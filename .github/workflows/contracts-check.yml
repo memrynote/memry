@@ -1,0 +1,36 @@
+name: Contracts Drift Check
+
+on:
+  pull_request:
+    paths:
+      - src/shared/contracts/**
+      - sync-server/src/contracts/**
+      - scripts/contracts-manifest.txt
+      - scripts/check-contracts.sh
+      - scripts/sync-contracts.sh
+      - .github/workflows/contracts-check.yml
+  push:
+    branches:
+      - main
+    paths:
+      - src/shared/contracts/**
+      - sync-server/src/contracts/**
+      - scripts/contracts-manifest.txt
+      - scripts/check-contracts.sh
+      - scripts/sync-contracts.sh
+      - .github/workflows/contracts-check.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check-contracts:
+    name: Check contracts drift
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Verify shared/server contract sync
+        run: bash scripts/check-contracts.sh

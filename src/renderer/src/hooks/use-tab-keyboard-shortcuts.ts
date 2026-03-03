@@ -3,33 +3,20 @@
  * All keyboard shortcuts for tab management
  */
 
-import { useMemo } from 'react';
-import { useTabs } from '@/contexts/tabs';
-import {
-  useKeyboardShortcuts,
-  type KeyboardShortcut,
-} from './use-keyboard-shortcuts-base';
+import { useMemo } from 'react'
+import { useTabs } from '@/contexts/tabs'
+import { useKeyboardShortcuts, type KeyboardShortcut } from './use-keyboard-shortcuts-base'
 
 /**
  * Hook providing all tab-related keyboard shortcuts
  */
 export const useTabKeyboardShortcuts = (): void => {
-  const {
-    state,
-    dispatch,
-    openTab,
-    closeTab,
-    pinTab,
-    unpinTab,
-    splitView,
-    moveTabToNewSplit,
-  } = useTabs();
+  const { state, dispatch, openTab, closeTab, pinTab, unpinTab, splitView, moveTabToNewSplit } =
+    useTabs()
 
   const shortcuts = useMemo<KeyboardShortcut[]>(() => {
-    const activeGroup = state.tabGroups[state.activeGroupId];
-    const activeTab = activeGroup?.tabs.find(
-      (t) => t.id === activeGroup.activeTabId
-    );
+    const activeGroup = state.tabGroups[state.activeGroupId]
+    const activeTab = activeGroup?.tabs.find((t) => t.id === activeGroup.activeTabId)
 
     return [
       // =====================================================================
@@ -49,8 +36,9 @@ export const useTabKeyboardShortcuts = (): void => {
             isPinned: false,
             isModified: false,
             isPreview: false,
+            isDeleted: false
           }),
-        description: 'New tab',
+        description: 'New tab'
       },
 
       // Close tab (⌘W)
@@ -59,10 +47,10 @@ export const useTabKeyboardShortcuts = (): void => {
         modifiers: { meta: true },
         action: () => {
           if (activeTab) {
-            closeTab(activeTab.id, state.activeGroupId);
+            closeTab(activeTab.id, state.activeGroupId)
           }
         },
-        description: 'Close tab',
+        description: 'Close tab'
       },
 
       // Close all tabs (⌘⇧W)
@@ -72,10 +60,10 @@ export const useTabKeyboardShortcuts = (): void => {
         action: () => {
           dispatch({
             type: 'CLOSE_ALL_TABS',
-            payload: { groupId: state.activeGroupId },
-          });
+            payload: { groupId: state.activeGroupId }
+          })
         },
-        description: 'Close all tabs',
+        description: 'Close all tabs'
       },
 
       // =====================================================================
@@ -89,10 +77,10 @@ export const useTabKeyboardShortcuts = (): void => {
         action: () => {
           dispatch({
             type: 'GO_TO_NEXT_TAB',
-            payload: { groupId: state.activeGroupId },
-          });
+            payload: { groupId: state.activeGroupId }
+          })
         },
-        description: 'Next tab',
+        description: 'Next tab'
       },
 
       // Previous tab (Ctrl+Shift+Tab)
@@ -102,10 +90,10 @@ export const useTabKeyboardShortcuts = (): void => {
         action: () => {
           dispatch({
             type: 'GO_TO_PREVIOUS_TAB',
-            payload: { groupId: state.activeGroupId },
-          });
+            payload: { groupId: state.activeGroupId }
+          })
         },
-        description: 'Previous tab',
+        description: 'Previous tab'
       },
 
       // Go to tab 1-8 (⌘1-8)
@@ -115,10 +103,10 @@ export const useTabKeyboardShortcuts = (): void => {
         action: () => {
           dispatch({
             type: 'GO_TO_TAB_INDEX',
-            payload: { index: i, groupId: state.activeGroupId },
-          });
+            payload: { index: i, groupId: state.activeGroupId }
+          })
         },
-        description: `Go to tab ${i + 1}`,
+        description: `Go to tab ${i + 1}`
       })),
 
       // Go to last tab (⌘9)
@@ -127,14 +115,14 @@ export const useTabKeyboardShortcuts = (): void => {
         modifiers: { meta: true },
         action: () => {
           if (activeGroup) {
-            const lastIndex = activeGroup.tabs.length - 1;
+            const lastIndex = activeGroup.tabs.length - 1
             dispatch({
               type: 'GO_TO_TAB_INDEX',
-              payload: { index: lastIndex, groupId: state.activeGroupId },
-            });
+              payload: { index: lastIndex, groupId: state.activeGroupId }
+            })
           }
         },
-        description: 'Go to last tab',
+        description: 'Go to last tab'
       },
 
       // =====================================================================
@@ -148,13 +136,13 @@ export const useTabKeyboardShortcuts = (): void => {
         action: () => {
           if (activeTab) {
             if (activeTab.isPinned) {
-              unpinTab(activeTab.id, state.activeGroupId);
+              unpinTab(activeTab.id, state.activeGroupId)
             } else {
-              pinTab(activeTab.id, state.activeGroupId);
+              pinTab(activeTab.id, state.activeGroupId)
             }
           }
         },
-        description: 'Pin/Unpin tab',
+        description: 'Pin/Unpin tab'
       },
 
       // Duplicate tab (⌘⇧D)
@@ -167,15 +155,17 @@ export const useTabKeyboardShortcuts = (): void => {
               type: activeTab.type,
               title: activeTab.title,
               icon: activeTab.icon,
+              emoji: activeTab.emoji,
               path: activeTab.path,
               entityId: activeTab.entityId,
               isPinned: false,
               isModified: false,
               isPreview: false,
-            });
+              isDeleted: false
+            })
           }
         },
-        description: 'Duplicate tab',
+        description: 'Duplicate tab'
       },
 
       // =====================================================================
@@ -187,13 +177,13 @@ export const useTabKeyboardShortcuts = (): void => {
         key: '\\',
         modifiers: { meta: true },
         action: () => {
-          const group = state.tabGroups[state.activeGroupId];
-          const activeTabId = group?.activeTabId;
+          const group = state.tabGroups[state.activeGroupId]
+          const activeTabId = group?.activeTabId
           if (activeTabId && group && group.tabs.length > 0) {
-            moveTabToNewSplit(activeTabId, state.activeGroupId, 'right');
+            moveTabToNewSplit(activeTabId, state.activeGroupId, 'right')
           }
         },
-        description: 'Split right with active tab',
+        description: 'Split right with active tab'
       },
 
       // Close split (⌘⌥W)
@@ -204,14 +194,14 @@ export const useTabKeyboardShortcuts = (): void => {
           if (Object.keys(state.tabGroups).length > 1) {
             dispatch({
               type: 'CLOSE_SPLIT',
-              payload: { groupId: state.activeGroupId },
-            });
+              payload: { groupId: state.activeGroupId }
+            })
           }
         },
         description: 'Close split pane',
-        when: () => Object.keys(state.tabGroups).length > 1,
-      },
-    ];
+        when: () => Object.keys(state.tabGroups).length > 1
+      }
+    ]
   }, [
     state.tabGroups,
     state.activeGroupId,
@@ -220,10 +210,10 @@ export const useTabKeyboardShortcuts = (): void => {
     closeTab,
     pinTab,
     unpinTab,
-    splitView,
-  ]);
+    splitView
+  ])
 
-  useKeyboardShortcuts(shortcuts);
-};
+  useKeyboardShortcuts(shortcuts)
+}
 
-export default useTabKeyboardShortcuts;
+export default useTabKeyboardShortcuts

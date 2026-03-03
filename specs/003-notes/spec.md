@@ -5,7 +5,7 @@
 **Status**: Draft
 **Input**: User description: "Build the notes system that connects to the existing NotePage component and enables rich note-taking with properties, tags, and bidirectional linking"
 
-## User Scenarios & Testing *(mandatory)*
+## User Scenarios & Testing _(mandatory)_
 
 ### User Story 1 - Rich Text Note Editing (Priority: P1)
 
@@ -246,11 +246,12 @@ As a user, I want version history so I can see previous edits and restore earlie
 - What happens when attachment upload fails? **Error message shown; content not lost; retry option available.**
 - What happens when disk is full during save? **Error shown; content remains in memory; user prompted to free space.**
 
-## Requirements *(mandatory)*
+## Requirements _(mandatory)_
 
 ### Functional Requirements
 
 #### Note CRUD
+
 - **FR-001**: System MUST allow users to create new notes with a generated unique identifier
 - **FR-002**: System MUST parse and display note content with YAML frontmatter metadata
 - **FR-003**: System MUST save notes automatically 1 second after the user stops typing
@@ -260,6 +261,7 @@ As a user, I want version history so I can see previous edits and restore earlie
 - **FR-007**: System MUST allow renaming notes while preserving their unique identifier
 
 #### Rich Text Editing
+
 - **FR-008**: System MUST support headings (H1-H6), bold, italic, and strikethrough formatting
 - **FR-009**: System MUST support ordered and unordered lists with proper nesting
 - **FR-010**: System MUST support fenced code blocks with syntax highlighting
@@ -267,6 +269,7 @@ As a user, I want version history so I can see previous edits and restore earlie
 - **FR-012**: System MUST support blockquotes and horizontal rules
 
 #### Wiki Links
+
 - **FR-013**: System MUST recognize [[Note Title]] syntax as wiki links
 - **FR-014**: System MUST recognize [[Note Title|display text]] syntax for aliased links
 - **FR-015**: System MUST show autocomplete when user types "[["
@@ -274,12 +277,14 @@ As a user, I want version history so I can see previous edits and restore earlie
 - **FR-017**: System MUST offer to create non-existent linked notes when clicked
 
 #### Backlinks
+
 - **FR-018**: System MUST compute and store outgoing links for each note on save
 - **FR-019**: System MUST compute and display incoming links (backlinks) for each note
 - **FR-020**: System MUST show a context snippet around each backlink
 - **FR-021**: System MUST update backlinks when source notes are edited or deleted
 
 #### Tags
+
 - **FR-022**: System MUST store tags in note frontmatter
 - **FR-023**: System MUST provide tag autocomplete with existing tags
 - **FR-024**: System MUST normalize tags to lowercase
@@ -287,18 +292,21 @@ As a user, I want version history so I can see previous edits and restore earlie
 - **FR-026**: System MUST assign colors to tags for visual distinction
 
 #### Properties
+
 - **FR-027**: System MUST support text, number, checkbox, date, select, multiselect, url, and rating property types
 - **FR-028**: System MUST store properties in note frontmatter
 - **FR-029**: System MUST provide appropriate input controls for each property type
 - **FR-030**: System MUST allow adding, editing, and removing properties from notes
 
 #### Attachments
+
 - **FR-031**: System MUST allow drag-and-drop upload of images and files
 - **FR-032**: System MUST store attachments in vault/attachments/ directory
 - **FR-033**: System MUST insert markdown image/link syntax for uploaded files
 - **FR-034**: System MUST render embedded images inline in the editor
 
 #### Organization
+
 - **FR-035**: System MUST support folder hierarchy for organizing notes
 - **FR-036**: System MUST display folder tree in sidebar
 - **FR-037**: System MUST allow drag-and-drop of notes between folders
@@ -306,6 +314,7 @@ As a user, I want version history so I can see previous edits and restore earlie
 - **FR-039**: System MUST provide emoji picker for icon selection
 
 #### Outline
+
 - **FR-040**: System MUST generate heading outline for notes with headings
 - **FR-041**: System MUST allow clicking outline items to scroll to that heading
 
@@ -323,7 +332,7 @@ As a user, I want version history so I can see previous edits and restore earlie
 
 - **Folder**: A directory in the vault/notes/ hierarchy containing note files or other folders.
 
-## Success Criteria *(mandatory)*
+## Success Criteria _(mandatory)_
 
 ### Measurable Outcomes
 

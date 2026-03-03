@@ -2,7 +2,7 @@
 
 Quick capture system for links, notes, voice memos, and images.
 
-```
+````
 /speckit.specify
 
 Build the inbox system for quick capture that connects to the existing InboxPage component:
@@ -80,11 +80,12 @@ interface InboxMetadata {
   // Common
   source?: string           // "web-clipper", "share-sheet", "manual"
 }
-```
+````
 
 ## FUNCTIONAL REQUIREMENTS
 
 ### Link Capture
+
 ```
 On URL input:
 1. Create InboxItem with type="link", isProcessing=true
@@ -102,12 +103,14 @@ On URL input:
 ```
 
 ### Note Capture
+
 - Quick text input field always visible
 - Enter or button creates note item
 - Markdown supported in content
 - No fetch needed, instant save
 
 ### Image Capture
+
 - Drag and drop image files
 - Paste from clipboard (Cmd+V)
 - Screenshot capture (Cmd+Shift+4, then paste)
@@ -115,6 +118,7 @@ On URL input:
 - Extract EXIF metadata if available
 
 ### Voice Capture
+
 - Record button starts recording (MediaRecorder API)
 - Stop button saves and starts transcription
 - Store audio file in vault/attachments/
@@ -124,6 +128,7 @@ On URL input:
   - Make configurable in settings
 
 ### Filing Actions
+
 ```typescript
 interface FilingOptions {
   // Move to folder (just organizes, keeps as inbox item type)
@@ -139,7 +144,7 @@ interface FilingOptions {
   // Link to existing note (adds reference)
   linkToNote?: {
     noteId: string
-    section?: string  // Append to specific section
+    section?: string // Append to specific section
   }
 
   // Add tags (for organization before filing)
@@ -148,18 +153,21 @@ interface FilingOptions {
 ```
 
 ### Bulk Operations
+
 - Select multiple items (Cmd+click, Shift+click, Select All)
 - Bulk file: apply same action to all selected
 - Bulk delete: confirm dialog, then remove
 - Bulk tag: add tags to all selected
 
 ### Stale Detection
+
 - Items older than threshold (default 7 days) marked as stale
 - Visual indicator (different color, section separator)
 - Quick actions: "File all stale to Unsorted", "Delete all stale"
 - Threshold configurable in settings
 
 ### Global Capture Shortcut
+
 - Cmd+Shift+Space opens quick capture window
 - Works when app is in background
 - Mini window with:
@@ -169,6 +177,7 @@ interface FilingOptions {
 - Saves to inbox and closes
 
 ### Preview Panel
+
 - Click item to see full preview
 - Links: rendered article content (Reader mode style)
 - Notes: full text
@@ -178,12 +187,14 @@ interface FilingOptions {
 ## NON-FUNCTIONAL REQUIREMENTS
 
 ### Performance
+
 - Link preview fetch completes in <3 seconds
 - Voice transcription completes in <30 seconds (for 1 min audio)
 - Inbox list with 100 items scrolls smoothly
 - Global shortcut responds in <200ms
 
 ### Reliability
+
 - Failed fetches retry once, then show error state
 - Audio recording survives app crash (save chunks)
 - Bulk operations are transactional (all or nothing)
@@ -191,29 +202,34 @@ interface FilingOptions {
 ## ACCEPTANCE CRITERIA
 
 ### Link Capture
+
 - [ ] Pasting URL creates item and fetches preview
 - [ ] Preview shows title, excerpt, and image
 - [ ] Invalid URL shows error state
 - [ ] Slow/blocked sites timeout gracefully
 
 ### Note Capture
+
 - [ ] Typing text and pressing Enter creates note
 - [ ] Markdown formatting preserved
 - [ ] Empty input doesn't create item
 
 ### Image Capture
+
 - [ ] Drag image file creates item
 - [ ] Paste screenshot creates item
 - [ ] Image thumbnail shown in list
 - [ ] Original file stored in attachments
 
 ### Voice Capture
+
 - [ ] Record button starts recording with indicator
 - [ ] Stop button saves and queues transcription
 - [ ] Transcription appears when complete
 - [ ] Failed transcription shows retry option
 
 ### Filing
+
 - [ ] "File" button opens filing panel
 - [ ] Can select folder destination
 - [ ] "Convert to Note" creates .md file
@@ -221,6 +237,7 @@ interface FilingOptions {
 - [ ] Filed items removed from inbox
 
 ### Bulk Operations
+
 - [ ] Cmd+A selects all items
 - [ ] Cmd+click toggles selection
 - [ ] Bulk action bar appears when selected
@@ -228,21 +245,27 @@ interface FilingOptions {
 - [ ] Bulk delete shows confirmation
 
 ### Stale Items
+
 - [ ] Items >7 days show stale indicator
 - [ ] Stale section separated in list
 - [ ] "File all to Unsorted" works
 - [ ] Stale threshold configurable
 
 ### Global Capture
+
 - [ ] Cmd+Shift+Space opens capture window
 - [ ] Window appears quickly (<200ms)
 - [ ] Clipboard URL auto-detected
 - [ ] Saving closes window
 
 ### Edge Cases
+
 - [ ] 100 items in inbox doesn't slow list
 - [ ] Very long URLs truncated properly
 - [ ] Missing metadata handled gracefully
 - [ ] Network failure during fetch shows clear error
 - [ ] Audio recording with no microphone shows error
+
+```
+
 ```

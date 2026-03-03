@@ -1,9 +1,9 @@
-import { useRef, useEffect, forwardRef } from "react"
-import { Search, X } from "lucide-react"
+import { useRef, useEffect, forwardRef } from 'react'
+import { Search, X } from 'lucide-react'
 
-import { cn } from "@/lib/utils"
-import { Input } from "@/components/ui/input"
-import { Button } from "@/components/ui/button"
+import { cn } from '@/lib/utils'
+import { Input } from '@/components/ui/input'
+import { Button } from '@/components/ui/button'
 
 // ============================================================================
 // TYPES
@@ -27,10 +27,10 @@ export const SearchInput = forwardRef<HTMLInputElement, SearchInputProps>(
     {
       value,
       onChange,
-      placeholder = "Search tasks...",
+      placeholder = 'Search tasks...',
       className,
       autoFocus = false,
-      expandOnFocus = true,
+      expandOnFocus = true
     },
     ref
   ) => {
@@ -42,12 +42,12 @@ export const SearchInput = forwardRef<HTMLInputElement, SearchInputProps>(
     }
 
     const handleClear = (): void => {
-      onChange("")
+      onChange('')
       inputRef.current?.focus()
     }
 
     const handleKeyDown = (e: React.KeyboardEvent): void => {
-      if (e.key === "Escape" && value) {
+      if (e.key === 'Escape' && value) {
         e.preventDefault()
         e.stopPropagation()
         handleClear()
@@ -62,7 +62,7 @@ export const SearchInput = forwardRef<HTMLInputElement, SearchInputProps>(
     }, [autoFocus])
 
     return (
-      <div className={cn("relative group", className)}>
+      <div className={cn('relative group', className)}>
         <Search
           className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-text-tertiary pointer-events-none"
           aria-hidden="true"
@@ -75,8 +75,8 @@ export const SearchInput = forwardRef<HTMLInputElement, SearchInputProps>(
           onKeyDown={handleKeyDown}
           placeholder={placeholder}
           className={cn(
-            "pl-9 pr-8 h-9 text-sm",
-            expandOnFocus && "w-48 focus:w-64 transition-all duration-200"
+            'pl-9 pr-8 h-9 text-sm',
+            expandOnFocus && 'w-48 focus:w-64 transition-all duration-200'
           )}
           aria-label="Search tasks"
         />
@@ -97,6 +97,6 @@ export const SearchInput = forwardRef<HTMLInputElement, SearchInputProps>(
   }
 )
 
-SearchInput.displayName = "SearchInput"
+SearchInput.displayName = 'SearchInput'
 
 export default SearchInput

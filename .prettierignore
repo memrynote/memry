@@ -1,6 +1,12 @@
+node_modules
 out
 dist
+build
+coverage
 pnpm-lock.yaml
+package-lock.json
+yarn.lock
 LICENSE.md
 tsconfig.json
 tsconfig.*.json
+.env*

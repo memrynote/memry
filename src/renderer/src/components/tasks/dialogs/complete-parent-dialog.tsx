@@ -1,5 +1,5 @@
-import { useState } from "react"
-import { CheckCircle2 } from "lucide-react"
+import { useState } from 'react'
+import { CheckCircle2 } from 'lucide-react'
 
 import {
   AlertDialog,
@@ -9,11 +9,11 @@ import {
   AlertDialogDescription,
   AlertDialogFooter,
   AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog"
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
-import { Label } from "@/components/ui/label"
-import type { Task } from "@/data/sample-tasks"
+  AlertDialogTitle
+} from '@/components/ui/alert-dialog'
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
+import { Label } from '@/components/ui/label'
+import type { Task } from '@/data/sample-tasks'
 
 // ============================================================================
 // TYPES
@@ -27,7 +27,7 @@ interface CompleteParentDialogProps {
   onConfirm: (completeSubtasks: boolean) => void
 }
 
-type CompleteOption = "complete-all" | "complete-parent-only"
+type CompleteOption = 'complete-all' | 'complete-parent-only'
 
 // ============================================================================
 // COMPLETE PARENT DIALOG COMPONENT
@@ -38,22 +38,22 @@ export const CompleteParentDialog = ({
   onOpenChange,
   parent,
   incompleteSubtasks,
-  onConfirm,
+  onConfirm
 }: CompleteParentDialogProps): React.JSX.Element | null => {
-  const [option, setOption] = useState<CompleteOption>("complete-all")
+  const [option, setOption] = useState<CompleteOption>('complete-all')
 
   if (!parent) return null
 
   const handleConfirm = (): void => {
-    onConfirm(option === "complete-all")
+    onConfirm(option === 'complete-all')
     onOpenChange(false)
     // Reset option for next time
-    setOption("complete-all")
+    setOption('complete-all')
   }
 
   const handleCancel = (): void => {
     onOpenChange(false)
-    setOption("complete-all")
+    setOption('complete-all')
   }
 
   return (
@@ -67,11 +67,9 @@ export const CompleteParentDialog = ({
           <AlertDialogDescription asChild>
             <div className="space-y-3">
               <p>
-                <span className="font-medium text-foreground">
-                  "{parent.title}"
-                </span>{" "}
-                has {incompleteSubtasks.length} incomplete subtask
-                {incompleteSubtasks.length !== 1 ? "s" : ""}:
+                <span className="font-medium text-foreground">"{parent.title}"</span> has{' '}
+                {incompleteSubtasks.length} incomplete subtask
+                {incompleteSubtasks.length !== 1 ? 's' : ''}:
               </p>
               <ul className="space-y-1 text-sm">
                 {incompleteSubtasks.slice(0, 5).map((subtask) => (
@@ -108,7 +106,11 @@ export const CompleteParentDialog = ({
             </div>
 
             <div className="flex items-start space-x-3 rounded-lg border p-4 cursor-pointer hover:bg-accent/50 transition-colors">
-              <RadioGroupItem value="complete-parent-only" id="complete-parent-only" className="mt-0.5" />
+              <RadioGroupItem
+                value="complete-parent-only"
+                id="complete-parent-only"
+                className="mt-0.5"
+              />
               <Label htmlFor="complete-parent-only" className="cursor-pointer flex-1">
                 <div className="font-medium">Complete parent only, keep subtasks incomplete</div>
                 <div className="text-sm text-muted-foreground mt-1">
@@ -121,9 +123,7 @@ export const CompleteParentDialog = ({
 
         <AlertDialogFooter>
           <AlertDialogCancel onClick={handleCancel}>Cancel</AlertDialogCancel>
-          <AlertDialogAction onClick={handleConfirm}>
-            Complete
-          </AlertDialogAction>
+          <AlertDialogAction onClick={handleConfirm}>Complete</AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
@@ -131,11 +131,3 @@ export const CompleteParentDialog = ({
 }
 
 export default CompleteParentDialog
-
-
-
-
-
-
-
-

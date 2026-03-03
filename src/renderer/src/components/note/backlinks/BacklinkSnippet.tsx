@@ -15,21 +15,10 @@ export function BacklinkSnippet({ mention, className }: BacklinkSnippetProps) {
   const afterLink = snippet.slice(linkEnd)
 
   return (
-    <p
-      className={cn(
-        'text-[13px] text-stone-500 leading-relaxed',
-        'line-clamp-3',
-        className
-      )}
-    >
+    <p className={cn('text-[13px] text-stone-500 leading-relaxed', 'line-clamp-3', className)}>
       <span className="italic">"</span>
       {beforeLink}
-      <span
-        className={cn(
-          'bg-yellow-200 px-0.5 rounded-sm',
-          'font-medium text-stone-700'
-        )}
-      >
+      <span className={cn('bg-yellow-200 px-0.5 rounded-sm', 'font-medium text-stone-700')}>
         {linkText}
       </span>
       {afterLink}

@@ -1,5 +1,5 @@
-import { useState, useCallback } from "react"
-import { RefreshCw } from "lucide-react"
+import { useState, useCallback } from 'react'
+import { RefreshCw } from 'lucide-react'
 
 import {
   AlertDialog,
@@ -9,17 +9,17 @@ import {
   AlertDialogDescription,
   AlertDialogFooter,
   AlertDialogCancel,
-  AlertDialogAction,
-} from "@/components/ui/alert-dialog"
-import { cn } from "@/lib/utils"
-import { getRepeatDisplayText } from "@/lib/repeat-utils"
-import type { RepeatConfig } from "@/data/sample-tasks"
+  AlertDialogAction
+} from '@/components/ui/alert-dialog'
+import { cn } from '@/lib/utils'
+import { getRepeatDisplayText } from '@/lib/repeat-utils'
+import type { RepeatConfig } from '@/data/sample-tasks'
 
 // ============================================================================
 // TYPES
 // ============================================================================
 
-export type StopRepeatOption = "keep" | "delete"
+export type StopRepeatOption = 'keep' | 'delete'
 
 interface StopRepeatingDialogProps {
   isOpen: boolean
@@ -38,13 +38,13 @@ export const StopRepeatingDialog = ({
   onClose,
   onConfirm,
   taskTitle,
-  repeatConfig,
+  repeatConfig
 }: StopRepeatingDialogProps): React.JSX.Element => {
-  const [selectedOption, setSelectedOption] = useState<StopRepeatOption>("keep")
+  const [selectedOption, setSelectedOption] = useState<StopRepeatOption>('keep')
 
   const repeatText = repeatConfig
     ? getRepeatDisplayText(repeatConfig).toLowerCase()
-    : "on a schedule"
+    : 'on a schedule'
 
   const handleConfirm = useCallback((): void => {
     onConfirm(selectedOption)
@@ -68,17 +68,17 @@ export const StopRepeatingDialog = ({
           {/* Keep this task option */}
           <label
             className={cn(
-              "flex cursor-pointer items-start gap-3 rounded-lg border p-3 transition-colors",
-              selectedOption === "keep"
-                ? "border-primary bg-primary/5"
-                : "border-border hover:bg-accent/50"
+              'flex cursor-pointer items-start gap-3 rounded-lg border p-3 transition-colors',
+              selectedOption === 'keep'
+                ? 'border-primary bg-primary/5'
+                : 'border-border hover:bg-accent/50'
             )}
           >
             <input
               type="radio"
               name="stopOption"
-              checked={selectedOption === "keep"}
-              onChange={() => setSelectedOption("keep")}
+              checked={selectedOption === 'keep'}
+              onChange={() => setSelectedOption('keep')}
               className="mt-0.5 size-4 accent-primary"
             />
             <div className="flex flex-col gap-0.5">
@@ -92,26 +92,24 @@ export const StopRepeatingDialog = ({
           {/* Delete all option */}
           <label
             className={cn(
-              "flex cursor-pointer items-start gap-3 rounded-lg border p-3 transition-colors",
-              selectedOption === "delete"
-                ? "border-destructive bg-destructive/5"
-                : "border-border hover:bg-accent/50"
+              'flex cursor-pointer items-start gap-3 rounded-lg border p-3 transition-colors',
+              selectedOption === 'delete'
+                ? 'border-destructive bg-destructive/5'
+                : 'border-border hover:bg-accent/50'
             )}
           >
             <input
               type="radio"
               name="stopOption"
-              checked={selectedOption === "delete"}
-              onChange={() => setSelectedOption("delete")}
+              checked={selectedOption === 'delete'}
+              onChange={() => setSelectedOption('delete')}
               className="mt-0.5 size-4 accent-destructive"
             />
             <div className="flex flex-col gap-0.5">
               <span className="text-sm font-medium text-destructive">
                 Delete this and all future occurrences
               </span>
-              <span className="text-xs text-muted-foreground">
-                Task will be removed entirely
-              </span>
+              <span className="text-xs text-muted-foreground">Task will be removed entirely</span>
             </div>
           </label>
         </div>
@@ -121,7 +119,8 @@ export const StopRepeatingDialog = ({
           <AlertDialogAction
             onClick={handleConfirm}
             className={cn(
-              selectedOption === "delete" && "bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              selectedOption === 'delete' &&
+                'bg-destructive text-destructive-foreground hover:bg-destructive/90'
             )}
           >
             Confirm
@@ -133,4 +132,3 @@ export const StopRepeatingDialog = ({
 }
 
 export default StopRepeatingDialog
-

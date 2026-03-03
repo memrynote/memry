@@ -5,19 +5,19 @@ import {
   PointerSensor,
   useSensor,
   useSensors,
-  type DragEndEvent,
-} from "@dnd-kit/core"
+  type DragEndEvent
+} from '@dnd-kit/core'
 import {
   SortableContext,
   sortableKeyboardCoordinates,
-  verticalListSortingStrategy,
-} from "@dnd-kit/sortable"
-import { restrictToVerticalAxis, restrictToParentElement } from "@dnd-kit/modifiers"
+  verticalListSortingStrategy
+} from '@dnd-kit/sortable'
+import { restrictToVerticalAxis, restrictToParentElement } from '@dnd-kit/modifiers'
 
-import { cn } from "@/lib/utils"
-import { SortableSubtaskRow } from "@/components/tasks/sortable-subtask-row"
-import { AddSubtaskInput } from "@/components/tasks/add-subtask-input"
-import type { Task } from "@/data/sample-tasks"
+import { cn } from '@/lib/utils'
+import { SortableSubtaskRow } from '@/components/tasks/sortable-subtask-row'
+import { AddSubtaskInput } from '@/components/tasks/add-subtask-input'
+import type { Task } from '@/data/sample-tasks'
 
 // ============================================================================
 // TYPES
@@ -57,16 +57,16 @@ export const SortableSubtaskList = ({
   onToggleComplete,
   onAddSubtask,
   onClick,
-  className,
+  className
 }: SortableSubtaskListProps): React.JSX.Element => {
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
-        distance: 8, // 8px movement required before drag starts
-      },
+        distance: 8 // 8px movement required before drag starts
+      }
     }),
     useSensor(KeyboardSensor, {
-      coordinateGetter: sortableKeyboardCoordinates,
+      coordinateGetter: sortableKeyboardCoordinates
     })
   )
 
@@ -96,7 +96,7 @@ export const SortableSubtaskList = ({
       id={`subtasks-${parentId}`}
       role="group"
       aria-label={`Subtasks of ${parentTitle}`}
-      className={cn("ml-[62px]", className)}
+      className={cn('ml-[62px]', className)}
     >
       <DndContext
         sensors={sensors}
@@ -104,10 +104,7 @@ export const SortableSubtaskList = ({
         onDragEnd={handleDragEnd}
         modifiers={[restrictToVerticalAxis, restrictToParentElement]}
       >
-        <SortableContext
-          items={subtaskIds}
-          strategy={verticalListSortingStrategy}
-        >
+        <SortableContext items={subtaskIds} strategy={verticalListSortingStrategy}>
           {subtasks.map((subtask, index) => (
             <SortableSubtaskRow
               key={subtask.id}
@@ -123,21 +120,10 @@ export const SortableSubtaskList = ({
 
       {/* Add subtask input */}
       {onAddSubtask && (
-        <AddSubtaskInput
-          parentId={parentId}
-          onAdd={onAddSubtask}
-          className="pl-2"
-        />
+        <AddSubtaskInput parentId={parentId} onAdd={onAddSubtask} className="pl-2" />
       )}
     </div>
   )
 }
 
 export default SortableSubtaskList
-
-
-
-
-
-
-

@@ -2,7 +2,7 @@
 
 Complete task management system with projects, statuses, and repeating tasks.
 
-```
+````
 /speckit.specify
 
 Build the task management data layer that persists tasks, projects, and enables the existing UI components:
@@ -68,25 +68,26 @@ interface Task {
 }
 
 type Priority = "none" | "low" | "medium" | "high" | "urgent"
-```
+````
 
 ### RepeatConfig
+
 ```typescript
 interface RepeatConfig {
-  frequency: "daily" | "weekly" | "monthly" | "yearly"
-  interval: number              // Every X days/weeks/months/years
+  frequency: 'daily' | 'weekly' | 'monthly' | 'yearly'
+  interval: number // Every X days/weeks/months/years
 
   // Weekly options
-  daysOfWeek?: number[]         // 0=Sun, 1=Mon, ..., 6=Sat
+  daysOfWeek?: number[] // 0=Sun, 1=Mon, ..., 6=Sat
 
   // Monthly options
-  monthlyType?: "dayOfMonth" | "weekPattern"
-  dayOfMonth?: number           // 1-31
-  weekOfMonth?: number          // 1-5 (5 = last)
-  dayOfWeekForMonth?: number    // 0-6
+  monthlyType?: 'dayOfMonth' | 'weekPattern'
+  dayOfMonth?: number // 1-31
+  weekOfMonth?: number // 1-5 (5 = last)
+  dayOfWeekForMonth?: number // 0-6
 
   // End conditions
-  endType: "never" | "date" | "count"
+  endType: 'never' | 'date' | 'count'
   endDate?: Date | null
   endCount?: number
 
@@ -97,42 +98,46 @@ interface RepeatConfig {
 ```
 
 ### Project
+
 ```typescript
 interface Project {
   id: string
-  name: string                  // 1-100 chars
+  name: string // 1-100 chars
   description: string
-  icon: string                  // Lucide icon name
-  color: string                 // Hex color
-  statuses: Status[]            // Ordered list of statuses
-  isDefault: boolean            // One project is always default
+  icon: string // Lucide icon name
+  color: string // Hex color
+  statuses: Status[] // Ordered list of statuses
+  isDefault: boolean // One project is always default
   isArchived: boolean
   createdAt: Date
   modifiedAt: Date
-  sortOrder: number             // For sidebar ordering
+  sortOrder: number // For sidebar ordering
 }
 ```
 
 ### Status
+
 ```typescript
 interface Status {
   id: string
-  name: string                  // 1-50 chars, unique within project
-  color: string                 // Hex color
-  type: "todo" | "in_progress" | "done"  // Semantic type
-  order: number                 // Display order in project
+  name: string // 1-50 chars, unique within project
+  color: string // Hex color
+  type: 'todo' | 'in_progress' | 'done' // Semantic type
+  order: number // Display order in project
 }
 ```
 
 ## FUNCTIONAL REQUIREMENTS
 
 ### Task CRUD
+
 - Create task with minimal info (title + project), defaults for rest
 - Update any task field independently
 - Delete task (soft delete to trash, hard delete after 30 days)
 - Duplicate task (new ID, "Copy of" prefix, clear completion state)
 
 ### Task Completion
+
 - Toggle complete: set completedAt timestamp, move to done status
 - Toggle incomplete: clear completedAt, move to default todo status
 - For repeating tasks on complete:
@@ -141,6 +146,7 @@ interface Status {
   3. Create new task with next date (if not past end condition)
 
 ### Subtasks
+
 - Create subtask: new task with parentId set
 - Reorder subtasks: update parent's subtaskOrder array
 - Complete subtask: normal completion (doesn't affect parent)
@@ -148,6 +154,7 @@ interface Status {
 - Promote subtask: clear parentId, becomes standalone task
 
 ### Project Management
+
 - Create project with name, choose icon/color
 - Edit project details
 - Archive project (hides from sidebar, keeps tasks)
@@ -155,12 +162,14 @@ interface Status {
 - Reorder projects in sidebar (update sortOrder)
 
 ### Status Management
+
 - Each project has own status list
 - Must have at least one "todo" type and one "done" type status
 - Add/edit/remove statuses (can't remove if tasks use it)
 - Reorder statuses (affects Kanban column order)
 
 ### Filtering (connect to existing FilterBar)
+
 - Text search: fuzzy match on title and description
 - Project filter: multi-select project IDs
 - Priority filter: multi-select priorities
@@ -170,6 +179,7 @@ interface Status {
 - Repeat filter: All, Repeating Only, One-time Only
 
 ### Sorting
+
 - By due date (nulls last or first, configurable)
 - By priority (urgent first)
 - By created date
@@ -178,6 +188,7 @@ interface Status {
 - Manual ordering (sortOrder field)
 
 ### Undo Support
+
 - Delete task: keep in memory for 10 seconds, show undo toast
 - Complete task: same pattern
 - Bulk operations: undo restores all affected tasks
@@ -185,12 +196,14 @@ interface Status {
 ## NON-FUNCTIONAL REQUIREMENTS
 
 ### Performance
+
 - Create 100 tasks in <1 second
 - Load 500 tasks with smooth scrolling (virtualize list)
 - Filter 10,000 tasks in <100ms
 - Bulk operations (50 tasks) in <500ms
 
 ### Data Integrity
+
 - Task must always have valid projectId and statusId
 - Circular subtask references prevented
 - Completed tasks preserve original due date
@@ -199,38 +212,47 @@ interface Status {
 ## ACCEPTANCE CRITERIA
 
 ### Basic CRUD
+
 - [ ] Create task appears in list immediately
 - [ ] Edit task title updates everywhere it's shown
 - [ ] Delete task shows undo toast, actually deletes after timeout
 - [ ] Completing task moves to completed view, updates count
 
 ### Repeating Tasks
+
 - [ ] Creating daily repeat shows "Repeats daily" badge
 - [ ] Completing repeating task creates next occurrence
 - [ ] Next occurrence has correct date based on config
 - [ ] "Stop repeating" option removes repeat, keeps current task
 
 ### Subtasks
+
 - [ ] Creating subtask indents under parent in list view
 - [ ] Completing all subtasks doesn't auto-complete parent
 - [ ] Deleting parent offers to delete or promote subtasks
 - [ ] Reordering subtasks persists correctly
 
 ### Projects & Statuses
+
 - [ ] New project appears in sidebar
 - [ ] Changing task's project moves it correctly
 - [ ] Adding status appears in Kanban as new column
 - [ ] Deleting status with tasks shows error
 
 ### Filtering & Sorting
+
 - [ ] Search "meeting" finds "Team Meeting Notes" task
 - [ ] Filter by High priority shows only high priority tasks
 - [ ] Sort by due date puts overdue first, then today, then future
 - [ ] Saved filter can be loaded and applied
 
 ### Edge Cases
+
 - [ ] Task with 100 subtasks renders without lag
 - [ ] Completing task with no next repeat date shows message
 - [ ] Moving task to archived project archives the task too
 - [ ] Bulk delete 50 tasks completes without freeze
+
+```
+
 ```

@@ -1,13 +1,13 @@
-import { useState, useRef } from "react"
-import { Plus } from "lucide-react"
+import { useState, useRef } from 'react'
+import { Plus } from 'lucide-react'
 
-import { cn } from "@/lib/utils"
+import { cn } from '@/lib/utils'
 
-import { BulkSubtaskActionsMenu } from "./bulk-subtask-actions-menu"
-import { SubtasksEmptyState } from "./subtasks-empty-state"
-import { SortableSubtaskDetailList } from "./sortable-subtask-detail-list"
-import type { Task } from "@/data/sample-tasks"
-import type { SubtaskProgress } from "@/lib/subtask-utils"
+import { BulkSubtaskActionsMenu } from './bulk-subtask-actions-menu'
+import { SubtasksEmptyState } from './subtasks-empty-state'
+import { SortableSubtaskDetailList } from './sortable-subtask-detail-list'
+import type { Task } from '@/data/sample-tasks'
+import type { SubtaskProgress } from '@/lib/subtask-utils'
 
 // ============================================================================
 // TYPES
@@ -42,27 +42,27 @@ interface DetailAddSubtaskInputProps {
 
 const DetailAddSubtaskInput = ({
   parentId,
-  onAdd,
+  onAdd
 }: DetailAddSubtaskInputProps): React.JSX.Element => {
   const [isActive, setIsActive] = useState(false)
-  const [title, setTitle] = useState("")
+  const [title, setTitle] = useState('')
   const inputRef = useRef<HTMLInputElement>(null)
 
   const handleSubmit = (): void => {
     if (title.trim()) {
       onAdd(parentId, title.trim())
-      setTitle("")
+      setTitle('')
       inputRef.current?.focus()
     }
   }
 
   const handleKeyDown = (e: React.KeyboardEvent): void => {
-    if (e.key === "Enter" && title.trim()) {
+    if (e.key === 'Enter' && title.trim()) {
       e.preventDefault()
       handleSubmit()
     }
-    if (e.key === "Escape") {
-      setTitle("")
+    if (e.key === 'Escape') {
+      setTitle('')
       setIsActive(false)
       inputRef.current?.blur()
     }
@@ -71,16 +71,16 @@ const DetailAddSubtaskInput = ({
   return (
     <div
       className={cn(
-        "flex items-center rounded-lg border transition-colors mt-2",
+        'flex items-center rounded-lg border transition-colors mt-2',
         isActive
-          ? "border-ring bg-background shadow-sm"
-          : "border-dashed border-border hover:border-muted-foreground/50"
+          ? 'border-ring bg-background shadow-sm'
+          : 'border-dashed border-border hover:border-muted-foreground/50'
       )}
     >
       <Plus
         className={cn(
-          "w-4 h-4 ml-3 shrink-0",
-          isActive ? "text-muted-foreground" : "text-muted-foreground/60"
+          'w-4 h-4 ml-3 shrink-0',
+          isActive ? 'text-muted-foreground' : 'text-muted-foreground/60'
         )}
         aria-hidden="true"
       />
@@ -97,16 +97,14 @@ const DetailAddSubtaskInput = ({
         onKeyDown={handleKeyDown}
         placeholder="Add subtask..."
         className={cn(
-          "flex-1 px-2 py-2 text-sm bg-transparent outline-none",
-          "placeholder:text-muted-foreground/60"
+          'flex-1 px-2 py-2 text-sm bg-transparent outline-none',
+          'placeholder:text-muted-foreground/60'
         )}
         aria-label="Add subtask"
       />
 
       {isActive && title && (
-        <span className="text-xs text-muted-foreground mr-3 shrink-0">
-          Enter to add
-        </span>
+        <span className="text-xs text-muted-foreground mr-3 shrink-0">Enter to add</span>
       )}
     </div>
   )
@@ -131,7 +129,7 @@ export const SubtasksSection = ({
   onMarkAllSubtasksIncomplete,
   onOpenBulkDueDateDialog,
   onOpenBulkPriorityDialog,
-  onOpenDeleteAllSubtasksDialog,
+  onOpenDeleteAllSubtasksDialog
 }: SubtasksSectionProps): React.JSX.Element => {
   const hasSubtasks = subtasks.length > 0
   const hasIncomplete = progress.completed < progress.total
@@ -167,8 +165,6 @@ export const SubtasksSection = ({
         </div>
       </div>
 
-
-
       {/* Subtask list or empty state */}
       {hasSubtasks ? (
         <>
@@ -181,10 +177,7 @@ export const SubtasksSection = ({
             onReorder={onReorderSubtasks}
             onPromote={onPromoteSubtask}
           />
-          <DetailAddSubtaskInput
-            parentId={parentTask.id}
-            onAdd={onAddSubtask}
-          />
+          <DetailAddSubtaskInput parentId={parentTask.id} onAdd={onAddSubtask} />
         </>
       ) : (
         <SubtasksEmptyState
@@ -198,11 +191,3 @@ export const SubtasksSection = ({
 }
 
 export default SubtasksSection
-
-
-
-
-
-
-
-

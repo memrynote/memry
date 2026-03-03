@@ -1,12 +1,12 @@
-import { useMemo } from "react"
-import { Search, Calendar, Repeat, Clock } from "lucide-react"
+import { useMemo } from 'react'
+import { Search, Calendar, Repeat, Clock } from 'lucide-react'
 
-import { Button } from "@/components/ui/button"
-import { FilterChip } from "./filter-chip"
-import { cn } from "@/lib/utils"
-import type { TaskFilters, Project } from "@/data/tasks-data"
-import { priorityConfig, type Priority } from "@/data/sample-tasks"
-import { dueDateFilterOptions } from "@/data/tasks-data"
+import { Button } from '@/components/ui/button'
+import { FilterChip } from './filter-chip'
+import { cn } from '@/lib/utils'
+import type { TaskFilters, Project } from '@/data/tasks-data'
+import { priorityConfig, type Priority } from '@/data/sample-tasks'
+import { dueDateFilterOptions } from '@/data/tasks-data'
 
 // ============================================================================
 // TYPES
@@ -34,11 +34,11 @@ interface ChipData {
 // ============================================================================
 
 const priorityColors: Record<Priority, string> = {
-  urgent: priorityConfig.urgent.color || "#ef4444",
-  high: priorityConfig.high.color || "#f97316",
-  medium: priorityConfig.medium.color || "#eab308",
-  low: priorityConfig.low.color || "#6b7280",
-  none: "#9ca3af",
+  urgent: priorityConfig.urgent.color || '#ef4444',
+  high: priorityConfig.high.color || '#f97316',
+  medium: priorityConfig.medium.color || '#eab308',
+  low: priorityConfig.low.color || '#6b7280',
+  none: '#9ca3af'
 }
 
 // ============================================================================
@@ -51,7 +51,7 @@ export const ActiveFiltersBar = ({
   onUpdateFilters,
   onClearAll,
   onSaveFilter,
-  className,
+  className
 }: ActiveFiltersBarProps): React.JSX.Element | null => {
   // Generate chips from active filters
   const chips = useMemo((): ChipData[] => {
@@ -60,27 +60,25 @@ export const ActiveFiltersBar = ({
     // Search
     if (filters.search) {
       result.push({
-        id: "search",
+        id: 'search',
         label: `"${filters.search}"`,
         icon: <Search className="size-3" />,
-        onRemove: () => onUpdateFilters({ search: "" }),
+        onRemove: () => onUpdateFilters({ search: '' })
       })
     }
 
-    // Projects
+    // Projects - T032: Handle deleted projects gracefully
     filters.projectIds.forEach((projectId) => {
       const project = projects.find((p) => p.id === projectId)
-      if (project) {
-        result.push({
-          id: `project-${projectId}`,
-          label: project.name,
-          color: project.color,
-          onRemove: () =>
-            onUpdateFilters({
-              projectIds: filters.projectIds.filter((id) => id !== projectId),
-            }),
-        })
-      }
+      result.push({
+        id: `project-${projectId}`,
+        label: project?.name ?? 'Deleted Project',
+        color: project?.color ?? '#9ca3af', // Gray for deleted projects
+        onRemove: () =>
+          onUpdateFilters({
+            projectIds: filters.projectIds.filter((id) => id !== projectId)
+          })
+      })
     })
 
     // Priorities
@@ -91,17 +89,21 @@ export const ActiveFiltersBar = ({
         color: priorityColors[priority],
         onRemove: () =>
           onUpdateFilters({
-            priorities: filters.priorities.filter((p) => p !== priority),
-          }),
+            priorities: filters.priorities.filter((p) => p !== priority)
+          })
       })
     })
 
     // Due date
-    if (filters.dueDate.type !== "any") {
-      let label = ""
-      if (filters.dueDate.type === "custom" && filters.dueDate.customStart && filters.dueDate.customEnd) {
+    if (filters.dueDate.type !== 'any') {
+      let label = ''
+      if (
+        filters.dueDate.type === 'custom' &&
+        filters.dueDate.customStart &&
+        filters.dueDate.customEnd
+      ) {
         const formatDate = (date: Date): string =>
-          date.toLocaleDateString("en-US", { month: "short", day: "numeric" })
+          date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
         label = `${formatDate(filters.dueDate.customStart)} - ${formatDate(filters.dueDate.customEnd)}`
       } else {
         const option = dueDateFilterOptions.find((o) => o.value === filters.dueDate.type)
@@ -109,13 +111,13 @@ export const ActiveFiltersBar = ({
       }
 
       result.push({
-        id: "dueDate",
+        id: 'dueDate',
         label,
         icon: <Calendar className="size-3" />,
         onRemove: () =>
           onUpdateFilters({
-            dueDate: { type: "any", customStart: null, customEnd: null },
-          }),
+            dueDate: { type: 'any', customStart: null, customEnd: null }
+          })
       })
     }
 
@@ -123,7 +125,7 @@ export const ActiveFiltersBar = ({
     filters.statusIds.forEach((statusId) => {
       // Find the status across all projects
       let statusName = statusId
-      let statusColor = "#6b7280"
+      let statusColor = '#6b7280'
       for (const project of projects) {
         const status = project.statuses.find((s) => s.id === statusId)
         if (status) {
@@ -139,37 +141,37 @@ export const ActiveFiltersBar = ({
         color: statusColor,
         onRemove: () =>
           onUpdateFilters({
-            statusIds: filters.statusIds.filter((id) => id !== statusId),
-          }),
+            statusIds: filters.statusIds.filter((id) => id !== statusId)
+          })
       })
     })
 
     // Repeat type
-    if (filters.repeatType !== "all") {
+    if (filters.repeatType !== 'all') {
       result.push({
-        id: "repeatType",
-        label: filters.repeatType === "repeating" ? "Repeating" : "One-time",
+        id: 'repeatType',
+        label: filters.repeatType === 'repeating' ? 'Repeating' : 'One-time',
         icon: <Repeat className="size-3" />,
-        onRemove: () => onUpdateFilters({ repeatType: "all" }),
+        onRemove: () => onUpdateFilters({ repeatType: 'all' })
       })
     }
 
     // Has time
-    if (filters.hasTime !== "all") {
+    if (filters.hasTime !== 'all') {
       result.push({
-        id: "hasTime",
-        label: filters.hasTime === "with-time" ? "With time" : "No time",
+        id: 'hasTime',
+        label: filters.hasTime === 'with-time' ? 'With time' : 'No time',
         icon: <Clock className="size-3" />,
-        onRemove: () => onUpdateFilters({ hasTime: "all" }),
+        onRemove: () => onUpdateFilters({ hasTime: 'all' })
       })
     }
 
     // Completion (only if not default "active")
-    if (filters.completion !== "active") {
+    if (filters.completion !== 'active') {
       result.push({
-        id: "completion",
-        label: filters.completion === "completed" ? "Completed" : "All",
-        onRemove: () => onUpdateFilters({ completion: "active" }),
+        id: 'completion',
+        label: filters.completion === 'completed' ? 'Completed' : 'All',
+        onRemove: () => onUpdateFilters({ completion: 'active' })
       })
     }
 
@@ -180,12 +182,7 @@ export const ActiveFiltersBar = ({
   if (chips.length === 0) return null
 
   return (
-    <div
-      className={cn(
-        "flex items-center gap-2 px-4 py-2 bg-muted/50 border-b",
-        className
-      )}
-    >
+    <div className={cn('flex items-center gap-2 px-4 py-2 bg-muted/50 border-b', className)}>
       <span className="text-sm text-muted-foreground shrink-0">Active:</span>
 
       <div className="flex flex-wrap gap-2 flex-1 min-w-0">

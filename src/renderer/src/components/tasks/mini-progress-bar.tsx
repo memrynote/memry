@@ -1,5 +1,5 @@
-import { cn } from "@/lib/utils"
-import type { SubtaskProgress } from "@/lib/subtask-utils"
+import { cn } from '@/lib/utils'
+import type { SubtaskProgress } from '@/lib/subtask-utils'
 
 // ============================================================================
 // TYPES
@@ -17,7 +17,7 @@ interface MiniProgressBarProps {
 
 export const MiniProgressBar = ({
   progress,
-  className,
+  className
 }: MiniProgressBarProps): React.JSX.Element | null => {
   const { total, percentage } = progress
 
@@ -29,7 +29,7 @@ export const MiniProgressBar = ({
   return (
     <div
       className={cn(
-        "w-5 h-1 rounded-full overflow-hidden bg-gray-200 dark:bg-gray-700 shrink-0",
+        'w-5 h-1 rounded-full overflow-hidden bg-gray-200 dark:bg-gray-700 shrink-0',
         className
       )}
       role="progressbar"
@@ -40,8 +40,8 @@ export const MiniProgressBar = ({
     >
       <div
         className={cn(
-          "h-full rounded-full transition-all duration-300",
-          isComplete ? "bg-green-500" : "bg-blue-500"
+          'h-full rounded-full transition-all duration-300',
+          isComplete ? 'bg-green-500' : 'bg-blue-500'
         )}
         style={{ width: `${percentage}%` }}
       />
@@ -50,11 +50,3 @@ export const MiniProgressBar = ({
 }
 
 export default MiniProgressBar
-
-
-
-
-
-
-
-

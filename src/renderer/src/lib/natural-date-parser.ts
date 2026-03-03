@@ -4,7 +4,7 @@
 // Parses natural language date inputs like "tomorrow", "next friday", "dec 25"
 // Returns a parsed result with date and optional time
 
-import { startOfDay, addDays, isBefore } from "./task-utils"
+import { startOfDay, addDays, isBefore } from './task-utils'
 
 // ============================================================================
 // TYPES
@@ -32,29 +32,21 @@ export type NaturalDateParseResult = ParseResult | ParseError
 // CONSTANTS
 // ============================================================================
 
-const DAY_NAMES = [
-  "sunday",
-  "monday",
-  "tuesday",
-  "wednesday",
-  "thursday",
-  "friday",
-  "saturday",
-]
+const DAY_NAMES = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday']
 
 const MONTH_ABBREVIATIONS = [
-  "jan",
-  "feb",
-  "mar",
-  "apr",
-  "may",
-  "jun",
-  "jul",
-  "aug",
-  "sep",
-  "oct",
-  "nov",
-  "dec",
+  'jan',
+  'feb',
+  'mar',
+  'apr',
+  'may',
+  'jun',
+  'jul',
+  'aug',
+  'sep',
+  'oct',
+  'nov',
+  'dec'
 ]
 
 // ============================================================================
@@ -136,7 +128,7 @@ export const addMonths = (date: Date, months: number): Date => {
  * Parse time string like "3pm", "3:30pm", "15:00", "3:30 PM"
  */
 const parseTimeString = (timeStr: string): string | null => {
-  const cleaned = timeStr.toLowerCase().replace(/\s+/g, "")
+  const cleaned = timeStr.toLowerCase().replace(/\s+/g, '')
 
   // Match patterns like "3pm", "3:30pm", "15:00", "3:30 pm"
   const match12Hour = cleaned.match(/^(\d{1,2})(?::(\d{2}))?\s*(am|pm)$/)
@@ -150,13 +142,13 @@ const parseTimeString = (timeStr: string): string | null => {
     }
 
     // Convert to 24-hour format
-    if (period === "pm" && hours !== 12) {
+    if (period === 'pm' && hours !== 12) {
       hours += 12
-    } else if (period === "am" && hours === 12) {
+    } else if (period === 'am' && hours === 12) {
       hours = 0
     }
 
-    return `${hours.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}`
+    return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`
   }
 
   // Match 24-hour format "15:00"
@@ -169,7 +161,7 @@ const parseTimeString = (timeStr: string): string | null => {
       return null
     }
 
-    return `${hours.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}`
+    return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`
   }
 
   return null
@@ -179,18 +171,18 @@ const parseTimeString = (timeStr: string): string | null => {
  * Format date for display
  */
 const formatDisplayDate = (date: Date, time: string | null): string => {
-  const dateStr = date.toLocaleDateString("en-US", {
-    weekday: "long",
-    month: "long",
-    day: "numeric",
-    year: "numeric",
+  const dateStr = date.toLocaleDateString('en-US', {
+    weekday: 'long',
+    month: 'long',
+    day: 'numeric',
+    year: 'numeric'
   })
 
   if (time) {
-    const [hours, minutes] = time.split(":").map(Number)
-    const period = hours >= 12 ? "PM" : "AM"
+    const [hours, minutes] = time.split(':').map(Number)
+    const period = hours >= 12 ? 'PM' : 'AM'
     const displayHours = hours % 12 || 12
-    const timeStr = `${displayHours}:${minutes.toString().padStart(2, "0")} ${period}`
+    const timeStr = `${displayHours}:${minutes.toString().padStart(2, '0')} ${period}`
     return `${dateStr} · ${timeStr}`
   }
 
@@ -215,7 +207,7 @@ export const parseNaturalDate = (input: string): NaturalDateParseResult => {
   const lower = input.toLowerCase().trim()
 
   if (!lower) {
-    return { success: false, error: "Please enter a date" }
+    return { success: false, error: 'Please enter a date' }
   }
 
   const now = new Date()
@@ -226,29 +218,31 @@ export const parseNaturalDate = (input: string): NaturalDateParseResult => {
 
   // Extract time component if present (e.g., "at 3pm", "3:30pm")
   const timeMatch = lower.match(/(?:at\s+)?(\d{1,2}(?::\d{2})?\s*(?:am|pm)|\d{1,2}:\d{2})$/i)
-  const inputWithoutTime = timeMatch
-    ? lower.replace(timeMatch[0], "").trim()
-    : lower
+  const inputWithoutTime = timeMatch ? lower.replace(timeMatch[0], '').trim() : lower
 
   if (timeMatch) {
     time = parseTimeString(timeMatch[1])
   }
 
-  const normalizedInput = inputWithoutTime.replace(/\s+/g, " ").trim()
+  const normalizedInput = inputWithoutTime.replace(/\s+/g, ' ').trim()
 
   // -------------------------------------------------------------------------
   // RELATIVE TERMS
   // -------------------------------------------------------------------------
 
-  if (normalizedInput === "today") {
+  if (normalizedInput === 'today') {
     date = today
-  } else if (normalizedInput === "tomorrow" || normalizedInput === "tmrw" || normalizedInput === "tmr") {
+  } else if (
+    normalizedInput === 'tomorrow' ||
+    normalizedInput === 'tmrw' ||
+    normalizedInput === 'tmr'
+  ) {
     date = addDays(today, 1)
-  } else if (normalizedInput === "yesterday") {
+  } else if (normalizedInput === 'yesterday') {
     date = addDays(today, -1)
-  } else if (normalizedInput === "next week") {
+  } else if (normalizedInput === 'next week') {
     date = nextMonday(today)
-  } else if (normalizedInput === "this weekend" || normalizedInput === "weekend") {
+  } else if (normalizedInput === 'this weekend' || normalizedInput === 'weekend') {
     date = nextSaturday(today)
   }
 
@@ -262,11 +256,11 @@ export const parseNaturalDate = (input: string): NaturalDateParseResult => {
       const num = parseInt(inMatch[1], 10)
       const unit = inMatch[2]
 
-      if (unit.startsWith("day")) {
+      if (unit.startsWith('day')) {
         date = addDays(today, num)
-      } else if (unit.startsWith("week")) {
+      } else if (unit.startsWith('week')) {
         date = addWeeks(today, num)
-      } else if (unit.startsWith("month")) {
+      } else if (unit.startsWith('month')) {
         date = addMonths(today, num)
       }
     }
@@ -277,7 +271,9 @@ export const parseNaturalDate = (input: string): NaturalDateParseResult => {
   // -------------------------------------------------------------------------
 
   if (!date) {
-    const dayMatch = normalizedInput.match(/^(next\s+|this\s+)?(sunday|monday|tuesday|wednesday|thursday|friday|saturday)$/)
+    const dayMatch = normalizedInput.match(
+      /^(next\s+|this\s+)?(sunday|monday|tuesday|wednesday|thursday|friday|saturday)$/
+    )
     if (dayMatch) {
       const prefix = dayMatch[1]?.trim()
       const dayName = dayMatch[2]
@@ -287,7 +283,7 @@ export const parseNaturalDate = (input: string): NaturalDateParseResult => {
         date = getNextDayOfWeek(dayIndex, today)
 
         // "next friday" means skip this week if it's the same week
-        if (prefix === "next") {
+        if (prefix === 'next') {
           const currentDay = today.getDay()
           // If target is today or earlier in the week, add a week
           if (dayIndex <= currentDay) {
@@ -408,15 +404,15 @@ export const parseNaturalDate = (input: string): NaturalDateParseResult => {
       success: true,
       result: {
         date: startOfDay(date),
-        time,
+        time
       },
-      displayText: formatDisplayDate(date, time),
+      displayText: formatDisplayDate(date, time)
     }
   }
 
   return {
     success: false,
-    error: "Couldn't understand this date",
+    error: "Couldn't understand this date"
   }
 }
 
@@ -425,4 +421,3 @@ export const parseNaturalDate = (input: string): NaturalDateParseResult => {
 // ============================================================================
 
 export default parseNaturalDate
-

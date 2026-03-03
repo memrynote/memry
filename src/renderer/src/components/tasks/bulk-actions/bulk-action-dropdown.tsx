@@ -1,14 +1,14 @@
-import { ChevronDown } from "lucide-react"
+import { ChevronDown } from 'lucide-react'
 
-import { cn } from "@/lib/utils"
+import { cn } from '@/lib/utils'
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
+  DropdownMenuTrigger
+} from '@/components/ui/dropdown-menu'
 
 // ============================================================================
 // TYPES
@@ -58,18 +58,18 @@ export const BulkActionDropdown = <T extends string | number = string>({
   onSelect,
   selectedCount,
   disabled = false,
-  className,
+  className
 }: BulkActionDropdownProps<T>): React.JSX.Element => {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger
         disabled={disabled}
         className={cn(
-          "flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm font-medium",
-          "bg-background border-border hover:bg-accent text-foreground",
-          "transition-colors duration-150",
-          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-          "disabled:cursor-not-allowed disabled:opacity-50",
+          'flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm font-medium',
+          'bg-background border-border hover:bg-accent text-foreground',
+          'transition-colors duration-150',
+          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+          'disabled:cursor-not-allowed disabled:opacity-50',
           className
         )}
       >
@@ -80,7 +80,7 @@ export const BulkActionDropdown = <T extends string | number = string>({
 
       <DropdownMenuContent align="start" className="min-w-[200px]">
         <DropdownMenuLabel className="text-xs text-muted-foreground">
-          {label} for {selectedCount} task{selectedCount !== 1 ? "s" : ""}
+          {label} for {selectedCount} task{selectedCount !== 1 ? 's' : ''}
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
 
@@ -103,9 +103,7 @@ export const BulkActionDropdown = <T extends string | number = string>({
                   {option.icon}
                 </span>
               )}
-              <span style={option.color ? { color: option.color } : undefined}>
-                {option.label}
-              </span>
+              <span style={option.color ? { color: option.color } : undefined}>{option.label}</span>
             </DropdownMenuItem>
           )
         })}
@@ -115,14 +113,3 @@ export const BulkActionDropdown = <T extends string | number = string>({
 }
 
 export default BulkActionDropdown
-
-
-
-
-
-
-
-
-
-
-

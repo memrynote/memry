@@ -1,15 +1,15 @@
-import { useState, useRef, useEffect } from "react"
-import { AnimatePresence } from "framer-motion"
-import { useSortable } from "@dnd-kit/sortable"
-import { CSS } from "@dnd-kit/utilities"
-import { GripVertical, ChevronDown } from "lucide-react"
+import { useState, useRef, useEffect } from 'react'
+import { AnimatePresence } from 'framer-motion'
+import { useSortable } from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
+import { GripVertical, ChevronDown } from 'lucide-react'
 
-import { cn } from "@/lib/utils"
-import { formatDateShort, startOfDay, isBefore, isSameDay, addDays } from "@/lib/task-utils"
-import { TaskCheckbox, PriorityBadge } from "@/components/tasks/task-badges"
-import { SubtaskExpandedDetails } from "./subtask-expanded-details"
-import { SubtaskActionsMenu } from "./subtask-actions-menu"
-import type { Task, Priority } from "@/data/sample-tasks"
+import { cn } from '@/lib/utils'
+import { formatDateShort, startOfDay, isBefore, isSameDay, addDays } from '@/lib/task-utils'
+import { TaskCheckbox, PriorityBadge } from '@/components/tasks/task-badges'
+import { SubtaskExpandedDetails } from './subtask-expanded-details'
+import { SubtaskActionsMenu } from './subtask-actions-menu'
+import type { Task, Priority } from '@/data/sample-tasks'
 
 // ============================================================================
 // TYPES
@@ -29,7 +29,7 @@ interface SubtaskDetailItemProps {
 // ============================================================================
 
 const formatCompletionDate = (date: Date): string => {
-  return date.toLocaleDateString("en-US", { month: "short", day: "numeric" })
+  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
 }
 
 // ============================================================================
@@ -44,10 +44,10 @@ const formatDueDateWithStatus = (date: Date): { text: string; isOverdue: boolean
     return { text: `Due ${formatDateShort(date)}`, isOverdue: true }
   }
   if (isSameDay(dueDate, today)) {
-    return { text: "Due Today", isOverdue: false }
+    return { text: 'Due Today', isOverdue: false }
   }
   if (isSameDay(dueDate, addDays(today, 1))) {
-    return { text: "Due Tomorrow", isOverdue: false }
+    return { text: 'Due Tomorrow', isOverdue: false }
   }
   return { text: `Due ${formatDateShort(date)}`, isOverdue: false }
 }
@@ -62,7 +62,7 @@ export const SubtaskDetailItem = ({
   onUpdate,
   onToggleComplete,
   onDelete,
-  onPromote,
+  onPromote
 }: SubtaskDetailItemProps): React.JSX.Element => {
   const [isExpanded, setIsExpanded] = useState(false)
   const [isEditing, setIsEditing] = useState(false)
@@ -72,25 +72,18 @@ export const SubtaskDetailItem = ({
   const isCompleted = !!subtask.completedAt
 
   // Sortable setup
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: subtask.id,
     data: {
-      type: "subtask-detail",
+      type: 'subtask-detail',
       subtask,
-      parentId,
-    },
+      parentId
+    }
   })
 
   const style: React.CSSProperties = {
     transform: CSS.Transform.toString(transform),
-    transition: transition || "transform 200ms ease-out",
+    transition: transition || 'transform 200ms ease-out'
   }
 
   // Focus input when editing starts
@@ -131,11 +124,11 @@ export const SubtaskDetailItem = ({
   }
 
   const handleKeyDown = (e: React.KeyboardEvent): void => {
-    if (e.key === "Enter") {
+    if (e.key === 'Enter') {
       e.preventDefault()
       handleFinishEditing()
     }
-    if (e.key === "Escape") {
+    if (e.key === 'Escape') {
       e.preventDefault()
       setEditTitle(subtask.title)
       setIsEditing(false)
@@ -174,19 +167,14 @@ export const SubtaskDetailItem = ({
 
     const parts: React.JSX.Element[] = []
 
-    if (subtask.priority !== "none") {
-      parts.push(
-        <PriorityBadge key="priority" priority={subtask.priority} size="sm" />
-      )
+    if (subtask.priority !== 'none') {
+      parts.push(<PriorityBadge key="priority" priority={subtask.priority} size="sm" />)
     }
 
     if (subtask.dueDate) {
       const { text, isOverdue } = formatDueDateWithStatus(subtask.dueDate)
       parts.push(
-        <span
-          key="due"
-          className={cn(isOverdue && "text-destructive")}
-        >
+        <span key="due" className={cn(isOverdue && 'text-destructive')}>
           {text}
         </span>
       )
@@ -211,19 +199,16 @@ export const SubtaskDetailItem = ({
       ref={setNodeRef}
       style={style}
       className={cn(
-        "group rounded-lg border transition-colors",
+        'group rounded-lg border transition-colors',
         isCompleted
-          ? "bg-muted/50 border-border"
-          : "bg-background border-border hover:border-muted-foreground/30",
-        isDragging && "opacity-50 shadow-lg ring-2 ring-primary z-10"
+          ? 'bg-muted/50 border-border'
+          : 'bg-background border-border hover:border-muted-foreground/30',
+        isDragging && 'opacity-50 shadow-lg ring-2 ring-primary z-10'
       )}
     >
       {/* Main row */}
       <div
-        className={cn(
-          "flex items-start gap-3 p-3",
-          !isCompleted && "cursor-pointer"
-        )}
+        className={cn('flex items-start gap-3 p-3', !isCompleted && 'cursor-pointer')}
         onClick={handleToggleExpand}
       >
         {/* Drag Handle */}
@@ -233,11 +218,11 @@ export const SubtaskDetailItem = ({
           {...attributes}
           {...listeners}
           className={cn(
-            "shrink-0 cursor-grab touch-none p-0.5 text-muted-foreground/40 mt-0.5",
-            "hover:text-muted-foreground active:cursor-grabbing",
-            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:rounded",
-            "opacity-0 group-hover:opacity-100 transition-opacity",
-            isDragging && "cursor-grabbing opacity-100"
+            'shrink-0 cursor-grab touch-none p-0.5 text-muted-foreground/40 mt-0.5',
+            'hover:text-muted-foreground active:cursor-grabbing',
+            'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:rounded',
+            'opacity-0 group-hover:opacity-100 transition-opacity',
+            isDragging && 'cursor-grabbing opacity-100'
           )}
           aria-label="Drag to reorder subtask"
           onClick={(e) => e.stopPropagation()}
@@ -247,10 +232,7 @@ export const SubtaskDetailItem = ({
 
         {/* Checkbox */}
         <div onClick={(e) => e.stopPropagation()}>
-          <TaskCheckbox
-            checked={isCompleted}
-            onChange={handleToggleComplete}
-          />
+          <TaskCheckbox checked={isCompleted} onChange={handleToggleComplete} />
         </div>
 
         {/* Content */}
@@ -265,15 +247,15 @@ export const SubtaskDetailItem = ({
               onKeyDown={handleKeyDown}
               onClick={(e) => e.stopPropagation()}
               className={cn(
-                "w-full font-medium text-sm bg-transparent outline-none",
-                "border-b border-ring pb-0.5"
+                'w-full font-medium text-sm bg-transparent outline-none',
+                'border-b border-ring pb-0.5'
               )}
             />
           ) : (
             <span
               className={cn(
-                "font-medium text-sm block",
-                isCompleted && "line-through text-muted-foreground"
+                'font-medium text-sm block',
+                isCompleted && 'line-through text-muted-foreground'
               )}
               onDoubleClick={(e) => {
                 e.stopPropagation()
@@ -285,17 +267,15 @@ export const SubtaskDetailItem = ({
           )}
 
           {/* Metadata row */}
-          <div className="mt-1 text-xs text-muted-foreground">
-            {renderMetadata()}
-          </div>
+          <div className="mt-1 text-xs text-muted-foreground">{renderMetadata()}</div>
         </div>
 
         {/* Expand indicator (only for incomplete tasks) */}
         {!isCompleted && (
           <ChevronDown
             className={cn(
-              "size-4 text-muted-foreground/50 shrink-0 transition-transform mt-0.5",
-              isExpanded && "rotate-180"
+              'size-4 text-muted-foreground/50 shrink-0 transition-transform mt-0.5',
+              isExpanded && 'rotate-180'
             )}
           />
         )}
@@ -316,10 +296,7 @@ export const SubtaskDetailItem = ({
       {/* Expanded details */}
       <AnimatePresence>
         {isExpanded && !isCompleted && (
-          <SubtaskExpandedDetails
-            subtask={subtask}
-            onUpdate={handleUpdateFromExpanded}
-          />
+          <SubtaskExpandedDetails subtask={subtask} onUpdate={handleUpdateFromExpanded} />
         )}
       </AnimatePresence>
     </div>
@@ -327,11 +304,3 @@ export const SubtaskDetailItem = ({
 }
 
 export default SubtaskDetailItem
-
-
-
-
-
-
-
-

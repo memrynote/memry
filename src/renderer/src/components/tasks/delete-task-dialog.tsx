@@ -6,8 +6,8 @@ import {
   AlertDialogDescription,
   AlertDialogFooter,
   AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog"
+  AlertDialogTitle
+} from '@/components/ui/alert-dialog'
 
 // ============================================================================
 // TYPES
@@ -28,7 +28,7 @@ export const DeleteTaskDialog = ({
   isOpen,
   onClose,
   onConfirm,
-  taskTitle,
+  taskTitle
 }: DeleteTaskDialogProps): React.JSX.Element => {
   const handleConfirm = (): void => {
     onConfirm()
@@ -41,8 +41,7 @@ export const DeleteTaskDialog = ({
         <AlertDialogHeader>
           <AlertDialogTitle>Delete task?</AlertDialogTitle>
           <AlertDialogDescription>
-            &ldquo;{taskTitle}&rdquo; will be permanently deleted. This action
-            cannot be undone.
+            &ldquo;{taskTitle}&rdquo; will be permanently deleted. This action cannot be undone.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
@@ -60,4 +59,3 @@ export const DeleteTaskDialog = ({
 }
 
 export default DeleteTaskDialog
-

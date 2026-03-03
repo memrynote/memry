@@ -4,7 +4,10 @@
  */
 
 import { useState, useCallback, useEffect } from 'react'
+import { createLogger } from '@/lib/logger'
 import { fuzzySearch } from '@/lib/fuzzy-search'
+
+const log = createLogger('Hook:Tags')
 
 export interface Tag {
   name: string // tag name without # prefix
@@ -19,43 +22,43 @@ const MOCK_TAGS: Tag[] = [
   {
     name: 'work',
     count: 42,
-    createdAt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(), // 30 days ago
+    createdAt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString() // 30 days ago
   },
   {
     name: 'personal',
     count: 28,
-    createdAt: new Date(Date.now() - 25 * 24 * 60 * 60 * 1000).toISOString(),
+    createdAt: new Date(Date.now() - 25 * 24 * 60 * 60 * 1000).toISOString()
   },
   {
     name: 'ideas',
     count: 15,
-    createdAt: new Date(Date.now() - 20 * 24 * 60 * 60 * 1000).toISOString(),
+    createdAt: new Date(Date.now() - 20 * 24 * 60 * 60 * 1000).toISOString()
   },
   {
     name: 'productivity',
     count: 12,
-    createdAt: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000).toISOString(),
+    createdAt: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000).toISOString()
   },
   {
     name: 'wins',
     count: 8,
-    createdAt: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString(),
+    createdAt: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString()
   },
   {
     name: 'learning',
     count: 7,
-    createdAt: new Date(Date.now() - 8 * 24 * 60 * 60 * 1000).toISOString(),
+    createdAt: new Date(Date.now() - 8 * 24 * 60 * 60 * 1000).toISOString()
   },
   {
     name: 'health',
     count: 6,
-    createdAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
+    createdAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString()
   },
   {
     name: 'goals',
     count: 5,
-    createdAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
-  },
+    createdAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString()
+  }
 ]
 
 /**
@@ -70,7 +73,7 @@ export function useTags() {
         return JSON.parse(stored)
       }
     } catch (error) {
-      console.error('Failed to load tags from localStorage:', error)
+      log.error('Failed to load tags from localStorage:', error)
     }
     return MOCK_TAGS
   })
@@ -80,7 +83,7 @@ export function useTags() {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(tags))
     } catch (error) {
-      console.error('Failed to save tags to localStorage:', error)
+      log.error('Failed to save tags to localStorage:', error)
     }
   }, [tags])
 
@@ -125,7 +128,7 @@ export function useTags() {
         const newTag: Tag = {
           name: normalized,
           count: 1,
-          createdAt: new Date().toISOString(),
+          createdAt: new Date().toISOString()
         }
         return [...prev, newTag]
       }
@@ -205,6 +208,6 @@ export function useTags() {
     deleteTag,
     searchTags,
     getPopularTags,
-    getRecentTags,
+    getRecentTags
   }
 }

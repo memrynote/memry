@@ -3,20 +3,18 @@
  * Handle schema changes between versions
  */
 
-import type { PersistedTabState } from './types';
-import { STORAGE_VERSION } from './types';
+import type { PersistedTabState } from './types'
+import { STORAGE_VERSION } from './types'
 
 /**
  * Migrate persisted state to current schema version
  */
-export const migratePersistedState = (
-  persisted: PersistedTabState
-): PersistedTabState => {
-  let migrated = { ...persisted };
+export const migratePersistedState = (persisted: PersistedTabState): PersistedTabState => {
+  const migrated = { ...persisted }
 
   // No migrations needed if already at current version
   if (migrated.version >= STORAGE_VERSION) {
-    return migrated;
+    return migrated
   }
 
   // Version 0 to 1: Add viewState to tabs
@@ -24,40 +22,37 @@ export const migratePersistedState = (
     for (const group of Object.values(migrated.tabGroups)) {
       for (const tab of group.tabs) {
         if (!tab.viewState) {
-          tab.viewState = {};
+          tab.viewState = {}
         }
       }
     }
-    migrated.version = 1;
+    migrated.version = 1
   }
 
   // Add future migrations here...
   // if (migrated.version < 2) { ... }
 
-  return migrated;
-};
+  return migrated
+}
 
 /**
  * Check if persisted state needs migration
  */
 export const needsMigration = (persisted: PersistedTabState): boolean => {
-  return persisted.version < STORAGE_VERSION;
-};
+  return persisted.version < STORAGE_VERSION
+}
 
 /**
  * Get migration description for logging
  */
-export const getMigrationDescription = (
-  fromVersion: number,
-  toVersion: number
-): string => {
-  const descriptions: string[] = [];
+export const getMigrationDescription = (fromVersion: number, toVersion: number): string => {
+  const descriptions: string[] = []
 
   if (fromVersion < 1 && toVersion >= 1) {
-    descriptions.push('Added viewState to tabs');
+    descriptions.push('Added viewState to tabs')
   }
 
   // Add future migration descriptions...
 
-  return descriptions.join(', ') || 'No migrations needed';
-};
+  return descriptions.join(', ') || 'No migrations needed'
+}

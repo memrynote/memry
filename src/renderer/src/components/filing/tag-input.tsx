@@ -1,23 +1,23 @@
-import { useState, useRef } from "react"
-import { X } from "lucide-react"
+import { useState, useRef } from 'react'
+import { X } from 'lucide-react'
 
-import { Input } from "@/components/ui/input"
-import { cn } from "@/lib/utils"
+import { Input } from '@/components/ui/input'
+import { cn } from '@/lib/utils'
 
 interface TagPillProps {
   tag: string
   onRemove: (tag: string) => void
-  variant?: "selected" | "suggested"
+  variant?: 'selected' | 'suggested'
 }
 
-const TagPill = ({ tag, onRemove, variant = "selected" }: TagPillProps): React.JSX.Element => {
+const TagPill = ({ tag, onRemove, variant = 'selected' }: TagPillProps): React.JSX.Element => {
   const handleRemove = (e: React.MouseEvent): void => {
     e.stopPropagation()
     onRemove(tag)
   }
 
   const handleKeyDown = (e: React.KeyboardEvent): void => {
-    if (e.key === "Enter" || e.key === " " || e.key === "Backspace") {
+    if (e.key === 'Enter' || e.key === ' ' || e.key === 'Backspace') {
       e.preventDefault()
       onRemove(tag)
     }
@@ -26,22 +26,22 @@ const TagPill = ({ tag, onRemove, variant = "selected" }: TagPillProps): React.J
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium",
-        "tag-pill-enter motion-reduce:animate-none",
-        variant === "selected"
-          ? "bg-primary text-primary-foreground"
-          : "bg-muted text-muted-foreground hover:bg-muted/80 cursor-pointer"
+        'inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium',
+        'tag-pill-enter motion-reduce:animate-none',
+        variant === 'selected'
+          ? 'bg-primary text-primary-foreground'
+          : 'bg-muted text-muted-foreground hover:bg-muted/80 cursor-pointer'
       )}
     >
       {tag}
-      {variant === "selected" && (
+      {variant === 'selected' && (
         <button
           type="button"
           onClick={handleRemove}
           onKeyDown={handleKeyDown}
           className={cn(
-            "hover:bg-primary-foreground/20 rounded-full p-0.5",
-            "transition-colors duration-[var(--duration-instant)]"
+            'hover:bg-primary-foreground/20 rounded-full p-0.5',
+            'transition-colors duration-[var(--duration-instant)]'
           )}
           aria-label={`Remove tag ${tag}`}
         >
@@ -66,7 +66,7 @@ const SuggestedTag = ({ tag, onAdd, disabled }: SuggestedTagProps): React.JSX.El
   }
 
   const handleKeyDown = (e: React.KeyboardEvent): void => {
-    if ((e.key === "Enter" || e.key === " ") && !disabled) {
+    if ((e.key === 'Enter' || e.key === ' ') && !disabled) {
       e.preventDefault()
       onAdd(tag)
     }
@@ -79,11 +79,11 @@ const SuggestedTag = ({ tag, onAdd, disabled }: SuggestedTagProps): React.JSX.El
       onKeyDown={handleKeyDown}
       disabled={disabled}
       className={cn(
-        "inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium",
-        "transition-colors duration-[var(--duration-instant)]",
+        'inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium',
+        'transition-colors duration-[var(--duration-instant)]',
         disabled
-          ? "bg-muted/50 text-muted-foreground/50 cursor-not-allowed"
-          : "bg-muted text-muted-foreground hover:bg-accent hover:text-accent-foreground cursor-pointer"
+          ? 'bg-muted/50 text-muted-foreground/50 cursor-not-allowed'
+          : 'bg-muted text-muted-foreground hover:bg-accent hover:text-accent-foreground cursor-pointer'
       )}
     >
       {tag}
@@ -97,12 +97,8 @@ interface TagInputProps {
   onTagsChange: (tags: string[]) => void
 }
 
-const TagInput = ({
-  tags,
-  suggestedTags,
-  onTagsChange,
-}: TagInputProps): React.JSX.Element => {
-  const [inputValue, setInputValue] = useState("")
+const TagInput = ({ tags, suggestedTags, onTagsChange }: TagInputProps): React.JSX.Element => {
+  const [inputValue, setInputValue] = useState('')
   const inputRef = useRef<HTMLInputElement>(null)
 
   const addTag = (tag: string): void => {
@@ -110,7 +106,7 @@ const TagInput = ({
     if (normalizedTag && !tags.includes(normalizedTag)) {
       onTagsChange([...tags, normalizedTag])
     }
-    setInputValue("")
+    setInputValue('')
   }
 
   const removeTag = (tag: string): void => {
@@ -120,23 +116,23 @@ const TagInput = ({
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>): void => {
     const value = e.target.value
     // Check for comma to add tag
-    if (value.includes(",")) {
-      const parts = value.split(",")
+    if (value.includes(',')) {
+      const parts = value.split(',')
       const tagToAdd = parts[0]
       if (tagToAdd.trim()) {
         addTag(tagToAdd)
       }
-      setInputValue(parts.slice(1).join(","))
+      setInputValue(parts.slice(1).join(','))
     } else {
       setInputValue(value)
     }
   }
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>): void => {
-    if (e.key === "Enter" && inputValue.trim()) {
+    if (e.key === 'Enter' && inputValue.trim()) {
       e.preventDefault()
       addTag(inputValue)
-    } else if (e.key === "Backspace" && !inputValue && tags.length > 0) {
+    } else if (e.key === 'Backspace' && !inputValue && tags.length > 0) {
       // Remove last tag when backspace is pressed on empty input
       removeTag(tags[tags.length - 1])
     }
@@ -183,16 +179,10 @@ const TagInput = ({
       {/* Suggested Tags */}
       {availableSuggestedTags.length > 0 && (
         <div className="space-y-1.5">
-          <p className="text-[10px] uppercase tracking-wider text-muted-foreground/70">
-            Suggested
-          </p>
+          <p className="text-[10px] uppercase tracking-wider text-muted-foreground/70">Suggested</p>
           <div className="flex flex-wrap gap-1.5">
             {availableSuggestedTags.map((tag) => (
-              <SuggestedTag
-                key={tag}
-                tag={tag}
-                onAdd={handleSuggestedTagClick}
-              />
+              <SuggestedTag key={tag} tag={tag} onAdd={handleSuggestedTagClick} />
             ))}
           </div>
         </div>
@@ -202,4 +192,3 @@ const TagInput = ({
 }
 
 export { TagInput }
-

@@ -1,8 +1,8 @@
-import { useState, useRef, useEffect } from "react"
-import { X, Check, Circle } from "lucide-react"
+import { useState, useRef, useEffect } from 'react'
+import { X, Check, Circle } from 'lucide-react'
 
-import { Button } from "@/components/ui/button"
-import { cn } from "@/lib/utils"
+import { Button } from '@/components/ui/button'
+import { cn } from '@/lib/utils'
 
 // ============================================================================
 // TYPES
@@ -27,7 +27,7 @@ export const TaskDetailHeader = ({
   onTitleChange,
   onToggleComplete,
   onClose,
-  className,
+  className
 }: TaskDetailHeaderProps): React.JSX.Element => {
   const [isEditing, setIsEditing] = useState(false)
   const [localTitle, setLocalTitle] = useState(title)
@@ -56,18 +56,18 @@ export const TaskDetailHeader = ({
 
   const handleTitleBlur = (): void => {
     setIsEditing(false)
-    if (localTitle.trim() !== title && localTitle.trim() !== "") {
+    if (localTitle.trim() !== title && localTitle.trim() !== '') {
       onTitleChange(localTitle.trim())
-    } else if (localTitle.trim() === "") {
+    } else if (localTitle.trim() === '') {
       setLocalTitle(title) // Revert to original if empty
     }
   }
 
   const handleTitleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>): void => {
-    if (e.key === "Enter") {
+    if (e.key === 'Enter') {
       e.preventDefault()
       inputRef.current?.blur()
-    } else if (e.key === "Escape") {
+    } else if (e.key === 'Escape') {
       e.preventDefault()
       setLocalTitle(title) // Revert
       setIsEditing(false)
@@ -80,23 +80,18 @@ export const TaskDetailHeader = ({
   }
 
   return (
-    <header
-      className={cn(
-        "flex items-start gap-3 border-b border-border px-4 py-4",
-        className
-      )}
-    >
+    <header className={cn('flex items-start gap-3 border-b border-border px-4 py-4', className)}>
       {/* Checkbox */}
       <button
         type="button"
         onClick={handleCheckboxClick}
         className={cn(
-          "mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full border-2 transition-all duration-150",
+          'mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full border-2 transition-all duration-150',
           isCompleted
-            ? "border-green-500 bg-green-500 text-white"
-            : "border-muted-foreground/50 hover:border-primary"
+            ? 'border-green-500 bg-green-500 text-white'
+            : 'border-muted-foreground/50 hover:border-primary'
         )}
-        aria-label={isCompleted ? "Mark as incomplete" : "Mark as complete"}
+        aria-label={isCompleted ? 'Mark as incomplete' : 'Mark as complete'}
       >
         {isCompleted && <Check className="size-4" />}
       </button>
@@ -112,8 +107,8 @@ export const TaskDetailHeader = ({
             onBlur={handleTitleBlur}
             onKeyDown={handleTitleKeyDown}
             className={cn(
-              "w-full bg-transparent text-lg font-medium outline-none",
-              "ring-2 ring-primary rounded px-1 -mx-1"
+              'w-full bg-transparent text-lg font-medium outline-none',
+              'ring-2 ring-primary rounded px-1 -mx-1'
             )}
             aria-label="Task title"
           />
@@ -122,13 +117,13 @@ export const TaskDetailHeader = ({
             type="button"
             onClick={handleTitleClick}
             className={cn(
-              "w-full text-left text-lg font-medium transition-colors",
-              "hover:text-primary focus:outline-none focus:ring-2 focus:ring-ring rounded px-1 -mx-1",
-              isCompleted && "text-muted-foreground line-through"
+              'w-full text-left text-lg font-medium transition-colors',
+              'hover:text-primary focus:outline-none focus:ring-2 focus:ring-ring rounded px-1 -mx-1',
+              isCompleted && 'text-muted-foreground line-through'
             )}
             aria-label="Click to edit title"
           >
-            {title || "Untitled task"}
+            {title || 'Untitled task'}
           </button>
         )}
       </div>
@@ -148,4 +143,3 @@ export const TaskDetailHeader = ({
 }
 
 export default TaskDetailHeader
-

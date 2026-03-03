@@ -1,11 +1,11 @@
-import { cn } from "@/lib/utils"
+import { cn } from '@/lib/utils'
 
 // ============================================================================
 // TYPES
 // ============================================================================
 
 interface KanbanEmptyColumnProps {
-  columnType: "status" | "project"
+  columnType: 'status' | 'project'
   isDone?: boolean
   isDropTarget?: boolean
   className?: string
@@ -19,27 +19,27 @@ export const KanbanEmptyColumn = ({
   columnType,
   isDone = false,
   isDropTarget = false,
-  className,
+  className
 }: KanbanEmptyColumnProps): React.JSX.Element => {
   // Message based on column type and state
   const getMessage = (): { title: string; description: string } => {
     if (isDone) {
       return {
-        title: "No completed tasks",
-        description: "Complete tasks to see them here",
+        title: 'No completed tasks',
+        description: 'Complete tasks to see them here'
       }
     }
 
-    if (columnType === "project") {
+    if (columnType === 'project') {
       return {
-        title: "No tasks in this project",
-        description: "Drag tasks here or click add",
+        title: 'No tasks in this project',
+        description: 'Drag tasks here or click add'
       }
     }
 
     return {
-      title: "No tasks",
-      description: "Drag tasks here or click add",
+      title: 'No tasks',
+      description: 'Drag tasks here or click add'
     }
   }
 
@@ -48,10 +48,8 @@ export const KanbanEmptyColumn = ({
   return (
     <div
       className={cn(
-        "flex flex-1 flex-col items-center justify-center rounded-lg border-2 border-dashed p-6 text-center transition-colors",
-        isDropTarget
-          ? "border-primary bg-primary/5"
-          : "border-border/50 bg-muted/20",
+        'flex flex-1 flex-col items-center justify-center rounded-lg border-2 border-dashed p-6 text-center transition-colors',
+        isDropTarget ? 'border-primary bg-primary/5' : 'border-border/50 bg-muted/20',
         className
       )}
     >
@@ -62,4 +60,3 @@ export const KanbanEmptyColumn = ({
 }
 
 export default KanbanEmptyColumn
-

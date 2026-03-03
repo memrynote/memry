@@ -1,7 +1,7 @@
-import { Check, Calendar, Plus } from "lucide-react"
+import { Check, Calendar, Plus } from 'lucide-react'
 
-import { Button } from "@/components/ui/button"
-import { cn } from "@/lib/utils"
+import { Button } from '@/components/ui/button'
+import { cn } from '@/lib/utils'
 
 // ============================================================================
 // TYPES
@@ -49,21 +49,18 @@ interface PlanningEmptyStateProps {
  * Used primarily for the TODAY section to acknowledge accomplishment.
  */
 export const CelebrationEmptyState = ({
-  title = "All clear for today!",
-  description = "Enjoy your free time or plan ahead.",
+  title = 'All clear for today!',
+  description = 'Enjoy your free time or plan ahead.',
   onAddTask,
-  addButtonLabel = "Add task for today",
+  addButtonLabel = 'Add task for today',
   onViewUpcoming,
-  className,
+  className
 }: CelebrationEmptyStateProps): React.JSX.Element => {
   return (
-    <div className={cn("py-8 text-center", className)}>
+    <div className={cn('py-8 text-center', className)}>
       {/* Celebration icon */}
       <div className="mb-4 mx-auto w-14 h-14 rounded-full bg-emerald-50 dark:bg-emerald-950/30 flex items-center justify-center">
-        <Check
-          className="size-7 text-emerald-600 dark:text-emerald-500"
-          aria-hidden="true"
-        />
+        <Check className="size-7 text-emerald-600 dark:text-emerald-500" aria-hidden="true" />
       </div>
 
       {/* Title */}
@@ -74,12 +71,7 @@ export const CelebrationEmptyState = ({
 
       {/* Action buttons */}
       <div className="flex flex-col items-center gap-3">
-        <Button
-          onClick={onAddTask}
-          variant="outline"
-          size="sm"
-          className="gap-2"
-        >
+        <Button onClick={onAddTask} variant="outline" size="sm" className="gap-2">
           <Plus className="size-4" aria-hidden="true" />
           {addButtonLabel}
         </Button>
@@ -89,9 +81,9 @@ export const CelebrationEmptyState = ({
             type="button"
             onClick={onViewUpcoming}
             className={cn(
-              "flex items-center gap-2 text-sm text-text-tertiary",
-              "hover:text-text-secondary transition-colors",
-              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded"
+              'flex items-center gap-2 text-sm text-text-tertiary',
+              'hover:text-text-secondary transition-colors',
+              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded'
             )}
             aria-label="View upcoming tasks"
           >
@@ -115,10 +107,10 @@ export const CelebrationEmptyState = ({
 export const SimpleEmptyState = ({
   label,
   onAddTask,
-  className,
+  className
 }: SimpleEmptyStateProps): React.JSX.Element => {
   return (
-    <div className={cn("py-4 text-center", className)}>
+    <div className={cn('py-4 text-center', className)}>
       {/* Message */}
       <p className="text-sm text-text-tertiary mb-2">No tasks scheduled</p>
 
@@ -127,9 +119,9 @@ export const SimpleEmptyState = ({
         type="button"
         onClick={onAddTask}
         className={cn(
-          "inline-flex items-center gap-1 text-sm text-primary hover:text-primary/80",
-          "transition-colors",
-          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded"
+          'inline-flex items-center gap-1 text-sm text-primary hover:text-primary/80',
+          'transition-colors',
+          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded'
         )}
         aria-label={`Add task for ${label.toLowerCase()}`}
       >
@@ -151,25 +143,20 @@ export const SimpleEmptyState = ({
 export const PlanningEmptyState = ({
   onAddTask,
   onViewCalendar,
-  className,
+  className
 }: PlanningEmptyStateProps): React.JSX.Element => {
   return (
-    <div className={cn("py-8 text-center", className)}>
+    <div className={cn('py-8 text-center', className)}>
       {/* Calendar icon */}
       <div className="mb-4 mx-auto w-14 h-14 rounded-full bg-muted flex items-center justify-center">
-        <Calendar
-          className="size-7 text-text-tertiary"
-          aria-hidden="true"
-        />
+        <Calendar className="size-7 text-text-tertiary" aria-hidden="true" />
       </div>
 
       {/* Title */}
       <h3 className="font-medium text-text-primary mb-1">Nothing scheduled</h3>
 
       {/* Description */}
-      <p className="text-sm text-text-tertiary mb-5">
-        Add tasks with due dates to plan your week.
-      </p>
+      <p className="text-sm text-text-tertiary mb-5">Add tasks with due dates to plan your week.</p>
 
       {/* Action buttons */}
       <div className="flex items-center justify-center gap-3">
@@ -179,12 +166,7 @@ export const PlanningEmptyState = ({
         </Button>
 
         {onViewCalendar && (
-          <Button
-            onClick={onViewCalendar}
-            variant="outline"
-            size="sm"
-            className="gap-2"
-          >
+          <Button onClick={onViewCalendar} variant="outline" size="sm" className="gap-2">
             <Calendar className="size-4" aria-hidden="true" />
             View calendar
           </Button>
@@ -197,11 +179,5 @@ export const PlanningEmptyState = ({
 export default {
   CelebrationEmptyState,
   SimpleEmptyState,
-  PlanningEmptyState,
+  PlanningEmptyState
 }
-
-
-
-
-
-

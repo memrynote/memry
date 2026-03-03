@@ -1,17 +1,17 @@
-import { useSortable } from "@dnd-kit/sortable"
-import { useDroppable } from "@dnd-kit/core"
-import { CSS } from "@dnd-kit/utilities"
-import { GripVertical, Settings } from "lucide-react"
-import { cn } from "@/lib/utils"
+import { useSortable } from '@dnd-kit/sortable'
+import { useDroppable } from '@dnd-kit/core'
+import { CSS } from '@dnd-kit/utilities'
+import { Settings } from 'lucide-react'
+import { cn } from '@/lib/utils'
 import {
   SidebarMenuAction,
   SidebarMenuBadge,
   SidebarMenuButton,
   SidebarMenuItem,
-  useSidebar,
-} from "@/components/ui/sidebar"
-import { useDragContext } from "@/contexts/drag-context"
-import type { Project } from "@/data/tasks-data"
+  useSidebar
+} from '@/components/ui/sidebar'
+import { useDragContext } from '@/contexts/drag-context'
+import type { Project } from '@/data/tasks-data'
 
 interface SortableProjectItemProps {
   project: Project
@@ -33,7 +33,7 @@ export const SortableProjectItem = ({
   onClick,
   onEdit,
   onArchive,
-  onDelete,
+  onDelete
 }: SortableProjectItemProps): React.JSX.Element => {
   const { isMobile } = useSidebar()
 
@@ -53,17 +53,17 @@ export const SortableProjectItem = ({
     setNodeRef: setSortableRef,
     transform,
     transition,
-    isDragging: isSortableDragging,
+    isDragging: isSortableDragging
   } = useSortable({ id: project.id })
 
   // Droppable for receiving tasks
   const { setNodeRef: setDroppableRef, isOver } = useDroppable({
     id: `project-${project.id}`,
     data: {
-      type: "project",
+      type: 'project',
       projectId: project.id,
-      project,
-    },
+      project
+    }
   })
 
   // Combine refs
@@ -74,7 +74,7 @@ export const SortableProjectItem = ({
 
   const style = {
     transform: CSS.Transform.toString(transform),
-    transition,
+    transition
   }
 
   // Show as drop zone when a task is being dragged (not a project)
@@ -85,12 +85,14 @@ export const SortableProjectItem = ({
       ref={setRefs}
       style={style}
       className={cn(
-        "group/project relative transition-all duration-150",
-        isSortableDragging && "opacity-50 z-50",
+        'group/project relative transition-all duration-150',
+        isSortableDragging && 'opacity-50 z-50',
         // Drop zone visual feedback
-        showAsDropZone && "border border-dotted border-muted-foreground/40 rounded-md",
-        isOver && "bg-primary/10 ring-2 ring-primary rounded-md shadow-sm"
+        showAsDropZone && 'border border-dotted border-muted-foreground/40 rounded-md',
+        isOver && 'bg-primary/10 ring-2 ring-primary rounded-md shadow-sm'
       )}
+      {...attributes}
+      {...listeners}
     >
       {/* Drop indicator when hovering */}
       {isOver && (
@@ -99,32 +101,7 @@ export const SortableProjectItem = ({
         </span>
       )}
 
-      {/* Drag Handle - visible on hover, hidden when drop zone active */}
-      {!showAsDropZone && (
-        <button
-          type="button"
-          className={cn(
-            "absolute left-0 top-1/2 -translate-y-1/2 -translate-x-1",
-            "p-0.5 rounded opacity-0 group-hover/project:opacity-100",
-            "cursor-grab active:cursor-grabbing",
-            "text-sidebar-foreground/40 hover:text-sidebar-foreground/70",
-            "transition-opacity focus-visible:opacity-100",
-            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          )}
-          {...attributes}
-          {...listeners}
-          tabIndex={-1}
-          aria-label={`Drag to reorder ${project.name}`}
-        >
-          <GripVertical className="size-3" />
-        </button>
-      )}
-
-      <SidebarMenuButton
-        tooltip={project.name}
-        isActive={isActive}
-        onClick={onClick}
-      >
+      <SidebarMenuButton tooltip={project.name} isActive={isActive} onClick={onClick}>
         <span
           className="size-2.5 rounded-full shrink-0"
           style={{ backgroundColor: project.color }}
@@ -135,10 +112,8 @@ export const SortableProjectItem = ({
 
       {/* Task count badge - hide when showing drop indicator */}
       {!isOver && (
-        <SidebarMenuBadge className={cn(
-          !isActive && "group-hover/project:hidden"
-        )}>
-          {project.taskCount > 0 ? project.taskCount : ""}
+        <SidebarMenuBadge className={cn(!isActive && 'group-hover/project:hidden')}>
+          {project.taskCount > 0 ? project.taskCount : ''}
         </SidebarMenuBadge>
       )}
 
@@ -147,8 +122,8 @@ export const SortableProjectItem = ({
         <SidebarMenuAction
           showOnHover
           className={cn(
-            !isActive && "opacity-0 group-hover/project:opacity-100",
-            isActive && "hidden"
+            !isActive && 'opacity-0 group-hover/project:opacity-100',
+            isActive && 'hidden'
           )}
           onClick={(e) => {
             e.stopPropagation()
@@ -164,4 +139,3 @@ export const SortableProjectItem = ({
 }
 
 export default SortableProjectItem
-

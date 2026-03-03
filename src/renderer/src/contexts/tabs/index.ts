@@ -13,10 +13,10 @@ export type {
   TabSettings,
   SplitLayout,
   OpenTabOptions,
-  SidebarItem,
-} from './types';
+  SidebarItem
+} from './types'
 
-export { SINGLETON_TAB_TYPES, isSingletonTabType } from './types';
+export { SINGLETON_TAB_TYPES, isSingletonTabType } from './types'
 
 // Helpers
 export {
@@ -41,13 +41,13 @@ export {
   sortTabsWithPinnedFirst,
   getInsertIndexAfterPinned,
   DEFAULT_TAB_SETTINGS,
-  createInitialState,
-} from './helpers';
+  createInitialState
+} from './helpers'
 
-export type { FoundTab } from './helpers';
+export type { FoundTab } from './helpers'
 
 // Reducer
-export { tabReducer } from './reducer';
+export { tabReducer } from './reducer'
 
 // Context and Hooks
 export {
@@ -61,7 +61,8 @@ export {
   useIsTabActive,
   useTabLayout,
   useTabCounts,
-} from './context';
+  useTabActions
+} from './context'
 
 // Persistence
-export * from './persistence';
+export * from './persistence'

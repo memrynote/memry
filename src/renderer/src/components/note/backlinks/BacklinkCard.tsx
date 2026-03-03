@@ -55,20 +55,14 @@ export function BacklinkCard({ backlink, onClick }: BacklinkCardProps) {
       <div className="flex items-center justify-between gap-2 mb-2">
         <div className="flex items-center gap-2 flex-1 min-w-0">
           <FileText className="h-4 w-4 text-stone-400 shrink-0" />
-          <span className="text-sm font-medium text-stone-900 truncate">
-            {noteTitle}
-          </span>
+          <span className="text-sm font-medium text-stone-900 truncate">{noteTitle}</span>
         </div>
 
         <div className="flex items-center gap-2 shrink-0">
           {hasMultipleMentions && (
-            <span className="text-xs text-stone-400">
-              {mentions.length} mentions
-            </span>
+            <span className="text-xs text-stone-400">{mentions.length} mentions</span>
           )}
-          <span className="text-xs text-stone-400">
-            {formatBacklinkDate(date)}
-          </span>
+          <span className="text-xs text-stone-400">{formatBacklinkDate(date)}</span>
         </div>
       </div>
 

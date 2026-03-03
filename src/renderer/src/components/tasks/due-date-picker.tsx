@@ -1,13 +1,13 @@
-import { useState, useMemo, useEffect, useCallback, useRef } from "react"
-import { Calendar as CalendarIcon, Star, X, Clock, Plus, Sun } from "lucide-react"
+import { useState, useMemo, useEffect, useCallback, useRef } from 'react'
+import { Calendar as CalendarIcon, Star, X, Clock, Plus, Sun } from 'lucide-react'
 
-import { Button } from "@/components/ui/button"
-import { Calendar } from "@/components/ui/calendar"
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { Separator } from "@/components/ui/separator"
-import { TimePicker } from "./time-picker"
-import { NaturalDateInput, type NaturalDateInputRef } from "./natural-date-input"
-import { cn } from "@/lib/utils"
+import { Button } from '@/components/ui/button'
+import { Calendar } from '@/components/ui/calendar'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { Separator } from '@/components/ui/separator'
+import { TimePicker } from './time-picker'
+import { NaturalDateInput, type NaturalDateInputRef } from './natural-date-input'
+import { cn } from '@/lib/utils'
 import {
   startOfDay,
   addDays,
@@ -16,9 +16,9 @@ import {
   formatTime,
   isSameDay,
   isBefore,
-  type DueDateStatus,
-} from "@/lib/task-utils"
-import { nextSaturday, nextMonday, type ParsedDateResult } from "@/lib/natural-date-parser"
+  type DueDateStatus
+} from '@/lib/task-utils'
+import { nextSaturday, nextMonday, type ParsedDateResult } from '@/lib/natural-date-parser'
 
 // ============================================================================
 // TYPES
@@ -56,45 +56,45 @@ const getQuickDateOptions = (): QuickDateOption[] => {
 
   const options: QuickDateOption[] = [
     {
-      id: "today",
-      label: "Today",
+      id: 'today',
+      label: 'Today',
       icon: <Star className="size-4 text-amber-500" />,
       getDate: () => today,
-      shortcutNumber: 1,
+      shortcutNumber: 1
     },
     {
-      id: "tomorrow",
-      label: "Tomorrow",
+      id: 'tomorrow',
+      label: 'Tomorrow',
       icon: <CalendarIcon className="size-4 text-blue-500" />,
       getDate: () => tomorrow,
-      shortcutNumber: 2,
-    },
+      shortcutNumber: 2
+    }
   ]
 
   if (showWeekend) {
     options.push({
-      id: "weekend",
-      label: "This Weekend",
+      id: 'weekend',
+      label: 'This Weekend',
       icon: <Sun className="size-4 text-orange-500" />,
       getDate: () => saturday,
-      shortcutNumber: 3,
+      shortcutNumber: 3
     })
 
     options.push({
-      id: "next-week",
-      label: "Next Week",
+      id: 'next-week',
+      label: 'Next Week',
       icon: <CalendarIcon className="size-4 text-indigo-500" />,
       getDate: () => monday,
-      shortcutNumber: 4,
+      shortcutNumber: 4
     })
   } else {
     // If weekend, Next Week becomes option 3
     options.push({
-      id: "next-week",
-      label: "Next Week",
+      id: 'next-week',
+      label: 'Next Week',
       icon: <CalendarIcon className="size-4 text-indigo-500" />,
       getDate: () => monday,
-      shortcutNumber: 3,
+      shortcutNumber: 3
     })
   }
 
@@ -114,35 +114,35 @@ const formatSelectedDate = (date: Date): { text: string; status: DueDateStatus }
 
   // Overdue
   if (isBefore(selectedDate, today)) {
-    return { text: formatDateShort(date), status: "overdue" }
+    return { text: formatDateShort(date), status: 'overdue' }
   }
 
   // Today
   if (isSameDay(selectedDate, today)) {
-    return { text: "Today", status: "today" }
+    return { text: 'Today', status: 'today' }
   }
 
   // Tomorrow
   const tomorrow = addDays(today, 1)
   if (isSameDay(selectedDate, tomorrow)) {
-    return { text: "Tomorrow", status: "tomorrow" }
+    return { text: 'Tomorrow', status: 'tomorrow' }
   }
 
   // This week (next 7 days)
   const weekFromNow = addDays(today, 7)
   if (isBefore(selectedDate, weekFromNow)) {
-    return { text: formatDayName(date), status: "upcoming" }
+    return { text: formatDayName(date), status: 'upcoming' }
   }
 
   // Later
-  return { text: formatDateShort(date), status: "later" }
+  return { text: formatDateShort(date), status: 'later' }
 }
 
 /**
  * Format date for quick option display (Mon, Dec 16)
  */
 const formatQuickOptionDate = (date: Date): string => {
-  return date.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })
+  return date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
 }
 
 // ============================================================================
@@ -150,12 +150,12 @@ const formatQuickOptionDate = (date: Date): string => {
 // ============================================================================
 
 const statusColors: Record<DueDateStatus, string> = {
-  overdue: "text-red-600 dark:text-red-400",
-  today: "text-amber-600 dark:text-amber-400",
-  tomorrow: "text-blue-600 dark:text-blue-400",
-  upcoming: "text-foreground",
-  later: "text-muted-foreground",
-  none: "text-muted-foreground",
+  overdue: 'text-red-600 dark:text-red-400',
+  today: 'text-amber-600 dark:text-amber-400',
+  tomorrow: 'text-blue-600 dark:text-blue-400',
+  upcoming: 'text-foreground',
+  later: 'text-muted-foreground',
+  none: 'text-muted-foreground'
 }
 
 // ============================================================================
@@ -167,12 +167,12 @@ export const DueDatePicker = ({
   time,
   onDateChange,
   onTimeChange,
-  className,
+  className
 }: DueDatePickerProps): React.JSX.Element => {
   const [isOpen, setIsOpen] = useState(false)
   const [showCalendar, setShowCalendar] = useState(false)
   const [showTimePicker, setShowTimePicker] = useState(!!time)
-  const [inputValue, setInputValue] = useState("") // Track input value for conditional shortcuts
+  const [inputValue, setInputValue] = useState('') // Track input value for conditional shortcuts
   const triggerRef = useRef<HTMLButtonElement>(null)
   const naturalDateInputRef = useRef<NaturalDateInputRef>(null)
 
@@ -185,13 +185,13 @@ export const DueDatePicker = ({
   }, [date])
 
   // Check if input is empty (for conditional shortcuts)
-  const inputIsEmpty = inputValue.trim() === ""
+  const inputIsEmpty = inputValue.trim() === ''
 
   // Reset state when popover closes
   useEffect(() => {
     if (!isOpen) {
       setShowCalendar(false)
-      setInputValue("") // Reset input tracking
+      setInputValue('') // Reset input tracking
     }
   }, [isOpen])
 
@@ -200,34 +200,46 @@ export const DueDatePicker = ({
     setShowTimePicker(!!time)
   }, [time])
 
-  const handleQuickSelect = useCallback((getDate: () => Date): void => {
-    onDateChange(getDate())
-    setShowCalendar(false)
-    setIsOpen(false)
-  }, [onDateChange])
-
-  const selectQuickOptionByIndex = useCallback((index: number): void => {
-    const option = quickOptions[index]
-    if (option) {
-      handleQuickSelect(option.getDate)
-    }
-  }, [quickOptions, handleQuickSelect])
-
-  const handleCalendarSelect = useCallback((selectedDate: Date | undefined): void => {
-    if (selectedDate) {
-      onDateChange(selectedDate)
+  const handleQuickSelect = useCallback(
+    (getDate: () => Date): void => {
+      onDateChange(getDate())
       setShowCalendar(false)
       setIsOpen(false)
-    }
-  }, [onDateChange])
+    },
+    [onDateChange]
+  )
 
-  const handleNaturalDateSelect = useCallback((result: ParsedDateResult): void => {
-    onDateChange(result.date)
-    if (result.time) {
-      onTimeChange(result.time)
-    }
-    setIsOpen(false)
-  }, [onDateChange, onTimeChange])
+  const selectQuickOptionByIndex = useCallback(
+    (index: number): void => {
+      const option = quickOptions[index]
+      if (option) {
+        handleQuickSelect(option.getDate)
+      }
+    },
+    [quickOptions, handleQuickSelect]
+  )
+
+  const handleCalendarSelect = useCallback(
+    (selectedDate: Date | undefined): void => {
+      if (selectedDate) {
+        onDateChange(selectedDate)
+        setShowCalendar(false)
+        setIsOpen(false)
+      }
+    },
+    [onDateChange]
+  )
+
+  const handleNaturalDateSelect = useCallback(
+    (result: ParsedDateResult): void => {
+      onDateChange(result.date)
+      if (result.time) {
+        onTimeChange(result.time)
+      }
+      setIsOpen(false)
+    },
+    [onDateChange, onTimeChange]
+  )
 
   const handleRemoveDate = useCallback((): void => {
     onDateChange(null)
@@ -239,7 +251,7 @@ export const DueDatePicker = ({
   const handleToggleTimePicker = useCallback((): void => {
     if (!showTimePicker) {
       // Default to 9:00 AM when adding time
-      onTimeChange("09:00")
+      onTimeChange('09:00')
       setShowTimePicker(true)
     } else {
       onTimeChange(null)
@@ -253,57 +265,60 @@ export const DueDatePicker = ({
   }, [])
 
   // Context-aware keyboard shortcuts handler
-  const handleKeyDown = useCallback((e: KeyboardEvent): void => {
-    if (!isOpen) return
+  const handleKeyDown = useCallback(
+    (e: KeyboardEvent): void => {
+      if (!isOpen) return
 
-    // MODIFIER SHORTCUTS - Always work (Cmd/Ctrl + Backspace to clear)
-    if ((e.metaKey || e.ctrlKey) && e.key === "Backspace") {
-      e.preventDefault()
-      handleRemoveDate()
-      return
-    }
-
-    // Escape to close
-    if (e.key === "Escape") {
-      e.preventDefault()
-      setIsOpen(false)
-      return
-    }
-
-    // NUMBER SHORTCUTS - Only when input is empty
-    // This prevents shortcuts from interfering with natural language typing
-    if (inputIsEmpty) {
-      const key = e.key
-
-      // 1-4 select quick options
-      if (/^[1-4]$/.test(key)) {
-        e.preventDefault()
-        selectQuickOptionByIndex(parseInt(key, 10) - 1)
-        return
-      }
-
-      // 0 clears the date
-      if (key === "0") {
+      // MODIFIER SHORTCUTS - Always work (Cmd/Ctrl + Backspace to clear)
+      if ((e.metaKey || e.ctrlKey) && e.key === 'Backspace') {
         e.preventDefault()
         handleRemoveDate()
         return
       }
-    }
 
-    // ALL OTHER KEYS - Let them type normally
-    // Do NOT prevent default - characters will be typed into input
-  }, [isOpen, inputIsEmpty, selectQuickOptionByIndex, handleRemoveDate])
+      // Escape to close
+      if (e.key === 'Escape') {
+        e.preventDefault()
+        setIsOpen(false)
+        return
+      }
+
+      // NUMBER SHORTCUTS - Only when input is empty
+      // This prevents shortcuts from interfering with natural language typing
+      if (inputIsEmpty) {
+        const key = e.key
+
+        // 1-4 select quick options
+        if (/^[1-4]$/.test(key)) {
+          e.preventDefault()
+          selectQuickOptionByIndex(parseInt(key, 10) - 1)
+          return
+        }
+
+        // 0 clears the date
+        if (key === '0') {
+          e.preventDefault()
+          handleRemoveDate()
+          return
+        }
+      }
+
+      // ALL OTHER KEYS - Let them type normally
+      // Do NOT prevent default - characters will be typed into input
+    },
+    [isOpen, inputIsEmpty, selectQuickOptionByIndex, handleRemoveDate]
+  )
 
   // Add keyboard listener when popover is open
   useEffect(() => {
     if (isOpen) {
-      document.addEventListener("keydown", handleKeyDown)
+      document.addEventListener('keydown', handleKeyDown)
     } else {
-      document.removeEventListener("keydown", handleKeyDown)
+      document.removeEventListener('keydown', handleKeyDown)
     }
 
     return () => {
-      document.removeEventListener("keydown", handleKeyDown)
+      document.removeEventListener('keydown', handleKeyDown)
     }
   }, [isOpen, handleKeyDown])
 
@@ -317,8 +332,8 @@ export const DueDatePicker = ({
           aria-expanded={isOpen}
           aria-label="Select due date"
           className={cn(
-            "w-full justify-start text-left font-normal",
-            !date && "text-muted-foreground",
+            'w-full justify-start text-left font-normal',
+            !date && 'text-muted-foreground',
             dateDisplay && statusColors[dateDisplay.status],
             className
           )}
@@ -327,10 +342,8 @@ export const DueDatePicker = ({
           {date ? (
             <span className="truncate">
               {dateDisplay?.text}
-              {time && (
-                <span className="ml-1 text-muted-foreground">· {formatTime(time)}</span>
-              )}
-              {dateDisplay?.status === "overdue" && (
+              {time && <span className="ml-1 text-muted-foreground">· {formatTime(time)}</span>}
+              {dateDisplay?.status === 'overdue' && (
                 <span className="ml-1 text-xs opacity-80">· Overdue</span>
               )}
             </span>
@@ -365,8 +378,8 @@ export const DueDatePicker = ({
                   type="button"
                   onClick={() => handleQuickSelect(option.getDate)}
                   className={cn(
-                    "flex w-full items-center justify-between rounded-md px-2 py-2 text-sm transition-colors",
-                    "hover:bg-accent focus:bg-accent focus:outline-none"
+                    'flex w-full items-center justify-between rounded-md px-2 py-2 text-sm transition-colors',
+                    'hover:bg-accent focus:bg-accent focus:outline-none'
                   )}
                 >
                   <span className="flex items-center gap-2">
@@ -394,8 +407,8 @@ export const DueDatePicker = ({
                 type="button"
                 onClick={() => setShowCalendar(true)}
                 className={cn(
-                  "flex w-full items-center gap-2 rounded-md px-2 py-2 text-sm transition-colors",
-                  "hover:bg-accent focus:bg-accent focus:outline-none"
+                  'flex w-full items-center gap-2 rounded-md px-2 py-2 text-sm transition-colors',
+                  'hover:bg-accent focus:bg-accent focus:outline-none'
                 )}
               >
                 <CalendarIcon className="size-4 text-muted-foreground" />
@@ -413,11 +426,11 @@ export const DueDatePicker = ({
                   <div className="flex items-center gap-2 text-sm">
                     <CalendarIcon className="size-4 text-muted-foreground" />
                     <span className="font-medium">
-                      {date.toLocaleDateString("en-US", {
-                        weekday: "long",
-                        month: "long",
-                        day: "numeric",
-                        year: "numeric",
+                      {date.toLocaleDateString('en-US', {
+                        weekday: 'long',
+                        month: 'long',
+                        day: 'numeric',
+                        year: 'numeric'
                       })}
                     </span>
                   </div>
@@ -428,8 +441,8 @@ export const DueDatePicker = ({
                       type="button"
                       onClick={handleToggleTimePicker}
                       className={cn(
-                        "mt-1 flex items-center gap-2 rounded-md px-2 py-1.5 text-sm text-muted-foreground transition-colors",
-                        "hover:bg-accent hover:text-foreground focus:bg-accent focus:outline-none"
+                        'mt-1 flex items-center gap-2 rounded-md px-2 py-1.5 text-sm text-muted-foreground transition-colors',
+                        'hover:bg-accent hover:text-foreground focus:bg-accent focus:outline-none'
                       )}
                     >
                       <Plus className="size-4" />
@@ -454,8 +467,8 @@ export const DueDatePicker = ({
                     type="button"
                     onClick={handleRemoveDate}
                     className={cn(
-                      "flex w-full items-center justify-between rounded-md px-2 py-2 text-sm text-destructive transition-colors",
-                      "hover:bg-destructive/10 focus:bg-destructive/10 focus:outline-none"
+                      'flex w-full items-center justify-between rounded-md px-2 py-2 text-sm text-destructive transition-colors',
+                      'hover:bg-destructive/10 focus:bg-destructive/10 focus:outline-none'
                     )}
                   >
                     <span className="flex items-center gap-2">
@@ -480,8 +493,8 @@ export const DueDatePicker = ({
               type="button"
               onClick={() => setShowCalendar(false)}
               className={cn(
-                "flex items-center gap-2 border-b border-border px-3 py-2 text-sm transition-colors",
-                "hover:bg-accent focus:bg-accent focus:outline-none"
+                'flex items-center gap-2 border-b border-border px-3 py-2 text-sm transition-colors',
+                'hover:bg-accent focus:bg-accent focus:outline-none'
               )}
             >
               <span className="text-muted-foreground">←</span>

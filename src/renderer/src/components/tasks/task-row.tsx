@@ -1,15 +1,15 @@
-import { cn } from "@/lib/utils"
-import { formatDueDate } from "@/lib/task-utils"
+import { cn } from '@/lib/utils'
+import { formatDueDate } from '@/lib/task-utils'
 import {
   TaskCheckbox,
   InteractiveProjectBadge,
   InteractivePriorityBadge,
-  InteractiveDueDateBadge,
-} from "@/components/tasks/task-badges"
-import { RepeatIndicator } from "@/components/tasks/repeat-indicator"
-import { SelectionCheckbox } from "@/components/tasks/bulk-actions"
-import type { Task, Priority } from "@/data/sample-tasks"
-import type { Project } from "@/data/tasks-data"
+  InteractiveDueDateBadge
+} from '@/components/tasks/task-badges'
+import { RepeatIndicator } from '@/components/tasks/repeat-indicator'
+import { SelectionCheckbox } from '@/components/tasks/bulk-actions'
+import type { Task, Priority } from '@/data/sample-tasks'
+import type { Project } from '@/data/tasks-data'
 
 // ============================================================================
 // TYPES
@@ -56,11 +56,11 @@ export const TaskRow = ({
   isSelectionMode = false,
   isCheckedForSelection = false,
   onToggleSelect,
-  onShiftSelect,
+  onShiftSelect
 }: TaskRowProps): React.JSX.Element => {
   // Check if overdue
   const formattedDate = formatDueDate(task.dueDate, task.dueTime)
-  const isOverdue = formattedDate?.status === "overdue"
+  const isOverdue = formattedDate?.status === 'overdue'
 
   const handleRowClick = (e: React.MouseEvent): void => {
     // Shift+click for range selection
@@ -88,7 +88,7 @@ export const TaskRow = ({
   }
 
   const handleRowKeyDown = (e: React.KeyboardEvent): void => {
-    if (e.key === "Enter" && onClick) {
+    if (e.key === 'Enter' && onClick) {
       e.preventDefault()
       onClick(task.id)
     }
@@ -128,26 +128,27 @@ export const TaskRow = ({
       onClick={handleRowClick}
       onKeyDown={onClick ? handleRowKeyDown : undefined}
       className={cn(
-        "group rounded-md px-3 py-2.5 transition-colors duration-150",
-        "hover:bg-accent/50",
-        onClick && "cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+        'group rounded-md px-3 py-2.5 transition-colors duration-150',
+        'hover:bg-accent/50',
+        onClick &&
+          'cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
         // Mobile: flex layout for stacked view
-        "flex flex-col gap-1",
+        'flex flex-col gap-1',
         // Tablet+: grid layout with fixed columns
         // md: [select 20px][check 20px][title 1fr][priority 70px][due 110px] (no project)
         // lg: [select 20px][check 20px][title 1fr][project 120px][priority 70px][due 110px]
-        "md:grid md:items-center md:gap-2",
+        'md:grid md:items-center md:gap-2',
         showProjectBadge
-          ? "md:grid-cols-[20px_20px_1fr_70px_110px] lg:grid-cols-[20px_20px_1fr_120px_70px_110px]"
-          : "md:grid-cols-[20px_20px_1fr_70px_110px]",
-        isOverdue && !isCompleted && "border-l-2 border-l-destructive",
+          ? 'md:grid-cols-[20px_20px_1fr_70px_110px] lg:grid-cols-[20px_20px_1fr_120px_70px_110px]'
+          : 'md:grid-cols-[20px_20px_1fr_70px_110px]',
+        isOverdue && !isCompleted && 'border-l-2 border-l-destructive',
         // Selection highlight (when checked for selection)
-        isCheckedForSelection && "bg-primary/10 hover:bg-primary/15",
+        isCheckedForSelection && 'bg-primary/10 hover:bg-primary/15',
         // Detail panel selected (not the same as selection mode)
-        isSelected && !isCheckedForSelection && "bg-primary/10 ring-2 ring-primary/30",
+        isSelected && !isCheckedForSelection && 'bg-primary/10 ring-2 ring-primary/30',
         className
       )}
-      aria-label={`Task: ${task.title}${isCompleted ? ", completed" : ""}`}
+      aria-label={`Task: ${task.title}${isCompleted ? ', completed' : ''}`}
     >
       {/* Mobile: Main row with checkbox and title */}
       {/* Desktop: Grid columns */}
@@ -156,10 +157,10 @@ export const TaskRow = ({
         {/* Selection Checkbox - visible only in selection mode */}
         <div
           className={cn(
-            "flex items-center justify-center",
+            'flex items-center justify-center',
             // Hide on mobile
-            "hidden md:flex",
-            showSelection && isSelectionMode ? "opacity-100" : "hidden"
+            'hidden md:flex',
+            showSelection && isSelectionMode ? 'opacity-100' : 'hidden'
           )}
         >
           {showSelection && isSelectionMode && (
@@ -186,10 +187,10 @@ export const TaskRow = ({
         <div className="flex flex-1 items-center gap-2 min-w-0">
           <span
             className={cn(
-              "truncate text-sm",
+              'truncate text-sm',
               isCompleted
-                ? "text-text-tertiary line-through decoration-text-tertiary"
-                : "text-text-primary"
+                ? 'text-text-tertiary line-through decoration-text-tertiary'
+                : 'text-text-primary'
             )}
           >
             {task.title}
@@ -214,7 +215,7 @@ export const TaskRow = ({
         {/* Priority Badge - Column 5 (70px) - hidden on mobile */}
         <div className="hidden md:block">
           <InteractivePriorityBadge
-            priority={isCompleted ? "none" : task.priority}
+            priority={isCompleted ? 'none' : task.priority}
             onPriorityChange={handlePriorityChange}
             compact
             fixedWidth
@@ -229,7 +230,7 @@ export const TaskRow = ({
             onDateChange={handleDateChange}
             isRepeating={task.isRepeating}
             fixedWidth
-            className={cn(isCompleted && "opacity-60")}
+            className={cn(isCompleted && 'opacity-60')}
           />
         </div>
       </div>
@@ -243,7 +244,7 @@ export const TaskRow = ({
             onProjectChange={handleProjectChange}
           />
         )}
-        {!isCompleted && task.priority !== "none" && (
+        {!isCompleted && task.priority !== 'none' && (
           <InteractivePriorityBadge
             priority={task.priority}
             onPriorityChange={handlePriorityChange}
@@ -255,7 +256,7 @@ export const TaskRow = ({
           dueTime={task.dueTime}
           onDateChange={handleDateChange}
           isRepeating={task.isRepeating}
-          className={cn(isCompleted && "opacity-60")}
+          className={cn(isCompleted && 'opacity-60')}
         />
       </div>
     </div>
@@ -263,4 +264,3 @@ export const TaskRow = ({
 }
 
 export default TaskRow
-

@@ -1,5 +1,5 @@
-import { useState } from "react"
-import { Flag } from "lucide-react"
+import { useState } from 'react'
+import { Flag } from 'lucide-react'
 
 import {
   Dialog,
@@ -7,14 +7,14 @@ import {
   DialogDescription,
   DialogFooter,
   DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
-import { Button } from "@/components/ui/button"
-import { Checkbox } from "@/components/ui/checkbox"
-import { Label } from "@/components/ui/label"
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
-import { cn } from "@/lib/utils"
-import { priorityConfig, type Priority } from "@/data/sample-tasks"
+  DialogTitle
+} from '@/components/ui/dialog'
+import { Button } from '@/components/ui/button'
+import { Checkbox } from '@/components/ui/checkbox'
+import { Label } from '@/components/ui/label'
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
+import { cn } from '@/lib/utils'
+import { priorityConfig, type Priority } from '@/data/sample-tasks'
 
 // ============================================================================
 // TYPES
@@ -34,11 +34,11 @@ interface BulkPriorityDialogProps {
 // ============================================================================
 
 const priorityOptions: { value: Priority; label: string; color: string | null }[] = [
-  { value: "none", label: "No priority", color: null },
-  { value: "low", label: "Low", color: priorityConfig.low.color },
-  { value: "medium", label: "Medium", color: priorityConfig.medium.color },
-  { value: "high", label: "High", color: priorityConfig.high.color },
-  { value: "urgent", label: "Urgent", color: priorityConfig.urgent.color },
+  { value: 'none', label: 'No priority', color: null },
+  { value: 'low', label: 'Low', color: priorityConfig.low.color },
+  { value: 'medium', label: 'Medium', color: priorityConfig.medium.color },
+  { value: 'high', label: 'High', color: priorityConfig.high.color },
+  { value: 'urgent', label: 'Urgent', color: priorityConfig.urgent.color }
 ]
 
 // ============================================================================
@@ -51,20 +51,20 @@ export const BulkPriorityDialog = ({
   subtaskCount,
   completedCount,
   onClose,
-  onApply,
+  onApply
 }: BulkPriorityDialogProps): React.JSX.Element => {
-  const [selectedPriority, setSelectedPriority] = useState<Priority>("none")
+  const [selectedPriority, setSelectedPriority] = useState<Priority>('none')
   const [includeCompleted, setIncludeCompleted] = useState(false)
 
   const handleApply = (): void => {
     onApply(selectedPriority, includeCompleted)
-    setSelectedPriority("none")
+    setSelectedPriority('none')
     setIncludeCompleted(false)
     onClose()
   }
 
   const handleClose = (): void => {
-    setSelectedPriority("none")
+    setSelectedPriority('none')
     setIncludeCompleted(false)
     onClose()
   }
@@ -81,8 +81,8 @@ export const BulkPriorityDialog = ({
             <DialogTitle>Set priority for all subtasks</DialogTitle>
           </div>
           <DialogDescription>
-            Set priority for {affectedCount} subtask{affectedCount !== 1 ? "s" : ""} in
-            &ldquo;{parentTitle}&rdquo;
+            Set priority for {affectedCount} subtask{affectedCount !== 1 ? 's' : ''} in &ldquo;
+            {parentTitle}&rdquo;
           </DialogDescription>
         </DialogHeader>
 
@@ -97,19 +97,16 @@ export const BulkPriorityDialog = ({
               <div
                 key={option.value}
                 className={cn(
-                  "flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors",
+                  'flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors',
                   selectedPriority === option.value
-                    ? "border-primary bg-primary/5"
-                    : "border-border hover:bg-accent/50"
+                    ? 'border-primary bg-primary/5'
+                    : 'border-border hover:bg-accent/50'
                 )}
                 onClick={() => setSelectedPriority(option.value)}
               >
                 <RadioGroupItem value={option.value} id={option.value} />
                 {option.color ? (
-                  <span
-                    className="size-3 rounded-full"
-                    style={{ backgroundColor: option.color }}
-                  />
+                  <span className="size-3 rounded-full" style={{ backgroundColor: option.color }} />
                 ) : (
                   <span className="size-3 rounded-full border-2 border-muted-foreground/40" />
                 )}
@@ -126,9 +123,7 @@ export const BulkPriorityDialog = ({
               <Checkbox
                 id="include-completed-priority"
                 checked={includeCompleted}
-                onCheckedChange={(checked) =>
-                  setIncludeCompleted(checked === true)
-                }
+                onCheckedChange={(checked) => setIncludeCompleted(checked === true)}
               />
               <Label
                 htmlFor="include-completed-priority"
@@ -152,11 +147,3 @@ export const BulkPriorityDialog = ({
 }
 
 export default BulkPriorityDialog
-
-
-
-
-
-
-
-

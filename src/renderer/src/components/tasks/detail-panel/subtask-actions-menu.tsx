@@ -1,12 +1,5 @@
-import { useState } from "react"
-import {
-  MoreHorizontal,
-  Pencil,
-  Calendar,
-  Flag,
-  ArrowUp,
-  Trash2,
-} from "lucide-react"
+import { useState } from 'react'
+import { MoreHorizontal, Pencil, Calendar, Flag, ArrowUp, Trash2 } from 'lucide-react'
 
 import {
   DropdownMenu,
@@ -16,10 +9,10 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSub,
   DropdownMenuSubContent,
-  DropdownMenuSubTrigger,
-} from "@/components/ui/dropdown-menu"
-import { cn } from "@/lib/utils"
-import { priorityConfig, type Task, type Priority } from "@/data/sample-tasks"
+  DropdownMenuSubTrigger
+} from '@/components/ui/dropdown-menu'
+import { cn } from '@/lib/utils'
+import { priorityConfig, type Task, type Priority } from '@/data/sample-tasks'
 
 // ============================================================================
 // TYPES
@@ -39,11 +32,11 @@ interface SubtaskActionsMenuProps {
 // ============================================================================
 
 const priorityOptions: { value: Priority; label: string; color: string | null }[] = [
-  { value: "none", label: "No priority", color: null },
-  { value: "low", label: "Low", color: priorityConfig.low.color },
-  { value: "medium", label: "Medium", color: priorityConfig.medium.color },
-  { value: "high", label: "High", color: priorityConfig.high.color },
-  { value: "urgent", label: "Urgent", color: priorityConfig.urgent.color },
+  { value: 'none', label: 'No priority', color: null },
+  { value: 'low', label: 'Low', color: priorityConfig.low.color },
+  { value: 'medium', label: 'Medium', color: priorityConfig.medium.color },
+  { value: 'high', label: 'High', color: priorityConfig.high.color },
+  { value: 'urgent', label: 'Urgent', color: priorityConfig.urgent.color }
 ]
 
 // ============================================================================
@@ -61,10 +54,10 @@ const getQuickDateOptions = (): { id: string; label: string; getDate: () => Date
   nextWeek.setDate(nextWeek.getDate() + 7)
 
   return [
-    { id: "today", label: "Today", getDate: () => today },
-    { id: "tomorrow", label: "Tomorrow", getDate: () => tomorrow },
-    { id: "next-week", label: "Next week", getDate: () => nextWeek },
-    { id: "none", label: "No date", getDate: () => null },
+    { id: 'today', label: 'Today', getDate: () => today },
+    { id: 'tomorrow', label: 'Tomorrow', getDate: () => tomorrow },
+    { id: 'next-week', label: 'Next week', getDate: () => nextWeek },
+    { id: 'none', label: 'No date', getDate: () => null }
   ]
 }
 
@@ -78,7 +71,7 @@ export const SubtaskActionsMenu = ({
   onDelete,
   onPromote,
   onSetPriority,
-  onSetDueDate,
+  onSetDueDate
 }: SubtaskActionsMenuProps): React.JSX.Element => {
   const [isOpen, setIsOpen] = useState(false)
   const quickDateOptions = getQuickDateOptions()
@@ -112,9 +105,9 @@ export const SubtaskActionsMenu = ({
         <button
           type="button"
           className={cn(
-            "p-1 rounded hover:bg-accent transition-colors",
-            "opacity-0 group-hover:opacity-100",
-            isOpen && "opacity-100"
+            'p-1 rounded hover:bg-accent transition-colors',
+            'opacity-0 group-hover:opacity-100',
+            isOpen && 'opacity-100'
           )}
           aria-label="Subtask actions"
         >
@@ -138,12 +131,9 @@ export const SubtaskActionsMenu = ({
           </DropdownMenuSubTrigger>
           <DropdownMenuSubContent>
             {quickDateOptions.map((option) => (
-              <DropdownMenuItem
-                key={option.id}
-                onClick={() => handleSetDueDate(option.getDate)}
-              >
+              <DropdownMenuItem key={option.id} onClick={() => handleSetDueDate(option.getDate)}>
                 {option.label}
-                {subtask.dueDate && option.id === "none" && (
+                {subtask.dueDate && option.id === 'none' && (
                   <span className="ml-auto text-xs text-muted-foreground">Clear</span>
                 )}
               </DropdownMenuItem>
@@ -159,10 +149,7 @@ export const SubtaskActionsMenu = ({
           </DropdownMenuSubTrigger>
           <DropdownMenuSubContent>
             {priorityOptions.map((option) => (
-              <DropdownMenuItem
-                key={option.value}
-                onClick={() => handleSetPriority(option.value)}
-              >
+              <DropdownMenuItem key={option.value} onClick={() => handleSetPriority(option.value)}>
                 <span className="flex items-center gap-2">
                   {option.color ? (
                     <span
@@ -191,10 +178,7 @@ export const SubtaskActionsMenu = ({
 
         <DropdownMenuSeparator />
 
-        <DropdownMenuItem
-          onClick={handleDelete}
-          variant="destructive"
-        >
+        <DropdownMenuItem onClick={handleDelete} variant="destructive">
           <Trash2 className="size-4 mr-2" />
           Delete subtask
         </DropdownMenuItem>
@@ -204,11 +188,3 @@ export const SubtaskActionsMenu = ({
 }
 
 export default SubtaskActionsMenu
-
-
-
-
-
-
-
-

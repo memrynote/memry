@@ -1,19 +1,15 @@
-import { useState, useMemo } from "react"
-import { ArrowLeft, Trash2 } from "lucide-react"
+import { useState, useMemo } from 'react'
+import { ArrowLeft, Trash2 } from 'lucide-react'
 
-import { cn } from "@/lib/utils"
-import {
-  getArchivedTasks,
-  groupArchivedByMonth,
-  filterCompletedBySearch,
-} from "@/lib/task-utils"
-import { ScrollArea } from "@/components/ui/scroll-area"
-import { Button } from "@/components/ui/button"
-import { ArchivedTaskRow } from "./archived-task-row"
-import { CompletedSearchInput } from "./completed-search-input"
-import { ArchivedEmptyState } from "./archived-empty-state"
-import type { Task } from "@/data/sample-tasks"
-import type { Project } from "@/data/tasks-data"
+import { cn } from '@/lib/utils'
+import { getArchivedTasks, groupArchivedByMonth, filterCompletedBySearch } from '@/lib/task-utils'
+import { ScrollArea } from '@/components/ui/scroll-area'
+import { Button } from '@/components/ui/button'
+import { ArchivedTaskRow } from './archived-task-row'
+import { CompletedSearchInput } from './completed-search-input'
+import { ArchivedEmptyState } from './archived-empty-state'
+import type { Task } from '@/data/sample-tasks'
+import type { Project } from '@/data/tasks-data'
 
 // ============================================================================
 // TYPES
@@ -40,15 +36,12 @@ export const ArchivedView = ({
   onRestore,
   onDelete,
   onDeleteAll,
-  className,
+  className
 }: ArchivedViewProps): React.JSX.Element => {
-  const [searchQuery, setSearchQuery] = useState("")
+  const [searchQuery, setSearchQuery] = useState('')
 
   // Get archived tasks
-  const archivedTasks = useMemo(
-    () => getArchivedTasks(tasks),
-    [tasks]
-  )
+  const archivedTasks = useMemo(() => getArchivedTasks(tasks), [tasks])
 
   // Filter by search
   const filteredTasks = useMemo(
@@ -57,10 +50,7 @@ export const ArchivedView = ({
   )
 
   // Group filtered tasks by month
-  const groupedByMonth = useMemo(
-    () => groupArchivedByMonth(filteredTasks),
-    [filteredTasks]
-  )
+  const groupedByMonth = useMemo(() => groupArchivedByMonth(filteredTasks), [filteredTasks])
 
   // Check for empty states
   const hasArchivedTasks = archivedTasks.length > 0
@@ -73,7 +63,7 @@ export const ArchivedView = ({
   }
 
   return (
-    <ScrollArea className={cn("flex-1", className)}>
+    <ScrollArea className={cn('flex-1', className)}>
       <div className="p-4 space-y-4">
         {/* Header with Back button */}
         <div className="flex items-center justify-between">
@@ -88,11 +78,9 @@ export const ArchivedView = ({
               <ArrowLeft className="size-4" />
             </Button>
             <div>
-              <h2 className="text-lg font-semibold text-text-primary">
-                Archived Tasks
-              </h2>
+              <h2 className="text-lg font-semibold text-text-primary">Archived Tasks</h2>
               <p className="text-sm text-text-tertiary">
-                {archivedTasks.length} task{archivedTasks.length !== 1 ? "s" : ""} archived
+                {archivedTasks.length} task{archivedTasks.length !== 1 ? 's' : ''} archived
               </p>
             </div>
           </div>
@@ -136,7 +124,7 @@ export const ArchivedView = ({
                     {group.label}
                   </span>
                   <span className="text-xs tabular-nums text-text-tertiary">
-                    {group.tasks.length} task{group.tasks.length !== 1 ? "s" : ""}
+                    {group.tasks.length} task{group.tasks.length !== 1 ? 's' : ''}
                   </span>
                 </div>
                 <div className="divide-y divide-border/50 rounded-lg border border-border">

@@ -47,12 +47,12 @@ export const Tag = Node.create<TagOptions>({
             .deleteRange(range)
             .insertContent({
               type: this.name,
-              attrs: props,
+              attrs: props
             })
             .insertContent(' ') // Add space after tag
             .run()
-        },
-      },
+        }
+      }
     }
   },
 
@@ -66,18 +66,18 @@ export const Tag = Node.create<TagOptions>({
             return {}
           }
           return {
-            'data-tag': attributes.tag,
+            'data-tag': attributes.tag
           }
-        },
-      },
+        }
+      }
     }
   },
 
   parseHTML() {
     return [
       {
-        tag: 'span[data-tag-node]',
-      },
+        tag: 'span[data-tag-node]'
+      }
     ]
   },
 
@@ -89,9 +89,9 @@ export const Tag = Node.create<TagOptions>({
         class: 'tag',
         role: 'button',
         tabindex: '0',
-        'aria-label': `Tag: ${HTMLAttributes.tag}, click to filter`,
+        'aria-label': `Tag: ${HTMLAttributes.tag}, click to filter`
       }),
-      `#${HTMLAttributes.tag}`,
+      `#${HTMLAttributes.tag}`
     ]
   },
 
@@ -123,7 +123,7 @@ export const Tag = Node.create<TagOptions>({
           return isTag
         })
         return result
-      },
+      }
     }
   },
 
@@ -147,10 +147,10 @@ export const Tag = Node.create<TagOptions>({
 
           // Allow if empty (just typed #) or if valid tag characters
           return tagText === '' || /^[a-zA-Z0-9_-]*$/.test(tagText)
-        },
-      }),
+        }
+      })
     ]
-  },
+  }
 })
 
 // CSS styles for tag rendering

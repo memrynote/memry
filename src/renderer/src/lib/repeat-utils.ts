@@ -1,25 +1,46 @@
-import type { RepeatConfig, RepeatFrequency, RepeatEndType, MonthlyType } from "@/data/sample-tasks"
-import { addDays, addWeeks, addMonths, startOfDay, isBefore, isAfter, endOfMonth, subDays } from "./task-utils"
+import type { RepeatConfig, RepeatFrequency, RepeatEndType, MonthlyType } from '@/data/sample-tasks'
+import {
+  addDays,
+  addWeeks,
+  addMonths,
+  startOfDay,
+  isBefore,
+  isAfter,
+  endOfMonth,
+  subDays
+} from './task-utils'
 
 // ============================================================================
 // CONSTANTS
 // ============================================================================
 
-export const DAY_NAMES = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
-export const SHORT_DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
-export const ORDINALS = ["", "first", "second", "third", "fourth", "last"]
+export const DAY_NAMES = [
+  'Sunday',
+  'Monday',
+  'Tuesday',
+  'Wednesday',
+  'Thursday',
+  'Friday',
+  'Saturday'
+]
+export const SHORT_DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+export const ORDINALS = ['', 'first', 'second', 'third', 'fourth', 'last']
 
 // ============================================================================
 // HELPER: GET ORDINAL SUFFIX
 // ============================================================================
 
 export const getOrdinalSuffix = (n: number): string => {
-  if (n >= 11 && n <= 13) return "th"
+  if (n >= 11 && n <= 13) return 'th'
   switch (n % 10) {
-    case 1: return "st"
-    case 2: return "nd"
-    case 3: return "rd"
-    default: return "th"
+    case 1:
+      return 'st'
+    case 2:
+      return 'nd'
+    case 3:
+      return 'rd'
+    default:
+      return 'th'
   }
 }
 
@@ -87,20 +108,25 @@ export const addYears = (date: Date, years: number): Date => {
 // CALCULATE NEXT OCCURRENCE
 // ============================================================================
 
-export const calculateNextOccurrence = (
-  fromDate: Date,
-  config: RepeatConfig
-): Date | null => {
-  const { frequency, interval, daysOfWeek, monthlyType, dayOfMonth, weekOfMonth, dayOfWeekForMonth } = config
+export const calculateNextOccurrence = (fromDate: Date, config: RepeatConfig): Date | null => {
+  const {
+    frequency,
+    interval,
+    daysOfWeek,
+    monthlyType,
+    dayOfMonth,
+    weekOfMonth,
+    dayOfWeekForMonth
+  } = config
 
   let next: Date
 
   switch (frequency) {
-    case "daily":
+    case 'daily':
       next = addDays(fromDate, interval)
       break
 
-    case "weekly":
+    case 'weekly':
       if (daysOfWeek && daysOfWeek.length > 0) {
         // Find next matching day
         next = findNextWeekday(fromDate, daysOfWeek, interval)
@@ -109,14 +135,14 @@ export const calculateNextOccurrence = (
       }
       break
 
-    case "monthly":
-      if (monthlyType === "dayOfMonth" && dayOfMonth) {
+    case 'monthly':
+      if (monthlyType === 'dayOfMonth' && dayOfMonth) {
         next = addMonths(fromDate, interval)
         // Clamp to valid day of month
         const daysInMonth = new Date(next.getFullYear(), next.getMonth() + 1, 0).getDate()
         const targetDay = Math.min(dayOfMonth, daysInMonth)
         next.setDate(targetDay)
-      } else if (monthlyType === "weekPattern" && weekOfMonth && dayOfWeekForMonth !== undefined) {
+      } else if (monthlyType === 'weekPattern' && weekOfMonth && dayOfWeekForMonth !== undefined) {
         // Find nth weekday of next month
         const nextMonth = addMonths(fromDate, interval)
         next = findNthWeekdayOfMonth(
@@ -130,7 +156,7 @@ export const calculateNextOccurrence = (
       }
       break
 
-    case "yearly":
+    case 'yearly':
       next = addYears(fromDate, interval)
       break
 
@@ -139,11 +165,11 @@ export const calculateNextOccurrence = (
   }
 
   // Check end conditions
-  if (config.endType === "date" && config.endDate && isAfter(next, config.endDate)) {
+  if (config.endType === 'date' && config.endDate && isAfter(next, config.endDate)) {
     return null
   }
 
-  if (config.endType === "count" && config.endCount && config.completedCount >= config.endCount) {
+  if (config.endType === 'count' && config.endCount && config.completedCount >= config.endCount) {
     return null
   }
 
@@ -154,17 +180,13 @@ export const calculateNextOccurrence = (
 // HELPER: FIND NEXT WEEKDAY
 // ============================================================================
 
-const findNextWeekday = (
-  fromDate: Date,
-  daysOfWeek: number[],
-  interval: number
-): Date => {
+const findNextWeekday = (fromDate: Date, daysOfWeek: number[], interval: number): Date => {
   const sortedDays = [...daysOfWeek].sort((a, b) => a - b)
   const currentDay = fromDate.getDay()
 
   // First, check if there's another day in the same week (for interval = 1)
   if (interval === 1) {
-    const nextDayInWeek = sortedDays.find(d => d > currentDay)
+    const nextDayInWeek = sortedDays.find((d) => d > currentDay)
     if (nextDayInWeek !== undefined) {
       return addDays(fromDate, nextDayInWeek - currentDay)
     }
@@ -201,10 +223,10 @@ export const calculateNextOccurrences = (
 
   while (occurrences.length < count && generated < 100) {
     // Check end conditions before calculating next
-    if (config.endType === "date" && config.endDate && isAfter(current, config.endDate)) {
+    if (config.endType === 'date' && config.endDate && isAfter(current, config.endDate)) {
       break
     }
-    if (config.endType === "count" && config.endCount && generated >= config.endCount) {
+    if (config.endType === 'count' && config.endCount && generated >= config.endCount) {
       break
     }
 
@@ -224,58 +246,62 @@ export const calculateNextOccurrences = (
 // ============================================================================
 
 export const getRepeatDisplayText = (config: RepeatConfig): string => {
-  const { frequency, interval, daysOfWeek, monthlyType, dayOfMonth, weekOfMonth, dayOfWeekForMonth } = config
+  const {
+    frequency,
+    interval,
+    daysOfWeek,
+    monthlyType,
+    dayOfMonth,
+    weekOfMonth,
+    dayOfWeekForMonth
+  } = config
 
   switch (frequency) {
-    case "daily":
-      return interval === 1 ? "Every day" : `Every ${interval} days`
+    case 'daily':
+      return interval === 1 ? 'Every day' : `Every ${interval} days`
 
-    case "weekly":
+    case 'weekly':
       if (!daysOfWeek || daysOfWeek.length === 0) {
-        return interval === 1 ? "Every week" : `Every ${interval} weeks`
+        return interval === 1 ? 'Every week' : `Every ${interval} weeks`
       }
 
       // Check for weekdays (Mon-Fri)
-      if (daysOfWeek.length === 5 &&
-          [1, 2, 3, 4, 5].every(d => daysOfWeek.includes(d))) {
-        return interval === 1 ? "Every weekday" : `Every ${interval} weeks on weekdays`
+      if (daysOfWeek.length === 5 && [1, 2, 3, 4, 5].every((d) => daysOfWeek.includes(d))) {
+        return interval === 1 ? 'Every weekday' : `Every ${interval} weeks on weekdays`
       }
 
       // Check for weekends (Sat-Sun)
-      if (daysOfWeek.length === 2 &&
-          daysOfWeek.includes(0) && daysOfWeek.includes(6)) {
-        return interval === 1 ? "Every weekend" : `Every ${interval} weeks on weekends`
+      if (daysOfWeek.length === 2 && daysOfWeek.includes(0) && daysOfWeek.includes(6)) {
+        return interval === 1 ? 'Every weekend' : `Every ${interval} weeks on weekends`
       }
 
       const daysList = [...daysOfWeek]
         .sort((a, b) => a - b)
-        .map(d => daysOfWeek.length > 2 ? SHORT_DAY_NAMES[d] : DAY_NAMES[d])
-        .join(", ")
+        .map((d) => (daysOfWeek.length > 2 ? SHORT_DAY_NAMES[d] : DAY_NAMES[d]))
+        .join(', ')
 
-      return interval === 1
-        ? `Every week on ${daysList}`
-        : `Every ${interval} weeks on ${daysList}`
+      return interval === 1 ? `Every week on ${daysList}` : `Every ${interval} weeks on ${daysList}`
 
-    case "monthly":
-      if (monthlyType === "dayOfMonth" && dayOfMonth) {
+    case 'monthly':
+      if (monthlyType === 'dayOfMonth' && dayOfMonth) {
         const suffix = getOrdinalSuffix(dayOfMonth)
         return interval === 1
           ? `Every month on the ${dayOfMonth}${suffix}`
           : `Every ${interval} months on the ${dayOfMonth}${suffix}`
-      } else if (monthlyType === "weekPattern" && weekOfMonth && dayOfWeekForMonth !== undefined) {
+      } else if (monthlyType === 'weekPattern' && weekOfMonth && dayOfWeekForMonth !== undefined) {
         const weekText = ORDINALS[weekOfMonth]
         const dayText = DAY_NAMES[dayOfWeekForMonth]
         return interval === 1
           ? `Every month on the ${weekText} ${dayText}`
           : `Every ${interval} months on the ${weekText} ${dayText}`
       }
-      return interval === 1 ? "Every month" : `Every ${interval} months`
+      return interval === 1 ? 'Every month' : `Every ${interval} months`
 
-    case "yearly":
-      return interval === 1 ? "Every year" : `Every ${interval} years`
+    case 'yearly':
+      return interval === 1 ? 'Every year' : `Every ${interval} years`
 
     default:
-      return "Repeats"
+      return 'Repeats'
   }
 }
 
@@ -297,87 +323,87 @@ export const getRepeatPresets = (dueDate: Date | null): RepeatPreset[] => {
   const isLast = isLastWeekdayOfMonth(today)
 
   const dayName = DAY_NAMES[dayOfWeek]
-  const weekText = isLast ? "last" : ORDINALS[weekOfMonth]
-  const monthName = today.toLocaleDateString("en-US", { month: "long" })
+  const weekText = isLast ? 'last' : ORDINALS[weekOfMonth]
+  const monthName = today.toLocaleDateString('en-US', { month: 'long' })
 
-  const baseConfig: Omit<RepeatConfig, "frequency" | "interval"> = {
-    endType: "never",
+  const baseConfig: Omit<RepeatConfig, 'frequency' | 'interval'> = {
+    endType: 'never',
     completedCount: 0,
-    createdAt: new Date(),
+    createdAt: new Date()
   }
 
   return [
     {
-      id: "daily",
-      label: "Every day",
+      id: 'daily',
+      label: 'Every day',
       config: {
         ...baseConfig,
-        frequency: "daily",
-        interval: 1,
-      },
+        frequency: 'daily',
+        interval: 1
+      }
     },
     {
-      id: "weekdays",
-      label: "Every weekday (Mon-Fri)",
+      id: 'weekdays',
+      label: 'Every weekday (Mon-Fri)',
       config: {
         ...baseConfig,
-        frequency: "weekly",
+        frequency: 'weekly',
         interval: 1,
-        daysOfWeek: [1, 2, 3, 4, 5],
-      },
+        daysOfWeek: [1, 2, 3, 4, 5]
+      }
     },
     {
-      id: "weekly",
+      id: 'weekly',
       label: `Every week on ${dayName}`,
       config: {
         ...baseConfig,
-        frequency: "weekly",
+        frequency: 'weekly',
         interval: 1,
-        daysOfWeek: [dayOfWeek],
-      },
+        daysOfWeek: [dayOfWeek]
+      }
     },
     {
-      id: "biweekly",
+      id: 'biweekly',
       label: `Every 2 weeks on ${dayName}`,
       config: {
         ...baseConfig,
-        frequency: "weekly",
+        frequency: 'weekly',
         interval: 2,
-        daysOfWeek: [dayOfWeek],
-      },
+        daysOfWeek: [dayOfWeek]
+      }
     },
     {
-      id: "monthly-day",
+      id: 'monthly-day',
       label: `Every month on the ${dayOfMonth}${getOrdinalSuffix(dayOfMonth)}`,
       config: {
         ...baseConfig,
-        frequency: "monthly",
+        frequency: 'monthly',
         interval: 1,
-        monthlyType: "dayOfMonth",
-        dayOfMonth,
-      },
+        monthlyType: 'dayOfMonth',
+        dayOfMonth
+      }
     },
     {
-      id: "monthly-week",
+      id: 'monthly-week',
       label: `Every month on the ${weekText} ${dayName}`,
       config: {
         ...baseConfig,
-        frequency: "monthly",
+        frequency: 'monthly',
         interval: 1,
-        monthlyType: "weekPattern",
+        monthlyType: 'weekPattern',
         weekOfMonth: isLast ? 5 : weekOfMonth,
-        dayOfWeekForMonth: dayOfWeek,
-      },
+        dayOfWeekForMonth: dayOfWeek
+      }
     },
     {
-      id: "yearly",
+      id: 'yearly',
       label: `Every year on ${monthName} ${dayOfMonth}`,
       config: {
         ...baseConfig,
-        frequency: "yearly",
-        interval: 1,
-      },
-    },
+        frequency: 'yearly',
+        interval: 1
+      }
+    }
   ]
 }
 
@@ -386,7 +412,7 @@ export const getRepeatPresets = (dueDate: Date | null): RepeatPreset[] => {
 // ============================================================================
 
 export const createDefaultRepeatConfig = (
-  frequency: RepeatFrequency = "weekly",
+  frequency: RepeatFrequency = 'weekly',
   dueDate: Date | null = null
 ): RepeatConfig => {
   const today = dueDate || new Date()
@@ -394,12 +420,12 @@ export const createDefaultRepeatConfig = (
   return {
     frequency,
     interval: 1,
-    daysOfWeek: frequency === "weekly" ? [today.getDay()] : undefined,
-    monthlyType: frequency === "monthly" ? "dayOfMonth" : undefined,
-    dayOfMonth: frequency === "monthly" ? today.getDate() : undefined,
-    endType: "never",
+    daysOfWeek: frequency === 'weekly' ? [today.getDay()] : undefined,
+    monthlyType: frequency === 'monthly' ? 'dayOfMonth' : undefined,
+    dayOfMonth: frequency === 'monthly' ? today.getDate() : undefined,
+    endType: 'never',
     completedCount: 0,
-    createdAt: new Date(),
+    createdAt: new Date()
   }
 }
 
@@ -408,13 +434,13 @@ export const createDefaultRepeatConfig = (
 // ============================================================================
 
 export const shouldCreateNextOccurrence = (config: RepeatConfig): boolean => {
-  if (config.endType === "never") return true
+  if (config.endType === 'never') return true
 
-  if (config.endType === "count" && config.endCount) {
+  if (config.endType === 'count' && config.endCount) {
     return config.completedCount < config.endCount
   }
 
-  if (config.endType === "date" && config.endDate) {
+  if (config.endType === 'date' && config.endDate) {
     return !isAfter(new Date(), config.endDate)
   }
 
@@ -425,13 +451,14 @@ export const shouldCreateNextOccurrence = (config: RepeatConfig): boolean => {
 // GET PROGRESS FOR COUNT-LIMITED REPEATS
 // ============================================================================
 
-export const getRepeatProgress = (config: RepeatConfig): { current: number; total: number; percentage: number } | null => {
-  if (config.endType !== "count" || !config.endCount) return null
+export const getRepeatProgress = (
+  config: RepeatConfig
+): { current: number; total: number; percentage: number } | null => {
+  if (config.endType !== 'count' || !config.endCount) return null
 
   return {
     current: config.completedCount,
     total: config.endCount,
-    percentage: Math.round((config.completedCount / config.endCount) * 100),
+    percentage: Math.round((config.completedCount / config.endCount) * 100)
   }
 }
-

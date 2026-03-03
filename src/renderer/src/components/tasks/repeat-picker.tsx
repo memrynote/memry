@@ -1,16 +1,12 @@
-import { useState, useMemo, useCallback } from "react"
-import { RefreshCw, ChevronDown, Check } from "lucide-react"
+import { useState, useMemo, useCallback } from 'react'
+import { RefreshCw, ChevronDown, Check } from 'lucide-react'
 
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover"
-import { Button } from "@/components/ui/button"
-import { Separator } from "@/components/ui/separator"
-import { cn } from "@/lib/utils"
-import { getRepeatPresets, getRepeatDisplayText, type RepeatPreset } from "@/lib/repeat-utils"
-import type { RepeatConfig } from "@/data/sample-tasks"
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { Button } from '@/components/ui/button'
+import { Separator } from '@/components/ui/separator'
+import { cn } from '@/lib/utils'
+import { getRepeatPresets, getRepeatDisplayText, type RepeatPreset } from '@/lib/repeat-utils'
+import type { RepeatConfig } from '@/data/sample-tasks'
 
 // ============================================================================
 // TYPES
@@ -35,7 +31,7 @@ export const RepeatPicker = ({
   onChange,
   onOpenCustomDialog,
   disabled = false,
-  className,
+  className
 }: RepeatPickerProps): React.JSX.Element => {
   const [isOpen, setIsOpen] = useState(false)
 
@@ -44,7 +40,7 @@ export const RepeatPicker = ({
 
   // Get current display text
   const displayText = useMemo(() => {
-    if (!value) return "Does not repeat"
+    if (!value) return 'Does not repeat'
     return getRepeatDisplayText(value)
   }, [value])
 
@@ -54,18 +50,21 @@ export const RepeatPicker = ({
 
     // Simple matching based on display text
     const currentText = getRepeatDisplayText(value)
-    const matchingPreset = presets.find(p => getRepeatDisplayText(p.config) === currentText)
+    const matchingPreset = presets.find((p) => getRepeatDisplayText(p.config) === currentText)
     return matchingPreset?.id || null
   }, [value, presets])
 
-  const handleSelectPreset = useCallback((preset: RepeatPreset | null): void => {
-    if (!preset) {
-      onChange(null)
-    } else {
-      onChange(preset.config)
-    }
-    setIsOpen(false)
-  }, [onChange])
+  const handleSelectPreset = useCallback(
+    (preset: RepeatPreset | null): void => {
+      if (!preset) {
+        onChange(null)
+      } else {
+        onChange(preset.config)
+      }
+      setIsOpen(false)
+    },
+    [onChange]
+  )
 
   const handleOpenCustom = useCallback((): void => {
     setIsOpen(false)
@@ -82,17 +81,14 @@ export const RepeatPicker = ({
           aria-label="Select repeat frequency"
           disabled={disabled}
           className={cn(
-            "w-full justify-between font-normal",
-            !value && "text-muted-foreground",
+            'w-full justify-between font-normal',
+            !value && 'text-muted-foreground',
             className
           )}
         >
           <div className="flex items-center gap-2 truncate">
             <RefreshCw
-              className={cn(
-                "size-4 shrink-0",
-                value ? "text-blue-500" : "text-muted-foreground"
-              )}
+              className={cn('size-4 shrink-0', value ? 'text-blue-500' : 'text-muted-foreground')}
               aria-hidden="true"
             />
             <span className="truncate">{displayText}</span>
@@ -107,9 +103,9 @@ export const RepeatPicker = ({
           type="button"
           onClick={() => handleSelectPreset(null)}
           className={cn(
-            "flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm transition-colors",
-            "hover:bg-accent focus:bg-accent focus:outline-none",
-            !value && "bg-accent/50"
+            'flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm transition-colors',
+            'hover:bg-accent focus:bg-accent focus:outline-none',
+            !value && 'bg-accent/50'
           )}
         >
           <span className="size-4 flex items-center justify-center">
@@ -128,9 +124,9 @@ export const RepeatPicker = ({
               type="button"
               onClick={() => handleSelectPreset(preset)}
               className={cn(
-                "flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm transition-colors",
-                "hover:bg-accent focus:bg-accent focus:outline-none",
-                matchingPresetId === preset.id && "bg-accent/50"
+                'flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm transition-colors',
+                'hover:bg-accent focus:bg-accent focus:outline-none',
+                matchingPresetId === preset.id && 'bg-accent/50'
               )}
             >
               <span className="size-4 flex items-center justify-center">
@@ -149,8 +145,8 @@ export const RepeatPicker = ({
               type="button"
               onClick={handleOpenCustom}
               className={cn(
-                "flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm transition-colors",
-                "hover:bg-accent focus:bg-accent focus:outline-none text-muted-foreground"
+                'flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm transition-colors',
+                'hover:bg-accent focus:bg-accent focus:outline-none text-muted-foreground'
               )}
             >
               <span className="size-4" />
@@ -164,4 +160,3 @@ export const RepeatPicker = ({
 }
 
 export default RepeatPicker
-

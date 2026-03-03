@@ -1,15 +1,15 @@
-import React, { useMemo, useState } from "react"
-import { X, ChevronDown } from "lucide-react"
+import React, { useMemo, useState } from 'react'
+import { X, ChevronDown } from 'lucide-react'
 
-import { Dialog, DialogContent } from "@/components/ui/dialog"
-import { Button } from "@/components/ui/button"
-import { Checkbox } from "@/components/ui/checkbox"
-import { SelectionCheckbox } from "@/components/tasks/bulk-actions"
-import { SubtaskBadge } from "@/components/tasks/subtask-badge"
-import { cn } from "@/lib/utils"
-import { formatDayName } from "@/lib/task-utils"
-import { getSubtasks, calculateProgress } from "@/lib/subtask-utils"
-import { priorityConfig, type Task } from "@/data/sample-tasks"
+import { Dialog, DialogContent } from '@/components/ui/dialog'
+import { Button } from '@/components/ui/button'
+import { Checkbox } from '@/components/ui/checkbox'
+import { SelectionCheckbox } from '@/components/tasks/bulk-actions'
+import { SubtaskBadge } from '@/components/tasks/subtask-badge'
+import { cn } from '@/lib/utils'
+import { formatDayName } from '@/lib/task-utils'
+import { getSubtasks, calculateProgress } from '@/lib/subtask-utils'
+import { priorityConfig, type Task } from '@/data/sample-tasks'
 
 interface DayDetailPopoverProps {
   date: Date | null
@@ -54,16 +54,16 @@ export const DayDetailPopover = ({
   // Selection props
   isSelectionMode = false,
   selectedIds,
-  onToggleSelect,
+  onToggleSelect
 }: DayDetailPopoverProps): React.JSX.Element | null => {
   const [expandedTasks, setExpandedTasks] = useState<Set<string>>(new Set())
   const sortedTasks = useMemo(() => sortTasks(tasks), [tasks])
   const title = date
-    ? `${formatDayName(date)}, ${date.toLocaleDateString("en-US", {
-      month: "long",
-      day: "numeric",
-    })}`
-    : ""
+    ? `${formatDayName(date)}, ${date.toLocaleDateString('en-US', {
+        month: 'long',
+        day: 'numeric'
+      })}`
+    : ''
 
   const handleAdd = (): void => {
     if (!date) return
@@ -103,7 +103,7 @@ export const DayDetailPopover = ({
           <div>
             <h3 className="text-base font-semibold leading-tight">{title}</h3>
             <p className="text-sm text-muted-foreground">
-              {tasks.length} task{tasks.length !== 1 ? "s" : ""}
+              {tasks.length} task{tasks.length !== 1 ? 's' : ''}
             </p>
           </div>
           <button
@@ -135,9 +135,9 @@ export const DayDetailPopover = ({
                   <button
                     type="button"
                     className={cn(
-                      "group flex w-full items-center gap-3 rounded-md px-2 py-2 text-left text-sm",
-                      "hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                      isCheckedForSelection && "bg-primary/10 hover:bg-primary/15"
+                      'group flex w-full items-center gap-3 rounded-md px-2 py-2 text-left text-sm',
+                      'hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                      isCheckedForSelection && 'bg-primary/10 hover:bg-primary/15'
                     )}
                     onClick={() => handleTaskClick(task.id)}
                   >
@@ -150,12 +150,12 @@ export const DayDetailPopover = ({
                           toggleExpanded(task.id)
                         }}
                         className="shrink-0 p-0.5 hover:bg-accent rounded"
-                        aria-label={isExpanded ? "Collapse subtasks" : "Expand subtasks"}
+                        aria-label={isExpanded ? 'Collapse subtasks' : 'Expand subtasks'}
                       >
                         <ChevronDown
                           className={cn(
-                            "size-4 text-muted-foreground transition-transform",
-                            isExpanded && "rotate-180"
+                            'size-4 text-muted-foreground transition-transform',
+                            isExpanded && 'rotate-180'
                           )}
                         />
                       </button>
@@ -165,10 +165,7 @@ export const DayDetailPopover = ({
 
                     {/* Selection checkbox - visible only in selection mode */}
                     {onToggleSelect && isSelectionMode && (
-                      <div
-                        className="shrink-0"
-                        onClick={(e) => e.stopPropagation()}
-                      >
+                      <div className="shrink-0" onClick={(e) => e.stopPropagation()}>
                         <SelectionCheckbox
                           checked={isCheckedForSelection}
                           onChange={() => handleSelectionCheckboxChange(task.id)}
@@ -188,23 +185,25 @@ export const DayDetailPopover = ({
                     <div className="flex flex-1 items-center gap-2">
                       <span
                         className={cn(
-                          "w-12 shrink-0 tabular-nums text-xs",
-                          task.dueTime ? "text-muted-foreground" : "text-muted-foreground/60"
+                          'w-12 shrink-0 tabular-nums text-xs',
+                          task.dueTime ? 'text-muted-foreground' : 'text-muted-foreground/60'
                         )}
                       >
-                        {task.dueTime || "—"}
+                        {task.dueTime || '—'}
                       </span>
-                      {task.priority !== "none" && (
+                      {task.priority !== 'none' && (
                         <span
                           className="block size-2 shrink-0 rounded-full"
-                          style={{ backgroundColor: priorityConfig[task.priority].color || undefined }}
+                          style={{
+                            backgroundColor: priorityConfig[task.priority].color || undefined
+                          }}
                           aria-hidden="true"
                         />
                       )}
                       <span
                         className={cn(
-                          "truncate text-sm",
-                          task.completedAt && "line-through text-muted-foreground"
+                          'truncate text-sm',
+                          task.completedAt && 'line-through text-muted-foreground'
                         )}
                       >
                         {task.title}
@@ -236,13 +235,13 @@ export const DayDetailPopover = ({
                             type="button"
                             onClick={() => handleTaskClick(subtask.id)}
                             className={cn(
-                              "flex w-full items-center gap-2 rounded-md px-2 py-1 text-left text-sm",
-                              "hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                              'flex w-full items-center gap-2 rounded-md px-2 py-1 text-left text-sm',
+                              'hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring'
                             )}
                           >
                             {/* Tree connector */}
                             <span className="text-muted-foreground/50 text-xs font-mono shrink-0">
-                              {isLastSubtask ? "└─" : "├─"}
+                              {isLastSubtask ? '└─' : '├─'}
                             </span>
 
                             {/* Subtask checkbox */}
@@ -257,8 +256,8 @@ export const DayDetailPopover = ({
                             {/* Subtask title */}
                             <span
                               className={cn(
-                                "truncate text-sm",
-                                subtask.completedAt && "line-through text-muted-foreground"
+                                'truncate text-sm',
+                                subtask.completedAt && 'line-through text-muted-foreground'
                               )}
                             >
                               {subtask.title}

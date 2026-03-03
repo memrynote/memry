@@ -1,20 +1,20 @@
-import { useState, useMemo } from "react"
-import { Search, FolderKanban } from "lucide-react"
+import { useState, useMemo } from 'react'
+import { Search, FolderKanban } from 'lucide-react'
 
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogDescription,
-} from "@/components/ui/dialog"
-import { Input } from "@/components/ui/input"
-import { ScrollArea } from "@/components/ui/scroll-area"
-import { cn } from "@/lib/utils"
-import { TaskCheckbox } from "@/components/tasks/task-badges"
-import { getPotentialParents } from "@/lib/subtask-utils"
-import type { Task } from "@/data/sample-tasks"
-import type { Project } from "@/data/tasks-data"
+  DialogDescription
+} from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
+import { ScrollArea } from '@/components/ui/scroll-area'
+import { cn } from '@/lib/utils'
+import { TaskCheckbox } from '@/components/tasks/task-badges'
+import { getPotentialParents } from '@/lib/subtask-utils'
+import type { Task } from '@/data/sample-tasks'
+import type { Project } from '@/data/tasks-data'
 
 // ============================================================================
 // TYPES
@@ -39,9 +39,9 @@ export const ParentPickerDialog = ({
   task,
   allTasks,
   projects,
-  onSelect,
+  onSelect
 }: ParentPickerDialogProps): React.JSX.Element | null => {
-  const [searchQuery, setSearchQuery] = useState("")
+  const [searchQuery, setSearchQuery] = useState('')
 
   // Get potential parents
   const potentialParents = useMemo(() => {
@@ -53,9 +53,7 @@ export const ParentPickerDialog = ({
   const filteredParents = useMemo(() => {
     if (!searchQuery.trim()) return potentialParents
     const query = searchQuery.toLowerCase()
-    return potentialParents.filter((t) =>
-      t.title.toLowerCase().includes(query)
-    )
+    return potentialParents.filter((t) => t.title.toLowerCase().includes(query))
   }, [potentialParents, searchQuery])
 
   // Group by project
@@ -84,12 +82,12 @@ export const ParentPickerDialog = ({
   const handleSelect = (parentId: string): void => {
     onSelect(parentId)
     onOpenChange(false)
-    setSearchQuery("")
+    setSearchQuery('')
   }
 
   const handleClose = (): void => {
     onOpenChange(false)
-    setSearchQuery("")
+    setSearchQuery('')
   }
 
   const renderTaskItem = (potentialParent: Task): React.JSX.Element => {
@@ -102,26 +100,23 @@ export const ParentPickerDialog = ({
         type="button"
         onClick={() => handleSelect(potentialParent.id)}
         className={cn(
-          "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left",
-          "hover:bg-accent transition-colors",
-          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          'w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left',
+          'hover:bg-accent transition-colors',
+          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring'
         )}
       >
-        <TaskCheckbox checked={isCompleted} onChange={() => { }} />
+        <TaskCheckbox checked={isCompleted} onChange={() => {}} />
         <span
           className={cn(
-            "flex-1 truncate text-sm",
-            isCompleted && "line-through text-muted-foreground"
+            'flex-1 truncate text-sm',
+            isCompleted && 'line-through text-muted-foreground'
           )}
         >
           {potentialParent.title}
         </span>
         {project && (
           <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
-            <span
-              className="w-2 h-2 rounded-full"
-              style={{ backgroundColor: project.color }}
-            />
+            <span className="w-2 h-2 rounded-full" style={{ backgroundColor: project.color }} />
             <span className="truncate max-w-[100px]">{project.name}</span>
           </span>
         )}
@@ -141,9 +136,7 @@ export const ParentPickerDialog = ({
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Make subtask of...</DialogTitle>
-          <DialogDescription>
-            Select a task to make "{task.title}" a subtask of.
-          </DialogDescription>
+          <DialogDescription>Select a task to make "{task.title}" a subtask of.</DialogDescription>
         </DialogHeader>
 
         {/* Search input */}
@@ -165,8 +158,8 @@ export const ParentPickerDialog = ({
               <FolderKanban className="h-10 w-10 text-muted-foreground/50 mb-2" />
               <p className="text-sm text-muted-foreground">
                 {searchQuery
-                  ? "No tasks found matching your search"
-                  : "No available tasks to make this a subtask of"}
+                  ? 'No tasks found matching your search'
+                  : 'No available tasks to make this a subtask of'}
               </p>
             </div>
           ) : (
@@ -175,7 +168,7 @@ export const ParentPickerDialog = ({
               {hasSameProject && (
                 <div>
                   <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide px-3 py-2">
-                    Same Project{currentProject ? ` (${currentProject.name})` : ""}
+                    Same Project{currentProject ? ` (${currentProject.name})` : ''}
                   </h4>
                   <div className="space-y-0.5">
                     {groupedParents.sameProject.map(renderTaskItem)}
@@ -203,11 +196,3 @@ export const ParentPickerDialog = ({
 }
 
 export default ParentPickerDialog
-
-
-
-
-
-
-
-

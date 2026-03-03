@@ -1,25 +1,25 @@
-import { useRef, useEffect } from "react"
-import { useSortable } from "@dnd-kit/sortable"
-import { CSS } from "@dnd-kit/utilities"
-import { GripVertical } from "lucide-react"
+import { useRef, useEffect } from 'react'
+import { useSortable } from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
+import { GripVertical } from 'lucide-react'
 
-import { cn } from "@/lib/utils"
-import { formatDueDate } from "@/lib/task-utils"
-import { hasSubtasks, type SubtaskProgress } from "@/lib/subtask-utils"
+import { cn } from '@/lib/utils'
+import { formatDueDate } from '@/lib/task-utils'
+import { hasSubtasks, type SubtaskProgress } from '@/lib/subtask-utils'
 import {
   TaskCheckbox,
   ProjectBadge,
   PriorityBadge,
-  DueDateBadge,
-} from "@/components/tasks/task-badges"
-import { RepeatIndicator } from "@/components/tasks/repeat-indicator"
-import { SelectionCheckbox } from "@/components/tasks/bulk-actions"
+  DueDateBadge
+} from '@/components/tasks/task-badges'
+import { RepeatIndicator } from '@/components/tasks/repeat-indicator'
+import { SelectionCheckbox } from '@/components/tasks/bulk-actions'
 
-import { ExpandChevron } from "@/components/tasks/expand-chevron"
-import { SubtaskBadge } from "@/components/tasks/subtask-badge"
-import { SortableSubtaskList } from "@/components/tasks/sortable-subtask-list"
-import type { Task } from "@/data/sample-tasks"
-import type { Project } from "@/data/tasks-data"
+import { ExpandChevron } from '@/components/tasks/expand-chevron'
+import { SubtaskBadge } from '@/components/tasks/subtask-badge'
+import { SortableSubtaskList } from '@/components/tasks/sortable-subtask-list'
+import type { Task } from '@/data/sample-tasks'
+import type { Project } from '@/data/tasks-data'
 
 // ============================================================================
 // TYPES
@@ -77,34 +77,27 @@ export const SortableParentTaskRow = ({
   onShiftSelect,
   onAddSubtask,
   onReorderSubtasks,
-  accentClass,
+  accentClass
 }: SortableParentTaskRowProps): React.JSX.Element => {
   const rowRef = useRef<HTMLDivElement>(null)
   const taskHasSubtasks = hasSubtasks(task)
 
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: task.id,
     data: {
-      type: "task",
+      type: 'task',
       task,
       sectionId,
-      sourceType: "list",
-    },
+      sourceType: 'list'
+    }
   })
 
   // Scroll into view when focused via keyboard navigation
   useEffect(() => {
     if (isSelected && rowRef.current) {
       rowRef.current.scrollIntoView({
-        behavior: "smooth",
-        block: "nearest",
+        behavior: 'smooth',
+        block: 'nearest'
       })
     }
   }, [isSelected])
@@ -112,25 +105,25 @@ export const SortableParentTaskRow = ({
   // Combine refs
   const setRefs = (node: HTMLDivElement | null): void => {
     setNodeRef(node)
-      ; (rowRef as React.MutableRefObject<HTMLDivElement | null>).current = node
+    ;(rowRef as React.MutableRefObject<HTMLDivElement | null>).current = node
   }
 
   // Apply transform and transition styles
   const style: React.CSSProperties = {
     transform: CSS.Transform.toString(transform),
-    transition: transition || "transform 200ms ease-out",
+    transition: transition || 'transform 200ms ease-out'
   }
 
   // Check if overdue
   const formattedDate = formatDueDate(task.dueDate, task.dueTime)
-  const isOverdue = formattedDate?.status === "overdue" && !isCompleted
+  const isOverdue = formattedDate?.status === 'overdue' && !isCompleted
 
   const handleRowClick = (e: React.MouseEvent): void => {
     // Don't trigger if clicking on drag handle or expand button
-    if ((e.target as HTMLElement).closest("[data-drag-handle]")) {
+    if ((e.target as HTMLElement).closest('[data-drag-handle]')) {
       return
     }
-    if ((e.target as HTMLElement).closest("[data-expand-button]")) {
+    if ((e.target as HTMLElement).closest('[data-expand-button]')) {
       return
     }
 
@@ -159,18 +152,18 @@ export const SortableParentTaskRow = ({
   }
 
   const handleRowKeyDown = (e: React.KeyboardEvent): void => {
-    if (e.key === "Enter" && onClick) {
+    if (e.key === 'Enter' && onClick) {
       e.preventDefault()
       onClick(task.id)
     }
 
     // Keyboard navigation for expand/collapse
     if (taskHasSubtasks) {
-      if (e.key === "ArrowRight" && !isExpanded) {
+      if (e.key === 'ArrowRight' && !isExpanded) {
         e.preventDefault()
         onToggleExpand(task.id)
       }
-      if (e.key === "ArrowLeft" && isExpanded) {
+      if (e.key === 'ArrowLeft' && isExpanded) {
         e.preventDefault()
         onToggleExpand(task.id)
       }
@@ -196,7 +189,7 @@ export const SortableParentTaskRow = ({
   }
 
   return (
-    <div className={cn("group", className)}>
+    <div className={cn('group', className)}>
       {/* Parent task row */}
       <div
         ref={setRefs}
@@ -206,32 +199,33 @@ export const SortableParentTaskRow = ({
         onClick={handleRowClick}
         onKeyDown={onClick ? handleRowKeyDown : undefined}
         className={cn(
-          "rounded-md px-2 py-2.5 transition-all duration-150",
-          "hover:bg-accent/50",
-          onClick && "cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+          'rounded-md px-2 py-2.5 transition-all duration-150',
+          'hover:bg-accent/50',
+          onClick &&
+            'cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
           // Mobile: flex layout for stacked view
-          "flex flex-col gap-1",
+          'flex flex-col gap-1',
           // Tablet+: grid layout with fixed columns
           // [drag 24px][checkbox 20px][chevron 20px][title 1fr][project? 120px][priority 70px][due 110px]
-          "md:grid md:items-center md:gap-1",
+          'md:grid md:items-center md:gap-1',
           // Dynamic grid columns based on selection mode
           isSelectionMode
             ? showProjectBadge
-              ? "md:grid-cols-[24px_20px_20px_20px_1fr_70px_110px] lg:grid-cols-[24px_20px_20px_20px_1fr_120px_70px_110px]"
-              : "md:grid-cols-[24px_20px_20px_20px_1fr_70px_110px]"
+              ? 'md:grid-cols-[24px_20px_20px_20px_1fr_70px_110px] lg:grid-cols-[24px_20px_20px_20px_1fr_120px_70px_110px]'
+              : 'md:grid-cols-[24px_20px_20px_20px_1fr_70px_110px]'
             : showProjectBadge
-              ? "md:grid-cols-[24px_20px_20px_1fr_70px_110px] lg:grid-cols-[24px_20px_20px_1fr_120px_70px_110px]"
-              : "md:grid-cols-[24px_20px_20px_1fr_70px_110px]",
+              ? 'md:grid-cols-[24px_20px_20px_1fr_70px_110px] lg:grid-cols-[24px_20px_20px_1fr_120px_70px_110px]'
+              : 'md:grid-cols-[24px_20px_20px_1fr_70px_110px]',
           // Urgency accent class takes priority, otherwise fall back to overdue styling
-          accentClass ? accentClass : (isOverdue && "border-l-2 border-l-destructive"),
+          accentClass ? accentClass : isOverdue && 'border-l-2 border-l-destructive',
           // Selection highlight (when checked for selection)
-          isCheckedForSelection && "bg-primary/10 hover:bg-primary/15",
+          isCheckedForSelection && 'bg-primary/10 hover:bg-primary/15',
           // Detail panel selected (not the same as selection mode)
-          isSelected && !isCheckedForSelection && "bg-primary/10 ring-2 ring-primary/30",
+          isSelected && !isCheckedForSelection && 'bg-primary/10 ring-2 ring-primary/30',
           // Dragging state
-          isDragging && "opacity-50 shadow-lg ring-2 ring-primary bg-background z-10"
+          isDragging && 'opacity-50 shadow-lg ring-2 ring-primary bg-background z-10'
         )}
-        aria-label={`Task: ${task.title}${isCompleted ? ", completed" : ""}${taskHasSubtasks ? `, ${subtasks.length} subtasks` : ""}`}
+        aria-label={`Task: ${task.title}${isCompleted ? ', completed' : ''}${taskHasSubtasks ? `, ${subtasks.length} subtasks` : ''}`}
       >
         {/* Mobile: Main row with checkbox and title */}
         {/* Desktop: Grid columns */}
@@ -243,13 +237,13 @@ export const SortableParentTaskRow = ({
             {...attributes}
             {...listeners}
             className={cn(
-              "flex items-center justify-center cursor-grab touch-none text-muted-foreground/50",
-              "hover:text-muted-foreground active:cursor-grabbing",
-              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:rounded",
-              "opacity-0 group-hover:opacity-100 transition-opacity",
+              'flex items-center justify-center cursor-grab touch-none text-muted-foreground/50',
+              'hover:text-muted-foreground active:cursor-grabbing',
+              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:rounded',
+              'opacity-0 group-hover:opacity-100 transition-opacity',
               // Hide on mobile
-              "hidden md:flex",
-              isDragging && "cursor-grabbing opacity-100"
+              'hidden md:flex',
+              isDragging && 'cursor-grabbing opacity-100'
             )}
             aria-label="Drag to reorder"
           >
@@ -272,10 +266,7 @@ export const SortableParentTaskRow = ({
 
           {/* Task Completion Checkbox - Column 3 (20px) */}
           <div className="flex items-center justify-center shrink-0">
-            <TaskCheckbox
-              checked={isCompleted}
-              onChange={handleToggleComplete}
-            />
+            <TaskCheckbox checked={isCompleted} onChange={handleToggleComplete} />
           </div>
 
           {/* Expand/collapse chevron - Column 4 (20px) */}
@@ -293,8 +284,8 @@ export const SortableParentTaskRow = ({
             <div className="flex items-center gap-2">
               <span
                 className={cn(
-                  "truncate text-sm",
-                  isCompleted && "line-through text-muted-foreground"
+                  'truncate text-sm',
+                  isCompleted && 'line-through text-muted-foreground'
                 )}
               >
                 {task.title}
@@ -313,8 +304,6 @@ export const SortableParentTaskRow = ({
                 />
               )}
             </div>
-
-
           </div>
 
           {/* Project Badge - Column 6 (conditional, 120px) - hidden on mobile & tablet */}
@@ -326,11 +315,7 @@ export const SortableParentTaskRow = ({
 
           {/* Priority Badge - Column 7 (70px) - hidden on mobile */}
           <div className="hidden md:block">
-            <PriorityBadge
-              priority={isCompleted ? "none" : task.priority}
-              compact
-              fixedWidth
-            />
+            <PriorityBadge priority={isCompleted ? 'none' : task.priority} compact fixedWidth />
           </div>
 
           {/* Due Date Badge - Column 8 (110px) - hidden on mobile */}
@@ -340,24 +325,22 @@ export const SortableParentTaskRow = ({
               dueTime={task.dueTime}
               isRepeating={task.isRepeating}
               fixedWidth
-              className={cn(isCompleted && "opacity-60")}
+              className={cn(isCompleted && 'opacity-60')}
             />
           </div>
         </div>
 
         {/* Mobile: Stacked metadata row */}
         <div className="flex items-center gap-2 pl-7 text-xs md:hidden">
-          {showProjectBadge && (
-            <ProjectBadge project={project} />
-          )}
-          {!isCompleted && task.priority !== "none" && (
+          {showProjectBadge && <ProjectBadge project={project} />}
+          {!isCompleted && task.priority !== 'none' && (
             <PriorityBadge priority={task.priority} compact />
           )}
           <DueDateBadge
             dueDate={task.dueDate}
             dueTime={task.dueTime}
             isRepeating={task.isRepeating}
-            className={cn(isCompleted && "opacity-60")}
+            className={cn(isCompleted && 'opacity-60')}
           />
         </div>
       </div>
@@ -368,7 +351,7 @@ export const SortableParentTaskRow = ({
           parentId={task.id}
           parentTitle={task.title}
           subtasks={subtasks}
-          onReorder={onReorderSubtasks || (() => { })}
+          onReorder={onReorderSubtasks || (() => {})}
           onToggleComplete={onToggleSubtaskComplete || onToggleComplete}
           onAddSubtask={onAddSubtask}
           onClick={onClick}

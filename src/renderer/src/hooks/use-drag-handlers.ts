@@ -1,18 +1,23 @@
-import { useCallback, useState } from "react"
-import type { DragEndEvent, DragStartEvent, DragOverEvent } from "@dnd-kit/core"
-import { toast } from "sonner"
+import { useCallback, useState } from 'react'
+import type { DragEndEvent, DragStartEvent, DragOverEvent } from '@dnd-kit/core'
+import { toast } from 'sonner'
 
-import type { DragState } from "@/contexts/drag-context"
-import { formatDateShort, startOfDay, getDefaultTodoStatus, getDefaultDoneStatus } from "@/lib/task-utils"
-import type { Task } from "@/data/sample-tasks"
-import type { Project } from "@/data/tasks-data"
+import type { DragState } from '@/contexts/drag-context'
+import {
+  formatDateShort,
+  startOfDay,
+  getDefaultTodoStatus,
+  getDefaultDoneStatus
+} from '@/lib/task-utils'
+import type { Task } from '@/data/sample-tasks'
+import type { Project } from '@/data/tasks-data'
 
 // ============================================================================
 // TYPES
 // ============================================================================
 
 interface UndoAction {
-  type: "move-project" | "change-status" | "reschedule" | "reorder" | "delete" | "archive"
+  type: 'move-project' | 'change-status' | 'reschedule' | 'reorder' | 'delete' | 'archive'
   taskIds: string[]
   previousProjectId?: string
   previousStatusId?: string
@@ -54,7 +59,7 @@ export const useDragHandlers = ({
   projects,
   onUpdateTask,
   onDeleteTask,
-  onReorder,
+  onReorder
 }: UseDragHandlersProps): UseDragHandlersReturn => {
   const [undoStack, setUndoStack] = useState<UndoAction[]>([])
   const [lastActionDescription, setLastActionDescription] = useState<string | null>(null)
@@ -71,7 +76,7 @@ export const useDragHandlers = ({
     if (!lastAction) return
 
     switch (lastAction.type) {
-      case "move-project":
+      case 'move-project':
         if (lastAction.previousProjectId) {
           lastAction.taskIds.forEach((id) => {
             const task = tasks.find((t) => t.id === id)
@@ -87,19 +92,20 @@ export const useDragHandlers = ({
                 const matchingStatus = targetProject.statuses.find(
                   (s) => s.type === currentStatus.type
                 )
-                newStatusId = matchingStatus?.id || getDefaultTodoStatus(targetProject)?.id || task.statusId
+                newStatusId =
+                  matchingStatus?.id || getDefaultTodoStatus(targetProject)?.id || task.statusId
               }
 
               onUpdateTask(id, {
                 projectId: lastAction.previousProjectId,
-                statusId: newStatusId,
+                statusId: newStatusId
               })
             }
           })
         }
         break
 
-      case "change-status":
+      case 'change-status':
         if (lastAction.previousStatusId) {
           lastAction.taskIds.forEach((id) => {
             onUpdateTask(id, { statusId: lastAction.previousStatusId })
@@ -107,7 +113,7 @@ export const useDragHandlers = ({
         }
         break
 
-      case "reschedule":
+      case 'reschedule':
         if (lastAction.previousDates) {
           lastAction.previousDates.forEach((date, taskId) => {
             onUpdateTask(taskId, { dueDate: date })
@@ -115,13 +121,13 @@ export const useDragHandlers = ({
         }
         break
 
-      case "reorder":
+      case 'reorder':
         if (lastAction.sectionId && lastAction.previousOrder) {
           onReorder?.(lastAction.sectionId, lastAction.previousOrder)
         }
         break
 
-      case "archive":
+      case 'archive':
         lastAction.taskIds.forEach((id) => {
           onUpdateTask(id, { archivedAt: null })
         })
@@ -129,7 +135,7 @@ export const useDragHandlers = ({
     }
 
     setUndoStack((prev) => prev.slice(0, -1))
-    toast.success("Undone")
+    toast.success('Undone')
   }, [undoStack, tasks, projects, onUpdateTask, onReorder])
 
   // Handle dropping on a section (reschedule)
@@ -150,9 +156,9 @@ export const useDragHandlers = ({
       // Record for undo
       recordAction(
         {
-          type: "reschedule",
+          type: 'reschedule',
           taskIds,
-          previousDates,
+          previousDates
         },
         `Rescheduled to ${sectionLabel}`
       )
@@ -182,13 +188,13 @@ export const useDragHandlers = ({
         if (!task) return
 
         const updates: Partial<Task> = {
-          statusId: targetColumnId,
+          statusId: targetColumnId
         }
 
         // Handle completion
-        if (targetStatus.type === "done" && !task.completedAt) {
+        if (targetStatus.type === 'done' && !task.completedAt) {
           updates.completedAt = new Date()
-        } else if (targetStatus.type !== "done" && task.completedAt) {
+        } else if (targetStatus.type !== 'done' && task.completedAt) {
           updates.completedAt = null
         }
 
@@ -199,9 +205,9 @@ export const useDragHandlers = ({
       if (previousStatusId) {
         recordAction(
           {
-            type: "change-status",
+            type: 'change-status',
             taskIds,
-            previousStatusId,
+            previousStatusId
           },
           `Moved to ${targetStatus.name}`
         )
@@ -232,7 +238,7 @@ export const useDragHandlers = ({
         // Preserve time if set
         let newDueDate = startOfDay(targetDate)
         if (task?.dueTime) {
-          const [hours, minutes] = task.dueTime.split(":").map(Number)
+          const [hours, minutes] = task.dueTime.split(':').map(Number)
           newDueDate = new Date(newDueDate)
           newDueDate.setHours(hours, minutes)
         }
@@ -242,9 +248,9 @@ export const useDragHandlers = ({
       // Record for undo
       recordAction(
         {
-          type: "reschedule",
+          type: 'reschedule',
           taskIds,
-          previousDates,
+          previousDates
         },
         `Rescheduled to ${formatDateShort(targetDate)}`
       )
@@ -276,7 +282,7 @@ export const useDragHandlers = ({
         // Find current status type and map to new project
         const currentProject = projects.find((p) => p.id === task.projectId)
         const currentStatus = currentProject?.statuses.find((s) => s.id === task.statusId)
-        const currentStatusType = currentStatus?.type || "todo"
+        const currentStatusType = currentStatus?.type || 'todo'
 
         // Find matching status in target project
         let newStatus = targetProject.statuses.find((s) => s.type === currentStatusType)
@@ -286,7 +292,7 @@ export const useDragHandlers = ({
 
         onUpdateTask(id, {
           projectId: targetProjectId,
-          statusId: newStatus?.id || targetProject.statuses[0]?.id,
+          statusId: newStatus?.id || targetProject.statuses[0]?.id
         })
       })
 
@@ -294,9 +300,9 @@ export const useDragHandlers = ({
       if (previousProjectId) {
         recordAction(
           {
-            type: "move-project",
+            type: 'move-project',
             taskIds,
-            previousProjectId,
+            previousProjectId
           },
           `Moved to ${targetProject.name}`
         )
@@ -320,21 +326,16 @@ export const useDragHandlers = ({
         onDeleteTask(id)
       })
 
-      toast.success(
-        taskIds.length === 1
-          ? "Task deleted"
-          : `${taskIds.length} tasks deleted`,
-        {
-          action: {
-            label: "Undo",
-            onClick: () => {
-              // Note: This is a simplified undo - actual implementation would
-              // need to re-create the tasks
-              toast.info("Undo not available for delete")
-            },
-          },
+      toast.success(taskIds.length === 1 ? 'Task deleted' : `${taskIds.length} tasks deleted`, {
+        action: {
+          label: 'Undo',
+          onClick: () => {
+            // Note: This is a simplified undo - actual implementation would
+            // need to re-create the tasks
+            toast.info('Undo not available for delete')
+          }
         }
-      )
+      })
     },
     [tasks, onDeleteTask]
   )
@@ -349,23 +350,19 @@ export const useDragHandlers = ({
       // Record for undo
       recordAction(
         {
-          type: "archive",
-          taskIds,
+          type: 'archive',
+          taskIds
         },
-        `Archived ${taskIds.length} task${taskIds.length !== 1 ? "s" : ""}`
+        `Archived ${taskIds.length} task${taskIds.length !== 1 ? 's' : ''}`
       )
 
-      toast.success(
-        taskIds.length === 1
-          ? "Task archived"
-          : `${taskIds.length} tasks archived`,
-        {
-          action: {
-            label: "Undo",
-            onClick: undo,
-          },
+      toast.success(taskIds.length === 1 ? 'Task archived' : `${taskIds.length} tasks archived`, {
+        duration: 10000, // T052: 10-second timeout for undo per spec
+        action: {
+          label: 'Undo',
+          onClick: undo
         }
-      )
+      })
     },
     [onUpdateTask, recordAction, undo]
   )
@@ -382,13 +379,18 @@ export const useDragHandlers = ({
       const taskIds = dragState.activeIds
 
       switch (overType) {
-        case "task": {
+        case 'task': {
           // Check if we're dropping within the same section (reorder) or different section (move)
           const overSectionId = overData?.sectionId
           const sourceSectionId = dragState.sourceContainerId
 
           // Only reorder if dropping within the same section
-          if (overSectionId && sourceSectionId && overSectionId === sourceSectionId && taskIds.length === 1) {
+          if (
+            overSectionId &&
+            sourceSectionId &&
+            overSectionId === sourceSectionId &&
+            taskIds.length === 1
+          ) {
             // Same section - this is a reorder operation
             // Pass the reorder to the callback which should handle it via useTaskOrder
             onReorder?.(overSectionId, [taskIds[0], over.id as string])
@@ -403,25 +405,25 @@ export const useDragHandlers = ({
           break
         }
 
-        case "section": {
+        case 'section': {
           const targetDate = overData?.date as Date | null
           const sectionLabel = overData?.label as string
           handleSectionDrop(taskIds, targetDate, sectionLabel)
           break
         }
 
-        case "column": {
+        case 'column': {
           const targetColumnId = overData?.columnId || over.id
-          const project = overData?.project || projects.find((p) =>
-            p.statuses.some((s) => s.id === targetColumnId)
-          )
+          const project =
+            overData?.project ||
+            projects.find((p) => p.statuses.some((s) => s.id === targetColumnId))
           if (project) {
             handleColumnDrop(taskIds, targetColumnId as string, project)
           }
           break
         }
 
-        case "date": {
+        case 'date': {
           const targetDate = overData?.date as Date
           if (targetDate) {
             handleDateDrop(taskIds, targetDate)
@@ -429,7 +431,7 @@ export const useDragHandlers = ({
           break
         }
 
-        case "project": {
+        case 'project': {
           const targetProjectId = overData?.projectId as string
           if (targetProjectId) {
             handleProjectDrop(taskIds, targetProjectId)
@@ -437,12 +439,12 @@ export const useDragHandlers = ({
           break
         }
 
-        case "trash": {
+        case 'trash': {
           handleTrashDrop(taskIds)
           break
         }
 
-        case "archive": {
+        case 'archive': {
           handleArchiveDrop(taskIds)
           break
         }
@@ -457,25 +459,19 @@ export const useDragHandlers = ({
       handleDateDrop,
       handleProjectDrop,
       handleTrashDrop,
-      handleArchiveDrop,
+      handleArchiveDrop
     ]
   )
 
   // Drag start handler (for logging/analytics)
-  const handleDragStart = useCallback(
-    (event: DragStartEvent, dragState: DragState) => {
-      // Can be used for analytics or additional setup
-    },
-    []
-  )
+  const handleDragStart = useCallback((event: DragStartEvent, dragState: DragState) => {
+    // Can be used for analytics or additional setup
+  }, [])
 
   // Drag over handler (for visual feedback)
-  const handleDragOver = useCallback(
-    (event: DragOverEvent, dragState: DragState) => {
-      // Can be used for additional visual feedback
-    },
-    []
-  )
+  const handleDragOver = useCallback((event: DragOverEvent, dragState: DragState) => {
+    // Can be used for additional visual feedback
+  }, [])
 
   return {
     handleDragEnd,
@@ -483,19 +479,8 @@ export const useDragHandlers = ({
     handleDragOver,
     undo,
     canUndo: undoStack.length > 0,
-    lastActionDescription,
+    lastActionDescription
   }
 }
 
 export default useDragHandlers
-
-
-
-
-
-
-
-
-
-
-

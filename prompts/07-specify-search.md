@@ -2,7 +2,7 @@
 
 Comprehensive search across all content with filters and AI-powered discovery.
 
-```
+````
 /speckit.specify
 
 Build the search system that enables finding content across notes, tasks, journal, and inbox:
@@ -53,32 +53,34 @@ interface SearchResult {
   modifiedAt: Date
   tags?: string[]
 }
-```
+````
 
 ### SearchQuery
+
 ```typescript
 interface SearchQuery {
   text: string
 
   // Filters
-  types?: ("note" | "task" | "journal" | "inbox")[]
+  types?: ('note' | 'task' | 'journal' | 'inbox')[]
   tags?: string[]
   dateRange?: {
     start: Date
     end: Date
   }
-  projectIds?: string[]     // For tasks
-  folders?: string[]        // For notes
+  projectIds?: string[] // For tasks
+  folders?: string[] // For notes
 
   // Options
-  limit?: number            // Default 50
-  offset?: number           // For pagination
-  sortBy?: "relevance" | "date" | "title"
-  sortDirection?: "asc" | "desc"
+  limit?: number // Default 50
+  offset?: number // For pagination
+  sortBy?: 'relevance' | 'date' | 'title'
+  sortDirection?: 'asc' | 'desc'
 }
 ```
 
 ### RecentSearch
+
 ```typescript
 interface RecentSearch {
   query: string
@@ -90,6 +92,7 @@ interface RecentSearch {
 ## FUNCTIONAL REQUIREMENTS
 
 ### Global Search (Cmd+K)
+
 - Keyboard shortcut: Cmd+K (or Cmd+P)
 - Opens command palette-style modal
 - Auto-focus on search input
@@ -100,19 +103,22 @@ interface RecentSearch {
 - "View all" link per section for more results
 
 ### Full-Text Search
+
 - Use SQLite FTS5 for fast text search
 - Index: note content, note titles, task titles, task descriptions, journal content, inbox titles
-- Support prefix matching ("meet*" finds "meeting")
+- Support prefix matching ("meet\*" finds "meeting")
 - Support phrase search ("project alpha" in quotes)
 - Rank by relevance using BM25 algorithm
 
 ### Fuzzy Search
+
 - Use fuzzy matching for typo tolerance
 - "meetng" should find "meeting"
 - Fuzzy threshold configurable (default: 70% similarity)
 - Combine fuzzy with FTS for best results
 
 ### Search Results UI
+
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │  🔍  meeting notes                               [⌘ K to close]  │
@@ -146,6 +152,7 @@ interface RecentSearch {
 ```
 
 ### Filter Panel
+
 - Toggle filters sidebar (Cmd+Shift+F)
 - Type checkboxes: Notes, Tasks, Journal, Inbox
 - Tag multi-select with autocomplete
@@ -155,12 +162,14 @@ interface RecentSearch {
 - Clear all filters button
 
 ### Result Highlighting
+
 - Match text highlighted in snippet
 - Use <mark> tag or custom component
 - Show context around match (50 chars before/after)
 - Multiple matches shown with "..." separator
 
 ### Keyboard Navigation
+
 - Arrow Up/Down: navigate results
 - Enter: open selected result
 - Tab: move between sections
@@ -168,6 +177,7 @@ interface RecentSearch {
 - Cmd+1-4: filter by type (1=Notes, 2=Tasks, 3=Journal, 4=Inbox)
 
 ### Recent Searches
+
 - Store last 20 unique searches
 - Show when search input empty
 - Click to re-run search
@@ -176,12 +186,14 @@ interface RecentSearch {
 ## NON-FUNCTIONAL REQUIREMENTS
 
 ### Performance
+
 - First results appear within 100ms
 - Full search completes within 200ms
 - Works smoothly with 10,000+ items
 - Index updates don't block UI
 
 ### UX
+
 - Search modal opens instantly
 - No flicker during result updates
 - Smooth keyboard navigation
@@ -190,6 +202,7 @@ interface RecentSearch {
 ## ACCEPTANCE CRITERIA
 
 ### Basic Search
+
 - [ ] Cmd+K opens search modal
 - [ ] Typing shows results immediately
 - [ ] Results grouped by type
@@ -197,6 +210,7 @@ interface RecentSearch {
 - [ ] Escape closes modal
 
 ### Text Matching
+
 - [ ] "meeting" finds "Team Meeting Notes"
 - [ ] "meet" finds "meeting" (prefix)
 - [ ] "meetng" finds "meeting" (fuzzy)
@@ -204,6 +218,7 @@ interface RecentSearch {
 - [ ] Case-insensitive matching
 
 ### Filtering
+
 - [ ] Type filter shows only selected types
 - [ ] Tag filter narrows results
 - [ ] Date range filter works correctly
@@ -211,6 +226,7 @@ interface RecentSearch {
 - [ ] Clear filters shows all results
 
 ### Results Display
+
 - [ ] Matches highlighted in snippets
 - [ ] Relevant context shown
 - [ ] Result count per section shown
@@ -218,6 +234,7 @@ interface RecentSearch {
 - [ ] Empty state when no matches
 
 ### Keyboard Navigation
+
 - [ ] Arrow keys move selection
 - [ ] Enter opens selected
 - [ ] Tab moves between sections
@@ -225,15 +242,20 @@ interface RecentSearch {
 - [ ] Focus indicator visible
 
 ### Recent Searches
+
 - [ ] Recent searches shown when empty
 - [ ] Clicking recent search executes it
 - [ ] History persists across sessions
 - [ ] Can clear search history
 
 ### Edge Cases
+
 - [ ] Very long query handled gracefully
 - [ ] Special characters don't break search
 - [ ] Empty results shows helpful message
 - [ ] Search works offline
 - [ ] Index corruption recoverable
+
+```
+
 ```

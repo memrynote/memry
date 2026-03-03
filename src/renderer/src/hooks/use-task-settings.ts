@@ -1,4 +1,7 @@
-import { useState, useCallback, useEffect } from "react"
+import { useState, useCallback, useEffect } from 'react'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('Hook:TaskSettings')
 
 // ============================================================================
 // TYPES
@@ -30,14 +33,14 @@ const defaultSubtaskSettings: SubtaskSettings = {
   inheritDueDate: false,
   inheritPriority: false,
   showProgressBar: true,
-  autoExpandInList: false,
+  autoExpandInList: false
 }
 
 const defaultTaskSettings: TaskSettings = {
-  subtasks: defaultSubtaskSettings,
+  subtasks: defaultSubtaskSettings
 }
 
-const STORAGE_KEY = "memry-task-settings"
+const STORAGE_KEY = 'memry-task-settings'
 
 // ============================================================================
 // HOOK
@@ -60,12 +63,12 @@ export const useTaskSettings = (): UseTaskSettingsReturn => {
         return {
           subtasks: {
             ...defaultSubtaskSettings,
-            ...parsed.subtasks,
-          },
+            ...parsed.subtasks
+          }
         }
       }
     } catch (error) {
-      console.error("Failed to load task settings:", error)
+      log.error('Failed to load task settings:', error)
     }
     return defaultTaskSettings
   })
@@ -75,22 +78,19 @@ export const useTaskSettings = (): UseTaskSettingsReturn => {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(settings))
     } catch (error) {
-      console.error("Failed to save task settings:", error)
+      log.error('Failed to save task settings:', error)
     }
   }, [settings])
 
-  const updateSubtaskSettings = useCallback(
-    (updates: Partial<SubtaskSettings>): void => {
-      setSettings((prev) => ({
-        ...prev,
-        subtasks: {
-          ...prev.subtasks,
-          ...updates,
-        },
-      }))
-    },
-    []
-  )
+  const updateSubtaskSettings = useCallback((updates: Partial<SubtaskSettings>): void => {
+    setSettings((prev) => ({
+      ...prev,
+      subtasks: {
+        ...prev.subtasks,
+        ...updates
+      }
+    }))
+  }, [])
 
   const resetToDefaults = useCallback((): void => {
     setSettings(defaultTaskSettings)
@@ -100,16 +100,8 @@ export const useTaskSettings = (): UseTaskSettingsReturn => {
     settings,
     subtaskSettings: settings.subtasks,
     updateSubtaskSettings,
-    resetToDefaults,
+    resetToDefaults
   }
 }
 
 export default useTaskSettings
-
-
-
-
-
-
-
-

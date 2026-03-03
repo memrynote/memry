@@ -1,12 +1,7 @@
 import { useState, useRef, useCallback, type KeyboardEvent, type ChangeEvent } from 'react'
 import { Paperclip, Send, Square } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger
-} from '@/components/ui/tooltip'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { AttachmentList } from './AttachmentList'
 import { ModeToggle } from './ModeToggle'
 import { ModelSelector } from './ModelSelector'
@@ -52,7 +47,16 @@ export function AIAgentComposer({
     // Clear message and attachments, but keep mode toggles
     setMessage('')
     setAttachments([])
-  }, [message, attachments, webSearchEnabled, thinkingModeEnabled, selectedModel, canSend, isStreaming, onSend])
+  }, [
+    message,
+    attachments,
+    webSearchEnabled,
+    thinkingModeEnabled,
+    selectedModel,
+    canSend,
+    isStreaming,
+    onSend
+  ])
 
   const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
     // Send on Enter (without shift)

@@ -1,10 +1,10 @@
-import { Lightbulb, Plus, X } from "lucide-react"
+import { Lightbulb, Plus, X } from 'lucide-react'
 
-import { Button } from "@/components/ui/button"
-import type { InboxItem } from "@/types"
+import { Button } from '@/components/ui/button'
+import type { InboxItemListItem } from '@/types'
 
 interface ClusterSuggestion {
-  items: InboxItem[]
+  items: InboxItemListItem[]
   reason: string
 }
 
@@ -17,20 +17,13 @@ interface AIClusterSuggestionProps {
 const AIClusterSuggestion = ({
   suggestion,
   onAddToSelection,
-  onDismiss,
+  onDismiss
 }: AIClusterSuggestionProps): React.JSX.Element => {
   return (
     <div className="flex items-center justify-center gap-3 text-sm">
       <Lightbulb className="size-4 text-yellow-500" aria-hidden="true" />
-      <span className="text-[var(--muted-foreground)]">
-        AI detected: "{suggestion.reason}"
-      </span>
-      <Button
-        variant="outline"
-        size="sm"
-        onClick={onAddToSelection}
-        className="gap-1.5 h-7"
-      >
+      <span className="text-[var(--muted-foreground)]">AI detected: "{suggestion.reason}"</span>
+      <Button variant="outline" size="sm" onClick={onAddToSelection} className="gap-1.5 h-7">
         <Plus className="size-3" aria-hidden="true" />
         Add to selection
       </Button>
@@ -48,4 +41,3 @@ const AIClusterSuggestion = ({
 }
 
 export { AIClusterSuggestion }
-

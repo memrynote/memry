@@ -30,11 +30,11 @@ export function CheckboxEditor({ value, onChange }: CheckboxEditorProps) {
       onClick={handleClick}
       onKeyDown={handleKeyDown}
       className={cn(
-        'flex h-[18px] w-[18px] items-center justify-center',
-        'rounded border-2 transition-all duration-150',
+        'flex h-4 w-4 items-center justify-center shrink-0',
+        'rounded border-[1.5px] transition-colors duration-150',
         value
-          ? 'border-stone-900 bg-stone-900 text-white'
-          : 'border-stone-300 bg-white hover:border-stone-400'
+          ? 'border-primary bg-primary text-primary-foreground'
+          : 'border-muted-foreground/30 bg-background/50'
       )}
     >
       {value && <Check className="h-3 w-3" strokeWidth={3} />}

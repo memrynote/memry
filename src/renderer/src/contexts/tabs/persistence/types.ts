@@ -3,17 +3,17 @@
  * Serializable types for tab state storage
  */
 
-import type { TabType, TabSettings, SplitLayout } from '@/contexts/tabs/types';
+import type { TabType, TabSettings, SplitLayout } from '@/contexts/tabs/types'
 
 // =============================================================================
 // STORAGE SCHEMA VERSION
 // =============================================================================
 
 /** Current schema version for migrations */
-export const STORAGE_VERSION = 1;
+export const STORAGE_VERSION = 1
 
 /** Storage key for tab state */
-export const STORAGE_KEY = 'memry_tab_state';
+export const STORAGE_KEY = 'memry_tab_state'
 
 // =============================================================================
 // PERSISTED TYPES
@@ -24,17 +24,17 @@ export const STORAGE_KEY = 'memry_tab_state';
  */
 export interface PersistedTabState {
   /** Schema version for migrations */
-  version: number;
+  version: number
   /** Persisted tab groups */
-  tabGroups: Record<string, PersistedTabGroup>;
+  tabGroups: Record<string, PersistedTabGroup>
   /** Split layout configuration */
-  layout: SplitLayout;
+  layout: SplitLayout
   /** Active group ID */
-  activeGroupId: string;
+  activeGroupId: string
   /** User settings */
-  settings: TabSettings;
+  settings: TabSettings
   /** Timestamp when saved */
-  savedAt: number;
+  savedAt: number
 }
 
 /**
@@ -42,11 +42,11 @@ export interface PersistedTabState {
  */
 export interface PersistedTabGroup {
   /** Group ID */
-  id: string;
+  id: string
   /** Tabs in group */
-  tabs: PersistedTab[];
+  tabs: PersistedTab[]
   /** Active tab ID */
-  activeTabId: string | null;
+  activeTabId: string | null
 }
 
 /**
@@ -54,23 +54,23 @@ export interface PersistedTabGroup {
  */
 export interface PersistedTab {
   /** Tab ID */
-  id: string;
+  id: string
   /** Content type */
-  type: TabType;
+  type: TabType
   /** Display title */
-  title: string;
+  title: string
   /** Icon name */
-  icon: string;
+  icon: string
   /** Route path */
-  path: string;
+  path: string
   /** Entity ID (for notes, projects, etc.) */
-  entityId?: string;
+  entityId?: string
   /** Whether pinned */
-  isPinned: boolean;
+  isPinned: boolean
   /** Scroll position */
-  scrollPosition?: number;
+  scrollPosition?: number
   /** View-specific state */
-  viewState?: Record<string, unknown>;
+  viewState?: Record<string, unknown>
 }
 
 // =============================================================================
@@ -82,9 +82,9 @@ export interface PersistedTab {
  */
 export interface TabStorage {
   /** Save state to storage */
-  save: (state: PersistedTabState) => Promise<void>;
+  save: (state: PersistedTabState) => Promise<void>
   /** Load state from storage */
-  load: () => Promise<PersistedTabState | null>;
+  load: () => Promise<PersistedTabState | null>
   /** Clear stored state */
-  clear: () => Promise<void>;
+  clear: () => Promise<void>
 }

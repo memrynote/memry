@@ -1,0 +1,1 @@
+ALTER TABLE `note_cache` DROP COLUMN `file_mtime`;

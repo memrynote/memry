@@ -22,13 +22,7 @@ interface EmojiData {
   shortcodes: string
 }
 
-export function EmojiPicker({
-  isOpen,
-  onClose,
-  onSelect,
-  onRemove,
-  hasEmoji
-}: EmojiPickerProps) {
+export function EmojiPicker({ isOpen, onClose, onSelect, onRemove, hasEmoji }: EmojiPickerProps) {
   const pickerRef = useRef<HTMLDivElement>(null)
 
   useClickOutside(pickerRef, onClose, isOpen)

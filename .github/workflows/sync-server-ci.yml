@@ -1,0 +1,66 @@
+name: Sync Server CI
+
+on:
+  pull_request:
+    paths:
+      - sync-server/**
+      - src/shared/contracts/**
+      - scripts/contracts-manifest.txt
+      - scripts/check-contracts.sh
+      - .github/workflows/sync-server-ci.yml
+  push:
+    branches:
+      - main
+    paths:
+      - sync-server/**
+      - src/shared/contracts/**
+      - scripts/contracts-manifest.txt
+      - scripts/check-contracts.sh
+      - .github/workflows/sync-server-ci.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: sync-server-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CI: true
+
+jobs:
+  sync-server:
+    name: Typecheck and Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+          cache-dependency-path: sync-server/pnpm-lock.yaml
+
+      - name: Check shared contract stubs
+        run: bash scripts/check-contracts.sh
+
+      - name: Install sync-server dependencies
+        working-directory: sync-server
+        run: pnpm install --frozen-lockfile
+
+      - name: Typecheck sync-server
+        working-directory: sync-server
+        run: pnpm typecheck
+
+      - name: Test sync-server
+        working-directory: sync-server
+        run: pnpm test

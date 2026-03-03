@@ -1,5 +1,5 @@
-import { useState } from "react"
-import { AlertTriangle } from "lucide-react"
+import { useState } from 'react'
+import { AlertTriangle } from 'lucide-react'
 
 import {
   AlertDialog,
@@ -9,11 +9,11 @@ import {
   AlertDialogDescription,
   AlertDialogFooter,
   AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog"
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
-import { Label } from "@/components/ui/label"
-import type { Task } from "@/data/sample-tasks"
+  AlertDialogTitle
+} from '@/components/ui/alert-dialog'
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
+import { Label } from '@/components/ui/label'
+import type { Task } from '@/data/sample-tasks'
 
 // ============================================================================
 // TYPES
@@ -27,7 +27,7 @@ interface DeleteParentDialogProps {
   onConfirm: (keepSubtasks: boolean) => void
 }
 
-type DeleteOption = "delete-all" | "keep-subtasks"
+type DeleteOption = 'delete-all' | 'keep-subtasks'
 
 // ============================================================================
 // DELETE PARENT DIALOG COMPONENT
@@ -38,22 +38,22 @@ export const DeleteParentDialog = ({
   onOpenChange,
   parent,
   subtaskCount,
-  onConfirm,
+  onConfirm
 }: DeleteParentDialogProps): React.JSX.Element | null => {
-  const [option, setOption] = useState<DeleteOption>("delete-all")
+  const [option, setOption] = useState<DeleteOption>('delete-all')
 
   if (!parent) return null
 
   const handleConfirm = (): void => {
-    onConfirm(option === "keep-subtasks")
+    onConfirm(option === 'keep-subtasks')
     onOpenChange(false)
     // Reset option for next time
-    setOption("delete-all")
+    setOption('delete-all')
   }
 
   const handleCancel = (): void => {
     onOpenChange(false)
-    setOption("delete-all")
+    setOption('delete-all')
   }
 
   return (
@@ -67,10 +67,8 @@ export const DeleteParentDialog = ({
           <AlertDialogDescription asChild>
             <div className="space-y-3">
               <p>
-                <span className="font-medium text-foreground">
-                  "{parent.title}"
-                </span>{" "}
-                has {subtaskCount} subtask{subtaskCount !== 1 ? "s" : ""}.
+                <span className="font-medium text-foreground">"{parent.title}"</span> has{' '}
+                {subtaskCount} subtask{subtaskCount !== 1 ? 's' : ''}.
               </p>
               <p>What would you like to do?</p>
             </div>
@@ -120,11 +118,3 @@ export const DeleteParentDialog = ({
 }
 
 export default DeleteParentDialog
-
-
-
-
-
-
-
-

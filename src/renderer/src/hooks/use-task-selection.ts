@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from "react"
+import { useState, useCallback, useMemo } from 'react'
 
 // ============================================================================
 // TYPES
@@ -12,7 +12,7 @@ export interface SelectionState {
   /** Last selected ID (for shift+click range) */
   lastSelectedId: string | null
   /** Select all state */
-  selectAllState: "none" | "some" | "all"
+  selectAllState: 'none' | 'some' | 'all'
 }
 
 export interface UseTaskSelectionReturn {
@@ -58,7 +58,7 @@ const initialSelectionState: SelectionState = {
   selectedIds: new Set(),
   isSelectionMode: false,
   lastSelectedId: null,
-  selectAllState: "none",
+  selectAllState: 'none'
 }
 
 // ============================================================================
@@ -69,9 +69,7 @@ const initialSelectionState: SelectionState = {
  * Hook to manage task selection state for multi-select functionality
  * @param visibleTaskIds - Array of task IDs currently visible in the view
  */
-export const useTaskSelection = (
-  visibleTaskIds: string[]
-): UseTaskSelectionReturn => {
+export const useTaskSelection = (visibleTaskIds: string[]): UseTaskSelectionReturn => {
   const [selection, setSelection] = useState<SelectionState>(initialSelectionState)
 
   // ========== DERIVED STATE ==========
@@ -80,18 +78,15 @@ export const useTaskSelection = (
   const hasSelection = selectedCount > 0
   const allSelected = selectedCount === visibleTaskIds.length && visibleTaskIds.length > 0
   const someSelected = selectedCount > 0 && selectedCount < visibleTaskIds.length
-  const selectedTaskIds = useMemo(
-    () => Array.from(selection.selectedIds),
-    [selection.selectedIds]
-  )
+  const selectedTaskIds = useMemo(() => Array.from(selection.selectedIds), [selection.selectedIds])
 
   // ========== HELPER FUNCTIONS ==========
 
   const calculateSelectAllState = useCallback(
-    (newSelectedSize: number): SelectionState["selectAllState"] => {
-      if (newSelectedSize === 0) return "none"
-      if (newSelectedSize === visibleTaskIds.length) return "all"
-      return "some"
+    (newSelectedSize: number): SelectionState['selectAllState'] => {
+      if (newSelectedSize === 0) return 'none'
+      if (newSelectedSize === visibleTaskIds.length) return 'all'
+      return 'some'
     },
     [visibleTaskIds.length]
   )
@@ -108,7 +103,7 @@ export const useTaskSelection = (
           selectedIds: newSelected,
           isSelectionMode: true,
           lastSelectedId: taskId,
-          selectAllState: calculateSelectAllState(newSelected.size),
+          selectAllState: calculateSelectAllState(newSelected.size)
         }
       })
     },
@@ -125,7 +120,7 @@ export const useTaskSelection = (
           ...prev,
           selectedIds: newSelected,
           isSelectionMode: newIsSelectionMode,
-          selectAllState: calculateSelectAllState(newSelected.size),
+          selectAllState: calculateSelectAllState(newSelected.size)
         }
       })
     },
@@ -147,7 +142,7 @@ export const useTaskSelection = (
           selectedIds: newSelected,
           isSelectionMode: newIsSelectionMode,
           lastSelectedId: taskId,
-          selectAllState: calculateSelectAllState(newSelected.size),
+          selectAllState: calculateSelectAllState(newSelected.size)
         }
       })
     },
@@ -167,7 +162,7 @@ export const useTaskSelection = (
             selectedIds: newSelected,
             isSelectionMode: true,
             lastSelectedId: toId,
-            selectAllState: calculateSelectAllState(newSelected.size),
+            selectAllState: calculateSelectAllState(newSelected.size)
           }
         }
 
@@ -183,7 +178,7 @@ export const useTaskSelection = (
             selectedIds: newSelected,
             isSelectionMode: true,
             lastSelectedId: toId,
-            selectAllState: calculateSelectAllState(newSelected.size),
+            selectAllState: calculateSelectAllState(newSelected.size)
           }
         }
 
@@ -200,7 +195,7 @@ export const useTaskSelection = (
           selectedIds: newSelected,
           isSelectionMode: true,
           lastSelectedId: toId,
-          selectAllState: calculateSelectAllState(newSelected.size),
+          selectAllState: calculateSelectAllState(newSelected.size)
         }
       })
     },
@@ -214,7 +209,7 @@ export const useTaskSelection = (
       selectedIds: new Set(visibleTaskIds),
       isSelectionMode: true,
       lastSelectedId: visibleTaskIds[visibleTaskIds.length - 1] || null,
-      selectAllState: "all",
+      selectAllState: 'all'
     })
   }, [visibleTaskIds])
 
@@ -240,7 +235,7 @@ export const useTaskSelection = (
   const enterSelectionMode = useCallback((): void => {
     setSelection((prev) => ({
       ...prev,
-      isSelectionMode: true,
+      isSelectionMode: true
     }))
   }, [])
 
@@ -264,13 +259,8 @@ export const useTaskSelection = (
     toggleSelectAll,
     isSelected,
     enterSelectionMode,
-    exitSelectionMode,
+    exitSelectionMode
   }
 }
 
 export default useTaskSelection
-
-
-
-
-

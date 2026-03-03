@@ -10,6 +10,23 @@ interface UrlEditorProps {
   autoFocus?: boolean
 }
 
+// URL validation: must have a dot and be parseable as URL
+const isValidUrl = (input: string): boolean => {
+  if (!input) return true // Empty is valid
+  try {
+    if (!input.includes('.')) return false // Must have at least one dot
+    new URL(input)
+    return true
+  } catch {
+    try {
+      new URL(`https://${input}`)
+      return true
+    } catch {
+      return false
+    }
+  }
+}
+
 export function UrlEditor({
   value,
   onChange,
@@ -19,10 +36,13 @@ export function UrlEditor({
 }: UrlEditorProps) {
   const inputRef = useRef<HTMLInputElement>(null)
   const [localValue, setLocalValue] = useState(value)
-
-  useEffect(() => {
+  const [isValid, setIsValid] = useState(true)
+  const [prevValue, setPrevValue] = useState(value)
+  if (value !== prevValue) {
+    setPrevValue(value)
     setLocalValue(value)
-  }, [value])
+    setIsValid(true)
+  }
 
   useEffect(() => {
     if (autoFocus && inputRef.current) {
@@ -32,24 +52,44 @@ export function UrlEditor({
   }, [autoFocus])
 
   const handleChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    setLocalValue(e.target.value)
+    const newValue = e.target.value
+    setLocalValue(newValue)
+    const valid = isValidUrl(newValue)
+    setIsValid(valid)
   }, [])
 
   const handleBlur = useCallback(() => {
+    const valid = isValidUrl(localValue)
+    setIsValid(valid)
+    if (!valid) {
+      setLocalValue(value)
+      setIsValid(true)
+      onBlur?.()
+      return
+    }
     onChange(localValue)
     onBlur?.()
-  }, [localValue, onChange, onBlur])
+  }, [localValue, onChange, onBlur, value])
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
       if (e.key === 'Enter') {
         e.preventDefault()
+        const valid = isValidUrl(localValue)
+        setIsValid(valid)
+        if (!valid) {
+          setLocalValue(value)
+          setIsValid(true)
+          onBlur?.()
+          return
+        }
         onChange(localValue)
         onBlur?.()
       }
       if (e.key === 'Escape') {
         e.preventDefault()
         setLocalValue(value)
+        setIsValid(true)
         onBlur?.()
       }
     },
@@ -63,37 +103,37 @@ export function UrlEditor({
   }, [value])
 
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex items-center gap-1 min-h-[20px]">
       <input
         ref={inputRef}
-        type="url"
+        type="text"
         value={localValue}
         onChange={handleChange}
         onBlur={handleBlur}
         onKeyDown={handleKeyDown}
         placeholder={placeholder}
         className={cn(
-          'flex-1 rounded px-2 py-1',
-          'text-[13px] text-stone-900',
-          'bg-white border border-stone-300',
-          'placeholder:text-stone-400',
-          'outline-none',
-          'focus:border-stone-400 focus:ring-1 focus:ring-stone-400'
+          'flex-1 bg-transparent p-0',
+          'text-[13px] text-foreground leading-tight',
+          'placeholder:text-muted-foreground/30',
+          'outline-none focus:ring-0 shadow-none',
+          // Red border + background when URL is invalid (matching DateEditor)
+          !isValid && 'border border-red-500 bg-red-500/10 rounded px-1 -mx-1'
         )}
       />
-      {value && (
+      {value && isValid && (
         <button
           type="button"
           onClick={handleOpenUrl}
           aria-label="Open URL"
           className={cn(
-            'flex h-7 w-7 items-center justify-center',
-            'rounded text-stone-400',
+            'flex h-4 w-4 items-center justify-center shrink-0',
+            'rounded text-muted-foreground/40',
             'transition-colors duration-150',
-            'hover:bg-stone-100 hover:text-stone-600'
+            'hover:bg-muted hover:text-muted-foreground'
           )}
         >
-          <ExternalLink className="h-3.5 w-3.5" />
+          <ExternalLink className="h-3 w-3" />
         </button>
       )}
     </div>
