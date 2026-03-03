@@ -321,7 +321,7 @@ describe('notes cache queries', () => {
       db,
       'note-21',
       { status: 'open', score: 3, due: '2026-01-20', kind: 'alpha' },
-      (name, value) => (typeof value === 'number' ? 'number' : 'text')
+      (_name, value) => (typeof value === 'number' ? 'number' : 'text')
     )
 
     expect(filterNotesByProperty(db, 'status', 'open').map((n) => n.id)).toEqual(['note-21'])

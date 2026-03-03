@@ -94,14 +94,15 @@ export const findPreviewTab = (group: TabGroup): Tab | null => {
 const TAB_ICONS: Record<TabType, string> = {
   inbox: 'inbox',
   home: 'home',
-  tasks: 'list-checks', // New unified tasks tab
+  tasks: 'list-checks',
   'all-tasks': 'list-checks',
   today: 'star',
   upcoming: 'calendar',
   completed: 'check-circle',
   project: 'folder',
   note: 'file-text',
-  folder: 'folder', // Folder view (Bases-like database view)
+  file: 'file',
+  folder: 'folder',
   journal: 'book-open',
   search: 'search',
   settings: 'settings',

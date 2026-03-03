@@ -210,7 +210,8 @@ describe('worker', () => {
             encryptedData: 'ed',
             dataNonce: 'dn',
             signature: 'sig',
-            signerDeviceId: 'device-1'
+            signerDeviceId: 'device-1',
+            cryptoVersion: 1
           }
         ],
         vaultKey: new Uint8Array(32),
@@ -246,7 +247,8 @@ describe('worker', () => {
             encryptedData: 'ed',
             dataNonce: 'dn',
             signature: 'sig',
-            signerDeviceId: 'unknown-device'
+            signerDeviceId: 'unknown-device',
+            cryptoVersion: 1
           }
         ],
         vaultKey: new Uint8Array(32),
@@ -295,7 +297,8 @@ describe('worker', () => {
             encryptedData: 'ed',
             dataNonce: 'dn',
             signature: 'sig',
-            signerDeviceId: 'device-1'
+            signerDeviceId: 'device-1',
+            cryptoVersion: 1
           }
         ],
         vaultKey: new Uint8Array(32),

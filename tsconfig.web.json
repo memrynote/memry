@@ -7,9 +7,12 @@
     "src/preload/*.d.ts",
     "src/shared/**/*"
   ],
+  "exclude": ["**/*.test.ts", "**/*.test.tsx", "**/*.spec.ts"],
   "compilerOptions": {
     "composite": true,
     "jsx": "react-jsx",
+    "noUnusedLocals": false,
+    "noUnusedParameters": false,
     "baseUrl": ".",
     "types": ["vitest/globals", "@testing-library/jest-dom"],
     "paths": {

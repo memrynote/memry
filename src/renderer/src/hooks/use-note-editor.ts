@@ -221,7 +221,7 @@ export function useNoteEditor(
       try {
         const result = await notesService.update({ id: noteId, content })
         if (result) {
-          setNote(result)
+          setNote(result as unknown as Note)
           lastSavedContentRef.current = content
           setSaveStatus('saved')
 
@@ -256,7 +256,7 @@ export function useNoteEditor(
       try {
         const result = await notesService.rename(noteId, title)
         if (result) {
-          setNote(result)
+          setNote(result as unknown as Note)
         }
       } catch (err) {
         const message = extractErrorMessage(err, 'Failed to rename')
@@ -307,7 +307,7 @@ export function useNoteEditor(
       try {
         const result = await notesService.update({ id: noteId, emoji })
         if (result) {
-          setNote(result)
+          setNote(result as unknown as Note)
         }
       } catch (err) {
         const message = extractErrorMessage(err, 'Failed to update emoji')
@@ -327,7 +327,7 @@ export function useNoteEditor(
       try {
         const result = await notesService.update({ id: noteId, tags })
         if (result) {
-          setNote(result)
+          setNote(result as unknown as Note)
         }
       } catch (err) {
         const message = extractErrorMessage(err, 'Failed to update tags')

@@ -5,7 +5,7 @@ const log = createLogger('CrdtCompaction')
 
 export function compactYDoc(
   doc: Y.Doc,
-  fragmentName: string
+  _fragmentName: string
 ): { compacted: Uint8Array; savedBytes: number } | null {
   const originalSize = Y.encodeStateAsUpdate(doc).byteLength
 

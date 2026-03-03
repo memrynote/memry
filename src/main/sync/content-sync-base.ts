@@ -4,7 +4,7 @@ import type { SyncQueueManager } from './queue'
 import { increment } from './vector-clock'
 import { getIndexDatabase } from '../database/client'
 import { getNoteCacheById, updateNoteCache } from '@shared/db/queries/notes'
-import type { Logger } from 'electron-log'
+import type Logger from 'electron-log'
 
 export interface ContentSyncDeps {
   queue: SyncQueueManager

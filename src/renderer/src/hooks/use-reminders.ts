@@ -103,6 +103,7 @@ export function useRemindersForTarget(
   targetId: string
 ): {
   reminders: Array<any>
+  hasReminders: boolean
   isLoading: boolean
   error: any
   refetch: () => void
@@ -151,7 +152,8 @@ export function useRemindersForTarget(
     reminders: query.data ?? [],
     hasReminders: (query.data?.length ?? 0) > 0,
     isLoading: query.isLoading,
-    error: query.error
+    error: query.error,
+    refetch: () => query.refetch()
   }
 }
 

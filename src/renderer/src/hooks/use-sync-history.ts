@@ -62,7 +62,7 @@ export function useSyncHistory(): UseSyncHistoryReturn {
     setIsLoading(true)
     try {
       const result = await window.api.syncOps.getHistory({ limit: FETCH_SIZE, offset })
-      const entries = result.entries as SyncHistoryEntry[]
+      const entries = result.entries as unknown as SyncHistoryEntry[]
       if (append) {
         setAllEntries((prev) => [...prev, ...entries])
       } else {

@@ -64,13 +64,13 @@ describe('vault watcher', () => {
 
     vi.mocked(getDatabase).mockReturnValue(dataDb.db)
     vi.mocked(getIndexDatabase).mockReturnValue(indexDb.db)
-    vi.mocked(updateFtsContent).mockImplementation(() => undefined)
-    vi.mocked(queueFtsUpdate).mockImplementation(() => undefined)
-    vi.mocked(updateNoteEmbedding).mockResolvedValue(undefined)
+    vi.mocked(updateFtsContent).mockImplementation(() => false)
+    vi.mocked(queueFtsUpdate).mockImplementation(() => false)
+    vi.mocked(updateNoteEmbedding).mockResolvedValue(false)
     vi.mocked(getConfig).mockReturnValue(baseConfig)
 
     window = new MockBrowserWindow()
-    vi.mocked(BrowserWindow.getAllWindows).mockReturnValue([window])
+    vi.mocked(BrowserWindow.getAllWindows).mockReturnValue([window as never])
     mockWatch.mockReset()
   })
 
