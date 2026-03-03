@@ -32,7 +32,7 @@ const HEATMAP_COLORS = {
   1: 'bg-[#9be9a8]',
   2: 'bg-[#40c463]',
   3: 'bg-[#30a14e]',
-  4: 'bg-[#216e39]',
+  4: 'bg-[#216e39]'
 } as const
 
 // =============================================================================
@@ -52,24 +52,24 @@ function MonthCard({ stat, isCurrent, onClick }: MonthCardProps) {
       onClick={onClick}
       className={cn(
         // Base styling
-        "flex flex-col items-center gap-2 p-4 rounded-xl",
-        "border border-border/40 bg-card",
-        "transition-all duration-150",
+        'flex flex-col items-center gap-2 p-4 rounded-xl',
+        'border border-border/40 bg-card',
+        'transition-all duration-150',
         // Hover state
-        "hover:border-accent-purple/40 hover:bg-accent-purple/5 hover:shadow-sm",
+        'hover:border-accent-purple/40 hover:bg-accent-purple/5 hover:shadow-sm',
         // Focus state
-        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-purple/50",
+        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-purple/50',
         // Active state
-        "active:scale-[0.98]",
+        'active:scale-[0.98]',
         // Current month highlight
-        isCurrent && "ring-1 ring-accent-purple/30 bg-accent-purple/5"
+        isCurrent && 'ring-1 ring-accent-purple/30 bg-accent-purple/5'
       )}
     >
       {/* Month Name */}
       <span
         className={cn(
-          "text-base font-medium",
-          isCurrent ? "text-accent-purple" : "text-foreground"
+          'text-base font-medium',
+          isCurrent ? 'text-accent-purple' : 'text-foreground'
         )}
       >
         {stat.monthName.slice(0, 3)}
@@ -83,20 +83,11 @@ function MonthCard({ stat, isCurrent, onClick }: MonthCardProps) {
       {/* Activity Dots */}
       <div className="flex items-center gap-1">
         {stat.activityDots.map((level, index) => (
-          <span
-            key={index}
-            className={cn(
-              "size-2 rounded-full",
-              HEATMAP_COLORS[level]
-            )}
-          />
+          <span key={index} className={cn('size-2 rounded-full', HEATMAP_COLORS[level])} />
         ))}
         {/* Fill remaining dots if less than 5 */}
         {Array.from({ length: Math.max(0, 5 - stat.activityDots.length) }).map((_, index) => (
-          <span
-            key={`empty-${index}`}
-            className="size-2 rounded-full bg-border/30"
-          />
+          <span key={`empty-${index}`} className="size-2 rounded-full bg-border/30" />
         ))}
       </div>
     </button>
@@ -112,7 +103,7 @@ export function JournalYearView({
   monthStats,
   currentMonth,
   onMonthClick,
-  className,
+  className
 }: JournalYearViewProps): React.JSX.Element {
   // Get current month from date if not provided
   const currentMonthIndex = currentMonth ?? new Date().getMonth()
@@ -120,10 +111,10 @@ export function JournalYearView({
   const isCurrentYear = year === currentYear
 
   return (
-    <div className={cn("flex flex-col gap-6", className)}>
+    <div className={cn('flex flex-col gap-6', className)}>
       {/* Month Grid - 3x4 */}
       <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
-        {monthStats.map(stat => (
+        {monthStats.map((stat) => (
           <MonthCard
             key={stat.month}
             stat={stat}

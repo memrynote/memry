@@ -1,24 +1,19 @@
-import { useState, useCallback, useEffect, useRef, useMemo } from "react"
+import { useState, useCallback, useEffect, useRef, useMemo } from 'react'
 
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Checkbox } from "@/components/ui/checkbox"
-import { ProjectSelect } from "./project-select"
-import { StatusSelect } from "./status-select"
-import { DueDatePicker } from "./due-date-picker"
-import { PrioritySelect } from "./priority-select"
-import { RepeatPicker } from "./repeat-picker"
-import { CustomRepeatDialog } from "./custom-repeat-dialog"
-import { cn } from "@/lib/utils"
-import { getDefaultTodoStatus } from "@/lib/task-utils"
-import { createDefaultTask, type Task, type Priority, type RepeatConfig } from "@/data/sample-tasks"
-import type { Project } from "@/data/tasks-data"
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Checkbox } from '@/components/ui/checkbox'
+import { ProjectSelect } from './project-select'
+import { StatusSelect } from './status-select'
+import { DueDatePicker } from './due-date-picker'
+import { PrioritySelect } from './priority-select'
+import { RepeatPicker } from './repeat-picker'
+import { CustomRepeatDialog } from './custom-repeat-dialog'
+import { cn } from '@/lib/utils'
+import { getDefaultTodoStatus } from '@/lib/task-utils'
+import { createDefaultTask, type Task, type Priority, type RepeatConfig } from '@/data/sample-tasks'
+import type { Project } from '@/data/tasks-data'
 
 // ============================================================================
 // TYPES
@@ -58,9 +53,9 @@ export const AddTaskModal = ({
   onClose,
   onAddTask,
   projects,
-  defaultProjectId = "personal",
+  defaultProjectId = 'personal',
   defaultDueDate = null,
-  prefillTitle = "",
+  prefillTitle = ''
 }: AddTaskModalProps): React.JSX.Element => {
   const titleInputRef = useRef<HTMLInputElement>(null)
 
@@ -69,17 +64,17 @@ export const AddTaskModal = ({
     const projectId = defaultProjectId
     const project = projects.find((p) => p.id === projectId)
     const defaultStatus = project ? getDefaultTodoStatus(project) : null
-    const statusId = defaultStatus?.id || project?.statuses[0]?.id || ""
+    const statusId = defaultStatus?.id || project?.statuses[0]?.id || ''
 
     return {
       title: prefillTitle,
-      description: "",
+      description: '',
       projectId,
       statusId,
       dueDate: defaultDueDate,
       dueTime: null,
-      priority: "none",
-      repeatConfig: null,
+      priority: 'none',
+      repeatConfig: null
     }
   }, [defaultProjectId, defaultDueDate, prefillTitle, projects])
 
@@ -127,12 +122,12 @@ export const AddTaskModal = ({
   const handleProjectChange = (projectId: string): void => {
     const project = projects.find((p) => p.id === projectId)
     const defaultStatus = project ? getDefaultTodoStatus(project) : null
-    const statusId = defaultStatus?.id || project?.statuses[0]?.id || ""
+    const statusId = defaultStatus?.id || project?.statuses[0]?.id || ''
 
     setFormData((prev) => ({
       ...prev,
       projectId,
-      statusId,
+      statusId
     }))
   }
 
@@ -164,7 +159,7 @@ export const AddTaskModal = ({
     const newErrors: FormErrors = {}
 
     if (!formData.title.trim()) {
-      newErrors.title = "Title is required"
+      newErrors.title = 'Title is required'
     }
 
     setErrors(newErrors)
@@ -192,7 +187,7 @@ export const AddTaskModal = ({
       dueTime: formData.dueTime,
       priority: formData.priority,
       isRepeating: formData.repeatConfig !== null,
-      repeatConfig: formData.repeatConfig,
+      repeatConfig: formData.repeatConfig
     }
 
     onAddTask(finalTask)
@@ -200,14 +195,14 @@ export const AddTaskModal = ({
     if (createAnother) {
       // Reset form but keep project and date
       setFormData((prev) => ({
-        title: "",
-        description: "",
+        title: '',
+        description: '',
         projectId: prev.projectId,
         statusId: getDefaultTodoStatus(currentProject!)?.id || prev.statusId,
         dueDate: prev.dueDate,
         dueTime: null,
-        priority: "none",
-        repeatConfig: null,
+        priority: 'none',
+        repeatConfig: null
       }))
       setErrors({})
       titleInputRef.current?.focus()
@@ -223,7 +218,7 @@ export const AddTaskModal = ({
 
   const handleKeyDown = (e: React.KeyboardEvent): void => {
     // Cmd/Ctrl + Enter to submit
-    if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
+    if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
       e.preventDefault()
       handleSubmit()
     }
@@ -231,10 +226,7 @@ export const AddTaskModal = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && handleClose()}>
-      <DialogContent
-        className="max-w-lg"
-        onKeyDown={handleKeyDown}
-      >
+      <DialogContent className="max-w-lg" onKeyDown={handleKeyDown}>
         <DialogHeader>
           <DialogTitle>Add Task</DialogTitle>
         </DialogHeader>
@@ -254,9 +246,9 @@ export const AddTaskModal = ({
               value={formData.title}
               onChange={handleTitleChange}
               placeholder="What needs to be done?"
-              className={cn(errors.title && "border-destructive")}
+              className={cn(errors.title && 'border-destructive')}
               aria-invalid={!!errors.title}
-              aria-describedby={errors.title ? "title-error" : undefined}
+              aria-describedby={errors.title ? 'title-error' : undefined}
             />
             {errors.title && (
               <p id="title-error" className="text-sm text-destructive">
@@ -280,9 +272,9 @@ export const AddTaskModal = ({
               placeholder="Add details, notes, or links..."
               rows={3}
               className={cn(
-                "flex min-h-[80px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm",
-                "placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
-                "disabled:cursor-not-allowed disabled:opacity-50 resize-none"
+                'flex min-h-[80px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm',
+                'placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring',
+                'disabled:cursor-not-allowed disabled:opacity-50 resize-none'
               )}
             />
           </div>
@@ -328,10 +320,7 @@ export const AddTaskModal = ({
               <label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
                 Priority
               </label>
-              <PrioritySelect
-                value={formData.priority}
-                onChange={handlePriorityChange}
-              />
+              <PrioritySelect value={formData.priority} onChange={handlePriorityChange} />
             </div>
           </div>
 
@@ -390,4 +379,3 @@ export const AddTaskModal = ({
 }
 
 export default AddTaskModal
-

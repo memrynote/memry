@@ -48,7 +48,12 @@ interface BreadcrumbSegmentProps {
   className?: string
 }
 
-function BreadcrumbSegment({ onClick, children, isActive = false, className }: BreadcrumbSegmentProps) {
+function BreadcrumbSegment({
+  onClick,
+  children,
+  isActive = false,
+  className
+}: BreadcrumbSegmentProps) {
   const isClickable = !!onClick
 
   return (
@@ -57,16 +62,17 @@ function BreadcrumbSegment({ onClick, children, isActive = false, className }: B
       onClick={onClick}
       disabled={!isClickable}
       className={cn(
-        "inline-flex items-center",
-        "font-sans text-sm transition-all duration-200",
-        isClickable && !isActive && [
-          "text-muted-foreground/70 hover:text-foreground",
-          "hover:bg-muted/50 px-2 py-1 -mx-1 rounded-md",
-          "cursor-pointer"
-        ],
-        isActive && "text-foreground font-medium",
-        !isClickable && "text-muted-foreground/50 cursor-default",
-        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:rounded-md",
+        'inline-flex items-center',
+        'font-sans text-sm transition-all duration-200',
+        isClickable &&
+          !isActive && [
+            'text-muted-foreground/70 hover:text-foreground',
+            'hover:bg-muted/50 px-2 py-1 -mx-1 rounded-md',
+            'cursor-pointer'
+          ],
+        isActive && 'text-foreground font-medium',
+        !isClickable && 'text-muted-foreground/50 cursor-default',
+        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:rounded-md',
         className
       )}
     >
@@ -80,9 +86,7 @@ function BreadcrumbSegment({ onClick, children, isActive = false, className }: B
 // =============================================================================
 
 function BreadcrumbSeparator() {
-  return (
-    <span className="mx-1 text-muted-foreground/30 select-none">/</span>
-  )
+  return <span className="mx-1 text-muted-foreground/30 select-none">/</span>
 }
 
 // =============================================================================
@@ -103,11 +107,11 @@ function DayNavArrow({ direction, onClick }: DayNavArrowProps) {
       onClick={onClick}
       aria-label={direction === 'prev' ? 'Previous day' : 'Next day'}
       className={cn(
-        "p-1 rounded-md",
-        "text-muted-foreground/50 hover:text-foreground",
-        "hover:bg-muted/50",
-        "transition-all duration-200",
-        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+        'p-1 rounded-md',
+        'text-muted-foreground/50 hover:text-foreground',
+        'hover:bg-muted/50',
+        'transition-all duration-200',
+        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50'
       )}
     >
       <Icon className="size-3.5" />
@@ -131,11 +135,11 @@ function BackButton({ onClick, className }: BackButtonProps) {
       onClick={onClick}
       aria-label="Go back"
       className={cn(
-        "inline-flex items-center gap-1 mr-2 p-1 rounded-md",
-        "text-muted-foreground/60 hover:text-foreground",
-        "hover:bg-muted/50",
-        "cursor-pointer transition-all duration-200",
-        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50",
+        'inline-flex items-center gap-1 mr-2 p-1 rounded-md',
+        'text-muted-foreground/60 hover:text-foreground',
+        'hover:bg-muted/50',
+        'cursor-pointer transition-all duration-200',
+        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50',
         className
       )}
     >
@@ -155,7 +159,7 @@ export function DateBreadcrumb({
   onBackClick,
   onPreviousDay,
   onNextDay,
-  className,
+  className
 }: DateBreadcrumbProps): React.JSX.Element {
   const today = getTodayString()
 
@@ -176,10 +180,7 @@ export function DateBreadcrumb({
     return (
       <nav
         aria-label="Journal date navigation"
-        className={cn(
-          "flex items-center justify-center gap-2",
-          className
-        )}
+        className={cn('flex items-center justify-center gap-2', className)}
       >
         {/* Day navigation arrows - grouped on left */}
         <div className="flex items-center gap-0.5 mr-1">
@@ -215,12 +216,14 @@ export function DateBreadcrumb({
 
           {/* Today badge */}
           {isToday && (
-            <span className={cn(
-              "ml-2.5 px-2 py-0.5",
-              "text-[0.6rem] font-semibold uppercase tracking-[0.1em]",
-              "bg-amber-500/10 text-amber-700 dark:text-amber-400",
-              "rounded-full border border-amber-500/20"
-            )}>
+            <span
+              className={cn(
+                'ml-2.5 px-2 py-0.5',
+                'text-[0.6rem] font-semibold uppercase tracking-[0.1em]',
+                'bg-amber-500/10 text-amber-700 dark:text-amber-400',
+                'rounded-full border border-amber-500/20'
+              )}
+            >
               Today
             </span>
           )}
@@ -235,10 +238,7 @@ export function DateBreadcrumb({
     return (
       <nav
         aria-label="Journal date navigation"
-        className={cn(
-          "flex items-center justify-center",
-          className
-        )}
+        className={cn('flex items-center justify-center', className)}
       >
         <BackButton onClick={onBackClick} />
 
@@ -251,9 +251,7 @@ export function DateBreadcrumb({
           <BreadcrumbSeparator />
 
           {/* Month (active) */}
-          <span className="font-display text-base font-medium text-foreground">
-            {monthName}
-          </span>
+          <span className="font-display text-base font-medium text-foreground">{monthName}</span>
         </div>
       </nav>
     )
@@ -264,16 +262,11 @@ export function DateBreadcrumb({
     return (
       <nav
         aria-label="Journal date navigation"
-        className={cn(
-          "flex items-center justify-center",
-          className
-        )}
+        className={cn('flex items-center justify-center', className)}
       >
         <BackButton onClick={onBackClick} />
 
-        <span className="font-display text-base font-medium text-foreground">
-          {viewState.year}
-        </span>
+        <span className="font-display text-base font-medium text-foreground">{viewState.year}</span>
       </nav>
     )
   }

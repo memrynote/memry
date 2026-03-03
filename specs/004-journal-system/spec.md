@@ -5,7 +5,7 @@
 **Status**: Draft
 **Input**: User description: "Build the journal system for daily entries that connects to the existing JournalPage component"
 
-## User Scenarios & Testing *(mandatory)*
+## User Scenarios & Testing _(mandatory)_
 
 ### User Story 1 - Daily Journal Entry (Priority: P1)
 
@@ -203,11 +203,12 @@ As a user, I want to search across all journal entries so I can find past reflec
 - What happens when disk is full during auto-save? **Error is displayed; content remains in memory; user prompted to free space.**
 - What happens when the AI connection search times out? **Graceful timeout with message; user can manually retry.**
 
-## Requirements *(mandatory)*
+## Requirements _(mandatory)_
 
 ### Functional Requirements
 
 #### Entry Management
+
 - **FR-001**: System MUST store each journal entry as a markdown file at `vault/journal/YYYY-MM-DD.md`
 - **FR-002**: System MUST parse and display note content with YAML frontmatter metadata including id, date, created, modified, wordCount, characterCount, and tags
 - **FR-003**: System MUST create entry file on first keystroke for a date (lazy creation)
@@ -217,6 +218,7 @@ As a user, I want to search across all journal entries so I can find past reflec
 - **FR-007**: System MUST open today's date by default when journal is accessed
 
 #### Calendar Widget
+
 - **FR-008**: System MUST display current month by default with today highlighted
 - **FR-009**: System MUST allow previous/next month navigation
 - **FR-010**: System MUST navigate to selected day when user clicks a calendar date
@@ -225,6 +227,7 @@ As a user, I want to search across all journal entries so I can find past reflec
 - **FR-013**: System MUST show future dates in muted styling but allow navigation to them
 
 #### Heatmap Calculation
+
 - **FR-014**: System MUST calculate activity level 0 for entries with 0 characters
 - **FR-015**: System MUST calculate activity level 1 for entries with 1-100 characters
 - **FR-016**: System MUST calculate activity level 2 for entries with 101-500 characters
@@ -232,26 +235,31 @@ As a user, I want to search across all journal entries so I can find past reflec
 - **FR-018**: System MUST calculate activity level 4 for entries with 1001+ characters
 
 #### Month View
+
 - **FR-019**: System MUST list all entries in selected month with preview, word count, and tags
 - **FR-020**: System MUST navigate to day view when entry is clicked
 
 #### Year View
+
 - **FR-021**: System MUST display grid of 12 month cards showing entry count and total word count
 - **FR-022**: System MUST navigate to month view when month card is clicked
 
 #### Day Context Sidebar
+
 - **FR-023**: System MUST display tasks for the viewed date from the task system
 - **FR-024**: System MUST allow toggling task completion from sidebar (syncs with task system)
 - **FR-025**: System MUST highlight overdue tasks with warning styling
 - **FR-026**: System MUST display calendar events (initially mock data, integration later)
 
 #### AI Connections Panel
+
 - **FR-027**: System MUST search for related content 2 seconds after user stops typing
 - **FR-028**: System MUST display top 3-5 semantic matches from past journal entries and notes
 - **FR-029**: System MUST show source type, date/title, and relevant snippet for each connection
 - **FR-030**: System MUST open connected content in new tab when clicked
 
 #### Focus Mode
+
 - **FR-031**: System MUST toggle focus mode via Cmd+\ keyboard shortcut
 - **FR-032**: System MUST hide left sidebar when focus mode is active
 - **FR-033**: System MUST hide right context sidebar when focus mode is active
@@ -260,6 +268,7 @@ As a user, I want to search across all journal entries so I can find past reflec
 - **FR-036**: System MUST persist focus mode preference in localStorage
 
 #### Writing Experience
+
 - **FR-037**: System MUST display word count and character count that update in real-time
 - **FR-038**: System MUST support headings, bold, italic, lists, and code blocks in journal content
 - **FR-039**: System MUST support [[wiki links]] to notes with autocomplete
@@ -277,7 +286,7 @@ As a user, I want to search across all journal entries so I can find past reflec
 
 - **DayContext**: Aggregated data for the sidebar containing date, tasks for that day, calendar events, and overdue task count.
 
-## Success Criteria *(mandatory)*
+## Success Criteria _(mandatory)_
 
 ### Measurable Outcomes
 

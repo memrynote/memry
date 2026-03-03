@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useState } from 'react'
 import {
   Calendar,
   FolderOpen,
@@ -6,11 +6,11 @@ import {
   ArrowDown,
   ChevronsUp,
   ChevronsDown,
-  MoveVertical,
-} from "lucide-react"
+  MoveVertical
+} from 'lucide-react'
 
-import { cn } from "@/lib/utils"
-import { Button } from "@/components/ui/button"
+import { cn } from '@/lib/utils'
+import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -20,12 +20,12 @@ import {
   DropdownMenuSub,
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import { getIconByName } from "@/components/icon-picker"
-import { addDays, startOfDay } from "@/lib/task-utils"
-import type { Project, Status } from "@/data/tasks-data"
-import type { Task } from "@/data/sample-tasks"
+  DropdownMenuTrigger
+} from '@/components/ui/dropdown-menu'
+import { getIconByName } from '@/components/icon-picker'
+import { addDays, startOfDay } from '@/lib/task-utils'
+import type { Project, Status } from '@/data/tasks-data'
+import type { Task } from '@/data/sample-tasks'
 
 // ============================================================================
 // TYPES
@@ -78,7 +78,7 @@ export const MoveMenu = ({
   onMoveToTop,
   onMoveToBottom,
   className,
-  iconOnly = false,
+  iconOnly = false
 }: MoveMenuProps): React.JSX.Element => {
   const [open, setOpen] = useState(false)
 
@@ -105,18 +105,18 @@ export const MoveMenu = ({
     setOpen(false)
   }
 
-  const handleReorder = (action: "up" | "down" | "top" | "bottom"): void => {
+  const handleReorder = (action: 'up' | 'down' | 'top' | 'bottom'): void => {
     switch (action) {
-      case "up":
+      case 'up':
         onMoveUp?.()
         break
-      case "down":
+      case 'down':
         onMoveDown?.()
         break
-      case "top":
+      case 'top':
         onMoveToTop?.()
         break
-      case "bottom":
+      case 'bottom':
         onMoveToBottom?.()
         break
     }
@@ -129,11 +129,7 @@ export const MoveMenu = ({
         <Button
           variant="ghost"
           size="sm"
-          className={cn(
-            "h-8 gap-1.5",
-            iconOnly && "w-8 p-0",
-            className
-          )}
+          className={cn('h-8 gap-1.5', iconOnly && 'w-8 p-0', className)}
           aria-label="Move task"
         >
           <MoveVertical className="size-4" />
@@ -150,18 +146,12 @@ export const MoveMenu = ({
               Reschedule
             </DropdownMenuLabel>
 
-            <DropdownMenuItem onClick={() => handleDateChange(today)}>
-              Today
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => handleDateChange(tomorrow)}>
-              Tomorrow
-            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => handleDateChange(today)}>Today</DropdownMenuItem>
+            <DropdownMenuItem onClick={() => handleDateChange(tomorrow)}>Tomorrow</DropdownMenuItem>
             <DropdownMenuItem onClick={() => handleDateChange(nextWeek)}>
               Next week
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => handleDateChange(null)}>
-              Remove date
-            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => handleDateChange(null)}>Remove date</DropdownMenuItem>
 
             <DropdownMenuSeparator />
           </>
@@ -189,10 +179,7 @@ export const MoveMenu = ({
                         disabled={isCurrent}
                       >
                         {IconComponent ? (
-                          <IconComponent
-                            className="size-4 mr-2"
-                            style={{ color: project.color }}
-                          />
+                          <IconComponent className="size-4 mr-2" style={{ color: project.color }} />
                         ) : (
                           <span
                             className="size-3 rounded-full mr-2"
@@ -201,9 +188,7 @@ export const MoveMenu = ({
                         )}
                         {project.name}
                         {isCurrent && (
-                          <span className="ml-auto text-muted-foreground text-xs">
-                            Current
-                          </span>
+                          <span className="ml-auto text-muted-foreground text-xs">Current</span>
                         )}
                       </DropdownMenuItem>
                     )
@@ -223,8 +208,7 @@ export const MoveMenu = ({
                 <span
                   className="size-3 rounded-full mr-2"
                   style={{
-                    backgroundColor:
-                      statuses.find((s) => s.id === task.statusId)?.color || "#888",
+                    backgroundColor: statuses.find((s) => s.id === task.statusId)?.color || '#888'
                   }}
                 />
                 Change status
@@ -245,9 +229,7 @@ export const MoveMenu = ({
                       />
                       {status.name}
                       {isCurrent && (
-                        <span className="ml-auto text-muted-foreground text-xs">
-                          Current
-                        </span>
+                        <span className="ml-auto text-muted-foreground text-xs">Current</span>
                       )}
                     </DropdownMenuItem>
                   )
@@ -268,42 +250,34 @@ export const MoveMenu = ({
             </DropdownMenuLabel>
 
             {onMoveUp && (
-              <DropdownMenuItem onClick={() => handleReorder("up")}>
+              <DropdownMenuItem onClick={() => handleReorder('up')}>
                 <ArrowUp className="size-4 mr-2" />
                 Move up
-                <span className="ml-auto text-xs text-muted-foreground">
-                  Alt+↑
-                </span>
+                <span className="ml-auto text-xs text-muted-foreground">Alt+↑</span>
               </DropdownMenuItem>
             )}
 
             {onMoveDown && (
-              <DropdownMenuItem onClick={() => handleReorder("down")}>
+              <DropdownMenuItem onClick={() => handleReorder('down')}>
                 <ArrowDown className="size-4 mr-2" />
                 Move down
-                <span className="ml-auto text-xs text-muted-foreground">
-                  Alt+↓
-                </span>
+                <span className="ml-auto text-xs text-muted-foreground">Alt+↓</span>
               </DropdownMenuItem>
             )}
 
             {onMoveToTop && (
-              <DropdownMenuItem onClick={() => handleReorder("top")}>
+              <DropdownMenuItem onClick={() => handleReorder('top')}>
                 <ChevronsUp className="size-4 mr-2" />
                 Move to top
-                <span className="ml-auto text-xs text-muted-foreground">
-                  Alt+Shift+↑
-                </span>
+                <span className="ml-auto text-xs text-muted-foreground">Alt+Shift+↑</span>
               </DropdownMenuItem>
             )}
 
             {onMoveToBottom && (
-              <DropdownMenuItem onClick={() => handleReorder("bottom")}>
+              <DropdownMenuItem onClick={() => handleReorder('bottom')}>
                 <ChevronsDown className="size-4 mr-2" />
                 Move to bottom
-                <span className="ml-auto text-xs text-muted-foreground">
-                  Alt+Shift+↓
-                </span>
+                <span className="ml-auto text-xs text-muted-foreground">Alt+Shift+↓</span>
               </DropdownMenuItem>
             )}
           </>
@@ -314,14 +288,3 @@ export const MoveMenu = ({
 }
 
 export default MoveMenu
-
-
-
-
-
-
-
-
-
-
-

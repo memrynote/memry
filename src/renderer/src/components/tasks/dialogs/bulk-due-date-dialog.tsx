@@ -1,5 +1,5 @@
-import { useState } from "react"
-import { Calendar as CalendarIcon } from "lucide-react"
+import { useState } from 'react'
+import { Calendar as CalendarIcon } from 'lucide-react'
 
 import {
   Dialog,
@@ -7,12 +7,12 @@ import {
   DialogDescription,
   DialogFooter,
   DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
-import { Button } from "@/components/ui/button"
-import { Calendar } from "@/components/ui/calendar"
-import { Checkbox } from "@/components/ui/checkbox"
-import { Label } from "@/components/ui/label"
+  DialogTitle
+} from '@/components/ui/dialog'
+import { Button } from '@/components/ui/button'
+import { Calendar } from '@/components/ui/calendar'
+import { Checkbox } from '@/components/ui/checkbox'
+import { Label } from '@/components/ui/label'
 
 // ============================================================================
 // TYPES
@@ -37,7 +37,7 @@ export const BulkDueDateDialog = ({
   subtaskCount,
   completedCount,
   onClose,
-  onApply,
+  onApply
 }: BulkDueDateDialogProps): React.JSX.Element => {
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined)
   const [includeCompleted, setIncludeCompleted] = useState(false)
@@ -74,8 +74,8 @@ export const BulkDueDateDialog = ({
             <DialogTitle>Set due date for all subtasks</DialogTitle>
           </div>
           <DialogDescription>
-            Set due date for {affectedCount} subtask{affectedCount !== 1 ? "s" : ""} in
-            &ldquo;{parentTitle}&rdquo;
+            Set due date for {affectedCount} subtask{affectedCount !== 1 ? 's' : ''} in &ldquo;
+            {parentTitle}&rdquo;
           </DialogDescription>
         </DialogHeader>
 
@@ -96,9 +96,7 @@ export const BulkDueDateDialog = ({
               <Checkbox
                 id="include-completed"
                 checked={includeCompleted}
-                onCheckedChange={(checked) =>
-                  setIncludeCompleted(checked === true)
-                }
+                onCheckedChange={(checked) => setIncludeCompleted(checked === true)}
               />
               <Label
                 htmlFor="include-completed"
@@ -127,11 +125,3 @@ export const BulkDueDateDialog = ({
 }
 
 export default BulkDueDateDialog
-
-
-
-
-
-
-
-

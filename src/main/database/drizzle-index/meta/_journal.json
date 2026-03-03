@@ -1,0 +1,139 @@
+{
+  "version": "7",
+  "dialect": "sqlite",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "6",
+      "when": 1766496151713,
+      "tag": "0000_previous_toxin",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1766506066542,
+      "tag": "0001_fuzzy_mandarin",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1766665036232,
+      "tag": "0002_thin_payback",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1766683424698,
+      "tag": "0003_wakeful_shinobi_shaw",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1766743885276,
+      "tag": "0004_light_rage",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "6",
+      "when": 1766748345123,
+      "tag": "0005_mature_deathbird",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1766754707629,
+      "tag": "0006_flashy_captain_flint",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "6",
+      "when": 1766851308463,
+      "tag": "0007_easy_domino",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "6",
+      "when": 1767534101164,
+      "tag": "0008_tiresome_micromax",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "6",
+      "when": 1767972672019,
+      "tag": "0009_yummy_ultimatum",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "6",
+      "when": 1768002000000,
+      "tag": "0010_make_columns_nullable",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "6",
+      "when": 1768336044711,
+      "tag": "0011_purple_madame_masque",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "6",
+      "when": 1769997600000,
+      "tag": "0012_snapshot_title_column",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "6",
+      "when": 1771404117751,
+      "tag": "0013_tidy_puppet_master",
+      "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "6",
+      "when": 1771589398214,
+      "tag": "0014_ordinary_mathemanic",
+      "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "6",
+      "when": 1771591565928,
+      "tag": "0015_parched_karnak",
+      "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "6",
+      "when": 1771795809885,
+      "tag": "0016_skinny_tombstone",
+      "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "6",
+      "when": 1771887483598,
+      "tag": "0017_massive_sharon_ventura",
+      "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "6",
+      "when": 1771961898409,
+      "tag": "0018_secret_jackal",
+      "breakpoints": true
+    }
+  ]
+}

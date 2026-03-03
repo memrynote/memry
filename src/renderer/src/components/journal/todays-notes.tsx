@@ -7,7 +7,7 @@ import { memo, useState } from 'react'
 import { FileText, ChevronRight, Plus } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
-import type { Note } from '@/hooks/use-notes'
+import type { Note } from '@/hooks/use-notes-query'
 
 // =============================================================================
 // TYPES
@@ -35,7 +35,7 @@ export const TodaysNotesSection = memo(function TodaysNotesSection({
   onNoteClick,
   activeNoteId,
   onCreate,
-  maxItems = 3,
+  maxItems = 3
 }: TodaysNotesSectionProps): React.JSX.Element {
   const [isExpanded, setIsExpanded] = useState(false)
 
@@ -49,7 +49,7 @@ export const TodaysNotesSection = memo(function TodaysNotesSection({
       day: 'numeric',
       year: 'numeric',
       hour: 'numeric',
-      minute: '2-digit',
+      minute: '2-digit'
     })}`
     onCreate?.(title)
   }
@@ -62,17 +62,12 @@ export const TodaysNotesSection = memo(function TodaysNotesSection({
       className="rounded-lg border border-border/40 bg-card overflow-hidden"
     >
       {/* Header */}
-      <NotesSectionHeader
-        count={notes.length}
-        onCreate={onCreate ? handleCreateNote : undefined}
-      />
+      <NotesSectionHeader count={notes.length} onCreate={onCreate ? handleCreateNote : undefined} />
 
       {/* Content */}
       <div className="p-3">
         {/* Empty State */}
-        {notes.length === 0 && (
-          <EmptyState onCreate={onCreate ? handleCreateNote : undefined} />
-        )}
+        {notes.length === 0 && <EmptyState onCreate={onCreate ? handleCreateNote : undefined} />}
 
         {/* Notes List */}
         {notes.length > 0 && (
@@ -153,7 +148,10 @@ function NotesSectionHeader({ count, onCreate }: NotesSectionHeaderProps): React
 
         {/* Count badge */}
         {count > 0 && (
-          <span className="text-xs text-muted-foreground" aria-label={`${count} notes created today`}>
+          <span
+            className="text-xs text-muted-foreground"
+            aria-label={`${count} notes created today`}
+          >
             ({count})
           </span>
         )}
@@ -174,9 +172,9 @@ interface NoteItemProps {
 
 function NoteItem({ note, isActive, onClick }: NoteItemProps): React.JSX.Element {
   // Format time as "2:34 PM"
-  const time = new Date(note.createdAt).toLocaleTimeString('en-US', {
+  const time = new Date(note.created).toLocaleTimeString('en-US', {
     hour: 'numeric',
-    minute: '2-digit',
+    minute: '2-digit'
   })
 
   return (

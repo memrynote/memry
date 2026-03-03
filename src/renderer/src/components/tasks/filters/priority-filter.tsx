@@ -1,10 +1,10 @@
-import { useState } from "react"
-import { ChevronDown, Check } from "lucide-react"
+import { useState } from 'react'
+import { ChevronDown, Check } from 'lucide-react'
 
-import { Button } from "@/components/ui/button"
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { cn } from "@/lib/utils"
-import { type Priority, priorityConfig } from "@/data/sample-tasks"
+import { Button } from '@/components/ui/button'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { cn } from '@/lib/utils'
+import { type Priority, priorityConfig } from '@/data/sample-tasks'
 
 // ============================================================================
 // TYPES
@@ -28,18 +28,22 @@ interface PriorityOption {
 // ============================================================================
 
 const priorityOptions: PriorityOption[] = [
-  { value: "urgent", label: "Urgent", color: priorityConfig.urgent.color },
-  { value: "high", label: "High", color: priorityConfig.high.color },
-  { value: "medium", label: "Medium", color: priorityConfig.medium.color },
-  { value: "low", label: "Low", color: priorityConfig.low.color },
-  { value: "none", label: "None", color: null },
+  { value: 'urgent', label: 'Urgent', color: priorityConfig.urgent.color },
+  { value: 'high', label: 'High', color: priorityConfig.high.color },
+  { value: 'medium', label: 'Medium', color: priorityConfig.medium.color },
+  { value: 'low', label: 'Low', color: priorityConfig.low.color },
+  { value: 'none', label: 'None', color: null }
 ]
 
 // Quick presets
 const quickPresets = [
-  { id: "high-urgent", label: "High & Urgent", priorities: ["urgent", "high"] as Priority[] },
-  { id: "medium-plus", label: "Medium+", priorities: ["urgent", "high", "medium"] as Priority[] },
-  { id: "has-priority", label: "Has Priority", priorities: ["urgent", "high", "medium", "low"] as Priority[] },
+  { id: 'high-urgent', label: 'High & Urgent', priorities: ['urgent', 'high'] as Priority[] },
+  { id: 'medium-plus', label: 'Medium+', priorities: ['urgent', 'high', 'medium'] as Priority[] },
+  {
+    id: 'has-priority',
+    label: 'Has Priority',
+    priorities: ['urgent', 'high', 'medium', 'low'] as Priority[]
+  }
 ]
 
 // ============================================================================
@@ -48,7 +52,7 @@ const quickPresets = [
 
 const PriorityDot = ({
   color,
-  className,
+  className
 }: {
   color: string | null
   className?: string
@@ -57,7 +61,7 @@ const PriorityDot = ({
     return (
       <span
         className={cn(
-          "size-3 shrink-0 rounded-full border-2 border-muted-foreground/40",
+          'size-3 shrink-0 rounded-full border-2 border-muted-foreground/40',
           className
         )}
         aria-hidden="true"
@@ -67,7 +71,7 @@ const PriorityDot = ({
 
   return (
     <span
-      className={cn("size-3 shrink-0 rounded-full", className)}
+      className={cn('size-3 shrink-0 rounded-full', className)}
       style={{ backgroundColor: color }}
       aria-hidden="true"
     />
@@ -82,7 +86,7 @@ export const PriorityFilter = ({
   selectedPriorities,
   onChange,
   taskCountByPriority = {} as Record<Priority, number>,
-  className,
+  className
 }: PriorityFilterProps): React.JSX.Element => {
   const [isOpen, setIsOpen] = useState(false)
 
@@ -114,11 +118,7 @@ export const PriorityFilter = ({
         <Button
           variant="outline"
           size="sm"
-          className={cn(
-            "h-9 gap-2",
-            hasSelection && "border-primary bg-primary/5",
-            className
-          )}
+          className={cn('h-9 gap-2', hasSelection && 'border-primary bg-primary/5', className)}
           aria-label="Filter by priority"
         >
           <span>Priority</span>
@@ -135,9 +135,7 @@ export const PriorityFilter = ({
         <div className="p-2">
           {/* Quick presets */}
           <div className="mb-2">
-            <div className="text-xs font-medium text-muted-foreground px-2 py-1">
-              QUICK SELECT
-            </div>
+            <div className="text-xs font-medium text-muted-foreground px-2 py-1">QUICK SELECT</div>
             <div className="flex flex-wrap gap-1 px-2">
               {quickPresets.map((preset) => {
                 const isActive =
@@ -150,10 +148,10 @@ export const PriorityFilter = ({
                     type="button"
                     onClick={() => handleApplyPreset(preset.priorities)}
                     className={cn(
-                      "px-2 py-1 text-xs rounded-md border transition-colors",
+                      'px-2 py-1 text-xs rounded-md border transition-colors',
                       isActive
-                        ? "bg-primary text-primary-foreground border-primary"
-                        : "bg-background border-border hover:bg-accent"
+                        ? 'bg-primary text-primary-foreground border-primary'
+                        : 'bg-background border-border hover:bg-accent'
                     )}
                   >
                     {preset.label}
@@ -170,9 +168,9 @@ export const PriorityFilter = ({
             type="button"
             onClick={handleToggleAll}
             className={cn(
-              "flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm transition-colors",
-              "hover:bg-accent focus:outline-none focus:bg-accent",
-              allSelected && "font-medium"
+              'flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm transition-colors',
+              'hover:bg-accent focus:outline-none focus:bg-accent',
+              allSelected && 'font-medium'
             )}
           >
             <span className="flex items-center justify-center size-4">
@@ -195,9 +193,9 @@ export const PriorityFilter = ({
                   type="button"
                   onClick={() => handleTogglePriority(option.value)}
                   className={cn(
-                    "flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm transition-colors",
-                    "hover:bg-accent focus:outline-none focus:bg-accent",
-                    isSelected && "font-medium"
+                    'flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm transition-colors',
+                    'hover:bg-accent focus:outline-none focus:bg-accent',
+                    isSelected && 'font-medium'
                   )}
                 >
                   <span className="flex items-center justify-center size-4">
@@ -207,9 +205,7 @@ export const PriorityFilter = ({
                     <PriorityDot color={option.color} />
                     <span>{option.label}</span>
                   </span>
-                  <span className="text-xs text-text-tertiary">
-                    {taskCount}
-                  </span>
+                  <span className="text-xs text-text-tertiary">{taskCount}</span>
                 </button>
               )
             })}

@@ -56,9 +56,7 @@ export function ColorPicker({
                   )}
                   style={{ backgroundColor: colors.background }}
                 >
-                  {isSelected && (
-                    <Check className="h-3 w-3" style={{ color: colors.text }} />
-                  )}
+                  {isSelected && <Check className="h-3 w-3" style={{ color: colors.text }} />}
                 </button>
               )
             })}

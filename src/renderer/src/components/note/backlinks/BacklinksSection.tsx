@@ -11,6 +11,9 @@ import { BacklinkCard } from './BacklinkCard'
 import { BacklinksEmptyState } from './BacklinksEmptyState'
 import { BacklinksLoadingState } from './BacklinksLoadingState'
 import type { BacklinksSectionProps, BacklinkSortOption, Backlink } from './types'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('Component:BacklinksSection')
 
 const SORT_LABELS: Record<BacklinkSortOption, string> = {
   recent: 'Recent',
@@ -69,7 +72,7 @@ const DEMO_BACKLINKS: Backlink[] = [
       {
         id: 'm-4',
         snippet:
-          '...the baptism scene in [[The Godfather]] is often cited as one of cinema\'s greatest...',
+          "...the baptism scene in [[The Godfather]] is often cited as one of cinema's greatest...",
         linkStart: 23,
         linkEnd: 39
       }
@@ -89,8 +92,7 @@ export function BacklinksSection({
   onShowMore: propOnShowMore
 }: Partial<BacklinksSectionProps>) {
   // Internal state for demo mode
-  const [internalSortBy, setInternalSortBy] =
-    useState<BacklinkSortOption>('recent')
+  const [internalSortBy, setInternalSortBy] = useState<BacklinkSortOption>('recent')
   const [isCollapsed, setIsCollapsed] = useState(defaultCollapsed)
   const [visibleCount, setVisibleCount] = useState(initialCount)
 
@@ -132,7 +134,7 @@ export function BacklinksSection({
     if (propOnBacklinkClick) {
       propOnBacklinkClick(noteId)
     } else {
-      console.log('Navigate to note:', noteId)
+      log.info('Navigate to note:', noteId)
     }
   }
 
@@ -152,7 +154,8 @@ export function BacklinksSection({
     <section
       className={cn('mt-12 pt-6 border-t border-stone-200')}
       role="region"
-      aria-label="Backlinks"
+      aria-label={`Backlinks section with ${backlinks.length} ${backlinks.length === 1 ? 'link' : 'links'}`}
+      aria-busy={isLoading}
     >
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
@@ -163,10 +166,12 @@ export function BacklinksSection({
             collapsible && 'cursor-pointer hover:opacity-80 transition-opacity'
           )}
           aria-expanded={!isCollapsed}
+          aria-controls="backlinks-content"
+          aria-label={isCollapsed ? 'Expand backlinks section' : 'Collapse backlinks section'}
           disabled={!collapsible}
         >
           {collapsible && (
-            <span className="text-stone-400">
+            <span className="text-stone-400" aria-hidden="true">
               {isCollapsed ? (
                 <ChevronRight className="h-4 w-4" />
               ) : (
@@ -174,12 +179,14 @@ export function BacklinksSection({
               )}
             </span>
           )}
-          <Link2 className="h-4 w-4 text-stone-400" />
+          <Link2 className="h-4 w-4 text-stone-400" aria-hidden="true" />
           <span className="text-xs font-semibold uppercase tracking-wide text-stone-500">
             Backlinks
           </span>
           {backlinks.length > 0 && (
-            <span className="text-xs text-stone-400">({backlinks.length})</span>
+            <span className="text-xs text-stone-400" aria-hidden="true">
+              ({backlinks.length})
+            </span>
           )}
         </button>
 
@@ -194,23 +201,22 @@ export function BacklinksSection({
                   'hover:text-stone-700 hover:bg-stone-100 rounded',
                   'transition-colors duration-150'
                 )}
+                aria-label={`Sort backlinks by ${SORT_LABELS[sortBy]}`}
               >
                 {SORT_LABELS[sortBy]}
-                <ChevronDown className="h-3 w-3" />
+                <ChevronDown className="h-3 w-3" aria-hidden="true" />
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-[140px]">
-              {(Object.keys(SORT_LABELS) as BacklinkSortOption[]).map(
-                (option) => (
-                  <DropdownMenuItem
-                    key={option}
-                    onClick={() => handleSortChange(option)}
-                    className={cn(sortBy === option && 'bg-stone-100')}
-                  >
-                    {SORT_LABELS[option]}
-                  </DropdownMenuItem>
-                )
-              )}
+              {(Object.keys(SORT_LABELS) as BacklinkSortOption[]).map((option) => (
+                <DropdownMenuItem
+                  key={option}
+                  onClick={() => handleSortChange(option)}
+                  className={cn(sortBy === option && 'bg-stone-100')}
+                >
+                  {SORT_LABELS[option]}
+                </DropdownMenuItem>
+              ))}
             </DropdownMenuContent>
           </DropdownMenu>
         )}
@@ -218,7 +224,7 @@ export function BacklinksSection({
 
       {/* Content */}
       {!isCollapsed && (
-        <div aria-live="polite">
+        <div id="backlinks-content" aria-live="polite" role="list" aria-label="Backlinks list">
           {isLoading ? (
             <BacklinksLoadingState />
           ) : backlinks.length === 0 ? (
@@ -226,11 +232,7 @@ export function BacklinksSection({
           ) : (
             <div className="space-y-2">
               {visibleBacklinks.map((backlink) => (
-                <BacklinkCard
-                  key={backlink.id}
-                  backlink={backlink}
-                  onClick={handleBacklinkClick}
-                />
+                <BacklinkCard key={backlink.id} backlink={backlink} onClick={handleBacklinkClick} />
               ))}
 
               {/* Show More Button */}
@@ -245,6 +247,7 @@ export function BacklinksSection({
                       'transition-colors duration-150',
                       'cursor-pointer'
                     )}
+                    aria-label={`Show ${remainingCount} more backlink${remainingCount > 1 ? 's' : ''}`}
                   >
                     Show {remainingCount} more backlink
                     {remainingCount > 1 ? 's' : ''}

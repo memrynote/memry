@@ -1,7 +1,7 @@
-import { Calendar, Plus } from "lucide-react"
+import { Calendar, Plus } from 'lucide-react'
 
-import { Button } from "@/components/ui/button"
-import { cn } from "@/lib/utils"
+import { Button } from '@/components/ui/button'
+import { cn } from '@/lib/utils'
 
 // ============================================================================
 // TYPES
@@ -20,12 +20,12 @@ interface UpcomingEmptyStateProps {
 export const UpcomingEmptyState = ({
   hasOverdue,
   onAddTask,
-  className,
+  className
 }: UpcomingEmptyStateProps): React.JSX.Element => {
   // If there are overdue tasks but nothing upcoming
   if (hasOverdue) {
     return (
-      <div className={cn("text-center py-12", className)}>
+      <div className={cn('text-center py-12', className)}>
         <div className="mb-4 rounded-full bg-muted p-4 inline-block">
           <Calendar className="size-8 text-text-tertiary" aria-hidden="true" />
         </div>
@@ -45,16 +45,14 @@ export const UpcomingEmptyState = ({
 
   // Completely clear
   return (
-    <div className={cn("text-center py-16", className)}>
+    <div className={cn('text-center py-16', className)}>
       {/* Icon */}
       <div className="mb-4 rounded-full bg-muted p-4 inline-block">
         <Calendar className="size-8 text-text-tertiary" aria-hidden="true" />
       </div>
 
       {/* Title */}
-      <h3 className="text-lg font-medium text-text-primary mb-2">
-        No upcoming tasks
-      </h3>
+      <h3 className="text-lg font-medium text-text-primary mb-2">No upcoming tasks</h3>
 
       {/* Description */}
       <p className="text-sm text-text-tertiary mb-6 max-w-sm mx-auto">

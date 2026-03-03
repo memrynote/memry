@@ -2,7 +2,7 @@
 
 Technical architecture, tech stack decisions, and implementation strategy.
 
-```
+````
 /speckit.plan
 
 Plan the implementation of Memry's backend with these technology decisions:
@@ -173,9 +173,10 @@ CREATE TABLE conflicts (
   blob_key TEXT NOT NULL,  -- R2 key for conflict version
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
-```
+````
 
 ### API Endpoints
+
 ```typescript
 // Auth
 POST   /auth/oauth/google        // OAuth callback
@@ -202,16 +203,8 @@ GET    /user/storage             // Get storage usage
 GET    /user/devices             // List devices
 ```
 
-## MOBILE APP (Future Phase)
-
-### Framework
-**Choice: React Native with Expo**
-- Share business logic with desktop
-- Expo for easier development
-- expo-sqlite for local database
-- Same encryption library (libsodium has RN bindings)
-
 ### Considerations
+
 - Selective sync (don't download all attachments)
 - Background sync (iOS/Android limitations)
 - Push notifications for real-time updates
@@ -220,7 +213,9 @@ GET    /user/devices             // List devices
 ## AI FEATURES
 
 ### Embeddings & Semantic Search
+
 **Choice: OpenAI text-embedding-3-small (default) + Ollama (local option)**
+
 - OpenAI: Best quality, reasonable cost
 - Ollama: Local, private, works offline
 - Store embeddings in SQLite with vec extension (or separate vector DB)
@@ -228,7 +223,9 @@ GET    /user/devices             // List devices
 **Alternative: Use Supabase pgvector if using Supabase**
 
 ### LLM for Completions
+
 **Choice: OpenAI GPT-4-turbo (default) + Ollama local models (optional)**
+
 - OpenAI: Best quality for writing assistance
 - Ollama: Llama 3, Mistral for local option
 - Anthropic Claude as secondary option
@@ -236,6 +233,7 @@ GET    /user/devices             // List devices
 ## IMPLEMENTATION ORDER
 
 ### Phase 1: Core Data Layer (Week 1-2)
+
 1. Set up better-sqlite3 in main process
 2. Create database schemas (index.db, data.db)
 3. Implement IPC handlers for CRUD operations
@@ -244,6 +242,7 @@ GET    /user/devices             // List devices
 6. Connect existing UI to real data layer
 
 ### Phase 2: Task Backend (Week 3-4)
+
 1. Task CRUD with SQLite
 2. Project and status management
 3. Repeating task logic
@@ -251,6 +250,7 @@ GET    /user/devices             // List devices
 5. Connect TasksPage to real data
 
 ### Phase 3: Notes & Journal Backend (Week 5-6)
+
 1. Note file operations (create, read, write, delete)
 2. Frontmatter parsing and generation
 3. Wiki link extraction and backlink computation
@@ -258,6 +258,7 @@ GET    /user/devices             // List devices
 5. Connect NotePage and JournalPage to real data
 
 ### Phase 4: Encryption Layer (Week 7-8)
+
 1. Implement key generation and derivation
 2. Recovery phrase generation
 3. Keychain integration
@@ -265,6 +266,7 @@ GET    /user/devices             // List devices
 5. Test encryption thoroughly
 
 ### Phase 5: Sync Server (Week 9-11)
+
 1. Set up Cloudflare Workers project
 2. Implement OAuth flows
 3. Create sync endpoints
@@ -272,6 +274,7 @@ GET    /user/devices             // List devices
 5. Blob storage with R2
 
 ### Phase 6: Sync Client (Week 12-14)
+
 1. Sync queue implementation
 2. Background sync worker
 3. Conflict detection and resolution
@@ -279,6 +282,7 @@ GET    /user/devices             // List devices
 5. Sync status UI
 
 ### Phase 7: Inbox Backend (Week 15-16)
+
 1. Inbox item storage
 2. Link fetching (URL metadata)
 3. Voice recording and storage
@@ -286,6 +290,7 @@ GET    /user/devices             // List devices
 5. Filing operations
 
 ### Phase 8: Search & AI (Week 17-19)
+
 1. FTS5 search implementation
 2. Embedding generation pipeline
 3. Semantic search
@@ -293,6 +298,7 @@ GET    /user/devices             // List devices
 5. Writing assistance commands
 
 ### Phase 9: Settings & Polish (Week 20-21)
+
 1. Settings persistence
 2. Preferences UI
 3. Data export/import
@@ -300,6 +306,7 @@ GET    /user/devices             // List devices
 5. Performance optimization
 
 ### Phase 10: Mobile App (Week 22+)
+
 1. React Native project setup
 2. Share core logic
 3. Implement mobile UI
@@ -309,6 +316,7 @@ GET    /user/devices             // List devices
 ## RESEARCH QUESTIONS
 
 ### To Investigate Further
+
 1. **SQLite in Electron**: Verify better-sqlite3 works reliably with electron-vite
 2. **File watching**: Benchmark chokidar vs @parcel/watcher for large vaults
 3. **Sync protocol**: Evaluate CRDTs vs operational transform vs simple last-write-wins
@@ -316,6 +324,7 @@ GET    /user/devices             // List devices
 5. **Vector storage**: SQLite vec extension vs dedicated vector DB vs simple linear search
 
 ### Deferred Decisions
+
 1. Real-time collaboration (v2 feature)
 2. Team/shared vaults (v2 feature)
 3. Plugin system (v2 feature)
@@ -324,25 +333,32 @@ GET    /user/devices             // List devices
 ## TESTING STRATEGY
 
 ### Unit Tests
+
 - Jest for utility functions
 - Test encryption roundtrip
 - Test date calculations
 - Test conflict resolution logic
 
 ### Integration Tests
+
 - Database operations
 - File watcher events
 - IPC communication
 - Sync push/pull
 
 ### E2E Tests
+
 - Playwright for Electron
 - Critical user flows
 - Sync between simulated devices
 
 ### Security Tests
+
 - Verify no plaintext in transit
 - Verify no plaintext in logs
 - Verify key derivation consistency
 - Verify recovery phrase restoration
+
+```
+
 ```

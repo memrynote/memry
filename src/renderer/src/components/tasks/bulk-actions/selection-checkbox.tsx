@@ -1,6 +1,6 @@
-import { useRef, useEffect } from "react"
+import { useRef, useEffect } from 'react'
 
-import { cn } from "@/lib/utils"
+import { cn } from '@/lib/utils'
 
 // ============================================================================
 // TYPES
@@ -20,7 +20,7 @@ interface SelectionCheckboxProps {
   /** Additional class names */
   className?: string
   /** Aria label for accessibility */
-  "aria-label"?: string
+  'aria-label'?: string
 }
 
 // ============================================================================
@@ -38,7 +38,7 @@ export const SelectionCheckbox = ({
   onClick,
   disabled = false,
   className,
-  "aria-label": ariaLabel,
+  'aria-label': ariaLabel
 }: SelectionCheckboxProps): React.JSX.Element => {
   const checkboxRef = useRef<HTMLInputElement>(null)
 
@@ -60,7 +60,7 @@ export const SelectionCheckbox = ({
 
   const handleKeyDown = (e: React.KeyboardEvent): void => {
     // Prevent row click when pressing space/enter on checkbox
-    if (e.key === " " || e.key === "Enter") {
+    if (e.key === ' ' || e.key === 'Enter') {
       e.stopPropagation()
     }
   }
@@ -76,12 +76,12 @@ export const SelectionCheckbox = ({
       disabled={disabled}
       aria-label={ariaLabel}
       className={cn(
-        "size-4 shrink-0 cursor-pointer rounded border-gray-300",
-        "text-primary focus:ring-primary focus:ring-offset-0",
-        "transition-colors duration-150",
-        "disabled:cursor-not-allowed disabled:opacity-50",
+        'size-4 shrink-0 cursor-pointer rounded border-gray-300',
+        'text-primary focus:ring-primary focus:ring-offset-0',
+        'transition-colors duration-150',
+        'disabled:cursor-not-allowed disabled:opacity-50',
         // Custom styling for indeterminate state
-        indeterminate && "indeterminate:bg-primary indeterminate:border-primary",
+        indeterminate && 'indeterminate:bg-primary indeterminate:border-primary',
         className
       )}
     />
@@ -89,14 +89,3 @@ export const SelectionCheckbox = ({
 }
 
 export default SelectionCheckbox
-
-
-
-
-
-
-
-
-
-
-

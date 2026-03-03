@@ -1,10 +1,6 @@
 import { Sparkles, ChevronDown, Check, Monitor } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger
-} from '@/components/ui/popover'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { AVAILABLE_MODELS, type ModelOption } from './types'
 
 interface ModelSelectorProps {
@@ -75,9 +71,7 @@ export function ModelSelector({ selectedModel, onModelChange }: ModelSelectorPro
                 <p className="text-sm font-medium text-stone-900 truncate">{model.name}</p>
                 <p className="text-xs text-stone-500 truncate">{model.description}</p>
               </div>
-              {selectedModel === model.id && (
-                <Check className="h-4 w-4 text-blue-600 shrink-0" />
-              )}
+              {selectedModel === model.id && <Check className="h-4 w-4 text-blue-600 shrink-0" />}
             </button>
           ))}
         </div>

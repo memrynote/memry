@@ -3,35 +3,35 @@
  * Skip link for keyboard users to bypass tab bar
  */
 
-import { cn } from '@/lib/utils';
+import { cn } from '@/lib/utils'
 
 interface SkipToContentProps {
-    /** Target element ID to skip to */
-    targetId?: string;
-    /** Link text */
-    children?: React.ReactNode;
+  /** Target element ID to skip to */
+  targetId?: string
+  /** Link text */
+  children?: React.ReactNode
 }
 
 /**
  * Accessible skip link for keyboard navigation
  */
 export const SkipToContent = ({
-    targetId = 'main-content',
-    children = 'Skip to main content',
+  targetId = 'main-content',
+  children = 'Skip to main content'
 }: SkipToContentProps): React.JSX.Element => {
-    return (
-        <a
-            href={`#${targetId}`}
-            className={cn(
-                'sr-only focus:not-sr-only',
-                'fixed top-2 left-2 z-50',
-                'px-4 py-2 bg-blue-500 text-white rounded-md',
-                'focus:outline-none focus:ring-2 focus:ring-blue-300'
-            )}
-        >
-            {children}
-        </a>
-    );
-};
+  return (
+    <a
+      href={`#${targetId}`}
+      className={cn(
+        'sr-only focus:not-sr-only',
+        'fixed top-2 left-2 z-50',
+        'px-4 py-2 bg-blue-500 text-white rounded-md',
+        'focus:outline-none focus:ring-2 focus:ring-blue-300'
+      )}
+    >
+      {children}
+    </a>
+  )
+}
 
-export default SkipToContent;
+export default SkipToContent
