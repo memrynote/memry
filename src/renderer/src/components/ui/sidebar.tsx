@@ -20,10 +20,12 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 
 const SIDEBAR_COOKIE_NAME = 'sidebar_state'
 const SIDEBAR_COOKIE_MAX_AGE = 60 * 60 * 24 * 7
-const SIDEBAR_WIDTH = '16rem'
 const SIDEBAR_WIDTH_MOBILE = '18rem'
 const SIDEBAR_WIDTH_ICON = '3rem'
-const SIDEBAR_KEYBOARD_SHORTCUT = 'b'
+const SIDEBAR_WIDTH_DEFAULT_PX = 256
+const SIDEBAR_WIDTH_MIN_PX = 200
+const SIDEBAR_WIDTH_MAX_PX = 480
+const SIDEBAR_STORAGE_KEY = 'sidebar_width'
 
 type SidebarContextProps = {
   state: 'expanded' | 'collapsed'
@@ -33,6 +35,10 @@ type SidebarContextProps = {
   setOpenMobile: (open: boolean) => void
   isMobile: boolean
   toggleSidebar: () => void
+  sidebarWidth: number
+  setSidebarWidth: React.Dispatch<React.SetStateAction<number>>
+  isResizing: boolean
+  setIsResizing: React.Dispatch<React.SetStateAction<boolean>>
 }
 
 const SidebarContext = React.createContext<SidebarContextProps | null>(null)
@@ -62,8 +68,6 @@ function SidebarProvider({
   const isMobile = useIsMobile()
   const [openMobile, setOpenMobile] = React.useState(false)
 
-  // This is the internal state of the sidebar.
-  // We use openProp and setOpenProp for control from outside the component.
   const [_open, _setOpen] = React.useState(defaultOpen)
   const open = openProp ?? _open
   const setOpen = React.useCallback(
@@ -74,33 +78,35 @@ function SidebarProvider({
       } else {
         _setOpen(openState)
       }
-
-      // This sets the cookie to keep the sidebar state.
       document.cookie = `${SIDEBAR_COOKIE_NAME}=${openState}; path=/; max-age=${SIDEBAR_COOKIE_MAX_AGE}`
     },
     [setOpenProp, open]
   )
 
-  // Helper to toggle the sidebar.
+  const [sidebarWidth, setSidebarWidth] = React.useState<number>(() => {
+    try {
+      const stored = localStorage.getItem(SIDEBAR_STORAGE_KEY)
+      return stored ? Number(stored) : SIDEBAR_WIDTH_DEFAULT_PX
+    } catch {
+      return SIDEBAR_WIDTH_DEFAULT_PX
+    }
+  })
+  const [isResizing, setIsResizing] = React.useState(false)
+
+  React.useEffect(() => {
+    if (!isResizing) {
+      try {
+        localStorage.setItem(SIDEBAR_STORAGE_KEY, String(sidebarWidth))
+      } catch {
+        /* localStorage unavailable */
+      }
+    }
+  }, [sidebarWidth, isResizing])
+
   const toggleSidebar = React.useCallback(() => {
     return isMobile ? setOpenMobile((open) => !open) : setOpen((open) => !open)
   }, [isMobile, setOpen, setOpenMobile])
 
-  // Adds a keyboard shortcut to toggle the sidebar.
-  React.useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === SIDEBAR_KEYBOARD_SHORTCUT && (event.metaKey || event.ctrlKey)) {
-        event.preventDefault()
-        toggleSidebar()
-      }
-    }
-
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [toggleSidebar])
-
-  // We add a state so that we can do data-state="expanded" or "collapsed".
-  // This makes it easier to style the sidebar with Tailwind classes.
   const state = open ? 'expanded' : 'collapsed'
 
   const contextValue = React.useMemo<SidebarContextProps>(
@@ -111,9 +117,23 @@ function SidebarProvider({
       isMobile,
       openMobile,
       setOpenMobile,
-      toggleSidebar
+      toggleSidebar,
+      sidebarWidth,
+      setSidebarWidth,
+      isResizing,
+      setIsResizing
     }),
-    [state, open, setOpen, isMobile, openMobile, setOpenMobile, toggleSidebar]
+    [
+      state,
+      open,
+      setOpen,
+      isMobile,
+      openMobile,
+      setOpenMobile,
+      toggleSidebar,
+      sidebarWidth,
+      isResizing
+    ]
   )
 
   return (
@@ -123,7 +143,7 @@ function SidebarProvider({
           data-slot="sidebar-wrapper"
           style={
             {
-              '--sidebar-width': SIDEBAR_WIDTH,
+              '--sidebar-width': `${sidebarWidth}px`,
               '--sidebar-width-icon': SIDEBAR_WIDTH_ICON,
               ...style
             } as React.CSSProperties
@@ -153,7 +173,7 @@ function Sidebar({
   variant?: 'sidebar' | 'floating' | 'inset'
   collapsible?: 'offcanvas' | 'icon' | 'none'
 }) {
-  const { isMobile, state, openMobile, setOpenMobile } = useSidebar()
+  const { isMobile, state, openMobile, setOpenMobile, isResizing } = useSidebar()
 
   if (collapsible === 'none') {
     return (
@@ -204,11 +224,11 @@ function Sidebar({
       data-side={side}
       data-slot="sidebar"
     >
-      {/* This is what handles the sidebar gap on desktop */}
       <div
         data-slot="sidebar-gap"
         className={cn(
-          'relative w-(--sidebar-width) bg-transparent transition-[width] duration-200 ease-linear',
+          'relative w-(--sidebar-width) bg-transparent',
+          !isResizing && 'transition-[width] duration-200 ease-linear',
           'group-data-[collapsible=offcanvas]:w-0',
           'group-data-[side=right]:rotate-180',
           variant === 'floating' || variant === 'inset'
@@ -219,7 +239,8 @@ function Sidebar({
       <div
         data-slot="sidebar-container"
         className={cn(
-          'fixed inset-y-0 z-10 hidden h-svh w-(--sidebar-width) transition-[left,right,width] duration-200 ease-linear md:flex',
+          'fixed inset-y-0 z-10 hidden h-svh w-(--sidebar-width) md:flex',
+          !isResizing && 'transition-[left,right,width] duration-200 ease-linear',
           side === 'left'
             ? 'left-0 group-data-[collapsible=offcanvas]:left-[calc(var(--sidebar-width)*-1)]'
             : 'right-0 group-data-[collapsible=offcanvas]:right-[calc(var(--sidebar-width)*-1)]',
@@ -266,7 +287,64 @@ function SidebarTrigger({ className, onClick, ...props }: React.ComponentProps<t
 }
 
 function SidebarRail({ className, ...props }: React.ComponentProps<'button'>) {
-  const { toggleSidebar } = useSidebar()
+  const { toggleSidebar, sidebarWidth, setSidebarWidth, setIsResizing } = useSidebar()
+  const startXRef = React.useRef(0)
+  const startWidthRef = React.useRef(0)
+  const hasDraggedRef = React.useRef(false)
+
+  const handleMouseDown = React.useCallback(
+    (e: React.MouseEvent) => {
+      e.preventDefault()
+      startXRef.current = e.clientX
+      startWidthRef.current = sidebarWidth
+      hasDraggedRef.current = false
+      setIsResizing(true)
+
+      const sidebarEl = (e.target as HTMLElement).closest('[data-side]')
+      const side = sidebarEl?.getAttribute('data-side') || 'left'
+
+      const onMouseMove = (moveEvent: MouseEvent): void => {
+        const delta = moveEvent.clientX - startXRef.current
+        if (Math.abs(delta) > 2) hasDraggedRef.current = true
+        const direction = side === 'left' ? 1 : -1
+        const maxWidth = Math.min(SIDEBAR_WIDTH_MAX_PX, window.innerWidth * 0.5)
+        const newWidth = Math.min(
+          maxWidth,
+          Math.max(SIDEBAR_WIDTH_MIN_PX, startWidthRef.current + delta * direction)
+        )
+        setSidebarWidth(newWidth)
+      }
+
+      const onMouseUp = (): void => {
+        setIsResizing(false)
+        document.removeEventListener('mousemove', onMouseMove)
+        document.removeEventListener('mouseup', onMouseUp)
+        document.body.style.cursor = ''
+        document.body.style.userSelect = ''
+      }
+
+      document.body.style.cursor = 'col-resize'
+      document.body.style.userSelect = 'none'
+      document.addEventListener('mousemove', onMouseMove)
+      document.addEventListener('mouseup', onMouseUp)
+    },
+    [sidebarWidth, setSidebarWidth, setIsResizing]
+  )
+
+  const handleClick = React.useCallback(
+    (e: React.MouseEvent) => {
+      if (hasDraggedRef.current) {
+        e.preventDefault()
+        return
+      }
+      toggleSidebar()
+    },
+    [toggleSidebar]
+  )
+
+  const handleDoubleClick = React.useCallback(() => {
+    setSidebarWidth(SIDEBAR_WIDTH_DEFAULT_PX)
+  }, [setSidebarWidth])
 
   return (
     <button
@@ -274,12 +352,13 @@ function SidebarRail({ className, ...props }: React.ComponentProps<'button'>) {
       data-slot="sidebar-rail"
       aria-label="Toggle Sidebar"
       tabIndex={-1}
-      onClick={toggleSidebar}
-      title="Toggle Sidebar"
+      onMouseDown={handleMouseDown}
+      onClick={handleClick}
+      onDoubleClick={handleDoubleClick}
+      title="Drag to resize · Double-click to reset"
       className={cn(
         'hover:after:bg-sidebar-border absolute inset-y-0 z-20 hidden w-4 -translate-x-1/2 transition-all ease-linear group-data-[side=left]:-right-4 group-data-[side=right]:left-0 after:absolute after:inset-y-0 after:left-1/2 after:w-[2px] sm:flex',
-        'in-data-[side=left]:cursor-w-resize in-data-[side=right]:cursor-e-resize',
-        '[[data-side=left][data-state=collapsed]_&]:cursor-e-resize [[data-side=right][data-state=collapsed]_&]:cursor-w-resize',
+        'cursor-col-resize',
         'hover:group-data-[collapsible=offcanvas]:bg-sidebar group-data-[collapsible=offcanvas]:translate-x-0 group-data-[collapsible=offcanvas]:after:left-full',
         '[[data-side=left][data-collapsible=offcanvas]_&]:-right-2',
         '[[data-side=right][data-collapsible=offcanvas]_&]:-left-2',
@@ -354,7 +433,7 @@ function SidebarContent({ className, ...props }: React.ComponentProps<'div'>) {
       data-slot="sidebar-content"
       data-sidebar="content"
       className={cn(
-        'flex min-h-0 flex-1 flex-col gap-2 overflow-auto group-data-[collapsible=icon]:overflow-hidden',
+        'flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto group-data-[collapsible=icon]:overflow-hidden',
         className
       )}
       {...props}

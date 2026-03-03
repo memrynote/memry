@@ -103,6 +103,12 @@ export const StaleItemRow = ({
       aria-label={`${item.type}: ${item.title}`}
       aria-selected={isSelected}
       onClick={handleClick}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault()
+          handleClick()
+        }
+      }}
       data-item-id={item.id}
     >
       {/* Top row: checkbox, icon, title, timestamp */}
@@ -154,7 +160,12 @@ export const StaleItemRow = ({
                 isFocused ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
               )}
             >
-              <QuickActions itemId={item.id} onArchive={onArchive} onSnooze={onSnooze} variant="row" />
+              <QuickActions
+                itemId={item.id}
+                onArchive={onArchive}
+                onSnooze={onSnooze}
+                variant="row"
+              />
             </div>
           )}
         </div>

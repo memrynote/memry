@@ -8,6 +8,7 @@
  */
 
 import React, { useState, useEffect, useCallback, useRef } from 'react'
+import { extractErrorMessage } from '@/lib/ipc-error'
 import {
   Sheet,
   SheetContent,
@@ -155,7 +156,7 @@ export function VersionHistory({
       const result = await notesService.getVersions(noteId)
       setVersions(result)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load version history')
+      setError(extractErrorMessage(err, 'Failed to load version history'))
     } finally {
       setLoading(false)
     }
@@ -205,10 +206,10 @@ export function VersionHistory({
         onOpenChange(false)
         onRestore?.()
       } else {
-        toast.error(result.error || 'Failed to restore version')
+        toast.error(extractErrorMessage(result.error, 'Failed to restore version'))
       }
-    } catch {
-      toast.error('Failed to restore version')
+    } catch (err) {
+      toast.error(extractErrorMessage(err, 'Failed to restore version'))
     } finally {
       setRestoring(false)
       setRestoreDialogOpen(false)
@@ -231,10 +232,10 @@ export function VersionHistory({
           setPreviewContent(null)
         }
       } else {
-        toast.error(result.error || 'Failed to delete version')
+        toast.error(extractErrorMessage(result.error, 'Failed to delete version'))
       }
-    } catch {
-      toast.error('Failed to delete version')
+    } catch (err) {
+      toast.error(extractErrorMessage(err, 'Failed to delete version'))
     } finally {
       setDeleteDialogOpen(false)
       setVersionToDelete(null)

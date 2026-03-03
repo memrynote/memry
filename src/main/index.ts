@@ -12,15 +12,46 @@ import {
   Menu,
   MenuItem
 } from 'electron'
-import { join } from 'path'
+import { join, resolve, normalize } from 'path'
 import { homedir } from 'node:os'
 import { existsSync, readdirSync } from 'node:fs'
 import { config } from 'dotenv'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import { registerAllHandlers } from './ipc'
 import { autoOpenLastVault, closeVault } from './vault'
+import { getCurrentVaultPath } from './store'
 import { startSnoozeScheduler, stopSnoozeScheduler, checkDueItemsOnStartup } from './inbox/snooze'
 import { startReminderScheduler, stopReminderScheduler } from './lib/reminders'
+import { log, createLogger } from './lib/logger'
+import {
+  computeSpkiHashFromPem,
+  isPinningDisabled,
+  getPinnedCertificateHashes
+} from './sync/certificate-pinning'
+import { getCrdtProvider } from './sync/crdt-provider'
+import { stopSyncRuntime } from './sync/runtime'
+import { getNoteCacheById } from '@shared/db/queries/notes'
+import { getIndexDatabase } from './database/client'
+import { toAbsolutePath, createSnapshot } from './vault/notes'
+import { safeRead } from './vault/file-ops'
+import { SnapshotReasons } from '@shared/db/schema/notes-cache'
+
+if (process.type === 'browser') {
+  log.initialize()
+}
+
+const deviceId = process.env.MEMRY_DEVICE
+if (deviceId) {
+  app.name = `memry-${deviceId}`
+  const deviceUserData = `${app.getPath('userData')}-${deviceId}`
+  app.setPath('userData', deviceUserData)
+}
+
+const mainLog = createLogger('Main')
+const configLog = createLogger('Config')
+const quickCaptureLog = createLogger('QuickCapture')
+const shutdownLog = createLogger('Shutdown')
+const deepLinkLog = createLogger('DeepLink')
 
 // Load .env file from project root (must be before any env access)
 // In development, load from project root; in production, from app resources
@@ -83,11 +114,11 @@ function loadEnvironmentConfig(): void {
   envConfig.openaiApiKey = process.env.OPENAI_API_KEY
 
   if (!envConfig.openaiApiKey) {
-    console.warn(
-      '[Config] OPENAI_API_KEY not set. Voice transcription and AI suggestions will be disabled.'
+    configLog.warn(
+      'OPENAI_API_KEY not set. Voice transcription and AI suggestions will be disabled.'
     )
   } else {
-    console.log('[Config] OpenAI API key loaded successfully')
+    configLog.info('OpenAI API key loaded successfully')
   }
 
   // Optional: Override default models
@@ -102,6 +133,92 @@ function loadEnvironmentConfig(): void {
 
 // Load environment config early
 loadEnvironmentConfig()
+
+const cspLog = createLogger('CSP')
+
+function configureCsp(): void {
+  const policy = [
+    "default-src 'self' memry-file:",
+    "script-src 'self'",
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+    "img-src 'self' data: memry-file:",
+    "font-src 'self' data: https://fonts.gstatic.com",
+    "connect-src 'self' memry-file: https://*.memry.app wss://*.memry.app",
+    "media-src 'self' memry-file:",
+    "worker-src 'self' blob:",
+    "object-src 'none'",
+    "base-uri 'self'",
+    "form-action 'self'",
+    "frame-ancestors 'none'"
+  ]
+
+  if (is.dev) {
+    policy[1] = "script-src 'self' 'unsafe-eval' 'unsafe-inline'"
+    policy[5] =
+      "connect-src 'self' memry-file: https://*.memry.app wss://*.memry.app ws://localhost:* http://localhost:*"
+  }
+
+  const cspString = policy.join('; ')
+
+  session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
+    callback({
+      responseHeaders: {
+        ...details.responseHeaders,
+        'Content-Security-Policy': [cspString]
+      }
+    })
+  })
+
+  cspLog.info('CSP configured', is.dev ? '(dev mode)' : '(production)')
+}
+
+const certPinLog = createLogger('CertPinSession')
+
+function configureCertificatePinning(): void {
+  if (isPinningDisabled()) {
+    certPinLog.debug('Session cert pinning disabled (dev/test mode)')
+    return
+  }
+
+  const pins = getPinnedCertificateHashes()
+
+  if (pins.length === 0) {
+    certPinLog.error('No valid certificate pins available — session pinning disabled (TLS-only)')
+    return
+  }
+
+  session.defaultSession.setCertificateVerifyProc((request, callback) => {
+    const cert = request.certificate
+    if (!cert.data) {
+      certPinLog.error('Certificate missing PEM data', { hostname: request.hostname })
+      callback(-2)
+      return
+    }
+
+    try {
+      const spkiHash = computeSpkiHashFromPem(cert.data)
+      if (!pins.some((pin) => pin === spkiHash)) {
+        certPinLog.error('Session certificate pin mismatch', {
+          hostname: request.hostname,
+          hash: spkiHash
+        })
+        callback(-2)
+        return
+      }
+
+      certPinLog.debug('Session certificate pin verified', { hostname: request.hostname })
+      callback(0)
+    } catch (err) {
+      certPinLog.error('Certificate verification error', {
+        hostname: request.hostname,
+        error: err instanceof Error ? err.message : err
+      })
+      callback(-2)
+    }
+  })
+
+  certPinLog.info('Session certificate pinning configured')
+}
 
 function createWindow(): void {
   // Create the browser window.
@@ -127,7 +244,7 @@ function createWindow(): void {
     // Zoom out once (equivalent to Cmd+-)
     // mainWindow.webContents.setZoomLevel(-0.8)
     mainWindow.show()
-    mainWindow.webContents.openDevTools()
+    // mainWindow.webContents.openDevTools()
   })
 
   mainWindow.webContents.setWindowOpenHandler((details) => {
@@ -142,6 +259,50 @@ function createWindow(): void {
   } else {
     void mainWindow.loadFile(join(__dirname, '../renderer/index.html'))
   }
+}
+
+const pendingOAuthStates = new Map<string, number>()
+
+export const registerOAuthState = (state: string): void => {
+  pendingOAuthStates.set(state, Date.now())
+  setTimeout(() => pendingOAuthStates.delete(state), 10 * 60 * 1000)
+}
+
+function handleDeepLink(url: string): void {
+  try {
+    const parsed = new URL(url)
+    if (parsed.protocol !== 'memry:') return
+
+    const mainWindow = BrowserWindow.getAllWindows()[0]
+    if (!mainWindow) return
+
+    if (parsed.hostname === 'oauth' || parsed.pathname.startsWith('/oauth')) {
+      const code = parsed.searchParams.get('code')
+      const state = parsed.searchParams.get('state')
+      if (code && state && pendingOAuthStates.has(state)) {
+        pendingOAuthStates.delete(state)
+        mainWindow.webContents.send('auth:oauth-callback', { code, state })
+      }
+    }
+
+    if (mainWindow.isMinimized()) mainWindow.restore()
+    mainWindow.focus()
+  } catch {
+    deepLinkLog.error('failed to parse URL:', url)
+  }
+}
+
+// Windows/Linux: deep links arrive via second-instance event
+const gotTheLock = app.requestSingleInstanceLock()
+if (!gotTheLock) {
+  app.quit()
+} else {
+  app.on('second-instance', (_event, commandLine) => {
+    const deepLinkUrl = commandLine.find((arg) => arg.startsWith('memry://'))
+    if (deepLinkUrl) {
+      handleDeepLink(deepLinkUrl)
+    }
+  })
 }
 
 // This method will be called when Electron has finished
@@ -173,23 +334,28 @@ void app.whenReady().then(async () => {
           // Check if extensions API is available (Electron 38+)
           if (session.defaultSession.extensions?.loadExtension) {
             const extension = await session.defaultSession.extensions.loadExtension(extensionPath)
-            console.log(`Added Extension: ${extension.name}`)
+            mainLog.debug(`added extension: ${extension.name}`)
           } else {
-            console.log('React DevTools: session.extensions API not available')
+            mainLog.debug('React DevTools: session.extensions API not available')
           }
         }
       } else {
-        console.log('React DevTools not found. Install it in Chrome to enable.')
+        mainLog.debug('React DevTools not found. Install it in Chrome to enable.')
       }
     } catch (err) {
       // Extension loading can fail for various reasons (version mismatch, sandbox issues)
       // This is non-critical for development
-      console.log('Failed to load React DevTools:', err instanceof Error ? err.message : err)
+      mainLog.debug('failed to load React DevTools:', err instanceof Error ? err.message : err)
     }
   }
 
   // Set app user model id for windows
   electronApp.setAppUserModelId('com.electron')
+
+  // Register memry:// deep link protocol for OAuth callbacks (T041e)
+  if (!app.isDefaultProtocolClient('memry')) {
+    app.setAsDefaultProtocolClient('memry')
+  }
 
   // Register custom protocol for serving local attachment files
   // This allows secure access to vault files from the renderer process
@@ -213,7 +379,18 @@ void app.whenReady().then(async () => {
       }
     }
 
-    // Check if file exists before fetching to avoid noisy errors
+    filePath = resolve(normalize(filePath))
+
+    const allowedDirs: string[] = [app.getPath('userData')]
+    const vaultPath = getCurrentVaultPath()
+    if (vaultPath) allowedDirs.push(resolve(vaultPath))
+
+    const isAllowed = allowedDirs.some((dir) => filePath.startsWith(dir + '/') || filePath === dir)
+    if (!isAllowed) {
+      mainLog.warn('memry-file: blocked path outside allowed directories', { filePath })
+      return new Response(null, { status: 403, statusText: 'Forbidden' })
+    }
+
     const { existsSync } = await import('fs')
     if (!existsSync(filePath)) {
       // Return empty 1x1 transparent PNG for missing image files (null thumbnails)
@@ -295,7 +472,7 @@ void app.whenReady().then(async () => {
   })
 
   // IPC test
-  ipcMain.on('ping', () => console.log('pong'))
+  ipcMain.on('ping', () => mainLog.debug('pong'))
 
   // Window control IPC handlers
   ipcMain.on('window-minimize', () => {
@@ -314,7 +491,10 @@ void app.whenReady().then(async () => {
 
   ipcMain.on('window-close', () => {
     const win = BrowserWindow.getFocusedWindow()
-    win?.close()
+    if (!win) return
+    flushWindow(win)
+      .then(() => createCloseSnapshots())
+      .then(() => win.close())
   })
 
   // Quick Capture IPC handlers
@@ -324,6 +504,13 @@ void app.whenReady().then(async () => {
 
   ipcMain.handle('quick-capture:get-clipboard', () => {
     return clipboard.readText()
+  })
+
+  // Deep link handler for memry:// protocol (T041e)
+  // macOS: deep links arrive via open-url event
+  app.on('open-url', (event, url) => {
+    event.preventDefault()
+    handleDeepLink(url)
   })
 
   // Native context menu handler
@@ -381,6 +568,12 @@ void app.whenReady().then(async () => {
   // Register all IPC handlers (vault, notes, tasks, search)
   registerAllHandlers()
 
+  // Initialize CRDT persistence early so offline-created notes survive app restarts.
+  // Sync callbacks (queue, snapshot push) attach later when auth is ready.
+  getCrdtProvider()
+    .initPersistence()
+    .catch((err) => mainLog.warn('Early CRDT persistence init failed (non-fatal)', err))
+
   // Register global shortcut for quick capture (Cmd+Shift+Space)
   registerQuickCaptureShortcut()
 
@@ -394,7 +587,7 @@ void app.whenReady().then(async () => {
     startSnoozeScheduler()
   } catch (error) {
     // Snooze scheduler is non-critical - log and continue
-    console.warn('[Snooze] Failed to start scheduler:', error)
+    mainLog.warn('snooze scheduler failed to start:', error)
   }
 
   // Start the reminder scheduler for notes/journal/highlights
@@ -403,8 +596,11 @@ void app.whenReady().then(async () => {
     startReminderScheduler()
   } catch (error) {
     // Reminder scheduler is non-critical - log and continue
-    console.warn('[Reminders] Failed to start scheduler:', error)
+    mainLog.warn('reminder scheduler failed to start:', error)
   }
+
+  configureCsp()
+  configureCertificatePinning()
 
   createWindow()
 
@@ -471,12 +667,12 @@ function showQuickCaptureWindow(): void {
     // Remove trailing slash if present to avoid double slashes
     const baseUrl = devUrl.endsWith('/') ? devUrl.slice(0, -1) : devUrl
     const url = `${baseUrl}/#/quick-capture`
-    console.log('[QuickCapture] Loading URL:', url)
+    quickCaptureLog.debug('loading URL:', url)
     void quickCaptureWindow.loadURL(url)
   } else {
     // In production, load the HTML file with hash
     const filePath = join(__dirname, '../renderer/index.html')
-    console.log('[QuickCapture] Loading file:', filePath)
+    quickCaptureLog.debug('loading file:', filePath)
     void quickCaptureWindow.loadFile(filePath, {
       hash: 'quick-capture'
     })
@@ -484,7 +680,7 @@ function showQuickCaptureWindow(): void {
 
   // Handle load failures
   quickCaptureWindow.webContents.on('did-fail-load', (_event, errorCode, errorDescription) => {
-    console.error('[QuickCapture] Failed to load:', errorCode, errorDescription)
+    quickCaptureLog.error('failed to load:', errorCode, errorDescription)
   })
 
   // Show window when ready
@@ -529,8 +725,8 @@ function registerQuickCaptureShortcut(): void {
   })
 
   if (!registered) {
-    console.warn(
-      `[QuickCapture] Failed to register global shortcut: ${shortcut}. It may be in use by another application.`
+    quickCaptureLog.warn(
+      `failed to register global shortcut: ${shortcut}. It may be in use by another application.`
     )
   }
 }
@@ -542,6 +738,73 @@ function registerQuickCaptureShortcut(): void {
 // Track if shutdown is already in progress to prevent duplicate handling
 let isShuttingDown = false
 
+function flushWindow(win: BrowserWindow, timeoutMs = 2000): Promise<void> {
+  return new Promise<void>((resolve) => {
+    if (win.isDestroyed() || !win.webContents) {
+      shutdownLog.info('flushWindow: window already destroyed', win.id)
+      resolve()
+      return
+    }
+
+    shutdownLog.info('flushWindow: requesting flush from window', win.id)
+
+    const timer = setTimeout(() => {
+      shutdownLog.warn('flushWindow: timeout for window', win.id)
+      resolve()
+    }, timeoutMs)
+
+    const channel = 'app:flush-done'
+    const handler = (): void => {
+      shutdownLog.info('flushWindow: flush-done received from window', win.id)
+      clearTimeout(timer)
+      ipcMain.removeListener(channel, handler)
+      resolve()
+    }
+
+    ipcMain.on(channel, handler)
+    win.webContents.send('app:request-flush')
+  })
+}
+
+async function flushAllWindows(): Promise<void> {
+  const windows = BrowserWindow.getAllWindows().filter((w) => !w.isDestroyed())
+  if (windows.length === 0) return
+  shutdownLog.info(`flushing ${windows.length} window(s)...`)
+  await Promise.allSettled(windows.map((w) => flushWindow(w)))
+  shutdownLog.info('flush complete')
+}
+
+async function createCloseSnapshots(): Promise<void> {
+  try {
+    const provider = getCrdtProvider()
+    const openNoteIds = provider.getOpenNoteIds()
+    if (openNoteIds.length === 0) return
+
+    const indexDb = getIndexDatabase()
+    let created = 0
+
+    for (const noteId of openNoteIds) {
+      try {
+        const cached = getNoteCacheById(indexDb, noteId)
+        if (!cached) continue
+        const absolutePath = toAbsolutePath(cached.path)
+        const fileContent = await safeRead(absolutePath)
+        if (!fileContent) continue
+        const result = createSnapshot(noteId, fileContent, cached.title, SnapshotReasons.CLOSE)
+        if (result) created++
+      } catch (err) {
+        shutdownLog.error('close snapshot failed', { noteId, error: err })
+      }
+    }
+
+    if (created > 0) {
+      shutdownLog.info(`created ${created} close snapshot(s)`)
+    }
+  } catch {
+    shutdownLog.warn('skipped close snapshots (provider not initialized)')
+  }
+}
+
 // Graceful shutdown: close vault and databases before quitting
 app.on('before-quit', (event) => {
   // Prevent duplicate shutdown handling
@@ -550,31 +813,38 @@ app.on('before-quit', (event) => {
 
   event.preventDefault()
 
-  console.log('[Shutdown] Starting graceful shutdown...')
+  shutdownLog.info('starting graceful shutdown...')
 
   // Set timeout to force exit if shutdown takes too long
   const shutdownTimeout = setTimeout(() => {
-    console.error('[Shutdown] Timeout - forcing exit')
+    shutdownLog.error('timeout - forcing exit')
     app.exit(1)
   }, 5000) // 5 second timeout
 
-  // Stop the snooze scheduler
-  console.log('[Shutdown] Stopping snooze scheduler...')
-  stopSnoozeScheduler()
-
-  // Stop the reminder scheduler
-  console.log('[Shutdown] Stopping reminder scheduler...')
-  stopReminderScheduler()
-
-  console.log('[Shutdown] Closing vault and stopping watcher...')
-  closeVault()
+  // Flush pending saves from all renderer windows before closing vault
+  flushAllWindows()
+    .then(() => createCloseSnapshots())
     .then(() => {
-      console.log('[Shutdown] Cleanup complete')
+      shutdownLog.info('stopping snooze scheduler...')
+      stopSnoozeScheduler()
+
+      shutdownLog.info('stopping reminder scheduler...')
+      stopReminderScheduler()
+
+      shutdownLog.info('stopping sync runtime...')
+      return stopSyncRuntime()
+    })
+    .then(() => {
+      shutdownLog.info('closing vault and stopping watcher...')
+      return closeVault()
+    })
+    .then(() => {
+      shutdownLog.info('cleanup complete')
       clearTimeout(shutdownTimeout)
       app.exit(0)
     })
     .catch((error) => {
-      console.error('[Shutdown] Error during cleanup:', error)
+      shutdownLog.error('error during cleanup:', error)
       clearTimeout(shutdownTimeout)
       app.exit(1)
     })
@@ -592,7 +862,7 @@ app.on('window-all-closed', () => {
 // Unregister all global shortcuts when the app is about to quit
 app.on('will-quit', () => {
   globalShortcut.unregisterAll()
-  console.log('[QuickCapture] Global shortcuts unregistered')
+  quickCaptureLog.info('global shortcuts unregistered')
 })
 
 // In this file you can include the rest of your app's specific main process

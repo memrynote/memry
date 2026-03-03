@@ -8,6 +8,7 @@
  */
 
 import { useState, useEffect, useCallback } from 'react'
+import { extractErrorMessage } from '@/lib/ipc-error'
 import type { NoteEditorSettings } from '../../../preload/index.d'
 
 interface UseNoteEditorSettingsReturn {
@@ -56,7 +57,7 @@ export function useNoteEditorSettings(): UseNoteEditorSettingsReturn {
         }
       } catch (err) {
         if (mounted) {
-          setError(err instanceof Error ? err.message : 'Failed to load note editor settings')
+          setError(extractErrorMessage(err, 'Failed to load note editor settings'))
         }
       } finally {
         if (mounted) {
@@ -96,10 +97,10 @@ export function useNoteEditorSettings(): UseNoteEditorSettingsReturn {
           setSettings((prev) => ({ ...prev, ...updates }))
           return true
         }
-        setError(result.error ?? 'Failed to update settings')
+        setError(extractErrorMessage(result.error, 'Failed to update settings'))
         return false
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to update settings')
+        setError(extractErrorMessage(err, 'Failed to update settings'))
         return false
       }
     },

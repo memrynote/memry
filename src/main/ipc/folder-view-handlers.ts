@@ -31,11 +31,14 @@ import {
   type GetAvailablePropertiesResponse,
   type GetFolderSuggestionsResponse
 } from '@shared/contracts/folder-view-api'
+import { createLogger } from '../lib/logger'
 import { getNoteFolderSuggestions } from '../inbox/suggestions'
 import { createValidatedHandler } from './validate'
 import { readFolderConfig, writeFolderConfig, folderExists } from '../vault/folders'
 import { getIndexDatabase as getDataDb } from '../database'
 import { noteCache, noteTags, noteProperties } from '@shared/db/schema/notes-cache'
+
+const logger = createLogger('IPC:FolderView')
 
 // ============================================================================
 // Helpers
@@ -164,7 +167,7 @@ export function registerFolderViewHandlers(): void {
         await writeFolderConfig(input.folderPath, { ...currentConfig, views })
         return { success: true }
       } catch (error) {
-        console.error('[folder-view:set-view] Error:', error)
+        logger.error('set-view error:', error)
         const message = error instanceof Error ? error.message : 'Failed to set view'
         return { success: false, error: message }
       }
@@ -396,7 +399,7 @@ export function registerFolderViewHandlers(): void {
           const suggestions = await getNoteFolderSuggestions(input.noteId)
           return { suggestions }
         } catch (error) {
-          console.error('[folder-view:get-folder-suggestions] Error:', error)
+          logger.error('get-folder-suggestions error:', error)
           // Return empty array on error - not critical, just disables AI suggestions
           return { suggestions: [] }
         }

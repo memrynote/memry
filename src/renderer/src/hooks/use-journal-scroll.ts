@@ -262,18 +262,30 @@ export function useJournalScroll(): UseJournalScrollResult {
   useEffect(() => {
     if (hasScrolledToToday) return
 
+    let cancelled = false
+    let initialScrollTimer: ReturnType<typeof setTimeout> | null = null
+
     // Wait for day cards to be registered
     const checkAndScroll = () => {
+      if (cancelled) return
+
       if (dayCardRefsMap.current.has(today)) {
         scrollToDate(today, false) // Instant scroll on initial load
         setHasScrolledToToday(true)
       } else {
         // Retry after a short delay
-        setTimeout(checkAndScroll, 50)
+        initialScrollTimer = setTimeout(checkAndScroll, 50)
       }
     }
 
     checkAndScroll()
+
+    return () => {
+      cancelled = true
+      if (initialScrollTimer) {
+        clearTimeout(initialScrollTimer)
+      }
+    }
   }, [today, scrollToDate, hasScrolledToToday])
 
   // Memoize the state object

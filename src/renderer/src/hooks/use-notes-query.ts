@@ -22,7 +22,8 @@ import {
   onNoteDeleted,
   onNoteRenamed,
   onNoteMoved,
-  onNoteExternalChange
+  onNoteExternalChange,
+  onTagsChanged
 } from '@/services/notes-service'
 
 // =============================================================================
@@ -217,18 +218,21 @@ export function useNotesList(options: UseNotesListOptions = {}): UseNotesListRes
       void queryClient.invalidateQueries({ queryKey: notesKeys.lists() })
     })
 
+    const unsubUpdated = onNoteUpdated(() => {
+      void queryClient.invalidateQueries({ queryKey: notesKeys.lists() })
+    })
+
     const unsubRenamed = onNoteRenamed(() => {
-      // Title changed, may affect sort order
       void queryClient.invalidateQueries({ queryKey: notesKeys.lists() })
     })
 
     const unsubMoved = onNoteMoved(() => {
-      // Folder changed, invalidate lists
       void queryClient.invalidateQueries({ queryKey: notesKeys.lists() })
     })
 
     return () => {
       unsubCreated()
+      unsubUpdated()
       unsubDeleted()
       unsubRenamed()
       unsubMoved()
@@ -258,6 +262,7 @@ export function useNotesList(options: UseNotesListOptions = {}): UseNotesListRes
  */
 export function useNoteTagsQuery(options: { enabled?: boolean } = {}) {
   const { enabled = true } = options
+  const queryClient = useQueryClient()
 
   const query = useQuery({
     queryKey: notesKeys.tags(),
@@ -269,6 +274,14 @@ export function useNoteTagsQuery(options: { enabled?: boolean } = {}) {
 
   // Memoize tags to avoid recreating array reference
   const tags = useMemo(() => query.data ?? EMPTY_TAGS, [query.data])
+
+  useEffect(() => {
+    const unsubscribe = onTagsChanged(() => {
+      void queryClient.invalidateQueries({ queryKey: notesKeys.tags() })
+    })
+
+    return unsubscribe
+  }, [queryClient])
 
   return {
     tags,
@@ -296,6 +309,24 @@ export function useNoteFoldersQuery(options: { enabled?: boolean } = {}) {
     staleTime: METADATA_STALE_TIME,
     gcTime: NOTE_GC_TIME
   })
+
+  useEffect(() => {
+    const invalidate = () => {
+      void queryClient.invalidateQueries({ queryKey: notesKeys.folders() })
+    }
+
+    const unsubCreated = onNoteCreated(invalidate)
+    const unsubDeleted = onNoteDeleted(invalidate)
+    const unsubMoved = onNoteMoved(invalidate)
+    const unsubRenamed = onNoteRenamed(invalidate)
+
+    return () => {
+      unsubCreated()
+      unsubDeleted()
+      unsubMoved()
+      unsubRenamed()
+    }
+  }, [queryClient])
 
   const createFolderMutation = useMutation({
     mutationFn: (path: string) => notesService.createFolder(path),

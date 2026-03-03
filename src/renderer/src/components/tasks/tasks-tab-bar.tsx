@@ -1,6 +1,8 @@
 import { useCallback, useRef } from 'react'
-import { List, Star, CalendarDays, FolderKanban } from 'lucide-react'
+import { List, Star, CalendarDays, FolderKanban, Plus, Settings } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { Button } from '@/components/ui/button'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 
 // ============================================================================
 // TYPES
@@ -17,6 +19,9 @@ interface TabConfig {
 interface TasksTabBarProps {
   activeTab: TasksInternalTab
   onTabChange: (tab: TasksInternalTab) => void
+  onAddTask?: () => void
+  onProjectSettings?: () => void
+  showProjectSettings?: boolean
   counts: {
     all: number
     today: number
@@ -44,6 +49,9 @@ const tabs: TabConfig[] = [
 export const TasksTabBar = ({
   activeTab,
   onTabChange,
+  onAddTask,
+  onProjectSettings,
+  showProjectSettings,
   counts,
   className
 }: TasksTabBarProps): React.JSX.Element => {
@@ -148,6 +156,44 @@ export const TasksTabBar = ({
             </button>
           )
         })}
+
+        {/* Spacer */}
+        <div className="flex-1" />
+
+        {/* Actions side */}
+        <div className="flex items-center gap-2 py-2">
+          {showProjectSettings && onProjectSettings && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  onClick={onProjectSettings}
+                  className={cn(
+                    'rounded-md p-1.5 text-muted-foreground transition-all duration-200',
+                    'hover:bg-accent hover:text-foreground',
+                    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring'
+                  )}
+                  aria-label="Project settings"
+                >
+                  <Settings className="size-4" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent>Project settings</TooltipContent>
+            </Tooltip>
+          )}
+
+          {onAddTask && (
+            <Button
+              onClick={onAddTask}
+              variant="default"
+              size="sm"
+              className="h-8 gap-1.5 px-3 shadow-sm transition-all duration-200"
+            >
+              <Plus className="size-3.5" aria-hidden="true" />
+              <span>Add Task</span>
+            </Button>
+          )}
+        </div>
       </div>
     </div>
   )

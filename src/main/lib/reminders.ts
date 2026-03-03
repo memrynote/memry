@@ -9,6 +9,7 @@
 
 import { BrowserWindow, Notification } from 'electron'
 import { getDatabase, getIndexDatabase } from '../database'
+import { getStatus } from '../vault'
 import { reminders, reminderStatus } from '@shared/db/schema/reminders'
 import { inboxItems, inboxItemType } from '@shared/db/schema/inbox'
 import { noteCache } from '@shared/db/schema/notes-cache'
@@ -25,6 +26,9 @@ import {
   type ReminderDueEvent
 } from '@shared/contracts/reminders-api'
 import { InboxChannels, type ReminderMetadata } from '@shared/contracts/inbox-api'
+import { createLogger } from './logger'
+
+const logger = createLogger('Reminders')
 
 // ============================================================================
 // Types
@@ -120,10 +124,7 @@ function resolveTargetTitle(targetType: string, targetId: string): string | null
 
     return note?.title || null
   } catch (error) {
-    console.error(
-      `[Reminders] Failed to resolve target title for ${targetType}:${targetId}:`,
-      error
-    )
+    logger.error(`Failed to resolve target title for ${targetType}:${targetId}:`, error)
     return null
   }
 }
@@ -188,9 +189,9 @@ function createReminderInboxItem(reminder: ReminderWithTarget): void {
       }
     })
 
-    console.log(`[Reminders] Created inbox item ${id} for reminder ${reminder.id}`)
+    logger.debug(`Created inbox item ${id} for reminder ${reminder.id}`)
   } catch (error) {
-    console.error('[Reminders] Failed to create inbox item for reminder:', error)
+    logger.error('Failed to create inbox item for reminder:', error)
   }
 }
 
@@ -201,7 +202,7 @@ function createReminderInboxItem(reminder: ReminderWithTarget): void {
 function showDesktopNotification(reminder: ReminderWithTarget): void {
   // Check if notifications are supported
   if (!Notification.isSupported()) {
-    console.log('[Reminders] Desktop notifications not supported')
+    logger.warn('Desktop notifications not supported')
     return
   }
 
@@ -244,9 +245,9 @@ function showDesktopNotification(reminder: ReminderWithTarget): void {
     })
 
     notification.show()
-    console.log(`[Reminders] Showed desktop notification for reminder ${reminder.id}`)
+    logger.debug(`Showed desktop notification for reminder ${reminder.id}`)
   } catch (error) {
-    console.error('[Reminders] Failed to show desktop notification:', error)
+    logger.error('Failed to show desktop notification:', error)
   }
 }
 
@@ -298,7 +299,7 @@ export function createReminder(input: CreateReminderInput): Reminder {
   const result = toReminder(reminder)
   emitEvent(ReminderChannels.events.CREATED, { reminder: result })
 
-  console.log(`[Reminders] Created reminder ${id} for ${input.targetType}:${input.targetId}`)
+  logger.info(`Created reminder ${id} for ${input.targetType}:${input.targetId}`)
   return result
 }
 
@@ -346,7 +347,7 @@ export function updateReminder(input: UpdateReminderInput): Reminder | null {
   const result = toReminder(reminder)
   emitEvent(ReminderChannels.events.UPDATED, { reminder: result })
 
-  console.log(`[Reminders] Updated reminder ${input.id}`)
+  logger.info(`Updated reminder ${input.id}`)
   return result
 }
 
@@ -371,7 +372,7 @@ export function deleteReminder(id: string): boolean {
     targetId: reminder.targetId
   })
 
-  console.log(`[Reminders] Deleted reminder ${id}`)
+  logger.info(`Deleted reminder ${id}`)
   return true
 }
 
@@ -544,7 +545,7 @@ export function dismissReminder(id: string): Reminder | null {
   const result = toReminder(reminder)
   emitEvent(ReminderChannels.events.DISMISSED, { reminder: result })
 
-  console.log(`[Reminders] Dismissed reminder ${id}`)
+  logger.info(`Dismissed reminder ${id}`)
   return result
 }
 
@@ -579,7 +580,7 @@ export function snoozeReminder(input: SnoozeReminderInput): Reminder | null {
   const result = toReminder(reminder)
   emitEvent(ReminderChannels.events.SNOOZED, { reminder: result })
 
-  console.log(`[Reminders] Snoozed reminder ${input.id} until ${input.snoozeUntil}`)
+  logger.info(`Snoozed reminder ${input.id} until ${input.snoozeUntil}`)
   return result
 }
 
@@ -610,7 +611,7 @@ export function bulkDismissReminders(reminderIds: string[]): number {
     }
   }
 
-  console.log(`[Reminders] Bulk dismissed ${dismissedCount} reminders`)
+  logger.info(`Bulk dismissed ${dismissedCount} reminders`)
   return dismissedCount
 }
 
@@ -622,6 +623,8 @@ export function bulkDismissReminders(reminderIds: string[]): number {
  * Process due reminders and emit notifications
  */
 function processDueReminders(): void {
+  if (!getStatus().isOpen) return
+
   try {
     const dueReminders = getDueReminders()
 
@@ -629,7 +632,7 @@ function processDueReminders(): void {
       return
     }
 
-    console.log(`[Reminders] Found ${dueReminders.length} due reminders`)
+    logger.info(`Found ${dueReminders.length} due reminders`)
 
     // Mark reminders as triggered
     const db = getDatabase()
@@ -665,9 +668,9 @@ function processDueReminders(): void {
     }
 
     emitEvent(ReminderChannels.events.DUE, event)
-    console.log(`[Reminders] Emitted due event for ${dueReminders.length} reminders`)
+    logger.debug(`Emitted due event for ${dueReminders.length} reminders`)
   } catch (error) {
-    console.error('[Reminders] Error processing due reminders:', error)
+    logger.error('Error processing due reminders:', error)
   }
 }
 
@@ -677,11 +680,11 @@ function processDueReminders(): void {
  */
 export function startReminderScheduler(): void {
   if (schedulerInterval) {
-    console.warn('[Reminders] Scheduler already running')
+    logger.warn('Scheduler already running')
     return
   }
 
-  console.log('[Reminders] Starting scheduler')
+  logger.info('Starting scheduler')
 
   // Process any reminders that became due while app was closed
   processDueReminders()
@@ -698,7 +701,7 @@ export function stopReminderScheduler(): void {
   if (schedulerInterval) {
     clearInterval(schedulerInterval)
     schedulerInterval = null
-    console.log('[Reminders] Scheduler stopped')
+    logger.info('Scheduler stopped')
   }
 }
 
@@ -728,7 +731,7 @@ export function deleteRemindersForTarget(targetType: string, targetId: string): 
     .run()
 
   if (result.changes > 0) {
-    console.log(`[Reminders] Deleted ${result.changes} reminders for ${targetType}:${targetId}`)
+    logger.info(`Deleted ${result.changes} reminders for ${targetType}:${targetId}`)
   }
 
   return result.changes

@@ -506,15 +506,27 @@ describe('tasks-handlers', () => {
     describe('PROJECT_CREATE handler', () => {
       it('should create a project with default statuses', async () => {
         const mockProject = { id: 'generated-id-123', name: 'New Project' }
+        const mockStatuses = [
+          { id: 's1', name: 'Todo', position: 0 },
+          { id: 's2', name: 'In Progress', position: 1 },
+          { id: 's3', name: 'Done', position: 2 }
+        ]
+        const mockFullProject = { ...mockProject, statuses: mockStatuses }
         ;(projectQueries.insertProject as Mock).mockReturnValue(mockProject)
+        ;(projectQueries.getProjectWithStatuses as Mock).mockReturnValue(mockFullProject)
 
         const result = await invokeHandler(TasksChannels.invoke.PROJECT_CREATE, {
           name: 'New Project'
         })
 
         expect(result.success).toBe(true)
-        expect(result.project).toEqual(mockProject)
+        expect(result.project).toEqual(mockFullProject)
+        expect(result.project.statuses).toHaveLength(3)
         expect(projectQueries.createDefaultStatuses).toHaveBeenCalled()
+        expect(projectQueries.getProjectWithStatuses).toHaveBeenCalledWith(
+          expect.anything(),
+          'generated-id-123'
+        )
       })
     })
 
@@ -530,9 +542,15 @@ describe('tasks-handlers', () => {
     })
 
     describe('PROJECT_UPDATE handler', () => {
-      it('should update a project', async () => {
+      it('should update a project and include statuses', async () => {
         const mockProject = { id: 'project1', name: 'Updated Name' }
+        const mockStatuses = [
+          { id: 's1', name: 'Todo', position: 0 },
+          { id: 's2', name: 'Done', position: 1 }
+        ]
+        const mockFullProject = { ...mockProject, statuses: mockStatuses }
         ;(projectQueries.updateProject as Mock).mockReturnValue(mockProject)
+        ;(projectQueries.getProjectWithStatuses as Mock).mockReturnValue(mockFullProject)
 
         const result = await invokeHandler(TasksChannels.invoke.PROJECT_UPDATE, {
           id: 'project1',
@@ -540,6 +558,12 @@ describe('tasks-handlers', () => {
         })
 
         expect(result.success).toBe(true)
+        expect(result.project).toEqual(mockFullProject)
+        expect(result.project.statuses).toHaveLength(2)
+        expect(projectQueries.getProjectWithStatuses).toHaveBeenCalledWith(
+          expect.anything(),
+          'project1'
+        )
       })
     })
 

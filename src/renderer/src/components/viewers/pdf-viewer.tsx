@@ -6,6 +6,7 @@
  */
 
 import { useState, useCallback, useRef } from 'react'
+import { extractErrorMessage } from '@/lib/ipc-error'
 import { Document, Page, pdfjs } from 'react-pdf'
 import 'react-pdf/dist/Page/AnnotationLayer.css'
 import 'react-pdf/dist/Page/TextLayer.css'
@@ -59,7 +60,7 @@ export function PdfViewer({ src, className }: PdfViewerProps) {
   }, [])
 
   const handleLoadError = useCallback((err: Error) => {
-    setError(err.message)
+    setError(extractErrorMessage(err, 'Failed to load PDF'))
     setLoading(false)
   }, [])
 

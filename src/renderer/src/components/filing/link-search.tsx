@@ -4,6 +4,9 @@ import { Search, FileText, Folder, Link2, X, Loader2 } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
 import type { LinkedNote } from '@/types'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('Component:LinkSearch')
 
 // Debounce hook for search
 function useDebounce<T>(value: T, delay: number): T {
@@ -71,6 +74,13 @@ const SearchResult = ({ note, onSelect, isHighlighted }: SearchResultProps): Rea
         isHighlighted ? 'bg-[var(--muted)]' : 'hover:bg-[var(--muted)]/50'
       )}
       onClick={handleClick}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault()
+          handleClick()
+        }
+      }}
+      tabIndex={0}
       role="option"
       aria-selected={isHighlighted}
     >
@@ -102,13 +112,13 @@ const LinkSearch = ({ linkedNotes, onLinkedNotesChange }: LinkSearchProps): Reac
     const searchNotes = async (): Promise<void> => {
       if (!debouncedQuery.trim()) {
         setSearchResults([])
+        setHighlightedIndex(0)
         return
       }
 
       setIsSearching(true)
       try {
         const results = await window.api.search.searchNotes(debouncedQuery, { limit: 10 })
-        // Convert search results to LinkedNote format, excluding already linked ones
         const linkedIds = new Set(linkedNotes.map((n) => n.id))
         const notes: LinkedNote[] = results
           .filter((r: { id: string }) => !linkedIds.has(r.id))
@@ -118,9 +128,11 @@ const LinkSearch = ({ linkedNotes, onLinkedNotesChange }: LinkSearchProps): Reac
             type: 'note' as const
           }))
         setSearchResults(notes)
+        setHighlightedIndex(0)
       } catch (error) {
-        console.error('Error searching notes:', error)
+        log.error('Error searching notes', error)
         setSearchResults([])
+        setHighlightedIndex(0)
       } finally {
         setIsSearching(false)
       }
@@ -148,11 +160,6 @@ const LinkSearch = ({ linkedNotes, onLinkedNotesChange }: LinkSearchProps): Reac
     document.addEventListener('mousedown', handleClickOutside)
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
-
-  // Reset highlighted index when filtered results change
-  useEffect(() => {
-    setHighlightedIndex(0)
-  }, [filteredNotes])
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>): void => {
     setSearchQuery(e.target.value)

@@ -1,4 +1,27 @@
 import { ElectronAPI } from '@electron-toolkit/preload'
+import type {
+  SyncStatusChangedEvent,
+  ItemSyncedEvent,
+  ConflictDetectedEvent,
+  LinkingRequestEvent,
+  LinkingApprovedEvent,
+  LinkingFinalizedEvent,
+  UploadProgressEvent,
+  DownloadProgressEvent,
+  InitialSyncProgressEvent,
+  QueueClearedEvent,
+  SyncPausedEvent,
+  SyncResumedEvent,
+  KeyRotationProgressEvent,
+  SessionExpiredEvent,
+  OtpDetectedEvent,
+  OAuthCallbackEvent,
+  OAuthErrorEvent,
+  ClockSkewWarningEvent,
+  DeviceRevokedEvent,
+  SecurityWarningEvent,
+  CertificatePinFailedEvent
+} from '../shared/contracts/ipc-sync'
 
 // Vault types (mirrored from contracts for preload compatibility)
 export interface VaultInfo {
@@ -250,6 +273,7 @@ export interface NoteListItem {
   wordCount: number
   snippet?: string
   emoji?: string | null // T028: Emoji icon for visual identification
+  localOnly?: boolean
   fileType?: 'markdown' | 'pdf' | 'image' | 'audio' | 'video' // File type discriminator
   mimeType?: string | null // MIME type (e.g., 'application/pdf')
   fileSize?: number | null // File size in bytes
@@ -937,9 +961,8 @@ export interface NotesClientAPI {
   exists(titleOrPath: string): Promise<boolean>
   openExternal(id: string): Promise<void>
   revealInFinder(id: string): Promise<void>
-  // T020: Properties API
-  getProperties(noteId: string): Promise<PropertyValue[]>
-  setProperties(noteId: string, properties: Record<string, unknown>): Promise<SetPropertiesResponse>
+  // Property Definitions API (T017-T018)
+  // Note: get/set properties moved to unified PropertiesClientAPI
   getPropertyDefinitions(): Promise<PropertyDefinition[]>
   createPropertyDefinition(
     input: CreatePropertyDefinitionInput
@@ -979,8 +1002,40 @@ export interface NotesClientAPI {
   importFiles(
     sourcePaths: string[],
     targetFolder?: string
-  ): Promise<{ success: boolean; imported: number; failed: number; errors: string[] }>
+  ): Promise<{
+    success: boolean
+    imported: number
+    failed: number
+    errors: string[]
+    importedFiles: Array<{ destPath: string; filename: string; fileType: string }>
+  }>
   showImportDialog(): Promise<{ canceled: boolean; filePaths: string[] }>
+  setLocalOnly(
+    id: string,
+    localOnly: boolean
+  ): Promise<{ success: boolean; note: Note | null; error?: string }>
+  getLocalOnlyCount(): Promise<{ count: number }>
+}
+
+// Unified Properties API (works with notes and journal entries)
+export interface PropertiesClientAPI {
+  /**
+   * Get properties for any entity (note or journal entry) by ID.
+   */
+  get(entityId: string): Promise<PropertyValue[]>
+  /**
+   * Set properties for any entity (note or journal entry) by ID.
+   */
+  set(entityId: string, properties: Record<string, unknown>): Promise<SetPropertiesResponse>
+  /**
+   * Rename a property for a specific entity (note-only scope).
+   * Does not propagate to other entities - only affects this entity's frontmatter.
+   */
+  rename(
+    entityId: string,
+    oldName: string,
+    newName: string
+  ): Promise<{ success: true } | { success: false; error: string }>
 }
 
 // Tasks client API interface
@@ -1653,6 +1708,14 @@ export interface ContextMenuItem {
 // Settings types
 export interface JournalSettings {
   defaultTemplate: string | null
+  /** Whether to show the Schedule section in the journal sidebar */
+  showSchedule: boolean
+  /** Whether to show the Tasks section in the journal sidebar */
+  showTasks: boolean
+  /** Whether to show the AI Connections panel in the journal sidebar */
+  showAIConnections: boolean
+  /** Whether to show the stats footer at the bottom of journal entries */
+  showStatsFooter: boolean
 }
 
 export interface AISettings {
@@ -1996,6 +2059,261 @@ export interface SettingsClientAPI {
   ): Promise<{ success: boolean; error?: string }>
 }
 
+// Sync Auth API
+interface SyncAuthClientAPI {
+  requestOtp: (input: { email: string }) => Promise<{
+    success: boolean
+    expiresIn?: number
+    message?: string
+    error?: string
+  }>
+  verifyOtp: (input: { email: string; code: string }) => Promise<{
+    success: boolean
+    isNewUser?: boolean
+    needsSetup?: boolean
+    needsRecoverySetup?: boolean
+    needsRecoveryInput?: boolean
+    recoveryPhrase?: string
+    deviceId?: string
+    error?: string
+  }>
+  resendOtp: (input: { email: string }) => Promise<{
+    success: boolean
+    expiresIn?: number
+    message?: string
+    error?: string
+  }>
+  initOAuth: (input: { provider: 'google' }) => Promise<{
+    state: string
+  }>
+  refreshToken: () => Promise<{
+    success: boolean
+    error?: string
+  }>
+  logout: () => Promise<{
+    success: boolean
+    keychainWarning?: string
+  }>
+}
+
+// Sync Setup API
+interface SyncSetupClientAPI {
+  setupFirstDevice: (input: { provider: 'google'; oauthToken: string; state: string }) => Promise<{
+    success: boolean
+    needsRecoverySetup?: boolean
+    deviceId?: string
+    needsRecoveryInput?: boolean
+    error?: string
+  }>
+  setupNewAccount: () => Promise<{
+    success: boolean
+    deviceId?: string
+    error?: string
+  }>
+  confirmRecoveryPhrase: (input: { confirmed: boolean }) => Promise<{
+    success: boolean
+  }>
+  getRecoveryPhrase: () => Promise<string | null>
+}
+
+// Device Linking API
+interface SyncLinkingClientAPI {
+  generateLinkingQr: () => Promise<{
+    sessionId?: string
+    qrData?: string
+    expiresAt?: number
+  }>
+  linkViaQr: (input: { qrData: string; provider?: string; oauthToken?: string }) => Promise<{
+    success: boolean
+    status?: 'waiting_approval' | 'approved' | 'error'
+    verificationCode?: string
+    error?: string
+  }>
+  linkViaRecovery: (input: { recoveryPhrase: string }) => Promise<{
+    success: boolean
+    deviceId?: string
+    error?: string
+  }>
+  approveLinking: (input: { sessionId: string }) => Promise<{
+    success: boolean
+    error?: string
+  }>
+  getLinkingSas: (input: { sessionId: string }) => Promise<{
+    verificationCode?: string
+    error?: string
+  }>
+  completeLinkingQr: (input: { sessionId: string }) => Promise<{
+    success: boolean
+    deviceId?: string
+    error?: string
+  }>
+}
+
+// Device Management API
+interface SyncDevicesClientAPI {
+  getDevices: () => Promise<{
+    devices: Array<{
+      id: string
+      name: string
+      platform: string
+      isCurrentDevice: boolean
+      lastSyncAt?: number
+      linkedAt: number
+    }>
+    email?: string
+  }>
+  removeDevice: (input: { deviceId: string }) => Promise<{
+    success: boolean
+    error?: string
+  }>
+  renameDevice: (input: { deviceId: string; newName: string }) => Promise<{
+    success: boolean
+    error?: string
+  }>
+}
+
+// Sync Operations API
+interface SyncOpsClientAPI {
+  getStatus: () => Promise<{
+    status: string
+    lastSyncAt?: number
+    pendingCount: number
+    error?: string
+    offlineSince?: number
+  }>
+  triggerSync: () => Promise<{
+    success: boolean
+    error?: string
+  }>
+  getHistory: (input: { limit?: number; offset?: number }) => Promise<{
+    entries: Array<{
+      id: string
+      type: string
+      direction: string
+      itemCount: number
+      details: string
+      durationMs?: number
+      createdAt: number
+    }>
+    total: number
+  }>
+  getQueueSize: () => Promise<{
+    pending: number
+    failed: number
+  }>
+  pause: () => Promise<{
+    success: boolean
+    wasPaused: boolean
+  }>
+  resume: () => Promise<{
+    success: boolean
+    pendingCount: number
+  }>
+  updateSyncedSetting: (
+    fieldPath: string,
+    value: unknown
+  ) => Promise<{ success: boolean; error?: string }>
+  getSyncedSettings: () => Promise<
+    import('../shared/contracts/settings-sync').SyncedSettings | null
+  >
+  getStorageBreakdown: () => Promise<{
+    used: number
+    limit: number
+    breakdown: {
+      notes: number
+      attachments: number
+      crdt: number
+      other: number
+    }
+  } | null>
+}
+
+// Crypto API
+interface CryptoClientAPI {
+  encryptItem: (input: {
+    itemId: string
+    type: 'note' | 'task' | 'project' | 'settings'
+    content: Record<string, unknown>
+    operation?: 'create' | 'update' | 'delete'
+    deletedAt?: number
+    metadata?: Record<string, unknown>
+  }) => Promise<{
+    encryptedKey: string
+    keyNonce: string
+    encryptedData: string
+    dataNonce: string
+    signature: string
+  }>
+  decryptItem: (input: {
+    itemId: string
+    type: 'note' | 'task' | 'project' | 'settings'
+    encryptedKey: string
+    keyNonce: string
+    encryptedData: string
+    dataNonce: string
+    signature: string
+    operation?: 'create' | 'update' | 'delete'
+    deletedAt?: number
+    metadata?: Record<string, unknown>
+  }) => Promise<{
+    success: boolean
+    content?: Record<string, unknown>
+    error?: string
+  }>
+  verifySignature: (input: {
+    itemId: string
+    type: 'note' | 'task' | 'project' | 'settings'
+    encryptedKey: string
+    keyNonce: string
+    encryptedData: string
+    dataNonce: string
+    signature: string
+    operation?: 'create' | 'update' | 'delete'
+    deletedAt?: number
+    metadata?: Record<string, unknown>
+  }) => Promise<{
+    valid: boolean
+  }>
+  rotateKeys: (input: { confirm: boolean }) => Promise<{
+    success: boolean
+    newRecoveryPhrase?: string
+    error?: string
+  }>
+  getRotationProgress: () => Promise<{
+    inProgress: boolean
+    phase?: string
+    processedItems?: number
+    totalItems?: number
+  }>
+}
+
+// Attachment Sync API
+interface SyncAttachmentsClientAPI {
+  upload: (input: { noteId: string; filePath: string }) => Promise<{
+    success: boolean
+    sessionId?: string
+    attachmentId?: string
+    error?: string
+  }>
+  getUploadProgress: (input: { sessionId: string }) => Promise<{
+    status: string
+    uploadedChunks: number
+    totalChunks: number
+    progress: number
+  }>
+  download: (input: { attachmentId: string; targetPath: string }) => Promise<{
+    success: boolean
+    filePath?: string
+    error?: string
+  }>
+  getDownloadProgress: (input: { attachmentId: string }) => Promise<{
+    status: string
+    downloadedChunks: number
+    totalChunks: number
+    progress: number
+  }>
+}
+
 // Window controls API
 interface WindowAPI {
   windowMinimize: () => void
@@ -2005,8 +2323,10 @@ interface WindowAPI {
 
 // Full API interface
 interface API extends WindowAPI {
+  getFileDropPaths: (files: File[]) => string[]
   vault: VaultClientAPI
   notes: NotesClientAPI
+  properties: PropertiesClientAPI
   search: SearchClientAPI
   tasks: TasksClientAPI
   savedFilters: SavedFiltersClientAPI
@@ -2019,6 +2339,23 @@ interface API extends WindowAPI {
   reminders: RemindersClientAPI
   quickCapture: QuickCaptureClientAPI
   folderView: FolderViewClientAPI
+  syncAuth: SyncAuthClientAPI
+  syncSetup: SyncSetupClientAPI
+  syncLinking: SyncLinkingClientAPI
+  syncDevices: SyncDevicesClientAPI
+  syncOps: SyncOpsClientAPI
+  crypto: CryptoClientAPI
+  syncAttachments: SyncAttachmentsClientAPI
+  syncCrdt: {
+    openDoc: (input: { noteId: string }) => Promise<void>
+    closeDoc: (input: { noteId: string }) => Promise<void>
+    applyUpdate: (input: { noteId: string; update: number[] }) => Promise<void>
+    syncStep1: (input: {
+      noteId: string
+      stateVector: number[]
+    }) => Promise<{ diff: number[]; stateVector: number[] }>
+    syncStep2: (input: { noteId: string; diff: number[] }) => Promise<void>
+  }
   /** Show a native OS context menu and return the selected item id, or null if dismissed */
   showContextMenu: (items: ContextMenuItem[]) => Promise<string | null>
   // Vault event subscriptions
@@ -2105,6 +2442,33 @@ interface API extends WindowAPI {
   onReminderClicked: (callback: (event: ReminderClickedEvent) => void) => () => void
   // Folder View event subscriptions
   onFolderViewConfigUpdated: (callback: (event: FolderViewConfigUpdatedEvent) => void) => () => void
+  // Sync event subscriptions
+  onSyncStatusChanged: (callback: (event: SyncStatusChangedEvent) => void) => () => void
+  onItemSynced: (callback: (event: ItemSyncedEvent) => void) => () => void
+  onConflictDetected: (callback: (event: ConflictDetectedEvent) => void) => () => void
+  onLinkingRequest: (callback: (event: LinkingRequestEvent) => void) => () => void
+  onLinkingApproved: (callback: (event: LinkingApprovedEvent) => void) => () => void
+  onLinkingFinalized: (callback: (event: LinkingFinalizedEvent) => void) => () => void
+  onUploadProgress: (callback: (event: UploadProgressEvent) => void) => () => void
+  onDownloadProgress: (callback: (event: DownloadProgressEvent) => void) => () => void
+  onInitialSyncProgress: (callback: (event: InitialSyncProgressEvent) => void) => () => void
+  onQueueCleared: (callback: (event: QueueClearedEvent) => void) => () => void
+  onSyncPaused: (callback: (event: SyncPausedEvent) => void) => () => void
+  onSyncResumed: (callback: (event: SyncResumedEvent) => void) => () => void
+  onKeyRotationProgress: (callback: (event: KeyRotationProgressEvent) => void) => () => void
+  onSessionExpired: (callback: (event: SessionExpiredEvent) => void) => () => void
+  onDeviceRevoked: (callback: (event: DeviceRevokedEvent) => void) => () => void
+  onOtpDetected: (callback: (event: OtpDetectedEvent) => void) => () => void
+  onOAuthCallback: (callback: (event: OAuthCallbackEvent) => void) => () => void
+  onOAuthError: (callback: (event: OAuthErrorEvent) => void) => () => void
+  onClockSkewWarning: (callback: (event: ClockSkewWarningEvent) => void) => () => void
+  onSecurityWarning: (callback: (event: SecurityWarningEvent) => void) => () => void
+  onCertificatePinFailed: (callback: (event: CertificatePinFailedEvent) => void) => () => void
+  onCrdtStateChanged: (
+    callback: (data: { noteId: string; update: number[]; origin: string }) => void
+  ) => () => void
+  onFlushRequested: (callback: () => void) => () => void
+  notifyFlushDone: () => void
 }
 
 declare global {

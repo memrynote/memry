@@ -6,13 +6,14 @@
  */
 
 import { useState, useCallback, useEffect, useRef, useMemo } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { ExportDialog } from '@/components/note/export-dialog'
 import { VersionHistory } from '@/components/note/version-history'
 import { EditorErrorBoundary } from '@/components/note/editor-error-boundary'
 import { NoteLayout, HeadingItem, ContentArea, HeadingInfo, Block } from '@/components/note'
 import { NoteTitle } from '@/components/note/note-title'
 import { TagsRow, Tag } from '@/components/note/tags-row'
-import { InfoSection, Property, NewProperty, PropertyType } from '@/components/note/info-section'
+import { InfoSection } from '@/components/note/info-section'
 import { BacklinksSection, Backlink } from '@/components/note/backlinks'
 import { LinkedTasksSection } from '@/components/note/linked-tasks'
 import {
@@ -22,23 +23,29 @@ import {
   useNoteTagsQuery,
   type Note
 } from '@/hooks/use-notes-query'
-import { useNoteProperties } from '@/hooks/use-note-properties'
+import { usePropertySection, type PropertySectionAction } from '@/hooks/use-property-section'
 import { useTasksLinkedToNote } from '@/hooks/use-tasks-linked-to-note'
-import { onNoteDeleted, onNoteUpdated } from '@/services/notes-service'
+import { notesService, onNoteDeleted, onNoteUpdated, onNoteRenamed } from '@/services/notes-service'
 import { resolveWikiLink } from '@/lib/wikilink-resolver'
 import { useTabs, useActiveTab } from '@/contexts/tabs'
-import { MoreHorizontal, History, Bookmark } from 'lucide-react'
+import { MoreHorizontal, History, Bookmark, Monitor } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu'
 import { toast } from 'sonner'
+import { registerPendingSave, unregisterPendingSave } from '@/lib/save-registry'
 import { useIsBookmarked } from '@/hooks/use-bookmarks'
 import { NoteReminderButton } from '@/components/note/note-reminder-button'
 import { useNoteEditorSettings } from '@/hooks/use-note-editor-settings'
+import { extractErrorMessage } from '@/lib/ipc-error'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('Page:Note')
 
 // ============================================================================
 // Types
@@ -46,23 +53,6 @@ import { useNoteEditorSettings } from '@/hooks/use-note-editor-settings'
 
 interface NotePageProps {
   noteId?: string
-}
-
-// Default values for property types when creating new properties
-function getDefaultValueForType(type: PropertyType): unknown {
-  switch (type) {
-    case 'checkbox':
-      return false
-    case 'number':
-    case 'rating':
-      return 0
-    case 'multiSelect':
-      return []
-    case 'date':
-      return null
-    default:
-      return ''
-  }
 }
 
 // ============================================================================
@@ -111,8 +101,9 @@ export function NotePage({ noteId }: NotePageProps) {
   const { incoming: rawBacklinks, isLoading: backlinksLoading } = useNoteLinksQuery(noteId ?? null)
   const { tasks: linkedTasks, isLoading: linkedTasksLoading } = useTasksLinkedToNote(noteId ?? null)
   const { tags: allAvailableTags } = useNoteTagsQuery()
-  const { openTab, setTabDeleted } = useTabs()
+  const { openTab, setTabDeleted, updateTabTitleByEntityId } = useTabs()
   const activeTab = useActiveTab()
+  const queryClient = useQueryClient()
 
   // Extract highlight info from tab viewState (from reminder navigation)
   const initialHighlight = useMemo(() => {
@@ -134,20 +125,6 @@ export function NotePage({ noteId }: NotePageProps) {
     return undefined
   }, [activeTab?.viewState])
 
-  // Properties from backend
-  const {
-    properties: backendProperties,
-    updateProperty: updateBackendProperty,
-    addProperty: addBackendProperty,
-    removeProperty: removeBackendProperty
-  } = useNoteProperties(noteId ?? null)
-
-  // Bookmark state
-  const { isBookmarked, toggle: toggleBookmark } = useIsBookmarked('note', noteId ?? '')
-
-  // Editor settings (toolbar mode)
-  const { settings: editorSettings } = useNoteEditorSettings()
-
   // Convert query error to string
   const error = noteError?.message ?? null
 
@@ -159,37 +136,43 @@ export function NotePage({ noteId }: NotePageProps) {
   const [isVersionHistoryOpen, setIsVersionHistoryOpen] = useState(false)
   const [externalUpdateCount, setExternalUpdateCount] = useState(0)
 
+  const handlePropertyBlocked = useCallback((action: PropertySectionAction) => {
+    const messages: Record<PropertySectionAction, string> = {
+      update: 'Cannot update property - this note was deleted',
+      add: 'Cannot add property - this note was deleted',
+      remove: 'Cannot delete property - this note was deleted',
+      rename: 'Cannot rename property - this note was deleted',
+      reorder: 'Cannot reorder properties - this note was deleted'
+    }
+    toast.error(messages[action])
+  }, [])
+
+  const {
+    properties,
+    handlePropertyChange,
+    handleAddProperty,
+    handleDeleteProperty,
+    handlePropertyNameChange,
+    handlePropertyOrderChange
+  } = usePropertySection({
+    entityId: noteId ?? null,
+    canEdit: () => !isDeleted,
+    onBlocked: handlePropertyBlocked,
+    includeExplicitType: true
+  })
+
+  // Bookmark state
+  const { isBookmarked, toggle: toggleBookmark } = useIsBookmarked('note', noteId ?? '')
+
+  // Editor settings (toolbar mode)
+  const { settings: editorSettings } = useNoteEditorSettings()
+
   // Content tracking for change detection
   const lastSavedContent = useRef<string>('')
 
   // Refs for debouncing
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null)
-
-  // Type mapping for backend PropertyValue → UI Property
-  const mapPropertyType = useCallback((backendType: string): PropertyType => {
-    const typeMap: Record<string, PropertyType> = {
-      text: 'text',
-      number: 'number',
-      checkbox: 'checkbox',
-      date: 'date',
-      select: 'select',
-      multiselect: 'multiSelect',
-      url: 'url',
-      rating: 'rating'
-    }
-    return typeMap[backendType] ?? 'text'
-  }, [])
-
-  // Convert backend properties to UI format
-  const properties: Property[] = useMemo(() => {
-    return backendProperties.map((prop) => ({
-      id: prop.name,
-      name: prop.name,
-      type: mapPropertyType(prop.type),
-      value: prop.value,
-      isCustom: true
-    }))
-  }, [backendProperties, mapPropertyType])
+  const pendingMarkdownRef = useRef<string | null>(null)
 
   // Compute document stats for the Info tab in OutlineInfoPanel
   const documentStats = useMemo(() => {
@@ -215,14 +198,39 @@ export function NotePage({ noteId }: NotePageProps) {
     setIsDeleted(false)
   }, [note?.id, note?.content])
 
-  // Cleanup save timeout on unmount
+  // Stable ref so cleanup can always call the latest mutateAsync
+  const updateNoteRef = useRef(updateNote.mutateAsync)
+  updateNoteRef.current = updateNote.mutateAsync
+
+  // Register with save registry + flush on unmount
   useEffect(() => {
+    if (!noteId) return
+
+    const registryKey = `note-page:${noteId}`
+
+    registerPendingSave(registryKey, async () => {
+      const pending = pendingMarkdownRef.current
+      if (pending !== null) {
+        pendingMarkdownRef.current = null
+        await updateNoteRef.current({ id: noteId, content: pending })
+      }
+    })
+
     return () => {
       if (saveTimeoutRef.current) {
         clearTimeout(saveTimeoutRef.current)
+        saveTimeoutRef.current = null
       }
+
+      const pending = pendingMarkdownRef.current
+      if (pending !== null) {
+        pendingMarkdownRef.current = null
+        void updateNoteRef.current({ id: noteId, content: pending })
+      }
+
+      unregisterPendingSave(registryKey)
     }
-  }, [])
+  }, [noteId])
 
   // Listen for note deletion events
   useEffect(() => {
@@ -242,6 +250,19 @@ export function NotePage({ noteId }: NotePageProps) {
       unsubDeleted()
     }
   }, [noteId, setTabDeleted])
+
+  // Listen for sync-driven rename events to update tab title
+  useEffect(() => {
+    if (!noteId) return
+
+    const unsub = onNoteRenamed((event) => {
+      if (event.id === noteId) {
+        updateTabTitleByEntityId(noteId, event.newTitle)
+      }
+    })
+
+    return unsub
+  }, [noteId, updateTabTitleByEntityId])
 
   // Listen for external note updates (file changed outside app)
   // Track if we're currently saving to ignore our own updates
@@ -374,6 +395,8 @@ export function NotePage({ noteId }: NotePageProps) {
       // Skip if content hasn't changed
       if (markdown === lastSavedContent.current) return
 
+      pendingMarkdownRef.current = markdown
+
       // Clear previous timeout
       if (saveTimeoutRef.current) {
         clearTimeout(saveTimeoutRef.current)
@@ -385,8 +408,9 @@ export function NotePage({ noteId }: NotePageProps) {
         try {
           await updateNote.mutateAsync({ id: noteId, content: markdown })
           lastSavedContent.current = markdown
+          pendingMarkdownRef.current = null
         } catch (err) {
-          console.error('Failed to save note:', err)
+          log.error('Failed to save note:', err)
         } finally {
           isSavingRef.current = false
         }
@@ -412,7 +436,7 @@ export function NotePage({ noteId }: NotePageProps) {
         await renameNote.mutateAsync({ id: noteId, newTitle })
         // Note will be updated via TanStack Query cache invalidation
       } catch (err) {
-        console.error('Failed to rename note:', err)
+        log.error('Failed to rename note:', err)
       }
     },
     [noteId, note, renameNote.mutateAsync, isDeleted]
@@ -432,7 +456,7 @@ export function NotePage({ noteId }: NotePageProps) {
         await updateNote.mutateAsync({ id: noteId, emoji: newEmoji })
         // Note will be updated via TanStack Query cache invalidation
       } catch (err) {
-        console.error('Failed to update emoji:', err)
+        log.error('Failed to update emoji:', err)
         toast.error('Failed to update emoji')
       }
     },
@@ -456,7 +480,7 @@ export function NotePage({ noteId }: NotePageProps) {
           await updateNote.mutateAsync({ id: noteId, tags: newTags })
           // Note will be updated via TanStack Query cache invalidation
         } catch (err) {
-          console.error('Failed to add tag:', err)
+          log.error('Failed to add tag:', err)
         }
       }
     },
@@ -478,7 +502,7 @@ export function NotePage({ noteId }: NotePageProps) {
           await updateNote.mutateAsync({ id: noteId, tags: newTags })
           // Note will be updated via TanStack Query cache invalidation
         } catch (err) {
-          console.error('Failed to create tag:', err)
+          log.error('Failed to create tag:', err)
         }
       }
     },
@@ -499,71 +523,30 @@ export function NotePage({ noteId }: NotePageProps) {
         await updateNote.mutateAsync({ id: noteId, tags: newTags })
         // Note will be updated via TanStack Query cache invalidation
       } catch (err) {
-        console.error('Failed to remove tag:', err)
+        log.error('Failed to remove tag:', err)
       }
     },
     [noteId, note, updateNote.mutateAsync, isDeleted]
   )
 
-  // Property handlers - wired to backend
-  const handlePropertyChange = useCallback(
-    async (propertyId: string, value: unknown) => {
-      console.log('[NotePage] handlePropertyChange called:', { propertyId, value, noteId })
+  // Local-only toggle
+  const handleToggleLocalOnly = useCallback(
+    async (value: boolean) => {
+      if (!noteId) return
       if (isDeleted) {
-        toast.error('Cannot update property - this note was deleted')
+        toast.error('Cannot change local-only — this note was deleted')
         return
       }
       try {
-        await updateBackendProperty(propertyId, value)
-        console.log('[NotePage] Property updated successfully')
+        await notesService.setLocalOnly(noteId, value)
+        refetchNote()
+        queryClient.invalidateQueries({ queryKey: ['notes', 'localOnlyCount'] })
+        toast.success(value ? 'Note set to local only' : 'Note will sync to cloud')
       } catch (err) {
-        console.error('[NotePage] Failed to update property:', err)
-        toast.error('Failed to update property')
+        toast.error(extractErrorMessage(err, 'Failed to toggle local only'))
       }
     },
-    [updateBackendProperty, isDeleted, noteId]
-  )
-
-  const handleAddProperty = useCallback(
-    async (newProp: NewProperty) => {
-      console.log('[NotePage] handleAddProperty called:', { newProp, noteId })
-      if (isDeleted) {
-        toast.error('Cannot add property - this note was deleted')
-        return
-      }
-      // Get default value based on type
-      const defaultValue = getDefaultValueForType(newProp.type)
-      console.log('[NotePage] Adding property with default value:', {
-        name: newProp.name,
-        defaultValue
-      })
-      try {
-        await addBackendProperty(newProp.name, defaultValue)
-        console.log('[NotePage] Property added successfully')
-      } catch (err) {
-        console.error('[NotePage] Failed to add property:', err)
-        toast.error('Failed to add property')
-      }
-    },
-    [addBackendProperty, isDeleted, noteId]
-  )
-
-  const handleDeleteProperty = useCallback(
-    async (propertyId: string) => {
-      console.log('[NotePage] handleDeleteProperty called:', { propertyId, noteId })
-      if (isDeleted) {
-        toast.error('Cannot delete property - this note was deleted')
-        return
-      }
-      try {
-        await removeBackendProperty(propertyId)
-        console.log('[NotePage] Property deleted successfully')
-      } catch (err) {
-        console.error('[NotePage] Failed to delete property:', err)
-        toast.error('Failed to delete property')
-      }
-    },
-    [removeBackendProperty, isDeleted, noteId]
+    [noteId, isDeleted, refetchNote, queryClient]
   )
 
   // Link handlers
@@ -637,7 +620,7 @@ export function NotePage({ noteId }: NotePageProps) {
             break
         }
       } catch (err) {
-        console.error('[NotePage] Failed to resolve wiki link:', err)
+        log.error('Failed to resolve wiki link:', err)
         toast.error('Failed to open linked item')
       }
     },
@@ -743,6 +726,13 @@ export function NotePage({ noteId }: NotePageProps) {
               <DropdownMenuItem onClick={() => setIsExportDialogOpen(true)}>
                 Export
               </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                onClick={() => handleToggleLocalOnly(!(note.frontmatter.localOnly ?? false))}
+              >
+                <Monitor className="mr-2 h-4 w-4" />
+                {note.frontmatter.localOnly ? 'Disable local only' : 'Set local only'}
+              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
@@ -786,6 +776,8 @@ export function NotePage({ noteId }: NotePageProps) {
                 isExpanded={isInfoExpanded}
                 onToggleExpand={() => setIsInfoExpanded(!isInfoExpanded)}
                 onPropertyChange={handlePropertyChange}
+                onPropertyNameChange={handlePropertyNameChange}
+                onPropertyOrderChange={handlePropertyOrderChange}
                 onAddProperty={handleAddProperty}
                 onDeleteProperty={handleDeleteProperty}
                 disabled={isDeleted}
@@ -795,6 +787,7 @@ export function NotePage({ noteId }: NotePageProps) {
 
           {/* Main content - BlockNote Editor with Markdown */}
           <div
+            role="presentation"
             className="editor-click-area min-h-[400px] relative"
             onMouseDown={(e) => {
               const target = e.target as HTMLElement
@@ -819,7 +812,7 @@ export function NotePage({ noteId }: NotePageProps) {
             <EditorErrorBoundary
               noteId={noteId}
               onRecover={refetchNote}
-              onError={(error) => console.error('[NotePage] Editor error:', error)}
+              onError={(error) => log.error('Editor error:', error)}
             >
               <ContentArea
                 key={`${noteId}-${externalUpdateCount}`}

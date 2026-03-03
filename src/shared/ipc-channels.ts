@@ -73,10 +73,6 @@ export const NotesChannels = {
     OPEN_EXTERNAL: 'notes:open-external',
     /** Reveal note in file explorer */
     REVEAL_IN_FINDER: 'notes:reveal-in-finder',
-    /** Get properties for a note (T015) */
-    GET_PROPERTIES: 'notes:get-properties',
-    /** Set properties for a note (T016) */
-    SET_PROPERTIES: 'notes:set-properties',
     /** Get all property definitions (T017) */
     GET_PROPERTY_DEFINITIONS: 'notes:get-property-definitions',
     /** Create a property definition (T018) */
@@ -120,7 +116,11 @@ export const NotesChannels = {
     /** Import files from external paths into the vault */
     IMPORT_FILES: 'notes:import-files',
     /** Open a file dialog to select files for import */
-    SHOW_IMPORT_DIALOG: 'notes:show-import-dialog'
+    SHOW_IMPORT_DIALOG: 'notes:show-import-dialog',
+    /** Toggle local-only flag (excludes note from sync) */
+    SET_LOCAL_ONLY: 'notes:set-local-only',
+    /** Get count of local-only notes */
+    GET_LOCAL_ONLY_COUNT: 'notes:get-local-only-count'
   },
   events: {
     /** Note was created (externally or internally) */
@@ -337,6 +337,24 @@ export const TemplatesChannels = {
     DELETED: 'templates:deleted'
   }
 } as const
+
+// ============================================================================
+// Properties Channels (Unified for Notes & Journal)
+// ============================================================================
+
+export const PropertiesChannels = {
+  invoke: {
+    /** Get properties for any entity (note or journal) by ID */
+    GET: 'properties:get',
+    /** Set properties for any entity (note or journal) by ID */
+    SET: 'properties:set',
+    /** Rename a property for a specific entity (note-only scope) */
+    RENAME: 'properties:rename'
+  }
+} as const
+
+export type PropertiesInvokeChannel =
+  (typeof PropertiesChannels.invoke)[keyof typeof PropertiesChannels.invoke]
 
 // ============================================================================
 // Type Exports

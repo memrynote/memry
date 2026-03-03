@@ -165,6 +165,12 @@ export interface ProjectCreateInput {
   description?: string | null
   color?: string
   icon?: string | null
+  statuses?: Array<{
+    name: string
+    color: string
+    type: 'todo' | 'in_progress' | 'done'
+    order: number
+  }>
 }
 
 export interface ProjectUpdateInput {
@@ -173,6 +179,13 @@ export interface ProjectUpdateInput {
   description?: string | null
   color?: string
   icon?: string | null
+  statuses?: Array<{
+    id?: string
+    name: string
+    color: string
+    type: 'todo' | 'in_progress' | 'done'
+    order: number
+  }>
 }
 
 export interface ProjectListResponse {

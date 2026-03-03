@@ -5,7 +5,9 @@
  * @module ipc/tags-handlers
  */
 
+import { readFile } from 'fs/promises'
 import { ipcMain, BrowserWindow } from 'electron'
+import { eq } from 'drizzle-orm'
 import { TagsChannels } from '@shared/ipc-channels'
 import {
   GetNotesByTagSchema,
@@ -20,8 +22,10 @@ import {
   type RenameTagResponse,
   type DeleteTagResponse
 } from '@shared/contracts/tags-api'
+import { noteTags } from '@shared/db/schema/notes-cache'
+import { tagDefinitions } from '@shared/db/schema/tag-definitions'
 import { createValidatedHandler, createStringHandler } from './validate'
-import { getIndexDatabase } from '../database'
+import { getDatabase, getIndexDatabase } from '../database'
 import {
   findNotesWithTagInfo,
   pinNoteToTag,
@@ -29,10 +33,21 @@ import {
   renameTag,
   deleteTag,
   removeTagFromNote,
-  getTagDefinition,
+  getOrCreateTag,
+  renameTagDefinition,
+  deleteTagDefinition,
   updateTagColor,
-  getNoteTags
+  getNoteTags,
+  getNoteCacheById
 } from '@shared/db/queries/notes'
+import { createLogger } from '../lib/logger'
+import { toAbsolutePath } from '../vault/notes'
+import { parseNote, serializeNote } from '../vault/frontmatter'
+import { atomicWrite } from '../vault/file-ops'
+import { getNoteSyncService } from '../sync/note-sync'
+import { getTagDefinitionSyncService } from '../sync/tag-definition-sync'
+
+const log = createLogger('TagsHandlers')
 
 /**
  * Emit tag event to all windows
@@ -49,6 +64,17 @@ function emitTagEvent(channel: string, data: unknown): void {
 function requireIndexDatabase() {
   try {
     return getIndexDatabase()
+  } catch {
+    throw new Error('No vault is open. Please open a vault first.')
+  }
+}
+
+/**
+ * Helper to get data database, throwing a user-friendly error if not available.
+ */
+function requireDatabase() {
+  try {
+    return getDatabase()
   } catch {
     throw new Error('No vault is open. Please open a vault first.')
   }
@@ -85,6 +111,44 @@ function toTagNoteItem(
   }
 }
 
+function getAffectedNoteIds(indexDb: ReturnType<typeof getIndexDatabase>, tag: string): string[] {
+  const normalized = tag.toLowerCase().trim()
+  return indexDb
+    .select({ noteId: noteTags.noteId })
+    .from(noteTags)
+    .where(eq(noteTags.tag, normalized))
+    .all()
+    .map((r) => r.noteId)
+}
+
+async function updateNoteFrontmatterTag(
+  indexDb: ReturnType<typeof getIndexDatabase>,
+  noteId: string,
+  mutate: (tags: string[]) => string[]
+): Promise<void> {
+  const cached = getNoteCacheById(indexDb, noteId)
+  if (!cached) return
+
+  const absolutePath = toAbsolutePath(cached.path)
+  const raw = await readFile(absolutePath, 'utf-8')
+  const parsed = parseNote(raw, absolutePath)
+
+  const currentTags: string[] = Array.isArray(parsed.frontmatter.tags)
+    ? parsed.frontmatter.tags
+    : []
+  const updatedTags = mutate(currentTags)
+
+  if (updatedTags.length === 0) {
+    delete parsed.frontmatter.tags
+  } else {
+    parsed.frontmatter.tags = updatedTags
+  }
+
+  const serialized = serializeNote(parsed.frontmatter, parsed.content)
+  await atomicWrite(absolutePath, serialized)
+  getNoteSyncService()?.enqueueUpdate(noteId)
+}
+
 /**
  * Register all tags IPC handlers.
  */
@@ -93,14 +157,14 @@ export function registerTagsHandlers(): void {
   ipcMain.handle(
     TagsChannels.invoke.GET_NOTES_BY_TAG,
     createValidatedHandler(GetNotesByTagSchema, (input) => {
-      const db = requireIndexDatabase()
+      const indexDb = requireIndexDatabase()
+      const dataDb = requireDatabase()
 
-      // Get tag definition for color
-      const tagDef = getTagDefinition(db, input.tag)
-      const color = tagDef?.color ?? 'gray'
+      // Get tag definition for color (create if missing)
+      const { color } = getOrCreateTag(dataDb, input.tag)
 
       // Get notes with pinned info
-      const notes = findNotesWithTagInfo(db, input.tag, {
+      const notes = findNotesWithTagInfo(indexDb, input.tag, {
         sortBy: input.sortBy,
         sortOrder: input.sortOrder
       })
@@ -110,7 +174,7 @@ export function registerTagsHandlers(): void {
       const unpinnedNotes: TagNoteItem[] = []
 
       for (const note of notes) {
-        const noteTags = getNoteTags(db, note.id)
+        const noteTags = getNoteTags(indexDb, note.id)
         const item = toTagNoteItem(note, noteTags)
 
         if (note.isPinned) {
@@ -183,20 +247,44 @@ export function registerTagsHandlers(): void {
   // tags:rename - Rename a tag across all notes
   ipcMain.handle(
     TagsChannels.invoke.RENAME_TAG,
-    createValidatedHandler(RenameTagSchema, (input) => {
-      const db = requireIndexDatabase()
+    createValidatedHandler(RenameTagSchema, async (input) => {
+      const indexDb = requireIndexDatabase()
+      const dataDb = requireDatabase()
 
       try {
-        const affectedNotes = renameTag(db, input.oldName, input.newName)
+        const noteIds = getAffectedNoteIds(indexDb, input.oldName)
 
-        // Emit event
+        const affectedNotes = renameTag(indexDb, input.oldName, input.newName)
+
+        const oldTagSnapshot = dataDb
+          .select()
+          .from(tagDefinitions)
+          .where(eq(tagDefinitions.name, input.oldName.toLowerCase().trim()))
+          .get()
+
+        renameTagDefinition(dataDb, input.oldName, input.newName)
+
+        const syncService = getTagDefinitionSyncService()
+        if (syncService && oldTagSnapshot) {
+          syncService.enqueueDelete(input.oldName, JSON.stringify(oldTagSnapshot))
+          syncService.enqueueCreate(input.newName.toLowerCase().trim())
+        }
+
+        const normalizedOld = input.oldName.toLowerCase().trim()
+        const normalizedNew = input.newName.toLowerCase().trim()
+        await Promise.all(
+          noteIds.map((noteId) =>
+            updateNoteFrontmatterTag(indexDb, noteId, (tags) =>
+              tags.map((t) => (t.toLowerCase() === normalizedOld ? normalizedNew : t))
+            ).catch((err) => log.warn('Failed to update frontmatter for note', { noteId, err }))
+          )
+        )
+
         emitTagEvent(TagsChannels.events.RENAMED, {
           oldName: input.oldName,
           newName: input.newName,
           affectedNotes
         })
-
-        // Also emit tags changed for sidebar update
         emitTagEvent('notes:tags-changed', {})
 
         return { success: true, affectedNotes } as RenameTagResponse
@@ -211,12 +299,13 @@ export function registerTagsHandlers(): void {
   ipcMain.handle(
     TagsChannels.invoke.UPDATE_TAG_COLOR,
     createValidatedHandler(UpdateTagColorSchema, (input) => {
-      const db = requireIndexDatabase()
+      const dataDb = requireDatabase()
 
       try {
-        updateTagColor(db, input.tag, input.color)
+        getOrCreateTag(dataDb, input.tag)
+        updateTagColor(dataDb, input.tag, input.color)
+        getTagDefinitionSyncService()?.enqueueUpdate(input.tag)
 
-        // Emit event
         emitTagEvent(TagsChannels.events.COLOR_UPDATED, {
           tag: input.tag,
           color: input.color
@@ -236,19 +325,35 @@ export function registerTagsHandlers(): void {
   // tags:delete - Delete a tag from all notes
   ipcMain.handle(
     TagsChannels.invoke.DELETE_TAG,
-    createStringHandler((tag: string) => {
-      const db = requireIndexDatabase()
+    createStringHandler(async (tag: string) => {
+      const indexDb = requireIndexDatabase()
+      const dataDb = requireDatabase()
 
       try {
-        const affectedNotes = deleteTag(db, tag)
+        const noteIds = getAffectedNoteIds(indexDb, tag)
 
-        // Emit event
-        emitTagEvent(TagsChannels.events.DELETED, {
-          tag,
-          affectedNotes
-        })
+        const normalizedTag = tag.toLowerCase().trim()
+        const tagSnapshot = dataDb
+          .select()
+          .from(tagDefinitions)
+          .where(eq(tagDefinitions.name, normalizedTag))
+          .get()
 
-        // Also emit tags changed for sidebar update
+        const affectedNotes = deleteTag(indexDb, tag)
+        deleteTagDefinition(dataDb, tag)
+
+        if (tagSnapshot) {
+          getTagDefinitionSyncService()?.enqueueDelete(normalizedTag, JSON.stringify(tagSnapshot))
+        }
+        await Promise.all(
+          noteIds.map((noteId) =>
+            updateNoteFrontmatterTag(indexDb, noteId, (tags) =>
+              tags.filter((t) => t.toLowerCase() !== normalizedTag)
+            ).catch((err) => log.warn('Failed to update frontmatter for note', { noteId, err }))
+          )
+        )
+
+        emitTagEvent(TagsChannels.events.DELETED, { tag, affectedNotes })
         emitTagEvent('notes:tags-changed', {})
 
         return { success: true, affectedNotes } as DeleteTagResponse
@@ -262,20 +367,24 @@ export function registerTagsHandlers(): void {
   // tags:remove-from-note - Remove tag from a specific note
   ipcMain.handle(
     TagsChannels.invoke.REMOVE_TAG_FROM_NOTE,
-    createValidatedHandler(RemoveTagFromNoteSchema, (input) => {
+    createValidatedHandler(RemoveTagFromNoteSchema, async (input) => {
       const db = requireIndexDatabase()
 
       try {
         removeTagFromNote(db, input.noteId, input.tag)
 
-        // Emit event
+        const normalizedTag = input.tag.toLowerCase().trim()
+        await updateNoteFrontmatterTag(db, input.noteId, (tags) =>
+          tags.filter((t) => t.toLowerCase() !== normalizedTag)
+        ).catch((err) =>
+          log.warn('Failed to update frontmatter for note', { noteId: input.noteId, err })
+        )
+
         emitTagEvent(TagsChannels.events.NOTES_CHANGED, {
           tag: input.tag,
           noteId: input.noteId,
           action: 'removed'
         })
-
-        // Also emit tags changed for sidebar update
         emitTagEvent('notes:tags-changed', {})
 
         return { success: true } as TagOperationResponse
@@ -285,4 +394,17 @@ export function registerTagsHandlers(): void {
       }
     })
   )
+}
+
+/**
+ * Unregister all tags IPC handlers.
+ */
+export function unregisterTagsHandlers(): void {
+  ipcMain.removeHandler(TagsChannels.invoke.GET_NOTES_BY_TAG)
+  ipcMain.removeHandler(TagsChannels.invoke.PIN_NOTE_TO_TAG)
+  ipcMain.removeHandler(TagsChannels.invoke.UNPIN_NOTE_FROM_TAG)
+  ipcMain.removeHandler(TagsChannels.invoke.RENAME_TAG)
+  ipcMain.removeHandler(TagsChannels.invoke.UPDATE_TAG_COLOR)
+  ipcMain.removeHandler(TagsChannels.invoke.DELETE_TAG)
+  ipcMain.removeHandler(TagsChannels.invoke.REMOVE_TAG_FROM_NOTE)
 }

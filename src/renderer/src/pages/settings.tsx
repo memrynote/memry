@@ -41,11 +41,18 @@ import {
   BookOpen,
   Info,
   Brain,
+  Cloud,
+  CloudOff,
   Loader2,
   CheckCircle,
   XCircle,
   RefreshCw,
-  PenLine
+  Pause,
+  Play,
+  PenLine,
+  LogOut,
+  QrCode,
+  RotateCw
 } from 'lucide-react'
 import {
   Select,
@@ -63,6 +70,20 @@ import { useTabPreferences } from '@/hooks/use-tab-preferences'
 import { useTabs } from '@/contexts/tabs'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
+import { extractErrorMessage } from '@/lib/ipc-error'
+import { useAuth } from '@/contexts/auth-context'
+import { useSync } from '@/contexts/sync-context'
+import { useSyncStatus } from '@/hooks/use-sync-status'
+import { SetupWizard } from './settings/setup-wizard'
+import { QrLinking } from '@/components/sync/qr-linking'
+import { LinkingApprovalDialog } from '@/components/sync/linking-approval-dialog'
+import { SyncHistoryPanel } from '@/components/sync/sync-history'
+import { DeviceList } from '@/components/sync/device-list'
+import { KeyRotationWizard } from '@/components/sync/key-rotation-wizard'
+import { StorageUsageBar } from '@/components/settings/storage-usage-bar'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('Page:Settings')
 
 // ============================================================================
 // Types
@@ -76,13 +97,31 @@ type SettingsSection =
   | 'vault'
   | 'appearance'
   | 'ai'
+  | 'sync'
 
 // ============================================================================
 // Main Component
 // ============================================================================
 
 export function SettingsPage() {
-  const [activeSection, setActiveSection] = useState<SettingsSection>('templates')
+  const [activeSection, setActiveSection] = useState<SettingsSection>(() => {
+    const saved = localStorage.getItem('memry_settings_section')
+    return (saved as SettingsSection) || 'templates'
+  })
+
+  useEffect(() => {
+    localStorage.setItem('memry_settings_section', activeSection)
+  }, [activeSection])
+
+  useEffect(() => {
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === 'memry_settings_section' && e.newValue) {
+        setActiveSection(e.newValue as SettingsSection)
+      }
+    }
+    window.addEventListener('storage', onStorage)
+    return () => window.removeEventListener('storage', onStorage)
+  }, [])
 
   return (
     <div className="h-full flex">
@@ -136,13 +175,19 @@ export function SettingsPage() {
             isActive={activeSection === 'ai'}
             onClick={() => setActiveSection('ai')}
           />
+          <SettingsNavItem
+            icon={<Cloud className="w-4 h-4" />}
+            label="Sync"
+            isActive={activeSection === 'sync'}
+            onClick={() => setActiveSection('sync')}
+          />
         </nav>
       </div>
 
       {/* Content */}
       <div className="flex-1 overflow-hidden">
         <ScrollArea className="h-full">
-          <div className="p-6 max-w-3xl">
+          <div className="p-6 max-w-3xl mx-auto">
             {activeSection === 'general' && <GeneralSettings />}
             {activeSection === 'editor' && <EditorSettings />}
             {activeSection === 'templates' && <TemplatesSettings />}
@@ -150,6 +195,7 @@ export function SettingsPage() {
             {activeSection === 'vault' && <VaultSettings />}
             {activeSection === 'appearance' && <AppearanceSettings />}
             {activeSection === 'ai' && <AISettings />}
+            {activeSection === 'sync' && <SyncSettings />}
           </div>
         </ScrollArea>
       </div>
@@ -672,7 +718,12 @@ function TemplateListItem({ template, onEdit, onDuplicate, onDelete }: TemplateL
 
 function JournalSettings() {
   const { templates, isLoading: isLoadingTemplates } = useTemplates()
-  const { settings, setDefaultTemplate, isLoading: isLoadingSettings } = useJournalSettings()
+  const {
+    settings,
+    updateSettings,
+    setDefaultTemplate,
+    isLoading: isLoadingSettings
+  } = useJournalSettings()
 
   const handleTemplateChange = useCallback(
     async (value: string) => {
@@ -687,10 +738,69 @@ function JournalSettings() {
     [setDefaultTemplate]
   )
 
+  const handleShowScheduleChange = useCallback(
+    async (checked: boolean) => {
+      const success = await updateSettings({ showSchedule: checked })
+      if (success) {
+        toast.success(checked ? 'Schedule section shown' : 'Schedule section hidden')
+      } else {
+        toast.error('Failed to update setting')
+      }
+    },
+    [updateSettings]
+  )
+
+  const handleShowTasksChange = useCallback(
+    async (checked: boolean) => {
+      const success = await updateSettings({ showTasks: checked })
+      if (success) {
+        toast.success(checked ? 'Tasks section shown' : 'Tasks section hidden')
+      } else {
+        toast.error('Failed to update setting')
+      }
+    },
+    [updateSettings]
+  )
+
+  const handleShowAIConnectionsChange = useCallback(
+    async (checked: boolean) => {
+      const success = await updateSettings({ showAIConnections: checked })
+      if (success) {
+        toast.success(checked ? 'AI Connections shown' : 'AI Connections hidden')
+      } else {
+        toast.error('Failed to update setting')
+      }
+    },
+    [updateSettings]
+  )
+
+  const handleShowStatsFooterChange = useCallback(
+    async (checked: boolean) => {
+      const success = await updateSettings({ showStatsFooter: checked })
+      if (success) {
+        toast.success(checked ? 'Stats footer shown' : 'Stats footer hidden')
+      } else {
+        toast.error('Failed to update setting')
+      }
+    },
+    [updateSettings]
+  )
+
   // Find the current default template name for display
   const defaultTemplateName = settings.defaultTemplate
     ? templates.find((t) => t.id === settings.defaultTemplate)?.name
     : null
+
+  if (isLoadingSettings) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h3 className="text-lg font-semibold">Journal</h3>
+          <p className="text-sm text-muted-foreground">Loading settings...</p>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-6">
@@ -704,7 +814,9 @@ function JournalSettings() {
       {/* Default Template Setting */}
       <div className="space-y-4">
         <div>
-          <label className="text-sm font-medium">Default Template</label>
+          <label htmlFor="default-template" className="text-sm font-medium">
+            Default Template
+          </label>
           <p className="text-sm text-muted-foreground mt-1">
             New journal entries will start with this template. You can always change it when
             creating an entry.
@@ -716,7 +828,7 @@ function JournalSettings() {
           onValueChange={handleTemplateChange}
           disabled={isLoadingTemplates || isLoadingSettings}
         >
-          <SelectTrigger className="w-full max-w-xs">
+          <SelectTrigger id="default-template" className="w-full max-w-xs">
             <SelectValue placeholder="Select a template">
               {isLoadingSettings
                 ? 'Loading...'
@@ -749,6 +861,101 @@ function JournalSettings() {
             content automatically. A small indicator will appear letting you change the template or
             start blank.
           </p>
+        </div>
+      </div>
+
+      <Separator />
+
+      {/* Sidebar Visibility Section */}
+      <div className="space-y-6">
+        <div>
+          <h4 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
+            Sidebar Visibility
+          </h4>
+          <p className="text-sm text-muted-foreground mt-1">
+            Choose which sections to display in the journal sidebar. The calendar is always visible.
+          </p>
+        </div>
+
+        {/* Show Schedule Toggle */}
+        <div className="flex items-center justify-between">
+          <div className="space-y-0.5">
+            <Label htmlFor="show-schedule">Show Schedule</Label>
+            <p className="text-sm text-muted-foreground">
+              Display today's events and calendar schedule
+            </p>
+          </div>
+          <Switch
+            id="show-schedule"
+            checked={settings.showSchedule}
+            onCheckedChange={handleShowScheduleChange}
+          />
+        </div>
+
+        {/* Show Tasks Toggle */}
+        <div className="flex items-center justify-between">
+          <div className="space-y-0.5">
+            <Label htmlFor="show-tasks">Show Tasks</Label>
+            <p className="text-sm text-muted-foreground">Display tasks due on the selected day</p>
+          </div>
+          <Switch
+            id="show-tasks"
+            checked={settings.showTasks}
+            onCheckedChange={handleShowTasksChange}
+          />
+        </div>
+
+        {/* Show AI Connections Toggle */}
+        <div className="flex items-center justify-between">
+          <div className="space-y-0.5">
+            <Label htmlFor="show-ai-connections">Show AI Connections</Label>
+            <p className="text-sm text-muted-foreground">
+              Display AI-powered connections to related entries and notes
+            </p>
+          </div>
+          <Switch
+            id="show-ai-connections"
+            checked={settings.showAIConnections}
+            onCheckedChange={handleShowAIConnectionsChange}
+          />
+        </div>
+
+        {/* Info hint */}
+        <div className="flex items-start gap-2 p-3 rounded-lg bg-muted/50 text-sm">
+          <Info className="w-4 h-4 text-muted-foreground mt-0.5 flex-shrink-0" />
+          <p className="text-muted-foreground">
+            The mini calendar at the top of the sidebar is always visible for quick navigation.
+            These settings only affect the additional panels below it.
+          </p>
+        </div>
+      </div>
+
+      <Separator />
+
+      {/* Footer Section */}
+      <div className="space-y-6">
+        <div>
+          <h4 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
+            Footer
+          </h4>
+          <p className="text-sm text-muted-foreground mt-1">
+            Display document statistics at the bottom of journal entries.
+          </p>
+        </div>
+
+        {/* Show Stats Footer Toggle */}
+        <div className="flex items-center justify-between">
+          <div className="space-y-0.5">
+            <Label htmlFor="show-stats-footer">Show Stats Footer</Label>
+            <p className="text-sm text-muted-foreground">
+              Display word count, reading time, and timestamps at the bottom
+            </p>
+          </div>
+          <Switch
+            id="show-stats-footer"
+            checked={settings.showStatsFooter}
+            onCheckedChange={handleShowStatsFooterChange}
+          />
         </div>
       </div>
     </div>
@@ -791,7 +998,7 @@ function AISettings() {
         setSettings(aiSettings)
         setModelStatus(status)
       } catch (error) {
-        console.error('Failed to load AI settings:', error)
+        log.error('Failed to load AI settings:', error)
       } finally {
         setIsLoading(false)
       }
@@ -844,10 +1051,10 @@ function AISettings() {
         setSettings((prev) => ({ ...prev, enabled }))
         toast.success(enabled ? 'AI features enabled' : 'AI features disabled')
       } else {
-        toast.error(result.error || 'Failed to update setting')
+        toast.error(extractErrorMessage(result.error, 'Failed to update setting'))
       }
     } catch (error) {
-      toast.error('Failed to update setting')
+      toast.error(extractErrorMessage(error, 'Failed to update setting'))
     }
   }, [])
 
@@ -861,10 +1068,10 @@ function AISettings() {
         const status = await window.api.settings.getAIModelStatus()
         setModelStatus(status)
       } else {
-        toast.error(result.error || 'Failed to load model')
+        toast.error(extractErrorMessage(result.error, 'Failed to load model'))
       }
     } catch (error) {
-      toast.error('Failed to load model')
+      toast.error(extractErrorMessage(error, 'Failed to load model'))
     } finally {
       setIsLoadingModel(false)
     }
@@ -881,12 +1088,12 @@ function AISettings() {
         )
         setIsReindexing(false)
       } else {
-        toast.error(result.error || 'Failed to reindex embeddings')
+        toast.error(extractErrorMessage(result.error, 'Failed to reindex embeddings'))
         setIsReindexing(false)
         setReindexProgress(null)
       }
     } catch (error) {
-      toast.error('Failed to reindex embeddings')
+      toast.error(extractErrorMessage(error, 'Failed to reindex embeddings'))
       setIsReindexing(false)
       setReindexProgress(null)
     }
@@ -1091,6 +1298,243 @@ function AISettings() {
 }
 
 // ============================================================================
+// Sync Settings
+// ============================================================================
+
+function SyncSettings() {
+  const { state, logout, setWizardStep } = useAuth()
+  const { linkingRequest, clearLinkingRequest } = useSync()
+  const syncStatus = useSyncStatus()
+  const [showSignOutDialog, setShowSignOutDialog] = useState(false)
+  const [signingOut, setSigningOut] = useState(false)
+  const [showLinkingQr, setShowLinkingQr] = useState(false)
+  const [showRotationWizard, setShowRotationWizard] = useState(false)
+
+  useEffect(() => {
+    if (state.status === 'unauthenticated' && state.wizardStep === 'idle') {
+      setWizardStep('sign-in')
+    }
+  }, [state.status, state.wizardStep, setWizardStep])
+
+  const handleSignOut = useCallback(async () => {
+    setSigningOut(true)
+    try {
+      await logout()
+      toast.success('Signed out successfully')
+    } catch (error: unknown) {
+      toast.error(extractErrorMessage(error, 'Failed to sign out'))
+    } finally {
+      setSigningOut(false)
+      setShowSignOutDialog(false)
+    }
+  }, [logout])
+
+  const isSyncBusy = syncStatus.status === 'syncing' || syncStatus.status === 'offline'
+
+  if (state.status === 'checking') {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h3 className="text-lg font-semibold">Sync</h3>
+          <p className="text-sm text-muted-foreground">Loading...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (state.status === 'authenticated') {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h3 className="text-lg font-semibold">Sync</h3>
+          <p className="text-sm text-muted-foreground">End-to-end encrypted</p>
+        </div>
+        <Separator />
+
+        <div className="space-y-4">
+          <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
+            <div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary/10">
+              <syncStatus.IconComponent
+                className={`w-4 h-4 text-primary ${syncStatus.isAnimating ? 'animate-spin' : ''}`}
+              />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2">
+                <span className={`w-2 h-2 rounded-full ${syncStatus.dotColor}`} />
+                <p className="text-sm font-medium">
+                  {syncStatus.label}
+                  <span className="text-muted-foreground font-normal">
+                    {' · '}Last synced {syncStatus.lastSyncLabel}
+                    {syncStatus.pendingCount > 0 && ` · ${syncStatus.pendingCount} pending`}
+                  </span>
+                </p>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Signed in{state.email ? ` as ${state.email}` : ''}
+              </p>
+            </div>
+          </div>
+
+          {showLinkingQr ? (
+            <QrLinking onCancel={() => setShowLinkingQr(false)} />
+          ) : (
+            <div className="flex flex-wrap gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={isSyncBusy}
+                onClick={() => void syncStatus.triggerSync()}
+                className="gap-2"
+              >
+                <RefreshCw
+                  className={`w-4 h-4 ${syncStatus.status === 'syncing' ? 'animate-spin' : ''}`}
+                />
+                {syncStatus.status === 'syncing'
+                  ? 'Syncing...'
+                  : syncStatus.status === 'idle' && syncStatus.pendingCount > 0
+                    ? `Sync ${syncStatus.pendingCount} ${syncStatus.pendingCount === 1 ? 'change' : 'changes'}`
+                    : 'Sync Now'}
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() =>
+                  void (syncStatus.status === 'paused' ? syncStatus.resume() : syncStatus.pause())
+                }
+                className="gap-2"
+              >
+                {syncStatus.status === 'paused' ? (
+                  <>
+                    <Play className="w-4 h-4" />
+                    Resume
+                  </>
+                ) : (
+                  <>
+                    <Pause className="w-4 h-4" />
+                    Pause
+                  </>
+                )}
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowLinkingQr(true)}
+                className="gap-2"
+              >
+                <QrCode className="w-4 h-4" />
+                Link Device
+              </Button>
+            </div>
+          )}
+        </div>
+
+        <Separator />
+
+        <div className="space-y-3">
+          <h4 className="text-sm font-medium">Devices</h4>
+          <DeviceList />
+        </div>
+
+        <Separator />
+
+        <div className="space-y-3">
+          <h4 className="text-sm font-medium">Security</h4>
+          <p className="text-xs text-muted-foreground">
+            Rotate encryption keys to generate a new recovery phrase. Your data stays intact.
+          </p>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowRotationWizard(true)}
+            className="gap-2"
+          >
+            <RotateCw className="w-4 h-4" />
+            Rotate Encryption Keys
+          </Button>
+        </div>
+
+        <KeyRotationWizard open={showRotationWizard} onOpenChange={setShowRotationWizard} />
+
+        <Separator />
+
+        <SyncHistoryPanel />
+
+        <Separator />
+
+        <div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowSignOutDialog(true)}
+            className="text-destructive hover:text-destructive hover:bg-destructive/10"
+          >
+            <LogOut className="w-4 h-4 mr-2" />
+            Sign out
+          </Button>
+          <p className="text-xs text-muted-foreground mt-2">
+            Your notes stay on this device. Sync will stop until you sign in again.
+          </p>
+        </div>
+
+        <AlertDialog open={showSignOutDialog} onOpenChange={setShowSignOutDialog}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Sign out of sync?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Sync will stop and encryption keys will be removed from this device. Your notes will
+                remain on this device. You&apos;ll need your recovery phrase to set up sync again.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={signingOut}>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={handleSignOut}
+                disabled={signingOut}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                {signingOut ? 'Signing out...' : 'Sign out'}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        <LinkingApprovalDialog
+          open={!!linkingRequest}
+          event={linkingRequest}
+          onApprove={() => {
+            clearLinkingRequest()
+            toast.success('Device linked successfully')
+          }}
+          onReject={clearLinkingRequest}
+        />
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h3 className="text-lg font-semibold">Sync</h3>
+        <p className="text-sm text-muted-foreground">
+          Sync your data across devices with end-to-end encryption
+        </p>
+      </div>
+      <Separator />
+      <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
+        <div className="flex items-center justify-center w-8 h-8 rounded-full bg-muted">
+          <CloudOff className="w-4 h-4 text-muted-foreground" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-medium">Sync disabled</p>
+          <p className="text-xs text-muted-foreground">Your notes are only stored on this device</p>
+        </div>
+      </div>
+      <SetupWizard />
+    </div>
+  )
+}
+
+// ============================================================================
 // Vault Settings (Placeholder)
 // ============================================================================
 
@@ -1102,7 +1546,7 @@ function VaultSettings() {
         <p className="text-sm text-muted-foreground">Vault configuration and storage settings</p>
       </div>
       <Separator />
-      <div className="text-muted-foreground text-sm">Vault settings coming soon...</div>
+      <StorageUsageBar />
     </div>
   )
 }

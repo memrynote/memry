@@ -121,10 +121,10 @@ export const useRevealInSidebar = (
         }
 
         // Scroll into view
-        scrollToItem(item.id)
+        scrollToItem(item.id ?? '')
 
         // Highlight briefly
-        setHighlightedItemId(item.id)
+        setHighlightedItemId(item.id ?? null)
       }
     }
 

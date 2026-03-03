@@ -1,6 +1,9 @@
 import { app } from 'electron'
 import fs from 'fs'
 import path from 'path'
+import { createLogger } from './lib/logger'
+
+const logger = createLogger('Store')
 
 /**
  * Vault information stored in config
@@ -15,6 +18,14 @@ export interface StoredVaultInfo {
 }
 
 /**
+ * Sync-related persistent state
+ */
+export interface SyncStoreData {
+  recoveryPhraseConfirmed?: boolean
+  email?: string
+}
+
+/**
  * Application store schema
  */
 interface StoreSchema {
@@ -22,13 +33,16 @@ interface StoreSchema {
   currentVault: string | null
   /** List of known vaults */
   vaults: StoredVaultInfo[]
+  /** Sync configuration */
+  sync: SyncStoreData
 }
 
 const CONFIG_FILE = 'memry-config.json'
 
 const defaultData: StoreSchema = {
   currentVault: null,
-  vaults: []
+  vaults: [],
+  sync: {}
 }
 
 /**
@@ -51,7 +65,7 @@ function readConfig(): StoreSchema {
       return { ...defaultData, ...parsed }
     }
   } catch (error) {
-    console.error('Error reading config:', error)
+    logger.error('Error reading config:', error)
   }
   return defaultData
 }
@@ -64,7 +78,7 @@ function writeConfig(data: StoreSchema): void {
     const configPath = getConfigPath()
     fs.writeFileSync(configPath, JSON.stringify(data, null, 2), 'utf-8')
   } catch (error) {
-    console.error('Error writing config:', error)
+    logger.error('Error writing config:', error)
   }
 }
 

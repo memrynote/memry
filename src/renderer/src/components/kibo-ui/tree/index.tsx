@@ -1,7 +1,7 @@
 'use client'
 
 import { ChevronRight, File, Folder, FolderOpen, Palette } from 'lucide-react'
-import { AnimatePresence, motion } from 'motion/react'
+import { AnimatePresence, LazyMotion, domAnimation, m } from 'motion/react'
 import {
   type ComponentProps,
   createContext,
@@ -105,6 +105,7 @@ type TreeNodeContextType = {
   parentPath: boolean[]
   hasChildren: boolean
   setHasChildren: (value: boolean) => void
+  acceptsDropInside: boolean
   customIcon?: string
   inheritedIcon?: string
   setCustomIcon: (iconName: string | undefined) => void
@@ -120,6 +121,9 @@ const useTreeNode = () => {
   }
   return context
 }
+
+const EMPTY_IDS: string[] = []
+const EMPTY_PATH: boolean[] = []
 
 export type TreeProviderProps = {
   children: ReactNode
@@ -140,7 +144,7 @@ export type TreeProviderProps = {
 
 export const TreeProvider = ({
   children,
-  defaultExpandedIds = [],
+  defaultExpandedIds = EMPTY_IDS,
   showLines = true,
   showIcons = true,
   selectable = true,
@@ -410,14 +414,16 @@ export const TreeProvider = ({
         animateExpand
       }}
     >
-      <motion.div
-        animate={{ opacity: 1, y: 0 }}
-        className={cn('w-full', className)}
-        initial={{ opacity: 0, y: 10 }}
-        transition={{ duration: 0.3, ease: 'easeOut' }}
-      >
-        {children}
-      </motion.div>
+      <LazyMotion features={domAnimation}>
+        <m.div
+          animate={{ opacity: 1, y: 0 }}
+          className={cn('w-full', className)}
+          initial={{ opacity: 0, y: 10 }}
+          transition={{ duration: 0.3, ease: 'easeOut' }}
+        >
+          {children}
+        </m.div>
+      </LazyMotion>
     </TreeContext.Provider>
   )
 }
@@ -436,6 +442,7 @@ export type TreeNodeProps = HTMLAttributes<HTMLDivElement> & {
   isLast?: boolean
   parentPath?: boolean[]
   children?: ReactNode
+  acceptsDropInside?: boolean
   customIcon?: string
   inheritedIcon?: string
 }
@@ -444,10 +451,11 @@ export const TreeNode = ({
   nodeId: providedNodeId,
   level = 0,
   isLast = false,
-  parentPath = [],
+  parentPath = EMPTY_PATH,
   children,
   className,
   onClick,
+  acceptsDropInside = false,
   customIcon: initialCustomIcon,
   inheritedIcon: initialInheritedIcon,
   ...props
@@ -498,6 +506,7 @@ export const TreeNode = ({
         parentPath: currentPath,
         hasChildren,
         setHasChildren,
+        acceptsDropInside,
         customIcon,
         inheritedIcon,
         setCustomIcon,
@@ -511,7 +520,7 @@ export const TreeNode = ({
   )
 }
 
-export type TreeNodeTriggerProps = ComponentProps<typeof motion.div> & {
+export type TreeNodeTriggerProps = ComponentProps<typeof m.div> & {
   /** Custom context menu content to render instead of the default "Set Icon" menu */
   contextMenuContent?: ReactNode
   /** Whether to show the default icon context menu (default: true) */
@@ -547,7 +556,7 @@ export const TreeNodeTrigger = ({
     setNodeIcon,
     getEffectiveIcon
   } = useTree()
-  const { nodeId, level, hasChildren, parentId, customIcon } = useTreeNode()
+  const { nodeId, level, hasChildren, parentId, customIcon, acceptsDropInside } = useTreeNode()
   const isSelected = selectedIds.includes(nodeId)
   const triggerRef = useRef<HTMLDivElement>(null)
 
@@ -650,7 +659,7 @@ export const TreeNodeTrigger = ({
       if (!draggable) return
 
       e.dataTransfer.effectAllowed = 'move'
-      e.dataTransfer.setData('text/plain', nodeId)
+      e.dataTransfer.setData('application/x-memry-tree-node', nodeId)
       setDragState({ draggedId: nodeId })
     },
     [draggable, nodeId, setDragState]
@@ -672,7 +681,8 @@ export const TreeNodeTrigger = ({
 
       const y = e.clientY - rect.top
       const height = rect.height
-      const threshold = height / 3
+      const canDropInside = hasChildren || acceptsDropInside
+      const threshold = canDropInside ? height / 4 : height / 2
 
       let position: DropPosition
       if (y < threshold) {
@@ -680,12 +690,12 @@ export const TreeNodeTrigger = ({
       } else if (y > height - threshold) {
         position = 'after'
       } else {
-        position = hasChildren ? 'inside' : 'after'
+        position = canDropInside ? 'inside' : 'after'
       }
 
       setDragState({ dropTargetId: nodeId, dropPosition: position })
     },
-    [draggable, dragState.draggedId, nodeId, hasChildren, setDragState]
+    [draggable, dragState.draggedId, nodeId, hasChildren, acceptsDropInside, setDragState]
   )
 
   const handleDragLeave = useCallback(
@@ -701,6 +711,7 @@ export const TreeNodeTrigger = ({
   const handleDropEvent = useCallback(
     (e: React.DragEvent) => {
       e.preventDefault()
+      e.stopPropagation()
       handleDrop()
     },
     [handleDrop]
@@ -739,7 +750,7 @@ export const TreeNodeTrigger = ({
     <>
       <ContextMenu>
         <ContextMenuTrigger asChild>
-          <motion.div
+          <m.div
             ref={triggerRef}
             tabIndex={0}
             data-tree-node-id={nodeId}
@@ -755,9 +766,11 @@ export const TreeNodeTrigger = ({
             )}
             onClick={(e) => {
               setFocusedId(nodeId)
-              toggleExpanded(nodeId)
-              // Skip selection handling for expandOnly mode (faster folder expand/collapse)
-              if (!expandOnly) {
+              const hasModifier = e.ctrlKey || e.metaKey || e.shiftKey
+              if (!expandOnly || !hasModifier) {
+                toggleExpanded(nodeId)
+              }
+              if (!expandOnly || hasModifier) {
                 handleSelection(nodeId, e.ctrlKey || e.metaKey, e.shiftKey)
               }
               onClick?.(e)
@@ -798,7 +811,7 @@ export const TreeNodeTrigger = ({
 
             <TreeLines />
             {children as ReactNode}
-          </motion.div>
+          </m.div>
         </ContextMenuTrigger>
         <ContextMenuContent>
           {contextMenuContent ? (
@@ -859,7 +872,7 @@ export const TreeLines = () => {
         return (
           <div
             className="absolute top-0 bottom-0 border-border border-l"
-            key={index.toString()}
+            key={`indent-${index}`}
             style={{
               left: index * (indent ?? 0) + 12,
               display: shouldHideLine ? 'none' : 'block'
@@ -892,7 +905,7 @@ export const TreeLines = () => {
   )
 }
 
-export type TreeNodeContentProps = ComponentProps<typeof motion.div> & {
+export type TreeNodeContentProps = ComponentProps<typeof m.div> & {
   hasChildren?: boolean
 }
 
@@ -903,20 +916,17 @@ export const TreeNodeContent = ({
   ...props
 }: TreeNodeContentProps) => {
   const { animateExpand, expandedIds } = useTree()
-  const { nodeId, setHasChildren } = useTreeNode()
+  const { nodeId, setHasChildren, hasChildren } = useTreeNode()
   const isExpanded = expandedIds.has(nodeId)
 
-  // Update parent node's hasChildren state
-  useEffect(() => {
-    if (hasChildrenProp) {
-      setHasChildren(true)
-    }
-  }, [hasChildrenProp, setHasChildren])
+  if (hasChildrenProp && !hasChildren) {
+    setHasChildren(true)
+  }
 
   return (
     <AnimatePresence>
       {hasChildrenProp && isExpanded && (
-        <motion.div
+        <m.div
           animate={{ height: 'auto', opacity: 1 }}
           className="overflow-hidden"
           exit={{ height: 0, opacity: 0 }}
@@ -926,7 +936,7 @@ export const TreeNodeContent = ({
             ease: 'easeInOut'
           }}
         >
-          <motion.div
+          <m.div
             animate={{ y: 0 }}
             className={className}
             exit={{ y: -10 }}
@@ -938,14 +948,14 @@ export const TreeNodeContent = ({
             {...props}
           >
             {children}
-          </motion.div>
-        </motion.div>
+          </m.div>
+        </m.div>
       )}
     </AnimatePresence>
   )
 }
 
-export type TreeExpanderProps = ComponentProps<typeof motion.div> & {
+export type TreeExpanderProps = ComponentProps<typeof m.div> & {
   hasChildren?: boolean
 }
 
@@ -956,22 +966,19 @@ export const TreeExpander = ({
   ...props
 }: TreeExpanderProps) => {
   const { expandedIds, toggleExpanded } = useTree()
-  const { nodeId, setHasChildren } = useTreeNode()
+  const { nodeId, setHasChildren, hasChildren } = useTreeNode()
   const isExpanded = expandedIds.has(nodeId)
 
-  // Update parent node's hasChildren state
-  useEffect(() => {
-    if (hasChildrenProp) {
-      setHasChildren(true)
-    }
-  }, [hasChildrenProp, setHasChildren])
+  if (hasChildrenProp && !hasChildren) {
+    setHasChildren(true)
+  }
 
   if (!hasChildrenProp) {
     return <div className="mr-1 h-4 w-4" />
   }
 
   return (
-    <motion.div
+    <m.div
       animate={{ rotate: isExpanded ? 90 : 0 }}
       className={cn('mr-1 flex h-4 w-4 cursor-pointer items-center justify-center', className)}
       onClick={(e) => {
@@ -983,11 +990,11 @@ export const TreeExpander = ({
       {...props}
     >
       <ChevronRight className="h-3 w-3 text-muted-foreground" />
-    </motion.div>
+    </m.div>
   )
 }
 
-export type TreeIconProps = ComponentProps<typeof motion.div> & {
+export type TreeIconProps = ComponentProps<typeof m.div> & {
   icon?: ReactNode
   hasChildren?: boolean
   iconName?: string
@@ -1038,7 +1045,7 @@ export const TreeIcon = ({
   }
 
   return (
-    <motion.div
+    <m.div
       className={cn(
         'mr-2 flex h-4 w-4 items-center justify-center text-muted-foreground',
         className
@@ -1048,7 +1055,7 @@ export const TreeIcon = ({
       {...props}
     >
       {getIconComponent()}
-    </motion.div>
+    </m.div>
   )
 }
 

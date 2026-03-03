@@ -14,7 +14,7 @@ import {
   createTestJournalEntry,
   type TestVaultResult
 } from '@tests/utils/test-vault'
-import { createTestIndexDb, type TestDatabaseResult } from '@tests/utils/test-db'
+import { createTestDataDb, createTestIndexDb, type TestDatabaseResult } from '@tests/utils/test-db'
 import type { VaultConfig } from '@shared/contracts/vault-api'
 
 // ============================================================================
@@ -50,6 +50,7 @@ vi.mock('../inbox/suggestions', () => ({
 
 describe('indexer', () => {
   let tempVault: TestVaultResult
+  let dataDb: TestDatabaseResult
   let testDb: TestDatabaseResult
 
   // Import modules after mocks are set up
@@ -63,6 +64,7 @@ describe('indexer', () => {
 
     // Create fresh test fixtures
     tempVault = createTestVault('indexer-test')
+    dataDb = createTestDataDb()
     testDb = createTestIndexDb()
 
     // Use fake timers for deterministic timestamps
@@ -75,6 +77,7 @@ describe('indexer', () => {
     vaultIndex = await import('./index')
 
     // Inject test database - spyOn ensures type compatibility
+    vi.spyOn(database, 'getDatabase').mockReturnValue(dataDb.db)
     vi.spyOn(database, 'getIndexDatabase').mockReturnValue(testDb.db)
 
     // Mock FTS update (simplified for tests)
@@ -87,6 +90,7 @@ describe('indexer', () => {
     vi.useRealTimers()
     vi.restoreAllMocks()
     testDb.close()
+    dataDb.close()
     tempVault.cleanup()
   })
 

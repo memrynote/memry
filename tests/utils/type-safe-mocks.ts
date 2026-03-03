@@ -14,7 +14,7 @@
  * ```
  */
 
-import { vi } from 'vitest'
+import { vi, type Mock } from 'vitest'
 import type {
   NotesClientAPI,
   TasksClientAPI,
@@ -39,9 +39,8 @@ import type {
  * Converts a function type to a Vitest Mock with the same signature.
  * Uses ReturnType<typeof vi.fn> which is the actual mock type.
  */
-type MockedFunction<T extends (...args: unknown[]) => unknown> = ReturnType<
-  typeof vi.fn<Parameters<T>, ReturnType<T>>
->
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type MockedFunction<T extends (...args: any[]) => any> = Mock<T>
 
 /**
  * Converts an API interface to a mocked version where all methods
@@ -117,8 +116,6 @@ export function createNotesMock(
     exists: vi.fn().mockResolvedValue(false),
     openExternal: vi.fn().mockResolvedValue(undefined),
     revealInFinder: vi.fn().mockResolvedValue(undefined),
-    getProperties: vi.fn().mockResolvedValue([]),
-    setProperties: vi.fn().mockResolvedValue({ success: true }),
     getPropertyDefinitions: vi.fn().mockResolvedValue([]),
     createPropertyDefinition: vi.fn().mockResolvedValue({ success: true, definition: null }),
     updatePropertyDefinition: vi.fn().mockResolvedValue({ success: true, definition: null }),
@@ -241,8 +238,7 @@ export function createTypeSafeAPI(config: TypeSafeAPIConfig = {}): TypeSafeWindo
  *
  * If NotesClientAPI changes and our mocks don't match, TypeScript will error here.
  */
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-function _verifyMockTypesMatchRealAPI(): void {
+export function _verifyMockTypesMatchRealAPI(): void {
   // This would fail to compile if types don't match
   const _notesMock: NotesClientAPI = {} as TypeSafeNotesAPI
   const _tasksMock: TasksClientAPI = {} as TypeSafeTasksAPI

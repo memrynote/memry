@@ -18,6 +18,7 @@ import {
   JournalErrorBoundary,
   JournalNavigationRow,
   JournalDateDisplay,
+  JournalStatsFooter,
   type ScheduleEvent,
   type JournalViewState
 } from '@/components/journal'
@@ -25,16 +26,11 @@ import { ContentArea, type Block, type HeadingInfo } from '@/components/note'
 
 import { TemplateSelector } from '@/components/note/template-selector'
 import { TagsRow, type Tag } from '@/components/note/tags-row'
-import {
-  InfoSection,
-  type Property,
-  type NewProperty,
-  type PropertyType
-} from '@/components/note/info-section'
+import { InfoSection } from '@/components/note/info-section'
 import { OutlineInfoPanel, type HeadingItem } from '@/components/shared'
 import { useActiveHeading } from '@/hooks/use-active-heading'
 import { useNoteTagsQuery } from '@/hooks/use-notes-query'
-import { useJournalProperties } from '@/hooks/use-journal-properties'
+import { usePropertySection } from '@/hooks/use-property-section'
 import { useTemplates } from '@/hooks/use-templates'
 import { useJournalSettings } from '@/hooks/use-journal-settings'
 import { useNoteEditorSettings } from '@/hooks/use-note-editor-settings'
@@ -66,6 +62,9 @@ import { tasksService } from '@/services/tasks-service'
 import { parseConnectionDate } from '@/services/ai-connections-service'
 import { journalService } from '@/services/journal-service'
 import { useIsBookmarked } from '@/hooks/use-bookmarks'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('Page:Journal')
 
 // =============================================================================
 // CONSTANTS
@@ -142,15 +141,7 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
   // Tags hook
   const { tags: allAvailableTags } = useNoteTagsQuery()
 
-  // Properties hook
-  const {
-    properties: backendProperties,
-    updateProperty: updateBackendProperty,
-    addProperty: addBackendProperty,
-    removeProperty: removeBackendProperty
-  } = useJournalProperties(entry?.date ?? null, entry?.properties)
-
-  // State for InfoSection expansion
+  // State for InfoSection expansion (collapsed by default)
   const [isInfoExpanded, setIsInfoExpanded] = useState(false)
 
   // Template selector state
@@ -158,18 +149,25 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
   const { templates, getTemplate } = useTemplates({ autoLoad: true })
 
   // Journal settings
-  const { settings: journalSettings, setDefaultTemplate: setJournalDefaultTemplate } =
-    useJournalSettings()
+  const {
+    settings: journalSettings,
+    isLoading: isJournalSettingsLoading,
+    setDefaultTemplate: setJournalDefaultTemplate
+  } = useJournalSettings()
 
   // Editor settings
   const { settings: editorSettings } = useNoteEditorSettings()
 
-  // Bookmark state
-  const { isBookmarked, toggle: toggleBookmark } = useIsBookmarked('journal', entry?.date ?? '')
+  // Bookmark state - use entry.id (e.g., "j2026-01-13") to match notes_cache lookup
+  const { isBookmarked, toggle: toggleBookmark } = useIsBookmarked('journal', entry?.id ?? '')
 
   // Track auto-applying default template
   const [isApplyingDefaultTemplate, setIsApplyingDefaultTemplate] = useState(false)
   const hasAppliedDefaultForDateRef = useRef<string | null>(null)
+
+  // Ref to track current entry tags for stable callbacks (prevents re-renders on content changes)
+  const entryTagsRef = useRef<string[]>([])
+  entryTagsRef.current = entry?.tags ?? []
 
   // Get default template info
   const defaultTemplateInfo = useMemo(() => {
@@ -249,7 +247,7 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
   const selectedDateObj = parseISODate(selectedDate)
   const dateParts = useMemo(() => formatDateParts(selectedDate), [selectedDate])
 
-  const currentYear = useMemo(() => dateParts.year, [dateParts.year])
+  const currentYear = dateParts.year
   const { data: heatmapData } = useJournalHeatmap(currentYear)
 
   const viewMonth = viewState.type === 'month' ? viewState.month : dateParts.monthIndex
@@ -353,29 +351,14 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
     return availableTags.slice(0, 4)
   }, [availableTags])
 
-  const mapPropertyType = useCallback((backendType: string): PropertyType => {
-    const typeMap: Record<string, PropertyType> = {
-      text: 'text',
-      number: 'number',
-      checkbox: 'checkbox',
-      date: 'date',
-      select: 'select',
-      multiselect: 'multiSelect',
-      url: 'url',
-      rating: 'rating'
-    }
-    return typeMap[backendType] ?? 'text'
-  }, [])
-
-  const properties: Property[] = useMemo(() => {
-    return backendProperties.map((prop) => ({
-      id: prop.name,
-      name: prop.name,
-      type: mapPropertyType(prop.type),
-      value: prop.value,
-      isCustom: true
-    }))
-  }, [backendProperties, mapPropertyType])
+  const {
+    properties,
+    handlePropertyChange,
+    handleAddProperty,
+    handleDeleteProperty,
+    handlePropertyNameChange,
+    handlePropertyOrderChange
+  } = usePropertySection({ entityId: entry?.id ?? null })
 
   // Navigation
   const navigateToMonth = useCallback((year: number, month: number) => {
@@ -520,7 +503,7 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
             break
         }
       } catch (err) {
-        console.error('[JournalPage] Failed to resolve wiki link:', err)
+        log.error('Failed to resolve wiki link:', err)
         toast.error('Failed to open linked item')
       }
     },
@@ -543,84 +526,34 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
     )
   }, [])
 
-  // Tag Handlers
+  // Tag Handlers - use refs to avoid dependency on entry (which changes on every keystroke)
   const handleAddTag = useCallback(
     (tagId: string) => {
       const tagToAdd = availableTags.find((t) => t.id === tagId)
-      if (tagToAdd && entry && !entry.tags.includes(tagToAdd.name)) {
-        updateTags([...entry.tags, tagToAdd.name])
+      const currentTags = entryTagsRef.current
+      if (tagToAdd && !currentTags.includes(tagToAdd.name)) {
+        updateTags([...currentTags, tagToAdd.name])
       }
     },
-    [availableTags, entry, updateTags]
+    [availableTags, updateTags]
   )
 
   const handleCreateTag = useCallback(
     (name: string, _color: string) => {
-      if (entry && !entry.tags.includes(name)) {
-        updateTags([...entry.tags, name])
+      const currentTags = entryTagsRef.current
+      if (!currentTags.includes(name)) {
+        updateTags([...currentTags, name])
       }
     },
-    [entry, updateTags]
+    [updateTags]
   )
 
   const handleRemoveTag = useCallback(
     (tagId: string) => {
-      if (entry) {
-        updateTags(entry.tags.filter((t) => t !== tagId))
-      }
+      const currentTags = entryTagsRef.current
+      updateTags(currentTags.filter((t) => t !== tagId))
     },
-    [entry, updateTags]
-  )
-
-  // Property Handlers
-  const getDefaultValueForType = useCallback((type: PropertyType): unknown => {
-    switch (type) {
-      case 'checkbox':
-        return false
-      case 'number':
-      case 'rating':
-        return 0
-      case 'multiSelect':
-        return []
-      case 'date':
-        return null
-      default:
-        return ''
-    }
-  }, [])
-
-  const handlePropertyChange = useCallback(
-    async (propertyId: string, value: unknown) => {
-      try {
-        await updateBackendProperty(propertyId, value)
-      } catch (err) {
-        console.error('[JournalPage] Failed to update property:', err)
-      }
-    },
-    [updateBackendProperty]
-  )
-
-  const handleAddProperty = useCallback(
-    async (newProp: NewProperty) => {
-      const defaultValue = getDefaultValueForType(newProp.type)
-      try {
-        await addBackendProperty(newProp.name, defaultValue)
-      } catch (err) {
-        console.error('[JournalPage] Failed to add property:', err)
-      }
-    },
-    [addBackendProperty, getDefaultValueForType]
-  )
-
-  const handleDeleteProperty = useCallback(
-    async (propertyId: string) => {
-      try {
-        await removeBackendProperty(propertyId)
-      } catch (err) {
-        console.error('[JournalPage] Failed to delete property:', err)
-      }
-    },
-    [removeBackendProperty]
+    [updateTags]
   )
 
   // Template Handlers
@@ -633,7 +566,7 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
           lastLoadedDateRef.current = null
           setEditorLoadCount((c) => c + 1)
         } catch (err) {
-          console.error('[JournalPage] Failed to create blank entry:', err)
+          log.error('Failed to create blank entry:', err)
         }
         return
       }
@@ -656,7 +589,7 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
         lastLoadedDateRef.current = null
         setEditorLoadCount((c) => c + 1)
       } catch (err) {
-        console.error('[JournalPage] Failed to apply template:', err)
+        log.error('Failed to apply template:', err)
       }
     },
     [selectedDate, getTemplate]
@@ -689,7 +622,7 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
       lastLoadedDateRef.current = null
       setEditorLoadCount((c) => c + 1)
     } catch (err) {
-      console.error('[JournalPage] Failed to apply default template:', err)
+      log.error('Failed to apply default template:', err)
     } finally {
       setIsApplyingDefaultTemplate(false)
     }
@@ -702,7 +635,7 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
       lastLoadedDateRef.current = null
       setEditorLoadCount((c) => c + 1)
     } catch (err) {
-      console.error('[JournalPage] Failed to create blank entry:', err)
+      log.error('Failed to create blank entry:', err)
     }
   }, [selectedDate])
 
@@ -733,7 +666,7 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
         if (task.completed) await tasksService.uncomplete(taskId)
         else await tasksService.complete({ id: taskId })
       } catch (error) {
-        console.error('Failed to toggle task completion:', error)
+        log.error('Failed to toggle task completion:', error)
       }
     },
     [dayTasks]
@@ -745,7 +678,7 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
         const isoDate = parseConnectionDate(connection.date)
         if (isoDate) navigateToDay(isoDate)
       } else if (connection.type === 'note' && connection.title) {
-        console.log('Navigate to note:', connection.title)
+        log.info('Navigate to note:', connection.title)
       }
     },
     [navigateToDay]
@@ -785,7 +718,7 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
       date={selectedDate}
       onRecover={handleErrorRecover}
       onError={(error, errorInfo) => {
-        console.error('[JournalPage] Error caught by boundary:', error, errorInfo)
+        log.error('Error caught by boundary:', error, errorInfo)
       }}
     >
       <div className={cn('flex h-full w-full overflow-hidden bg-background', className)}>
@@ -821,7 +754,7 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
               </header>
 
               {/* Editor/Content Area with Sliding Animation */}
-              <div className="flex-1 flex w-full overflow-hidden">
+              <div className="flex-1 flex w-full overflow-hidden min-w-0">
                 {/* Left Spacer */}
                 <div
                   className="transition-all duration-500 ease-in-out"
@@ -830,10 +763,11 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
 
                 <div
                   className={cn(
-                    'flex flex-col transition-all duration-500 ease-in-out shrink-0 px-8 lg:px-12'
+                    'flex flex-col transition-all duration-500 ease-in-out min-w-0 px-8 lg:px-12'
                   )}
                   style={{
-                    width: isCompactMode ? 'min(100%, 48rem)' : '100%'
+                    width: isCompactMode ? 'min(100%, 48rem)' : '100%',
+                    maxWidth: '100%'
                   }}
                 >
                   {entryError && (
@@ -886,44 +820,48 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
                       {entry && (
                         <div
                           className={cn(
-                            'mb-4 transition-all duration-500 ease-in-out',
+                            'mb-8 transition-all duration-500 ease-in-out',
                             isCompactMode ? 'pl-0' : 'pl-6 lg:pl-8'
                           )}
                         >
-                          <TagsRow
-                            tags={journalTags}
-                            availableTags={availableTags}
-                            recentTags={recentTags}
-                            onAddTag={handleAddTag}
-                            onCreateTag={handleCreateTag}
-                            onRemoveTag={handleRemoveTag}
-                          />
-                        </div>
-                      )}
+                          <div className="flex flex-col gap-3">
+                            {/* Tags Row */}
+                            <TagsRow
+                              tags={journalTags}
+                              availableTags={availableTags}
+                              recentTags={recentTags}
+                              onAddTag={handleAddTag}
+                              onCreateTag={handleCreateTag}
+                              onRemoveTag={handleRemoveTag}
+                              className="mb-0"
+                            />
 
-                      {entry && (
-                        <div
-                          className={cn(
-                            'mb-4 transition-all duration-500 ease-in-out',
-                            isCompactMode ? 'pl-0' : 'pl-6 lg:pl-8'
-                          )}
-                        >
-                          <InfoSection
-                            properties={properties}
-                            isExpanded={isInfoExpanded}
-                            onToggleExpand={() => setIsInfoExpanded(!isInfoExpanded)}
-                            onPropertyChange={handlePropertyChange}
-                            onAddProperty={handleAddProperty}
-                            onDeleteProperty={handleDeleteProperty}
-                          />
+                            {/* Divider - subtle */}
+                            <div className="h-px w-full bg-border/40" />
+
+                            {/* Properties Section */}
+                            <InfoSection
+                              properties={properties}
+                              isExpanded={isInfoExpanded}
+                              variant="embedded"
+                              onToggleExpand={() => setIsInfoExpanded(!isInfoExpanded)}
+                              onPropertyChange={handlePropertyChange}
+                              onPropertyNameChange={handlePropertyNameChange}
+                              onPropertyOrderChange={handlePropertyOrderChange}
+                              onAddProperty={handleAddProperty}
+                              onDeleteProperty={handleDeleteProperty}
+                            />
+                          </div>
                         </div>
                       )}
 
                       <div
+                        role="presentation"
                         className={cn(
-                          'editor-click-area min-h-[300px] relative transition-all duration-500 ease-in-out',
+                          'editor-click-area min-h-[300px] relative transition-all duration-500 ease-in-out overflow-visible',
                           isCompactMode ? 'pl-0' : 'note-margin-line pl-6 lg:pl-8'
                         )}
+                        style={{ wordBreak: 'break-word', overflowWrap: 'break-word' }}
                         onMouseDown={(e) => {
                           const target = e.target as HTMLElement
                           if (
@@ -948,6 +886,7 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
                         ) : (
                           <ContentArea
                             key={editorState.key}
+                            noteId={entry?.id}
                             initialContent={editorState.content}
                             contentType="markdown"
                             placeholder={
@@ -994,6 +933,19 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
                 <div className="flex-grow transition-all duration-500 ease-in-out" />
               </div>
             </div>
+
+            {/* Stats Footer - sticky at bottom of scroll area */}
+            {!isJournalSettingsLoading &&
+              journalSettings.showStatsFooter &&
+              viewState.type === 'day' &&
+              documentStats && (
+                <JournalStatsFooter
+                  wordCount={documentStats.wordCount}
+                  characterCount={documentStats.characterCount}
+                  createdAt={documentStats.createdAt}
+                  modifiedAt={documentStats.modifiedAt}
+                />
+              )}
           </div>
 
           {viewState.type === 'day' && !isCompactMode && (
@@ -1026,41 +978,42 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
               aria-hidden="true"
             />
             <section className="relative">
-              <h3 className="journal-section-label mb-3">Calendar</h3>
               <JournalCalendar
                 selectedDate={selectedDate}
                 onDayClick={handleDayClick}
-                onTodayClick={handleTodayClick}
                 heatmapData={heatmapData}
               />
             </section>
-            <section className="relative">
-              <h3 className="journal-section-label mb-3">
-                {isToday ? "Today's Schedule" : 'Schedule'}
-              </h3>
-              <DayContextSidebar
-                events={EMPTY_EVENTS}
-                tasks={dayTasks}
-                overdueCount={overdueCount}
-                isToday={isToday}
-                isPast={selectedDate < today}
-                onTaskClick={(id) => console.log('Task clicked:', id)}
-                onTaskToggle={handleTaskToggle}
-                onEventClick={(id) => console.log('Event clicked:', id)}
-              />
-            </section>
-            <section className="relative">
-              <h3 className="journal-section-label mb-3">Connected Thoughts</h3>
-              <AIConnectionsPanel
-                connections={aiConnections}
-                isLoading={isAILoading}
-                error={aiError}
-                isNewUser={!entry && aiConnections.length === 0}
-                onConnectionClick={handleConnectionClick}
-                onRefresh={refreshAIConnections}
-                maxItems={3}
-              />
-            </section>
+            {!isJournalSettingsLoading &&
+              (journalSettings.showSchedule || journalSettings.showTasks) && (
+                <section className="relative">
+                  <DayContextSidebar
+                    events={EMPTY_EVENTS}
+                    tasks={dayTasks}
+                    overdueCount={overdueCount}
+                    isToday={isToday}
+                    isPast={selectedDate < today}
+                    showSchedule={journalSettings.showSchedule}
+                    showTasks={journalSettings.showTasks}
+                    onTaskClick={(id) => log.info('Task clicked:', id)}
+                    onTaskToggle={handleTaskToggle}
+                    onEventClick={(id) => log.info('Event clicked:', id)}
+                  />
+                </section>
+              )}
+            {!isJournalSettingsLoading && journalSettings.showAIConnections && (
+              <section className="relative">
+                <AIConnectionsPanel
+                  connections={aiConnections}
+                  isLoading={isAILoading}
+                  error={aiError}
+                  isNewUser={!entry && aiConnections.length === 0}
+                  onConnectionClick={handleConnectionClick}
+                  onRefresh={refreshAIConnections}
+                  maxItems={3}
+                />
+              </section>
+            )}
           </div>
         </aside>
 

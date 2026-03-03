@@ -1,0 +1,1 @@
+ALTER TABLE `note_cache` ADD `local_only` integer DEFAULT false;

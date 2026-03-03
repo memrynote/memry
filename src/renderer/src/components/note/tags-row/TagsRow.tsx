@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, memo } from 'react'
 import { cn } from '@/lib/utils'
 import { TagChip, Tag } from './TagChip'
 import { AddTagButton } from './AddTagButton'
@@ -12,16 +12,18 @@ export interface TagsRowProps {
   onCreateTag: (name: string, color: string) => void
   onRemoveTag: (tagId: string) => void
   disabled?: boolean
+  className?: string
 }
 
-export function TagsRow({
+export const TagsRow = memo(function TagsRow({
   tags,
   availableTags,
   recentTags,
   onAddTag,
   onCreateTag,
   onRemoveTag,
-  disabled = false
+  disabled = false,
+  className
 }: TagsRowProps) {
   const [isPopupOpen, setIsPopupOpen] = useState(false)
 
@@ -41,7 +43,7 @@ export function TagsRow({
     <div
       role="list"
       aria-label="Tags"
-      className={cn('relative flex min-h-8 flex-wrap items-center gap-2', 'mb-4')}
+      className={cn('relative flex min-h-8 flex-wrap items-center gap-2', className || 'mb-4')}
     >
       {/* Tag chips */}
       {tags.map((tag) => (
@@ -72,4 +74,4 @@ export function TagsRow({
       {tags.length === 0 && <span className="text-[13px] text-stone-400">Add tags</span>}
     </div>
   )
-}
+})

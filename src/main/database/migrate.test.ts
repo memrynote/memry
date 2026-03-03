@@ -27,7 +27,17 @@ describe('database migrations', () => {
     const names = tables.map((table) => table.name)
 
     expect(names).toEqual(
-      expect.arrayContaining(['projects', 'statuses', 'tasks', 'inbox_items', 'settings'])
+      expect.arrayContaining([
+        'projects',
+        'statuses',
+        'tasks',
+        'inbox_items',
+        'settings',
+        'sync_devices',
+        'sync_queue',
+        'sync_state',
+        'sync_history'
+      ])
     )
 
     sqlite.close()

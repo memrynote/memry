@@ -1,6 +1,7 @@
 import { sqliteTable, text, integer, index, primaryKey } from 'drizzle-orm/sqlite-core'
 import { sql } from 'drizzle-orm'
 import type { FileType } from '../../file-types'
+import type { VectorClock } from '../../contracts/sync-api'
 
 export const noteCache = sqliteTable(
   'note_cache',
@@ -14,7 +15,10 @@ export const noteCache = sqliteTable(
     mimeType: text('mime_type'),
     // File size in bytes
     fileSize: integer('file_size'),
+    // Attachment ID for synced binary files (links to R2 blob)
+    attachmentId: text('attachment_id'),
     emoji: text('emoji'), // T003: Emoji icon for visual identification (markdown only)
+    localOnly: integer('local_only', { mode: 'boolean' }).default(false),
     // Content hash for change detection (markdown only - nullable for other types)
     contentHash: text('content_hash'),
     // Word count (markdown only - nullable for other types)
@@ -25,11 +29,13 @@ export const noteCache = sqliteTable(
     snippet: text('snippet'),
     // Unified: date field for journal entries (YYYY-MM-DD), null for regular notes
     date: text('date'),
+    clock: text('clock', { mode: 'json' }).$type<VectorClock>(),
+    syncedAt: text('synced_at'),
     createdAt: text('created_at').notNull(),
     modifiedAt: text('modified_at').notNull(),
     indexedAt: text('indexed_at')
       .notNull()
-      .default(sql`(datetime('now'))`)
+      .default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`)
   },
   (table) => [
     index('idx_note_cache_path').on(table.path),
@@ -48,6 +54,7 @@ export const noteTags = sqliteTable(
       .notNull()
       .references(() => noteCache.id, { onDelete: 'cascade' }),
     tag: text('tag').notNull(),
+    position: integer('position').notNull().default(0),
     // When the note was pinned to this tag (null = not pinned)
     pinnedAt: text('pinned_at')
   },
@@ -57,18 +64,6 @@ export const noteTags = sqliteTable(
     index('idx_note_tags_pinned').on(table.pinnedAt)
   ]
 )
-
-// ============================================================================
-// Tag Definitions Table (vault-wide tag registry with persistent colors)
-// ============================================================================
-
-export const tagDefinitions = sqliteTable('tag_definitions', {
-  name: text('name').primaryKey(),
-  color: text('color').notNull(),
-  createdAt: text('created_at')
-    .notNull()
-    .default(sql`(datetime('now'))`)
-})
 
 export const noteLinks = sqliteTable(
   'note_links',
@@ -118,7 +113,7 @@ export const propertyDefinitions = sqliteTable('property_definitions', {
   color: text('color'),
   createdAt: text('created_at')
     .notNull()
-    .default(sql`(datetime('now'))`)
+    .default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`)
 })
 
 // ============================================================================
@@ -129,8 +124,6 @@ export type NoteCache = typeof noteCache.$inferSelect
 export type NewNoteCache = typeof noteCache.$inferInsert
 export type NoteTag = typeof noteTags.$inferSelect
 export type NewNoteTag = typeof noteTags.$inferInsert
-export type TagDefinition = typeof tagDefinitions.$inferSelect
-export type NewTagDefinition = typeof tagDefinitions.$inferInsert
 export type NoteLink = typeof noteLinks.$inferSelect
 export type NewNoteLink = typeof noteLinks.$inferInsert
 export type NoteProperty = typeof noteProperties.$inferSelect
@@ -147,10 +140,7 @@ export const PropertyTypes = {
   NUMBER: 'number',
   CHECKBOX: 'checkbox',
   DATE: 'date',
-  SELECT: 'select',
-  MULTISELECT: 'multiselect',
-  URL: 'url',
-  RATING: 'rating'
+  URL: 'url'
 } as const
 
 export type PropertyType = (typeof PropertyTypes)[keyof typeof PropertyTypes]
@@ -174,7 +164,7 @@ export const noteSnapshots = sqliteTable(
     reason: text('reason').notNull(), // 'auto' | 'significant'
     createdAt: text('created_at')
       .notNull()
-      .default(sql`(datetime('now'))`)
+      .default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`)
   },
   (table) => [
     index('idx_note_snapshots_note_id').on(table.noteId),
@@ -190,7 +180,8 @@ export const SnapshotReasons = {
   MANUAL: 'manual', // User explicitly saved a version
   AUTO: 'auto', // Auto-save triggered snapshot
   TIMER: 'timer', // Periodic timer (e.g., every 5 minutes of editing)
-  SIGNIFICANT: 'significant' // Significant content change detected
+  SIGNIFICANT: 'significant', // Significant content change detected
+  CLOSE: 'close' // Tab/window/app close — bypass word threshold
 } as const
 
 export type SnapshotReason = (typeof SnapshotReasons)[keyof typeof SnapshotReasons]

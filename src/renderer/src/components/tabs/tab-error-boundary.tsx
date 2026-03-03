@@ -5,6 +5,9 @@
 
 import { Component, type ErrorInfo, type ReactNode } from 'react'
 import { AlertTriangle, RefreshCw } from 'lucide-react'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('Component:TabErrorBoundary')
 
 interface TabErrorBoundaryProps {
   /** Children to render */
@@ -33,7 +36,7 @@ export class TabErrorBoundary extends Component<TabErrorBoundaryProps, TabErrorB
   }
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo): void {
-    console.error('Tab content error:', error, errorInfo)
+    log.error('Tab content error', error, errorInfo)
     this.props.onError?.(error, errorInfo)
   }
 

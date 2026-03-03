@@ -14,6 +14,9 @@ import { updateNoteCache } from '@shared/db/queries/notes'
 import { getIndexDatabase } from '../database'
 import { NotesChannels } from '@shared/ipc-channels'
 import type { NoteRenamedEvent } from '@shared/contracts/notes-api'
+import { createLogger } from '../lib/logger'
+
+const logger = createLogger('RenameTracker')
 
 // ============================================================================
 // Configuration
@@ -53,6 +56,16 @@ interface PendingDelete {
  */
 const pendingDeletes = new Map<string, PendingDelete>()
 
+let onRenameSyncCallback: ((id: string) => void) | null = null
+
+export function registerRenameSyncCallback(cb: (id: string) => void): void {
+  onRenameSyncCallback = cb
+}
+
+export function unregisterRenameSyncCallback(): void {
+  onRenameSyncCallback = null
+}
+
 // ============================================================================
 // Event Emission
 // ============================================================================
@@ -89,13 +102,13 @@ export function trackPendingDelete(
   // Clear any existing pending for this ID (shouldn't happen, but be safe)
   clearPendingDelete(id)
 
-  console.log(`[RenameTracker] Tracking pending delete: ${id} at ${relativePath}`)
+  logger.debug(`Tracking pending delete: ${id} at ${relativePath}`)
 
   const timeout = setTimeout(() => {
     // No matching 'add' event arrived - this is a real delete
     const pending = pendingDeletes.get(id)
     if (pending) {
-      console.log(`[RenameTracker] No rename detected for ${id}, processing as delete`)
+      logger.debug(`No rename detected for ${id}, processing as delete`)
       pendingDeletes.delete(id)
       void pending.onRealDelete()
     }
@@ -127,7 +140,7 @@ export function checkForRename(id: string, newPath: string): string | null {
   }
 
   // Found a match! This is a rename.
-  console.log(`[RenameTracker] Rename detected: ${pending.path} -> ${newPath}`)
+  logger.info(`Rename detected: ${pending.path} -> ${newPath}`)
 
   // Clear the timeout and pending entry
   clearTimeout(pending.timeout)
@@ -149,7 +162,7 @@ export function clearPendingDelete(id: string): void {
   if (pending) {
     clearTimeout(pending.timeout)
     pendingDeletes.delete(id)
-    console.log(`[RenameTracker] Cleared pending delete for ${id}`)
+    logger.debug(`Cleared pending delete for ${id}`)
   }
 }
 
@@ -159,7 +172,7 @@ export function clearPendingDelete(id: string): void {
 export function clearAllPendingDeletes(): void {
   for (const [id, pending] of pendingDeletes) {
     clearTimeout(pending.timeout)
-    console.log(`[RenameTracker] Cleared pending delete for ${id} (shutdown)`)
+    logger.debug(`Cleared pending delete for ${id} (shutdown)`)
   }
   pendingDeletes.clear()
 }
@@ -189,7 +202,7 @@ export function getPendingDeleteCount(): number {
  * @param oldPath - Old relative path
  * @param newPath - New relative path
  */
-function processRename(id: string, oldPath: string, newPath: string): void {
+export function processRename(id: string, oldPath: string, newPath: string): void {
   const db = getIndexDatabase()
 
   // Extract old and new titles from filenames
@@ -205,11 +218,11 @@ function processRename(id: string, oldPath: string, newPath: string): void {
   })
 
   if (!updated) {
-    console.error(`[RenameTracker] Failed to update cache for ${id}`)
+    logger.error(`Failed to update cache for ${id}`)
     return
   }
 
-  console.log(`[RenameTracker] Updated cache: ${oldPath} -> ${newPath}`)
+  logger.debug(`Updated cache: ${oldPath} -> ${newPath}`)
 
   // Emit rename event to renderer
   const event: NoteRenamedEvent = {
@@ -221,7 +234,9 @@ function processRename(id: string, oldPath: string, newPath: string): void {
   }
 
   emitNoteRenamed(event)
-  console.log(`[RenameTracker] Emitted RENAMED event for ${id}`)
+  logger.debug(`Emitted RENAMED event for ${id}`)
+
+  onRenameSyncCallback?.(id)
 }
 
 /**

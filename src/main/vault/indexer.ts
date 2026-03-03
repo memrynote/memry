@@ -17,6 +17,7 @@ import {
   initIndexDatabase,
   runIndexMigrations,
   initializeFts,
+  getDatabase,
   getIndexDatabase,
   closeIndexDatabase
 } from '../database'
@@ -29,9 +30,13 @@ import {
   getNoteCacheByPath,
   getNoteCacheById,
   countNotes,
-  countJournalEntries
+  countJournalEntries,
+  ensureTagDefinitions
 } from '@shared/db/queries/notes'
 import { isSupportedPath, getFileType, getMimeType, getExtension } from '@shared/file-types'
+import { createLogger } from '../lib/logger'
+
+const logger = createLogger('Indexer')
 
 // ============================================================================
 // Types
@@ -83,12 +88,12 @@ async function findVaultFiles(
           // Add supported file (relative path from vault root)
           files.push(path.relative(basePath, fullPath))
         } else {
-          console.log(`[Indexer] Skipping unsupported file: ${entry.name}`)
+          logger.debug(`Skipping unsupported file: ${entry.name}`)
         }
       }
     }
   } catch (error) {
-    console.error(`[Indexer] Error scanning directory ${dirPath}:`, error)
+    logger.error(`Error scanning directory ${dirPath}:`, error)
   }
 
   return files
@@ -110,7 +115,7 @@ async function indexFile(
   const fileType = getFileType(getExtension(absolutePath))
 
   if (!fileType) {
-    console.warn(`[Indexer] Unsupported file type: ${relativePath}`)
+    logger.warn(`Unsupported file type: ${relativePath}`)
     return 'error'
   }
 
@@ -131,7 +136,7 @@ async function indexFile(
     // Handle non-markdown files (PDF, images, audio, video)
     return await indexNonMarkdownFile(vaultPath, relativePath, absolutePath, fileType, db)
   } catch (error) {
-    console.error(`[Indexer] Error indexing file ${relativePath}:`, error)
+    logger.error(`Error indexing file ${relativePath}:`, error)
     return 'error'
   }
 }
@@ -148,7 +153,7 @@ async function indexMarkdownFile(
   // Read and parse the file
   const content = await safeRead(absolutePath)
   if (!content) {
-    console.warn(`[Indexer] Could not read file: ${relativePath}`)
+    logger.warn(`Could not read file: ${relativePath}`)
     return 'error'
   }
 
@@ -158,17 +163,18 @@ async function indexMarkdownFile(
   const existingById = getNoteCacheById(db, parsed.frontmatter.id)
   if (existingById) {
     // This is a copy of an existing note - regenerate ID
-    console.log(`[Indexer] Duplicate ID detected, regenerating for: ${relativePath}`)
+    logger.debug(`Duplicate ID detected, regenerating for: ${relativePath}`)
     const newId = generateNoteId()
     parsed.frontmatter.id = newId
+    parsed.frontmatter.title = path.basename(relativePath, path.extname(relativePath))
 
     // Write back to file with new ID
     try {
       const newContent = serializeNote(parsed.frontmatter, parsed.content)
       await atomicWrite(absolutePath, newContent)
-      console.log(`[Indexer] Regenerated ID for ${relativePath}: ${existingById.id} → ${newId}`)
+      logger.debug(`Regenerated ID for ${relativePath}: ${existingById.id} → ${newId}`)
     } catch (writeError) {
-      console.error(`[Indexer] Failed to write new ID for ${relativePath}:`, writeError)
+      logger.error(`Failed to write new ID for ${relativePath}:`, writeError)
       return 'error'
     }
   }
@@ -186,11 +192,12 @@ async function indexMarkdownFile(
       },
       { isNew: true }
     )
-    console.log(
-      `[Indexer] Indexed: ${relativePath}${result.date ? ` (journal: ${result.date})` : ''}`
-    )
+    logger.debug(`Indexed: ${relativePath}${result.date ? ` (journal: ${result.date})` : ''}`)
+    if (result.tags.length > 0) {
+      ensureTagDefinitions(getDatabase(), result.tags)
+    }
   } catch (syncError) {
-    console.error(`[Indexer] Sync failed for ${relativePath}:`, syncError)
+    logger.error(`Sync failed for ${relativePath}:`, syncError)
     return 'error'
   }
 
@@ -225,7 +232,7 @@ async function indexNonMarkdownFile(
     const title = path.basename(absolutePath, path.extname(absolutePath))
 
     // Sync to cache
-    console.log(`[Indexer] Syncing file to cache:`, {
+    logger.debug(`Syncing file to cache:`, {
       id,
       path: relativePath,
       title,
@@ -243,10 +250,10 @@ async function indexNonMarkdownFile(
       modifiedAt: stats.mtime
     })
 
-    console.log(`[Indexer] Successfully indexed: ${relativePath} (${fileType})`)
+    logger.debug(`Successfully indexed: ${relativePath} (${fileType})`)
     return 'indexed'
   } catch (error) {
-    console.error(`[Indexer] Error indexing file ${relativePath}:`, error)
+    logger.error(`Error indexing file ${relativePath}:`, error)
     return 'error'
   }
 }
@@ -264,7 +271,7 @@ async function indexNonMarkdownFile(
  * @returns Index result with counts
  */
 export async function indexVault(vaultPath: string): Promise<IndexResult> {
-  console.log('[Indexer] Starting vault indexing:', vaultPath)
+  logger.info('Starting vault indexing:', vaultPath)
 
   const config = getConfig()
   const excludePatterns = config.excludePatterns ?? []
@@ -291,14 +298,11 @@ export async function indexVault(vaultPath: string): Promise<IndexResult> {
       }
     } catch {
       // Folder doesn't exist, skip
-      console.log(`[Indexer] Folder does not exist, skipping: ${folder}`)
+      logger.debug(`Folder does not exist, skipping: ${folder}`)
     }
   }
 
-  console.log(`[Indexer] Found ${allFiles.length} files to index`)
-  if (allFiles.length > 0) {
-    console.log(`[Indexer] Files found:`, allFiles.slice(0, 20)) // Log first 20 files
-  }
+  logger.info(`Found ${allFiles.length} files to index`)
 
   if (allFiles.length === 0) {
     emitIndexProgress(100)
@@ -329,16 +333,16 @@ export async function indexVault(vaultPath: string): Promise<IndexResult> {
     }
   }
 
-  console.log(
-    `[Indexer] Indexing complete: ${result.indexed} indexed, ${result.skipped} skipped, ${result.errors} errors`
+  logger.info(
+    `Indexing complete: ${result.indexed} indexed, ${result.skipped} skipped, ${result.errors} errors`
   )
 
   // Verify counts (notes and journal entries are counted separately)
   const db = getIndexDatabase()
   const totalNotes = countNotes(db)
   const journalCount = countJournalEntries(db)
-  console.log(`[Indexer] Total notes in cache: ${totalNotes}`)
-  console.log(`[Indexer] Total journal entries in cache: ${journalCount}`)
+  logger.debug(`Total notes in cache: ${totalNotes}`)
+  logger.debug(`Total journal entries in cache: ${journalCount}`)
 
   return result
 }
@@ -381,7 +385,7 @@ export async function rebuildIndex(vaultPath: string): Promise<RebuildResult> {
   const startTime = Date.now()
   const indexDbPath = getIndexDbPath(vaultPath)
 
-  console.log('[Indexer] Starting index rebuild:', vaultPath)
+  logger.info('Starting index rebuild:', vaultPath)
 
   // Close existing index database connection if open
   try {
@@ -392,28 +396,28 @@ export async function rebuildIndex(vaultPath: string): Promise<RebuildResult> {
 
   // Delete corrupt/existing index file
   if (existsSync(indexDbPath)) {
-    console.log('[Indexer] Deleting existing index.db')
+    logger.info('Deleting existing index.db')
     unlinkSync(indexDbPath)
   }
 
   // Re-initialize database (migrations will recreate tables)
-  console.log('[Indexer] Running index migrations')
+  logger.debug('Running index migrations')
   runIndexMigrations(indexDbPath)
 
   // Initialize the database connection
-  console.log('[Indexer] Initializing index database')
+  logger.debug('Initializing index database')
   initIndexDatabase(indexDbPath)
 
   // Initialize FTS5
-  console.log('[Indexer] Initializing FTS')
+  logger.debug('Initializing FTS')
   initializeFts(getIndexDatabase())
 
   // Re-index all files
-  console.log('[Indexer] Re-indexing all files')
+  logger.debug('Re-indexing all files')
   const result = await indexVault(vaultPath)
 
   const duration = Date.now() - startTime
-  console.log(`[Indexer] Rebuild complete: ${result.indexed} files in ${duration}ms`)
+  logger.info(`Rebuild complete: ${result.indexed} files in ${duration}ms`)
 
   return {
     filesIndexed: result.indexed,

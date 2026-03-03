@@ -33,6 +33,16 @@ vi.mock('../database', () => ({
   getDatabase: vi.fn()
 }))
 
+vi.mock('../vault', () => ({
+  getStatus: vi.fn(() => ({
+    isOpen: true,
+    path: '/test-vault',
+    isIndexing: false,
+    indexProgress: 0,
+    error: null
+  }))
+}))
+
 // Create a mock send function that persists across calls
 const mockSend = vi.fn()
 

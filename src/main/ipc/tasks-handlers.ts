@@ -29,11 +29,53 @@ import {
   BulkMoveSchema,
   GetUpcomingSchema
 } from '@shared/contracts/tasks-api'
+import { createLogger } from '../lib/logger'
 import { createValidatedHandler, createHandler, createStringHandler } from './validate'
 import { getDatabase, type DrizzleDb } from '../database'
 import { generateId } from '../lib/id'
 import * as taskQueries from '@shared/db/queries/tasks'
 import * as projectQueries from '@shared/db/queries/projects'
+import { getTaskSyncService } from '../sync/task-sync'
+import { getProjectSyncService } from '../sync/project-sync'
+import { incrementTaskClocksOffline, incrementProjectClocksOffline } from '../sync/offline-clock'
+
+const logger = createLogger('IPC:Tasks')
+
+function syncTaskUpdate(db: DrizzleDb, taskId: string, changedFields: string[]): void {
+  const svc = getTaskSyncService()
+  if (svc) {
+    svc.enqueueUpdate(taskId, changedFields)
+  } else {
+    incrementTaskClocksOffline(db, taskId, changedFields)
+  }
+}
+
+function syncTaskCreate(db: DrizzleDb, taskId: string): void {
+  const svc = getTaskSyncService()
+  if (svc) {
+    svc.enqueueCreate(taskId)
+  } else {
+    incrementTaskClocksOffline(db, taskId, [])
+  }
+}
+
+function syncProjectUpdate(db: DrizzleDb, projectId: string, changedFields?: string[]): void {
+  const svc = getProjectSyncService()
+  if (svc) {
+    svc.enqueueUpdate(projectId, changedFields)
+  } else {
+    incrementProjectClocksOffline(db, projectId, changedFields)
+  }
+}
+
+function syncProjectCreate(db: DrizzleDb, projectId: string): void {
+  const svc = getProjectSyncService()
+  if (svc) {
+    svc.enqueueCreate(projectId)
+  } else {
+    incrementProjectClocksOffline(db, projectId)
+  }
+}
 
 /**
  * Emit task event to all windows
@@ -108,6 +150,7 @@ export function registerTasksHandlers(): void {
         }
 
         emitTaskEvent(TasksChannels.events.CREATED, { task: enrichedTask })
+        syncTaskCreate(db, id)
 
         return { success: true, task: enrichedTask }
       } catch (error) {
@@ -148,13 +191,14 @@ export function registerTasksHandlers(): void {
         const db = requireDatabase()
         const { id, tags, linkedNoteIds, ...updates } = input
 
+        const existingTask = taskQueries.getTaskById(db, id)
+
         // If projectId is changing, we need to map the status to the new project
         if (updates.projectId) {
-          const currentTask = taskQueries.getTaskById(db, id)
-          if (currentTask && currentTask.projectId !== updates.projectId) {
+          if (existingTask && existingTask.projectId !== updates.projectId) {
             // Get the current status
-            const currentStatus = currentTask.statusId
-              ? projectQueries.getStatusById(db, currentTask.statusId)
+            const currentStatus = existingTask.statusId
+              ? projectQueries.getStatusById(db, existingTask.statusId)
               : undefined
             // Find equivalent status in the new project
             const newStatus = projectQueries.getEquivalentStatus(
@@ -189,7 +233,16 @@ export function registerTasksHandlers(): void {
           linkedNoteIds: taskQueries.getTaskNoteIds(db, id)
         }
 
+        const actualChanged = existingTask
+          ? Object.keys(updates).filter((k) => {
+              const oldVal = (existingTask as Record<string, unknown>)[k] ?? null
+              const newVal = (updates as Record<string, unknown>)[k] ?? null
+              return JSON.stringify(oldVal) !== JSON.stringify(newVal)
+            })
+          : Object.keys(updates)
+
         emitTaskEvent(TasksChannels.events.UPDATED, { id, task: enrichedTask, changes: updates })
+        syncTaskUpdate(db, id, actualChanged)
 
         return { success: true, task: enrichedTask }
       } catch (error) {
@@ -205,6 +258,11 @@ export function registerTasksHandlers(): void {
     createStringHandler(async (id) => {
       try {
         const db = requireDatabase()
+        const syncService = getTaskSyncService()
+        if (syncService) {
+          const task = taskQueries.getTaskById(db, id)
+          if (task) syncService.enqueueDelete(id, JSON.stringify(task))
+        }
         taskQueries.deleteTask(db, id)
         emitTaskEvent(TasksChannels.events.DELETED, { id })
         return { success: true }
@@ -271,6 +329,7 @@ export function registerTasksHandlers(): void {
         }
 
         emitTaskEvent(TasksChannels.events.COMPLETED, { id: input.id, task: enrichedTask })
+        syncTaskUpdate(db, input.id, ['completedAt'])
 
         return { success: true, task: enrichedTask }
       } catch (error) {
@@ -301,6 +360,7 @@ export function registerTasksHandlers(): void {
           task: enrichedTask,
           changes: { completedAt: null }
         })
+        syncTaskUpdate(db, id, ['completedAt'])
 
         return { success: true, task: enrichedTask }
       } catch (error) {
@@ -331,6 +391,7 @@ export function registerTasksHandlers(): void {
           task: enrichedTask,
           changes: { archivedAt: task.archivedAt }
         })
+        syncTaskUpdate(db, id, ['archivedAt'])
         return { success: true }
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Failed to archive task'
@@ -360,6 +421,7 @@ export function registerTasksHandlers(): void {
           task: enrichedTask,
           changes: { archivedAt: null }
         })
+        syncTaskUpdate(db, id, ['archivedAt'])
         return { success: true }
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Failed to unarchive task'
@@ -410,7 +472,12 @@ export function registerTasksHandlers(): void {
           linkedNoteIds: taskQueries.getTaskNoteIds(db, input.taskId)
         }
 
+        const movedFields: string[] = ['position']
+        if (input.targetProjectId) movedFields.push('projectId')
+        if (targetStatusId) movedFields.push('statusId')
+        if (input.targetParentId !== undefined) movedFields.push('parentId')
         emitTaskEvent(TasksChannels.events.MOVED, { id: input.taskId, task: enrichedTask })
+        syncTaskUpdate(db, input.taskId, movedFields)
 
         return { success: true, task: enrichedTask }
       } catch (error) {
@@ -467,6 +534,7 @@ export function registerTasksHandlers(): void {
 
         // IMPORTANT: Emit parent task FIRST so it exists in state when subtasks arrive
         emitTaskEvent(TasksChannels.events.CREATED, { task: enrichedTask })
+        syncTaskCreate(db, newId)
 
         // Duplicate subtasks (if any)
         const subtasks = taskQueries.getSubtasks(db, id)
@@ -497,6 +565,7 @@ export function registerTasksHandlers(): void {
             emitTaskEvent(TasksChannels.events.CREATED, {
               task: { ...duplicatedSubtask, linkedNoteIds: subtaskNoteIds }
             })
+            syncTaskCreate(db, newSubtaskId)
           }
         }
 
@@ -535,6 +604,7 @@ export function registerTasksHandlers(): void {
           ...task,
           linkedNoteIds: taskQueries.getTaskNoteIds(db, input.taskId)
         }
+        syncTaskUpdate(db, input.taskId, ['parentId'])
         return { success: true, task: enrichedTask }
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Failed to convert to subtask'
@@ -557,6 +627,7 @@ export function registerTasksHandlers(): void {
           ...task,
           linkedNoteIds: taskQueries.getTaskNoteIds(db, taskId)
         }
+        syncTaskUpdate(db, taskId, ['parentId'])
         return { success: true, task: enrichedTask }
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Failed to convert to task'
@@ -588,12 +659,17 @@ export function registerTasksHandlers(): void {
           isInbox: false
         })
 
-        // Create default statuses for the project
-        projectQueries.createDefaultStatuses(db, id)
+        if (input.statuses && input.statuses.length >= 2) {
+          projectQueries.createCustomStatuses(db, id, input.statuses)
+        } else {
+          projectQueries.createDefaultStatuses(db, id)
+        }
 
-        emitTaskEvent(TasksChannels.events.PROJECT_CREATED, { project })
+        const fullProject = projectQueries.getProjectWithStatuses(db, id)
+        emitTaskEvent(TasksChannels.events.PROJECT_CREATED, { project: fullProject ?? project })
+        syncProjectCreate(db, id)
 
-        return { success: true, project }
+        return { success: true, project: fullProject ?? project }
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Failed to create project'
         return { success: false, project: null, error: message }
@@ -616,16 +692,22 @@ export function registerTasksHandlers(): void {
     createValidatedHandler(ProjectUpdateSchema, async (input) => {
       try {
         const db = requireDatabase()
-        const { id, ...updates } = input
-        const project = projectQueries.updateProject(db, id, updates)
+        const { id, statuses: statusUpdates, ...metadataUpdates } = input
+        const project = projectQueries.updateProject(db, id, metadataUpdates)
 
         if (!project) {
           return { success: false, project: null, error: 'Project not found' }
         }
 
-        emitTaskEvent(TasksChannels.events.PROJECT_UPDATED, { id, project })
+        if (statusUpdates) {
+          projectQueries.reconcileProjectStatuses(db, id, statusUpdates)
+        }
 
-        return { success: true, project }
+        const fullProject = projectQueries.getProjectWithStatuses(db, id)
+        emitTaskEvent(TasksChannels.events.PROJECT_UPDATED, { id, project: fullProject ?? project })
+        syncProjectUpdate(db, id)
+
+        return { success: true, project: fullProject ?? project }
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Failed to update project'
         return { success: false, project: null, error: message }
@@ -639,8 +721,15 @@ export function registerTasksHandlers(): void {
     createStringHandler(async (id) => {
       try {
         const db = requireDatabase()
+        const syncService = getProjectSyncService()
+        let snapshot: string | undefined
+        if (syncService) {
+          const project = projectQueries.getProjectWithStatuses(db, id)
+          if (project) snapshot = JSON.stringify(project)
+        }
         projectQueries.deleteProject(db, id)
         emitTaskEvent(TasksChannels.events.PROJECT_DELETED, { id })
+        if (syncService && snapshot) syncService.enqueueDelete(id, snapshot)
         return { success: true }
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Failed to delete project'
@@ -666,6 +755,7 @@ export function registerTasksHandlers(): void {
       try {
         const db = requireDatabase()
         projectQueries.archiveProject(db, id)
+        syncProjectUpdate(db, id)
         return { success: true }
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Failed to archive project'
@@ -681,6 +771,9 @@ export function registerTasksHandlers(): void {
       try {
         const db = requireDatabase()
         projectQueries.reorderProjects(db, input.projectIds, input.positions)
+        for (const pid of input.projectIds) {
+          syncProjectUpdate(db, pid, ['position'])
+        }
         return { success: true }
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Failed to reorder projects'
@@ -712,6 +805,7 @@ export function registerTasksHandlers(): void {
           isDone: input.isDone ?? false
         })
 
+        syncProjectUpdate(db, input.projectId)
         return { success: true, status }
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Failed to create status'
@@ -731,6 +825,8 @@ export function registerTasksHandlers(): void {
         if (!status) {
           return { success: false, error: 'Status not found' }
         }
+        const resolved = projectQueries.getStatusById(db, id)
+        if (resolved) syncProjectUpdate(db, resolved.projectId)
         return { success: true, status }
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Failed to update status'
@@ -745,7 +841,9 @@ export function registerTasksHandlers(): void {
     createStringHandler(async (id) => {
       try {
         const db = requireDatabase()
+        const statusBefore = projectQueries.getStatusById(db, id)
         projectQueries.deleteStatus(db, id)
+        if (statusBefore) syncProjectUpdate(db, statusBefore.projectId)
         return { success: true }
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Failed to delete status'
@@ -761,6 +859,10 @@ export function registerTasksHandlers(): void {
       try {
         const db = requireDatabase()
         projectQueries.reorderStatuses(db, input.statusIds, input.positions)
+        if (input.statusIds.length > 0) {
+          const firstStatus = projectQueries.getStatusById(db, input.statusIds[0])
+          if (firstStatus) syncProjectUpdate(db, firstStatus.projectId)
+        }
         return { success: true }
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Failed to reorder statuses'
@@ -803,7 +905,6 @@ export function registerTasksHandlers(): void {
         const db = requireDatabase()
         const count = taskQueries.bulkCompleteTasks(db, input.ids)
 
-        // Emit COMPLETED event for each task to update UI state
         for (const id of input.ids) {
           const task = taskQueries.getTaskById(db, id)
           if (task) {
@@ -812,6 +913,7 @@ export function registerTasksHandlers(): void {
               linkedNoteIds: taskQueries.getTaskNoteIds(db, id)
             }
             emitTaskEvent(TasksChannels.events.COMPLETED, { id, task: enrichedTask })
+            syncTaskUpdate(db, id, ['completedAt'])
           }
         }
 
@@ -829,6 +931,13 @@ export function registerTasksHandlers(): void {
     createValidatedHandler(BulkIdsSchema, async (input) => {
       try {
         const db = requireDatabase()
+        const syncService = getTaskSyncService()
+        if (syncService) {
+          for (const id of input.ids) {
+            const task = taskQueries.getTaskById(db, id)
+            if (task) syncService.enqueueDelete(id, JSON.stringify(task))
+          }
+        }
         const count = taskQueries.bulkDeleteTasks(db, input.ids)
         input.ids.forEach((id) => emitTaskEvent(TasksChannels.events.DELETED, { id }))
         return { success: true, count }
@@ -847,7 +956,6 @@ export function registerTasksHandlers(): void {
         const db = requireDatabase()
         const count = taskQueries.bulkMoveTasks(db, input.ids, input.projectId)
 
-        // Emit UPDATED event for each task to update UI state with new projectId
         for (const id of input.ids) {
           const task = taskQueries.getTaskById(db, id)
           if (task) {
@@ -860,6 +968,7 @@ export function registerTasksHandlers(): void {
               task: enrichedTask,
               changes: { projectId: input.projectId }
             })
+            syncTaskUpdate(db, id, ['projectId', 'position'])
           }
         }
 
@@ -879,7 +988,6 @@ export function registerTasksHandlers(): void {
         const db = requireDatabase()
         const count = taskQueries.bulkArchiveTasks(db, input.ids)
 
-        // Emit UPDATED event for each task to update UI state with archivedAt
         for (const id of input.ids) {
           const task = taskQueries.getTaskById(db, id)
           if (task) {
@@ -892,6 +1000,7 @@ export function registerTasksHandlers(): void {
               task: enrichedTask,
               changes: { archivedAt: task.archivedAt }
             })
+            syncTaskUpdate(db, id, ['archivedAt'])
           }
         }
 
@@ -976,7 +1085,17 @@ export function registerTasksHandlers(): void {
     })
   )
 
-  console.log('[IPC] Tasks handlers registered')
+  // Development helpers used by renderer task tooling.
+  ipcMain.handle(
+    'tasks:seed-performance-test',
+    createHandler(() => ({ success: true, message: '' }))
+  )
+  ipcMain.handle(
+    'tasks:seed-demo',
+    createHandler(() => ({ success: true, message: '' }))
+  )
+
+  logger.info('Tasks handlers registered')
 }
 
 /**
@@ -987,5 +1106,7 @@ export function unregisterTasksHandlers(): void {
   Object.values(TasksChannels.invoke).forEach((channel) => {
     ipcMain.removeHandler(channel)
   })
-  console.log('[IPC] Tasks handlers unregistered')
+  ipcMain.removeHandler('tasks:seed-performance-test')
+  ipcMain.removeHandler('tasks:seed-demo')
+  logger.info('Tasks handlers unregistered')
 }

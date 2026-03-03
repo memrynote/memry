@@ -68,11 +68,16 @@ const QuickFileDropdownItem = ({
       className={cn(
         'flex items-center gap-2 px-3 py-2 cursor-pointer',
         'dropdown-highlight', // smooth background transition
-        isHighlighted
-          ? 'bg-primary text-primary-foreground'
-          : 'text-foreground hover:bg-muted'
+        isHighlighted ? 'bg-primary text-primary-foreground' : 'text-foreground hover:bg-muted'
       )}
       onClick={handleClick}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault()
+          handleClick()
+        }
+      }}
+      tabIndex={0}
       role="option"
       aria-selected={isHighlighted}
     >

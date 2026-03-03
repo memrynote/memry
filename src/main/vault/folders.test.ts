@@ -179,8 +179,8 @@ summaries:
       expect(config!.views).toHaveLength(1)
       expect(config!.views![0].name).toBe('Table View')
       expect(config!.formulas).toEqual({ computed: '1 + 1' })
-      expect(config!.properties!.status.type).toBe('select')
-      expect(config!.summaries!.status.type).toBe('count')
+      expect((config!.properties!.status as Record<string, unknown>).type).toBe('select')
+      expect((config!.summaries!.status as unknown as Record<string, unknown>).type).toBe('count')
     })
   })
 
@@ -216,7 +216,7 @@ summaries:
     })
 
     it('T398: preserves views configuration', async () => {
-      const views = [{ name: 'Table', type: 'table' }]
+      const views = [{ name: 'Table', type: 'table' as const }]
       await writeFolderConfig('projects', { views })
 
       const config = await readFolderConfig('projects')

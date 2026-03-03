@@ -6,6 +6,7 @@
  */
 
 import { useState, useCallback } from 'react'
+import { extractErrorMessage } from '@/lib/ipc-error'
 import { createReactBlockSpec } from '@blocknote/react'
 import { Document, Page, pdfjs } from 'react-pdf'
 import 'react-pdf/dist/Page/AnnotationLayer.css'
@@ -14,6 +15,7 @@ import {
   FileText,
   File,
   Download,
+  Upload,
   Loader2,
   PanelLeftClose,
   PanelLeft,
@@ -23,6 +25,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { cn } from '@/lib/utils'
+import { useSync } from '@/contexts/sync-context'
 
 // Configure PDF.js worker
 pdfjs.GlobalWorkerOptions.workerSrc = new URL(
@@ -81,7 +84,7 @@ function PdfPreview({ url, name }: PdfPreviewProps) {
   }
 
   const handleLoadError = (err: Error) => {
-    setError(err.message)
+    setError(extractErrorMessage(err, 'Failed to load file'))
     setLoading(false)
   }
 
@@ -243,6 +246,54 @@ function PdfPreview({ url, name }: PdfPreviewProps) {
 }
 
 // ============================================================================
+// Sync Progress Overlay
+// ============================================================================
+
+interface SyncProgressOverlayProps {
+  progress: number
+  status: string
+  direction: 'upload' | 'download'
+}
+
+function SyncProgressOverlay({
+  progress,
+  status,
+  direction
+}: SyncProgressOverlayProps): React.ReactNode {
+  const Icon = direction === 'upload' ? Upload : Download
+  const label =
+    status === 'completed'
+      ? `${direction === 'upload' ? 'Uploaded' : 'Downloaded'}`
+      : status === 'failed'
+        ? 'Failed'
+        : `${direction === 'upload' ? 'Uploading' : 'Downloading'}...`
+
+  return (
+    <div className="absolute inset-x-0 bottom-0 bg-background/80 backdrop-blur-sm px-3 py-1.5 border-t border-border">
+      <div className="flex items-center gap-2 text-xs">
+        <Icon className="h-3 w-3 text-muted-foreground" />
+        <div className="flex-1 min-w-0">
+          <div className="h-1 rounded-full bg-muted overflow-hidden">
+            <div
+              className={cn(
+                'h-full rounded-full transition-all duration-300',
+                status === 'completed' && 'bg-green-500',
+                status === 'failed' && 'bg-red-500',
+                status !== 'completed' && status !== 'failed' && 'bg-primary'
+              )}
+              style={{ width: `${Math.min(100, progress)}%` }}
+            />
+          </div>
+        </div>
+        <span className="tabular-nums text-muted-foreground whitespace-nowrap">
+          {label} {status !== 'completed' && status !== 'failed' ? `${progress}%` : ''}
+        </span>
+      </div>
+    </div>
+  )
+}
+
+// ============================================================================
 // Generic File Preview Component
 // ============================================================================
 
@@ -254,8 +305,21 @@ interface FilePreviewProps {
 }
 
 function FilePreview({ url, name, size, mimeType }: FilePreviewProps) {
+  const { state } = useSync()
+
+  const uploadEntry = state.uploadProgress
+    ? Object.entries(state.uploadProgress).find(([key]) => name && key.includes(name))?.[1]
+    : null
+
+  const downloadEntry = state.downloadProgress
+    ? Object.entries(state.downloadProgress).find(([key]) => name && key.includes(name))?.[1]
+    : null
+
+  const activeTransfer = uploadEntry ?? downloadEntry
+  const transferDirection: 'upload' | 'download' = uploadEntry ? 'upload' : 'download'
+
   return (
-    <div className="file-attachment flex items-center gap-3 rounded-lg border border-border bg-muted/30 p-3">
+    <div className="file-attachment relative flex items-center gap-3 rounded-lg border border-border bg-muted/30 p-3">
       {getFileIcon(mimeType)}
       <div className="flex-1 min-w-0">
         <p className="truncate font-medium text-sm">{name}</p>
@@ -267,6 +331,13 @@ function FilePreview({ url, name, size, mimeType }: FilePreviewProps) {
           Download
         </a>
       </Button>
+      {activeTransfer && activeTransfer.status !== 'completed' && (
+        <SyncProgressOverlay
+          progress={activeTransfer.progress}
+          status={activeTransfer.status}
+          direction={transferDirection}
+        />
+      )}
     </div>
   )
 }

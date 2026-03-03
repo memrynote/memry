@@ -5,14 +5,21 @@
  */
 
 import { useState, useCallback, useMemo, useEffect } from 'react'
-import { Check, Loader2, AlertCircle, Clock } from 'lucide-react'
+import { extractErrorMessage } from '@/lib/ipc-error'
+import { Check, Loader2, AlertCircle, Clock, Filter } from 'lucide-react'
 import { useQueryClient } from '@tanstack/react-query'
 
 import { useTabs } from '@/contexts/tabs'
 import { Button } from '@/components/ui/button'
 import { ToastContainer, type Toast } from '@/components/ui/toast'
-import { Switch } from '@/components/ui/switch'
-import { Label } from '@/components/ui/label'
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuCheckboxItem,
+  DropdownMenuSeparator,
+  DropdownMenuLabel
+} from '@/components/ui/dropdown-menu'
 import { ListView } from '@/components/list-view'
 import { InboxDetailPanel } from '@/components/inbox-detail'
 import { BulkActionBar, type ClusterSuggestion } from '@/components/bulk/bulk-action-bar'
@@ -27,7 +34,7 @@ import type { InboxView } from '@/components/inbox/inbox-segment-control'
 import { InboxInsightsView } from '@/components/inbox/inbox-insights-view'
 import { InboxArchivedView } from '@/components/inbox/inbox-archived-view'
 import { inboxService, onInboxSnoozeDue } from '@/services/inbox-service'
-import type { ReminderMetadata } from '@shared/contracts/inbox-api'
+import type { ReminderMetadata, InboxItemType } from '@shared/contracts/inbox-api'
 import { detectClusters, getClusterKey } from '@/lib/ai-clustering'
 import { getStaleItems, getNonStaleItems } from '@/lib/stale-utils'
 import { cn } from '@/lib/utils'
@@ -39,6 +46,7 @@ import {
   useArchiveInboxItem,
   useBulkArchiveInboxItems,
   useFileInboxItem,
+  useInboxSnoozed,
   inboxKeys
 } from '@/hooks/use-inbox'
 import { notesKeys } from '@/hooks/use-notes-query'
@@ -47,9 +55,36 @@ interface InboxPageProps {
   className?: string
 }
 
+// All inbox item types for the filter
+const INBOX_ITEM_TYPES: InboxItemType[] = [
+  'link',
+  'note',
+  'image',
+  'voice',
+  'video',
+  'clip',
+  'pdf',
+  'social',
+  'reminder'
+]
+
+// Display labels for inbox item types
+const INBOX_TYPE_LABELS: Record<InboxItemType, string> = {
+  link: 'Links',
+  note: 'Notes',
+  image: 'Images',
+  voice: 'Voice',
+  video: 'Video',
+  clip: 'Clips',
+  pdf: 'PDFs',
+  social: 'Social',
+  reminder: 'Reminders'
+}
+
 export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
   const [toasts, setToasts] = useState<Toast[]>([])
   const [showSnoozedItems, setShowSnoozedItems] = useState(false)
+  const [selectedTypes, setSelectedTypes] = useState<Set<InboxItemType>>(new Set())
   const currentView: InboxView = 'inbox'
   const queryClient = useQueryClient()
   const { openTab } = useTabs()
@@ -68,6 +103,10 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
     includeSnoozed: showSnoozedItems
   })
 
+  // Get snoozed items count for badge display
+  const { data: snoozedItems = [] } = useInboxSnoozed()
+  const snoozedCount = snoozedItems.length
+
   // File mutation
   const fileItemMutation = useFileInboxItem()
 
@@ -78,9 +117,37 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
   // Local state for optimistic UI (items pending archive animation)
   const [pendingArchiveIds, setPendingArchiveIds] = useState<Set<string>>(new Set())
 
-  // Combine backend items with pending archives for optimistic UI
+  // Combine backend items with pending archives and type filter for optimistic UI
   const items = useMemo(() => {
-    return backendItems.filter((item) => !pendingArchiveIds.has(item.id))
+    return backendItems.filter((item) => {
+      // Filter out pending archives
+      if (pendingArchiveIds.has(item.id)) return false
+      // Apply type filter (empty set means show all)
+      if (selectedTypes.size > 0 && !selectedTypes.has(item.type)) return false
+      return true
+    })
+  }, [backendItems, pendingArchiveIds, selectedTypes])
+
+  // Count items by type for filter display
+  const itemCountsByType = useMemo(() => {
+    const counts: Record<InboxItemType, number> = {
+      link: 0,
+      note: 0,
+      image: 0,
+      voice: 0,
+      video: 0,
+      clip: 0,
+      pdf: 0,
+      social: 0,
+      reminder: 0
+    }
+    // Count from backend items (excluding pending archives)
+    backendItems.forEach((item) => {
+      if (!pendingArchiveIds.has(item.id)) {
+        counts[item.type]++
+      }
+    })
+    return counts
   }, [backendItems, pendingArchiveIds])
 
   // Empty state tracking
@@ -432,7 +499,7 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
           })
           setItemsProcessedToday((prev) => Math.max(0, prev - 1))
           addToast({
-            message: error instanceof Error ? error.message : 'Failed to file item',
+            message: extractErrorMessage(error, 'Failed to file item'),
             type: 'error'
           })
         }
@@ -507,7 +574,7 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
           })
           setItemsProcessedToday((prev) => Math.max(0, prev - 1))
           addToast({
-            message: error instanceof Error ? error.message : 'Failed to file item',
+            message: extractErrorMessage(error, 'Failed to file item'),
             type: 'error'
           })
         }
@@ -751,7 +818,7 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
             return next
           })
           addToast({
-            message: error instanceof Error ? error.message : 'Failed to snooze item',
+            message: extractErrorMessage(error, 'Failed to snooze item'),
             type: 'error'
           })
         }
@@ -819,7 +886,7 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
         })
         setItemsProcessedToday((prev) => Math.max(0, prev - processedCount))
         addToast({
-          message: error instanceof Error ? error.message : 'Failed to file items',
+          message: extractErrorMessage(error, 'Failed to file items'),
           type: 'error'
         })
       }
@@ -851,7 +918,7 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
         }
       } catch (error) {
         addToast({
-          message: error instanceof Error ? error.message : 'Failed to apply tags',
+          message: extractErrorMessage(error, 'Failed to apply tags'),
           type: 'error'
         })
       }
@@ -1031,7 +1098,7 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
             return next
           })
           addToast({
-            message: error instanceof Error ? error.message : 'Failed to snooze items',
+            message: extractErrorMessage(error, 'Failed to snooze items'),
             type: 'error'
           })
         }
@@ -1097,7 +1164,7 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
         })
         setItemsProcessedToday((prev) => Math.max(0, prev - processedCount))
         addToast({
-          message: error instanceof Error ? error.message : 'Failed to file stale items',
+          message: extractErrorMessage(error, 'Failed to file stale items'),
           type: 'error'
         })
       }
@@ -1173,7 +1240,7 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
         }
       } catch (error) {
         addToast({
-          message: error instanceof Error ? error.message : 'Failed to capture image',
+          message: extractErrorMessage(error, 'Failed to capture image'),
           type: 'error'
         })
       } finally {
@@ -1307,23 +1374,8 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
         </div>
       )}
 
-      {/* Header with Dramatic Item Count */}
+      {/* Header */}
       <header className={cn('relative', densityConfig.headerMargin)}>
-        {/* Large decorative item count watermark */}
-        {!isInBulkMode && items.length > 0 && (
-          <div
-            className={cn(
-              'absolute',
-              densityConfig.watermarkOffset,
-              densityConfig.watermarkSize,
-              'journal-day-watermark'
-            )}
-            aria-hidden="true"
-          >
-            {items.length}
-          </div>
-        )}
-
         {/* Content layer */}
         <div className="relative z-10">
           {isInBulkMode ? (
@@ -1354,67 +1406,138 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
               </Button>
             </div>
           ) : (
-            /* Normal Header */
-            <div className="flex items-start justify-between gap-6">
-              <div>
-                <h1 className="font-display text-2xl lg:text-3xl font-normal tracking-tight text-foreground/90 mb-1">
-                  Inbox
-                </h1>
-                {currentView !== 'inbox' && (
-                  <p className="font-serif text-sm text-muted-foreground/70 tracking-wide">
-                    {currentView === 'archived'
-                      ? 'Previously processed items'
-                      : 'Capture patterns & insights'}
-                  </p>
+            /* Normal Header with Capture Input */
+            <div className="flex items-start justify-between gap-4">
+              <div className="flex-1">
+                {/* Quick Capture Input - only in inbox view */}
+                {currentView === 'inbox' && (
+                  <CaptureInput
+                    density={density}
+                    onCaptureSuccess={() => {
+                      addToast({
+                        message: 'Item captured',
+                        type: 'success'
+                      })
+                    }}
+                    onCaptureError={(errorMsg) => {
+                      addToast({
+                        message: errorMsg,
+                        type: 'error'
+                      })
+                    }}
+                  />
                 )}
               </div>
 
-              <div className="flex items-center gap-3">
+              {/* Filter and snooze buttons - aligned with input field (accounting for input padding) */}
+              <div className="flex items-center gap-2 mt-1.5">
                 {/* View-specific controls */}
                 {currentView === 'inbox' && (
-                  <div className="flex items-center gap-2">
-                    <Switch
-                      id="show-snoozed"
-                      checked={showSnoozedItems}
-                      onCheckedChange={setShowSnoozedItems}
-                      className="scale-90"
-                    />
-                    <Label
-                      htmlFor="show-snoozed"
-                      className="text-xs text-muted-foreground/70 cursor-pointer whitespace-nowrap"
+                  <>
+                    {/* Type Filter Dropdown */}
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className={cn(
+                            'size-8 relative',
+                            'text-muted-foreground/60 hover:text-foreground',
+                            'hover:bg-foreground/5',
+                            selectedTypes.size > 0 && 'text-amber-600 dark:text-amber-400'
+                          )}
+                          title={
+                            selectedTypes.size > 0
+                              ? `Filtering by ${selectedTypes.size} type${selectedTypes.size > 1 ? 's' : ''}`
+                              : 'Filter by type'
+                          }
+                        >
+                          <Filter className="size-4" />
+                          {selectedTypes.size > 0 && (
+                            <span className="absolute -top-1 -right-1 size-4 text-[10px] font-medium bg-amber-600 dark:bg-amber-500 text-white rounded-full flex items-center justify-center">
+                              {selectedTypes.size}
+                            </span>
+                          )}
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="w-48">
+                        <DropdownMenuLabel className="text-xs text-muted-foreground/70">
+                          Filter by type
+                        </DropdownMenuLabel>
+                        <DropdownMenuSeparator />
+                        {INBOX_ITEM_TYPES.map((type) => {
+                          const count = itemCountsByType[type]
+                          return (
+                            <DropdownMenuCheckboxItem
+                              key={type}
+                              checked={selectedTypes.has(type)}
+                              onCheckedChange={(checked) => {
+                                setSelectedTypes((prev) => {
+                                  const next = new Set(prev)
+                                  if (checked) {
+                                    next.add(type)
+                                  } else {
+                                    next.delete(type)
+                                  }
+                                  return next
+                                })
+                              }}
+                              onSelect={(e) => e.preventDefault()}
+                              disabled={count === 0}
+                              className={cn(count === 0 && 'opacity-50')}
+                            >
+                              <span className="flex-1">{INBOX_TYPE_LABELS[type]}</span>
+                              <span className="text-xs text-muted-foreground/60 ml-2">{count}</span>
+                            </DropdownMenuCheckboxItem>
+                          )
+                        })}
+                        {selectedTypes.size > 0 && (
+                          <>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuCheckboxItem
+                              checked={false}
+                              onCheckedChange={() => setSelectedTypes(new Set())}
+                              onSelect={(e) => e.preventDefault()}
+                              className="text-muted-foreground/70"
+                            >
+                              Clear all
+                            </DropdownMenuCheckboxItem>
+                          </>
+                        )}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+
+                    {/* Snooze Toggle Button (icon only) */}
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => setShowSnoozedItems(!showSnoozedItems)}
+                      className={cn(
+                        'size-8 relative',
+                        'text-muted-foreground/60 hover:text-foreground',
+                        'hover:bg-foreground/5',
+                        showSnoozedItems && 'bg-amber-500/10 text-amber-600 dark:text-amber-400'
+                      )}
+                      title={
+                        showSnoozedItems
+                          ? 'Hide snoozed items'
+                          : `Show snoozed items${snoozedCount > 0 ? ` (${snoozedCount})` : ''}`
+                      }
                     >
-                      <Clock className="inline-block size-3 mr-1" />
-                      Show snoozed
-                    </Label>
-                  </div>
+                      <Clock className="size-4" />
+                      {snoozedCount > 0 && (
+                        <span className="absolute -top-1 -right-1 size-4 text-[10px] font-medium bg-amber-600 dark:bg-amber-500 text-white rounded-full flex items-center justify-center">
+                          {snoozedCount}
+                        </span>
+                      )}
+                    </Button>
+                  </>
                 )}
               </div>
             </div>
           )}
         </div>
-
       </header>
-
-      {/* Quick Capture Input - only in inbox view */}
-      {currentView === 'inbox' && (
-        <div className={densityConfig.captureMargin}>
-          <CaptureInput
-            density={density}
-            onCaptureSuccess={() => {
-              addToast({
-                message: 'Item captured',
-                type: 'success'
-              })
-            }}
-            onCaptureError={(errorMsg) => {
-              addToast({
-                message: errorMsg,
-                type: 'error'
-              })
-            }}
-          />
-        </div>
-      )}
 
       {/* Content: Scrollable area with view-based rendering */}
       <div
@@ -1463,9 +1586,9 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
           </>
         )}
 
-        {currentView === 'archived' && <InboxArchivedView />}
+        {(currentView as string) === 'archived' && <InboxArchivedView />}
 
-        {currentView === 'insights' && <InboxInsightsView />}
+        {(currentView as string) === 'insights' && <InboxInsightsView />}
       </div>
 
       {/* Inbox view specific components */}

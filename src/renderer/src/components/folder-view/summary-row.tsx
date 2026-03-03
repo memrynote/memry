@@ -102,7 +102,7 @@ export function SummaryRow({
       }}
       className="bg-muted/50 border-t-2 border-border"
     >
-      <tr style={{ display: 'flex', width: '100%' }}>
+      <tr style={{ display: 'flex', width: '100%' }} className="items-center">
         {columns.map((column, index) => {
           const summary = computedSummaries[column.id]
           const width = columnWidths?.[column.id] ?? column.width ?? 120

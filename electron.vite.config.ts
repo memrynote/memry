@@ -1,39 +1,72 @@
 import { resolve } from 'path'
-import { defineConfig, externalizeDepsPlugin } from 'electron-vite'
+import { cpSync } from 'fs'
+import { defineConfig } from 'electron-vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
-import { viteStaticCopy } from 'vite-plugin-static-copy'
+import type { Plugin } from 'vite'
+
+function devCsp(): Plugin {
+  return {
+    name: 'dev-csp',
+    transformIndexHtml(html) {
+      if (process.env.NODE_ENV !== 'production') {
+        return html.replace("script-src 'self'", "script-src 'self' 'unsafe-eval' 'unsafe-inline'")
+      }
+      return html
+    }
+  }
+}
+
+function copyMigrations(): Plugin {
+  return {
+    name: 'copy-drizzle-migrations',
+    writeBundle(options) {
+      const outDir = options.dir ?? resolve('out/main')
+      cpSync(resolve('src/main/database/drizzle-data'), resolve(outDir, 'drizzle-data'), {
+        recursive: true
+      })
+      cpSync(resolve('src/main/database/drizzle-index'), resolve(outDir, 'drizzle-index'), {
+        recursive: true
+      })
+    }
+  }
+}
 
 export default defineConfig({
   main: {
-    plugins: [
-      externalizeDepsPlugin(),
-      viteStaticCopy({
-        targets: [
-          {
-            src: 'src/main/database/drizzle-data/*',
-            dest: 'drizzle-data'
-          },
-          {
-            src: 'src/main/database/drizzle-index/*',
-            dest: 'drizzle-index'
-          }
-        ]
-      })
-    ],
+    plugins: [copyMigrations()],
     build: {
+      externalizeDeps: {
+        exclude: [
+          'cborg',
+          '@blocknote/server-util',
+          '@blocknote/core',
+          '@blocknote/react',
+          '@handlewithcare/prosemirror-inputrules',
+          'y-prosemirror'
+        ]
+      },
       rollupOptions: {
-        external: ['better-sqlite3']
+        input: {
+          index: resolve('src/main/index.ts'),
+          'sync-worker': resolve('src/main/sync/worker.ts')
+        },
+        external: ['better-sqlite3', 'jsdom', 'canvas']
       }
     },
     resolve: {
       alias: {
         '@shared': resolve('src/shared')
-      }
+      },
+      dedupe: [
+        'prosemirror-model',
+        'prosemirror-state',
+        'prosemirror-view',
+        'prosemirror-transform'
+      ]
     }
   },
   preload: {
-    plugins: [externalizeDepsPlugin()],
     resolve: {
       alias: {
         '@shared': resolve('src/shared')
@@ -48,6 +81,6 @@ export default defineConfig({
         '@shared': resolve('src/shared')
       }
     },
-    plugins: [react(), tailwindcss()]
+    plugins: [devCsp(), react(), tailwindcss()]
   }
 })

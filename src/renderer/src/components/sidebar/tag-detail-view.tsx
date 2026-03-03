@@ -45,9 +45,12 @@ import { Separator } from '@/components/ui/separator'
 import { useSidebarDrillDown } from '@/contexts/sidebar-drill-down'
 import { useTagDetail, type TagSortBy } from '@/hooks/use-tag-detail'
 import { useSidebarNavigation } from '@/hooks/use-sidebar-navigation'
-import { getTagColors } from '@/components/note/tags-row/tag-colors'
-import type { TagNoteItem } from '@/services/tags-service'
+import { COLOR_NAMES, getTagColors } from '@/components/note/tags-row/tag-colors'
+import { tagsService, type TagNoteItem } from '@/services/tags-service'
 import type { SidebarItem } from '@/contexts/tabs/types'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('Component:TagDetailView')
 
 interface TagDetailViewProps {
   tag: string
@@ -62,15 +65,16 @@ export function TagDetailView({ tag, color, className }: TagDetailViewProps): Re
     count,
     pinnedNotes,
     unpinnedNotes,
+    color: resolvedColor,
     isLoading,
     error,
     sortBy,
     setSortBy,
     pinNote,
     unpinNote
-  } = useTagDetail({ tag })
+  } = useTagDetail({ tag, fallbackColor: color })
 
-  const tagColors = getTagColors(color)
+  const tagColors = getTagColors(resolvedColor)
 
   // Handle note click - open in main area
   const handleNoteClick = useCallback(
@@ -116,7 +120,7 @@ export function TagDetailView({ tag, color, className }: TagDetailViewProps): Re
         </div>
 
         {/* Overflow menu */}
-        <TagOverflowMenu tag={tag} color={color} />
+        <TagOverflowMenu tag={tag} color={resolvedColor} />
       </div>
 
       {/* Content */}
@@ -221,7 +225,15 @@ function NoteItem({ note, isPinned, onClick, onPin, onUnpin }: NoteItemProps): R
   return (
     <div
       className="group/noteitem px-3 py-2 hover:bg-accent/50 cursor-pointer relative"
+      role="button"
+      tabIndex={0}
       onClick={onClick}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault()
+          onClick()
+        }
+      }}
     >
       <div className="flex items-start gap-2">
         {/* Icon */}
@@ -287,41 +299,37 @@ interface TagOverflowMenuProps {
 
 function TagOverflowMenu({ tag, color }: TagOverflowMenuProps): React.JSX.Element {
   // TODO: Implement rename and delete handlers
+  const [isUpdatingColor, setIsUpdatingColor] = React.useState(false)
+
   const handleRename = () => {
-    console.log('Rename tag:', tag)
+    log.info('Rename tag:', tag)
     // TODO: Open rename dialog
   }
 
-  const handleColorChange = (newColor: string) => {
-    console.log('Change color:', tag, newColor)
-    // TODO: Call tagsService.updateTagColor
+  const handleColorChange = async (newColor: string) => {
+    if (newColor === color || isUpdatingColor) {
+      return
+    }
+
+    setIsUpdatingColor(true)
+    try {
+      const result = await tagsService.updateTagColor({ tag, color: newColor })
+      if (!result.success) {
+        throw new Error(result.error ?? 'Failed to update tag color')
+      }
+    } catch (error) {
+      log.error('Failed to update tag color', error)
+    } finally {
+      setIsUpdatingColor(false)
+    }
   }
 
   const handleDelete = () => {
-    console.log('Delete tag:', tag)
+    log.info('Delete tag:', tag)
     // TODO: Show confirmation and call tagsService.deleteTag
   }
 
-  const colorOptions = [
-    'rose',
-    'pink',
-    'fuchsia',
-    'purple',
-    'violet',
-    'indigo',
-    'blue',
-    'sky',
-    'cyan',
-    'teal',
-    'emerald',
-    'green',
-    'lime',
-    'yellow',
-    'amber',
-    'orange',
-    'red',
-    'gray'
-  ]
+  const colorOptions = COLOR_NAMES
 
   return (
     <DropdownMenu>
@@ -353,6 +361,7 @@ function TagOverflowMenu({ tag, color }: TagOverflowMenuProps): React.JSX.Elemen
                     )}
                     style={{ backgroundColor: colors.background, borderColor: colors.text }}
                     onClick={() => handleColorChange(c)}
+                    disabled={isUpdatingColor}
                     title={c}
                   />
                 )

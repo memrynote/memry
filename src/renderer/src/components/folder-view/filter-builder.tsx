@@ -6,10 +6,11 @@
  */
 
 import { useState, useCallback, useMemo, useEffect, useRef } from 'react'
-import { Filter, Plus, X, ChevronDown, Trash2 } from 'lucide-react'
+import { Filter, Plus, X, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import {
   Select,
   SelectContent,
@@ -440,163 +441,168 @@ export function FilterBuilder({
   const hasFilters = state.conditions.length > 0 || state.groups.length > 0
 
   return (
-    <Popover open={isOpen} onOpenChange={setIsOpen}>
-      <PopoverTrigger asChild>
-        <Button
-          variant="outline"
-          size="sm"
-          className={cn('gap-1.5', filterCount > 0 && 'border-primary', className)}
-        >
-          <Filter className="h-4 w-4" />
-          <span>Filter</span>
-          {filterCount > 0 && (
-            <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-[10px]">
-              {filterCount}
-            </Badge>
-          )}
-          <ChevronDown className="h-3.5 w-3.5 opacity-50" />
-        </Button>
-      </PopoverTrigger>
+    <TooltipProvider>
+      <Popover open={isOpen} onOpenChange={setIsOpen}>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                size="sm"
+                className={cn('gap-1.5 px-2', filterCount > 0 && 'border-primary', className)}
+              >
+                <Filter className="h-4 w-4" />
+                {filterCount > 0 && (
+                  <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-[10px]">
+                    {filterCount}
+                  </Badge>
+                )}
+              </Button>
+            </PopoverTrigger>
+          </TooltipTrigger>
+          <TooltipContent side="bottom">Filter</TooltipContent>
+        </Tooltip>
 
-      <PopoverContent align="start" className="w-[480px] p-0">
-        {/* Header */}
-        <div className="flex items-center justify-between px-3 py-2 border-b">
-          <span className="text-sm font-medium">Filters</span>
-          {hasFilters && (
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-7 px-2 text-xs text-muted-foreground hover:text-destructive"
-              onClick={handleClearAll}
-            >
-              <Trash2 className="h-3.5 w-3.5 mr-1" />
-              Clear all
-            </Button>
-          )}
-        </div>
+        <PopoverContent align="start" className="w-[480px] p-0">
+          {/* Header */}
+          <div className="flex items-center justify-between px-3 py-2 border-b">
+            <span className="text-sm font-medium">Filters</span>
+            {hasFilters && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 px-2 text-xs text-muted-foreground hover:text-destructive"
+                onClick={handleClearAll}
+              >
+                <Trash2 className="h-3.5 w-3.5 mr-1" />
+                Clear all
+              </Button>
+            )}
+          </div>
 
-        {/* Content */}
-        <div className="p-3 max-h-[400px] overflow-y-auto">
-          {!hasFilters ? (
-            /* Empty state */
-            <div className="text-center py-6 text-sm text-muted-foreground">
-              <Filter className="h-8 w-8 mx-auto mb-2 opacity-50" />
-              <p>No filters applied</p>
-              <p className="text-xs mt-1">Add filters to narrow down your notes</p>
-            </div>
-          ) : (
-            <>
-              {/* Logic selector */}
-              <div className="flex items-center gap-2 mb-3">
-                <span className="text-xs text-muted-foreground">Match</span>
-                <Select value={state.logic} onValueChange={handleLogicChange}>
-                  <SelectTrigger className="w-[100px] h-7 text-xs">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="and" className="text-xs">
-                      All (AND)
-                    </SelectItem>
-                    <SelectItem value="or" className="text-xs">
-                      Any (OR)
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-                <span className="text-xs text-muted-foreground">of the following:</span>
+          {/* Content */}
+          <div className="p-3 max-h-[400px] overflow-y-auto">
+            {!hasFilters ? (
+              /* Empty state */
+              <div className="text-center py-6 text-sm text-muted-foreground">
+                <Filter className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                <p>No filters applied</p>
+                <p className="text-xs mt-1">Add filters to narrow down your notes</p>
               </div>
+            ) : (
+              <>
+                {/* Logic selector */}
+                <div className="flex items-center gap-2 mb-3">
+                  <span className="text-xs text-muted-foreground">Match</span>
+                  <Select value={state.logic} onValueChange={handleLogicChange}>
+                    <SelectTrigger className="w-[100px] h-7 text-xs">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="and" className="text-xs">
+                        All (AND)
+                      </SelectItem>
+                      <SelectItem value="or" className="text-xs">
+                        Any (OR)
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <span className="text-xs text-muted-foreground">of the following:</span>
+                </div>
 
-              {/* Top-level conditions */}
-              {state.conditions.map((condition) => (
-                <FilterRow
-                  key={condition.id}
-                  condition={condition}
-                  availableProperties={propertyInfos}
-                  onChange={(updated) => handleUpdateCondition(condition.id, updated)}
-                  onRemove={() => handleRemoveCondition(condition.id)}
-                />
-              ))}
+                {/* Top-level conditions */}
+                {state.conditions.map((condition) => (
+                  <FilterRow
+                    key={condition.id}
+                    condition={condition}
+                    availableProperties={propertyInfos}
+                    onChange={(updated) => handleUpdateCondition(condition.id, updated)}
+                    onRemove={() => handleRemoveCondition(condition.id)}
+                  />
+                ))}
 
-              {/* Nested groups */}
-              {state.groups.map((group) => (
-                <div key={group.id} className="mt-2 pl-3 border-l-2 border-muted-foreground/20">
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="text-xs text-muted-foreground">Match</span>
-                    <Select
-                      value={group.logic}
-                      onValueChange={(v) => handleGroupLogicChange(group.id, v as 'and' | 'or')}
-                    >
-                      <SelectTrigger className="w-[80px] h-6 text-[10px]">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="and" className="text-xs">
-                          All
-                        </SelectItem>
-                        <SelectItem value="or" className="text-xs">
-                          Any
-                        </SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <span className="text-xs text-muted-foreground flex-1">of:</span>
+                {/* Nested groups */}
+                {state.groups.map((group) => (
+                  <div key={group.id} className="mt-2 pl-3 border-l-2 border-muted-foreground/20">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="text-xs text-muted-foreground">Match</span>
+                      <Select
+                        value={group.logic}
+                        onValueChange={(v) => handleGroupLogicChange(group.id, v as 'and' | 'or')}
+                      >
+                        <SelectTrigger className="w-[80px] h-6 text-[10px]">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="and" className="text-xs">
+                            All
+                          </SelectItem>
+                          <SelectItem value="or" className="text-xs">
+                            Any
+                          </SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <span className="text-xs text-muted-foreground flex-1">of:</span>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-6 w-6 text-muted-foreground hover:text-destructive"
+                        onClick={() => handleRemoveGroup(group.id)}
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+
+                    {group.conditions.map((condition) => (
+                      <FilterRow
+                        key={condition.id}
+                        condition={condition}
+                        availableProperties={propertyInfos}
+                        onChange={(updated) =>
+                          handleUpdateGroupCondition(group.id, condition.id, updated)
+                        }
+                        onRemove={() => handleRemoveGroupCondition(group.id, condition.id)}
+                        nestingLevel={1}
+                      />
+                    ))}
+
                     <Button
                       variant="ghost"
-                      size="icon"
-                      className="h-6 w-6 text-muted-foreground hover:text-destructive"
-                      onClick={() => handleRemoveGroup(group.id)}
+                      size="sm"
+                      className="h-6 px-2 text-[10px] text-muted-foreground ml-4 mt-1"
+                      onClick={() => handleAddGroupCondition(group.id)}
                     >
-                      <X className="h-3.5 w-3.5" />
+                      <Plus className="h-3 w-3 mr-1" />
+                      Add condition
                     </Button>
                   </div>
+                ))}
+              </>
+            )}
+          </div>
 
-                  {group.conditions.map((condition) => (
-                    <FilterRow
-                      key={condition.id}
-                      condition={condition}
-                      availableProperties={propertyInfos}
-                      onChange={(updated) =>
-                        handleUpdateGroupCondition(group.id, condition.id, updated)
-                      }
-                      onRemove={() => handleRemoveGroupCondition(group.id, condition.id)}
-                      nestingLevel={1}
-                    />
-                  ))}
-
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-6 px-2 text-[10px] text-muted-foreground ml-4 mt-1"
-                    onClick={() => handleAddGroupCondition(group.id)}
-                  >
-                    <Plus className="h-3 w-3 mr-1" />
-                    Add condition
-                  </Button>
-                </div>
-              ))}
-            </>
-          )}
-        </div>
-
-        {/* Footer with add buttons */}
-        <Separator />
-        <div className="flex items-center gap-2 p-2">
-          <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={handleAddCondition}>
-            <Plus className="h-3.5 w-3.5 mr-1" />
-            Add filter
-          </Button>
-          {state.groups.length < 3 && (
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-7 text-xs text-muted-foreground"
-              onClick={handleAddGroup}
-            >
+          {/* Footer with add buttons */}
+          <Separator />
+          <div className="flex items-center gap-2 p-2">
+            <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={handleAddCondition}>
               <Plus className="h-3.5 w-3.5 mr-1" />
-              Add group
+              Add filter
             </Button>
-          )}
-        </div>
-      </PopoverContent>
-    </Popover>
+            {state.groups.length < 3 && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 text-xs text-muted-foreground"
+                onClick={handleAddGroup}
+              >
+                <Plus className="h-3.5 w-3.5 mr-1" />
+                Add group
+              </Button>
+            )}
+          </div>
+        </PopoverContent>
+      </Popover>
+    </TooltipProvider>
   )
 }
 

@@ -12,9 +12,7 @@ import type {
   NoteRenamedEvent,
   NoteMovedEvent,
   NoteExternalChangeEvent,
-  PropertyValue,
   PropertyDefinition,
-  SetPropertiesResponse,
   CreatePropertyDefinitionInput,
   CreatePropertyDefinitionResponse,
   UpdatePropertyDefinitionInput,
@@ -193,24 +191,6 @@ export const notesService: NotesClientAPI = {
   // =========================================================================
   // T021: Properties API
   // =========================================================================
-
-  /**
-   * Get properties for a note.
-   */
-  getProperties: (noteId: string): Promise<PropertyValue[]> => {
-    return window.api.notes.getProperties(noteId)
-  },
-
-  /**
-   * Set properties for a note.
-   */
-  setProperties: async (
-    noteId: string,
-    properties: Record<string, unknown>
-  ): Promise<SetPropertiesResponse> => {
-    const result = await window.api.notes.setProperties(noteId, properties)
-    return result
-  },
 
   /**
    * Get all property definitions.
@@ -392,6 +372,17 @@ export const notesService: NotesClientAPI = {
    */
   showImportDialog: () => {
     return window.api.notes.showImportDialog()
+  },
+
+  setLocalOnly: (
+    id: string,
+    localOnly: boolean
+  ): Promise<{ success: boolean; note: Note | null; error?: string }> => {
+    return window.api.notes.setLocalOnly(id, localOnly)
+  },
+
+  getLocalOnlyCount: (): Promise<{ count: number }> => {
+    return window.api.notes.getLocalOnlyCount()
   }
 }
 
@@ -450,6 +441,14 @@ export function onNoteExternalChange(
   return window.api.onNoteExternalChange(callback)
 }
 
+/**
+ * Subscribe to tag change events.
+ * Returns unsubscribe function.
+ */
+export function onTagsChanged(callback: () => void): () => void {
+  return window.api.onTagsChanged(callback)
+}
+
 // Re-export types for convenience
 export type {
   Note,
@@ -464,9 +463,7 @@ export type {
   NoteRenamedEvent,
   NoteMovedEvent,
   NoteExternalChangeEvent,
-  PropertyValue,
   PropertyDefinition,
-  SetPropertiesResponse,
   CreatePropertyDefinitionInput,
   CreatePropertyDefinitionResponse,
   UpdatePropertyDefinitionInput,

@@ -22,12 +22,17 @@ import { useTheme } from 'next-themes'
 import '@blocknote/core/fonts/inter.css'
 import '@blocknote/shadcn/style.css'
 
+import type * as Y from 'yjs'
 import { cn } from '@/lib/utils'
 import { fuzzySearch } from '@/lib/fuzzy-search'
 import { notesService } from '@/services/notes-service'
+import { useYjsCollaboration } from '@/sync/use-yjs-collaboration'
+import { useSync } from '@/contexts/sync-context'
 import type { ContentAreaProps, HeadingInfo } from './types'
 import { createWikiLinkInlineContent, WikiLink } from './wiki-link'
 import { WikiLinkMenu, type WikiLinkSuggestionItem } from './wiki-link-menu'
+import { BlockDropIndicator, EmptyDocumentDropIndicator } from './block-drop-indicator'
+import { findDropTarget, type DropTarget } from './drop-target-utils'
 import {
   createFileBlock,
   createFileBlockContent,
@@ -39,6 +44,9 @@ import {
   useTextSelection,
   type HighlightSelection
 } from '@/components/reminder'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('Component:ContentArea')
 
 type NoteSuggestion = {
   id: string
@@ -251,6 +259,13 @@ function normalizeTableContent(tableContent: any): { content: any; didChange: bo
 }
 
 function normalizeWikiLinks(blocks: Block[]): { blocks: Block[]; didChange: boolean } {
+  // Quick check: if no wiki link markers exist in the content, skip the expensive tree walk
+  // This is a performance optimization since most content won't have wiki links
+  const blockStr = JSON.stringify(blocks)
+  if (!blockStr.includes('[[')) {
+    return { blocks, didChange: false }
+  }
+
   let didChange = false
 
   const nextBlocks = blocks.map((block) => {
@@ -295,6 +310,47 @@ function normalizeWikiLinks(blocks: Block[]): { blocks: Block[]; didChange: bool
   return { blocks: didChange ? nextBlocks : blocks, didChange }
 }
 
+function normalizeMarkdownHardBreaks(markdown: string): string {
+  const lines = markdown.split('\n')
+  const normalized: string[] = []
+  let inCodeBlock = false
+
+  for (const line of lines) {
+    let lineBody = line
+    let lineEnding = ''
+
+    if (lineBody.endsWith('\r')) {
+      lineEnding = '\r'
+      lineBody = lineBody.slice(0, -1)
+    }
+
+    const trimmed = lineBody.trimStart()
+    const isFence = trimmed.startsWith('```') || trimmed.startsWith('~~~')
+
+    if (isFence) {
+      inCodeBlock = !inCodeBlock
+      normalized.push(lineBody + lineEnding)
+      continue
+    }
+
+    if (!inCodeBlock) {
+      const match = lineBody.match(/(\\+)$/)
+      if (match && match[1].length % 2 === 1) {
+        const nextLine = lineBody.slice(0, -1)
+        if (nextLine.trim() === '') {
+          continue
+        }
+        normalized.push(nextLine + lineEnding)
+        continue
+      }
+    }
+
+    normalized.push(lineBody + lineEnding)
+  }
+
+  return normalized.join('\n')
+}
+
 // =============================================================================
 // CONTENT AREA COMPONENT
 // =============================================================================
@@ -309,7 +365,12 @@ function normalizeWikiLinks(blocks: Block[]): { blocks: Block[]; didChange: bool
  * - Heading extraction for outline panel
  * - shadcn/ui styling integration
  */
-export const ContentArea = memo(function ContentArea({
+interface ContentAreaEditorProps extends ContentAreaProps {
+  yjsFragment?: Y.XmlFragment
+  isRemoteUpdateRef?: React.RefObject<boolean>
+}
+
+const ContentAreaEditor = memo(function ContentAreaEditor({
   noteId,
   initialContent,
   contentType = 'html',
@@ -322,8 +383,10 @@ export const ContentArea = memo(function ContentArea({
   onLinkClick,
   onInternalLinkClick,
   className,
-  initialHighlight
-}: ContentAreaProps) {
+  initialHighlight,
+  yjsFragment,
+  isRemoteUpdateRef
+}: ContentAreaEditorProps) {
   // T030: Get current theme for dark mode support
   const { resolvedTheme } = useTheme()
   const editorTheme = resolvedTheme === 'dark' ? 'dark' : 'light'
@@ -331,9 +394,15 @@ export const ContentArea = memo(function ContentArea({
   // T069: Drag state for visual feedback
   const [isDragging, setIsDragging] = useState(false)
 
+  // Block-level drop target state (for Notion-style file drops)
+  const [dropTarget, setDropTarget] = useState<DropTarget | null>(null)
+
   // T220-T222: Text selection state for highlight reminders
   const [highlightSelection, setHighlightSelection] = useState<HighlightSelection | null>(null)
   const editorContainerRef = useRef<HTMLDivElement>(null)
+
+  // Container ref for drag-drop position calculations (intercepts drops before BlockNote)
+  const containerRef = useRef<HTMLDivElement>(null)
 
   // Ref to hold current noteId for upload function (since editor is created once)
   const noteIdRef = useRef<string | undefined>(noteId)
@@ -346,6 +415,63 @@ export const ContentArea = memo(function ContentArea({
 
   // Track if content is ready for saving (prevents saving empty content before load completes)
   const isContentReadyRef = useRef(false)
+
+  // Debounce timers for expensive operations (prevents lag during typing)
+  const markdownDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const headingsDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // Cleanup debounce timers on unmount
+  useEffect(() => {
+    return () => {
+      if (markdownDebounceRef.current) clearTimeout(markdownDebounceRef.current)
+      if (headingsDebounceRef.current) clearTimeout(headingsDebounceRef.current)
+    }
+  }, [])
+
+  // Global event listeners to reset drag state when drag is cancelled or tab loses focus
+  // This fixes the bug where the overlay gets stuck when user cancels the drag
+  useEffect(() => {
+    const resetDragState = (): void => {
+      setIsDragging(false)
+      setDropTarget(null)
+    }
+
+    // dragend fires when the drag operation ends (including cancel via Escape)
+    window.addEventListener('dragend', resetDragState)
+
+    // Reset when user switches to another tab
+    const handleVisibilityChange = (): void => {
+      if (document.hidden) {
+        resetDragState()
+      }
+    }
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+
+    // Reset when window loses focus
+    window.addEventListener('blur', resetDragState)
+
+    return () => {
+      window.removeEventListener('dragend', resetDragState)
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+      window.removeEventListener('blur', resetDragState)
+    }
+  }, [])
+
+  // Apply subtle highlight to the target block when dragging over it
+  useEffect(() => {
+    if (!dropTarget || !containerRef.current) return
+
+    const blockElement = containerRef.current.querySelector(`[data-id="${dropTarget.blockId}"]`)
+    if (!blockElement) return
+
+    // Add highlight class
+    blockElement.classList.add('bg-primary/5', 'transition-colors', 'duration-150')
+
+    return () => {
+      // Remove highlight class on cleanup
+      blockElement.classList.remove('bg-primary/5', 'transition-colors', 'duration-150')
+    }
+  }, [dropTarget])
 
   // T069/T071: Schema with FileBlock for attachments
   const schema = useMemo(
@@ -393,7 +519,16 @@ export const ContentArea = memo(function ContentArea({
       bulletListItem: 'List item',
       numberedListItem: 'List item',
       checkListItem: 'To-do item'
-    }
+    },
+    // T140: Yjs collaboration (when fragment is available from IPC provider)
+    ...(yjsFragment
+      ? {
+          collaboration: {
+            fragment: yjsFragment,
+            user: { name: 'Local User', color: '#3b82f6' }
+          }
+        }
+      : {})
   })
 
   const notesCacheRef = useRef<{ notes: NoteSuggestion[]; fetchedAt: number } | null>(null)
@@ -414,7 +549,7 @@ export const ContentArea = memo(function ContentArea({
           fetchedAt: now
         }
       } catch (error) {
-        console.error('[ContentArea] Failed to load wiki link suggestions:', error)
+        log.error('Failed to load wiki link suggestions', error)
         notesCacheRef.current = { notes: [], fetchedAt: now }
       }
     }
@@ -472,6 +607,16 @@ export const ContentArea = memo(function ContentArea({
     }
     initialContentLoadedRef.current = true
 
+    // When Yjs collaboration is active, content comes from Y.Doc — skip file-based loading
+    if (yjsFragment) {
+      isContentReadyRef.current = true
+      if (onHeadingsChange) {
+        const headings = extractHeadings(editor.document as Block[])
+        onHeadingsChange(headings)
+      }
+      return
+    }
+
     async function loadContent(): Promise<void> {
       try {
         if (typeof initialContent === 'string' && initialContent.trim()) {
@@ -497,6 +642,7 @@ export const ContentArea = memo(function ContentArea({
               }
               // Remove markers from content before parsing
               content = content.replace(FILE_BLOCK_REGEX, '').trim()
+              content = normalizeMarkdownHardBreaks(content)
             }
 
             let blocks
@@ -518,7 +664,7 @@ export const ContentArea = memo(function ContentArea({
             const normalized = normalizeWikiLinks(blocks)
             editor.replaceBlocks(editor.document, normalized.blocks)
           } catch (error) {
-            console.error(`Failed to parse ${contentType} content:`, error)
+            log.error(`Failed to parse ${contentType} content`, error)
           }
         } else if (Array.isArray(initialContent) && initialContent.length > 0) {
           // If it's already blocks, replace the document
@@ -529,6 +675,10 @@ export const ContentArea = memo(function ContentArea({
         // Mark content as ready for saving (prevents race condition where empty content is saved)
         // Using finally ensures the flag is set even if parsing fails
         isContentReadyRef.current = true
+        if (onHeadingsChange) {
+          const headings = extractHeadings(editor.document as Block[])
+          onHeadingsChange(headings)
+        }
       }
     }
     void loadContent()
@@ -537,61 +687,69 @@ export const ContentArea = memo(function ContentArea({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editor])
 
-  // Handle content changes
-  const handleChange = useCallback(async () => {
+  // Handle content changes with debouncing for expensive operations
+  // This prevents typing lag by deferring markdown conversion and heading extraction
+  const handleChange = useCallback(() => {
     const blocks = editor.document
+
+    // Check for wiki links that need normalization (fast check with early exit optimization)
     const normalized = normalizeWikiLinks(blocks as Block[])
     if (normalized.didChange) {
       editor.replaceBlocks(editor.document, normalized.blocks)
       return
     }
 
-    // Notify parent of content changes (blocks)
+    // Notify parent of content changes (blocks) - synchronous, lightweight
     onContentChange?.(blocks as Block[])
 
-    // Notify parent of markdown changes if callback provided
-    // Only save if initial content has been loaded (prevents saving empty content from race condition)
+    // Skip save for remote Y.Doc updates — content came from another device via CRDT,
+    // re-saving would enqueue a metadata push and trigger a sync ping-pong loop
+    if (isRemoteUpdateRef?.current) return
+
+    // Debounce markdown conversion (150ms) - expensive async operation
+    // This is the main performance optimization: converts blocks to markdown only after typing pauses
     if (onMarkdownChange && isContentReadyRef.current) {
-      try {
-        // eslint-disable-next-line @typescript-eslint/await-thenable -- BlockNote types are incorrect, this is async
-        let markdown = await editor.blocksToMarkdownLossy(blocks)
-
-        // Serialize file blocks to markers (they're lost in markdown conversion)
-        const fileBlocks = (blocks as Block[]).filter((b) => b.type === 'file')
-        if (fileBlocks.length > 0) {
-          // Append file block markers at the end
-          const markers = fileBlocks.map((b) => {
-            const props = b.props as unknown as {
-              url: string
-              name: string
-              size: number
-              mimeType: string
-            }
-            return serializeFileBlock(props)
-          })
-          markdown = markdown + '\n\n' + markers.join('\n')
-        }
-
-        onMarkdownChange(markdown)
-      } catch (error) {
-        console.error('Failed to convert blocks to markdown:', error)
+      if (markdownDebounceRef.current) {
+        clearTimeout(markdownDebounceRef.current)
       }
+      markdownDebounceRef.current = setTimeout(async () => {
+        try {
+          // eslint-disable-next-line @typescript-eslint/await-thenable -- BlockNote types are incorrect, this is async
+          let markdown = await editor.blocksToMarkdownLossy(editor.document)
+
+          // Serialize file blocks to markers (they're lost in markdown conversion)
+          const fileBlocks = (editor.document as Block[]).filter((b) => b.type === 'file')
+          if (fileBlocks.length > 0) {
+            const markers = fileBlocks.map((b) => {
+              const props = b.props as unknown as {
+                url: string
+                name: string
+                size: number
+                mimeType: string
+              }
+              return serializeFileBlock(props)
+            })
+            markdown = markdown + '\n\n' + markers.join('\n')
+          }
+
+          onMarkdownChange(markdown)
+        } catch (error) {
+          log.error('Failed to convert blocks to markdown', error)
+        }
+      }, 150)
     }
 
-    // Extract and emit headings for outline
+    // Debounce heading extraction (200ms) - requires tree walk
     if (onHeadingsChange) {
-      const headings = extractHeadings(blocks as Block[])
-      onHeadingsChange(headings)
+      if (headingsDebounceRef.current) {
+        clearTimeout(headingsDebounceRef.current)
+      }
+      headingsDebounceRef.current = setTimeout(() => {
+        const headings = extractHeadings(editor.document as Block[])
+        onHeadingsChange(headings)
+      }, 200)
     }
   }, [editor, onContentChange, onMarkdownChange, onHeadingsChange])
-
-  // Initial heading extraction
-  useEffect(() => {
-    if (onHeadingsChange) {
-      const headings = extractHeadings(editor.document as Block[])
-      onHeadingsChange(headings)
-    }
-  }, [editor, onHeadingsChange])
 
   // Handle link clicks
   useEffect(() => {
@@ -648,22 +806,35 @@ export const ContentArea = memo(function ContentArea({
     return imageTypes.includes(file.type.toLowerCase())
   }, [])
 
-  const handleDragOver = useCallback((e: React.DragEvent) => {
-    e.preventDefault()
-    e.stopPropagation()
-    // Only show drag state for file drops, not internal BlockNote drags
-    if (e.dataTransfer.types.includes('Files')) {
+  const handleDragOver = useCallback(
+    (e: React.DragEvent) => {
+      e.stopPropagation()
+
+      if (!e.dataTransfer.types.includes('Files')) return
+
+      e.preventDefault()
+
       setIsDragging(true)
-    }
-  }, [])
+
+      const target = findDropTarget(e.clientY, containerRef)
+      setDropTarget(target)
+    },
+    [containerRef]
+  )
 
   const handleDragLeave = useCallback((e: React.DragEvent) => {
     e.preventDefault()
     e.stopPropagation()
-    // Only reset if leaving the container (not entering a child)
-    const relatedTarget = e.relatedTarget as HTMLElement | null
-    if (!relatedTarget || !e.currentTarget.contains(relatedTarget)) {
+
+    // Use bounding rect check instead of relatedTarget (more reliable)
+    // relatedTarget can be null or unreliable with shadow DOM elements
+    const rect = e.currentTarget.getBoundingClientRect()
+    const { clientX: x, clientY: y } = e
+
+    // Only reset if cursor has actually left the container bounds
+    if (x < rect.left || x >= rect.right || y < rect.top || y >= rect.bottom) {
       setIsDragging(false)
+      setDropTarget(null)
     }
   }, [])
 
@@ -684,16 +855,32 @@ export const ContentArea = memo(function ContentArea({
       // We have non-image files - prevent BlockNote from trying to handle them
       e.preventDefault()
       e.stopPropagation()
+
+      // Capture the drop target position before clearing state
+      const insertTarget = dropTarget
       setIsDragging(false)
+      setDropTarget(null)
 
       // Skip if no noteId (can't upload attachments without a note)
       if (!noteId) {
-        console.warn('[ContentArea] Cannot upload attachment: no noteId provided')
+        log.warn('Cannot upload attachment: no noteId provided')
         return true
       }
 
       // Skip if not editable
       if (!editable) return true
+
+      // Determine reference block and placement from drop target
+      // If we have a specific drop target, use it; otherwise fall back to cursor position
+      let referenceBlockId: string
+      let placement: 'before' | 'after' = 'after'
+
+      if (insertTarget) {
+        referenceBlockId = insertTarget.blockId
+        placement = insertTarget.position
+      } else {
+        referenceBlockId = editor.getTextCursorPosition().block.id
+      }
 
       // Process each file (both images and non-images)
       for (const file of files) {
@@ -702,11 +889,11 @@ export const ContentArea = memo(function ContentArea({
           const result = await notesService.uploadAttachment(noteId, file)
 
           if (!result.success) {
-            console.error('[ContentArea] Upload failed:', result.error)
+            log.error('Upload failed', result.error)
             continue
           }
 
-          // Insert appropriate block based on file type
+          // Insert appropriate block based on file type at the target position
           if (result.type === 'image' && result.path) {
             // Insert image block (BlockNote's built-in image block)
             editor.insertBlocks(
@@ -720,8 +907,8 @@ export const ContentArea = memo(function ContentArea({
                   }
                 }
               ],
-              editor.getTextCursorPosition().block,
-              'after'
+              referenceBlockId,
+              placement
             )
           } else if (result.path) {
             // Insert file block (custom FileBlock for PDFs, docs, etc.)
@@ -734,23 +921,25 @@ export const ContentArea = memo(function ContentArea({
                   mimeType: result.mimeType || file.type
                 })
               ],
-              editor.getTextCursorPosition().block,
-              'after'
+              referenceBlockId,
+              placement
             )
           }
+
+          // After inserting the first file, subsequent files should go after it
+          // This keeps files in the order they were dropped
+          placement = 'after'
         } catch (error) {
-          console.error('[ContentArea] Failed to upload file:', file.name, error)
+          log.error('Failed to upload file', file.name, error)
         }
       }
 
       return true
     },
-    [noteId, editable, editor, isImageFile]
+    [noteId, editable, editor, isImageFile, dropTarget]
   )
 
   // Use capture phase to intercept drops before BlockNote
-  const containerRef = useRef<HTMLDivElement>(null)
-
   useEffect(() => {
     const container = containerRef.current
     if (!container) return
@@ -783,9 +972,10 @@ export const ContentArea = memo(function ContentArea({
     }
   }, [isImageFile, handleNonImageDrop])
 
-  // Regular drag leave handler for visual feedback
+  // Reset drag state when drop occurs (for both image and non-image files)
   const handleDrop = useCallback(() => {
     setIsDragging(false)
+    setDropTarget(null)
   }, [])
 
   // T220-T222: Track text selection for highlight reminders
@@ -851,30 +1041,18 @@ export const ContentArea = memo(function ContentArea({
       role="region"
       aria-label="Note editor"
       aria-busy={!isContentReadyRef.current}
-      className={cn(
-        'content-area h-full flex flex-col relative',
-        isDragging && 'ring-2 ring-primary ring-offset-2 bg-primary/5',
-        className
-      )}
+      className={cn('content-area h-full flex flex-col relative', className)}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
     >
-      {/* Drag overlay */}
-      {isDragging && (
-        <div
-          className="absolute inset-0 z-10 flex items-center justify-center bg-background/80 backdrop-blur-sm pointer-events-none"
-          aria-live="polite"
-          aria-label="Drop zone active - release to attach files"
-        >
-          <div className="text-center">
-            <div className="text-4xl mb-2" aria-hidden="true">
-              📎
-            </div>
-            <p className="text-lg font-medium text-muted-foreground">Drop files to attach</p>
-          </div>
-        </div>
+      {/* Block-level drop indicator - shows where file will be inserted */}
+      {isDragging && dropTarget && (
+        <BlockDropIndicator dropTarget={dropTarget} containerRef={containerRef} />
       )}
+
+      {/* Empty document drop indicator - simple line at top when no blocks */}
+      {isDragging && !dropTarget && <EmptyDocumentDropIndicator />}
 
       {/* BlockNote Editor */}
       <div
@@ -916,6 +1094,31 @@ export const ContentArea = memo(function ContentArea({
         )}
       </div>
     </div>
+  )
+})
+
+export const ContentArea = memo(function ContentArea(props: ContentAreaProps) {
+  const { state } = useSync()
+  const syncActive = state.status === 'idle' || state.status === 'syncing'
+  const { fragment, isReady, isRemoteUpdateRef } = useYjsCollaboration({
+    noteId: props.noteId,
+    enabled: syncActive
+  })
+
+  if (syncActive && props.noteId && !isReady) {
+    return (
+      <div className={cn('content-area h-full flex flex-col', props.className)}>
+        <div className="flex-1 animate-pulse bg-muted/10 rounded-md" />
+      </div>
+    )
+  }
+
+  return (
+    <ContentAreaEditor
+      {...props}
+      yjsFragment={isReady && fragment ? fragment : undefined}
+      isRemoteUpdateRef={isRemoteUpdateRef}
+    />
   )
 })
 

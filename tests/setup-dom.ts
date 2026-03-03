@@ -8,6 +8,25 @@ import { vi } from 'vitest'
 import { cleanup } from '@testing-library/react'
 import { afterEach } from 'vitest'
 
+vi.mock('electron-log/renderer', () => {
+  const createScopedLogger = () => ({
+    debug: vi.fn(),
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn()
+  })
+
+  return {
+    default: {
+      debug: vi.fn(),
+      info: vi.fn(),
+      warn: vi.fn(),
+      error: vi.fn(),
+      scope: vi.fn(() => createScopedLogger())
+    }
+  }
+})
+
 // ============================================================================
 // Cleanup after each test
 // ============================================================================
@@ -59,8 +78,6 @@ const createMockApi = () => ({
     exists: vi.fn().mockResolvedValue(false),
     openExternal: vi.fn().mockResolvedValue({ success: true }),
     revealInFinder: vi.fn().mockResolvedValue({ success: true }),
-    getProperties: vi.fn().mockResolvedValue({}),
-    setProperties: vi.fn().mockResolvedValue({ success: true }),
     getPropertyDefinitions: vi.fn().mockResolvedValue([]),
     createPropertyDefinition: vi.fn().mockResolvedValue({ success: true }),
     updatePropertyDefinition: vi.fn().mockResolvedValue({ success: true }),
@@ -76,6 +93,12 @@ const createMockApi = () => ({
     getVersion: vi.fn().mockResolvedValue(null),
     restoreVersion: vi.fn().mockResolvedValue({ success: true }),
     deleteVersion: vi.fn().mockResolvedValue({ success: true })
+  },
+
+  // Properties API (unified for notes and journal)
+  properties: {
+    get: vi.fn().mockResolvedValue([]),
+    set: vi.fn().mockResolvedValue({ success: true })
   },
 
   // Tasks API
@@ -224,6 +247,26 @@ const createMockApi = () => ({
     update: vi.fn().mockResolvedValue({ success: true }),
     delete: vi.fn().mockResolvedValue({ success: true }),
     rename: vi.fn().mockResolvedValue({ success: true })
+  },
+
+  // Sync Auth API
+  syncAuth: {
+    requestOtp: vi.fn().mockResolvedValue({ success: true }),
+    verifyOtp: vi.fn().mockResolvedValue({ success: true }),
+    resendOtp: vi.fn().mockResolvedValue({ success: true })
+  },
+
+  // Sync Setup API
+  syncSetup: {
+    setupFirstDevice: vi.fn().mockResolvedValue({ success: true }),
+    confirmRecoveryPhrase: vi.fn().mockResolvedValue({ success: true })
+  },
+
+  // Sync Devices API
+  syncDevices: {
+    getDevices: vi.fn().mockResolvedValue({ devices: [] }),
+    removeDevice: vi.fn().mockResolvedValue({ success: true }),
+    renameDevice: vi.fn().mockResolvedValue({ success: true })
   },
 
   // Saved Filters API

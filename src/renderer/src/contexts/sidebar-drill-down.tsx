@@ -86,7 +86,7 @@ export function SidebarDrillDownProvider({ children }: SidebarDrillDownProviderP
   // Navigate to tag detail view
   const openTag = useCallback((tag: string, color: string) => {
     setAnimationDirection('left') // Slide left to reveal new view
-    setViewStack((prev) => [...prev, { type: 'tag', tag, color }])
+    setViewStack([MAIN_VIEW, { type: 'tag', tag, color }])
   }, [])
 
   // Go back to previous view

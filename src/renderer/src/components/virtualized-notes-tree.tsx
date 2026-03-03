@@ -316,7 +316,7 @@ function FolderRow({
           tabIndex={0}
           draggable={draggable}
           className={cn(
-            'group/folder relative flex items-center gap-1 px-2 py-1 cursor-pointer rounded-sm transition-colors',
+            'group/folder relative flex items-center gap-1 px-2 py-1 cursor-pointer rounded-sm transition-colors min-w-0',
             'hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring',
             isSelected && 'bg-sidebar-accent text-sidebar-accent-foreground',
             isDragging && 'opacity-50',

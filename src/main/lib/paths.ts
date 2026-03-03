@@ -117,3 +117,15 @@ export function toMemryFileUrl(filePath: string): string {
   const absolutePath = normalized.startsWith('/') ? normalized.slice(1) : normalized
   return `memry-file://local/${absolutePath}`
 }
+
+export function fromMemryFileUrl(url: string): string {
+  const prefix = 'memry-file://local/'
+  if (!url.startsWith(prefix)) {
+    throw new Error(`Invalid memry-file URL: ${url}`)
+  }
+  const pathPart = url.slice(prefix.length)
+  if (process.platform === 'win32') {
+    return pathPart.replace(/\//g, '\\')
+  }
+  return '/' + pathPart
+}

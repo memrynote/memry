@@ -10,6 +10,7 @@
 **Total Reduction**: 2,619 → 1,708 errors (**911 errors fixed, 35% reduction**)
 
 ### Completed Work
+
 1. ✅ **use-inbox.ts** - Fixed 99 errors (return types + floating promises)
 2. ✅ **Test file ESLint override** - Eliminated 593 errors (unsafe any rules disabled for tests)
 3. ✅ **ContentArea.tsx** - Fixed 57 errors (BlockNote any types + return types)
@@ -20,17 +21,17 @@
 
 ### Current Error Breakdown (1,706 total)
 
-| Category | Count | Rule | Priority |
-|----------|-------|------|----------|
-| Missing return types | 420 | @typescript-eslint/explicit-function-return-type | HIGH |
-| Unused variables | 194 | @typescript-eslint/no-unused-vars | HIGH |
-| Misused promises | 156 | @typescript-eslint/no-misused-promises | MEDIUM |
-| Floating promises | 131 | @typescript-eslint/no-floating-promises | MEDIUM |
-| Require await | 96 | @typescript-eslint/require-await | HIGH |
-| Unsafe any | 55+38 | @typescript-eslint/no-unsafe-* | LOW (mostly suppressed) |
-| React refresh | 42 | react-refresh/only-export-components | LOW |
-| Unescaped entities | 38 | react/no-unescaped-entities | LOW |
-| React effect warnings | 279 | react-you-might-not-need-an-effect/* | SKIP (legitimate) |
+| Category              | Count | Rule                                             | Priority                |
+| --------------------- | ----- | ------------------------------------------------ | ----------------------- |
+| Missing return types  | 420   | @typescript-eslint/explicit-function-return-type | HIGH                    |
+| Unused variables      | 194   | @typescript-eslint/no-unused-vars                | HIGH                    |
+| Misused promises      | 156   | @typescript-eslint/no-misused-promises           | MEDIUM                  |
+| Floating promises     | 131   | @typescript-eslint/no-floating-promises          | MEDIUM                  |
+| Require await         | 96    | @typescript-eslint/require-await                 | HIGH                    |
+| Unsafe any            | 55+38 | @typescript-eslint/no-unsafe-\*                  | LOW (mostly suppressed) |
+| React refresh         | 42    | react-refresh/only-export-components             | LOW                     |
+| Unescaped entities    | 38    | react/no-unescaped-entities                      | LOW                     |
+| React effect warnings | 279   | react-you-might-not-need-an-effect/\*            | SKIP (legitimate)       |
 
 ## Format: `[ID] [P?] [Category] Description`
 
@@ -40,24 +41,24 @@
 
 ## Error Breakdown
 
-| Category | Count | Rule | Complexity |
-|----------|-------|------|------------|
-| Missing return types | 359 | @typescript-eslint/explicit-function-return-type | Low |
-| Unnecessary async | 173 | @typescript-eslint/require-await | Low |
-| Unsafe any assignment | 123 | @typescript-eslint/no-unsafe-assignment | Medium |
-| Unbound methods | 112 | @typescript-eslint/unbound-method | Medium |
-| Floating promises | 110 | @typescript-eslint/no-floating-promises | High |
-| Other errors | ~1,419 | Various | Varies |
+| Category              | Count  | Rule                                             | Complexity |
+| --------------------- | ------ | ------------------------------------------------ | ---------- |
+| Missing return types  | 359    | @typescript-eslint/explicit-function-return-type | Low        |
+| Unnecessary async     | 173    | @typescript-eslint/require-await                 | Low        |
+| Unsafe any assignment | 123    | @typescript-eslint/no-unsafe-assignment          | Medium     |
+| Unbound methods       | 112    | @typescript-eslint/unbound-method                | Medium     |
+| Floating promises     | 110    | @typescript-eslint/no-floating-promises          | High       |
+| Other errors          | ~1,419 | Various                                          | Varies     |
 
 ## High-Impact Files
 
-| File | Errors | Priority |
-|------|--------|----------|
-| `src/renderer/src/hooks/use-inbox.ts` | 99 | P1 |
-| `src/main/ipc/inbox-handlers.test.ts` | 66 | P1 |
-| `src/renderer/src/components/note/content-area/ContentArea.tsx` | 57 | P1 |
-| `src/main/ipc/inbox-handlers.ts` | 52 | P1 |
-| `src/renderer/src/services/inbox-service.test.ts` | 44 | P1 |
+| File                                                            | Errors | Priority |
+| --------------------------------------------------------------- | ------ | -------- |
+| `src/renderer/src/hooks/use-inbox.ts`                           | 99     | P1       |
+| `src/main/ipc/inbox-handlers.test.ts`                           | 66     | P1       |
+| `src/renderer/src/components/note/content-area/ContentArea.tsx` | 57     | P1       |
+| `src/main/ipc/inbox-handlers.ts`                                | 52     | P1       |
+| `src/renderer/src/services/inbox-service.test.ts`               | 44     | P1       |
 
 ---
 
@@ -66,6 +67,7 @@
 **Purpose**: Add explicit return types to functions - low effort, high type safety impact
 
 **Pattern**:
+
 ```typescript
 // Before
 export function useInboxTags() { return useQuery({...}) }
@@ -120,6 +122,7 @@ export function useInboxTags(): UseQueryResult<TagData[]> { return useQuery({...
 **Purpose**: Remove `async` keyword from functions without `await` - improves clarity
 
 **Pattern**:
+
 ```typescript
 // Before (unnecessary async)
 const handleClick = async () => { queryClient.invalidateQueries(...) }
@@ -169,11 +172,13 @@ const handleClick = () => { queryClient.invalidateQueries(...) }
 **Purpose**: Add type safety to dynamic values - prevents runtime errors
 
 **Root Causes**:
+
 1. BlockNote dynamic content (uses `any` internally)
 2. IPC boundary crossing (Electron serialization)
 3. Database row type inference
 
 **Pattern**:
+
 ```typescript
 // Before (unsafe)
 const item = await db.query.inboxItems.findFirst(...)
@@ -226,6 +231,7 @@ const item: InboxItem | undefined = await db.query.inboxItems.findFirst(...)
 **Purpose**: Prevent `this` context bugs when passing methods as callbacks
 
 **Pattern**:
+
 ```typescript
 // Before (unbound)
 editor.insertBlocks(blocks)  // Warning: this might lose context
@@ -268,6 +274,7 @@ const process = (blocks: Block[]) => editor.insertBlocks(blocks)
 **⚠️ CRITICAL**: These require understanding business logic intent
 
 **Pattern**:
+
 ```typescript
 // Pattern 1: Fire-and-forget (intentional)
 void fetchAndUpdateMetadata(itemId, url)
@@ -374,6 +381,7 @@ mutate().catch(() => toast.error('Failed'))
 ### Parallel Opportunities
 
 Tasks marked **[P]** can run in parallel within their phase:
+
 - Phase 1: T001-T006 (all parallel)
 - Phase 2: T010-T015 (all parallel)
 - Phase 3: T018-T024 (all parallel)

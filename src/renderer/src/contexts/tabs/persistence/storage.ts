@@ -5,6 +5,9 @@
 
 import type { TabStorage, PersistedTabState } from './types'
 import { STORAGE_KEY } from './types'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('TabPersistence:Storage')
 
 // =============================================================================
 // LOCALSTORAGE ADAPTER
@@ -20,7 +23,7 @@ export const localStorageAdapter: TabStorage = {
       const json = JSON.stringify(state)
       localStorage.setItem(STORAGE_KEY, json)
     } catch (error) {
-      console.error('Failed to save tab state to localStorage:', error)
+      log.error('Failed to save tab state to localStorage:', error)
       throw error
     }
   },
@@ -34,13 +37,13 @@ export const localStorageAdapter: TabStorage = {
 
       // Basic validation
       if (!parsed.version || !parsed.tabGroups || !parsed.layout) {
-        console.warn('Invalid persisted tab state, ignoring')
+        log.warn('Invalid persisted tab state, ignoring')
         return null
       }
 
       return parsed as PersistedTabState
     } catch (error) {
-      console.error('Failed to load tab state from localStorage:', error)
+      log.error('Failed to load tab state from localStorage:', error)
       return null
     }
   },
@@ -63,7 +66,7 @@ export const saveSync = (state: PersistedTabState): void => {
     const json = JSON.stringify(state)
     localStorage.setItem(STORAGE_KEY, json)
   } catch (error) {
-    console.error('Failed to save tab state synchronously:', error)
+    log.error('Failed to save tab state synchronously:', error)
   }
 }
 
@@ -125,7 +128,7 @@ export const indexedDBAdapter: TabStorage = {
         request.onsuccess = () => resolve(request.result || null)
       })
     } catch (error) {
-      console.error('Failed to load from IndexedDB:', error)
+      log.error('Failed to load from IndexedDB:', error)
       return null
     }
   },

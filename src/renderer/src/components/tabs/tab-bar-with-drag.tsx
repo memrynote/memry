@@ -6,9 +6,9 @@
 
 import { useRef, useState, useEffect, useCallback } from 'react'
 import { SortableContext, horizontalListSortingStrategy } from '@dnd-kit/sortable'
-import { ChevronLeft, ChevronRight, PanelRight, Bot } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Bot } from 'lucide-react'
 import { useAIAgent } from '@/contexts/ai-agent-context'
-import { useTabGroup, useTabs } from '@/contexts/tabs'
+import { useTabGroup } from '@/contexts/tabs'
 import { SortableTab } from './sortable-tab'
 import { PinnedTab } from './pinned-tab'
 import { TabBarAction } from './tab-bar-action'
@@ -31,7 +31,6 @@ export const TabBarWithDrag = ({
   groupId,
   className
 }: TabBarWithDragProps): React.JSX.Element | null => {
-  const { splitView } = useTabs()
   const group = useTabGroup(groupId)
   const { toggle: toggleAIAgent, isOpen: isAIAgentOpen } = useAIAgent()
 
@@ -40,14 +39,7 @@ export const TabBarWithDrag = ({
   const [canScrollLeft, setCanScrollLeft] = useState(false)
   const [canScrollRight, setCanScrollRight] = useState(false)
 
-  // If group doesn't exist, don't render
-  if (!group) return null
-
-  // Separate pinned and regular tabs
-  const pinnedTabs = group.tabs.filter((t) => t.isPinned)
-  const regularTabs = group.tabs.filter((t) => !t.isPinned)
-
-  // Check scroll state
+  // Check scroll state - must be before early return (rules of hooks)
   const checkScroll = useCallback(() => {
     if (!scrollRef.current) return
     const { scrollLeft, scrollWidth, clientWidth } = scrollRef.current
@@ -55,13 +47,16 @@ export const TabBarWithDrag = ({
     setCanScrollRight(scrollLeft + clientWidth < scrollWidth - 1)
   }, [])
 
-  // Set up scroll listener
+  // Compute tabs length safely before early return for useEffect dependency
+  const regularTabsLength = group?.tabs.filter((t) => !t.isPinned).length ?? 0
+
+  // Set up scroll listener - must be before early return (rules of hooks)
   useEffect(() => {
     const el = scrollRef.current
     if (!el) return
 
     checkScroll()
-    el.addEventListener('scroll', checkScroll)
+    el.addEventListener('scroll', checkScroll, { passive: true })
 
     const resizeObserver = new ResizeObserver(checkScroll)
     resizeObserver.observe(el)
@@ -70,7 +65,14 @@ export const TabBarWithDrag = ({
       el.removeEventListener('scroll', checkScroll)
       resizeObserver.disconnect()
     }
-  }, [checkScroll, regularTabs.length])
+  }, [checkScroll, regularTabsLength])
+
+  // If group doesn't exist, don't render (after all hooks)
+  if (!group) return null
+
+  // Separate pinned and regular tabs
+  const pinnedTabs = group.tabs.filter((t) => t.isPinned)
+  const regularTabs = group.tabs.filter((t) => !t.isPinned)
 
   // Scroll handlers
   const scrollLeft = (): void => {
@@ -79,11 +81,6 @@ export const TabBarWithDrag = ({
 
   const scrollRight = (): void => {
     scrollRef.current?.scrollBy({ left: 200, behavior: 'smooth' })
-  }
-
-  // Handle split view
-  const handleSplitRight = (): void => {
-    splitView('horizontal', groupId)
   }
 
   return (
@@ -188,11 +185,6 @@ export const TabBarWithDrag = ({
 
         {/* Tab actions */}
         <div className="flex items-center px-2 gap-1 mb-1.5 ml-auto self-center">
-          <TabBarAction
-            icon={<PanelRight className="w-4 h-4" />}
-            tooltip="Split Right"
-            onClick={handleSplitRight}
-          />
           <TabBarAction
             icon={
               <Bot

@@ -10,6 +10,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
 import { Send, Loader2, Link, FileText, Mic, Paperclip } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { extractErrorMessage } from '@/lib/ipc-error'
 import { useCaptureText, useCaptureLink, useCaptureVoice, useCaptureImage } from '@/hooks/use-inbox'
 import { type DisplayDensity, DENSITY_CONFIG } from '@/hooks/use-display-density'
 import { VoiceRecorder } from './voice-recorder'
@@ -134,7 +135,7 @@ export function CaptureInput({
           setValue('')
           onCaptureSuccess?.()
         } else {
-          onCaptureError?.(result.error || 'Failed to capture link')
+          onCaptureError?.(extractErrorMessage(result.error, 'Failed to capture link'))
         }
       } else {
         // Capture as text note
@@ -150,11 +151,11 @@ export function CaptureInput({
           setValue('')
           onCaptureSuccess?.()
         } else {
-          onCaptureError?.(result.error || 'Failed to capture note')
+          onCaptureError?.(extractErrorMessage(result.error, 'Failed to capture note'))
         }
       }
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Capture failed'
+      const message = extractErrorMessage(err, 'Capture failed')
       onCaptureError?.(message)
     }
   }, [value, isCapturing, captureText, captureLink, onCaptureSuccess, onCaptureError])
@@ -192,10 +193,10 @@ export function CaptureInput({
         if (result.success) {
           onCaptureSuccess?.()
         } else {
-          onCaptureError?.(result.error || 'Failed to capture voice memo')
+          onCaptureError?.(extractErrorMessage(result.error, 'Failed to capture voice memo'))
         }
       } catch (err) {
-        const message = err instanceof Error ? err.message : 'Voice capture failed'
+        const message = extractErrorMessage(err, 'Voice capture failed')
         onCaptureError?.(message)
       }
     },
@@ -242,10 +243,10 @@ export function CaptureInput({
         if (result.success) {
           onCaptureSuccess?.()
         } else {
-          onCaptureError?.(result.error || 'Failed to capture file')
+          onCaptureError?.(extractErrorMessage(result.error, 'Failed to capture file'))
         }
       } catch (err) {
-        const message = err instanceof Error ? err.message : 'File capture failed'
+        const message = extractErrorMessage(err, 'File capture failed')
         onCaptureError?.(message)
       }
     },
@@ -271,23 +272,27 @@ export function CaptureInput({
       {/* Input container with editorial styling */}
       <div
         className={cn(
-          'relative flex items-start',
+          'relative flex items-center',
           densityConfig.captureGap,
           densityConfig.capturePadding,
-          'bg-muted/20 hover:bg-muted/30',
-          'border border-border/40',
+          // Enhanced foundation - soft gradient with depth
+          'bg-linear-to-r from-muted/30 via-muted/40 to-muted/30',
+          'hover:from-muted/35 hover:via-muted/45 hover:to-muted/35',
+          'border border-border/60',
+          'shadow-[inset_0_1px_2px_rgba(0,0,0,0.04)]',
           densityConfig.captureRadius,
-          'transition-all duration-200',
-          isFocused && 'bg-muted/40 border-border/60 shadow-sm'
+          'transition-all duration-300',
+          // Focused state with warm amber glow
+          isFocused && 'bg-muted/50 border-border shadow-sm ring-1 ring-amber-500/20'
         )}
       >
         {/* Type indicator icon */}
         <div
           className={cn(
-            'mt-1 flex-shrink-0',
-            'text-muted-foreground/50',
+            'shrink-0',
+            'text-muted-foreground/70', // More visible
             'transition-colors duration-200',
-            isFocused && 'text-muted-foreground/70'
+            isFocused && 'text-amber-600 dark:text-amber-400' // Amber on focus
           )}
         >
           {isUrl ? (
@@ -305,18 +310,20 @@ export function CaptureInput({
           onFocus={() => setIsFocused(true)}
           onBlur={() => setIsFocused(false)}
           onKeyDown={handleKeyDown}
-          placeholder="Capture a thought or paste a link..."
+          placeholder="What's on your mind?"
           disabled={isCapturing}
           rows={1}
           className={cn(
             'flex-1 min-h-[24px] max-h-[200px]',
             'bg-transparent',
-            'text-sm text-foreground/90',
-            'placeholder:text-muted-foreground/50',
+            'text-sm text-foreground/90 leading-6',
+            // Editorial placeholder - serif, italic, more visible
+            'placeholder:font-serif placeholder:italic',
+            'placeholder:text-muted-foreground/60',
             'resize-none',
             'focus:outline-none',
             'disabled:opacity-50 disabled:cursor-not-allowed',
-            'font-serif tracking-wide'
+            'tracking-wide'
           )}
           aria-label="Capture input"
         />
@@ -326,11 +333,11 @@ export function CaptureInput({
           onClick={handleAttachClick}
           disabled={isCapturing}
           className={cn(
-            'mt-0.5 flex-shrink-0',
+            'shrink-0',
             'p-1.5 rounded-lg',
-            'text-muted-foreground/50',
+            'text-muted-foreground/60', // More visible
             'transition-all duration-200',
-            'hover:bg-foreground/5 hover:text-foreground/70',
+            'hover:bg-amber-500/10 hover:text-amber-600 dark:hover:text-amber-400', // Amber hover
             'disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-transparent'
           )}
           aria-label="Attach file"
@@ -344,11 +351,11 @@ export function CaptureInput({
           onClick={handleMicClick}
           disabled={isCapturing}
           className={cn(
-            'mt-0.5 flex-shrink-0',
+            'shrink-0',
             'p-1.5 rounded-lg',
-            'text-muted-foreground/50',
+            'text-muted-foreground/60', // More visible
             'transition-all duration-200',
-            'hover:bg-foreground/5 hover:text-foreground/70',
+            'hover:bg-amber-500/10 hover:text-amber-600 dark:hover:text-amber-400', // Amber hover
             'disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-transparent'
           )}
           aria-label="Record voice memo"
@@ -372,13 +379,14 @@ export function CaptureInput({
           onClick={handleSubmit}
           disabled={!value.trim() || isCapturing}
           className={cn(
-            'mt-0.5 flex-shrink-0',
+            'shrink-0',
             'p-1.5 rounded-lg',
-            'text-muted-foreground/50',
+            'text-muted-foreground/60', // More visible
             'transition-all duration-200',
-            'hover:bg-foreground/5 hover:text-foreground/70',
+            'hover:bg-amber-500/10 hover:text-amber-600 dark:hover:text-amber-400', // Amber hover
             'disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-transparent',
-            value.trim() && !isCapturing && 'text-amber-600 dark:text-amber-400'
+            // Active state when there's content
+            value.trim() && !isCapturing && 'text-amber-600 dark:text-amber-400 bg-amber-500/10'
           )}
           aria-label={isUrl ? 'Capture link' : 'Capture note'}
         >
@@ -393,21 +401,31 @@ export function CaptureInput({
       {/* Hint text */}
       <div
         className={cn(
-          'mt-1.5 px-4',
-          'text-xs text-muted-foreground/40',
-          'transition-opacity duration-200',
-          !isFocused && 'opacity-0'
+          'mt-2 px-4',
+          'text-xs text-muted-foreground/60', // More visible
+          'transition-all duration-200',
+          !isFocused && 'opacity-0 translate-y-1',
+          isFocused && 'opacity-100 translate-y-0'
         )}
       >
         {isUrl ? (
           <span>
-            Press <kbd className="px-1 py-0.5 bg-muted/50 rounded text-[10px]">Enter</kbd> to
-            capture link
+            Press{' '}
+            <kbd className="px-1.5 py-0.5 bg-muted/70 rounded border border-border/50 text-[10px] font-medium">
+              Enter
+            </kbd>{' '}
+            to capture link
           </span>
         ) : (
           <span>
-            Press <kbd className="px-1 py-0.5 bg-muted/50 rounded text-[10px]">Enter</kbd> to
-            capture, <kbd className="px-1 py-0.5 bg-muted/50 rounded text-[10px]">Shift+Enter</kbd>{' '}
+            Press{' '}
+            <kbd className="px-1.5 py-0.5 bg-muted/70 rounded border border-border/50 text-[10px] font-medium">
+              Enter
+            </kbd>{' '}
+            to capture,{' '}
+            <kbd className="px-1.5 py-0.5 bg-muted/70 rounded border border-border/50 text-[10px] font-medium">
+              Shift+Enter
+            </kbd>{' '}
             for new line
           </span>
         )}

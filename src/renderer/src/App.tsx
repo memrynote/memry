@@ -7,6 +7,7 @@ import { SidebarInset, SidebarProvider, SidebarTrigger } from '@/components/ui/s
 import { Toaster } from '@/components/ui/sonner'
 import { DragProvider, type DragState } from '@/contexts/drag-context'
 import { AIAgentProvider } from '@/contexts/ai-agent-context'
+import { SidebarDrillDownProvider } from '@/contexts/sidebar-drill-down'
 import { GlobalAIPanel } from '@/components/ai-agent'
 import { TaskDragOverlay } from '@/components/tasks/drag-drop'
 import { initialProjects, taskViews, type Project } from '@/data/tasks-data'
@@ -29,14 +30,19 @@ import {
   useTaskOrder,
   useVault,
   useSearchShortcut,
+  useSettingsShortcut,
   useNewNoteShortcut,
   useUndoKeyboardShortcut,
   useReminderNotifications
 } from '@/hooks'
 import { useFolderViewEvents } from '@/hooks/use-folder-view-events'
+import { useFlushOnQuit } from '@/hooks/use-flush-on-quit'
 import { tasksService } from '@/services/tasks-service'
 import { notesService } from '@/services/notes-service'
 import { VaultOnboarding } from '@/components/vault-onboarding'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('App')
 
 // Base pages (non-task)
 export type BasePage = 'inbox' | 'home' | 'journal'
@@ -103,7 +109,7 @@ const AppContent = ({ searchOpen, onSearchOpenChange }: AppContentProps): React.
         })
       }
     } catch (error) {
-      console.error('Failed to create new note:', error)
+      log.error('Failed to create new note:', error)
     }
   }, [openTab])
 
@@ -111,6 +117,18 @@ const AppContent = ({ searchOpen, onSearchOpenChange }: AppContentProps): React.
   useTabKeyboardShortcuts()
   const isChordActive = useChordShortcuts()
   useSearchShortcut(() => onSearchOpenChange(true))
+  useSettingsShortcut(() => {
+    openTab({
+      type: 'settings',
+      title: 'Settings',
+      icon: 'settings',
+      path: '/settings',
+      isPinned: false,
+      isModified: false,
+      isPreview: false,
+      isDeleted: false
+    })
+  })
   useNewNoteShortcut(() => void handleNewNote())
   useUndoKeyboardShortcut() // T051-T054: Cmd+Z for task undo
   useReminderNotifications() // T231-T233: In-app toast notifications for reminders
@@ -213,20 +231,6 @@ const AppContent = ({ searchOpen, onSearchOpenChange }: AppContentProps): React.
             <TabBarWithDrag groupId={activeGroupId} />
           </div>
         )}
-
-        {/* Global Actions with refined styling */}
-        <div className="flex items-center gap-1.5 px-3 shrink-0">
-          <button
-            type="button"
-            onClick={() => setShowShortcutsDialog(true)}
-            className="p-2 rounded-md text-gray-400 hover:text-gray-600 dark:hover:text-gray-300
-              hover:bg-gray-200/50 dark:hover:bg-gray-700/50
-              transition-all duration-150 ease-out"
-            title="Keyboard shortcuts (?)"
-          >
-            <span className="text-xs font-medium tracking-wide">?</span>
-          </button>
-        </div>
       </header>
 
       {/* Main Content Area - Split View or Single Pane */}
@@ -281,6 +285,9 @@ const AppContent = ({ searchOpen, onSearchOpenChange }: AppContentProps): React.
 // =============================================================================
 
 function App(): React.JSX.Element {
+  // Flush pending saves when main process requests it (Cmd+Q, window close)
+  useFlushOnQuit()
+
   // Vault state - check if vault is open
   const { status: vaultStatus, isLoading: vaultLoading } = useVault()
   const isVaultOpen = vaultStatus?.isOpen ?? false
@@ -444,7 +451,7 @@ function App(): React.JSX.Element {
             dueTime: updates.dueTime ?? undefined
           })
         } catch (error) {
-          console.error('[App] Failed to persist task update:', error)
+          log.error('Failed to persist task update:', error)
           // Local state already updated, error will be visible in logs
         }
       }
@@ -463,7 +470,7 @@ function App(): React.JSX.Element {
         try {
           await tasksService.delete(taskId)
         } catch (error) {
-          console.error('[App] Failed to persist task deletion:', error)
+          log.error('Failed to persist task deletion:', error)
         }
       }
     },
@@ -516,7 +523,7 @@ function App(): React.JSX.Element {
   // Wrapped in TabErrorBoundary for graceful error handling
   const mainContent = (
     <TabErrorBoundary
-      onError={(error, errorInfo) => console.error('[App] Critical error:', error, errorInfo)}
+      onError={(error, errorInfo) => log.error('Critical error:', error, errorInfo)}
     >
       <TasksProvider
         initialTasks={tasks}
@@ -527,14 +534,16 @@ function App(): React.JSX.Element {
         <AIAgentProvider>
           <TabProvider>
             <TabPersistenceManager>
-              <AppSidebar
-                currentPage={currentPage}
-                viewCounts={viewCounts}
-                onOpenSearch={() => setSearchOpen(true)}
-              />
-              <SidebarInset className="flex flex-col">
-                <AppContent searchOpen={searchOpen} onSearchOpenChange={setSearchOpen} />
-              </SidebarInset>
+              <SidebarDrillDownProvider>
+                <AppSidebar
+                  currentPage={currentPage}
+                  viewCounts={viewCounts}
+                  onOpenSearch={() => setSearchOpen(true)}
+                />
+                <SidebarInset className="flex flex-col">
+                  <AppContent searchOpen={searchOpen} onSearchOpenChange={setSearchOpen} />
+                </SidebarInset>
+              </SidebarDrillDownProvider>
               {/* Drag Overlay - only for task drag to sidebar */}
               <TaskDragOverlay projects={projectsWithCounts} />
             </TabPersistenceManager>
@@ -544,8 +553,11 @@ function App(): React.JSX.Element {
     </TabErrorBoundary>
   )
 
-  // Show onboarding if no vault is open (and not still loading)
-  if (!vaultLoading && !isVaultOpen) {
+  if (vaultLoading) {
+    return <></>
+  }
+
+  if (!isVaultOpen) {
     return (
       <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
         <VaultOnboarding />

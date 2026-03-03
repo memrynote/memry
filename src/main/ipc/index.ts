@@ -10,10 +10,16 @@ import { registerTemplatesHandlers, unregisterTemplatesHandlers } from './templa
 import { registerJournalHandlers, unregisterJournalHandlers } from './journal-handlers'
 import { registerSettingsHandlers, unregisterSettingsHandlers } from './settings-handlers'
 import { registerBookmarksHandlers, unregisterBookmarksHandlers } from './bookmarks-handlers'
-import { registerTagsHandlers } from './tags-handlers'
+import { registerTagsHandlers, unregisterTagsHandlers } from './tags-handlers'
 import { registerInboxHandlers, unregisterInboxHandlers } from './inbox-handlers'
 import { registerReminderHandlers, unregisterReminderHandlers } from './reminder-handlers'
 import { registerFolderViewHandlers, unregisterFolderViewHandlers } from './folder-view-handlers'
+import { registerPropertiesHandlers, unregisterPropertiesHandlers } from './properties-handlers'
+import { registerSyncHandlers, unregisterSyncHandlers, checkSyncIntegrity } from './sync-handlers'
+import { registerCryptoHandlers, unregisterCryptoHandlers } from './crypto-handlers'
+import { createLogger } from '../lib/logger'
+
+const ipcLog = createLogger('IPC')
 
 /**
  * Flag to prevent duplicate handler registration
@@ -34,7 +40,7 @@ let handlersRegistered = false
  */
 export function registerAllHandlers(): void {
   if (handlersRegistered) {
-    console.warn('IPC handlers already registered, skipping duplicate registration')
+    ipcLog.warn('handlers already registered, skipping')
     return
   }
 
@@ -77,8 +83,18 @@ export function registerAllHandlers(): void {
   // Register folder view handlers
   registerFolderViewHandlers()
 
+  // Register properties handlers (unified for notes + journal)
+  registerPropertiesHandlers()
+
+  // Register sync handlers
+  registerSyncHandlers()
+  checkSyncIntegrity().catch((err) => ipcLog.error('Sync integrity check failed', err))
+
+  // Register crypto handlers
+  registerCryptoHandlers()
+
   handlersRegistered = true
-  console.log('[IPC] All handlers registered')
+  ipcLog.info('all handlers registered')
 }
 
 /**
@@ -99,12 +115,16 @@ export function unregisterAllHandlers(): void {
   unregisterJournalHandlers()
   unregisterSettingsHandlers()
   unregisterBookmarksHandlers()
+  unregisterTagsHandlers()
   unregisterInboxHandlers()
   unregisterReminderHandlers()
   unregisterFolderViewHandlers()
+  unregisterPropertiesHandlers()
+  unregisterSyncHandlers()
+  unregisterCryptoHandlers()
 
   handlersRegistered = false
-  console.log('All IPC handlers unregistered')
+  ipcLog.info('all handlers unregistered')
 }
 
 /**
@@ -127,7 +147,10 @@ export { registerTemplatesHandlers, unregisterTemplatesHandlers } from './templa
 export { registerJournalHandlers, unregisterJournalHandlers } from './journal-handlers'
 export { registerSettingsHandlers, unregisterSettingsHandlers } from './settings-handlers'
 export { registerBookmarksHandlers, unregisterBookmarksHandlers } from './bookmarks-handlers'
-export { registerTagsHandlers } from './tags-handlers'
+export { registerTagsHandlers, unregisterTagsHandlers } from './tags-handlers'
 export { registerInboxHandlers, unregisterInboxHandlers } from './inbox-handlers'
 export { registerReminderHandlers, unregisterReminderHandlers } from './reminder-handlers'
 export { registerFolderViewHandlers, unregisterFolderViewHandlers } from './folder-view-handlers'
+export { registerPropertiesHandlers, unregisterPropertiesHandlers } from './properties-handlers'
+export { registerSyncHandlers, unregisterSyncHandlers } from './sync-handlers'
+export { registerCryptoHandlers, unregisterCryptoHandlers } from './crypto-handlers'

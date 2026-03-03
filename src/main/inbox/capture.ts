@@ -11,6 +11,7 @@
 import { BrowserWindow } from 'electron'
 import { eq } from 'drizzle-orm'
 
+import { createLogger } from '../lib/logger'
 import { getDatabase, type DrizzleDb } from '../database'
 import { generateId } from '../lib/id'
 import { inboxItems, inboxItemTags } from '@shared/db/schema/inbox'
@@ -24,6 +25,8 @@ import {
 } from '@shared/contracts/inbox-api'
 import { storeInboxAttachment, resolveAttachmentUrl } from './attachments'
 import { transcribeAudio, isTranscriptionAvailable } from './transcription'
+
+const log = createLogger('Inbox:Capture')
 
 // ============================================================================
 // Types
@@ -268,12 +271,12 @@ export async function captureVoice(input: CaptureVoiceInput): Promise<CaptureRes
 
     // Trigger async transcription if enabled and available
     if (shouldTranscribe && storageResult.path) {
-      console.log(`[Capture] Triggering transcription for voice memo ${id}`)
+      log.info(`Triggering transcription for voice memo ${id}`)
 
       // Run transcription asynchronously (don't await)
       setImmediate(() => {
         transcribeAudio(id, storageResult.path!).catch((err) => {
-          console.error('[Capture] Background transcription error:', err)
+          log.error('Background transcription error:', err)
         })
       })
     }
@@ -281,7 +284,7 @@ export async function captureVoice(input: CaptureVoiceInput): Promise<CaptureRes
     return { success: true, item }
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error'
-    console.error('[Capture] Voice capture error:', message)
+    log.error('Voice capture error:', message)
     return { success: false, item: null, error: message }
   }
 }

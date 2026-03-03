@@ -42,6 +42,9 @@ import { Label } from '@/components/ui/label'
 import { cn } from '@/lib/utils'
 import { DEFAULT_COLUMNS } from '@shared/contracts/folder-view-api'
 import type { ViewConfig } from '@/hooks/use-folder-view'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('Component:ViewSwitcher')
 
 // ============================================================================
 // Types
@@ -140,7 +143,7 @@ export function ViewSwitcher({
       setNewViewName('')
       setCopyFromCurrent(true)
     } catch (err) {
-      console.error('[ViewSwitcher] Failed to create view:', err)
+      log.error('Failed to create view', err)
       // Keep dialog open on error so user can retry
     } finally {
       setIsSubmitting(false)

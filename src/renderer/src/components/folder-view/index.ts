@@ -15,6 +15,7 @@ export { FilterBuilder } from './filter-builder'
 export { FilterRow, type FilterCondition, type PropertyInfo } from './filter-row'
 export {
   PropertyCell,
+  EditablePropertyCell,
   TextCell,
   NumberCell,
   CheckboxCell,
