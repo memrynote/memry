@@ -8,9 +8,9 @@
 // TYPES
 // ============================================================================
 
-export type SectionType = "overdue" | "today" | "tomorrow" | "upcoming" | "no-date"
+export type SectionType = 'overdue' | 'today' | 'tomorrow' | 'upcoming' | 'no-date'
 
-export type EmptyStateType = "celebration" | "simple" | "planning" | "none"
+export type EmptyStateType = 'celebration' | 'simple' | 'planning' | 'none'
 
 export interface SectionVisibility {
   /** Whether the section should be rendered at all */
@@ -48,48 +48,48 @@ export const getSectionVisibility = (
   context: SectionVisibilityContext = { hasTasksThisWeek: false }
 ): SectionVisibility => {
   switch (sectionType) {
-    case "overdue":
+    case 'overdue':
       // Hide completely when empty - absence of overdue is good!
       // The celebration banner handles the transition moment
       return {
         shouldShow: taskCount > 0,
         showEmptyState: false,
-        emptyStateType: "none",
+        emptyStateType: 'none'
       }
 
-    case "today":
+    case 'today':
       // Always show TODAY section - it's the primary focus area
       // When empty, show a celebration/encouragement state
       return {
         shouldShow: true,
         showEmptyState: taskCount === 0,
-        emptyStateType: "celebration",
+        emptyStateType: 'celebration'
       }
 
-    case "tomorrow":
+    case 'tomorrow':
       // Show if there are tasks for tomorrow OR if there are tasks this week
       // This provides planning context without cluttering empty views
       return {
         shouldShow: taskCount > 0 || context.hasTasksThisWeek,
         showEmptyState: taskCount === 0,
-        emptyStateType: "simple",
+        emptyStateType: 'simple'
       }
 
-    case "upcoming":
+    case 'upcoming':
       // Always show UPCOMING section - main planning area
       // When empty, show a planning-oriented prompt
       return {
         shouldShow: true,
         showEmptyState: taskCount === 0,
-        emptyStateType: "planning",
+        emptyStateType: 'planning'
       }
 
-    case "no-date":
+    case 'no-date':
       // Only show if there are actually undated tasks
       return {
         shouldShow: taskCount > 0,
         showEmptyState: false,
-        emptyStateType: "none",
+        emptyStateType: 'none'
       }
 
     default:
@@ -97,7 +97,7 @@ export const getSectionVisibility = (
       return {
         shouldShow: taskCount > 0,
         showEmptyState: false,
-        emptyStateType: "none",
+        emptyStateType: 'none'
       }
   }
 }
@@ -124,31 +124,25 @@ export const getEmptyStateMessage = (
   sectionType: SectionType
 ): { title: string; description: string } => {
   switch (sectionType) {
-    case "today":
+    case 'today':
       return {
-        title: "All clear for today!",
-        description: "Enjoy your free time or plan ahead.",
+        title: 'All clear for today!',
+        description: 'Enjoy your free time or plan ahead.'
       }
-    case "tomorrow":
+    case 'tomorrow':
       return {
-        title: "No tasks scheduled",
-        description: "Plan ahead by adding tasks for tomorrow.",
+        title: 'No tasks scheduled',
+        description: 'Plan ahead by adding tasks for tomorrow.'
       }
-    case "upcoming":
+    case 'upcoming':
       return {
-        title: "Nothing scheduled",
-        description: "Add tasks with due dates to plan your week.",
+        title: 'Nothing scheduled',
+        description: 'Add tasks with due dates to plan your week.'
       }
     default:
       return {
-        title: "No tasks",
-        description: "Add a task to get started.",
+        title: 'No tasks',
+        description: 'Add a task to get started.'
       }
   }
 }
-
-
-
-
-
-

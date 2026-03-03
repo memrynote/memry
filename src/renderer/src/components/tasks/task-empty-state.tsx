@@ -1,13 +1,13 @@
-import { ClipboardList, Star, Calendar, CheckCircle, FolderOpen, Plus } from "lucide-react"
+import { ClipboardList, Star, Calendar, CheckCircle, FolderOpen, Plus } from 'lucide-react'
 
-import { Button } from "@/components/ui/button"
-import { cn } from "@/lib/utils"
+import { Button } from '@/components/ui/button'
+import { cn } from '@/lib/utils'
 
 // ============================================================================
 // TYPES
 // ============================================================================
 
-type EmptyStateVariant = "all" | "today" | "upcoming" | "completed" | "project"
+type EmptyStateVariant = 'all' | 'today' | 'upcoming' | 'completed' | 'project'
 
 interface TaskEmptyStateProps {
   variant: EmptyStateVariant
@@ -30,34 +30,34 @@ interface EmptyStateConfig {
 const emptyStateConfigs: Record<EmptyStateVariant, EmptyStateConfig> = {
   all: {
     icon: ClipboardList,
-    title: "No tasks yet",
-    description: "Create your first task to get started",
-    showAddButton: true,
+    title: 'No tasks yet',
+    description: 'Create your first task to get started',
+    showAddButton: true
   },
   today: {
     icon: Star,
-    title: "Nothing due today",
+    title: 'Nothing due today',
     description: "You're all caught up!",
-    showAddButton: false,
+    showAddButton: false
   },
   upcoming: {
     icon: Calendar,
-    title: "No upcoming tasks",
-    description: "Tasks due in the next 7 days will appear here",
-    showAddButton: false,
+    title: 'No upcoming tasks',
+    description: 'Tasks due in the next 7 days will appear here',
+    showAddButton: false
   },
   completed: {
     icon: CheckCircle,
-    title: "No completed tasks",
-    description: "Completed tasks will appear here",
-    showAddButton: false,
+    title: 'No completed tasks',
+    description: 'Completed tasks will appear here',
+    showAddButton: false
   },
   project: {
     icon: FolderOpen,
-    title: "No tasks in this project",
-    description: "Add a task to get started",
-    showAddButton: true,
-  },
+    title: 'No tasks in this project',
+    description: 'Add a task to get started',
+    showAddButton: true
+  }
 }
 
 // ============================================================================
@@ -68,23 +68,16 @@ export const TaskEmptyState = ({
   variant,
   projectName,
   onAddTask,
-  className,
+  className
 }: TaskEmptyStateProps): React.JSX.Element => {
   const config = emptyStateConfigs[variant]
   const Icon = config.icon
 
   // Customize title for project variant
-  const title = variant === "project" && projectName
-    ? `No tasks in ${projectName}`
-    : config.title
+  const title = variant === 'project' && projectName ? `No tasks in ${projectName}` : config.title
 
   return (
-    <div
-      className={cn(
-        "flex flex-col items-center justify-center py-16 text-center",
-        className
-      )}
-    >
+    <div className={cn('flex flex-col items-center justify-center py-16 text-center', className)}>
       {/* Icon */}
       <div className="mb-4 rounded-full bg-muted p-4">
         <Icon className="size-8 text-text-tertiary" aria-hidden="true" />
@@ -94,9 +87,7 @@ export const TaskEmptyState = ({
       <h3 className="mb-2 text-lg font-medium text-text-primary">{title}</h3>
 
       {/* Description */}
-      <p className="mb-6 max-w-sm text-sm text-text-tertiary">
-        {config.description}
-      </p>
+      <p className="mb-6 max-w-sm text-sm text-text-tertiary">{config.description}</p>
 
       {/* Add Task Button */}
       {config.showAddButton && onAddTask && (
@@ -110,4 +101,3 @@ export const TaskEmptyState = ({
 }
 
 export default TaskEmptyState
-

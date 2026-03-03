@@ -3,14 +3,7 @@
  * Global state management for the AI agent panel visibility
  */
 
-import {
-  createContext,
-  useContext,
-  useState,
-  useCallback,
-  useMemo,
-  type ReactNode,
-} from 'react'
+import { createContext, useContext, useState, useCallback, useMemo, type ReactNode } from 'react'
 
 // ============================================================================
 // TYPES
@@ -57,7 +50,7 @@ export const useAIAgent = (): AIAgentContextValue => {
 
 export const AIAgentProvider = ({
   children,
-  defaultOpen = false,
+  defaultOpen = false
 }: AIAgentProviderProps): React.JSX.Element => {
   const [isOpen, setIsOpen] = useState(defaultOpen)
 
@@ -78,16 +71,12 @@ export const AIAgentProvider = ({
       isOpen,
       toggle,
       open,
-      close,
+      close
     }),
     [isOpen, toggle, open, close]
   )
 
-  return (
-    <AIAgentContext.Provider value={value}>
-      {children}
-    </AIAgentContext.Provider>
-  )
+  return <AIAgentContext.Provider value={value}>{children}</AIAgentContext.Provider>
 }
 
 export default AIAgentProvider

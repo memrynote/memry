@@ -1,6 +1,6 @@
-import { useState, useRef, useEffect, useCallback } from "react"
+import { useState, useRef, useEffect, useCallback } from 'react'
 
-import { cn } from "@/lib/utils"
+import { cn } from '@/lib/utils'
 
 // ============================================================================
 // TYPES
@@ -16,10 +16,8 @@ interface TaskDescriptionProps {
 // DEBOUNCE HOOK
 // ============================================================================
 
-const useDebounce = <T extends (...args: unknown[]) => void>(
-  callback: T,
-  delay: number
-): T => {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const useDebounce = <T extends (...args: any[]) => void>(callback: T, delay: number): T => {
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const debouncedCallback = useCallback(
@@ -53,7 +51,7 @@ const useDebounce = <T extends (...args: unknown[]) => void>(
 export const TaskDescription = ({
   value,
   onChange,
-  className,
+  className
 }: TaskDescriptionProps): React.JSX.Element => {
   const [localValue, setLocalValue] = useState(value)
   const [isSaving, setIsSaving] = useState(false)
@@ -89,7 +87,7 @@ export const TaskDescription = ({
   const adjustHeight = (): void => {
     const textarea = textareaRef.current
     if (textarea) {
-      textarea.style.height = "auto"
+      textarea.style.height = 'auto'
       textarea.style.height = `${Math.max(80, textarea.scrollHeight)}px`
     }
   }
@@ -99,17 +97,13 @@ export const TaskDescription = ({
   }, [localValue])
 
   return (
-    <div className={cn("flex flex-col gap-2", className)}>
+    <div className={cn('flex flex-col gap-2', className)}>
       {/* Section label with saving indicator */}
       <div className="flex items-center justify-between">
         <h3 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
           Description
         </h3>
-        {isSaving && (
-          <span className="text-xs text-muted-foreground animate-pulse">
-            Saving...
-          </span>
-        )}
+        {isSaving && <span className="text-xs text-muted-foreground animate-pulse">Saving...</span>}
       </div>
 
       {/* Textarea */}
@@ -120,10 +114,10 @@ export const TaskDescription = ({
         onBlur={handleBlur}
         placeholder="Add a description..."
         className={cn(
-          "min-h-[80px] w-full resize-none rounded-md border border-border bg-transparent px-3 py-2 text-sm",
-          "placeholder:text-muted-foreground",
-          "focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent",
-          "transition-colors duration-150"
+          'min-h-[80px] w-full resize-none rounded-md border border-border bg-transparent px-3 py-2 text-sm',
+          'placeholder:text-muted-foreground',
+          'focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent',
+          'transition-colors duration-150'
         )}
         aria-label="Task description"
       />
@@ -132,4 +126,3 @@ export const TaskDescription = ({
 }
 
 export default TaskDescription
-

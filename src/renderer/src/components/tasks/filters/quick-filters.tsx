@@ -1,9 +1,9 @@
-import { useMemo } from "react"
-import { AlertTriangle, Flag, Calendar, Repeat, HelpCircle } from "lucide-react"
+import { useMemo } from 'react'
+import { AlertTriangle, Flag, Calendar, Repeat, HelpCircle } from 'lucide-react'
 
-import { cn } from "@/lib/utils"
-import type { TaskFilters, QuickFilterPreset } from "@/data/tasks-data"
-import { quickFilterPresets, defaultFilters } from "@/data/tasks-data"
+import { cn } from '@/lib/utils'
+import type { TaskFilters, QuickFilterPreset } from '@/data/tasks-data'
+import { quickFilterPresets, defaultFilters } from '@/data/tasks-data'
 
 // ============================================================================
 // TYPES
@@ -24,7 +24,7 @@ const iconMap: Record<string, React.ReactNode> = {
   Flag: <Flag className="size-3" />,
   Calendar: <Calendar className="size-3" />,
   Repeat: <Repeat className="size-3" />,
-  HelpCircle: <HelpCircle className="size-3" />,
+  HelpCircle: <HelpCircle className="size-3" />
 }
 
 // ============================================================================
@@ -34,7 +34,7 @@ const iconMap: Record<string, React.ReactNode> = {
 export const QuickFilters = ({
   filters,
   onApply,
-  className,
+  className
 }: QuickFiltersProps): React.JSX.Element => {
   // Determine which preset is currently active
   const activePresetId = useMemo((): string | null => {
@@ -61,13 +61,13 @@ export const QuickFilters = ({
       // Also check that other filters are at defaults
       if (isMatch) {
         const otherFiltersDefault =
-          filters.search === "" &&
+          filters.search === '' &&
           (preset.filters.projectIds ? true : filters.projectIds.length === 0) &&
           (!preset.filters.priorities ? filters.priorities.length === 0 : true) &&
-          (!preset.filters.dueDate ? filters.dueDate.type === "any" : true) &&
+          (!preset.filters.dueDate ? filters.dueDate.type === 'any' : true) &&
           filters.statusIds.length === 0 &&
-          (!preset.filters.repeatType ? filters.repeatType === "all" : true) &&
-          filters.hasTime === "all"
+          (!preset.filters.repeatType ? filters.repeatType === 'all' : true) &&
+          filters.hasTime === 'all'
 
         if (otherFiltersDefault) {
           return preset.id
@@ -86,18 +86,13 @@ export const QuickFilters = ({
       // Apply the preset filters (merge with defaults to reset other filters)
       onApply({
         ...defaultFilters,
-        ...preset.filters,
+        ...preset.filters
       })
     }
   }
 
   return (
-    <div
-      className={cn(
-        "flex items-center gap-2 px-4 py-2 bg-muted/30 border-b",
-        className
-      )}
-    >
+    <div className={cn('flex items-center gap-2 px-4 py-2 bg-muted/30 border-b', className)}>
       <span className="text-xs text-muted-foreground shrink-0">Quick filters:</span>
 
       <div className="flex flex-wrap gap-1.5">
@@ -111,10 +106,10 @@ export const QuickFilters = ({
               type="button"
               onClick={() => handleApply(preset)}
               className={cn(
-                "inline-flex items-center gap-1.5 px-2 py-1 text-xs rounded-full border transition-colors",
+                'inline-flex items-center gap-1.5 px-2 py-1 text-xs rounded-full border transition-colors',
                 isActive
-                  ? "bg-primary text-primary-foreground border-primary"
-                  : "bg-background border-border text-foreground hover:bg-accent"
+                  ? 'bg-primary text-primary-foreground border-primary'
+                  : 'bg-background border-border text-foreground hover:bg-accent'
               )}
             >
               {icon}

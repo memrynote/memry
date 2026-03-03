@@ -1,4 +1,4 @@
-import { CheckCircle2 } from "lucide-react"
+import { CheckCircle2 } from 'lucide-react'
 
 import {
   AlertDialog,
@@ -8,8 +8,8 @@ import {
   AlertDialogDescription,
   AlertDialogFooter,
   AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog"
+  AlertDialogTitle
+} from '@/components/ui/alert-dialog'
 
 // ============================================================================
 // TYPES
@@ -34,7 +34,7 @@ export const AllSubtasksCompleteDialog = ({
   subtaskCount,
   onClose,
   onKeepOpen,
-  onCompleteParent,
+  onCompleteParent
 }: AllSubtasksCompleteDialogProps): React.JSX.Element => {
   const handleKeepOpen = (): void => {
     onKeepOpen()
@@ -59,7 +59,7 @@ export const AllSubtasksCompleteDialog = ({
           <AlertDialogDescription className="space-y-2">
             <p>
               &ldquo;{parentTitle}&rdquo; has all {subtaskCount} subtask
-              {subtaskCount !== 1 ? "s" : ""} done.
+              {subtaskCount !== 1 ? 's' : ''} done.
             </p>
             <p className="text-muted-foreground">
               Would you like to mark the parent task as complete too?
@@ -67,12 +67,8 @@ export const AllSubtasksCompleteDialog = ({
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel onClick={handleKeepOpen}>
-            Keep task open
-          </AlertDialogCancel>
-          <AlertDialogAction onClick={handleComplete}>
-            Complete task ✓
-          </AlertDialogAction>
+          <AlertDialogCancel onClick={handleKeepOpen}>Keep task open</AlertDialogCancel>
+          <AlertDialogAction onClick={handleComplete}>Complete task ✓</AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
@@ -80,11 +76,3 @@ export const AllSubtasksCompleteDialog = ({
 }
 
 export default AllSubtasksCompleteDialog
-
-
-
-
-
-
-
-

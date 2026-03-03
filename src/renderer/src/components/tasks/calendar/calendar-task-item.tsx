@@ -1,10 +1,10 @@
-import React, { useMemo } from "react"
+import React, { useMemo } from 'react'
 
-import { cn } from "@/lib/utils"
-import { priorityConfig, type Task } from "@/data/sample-tasks"
-import { isBefore, startOfDay } from "@/lib/task-utils"
-import { getSubtasks, calculateProgress } from "@/lib/subtask-utils"
-import { MiniProgressBar } from "@/components/tasks/mini-progress-bar"
+import { cn } from '@/lib/utils'
+import { priorityConfig, type Task } from '@/data/sample-tasks'
+import { isBefore, startOfDay } from '@/lib/task-utils'
+import { getSubtasks, calculateProgress } from '@/lib/subtask-utils'
+import { MiniProgressBar } from '@/components/tasks/mini-progress-bar'
 
 interface CalendarTaskItemProps {
   task: Task
@@ -13,24 +13,24 @@ interface CalendarTaskItemProps {
   onClick?: (taskId: string) => void
 }
 
-const getPriorityColor = (priority: Task["priority"]): string | null => {
+const getPriorityColor = (priority: Task['priority']): string | null => {
   return priorityConfig[priority].color
 }
 
 const formatShortTime = (time: string | null): string | null => {
   if (!time) return null
-  const [hours, minutes] = time.split(":").map(Number)
+  const [hours, minutes] = time.split(':').map(Number)
   if (Number.isNaN(hours) || Number.isNaN(minutes)) return null
-  return `${hours}:${minutes.toString().padStart(2, "0")}`
+  return `${hours}:${minutes.toString().padStart(2, '0')}`
 }
 
 export const CalendarTaskItem = ({
   task,
   allTasks = [],
   compact = false,
-  onClick,
+  onClick
 }: CalendarTaskItemProps): React.JSX.Element => {
-  const priorityColor = getPriorityColor(task.priority) || "#9ca3af"
+  const priorityColor = getPriorityColor(task.priority) || '#9ca3af'
   const isCompleted = !!task.completedAt
   const isOverdue =
     task.dueDate !== null &&
@@ -52,10 +52,7 @@ export const CalendarTaskItem = ({
   if (compact) {
     return (
       <span
-        className={cn(
-          "inline-flex size-2 rounded-full",
-          isOverdue && "ring-2 ring-red-300"
-        )}
+        className={cn('inline-flex size-2 rounded-full', isOverdue && 'ring-2 ring-red-300')}
         style={{ backgroundColor: priorityColor }}
         title={task.title}
       />
@@ -67,7 +64,7 @@ export const CalendarTaskItem = ({
   }
 
   const handleKeyDown = (e: React.KeyboardEvent): void => {
-    if (e.key === "Enter" || e.key === " ") {
+    if (e.key === 'Enter' || e.key === ' ') {
       e.preventDefault()
       onClick?.(task.id)
     }
@@ -80,15 +77,15 @@ export const CalendarTaskItem = ({
       onClick={handleClick}
       onKeyDown={handleKeyDown}
       className={cn(
-        "flex items-center gap-1.5 rounded px-1.5 py-0.5 text-xs",
-        "hover:bg-muted cursor-pointer truncate focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-        isCompleted && "opacity-60 line-through",
-        isOverdue && "bg-red-50"
+        'flex items-center gap-1.5 rounded px-1.5 py-0.5 text-xs',
+        'hover:bg-muted cursor-pointer truncate focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+        isCompleted && 'opacity-60 line-through',
+        isOverdue && 'bg-red-50'
       )}
       aria-label={task.title}
     >
       {/* Priority dot */}
-      {task.priority !== "none" && (
+      {task.priority !== 'none' && (
         <span
           className="block size-1.5 shrink-0 rounded-full"
           style={{ backgroundColor: priorityColor }}
@@ -97,9 +94,7 @@ export const CalendarTaskItem = ({
       )}
 
       {/* Mini progress bar for subtasks */}
-      {hasSubtasks && !isCompleted && (
-        <MiniProgressBar progress={subtaskProgress} />
-      )}
+      {hasSubtasks && !isCompleted && <MiniProgressBar progress={subtaskProgress} />}
 
       {/* Due time */}
       {task.dueTime && (
@@ -123,4 +118,3 @@ export const CalendarTaskItem = ({
 }
 
 export default CalendarTaskItem
-

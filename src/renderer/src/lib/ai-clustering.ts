@@ -1,5 +1,8 @@
-import type { InboxItem } from "@/types"
-import { extractDomain } from "@/lib/inbox-utils"
+import type { InboxItemListItem } from '@/types'
+import { extractDomain } from '@/lib/inbox-utils'
+
+// Type alias for convenience
+type InboxItem = InboxItemListItem
 
 export interface ClusterSuggestion {
   items: InboxItem[]
@@ -7,13 +10,22 @@ export interface ClusterSuggestion {
 }
 
 // Keywords that indicate design-related content
-const DESIGN_KEYWORDS = ["design", "system", "token", "component", "ui", "ux", "figma", "style"]
+const DESIGN_KEYWORDS = ['design', 'system', 'token', 'component', 'ui', 'ux', 'figma', 'style']
 
 // Keywords that indicate technical content
-const TECH_KEYWORDS = ["api", "code", "architecture", "react", "typescript", "javascript", "frontend", "backend"]
+const TECH_KEYWORDS = [
+  'api',
+  'code',
+  'architecture',
+  'react',
+  'typescript',
+  'javascript',
+  'frontend',
+  'backend'
+]
 
 // Keywords that indicate research/reading content
-const READING_KEYWORDS = ["article", "book", "reading", "research", "study", "paper"]
+const READING_KEYWORDS = ['article', 'book', 'reading', 'research', 'study', 'paper']
 
 /**
  * Detects clusters of related items based on the current selection.
@@ -73,15 +85,15 @@ const findSameTypeCluster = (
   if (sameTypeItems.length === 0) return null
 
   const typeLabels: Record<string, string> = {
-    link: "links",
-    note: "notes",
-    image: "images",
-    voice: "voice memos",
+    link: 'links',
+    note: 'notes',
+    image: 'images',
+    voice: 'voice memos'
   }
 
   return {
     items: sameTypeItems,
-    reason: `${sameTypeItems.length} more ${typeLabels[type] || type}`,
+    reason: `${sameTypeItems.length} more ${typeLabels[type] || type}`
   }
 }
 
@@ -93,20 +105,18 @@ const findSameDomainCluster = (
   unselectedItems: InboxItem[]
 ): ClusterSuggestion | null => {
   // Get domains from selected links
-  const selectedLinks = selectedItems.filter((i) => i.type === "link" && i.url)
+  const selectedLinks = selectedItems.filter((i) => i.type === 'link' && i.sourceUrl)
   if (selectedLinks.length === 0) return null
 
-  const selectedDomains = new Set(
-    selectedLinks.map((i) => extractDomain(i.url!))
-  )
+  const selectedDomains = new Set(selectedLinks.map((i) => extractDomain(i.sourceUrl!)))
 
   // If multiple domains selected, skip this clustering
   if (selectedDomains.size > 2) return null
 
   // Find unselected items from same domains
   const sameDomainItems = unselectedItems.filter((item) => {
-    if (item.type !== "link" || !item.url) return false
-    return selectedDomains.has(extractDomain(item.url))
+    if (item.type !== 'link' || !item.sourceUrl) return false
+    return selectedDomains.has(extractDomain(item.sourceUrl))
   })
 
   if (sameDomainItems.length === 0) return null
@@ -114,17 +124,15 @@ const findSameDomainCluster = (
   // Get the most common domain for the message
   const domainCounts = new Map<string, number>()
   sameDomainItems.forEach((item) => {
-    const domain = extractDomain(item.url!)
+    const domain = extractDomain(item.sourceUrl!)
     domainCounts.set(domain, (domainCounts.get(domain) || 0) + 1)
   })
 
-  const topDomain = Array.from(domainCounts.entries()).sort(
-    (a, b) => b[1] - a[1]
-  )[0][0]
+  const topDomain = Array.from(domainCounts.entries()).sort((a, b) => b[1] - a[1])[0][0]
 
   return {
     items: sameDomainItems,
-    reason: `${sameDomainItems.length} more from ${topDomain}`,
+    reason: `${sameDomainItems.length} more from ${topDomain}`
   }
 }
 
@@ -159,7 +167,7 @@ const findTopicCluster = (
     if (designItems.length > 0) {
       return {
         items: designItems,
-        reason: `${designItems.length} more items about design`,
+        reason: `${designItems.length} more items about design`
       }
     }
   }
@@ -177,7 +185,7 @@ const findTopicCluster = (
     if (techItems.length > 0) {
       return {
         items: techItems,
-        reason: `${techItems.length} more items about development`,
+        reason: `${techItems.length} more items about development`
       }
     }
   }
@@ -185,15 +193,13 @@ const findTopicCluster = (
   // Generic keyword matching
   const relatedItems = unselectedItems.filter((item) => {
     const itemWords = item.title.toLowerCase().split(/\s+/)
-    return itemWords.some(
-      (word) => word.length > 4 && selectedTitleWords.has(word)
-    )
+    return itemWords.some((word) => word.length > 4 && selectedTitleWords.has(word))
   })
 
   if (relatedItems.length > 0) {
     return {
       items: relatedItems,
-      reason: `${relatedItems.length} more related items`,
+      reason: `${relatedItems.length} more related items`
     }
   }
 
@@ -204,7 +210,9 @@ const findTopicCluster = (
  * Generate a unique key for a cluster suggestion (for dismissal tracking)
  */
 export const getClusterKey = (suggestion: ClusterSuggestion): string => {
-  const itemIds = suggestion.items.map((i) => i.id).sort().join(",")
+  const itemIds = suggestion.items
+    .map((i) => i.id)
+    .sort()
+    .join(',')
   return `${suggestion.reason}:${itemIds}`
 }
-

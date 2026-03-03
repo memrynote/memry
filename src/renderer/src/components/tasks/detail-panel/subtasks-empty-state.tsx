@@ -1,9 +1,9 @@
-import { useState, useRef } from "react"
-import { ClipboardList, Plus } from "lucide-react"
+import { useState, useRef } from 'react'
+import { ClipboardList, Plus } from 'lucide-react'
 
-import { Button } from "@/components/ui/button"
-import { BulkAddSubtasks } from "./bulk-add-subtasks"
-import { cn } from "@/lib/utils"
+import { Button } from '@/components/ui/button'
+import { BulkAddSubtasks } from './bulk-add-subtasks'
+import { cn } from '@/lib/utils'
 
 // ============================================================================
 // TYPES
@@ -22,10 +22,10 @@ interface SubtasksEmptyStateProps {
 export const SubtasksEmptyState = ({
   parentId,
   onAddFirst,
-  onBulkAdd,
+  onBulkAdd
 }: SubtasksEmptyStateProps): React.JSX.Element => {
   const [showInput, setShowInput] = useState(false)
-  const [title, setTitle] = useState("")
+  const [title, setTitle] = useState('')
   const inputRef = useRef<HTMLInputElement>(null)
 
   const handleAddFirstClick = (): void => {
@@ -38,18 +38,18 @@ export const SubtasksEmptyState = ({
   const handleSubmit = (): void => {
     if (title.trim()) {
       onAddFirst(title.trim())
-      setTitle("")
+      setTitle('')
       // Keep showing input for adding more
     }
   }
 
   const handleKeyDown = (e: React.KeyboardEvent): void => {
-    if (e.key === "Enter" && title.trim()) {
+    if (e.key === 'Enter' && title.trim()) {
       e.preventDefault()
       handleSubmit()
     }
-    if (e.key === "Escape") {
-      setTitle("")
+    if (e.key === 'Escape') {
+      setTitle('')
       setShowInput(false)
     }
   }
@@ -64,9 +64,7 @@ export const SubtasksEmptyState = ({
       </div>
 
       {/* Title */}
-      <h4 className="text-sm font-medium mb-1">
-        Break this task into smaller steps
-      </h4>
+      <h4 className="text-sm font-medium mb-1">Break this task into smaller steps</h4>
 
       {/* Description */}
       <p className="text-xs text-muted-foreground mb-4 max-w-[250px] mx-auto">
@@ -75,20 +73,15 @@ export const SubtasksEmptyState = ({
 
       {/* Add first subtask */}
       {!showInput ? (
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={handleAddFirstClick}
-          className="gap-1.5"
-        >
+        <Button variant="outline" size="sm" onClick={handleAddFirstClick} className="gap-1.5">
           <Plus className="size-4" />
           Add first subtask
         </Button>
       ) : (
         <div
           className={cn(
-            "flex items-center rounded-lg border transition-colors mx-auto max-w-[280px]",
-            "border-ring bg-background shadow-sm"
+            'flex items-center rounded-lg border transition-colors mx-auto max-w-[280px]',
+            'border-ring bg-background shadow-sm'
           )}
         >
           <Plus className="w-4 h-4 ml-3 shrink-0 text-muted-foreground" />
@@ -103,16 +96,12 @@ export const SubtasksEmptyState = ({
             }}
             placeholder="First subtask..."
             className={cn(
-              "flex-1 px-2 py-2 text-sm bg-transparent outline-none",
-              "placeholder:text-muted-foreground/60"
+              'flex-1 px-2 py-2 text-sm bg-transparent outline-none',
+              'placeholder:text-muted-foreground/60'
             )}
             aria-label="Add first subtask"
           />
-          {title && (
-            <span className="text-xs text-muted-foreground mr-3 shrink-0">
-              Enter
-            </span>
-          )}
+          {title && <span className="text-xs text-muted-foreground mr-3 shrink-0">Enter</span>}
         </div>
       )}
 
@@ -123,11 +112,3 @@ export const SubtasksEmptyState = ({
 }
 
 export default SubtasksEmptyState
-
-
-
-
-
-
-
-

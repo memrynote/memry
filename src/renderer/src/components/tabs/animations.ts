@@ -14,7 +14,7 @@ export const tabVariants = {
   initial: {
     opacity: 0,
     width: 0,
-    marginRight: 0,
+    marginRight: 0
   },
   animate: {
     opacity: 1,
@@ -22,8 +22,8 @@ export const tabVariants = {
     marginRight: 8,
     transition: {
       duration: 0.2,
-      ease: 'easeOut',
-    },
+      ease: 'easeOut'
+    }
   },
   exit: {
     opacity: 0,
@@ -31,10 +31,10 @@ export const tabVariants = {
     marginRight: 0,
     transition: {
       duration: 0.15,
-      ease: 'easeIn',
-    },
-  },
-};
+      ease: 'easeIn'
+    }
+  }
+}
 
 /**
  * Reduced motion tab variants
@@ -42,8 +42,8 @@ export const tabVariants = {
 export const tabVariantsReduced = {
   initial: { opacity: 0 },
   animate: { opacity: 1, transition: { duration: 0.1 } },
-  exit: { opacity: 0, transition: { duration: 0.05 } },
-};
+  exit: { opacity: 0, transition: { duration: 0.05 } }
+}
 
 // =============================================================================
 // CONTENT ANIMATIONS
@@ -55,25 +55,25 @@ export const tabVariantsReduced = {
 export const contentVariants = {
   initial: {
     opacity: 0,
-    y: 10,
+    y: 10
   },
   animate: {
     opacity: 1,
     y: 0,
     transition: {
       duration: 0.15,
-      ease: 'easeOut',
-    },
+      ease: 'easeOut'
+    }
   },
   exit: {
     opacity: 0,
     y: -10,
     transition: {
       duration: 0.1,
-      ease: 'easeIn',
-    },
-  },
-};
+      ease: 'easeIn'
+    }
+  }
+}
 
 /**
  * Reduced motion content variants
@@ -81,8 +81,8 @@ export const contentVariants = {
 export const contentVariantsReduced = {
   initial: { opacity: 0 },
   animate: { opacity: 1, transition: { duration: 0.1 } },
-  exit: { opacity: 0, transition: { duration: 0.05 } },
-};
+  exit: { opacity: 0, transition: { duration: 0.05 } }
+}
 
 // =============================================================================
 // SPLIT PANE ANIMATIONS
@@ -95,13 +95,13 @@ export const splitPaneVariants = {
   initial: { opacity: 0 },
   animate: {
     opacity: 1,
-    transition: { duration: 0.2 },
+    transition: { duration: 0.2 }
   },
   exit: {
     opacity: 0,
-    transition: { duration: 0.15 },
-  },
-};
+    transition: { duration: 0.15 }
+  }
+}
 
 // =============================================================================
 // DRAG ANIMATIONS
@@ -114,14 +114,14 @@ export const dragFeedbackVariants = {
   dragging: {
     scale: 1.02,
     boxShadow: '0 10px 25px rgba(0,0,0,0.15)',
-    zIndex: 50,
+    zIndex: 50
   },
   idle: {
     scale: 1,
     boxShadow: 'none',
-    zIndex: 0,
-  },
-};
+    zIndex: 0
+  }
+}
 
 // =============================================================================
 // DROP ZONE ANIMATIONS
@@ -133,16 +133,16 @@ export const dragFeedbackVariants = {
 export const dropZoneVariants = {
   inactive: {
     opacity: 0,
-    scale: 0.95,
+    scale: 0.95
   },
   active: {
     opacity: 1,
     scale: 1,
     transition: {
-      duration: 0.15,
-    },
-  },
-};
+      duration: 0.15
+    }
+  }
+}
 
 // =============================================================================
 // UI ELEMENT ANIMATIONS
@@ -154,8 +154,8 @@ export const dropZoneVariants = {
 export const fadeVariants = {
   initial: { opacity: 0 },
   animate: { opacity: 1, transition: { duration: 0.15 } },
-  exit: { opacity: 0, transition: { duration: 0.1 } },
-};
+  exit: { opacity: 0, transition: { duration: 0.1 } }
+}
 
 /**
  * Slide in from edge
@@ -164,11 +164,11 @@ export const slideInVariants = {
   left: {
     initial: { x: -20, opacity: 0 },
     animate: { x: 0, opacity: 1 },
-    exit: { x: -20, opacity: 0 },
+    exit: { x: -20, opacity: 0 }
   },
   right: {
     initial: { x: 20, opacity: 0 },
     animate: { x: 0, opacity: 1 },
-    exit: { x: 20, opacity: 0 },
-  },
-};
+    exit: { x: 20, opacity: 0 }
+  }
+}

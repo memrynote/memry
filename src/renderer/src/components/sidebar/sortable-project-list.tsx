@@ -1,9 +1,9 @@
-import { useCallback } from "react"
-import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable"
-import { SortableProjectItem } from "./sortable-project-item"
-import { ProjectsEmptyState } from "./projects-empty-state"
-import { ProjectsSkeleton } from "./projects-skeleton"
-import type { Project } from "@/data/tasks-data"
+import { useCallback } from 'react'
+import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
+import { SortableProjectItem } from './sortable-project-item'
+import { ProjectsEmptyState } from './projects-empty-state'
+import { ProjectsSkeleton } from './projects-skeleton'
+import type { Project } from '@/data/tasks-data'
 
 interface SortableProjectListProps {
   projects: Project[]
@@ -34,7 +34,7 @@ export const SortableProjectList = ({
   onProjectArchive,
   onProjectDelete,
   onProjectsReorder,
-  onCreateProject,
+  onCreateProject
 }: SortableProjectListProps): React.JSX.Element => {
   // Handle project click
   const handleProjectClick = useCallback(
@@ -56,10 +56,7 @@ export const SortableProjectList = ({
   }
 
   return (
-    <SortableContext
-      items={projects.map((p) => p.id)}
-      strategy={verticalListSortingStrategy}
-    >
+    <SortableContext items={projects.map((p) => p.id)} strategy={verticalListSortingStrategy}>
       {projects.map((project) => (
         <SortableProjectItem
           key={project.id}
@@ -76,11 +73,3 @@ export const SortableProjectList = ({
 }
 
 export default SortableProjectList
-
-
-
-
-
-
-
-

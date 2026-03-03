@@ -3,29 +3,29 @@
  * Respects user's motion preferences
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react'
 
 /**
  * Hook to detect if user prefers reduced motion
  */
 export const useReducedMotion = (): boolean => {
-  const [reducedMotion, setReducedMotion] = useState(false);
+  const [reducedMotion, setReducedMotion] = useState(false)
 
   useEffect(() => {
     // Check initial preference
-    const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
-    setReducedMotion(mediaQuery.matches);
+    const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)')
+    setReducedMotion(mediaQuery.matches)
 
     // Listen for changes
     const handler = (e: MediaQueryListEvent): void => {
-      setReducedMotion(e.matches);
-    };
+      setReducedMotion(e.matches)
+    }
 
-    mediaQuery.addEventListener('change', handler);
-    return () => mediaQuery.removeEventListener('change', handler);
-  }, []);
+    mediaQuery.addEventListener('change', handler)
+    return () => mediaQuery.removeEventListener('change', handler)
+  }, [])
 
-  return reducedMotion;
-};
+  return reducedMotion
+}
 
-export default useReducedMotion;
+export default useReducedMotion

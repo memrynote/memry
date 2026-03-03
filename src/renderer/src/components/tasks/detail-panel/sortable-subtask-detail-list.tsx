@@ -5,17 +5,17 @@ import {
   PointerSensor,
   useSensor,
   useSensors,
-  type DragEndEvent,
-} from "@dnd-kit/core"
+  type DragEndEvent
+} from '@dnd-kit/core'
 import {
   SortableContext,
   sortableKeyboardCoordinates,
-  verticalListSortingStrategy,
-} from "@dnd-kit/sortable"
-import { restrictToVerticalAxis, restrictToParentElement } from "@dnd-kit/modifiers"
+  verticalListSortingStrategy
+} from '@dnd-kit/sortable'
+import { restrictToVerticalAxis, restrictToParentElement } from '@dnd-kit/modifiers'
 
-import { SubtaskDetailItem } from "./subtask-detail-item"
-import type { Task } from "@/data/sample-tasks"
+import { SubtaskDetailItem } from './subtask-detail-item'
+import type { Task } from '@/data/sample-tasks'
 
 // ============================================================================
 // TYPES
@@ -53,16 +53,16 @@ export const SortableSubtaskDetailList = ({
   onToggleComplete,
   onDelete,
   onReorder,
-  onPromote,
+  onPromote
 }: SortableSubtaskDetailListProps): React.JSX.Element => {
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
-        distance: 8, // 8px movement required before drag starts
-      },
+        distance: 8 // 8px movement required before drag starts
+      }
     }),
     useSensor(KeyboardSensor, {
-      coordinateGetter: sortableKeyboardCoordinates,
+      coordinateGetter: sortableKeyboardCoordinates
     })
   )
 
@@ -94,10 +94,7 @@ export const SortableSubtaskDetailList = ({
       onDragEnd={handleDragEnd}
       modifiers={[restrictToVerticalAxis, restrictToParentElement]}
     >
-      <SortableContext
-        items={subtaskIds}
-        strategy={verticalListSortingStrategy}
-      >
+      <SortableContext items={subtaskIds} strategy={verticalListSortingStrategy}>
         <div className="flex flex-col gap-2">
           {subtasks.map((subtask) => (
             <SubtaskDetailItem
@@ -117,11 +114,3 @@ export const SortableSubtaskDetailList = ({
 }
 
 export default SortableSubtaskDetailList
-
-
-
-
-
-
-
-

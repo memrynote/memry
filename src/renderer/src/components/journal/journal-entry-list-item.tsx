@@ -39,7 +39,7 @@ const HEATMAP_COLORS = {
   1: '#9be9a8', // Very light green
   2: '#40c463', // Light green
   3: '#30a14e', // Medium green
-  4: '#216e39', // Dark green
+  4: '#216e39' // Dark green
 } as const
 
 // =============================================================================
@@ -54,7 +54,7 @@ export function JournalEntryListItem({
   isToday = false,
   isFuture = false,
   onClick,
-  className,
+  className
 }: JournalEntryListItemProps): React.JSX.Element {
   const hasEntry = heatmapLevel > 0
 
@@ -64,18 +64,18 @@ export function JournalEntryListItem({
       onClick={onClick}
       className={cn(
         // Base styling
-        "w-full flex items-center gap-3 px-3 py-2.5 text-left",
-        "rounded-lg transition-all duration-150",
+        'w-full flex items-center gap-3 px-3 py-2.5 text-left',
+        'rounded-lg transition-all duration-150',
         // Hover state
-        "hover:bg-muted/60",
+        'hover:bg-muted/60',
         // Focus state
-        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-purple/50",
+        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-purple/50',
         // Today highlight
-        isToday && "bg-accent-purple/5 ring-1 ring-accent-purple/20",
+        isToday && 'bg-accent-purple/5 ring-1 ring-accent-purple/20',
         // Future styling
-        isFuture && !isToday && "opacity-60",
+        isFuture && !isToday && 'opacity-60',
         // No entry muted
-        !hasEntry && !isFuture && "opacity-50",
+        !hasEntry && !isFuture && 'opacity-50',
         className
       )}
     >
@@ -95,31 +95,23 @@ export function JournalEntryListItem({
       <div className="flex-shrink-0 w-24 flex items-baseline gap-2">
         <span
           className={cn(
-            "text-lg font-medium tabular-nums",
-            isToday ? "text-accent-purple" : "text-foreground"
+            'text-lg font-medium tabular-nums',
+            isToday ? 'text-accent-purple' : 'text-foreground'
           )}
         >
           {day}
         </span>
-        <span className="text-sm text-muted-foreground truncate">
-          {dayName.slice(0, 3)}
-        </span>
+        <span className="text-sm text-muted-foreground truncate">{dayName.slice(0, 3)}</span>
       </div>
 
       {/* Preview Text */}
       <div className="flex-1 min-w-0">
         {hasEntry && preview ? (
-          <p className="text-sm text-muted-foreground truncate">
-            {preview}
-          </p>
+          <p className="text-sm text-muted-foreground truncate">{preview}</p>
         ) : isFuture ? (
-          <p className="text-sm text-muted-foreground/60 italic">
-            Future
-          </p>
+          <p className="text-sm text-muted-foreground/60 italic">Future</p>
         ) : (
-          <p className="text-sm text-muted-foreground/60 italic">
-            No entry
-          </p>
+          <p className="text-sm text-muted-foreground/60 italic">No entry</p>
         )}
       </div>
 

@@ -1,5 +1,5 @@
-import { cn } from "@/lib/utils"
-import type { SubtaskProgress } from "@/lib/subtask-utils"
+import { cn } from '@/lib/utils'
+import type { SubtaskProgress } from '@/lib/subtask-utils'
 
 // ============================================================================
 // TYPES
@@ -7,7 +7,7 @@ import type { SubtaskProgress } from "@/lib/subtask-utils"
 
 interface SubtaskProgressBarProps {
   progress: SubtaskProgress
-  size?: "sm" | "md"
+  size?: 'sm' | 'md'
   showLabel?: boolean
   className?: string
 }
@@ -18,9 +18,9 @@ interface SubtaskProgressBarProps {
 
 export const SubtaskProgressBar = ({
   progress,
-  size = "sm",
+  size = 'sm',
   showLabel = true,
-  className,
+  className
 }: SubtaskProgressBarProps): React.JSX.Element | null => {
   const { total, completed, percentage } = progress
 
@@ -30,12 +30,12 @@ export const SubtaskProgressBar = ({
   const isComplete = completed === total
 
   return (
-    <div className={cn("flex items-center gap-2", className)}>
+    <div className={cn('flex items-center gap-2', className)}>
       {/* Progress bar track */}
       <div
         className={cn(
-          "flex-1 rounded-full overflow-hidden bg-gray-200 dark:bg-gray-700",
-          size === "sm" ? "h-1.5 max-w-[120px]" : "h-2 max-w-[160px]"
+          'flex-1 rounded-full overflow-hidden bg-gray-200 dark:bg-gray-700',
+          size === 'sm' ? 'h-1.5 max-w-[120px]' : 'h-2 max-w-[160px]'
         )}
         role="progressbar"
         aria-valuenow={percentage}
@@ -46,8 +46,8 @@ export const SubtaskProgressBar = ({
         {/* Progress bar fill */}
         <div
           className={cn(
-            "h-full rounded-full transition-all duration-300",
-            isComplete ? "bg-green-500" : "bg-blue-500"
+            'h-full rounded-full transition-all duration-300',
+            isComplete ? 'bg-green-500' : 'bg-blue-500'
           )}
           style={{ width: `${percentage}%` }}
         />
@@ -57,8 +57,8 @@ export const SubtaskProgressBar = ({
       {showLabel && (
         <span
           className={cn(
-            "text-muted-foreground whitespace-nowrap",
-            size === "sm" ? "text-xs" : "text-sm"
+            'text-muted-foreground whitespace-nowrap',
+            size === 'sm' ? 'text-xs' : 'text-sm'
           )}
         >
           {completed}/{total}
@@ -69,11 +69,3 @@ export const SubtaskProgressBar = ({
 }
 
 export default SubtaskProgressBar
-
-
-
-
-
-
-
-

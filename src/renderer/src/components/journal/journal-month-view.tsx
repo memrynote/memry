@@ -45,14 +45,14 @@ export function JournalMonthView({
   entries,
   heatmapData,
   onDayClick,
-  className,
+  className
 }: JournalMonthViewProps): React.JSX.Element {
   const today = getTodayString()
 
   // Build heatmap lookup
   const heatmapLookup = useMemo(() => {
     const lookup = new Map<string, HeatmapEntry>()
-    heatmapData.forEach(entry => lookup.set(entry.date, entry))
+    heatmapData.forEach((entry) => lookup.set(entry.date, entry))
     return lookup
   }, [heatmapData])
 
@@ -63,10 +63,10 @@ export function JournalMonthView({
   const reversedDays = useMemo(() => [...days].reverse(), [days])
 
   return (
-    <div className={cn("flex flex-col gap-1", className)}>
+    <div className={cn('flex flex-col gap-1', className)}>
       {/* Day List */}
       <div className="flex flex-col">
-        {reversedDays.map(dayData => {
+        {reversedDays.map((dayData) => {
           const dateParts = formatDateParts(dayData.date)
           const entryData = entries.get(dayData.date)
           const heatmapEntry = heatmapLookup.get(dayData.date)

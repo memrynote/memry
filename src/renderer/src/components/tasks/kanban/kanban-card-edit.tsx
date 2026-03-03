@@ -1,14 +1,14 @@
-import { useState, useCallback, useRef, useEffect } from "react"
-import { X } from "lucide-react"
+import { useState, useCallback, useRef, useEffect } from 'react'
+import { X } from 'lucide-react'
 
-import { cn } from "@/lib/utils"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { StatusSelect } from "@/components/tasks/status-select"
-import { PrioritySelect } from "@/components/tasks/priority-select"
-import { DueDatePicker } from "@/components/tasks/due-date-picker"
-import type { Task, Priority } from "@/data/sample-tasks"
-import type { Status } from "@/data/tasks-data"
+import { cn } from '@/lib/utils'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { StatusSelect } from '@/components/tasks/status-select'
+import { PrioritySelect } from '@/components/tasks/priority-select'
+import { DueDatePicker } from '@/components/tasks/due-date-picker'
+import type { Task, Priority } from '@/data/sample-tasks'
+import type { Status } from '@/data/tasks-data'
 
 // ============================================================================
 // TYPES
@@ -29,7 +29,7 @@ export const KanbanCardEdit = ({
   task,
   statuses,
   onSave,
-  onCancel,
+  onCancel
 }: KanbanCardEditProps): React.JSX.Element => {
   // Form state
   const [title, setTitle] = useState(task.title)
@@ -71,15 +71,15 @@ export const KanbanCardEdit = ({
 
     // Find the target status to determine if it's a "done" status
     const targetStatus = statuses.find((s) => s.id === statusId)
-    const isDone = targetStatus?.type === "done"
-    const wasDone = statuses.find((s) => s.id === task.statusId)?.type === "done"
+    const isDone = targetStatus?.type === 'done'
+    const wasDone = statuses.find((s) => s.id === task.statusId)?.type === 'done'
 
     const updates: Partial<Task> = {
       title: title.trim(),
       statusId,
       priority,
       dueDate,
-      dueTime,
+      dueTime
     }
 
     // Handle completedAt based on status change
@@ -94,33 +94,39 @@ export const KanbanCardEdit = ({
   }, [title, statusId, priority, dueDate, dueTime, task, statuses, hasChanges, onSave, onCancel])
 
   // Handle form submission
-  const handleSubmit = useCallback((e: React.FormEvent): void => {
-    e.preventDefault()
-    handleSave()
-  }, [handleSave])
-
-  // Keyboard handler for the form
-  const handleKeyDown = useCallback((e: React.KeyboardEvent): void => {
-    // Cmd/Ctrl + Enter to save
-    if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
+  const handleSubmit = useCallback(
+    (e: React.FormEvent): void => {
       e.preventDefault()
       handleSave()
-      return
-    }
+    },
+    [handleSave]
+  )
 
-    // Escape to cancel
-    if (e.key === "Escape") {
-      e.preventDefault()
-      onCancel()
-      return
-    }
-  }, [handleSave, onCancel])
+  // Keyboard handler for the form
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent): void => {
+      // Cmd/Ctrl + Enter to save
+      if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+        e.preventDefault()
+        handleSave()
+        return
+      }
+
+      // Escape to cancel
+      if (e.key === 'Escape') {
+        e.preventDefault()
+        onCancel()
+        return
+      }
+    },
+    [handleSave, onCancel]
+  )
 
   return (
     <div
       className={cn(
-        "w-full max-w-[260px] box-border overflow-hidden rounded-lg border-2 border-primary bg-card p-2 shadow-md",
-        "mx-auto"
+        'w-full max-w-[260px] box-border overflow-hidden rounded-lg border-2 border-primary bg-card p-2 shadow-md',
+        'mx-auto'
       )}
     >
       <form
@@ -141,19 +147,10 @@ export const KanbanCardEdit = ({
         {/* Status & Priority Row */}
         <div className="flex min-w-0 gap-1.5">
           <div className="min-w-0 flex-1">
-            <StatusSelect
-              value={statusId}
-              onChange={setStatusId}
-              statuses={statuses}
-              compact
-            />
+            <StatusSelect value={statusId} onChange={setStatusId} statuses={statuses} compact />
           </div>
           <div className="min-w-0 flex-1">
-            <PrioritySelect
-              value={priority}
-              onChange={setPriority}
-              compact
-            />
+            <PrioritySelect value={priority} onChange={setPriority} compact />
           </div>
         </div>
 

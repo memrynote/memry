@@ -1,18 +1,18 @@
-import { useState, useMemo, useCallback, useRef, useEffect } from "react"
-import { toast } from "sonner"
+import { useState, useMemo, useCallback, useRef, useEffect } from 'react'
+import { toast } from 'sonner'
 
-import { cn } from "@/lib/utils"
-import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area"
-import { KanbanColumn, type KanbanColumnData } from "./kanban-column"
-import { startOfDay, isBefore, getDefaultTodoStatus, getDefaultDoneStatus } from "@/lib/task-utils"
-import type { Task } from "@/data/sample-tasks"
-import type { Project } from "@/data/tasks-data"
+import { cn } from '@/lib/utils'
+import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area'
+import { KanbanColumn, type KanbanColumnData } from './kanban-column'
+import { startOfDay, isBefore, getDefaultTodoStatus, getDefaultDoneStatus } from '@/lib/task-utils'
+import type { Task } from '@/data/sample-tasks'
+import type { Project } from '@/data/tasks-data'
 
 // ============================================================================
 // TYPES
 // ============================================================================
 
-type SelectionType = "view" | "project"
+type SelectionType = 'view' | 'project'
 
 interface LinearCardItem {
   taskId: string
@@ -33,8 +33,9 @@ interface KanbanBoardProps {
     title: string,
     parsedData?: {
       dueDate: Date | null
-      priority: Task["priority"]
+      priority: Task['priority']
       projectId: string | null
+      statusId?: string
     }
   ) => void
   className?: string
@@ -54,7 +55,7 @@ const getKanbanColumns = (
   projects: Project[]
 ): KanbanColumnData[] => {
   // Project view: columns = project's statuses
-  if (selectedType === "project") {
+  if (selectedType === 'project') {
     const project = projects.find((p) => p.id === selectedId)
     if (!project) return []
 
@@ -62,13 +63,13 @@ const getKanbanColumns = (
       id: status.id,
       title: status.name,
       color: status.color,
-      type: "status" as const,
-      statusType: status.type,
+      type: 'status' as const,
+      statusType: status.type
     }))
   }
 
   // All Tasks view: columns = projects
-  if (selectedId === "all") {
+  if (selectedId === 'all') {
     return projects
       .filter((p) => !p.isArchived)
       .sort((a, b) => {
@@ -81,7 +82,7 @@ const getKanbanColumns = (
         title: project.name,
         color: project.color,
         icon: project.icon,
-        type: "project" as const,
+        type: 'project' as const
       }))
   }
 
@@ -107,7 +108,7 @@ export const KanbanBoard = ({
   // Selection props
   isSelectionMode = false,
   selectedIds,
-  onToggleSelect,
+  onToggleSelect
 }: KanbanBoardProps): React.JSX.Element => {
   const [focusedTaskId, setFocusedTaskId] = useState<string | null>(null)
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null)
@@ -121,7 +122,7 @@ export const KanbanBoard = ({
 
   // Get the currently selected project (for status columns)
   const selectedProject = useMemo(() => {
-    if (selectedType === "project") {
+    if (selectedType === 'project') {
       return projects.find((p) => p.id === selectedId) || null
     }
     return null
@@ -132,9 +133,9 @@ export const KanbanBoard = ({
     const grouped: Record<string, Task[]> = {}
 
     columns.forEach((column) => {
-      if (column.type === "status") {
+      if (column.type === 'status') {
         grouped[column.id] = tasks.filter((t) => t.statusId === column.id)
-      } else if (column.type === "project") {
+      } else if (column.type === 'project') {
         grouped[column.id] = tasks.filter((t) => t.projectId === column.id)
       }
     })
@@ -148,7 +149,7 @@ export const KanbanBoard = ({
       const project = projects.find((p) => p.id === task.projectId)
       if (!project) return false
       const status = project.statuses.find((s) => s.id === task.statusId)
-      return status?.type === "done"
+      return status?.type === 'done'
     },
     [projects]
   )
@@ -169,20 +170,20 @@ export const KanbanBoard = ({
       const column = columns.find((c) => c.id === columnId)
       if (!column) return
 
-      if (column.type === "status" && selectedProject) {
+      if (column.type === 'status' && selectedProject) {
         // Adding to a status column - use the current project and the column's status
         onQuickAdd(title, {
           dueDate: null,
-          priority: "none",
+          priority: 'none',
           projectId: selectedProject.id,
-          statusId: columnId, // Pass the status ID from the column
+          statusId: columnId // Pass the status ID from the column
         })
-      } else if (column.type === "project") {
+      } else if (column.type === 'project') {
         // Adding to a project column - status will be default todo
         onQuickAdd(title, {
           dueDate: null,
-          priority: "none",
-          projectId: columnId,
+          priority: 'none',
+          projectId: columnId
         })
       }
     },
@@ -217,13 +218,16 @@ export const KanbanBoard = ({
   }, [])
 
   // Handle double-click on a card to open quick edit
-  const handleTaskDoubleClick = useCallback((taskId: string) => {
-    openQuickEdit(taskId)
-  }, [openQuickEdit])
+  const handleTaskDoubleClick = useCallback(
+    (taskId: string) => {
+      openQuickEdit(taskId)
+    },
+    [openQuickEdit]
+  )
 
   // Get statuses for the current project (for quick edit form)
   const currentStatuses = useMemo(() => {
-    if (selectedType === "project" && selectedProject) {
+    if (selectedType === 'project' && selectedProject) {
       return selectedProject.statuses
     }
     // For "All Tasks" view, we don't have a single project's statuses
@@ -283,7 +287,7 @@ export const KanbanBoard = ({
 
   // Navigate to first card of adjacent column
   const navigateToColumn = useCallback(
-    (direction: "next" | "previous") => {
+    (direction: 'next' | 'previous') => {
       const linearOrder = getLinearCardOrder()
       if (linearOrder.length === 0 || columns.length === 0) return
 
@@ -295,12 +299,12 @@ export const KanbanBoard = ({
 
       // If no current focus, start from first/last column
       if (currentColumnIndex === -1) {
-        currentColumnIndex = direction === "next" ? -1 : columns.length
+        currentColumnIndex = direction === 'next' ? -1 : columns.length
       }
 
       // Calculate target column (no wrap)
       const targetIndex =
-        direction === "next"
+        direction === 'next'
           ? Math.min(currentColumnIndex + 1, columns.length - 1)
           : Math.max(currentColumnIndex - 1, 0)
 
@@ -318,7 +322,7 @@ export const KanbanBoard = ({
 
   // Move focused task to adjacent column
   const moveTaskToAdjacentColumn = useCallback(
-    (direction: "next" | "previous") => {
+    (direction: 'next' | 'previous') => {
       if (!focusedTaskId) return
 
       const task = tasks.find((t) => t.id === focusedTaskId)
@@ -326,7 +330,7 @@ export const KanbanBoard = ({
 
       // Find current column index
       let currentColumnIndex: number
-      if (selectedType === "project") {
+      if (selectedType === 'project') {
         currentColumnIndex = columns.findIndex((col) => col.id === task.statusId)
       } else {
         currentColumnIndex = columns.findIndex((col) => col.id === task.projectId)
@@ -336,7 +340,7 @@ export const KanbanBoard = ({
 
       // Calculate target column (no wrap)
       const targetIndex =
-        direction === "next"
+        direction === 'next'
           ? Math.min(currentColumnIndex + 1, columns.length - 1)
           : Math.max(currentColumnIndex - 1, 0)
 
@@ -346,28 +350,28 @@ export const KanbanBoard = ({
       const targetColumn = columns[targetIndex]
 
       // Update task based on column type
-      if (selectedType === "project" && targetColumn.type === "status") {
+      if (selectedType === 'project' && targetColumn.type === 'status') {
         const updates: Partial<Task> = {
-          statusId: targetColumn.id,
+          statusId: targetColumn.id
         }
 
         // Handle completedAt based on status type
-        if (targetColumn.statusType === "done" && !task.completedAt) {
+        if (targetColumn.statusType === 'done' && !task.completedAt) {
           updates.completedAt = new Date()
-        } else if (targetColumn.statusType !== "done" && task.completedAt) {
+        } else if (targetColumn.statusType !== 'done' && task.completedAt) {
           updates.completedAt = null
         }
 
         onUpdateTask(focusedTaskId, updates)
         toast.success(`Moved to ${targetColumn.title}`)
-      } else if (targetColumn.type === "project") {
+      } else if (targetColumn.type === 'project') {
         const targetProject = projects.find((p) => p.id === targetColumn.id)
         if (!targetProject) return
 
         // Find current status type and map to new project
         const currentProject = projects.find((p) => p.id === task.projectId)
         const currentStatus = currentProject?.statuses.find((s) => s.id === task.statusId)
-        const currentStatusType = currentStatus?.type || "todo"
+        const currentStatusType = currentStatus?.type || 'todo'
 
         let newStatus = targetProject.statuses.find((s) => s.type === currentStatusType)
         if (!newStatus) {
@@ -376,7 +380,7 @@ export const KanbanBoard = ({
 
         onUpdateTask(focusedTaskId, {
           projectId: targetColumn.id,
-          statusId: newStatus?.id || targetProject.statuses[0]?.id,
+          statusId: newStatus?.id || targetProject.statuses[0]?.id
         })
         toast.success(`Moved to ${targetColumn.title}`)
       }
@@ -388,7 +392,11 @@ export const KanbanBoard = ({
   const isEditableTarget = useCallback((target: EventTarget | null): boolean => {
     if (!target || !(target instanceof HTMLElement)) return false
     const tag = target.tagName.toLowerCase()
-    if (tag === "input" || tag === "textarea" || target.getAttribute("contenteditable") === "true") {
+    if (
+      tag === 'input' ||
+      tag === 'textarea' ||
+      target.getAttribute('contenteditable') === 'true'
+    ) {
       return true
     }
     // Also skip when inside any contenteditable ancestor
@@ -416,13 +424,13 @@ export const KanbanBoard = ({
       // Handle Cmd/Ctrl + arrow keys for moving cards
       if (e.metaKey || e.ctrlKey) {
         switch (e.key) {
-          case "ArrowRight":
+          case 'ArrowRight':
             e.preventDefault()
-            moveTaskToAdjacentColumn("next")
+            moveTaskToAdjacentColumn('next')
             return
-          case "ArrowLeft":
+          case 'ArrowLeft':
             e.preventDefault()
-            moveTaskToAdjacentColumn("previous")
+            moveTaskToAdjacentColumn('previous')
             return
         }
       }
@@ -430,12 +438,12 @@ export const KanbanBoard = ({
       // If no card focused yet, ensure first card is focused on navigation keys
       if (
         !focusedTaskId &&
-        (e.key === "ArrowDown" ||
-          e.key === "ArrowUp" ||
-          e.key === "ArrowLeft" ||
-          e.key === "ArrowRight" ||
-          e.key === "j" ||
-          e.key === "k")
+        (e.key === 'ArrowDown' ||
+          e.key === 'ArrowUp' ||
+          e.key === 'ArrowLeft' ||
+          e.key === 'ArrowRight' ||
+          e.key === 'j' ||
+          e.key === 'k')
       ) {
         const focused = ensureFirstFocus()
         if (focused) {
@@ -447,32 +455,32 @@ export const KanbanBoard = ({
       // Regular navigation
       switch (e.key) {
         // Linear navigation (down/up or j/k)
-        case "ArrowDown":
-        case "j":
+        case 'ArrowDown':
+        case 'j':
           e.preventDefault()
           navigateNext()
           break
 
-        case "ArrowUp":
-        case "k":
+        case 'ArrowUp':
+        case 'k':
           e.preventDefault()
           navigatePrevious()
           break
 
         // Column jump (left/right)
-        case "ArrowLeft":
+        case 'ArrowLeft':
           e.preventDefault()
-          navigateToColumn("previous")
+          navigateToColumn('previous')
           break
 
-        case "ArrowRight":
+        case 'ArrowRight':
           e.preventDefault()
-          navigateToColumn("next")
+          navigateToColumn('next')
           break
 
         // Actions - Enter/E to quick edit, Shift+Enter/Shift+E to open full panel
-        case "Enter":
-        case "e":
+        case 'Enter':
+        case 'e':
           e.preventDefault()
           if (focusedTaskId) {
             if (e.shiftKey) {
@@ -483,15 +491,15 @@ export const KanbanBoard = ({
           }
           break
 
-        case " ": // Space - complete task
+        case ' ': // Space - complete task
           e.preventDefault()
           if (focusedTaskId) {
             onToggleComplete(focusedTaskId)
           }
           break
 
-        case "Delete":
-        case "Backspace":
+        case 'Delete':
+        case 'Backspace':
           e.preventDefault()
           if (focusedTaskId) {
             onDeleteTask(focusedTaskId)
@@ -511,7 +519,7 @@ export const KanbanBoard = ({
       openQuickEdit,
       onTaskClick,
       onToggleComplete,
-      onDeleteTask,
+      onDeleteTask
     ]
   )
 
@@ -533,9 +541,9 @@ export const KanbanBoard = ({
 
   // Global keyboard listener while Kanban is mounted
   useEffect(() => {
-    window.addEventListener("keydown", handleKeyDown)
+    window.addEventListener('keydown', handleKeyDown)
     return () => {
-      window.removeEventListener("keydown", handleKeyDown)
+      window.removeEventListener('keydown', handleKeyDown)
     }
   }, [handleKeyDown])
 
@@ -543,7 +551,7 @@ export const KanbanBoard = ({
     <div
       ref={boardRef}
       tabIndex={0}
-      className={cn("flex-1 outline-none", className)}
+      className={cn('flex-1 outline-none', className)}
       role="grid"
       aria-label="Kanban board. Use arrow keys to navigate cards."
     >
@@ -553,9 +561,8 @@ export const KanbanBoard = ({
             // Get the statuses for this column's context
             // For project view: use the selected project's statuses
             // For all tasks view: get the task's project statuses
-            const columnStatuses = column.type === "status" && selectedProject
-              ? selectedProject.statuses
-              : []
+            const columnStatuses =
+              column.type === 'status' && selectedProject ? selectedProject.statuses : []
 
             return (
               <KanbanColumn

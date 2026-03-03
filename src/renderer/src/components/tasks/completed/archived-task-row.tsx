@@ -1,16 +1,11 @@
-import { Archive, RotateCcw, Trash2 } from "lucide-react"
+import { Archive, RotateCcw, Trash2 } from 'lucide-react'
 
-import { cn } from "@/lib/utils"
-import { ProjectBadge } from "@/components/tasks/task-badges"
-import { Button } from "@/components/ui/button"
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip"
-import type { Task } from "@/data/sample-tasks"
-import type { Project } from "@/data/tasks-data"
+import { cn } from '@/lib/utils'
+import { ProjectBadge } from '@/components/tasks/task-badges'
+import { Button } from '@/components/ui/button'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+import type { Task } from '@/data/sample-tasks'
+import type { Project } from '@/data/tasks-data'
 
 // ============================================================================
 // TYPES
@@ -33,16 +28,16 @@ export const ArchivedTaskRow = ({
   project,
   onRestore,
   onDelete,
-  className,
+  className
 }: ArchivedTaskRowProps): React.JSX.Element => {
   // Format completed date
   const getCompletedDate = (): string => {
-    if (!task.completedAt) return ""
+    if (!task.completedAt) return ''
 
-    return new Date(task.completedAt).toLocaleDateString("en-US", {
-      month: "short",
-      day: "numeric",
-      year: "numeric",
+    return new Date(task.completedAt).toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric'
     })
   }
 
@@ -59,8 +54,8 @@ export const ArchivedTaskRow = ({
   return (
     <div
       className={cn(
-        "group flex items-center gap-3 rounded-md px-3 py-2.5 transition-colors duration-150",
-        "hover:bg-accent/50",
+        'group flex items-center gap-3 rounded-md px-3 py-2.5 transition-colors duration-150',
+        'hover:bg-accent/50',
         className
       )}
       role="listitem"
@@ -72,9 +67,7 @@ export const ArchivedTaskRow = ({
       </div>
 
       {/* Title (muted) */}
-      <span className="flex-1 truncate text-sm text-text-tertiary">
-        {task.title}
-      </span>
+      <span className="flex-1 truncate text-sm text-text-tertiary">{task.title}</span>
 
       {/* Completed date */}
       <span className="text-xs text-text-tertiary tabular-nums shrink-0 min-w-[80px] text-right">
@@ -82,9 +75,7 @@ export const ArchivedTaskRow = ({
       </span>
 
       {/* Project badge (optional) */}
-      {project && (
-        <ProjectBadge project={project} className="opacity-50" />
-      )}
+      {project && <ProjectBadge project={project} className="opacity-50" />}
 
       {/* Hover actions */}
       <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">

@@ -1,33 +1,27 @@
-import { useMemo, useState } from "react"
-import { Plus } from "lucide-react"
-import { AnimatePresence } from "framer-motion"
-import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable"
-import { useDroppable } from "@dnd-kit/core"
+import { useMemo, useState } from 'react'
+import { Plus } from 'lucide-react'
+import { AnimatePresence } from 'framer-motion'
+import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
+import { useDroppable } from '@dnd-kit/core'
 
-import { ScrollArea } from "@/components/ui/scroll-area"
-import { Switch } from "@/components/ui/switch"
-import { Label } from "@/components/ui/label"
-import { TaskSection } from "@/components/tasks/task-section"
-import { DaySectionHeader } from "@/components/tasks/day-section-header"
-import { SortableTaskRow } from "@/components/tasks/drag-drop"
-import { QuickAddInput } from "@/components/tasks/quick-add-input"
+import { ScrollArea } from '@/components/ui/scroll-area'
+import { Switch } from '@/components/ui/switch'
+import { Label } from '@/components/ui/label'
+import { TaskSection } from '@/components/tasks/task-section'
+import { DaySectionHeader } from '@/components/tasks/day-section-header'
+import { SortableTaskRow } from '@/components/tasks/drag-drop'
+import { QuickAddInput } from '@/components/tasks/quick-add-input'
 import {
   PlanningEmptyState,
   SimpleEmptyState,
-  OverdueClearedBanner,
-} from "@/components/tasks/empty-states"
-import { cn } from "@/lib/utils"
-import {
-  getUpcomingTasks,
-  parseDateKey,
-  startOfDay,
-  isSameDay,
-  addDays,
-} from "@/lib/task-utils"
-import { getSectionVisibility } from "@/lib/section-visibility"
-import { useOverdueCelebration } from "@/hooks"
-import type { Task, Priority } from "@/data/sample-tasks"
-import type { Project } from "@/data/tasks-data"
+  OverdueClearedBanner
+} from '@/components/tasks/empty-states'
+import { cn } from '@/lib/utils'
+import { getUpcomingTasks, parseDateKey, startOfDay, isSameDay, addDays } from '@/lib/task-utils'
+import { getSectionVisibility } from '@/lib/section-visibility'
+import { useOverdueCelebration } from '@/hooks'
+import type { Task, Priority } from '@/data/sample-tasks'
+import type { Project } from '@/data/tasks-data'
 
 // ============================================================================
 // TYPES
@@ -86,7 +80,7 @@ const DaySection = ({
   onToggleComplete,
   onUpdateTask,
   onTaskClick,
-  onAddTaskForDate,
+  onAddTaskForDate
 }: DaySectionProps): React.JSX.Element | null => {
   const date = parseDateKey(dateKey)
   const isToday = isSameDay(date, startOfDay(new Date()))
@@ -99,11 +93,11 @@ const DaySection = ({
   const { setNodeRef, isOver } = useDroppable({
     id: sectionId,
     data: {
-      type: "section",
+      type: 'section',
       sectionId: dateKey,
-      label: date.toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric" }),
-      date: date, // Pass the actual date for reschedule
-    },
+      label: date.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' }),
+      date: date // Pass the actual date for reschedule
+    }
   })
 
   // Get task IDs for SortableContext
@@ -111,8 +105,8 @@ const DaySection = ({
 
   // Use visibility logic for tomorrow section
   if (isTomorrow) {
-    const tomorrowVisibility = getSectionVisibility("tomorrow", tasks.length, {
-      hasTasksThisWeek,
+    const tomorrowVisibility = getSectionVisibility('tomorrow', tasks.length, {
+      hasTasksThisWeek
     })
 
     if (!tomorrowVisibility.shouldShow) {
@@ -125,16 +119,13 @@ const DaySection = ({
         <section
           ref={setNodeRef}
           className={cn(
-            "rounded-lg border border-border overflow-hidden transition-all",
-            "border-l-2 border-l-border",
-            isOver && "border-dotted border-primary/60 bg-primary/5"
+            'rounded-lg border border-border overflow-hidden transition-all',
+            'border-l-2 border-l-border',
+            isOver && 'border-dotted border-primary/60 bg-primary/5'
           )}
         >
           <DaySectionHeader date={date} taskCount={0} />
-          <SimpleEmptyState
-            label="tomorrow"
-            onAddTask={() => onAddTaskForDate(date)}
-          />
+          <SimpleEmptyState label="tomorrow" onAddTask={() => onAddTaskForDate(date)} />
         </section>
       )
     }
@@ -154,17 +145,17 @@ const DaySection = ({
     const project = projects.find((p) => p.id === task.projectId)
     if (!project) return false
     const status = project.statuses.find((s) => s.id === task.statusId)
-    return status?.type === "done"
+    return status?.type === 'done'
   }
 
   return (
     <section
       ref={setNodeRef}
       className={cn(
-        "rounded-lg border border-border overflow-hidden transition-all",
-        "border-l-2",
-        isToday ? "border-l-amber-500 bg-amber-50/30 dark:bg-amber-950/10" : "border-l-border",
-        isOver && "border-dotted border-primary/60 bg-primary/5"
+        'rounded-lg border border-border overflow-hidden transition-all',
+        'border-l-2',
+        isToday ? 'border-l-amber-500 bg-amber-50/30 dark:bg-amber-950/10' : 'border-l-border',
+        isOver && 'border-dotted border-primary/60 bg-primary/5'
       )}
     >
       {/* Day header */}
@@ -202,12 +193,12 @@ const DaySection = ({
                 type="button"
                 onClick={handleAddTask}
                 className={cn(
-                  "block mx-auto mt-2 text-primary hover:text-primary/80",
-                  "text-sm font-medium transition-colors",
-                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  'block mx-auto mt-2 text-primary hover:text-primary/80',
+                  'text-sm font-medium transition-colors',
+                  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring'
                 )}
               >
-                + Add task for {date.toLocaleDateString("en-US", { weekday: "long" })}
+                + Add task for {date.toLocaleDateString('en-US', { weekday: 'long' })}
               </button>
             </div>
           )}
@@ -217,7 +208,8 @@ const DaySection = ({
       {/* Drop indicator message when hovering */}
       {isOver && (
         <div className="px-4 py-2 text-center text-sm text-primary font-medium bg-primary/5 border-t border-primary/20">
-          Drop to reschedule to {date.toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric" })}
+          Drop to reschedule to{' '}
+          {date.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}
         </div>
       )}
 
@@ -227,10 +219,10 @@ const DaySection = ({
           type="button"
           onClick={handleAddTask}
           className={cn(
-            "w-full flex items-center gap-2 px-4 py-2.5 text-sm text-text-tertiary",
-            "hover:bg-accent/50 hover:text-text-secondary",
-            "border-t border-border/50 transition-colors",
-            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
+            'w-full flex items-center gap-2 px-4 py-2.5 text-sm text-text-tertiary',
+            'hover:bg-accent/50 hover:text-text-secondary',
+            'border-t border-border/50 transition-colors',
+            'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset'
           )}
         >
           <Plus className="size-4" aria-hidden="true" />
@@ -257,7 +249,7 @@ export const UpcomingView = ({
   onOpenModal,
   onAddTaskWithDate,
   onViewCalendar,
-  className,
+  className
 }: UpcomingViewProps): React.JSX.Element => {
   // State for showing/hiding empty days
   const [showEmptyDays, setShowEmptyDays] = useState(true)
@@ -269,13 +261,11 @@ export const UpcomingView = ({
   )
 
   // Track overdue celebration state
-  const { showCelebration, dismiss: dismissCelebration } = useOverdueCelebration(
-    overdue.length
-  )
+  const { showCelebration, dismiss: dismissCelebration } = useOverdueCelebration(overdue.length)
 
   // Calculate section visibility
-  const overdueVisibility = getSectionVisibility("overdue", overdue.length)
-  const upcomingVisibility = getSectionVisibility("upcoming", 0) // Always show
+  const overdueVisibility = getSectionVisibility('overdue', overdue.length)
+  const upcomingVisibility = getSectionVisibility('upcoming', 0) // Always show
 
   // Calculate if there are any tasks this week (for tomorrow visibility)
   let totalUpcomingTasks = 0
@@ -290,17 +280,17 @@ export const UpcomingView = ({
 
   // Determine tomorrow's date key
   const tomorrow = addDays(startOfDay(new Date()), 1)
-  const tomorrowKey = `${tomorrow.getFullYear()}-${String(tomorrow.getMonth() + 1).padStart(2, "0")}-${String(tomorrow.getDate()).padStart(2, "0")}`
+  const tomorrowKey = `${tomorrow.getFullYear()}-${String(tomorrow.getMonth() + 1).padStart(2, '0')}-${String(tomorrow.getDate()).padStart(2, '0')}`
 
   // Handle adding task for a specific date
   const handleAddTaskForDate = (date: Date): void => {
     if (onAddTaskWithDate) {
       onAddTaskWithDate(date)
     } else {
-      onQuickAdd("", {
+      onQuickAdd('', {
         dueDate: date,
-        priority: "none",
-        projectId: null,
+        priority: 'none',
+        projectId: null
       })
     }
   }
@@ -323,14 +313,14 @@ export const UpcomingView = ({
     const finalData = {
       ...parsedData,
       dueDate: parsedData?.dueDate ?? tomorrow,
-      priority: parsedData?.priority ?? "none" as Priority,
-      projectId: parsedData?.projectId ?? null,
+      priority: parsedData?.priority ?? ('none' as Priority),
+      projectId: parsedData?.projectId ?? null
     }
     onQuickAdd(title, finalData)
   }
 
   return (
-    <ScrollArea className={cn("flex-1", className)}>
+    <ScrollArea className={cn('flex-1', className)}>
       <div className="p-4 space-y-4">
         {/* Header with toggle */}
         <div className="flex items-center justify-between">
@@ -348,10 +338,7 @@ export const UpcomingView = ({
               checked={showEmptyDays}
               onCheckedChange={setShowEmptyDays}
             />
-            <Label
-              htmlFor="show-empty-days"
-              className="text-sm text-text-tertiary cursor-pointer"
-            >
+            <Label htmlFor="show-empty-days" className="text-sm text-text-tertiary cursor-pointer">
               Show empty days
             </Label>
           </div>
@@ -359,17 +346,12 @@ export const UpcomingView = ({
 
         {/* Overdue Cleared Celebration Banner */}
         <AnimatePresence>
-          {showCelebration && (
-            <OverdueClearedBanner onDismiss={dismissCelebration} />
-          )}
+          {showCelebration && <OverdueClearedBanner onDismiss={dismissCelebration} />}
         </AnimatePresence>
 
         {/* Planning empty state - show when completely empty */}
         {isCompletelyEmpty && upcomingVisibility.showEmptyState && (
-          <PlanningEmptyState
-            onAddTask={handleAddTask}
-            onViewCalendar={onViewCalendar}
-          />
+          <PlanningEmptyState onAddTask={handleAddTask} onViewCalendar={onViewCalendar} />
         )}
 
         {/* Overdue section - only show when has tasks */}

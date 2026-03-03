@@ -1,23 +1,14 @@
-import * as React from "react"
-import { Repeat, Check } from "lucide-react"
+import * as React from 'react'
+import { Repeat, Check } from 'lucide-react'
 
-import { cn } from "@/lib/utils"
-import { formatDueDate, type DueDateStatus } from "@/lib/task-utils"
-import { priorityConfig, type Priority } from "@/data/sample-tasks"
-import type { Project } from "@/data/tasks-data"
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip"
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover"
-import { Calendar } from "@/components/ui/calendar"
-import { Checkbox } from "@/components/ui/checkbox"
+import { cn } from '@/lib/utils'
+import { formatDueDate, type DueDateStatus } from '@/lib/task-utils'
+import { priorityConfig, type Priority } from '@/data/sample-tasks'
+import type { Project } from '@/data/tasks-data'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { Calendar } from '@/components/ui/calendar'
+import { Checkbox } from '@/components/ui/checkbox'
 
 // ============================================================================
 // PROJECT BADGE
@@ -33,14 +24,14 @@ interface ProjectBadgeProps {
 export const ProjectBadge = ({
   project,
   fixedWidth = false,
-  className,
+  className
 }: ProjectBadgeProps): React.JSX.Element => {
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-xs",
-        "bg-muted text-text-secondary",
-        fixedWidth && "w-[120px] justify-start",
+        'inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-xs',
+        'bg-muted text-text-secondary',
+        fixedWidth && 'w-[120px] justify-start',
         className
       )}
     >
@@ -58,21 +49,21 @@ export const ProjectBadge = ({
 // PRIORITY BADGE
 // ============================================================================
 
-export type PriorityBadgeVariant = "dot" | "label" | "full"
+export type PriorityBadgeVariant = 'dot' | 'label' | 'full'
 
 /** Short labels for compact display in grid columns */
 const priorityShortLabels: Record<Priority, string | null> = {
   none: null,
-  low: "Low",
-  medium: "Med",
-  high: "High",
-  urgent: "Urgent",
+  low: 'Low',
+  medium: 'Med',
+  high: 'High',
+  urgent: 'Urgent'
 }
 
 interface PriorityBadgeProps {
   priority: Priority
   variant?: PriorityBadgeVariant
-  size?: "sm" | "md"
+  size?: 'sm' | 'md'
   showTooltip?: boolean
   /** Use compact short labels (Med instead of Medium) */
   compact?: boolean
@@ -83,17 +74,17 @@ interface PriorityBadgeProps {
 
 export const PriorityBadge = ({
   priority,
-  variant = "full",
-  size = "md",
+  variant = 'full',
+  size = 'md',
   showTooltip = false,
   compact = false,
   fixedWidth = false,
-  className,
+  className
 }: PriorityBadgeProps): React.JSX.Element | null => {
   const config = priorityConfig[priority]
 
   // Don't render anything for "none" priority
-  if (priority === "none" || !config.color) {
+  if (priority === 'none' || !config.color) {
     // Return empty placeholder if fixedWidth to maintain grid alignment
     if (fixedWidth) {
       return <span className="w-[70px]" aria-hidden="true" />
@@ -106,21 +97,21 @@ export const PriorityBadge = ({
   const content = (
     <span
       className={cn(
-        "inline-flex items-center gap-1.5",
-        size === "sm" && "text-xs",
-        size === "md" && "text-xs",
-        fixedWidth && "w-[70px] justify-start",
+        'inline-flex items-center gap-1.5',
+        size === 'sm' && 'text-xs',
+        size === 'md' && 'text-xs',
+        fixedWidth && 'w-[70px] justify-start',
         className
       )}
       aria-label={`${config.label} priority`}
     >
       {/* Priority dot */}
-      {(variant === "dot" || variant === "full") && (
+      {(variant === 'dot' || variant === 'full') && (
         <span
           className={cn(
-            "shrink-0 rounded-full",
-            size === "sm" && "size-1.5",
-            size === "md" && "size-2"
+            'shrink-0 rounded-full',
+            size === 'sm' && 'size-1.5',
+            size === 'md' && 'size-2'
           )}
           style={{ backgroundColor: config.color }}
           aria-hidden="true"
@@ -128,13 +119,9 @@ export const PriorityBadge = ({
       )}
 
       {/* Priority label */}
-      {(variant === "label" || variant === "full") && (
+      {(variant === 'label' || variant === 'full') && (
         <span
-          className={cn(
-            "font-medium",
-            size === "sm" && "text-[10px]",
-            size === "md" && "text-xs"
-          )}
+          className={cn('font-medium', size === 'sm' && 'text-[10px]', size === 'md' && 'text-xs')}
           style={{ color: config.color }}
         >
           {displayLabel}
@@ -144,13 +131,11 @@ export const PriorityBadge = ({
   )
 
   // Wrap with tooltip if needed (only useful for dot variant or compact mode)
-  if (showTooltip && (variant === "dot" || compact)) {
+  if (showTooltip && (variant === 'dot' || compact)) {
     return (
       <TooltipProvider>
         <Tooltip>
-          <TooltipTrigger asChild>
-            {content}
-          </TooltipTrigger>
+          <TooltipTrigger asChild>{content}</TooltipTrigger>
           <TooltipContent side="top" className="text-xs">
             {config.label} priority
           </TooltipContent>
@@ -170,37 +155,37 @@ interface DueDateBadgeProps {
   dueDate: Date | null
   dueTime: string | null
   isRepeating?: boolean
-  variant?: "default" | "compact"
+  variant?: 'default' | 'compact'
   /** Use fixed width for grid alignment */
   fixedWidth?: boolean
   className?: string
 }
 
 const dueDateStatusStyles: Record<DueDateStatus, string> = {
-  overdue: "text-red-600 dark:text-red-400",
-  today: "text-amber-600 dark:text-amber-500",
-  tomorrow: "text-blue-600 dark:text-blue-400",
-  upcoming: "text-foreground",
-  later: "text-muted-foreground",
-  none: "text-muted-foreground",
+  overdue: 'text-red-600 dark:text-red-400',
+  today: 'text-amber-600 dark:text-amber-500',
+  tomorrow: 'text-blue-600 dark:text-blue-400',
+  upcoming: 'text-foreground',
+  later: 'text-muted-foreground',
+  none: 'text-muted-foreground'
 }
 
 const dueDateBackgroundStyles: Record<DueDateStatus, string> = {
-  overdue: "bg-red-50 dark:bg-red-950/50",
-  today: "bg-amber-50 dark:bg-amber-950/50",
-  tomorrow: "",
-  upcoming: "",
-  later: "",
-  none: "",
+  overdue: 'bg-red-50 dark:bg-red-950/50',
+  today: 'bg-amber-50 dark:bg-amber-950/50',
+  tomorrow: '',
+  upcoming: '',
+  later: '',
+  none: ''
 }
 
 export const DueDateBadge = ({
   dueDate,
   dueTime,
   isRepeating = false,
-  variant = "default",
+  variant = 'default',
   fixedWidth = false,
-  className,
+  className
 }: DueDateBadgeProps): React.JSX.Element => {
   const formatted = formatDueDate(dueDate, dueTime)
 
@@ -208,8 +193,8 @@ export const DueDateBadge = ({
     return (
       <span
         className={cn(
-          "text-xs text-muted-foreground",
-          fixedWidth && "w-[110px] text-right",
+          'text-xs text-muted-foreground',
+          fixedWidth && 'w-[110px] text-right',
           className
         )}
       >
@@ -218,26 +203,23 @@ export const DueDateBadge = ({
     )
   }
 
-  const isOverdue = formatted.status === "overdue"
-  const isToday = formatted.status === "today"
+  const isOverdue = formatted.status === 'overdue'
+  const isToday = formatted.status === 'today'
   const showBackground = isOverdue || isToday
 
   const badgeContent = (
     <span
       className={cn(
-        "inline-flex items-center gap-1 text-xs font-medium",
+        'inline-flex items-center gap-1 text-xs font-medium',
         dueDateStatusStyles[formatted.status],
-        showBackground && variant === "default" && cn(
-          "rounded-md px-1.5 py-0.5",
-          dueDateBackgroundStyles[formatted.status]
-        )
+        showBackground &&
+          variant === 'default' &&
+          cn('rounded-md px-1.5 py-0.5', dueDateBackgroundStyles[formatted.status])
       )}
     >
-      {isRepeating && (
-        <Repeat className="size-3 shrink-0" aria-label="Repeating task" />
-      )}
+      {isRepeating && <Repeat className="size-3 shrink-0" aria-label="Repeating task" />}
       <span className="truncate">{formatted.label}</span>
-      {isOverdue && variant === "default" && (
+      {isOverdue && variant === 'default' && (
         <span className="text-[10px] font-semibold uppercase tracking-wide opacity-80 shrink-0">
           Overdue
         </span>
@@ -247,11 +229,7 @@ export const DueDateBadge = ({
 
   // If fixedWidth, wrap in a container for grid alignment
   if (fixedWidth) {
-    return (
-      <span className={cn("w-[110px] flex justify-end", className)}>
-        {badgeContent}
-      </span>
-    )
+    return <span className={cn('w-[110px] flex justify-end', className)}>{badgeContent}</span>
   }
 
   return <span className={className}>{badgeContent}</span>
@@ -274,7 +252,7 @@ export const TaskCheckbox = ({
   onChange,
   disabled = false,
   priority,
-  className,
+  className
 }: TaskCheckboxProps): React.JSX.Element => {
   const handleClick = (e: React.MouseEvent): void => {
     e.stopPropagation()
@@ -287,7 +265,7 @@ export const TaskCheckbox = ({
   // Get border color based on priority
   const getPriorityBorderColor = (): string | undefined => {
     if (checked) return undefined
-    if (!priority || priority === "none") return undefined
+    if (!priority || priority === 'none') return undefined
     return priorityConfig[priority]?.color ?? undefined
   }
 
@@ -296,8 +274,8 @@ export const TaskCheckbox = ({
   return (
     <div
       className={cn(
-        "group/checkbox relative",
-        disabled ? "cursor-not-allowed opacity-50" : "cursor-pointer"
+        'group/checkbox relative',
+        disabled ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'
       )}
       onClick={handleClick}
     >
@@ -307,16 +285,16 @@ export const TaskCheckbox = ({
         checked={checked}
         disabled={disabled}
         className={cn(
-          "size-[18px] rounded-[4px] border-[1.5px] transition-all duration-200 pointer-events-none",
-          "data-[state=unchecked]:border-muted-foreground/40",
-          "data-[state=unchecked]:hover:border-primary/70 data-[state=unchecked]:hover:bg-primary/8",
-          "data-[state=checked]:border-primary data-[state=checked]:bg-primary",
+          'size-[18px] rounded-[4px] border-[1.5px] transition-all duration-200 pointer-events-none',
+          'data-[state=unchecked]:border-muted-foreground/40',
+          'data-[state=unchecked]:hover:border-primary/70 data-[state=unchecked]:hover:bg-primary/8',
+          'data-[state=checked]:border-primary data-[state=checked]:bg-primary',
           // Add hover effect for checked state too
-          "data-[state=checked]:hover:opacity-80",
+          'data-[state=checked]:hover:opacity-80',
           className
         )}
         style={priorityBorderColor ? { borderColor: priorityBorderColor } : undefined}
-        aria-label={checked ? "Mark as incomplete" : "Mark as complete"}
+        aria-label={checked ? 'Mark as incomplete' : 'Mark as complete'}
       />
       {/* Hover state - soft checkmark preview (only for unchecked) */}
       {!checked && !disabled && (
@@ -336,7 +314,7 @@ export const TaskCheckbox = ({
 interface StatusBadgeProps {
   label: string
   color: string
-  type?: "todo" | "in_progress" | "done"
+  type?: 'todo' | 'in_progress' | 'done'
   className?: string
 }
 
@@ -344,18 +322,18 @@ export const StatusBadge = ({
   label,
   color,
   type,
-  className,
+  className
 }: StatusBadgeProps): React.JSX.Element => {
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-xs font-medium",
-        type === "done" && "opacity-70",
+        'inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-xs font-medium',
+        type === 'done' && 'opacity-70',
         className
       )}
       style={{
         backgroundColor: `${color}20`,
-        color: color,
+        color: color
       }}
     >
       <span
@@ -386,7 +364,7 @@ export const InteractiveProjectBadge = ({
   projects,
   onProjectChange,
   fixedWidth = false,
-  className,
+  className
 }: InteractiveProjectBadgeProps): React.JSX.Element => {
   const [isOpen, setIsOpen] = React.useState(false)
 
@@ -395,9 +373,9 @@ export const InteractiveProjectBadge = ({
     return (
       <span
         className={cn(
-          "inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-xs",
-          "bg-muted text-text-secondary",
-          fixedWidth && "w-[120px] justify-start",
+          'inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-xs',
+          'bg-muted text-text-secondary',
+          fixedWidth && 'w-[120px] justify-start',
           className
         )}
       >
@@ -411,7 +389,7 @@ export const InteractiveProjectBadge = ({
     )
   }
 
-  const activeProjects = projects.filter(p => !p.isArchived)
+  const activeProjects = projects.filter((p) => !p.isArchived)
 
   const handleSelect = (projectId: string): void => {
     onProjectChange(projectId)
@@ -428,11 +406,11 @@ export const InteractiveProjectBadge = ({
         <button
           type="button"
           className={cn(
-            "inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-xs",
-            "bg-muted text-text-secondary",
-            "hover:bg-accent hover:ring-1 hover:ring-primary/30 transition-all cursor-pointer",
-            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-            fixedWidth && "w-[120px] justify-start",
+            'inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-xs',
+            'bg-muted text-text-secondary',
+            'hover:bg-accent hover:ring-1 hover:ring-primary/30 transition-all cursor-pointer',
+            'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+            fixedWidth && 'w-[120px] justify-start',
             className
           )}
           aria-label={`Change project from ${project.name}`}
@@ -456,9 +434,9 @@ export const InteractiveProjectBadge = ({
               type="button"
               onClick={() => handleSelect(p.id)}
               className={cn(
-                "w-full flex items-center gap-2 rounded-sm px-2 py-1.5 text-sm transition-colors",
-                "hover:bg-accent focus:outline-none",
-                p.id === project.id && "bg-accent font-medium"
+                'w-full flex items-center gap-2 rounded-sm px-2 py-1.5 text-sm transition-colors',
+                'hover:bg-accent focus:outline-none',
+                p.id === project.id && 'bg-accent font-medium'
               )}
             >
               <span
@@ -467,9 +445,7 @@ export const InteractiveProjectBadge = ({
                 aria-hidden="true"
               />
               <span className="truncate">{p.name}</span>
-              {p.id === project.id && (
-                <Check className="size-4 ml-auto text-primary" />
-              )}
+              {p.id === project.id && <Check className="size-4 ml-auto text-primary" />}
             </button>
           ))}
         </div>
@@ -483,13 +459,13 @@ export const InteractiveProjectBadge = ({
 // ============================================================================
 
 /** Priority order for cycling */
-const priorityOrder: Priority[] = ["none", "low", "medium", "high", "urgent"]
+const priorityOrder: Priority[] = ['none', 'low', 'medium', 'high', 'urgent']
 
 interface InteractivePriorityBadgeProps {
   priority: Priority
   onPriorityChange: (priority: Priority) => void
   variant?: PriorityBadgeVariant
-  size?: "sm" | "md"
+  size?: 'sm' | 'md'
   /** Use compact short labels (Med instead of Medium) */
   compact?: boolean
   /** Use fixed width for grid alignment */
@@ -500,21 +476,21 @@ interface InteractivePriorityBadgeProps {
 export const InteractivePriorityBadge = ({
   priority,
   onPriorityChange,
-  variant = "full",
-  size = "md",
+  variant = 'full',
+  size = 'md',
   compact = false,
   fixedWidth = false,
-  className,
+  className
 }: InteractivePriorityBadgeProps): React.JSX.Element => {
   const config = priorityConfig[priority]
 
   /** Short labels for compact display */
   const priorityShortLabels: Record<Priority, string | null> = {
-    none: "None",
-    low: "Low",
-    medium: "Med",
-    high: "High",
-    urgent: "Urgent",
+    none: 'None',
+    low: 'Low',
+    medium: 'Med',
+    high: 'High',
+    urgent: 'Urgent'
   }
 
   const handleClick = (e: React.MouseEvent): void => {
@@ -524,31 +500,31 @@ export const InteractivePriorityBadge = ({
     onPriorityChange(priorityOrder[nextIndex])
   }
 
-  const displayLabel = compact ? priorityShortLabels[priority] : (config.label || "None")
-  const colorValue = config.color || "#9ca3af" // Gray for none
+  const displayLabel = compact ? priorityShortLabels[priority] : config.label || 'None'
+  const colorValue = config.color || '#9ca3af' // Gray for none
 
   return (
     <button
       type="button"
       onClick={handleClick}
       className={cn(
-        "inline-flex items-center gap-1.5",
-        "hover:bg-accent hover:ring-1 hover:ring-primary/30 rounded-full px-1.5 py-0.5 transition-all cursor-pointer",
-        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-        size === "sm" && "text-xs",
-        size === "md" && "text-xs",
-        fixedWidth && "w-[70px] justify-start",
+        'inline-flex items-center gap-1.5',
+        'hover:bg-accent hover:ring-1 hover:ring-primary/30 rounded-full px-1.5 py-0.5 transition-all cursor-pointer',
+        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+        size === 'sm' && 'text-xs',
+        size === 'md' && 'text-xs',
+        fixedWidth && 'w-[70px] justify-start',
         className
       )}
-      aria-label={`Change priority from ${config.label || "none"}`}
+      aria-label={`Change priority from ${config.label || 'none'}`}
     >
       {/* Priority dot */}
-      {(variant === "dot" || variant === "full") && (
+      {(variant === 'dot' || variant === 'full') && (
         <span
           className={cn(
-            "shrink-0 rounded-full",
-            size === "sm" && "size-1.5",
-            size === "md" && "size-2"
+            'shrink-0 rounded-full',
+            size === 'sm' && 'size-1.5',
+            size === 'md' && 'size-2'
           )}
           style={{ backgroundColor: colorValue }}
           aria-hidden="true"
@@ -556,13 +532,9 @@ export const InteractivePriorityBadge = ({
       )}
 
       {/* Priority label */}
-      {(variant === "label" || variant === "full") && (
+      {(variant === 'label' || variant === 'full') && (
         <span
-          className={cn(
-            "font-medium",
-            size === "sm" && "text-[10px]",
-            size === "md" && "text-xs"
-          )}
+          className={cn('font-medium', size === 'sm' && 'text-[10px]', size === 'md' && 'text-xs')}
           style={{ color: colorValue }}
         >
           {displayLabel}
@@ -581,7 +553,7 @@ interface InteractiveDueDateBadgeProps {
   dueTime: string | null
   onDateChange: (date: Date | null) => void
   isRepeating?: boolean
-  variant?: "default" | "compact"
+  variant?: 'default' | 'compact'
   /** Use fixed width for grid alignment */
   fixedWidth?: boolean
   className?: string
@@ -592,9 +564,9 @@ export const InteractiveDueDateBadge = ({
   dueTime,
   onDateChange,
   isRepeating = false,
-  variant = "default",
+  variant = 'default',
   fixedWidth = false,
-  className,
+  className
 }: InteractiveDueDateBadgeProps): React.JSX.Element => {
   const [isOpen, setIsOpen] = React.useState(false)
 
@@ -610,14 +582,16 @@ export const InteractiveDueDateBadge = ({
   }
 
   // Quick date options
-  const handleQuickDate = (days: number) => (e: React.MouseEvent): void => {
-    e.stopPropagation()
-    const targetDate = new Date()
-    targetDate.setDate(targetDate.getDate() + days)
-    targetDate.setHours(0, 0, 0, 0)
-    onDateChange(targetDate)
-    setIsOpen(false)
-  }
+  const handleQuickDate =
+    (days: number) =>
+    (e: React.MouseEvent): void => {
+      e.stopPropagation()
+      const targetDate = new Date()
+      targetDate.setDate(targetDate.getDate() + days)
+      targetDate.setHours(0, 0, 0, 0)
+      onDateChange(targetDate)
+      setIsOpen(false)
+    }
 
   const handleRemoveDate = (e: React.MouseEvent): void => {
     e.stopPropagation()
@@ -625,26 +599,23 @@ export const InteractiveDueDateBadge = ({
     setIsOpen(false)
   }
 
-  const isOverdue = formatted?.status === "overdue"
-  const isToday = formatted?.status === "today"
+  const isOverdue = formatted?.status === 'overdue'
+  const isToday = formatted?.status === 'today'
   const showBackground = isOverdue || isToday
 
   const badgeContent = (
     <span
       className={cn(
-        "inline-flex items-center gap-1 text-xs font-medium",
-        dueDateStatusStyles[formatted?.status || "none"],
-        showBackground && variant === "default" && cn(
-          "rounded-md px-1.5 py-0.5",
-          dueDateBackgroundStyles[formatted?.status || "none"]
-        )
+        'inline-flex items-center gap-1 text-xs font-medium',
+        dueDateStatusStyles[formatted?.status || 'none'],
+        showBackground &&
+          variant === 'default' &&
+          cn('rounded-md px-1.5 py-0.5', dueDateBackgroundStyles[formatted?.status || 'none'])
       )}
     >
-      {isRepeating && (
-        <Repeat className="size-3 shrink-0" aria-label="Repeating task" />
-      )}
-      <span className="truncate">{formatted?.label || "No date"}</span>
-      {isOverdue && variant === "default" && (
+      {isRepeating && <Repeat className="size-3 shrink-0" aria-label="Repeating task" />}
+      <span className="truncate">{formatted?.label || 'No date'}</span>
+      {isOverdue && variant === 'default' && (
         <span className="text-[10px] font-semibold uppercase tracking-wide opacity-80 shrink-0">
           Overdue
         </span>
@@ -658,12 +629,12 @@ export const InteractiveDueDateBadge = ({
         <button
           type="button"
           className={cn(
-            "hover:bg-accent hover:ring-1 hover:ring-primary/30 rounded-md px-1 py-0.5 transition-all cursor-pointer",
-            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-            fixedWidth && "w-[110px] flex justify-end",
+            'hover:bg-accent hover:ring-1 hover:ring-primary/30 rounded-md px-1 py-0.5 transition-all cursor-pointer',
+            'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+            fixedWidth && 'w-[110px] flex justify-end',
             className
           )}
-          aria-label={`Change due date from ${formatted?.label || "no date"}`}
+          aria-label={`Change due date from ${formatted?.label || 'no date'}`}
         >
           {badgeContent}
         </button>
@@ -676,9 +647,9 @@ export const InteractiveDueDateBadge = ({
               type="button"
               onClick={handleQuickDate(0)}
               className={cn(
-                "flex-1 px-2 py-1 text-xs rounded-md transition-colors",
-                "hover:bg-accent",
-                isToday && "bg-accent font-medium"
+                'flex-1 px-2 py-1 text-xs rounded-md transition-colors',
+                'hover:bg-accent',
+                isToday && 'bg-accent font-medium'
               )}
             >
               Today
@@ -687,9 +658,9 @@ export const InteractiveDueDateBadge = ({
               type="button"
               onClick={handleQuickDate(1)}
               className={cn(
-                "flex-1 px-2 py-1 text-xs rounded-md transition-colors",
-                "hover:bg-accent",
-                formatted?.status === "tomorrow" && "bg-accent font-medium"
+                'flex-1 px-2 py-1 text-xs rounded-md transition-colors',
+                'hover:bg-accent',
+                formatted?.status === 'tomorrow' && 'bg-accent font-medium'
               )}
             >
               Tomorrow
@@ -739,5 +710,5 @@ export default {
   StatusBadge,
   InteractiveProjectBadge,
   InteractivePriorityBadge,
-  InteractiveDueDateBadge,
+  InteractiveDueDateBadge
 }

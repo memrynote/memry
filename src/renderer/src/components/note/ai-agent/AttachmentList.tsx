@@ -16,11 +16,7 @@ export function AttachmentList({ attachments, onRemove }: AttachmentListProps) {
     <ScrollArea className="w-full whitespace-nowrap">
       <div className="flex gap-2 pb-2">
         {attachments.map((attachment) => (
-          <AttachmentChip
-            key={attachment.id}
-            attachment={attachment}
-            onRemove={onRemove}
-          />
+          <AttachmentChip key={attachment.id} attachment={attachment} onRemove={onRemove} />
         ))}
       </div>
       <ScrollBar orientation="horizontal" className="h-1.5" />

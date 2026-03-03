@@ -1,6 +1,6 @@
-import type { Task, Priority } from "@/data/sample-tasks"
-import type { Project, Status } from "@/data/tasks-data"
-import { priorityConfig } from "@/data/sample-tasks"
+import type { Task, Priority } from '@/data/sample-tasks'
+import type { Project, Status } from '@/data/tasks-data'
+import { priorityConfig } from '@/data/sample-tasks'
 
 // ============================================================================
 // DATE HELPERS
@@ -177,17 +177,14 @@ export const endOfWeek = (date: Date, weekStartsOn: 0 | 1 = 0): Date => {
  * Check if two dates are in the same month
  */
 export const isSameMonth = (date1: Date, date2: Date): boolean => {
-  return (
-    date1.getFullYear() === date2.getFullYear() &&
-    date1.getMonth() === date2.getMonth()
-  )
+  return date1.getFullYear() === date2.getFullYear() && date1.getMonth() === date2.getMonth()
 }
 
 // ============================================================================
 // DATE FORMATTING
 // ============================================================================
 
-export type DueDateStatus = "overdue" | "today" | "tomorrow" | "upcoming" | "later" | "none"
+export type DueDateStatus = 'overdue' | 'today' | 'tomorrow' | 'upcoming' | 'later' | 'none'
 
 export interface FormattedDueDate {
   label: string
@@ -198,24 +195,24 @@ export interface FormattedDueDate {
  * Format time string (HH:MM) to display format
  */
 export const formatTime = (time: string): string => {
-  const [hours, minutes] = time.split(":").map(Number)
-  const period = hours >= 12 ? "PM" : "AM"
+  const [hours, minutes] = time.split(':').map(Number)
+  const period = hours >= 12 ? 'PM' : 'AM'
   const displayHours = hours % 12 || 12
-  return `${displayHours}:${minutes.toString().padStart(2, "0")} ${period}`
+  return `${displayHours}:${minutes.toString().padStart(2, '0')} ${period}`
 }
 
 /**
  * Format date to short format (Dec 20)
  */
 export const formatDateShort = (date: Date): string => {
-  return date.toLocaleDateString("en-US", { month: "short", day: "numeric" })
+  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
 }
 
 /**
  * Format date to day name (Wednesday)
  */
 export const formatDayName = (date: Date): string => {
-  return date.toLocaleDateString("en-US", { weekday: "long" })
+  return date.toLocaleDateString('en-US', { weekday: 'long' })
 }
 
 /**
@@ -232,30 +229,30 @@ export const formatDueDate = (
   const nextWeek = addDays(today, 7)
   const taskDate = startOfDay(dueDate)
 
-  const timeStr = dueTime ? ` ${formatTime(dueTime)}` : ""
+  const timeStr = dueTime ? ` ${formatTime(dueTime)}` : ''
 
   // Overdue
   if (isBefore(taskDate, today)) {
-    return { label: formatDateShort(dueDate) + timeStr, status: "overdue" }
+    return { label: formatDateShort(dueDate) + timeStr, status: 'overdue' }
   }
 
   // Today
   if (isSameDay(taskDate, today)) {
-    return { label: "Today" + timeStr, status: "today" }
+    return { label: 'Today' + timeStr, status: 'today' }
   }
 
   // Tomorrow
   if (isSameDay(taskDate, tomorrow)) {
-    return { label: "Tomorrow" + timeStr, status: "tomorrow" }
+    return { label: 'Tomorrow' + timeStr, status: 'tomorrow' }
   }
 
   // This week (next 7 days)
   if (isBefore(taskDate, nextWeek)) {
-    return { label: formatDayName(dueDate) + timeStr, status: "upcoming" }
+    return { label: formatDayName(dueDate) + timeStr, status: 'upcoming' }
   }
 
   // Later
-  return { label: formatDateShort(dueDate) + timeStr, status: "later" }
+  return { label: formatDateShort(dueDate) + timeStr, status: 'later' }
 }
 
 // ============================================================================
@@ -270,21 +267,21 @@ export const isTaskCompleted = (task: Task, projects: Project[]): boolean => {
   if (!project) return false
 
   const status = project.statuses.find((s) => s.id === task.statusId)
-  return status?.type === "done"
+  return status?.type === 'done'
 }
 
 /**
  * Get the first "todo" type status for a project
  */
 export const getDefaultTodoStatus = (project: Project): Status | undefined => {
-  return project.statuses.find((s) => s.type === "todo")
+  return project.statuses.find((s) => s.type === 'todo')
 }
 
 /**
  * Get the first "done" type status for a project
  */
 export const getDefaultDoneStatus = (project: Project): Status | undefined => {
-  return project.statuses.find((s) => s.type === "done")
+  return project.statuses.find((s) => s.type === 'done')
 }
 
 // ============================================================================
@@ -338,7 +335,7 @@ export const groupTasksByDueDate = (tasks: Task[]): TaskGroupByDate => {
     tomorrow: [],
     upcoming: [],
     later: [],
-    noDueDate: [],
+    noDueDate: []
   }
 
   const today = startOfDay(new Date())
@@ -388,7 +385,7 @@ export const groupTasksByStatus = (
 
   return sortedStatuses.map((status) => ({
     status,
-    tasks: sortTasksByPriorityAndDate(tasks.filter((t) => t.statusId === status.id)),
+    tasks: sortTasksByPriorityAndDate(tasks.filter((t) => t.statusId === status.id))
   }))
 }
 
@@ -409,7 +406,7 @@ export const groupTasksByCompletion = (tasks: Task[]): TaskGroupByCompletion => 
   const groups: TaskGroupByCompletion = {
     today: [],
     yesterday: [],
-    earlier: [],
+    earlier: []
   }
 
   const today = startOfDay(new Date())
@@ -460,18 +457,15 @@ export interface CalendarDay {
  */
 export const formatDateKey = (date: Date): string => {
   const year = date.getFullYear()
-  const month = String(date.getMonth() + 1).padStart(2, "0")
-  const day = String(date.getDate()).padStart(2, "0")
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
   return `${year}-${month}-${day}`
 }
 
 /**
  * Build visible calendar days for a month (includes overflow days)
  */
-export const getCalendarDays = (
-  month: Date,
-  weekStartsOn: 0 | 1 = 0
-): CalendarDay[] => {
+export const getCalendarDays = (month: Date, weekStartsOn: 0 | 1 = 0): CalendarDay[] => {
   const start = startOfWeek(startOfMonth(month), weekStartsOn)
   const end = endOfWeek(endOfMonth(month), weekStartsOn)
 
@@ -484,7 +478,7 @@ export const getCalendarDays = (
       date: dayDate,
       isCurrentMonth: isSameMonth(dayDate, month),
       isToday: isSameDay(dayDate, startOfDay(new Date())),
-      isWeekend: [0, 6].includes(dayDate.getDay()),
+      isWeekend: [0, 6].includes(dayDate.getDay())
     })
     current = addDays(current, 1)
   }
@@ -497,7 +491,7 @@ export const getCalendarDays = (
  */
 const timeToMinutes = (time: string | null): number | null => {
   if (!time) return null
-  const [hoursStr, minutesStr] = time.split(":")
+  const [hoursStr, minutesStr] = time.split(':')
   const hours = Number(hoursStr)
   const minutes = Number(minutesStr)
   if (Number.isNaN(hours) || Number.isNaN(minutes)) return null
@@ -524,7 +518,7 @@ export const sortTasksForDay = (tasks: Task[]): Task[] => {
 
     // Both timed: chronological
     if (aHasTime && bHasTime && aMinutes !== bMinutes) {
-      return (aMinutes as number) - (bMinutes as number)
+      return aMinutes - bMinutes
     }
 
     // Priority (lower order is higher priority)
@@ -575,10 +569,7 @@ export const groupTasksByCalendarDate = (
  * Include subtasks when their parent matches the filter
  * When a top-level task matches, all its subtasks are included
  */
-const includeSubtasksForMatchingParents = (
-  matchingTopLevel: Task[],
-  allTasks: Task[]
-): Task[] => {
+const includeSubtasksForMatchingParents = (matchingTopLevel: Task[], allTasks: Task[]): Task[] => {
   const matchingIds = new Set(matchingTopLevel.map((t) => t.id))
 
   // Include all subtasks of matching parents
@@ -596,14 +587,17 @@ const includeSubtasksForMatchingParents = (
 export const getFilteredTasks = (
   tasks: Task[],
   selectedId: string,
-  selectedType: "view" | "project",
+  selectedType: 'view' | 'project',
   projects: Project[]
 ): Task[] => {
+  // Always exclude archived tasks from normal views
+  const nonArchivedTasks = tasks.filter((t) => !t.archivedAt)
+
   // Helper to check if task is incomplete
   const isIncomplete = (task: Task): boolean => {
     const project = projects.find((p) => p.id === task.projectId)
     const status = project?.statuses.find((s) => s.id === task.statusId)
-    return status?.type !== "done"
+    return status?.type !== 'done'
   }
 
   // Helper to check if task is complete
@@ -612,22 +606,22 @@ export const getFilteredTasks = (
   // Helper to check if task is a subtask
   const isSubtask = (task: Task): boolean => task.parentId !== null
 
-  // Get incomplete top-level tasks
-  const incompleteTopLevel = tasks.filter((t) => isIncomplete(t) && !isSubtask(t))
+  // Get incomplete top-level tasks (excluding archived)
+  const incompleteTopLevel = nonArchivedTasks.filter((t) => isIncomplete(t) && !isSubtask(t))
 
-  // Get completed top-level tasks
-  const completedTopLevel = tasks.filter((t) => isComplete(t) && !isSubtask(t))
+  // Get completed top-level tasks (excluding archived)
+  const completedTopLevel = nonArchivedTasks.filter((t) => isComplete(t) && !isSubtask(t))
 
-  if (selectedType === "view") {
+  if (selectedType === 'view') {
     const today = startOfDay(new Date())
     const weekFromNow = addDays(today, 7)
 
     switch (selectedId) {
-      case "all":
+      case 'all':
         // All incomplete tasks - include subtasks of incomplete parents
-        return includeSubtasksForMatchingParents(incompleteTopLevel, tasks)
+        return includeSubtasksForMatchingParents(incompleteTopLevel, nonArchivedTasks)
 
-      case "today": {
+      case 'today': {
         // Filter top-level tasks by due date
         const matchingTopLevel = incompleteTopLevel.filter((task) => {
           if (!task.dueDate) return false
@@ -636,10 +630,10 @@ export const getFilteredTasks = (
           return isSameDay(taskDate, today) || isBefore(taskDate, today)
         })
         // Include subtasks of matching parents
-        return includeSubtasksForMatchingParents(matchingTopLevel, tasks)
+        return includeSubtasksForMatchingParents(matchingTopLevel, nonArchivedTasks)
       }
 
-      case "upcoming": {
+      case 'upcoming': {
         // Filter top-level tasks by due date
         const matchingTopLevel = incompleteTopLevel.filter((task) => {
           if (!task.dueDate) return false
@@ -648,26 +642,25 @@ export const getFilteredTasks = (
           return isAfter(taskDate, today) && !isAfter(taskDate, weekFromNow)
         })
         // Include subtasks of matching parents
-        return includeSubtasksForMatchingParents(matchingTopLevel, tasks)
+        return includeSubtasksForMatchingParents(matchingTopLevel, nonArchivedTasks)
       }
 
-      case "completed":
+      case 'completed':
         // All completed tasks - include subtasks of completed parents
-        return includeSubtasksForMatchingParents(completedTopLevel, tasks)
+        return includeSubtasksForMatchingParents(completedTopLevel, nonArchivedTasks)
 
       default:
-        return includeSubtasksForMatchingParents(incompleteTopLevel, tasks)
+        return includeSubtasksForMatchingParents(incompleteTopLevel, nonArchivedTasks)
     }
   }
 
-  if (selectedType === "project") {
-    // Return all tasks for the project (both complete and incomplete)
-    // Filter to project first, then include subtasks
-    const projectTasks = tasks.filter((task) => task.projectId === selectedId)
+  if (selectedType === 'project') {
+    // Return all tasks for the project (both complete and incomplete, excluding archived)
+    const projectTasks = nonArchivedTasks.filter((task) => task.projectId === selectedId)
     return projectTasks
   }
 
-  return includeSubtasksForMatchingParents(incompleteTopLevel, tasks)
+  return includeSubtasksForMatchingParents(incompleteTopLevel, nonArchivedTasks)
 }
 
 // ============================================================================
@@ -687,7 +680,7 @@ export interface TaskCounts {
 export const getTaskCounts = (
   tasks: Task[],
   selectedId: string,
-  selectedType: "view" | "project",
+  selectedType: 'view' | 'project',
   projects: Project[]
 ): TaskCounts => {
   const filteredTasks = getFilteredTasks(tasks, selectedId, selectedType, projects)
@@ -726,27 +719,27 @@ export const getTaskCounts = (
 export const formatTaskSubtitle = (
   counts: TaskCounts,
   selectedId: string,
-  selectedType: "view" | "project"
+  selectedType: 'view' | 'project'
 ): string => {
-  if (selectedType === "view") {
+  if (selectedType === 'view') {
     switch (selectedId) {
-      case "all": {
+      case 'all': {
         const parts = [`${counts.total} tasks`]
         if (counts.dueToday > 0) parts.push(`${counts.dueToday} due today`)
         if (counts.overdue > 0) parts.push(`${counts.overdue} overdue`)
-        return parts.join(" · ")
+        return parts.join(' · ')
       }
 
-      case "today": {
+      case 'today': {
         const parts = [`${counts.total + counts.overdue} tasks due`]
         if (counts.overdue > 0) parts.push(`${counts.overdue} overdue`)
-        return parts.join(" · ")
+        return parts.join(' · ')
       }
 
-      case "upcoming":
+      case 'upcoming':
         return `${counts.total} tasks in the next 7 days`
 
-      case "completed":
+      case 'completed':
         return `${counts.completed} tasks completed`
 
       default:
@@ -757,7 +750,7 @@ export const formatTaskSubtitle = (
   // Project view
   const parts = [`${counts.total} tasks`]
   if (counts.dueToday > 0) parts.push(`${counts.dueToday} due today`)
-  return parts.join(" · ")
+  return parts.join(' · ')
 }
 
 // ============================================================================
@@ -771,7 +764,7 @@ export const formatTaskSubtitle = (
  * - normal: Standard importance (TOMORROW, UPCOMING)
  * - low: Informational, least urgent (LATER, NO DUE DATE)
  */
-export type UrgencyLevel = "critical" | "high" | "normal" | "low"
+export type UrgencyLevel = 'critical' | 'high' | 'normal' | 'low'
 
 export interface GroupHeaderConfig {
   id: string
@@ -782,18 +775,18 @@ export interface GroupHeaderConfig {
 }
 
 export const dueDateGroupConfig: Record<keyof TaskGroupByDate, GroupHeaderConfig> = {
-  overdue: { id: "overdue", label: "OVERDUE", urgency: "critical", accentColor: "#ef4444" },
-  today: { id: "today", label: "TODAY", urgency: "high", accentColor: "#3b82f6" },
-  tomorrow: { id: "tomorrow", label: "TOMORROW", urgency: "normal" },
-  upcoming: { id: "upcoming", label: "UPCOMING", urgency: "normal" },
-  later: { id: "later", label: "LATER", urgency: "low", isMuted: true },
-  noDueDate: { id: "noDueDate", label: "NO DUE DATE", urgency: "low", isMuted: true },
+  overdue: { id: 'overdue', label: 'OVERDUE', urgency: 'critical', accentColor: '#ef4444' },
+  today: { id: 'today', label: 'TODAY', urgency: 'high', accentColor: '#3b82f6' },
+  tomorrow: { id: 'tomorrow', label: 'TOMORROW', urgency: 'normal' },
+  upcoming: { id: 'upcoming', label: 'UPCOMING', urgency: 'normal' },
+  later: { id: 'later', label: 'LATER', urgency: 'low', isMuted: true },
+  noDueDate: { id: 'noDueDate', label: 'NO DUE DATE', urgency: 'low', isMuted: true }
 }
 
 export const completionGroupConfig: Record<keyof TaskGroupByCompletion, GroupHeaderConfig> = {
-  today: { id: "today", label: "TODAY", accentColor: "#10b981" },
-  yesterday: { id: "yesterday", label: "YESTERDAY" },
-  earlier: { id: "earlier", label: "EARLIER", isMuted: true },
+  today: { id: 'today', label: 'TODAY', urgency: 'high', accentColor: '#10b981' },
+  yesterday: { id: 'yesterday', label: 'YESTERDAY', urgency: 'normal' },
+  earlier: { id: 'earlier', label: 'EARLIER', urgency: 'low', isMuted: true }
 }
 
 // ============================================================================
@@ -817,7 +810,7 @@ const priorityOrder: Record<string, number> = {
   high: 1,
   medium: 2,
   low: 3,
-  none: 4,
+  none: 4
 }
 
 /**
@@ -868,10 +861,7 @@ export interface TodayViewTasks {
  * Get tasks for Today view: overdue and today's tasks
  * Filters out completed tasks
  */
-export const getTodayTasks = (
-  tasks: Task[],
-  projects: Project[]
-): TodayViewTasks => {
+export const getTodayTasks = (tasks: Task[], projects: Project[]): TodayViewTasks => {
   const now = new Date()
   const todayStart = startOfDay(now)
   const todayEnd = endOfDay(now)
@@ -901,7 +891,7 @@ export const getTodayTasks = (
   // Don't re-sort here - the caller controls sort order
   return {
     overdue,
-    today,
+    today
   }
 }
 
@@ -966,8 +956,8 @@ export const getUpcomingTasks = (
  * Day header text format for Upcoming view
  */
 export interface DayHeaderText {
-  primary: string    // "TODAY", "TOMORROW", or weekday name
-  secondary: string  // Full date like "Monday, Dec 16"
+  primary: string // "TODAY", "TOMORROW", or weekday name
+  secondary: string // Full date like "Monday, Dec 16"
 }
 
 /**
@@ -979,33 +969,33 @@ export const getDayHeaderText = (date: Date): DayHeaderText => {
   const tomorrowStart = addDays(todayStart, 1)
 
   // Format the secondary string (full date)
-  const secondary = date.toLocaleDateString("en-US", {
-    weekday: "long",
-    month: "short",
-    day: "numeric",
+  const secondary = date.toLocaleDateString('en-US', {
+    weekday: 'long',
+    month: 'short',
+    day: 'numeric'
   })
 
   if (isSameDay(date, todayStart)) {
     return {
-      primary: "TODAY",
-      secondary,
+      primary: 'TODAY',
+      secondary
     }
   }
 
   if (isSameDay(date, tomorrowStart)) {
     return {
-      primary: "TOMORROW",
-      secondary,
+      primary: 'TOMORROW',
+      secondary
     }
   }
 
   // Other days: show day name
-  const dayName = date.toLocaleDateString("en-US", { weekday: "long" }).toUpperCase()
-  const shortDate = date.toLocaleDateString("en-US", { month: "short", day: "numeric" })
+  const dayName = date.toLocaleDateString('en-US', { weekday: 'long' }).toUpperCase()
+  const shortDate = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
 
   return {
     primary: dayName,
-    secondary: shortDate,
+    secondary: shortDate
   }
 }
 
@@ -1013,7 +1003,7 @@ export const getDayHeaderText = (date: Date): DayHeaderText => {
  * Parse a date key (yyyy-MM-dd) back to a Date object
  */
 export const parseDateKey = (key: string): Date => {
-  const [year, month, day] = key.split("-").map(Number)
+  const [year, month, day] = key.split('-').map(Number)
   return new Date(year, month - 1, day)
 }
 
@@ -1038,12 +1028,7 @@ export const getArchivedTasks = (tasks: Task[]): Task[] => {
 /**
  * Completion period labels
  */
-export type CompletionPeriod =
-  | "today"
-  | "yesterday"
-  | "earlierThisWeek"
-  | "lastWeek"
-  | "older"
+export type CompletionPeriod = 'today' | 'yesterday' | 'earlierThisWeek' | 'lastWeek' | 'older'
 
 /**
  * Enhanced grouping for completed tasks by period
@@ -1070,7 +1055,7 @@ export const groupCompletedByPeriod = (tasks: Task[]): CompletedTaskGroups => {
     yesterday: [],
     earlierThisWeek: [],
     lastWeek: [],
-    older: [],
+    older: []
   }
 
   const now = new Date()
@@ -1089,7 +1074,9 @@ export const groupCompletedByPeriod = (tasks: Task[]): CompletedTaskGroups => {
       groups.today.push(task)
     } else if (isSameDay(completedDate, yesterdayStart)) {
       groups.yesterday.push(task)
-    } else if (isWithinInterval(completedDate, { start: weekStart, end: subDays(yesterdayStart, 1) })) {
+    } else if (
+      isWithinInterval(completedDate, { start: weekStart, end: subDays(yesterdayStart, 1) })
+    ) {
       groups.earlierThisWeek.push(task)
     } else if (isWithinInterval(completedDate, { start: lastWeekStart, end: lastWeekEnd })) {
       groups.lastWeek.push(task)
@@ -1119,11 +1106,11 @@ export const groupCompletedByPeriod = (tasks: Task[]): CompletedTaskGroups => {
  * Config for completion period headers
  */
 export const completionPeriodConfig: Record<CompletionPeriod, GroupHeaderConfig> = {
-  today: { id: "today", label: "TODAY", accentColor: "#10b981" },
-  yesterday: { id: "yesterday", label: "YESTERDAY" },
-  earlierThisWeek: { id: "earlierThisWeek", label: "EARLIER THIS WEEK" },
-  lastWeek: { id: "lastWeek", label: "LAST WEEK", isMuted: true },
-  older: { id: "older", label: "OLDER", isMuted: true },
+  today: { id: 'today', label: 'TODAY', urgency: 'high', accentColor: '#10b981' },
+  yesterday: { id: 'yesterday', label: 'YESTERDAY', urgency: 'normal' },
+  earlierThisWeek: { id: 'earlierThisWeek', label: 'EARLIER THIS WEEK', urgency: 'normal' },
+  lastWeek: { id: 'lastWeek', label: 'LAST WEEK', urgency: 'low', isMuted: true },
+  older: { id: 'older', label: 'OLDER', urgency: 'low', isMuted: true }
 }
 
 /**
@@ -1131,7 +1118,7 @@ export const completionPeriodConfig: Record<CompletionPeriod, GroupHeaderConfig>
  */
 export interface ArchivedByMonth {
   monthKey: string // "2024-12" format for sorting
-  label: string    // "December 2024" for display
+  label: string // "December 2024" for display
   tasks: Task[]
 }
 
@@ -1147,7 +1134,7 @@ export const groupArchivedByMonth = (tasks: Task[]): ArchivedByMonth[] => {
     const archivedDate = new Date(task.archivedAt)
     const year = archivedDate.getFullYear()
     const month = archivedDate.getMonth()
-    const monthKey = `${year}-${String(month + 1).padStart(2, "0")}`
+    const monthKey = `${year}-${String(month + 1).padStart(2, '0')}`
 
     if (!monthMap.has(monthKey)) {
       monthMap.set(monthKey, [])
@@ -1159,9 +1146,9 @@ export const groupArchivedByMonth = (tasks: Task[]): ArchivedByMonth[] => {
   const result: ArchivedByMonth[] = []
 
   monthMap.forEach((monthTasks, monthKey) => {
-    const [year, month] = monthKey.split("-").map(Number)
+    const [year, month] = monthKey.split('-').map(Number)
     const date = new Date(year, month - 1, 1)
-    const label = date.toLocaleDateString("en-US", { month: "long", year: "numeric" })
+    const label = date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
 
     // Sort tasks within month by archived date (most recent first)
     const sortedTasks = [...monthTasks].sort((a, b) => {
@@ -1298,8 +1285,8 @@ import type {
   DueDateFilter,
   CompletionFilterType,
   RepeatFilterType,
-  HasTimeFilterType,
-} from "@/data/tasks-data"
+  HasTimeFilterType
+} from '@/data/tasks-data'
 
 /**
  * Filter tasks by search query (title and description)
@@ -1335,70 +1322,67 @@ export const filterByPriorities = (tasks: Task[], priorities: Priority[]): Task[
 /**
  * Filter tasks by due date range/preset
  */
-export const filterByDueDateRange = (
-  tasks: Task[],
-  filter: DueDateFilter
-): Task[] => {
+export const filterByDueDateRange = (tasks: Task[], filter: DueDateFilter): Task[] => {
   const now = new Date()
   const todayStart = startOfDay(now)
   const todayEnd = endOfDay(now)
 
   switch (filter.type) {
-    case "any":
+    case 'any':
       return tasks
 
-    case "none":
+    case 'none':
       return tasks.filter((t) => !t.dueDate)
 
-    case "overdue":
-      return tasks.filter((t) =>
-        t.dueDate &&
-        isBefore(startOfDay(t.dueDate), todayStart) &&
-        !t.completedAt
+    case 'overdue':
+      return tasks.filter(
+        (t) => t.dueDate && isBefore(startOfDay(t.dueDate), todayStart) && !t.completedAt
       )
 
-    case "today":
-      return tasks.filter((t) =>
-        t.dueDate && isWithinInterval(t.dueDate, { start: todayStart, end: todayEnd })
+    case 'today':
+      return tasks.filter(
+        (t) => t.dueDate && isWithinInterval(t.dueDate, { start: todayStart, end: todayEnd })
       )
 
-    case "tomorrow": {
+    case 'tomorrow': {
       const tomorrowStart = startOfDay(addDays(now, 1))
       const tomorrowEnd = endOfDay(addDays(now, 1))
-      return tasks.filter((t) =>
-        t.dueDate && isWithinInterval(t.dueDate, { start: tomorrowStart, end: tomorrowEnd })
+      return tasks.filter(
+        (t) => t.dueDate && isWithinInterval(t.dueDate, { start: tomorrowStart, end: tomorrowEnd })
       )
     }
 
-    case "this-week": {
+    case 'this-week': {
       const weekEnd = endOfWeek(now, 0) // Sunday = 0
-      return tasks.filter((t) =>
-        t.dueDate && isWithinInterval(t.dueDate, { start: todayStart, end: weekEnd })
+      return tasks.filter(
+        (t) => t.dueDate && isWithinInterval(t.dueDate, { start: todayStart, end: weekEnd })
       )
     }
 
-    case "next-week": {
+    case 'next-week': {
       const nextWeekStart = startOfWeek(addWeeks(now, 1), 0)
       const nextWeekEnd = endOfWeek(addWeeks(now, 1), 0)
-      return tasks.filter((t) =>
-        t.dueDate && isWithinInterval(t.dueDate, { start: nextWeekStart, end: nextWeekEnd })
+      return tasks.filter(
+        (t) => t.dueDate && isWithinInterval(t.dueDate, { start: nextWeekStart, end: nextWeekEnd })
       )
     }
 
-    case "this-month": {
+    case 'this-month': {
       const monthEnd = endOfMonth(now)
-      return tasks.filter((t) =>
-        t.dueDate && isWithinInterval(t.dueDate, { start: todayStart, end: monthEnd })
+      return tasks.filter(
+        (t) => t.dueDate && isWithinInterval(t.dueDate, { start: todayStart, end: monthEnd })
       )
     }
 
-    case "custom":
+    case 'custom':
       if (!filter.customStart || !filter.customEnd) return tasks
-      return tasks.filter((t) =>
-        t.dueDate && isWithinInterval(t.dueDate, {
-          start: startOfDay(filter.customStart!),
-          end: endOfDay(filter.customEnd!),
-        })
+      return tasks.filter(
+        (t) =>
+          t.dueDate &&
+          isWithinInterval(t.dueDate, {
+            start: startOfDay(filter.customStart!),
+            end: endOfDay(filter.customEnd!)
+          })
       )
 
     default:
@@ -1425,33 +1409,33 @@ export const filterByCompletion = (
   const isComplete = (task: Task): boolean => {
     const project = projects.find((p) => p.id === task.projectId)
     const status = project?.statuses.find((s) => s.id === task.statusId)
-    return status?.type === "done"
+    return status?.type === 'done'
   }
 
+  // Always exclude archived tasks from normal views
+  const nonArchivedTasks = tasks.filter((t) => !t.archivedAt)
+
   switch (completion) {
-    case "active":
-      return tasks.filter((t) => !isComplete(t))
-    case "completed":
-      return tasks.filter((t) => isComplete(t) && !t.archivedAt)
-    case "all":
+    case 'active':
+      return nonArchivedTasks.filter((t) => !isComplete(t))
+    case 'completed':
+      return nonArchivedTasks.filter((t) => isComplete(t))
+    case 'all':
     default:
-      return tasks
+      return nonArchivedTasks
   }
 }
 
 /**
  * Filter tasks by repeat type
  */
-export const filterByRepeatType = (
-  tasks: Task[],
-  type: RepeatFilterType
-): Task[] => {
+export const filterByRepeatType = (tasks: Task[], type: RepeatFilterType): Task[] => {
   switch (type) {
-    case "repeating":
+    case 'repeating':
       return tasks.filter((t) => t.isRepeating)
-    case "one-time":
+    case 'one-time':
       return tasks.filter((t) => !t.isRepeating)
-    case "all":
+    case 'all':
     default:
       return tasks
   }
@@ -1460,16 +1444,13 @@ export const filterByRepeatType = (
 /**
  * Filter tasks by whether they have a time set
  */
-export const filterByHasTime = (
-  tasks: Task[],
-  type: HasTimeFilterType
-): Task[] => {
+export const filterByHasTime = (tasks: Task[], type: HasTimeFilterType): Task[] => {
   switch (type) {
-    case "with-time":
+    case 'with-time':
       return tasks.filter((t) => t.dueTime !== null)
-    case "without-time":
+    case 'without-time':
       return tasks.filter((t) => t.dueTime === null)
-    case "all":
+    case 'all':
     default:
       return tasks
   }
@@ -1478,51 +1459,69 @@ export const filterByHasTime = (
 /**
  * Sort tasks by specified field and direction
  */
-export const sortTasksAdvanced = (
-  tasks: Task[],
-  sort: TaskSort,
-  projects: Project[]
-): Task[] => {
+export const sortTasksAdvanced = (tasks: Task[], sort: TaskSort, projects: Project[]): Task[] => {
   const priorityOrder: Record<Priority, number> = {
     urgent: 0,
     high: 1,
     medium: 2,
     low: 3,
-    none: 4,
+    none: 4
   }
 
   const sorted = [...tasks].sort((a, b) => {
     let comparison = 0
 
     switch (sort.field) {
-      case "dueDate":
+      case 'dueDate': {
         // Tasks without due date go to end
-        if (!a.dueDate && !b.dueDate) comparison = 0
-        else if (!a.dueDate) comparison = 1
-        else if (!b.dueDate) comparison = -1
-        else comparison = a.dueDate.getTime() - b.dueDate.getTime()
-        break
+        if (!a.dueDate && !b.dueDate) {
+          comparison = 0
+        } else if (!a.dueDate) {
+          comparison = 1
+        } else if (!b.dueDate) {
+          comparison = -1
+        } else {
+          // Compare dates first
+          comparison = a.dueDate.getTime() - b.dueDate.getTime()
 
-      case "priority":
+          // If same date, compare by time
+          // Tasks with time come before tasks without time
+          if (comparison === 0) {
+            if (!a.dueTime && !b.dueTime) {
+              comparison = 0
+            } else if (!a.dueTime) {
+              comparison = 1 // Tasks without time go after tasks with time
+            } else if (!b.dueTime) {
+              comparison = -1
+            } else {
+              // Compare time strings (HH:MM format sorts correctly alphabetically)
+              comparison = a.dueTime.localeCompare(b.dueTime)
+            }
+          }
+        }
+        break
+      }
+
+      case 'priority':
         comparison = priorityOrder[a.priority] - priorityOrder[b.priority]
         break
 
-      case "createdAt":
+      case 'createdAt':
         comparison = a.createdAt.getTime() - b.createdAt.getTime()
         break
 
-      case "title":
+      case 'title':
         comparison = a.title.localeCompare(b.title)
         break
 
-      case "project": {
-        const projectA = projects.find((p) => p.id === a.projectId)?.name || ""
-        const projectB = projects.find((p) => p.id === b.projectId)?.name || ""
+      case 'project': {
+        const projectA = projects.find((p) => p.id === a.projectId)?.name || ''
+        const projectB = projects.find((p) => p.id === b.projectId)?.name || ''
         comparison = projectA.localeCompare(projectB)
         break
       }
 
-      case "completedAt":
+      case 'completedAt':
         if (!a.completedAt && !b.completedAt) comparison = 0
         else if (!a.completedAt) comparison = 1
         else if (!b.completedAt) comparison = -1
@@ -1530,7 +1529,7 @@ export const sortTasksAdvanced = (
         break
     }
 
-    return sort.direction === "desc" ? -comparison : comparison
+    return sort.direction === 'desc' ? -comparison : comparison
   })
 
   return sorted
@@ -1590,14 +1589,14 @@ export const applyFiltersAndSort = (
  */
 export const hasActiveFilters = (filters: TaskFilters): boolean => {
   return (
-    filters.search !== "" ||
+    filters.search !== '' ||
     filters.projectIds.length > 0 ||
     filters.priorities.length > 0 ||
-    filters.dueDate.type !== "any" ||
+    filters.dueDate.type !== 'any' ||
     filters.statusIds.length > 0 ||
-    filters.completion !== "active" ||
-    filters.repeatType !== "all" ||
-    filters.hasTime !== "all"
+    filters.completion !== 'active' ||
+    filters.repeatType !== 'all' ||
+    filters.hasTime !== 'all'
   )
 }
 
@@ -1609,11 +1608,10 @@ export const countActiveFilters = (filters: TaskFilters): number => {
   if (filters.search) count++
   if (filters.projectIds.length > 0) count++
   if (filters.priorities.length > 0) count++
-  if (filters.dueDate.type !== "any") count++
+  if (filters.dueDate.type !== 'any') count++
   if (filters.statusIds.length > 0) count++
-  if (filters.completion !== "active") count++
-  if (filters.repeatType !== "all") count++
-  if (filters.hasTime !== "all") count++
+  if (filters.completion !== 'active') count++
+  if (filters.repeatType !== 'all') count++
+  if (filters.hasTime !== 'all') count++
   return count
 }
-

@@ -49,11 +49,7 @@ export function NoteTitle({
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
       // Open picker with Enter on emoji button
-      if (
-        e.key === 'Enter' &&
-        e.target instanceof HTMLButtonElement &&
-        !isPickerOpen
-      ) {
+      if (e.key === 'Enter' && e.target instanceof HTMLButtonElement && !isPickerOpen) {
         e.preventDefault()
         setIsPickerOpen(true)
       }
@@ -65,11 +61,7 @@ export function NoteTitle({
     <div className={cn('relative mb-4 flex items-start gap-3')}>
       {/* Emoji Section */}
       <div className="relative" onKeyDown={handleKeyDown}>
-        <EmojiButton
-          emoji={emoji}
-          onClick={handleEmojiButtonClick}
-          disabled={disabled}
-        />
+        <EmojiButton emoji={emoji} onClick={handleEmojiButtonClick} disabled={disabled} />
         <EmojiPicker
           isOpen={isPickerOpen}
           onClose={handleClosePicker}
