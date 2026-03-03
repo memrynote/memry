@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import {
   ChevronsUpDown,
   Plus,
@@ -8,7 +9,8 @@ import {
   HardDrive,
   Loader2,
   LayoutTemplate,
-  Settings
+  Settings,
+  X
 } from 'lucide-react'
 
 import {
@@ -24,14 +26,25 @@ import {
   SidebarMenuItem,
   useSidebar
 } from '@/components/ui/sidebar'
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle
+} from '@/components/ui/alert-dialog'
+import { Button } from '@/components/ui/button'
 import { useVault, useVaultList } from '@/hooks/use-vault'
 import { useTabActions } from '@/contexts/tabs'
+import type { VaultInfo } from '../../../preload/index.d'
 
 export function VaultSwitcher() {
   const { isMobile } = useSidebar()
   const { status, isLoading, selectVault, switchVault } = useVault()
-  const { vaults } = useVaultList()
+  const { vaults, removeVault } = useVaultList()
   const { openTab } = useTabActions()
+  const [vaultToRemove, setVaultToRemove] = useState<VaultInfo | null>(null)
 
   const currentVaultName = status?.path
     ? status.path.split('/').pop() || 'Vault'
@@ -69,6 +82,19 @@ export function VaultSwitcher() {
       isPreview: false,
       isDeleted: false
     })
+  }
+
+  const handleRemoveClick = (e: React.MouseEvent, vault: VaultInfo): void => {
+    e.stopPropagation()
+    setVaultToRemove(vault)
+  }
+
+  const handleConfirmRemove = (): void => {
+    if (vaultToRemove) {
+      void removeVault(vaultToRemove.path).then(() => {
+        setVaultToRemove(null)
+      })
+    }
   }
 
   return (
@@ -115,7 +141,7 @@ export function VaultSwitcher() {
                   <DropdownMenuItem
                     key={vault.path}
                     onClick={() => !isActive && handleSwitchVault(vault.path)}
-                    className="rounded-lg cursor-pointer hover:bg-gray-100 focus:bg-gray-100 transition-colors"
+                    className="group/vault rounded-lg cursor-pointer hover:bg-gray-100 focus:bg-gray-100 transition-colors"
                   >
                     <div className="flex size-7 items-center justify-center rounded-md border border-gray-200 bg-white">
                       <FolderOpen className="size-4 shrink-0 text-indigo-500" />
@@ -126,7 +152,17 @@ export function VaultSwitcher() {
                         {vault.noteCount} notes
                       </span>
                     </div>
-                    {isActive && <Check className="size-4 text-indigo-500 shrink-0" />}
+                    {isActive ? (
+                      <Check className="size-4 text-indigo-500 shrink-0" />
+                    ) : (
+                      <button
+                        onClick={(e) => handleRemoveClick(e, vault)}
+                        className="size-6 flex items-center justify-center rounded-md opacity-0 group-hover/vault:opacity-100 hover:bg-gray-200 transition-all"
+                        aria-label={`Remove ${vault.name} from list`}
+                      >
+                        <X className="size-3.5 text-gray-500" />
+                      </button>
+                    )}
                   </DropdownMenuItem>
                 )
               })
@@ -173,6 +209,29 @@ export function VaultSwitcher() {
           </DropdownMenuContent>
         </DropdownMenu>
       </SidebarMenuItem>
+
+      {/* Remove Vault Confirmation Dialog */}
+      <AlertDialog open={!!vaultToRemove} onOpenChange={(open) => !open && setVaultToRemove(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              Remove &ldquo;{vaultToRemove?.name}&rdquo; from list?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              This vault will be removed from the app, but your files will remain on disk. You can
+              always re-add it later using &ldquo;Open Another Vault&rdquo;.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <Button variant="outline" onClick={() => setVaultToRemove(null)}>
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={handleConfirmRemove}>
+              Remove
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </SidebarMenu>
   )
 }

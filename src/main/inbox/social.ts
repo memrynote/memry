@@ -11,6 +11,7 @@
  * @module main/inbox/social
  */
 
+import { createLogger } from '../lib/logger'
 import type { SocialMetadata } from '@shared/contracts/inbox-api'
 import {
   detectSocialPlatform,
@@ -18,6 +19,8 @@ import {
   extractDomain,
   type SocialPlatform
 } from '../lib/url-utils'
+
+const log = createLogger('Inbox:Social')
 
 // ============================================================================
 // Types
@@ -168,7 +171,7 @@ async function extractTwitterPost(url: string): Promise<SocialExtractionResult> 
 
   try {
     const oembedUrl = `${endpoint}?url=${encodeURIComponent(url)}&omit_script=true&dnt=true`
-    console.log(`[Social] Fetching Twitter oEmbed: ${oembedUrl}`)
+    log.debug(`Fetching Twitter oEmbed: ${oembedUrl}`)
 
     const response = await fetchWithTimeout(oembedUrl, {
       headers: {
@@ -213,14 +216,14 @@ async function extractTwitterPost(url: string): Promise<SocialExtractionResult> 
       extractionStatus: parsed.content ? 'full' : 'partial'
     }
 
-    console.log(
-      `[Social] Twitter extraction successful: @${authorHandle}, content length: ${metadata.postContent.length}`
+    log.info(
+      `Twitter extraction successful: @${authorHandle}, content length: ${metadata.postContent.length}`
     )
 
     return { success: true, metadata }
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error'
-    console.error(`[Social] Twitter extraction failed:`, message)
+    log.error('Twitter extraction failed:', message)
     return {
       success: false,
       metadata: null,
@@ -243,7 +246,7 @@ async function extractMastodonPost(url: string): Promise<SocialExtractionResult>
 
     // Mastodon oEmbed endpoint
     const oembedUrl = `https://${domain}/api/oembed?url=${encodeURIComponent(url)}`
-    console.log(`[Social] Fetching Mastodon oEmbed: ${oembedUrl}`)
+    log.debug(`Fetching Mastodon oEmbed: ${oembedUrl}`)
 
     const response = await fetchWithTimeout(oembedUrl, {
       headers: {
@@ -296,12 +299,12 @@ async function extractMastodonPost(url: string): Promise<SocialExtractionResult>
       extractionStatus: postContent ? 'full' : 'partial'
     }
 
-    console.log(`[Social] Mastodon extraction successful: ${authorHandle}`)
+    log.info(`Mastodon extraction successful: ${authorHandle}`)
 
     return { success: true, metadata }
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error'
-    console.error(`[Social] Mastodon extraction failed:`, message)
+    log.error('Mastodon extraction failed:', message)
     return {
       success: false,
       metadata: null,
@@ -332,7 +335,7 @@ async function extractBlueskyPost(url: string): Promise<SocialExtractionResult> 
 
     // Bluesky public API endpoint
     const apiUrl = `https://public.api.bsky.app/xrpc/app.bsky.feed.getPostThread?uri=at://${handle}/app.bsky.feed.post/${postId}&depth=0`
-    console.log(`[Social] Fetching Bluesky post: ${apiUrl}`)
+    log.debug(`Fetching Bluesky post: ${apiUrl}`)
 
     const response = await fetchWithTimeout(apiUrl, {
       headers: {
@@ -392,12 +395,12 @@ async function extractBlueskyPost(url: string): Promise<SocialExtractionResult> 
       extractionStatus: 'full'
     }
 
-    console.log(`[Social] Bluesky extraction successful: @${author.handle}`)
+    log.info(`Bluesky extraction successful: @${author.handle}`)
 
     return { success: true, metadata }
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error'
-    console.error(`[Social] Bluesky extraction failed:`, message)
+    log.error('Bluesky extraction failed:', message)
     return {
       success: false,
       metadata: null,
@@ -507,7 +510,7 @@ export async function extractSocialPost(url: string): Promise<SocialExtractionRe
 
   // Check if it's actually a post (not just a profile page)
   if (!isSocialPost(url)) {
-    console.log(`[Social] URL is not a post, treating as profile/page: ${url}`)
+    log.debug(`URL is not a post, treating as profile/page: ${url}`)
     return {
       success: true,
       metadata: {
@@ -522,7 +525,7 @@ export async function extractSocialPost(url: string): Promise<SocialExtractionRe
     }
   }
 
-  console.log(`[Social] Extracting ${platform} post: ${url}`)
+  log.debug(`Extracting ${platform} post: ${url}`)
 
   // Route to platform-specific extractor
   switch (platform) {

@@ -59,6 +59,11 @@ export interface HighlightInfo {
   end?: number
 }
 
+export interface CollaborationInfo {
+  fragment: import('yjs').XmlFragment
+  provider: { awareness?: unknown }
+}
+
 export interface ContentAreaProps {
   /** Note ID for attachment uploads (T069) */
   noteId?: string

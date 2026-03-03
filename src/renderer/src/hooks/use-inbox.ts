@@ -23,7 +23,6 @@ import type {
   InboxFileResponse,
   InboxBulkResponse,
   InboxSuggestionsResponse,
-  InboxCapturePattern,
   InboxFilingHistoryResponse
 } from '../../../preload/index.d'
 import {
@@ -389,7 +388,7 @@ export function useInboxSuggestions(
 /**
  * Hook for fetching snoozed inbox items.
  */
-export function useInboxSnoozed(): UseQueryResult<InboxItemListItem[]> {
+export function useInboxSnoozed() {
   const queryClient = useQueryClient()
 
   const query = useQuery({
@@ -424,7 +423,7 @@ export function useInboxSnoozed(): UseQueryResult<InboxItemListItem[]> {
 /**
  * Hook for fetching capture patterns analytics.
  */
-export function useInboxPatterns(): UseQueryResult<InboxCapturePattern[]> {
+export function useInboxPatterns() {
   return useQuery({
     queryKey: inboxKeys.patterns(),
     queryFn: () => inboxService.getPatterns(),
@@ -549,7 +548,7 @@ export function useCaptureImage(): UseMutationResult<
 /**
  * Hook for updating an inbox item.
  */
-export function useUpdateInboxItem(): UseMutationResult<InboxItem, Error, InboxUpdateInput> {
+export function useUpdateInboxItem() {
   const queryClient = useQueryClient()
 
   return useMutation({
@@ -564,7 +563,7 @@ export function useUpdateInboxItem(): UseMutationResult<InboxItem, Error, InboxU
 /**
  * Hook for archiving an inbox item.
  */
-export function useArchiveInboxItem(): UseMutationResult<void, Error, string> {
+export function useArchiveInboxItem() {
   const queryClient = useQueryClient()
 
   return useMutation({
@@ -616,11 +615,7 @@ export function useConvertToNote(): UseMutationResult<InboxFileResponse, Error, 
 /**
  * Hook for linking an inbox item to an existing note.
  */
-export function useLinkToNote(): UseMutationResult<
-  InboxFileResponse,
-  Error,
-  { itemId: string; noteId: string }
-> {
+export function useLinkToNote() {
   const queryClient = useQueryClient()
 
   return useMutation({
@@ -641,7 +636,7 @@ export function useLinkToNote(): UseMutationResult<
 /**
  * Hook for adding a tag to an inbox item.
  */
-export function useAddInboxTag(): UseMutationResult<void, Error, { itemId: string; tag: string }> {
+export function useAddInboxTag() {
   const queryClient = useQueryClient()
 
   return useMutation({
@@ -658,11 +653,7 @@ export function useAddInboxTag(): UseMutationResult<void, Error, { itemId: strin
 /**
  * Hook for removing a tag from an inbox item.
  */
-export function useRemoveInboxTag(): UseMutationResult<
-  void,
-  Error,
-  { itemId: string; tag: string }
-> {
+export function useRemoveInboxTag() {
   const queryClient = useQueryClient()
 
   return useMutation({
@@ -683,7 +674,7 @@ export function useRemoveInboxTag(): UseMutationResult<
 /**
  * Hook for snoozing an inbox item.
  */
-export function useSnoozeInboxItem(): UseMutationResult<void, Error, SnoozeInput> {
+export function useSnoozeInboxItem() {
   const queryClient = useQueryClient()
 
   return useMutation({
@@ -699,7 +690,7 @@ export function useSnoozeInboxItem(): UseMutationResult<void, Error, SnoozeInput
 /**
  * Hook for unsnoozing an inbox item.
  */
-export function useUnsnoozeInboxItem(): UseMutationResult<void, Error, string> {
+export function useUnsnoozeInboxItem() {
   const queryClient = useQueryClient()
 
   return useMutation({
@@ -775,7 +766,7 @@ export function useFileAllStale(): UseMutationResult<InboxBulkResponse, Error, v
 /**
  * Hook for retrying transcription on a voice item.
  */
-export function useRetryTranscription(): UseMutationResult<void, Error, string> {
+export function useRetryTranscription() {
   const queryClient = useQueryClient()
 
   return useMutation({
@@ -793,7 +784,7 @@ export function useRetryTranscription(): UseMutationResult<void, Error, string> 
 /**
  * Hook for retrying metadata fetch on a link item.
  */
-export function useRetryMetadata(): UseMutationResult<void, Error, string> {
+export function useRetryMetadata() {
   const queryClient = useQueryClient()
 
   return useMutation({
@@ -883,7 +874,7 @@ export function useInboxArchived(options: ArchivedListOptions = {}): UseInboxLis
   }
 }
 
-export function useUnarchiveInboxItem(): UseMutationResult<void, Error, string> {
+export function useUnarchiveInboxItem() {
   const queryClient = useQueryClient()
 
   return useMutation({
@@ -896,7 +887,7 @@ export function useUnarchiveInboxItem(): UseMutationResult<void, Error, string> 
   })
 }
 
-export function useDeletePermanentInboxItem(): UseMutationResult<void, Error, string> {
+export function useDeletePermanentInboxItem() {
   const queryClient = useQueryClient()
 
   return useMutation({
@@ -919,34 +910,7 @@ export function useInboxFilingHistory(options?: {
   })
 }
 
-export function useInboxOperations(): {
-  captureText: (input: CaptureTextInput) => Promise<InboxCaptureResponse>
-  captureLink: (input: CaptureLinkInput) => Promise<InboxCaptureResponse>
-  isCaptureTextPending: boolean
-  isCaptureLinkPending: boolean
-  updateItem: (input: InboxUpdateInput) => Promise<InboxItem>
-  archiveItem: (id: string) => Promise<void>
-  isUpdatePending: boolean
-  isArchivePending: boolean
-  fileItem: (input: FileItemInput) => Promise<InboxFileResponse>
-  convertToNote: (itemId: string) => Promise<InboxFileResponse>
-  isFilePending: boolean
-  isConvertPending: boolean
-  addTag: (input: { itemId: string; tag: string }) => Promise<void>
-  removeTag: (input: { itemId: string; tag: string }) => Promise<void>
-  snoozeItem: (input: SnoozeInput) => Promise<void>
-  unsnoozeItem: (itemId: string) => Promise<void>
-  bulkArchive: (input: BulkArchiveInput) => Promise<InboxBulkResponse>
-  bulkTag: (input: BulkTagInput) => Promise<InboxBulkResponse>
-  fileAllStale: () => Promise<InboxBulkResponse>
-  isBulkArchivePending: boolean
-  isBulkTagPending: boolean
-  isFileAllStalePending: boolean
-  retryTranscription: (itemId: string) => Promise<void>
-  isRetryTranscriptionPending: boolean
-  retryMetadata: (itemId: string) => Promise<void>
-  isRetryMetadataPending: boolean
-} {
+export function useInboxOperations() {
   const captureText = useCaptureText()
   const captureLink = useCaptureLink()
   const updateItem = useUpdateInboxItem()

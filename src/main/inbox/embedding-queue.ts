@@ -10,7 +10,10 @@
  * @module inbox/embedding-queue
  */
 
+import { createLogger } from '../lib/logger'
 import { updateNoteEmbedding } from './suggestions'
+
+const log = createLogger('Inbox:Embeddings')
 
 // ============================================================================
 // Configuration
@@ -58,7 +61,7 @@ export function queueEmbeddingUpdate(noteId: string): void {
     processTimer = setTimeout(() => {
       processTimer = null
       processEmbeddingQueue().catch((err) => {
-        console.error('[EmbeddingQueue] Processing error:', err)
+        log.error('Processing error:', err)
       })
     }, PROCESS_START_DELAY_MS)
   }
@@ -98,44 +101,33 @@ export async function processEmbeddingQueue(): Promise<{
   let totalSucceeded = 0
   let totalFailed = 0
 
-  try {
-    // Process in batches
-    while (pendingNoteIds.size > 0) {
-      // Get next batch
-      const batch = Array.from(pendingNoteIds).slice(0, BATCH_SIZE)
+  // Process in batches
+  while (pendingNoteIds.size > 0) {
+    // Get next batch
+    const batch = Array.from(pendingNoteIds).slice(0, BATCH_SIZE)
 
-      // Remove from pending
-      for (const noteId of batch) {
-        pendingNoteIds.delete(noteId)
-      }
+    // Remove from pending
+    for (const noteId of batch) {
+      pendingNoteIds.delete(noteId)
+    }
 
-      // Process batch in parallel
-      const results = await Promise.allSettled(batch.map((noteId) => updateNoteEmbedding(noteId)))
+    // Process batch in parallel
+    const results = await Promise.allSettled(batch.map((noteId) => updateNoteEmbedding(noteId)))
 
-      // Count results
-      for (const result of results) {
-        totalProcessed++
-        if (result.status === 'fulfilled' && result.value === true) {
-          totalSucceeded++
-        } else {
-          totalFailed++
-        }
-      }
-
-      // Log batch progress
-      if (batch.length > 0) {
-        console.log(
-          `[EmbeddingQueue] Processed batch of ${batch.length}: ${totalSucceeded} succeeded, ${totalFailed} failed`
-        )
-      }
-
-      // Delay before next batch if there are more items
-      if (pendingNoteIds.size > 0) {
-        await new Promise((resolve) => setTimeout(resolve, BATCH_DELAY_MS))
+    // Count results
+    for (const result of results) {
+      totalProcessed++
+      if (result.status === 'fulfilled' && result.value === true) {
+        totalSucceeded++
+      } else {
+        totalFailed++
       }
     }
-  } finally {
-    isProcessing = false
+
+    // Delay before next batch if there are more items
+    if (pendingNoteIds.size > 0) {
+      await new Promise((resolve) => setTimeout(resolve, BATCH_DELAY_MS))
+    }
   }
 
   return {

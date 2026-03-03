@@ -32,6 +32,9 @@ import { FilingSection, useFilingState } from './filing-section'
 import { useRetryTranscription, useUpdateInboxItem } from '@/hooks/use-inbox'
 import { isMac, isInputFocused } from '@/hooks/use-keyboard-shortcuts'
 import type { InboxItem, InboxItemListItem, Folder } from '@/types'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('Component:InboxDetailPanel')
 
 // Panel can work with either full or list item types
 type DetailItem = InboxItem | InboxItemListItem
@@ -217,7 +220,7 @@ export const InboxDetailPanel = ({
           actualTags: tags
         })
         .catch((error) => {
-          console.error('Failed to track suggestion:', error)
+          log.error('Failed to track suggestion', error)
         })
     }
 

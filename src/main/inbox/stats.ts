@@ -7,10 +7,13 @@
  * @module main/inbox/stats
  */
 
+import { createLogger } from '../lib/logger'
 import { getDatabase } from '../database'
 import { inboxItems, inboxStats, inboxItemType } from '@shared/db/schema/inbox'
 import { eq, and, isNull, sql, lt } from 'drizzle-orm'
 import { generateId } from '../lib/id'
+
+const log = createLogger('Inbox:Stats')
 
 // ============================================================================
 // Constants
@@ -91,7 +94,7 @@ export function getStaleItemIds(): string[] {
 
     return staleItems.map((item) => item.id)
   } catch {
-    console.warn('[Stats] No database available for stale item query')
+    log.warn('No database available for stale item query')
     return []
   }
 }
@@ -189,7 +192,7 @@ export function incrementCaptureCount(itemType: string): void {
 
     const column = columnMap[itemType]
     if (!column) {
-      console.warn(`[Stats] Unknown item type: ${itemType}`)
+      log.warn(`Unknown item type: ${itemType}`)
       return
     }
 
@@ -199,9 +202,9 @@ export function incrementCaptureCount(itemType: string): void {
       .where(eq(inboxStats.id, stats.id))
       .run()
 
-    console.log(`[Stats] Incremented ${column} to ${currentValue + 1}`)
+    log.debug(`Incremented ${column} to ${currentValue + 1}`)
   } catch (error) {
-    console.warn('[Stats] Failed to increment capture count:', error)
+    log.warn('Failed to increment capture count:', error)
   }
 }
 
@@ -220,9 +223,9 @@ export function incrementProcessedCount(count = 1): void {
       .where(eq(inboxStats.id, stats.id))
       .run()
 
-    console.log(`[Stats] Incremented processedCount to ${currentValue + count}`)
+    log.debug(`Incremented processedCount to ${currentValue + count}`)
   } catch (error) {
-    console.warn('[Stats] Failed to increment processed count:', error)
+    log.warn('Failed to increment processed count:', error)
   }
 }
 
@@ -241,9 +244,9 @@ export function incrementArchivedCount(count = 1): void {
       .where(eq(inboxStats.id, stats.id))
       .run()
 
-    console.log(`[Stats] Incremented archivedCount to ${currentValue + count}`)
+    log.debug(`Incremented archivedCount to ${currentValue + count}`)
   } catch (error) {
-    console.warn('[Stats] Failed to increment archived count:', error)
+    log.warn('Failed to increment archived count:', error)
   }
 }
 

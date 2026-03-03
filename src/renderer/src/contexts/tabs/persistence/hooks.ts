@@ -9,6 +9,9 @@ import type { TabSystemState } from '@/contexts/tabs/types'
 import { getDefaultStorage, saveSync } from './storage'
 import { serializeTabState, deserializeTabState, extractPinnedTabs } from './serialization'
 import type { TabStorage } from './types'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('TabPersistence:Hooks')
 
 // =============================================================================
 // AUTO-SAVE HOOK
@@ -159,7 +162,7 @@ export const useSessionRestore = (
 
       hasRestoredRef.current = true
     } catch (error) {
-      console.error('Failed to restore session:', error)
+      log.error('Failed to restore session:', error)
       setRestoreError(error as Error)
     } finally {
       setIsRestoring(false)

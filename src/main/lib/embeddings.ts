@@ -12,6 +12,10 @@
 import { app, BrowserWindow } from 'electron'
 import path from 'path'
 import { SettingsChannels } from '@shared/ipc-channels'
+import { EMBEDDING_DIMENSION } from './embeddings-constants'
+import { createLogger } from './logger'
+
+const logger = createLogger('Embeddings')
 
 // ============================================================================
 // Types
@@ -41,8 +45,7 @@ export interface ModelInfo {
 /** Model to use for embeddings */
 const MODEL_NAME = 'Xenova/all-MiniLM-L6-v2'
 
-/** Embedding vector dimension */
-export const EMBEDDING_DIMENSION = 384
+export { EMBEDDING_DIMENSION } from './embeddings-constants'
 
 /** Minimum content length to generate embedding */
 const MIN_CONTENT_LENGTH = 10
@@ -107,7 +110,7 @@ export async function initEmbeddingModel(): Promise<boolean> {
 
   // Already loading - wait for it
   if (isLoading) {
-    console.log('[Embeddings] Model already loading, waiting...')
+    logger.info('Model already loading, waiting...')
     while (isLoading) {
       await new Promise((resolve) => setTimeout(resolve, 100))
     }
@@ -118,7 +121,7 @@ export async function initEmbeddingModel(): Promise<boolean> {
   loadError = null
 
   try {
-    console.log('[Embeddings] Initializing embedding model...')
+    logger.info('Initializing embedding model...')
     emitProgress('loading', 0, 'Initializing embedding model...')
 
     // Dynamic import to avoid loading at startup
@@ -126,7 +129,7 @@ export async function initEmbeddingModel(): Promise<boolean> {
 
     // Configure cache directory
     env.cacheDir = getModelCacheDir()
-    console.log('[Embeddings] Cache directory:', env.cacheDir)
+    logger.debug('Cache directory:', env.cacheDir)
 
     emitProgress('downloading', 5, 'Loading model (downloading if first time)...')
 
@@ -145,11 +148,11 @@ export async function initEmbeddingModel(): Promise<boolean> {
     })
 
     emitProgress('ready', 100, 'Model ready')
-    console.log('[Embeddings] Model loaded successfully')
+    logger.info('Model loaded successfully')
     return true
   } catch (error) {
     loadError = error instanceof Error ? error.message : String(error)
-    console.error('[Embeddings] Failed to load model:', loadError)
+    logger.error('Failed to load model:', loadError)
     emitProgress('error', 0, `Error: ${loadError}`)
     extractor = null
     return false
@@ -174,7 +177,7 @@ export async function generateEmbedding(text: string): Promise<Float32Array | nu
   if (!extractor) {
     const loaded = await initEmbeddingModel()
     if (!loaded) {
-      console.log('[Embeddings] Model not available, skipping embedding')
+      logger.warn('Model not available, skipping embedding')
       return null
     }
   }
@@ -194,15 +197,13 @@ export async function generateEmbedding(text: string): Promise<Float32Array | nu
 
     // Verify dimension
     if (embedding.length !== EMBEDDING_DIMENSION) {
-      console.error(
-        `[Embeddings] Unexpected dimension: ${embedding.length} (expected ${EMBEDDING_DIMENSION})`
-      )
+      logger.error(`Unexpected dimension: ${embedding.length} (expected ${EMBEDDING_DIMENSION})`)
       return null
     }
 
     return embedding
   } catch (error) {
-    console.error('[Embeddings] Generation failed:', error)
+    logger.error('Generation failed:', error)
     return null
   }
 }
@@ -240,5 +241,5 @@ export function getModelInfo(): ModelInfo {
 export function unloadModel(): void {
   extractor = null
   loadError = null
-  console.log('[Embeddings] Model unloaded')
+  logger.info('Model unloaded')
 }

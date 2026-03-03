@@ -7,6 +7,11 @@
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react'
+import { createLogger } from '@/lib/logger'
+import { extractErrorMessage } from '@/lib/ipc-error'
+import { registerPendingSave, unregisterPendingSave } from '@/lib/save-registry'
+
+const log = createLogger('Hook:Journal')
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import type {
   JournalEntry,
@@ -124,6 +129,7 @@ export function useJournalEntry(date: string): UseJournalEntryResult {
   const isDirtyRef = useRef(isDirty)
   // Track if we're currently saving to ignore our own update events
   const isSavingRef = useRef(false)
+  const performSaveRef = useRef<() => Promise<void>>(async () => {})
 
   // Keep refs in sync
   useEffect(() => {
@@ -157,7 +163,7 @@ export function useJournalEntry(date: string): UseJournalEntryResult {
 
       // Perform save for the old date asynchronously using the service directly
       journalService.updateEntry(saveInput).catch((err) => {
-        console.error(`[useJournalEntry] Failed to save pending changes for ${oldDate}:`, err)
+        log.error(`Failed to save pending changes for ${oldDate}:`, err)
         // Note: We don't set save error here as we've already navigated away
       })
     }
@@ -278,9 +284,9 @@ export function useJournalEntry(date: string): UseJournalEntryResult {
       }
     } catch (err) {
       // Keep the dirty state so user knows there's unsaved content
-      console.error('Failed to save journal entry:', err)
+      log.error('Failed to save journal entry:', err)
       // Set save error for UI feedback
-      const errorMessage = err instanceof Error ? err.message : 'Failed to save journal entry'
+      const errorMessage = extractErrorMessage(err, 'Failed to save journal entry')
       // Check for disk-related errors
       const isDiskError =
         errorMessage.includes('ENOSPC') ||
@@ -297,6 +303,9 @@ export function useJournalEntry(date: string): UseJournalEntryResult {
       }
     }
   }, [updateMutation])
+
+  // Keep ref in sync so cleanup always calls the latest version
+  performSaveRef.current = performSave
 
   // Debounced save
   const scheduleSave = useCallback(() => {
@@ -321,14 +330,24 @@ export function useJournalEntry(date: string): UseJournalEntryResult {
     [scheduleSave]
   )
 
-  // Update tags (triggers debounced save)
+  // Update tags with optimistic UI update (no debounce - discrete action)
+  // Tags are instant user actions (clicks), not continuous typing, so we:
+  // 1. Update the UI immediately via queryClient
+  // 2. Save in background without debounce delay
   const updateTags = useCallback(
     (tags: string[]) => {
+      // Optimistic update - show tags immediately in UI
+      queryClient.setQueryData(
+        journalKeys.entry(currentDateRef.current),
+        (old: JournalEntry | undefined) => (old ? { ...old, tags } : old)
+      )
+
+      // Store pending tags and save immediately (no debounce)
       pendingTagsRef.current = tags
       setIsDirty(true)
-      scheduleSave()
+      void performSave()
     },
-    [scheduleSave]
+    [queryClient, performSave]
   )
 
   // Force save now
@@ -377,7 +396,7 @@ export function useJournalEntry(date: string): UseJournalEntryResult {
       }
       return result.success
     } catch (err) {
-      console.error('Failed to delete journal entry:', err)
+      log.error('Failed to delete journal entry:', err)
       return false
     }
   }, [date, deleteMutation])
@@ -393,16 +412,29 @@ export function useJournalEntry(date: string): UseJournalEntryResult {
     setSaveError(null)
   }, [])
 
-  // Cleanup on unmount - save pending changes
+  // Register with save registry + flush on unmount
   useEffect(() => {
+    const registryKey = `journal:${date}`
+
+    registerPendingSave(registryKey, async () => {
+      if (pendingContentRef.current !== null || pendingTagsRef.current !== null) {
+        await performSaveRef.current()
+      }
+    })
+
     return () => {
-      // Clear timer
       if (saveTimerRef.current) {
         clearTimeout(saveTimerRef.current)
         saveTimerRef.current = null
       }
+
+      if (pendingContentRef.current !== null || pendingTagsRef.current !== null) {
+        void performSaveRef.current()
+      }
+
+      unregisterPendingSave(registryKey)
     }
-  }, [])
+  }, [date])
 
   // Subscribe to external updates - use refs to avoid re-subscribing on state changes
   useEffect(() => {
@@ -476,7 +508,7 @@ export function useJournalEntry(date: string): UseJournalEntryResult {
     entry,
     isLoading,
     loadedForDate,
-    error: queryError instanceof Error ? queryError.message : null,
+    error: queryError ? extractErrorMessage(queryError) : null,
     isSaving,
     isDirty,
     saveError,
@@ -569,7 +601,7 @@ export function useJournalHeatmap(year: number): UseJournalHeatmapResult {
   return {
     data,
     isLoading,
-    error: queryError instanceof Error ? queryError.message : null,
+    error: queryError ? extractErrorMessage(queryError) : null,
     reload
   }
 }
@@ -660,7 +692,7 @@ export function useMonthEntries(year: number, month: number): UseMonthEntriesRes
   return {
     data,
     isLoading,
-    error: queryError instanceof Error ? queryError.message : null,
+    error: queryError ? extractErrorMessage(queryError) : null,
     reload
   }
 }
@@ -741,7 +773,7 @@ export function useYearStats(year: number): UseYearStatsResult {
   return {
     data,
     isLoading,
-    error: queryError instanceof Error ? queryError.message : null,
+    error: queryError ? extractErrorMessage(queryError) : null,
     reload
   }
 }
@@ -838,7 +870,7 @@ export function useDayContext(date: string): UseDayContextResult {
     events: data?.events ?? [],
     overdueCount: data?.overdueCount ?? 0,
     isLoading,
-    error: queryError instanceof Error ? queryError.message : null,
+    error: queryError ? extractErrorMessage(queryError) : null,
     reload
   }
 }
@@ -887,6 +919,11 @@ export function useAIConnections(content: string): UseAIConnectionsResult {
   const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const lastAnalyzedContentRef = useRef<string | null>(null)
 
+  // Content ref to avoid effect re-runs on every keystroke
+  // The effect uses this ref instead of content in dependencies
+  const contentRef = useRef(content)
+  contentRef.current = content
+
   // Analysis function
   const analyzeContent = useCallback(async (contentToAnalyze: string) => {
     // Cancel any pending request
@@ -932,54 +969,72 @@ export function useAIConnections(content: string): UseAIConnectionsResult {
 
       // Only update state if this request wasn't aborted
       if (!abortController.signal.aborted) {
-        setError(err instanceof Error ? err.message : 'Failed to analyze content')
+        setError(extractErrorMessage(err, 'Failed to analyze content'))
         setIsLoading(false)
       }
     }
   }, [])
 
-  // Debounced analysis trigger
+  // Debounced analysis trigger using interval-based polling
+  // This prevents effect re-runs on every keystroke while still detecting content changes
+  // The interval checks for content changes and triggers analysis after debounce period
   useEffect(() => {
-    // Clear any pending debounce timer
-    if (debounceTimerRef.current) {
-      clearTimeout(debounceTimerRef.current)
-      debounceTimerRef.current = null
-    }
+    let lastCheckedContent = contentRef.current
+    let pendingAnalysisTimeout: ReturnType<typeof setTimeout> | null = null
 
-    // If content is too short, clear connections immediately
-    if (content.length < MIN_CONTENT_LENGTH) {
-      // Cancel any pending analysis
-      if (abortControllerRef.current) {
-        abortControllerRef.current.abort()
-        abortControllerRef.current = null
+    // Check interval - polls for content changes every 500ms (half of debounce delay)
+    const checkInterval = setInterval(() => {
+      const currentContent = contentRef.current
+
+      // If content hasn't changed since last check, do nothing
+      if (currentContent === lastCheckedContent) {
+        return
       }
-      setConnections([])
-      setIsLoading(false)
-      setError(null)
-      lastAnalyzedContentRef.current = null
-      return
-    }
 
-    // Set loading state to indicate we're waiting to analyze
-    // (but only if content has changed from last analysis)
-    if (content !== lastAnalyzedContentRef.current) {
-      // Don't set loading here - we're just debouncing
-      // Loading will be set when actual analysis starts
-    }
+      // Content changed - update last checked and schedule analysis
+      lastCheckedContent = currentContent
 
-    // Schedule analysis after debounce delay
-    debounceTimerRef.current = setTimeout(() => {
-      analyzeContent(content)
-    }, AI_ANALYSIS_DEBOUNCE_MS)
+      // Clear any pending analysis
+      if (pendingAnalysisTimeout) {
+        clearTimeout(pendingAnalysisTimeout)
+      }
+
+      // If content is too short, clear connections immediately
+      if (currentContent.length < MIN_CONTENT_LENGTH) {
+        if (abortControllerRef.current) {
+          abortControllerRef.current.abort()
+          abortControllerRef.current = null
+        }
+        setConnections([])
+        setIsLoading(false)
+        setError(null)
+        lastAnalyzedContentRef.current = null
+        return
+      }
+
+      // Schedule analysis after debounce delay
+      pendingAnalysisTimeout = setTimeout(() => {
+        if (currentContent !== lastAnalyzedContentRef.current) {
+          analyzeContent(currentContent)
+        }
+      }, AI_ANALYSIS_DEBOUNCE_MS)
+    }, 500)
+
+    // Initial check after mount
+    if (contentRef.current.length >= MIN_CONTENT_LENGTH) {
+      pendingAnalysisTimeout = setTimeout(() => {
+        analyzeContent(contentRef.current)
+      }, AI_ANALYSIS_DEBOUNCE_MS)
+    }
 
     // Cleanup
     return () => {
-      if (debounceTimerRef.current) {
-        clearTimeout(debounceTimerRef.current)
-        debounceTimerRef.current = null
+      clearInterval(checkInterval)
+      if (pendingAnalysisTimeout) {
+        clearTimeout(pendingAnalysisTimeout)
       }
     }
-  }, [content, analyzeContent])
+  }, [analyzeContent])
 
   // Cleanup on unmount
   useEffect(() => {
@@ -1006,8 +1061,8 @@ export function useAIConnections(content: string): UseAIConnectionsResult {
       debounceTimerRef.current = null
     }
 
-    analyzeContent(content)
-  }, [content, analyzeContent])
+    analyzeContent(contentRef.current)
+  }, [analyzeContent])
 
   return {
     connections,

@@ -17,6 +17,7 @@ import {
   type SuggestionsResponse,
   type SearchStats
 } from '@shared/contracts/search-api'
+import { createLogger } from '../lib/logger'
 import { createValidatedHandler, createHandler, createStringHandler } from './validate'
 import {
   searchNotes,
@@ -33,6 +34,8 @@ import { getIndexDatabase, getRawIndexDatabase } from '../database'
 // ============================================================================
 // Recent Searches (in-memory store)
 // ============================================================================
+
+const logger = createLogger('IPC:Search')
 
 const MAX_RECENT_SEARCHES = 20
 let recentSearches: string[] = []
@@ -70,6 +73,8 @@ export function registerSearchHandlers(): void {
       const db = getIndexDatabase()
 
       try {
+        addRecentSearch(input.query)
+
         const results = searchNotes(db, input.query, {
           limit: input.limit,
           offset: input.offset,
@@ -100,7 +105,7 @@ export function registerSearchHandlers(): void {
         return response
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Search failed'
-        console.error('[Search] Query error:', message)
+        logger.error('Query error:', message)
         return {
           results: [],
           total: 0,
@@ -139,7 +144,7 @@ export function registerSearchHandlers(): void {
 
         return response
       } catch (error) {
-        console.error('[Search] Quick search error:', error)
+        logger.error('Quick search error:', error)
         return { notes: [], tasks: [] }
       }
     })
@@ -160,7 +165,7 @@ export function registerSearchHandlers(): void {
 
         return response
       } catch (error) {
-        console.error('[Search] Suggestions error:', error)
+        logger.error('Suggestions error:', error)
         return { suggestions: [] }
       }
     })
@@ -217,7 +222,7 @@ export function registerSearchHandlers(): void {
     createHandler(() => {
       // TODO: Implement full index rebuild
       // This would clear FTS and re-index all notes from files
-      console.log('[Search] Index rebuild requested - not yet implemented')
+      logger.info('Index rebuild requested - not yet implemented')
     })
   )
 
@@ -313,9 +318,7 @@ export function registerSearchHandlers(): void {
         })
 
         const queryTime = Math.round(performance.now() - startTime)
-        console.log(
-          `[Search] Advanced search completed in ${queryTime}ms, found ${results.length} results`
-        )
+        logger.debug(`Advanced search completed in ${queryTime}ms, found ${results.length} results`)
 
         return results.map((r) => ({
           type: 'note' as const,
@@ -332,13 +335,13 @@ export function registerSearchHandlers(): void {
         }))
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Advanced search failed'
-        console.error('[Search] Advanced search error:', message)
+        logger.error('Advanced search error:', message)
         return []
       }
     })
   )
 
-  console.log('[IPC] Search handlers registered')
+  logger.info('Search handlers registered')
 }
 
 /**

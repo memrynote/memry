@@ -28,6 +28,7 @@
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react'
+import { extractErrorMessage } from '@/lib/ipc-error'
 import type { SearchResult, SearchResultNote, SearchStats } from '../../../preload/index.d'
 import {
   searchService,
@@ -138,7 +139,7 @@ export function useSearch(options: UseSearchOptions = {}): UseSearchReturn {
         setHasMore(response.hasMore)
         setQueryTime(response.queryTime)
       } catch (err) {
-        const message = err instanceof Error ? err.message : 'Search failed'
+        const message = extractErrorMessage(err, 'Search failed')
         setError(message)
         setResults([])
         setTotal(0)
@@ -167,7 +168,7 @@ export function useSearch(options: UseSearchOptions = {}): UseSearchReturn {
       setResults((prev) => [...prev, ...response.results])
       setHasMore(response.hasMore)
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to load more'
+      const message = extractErrorMessage(err, 'Failed to load more')
       setError(message)
     } finally {
       setIsLoading(false)

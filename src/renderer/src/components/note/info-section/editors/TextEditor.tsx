@@ -18,10 +18,11 @@ export function TextEditor({
 }: TextEditorProps) {
   const inputRef = useRef<HTMLInputElement>(null)
   const [localValue, setLocalValue] = useState(value)
-
-  useEffect(() => {
+  const [prevValue, setPrevValue] = useState(value)
+  if (value !== prevValue) {
+    setPrevValue(value)
     setLocalValue(value)
-  }, [value])
+  }
 
   useEffect(() => {
     if (autoFocus && inputRef.current) {
@@ -65,12 +66,10 @@ export function TextEditor({
       onKeyDown={handleKeyDown}
       placeholder={placeholder}
       className={cn(
-        'w-full rounded px-2 py-1',
+        'w-full bg-transparent border-none p-0',
         'text-[13px] text-foreground',
-        'bg-background/50 border border-border/60',
-        'placeholder:text-muted-foreground/40',
-        'outline-none',
-        'focus:bg-background focus:border-border focus:ring-1 focus:ring-border/40 shadow-sm'
+        'placeholder:text-muted-foreground/30',
+        'outline-none focus:ring-0 shadow-none'
       )}
     />
   )

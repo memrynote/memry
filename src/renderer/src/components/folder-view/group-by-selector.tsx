@@ -8,10 +8,11 @@
  */
 
 import { useState, useMemo, useCallback } from 'react'
-import { Layers, X, ChevronDown, Check, ArrowUpAZ, ArrowDownZA } from 'lucide-react'
+import { Layers, X, Check, ArrowUpAZ, ArrowDownZA } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { Input } from '@/components/ui/input'
 import { Separator } from '@/components/ui/separator'
 import { Switch } from '@/components/ui/switch'
@@ -171,165 +172,176 @@ export function GroupBySelector({
   const isGrouped = !!groupBy?.property
 
   return (
-    <Popover open={isOpen} onOpenChange={setIsOpen}>
-      <PopoverTrigger asChild>
-        <Button
-          variant="outline"
-          size="sm"
-          className={cn('gap-1.5 h-8', isGrouped && 'bg-primary/10 border-primary/30', className)}
-        >
-          <Layers className="h-4 w-4" />
-          <span className="hidden sm:inline">{isGrouped ? currentPropertyName : 'Group'}</span>
+    <TooltipProvider>
+      <Popover open={isOpen} onOpenChange={setIsOpen}>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                size="sm"
+                className={cn(
+                  'gap-1.5 px-2',
+                  isGrouped && 'bg-primary/10 border-primary/30',
+                  className
+                )}
+              >
+                <Layers className="h-4 w-4" />
+                {isGrouped && (
+                  <button
+                    type="button"
+                    onClick={handleClearGrouping}
+                    className="ml-1 p-0.5 rounded hover:bg-muted"
+                    aria-label="Clear grouping"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                )}
+              </Button>
+            </PopoverTrigger>
+          </TooltipTrigger>
+          <TooltipContent side="bottom">
+            {isGrouped ? `Group by ${currentPropertyName}` : 'Group'}
+          </TooltipContent>
+        </Tooltip>
+
+        <PopoverContent align="start" className="w-72 p-0">
+          {/* Search */}
+          <div className="p-2 border-b">
+            <Input
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search properties..."
+              className="h-8"
+            />
+          </div>
+
+          {/* Property List */}
+          <div className="max-h-64 overflow-y-auto p-1">
+            {/* Built-in columns */}
+            {filteredBuiltIn.length > 0 && (
+              <div className="mb-2">
+                <div className="px-2 py-1 text-xs font-medium text-muted-foreground uppercase">
+                  Built-in
+                </div>
+                {filteredBuiltIn.map((col) => (
+                  <PropertyRow
+                    key={col.id}
+                    name={col.displayName}
+                    type={col.type}
+                    isSelected={groupBy?.property === col.id}
+                    onClick={() => handleSelectProperty(col.id)}
+                  />
+                ))}
+              </div>
+            )}
+
+            {/* Custom properties */}
+            {filteredProperties.length > 0 && (
+              <div>
+                {filteredBuiltIn.length > 0 && <Separator className="my-1" />}
+                <div className="px-2 py-1 text-xs font-medium text-muted-foreground uppercase">
+                  Properties
+                </div>
+                {filteredProperties.map((prop) => (
+                  <PropertyRow
+                    key={prop.name}
+                    name={capitalizeFirst(prop.name)}
+                    type={prop.type}
+                    usageCount={prop.usageCount}
+                    isSelected={groupBy?.property === prop.name}
+                    onClick={() => handleSelectProperty(prop.name)}
+                  />
+                ))}
+              </div>
+            )}
+
+            {/* No results */}
+            {filteredBuiltIn.length === 0 && filteredProperties.length === 0 && (
+              <div className="px-2 py-4 text-center text-sm text-muted-foreground">
+                No groupable properties found
+              </div>
+            )}
+          </div>
+
+          {/* Options (when grouped) */}
           {isGrouped && (
-            <button
-              type="button"
-              onClick={handleClearGrouping}
-              className="ml-1 p-0.5 rounded hover:bg-muted"
-              aria-label="Clear grouping"
-            >
-              <X className="h-3 w-3" />
-            </button>
-          )}
-          {!isGrouped && <ChevronDown className="h-3.5 w-3.5 opacity-50" />}
-        </Button>
-      </PopoverTrigger>
+            <>
+              <Separator />
+              <div className="p-2 space-y-3">
+                {/* Direction toggle */}
+                <div className="flex items-center justify-between">
+                  <Label className="text-sm">Sort direction</Label>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleDirectionChange}
+                    className="h-7 gap-1.5"
+                  >
+                    {groupBy?.direction === 'asc' ? (
+                      <>
+                        <ArrowUpAZ className="h-4 w-4" />
+                        <span className="text-xs">A → Z</span>
+                      </>
+                    ) : (
+                      <>
+                        <ArrowDownZA className="h-4 w-4" />
+                        <span className="text-xs">Z → A</span>
+                      </>
+                    )}
+                  </Button>
+                </div>
 
-      <PopoverContent align="start" className="w-72 p-0">
-        {/* Search */}
-        <div className="p-2 border-b">
-          <Input
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search properties..."
-            className="h-8"
-          />
-        </div>
+                {/* Collapsed by default */}
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="collapsed-toggle" className="text-sm">
+                    Collapse groups by default
+                  </Label>
+                  <Switch
+                    id="collapsed-toggle"
+                    checked={groupBy?.collapsed ?? false}
+                    onCheckedChange={handleCollapsedChange}
+                  />
+                </div>
 
-        {/* Property List */}
-        <div className="max-h-64 overflow-y-auto p-1">
-          {/* Built-in columns */}
-          {filteredBuiltIn.length > 0 && (
-            <div className="mb-2">
-              <div className="px-2 py-1 text-xs font-medium text-muted-foreground uppercase">
-                Built-in
+                {/* Show summaries */}
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="summary-toggle" className="text-sm">
+                    Show group summaries
+                  </Label>
+                  <Switch
+                    id="summary-toggle"
+                    checked={groupBy?.showSummary ?? false}
+                    onCheckedChange={handleShowSummaryChange}
+                  />
+                </div>
               </div>
-              {filteredBuiltIn.map((col) => (
-                <PropertyRow
-                  key={col.id}
-                  name={col.displayName}
-                  type={col.type}
-                  isSelected={groupBy?.property === col.id}
-                  onClick={() => handleSelectProperty(col.id)}
-                />
-              ))}
-            </div>
+            </>
           )}
 
-          {/* Custom properties */}
-          {filteredProperties.length > 0 && (
-            <div>
-              {filteredBuiltIn.length > 0 && <Separator className="my-1" />}
-              <div className="px-2 py-1 text-xs font-medium text-muted-foreground uppercase">
-                Properties
-              </div>
-              {filteredProperties.map((prop) => (
-                <PropertyRow
-                  key={prop.name}
-                  name={capitalizeFirst(prop.name)}
-                  type={prop.type}
-                  usageCount={prop.usageCount}
-                  isSelected={groupBy?.property === prop.name}
-                  onClick={() => handleSelectProperty(prop.name)}
-                />
-              ))}
-            </div>
-          )}
-
-          {/* No results */}
-          {filteredBuiltIn.length === 0 && filteredProperties.length === 0 && (
-            <div className="px-2 py-4 text-center text-sm text-muted-foreground">
-              No groupable properties found
-            </div>
-          )}
-        </div>
-
-        {/* Options (when grouped) */}
-        {isGrouped && (
-          <>
-            <Separator />
-            <div className="p-2 space-y-3">
-              {/* Direction toggle */}
-              <div className="flex items-center justify-between">
-                <Label className="text-sm">Sort direction</Label>
+          {/* Clear grouping button */}
+          {isGrouped && (
+            <>
+              <Separator />
+              <div className="p-1">
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={handleDirectionChange}
-                  className="h-7 gap-1.5"
+                  onClick={() => {
+                    onGroupByChange(undefined)
+                    setIsOpen(false)
+                  }}
+                  className="w-full justify-start gap-2 text-muted-foreground hover:text-foreground"
                 >
-                  {groupBy?.direction === 'asc' ? (
-                    <>
-                      <ArrowUpAZ className="h-4 w-4" />
-                      <span className="text-xs">A → Z</span>
-                    </>
-                  ) : (
-                    <>
-                      <ArrowDownZA className="h-4 w-4" />
-                      <span className="text-xs">Z → A</span>
-                    </>
-                  )}
+                  <X className="h-4 w-4" />
+                  Clear grouping
                 </Button>
               </div>
-
-              {/* Collapsed by default */}
-              <div className="flex items-center justify-between">
-                <Label htmlFor="collapsed-toggle" className="text-sm">
-                  Collapse groups by default
-                </Label>
-                <Switch
-                  id="collapsed-toggle"
-                  checked={groupBy?.collapsed ?? false}
-                  onCheckedChange={handleCollapsedChange}
-                />
-              </div>
-
-              {/* Show summaries */}
-              <div className="flex items-center justify-between">
-                <Label htmlFor="summary-toggle" className="text-sm">
-                  Show group summaries
-                </Label>
-                <Switch
-                  id="summary-toggle"
-                  checked={groupBy?.showSummary ?? false}
-                  onCheckedChange={handleShowSummaryChange}
-                />
-              </div>
-            </div>
-          </>
-        )}
-
-        {/* Clear grouping button */}
-        {isGrouped && (
-          <>
-            <Separator />
-            <div className="p-1">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => {
-                  onGroupByChange(undefined)
-                  setIsOpen(false)
-                }}
-                className="w-full justify-start gap-2 text-muted-foreground hover:text-foreground"
-              >
-                <X className="h-4 w-4" />
-                Clear grouping
-              </Button>
-            </div>
-          </>
-        )}
-      </PopoverContent>
-    </Popover>
+            </>
+          )}
+        </PopoverContent>
+      </Popover>
+    </TooltipProvider>
   )
 }
 

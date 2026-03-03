@@ -11,6 +11,9 @@
 import { Component, type ErrorInfo, type ReactNode } from 'react'
 import { AlertTriangle, RefreshCw, Calendar } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('Component:JournalErrorBoundary')
 
 interface JournalErrorBoundaryProps {
   /** Children to render (the journal content) */
@@ -48,7 +51,7 @@ export class JournalErrorBoundary extends Component<
   }
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo): void {
-    console.error('[JournalErrorBoundary] Journal crash:', error, errorInfo)
+    log.error('Journal crash', error, errorInfo)
     this.props.onError?.(error, errorInfo)
   }
 

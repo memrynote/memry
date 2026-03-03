@@ -78,6 +78,62 @@
       "when": 1768002000000,
       "tag": "0010_make_columns_nullable",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "6",
+      "when": 1768336044711,
+      "tag": "0011_purple_madame_masque",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "6",
+      "when": 1769997600000,
+      "tag": "0012_snapshot_title_column",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "6",
+      "when": 1771404117751,
+      "tag": "0013_tidy_puppet_master",
+      "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "6",
+      "when": 1771589398214,
+      "tag": "0014_ordinary_mathemanic",
+      "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "6",
+      "when": 1771591565928,
+      "tag": "0015_parched_karnak",
+      "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "6",
+      "when": 1771795809885,
+      "tag": "0016_skinny_tombstone",
+      "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "6",
+      "when": 1771887483598,
+      "tag": "0017_massive_sharon_ventura",
+      "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "6",
+      "when": 1771961898409,
+      "tag": "0018_secret_jackal",
+      "breakpoints": true
     }
   ]
 }

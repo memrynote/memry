@@ -4,7 +4,7 @@
  * Includes Mock IPC context, React Query, and Theme providers.
  */
 
-import React, { ReactNode, ReactElement } from 'react'
+import { type ReactNode, type ReactElement } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { renderHook, RenderHookOptions, RenderHookResult } from '@testing-library/react'
 import { vi, beforeEach, afterEach, Mock } from 'vitest'
@@ -533,7 +533,7 @@ export function cleanupHookTestEnvironment() {
       writable: true
     })
   } else {
-    delete (window as Window & { api?: unknown }).api
+    delete (window as unknown as { api?: unknown }).api
   }
 }
 

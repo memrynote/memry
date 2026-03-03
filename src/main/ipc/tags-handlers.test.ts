@@ -29,7 +29,8 @@ vi.mock('electron', () => ({
 }))
 
 vi.mock('../database', () => ({
-  getIndexDatabase: vi.fn()
+  getIndexDatabase: vi.fn(),
+  getDatabase: vi.fn()
 }))
 
 vi.mock('@shared/db/queries/notes', () => ({
@@ -37,16 +38,32 @@ vi.mock('@shared/db/queries/notes', () => ({
   pinNoteToTag: vi.fn(),
   unpinNoteFromTag: vi.fn(),
   renameTag: vi.fn(),
+  renameTagDefinition: vi.fn(),
   deleteTag: vi.fn(),
+  deleteTagDefinition: vi.fn(),
   removeTagFromNote: vi.fn(),
-  getTagDefinition: vi.fn(),
+  getOrCreateTag: vi.fn(),
   updateTagColor: vi.fn(),
-  getNoteTags: vi.fn()
+  getNoteTags: vi.fn(),
+  getNoteCacheById: vi.fn()
 }))
 
 import { registerTagsHandlers } from './tags-handlers'
-import { getIndexDatabase } from '../database'
+import { getIndexDatabase, getDatabase } from '../database'
 import * as notesQueries from '@shared/db/queries/notes'
+
+function createDbMock(options?: { allResult?: unknown[]; getResult?: unknown }) {
+  return {
+    select: vi.fn(() => ({
+      from: vi.fn(() => ({
+        where: vi.fn(() => ({
+          all: vi.fn(() => options?.allResult ?? []),
+          get: vi.fn(() => options?.getResult)
+        }))
+      }))
+    }))
+  }
+}
 
 describe('tags-handlers', () => {
   beforeEach(() => {
@@ -55,7 +72,8 @@ describe('tags-handlers', () => {
     handleCalls.length = 0
     removeHandlerCalls.length = 0
     mockSend.mockClear()
-    ;(getIndexDatabase as Mock).mockReturnValue({})
+    ;(getIndexDatabase as Mock).mockReturnValue(createDbMock())
+    ;(getDatabase as Mock).mockReturnValue(createDbMock())
   })
 
   afterEach(() => {
@@ -64,7 +82,7 @@ describe('tags-handlers', () => {
 
   it('lists notes by tag with pinned separation', async () => {
     registerTagsHandlers()
-    ;(notesQueries.getTagDefinition as Mock).mockReturnValue({ color: 'blue' })
+    ;(notesQueries.getOrCreateTag as Mock).mockReturnValue({ name: 'focus', color: 'blue' })
     ;(notesQueries.findNotesWithTagInfo as Mock).mockReturnValue([
       {
         id: 'note-1',
@@ -109,14 +127,18 @@ describe('tags-handlers', () => {
     registerTagsHandlers()
 
     await invokeHandler(TagsChannels.invoke.PIN_NOTE_TO_TAG, { noteId: 'note-1', tag: 'focus' })
-    expect(notesQueries.pinNoteToTag).toHaveBeenCalledWith({}, 'note-1', 'focus')
+    expect(notesQueries.pinNoteToTag).toHaveBeenCalledWith(expect.any(Object), 'note-1', 'focus')
     expect(mockSend).toHaveBeenCalledWith(
       TagsChannels.events.NOTES_CHANGED,
       expect.objectContaining({ action: 'pinned' })
     )
 
     await invokeHandler(TagsChannels.invoke.UNPIN_NOTE_FROM_TAG, { noteId: 'note-1', tag: 'focus' })
-    expect(notesQueries.unpinNoteFromTag).toHaveBeenCalledWith({}, 'note-1', 'focus')
+    expect(notesQueries.unpinNoteFromTag).toHaveBeenCalledWith(
+      expect.any(Object),
+      'note-1',
+      'focus'
+    )
     expect(mockSend).toHaveBeenCalledWith(
       TagsChannels.events.NOTES_CHANGED,
       expect.objectContaining({ action: 'unpinned' })
@@ -131,6 +153,7 @@ describe('tags-handlers', () => {
       newName: 'new'
     })
     expect(renameResult).toEqual({ success: true, affectedNotes: 3 })
+    expect(notesQueries.renameTagDefinition).toHaveBeenCalledWith(expect.any(Object), 'old', 'new')
     expect(mockSend).toHaveBeenCalledWith(
       TagsChannels.events.RENAMED,
       expect.objectContaining({ oldName: 'old', newName: 'new' })
@@ -142,11 +165,13 @@ describe('tags-handlers', () => {
       color: '#ff0000'
     })
     expect(colorResult).toEqual({ success: true })
-    expect(notesQueries.updateTagColor).toHaveBeenCalledWith({}, 'new', '#ff0000')
+    expect(notesQueries.getOrCreateTag).toHaveBeenCalledWith(expect.any(Object), 'new')
+    expect(notesQueries.updateTagColor).toHaveBeenCalledWith(expect.any(Object), 'new', '#ff0000')
     expect(mockSend).toHaveBeenCalledWith('notes:tags-changed', {})
     ;(notesQueries.deleteTag as Mock).mockReturnValue(5)
     const deleteResult = await invokeHandler(TagsChannels.invoke.DELETE_TAG, 'new')
     expect(deleteResult).toEqual({ success: true, affectedNotes: 5 })
+    expect(notesQueries.deleteTagDefinition).toHaveBeenCalledWith(expect.any(Object), 'new')
     expect(mockSend).toHaveBeenCalledWith(
       TagsChannels.events.DELETED,
       expect.objectContaining({ tag: 'new', affectedNotes: 5 })
@@ -163,7 +188,11 @@ describe('tags-handlers', () => {
     })
 
     expect(result).toEqual({ success: true })
-    expect(notesQueries.removeTagFromNote).toHaveBeenCalledWith({}, 'note-1', 'focus')
+    expect(notesQueries.removeTagFromNote).toHaveBeenCalledWith(
+      expect.any(Object),
+      'note-1',
+      'focus'
+    )
     expect(mockSend).toHaveBeenCalledWith(
       TagsChannels.events.NOTES_CHANGED,
       expect.objectContaining({ action: 'removed', tag: 'focus', noteId: 'note-1' })

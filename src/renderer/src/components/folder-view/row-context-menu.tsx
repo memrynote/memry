@@ -24,6 +24,9 @@ import {
 } from 'lucide-react'
 import type { NoteWithProperties } from '@shared/contracts/folder-view-api'
 import { notesService } from '@/services/notes-service'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('Component:RowContextMenu')
 
 interface RowContextMenuProps {
   /** Note data for the row */
@@ -76,7 +79,7 @@ export function RowContextMenu({
     try {
       await notesService.openExternal(note.id)
     } catch (err) {
-      console.error('Failed to open in external editor:', err)
+      log.error('Failed to open in external editor', err)
     }
   }
 
@@ -84,7 +87,7 @@ export function RowContextMenu({
     try {
       await notesService.revealInFinder(note.id)
     } catch (err) {
-      console.error('Failed to reveal in Finder:', err)
+      log.error('Failed to reveal in Finder', err)
     }
   }
 
@@ -106,7 +109,7 @@ export function RowContextMenu({
       const link = `memry://note/${note.id}`
       await navigator.clipboard.writeText(link)
     } catch (err) {
-      console.error('Failed to copy link:', err)
+      log.error('Failed to copy link', err)
     }
   }
 

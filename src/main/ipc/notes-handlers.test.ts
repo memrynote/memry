@@ -740,37 +740,12 @@ describe('notes-handlers', () => {
     })
   })
 
-  describe('Properties handlers', () => {
+  describe('Property definitions handlers', () => {
     beforeEach(() => {
       registerNotesHandlers()
     })
 
-    it('GET_PROPERTIES should get note properties', async () => {
-      const mockProps = [
-        { name: 'status', value: 'active' },
-        { name: 'priority', value: 1 }
-      ]
-      ;(noteQueries.getNoteProperties as Mock).mockReturnValue(mockProps)
-
-      const result = await invokeHandler(NotesChannels.invoke.GET_PROPERTIES, 'note123')
-
-      expect(result).toEqual(mockProps)
-    })
-
-    it('SET_PROPERTIES should set note properties', async () => {
-      ;(notesVault.updateNote as Mock).mockResolvedValue({ id: 'note123' })
-
-      const result = await invokeHandler(NotesChannels.invoke.SET_PROPERTIES, {
-        noteId: 'note123',
-        properties: { status: 'completed' }
-      })
-
-      expect(result).toEqual({ success: true })
-      expect(notesVault.updateNote).toHaveBeenCalledWith({
-        id: 'note123',
-        properties: { status: 'completed' }
-      })
-    })
+    // Note: GET_PROPERTIES and SET_PROPERTIES moved to properties-handlers.ts
 
     it('GET_PROPERTY_DEFINITIONS should get all definitions', async () => {
       const mockDefs = [

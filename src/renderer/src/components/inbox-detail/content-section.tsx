@@ -4,6 +4,7 @@
  */
 
 import { useRef, useState } from 'react'
+import { extractErrorMessage } from '@/lib/ipc-error'
 import {
   Globe,
   Image,
@@ -35,6 +36,9 @@ import type {
   ImageMetadata,
   VoiceMetadata
 } from '@/types'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('Component:ContentSection')
 
 // Content section can work with either full or list item types
 type ContentItem = InboxItem | InboxItemListItem
@@ -384,8 +388,8 @@ const VoicePreview = ({
       try {
         await audioRef.current.play()
       } catch (err) {
-        console.error('[VoicePreview] Play error:', err)
-        setAudioError(err instanceof Error ? err.message : 'Failed to play audio')
+        log.error('Play error', err)
+        setAudioError(extractErrorMessage(err, 'Failed to play audio'))
       }
     }
   }
@@ -393,7 +397,7 @@ const VoicePreview = ({
   const handleAudioError = (e: React.SyntheticEvent<HTMLAudioElement>): void => {
     const audio = e.currentTarget
     const error = audio.error
-    console.error('[VoicePreview] Audio error:', error?.code, error?.message)
+    log.error('Audio error', error?.code, error?.message)
     setAudioError(error?.message || 'Failed to load audio')
   }
 
@@ -646,12 +650,7 @@ const VideoPreview = ({ item }: VideoPreviewProps): React.JSX.Element => {
     <div className="space-y-4">
       {videoUrl ? (
         <div className="relative overflow-hidden rounded-lg bg-black">
-          <video
-            src={videoUrl}
-            controls
-            className="w-full max-h-[400px]"
-            preload="metadata"
-          >
+          <video src={videoUrl} controls className="w-full max-h-[400px]" preload="metadata">
             Your browser does not support the video tag.
           </video>
         </div>

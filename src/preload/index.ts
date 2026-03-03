@@ -1,4 +1,4 @@
-import { contextBridge, ipcRenderer } from 'electron'
+import { contextBridge, ipcRenderer, webUtils } from 'electron'
 import { electronAPI } from '@electron-toolkit/preload'
 
 // Import channel constants from shared (single source of truth)
@@ -15,41 +15,80 @@ import {
   TagsChannels,
   InboxChannels,
   ReminderChannels,
-  FolderViewChannels
+  FolderViewChannels,
+  PropertiesChannels
 } from '@shared/ipc-channels'
+import { SYNC_CHANNELS, SYNC_EVENTS } from '@shared/contracts/ipc-sync'
+import type {
+  SyncStatusChangedEvent,
+  ItemSyncedEvent,
+  ConflictDetectedEvent,
+  LinkingRequestEvent,
+  LinkingApprovedEvent,
+  LinkingFinalizedEvent,
+  UploadProgressEvent,
+  DownloadProgressEvent,
+  InitialSyncProgressEvent,
+  QueueClearedEvent,
+  SyncPausedEvent,
+  SyncResumedEvent,
+  KeyRotationProgressEvent,
+  SessionExpiredEvent,
+  OtpDetectedEvent,
+  OAuthCallbackEvent,
+  OAuthErrorEvent,
+  ClockSkewWarningEvent,
+  DeviceRevokedEvent,
+  SecurityWarningEvent,
+  CertificatePinFailedEvent
+} from '@shared/contracts/ipc-sync'
+import type {
+  MainIpcInvokeChannel,
+  MainIpcInvokeArgs,
+  MainIpcInvokeResult
+} from '../main/ipc/generated-ipc-invoke-map'
+
+function invoke<C extends MainIpcInvokeChannel>(
+  channel: C,
+  ...args: MainIpcInvokeArgs<C>
+): Promise<MainIpcInvokeResult<C>> {
+  return ipcRenderer.invoke(channel, ...args) as Promise<MainIpcInvokeResult<C>>
+}
 
 // Custom APIs for renderer
-const api = {
+export const api = {
   // Window controls for custom traffic lights
   windowMinimize: (): void => ipcRenderer.send('window-minimize'),
   windowMaximize: (): void => ipcRenderer.send('window-maximize'),
   windowClose: (): void => ipcRenderer.send('window-close'),
 
+  // File drop utility — resolves real filesystem paths from dropped File objects
+  // (File.path is empty with contextIsolation; webUtils.getPathForFile is the replacement)
+  getFileDropPaths: (files: File[]): string[] => files.map((f) => webUtils.getPathForFile(f)),
+
   // Vault API
   vault: {
-    select: (path?: string) => ipcRenderer.invoke(VaultChannels.invoke.SELECT, { path }),
-    create: (path: string, name: string) =>
-      ipcRenderer.invoke(VaultChannels.invoke.CREATE, { path, name }),
-    getAll: () => ipcRenderer.invoke(VaultChannels.invoke.GET_ALL),
-    getStatus: () => ipcRenderer.invoke(VaultChannels.invoke.GET_STATUS),
-    getConfig: () => ipcRenderer.invoke(VaultChannels.invoke.GET_CONFIG),
+    select: (path?: string) => invoke(VaultChannels.invoke.SELECT, { path }),
+    create: (path: string, _name: string) => invoke(VaultChannels.invoke.SELECT, { path }),
+    getAll: () => invoke(VaultChannels.invoke.GET_ALL),
+    getStatus: () => invoke(VaultChannels.invoke.GET_STATUS),
+    getConfig: () => invoke(VaultChannels.invoke.GET_CONFIG),
     updateConfig: (config: Record<string, unknown>) =>
-      ipcRenderer.invoke(VaultChannels.invoke.UPDATE_CONFIG, config),
-    close: () => ipcRenderer.invoke(VaultChannels.invoke.CLOSE),
-    switch: (vaultPath: string) => ipcRenderer.invoke(VaultChannels.invoke.SWITCH, vaultPath),
-    remove: (vaultPath: string) => ipcRenderer.invoke(VaultChannels.invoke.REMOVE, vaultPath),
-    reindex: () => ipcRenderer.invoke(VaultChannels.invoke.REINDEX)
+      invoke(VaultChannels.invoke.UPDATE_CONFIG, config),
+    close: () => invoke(VaultChannels.invoke.CLOSE),
+    switch: (vaultPath: string) => invoke(VaultChannels.invoke.SWITCH, vaultPath),
+    remove: (vaultPath: string) => invoke(VaultChannels.invoke.REMOVE, vaultPath),
+    reindex: () => invoke(VaultChannels.invoke.REINDEX)
   },
 
   // Notes API
   notes: {
     create: (input: { title: string; content?: string; folder?: string; tags?: string[] }) =>
-      ipcRenderer.invoke(NotesChannels.invoke.CREATE, input),
-    get: (id: string) => ipcRenderer.invoke(NotesChannels.invoke.GET, id),
-    getByPath: (path: string) => ipcRenderer.invoke(NotesChannels.invoke.GET_BY_PATH, path),
-    getFile: (id: string) => ipcRenderer.invoke(NotesChannels.invoke.GET_FILE, id),
-    resolveByTitle: (title: string) =>
-      ipcRenderer.invoke(NotesChannels.invoke.RESOLVE_BY_TITLE, title),
+      invoke(NotesChannels.invoke.CREATE, input),
+    get: (id: string) => invoke(NotesChannels.invoke.GET, id),
+    getByPath: (path: string) => invoke(NotesChannels.invoke.GET_BY_PATH, path),
+    getFile: (id: string) => invoke(NotesChannels.invoke.GET_FILE, id),
+    resolveByTitle: (title: string) => invoke(NotesChannels.invoke.RESOLVE_BY_TITLE, title),
     update: (input: {
       id: string
       title?: string
@@ -57,12 +96,10 @@ const api = {
       tags?: string[]
       frontmatter?: Record<string, unknown>
       emoji?: string | null // T028: Emoji support
-    }) => ipcRenderer.invoke(NotesChannels.invoke.UPDATE, input),
-    rename: (id: string, newTitle: string) =>
-      ipcRenderer.invoke(NotesChannels.invoke.RENAME, { id, newTitle }),
-    move: (id: string, newFolder: string) =>
-      ipcRenderer.invoke(NotesChannels.invoke.MOVE, { id, newFolder }),
-    delete: (id: string) => ipcRenderer.invoke(NotesChannels.invoke.DELETE, id),
+    }) => invoke(NotesChannels.invoke.UPDATE, input),
+    rename: (id: string, newTitle: string) => invoke(NotesChannels.invoke.RENAME, { id, newTitle }),
+    move: (id: string, newFolder: string) => invoke(NotesChannels.invoke.MOVE, { id, newFolder }),
+    delete: (id: string) => invoke(NotesChannels.invoke.DELETE, id),
     list: (options?: {
       folder?: string
       tags?: string[]
@@ -70,38 +107,43 @@ const api = {
       sortOrder?: 'asc' | 'desc'
       limit?: number
       offset?: number
-    }) => ipcRenderer.invoke(NotesChannels.invoke.LIST, options ?? {}),
-    getTags: () => ipcRenderer.invoke(NotesChannels.invoke.GET_TAGS),
-    getLinks: (id: string) => ipcRenderer.invoke(NotesChannels.invoke.GET_LINKS, id),
-    getFolders: () => ipcRenderer.invoke(NotesChannels.invoke.GET_FOLDERS),
-    createFolder: (path: string) => ipcRenderer.invoke(NotesChannels.invoke.CREATE_FOLDER, path),
+    }) => invoke(NotesChannels.invoke.LIST, options ?? {}),
+    getTags: () => invoke(NotesChannels.invoke.GET_TAGS),
+    getLinks: (id: string) => invoke(NotesChannels.invoke.GET_LINKS, id),
+    getFolders: () => invoke(NotesChannels.invoke.GET_FOLDERS),
+    createFolder: (path: string) => invoke(NotesChannels.invoke.CREATE_FOLDER, path),
     renameFolder: (oldPath: string, newPath: string) =>
-      ipcRenderer.invoke(NotesChannels.invoke.RENAME_FOLDER, { oldPath, newPath }),
-    deleteFolder: (path: string) => ipcRenderer.invoke(NotesChannels.invoke.DELETE_FOLDER, path),
-    exists: (titleOrPath: string) => ipcRenderer.invoke(NotesChannels.invoke.EXISTS, titleOrPath),
-    openExternal: (id: string) => ipcRenderer.invoke(NotesChannels.invoke.OPEN_EXTERNAL, id),
-    revealInFinder: (id: string) => ipcRenderer.invoke(NotesChannels.invoke.REVEAL_IN_FINDER, id),
+      invoke(NotesChannels.invoke.RENAME_FOLDER, { oldPath, newPath }),
+    deleteFolder: (path: string) => invoke(NotesChannels.invoke.DELETE_FOLDER, path),
+    exists: (titleOrPath: string) => invoke(NotesChannels.invoke.EXISTS, titleOrPath),
+    openExternal: (id: string) => invoke(NotesChannels.invoke.OPEN_EXTERNAL, id),
+    revealInFinder: (id: string) => invoke(NotesChannels.invoke.REVEAL_IN_FINDER, id),
 
-    // T019: Properties API
-    getProperties: (noteId: string) =>
-      ipcRenderer.invoke(NotesChannels.invoke.GET_PROPERTIES, noteId),
-    setProperties: (noteId: string, properties: Record<string, unknown>) =>
-      ipcRenderer.invoke(NotesChannels.invoke.SET_PROPERTIES, { noteId, properties }),
-    getPropertyDefinitions: () => ipcRenderer.invoke(NotesChannels.invoke.GET_PROPERTY_DEFINITIONS),
+    // Property Definitions API (T017-T018)
+    // Note: get/set properties moved to unified properties API
+    getPropertyDefinitions: () => invoke(NotesChannels.invoke.GET_PROPERTY_DEFINITIONS),
     createPropertyDefinition: (input: {
       name: string
       type: string
       options?: string[]
       defaultValue?: unknown
       color?: string
-    }) => ipcRenderer.invoke(NotesChannels.invoke.CREATE_PROPERTY_DEFINITION, input),
+    }) =>
+      invoke(
+        NotesChannels.invoke.CREATE_PROPERTY_DEFINITION,
+        input as MainIpcInvokeArgs<typeof NotesChannels.invoke.CREATE_PROPERTY_DEFINITION>[0]
+      ),
     updatePropertyDefinition: (input: {
       name: string
       type?: string
       options?: string[]
       defaultValue?: unknown
       color?: string
-    }) => ipcRenderer.invoke(NotesChannels.invoke.UPDATE_PROPERTY_DEFINITION, input),
+    }) =>
+      invoke(
+        NotesChannels.invoke.UPDATE_PROPERTY_DEFINITION,
+        input as MainIpcInvokeArgs<typeof NotesChannels.invoke.UPDATE_PROPERTY_DEFINITION>[0]
+      ),
 
     // T070: Attachments API
     uploadAttachment: (noteId: string, file: File) => {
@@ -109,12 +151,11 @@ const api = {
         const reader = new FileReader()
         reader.onload = () => {
           const arrayBuffer = reader.result as ArrayBuffer
-          ipcRenderer
-            .invoke(NotesChannels.invoke.UPLOAD_ATTACHMENT, {
-              noteId,
-              filename: file.name,
-              data: Array.from(new Uint8Array(arrayBuffer))
-            })
+          invoke(NotesChannels.invoke.UPLOAD_ATTACHMENT, {
+            noteId,
+            filename: file.name,
+            data: Array.from(new Uint8Array(arrayBuffer))
+          })
             .then(resolve)
             .catch(reject)
         }
@@ -122,51 +163,65 @@ const api = {
         reader.readAsArrayBuffer(file)
       })
     },
-    listAttachments: (noteId: string) =>
-      ipcRenderer.invoke(NotesChannels.invoke.LIST_ATTACHMENTS, noteId),
+    listAttachments: (noteId: string) => invoke(NotesChannels.invoke.LIST_ATTACHMENTS, noteId),
     deleteAttachment: (noteId: string, filename: string) =>
-      ipcRenderer.invoke(NotesChannels.invoke.DELETE_ATTACHMENT, { noteId, filename }),
+      invoke(NotesChannels.invoke.DELETE_ATTACHMENT, { noteId, filename }),
 
     // Folder config API (T096.5)
     getFolderConfig: (folderPath: string) =>
-      ipcRenderer.invoke(NotesChannels.invoke.GET_FOLDER_CONFIG, folderPath),
+      invoke(NotesChannels.invoke.GET_FOLDER_CONFIG, folderPath),
     setFolderConfig: (folderPath: string, config: { template?: string; inherit?: boolean }) =>
-      ipcRenderer.invoke(NotesChannels.invoke.SET_FOLDER_CONFIG, { folderPath, config }),
+      invoke(NotesChannels.invoke.SET_FOLDER_CONFIG, { folderPath, config }),
     getFolderTemplate: (folderPath: string) =>
-      ipcRenderer.invoke(NotesChannels.invoke.GET_FOLDER_TEMPLATE, folderPath),
+      invoke(NotesChannels.invoke.GET_FOLDER_TEMPLATE, folderPath),
 
     // Export API (T106, T108)
     exportPdf: (input: { noteId: string; includeMetadata?: boolean; pageSize?: string }) =>
-      ipcRenderer.invoke(NotesChannels.invoke.EXPORT_PDF, input),
+      invoke(
+        NotesChannels.invoke.EXPORT_PDF,
+        input as MainIpcInvokeArgs<typeof NotesChannels.invoke.EXPORT_PDF>[0]
+      ),
     exportHtml: (input: { noteId: string; includeMetadata?: boolean }) =>
-      ipcRenderer.invoke(NotesChannels.invoke.EXPORT_HTML, input),
+      invoke(NotesChannels.invoke.EXPORT_HTML, input),
 
     // Version History API (T114)
-    getVersions: (noteId: string) => ipcRenderer.invoke(NotesChannels.invoke.GET_VERSIONS, noteId),
-    getVersion: (snapshotId: string) =>
-      ipcRenderer.invoke(NotesChannels.invoke.GET_VERSION, snapshotId),
+    getVersions: (noteId: string) => invoke(NotesChannels.invoke.GET_VERSIONS, noteId),
+    getVersion: (snapshotId: string) => invoke(NotesChannels.invoke.GET_VERSION, snapshotId),
     restoreVersion: (snapshotId: string) =>
-      ipcRenderer.invoke(NotesChannels.invoke.RESTORE_VERSION, snapshotId),
-    deleteVersion: (snapshotId: string) =>
-      ipcRenderer.invoke(NotesChannels.invoke.DELETE_VERSION, snapshotId),
+      invoke(NotesChannels.invoke.RESTORE_VERSION, snapshotId),
+    deleteVersion: (snapshotId: string) => invoke(NotesChannels.invoke.DELETE_VERSION, snapshotId),
 
     // Position/Reorder API (drag-drop sidebar reordering)
     getPositions: (folderPath: string) =>
-      ipcRenderer.invoke(NotesChannels.invoke.GET_POSITIONS, { folderPath }),
-    getAllPositions: () => ipcRenderer.invoke(NotesChannels.invoke.GET_ALL_POSITIONS),
+      invoke(NotesChannels.invoke.GET_POSITIONS, { folderPath }),
+    getAllPositions: () => invoke(NotesChannels.invoke.GET_ALL_POSITIONS),
     reorder: (folderPath: string, notePaths: string[]) =>
-      ipcRenderer.invoke(NotesChannels.invoke.REORDER, { folderPath, notePaths }),
+      invoke(NotesChannels.invoke.REORDER, { folderPath, notePaths }),
 
     // File import API
     importFiles: (sourcePaths: string[], targetFolder?: string) =>
-      ipcRenderer.invoke(NotesChannels.invoke.IMPORT_FILES, { sourcePaths, targetFolder }),
-    showImportDialog: () => ipcRenderer.invoke(NotesChannels.invoke.SHOW_IMPORT_DIALOG)
+      invoke(NotesChannels.invoke.IMPORT_FILES, { sourcePaths, targetFolder }),
+    showImportDialog: () => invoke(NotesChannels.invoke.SHOW_IMPORT_DIALOG),
+
+    // Local-only API
+    setLocalOnly: (id: string, localOnly: boolean) =>
+      invoke(NotesChannels.invoke.SET_LOCAL_ONLY, { id, localOnly }),
+    getLocalOnlyCount: () => invoke(NotesChannels.invoke.GET_LOCAL_ONLY_COUNT)
+  },
+
+  // Unified Properties API (works with notes and journal entries)
+  properties: {
+    get: (entityId: string) => invoke(PropertiesChannels.invoke.GET, { entityId }),
+    set: (entityId: string, properties: Record<string, unknown>) =>
+      invoke(PropertiesChannels.invoke.SET, { entityId, properties }),
+    rename: (entityId: string, oldName: string, newName: string) =>
+      invoke(PropertiesChannels.invoke.RENAME, { entityId, oldName, newName })
   },
 
   // Templates API
   templates: {
-    list: () => ipcRenderer.invoke(TemplatesChannels.invoke.LIST),
-    get: (id: string) => ipcRenderer.invoke(TemplatesChannels.invoke.GET, id),
+    list: () => invoke(TemplatesChannels.invoke.LIST),
+    get: (id: string) => invoke(TemplatesChannels.invoke.GET, id),
     create: (input: {
       name: string
       description?: string
@@ -179,7 +234,11 @@ const api = {
         options?: string[]
       }>
       content?: string
-    }) => ipcRenderer.invoke(TemplatesChannels.invoke.CREATE, input),
+    }) =>
+      invoke(
+        TemplatesChannels.invoke.CREATE,
+        input as MainIpcInvokeArgs<typeof TemplatesChannels.invoke.CREATE>[0]
+      ),
     update: (input: {
       id: string
       name?: string
@@ -193,10 +252,14 @@ const api = {
         options?: string[]
       }>
       content?: string
-    }) => ipcRenderer.invoke(TemplatesChannels.invoke.UPDATE, input),
-    delete: (id: string) => ipcRenderer.invoke(TemplatesChannels.invoke.DELETE, id),
+    }) =>
+      invoke(
+        TemplatesChannels.invoke.UPDATE,
+        input as MainIpcInvokeArgs<typeof TemplatesChannels.invoke.UPDATE>[0]
+      ),
+    delete: (id: string) => invoke(TemplatesChannels.invoke.DELETE, id),
     duplicate: (id: string, newName: string) =>
-      ipcRenderer.invoke(TemplatesChannels.invoke.DUPLICATE, { id, newName })
+      invoke(TemplatesChannels.invoke.DUPLICATE, { id, newName })
   },
 
   // Search API
@@ -213,21 +276,20 @@ const api = {
       sortBy?: 'relevance' | 'modified' | 'created'
       limit?: number
       offset?: number
-    }) => ipcRenderer.invoke(SearchChannels.invoke.SEARCH, input),
+    }) => invoke(SearchChannels.invoke.SEARCH, input),
     quick: (input: { query: string; limit?: number }) =>
-      ipcRenderer.invoke(SearchChannels.invoke.QUICK_SEARCH, input),
+      invoke(SearchChannels.invoke.QUICK_SEARCH, input),
     suggestions: (input: { prefix: string; limit?: number }) =>
-      ipcRenderer.invoke(SearchChannels.invoke.SUGGESTIONS, input),
-    getRecent: () => ipcRenderer.invoke(SearchChannels.invoke.GET_RECENT),
-    clearRecent: () => ipcRenderer.invoke(SearchChannels.invoke.CLEAR_RECENT),
-    addRecent: (query: string) => ipcRenderer.invoke(SearchChannels.invoke.ADD_RECENT, query),
-    getStats: () => ipcRenderer.invoke(SearchChannels.invoke.GET_STATS),
-    rebuildIndex: () => ipcRenderer.invoke(SearchChannels.invoke.REBUILD_INDEX),
+      invoke(SearchChannels.invoke.SUGGESTIONS, input),
+    getRecent: () => invoke(SearchChannels.invoke.GET_RECENT),
+    clearRecent: () => invoke(SearchChannels.invoke.CLEAR_RECENT),
+    addRecent: (query: string) => invoke(SearchChannels.invoke.ADD_RECENT, query),
+    getStats: () => invoke(SearchChannels.invoke.GET_STATS),
+    rebuildIndex: () => invoke(SearchChannels.invoke.REBUILD_INDEX),
     searchNotes: (query: string, options?: { tags?: string[]; limit?: number }) =>
-      ipcRenderer.invoke(SearchChannels.invoke.SEARCH_NOTES, { query, ...options }),
-    findByTag: (tag: string) => ipcRenderer.invoke(SearchChannels.invoke.FIND_BY_TAG, tag),
-    findBacklinks: (noteId: string) =>
-      ipcRenderer.invoke(SearchChannels.invoke.FIND_BACKLINKS, noteId),
+      invoke(SearchChannels.invoke.SEARCH_NOTES, { query, ...options }),
+    findByTag: (tag: string) => invoke(SearchChannels.invoke.FIND_BY_TAG, tag),
+    findBacklinks: (noteId: string) => invoke(SearchChannels.invoke.FIND_BACKLINKS, noteId),
     advancedSearch: (input: {
       text?: string
       operators?: {
@@ -244,7 +306,7 @@ const api = {
       dateTo?: string
       limit?: number
       offset?: number
-    }) => ipcRenderer.invoke(SearchChannels.invoke.ADVANCED_SEARCH, input)
+    }) => invoke(SearchChannels.invoke.ADVANCED_SEARCH, input)
   },
 
   // Tasks API
@@ -264,8 +326,8 @@ const api = {
       linkedNoteIds?: string[]
       sourceNoteId?: string | null
       position?: number
-    }) => ipcRenderer.invoke(TasksChannels.invoke.CREATE, input),
-    get: (id: string) => ipcRenderer.invoke(TasksChannels.invoke.GET, id),
+    }) => invoke(TasksChannels.invoke.CREATE, input),
+    get: (id: string) => invoke(TasksChannels.invoke.GET, id),
     update: (input: {
       id: string
       title?: string
@@ -279,8 +341,8 @@ const api = {
       startDate?: string | null
       tags?: string[]
       linkedNoteIds?: string[]
-    }) => ipcRenderer.invoke(TasksChannels.invoke.UPDATE, input),
-    delete: (id: string) => ipcRenderer.invoke(TasksChannels.invoke.DELETE, id),
+    }) => invoke(TasksChannels.invoke.UPDATE, input),
+    delete: (id: string) => invoke(TasksChannels.invoke.DELETE, id),
     list: (options?: {
       projectId?: string
       statusId?: string | null
@@ -295,32 +357,30 @@ const api = {
       sortOrder?: 'asc' | 'desc'
       limit?: number
       offset?: number
-    }) => ipcRenderer.invoke(TasksChannels.invoke.LIST, options ?? {}),
+    }) => invoke(TasksChannels.invoke.LIST, options ?? {}),
 
     // Task actions
     complete: (input: { id: string; completedAt?: string }) =>
-      ipcRenderer.invoke(TasksChannels.invoke.COMPLETE, input),
-    uncomplete: (id: string) => ipcRenderer.invoke(TasksChannels.invoke.UNCOMPLETE, id),
-    archive: (id: string) => ipcRenderer.invoke(TasksChannels.invoke.ARCHIVE, id),
-    unarchive: (id: string) => ipcRenderer.invoke(TasksChannels.invoke.UNARCHIVE, id),
+      invoke(TasksChannels.invoke.COMPLETE, input),
+    uncomplete: (id: string) => invoke(TasksChannels.invoke.UNCOMPLETE, id),
+    archive: (id: string) => invoke(TasksChannels.invoke.ARCHIVE, id),
+    unarchive: (id: string) => invoke(TasksChannels.invoke.UNARCHIVE, id),
     move: (input: {
       taskId: string
       targetProjectId?: string
       targetStatusId?: string | null
       targetParentId?: string | null
       position: number
-    }) => ipcRenderer.invoke(TasksChannels.invoke.MOVE, input),
+    }) => invoke(TasksChannels.invoke.MOVE, input),
     reorder: (taskIds: string[], positions: number[]) =>
-      ipcRenderer.invoke(TasksChannels.invoke.REORDER, { taskIds, positions }),
-    duplicate: (id: string) => ipcRenderer.invoke(TasksChannels.invoke.DUPLICATE, id),
+      invoke(TasksChannels.invoke.REORDER, { taskIds, positions }),
+    duplicate: (id: string) => invoke(TasksChannels.invoke.DUPLICATE, id),
 
     // Subtask operations
-    getSubtasks: (parentId: string) =>
-      ipcRenderer.invoke(TasksChannels.invoke.GET_SUBTASKS, parentId),
+    getSubtasks: (parentId: string) => invoke(TasksChannels.invoke.GET_SUBTASKS, parentId),
     convertToSubtask: (taskId: string, parentId: string) =>
-      ipcRenderer.invoke(TasksChannels.invoke.CONVERT_TO_SUBTASK, { taskId, parentId }),
-    convertToTask: (taskId: string) =>
-      ipcRenderer.invoke(TasksChannels.invoke.CONVERT_TO_TASK, taskId),
+      invoke(TasksChannels.invoke.CONVERT_TO_SUBTASK, { taskId, parentId }),
+    convertToTask: (taskId: string) => invoke(TasksChannels.invoke.CONVERT_TO_TASK, taskId),
 
     // Project operations
     createProject: (input: {
@@ -328,138 +388,161 @@ const api = {
       description?: string | null
       color?: string
       icon?: string | null
-    }) => ipcRenderer.invoke(TasksChannels.invoke.PROJECT_CREATE, input),
-    getProject: (id: string) => ipcRenderer.invoke(TasksChannels.invoke.PROJECT_GET, id),
+      statuses?: Array<{
+        name: string
+        color: string
+        type: string
+        order: number
+      }>
+    }) =>
+      invoke(
+        TasksChannels.invoke.PROJECT_CREATE,
+        input as MainIpcInvokeArgs<typeof TasksChannels.invoke.PROJECT_CREATE>[0]
+      ),
+    getProject: (id: string) => invoke(TasksChannels.invoke.PROJECT_GET, id),
     updateProject: (input: {
       id: string
       name?: string
       description?: string | null
       color?: string
       icon?: string | null
-    }) => ipcRenderer.invoke(TasksChannels.invoke.PROJECT_UPDATE, input),
-    deleteProject: (id: string) => ipcRenderer.invoke(TasksChannels.invoke.PROJECT_DELETE, id),
-    listProjects: () => ipcRenderer.invoke(TasksChannels.invoke.PROJECT_LIST),
-    archiveProject: (id: string) => ipcRenderer.invoke(TasksChannels.invoke.PROJECT_ARCHIVE, id),
+      statuses?: Array<{
+        id?: string
+        name: string
+        color: string
+        type: string
+        order: number
+      }>
+    }) =>
+      invoke(
+        TasksChannels.invoke.PROJECT_UPDATE,
+        input as MainIpcInvokeArgs<typeof TasksChannels.invoke.PROJECT_UPDATE>[0]
+      ),
+    deleteProject: (id: string) => invoke(TasksChannels.invoke.PROJECT_DELETE, id),
+    listProjects: () => invoke(TasksChannels.invoke.PROJECT_LIST),
+    archiveProject: (id: string) => invoke(TasksChannels.invoke.PROJECT_ARCHIVE, id),
     reorderProjects: (projectIds: string[], positions: number[]) =>
-      ipcRenderer.invoke(TasksChannels.invoke.PROJECT_REORDER, { projectIds, positions }),
+      invoke(TasksChannels.invoke.PROJECT_REORDER, { projectIds, positions }),
 
     // Status operations
     createStatus: (input: { projectId: string; name: string; color?: string; isDone?: boolean }) =>
-      ipcRenderer.invoke(TasksChannels.invoke.STATUS_CREATE, input),
+      invoke(TasksChannels.invoke.STATUS_CREATE, input),
     updateStatus: (id: string, updates: Record<string, unknown>) =>
-      ipcRenderer.invoke(TasksChannels.invoke.STATUS_UPDATE, { id, ...updates }),
-    deleteStatus: (id: string) => ipcRenderer.invoke(TasksChannels.invoke.STATUS_DELETE, id),
+      invoke(TasksChannels.invoke.STATUS_UPDATE, { id, ...updates }),
+    deleteStatus: (id: string) => invoke(TasksChannels.invoke.STATUS_DELETE, id),
     reorderStatuses: (statusIds: string[], positions: number[]) =>
-      ipcRenderer.invoke(TasksChannels.invoke.STATUS_REORDER, { statusIds, positions }),
-    listStatuses: (projectId: string) =>
-      ipcRenderer.invoke(TasksChannels.invoke.STATUS_LIST, projectId),
+      invoke(TasksChannels.invoke.STATUS_REORDER, { statusIds, positions }),
+    listStatuses: (projectId: string) => invoke(TasksChannels.invoke.STATUS_LIST, projectId),
 
     // Tag operations
-    getTags: () => ipcRenderer.invoke(TasksChannels.invoke.GET_TAGS),
+    getTags: () => invoke(TasksChannels.invoke.GET_TAGS),
 
     // Bulk operations
-    bulkComplete: (ids: string[]) =>
-      ipcRenderer.invoke(TasksChannels.invoke.BULK_COMPLETE, { ids }),
-    bulkDelete: (ids: string[]) => ipcRenderer.invoke(TasksChannels.invoke.BULK_DELETE, { ids }),
+    bulkComplete: (ids: string[]) => invoke(TasksChannels.invoke.BULK_COMPLETE, { ids }),
+    bulkDelete: (ids: string[]) => invoke(TasksChannels.invoke.BULK_DELETE, { ids }),
     bulkMove: (ids: string[], projectId: string) =>
-      ipcRenderer.invoke(TasksChannels.invoke.BULK_MOVE, { ids, projectId }),
-    bulkArchive: (ids: string[]) => ipcRenderer.invoke(TasksChannels.invoke.BULK_ARCHIVE, { ids }),
+      invoke(TasksChannels.invoke.BULK_MOVE, { ids, projectId }),
+    bulkArchive: (ids: string[]) => invoke(TasksChannels.invoke.BULK_ARCHIVE, { ids }),
 
     // Stats and views
-    getStats: () => ipcRenderer.invoke(TasksChannels.invoke.GET_STATS),
-    getToday: () => ipcRenderer.invoke(TasksChannels.invoke.GET_TODAY),
-    getUpcoming: (days?: number) =>
-      ipcRenderer.invoke(TasksChannels.invoke.GET_UPCOMING, { days: days ?? 7 }),
-    getOverdue: () => ipcRenderer.invoke(TasksChannels.invoke.GET_OVERDUE),
+    getStats: () => invoke(TasksChannels.invoke.GET_STATS),
+    getToday: () => invoke(TasksChannels.invoke.GET_TODAY),
+    getUpcoming: (days?: number) => invoke(TasksChannels.invoke.GET_UPCOMING, { days: days ?? 7 }),
+    getOverdue: () => invoke(TasksChannels.invoke.GET_OVERDUE),
 
     // Note linking
-    getLinkedTasks: (noteId: string) =>
-      ipcRenderer.invoke(TasksChannels.invoke.GET_LINKED_TASKS, noteId),
+    getLinkedTasks: (noteId: string) => invoke(TasksChannels.invoke.GET_LINKED_TASKS, noteId),
 
     // Development/Testing
-    seedPerformanceTest: () => ipcRenderer.invoke('tasks:seed-performance-test'),
-    seedDemo: () => ipcRenderer.invoke('tasks:seed-demo')
+    seedPerformanceTest: () => invoke('tasks:seed-performance-test'),
+    seedDemo: () => invoke('tasks:seed-demo')
   },
 
   // Saved Filters API
   savedFilters: {
-    list: () => ipcRenderer.invoke(SavedFiltersChannels.invoke.LIST),
+    list: () => invoke(SavedFiltersChannels.invoke.LIST),
     create: (input: { name: string; config: unknown }) =>
-      ipcRenderer.invoke(SavedFiltersChannels.invoke.CREATE, input),
+      invoke(
+        SavedFiltersChannels.invoke.CREATE,
+        input as MainIpcInvokeArgs<typeof SavedFiltersChannels.invoke.CREATE>[0]
+      ),
     update: (input: { id: string; name?: string; config?: unknown; position?: number }) =>
-      ipcRenderer.invoke(SavedFiltersChannels.invoke.UPDATE, input),
-    delete: (id: string) => ipcRenderer.invoke(SavedFiltersChannels.invoke.DELETE, { id }),
+      invoke(
+        SavedFiltersChannels.invoke.UPDATE,
+        input as MainIpcInvokeArgs<typeof SavedFiltersChannels.invoke.UPDATE>[0]
+      ),
+    delete: (id: string) => invoke(SavedFiltersChannels.invoke.DELETE, { id }),
     reorder: (ids: string[], positions: number[]) =>
-      ipcRenderer.invoke(SavedFiltersChannels.invoke.REORDER, { ids, positions })
+      invoke(SavedFiltersChannels.invoke.REORDER, { ids, positions })
   },
 
   // Journal API
   journal: {
     // Entry CRUD
-    getEntry: (date: string) => ipcRenderer.invoke(JournalChannels.invoke.GET_ENTRY, { date }),
+    getEntry: (date: string) => invoke(JournalChannels.invoke.GET_ENTRY, { date }),
     createEntry: (input: { date: string; content?: string; tags?: string[] }) =>
-      ipcRenderer.invoke(JournalChannels.invoke.CREATE_ENTRY, input),
+      invoke(JournalChannels.invoke.CREATE_ENTRY, input),
     updateEntry: (input: { date: string; content?: string; tags?: string[] }) =>
-      ipcRenderer.invoke(JournalChannels.invoke.UPDATE_ENTRY, input),
-    deleteEntry: (date: string) =>
-      ipcRenderer.invoke(JournalChannels.invoke.DELETE_ENTRY, { date }),
+      invoke(JournalChannels.invoke.UPDATE_ENTRY, input),
+    deleteEntry: (date: string) => invoke(JournalChannels.invoke.DELETE_ENTRY, { date }),
 
     // Calendar & Views
-    getHeatmap: (year: number) => ipcRenderer.invoke(JournalChannels.invoke.GET_HEATMAP, { year }),
+    getHeatmap: (year: number) => invoke(JournalChannels.invoke.GET_HEATMAP, { year }),
     getMonthEntries: (year: number, month: number) =>
-      ipcRenderer.invoke(JournalChannels.invoke.GET_MONTH_ENTRIES, { year, month }),
-    getYearStats: (year: number) =>
-      ipcRenderer.invoke(JournalChannels.invoke.GET_YEAR_STATS, { year }),
+      invoke(JournalChannels.invoke.GET_MONTH_ENTRIES, { year, month }),
+    getYearStats: (year: number) => invoke(JournalChannels.invoke.GET_YEAR_STATS, { year }),
 
     // Context
-    getDayContext: (date: string) =>
-      ipcRenderer.invoke(JournalChannels.invoke.GET_DAY_CONTEXT, { date }),
+    getDayContext: (date: string) => invoke(JournalChannels.invoke.GET_DAY_CONTEXT, { date }),
 
     // Tags
-    getAllTags: () => ipcRenderer.invoke(JournalChannels.invoke.GET_ALL_TAGS),
+    getAllTags: () => invoke(JournalChannels.invoke.GET_ALL_TAGS),
 
     // Streak
-    getStreak: () => ipcRenderer.invoke(JournalChannels.invoke.GET_STREAK)
+    getStreak: () => invoke(JournalChannels.invoke.GET_STREAK)
   },
 
   // Settings API
   settings: {
-    get: (key: string) => ipcRenderer.invoke(SettingsChannels.invoke.GET, key),
-    set: (key: string, value: string) =>
-      ipcRenderer.invoke(SettingsChannels.invoke.SET, { key, value }),
-    getJournalSettings: () => ipcRenderer.invoke(SettingsChannels.invoke.GET_JOURNAL_SETTINGS),
-    setJournalSettings: (settings: { defaultTemplate?: string | null }) =>
-      ipcRenderer.invoke(SettingsChannels.invoke.SET_JOURNAL_SETTINGS, settings),
+    get: (key: string) => invoke(SettingsChannels.invoke.GET, key),
+    set: (key: string, value: string) => invoke(SettingsChannels.invoke.SET, { key, value }),
+    getJournalSettings: () => invoke(SettingsChannels.invoke.GET_JOURNAL_SETTINGS),
+    setJournalSettings: (settings: {
+      defaultTemplate?: string | null
+      showSchedule?: boolean
+      showTasks?: boolean
+      showAIConnections?: boolean
+      showStatsFooter?: boolean
+    }) => invoke(SettingsChannels.invoke.SET_JOURNAL_SETTINGS, settings),
     // AI Settings (simplified - no API key needed, uses local model)
-    getAISettings: () => ipcRenderer.invoke(SettingsChannels.invoke.GET_AI_SETTINGS),
+    getAISettings: () => invoke(SettingsChannels.invoke.GET_AI_SETTINGS),
     setAISettings: (settings: { enabled?: boolean }) =>
-      ipcRenderer.invoke(SettingsChannels.invoke.SET_AI_SETTINGS, settings),
-    getAIModelStatus: () => ipcRenderer.invoke(SettingsChannels.invoke.GET_AI_MODEL_STATUS),
-    loadAIModel: () => ipcRenderer.invoke(SettingsChannels.invoke.LOAD_AI_MODEL),
-    reindexEmbeddings: () => ipcRenderer.invoke(SettingsChannels.invoke.REINDEX_EMBEDDINGS),
+      invoke(SettingsChannels.invoke.SET_AI_SETTINGS, settings),
+    getAIModelStatus: () => invoke(SettingsChannels.invoke.GET_AI_MODEL_STATUS),
+    loadAIModel: () => invoke(SettingsChannels.invoke.LOAD_AI_MODEL),
+    reindexEmbeddings: () => invoke(SettingsChannels.invoke.REINDEX_EMBEDDINGS),
     // Tab Settings
-    getTabSettings: () => ipcRenderer.invoke(SettingsChannels.invoke.GET_TAB_SETTINGS),
+    getTabSettings: () => invoke(SettingsChannels.invoke.GET_TAB_SETTINGS),
     setTabSettings: (settings: {
       previewMode?: boolean
       restoreSessionOnStart?: boolean
       tabCloseButton?: 'always' | 'hover' | 'active'
-    }) => ipcRenderer.invoke(SettingsChannels.invoke.SET_TAB_SETTINGS, settings),
+    }) => invoke(SettingsChannels.invoke.SET_TAB_SETTINGS, settings),
     // Note Editor Settings
-    getNoteEditorSettings: () =>
-      ipcRenderer.invoke(SettingsChannels.invoke.GET_NOTE_EDITOR_SETTINGS),
+    getNoteEditorSettings: () => invoke(SettingsChannels.invoke.GET_NOTE_EDITOR_SETTINGS),
     setNoteEditorSettings: (settings: { toolbarMode?: 'floating' | 'sticky' }) =>
-      ipcRenderer.invoke(SettingsChannels.invoke.SET_NOTE_EDITOR_SETTINGS, settings)
+      invoke(SettingsChannels.invoke.SET_NOTE_EDITOR_SETTINGS, settings)
   },
 
   // Bookmarks API
   bookmarks: {
     /** Create a new bookmark */
     create: (input: { itemType: string; itemId: string }) =>
-      ipcRenderer.invoke(BookmarksChannels.invoke.CREATE, input),
+      invoke(BookmarksChannels.invoke.CREATE, input),
     /** Delete a bookmark by ID */
-    delete: (id: string) => ipcRenderer.invoke(BookmarksChannels.invoke.DELETE, id),
+    delete: (id: string) => invoke(BookmarksChannels.invoke.DELETE, id),
     /** Get a bookmark by ID */
-    get: (id: string) => ipcRenderer.invoke(BookmarksChannels.invoke.GET, id),
+    get: (id: string) => invoke(BookmarksChannels.invoke.GET, id),
     /** List bookmarks with optional filters */
     list: (options?: {
       itemType?: string
@@ -467,66 +550,64 @@ const api = {
       sortOrder?: 'asc' | 'desc'
       limit?: number
       offset?: number
-    }) => ipcRenderer.invoke(BookmarksChannels.invoke.LIST, options ?? {}),
+    }) => invoke(BookmarksChannels.invoke.LIST, options ?? {}),
     /** Check if an item is bookmarked */
     isBookmarked: (input: { itemType: string; itemId: string }) =>
-      ipcRenderer.invoke(BookmarksChannels.invoke.IS_BOOKMARKED, input),
+      invoke(BookmarksChannels.invoke.IS_BOOKMARKED, input),
     /** Toggle bookmark status (create or delete) */
     toggle: (input: { itemType: string; itemId: string }) =>
-      ipcRenderer.invoke(BookmarksChannels.invoke.TOGGLE, input),
+      invoke(BookmarksChannels.invoke.TOGGLE, input),
     /** Reorder bookmarks */
-    reorder: (bookmarkIds: string[]) =>
-      ipcRenderer.invoke(BookmarksChannels.invoke.REORDER, { bookmarkIds }),
+    reorder: (bookmarkIds: string[]) => invoke(BookmarksChannels.invoke.REORDER, { bookmarkIds }),
     /** List bookmarks by item type */
-    listByType: (itemType: string) =>
-      ipcRenderer.invoke(BookmarksChannels.invoke.LIST_BY_TYPE, itemType),
+    listByType: (itemType: string) => invoke(BookmarksChannels.invoke.LIST_BY_TYPE, itemType),
     /** Get bookmark for a specific item */
     getByItem: (input: { itemType: string; itemId: string }) =>
-      ipcRenderer.invoke(BookmarksChannels.invoke.GET_BY_ITEM, input),
+      invoke(BookmarksChannels.invoke.GET_BY_ITEM, input),
     /** Delete multiple bookmarks */
     bulkDelete: (bookmarkIds: string[]) =>
-      ipcRenderer.invoke(BookmarksChannels.invoke.BULK_DELETE, { bookmarkIds }),
+      invoke(BookmarksChannels.invoke.BULK_DELETE, { bookmarkIds }),
     /** Create multiple bookmarks */
     bulkCreate: (items: Array<{ itemType: string; itemId: string }>) =>
-      ipcRenderer.invoke(BookmarksChannels.invoke.BULK_CREATE, { items })
+      invoke(BookmarksChannels.invoke.BULK_CREATE, { items })
   },
 
   // Inbox API
   inbox: {
     // Capture
     captureText: (input: { content: string; title?: string; tags?: string[] }) =>
-      ipcRenderer.invoke(InboxChannels.invoke.CAPTURE_TEXT, input),
+      invoke(InboxChannels.invoke.CAPTURE_TEXT, input),
     captureLink: (input: { url: string; tags?: string[] }) =>
-      ipcRenderer.invoke(InboxChannels.invoke.CAPTURE_LINK, input),
+      invoke(InboxChannels.invoke.CAPTURE_LINK, input),
     captureImage: (input: {
       data: ArrayBuffer
       filename: string
       mimeType: string
       tags?: string[]
-    }) => ipcRenderer.invoke(InboxChannels.invoke.CAPTURE_IMAGE, input),
+    }) => invoke(InboxChannels.invoke.CAPTURE_IMAGE, input),
     captureVoice: (input: {
       data: ArrayBuffer
       duration: number
       format: string
       transcribe?: boolean
       tags?: string[]
-    }) => ipcRenderer.invoke(InboxChannels.invoke.CAPTURE_VOICE, input),
+    }) => invoke(InboxChannels.invoke.CAPTURE_VOICE, input),
     captureClip: (input: {
       html: string
       text: string
       sourceUrl: string
       sourceTitle: string
       tags?: string[]
-    }) => ipcRenderer.invoke(InboxChannels.invoke.CAPTURE_CLIP, input),
+    }) => invoke(InboxChannels.invoke.CAPTURE_CLIP, input),
     capturePdf: (input: {
       data: ArrayBuffer
       filename: string
       extractText?: boolean
       tags?: string[]
-    }) => ipcRenderer.invoke(InboxChannels.invoke.CAPTURE_PDF, input),
+    }) => invoke(InboxChannels.invoke.CAPTURE_PDF, input),
 
     // CRUD
-    get: (id: string) => ipcRenderer.invoke(InboxChannels.invoke.GET, id),
+    get: (id: string) => invoke(InboxChannels.invoke.GET, id),
     list: (options?: {
       type?: string
       includeSnoozed?: boolean
@@ -534,19 +615,18 @@ const api = {
       sortOrder?: 'asc' | 'desc'
       limit?: number
       offset?: number
-    }) => ipcRenderer.invoke(InboxChannels.invoke.LIST, options ?? {}),
+    }) => invoke(InboxChannels.invoke.LIST, options ?? {}),
     update: (input: { id: string; title?: string; content?: string }) =>
-      ipcRenderer.invoke(InboxChannels.invoke.UPDATE, input),
-    archive: (id: string) => ipcRenderer.invoke(InboxChannels.invoke.ARCHIVE, id),
+      invoke(InboxChannels.invoke.UPDATE, input),
+    archive: (id: string) => invoke(InboxChannels.invoke.ARCHIVE, id),
 
     // Filing
     file: (input: {
       itemId: string
       destination: { type: string; path?: string; noteId?: string; noteTitle?: string }
       tags?: string[]
-    }) => ipcRenderer.invoke(InboxChannels.invoke.FILE, input),
-    getSuggestions: (itemId: string) =>
-      ipcRenderer.invoke(InboxChannels.invoke.GET_SUGGESTIONS, itemId),
+    }) => invoke(InboxChannels.invoke.FILE, input),
+    getSuggestions: (itemId: string) => invoke(InboxChannels.invoke.GET_SUGGESTIONS, itemId),
     trackSuggestion: (input: {
       itemId: string
       itemType: string
@@ -556,7 +636,7 @@ const api = {
       suggestedTags?: string[]
       actualTags?: string[]
     }) =>
-      ipcRenderer.invoke(
+      invoke(
         InboxChannels.invoke.TRACK_SUGGESTION,
         input.itemId,
         input.itemType,
@@ -566,67 +646,62 @@ const api = {
         input.suggestedTags || [],
         input.actualTags || []
       ),
-    convertToNote: (itemId: string) =>
-      ipcRenderer.invoke(InboxChannels.invoke.CONVERT_TO_NOTE, itemId),
+    convertToNote: (itemId: string) => invoke(InboxChannels.invoke.CONVERT_TO_NOTE, itemId),
     linkToNote: (itemId: string, noteId: string, tags?: string[]) =>
-      ipcRenderer.invoke(InboxChannels.invoke.LINK_TO_NOTE, itemId, noteId, tags || []),
+      invoke(InboxChannels.invoke.LINK_TO_NOTE, itemId, noteId, tags || []),
 
     // Tags
-    addTag: (itemId: string, tag: string) =>
-      ipcRenderer.invoke(InboxChannels.invoke.ADD_TAG, itemId, tag),
+    addTag: (itemId: string, tag: string) => invoke(InboxChannels.invoke.ADD_TAG, itemId, tag),
     removeTag: (itemId: string, tag: string) =>
-      ipcRenderer.invoke(InboxChannels.invoke.REMOVE_TAG, itemId, tag),
-    getTags: () => ipcRenderer.invoke(InboxChannels.invoke.GET_TAGS),
+      invoke(InboxChannels.invoke.REMOVE_TAG, itemId, tag),
+    getTags: () => invoke(InboxChannels.invoke.GET_TAGS),
 
     // Snooze
     snooze: (input: { itemId: string; snoozeUntil: string; reason?: string }) =>
-      ipcRenderer.invoke(InboxChannels.invoke.SNOOZE, input),
-    unsnooze: (itemId: string) => ipcRenderer.invoke(InboxChannels.invoke.UNSNOOZE, itemId),
-    getSnoozed: () => ipcRenderer.invoke(InboxChannels.invoke.GET_SNOOZED),
+      invoke(InboxChannels.invoke.SNOOZE, input),
+    unsnooze: (itemId: string) => invoke(InboxChannels.invoke.UNSNOOZE, itemId),
+    getSnoozed: () => invoke(InboxChannels.invoke.GET_SNOOZED),
     bulkSnooze: (input: { itemIds: string[]; snoozeUntil: string; reason?: string }) =>
-      ipcRenderer.invoke(InboxChannels.invoke.BULK_SNOOZE, input),
+      invoke(InboxChannels.invoke.BULK_SNOOZE, input),
 
     // Viewed (for reminder items)
-    markViewed: (itemId: string) => ipcRenderer.invoke(InboxChannels.invoke.MARK_VIEWED, itemId),
+    markViewed: (itemId: string) => invoke(InboxChannels.invoke.MARK_VIEWED, itemId),
 
     // Bulk operations
     bulkFile: (input: {
       itemIds: string[]
       destination: { type: string; path?: string; noteId?: string }
       tags?: string[]
-    }) => ipcRenderer.invoke(InboxChannels.invoke.BULK_FILE, input),
-    bulkArchive: (input: { itemIds: string[] }) =>
-      ipcRenderer.invoke(InboxChannels.invoke.BULK_ARCHIVE, input),
+    }) => invoke(InboxChannels.invoke.BULK_FILE, input),
+    bulkArchive: (input: { itemIds: string[] }) => invoke(InboxChannels.invoke.BULK_ARCHIVE, input),
     bulkTag: (input: { itemIds: string[]; tags: string[] }) =>
-      ipcRenderer.invoke(InboxChannels.invoke.BULK_TAG, input),
-    fileAllStale: () => ipcRenderer.invoke(InboxChannels.invoke.FILE_ALL_STALE),
+      invoke(InboxChannels.invoke.BULK_TAG, input),
+    fileAllStale: () => invoke(InboxChannels.invoke.FILE_ALL_STALE),
 
     // Transcription
     retryTranscription: (itemId: string) =>
-      ipcRenderer.invoke(InboxChannels.invoke.RETRY_TRANSCRIPTION, itemId),
+      invoke(InboxChannels.invoke.RETRY_TRANSCRIPTION, itemId),
 
     // Metadata
-    retryMetadata: (itemId: string) =>
-      ipcRenderer.invoke(InboxChannels.invoke.RETRY_METADATA, itemId),
+    retryMetadata: (itemId: string) => invoke(InboxChannels.invoke.RETRY_METADATA, itemId),
 
     // Stats
-    getStats: () => ipcRenderer.invoke(InboxChannels.invoke.GET_STATS),
-    getPatterns: () => ipcRenderer.invoke(InboxChannels.invoke.GET_PATTERNS),
+    getStats: () => invoke(InboxChannels.invoke.GET_STATS),
+    getPatterns: () => invoke(InboxChannels.invoke.GET_PATTERNS),
 
     // Settings
-    getStaleThreshold: () => ipcRenderer.invoke(InboxChannels.invoke.GET_STALE_THRESHOLD),
-    setStaleThreshold: (days: number) =>
-      ipcRenderer.invoke(InboxChannels.invoke.SET_STALE_THRESHOLD, days),
+    getStaleThreshold: () => invoke(InboxChannels.invoke.GET_STALE_THRESHOLD),
+    setStaleThreshold: (days: number) => invoke(InboxChannels.invoke.SET_STALE_THRESHOLD, days),
 
     // Archived items
     listArchived: (options?: { search?: string; limit?: number; offset?: number }) =>
-      ipcRenderer.invoke(InboxChannels.invoke.LIST_ARCHIVED, options ?? {}),
-    unarchive: (id: string) => ipcRenderer.invoke(InboxChannels.invoke.UNARCHIVE, id),
-    deletePermanent: (id: string) => ipcRenderer.invoke(InboxChannels.invoke.DELETE_PERMANENT, id),
+      invoke(InboxChannels.invoke.LIST_ARCHIVED, options ?? {}),
+    unarchive: (id: string) => invoke(InboxChannels.invoke.UNARCHIVE, id),
+    deletePermanent: (id: string) => invoke(InboxChannels.invoke.DELETE_PERMANENT, id),
 
     // Filing history
     getFilingHistory: (options?: { limit?: number }) =>
-      ipcRenderer.invoke(InboxChannels.invoke.GET_FILING_HISTORY, options ?? {})
+      invoke(InboxChannels.invoke.GET_FILING_HISTORY, options ?? {})
   },
 
   // Quick Capture API (global shortcut window)
@@ -634,7 +709,7 @@ const api = {
     /** Close the quick capture window */
     close: (): void => ipcRenderer.send('quick-capture:close'),
     /** Get current clipboard text content */
-    getClipboard: (): Promise<string> => ipcRenderer.invoke('quick-capture:get-clipboard')
+    getClipboard: (): Promise<string> => invoke('quick-capture:get-clipboard')
   },
 
   // Native context menu
@@ -646,7 +721,7 @@ const api = {
       disabled?: boolean
       type?: 'normal' | 'separator'
     }>
-  ): Promise<string | null> => ipcRenderer.invoke('context-menu:show', items),
+  ): Promise<string | null> => invoke('context-menu:show', items),
 
   // Tags API (for sidebar drill-down)
   tags: {
@@ -655,24 +730,24 @@ const api = {
       tag: string
       sortBy?: 'modified' | 'created' | 'title'
       sortOrder?: 'asc' | 'desc'
-    }) => ipcRenderer.invoke(TagsChannels.invoke.GET_NOTES_BY_TAG, input),
+    }) => invoke(TagsChannels.invoke.GET_NOTES_BY_TAG, input),
     /** Pin a note to a tag */
     pinNoteToTag: (input: { noteId: string; tag: string }) =>
-      ipcRenderer.invoke(TagsChannels.invoke.PIN_NOTE_TO_TAG, input),
+      invoke(TagsChannels.invoke.PIN_NOTE_TO_TAG, input),
     /** Unpin a note from a tag */
     unpinNoteFromTag: (input: { noteId: string; tag: string }) =>
-      ipcRenderer.invoke(TagsChannels.invoke.UNPIN_NOTE_FROM_TAG, input),
+      invoke(TagsChannels.invoke.UNPIN_NOTE_FROM_TAG, input),
     /** Rename a tag across all notes */
     renameTag: (input: { oldName: string; newName: string }) =>
-      ipcRenderer.invoke(TagsChannels.invoke.RENAME_TAG, input),
+      invoke(TagsChannels.invoke.RENAME_TAG, input),
     /** Update tag color */
     updateTagColor: (input: { tag: string; color: string }) =>
-      ipcRenderer.invoke(TagsChannels.invoke.UPDATE_TAG_COLOR, input),
+      invoke(TagsChannels.invoke.UPDATE_TAG_COLOR, input),
     /** Delete a tag from all notes */
-    deleteTag: (tag: string) => ipcRenderer.invoke(TagsChannels.invoke.DELETE_TAG, tag),
+    deleteTag: (tag: string) => invoke(TagsChannels.invoke.DELETE_TAG, tag),
     /** Remove tag from a specific note */
     removeTagFromNote: (input: { noteId: string; tag: string }) =>
-      ipcRenderer.invoke(TagsChannels.invoke.REMOVE_TAG_FROM_NOTE, input)
+      invoke(TagsChannels.invoke.REMOVE_TAG_FROM_NOTE, input)
   },
 
   // Reminders API
@@ -687,7 +762,11 @@ const api = {
       highlightText?: string
       highlightStart?: number
       highlightEnd?: number
-    }) => ipcRenderer.invoke(ReminderChannels.invoke.CREATE, input),
+    }) =>
+      invoke(
+        ReminderChannels.invoke.CREATE,
+        input as MainIpcInvokeArgs<typeof ReminderChannels.invoke.CREATE>[0]
+      ),
 
     /** Update an existing reminder */
     update: (input: {
@@ -695,13 +774,13 @@ const api = {
       remindAt?: string
       title?: string | null
       note?: string | null
-    }) => ipcRenderer.invoke(ReminderChannels.invoke.UPDATE, input),
+    }) => invoke(ReminderChannels.invoke.UPDATE, input),
 
     /** Delete a reminder */
-    delete: (id: string) => ipcRenderer.invoke(ReminderChannels.invoke.DELETE, id),
+    delete: (id: string) => invoke(ReminderChannels.invoke.DELETE, id),
 
     /** Get a reminder by ID */
-    get: (id: string) => ipcRenderer.invoke(ReminderChannels.invoke.GET, id),
+    get: (id: string) => invoke(ReminderChannels.invoke.GET, id),
 
     /** List reminders with optional filters */
     list: (options?: {
@@ -712,31 +791,35 @@ const api = {
       toDate?: string
       limit?: number
       offset?: number
-    }) => ipcRenderer.invoke(ReminderChannels.invoke.LIST, options ?? {}),
+    }) =>
+      invoke(
+        ReminderChannels.invoke.LIST,
+        (options ?? {}) as MainIpcInvokeArgs<typeof ReminderChannels.invoke.LIST>[0]
+      ),
 
     /** Get upcoming reminders (next N days) */
-    getUpcoming: (days?: number) => ipcRenderer.invoke(ReminderChannels.invoke.GET_UPCOMING, days),
+    getUpcoming: (days?: number) => invoke(ReminderChannels.invoke.GET_UPCOMING, days),
 
     /** Get due reminders */
-    getDue: () => ipcRenderer.invoke(ReminderChannels.invoke.GET_DUE),
+    getDue: () => invoke(ReminderChannels.invoke.GET_DUE),
 
     /** Get reminders for a specific target */
     getForTarget: (input: { targetType: 'note' | 'journal' | 'highlight'; targetId: string }) =>
-      ipcRenderer.invoke(ReminderChannels.invoke.GET_FOR_TARGET, input),
+      invoke(ReminderChannels.invoke.GET_FOR_TARGET, input),
 
     /** Count pending reminders (for badge) */
-    countPending: () => ipcRenderer.invoke(ReminderChannels.invoke.COUNT_PENDING),
+    countPending: () => invoke(ReminderChannels.invoke.COUNT_PENDING),
 
     /** Dismiss a reminder */
-    dismiss: (id: string) => ipcRenderer.invoke(ReminderChannels.invoke.DISMISS, id),
+    dismiss: (id: string) => invoke(ReminderChannels.invoke.DISMISS, id),
 
     /** Snooze a reminder to a later time */
     snooze: (input: { id: string; snoozeUntil: string }) =>
-      ipcRenderer.invoke(ReminderChannels.invoke.SNOOZE, input),
+      invoke(ReminderChannels.invoke.SNOOZE, input),
 
     /** Bulk dismiss multiple reminders */
     bulkDismiss: (input: { reminderIds: string[] }) =>
-      ipcRenderer.invoke(ReminderChannels.invoke.BULK_DISMISS, input)
+      invoke(ReminderChannels.invoke.BULK_DISMISS, input)
   },
 
   // Event subscription helpers
@@ -1256,36 +1339,36 @@ const api = {
   // Folder View API (Bases-like database view)
   folderView: {
     /** Get folder view configuration */
-    getConfig: (folderPath: string) =>
-      ipcRenderer.invoke(FolderViewChannels.invoke.GET_CONFIG, { folderPath }),
+    getConfig: (folderPath: string) => invoke(FolderViewChannels.invoke.GET_CONFIG, { folderPath }),
     /** Set/update folder view configuration */
     setConfig: (folderPath: string, config: Record<string, unknown>) =>
-      ipcRenderer.invoke(FolderViewChannels.invoke.SET_CONFIG, { folderPath, config }),
+      invoke(FolderViewChannels.invoke.SET_CONFIG, { folderPath, config }),
     /** Get all views for a folder */
-    getViews: (folderPath: string) =>
-      ipcRenderer.invoke(FolderViewChannels.invoke.GET_VIEWS, { folderPath }),
+    getViews: (folderPath: string) => invoke(FolderViewChannels.invoke.GET_VIEWS, { folderPath }),
     /** Add or update a single view */
     setView: (folderPath: string, view: Record<string, unknown>) =>
-      ipcRenderer.invoke(FolderViewChannels.invoke.SET_VIEW, { folderPath, view }),
+      invoke(FolderViewChannels.invoke.SET_VIEW, { folderPath, view } as MainIpcInvokeArgs<
+        typeof FolderViewChannels.invoke.SET_VIEW
+      >[0]),
     /** Delete a view by name */
     deleteView: (folderPath: string, viewName: string) =>
-      ipcRenderer.invoke(FolderViewChannels.invoke.DELETE_VIEW, { folderPath, viewName }),
+      invoke(FolderViewChannels.invoke.DELETE_VIEW, { folderPath, viewName }),
     /** List notes in folder with property values */
     listWithProperties: (options: {
       folderPath: string
       properties?: string[]
       limit?: number
       offset?: number
-    }) => ipcRenderer.invoke(FolderViewChannels.invoke.LIST_WITH_PROPERTIES, options),
+    }) => invoke(FolderViewChannels.invoke.LIST_WITH_PROPERTIES, options),
     /** Get available properties for column selector */
     getAvailableProperties: (folderPath: string) =>
-      ipcRenderer.invoke(FolderViewChannels.invoke.GET_AVAILABLE_PROPERTIES, { folderPath }),
+      invoke(FolderViewChannels.invoke.GET_AVAILABLE_PROPERTIES, { folderPath }),
     /** Get AI-powered folder suggestions for moving a note (Phase 27) */
     getFolderSuggestions: (noteId: string) =>
-      ipcRenderer.invoke(FolderViewChannels.invoke.GET_FOLDER_SUGGESTIONS, { noteId }),
+      invoke(FolderViewChannels.invoke.GET_FOLDER_SUGGESTIONS, { noteId }),
     /** Check if a folder exists (T115) */
     folderExists: (folderPath: string): Promise<boolean> =>
-      ipcRenderer.invoke(FolderViewChannels.invoke.FOLDER_EXISTS, folderPath)
+      invoke(FolderViewChannels.invoke.FOLDER_EXISTS, folderPath)
   },
 
   // Folder View event subscription helpers
@@ -1298,6 +1381,273 @@ const api = {
     ): void => callback(data)
     ipcRenderer.on(FolderViewChannels.events.CONFIG_UPDATED, handler)
     return () => ipcRenderer.removeListener(FolderViewChannels.events.CONFIG_UPDATED, handler)
+  },
+
+  // Sync Auth API
+  syncAuth: {
+    requestOtp: (input: { email: string }) => invoke(SYNC_CHANNELS.AUTH_REQUEST_OTP, input),
+    verifyOtp: (input: { email: string; code: string }) =>
+      invoke(SYNC_CHANNELS.AUTH_VERIFY_OTP, input),
+    resendOtp: (input: { email: string }) => invoke(SYNC_CHANNELS.AUTH_RESEND_OTP, input),
+    initOAuth: (input: { provider: 'google' }) => invoke(SYNC_CHANNELS.AUTH_INIT_OAUTH, input),
+    refreshToken: () => invoke(SYNC_CHANNELS.AUTH_REFRESH_TOKEN),
+    logout: () => invoke(SYNC_CHANNELS.AUTH_LOGOUT)
+  },
+
+  // Sync Setup API
+  syncSetup: {
+    setupFirstDevice: (input: { provider: 'google'; oauthToken: string; state: string }) =>
+      invoke(SYNC_CHANNELS.SETUP_FIRST_DEVICE, input),
+    setupNewAccount: () => invoke(SYNC_CHANNELS.SETUP_NEW_ACCOUNT),
+    confirmRecoveryPhrase: (input: { confirmed: boolean }) =>
+      invoke(SYNC_CHANNELS.CONFIRM_RECOVERY_PHRASE, input),
+    getRecoveryPhrase: (): Promise<string | null> => invoke(SYNC_CHANNELS.GET_RECOVERY_PHRASE)
+  },
+
+  // Device Linking API
+  syncLinking: {
+    generateLinkingQr: () => invoke(SYNC_CHANNELS.GENERATE_LINKING_QR),
+    linkViaQr: (input: { qrData: string; provider?: string; oauthToken?: string }) =>
+      invoke(SYNC_CHANNELS.LINK_VIA_QR, input),
+    linkViaRecovery: (input: { recoveryPhrase: string }) =>
+      invoke(SYNC_CHANNELS.LINK_VIA_RECOVERY, input),
+    approveLinking: (input: { sessionId: string }) => invoke(SYNC_CHANNELS.APPROVE_LINKING, input),
+    getLinkingSas: (input: { sessionId: string }) => invoke(SYNC_CHANNELS.GET_LINKING_SAS, input),
+    completeLinkingQr: (input: { sessionId: string }) =>
+      invoke(SYNC_CHANNELS.COMPLETE_LINKING_QR, input)
+  },
+
+  // Device Management API
+  syncDevices: {
+    getDevices: () => invoke(SYNC_CHANNELS.GET_DEVICES),
+    removeDevice: (input: { deviceId: string }) => invoke(SYNC_CHANNELS.REMOVE_DEVICE, input),
+    renameDevice: (input: { deviceId: string; newName: string }) =>
+      invoke(SYNC_CHANNELS.RENAME_DEVICE, input)
+  },
+
+  // Sync Operations API
+  syncOps: {
+    getStatus: () => invoke(SYNC_CHANNELS.GET_STATUS),
+    triggerSync: () => invoke(SYNC_CHANNELS.TRIGGER_SYNC),
+    getHistory: (input: { limit?: number; offset?: number }) =>
+      invoke(SYNC_CHANNELS.GET_HISTORY, input),
+    getQueueSize: () => invoke(SYNC_CHANNELS.GET_QUEUE_SIZE),
+    pause: () => invoke(SYNC_CHANNELS.PAUSE),
+    resume: () => invoke(SYNC_CHANNELS.RESUME),
+    updateSyncedSetting: (fieldPath: string, value: unknown) =>
+      invoke(SYNC_CHANNELS.UPDATE_SYNCED_SETTING, { fieldPath, value }),
+    getSyncedSettings: () => invoke(SYNC_CHANNELS.GET_SYNCED_SETTINGS),
+    getStorageBreakdown: () => invoke(SYNC_CHANNELS.GET_STORAGE_BREAKDOWN)
+  },
+
+  // Crypto API
+  crypto: {
+    encryptItem: (input: {
+      itemId: string
+      type: 'note' | 'task' | 'project' | 'settings'
+      content: Record<string, unknown>
+      operation?: 'create' | 'update' | 'delete'
+      deletedAt?: number
+      metadata?: Record<string, unknown>
+    }) => invoke(SYNC_CHANNELS.ENCRYPT_ITEM, input),
+    decryptItem: (input: {
+      itemId: string
+      type: 'note' | 'task' | 'project' | 'settings'
+      encryptedKey: string
+      keyNonce: string
+      encryptedData: string
+      dataNonce: string
+      signature: string
+      operation?: 'create' | 'update' | 'delete'
+      deletedAt?: number
+      metadata?: Record<string, unknown>
+    }) => invoke(SYNC_CHANNELS.DECRYPT_ITEM, input),
+    verifySignature: (input: {
+      itemId: string
+      type: 'note' | 'task' | 'project' | 'settings'
+      encryptedKey: string
+      keyNonce: string
+      encryptedData: string
+      dataNonce: string
+      signature: string
+      operation?: 'create' | 'update' | 'delete'
+      deletedAt?: number
+      metadata?: Record<string, unknown>
+    }) => invoke(SYNC_CHANNELS.VERIFY_SIGNATURE, input),
+    rotateKeys: (input: { confirm: boolean }) => invoke(SYNC_CHANNELS.ROTATE_KEYS, input),
+    getRotationProgress: () => invoke(SYNC_CHANNELS.GET_ROTATION_PROGRESS)
+  },
+
+  // Attachment Sync API
+  syncAttachments: {
+    upload: (input: { noteId: string; filePath: string }) =>
+      invoke(SYNC_CHANNELS.UPLOAD_ATTACHMENT, input),
+    getUploadProgress: (input: { sessionId: string }) =>
+      invoke(SYNC_CHANNELS.GET_UPLOAD_PROGRESS, input),
+    download: (input: { attachmentId: string; targetPath: string }) =>
+      invoke(SYNC_CHANNELS.DOWNLOAD_ATTACHMENT, input),
+    getDownloadProgress: (input: { attachmentId: string }) =>
+      invoke(SYNC_CHANNELS.GET_DOWNLOAD_PROGRESS, input)
+  },
+
+  // CRDT channels are merged into SYNC_CHANNELS (single flat namespace for the preload bridge)
+  syncCrdt: {
+    openDoc: (input: { noteId: string }) => invoke(SYNC_CHANNELS.OPEN_DOC, input),
+    closeDoc: (input: { noteId: string }) => invoke(SYNC_CHANNELS.CLOSE_DOC, input),
+    applyUpdate: (input: { noteId: string; update: number[] }) =>
+      invoke(SYNC_CHANNELS.APPLY_UPDATE, input),
+    syncStep1: (input: { noteId: string; stateVector: number[] }) =>
+      invoke(SYNC_CHANNELS.SYNC_STEP_1, input),
+    syncStep2: (input: { noteId: string; diff: number[] }) =>
+      invoke(SYNC_CHANNELS.SYNC_STEP_2, input)
+  },
+  onCrdtStateChanged: (
+    callback: (data: { noteId: string; update: number[]; origin: string }) => void
+  ): (() => void) => {
+    const handler = (
+      _event: Electron.IpcRendererEvent,
+      data: { noteId: string; update: number[]; origin: string }
+    ): void => callback(data)
+    ipcRenderer.on(SYNC_EVENTS.STATE_CHANGED, handler)
+    return () => ipcRenderer.removeListener(SYNC_EVENTS.STATE_CHANGED, handler)
+  },
+
+  // Sync event subscriptions
+  onSyncStatusChanged: (callback: (event: SyncStatusChangedEvent) => void): (() => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, data: SyncStatusChangedEvent): void =>
+      callback(data)
+    ipcRenderer.on(SYNC_EVENTS.STATUS_CHANGED, handler)
+    return () => ipcRenderer.removeListener(SYNC_EVENTS.STATUS_CHANGED, handler)
+  },
+  onItemSynced: (callback: (event: ItemSyncedEvent) => void): (() => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, data: ItemSyncedEvent): void =>
+      callback(data)
+    ipcRenderer.on(SYNC_EVENTS.ITEM_SYNCED, handler)
+    return () => ipcRenderer.removeListener(SYNC_EVENTS.ITEM_SYNCED, handler)
+  },
+  onConflictDetected: (callback: (event: ConflictDetectedEvent) => void): (() => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, data: ConflictDetectedEvent): void =>
+      callback(data)
+    ipcRenderer.on(SYNC_EVENTS.CONFLICT_DETECTED, handler)
+    return () => ipcRenderer.removeListener(SYNC_EVENTS.CONFLICT_DETECTED, handler)
+  },
+  onLinkingRequest: (callback: (event: LinkingRequestEvent) => void): (() => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, data: LinkingRequestEvent): void =>
+      callback(data)
+    ipcRenderer.on(SYNC_EVENTS.LINKING_REQUEST, handler)
+    return () => ipcRenderer.removeListener(SYNC_EVENTS.LINKING_REQUEST, handler)
+  },
+  onLinkingApproved: (callback: (event: LinkingApprovedEvent) => void): (() => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, data: LinkingApprovedEvent): void =>
+      callback(data)
+    ipcRenderer.on(SYNC_EVENTS.LINKING_APPROVED, handler)
+    return () => ipcRenderer.removeListener(SYNC_EVENTS.LINKING_APPROVED, handler)
+  },
+  onLinkingFinalized: (callback: (event: LinkingFinalizedEvent) => void): (() => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, data: LinkingFinalizedEvent): void =>
+      callback(data)
+    ipcRenderer.on(SYNC_EVENTS.LINKING_FINALIZED, handler)
+    return () => ipcRenderer.removeListener(SYNC_EVENTS.LINKING_FINALIZED, handler)
+  },
+  onUploadProgress: (callback: (event: UploadProgressEvent) => void): (() => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, data: UploadProgressEvent): void =>
+      callback(data)
+    ipcRenderer.on(SYNC_EVENTS.UPLOAD_PROGRESS, handler)
+    return () => ipcRenderer.removeListener(SYNC_EVENTS.UPLOAD_PROGRESS, handler)
+  },
+  onDownloadProgress: (callback: (event: DownloadProgressEvent) => void): (() => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, data: DownloadProgressEvent): void =>
+      callback(data)
+    ipcRenderer.on(SYNC_EVENTS.DOWNLOAD_PROGRESS, handler)
+    return () => ipcRenderer.removeListener(SYNC_EVENTS.DOWNLOAD_PROGRESS, handler)
+  },
+  onInitialSyncProgress: (callback: (event: InitialSyncProgressEvent) => void): (() => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, data: InitialSyncProgressEvent): void =>
+      callback(data)
+    ipcRenderer.on(SYNC_EVENTS.INITIAL_SYNC_PROGRESS, handler)
+    return () => ipcRenderer.removeListener(SYNC_EVENTS.INITIAL_SYNC_PROGRESS, handler)
+  },
+  onQueueCleared: (callback: (event: QueueClearedEvent) => void): (() => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, data: QueueClearedEvent): void =>
+      callback(data)
+    ipcRenderer.on(SYNC_EVENTS.QUEUE_CLEARED, handler)
+    return () => ipcRenderer.removeListener(SYNC_EVENTS.QUEUE_CLEARED, handler)
+  },
+  onSyncPaused: (callback: (event: SyncPausedEvent) => void): (() => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, data: SyncPausedEvent): void =>
+      callback(data)
+    ipcRenderer.on(SYNC_EVENTS.PAUSED, handler)
+    return () => ipcRenderer.removeListener(SYNC_EVENTS.PAUSED, handler)
+  },
+  onSyncResumed: (callback: (event: SyncResumedEvent) => void): (() => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, data: SyncResumedEvent): void =>
+      callback(data)
+    ipcRenderer.on(SYNC_EVENTS.RESUMED, handler)
+    return () => ipcRenderer.removeListener(SYNC_EVENTS.RESUMED, handler)
+  },
+  onKeyRotationProgress: (callback: (event: KeyRotationProgressEvent) => void): (() => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, data: KeyRotationProgressEvent): void =>
+      callback(data)
+    ipcRenderer.on(SYNC_EVENTS.KEY_ROTATION_PROGRESS, handler)
+    return () => ipcRenderer.removeListener(SYNC_EVENTS.KEY_ROTATION_PROGRESS, handler)
+  },
+  onSessionExpired: (callback: (event: SessionExpiredEvent) => void): (() => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, data: SessionExpiredEvent): void =>
+      callback(data)
+    ipcRenderer.on(SYNC_EVENTS.SESSION_EXPIRED, handler)
+    return () => ipcRenderer.removeListener(SYNC_EVENTS.SESSION_EXPIRED, handler)
+  },
+  onDeviceRevoked: (callback: (event: DeviceRevokedEvent) => void): (() => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, data: DeviceRevokedEvent): void =>
+      callback(data)
+    ipcRenderer.on(SYNC_EVENTS.DEVICE_REMOVED, handler)
+    return () => ipcRenderer.removeListener(SYNC_EVENTS.DEVICE_REMOVED, handler)
+  },
+  onOtpDetected: (callback: (event: OtpDetectedEvent) => void): (() => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, data: OtpDetectedEvent): void =>
+      callback(data)
+    ipcRenderer.on(SYNC_EVENTS.OTP_DETECTED, handler)
+    return () => ipcRenderer.removeListener(SYNC_EVENTS.OTP_DETECTED, handler)
+  },
+  onOAuthCallback: (callback: (event: OAuthCallbackEvent) => void): (() => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, data: OAuthCallbackEvent): void =>
+      callback(data)
+    ipcRenderer.on(SYNC_EVENTS.OAUTH_CALLBACK, handler)
+    return () => ipcRenderer.removeListener(SYNC_EVENTS.OAUTH_CALLBACK, handler)
+  },
+  onOAuthError: (callback: (event: OAuthErrorEvent) => void): (() => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, data: OAuthErrorEvent): void =>
+      callback(data)
+    ipcRenderer.on(SYNC_EVENTS.OAUTH_ERROR, handler)
+    return () => ipcRenderer.removeListener(SYNC_EVENTS.OAUTH_ERROR, handler)
+  },
+  onClockSkewWarning: (callback: (event: ClockSkewWarningEvent) => void): (() => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, data: ClockSkewWarningEvent): void =>
+      callback(data)
+    ipcRenderer.on(SYNC_EVENTS.CLOCK_SKEW_WARNING, handler)
+    return () => ipcRenderer.removeListener(SYNC_EVENTS.CLOCK_SKEW_WARNING, handler)
+  },
+  onSecurityWarning: (callback: (event: SecurityWarningEvent) => void): (() => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, data: SecurityWarningEvent): void =>
+      callback(data)
+    ipcRenderer.on(SYNC_EVENTS.SECURITY_WARNING, handler)
+    return () => ipcRenderer.removeListener(SYNC_EVENTS.SECURITY_WARNING, handler)
+  },
+  onCertificatePinFailed: (callback: (event: CertificatePinFailedEvent) => void): (() => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, data: CertificatePinFailedEvent): void =>
+      callback(data)
+    ipcRenderer.on(SYNC_EVENTS.CERTIFICATE_PIN_FAILED, handler)
+    return () => ipcRenderer.removeListener(SYNC_EVENTS.CERTIFICATE_PIN_FAILED, handler)
+  },
+
+  // Flush-on-quit protocol: main asks renderer to flush pending saves before shutdown
+  onFlushRequested: (callback: () => void): (() => void) => {
+    const handler = (): void => callback()
+    ipcRenderer.on('app:request-flush', handler)
+    return () => ipcRenderer.removeListener('app:request-flush', handler)
+  },
+  notifyFlushDone: (): void => {
+    ipcRenderer.send('app:flush-done')
   }
 }
 
@@ -1312,8 +1662,8 @@ if (process.contextIsolated) {
     console.error(error)
   }
 } else {
-  // @ts-ignore (define in dts)
-  window.electron = electronAPI
-  // @ts-ignore (define in dts)
-  window.api = api
+  ;(window as unknown as Record<string, unknown>).electron = electronAPI
+  ;(window as unknown as Record<string, unknown>).api = api
 }
+
+export type API = typeof api

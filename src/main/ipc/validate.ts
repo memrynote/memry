@@ -1,5 +1,8 @@
 import { z, ZodError } from 'zod'
 import type { IpcMainInvokeEvent } from 'electron'
+import { createLogger } from '../lib/logger'
+
+const ipcLog = createLogger('IPC')
 
 /**
  * Creates a validated IPC handler that parses input with a Zod schema.
@@ -27,21 +30,21 @@ import type { IpcMainInvokeEvent } from 'electron'
 export function createValidatedHandler<TSchema extends z.ZodSchema, TResult>(
   schema: TSchema,
   handler: (input: z.infer<TSchema>) => TResult | Promise<TResult>
-): (event: IpcMainInvokeEvent, rawInput: unknown) => Promise<TResult> {
-  return async (_event: IpcMainInvokeEvent, rawInput: unknown): Promise<TResult> => {
+): (event: IpcMainInvokeEvent, rawInput: z.input<TSchema>) => Promise<TResult> {
+  return async (_event: IpcMainInvokeEvent, rawInput: z.input<TSchema>): Promise<TResult> => {
     try {
       const validated = schema.parse(rawInput)
       return await handler(validated)
     } catch (error) {
       if (error instanceof ZodError) {
-        // Zod v4 uses 'issues' instead of 'errors'
         const issues = error.issues ?? (error as { errors?: unknown[] }).errors ?? []
         const messages = (issues as Array<{ path: (string | number)[]; message: string }>)
           .map((e) => `${e.path.join('.')}: ${e.message}`)
           .join(', ')
         throw new Error(`Validation failed: ${messages}`)
       }
-      throw error
+      ipcLog.error('handler error:', error)
+      throw error instanceof Error ? new Error(error.message) : new Error('Something went wrong')
     }
   }
 }
@@ -88,7 +91,7 @@ export function createHandler<TResult>(
  */
 export function createStringHandler<TResult>(
   handler: (input: string) => TResult | Promise<TResult>
-): (event: IpcMainInvokeEvent, rawInput: unknown) => Promise<TResult> {
+): (event: IpcMainInvokeEvent, rawInput: string) => Promise<TResult> {
   return createValidatedHandler(z.string(), handler)
 }
 

@@ -33,6 +33,9 @@ import {
   type Status as DbStatus
 } from '@/services/tasks-service'
 import { useVault } from '@/hooks/use-vault'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('Context:Tasks')
 
 // =============================================================================
 // TYPE CONVERSION HELPERS
@@ -140,14 +143,19 @@ function dbTaskToUiTask(dbTask: DbTask): Task {
 /**
  * Convert database project to UI project format
  */
-function dbProjectToUiProject(dbProject: DbProject | ProjectWithStats): Project {
+function dbProjectToUiProject(
+  dbProject: DbProject | ProjectWithStats | (DbProject & { statuses: DbStatus[] })
+): Project {
   return {
     id: dbProject.id,
     name: dbProject.name,
     description: dbProject.description ?? '',
     icon: dbProject.icon ?? 'folder',
     color: dbProject.color,
-    statuses: [], // Loaded separately
+    statuses:
+      'statuses' in dbProject && Array.isArray(dbProject.statuses)
+        ? dbProject.statuses.map(dbStatusToUiStatus)
+        : [],
     isDefault: dbProject.isInbox,
     isArchived: !!dbProject.archivedAt,
     createdAt: new Date(dbProject.createdAt),
@@ -265,10 +273,7 @@ export const TasksProvider = ({
                 statuses: statuses.map(dbStatusToUiStatus)
               }
             } catch (error) {
-              console.warn(
-                `[TasksProvider] Failed to load statuses for project ${project.id}:`,
-                error
-              )
+              log.warn(`Failed to load statuses for project ${project.id}:`, error)
               return project // Return project without statuses on error
             }
           })
@@ -311,7 +316,7 @@ export const TasksProvider = ({
 
         setIsLoaded(true)
       } catch (error) {
-        console.error('[TasksProvider] Failed to load from database:', error)
+        log.error('Failed to load from database:', error)
         // Keep using initial data on error
       }
     }
@@ -432,6 +437,28 @@ export const TasksProvider = ({
       setProjects((prev) => prev.filter((p) => p.id !== event.id))
     })
 
+    const unsubItemSynced = window.api.onItemSynced((event) => {
+      if (event.type !== 'task' || event.operation !== 'pull') return
+
+      if (event.itemOperation === 'delete') {
+        setTasks((prev) => prev.filter((t) => t.id !== event.itemId))
+        return
+      }
+
+      tasksService
+        .get(event.itemId)
+        .then((dbTask) => {
+          if (!dbTask) return
+          const uiTask = dbTaskToUiTask(dbTask)
+          setTasks((prev) => {
+            const exists = prev.some((t) => t.id === event.itemId)
+            if (exists) return prev.map((t) => (t.id === event.itemId ? uiTask : t))
+            return [uiTask, ...prev]
+          })
+        })
+        .catch((err) => log.error('Failed to fetch synced task', err))
+    })
+
     return () => {
       unsubTaskCreated()
       unsubTaskUpdated()
@@ -440,6 +467,7 @@ export const TasksProvider = ({
       unsubProjectCreated()
       unsubProjectUpdated()
       unsubProjectDeleted()
+      unsubItemSynced()
     }
   }, [isVaultOpen, setTasks, setProjects])
 
@@ -489,7 +517,7 @@ export const TasksProvider = ({
           })
           // Event listener will add to state
         } catch (error) {
-          console.error('[TasksProvider] Failed to create task:', error)
+          log.error('Failed to create task:', error)
           // Fallback to local state on error
           setTasks((prev) => [...prev, task])
         }
@@ -671,7 +699,7 @@ export const TasksProvider = ({
           })
           // Event listener will update state
         } catch (error) {
-          console.error('[TasksProvider] Failed to update task:', error)
+          log.error('Failed to update task:', error)
           // Fallback to local state on error
           setTasks((prev) =>
             prev.map((task) => (task.id === taskId ? { ...task, ...updates } : task))
@@ -693,7 +721,7 @@ export const TasksProvider = ({
           await tasksService.delete(taskId)
           // Event listener will remove from state
         } catch (error) {
-          console.error('[TasksProvider] Failed to delete task:', error)
+          log.error('Failed to delete task:', error)
           setTasks((prev) => prev.filter((t) => t.id !== taskId))
         }
       } else {
@@ -712,11 +740,20 @@ export const TasksProvider = ({
             name: project.name,
             description: project.description || null,
             color: project.color,
-            icon: project.icon || null
+            icon: project.icon || null,
+            statuses:
+              project.statuses && project.statuses.length >= 2
+                ? project.statuses.map((s) => ({
+                    name: s.name,
+                    color: s.color,
+                    type: s.type,
+                    order: s.order
+                  }))
+                : undefined
           })
           // Event listener will add to state
         } catch (error) {
-          console.error('[TasksProvider] Failed to create project:', error)
+          log.error('Failed to create project:', error)
           setProjects((prev) => [...prev, project])
         }
       } else {
@@ -735,11 +772,18 @@ export const TasksProvider = ({
             name: updates.name,
             description: updates.description ?? undefined,
             color: updates.color,
-            icon: updates.icon ?? undefined
+            icon: updates.icon ?? undefined,
+            statuses: updates.statuses?.map((s) => ({
+              id: s.id,
+              name: s.name,
+              color: s.color,
+              type: s.type,
+              order: s.order
+            }))
           })
           // Event listener will update state
         } catch (error) {
-          console.error('[TasksProvider] Failed to update project:', error)
+          log.error('Failed to update project:', error)
           setProjects((prev) =>
             prev.map((project) => (project.id === projectId ? { ...project, ...updates } : project))
           )
@@ -760,7 +804,7 @@ export const TasksProvider = ({
           await tasksService.deleteProject(projectId)
           // Event listener will remove from state
         } catch (error) {
-          console.error('[TasksProvider] Failed to delete project:', error)
+          log.error('Failed to delete project:', error)
           setProjects((prev) => prev.filter((p) => p.id !== projectId))
         }
       } else {

@@ -20,7 +20,8 @@ import {
   getFileStats,
   sanitizeFilename,
   generateNotePath,
-  generateUniquePath
+  generateUniquePath,
+  generateUniquePathSync
 } from './file-ops'
 import { NoteError } from '../lib/errors'
 
@@ -566,5 +567,66 @@ describe('generateUniquePath', () => {
     const result = await generateUniquePath(filePath)
 
     expect(result).toBe(path.join(tempDir.path, 'document 1.txt'))
+  })
+})
+
+describe('generateUniquePathSync', () => {
+  let tempDir: TestDir
+
+  beforeEach(() => {
+    tempDir = createTempDir()
+  })
+
+  afterEach(() => {
+    tempDir.cleanup()
+  })
+
+  it('returns basePath when nothing conflicts', () => {
+    // #given
+    const filePath = path.join(tempDir.path, 'unique.md')
+
+    // #when
+    const result = generateUniquePathSync(filePath)
+
+    // #then
+    expect(result).toBe(filePath)
+  })
+
+  it('appends " 1" when basePath exists on disk', () => {
+    // #given
+    const filePath = path.join(tempDir.path, 'note.md')
+    fs.writeFileSync(filePath, '')
+
+    // #when
+    const result = generateUniquePathSync(filePath)
+
+    // #then
+    expect(result).toBe(path.join(tempDir.path, 'note 1.md'))
+  })
+
+  it('appends " 1" when isPathTaken returns true (DB collision)', () => {
+    // #given
+    const filePath = path.join(tempDir.path, 'note.md')
+    const isPathTaken = (p: string) => p === filePath
+
+    // #when
+    const result = generateUniquePathSync(filePath, isPathTaken)
+
+    // #then
+    expect(result).toBe(path.join(tempDir.path, 'note 1.md'))
+  })
+
+  it('increments counter when both disk and DB paths are taken', () => {
+    // #given
+    const basePath = path.join(tempDir.path, 'note.md')
+    fs.writeFileSync(basePath, '')
+    fs.writeFileSync(path.join(tempDir.path, 'note 1.md'), '')
+    const isPathTaken = (p: string) => p === path.join(tempDir.path, 'note 2.md')
+
+    // #when
+    const result = generateUniquePathSync(basePath, isPathTaken)
+
+    // #then
+    expect(result).toBe(path.join(tempDir.path, 'note 3.md'))
   })
 })

@@ -123,7 +123,11 @@ export const JournalEditor = memo(function JournalEditor({
                     popup?.[0]?.hide()
                     return true
                   }
-                  return component?.ref?.onKeyDown?.(props) ?? false
+                  return (
+                    (component?.ref as { onKeyDown?: (props: any) => boolean })?.onKeyDown?.(
+                      props
+                    ) ?? false
+                  )
                 },
                 onExit: () => {
                   popup?.[0]?.destroy()
@@ -173,7 +177,11 @@ export const JournalEditor = memo(function JournalEditor({
                     popup?.[0]?.hide()
                     return true
                   }
-                  return component?.ref?.onKeyDown?.(props) ?? false
+                  return (
+                    (component?.ref as { onKeyDown?: (props: any) => boolean })?.onKeyDown?.(
+                      props
+                    ) ?? false
+                  )
                 },
                 onExit: () => {
                   popup?.[0]?.destroy()

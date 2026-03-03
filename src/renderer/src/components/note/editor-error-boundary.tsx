@@ -11,6 +11,9 @@
 import { Component, type ErrorInfo, type ReactNode } from 'react'
 import { AlertTriangle, RefreshCw } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('Component:EditorErrorBoundary')
 
 interface EditorErrorBoundaryProps {
   /** Children to render (the editor) */
@@ -46,7 +49,7 @@ export class EditorErrorBoundary extends Component<
   }
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo): void {
-    console.error('[EditorErrorBoundary] Editor crash:', error, errorInfo)
+    log.error('Editor crash', error, errorInfo)
     this.props.onError?.(error, errorInfo)
   }
 

@@ -1,9 +1,5 @@
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react'
-import { Plus, LayoutList, Columns3, CalendarDays, Settings } from 'lucide-react'
 
-import { Button } from '@/components/ui/button'
-import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { toast } from 'sonner'
 import { TaskList } from '@/components/tasks/task-list'
 import { TasksTabBar, type TasksInternalTab } from '@/components/tasks/tasks-tab-bar'
@@ -24,9 +20,9 @@ import {
 } from '@/components/tasks/completed'
 import { FilterBar, FilterEmptyState, type FilterBarRef } from '@/components/tasks/filters'
 import { cn } from '@/lib/utils'
+import { extractErrorMessage } from '@/lib/ipc-error'
 import {
   getFilteredTasks,
-  getTaskCounts,
   getDefaultTodoStatus,
   getDefaultDoneStatus,
   startOfDay,
@@ -73,6 +69,9 @@ import {
 import { getSubtasks } from '@/lib/subtask-utils'
 import { tasksService } from '@/services/tasks-service'
 import type { TaskSelectionType } from '@/App'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('Page:Tasks')
 
 // ============================================================================
 // TYPES
@@ -90,145 +89,6 @@ interface TasksPageProps {
   selectedTaskIds?: Set<string>
   /** Callback to sync selection state with App level */
   onSelectedTaskIdsChange?: (ids: Set<string>) => void
-}
-
-interface TasksContentHeaderProps {
-  title: string
-  subtitle: string
-  activeView: ViewMode
-  availableViews: ViewMode[]
-  showProjectSettings: boolean
-  onViewChange: (view: ViewMode) => void
-  onAddTask: () => void
-  onProjectSettings: () => void
-}
-
-interface TasksViewToggleProps {
-  activeView: ViewMode
-  availableViews: ViewMode[]
-  onViewChange: (view: ViewMode) => void
-}
-
-// ============================================================================
-// VIEW TOGGLE COMPONENT
-// ============================================================================
-
-const TasksViewToggle = ({
-  activeView,
-  availableViews,
-  onViewChange
-}: TasksViewToggleProps): React.JSX.Element => {
-  const handleValueChange = (value: string): void => {
-    if (value && availableViews.includes(value as ViewMode)) {
-      onViewChange(value as ViewMode)
-    }
-  }
-
-  return (
-    <ToggleGroup
-      type="single"
-      value={activeView}
-      onValueChange={handleValueChange}
-      className="gap-0.5 rounded-lg bg-muted/30 p-0.5"
-      aria-label="View mode"
-    >
-      <ToggleGroupItem
-        value="list"
-        aria-label="List view"
-        disabled={!availableViews.includes('list')}
-        className="rounded-md data-[state=on]:bg-background data-[state=on]:shadow-sm"
-      >
-        <LayoutList className="size-4" />
-      </ToggleGroupItem>
-      <ToggleGroupItem
-        value="kanban"
-        aria-label="Kanban view"
-        disabled={!availableViews.includes('kanban')}
-        className={cn(
-          'rounded-md data-[state=on]:bg-background data-[state=on]:shadow-sm',
-          !availableViews.includes('kanban') && 'hidden'
-        )}
-      >
-        <Columns3 className="size-4" />
-      </ToggleGroupItem>
-      <ToggleGroupItem
-        value="calendar"
-        aria-label="Calendar view"
-        disabled={!availableViews.includes('calendar')}
-        className={cn(
-          'rounded-md data-[state=on]:bg-background data-[state=on]:shadow-sm',
-          !availableViews.includes('calendar') && 'hidden'
-        )}
-      >
-        <CalendarDays className="size-4" />
-      </ToggleGroupItem>
-    </ToggleGroup>
-  )
-}
-
-// ============================================================================
-// CONTENT HEADER COMPONENT
-// ============================================================================
-
-const TasksContentHeader = ({
-  title,
-  subtitle,
-  activeView,
-  availableViews,
-  showProjectSettings,
-  onViewChange,
-  onAddTask,
-  onProjectSettings
-}: TasksContentHeaderProps): React.JSX.Element => {
-  return (
-    <header className="relative flex items-start justify-between border-b border-border/50 px-6 py-6">
-      {/* Left side: Title and Subtitle */}
-      <div className="flex flex-col gap-1.5">
-        <div className="flex items-center gap-2.5">
-          <h1 className="font-display text-2xl font-medium tracking-tight text-foreground">
-            {title}
-          </h1>
-          {showProjectSettings && (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  type="button"
-                  onClick={onProjectSettings}
-                  className={cn(
-                    'rounded-md p-1.5 text-text-tertiary transition-all duration-200',
-                    'hover:bg-accent/80 hover:text-text-secondary',
-                    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring'
-                  )}
-                  aria-label="Project settings"
-                >
-                  <Settings className="size-4" />
-                </button>
-              </TooltipTrigger>
-              <TooltipContent>Project settings</TooltipContent>
-            </Tooltip>
-          )}
-        </div>
-        <p className="font-serif text-sm italic text-text-tertiary/80">{subtitle}</p>
-      </div>
-
-      {/* Right side: View Toggle and Add Task button */}
-      <div className="flex items-center gap-3">
-        <TasksViewToggle
-          activeView={activeView}
-          availableViews={availableViews}
-          onViewChange={onViewChange}
-        />
-        <Button
-          onClick={onAddTask}
-          size="sm"
-          className="transition-all duration-200 hover:shadow-sm"
-        >
-          <Plus className="size-4" aria-hidden="true" />
-          Add Task
-        </Button>
-      </div>
-    </header>
-  )
 }
 
 // ============================================================================
@@ -399,10 +259,6 @@ export const TasksPage = ({
   // Apply advanced filters for all selections (All/Today/Upcoming/Projects/Project)
   const filteredTasks = advancedFilteredTasks
 
-  // For project list view, use base filtered tasks to show all statuses including Done
-  // (kept for potential future use in project tab enhancements)
-  const _projectListTasks = selectedType === 'project' ? baseFilteredTasks : filteredTasks
-
   // Check if we should show the filter empty state
   const showFilterEmptyState = filtersActive && filteredCount === 0 && totalCount > 0
 
@@ -487,15 +343,10 @@ export const TasksPage = ({
       try {
         await tasksService.reorder(taskIds, positions)
       } catch (error) {
-        console.error('[Tasks] Failed to reorder subtasks:', error)
+        log.error('Failed to reorder subtasks:', error)
       }
     }
   })
-
-  // Derived: task counts for header (replaced by tabCounts, kept for potential future use)
-  const _taskCounts = useMemo(() => {
-    return getTaskCounts(tasks, selectedId, selectedType, projects)
-  }, [tasks, selectedId, selectedType, projects])
 
   // Derived: tab counts for TasksTabBar
   const tabCounts = useMemo(() => {
@@ -510,67 +361,6 @@ export const TasksPage = ({
       projects: activeProjects.length
     }
   }, [tasks, projects])
-
-  // Derived: title for content header based on internal tab
-  const headerTitle = useMemo(() => {
-    switch (activeInternalTab) {
-      case 'all':
-        return 'All Tasks'
-      case 'today':
-        return 'Today'
-      case 'upcoming':
-        return 'Upcoming'
-      case 'projects': {
-        // If a project is selected, show project name
-        if (selectedProjectId) {
-          const project = projects.find((p) => p.id === selectedProjectId)
-          return project?.name || 'Projects'
-        }
-        return 'Projects'
-      }
-      default:
-        return 'Tasks'
-    }
-  }, [activeInternalTab, selectedProjectId, projects])
-
-  // Derived: subtitle for content header based on internal tab
-  const headerSubtitle = useMemo(() => {
-    switch (activeInternalTab) {
-      case 'today': {
-        const today = new Date()
-        return today.toLocaleDateString('en-US', {
-          weekday: 'long',
-          month: 'long',
-          day: 'numeric'
-        })
-      }
-      case 'all':
-        if (filtersActive) {
-          return `Showing ${filteredCount} of ${totalCount} tasks`
-        }
-        return `${tabCounts.all} task${tabCounts.all !== 1 ? 's' : ''}`
-      case 'upcoming':
-        return `${tabCounts.upcoming} task${tabCounts.upcoming !== 1 ? 's' : ''} this week`
-      case 'projects': {
-        if (selectedProjectId) {
-          const project = projects.find((p) => p.id === selectedProjectId)
-          const projectTaskCount = project?.taskCount || 0
-          return `${projectTaskCount} task${projectTaskCount !== 1 ? 's' : ''}`
-        }
-        return `${tabCounts.projects} project${tabCounts.projects !== 1 ? 's' : ''}`
-      }
-      default:
-        return ''
-    }
-  }, [
-    activeInternalTab,
-    tabCounts,
-    filtersActive,
-    filteredCount,
-    totalCount,
-    selectedProjectId,
-    projects
-  ])
 
   // Derived: selected task for detail panel
   const selectedTask = useMemo(() => {
@@ -587,7 +377,7 @@ export const TasksPage = ({
     return status?.type === 'done'
   }, [selectedTask, projects])
 
-  // Show filter bar for all internal tabs (compact UI)
+  // Visibility constants
   const showFilterBar = true
 
   // ========== HANDLERS ==========
@@ -601,10 +391,6 @@ export const TasksPage = ({
     // Project settings are now handled in AppSidebar
     // This is kept for the settings button in the header
     // We could emit an event or use a context here
-  }
-
-  const handleViewChange = (view: ViewMode): void => {
-    setActiveView(view)
   }
 
   // ========== PROJECT HANDLERS ==========
@@ -632,7 +418,7 @@ export const TasksPage = ({
         setIsProjectModalOpen(false)
         setEditingProject(null)
       } catch (error) {
-        console.error('Failed to save project:', error)
+        log.error('Failed to save project:', error)
         toast.error('Failed to save project')
       }
     },
@@ -645,7 +431,7 @@ export const TasksPage = ({
         await contextUpdateProject(project.id, { isArchived: true })
         toast.success('Project archived')
       } catch (error) {
-        console.error('Failed to archive project:', error)
+        log.error('Failed to archive project:', error)
         toast.error('Failed to archive project')
       }
     },
@@ -662,7 +448,7 @@ export const TasksPage = ({
           setSelectedProjectId(null)
         }
       } catch (error) {
-        console.error('Failed to delete project:', error)
+        log.error('Failed to delete project:', error)
         toast.error('Failed to delete project')
       }
     },
@@ -1030,12 +816,12 @@ export const TasksPage = ({
           setSelectedTaskId(result.task.id)
         } else {
           toast.error('Failed to duplicate task', {
-            description: result.error || 'Unknown error'
+            description: extractErrorMessage(result.error, 'Unknown error')
           })
         }
       } catch (error) {
-        console.error('Failed to duplicate task:', error)
-        toast.error('Failed to duplicate task')
+        log.error('Failed to duplicate task:', error)
+        toast.error(extractErrorMessage(error, 'Failed to duplicate task'))
       }
     },
     [tasks]
@@ -1124,6 +910,16 @@ export const TasksPage = ({
     [tasks, setTasks]
   )
 
+  // Calendar tasks for CalendarView (kept for potential future use)
+  const _calendarTasks = useMemo(() => {
+    if (selectedType === 'project') {
+      return tasks.filter((t) => t.projectId === selectedId)
+    }
+    return tasks
+  }, [selectedType, selectedId, tasks])
+
+  // ========== ARCHIVE ACTIONS ==========
+
   const handleViewArchived = useCallback((): void => {
     setShowArchivedView(true)
   }, [])
@@ -1210,14 +1006,6 @@ export const TasksPage = ({
     }
     return archivedTasksForActions.length
   }, [deleteCompletedVariant, completedTasksForActions, archivedTasksForActions])
-
-  // Calendar tasks for CalendarView (kept for potential future use)
-  const _calendarTasks = useMemo(() => {
-    if (selectedType === 'project') {
-      return tasks.filter((t) => t.projectId === selectedId)
-    }
-    return tasks
-  }, [selectedType, selectedId, tasks])
 
   // ========== BULK ACTION HANDLERS ==========
 
@@ -1335,23 +1123,14 @@ export const TasksPage = ({
       <div className={cn('flex h-full', className)}>
         {/* Main Content Area - Full Width */}
         <main className="flex flex-1 flex-col overflow-hidden">
-          {/* Content Header */}
-          <TasksContentHeader
-            title={headerTitle}
-            subtitle={headerSubtitle}
-            activeView={activeView}
-            availableViews={availableViews}
-            showProjectSettings={activeInternalTab === 'projects' && !!selectedProjectId}
-            onViewChange={handleViewChange}
-            onAddTask={handleAddTask}
-            onProjectSettings={handleProjectSettings}
-          />
-
           {/* Internal Tab Bar */}
           <TasksTabBar
             activeTab={activeInternalTab}
             onTabChange={setActiveInternalTab}
             counts={tabCounts}
+            onAddTask={handleAddTask}
+            onProjectSettings={handleProjectSettings}
+            showProjectSettings={activeInternalTab === 'projects' && !!selectedProjectId}
           />
 
           {/* Filter Bar */}

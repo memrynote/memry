@@ -9,6 +9,7 @@
 
 import { ipcMain, BrowserWindow } from 'electron'
 import { SettingsChannels } from '@shared/ipc-channels'
+import { createLogger } from '../lib/logger'
 import { getDatabase } from '../database'
 import { getSetting, setSetting, deleteSetting } from '@shared/db/queries/settings'
 import { initEmbeddingModel, getModelInfo, isModelLoaded, isModelLoading } from '../lib/embeddings'
@@ -17,8 +18,14 @@ import { initEmbeddingModel, getModelInfo, isModelLoaded, isModelLoading } from 
 // Settings Keys
 // ============================================================================
 
+const logger = createLogger('IPC:Settings')
+
 const SETTINGS_KEYS = {
   JOURNAL_DEFAULT_TEMPLATE: 'journal.defaultTemplate',
+  JOURNAL_SHOW_SCHEDULE: 'journal.showSchedule',
+  JOURNAL_SHOW_TASKS: 'journal.showTasks',
+  JOURNAL_SHOW_AI_CONNECTIONS: 'journal.showAIConnections',
+  JOURNAL_SHOW_STATS_FOOTER: 'journal.showStatsFooter',
   AI_ENABLED: 'ai.enabled',
   // Tab settings
   TAB_PREVIEW_MODE: 'tabs.previewMode',
@@ -34,6 +41,10 @@ const SETTINGS_KEYS = {
 
 export interface JournalSettings {
   defaultTemplate: string | null
+  showSchedule: boolean
+  showTasks: boolean
+  showAIConnections: boolean
+  showStatsFooter: boolean
 }
 
 // ============================================================================
@@ -147,11 +158,28 @@ export function registerSettingsHandlers(): void {
   ipcMain.handle(SettingsChannels.invoke.GET_JOURNAL_SETTINGS, () => {
     const db = getDbOrNull()
     if (!db) {
-      return { defaultTemplate: null }
+      return {
+        defaultTemplate: null,
+        showSchedule: true,
+        showTasks: true,
+        showAIConnections: true,
+        showStatsFooter: false
+      }
     }
 
     const defaultTemplate = getSetting(db, SETTINGS_KEYS.JOURNAL_DEFAULT_TEMPLATE)
-    return { defaultTemplate }
+    const showScheduleStr = getSetting(db, SETTINGS_KEYS.JOURNAL_SHOW_SCHEDULE)
+    const showTasksStr = getSetting(db, SETTINGS_KEYS.JOURNAL_SHOW_TASKS)
+    const showAIConnectionsStr = getSetting(db, SETTINGS_KEYS.JOURNAL_SHOW_AI_CONNECTIONS)
+    const showStatsFooterStr = getSetting(db, SETTINGS_KEYS.JOURNAL_SHOW_STATS_FOOTER)
+
+    return {
+      defaultTemplate,
+      showSchedule: showScheduleStr !== 'false', // Default true
+      showTasks: showTasksStr !== 'false', // Default true
+      showAIConnections: showAIConnectionsStr !== 'false', // Default true
+      showStatsFooter: showStatsFooterStr === 'true' // Default false
+    }
   })
 
   // Set journal settings
@@ -170,6 +198,32 @@ export function registerSettingsHandlers(): void {
         } else {
           setSetting(db, SETTINGS_KEYS.JOURNAL_DEFAULT_TEMPLATE, settings.defaultTemplate)
         }
+      }
+
+      // Handle sidebar visibility settings
+      if (settings.showSchedule !== undefined) {
+        setSetting(
+          db,
+          SETTINGS_KEYS.JOURNAL_SHOW_SCHEDULE,
+          settings.showSchedule ? 'true' : 'false'
+        )
+      }
+      if (settings.showTasks !== undefined) {
+        setSetting(db, SETTINGS_KEYS.JOURNAL_SHOW_TASKS, settings.showTasks ? 'true' : 'false')
+      }
+      if (settings.showAIConnections !== undefined) {
+        setSetting(
+          db,
+          SETTINGS_KEYS.JOURNAL_SHOW_AI_CONNECTIONS,
+          settings.showAIConnections ? 'true' : 'false'
+        )
+      }
+      if (settings.showStatsFooter !== undefined) {
+        setSetting(
+          db,
+          SETTINGS_KEYS.JOURNAL_SHOW_STATS_FOOTER,
+          settings.showStatsFooter ? 'true' : 'false'
+        )
       }
 
       // Emit settings changed event
@@ -275,7 +329,7 @@ export function registerSettingsHandlers(): void {
       return result
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error'
-      console.error('[AI] Reindex failed:', message)
+      logger.error('Reindex failed:', message)
       return { success: false, error: message, computed: 0, skipped: 0 }
     }
   })
@@ -379,7 +433,7 @@ export function registerSettingsHandlers(): void {
     }
   )
 
-  console.log('[IPC] Settings handlers registered')
+  logger.info('Settings handlers registered')
 }
 
 /**
@@ -400,5 +454,5 @@ export function unregisterSettingsHandlers(): void {
   ipcMain.removeHandler(SettingsChannels.invoke.GET_NOTE_EDITOR_SETTINGS)
   ipcMain.removeHandler(SettingsChannels.invoke.SET_NOTE_EDITOR_SETTINGS)
 
-  console.log('Settings IPC handlers unregistered')
+  logger.info('Settings handlers unregistered')
 }

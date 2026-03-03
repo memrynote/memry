@@ -7,6 +7,7 @@ interface NumberEditorProps {
   onBlur?: () => void
   placeholder?: string
   autoFocus?: boolean
+  className?: string
 }
 
 export function NumberEditor({
@@ -14,7 +15,8 @@ export function NumberEditor({
   onChange,
   onBlur,
   placeholder = 'Empty',
-  autoFocus = true
+  autoFocus = true,
+  className
 }: NumberEditorProps) {
   const inputRef = useRef<HTMLInputElement>(null)
   const [localValue, setLocalValue] = useState(value?.toString() ?? '')
@@ -41,18 +43,52 @@ export function NumberEditor({
   }, [localValue, onChange, onBlur])
 
   const handleKeyDown = useCallback(
-    (e: React.KeyboardEvent) => {
+    (e: React.KeyboardEvent<HTMLInputElement>) => {
+      // Handle Enter - save value
       if (e.key === 'Enter') {
         e.preventDefault()
         const num = localValue ? parseFloat(localValue) : null
         onChange(num !== null && !isNaN(num) ? num : null)
         onBlur?.()
+        return
       }
+
+      // Handle Escape - revert value
       if (e.key === 'Escape') {
         e.preventDefault()
         setLocalValue(value?.toString() ?? '')
         onBlur?.()
+        return
       }
+
+      // Allow control keys
+      const allowedKeys = [
+        'Backspace',
+        'Delete',
+        'Tab',
+        'ArrowLeft',
+        'ArrowRight',
+        'ArrowUp',
+        'ArrowDown',
+        'Home',
+        'End'
+      ]
+      if (allowedKeys.includes(e.key)) return
+
+      // Allow Ctrl/Cmd shortcuts (copy, paste, select all, cut)
+      if ((e.ctrlKey || e.metaKey) && ['a', 'c', 'v', 'x'].includes(e.key.toLowerCase())) return
+
+      // Allow decimal point (only one)
+      if (e.key === '.' && !localValue.includes('.')) return
+
+      // Allow minus sign (only at start when cursor is at position 0)
+      if (e.key === '-' && e.currentTarget.selectionStart === 0 && !localValue.includes('-')) return
+
+      // Allow digits
+      if (/^\d$/.test(e.key)) return
+
+      // Block everything else (letters, special characters, etc.)
+      e.preventDefault()
     },
     [localValue, value, onChange, onBlur]
   )
@@ -67,13 +103,12 @@ export function NumberEditor({
       onKeyDown={handleKeyDown}
       placeholder={placeholder}
       className={cn(
-        'w-24 rounded px-2 py-1',
+        'w-24 bg-transparent border-none p-0',
         'text-[13px] text-foreground',
-        'bg-background/50 border border-border/60',
-        'placeholder:text-muted-foreground/40',
-        'outline-none',
-        'focus:bg-background focus:border-border focus:ring-1 focus:ring-border/40 shadow-sm',
-        '[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none'
+        'placeholder:text-muted-foreground/30',
+        'outline-none focus:ring-0 shadow-none',
+        '[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none',
+        className
       )}
     />
   )

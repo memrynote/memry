@@ -25,6 +25,7 @@ import {
   deleteAllSubtasks,
   completeParentTask
 } from '@/lib/subtask-bulk-utils'
+import { extractErrorMessage } from '@/lib/ipc-error'
 import { useTaskSettings } from './use-task-settings'
 import type { Task, Priority } from '@/data/sample-tasks'
 import type { Project } from '@/data/tasks-data'
@@ -179,7 +180,7 @@ export const useSubtaskManagement = ({
         }
         toast.success('Subtask added')
       } else {
-        toast.error(result.error || 'Failed to add subtask')
+        toast.error(extractErrorMessage(result.error, 'Failed to add subtask'))
       }
     },
     [tasks, onTasksChange, onAddTask]
@@ -204,7 +205,7 @@ export const useSubtaskManagement = ({
         }
         toast.success(`${titles.length} subtask${titles.length > 1 ? 's' : ''} added`)
       } else {
-        toast.error(result.error || 'Failed to add subtasks')
+        toast.error(extractErrorMessage(result.error, 'Failed to add subtasks'))
       }
     },
     [tasks, onTasksChange, onAddTask]
@@ -229,7 +230,7 @@ export const useSubtaskManagement = ({
           onTasksChange(result.updatedTasks)
         }
       } else {
-        toast.error(result.error || 'Failed to reorder subtasks')
+        toast.error(extractErrorMessage(result.error, 'Failed to reorder subtasks'))
       }
     },
     [tasks, onTasksChange, onReorderTasks]
@@ -253,7 +254,7 @@ export const useSubtaskManagement = ({
         }
         toast.success(`"${subtask?.title}" promoted to task`)
       } else {
-        toast.error(result.error || 'Failed to promote subtask')
+        toast.error(extractErrorMessage(result.error, 'Failed to promote subtask'))
       }
     },
     [tasks, onTasksChange, onUpdateTask]
@@ -278,7 +279,7 @@ export const useSubtaskManagement = ({
           description: 'The subtask has been removed'
         })
       } else {
-        toast.error(result.error || 'Failed to delete subtask')
+        toast.error(extractErrorMessage(result.error, 'Failed to delete subtask'))
       }
     },
     [tasks, onTasksChange, onDeleteTask]
@@ -312,7 +313,7 @@ export const useSubtaskManagement = ({
           keepSubtasks ? 'Task deleted, subtasks converted to tasks' : 'Task and subtasks deleted'
         )
       } else {
-        toast.error(result.error || 'Failed to delete task')
+        toast.error(extractErrorMessage(result.error, 'Failed to delete task'))
       }
 
       closeDeleteParentDialog()
@@ -350,7 +351,7 @@ export const useSubtaskManagement = ({
         onTasksChange(result.updatedTasks)
         toast.success(completeSubtasks ? 'Task and subtasks completed' : 'Task completed')
       } else {
-        toast.error(result.error || 'Failed to complete task')
+        toast.error(extractErrorMessage(result.error, 'Failed to complete task'))
       }
 
       closeCompleteParentDialog()
@@ -388,7 +389,7 @@ export const useSubtaskManagement = ({
         }
         toast.success(`Moved under "${parent?.title}"`)
       } else {
-        toast.error(result.error || 'Failed to make subtask')
+        toast.error(extractErrorMessage(result.error, 'Failed to make subtask'))
       }
 
       closeParentPickerDialog()
@@ -619,7 +620,7 @@ export const useSubtaskManagement = ({
           }, 1500) // Wait 1.5 seconds for celebration animation
         }
       } else {
-        toast.error(result.error || 'Failed to complete subtasks')
+        toast.error(extractErrorMessage(result.error, 'Failed to complete subtasks'))
       }
     },
     [tasks, onTasksChange, onUpdateTask, subtaskSettings.autoCompleteParent]
@@ -646,7 +647,7 @@ export const useSubtaskManagement = ({
         }
         toast.success(`${affectedCount} subtask${affectedCount !== 1 ? 's' : ''} marked incomplete`)
       } else {
-        toast.error(result.error || 'Failed to mark subtasks incomplete')
+        toast.error(extractErrorMessage(result.error, 'Failed to mark subtasks incomplete'))
       }
     },
     [tasks, onTasksChange, onUpdateTask]
@@ -694,7 +695,7 @@ export const useSubtaskManagement = ({
             : `Due date cleared for ${result.affectedCount} subtask${result.affectedCount !== 1 ? 's' : ''}`
         )
       } else {
-        toast.error(result.error || 'Failed to set due date')
+        toast.error(extractErrorMessage(result.error, 'Failed to set due date'))
       }
 
       closeBulkDueDateDialog()
@@ -742,7 +743,7 @@ export const useSubtaskManagement = ({
           `Priority set for ${result.affectedCount} subtask${result.affectedCount !== 1 ? 's' : ''}`
         )
       } else {
-        toast.error(result.error || 'Failed to set priority')
+        toast.error(extractErrorMessage(result.error, 'Failed to set priority'))
       }
 
       closeBulkPriorityDialog()
@@ -784,7 +785,7 @@ export const useSubtaskManagement = ({
         `${result.affectedCount} subtask${result.affectedCount !== 1 ? 's' : ''} deleted`
       )
     } else {
-      toast.error(result.error || 'Failed to delete subtasks')
+      toast.error(extractErrorMessage(result.error, 'Failed to delete subtasks'))
     }
 
     closeDeleteAllSubtasksDialog()

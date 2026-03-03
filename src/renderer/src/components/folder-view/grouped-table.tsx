@@ -46,37 +46,53 @@ import {
   sortableKeyboardCoordinates
 } from '@dnd-kit/sortable'
 import { restrictToHorizontalAxis } from '@dnd-kit/modifiers'
-import { ChevronRight, ChevronDown } from 'lucide-react'
-import type {
-  NoteWithProperties,
-  ColumnConfig,
-  SummaryConfig,
-  GroupByConfig
-} from '@shared/contracts/folder-view-api'
-import { cn } from '@/lib/utils'
 import {
-  TitleCell,
-  FolderCell,
-  TagsCell,
-  DateCell,
-  WordCountCell,
-  PropertyCell,
-  CheckboxCell,
-  NumberCell,
-  TextCell,
-  type PropertyType
-} from './property-cell'
+  AlignLeft,
+  Calendar,
+  CheckSquare,
+  ChevronRight,
+  ChevronDown,
+  FileText,
+  Folder,
+  Hash,
+  Link,
+  List,
+  Sigma,
+  Star,
+  Tag,
+  Tags,
+  type LucideIcon
+} from 'lucide-react'
+import { cn } from '@/lib/utils'
 import { evaluateFormula } from '@/lib/expression-evaluator'
-import { SortableColumnHeader } from './sortable-column-header'
-import { RowContextMenu } from './row-context-menu'
-import { FolderViewEmptyState } from './folder-view-empty-state'
-import { SummaryRow } from './summary-row'
 import {
   getColumnValues,
   computeSummary,
   formatSummaryValue,
   getSummaryTypeSymbol
 } from '@/lib/summary-evaluator'
+import type {
+  NoteWithProperties,
+  ColumnConfig,
+  SummaryConfig,
+  GroupByConfig
+} from '@shared/contracts/folder-view-api'
+import {
+  TitleCell,
+  FolderCell,
+  TagsCell,
+  DateCell,
+  WordCountCell,
+  EditablePropertyCell,
+  CheckboxCell,
+  NumberCell,
+  TextCell,
+  type PropertyType
+} from './property-cell'
+import { SortableColumnHeader } from './sortable-column-header'
+import { RowContextMenu } from './row-context-menu'
+import { FolderViewEmptyState } from './folder-view-empty-state'
+import { SummaryRow } from './summary-row'
 
 // ============================================================================
 // Types
@@ -89,6 +105,11 @@ export interface OrderConfig {
   property: string
   direction: 'asc' | 'desc'
 }
+
+const EMPTY_FORMULAS: Record<string, string> = {}
+const EMPTY_PROPERTY_TYPES: Record<string, PropertyType> = {}
+const EMPTY_HIGHLIGHTED: string[] = []
+const EMPTY_SUMMARIES: Record<string, SummaryConfig> = {}
 
 interface GroupedTableProps {
   /** Notes to display */
@@ -117,6 +138,10 @@ interface GroupedTableProps {
   onFolderClick?: (folderPath: string) => void
   /** Called when a tag is clicked */
   onTagClick?: (tag: string) => void
+  /** Called when a tag is removed */
+  onTagRemove?: (noteId: string, tag: string) => void
+  /** Called when a property value is updated */
+  onPropertyUpdate?: (noteId: string, propertyId: string, value: unknown) => void
   /** Called when column config changes (resize, reorder) */
   onColumnsChange?: (columns: ColumnConfig[]) => void
   /** Called when display name changes for a column */
@@ -188,6 +213,37 @@ function getColumnType(columnId: string): PropertyType {
   }
 }
 
+const PROPERTY_TYPE_ICONS: Record<PropertyType, LucideIcon> = {
+  text: AlignLeft,
+  number: Hash,
+  checkbox: CheckSquare,
+  date: Calendar,
+  select: List,
+  multiselect: Tags,
+  url: Link,
+  rating: Star
+}
+
+const BUILT_IN_COLUMN_ICONS: Record<string, LucideIcon> = {
+  title: FileText,
+  folder: Folder,
+  tags: Tag,
+  created: Calendar,
+  modified: Calendar,
+  wordCount: Hash
+}
+
+function getColumnIcon(
+  columnId: string,
+  propertyTypes: Record<string, PropertyType>
+): LucideIcon | undefined {
+  const builtInIcon = BUILT_IN_COLUMN_ICONS[columnId]
+  if (builtInIcon) return builtInIcon
+  if (columnId.startsWith('formula.')) return Sigma
+  const type = propertyTypes[columnId] ?? getColumnType(columnId)
+  return PROPERTY_TYPE_ICONS[type]
+}
+
 /**
  * Convert OrderConfig[] to TanStack SortingState
  */
@@ -241,8 +297,8 @@ function getGroupDisplayValue(value: unknown): string {
 export function GroupedTable({
   notes,
   columns: columnConfig,
-  formulas = {},
-  propertyTypes = {},
+  formulas = EMPTY_FORMULAS,
+  propertyTypes = EMPTY_PROPERTY_TYPES,
   groupBy,
   initialSorting,
   globalFilter,
@@ -252,6 +308,8 @@ export function GroupedTable({
   onOpenInNewTab,
   onFolderClick,
   onTagClick,
+  onTagRemove,
+  onPropertyUpdate,
   onColumnsChange,
   onDisplayNameChange,
   onSortingChange,
@@ -260,12 +318,12 @@ export function GroupedTable({
   onMoveToFolder,
   onCreateNote,
   onClearAll,
-  highlightedColumns = [],
+  highlightedColumns = EMPTY_HIGHLIGHTED,
   isLoading,
   density = 'comfortable',
   showColumnBorders = false,
   showSummaries = false,
-  summaries = {},
+  summaries = EMPTY_SUMMARIES,
   exitingRowIds = new Set<string>(),
   className
 }: GroupedTableProps): React.JSX.Element {
@@ -407,9 +465,22 @@ export function GroupedTable({
   const renderTagsCell = useCallback(
     (info: CellContext<NoteWithProperties, unknown>) => {
       const note = info.row.original
-      return <TagsCell tags={note.tags} onTagClick={onTagClick} highlightQuery={highlightQuery} />
+      return (
+        <TagsCell
+          tags={note.tags}
+          onTagClick={onTagClick}
+          onTagRemove={
+            onTagRemove
+              ? (tag) => {
+                  onTagRemove(note.id, tag)
+                }
+              : undefined
+          }
+          highlightQuery={highlightQuery}
+        />
+      )
     },
-    [onTagClick, highlightQuery]
+    [onTagClick, onTagRemove, highlightQuery]
   )
 
   const renderDateCell = useCallback((info: CellContext<NoteWithProperties, unknown>) => {
@@ -427,24 +498,32 @@ export function GroupedTable({
   // T116: Uses propertyTypes map for correct type rendering
   const renderPropertyCell = useCallback(
     (columnId: string) => {
-      const PropertyCellRenderer = (
-        info: CellContext<NoteWithProperties, unknown>
-      ): React.JSX.Element => {
+      return (info: CellContext<NoteWithProperties, unknown>): React.JSX.Element => {
+        const note = info.row.original
         const value = info.getValue()
-        // T116: Use propertyTypes from available properties if available
         const type = propertyTypes[columnId] ?? getColumnType(columnId)
-        return <PropertyCell value={value} type={type} highlightQuery={highlightQuery} />
+        return (
+          <EditablePropertyCell
+            value={value}
+            type={type}
+            highlightQuery={highlightQuery}
+            onSave={
+              onPropertyUpdate
+                ? (nextValue) => {
+                    onPropertyUpdate(note.id, columnId, nextValue)
+                  }
+                : undefined
+            }
+          />
+        )
       }
-      return PropertyCellRenderer
     },
-    [highlightQuery, propertyTypes]
+    [highlightQuery, onPropertyUpdate, propertyTypes]
   )
 
   const renderFormulaCell = useCallback(
-    (formulaName: string, expression: string) => {
-      const FormulaCellRenderer = (
-        info: CellContext<NoteWithProperties, unknown>
-      ): React.JSX.Element => {
+    (_formulaName: string, expression: string) => {
+      return (info: CellContext<NoteWithProperties, unknown>): React.JSX.Element => {
         const note = info.row.original
         const result = evaluateFormula(expression, note)
 
@@ -459,8 +538,6 @@ export function GroupedTable({
           return <TextCell value={result.join(', ')} highlightQuery={highlightQuery} />
         return <TextCell value={String(result)} highlightQuery={highlightQuery} />
       }
-      FormulaCellRenderer.displayName = `FormulaCell_${formulaName}`
-      return FormulaCellRenderer
     },
     [highlightQuery]
   )
@@ -771,6 +848,16 @@ export function GroupedTable({
     [rows, selectedRowIds, setSelectedRowIds]
   )
 
+  const scrollToRowById = useCallback(
+    (rowId: string) => {
+      const rowIndex = rows.findIndex((r) => r.original?.id === rowId)
+      if (rowIndex >= 0) {
+        rowVirtualizer.scrollToIndex(rowIndex, { align: 'auto', behavior: 'smooth' })
+      }
+    },
+    [rows, rowVirtualizer]
+  )
+
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
       const rows = table.getRowModel().rows.filter((r) => !r.getIsGrouped())
@@ -790,6 +877,7 @@ export function GroupedTable({
 
           const nextRow = rows[nextIndex]
           setFocusedRowId(nextRow.original.id)
+          scrollToRowById(nextRow.original.id)
 
           if (e.shiftKey) {
             setSelectedRowIds((prev) => {
@@ -815,6 +903,7 @@ export function GroupedTable({
 
           const prevRow = rows[prevIndex]
           setFocusedRowId(prevRow.original.id)
+          scrollToRowById(prevRow.original.id)
 
           if (e.shiftKey) {
             setSelectedRowIds((prev) => {
@@ -833,6 +922,7 @@ export function GroupedTable({
           e.preventDefault()
           const lastRow = rows[rows.length - 1]
           setFocusedRowId(lastRow.original.id)
+          scrollToRowById(lastRow.original.id)
           setSelectedRowIds(new Set([lastRow.original.id]))
           lastSelectedIndexRef.current = rows.length - 1
           break
@@ -861,6 +951,7 @@ export function GroupedTable({
             setSelectedRowIds(allIds)
             if (!focusedRowId && rows.length > 0) {
               setFocusedRowId(rows[0].original.id)
+              scrollToRowById(rows[0].original.id)
             }
           }
           break
@@ -868,7 +959,6 @@ export function GroupedTable({
 
         case 'm':
         case 'M': {
-          // Cmd/Ctrl+Shift+M: Move to folder
           if ((e.metaKey || e.ctrlKey) && e.shiftKey && selectedRowIds.size > 0) {
             e.preventDefault()
             onMoveToFolder?.(Array.from(selectedRowIds))
@@ -877,19 +967,16 @@ export function GroupedTable({
         }
       }
     },
-    [focusedRowId, table, onNoteOpen, onMoveToFolder, selectedRowIds, setSelectedRowIds]
+    [
+      focusedRowId,
+      table,
+      onNoteOpen,
+      onMoveToFolder,
+      selectedRowIds,
+      setSelectedRowIds,
+      scrollToRowById
+    ]
   )
-
-  // Scroll to focused row when it changes
-  // This is a legitimate external synchronization (syncing virtualizer scroll with state)
-  useEffect(() => {
-    if (focusedRowId) {
-      const rowIndex = rows.findIndex((r) => r.original?.id === focusedRowId)
-      if (rowIndex >= 0) {
-        rowVirtualizer.scrollToIndex(rowIndex, { align: 'auto', behavior: 'smooth' })
-      }
-    }
-  }, [focusedRowId, rows, rowVirtualizer])
 
   // ============================================================================
   // Rendering
@@ -937,6 +1024,8 @@ export function GroupedTable({
     >
       <div
         ref={tableContainerRef}
+        role="grid"
+        aria-label="Grouped notes table"
         className={cn('w-full max-w-full overflow-auto outline-none', className)}
         tabIndex={0}
         onKeyDown={handleKeyDown}
@@ -966,11 +1055,13 @@ export function GroupedTable({
                     const config = columnConfigMap.get(header.column.id) || {
                       id: header.column.id
                     }
+                    const icon = getColumnIcon(header.column.id, propertyTypes)
                     return (
                       <SortableColumnHeader
                         key={header.id}
                         header={header}
                         columnConfig={config}
+                        icon={icon}
                         sortIndex={getSortIndex(header.column.id)}
                         totalSortedColumns={sortedColumnsCount}
                         onWidthChange={handleWidthChange}
@@ -1055,10 +1146,11 @@ export function GroupedTable({
                     className={cn(
                       'border-b border-border/50',
                       'transition-colors',
+                      'items-center',
                       'cursor-pointer',
                       !isSelected && 'hover:bg-muted/50',
-                      isSelected && 'bg-primary/15 hover:bg-primary/20',
-                      isFocused && 'ring-2 ring-primary ring-inset',
+                      isSelected && 'border-l-2 border-amber-400 dark:border-amber-600',
+                      isFocused && 'ring-2 ring-amber-400/50 ring-inset dark:ring-amber-600/50',
                       // T121: Exit animation - simple opacity fade
                       isExiting && 'opacity-0 transition-opacity duration-200'
                     )}

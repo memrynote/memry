@@ -23,6 +23,7 @@ import {
   type DayContext,
   type GetAllTagsOutput
 } from '@shared/contracts/journal-api'
+import { createLogger } from '../lib/logger'
 import { createValidatedHandler, createHandler } from './validate'
 import {
   readJournalEntry,
@@ -47,16 +48,18 @@ import {
   getJournalStreak,
   // Tag operations (using note_tags)
   getNoteTags,
-  getAllTagsWithColors,
+  getAllTags,
   // Property operations (using note_properties)
   getNotePropertiesAsRecord,
-  setNoteProperties,
-  inferPropertyType,
   // Utilities
   calculateActivityLevel as calculateActivityLevelFromCharCount
 } from '@shared/db/queries/notes'
 import { getTasksByDueDate, countOverdueTasksBeforeDate } from '@shared/db/queries/tasks'
 import { getIndexDatabase, getDatabase } from '../database'
+import { getJournalSyncService } from '../sync/journal-sync'
+import { getCrdtProvider } from '../sync/crdt-provider'
+
+const logger = createLogger('IPC:Journal')
 
 // ============================================================================
 // Event Emitters
@@ -112,17 +115,20 @@ export function registerJournalHandlers(): void {
     createValidatedHandler(CreateEntryInputSchema, async (input): Promise<JournalEntry> => {
       const db = getIndexDatabase()
 
-      // Write to file
+      // Write to file (properties are now serialized to frontmatter)
       const { entry, fileContent, frontmatter } = await writeJournalEntryWithContent(
         input.date,
         input.content ?? '',
-        input.tags
+        input.tags,
+        null, // existingEntry
+        input.properties // properties serialized to frontmatter
       )
 
       const journalPath = getJournalRelativePath(entry.date)
       const cached = getJournalEntryByDate(db, entry.date)
       const cacheId = cached?.id ?? entry.id
 
+      // syncNoteToCache will extract properties from frontmatter and sync to DB
       syncNoteToCache(
         db,
         {
@@ -135,12 +141,10 @@ export function registerJournalHandlers(): void {
         { isNew: !cached }
       )
       queueEmbeddingUpdate(cacheId)
-
-      // Set properties using unified note_properties
-      if (input.properties && Object.keys(input.properties).length > 0) {
-        setNoteProperties(db, cacheId, input.properties, inferPropertyType)
-        entry.properties = input.properties
-      }
+      getJournalSyncService()?.enqueueCreate(cacheId, entry.date)
+      getCrdtProvider()
+        .initForNote(cacheId, { date: entry.date }, entry.tags)
+        .catch(() => {})
 
       // Emit event
       emitJournalEvent(JournalChannels.events.ENTRY_CREATED, {
@@ -169,14 +173,17 @@ export function registerJournalHandlers(): void {
       // Read current entry to get existing data
       const existing = await readJournalEntry(input.date)
       if (!existing) {
-        // If entry doesn't exist, create it
+        // If entry doesn't exist, create it (properties serialized to frontmatter)
         const { entry, fileContent, frontmatter } = await writeJournalEntryWithContent(
           input.date,
           input.content ?? '',
-          input.tags ?? []
+          input.tags ?? [],
+          null, // existingEntry
+          input.properties // properties serialized to frontmatter
         )
         const cacheId = cached?.id ?? entry.id
 
+        // syncNoteToCache will extract properties from frontmatter and sync to DB
         syncNoteToCache(
           db,
           {
@@ -189,12 +196,10 @@ export function registerJournalHandlers(): void {
           { isNew: !cached }
         )
         queueEmbeddingUpdate(cacheId)
-
-        // Set properties if provided
-        if (input.properties && Object.keys(input.properties).length > 0) {
-          setNoteProperties(db, cacheId, input.properties, inferPropertyType)
-          entry.properties = input.properties
-        }
+        getJournalSyncService()?.enqueueCreate(cacheId, entry.date)
+        getCrdtProvider()
+          .initForNote(cacheId, { date: entry.date }, entry.tags)
+          .catch(() => {})
 
         emitJournalEvent(JournalChannels.events.ENTRY_CREATED, {
           date: entry.date,
@@ -207,6 +212,8 @@ export function registerJournalHandlers(): void {
       // Merge updates
       const newContent = input.content ?? existing.content
       const newTags = input.tags ?? existing.tags
+      // Merge properties: use input.properties if provided, otherwise keep existing
+      const newProperties = input.properties !== undefined ? input.properties : existing.properties
 
       // Create snapshot before significant content changes (T111)
       // Use the entry ID from cache or existing entry
@@ -214,16 +221,18 @@ export function registerJournalHandlers(): void {
       if (input.content !== undefined && input.content !== existing.content) {
         try {
           // Create the current file content (before save) for snapshot
-          const currentFileContent = serializeJournalEntry(
-            {
-              id: existing.id,
-              date: existing.date,
-              created: existing.createdAt,
-              modified: existing.modifiedAt,
-              tags: existing.tags
-            },
-            existing.content
-          )
+          // Include existing properties in snapshot frontmatter
+          const snapshotFrontmatter: Parameters<typeof serializeJournalEntry>[0] = {
+            id: existing.id,
+            date: existing.date,
+            created: existing.createdAt,
+            modified: existing.modifiedAt,
+            tags: existing.tags
+          }
+          if (existing.properties && Object.keys(existing.properties).length > 0) {
+            snapshotFrontmatter.properties = existing.properties
+          }
+          const currentFileContent = serializeJournalEntry(snapshotFrontmatter, existing.content)
           maybeCreateSignificantSnapshot(
             entryId,
             currentFileContent,
@@ -232,19 +241,21 @@ export function registerJournalHandlers(): void {
             `Journal - ${input.date}`
           )
         } catch (err) {
-          console.error('[Journal Snapshot] Failed to create snapshot:', err)
+          logger.error('Failed to create snapshot:', err)
         }
       }
 
-      // Write to file
+      // Write to file (properties are now serialized to frontmatter)
       const { entry, fileContent, frontmatter } = await writeJournalEntryWithContent(
         input.date,
         newContent,
         newTags,
-        existing
+        existing,
+        newProperties // properties serialized to frontmatter
       )
       const cacheId = cached?.id ?? entry.id
 
+      // syncNoteToCache will extract properties from frontmatter and sync to DB
       syncNoteToCache(
         db,
         {
@@ -257,15 +268,7 @@ export function registerJournalHandlers(): void {
         { isNew: !cached }
       )
       queueEmbeddingUpdate(cacheId)
-
-      // Update properties if provided
-      if (input.properties !== undefined) {
-        setNoteProperties(db, cacheId, input.properties, inferPropertyType)
-        entry.properties = input.properties
-      } else if (existing.properties) {
-        // Keep existing properties if not updating
-        entry.properties = existing.properties
-      }
+      getJournalSyncService()?.enqueueUpdate(cacheId, entry.date)
 
       // Emit event
       emitJournalEvent(JournalChannels.events.ENTRY_UPDATED, {
@@ -291,6 +294,7 @@ export function registerJournalHandlers(): void {
 
       // Delete from unified cache
       if (cached) {
+        getJournalSyncService()?.enqueueDelete(cached.id, input.date)
         deleteNoteCache(db, cached.id)
       }
 
@@ -424,15 +428,13 @@ export function registerJournalHandlers(): void {
   // =========================================================================
 
   // journal:getAllTags - Get all tags used in journal entries
-  // Note: Now uses unified tag system (note_tags + tag_definitions)
+  // Note: Uses note_tags in index.db for counts.
   ipcMain.handle(
     JournalChannels.invoke.GET_ALL_TAGS,
     createHandler((): GetAllTagsOutput => {
       const db = getIndexDatabase()
-      // Get all tags with colors from unified system
-      const tagsWithColors = getAllTagsWithColors(db)
-      // Return in expected format (tag + count, without color for backward compat)
-      return tagsWithColors.map((t) => ({ tag: t.tag, count: t.count }))
+      const tagsWithCounts = getAllTags(db)
+      return tagsWithCounts.map((t) => ({ tag: t.tag, count: t.count }))
     })
   )
 

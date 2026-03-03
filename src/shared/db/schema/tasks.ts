@@ -1,5 +1,6 @@
 import { sqliteTable, text, integer, index } from 'drizzle-orm/sqlite-core'
 import { sql } from 'drizzle-orm'
+import type { VectorClock, FieldClocks } from '@shared/contracts/sync-api'
 import { projects } from './projects'
 import { statuses } from './statuses'
 
@@ -31,12 +32,16 @@ export const tasks = sqliteTable(
     completedAt: text('completed_at'),
     archivedAt: text('archived_at'),
 
+    clock: text('clock', { mode: 'json' }).$type<VectorClock>(),
+    fieldClocks: text('field_clocks', { mode: 'json' }).$type<FieldClocks>(),
+    syncedAt: text('synced_at'),
+
     createdAt: text('created_at')
       .notNull()
-      .default(sql`(datetime('now'))`),
+      .default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`),
     modifiedAt: text('modified_at')
       .notNull()
-      .default(sql`(datetime('now'))`)
+      .default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`)
   },
   (table) => [
     index('idx_tasks_project').on(table.projectId),

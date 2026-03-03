@@ -49,6 +49,7 @@ export interface NoteListItem {
   wordCount: number
   snippet?: string // First 200 chars of content
   emoji?: string | null // Emoji icon for visual identification
+  localOnly?: boolean
 }
 
 export interface NoteLink {
@@ -113,6 +114,11 @@ export const NoteReorderSchema = z.object({
 
 export const NoteGetPositionsSchema = z.object({
   folderPath: z.string()
+})
+
+export const SetLocalOnlySchema = z.object({
+  id: z.string(),
+  localOnly: z.boolean()
 })
 
 // ============================================================================

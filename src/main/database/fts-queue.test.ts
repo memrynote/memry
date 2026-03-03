@@ -11,6 +11,8 @@ import {
   scheduleFlush
 } from './fts-queue'
 
+const mockFtsWarn = vi.hoisted(() => vi.fn())
+
 // Mock getIndexDatabase for automatic timer flush tests
 vi.mock('./client', async (importOriginal) => {
   const actual = await importOriginal<typeof import('./client')>()
@@ -19,6 +21,12 @@ vi.mock('./client', async (importOriginal) => {
     getIndexDatabase: vi.fn()
   }
 })
+
+vi.mock('../lib/logger', () => ({
+  createLogger: vi.fn(() => ({
+    warn: mockFtsWarn
+  }))
+}))
 
 import { getIndexDatabase } from './client'
 
@@ -37,6 +45,7 @@ describe('fts-queue', () => {
 
     // Setup mock to return test db
     vi.mocked(getIndexDatabase).mockReturnValue(db)
+    mockFtsWarn.mockClear()
   })
 
   afterEach(() => {
@@ -218,18 +227,11 @@ describe('fts-queue', () => {
         throw new Error('Database not open')
       })
 
-      const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
-
       queueFtsUpdate('note-1', 'content', ['tag'])
       vi.advanceTimersByTime(2000)
 
       // Should log warning but not throw
-      expect(consoleSpy).toHaveBeenCalledWith(
-        '[FTS Queue] Failed to flush updates:',
-        expect.any(Error)
-      )
-
-      consoleSpy.mockRestore()
+      expect(mockFtsWarn).toHaveBeenCalledWith('Failed to flush updates:', expect.any(Error))
     })
   })
 

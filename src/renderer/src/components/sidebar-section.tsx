@@ -112,7 +112,7 @@ export const SidebarSection = ({
             onClick={handleToggle}
             onKeyDown={handleKeyDown}
             className={cn(
-              'flex flex-1 cursor-pointer items-center gap-2 px-2 py-1.5 rounded-md',
+              'flex flex-1 min-w-0 cursor-pointer items-center gap-2 px-2 py-1.5 rounded-md',
               'text-xs font-medium uppercase tracking-wide',
               'text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent/50',
               'transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring'
@@ -132,7 +132,7 @@ export const SidebarSection = ({
             />
 
             {/* Label */}
-            <span className="flex-1 text-left">{label}</span>
+            <span className="flex-1 truncate text-left">{label}</span>
 
             {/* Total count (shown when collapsed) */}
             {!isExpanded && totalCount !== undefined && totalCount > 0 && (
@@ -144,7 +144,10 @@ export const SidebarSection = ({
 
           {/* Action buttons */}
           {actions && (
-            <div className="flex items-center gap-0.5 pr-1" onClick={(e) => e.stopPropagation()}>
+            <div
+              className="flex shrink-0 items-center gap-0.5 pr-1"
+              onClick={(e) => e.stopPropagation()}
+            >
               {actions}
             </div>
           )}

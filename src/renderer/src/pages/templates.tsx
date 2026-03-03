@@ -34,6 +34,9 @@ import {
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('Page:Templates')
 
 // ============================================================================
 // Types
@@ -163,7 +166,7 @@ export function TemplatesPage() {
         toast.error('Failed to delete template')
       }
     } catch (err) {
-      console.error('Failed to delete template:', err)
+      log.error('Failed to delete template:', err)
       toast.error('Failed to delete template')
     } finally {
       setIsDeleting(false)
@@ -444,7 +447,9 @@ function TemplateListRow({ template, onEdit, onDuplicate, onDelete }: TemplateLi
           'opacity-0 group-hover:opacity-100',
           'transition-opacity duration-150'
         )}
+        role="group"
         onClick={(e) => e.stopPropagation()}
+        onKeyDown={(e) => e.stopPropagation()}
       >
         <Button
           variant="ghost"

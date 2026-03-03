@@ -1,30 +1,10 @@
-import {
-  AlignLeft,
-  FileText,
-  Hash,
-  Calendar,
-  CheckSquare,
-  List,
-  Tags,
-  Star,
-  Link,
-  CornerUpRight,
-  User,
-  type LucideIcon
-} from 'lucide-react'
+import { AlignLeft, Hash, Calendar, CheckSquare, Link, type LucideIcon } from 'lucide-react'
 
-export type PropertyType =
-  | 'text'
-  | 'longText'
-  | 'number'
-  | 'date'
-  | 'checkbox'
-  | 'select'
-  | 'multiSelect'
-  | 'rating'
-  | 'url'
-  | 'relation'
-  | 'person'
+/**
+ * Supported property types.
+ * Matches backend PropertyTypes from notes-cache.ts
+ */
+export type PropertyType = 'text' | 'number' | 'date' | 'checkbox' | 'url'
 
 export interface Property {
   id: string
@@ -33,7 +13,6 @@ export interface Property {
   value: unknown
   isCustom: boolean
   isRequired?: boolean
-  options?: string[]
 }
 
 export interface PropertyTemplate {
@@ -41,7 +20,6 @@ export interface PropertyTemplate {
   name: string
   type: PropertyType
   isRequired?: boolean
-  options?: string[]
 }
 
 export interface NewProperty {
@@ -56,16 +34,10 @@ export interface PropertyTypeConfig {
 
 export const PROPERTY_TYPE_CONFIG: Record<PropertyType, PropertyTypeConfig> = {
   text: { label: 'Text', icon: AlignLeft },
-  longText: { label: 'Long Text', icon: FileText },
   number: { label: 'Number', icon: Hash },
   date: { label: 'Date', icon: Calendar },
   checkbox: { label: 'Checkbox', icon: CheckSquare },
-  select: { label: 'Select', icon: List },
-  multiSelect: { label: 'Multi-Select', icon: Tags },
-  rating: { label: 'Rating', icon: Star },
-  url: { label: 'URL', icon: Link },
-  relation: { label: 'Relation', icon: CornerUpRight },
-  person: { label: 'Person', icon: User }
+  url: { label: 'URL', icon: Link }
 }
 
 export const PROPERTY_TYPES = Object.keys(PROPERTY_TYPE_CONFIG) as PropertyType[]

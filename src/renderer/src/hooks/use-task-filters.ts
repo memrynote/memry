@@ -1,6 +1,9 @@
-import { useState, useEffect, useMemo, useCallback } from 'react'
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
+import { createLogger } from '@/lib/logger'
 
 import type { Task, Priority } from '@/data/sample-tasks'
+
+const log = createLogger('Hook:TaskFilters')
 import type { TaskFilters, TaskSort, SavedFilter, Project, DueDateFilter } from '@/data/tasks-data'
 import { defaultFilters, defaultSort } from '@/data/tasks-data'
 import { applyFiltersAndSort, hasActiveFilters } from '@/lib/task-utils'
@@ -69,7 +72,7 @@ const persistFilters = (viewKey: string, filters: TaskFilters, sort: TaskSort): 
     }
     localStorage.setItem(FILTERS_STORAGE_KEY, JSON.stringify(stored))
   } catch (err) {
-    console.error('Failed to persist filters:', err)
+    log.error('Failed to persist filters:', err)
   }
 }
 
@@ -81,7 +84,7 @@ const loadPersistedFilters = (viewKey: string): PersistedFilterState | null => {
     const stored = JSON.parse(localStorage.getItem(FILTERS_STORAGE_KEY) || '{}')
     return stored[viewKey] || null
   } catch (err) {
-    console.error('Failed to load persisted filters:', err)
+    log.error('Failed to load persisted filters:', err)
     return null
   }
 }
@@ -100,7 +103,7 @@ const loadSavedFilters = (): SavedFilter[] => {
       createdAt: new Date(f.createdAt)
     }))
   } catch (err) {
-    console.error('Failed to load saved filters:', err)
+    log.error('Failed to load saved filters:', err)
     return []
   }
 }
@@ -135,6 +138,8 @@ export const useFilterState = ({
   persistFilters: shouldPersist = true
 }: UseFilterStateOptions): UseFilterStateReturn => {
   const viewKey = getViewKey(selectedType, selectedId, activeView)
+  const isSwitchingViewRef = useRef(false)
+  const previousViewKeyRef = useRef(viewKey)
 
   // Initialize filters from persisted state or defaults
   const [filters, setFilters] = useState<TaskFilters>(() => {
@@ -150,21 +155,30 @@ export const useFilterState = ({
     return persisted?.sort || defaultSort
   })
 
-  // Persist filters when they change
+  // Reload filters when the view key changes.
   useEffect(() => {
-    if (shouldPersist) {
-      persistFilters(viewKey, filters, sort)
-    }
-  }, [viewKey, filters, sort, shouldPersist])
+    if (!shouldPersist) return
+    if (previousViewKeyRef.current === viewKey) return
 
-  // Reset filters when view changes
-  useEffect(() => {
-    if (shouldPersist) {
-      const persisted = loadPersistedFilters(viewKey)
-      setFilters(persisted?.filters || defaultFilters)
-      setSort(persisted?.sort || defaultSort)
-    }
+    const persisted = loadPersistedFilters(viewKey)
+    isSwitchingViewRef.current = true
+    previousViewKeyRef.current = viewKey
+    setFilters(persisted?.filters || defaultFilters)
+    setSort(persisted?.sort || defaultSort)
   }, [viewKey, shouldPersist])
+
+  // Persist filters when they change.
+  useEffect(() => {
+    if (!shouldPersist) return
+
+    // Skip one cycle right after a view-key change to avoid writing stale state.
+    if (isSwitchingViewRef.current) {
+      isSwitchingViewRef.current = false
+      return
+    }
+
+    persistFilters(viewKey, filters, sort)
+  }, [viewKey, filters, sort, shouldPersist])
 
   const updateFilters = useCallback((updates: Partial<TaskFilters>) => {
     setFilters((prev) => ({ ...prev, ...updates }))
@@ -333,7 +347,7 @@ export const useSavedFilters = (): UseSavedFiltersReturn => {
         const response = await savedFiltersService.list()
         setSavedFilters(response.savedFilters.map(dbToFrontendFilter))
       } catch (error) {
-        console.error('[useSavedFilters] Failed to load saved filters:', error)
+        log.error('Failed to load saved filters from DB:', error)
         // Fallback to localStorage for backwards compatibility
         setSavedFilters(loadSavedFilters())
       } finally {
@@ -372,7 +386,7 @@ export const useSavedFilters = (): UseSavedFiltersReturn => {
       await savedFiltersService.create({ name, config })
       // Event subscription will update state
     } catch (error) {
-      console.error('[useSavedFilters] Failed to save filter:', error)
+      log.error('Failed to save filter:', error)
     }
   }, [])
 
@@ -381,7 +395,7 @@ export const useSavedFilters = (): UseSavedFiltersReturn => {
       await savedFiltersService.delete(id)
       // Event subscription will update state
     } catch (error) {
-      console.error('[useSavedFilters] Failed to delete filter:', error)
+      log.error('Failed to delete filter:', error)
     }
   }, [])
 
@@ -403,7 +417,7 @@ export const useSavedFilters = (): UseSavedFiltersReturn => {
         await savedFiltersService.update(updateInput)
         // Event subscription will update state
       } catch (error) {
-        console.error('[useSavedFilters] Failed to update filter:', error)
+        log.error('Failed to update filter:', error)
       }
     },
     [savedFilters]
