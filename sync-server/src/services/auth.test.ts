@@ -289,7 +289,9 @@ describe('rotateRefreshToken', () => {
     })
 
     db.batch
-      .mockRejectedValueOnce(new Error('UNIQUE constraint failed: refresh_tokens.user_id, refresh_tokens.device_id'))
+      .mockRejectedValueOnce(
+        new Error('UNIQUE constraint failed: refresh_tokens.user_id, refresh_tokens.device_id')
+      )
       .mockResolvedValueOnce([])
 
     // #when

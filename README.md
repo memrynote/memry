@@ -43,6 +43,7 @@ A distraction-free editor that stays out of your way. Rich text, markdown, wiki-
 
 <!-- TODO: Replace with editor screenshot -->
 <!-- Recommended: 580x380 showing the editor with some formatted text and a wiki link -->
+
 `[ editor screenshot — 580×380 ]`
 
 </td>
@@ -54,6 +55,7 @@ Every `[[link]]` creates a two-way connection. See what links back to any note. 
 
 <!-- TODO: Replace with backlinks/graph screenshot -->
 <!-- Recommended: 580x380 showing backlinks panel or graph view -->
+
 `[ backlinks screenshot — 580×380 ]`
 
 </td>
@@ -67,6 +69,7 @@ A dedicated space for daily reflection. Calendar view with activity streaks so y
 
 <!-- TODO: Replace with journal screenshot -->
 <!-- Recommended: 580x380 showing journal with calendar heatmap -->
+
 `[ journal screenshot — 580×380 ]`
 
 </td>
@@ -78,6 +81,7 @@ Tasks and projects live alongside your notes — not in a separate app. Prioriti
 
 <!-- TODO: Replace with tasks screenshot -->
 <!-- Recommended: 580x380 showing task board or list view -->
+
 `[ tasks screenshot — 580×380 ]`
 
 </td>
@@ -92,18 +96,19 @@ Tasks and projects live alongside your notes — not in a separate app. Prioriti
 
 <!-- TODO: Replace with sync diagram or animation -->
 <!-- Recommended: 700x300 showing two devices syncing with a lock icon in between -->
+
 `[ sync diagram / animation — 700×300 ]`
 
 </div>
 
 Most apps make you choose: **privacy** or **sync**. memry gives you both.
 
-| | memry | Typical note apps |
-|---|---|---|
-| **Encryption** | End-to-end. We literally can't read your notes. | "Encrypted at rest" (they hold the keys) |
-| **Offline** | Full functionality. No internet needed. | Degraded or broken without connection |
-| **Conflicts** | Smart merge — edits from multiple devices combine automatically | Last save wins (your edits disappear) |
-| **Data ownership** | SQLite on your machine. Export anytime. | Proprietary format on someone else's server |
+|                    | memry                                                           | Typical note apps                           |
+| ------------------ | --------------------------------------------------------------- | ------------------------------------------- |
+| **Encryption**     | End-to-end. We literally can't read your notes.                 | "Encrypted at rest" (they hold the keys)    |
+| **Offline**        | Full functionality. No internet needed.                         | Degraded or broken without connection       |
+| **Conflicts**      | Smart merge — edits from multiple devices combine automatically | Last save wins (your edits disappear)       |
+| **Data ownership** | SQLite on your machine. Export anytime.                         | Proprietary format on someone else's server |
 
 <details>
 <summary><strong>How does the sync actually work?</strong></summary>
@@ -136,6 +141,7 @@ memry runs natively on your machine. Not a browser tab pretending to be an app.
 
 <!-- TODO: Replace with speed/feature demo GIF or video -->
 <!-- Recommended: 700x420 GIF showing tab switching, split pane, dark/light toggle -->
+
 `[ app demo GIF — 700×420 ]`
 
 </div>
@@ -185,6 +191,7 @@ Scan a code from your first device to your second, and they sync.
 
 <!-- TODO: Replace with device linking screenshot or GIF -->
 <!-- Recommended: 500x300 showing QR code device linking flow -->
+
 `[ device linking flow — 500×300 ]`
 
 </div>

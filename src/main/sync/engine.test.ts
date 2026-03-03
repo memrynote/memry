@@ -374,7 +374,6 @@ describe('SyncEngine', () => {
       const deps = createMockDeps(testDb, { network, getAccessToken })
       const engine = new SyncEngine(deps)
       await engine.start()
-
       ;(network as unknown as { _online: boolean })._online = true
       network.emit('status-changed', { online: true })
       ;(network as unknown as { _online: boolean })._online = false

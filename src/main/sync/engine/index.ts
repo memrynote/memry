@@ -1,4 +1,9 @@
-export type { SyncContext, SyncEngineDeps, SyncEngineOptions, QuarantineEntry } from './sync-context'
+export type {
+  SyncContext,
+  SyncEngineDeps,
+  SyncEngineOptions,
+  QuarantineEntry
+} from './sync-context'
 export { SYNC_STATE_KEYS } from './sync-context'
 export { SyncStateManager } from './sync-state-manager'
 export { QuarantineManager } from './quarantine-manager'

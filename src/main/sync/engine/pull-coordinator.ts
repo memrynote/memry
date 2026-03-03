@@ -58,11 +58,7 @@ export class PullCoordinator {
     this.quarantine = quarantine
     this.crdtSync = crdtSync
     this.pushCoordinator = pushCoordinator
-    this.corruptTracker = new CorruptItemTracker(
-      ctx,
-      quarantine,
-      (id) => this.resolveDeviceKey(id)
-    )
+    this.corruptTracker = new CorruptItemTracker(ctx, quarantine, (id) => this.resolveDeviceKey(id))
   }
 
   async pull(): Promise<void> {
@@ -217,8 +213,13 @@ export class PullCoordinator {
     )
   }
 
-  private async pullChangesPage(changes: ChangesResponse, runState: PullRunState): Promise<boolean> {
-    const itemIds = Array.from(new Set([...changes.items.map((item) => item.id), ...changes.deleted]))
+  private async pullChangesPage(
+    changes: ChangesResponse,
+    runState: PullRunState
+  ): Promise<boolean> {
+    const itemIds = Array.from(
+      new Set([...changes.items.map((item) => item.id), ...changes.deleted])
+    )
     if (itemIds.length === 0) return false
 
     const pageResult = await this.processPage(
@@ -248,7 +249,9 @@ export class PullCoordinator {
   private emitInitialSyncProgress(changes: ChangesResponse, pulledCount: number): void {
     if (!this.ctx.fullSyncActive) return
 
-    const estimatedTotal = changes.hasMore ? pulledCount + this.ctx.options.pullPageLimit : pulledCount
+    const estimatedTotal = changes.hasMore
+      ? pulledCount + this.ctx.options.pullPageLimit
+      : pulledCount
     this.ctx.deps.emitToRenderer(EVENT_CHANNELS.INITIAL_SYNC_PROGRESS, {
       phase: 'notes',
       processedItems: pulledCount,
@@ -357,7 +360,10 @@ export class PullCoordinator {
     for (const failure of failures) {
       if (failure.isSignatureError) {
         this.quarantine.quarantineItem(
-          failure.id, failure.type, failure.signerDeviceId, failure.error
+          failure.id,
+          failure.type,
+          failure.signerDeviceId,
+          failure.error
         )
         pageFailed++
         continue
@@ -444,7 +450,9 @@ export class PullCoordinator {
     if (allRefetchIds.length > 0 && pageApplied > 0) {
       this.corruptTracker.clearExpired()
       const { recovered, permanentFailures } = await this.corruptTracker.refetch(
-        allRefetchIds, token, vaultKey
+        allRefetchIds,
+        token,
+        vaultKey
       )
 
       for (const dec of recovered) {
@@ -465,7 +473,8 @@ export class PullCoordinator {
             pageFailed--
             this.stateManager.emitItemSynced(dec.id, dec.type, 'pull', itemOp)
             this.ctx.deps.emitToRenderer(EVENT_CHANNELS.ITEM_RECOVERED, {
-              itemId: dec.id, type: dec.type
+              itemId: dec.id,
+              type: dec.type
             } satisfies ItemRecoveredEvent)
             log.info('Pull: recovered corrupt item', { itemId: dec.id, type: dec.type })
           }
@@ -478,8 +487,7 @@ export class PullCoordinator {
       }
 
       for (const id of permanentFailures) {
-        const failInfo =
-          parseErrorIds.find((p) => p.id === id) ?? failures.find((f) => f.id === id)
+        const failInfo = parseErrorIds.find((p) => p.id === id) ?? failures.find((f) => f.id === id)
         this.ctx.deps.emitToRenderer(EVENT_CHANNELS.ITEM_CORRUPT, {
           itemId: id,
           type: failInfo?.type ?? 'unknown',
@@ -526,9 +534,12 @@ export class PullCoordinator {
     return { applied: pageApplied, conflicts: pageConflicts, allCryptoFailed }
   }
 
-  private handleConflict(
-    dec: { id: string; type: string; content: string; clock?: Record<string, number> }
-  ): void {
+  private handleConflict(dec: {
+    id: string
+    type: string
+    content: string
+    clock?: Record<string, number>
+  }): void {
     let remoteVersion: Record<string, unknown> = {}
     try {
       const parsedRemote = JSON.parse(dec.content) as unknown

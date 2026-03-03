@@ -75,7 +75,8 @@ export const clearPendingLinkCompletion = (): void => {
 
 const isExpired = (expiresAt: number): boolean => Date.now() / 1000 > expiresAt
 
-const decodeBase64 = (input: string): Uint8Array => Uint8Array.from(atob(input), (ch) => ch.charCodeAt(0))
+const decodeBase64 = (input: string): Uint8Array =>
+  Uint8Array.from(atob(input), (ch) => ch.charCodeAt(0))
 
 const encodeBase64 = (input: Uint8Array): string => btoa(String.fromCharCode(...input))
 

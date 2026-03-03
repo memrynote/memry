@@ -16,11 +16,7 @@ export class ErrorRecoveryHandler {
   private rateLimitResumeTimer: ReturnType<typeof setTimeout> | null = null
   private onFullSync: () => void
 
-  constructor(
-    ctx: SyncContext,
-    stateManager: SyncStateManager,
-    onFullSync: () => void
-  ) {
+  constructor(ctx: SyncContext, stateManager: SyncStateManager, onFullSync: () => void) {
     this.ctx = ctx
     this.stateManager = stateManager
     this.onFullSync = onFullSync

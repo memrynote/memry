@@ -15,14 +15,14 @@ function createCtx(testDb: TestDatabaseResult): SyncContext {
       db: testDb.db,
       emitToRenderer: vi.fn(),
       network: { online: true },
-      queue: { getPendingCount: vi.fn().mockReturnValue(0) },
+      queue: { getPendingCount: vi.fn().mockReturnValue(0) }
     },
     state: 'idle' as SyncStatusValue,
     syncing: false,
     abortController: null,
     offlineSince: null,
     lastError: undefined,
-    lastErrorInfo: undefined,
+    lastErrorInfo: undefined
   } as unknown as SyncContext
 }
 
@@ -163,7 +163,7 @@ describe('SyncStateManager', () => {
         itemCount: 5,
         direction: 'push',
         durationMs: 120,
-        details: 'batch done',
+        details: 'batch done'
       })
     })
   })
@@ -174,14 +174,18 @@ describe('SyncStateManager', () => {
       mgr.emitItemSynced('item-1', 'task', 'push', 'create')
 
       // #then
-      expect(ctx.deps.emitToRenderer).toHaveBeenCalledWith(
-        EVENT_CHANNELS.ITEM_SYNCED,
-        { itemId: 'item-1', type: 'task', operation: 'push', itemOperation: 'create' }
-      )
-      expect(nodeEmit).toHaveBeenCalledWith(
-        'item-synced',
-        { itemId: 'item-1', type: 'task', operation: 'push', itemOperation: 'create' }
-      )
+      expect(ctx.deps.emitToRenderer).toHaveBeenCalledWith(EVENT_CHANNELS.ITEM_SYNCED, {
+        itemId: 'item-1',
+        type: 'task',
+        operation: 'push',
+        itemOperation: 'create'
+      })
+      expect(nodeEmit).toHaveBeenCalledWith('item-synced', {
+        itemId: 'item-1',
+        type: 'task',
+        operation: 'push',
+        itemOperation: 'create'
+      })
     })
   })
 
@@ -200,7 +204,7 @@ describe('SyncStateManager', () => {
         EVENT_CHANNELS.CLOCK_SKEW_WARNING,
         expect.objectContaining({
           serverTime: skewedServer,
-          skewSeconds: expect.any(Number),
+          skewSeconds: expect.any(Number)
         })
       )
     })

@@ -42,7 +42,9 @@ function printTypeNode(typeNode) {
   const file = ts.factory.updateSourceFile(source, [
     ts.factory.createTypeAliasDeclaration(undefined, 'T', undefined, typeNode)
   ])
-  return ts.createPrinter({ removeComments: true }).printNode(ts.EmitHint.Unspecified, typeNode, file)
+  return ts
+    .createPrinter({ removeComments: true })
+    .printNode(ts.EmitHint.Unspecified, typeNode, file)
 }
 
 function normalizeTypeText(typeText) {
@@ -137,10 +139,13 @@ function collectEntries(program) {
         return
       }
 
-      const params = signature.getParameters().slice(1).map((symbol) => {
-        const symbolType = checker.getTypeOfSymbolAtLocation(symbol, handlerArg)
-        return formatType(checker, symbolType)
-      })
+      const params = signature
+        .getParameters()
+        .slice(1)
+        .map((symbol) => {
+          const symbolType = checker.getTypeOfSymbolAtLocation(symbol, handlerArg)
+          return formatType(checker, symbolType)
+        })
       const returnType = formatType(checker, checker.getReturnTypeOfSignature(signature))
       const awaitedReturn = `Awaited<${returnType}>`
       const argsTuple = params.length > 0 ? `[${params.join(', ')}]` : '[]'

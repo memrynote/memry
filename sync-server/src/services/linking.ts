@@ -30,7 +30,8 @@ const hashLinkingSecret = async (secret: string): Promise<string> => {
   return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, '0')).join('')
 }
 
-const decodeBase64 = (input: string): Uint8Array => Uint8Array.from(atob(input), (ch) => ch.charCodeAt(0))
+const decodeBase64 = (input: string): Uint8Array =>
+  Uint8Array.from(atob(input), (ch) => ch.charCodeAt(0))
 
 const encodeBase64 = (input: Uint8Array): string => btoa(String.fromCharCode(...input))
 

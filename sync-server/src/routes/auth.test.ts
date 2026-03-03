@@ -543,7 +543,11 @@ describe('auth routes', () => {
         JWT_PRIVATE_KEY: 'jwt-key-a',
         RECOVERY_DUMMY_SECRET: 'dummy-secret'
       }
-      const first = await app.request('/auth/recovery?email=test@example.com', { method: 'GET' }, envWithJwtA)
+      const first = await app.request(
+        '/auth/recovery?email=test@example.com',
+        { method: 'GET' },
+        envWithJwtA
+      )
       expect(first.status).toBe(200)
       const firstJson = await first.json()
 

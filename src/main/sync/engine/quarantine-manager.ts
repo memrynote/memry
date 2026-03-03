@@ -16,12 +16,7 @@ export class QuarantineManager {
     this.ctx = ctx
   }
 
-  quarantineItem(
-    itemId: string,
-    itemType: string,
-    signerDeviceId: string,
-    error: string
-  ): void {
+  quarantineItem(itemId: string, itemType: string, signerDeviceId: string, error: string): void {
     const existing = this.quarantinedItems.get(itemId)
     const attemptCount = existing ? existing.attemptCount + 1 : 1
     const permanent = attemptCount >= QUARANTINE_MAX_ATTEMPTS

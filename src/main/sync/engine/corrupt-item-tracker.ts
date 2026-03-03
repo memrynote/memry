@@ -27,11 +27,7 @@ export class CorruptItemTracker {
   private quarantine: QuarantineManager
   private resolveDeviceKey: ResolveDeviceKey
 
-  constructor(
-    ctx: SyncContext,
-    quarantine: QuarantineManager,
-    resolveDeviceKey: ResolveDeviceKey
-  ) {
+  constructor(ctx: SyncContext, quarantine: QuarantineManager, resolveDeviceKey: ResolveDeviceKey) {
     this.ctx = ctx
     this.quarantine = quarantine
     this.resolveDeviceKey = resolveDeviceKey
