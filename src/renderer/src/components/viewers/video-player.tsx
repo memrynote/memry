@@ -163,7 +163,7 @@ MemryFilePlayer.displayName = 'MemryFilePlayer'
 let customPlayerRegistered = false
 function ensureCustomPlayerRegistered() {
   if (!customPlayerRegistered) {
-    ReactPlayer.addCustomPlayer(MemryFilePlayer as never)
+    ReactPlayer.addCustomPlayer?.(MemryFilePlayer as never)
     customPlayerRegistered = true
   }
 }

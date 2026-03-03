@@ -1586,9 +1586,9 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
           </>
         )}
 
-        {currentView === 'archived' && <InboxArchivedView />}
+        {(currentView as string) === 'archived' && <InboxArchivedView />}
 
-        {currentView === 'insights' && <InboxInsightsView />}
+        {(currentView as string) === 'insights' && <InboxInsightsView />}
       </div>
 
       {/* Inbox view specific components */}

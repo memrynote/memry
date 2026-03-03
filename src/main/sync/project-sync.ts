@@ -1,6 +1,4 @@
-import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3'
 import { eq } from 'drizzle-orm'
-import type * as schema from '@shared/db/schema/data-schema'
 import { projects } from '@shared/db/schema/projects'
 import { statuses } from '@shared/db/schema/statuses'
 import type { VectorClock } from '@shared/contracts/sync-api'
@@ -13,8 +11,7 @@ import {
   rebindOfflineClockData
 } from './offline-clock'
 import { createLogger } from '../lib/logger'
-
-type DrizzleDb = BetterSQLite3Database<typeof schema>
+import type { DrizzleDb } from '../database/client'
 
 const log = createLogger('ProjectSync')
 

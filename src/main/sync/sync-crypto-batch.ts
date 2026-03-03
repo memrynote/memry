@@ -189,7 +189,8 @@ export async function decryptPullBatch(
         type: item.type,
         signerDeviceId: item.signerDeviceId,
         error: `No public key for signer device ${item.signerDeviceId}`,
-        isCryptoError: false
+        isCryptoError: false,
+        isSignatureError: false
       })
       continue
     }

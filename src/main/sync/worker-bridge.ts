@@ -78,7 +78,7 @@ export class SyncWorkerBridge {
       }
     })
 
-    this.worker.on('error', (err) => {
+    this.worker.on('error', (err: Error) => {
       log.error('Sync worker error', err)
       this.rejectAll(err)
     })

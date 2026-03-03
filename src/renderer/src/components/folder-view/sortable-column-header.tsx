@@ -257,8 +257,6 @@ export function SortableColumnHeader({
       <div className="flex items-center gap-1 min-w-0">
         {/* Drag handle - visible on hover */}
         <div
-          role="button"
-          tabIndex={0}
           {...attributes}
           {...listeners}
           onClick={(e) => e.stopPropagation()}
@@ -273,7 +271,7 @@ export function SortableColumnHeader({
             'text-muted-foreground/50 hover:text-muted-foreground',
             '-ml-1 mr-0.5'
           )}
-          aria-label={`Drag to reorder column: ${columnConfig.name}`}
+          aria-label={`Drag to reorder column: ${columnConfig.displayName ?? columnConfig.id}`}
           title="Drag to reorder column"
         >
           <GripVertical className="h-4 w-4" />

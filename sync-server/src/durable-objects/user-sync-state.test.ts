@@ -127,7 +127,11 @@ describe('UserSyncState', () => {
 
     it('returns 403 when device not found in DB', async () => {
       // #given
-      const db = { prepare: () => ({ bind: () => ({ first: async () => null, all: async () => ({ results: [] }) }) }) }
+      const db = {
+        prepare: () => ({
+          bind: () => ({ first: async () => null, all: async () => ({ results: [] }) })
+        })
+      }
       const doObj = createDO(db as unknown as ReturnType<typeof createMockDB>)
 
       // #when

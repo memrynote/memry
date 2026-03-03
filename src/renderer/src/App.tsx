@@ -554,7 +554,7 @@ function App(): React.JSX.Element {
   )
 
   if (vaultLoading) {
-    return null
+    return <></>
   }
 
   if (!isVaultOpen) {

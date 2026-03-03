@@ -273,6 +273,7 @@ export interface NoteListItem {
   wordCount: number
   snippet?: string
   emoji?: string | null // T028: Emoji icon for visual identification
+  localOnly?: boolean
   fileType?: 'markdown' | 'pdf' | 'image' | 'audio' | 'video' // File type discriminator
   mimeType?: string | null // MIME type (e.g., 'application/pdf')
   fileSize?: number | null // File size in bytes
@@ -2069,6 +2070,7 @@ interface SyncAuthClientAPI {
   verifyOtp: (input: { email: string; code: string }) => Promise<{
     success: boolean
     isNewUser?: boolean
+    needsSetup?: boolean
     needsRecoverySetup?: boolean
     needsRecoveryInput?: boolean
     recoveryPhrase?: string
@@ -2177,6 +2179,7 @@ interface SyncOpsClientAPI {
     lastSyncAt?: number
     pendingCount: number
     error?: string
+    offlineSince?: number
   }>
   triggerSync: () => Promise<{
     success: boolean
@@ -2343,6 +2346,16 @@ interface API extends WindowAPI {
   syncOps: SyncOpsClientAPI
   crypto: CryptoClientAPI
   syncAttachments: SyncAttachmentsClientAPI
+  syncCrdt: {
+    openDoc: (input: { noteId: string }) => Promise<void>
+    closeDoc: (input: { noteId: string }) => Promise<void>
+    applyUpdate: (input: { noteId: string; update: number[] }) => Promise<void>
+    syncStep1: (input: {
+      noteId: string
+      stateVector: number[]
+    }) => Promise<{ diff: number[]; stateVector: number[] }>
+    syncStep2: (input: { noteId: string; diff: number[] }) => Promise<void>
+  }
   /** Show a native OS context menu and return the selected item id, or null if dismissed */
   showContextMenu: (items: ContextMenuItem[]) => Promise<string | null>
   // Vault event subscriptions
@@ -2451,6 +2464,9 @@ interface API extends WindowAPI {
   onClockSkewWarning: (callback: (event: ClockSkewWarningEvent) => void) => () => void
   onSecurityWarning: (callback: (event: SecurityWarningEvent) => void) => () => void
   onCertificatePinFailed: (callback: (event: CertificatePinFailedEvent) => void) => () => void
+  onCrdtStateChanged: (
+    callback: (data: { noteId: string; update: number[]; origin: string }) => void
+  ) => () => void
   onFlushRequested: (callback: () => void) => () => void
   notifyFlushDone: () => void
 }

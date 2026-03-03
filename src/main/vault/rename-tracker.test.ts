@@ -35,7 +35,7 @@ describe('rename-tracker', () => {
     vi.mocked(getIndexDatabase).mockReturnValue(indexDb.db)
 
     window = new MockBrowserWindow()
-    vi.mocked(BrowserWindow.getAllWindows).mockReturnValue([window])
+    vi.mocked(BrowserWindow.getAllWindows).mockReturnValue([window as never])
   })
 
   afterEach(() => {

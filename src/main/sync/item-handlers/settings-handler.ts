@@ -14,7 +14,7 @@ export const settingsHandler: SyncItemHandler<SettingsSyncPayload> = {
 
   applyUpsert(
     _ctx: ApplyContext,
-    itemId: string,
+    _itemId: string,
     data: SettingsSyncPayload,
     _clock: VectorClock
   ): ApplyResult {
