@@ -926,6 +926,54 @@ export const getTodayTasks = (tasks: Task[], projects: Project[]): TodayViewTask
   }
 }
 
+export interface TodayWithWeekTasks {
+  overdue: Task[]
+  today: Task[]
+  weekByDay: Map<string, Task[]>
+}
+
+export const getTodayWithWeekTasks = (
+  tasks: Task[],
+  projects: Project[],
+  weekDays: number = 6
+): TodayWithWeekTasks => {
+  const now = new Date()
+  const todayStart = startOfDay(now)
+  const todayEnd = endOfDay(now)
+  const tomorrowStart = addDays(todayStart, 1)
+  const weekEnd = endOfDay(addDays(todayStart, weekDays))
+
+  const overdue: Task[] = []
+  const today: Task[] = []
+  const weekByDay = new Map<string, Task[]>()
+
+  for (let i = 1; i <= weekDays; i++) {
+    const date = addDays(todayStart, i)
+    const key = formatDateKey(date)
+    weekByDay.set(key, [])
+  }
+
+  tasks.forEach((task) => {
+    if (isTaskCompleted(task, projects)) return
+    if (!task.dueDate) return
+
+    const dueDate = startOfDay(task.dueDate)
+
+    if (isBefore(dueDate, todayStart)) {
+      overdue.push(task)
+    } else if (isWithinInterval(task.dueDate, { start: todayStart, end: todayEnd })) {
+      today.push(task)
+    } else if (isWithinInterval(task.dueDate, { start: tomorrowStart, end: weekEnd })) {
+      const key = formatDateKey(dueDate)
+      if (weekByDay.has(key)) {
+        weekByDay.get(key)!.push(task)
+      }
+    }
+  })
+
+  return { overdue, today, weekByDay }
+}
+
 /**
  * Result type for Upcoming view filtering
  */

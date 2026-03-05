@@ -4,6 +4,9 @@ import {
   groupTasksByDueDate,
   groupTasksByStatus,
   dueDateGroupConfig,
+  formatDateKey,
+  parseDateKey,
+  startOfDay,
   type TaskGroupByDate,
   type TaskGroupByStatus,
   type UrgencyLevel
@@ -24,6 +27,8 @@ export type VirtualItemType =
   | 'parent-task' // Task with subtasks (variable height when expanded)
   | 'empty-state' // Per-section empty state
   | 'add-task-button' // Add task button at section end
+  | 'week-accordion-header' // "This Week" collapsible accordion
+  | 'day-header' // Per-day header within week accordion
 
 /**
  * Base interface for all virtual items
@@ -98,6 +103,20 @@ export interface AddTaskButtonItem extends VirtualItemBase {
   date?: Date
 }
 
+export interface WeekAccordionHeaderItem extends VirtualItemBase {
+  type: 'week-accordion-header'
+  totalCount: number
+  isCollapsed: boolean
+}
+
+export interface DayHeaderItem extends VirtualItemBase {
+  type: 'day-header'
+  date: Date
+  dateKey: string
+  taskCount: number
+  isTomorrow: boolean
+}
+
 /**
  * Union type for all virtual items
  */
@@ -108,6 +127,8 @@ export type VirtualItem =
   | ParentTaskItem
   | EmptyStateItem
   | AddTaskButtonItem
+  | WeekAccordionHeaderItem
+  | DayHeaderItem
 
 // ============================================================================
 // HEIGHT CONSTANTS
@@ -125,7 +146,10 @@ export const ITEM_HEIGHTS = {
   'add-subtask-input': 40,
   'empty-state': 80,
   'empty-state-celebration': 200,
-  'add-task-button': 40
+  'add-task-button': 40,
+  'week-accordion-header': 48,
+  'day-header': 40,
+  'empty-day': 56
 } as const
 
 /**
@@ -167,6 +191,12 @@ export const estimateItemHeight = (
 
     case 'add-task-button':
       return ITEM_HEIGHTS['add-task-button']
+
+    case 'week-accordion-header':
+      return ITEM_HEIGHTS['week-accordion-header']
+
+    case 'day-header':
+      return ITEM_HEIGHTS['day-header']
 
     default:
       return 50
@@ -273,6 +303,7 @@ export const flattenTasksByDueDate = (
 export interface TodayViewData {
   overdue: Task[]
   today: Task[]
+  weekByDay?: Map<string, Task[]>
 }
 
 /**
@@ -285,14 +316,18 @@ export const flattenTodayTasks = (
   _expandedIds: Set<string>,
   allTasks: Task[],
   showCelebration: boolean,
-  collapsedSections: Set<string> = new Set()
+  collapsedSections: Set<string> = new Set(),
+  showEmptyDays: boolean = true
 ): VirtualItem[] => {
   const items: VirtualItem[] = []
   const projectMap = new Map(projects.map((p) => [p.id, p]))
 
   const hasOverdue = todayData.overdue.length > 0
   const hasToday = todayData.today.length > 0
-  const isEmpty = !hasOverdue && !hasToday
+  const hasWeekTasks = todayData.weekByDay
+    ? Array.from(todayData.weekByDay.values()).some((d) => d.length > 0)
+    : false
+  const isEmpty = !hasOverdue && !hasToday && !hasWeekTasks
 
   // Show celebration empty state when completely empty
   if (isEmpty) {
@@ -403,6 +438,80 @@ export const flattenTodayTasks = (
       type: 'add-task-button',
       sectionId: 'today'
     })
+  }
+
+  if (todayData.weekByDay && todayData.weekByDay.size > 0) {
+    let totalWeekTasks = 0
+    todayData.weekByDay.forEach((dayTasks) => {
+      totalWeekTasks += dayTasks.length
+    })
+
+    const isWeekCollapsed = collapsedSections.has('this-week')
+
+    items.push({
+      id: 'header-this-week',
+      type: 'week-accordion-header',
+      totalCount: totalWeekTasks,
+      isCollapsed: isWeekCollapsed
+    })
+
+    if (!isWeekCollapsed) {
+      const tomorrowDate = new Date()
+      tomorrowDate.setDate(tomorrowDate.getDate() + 1)
+      const tomorrowKey = formatDateKey(startOfDay(tomorrowDate))
+
+      todayData.weekByDay.forEach((dayTasks, dateKey) => {
+        const date = parseDateKey(dateKey)
+        const isTomorrow = dateKey === tomorrowKey
+
+        if (dayTasks.length === 0 && !showEmptyDays) return
+
+        items.push({
+          id: `day-${dateKey}`,
+          type: 'day-header',
+          date,
+          dateKey,
+          taskCount: dayTasks.length,
+          isTomorrow
+        })
+
+        if (dayTasks.length > 0) {
+          const topLevelDayTasks = getTopLevelTasks(dayTasks)
+          topLevelDayTasks.forEach((task) => {
+            const project = projectMap.get(task.projectId)
+            if (!project) return
+
+            const taskHasSubtasks = hasSubtasks(task)
+            if (taskHasSubtasks) {
+              const subtasks = getSubtasks(task.id, allTasks)
+              items.push({
+                id: `parent-task-${task.id}`,
+                type: 'parent-task',
+                task,
+                project,
+                subtasks,
+                sectionId: dateKey
+              })
+            } else {
+              items.push({
+                id: `task-${task.id}`,
+                type: 'task',
+                task,
+                project,
+                sectionId: dateKey
+              })
+            }
+          })
+        }
+
+        items.push({
+          id: `add-${dateKey}`,
+          type: 'add-task-button',
+          sectionId: dateKey,
+          date
+        })
+      })
+    }
   }
 
   return items
