@@ -20,7 +20,7 @@ import {
   SelectValue
 } from '@/components/ui/select'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
-import { Calendar } from '@/components/ui/calendar'
+import { DatePickerCalendar } from './date-picker-calendar'
 import { cn } from '@/lib/utils'
 import {
   calculateNextOccurrences,
@@ -264,16 +264,14 @@ const RepeatEndOptions = ({
               {endDate ? format(endDate, 'MMM d, yyyy') : 'Pick a date'}
             </Button>
           </PopoverTrigger>
-          <PopoverContent className="w-auto p-0" align="start">
-            <Calendar
-              mode="single"
+          <PopoverContent className="w-[296px] p-3" align="start">
+            <DatePickerCalendar
               selected={endDate || undefined}
               onSelect={(date) => {
                 onChange({ endDate: date || null })
                 setIsDatePickerOpen(false)
               }}
               disabled={(date) => date < new Date()}
-              initialFocus
             />
           </PopoverContent>
         </Popover>

@@ -9,7 +9,7 @@ import {
   DialogTitle
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
-import { Calendar } from '@/components/ui/calendar'
+import { DatePickerCalendar } from '@/components/tasks/date-picker-calendar'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
 import { Input } from '@/components/ui/input'
@@ -80,12 +80,10 @@ export const BulkDueDatePicker = ({
         </DialogHeader>
 
         <div className="flex flex-col items-center gap-4 py-4">
-          <Calendar
-            mode="single"
+          <DatePickerCalendar
             selected={selectedDate}
-            onSelect={setSelectedDate}
+            onSelect={(d) => setSelectedDate(d)}
             disabled={(date) => date < new Date(new Date().setHours(0, 0, 0, 0))}
-            initialFocus
           />
 
           <div className="flex w-full items-center justify-between gap-4 px-2">

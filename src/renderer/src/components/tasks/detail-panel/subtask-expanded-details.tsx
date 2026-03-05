@@ -7,7 +7,7 @@ import type { Task, Priority } from '@/data/sample-tasks'
 import { Calendar, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
-import { Calendar as CalendarComponent } from '@/components/ui/calendar'
+import { DatePickerCalendar } from '@/components/tasks/date-picker-calendar'
 import { useState } from 'react'
 
 // ============================================================================
@@ -80,13 +80,8 @@ const SimpleDueDatePicker = ({ value, onChange }: SimpleDueDatePickerProps): Rea
           )}
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-auto p-0" align="start">
-        <CalendarComponent
-          mode="single"
-          selected={value || undefined}
-          onSelect={handleSelect}
-          initialFocus
-        />
+      <PopoverContent className="w-[296px] p-3" align="start">
+        <DatePickerCalendar selected={value || undefined} onSelect={handleSelect} />
       </PopoverContent>
     </Popover>
   )

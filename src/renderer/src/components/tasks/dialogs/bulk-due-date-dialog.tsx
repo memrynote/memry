@@ -10,7 +10,7 @@ import {
   DialogTitle
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
-import { Calendar } from '@/components/ui/calendar'
+import { DatePickerCalendar } from '@/components/tasks/date-picker-calendar'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Label } from '@/components/ui/label'
 
@@ -82,12 +82,7 @@ export const BulkDueDateDialog = ({
         <div className="py-4">
           {/* Calendar */}
           <div className="flex justify-center">
-            <Calendar
-              mode="single"
-              selected={selectedDate}
-              onSelect={setSelectedDate}
-              initialFocus
-            />
+            <DatePickerCalendar selected={selectedDate} onSelect={(d) => setSelectedDate(d)} />
           </div>
 
           {/* Include completed checkbox */}

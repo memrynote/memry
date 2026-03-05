@@ -13,7 +13,7 @@ import { priorityConfig, type Priority } from '@/data/sample-tasks'
 import type { Project } from '@/data/tasks-data'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
-import { Calendar } from '@/components/ui/calendar'
+import { DatePickerCalendar } from './date-picker-calendar'
 import { Checkbox } from '@/components/ui/checkbox'
 
 // ============================================================================
@@ -654,17 +654,17 @@ export const InteractiveDueDateBadge = ({
           {badgeContent}
         </button>
       </PopoverTrigger>
-      <PopoverContent className="w-auto p-0" align="end" onClick={handleTriggerClick}>
-        <div className="p-2 space-y-2">
+      <PopoverContent className="w-[296px] p-3" align="end" onClick={handleTriggerClick}>
+        <div className="flex flex-col gap-2">
           {/* Quick date buttons */}
-          <div className="flex gap-1 px-1">
+          <div className="flex gap-2">
             <button
               type="button"
               onClick={handleQuickDate(0)}
               className={cn(
-                'flex-1 px-2 py-1 text-xs rounded-md transition-colors',
+                'flex-1 rounded-md py-1.5 text-xs font-medium transition-colors',
                 'hover:bg-accent',
-                isToday && 'bg-accent font-medium'
+                isToday ? 'bg-accent text-foreground' : 'text-muted-foreground'
               )}
             >
               Today
@@ -673,9 +673,11 @@ export const InteractiveDueDateBadge = ({
               type="button"
               onClick={handleQuickDate(1)}
               className={cn(
-                'flex-1 px-2 py-1 text-xs rounded-md transition-colors',
+                'flex-1 rounded-md py-1.5 text-xs font-medium transition-colors',
                 'hover:bg-accent',
-                formatted?.status === 'tomorrow' && 'bg-accent font-medium'
+                formatted?.status === 'tomorrow'
+                  ? 'bg-accent text-foreground'
+                  : 'text-muted-foreground'
               )}
             >
               Tomorrow
@@ -683,29 +685,29 @@ export const InteractiveDueDateBadge = ({
             <button
               type="button"
               onClick={handleQuickDate(7)}
-              className="flex-1 px-2 py-1 text-xs rounded-md transition-colors hover:bg-accent"
+              className="flex-1 rounded-md py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-accent"
             >
               +1 Week
             </button>
           </div>
 
+          <div className="h-px bg-border" />
+
           {/* Calendar */}
-          <Calendar
-            mode="single"
-            selected={dueDate || undefined}
-            onSelect={handleDateSelect}
-            initialFocus
-          />
+          <DatePickerCalendar selected={dueDate || undefined} onSelect={handleDateSelect} />
 
           {/* Remove date button */}
           {dueDate && (
-            <button
-              type="button"
-              onClick={handleRemoveDate}
-              className="w-full px-3 py-1.5 text-xs text-destructive hover:bg-destructive/10 rounded-md transition-colors"
-            >
-              Remove due date
-            </button>
+            <>
+              <div className="h-px bg-border" />
+              <button
+                type="button"
+                onClick={handleRemoveDate}
+                className="w-full rounded-md py-1.5 text-xs font-medium text-destructive transition-colors hover:bg-destructive/10"
+              >
+                Remove due date
+              </button>
+            </>
           )}
         </div>
       </PopoverContent>

@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect, useCallback, useRef } from 'react'
 import { Calendar as CalendarIcon, Star, X, Clock, Plus, Sun } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
-import { Calendar } from '@/components/ui/calendar'
+import { DatePickerCalendar } from './date-picker-calendar'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Separator } from '@/components/ui/separator'
 import { TimePicker } from './time-picker'
@@ -502,11 +502,10 @@ export const DueDatePicker = ({
             </button>
 
             {/* Calendar */}
-            <Calendar
-              mode="single"
+            <DatePickerCalendar
               selected={date || undefined}
               onSelect={handleCalendarSelect}
-              initialFocus
+              className="p-2"
             />
           </div>
         )}
