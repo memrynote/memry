@@ -12,19 +12,21 @@ Memry is a local-first, end-to-end encrypted PKM (Personal Knowledge Management)
 
 ## Prompt Files
 
-| File                         | Speckit Command         | Purpose                          |
-| ---------------------------- | ----------------------- | -------------------------------- |
-| `00-constitution.md`         | `/speckit.constitution` | Project principles and standards |
-| `01-specify-core-data.md`    | `/speckit.specify`      | File system & SQLite data layer  |
-| `02-specify-tasks.md`        | `/speckit.specify`      | Task management system           |
-| `03-specify-notes.md`        | `/speckit.specify`      | Note-taking with wiki links      |
-| `04-specify-journal.md`      | `/speckit.specify`      | Daily journaling system          |
-| `05-specify-inbox.md`        | `/speckit.specify`      | Quick capture & inbox            |
-| `06-specify-sync.md`         | `/speckit.specify`      | Sync engine & E2E encryption     |
-| `07-specify-search.md`       | `/speckit.specify`      | Search & discovery               |
-| `08-specify-settings.md`     | `/speckit.specify`      | Settings & preferences           |
-| `09-specify-ai-assistant.md` | `/speckit.specify`      | AI-powered features              |
-| `10-plan-backend.md`         | `/speckit.plan`         | Tech stack & implementation plan |
+| File                         | Speckit Command         | Purpose                                    |
+| ---------------------------- | ----------------------- | ------------------------------------------ |
+| `00-constitution.md`         | `/speckit.constitution` | Project principles and standards           |
+| `01-specify-core-data.md`    | `/speckit.specify`      | File system & SQLite data layer            |
+| `02-specify-tasks.md`        | `/speckit.specify`      | Task management system                     |
+| `03-specify-notes.md`        | `/speckit.specify`      | Note-taking with wiki links                |
+| `04-specify-journal.md`      | `/speckit.specify`      | Daily journaling system                    |
+| `05-specify-inbox.md`        | `/speckit.specify`      | Quick capture & inbox                      |
+| `06-specify-sync.md`         | `/speckit.specify`      | Sync engine & E2E encryption               |
+| `07-specify-search.md`       | `/speckit.specify`      | Search & discovery                         |
+| `08-specify-settings.md`     | `/speckit.specify`      | Settings & preferences                     |
+| `09-specify-ai-assistant.md` | `/speckit.specify`      | AI-powered features                        |
+| `10-plan-backend.md`         | `/speckit.plan`         | Tech stack & implementation plan (general) |
+| `11-plan-sync-e2ee.md`       | `/speckit.plan`         | Sync & E2E encryption plan                 |
+| `12-plan-search.md`          | `/speckit.plan`         | Global search & discovery plan             |
 
 ## Execution Order
 

@@ -5,7 +5,7 @@
 **Status**: Draft
 **Input**: Build the sync engine that synchronizes encrypted data between devices with end-to-end encryption, offline support, and conflict resolution.
 
-## User Scenarios & Testing *(mandatory)*
+## User Scenarios & Testing _(mandatory)_
 
 ### User Story 1 - Cross-Device Data Synchronization (Priority: P1)
 
@@ -237,7 +237,7 @@ As a user, I want to remove a device from my account so I can revoke access if a
 - How does the system handle corrupted encrypted data? (Skip item, log error, notify user, preserve local version if available)
 - What happens when linking a device to an account that already has conflicting data? (Treat as merge with conflict resolution)
 
-## Requirements *(mandatory)*
+## Requirements _(mandatory)_
 
 ### Functional Requirements
 
@@ -317,7 +317,7 @@ As a user, I want to remove a device from my account so I can revoke access if a
 - **Recovery Phrase**: User's 24-word backup that can regenerate encryption keys
 - **Sync History Entry**: Log record of a sync operation including timestamp, type, and result
 
-## Success Criteria *(mandatory)*
+## Success Criteria _(mandatory)_
 
 ### Measurable Outcomes
 

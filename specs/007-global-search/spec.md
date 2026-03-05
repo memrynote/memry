@@ -9,7 +9,7 @@
 
 The Global Search System provides users with a unified search experience to find content across all data types in Memry (notes, tasks, journal entries, and inbox items). Users can quickly locate information using a command palette-style interface, with support for instant results, type filtering, fuzzy matching, and keyboard navigation.
 
-## User Scenarios & Testing *(mandatory)*
+## User Scenarios & Testing _(mandatory)_
 
 ### User Story 1 - Unified Cross-Content Search (Priority: P1)
 
@@ -219,16 +219,18 @@ As a user, I want to search within specific projects or folders so that I can na
 - **Offline mode**: Search works fully offline since all data is local
 - **Concurrent edits**: Search index updates when content is modified without blocking the UI
 
-## Requirements *(mandatory)*
+## Requirements _(mandatory)_
 
 ### Functional Requirements
 
 #### Search Invocation
+
 - **FR-001**: System MUST provide a global keyboard shortcut (Cmd+K on macOS, Ctrl+K on Windows/Linux) to open the search modal from anywhere in the application
 - **FR-002**: System MUST auto-focus the search input when the modal opens
 - **FR-003**: System MUST close the search modal when the user presses Escape or clicks outside
 
 #### Search Execution
+
 - **FR-004**: System MUST search across all content types: notes (title and content), tasks (title and description), journal entries (content), and inbox items (title and content)
 - **FR-005**: System MUST support case-insensitive text matching
 - **FR-006**: System MUST support prefix matching (partial word matches at the beginning)
@@ -237,6 +239,7 @@ As a user, I want to search within specific projects or folders so that I can na
 - **FR-009**: System MUST debounce search execution by 150ms while the user types
 
 #### Results Display
+
 - **FR-010**: System MUST group search results by content type with section headers
 - **FR-011**: System MUST display result count for each content type section
 - **FR-012**: System MUST display a maximum of 10 results per section initially
@@ -249,6 +252,7 @@ As a user, I want to search within specific projects or folders so that I can na
   - Inbox: title, item type, snippet
 
 #### Filtering
+
 - **FR-016**: System MUST provide type filter checkboxes (Notes, Tasks, Journal, Inbox)
 - **FR-017**: System MUST provide tag filter with autocomplete
 - **FR-018**: System MUST provide date range filter with presets (Today, This Week, This Month, Custom)
@@ -258,6 +262,7 @@ As a user, I want to search within specific projects or folders so that I can na
 - **FR-022**: System MUST provide a "Clear all filters" action
 
 #### Navigation & Interaction
+
 - **FR-023**: System MUST navigate to the source content when a result is clicked or selected with Enter
 - **FR-024**: System MUST support keyboard navigation with Arrow Up/Down for result selection
 - **FR-025**: System MUST support Tab key to move focus between result sections
@@ -266,6 +271,7 @@ As a user, I want to search within specific projects or folders so that I can na
 - **FR-028**: System MUST maintain visible focus indicator on selected result
 
 #### Recent Searches
+
 - **FR-029**: System MUST store the 20 most recent unique search queries
 - **FR-030**: System MUST display recent searches when the search input is empty
 - **FR-031**: System MUST execute the search when a recent search item is clicked
@@ -273,6 +279,7 @@ As a user, I want to search within specific projects or folders so that I can na
 - **FR-033**: System MUST provide ability to clear search history
 
 #### Results Ranking
+
 - **FR-034**: System MUST rank results by relevance score
 - **FR-035**: System MUST prioritize exact matches over fuzzy matches
 - **FR-036**: System MUST support sorting by relevance (default), date, or title
@@ -284,7 +291,7 @@ As a user, I want to search within specific projects or folders so that I can na
 - **RecentSearch**: Represents a saved search containing: query text, execution timestamp, and result count
 - **SearchIndex**: The indexed representation of searchable content, maintained in sync with source data
 
-## Success Criteria *(mandatory)*
+## Success Criteria _(mandatory)_
 
 ### Measurable Outcomes
 
