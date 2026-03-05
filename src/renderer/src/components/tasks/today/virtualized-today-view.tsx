@@ -54,7 +54,6 @@ interface VirtualizedTodayViewProps {
     }
   ) => void
   onOpenModal?: (prefillTitle: string) => void
-  onAddTaskWithDate?: (date: Date) => void
   className?: string
   // Selection props
   isSelectionMode?: boolean
@@ -205,6 +204,72 @@ const DroppableDayHeader = memo(({ item }: DroppableDayHeaderProps): React.JSX.E
 DroppableDayHeader.displayName = 'DroppableDayHeader'
 
 // ============================================================================
+// INLINE ADD TASK INPUT
+// ============================================================================
+
+interface InlineAddTaskInputProps {
+  date?: Date
+  onSubmit: (title: string, date?: Date) => void
+  onCancel: () => void
+  placeholder?: string
+  className?: string
+}
+
+const InlineAddTaskInput = ({
+  date,
+  onSubmit,
+  onCancel,
+  placeholder = 'Task name...',
+  className
+}: InlineAddTaskInputProps): React.JSX.Element => {
+  const [value, setValue] = useState('')
+  const inputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    inputRef.current?.focus()
+  }, [])
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>): void => {
+    if (e.key === 'Enter') {
+      e.preventDefault()
+      const trimmed = value.trim()
+      if (trimmed) {
+        onSubmit(trimmed, date)
+        setValue('')
+      }
+    } else if (e.key === 'Escape') {
+      e.preventDefault()
+      onCancel()
+    }
+  }
+
+  const handleBlur = (): void => {
+    const trimmed = value.trim()
+    if (trimmed) {
+      onSubmit(trimmed, date)
+    }
+    onCancel()
+  }
+
+  return (
+    <div className={cn('flex items-center gap-2 px-4 py-2 border-t border-border/50', className)}>
+      <div className="flex size-5 shrink-0 items-center justify-center rounded-full border-2 border-text-tertiary" />
+      <input
+        ref={inputRef}
+        type="text"
+        value={value}
+        onChange={(e) => setValue(e.target.value)}
+        onKeyDown={handleKeyDown}
+        onBlur={handleBlur}
+        placeholder={placeholder}
+        className="flex-1 bg-transparent text-sm outline-none text-text-primary placeholder:text-text-tertiary"
+        aria-label="New task name"
+      />
+    </div>
+  )
+}
+
+// ============================================================================
 // VIRTUAL ITEM RENDERER
 // ============================================================================
 
@@ -230,8 +295,10 @@ interface VirtualItemRendererProps {
   onAddSubtask?: (parentId: string, title: string) => void
   onReorderSubtasks?: (parentId: string, newOrder: string[]) => void
   // Callbacks
-  onAddTaskForToday: () => void
-  onAddTaskWithDate?: (date: Date) => void
+  onActivateInlineAdd: (sectionId: string) => void
+  onInlineAddSubmit: (title: string, date?: Date) => void
+  onInlineAddCancel: () => void
+  inlineAddSection: string | null
   onToggleCollapse?: (sectionKey: string) => void
   showEmptyDays?: boolean
   onToggleEmptyDays?: (value: boolean) => void
@@ -256,8 +323,10 @@ const VirtualItemRenderer = memo(
     onToggleExpand,
     onAddSubtask,
     onReorderSubtasks,
-    onAddTaskForToday,
-    onAddTaskWithDate,
+    onActivateInlineAdd,
+    onInlineAddSubmit,
+    onInlineAddCancel,
+    inlineAddSection,
     onToggleCollapse,
     showEmptyDays,
     onToggleEmptyDays
@@ -387,36 +456,36 @@ const VirtualItemRenderer = memo(
 
       case 'add-task-button': {
         const addItem = item as AddTaskButtonItem
-        if (addItem.date) {
+        const isActive = inlineAddSection === addItem.sectionId
+        const isWeekDay = !!addItem.date
+        const label = isWeekDay ? 'Add task' : 'Add task for today'
+
+        if (isActive) {
           return (
-            <button
-              type="button"
-              onClick={() => onAddTaskWithDate?.(addItem.date!)}
-              className={cn(
-                'w-full flex items-center gap-2 px-4 py-2.5 text-sm text-text-tertiary ml-2',
-                'hover:bg-accent/50 hover:text-text-secondary',
-                'border-t border-border/50 transition-colors',
-                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset'
-              )}
-            >
-              <Plus className="size-4" aria-hidden="true" />
-              <span>Add task</span>
-            </button>
+            <InlineAddTaskInput
+              date={addItem.date}
+              onSubmit={onInlineAddSubmit}
+              onCancel={onInlineAddCancel}
+              placeholder={label + '...'}
+              className={isWeekDay ? 'ml-2' : ''}
+            />
           )
         }
+
         return (
           <button
             type="button"
-            onClick={onAddTaskForToday}
+            onClick={() => onActivateInlineAdd(addItem.sectionId)}
             className={cn(
               'w-full flex items-center gap-2 px-4 py-2.5 text-sm text-text-tertiary',
               'hover:bg-accent/50 hover:text-text-secondary',
               'border-t border-border/50 transition-colors',
-              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset'
+              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset',
+              isWeekDay && 'ml-2'
             )}
           >
             <Plus className="size-4" aria-hidden="true" />
-            <span>Add task for today</span>
+            <span>{label}</span>
           </button>
         )
       }
@@ -428,7 +497,7 @@ const VirtualItemRenderer = memo(
             <CelebrationEmptyState
               title="All clear for today!"
               description="Enjoy your free time or plan ahead."
-              onAddTask={onAddTaskForToday}
+              onAddTask={() => onActivateInlineAdd('today')}
               addButtonLabel="Add task for today"
             />
           )
@@ -458,7 +527,6 @@ export const VirtualizedTodayView = ({
   onTaskClick,
   onQuickAdd,
   onOpenModal,
-  onAddTaskWithDate,
   className,
   isSelectionMode = false,
   selectedIds,
@@ -478,6 +546,7 @@ export const VirtualizedTodayView = ({
   const { collapsedSections, toggleSection } = useCollapsedSections('today')
 
   const [showEmptyDays, setShowEmptyDays] = useState(true)
+  const [inlineAddSection, setInlineAddSection] = useState<string | null>(null)
 
   const todayData = useMemo(() => getTodayWithWeekTasks(tasks, projects), [tasks, projects])
 
@@ -514,19 +583,30 @@ export const VirtualizedTodayView = ({
     overscan: 5
   })
 
-  // Remeasure when expanded state changes
   useEffect(() => {
     virtualizer.measure()
-  }, [expandedIds, virtualizer])
+  }, [expandedIds, inlineAddSection, virtualizer])
 
-  // Handle adding task for today
-  const handleAddTaskForToday = useCallback(() => {
-    onQuickAdd('', {
-      dueDate: startOfDay(new Date()),
-      priority: 'none',
-      projectId: null
-    })
-  }, [onQuickAdd])
+  const handleActivateInlineAdd = useCallback((sectionId: string) => {
+    setInlineAddSection(sectionId)
+  }, [])
+
+  const handleInlineAddCancel = useCallback(() => {
+    setInlineAddSection(null)
+  }, [])
+
+  const handleInlineAddSubmit = useCallback(
+    (title: string, date?: Date) => {
+      const dueDate = date ?? startOfDay(new Date())
+      onQuickAdd(title, {
+        dueDate,
+        priority: 'none',
+        projectId: null
+      })
+      setInlineAddSection(null)
+    },
+    [onQuickAdd]
+  )
 
   // Handle quick add with context (defaults to today)
   const handleQuickAdd = useCallback(
@@ -617,8 +697,10 @@ export const VirtualizedTodayView = ({
                     onToggleExpand={toggleExpanded}
                     onAddSubtask={onAddSubtask}
                     onReorderSubtasks={onReorderSubtasks}
-                    onAddTaskForToday={handleAddTaskForToday}
-                    onAddTaskWithDate={onAddTaskWithDate}
+                    onActivateInlineAdd={handleActivateInlineAdd}
+                    onInlineAddSubmit={handleInlineAddSubmit}
+                    onInlineAddCancel={handleInlineAddCancel}
+                    inlineAddSection={inlineAddSection}
                     onToggleCollapse={toggleSection}
                     showEmptyDays={showEmptyDays}
                     onToggleEmptyDays={setShowEmptyDays}
