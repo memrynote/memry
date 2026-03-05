@@ -4,6 +4,11 @@ const STORAGE_PREFIX = 'collapsedSections'
 
 const getStorageKey = (viewKey: string): string => `${STORAGE_PREFIX}-${viewKey}`
 
+const getDefaultCollapsed = (viewKey: string): Set<string> => {
+  if (viewKey === 'today') return new Set(['this-week'])
+  return new Set()
+}
+
 const loadFromStorage = (viewKey: string): Set<string> => {
   try {
     const stored = localStorage.getItem(getStorageKey(viewKey))
@@ -14,7 +19,7 @@ const loadFromStorage = (viewKey: string): Set<string> => {
   } catch {
     // Ignore
   }
-  return new Set()
+  return getDefaultCollapsed(viewKey)
 }
 
 const saveToStorage = (viewKey: string, ids: Set<string>): void => {
