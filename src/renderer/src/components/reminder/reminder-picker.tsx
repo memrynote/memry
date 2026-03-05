@@ -12,7 +12,7 @@ import { useState } from 'react'
 import { Bell, Calendar, Clock, ChevronRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
-import { Calendar as CalendarComponent } from '@/components/ui/calendar'
+import { DatePickerCalendar } from '@/components/tasks/date-picker-calendar'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
@@ -191,12 +191,10 @@ export function ReminderPicker({
               Back to presets
             </button>
 
-            <CalendarComponent
-              mode="single"
+            <DatePickerCalendar
               selected={selectedDate}
-              onSelect={setSelectedDate}
+              onSelect={(d) => setSelectedDate(d)}
               disabled={(date) => date < new Date(new Date().setHours(0, 0, 0, 0))}
-              initialFocus
               className="rounded-md border p-2"
             />
 

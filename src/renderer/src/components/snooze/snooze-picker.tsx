@@ -16,7 +16,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu'
-import { Calendar } from '@/components/ui/calendar'
+import { DatePickerCalendar } from '@/components/tasks/date-picker-calendar'
 import { Input } from '@/components/ui/input'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import {
@@ -234,20 +234,17 @@ export function SnoozePicker({
 
           <div className="space-y-4">
             {/* Calendar - properly sized with larger cells */}
-            <Calendar
-              mode="single"
+            <DatePickerCalendar
               selected={selectedDate}
-              onSelect={setSelectedDate}
+              onSelect={(d) => setSelectedDate(d)}
               disabled={(date) => {
-                // Compare only date portion (ignore time) to allow today
                 const today = new Date()
                 today.setHours(0, 0, 0, 0)
                 const compareDate = new Date(date)
                 compareDate.setHours(0, 0, 0, 0)
                 return compareDate < today
               }}
-              initialFocus
-              className="rounded-md border mx-auto [--cell-size:2.5rem]"
+              className="rounded-md border mx-auto"
             />
 
             {/* Time Picker */}

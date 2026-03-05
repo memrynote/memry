@@ -3,7 +3,7 @@ import { ChevronDown, Calendar as CalendarIcon } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
-import { Calendar } from '@/components/ui/calendar'
+import { DatePickerCalendar } from '@/components/tasks/date-picker-calendar'
 import { cn } from '@/lib/utils'
 import type {
   DueDateFilter as DueDateFilterType,
@@ -192,9 +192,8 @@ export const DueDateFilter = ({
                         : 'Select date'}
                     </Button>
                   </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar
-                      mode="single"
+                  <PopoverContent className="w-[296px] p-3" align="start">
+                    <DatePickerCalendar
                       selected={customStart}
                       onSelect={(date) => {
                         const nextStart = date || undefined
@@ -206,7 +205,6 @@ export const DueDateFilter = ({
                         }
                         tryApplyCustomRange(nextStart, nextEnd)
                       }}
-                      initialFocus
                     />
                   </PopoverContent>
                 </Popover>
@@ -234,9 +232,8 @@ export const DueDateFilter = ({
                         : 'Select date'}
                     </Button>
                   </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar
-                      mode="single"
+                  <PopoverContent className="w-[296px] p-3" align="start">
+                    <DatePickerCalendar
                       selected={customEnd}
                       onSelect={(date) => {
                         const nextEnd = date || undefined
@@ -244,7 +241,6 @@ export const DueDateFilter = ({
                         tryApplyCustomRange(customStart, nextEnd)
                       }}
                       disabled={(date) => (customStart ? date < customStart : false)}
-                      initialFocus
                     />
                   </PopoverContent>
                 </Popover>

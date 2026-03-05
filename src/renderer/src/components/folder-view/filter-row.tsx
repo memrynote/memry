@@ -10,7 +10,7 @@ import { X, Calendar as CalendarIcon } from 'lucide-react'
 import { format } from 'date-fns'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Calendar } from '@/components/ui/calendar'
+import { DatePickerCalendar } from '@/components/tasks/date-picker-calendar'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import {
   Select,
@@ -315,8 +315,8 @@ function DateValueInput({ value, onChange }: DateValueInputProps): React.JSX.Ele
           {dateValue ? format(dateValue, 'MMM d, yyyy') : 'Pick a date'}
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-auto p-0" align="start">
-        <Calendar mode="single" selected={dateValue} onSelect={handleSelect} initialFocus />
+      <PopoverContent className="w-[296px] p-3" align="start">
+        <DatePickerCalendar selected={dateValue} onSelect={handleSelect} />
       </PopoverContent>
     </Popover>
   )
