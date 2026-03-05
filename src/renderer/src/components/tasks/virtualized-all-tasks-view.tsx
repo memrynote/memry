@@ -423,7 +423,7 @@ export const VirtualizedAllTasksView = ({
   const lookupContext = useMemo(() => createLookupContext(projects), [projects])
 
   const virtualItems = useMemo(
-    () => flattenTasksByDueDate(tasks, projects, expandedIds, tasks, collapsedSections),
+    () => flattenTasksByDueDate(tasks, projects, expandedIds, tasks, collapsedSections, true),
     [tasks, projects, expandedIds, collapsedSections]
   )
 

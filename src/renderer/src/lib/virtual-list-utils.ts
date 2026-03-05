@@ -216,11 +216,12 @@ export const flattenTasksByDueDate = (
   projects: Project[],
   _expandedIds: Set<string>,
   allTasks: Task[],
-  collapsedSections: Set<string> = new Set()
+  collapsedSections: Set<string> = new Set(),
+  preserveOrder: boolean = false
 ): VirtualItem[] => {
   const items: VirtualItem[] = []
   const topLevelTasks = getTopLevelTasks(tasks)
-  const groupedTasks = groupTasksByDueDate(topLevelTasks)
+  const groupedTasks = groupTasksByDueDate(topLevelTasks, preserveOrder)
 
   // Create project lookup map
   const projectMap = new Map(projects.map((p) => [p.id, p]))
@@ -529,11 +530,12 @@ export const flattenTasksByStatus = (
   tasks: Task[],
   project: Project,
   _expandedIds: Set<string>,
-  allTasks: Task[]
+  allTasks: Task[],
+  preserveOrder: boolean = false
 ): VirtualItem[] => {
   const items: VirtualItem[] = []
   const topLevelTasks = getTopLevelTasks(tasks)
-  const groupedTasks = groupTasksByStatus(topLevelTasks, project.statuses)
+  const groupedTasks = groupTasksByStatus(topLevelTasks, project.statuses, preserveOrder)
 
   groupedTasks.forEach((group: TaskGroupByStatus) => {
     // Add status header (always show, even if empty - for drop targets)

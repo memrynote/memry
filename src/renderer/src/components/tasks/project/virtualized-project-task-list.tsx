@@ -275,7 +275,7 @@ export const VirtualizedProjectTaskList = ({
 
   // Flatten tasks into virtual items
   const virtualItems = useMemo(
-    () => flattenTasksByStatus(tasks, project, expandedIds, tasks),
+    () => flattenTasksByStatus(tasks, project, expandedIds, tasks, true),
     [tasks, project, expandedIds]
   )
 

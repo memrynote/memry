@@ -536,18 +536,20 @@ export const QuickAddInput = ({
           )}
         </div>
 
-        {/* Parse preview */}
-        {showPreview && preview && (
+        {/* Bottom slot — always reserves height to prevent layout shift on blur */}
+        {showPreview && preview ? (
           <ParsePreview
             dueDate={preview.dueDate}
             priority={preview.priority}
             projectName={preview.projectName}
           />
-        )}
-
-        {/* Quick options bar */}
-        {showQuickOptions && (
-          <div className="px-3 pb-2">
+        ) : (
+          <div
+            className={cn(
+              'px-3 pb-2 transition-opacity duration-150',
+              showQuickOptions ? 'opacity-100' : 'opacity-0 pointer-events-none'
+            )}
+          >
             <QuickOptionsBar onInsert={handleInsert} />
           </div>
         )}
