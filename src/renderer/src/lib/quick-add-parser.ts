@@ -317,24 +317,34 @@ export interface AutocompleteOption {
   icon?: string
 }
 
+export const resolveDateDay = (keyword: string): number | null => {
+  const date = parseDateKeyword(keyword)
+  return date ? date.getDate() : null
+}
+
 /**
  * Get date options for autocomplete, filtered by query
  */
 export const getDateOptions = (query: string): AutocompleteOption[] => {
-  const options: AutocompleteOption[] = [
-    { value: '!today', label: 'Today', icon: '📅' },
-    { value: '!tomorrow', label: 'Tomorrow', icon: '📅' },
-    { value: '!nextweek', label: 'Next Week', icon: '📅' },
-    { value: '!monday', label: 'Monday', icon: '📅' },
-    { value: '!tuesday', label: 'Tuesday', icon: '📅' },
-    { value: '!wednesday', label: 'Wednesday', icon: '📅' },
-    { value: '!thursday', label: 'Thursday', icon: '📅' },
-    { value: '!friday', label: 'Friday', icon: '📅' },
-    { value: '!saturday', label: 'Saturday', icon: '📅' },
-    { value: '!sunday', label: 'Sunday', icon: '📅' }
+  const keywords = [
+    { keyword: 'today', label: 'Today' },
+    { keyword: 'tomorrow', label: 'Tomorrow' },
+    { keyword: 'nextweek', label: 'Next Week' },
+    { keyword: 'monday', label: 'Monday' },
+    { keyword: 'tuesday', label: 'Tuesday' },
+    { keyword: 'wednesday', label: 'Wednesday' },
+    { keyword: 'thursday', label: 'Thursday' },
+    { keyword: 'friday', label: 'Friday' },
+    { keyword: 'saturday', label: 'Saturday' },
+    { keyword: 'sunday', label: 'Sunday' }
   ]
 
-  if (!query) return options.slice(0, 5) // Show first 5 by default
+  const options: AutocompleteOption[] = keywords.map(({ keyword, label }) => ({
+    value: `!${keyword}`,
+    label
+  }))
+
+  if (!query) return options.slice(0, 5)
 
   const lowerQuery = query.toLowerCase()
   return options.filter(
@@ -348,10 +358,10 @@ export const getDateOptions = (query: string): AutocompleteOption[] => {
  */
 export const getPriorityOptions = (query: string): AutocompleteOption[] => {
   const options: AutocompleteOption[] = [
-    { value: '!!urgent', label: 'Urgent', icon: '🔴' },
-    { value: '!!high', label: 'High', icon: '🟠' },
-    { value: '!!medium', label: 'Medium', icon: '🟡' },
-    { value: '!!low', label: 'Low', icon: '🟢' }
+    { value: '!!urgent', label: 'Urgent' },
+    { value: '!!high', label: 'High' },
+    { value: '!!medium', label: 'Medium' },
+    { value: '!!low', label: 'Low' }
   ]
 
   if (!query) return options
@@ -372,8 +382,7 @@ export const getProjectOptions = (query: string, projects: Project[]): Autocompl
   if (!query) {
     return activeProjects.map((p) => ({
       value: `#${p.id}`,
-      label: p.name,
-      icon: '📁'
+      label: p.name
     }))
   }
 
@@ -384,7 +393,6 @@ export const getProjectOptions = (query: string, projects: Project[]): Autocompl
     )
     .map((p) => ({
       value: `#${p.id}`,
-      label: p.name,
-      icon: '📁'
+      label: p.name
     }))
 }
