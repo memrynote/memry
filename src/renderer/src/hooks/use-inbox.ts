@@ -203,6 +203,10 @@ export function useInboxList(options: UseInboxListOptions = {}): UseInboxListRes
       void queryClient.invalidateQueries({ queryKey: inboxKeys.lists() })
     })
 
+    const unsubTranscription = onInboxTranscriptionComplete(() => {
+      void queryClient.invalidateQueries({ queryKey: inboxKeys.lists() })
+    })
+
     return () => {
       unsubCaptured()
       unsubUpdated()
@@ -210,6 +214,7 @@ export function useInboxList(options: UseInboxListOptions = {}): UseInboxListRes
       unsubFiled()
       unsubSnoozeDue()
       unsubMetadata()
+      unsubTranscription()
     }
   }, [queryClient])
 

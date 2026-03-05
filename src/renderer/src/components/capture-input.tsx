@@ -261,6 +261,7 @@ export function CaptureInput({
           onRecordingComplete={handleRecordingComplete}
           onCancel={handleRecordingCancel}
           maxDuration={300}
+          autoStart
           className="w-full"
         />
       </div>
