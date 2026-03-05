@@ -53,18 +53,25 @@ const AutocompleteHeader = ({ type }: { type: AutocompleteType }): React.JSX.Ele
 interface OptionItemProps {
   option: AutocompleteOption
   isSelected: boolean
+  showValue?: boolean
   onClick: () => void
 }
 
-const OptionItem = ({ option, isSelected, onClick }: OptionItemProps): React.JSX.Element => {
+const OptionItem = ({
+  option,
+  isSelected,
+  showValue = true,
+  onClick
+}: OptionItemProps): React.JSX.Element => {
   return (
     <button
       type="button"
       onClick={onClick}
       onMouseDown={(e) => e.preventDefault()} // Prevent input blur
       className={cn(
-        'w-full flex items-center justify-between px-3 py-2 text-sm',
+        'w-full flex items-center px-3 py-2 text-sm',
         'transition-colors duration-100',
+        showValue ? 'justify-between' : 'gap-2',
         isSelected ? 'bg-primary/10 text-primary' : 'hover:bg-muted/50'
       )}
       role="option"
@@ -72,9 +79,12 @@ const OptionItem = ({ option, isSelected, onClick }: OptionItemProps): React.JSX
     >
       <div className="flex items-center gap-2">
         {option.icon && <span className="flex items-center justify-center w-4">{option.icon}</span>}
-        <span className="font-mono text-xs text-muted-foreground">{option.value}</span>
+        {showValue && (
+          <span className="font-mono text-xs text-muted-foreground">{option.value}</span>
+        )}
+        {!showValue && <span className="text-foreground">{option.label}</span>}
       </div>
-      <span className="text-foreground">{option.label}</span>
+      {showValue && <span className="text-foreground">{option.label}</span>}
     </button>
   )
 }
@@ -150,7 +160,7 @@ export const AutocompleteDropdown = ({
   return (
     <div
       className={cn(
-        'absolute top-full left-0 right-0 mt-1 min-w-[16rem]',
+        'absolute top-full left-0 mt-1 min-w-[16rem] w-fit',
         'bg-popover rounded-lg shadow-lg border border-border',
         'z-50 overflow-hidden',
         'animate-in fade-in-0 zoom-in-95 duration-100',
@@ -169,6 +179,7 @@ export const AutocompleteDropdown = ({
             <OptionItem
               option={option}
               isSelected={index === selectedIndex}
+              showValue={type !== 'project'}
               onClick={() => onSelect(option.value)}
             />
           </div>

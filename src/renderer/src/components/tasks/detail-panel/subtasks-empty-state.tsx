@@ -1,13 +1,7 @@
 import { useState, useRef } from 'react'
-import { ClipboardList, Plus } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
-import { BulkAddSubtasks } from './bulk-add-subtasks'
 import { cn } from '@/lib/utils'
-
-// ============================================================================
-// TYPES
-// ============================================================================
 
 interface SubtasksEmptyStateProps {
   parentId: string
@@ -15,98 +9,100 @@ interface SubtasksEmptyStateProps {
   onBulkAdd: (titles: string[]) => void
 }
 
-// ============================================================================
-// SUBTASKS EMPTY STATE COMPONENT
-// ============================================================================
-
 export const SubtasksEmptyState = ({
-  parentId,
   onAddFirst,
   onBulkAdd
 }: SubtasksEmptyStateProps): React.JSX.Element => {
-  const [showInput, setShowInput] = useState(false)
-  const [title, setTitle] = useState('')
-  const inputRef = useRef<HTMLInputElement>(null)
+  const [text, setText] = useState('')
+  const [isFocused, setIsFocused] = useState(false)
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
 
-  const handleAddFirstClick = (): void => {
-    setShowInput(true)
-    setTimeout(() => {
-      inputRef.current?.focus()
-    }, 0)
-  }
+  const lines = text
+    .split('\n')
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0)
+
+  const isBulk = lines.length > 1
 
   const handleSubmit = (): void => {
-    if (title.trim()) {
-      onAddFirst(title.trim())
-      setTitle('')
-      // Keep showing input for adding more
+    if (lines.length === 0) return
+
+    if (isBulk) {
+      onBulkAdd(lines)
+    } else {
+      onAddFirst(lines[0])
     }
+    setText('')
+    textareaRef.current?.focus()
   }
 
   const handleKeyDown = (e: React.KeyboardEvent): void => {
-    if (e.key === 'Enter' && title.trim()) {
+    if ((e.metaKey || e.ctrlKey) && e.key === 'Enter' && lines.length > 0) {
+      e.preventDefault()
+      handleSubmit()
+    }
+    if (e.key === 'Enter' && !e.shiftKey && !e.metaKey && !e.ctrlKey && lines.length === 1) {
       e.preventDefault()
       handleSubmit()
     }
     if (e.key === 'Escape') {
-      setTitle('')
-      setShowInput(false)
+      setText('')
+      textareaRef.current?.blur()
     }
   }
 
   return (
-    <div className="text-center py-6">
-      {/* Icon */}
-      <div className="flex justify-center mb-3">
-        <div className="p-3 rounded-full bg-muted">
-          <ClipboardList className="size-6 text-muted-foreground" />
-        </div>
-      </div>
+    <div>
+      <textarea
+        ref={textareaRef}
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+        onKeyDown={handleKeyDown}
+        onFocus={() => setIsFocused(true)}
+        onBlur={() => setIsFocused(false)}
+        placeholder="Add subtask — one per line for multiple"
+        rows={isFocused || text ? 3 : 1}
+        className={cn(
+          'w-full px-3 py-2 text-sm rounded-lg border resize-none transition-all',
+          'bg-background placeholder:text-muted-foreground/50',
+          'focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-0',
+          isFocused || text
+            ? 'border-ring shadow-sm'
+            : 'border-dashed border-border hover:border-muted-foreground/50'
+        )}
+        aria-label="Add subtasks"
+      />
 
-      {/* Title */}
-      <h4 className="text-sm font-medium mb-1">Break this task into smaller steps</h4>
-
-      {/* Description */}
-      <p className="text-xs text-muted-foreground mb-4 max-w-[250px] mx-auto">
-        Subtasks help you track progress and stay organized on complex work.
-      </p>
-
-      {/* Add first subtask */}
-      {!showInput ? (
-        <Button variant="outline" size="sm" onClick={handleAddFirstClick} className="gap-1.5">
-          <Plus className="size-4" />
-          Add first subtask
-        </Button>
-      ) : (
-        <div
-          className={cn(
-            'flex items-center rounded-lg border transition-colors mx-auto max-w-[280px]',
-            'border-ring bg-background shadow-sm'
-          )}
-        >
-          <Plus className="w-4 h-4 ml-3 shrink-0 text-muted-foreground" />
-          <input
-            ref={inputRef}
-            type="text"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            onKeyDown={handleKeyDown}
-            onBlur={() => {
-              if (!title) setShowInput(false)
-            }}
-            placeholder="First subtask..."
-            className={cn(
-              'flex-1 px-2 py-2 text-sm bg-transparent outline-none',
-              'placeholder:text-muted-foreground/60'
+      {lines.length > 0 && (
+        <div className="flex items-center justify-between mt-2">
+          <span className="text-xs text-muted-foreground">
+            {isBulk ? (
+              <>
+                {lines.length} subtasks —{' '}
+                <kbd className="px-1 py-0.5 rounded bg-muted text-[10px] font-mono">
+                  {navigator.platform?.includes('Mac') ? '⌘' : 'Ctrl'}+↵
+                </kbd>{' '}
+                to add all
+              </>
+            ) : (
+              <>
+                <kbd className="px-1 py-0.5 rounded bg-muted text-[10px] font-mono">↵</kbd> to add
+              </>
             )}
-            aria-label="Add first subtask"
-          />
-          {title && <span className="text-xs text-muted-foreground mr-3 shrink-0">Enter</span>}
+          </span>
+          {isBulk && (
+            <Button size="sm" variant="default" onClick={handleSubmit} className="h-7 text-xs">
+              Add {lines.length}
+            </Button>
+          )}
         </div>
       )}
 
-      {/* Bulk add section */}
-      <BulkAddSubtasks onAdd={onBulkAdd} className="mt-6 text-left" />
+      {!text && !isFocused && (
+        <p className="text-[11px] text-muted-foreground/60 mt-1.5 leading-tight">
+          Paste or type multiple lines to bulk-add
+        </p>
+      )}
     </div>
   )
 }
