@@ -2,7 +2,7 @@ import { useMemo, useRef, useEffect, memo, useCallback } from 'react'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { useDroppable } from '@dnd-kit/core'
-import { AlertTriangle, Star, Plus } from 'lucide-react'
+import { ChevronRight, Star, Plus } from 'lucide-react'
 
 import { cn } from '@/lib/utils'
 import { SortableTaskRow } from '@/components/tasks/drag-drop'
@@ -28,7 +28,7 @@ import {
 } from '@/lib/task-utils'
 import { createLookupContext, isTaskCompletedFast } from '@/lib/lookup-utils'
 import { calculateProgress } from '@/lib/subtask-utils'
-import { useExpandedTasks } from '@/hooks'
+import { useExpandedTasks, useCollapsedSections } from '@/hooks'
 import type { Task, Priority } from '@/data/sample-tasks'
 import type { Project } from '@/data/tasks-data'
 
@@ -80,12 +80,11 @@ interface UrgencyStyleConfig {
 
 const urgencyStyles: Record<UrgencyLevel, UrgencyStyleConfig> = {
   critical: {
-    containerClass:
-      'bg-red-50/30 dark:bg-red-950/20 border border-red-200/50 dark:border-red-900/50 rounded-lg',
-    headerClass: 'text-red-700 dark:text-red-400 font-semibold',
-    countClass: 'bg-red-100 dark:bg-red-900/50 text-red-600 dark:text-red-400',
-    accentClass: 'border-l-[3px] border-l-red-500',
-    icon: <AlertTriangle className="size-4" aria-hidden="true" />
+    containerClass: 'rounded-lg',
+    headerClass: 'text-text-secondary font-semibold',
+    countClass: 'bg-muted text-text-tertiary',
+    accentClass: '',
+    icon: null
   },
   high: {
     containerClass:
@@ -143,22 +142,34 @@ const getDateFromSectionKey = (sectionKey: keyof TaskGroupByDate): Date | null =
 interface VirtualSectionHeaderProps {
   item: SectionHeaderItem
   isOver: boolean
+  onToggleCollapse?: (sectionKey: string) => void
 }
 
 const VirtualSectionHeader = memo(
-  ({ item, isOver }: VirtualSectionHeaderProps): React.JSX.Element => {
+  ({ item, isOver, onToggleCollapse }: VirtualSectionHeaderProps): React.JSX.Element => {
     const styles = urgencyStyles[item.urgency]
     const hasUrgentStyling = item.urgency === 'critical' || item.urgency === 'high'
 
     return (
-      <div
+      <button
+        type="button"
+        onClick={() => onToggleCollapse?.(item.sectionKey)}
         className={cn(
-          'flex items-center justify-between px-3 py-2 transition-colors',
+          'flex w-full items-center justify-between px-3 py-2 transition-colors',
+          'hover:bg-accent/30 rounded-md cursor-pointer',
+          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
           hasUrgentStyling && styles.containerClass,
           isOver && 'ring-2 ring-primary/50 ring-inset'
         )}
       >
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5">
+          <ChevronRight
+            className={cn(
+              'size-3.5 text-text-tertiary transition-transform duration-200',
+              !item.isCollapsed && 'rotate-90'
+            )}
+            strokeWidth={2.5}
+          />
           {styles.icon && <span className={styles.headerClass}>{styles.icon}</span>}
           <h3
             className={cn(
@@ -182,7 +193,7 @@ const VirtualSectionHeader = memo(
         >
           {hasUrgentStyling ? item.count : `(${item.count})`}
         </span>
-      </div>
+      </button>
     )
   }
 )
@@ -195,28 +206,31 @@ VirtualSectionHeader.displayName = 'VirtualSectionHeader'
 
 interface DroppableSectionHeaderProps {
   item: SectionHeaderItem
+  onToggleCollapse?: (sectionKey: string) => void
 }
 
-const DroppableSectionHeader = memo(({ item }: DroppableSectionHeaderProps): React.JSX.Element => {
-  const targetDate = getDateFromSectionKey(item.sectionKey)
-  const sectionId = `group-${item.sectionKey}`
+const DroppableSectionHeader = memo(
+  ({ item, onToggleCollapse }: DroppableSectionHeaderProps): React.JSX.Element => {
+    const targetDate = getDateFromSectionKey(item.sectionKey)
+    const sectionId = `group-${item.sectionKey}`
 
-  const { setNodeRef, isOver } = useDroppable({
-    id: sectionId,
-    data: {
-      type: 'section',
-      sectionId,
-      label: item.label,
-      date: targetDate
-    }
-  })
+    const { setNodeRef, isOver } = useDroppable({
+      id: sectionId,
+      data: {
+        type: 'section',
+        sectionId,
+        label: item.label,
+        date: targetDate
+      }
+    })
 
-  return (
-    <div ref={setNodeRef}>
-      <VirtualSectionHeader item={item} isOver={isOver} />
-    </div>
-  )
-})
+    return (
+      <div ref={setNodeRef}>
+        <VirtualSectionHeader item={item} isOver={isOver} onToggleCollapse={onToggleCollapse} />
+      </div>
+    )
+  }
+)
 
 DroppableSectionHeader.displayName = 'DroppableSectionHeader'
 
@@ -247,6 +261,7 @@ interface VirtualItemRendererProps {
   onReorderSubtasks?: (parentId: string, newOrder: string[]) => void
   // Add task for section
   onAddTaskForSection: (sectionKey: keyof TaskGroupByDate) => void
+  onToggleCollapse?: (sectionKey: string) => void
 }
 
 const VirtualItemRenderer = memo(
@@ -268,11 +283,12 @@ const VirtualItemRenderer = memo(
     onToggleExpand,
     onAddSubtask,
     onReorderSubtasks,
-    onAddTaskForSection
+    onAddTaskForSection,
+    onToggleCollapse
   }: VirtualItemRendererProps): React.JSX.Element | null => {
     switch (item.type) {
       case 'section-header':
-        return <DroppableSectionHeader item={item} />
+        return <DroppableSectionHeader item={item} onToggleCollapse={onToggleCollapse} />
 
       case 'task': {
         const taskItem = item
@@ -397,19 +413,18 @@ export const VirtualizedAllTasksView = ({
   // Scroll container ref
   const parentRef = useRef<HTMLDivElement>(null)
 
-  // Expand/collapse state with persistence
   const { expandedIds, toggleExpanded } = useExpandedTasks({
     storageKey,
     persist: true
   })
 
-  // Create lookup context for O(1) project/status lookups
+  const { collapsedSections, toggleSection } = useCollapsedSections(storageKey)
+
   const lookupContext = useMemo(() => createLookupContext(projects), [projects])
 
-  // Flatten tasks into virtual items
   const virtualItems = useMemo(
-    () => flattenTasksByDueDate(tasks, projects, expandedIds, tasks),
-    [tasks, projects, expandedIds]
+    () => flattenTasksByDueDate(tasks, projects, expandedIds, tasks, collapsedSections),
+    [tasks, projects, expandedIds, collapsedSections]
   )
 
   // Get all task IDs for SortableContext
@@ -521,6 +536,7 @@ export const VirtualizedAllTasksView = ({
                     onAddSubtask={onAddSubtask}
                     onReorderSubtasks={onReorderSubtasks}
                     onAddTaskForSection={handleAddTaskForSection}
+                    onToggleCollapse={toggleSection}
                   />
                 </div>
               )

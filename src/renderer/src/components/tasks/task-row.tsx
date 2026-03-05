@@ -1,5 +1,5 @@
 import { cn } from '@/lib/utils'
-import { formatDueDate } from '@/lib/task-utils'
+import { formatDueDate, getDaysOverdue, getOverdueTier, overdueTierStyles } from '@/lib/task-utils'
 import {
   TaskCheckbox,
   InteractiveProjectBadge,
@@ -58,9 +58,11 @@ export const TaskRow = ({
   onToggleSelect,
   onShiftSelect
 }: TaskRowProps): React.JSX.Element => {
-  // Check if overdue
   const formattedDate = formatDueDate(task.dueDate, task.dueTime)
   const isOverdue = formattedDate?.status === 'overdue'
+  const daysOver = isOverdue && !isCompleted ? getDaysOverdue(task.dueDate) : 0
+  const overdueTier = daysOver > 0 ? getOverdueTier(daysOver) : null
+  const tierRowStyle = overdueTier ? overdueTierStyles[overdueTier].rowBg : null
 
   const handleRowClick = (e: React.MouseEvent): void => {
     // Shift+click for range selection
@@ -141,7 +143,8 @@ export const TaskRow = ({
         showProjectBadge
           ? 'md:grid-cols-[20px_20px_1fr_70px_110px] lg:grid-cols-[20px_20px_1fr_120px_70px_110px]'
           : 'md:grid-cols-[20px_20px_1fr_70px_110px]',
-        isOverdue && !isCompleted && 'border-l-2 border-l-destructive',
+        tierRowStyle,
+        overdueTier === 'severe' && 'overdue-pulse',
         // Selection highlight (when checked for selection)
         isCheckedForSelection && 'bg-primary/10 hover:bg-primary/15',
         // Detail panel selected (not the same as selection mode)

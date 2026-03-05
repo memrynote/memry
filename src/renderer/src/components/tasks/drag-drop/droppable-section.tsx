@@ -66,9 +66,9 @@ export const DroppableSection = ({
       hoverBg: 'bg-accent/20'
     },
     overdue: {
-      accent: 'border-l-red-500',
-      bg: 'bg-red-50/30 dark:bg-red-950/10',
-      hoverBg: 'bg-red-100/50 dark:bg-red-950/30'
+      accent: 'border-l-border',
+      bg: 'bg-background',
+      hoverBg: 'bg-accent/20'
     },
     today: {
       accent: 'border-l-amber-500',

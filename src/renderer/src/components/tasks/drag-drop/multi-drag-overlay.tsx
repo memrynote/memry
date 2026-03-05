@@ -119,7 +119,7 @@ export const SingleTaskPreview = ({
       className={cn(
         'bg-card rounded-lg shadow-xl border p-3 w-64',
         'rotate-2 scale-105',
-        isOverdue && !isCompleted && 'border-l-2 border-l-destructive',
+        isOverdue && !isCompleted && 'bg-rose-50/60 dark:bg-rose-950/20',
         isCompleted && 'opacity-70 bg-muted/30'
       )}
     >
