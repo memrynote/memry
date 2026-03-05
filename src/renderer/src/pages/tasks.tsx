@@ -4,7 +4,7 @@ import { toast } from 'sonner'
 import { TaskList } from '@/components/tasks/task-list'
 import { TasksTabBar, type TasksInternalTab } from '@/components/tasks/tasks-tab-bar'
 import { ProjectsTabContent } from '@/components/tasks/projects/projects-tab-content'
-import { ProjectSidebar } from '@/components/tasks/projects/project-sidebar'
+import { ProjectSelector } from '@/components/tasks/projects/project-selector'
 import { AddTaskModal } from '@/components/tasks/add-task-modal'
 import { ProjectModal } from '@/components/tasks/project-modal'
 import { TaskDetailPanel } from '@/components/tasks/task-detail-panel'
@@ -1301,17 +1301,19 @@ export const TasksPage = ({
 
           {/* Kanban View - Projects Tab */}
           {activeInternalTab === 'projects' && activeView === 'kanban' && (
-            <div className="flex min-w-0 flex-1 overflow-hidden">
-              <ProjectSidebar
-                tasks={tasks}
-                projects={projects}
-                selectedProjectId={selectedProjectId}
-                onProjectSelect={setSelectedProjectId}
-                onProjectEdit={handleEditProject}
-                onProjectArchive={handleArchiveProject}
-                onProjectDelete={handleDeleteProject}
-                onCreateProject={handleCreateProject}
-              />
+            <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
+              <div className="flex items-center gap-2 px-4 py-3 border-b border-border">
+                <ProjectSelector
+                  tasks={tasks}
+                  projects={projects}
+                  selectedProjectId={selectedProjectId}
+                  onProjectSelect={setSelectedProjectId}
+                  onProjectEdit={handleEditProject}
+                  onProjectArchive={handleArchiveProject}
+                  onProjectDelete={handleDeleteProject}
+                  onCreateProject={handleCreateProject}
+                />
+              </div>
               <div className="min-w-0 flex-1 overflow-hidden">
                 {selectedProjectId ? (
                   <KanbanBoard
@@ -1366,17 +1368,19 @@ export const TasksPage = ({
 
           {/* Calendar View - Projects Tab */}
           {activeInternalTab === 'projects' && activeView === 'calendar' && (
-            <div className="flex flex-1 overflow-hidden">
-              <ProjectSidebar
-                tasks={tasks}
-                projects={projects}
-                selectedProjectId={selectedProjectId}
-                onProjectSelect={setSelectedProjectId}
-                onProjectEdit={handleEditProject}
-                onProjectArchive={handleArchiveProject}
-                onProjectDelete={handleDeleteProject}
-                onCreateProject={handleCreateProject}
-              />
+            <div className="flex flex-1 flex-col overflow-hidden">
+              <div className="flex items-center gap-2 px-4 py-3 border-b border-border">
+                <ProjectSelector
+                  tasks={tasks}
+                  projects={projects}
+                  selectedProjectId={selectedProjectId}
+                  onProjectSelect={setSelectedProjectId}
+                  onProjectEdit={handleEditProject}
+                  onProjectArchive={handleArchiveProject}
+                  onProjectDelete={handleDeleteProject}
+                  onCreateProject={handleCreateProject}
+                />
+              </div>
               <div className="flex-1 overflow-hidden">
                 {selectedProjectId ? (
                   <CalendarView
