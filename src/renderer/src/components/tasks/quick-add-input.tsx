@@ -536,23 +536,29 @@ export const QuickAddInput = ({
           )}
         </div>
 
-        {/* Bottom slot — always reserves height to prevent layout shift on blur */}
-        {showPreview && preview ? (
-          <ParsePreview
-            dueDate={preview.dueDate}
-            priority={preview.priority}
-            projectName={preview.projectName}
-          />
-        ) : (
-          <div
-            className={cn(
-              'px-3 pb-2 transition-opacity duration-150',
-              showQuickOptions ? 'opacity-100' : 'opacity-0 pointer-events-none'
+        {/* Bottom slot — smooth height animation prevents jarring layout shift */}
+        <div
+          className={cn(
+            'grid transition-[grid-template-rows,opacity] duration-150 ease-out',
+            showPreview || showQuickOptions
+              ? 'grid-rows-[1fr] opacity-100'
+              : 'grid-rows-[0fr] opacity-0'
+          )}
+        >
+          <div className="overflow-hidden min-h-0">
+            {showPreview && preview ? (
+              <ParsePreview
+                dueDate={preview.dueDate}
+                priority={preview.priority}
+                projectName={preview.projectName}
+              />
+            ) : (
+              <div className="px-3 pb-2">
+                <QuickOptionsBar onInsert={handleInsert} />
+              </div>
             )}
-          >
-            <QuickOptionsBar onInsert={handleInsert} />
           </div>
-        )}
+        </div>
       </div>
 
       {/* Autocomplete dropdown */}
