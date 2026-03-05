@@ -148,10 +148,21 @@ const SortableTaskRowComponent = ({
   }
 
   // Apply transform and transition styles
-  const style: React.CSSProperties = {
-    transform: CSS.Transform.toString(transform),
-    transition: transition || 'transform 200ms ease-out'
-  }
+  // When exiting, animate opacity+scale only (no height collapse).
+  // Height collapse via max-height breaks virtualized lists where items are
+  // position:absolute — the virtualizer remeasures mid-animation and repositions
+  // siblings into the still-visible exiting item, causing overlap.
+  const style: React.CSSProperties = isExiting
+    ? {
+        opacity: 0,
+        transform: 'scale(0.98)',
+        transition: 'opacity 200ms ease-out, transform 200ms ease-out',
+        pointerEvents: 'none'
+      }
+    : {
+        transform: CSS.Transform.toString(transform),
+        transition: transition || 'transform 200ms ease-out'
+      }
 
   const formattedDate = formatDueDate(task.dueDate, task.dueTime)
   const isOverdue = formattedDate?.status === 'overdue'
@@ -270,8 +281,7 @@ const SortableTaskRowComponent = ({
         isSelected && !isCheckedForSelection && 'bg-primary/10 ring-2 ring-primary/30',
         // Dragging state
         isDragging && 'opacity-50 shadow-lg ring-2 ring-primary bg-background z-10',
-        // Exit animation - uses CSS keyframe that collapses height
-        isExiting && 'item-removing overflow-hidden',
+        isExiting && 'select-none',
         className
       )}
       aria-label={`Task: ${task.title}${isCompleted ? ', completed' : ''}`}
