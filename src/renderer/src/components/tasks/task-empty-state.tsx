@@ -1,4 +1,4 @@
-import { ClipboardList, Star, Calendar, CheckCircle, FolderOpen, Plus } from 'lucide-react'
+import { ClipboardList, Star, CheckCircle, FolderOpen, Plus } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
@@ -7,7 +7,7 @@ import { cn } from '@/lib/utils'
 // TYPES
 // ============================================================================
 
-type EmptyStateVariant = 'all' | 'today' | 'upcoming' | 'completed' | 'project'
+type EmptyStateVariant = 'all' | 'today' | 'completed' | 'project'
 
 interface TaskEmptyStateProps {
   variant: EmptyStateVariant
@@ -38,12 +38,6 @@ const emptyStateConfigs: Record<EmptyStateVariant, EmptyStateConfig> = {
     icon: Star,
     title: 'Nothing due today',
     description: "You're all caught up!",
-    showAddButton: false
-  },
-  upcoming: {
-    icon: Calendar,
-    title: 'No upcoming tasks',
-    description: 'Tasks due in the next 7 days will appear here',
     showAddButton: false
   },
   completed: {

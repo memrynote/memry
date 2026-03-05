@@ -74,7 +74,6 @@ const TYPE_TO_ICON: Record<TabType, string> = {
   tasks: 'list-checks', // New unified tasks tab
   'all-tasks': 'list-checks',
   today: 'star',
-  upcoming: 'calendar',
   completed: 'check-circle',
   project: 'folder',
   note: 'file-text',

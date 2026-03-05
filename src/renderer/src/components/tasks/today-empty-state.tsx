@@ -10,7 +10,6 @@ import { cn } from '@/lib/utils'
 interface TodayEmptyStateProps {
   hasOverdue: boolean
   onAddTask: () => void
-  onViewUpcoming?: () => void
   className?: string
 }
 
@@ -21,7 +20,6 @@ interface TodayEmptyStateProps {
 export const TodayEmptyState = ({
   hasOverdue,
   onAddTask,
-  onViewUpcoming,
   className
 }: TodayEmptyStateProps): React.JSX.Element => {
   // If there are overdue tasks but nothing for today
@@ -65,21 +63,6 @@ export const TodayEmptyState = ({
           <Plus className="size-4" aria-hidden="true" />
           Add task for today
         </Button>
-
-        {onViewUpcoming && (
-          <button
-            type="button"
-            onClick={onViewUpcoming}
-            className={cn(
-              'flex items-center gap-2 text-sm text-text-tertiary',
-              'hover:text-text-secondary transition-colors',
-              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded'
-            )}
-          >
-            <CalendarDays className="size-4" aria-hidden="true" />
-            <span>View upcoming tasks</span>
-          </button>
-        )}
       </div>
     </div>
   )
