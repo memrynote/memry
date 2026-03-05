@@ -1,4 +1,4 @@
-import { useMemo, useRef, useEffect, memo, useCallback } from 'react'
+import { useState, useMemo, useRef, useEffect, memo, useCallback } from 'react'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { useDroppable } from '@dnd-kit/core'
@@ -10,6 +10,9 @@ import { SortableTaskRow } from '@/components/tasks/drag-drop'
 import { SortableParentTaskRow } from '@/components/tasks/sortable-parent-task-row'
 import { QuickAddInput } from '@/components/tasks/quick-add-input'
 import { CelebrationEmptyState, OverdueClearedBanner } from '@/components/tasks/empty-states'
+import { DaySectionHeader } from '@/components/tasks/day-section-header'
+import { Switch } from '@/components/ui/switch'
+import { Label } from '@/components/ui/label'
 import {
   flattenTodayTasks,
   estimateItemHeight,
@@ -18,9 +21,12 @@ import {
   type SectionHeaderItem,
   type TaskItem,
   type ParentTaskItem,
-  type EmptyStateItem
+  type EmptyStateItem,
+  type AddTaskButtonItem,
+  type WeekAccordionHeaderItem,
+  type DayHeaderItem
 } from '@/lib/virtual-list-utils'
-import { getTodayTasks, startOfDay } from '@/lib/task-utils'
+import { getTodayWithWeekTasks, getDayHeaderText, startOfDay } from '@/lib/task-utils'
 import { createLookupContext, isTaskCompletedFast } from '@/lib/lookup-utils'
 import { calculateProgress } from '@/lib/subtask-utils'
 import { useExpandedTasks, useOverdueCelebration, useCollapsedSections } from '@/hooks'
@@ -48,7 +54,7 @@ interface VirtualizedTodayViewProps {
     }
   ) => void
   onOpenModal?: (prefillTitle: string) => void
-  onViewUpcoming?: () => void
+  onAddTaskWithDate?: (date: Date) => void
   className?: string
   // Selection props
   isSelectionMode?: boolean
@@ -167,6 +173,38 @@ const DroppableSectionHeader = memo(
 DroppableSectionHeader.displayName = 'DroppableSectionHeader'
 
 // ============================================================================
+// DROPPABLE DAY HEADER (week days)
+// ============================================================================
+
+interface DroppableDayHeaderProps {
+  item: DayHeaderItem
+}
+
+const DroppableDayHeader = memo(({ item }: DroppableDayHeaderProps): React.JSX.Element => {
+  const { setNodeRef, isOver } = useDroppable({
+    id: item.dateKey,
+    data: {
+      type: 'section',
+      sectionId: item.dateKey,
+      label: getDayHeaderText(item.date).primary,
+      date: item.date
+    }
+  })
+
+  return (
+    <div ref={setNodeRef} className="ml-2">
+      <DaySectionHeader
+        date={item.date}
+        taskCount={item.taskCount}
+        className={cn(isOver && 'ring-2 ring-primary/50 ring-inset rounded-md')}
+      />
+    </div>
+  )
+})
+
+DroppableDayHeader.displayName = 'DroppableDayHeader'
+
+// ============================================================================
 // VIRTUAL ITEM RENDERER
 // ============================================================================
 
@@ -193,8 +231,10 @@ interface VirtualItemRendererProps {
   onReorderSubtasks?: (parentId: string, newOrder: string[]) => void
   // Callbacks
   onAddTaskForToday: () => void
-  onViewUpcoming?: () => void
+  onAddTaskWithDate?: (date: Date) => void
   onToggleCollapse?: (sectionKey: string) => void
+  showEmptyDays?: boolean
+  onToggleEmptyDays?: (value: boolean) => void
 }
 
 const VirtualItemRenderer = memo(
@@ -217,8 +257,10 @@ const VirtualItemRenderer = memo(
     onAddSubtask,
     onReorderSubtasks,
     onAddTaskForToday,
-    onViewUpcoming,
-    onToggleCollapse
+    onAddTaskWithDate,
+    onToggleCollapse,
+    showEmptyDays,
+    onToggleEmptyDays
   }: VirtualItemRendererProps): React.JSX.Element | null => {
     switch (item.type) {
       case 'section-header':
@@ -286,7 +328,82 @@ const VirtualItemRenderer = memo(
         )
       }
 
-      case 'add-task-button':
+      case 'week-accordion-header': {
+        const weekItem = item as WeekAccordionHeaderItem
+        return (
+          <button
+            type="button"
+            onClick={() => onToggleCollapse?.('this-week')}
+            className={cn(
+              'flex w-full items-center justify-between px-3 py-2 transition-colors mt-4',
+              'hover:bg-accent/30 rounded-md cursor-pointer',
+              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring'
+            )}
+          >
+            <div className="flex items-center gap-1.5">
+              <ChevronRight
+                className={cn(
+                  'size-3.5 text-text-tertiary transition-transform duration-200',
+                  !weekItem.isCollapsed && 'rotate-90'
+                )}
+                strokeWidth={2.5}
+              />
+              <h3 className="text-xs uppercase tracking-wide text-text-secondary font-semibold">
+                This Week
+              </h3>
+            </div>
+            <div className="flex items-center gap-2">
+              {!weekItem.isCollapsed && (
+                <div
+                  className="flex items-center gap-1.5 ml-2"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <Switch
+                    id="show-empty-days"
+                    checked={showEmptyDays}
+                    onCheckedChange={onToggleEmptyDays}
+                    className="scale-75"
+                  />
+                  <Label
+                    htmlFor="show-empty-days"
+                    className="text-[11px] text-text-tertiary cursor-pointer"
+                  >
+                    Empty days
+                  </Label>
+                </div>
+              )}
+              <span className="text-xs px-1.5 py-0.5 rounded-full bg-muted text-text-tertiary">
+                {weekItem.totalCount}
+              </span>
+            </div>
+          </button>
+        )
+      }
+
+      case 'day-header': {
+        const dayItem = item as DayHeaderItem
+        return <DroppableDayHeader item={dayItem} />
+      }
+
+      case 'add-task-button': {
+        const addItem = item as AddTaskButtonItem
+        if (addItem.date) {
+          return (
+            <button
+              type="button"
+              onClick={() => onAddTaskWithDate?.(addItem.date!)}
+              className={cn(
+                'w-full flex items-center gap-2 px-4 py-2.5 text-sm text-text-tertiary ml-2',
+                'hover:bg-accent/50 hover:text-text-secondary',
+                'border-t border-border/50 transition-colors',
+                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset'
+              )}
+            >
+              <Plus className="size-4" aria-hidden="true" />
+              <span>Add task</span>
+            </button>
+          )
+        }
         return (
           <button
             type="button"
@@ -302,6 +419,7 @@ const VirtualItemRenderer = memo(
             <span>Add task for today</span>
           </button>
         )
+      }
 
       case 'empty-state': {
         const emptyItem = item
@@ -312,7 +430,6 @@ const VirtualItemRenderer = memo(
               description="Enjoy your free time or plan ahead."
               onAddTask={onAddTaskForToday}
               addButtonLabel="Add task for today"
-              onViewUpcoming={onViewUpcoming}
             />
           )
         }
@@ -341,7 +458,7 @@ export const VirtualizedTodayView = ({
   onTaskClick,
   onQuickAdd,
   onOpenModal,
-  onViewUpcoming,
+  onAddTaskWithDate,
   className,
   isSelectionMode = false,
   selectedIds,
@@ -360,24 +477,30 @@ export const VirtualizedTodayView = ({
 
   const { collapsedSections, toggleSection } = useCollapsedSections('today')
 
-  // Get filtered tasks for today
-  const todayData = useMemo(() => getTodayTasks(tasks, projects), [tasks, projects])
+  const [showEmptyDays, setShowEmptyDays] = useState(true)
 
-  // Track overdue celebration state
+  const todayData = useMemo(() => getTodayWithWeekTasks(tasks, projects), [tasks, projects])
+
   const { showCelebration, dismiss: dismissCelebration } = useOverdueCelebration(
     todayData.overdue.length
   )
 
-  // Create lookup context for O(1) project/status lookups
   const lookupContext = useMemo(() => createLookupContext(projects), [projects])
 
-  // Check if completely empty (no overdue, no today tasks)
   const isEmpty = todayData.overdue.length === 0 && todayData.today.length === 0
 
-  // Flatten tasks into virtual items
   const virtualItems = useMemo(
-    () => flattenTodayTasks(todayData, projects, expandedIds, tasks, isEmpty, collapsedSections),
-    [todayData, projects, expandedIds, tasks, isEmpty, collapsedSections]
+    () =>
+      flattenTodayTasks(
+        todayData,
+        projects,
+        expandedIds,
+        tasks,
+        isEmpty,
+        collapsedSections,
+        showEmptyDays
+      ),
+    [todayData, projects, expandedIds, tasks, isEmpty, collapsedSections, showEmptyDays]
   )
 
   // Get all task IDs for SortableContext
@@ -495,8 +618,10 @@ export const VirtualizedTodayView = ({
                     onAddSubtask={onAddSubtask}
                     onReorderSubtasks={onReorderSubtasks}
                     onAddTaskForToday={handleAddTaskForToday}
-                    onViewUpcoming={onViewUpcoming}
+                    onAddTaskWithDate={onAddTaskWithDate}
                     onToggleCollapse={toggleSection}
+                    showEmptyDays={showEmptyDays}
+                    onToggleEmptyDays={setShowEmptyDays}
                   />
                 </div>
               )
