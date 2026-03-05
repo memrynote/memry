@@ -16,8 +16,6 @@ interface CelebrationEmptyStateProps {
   onAddTask: () => void
   /** Button label */
   addButtonLabel?: string
-  /** Optional callback to view upcoming/other section */
-  onViewUpcoming?: () => void
   /** Additional class names */
   className?: string
 }
@@ -53,7 +51,6 @@ export const CelebrationEmptyState = ({
   description = 'Enjoy your free time or plan ahead.',
   onAddTask,
   addButtonLabel = 'Add task for today',
-  onViewUpcoming,
   className
 }: CelebrationEmptyStateProps): React.JSX.Element => {
   return (
@@ -75,22 +72,6 @@ export const CelebrationEmptyState = ({
           <Plus className="size-4" aria-hidden="true" />
           {addButtonLabel}
         </Button>
-
-        {onViewUpcoming && (
-          <button
-            type="button"
-            onClick={onViewUpcoming}
-            className={cn(
-              'flex items-center gap-2 text-sm text-text-tertiary',
-              'hover:text-text-secondary transition-colors',
-              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded'
-            )}
-            aria-label="View upcoming tasks"
-          >
-            <Calendar className="size-4" aria-hidden="true" />
-            <span>View upcoming tasks</span>
-          </button>
-        )}
       </div>
     </div>
   )

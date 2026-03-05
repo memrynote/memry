@@ -16,7 +16,6 @@ export type TabType =
   | 'tasks' // New unified tasks tab
   | 'all-tasks' // Legacy - kept for backwards compatibility
   | 'today' // Legacy - kept for backwards compatibility
-  | 'upcoming' // Legacy - kept for backwards compatibility
   | 'completed' // Legacy - kept for backwards compatibility
   | 'project' // Legacy - kept for backwards compatibility
   | 'note'
@@ -40,7 +39,6 @@ export const SINGLETON_TAB_TYPES: TabType[] = [
   'tasks', // New unified tasks tab
   'all-tasks', // Legacy
   'today', // Legacy
-  'upcoming', // Legacy
   'completed', // Legacy
   'settings',
   'templates' // Template list

@@ -32,7 +32,6 @@ interface TodayViewProps {
     }
   ) => void
   onOpenModal?: (prefillTitle: string) => void
-  onViewUpcoming?: () => void
   className?: string
 }
 
@@ -49,7 +48,6 @@ export const TodayView = ({
   onTaskClick,
   onQuickAdd,
   onOpenModal,
-  onViewUpcoming,
   className
 }: TodayViewProps): React.JSX.Element => {
   // Get filtered and sorted tasks for today
@@ -152,7 +150,6 @@ export const TodayView = ({
                   description="Enjoy your free time or plan ahead."
                   onAddTask={handleAddTaskForToday}
                   addButtonLabel="Add task for today"
-                  onViewUpcoming={onViewUpcoming}
                 />
               )
             )}
