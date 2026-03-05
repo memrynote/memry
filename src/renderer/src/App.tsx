@@ -12,7 +12,7 @@ import { GlobalAIPanel } from '@/components/ai-agent'
 import { TaskDragOverlay } from '@/components/tasks/drag-drop'
 import { initialProjects, taskViews, type Project } from '@/data/tasks-data'
 import { sampleTasks, type Task } from '@/data/sample-tasks'
-import { getFilteredTasks } from '@/lib/task-utils'
+import { getFilteredTasks, formatDateKey } from '@/lib/task-utils'
 import { ThemeProvider } from 'next-themes'
 
 // Tab System imports
@@ -376,9 +376,7 @@ function App(): React.JSX.Element {
             if (Object.keys(otherUpdates).length > 0) {
               let dueDateValue: string | null | undefined = undefined
               if ('dueDate' in otherUpdates) {
-                dueDateValue = otherUpdates.dueDate
-                  ? otherUpdates.dueDate.toISOString().split('T')[0]
-                  : null
+                dueDateValue = otherUpdates.dueDate ? formatDateKey(otherUpdates.dueDate) : null
               }
               await tasksService.update({
                 id: taskId,
@@ -411,9 +409,7 @@ function App(): React.JSX.Element {
             if (Object.keys(otherUpdates).length > 0) {
               let dueDateValue: string | null | undefined = undefined
               if ('dueDate' in otherUpdates) {
-                dueDateValue = otherUpdates.dueDate
-                  ? otherUpdates.dueDate.toISOString().split('T')[0]
-                  : null
+                dueDateValue = otherUpdates.dueDate ? formatDateKey(otherUpdates.dueDate) : null
               }
               await tasksService.update({
                 id: taskId,
@@ -436,7 +432,7 @@ function App(): React.JSX.Element {
           // Convert dueDate: undefined = not changing, null = clearing, Date = setting
           let dueDateValue: string | null | undefined = undefined
           if ('dueDate' in updates) {
-            dueDateValue = updates.dueDate ? updates.dueDate.toISOString().split('T')[0] : null
+            dueDateValue = updates.dueDate ? formatDateKey(updates.dueDate) : null
           }
 
           await tasksService.update({

@@ -114,7 +114,8 @@ export function getProjectsWithStats(
   db: DrizzleDb,
   includeArchived: boolean = false
 ): ProjectWithStats[] {
-  const today = new Date().toISOString().split('T')[0]
+  const now = new Date()
+  const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
 
   // Get base projects
   const projectList = listProjects(db, includeArchived)
