@@ -359,7 +359,10 @@ export interface TaskGroupByDate {
 /**
  * Group tasks by due date (for All Tasks, Today, Upcoming views)
  */
-export const groupTasksByDueDate = (tasks: Task[]): TaskGroupByDate => {
+export const groupTasksByDueDate = (
+  tasks: Task[],
+  preserveOrder: boolean = false
+): TaskGroupByDate => {
   const groups: TaskGroupByDate = {
     overdue: [],
     today: [],
@@ -386,12 +389,13 @@ export const groupTasksByDueDate = (tasks: Task[]): TaskGroupByDate => {
     }
   })
 
-  // Sort within groups
-  Object.keys(groups).forEach((key) => {
-    groups[key as keyof TaskGroupByDate] = sortTasksByPriorityAndDate(
-      groups[key as keyof TaskGroupByDate]
-    )
-  })
+  if (!preserveOrder) {
+    Object.keys(groups).forEach((key) => {
+      groups[key as keyof TaskGroupByDate] = sortTasksByPriorityAndDate(
+        groups[key as keyof TaskGroupByDate]
+      )
+    })
+  }
 
   return groups
 }
@@ -410,14 +414,18 @@ export interface TaskGroupByStatus {
  */
 export const groupTasksByStatus = (
   tasks: Task[],
-  projectStatuses: Status[]
+  projectStatuses: Status[],
+  preserveOrder: boolean = false
 ): TaskGroupByStatus[] => {
   const sortedStatuses = [...projectStatuses].sort((a, b) => a.order - b.order)
 
-  return sortedStatuses.map((status) => ({
-    status,
-    tasks: sortTasksByPriorityAndDate(tasks.filter((t) => t.statusId === status.id))
-  }))
+  return sortedStatuses.map((status) => {
+    const statusTasks = tasks.filter((t) => t.statusId === status.id)
+    return {
+      status,
+      tasks: preserveOrder ? statusTasks : sortTasksByPriorityAndDate(statusTasks)
+    }
+  })
 }
 
 // ============================================================================
