@@ -55,7 +55,7 @@ export const viewModes: { id: ViewMode; label: string }[] = [
 ]
 
 // Views that only support List mode (no Kanban/Calendar)
-export const LIST_ONLY_VIEWS = ['today', 'upcoming', 'completed']
+export const LIST_ONLY_VIEWS = ['today', 'completed']
 
 // ============================================================================
 // PROJECT COLORS
@@ -118,7 +118,6 @@ export const defaultStatuses: Status[] = [
 export const taskViews: TaskView[] = [
   { id: 'all', label: 'All Tasks', icon: 'list', count: 23 },
   { id: 'today', label: 'Today', icon: 'star', count: 3 },
-  { id: 'upcoming', label: 'Upcoming', icon: 'calendar', count: 8 },
   { id: 'completed', label: 'Completed', icon: 'check', count: 45 }
 ]
 
