@@ -274,8 +274,15 @@ export function countSubtasks(
 /**
  * Get today's date in YYYY-MM-DD format.
  */
+function toLocalDateStr(date: Date): string {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
 function getTodayDate(): string {
-  return new Date().toISOString().split('T')[0]
+  return toLocalDateStr(new Date())
 }
 
 /**
@@ -373,7 +380,7 @@ export function getUpcomingTasks(db: DrizzleDb, days: number = 7): Task[] {
   const today = getTodayDate()
   const futureDate = new Date()
   futureDate.setDate(futureDate.getDate() + days)
-  const futureDateStr = futureDate.toISOString().split('T')[0]
+  const futureDateStr = toLocalDateStr(futureDate)
 
   return db
     .select()
@@ -754,7 +761,7 @@ export function getTaskStats(db: DrizzleDb): {
   const today = getTodayDate()
   const weekFromNow = new Date()
   weekFromNow.setDate(weekFromNow.getDate() + 7)
-  const weekFromNowStr = weekFromNow.toISOString().split('T')[0]
+  const weekFromNowStr = toLocalDateStr(weekFromNow)
 
   const result = db
     .select({

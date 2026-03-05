@@ -32,6 +32,7 @@ import {
   type ProjectWithStats,
   type Status as DbStatus
 } from '@/services/tasks-service'
+import { formatDateKey } from '@/lib/task-utils'
 import { useVault } from '@/hooks/use-vault'
 import { createLogger } from '@/lib/logger'
 
@@ -493,7 +494,9 @@ export const TasksProvider = ({
                 weekOfMonth: task.repeatConfig.weekOfMonth,
                 dayOfWeekForMonth: task.repeatConfig.dayOfWeekForMonth,
                 endType: task.repeatConfig.endType,
-                endDate: task.repeatConfig.endDate?.toISOString().split('T')[0] ?? null,
+                endDate: task.repeatConfig.endDate
+                  ? formatDateKey(task.repeatConfig.endDate)
+                  : null,
                 endCount: task.repeatConfig.endCount,
                 completedCount: task.repeatConfig.completedCount,
                 createdAt: task.repeatConfig.createdAt.toISOString()
@@ -507,7 +510,7 @@ export const TasksProvider = ({
             priority: priorityReverseMap[task.priority] ?? 0,
             statusId: task.statusId || null,
             parentId: task.parentId || null,
-            dueDate: task.dueDate ? task.dueDate.toISOString().split('T')[0] : null,
+            dueDate: task.dueDate ? formatDateKey(task.dueDate) : null,
             dueTime: task.dueTime || null,
             isRepeating: task.isRepeating,
             repeatConfig: repeatConfigForService,
@@ -565,8 +568,9 @@ export const TasksProvider = ({
                       weekOfMonth: otherUpdates.repeatConfig.weekOfMonth,
                       dayOfWeekForMonth: otherUpdates.repeatConfig.dayOfWeekForMonth,
                       endType: otherUpdates.repeatConfig.endType,
-                      endDate:
-                        otherUpdates.repeatConfig.endDate?.toISOString().split('T')[0] ?? null,
+                      endDate: otherUpdates.repeatConfig.endDate
+                        ? formatDateKey(otherUpdates.repeatConfig.endDate)
+                        : null,
                       endCount: otherUpdates.repeatConfig.endCount,
                       completedCount: otherUpdates.repeatConfig.completedCount,
                       createdAt: otherUpdates.repeatConfig.createdAt.toISOString()
@@ -585,9 +589,7 @@ export const TasksProvider = ({
                 projectId: otherUpdates.projectId,
                 statusId: otherUpdates.statusId ?? undefined,
                 parentId: otherUpdates.parentId ?? undefined,
-                dueDate: otherUpdates.dueDate
-                  ? otherUpdates.dueDate.toISOString().split('T')[0]
-                  : undefined,
+                dueDate: otherUpdates.dueDate ? formatDateKey(otherUpdates.dueDate) : undefined,
                 dueTime: otherUpdates.dueTime ?? undefined,
                 isRepeating: otherUpdates.isRepeating,
                 repeatConfig: repeatConfigForService,
@@ -626,8 +628,9 @@ export const TasksProvider = ({
                       weekOfMonth: otherUpdates.repeatConfig.weekOfMonth,
                       dayOfWeekForMonth: otherUpdates.repeatConfig.dayOfWeekForMonth,
                       endType: otherUpdates.repeatConfig.endType,
-                      endDate:
-                        otherUpdates.repeatConfig.endDate?.toISOString().split('T')[0] ?? null,
+                      endDate: otherUpdates.repeatConfig.endDate
+                        ? formatDateKey(otherUpdates.repeatConfig.endDate)
+                        : null,
                       endCount: otherUpdates.repeatConfig.endCount,
                       completedCount: otherUpdates.repeatConfig.completedCount,
                       createdAt: otherUpdates.repeatConfig.createdAt.toISOString()
@@ -646,9 +649,7 @@ export const TasksProvider = ({
                 projectId: otherUpdates.projectId,
                 statusId: otherUpdates.statusId ?? undefined,
                 parentId: otherUpdates.parentId ?? undefined,
-                dueDate: otherUpdates.dueDate
-                  ? otherUpdates.dueDate.toISOString().split('T')[0]
-                  : undefined,
+                dueDate: otherUpdates.dueDate ? formatDateKey(otherUpdates.dueDate) : undefined,
                 dueTime: otherUpdates.dueTime ?? undefined,
                 isRepeating: otherUpdates.isRepeating,
                 repeatConfig: repeatConfigForService,
@@ -674,7 +675,9 @@ export const TasksProvider = ({
                   weekOfMonth: updates.repeatConfig.weekOfMonth,
                   dayOfWeekForMonth: updates.repeatConfig.dayOfWeekForMonth,
                   endType: updates.repeatConfig.endType,
-                  endDate: updates.repeatConfig.endDate?.toISOString().split('T')[0] ?? null,
+                  endDate: updates.repeatConfig.endDate
+                    ? formatDateKey(updates.repeatConfig.endDate)
+                    : null,
                   endCount: updates.repeatConfig.endCount,
                   completedCount: updates.repeatConfig.completedCount,
                   createdAt: updates.repeatConfig.createdAt.toISOString()
@@ -691,7 +694,7 @@ export const TasksProvider = ({
             projectId: updates.projectId,
             statusId: updates.statusId ?? undefined,
             parentId: updates.parentId ?? undefined,
-            dueDate: updates.dueDate ? updates.dueDate.toISOString().split('T')[0] : undefined,
+            dueDate: updates.dueDate ? formatDateKey(updates.dueDate) : undefined,
             dueTime: updates.dueTime ?? undefined,
             isRepeating: updates.isRepeating,
             repeatConfig: repeatConfigForService,
