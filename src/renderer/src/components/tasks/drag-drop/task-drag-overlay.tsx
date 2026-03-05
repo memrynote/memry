@@ -1,4 +1,6 @@
+import { useRef } from 'react'
 import { DragOverlay, type DropAnimation, defaultDropAnimationSideEffects } from '@dnd-kit/core'
+import { CSS } from '@dnd-kit/utilities'
 
 import { useDragContext } from '@/contexts/drag-context'
 import { MultiDragOverlay, SingleTaskPreview } from './multi-drag-overlay'
@@ -29,6 +31,24 @@ const dropAnimation: DropAnimation = {
   easing: 'ease-out'
 }
 
+const crossContainerDropAnimation: DropAnimation = {
+  sideEffects: defaultDropAnimationSideEffects({
+    styles: {
+      active: {
+        opacity: '0'
+      }
+    }
+  }),
+  duration: 150,
+  easing: 'ease-out',
+  keyframes({ transform }) {
+    return [
+      { opacity: 1, transform: CSS.Transform.toString(transform.initial) },
+      { opacity: 0, transform: CSS.Transform.toString(transform.initial) }
+    ]
+  }
+}
+
 // ============================================================================
 // TASK DRAG OVERLAY COMPONENT
 // ============================================================================
@@ -39,11 +59,30 @@ const dropAnimation: DropAnimation = {
  */
 export const TaskDragOverlay = ({ projects }: TaskDragOverlayProps): React.JSX.Element => {
   const { dragState, isMultiDrag } = useDragContext()
-  const { isDragging, draggedTasks } = dragState
+  const { isDragging, draggedTasks, overType, sourceContainerId, overId } = dragState
+
+  const wasCrossContainerRef = useRef(false)
+
+  const isCrossContainerDrop =
+    (overType === 'column' && overId !== sourceContainerId) ||
+    overType === 'project' ||
+    overType === 'trash' ||
+    overType === 'archive' ||
+    overType === 'section' ||
+    overType === 'date'
+
+  // Latch cross-container state during drag; ref survives resetDragState()
+  if (isDragging) {
+    wasCrossContainerRef.current = isCrossContainerDrop
+  }
+
+  const effectiveDropAnimation = wasCrossContainerRef.current
+    ? crossContainerDropAnimation
+    : dropAnimation
 
   // Don't render if not dragging or no tasks
   if (!isDragging || draggedTasks.length === 0) {
-    return <DragOverlay dropAnimation={dropAnimation}>{null}</DragOverlay>
+    return <DragOverlay dropAnimation={effectiveDropAnimation}>{null}</DragOverlay>
   }
 
   // Check if the primary task is completed/overdue
@@ -60,7 +99,7 @@ export const TaskDragOverlay = ({ projects }: TaskDragOverlayProps): React.JSX.E
   )
 
   return (
-    <DragOverlay dropAnimation={dropAnimation}>
+    <DragOverlay dropAnimation={effectiveDropAnimation}>
       {isMultiDrag ? (
         <MultiDragOverlay tasks={draggedTasks} />
       ) : (

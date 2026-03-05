@@ -589,6 +589,33 @@
 
 /* ===== KEYFRAME ANIMATIONS ===== */
 
+/* Overdue severe tier — single pulse on mount */
+.overdue-pulse {
+  animation: overdue-pulse 0.6s var(--ease-out) 1;
+}
+
+@keyframes overdue-pulse {
+  0% {
+    background-color: oklch(0.93 0.04 15);
+  }
+  100% {
+    background-color: transparent;
+  }
+}
+
+:is(.dark) .overdue-pulse {
+  animation: overdue-pulse-dark 0.6s var(--ease-out) 1;
+}
+
+@keyframes overdue-pulse-dark {
+  0% {
+    background-color: oklch(0.25 0.04 15);
+  }
+  100% {
+    background-color: transparent;
+  }
+}
+
 /* Item removal - compresses height for smooth list reflow */
 @keyframes item-remove {
   0% {
