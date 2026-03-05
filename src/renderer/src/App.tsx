@@ -48,7 +48,7 @@ const log = createLogger('App')
 export type BasePage = 'inbox' | 'home' | 'journal'
 
 // Task view type for navigation within tasks
-export type TaskViewId = 'all' | 'today' | 'upcoming' | 'completed'
+export type TaskViewId = 'all' | 'today' | 'completed'
 
 // Selection type for tasks page
 export type TaskSelectionType = 'view' | 'project'
