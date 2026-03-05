@@ -408,7 +408,7 @@ function AppSidebarInner({ currentPage, viewCounts, onOpenSearch, ...props }: Ap
       <SidebarContent className="flex flex-col overflow-hidden">
         <SidebarDrillDownContainer>{mainContent}</SidebarDrillDownContainer>
       </SidebarContent>
-      <SidebarFooter>
+      <SidebarFooter className="group-data-[collapsible=icon]:hidden">
         <SidebarMenu>
           <SidebarMenuItem>
             {authState.status === 'authenticated' ? (
