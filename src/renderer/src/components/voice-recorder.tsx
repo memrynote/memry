@@ -33,6 +33,8 @@ interface VoiceRecorderProps {
   onCancel: () => void
   /** Maximum recording duration in seconds (default: 300 = 5 minutes) */
   maxDuration?: number
+  /** Start recording immediately on mount */
+  autoStart?: boolean
   /** Additional CSS classes */
   className?: string
 }
@@ -65,6 +67,7 @@ export function VoiceRecorder({
   onRecordingComplete,
   onCancel,
   maxDuration = DEFAULT_MAX_DURATION,
+  autoStart = false,
   className
 }: VoiceRecorderProps): React.JSX.Element {
   const [state, setState] = useState<RecordingState>('idle')
@@ -84,6 +87,13 @@ export function VoiceRecorder({
       stopRecording(true)
     }
   }, [])
+
+  // Auto-start recording on mount
+  useEffect(() => {
+    if (autoStart && state === 'idle') {
+      void startRecording()
+    }
+  }, [autoStart])
 
   /**
    * Stop recording and clean up resources
@@ -180,7 +190,7 @@ export function VoiceRecorder({
       }
 
       // Start recording
-      mediaRecorder.start(1000) // Collect data every second
+      mediaRecorder.start()
       startTimeRef.current = Date.now()
       setState('recording')
       setDuration(0)
