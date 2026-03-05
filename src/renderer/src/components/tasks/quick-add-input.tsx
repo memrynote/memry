@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback, useMemo } from 'react'
-import { Plus, Calendar, Folder } from 'lucide-react'
+import { Plus, Calendar, Folder, Flag } from 'lucide-react'
 
 import { cn } from '@/lib/utils'
 
@@ -102,7 +102,8 @@ import {
   hasSpecialSyntax,
   getDateOptions,
   getPriorityOptions,
-  getProjectOptions
+  getProjectOptions,
+  resolveDateDay
 } from '@/lib/quick-add-parser'
 import { priorityConfig, type Priority } from '@/data/sample-tasks'
 import type { Project } from '@/data/tasks-data'
@@ -293,21 +294,43 @@ export const QuickAddInput = ({
   const autocompleteOptions = useMemo((): AutocompleteOption[] => {
     if (!autocompleteType) return []
 
+    const PRIORITY_ICON_COLORS: Record<string, string> = {
+      '!!urgent': 'text-red-500',
+      '!!high': 'text-orange-500',
+      '!!medium': 'text-amber-500',
+      '!!low': 'text-blue-400'
+    }
+
     switch (autocompleteType) {
       case 'date': {
         const opts = getDateOptions(autocompleteQuery)
-        return opts.map((o) => ({
-          value: o.value,
-          label: o.label,
-          icon: <span>{o.icon}</span>
-        }))
+        return opts.map((o) => {
+          const keyword = o.value.slice(1)
+          const day = resolveDateDay(keyword)
+          return {
+            value: o.value,
+            label: o.label,
+            icon: (
+              <span className="relative flex items-center justify-center w-4 h-4 text-amber-500">
+                <Calendar className="size-4" />
+                {day !== null && (
+                  <span className="absolute text-[6px] font-bold leading-none mt-[3px]">{day}</span>
+                )}
+              </span>
+            )
+          }
+        })
       }
       case 'priority': {
         const opts = getPriorityOptions(autocompleteQuery)
         return opts.map((o) => ({
           value: o.value,
           label: o.label,
-          icon: <span>{o.icon}</span>
+          icon: (
+            <Flag
+              className={cn('size-4', PRIORITY_ICON_COLORS[o.value] ?? 'text-muted-foreground')}
+            />
+          )
         }))
       }
       case 'project': {
@@ -315,7 +338,7 @@ export const QuickAddInput = ({
         return opts.map((o) => ({
           value: o.value,
           label: o.label,
-          icon: <span>{o.icon}</span>
+          icon: <Folder className="size-4 text-blue-400" />
         }))
       }
       default:

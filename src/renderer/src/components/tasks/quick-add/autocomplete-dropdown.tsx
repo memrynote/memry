@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
+import { Calendar, Flag, Folder } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 // ============================================================================
@@ -28,18 +29,18 @@ interface AutocompleteDropdownProps {
 const AutocompleteHeader = ({ type }: { type: AutocompleteType }): React.JSX.Element | null => {
   if (!type) return null
 
-  const headers: Record<NonNullable<AutocompleteType>, { emoji: string; label: string }> = {
-    date: { emoji: '📅', label: 'Due Date' },
-    priority: { emoji: '⚡', label: 'Priority' },
-    project: { emoji: '📁', label: 'Project' }
+  const headers: Record<NonNullable<AutocompleteType>, { icon: React.ReactNode; label: string }> = {
+    date: { icon: <Calendar className="size-3.5" />, label: 'Due Date' },
+    priority: { icon: <Flag className="size-3.5" />, label: 'Priority' },
+    project: { icon: <Folder className="size-3.5" />, label: 'Project' }
   }
 
   const header = headers[type]
 
   return (
     <div className="px-3 py-2 border-b border-border bg-muted/50 rounded-t-lg">
-      <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-        {header.emoji} {header.label}
+      <span className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground uppercase tracking-wide">
+        {header.icon} {header.label}
       </span>
     </div>
   )
@@ -149,7 +150,7 @@ export const AutocompleteDropdown = ({
   return (
     <div
       className={cn(
-        'absolute top-full left-0 mt-1 w-64',
+        'absolute top-full left-0 right-0 mt-1 min-w-[16rem]',
         'bg-popover rounded-lg shadow-lg border border-border',
         'z-50 overflow-hidden',
         'animate-in fade-in-0 zoom-in-95 duration-100',
