@@ -1,14 +1,5 @@
 import { useCallback, useRef } from 'react'
-import {
-  List,
-  Star,
-  CalendarDays,
-  FolderKanban,
-  Plus,
-  Settings,
-  Columns3,
-  Calendar
-} from 'lucide-react'
+import { List, Star, FolderKanban, Plus, Settings, Columns3, Calendar } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
@@ -18,7 +9,7 @@ import type { ViewMode } from '@/data/tasks-data'
 // TYPES
 // ============================================================================
 
-export type TasksInternalTab = 'all' | 'today' | 'upcoming' | 'projects'
+export type TasksInternalTab = 'all' | 'today' | 'projects'
 
 interface TabConfig {
   id: TasksInternalTab
@@ -47,7 +38,6 @@ interface TasksTabBarProps {
   counts: {
     all: number
     today: number
-    upcoming: number
     projects: number
   }
   activeView?: ViewMode
@@ -63,7 +53,6 @@ interface TasksTabBarProps {
 const tabs: TabConfig[] = [
   { id: 'all', label: 'All', icon: List },
   { id: 'today', label: 'Today', icon: Star },
-  { id: 'upcoming', label: 'Upcoming', icon: CalendarDays },
   { id: 'projects', label: 'Projects', icon: FolderKanban }
 ]
 

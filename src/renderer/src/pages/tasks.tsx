@@ -11,7 +11,6 @@ import { TaskDetailPanel } from '@/components/tasks/task-detail-panel'
 import { KanbanBoard } from '@/components/tasks/kanban'
 import { CalendarView } from '@/components/tasks/calendar'
 import { TodayView } from '@/components/tasks/today'
-import { UpcomingView } from '@/components/tasks/upcoming'
 import {
   ClearCompletedMenu,
   ArchiveConfirmDialog,
@@ -30,8 +29,7 @@ import {
   getArchivedTasks,
   getTasksOlderThan,
   formatDateShort,
-  getTodayTasks,
-  getUpcomingTasks
+  getTodayTasks
 } from '@/lib/task-utils'
 import {
   type Project,
@@ -205,7 +203,7 @@ export const TasksPage = ({
   // Derived: available views based on internal tab
   const availableViews = useMemo((): ViewMode[] => {
     // Today and Upcoming are list-only views
-    if (activeInternalTab === 'today' || activeInternalTab === 'upcoming') {
+    if (activeInternalTab === 'today') {
       return ['list']
     }
     // All and Projects support all view modes
@@ -272,15 +270,6 @@ export const TasksPage = ({
     if (activeInternalTab === 'today') {
       const { overdue, today } = getTodayTasks(filteredTasks, projects)
       return [...overdue, ...today]
-    }
-
-    if (activeInternalTab === 'upcoming') {
-      const { overdue, byDay } = getUpcomingTasks(filteredTasks, projects, 7)
-      const upcomingTasks: Task[] = []
-      byDay.forEach((dayTasks) => {
-        upcomingTasks.push(...dayTasks)
-      })
-      return [...overdue, ...upcomingTasks]
     }
 
     return filteredTasks
@@ -352,12 +341,10 @@ export const TasksPage = ({
   const tabCounts = useMemo(() => {
     const allTasks = getFilteredTasks(tasks, 'all', 'view', projects)
     const todayTasks = getFilteredTasks(tasks, 'today', 'view', projects)
-    const upcomingTasks = getFilteredTasks(tasks, 'upcoming', 'view', projects)
     const activeProjects = projects.filter((p) => !p.isArchived)
     return {
       all: allTasks.length,
       today: todayTasks.length,
-      upcoming: upcomingTasks.length,
       projects: activeProjects.length
     }
   }, [tasks, projects])
@@ -550,9 +537,6 @@ export const TasksPage = ({
     if (selectedId === 'today') {
       return startOfDay(new Date())
     }
-    if (selectedId === 'upcoming') {
-      return addDays(startOfDay(new Date()), 1)
-    }
     return null
   }, [selectedId])
 
@@ -584,8 +568,6 @@ export const TasksPage = ({
       if (!parsedData?.dueDate) {
         if (selectedId === 'today') {
           dueDate = startOfDay(new Date())
-        } else if (selectedId === 'upcoming') {
-          dueDate = addDays(startOfDay(new Date()), 1)
         }
       }
 
@@ -1212,23 +1194,6 @@ export const TasksPage = ({
                 {new Date().getDate()}
               </div>
               <TodayView
-                tasks={filteredTasks}
-                projects={projects}
-                selectedTaskId={selectedTaskId}
-                onToggleComplete={handleToggleComplete}
-                onUpdateTask={handleUpdateTask}
-                onTaskClick={handleTaskClick}
-                onQuickAdd={handleQuickAdd}
-                onOpenModal={handleOpenAddTaskModal}
-                onAddTaskWithDate={handleAddTaskWithDate}
-              />
-            </div>
-          )}
-
-          {/* Content Body - Upcoming Tab */}
-          {activeInternalTab === 'upcoming' && (
-            <div className="flex flex-1 flex-col overflow-hidden">
-              <UpcomingView
                 tasks={filteredTasks}
                 projects={projects}
                 selectedTaskId={selectedTaskId}
