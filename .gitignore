@@ -25,3 +25,14 @@ test-data.db
 test-index.db
 .codex
 .pnpm-store
+
+# Agent/AI tooling
+.claude/
+CLAUDE.md
+opencode.jsonc
+.specify/
+
+# Internal docs & specs
+docs/
+prompts/
+specs/
