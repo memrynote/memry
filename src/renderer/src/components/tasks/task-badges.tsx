@@ -2,7 +2,13 @@ import * as React from 'react'
 import { Repeat, Check } from 'lucide-react'
 
 import { cn } from '@/lib/utils'
-import { formatDueDate, type DueDateStatus } from '@/lib/task-utils'
+import {
+  formatDueDate,
+  getDaysOverdue,
+  getOverdueTier,
+  overdueTierStyles,
+  type DueDateStatus
+} from '@/lib/task-utils'
 import { priorityConfig, type Priority } from '@/data/sample-tasks'
 import type { Project } from '@/data/tasks-data'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
@@ -207,6 +213,10 @@ export const DueDateBadge = ({
   const isToday = formatted.status === 'today'
   const showBackground = isOverdue || isToday
 
+  const daysOver = isOverdue ? getDaysOverdue(dueDate) : 0
+  const tier = isOverdue ? getOverdueTier(daysOver) : null
+  const tierStyle = tier ? overdueTierStyles[tier] : null
+
   const badgeContent = (
     <span
       className={cn(
@@ -219,9 +229,14 @@ export const DueDateBadge = ({
     >
       {isRepeating && <Repeat className="size-3 shrink-0" aria-label="Repeating task" />}
       <span className="truncate">{formatted.label}</span>
-      {isOverdue && variant === 'default' && (
-        <span className="text-[10px] font-semibold uppercase tracking-wide opacity-80 shrink-0">
-          Overdue
+      {isOverdue && variant === 'default' && tierStyle && (
+        <span
+          className={cn(
+            'text-[10px] font-semibold px-1.5 py-0.5 rounded-full shrink-0',
+            tierStyle.chipBg
+          )}
+        >
+          {daysOver}d
         </span>
       )}
     </span>

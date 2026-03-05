@@ -1,7 +1,7 @@
 import { useMemo } from 'react'
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { useDroppable } from '@dnd-kit/core'
-import { AlertTriangle, Star } from 'lucide-react'
+import { Star } from 'lucide-react'
 
 import { cn } from '@/lib/utils'
 import { SortableTaskRow } from '@/components/tasks/drag-drop'
@@ -26,12 +26,11 @@ interface UrgencyStyleConfig {
 
 const urgencyStyles: Record<UrgencyLevel, UrgencyStyleConfig> = {
   critical: {
-    containerClass:
-      'bg-red-50/30 dark:bg-red-950/20 border border-red-200/50 dark:border-red-900/50 rounded-lg',
-    headerClass: 'text-red-700 dark:text-red-400 font-semibold',
-    countClass: 'bg-red-100 dark:bg-red-900/50 text-red-600 dark:text-red-400',
-    accentClass: 'border-l-[3px] border-l-red-500',
-    icon: <AlertTriangle className="size-4" aria-hidden="true" />
+    containerClass: 'rounded-lg',
+    headerClass: 'text-text-secondary font-semibold',
+    countClass: 'bg-muted text-text-tertiary',
+    accentClass: '',
+    icon: null
   },
   high: {
     containerClass:

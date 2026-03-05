@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState, memo } from 'react'
-import { Plus } from 'lucide-react'
+import { ChevronRight, Plus } from 'lucide-react'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import { AnimatePresence } from 'framer-motion'
 
@@ -17,7 +17,7 @@ import { cn } from '@/lib/utils'
 import { getUpcomingTasks, parseDateKey, startOfDay, addDays } from '@/lib/task-utils'
 import { createLookupContext, isTaskCompletedFast, type LookupContext } from '@/lib/lookup-utils'
 import { getSectionVisibility } from '@/lib/section-visibility'
-import { useOverdueCelebration } from '@/hooks'
+import { useOverdueCelebration, useCollapsedSections } from '@/hooks'
 import type { Task, Priority } from '@/data/sample-tasks'
 import type { Project } from '@/data/tasks-data'
 
@@ -60,6 +60,7 @@ interface VirtualItem {
   taskCount?: number
   isOverdue?: boolean
   isTomorrow?: boolean
+  isCollapsed?: boolean
 }
 
 // Estimated heights for different item types
@@ -84,29 +85,33 @@ const flattenUpcomingData = (
   lookupContext: LookupContext,
   showEmptyDays: boolean,
   tomorrowKey: string,
-  hasTasksThisWeek: boolean
+  hasTasksThisWeek: boolean,
+  collapsedSections: Set<string> = new Set()
 ): VirtualItem[] => {
   const items: VirtualItem[] = []
 
-  // Add overdue section if has tasks
   if (overdue.length > 0) {
+    const isOverdueCollapsed = collapsedSections.has('overdue')
     items.push({
       id: 'overdue-header',
       type: 'overdue-header',
       taskCount: overdue.length,
-      isOverdue: true
+      isOverdue: true,
+      isCollapsed: isOverdueCollapsed
     })
 
-    overdue.forEach((task) => {
-      const project = lookupContext.projectMap.get(task.projectId)
-      items.push({
-        id: `task-${task.id}`,
-        type: 'task',
-        task,
-        project,
-        isOverdue: true
+    if (!isOverdueCollapsed) {
+      overdue.forEach((task) => {
+        const project = lookupContext.projectMap.get(task.projectId)
+        items.push({
+          id: `task-${task.id}`,
+          type: 'task',
+          task,
+          project,
+          isOverdue: true
+        })
       })
-    })
+    }
   }
 
   // Add day sections
@@ -186,6 +191,7 @@ interface VirtualItemRendererProps {
   onUpdateTask?: (taskId: string, updates: Partial<Task>) => void
   onTaskClick?: (taskId: string) => void
   onAddTaskForDate: (date: Date) => void
+  onToggleCollapse?: (sectionKey: string) => void
 }
 
 const VirtualItemRenderer = memo(
@@ -198,19 +204,37 @@ const VirtualItemRenderer = memo(
     onToggleComplete,
     onUpdateTask,
     onTaskClick,
-    onAddTaskForDate
+    onAddTaskForDate,
+    onToggleCollapse
   }: VirtualItemRendererProps): React.JSX.Element | null => {
     switch (item.type) {
       case 'overdue-header':
         return (
-          <div className="flex items-center justify-between px-4 py-2.5 border-b border-border/50 bg-red-50/50 dark:bg-red-950/20 rounded-t-lg border border-red-200 dark:border-red-900">
-            <span className="font-semibold text-sm uppercase tracking-wide text-red-600 dark:text-red-400">
-              OVERDUE
-            </span>
-            <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-red-100 dark:bg-red-950/50 text-red-700 dark:text-red-400">
+          <button
+            type="button"
+            onClick={() => onToggleCollapse?.('overdue')}
+            className={cn(
+              'flex w-full items-center justify-between px-4 py-2.5 rounded-md',
+              'hover:bg-accent/30 cursor-pointer transition-colors',
+              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring'
+            )}
+          >
+            <div className="flex items-center gap-1.5">
+              <ChevronRight
+                className={cn(
+                  'size-3.5 text-text-tertiary transition-transform duration-200',
+                  !item.isCollapsed && 'rotate-90'
+                )}
+                strokeWidth={2.5}
+              />
+              <span className="font-semibold text-sm uppercase tracking-wide text-text-secondary">
+                OVERDUE
+              </span>
+            </div>
+            <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-muted text-text-tertiary">
               {item.taskCount}
             </span>
-          </div>
+          </button>
         )
 
       case 'day-header':
@@ -237,9 +261,7 @@ const VirtualItemRenderer = memo(
             onToggleComplete={onToggleComplete}
             onUpdateTask={onUpdateTask}
             onClick={onTaskClick}
-            accentClass={
-              item.isOverdue && !isCompleted ? 'border-l-2 border-l-destructive' : undefined
-            }
+            accentClass={undefined}
           />
         )
 
@@ -300,8 +322,8 @@ export const VirtualizedUpcomingView = ({
   onViewCalendar,
   className
 }: VirtualizedUpcomingViewProps): React.JSX.Element => {
-  // State for showing/hiding empty days
   const [showEmptyDays, setShowEmptyDays] = useState(true)
+  const { collapsedSections, toggleSection } = useCollapsedSections('upcoming')
 
   // Ref for the scroll container
   const parentRef = useRef<HTMLDivElement>(null)
@@ -343,9 +365,10 @@ export const VirtualizedUpcomingView = ({
         lookupContext,
         showEmptyDays,
         tomorrowKey,
-        hasTasksThisWeek
+        hasTasksThisWeek,
+        collapsedSections
       ),
-    [overdue, byDay, lookupContext, showEmptyDays, tomorrowKey, hasTasksThisWeek]
+    [overdue, byDay, lookupContext, showEmptyDays, tomorrowKey, hasTasksThisWeek, collapsedSections]
   )
 
   // Set up virtualizer
@@ -465,6 +488,7 @@ export const VirtualizedUpcomingView = ({
                     onUpdateTask={onUpdateTask}
                     onTaskClick={onTaskClick}
                     onAddTaskForDate={handleAddTaskForDate}
+                    onToggleCollapse={toggleSection}
                   />
                 </div>
               )

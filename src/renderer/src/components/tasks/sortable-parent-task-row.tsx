@@ -216,8 +216,7 @@ export const SortableParentTaskRow = ({
             : showProjectBadge
               ? 'md:grid-cols-[24px_20px_20px_1fr_70px_110px] lg:grid-cols-[24px_20px_20px_1fr_120px_70px_110px]'
               : 'md:grid-cols-[24px_20px_20px_1fr_70px_110px]',
-          // Urgency accent class takes priority, otherwise fall back to overdue styling
-          accentClass ? accentClass : isOverdue && 'border-l-2 border-l-destructive',
+          isOverdue && 'bg-rose-50/60 dark:bg-rose-950/20',
           // Selection highlight (when checked for selection)
           isCheckedForSelection && 'bg-primary/10 hover:bg-primary/15',
           // Detail panel selected (not the same as selection mode)
