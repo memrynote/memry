@@ -1220,7 +1220,7 @@ export const TasksPage = ({
                 onTaskClick={handleTaskClick}
                 onQuickAdd={handleQuickAdd}
                 onOpenModal={handleOpenAddTaskModal}
-                onViewUpcoming={() => setActiveInternalTab('upcoming')}
+                onAddTaskWithDate={handleAddTaskWithDate}
               />
             </div>
           )}
