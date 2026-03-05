@@ -191,7 +191,7 @@ export const KanbanCard = ({
         // Selected state (detail panel open)
         isSelected && !isFocused && !isCheckedForSelection && 'border-primary/50',
         // Overdue state
-        isOverdue && !isCompleted && !isCheckedForSelection && 'border-l-red-500',
+        isOverdue && !isCompleted && !isCheckedForSelection && 'bg-rose-50/60 dark:bg-rose-950/20',
         // Completed state
         isCompleted && 'opacity-70 bg-muted/30',
         // Dragging state - card becomes a placeholder
@@ -308,7 +308,7 @@ export const KanbanCardSkeleton = ({
       className={cn(
         'rounded-lg border bg-card p-3 shadow-xl transition-all duration-150',
         'rotate-3 scale-105',
-        isOverdue && !isCompleted && 'border-l-2 border-l-red-500',
+        isOverdue && !isCompleted && 'bg-rose-50/60 dark:bg-rose-950/20',
         isCompleted && 'opacity-70 bg-muted/30'
       )}
       style={{ width: '256px' }}

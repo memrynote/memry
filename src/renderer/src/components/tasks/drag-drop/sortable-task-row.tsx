@@ -4,7 +4,7 @@ import { CSS } from '@dnd-kit/utilities'
 import { GripVertical } from 'lucide-react'
 
 import { cn } from '@/lib/utils'
-import { formatDueDate } from '@/lib/task-utils'
+import { formatDueDate, getDaysOverdue, getOverdueTier, overdueTierStyles } from '@/lib/task-utils'
 import {
   TaskCheckbox,
   ProjectBadge,
@@ -153,9 +153,11 @@ const SortableTaskRowComponent = ({
     transition: transition || 'transform 200ms ease-out'
   }
 
-  // Check if overdue
   const formattedDate = formatDueDate(task.dueDate, task.dueTime)
   const isOverdue = formattedDate?.status === 'overdue'
+  const daysOver = isOverdue && !isCompleted ? getDaysOverdue(task.dueDate) : 0
+  const overdueTier = daysOver > 0 ? getOverdueTier(daysOver) : null
+  const tierRowStyle = overdueTier ? overdueTierStyles[overdueTier].rowBg : null
 
   const handleRowClick = (e: React.MouseEvent): void => {
     // Don't trigger if clicking on drag handle
@@ -260,8 +262,8 @@ const SortableTaskRowComponent = ({
           : showProjectBadge
             ? 'md:grid-cols-[24px_20px_20px_1fr_70px_110px] lg:grid-cols-[24px_20px_20px_1fr_120px_70px_110px]'
             : 'md:grid-cols-[24px_20px_20px_1fr_70px_110px]',
-        // Urgency accent class takes priority, otherwise fall back to overdue styling
-        accentClass ? accentClass : isOverdue && !isCompleted && 'border-l-2 border-l-destructive',
+        tierRowStyle,
+        overdueTier === 'severe' && 'overdue-pulse',
         // Selection highlight (when checked for selection)
         isCheckedForSelection && 'bg-primary/10 hover:bg-primary/15',
         // Detail panel selected (not the same as selection mode)
@@ -431,7 +433,7 @@ export const TaskRowPreview = ({
       className={cn(
         'flex items-center gap-3 rounded-lg border bg-card p-3 shadow-xl',
         'rotate-2 scale-105',
-        isOverdue && 'border-l-2 border-l-destructive'
+        isOverdue && 'bg-rose-50/60 dark:bg-rose-950/20'
       )}
       style={{ width: '320px' }}
     >

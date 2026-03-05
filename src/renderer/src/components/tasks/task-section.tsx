@@ -60,7 +60,7 @@ const TaskSectionHeader = ({
         <span
           className={cn(
             'font-semibold text-sm uppercase tracking-wide',
-            variant === 'overdue' && 'text-red-600 dark:text-red-400',
+            variant === 'overdue' && 'text-text-secondary',
             variant === 'today' && 'text-amber-600 dark:text-amber-500',
             variant === 'default' && 'text-text-secondary'
           )}
@@ -73,7 +73,7 @@ const TaskSectionHeader = ({
       <span
         className={cn(
           'text-xs px-2 py-0.5 rounded-full font-medium',
-          variant === 'overdue' && 'bg-red-100 dark:bg-red-950/50 text-red-700 dark:text-red-400',
+          variant === 'overdue' && 'bg-muted text-text-tertiary',
           variant === 'today' &&
             'bg-amber-100 dark:bg-amber-950/50 text-amber-700 dark:text-amber-500',
           variant === 'default' && 'bg-muted text-text-tertiary'
@@ -144,13 +144,13 @@ export const TaskSection = ({
   const taskIds = tasks.map((t) => t.id)
 
   const accentBorderColor = {
-    overdue: 'border-l-red-500',
+    overdue: 'border-l-border',
     today: 'border-l-amber-500',
     default: 'border-l-border'
   }[variant]
 
   const accentBgColor = {
-    overdue: 'bg-red-50/30 dark:bg-red-950/10',
+    overdue: 'bg-background',
     today: 'bg-amber-50/30 dark:bg-amber-950/10',
     default: 'bg-background'
   }[variant]

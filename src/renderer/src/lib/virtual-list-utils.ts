@@ -44,6 +44,7 @@ export interface SectionHeaderItem extends VirtualItemBase {
   urgency: UrgencyLevel
   accentColor?: string
   isMuted?: boolean
+  isCollapsed?: boolean
 }
 
 /**
@@ -184,7 +185,8 @@ export const flattenTasksByDueDate = (
   tasks: Task[],
   projects: Project[],
   _expandedIds: Set<string>,
-  allTasks: Task[]
+  allTasks: Task[],
+  collapsedSections: Set<string> = new Set()
 ): VirtualItem[] => {
   const items: VirtualItem[] = []
   const topLevelTasks = getTopLevelTasks(tasks)
@@ -207,10 +209,10 @@ export const flattenTasksByDueDate = (
     const config = dueDateGroupConfig[groupKey]
     const tasksInGroup = groupedTasks[groupKey]
 
-    // Skip empty groups
     if (tasksInGroup.length === 0) return
 
-    // Add section header
+    const isSectionCollapsed = collapsedSections.has(groupKey)
+
     items.push({
       id: `header-${groupKey}`,
       type: 'section-header',
@@ -219,10 +221,12 @@ export const flattenTasksByDueDate = (
       count: tasksInGroup.length,
       urgency: config.urgency,
       accentColor: config.accentColor,
-      isMuted: config.isMuted
+      isMuted: config.isMuted,
+      isCollapsed: isSectionCollapsed
     })
 
-    // Add tasks
+    if (isSectionCollapsed) return
+
     tasksInGroup.forEach((task) => {
       const project = projectMap.get(task.projectId)
       if (!project) return
@@ -252,7 +256,6 @@ export const flattenTasksByDueDate = (
       }
     })
 
-    // Add "add task" button at end of section
     items.push({
       id: `add-${groupKey}`,
       type: 'add-task-button',
@@ -281,7 +284,8 @@ export const flattenTodayTasks = (
   projects: Project[],
   _expandedIds: Set<string>,
   allTasks: Task[],
-  showCelebration: boolean
+  showCelebration: boolean,
+  collapsedSections: Set<string> = new Set()
 ): VirtualItem[] => {
   const items: VirtualItem[] = []
   const projectMap = new Map(projects.map((p) => [p.id, p]))
@@ -305,6 +309,7 @@ export const flattenTodayTasks = (
 
   // Overdue section
   if (hasOverdue) {
+    const isOverdueCollapsed = collapsedSections.has('overdue')
     items.push({
       id: 'header-overdue',
       type: 'section-header',
@@ -312,41 +317,45 @@ export const flattenTodayTasks = (
       label: 'OVERDUE',
       count: todayData.overdue.length,
       urgency: 'critical',
-      accentColor: '#ef4444'
+      accentColor: '#ef4444',
+      isCollapsed: isOverdueCollapsed
     })
 
-    const topLevelOverdue = getTopLevelTasks(todayData.overdue)
-    topLevelOverdue.forEach((task) => {
-      const project = projectMap.get(task.projectId)
-      if (!project) return
+    if (!isOverdueCollapsed) {
+      const topLevelOverdue = getTopLevelTasks(todayData.overdue)
+      topLevelOverdue.forEach((task) => {
+        const project = projectMap.get(task.projectId)
+        if (!project) return
 
-      const taskHasSubtasks = hasSubtasks(task)
+        const taskHasSubtasks = hasSubtasks(task)
 
-      if (taskHasSubtasks) {
-        const subtasks = getSubtasks(task.id, allTasks)
-        items.push({
-          id: `parent-task-${task.id}`,
-          type: 'parent-task',
-          task,
-          project,
-          subtasks,
-          sectionId: 'overdue',
-          isOverdue: true
-        })
-      } else {
-        items.push({
-          id: `task-${task.id}`,
-          type: 'task',
-          task,
-          project,
-          sectionId: 'overdue',
-          isOverdue: true
-        })
-      }
-    })
+        if (taskHasSubtasks) {
+          const subtasks = getSubtasks(task.id, allTasks)
+          items.push({
+            id: `parent-task-${task.id}`,
+            type: 'parent-task',
+            task,
+            project,
+            subtasks,
+            sectionId: 'overdue',
+            isOverdue: true
+          })
+        } else {
+          items.push({
+            id: `task-${task.id}`,
+            type: 'task',
+            task,
+            project,
+            sectionId: 'overdue',
+            isOverdue: true
+          })
+        }
+      })
+    }
   }
 
   // Today section
+  const isTodayCollapsed = collapsedSections.has('today')
   items.push({
     id: 'header-today',
     type: 'section-header',
@@ -354,45 +363,47 @@ export const flattenTodayTasks = (
     label: 'TODAY',
     count: todayData.today.length,
     urgency: 'high',
-    accentColor: '#3b82f6'
+    accentColor: '#3b82f6',
+    isCollapsed: isTodayCollapsed
   })
 
-  if (hasToday) {
-    const topLevelToday = getTopLevelTasks(todayData.today)
-    topLevelToday.forEach((task) => {
-      const project = projectMap.get(task.projectId)
-      if (!project) return
+  if (!isTodayCollapsed) {
+    if (hasToday) {
+      const topLevelToday = getTopLevelTasks(todayData.today)
+      topLevelToday.forEach((task) => {
+        const project = projectMap.get(task.projectId)
+        if (!project) return
 
-      const taskHasSubtasks = hasSubtasks(task)
+        const taskHasSubtasks = hasSubtasks(task)
 
-      if (taskHasSubtasks) {
-        const subtasks = getSubtasks(task.id, allTasks)
-        items.push({
-          id: `parent-task-${task.id}`,
-          type: 'parent-task',
-          task,
-          project,
-          subtasks,
-          sectionId: 'today'
-        })
-      } else {
-        items.push({
-          id: `task-${task.id}`,
-          type: 'task',
-          task,
-          project,
-          sectionId: 'today'
-        })
-      }
+        if (taskHasSubtasks) {
+          const subtasks = getSubtasks(task.id, allTasks)
+          items.push({
+            id: `parent-task-${task.id}`,
+            type: 'parent-task',
+            task,
+            project,
+            subtasks,
+            sectionId: 'today'
+          })
+        } else {
+          items.push({
+            id: `task-${task.id}`,
+            type: 'task',
+            task,
+            project,
+            sectionId: 'today'
+          })
+        }
+      })
+    }
+
+    items.push({
+      id: 'add-today',
+      type: 'add-task-button',
+      sectionId: 'today'
     })
   }
-
-  // Add task button at end
-  items.push({
-    id: 'add-today',
-    type: 'add-task-button',
-    sectionId: 'today'
-  })
 
   return items
 }

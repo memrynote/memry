@@ -106,7 +106,7 @@ export const ParentTaskRow = ({
           'hover:bg-accent/50',
           onClick &&
             'cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-          isOverdue && 'border-l-2 border-l-destructive',
+          isOverdue && 'bg-rose-50/60 dark:bg-rose-950/20',
           isSelected && 'bg-primary/10 ring-2 ring-primary/30'
         )}
         aria-label={`Task: ${task.title}${isCompleted ? ', completed' : ''}${taskHasSubtasks ? `, ${subtasks.length} subtasks` : ''}`}
