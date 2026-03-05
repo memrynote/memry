@@ -31,12 +31,12 @@
 
 ## Validation Summary
 
-| Category | Pass | Fail | Total |
-|----------|------|------|-------|
-| Content Quality | 4 | 0 | 4 |
-| Requirement Completeness | 8 | 0 | 8 |
-| Feature Readiness | 4 | 0 | 4 |
-| **Total** | **16** | **0** | **16** |
+| Category                 | Pass   | Fail  | Total  |
+| ------------------------ | ------ | ----- | ------ |
+| Content Quality          | 4      | 0     | 4      |
+| Requirement Completeness | 8      | 0     | 8      |
+| Feature Readiness        | 4      | 0     | 4      |
+| **Total**                | **16** | **0** | **16** |
 
 **Status**: PASSED - Specification is ready for `/speckit.clarify` or `/speckit.plan`
 
