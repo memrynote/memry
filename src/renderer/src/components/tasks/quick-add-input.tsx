@@ -2,6 +2,100 @@ import { useState, useRef, useCallback, useMemo } from 'react'
 import { Plus, Calendar, Folder } from 'lucide-react'
 
 import { cn } from '@/lib/utils'
+
+// ============================================================================
+// TOKEN HIGHLIGHT OVERLAY
+// ============================================================================
+
+type TokenKind = 'date' | 'priority' | 'project' | 'plain'
+
+interface Token {
+  text: string
+  kind: TokenKind
+}
+
+const TOKEN_STYLES: Record<Exclude<TokenKind, 'plain'>, string> = {
+  date: 'text-amber-500 bg-amber-500/10 rounded px-0.5 -mx-0.5',
+  priority: 'rounded px-0.5 -mx-0.5',
+  project: 'text-blue-400 bg-blue-400/10 rounded px-0.5 -mx-0.5'
+}
+
+const PRIORITY_COLORS: Record<string, string> = {
+  urgent: 'text-red-400 bg-red-400/10',
+  u: 'text-red-400 bg-red-400/10',
+  high: 'text-orange-400 bg-orange-400/10',
+  h: 'text-orange-400 bg-orange-400/10',
+  medium: 'text-amber-400 bg-amber-400/10',
+  med: 'text-amber-400 bg-amber-400/10',
+  m: 'text-amber-400 bg-amber-400/10',
+  low: 'text-blue-400 bg-blue-400/10',
+  l: 'text-blue-400 bg-blue-400/10',
+  none: 'text-muted-foreground bg-muted/50',
+  n: 'text-muted-foreground bg-muted/50'
+}
+
+function tokenize(input: string): Token[] {
+  const regex = /(!![a-zA-Z]+|(?<![!])![a-zA-Z0-9]+|#[\w-]+)/g
+  const tokens: Token[] = []
+  let lastIndex = 0
+
+  for (const match of input.matchAll(regex)) {
+    const start = match.index!
+    if (start > lastIndex) {
+      tokens.push({ text: input.slice(lastIndex, start), kind: 'plain' })
+    }
+
+    const raw = match[0]
+    if (raw.startsWith('!!')) {
+      tokens.push({ text: raw, kind: 'priority' })
+    } else if (raw.startsWith('!')) {
+      tokens.push({ text: raw, kind: 'date' })
+    } else {
+      tokens.push({ text: raw, kind: 'project' })
+    }
+    lastIndex = start + raw.length
+  }
+
+  if (lastIndex < input.length) {
+    tokens.push({ text: input.slice(lastIndex), kind: 'plain' })
+  }
+
+  return tokens
+}
+
+const TokenOverlay = ({ value }: { value: string }): React.JSX.Element => {
+  const tokens = useMemo(() => tokenize(value), [value])
+
+  return (
+    <span>
+      {tokens.map((token, i) => {
+        if (token.kind === 'plain') {
+          return (
+            <span key={i} className="text-text-primary">
+              {token.text}
+            </span>
+          )
+        }
+
+        if (token.kind === 'priority') {
+          const keyword = token.text.slice(2).toLowerCase()
+          const colorClass = PRIORITY_COLORS[keyword] ?? 'text-orange-400 bg-orange-400/10'
+          return (
+            <span key={i} className={cn(TOKEN_STYLES.priority, colorClass)}>
+              {token.text}
+            </span>
+          )
+        }
+
+        return (
+          <span key={i} className={TOKEN_STYLES[token.kind]}>
+            {token.text}
+          </span>
+        )
+      })}
+    </span>
+  )
+}
 import {
   parseQuickAdd,
   getParsePreview,
@@ -151,6 +245,7 @@ export const QuickAddInput = ({
   const [value, setValue] = useState('')
   const [isFocused, setIsFocused] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
+  const overlayRef = useRef<HTMLDivElement>(null)
 
   // Detect triggers for autocomplete - compute during render instead of useEffect
   const { showAutocomplete, autocompleteType, autocompleteQuery } = useMemo(() => {
@@ -297,7 +392,14 @@ export const QuickAddInput = ({
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>): void => {
     setValue(e.target.value)
+    syncScroll()
   }
+
+  const syncScroll = useCallback((): void => {
+    if (inputRef.current && overlayRef.current) {
+      overlayRef.current.scrollLeft = inputRef.current.scrollLeft
+    }
+  }, [])
 
   const handleFocus = (): void => {
     setIsFocused(true)
@@ -368,23 +470,36 @@ export const QuickAddInput = ({
             {!isFocused && <Plus className="size-4 text-text-tertiary" aria-hidden="true" />}
           </div>
 
-          {/* Input */}
-          <input
-            ref={inputRef}
-            type="text"
-            value={value}
-            onChange={handleChange}
-            onFocus={handleFocus}
-            onBlur={handleBlur}
-            onKeyDown={handleKeyDown}
-            placeholder={placeholder}
-            className={cn(
-              'flex-1 bg-transparent text-sm outline-none',
-              'placeholder:text-text-tertiary',
-              isFocused ? 'text-text-primary' : 'text-text-tertiary'
-            )}
-            aria-label="Quick add task"
-          />
+          {/* Input with token highlight overlay */}
+          <div className="relative flex-1 min-w-0">
+            <div
+              ref={overlayRef}
+              aria-hidden="true"
+              className="pointer-events-none absolute inset-0 overflow-hidden whitespace-pre text-sm leading-[normal]"
+            >
+              {value && hasSpecialSyntax(value) && <TokenOverlay value={value} />}
+            </div>
+            <input
+              ref={inputRef}
+              type="text"
+              value={value}
+              onChange={handleChange}
+              onScroll={syncScroll}
+              onFocus={handleFocus}
+              onBlur={handleBlur}
+              onKeyDown={handleKeyDown}
+              placeholder={placeholder}
+              className={cn(
+                'relative w-full bg-transparent text-sm outline-none caret-text-primary',
+                value && hasSpecialSyntax(value)
+                  ? 'text-transparent selection:bg-primary/20 selection:text-transparent placeholder:text-text-tertiary'
+                  : isFocused
+                    ? 'text-text-primary placeholder:text-text-tertiary'
+                    : 'text-text-tertiary placeholder:text-text-tertiary'
+              )}
+              aria-label="Quick add task"
+            />
+          </div>
 
           {/* Help icon when not focused */}
           {!isFocused && <QuickAddHelp />}
