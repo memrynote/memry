@@ -33,7 +33,9 @@ import {
   type ParentTaskItem,
   type EmptyStateItem,
   type AddTaskButtonItem,
-  type TodayViewData
+  type TodayViewData,
+  type WeekAccordionHeaderItem,
+  type DayHeaderItem
 } from './virtual-list-utils'
 
 import { groupTasksByDueDate, groupTasksByStatus, dueDateGroupConfig } from '@/lib/task-utils'
@@ -1139,6 +1141,108 @@ describe('virtual-list-utils', () => {
 
       const result = getTaskIdsFromVirtualItems(items)
       expect(result).toEqual(['task-1', 'task-2', 'task-3', 'task-4', 'task-5'])
+    })
+  })
+
+  // ==========================================================================
+  // WEEK ACCORDION IN TODAY VIEW
+  // ==========================================================================
+
+  describe('flattenTodayTasks with weekByDay', () => {
+    const mockProject = createMockProject()
+
+    beforeEach(() => {
+      vi.mocked(getTopLevelTasks).mockImplementation((tasks: Task[]) =>
+        tasks.filter((t) => t.parentId === null)
+      )
+      vi.mocked(hasSubtasks).mockImplementation((task: Task) => task.subtaskIds?.length > 0)
+      vi.mocked(getSubtasks).mockImplementation((id: string, tasks: Task[]) =>
+        tasks.filter((t) => t.parentId === id)
+      )
+    })
+
+    it('should emit week-accordion-header when weekByDay is provided', () => {
+      const weekByDay = new Map<string, Task[]>()
+      weekByDay.set('2026-03-06', [createMockTask({ id: 'week-1' })])
+      weekByDay.set('2026-03-07', [])
+
+      const todayData: TodayViewData = { overdue: [], today: [], weekByDay }
+      const items = flattenTodayTasks(
+        todayData,
+        [mockProject],
+        new Set(),
+        [],
+        true,
+        new Set(),
+        true
+      )
+
+      const weekHeader = items.find(
+        (i) => i.type === 'week-accordion-header'
+      ) as WeekAccordionHeaderItem
+      expect(weekHeader).toBeDefined()
+      expect(weekHeader.totalCount).toBe(1)
+    })
+
+    it('should hide day items when this-week is collapsed', () => {
+      const weekByDay = new Map<string, Task[]>()
+      weekByDay.set('2026-03-06', [createMockTask({ id: 'week-1' })])
+
+      const todayData: TodayViewData = { overdue: [], today: [], weekByDay }
+      const collapsed = new Set(['this-week'])
+      const items = flattenTodayTasks(
+        todayData,
+        [mockProject],
+        new Set(),
+        [],
+        true,
+        collapsed,
+        true
+      )
+
+      const dayHeaders = items.filter((i) => i.type === 'day-header')
+      expect(dayHeaders).toHaveLength(0)
+    })
+
+    it('should use dateKey as sectionId for week tasks', () => {
+      const weekByDay = new Map<string, Task[]>()
+      weekByDay.set('2026-03-06', [createMockTask({ id: 'week-1' })])
+
+      const todayData: TodayViewData = { overdue: [], today: [], weekByDay }
+      const items = flattenTodayTasks(
+        todayData,
+        [mockProject],
+        new Set(),
+        [],
+        true,
+        new Set(),
+        true
+      )
+
+      const taskItems = items.filter((i) => i.type === 'task') as TaskItem[]
+      const weekTask = taskItems.find((t) => t.task.id === 'week-1')
+      expect(weekTask?.sectionId).toBe('2026-03-06')
+    })
+
+    it('should skip empty days when showEmptyDays is false', () => {
+      const weekByDay = new Map<string, Task[]>()
+      weekByDay.set('2026-03-06', [createMockTask({ id: 'week-1' })])
+      weekByDay.set('2026-03-07', [])
+
+      const todayData: TodayViewData = { overdue: [], today: [], weekByDay }
+      const items = flattenTodayTasks(
+        todayData,
+        [mockProject],
+        new Set(),
+        [],
+        true,
+        new Set(),
+        false
+      )
+
+      const dayHeaders = items.filter((i) => i.type === 'day-header') as DayHeaderItem[]
+      expect(dayHeaders).toHaveLength(1)
+      expect(dayHeaders[0].dateKey).toBe('2026-03-06')
     })
   })
 })
