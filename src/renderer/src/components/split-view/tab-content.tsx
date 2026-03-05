@@ -97,7 +97,6 @@ export const TabContent = ({ tab, groupId, className }: TabContentProps): React.
       case 'tasks':
       case 'all-tasks':
       case 'today':
-      case 'upcoming':
       case 'completed':
       case 'project': {
         // Use TasksContext if available

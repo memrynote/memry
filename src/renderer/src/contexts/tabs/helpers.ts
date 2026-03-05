@@ -97,7 +97,6 @@ const TAB_ICONS: Record<TabType, string> = {
   tasks: 'list-checks',
   'all-tasks': 'list-checks',
   today: 'star',
-  upcoming: 'calendar',
   completed: 'check-circle',
   project: 'folder',
   note: 'file-text',
@@ -130,7 +129,6 @@ const TAB_PATHS: Partial<Record<TabType, string>> = {
   home: '/home',
   'all-tasks': '/tasks/all',
   today: '/tasks/today',
-  upcoming: '/tasks/upcoming',
   completed: '/tasks/completed',
   settings: '/settings'
 }
