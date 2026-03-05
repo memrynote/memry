@@ -551,12 +551,12 @@ export const KanbanBoard = ({
     <div
       ref={boardRef}
       tabIndex={0}
-      className={cn('flex-1 outline-none', className)}
+      className={cn('min-w-0 flex-1 overflow-hidden outline-none', className)}
       role="grid"
       aria-label="Kanban board. Use arrow keys to navigate cards."
     >
-      <ScrollArea className="h-full">
-        <div className="flex h-full gap-4 p-6">
+      <ScrollArea className="h-full" type="auto">
+        <div className="flex h-full gap-4 p-6 pb-10">
           {columns.map((column) => {
             // Get the statuses for this column's context
             // For project view: use the selected project's statuses

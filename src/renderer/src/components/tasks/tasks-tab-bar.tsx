@@ -1,8 +1,18 @@
 import { useCallback, useRef } from 'react'
-import { List, Star, CalendarDays, FolderKanban, Plus, Settings } from 'lucide-react'
+import {
+  List,
+  Star,
+  CalendarDays,
+  FolderKanban,
+  Plus,
+  Settings,
+  Columns3,
+  Calendar
+} from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import type { ViewMode } from '@/data/tasks-data'
 
 // ============================================================================
 // TYPES
@@ -16,6 +26,18 @@ interface TabConfig {
   icon: React.ComponentType<{ className?: string }>
 }
 
+interface ViewModeConfig {
+  id: ViewMode
+  label: string
+  icon: React.ComponentType<{ className?: string }>
+}
+
+const viewModeButtons: ViewModeConfig[] = [
+  { id: 'list', label: 'List', icon: List },
+  { id: 'kanban', label: 'Kanban', icon: Columns3 },
+  { id: 'calendar', label: 'Calendar', icon: Calendar }
+]
+
 interface TasksTabBarProps {
   activeTab: TasksInternalTab
   onTabChange: (tab: TasksInternalTab) => void
@@ -28,6 +50,9 @@ interface TasksTabBarProps {
     upcoming: number
     projects: number
   }
+  activeView?: ViewMode
+  availableViews?: ViewMode[]
+  onViewChange?: (view: ViewMode) => void
   className?: string
 }
 
@@ -53,6 +78,9 @@ export const TasksTabBar = ({
   onProjectSettings,
   showProjectSettings,
   counts,
+  activeView = 'list',
+  availableViews,
+  onViewChange,
   className
 }: TasksTabBarProps): React.JSX.Element => {
   const tabRefs = useRef<Map<TasksInternalTab, HTMLButtonElement>>(new Map())
@@ -162,6 +190,45 @@ export const TasksTabBar = ({
 
         {/* Actions side */}
         <div className="flex items-center gap-2 py-2">
+          {/* View Mode Toggle */}
+          {availableViews && availableViews.length > 1 && onViewChange && (
+            <div
+              className="flex items-center rounded-md border border-border bg-muted/40 p-0.5"
+              role="radiogroup"
+              aria-label="View mode"
+            >
+              {viewModeButtons
+                .filter((vm) => availableViews.includes(vm.id))
+                .map((vm) => {
+                  const isActive = activeView === vm.id
+                  const Icon = vm.icon
+                  return (
+                    <Tooltip key={vm.id}>
+                      <TooltipTrigger asChild>
+                        <button
+                          type="button"
+                          role="radio"
+                          aria-checked={isActive}
+                          aria-label={`${vm.label} view`}
+                          onClick={() => onViewChange(vm.id)}
+                          className={cn(
+                            'rounded-sm p-1.5 transition-all duration-150',
+                            'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                            isActive
+                              ? 'bg-background text-foreground shadow-sm'
+                              : 'text-muted-foreground hover:text-foreground'
+                          )}
+                        >
+                          <Icon className="size-3.5" />
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent>{vm.label}</TooltipContent>
+                    </Tooltip>
+                  )
+                })}
+            </div>
+          )}
+
           {showProjectSettings && onProjectSettings && (
             <Tooltip>
               <TooltipTrigger asChild>

@@ -230,7 +230,7 @@ export function JournalCalendar({
                 >
                   <span aria-hidden="true">{day.date.getDate()}</span>
                   {/* Heatmap dot */}
-                  {heatmapLevel > 0 && !modifiers.outside && (
+                  {heatmapLevel > 0 && (
                     <span
                       className="size-1.5 rounded-full"
                       style={{ backgroundColor: HEATMAP_COLORS[heatmapLevel] }}

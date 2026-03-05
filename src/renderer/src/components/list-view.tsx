@@ -458,6 +458,7 @@ const ListView = ({
           key={group.period}
           title={group.period}
           count={group.items.length}
+          collapsible
           selectedIds={selectedItemIds}
           focusedId={focusedItemId}
           density={density}
