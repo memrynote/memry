@@ -338,7 +338,7 @@ function AppSidebarInner({ currentPage, viewCounts, onOpenSearch, ...props }: Ap
       {/* SCROLLABLE SECTION - Collections, Bookmarks, Tags — entire area is drop target */}
       <div
         ref={sidebarScrollRef}
-        className="relative flex-1 min-h-0 overflow-y-auto scrollbar-thin"
+        className="relative flex-1 min-h-0 overflow-y-auto scrollbar-thin group-data-[collapsible=icon]:overflow-hidden"
         {...dropHandlers}
       >
         {/* COLLECTIONS Section */}
@@ -408,7 +408,7 @@ function AppSidebarInner({ currentPage, viewCounts, onOpenSearch, ...props }: Ap
       <SidebarContent className="flex flex-col overflow-hidden">
         <SidebarDrillDownContainer>{mainContent}</SidebarDrillDownContainer>
       </SidebarContent>
-      <SidebarFooter className="group-data-[collapsible=icon]:hidden">
+      <SidebarFooter>
         <SidebarMenu>
           <SidebarMenuItem>
             {authState.status === 'authenticated' ? (
