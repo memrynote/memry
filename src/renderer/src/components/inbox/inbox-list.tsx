@@ -360,11 +360,9 @@ export function InboxListItem({
   const isReminderViewed = item.type === 'reminder' && !!item.viewedAt
 
   const displayTitle =
-    item.type === 'voice' && item.duration
-      ? `${item.title} · ${formatDuration(item.duration)}`
-      : item.type === 'reminder' && reminderMetadata?.targetTitle
-        ? reminderMetadata.targetTitle
-        : item.title
+    item.type === 'reminder' && reminderMetadata?.targetTitle
+      ? reminderMetadata.targetTitle
+      : item.title
 
   const handleClick = (): void => {
     onFocus(item.id)
