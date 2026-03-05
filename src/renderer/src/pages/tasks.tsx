@@ -1120,14 +1120,17 @@ export const TasksPage = ({
 
   return (
     <>
-      <div className={cn('flex h-full', className)}>
-        {/* Main Content Area - Full Width */}
-        <main className="flex flex-1 flex-col overflow-hidden">
+      <div className={cn('relative h-full', className)}>
+        {/* Main Content Area - Absolute to constrain width from parent, not content */}
+        <main className="absolute inset-0 flex flex-col overflow-hidden">
           {/* Internal Tab Bar */}
           <TasksTabBar
             activeTab={activeInternalTab}
             onTabChange={setActiveInternalTab}
             counts={tabCounts}
+            activeView={activeView}
+            availableViews={availableViews}
+            onViewChange={setActiveView}
             onAddTask={handleAddTask}
             onProjectSettings={handleProjectSettings}
             showProjectSettings={activeInternalTab === 'projects' && !!selectedProjectId}
@@ -1304,7 +1307,7 @@ export const TasksPage = ({
 
           {/* Kanban View - All Tab */}
           {activeInternalTab === 'all' && activeView === 'kanban' && (
-            <div className="flex flex-1 flex-col overflow-hidden">
+            <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
               {showFilterEmptyState ? (
                 <FilterEmptyState
                   filters={filters}
@@ -1333,7 +1336,7 @@ export const TasksPage = ({
 
           {/* Kanban View - Projects Tab */}
           {activeInternalTab === 'projects' && activeView === 'kanban' && (
-            <div className="flex flex-1 overflow-hidden">
+            <div className="flex min-w-0 flex-1 overflow-hidden">
               <ProjectSidebar
                 tasks={tasks}
                 projects={projects}
@@ -1344,7 +1347,7 @@ export const TasksPage = ({
                 onProjectDelete={handleDeleteProject}
                 onCreateProject={handleCreateProject}
               />
-              <div className="flex-1 overflow-hidden">
+              <div className="min-w-0 flex-1 overflow-hidden">
                 {selectedProjectId ? (
                   <KanbanBoard
                     tasks={projectsTabFilteredTasks}
