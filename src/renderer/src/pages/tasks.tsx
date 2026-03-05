@@ -1202,7 +1202,6 @@ export const TasksPage = ({
                 onTaskClick={handleTaskClick}
                 onQuickAdd={handleQuickAdd}
                 onOpenModal={handleOpenAddTaskModal}
-                onAddTaskWithDate={handleAddTaskWithDate}
               />
             </div>
           )}
