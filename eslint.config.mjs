@@ -19,14 +19,17 @@ export default defineConfig(
       '**/*.test.tsx',
       '**/*.spec.ts',
       'tests/**',
+      'apps/desktop/tests/**',
       '*.config.ts',
       '*.config.mjs',
       '*.config.js',
       'config/**',
+      'apps/desktop/config/**',
       'scripts/**',
+      'apps/desktop/scripts/**',
       'specs/**',
       'docs/**',
-      'sync-server/**'
+      'apps/sync-server/**'
     ]
   },
   tseslint.configs.recommended,

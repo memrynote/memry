@@ -1,0 +1,32 @@
+{
+  "extends": "../tsconfig.node.json",
+  "compilerOptions": {
+    "composite": false,
+    "declaration": false,
+    "declarationMap": false,
+    "types": ["vitest/globals", "node", "@testing-library/jest-dom"],
+    "baseUrl": "..",
+    "paths": {
+      "@memry/contracts": ["../../packages/contracts/src/index.ts"],
+      "@memry/contracts/*": ["../../packages/contracts/src/*"],
+      "@memry/db-schema": ["../../packages/db-schema/src/index.ts"],
+      "@memry/db-schema/*": ["../../packages/db-schema/src/*"],
+      "@memry/shared": ["../../packages/shared/src/index.ts"],
+      "@memry/shared/*": ["../../packages/shared/src/*"],
+      "@main/*": ["./src/main/*"],
+      "@/*": ["./src/renderer/src/*"],
+      "@renderer/*": ["./src/renderer/src/*"],
+      "@tests/*": ["./tests/*"]
+    },
+    "jsx": "react-jsx",
+    "esModuleInterop": true,
+    "skipLibCheck": true
+  },
+  "include": [
+    "./**/*.ts",
+    "./**/*.tsx",
+    "../src/main/**/*",
+    "../src/renderer/src/**/*"
+  ],
+  "exclude": ["node_modules"]
+}

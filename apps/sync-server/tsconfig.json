@@ -1,0 +1,14 @@
+{
+  "extends": "@memry/typescript-config/node.json",
+  "compilerOptions": {
+    "types": ["@cloudflare/workers-types/2023-07-01"],
+    "baseUrl": ".",
+    "paths": {
+      "@memry/contracts": ["../../packages/contracts/src/index.ts"],
+      "@memry/contracts/*": ["../../packages/contracts/src/*"],
+      "zod": ["./node_modules/zod"]
+    }
+  },
+  "include": ["src/**/*.ts"],
+  "exclude": ["node_modules"]
+}

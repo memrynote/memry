@@ -1,0 +1,27 @@
+{
+  "extends": "@electron-toolkit/tsconfig/tsconfig.node.json",
+  "include": [
+    "electron.vite.config.*",
+    "src/main/**/*",
+    "src/preload/**/*",
+    "../../packages/contracts/src/**/*",
+    "../../packages/db-schema/src/**/*",
+    "../../packages/shared/src/**/*"
+  ],
+  "exclude": ["**/*.test.ts", "**/*.test.tsx", "**/*.spec.ts"],
+  "compilerOptions": {
+    "composite": true,
+    "types": ["electron-vite/node", "vitest/globals"],
+    "baseUrl": ".",
+    "paths": {
+      "@memry/contracts": ["../../packages/contracts/src/index.ts"],
+      "@memry/contracts/*": ["../../packages/contracts/src/*"],
+      "@memry/db-schema": ["../../packages/db-schema/src/index.ts"],
+      "@memry/db-schema/*": ["../../packages/db-schema/src/*"],
+      "@memry/shared": ["../../packages/shared/src/index.ts"],
+      "@memry/shared/*": ["../../packages/shared/src/*"],
+      "@main/*": ["./src/main/*"],
+      "@tests/*": ["./tests/*"]
+    }
+  }
+}

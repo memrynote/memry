@@ -1,0 +1,25 @@
+{
+  "name": "@memry/db-schema",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./data-schema": "./src/data-schema.ts",
+    "./index-schema": "./src/index-schema.ts",
+    "./schema": "./src/schema/index.ts",
+    "./schema/*": "./src/schema/*.ts"
+  },
+  "types": "./src/index.ts",
+  "scripts": {
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "devDependencies": {
+    "@memry/typescript-config": "workspace:*"
+  },
+  "dependencies": {
+    "@memry/contracts": "workspace:*",
+    "@memry/shared": "workspace:*",
+    "drizzle-orm": "^0.45.1"
+  }
+}

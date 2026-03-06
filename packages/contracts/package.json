@@ -1,0 +1,52 @@
+{
+  "name": "@memry/contracts",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./auth-api": "./src/auth-api.ts",
+    "./blob-api": "./src/blob-api.ts",
+    "./bookmark-types": "./src/bookmark-types.ts",
+    "./bookmarks-api": "./src/bookmarks-api.ts",
+    "./cbor-ordering": "./src/cbor-ordering.ts",
+    "./crypto": "./src/crypto.ts",
+    "./folder-view-api": "./src/folder-view-api.ts",
+    "./inbox-api": "./src/inbox-api.ts",
+    "./ipc-attachments": "./src/ipc-attachments.ts",
+    "./ipc-auth": "./src/ipc-auth.ts",
+    "./ipc-channels": "./src/ipc-channels.ts",
+    "./ipc-crdt": "./src/ipc-crdt.ts",
+    "./ipc-crypto": "./src/ipc-crypto.ts",
+    "./ipc-devices": "./src/ipc-devices.ts",
+    "./ipc-events": "./src/ipc-events.ts",
+    "./ipc-sync": "./src/ipc-sync.ts",
+    "./ipc-sync-ops": "./src/ipc-sync-ops.ts",
+    "./journal-api": "./src/journal-api.ts",
+    "./linking-api": "./src/linking-api.ts",
+    "./notes-api": "./src/notes-api.ts",
+    "./properties-api": "./src/properties-api.ts",
+    "./property-types": "./src/property-types.ts",
+    "./reminder-types": "./src/reminder-types.ts",
+    "./reminders-api": "./src/reminders-api.ts",
+    "./saved-filters-api": "./src/saved-filters-api.ts",
+    "./search-api": "./src/search-api.ts",
+    "./settings-sync": "./src/settings-sync.ts",
+    "./sync-api": "./src/sync-api.ts",
+    "./sync-payloads": "./src/sync-payloads.ts",
+    "./tags-api": "./src/tags-api.ts",
+    "./tasks-api": "./src/tasks-api.ts",
+    "./templates-api": "./src/templates-api.ts",
+    "./vault-api": "./src/vault-api.ts"
+  },
+  "types": "./src/index.ts",
+  "scripts": {
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "devDependencies": {
+    "@memry/typescript-config": "workspace:*"
+  },
+  "dependencies": {
+    "zod": "^4.3.4"
+  }
+}
