@@ -3,19 +3,15 @@ name: Sync Server CI
 on:
   pull_request:
     paths:
-      - sync-server/**
-      - src/shared/contracts/**
-      - scripts/contracts-manifest.txt
-      - scripts/check-contracts.sh
+      - apps/sync-server/**
+      - packages/contracts/**
       - .github/workflows/sync-server-ci.yml
   push:
     branches:
       - main
     paths:
-      - sync-server/**
-      - src/shared/contracts/**
-      - scripts/contracts-manifest.txt
-      - scripts/check-contracts.sh
+      - apps/sync-server/**
+      - packages/contracts/**
       - .github/workflows/sync-server-ci.yml
   workflow_dispatch:
 
@@ -48,19 +44,12 @@ jobs:
         with:
           node-version-file: .nvmrc
           cache: pnpm
-          cache-dependency-path: sync-server/pnpm-lock.yaml
 
-      - name: Check shared contract stubs
-        run: bash scripts/check-contracts.sh
-
-      - name: Install sync-server dependencies
-        working-directory: sync-server
+      - name: Install workspace dependencies
         run: pnpm install --frozen-lockfile
 
       - name: Typecheck sync-server
-        working-directory: sync-server
-        run: pnpm typecheck
+        run: pnpm --filter @memry/sync-server typecheck
 
       - name: Test sync-server
-        working-directory: sync-server
-        run: pnpm test
+        run: pnpm --filter @memry/sync-server test
