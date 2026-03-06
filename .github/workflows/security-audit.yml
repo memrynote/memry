@@ -5,8 +5,8 @@ on:
     paths:
       - package.json
       - pnpm-lock.yaml
-      - sync-server/package.json
-      - sync-server/pnpm-lock.yaml
+      - apps/desktop/package.json
+      - apps/sync-server/package.json
       - .github/workflows/security-audit.yml
   schedule:
     - cron: 0 7 * * 1
@@ -63,12 +63,9 @@ jobs:
         with:
           node-version-file: .nvmrc
           cache: pnpm
-          cache-dependency-path: sync-server/pnpm-lock.yaml
 
-      - name: Install sync-server dependencies
-        working-directory: sync-server
+      - name: Install workspace dependencies
         run: pnpm install --frozen-lockfile
 
       - name: Audit sync-server dependencies
-        working-directory: sync-server
-        run: pnpm audit --audit-level high
+        run: pnpm --filter @memry/sync-server audit --audit-level high
