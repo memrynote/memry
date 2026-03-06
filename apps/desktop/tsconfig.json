@@ -1,0 +1,43 @@
+{
+  "files": [],
+  "references": [
+    {
+      "path": "./tsconfig.node.json"
+    },
+    {
+      "path": "./tsconfig.web.json"
+    }
+  ],
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@memry/contracts": [
+        "../../packages/contracts/src/index.ts"
+      ],
+      "@memry/contracts/*": [
+        "../../packages/contracts/src/*"
+      ],
+      "@memry/db-schema": [
+        "../../packages/db-schema/src/index.ts"
+      ],
+      "@memry/db-schema/*": [
+        "../../packages/db-schema/src/*"
+      ],
+      "@memry/shared": [
+        "../../packages/shared/src/index.ts"
+      ],
+      "@memry/shared/*": [
+        "../../packages/shared/src/*"
+      ],
+      "@main/*": [
+        "./src/main/*"
+      ],
+      "@/*": [
+        "./src/renderer/src/*"
+      ],
+      "@tests/*": [
+        "./tests/*"
+      ]
+    }
+  }
+}

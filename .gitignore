@@ -25,6 +25,7 @@ test-data.db
 test-index.db
 .codex
 .pnpm-store
+.turbo
 
 # Agent/AI tooling
 .claude/
