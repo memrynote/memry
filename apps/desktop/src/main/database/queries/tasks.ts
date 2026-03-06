@@ -8,7 +8,12 @@
 import { eq, desc, asc, and, lte, gte, isNull, isNotNull, sql, count, type SQL } from 'drizzle-orm'
 import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3'
 import { tasks, type Task, type NewTask } from '@memry/db-schema/schema/tasks'
-import { taskTags, taskNotes, type NewTaskTag, type NewTaskNote } from '@memry/db-schema/schema/task-relations'
+import {
+  taskTags,
+  taskNotes,
+  type NewTaskTag,
+  type NewTaskNote
+} from '@memry/db-schema/schema/task-relations'
 import * as schema from '@memry/db-schema/schema'
 
 type DrizzleDb = BetterSQLite3Database<typeof schema>

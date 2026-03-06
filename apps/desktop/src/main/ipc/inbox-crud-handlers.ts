@@ -1,10 +1,6 @@
 import { ipcMain } from 'electron'
 import { InboxChannels } from '@memry/contracts/ipc-channels'
-import {
-  InboxUpdateSchema,
-  type CaptureResponse,
-  type InboxItem
-} from '@memry/contracts/inbox-api'
+import { InboxUpdateSchema, type CaptureResponse, type InboxItem } from '@memry/contracts/inbox-api'
 import { inboxItems, inboxItemTags } from '@memry/db-schema/schema/inbox'
 import { eq, and } from 'drizzle-orm'
 import { generateId } from '../lib/id'
