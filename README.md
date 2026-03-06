@@ -1,19 +1,12 @@
 <div align="center">
 
-<!-- TODO: Replace with actual logo -->
-<!-- <img src="assets/logo.png" width="80" alt="memry logo" /> -->
+<img src="assets/hero-dark.jpg" width="720" alt="Memry — Your thoughts, beautifully organized" />
 
 # memry
 
 **Your thoughts. Your devices. Your control.**
 
 A private, offline-first workspace for notes, journals, and tasks — with real-time sync that never sees your data.
-
-<!-- TODO: Replace with actual hero screenshot or demo video -->
-<!-- Recommended: 1200x720 screenshot showing the app in dark mode with a note open -->
-
-[<!-- <img src="assets/hero-screenshot.png" width="720" alt="memry app screenshot" /> -->
-`[ hero screenshot / demo video — 1200×720 ]`](https://memry.app)
 
 [![Download for macOS](https://img.shields.io/badge/Download-macOS-000?style=for-the-badge&logo=apple&logoColor=white)](#download)
 [![Download for Windows](https://img.shields.io/badge/Download-Windows-0078D4?style=for-the-badge&logo=windows&logoColor=white)](#download)
@@ -241,11 +234,20 @@ memry is built with:
 - **BlockNote** for the rich text editor
 
 ```bash
-# Clone and run locally
+# Clone and install once at the workspace root
 git clone https://github.com/memry-app/memry.git
 cd memry
 pnpm install
-pnpm dev
+
+# Run the desktop app
+pnpm dev:desktop
+
+# Run the sync server
+pnpm dev:sync-server
+
+# Common workspace checks
+pnpm typecheck
+pnpm test
 ```
 
 </details>
