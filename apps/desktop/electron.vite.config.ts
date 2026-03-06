@@ -29,9 +29,13 @@ function copyMigrations(): Plugin {
       cpSync(resolve(appRoot, 'src/main/database/drizzle-data'), resolve(outDir, 'drizzle-data'), {
         recursive: true
       })
-      cpSync(resolve(appRoot, 'src/main/database/drizzle-index'), resolve(outDir, 'drizzle-index'), {
-        recursive: true
-      })
+      cpSync(
+        resolve(appRoot, 'src/main/database/drizzle-index'),
+        resolve(outDir, 'drizzle-index'),
+        {
+          recursive: true
+        }
+      )
     }
   }
 }
@@ -42,6 +46,9 @@ export default defineConfig({
     build: {
       externalizeDeps: {
         exclude: [
+          '@memry/contracts',
+          '@memry/db-schema',
+          '@memry/shared',
           'cborg',
           '@blocknote/server-util',
           '@blocknote/core',
@@ -74,6 +81,11 @@ export default defineConfig({
     }
   },
   preload: {
+    build: {
+      externalizeDeps: {
+        exclude: ['@memry/contracts', '@memry/db-schema', '@memry/shared']
+      }
+    },
     resolve: {
       alias: {
         '@memry/contracts': resolve(workspaceRoot, 'packages/contracts/src'),
