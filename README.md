@@ -234,9 +234,10 @@ memry is built with:
 - **BlockNote** for the rich text editor
 
 ```bash
-# Clone and install once at the workspace root
+# Clone and use the pinned Node version from .nvmrc (24.x)
 git clone https://github.com/memry-app/memry.git
 cd memry
+nvm use
 pnpm install
 
 # Run the desktop app
