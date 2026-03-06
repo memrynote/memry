@@ -7,7 +7,12 @@
 
 import { eq, asc } from 'drizzle-orm'
 import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3'
-import { settings, savedFilters, type SavedFilter, type NewSavedFilter } from '@memry/db-schema/schema/settings'
+import {
+  settings,
+  savedFilters,
+  type SavedFilter,
+  type NewSavedFilter
+} from '@memry/db-schema/schema/settings'
 import * as schema from '@memry/db-schema/schema'
 import { utcNow } from '@memry/shared/utc'
 
