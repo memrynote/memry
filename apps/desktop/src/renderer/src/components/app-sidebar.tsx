@@ -102,9 +102,17 @@ function SidebarHeaderContent() {
   const isCollapsed = state === 'collapsed'
 
   return (
-    <SidebarHeader className="p-0 gap-0">
-      {/* Minimal drag region for window dragging (traffic lights + vault hidden temporarily) */}
-      <div className="drag-region h-3 shrink-0" />
+    <SidebarHeader>
+      {/* Drag region + Traffic lights for macOS */}
+      <div
+        className={cn(
+          'drag-region flex items-center h-8 shrink-0 transition-all duration-200',
+          isCollapsed ? 'justify-center px-0' : 'justify-start px-2'
+        )}
+      >
+        <TrafficLights compact={isCollapsed} />
+      </div>
+      <VaultSwitcher />
     </SidebarHeader>
   )
 }
