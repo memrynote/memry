@@ -8,9 +8,9 @@
 
 A private, offline-first workspace for notes, journals, and tasks — with real-time sync that never sees your data.
 
-[![Download for macOS](https://img.shields.io/badge/Download-macOS-000?style=for-the-badge&logo=apple&logoColor=white)](#download)
-[![Download for Windows](https://img.shields.io/badge/Download-Windows-0078D4?style=for-the-badge&logo=windows&logoColor=white)](#download)
-[![Download for Linux](https://img.shields.io/badge/Download-Linux-FCC624?style=for-the-badge&logo=linux&logoColor=black)](#download)
+![Status](https://img.shields.io/badge/status-in%20development-orange?style=for-the-badge)
+
+> **Not yet released.** memry is under active development and hasn't shipped a public version yet. Star the repo or watch for updates — downloads will be available once we reach a stable release.
 
 </div>
 
@@ -34,10 +34,6 @@ No cloud lock-in. No subscription walls for basic features. No "oops, we got bre
 
 A distraction-free editor that stays out of your way. Rich text, markdown, wiki-style `[[links]]` between notes — connect ideas naturally.
 
-<!-- TODO: Replace with editor screenshot -->
-<!-- Recommended: 580x380 showing the editor with some formatted text and a wiki link -->
-
-`[ editor screenshot — 580×380 ]`
 
 </td>
 <td width="50%">
@@ -45,11 +41,6 @@ A distraction-free editor that stays out of your way. Rich text, markdown, wiki-
 ### Think in connections
 
 Every `[[link]]` creates a two-way connection. See what links back to any note. Watch your personal knowledge graph grow without effort.
-
-<!-- TODO: Replace with backlinks/graph screenshot -->
-<!-- Recommended: 580x380 showing backlinks panel or graph view -->
-
-`[ backlinks screenshot — 580×380 ]`
 
 </td>
 </tr>
@@ -60,22 +51,12 @@ Every `[[link]]` creates a two-way connection. See what links back to any note. 
 
 A dedicated space for daily reflection. Calendar view with activity streaks so you can see your consistency at a glance. Just open the app and start writing.
 
-<!-- TODO: Replace with journal screenshot -->
-<!-- Recommended: 580x380 showing journal with calendar heatmap -->
-
-`[ journal screenshot — 580×380 ]`
-
 </td>
 <td width="50%">
 
 ### Track what matters
 
 Tasks and projects live alongside your notes — not in a separate app. Priorities, due dates, drag-and-drop. Simple enough for groceries, structured enough for goals.
-
-<!-- TODO: Replace with tasks screenshot -->
-<!-- Recommended: 580x380 showing task board or list view -->
-
-`[ tasks screenshot — 580×380 ]`
 
 </td>
 </tr>
@@ -86,11 +67,6 @@ Tasks and projects live alongside your notes — not in a separate app. Prioriti
 ## Sync without compromise
 
 <div align="center">
-
-<!-- TODO: Replace with sync diagram or animation -->
-<!-- Recommended: 700x300 showing two devices syncing with a lock icon in between -->
-
-`[ sync diagram / animation — 700×300 ]`
 
 </div>
 
@@ -135,7 +111,6 @@ memry runs natively on your machine. Not a browser tab pretending to be an app.
 <!-- TODO: Replace with speed/feature demo GIF or video -->
 <!-- Recommended: 700x420 GIF showing tab switching, split pane, dark/light toggle -->
 
-`[ app demo GIF — 700×420 ]`
 
 </div>
 
@@ -149,7 +124,7 @@ memry runs natively on your machine. Not a browser tab pretending to be an app.
  ┌──────────────┐          ┌──────────────┐          ┌──────────────┐
  │   Device A   │          │    Server    │          │   Device B   │
  │              │          │              │          │              │
- │  Your notes  │──────▶  │  ████████░░  │  ──────▶│  Your notes  │
+ │  Your notes  │──────▶   │  ████████░░  │  ──────▶ │  Your notes  │
  │  (readable)  │ encrypt  │  (garbage)   │ decrypt  │  (readable)  │
  └──────────────┘          └──────────────┘          └──────────────┘
                                   │
@@ -171,19 +146,11 @@ Even if someone broke into the server, they'd get nothing but encrypted noise.
 
 ## Get started
 
-<!-- TODO: Replace with download links when ready -->
+memry is not yet available for download. We're actively building toward a first release.
 
-[![Download for macOS](https://img.shields.io/badge/Download-macOS-000?style=for-the-badge&logo=apple&logoColor=white)](#download)
-[![Download for Windows](https://img.shields.io/badge/Download-Windows-0078D4?style=for-the-badge&logo=windows&logoColor=white)](#download)
-[![Download for Linux](https://img.shields.io/badge/Download-Linux-FCC624?style=for-the-badge&logo=linux&logoColor=black)](#download)
+**Star this repo** to get notified when downloads go live.
 
-**Link your devices with a QR code. That's it.**
-
-No account creation. No email verification. No password to forget.
-Scan a code from your first device to your second, and they sync.
-
-<!-- TODO: Replace with device linking screenshot or GIF -->
-<!-- Recommended: 500x300 showing QR code device linking flow -->
+When it ships, setup will be simple: **link your devices with a QR code. That's it.** No account creation, no email verification, no password to forget.
 
 `[ device linking flow — 500×300 ]`
 
@@ -235,8 +202,8 @@ memry is built with:
 
 ```bash
 # Clone and use the pinned Node version from .nvmrc (24.x)
-git clone https://github.com/memry-app/memry.git
-cd memry
+git clone https://github.com/memrynote/memrynote.git
+cd memrynote
 nvm use
 pnpm install
 
