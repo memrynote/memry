@@ -118,11 +118,17 @@ const LinkSearch = ({ linkedNotes, onLinkedNotesChange }: LinkSearchProps): Reac
 
       setIsSearching(true)
       try {
-        const results = await window.api.search.searchNotes(debouncedQuery, { limit: 10 })
+        const response = await window.api.notes.list({
+          limit: 50,
+          sortBy: 'modified',
+          sortOrder: 'desc'
+        })
+        const query = debouncedQuery.trim().toLowerCase()
         const linkedIds = new Set(linkedNotes.map((n) => n.id))
-        const notes: LinkedNote[] = results
-          .filter((r: { id: string }) => !linkedIds.has(r.id))
-          .map((r: { id: string; title: string }) => ({
+        const notes: LinkedNote[] = response.notes
+          .filter((r) => r.title.toLowerCase().includes(query) && !linkedIds.has(r.id))
+          .slice(0, 10)
+          .map((r) => ({
             id: r.id,
             title: r.title,
             type: 'note' as const

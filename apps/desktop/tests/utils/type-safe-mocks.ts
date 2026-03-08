@@ -18,7 +18,6 @@ import { vi, type Mock } from 'vitest'
 import type {
   NotesClientAPI,
   TasksClientAPI,
-  SearchClientAPI,
   JournalClientAPI,
   InboxClientAPI,
   BookmarksClientAPI,
@@ -64,7 +63,6 @@ export type PartialMockedAPI<T> = Partial<MockedAPI<T>>
 
 export type TypeSafeNotesAPI = MockedAPI<NotesClientAPI>
 export type TypeSafeTasksAPI = MockedAPI<TasksClientAPI>
-export type TypeSafeSearchAPI = MockedAPI<SearchClientAPI>
 export type TypeSafeJournalAPI = MockedAPI<JournalClientAPI>
 export type TypeSafeInboxAPI = MockedAPI<InboxClientAPI>
 export type TypeSafeBookmarksAPI = MockedAPI<BookmarksClientAPI>
@@ -185,7 +183,6 @@ export function createBookmarksMock(
 export interface TypeSafeAPIConfig {
   notes?: PartialMockedAPI<NotesClientAPI>
   tasks?: PartialMockedAPI<TasksClientAPI>
-  search?: PartialMockedAPI<SearchClientAPI>
   journal?: PartialMockedAPI<JournalClientAPI>
   inbox?: PartialMockedAPI<InboxClientAPI>
   bookmarks?: PartialMockedAPI<BookmarksClientAPI>

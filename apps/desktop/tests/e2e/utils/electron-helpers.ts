@@ -55,17 +55,6 @@ export const SELECTORS = {
   journalCalendar: '[data-testid="journal-calendar"], [class*="calendar"]',
   journalEntry: '[data-testid="journal-entry"], [class*="journal"]',
 
-  // Search - command palette (cmdk-based)
-  searchModal:
-    '[role="dialog"][cmdk-dialog], [role="dialog"]:has([cmdk-root]), [data-testid="search-modal"]',
-  searchInput: '[cmdk-input], input[placeholder*="Search notes"]',
-  searchResults: '[cmdk-list]',
-  searchResultItem: '[cmdk-item]',
-  searchGroup: '[cmdk-group]',
-  searchGroupHeading: '[cmdk-group-heading]',
-  searchEmpty: '[cmdk-empty]',
-  searchLoading: '[cmdk-loading]',
-
   // Vault
   vaultSwitcher: '[data-testid="vault-switcher"], button[title*="vault"]',
   vaultCreateButton: '[data-testid="vault-create"], button:has-text("Create")',
@@ -90,7 +79,6 @@ export const SELECTORS = {
 export const SHORTCUTS = {
   newNote: 'Meta+n', // ⌘N - creates new note
   newTask: 'Meta+t', // ⌘T - creates new task (if available)
-  search: 'Meta+p', // ⌘P - opens search/command palette
   save: 'Meta+s', // ⌘S - save
   undo: 'Meta+z', // ⌘Z - undo
   redo: 'Meta+Shift+z', // ⌘⇧Z - redo
@@ -168,23 +156,6 @@ export async function navigateTo(
     console.log(`Navigation to ${view} not found, may already be on that view`)
   }
   await page.waitForTimeout(300)
-}
-
-/**
- * Open the command palette / search modal
- * Uses Meta+P (⌘P) keyboard shortcut
- */
-export async function openCommandPalette(page: Page): Promise<void> {
-  await page.keyboard.press(SHORTCUTS.search)
-
-  // Wait for command palette to open - try multiple selectors
-  const modal = page.locator(SELECTORS.searchModal).first()
-  try {
-    await modal.waitFor({ state: 'visible', timeout: 3000 })
-  } catch {
-    // Command palette might not be visible or uses different selector
-    console.log('Command palette not found, may not be implemented')
-  }
 }
 
 /**
@@ -327,24 +298,6 @@ export async function toggleTaskCompletion(page: Page, taskTitle: string): Promi
   } catch {
     console.log(`Toggle task completion: could not find task "${taskTitle}"`)
   }
-}
-
-/**
- * Search for content
- */
-export async function search(page: Page, query: string): Promise<void> {
-  await openCommandPalette(page)
-  const searchInput = page.locator(SELECTORS.searchInput)
-  await searchInput.fill(query)
-  await page.waitForTimeout(300)
-}
-
-/**
- * Select a search result by index
- */
-export async function selectSearchResult(page: Page, index: number): Promise<void> {
-  const results = page.locator(SELECTORS.searchResultItem)
-  await results.nth(index).click()
 }
 
 /**
