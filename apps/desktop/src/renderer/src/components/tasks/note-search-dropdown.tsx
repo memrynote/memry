@@ -5,7 +5,6 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
 import { notesService, type NoteListItem } from '@/services/notes-service'
-import type { SearchResultNote } from '@/services/search-service'
 import { createLogger } from '@/lib/logger'
 
 const log = createLogger('Component:NoteSearchDropdown')
@@ -60,19 +59,16 @@ export const NoteSearchDropdown = ({
     const loadNotes = async (): Promise<void> => {
       setIsLoading(true)
       try {
-        if (debouncedQuery.trim()) {
-          // Use search API when there's a query
-          const results = await window.api.search.searchNotes(debouncedQuery, { limit: 20 })
-          setNotes(results.map((r: SearchResultNote) => ({ id: r.id, title: r.title })))
-        } else {
-          // Load recent notes when no query
-          const response = await notesService.list({
-            limit: 20,
-            sortBy: 'modified',
-            sortOrder: 'desc'
-          })
-          setNotes(response.notes.map((n: NoteListItem) => ({ id: n.id, title: n.title })))
-        }
+        const response = await notesService.list({
+          limit: 50,
+          sortBy: 'modified',
+          sortOrder: 'desc'
+        })
+        const query = debouncedQuery.trim().toLowerCase()
+        const filtered = query
+          ? response.notes.filter((n: NoteListItem) => n.title.toLowerCase().includes(query))
+          : response.notes
+        setNotes(filtered.slice(0, 20).map((n: NoteListItem) => ({ id: n.id, title: n.title })))
       } catch (error) {
         log.error('Failed to load notes', error)
         setNotes([])

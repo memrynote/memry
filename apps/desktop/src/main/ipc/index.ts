@@ -1,6 +1,5 @@
 import { registerVaultHandlers, unregisterVaultHandlers } from './vault-handlers'
 import { registerNotesHandlers, unregisterNotesHandlers } from './notes-handlers'
-import { registerSearchHandlers, unregisterSearchHandlers } from './search-handlers'
 import { registerTasksHandlers, unregisterTasksHandlers } from './tasks-handlers'
 import {
   registerSavedFiltersHandlers,
@@ -49,9 +48,6 @@ export function registerAllHandlers(): void {
 
   // Register notes handlers
   registerNotesHandlers()
-
-  // Register search handlers
-  registerSearchHandlers()
 
   // Register tasks handlers
   registerTasksHandlers()
@@ -108,7 +104,6 @@ export function unregisterAllHandlers(): void {
 
   unregisterVaultHandlers()
   unregisterNotesHandlers()
-  unregisterSearchHandlers()
   unregisterTasksHandlers()
   unregisterSavedFiltersHandlers()
   unregisterTemplatesHandlers()
@@ -137,7 +132,6 @@ export function areHandlersRegistered(): boolean {
 // Re-export individual handler modules for direct access if needed
 export { registerVaultHandlers, unregisterVaultHandlers } from './vault-handlers'
 export { registerNotesHandlers, unregisterNotesHandlers } from './notes-handlers'
-export { registerSearchHandlers, unregisterSearchHandlers } from './search-handlers'
 export { registerTasksHandlers, unregisterTasksHandlers } from './tasks-handlers'
 export {
   registerSavedFiltersHandlers,
