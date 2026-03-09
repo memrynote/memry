@@ -15,7 +15,8 @@ import {
   InboxChannels,
   ReminderChannels,
   FolderViewChannels,
-  PropertiesChannels
+  PropertiesChannels,
+  SearchChannels
 } from '@memry/contracts/ipc-channels'
 import { SYNC_CHANNELS, SYNC_EVENTS } from '@memry/contracts/ipc-sync'
 import type {
@@ -654,6 +655,58 @@ export const api = {
     // Filing history
     getFilingHistory: (options?: { limit?: number }) =>
       invoke(InboxChannels.invoke.GET_FILING_HISTORY, options ?? {})
+  },
+
+  // Search API
+  search: {
+    query: (params: {
+      text: string
+      types?: Array<'note' | 'journal' | 'task' | 'inbox'>
+      tags?: string[]
+      dateRange?: { from: string; to: string } | null
+      projectId?: string | null
+      folderPath?: string | null
+      limit?: number
+      offset?: number
+    }) => invoke(SearchChannels.invoke.QUERY, params),
+    quick: (text: string) => invoke(SearchChannels.invoke.QUICK, text),
+    getStats: () => invoke(SearchChannels.invoke.GET_STATS),
+    rebuildIndex: () => invoke(SearchChannels.invoke.REBUILD_INDEX),
+    getRecent: () => invoke(SearchChannels.invoke.GET_RECENT),
+    addRecent: (params: { query: string; resultCount: number }) =>
+      invoke(SearchChannels.invoke.ADD_RECENT, params),
+    clearRecent: () => invoke(SearchChannels.invoke.CLEAR_RECENT),
+    getAllTags: () => invoke(SearchChannels.invoke.GET_ALL_TAGS)
+  },
+
+  // Search event listeners
+  onSearchIndexRebuildStarted: (callback: () => void): (() => void) => {
+    const handler = (): void => callback()
+    ipcRenderer.on(SearchChannels.events.INDEX_REBUILD_STARTED, handler)
+    return () => ipcRenderer.removeListener(SearchChannels.events.INDEX_REBUILD_STARTED, handler)
+  },
+
+  onSearchIndexRebuildProgress: (
+    callback: (progress: { phase: string; current: number; total: number; percent: number }) => void
+  ): (() => void) => {
+    const handler = (
+      _event: Electron.IpcRendererEvent,
+      data: { phase: string; current: number; total: number; percent: number }
+    ): void => callback(data)
+    ipcRenderer.on(SearchChannels.events.INDEX_REBUILD_PROGRESS, handler)
+    return () => ipcRenderer.removeListener(SearchChannels.events.INDEX_REBUILD_PROGRESS, handler)
+  },
+
+  onSearchIndexRebuildCompleted: (callback: () => void): (() => void) => {
+    const handler = (): void => callback()
+    ipcRenderer.on(SearchChannels.events.INDEX_REBUILD_COMPLETED, handler)
+    return () => ipcRenderer.removeListener(SearchChannels.events.INDEX_REBUILD_COMPLETED, handler)
+  },
+
+  onSearchIndexCorrupt: (callback: () => void): (() => void) => {
+    const handler = (): void => callback()
+    ipcRenderer.on(SearchChannels.events.INDEX_CORRUPT, handler)
+    return () => ipcRenderer.removeListener(SearchChannels.events.INDEX_CORRUPT, handler)
   },
 
   // Quick Capture API (global shortcut window)
