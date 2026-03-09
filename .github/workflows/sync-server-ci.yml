@@ -49,4 +49,4 @@ jobs:
         run: pnpm --filter @memry/sync-server typecheck
 
       - name: Test sync-server
-        run: pnpm --filter @memry/sync-server test
+        run: pnpm rebuild better-sqlite3 && pnpm --filter @memry/sync-server test
