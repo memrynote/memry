@@ -16,6 +16,7 @@ import { registerFolderViewHandlers, unregisterFolderViewHandlers } from './fold
 import { registerPropertiesHandlers, unregisterPropertiesHandlers } from './properties-handlers'
 import { registerSyncHandlers, unregisterSyncHandlers, checkSyncIntegrity } from './sync-handlers'
 import { registerCryptoHandlers, unregisterCryptoHandlers } from './crypto-handlers'
+import { registerSearchHandlers, unregisterSearchHandlers } from './search-handlers'
 import { createLogger } from '../lib/logger'
 
 const ipcLog = createLogger('IPC')
@@ -89,6 +90,9 @@ export function registerAllHandlers(): void {
   // Register crypto handlers
   registerCryptoHandlers()
 
+  // Register search handlers
+  registerSearchHandlers()
+
   handlersRegistered = true
   ipcLog.info('all handlers registered')
 }
@@ -117,6 +121,7 @@ export function unregisterAllHandlers(): void {
   unregisterPropertiesHandlers()
   unregisterSyncHandlers()
   unregisterCryptoHandlers()
+  unregisterSearchHandlers()
 
   handlersRegistered = false
   ipcLog.info('all handlers unregistered')
@@ -148,3 +153,4 @@ export { registerFolderViewHandlers, unregisterFolderViewHandlers } from './fold
 export { registerPropertiesHandlers, unregisterPropertiesHandlers } from './properties-handlers'
 export { registerSyncHandlers, unregisterSyncHandlers } from './sync-handlers'
 export { registerCryptoHandlers, unregisterCryptoHandlers } from './crypto-handlers'
+export { registerSearchHandlers, unregisterSearchHandlers } from './search-handlers'

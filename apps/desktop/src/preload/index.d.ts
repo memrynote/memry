@@ -1558,6 +1558,35 @@ export interface InboxClientAPI {
   getFilingHistory(options?: { limit?: number }): Promise<InboxFilingHistoryResponse>
 }
 
+// Search types
+import type {
+  SearchResponse,
+  QuickSearchResponse,
+  SearchStats,
+  RecentSearch,
+  IndexRebuildProgress
+} from '@memry/contracts/search-api'
+
+export interface SearchClientAPI {
+  query(params: {
+    text: string
+    types?: Array<'note' | 'journal' | 'task' | 'inbox'>
+    tags?: string[]
+    dateRange?: { from: string; to: string } | null
+    projectId?: string | null
+    folderPath?: string | null
+    limit?: number
+    offset?: number
+  }): Promise<SearchResponse>
+  quick(text: string): Promise<QuickSearchResponse>
+  getStats(): Promise<SearchStats>
+  rebuildIndex(): Promise<{ started: true }>
+  getRecent(): Promise<RecentSearch[]>
+  addRecent(params: { query: string; resultCount: number }): Promise<RecentSearch>
+  clearRecent(): Promise<{ cleared: true }>
+  getAllTags(): Promise<string[]>
+}
+
 // Quick Capture types
 export interface QuickCaptureClientAPI {
   /** Close the quick capture window */
@@ -2206,6 +2235,7 @@ interface API extends WindowAPI {
   tags: TagsClientAPI
   inbox: InboxClientAPI
   reminders: RemindersClientAPI
+  search: SearchClientAPI
   quickCapture: QuickCaptureClientAPI
   folderView: FolderViewClientAPI
   syncAuth: SyncAuthClientAPI
@@ -2311,6 +2341,13 @@ interface API extends WindowAPI {
   onReminderClicked: (callback: (event: ReminderClickedEvent) => void) => () => void
   // Folder View event subscriptions
   onFolderViewConfigUpdated: (callback: (event: FolderViewConfigUpdatedEvent) => void) => () => void
+  // Search event subscriptions
+  onSearchIndexRebuildStarted: (callback: () => void) => () => void
+  onSearchIndexRebuildProgress: (
+    callback: (progress: { phase: string; current: number; total: number; percent: number }) => void
+  ) => () => void
+  onSearchIndexRebuildCompleted: (callback: () => void) => () => void
+  onSearchIndexCorrupt: (callback: () => void) => () => void
   // Sync event subscriptions
   onSyncStatusChanged: (callback: (event: SyncStatusChangedEvent) => void) => () => void
   onItemSynced: (callback: (event: ItemSyncedEvent) => void) => () => void
