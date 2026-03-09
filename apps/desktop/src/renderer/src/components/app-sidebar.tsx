@@ -2,7 +2,7 @@
 
 import * as React from 'react'
 import { useMemo, useState, useCallback, useRef } from 'react'
-import { BookOpen, CloudOff, Home, Inbox, ListTodo, Plus, Upload } from 'lucide-react'
+import { BookOpen, CloudOff, Home, Inbox, ListTodo, Plus, Search, Upload } from 'lucide-react'
 import { toast } from 'sonner'
 
 import { cn } from '@/lib/utils'
@@ -48,6 +48,13 @@ const log = createLogger('Component:AppSidebar')
 
 // Quick actions data with soft utility colors
 const quickActions = [
+  {
+    title: 'Search',
+    icon: Search,
+    kbd: '⌘ K',
+    iconColor: 'text-accent-cyan',
+    action: 'search' as const
+  },
   {
     title: 'New',
     icon: Plus,
@@ -270,7 +277,13 @@ function AppSidebarInner({ currentPage, viewCounts, ...props }: AppSidebarProps)
               <SidebarMenuItem key={action.title}>
                 <SidebarMenuButton
                   tooltip={action.title}
-                  onClick={action.action === 'new' ? handleNewNote : undefined}
+                  onClick={
+                    action.action === 'new'
+                      ? handleNewNote
+                      : action.action === 'search'
+                        ? () => window.dispatchEvent(new CustomEvent('memry:open-search'))
+                        : undefined
+                  }
                 >
                   <action.icon className={cn('size-4', action.iconColor)} />
                   <span>{action.title}</span>
