@@ -31,8 +31,10 @@ import {
   useSettingsShortcut,
   useNewNoteShortcut,
   useUndoKeyboardShortcut,
-  useReminderNotifications
+  useReminderNotifications,
+  useSearchShortcut
 } from '@/hooks'
+import { CommandPalette } from '@/components/search/command-palette'
 import { useFolderViewEvents } from '@/hooks/use-folder-view-events'
 import { useFlushOnQuit } from '@/hooks/use-flush-on-quit'
 import { tasksService } from '@/services/tasks-service'
@@ -79,6 +81,7 @@ function TabPersistenceManager({ children }: { children: React.ReactNode }): Rea
 const AppContent = (): React.JSX.Element => {
   const { state, openTab } = useTabs()
   const [showShortcutsDialog, setShowShortcutsDialog] = useState(false)
+  const [searchOpen, setSearchOpen] = useState(false)
 
   // Handle creating a new note
   const handleNewNote = useCallback(async () => {
@@ -125,6 +128,7 @@ const AppContent = (): React.JSX.Element => {
   useUndoKeyboardShortcut() // T051-T054: Cmd+Z for task undo
   useReminderNotifications() // T231-T233: In-app toast notifications for reminders
   useFolderViewEvents() // Global cache invalidation for folder-view tabs
+  useSearchShortcut(useCallback(() => setSearchOpen((prev) => !prev), []))
 
   // Get active group for tab bar
   const activeGroupId = state.activeGroupId
@@ -209,6 +213,9 @@ const AppContent = (): React.JSX.Element => {
         isOpen={showShortcutsDialog}
         onClose={() => setShowShortcutsDialog(false)}
       />
+
+      {/* Global Search Command Palette */}
+      <CommandPalette open={searchOpen} onOpenChange={setSearchOpen} />
     </TabDragProvider>
   )
 }

@@ -53,3 +53,7 @@ export * from './use-reminder-notifications'
 
 // Sync
 export * from './use-sync-status'
+
+// Search
+export * from './use-search-shortcut'
+export * from './use-search'
