@@ -47,6 +47,8 @@ import {
   useBulkArchiveInboxItems,
   useFileInboxItem,
   useInboxSnoozed,
+  useInboxStats,
+  useInboxFilingHistory,
   inboxKeys
 } from '@/hooks/use-inbox'
 import { notesKeys } from '@/hooks/use-notes-query'
@@ -150,10 +152,11 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
     return counts
   }, [backendItems, pendingArchiveIds])
 
-  // Empty state tracking
-  const [itemsProcessedToday, setItemsProcessedToday] = useState(0)
-  // Simulated filing history - in a real app, this would come from persisted data
-  const [hasFilingHistory, setHasFilingHistory] = useState(false)
+  // Empty state — wired to real backend data
+  const { stats: inboxStats } = useInboxStats()
+  const { data: filingHistoryData } = useInboxFilingHistory()
+  const itemsProcessedToday = inboxStats?.processedToday ?? 0
+  const hasFilingHistory = (filingHistoryData?.entries?.length ?? 0) > 0
 
   // Animation states for transitions
   const [exitingItemIds, setExitingItemIds] = useState<Set<string>>(new Set())
@@ -443,8 +446,6 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
         })
 
         // Increment items processed counter and mark filing history
-        setItemsProcessedToday((prev) => prev + 1)
-        setHasFilingHistory(true)
 
         // If this was the last item, show empty state after a brief pause
         if (willBeEmpty) {
@@ -497,7 +498,7 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
             next.delete(itemId)
             return next
           })
-          setItemsProcessedToday((prev) => Math.max(0, prev - 1))
+          // Stats auto-refresh via TanStack Query event subscriptions
           addToast({
             message: extractErrorMessage(error, 'Failed to file item'),
             type: 'error'
@@ -539,8 +540,6 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
         })
 
         // Increment items processed counter and mark filing history
-        setItemsProcessedToday((prev) => prev + 1)
-        setHasFilingHistory(true)
 
         // If this was the last item, show empty state after a brief pause
         if (willBeEmpty) {
@@ -572,7 +571,7 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
             next.delete(itemId)
             return next
           })
-          setItemsProcessedToday((prev) => Math.max(0, prev - 1))
+          // Stats auto-refresh via TanStack Query event subscriptions
           addToast({
             message: extractErrorMessage(error, 'Failed to file item'),
             type: 'error'
@@ -706,9 +705,6 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
           return next
         })
 
-        // Increment items processed counter
-        setItemsProcessedToday((prev) => prev + 1)
-
         // If this was the last item, show empty state after a brief pause
         if (willBeEmpty) {
           setTimeout(() => {
@@ -730,7 +726,7 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
             return next
           })
           // Decrement the processed counter on error
-          setItemsProcessedToday((prev) => Math.max(0, prev - 1))
+          // Stats auto-refresh via TanStack Query event subscriptions
           addToast({
             message: 'Failed to archive item',
             type: 'error'
@@ -850,8 +846,7 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
       setSelectedItemIds(new Set())
 
       // Increment items processed counter and mark filing history
-      setItemsProcessedToday((prev) => prev + processedCount)
-      setHasFilingHistory(true)
+      // Stats auto-refresh via TanStack Query event subscriptions
 
       try {
         // Use bulk file API
@@ -884,7 +879,7 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
           itemIds.forEach((id) => next.delete(id))
           return next
         })
-        setItemsProcessedToday((prev) => Math.max(0, prev - processedCount))
+        // Stats auto-refresh via TanStack Query event subscriptions
         addToast({
           message: extractErrorMessage(error, 'Failed to file items'),
           type: 'error'
@@ -965,7 +960,7 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
       setSelectedItemIds(new Set())
 
       // Increment items processed counter
-      setItemsProcessedToday((prev) => prev + processedCount)
+      // Stats auto-refresh via TanStack Query event subscriptions
 
       // If this removed all items, show empty state after a brief pause
       if (willBeEmpty) {
@@ -987,7 +982,7 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
           idsToArchive.forEach((id) => next.delete(id))
           return next
         })
-        setItemsProcessedToday((prev) => Math.max(0, prev - processedCount))
+        // Stats auto-refresh via TanStack Query event subscriptions
         addToast({
           message: 'Failed to archive items',
           type: 'error'
@@ -1139,8 +1134,7 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
       })
 
       // Increment items processed counter and mark filing history
-      setItemsProcessedToday((prev) => prev + processedCount)
-      setHasFilingHistory(true)
+      // Stats auto-refresh via TanStack Query event subscriptions
 
       try {
         // Use dedicated fileAllStale API - it handles finding stale items server-side
@@ -1162,7 +1156,7 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
           staleIds.forEach((id) => next.delete(id))
           return next
         })
-        setItemsProcessedToday((prev) => Math.max(0, prev - processedCount))
+        // Stats auto-refresh via TanStack Query event subscriptions
         addToast({
           message: extractErrorMessage(error, 'Failed to file stale items'),
           type: 'error'
