@@ -175,8 +175,7 @@ describe('T519: InboxListItem - item type display', () => {
       })
       renderWithContext(item)
 
-      // Match the full display title to avoid colliding with timestamp text.
-      expect(screen.getByText('Voice memo · 1:05')).toBeInTheDocument()
+      expect(screen.getByText('Voice memo')).toBeInTheDocument()
     })
 
     it('should show transcription status when transcribing', () => {

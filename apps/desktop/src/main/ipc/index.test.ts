@@ -31,7 +31,9 @@ const hoisted = vi.hoisted(() => ({
   unregisterSyncHandlers: vi.fn(),
   checkSyncIntegrity: vi.fn().mockResolvedValue(undefined),
   registerCryptoHandlers: vi.fn(),
-  unregisterCryptoHandlers: vi.fn()
+  unregisterCryptoHandlers: vi.fn(),
+  registerSearchHandlers: vi.fn(),
+  unregisterSearchHandlers: vi.fn()
 }))
 
 vi.mock('./vault-handlers', () => ({
@@ -94,6 +96,10 @@ vi.mock('./sync-handlers', () => ({
 vi.mock('./crypto-handlers', () => ({
   registerCryptoHandlers: hoisted.registerCryptoHandlers,
   unregisterCryptoHandlers: hoisted.unregisterCryptoHandlers
+}))
+vi.mock('./search-handlers', () => ({
+  registerSearchHandlers: hoisted.registerSearchHandlers,
+  unregisterSearchHandlers: hoisted.unregisterSearchHandlers
 }))
 
 import { areHandlersRegistered, registerAllHandlers, unregisterAllHandlers } from './index'
