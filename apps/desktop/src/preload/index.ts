@@ -625,6 +625,7 @@ export const api = {
         input.actualTags || []
       ),
     convertToNote: (itemId: string) => invoke(InboxChannels.invoke.CONVERT_TO_NOTE, itemId),
+    convertToTask: (itemId: string) => invoke(InboxChannels.invoke.CONVERT_TO_TASK, itemId),
     linkToNote: (itemId: string, noteId: string, tags?: string[]) =>
       invoke(InboxChannels.invoke.LINK_TO_NOTE, itemId, noteId, tags || []),
 

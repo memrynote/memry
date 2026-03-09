@@ -1371,6 +1371,11 @@ export interface InboxFilingSuggestion {
   confidence: number
   reason: string
   suggestedTags: string[]
+  suggestedNote?: {
+    id: string
+    title: string
+    snippet: string
+  }
 }
 
 export interface InboxSuggestionsResponse {
@@ -1500,6 +1505,9 @@ export interface InboxClientAPI {
   }): Promise<InboxFileResponse>
   getSuggestions(itemId: string): Promise<InboxSuggestionsResponse>
   convertToNote(itemId: string): Promise<InboxFileResponse>
+  convertToTask(
+    itemId: string
+  ): Promise<{ success: boolean; taskId: string | null; error?: string }>
   linkToNote(
     itemId: string,
     noteId: string,

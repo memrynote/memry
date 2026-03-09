@@ -237,11 +237,18 @@ export interface FilingDestination {
   noteTitle?: string
 }
 
+export interface SuggestedNote {
+  id: string
+  title: string
+  snippet: string
+}
+
 export interface FilingSuggestion {
   destination: FilingDestination
   confidence: number
   reason: string
   suggestedTags: string[]
+  suggestedNote?: SuggestedNote
 }
 
 export interface InboxStats {
@@ -523,6 +530,9 @@ export interface InboxHandlers {
   [InboxChannels.invoke.FILE]: (input: z.infer<typeof FileItemSchema>) => Promise<FileResponse>
   [InboxChannels.invoke.GET_SUGGESTIONS]: (itemId: string) => Promise<SuggestionsResponse>
   [InboxChannels.invoke.CONVERT_TO_NOTE]: (itemId: string) => Promise<FileResponse>
+  [InboxChannels.invoke.CONVERT_TO_TASK]: (
+    itemId: string
+  ) => Promise<{ success: boolean; taskId: string | null; error?: string }>
   [InboxChannels.invoke.LINK_TO_NOTE]: (
     itemId: string,
     noteId: string
@@ -676,6 +686,9 @@ export interface InboxClientAPI {
   file(input: z.infer<typeof FileItemSchema>): Promise<FileResponse>
   getSuggestions(itemId: string): Promise<SuggestionsResponse>
   convertToNote(itemId: string): Promise<FileResponse>
+  convertToTask(
+    itemId: string
+  ): Promise<{ success: boolean; taskId: string | null; error?: string }>
   linkToNote(itemId: string, noteId: string): Promise<{ success: boolean; error?: string }>
 
   // Tags
