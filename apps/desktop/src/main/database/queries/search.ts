@@ -1,812 +1,598 @@
 /**
- * Search query functions for FTS5 full-text search.
- * Uses SQLite FTS5 with BM25 ranking for relevance scoring.
+ * Cross-type search orchestrator.
+ *
+ * Runs parallel FTS5 queries across index.db (notes/journals)
+ * and data.db (tasks/inbox), normalizes scores, and merges
+ * into grouped results.
  *
  * @module db/queries/search
  */
 
 import { sql } from 'drizzle-orm'
-import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3'
-import type Database from 'better-sqlite3'
-import * as schema from '@memry/db-schema/schema'
+import type { DrizzleDb } from '../client'
+import type {
+  ContentType,
+  SearchResultItem,
+  SearchResultGroup,
+  SearchResponse,
+  QuickSearchResponse,
+  SearchStats,
+  SearchQuery,
+  NoteResultMetadata,
+  JournalResultMetadata,
+  TaskResultMetadata,
+  InboxResultMetadata
+} from '@memry/contracts/search-api'
+import {
+  normalizeScores,
+  buildPrefixQuery,
+  parseSearchQuery,
+  truncateQuery
+} from '../../lib/search-utils'
+import { fuzzySearchTitles } from '../../lib/fuzzysort-search'
+import { createLogger } from '../../lib/logger'
 
-type DrizzleDb = BetterSQLite3Database<typeof schema>
-type RawSqliteDb = Database.Database
+const logger = createLogger('Search')
 
 // ============================================================================
-// Types
+// Raw FTS result types
 // ============================================================================
 
-export interface SearchResultNote {
+interface FtsNoteRow {
   id: string
-  path: string
   title: string
-  snippet: string
-  score: number
-  matchedIn: ('title' | 'content' | 'tags')[]
-  createdAt: string
+  path: string
+  date: string | null
+  emoji: string | null
+  wordCount: number | null
   modifiedAt: string
-  tags: string[]
+  rank: number
+  snippet: string
 }
 
-export interface SearchOptions {
-  limit?: number
-  offset?: number
-  tags?: string[]
-  folder?: string
-}
-
-export interface AdvancedSearchOptions {
-  text?: string
-  operators?: {
-    path?: string
-    file?: string
-    tags?: string[]
-    properties?: { name: string; value: string }[]
-  }
-  titleOnly?: boolean
-  sortBy?: 'relevance' | 'modified' | 'created' | 'title'
-  sortDirection?: 'asc' | 'desc'
-  folder?: string
-  dateFrom?: string
-  dateTo?: string
-  limit?: number
-  offset?: number
-}
-
-export interface AdvancedSearchResultNote {
+interface FtsTaskRow {
   id: string
-  path: string
   title: string
-  emoji?: string | null
-  snippet: string
-  score: number
-  matchedIn: ('title' | 'content' | 'tags')[]
-  createdAt: string
+  projectId: string
+  projectName: string
+  projectColor: string
+  statusId: string | null
+  statusName: string | null
+  dueDate: string | null
+  priority: number
+  completedAt: string | null
   modifiedAt: string
-  tags: string[]
+  rank: number
+  snippet: string
 }
 
-export interface QuickSearchResult {
-  notes: SearchResultNote[]
-}
-
-export interface SearchSuggestion {
-  text: string
-  type: 'recent' | 'tag' | 'title' | 'completion'
-  count?: number
-}
-
-// ============================================================================
-// Highlighting Utilities
-// ============================================================================
-
-/**
- * Highlights search terms in arbitrary text using <mark> tags.
- * Useful for highlighting matches in titles, tags, etc. that don't
- * come from FTS snippet().
- *
- * @param text - Text to highlight
- * @param query - Search query (will be split into terms)
- * @param tag - HTML tag to use for highlighting (default: 'mark')
- * @returns Text with highlighted matches
- *
- * @example
- * ```typescript
- * highlightTerms('Hello World', 'world')
- * // Returns: 'Hello <mark>World</mark>'
- * ```
- */
-export function highlightTerms(text: string, query: string, tag: string = 'mark'): string {
-  if (!text || !query) return text
-
-  // Get search terms from query
-  const terms = query
-    .toLowerCase()
-    .split(/\s+/)
-    .filter((t) => t.length > 0)
-    .map((t) => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')) // Escape regex special chars
-
-  if (terms.length === 0) return text
-
-  // Build regex pattern that matches any term (case insensitive)
-  const pattern = new RegExp(`(${terms.join('|')})`, 'gi')
-
-  // Replace matches with highlighted version
-  return text.replace(pattern, `<${tag}>$1</${tag}>`)
-}
-
-/**
- * Extracts a snippet from text around the first match.
- * Useful for creating snippets when FTS snippet() isn't available.
- *
- * @param text - Full text to extract from
- * @param query - Search query to find
- * @param contextChars - Characters of context around match (default: 50)
- * @returns Snippet with highlighted match
- */
-export function extractSnippet(text: string, query: string, contextChars: number = 50): string {
-  if (!text || !query) return text.slice(0, contextChars * 2) + '...'
-
-  const terms = query
-    .toLowerCase()
-    .split(/\s+/)
-    .filter((t) => t.length > 0)
-  if (terms.length === 0) return text.slice(0, contextChars * 2) + '...'
-
-  // Find first match position
-  const textLower = text.toLowerCase()
-  let matchIndex = -1
-  let matchTerm = ''
-
-  for (const term of terms) {
-    const idx = textLower.indexOf(term)
-    if (idx !== -1 && (matchIndex === -1 || idx < matchIndex)) {
-      matchIndex = idx
-      matchTerm = term
-    }
-  }
-
-  if (matchIndex === -1) {
-    // No match found, return beginning of text
-    return text.slice(0, contextChars * 2) + (text.length > contextChars * 2 ? '...' : '')
-  }
-
-  // Calculate start and end positions for snippet
-  const start = Math.max(0, matchIndex - contextChars)
-  const end = Math.min(text.length, matchIndex + matchTerm.length + contextChars)
-
-  // Build snippet
-  let snippet = ''
-  if (start > 0) snippet += '...'
-  snippet += text.slice(start, end)
-  if (end < text.length) snippet += '...'
-
-  // Highlight all terms in snippet
-  return highlightTerms(snippet, query)
+interface FtsInboxRow {
+  id: string
+  title: string
+  type: string
+  sourceUrl: string | null
+  sourceTitle: string | null
+  filedAt: string | null
+  modifiedAt: string
+  rank: number
+  snippet: string
 }
 
 // ============================================================================
-// Path Normalization
+// Per-type FTS queries
 // ============================================================================
 
-const ROOT_FOLDER = 'notes'
-
-function normalizePathFilter(pathFilter: string): string {
-  let normalized = pathFilter.trim()
-  if (normalized.startsWith(ROOT_FOLDER + '/')) {
-    normalized = normalized.slice(ROOT_FOLDER.length + 1)
-  }
-  if (normalized.startsWith('/')) {
-    normalized = normalized.slice(1)
-  }
-  return normalized
-}
-
-// ============================================================================
-// Query Escaping
-// ============================================================================
-
-/**
- * Escapes special FTS5 query characters.
- * FTS5 special characters: " * - ( ) : ^
- *
- * @param query - Raw user query string
- * @returns Escaped query safe for FTS5
- */
-export function escapeSearchQuery(query: string): string {
-  // Remove or escape FTS5 special characters
-  let escaped = query
-    .replace(/"/g, ' ') // Remove quotes to avoid phrase parsing
-    .replace(/\*/g, '') // Remove wildcards (we add our own)
-    .replace(/[():\-^]/g, ' ') // Replace operators with spaces
-    .trim()
-
-  // Normalize whitespace
-  escaped = escaped.replace(/\s+/g, ' ')
-
-  return escaped
-}
-
-/**
- * Builds an FTS5 query with prefix matching.
- * Splits query into terms and adds * suffix for prefix matching.
- *
- * @param query - Escaped query string
- * @returns FTS5 query with prefix matching
- */
-export function buildPrefixQuery(query: string): string {
-  const terms = query.split(/\s+/).filter((t) => t.length > 0)
-
-  if (terms.length === 0) return ''
-
-  // Add * suffix to each term for prefix matching
-  // Join with space (implicit AND in FTS5)
-  return terms.map((term) => `"${term}"*`).join(' ')
-}
-
-// ============================================================================
-// Search Functions
-// ============================================================================
-
-/**
- * Search notes using FTS5 with BM25 ranking.
- * Returns results sorted by relevance score.
- *
- * @param db - Drizzle database instance
- * @param query - Search query string
- * @param options - Search options (limit, offset, tags, folder)
- * @returns Array of search results with snippets and scores
- */
-export function searchNotes(
-  db: DrizzleDb,
-  query: string,
-  options: SearchOptions = {}
-): SearchResultNote[] {
-  const { limit = 50, offset = 0, tags, folder } = options
-
-  // Escape and build query
-  const escapedQuery = escapeSearchQuery(query)
-  if (!escapedQuery) return []
-
-  const ftsQuery = buildPrefixQuery(escapedQuery)
+function searchNotes(indexDb: DrizzleDb, ftsQuery: string, limit: number): SearchResultItem[] {
   if (!ftsQuery) return []
 
-  // Build the search query with BM25 ranking
-  // snippet() extracts context around matches with highlighting
-  const results = db.all<{
-    id: string
-    path: string
-    title: string
-    snippet: string
-    score: number
-    fts_title: string
-    fts_content: string
-    fts_tags: string
-    createdAt: string
-    modifiedAt: string
-  }>(sql`
+  const rows = indexDb.all<FtsNoteRow>(sql`
     SELECT
       nc.id,
-      nc.path,
       nc.title,
-      snippet(fts_notes, 2, '<mark>', '</mark>', '...', 30) as snippet,
-      bm25(fts_notes, 2.0, 1.0, 1.0) as score,
-      fts_notes.title as fts_title,
-      fts_notes.content as fts_content,
-      fts_notes.tags as fts_tags,
-      nc.created_at as createdAt,
-      nc.modified_at as modifiedAt
+      nc.path,
+      nc.date,
+      nc.emoji,
+      nc.word_count as wordCount,
+      nc.modified_at as modifiedAt,
+      bm25(fts_notes, 0.0, 2.0, 1.0, 1.0) as rank,
+      snippet(fts_notes, 2, '<mark>', '</mark>', '...', 20) as snippet
     FROM fts_notes
-    INNER JOIN note_cache nc ON nc.id = fts_notes.id
+    JOIN note_cache nc ON nc.id = fts_notes.id
     WHERE fts_notes MATCH ${ftsQuery}
-    ${folder ? sql`AND nc.path LIKE ${folder + '%'}` : sql``}
-    ORDER BY score DESC
+      AND nc.date IS NULL
+    ORDER BY rank
     LIMIT ${limit}
-    OFFSET ${offset}
   `)
 
-  // Get tags for each result and determine what matched
-  return results
-    .map((row) => {
-      const noteTags = getTagsForNote(db, row.id)
-      const matchedIn = determineMatchedFields(
-        escapedQuery,
-        row.fts_title,
-        row.fts_content,
-        row.fts_tags
+  return rows.map((row) => {
+    const metadata: NoteResultMetadata = {
+      type: 'note',
+      path: row.path,
+      tags: [],
+      emoji: row.emoji,
+      wordCount: row.wordCount
+    }
+    return {
+      id: row.id,
+      type: 'note' as ContentType,
+      title: row.title,
+      snippet: row.snippet,
+      score: Math.abs(row.rank),
+      normalizedScore: 0,
+      matchType: 'exact' as const,
+      modifiedAt: row.modifiedAt,
+      metadata
+    }
+  })
+}
+
+function searchJournals(indexDb: DrizzleDb, ftsQuery: string, limit: number): SearchResultItem[] {
+  if (!ftsQuery) return []
+
+  const rows = indexDb.all<FtsNoteRow>(sql`
+    SELECT
+      nc.id,
+      nc.title,
+      nc.path,
+      nc.date,
+      nc.emoji,
+      nc.word_count as wordCount,
+      nc.modified_at as modifiedAt,
+      bm25(fts_notes, 0.0, 2.0, 1.0, 1.0) as rank,
+      snippet(fts_notes, 2, '<mark>', '</mark>', '...', 20) as snippet
+    FROM fts_notes
+    JOIN note_cache nc ON nc.id = fts_notes.id
+    WHERE fts_notes MATCH ${ftsQuery}
+      AND nc.date IS NOT NULL
+    ORDER BY rank
+    LIMIT ${limit}
+  `)
+
+  return rows.map((row) => {
+    const metadata: JournalResultMetadata = {
+      type: 'journal',
+      date: row.date!,
+      path: row.path,
+      tags: [],
+      wordCount: row.wordCount
+    }
+    return {
+      id: row.id,
+      type: 'journal' as ContentType,
+      title: row.title,
+      snippet: row.snippet,
+      score: Math.abs(row.rank),
+      normalizedScore: 0,
+      matchType: 'exact' as const,
+      modifiedAt: row.modifiedAt,
+      metadata
+    }
+  })
+}
+
+function searchTasks(dataDb: DrizzleDb, ftsQuery: string, limit: number): SearchResultItem[] {
+  if (!ftsQuery) return []
+
+  const rows = dataDb.all<FtsTaskRow>(sql`
+    SELECT
+      t.id,
+      t.title,
+      t.project_id as projectId,
+      p.name as projectName,
+      p.color as projectColor,
+      t.status_id as statusId,
+      s.name as statusName,
+      t.due_date as dueDate,
+      t.priority,
+      t.completed_at as completedAt,
+      t.modified_at as modifiedAt,
+      bm25(fts_tasks, 0.0, 2.0, 1.0, 1.0) as rank,
+      snippet(fts_tasks, 1, '<mark>', '</mark>', '...', 20) as snippet
+    FROM fts_tasks
+    JOIN tasks t ON t.id = fts_tasks.id
+    JOIN projects p ON p.id = t.project_id
+    LEFT JOIN statuses s ON s.id = t.status_id
+    WHERE fts_tasks MATCH ${ftsQuery}
+    ORDER BY rank
+    LIMIT ${limit}
+  `)
+
+  return rows.map((row) => {
+    const metadata: TaskResultMetadata = {
+      type: 'task',
+      projectId: row.projectId,
+      projectName: row.projectName,
+      projectColor: row.projectColor,
+      statusId: row.statusId,
+      statusName: row.statusName,
+      dueDate: row.dueDate,
+      priority: row.priority,
+      completedAt: row.completedAt
+    }
+    return {
+      id: row.id,
+      type: 'task' as ContentType,
+      title: row.title,
+      snippet: row.snippet,
+      score: Math.abs(row.rank),
+      normalizedScore: 0,
+      matchType: 'exact' as const,
+      modifiedAt: row.modifiedAt,
+      metadata
+    }
+  })
+}
+
+function searchInbox(dataDb: DrizzleDb, ftsQuery: string, limit: number): SearchResultItem[] {
+  if (!ftsQuery) return []
+
+  const rows = dataDb.all<FtsInboxRow>(sql`
+    SELECT
+      i.id,
+      i.title,
+      i.type,
+      i.source_url as sourceUrl,
+      i.source_title as sourceTitle,
+      i.filed_at as filedAt,
+      i.modified_at as modifiedAt,
+      bm25(fts_inbox, 0.0, 3.0, 1.0, 1.0, 0.5) as rank,
+      snippet(fts_inbox, 2, '<mark>', '</mark>', '...', 20) as snippet
+    FROM fts_inbox
+    JOIN inbox_items i ON i.id = fts_inbox.id
+    WHERE fts_inbox MATCH ${ftsQuery}
+    ORDER BY rank
+    LIMIT ${limit}
+  `)
+
+  return rows.map((row) => {
+    const metadata: InboxResultMetadata = {
+      type: 'inbox',
+      itemType: row.type as InboxResultMetadata['itemType'],
+      sourceUrl: row.sourceUrl,
+      sourceTitle: row.sourceTitle,
+      filedAt: row.filedAt
+    }
+    return {
+      id: row.id,
+      type: 'inbox' as ContentType,
+      title: row.title,
+      snippet: row.snippet,
+      score: Math.abs(row.rank),
+      normalizedScore: 0,
+      matchType: 'exact' as const,
+      modifiedAt: row.modifiedAt,
+      metadata
+    }
+  })
+}
+
+// ============================================================================
+// Fuzzy fallback candidate loaders
+// ============================================================================
+
+const FUZZY_FALLBACK_THRESHOLD = 3
+
+interface TitleRow {
+  id: string
+  title: string
+  modifiedAt: string
+}
+
+function getNoteTitles(
+  indexDb: DrizzleDb
+): Array<TitleRow & { type: ContentType; metadata: NoteResultMetadata }> {
+  const rows = indexDb.all<TitleRow & { path: string; emoji: string | null }>(
+    sql`SELECT id, title, path, emoji, modified_at as modifiedAt FROM note_cache WHERE date IS NULL`
+  )
+  return rows.map((r) => ({
+    ...r,
+    type: 'note' as ContentType,
+    metadata: { type: 'note' as const, path: r.path, tags: [], emoji: r.emoji }
+  }))
+}
+
+function getJournalTitles(
+  indexDb: DrizzleDb
+): Array<TitleRow & { type: ContentType; metadata: JournalResultMetadata }> {
+  const rows = indexDb.all<TitleRow & { path: string; date: string }>(
+    sql`SELECT id, title, path, date, modified_at as modifiedAt FROM note_cache WHERE date IS NOT NULL`
+  )
+  return rows.map((r) => ({
+    ...r,
+    type: 'journal' as ContentType,
+    metadata: { type: 'journal' as const, date: r.date, path: r.path, tags: [] }
+  }))
+}
+
+function getTaskTitles(
+  dataDb: DrizzleDb
+): Array<TitleRow & { type: ContentType; metadata: TaskResultMetadata }> {
+  const rows = dataDb.all<
+    TitleRow & {
+      projectId: string
+      projectName: string
+      projectColor: string
+      statusId: string | null
+      statusName: string | null
+      dueDate: string | null
+      priority: number
+      completedAt: string | null
+    }
+  >(sql`
+    SELECT t.id, t.title, t.modified_at as modifiedAt,
+      t.project_id as projectId, p.name as projectName, p.color as projectColor,
+      t.status_id as statusId, s.name as statusName,
+      t.due_date as dueDate, t.priority, t.completed_at as completedAt
+    FROM tasks t
+    JOIN projects p ON p.id = t.project_id
+    LEFT JOIN statuses s ON s.id = t.status_id
+  `)
+  return rows.map((r) => ({
+    ...r,
+    type: 'task' as ContentType,
+    metadata: {
+      type: 'task' as const,
+      projectId: r.projectId,
+      projectName: r.projectName,
+      projectColor: r.projectColor,
+      statusId: r.statusId,
+      statusName: r.statusName,
+      dueDate: r.dueDate,
+      priority: r.priority,
+      completedAt: r.completedAt
+    }
+  }))
+}
+
+function getInboxTitles(
+  dataDb: DrizzleDb
+): Array<TitleRow & { type: ContentType; metadata: InboxResultMetadata }> {
+  const rows = dataDb.all<
+    TitleRow & {
+      itemType: string
+      sourceUrl: string | null
+      sourceTitle: string | null
+      filedAt: string | null
+    }
+  >(sql`
+    SELECT id, title, modified_at as modifiedAt,
+      type as itemType, source_url as sourceUrl, source_title as sourceTitle, filed_at as filedAt
+    FROM inbox_items
+  `)
+  return rows.map((r) => ({
+    ...r,
+    type: 'inbox' as ContentType,
+    metadata: {
+      type: 'inbox' as const,
+      itemType: r.itemType as InboxResultMetadata['itemType'],
+      sourceUrl: r.sourceUrl,
+      sourceTitle: r.sourceTitle,
+      filedAt: r.filedAt
+    }
+  }))
+}
+
+function getItemTagIds(
+  indexDb: DrizzleDb,
+  dataDb: DrizzleDb,
+  type: ContentType,
+  tags: string[]
+): Set<string> {
+  if (tags.length === 0) return new Set()
+
+  const tagList = sql.join(
+    tags.map((t) => sql`${t}`),
+    sql`, `
+  )
+
+  let rows: Array<{ id: string }> = []
+
+  switch (type) {
+    case 'note':
+    case 'journal':
+      rows = indexDb.all<{ id: string }>(
+        sql`SELECT DISTINCT note_id as id FROM note_tags WHERE tag IN (${tagList})`
       )
+      break
+    case 'task':
+      rows = dataDb.all<{ id: string }>(
+        sql`SELECT DISTINCT task_id as id FROM task_tags WHERE tag IN (${tagList})`
+      )
+      break
+    case 'inbox':
+      rows = dataDb.all<{ id: string }>(
+        sql`SELECT DISTINCT inbox_item_id as id FROM inbox_item_tags WHERE tag IN (${tagList})`
+      )
+      break
+  }
 
-      // Filter by tags if specified
-      if (tags && tags.length > 0) {
-        const hasMatchingTag = tags.some((t) => noteTags.includes(t.toLowerCase()))
-        if (!hasMatchingTag) return null
-      }
-
-      return {
-        id: row.id,
-        path: row.path,
-        title: row.title,
-        snippet: row.snippet || '',
-        score: Math.abs(row.score), // BM25 returns negative scores
-        matchedIn,
-        createdAt: row.createdAt,
-        modifiedAt: row.modifiedAt,
-        tags: noteTags
-      }
-    })
-    .filter((r): r is SearchResultNote => r !== null)
+  return new Set(rows.map((r) => r.id))
 }
 
-/**
- * Quick search for command palette / omnibar.
- * Faster search with fewer results and minimal processing.
- *
- * @param db - Drizzle database instance
- * @param query - Search query string
- * @param limit - Maximum number of results (default 5)
- * @returns Quick search results
- */
-export function quickSearch(db: DrizzleDb, query: string, limit: number = 5): QuickSearchResult {
-  const escapedQuery = escapeSearchQuery(query)
-  if (!escapedQuery) return { notes: [] }
+function applyPostFilters(
+  results: SearchResultItem[],
+  query: SearchQuery,
+  taggedIds: Set<string> | null
+): SearchResultItem[] {
+  let filtered = results
 
-  const ftsQuery = buildPrefixQuery(escapedQuery)
-  if (!ftsQuery) return { notes: [] }
+  if (taggedIds && taggedIds.size > 0) {
+    filtered = filtered.filter((r) => taggedIds.has(r.id))
+  }
 
-  const results = db.all<{
-    id: string
-    path: string
-    title: string
-    snippet: string
-    score: number
-    createdAt: string
-    modifiedAt: string
-  }>(sql`
-    SELECT
-      nc.id,
-      nc.path,
-      nc.title,
-      snippet(fts_notes, 2, '<mark>', '</mark>', '...', 20) as snippet,
-      bm25(fts_notes, 2.0, 1.0, 1.0) as score,
-      nc.created_at as createdAt,
-      nc.modified_at as modifiedAt
-    FROM fts_notes
-    INNER JOIN note_cache nc ON nc.id = fts_notes.id
-    WHERE fts_notes MATCH ${ftsQuery}
-    ORDER BY score DESC
-    LIMIT ${limit}
-  `)
+  if (query.dateRange) {
+    const { from, to } = query.dateRange
+    filtered = filtered.filter((r) => r.modifiedAt >= from && r.modifiedAt <= to)
+  }
 
-  const notes: SearchResultNote[] = results.map((row) => ({
-    id: row.id,
-    path: row.path,
-    title: row.title,
-    snippet: row.snippet || '',
-    score: Math.abs(row.score),
-    matchedIn: ['title', 'content'], // Simplified for quick search
-    createdAt: row.createdAt,
-    modifiedAt: row.modifiedAt,
-    tags: getTagsForNote(db, row.id)
-  }))
+  if (query.projectId) {
+    filtered = filtered.filter(
+      (r) => r.metadata.type === 'task' && r.metadata.projectId === query.projectId
+    )
+  }
 
-  return { notes }
+  if (query.folderPath) {
+    const prefix = query.folderPath
+    filtered = filtered.filter(
+      (r) =>
+        (r.metadata.type === 'note' || r.metadata.type === 'journal') &&
+        r.metadata.path.startsWith(prefix)
+    )
+  }
+
+  return filtered
 }
 
-export function advancedSearch(
-  db: DrizzleDb,
-  rawDb: RawSqliteDb,
-  options: AdvancedSearchOptions
-): AdvancedSearchResultNote[] {
-  const {
-    text = '',
-    operators = {},
-    titleOnly = false,
-    sortBy = 'modified',
-    sortDirection = 'desc',
-    folder,
-    dateFrom,
-    dateTo,
-    limit = 50,
-    offset = 0
-  } = options
-
-  const hasTextQuery = text.trim().length > 0
-  const hasFilters =
-    operators.path ||
-    operators.file ||
-    (operators.tags && operators.tags.length > 0) ||
-    (operators.properties && operators.properties.length > 0) ||
-    folder ||
-    dateFrom ||
-    dateTo
-
-  if (!hasTextQuery && !hasFilters) {
-    return getRecentNotes(db, limit, offset, sortBy, sortDirection)
+function loadFuzzyCandidates(indexDb: DrizzleDb, dataDb: DrizzleDb, type: ContentType) {
+  switch (type) {
+    case 'note':
+      return getNoteTitles(indexDb)
+    case 'journal':
+      return getJournalTitles(indexDb)
+    case 'task':
+      return getTaskTitles(dataDb)
+    case 'inbox':
+      return getInboxTitles(dataDb)
   }
-
-  let baseQuery: string
-  const queryParams: unknown[] = []
-
-  if (hasTextQuery) {
-    const escapedQuery = escapeSearchQuery(text)
-    const ftsQuery = titleOnly ? buildTitleOnlyQuery(escapedQuery) : buildPrefixQuery(escapedQuery)
-
-    if (!ftsQuery) {
-      return hasFilters ? getFilteredNotes(db, rawDb, options) : []
-    }
-
-    baseQuery = `
-      SELECT
-        nc.id,
-        nc.path,
-        nc.title,
-        nc.emoji,
-        snippet(fts_notes, 2, '<mark>', '</mark>', '...', 30) as snippet,
-        bm25(fts_notes, 2.0, 1.0, 1.0) as score,
-        nc.created_at as createdAt,
-        nc.modified_at as modifiedAt
-      FROM fts_notes
-      INNER JOIN note_cache nc ON nc.id = fts_notes.id
-      WHERE fts_notes MATCH ?
-    `
-    queryParams.push(ftsQuery)
-  } else {
-    baseQuery = `
-      SELECT
-        nc.id,
-        nc.path,
-        nc.title,
-        nc.emoji,
-        nc.snippet as snippet,
-        1.0 as score,
-        nc.created_at as createdAt,
-        nc.modified_at as modifiedAt
-      FROM note_cache nc
-      WHERE 1=1
-    `
-  }
-
-  if (operators.path) {
-    const normalizedPath = normalizePathFilter(operators.path)
-    baseQuery += ` AND nc.path LIKE ?`
-    queryParams.push(`%${normalizedPath}%`)
-  }
-
-  if (operators.file) {
-    baseQuery += ` AND nc.path LIKE ?`
-    queryParams.push(`%/${operators.file}%`)
-  }
-
-  if (folder) {
-    const normalizedFolder = normalizePathFilter(folder)
-    baseQuery += ` AND nc.path LIKE ?`
-    queryParams.push(`%${normalizedFolder}%`)
-  }
-
-  if (operators.file) {
-    baseQuery += ` AND nc.path LIKE ?`
-    queryParams.push(`%/${operators.file}%`)
-  }
-
-  if (folder) {
-    const normalizedFolder = normalizePathFilter(folder)
-    baseQuery += ` AND nc.path LIKE ?`
-    queryParams.push(`%${normalizedFolder}%`)
-  }
-
-  if (dateFrom) {
-    baseQuery += ` AND nc.modified_at >= ?`
-    queryParams.push(dateFrom)
-  }
-
-  if (dateTo) {
-    baseQuery += ` AND nc.modified_at <= ?`
-    queryParams.push(dateTo)
-  }
-
-  if (operators.tags && operators.tags.length > 0) {
-    const tagPlaceholders = operators.tags.map(() => '?').join(', ')
-    baseQuery += ` AND nc.id IN (
-      SELECT note_id FROM note_tags WHERE LOWER(tag) IN (${tagPlaceholders})
-    )`
-    queryParams.push(...operators.tags.map((t) => t.toLowerCase()))
-  }
-
-  if (operators.properties && operators.properties.length > 0) {
-    for (const prop of operators.properties) {
-      baseQuery += ` AND nc.id IN (
-        SELECT note_id FROM note_properties WHERE name = ? AND value = ?
-      )`
-      queryParams.push(prop.name, prop.value)
-    }
-  }
-
-  const orderClause = buildOrderClause(sortBy, sortDirection, hasTextQuery)
-  baseQuery += ` ${orderClause} LIMIT ? OFFSET ?`
-  queryParams.push(limit, offset)
-
-  const stmt = rawDb.prepare(baseQuery)
-  const results = stmt.all(...queryParams) as {
-    id: string
-    path: string
-    title: string
-    emoji: string | null
-    snippet: string
-    score: number
-    createdAt: string
-    modifiedAt: string
-  }[]
-
-  return results.map((row) => ({
-    id: row.id,
-    path: row.path,
-    title: row.title,
-    emoji: row.emoji,
-    snippet: row.snippet || '',
-    score: Math.abs(row.score),
-    matchedIn: hasTextQuery ? (['title', 'content'] as const) : ([] as const),
-    createdAt: row.createdAt,
-    modifiedAt: row.modifiedAt,
-    tags: getTagsForNote(db, row.id)
-  }))
-}
-
-function buildTitleOnlyQuery(query: string): string {
-  const terms = query.split(/\s+/).filter((t) => t.length > 0)
-  if (terms.length === 0) return ''
-  return terms.map((term) => `title:"${term}"*`).join(' ')
-}
-
-function buildOrderClause(sortBy: string, sortDirection: string, hasTextQuery: boolean): string {
-  const dir = sortDirection === 'asc' ? 'ASC' : 'DESC'
-
-  switch (sortBy) {
-    case 'relevance':
-      return hasTextQuery ? `ORDER BY score ${dir}` : `ORDER BY modified_at DESC`
-    case 'created':
-      return `ORDER BY created_at ${dir}`
-    case 'title':
-      return `ORDER BY title ${dir}`
-    case 'modified':
-    default:
-      return `ORDER BY modified_at ${dir}`
-  }
-}
-
-function getRecentNotes(
-  db: DrizzleDb,
-  limit: number,
-  offset: number,
-  sortBy: string,
-  sortDirection: string
-): AdvancedSearchResultNote[] {
-  const orderClause = buildOrderClause(sortBy, sortDirection, false)
-
-  const results = db.all<{
-    id: string
-    path: string
-    title: string
-    emoji: string | null
-    snippet: string | null
-    createdAt: string
-    modifiedAt: string
-  }>(sql`
-    SELECT
-      id,
-      path,
-      title,
-      emoji,
-      snippet,
-      created_at as createdAt,
-      modified_at as modifiedAt
-    FROM note_cache
-    ${sql.raw(orderClause)}
-    LIMIT ${limit}
-    OFFSET ${offset}
-  `)
-
-  return results.map((row) => ({
-    id: row.id,
-    path: row.path,
-    title: row.title,
-    emoji: row.emoji,
-    snippet: row.snippet || '',
-    score: 1.0,
-    matchedIn: [],
-    createdAt: row.createdAt,
-    modifiedAt: row.modifiedAt,
-    tags: getTagsForNote(db, row.id)
-  }))
-}
-
-function getFilteredNotes(
-  db: DrizzleDb,
-  rawDb: RawSqliteDb,
-  options: AdvancedSearchOptions
-): AdvancedSearchResultNote[] {
-  return advancedSearch(db, rawDb, { ...options, text: '' })
-}
-
-export function getSuggestions(
-  db: DrizzleDb,
-  prefix: string,
-  limit: number = 5
-): SearchSuggestion[] {
-  const suggestions: SearchSuggestion[] = []
-  const normalizedPrefix = prefix.toLowerCase().trim()
-
-  if (!normalizedPrefix) return suggestions
-
-  // Get matching tags
-  const matchingTags = db.all<{ tag: string; count: number }>(sql`
-    SELECT tag, COUNT(*) as count
-    FROM note_tags
-    WHERE tag LIKE ${normalizedPrefix + '%'}
-    GROUP BY tag
-    ORDER BY count DESC
-    LIMIT ${Math.ceil(limit / 2)}
-  `)
-
-  for (const row of matchingTags) {
-    suggestions.push({
-      text: row.tag,
-      type: 'tag',
-      count: row.count
-    })
-  }
-
-  // Get matching note titles
-  const matchingTitles = db.all<{ title: string }>(sql`
-    SELECT DISTINCT title
-    FROM note_cache
-    WHERE LOWER(title) LIKE ${normalizedPrefix + '%'}
-    ORDER BY modified_at DESC
-    LIMIT ${limit - suggestions.length}
-  `)
-
-  for (const row of matchingTitles) {
-    suggestions.push({
-      text: row.title,
-      type: 'title'
-    })
-  }
-
-  return suggestions.slice(0, limit)
-}
-
-/**
- * Search for notes containing a specific tag.
- *
- * @param db - Drizzle database instance
- * @param tag - Tag to search for
- * @param limit - Maximum results (default 50)
- * @returns Array of notes with the tag
- */
-export function findNotesByTag(db: DrizzleDb, tag: string, limit: number = 50): SearchResultNote[] {
-  const normalizedTag = tag.toLowerCase().trim()
-
-  const results = db.all<{
-    id: string
-    path: string
-    title: string
-    createdAt: string
-    modifiedAt: string
-  }>(sql`
-    SELECT
-      nc.id,
-      nc.path,
-      nc.title,
-      nc.created_at as createdAt,
-      nc.modified_at as modifiedAt
-    FROM note_cache nc
-    INNER JOIN note_tags nt ON nt.note_id = nc.id
-    WHERE nt.tag = ${normalizedTag}
-    ORDER BY nc.modified_at DESC
-    LIMIT ${limit}
-  `)
-
-  return results.map((row) => ({
-    id: row.id,
-    path: row.path,
-    title: row.title,
-    snippet: '', // note_cache doesn't store snippets
-    score: 1.0,
-    matchedIn: ['tags'] as ('title' | 'content' | 'tags')[],
-    createdAt: row.createdAt,
-    modifiedAt: row.modifiedAt,
-    tags: getTagsForNote(db, row.id)
-  }))
-}
-
-/**
- * Find notes that link to a specific note (backlinks).
- *
- * @param db - Drizzle database instance
- * @param noteId - Target note ID
- * @param limit - Maximum results (default 50)
- * @returns Array of notes linking to the target
- */
-export function findBacklinks(
-  db: DrizzleDb,
-  noteId: string,
-  limit: number = 50
-): SearchResultNote[] {
-  const results = db.all<{
-    id: string
-    path: string
-    title: string
-    createdAt: string
-    modifiedAt: string
-  }>(sql`
-    SELECT
-      nc.id,
-      nc.path,
-      nc.title,
-      nc.created_at as createdAt,
-      nc.modified_at as modifiedAt
-    FROM note_cache nc
-    INNER JOIN note_links nl ON nl.source_id = nc.id
-    WHERE nl.target_id = ${noteId}
-    ORDER BY nc.modified_at DESC
-    LIMIT ${limit}
-  `)
-
-  return results.map((row) => ({
-    id: row.id,
-    path: row.path,
-    title: row.title,
-    snippet: '', // note_cache doesn't store snippets
-    score: 1.0,
-    matchedIn: ['content'] as ('title' | 'content' | 'tags')[],
-    createdAt: row.createdAt,
-    modifiedAt: row.modifiedAt,
-    tags: getTagsForNote(db, row.id)
-  }))
 }
 
 // ============================================================================
-// Helper Functions
+// Orchestrator
 // ============================================================================
 
-/**
- * Get tags for a specific note.
- */
-function getTagsForNote(db: DrizzleDb, noteId: string): string[] {
-  const results = db.all<{ tag: string }>(sql`
-    SELECT tag FROM note_tags WHERE note_id = ${noteId}
-  `)
-  return results.map((r) => r.tag)
-}
+export function searchAll(
+  indexDb: DrizzleDb,
+  dataDb: DrizzleDb,
+  query: SearchQuery
+): SearchResponse {
+  const startTime = performance.now()
+  const truncated = truncateQuery(query.text)
+  const hasOperators = /\b(AND|OR|NOT)\b/.test(truncated) || /"[^"]+"/.test(truncated)
+  const ftsQuery = hasOperators ? parseSearchQuery(truncated) : buildPrefixQuery(truncated)
 
-/**
- * Determine which fields matched the search query.
- */
-function determineMatchedFields(
-  query: string,
-  title: string,
-  content: string,
-  tags: string
-): ('title' | 'content' | 'tags')[] {
-  const matched: ('title' | 'content' | 'tags')[] = []
-  const queryLower = query.toLowerCase()
-  const terms = queryLower.split(/\s+/)
+  if (!ftsQuery) {
+    return { groups: [], totalCount: 0, queryTimeMs: 0 }
+  }
 
-  for (const term of terms) {
-    if (title && title.toLowerCase().includes(term)) {
-      if (!matched.includes('title')) matched.push('title')
+  const activeTypes =
+    query.types.length > 0 ? query.types : (['note', 'journal', 'task', 'inbox'] as ContentType[])
+
+  const hasFilters = query.tags.length > 0 || query.dateRange !== null
+  const fetchLimit = hasFilters ? query.limit * 5 : query.limit
+
+  const groups: SearchResultGroup[] = []
+  let totalCount = 0
+
+  for (const type of activeTypes) {
+    let results: SearchResultItem[] = []
+
+    try {
+      switch (type) {
+        case 'note':
+          results = searchNotes(indexDb, ftsQuery, fetchLimit)
+          break
+        case 'journal':
+          results = searchJournals(indexDb, ftsQuery, fetchLimit)
+          break
+        case 'task':
+          results = searchTasks(dataDb, ftsQuery, fetchLimit)
+          break
+        case 'inbox':
+          results = searchInbox(dataDb, ftsQuery, fetchLimit)
+          break
+      }
+    } catch (error) {
+      logger.warn(`Search failed for type ${type}:`, error)
+      continue
     }
-    if (content && content.toLowerCase().includes(term)) {
-      if (!matched.includes('content')) matched.push('content')
+
+    if (hasFilters) {
+      const taggedIds =
+        query.tags.length > 0 ? getItemTagIds(indexDb, dataDb, type, query.tags) : null
+      results = applyPostFilters(results, query, taggedIds).slice(0, query.limit)
     }
-    if (tags && tags.toLowerCase().includes(term)) {
-      if (!matched.includes('tags')) matched.push('tags')
+
+    const normalized = normalizeScores(results)
+
+    if (normalized.length < FUZZY_FALLBACK_THRESHOLD) {
+      try {
+        const candidates = loadFuzzyCandidates(indexDb, dataDb, type)
+        const existingIds = new Set(normalized.map((r) => r.id))
+        const fuzzyResults = fuzzySearchTitles(candidates, query.text, query.limit).filter(
+          (r) => !existingIds.has(r.id)
+        )
+
+        const merged = [...normalized, ...fuzzyResults].slice(0, query.limit)
+        if (merged.length > 0) {
+          groups.push({ type, results: merged, totalInGroup: merged.length })
+          totalCount += merged.length
+        }
+      } catch (error) {
+        logger.warn(`Fuzzy fallback failed for type ${type}:`, error)
+        if (normalized.length > 0) {
+          groups.push({ type, results: normalized, totalInGroup: normalized.length })
+          totalCount += normalized.length
+        }
+      }
+    } else {
+      groups.push({ type, results: normalized, totalInGroup: normalized.length })
+      totalCount += normalized.length
     }
   }
 
-  return matched.length > 0 ? matched : ['content']
+  const queryTimeMs = Math.round(performance.now() - startTime)
+  return { groups, totalCount, queryTimeMs }
 }
 
-/**
- * Get total count of searchable notes.
- */
-export function getSearchableCount(db: DrizzleDb): number {
-  const result = db.get<{ count: number }>(sql`
-    SELECT COUNT(*) as count FROM fts_notes
-  `)
-  return result?.count ?? 0
+export function quickSearch(
+  indexDb: DrizzleDb,
+  dataDb: DrizzleDb,
+  text: string
+): QuickSearchResponse {
+  const startTime = performance.now()
+  const query: SearchQuery = {
+    text,
+    types: [],
+    tags: [],
+    dateRange: null,
+    projectId: null,
+    folderPath: null,
+    limit: 5,
+    offset: 0
+  }
+
+  const response = searchAll(indexDb, dataDb, query)
+
+  const allResults = response.groups
+    .flatMap((g) => g.results)
+    .sort((a, b) => b.normalizedScore - a.normalizedScore)
+    .slice(0, 20)
+
+  const queryTimeMs = Math.round(performance.now() - startTime)
+  return { results: allResults, queryTimeMs }
 }
 
-/**
- * Check if FTS index is healthy (has same count as note_cache).
- */
-export function isFtsHealthy(db: DrizzleDb): boolean {
-  const ftsCount = db.get<{ count: number }>(sql`
-    SELECT COUNT(*) as count FROM fts_notes
-  `)
-  const cacheCount = db.get<{ count: number }>(sql`
-    SELECT COUNT(*) as count FROM note_cache
-  `)
+export function getSearchStats(indexDb: DrizzleDb, dataDb: DrizzleDb): SearchStats {
+  const notesResult = indexDb.get<{ count: number }>(
+    sql`SELECT COUNT(*) as count FROM note_cache WHERE date IS NULL`
+  )
+  const journalsResult = indexDb.get<{ count: number }>(
+    sql`SELECT COUNT(*) as count FROM note_cache WHERE date IS NOT NULL`
+  )
+  const tasksResult = dataDb.get<{ count: number }>(sql`SELECT COUNT(*) as count FROM tasks`)
+  const inboxResult = dataDb.get<{ count: number }>(sql`SELECT COUNT(*) as count FROM inbox_items`)
 
-  return (ftsCount?.count ?? 0) === (cacheCount?.count ?? 0)
+  const totalNotes = notesResult?.count ?? 0
+  const totalJournals = journalsResult?.count ?? 0
+  const totalTasks = tasksResult?.count ?? 0
+  const totalInboxItems = inboxResult?.count ?? 0
+
+  return {
+    totalNotes,
+    totalJournals,
+    totalTasks,
+    totalInboxItems,
+    totalIndexed: totalNotes + totalJournals + totalTasks + totalInboxItems,
+    lastIndexedAt: null
+  }
 }

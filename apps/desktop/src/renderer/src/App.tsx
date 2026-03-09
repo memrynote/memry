@@ -22,19 +22,19 @@ import { TasksProvider } from '@/contexts/tasks'
 import { TabBarWithDrag, TabDragProvider, TabErrorBoundary } from '@/components/tabs'
 import { SplitViewContainer, SinglePaneContent } from '@/components/split-view'
 import { ChordIndicator, KeyboardShortcutsDialog } from '@/components/keyboard'
-import { CommandPalette } from '@/components/search'
 import {
   useTabKeyboardShortcuts,
   useChordShortcuts,
   useDragHandlers,
   useTaskOrder,
   useVault,
-  useSearchShortcut,
   useSettingsShortcut,
   useNewNoteShortcut,
   useUndoKeyboardShortcut,
-  useReminderNotifications
+  useReminderNotifications,
+  useSearchShortcut
 } from '@/hooks'
+import { CommandPalette } from '@/components/search/command-palette'
 import { useFolderViewEvents } from '@/hooks/use-folder-view-events'
 import { useFlushOnQuit } from '@/hooks/use-flush-on-quit'
 import { tasksService } from '@/services/tasks-service'
@@ -78,14 +78,10 @@ function TabPersistenceManager({ children }: { children: React.ReactNode }): Rea
 // MAIN APP CONTENT (inside TabProvider)
 // =============================================================================
 
-interface AppContentProps {
-  searchOpen: boolean
-  onSearchOpenChange: (open: boolean) => void
-}
-
-const AppContent = ({ searchOpen, onSearchOpenChange }: AppContentProps): React.JSX.Element => {
+const AppContent = (): React.JSX.Element => {
   const { state, openTab } = useTabs()
   const [showShortcutsDialog, setShowShortcutsDialog] = useState(false)
+  const [searchOpen, setSearchOpen] = useState(false)
 
   // Handle creating a new note
   const handleNewNote = useCallback(async () => {
@@ -116,7 +112,6 @@ const AppContent = ({ searchOpen, onSearchOpenChange }: AppContentProps): React.
   // Keyboard shortcuts
   useTabKeyboardShortcuts()
   const isChordActive = useChordShortcuts()
-  useSearchShortcut(() => onSearchOpenChange(true))
   useSettingsShortcut(() => {
     openTab({
       type: 'settings',
@@ -133,57 +128,7 @@ const AppContent = ({ searchOpen, onSearchOpenChange }: AppContentProps): React.
   useUndoKeyboardShortcut() // T051-T054: Cmd+Z for task undo
   useReminderNotifications() // T231-T233: In-app toast notifications for reminders
   useFolderViewEvents() // Global cache invalidation for folder-view tabs
-
-  const openNoteOrJournalTab = useCallback(
-    (noteId: string, path: string, isPreview: boolean) => {
-      const journalDateMatch = path.match(/^journal\/(\d{4}-\d{2}-\d{2})\.md$/)
-
-      if (journalDateMatch) {
-        const date = journalDateMatch[1]
-        openTab({
-          type: 'journal',
-          title: 'Journal',
-          icon: 'book-open',
-          path: '/journal',
-          entityId: undefined,
-          isPinned: false,
-          isModified: false,
-          isPreview: false,
-          isDeleted: false,
-          viewState: { date }
-        })
-      } else {
-        openTab({
-          type: 'note',
-          title: 'Note',
-          icon: 'file-text',
-          path: `/note/${noteId}`,
-          entityId: noteId,
-          isPinned: false,
-          isModified: false,
-          isPreview,
-          isDeleted: false
-        })
-      }
-    },
-    [openTab]
-  )
-
-  const handleSelectSearchResult = useCallback(
-    (noteId: string, path: string) => {
-      openNoteOrJournalTab(noteId, path, true)
-      onSearchOpenChange(false)
-    },
-    [openNoteOrJournalTab, onSearchOpenChange]
-  )
-
-  const handleSelectSearchResultNewTab = useCallback(
-    (noteId: string, path: string) => {
-      openNoteOrJournalTab(noteId, path, false)
-      onSearchOpenChange(false)
-    },
-    [openNoteOrJournalTab, onSearchOpenChange]
-  )
+  useSearchShortcut(useCallback(() => setSearchOpen((prev) => !prev), []))
 
   // Get active group for tab bar
   const activeGroupId = state.activeGroupId
@@ -269,13 +214,8 @@ const AppContent = ({ searchOpen, onSearchOpenChange }: AppContentProps): React.
         onClose={() => setShowShortcutsDialog(false)}
       />
 
-      {/* Command Palette (Advanced Search) */}
-      <CommandPalette
-        isOpen={searchOpen}
-        onClose={() => onSearchOpenChange(false)}
-        onSelectNote={handleSelectSearchResult}
-        onSelectNoteNewTab={handleSelectSearchResultNewTab}
-      />
+      {/* Global Search Command Palette */}
+      <CommandPalette open={searchOpen} onOpenChange={setSearchOpen} />
     </TabDragProvider>
   )
 }
@@ -303,9 +243,6 @@ function App(): React.JSX.Element {
 
   // Task selection state for drag-drop (lifted from TasksPage)
   const [selectedTaskIds, setSelectedTaskIds] = useState<Set<string>>(new Set())
-
-  // Search modal state
-  const [searchOpen, setSearchOpen] = useState(false)
 
   // Calculate view counts dynamically
   const viewCounts = useMemo(() => {
@@ -531,13 +468,9 @@ function App(): React.JSX.Element {
           <TabProvider>
             <TabPersistenceManager>
               <SidebarDrillDownProvider>
-                <AppSidebar
-                  currentPage={currentPage}
-                  viewCounts={viewCounts}
-                  onOpenSearch={() => setSearchOpen(true)}
-                />
+                <AppSidebar currentPage={currentPage} viewCounts={viewCounts} />
                 <SidebarInset className="flex flex-col">
-                  <AppContent searchOpen={searchOpen} onSearchOpenChange={setSearchOpen} />
+                  <AppContent />
                 </SidebarInset>
               </SidebarDrillDownProvider>
               {/* Drag Overlay - only for task drag to sidebar */}

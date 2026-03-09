@@ -30,9 +30,6 @@ jobs:
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
-        with:
-          version: 10
-
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
@@ -55,9 +52,6 @@ jobs:
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
-        with:
-          version: 10
-
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
@@ -68,4 +62,4 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Audit sync-server dependencies
-        run: pnpm --filter @memry/sync-server audit --audit-level high
+        run: cd apps/sync-server && pnpm audit --audit-level high

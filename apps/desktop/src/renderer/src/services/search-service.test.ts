@@ -1,88 +1,74 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest'
-import { createMockApi } from '@tests/setup-dom'
-import {
-  searchService,
-  onSearchIndexRebuildStarted,
-  onSearchIndexRebuildProgress,
-  onSearchIndexRebuildCompleted,
-  onSearchIndexCorrupt,
-  highlightTerms,
-  escapeHtml,
-  safeHighlight
-} from './search-service'
+import { describe, it, expect } from 'vitest'
+import { highlightTerms, stripMarkTags } from './search-service'
 
-describe('search-service', () => {
-  let api: any
-
-  beforeEach(() => {
-    api = createMockApi()
-    api.search.query = vi.fn().mockResolvedValue({ results: [], total: 0 })
-    api.search.quick = vi.fn().mockResolvedValue([])
-    api.search.suggestions = vi.fn().mockResolvedValue([])
-    api.search.getRecent = vi.fn().mockResolvedValue([])
-    api.search.clearRecent = vi.fn().mockResolvedValue({ success: true })
-    api.search.addRecent = vi.fn().mockResolvedValue({ success: true })
-    api.search.getStats = vi.fn().mockResolvedValue({})
-    api.search.rebuildIndex = vi.fn().mockResolvedValue({ success: true })
-    api.search.searchNotes = vi.fn().mockResolvedValue([])
-    api.search.findByTag = vi.fn().mockResolvedValue([])
-    api.search.findBacklinks = vi.fn().mockResolvedValue([])
-
-    api.onSearchIndexRebuildStarted = vi.fn().mockReturnValue(() => {})
-    api.onSearchIndexRebuildProgress = vi.fn().mockReturnValue(() => {})
-    api.onSearchIndexRebuildCompleted = vi.fn().mockReturnValue(() => {})
-    api.onSearchIndexCorrupt = vi.fn().mockReturnValue(() => {})
-    ;(window as Window & { api: unknown }).api = api
+describe('stripMarkTags', () => {
+  it('removes <mark> and </mark> tags', () => {
+    expect(stripMarkTags('<mark>hello</mark> world')).toBe('hello world')
   })
 
-  it('forwards search queries and related calls', async () => {
-    await searchService.query({ query: 'test' })
-    expect(api.search.query).toHaveBeenCalledWith({ query: 'test' })
-
-    await searchService.quick({ query: 'quick', limit: 5 })
-    expect(api.search.quick).toHaveBeenCalledWith({ query: 'quick', limit: 5 })
-
-    await searchService.suggestions({ prefix: 'ta' })
-    expect(api.search.suggestions).toHaveBeenCalledWith({ prefix: 'ta' })
-
-    await searchService.getRecent()
-    expect(api.search.getRecent).toHaveBeenCalled()
-
-    await searchService.clearRecent()
-    expect(api.search.clearRecent).toHaveBeenCalled()
-
-    await searchService.addRecent('task')
-    expect(api.search.addRecent).toHaveBeenCalledWith('task')
-
-    await searchService.rebuildIndex()
-    expect(api.search.rebuildIndex).toHaveBeenCalled()
-
-    await searchService.searchNotes('query', { tags: ['tag'] })
-    expect(api.search.searchNotes).toHaveBeenCalledWith('query', { tags: ['tag'] })
-
-    await searchService.findByTag('tag')
-    expect(api.search.findByTag).toHaveBeenCalledWith('tag')
-
-    await searchService.findBacklinks('note-1')
-    expect(api.search.findBacklinks).toHaveBeenCalledWith('note-1')
+  it('handles multiple mark tags', () => {
+    expect(stripMarkTags('<mark>a</mark> and <mark>b</mark>')).toBe('a and b')
   })
 
-  it('registers search index event subscriptions', () => {
-    const unsubscribe = vi.fn()
-    api.onSearchIndexRebuildStarted = vi.fn(() => unsubscribe)
-    api.onSearchIndexRebuildProgress = vi.fn(() => unsubscribe)
-    api.onSearchIndexRebuildCompleted = vi.fn(() => unsubscribe)
-    api.onSearchIndexCorrupt = vi.fn(() => unsubscribe)
-
-    expect(onSearchIndexRebuildStarted(vi.fn())).toBe(unsubscribe)
-    expect(onSearchIndexRebuildProgress(vi.fn())).toBe(unsubscribe)
-    expect(onSearchIndexRebuildCompleted(vi.fn())).toBe(unsubscribe)
-    expect(onSearchIndexCorrupt(vi.fn())).toBe(unsubscribe)
+  it('is case-insensitive', () => {
+    expect(stripMarkTags('<MARK>test</MARK>')).toBe('test')
   })
 
-  it('highlights and escapes search terms', () => {
-    expect(highlightTerms('Hello world', 'world')).toBe('Hello <mark>world</mark>')
-    expect(escapeHtml('<script>')).toBe('&lt;script&gt;')
-    expect(safeHighlight('<script>', 'script')).toBe('&lt;<mark>script</mark>&gt;')
+  it('returns unchanged text with no mark tags', () => {
+    expect(stripMarkTags('plain text')).toBe('plain text')
+  })
+
+  it('handles empty string', () => {
+    expect(stripMarkTags('')).toBe('')
+  })
+})
+
+describe('highlightTerms', () => {
+  it('splits text into highlighted and non-highlighted segments', () => {
+    // #given
+    const text = 'hello world hello'
+    const query = 'hello'
+
+    // #when
+    const segments = highlightTerms(text, query)
+
+    // #then
+    const highlighted = segments.filter((s) => s.highlight)
+    expect(highlighted.length).toBeGreaterThanOrEqual(1)
+    expect(highlighted[0].text.toLowerCase()).toBe('hello')
+  })
+
+  it('returns single non-highlighted segment for empty query', () => {
+    const segments = highlightTerms('some text', '')
+    expect(segments).toEqual([{ text: 'some text', highlight: false }])
+  })
+
+  it('returns single non-highlighted segment for whitespace query', () => {
+    const segments = highlightTerms('some text', '   ')
+    expect(segments).toEqual([{ text: 'some text', highlight: false }])
+  })
+
+  it('handles case-insensitive matching', () => {
+    const segments = highlightTerms('Hello World', 'hello')
+    const highlighted = segments.filter((s) => s.highlight)
+    expect(highlighted.length).toBe(1)
+    expect(highlighted[0].text).toBe('Hello')
+  })
+
+  it('highlights multiple different terms', () => {
+    const segments = highlightTerms('the quick brown fox', 'quick fox')
+    const highlighted = segments.filter((s) => s.highlight)
+    expect(highlighted).toHaveLength(2)
+  })
+
+  it('handles text with no matches', () => {
+    const segments = highlightTerms('hello world', 'xyz')
+    const highlighted = segments.filter((s) => s.highlight)
+    expect(highlighted).toHaveLength(0)
+  })
+
+  it('escapes regex special characters in query', () => {
+    const segments = highlightTerms('price is $100', '$100')
+    expect(segments.some((s) => s.highlight && s.text === '$100')).toBe(true)
   })
 })

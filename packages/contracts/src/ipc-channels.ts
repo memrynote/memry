@@ -175,51 +175,6 @@ export type TagsInvokeChannel = (typeof TagsChannels.invoke)[keyof typeof TagsCh
 export type TagsEventChannel = (typeof TagsChannels.events)[keyof typeof TagsChannels.events]
 
 // ============================================================================
-// Search Channels
-// ============================================================================
-
-export const SearchChannels = {
-  invoke: {
-    /** Full search with all options */
-    SEARCH: 'search:query',
-    /** Quick search for command palette / omnibar */
-    QUICK_SEARCH: 'search:quick',
-    /** Get search suggestions as user types */
-    SUGGESTIONS: 'search:suggestions',
-    /** Get recent searches */
-    GET_RECENT: 'search:get-recent',
-    /** Clear recent searches */
-    CLEAR_RECENT: 'search:clear-recent',
-    /** Add to recent searches */
-    ADD_RECENT: 'search:add-recent',
-    /** Get search index stats */
-    GET_STATS: 'search:get-stats',
-    /** Force rebuild search index */
-    REBUILD_INDEX: 'search:rebuild-index',
-    /** Search notes only (optimized) */
-    SEARCH_NOTES: 'search:notes',
-    /** Search tasks only (optimized) */
-    SEARCH_TASKS: 'search:tasks',
-    /** Find notes by tag */
-    FIND_BY_TAG: 'search:find-by-tag',
-    /** Find notes by backlink */
-    FIND_BACKLINKS: 'search:find-backlinks',
-    /** Advanced search with operators */
-    ADVANCED_SEARCH: 'search:advanced'
-  },
-  events: {
-    /** Index rebuild started */
-    INDEX_REBUILD_STARTED: 'search:index-rebuild-started',
-    /** Index rebuild progress */
-    INDEX_REBUILD_PROGRESS: 'search:index-rebuild-progress',
-    /** Index rebuild completed */
-    INDEX_REBUILD_COMPLETED: 'search:index-rebuild-completed',
-    /** Index corrupted, needs rebuild */
-    INDEX_CORRUPT: 'search:index-corrupt'
-  }
-} as const
-
-// ============================================================================
 // Tasks Channels
 // ============================================================================
 
@@ -365,9 +320,6 @@ export type VaultEventChannel = (typeof VaultChannels.events)[keyof typeof Vault
 
 export type NotesInvokeChannel = (typeof NotesChannels.invoke)[keyof typeof NotesChannels.invoke]
 export type NotesEventChannel = (typeof NotesChannels.events)[keyof typeof NotesChannels.events]
-
-export type SearchInvokeChannel = (typeof SearchChannels.invoke)[keyof typeof SearchChannels.invoke]
-export type SearchEventChannel = (typeof SearchChannels.events)[keyof typeof SearchChannels.events]
 
 export type TasksInvokeChannel = (typeof TasksChannels.invoke)[keyof typeof TasksChannels.invoke]
 export type TasksEventChannel = (typeof TasksChannels.events)[keyof typeof TasksChannels.events]
@@ -709,6 +661,44 @@ export type ReminderInvokeChannel =
   (typeof ReminderChannels.invoke)[keyof typeof ReminderChannels.invoke]
 export type ReminderEventChannel =
   (typeof ReminderChannels.events)[keyof typeof ReminderChannels.events]
+
+// ============================================================================
+// Search Channels
+// ============================================================================
+
+export const SearchChannels = {
+  invoke: {
+    /** Full cross-type search with filters */
+    QUERY: 'search:query',
+    /** Fast search for command palette (limited results, no filters) */
+    QUICK: 'search:quick',
+    /** Get aggregate counts for all indexed content */
+    GET_STATS: 'search:get-stats',
+    /** Trigger full index rebuild (all types) */
+    REBUILD_INDEX: 'search:rebuild-index',
+    /** Get recent search history */
+    GET_RECENT: 'search:get-recent',
+    /** Add a search to recent history */
+    ADD_RECENT: 'search:add-recent',
+    /** Clear all recent search history */
+    CLEAR_RECENT: 'search:clear-recent',
+    /** Get all tags across all content types */
+    GET_ALL_TAGS: 'search:get-all-tags'
+  },
+  events: {
+    /** Index rebuild has started */
+    INDEX_REBUILD_STARTED: 'search:index-rebuild-started',
+    /** Index rebuild progress update */
+    INDEX_REBUILD_PROGRESS: 'search:index-rebuild-progress',
+    /** Index rebuild completed successfully */
+    INDEX_REBUILD_COMPLETED: 'search:index-rebuild-completed',
+    /** Index corruption detected */
+    INDEX_CORRUPT: 'search:index-corrupt'
+  }
+} as const
+
+export type SearchInvokeChannel = (typeof SearchChannels.invoke)[keyof typeof SearchChannels.invoke]
+export type SearchEventChannel = (typeof SearchChannels.events)[keyof typeof SearchChannels.events]
 
 // ============================================================================
 // Folder View Channels (Bases-like database view)

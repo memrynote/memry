@@ -36,10 +36,6 @@ export * from './use-journal-scroll'
 // Vault management
 export * from './use-vault'
 
-// Search
-export * from './use-search'
-export * from './use-search-shortcut'
-
 // Settings
 export * from './use-settings-shortcut'
 
@@ -57,3 +53,7 @@ export * from './use-reminder-notifications'
 
 // Sync
 export * from './use-sync-status'
+
+// Search
+export * from './use-search-shortcut'
+export * from './use-search'

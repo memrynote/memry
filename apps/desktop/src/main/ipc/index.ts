@@ -1,6 +1,5 @@
 import { registerVaultHandlers, unregisterVaultHandlers } from './vault-handlers'
 import { registerNotesHandlers, unregisterNotesHandlers } from './notes-handlers'
-import { registerSearchHandlers, unregisterSearchHandlers } from './search-handlers'
 import { registerTasksHandlers, unregisterTasksHandlers } from './tasks-handlers'
 import {
   registerSavedFiltersHandlers,
@@ -17,6 +16,7 @@ import { registerFolderViewHandlers, unregisterFolderViewHandlers } from './fold
 import { registerPropertiesHandlers, unregisterPropertiesHandlers } from './properties-handlers'
 import { registerSyncHandlers, unregisterSyncHandlers, checkSyncIntegrity } from './sync-handlers'
 import { registerCryptoHandlers, unregisterCryptoHandlers } from './crypto-handlers'
+import { registerSearchHandlers, unregisterSearchHandlers } from './search-handlers'
 import { createLogger } from '../lib/logger'
 
 const ipcLog = createLogger('IPC')
@@ -49,9 +49,6 @@ export function registerAllHandlers(): void {
 
   // Register notes handlers
   registerNotesHandlers()
-
-  // Register search handlers
-  registerSearchHandlers()
 
   // Register tasks handlers
   registerTasksHandlers()
@@ -93,6 +90,9 @@ export function registerAllHandlers(): void {
   // Register crypto handlers
   registerCryptoHandlers()
 
+  // Register search handlers
+  registerSearchHandlers()
+
   handlersRegistered = true
   ipcLog.info('all handlers registered')
 }
@@ -108,7 +108,6 @@ export function unregisterAllHandlers(): void {
 
   unregisterVaultHandlers()
   unregisterNotesHandlers()
-  unregisterSearchHandlers()
   unregisterTasksHandlers()
   unregisterSavedFiltersHandlers()
   unregisterTemplatesHandlers()
@@ -122,6 +121,7 @@ export function unregisterAllHandlers(): void {
   unregisterPropertiesHandlers()
   unregisterSyncHandlers()
   unregisterCryptoHandlers()
+  unregisterSearchHandlers()
 
   handlersRegistered = false
   ipcLog.info('all handlers unregistered')
@@ -137,7 +137,6 @@ export function areHandlersRegistered(): boolean {
 // Re-export individual handler modules for direct access if needed
 export { registerVaultHandlers, unregisterVaultHandlers } from './vault-handlers'
 export { registerNotesHandlers, unregisterNotesHandlers } from './notes-handlers'
-export { registerSearchHandlers, unregisterSearchHandlers } from './search-handlers'
 export { registerTasksHandlers, unregisterTasksHandlers } from './tasks-handlers'
 export {
   registerSavedFiltersHandlers,
@@ -154,3 +153,4 @@ export { registerFolderViewHandlers, unregisterFolderViewHandlers } from './fold
 export { registerPropertiesHandlers, unregisterPropertiesHandlers } from './properties-handlers'
 export { registerSyncHandlers, unregisterSyncHandlers } from './sync-handlers'
 export { registerCryptoHandlers, unregisterCryptoHandlers } from './crypto-handlers'
+export { registerSearchHandlers, unregisterSearchHandlers } from './search-handlers'

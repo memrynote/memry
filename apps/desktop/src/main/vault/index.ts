@@ -35,6 +35,8 @@ import {
   runMigrations,
   runIndexMigrations,
   initializeFts,
+  initializeFtsTasks,
+  initializeFtsInbox,
   getDatabase,
   getIndexDatabase,
   checkIndexHealth,
@@ -204,8 +206,13 @@ async function openVault(vaultPath: string): Promise<void> {
   // Initialize data database
   initDatabase(dataDbPath)
 
+  // Create FTS5 virtual tables for tasks and inbox in data.db
+  const dataDb = getDatabase()
+  initializeFtsTasks(dataDb)
+  initializeFtsInbox(dataDb)
+
   // Seed default data (inbox project, etc.)
-  seedDefaults(getDatabase())
+  seedDefaults(dataDb)
 
   // Check index database health before proceeding
   const indexHealth: IndexHealth = checkIndexHealth(indexDbPath)
