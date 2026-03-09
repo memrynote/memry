@@ -270,6 +270,12 @@ export const inboxService = {
     return window.api.inbox.convertToNote(itemId)
   },
 
+  convertToTask: (
+    itemId: string
+  ): Promise<{ success: boolean; taskId: string | null; error?: string }> => {
+    return window.api.inbox.convertToTask(itemId)
+  },
+
   /**
    * Link an inbox item to an existing note.
    * @param itemId - Inbox item ID
