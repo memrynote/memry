@@ -663,6 +663,44 @@ export type ReminderEventChannel =
   (typeof ReminderChannels.events)[keyof typeof ReminderChannels.events]
 
 // ============================================================================
+// Search Channels
+// ============================================================================
+
+export const SearchChannels = {
+  invoke: {
+    /** Full cross-type search with filters */
+    QUERY: 'search:query',
+    /** Fast search for command palette (limited results, no filters) */
+    QUICK: 'search:quick',
+    /** Get aggregate counts for all indexed content */
+    GET_STATS: 'search:get-stats',
+    /** Trigger full index rebuild (all types) */
+    REBUILD_INDEX: 'search:rebuild-index',
+    /** Get recent search history */
+    GET_RECENT: 'search:get-recent',
+    /** Add a search to recent history */
+    ADD_RECENT: 'search:add-recent',
+    /** Clear all recent search history */
+    CLEAR_RECENT: 'search:clear-recent',
+    /** Get all tags across all content types */
+    GET_ALL_TAGS: 'search:get-all-tags'
+  },
+  events: {
+    /** Index rebuild has started */
+    INDEX_REBUILD_STARTED: 'search:index-rebuild-started',
+    /** Index rebuild progress update */
+    INDEX_REBUILD_PROGRESS: 'search:index-rebuild-progress',
+    /** Index rebuild completed successfully */
+    INDEX_REBUILD_COMPLETED: 'search:index-rebuild-completed',
+    /** Index corruption detected */
+    INDEX_CORRUPT: 'search:index-corrupt'
+  }
+} as const
+
+export type SearchInvokeChannel = (typeof SearchChannels.invoke)[keyof typeof SearchChannels.invoke]
+export type SearchEventChannel = (typeof SearchChannels.events)[keyof typeof SearchChannels.events]
+
+// ============================================================================
 // Folder View Channels (Bases-like database view)
 // ============================================================================
 
