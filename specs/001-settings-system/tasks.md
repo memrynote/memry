@@ -64,10 +64,10 @@
 
 **Independent Test**: Open settings → select theme → verify entire app changes immediately. Switch OS theme with "System" selected → verify app follows.
 
-- [ ] T025 [US1] Build GeneralSection component with theme selector (3-option segmented control: light/dark/system) in `apps/desktop/src/renderer/src/pages/settings/general-section.tsx`
-- [ ] T026 [US1] Create useThemeSync() hook that bridges GeneralSettings.theme → next-themes setTheme(), listens to settings:changed events in `apps/desktop/src/renderer/src/hooks/use-theme-sync.ts`
-- [ ] T027 [US1] Wire useThemeSync() into App.tsx inside ThemeProvider — ensure theme persists on restart and follows OS when "system" selected in `apps/desktop/src/renderer/src/App.tsx`
-- [ ] T028 [US1] Add accent color picker with hex presets to GeneralSection, apply via CSS custom property `--accent` in `apps/desktop/src/renderer/src/pages/settings/general-section.tsx`
+- [x] T025 [US1] Build GeneralSection component with theme selector (3-option segmented control: light/dark/system) in `apps/desktop/src/renderer/src/pages/settings/general-section.tsx`
+- [x] T026 [US1] Create useThemeSync() hook that bridges GeneralSettings.theme → next-themes setTheme(), listens to settings:changed events in `apps/desktop/src/renderer/src/hooks/use-theme-sync.ts`
+- [x] T027 [US1] Wire useThemeSync() into App.tsx inside ThemeProvider — ensure theme persists on restart and follows OS when "system" selected in `apps/desktop/src/renderer/src/App.tsx`
+- [x] T028 [US1] Add accent color picker with hex presets to GeneralSection, apply via CSS custom property `--accent` in `apps/desktop/src/renderer/src/pages/settings/general-section.tsx`
 
 **Checkpoint**: Theme switching works end-to-end. Restart preserves choice. "System" follows OS. Accent color applies globally.
 

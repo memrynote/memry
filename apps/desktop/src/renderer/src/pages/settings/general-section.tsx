@@ -1,4 +1,4 @@
-import { useCallback } from 'react'
+import { useCallback, useState } from 'react'
 import { Separator } from '@/components/ui/separator'
 import {
   Select,
@@ -9,18 +9,72 @@ import {
 } from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
 import { Label } from '@/components/ui/label'
-import { Info } from 'lucide-react'
+import { Input } from '@/components/ui/input'
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
+import { Info, Sun, Moon, Monitor, Check } from 'lucide-react'
 import { useTabPreferences } from '@/hooks/use-tab-preferences'
+import { useGeneralSettings } from '@/hooks/use-general-settings'
 import { useTabs } from '@/contexts/tabs'
 import { toast } from 'sonner'
+import { cn } from '@/lib/utils'
+
+const ACCENT_PRESETS = [
+  { value: '#6366f1', label: 'Indigo' },
+  { value: '#f59e0b', label: 'Amber' },
+  { value: '#10b981', label: 'Emerald' },
+  { value: '#ef4444', label: 'Red' },
+  { value: '#8b5cf6', label: 'Violet' },
+  { value: '#06b6d4', label: 'Cyan' },
+  { value: '#ec4899', label: 'Pink' },
+  { value: '#f97316', label: 'Orange' }
+] as const
+
+const HEX_COLOR_REGEX = /^#[0-9a-fA-F]{6}$/
 
 export function GeneralSettings() {
-  const { settings, isLoading, updateSettings } = useTabPreferences()
+  const {
+    settings: tabSettings,
+    isLoading: tabLoading,
+    updateSettings: updateTabSettings
+  } = useTabPreferences()
+  const {
+    settings: generalSettings,
+    isLoading: generalLoading,
+    updateSettings: updateGeneralSettings
+  } = useGeneralSettings()
   const { updateSettings: updateContextSettings } = useTabs()
+  const [customHex, setCustomHex] = useState('')
+
+  const isLoading = tabLoading || generalLoading
+
+  const handleThemeChange = useCallback(
+    async (value: string) => {
+      if (!value) return
+      const theme = value as 'light' | 'dark' | 'system'
+      const success = await updateGeneralSettings({ theme })
+      if (!success) toast.error('Failed to update theme')
+    },
+    [updateGeneralSettings]
+  )
+
+  const handleAccentChange = useCallback(
+    async (hex: string) => {
+      const success = await updateGeneralSettings({ accentColor: hex })
+      if (!success) toast.error('Failed to update accent color')
+    },
+    [updateGeneralSettings]
+  )
+
+  const handleCustomHexSubmit = useCallback(() => {
+    if (HEX_COLOR_REGEX.test(customHex)) {
+      void handleAccentChange(customHex)
+      setCustomHex('')
+    }
+  }, [customHex, handleAccentChange])
 
   const handlePreviewModeChange = useCallback(
     async (enabled: boolean) => {
-      const success = await updateSettings({ previewMode: enabled })
+      const success = await updateTabSettings({ previewMode: enabled })
       if (success) {
         updateContextSettings({ previewMode: enabled })
         toast.success(enabled ? 'Preview mode enabled' : 'Preview mode disabled')
@@ -28,12 +82,12 @@ export function GeneralSettings() {
         toast.error('Failed to update setting')
       }
     },
-    [updateSettings, updateContextSettings]
+    [updateTabSettings, updateContextSettings]
   )
 
   const handleRestoreSessionChange = useCallback(
     async (enabled: boolean) => {
-      const success = await updateSettings({ restoreSessionOnStart: enabled })
+      const success = await updateTabSettings({ restoreSessionOnStart: enabled })
       if (success) {
         updateContextSettings({ restoreSessionOnStart: enabled })
         toast.success(enabled ? 'Session will be restored on start' : 'Session restore disabled')
@@ -41,12 +95,12 @@ export function GeneralSettings() {
         toast.error('Failed to update setting')
       }
     },
-    [updateSettings, updateContextSettings]
+    [updateTabSettings, updateContextSettings]
   )
 
   const handleCloseButtonChange = useCallback(
     async (value: 'always' | 'hover' | 'active') => {
-      const success = await updateSettings({ tabCloseButton: value })
+      const success = await updateTabSettings({ tabCloseButton: value })
       if (success) {
         updateContextSettings({ tabCloseButton: value })
         toast.success('Close button visibility updated')
@@ -54,7 +108,7 @@ export function GeneralSettings() {
         toast.error('Failed to update setting')
       }
     },
-    [updateSettings, updateContextSettings]
+    [updateTabSettings, updateContextSettings]
   )
 
   if (isLoading) {
@@ -77,15 +131,111 @@ export function GeneralSettings() {
 
       <Separator />
 
+      {/* Theme Section */}
+      <div className="space-y-6">
+        <h4 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
+          Theme
+        </h4>
+
+        <div className="space-y-2">
+          <Label>Color Mode</Label>
+          <p className="text-sm text-muted-foreground">
+            Choose between light, dark, or follow your system preference
+          </p>
+          <ToggleGroup
+            type="single"
+            value={generalSettings.theme}
+            onValueChange={handleThemeChange}
+            className="justify-start"
+          >
+            <ToggleGroupItem value="light" aria-label="Light theme" className="gap-2 px-4">
+              <Sun className="w-4 h-4" />
+              Light
+            </ToggleGroupItem>
+            <ToggleGroupItem value="dark" aria-label="Dark theme" className="gap-2 px-4">
+              <Moon className="w-4 h-4" />
+              Dark
+            </ToggleGroupItem>
+            <ToggleGroupItem value="system" aria-label="System theme" className="gap-2 px-4">
+              <Monitor className="w-4 h-4" />
+              System
+            </ToggleGroupItem>
+          </ToggleGroup>
+        </div>
+      </div>
+
+      <Separator />
+
+      {/* Accent Color Section */}
+      <div className="space-y-6">
+        <h4 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
+          Accent Color
+        </h4>
+
+        <div className="space-y-3">
+          <Label>Pick an accent color</Label>
+          <div className="flex flex-wrap gap-2">
+            {ACCENT_PRESETS.map((preset) => (
+              <button
+                key={preset.value}
+                type="button"
+                onClick={() => void handleAccentChange(preset.value)}
+                className={cn(
+                  'w-8 h-8 rounded-full transition-all duration-150 relative',
+                  'hover:scale-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                  generalSettings.accentColor === preset.value &&
+                    'ring-2 ring-offset-2 ring-offset-background ring-foreground/50'
+                )}
+                style={{ backgroundColor: preset.value }}
+                title={preset.label}
+              >
+                {generalSettings.accentColor === preset.value && (
+                  <Check className="w-4 h-4 text-white absolute inset-0 m-auto drop-shadow-sm" />
+                )}
+              </button>
+            ))}
+          </div>
+
+          <div className="flex items-center gap-2 max-w-xs">
+            <Input
+              placeholder="#hex"
+              value={customHex}
+              onChange={(e) => setCustomHex(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleCustomHexSubmit()}
+              className="w-28 font-mono text-sm"
+              maxLength={7}
+            />
+            {customHex && HEX_COLOR_REGEX.test(customHex) && (
+              <button
+                type="button"
+                onClick={handleCustomHexSubmit}
+                className="w-8 h-8 rounded-full border-2 border-border shrink-0 transition-transform hover:scale-110"
+                style={{ backgroundColor: customHex }}
+                title="Apply custom color"
+              />
+            )}
+            {generalSettings.accentColor &&
+              !ACCENT_PRESETS.some((p) => p.value === generalSettings.accentColor) && (
+                <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                  <div
+                    className="w-4 h-4 rounded-full ring-1 ring-border"
+                    style={{ backgroundColor: generalSettings.accentColor }}
+                  />
+                  <span className="font-mono">{generalSettings.accentColor}</span>
+                </div>
+              )}
+          </div>
+        </div>
+      </div>
+
+      <Separator />
+
       {/* Tab Behavior Section */}
       <div className="space-y-6">
-        <div>
-          <h4 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
-            Tab Behavior
-          </h4>
-        </div>
+        <h4 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
+          Tab Behavior
+        </h4>
 
-        {/* Preview Mode */}
         <div className="flex items-center justify-between">
           <div className="space-y-0.5">
             <Label htmlFor="preview-mode">Preview Mode</Label>
@@ -95,12 +245,11 @@ export function GeneralSettings() {
           </div>
           <Switch
             id="preview-mode"
-            checked={settings.previewMode}
+            checked={tabSettings.previewMode}
             onCheckedChange={handlePreviewModeChange}
           />
         </div>
 
-        {/* Restore Session */}
         <div className="flex items-center justify-between">
           <div className="space-y-0.5">
             <Label htmlFor="restore-session">Restore Session on Start</Label>
@@ -110,16 +259,15 @@ export function GeneralSettings() {
           </div>
           <Switch
             id="restore-session"
-            checked={settings.restoreSessionOnStart}
+            checked={tabSettings.restoreSessionOnStart}
             onCheckedChange={handleRestoreSessionChange}
           />
         </div>
 
-        {/* Tab Close Button */}
         <div className="space-y-2">
           <Label>Tab Close Button</Label>
           <p className="text-sm text-muted-foreground">When to show the close button on tabs</p>
-          <Select value={settings.tabCloseButton} onValueChange={handleCloseButtonChange}>
+          <Select value={tabSettings.tabCloseButton} onValueChange={handleCloseButtonChange}>
             <SelectTrigger className="w-full max-w-xs">
               <SelectValue />
             </SelectTrigger>
@@ -131,7 +279,6 @@ export function GeneralSettings() {
           </Select>
         </div>
 
-        {/* Info hint */}
         <div className="flex items-start gap-2 p-3 rounded-lg bg-muted/50 text-sm">
           <Info className="w-4 h-4 text-muted-foreground mt-0.5 flex-shrink-0" />
           <p className="text-muted-foreground">
