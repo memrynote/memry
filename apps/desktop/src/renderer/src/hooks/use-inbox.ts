@@ -617,6 +617,19 @@ export function useConvertToNote(): UseMutationResult<InboxFileResponse, Error, 
   })
 }
 
+export function useConvertToTask() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (itemId: string) => inboxService.convertToTask(itemId),
+    onSuccess: (_, itemId) => {
+      queryClient.removeQueries({ queryKey: inboxKeys.item(itemId) })
+      void queryClient.invalidateQueries({ queryKey: inboxKeys.lists() })
+      void queryClient.invalidateQueries({ queryKey: inboxKeys.stats() })
+    }
+  })
+}
+
 /**
  * Hook for linking an inbox item to an existing note.
  */

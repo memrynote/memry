@@ -18,7 +18,7 @@ import { getStatus, getConfig } from '../vault/index'
 import { inboxItems, inboxItemTags, filingHistory } from '@memry/db-schema/schema/inbox'
 import { generateId } from '../lib/id'
 import { eq } from 'drizzle-orm'
-import { InboxChannels } from '@memry/contracts/ipc-channels'
+import { InboxChannels, TasksChannels } from '@memry/contracts/ipc-channels'
 import { resolveAttachmentUrl, deleteInboxAttachments } from './attachments'
 
 const log = createLogger('Inbox:Filing')
@@ -590,6 +590,97 @@ export async function convertToNote(itemId: string): Promise<FileResponse> {
     const message = error instanceof Error ? error.message : 'Unknown error'
     log.error('Error converting to note:', message)
     return { success: false, filedTo: null, error: message }
+  }
+}
+
+/**
+ * Convert an inbox item to a task.
+ * Creates a task with the item title, content as description,
+ * and tags carried over. Marks the inbox item as filed.
+ *
+ * @param itemId - Inbox item ID
+ */
+export async function convertToTask(
+  itemId: string
+): Promise<{ success: boolean; taskId: string | null; error?: string }> {
+  try {
+    const db = requireDatabase()
+
+    const item = getInboxItem(db, itemId)
+    if (!item) {
+      return { success: false, taskId: null, error: 'Inbox item not found' }
+    }
+
+    if (item.filedAt) {
+      return { success: false, taskId: null, error: 'Item has already been filed' }
+    }
+
+    const existingTags = getItemTags(db, itemId)
+    const mergedTags = [...new Set([...existingTags, 'inbox'])]
+
+    const title = generateNoteTitle(item)
+    const description = item.content || null
+
+    const taskId = generateId()
+    const { insertTask, getNextTaskPosition, setTaskTags } =
+      await import('../database/queries/tasks')
+    const { getInboxProject } = await import('../database/queries/projects')
+
+    const inboxProject = getInboxProject(db)
+    if (!inboxProject) {
+      return { success: false, taskId: null, error: 'No inbox project found' }
+    }
+
+    const position = getNextTaskPosition(db, inboxProject.id, null)
+    const task = insertTask(db, {
+      id: taskId,
+      projectId: inboxProject.id,
+      statusId: null,
+      parentId: null,
+      title,
+      description,
+      priority: 0,
+      position,
+      dueDate: null,
+      dueTime: null,
+      startDate: null,
+      repeatConfig: null,
+      repeatFrom: null,
+      sourceNoteId: null
+    })
+
+    if (mergedTags.length > 0) {
+      setTaskTags(db, taskId, mergedTags)
+    }
+
+    log.info(`Converted to task: ${taskId}`)
+
+    markItemAsFiled(itemId, `task:${taskId}`, 'note')
+    recordFilingHistory(item.type, item.content, `task:${taskId}`, 'note', mergedTags)
+
+    const enrichedTask = { ...task, linkedNoteIds: [] as string[] }
+    BrowserWindow.getAllWindows().forEach((win) => {
+      win.webContents.send(TasksChannels.events.CREATED, { task: enrichedTask })
+    })
+
+    try {
+      const { getTaskSyncService } = await import('../sync/task-sync')
+      const { incrementTaskClocksOffline } = await import('../sync/offline-clock')
+      const svc = getTaskSyncService()
+      if (svc) {
+        svc.enqueueCreate(taskId)
+      } else {
+        incrementTaskClocksOffline(db, taskId, [])
+      }
+    } catch {
+      log.warn('Task sync unavailable, skipping sync for converted task')
+    }
+
+    return { success: true, taskId }
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown error'
+    log.error('Error converting to task:', message)
+    return { success: false, taskId: null, error: message }
   }
 }
 
