@@ -40,6 +40,7 @@ import { useFlushOnQuit } from '@/hooks/use-flush-on-quit'
 import { tasksService } from '@/services/tasks-service'
 import { notesService } from '@/services/notes-service'
 import { VaultOnboarding } from '@/components/vault-onboarding'
+import { useThemeSync } from '@/hooks/use-theme-sync'
 import { createLogger } from '@/lib/logger'
 
 const log = createLogger('App')
@@ -55,6 +56,15 @@ export type TaskSelectionType = 'view' | 'project'
 
 // Combined page type for routing
 export type AppPage = BasePage | 'tasks'
+
+// =============================================================================
+// THEME SYNC MANAGER (inside ThemeProvider)
+// =============================================================================
+
+function ThemeSyncManager({ children }: { children: React.ReactNode }): React.JSX.Element {
+  useThemeSync()
+  return <>{children}</>
+}
 
 // =============================================================================
 // TAB PERSISTENCE MANAGER (inside TabProvider)
@@ -495,7 +505,7 @@ function App(): React.JSX.Element {
 
   if (!isVaultOpen) {
     return (
-      <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
+      <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
         <VaultOnboarding />
         <Toaster />
       </ThemeProvider>
@@ -503,17 +513,19 @@ function App(): React.JSX.Element {
   }
 
   return (
-    <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
-      <SidebarProvider>
-        <DragProvider
-          tasks={tasks}
-          selectedIds={selectedTaskIds}
-          onDragEnd={(event, state) => void handleDragEnd(event, state)}
-        >
-          {mainContent}
-        </DragProvider>
-      </SidebarProvider>
-      <Toaster />
+    <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+      <ThemeSyncManager>
+        <SidebarProvider>
+          <DragProvider
+            tasks={tasks}
+            selectedIds={selectedTaskIds}
+            onDragEnd={(event, state) => void handleDragEnd(event, state)}
+          >
+            {mainContent}
+          </DragProvider>
+        </SidebarProvider>
+        <Toaster />
+      </ThemeSyncManager>
     </ThemeProvider>
   )
 }

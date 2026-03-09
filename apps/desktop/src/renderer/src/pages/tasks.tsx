@@ -53,6 +53,7 @@ import {
   useUndoTracker
 } from '@/hooks'
 import { useTasksContext } from '@/contexts/tasks'
+import { useTaskPreferences } from '@/hooks/use-task-preferences'
 import {
   BulkActionToolbar,
   BulkDeleteDialog,
@@ -116,6 +117,8 @@ export const TasksPage = ({
 
   // T051-T054: Undo tracking for Cmd+Z support
   const { registerUndo } = useUndoTracker()
+
+  const { settings: taskPrefs } = useTaskPreferences()
 
   // Local setter that updates via parent callback
   const setTasks = useCallback(
@@ -530,8 +533,11 @@ export const TasksPage = ({
     if (selectedType === 'project' && selectedProject) {
       return selectedProject.id
     }
+    if (taskPrefs.defaultProjectId) {
+      return taskPrefs.defaultProjectId
+    }
     return 'personal'
-  }, [selectedType, selectedProject])
+  }, [selectedType, selectedProject, taskPrefs.defaultProjectId])
 
   const modalDefaultDueDate = useMemo((): Date | null => {
     if (selectedId === 'today') {
@@ -557,6 +563,8 @@ export const TasksPage = ({
       if (!parsedData?.projectId) {
         if (selectedType === 'project' && selectedProject) {
           projectId = selectedProject.id
+        } else if (taskPrefs.defaultProjectId) {
+          projectId = taskPrefs.defaultProjectId
         } else {
           const personalProject = projects.find((p) => p.isDefault)
           if (personalProject) {
@@ -587,7 +595,14 @@ export const TasksPage = ({
       // Use context addTask to persist to database
       contextAddTask(newTask)
     },
-    [selectedId, selectedType, selectedProject, projects, contextAddTask]
+    [
+      selectedId,
+      selectedType,
+      selectedProject,
+      projects,
+      contextAddTask,
+      taskPrefs.defaultProjectId
+    ]
   )
 
   const handleToggleComplete = useCallback(

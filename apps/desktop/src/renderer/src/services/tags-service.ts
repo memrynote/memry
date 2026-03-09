@@ -1,6 +1,8 @@
 import type {
   TagsClientAPI,
   GetNotesByTagResponse,
+  GetAllWithCountsResponse,
+  MergeTagResponse,
   TagOperationResponse,
   RenameTagResponse,
   DeleteTagResponse,
@@ -66,6 +68,14 @@ export const tagsService: TagsClientAPI = {
    */
   removeTagFromNote: (input: { noteId: string; tag: string }): Promise<TagOperationResponse> => {
     return window.api.tags.removeTagFromNote(input)
+  },
+
+  getAllWithCounts: (): Promise<GetAllWithCountsResponse> => {
+    return window.api.tags.getAllWithCounts()
+  },
+
+  mergeTag: (input: { source: string; target: string }): Promise<MergeTagResponse> => {
+    return window.api.tags.mergeTag(input)
   }
 }
 
@@ -111,10 +121,13 @@ export function onTagNotesChanged(callback: (event: TagNotesChangedEvent) => voi
 
 export type {
   GetNotesByTagResponse,
+  GetAllWithCountsResponse,
+  MergeTagResponse,
   TagOperationResponse,
   RenameTagResponse,
   DeleteTagResponse,
   TagNoteItem,
+  TagWithCount,
   TagRenamedEvent,
   TagColorUpdatedEvent,
   TagDeletedEvent,
