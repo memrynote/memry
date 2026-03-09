@@ -16,15 +16,18 @@ import {
   RenameTagSchema,
   UpdateTagColorSchema,
   RemoveTagFromNoteSchema,
+  MergeTagSchema,
   type TagNoteItem,
   type GetNotesByTagResponse,
+  type GetAllWithCountsResponse,
+  type MergeTagResponse,
   type TagOperationResponse,
   type RenameTagResponse,
   type DeleteTagResponse
 } from '@memry/contracts/tags-api'
 import { noteTags } from '@memry/db-schema/schema/notes-cache'
 import { tagDefinitions } from '@memry/db-schema/schema/tag-definitions'
-import { createValidatedHandler, createStringHandler } from './validate'
+import { createValidatedHandler, createStringHandler, createHandler } from './validate'
 import { getDatabase, getIndexDatabase } from '../database'
 import {
   findNotesWithTagInfo,
@@ -34,18 +37,20 @@ import {
   deleteTag,
   removeTagFromNote,
   getOrCreateTag,
-  renameTagDefinition,
   deleteTagDefinition,
+  renameTagDefinition,
   updateTagColor,
   getNoteTags,
   getNoteCacheById
 } from '@main/database/queries/notes'
+import { getAllTagsWithCounts, mergeTagInNotes, mergeTagInTasks } from '@main/database/queries/tags'
 import { createLogger } from '../lib/logger'
 import { toAbsolutePath } from '../vault/notes'
 import { parseNote, serializeNote } from '../vault/frontmatter'
 import { atomicWrite } from '../vault/file-ops'
 import { getNoteSyncService } from '../sync/note-sync'
 import { getTagDefinitionSyncService } from '../sync/tag-definition-sync'
+import { getTaskSyncService } from '../sync/task-sync'
 
 const log = createLogger('TagsHandlers')
 
@@ -394,6 +399,86 @@ export function registerTagsHandlers(): void {
       }
     })
   )
+
+  // tags:get-all-with-counts - Aggregate tags from notes + tasks
+  ipcMain.handle(
+    TagsChannels.invoke.GET_ALL_WITH_COUNTS,
+    createHandler((): GetAllWithCountsResponse => {
+      const indexDb = requireIndexDatabase()
+      const dataDb = requireDatabase()
+      return { tags: getAllTagsWithCounts(indexDb, dataDb) }
+    })
+  )
+
+  // tags:merge - Merge source tag into target (deduplicate across notes + tasks)
+  ipcMain.handle(
+    TagsChannels.invoke.MERGE_TAG,
+    createValidatedHandler(MergeTagSchema, async (input): Promise<MergeTagResponse> => {
+      const indexDb = requireIndexDatabase()
+      const dataDb = requireDatabase()
+
+      const normalizedSource = input.source.toLowerCase().trim()
+      const normalizedTarget = input.target.toLowerCase().trim()
+
+      if (normalizedSource === normalizedTarget) {
+        return { success: false, error: 'Source and target tags are the same' }
+      }
+
+      try {
+        const noteResult = mergeTagInNotes(indexDb, normalizedSource, normalizedTarget)
+        const taskResult = mergeTagInTasks(dataDb, normalizedSource, normalizedTarget)
+
+        const sourceSnapshot = dataDb
+          .select()
+          .from(tagDefinitions)
+          .where(eq(tagDefinitions.name, normalizedSource))
+          .get()
+
+        deleteTagDefinition(dataDb, normalizedSource)
+        getOrCreateTag(dataDb, normalizedTarget)
+
+        const syncService = getTagDefinitionSyncService()
+        if (syncService && sourceSnapshot) {
+          syncService.enqueueDelete(normalizedSource, JSON.stringify(sourceSnapshot))
+          syncService.enqueueCreate(normalizedTarget)
+        }
+
+        await Promise.all(
+          noteResult.noteIds.map((noteId) =>
+            updateNoteFrontmatterTag(indexDb, noteId, (tags) => {
+              const withoutSource = tags.filter((t) => t.toLowerCase() !== normalizedSource)
+              const hasTarget = withoutSource.some((t) => t.toLowerCase() === normalizedTarget)
+              return hasTarget ? withoutSource : [...withoutSource, normalizedTarget]
+            }).catch((err) =>
+              log.warn('Failed to update frontmatter for note during merge', { noteId, err })
+            )
+          )
+        )
+
+        const taskSyncService = getTaskSyncService()
+        if (taskSyncService) {
+          for (const taskId of taskResult.taskIds) {
+            taskSyncService.enqueueUpdate(taskId)
+          }
+        }
+
+        emitTagEvent(TagsChannels.events.DELETED, {
+          tag: normalizedSource,
+          affectedNotes: noteResult.affected
+        })
+        emitTagEvent('notes:tags-changed', {})
+
+        return {
+          success: true,
+          affectedItems: noteResult.affected + taskResult.affected
+        }
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'Failed to merge tags'
+        log.error('Tag merge failed', { source: input.source, target: input.target, error })
+        return { success: false, error: message }
+      }
+    })
+  )
 }
 
 /**
@@ -407,4 +492,6 @@ export function unregisterTagsHandlers(): void {
   ipcMain.removeHandler(TagsChannels.invoke.UPDATE_TAG_COLOR)
   ipcMain.removeHandler(TagsChannels.invoke.DELETE_TAG)
   ipcMain.removeHandler(TagsChannels.invoke.REMOVE_TAG_FROM_NOTE)
+  ipcMain.removeHandler(TagsChannels.invoke.GET_ALL_WITH_COUNTS)
+  ipcMain.removeHandler(TagsChannels.invoke.MERGE_TAG)
 }

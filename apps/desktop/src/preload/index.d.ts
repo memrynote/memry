@@ -1200,6 +1200,20 @@ export interface DeleteTagResponse extends TagOperationResponse {
   affectedNotes?: number
 }
 
+export interface MergeTagResponse extends TagOperationResponse {
+  affectedItems?: number
+}
+
+export interface TagWithCount {
+  name: string
+  count: number
+  color?: string
+}
+
+export interface GetAllWithCountsResponse {
+  tags: TagWithCount[]
+}
+
 export interface TagRenamedEvent {
   oldName: string
   newName: string
@@ -1235,6 +1249,8 @@ export interface TagsClientAPI {
   updateTagColor(input: { tag: string; color: string }): Promise<TagOperationResponse>
   deleteTag(tag: string): Promise<DeleteTagResponse>
   removeTagFromNote(input: { noteId: string; tag: string }): Promise<TagOperationResponse>
+  getAllWithCounts(): Promise<GetAllWithCountsResponse>
+  mergeTag(input: { source: string; target: string }): Promise<MergeTagResponse>
 }
 
 // Inbox types

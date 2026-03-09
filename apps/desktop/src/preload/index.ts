@@ -777,7 +777,10 @@ export const api = {
     deleteTag: (tag: string) => invoke(TagsChannels.invoke.DELETE_TAG, tag),
     /** Remove tag from a specific note */
     removeTagFromNote: (input: { noteId: string; tag: string }) =>
-      invoke(TagsChannels.invoke.REMOVE_TAG_FROM_NOTE, input)
+      invoke(TagsChannels.invoke.REMOVE_TAG_FROM_NOTE, input),
+    getAllWithCounts: () => invoke(TagsChannels.invoke.GET_ALL_WITH_COUNTS),
+    mergeTag: (input: { source: string; target: string }) =>
+      invoke(TagsChannels.invoke.MERGE_TAG, input)
   },
 
   // Reminders API
