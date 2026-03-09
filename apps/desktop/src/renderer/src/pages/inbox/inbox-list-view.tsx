@@ -1,6 +1,6 @@
 import { useState, useCallback, useMemo, useEffect } from 'react'
 import { extractErrorMessage } from '@/lib/ipc-error'
-import { Check, Loader2, AlertCircle, Clock, Filter } from 'lucide-react'
+import { Check, Loader2, AlertCircle, Clock, Filter, Play } from 'lucide-react'
 import { useQueryClient } from '@tanstack/react-query'
 
 import { useTabs } from '@/contexts/tabs'
@@ -73,9 +73,14 @@ const ALLOWED_IMAGE_TYPES = ['image/png', 'image/jpeg', 'image/gif', 'image/webp
 export interface InboxListViewProps {
   notifications: UseInboxNotificationsResult
   className?: string
+  onEnterTriage?: () => void
 }
 
-export function InboxListView({ notifications, className }: InboxListViewProps): React.JSX.Element {
+export function InboxListView({
+  notifications,
+  className,
+  onEnterTriage
+}: InboxListViewProps): React.JSX.Element {
   const { addToast } = notifications
   const queryClient = useQueryClient()
   const { openTab } = useTabs()
@@ -926,6 +931,18 @@ export function InboxListView({ notifications, className }: InboxListViewProps):
                 />
               </div>
               <div className="flex items-center gap-2 mt-1.5">
+                {onEnterTriage && nonStaleItems.length > 0 && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={onEnterTriage}
+                    className="text-muted-foreground/60 hover:text-foreground hover:bg-foreground/5 gap-1.5"
+                    title="Process inbox (Cmd+P)"
+                  >
+                    <Play className="size-3.5" />
+                    <span className="text-xs">Process</span>
+                  </Button>
+                )}
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button
