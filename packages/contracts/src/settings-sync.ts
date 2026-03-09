@@ -5,15 +5,36 @@ export const SyncedSettingsSchema = z.object({
   general: z
     .object({
       theme: z.enum(['light', 'dark', 'system']).optional(),
-      language: z.string().optional(),
-      startOnBoot: z.boolean().optional()
+      fontSize: z.enum(['small', 'medium', 'large']).optional(),
+      fontFamily: z.enum(['system', 'serif', 'sans-serif', 'monospace']).optional(),
+      accentColor: z.string().optional(),
+      reducedMotion: z.boolean().optional(),
+      startOnBoot: z.boolean().optional(),
+      language: z.string().optional()
+    })
+    .optional(),
+  editor: z
+    .object({
+      width: z.enum(['narrow', 'medium', 'wide']).optional(),
+      spellCheck: z.boolean().optional(),
+      autoSaveDelay: z.number().optional(),
+      showWordCount: z.boolean().optional(),
+      toolbarMode: z.enum(['floating', 'sticky']).optional()
     })
     .optional(),
   tasks: z
     .object({
-      defaultProjectId: z.string().optional(),
+      defaultProjectId: z.string().nullable().optional(),
+      defaultSortOrder: z.enum(['manual', 'dueDate', 'priority', 'createdAt']).optional(),
+      weekStartDay: z.enum(['sunday', 'monday']).optional(),
+      staleInboxDays: z.number().optional(),
       showCompleted: z.boolean().optional(),
       sortBy: z.string().optional()
+    })
+    .optional(),
+  keyboard: z
+    .object({
+      overrides: z.record(z.string(), z.unknown()).optional()
     })
     .optional(),
   notes: z

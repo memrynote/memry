@@ -484,7 +484,32 @@ export const api = {
     // Note Editor Settings
     getNoteEditorSettings: () => invoke(SettingsChannels.invoke.GET_NOTE_EDITOR_SETTINGS),
     setNoteEditorSettings: (settings: { toolbarMode?: 'floating' | 'sticky' }) =>
-      invoke(SettingsChannels.invoke.SET_NOTE_EDITOR_SETTINGS, settings)
+      invoke(SettingsChannels.invoke.SET_NOTE_EDITOR_SETTINGS, settings),
+    // General Settings (theme, font, accent, etc.)
+    getGeneralSettings: () => invoke(SettingsChannels.invoke.GET_GENERAL_SETTINGS),
+    setGeneralSettings: (settings: Record<string, unknown>) =>
+      invoke(SettingsChannels.invoke.SET_GENERAL_SETTINGS, settings),
+    // Editor Settings (width, spellcheck, autosave, etc.)
+    getEditorSettings: () => invoke(SettingsChannels.invoke.GET_EDITOR_SETTINGS),
+    setEditorSettings: (settings: Record<string, unknown>) =>
+      invoke(SettingsChannels.invoke.SET_EDITOR_SETTINGS, settings),
+    // Task Settings (default project, sort order, etc.)
+    getTaskSettings: () => invoke(SettingsChannels.invoke.GET_TASK_SETTINGS),
+    setTaskSettings: (settings: Record<string, unknown>) =>
+      invoke(SettingsChannels.invoke.SET_TASK_SETTINGS, settings),
+    // Keyboard Settings (shortcut overrides, global capture)
+    getKeyboardSettings: () => invoke(SettingsChannels.invoke.GET_KEYBOARD_SETTINGS),
+    setKeyboardSettings: (settings: Record<string, unknown>) =>
+      invoke(SettingsChannels.invoke.SET_KEYBOARD_SETTINGS, settings),
+    resetKeyboardSettings: () => invoke(SettingsChannels.invoke.RESET_KEYBOARD_SETTINGS),
+    // Sync Settings (enabled, auto-sync)
+    getSyncSettings: () => invoke(SettingsChannels.invoke.GET_SYNC_SETTINGS),
+    setSyncSettings: (settings: Record<string, unknown>) =>
+      invoke(SettingsChannels.invoke.SET_SYNC_SETTINGS, settings),
+    // Backup Settings (auto-backup, frequency, etc.)
+    getBackupSettings: () => invoke(SettingsChannels.invoke.GET_BACKUP_SETTINGS),
+    setBackupSettings: (settings: Record<string, unknown>) =>
+      invoke(SettingsChannels.invoke.SET_BACKUP_SETTINGS, settings)
   },
 
   // Bookmarks API
@@ -752,7 +777,10 @@ export const api = {
     deleteTag: (tag: string) => invoke(TagsChannels.invoke.DELETE_TAG, tag),
     /** Remove tag from a specific note */
     removeTagFromNote: (input: { noteId: string; tag: string }) =>
-      invoke(TagsChannels.invoke.REMOVE_TAG_FROM_NOTE, input)
+      invoke(TagsChannels.invoke.REMOVE_TAG_FROM_NOTE, input),
+    getAllWithCounts: () => invoke(TagsChannels.invoke.GET_ALL_WITH_COUNTS),
+    mergeTag: (input: { source: string; target: string }) =>
+      invoke(TagsChannels.invoke.MERGE_TAG, input)
   },
 
   // Reminders API

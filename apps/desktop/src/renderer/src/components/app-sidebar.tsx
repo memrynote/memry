@@ -52,7 +52,7 @@ const quickActions = [
     title: 'Search',
     icon: Search,
     kbd: '⌘ K',
-    iconColor: 'text-accent-cyan',
+    iconColor: 'text-soft-sage',
     action: 'search' as const
   },
   {

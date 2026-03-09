@@ -7,8 +7,24 @@
  * @module main/ipc/settings-handlers
  */
 
-import { ipcMain, BrowserWindow } from 'electron'
+import { ipcMain, BrowserWindow, app } from 'electron'
 import { SettingsChannels } from '@memry/contracts/ipc-channels'
+import {
+  GENERAL_SETTINGS_DEFAULTS,
+  EDITOR_SETTINGS_DEFAULTS,
+  TASK_SETTINGS_DEFAULTS,
+  KEYBOARD_SHORTCUTS_DEFAULTS,
+  SYNC_SETTINGS_DEFAULTS,
+  BACKUP_SETTINGS_DEFAULTS
+} from '@memry/contracts/settings-schemas'
+import type {
+  GeneralSettings,
+  EditorSettings,
+  TaskSettings,
+  KeyboardShortcuts,
+  SyncSettings,
+  BackupSettings
+} from '@memry/contracts/settings-schemas'
 import { createLogger } from '../lib/logger'
 import { getDatabase } from '../database'
 import { getSetting, setSetting, deleteSetting } from '@main/database/queries/settings'
@@ -116,6 +132,53 @@ function getDbOrNull() {
   } catch {
     return null
   }
+}
+
+/**
+ * Read a JSON-blob settings group with corruption recovery (T015).
+ * If parse fails, deletes corrupted key and returns defaults.
+ */
+function readGroupSettings<T extends Record<string, unknown>>(groupKey: string, defaults: T): T {
+  const db = getDbOrNull()
+  if (!db) return { ...defaults }
+
+  const raw = getSetting(db, groupKey)
+  if (!raw) return { ...defaults }
+
+  try {
+    const parsed = JSON.parse(raw) as Partial<T>
+    return { ...defaults, ...parsed }
+  } catch {
+    logger.warn(`Corrupted settings for "${groupKey}", resetting to defaults`)
+    deleteSetting(db, groupKey)
+    return { ...defaults }
+  }
+}
+
+/**
+ * Write a partial update to a JSON-blob settings group.
+ * Merges with existing values and broadcasts change event.
+ */
+function writeGroupSettings<T extends Record<string, unknown>>(
+  groupKey: string,
+  defaults: T,
+  updates: Partial<T>
+): { success: boolean; error?: string } {
+  const db = getDbOrNull()
+  if (!db) return { success: false, error: 'No vault open' }
+
+  const current = readGroupSettings(groupKey, defaults)
+  const updated = { ...current, ...updates }
+  setSetting(db, groupKey, JSON.stringify(updated))
+
+  BrowserWindow.getAllWindows().forEach((win) => {
+    win.webContents.send(SettingsChannels.events.CHANGED, {
+      key: groupKey,
+      value: updates
+    })
+  })
+
+  return { success: true }
 }
 
 // ============================================================================
@@ -433,6 +496,93 @@ export function registerSettingsHandlers(): void {
     }
   )
 
+  // ==========================================================================
+  // New settings groups (JSON blob per group with corruption recovery)
+  // ==========================================================================
+
+  ipcMain.handle(SettingsChannels.invoke.GET_GENERAL_SETTINGS, () =>
+    readGroupSettings('general', GENERAL_SETTINGS_DEFAULTS)
+  )
+  ipcMain.handle(
+    SettingsChannels.invoke.SET_GENERAL_SETTINGS,
+    (_event, updates: Partial<GeneralSettings>) => {
+      const result = writeGroupSettings('general', GENERAL_SETTINGS_DEFAULTS, updates)
+      if (result.success && updates.startOnBoot !== undefined) {
+        try {
+          app.setLoginItemSettings({ openAtLogin: updates.startOnBoot })
+          logger.info(`Start on boot ${updates.startOnBoot ? 'enabled' : 'disabled'}`)
+        } catch (err) {
+          logger.warn('Failed to set login item:', err)
+        }
+      }
+      return result
+    }
+  )
+
+  ipcMain.handle(SettingsChannels.invoke.GET_EDITOR_SETTINGS, () =>
+    readGroupSettings('editor', EDITOR_SETTINGS_DEFAULTS)
+  )
+  ipcMain.handle(
+    SettingsChannels.invoke.SET_EDITOR_SETTINGS,
+    (_event, updates: Partial<EditorSettings>) =>
+      writeGroupSettings('editor', EDITOR_SETTINGS_DEFAULTS, updates)
+  )
+
+  ipcMain.handle(SettingsChannels.invoke.GET_TASK_SETTINGS, () =>
+    readGroupSettings('tasks', TASK_SETTINGS_DEFAULTS)
+  )
+  ipcMain.handle(
+    SettingsChannels.invoke.SET_TASK_SETTINGS,
+    (_event, updates: Partial<TaskSettings>) =>
+      writeGroupSettings('tasks', TASK_SETTINGS_DEFAULTS, updates)
+  )
+
+  ipcMain.handle(SettingsChannels.invoke.GET_KEYBOARD_SETTINGS, () =>
+    readGroupSettings('keyboard', KEYBOARD_SHORTCUTS_DEFAULTS)
+  )
+  ipcMain.handle(
+    SettingsChannels.invoke.SET_KEYBOARD_SETTINGS,
+    (_event, updates: Partial<KeyboardShortcuts>) =>
+      writeGroupSettings('keyboard', KEYBOARD_SHORTCUTS_DEFAULTS, updates)
+  )
+
+  ipcMain.handle(SettingsChannels.invoke.GET_SYNC_SETTINGS, () =>
+    readGroupSettings('sync', SYNC_SETTINGS_DEFAULTS)
+  )
+  ipcMain.handle(
+    SettingsChannels.invoke.SET_SYNC_SETTINGS,
+    (_event, updates: Partial<SyncSettings>) =>
+      writeGroupSettings('sync', SYNC_SETTINGS_DEFAULTS, updates)
+  )
+
+  ipcMain.handle(SettingsChannels.invoke.GET_BACKUP_SETTINGS, () =>
+    readGroupSettings('backup', BACKUP_SETTINGS_DEFAULTS)
+  )
+  ipcMain.handle(
+    SettingsChannels.invoke.SET_BACKUP_SETTINGS,
+    (_event, updates: Partial<BackupSettings>) =>
+      writeGroupSettings('backup', BACKUP_SETTINGS_DEFAULTS, updates)
+  )
+
+  // Keyboard shortcuts: reset to defaults
+  ipcMain.handle(SettingsChannels.invoke.RESET_KEYBOARD_SETTINGS, () => {
+    const db = getDbOrNull()
+    if (!db) {
+      return { success: false, error: 'No vault open' }
+    }
+
+    deleteSetting(db, 'keyboard')
+
+    BrowserWindow.getAllWindows().forEach((win) => {
+      win.webContents.send(SettingsChannels.events.CHANGED, {
+        key: 'keyboard',
+        value: KEYBOARD_SHORTCUTS_DEFAULTS
+      })
+    })
+
+    return { success: true }
+  })
+
   logger.info('Settings handlers registered')
 }
 
@@ -453,6 +603,20 @@ export function unregisterSettingsHandlers(): void {
   ipcMain.removeHandler(SettingsChannels.invoke.SET_TAB_SETTINGS)
   ipcMain.removeHandler(SettingsChannels.invoke.GET_NOTE_EDITOR_SETTINGS)
   ipcMain.removeHandler(SettingsChannels.invoke.SET_NOTE_EDITOR_SETTINGS)
+  // New settings groups
+  ipcMain.removeHandler(SettingsChannels.invoke.GET_GENERAL_SETTINGS)
+  ipcMain.removeHandler(SettingsChannels.invoke.SET_GENERAL_SETTINGS)
+  ipcMain.removeHandler(SettingsChannels.invoke.GET_EDITOR_SETTINGS)
+  ipcMain.removeHandler(SettingsChannels.invoke.SET_EDITOR_SETTINGS)
+  ipcMain.removeHandler(SettingsChannels.invoke.GET_TASK_SETTINGS)
+  ipcMain.removeHandler(SettingsChannels.invoke.SET_TASK_SETTINGS)
+  ipcMain.removeHandler(SettingsChannels.invoke.GET_KEYBOARD_SETTINGS)
+  ipcMain.removeHandler(SettingsChannels.invoke.SET_KEYBOARD_SETTINGS)
+  ipcMain.removeHandler(SettingsChannels.invoke.RESET_KEYBOARD_SETTINGS)
+  ipcMain.removeHandler(SettingsChannels.invoke.GET_SYNC_SETTINGS)
+  ipcMain.removeHandler(SettingsChannels.invoke.SET_SYNC_SETTINGS)
+  ipcMain.removeHandler(SettingsChannels.invoke.GET_BACKUP_SETTINGS)
+  ipcMain.removeHandler(SettingsChannels.invoke.SET_BACKUP_SETTINGS)
 
   logger.info('Settings handlers unregistered')
 }

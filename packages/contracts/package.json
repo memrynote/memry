@@ -32,6 +32,7 @@
     "./saved-filters-api": "./src/saved-filters-api.ts",
     "./search-api": "./src/search-api.ts",
     "./search-types": "./src/search-api.ts",
+    "./settings-schemas": "./src/settings-schemas.ts",
     "./settings-sync": "./src/settings-sync.ts",
     "./sync-api": "./src/sync-api.ts",
     "./sync-payloads": "./src/sync-payloads.ts",
