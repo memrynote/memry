@@ -31,6 +31,15 @@ export type InboxItemType =
 export type ProcessingStatus = 'pending' | 'processing' | 'complete' | 'failed'
 export type FilingAction = 'folder' | 'note' | 'linked'
 
+export type TriageAction = 'discard' | 'convert-to-task' | 'expand-to-note' | 'file' | 'defer'
+
+export interface TriageState {
+  currentIndex: number
+  totalItems: number
+  currentItem: InboxItem | null
+  completedCount: number
+}
+
 // ============================================================================
 // Metadata Types
 // ============================================================================
