@@ -227,19 +227,35 @@ function generateNoteContent(item: InboxItemRow): string {
       const description = item.content || ''
       const metadata = item.metadata as Record<string, unknown> | null
 
-      let content = `[Open Original](${url})\n\n`
+      let content = ''
+
+      if (
+        metadata?.heroImage &&
+        typeof metadata.heroImage === 'string' &&
+        metadata.heroImage.length > 0
+      ) {
+        content += `![](${metadata.heroImage})\n\n`
+      }
+
+      content += `[Open Original](${url})\n\n`
 
       if (description) {
         content += `> ${description}\n\n`
       }
 
-      // Add metadata info if available
       if (metadata) {
+        const metaLines: string[] = []
         if (metadata.author && typeof metadata.author === 'string') {
-          content += `**Author:** ${metadata.author}\n`
+          metaLines.push(`**Author:** ${metadata.author}`)
         }
         if (metadata.siteName && typeof metadata.siteName === 'string') {
-          content += `**Site:** ${metadata.siteName}\n`
+          metaLines.push(`**Site:** ${metadata.siteName}`)
+        }
+        if (metadata.publishedDate && typeof metadata.publishedDate === 'string') {
+          metaLines.push(`**Published:** ${metadata.publishedDate}`)
+        }
+        if (metaLines.length > 0) {
+          content += metaLines.join('  \n') + '\n'
         }
       }
 
@@ -475,18 +491,12 @@ export async function fileToFolder(
       return { success: false, filedTo: null, error: 'Item has already been filed' }
     }
 
-    // Skip link type (handled separately in another task)
-    if (item.type === 'link') {
-      return { success: false, filedTo: null, error: 'Link filing not implemented yet' }
-    }
-
     // Binary types: move file directly (no markdown wrapper, no tags)
     if (isBinaryType(item.type)) {
       return fileBinaryToFolder(itemId, folderPath)
     }
 
-    // Text types: create markdown note (existing logic)
-    // Ensure folder exists
+    // Text + link types: create markdown note
     await ensureFolderExists(folderPath)
 
     // Get existing tags from inbox item
@@ -761,11 +771,6 @@ export async function linkToNotes(
     // Check if already filed
     if (item.filedAt) {
       return { success: false, error: 'Item has already been filed' }
-    }
-
-    // Skip link type (handled separately in another task)
-    if (item.type === 'link') {
-      return { success: false, error: 'Link filing not implemented yet' }
     }
 
     // Binary types: move file and add wiki-links to target notes

@@ -12,6 +12,7 @@ import { getDatabase } from '../database'
 import { inboxItems, inboxStats, inboxItemType } from '@memry/db-schema/schema/inbox'
 import { eq, and, isNull, sql, lt } from 'drizzle-orm'
 import { generateId } from '../lib/id'
+import { getSetting, setSetting } from '../database/queries/settings'
 
 const log = createLogger('Inbox:Stats')
 
@@ -19,41 +20,46 @@ const log = createLogger('Inbox:Stats')
 // Constants
 // ============================================================================
 
-/** Default stale threshold in days */
 const DEFAULT_STALE_DAYS = 7
-
-/** Current stale threshold (can be changed via settings) */
-let staleThresholdDays = DEFAULT_STALE_DAYS
+const STALE_THRESHOLD_KEY = 'inbox.staleThresholdDays'
 
 // ============================================================================
 // Stale Threshold Management
 // ============================================================================
 
-/**
- * Get the current stale threshold in days
- */
+function readStaleThreshold(): number {
+  try {
+    const db = getDatabase()
+    const stored = getSetting(db, STALE_THRESHOLD_KEY)
+    if (stored !== null) {
+      const parsed = parseInt(stored, 10)
+      if (!isNaN(parsed) && parsed >= 1 && parsed <= 365) return parsed
+    }
+  } catch {
+    // DB not available yet — use default
+  }
+  return DEFAULT_STALE_DAYS
+}
+
 export function getStaleThreshold(): number {
-  return staleThresholdDays
+  return readStaleThreshold()
 }
 
-/**
- * Set the stale threshold in days
- * @param days - Number of days after which an item is considered stale (1-365)
- */
 export function setStaleThreshold(days: number): void {
-  staleThresholdDays = Math.max(1, Math.min(365, days))
+  const clamped = Math.max(1, Math.min(365, days))
+  try {
+    const db = getDatabase()
+    setSetting(db, STALE_THRESHOLD_KEY, String(clamped))
+  } catch {
+    log.warn('Failed to persist stale threshold — DB not available')
+  }
 }
 
-/**
- * Check if a date is stale based on current threshold
- * @param createdAt - ISO date string
- * @returns Whether the date is older than the threshold
- */
 export function isStale(createdAt: string): boolean {
   const created = new Date(createdAt)
   const now = new Date()
   const diffDays = (now.getTime() - created.getTime()) / (1000 * 60 * 60 * 24)
-  return diffDays > staleThresholdDays
+  return diffDays > readStaleThreshold()
 }
 
 /**
@@ -62,7 +68,7 @@ export function isStale(createdAt: string): boolean {
  */
 export function getStaleCutoffDate(): string {
   const cutoff = new Date()
-  cutoff.setDate(cutoff.getDate() - staleThresholdDays)
+  cutoff.setDate(cutoff.getDate() - readStaleThreshold())
   return cutoff.toISOString()
 }
 
