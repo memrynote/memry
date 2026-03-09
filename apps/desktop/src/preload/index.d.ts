@@ -1929,6 +1929,59 @@ export interface NoteEditorSettings {
   toolbarMode: 'floating' | 'sticky'
 }
 
+// New settings group types (from @memry/contracts/settings-schemas)
+export interface GeneralSettingsDTO {
+  theme: 'light' | 'dark' | 'system'
+  fontSize: 'small' | 'medium' | 'large'
+  fontFamily: 'system' | 'serif' | 'sans-serif' | 'monospace'
+  accentColor: string
+  reducedMotion: boolean
+  startOnBoot: boolean
+  language: string
+}
+
+export interface EditorSettingsDTO {
+  width: 'narrow' | 'medium' | 'wide'
+  spellCheck: boolean
+  autoSaveDelay: number
+  showWordCount: boolean
+  toolbarMode: 'floating' | 'sticky'
+}
+
+export interface TaskSettingsDTO {
+  defaultProjectId: string | null
+  defaultSortOrder: 'manual' | 'dueDate' | 'priority' | 'createdAt'
+  weekStartDay: 'sunday' | 'monday'
+  staleInboxDays: number
+}
+
+export interface ShortcutBindingDTO {
+  key: string
+  modifiers: {
+    meta?: boolean
+    ctrl?: boolean
+    shift?: boolean
+    alt?: boolean
+  }
+}
+
+export interface KeyboardShortcutsDTO {
+  overrides: Record<string, ShortcutBindingDTO>
+  globalCapture: ShortcutBindingDTO | null
+}
+
+export interface SyncSettingsDTO {
+  enabled: boolean
+  autoSync: boolean
+}
+
+export interface BackupSettingsDTO {
+  autoBackup: boolean
+  frequencyHours: number
+  maxBackups: number
+  lastBackupAt: string | null
+}
+
 // Settings client API interface
 export interface SettingsClientAPI {
   get(key: string): Promise<string | null>
@@ -1955,6 +2008,33 @@ export interface SettingsClientAPI {
   getNoteEditorSettings(): Promise<NoteEditorSettings>
   setNoteEditorSettings(
     settings: Partial<NoteEditorSettings>
+  ): Promise<{ success: boolean; error?: string }>
+  // General Settings
+  getGeneralSettings(): Promise<GeneralSettingsDTO>
+  setGeneralSettings(
+    settings: Partial<GeneralSettingsDTO>
+  ): Promise<{ success: boolean; error?: string }>
+  // Editor Settings
+  getEditorSettings(): Promise<EditorSettingsDTO>
+  setEditorSettings(
+    settings: Partial<EditorSettingsDTO>
+  ): Promise<{ success: boolean; error?: string }>
+  // Task Settings
+  getTaskSettings(): Promise<TaskSettingsDTO>
+  setTaskSettings(settings: Partial<TaskSettingsDTO>): Promise<{ success: boolean; error?: string }>
+  // Keyboard Settings
+  getKeyboardSettings(): Promise<KeyboardShortcutsDTO>
+  setKeyboardSettings(
+    settings: Partial<KeyboardShortcutsDTO>
+  ): Promise<{ success: boolean; error?: string }>
+  resetKeyboardSettings(): Promise<{ success: boolean; error?: string }>
+  // Sync Settings
+  getSyncSettings(): Promise<SyncSettingsDTO>
+  setSyncSettings(settings: Partial<SyncSettingsDTO>): Promise<{ success: boolean; error?: string }>
+  // Backup Settings
+  getBackupSettings(): Promise<BackupSettingsDTO>
+  setBackupSettings(
+    settings: Partial<BackupSettingsDTO>
   ): Promise<{ success: boolean; error?: string }>
 }
 
