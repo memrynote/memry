@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { ToastContainer } from '@/components/ui/toast'
 import { SRAnnouncer } from '@/components/sr-announcer'
-import type { InboxView } from '@/components/inbox/inbox-segment-control'
+import { InboxSegmentControl, type InboxView } from '@/components/inbox/inbox-segment-control'
 import { useInboxNotifications } from '@/hooks/use-inbox-notifications'
 import { InboxListView } from './inbox/inbox-list-view'
 import { InboxHealthView } from './inbox/inbox-health-view'
@@ -13,7 +13,7 @@ interface InboxPageProps {
 }
 
 export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
-  const [currentView] = useState<InboxView>('inbox')
+  const [currentView, setCurrentView] = useState<InboxView>('inbox')
   const [isTriageMode, setIsTriageMode] = useState(false)
   const notifications = useInboxNotifications()
 
@@ -44,17 +44,22 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
       {isTriageMode ? (
         <TriageView onExit={exitTriage} />
       ) : (
-        <>
-          {currentView === 'inbox' && (
-            <InboxListView
-              notifications={notifications}
-              className={className}
-              onEnterTriage={enterTriage}
-            />
-          )}
-          {(currentView as string) === 'archived' && <InboxArchivedView className={className} />}
-          {(currentView as string) === 'insights' && <InboxHealthView className={className} />}
-        </>
+        <div className="flex h-full flex-col">
+          <div className="flex shrink-0 items-center justify-center px-4 pt-3 pb-1">
+            <InboxSegmentControl value={currentView} onChange={setCurrentView} />
+          </div>
+          <div className="min-h-0 flex-1">
+            {currentView === 'inbox' && (
+              <InboxListView
+                notifications={notifications}
+                className={className}
+                onEnterTriage={enterTriage}
+              />
+            )}
+            {currentView === 'archived' && <InboxArchivedView className={className} />}
+            {currentView === 'insights' && <InboxHealthView className={className} />}
+          </div>
+        </div>
       )}
 
       <ToastContainer toasts={notifications.toasts} onDismiss={notifications.removeToast} />

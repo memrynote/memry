@@ -647,6 +647,8 @@ export const InboxChannels = {
     BULK_TAG: 'inbox:bulk-tag',
     /** File all stale items to unsorted */
     FILE_ALL_STALE: 'inbox:file-all-stale',
+    /** Archive all unfiled items older than N days (inbox bankruptcy) */
+    BULK_ARCHIVE_OLDER_THAN: 'inbox:bulk-archive-older-than',
 
     // Transcription
     /** Retry transcription for a voice item */

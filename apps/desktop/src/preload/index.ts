@@ -656,6 +656,8 @@ export const api = {
     bulkTag: (input: { itemIds: string[]; tags: string[] }) =>
       invoke(InboxChannels.invoke.BULK_TAG, input),
     fileAllStale: () => invoke(InboxChannels.invoke.FILE_ALL_STALE),
+    bulkArchiveOlderThan: (olderThanDays: number) =>
+      invoke(InboxChannels.invoke.BULK_ARCHIVE_OLDER_THAN, { olderThanDays }),
 
     // Transcription
     retryTranscription: (itemId: string) =>

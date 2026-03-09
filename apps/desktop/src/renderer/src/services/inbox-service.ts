@@ -406,6 +406,10 @@ export const inboxService = {
     return window.api.inbox.fileAllStale()
   },
 
+  bulkArchiveOlderThan: (olderThanDays: number): Promise<BulkResponse> => {
+    return window.api.inbox.bulkArchiveOlderThan(olderThanDays)
+  },
+
   // =========================================================================
   // Transcription
   // =========================================================================

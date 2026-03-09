@@ -1382,6 +1382,12 @@ export interface InboxSuggestionsResponse {
   suggestions: InboxFilingSuggestion[]
 }
 
+export interface InboxAgeDistribution {
+  fresh: number
+  aging: number
+  stale: number
+}
+
 export interface InboxStats {
   totalItems: number
   itemsByType: Record<InboxItemType, number>
@@ -1390,6 +1396,12 @@ export interface InboxStats {
   processedToday: number
   capturedToday: number
   avgTimeToProcess: number
+  capturedThisWeek: number
+  processedThisWeek: number
+  captureProcessRatio: number
+  ageDistribution: InboxAgeDistribution
+  oldestItemDays: number
+  currentStreak: number
 }
 
 export interface InboxCapturePattern {
@@ -1554,6 +1566,7 @@ export interface InboxClientAPI {
     reason?: string
   }): Promise<InboxBulkResponse>
   fileAllStale(): Promise<InboxBulkResponse>
+  bulkArchiveOlderThan(olderThanDays: number): Promise<InboxBulkResponse>
 
   // Transcription
   retryTranscription(itemId: string): Promise<{ success: boolean; error?: string }>
