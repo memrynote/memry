@@ -26,7 +26,7 @@
     "clean:c": "rm -rf \"$HOME/Library/Application Support/memry-C\"",
     "clean:devices": "pnpm clean:a && pnpm clean:b && pnpm clean:c",
     "build": "pnpm typecheck && electron-vite build",
-    "postinstall": "pnpm exec electron-rebuild -o better-sqlite3,classic-level,keytar",
+    "postinstall": "[ \"$SKIP_ELECTRON_REBUILD\" = '1' ] || pnpm exec electron-rebuild -o better-sqlite3,classic-level,keytar",
     "rebuild:node": "bash scripts/ensure-native.sh node",
     "rebuild:electron": "bash scripts/ensure-native.sh electron",
     "rebuild:node:force": "pnpm rebuild better-sqlite3",
