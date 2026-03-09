@@ -406,6 +406,9 @@ export interface MainIpcInvokeHandlers {
   'inbox:file-all-stale': (
     ...args: []
   ) => Awaited<Promise<import('../../../../../packages/contracts/src/inbox-api').BulkResponse>>
+  'inbox:bulk-archive-older-than': (
+    ...args: [any]
+  ) => Awaited<Promise<import('../../../../../packages/contracts/src/inbox-api').BulkResponse>>
   'inbox:get': (
     ...args: [any]
   ) => Awaited<Promise<import('../../../../../packages/contracts/src/inbox-api').InboxItem | null>>

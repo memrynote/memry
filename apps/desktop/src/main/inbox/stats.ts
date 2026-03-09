@@ -10,7 +10,7 @@
 import { createLogger } from '../lib/logger'
 import { getDatabase } from '../database'
 import { inboxItems, inboxStats, inboxItemType } from '@memry/db-schema/schema/inbox'
-import { eq, and, isNull, sql, lt } from 'drizzle-orm'
+import { eq, and, isNull, sql, lt, gte, desc, asc } from 'drizzle-orm'
 import { generateId } from '../lib/id'
 import { getSetting, setSetting } from '../database/queries/settings'
 
@@ -342,5 +342,158 @@ export function getAverageTimeToProcess(): number {
     return validCount > 0 ? Math.round(totalMinutes / validCount) : 0
   } catch {
     return 0
+  }
+}
+
+// ============================================================================
+// Health Metrics
+// ============================================================================
+
+export interface InboxHealthMetrics {
+  capturedThisWeek: number
+  processedThisWeek: number
+  captureProcessRatio: number
+  ageDistribution: { fresh: number; aging: number; stale: number }
+  oldestItemDays: number
+  currentStreak: number
+}
+
+function sumCaptures(row: typeof inboxStats.$inferSelect): number {
+  return (
+    (row.captureCountLink || 0) +
+    (row.captureCountNote || 0) +
+    (row.captureCountImage || 0) +
+    (row.captureCountVoice || 0) +
+    (row.captureCountClip || 0) +
+    (row.captureCountPdf || 0) +
+    (row.captureCountSocial || 0)
+  )
+}
+
+export function getInboxHealthMetrics(): InboxHealthMetrics {
+  try {
+    const db = getDatabase()
+    const now = new Date()
+
+    const weekAgoDate = new Date(now)
+    weekAgoDate.setDate(weekAgoDate.getDate() - 7)
+    const weekAgo = weekAgoDate.toISOString().split('T')[0]
+
+    const weekRows = db.select().from(inboxStats).where(gte(inboxStats.date, weekAgo)).all()
+
+    let capturedThisWeek = 0
+    let processedThisWeek = 0
+    for (const row of weekRows) {
+      capturedThisWeek += sumCaptures(row)
+      processedThisWeek += row.processedCount || 0
+    }
+
+    const captureProcessRatio =
+      processedThisWeek > 0
+        ? Math.round((capturedThisWeek / processedThisWeek) * 10) / 10
+        : capturedThisWeek > 0
+          ? capturedThisWeek
+          : 0
+
+    const pendingBase = and(
+      isNull(inboxItems.filedAt),
+      isNull(inboxItems.snoozedUntil),
+      isNull(inboxItems.archivedAt)
+    )
+
+    const threeDaysAgo = new Date(now)
+    threeDaysAgo.setDate(threeDaysAgo.getDate() - 3)
+
+    const staleCutoff = getStaleCutoffDate()
+
+    const freshCount = db
+      .select({ count: sql<number>`count(*)` })
+      .from(inboxItems)
+      .where(and(pendingBase, gte(inboxItems.createdAt, threeDaysAgo.toISOString())))
+      .get()
+
+    const agingCount = db
+      .select({ count: sql<number>`count(*)` })
+      .from(inboxItems)
+      .where(
+        and(
+          pendingBase,
+          lt(inboxItems.createdAt, threeDaysAgo.toISOString()),
+          gte(inboxItems.createdAt, staleCutoff)
+        )
+      )
+      .get()
+
+    const staleCount = db
+      .select({ count: sql<number>`count(*)` })
+      .from(inboxItems)
+      .where(and(pendingBase, lt(inboxItems.createdAt, staleCutoff)))
+      .get()
+
+    const oldestItem = db
+      .select({ createdAt: inboxItems.createdAt })
+      .from(inboxItems)
+      .where(pendingBase)
+      .orderBy(asc(inboxItems.createdAt))
+      .limit(1)
+      .get()
+
+    let oldestItemDays = 0
+    if (oldestItem) {
+      oldestItemDays = Math.floor(
+        (now.getTime() - new Date(oldestItem.createdAt).getTime()) / (1000 * 60 * 60 * 24)
+      )
+    }
+
+    const recentStats = db.select().from(inboxStats).orderBy(desc(inboxStats.date)).limit(90).all()
+
+    let currentStreak = 0
+    const today = getTodayDate()
+    const checkDate = new Date(today)
+
+    for (let i = 0; i < 90; i++) {
+      const dateStr = checkDate.toISOString().split('T')[0]
+      const dayStats = recentStats.find((r) => r.date === dateStr)
+      if (dayStats && (dayStats.processedCount || 0) > 0) {
+        currentStreak++
+      } else if (i > 0) {
+        break
+      } else if (i === 0 && (!dayStats || (dayStats.processedCount || 0) === 0)) {
+        const yesterday = new Date(checkDate)
+        yesterday.setDate(yesterday.getDate() - 1)
+        const yStr = yesterday.toISOString().split('T')[0]
+        const yStats = recentStats.find((r) => r.date === yStr)
+        if (yStats && (yStats.processedCount || 0) > 0) {
+          checkDate.setDate(checkDate.getDate() - 1)
+          currentStreak++
+          continue
+        }
+        break
+      }
+      checkDate.setDate(checkDate.getDate() - 1)
+    }
+
+    return {
+      capturedThisWeek,
+      processedThisWeek,
+      captureProcessRatio,
+      ageDistribution: {
+        fresh: freshCount?.count || 0,
+        aging: agingCount?.count || 0,
+        stale: staleCount?.count || 0
+      },
+      oldestItemDays,
+      currentStreak
+    }
+  } catch (error) {
+    log.warn('Failed to compute health metrics:', error)
+    return {
+      capturedThisWeek: 0,
+      processedThisWeek: 0,
+      captureProcessRatio: 0,
+      ageDistribution: { fresh: 0, aging: 0, stale: 0 },
+      oldestItemDays: 0,
+      currentStreak: 0
+    }
   }
 }

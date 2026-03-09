@@ -186,10 +186,10 @@
 
 **Why this matters**: The design doc identifies 5 failure modes. Current insights show interesting-but-not-actionable charts (heatmap, type distribution). Health dashboard should drive behavior.
 
-- [ ] T051 [US6] Create `getInboxHealthMetrics()` backend query: returns `{ totalPending, capturedThisWeek, processedThisWeek, captureProcessRatio, ageDistribution: { fresh: n, aging: n, stale: n }, oldestItemDays, currentStreak }` in `apps/desktop/src/main/inbox/stats.ts`
-- [ ] T052 [US6] Add INBOX.GET_HEALTH IPC channel and handler in `packages/contracts/src/ipc-channels.ts` and `apps/desktop/src/main/ipc/inbox-query-handlers.ts`
-- [ ] T053 [P] [US6] Create `useInboxHealth()` hook (invoke + TanStack Query cache, 60s stale time) in `apps/desktop/src/renderer/src/hooks/use-inbox.ts`
-- [ ] T054 [US6] Build `InboxHealthView` component replacing insights:
+- [x] T051 [US6] Create `getInboxHealthMetrics()` backend query: returns `{ totalPending, capturedThisWeek, processedThisWeek, captureProcessRatio, ageDistribution: { fresh: n, aging: n, stale: n }, oldestItemDays, currentStreak }` in `apps/desktop/src/main/inbox/stats.ts`
+- [x] T052 [US6] Add INBOX.GET_HEALTH IPC channel and handler in `packages/contracts/src/ipc-channels.ts` and `apps/desktop/src/main/ipc/inbox-query-handlers.ts`
+- [x] T053 [P] [US6] Create `useInboxHealth()` hook (invoke + TanStack Query cache, 60s stale time) in `apps/desktop/src/renderer/src/hooks/use-inbox.ts`
+- [x] T054 [US6] Build `InboxHealthView` component replacing insights:
   - **Capture vs Process ratio**: big number + trend arrow ("You captured 23, processed 4 this week")
   - **Age distribution**: 3-segment bar (fresh <3d / aging 3-7d / stale >7d) with item counts
   - **Collector's Fallacy Warning**: conditional banner when ratio > 3:1 ("You're collecting faster than processing")
@@ -198,8 +198,8 @@
   - **Keep**: filing history table from current insights (actionable — shows patterns)
   - **Remove**: heatmap and type distribution charts (interesting but not actionable)
   in `apps/desktop/src/renderer/src/pages/inbox/inbox-health-view.tsx`
-- [ ] T055 [US6] Add `BULK_ARCHIVE_OLDER_THAN` IPC handler: archives all unfiled items older than N days in `apps/desktop/src/main/ipc/inbox-batch-handlers.ts`
-- [ ] T056 [US6] Wire bankruptcy button to `BULK_ARCHIVE_OLDER_THAN` with confirmation dialog in health view
+- [x] T055 [US6] Add `BULK_ARCHIVE_OLDER_THAN` IPC handler: archives all unfiled items older than N days in `apps/desktop/src/main/ipc/inbox-batch-handlers.ts`
+- [x] T056 [US6] Wire bankruptcy button to `BULK_ARCHIVE_OLDER_THAN` with confirmation dialog in health view
 
 **Checkpoint**: Health tab shows ratio, age distribution, streak. Warning appears when ratio > 3:1. Bankruptcy archives old items.
 
