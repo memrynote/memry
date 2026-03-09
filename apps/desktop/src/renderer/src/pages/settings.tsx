@@ -1354,9 +1354,7 @@ function SyncSettings() {
         <div className="space-y-4">
           <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
             <div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary/10">
-              <syncStatus.IconComponent
-                className={`w-4 h-4 text-primary ${syncStatus.isAnimating ? 'animate-spin' : ''}`}
-              />
+              <syncStatus.IconComponent className="w-4 h-4 text-primary" />
             </div>
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2">
@@ -1386,9 +1384,7 @@ function SyncSettings() {
                 onClick={() => void syncStatus.triggerSync()}
                 className="gap-2"
               >
-                <RefreshCw
-                  className={`w-4 h-4 ${syncStatus.status === 'syncing' ? 'animate-spin' : ''}`}
-                />
+                <RefreshCw className="w-4 h-4" />
                 {syncStatus.status === 'syncing'
                   ? 'Syncing...'
                   : syncStatus.status === 'idle' && syncStatus.pendingCount > 0

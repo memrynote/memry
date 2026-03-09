@@ -1494,8 +1494,7 @@
 }
 
 .wizard-step-enter {
-  opacity: 0;
-  animation: wizard-step-enter 0.5s var(--ease-out) forwards;
+  opacity: 1;
 }
 
 .wiz-delay-1 {

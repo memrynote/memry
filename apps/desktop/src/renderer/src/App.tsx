@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from 'react'
+import { useState, useMemo, useCallback, useEffect } from 'react'
 import type { DragEndEvent } from '@dnd-kit/core'
 import { arrayMove } from '@dnd-kit/sortable'
 import { AppSidebar } from '@/components/app-sidebar'
@@ -128,7 +128,14 @@ const AppContent = (): React.JSX.Element => {
   useUndoKeyboardShortcut() // T051-T054: Cmd+Z for task undo
   useReminderNotifications() // T231-T233: In-app toast notifications for reminders
   useFolderViewEvents() // Global cache invalidation for folder-view tabs
-  useSearchShortcut(useCallback(() => setSearchOpen((prev) => !prev), []))
+  const toggleSearch = useCallback(() => setSearchOpen((prev) => !prev), [])
+  useSearchShortcut(toggleSearch)
+
+  useEffect(() => {
+    const openSearch = () => setSearchOpen(true)
+    window.addEventListener('memry:open-search', openSearch)
+    return () => window.removeEventListener('memry:open-search', openSearch)
+  }, [])
 
   // Get active group for tab bar
   const activeGroupId = state.activeGroupId
@@ -142,7 +149,7 @@ const AppContent = (): React.JSX.Element => {
     <TabDragProvider>
       {/* Header with Tab Bar(s) - Browser-style tabs */}
       <header
-        className="drag-region flex h-11 shrink-0 items-center relative
+        className="drag-region flex h-11 shrink-0 items-center relative overflow-hidden
           bg-gray-100 dark:bg-gray-800"
       >
         {/* Sidebar trigger with refined styling */}
@@ -469,7 +476,7 @@ function App(): React.JSX.Element {
             <TabPersistenceManager>
               <SidebarDrillDownProvider>
                 <AppSidebar currentPage={currentPage} viewCounts={viewCounts} />
-                <SidebarInset className="flex flex-col">
+                <SidebarInset className="flex flex-col overflow-hidden">
                   <AppContent />
                 </SidebarInset>
               </SidebarDrillDownProvider>
