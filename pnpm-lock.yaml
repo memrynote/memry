@@ -244,6 +244,9 @@ importers:
       framer-motion:
         specifier: ^12.23.26
         version: 12.34.0(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+      fuzzysort:
+        specifier: ^3.1.0
+        version: 3.1.0
       gray-matter:
         specifier: ^4.0.3
         version: 4.0.3
@@ -512,7 +515,6 @@ importers:
       vitest:
         specifier: '4'
         version: 4.0.18(@types/node@25.2.2)(@vitest/ui@4.0.18)(happy-dom@20.5.3)(jiti@2.6.1)(jsdom@27.4.0(@noble/hashes@1.8.0))(lightningcss@1.30.2)(msw@2.12.9(@types/node@25.2.2)(typescript@5.9.3))
-
 
   apps/sync-server:
     dependencies:
