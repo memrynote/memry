@@ -74,6 +74,11 @@ export const RemoveTagFromNoteSchema = z.object({
   tag: z.string().min(1)
 })
 
+export const MergeTagSchema = z.object({
+  source: z.string().min(1),
+  target: z.string().min(1)
+})
+
 // ============================================================================
 // Response Types
 // ============================================================================
@@ -97,6 +102,20 @@ export interface RenameTagResponse extends TagOperationResponse {
 
 export interface DeleteTagResponse extends TagOperationResponse {
   affectedNotes?: number
+}
+
+export interface MergeTagResponse extends TagOperationResponse {
+  affectedItems?: number
+}
+
+export interface TagWithCount {
+  name: string
+  count: number
+  color?: string
+}
+
+export interface GetAllWithCountsResponse {
+  tags: TagWithCount[]
 }
 
 // ============================================================================
@@ -129,6 +148,12 @@ export interface TagsHandlers {
   [TagsChannels.invoke.REMOVE_TAG_FROM_NOTE]: (
     input: z.infer<typeof RemoveTagFromNoteSchema>
   ) => Promise<TagOperationResponse>
+
+  [TagsChannels.invoke.GET_ALL_WITH_COUNTS]: () => Promise<GetAllWithCountsResponse>
+
+  [TagsChannels.invoke.MERGE_TAG]: (
+    input: z.infer<typeof MergeTagSchema>
+  ) => Promise<MergeTagResponse>
 }
 
 // ============================================================================
@@ -191,4 +216,6 @@ export interface TagsClientAPI {
   updateTagColor(input: z.infer<typeof UpdateTagColorSchema>): Promise<TagOperationResponse>
   deleteTag(tag: string): Promise<DeleteTagResponse>
   removeTagFromNote(input: z.infer<typeof RemoveTagFromNoteSchema>): Promise<TagOperationResponse>
+  getAllWithCounts(): Promise<GetAllWithCountsResponse>
+  mergeTag(input: z.infer<typeof MergeTagSchema>): Promise<MergeTagResponse>
 }

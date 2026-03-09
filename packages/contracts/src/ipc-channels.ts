@@ -157,7 +157,11 @@ export const TagsChannels = {
     /** Delete a tag from all notes */
     DELETE_TAG: 'tags:delete',
     /** Remove tag from a specific note */
-    REMOVE_TAG_FROM_NOTE: 'tags:remove-from-note'
+    REMOVE_TAG_FROM_NOTE: 'tags:remove-from-note',
+    /** Get all tags with usage counts across notes + tasks */
+    GET_ALL_WITH_COUNTS: 'tags:get-all-with-counts',
+    /** Merge source tag into target tag (rename + deduplicate) */
+    MERGE_TAG: 'tags:merge'
   },
   events: {
     /** Tag was renamed */
@@ -418,7 +422,44 @@ export const SettingsChannels = {
     /** Get note editor settings (toolbar mode, etc.) */
     GET_NOTE_EDITOR_SETTINGS: 'settings:getNoteEditorSettings',
     /** Set note editor settings */
-    SET_NOTE_EDITOR_SETTINGS: 'settings:setNoteEditorSettings'
+    SET_NOTE_EDITOR_SETTINGS: 'settings:setNoteEditorSettings',
+
+    // --- Settings System: new group channels ---
+
+    /** Get general appearance settings (theme, font, accent) */
+    GET_GENERAL_SETTINGS: 'settings:getGeneralSettings',
+    /** Update general appearance settings (partial merge) */
+    SET_GENERAL_SETTINGS: 'settings:setGeneralSettings',
+    /** Get editor settings (width, spellcheck, autosave) */
+    GET_EDITOR_SETTINGS: 'settings:getEditorSettings',
+    /** Update editor settings (partial merge) */
+    SET_EDITOR_SETTINGS: 'settings:setEditorSettings',
+    /** Get task preference settings */
+    GET_TASK_SETTINGS: 'settings:getTaskSettings',
+    /** Update task preference settings (partial merge) */
+    SET_TASK_SETTINGS: 'settings:setTaskSettings',
+    /** Get keyboard shortcut overrides */
+    GET_KEYBOARD_SETTINGS: 'settings:getKeyboardSettings',
+    /** Update keyboard shortcut overrides (partial merge) */
+    SET_KEYBOARD_SETTINGS: 'settings:setKeyboardSettings',
+    /** Reset all keyboard shortcuts to defaults */
+    RESET_KEYBOARD_SETTINGS: 'settings:resetKeyboardSettings',
+    /** Get sync toggle settings */
+    GET_SYNC_SETTINGS: 'settings:getSyncSettings',
+    /** Update sync toggle settings */
+    SET_SYNC_SETTINGS: 'settings:setSyncSettings',
+    /** Get backup configuration */
+    GET_BACKUP_SETTINGS: 'settings:getBackupSettings',
+    /** Update backup configuration */
+    SET_BACKUP_SETTINGS: 'settings:setBackupSettings',
+    /** Store API key in OS keychain (never in DB) */
+    SET_API_KEY: 'settings:setApiKey',
+    /** Test API provider connection */
+    TEST_API_CONNECTION: 'settings:testApiConnection',
+    /** Reset all settings to defaults */
+    RESET_ALL: 'settings:resetAll',
+    /** Trigger manual sync */
+    TRIGGER_SYNC: 'settings:triggerSync'
   },
   events: {
     /** Settings changed */
@@ -432,6 +473,60 @@ export type SettingsInvokeChannel =
   (typeof SettingsChannels.invoke)[keyof typeof SettingsChannels.invoke]
 export type SettingsEventChannel =
   (typeof SettingsChannels.events)[keyof typeof SettingsChannels.events]
+
+// ============================================================================
+// Account Channels
+// ============================================================================
+
+export const AccountChannels = {
+  invoke: {
+    /** Get account info (email, provider, storage usage) */
+    GET_INFO: 'account:getInfo',
+    /** Sign out and clear local synced data */
+    SIGN_OUT: 'account:signOut',
+    /** Get recovery key (requires re-auth token) */
+    GET_RECOVERY_KEY: 'account:getRecoveryKey'
+  }
+} as const
+
+export type AccountInvokeChannel =
+  (typeof AccountChannels.invoke)[keyof typeof AccountChannels.invoke]
+
+// ============================================================================
+// Data Management Channels
+// ============================================================================
+
+export const DataChannels = {
+  invoke: {
+    /** Get current vault file path */
+    GET_VAULT_LOCATION: 'data:getVaultLocation',
+    /** Move vault to a new location (atomic with rollback) */
+    CHANGE_VAULT_LOCATION: 'data:changeVaultLocation',
+    /** Export all data to portable format */
+    EXPORT: 'data:export',
+    /** Import data from external format */
+    IMPORT: 'data:import',
+    /** Clear application cache */
+    CLEAR_CACHE: 'data:clearCache',
+    /** Rebuild search index */
+    REBUILD_INDEX: 'data:rebuildIndex',
+    /** Get backup history (list of backup files) */
+    GET_BACKUP_HISTORY: 'data:getBackupHistory',
+    /** Trigger a manual backup */
+    TRIGGER_BACKUP: 'data:triggerBackup'
+  },
+  events: {
+    /** Vault move progress */
+    VAULT_CHANGE_PROGRESS: 'data:vaultChangeProgress',
+    /** Data export progress */
+    EXPORT_PROGRESS: 'data:exportProgress',
+    /** Data import progress */
+    IMPORT_PROGRESS: 'data:importProgress'
+  }
+} as const
+
+export type DataInvokeChannel = (typeof DataChannels.invoke)[keyof typeof DataChannels.invoke]
+export type DataEventChannel = (typeof DataChannels.events)[keyof typeof DataChannels.events]
 
 // ============================================================================
 // Bookmarks Channels
