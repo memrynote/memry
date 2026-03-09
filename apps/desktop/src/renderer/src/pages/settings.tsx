@@ -9,7 +9,8 @@ import {
   BookOpen,
   Brain,
   Cloud,
-  PenLine
+  PenLine,
+  Tags
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { GeneralSettings } from './settings/general-section'
@@ -20,6 +21,7 @@ import { VaultSettings } from './settings/vault-section'
 import { AppearanceSettings } from './settings/appearance-section'
 import { AISettings } from './settings/ai-section'
 import { SyncSettings } from './settings/sync-section'
+import { AdvancedSettings } from './settings/advanced-section'
 
 type SettingsSection =
   | 'general'
@@ -30,6 +32,7 @@ type SettingsSection =
   | 'appearance'
   | 'ai'
   | 'sync'
+  | 'advanced'
 
 export function SettingsPage() {
   const [activeSection, setActiveSection] = useState<SettingsSection>(() => {
@@ -109,6 +112,12 @@ export function SettingsPage() {
             isActive={activeSection === 'sync'}
             onClick={() => setActiveSection('sync')}
           />
+          <SettingsNavItem
+            icon={<Tags className="w-4 h-4" />}
+            label="Advanced"
+            isActive={activeSection === 'advanced'}
+            onClick={() => setActiveSection('advanced')}
+          />
         </nav>
       </div>
 
@@ -124,6 +133,7 @@ export function SettingsPage() {
             {activeSection === 'appearance' && <AppearanceSettings />}
             {activeSection === 'ai' && <AISettings />}
             {activeSection === 'sync' && <SyncSettings />}
+            {activeSection === 'advanced' && <AdvancedSettings />}
           </div>
         </ScrollArea>
       </div>
