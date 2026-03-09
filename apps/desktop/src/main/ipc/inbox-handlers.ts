@@ -41,7 +41,13 @@ import {
   ALLOWED_DOCUMENT_TYPES
 } from '../inbox/attachments'
 import { fetchUrlMetadata, downloadImage } from '../inbox/metadata'
-import { fileToFolder, convertToNote, linkToNote, linkToNotes } from '../inbox/filing'
+import {
+  fileToFolder,
+  convertToNote,
+  convertToTask,
+  linkToNote,
+  linkToNotes
+} from '../inbox/filing'
 import {
   extractSocialPost,
   detectSocialPlatform,
@@ -1021,6 +1027,12 @@ async function handleConvertToNote(itemId: string): Promise<FileResponse> {
   return convertToNote(itemId)
 }
 
+async function handleConvertToTask(
+  itemId: string
+): Promise<{ success: boolean; taskId: string | null; error?: string }> {
+  return convertToTask(itemId)
+}
+
 /**
  * Link an inbox item to an existing note
  */
@@ -1198,6 +1210,7 @@ export function registerInboxHandlers(): void {
       )
   )
   ipcMain.handle(InboxChannels.invoke.CONVERT_TO_NOTE, (_, itemId) => handleConvertToNote(itemId))
+  ipcMain.handle(InboxChannels.invoke.CONVERT_TO_TASK, (_, itemId) => handleConvertToTask(itemId))
   ipcMain.handle(InboxChannels.invoke.LINK_TO_NOTE, (_, itemId, noteId, tags) =>
     handleLinkToNote(itemId, noteId, tags || [])
   )
@@ -1246,6 +1259,7 @@ export function unregisterInboxHandlers(): void {
   ipcMain.removeHandler(InboxChannels.invoke.GET_SUGGESTIONS)
   ipcMain.removeHandler(InboxChannels.invoke.TRACK_SUGGESTION)
   ipcMain.removeHandler(InboxChannels.invoke.CONVERT_TO_NOTE)
+  ipcMain.removeHandler(InboxChannels.invoke.CONVERT_TO_TASK)
   ipcMain.removeHandler(InboxChannels.invoke.LINK_TO_NOTE)
 
   // Snooze
