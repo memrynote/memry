@@ -1,672 +1,288 @@
-import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react'
+import { useCallback, useEffect } from 'react'
 import { Command } from 'cmdk'
-import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog'
-import { Button } from '@/components/ui/button'
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
-import {
-  Search,
-  ArrowUp,
-  ArrowDown,
-  Folder,
-  FileText,
-  Clock,
-  Check,
-  X,
-  CornerDownLeft,
-  Tag,
-  File
-} from 'lucide-react'
-import { parseSearchQuery } from '@/lib/search-query-parser'
-import { groupByDateWithLabels, formatRelativeDate } from '@/lib/date-grouping'
-import {
-  searchService,
-  type AdvancedSearchResultNote,
-  type AdvancedSearchInput
-} from '@/services/search-service'
-import { notesService, type NoteListItem } from '@/services/notes-service'
-import { useRecentSearches } from '@/hooks/use-search'
-import { cn } from '@/lib/utils'
-import { createLogger } from '@/lib/logger'
-import { subDays, startOfDay } from 'date-fns'
-
-const log = createLogger('Component:CommandPalette')
-
-const OPERATOR_SUGGESTIONS = [
-  { prefix: 'path:', label: 'path:', description: 'Search in folder', icon: Folder },
-  { prefix: 'tag:', label: 'tag:', description: 'Filter by tag', icon: Tag },
-  { prefix: 'file:', label: 'file:', description: 'Match filename', icon: File }
-]
-
-function sanitizeSnippet(html: string): string {
-  return html.replace(/<(?!\/?mark\b)[^>]*>/gi, '')
-}
-
-function highlightOperators(text: string): React.ReactNode[] {
-  if (!text) return []
-
-  const operatorRegex = /(path:|tag:|file:|\[[^\]]+\]:)(\S*)/g
-  const parts: React.ReactNode[] = []
-  let lastIndex = 0
-  let match
-
-  while ((match = operatorRegex.exec(text)) !== null) {
-    if (match.index > lastIndex) {
-      parts.push(text.slice(lastIndex, match.index))
-    }
-    const operator = match[1]
-    const value = match[2]
-    parts.push(
-      <span key={match.index} className="text-primary">
-        {operator}
-        {value}
-      </span>
-    )
-    lastIndex = match.index + match[0].length
-  }
-
-  if (lastIndex < text.length) {
-    parts.push(text.slice(lastIndex))
-  }
-
-  return parts
-}
-
-function getOperatorSuggestions(query: string) {
-  if (!query) return []
-
-  const words = query.split(/\s+/)
-  const lastWord = words[words.length - 1]?.toLowerCase() || ''
-
-  if (!lastWord || lastWord.includes(':')) return []
-
-  return OPERATOR_SUGGESTIONS.filter(
-    (op) => op.prefix.startsWith(lastWord) && op.prefix !== lastWord
-  )
-}
+import { Search, Loader2 } from 'lucide-react'
+import type {
+  SearchResultItem as SearchResultItemType,
+  ContentType,
+  DateRange
+} from '@memry/contracts/search-api'
+import { useTabs } from '@/contexts/tabs'
+import { useSearch } from '@/hooks/use-search'
+import { SearchResultGroup } from './search-result-group'
+import { SearchFilters } from './search-filters'
+import { RecentSearches } from './recent-searches'
 
 interface CommandPaletteProps {
-  isOpen: boolean
-  onClose: () => void
-  onSelectNote: (noteId: string, path: string) => void
-  onSelectNoteNewTab?: (noteId: string, path: string) => void
+  open: boolean
+  onOpenChange: (open: boolean) => void
 }
 
-type SortOption = 'relevance' | 'modified' | 'created' | 'title'
-type DateFilterOption = 'any' | 'today' | 'week' | 'month'
-
-function useDebounce<T>(value: T, delay: number): T {
-  const [debouncedValue, setDebouncedValue] = useState(value)
-  useEffect(() => {
-    const handler = setTimeout(() => setDebouncedValue(value), delay)
-    return () => clearTimeout(handler)
-  }, [value, delay])
-  return debouncedValue
+const TYPE_SHORTCUT_MAP: Record<string, ContentType> = {
+  '1': 'note',
+  '2': 'journal',
+  '3': 'task',
+  '4': 'inbox'
 }
 
-export function CommandPalette({
-  isOpen,
-  onClose,
-  onSelectNote,
-  onSelectNoteNewTab
-}: CommandPaletteProps) {
-  const [query, setQuery] = useState('')
-  const actualDebouncedQuery = useDebounce(query, 150)
-
-  const [sortBy, setSortBy] = useState<SortOption>('modified')
-  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc')
-  const [titleOnly, setTitleOnly] = useState(true)
-  const [folder, setFolder] = useState<string>('')
-  const [dateFilter, setDateFilter] = useState<DateFilterOption>('any')
-
-  const [results, setResults] = useState<AdvancedSearchResultNote[]>([])
-  const [isLoading, setIsLoading] = useState(false)
-  const [folders, setFolders] = useState<string[]>([])
-  const [recentNotes, setRecentNotes] = useState<NoteListItem[]>([])
-  const [isLoadingRecent, setIsLoadingRecent] = useState(false)
-
-  const { recent, addRecent } = useRecentSearches()
-
-  const inputRef = useRef<HTMLInputElement>(null)
+export function CommandPalette({ open, onOpenChange }: CommandPaletteProps): React.JSX.Element {
+  const { openTab } = useTabs()
+  const {
+    query,
+    setQuery,
+    results,
+    totalCount,
+    loading,
+    error,
+    filters,
+    setFilters,
+    recentSearches,
+    loadRecentSearches,
+    clearRecentSearches,
+    reset
+  } = useSearch()
 
   useEffect(() => {
-    if (!isOpen) return
+    if (open) loadRecentSearches()
+  }, [open, loadRecentSearches])
 
-    window.api.notes
-      .getFolders()
-      .then(setFolders)
-      .catch((err) => log.error('Failed to load folders', err))
+  const handleClose = useCallback(() => {
+    onOpenChange(false)
+    setTimeout(reset, 200)
+  }, [onOpenChange, reset])
 
-    setIsLoadingRecent(true)
-    notesService
-      .list({ sortBy: 'modified', sortOrder: 'desc', limit: 50 })
-      .then((response) => setRecentNotes(response.notes))
-      .catch((error) => {
-        log.error('Failed to load recent notes', error)
-        setRecentNotes([])
+  const handleToggleType = useCallback(
+    (type: ContentType) => {
+      setFilters({
+        ...filters,
+        types: filters.types.includes(type)
+          ? filters.types.filter((t) => t !== type)
+          : [...filters.types, type]
       })
-      .finally(() => setIsLoadingRecent(false))
-  }, [isOpen])
+    },
+    [filters, setFilters]
+  )
+
+  const handleToggleTag = useCallback(
+    (tag: string) => {
+      setFilters({
+        ...filters,
+        tags: filters.tags.includes(tag)
+          ? filters.tags.filter((t) => t !== tag)
+          : [...filters.tags, tag]
+      })
+    },
+    [filters, setFilters]
+  )
+
+  const handleSetDateRange = useCallback(
+    (range: DateRange | null) => {
+      setFilters({ ...filters, dateRange: range })
+    },
+    [filters, setFilters]
+  )
+
+  const handleClearFilters = useCallback(() => {
+    setFilters({ types: [], tags: [], dateRange: null })
+  }, [setFilters])
 
   useEffect(() => {
-    const performSearch = async () => {
-      // Note: titleOnly is a search modifier, not a filter that triggers search
-      const hasFilters = folder || dateFilter !== 'any'
+    if (!open) return
 
-      if (!actualDebouncedQuery.trim() && !hasFilters) {
-        setResults([])
+    const handleKeyDown = (e: KeyboardEvent): void => {
+      const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0
+      const modifier = isMac ? e.metaKey : e.ctrlKey
+
+      if (modifier && e.key in TYPE_SHORTCUT_MAP) {
+        e.preventDefault()
+        handleToggleType(TYPE_SHORTCUT_MAP[e.key])
         return
       }
 
-      setIsLoading(true)
+      if (e.key === 'Tab' && !e.metaKey && !e.ctrlKey) {
+        e.preventDefault()
+        const groups = document.querySelectorAll('[cmdk-group]')
+        if (groups.length < 2) return
 
-      try {
-        const parsed = parseSearchQuery(actualDebouncedQuery)
+        const selected = document.querySelector('[cmdk-item][data-selected="true"]')
+        if (!selected) return
 
-        let dateFrom: string | undefined
-        const now = new Date()
-        if (dateFilter === 'today') dateFrom = startOfDay(now).toISOString()
-        else if (dateFilter === 'week') dateFrom = subDays(now, 7).toISOString()
-        else if (dateFilter === 'month') dateFrom = subDays(now, 30).toISOString()
+        const currentGroup = selected.closest('[cmdk-group]')
+        const groupArray = Array.from(groups)
+        const currentIdx = currentGroup ? groupArray.indexOf(currentGroup) : -1
 
-        const searchInput: AdvancedSearchInput = {
-          text: parsed.text,
-          operators: parsed.operators,
-          titleOnly,
-          sortBy,
-          sortDirection,
-          folder: folder || parsed.operators.path,
-          dateFrom,
-          limit: 50
-        }
+        const nextIdx = e.shiftKey
+          ? (currentIdx - 1 + groupArray.length) % groupArray.length
+          : (currentIdx + 1) % groupArray.length
 
-        const notes = await searchService.advancedSearch(searchInput)
-        setResults(notes)
-      } catch (error) {
-        log.error('Search failed', error)
-        setResults([])
-      } finally {
-        setIsLoading(false)
+        const firstItem = groupArray[nextIdx]?.querySelector('[cmdk-item]')
+        if (firstItem instanceof HTMLElement) firstItem.click()
       }
     }
 
-    performSearch()
-  }, [actualDebouncedQuery, sortBy, sortDirection, titleOnly, folder, dateFilter])
-
-  useEffect(() => {
-    if (!isOpen) {
-      setQuery('')
-      setResults([])
-      setRecentNotes([])
-    }
-  }, [isOpen])
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [open, handleToggleType])
 
   const handleSelect = useCallback(
-    (noteId: string, path: string) => {
-      addRecent(query || path)
-      onSelectNote(noteId, path)
-      onClose()
+    (item: SearchResultItemType) => {
+      handleClose()
+
+      switch (item.metadata.type) {
+        case 'note':
+          openTab({
+            type: 'note',
+            title: item.title,
+            icon: 'file-text',
+            path: `/note/${item.id}`,
+            entityId: item.id,
+            isPinned: false,
+            isModified: false,
+            isPreview: true,
+            isDeleted: false
+          })
+          break
+        case 'journal':
+          openTab({
+            type: 'journal',
+            title: `Journal — ${item.metadata.date}`,
+            icon: 'book-open',
+            path: `/journal/${item.metadata.date}`,
+            entityId: item.id,
+            isPinned: false,
+            isModified: false,
+            isPreview: true,
+            isDeleted: false
+          })
+          break
+        case 'task':
+          openTab({
+            type: 'tasks',
+            title: 'Tasks',
+            icon: 'check-square',
+            path: '/tasks',
+            isPinned: false,
+            isModified: false,
+            isPreview: false,
+            isDeleted: false,
+            viewState: {
+              focusTaskId: item.id,
+              projectId: item.metadata.projectId
+            }
+          })
+          break
+        case 'inbox':
+          openTab({
+            type: 'inbox',
+            title: 'Inbox',
+            icon: 'inbox',
+            path: '/inbox',
+            isPinned: false,
+            isModified: false,
+            isPreview: false,
+            isDeleted: false,
+            viewState: { highlightItemId: item.id }
+          })
+          break
+      }
     },
-    [query, addRecent, onSelectNote, onClose]
+    [handleClose, openTab]
   )
 
-  const groupedResults = useMemo(() => {
-    return groupByDateWithLabels(results, (item) => item.modified)
-  }, [results])
-
-  // Show recent notes when no query and no active filters
-  const showRecentNotes = !query.trim() && !folder && dateFilter === 'any'
-
-  const groupedRecentNotes = useMemo(() => {
-    if (!showRecentNotes) return []
-    return groupByDateWithLabels(recentNotes, (item) => item.modified)
-  }, [recentNotes, showRecentNotes])
-
-  const operatorSuggestions = useMemo(() => {
-    return getOperatorSuggestions(query)
-  }, [query])
-
-  const insertOperator = useCallback(
-    (operator: string) => {
-      const words = query.split(/\s+/)
-      words[words.length - 1] = operator
-      setQuery(words.join(' '))
-      inputRef.current?.focus()
-    },
-    [query]
-  )
+  const hasQuery = query.trim().length > 0
+  const hasResults = results.length > 0
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="p-0 gap-0 max-w-3xl overflow-hidden bg-popover text-popover-foreground shadow-2xl border-none ring-0 outline-none">
-        <DialogTitle className="sr-only">Search</DialogTitle>
-        <DialogDescription className="sr-only">
-          Search for notes, tasks, and more. Use arrow keys to navigate and Enter to select.
-        </DialogDescription>
-        <Command className="flex flex-col h-[65vh] w-full bg-transparent" shouldFilter={false} loop>
-          <div className="flex flex-col border-b border-border/40 bg-background/50 backdrop-blur-sm">
-            <div className="flex items-center px-4 py-3 gap-3">
-              <Search className="h-5 w-5 text-muted-foreground shrink-0" />
-              <div className="flex-1 relative">
-                <div
-                  className="absolute inset-0 text-lg pointer-events-none whitespace-pre text-transparent"
-                  aria-hidden="true"
-                >
-                  {highlightOperators(query)}
-                </div>
-                <Command.Input
-                  ref={inputRef}
-                  value={query}
-                  onValueChange={setQuery}
-                  placeholder="Search... try path: tag: file:"
-                  className="w-full bg-transparent text-lg outline-none placeholder:text-muted-foreground/70 caret-foreground"
-                  style={{ color: query ? 'inherit' : undefined }}
-                />
-              </div>
-              {isLoading && (
-                <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-              )}
-            </div>
-
-            <div className="flex items-center gap-2 px-4 pb-3 overflow-x-auto scrollbar-hide">
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-7 px-2 text-xs font-normal border border-transparent hover:border-border/50 hover:bg-muted/50 data-[state=open]:bg-muted"
-                  >
-                    <span className="text-muted-foreground mr-1">Sort:</span>
-                    <span className="font-medium flex items-center gap-1">
-                      {sortBy === 'relevance'
-                        ? 'Best match'
-                        : sortBy === 'modified'
-                          ? 'Last edited'
-                          : sortBy === 'created'
-                            ? 'Created'
-                            : 'Title'}
-                    </span>
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-48 p-1" align="start">
-                  <div className="flex flex-col gap-1">
-                    <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">
-                      Sort by
-                    </div>
-                    {[
-                      { value: 'relevance', label: 'Best match' },
-                      { value: 'modified', label: 'Last edited' },
-                      { value: 'created', label: 'Created time' },
-                      { value: 'title', label: 'Title' }
-                    ].map((opt) => (
-                      <div
-                        key={opt.value}
-                        role="option"
-                        tabIndex={0}
-                        aria-selected={sortBy === opt.value}
-                        className={cn(
-                          'flex items-center justify-between px-2 py-1.5 text-sm rounded-sm cursor-pointer hover:bg-accent hover:text-accent-foreground',
-                          sortBy === opt.value && 'bg-accent/50'
-                        )}
-                        onClick={() => setSortBy(opt.value as SortOption)}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter' || e.key === ' ') {
-                            e.preventDefault()
-                            setSortBy(opt.value as SortOption)
-                          }
-                        }}
-                      >
-                        {opt.label}
-                        {sortBy === opt.value && <Check className="h-3 w-3" />}
-                      </div>
-                    ))}
-                    <div className="h-px bg-border my-1" />
-                    <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">
-                      Order
-                    </div>
-                    <div
-                      role="option"
-                      tabIndex={0}
-                      aria-selected={sortDirection === 'asc'}
-                      className="flex items-center justify-between px-2 py-1.5 text-sm rounded-sm cursor-pointer hover:bg-accent hover:text-accent-foreground"
-                      onClick={() => setSortDirection('asc')}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' || e.key === ' ') {
-                          e.preventDefault()
-                          setSortDirection('asc')
-                        }
-                      }}
-                    >
-                      Ascending{' '}
-                      <ArrowUp
-                        className={cn(
-                          'h-3 w-3',
-                          sortDirection === 'asc' ? 'opacity-100' : 'opacity-0'
-                        )}
-                      />
-                    </div>
-                    <div
-                      role="option"
-                      tabIndex={0}
-                      aria-selected={sortDirection === 'desc'}
-                      className="flex items-center justify-between px-2 py-1.5 text-sm rounded-sm cursor-pointer hover:bg-accent hover:text-accent-foreground"
-                      onClick={() => setSortDirection('desc')}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' || e.key === ' ') {
-                          e.preventDefault()
-                          setSortDirection('desc')
-                        }
-                      }}
-                    >
-                      Descending{' '}
-                      <ArrowDown
-                        className={cn(
-                          'h-3 w-3',
-                          sortDirection === 'desc' ? 'opacity-100' : 'opacity-0'
-                        )}
-                      />
-                    </div>
-                  </div>
-                </PopoverContent>
-              </Popover>
-
-              <Button
-                variant="ghost"
-                size="sm"
-                className={cn(
-                  'h-7 px-2 text-xs font-normal border border-transparent hover:border-border/50 hover:bg-muted/50',
-                  titleOnly && 'bg-primary/10 text-primary hover:bg-primary/20 border-primary/20'
-                )}
-                onClick={() => setTitleOnly(!titleOnly)}
+    <Command.Dialog
+      open={open}
+      onOpenChange={(v) => {
+        if (!v) handleClose()
+        else onOpenChange(true)
+      }}
+      label="Search"
+      shouldFilter={false}
+      loop
+      className="fixed inset-0 z-50"
+    >
+      <div className="fixed inset-0 bg-black/50 backdrop-blur-sm" aria-hidden="true" />
+      <div className="fixed inset-0 flex items-start justify-center pt-[15vh] px-4">
+        <div
+          className="w-full max-w-xl bg-white dark:bg-gray-900 rounded-xl shadow-2xl
+            border border-gray-200 dark:border-gray-700 overflow-hidden"
+        >
+          <div className="flex items-center gap-3 px-4 border-b border-gray-100 dark:border-gray-800">
+            {loading ? (
+              <Loader2 className="size-4 shrink-0 text-gray-400 animate-spin" />
+            ) : (
+              <Search className="size-4 shrink-0 text-gray-400" />
+            )}
+            <Command.Input
+              value={query}
+              onValueChange={setQuery}
+              placeholder="Search notes, tasks, journal, inbox..."
+              autoFocus
+              className="flex-1 h-12 bg-transparent border-0 text-sm text-gray-900 dark:text-gray-100
+                placeholder:text-gray-400 focus:outline-none focus:ring-0"
+            />
+            {hasQuery && (
+              <kbd
+                className="hidden sm:inline-flex text-[10px] text-gray-400 border border-gray-200
+                dark:border-gray-700 rounded px-1.5 py-0.5"
               >
-                Title only
-              </Button>
-
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-7 px-2 text-xs font-normal border border-transparent hover:border-border/50 hover:bg-muted/50 data-[state=open]:bg-muted"
-                  >
-                    <span className="text-muted-foreground mr-1">In:</span>
-                    <span className="font-medium max-w-[100px] truncate">
-                      {folder ? folder.split('/').pop() : 'All folders'}
-                    </span>
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-[200px] p-0" align="start">
-                  <Command>
-                    <Command.Input
-                      placeholder="Filter folders..."
-                      className="h-9 px-2 text-xs border-b outline-none"
-                    />
-                    <Command.List className="max-h-[200px] overflow-y-auto p-1">
-                      <Command.Item
-                        onSelect={() => setFolder('')}
-                        className="flex items-center gap-2 px-2 py-1.5 text-sm rounded-sm cursor-pointer hover:bg-accent aria-selected:bg-accent"
-                      >
-                        <Folder className="h-3 w-3 text-muted-foreground" />
-                        <span>All folders</span>
-                        {!folder && <Check className="ml-auto h-3 w-3" />}
-                      </Command.Item>
-                      {folders.map((f) => (
-                        <Command.Item
-                          key={f}
-                          value={f}
-                          onSelect={() => setFolder(f)}
-                          className="flex items-center gap-2 px-2 py-1.5 text-sm rounded-sm cursor-pointer hover:bg-accent aria-selected:bg-accent"
-                        >
-                          <Folder className="h-3 w-3 text-muted-foreground" />
-                          <span className="truncate">{f}</span>
-                          {folder === f && <Check className="ml-auto h-3 w-3" />}
-                        </Command.Item>
-                      ))}
-                    </Command.List>
-                  </Command>
-                </PopoverContent>
-              </Popover>
-
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-7 px-2 text-xs font-normal border border-transparent hover:border-border/50 hover:bg-muted/50 data-[state=open]:bg-muted"
-                  >
-                    <span className="text-muted-foreground mr-1">Date:</span>
-                    <span className="font-medium">
-                      {dateFilter === 'any'
-                        ? 'Any time'
-                        : dateFilter === 'today'
-                          ? 'Today'
-                          : dateFilter === 'week'
-                            ? 'Past week'
-                            : 'Past 30 days'}
-                    </span>
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-40 p-1" align="start">
-                  {[
-                    { value: 'any', label: 'Any time' },
-                    { value: 'today', label: 'Today' },
-                    { value: 'week', label: 'Past week' },
-                    { value: 'month', label: 'Past 30 days' }
-                  ].map((opt) => (
-                    <div
-                      key={opt.value}
-                      role="option"
-                      tabIndex={0}
-                      aria-selected={dateFilter === opt.value}
-                      className={cn(
-                        'flex items-center justify-between px-2 py-1.5 text-sm rounded-sm cursor-pointer hover:bg-accent hover:text-accent-foreground',
-                        dateFilter === opt.value && 'bg-accent/50'
-                      )}
-                      onClick={() => setDateFilter(opt.value as DateFilterOption)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' || e.key === ' ') {
-                          e.preventDefault()
-                          setDateFilter(opt.value as DateFilterOption)
-                        }
-                      }}
-                    >
-                      {opt.label}
-                      {dateFilter === opt.value && <Check className="h-3 w-3" />}
-                    </div>
-                  ))}
-                </PopoverContent>
-              </Popover>
-
-              {(folder || dateFilter !== 'any' || titleOnly) && (
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-7 w-7 text-muted-foreground hover:text-foreground ml-auto"
-                  onClick={() => {
-                    setFolder('')
-                    setDateFilter('any')
-                    setTitleOnly(false)
-                    setSortBy('modified')
-                  }}
-                  title="Clear filters"
-                >
-                  <X className="h-3 w-3" />
-                </Button>
-              )}
-            </div>
+                ESC
+              </kbd>
+            )}
           </div>
 
-          <Command.List className="flex-1 overflow-y-auto p-2 scroll-py-2 bg-background/30">
-            {operatorSuggestions.length > 0 && (
-              <Command.Group heading="Operators" className="mb-2">
-                {operatorSuggestions.map((op) => (
-                  <Command.Item
-                    key={op.prefix}
-                    value={`operator-${op.prefix}`}
-                    onSelect={() => insertOperator(op.prefix)}
-                    className="flex items-center gap-3 px-3 py-2 rounded-md aria-selected:bg-accent aria-selected:text-accent-foreground cursor-pointer"
-                  >
-                    <op.icon className="h-4 w-4 text-primary" />
-                    <span className="text-primary font-medium">{op.label}</span>
-                    <span className="text-muted-foreground text-sm">{op.description}</span>
-                  </Command.Item>
-                ))}
-              </Command.Group>
+          <SearchFilters
+            activeTypes={filters.types}
+            activeTags={filters.tags}
+            activeDateRange={filters.dateRange}
+            onToggleType={handleToggleType}
+            onToggleTag={handleToggleTag}
+            onSetDateRange={handleSetDateRange}
+            onClear={handleClearFilters}
+          />
+
+          <Command.List
+            className="max-h-[50vh] overflow-y-auto overscroll-contain p-2
+              [&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:py-1.5"
+          >
+            {hasQuery && !loading && !hasResults && !error && (
+              <Command.Empty className="py-12 text-center text-sm text-gray-400">
+                No results for &ldquo;{query}&rdquo;
+              </Command.Empty>
             )}
 
-            {/* Empty state: only show when not loading, no results, no recent notes to display */}
-            {!isLoading &&
-              !isLoadingRecent &&
-              results.length === 0 &&
-              operatorSuggestions.length === 0 &&
-              (!showRecentNotes || recentNotes.length === 0) && (
-                <div className="py-12 text-center text-sm text-muted-foreground">
-                  {query ? 'No results found.' : 'No recent notes yet'}
-                </div>
-              )}
+            {error && (
+              <div className="py-8 text-center text-sm text-red-500 dark:text-red-400">{error}</div>
+            )}
 
-            {/* Recent searches: show only when no query, no results, no recent notes, but have recent searches */}
-            {!query &&
-              !results.length &&
-              recent.length > 0 &&
-              (!showRecentNotes || recentNotes.length === 0) && (
-                <Command.Group heading="Recent Searches" className="mb-2">
-                  {recent.map((r) => (
-                    <Command.Item
-                      key={r}
-                      value={`recent-${r}`}
-                      onSelect={() => setQuery(r)}
-                      className="flex items-center gap-2 px-3 py-2 rounded-md aria-selected:bg-accent aria-selected:text-accent-foreground cursor-pointer group"
-                    >
-                      <Clock className="h-4 w-4 text-muted-foreground/50 group-aria-selected:text-muted-foreground" />
-                      <span className="flex-1">{r}</span>
-                    </Command.Item>
-                  ))}
-                </Command.Group>
-              )}
+            {!hasQuery && (
+              <RecentSearches
+                searches={recentSearches}
+                onSelect={setQuery}
+                onClear={clearRecentSearches}
+              />
+            )}
 
-            {/* Recent notes: show when no query and no filters */}
-            {showRecentNotes &&
-              groupedRecentNotes.map((group) => (
-                <Command.Group
-                  key={`recent-${group.group}`}
-                  heading={group.label}
-                  className="mb-2 [&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:py-1.5 [&_[cmdk-group-heading]]:text-xs [&_[cmdk-group-heading]]:font-medium [&_[cmdk-group-heading]]:text-muted-foreground"
-                >
-                  {group.items.map((note) => (
-                    <Command.Item
-                      key={note.id}
-                      value={note.id}
-                      onSelect={() => handleSelect(note.id, note.path)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
-                          e.preventDefault()
-                          e.stopPropagation()
-                          onSelectNoteNewTab?.(note.id, note.path)
-                          onClose()
-                        }
-                      }}
-                      className="flex items-center gap-3 px-3 py-2.5 rounded-md aria-selected:bg-accent aria-selected:text-accent-foreground cursor-pointer group transition-colors"
-                    >
-                      <div className="flex items-center justify-center h-8 w-8 rounded-md bg-muted/50 text-muted-foreground group-aria-selected:bg-background group-aria-selected:text-foreground transition-colors text-lg">
-                        {note.emoji || <FileText className="h-4 w-4" />}
-                      </div>
-
-                      <div className="flex-1 min-w-0 flex flex-col gap-0.5">
-                        <div className="flex items-center gap-2">
-                          <span className="font-medium text-sm truncate">{note.title}</span>
-                        </div>
-                        <div className="flex items-center gap-2 text-xs text-muted-foreground group-aria-selected:text-muted-foreground/80">
-                          <span className="truncate max-w-[200px] opacity-70">{note.path}</span>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-3 text-xs text-muted-foreground shrink-0">
-                        <span>{formatRelativeDate(note.modified)}</span>
-                      </div>
-                    </Command.Item>
-                  ))}
-                </Command.Group>
+            {hasResults &&
+              results.map((group) => (
+                <SearchResultGroup
+                  key={group.type}
+                  group={group}
+                  query={query}
+                  onSelect={handleSelect}
+                />
               ))}
 
-            {/* Search results */}
-            {groupedResults.map((group) => (
-              <Command.Group
-                key={group.group}
-                heading={group.label}
-                className="mb-2 [&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:py-1.5 [&_[cmdk-group-heading]]:text-xs [&_[cmdk-group-heading]]:font-medium [&_[cmdk-group-heading]]:text-muted-foreground"
-              >
-                {group.items.map((note) => (
-                  <Command.Item
-                    key={note.id}
-                    value={note.id}
-                    onSelect={() => handleSelect(note.id, note.path)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
-                        e.preventDefault()
-                        e.stopPropagation()
-                        onSelectNoteNewTab?.(note.id, note.path)
-                        onClose()
-                      }
-                    }}
-                    className="flex items-center gap-3 px-3 py-2.5 rounded-md aria-selected:bg-accent aria-selected:text-accent-foreground cursor-pointer group transition-colors"
-                  >
-                    <div className="flex items-center justify-center h-8 w-8 rounded-md bg-muted/50 text-muted-foreground group-aria-selected:bg-background group-aria-selected:text-foreground transition-colors text-lg">
-                      {note.emoji || <FileText className="h-4 w-4" />}
-                    </div>
-
-                    <div className="flex-1 min-w-0 flex flex-col gap-0.5">
-                      <div className="flex items-center gap-2">
-                        <span className="font-medium text-sm truncate">{note.title}</span>
-                      </div>
-                      <div className="flex items-center gap-2 text-xs text-muted-foreground group-aria-selected:text-muted-foreground/80">
-                        <span className="truncate max-w-[200px] opacity-70">{note.path}</span>
-                        {note.snippet && (
-                          <>
-                            <span className="w-1 h-1 rounded-full bg-border" />
-                            <span
-                              className="truncate max-w-[300px]"
-                              dangerouslySetInnerHTML={{ __html: sanitizeSnippet(note.snippet) }}
-                            />
-                          </>
-                        )}
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-3 text-xs text-muted-foreground shrink-0">
-                      <span>{formatRelativeDate(note.modified)}</span>
-                    </div>
-                  </Command.Item>
-                ))}
-              </Command.Group>
-            ))}
+            {hasQuery && hasResults && (
+              <div className="px-3 py-2 text-xs text-gray-400 dark:text-gray-500 text-right tabular-nums border-t border-gray-100 dark:border-gray-800 mt-1">
+                {totalCount} result{totalCount !== 1 ? 's' : ''}
+              </div>
+            )}
           </Command.List>
-
-          <div className="flex items-center justify-between px-4 py-2 border-t bg-muted/20 text-xs text-muted-foreground">
-            <div className="flex items-center gap-3">
-              <span className="flex items-center gap-1">
-                <ArrowUp className="h-3 w-3" />
-                <ArrowDown className="h-3 w-3" />
-                <span>Select</span>
-              </span>
-              <span className="flex items-center gap-1">
-                <CornerDownLeft className="h-3 w-3" />
-                <span>Open</span>
-              </span>
-              <span className="flex items-center gap-1">
-                <span className="font-sans">⌘</span>
-                <CornerDownLeft className="h-3 w-3" />
-                <span>New tab</span>
-              </span>
-            </div>
-            <div>
-              {results.length > 0 && <span>{results.length} results</span>}
-              {showRecentNotes && recentNotes.length > 0 && results.length === 0 && (
-                <span>{recentNotes.length} recent notes</span>
-              )}
-            </div>
-          </div>
-        </Command>
-      </DialogContent>
-    </Dialog>
+        </div>
+      </div>
+    </Command.Dialog>
   )
 }

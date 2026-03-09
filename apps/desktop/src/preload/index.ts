@@ -5,7 +5,6 @@ import { electronAPI } from '@electron-toolkit/preload'
 import {
   VaultChannels,
   NotesChannels,
-  SearchChannels,
   TasksChannels,
   SavedFiltersChannels,
   TemplatesChannels,
@@ -16,7 +15,8 @@ import {
   InboxChannels,
   ReminderChannels,
   FolderViewChannels,
-  PropertiesChannels
+  PropertiesChannels,
+  SearchChannels
 } from '@memry/contracts/ipc-channels'
 import { SYNC_CHANNELS, SYNC_EVENTS } from '@memry/contracts/ipc-sync'
 import type {
@@ -260,53 +260,6 @@ export const api = {
     delete: (id: string) => invoke(TemplatesChannels.invoke.DELETE, id),
     duplicate: (id: string, newName: string) =>
       invoke(TemplatesChannels.invoke.DUPLICATE, { id, newName })
-  },
-
-  // Search API
-  search: {
-    query: (input: {
-      query: string
-      types?: ('note' | 'task' | 'journal')[]
-      tags?: string[]
-      projectId?: string
-      dateFrom?: string
-      dateTo?: string
-      includeArchived?: boolean
-      includeCompleted?: boolean
-      sortBy?: 'relevance' | 'modified' | 'created'
-      limit?: number
-      offset?: number
-    }) => invoke(SearchChannels.invoke.SEARCH, input),
-    quick: (input: { query: string; limit?: number }) =>
-      invoke(SearchChannels.invoke.QUICK_SEARCH, input),
-    suggestions: (input: { prefix: string; limit?: number }) =>
-      invoke(SearchChannels.invoke.SUGGESTIONS, input),
-    getRecent: () => invoke(SearchChannels.invoke.GET_RECENT),
-    clearRecent: () => invoke(SearchChannels.invoke.CLEAR_RECENT),
-    addRecent: (query: string) => invoke(SearchChannels.invoke.ADD_RECENT, query),
-    getStats: () => invoke(SearchChannels.invoke.GET_STATS),
-    rebuildIndex: () => invoke(SearchChannels.invoke.REBUILD_INDEX),
-    searchNotes: (query: string, options?: { tags?: string[]; limit?: number }) =>
-      invoke(SearchChannels.invoke.SEARCH_NOTES, { query, ...options }),
-    findByTag: (tag: string) => invoke(SearchChannels.invoke.FIND_BY_TAG, tag),
-    findBacklinks: (noteId: string) => invoke(SearchChannels.invoke.FIND_BACKLINKS, noteId),
-    advancedSearch: (input: {
-      text?: string
-      operators?: {
-        path?: string
-        file?: string
-        tags?: string[]
-        properties?: { name: string; value: string }[]
-      }
-      titleOnly?: boolean
-      sortBy?: 'relevance' | 'modified' | 'created' | 'title'
-      sortDirection?: 'asc' | 'desc'
-      folder?: string
-      dateFrom?: string
-      dateTo?: string
-      limit?: number
-      offset?: number
-    }) => invoke(SearchChannels.invoke.ADVANCED_SEARCH, input)
   },
 
   // Tasks API
@@ -704,6 +657,58 @@ export const api = {
       invoke(InboxChannels.invoke.GET_FILING_HISTORY, options ?? {})
   },
 
+  // Search API
+  search: {
+    query: (params: {
+      text: string
+      types?: Array<'note' | 'journal' | 'task' | 'inbox'>
+      tags?: string[]
+      dateRange?: { from: string; to: string } | null
+      projectId?: string | null
+      folderPath?: string | null
+      limit?: number
+      offset?: number
+    }) => invoke(SearchChannels.invoke.QUERY, params),
+    quick: (text: string) => invoke(SearchChannels.invoke.QUICK, text),
+    getStats: () => invoke(SearchChannels.invoke.GET_STATS),
+    rebuildIndex: () => invoke(SearchChannels.invoke.REBUILD_INDEX),
+    getRecent: () => invoke(SearchChannels.invoke.GET_RECENT),
+    addRecent: (params: { query: string; resultCount: number }) =>
+      invoke(SearchChannels.invoke.ADD_RECENT, params),
+    clearRecent: () => invoke(SearchChannels.invoke.CLEAR_RECENT),
+    getAllTags: () => invoke(SearchChannels.invoke.GET_ALL_TAGS)
+  },
+
+  // Search event listeners
+  onSearchIndexRebuildStarted: (callback: () => void): (() => void) => {
+    const handler = (): void => callback()
+    ipcRenderer.on(SearchChannels.events.INDEX_REBUILD_STARTED, handler)
+    return () => ipcRenderer.removeListener(SearchChannels.events.INDEX_REBUILD_STARTED, handler)
+  },
+
+  onSearchIndexRebuildProgress: (
+    callback: (progress: { phase: string; current: number; total: number; percent: number }) => void
+  ): (() => void) => {
+    const handler = (
+      _event: Electron.IpcRendererEvent,
+      data: { phase: string; current: number; total: number; percent: number }
+    ): void => callback(data)
+    ipcRenderer.on(SearchChannels.events.INDEX_REBUILD_PROGRESS, handler)
+    return () => ipcRenderer.removeListener(SearchChannels.events.INDEX_REBUILD_PROGRESS, handler)
+  },
+
+  onSearchIndexRebuildCompleted: (callback: () => void): (() => void) => {
+    const handler = (): void => callback()
+    ipcRenderer.on(SearchChannels.events.INDEX_REBUILD_COMPLETED, handler)
+    return () => ipcRenderer.removeListener(SearchChannels.events.INDEX_REBUILD_COMPLETED, handler)
+  },
+
+  onSearchIndexCorrupt: (callback: () => void): (() => void) => {
+    const handler = (): void => callback()
+    ipcRenderer.on(SearchChannels.events.INDEX_CORRUPT, handler)
+    return () => ipcRenderer.removeListener(SearchChannels.events.INDEX_CORRUPT, handler)
+  },
+
   // Quick Capture API (global shortcut window)
   quickCapture: {
     /** Close the quick capture window */
@@ -895,46 +900,6 @@ export const api = {
     const handler = (): void => callback()
     ipcRenderer.on('notes:tags-changed', handler)
     return () => ipcRenderer.removeListener('notes:tags-changed', handler)
-  },
-
-  // Search event subscription helpers
-  onSearchIndexRebuildStarted: (callback: () => void): (() => void) => {
-    const handler = (): void => callback()
-    ipcRenderer.on(SearchChannels.events.INDEX_REBUILD_STARTED, handler)
-    return () => ipcRenderer.removeListener(SearchChannels.events.INDEX_REBUILD_STARTED, handler)
-  },
-
-  onSearchIndexRebuildProgress: (
-    callback: (progress: {
-      phase: string
-      current: number
-      total: number
-      percentage: number
-    }) => void
-  ): (() => void) => {
-    const handler = (
-      _event: Electron.IpcRendererEvent,
-      progress: { phase: string; current: number; total: number; percentage: number }
-    ): void => callback(progress)
-    ipcRenderer.on(SearchChannels.events.INDEX_REBUILD_PROGRESS, handler)
-    return () => ipcRenderer.removeListener(SearchChannels.events.INDEX_REBUILD_PROGRESS, handler)
-  },
-
-  onSearchIndexRebuildCompleted: (
-    callback: (result: { duration: number; notesIndexed: number; tasksIndexed: number }) => void
-  ): (() => void) => {
-    const handler = (
-      _event: Electron.IpcRendererEvent,
-      result: { duration: number; notesIndexed: number; tasksIndexed: number }
-    ): void => callback(result)
-    ipcRenderer.on(SearchChannels.events.INDEX_REBUILD_COMPLETED, handler)
-    return () => ipcRenderer.removeListener(SearchChannels.events.INDEX_REBUILD_COMPLETED, handler)
-  },
-
-  onSearchIndexCorrupt: (callback: () => void): (() => void) => {
-    const handler = (): void => callback()
-    ipcRenderer.on(SearchChannels.events.INDEX_CORRUPT, handler)
-    return () => ipcRenderer.removeListener(SearchChannels.events.INDEX_CORRUPT, handler)
   },
 
   // Tasks event subscription helpers

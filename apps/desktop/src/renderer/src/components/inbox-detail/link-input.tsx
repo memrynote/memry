@@ -155,17 +155,21 @@ export const LinkInput = ({
     queryKey: ['notes', 'search', 'title', debouncedQuery],
     queryFn: async () => {
       if (!debouncedQuery || debouncedQuery.length < 2) return []
-      const results = await window.api.search.advancedSearch({
-        text: debouncedQuery,
-        titleOnly: true,
-        limit: 10
+      const response = await window.api.notes.list({
+        limit: 50,
+        sortBy: 'modified',
+        sortOrder: 'desc'
       })
-      return results.map((note) => ({
-        id: note.id,
-        title: note.title,
-        type: 'note' as const,
-        emoji: note.emoji
-      }))
+      const query = debouncedQuery.trim().toLowerCase()
+      return response.notes
+        .filter((n) => n.title.toLowerCase().includes(query))
+        .slice(0, 10)
+        .map((note) => ({
+          id: note.id,
+          title: note.title,
+          type: 'note' as const,
+          emoji: note.emoji
+        }))
     },
     enabled: debouncedQuery.length >= 2
   })

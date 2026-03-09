@@ -2,7 +2,7 @@
 
 import * as React from 'react'
 import { useMemo, useState, useCallback, useRef } from 'react'
-import { BookOpen, CloudOff, Home, Inbox, ListTodo, Plus, Search, Upload } from 'lucide-react'
+import { BookOpen, CloudOff, Home, Inbox, ListTodo, Plus, Upload } from 'lucide-react'
 import { toast } from 'sonner'
 
 import { cn } from '@/lib/utils'
@@ -48,13 +48,6 @@ const log = createLogger('Component:AppSidebar')
 
 // Quick actions data with soft utility colors
 const quickActions = [
-  {
-    title: 'Search',
-    icon: Search,
-    kbd: '⌘ P',
-    iconColor: 'text-soft-slate',
-    action: 'search' as const
-  },
   {
     title: 'New',
     icon: Plus,
@@ -120,24 +113,16 @@ function SidebarHeaderContent() {
 interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {
   currentPage: AppPage
   viewCounts: Record<string, number>
-  onOpenSearch?: () => void
 }
 
-export function AppSidebar({ currentPage, viewCounts, onOpenSearch, ...props }: AppSidebarProps) {
-  return (
-    <AppSidebarInner
-      currentPage={currentPage}
-      viewCounts={viewCounts}
-      onOpenSearch={onOpenSearch}
-      {...props}
-    />
-  )
+export function AppSidebar({ currentPage, viewCounts, ...props }: AppSidebarProps) {
+  return <AppSidebarInner currentPage={currentPage} viewCounts={viewCounts} {...props} />
 }
 
 /**
  * Inner sidebar component that has access to the drill-down context.
  */
-function AppSidebarInner({ currentPage, viewCounts, onOpenSearch, ...props }: AppSidebarProps) {
+function AppSidebarInner({ currentPage, viewCounts, ...props }: AppSidebarProps) {
   // State to hold action buttons from NotesTree
   const [notesActions, setNotesActions] = useState<React.ReactNode>(null)
   const sidebarScrollRef = useRef<HTMLDivElement>(null)
@@ -285,13 +270,7 @@ function AppSidebarInner({ currentPage, viewCounts, onOpenSearch, ...props }: Ap
               <SidebarMenuItem key={action.title}>
                 <SidebarMenuButton
                   tooltip={action.title}
-                  onClick={
-                    action.action === 'search'
-                      ? onOpenSearch
-                      : action.action === 'new'
-                        ? handleNewNote
-                        : undefined
-                  }
+                  onClick={action.action === 'new' ? handleNewNote : undefined}
                 >
                   <action.icon className={cn('size-4', action.iconColor)} />
                   <span>{action.title}</span>
