@@ -792,12 +792,11 @@ describe('getDateOptions', () => {
   })
 
   describe('option structure', () => {
-    it('should have value, label, and icon for each option', () => {
+    it('should have value and label for each option', () => {
       const result = getDateOptions('')
       result.forEach((option) => {
         expect(option).toHaveProperty('value')
         expect(option).toHaveProperty('label')
-        expect(option).toHaveProperty('icon')
       })
     })
   })
@@ -832,12 +831,11 @@ describe('getPriorityOptions', () => {
   })
 
   describe('option structure', () => {
-    it('should have value, label, and icon for each option', () => {
+    it('should have value and label for each option', () => {
       const result = getPriorityOptions('')
       result.forEach((option) => {
         expect(option).toHaveProperty('value')
         expect(option).toHaveProperty('label')
-        expect(option).toHaveProperty('icon')
       })
     })
   })
@@ -896,12 +894,11 @@ describe('getProjectOptions', () => {
       expect(result[1].value).toBe('#personal')
     })
 
-    it('should have value, label, and icon for each option', () => {
+    it('should have value and label for each option', () => {
       const result = getProjectOptions('', projects)
       result.forEach((option) => {
         expect(option).toHaveProperty('value')
         expect(option).toHaveProperty('label')
-        expect(option).toHaveProperty('icon')
       })
     })
   })

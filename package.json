@@ -38,8 +38,11 @@
       "keytar"
     ],
     "overrides": {
-      "tar": ">=7.5.8",
+      "tar": ">=7.5.10",
       "rollup": ">=4.59.0",
+      "hono": ">=4.12.4",
+      "@hono/node-server": ">=1.19.10",
+      "express-rate-limit": ">=8.2.2",
       "minimatch@<4": "3.1.4",
       "minimatch@>=5 <6": "5.1.8",
       "minimatch@>=9 <10": "9.0.7",

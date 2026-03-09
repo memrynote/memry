@@ -1,355 +1,210 @@
-/**
- * Search IPC handlers.
- * Handles all search-related IPC communication from renderer.
- *
- * @module ipc/search-handlers
- */
+/* eslint-disable @typescript-eslint/require-await */
 
 import { ipcMain } from 'electron'
-import {
-  SearchChannels,
-  SearchQuerySchema,
-  QuickSearchSchema,
-  SuggestionsSchema,
-  AdvancedSearchSchema,
-  type SearchResponse,
-  type QuickSearchResponse,
-  type SuggestionsResponse,
-  type SearchStats
-} from '@memry/contracts/search-api'
+import { SearchChannels } from '@memry/contracts/ipc-channels'
+import { SearchQuerySchema, AddRecentSchema } from '@memry/contracts/search-api'
+import type { RecentSearch } from '@memry/contracts/search-api'
 import { createLogger } from '../lib/logger'
 import { createValidatedHandler, createHandler, createStringHandler } from './validate'
-import {
-  searchNotes,
-  quickSearch,
-  getSuggestions,
-  findNotesByTag,
-  findBacklinks,
-  getSearchableCount,
-  isFtsHealthy,
-  advancedSearch
-} from '@main/database/queries/search'
-import { getIndexDatabase, getRawIndexDatabase } from '../database'
-
-// ============================================================================
-// Recent Searches (in-memory store)
-// ============================================================================
+import { getDatabase, getIndexDatabase } from '../database'
+import { generateId } from '../lib/id'
+import * as searchQueries from '@main/database/queries/search'
+import { rebuildAllIndexes } from '@main/database/fts-rebuild'
+import { recentSearches } from '@memry/db-schema/schema/recent-searches'
+import { eq, desc, sql } from 'drizzle-orm'
 
 const logger = createLogger('IPC:Search')
 
-const MAX_RECENT_SEARCHES = 20
-let recentSearches: string[] = []
-
-function addRecentSearch(query: string): void {
-  const normalized = query.trim().toLowerCase()
-  if (!normalized) return
-
-  // Remove if already exists
-  recentSearches = recentSearches.filter((s) => s !== normalized)
-
-  // Add to front
-  recentSearches.unshift(normalized)
-
-  // Trim to max size
-  if (recentSearches.length > MAX_RECENT_SEARCHES) {
-    recentSearches = recentSearches.slice(0, MAX_RECENT_SEARCHES)
-  }
-}
-
-// ============================================================================
-// Handler Registration
-// ============================================================================
-
-/**
- * Register all search-related IPC handlers.
- * Call this once during app initialization.
- */
 export function registerSearchHandlers(): void {
-  // search:query - Full search with all options
   ipcMain.handle(
-    SearchChannels.invoke.SEARCH,
-    createValidatedHandler(SearchQuerySchema, (input) => {
-      const startTime = performance.now()
-      const db = getIndexDatabase()
-
+    SearchChannels.invoke.QUERY,
+    createValidatedHandler(SearchQuerySchema, async (input) => {
       try {
-        addRecentSearch(input.query)
-
-        const results = searchNotes(db, input.query, {
-          limit: input.limit,
-          offset: input.offset,
-          tags: input.tags,
-          folder: undefined
-        })
-
-        const queryTime = Math.round(performance.now() - startTime)
-
-        const response: SearchResponse = {
-          results: results.map((r) => ({
-            type: 'note' as const,
-            id: r.id,
-            path: r.path,
-            title: r.title,
-            snippet: r.snippet,
-            score: r.score,
-            matchedIn: r.matchedIn,
-            created: r.createdAt,
-            modified: r.modifiedAt,
-            tags: r.tags
-          })),
-          total: results.length,
-          hasMore: results.length === input.limit,
-          queryTime
-        }
-
-        return response
+        const indexDb = getIndexDatabase()
+        const dataDb = getDatabase()
+        return searchQueries.searchAll(indexDb, dataDb, input)
       } catch (error) {
-        const message = error instanceof Error ? error.message : 'Search failed'
-        logger.error('Query error:', message)
-        return {
-          results: [],
-          total: 0,
-          hasMore: false,
-          queryTime: Math.round(performance.now() - startTime),
-          error: message
-        }
+        logger.error('search:query failed:', error)
+        return { groups: [], totalCount: 0, queryTimeMs: 0 }
       }
     })
   )
 
-  // search:quick - Quick search for command palette
   ipcMain.handle(
-    SearchChannels.invoke.QUICK_SEARCH,
-    createValidatedHandler(QuickSearchSchema, (input) => {
-      const db = getIndexDatabase()
-
+    SearchChannels.invoke.QUICK,
+    createStringHandler(async (text) => {
       try {
-        const result = quickSearch(db, input.query, input.limit)
-
-        const response: QuickSearchResponse = {
-          notes: result.notes.map((r) => ({
-            type: 'note' as const,
-            id: r.id,
-            path: r.path,
-            title: r.title,
-            snippet: r.snippet,
-            score: r.score,
-            matchedIn: r.matchedIn,
-            created: r.createdAt,
-            modified: r.modifiedAt,
-            tags: r.tags
-          })),
-          tasks: [] // Tasks not implemented yet
-        }
-
-        return response
+        const indexDb = getIndexDatabase()
+        const dataDb = getDatabase()
+        return searchQueries.quickSearch(indexDb, dataDb, text)
       } catch (error) {
-        logger.error('Quick search error:', error)
-        return { notes: [], tasks: [] }
+        logger.error('search:quick failed:', error)
+        return { results: [], queryTimeMs: 0 }
       }
     })
   )
 
-  // search:suggestions - Get search suggestions
-  ipcMain.handle(
-    SearchChannels.invoke.SUGGESTIONS,
-    createValidatedHandler(SuggestionsSchema, (input) => {
-      const db = getIndexDatabase()
-
-      try {
-        const suggestions = getSuggestions(db, input.prefix, input.limit)
-
-        const response: SuggestionsResponse = {
-          suggestions
-        }
-
-        return response
-      } catch (error) {
-        logger.error('Suggestions error:', error)
-        return { suggestions: [] }
-      }
-    })
-  )
-
-  // search:get-recent - Get recent searches
-  ipcMain.handle(
-    SearchChannels.invoke.GET_RECENT,
-    createHandler(() => {
-      return recentSearches
-    })
-  )
-
-  // search:clear-recent - Clear recent searches
-  ipcMain.handle(
-    SearchChannels.invoke.CLEAR_RECENT,
-    createHandler(() => {
-      recentSearches = []
-    })
-  )
-
-  // search:add-recent - Add to recent searches
-  ipcMain.handle(
-    SearchChannels.invoke.ADD_RECENT,
-    createStringHandler((query) => {
-      addRecentSearch(query)
-    })
-  )
-
-  // search:get-stats - Get search index stats
   ipcMain.handle(
     SearchChannels.invoke.GET_STATS,
-    createHandler(() => {
-      const db = getIndexDatabase()
-
-      const totalNotes = getSearchableCount(db)
-      const healthy = isFtsHealthy(db)
-
-      const stats: SearchStats = {
-        totalNotes,
-        totalTasks: 0, // Tasks not implemented yet
-        totalJournals: 0, // Journals not implemented yet
-        lastIndexed: new Date().toISOString(),
-        indexHealth: healthy ? 'healthy' : 'corrupt'
+    createHandler(async () => {
+      try {
+        const indexDb = getIndexDatabase()
+        const dataDb = getDatabase()
+        return searchQueries.getSearchStats(indexDb, dataDb)
+      } catch (error) {
+        logger.error('search:get-stats failed:', error)
+        return {
+          totalNotes: 0,
+          totalJournals: 0,
+          totalTasks: 0,
+          totalInboxItems: 0,
+          totalIndexed: 0,
+          lastIndexedAt: null
+        }
       }
-
-      return stats
     })
   )
 
-  // search:rebuild-index - Force rebuild search index
   ipcMain.handle(
     SearchChannels.invoke.REBUILD_INDEX,
-    createHandler(() => {
-      // TODO: Implement full index rebuild
-      // This would clear FTS and re-index all notes from files
-      logger.info('Index rebuild requested - not yet implemented')
-    })
-  )
-
-  // search:notes - Search notes only (optimized)
-  ipcMain.handle(
-    SearchChannels.invoke.SEARCH_NOTES,
-    createValidatedHandler(
-      QuickSearchSchema, // Reuse quick search schema
-      (input) => {
-        const db = getIndexDatabase()
-        const results = searchNotes(db, input.query, { limit: input.limit })
-
-        return results.map((r) => ({
-          type: 'note' as const,
-          id: r.id,
-          path: r.path,
-          title: r.title,
-          snippet: r.snippet,
-          score: r.score,
-          matchedIn: r.matchedIn,
-          created: r.createdAt,
-          modified: r.modifiedAt,
-          tags: r.tags
-        }))
-      }
-    )
-  )
-
-  // search:find-by-tag - Find notes by tag
-  ipcMain.handle(
-    SearchChannels.invoke.FIND_BY_TAG,
-    createStringHandler((tag) => {
-      const db = getIndexDatabase()
-      const results = findNotesByTag(db, tag)
-
-      return results.map((r) => ({
-        type: 'note' as const,
-        id: r.id,
-        path: r.path,
-        title: r.title,
-        snippet: r.snippet,
-        score: r.score,
-        matchedIn: r.matchedIn,
-        created: r.createdAt,
-        modified: r.modifiedAt,
-        tags: r.tags
-      }))
-    })
-  )
-
-  // search:find-backlinks - Find notes linking to a note
-  ipcMain.handle(
-    SearchChannels.invoke.FIND_BACKLINKS,
-    createStringHandler((noteId) => {
-      const db = getIndexDatabase()
-      const results = findBacklinks(db, noteId)
-
-      return results.map((r) => ({
-        type: 'note' as const,
-        id: r.id,
-        path: r.path,
-        title: r.title,
-        snippet: r.snippet,
-        score: r.score,
-        matchedIn: r.matchedIn,
-        created: r.createdAt,
-        modified: r.modifiedAt,
-        tags: r.tags
-      }))
-    })
-  )
-
-  // search:advanced - Advanced search with operators, filters, and sorting
-  ipcMain.handle(
-    SearchChannels.invoke.ADVANCED_SEARCH,
-    createValidatedHandler(AdvancedSearchSchema, (input) => {
-      const startTime = performance.now()
-      const db = getIndexDatabase()
-      const rawDb = getRawIndexDatabase()
-
+    createHandler(async () => {
       try {
-        const results = advancedSearch(db, rawDb, {
-          text: input.text,
-          operators: input.operators,
-          titleOnly: input.titleOnly,
-          sortBy: input.sortBy,
-          sortDirection: input.sortDirection,
-          folder: input.folder,
-          dateFrom: input.dateFrom,
-          dateTo: input.dateTo,
-          limit: input.limit,
-          offset: input.offset
-        })
-
-        const queryTime = Math.round(performance.now() - startTime)
-        logger.debug(`Advanced search completed in ${queryTime}ms, found ${results.length} results`)
-
-        return results.map((r) => ({
-          type: 'note' as const,
-          id: r.id,
-          path: r.path,
-          title: r.title,
-          emoji: r.emoji,
-          snippet: r.snippet,
-          score: r.score,
-          matchedIn: r.matchedIn,
-          created: r.createdAt,
-          modified: r.modifiedAt,
-          tags: r.tags
-        }))
+        const indexDb = getIndexDatabase()
+        const dataDb = getDatabase()
+        const result = rebuildAllIndexes(indexDb, dataDb)
+        return { started: true as const, ...result }
       } catch (error) {
-        const message = error instanceof Error ? error.message : 'Advanced search failed'
-        logger.error('Advanced search error:', message)
+        logger.error('search:rebuild-index failed:', error)
+        return { started: false as const, error: 'Rebuild failed' }
+      }
+    })
+  )
+
+  ipcMain.handle(
+    SearchChannels.invoke.GET_RECENT,
+    createHandler(async () => {
+      try {
+        const db = getDatabase()
+        const rows = db
+          .select()
+          .from(recentSearches)
+          .orderBy(desc(recentSearches.searchedAt))
+          .limit(5)
+          .all()
+
+        return rows.map(
+          (row): RecentSearch => ({
+            id: row.id,
+            query: row.query,
+            resultCount: row.resultCount,
+            searchedAt: row.searchedAt
+          })
+        )
+      } catch (error) {
+        logger.error('search:get-recent failed:', error)
         return []
       }
     })
   )
 
-  logger.info('Search handlers registered')
+  ipcMain.handle(
+    SearchChannels.invoke.ADD_RECENT,
+    createValidatedHandler(AddRecentSchema, async (input) => {
+      try {
+        const db = getDatabase()
+
+        const count = db
+          .select({ count: sql<number>`count(*)` })
+          .from(recentSearches)
+          .get()
+
+        if (count && count.count >= 5) {
+          const oldest = db
+            .select({ id: recentSearches.id })
+            .from(recentSearches)
+            .orderBy(recentSearches.searchedAt)
+            .limit(1)
+            .get()
+
+          if (oldest) {
+            db.delete(recentSearches).where(eq(recentSearches.id, oldest.id)).run()
+          }
+        }
+
+        const newEntry = {
+          id: generateId(),
+          query: input.query,
+          resultCount: input.resultCount
+        }
+
+        db.insert(recentSearches).values(newEntry).run()
+
+        const inserted = db
+          .select()
+          .from(recentSearches)
+          .where(eq(recentSearches.id, newEntry.id))
+          .get()
+
+        return inserted as RecentSearch
+      } catch (error) {
+        logger.error('search:add-recent failed:', error)
+        throw error
+      }
+    })
+  )
+
+  ipcMain.handle(
+    SearchChannels.invoke.CLEAR_RECENT,
+    createHandler(async () => {
+      try {
+        const db = getDatabase()
+        db.delete(recentSearches).run()
+        return { cleared: true as const }
+      } catch (error) {
+        logger.error('search:clear-recent failed:', error)
+        throw error
+      }
+    })
+  )
+
+  ipcMain.handle(
+    SearchChannels.invoke.GET_ALL_TAGS,
+    createHandler(async () => {
+      try {
+        const indexDb = getIndexDatabase()
+        const dataDb = getDatabase()
+
+        const noteTags = indexDb.all<{ tag: string }>(
+          sql`SELECT DISTINCT tag FROM note_tags ORDER BY tag`
+        )
+        const taskTagRows = dataDb.all<{ tag: string }>(
+          sql`SELECT DISTINCT tag FROM task_tags ORDER BY tag`
+        )
+        const inboxTagRows = dataDb.all<{ tag: string }>(
+          sql`SELECT DISTINCT tag FROM inbox_item_tags ORDER BY tag`
+        )
+
+        const allTags = new Set<string>()
+        for (const row of noteTags) allTags.add(row.tag)
+        for (const row of taskTagRows) allTags.add(row.tag)
+        for (const row of inboxTagRows) allTags.add(row.tag)
+
+        return [...allTags].sort()
+      } catch (error) {
+        logger.error('search:get-all-tags failed:', error)
+        return []
+      }
+    })
+  )
 }
 
-/**
- * Unregister all search-related IPC handlers.
- * Useful for cleanup during testing.
- */
 export function unregisterSearchHandlers(): void {
-  Object.values(SearchChannels.invoke).forEach((channel) => {
-    ipcMain.removeHandler(channel)
-  })
+  ipcMain.removeHandler(SearchChannels.invoke.QUERY)
+  ipcMain.removeHandler(SearchChannels.invoke.QUICK)
+  ipcMain.removeHandler(SearchChannels.invoke.GET_STATS)
+  ipcMain.removeHandler(SearchChannels.invoke.REBUILD_INDEX)
+  ipcMain.removeHandler(SearchChannels.invoke.GET_RECENT)
+  ipcMain.removeHandler(SearchChannels.invoke.ADD_RECENT)
+  ipcMain.removeHandler(SearchChannels.invoke.CLEAR_RECENT)
+  ipcMain.removeHandler(SearchChannels.invoke.GET_ALL_TAGS)
 }

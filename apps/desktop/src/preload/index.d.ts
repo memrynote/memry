@@ -406,94 +406,6 @@ export interface NoteExternalChangeEvent {
   type: 'modified' | 'deleted'
 }
 
-// Search types (mirrored from contracts for preload compatibility)
-export interface SearchResultNote {
-  type: 'note'
-  id: string
-  path: string
-  title: string
-  snippet: string
-  score: number
-  matchedIn: ('title' | 'content' | 'tags')[]
-  created: string
-  modified: string
-  tags: string[]
-}
-
-export interface SearchResultTask {
-  type: 'task'
-  id: string
-  title: string
-  snippet: string | null
-  score: number
-  matchedIn: ('title' | 'description' | 'tags')[]
-  projectId: string
-  projectName: string
-  dueDate: string | null
-  priority: 0 | 1 | 2 | 3
-  completed: boolean
-}
-
-export type SearchResult = SearchResultNote | SearchResultTask
-
-export interface SearchSuggestion {
-  text: string
-  type: 'recent' | 'tag' | 'title' | 'completion'
-  count?: number
-}
-
-export interface SearchStats {
-  totalNotes: number
-  totalTasks: number
-  totalJournals: number
-  lastIndexed: string
-  indexHealth: 'healthy' | 'rebuilding' | 'corrupt'
-}
-
-export interface SearchQueryInput {
-  query: string
-  types?: ('note' | 'task' | 'journal')[]
-  tags?: string[]
-  projectId?: string
-  dateFrom?: string
-  dateTo?: string
-  includeArchived?: boolean
-  includeCompleted?: boolean
-  sortBy?: 'relevance' | 'modified' | 'created'
-  limit?: number
-  offset?: number
-}
-
-export interface SearchResponse {
-  results: SearchResult[]
-  total: number
-  hasMore: boolean
-  queryTime: number
-  suggestions?: string[]
-}
-
-export interface QuickSearchResponse {
-  notes: SearchResultNote[]
-  tasks: SearchResultTask[]
-}
-
-export interface SuggestionsResponse {
-  suggestions: SearchSuggestion[]
-}
-
-export interface IndexRebuildProgressEvent {
-  phase: 'scanning' | 'indexing' | 'optimizing'
-  current: number
-  total: number
-  percentage: number
-}
-
-export interface IndexRebuildCompletedEvent {
-  duration: number
-  notesIndexed: number
-  tasksIndexed: number
-}
-
 export interface IndexRecoveredEvent {
   reason: 'corrupt' | 'missing' | 'healthy'
   filesIndexed: number
@@ -1115,48 +1027,6 @@ export interface TasksClientAPI {
   seedDemo(): Promise<{ success: boolean; message: string }>
 }
 
-// Advanced search types
-export interface AdvancedSearchInput {
-  text?: string
-  operators?: {
-    path?: string
-    file?: string
-    tags?: string[]
-    properties?: { name: string; value: string }[]
-  }
-  titleOnly?: boolean
-  sortBy?: 'relevance' | 'modified' | 'created' | 'title'
-  sortDirection?: 'asc' | 'desc'
-  folder?: string
-  dateFrom?: string
-  dateTo?: string
-  limit?: number
-  offset?: number
-}
-
-export interface AdvancedSearchResultNote extends SearchResultNote {
-  emoji?: string | null
-}
-
-// Search client API interface
-export interface SearchClientAPI {
-  query(input: SearchQueryInput): Promise<SearchResponse>
-  quick(input: { query: string; limit?: number }): Promise<QuickSearchResponse>
-  suggestions(input: { prefix: string; limit?: number }): Promise<SuggestionsResponse>
-  getRecent(): Promise<string[]>
-  clearRecent(): Promise<void>
-  addRecent(query: string): Promise<void>
-  getStats(): Promise<SearchStats>
-  rebuildIndex(): Promise<void>
-  searchNotes(
-    query: string,
-    options?: { tags?: string[]; limit?: number }
-  ): Promise<SearchResultNote[]>
-  findByTag(tag: string): Promise<SearchResultNote[]>
-  findBacklinks(noteId: string): Promise<SearchResultNote[]>
-  advancedSearch(input: AdvancedSearchInput): Promise<AdvancedSearchResultNote[]>
-}
-
 // Saved Filters client API interface
 export interface SavedFiltersClientAPI {
   list(): Promise<SavedFilterListResponse>
@@ -1686,6 +1556,35 @@ export interface InboxClientAPI {
 
   // Filing history
   getFilingHistory(options?: { limit?: number }): Promise<InboxFilingHistoryResponse>
+}
+
+// Search types
+import type {
+  SearchResponse,
+  QuickSearchResponse,
+  SearchStats,
+  RecentSearch,
+  IndexRebuildProgress
+} from '@memry/contracts/search-api'
+
+export interface SearchClientAPI {
+  query(params: {
+    text: string
+    types?: Array<'note' | 'journal' | 'task' | 'inbox'>
+    tags?: string[]
+    dateRange?: { from: string; to: string } | null
+    projectId?: string | null
+    folderPath?: string | null
+    limit?: number
+    offset?: number
+  }): Promise<SearchResponse>
+  quick(text: string): Promise<QuickSearchResponse>
+  getStats(): Promise<SearchStats>
+  rebuildIndex(): Promise<{ started: true }>
+  getRecent(): Promise<RecentSearch[]>
+  addRecent(params: { query: string; resultCount: number }): Promise<RecentSearch>
+  clearRecent(): Promise<{ cleared: true }>
+  getAllTags(): Promise<string[]>
 }
 
 // Quick Capture types
@@ -2327,7 +2226,6 @@ interface API extends WindowAPI {
   vault: VaultClientAPI
   notes: NotesClientAPI
   properties: PropertiesClientAPI
-  search: SearchClientAPI
   tasks: TasksClientAPI
   savedFilters: SavedFiltersClientAPI
   templates: TemplatesClientAPI
@@ -2337,6 +2235,7 @@ interface API extends WindowAPI {
   tags: TagsClientAPI
   inbox: InboxClientAPI
   reminders: RemindersClientAPI
+  search: SearchClientAPI
   quickCapture: QuickCaptureClientAPI
   folderView: FolderViewClientAPI
   syncAuth: SyncAuthClientAPI
@@ -2442,6 +2341,13 @@ interface API extends WindowAPI {
   onReminderClicked: (callback: (event: ReminderClickedEvent) => void) => () => void
   // Folder View event subscriptions
   onFolderViewConfigUpdated: (callback: (event: FolderViewConfigUpdatedEvent) => void) => () => void
+  // Search event subscriptions
+  onSearchIndexRebuildStarted: (callback: () => void) => () => void
+  onSearchIndexRebuildProgress: (
+    callback: (progress: { phase: string; current: number; total: number; percent: number }) => void
+  ) => () => void
+  onSearchIndexRebuildCompleted: (callback: () => void) => () => void
+  onSearchIndexCorrupt: (callback: () => void) => () => void
   // Sync event subscriptions
   onSyncStatusChanged: (callback: (event: SyncStatusChangedEvent) => void) => () => void
   onItemSynced: (callback: (event: ItemSyncedEvent) => void) => () => void
