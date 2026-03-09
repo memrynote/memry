@@ -259,8 +259,8 @@
 
 **Independent Test**: Open integrations list → see available services → connect one → verify active → disconnect → verify removed.
 
-- [ ] T071 [US14] Define integration registry: list of supported integrations (calendar, etc.) with connection status, auth flow type, and icon in `apps/desktop/src/renderer/src/lib/integration-registry.ts`
-- [ ] T072 [US14] Build IntegrationsSubsection within AdvancedSection: integration list with connect/disconnect buttons, OAuth flow for each service in `apps/desktop/src/renderer/src/pages/settings/advanced-section.tsx`
+- [x] T071 [US14] Define integration registry: list of supported integrations (calendar, etc.) with connection status, auth flow type, and icon in `apps/desktop/src/renderer/src/lib/integration-registry.ts`
+- [x] T072 [US14] Build IntegrationsSubsection within AdvancedSection: integration list with connect/disconnect buttons, OAuth flow for each service in `apps/desktop/src/renderer/src/pages/settings/advanced-section.tsx`
 
 **Checkpoint**: Integration list displays. Connect/disconnect works. Auth flow completes. Status persists.
 

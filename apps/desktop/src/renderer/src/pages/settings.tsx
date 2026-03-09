@@ -10,6 +10,7 @@ import {
   Brain,
   Cloud,
   PenLine,
+  Plug,
   Tags,
   ListChecks
 } from 'lucide-react'
@@ -22,6 +23,7 @@ import { VaultSettings } from './settings/vault-section'
 import { AppearanceSettings } from './settings/appearance-section'
 import { AISettings } from './settings/ai-section'
 import { SyncSettings } from './settings/sync-section'
+import { IntegrationsSettings } from './settings/integrations-section'
 import { AdvancedSettings } from './settings/advanced-section'
 import { TasksSettings } from './settings/tasks-section'
 
@@ -35,6 +37,7 @@ type SettingsSection =
   | 'appearance'
   | 'ai'
   | 'sync'
+  | 'integrations'
   | 'advanced'
 
 export function SettingsPage() {
@@ -122,6 +125,12 @@ export function SettingsPage() {
             onClick={() => setActiveSection('sync')}
           />
           <SettingsNavItem
+            icon={<Plug className="w-4 h-4" />}
+            label="Integrations"
+            isActive={activeSection === 'integrations'}
+            onClick={() => setActiveSection('integrations')}
+          />
+          <SettingsNavItem
             icon={<Tags className="w-4 h-4" />}
             label="Advanced"
             isActive={activeSection === 'advanced'}
@@ -143,6 +152,7 @@ export function SettingsPage() {
             {activeSection === 'appearance' && <AppearanceSettings />}
             {activeSection === 'ai' && <AISettings />}
             {activeSection === 'sync' && <SyncSettings />}
+            {activeSection === 'integrations' && <IntegrationsSettings />}
             {activeSection === 'advanced' && <AdvancedSettings />}
           </div>
         </ScrollArea>
