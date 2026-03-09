@@ -62,4 +62,4 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Audit sync-server dependencies
-        run: pnpm --filter @memry/sync-server audit --audit-level high
+        run: cd apps/sync-server && pnpm audit --audit-level high
