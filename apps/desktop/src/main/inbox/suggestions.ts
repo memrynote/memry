@@ -25,7 +25,7 @@ import {
   isModelLoaded,
   initEmbeddingModel
 } from '../lib/embeddings'
-import type { FilingSuggestion } from '@memry/contracts/inbox-api'
+import type { FilingSuggestion, SuggestedNote } from '@memry/contracts/inbox-api'
 
 const log = createLogger('Inbox:Suggestions')
 
@@ -38,6 +38,7 @@ interface SimilarNote {
   notePath: string
   noteTitle: string
   score: number
+  snippet: string
 }
 
 interface FilingPattern {
@@ -61,8 +62,11 @@ const AI_SETTINGS_KEY = 'ai.enabled'
 /** Maximum cosine distance to include in suggestions (lower = more similar) */
 const MAX_DISTANCE_THRESHOLD = 1.0
 
-/** Maximum number of suggestions to return */
+/** Maximum number of folder suggestions to return */
 const MAX_SUGGESTIONS = 3
+
+/** Maximum number of note-level suggestions to return */
+const MAX_NOTE_SUGGESTIONS = 3
 
 /** Minimum content length to generate embedding */
 const MIN_CONTENT_LENGTH = 10
@@ -351,9 +355,9 @@ async function findSimilarNotes(content: string, limit: number = 5): Promise<Sim
       // Skip if distance is too high (not similar enough)
       if (row.distance > MAX_DISTANCE_THRESHOLD) continue
 
-      // Get note info from cache
+      // Get note info from cache (including snippet for note-level suggestions)
       const noteInfo = indexDb
-        .select({ path: noteCache.path, title: noteCache.title })
+        .select({ path: noteCache.path, title: noteCache.title, snippet: noteCache.snippet })
         .from(noteCache)
         .where(eq(noteCache.id, row.note_id))
         .get()
@@ -367,7 +371,8 @@ async function findSimilarNotes(content: string, limit: number = 5): Promise<Sim
           noteId: row.note_id,
           notePath: noteInfo.path,
           noteTitle: noteInfo.title,
-          score: similarityScore
+          score: similarityScore,
+          snippet: noteInfo.snippet || ''
         })
       }
     }
@@ -521,15 +526,18 @@ export async function getSuggestions(itemId: string): Promise<FilingSuggestion[]
     // Build content for similarity search
     const content = [item.title, item.content].filter(Boolean).join('\n\n')
 
-    // 1. Find similar notes and suggest their folders (only if model is loaded)
+    // 1. Find similar notes → suggest both folders AND direct note links
+    const noteSuggestions: FilingSuggestion[] = []
+
     if (isModelLoaded() && content.length >= MIN_CONTENT_LENGTH) {
-      const similarNotes = await findSimilarNotes(content, 5)
+      const similarNotes = await findSimilarNotes(content, 8)
 
       for (const note of similarNotes) {
+        // 1a. Folder suggestion (existing behavior)
         const folder = getFolderFromPath(note.notePath)
         const destKey = folder || 'root'
 
-        if (!seenDestinations.has(destKey)) {
+        if (!seenDestinations.has(destKey) && suggestions.length < MAX_SUGGESTIONS) {
           seenDestinations.add(destKey)
 
           suggestions.push({
@@ -545,7 +553,25 @@ export async function getSuggestions(itemId: string): Promise<FilingSuggestion[]
           })
         }
 
-        if (suggestions.length >= MAX_SUGGESTIONS) break
+        // 1b. Note-level suggestion: "link to this note"
+        if (noteSuggestions.length < MAX_NOTE_SUGGESTIONS) {
+          const suggestedNote: SuggestedNote = {
+            id: note.noteId,
+            title: note.noteTitle,
+            snippet: note.snippet.slice(0, 150)
+          }
+          noteSuggestions.push({
+            destination: {
+              type: 'note',
+              noteId: note.noteId,
+              noteTitle: note.noteTitle
+            },
+            confidence: note.score,
+            reason: `Similar content (${Math.round(note.score * 100)}% match)`,
+            suggestedTags: [],
+            suggestedNote
+          })
+        }
       }
     }
 
@@ -597,11 +623,19 @@ export async function getSuggestions(itemId: string): Promise<FilingSuggestion[]
       }
     }
 
-    // Sort by confidence
+    // Sort folder suggestions by confidence, then append note suggestions
     suggestions.sort((a, b) => b.confidence - a.confidence)
+    noteSuggestions.sort((a, b) => b.confidence - a.confidence)
 
-    log.debug(`Generated ${suggestions.length} suggestions for ${itemId}`)
-    return suggestions.slice(0, MAX_SUGGESTIONS)
+    const combined = [
+      ...suggestions.slice(0, MAX_SUGGESTIONS),
+      ...noteSuggestions.slice(0, MAX_NOTE_SUGGESTIONS)
+    ]
+
+    log.debug(
+      `Generated ${suggestions.length} folder + ${noteSuggestions.length} note suggestions for ${itemId}`
+    )
+    return combined
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error'
     log.error('Failed to get suggestions:', message)

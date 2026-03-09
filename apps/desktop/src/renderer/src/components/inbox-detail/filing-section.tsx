@@ -4,7 +4,7 @@
  */
 
 import { useState, useEffect, useCallback, useMemo } from 'react'
-import { Folder, Sparkles, Loader2, ChevronDown, Check } from 'lucide-react'
+import { Folder, Sparkles, Loader2, ChevronDown, Check, FileText, Link2 } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 
 import { Button } from '@/components/ui/button'
@@ -149,7 +149,28 @@ export const FilingSection = ({
     return vaultFolders.slice(0, 3).map((f) => ({ ...f }))
   }, [aiSuggestions, vaultFolders])
 
+  const noteSuggestions = useMemo(() => {
+    return aiSuggestions
+      .filter((s) => s.destination.type === 'note' && s.suggestedNote)
+      .slice(0, 3)
+      .map((s) => ({
+        note: s.suggestedNote!,
+        confidence: s.confidence,
+        reason: s.reason
+      }))
+  }, [aiSuggestions])
+
   const hasAISuggestions = aiSuggestions.length > 0
+
+  const handleLinkSuggestedNote = useCallback(
+    (note: { id: string; title: string }) => {
+      const alreadyLinked = linkedNotes.some((ln) => ln.id === note.id)
+      if (alreadyLinked) return
+
+      onLinkedNotesChange([...linkedNotes, { id: note.id, title: note.title, type: 'note' }])
+    },
+    [linkedNotes, onLinkedNotesChange]
+  )
 
   // Filter folders based on search query
   const filteredFolders = useMemo(() => {
@@ -259,6 +280,49 @@ export const FilingSection = ({
           </PopoverContent>
         </Popover>
       </div>
+
+      {/* AI Note Suggestions */}
+      {noteSuggestions.length > 0 && (
+        <div className="space-y-2">
+          <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+            <Link2 className="size-3.5" />
+            <span>Link to note</span>
+          </div>
+          <div className="space-y-1.5">
+            {noteSuggestions.map((suggestion) => {
+              const isLinked = linkedNotes.some((ln) => ln.id === suggestion.note.id)
+              return (
+                <button
+                  key={suggestion.note.id}
+                  onClick={() => handleLinkSuggestedNote(suggestion.note)}
+                  className={cn(
+                    'w-full flex items-start gap-2.5 rounded-md border px-3 py-2 text-left transition-colors',
+                    isLinked
+                      ? 'bg-primary/10 border-primary/30'
+                      : 'bg-background border-border hover:bg-accent'
+                  )}
+                >
+                  <FileText className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" />
+                  <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+                    <div className="flex items-center gap-2">
+                      <span className="truncate text-xs font-medium">{suggestion.note.title}</span>
+                      <span className="text-[10px] text-muted-foreground/60">
+                        {Math.round(suggestion.confidence * 100)}%
+                      </span>
+                      {isLinked && <Check className="size-3 shrink-0 text-primary" />}
+                    </div>
+                    {suggestion.note.snippet && (
+                      <p className="line-clamp-2 text-[11px] leading-relaxed text-muted-foreground">
+                        {suggestion.note.snippet}
+                      </p>
+                    )}
+                  </div>
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Tags Section - Full Width */}
       <div className="pt-2">
