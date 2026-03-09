@@ -611,6 +611,8 @@ export const InboxChannels = {
     TRACK_SUGGESTION: 'inbox:track-suggestion',
     /** Convert an item to a full note */
     CONVERT_TO_NOTE: 'inbox:convert-to-note',
+    /** Convert an inbox item to a task */
+    CONVERT_TO_TASK: 'inbox:convert-to-task',
     /** Link an item to an existing note */
     LINK_TO_NOTE: 'inbox:link-to-note',
 

@@ -52,17 +52,17 @@
 
 **⚠️ CRITICAL**: No US1/US3/US5+ UI work can begin until this phase completes.
 
-- [ ] T007 Extract `InboxListView` component from inbox.tsx: list rendering, type filter, stale/non-stale separation, selection state, drag-drop image capture in `apps/desktop/src/renderer/src/pages/inbox/inbox-list-view.tsx`
-- [ ] T008 [P] Extract `InboxHealthView` component shell (replaces current insights tab) in `apps/desktop/src/renderer/src/pages/inbox/inbox-health-view.tsx`
-- [ ] T009 [P] Extract `InboxArchivedView` import and wiring into clean sub-view in `apps/desktop/src/renderer/src/pages/inbox/inbox-archived-view.tsx`
-- [ ] T010 Extract keyboard shortcut logic from inbox.tsx into `useInboxKeyboard()` hook in `apps/desktop/src/renderer/src/hooks/use-inbox-keyboard.ts`
-- [ ] T011 Extract toast + snooze event subscription logic into `useInboxNotifications()` hook in `apps/desktop/src/renderer/src/hooks/use-inbox-notifications.ts`
-- [ ] T012 Refactor `inbox.tsx` into thin shell: view switcher (list/triage/health/archived) + shared state + dynamic view rendering, target <200 LOC in `apps/desktop/src/renderer/src/pages/inbox.tsx`
-- [ ] T013 [P] Define `TriageAction` type union and `TriageState` interface in `packages/contracts/src/inbox-api.ts`:
+- [x] T007 Extract `InboxListView` component from inbox.tsx: list rendering, type filter, stale/non-stale separation, selection state, drag-drop image capture in `apps/desktop/src/renderer/src/pages/inbox/inbox-list-view.tsx`
+- [x] T008 [P] Extract `InboxHealthView` component shell (replaces current insights tab) in `apps/desktop/src/renderer/src/pages/inbox/inbox-health-view.tsx`
+- [x] T009 [P] Extract `InboxArchivedView` import and wiring into clean sub-view in `apps/desktop/src/renderer/src/pages/inbox/inbox-archived-view.tsx`
+- [x] T010 Extract keyboard shortcut logic from inbox.tsx into `useInboxKeyboard()` hook in `apps/desktop/src/renderer/src/hooks/use-inbox-keyboard.ts`
+- [x] T011 Extract toast + snooze event subscription logic into `useInboxNotifications()` hook in `apps/desktop/src/renderer/src/hooks/use-inbox-notifications.ts`
+- [x] T012 Refactor `inbox.tsx` into thin shell: view switcher (list/triage/health/archived) + shared state + dynamic view rendering, target <200 LOC in `apps/desktop/src/renderer/src/pages/inbox.tsx`
+- [x] T013 [P] Define `TriageAction` type union and `TriageState` interface in `packages/contracts/src/inbox-api.ts`:
   - Actions: `discard` | `convert-to-task` | `expand-to-note` | `file` | `defer`
   - State: `currentIndex`, `totalItems`, `currentItem`, `completedCount`
-- [ ] T014 [P] Add InboxChannels.CONVERT_TO_TASK to `packages/contracts/src/ipc-channels.ts` (new channel for task creation from inbox)
-- [ ] T015 Regenerate IPC type map and verify build
+- [x] T014 [P] Add InboxChannels.CONVERT_TO_TASK to `packages/contracts/src/ipc-channels.ts` (new channel for task creation from inbox)
+- [x] T015 Regenerate IPC type map and verify build
 
 **Checkpoint**: inbox.tsx < 200 LOC. List/health/archived views render independently. Triage contracts defined. Build passes.
 
