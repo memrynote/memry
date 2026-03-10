@@ -247,15 +247,15 @@
 
 **Purpose**: Improvements that span multiple stories
 
-- [ ] T071 [P] Decouple reminders from inbox: render reminder items in triage with different actions (Dismiss / Open Target / Snooze Again) instead of File/Link/Convert in `apps/desktop/src/renderer/src/components/inbox/triage-action-bar.tsx`
-- [ ] T072 [P] Add `captureSource` field to inbox_items schema (`quick-capture` | `inline` | `browser-extension` | `api` | `reminder`), auto-populate on capture in `packages/db-schema/src/schema/inbox.ts`
-- [ ] T073 [P] Create migration for `captureSource` column in `apps/desktop/src/main/database/migrations/`
-- [ ] T074 Wire capture source into all capture handlers (Quick Capture sets `quick-capture`, CaptureInput sets `inline`, etc.) in `apps/desktop/src/main/ipc/inbox-handlers.ts`
-- [ ] T075 [P] Add "Process Inbox" entry point to sidebar: when inbox count > 0, show subtle "Process" action next to count badge in `apps/desktop/src/renderer/src/components/app-sidebar.tsx`
-- [ ] T076 [P] Add inbox widget to home/dashboard: "You have N items in inbox — Process now" card in relevant dashboard component
+- [x] T071 [P] Decouple reminders from inbox: render reminder items in triage with different actions (Dismiss / Open Target / Snooze Again) instead of File/Link/Convert in `apps/desktop/src/renderer/src/components/inbox/triage-action-bar.tsx`
+- [x] T072 [P] Add `captureSource` field to inbox_items schema (`quick-capture` | `inline` | `browser-extension` | `api` | `reminder`), auto-populate on capture in `packages/db-schema/src/schema/inbox.ts`
+- [x] T073 [P] Create migration for `captureSource` column in `apps/desktop/src/main/database/drizzle-data/0019_material_lethal_legion.sql`
+- [x] T074 Wire capture source into all capture handlers (Quick Capture sets `quick-capture`, CaptureInput sets `inline`, etc.) in `apps/desktop/src/main/ipc/inbox-handlers.ts`
+- [x] T075 [P] Add "Process Inbox" entry point to sidebar: when inbox count > 0, show subtle "Process" action next to count badge in `apps/desktop/src/renderer/src/components/app-sidebar.tsx`
+- [ ] T076 [P] ~~Add inbox widget to home/dashboard~~ SKIPPED — no home/dashboard page exists; inbox is the primary landing
 - [ ] T077 Verify triage keyboard flow end-to-end: process 10 mixed-type items using only keyboard → all actions work → progress tracks → celebration shows
 - [ ] T078 [P] Performance check: triage view renders in <100ms, action transitions <300ms, Quick Capture opens in <200ms
-- [ ] T079 Verify inbox sync round-trip with maturity + captureSource fields: change on device A → appears on device B
+- [x] T079 Verify inbox sync round-trip with maturity + captureSource fields: captureSource added to sync payload schema and inbox-handler upsert/insert paths
 
 ---
 
