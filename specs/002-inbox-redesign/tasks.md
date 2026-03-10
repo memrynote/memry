@@ -211,12 +211,12 @@
 
 **Independent Test**: Capture a URL → capture same URL again → see "Already captured on [date]" with option to view existing or capture anyway → paste same text → see similar warning.
 
-- [ ] T057 [US7] Add `findDuplicateByUrl(url: string)` query: check `sourceUrl` against existing unfiled+unarchived items, return match if found in `apps/desktop/src/main/inbox/capture.ts`
-- [ ] T058 [US7] Add `findDuplicateByContent(content: string)` query: check content hash (first 500 chars SHA-256) against existing items, return match if found in `apps/desktop/src/main/inbox/capture.ts`
-- [ ] T059 [US7] Modify capture handlers (CAPTURE_TEXT, CAPTURE_LINK) to check for duplicates before creating: if duplicate found, return `{ success: true, duplicate: true, existingItem: { id, title, createdAt } }` instead of creating new item in `apps/desktop/src/main/ipc/inbox-handlers.ts`
-- [ ] T060 [US7] Extend `CaptureResponse` type with optional `duplicate` flag and `existingItem` reference in `packages/contracts/src/inbox-api.ts`
-- [ ] T061 [US7] Handle duplicate response in Quick Capture UI: show "Already captured [date]" with "View" and "Capture Anyway" buttons in `apps/desktop/src/renderer/src/components/quick-capture.tsx`
-- [ ] T062 [US7] Handle duplicate response in CaptureInput (inline): same treatment in `apps/desktop/src/renderer/src/components/capture-input.tsx`
+- [x] T057 [US7] Add `findDuplicateByUrl(url: string)` query: check `sourceUrl` against existing unfiled+unarchived items, return match if found in `apps/desktop/src/main/inbox/duplicates.ts`
+- [x] T058 [US7] Add `findDuplicateByContent(content: string)` query: check content hash (first 500 chars SHA-256) against existing items, return match if found in `apps/desktop/src/main/inbox/duplicates.ts`
+- [x] T059 [US7] Modify capture handlers (CAPTURE_TEXT, CAPTURE_LINK) to check for duplicates before creating: if duplicate found, return `{ success: true, duplicate: true, existingItem: { id, title, createdAt } }` instead of creating new item in `apps/desktop/src/main/ipc/inbox-handlers.ts`
+- [x] T060 [US7] Extend `CaptureResponse` type with optional `duplicate` flag and `existingItem` reference in `packages/contracts/src/inbox-api.ts`
+- [x] T061 [US7] Handle duplicate response in Quick Capture UI: show "Already captured [date]" with "View" and "Capture Anyway" buttons in `apps/desktop/src/renderer/src/components/quick-capture.tsx`
+- [x] T062 [US7] Handle duplicate response in CaptureInput (inline): same treatment in `apps/desktop/src/renderer/src/components/capture-input.tsx`
 
 **Checkpoint**: URL duplicates detected. Content duplicates detected. User can view existing or force-capture. No silent duplicates.
 
