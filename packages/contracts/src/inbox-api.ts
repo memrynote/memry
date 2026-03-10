@@ -292,12 +292,14 @@ export interface CapturePattern {
 export const CaptureTextSchema = z.object({
   content: z.string().min(1).max(50000),
   title: z.string().min(1).max(200).optional(),
-  tags: z.array(z.string().max(50)).max(20).optional()
+  tags: z.array(z.string().max(50)).max(20).optional(),
+  force: z.boolean().optional()
 })
 
 export const CaptureLinkSchema = z.object({
   url: z.string().max(2000),
-  tags: z.array(z.string().max(50)).max(20).optional()
+  tags: z.array(z.string().max(50)).max(20).optional(),
+  force: z.boolean().optional()
 })
 
 // Custom validator for binary data that may be Buffer, Uint8Array, ArrayBuffer, or serialized object
@@ -468,10 +470,18 @@ export interface FilingHistoryEntry {
 // Response Types
 // ============================================================================
 
+export interface DuplicateMatch {
+  id: string
+  title: string
+  createdAt: string
+}
+
 export interface CaptureResponse {
   success: boolean
   item: InboxItem | null
   error?: string
+  duplicate?: boolean
+  existingItem?: DuplicateMatch
 }
 
 export interface InboxListResponse {

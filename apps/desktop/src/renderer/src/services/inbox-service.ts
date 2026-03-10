@@ -28,11 +28,13 @@ export interface CaptureTextInput {
   content: string
   title?: string
   tags?: string[]
+  force?: boolean
 }
 
 export interface CaptureLinkInput {
   url: string
   tags?: string[]
+  force?: boolean
 }
 
 export interface CaptureImageInput {
