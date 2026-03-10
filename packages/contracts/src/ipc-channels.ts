@@ -611,6 +611,8 @@ export const InboxChannels = {
     TRACK_SUGGESTION: 'inbox:track-suggestion',
     /** Convert an item to a full note */
     CONVERT_TO_NOTE: 'inbox:convert-to-note',
+    /** Convert an inbox item to a task */
+    CONVERT_TO_TASK: 'inbox:convert-to-task',
     /** Link an item to an existing note */
     LINK_TO_NOTE: 'inbox:link-to-note',
 
@@ -645,6 +647,8 @@ export const InboxChannels = {
     BULK_TAG: 'inbox:bulk-tag',
     /** File all stale items to unsorted */
     FILE_ALL_STALE: 'inbox:file-all-stale',
+    /** Archive all unfiled items older than N days (inbox bankruptcy) */
+    BULK_ARCHIVE_OLDER_THAN: 'inbox:bulk-archive-older-than',
 
     // Transcription
     /** Retry transcription for a voice item */
@@ -676,7 +680,13 @@ export const InboxChannels = {
 
     // Filing history
     /** Get recent filing history entries */
-    GET_FILING_HISTORY: 'inbox:get-filing-history'
+    GET_FILING_HISTORY: 'inbox:get-filing-history',
+
+    // Undo operations
+    /** Undo a file action (revert filedAt/filedTo/filedAction to null) */
+    UNDO_FILE: 'inbox:undo-file',
+    /** Undo an archive action (revert archivedAt to null) */
+    UNDO_ARCHIVE: 'inbox:undo-archive'
   },
   events: {
     /** Item was captured */

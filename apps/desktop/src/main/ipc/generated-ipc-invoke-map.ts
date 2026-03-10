@@ -40,6 +40,7 @@ export interface MainIpcInvokeHandlers {
   "inbox:add-tag": (...args: [any, any]) => Awaited<Promise<{ success: boolean; error?: string | undefined; }>>
   "inbox:archive": (...args: [any]) => Awaited<Promise<{ success: boolean; error?: string | undefined; }>>
   "inbox:bulk-archive": (...args: [any]) => Awaited<Promise<import("../../../../../packages/contracts/src/inbox-api").BulkResponse>>
+  "inbox:bulk-archive-older-than": (...args: [any]) => Awaited<Promise<import("../../../../../packages/contracts/src/inbox-api").BulkResponse>>
   "inbox:bulk-file": (...args: [any]) => Awaited<Promise<import("../../../../../packages/contracts/src/inbox-api").BulkResponse>>
   "inbox:bulk-snooze": (...args: [any]) => Awaited<Promise<{ success: boolean; processedCount: number; errors: { itemId: string; error: string; }[]; }>>
   "inbox:bulk-tag": (...args: [any]) => Awaited<Promise<import("../../../../../packages/contracts/src/inbox-api").BulkResponse>>
@@ -50,6 +51,7 @@ export interface MainIpcInvokeHandlers {
   "inbox:capture-text": (...args: [any]) => Awaited<Promise<import("../../../../../packages/contracts/src/inbox-api").CaptureResponse>>
   "inbox:capture-voice": (...args: [any]) => Awaited<Promise<import("../../../../../packages/contracts/src/inbox-api").CaptureResponse>>
   "inbox:convert-to-note": (...args: [any]) => Awaited<Promise<import("../../../../../packages/contracts/src/inbox-api").FileResponse>>
+  "inbox:convert-to-task": (...args: [any]) => Awaited<Promise<{ success: boolean; taskId: string | null; error?: string | undefined; }>>
   "inbox:delete-permanent": (...args: [any]) => Awaited<Promise<{ success: boolean; error?: string | undefined; }>>
   "inbox:file": (...args: [any]) => Awaited<Promise<import("../../../../../packages/contracts/src/inbox-api").FileResponse>>
   "inbox:file-all-stale": (...args: []) => Awaited<Promise<import("../../../../../packages/contracts/src/inbox-api").BulkResponse>>
@@ -72,6 +74,8 @@ export interface MainIpcInvokeHandlers {
   "inbox:snooze": (...args: [any]) => Awaited<Promise<{ success: boolean; error?: string | undefined; }>>
   "inbox:track-suggestion": (...args: [any, any, any, any, any, any, any]) => Awaited<Promise<{ success: boolean; error?: string | undefined; }>>
   "inbox:unarchive": (...args: [any]) => Awaited<Promise<{ success: boolean; error?: string | undefined; }>>
+  "inbox:undo-archive": (...args: [any]) => Awaited<Promise<{ success: boolean; error?: string | undefined; }>>
+  "inbox:undo-file": (...args: [any]) => Awaited<Promise<{ success: boolean; error?: string | undefined; }>>
   "inbox:unsnooze": (...args: [any]) => Awaited<Promise<{ success: boolean; error?: string | undefined; }>>
   "inbox:update": (...args: [any]) => Awaited<Promise<import("../../../../../packages/contracts/src/inbox-api").CaptureResponse>>
   "journal:createEntry": (...args: [{ date: string; content?: string | undefined; tags?: string[] | undefined; properties?: Record<string, unknown> | undefined; }]) => Awaited<Promise<{ id: string; date: string; content: string; wordCount: number; characterCount: number; tags: string[]; createdAt: string; modifiedAt: string; properties?: Record<string, unknown> | undefined; }>>

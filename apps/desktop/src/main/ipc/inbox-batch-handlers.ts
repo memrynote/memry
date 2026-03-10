@@ -2,12 +2,13 @@ import { ipcMain } from 'electron'
 import { InboxChannels } from '@memry/contracts/ipc-channels'
 import {
   BulkArchiveSchema,
+  BulkArchiveOlderThanSchema,
   BulkFileSchema,
   BulkTagSchema,
   type BulkResponse
 } from '@memry/contracts/inbox-api'
 import { inboxItems, inboxItemTags } from '@memry/db-schema/schema/inbox'
-import { eq, and } from 'drizzle-orm'
+import { eq, and, isNull, lt } from 'drizzle-orm'
 import { generateId } from '../lib/id'
 import { bulkFileToFolder } from '../inbox/filing'
 import { bulkSnoozeItems } from '../inbox/snooze'
@@ -30,6 +31,7 @@ export interface InboxBatchHandlers {
   handleBulkFile: (input: unknown) => Promise<BulkResponse>
   handleBulkTag: (input: unknown) => Promise<BulkResponse>
   handleFileAllStale: () => Promise<BulkResponse>
+  handleBulkArchiveOlderThan: (input: unknown) => Promise<BulkResponse>
 }
 
 export function createInboxBatchHandlers(deps: InboxBatchHandlerDeps): InboxBatchHandlers {
@@ -215,12 +217,56 @@ export function createInboxBatchHandlers(deps: InboxBatchHandlerDeps): InboxBatc
     }
   }
 
+  async function handleBulkArchiveOlderThan(input: unknown): Promise<BulkResponse> {
+    try {
+      const parsed = BulkArchiveOlderThanSchema.parse(input)
+      const db = deps.requireDatabase()
+      const cutoff = new Date()
+      cutoff.setDate(cutoff.getDate() - parsed.olderThanDays)
+      const cutoffIso = cutoff.toISOString()
+
+      const oldItems = db
+        .select({ id: inboxItems.id })
+        .from(inboxItems)
+        .where(
+          and(
+            isNull(inboxItems.filedAt),
+            isNull(inboxItems.archivedAt),
+            lt(inboxItems.createdAt, cutoffIso)
+          )
+        )
+        .all()
+
+      if (oldItems.length === 0) {
+        return { success: true, processedCount: 0, errors: [] }
+      }
+
+      const errors: Array<{ itemId: string; error: string }> = []
+      let processedCount = 0
+
+      for (const item of oldItems) {
+        const result = await deps.archiveItem(item.id)
+        if (result.success) {
+          processedCount++
+        } else {
+          errors.push({ itemId: item.id, error: result.error || 'Unknown error' })
+        }
+      }
+
+      return { success: errors.length === 0, processedCount, errors }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error'
+      return { success: false, processedCount: 0, errors: [{ itemId: '', error: message }] }
+    }
+  }
+
   return {
     handleBulkArchive,
     handleBulkSnooze,
     handleBulkFile,
     handleBulkTag,
-    handleFileAllStale
+    handleFileAllStale,
+    handleBulkArchiveOlderThan
   }
 }
 
@@ -230,6 +276,9 @@ export function registerInboxBatchHandlers(handlers: InboxBatchHandlers): void {
   ipcMain.handle(InboxChannels.invoke.BULK_ARCHIVE, (_, input) => handlers.handleBulkArchive(input))
   ipcMain.handle(InboxChannels.invoke.BULK_TAG, (_, input) => handlers.handleBulkTag(input))
   ipcMain.handle(InboxChannels.invoke.FILE_ALL_STALE, () => handlers.handleFileAllStale())
+  ipcMain.handle(InboxChannels.invoke.BULK_ARCHIVE_OLDER_THAN, (_, input) =>
+    handlers.handleBulkArchiveOlderThan(input)
+  )
 }
 
 export function unregisterInboxBatchHandlers(): void {
@@ -238,4 +287,5 @@ export function unregisterInboxBatchHandlers(): void {
   ipcMain.removeHandler(InboxChannels.invoke.BULK_ARCHIVE)
   ipcMain.removeHandler(InboxChannels.invoke.BULK_TAG)
   ipcMain.removeHandler(InboxChannels.invoke.FILE_ALL_STALE)
+  ipcMain.removeHandler(InboxChannels.invoke.BULK_ARCHIVE_OLDER_THAN)
 }

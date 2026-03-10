@@ -99,7 +99,21 @@ vi.mock('../inbox/stats', () => ({
   incrementArchivedCount: vi.fn(),
   incrementProcessedCount: vi.fn(),
   getTodayActivity: vi.fn(() => ({ capturedToday: 0, processedToday: 0 })),
-  getAverageTimeToProcess: vi.fn(() => 0)
+  getAverageTimeToProcess: vi.fn(() => 0),
+  getInboxHealthMetrics: vi.fn(() => ({
+    totalActive: 0,
+    staleCount: 0,
+    stalePercent: 0,
+    avgAgeHours: 0,
+    oldestAgeHours: 0,
+    healthScore: 100,
+    ageDistribution: { fresh: 0, aging: 0, stale: 0, rotten: 0 }
+  }))
+}))
+
+vi.mock('../inbox/duplicates', () => ({
+  findDuplicateByUrl: vi.fn(() => null),
+  findDuplicateByContent: vi.fn(() => null)
 }))
 
 vi.mock('../inbox/snooze', () => ({

@@ -55,6 +55,19 @@ export const filingAction = {
 
 export type FilingAction = (typeof filingAction)[keyof typeof filingAction]
 
+/**
+ * Capture source tracking — where the item was captured from
+ */
+export const captureSource = {
+  QUICK_CAPTURE: 'quick-capture',
+  INLINE: 'inline',
+  BROWSER_EXTENSION: 'browser-extension',
+  API: 'api',
+  REMINDER: 'reminder'
+} as const
+
+export type CaptureSource = (typeof captureSource)[keyof typeof captureSource]
+
 // ============================================================================
 // inbox_items Table
 // ============================================================================
@@ -164,6 +177,9 @@ export const inboxItems = sqliteTable(
 
     /** Original page title for clips */
     sourceTitle: text('source_title'),
+
+    /** Where the item was captured from: quick-capture, inline, browser-extension, api, reminder */
+    captureSource: text('capture_source'),
 
     // ========================================================================
     // Archive Status

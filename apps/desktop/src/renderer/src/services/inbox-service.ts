@@ -24,15 +24,21 @@ import type {
 // Types for service input
 // ============================================================================
 
+type CaptureSource = 'quick-capture' | 'inline' | 'browser-extension' | 'api' | 'reminder'
+
 export interface CaptureTextInput {
   content: string
   title?: string
   tags?: string[]
+  force?: boolean
+  source?: CaptureSource
 }
 
 export interface CaptureLinkInput {
   url: string
   tags?: string[]
+  force?: boolean
+  source?: CaptureSource
 }
 
 export interface CaptureImageInput {
@@ -40,6 +46,7 @@ export interface CaptureImageInput {
   filename: string
   mimeType: string
   tags?: string[]
+  source?: CaptureSource
 }
 
 export interface CaptureVoiceInput {
@@ -48,6 +55,7 @@ export interface CaptureVoiceInput {
   format: string
   transcribe?: boolean
   tags?: string[]
+  source?: CaptureSource
 }
 
 export interface CaptureClipInput {
@@ -56,6 +64,7 @@ export interface CaptureClipInput {
   sourceUrl: string
   sourceTitle: string
   tags?: string[]
+  source?: CaptureSource
 }
 
 export interface CapturePdfInput {
@@ -270,6 +279,12 @@ export const inboxService = {
     return window.api.inbox.convertToNote(itemId)
   },
 
+  convertToTask: (
+    itemId: string
+  ): Promise<{ success: boolean; taskId: string | null; error?: string }> => {
+    return window.api.inbox.convertToTask(itemId)
+  },
+
   /**
    * Link an inbox item to an existing note.
    * @param itemId - Inbox item ID
@@ -400,6 +415,10 @@ export const inboxService = {
     return window.api.inbox.fileAllStale()
   },
 
+  bulkArchiveOlderThan: (olderThanDays: number): Promise<BulkResponse> => {
+    return window.api.inbox.bulkArchiveOlderThan(olderThanDays)
+  },
+
   // =========================================================================
   // Transcription
   // =========================================================================
@@ -485,6 +504,18 @@ export const inboxService = {
 
   getFilingHistory: (options?: { limit?: number }): Promise<FilingHistoryResponse> => {
     return window.api.inbox.getFilingHistory(options)
+  },
+
+  // =========================================================================
+  // Undo Operations
+  // =========================================================================
+
+  undoFile: (id: string): Promise<{ success: boolean; error?: string }> => {
+    return window.api.inbox.undoFile(id)
+  },
+
+  undoArchive: (id: string): Promise<{ success: boolean; error?: string }> => {
+    return window.api.inbox.undoArchive(id)
   }
 }
 

@@ -8,6 +8,7 @@ export interface Toast {
   message: string
   type?: 'success' | 'error' | 'info'
   onUndo?: () => void
+  duration?: number
 }
 
 interface ToastItemProps {
@@ -22,11 +23,10 @@ const ToastItem = ({ toast, onDismiss }: ToastItemProps): React.JSX.Element => {
     // Trigger enter animation
     requestAnimationFrame(() => setIsVisible(true))
 
-    // Auto dismiss after 4 seconds
     const timer = setTimeout(() => {
       setIsVisible(false)
       setTimeout(() => onDismiss(toast.id), 150)
-    }, 4000)
+    }, toast.duration ?? 4000)
 
     return () => clearTimeout(timer)
   }, [toast.id, onDismiss])

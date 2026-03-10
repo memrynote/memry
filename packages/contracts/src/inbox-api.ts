@@ -30,6 +30,16 @@ export type InboxItemType =
   | 'reminder'
 export type ProcessingStatus = 'pending' | 'processing' | 'complete' | 'failed'
 export type FilingAction = 'folder' | 'note' | 'linked'
+export type CaptureSource = 'quick-capture' | 'inline' | 'browser-extension' | 'api' | 'reminder'
+
+export type TriageAction = 'discard' | 'convert-to-task' | 'expand-to-note' | 'file' | 'defer'
+
+export interface TriageState {
+  currentIndex: number
+  totalItems: number
+  currentItem: InboxItem | null
+  completedCount: number
+}
 
 // ============================================================================
 // Metadata Types
@@ -183,6 +193,7 @@ export interface InboxItem {
   // Source
   sourceUrl: string | null
   sourceTitle: string | null
+  captureSource: CaptureSource | null
 
   // Computed
   tags: string[]
@@ -217,6 +228,9 @@ export interface InboxItemListItem {
   // Viewed (for reminder items)
   viewedAt?: Date // When the item was opened/viewed
 
+  // Capture source
+  captureSource?: CaptureSource | null
+
   // Reminder-specific metadata (for reminder items)
   metadata?: ReminderMetadata // Reminder target info
 }
@@ -228,11 +242,24 @@ export interface FilingDestination {
   noteTitle?: string
 }
 
+export interface SuggestedNote {
+  id: string
+  title: string
+  snippet: string
+}
+
 export interface FilingSuggestion {
   destination: FilingDestination
   confidence: number
   reason: string
   suggestedTags: string[]
+  suggestedNote?: SuggestedNote
+}
+
+export interface InboxAgeDistribution {
+  fresh: number
+  aging: number
+  stale: number
 }
 
 export interface InboxStats {
@@ -243,6 +270,12 @@ export interface InboxStats {
   processedToday: number
   capturedToday: number
   avgTimeToProcess: number // minutes
+  capturedThisWeek: number
+  processedThisWeek: number
+  captureProcessRatio: number
+  ageDistribution: InboxAgeDistribution
+  oldestItemDays: number
+  currentStreak: number
 }
 
 export interface CapturePattern {
@@ -264,12 +297,16 @@ export interface CapturePattern {
 export const CaptureTextSchema = z.object({
   content: z.string().min(1).max(50000),
   title: z.string().min(1).max(200).optional(),
-  tags: z.array(z.string().max(50)).max(20).optional()
+  tags: z.array(z.string().max(50)).max(20).optional(),
+  force: z.boolean().optional(),
+  source: z.enum(['quick-capture', 'inline', 'browser-extension', 'api', 'reminder']).optional()
 })
 
 export const CaptureLinkSchema = z.object({
   url: z.string().max(2000),
-  tags: z.array(z.string().max(50)).max(20).optional()
+  tags: z.array(z.string().max(50)).max(20).optional(),
+  force: z.boolean().optional(),
+  source: z.enum(['quick-capture', 'inline', 'browser-extension', 'api', 'reminder']).optional()
 })
 
 // Custom validator for binary data that may be Buffer, Uint8Array, ArrayBuffer, or serialized object
@@ -321,7 +358,8 @@ export const CaptureImageSchema = z.object({
     // Documents
     'application/pdf'
   ]),
-  tags: z.array(z.string().max(50)).max(20).optional()
+  tags: z.array(z.string().max(50)).max(20).optional(),
+  source: z.enum(['quick-capture', 'inline', 'browser-extension', 'api', 'reminder']).optional()
 })
 
 export const CaptureVoiceSchema = z.object({
@@ -329,7 +367,8 @@ export const CaptureVoiceSchema = z.object({
   duration: z.number().min(0).max(300),
   format: z.enum(['webm', 'mp3', 'wav']),
   transcribe: z.boolean().default(true),
-  tags: z.array(z.string().max(50)).max(20).optional()
+  tags: z.array(z.string().max(50)).max(20).optional(),
+  source: z.enum(['quick-capture', 'inline', 'browser-extension', 'api', 'reminder']).optional()
 })
 
 export const CaptureClipSchema = z.object({
@@ -337,7 +376,8 @@ export const CaptureClipSchema = z.object({
   text: z.string().max(50000),
   sourceUrl: z.string().max(2000),
   sourceTitle: z.string().max(200),
-  tags: z.array(z.string().max(50)).max(20).optional()
+  tags: z.array(z.string().max(50)).max(20).optional(),
+  source: z.enum(['quick-capture', 'inline', 'browser-extension', 'api', 'reminder']).optional()
 })
 
 export const CapturePdfSchema = z.object({
@@ -394,6 +434,10 @@ export const BulkArchiveSchema = z.object({
   itemIds: z.array(z.string()).min(1).max(100)
 })
 
+export const BulkArchiveOlderThanSchema = z.object({
+  olderThanDays: z.number().int().min(1).max(365)
+})
+
 export const BulkTagSchema = z.object({
   itemIds: z.array(z.string()).min(1).max(100),
   tags: z.array(z.string().max(50)).min(1).max(20)
@@ -436,10 +480,18 @@ export interface FilingHistoryEntry {
 // Response Types
 // ============================================================================
 
+export interface DuplicateMatch {
+  id: string
+  title: string
+  createdAt: string
+}
+
 export interface CaptureResponse {
   success: boolean
   item: InboxItem | null
   error?: string
+  duplicate?: boolean
+  existingItem?: DuplicateMatch
 }
 
 export interface InboxListResponse {
@@ -514,6 +566,9 @@ export interface InboxHandlers {
   [InboxChannels.invoke.FILE]: (input: z.infer<typeof FileItemSchema>) => Promise<FileResponse>
   [InboxChannels.invoke.GET_SUGGESTIONS]: (itemId: string) => Promise<SuggestionsResponse>
   [InboxChannels.invoke.CONVERT_TO_NOTE]: (itemId: string) => Promise<FileResponse>
+  [InboxChannels.invoke.CONVERT_TO_TASK]: (
+    itemId: string
+  ) => Promise<{ success: boolean; taskId: string | null; error?: string }>
   [InboxChannels.invoke.LINK_TO_NOTE]: (
     itemId: string,
     noteId: string
@@ -549,6 +604,9 @@ export interface InboxHandlers {
   ) => Promise<BulkResponse>
   [InboxChannels.invoke.BULK_TAG]: (input: z.infer<typeof BulkTagSchema>) => Promise<BulkResponse>
   [InboxChannels.invoke.FILE_ALL_STALE]: () => Promise<BulkResponse>
+  [InboxChannels.invoke.BULK_ARCHIVE_OLDER_THAN]: (
+    input: z.infer<typeof BulkArchiveOlderThanSchema>
+  ) => Promise<BulkResponse>
 
   // Transcription
   [InboxChannels.invoke.RETRY_TRANSCRIPTION]: (
@@ -667,6 +725,9 @@ export interface InboxClientAPI {
   file(input: z.infer<typeof FileItemSchema>): Promise<FileResponse>
   getSuggestions(itemId: string): Promise<SuggestionsResponse>
   convertToNote(itemId: string): Promise<FileResponse>
+  convertToTask(
+    itemId: string
+  ): Promise<{ success: boolean; taskId: string | null; error?: string }>
   linkToNote(itemId: string, noteId: string): Promise<{ success: boolean; error?: string }>
 
   // Tags
@@ -687,6 +748,7 @@ export interface InboxClientAPI {
   bulkArchive(input: z.infer<typeof BulkArchiveSchema>): Promise<BulkResponse>
   bulkTag(input: z.infer<typeof BulkTagSchema>): Promise<BulkResponse>
   fileAllStale(): Promise<BulkResponse>
+  bulkArchiveOlderThan(input: z.infer<typeof BulkArchiveOlderThanSchema>): Promise<BulkResponse>
 
   // Transcription
   retryTranscription(itemId: string): Promise<{ success: boolean; error?: string }>

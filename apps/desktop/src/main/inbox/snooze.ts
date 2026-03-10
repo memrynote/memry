@@ -143,6 +143,7 @@ function toInboxItem(row: typeof inboxItems.$inferSelect, tags: string[]): Inbox
     transcriptionStatus: row.transcriptionStatus as InboxItem['transcriptionStatus'],
     sourceUrl: row.sourceUrl,
     sourceTitle: row.sourceTitle,
+    captureSource: row.captureSource as InboxItem['captureSource'],
     tags,
     isStale: false // Snoozed items are not considered stale
   }

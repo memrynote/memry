@@ -36,6 +36,7 @@ export const InboxSyncPayloadSchema = z.object({
   archivedAt: z.string().nullable().optional(),
   sourceUrl: z.string().nullable().optional(),
   sourceTitle: z.string().nullable().optional(),
+  captureSource: z.string().nullable().optional(),
   clock: VectorClockSchema.optional(),
   createdAt: z.string().optional(),
   modifiedAt: z.string().optional()
