@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { AlertTriangle, TrendingUp, TrendingDown, Flame, Archive, ArrowRight } from 'lucide-react'
+import { useState, useMemo } from 'react'
+import { AlertTriangle, Flame, Archive, ArrowRight, Inbox, Clock, Zap, Moon } from 'lucide-react'
 import { useInboxStats, useInboxBankruptcy, useInboxFilingHistory } from '@/hooks/use-inbox'
 import { InboxFilingHistoryList } from '@/components/inbox/inbox-filing-history'
 import { cn } from '@/lib/utils'
@@ -8,157 +8,235 @@ export interface InboxHealthViewProps {
   className?: string
 }
 
-function RatioDisplay({ captured, processed }: { captured: number; processed: number }) {
-  const ratio = processed > 0 ? Math.round((captured / processed) * 10) / 10 : captured
+// ---------------------------------------------------------------------------
+// Arc Gauge — SVG ratio visualization
+// ---------------------------------------------------------------------------
+
+function ArcGauge({
+  ratio,
+  captured,
+  processed
+}: {
+  ratio: number
+  captured: number
+  processed: number
+}) {
+  const clampedRatio = Math.min(ratio, 8)
+  const progress = Math.min(clampedRatio / 5, 1)
   const isHealthy = ratio <= 2
   const isWarning = ratio > 2 && ratio <= 3
   const isDanger = ratio > 3
 
+  const size = 160
+  const stroke = 10
+  const r = (size - stroke) / 2
+  const cx = size / 2
+  const cy = size / 2
+
+  const startAngle = 135
+  const endAngle = 405
+  const totalAngle = endAngle - startAngle
+  const valueAngle = startAngle + totalAngle * progress
+
+  const toRad = (deg: number) => ((deg - 90) * Math.PI) / 180
+  const arcPath = (start: number, end: number) => {
+    const s = { x: cx + r * Math.cos(toRad(start)), y: cy + r * Math.sin(toRad(start)) }
+    const e = { x: cx + r * Math.cos(toRad(end)), y: cy + r * Math.sin(toRad(end)) }
+    const large = end - start > 180 ? 1 : 0
+    return `M ${s.x} ${s.y} A ${r} ${r} 0 ${large} 1 ${e.x} ${e.y}`
+  }
+
+  const strokeColor = isDanger
+    ? 'stroke-red-500 dark:stroke-red-400'
+    : isWarning
+      ? 'stroke-amber-500 dark:stroke-amber-400'
+      : 'stroke-emerald-500 dark:stroke-emerald-400'
+
+  const textColor = isDanger
+    ? 'text-red-600 dark:text-red-400'
+    : isWarning
+      ? 'text-amber-600 dark:text-amber-400'
+      : 'text-emerald-600 dark:text-emerald-400'
+
   return (
-    <div className="rounded-xl border border-border/50 bg-card p-6">
-      <div className="mb-4 flex items-center justify-between">
-        <h3 className="font-serif text-lg font-medium">Capture vs Process</h3>
-        {isDanger && <AlertTriangle className="size-5 text-amber-500" />}
-      </div>
-
-      <div className="flex items-baseline gap-3">
-        <span
-          className={cn(
-            'font-display text-5xl font-bold tabular-nums tracking-tight',
-            isHealthy && 'text-emerald-600 dark:text-emerald-400',
-            isWarning && 'text-amber-600 dark:text-amber-400',
-            isDanger && 'text-red-600 dark:text-red-400'
-          )}
+    <div className="flex flex-col items-center">
+      <svg
+        width={size}
+        height={size - 20}
+        viewBox={`0 0 ${size} ${size - 10}`}
+        className="overflow-visible"
+      >
+        <path
+          d={arcPath(startAngle, endAngle)}
+          fill="none"
+          className="stroke-border/40"
+          strokeWidth={stroke}
+          strokeLinecap="round"
+        />
+        {progress > 0 && (
+          <path
+            d={arcPath(startAngle, valueAngle)}
+            fill="none"
+            className={strokeColor}
+            strokeWidth={stroke}
+            strokeLinecap="round"
+            style={{
+              filter: isDanger ? 'drop-shadow(0 0 6px rgba(239,68,68,0.3))' : undefined
+            }}
+          />
+        )}
+        <text
+          x={cx}
+          y={cy - 6}
+          textAnchor="middle"
+          className={cn('font-display text-[42px] font-bold', textColor)}
+          fill="currentColor"
         >
-          {ratio > 0 ? `${ratio}:1` : '0'}
+          {ratio > 0 ? `${ratio}` : '0'}
+        </text>
+        <text
+          x={cx}
+          y={cy + 16}
+          textAnchor="middle"
+          className="fill-muted-foreground font-serif text-[13px]"
+          fill="currentColor"
+        >
+          : 1 ratio
+        </text>
+      </svg>
+      <div className="mt-1 flex items-center gap-4 text-xs">
+        <span className="text-muted-foreground">
+          <strong className="text-foreground font-display tabular-nums">{captured}</strong> in
         </span>
-        <span className="text-muted-foreground text-sm">ratio this week</span>
-      </div>
-
-      <div className="mt-4 flex gap-6 text-sm">
-        <div className="flex items-center gap-2">
-          <TrendingUp className="text-muted-foreground size-4" />
-          <span className="text-muted-foreground">
-            <strong className="text-foreground">{captured}</strong> captured
-          </span>
-        </div>
-        <div className="flex items-center gap-2">
-          <TrendingDown className="text-muted-foreground size-4" />
-          <span className="text-muted-foreground">
-            <strong className="text-foreground">{processed}</strong> processed
-          </span>
-        </div>
+        <span className="bg-border/60 h-3 w-px" />
+        <span className="text-muted-foreground">
+          <strong className="text-foreground font-display tabular-nums">{processed}</strong> out
+        </span>
       </div>
     </div>
   )
 }
 
-function AgeDistributionBar({
-  fresh,
-  aging,
-  stale
-}: {
-  fresh: number
-  aging: number
-  stale: number
-}) {
+// ---------------------------------------------------------------------------
+// Age Strata — vertical layered visualization
+// ---------------------------------------------------------------------------
+
+function AgeStrata({ fresh, aging, stale }: { fresh: number; aging: number; stale: number }) {
   const total = fresh + aging + stale
+
   if (total === 0) {
     return (
-      <div className="rounded-xl border border-border/50 bg-card p-6">
-        <h3 className="font-serif text-lg font-medium">Age Distribution</h3>
-        <p className="text-muted-foreground mt-2 text-sm italic">No pending items</p>
+      <div className="flex h-full items-center justify-center">
+        <p className="text-muted-foreground font-serif text-sm italic">Inbox clear</p>
       </div>
     )
   }
 
-  const freshPct = (fresh / total) * 100
-  const agingPct = (aging / total) * 100
-  const stalePct = (stale / total) * 100
+  const layers = [
+    {
+      label: 'Fresh',
+      count: fresh,
+      range: '<3d',
+      color: 'bg-emerald-500/60 dark:bg-emerald-400/50',
+      dot: 'bg-emerald-500'
+    },
+    {
+      label: 'Aging',
+      count: aging,
+      range: '3–7d',
+      color: 'bg-amber-500/50 dark:bg-amber-400/40',
+      dot: 'bg-amber-500'
+    },
+    {
+      label: 'Stale',
+      count: stale,
+      range: '>7d',
+      color: 'bg-red-500/40 dark:bg-red-400/30',
+      dot: 'bg-red-500'
+    }
+  ]
 
   return (
-    <div className="rounded-xl border border-border/50 bg-card p-6">
-      <div className="mb-4 flex items-center justify-between">
-        <h3 className="font-serif text-lg font-medium">Age Distribution</h3>
-        <span className="text-muted-foreground font-display text-sm tabular-nums">
-          {total} items
-        </span>
-      </div>
-
-      <div className="mb-3 flex h-4 overflow-hidden rounded-full">
-        {freshPct > 0 && (
-          <div
-            className="bg-emerald-500/70 transition-all duration-500"
-            style={{ width: `${freshPct}%` }}
-            title={`Fresh: ${fresh}`}
-          />
-        )}
-        {agingPct > 0 && (
-          <div
-            className="bg-amber-500/70 transition-all duration-500"
-            style={{ width: `${agingPct}%` }}
-            title={`Aging: ${aging}`}
-          />
-        )}
-        {stalePct > 0 && (
-          <div
-            className="bg-red-500/70 transition-all duration-500"
-            style={{ width: `${stalePct}%` }}
-            title={`Stale: ${stale}`}
-          />
-        )}
-      </div>
-
-      <div className="flex justify-between text-xs">
-        <div className="flex items-center gap-1.5">
-          <span className="size-2 rounded-full bg-emerald-500/70" />
-          <span className="text-muted-foreground">
-            Fresh <strong className="text-foreground">{fresh}</strong>
-          </span>
-          <span className="text-muted-foreground/50 ml-1">&lt;3d</span>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <span className="size-2 rounded-full bg-amber-500/70" />
-          <span className="text-muted-foreground">
-            Aging <strong className="text-foreground">{aging}</strong>
-          </span>
-          <span className="text-muted-foreground/50 ml-1">3-7d</span>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <span className="size-2 rounded-full bg-red-500/70" />
-          <span className="text-muted-foreground">
-            Stale <strong className="text-foreground">{stale}</strong>
-          </span>
-          <span className="text-muted-foreground/50 ml-1">&gt;7d</span>
-        </div>
+    <div className="flex flex-col gap-2">
+      {layers.map((layer) => {
+        const pct = total > 0 ? (layer.count / total) * 100 : 0
+        return (
+          <div key={layer.label} className="group flex items-center gap-3">
+            <div className="w-20 flex-shrink-0">
+              <div className="flex items-center gap-1.5">
+                <span className={cn('size-1.5 rounded-full', layer.dot)} />
+                <span className="text-muted-foreground text-[11px] font-medium uppercase tracking-wider">
+                  {layer.label}
+                </span>
+              </div>
+              <span className="text-muted-foreground/50 ml-3 text-[10px]">{layer.range}</span>
+            </div>
+            <div className="relative h-7 min-w-0 flex-1 overflow-hidden rounded">
+              <div
+                className={cn(
+                  'absolute inset-y-0 left-0 rounded transition-all duration-700 ease-out',
+                  layer.color
+                )}
+                style={{ width: `${Math.max(pct, 2)}%` }}
+              />
+              <span className="relative z-10 flex h-full items-center px-2.5 text-xs font-bold tabular-nums">
+                {layer.count}
+              </span>
+            </div>
+          </div>
+        )
+      })}
+      <div className="text-muted-foreground/60 mt-1 text-right text-[10px] tabular-nums">
+        {total} pending
       </div>
     </div>
   )
 }
 
-function StreakCard({ streak }: { streak: number }) {
+// ---------------------------------------------------------------------------
+// Streak dots — visual habit tracker
+// ---------------------------------------------------------------------------
+
+function StreakDots({ streak }: { streak: number }) {
+  const dots = useMemo(() => {
+    const filled = Math.min(streak, 14)
+    const empty = 14 - filled
+    return { filled, empty }
+  }, [streak])
+
   return (
-    <div className="rounded-xl border border-border/50 bg-card p-6">
-      <div className="mb-2 flex items-center gap-2">
-        <Flame
-          className={cn('size-5', streak > 0 ? 'text-orange-500' : 'text-muted-foreground/40')}
-        />
-        <h3 className="font-serif text-lg font-medium">Processing Streak</h3>
+    <div className="flex items-center gap-3">
+      <Flame
+        className={cn(
+          'size-5 shrink-0',
+          streak > 0 ? 'text-orange-500' : 'text-muted-foreground/30'
+        )}
+      />
+      <div className="flex min-w-0 flex-1 items-center gap-[3px]">
+        {Array.from({ length: dots.filled }, (_, i) => (
+          <div
+            key={`f-${i}`}
+            className="size-2 rounded-full bg-orange-500/80 dark:bg-orange-400/70"
+            style={{ animationDelay: `${i * 40}ms` }}
+          />
+        ))}
+        {Array.from({ length: dots.empty }, (_, i) => (
+          <div key={`e-${i}`} className="bg-border/50 size-2 rounded-full" />
+        ))}
       </div>
-      <div className="flex items-baseline gap-2">
-        <span className="font-display text-4xl font-bold tabular-nums tracking-tight">
-          {streak}
-        </span>
-        <span className="text-muted-foreground text-sm">
-          {streak === 1 ? 'day' : 'days'} in a row
+      <div className="shrink-0 text-right">
+        <span className="font-display text-lg font-bold tabular-nums leading-none">{streak}</span>
+        <span className="text-muted-foreground ml-1 text-[10px]">
+          {streak === 1 ? 'day' : 'days'}
         </span>
       </div>
-      {streak === 0 && (
-        <p className="text-muted-foreground mt-2 text-xs">Process at least 1 item to start</p>
-      )}
     </div>
   )
 }
+
+// ---------------------------------------------------------------------------
+// Collector warning — editorial pull-quote
+// ---------------------------------------------------------------------------
 
 function CollectorWarning({
   ratio,
@@ -171,34 +249,45 @@ function CollectorWarning({
 }) {
   if (ratio <= 3 && oldestDays < 21) return null
 
+  const message =
+    ratio > 3
+      ? "You're collecting faster than processing"
+      : `Your oldest item is ${oldestDays} days old`
+
+  const detail =
+    ratio > 3
+      ? `At ${ratio}:1 this week, your inbox is growing. Triage or declare bankruptcy.`
+      : 'Items lose context as they age. Archive what you no longer need.'
+
   return (
-    <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-5">
-      <div className="flex items-start gap-3">
-        <AlertTriangle className="mt-0.5 size-5 shrink-0 text-amber-500" />
-        <div className="flex-1">
-          <h4 className="font-serif font-medium text-amber-700 dark:text-amber-400">
-            {ratio > 3
-              ? "You're collecting faster than processing"
-              : `Your oldest item is ${oldestDays} days old`}
-          </h4>
-          <p className="text-muted-foreground mt-1 text-sm">
-            {ratio > 3
-              ? `At ${ratio}:1 this week, your inbox is growing. Consider a triage session or declaring bankruptcy on old items.`
-              : 'Items lose context as they age. Consider archiving items you no longer need.'}
-          </p>
-          <button
-            onClick={onDeclare}
-            className="text-foreground bg-amber-500/10 hover:bg-amber-500/20 mt-3 inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors"
-          >
-            <Archive className="size-3.5" />
-            Declare Inbox Bankruptcy
-            <ArrowRight className="size-3" />
-          </button>
+    <div className="relative overflow-hidden rounded-xl border border-amber-600/20 dark:border-amber-400/15">
+      <div className="absolute inset-y-0 left-0 w-1 bg-amber-500 dark:bg-amber-400" />
+      <div className="bg-amber-500/[0.04] px-5 py-4 pl-6">
+        <div className="flex items-start gap-3">
+          <AlertTriangle className="mt-0.5 size-4 shrink-0 text-amber-600 dark:text-amber-400" />
+          <div className="flex-1">
+            <p className="font-serif text-sm font-semibold text-amber-800 dark:text-amber-300">
+              {message}
+            </p>
+            <p className="text-muted-foreground mt-1 text-xs leading-relaxed">{detail}</p>
+          </div>
         </div>
+        <button
+          onClick={onDeclare}
+          className="ml-7 mt-3 inline-flex items-center gap-1.5 rounded-md bg-amber-600/10 px-3 py-1.5 text-xs font-semibold text-amber-700 transition-colors hover:bg-amber-600/20 dark:text-amber-300 dark:hover:bg-amber-400/15"
+        >
+          <Archive className="size-3" />
+          Declare Bankruptcy
+          <ArrowRight className="size-3" />
+        </button>
       </div>
     </div>
   )
 }
+
+// ---------------------------------------------------------------------------
+// Bankruptcy dialog
+// ---------------------------------------------------------------------------
 
 function BankruptcyDialog({
   oldestDays,
@@ -220,51 +309,60 @@ function BankruptcyDialog({
   const [selectedDays, setSelectedDays] = useState(presets[0]?.days ?? 14)
 
   return (
-    <div className="bg-background/80 fixed inset-0 z-50 flex items-center justify-center backdrop-blur-sm">
-      <div className="bg-card mx-4 w-full max-w-md rounded-2xl border p-6 shadow-xl">
-        <div className="mb-4 flex items-center gap-3">
-          <div className="rounded-full bg-amber-500/10 p-2">
-            <Archive className="size-5 text-amber-500" />
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+      <div
+        className="bg-card mx-4 w-full max-w-sm rounded-2xl border shadow-2xl"
+        style={{ boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)' }}
+      >
+        <div className="border-b p-5">
+          <div className="flex items-center gap-3">
+            <div className="flex size-9 items-center justify-center rounded-lg bg-amber-500/10">
+              <Archive className="size-4 text-amber-600 dark:text-amber-400" />
+            </div>
+            <div>
+              <h3 className="font-serif text-base font-semibold">Inbox Bankruptcy</h3>
+              <p className="text-muted-foreground text-xs">Archive old unfiled items</p>
+            </div>
           </div>
-          <h3 className="font-serif text-lg font-semibold">Inbox Bankruptcy</h3>
         </div>
 
-        <p className="text-muted-foreground mb-4 text-sm">
-          Archive all unfiled items older than the selected threshold. This is reversible — items
-          move to the Archive tab.
-        </p>
+        <div className="p-5">
+          <p className="text-muted-foreground mb-4 text-xs leading-relaxed">
+            Move all unfiled items older than the threshold to Archive. This is reversible.
+          </p>
 
-        <div className="mb-6 flex gap-2">
-          {presets.map((p) => (
-            <button
-              key={p.days}
-              onClick={() => setSelectedDays(p.days)}
-              className={cn(
-                'flex-1 rounded-lg border px-3 py-2 text-sm font-medium transition-colors',
-                selectedDays === p.days
-                  ? 'border-primary bg-primary/10 text-primary'
-                  : 'border-border hover:bg-accent'
-              )}
-            >
-              {p.label}
-            </button>
-          ))}
+          <div className="flex gap-2">
+            {presets.map((p) => (
+              <button
+                key={p.days}
+                onClick={() => setSelectedDays(p.days)}
+                className={cn(
+                  'flex-1 rounded-lg border px-3 py-2.5 text-sm font-medium transition-all',
+                  selectedDays === p.days
+                    ? 'border-amber-500/50 bg-amber-500/10 text-amber-700 dark:border-amber-400/40 dark:text-amber-300'
+                    : 'border-border hover:bg-accent'
+                )}
+              >
+                {p.label}
+              </button>
+            ))}
+          </div>
         </div>
 
-        <div className="flex justify-end gap-2">
+        <div className="flex justify-end gap-2 border-t px-5 py-3">
           <button
             onClick={onCancel}
             disabled={isPending}
-            className="text-muted-foreground hover:bg-accent rounded-lg px-4 py-2 text-sm transition-colors"
+            className="text-muted-foreground hover:text-foreground rounded-lg px-4 py-2 text-sm transition-colors"
           >
             Cancel
           </button>
           <button
             onClick={() => onConfirm(selectedDays)}
             disabled={isPending}
-            className="bg-amber-600 hover:bg-amber-700 rounded-lg px-4 py-2 text-sm font-medium text-white transition-colors disabled:opacity-50"
+            className="rounded-lg bg-amber-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-amber-700 disabled:opacity-50 dark:bg-amber-500 dark:hover:bg-amber-600"
           >
-            {isPending ? 'Archiving...' : `Archive items older than ${selectedDays}d`}
+            {isPending ? 'Archiving...' : `Archive >${selectedDays}d`}
           </button>
         </div>
       </div>
@@ -272,48 +370,33 @@ function BankruptcyDialog({
   )
 }
 
-function QuickStatsRow({
-  stats
-}: {
-  stats: {
-    totalItems: number
-    processedToday: number
-    avgTimeToProcess: number
-    snoozedCount: number
-  }
-}) {
-  const cards = [
-    { label: 'Pending', value: stats.totalItems, trend: null },
-    {
-      label: 'Processed today',
-      value: stats.processedToday,
-      trend: stats.processedToday > 0 ? 'up' : null
-    },
-    {
-      label: 'Avg process time',
-      value: stats.avgTimeToProcess > 0 ? `${Math.round(stats.avgTimeToProcess)}m` : '—',
-      trend: null
-    },
-    { label: 'Snoozed', value: stats.snoozedCount, trend: null }
-  ] as Array<{ label: string; value: string | number; trend: 'up' | 'down' | null }>
+// ---------------------------------------------------------------------------
+// Stat pill — compact inline stat
+// ---------------------------------------------------------------------------
 
+function StatPill({
+  icon: Icon,
+  label,
+  value
+}: {
+  icon: typeof Inbox
+  label: string
+  value: string | number
+}) {
   return (
-    <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-      {cards.map((card) => (
-        <div key={card.label} className="rounded-xl border border-border/50 bg-card px-4 py-3">
-          <span className="text-muted-foreground text-xs font-medium">{card.label}</span>
-          <div className="mt-1 flex items-center gap-1.5">
-            <span className="font-display text-2xl font-bold tabular-nums tracking-tight">
-              {card.value}
-            </span>
-            {card.trend === 'up' && <TrendingUp className="size-3 text-emerald-500" />}
-            {card.trend === 'down' && <TrendingDown className="size-3 text-red-500" />}
-          </div>
-        </div>
-      ))}
+    <div className="flex items-center gap-2.5 rounded-lg border border-border/40 bg-card px-3 py-2">
+      <Icon className="text-muted-foreground/60 size-3.5" />
+      <div className="flex items-baseline gap-1.5">
+        <span className="font-display text-base font-bold tabular-nums leading-none">{value}</span>
+        <span className="text-muted-foreground text-[10px] uppercase tracking-wider">{label}</span>
+      </div>
     </div>
   )
 }
+
+// ---------------------------------------------------------------------------
+// Main health view
+// ---------------------------------------------------------------------------
 
 export function InboxHealthView({ className }: InboxHealthViewProps): React.JSX.Element {
   const { stats, isLoading } = useInboxStats()
@@ -324,7 +407,7 @@ export function InboxHealthView({ className }: InboxHealthViewProps): React.JSX.
   if (isLoading || !stats) {
     return (
       <div className={cn('flex h-64 items-center justify-center', className)}>
-        <div className="bg-muted/50 h-8 w-8 animate-spin rounded-full border-2 border-current border-t-transparent" />
+        <div className="size-6 animate-spin rounded-full border-2 border-amber-500/30 border-t-amber-500" />
       </div>
     )
   }
@@ -332,27 +415,58 @@ export function InboxHealthView({ className }: InboxHealthViewProps): React.JSX.
   const filingHistory = historyData?.entries ?? []
 
   return (
-    <div className={cn('space-y-6 pb-8', className)}>
-      <QuickStatsRow stats={stats} />
+    <div className={cn('mx-auto max-w-2xl space-y-6 px-6 py-6 pb-12', className)}>
+      {/* Section: Pulse */}
+      <div className="fade-in-up stagger-1">
+        <div className="journal-section-label mb-3">Weekly Pulse</div>
+        <div className="grid grid-cols-[auto_1fr] gap-6 rounded-xl border border-border/50 bg-card p-5">
+          <ArcGauge
+            ratio={stats.captureProcessRatio}
+            captured={stats.capturedThisWeek}
+            processed={stats.processedThisWeek}
+          />
+          <div className="flex flex-col justify-between py-1">
+            <div className="flex flex-wrap gap-2">
+              <StatPill icon={Inbox} label="pending" value={stats.totalItems} />
+              <StatPill icon={Zap} label="today" value={stats.processedToday} />
+              <StatPill
+                icon={Clock}
+                label="avg"
+                value={stats.avgTimeToProcess > 0 ? `${Math.round(stats.avgTimeToProcess)}m` : '—'}
+              />
+              <StatPill icon={Moon} label="snoozed" value={stats.snoozedCount} />
+            </div>
+            <StreakDots streak={stats.currentStreak} />
+          </div>
+        </div>
+      </div>
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        <RatioDisplay captured={stats.capturedThisWeek} processed={stats.processedThisWeek} />
-        <AgeDistributionBar
-          fresh={stats.ageDistribution.fresh}
-          aging={stats.ageDistribution.aging}
-          stale={stats.ageDistribution.stale}
+      {/* Section: Age */}
+      <div className="fade-in-up stagger-2">
+        <div className="journal-section-label mb-3">Item Age</div>
+        <div className="rounded-xl border border-border/50 bg-card p-5">
+          <AgeStrata
+            fresh={stats.ageDistribution.fresh}
+            aging={stats.ageDistribution.aging}
+            stale={stats.ageDistribution.stale}
+          />
+        </div>
+      </div>
+
+      {/* Section: Warning */}
+      <div className="fade-in-up stagger-3">
+        <CollectorWarning
+          ratio={stats.captureProcessRatio}
+          oldestDays={stats.oldestItemDays}
+          onDeclare={() => setShowBankruptcy(true)}
         />
       </div>
 
-      <StreakCard streak={stats.currentStreak} />
-
-      <CollectorWarning
-        ratio={stats.captureProcessRatio}
-        oldestDays={stats.oldestItemDays}
-        onDeclare={() => setShowBankruptcy(true)}
-      />
-
-      <InboxFilingHistoryList items={filingHistory} />
+      {/* Section: History */}
+      <div className="fade-in-up stagger-4">
+        <div className="journal-section-label mb-3">Recent Activity</div>
+        <InboxFilingHistoryList items={filingHistory} />
+      </div>
 
       {showBankruptcy && (
         <BankruptcyDialog
