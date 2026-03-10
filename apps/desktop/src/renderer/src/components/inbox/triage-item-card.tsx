@@ -1,3 +1,4 @@
+import { memo } from 'react'
 import { ExternalLink } from 'lucide-react'
 import { TypeIcon, ContentMetadata } from '@/components/inbox-detail/content-section'
 import { extractDomain } from '@/lib/inbox-utils'
@@ -8,7 +9,9 @@ interface TriageItemCardProps {
   item: InboxItemListItem
 }
 
-export function TriageItemCard({ item }: TriageItemCardProps): React.JSX.Element {
+export const TriageItemCard = memo(function TriageItemCard({
+  item
+}: TriageItemCardProps): React.JSX.Element {
   return (
     <div className="mx-auto flex w-full max-w-2xl flex-col gap-4 px-6 py-8">
       <div className="flex items-start gap-3">
@@ -25,7 +28,13 @@ export function TriageItemCard({ item }: TriageItemCardProps): React.JSX.Element
 
       {item.thumbnailUrl && (
         <div className="overflow-hidden rounded-lg">
-          <img src={item.thumbnailUrl} alt="" className="h-auto max-h-64 w-full object-cover" />
+          <img
+            src={item.thumbnailUrl}
+            alt=""
+            loading="lazy"
+            decoding="async"
+            className="h-auto max-h-64 w-full object-cover"
+          />
         </div>
       )}
 
@@ -64,4 +73,4 @@ export function TriageItemCard({ item }: TriageItemCardProps): React.JSX.Element
       )}
     </div>
   )
-}
+})
