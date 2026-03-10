@@ -19,7 +19,7 @@ export type { UrlMetadata } from './metadata'
 export { resolveAttachmentUrl, getInboxAttachmentsDir, deleteInboxAttachments } from './attachments'
 
 // Phase 5: Filing operations
-export { fileToFolder, convertToNote, linkToNote, bulkFileToFolder } from './filing'
+export { fileToFolder, convertToNote, convertToTask, linkToNote, bulkFileToFolder } from './filing'
 export type { FileResponse } from './filing'
 
 // Phase 10: Stats and stale detection

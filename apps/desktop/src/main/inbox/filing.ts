@@ -18,7 +18,7 @@ import { getStatus, getConfig } from '../vault/index'
 import { inboxItems, inboxItemTags, filingHistory } from '@memry/db-schema/schema/inbox'
 import { generateId } from '../lib/id'
 import { eq } from 'drizzle-orm'
-import { InboxChannels } from '@memry/contracts/ipc-channels'
+import { InboxChannels, TasksChannels } from '@memry/contracts/ipc-channels'
 import { resolveAttachmentUrl, deleteInboxAttachments } from './attachments'
 
 const log = createLogger('Inbox:Filing')
@@ -227,19 +227,35 @@ function generateNoteContent(item: InboxItemRow): string {
       const description = item.content || ''
       const metadata = item.metadata as Record<string, unknown> | null
 
-      let content = `[Open Original](${url})\n\n`
+      let content = ''
+
+      if (
+        metadata?.heroImage &&
+        typeof metadata.heroImage === 'string' &&
+        metadata.heroImage.length > 0
+      ) {
+        content += `![](${metadata.heroImage})\n\n`
+      }
+
+      content += `[Open Original](${url})\n\n`
 
       if (description) {
         content += `> ${description}\n\n`
       }
 
-      // Add metadata info if available
       if (metadata) {
+        const metaLines: string[] = []
         if (metadata.author && typeof metadata.author === 'string') {
-          content += `**Author:** ${metadata.author}\n`
+          metaLines.push(`**Author:** ${metadata.author}`)
         }
         if (metadata.siteName && typeof metadata.siteName === 'string') {
-          content += `**Site:** ${metadata.siteName}\n`
+          metaLines.push(`**Site:** ${metadata.siteName}`)
+        }
+        if (metadata.publishedDate && typeof metadata.publishedDate === 'string') {
+          metaLines.push(`**Published:** ${metadata.publishedDate}`)
+        }
+        if (metaLines.length > 0) {
+          content += metaLines.join('  \n') + '\n'
         }
       }
 
@@ -475,18 +491,12 @@ export async function fileToFolder(
       return { success: false, filedTo: null, error: 'Item has already been filed' }
     }
 
-    // Skip link type (handled separately in another task)
-    if (item.type === 'link') {
-      return { success: false, filedTo: null, error: 'Link filing not implemented yet' }
-    }
-
     // Binary types: move file directly (no markdown wrapper, no tags)
     if (isBinaryType(item.type)) {
       return fileBinaryToFolder(itemId, folderPath)
     }
 
-    // Text types: create markdown note (existing logic)
-    // Ensure folder exists
+    // Text + link types: create markdown note
     await ensureFolderExists(folderPath)
 
     // Get existing tags from inbox item
@@ -580,6 +590,97 @@ export async function convertToNote(itemId: string): Promise<FileResponse> {
     const message = error instanceof Error ? error.message : 'Unknown error'
     log.error('Error converting to note:', message)
     return { success: false, filedTo: null, error: message }
+  }
+}
+
+/**
+ * Convert an inbox item to a task.
+ * Creates a task with the item title, content as description,
+ * and tags carried over. Marks the inbox item as filed.
+ *
+ * @param itemId - Inbox item ID
+ */
+export async function convertToTask(
+  itemId: string
+): Promise<{ success: boolean; taskId: string | null; error?: string }> {
+  try {
+    const db = requireDatabase()
+
+    const item = getInboxItem(db, itemId)
+    if (!item) {
+      return { success: false, taskId: null, error: 'Inbox item not found' }
+    }
+
+    if (item.filedAt) {
+      return { success: false, taskId: null, error: 'Item has already been filed' }
+    }
+
+    const existingTags = getItemTags(db, itemId)
+    const mergedTags = [...new Set([...existingTags, 'inbox'])]
+
+    const title = generateNoteTitle(item)
+    const description = item.content || null
+
+    const taskId = generateId()
+    const { insertTask, getNextTaskPosition, setTaskTags } =
+      await import('../database/queries/tasks')
+    const { getInboxProject } = await import('../database/queries/projects')
+
+    const inboxProject = getInboxProject(db)
+    if (!inboxProject) {
+      return { success: false, taskId: null, error: 'No inbox project found' }
+    }
+
+    const position = getNextTaskPosition(db, inboxProject.id, null)
+    const task = insertTask(db, {
+      id: taskId,
+      projectId: inboxProject.id,
+      statusId: null,
+      parentId: null,
+      title,
+      description,
+      priority: 0,
+      position,
+      dueDate: null,
+      dueTime: null,
+      startDate: null,
+      repeatConfig: null,
+      repeatFrom: null,
+      sourceNoteId: null
+    })
+
+    if (mergedTags.length > 0) {
+      setTaskTags(db, taskId, mergedTags)
+    }
+
+    log.info(`Converted to task: ${taskId}`)
+
+    markItemAsFiled(itemId, `task:${taskId}`, 'note')
+    recordFilingHistory(item.type, item.content, `task:${taskId}`, 'note', mergedTags)
+
+    const enrichedTask = { ...task, linkedNoteIds: [] as string[] }
+    BrowserWindow.getAllWindows().forEach((win) => {
+      win.webContents.send(TasksChannels.events.CREATED, { task: enrichedTask })
+    })
+
+    try {
+      const { getTaskSyncService } = await import('../sync/task-sync')
+      const { incrementTaskClocksOffline } = await import('../sync/offline-clock')
+      const svc = getTaskSyncService()
+      if (svc) {
+        svc.enqueueCreate(taskId)
+      } else {
+        incrementTaskClocksOffline(db, taskId, [])
+      }
+    } catch {
+      log.warn('Task sync unavailable, skipping sync for converted task')
+    }
+
+    return { success: true, taskId }
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown error'
+    log.error('Error converting to task:', message)
+    return { success: false, taskId: null, error: message }
   }
 }
 
@@ -761,11 +862,6 @@ export async function linkToNotes(
     // Check if already filed
     if (item.filedAt) {
       return { success: false, error: 'Item has already been filed' }
-    }
-
-    // Skip link type (handled separately in another task)
-    if (item.type === 'link') {
-      return { success: false, error: 'Link filing not implemented yet' }
     }
 
     // Binary types: move file and add wiki-links to target notes

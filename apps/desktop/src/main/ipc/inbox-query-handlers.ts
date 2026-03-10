@@ -19,7 +19,8 @@ import {
   setStaleThreshold as setStaleThresholdDays,
   countStaleItems,
   getTodayActivity,
-  getAverageTimeToProcess
+  getAverageTimeToProcess,
+  getInboxHealthMetrics
 } from '../inbox/stats'
 import type { DrizzleDb } from '../database'
 
@@ -170,6 +171,7 @@ export function createInboxQueryHandlers(deps: InboxQueryHandlerDeps): InboxQuer
 
     const { capturedToday, processedToday } = getTodayActivity()
     const avgTimeToProcess = getAverageTimeToProcess()
+    const health = getInboxHealthMetrics()
 
     return {
       totalItems: totalResult?.count || 0,
@@ -178,7 +180,13 @@ export function createInboxQueryHandlers(deps: InboxQueryHandlerDeps): InboxQuer
       snoozedCount: snoozedResult?.count || 0,
       processedToday,
       capturedToday,
-      avgTimeToProcess
+      avgTimeToProcess,
+      capturedThisWeek: health.capturedThisWeek,
+      processedThisWeek: health.processedThisWeek,
+      captureProcessRatio: health.captureProcessRatio,
+      ageDistribution: health.ageDistribution,
+      oldestItemDays: health.oldestItemDays,
+      currentStreak: health.currentStreak
     }
   }
 
