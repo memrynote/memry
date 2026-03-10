@@ -30,6 +30,7 @@ export type InboxItemType =
   | 'reminder'
 export type ProcessingStatus = 'pending' | 'processing' | 'complete' | 'failed'
 export type FilingAction = 'folder' | 'note' | 'linked'
+export type CaptureSource = 'quick-capture' | 'inline' | 'browser-extension' | 'api' | 'reminder'
 
 export type TriageAction = 'discard' | 'convert-to-task' | 'expand-to-note' | 'file' | 'defer'
 
@@ -192,6 +193,7 @@ export interface InboxItem {
   // Source
   sourceUrl: string | null
   sourceTitle: string | null
+  captureSource: CaptureSource | null
 
   // Computed
   tags: string[]
@@ -225,6 +227,9 @@ export interface InboxItemListItem {
 
   // Viewed (for reminder items)
   viewedAt?: Date // When the item was opened/viewed
+
+  // Capture source
+  captureSource?: CaptureSource | null
 
   // Reminder-specific metadata (for reminder items)
   metadata?: ReminderMetadata // Reminder target info
@@ -293,13 +298,15 @@ export const CaptureTextSchema = z.object({
   content: z.string().min(1).max(50000),
   title: z.string().min(1).max(200).optional(),
   tags: z.array(z.string().max(50)).max(20).optional(),
-  force: z.boolean().optional()
+  force: z.boolean().optional(),
+  source: z.enum(['quick-capture', 'inline', 'browser-extension', 'api', 'reminder']).optional()
 })
 
 export const CaptureLinkSchema = z.object({
   url: z.string().max(2000),
   tags: z.array(z.string().max(50)).max(20).optional(),
-  force: z.boolean().optional()
+  force: z.boolean().optional(),
+  source: z.enum(['quick-capture', 'inline', 'browser-extension', 'api', 'reminder']).optional()
 })
 
 // Custom validator for binary data that may be Buffer, Uint8Array, ArrayBuffer, or serialized object
@@ -351,7 +358,8 @@ export const CaptureImageSchema = z.object({
     // Documents
     'application/pdf'
   ]),
-  tags: z.array(z.string().max(50)).max(20).optional()
+  tags: z.array(z.string().max(50)).max(20).optional(),
+  source: z.enum(['quick-capture', 'inline', 'browser-extension', 'api', 'reminder']).optional()
 })
 
 export const CaptureVoiceSchema = z.object({
@@ -359,7 +367,8 @@ export const CaptureVoiceSchema = z.object({
   duration: z.number().min(0).max(300),
   format: z.enum(['webm', 'mp3', 'wav']),
   transcribe: z.boolean().default(true),
-  tags: z.array(z.string().max(50)).max(20).optional()
+  tags: z.array(z.string().max(50)).max(20).optional(),
+  source: z.enum(['quick-capture', 'inline', 'browser-extension', 'api', 'reminder']).optional()
 })
 
 export const CaptureClipSchema = z.object({
@@ -367,7 +376,8 @@ export const CaptureClipSchema = z.object({
   text: z.string().max(50000),
   sourceUrl: z.string().max(2000),
   sourceTitle: z.string().max(200),
-  tags: z.array(z.string().max(50)).max(20).optional()
+  tags: z.array(z.string().max(50)).max(20).optional(),
+  source: z.enum(['quick-capture', 'inline', 'browser-extension', 'api', 'reminder']).optional()
 })
 
 export const CapturePdfSchema = z.object({
