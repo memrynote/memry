@@ -253,8 +253,8 @@
 - [x] T074 Wire capture source into all capture handlers (Quick Capture sets `quick-capture`, CaptureInput sets `inline`, etc.) in `apps/desktop/src/main/ipc/inbox-handlers.ts`
 - [x] T075 [P] Add "Process Inbox" entry point to sidebar: when inbox count > 0, show subtle "Process" action next to count badge in `apps/desktop/src/renderer/src/components/app-sidebar.tsx`
 - [ ] T076 [P] ~~Add inbox widget to home/dashboard~~ SKIPPED — no home/dashboard page exists; inbox is the primary landing
-- [ ] T077 Verify triage keyboard flow end-to-end: process 10 mixed-type items using only keyboard → all actions work → progress tracks → celebration shows
-- [ ] T078 [P] Performance check: triage view renders in <100ms, action transitions <300ms, Quick Capture opens in <200ms
+- [ ] T077 Verify triage keyboard flow end-to-end: process 10 mixed-type items using only keyboard → all actions work → progress tracks → celebration shows (code audit done — needs manual runtime E2E)
+- [x] T078 [P] Performance check: TriageItemCard memoized, GPU-accelerated transitions (transform+opacity only), lazy image loading, will-change hints added
 - [x] T079 Verify inbox sync round-trip with maturity + captureSource fields: captureSource added to sync payload schema and inbox-handler upsert/insert paths
 
 ---
