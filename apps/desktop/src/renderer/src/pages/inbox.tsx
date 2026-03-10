@@ -39,6 +39,12 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
     return () => window.removeEventListener('keydown', handler)
   }, [isTriageMode, enterTriage, exitTriage])
 
+  useEffect(() => {
+    const handler = (): void => enterTriage()
+    window.addEventListener('memry:enter-triage', handler)
+    return () => window.removeEventListener('memry:enter-triage', handler)
+  }, [enterTriage])
+
   return (
     <>
       {isTriageMode ? (
