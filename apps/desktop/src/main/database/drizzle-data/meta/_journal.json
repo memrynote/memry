@@ -134,6 +134,13 @@
       "when": 1773015358141,
       "tag": "0018_greedy_stepford_cuckoos",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "6",
+      "when": 1773130379373,
+      "tag": "0019_material_lethal_legion",
+      "breakpoints": true
     }
   ]
 }

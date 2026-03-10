@@ -38,6 +38,7 @@ export interface CaptureVoiceInput {
   format: 'webm' | 'mp3' | 'wav'
   transcribe?: boolean
   tags?: string[]
+  source?: 'quick-capture' | 'inline' | 'browser-extension' | 'api' | 'reminder'
 }
 
 // ============================================================================
@@ -111,6 +112,7 @@ function toInboxItem(row: typeof inboxItems.$inferSelect, tags: string[]): Inbox
     transcriptionStatus: row.transcriptionStatus as InboxItem['transcriptionStatus'],
     sourceUrl: row.sourceUrl,
     sourceTitle: row.sourceTitle,
+    captureSource: row.captureSource as InboxItem['captureSource'],
     tags,
     isStale: isStale(row.createdAt)
   }
@@ -239,7 +241,8 @@ export async function captureVoice(input: CaptureVoiceInput): Promise<CaptureRes
         metadata,
         attachmentPath: storageResult.path,
         transcription: null,
-        transcriptionStatus
+        transcriptionStatus,
+        captureSource: parsed.source ?? null
       })
       .run()
 

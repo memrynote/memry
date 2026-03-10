@@ -137,7 +137,7 @@ export function CaptureInput({
       try {
         if (isLikelyUrl(trimmed)) {
           const url = normalizeUrl(trimmed)
-          const result = await captureLink.mutateAsync({ url, force })
+          const result = await captureLink.mutateAsync({ url, force, source: 'inline' })
           if (result.duplicate && result.existingItem) {
             setDuplicateMatch(result.existingItem)
             return
@@ -155,7 +155,8 @@ export function CaptureInput({
           const result = await captureText.mutateAsync({
             content: trimmed,
             title: title + (title.length < trimmed.length ? '...' : ''),
-            force
+            force,
+            source: 'inline'
           })
           if (result.duplicate && result.existingItem) {
             setDuplicateMatch(result.existingItem)
@@ -203,7 +204,8 @@ export function CaptureInput({
           data: arrayBuffer,
           duration,
           format: 'webm',
-          transcribe: true
+          transcribe: true,
+          source: 'inline'
         })
 
         if (result.success) {
@@ -253,7 +255,8 @@ export function CaptureInput({
         const result = await captureImage.mutateAsync({
           data: arrayBuffer,
           filename: file.name,
-          mimeType: file.type
+          mimeType: file.type,
+          source: 'inline'
         })
 
         if (result.success) {

@@ -24,17 +24,21 @@ import type {
 // Types for service input
 // ============================================================================
 
+type CaptureSource = 'quick-capture' | 'inline' | 'browser-extension' | 'api' | 'reminder'
+
 export interface CaptureTextInput {
   content: string
   title?: string
   tags?: string[]
   force?: boolean
+  source?: CaptureSource
 }
 
 export interface CaptureLinkInput {
   url: string
   tags?: string[]
   force?: boolean
+  source?: CaptureSource
 }
 
 export interface CaptureImageInput {
@@ -42,6 +46,7 @@ export interface CaptureImageInput {
   filename: string
   mimeType: string
   tags?: string[]
+  source?: CaptureSource
 }
 
 export interface CaptureVoiceInput {
@@ -50,6 +55,7 @@ export interface CaptureVoiceInput {
   format: string
   transcribe?: boolean
   tags?: string[]
+  source?: CaptureSource
 }
 
 export interface CaptureClipInput {
@@ -58,6 +64,7 @@ export interface CaptureClipInput {
   sourceUrl: string
   sourceTitle: string
   tags?: string[]
+  source?: CaptureSource
 }
 
 export interface CapturePdfInput {

@@ -174,7 +174,8 @@ export function QuickCapture(): React.JSX.Element {
           const result = await captureImage.mutateAsync({
             data: arrayBuffer,
             filename: `clipboard-${Date.now()}.png`,
-            mimeType: clipboardImage.type || 'image/png'
+            mimeType: clipboardImage.type || 'image/png',
+            source: 'quick-capture'
           })
           if (result.success) {
             setCaptureState('success')
@@ -193,7 +194,8 @@ export function QuickCapture(): React.JSX.Element {
               data: arrayBuffer,
               duration: 0,
               format: droppedFile.name.split('.').pop() || 'unknown',
-              transcribe: true
+              transcribe: true,
+              source: 'quick-capture'
             })
             if (result.success) {
               setCaptureState('success')
@@ -207,7 +209,8 @@ export function QuickCapture(): React.JSX.Element {
           const result = await captureImage.mutateAsync({
             data: arrayBuffer,
             filename: droppedFile.name,
-            mimeType: droppedFile.type
+            mimeType: droppedFile.type,
+            source: 'quick-capture'
           })
           if (result.success) {
             setCaptureState('success')
@@ -224,7 +227,7 @@ export function QuickCapture(): React.JSX.Element {
 
         if (isLikelyUrl(trimmed)) {
           const url = normalizeUrl(trimmed)
-          const result = await captureLink.mutateAsync({ url, force })
+          const result = await captureLink.mutateAsync({ url, force, source: 'quick-capture' })
           if (result.duplicate && result.existingItem) {
             setDuplicateMatch(result.existingItem)
             setCaptureState('duplicate')
@@ -242,7 +245,8 @@ export function QuickCapture(): React.JSX.Element {
           const result = await captureText.mutateAsync({
             content: trimmed,
             title: title + (title.length < trimmed.length ? '...' : ''),
-            force
+            force,
+            source: 'quick-capture'
           })
           if (result.duplicate && result.existingItem) {
             setDuplicateMatch(result.existingItem)
@@ -358,7 +362,8 @@ export function QuickCapture(): React.JSX.Element {
           data: arrayBuffer,
           duration,
           format: 'webm',
-          transcribe: true
+          transcribe: true,
+          source: 'quick-capture'
         })
         if (result.success) {
           setCaptureState('success')
