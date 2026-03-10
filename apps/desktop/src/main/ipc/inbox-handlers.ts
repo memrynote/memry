@@ -56,6 +56,7 @@ import {
 } from '../inbox/social'
 import { createLogger } from '../lib/logger'
 import { captureVoice } from '../inbox/capture'
+import { findDuplicateByUrl, findDuplicateByContent } from '../inbox/duplicates'
 import { retryTranscription } from '../inbox/transcription'
 import { getSuggestions, trackSuggestionFeedback } from '../inbox/suggestions'
 import { FileItemSchema } from '@memry/contracts/inbox-api'
@@ -515,6 +516,13 @@ async function handleCaptureText(input: unknown): Promise<CaptureResponse> {
     const parsed = CaptureTextSchema.parse(input)
     const db = requireDatabase()
 
+    if (!parsed.force) {
+      const duplicate = findDuplicateByContent(parsed.content)
+      if (duplicate) {
+        return { success: true, item: null, duplicate: true, existingItem: duplicate }
+      }
+    }
+
     const id = generateId()
     const now = new Date().toISOString()
 
@@ -576,6 +584,13 @@ async function handleCaptureLink(input: unknown): Promise<CaptureResponse> {
   try {
     const parsed = CaptureLinkSchema.parse(input)
     const db = requireDatabase()
+
+    if (!parsed.force) {
+      const duplicate = findDuplicateByUrl(parsed.url)
+      if (duplicate) {
+        return { success: true, item: null, duplicate: true, existingItem: duplicate }
+      }
+    }
 
     const id = generateId()
     const now = new Date().toISOString()

@@ -1327,10 +1327,18 @@ export interface InboxListResponse {
   hasMore: boolean
 }
 
+export interface InboxDuplicateMatch {
+  id: string
+  title: string
+  createdAt: string
+}
+
 export interface InboxCaptureResponse {
   success: boolean
   item: InboxItem | null
   error?: string
+  duplicate?: boolean
+  existingItem?: InboxDuplicateMatch
 }
 
 export interface InboxFileResponse {
@@ -1467,8 +1475,13 @@ export interface InboxClientAPI {
     content: string
     title?: string
     tags?: string[]
+    force?: boolean
   }): Promise<InboxCaptureResponse>
-  captureLink(input: { url: string; tags?: string[] }): Promise<InboxCaptureResponse>
+  captureLink(input: {
+    url: string
+    tags?: string[]
+    force?: boolean
+  }): Promise<InboxCaptureResponse>
   captureImage(input: {
     data: ArrayBuffer
     filename: string
