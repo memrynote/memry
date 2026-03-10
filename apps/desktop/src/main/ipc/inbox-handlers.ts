@@ -55,7 +55,7 @@ import {
   createFallbackSocialMetadata
 } from '../inbox/social'
 import { createLogger } from '../lib/logger'
-import { captureVoice } from '../inbox/capture'
+import { captureVoice, type CaptureVoiceInput } from '../inbox/capture'
 import { findDuplicateByUrl, findDuplicateByContent } from '../inbox/duplicates'
 import { retryTranscription } from '../inbox/transcription'
 import { getSuggestions, trackSuggestionFeedback } from '../inbox/suggestions'
@@ -464,6 +464,7 @@ function toInboxItem(row: typeof inboxItems.$inferSelect, tags: string[]): Inbox
     transcriptionStatus: row.transcriptionStatus as InboxItem['transcriptionStatus'],
     sourceUrl: row.sourceUrl,
     sourceTitle: row.sourceTitle,
+    captureSource: row.captureSource as InboxItem['captureSource'],
     tags,
     isStale: isStale(row.createdAt)
   }
@@ -499,6 +500,7 @@ function toListItem(row: typeof inboxItems.$inferSelect, tags: string[]): InboxI
     snoozeReason: row.snoozeReason ?? undefined,
     // Viewed field (for reminder items)
     viewedAt: row.viewedAt ? new Date(row.viewedAt) : undefined,
+    captureSource: row.captureSource as InboxItemListItem['captureSource'],
     // Metadata (for reminder items - includes target info)
     metadata: isReminder ? (metadata as unknown as InboxItemListItem['metadata']) : undefined
   }
@@ -537,7 +539,8 @@ async function handleCaptureText(input: unknown): Promise<CaptureResponse> {
         content: parsed.content,
         createdAt: now,
         modifiedAt: now,
-        processingStatus: 'complete'
+        processingStatus: 'complete',
+        captureSource: parsed.source ?? null
       })
       .run()
 
@@ -614,6 +617,7 @@ async function handleCaptureLink(input: unknown): Promise<CaptureResponse> {
         createdAt: now,
         modifiedAt: now,
         processingStatus: 'pending', // Metadata fetch is pending
+        captureSource: parsed.source ?? null,
         metadata: isSocial
           ? {
               platform: platform || 'other',
@@ -827,7 +831,8 @@ async function handleCaptureImage(input: unknown): Promise<CaptureResponse> {
         processingStatus: 'complete',
         attachmentPath: storeResult.path || null,
         thumbnailPath,
-        metadata: itemMetadata
+        metadata: itemMetadata,
+        captureSource: parsed.source ?? null
       })
       .run()
 
@@ -927,7 +932,8 @@ async function handleCaptureVoice(input: unknown): Promise<CaptureResponse> {
       duration: rawInput.duration as number,
       format: rawInput.format as 'webm' | 'mp3' | 'wav',
       transcribe: rawInput.transcribe as boolean | undefined,
-      tags: rawInput.tags as string[] | undefined
+      tags: rawInput.tags as string[] | undefined,
+      source: rawInput.source as CaptureVoiceInput['source']
     })
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error'
