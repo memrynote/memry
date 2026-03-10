@@ -2,6 +2,7 @@ import { useState, useCallback, useEffect, useRef } from 'react'
 import { useTriageQueue } from '@/hooks/use-triage-queue'
 import { useInboxStats } from '@/hooks/use-inbox'
 import { useUndoableAction } from '@/hooks/use-undoable-action'
+import { useTabs } from '@/contexts/tabs'
 import { TriageProgress } from '@/components/inbox/triage-progress'
 import { TriageItemCard } from '@/components/inbox/triage-item-card'
 import { TriageActionBar } from '@/components/inbox/triage-action-bar'
@@ -11,6 +12,7 @@ import { cn } from '@/lib/utils'
 import { Loader2 } from 'lucide-react'
 import type { Toast } from '@/components/ui/toast'
 import type { FileItemInput, SnoozeInput } from '@/services/inbox-service'
+import type { ReminderMetadata } from '@memry/contracts/inbox-api'
 
 type SlideDirection = 'left' | 'right' | null
 
@@ -23,6 +25,7 @@ export function TriageView({ onExit, addToast }: TriageViewProps): React.JSX.Ele
   const { state, actions } = useTriageQueue()
   const { stats } = useInboxStats()
   const { archiveWithUndo } = useUndoableAction(addToast)
+  const { openTab } = useTabs()
   const [slideDir, setSlideDir] = useState<SlideDirection>(null)
   const [isAnimating, setIsAnimating] = useState(false)
   const [showComplete, setShowComplete] = useState(false)
@@ -95,6 +98,49 @@ export function TriageView({ onExit, addToast }: TriageViewProps): React.JSX.Ele
     [animateAndAct, actions.defer]
   )
 
+  const handleOpenTarget = useCallback(() => {
+    const item = state.currentItem
+    if (!item || item.type !== 'reminder' || !item.metadata) return
+    const meta = item.metadata as ReminderMetadata
+    switch (meta.targetType) {
+      case 'note':
+      case 'highlight':
+        openTab({
+          type: 'note',
+          title: meta.targetTitle || 'Note',
+          icon: 'file-text',
+          path: `/notes/${meta.targetId}`,
+          entityId: meta.targetId,
+          isPinned: false,
+          isModified: false,
+          isPreview: true,
+          isDeleted: false,
+          viewState:
+            meta.targetType === 'highlight'
+              ? {
+                  highlightStart: meta.highlightStart,
+                  highlightEnd: meta.highlightEnd,
+                  highlightText: meta.highlightText
+                }
+              : undefined
+        })
+        break
+      case 'journal':
+        openTab({
+          type: 'journal',
+          title: 'Journal',
+          icon: 'book-open',
+          path: '/journal',
+          isPinned: false,
+          isModified: false,
+          isPreview: false,
+          isDeleted: false,
+          viewState: { date: meta.targetId }
+        })
+        break
+    }
+  }, [state.currentItem, openTab])
+
   if (state.isLoading) {
     return (
       <div className="flex flex-1 items-center justify-center">
@@ -159,6 +205,7 @@ export function TriageView({ onExit, addToast }: TriageViewProps): React.JSX.Ele
         onFile={handleFile}
         onDefer={handleDefer}
         onDismissReminder={handleDiscard}
+        onOpenTarget={handleOpenTarget}
         disabled={isAnimating}
       />
     </div>
