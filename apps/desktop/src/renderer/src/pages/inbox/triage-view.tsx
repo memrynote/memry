@@ -186,7 +186,7 @@ export function TriageView({ onExit, addToast }: TriageViewProps): React.JSX.Ele
         <div
           key={state.currentItem.id}
           className={cn(
-            'transition-all duration-250 ease-out',
+            'transition-[transform,opacity] duration-250 ease-out will-change-[transform,opacity]',
             slideDir === 'left' && '-translate-x-full scale-95 opacity-0',
             slideDir === 'right' && 'translate-x-full scale-95 opacity-0',
             !slideDir && 'animate-in fade-in slide-in-from-bottom-3 duration-300'
