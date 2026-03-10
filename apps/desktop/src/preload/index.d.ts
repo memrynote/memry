@@ -1606,6 +1606,10 @@ export interface InboxClientAPI {
 
   // Filing history
   getFilingHistory(options?: { limit?: number }): Promise<InboxFilingHistoryResponse>
+
+  // Undo operations
+  undoFile(id: string): Promise<{ success: boolean; error?: string }>
+  undoArchive(id: string): Promise<{ success: boolean; error?: string }>
 }
 
 // Search types
