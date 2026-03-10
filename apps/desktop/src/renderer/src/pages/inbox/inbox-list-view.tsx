@@ -40,6 +40,7 @@ import {
   useInboxFilingHistory,
   inboxKeys
 } from '@/hooks/use-inbox'
+import { useUndoableAction } from '@/hooks/use-undoable-action'
 import { notesKeys } from '@/hooks/use-notes-query'
 import { useInboxKeyboard } from '@/hooks/use-inbox-keyboard'
 import type { UseInboxNotificationsResult } from '@/hooks/use-inbox-notifications'
@@ -103,6 +104,7 @@ export function InboxListView({
   const fileItemMutation = useFileInboxItem()
   const archiveItemMutation = useArchiveInboxItem()
   const bulkArchiveMutation = useBulkArchiveInboxItems()
+  const { archiveWithUndo } = useUndoableAction(addToast)
   const [selectedTypes, setSelectedTypes] = useState<Set<InboxItemType>>(new Set())
   const [pendingArchiveIds, setPendingArchiveIds] = useState<Set<string>>(new Set())
   const [exitingItemIds, setExitingItemIds] = useState<Set<string>>(new Set())
@@ -224,8 +226,7 @@ export function InboxListView({
         if (willBeEmpty) setTimeout(() => setShowEmptyState(true), 200)
 
         try {
-          await archiveItemMutation.mutateAsync(id)
-          addToast({ message: `"${targetItem.title}" archived`, type: 'success' })
+          await archiveWithUndo(id, targetItem.title)
         } catch {
           setPendingArchiveIds((prev) => {
             const next = new Set(prev)
@@ -236,7 +237,7 @@ export function InboxListView({
         }
       }, 200)
     },
-    [items, addToast, activeDetailItemId, archiveItemMutation]
+    [items, addToast, activeDetailItemId, archiveWithUndo]
   )
 
   // === KEYBOARD SHORTCUTS ===

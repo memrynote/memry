@@ -42,7 +42,7 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
   return (
     <>
       {isTriageMode ? (
-        <TriageView onExit={exitTriage} />
+        <TriageView onExit={exitTriage} addToast={notifications.addToast} />
       ) : (
         <div className="flex h-full flex-col">
           <div className="flex shrink-0 items-center justify-center px-4 pt-3 pb-1">

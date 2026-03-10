@@ -29,6 +29,7 @@ export interface TriageQueueActions {
   defer: (input: SnoozeInput) => Promise<void>
   skip: () => void
   reset: () => void
+  advanceAfterExternalAction: () => void
 }
 
 export interface UseTriageQueueResult {
@@ -132,6 +133,10 @@ export function useTriageQueue(): UseTriageQueueResult {
     setCurrentIndex((i) => Math.min(i + 1, items.length))
   }, [items.length])
 
+  const advanceAfterExternalAction = useCallback(() => {
+    advance('discard')
+  }, [advance])
+
   const reset = useCallback(() => {
     setCurrentIndex(0)
     setCompletedCount(0)
@@ -149,7 +154,16 @@ export function useTriageQueue(): UseTriageQueueResult {
       isLoading,
       items
     },
-    actions: { discard, convertToTask, expandToNote, file, defer, skip, reset },
+    actions: {
+      discard,
+      convertToTask,
+      expandToNote,
+      file,
+      defer,
+      skip,
+      reset,
+      advanceAfterExternalAction
+    },
     lastAction
   }
 }
