@@ -230,14 +230,14 @@
 
 **Depends on**: US1 (triage mode must exist)
 
-- [ ] T063 [US8] Add undo support for file/archive actions: implement 5-second undo window via toast with action button. On undo: revert `filedAt`/`archivedAt` to null, re-emit events in `apps/desktop/src/main/ipc/inbox-crud-handlers.ts`
-- [ ] T064 [US8] Add INBOX.UNDO_FILE and INBOX.UNDO_ARCHIVE IPC channels and handlers in `packages/contracts/src/ipc-channels.ts` and `apps/desktop/src/main/ipc/inbox-crud-handlers.ts`
-- [ ] T065 [P] [US8] Create `useUndoableAction()` hook: wraps any inbox mutation with 5s undo window, shows toast, reverts on undo click in `apps/desktop/src/renderer/src/hooks/use-undoable-action.ts`
-- [ ] T066 [US8] Wire undo into triage actions and list view actions in `apps/desktop/src/renderer/src/pages/inbox/triage-view.tsx` and `apps/desktop/src/renderer/src/pages/inbox/inbox-list-view.tsx`
-- [ ] T067 [P] [US8] Add processing streak tracking: `getProcessingStreak()` query — counts consecutive days with ≥1 processed item in `apps/desktop/src/main/inbox/stats.ts`
-- [ ] T068 [P] [US8] Build streak badge component for triage progress bar and health dashboard in `apps/desktop/src/renderer/src/components/inbox/streak-badge.tsx`
-- [ ] T069 [US8] Enhance `TriageComplete` celebration: animated check → stats summary (items processed, time, streak) → motivational micro-copy → "Back to inbox" button in `apps/desktop/src/renderer/src/components/inbox/triage-complete.tsx`
-- [ ] T070 [US8] Add slide animations to triage transitions: item exits left (discard) or right (file/note/task), next item enters from bottom with spring easing in `apps/desktop/src/renderer/src/pages/inbox/triage-view.tsx`
+- [x] T063 [US8] Add undo support for file/archive actions: implement 5-second undo window via toast with action button. On undo: revert `filedAt`/`archivedAt` to null, re-emit events in `apps/desktop/src/main/ipc/inbox-crud-handlers.ts`
+- [x] T064 [US8] Add INBOX.UNDO_FILE and INBOX.UNDO_ARCHIVE IPC channels and handlers in `packages/contracts/src/ipc-channels.ts` and `apps/desktop/src/main/ipc/inbox-crud-handlers.ts`
+- [x] T065 [P] [US8] Create `useUndoableAction()` hook: wraps any inbox mutation with 5s undo window, shows toast, reverts on undo click in `apps/desktop/src/renderer/src/hooks/use-undoable-action.ts`
+- [x] T066 [US8] Wire undo into triage actions and list view actions in `apps/desktop/src/renderer/src/pages/inbox/triage-view.tsx` and `apps/desktop/src/renderer/src/pages/inbox/inbox-list-view.tsx`
+- [x] T067 [P] [US8] Add processing streak tracking: `getProcessingStreak()` query — counts consecutive days with ≥1 processed item in `apps/desktop/src/main/inbox/stats.ts`
+- [x] T068 [P] [US8] Build streak badge component for triage progress bar and health dashboard in `apps/desktop/src/renderer/src/components/inbox/streak-badge.tsx`
+- [x] T069 [US8] Enhance `TriageComplete` celebration: animated check → stats summary (items processed, time, streak) → motivational micro-copy → "Back to inbox" button in `apps/desktop/src/renderer/src/components/inbox/triage-complete.tsx`
+- [x] T070 [US8] Add slide animations to triage transitions: item exits left (discard) or right (file/note/task), next item enters from bottom with spring easing in `apps/desktop/src/renderer/src/pages/inbox/triage-view.tsx`
 
 **Checkpoint**: Undo works within 5s for file/archive. Streak tracks correctly. Celebration is animated and shows stats. Transitions feel fluid.
 
