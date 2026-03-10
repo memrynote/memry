@@ -152,11 +152,13 @@ export function TriageView({ onExit, addToast }: TriageViewProps): React.JSX.Ele
 
       <TriageActionBar
         itemId={state.currentItem.id}
+        itemType={state.currentItem.type}
         onDiscard={handleDiscard}
         onConvertToTask={handleConvertToTask}
         onExpandToNote={handleExpandToNote}
         onFile={handleFile}
         onDefer={handleDefer}
+        onDismissReminder={handleDiscard}
         disabled={isAnimating}
       />
     </div>
