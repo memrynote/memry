@@ -8,7 +8,7 @@
  */
 
 import { useState, useCallback, useRef, useEffect } from 'react'
-import { Send, Loader2, Link, FileText, Mic, Paperclip } from 'lucide-react'
+import { Send, Loader2, Link, FileText, Mic, Paperclip, Copy } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { useCaptureText, useCaptureLink, useCaptureVoice, useCaptureImage } from '@/hooks/use-inbox'
@@ -96,6 +96,11 @@ export function CaptureInput({
   const [value, setValue] = useState('')
   const [isFocused, setIsFocused] = useState(false)
   const [isRecording, setIsRecording] = useState(false)
+  const [duplicateMatch, setDuplicateMatch] = useState<{
+    id: string
+    title: string
+    createdAt: string
+  } | null>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -122,43 +127,54 @@ export function CaptureInput({
     }
   }, [value])
 
-  const handleSubmit = useCallback(async () => {
-    const trimmed = value.trim()
-    if (!trimmed || isCapturing) return
+  const handleSubmit = useCallback(
+    async (force = false) => {
+      const trimmed = value.trim()
+      if (!trimmed || isCapturing) return
 
-    try {
-      if (isLikelyUrl(trimmed)) {
-        // Capture as link
-        const url = normalizeUrl(trimmed)
-        const result = await captureLink.mutateAsync({ url })
-        if (result.success) {
-          setValue('')
-          onCaptureSuccess?.()
-        } else {
-          onCaptureError?.(extractErrorMessage(result.error, 'Failed to capture link'))
-        }
-      } else {
-        // Capture as text note
-        // Use first line as title if multi-line, otherwise use content
-        const lines = trimmed.split('\n')
-        const title = lines.length > 1 ? lines[0].slice(0, 100) : trimmed.slice(0, 100)
+      setDuplicateMatch(null)
 
-        const result = await captureText.mutateAsync({
-          content: trimmed,
-          title: title + (title.length < trimmed.length ? '...' : '')
-        })
-        if (result.success) {
-          setValue('')
-          onCaptureSuccess?.()
+      try {
+        if (isLikelyUrl(trimmed)) {
+          const url = normalizeUrl(trimmed)
+          const result = await captureLink.mutateAsync({ url, force })
+          if (result.duplicate && result.existingItem) {
+            setDuplicateMatch(result.existingItem)
+            return
+          }
+          if (result.success) {
+            setValue('')
+            onCaptureSuccess?.()
+          } else {
+            onCaptureError?.(extractErrorMessage(result.error, 'Failed to capture link'))
+          }
         } else {
-          onCaptureError?.(extractErrorMessage(result.error, 'Failed to capture note'))
+          const lines = trimmed.split('\n')
+          const title = lines.length > 1 ? lines[0].slice(0, 100) : trimmed.slice(0, 100)
+
+          const result = await captureText.mutateAsync({
+            content: trimmed,
+            title: title + (title.length < trimmed.length ? '...' : ''),
+            force
+          })
+          if (result.duplicate && result.existingItem) {
+            setDuplicateMatch(result.existingItem)
+            return
+          }
+          if (result.success) {
+            setValue('')
+            onCaptureSuccess?.()
+          } else {
+            onCaptureError?.(extractErrorMessage(result.error, 'Failed to capture note'))
+          }
         }
+      } catch (err) {
+        const message = extractErrorMessage(err, 'Capture failed')
+        onCaptureError?.(message)
       }
-    } catch (err) {
-      const message = extractErrorMessage(err, 'Capture failed')
-      onCaptureError?.(message)
-    }
-  }, [value, isCapturing, captureText, captureLink, onCaptureSuccess, onCaptureError])
+    },
+    [value, isCapturing, captureText, captureLink, onCaptureSuccess, onCaptureError]
+  )
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
@@ -307,7 +323,10 @@ export function CaptureInput({
         <textarea
           ref={textareaRef}
           value={value}
-          onChange={(e) => setValue(e.target.value)}
+          onChange={(e) => {
+            setValue(e.target.value)
+            if (duplicateMatch) setDuplicateMatch(null)
+          }}
           onFocus={() => setIsFocused(true)}
           onBlur={() => setIsFocused(false)}
           onKeyDown={handleKeyDown}
@@ -377,7 +396,7 @@ export function CaptureInput({
 
         {/* Submit button */}
         <button
-          onClick={handleSubmit}
+          onClick={() => handleSubmit()}
           disabled={!value.trim() || isCapturing}
           className={cn(
             'shrink-0',
@@ -431,6 +450,23 @@ export function CaptureInput({
           </span>
         )}
       </div>
+
+      {/* Duplicate notice */}
+      {duplicateMatch && (
+        <div className="mt-2 flex items-center gap-2 rounded-lg border border-amber-500/30 bg-amber-500/5 px-3 py-2">
+          <Copy className="size-3.5 shrink-0 text-amber-600 dark:text-amber-400" />
+          <p className="flex-1 text-xs text-muted-foreground">
+            Already captured: &ldquo;{duplicateMatch.title.slice(0, 50)}
+            {duplicateMatch.title.length > 50 ? '...' : ''}&rdquo;
+          </p>
+          <button
+            onClick={() => handleSubmit(true)}
+            className="shrink-0 text-xs font-medium text-amber-600 hover:text-amber-700 dark:text-amber-400 dark:hover:text-amber-300"
+          >
+            Capture Anyway
+          </button>
+        </div>
+      )}
     </div>
   )
 }

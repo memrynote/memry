@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
-import { Send, Loader2, Link, FileText, Check, X, Image, Mic, FileIcon } from 'lucide-react'
+import { Send, Loader2, Link, FileText, Check, X, Image, Mic, FileIcon, Copy } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { useCaptureText, useCaptureLink, useCaptureImage, useCaptureVoice } from '@/hooks/use-inbox'
@@ -8,7 +8,7 @@ import { createLogger } from '@/lib/logger'
 
 const log = createLogger('Component:QuickCapture')
 
-type CaptureState = 'idle' | 'capturing' | 'success' | 'error'
+type CaptureState = 'idle' | 'capturing' | 'success' | 'error' | 'duplicate'
 type DetectedType = 'note' | 'link' | 'image' | 'voice' | 'pdf'
 
 const URL_REGEX =
@@ -59,6 +59,11 @@ export function QuickCapture(): React.JSX.Element {
   const [droppedFile, setDroppedFile] = useState<File | null>(null)
   const [isDragOver, setIsDragOver] = useState(false)
   const [isRecording, setIsRecording] = useState(false)
+  const [duplicateMatch, setDuplicateMatch] = useState<{
+    id: string
+    title: string
+    createdAt: string
+  } | null>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
   const captureText = useCaptureText()
@@ -155,104 +160,118 @@ export function QuickCapture(): React.JSX.Element {
     textareaRef.current?.focus()
   }, [clipboardImageUrl])
 
-  const handleSubmit = useCallback(async () => {
-    if (isCapturing) return
+  const handleSubmit = useCallback(
+    async (force = false) => {
+      if (isCapturing) return
 
-    setCaptureState('capturing')
-    setErrorMessage('')
+      setCaptureState('capturing')
+      setErrorMessage('')
 
-    try {
-      // Image from clipboard or dropped file
-      if (clipboardImage) {
-        const arrayBuffer = await clipboardImage.arrayBuffer()
-        const result = await captureImage.mutateAsync({
-          data: arrayBuffer,
-          filename: `clipboard-${Date.now()}.png`,
-          mimeType: clipboardImage.type || 'image/png'
-        })
-        if (result.success) {
-          setCaptureState('success')
-          return
-        }
-        setErrorMessage(extractErrorMessage(result.error, 'Failed to capture image'))
-        setCaptureState('error')
-        return
-      }
-
-      // Dropped file
-      if (droppedFile) {
-        const arrayBuffer = await droppedFile.arrayBuffer()
-        if (droppedFile.type.startsWith('audio/')) {
-          const result = await captureVoice.mutateAsync({
+      try {
+        // Image from clipboard or dropped file
+        if (clipboardImage) {
+          const arrayBuffer = await clipboardImage.arrayBuffer()
+          const result = await captureImage.mutateAsync({
             data: arrayBuffer,
-            duration: 0,
-            format: droppedFile.name.split('.').pop() || 'unknown',
-            transcribe: true
+            filename: `clipboard-${Date.now()}.png`,
+            mimeType: clipboardImage.type || 'image/png'
           })
           if (result.success) {
             setCaptureState('success')
             return
           }
-          setErrorMessage(extractErrorMessage(result.error, 'Failed to capture audio'))
+          setErrorMessage(extractErrorMessage(result.error, 'Failed to capture image'))
           setCaptureState('error')
           return
         }
-        // Image or PDF — both go through captureImage IPC
-        const result = await captureImage.mutateAsync({
-          data: arrayBuffer,
-          filename: droppedFile.name,
-          mimeType: droppedFile.type
-        })
-        if (result.success) {
-          setCaptureState('success')
+
+        // Dropped file
+        if (droppedFile) {
+          const arrayBuffer = await droppedFile.arrayBuffer()
+          if (droppedFile.type.startsWith('audio/')) {
+            const result = await captureVoice.mutateAsync({
+              data: arrayBuffer,
+              duration: 0,
+              format: droppedFile.name.split('.').pop() || 'unknown',
+              transcribe: true
+            })
+            if (result.success) {
+              setCaptureState('success')
+              return
+            }
+            setErrorMessage(extractErrorMessage(result.error, 'Failed to capture audio'))
+            setCaptureState('error')
+            return
+          }
+          // Image or PDF — both go through captureImage IPC
+          const result = await captureImage.mutateAsync({
+            data: arrayBuffer,
+            filename: droppedFile.name,
+            mimeType: droppedFile.type
+          })
+          if (result.success) {
+            setCaptureState('success')
+            return
+          }
+          setErrorMessage(extractErrorMessage(result.error, 'Failed to capture file'))
+          setCaptureState('error')
           return
         }
-        setErrorMessage(extractErrorMessage(result.error, 'Failed to capture file'))
+
+        // Text or URL
+        const trimmed = value.trim()
+        if (!trimmed) return
+
+        if (isLikelyUrl(trimmed)) {
+          const url = normalizeUrl(trimmed)
+          const result = await captureLink.mutateAsync({ url, force })
+          if (result.duplicate && result.existingItem) {
+            setDuplicateMatch(result.existingItem)
+            setCaptureState('duplicate')
+            return
+          }
+          if (result.success) {
+            setCaptureState('success')
+          } else {
+            setErrorMessage(extractErrorMessage(result.error, 'Failed to capture link'))
+            setCaptureState('error')
+          }
+        } else {
+          const lines = trimmed.split('\n')
+          const title = lines.length > 1 ? lines[0].slice(0, 100) : trimmed.slice(0, 100)
+          const result = await captureText.mutateAsync({
+            content: trimmed,
+            title: title + (title.length < trimmed.length ? '...' : ''),
+            force
+          })
+          if (result.duplicate && result.existingItem) {
+            setDuplicateMatch(result.existingItem)
+            setCaptureState('duplicate')
+            return
+          }
+          if (result.success) {
+            setCaptureState('success')
+          } else {
+            setErrorMessage(extractErrorMessage(result.error, 'Failed to capture note'))
+            setCaptureState('error')
+          }
+        }
+      } catch (err) {
+        setErrorMessage(extractErrorMessage(err, 'Capture failed'))
         setCaptureState('error')
-        return
       }
-
-      // Text or URL
-      const trimmed = value.trim()
-      if (!trimmed) return
-
-      if (isLikelyUrl(trimmed)) {
-        const url = normalizeUrl(trimmed)
-        const result = await captureLink.mutateAsync({ url })
-        if (result.success) {
-          setCaptureState('success')
-        } else {
-          setErrorMessage(extractErrorMessage(result.error, 'Failed to capture link'))
-          setCaptureState('error')
-        }
-      } else {
-        const lines = trimmed.split('\n')
-        const title = lines.length > 1 ? lines[0].slice(0, 100) : trimmed.slice(0, 100)
-        const result = await captureText.mutateAsync({
-          content: trimmed,
-          title: title + (title.length < trimmed.length ? '...' : '')
-        })
-        if (result.success) {
-          setCaptureState('success')
-        } else {
-          setErrorMessage(extractErrorMessage(result.error, 'Failed to capture note'))
-          setCaptureState('error')
-        }
-      }
-    } catch (err) {
-      setErrorMessage(extractErrorMessage(err, 'Capture failed'))
-      setCaptureState('error')
-    }
-  }, [
-    value,
-    isCapturing,
-    clipboardImage,
-    droppedFile,
-    captureText,
-    captureLink,
-    captureImage,
-    captureVoice
-  ])
+    },
+    [
+      value,
+      isCapturing,
+      clipboardImage,
+      droppedFile,
+      captureText,
+      captureLink,
+      captureImage,
+      captureVoice
+    ]
+  )
 
   // Paste handler — intercept image paste
   const handlePaste = useCallback(async (e: React.ClipboardEvent) => {
@@ -373,6 +392,50 @@ export function QuickCapture(): React.JSX.Element {
             <Check className="size-6 text-green-600 dark:text-green-400" />
           </div>
           <p className="text-sm font-medium text-foreground">Captured!</p>
+        </div>
+      </div>
+    )
+  }
+
+  // Duplicate detected state
+  if (captureState === 'duplicate' && duplicateMatch) {
+    const capturedDate = new Date(duplicateMatch.createdAt)
+    const dateStr = capturedDate.toLocaleDateString(undefined, {
+      month: 'short',
+      day: 'numeric'
+    })
+
+    return (
+      <div className="flex h-screen w-screen items-center justify-center bg-background p-4">
+        <div className="flex w-full max-w-xs flex-col items-center gap-3 text-center">
+          <div className="flex size-12 items-center justify-center rounded-full bg-amber-100 dark:bg-amber-900/30">
+            <Copy className="size-5 text-amber-600 dark:text-amber-400" />
+          </div>
+          <div>
+            <p className="text-sm font-medium text-foreground">Already captured</p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              &ldquo;{duplicateMatch.title.slice(0, 60)}
+              {duplicateMatch.title.length > 60 ? '...' : ''}&rdquo; &middot; {dateStr}
+            </p>
+          </div>
+          <div className="mt-1 flex gap-2">
+            <button
+              onClick={() => {
+                setCaptureState('idle')
+                setDuplicateMatch(null)
+                handleSubmit(true)
+              }}
+              className="rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-foreground transition-colors hover:bg-muted"
+            >
+              Capture Anyway
+            </button>
+            <button
+              onClick={() => window.api.quickCapture.close()}
+              className="rounded-lg bg-amber-600 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-amber-700 dark:bg-amber-500 dark:hover:bg-amber-600"
+            >
+              Close
+            </button>
+          </div>
         </div>
       </div>
     )
@@ -545,7 +608,7 @@ export function QuickCapture(): React.JSX.Element {
 
           {/* Submit button */}
           <button
-            onClick={handleSubmit}
+            onClick={() => handleSubmit()}
             disabled={(!value.trim() && !hasAttachment) || isCapturing}
             className={cn(
               'mt-0.5 shrink-0 rounded-md p-1.5',
