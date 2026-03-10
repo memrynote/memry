@@ -32,6 +32,8 @@ export interface InboxCrudHandlers {
   handleMarkViewed: (itemId: string) => Promise<{ success: boolean; error?: string }>
   handleUnarchive: (id: string) => Promise<{ success: boolean; error?: string }>
   handleDeletePermanent: (id: string) => Promise<{ success: boolean; error?: string }>
+  handleUndoFile: (id: string) => Promise<{ success: boolean; error?: string }>
+  handleUndoArchive: (id: string) => Promise<{ success: boolean; error?: string }>
 }
 
 export function createInboxCrudHandlers(deps: InboxCrudHandlerDeps): InboxCrudHandlers {
@@ -252,6 +254,77 @@ export function createInboxCrudHandlers(deps: InboxCrudHandlerDeps): InboxCrudHa
     }
   }
 
+  async function handleUndoFile(id: string): Promise<{ success: boolean; error?: string }> {
+    try {
+      const db = deps.requireDatabase()
+
+      const existing = db.select().from(inboxItems).where(eq(inboxItems.id, id)).get()
+      if (!existing) {
+        return { success: false, error: 'Item not found' }
+      }
+
+      if (!existing.filedAt) {
+        return { success: false, error: 'Item is not filed' }
+      }
+
+      db.update(inboxItems)
+        .set({
+          filedAt: null,
+          filedTo: null,
+          filedAction: null,
+          modifiedAt: new Date().toISOString()
+        })
+        .where(eq(inboxItems.id, id))
+        .run()
+
+      deps.emitInboxEvent(InboxChannels.events.UPDATED, {
+        id,
+        changes: { filedAt: null, filedTo: null, filedAction: null }
+      })
+      deps.syncInboxUpdate(db, id)
+
+      deps.logger.info(`Undo file for item ${id}`)
+      return { success: true }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error'
+      deps.logger.error(`Failed to undo file for item ${id}: ${message}`)
+      return { success: false, error: message }
+    }
+  }
+
+  async function handleUndoArchive(id: string): Promise<{ success: boolean; error?: string }> {
+    try {
+      const db = deps.requireDatabase()
+
+      const existing = db.select().from(inboxItems).where(eq(inboxItems.id, id)).get()
+      if (!existing) {
+        return { success: false, error: 'Item not found' }
+      }
+
+      if (!existing.archivedAt) {
+        return { success: false, error: 'Item is not archived' }
+      }
+
+      db.update(inboxItems)
+        .set({
+          archivedAt: null,
+          modifiedAt: new Date().toISOString()
+        })
+        .where(eq(inboxItems.id, id))
+        .run()
+
+      deps.emitInboxEvent(InboxChannels.events.UPDATED, { id, changes: { archivedAt: null } })
+      deps.syncInboxUpdate(db, id)
+
+      deps.logger.info(`Undo archive for item ${id}`)
+      return { success: true }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error'
+      deps.logger.error(`Failed to undo archive for item ${id}: ${message}`)
+      return { success: false, error: message }
+    }
+  }
+
   return {
     handleGet,
     handleUpdate,
@@ -260,7 +333,9 @@ export function createInboxCrudHandlers(deps: InboxCrudHandlerDeps): InboxCrudHa
     handleRemoveTag,
     handleMarkViewed,
     handleUnarchive,
-    handleDeletePermanent
+    handleDeletePermanent,
+    handleUndoFile,
+    handleUndoArchive
   }
 }
 
@@ -279,6 +354,8 @@ export function registerInboxCrudHandlers(handlers: InboxCrudHandlers): void {
   ipcMain.handle(InboxChannels.invoke.DELETE_PERMANENT, (_, id) =>
     handlers.handleDeletePermanent(id)
   )
+  ipcMain.handle(InboxChannels.invoke.UNDO_FILE, (_, id) => handlers.handleUndoFile(id))
+  ipcMain.handle(InboxChannels.invoke.UNDO_ARCHIVE, (_, id) => handlers.handleUndoArchive(id))
 }
 
 export function unregisterInboxCrudHandlers(): void {
@@ -290,4 +367,6 @@ export function unregisterInboxCrudHandlers(): void {
   ipcMain.removeHandler(InboxChannels.invoke.MARK_VIEWED)
   ipcMain.removeHandler(InboxChannels.invoke.UNARCHIVE)
   ipcMain.removeHandler(InboxChannels.invoke.DELETE_PERMANENT)
+  ipcMain.removeHandler(InboxChannels.invoke.UNDO_FILE)
+  ipcMain.removeHandler(InboxChannels.invoke.UNDO_ARCHIVE)
 }

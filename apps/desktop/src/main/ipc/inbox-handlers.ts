@@ -41,7 +41,13 @@ import {
   ALLOWED_DOCUMENT_TYPES
 } from '../inbox/attachments'
 import { fetchUrlMetadata, downloadImage } from '../inbox/metadata'
-import { fileToFolder, convertToNote, linkToNote, linkToNotes } from '../inbox/filing'
+import {
+  fileToFolder,
+  convertToNote,
+  convertToTask,
+  linkToNote,
+  linkToNotes
+} from '../inbox/filing'
 import {
   extractSocialPost,
   detectSocialPlatform,
@@ -49,7 +55,8 @@ import {
   createFallbackSocialMetadata
 } from '../inbox/social'
 import { createLogger } from '../lib/logger'
-import { captureVoice } from '../inbox/capture'
+import { captureVoice, type CaptureVoiceInput } from '../inbox/capture'
+import { findDuplicateByUrl, findDuplicateByContent } from '../inbox/duplicates'
 import { retryTranscription } from '../inbox/transcription'
 import { getSuggestions, trackSuggestionFeedback } from '../inbox/suggestions'
 import { FileItemSchema } from '@memry/contracts/inbox-api'
@@ -457,6 +464,7 @@ function toInboxItem(row: typeof inboxItems.$inferSelect, tags: string[]): Inbox
     transcriptionStatus: row.transcriptionStatus as InboxItem['transcriptionStatus'],
     sourceUrl: row.sourceUrl,
     sourceTitle: row.sourceTitle,
+    captureSource: row.captureSource as InboxItem['captureSource'],
     tags,
     isStale: isStale(row.createdAt)
   }
@@ -492,6 +500,7 @@ function toListItem(row: typeof inboxItems.$inferSelect, tags: string[]): InboxI
     snoozeReason: row.snoozeReason ?? undefined,
     // Viewed field (for reminder items)
     viewedAt: row.viewedAt ? new Date(row.viewedAt) : undefined,
+    captureSource: row.captureSource as InboxItemListItem['captureSource'],
     // Metadata (for reminder items - includes target info)
     metadata: isReminder ? (metadata as unknown as InboxItemListItem['metadata']) : undefined
   }
@@ -509,6 +518,13 @@ async function handleCaptureText(input: unknown): Promise<CaptureResponse> {
     const parsed = CaptureTextSchema.parse(input)
     const db = requireDatabase()
 
+    if (!parsed.force) {
+      const duplicate = findDuplicateByContent(parsed.content)
+      if (duplicate) {
+        return { success: true, item: null, duplicate: true, existingItem: duplicate }
+      }
+    }
+
     const id = generateId()
     const now = new Date().toISOString()
 
@@ -523,7 +539,8 @@ async function handleCaptureText(input: unknown): Promise<CaptureResponse> {
         content: parsed.content,
         createdAt: now,
         modifiedAt: now,
-        processingStatus: 'complete'
+        processingStatus: 'complete',
+        captureSource: parsed.source ?? null
       })
       .run()
 
@@ -571,6 +588,13 @@ async function handleCaptureLink(input: unknown): Promise<CaptureResponse> {
     const parsed = CaptureLinkSchema.parse(input)
     const db = requireDatabase()
 
+    if (!parsed.force) {
+      const duplicate = findDuplicateByUrl(parsed.url)
+      if (duplicate) {
+        return { success: true, item: null, duplicate: true, existingItem: duplicate }
+      }
+    }
+
     const id = generateId()
     const now = new Date().toISOString()
 
@@ -593,6 +617,7 @@ async function handleCaptureLink(input: unknown): Promise<CaptureResponse> {
         createdAt: now,
         modifiedAt: now,
         processingStatus: 'pending', // Metadata fetch is pending
+        captureSource: parsed.source ?? null,
         metadata: isSocial
           ? {
               platform: platform || 'other',
@@ -806,7 +831,8 @@ async function handleCaptureImage(input: unknown): Promise<CaptureResponse> {
         processingStatus: 'complete',
         attachmentPath: storeResult.path || null,
         thumbnailPath,
-        metadata: itemMetadata
+        metadata: itemMetadata,
+        captureSource: parsed.source ?? null
       })
       .run()
 
@@ -906,7 +932,8 @@ async function handleCaptureVoice(input: unknown): Promise<CaptureResponse> {
       duration: rawInput.duration as number,
       format: rawInput.format as 'webm' | 'mp3' | 'wav',
       transcribe: rawInput.transcribe as boolean | undefined,
-      tags: rawInput.tags as string[] | undefined
+      tags: rawInput.tags as string[] | undefined,
+      source: rawInput.source as CaptureVoiceInput['source']
     })
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error'
@@ -1019,6 +1046,12 @@ async function handleTrackSuggestion(
  */
 async function handleConvertToNote(itemId: string): Promise<FileResponse> {
   return convertToNote(itemId)
+}
+
+async function handleConvertToTask(
+  itemId: string
+): Promise<{ success: boolean; taskId: string | null; error?: string }> {
+  return convertToTask(itemId)
 }
 
 /**
@@ -1198,6 +1231,7 @@ export function registerInboxHandlers(): void {
       )
   )
   ipcMain.handle(InboxChannels.invoke.CONVERT_TO_NOTE, (_, itemId) => handleConvertToNote(itemId))
+  ipcMain.handle(InboxChannels.invoke.CONVERT_TO_TASK, (_, itemId) => handleConvertToTask(itemId))
   ipcMain.handle(InboxChannels.invoke.LINK_TO_NOTE, (_, itemId, noteId, tags) =>
     handleLinkToNote(itemId, noteId, tags || [])
   )
@@ -1246,6 +1280,7 @@ export function unregisterInboxHandlers(): void {
   ipcMain.removeHandler(InboxChannels.invoke.GET_SUGGESTIONS)
   ipcMain.removeHandler(InboxChannels.invoke.TRACK_SUGGESTION)
   ipcMain.removeHandler(InboxChannels.invoke.CONVERT_TO_NOTE)
+  ipcMain.removeHandler(InboxChannels.invoke.CONVERT_TO_TASK)
   ipcMain.removeHandler(InboxChannels.invoke.LINK_TO_NOTE)
 
   // Snooze

@@ -625,6 +625,7 @@ export const api = {
         input.actualTags || []
       ),
     convertToNote: (itemId: string) => invoke(InboxChannels.invoke.CONVERT_TO_NOTE, itemId),
+    convertToTask: (itemId: string) => invoke(InboxChannels.invoke.CONVERT_TO_TASK, itemId),
     linkToNote: (itemId: string, noteId: string, tags?: string[]) =>
       invoke(InboxChannels.invoke.LINK_TO_NOTE, itemId, noteId, tags || []),
 
@@ -655,6 +656,8 @@ export const api = {
     bulkTag: (input: { itemIds: string[]; tags: string[] }) =>
       invoke(InboxChannels.invoke.BULK_TAG, input),
     fileAllStale: () => invoke(InboxChannels.invoke.FILE_ALL_STALE),
+    bulkArchiveOlderThan: (olderThanDays: number) =>
+      invoke(InboxChannels.invoke.BULK_ARCHIVE_OLDER_THAN, { olderThanDays }),
 
     // Transcription
     retryTranscription: (itemId: string) =>
@@ -679,7 +682,11 @@ export const api = {
 
     // Filing history
     getFilingHistory: (options?: { limit?: number }) =>
-      invoke(InboxChannels.invoke.GET_FILING_HISTORY, options ?? {})
+      invoke(InboxChannels.invoke.GET_FILING_HISTORY, options ?? {}),
+
+    // Undo operations
+    undoFile: (id: string) => invoke(InboxChannels.invoke.UNDO_FILE, id),
+    undoArchive: (id: string) => invoke(InboxChannels.invoke.UNDO_ARCHIVE, id)
   },
 
   // Search API

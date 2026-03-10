@@ -1327,10 +1327,18 @@ export interface InboxListResponse {
   hasMore: boolean
 }
 
+export interface InboxDuplicateMatch {
+  id: string
+  title: string
+  createdAt: string
+}
+
 export interface InboxCaptureResponse {
   success: boolean
   item: InboxItem | null
   error?: string
+  duplicate?: boolean
+  existingItem?: InboxDuplicateMatch
 }
 
 export interface InboxFileResponse {
@@ -1371,10 +1379,21 @@ export interface InboxFilingSuggestion {
   confidence: number
   reason: string
   suggestedTags: string[]
+  suggestedNote?: {
+    id: string
+    title: string
+    snippet: string
+  }
 }
 
 export interface InboxSuggestionsResponse {
   suggestions: InboxFilingSuggestion[]
+}
+
+export interface InboxAgeDistribution {
+  fresh: number
+  aging: number
+  stale: number
 }
 
 export interface InboxStats {
@@ -1385,6 +1404,12 @@ export interface InboxStats {
   processedToday: number
   capturedToday: number
   avgTimeToProcess: number
+  capturedThisWeek: number
+  processedThisWeek: number
+  captureProcessRatio: number
+  ageDistribution: InboxAgeDistribution
+  oldestItemDays: number
+  currentStreak: number
 }
 
 export interface InboxCapturePattern {
@@ -1450,8 +1475,13 @@ export interface InboxClientAPI {
     content: string
     title?: string
     tags?: string[]
+    force?: boolean
   }): Promise<InboxCaptureResponse>
-  captureLink(input: { url: string; tags?: string[] }): Promise<InboxCaptureResponse>
+  captureLink(input: {
+    url: string
+    tags?: string[]
+    force?: boolean
+  }): Promise<InboxCaptureResponse>
   captureImage(input: {
     data: ArrayBuffer
     filename: string
@@ -1500,6 +1530,9 @@ export interface InboxClientAPI {
   }): Promise<InboxFileResponse>
   getSuggestions(itemId: string): Promise<InboxSuggestionsResponse>
   convertToNote(itemId: string): Promise<InboxFileResponse>
+  convertToTask(
+    itemId: string
+  ): Promise<{ success: boolean; taskId: string | null; error?: string }>
   linkToNote(
     itemId: string,
     noteId: string,
@@ -1546,6 +1579,7 @@ export interface InboxClientAPI {
     reason?: string
   }): Promise<InboxBulkResponse>
   fileAllStale(): Promise<InboxBulkResponse>
+  bulkArchiveOlderThan(olderThanDays: number): Promise<InboxBulkResponse>
 
   // Transcription
   retryTranscription(itemId: string): Promise<{ success: boolean; error?: string }>
@@ -1572,6 +1606,10 @@ export interface InboxClientAPI {
 
   // Filing history
   getFilingHistory(options?: { limit?: number }): Promise<InboxFilingHistoryResponse>
+
+  // Undo operations
+  undoFile(id: string): Promise<{ success: boolean; error?: string }>
+  undoArchive(id: string): Promise<{ success: boolean; error?: string }>
 }
 
 // Search types

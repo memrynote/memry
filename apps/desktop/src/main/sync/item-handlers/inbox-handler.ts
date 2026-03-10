@@ -51,6 +51,7 @@ export const inboxHandler: SyncItemHandler<InboxSyncPayload> = {
             archivedAt: data.archivedAt ?? null,
             sourceUrl: data.sourceUrl ?? null,
             sourceTitle: data.sourceTitle ?? null,
+            captureSource: data.captureSource ?? existing.captureSource ?? null,
             clock: resolution.mergedClock,
             syncedAt: now,
             modifiedAt: data.modifiedAt ?? now
@@ -71,6 +72,7 @@ export const inboxHandler: SyncItemHandler<InboxSyncPayload> = {
           metadata: data.metadata ?? null,
           sourceUrl: data.sourceUrl ?? null,
           sourceTitle: data.sourceTitle ?? null,
+          captureSource: data.captureSource ?? null,
           clock: remoteClock,
           syncedAt: now,
           createdAt: data.createdAt ?? now,
