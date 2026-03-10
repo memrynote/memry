@@ -497,6 +497,18 @@ export const inboxService = {
 
   getFilingHistory: (options?: { limit?: number }): Promise<FilingHistoryResponse> => {
     return window.api.inbox.getFilingHistory(options)
+  },
+
+  // =========================================================================
+  // Undo Operations
+  // =========================================================================
+
+  undoFile: (id: string): Promise<{ success: boolean; error?: string }> => {
+    return window.api.inbox.undoFile(id)
+  },
+
+  undoArchive: (id: string): Promise<{ success: boolean; error?: string }> => {
+    return window.api.inbox.undoArchive(id)
   }
 }
 

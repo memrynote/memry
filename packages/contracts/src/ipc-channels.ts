@@ -680,7 +680,13 @@ export const InboxChannels = {
 
     // Filing history
     /** Get recent filing history entries */
-    GET_FILING_HISTORY: 'inbox:get-filing-history'
+    GET_FILING_HISTORY: 'inbox:get-filing-history',
+
+    // Undo operations
+    /** Undo a file action (revert filedAt/filedTo/filedAction to null) */
+    UNDO_FILE: 'inbox:undo-file',
+    /** Undo an archive action (revert archivedAt to null) */
+    UNDO_ARCHIVE: 'inbox:undo-archive'
   },
   events: {
     /** Item was captured */

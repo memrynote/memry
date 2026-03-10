@@ -682,7 +682,11 @@ export const api = {
 
     // Filing history
     getFilingHistory: (options?: { limit?: number }) =>
-      invoke(InboxChannels.invoke.GET_FILING_HISTORY, options ?? {})
+      invoke(InboxChannels.invoke.GET_FILING_HISTORY, options ?? {}),
+
+    // Undo operations
+    undoFile: (id: string) => invoke(InboxChannels.invoke.UNDO_FILE, id),
+    undoArchive: (id: string) => invoke(InboxChannels.invoke.UNDO_ARCHIVE, id)
   },
 
   // Search API

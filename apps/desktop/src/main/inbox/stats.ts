@@ -346,6 +346,47 @@ export function getAverageTimeToProcess(): number {
 }
 
 // ============================================================================
+// Processing Streak
+// ============================================================================
+
+export function getProcessingStreak(): number {
+  try {
+    const db = getDatabase()
+    const recentStats = db.select().from(inboxStats).orderBy(desc(inboxStats.date)).limit(90).all()
+
+    let streak = 0
+    const today = getTodayDate()
+    const checkDate = new Date(today)
+
+    for (let i = 0; i < 90; i++) {
+      const dateStr = checkDate.toISOString().split('T')[0]
+      const dayStats = recentStats.find((r) => r.date === dateStr)
+      if (dayStats && (dayStats.processedCount || 0) > 0) {
+        streak++
+      } else if (i > 0) {
+        break
+      } else if (i === 0 && (!dayStats || (dayStats.processedCount || 0) === 0)) {
+        const yesterday = new Date(checkDate)
+        yesterday.setDate(yesterday.getDate() - 1)
+        const yStr = yesterday.toISOString().split('T')[0]
+        const yStats = recentStats.find((r) => r.date === yStr)
+        if (yStats && (yStats.processedCount || 0) > 0) {
+          checkDate.setDate(checkDate.getDate() - 1)
+          streak++
+          continue
+        }
+        break
+      }
+      checkDate.setDate(checkDate.getDate() - 1)
+    }
+
+    return streak
+  } catch {
+    return 0
+  }
+}
+
+// ============================================================================
 // Health Metrics
 // ============================================================================
 
@@ -445,33 +486,7 @@ export function getInboxHealthMetrics(): InboxHealthMetrics {
       )
     }
 
-    const recentStats = db.select().from(inboxStats).orderBy(desc(inboxStats.date)).limit(90).all()
-
-    let currentStreak = 0
-    const today = getTodayDate()
-    const checkDate = new Date(today)
-
-    for (let i = 0; i < 90; i++) {
-      const dateStr = checkDate.toISOString().split('T')[0]
-      const dayStats = recentStats.find((r) => r.date === dateStr)
-      if (dayStats && (dayStats.processedCount || 0) > 0) {
-        currentStreak++
-      } else if (i > 0) {
-        break
-      } else if (i === 0 && (!dayStats || (dayStats.processedCount || 0) === 0)) {
-        const yesterday = new Date(checkDate)
-        yesterday.setDate(yesterday.getDate() - 1)
-        const yStr = yesterday.toISOString().split('T')[0]
-        const yStats = recentStats.find((r) => r.date === yStr)
-        if (yStats && (yStats.processedCount || 0) > 0) {
-          checkDate.setDate(checkDate.getDate() - 1)
-          currentStreak++
-          continue
-        }
-        break
-      }
-      checkDate.setDate(checkDate.getDate() - 1)
-    }
+    const currentStreak = getProcessingStreak()
 
     return {
       capturedThisWeek,
