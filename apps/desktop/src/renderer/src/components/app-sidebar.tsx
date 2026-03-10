@@ -2,7 +2,7 @@
 
 import * as React from 'react'
 import { useMemo, useState, useCallback, useRef } from 'react'
-import { BookOpen, CloudOff, Home, Inbox, ListTodo, Plus, Search, Upload } from 'lucide-react'
+import { BookOpen, CloudOff, Home, Inbox, ListTodo, Play, Plus, Search, Upload } from 'lucide-react'
 import { toast } from 'sonner'
 
 import { cn } from '@/lib/utils'
@@ -318,9 +318,25 @@ function AppSidebarInner({ currentPage, viewCounts, ...props }: AppSidebarProps)
                     <item.icon className={cn('size-4', item.iconColor)} />
                     <span>{item.title}</span>
                   </SidebarMenuButton>
-                  {/* Show inbox count badge for Inbox */}
+                  {/* Show inbox count badge + process action for Inbox */}
                   {item.page === 'inbox' && inboxCount > 0 && (
-                    <SidebarMenuBadge>{inboxCount}</SidebarMenuBadge>
+                    <div className="flex items-center gap-1">
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          handleNavClick('inbox')(e as unknown as React.MouseEvent)
+                          requestAnimationFrame(() => {
+                            window.dispatchEvent(new CustomEvent('memry:enter-triage'))
+                          })
+                        }}
+                        className="opacity-0 group-hover/menu-item:opacity-100 transition-opacity rounded p-0.5 hover:bg-accent"
+                        title="Process Inbox"
+                      >
+                        <Play className="size-3 text-muted-foreground" />
+                      </button>
+                      <SidebarMenuBadge>{inboxCount}</SidebarMenuBadge>
+                    </div>
                   )}
                   {/* Show today's task count badge for Tasks */}
                   {item.page === 'tasks' && todayTasksCount > 0 && (

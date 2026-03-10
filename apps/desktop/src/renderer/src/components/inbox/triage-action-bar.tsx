@@ -1,19 +1,31 @@
-import { useState, useCallback, useEffect } from 'react'
-import { Trash2, CheckSquare, FileText, FolderOpen, Clock } from 'lucide-react'
+import { useState, useCallback, useEffect, useMemo } from 'react'
+import {
+  Trash2,
+  CheckSquare,
+  FileText,
+  FolderOpen,
+  Clock,
+  ExternalLink,
+  BellOff
+} from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { TriageFilePicker } from './triage-file-picker'
 import { TriageSnoozePicker } from './triage-snooze-picker'
 import type { FileItemInput, SnoozeInput } from '@/services/inbox-service'
+import type { InboxItemType } from '@memry/contracts/inbox-api'
 
 type ActivePicker = 'file' | 'snooze' | null
 
 interface TriageActionBarProps {
   itemId: string
+  itemType?: InboxItemType
   onDiscard: () => void
   onConvertToTask: () => void
   onExpandToNote: () => void
   onFile: (input: FileItemInput) => void
   onDefer: (input: SnoozeInput) => void
+  onDismissReminder?: () => void
+  onOpenTarget?: () => void
   disabled?: boolean
 }
 
@@ -28,30 +40,75 @@ interface ActionDef {
 
 export function TriageActionBar({
   itemId,
+  itemType,
   onDiscard,
   onConvertToTask,
   onExpandToNote,
   onFile,
   onDefer,
+  onDismissReminder,
+  onOpenTarget,
   disabled = false
 }: TriageActionBarProps): React.JSX.Element {
   const [activePicker, setActivePicker] = useState<ActivePicker>(null)
 
   const closePicker = useCallback(() => setActivePicker(null), [])
 
-  const actions: ActionDef[] = [
-    {
-      key: 'D',
-      label: 'Discard',
-      icon: <Trash2 className="size-4" />,
-      action: onDiscard,
-      variant: 'destructive'
-    },
-    { key: 'T', label: 'Task', icon: <CheckSquare className="size-4" />, action: onConvertToTask },
-    { key: 'N', label: 'Note', icon: <FileText className="size-4" />, action: onExpandToNote },
-    { key: 'F', label: 'File', icon: <FolderOpen className="size-4" />, picker: 'file' },
-    { key: 'S', label: 'Snooze', icon: <Clock className="size-4" />, picker: 'snooze' }
-  ]
+  const isReminder = itemType === 'reminder'
+
+  const actions: ActionDef[] = useMemo(() => {
+    if (isReminder) {
+      return [
+        {
+          key: 'D',
+          label: 'Dismiss',
+          icon: <BellOff className="size-4" />,
+          action: onDismissReminder ?? onDiscard
+        },
+        {
+          key: 'O',
+          label: 'Open',
+          icon: <ExternalLink className="size-4" />,
+          action: onOpenTarget
+        },
+        {
+          key: 'S',
+          label: 'Snooze',
+          icon: <Clock className="size-4" />,
+          picker: 'snooze' as ActivePicker
+        }
+      ]
+    }
+
+    return [
+      {
+        key: 'D',
+        label: 'Discard',
+        icon: <Trash2 className="size-4" />,
+        action: onDiscard,
+        variant: 'destructive' as const
+      },
+      {
+        key: 'T',
+        label: 'Task',
+        icon: <CheckSquare className="size-4" />,
+        action: onConvertToTask
+      },
+      { key: 'N', label: 'Note', icon: <FileText className="size-4" />, action: onExpandToNote },
+      {
+        key: 'F',
+        label: 'File',
+        icon: <FolderOpen className="size-4" />,
+        picker: 'file' as ActivePicker
+      },
+      {
+        key: 'S',
+        label: 'Snooze',
+        icon: <Clock className="size-4" />,
+        picker: 'snooze' as ActivePicker
+      }
+    ]
+  }, [isReminder, onDiscard, onConvertToTask, onExpandToNote, onDismissReminder, onOpenTarget])
 
   useEffect(() => {
     if (disabled) return
