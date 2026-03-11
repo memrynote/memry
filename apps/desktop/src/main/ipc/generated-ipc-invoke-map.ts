@@ -7,7 +7,9 @@ export interface MainIpcInvokeHandlers {
   ) => Awaited<Promise<{ success: boolean; error: string | undefined }>>
   'auth:request-otp': (...args: [{ email: string }]) => Awaited<Promise<unknown>>
   'auth:resend-otp': (...args: [{ email: string }]) => Awaited<Promise<unknown>>
-  'auth:verify-otp': (...args: [{ email: string; code: string }]) => Awaited<
+  'auth:verify-otp': (
+    ...args: [{ email: string; code: string }]
+  ) => Awaited<
     Promise<{
       success: boolean
       isNewUser: boolean
@@ -21,7 +23,9 @@ export interface MainIpcInvokeHandlers {
   'bookmarks:bulk-delete': (
     ...args: [{ bookmarkIds: string[] }]
   ) => Awaited<Promise<{ success: boolean; deletedCount: number }>>
-  'bookmarks:create': (...args: [{ itemType: string; itemId: string }]) => Awaited<
+  'bookmarks:create': (
+    ...args: [{ itemType: string; itemId: string }]
+  ) => Awaited<
     Promise<
       | { success: boolean; bookmark: null; error: string }
       | {
@@ -42,7 +46,9 @@ export interface MainIpcInvokeHandlers {
   ) => Awaited<
     Promise<{ success: boolean; error: string } | { success: boolean; error?: undefined }>
   >
-  'bookmarks:get': (...args: [string]) => Awaited<
+  'bookmarks:get': (
+    ...args: [string]
+  ) => Awaited<
     Promise<{
       id: string
       createdAt: string
@@ -51,7 +57,9 @@ export interface MainIpcInvokeHandlers {
       itemId: string
     } | null>
   >
-  'bookmarks:get-by-item': (...args: [{ itemType: string; itemId: string }]) => Awaited<
+  'bookmarks:get-by-item': (
+    ...args: [{ itemType: string; itemId: string }]
+  ) => Awaited<
     Promise<{
       id: string
       createdAt: string
@@ -84,7 +92,9 @@ export interface MainIpcInvokeHandlers {
   'bookmarks:reorder': (
     ...args: [{ bookmarkIds: string[] }]
   ) => Awaited<Promise<{ success: boolean }>>
-  'bookmarks:toggle': (...args: [{ itemType: string; itemId: string }]) => Awaited<
+  'bookmarks:toggle': (
+    ...args: [{ itemType: string; itemId: string }]
+  ) => Awaited<
     Promise<{
       success: boolean
       isBookmarked: boolean
@@ -351,7 +361,9 @@ export interface MainIpcInvokeHandlers {
   ) => Awaited<
     Promise<import('../../../../../packages/contracts/src/folder-view-api').SetViewResponse>
   >
-  'graph:get-graph-data': (...args: []) => Awaited<{
+  'graph:get-graph-data': (
+    ...args: []
+  ) => Awaited<{
     nodes: {
       id: string
       type: 'note' | 'task' | 'project' | 'journal'
@@ -372,7 +384,9 @@ export interface MainIpcInvokeHandlers {
       weight: number
     }[]
   }>
-  'graph:get-local-graph': (...args: [{ noteId: string; depth?: number | undefined }]) => Awaited<{
+  'graph:get-local-graph': (
+    ...args: [{ noteId: string; depth?: number | undefined }]
+  ) => Awaited<{
     nodes: {
       id: string
       type: 'note' | 'task' | 'project' | 'journal'
@@ -408,7 +422,9 @@ export interface MainIpcInvokeHandlers {
   'inbox:bulk-file': (
     ...args: [any]
   ) => Awaited<Promise<import('../../../../../packages/contracts/src/inbox-api').BulkResponse>>
-  'inbox:bulk-snooze': (...args: [any]) => Awaited<
+  'inbox:bulk-snooze': (
+    ...args: [any]
+  ) => Awaited<
     Promise<{
       success: boolean
       processedCount: number
@@ -542,7 +558,9 @@ export interface MainIpcInvokeHandlers {
   >
   'journal:deleteEntry': (...args: [{ date: string }]) => Awaited<Promise<{ success: boolean }>>
   'journal:getAllTags': (...args: []) => Awaited<Promise<{ tag: string; count: number }[]>>
-  'journal:getDayContext': (...args: [{ date: string }]) => Awaited<
+  'journal:getDayContext': (
+    ...args: [{ date: string }]
+  ) => Awaited<
     Promise<{
       date: string
       tasks: {
@@ -562,7 +580,9 @@ export interface MainIpcInvokeHandlers {
       overdueCount: number
     }>
   >
-  'journal:getEntry': (...args: [{ date: string }]) => Awaited<
+  'journal:getEntry': (
+    ...args: [{ date: string }]
+  ) => Awaited<
     Promise<{
       id: string
       date: string
@@ -578,7 +598,9 @@ export interface MainIpcInvokeHandlers {
   'journal:getHeatmap': (
     ...args: [{ year: number }]
   ) => Awaited<Promise<{ date: string; characterCount: number; level: 0 | 1 | 2 | 4 | 3 }[]>>
-  'journal:getMonthEntries': (...args: [{ year: number; month: number }]) => Awaited<
+  'journal:getMonthEntries': (
+    ...args: [{ year: number; month: number }]
+  ) => Awaited<
     Promise<
       {
         date: string
@@ -595,7 +617,9 @@ export interface MainIpcInvokeHandlers {
   ) => Awaited<
     Promise<{ currentStreak: number; longestStreak: number; lastEntryDate: string | null }>
   >
-  'journal:getYearStats': (...args: [{ year: number }]) => Awaited<
+  'journal:getYearStats': (
+    ...args: [{ year: number }]
+  ) => Awaited<
     Promise<
       {
         year: number
@@ -750,7 +774,9 @@ export interface MainIpcInvokeHandlers {
     ...args: [string]
   ) => Awaited<Promise<import('../vault/notes').NoteLinksResponse>>
   'notes:get-local-only-count': (...args: []) => Awaited<Promise<{ count: number }>>
-  'notes:get-positions': (...args: [{ folderPath: string }]) => Awaited<
+  'notes:get-positions': (
+    ...args: [{ folderPath: string }]
+  ) => Awaited<
     Promise<
       | {
           success: boolean
@@ -760,7 +786,9 @@ export interface MainIpcInvokeHandlers {
       | { success: boolean; positions: never[]; error: string }
     >
   >
-  'notes:get-property-definitions': (...args: []) => Awaited<
+  'notes:get-property-definitions': (
+    ...args: []
+  ) => Awaited<
     Promise<
       {
         type: string
@@ -826,7 +854,9 @@ export interface MainIpcInvokeHandlers {
   ) => Awaited<
     Promise<{ success: boolean; error?: undefined } | { success: boolean; error: string }>
   >
-  'notes:resolve-by-title': (...args: [string]) => Awaited<
+  'notes:resolve-by-title': (
+    ...args: [string]
+  ) => Awaited<
     Promise<{
       id: string
       path: string
@@ -978,7 +1008,9 @@ export interface MainIpcInvokeHandlers {
   ) => Awaited<
     Promise<{ success: boolean; error: string } | { success: boolean; error?: undefined }>
   >
-  'reminder:dismiss': (...args: [string]) => Awaited<
+  'reminder:dismiss': (
+    ...args: [string]
+  ) => Awaited<
     Promise<
       | { success: boolean; reminder: null; error: string }
       | {
@@ -1001,7 +1033,9 @@ export interface MainIpcInvokeHandlers {
   'reminder:get-for-target': (
     ...args: [{ targetType: 'note' | 'journal' | 'highlight'; targetId: string }]
   ) => Awaited<Promise<import('../../../../../packages/contracts/src/reminders-api').Reminder[]>>
-  'reminder:get-upcoming': (...args: [number | undefined]) => Awaited<
+  'reminder:get-upcoming': (
+    ...args: [number | undefined]
+  ) => Awaited<
     Promise<{
       reminders: import('../../../../../packages/contracts/src/reminders-api').ReminderWithTarget[]
       total: number
@@ -1033,7 +1067,9 @@ export interface MainIpcInvokeHandlers {
       hasMore: boolean
     }>
   >
-  'reminder:snooze': (...args: [{ id: string; snoozeUntil: string }]) => Awaited<
+  'reminder:snooze': (
+    ...args: [{ id: string; snoozeUntil: string }]
+  ) => Awaited<
     Promise<
       | { success: boolean; reminder: null; error: string }
       | {
@@ -1112,7 +1148,9 @@ export interface MainIpcInvokeHandlers {
   ) => Awaited<
     Promise<{ success: boolean; error: string } | { success: boolean; error?: undefined }>
   >
-  'saved-filters:list': (...args: []) => Awaited<
+  'saved-filters:list': (
+    ...args: []
+  ) => Awaited<
     Promise<{
       savedFilters: import('../../../../../packages/contracts/src/saved-filters-api').SavedFilter[]
     }>
@@ -1211,7 +1249,9 @@ export interface MainIpcInvokeHandlers {
   ) => Awaited<
     Promise<import('../../../../../packages/contracts/src/search-api').QuickSearchResponse>
   >
-  'search:rebuild-index': (...args: []) => Awaited<
+  'search:rebuild-index': (
+    ...args: []
+  ) => Awaited<
     Promise<
       | {
           notes: number
@@ -1229,20 +1269,26 @@ export interface MainIpcInvokeHandlers {
     ...args: []
   ) => Awaited<Promise<import('./settings-handlers').AIModelStatus>>
   'settings:getAISettings': (...args: []) => Awaited<import('./settings-handlers').AISettings>
-  'settings:getBackupSettings': (...args: []) => Awaited<{
+  'settings:getBackupSettings': (
+    ...args: []
+  ) => Awaited<{
     autoBackup: boolean
     frequencyHours: 1 | 6 | 12 | 24
     maxBackups: number
     lastBackupAt: string | null
   }>
-  'settings:getEditorSettings': (...args: []) => Awaited<{
+  'settings:getEditorSettings': (
+    ...args: []
+  ) => Awaited<{
     width: 'medium' | 'narrow' | 'wide'
     spellCheck: boolean
     autoSaveDelay: number
     showWordCount: boolean
     toolbarMode: 'floating' | 'sticky'
   }>
-  'settings:getGeneralSettings': (...args: []) => Awaited<{
+  'settings:getGeneralSettings': (
+    ...args: []
+  ) => Awaited<{
     theme: 'light' | 'dark' | 'system'
     fontSize: 'small' | 'medium' | 'large'
     fontFamily: 'system' | 'serif' | 'sans-serif' | 'monospace'
@@ -1250,23 +1296,27 @@ export interface MainIpcInvokeHandlers {
     startOnBoot: boolean
     language: string
   }>
-  'settings:getGraphSettings': (...args: []) => Awaited<{
+  'settings:getGraphSettings': (
+    ...args: []
+  ) => Awaited<{
     layout: 'forceatlas2' | 'circular' | 'random'
-    nodeSizing: 'uniform' | 'by-connections' | 'by-word-count'
     showLabels: boolean
-    linkDistance: number
-    repulsionStrength: number
     showEdgeLabels: boolean
+    animateLayout: boolean
     showTagEdges: boolean
   }>
-  'settings:getJournalSettings': (...args: []) => Awaited<{
+  'settings:getJournalSettings': (
+    ...args: []
+  ) => Awaited<{
     defaultTemplate: string | null
     showSchedule: boolean
     showTasks: boolean
     showAIConnections: boolean
     showStatsFooter: boolean
   }>
-  'settings:getKeyboardSettings': (...args: []) => Awaited<{
+  'settings:getKeyboardSettings': (
+    ...args: []
+  ) => Awaited<{
     overrides: Record<
       string,
       {
@@ -1294,7 +1344,9 @@ export interface MainIpcInvokeHandlers {
   ) => Awaited<import('./settings-handlers').NoteEditorSettings>
   'settings:getSyncSettings': (...args: []) => Awaited<{ enabled: boolean; autoSync: boolean }>
   'settings:getTabSettings': (...args: []) => Awaited<import('./settings-handlers').TabSettings>
-  'settings:getTaskSettings': (...args: []) => Awaited<{
+  'settings:getTaskSettings': (
+    ...args: []
+  ) => Awaited<{
     defaultProjectId: string | null
     defaultSortOrder: 'createdAt' | 'priority' | 'dueDate' | 'manual'
     weekStartDay: 'sunday' | 'monday'
@@ -1360,11 +1412,9 @@ export interface MainIpcInvokeHandlers {
     ...args: [
       Partial<{
         layout: 'forceatlas2' | 'circular' | 'random'
-        nodeSizing: 'uniform' | 'by-connections' | 'by-word-count'
         showLabels: boolean
-        linkDistance: number
-        repulsionStrength: number
         showEdgeLabels: boolean
+        animateLayout: boolean
         showTagEdges: boolean
       }>
     ]
@@ -1446,7 +1496,9 @@ export interface MainIpcInvokeHandlers {
   ) => Awaited<
     Promise<import('../../../../../packages/contracts/src/ipc-devices').GenerateLinkingQrResult>
   >
-  'sync:get-devices': (...args: []) => Awaited<
+  'sync:get-devices': (
+    ...args: []
+  ) => Awaited<
     Promise<{
       devices: {
         id: string
@@ -1459,7 +1511,9 @@ export interface MainIpcInvokeHandlers {
       email: string | undefined
     }>
   >
-  'sync:get-download-progress': (...args: [{ attachmentId: string }]) => Awaited<
+  'sync:get-download-progress': (
+    ...args: [{ attachmentId: string }]
+  ) => Awaited<
     Promise<{
       progress: number
       downloadedChunks: number
@@ -1504,7 +1558,9 @@ export interface MainIpcInvokeHandlers {
       import('../../../../../packages/contracts/src/ipc-sync-ops').StorageBreakdownResult | null
     >
   >
-  'sync:get-synced-settings': (...args: []) => Awaited<{
+  'sync:get-synced-settings': (
+    ...args: []
+  ) => Awaited<{
     general?:
       | {
           theme?: 'light' | 'dark' | 'system' | undefined
@@ -1544,7 +1600,9 @@ export interface MainIpcInvokeHandlers {
       | undefined
     sync?: { autoSync?: boolean | undefined; syncIntervalMinutes?: number | undefined } | undefined
   } | null>
-  'sync:get-upload-progress': (...args: [{ sessionId: string }]) => Awaited<
+  'sync:get-upload-progress': (
+    ...args: [{ sessionId: string }]
+  ) => Awaited<
     Promise<{
       progress: number
       uploadedChunks: number
@@ -1702,7 +1760,9 @@ export interface MainIpcInvokeHandlers {
       | { success: boolean; count: number; error: string }
     >
   >
-  'tasks:complete': (...args: [{ id: string; completedAt?: string | undefined }]) => Awaited<
+  'tasks:complete': (
+    ...args: [{ id: string; completedAt?: string | undefined }]
+  ) => Awaited<
     Promise<
       | { success: boolean; task: null; error: string }
       | {
@@ -1735,7 +1795,9 @@ export interface MainIpcInvokeHandlers {
         }
     >
   >
-  'tasks:convert-to-subtask': (...args: [{ taskId: string; parentId: string }]) => Awaited<
+  'tasks:convert-to-subtask': (
+    ...args: [{ taskId: string; parentId: string }]
+  ) => Awaited<
     Promise<
       | { success: boolean; task: null; error: string }
       | {
@@ -1768,7 +1830,9 @@ export interface MainIpcInvokeHandlers {
         }
     >
   >
-  'tasks:convert-to-task': (...args: [string]) => Awaited<
+  'tasks:convert-to-task': (
+    ...args: [string]
+  ) => Awaited<
     Promise<
       | { success: boolean; task: null; error: string }
       | {
@@ -1876,7 +1940,9 @@ export interface MainIpcInvokeHandlers {
   ) => Awaited<
     Promise<{ success: boolean; error?: undefined } | { success: boolean; error: string }>
   >
-  'tasks:duplicate': (...args: [string]) => Awaited<
+  'tasks:duplicate': (
+    ...args: [string]
+  ) => Awaited<
     Promise<
       | { success: boolean; task: null; error: string }
       | {
@@ -1909,7 +1975,9 @@ export interface MainIpcInvokeHandlers {
         }
     >
   >
-  'tasks:get': (...args: [string]) => Awaited<
+  'tasks:get': (
+    ...args: [string]
+  ) => Awaited<
     Promise<{
       tags: string[]
       linkedNoteIds: string[]
@@ -1939,7 +2007,9 @@ export interface MainIpcInvokeHandlers {
       completedAt: string | null
     } | null>
   >
-  'tasks:get-linked-tasks': (...args: [string]) => Awaited<
+  'tasks:get-linked-tasks': (
+    ...args: [string]
+  ) => Awaited<
     Promise<
       {
         tags: string[]
@@ -1968,7 +2038,9 @@ export interface MainIpcInvokeHandlers {
       }[]
     >
   >
-  'tasks:get-overdue': (...args: []) => Awaited<
+  'tasks:get-overdue': (
+    ...args: []
+  ) => Awaited<
     Promise<{
       tasks: {
         linkedNoteIds: string[]
@@ -1998,7 +2070,9 @@ export interface MainIpcInvokeHandlers {
       hasMore: boolean
     }>
   >
-  'tasks:get-stats': (...args: []) => Awaited<
+  'tasks:get-stats': (
+    ...args: []
+  ) => Awaited<
     Promise<{
       total: number
       completed: number
@@ -2007,7 +2081,9 @@ export interface MainIpcInvokeHandlers {
       dueThisWeek: number
     }>
   >
-  'tasks:get-subtasks': (...args: [string]) => Awaited<
+  'tasks:get-subtasks': (
+    ...args: [string]
+  ) => Awaited<
     Promise<
       {
         id: string
@@ -2035,7 +2111,9 @@ export interface MainIpcInvokeHandlers {
     >
   >
   'tasks:get-tags': (...args: []) => Awaited<Promise<{ tag: string; count: number }[]>>
-  'tasks:get-today': (...args: []) => Awaited<
+  'tasks:get-today': (
+    ...args: []
+  ) => Awaited<
     Promise<{
       tasks: {
         linkedNoteIds: string[]
@@ -2065,7 +2143,9 @@ export interface MainIpcInvokeHandlers {
       hasMore: boolean
     }>
   >
-  'tasks:get-upcoming': (...args: [{ days?: number | undefined }]) => Awaited<
+  'tasks:get-upcoming': (
+    ...args: [{ days?: number | undefined }]
+  ) => Awaited<
     Promise<{
       tasks: {
         linkedNoteIds: string[]
@@ -2332,7 +2412,9 @@ export interface MainIpcInvokeHandlers {
   ) => Awaited<
     Promise<{ success: boolean; error?: undefined } | { success: boolean; error: string }>
   >
-  'tasks:status-list': (...args: [string]) => Awaited<
+  'tasks:status-list': (
+    ...args: [string]
+  ) => Awaited<
     Promise<
       {
         id: string
@@ -2386,7 +2468,9 @@ export interface MainIpcInvokeHandlers {
   ) => Awaited<
     Promise<{ success: boolean; error: string } | { success: boolean; error?: undefined }>
   >
-  'tasks:uncomplete': (...args: [string]) => Awaited<
+  'tasks:uncomplete': (
+    ...args: [string]
+  ) => Awaited<
     Promise<
       | { success: boolean; task: null; error: string }
       | {
@@ -2529,7 +2613,9 @@ export interface MainIpcInvokeHandlers {
   ) => Awaited<
     Promise<{ success: boolean; error?: undefined } | { success: boolean; error: string }>
   >
-  'templates:duplicate': (...args: [{ id: string; newName: string }]) => Awaited<
+  'templates:duplicate': (
+    ...args: [{ id: string; newName: string }]
+  ) => Awaited<
     Promise<
       | {
           success: boolean
@@ -2544,7 +2630,9 @@ export interface MainIpcInvokeHandlers {
   ) => Awaited<
     Promise<import('../../../../../packages/contracts/src/templates-api').Template | null>
   >
-  'templates:list': (...args: []) => Awaited<
+  'templates:list': (
+    ...args: []
+  ) => Awaited<
     Promise<{
       templates: import('../../../../../packages/contracts/src/templates-api').TemplateListItem[]
     }>
