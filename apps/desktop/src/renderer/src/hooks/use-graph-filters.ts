@@ -5,6 +5,7 @@ export interface GraphFilterState {
   showTasks: boolean
   showJournals: boolean
   showProjects: boolean
+  showTags: boolean
   showOrphans: boolean
   selectedTags: string[]
   focusNodeId: string | null
@@ -13,7 +14,7 @@ export interface GraphFilterState {
 }
 
 export type GraphFilterAction =
-  | { type: 'TOGGLE_ENTITY_TYPE'; entityType: 'note' | 'task' | 'journal' | 'project' }
+  | { type: 'TOGGLE_ENTITY_TYPE'; entityType: 'note' | 'task' | 'journal' | 'project' | 'tag' }
   | { type: 'TOGGLE_ORPHANS' }
   | { type: 'SET_SELECTED_TAGS'; tags: string[] }
   | { type: 'SET_FOCUS_NODE'; nodeId: string; depth?: number }
@@ -27,6 +28,7 @@ const INITIAL_STATE: GraphFilterState = {
   showTasks: true,
   showJournals: true,
   showProjects: true,
+  showTags: true,
   showOrphans: true,
   selectedTags: [],
   focusNodeId: null,
@@ -38,7 +40,8 @@ const ENTITY_TYPE_KEYS = {
   note: 'showNotes',
   task: 'showTasks',
   journal: 'showJournals',
-  project: 'showProjects'
+  project: 'showProjects',
+  tag: 'showTags'
 } as const
 
 function filterReducer(state: GraphFilterState, action: GraphFilterAction): GraphFilterState {
@@ -76,6 +79,7 @@ export function useGraphFilters(): {
     !filterState.showTasks ||
     !filterState.showJournals ||
     !filterState.showProjects ||
+    !filterState.showTags ||
     !filterState.showOrphans ||
     filterState.selectedTags.length > 0 ||
     filterState.focusNodeId !== null ||

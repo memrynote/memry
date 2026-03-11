@@ -256,6 +256,7 @@
     --graph-node-journal: #8b5cf6;
     --graph-node-task: #d4944a;
     --graph-node-project: #5a8a5a;
+    --graph-node-tag: #c2855a;
     --graph-edge-default: #8c8c8c;
     --graph-edge-wikilink: #8c8c8c;
     --graph-edge-task-note: #c4a46a;
@@ -364,6 +365,7 @@
     --graph-node-journal: #a78bfa;
     --graph-node-task: #e8a960;
     --graph-node-project: #6aaa6a;
+    --graph-node-tag: #d4a070;
     --graph-edge-default: #6b6966;
     --graph-edge-wikilink: #6b6966;
     --graph-edge-task-note: #b89a5a;

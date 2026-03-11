@@ -5,21 +5,22 @@ const NODE_COLOR_VARS: Record<string, string> = {
   note: '--graph-node-note',
   journal: '--graph-node-journal',
   task: '--graph-node-task',
-  project: '--graph-node-project'
+  project: '--graph-node-project',
+  tag: '--graph-node-tag'
 }
 
 const EDGE_COLOR_VARS: Record<string, string> = {
   wikilink: '--graph-edge-wikilink',
   'task-note': '--graph-edge-task-note',
   'project-task': '--graph-edge-project-task',
-  'tag-cooccurrence': '--graph-edge-tag-cooccurrence'
+  'entity-tag': '--graph-node-tag'
 }
 
 const EDGE_SIZES: Record<string, number> = {
   wikilink: 2,
   'task-note': 1.5,
   'project-task': 1.5,
-  'tag-cooccurrence': 0.8
+  'entity-tag': 0.8
 }
 
 function resolveVar(varName: string, fallback = '#8c8c8c'): string {
@@ -28,7 +29,7 @@ function resolveVar(varName: string, fallback = '#8c8c8c'): string {
 }
 
 export interface BuildGraphOptions {
-  showTagEdges?: boolean
+  showTags?: boolean
   nodeSizing?: 'uniform' | 'by-connections' | 'by-word-count'
 }
 
@@ -36,7 +37,7 @@ export function buildGraphologyGraph(
   data: GraphDataResponse,
   options: BuildGraphOptions = {}
 ): Graph {
-  const { showTagEdges = false, nodeSizing = 'uniform' } = options
+  const { showTags = true, nodeSizing = 'uniform' } = options
   const graph = new Graph({ multi: true, type: 'undirected' })
 
   const ghostColor = resolveVar('--graph-ghost-node', '#c4c2bc')
@@ -76,7 +77,7 @@ export function buildGraphologyGraph(
 
   const defaultEdgeColor = resolvedEdgeColors.wikilink
   for (const edge of data.edges) {
-    if (!showTagEdges && edge.type === 'tag-cooccurrence') continue
+    if (edge.type === 'tag-cooccurrence') continue
     if (graph.hasNode(edge.source) && graph.hasNode(edge.target)) {
       const edgeKey = `${edge.source}-${edge.target}-${edge.type}`
       if (!graph.hasEdge(edgeKey)) {
@@ -87,6 +88,54 @@ export function buildGraphologyGraph(
           weight: edge.weight
         })
       }
+    }
+  }
+
+  if (showTags) {
+    const tagColor = resolvedNodeColors.tag
+    const tagEdgeColor = resolvedEdgeColors['entity-tag']
+    const tagNodeIds = new Map<string, string>()
+
+    for (const node of data.nodes) {
+      for (const tag of node.tags) {
+        let tagNodeId = tagNodeIds.get(tag)
+        if (!tagNodeId) {
+          tagNodeId = `tag:${tag}`
+          tagNodeIds.set(tag, tagNodeId)
+          const angle = Math.random() * 2 * Math.PI
+          const radius = 150 + Math.random() * 300
+          graph.addNode(tagNodeId, {
+            x: Math.cos(angle) * radius,
+            y: Math.sin(angle) * radius,
+            size: 4,
+            color: tagColor,
+            label: `#${tag}`,
+            nodeType: 'tag',
+            tags: [],
+            wordCount: 0,
+            connectionCount: 0,
+            emoji: null,
+            isOrphan: false,
+            isUnresolved: false
+          })
+        }
+
+        const edgeKey = `${node.id}-${tagNodeId}-entity-tag`
+        if (!graph.hasEdge(edgeKey)) {
+          graph.addEdgeWithKey(edgeKey, node.id, tagNodeId, {
+            size: EDGE_SIZES['entity-tag'],
+            color: tagEdgeColor,
+            edgeType: 'entity-tag',
+            weight: 1
+          })
+        }
+      }
+    }
+
+    for (const [, tagNodeId] of tagNodeIds) {
+      const degree = graph.degree(tagNodeId)
+      graph.setNodeAttribute(tagNodeId, 'size', 3 + Math.min(degree, 15) * 0.4)
+      graph.setNodeAttribute(tagNodeId, 'connectionCount', degree)
     }
   }
 

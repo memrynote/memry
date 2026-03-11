@@ -107,7 +107,7 @@ export function GraphSettingsPanel({
             />
 
             <SettingSwitch
-              label="Tag co-occurrence edges"
+              label="Show tag nodes"
               checked={settings.showTagEdges}
               onCheckedChange={(v) => updateSettings({ showTagEdges: v })}
             />

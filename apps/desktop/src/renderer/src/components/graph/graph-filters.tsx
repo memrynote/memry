@@ -4,6 +4,7 @@ import {
   BookOpen,
   ListChecks,
   FolderOpen,
+  Tag,
   Unlink,
   X,
   RotateCcw,
@@ -11,13 +12,11 @@ import {
 } from 'lucide-react'
 import { Toggle } from '@/components/ui/toggle'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
 import type { GraphFilterState, GraphFilterAction } from '@/hooks/use-graph-filters'
 
 interface GraphFiltersProps {
   filterState: GraphFilterState
   dispatch: Dispatch<GraphFilterAction>
-  allTags: string[]
   isFiltered: boolean
   focusLabel: string | null
 }
@@ -46,6 +45,12 @@ const ENTITY_TOGGLES = [
     icon: FolderOpen,
     label: 'Projects',
     colorClass: 'text-[var(--graph-node-project)]'
+  },
+  {
+    type: 'tag' as const,
+    icon: Tag,
+    label: 'Tags',
+    colorClass: 'text-[var(--graph-node-tag)]'
   }
 ] as const
 
@@ -53,13 +58,13 @@ const TYPE_TO_STATE_KEY: Record<string, keyof GraphFilterState> = {
   note: 'showNotes',
   journal: 'showJournals',
   task: 'showTasks',
-  project: 'showProjects'
+  project: 'showProjects',
+  tag: 'showTags'
 }
 
 export function GraphFilters({
   filterState,
   dispatch,
-  allTags,
   isFiltered,
   focusLabel
 }: GraphFiltersProps): React.JSX.Element {
@@ -125,65 +130,6 @@ export function GraphFilters({
           </Button>
         </div>
       )}
-
-      {allTags.length > 0 && filterState.selectedTags.length > 0 && (
-        <div className="rounded-lg border border-border bg-popover/95 backdrop-blur-sm p-2 shadow-card">
-          <div className="flex flex-wrap gap-1">
-            {filterState.selectedTags.map((tag) => (
-              <Badge
-                key={tag}
-                variant="secondary"
-                className="text-[10px] cursor-pointer gap-1 pr-1"
-                onClick={() =>
-                  dispatch({
-                    type: 'SET_SELECTED_TAGS',
-                    tags: filterState.selectedTags.filter((t) => t !== tag)
-                  })
-                }
-              >
-                #{tag}
-                <X className="size-2.5" />
-              </Badge>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {allTags.length > 0 && filterState.selectedTags.length === 0 && (
-        <TagSelector allTags={allTags} dispatch={dispatch} />
-      )}
-    </div>
-  )
-}
-
-function TagSelector({
-  allTags,
-  dispatch
-}: {
-  allTags: string[]
-  dispatch: Dispatch<GraphFilterAction>
-}): React.JSX.Element | null {
-  if (allTags.length === 0) return null
-
-  return (
-    <div className="rounded-lg border border-border bg-popover/95 backdrop-blur-sm p-2 shadow-card max-w-[200px]">
-      <div className="flex flex-wrap gap-1 max-h-[120px] overflow-y-auto">
-        {allTags.slice(0, 20).map((tag) => (
-          <Badge
-            key={tag}
-            variant="outline"
-            className="text-[10px] cursor-pointer hover:bg-accent"
-            onClick={() => dispatch({ type: 'SET_SELECTED_TAGS', tags: [tag] })}
-          >
-            #{tag}
-          </Badge>
-        ))}
-        {allTags.length > 20 && (
-          <span className="text-[10px] text-muted-foreground px-1">
-            +{allTags.length - 20} more
-          </span>
-        )}
-      </div>
     </div>
   )
 }
