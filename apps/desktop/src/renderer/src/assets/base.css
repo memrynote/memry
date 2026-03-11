@@ -264,6 +264,8 @@
     --graph-edge-tag-cooccurrence: #a8a6a1;
     --graph-ghost-node: #c4c2bc;
     --graph-dimmed-node: #e4e4de;
+    --graph-edge-soft: #a8a6a0;
+    --graph-bg: #f6f5f0;
 
     /* ===== QUEUE LIST ===== */
     --queue-bg: #eae8e1;
@@ -373,6 +375,8 @@
     --graph-edge-tag-cooccurrence: #5a5855;
     --graph-ghost-node: #4a4845;
     --graph-dimmed-node: #3a3835;
+    --graph-edge-soft: #6b6966;
+    --graph-bg: #1c1b19;
 
     /* ===== QUEUE LIST - Dark Mode ===== */
     --queue-bg: #252420;
@@ -389,6 +393,10 @@
     --ease-in: cubic-bezier(0.4, 0, 1, 1);
     --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
   }
+}
+
+div.react-sigma {
+  --sigma-background-color: var(--graph-bg);
 }
 
 @layer base {
