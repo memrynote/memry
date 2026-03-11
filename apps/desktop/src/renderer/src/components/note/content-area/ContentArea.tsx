@@ -28,6 +28,7 @@ import { fuzzySearch } from '@/lib/fuzzy-search'
 import { notesService } from '@/services/notes-service'
 import { useYjsCollaboration } from '@/sync/use-yjs-collaboration'
 import { useSync } from '@/contexts/sync-context'
+import { useSidebarDrillDown } from '@/contexts/sidebar-drill-down'
 import type { ContentAreaProps, HeadingInfo } from './types'
 import { createWikiLinkInlineContent, WikiLink } from './wiki-link'
 import { WikiLinkMenu, type WikiLinkSuggestionItem } from './wiki-link-menu'
@@ -401,6 +402,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
   // T030: Get current theme for dark mode support
   const { resolvedTheme } = useTheme()
   const editorTheme = resolvedTheme === 'dark' ? 'dark' : 'light'
+  const { openTag } = useSidebarDrillDown()
 
   // T069: Drag state for visual feedback
   const [isDragging, setIsDragging] = useState(false)
@@ -617,6 +619,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
   type TagCacheEntry = { tag: string; count: number; color: string }
   const tagsCacheRef = useRef<{ tags: TagCacheEntry[]; fetchedAt: number } | null>(null)
   const prevInlineTagsRef = useRef<string[]>([])
+  const lastNormalizedTagsRef = useRef<string>('')
   const tagColorMapRef = useRef(tagColorMap)
   useEffect(() => {
     tagColorMapRef.current = tagColorMap
@@ -710,6 +713,23 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
     }
   }, [editor, getTagColor])
 
+  useEffect(() => {
+    const container = editorContainerRef.current
+    if (!container) return
+
+    const handleTagClick = (e: MouseEvent) => {
+      const pill = (e.target as HTMLElement).closest<HTMLElement>('.inline-hash-tag')
+      if (!pill) return
+
+      const tag = pill.dataset.hashTag
+      const color = pill.dataset.hashTagColor || 'stone'
+      if (tag) openTag(tag, color)
+    }
+
+    container.addEventListener('click', handleTagClick)
+    return () => container.removeEventListener('click', handleTagClick)
+  }, [openTag])
+
   // Parse content based on content type (only on initial mount)
   // We use a ref to prevent re-loading when the parent updates initialContent
   // This makes ContentArea an "uncontrolled" component for content
@@ -780,6 +800,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
               const tagSet = new Set(noteTags.map((t) => t.toLowerCase()))
               const hashNormalized = normalizeHashTags(normalizedBlocks, tagSet, tagColorMap)
               normalizedBlocks = hashNormalized.blocks
+              lastNormalizedTagsRef.current = noteTags.slice().sort().join(',')
             }
 
             editor.replaceBlocks(editor.document, normalizedBlocks)
@@ -793,6 +814,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
             const tagSet = new Set(noteTags.map((t) => t.toLowerCase()))
             const hashNormalized = normalizeHashTags(normalizedBlocks, tagSet, tagColorMap)
             normalizedBlocks = hashNormalized.blocks
+            lastNormalizedTagsRef.current = noteTags.slice().sort().join(',')
           }
 
           editor.replaceBlocks(editor.document, normalizedBlocks)
@@ -815,6 +837,25 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
     // The key prop on ContentArea should be used to force re-mount when content source changes
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editor])
+
+  useEffect(() => {
+    if (!isContentReadyRef.current) return
+    if (!noteTags?.length || !tagColorMap) return
+
+    const tagsKey = noteTags.slice().sort().join(',')
+    if (tagsKey === lastNormalizedTagsRef.current) return
+
+    const tagSet = new Set(noteTags.map((t) => t.toLowerCase()))
+    const blocks = editor.document as Block[]
+    const { blocks: normalizedBlocks, didChange } = normalizeHashTags(blocks, tagSet, tagColorMap)
+
+    lastNormalizedTagsRef.current = tagsKey
+
+    if (didChange) {
+      editor.replaceBlocks(editor.document, normalizedBlocks)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editor, noteTags, tagColorMap])
 
   // Handle content changes with debouncing for expensive operations
   // This prevents typing lag by deferring markdown conversion and heading extraction
