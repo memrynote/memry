@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState, useCallback, useMemo } from 'react'
-import { SigmaContainer } from '@react-sigma/core'
+import { SigmaContainer, useSigma } from '@react-sigma/core'
 import { useWorkerLayoutForceAtlas2 } from '@react-sigma/layout-forceatlas2'
 import '@react-sigma/core/lib/style.css'
+import type Graph from 'graphology'
 import type { GraphDataResponse } from '@memry/contracts/graph-api'
 import type { NodeDisplayData, EdgeDisplayData } from 'sigma/types'
 import { buildGraphologyGraph, computeFocusSet, type BuildGraphOptions } from '@/lib/graph-builder'
@@ -171,30 +172,38 @@ export function GraphCanvas({
     [hoveredNode, graph, filterState, focusVisibleSet]
   )
 
-  const sigmaSettings = useMemo(
+  const initialSigmaSettings = useMemo(
     () => ({
       nodeReducer,
       edgeReducer,
-      labelRenderedSizeThreshold: Infinity,
+      labelRenderedSizeThreshold: graphSettings.showLabels ? 6 : Infinity,
       labelSize: 12,
       defaultEdgeType: 'line' as const,
       renderEdgeLabels: graphSettings.showEdgeLabels
     }),
-    [nodeReducer, edgeReducer, graphSettings.showEdgeLabels]
+    // Only used for initial mount — dynamic updates handled by SigmaSettingsSync
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    []
   )
 
   const handleCloseContextMenu = useCallback(() => setContextMenu(null), [])
 
   return (
     <div className="relative h-full w-full">
-      <SigmaContainer graph={graph} settings={sigmaSettings} className="h-full w-full">
-        {graphSettings.layout === 'forceatlas2' && (
-          <ForceAtlas2Layout
-            repulsionStrength={graphSettings.repulsionStrength}
-            linkDistance={graphSettings.linkDistance}
-            animate={graphSettings.animateLayout}
-          />
-        )}
+      <SigmaContainer graph={graph} settings={initialSigmaSettings} className="h-full w-full">
+        <SigmaSettingsSync
+          nodeReducer={nodeReducer}
+          edgeReducer={edgeReducer}
+          showLabels={graphSettings.showLabels}
+          showEdgeLabels={graphSettings.showEdgeLabels}
+        />
+        <LayoutManager
+          layout={graphSettings.layout}
+          repulsionStrength={graphSettings.repulsionStrength}
+          linkDistance={graphSettings.linkDistance}
+          animate={graphSettings.animateLayout}
+          graph={graph}
+        />
         <GraphEvents
           onHoverNode={setHoveredNode}
           onTooltipMove={setTooltipPos}
@@ -298,6 +307,95 @@ function ContextMenuWithTabAction({
   )
 }
 
+function SigmaSettingsSync({
+  nodeReducer,
+  edgeReducer,
+  showLabels,
+  showEdgeLabels
+}: {
+  nodeReducer: (node: string, attrs: Record<string, unknown>) => Partial<NodeDisplayData>
+  edgeReducer: (edge: string, attrs: Record<string, unknown>) => Partial<EdgeDisplayData>
+  showLabels: boolean
+  showEdgeLabels: boolean
+}): null {
+  const sigma = useSigma()
+
+  useEffect(() => {
+    sigma.setSetting('nodeReducer', nodeReducer)
+  }, [sigma, nodeReducer])
+
+  useEffect(() => {
+    sigma.setSetting('edgeReducer', edgeReducer)
+  }, [sigma, edgeReducer])
+
+  useEffect(() => {
+    sigma.setSetting('labelRenderedSizeThreshold', showLabels ? 6 : Infinity)
+  }, [sigma, showLabels])
+
+  useEffect(() => {
+    sigma.setSetting('renderEdgeLabels', showEdgeLabels)
+  }, [sigma, showEdgeLabels])
+
+  return null
+}
+
+function LayoutManager({
+  layout,
+  repulsionStrength,
+  linkDistance,
+  animate,
+  graph
+}: {
+  layout: GraphSettings['layout']
+  repulsionStrength: number
+  linkDistance: number
+  animate: boolean
+  graph: Graph
+}): React.JSX.Element | null {
+  const sigma = useSigma()
+
+  useEffect(() => {
+    if (layout === 'circular') {
+      applyCircularLayout(graph)
+      sigma.refresh()
+    } else if (layout === 'random') {
+      applyRandomLayout(graph)
+      sigma.refresh()
+    }
+  }, [layout, graph, sigma])
+
+  if (layout === 'forceatlas2') {
+    return (
+      <ForceAtlas2Layout
+        repulsionStrength={repulsionStrength}
+        linkDistance={linkDistance}
+        animate={animate}
+      />
+    )
+  }
+
+  return null
+}
+
+function applyCircularLayout(graph: Graph): void {
+  const nodes = graph.nodes()
+  const count = nodes.length
+  if (count === 0) return
+  const radius = 100 + count * 3
+  nodes.forEach((node, i) => {
+    const angle = (2 * Math.PI * i) / count
+    graph.setNodeAttribute(node, 'x', Math.cos(angle) * radius)
+    graph.setNodeAttribute(node, 'y', Math.sin(angle) * radius)
+  })
+}
+
+function applyRandomLayout(graph: Graph): void {
+  graph.forEachNode((node) => {
+    graph.setNodeAttribute(node, 'x', (Math.random() - 0.5) * 1000)
+    graph.setNodeAttribute(node, 'y', (Math.random() - 0.5) * 1000)
+  })
+}
+
 function ForceAtlas2Layout({
   repulsionStrength,
   linkDistance,
@@ -330,7 +428,7 @@ function ForceAtlas2Layout({
       clearTimeout(timerRef.current)
       stop()
     }
-  }, [animate]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [start, stop, animate, gravity, scalingRatio])
 
   return null
 }
