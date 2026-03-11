@@ -303,11 +303,15 @@ export function NotePage({ noteId }: NotePageProps) {
   // Tags - Convert between string[] and Tag[]
   // ============================================================================
 
-  // Build a lookup map of tag colors from backend
+  const pendingTagColorsRef = useRef(new Map<string, string>())
+
   const tagColorMap = useMemo(() => {
     const map = new Map<string, string>()
     for (const t of allAvailableTags) {
       map.set(t.tag, t.color)
+    }
+    for (const key of pendingTagColorsRef.current.keys()) {
+      if (map.has(key)) pendingTagColorsRef.current.delete(key)
     }
     return map
   }, [allAvailableTags])
@@ -316,7 +320,7 @@ export function NotePage({ noteId }: NotePageProps) {
     return (note?.tags || []).map((tagName) => ({
       id: tagName,
       name: tagName,
-      color: tagColorMap.get(tagName) ?? 'stone' // Fallback to stone if not found
+      color: tagColorMap.get(tagName) ?? pendingTagColorsRef.current.get(tagName) ?? 'stone'
     }))
   }, [note?.tags, tagColorMap])
 
@@ -494,7 +498,7 @@ export function NotePage({ noteId }: NotePageProps) {
   )
 
   const handleCreateTag = useCallback(
-    async (name: string, _color: string) => {
+    async (name: string, color: string) => {
       if (!noteId || !note) return
 
       if (isDeleted) {
@@ -503,11 +507,12 @@ export function NotePage({ noteId }: NotePageProps) {
       }
 
       if (!note.tags.includes(name)) {
+        pendingTagColorsRef.current.set(name.toLowerCase(), color)
         const newTags = [...note.tags, name]
         try {
           await updateNote.mutateAsync({ id: noteId, tags: newTags })
-          // Note will be updated via TanStack Query cache invalidation
         } catch (err) {
+          pendingTagColorsRef.current.delete(name.toLowerCase())
           log.error('Failed to create tag:', err)
         }
       }
@@ -530,6 +535,51 @@ export function NotePage({ noteId }: NotePageProps) {
         // Note will be updated via TanStack Query cache invalidation
       } catch (err) {
         log.error('Failed to remove tag:', err)
+      }
+    },
+    [noteId, note, updateNote.mutateAsync, isDeleted]
+  )
+
+  // Inline #tag sync: track which tags come from editor content
+  // pendingTagsRef bridges concurrent async calls so the second update
+  // builds on top of the first instead of overwriting it with stale data
+  const inlineTagsRef = useRef<Set<string>>(new Set())
+  const pendingTagsRef = useRef<string[] | null>(null)
+
+  const handleInlineTagsChange = useCallback(
+    async (currentInlineTags: string[]) => {
+      if (!noteId || !note || isDeleted) return
+
+      const prev = inlineTagsRef.current
+      const current = new Set(currentInlineTags)
+
+      const baseTags = pendingTagsRef.current ?? note.tags
+
+      const tagsToAdd = currentInlineTags.filter((t) => !prev.has(t) && !baseTags.includes(t))
+      const tagsToRemove = Array.from(prev).filter((t) => !current.has(t) && baseTags.includes(t))
+
+      inlineTagsRef.current = current
+
+      if (tagsToAdd.length === 0 && tagsToRemove.length === 0) return
+
+      let newTags = [...baseTags]
+      for (const tag of tagsToAdd) {
+        if (!newTags.includes(tag)) newTags.push(tag)
+      }
+      for (const tag of tagsToRemove) {
+        newTags = newTags.filter((t) => t !== tag)
+      }
+
+      pendingTagsRef.current = newTags
+
+      try {
+        await updateNote.mutateAsync({ id: noteId, tags: newTags })
+      } catch (err) {
+        log.error('Failed to sync inline tags:', err)
+      } finally {
+        if (pendingTagsRef.current === newTags) {
+          pendingTagsRef.current = null
+        }
       }
     },
     [noteId, note, updateNote.mutateAsync, isDeleted]
@@ -846,6 +896,9 @@ export function NotePage({ noteId }: NotePageProps) {
                 onLinkClick={handleLinkClick}
                 onInternalLinkClick={handleInternalLinkClick}
                 initialHighlight={initialHighlight}
+                noteTags={note.tags}
+                tagColorMap={tagColorMap}
+                onInlineTagsChange={handleInlineTagsChange}
               />
             </EditorErrorBoundary>
           </div>

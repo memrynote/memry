@@ -31,6 +31,14 @@ import { useSync } from '@/contexts/sync-context'
 import type { ContentAreaProps, HeadingInfo } from './types'
 import { createWikiLinkInlineContent, WikiLink } from './wiki-link'
 import { WikiLinkMenu, type WikiLinkSuggestionItem } from './wiki-link-menu'
+import {
+  HashTag,
+  createHashTagInlineContent,
+  normalizeHashTags,
+  extractInlineTags
+} from './hash-tag'
+import { HashTagMenu, type HashTagSuggestionItem } from './hash-tag-menu'
+import { createHashTagSpacePlugin } from './hash-tag-space-plugin'
 import { BlockDropIndicator, EmptyDocumentDropIndicator } from './block-drop-indicator'
 import { findDropTarget, type DropTarget } from './drop-target-utils'
 import {
@@ -384,6 +392,9 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
   onInternalLinkClick,
   className,
   initialHighlight,
+  noteTags,
+  tagColorMap,
+  onInlineTagsChange,
   yjsFragment,
   isRemoteUpdateRef
 }: ContentAreaEditorProps) {
@@ -473,7 +484,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
     }
   }, [dropTarget])
 
-  // T069/T071: Schema with FileBlock for attachments
+  // T069/T071: Schema with FileBlock + HashTag inline content
   const schema = useMemo(
     () =>
       BlockNoteSchema.create({
@@ -483,7 +494,8 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
         },
         inlineContentSpecs: {
           ...defaultInlineContentSpecs,
-          wikiLink: WikiLink
+          wikiLink: WikiLink,
+          hashTag: HashTag
         }
       }),
     []
@@ -593,9 +605,110 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
       editor.insertInlineContent([createWikiLinkInlineContent(item.target, item.alias ?? '')], {
         updateSelection: true
       })
+      editor.insertInlineContent([' '], { updateSelection: true })
     },
     [editor]
   )
+
+  // =========================================================================
+  // HASH TAG AUTOCOMPLETE
+  // =========================================================================
+
+  type TagCacheEntry = { tag: string; count: number; color: string }
+  const tagsCacheRef = useRef<{ tags: TagCacheEntry[]; fetchedAt: number } | null>(null)
+  const prevInlineTagsRef = useRef<string[]>([])
+  const tagColorMapRef = useRef(tagColorMap)
+  useEffect(() => {
+    tagColorMapRef.current = tagColorMap
+  }, [tagColorMap])
+
+  const getHashTagItems = useCallback(async (query: string): Promise<HashTagSuggestionItem[]> => {
+    const now = Date.now()
+    const cache = tagsCacheRef.current
+    if (!cache || now - cache.fetchedAt > 5000) {
+      try {
+        const result = await notesService.getTags()
+        tagsCacheRef.current = {
+          tags: result.map((t) => ({ tag: t.tag, count: t.count, color: t.color })),
+          fetchedAt: now
+        }
+      } catch (error) {
+        log.error('Failed to load tag suggestions', error)
+        tagsCacheRef.current = { tags: [], fetchedAt: now }
+      }
+    }
+
+    const colorMap = tagColorMapRef.current
+    const allTags = tagsCacheRef.current?.tags ?? []
+    const normalizedQuery = query.toLowerCase().trim()
+    const filtered = normalizedQuery
+      ? allTags.filter((t) => t.tag.includes(normalizedQuery))
+      : allTags
+
+    const sorted = filtered
+      .sort((a, b) => {
+        if (normalizedQuery) {
+          const aStarts = a.tag.startsWith(normalizedQuery)
+          const bStarts = b.tag.startsWith(normalizedQuery)
+          if (aStarts && !bStarts) return -1
+          if (!aStarts && bStarts) return 1
+        }
+        return b.count - a.count
+      })
+      .slice(0, 10)
+
+    const suggestions: HashTagSuggestionItem[] = sorted.map((t) => ({
+      name: t.tag,
+      color: colorMap?.get(t.tag) || t.color || 'stone',
+      count: t.count,
+      type: 'existing'
+    }))
+
+    const hasExactMatch = normalizedQuery ? filtered.some((t) => t.tag === normalizedQuery) : true
+
+    if (normalizedQuery && !hasExactMatch) {
+      suggestions.push({
+        name: normalizedQuery,
+        color: 'stone',
+        count: 0,
+        type: 'create'
+      })
+    }
+
+    return suggestions
+  }, [])
+
+  const handleHashTagSelect = useCallback(
+    (item: HashTagSuggestionItem) => {
+      if (!item.name) return
+      const tag = item.name.toLowerCase()
+      const color = item.color || 'stone'
+      editor.insertInlineContent([createHashTagInlineContent(tag, color)], {
+        updateSelection: true
+      })
+      editor.insertInlineContent([' '], { updateSelection: true })
+    },
+    [editor]
+  )
+
+  const getTagColor = useCallback((tag: string): string => {
+    const fromMap = tagColorMapRef.current?.get(tag)
+    if (fromMap) return fromMap
+    const cached = tagsCacheRef.current?.tags.find((t) => t.tag === tag)
+    return cached?.color || 'stone'
+  }, [])
+
+  useEffect(() => {
+    const tiptap = (editor as any)._tiptapEditor
+    if (!tiptap) return
+
+    const plugin = createHashTagSpacePlugin(getTagColor)
+    tiptap.registerPlugin(plugin)
+
+    return () => {
+      tiptap.unregisterPlugin(plugin.spec.key!)
+    }
+  }, [editor, getTagColor])
 
   // Parse content based on content type (only on initial mount)
   // We use a ref to prevent re-loading when the parent updates initialContent
@@ -661,23 +774,39 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
               blocks = [...blocks, ...fileBlocks]
             }
 
-            const normalized = normalizeWikiLinks(blocks)
-            editor.replaceBlocks(editor.document, normalized.blocks)
+            let normalizedBlocks = normalizeWikiLinks(blocks).blocks
+
+            if (noteTags?.length && tagColorMap) {
+              const tagSet = new Set(noteTags.map((t) => t.toLowerCase()))
+              const hashNormalized = normalizeHashTags(normalizedBlocks, tagSet, tagColorMap)
+              normalizedBlocks = hashNormalized.blocks
+            }
+
+            editor.replaceBlocks(editor.document, normalizedBlocks)
           } catch (error) {
             log.error(`Failed to parse ${contentType} content`, error)
           }
         } else if (Array.isArray(initialContent) && initialContent.length > 0) {
-          // If it's already blocks, replace the document
-          const normalized = normalizeWikiLinks(initialContent)
-          editor.replaceBlocks(editor.document, normalized.blocks)
+          let normalizedBlocks = normalizeWikiLinks(initialContent).blocks
+
+          if (noteTags?.length && tagColorMap) {
+            const tagSet = new Set(noteTags.map((t) => t.toLowerCase()))
+            const hashNormalized = normalizeHashTags(normalizedBlocks, tagSet, tagColorMap)
+            normalizedBlocks = hashNormalized.blocks
+          }
+
+          editor.replaceBlocks(editor.document, normalizedBlocks)
         }
       } finally {
-        // Mark content as ready for saving (prevents race condition where empty content is saved)
-        // Using finally ensures the flag is set even if parsing fails
         isContentReadyRef.current = true
         if (onHeadingsChange) {
           const headings = extractHeadings(editor.document as Block[])
           onHeadingsChange(headings)
+        }
+        if (onInlineTagsChange) {
+          const tags = extractInlineTags(editor.document as Block[])
+          prevInlineTagsRef.current = tags
+          onInlineTagsChange(tags)
         }
       }
     }
@@ -749,7 +878,18 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
         onHeadingsChange(headings)
       }, 200)
     }
-  }, [editor, onContentChange, onMarkdownChange, onHeadingsChange])
+
+    // Extract inline hash tags and notify parent if changed
+    if (onInlineTagsChange) {
+      const tags = extractInlineTags(blocks as Block[])
+      const tagsKey = tags.sort().join(',')
+      const prevKey = [...prevInlineTagsRef.current].sort().join(',')
+      if (tagsKey !== prevKey) {
+        prevInlineTagsRef.current = tags
+        onInlineTagsChange(tags)
+      }
+    }
+  }, [editor, onContentChange, onMarkdownChange, onHeadingsChange, onInlineTagsChange])
 
   // Handle link clicks
   useEffect(() => {
@@ -1079,6 +1219,12 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
             getItems={getWikiLinkItems}
             suggestionMenuComponent={WikiLinkMenu}
             onItemClick={handleWikiLinkSelect}
+          />
+          <SuggestionMenuController
+            triggerCharacter="#"
+            getItems={getHashTagItems}
+            suggestionMenuComponent={HashTagMenu}
+            onItemClick={handleHashTagSelect}
           />
         </BlockNoteView>
 
