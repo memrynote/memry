@@ -797,15 +797,6 @@
   }
 }
 
-/* App-level reduced motion override (user setting) */
-.reduce-motion *,
-.reduce-motion *::before,
-.reduce-motion *::after {
-  animation-duration: 0.01ms !important;
-  animation-iteration-count: 1 !important;
-  transition-duration: 0.01ms !important;
-}
-
 /* macOS window drag region */
 .drag-region {
   -webkit-app-region: drag;
@@ -820,43 +811,37 @@
 }
 
 :root {
-  /* ===== SIDEBAR THEME - Warm Palette ===== */
+  /* ===== SIDEBAR THEME - Warm Editorial Palette ===== */
   --sidebar: #efefe9;
-  /* Surface color for sidebar */
-  --sidebar-foreground: #4a4a4a;
-  /* Secondary text color */
-  --sidebar-primary: #1a1a1a;
-  /* Primary text color */
-  --sidebar-primary-foreground: #f6f5f0;
-  /* Inverse for buttons */
-  --sidebar-accent: #e4e4de;
-  /* Surface active/hover */
-  --sidebar-accent-foreground: #1a1a1a;
-  /* Text on accent */
-  --sidebar-border: #e4e4de;
-  /* Border color */
-  --sidebar-ring: #8c8c8c;
-  /* Focus ring */
+  --sidebar-foreground: #8a857a;
+  --sidebar-primary: #1a1917;
+  --sidebar-primary-foreground: #edeae4;
+  --sidebar-accent: rgba(196, 93, 62, 0.1);
+  --sidebar-accent-foreground: #c45d3e;
+  --sidebar-border: #d9d5ce;
+  --sidebar-ring: #c45d3e;
+  --sidebar-muted: #b5b0a6;
+  --sidebar-terracotta: #c45d3e;
+  --sidebar-text-folder: #3d3a35;
+  --sidebar-text-child: #5c5850;
+  --sidebar-dot-inactive: #d9d5ce;
 }
 
 .dark {
   /* ===== SIDEBAR THEME - Warm Dark Palette ===== */
-  --sidebar: #252420;
-  /* Dark surface */
-  --sidebar-foreground: #a8a6a1;
-  /* Muted light text */
-  --sidebar-primary: #e8e6e1;
-  /* Primary light text */
-  --sidebar-primary-foreground: #1c1b19;
-  /* Dark inverse */
-  --sidebar-accent: #2e2d28;
-  /* Dark hover */
-  --sidebar-accent-foreground: #e8e6e1;
-  /* Light text on accent */
-  --sidebar-border: #3a3935;
-  /* Dark border */
-  --sidebar-ring: #6b6966;
-  /* Focus ring */
+  --sidebar: #1e1d1a;
+  --sidebar-foreground: #8a857a;
+  --sidebar-primary: #e8e5df;
+  --sidebar-primary-foreground: #1e1d1a;
+  --sidebar-accent: rgba(224, 122, 92, 0.15);
+  --sidebar-accent-foreground: #e07a5c;
+  --sidebar-border: #3a3835;
+  --sidebar-ring: #e07a5c;
+  --sidebar-muted: #6b6862;
+  --sidebar-terracotta: #e07a5c;
+  --sidebar-text-folder: #c5c0b8;
+  --sidebar-text-child: #9a958d;
+  --sidebar-dot-inactive: #4a4742;
 }
 
 @theme inline {
@@ -920,6 +905,11 @@
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-muted: var(--sidebar-muted);
+  --color-sidebar-terracotta: var(--sidebar-terracotta);
+  --color-sidebar-text-folder: var(--sidebar-text-folder);
+  --color-sidebar-text-child: var(--sidebar-text-child);
+  --color-sidebar-dot-inactive: var(--sidebar-dot-inactive);
 
   /* ===== BORDER RADIUS ===== */
   --radius-sm: var(--radius-sm);
@@ -1139,6 +1129,11 @@
 
 .dark .wiki-link:hover {
   background-color: color-mix(in srgb, rgb(251, 191, 36) 24%, transparent);
+}
+
+/* Inline hash tag hover effect */
+.inline-hash-tag:hover {
+  opacity: 0.8;
 }
 
 /* Backlink mention highlight - warm amber for wiki-style links */

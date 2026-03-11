@@ -112,9 +112,9 @@ export const SidebarSection = ({
             onClick={handleToggle}
             onKeyDown={handleKeyDown}
             className={cn(
-              'flex flex-1 min-w-0 cursor-pointer items-center gap-2 px-2 py-1.5 rounded-md',
-              'text-xs font-medium uppercase tracking-wide',
-              'text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent/50',
+              'flex flex-1 min-w-0 cursor-pointer items-center gap-2 px-2.5 py-1.5 rounded-md',
+              'text-[11px] font-semibold uppercase tracking-[0.06em]',
+              'text-sidebar-muted hover:text-sidebar-foreground hover:bg-sidebar-accent/50',
               'transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring'
             )}
             aria-expanded={isExpanded}
@@ -125,7 +125,7 @@ export const SidebarSection = ({
             {/* Chevron */}
             <ChevronRight
               className={cn(
-                'size-3 shrink-0 transition-transform duration-200 ease-in-out',
+                'size-3 shrink-0 text-sidebar-muted transition-transform duration-200 ease-in-out',
                 isExpanded && 'rotate-90'
               )}
               aria-hidden="true"
