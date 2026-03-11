@@ -46,7 +46,7 @@ import { createLogger } from '@/lib/logger'
 const log = createLogger('App')
 
 // Base pages (non-task)
-export type BasePage = 'inbox' | 'home' | 'journal'
+export type BasePage = 'inbox' | 'home' | 'journal' | 'graph'
 
 // Task view type for navigation within tasks
 export type TaskViewId = 'all' | 'today' | 'completed'

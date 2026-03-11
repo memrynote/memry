@@ -28,7 +28,7 @@ import { useTasksLinkedToNote } from '@/hooks/use-tasks-linked-to-note'
 import { notesService, onNoteDeleted, onNoteUpdated, onNoteRenamed } from '@/services/notes-service'
 import { resolveWikiLink } from '@/lib/wikilink-resolver'
 import { useTabs, useActiveTab } from '@/contexts/tabs'
-import { MoreHorizontal, History, Bookmark, Monitor } from 'lucide-react'
+import { MoreHorizontal, History, Bookmark, Monitor, GitGraph } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -44,6 +44,8 @@ import { NoteReminderButton } from '@/components/note/note-reminder-button'
 import { useNoteEditorSettings } from '@/hooks/use-note-editor-settings'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { createLogger } from '@/lib/logger'
+import { LocalGraphPanel } from '@/components/graph/local-graph-panel'
+import { graphKeys } from '@/hooks/use-graph-data'
 
 const log = createLogger('Page:Note')
 
@@ -134,6 +136,7 @@ export function NotePage({ noteId }: NotePageProps) {
   const [isDeleted, setIsDeleted] = useState(false)
   const [isExportDialogOpen, setIsExportDialogOpen] = useState(false)
   const [isVersionHistoryOpen, setIsVersionHistoryOpen] = useState(false)
+  const [isLocalGraphOpen, setIsLocalGraphOpen] = useState(false)
   const [externalUpdateCount, setExternalUpdateCount] = useState(0)
 
   const handlePropertyBlocked = useCallback((action: PropertySectionAction) => {
@@ -409,6 +412,9 @@ export function NotePage({ noteId }: NotePageProps) {
           await updateNote.mutateAsync({ id: noteId, content: markdown })
           lastSavedContent.current = markdown
           pendingMarkdownRef.current = null
+          if (isLocalGraphOpen) {
+            void queryClient.invalidateQueries({ queryKey: graphKeys.local(noteId) })
+          }
         } catch (err) {
           log.error('Failed to save note:', err)
         } finally {
@@ -416,7 +422,7 @@ export function NotePage({ noteId }: NotePageProps) {
         }
       }, 500)
     },
-    [noteId, note, updateNote.mutateAsync, isDeleted]
+    [noteId, note, updateNote.mutateAsync, isDeleted, isLocalGraphOpen, queryClient]
   )
 
   const handleContentChange = useCallback((_blocks: Block[]) => {
@@ -693,6 +699,19 @@ export function NotePage({ noteId }: NotePageProps) {
           {/* Reminder Button */}
           {noteId && <NoteReminderButton noteId={noteId} disabled={isDeleted} />}
 
+          {/* Local Graph Toggle */}
+          <Button
+            variant="ghost"
+            size="icon"
+            className={`h-8 w-8 hover:bg-muted/50 ${isLocalGraphOpen ? 'text-accent-cyan' : ''}`}
+            onClick={() => setIsLocalGraphOpen((prev) => !prev)}
+            disabled={isDeleted || !noteId}
+            title={isLocalGraphOpen ? 'Hide local graph' : 'Show local graph'}
+          >
+            <GitGraph className="h-4 w-4" />
+            <span className="sr-only">Toggle local graph</span>
+          </Button>
+
           {/* Bookmark Button */}
           <Button
             variant="ghost"
@@ -830,6 +849,28 @@ export function NotePage({ noteId }: NotePageProps) {
               />
             </EditorErrorBoundary>
           </div>
+
+          {/* Local Graph Panel */}
+          {isLocalGraphOpen && noteId && (
+            <div className="mx-[54px]">
+              <LocalGraphPanel
+                noteId={noteId}
+                onClose={() => setIsLocalGraphOpen(false)}
+                onOpenFullGraph={() => {
+                  openTab({
+                    type: 'graph',
+                    title: 'Graph',
+                    icon: 'git-graph',
+                    path: '/graph',
+                    isPinned: false,
+                    isModified: false,
+                    isPreview: false,
+                    isDeleted: false
+                  })
+                }}
+              />
+            </div>
+          )}
 
           {/* Backlinks section */}
           <div className="pt-8 mx-[54px] border-t border-border/30">

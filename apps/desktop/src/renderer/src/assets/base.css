@@ -251,6 +251,19 @@
     --card-width: 280px;
     --card-height: 200px;
 
+    /* ===== GRAPH VIEW COLORS ===== */
+    --graph-node-note: #4a9e8e;
+    --graph-node-journal: #8b5cf6;
+    --graph-node-task: #d4944a;
+    --graph-node-project: #5a8a5a;
+    --graph-edge-default: #8c8c8c;
+    --graph-edge-wikilink: #8c8c8c;
+    --graph-edge-task-note: #c4a46a;
+    --graph-edge-project-task: #9a8abd;
+    --graph-edge-tag-cooccurrence: #a8a6a1;
+    --graph-ghost-node: #c4c2bc;
+    --graph-dimmed-node: #e4e4de;
+
     /* ===== QUEUE LIST ===== */
     --queue-bg: #eae8e1;
     --queue-number-bg: #d4d1c5;
@@ -345,6 +358,19 @@
     --sidebar-width: 240px;
     --card-width: 280px;
     --card-height: 200px;
+
+    /* ===== GRAPH VIEW COLORS - Dark Mode ===== */
+    --graph-node-note: #5abfad;
+    --graph-node-journal: #a78bfa;
+    --graph-node-task: #e8a960;
+    --graph-node-project: #6aaa6a;
+    --graph-edge-default: #6b6966;
+    --graph-edge-wikilink: #6b6966;
+    --graph-edge-task-note: #b89a5a;
+    --graph-edge-project-task: #8a7aad;
+    --graph-edge-tag-cooccurrence: #5a5855;
+    --graph-ghost-node: #4a4845;
+    --graph-dimmed-node: #3a3835;
 
     /* ===== QUEUE LIST - Dark Mode ===== */
     --queue-bg: #252420;

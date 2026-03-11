@@ -2,7 +2,18 @@
 
 import * as React from 'react'
 import { useMemo, useState, useCallback, useRef } from 'react'
-import { BookOpen, CloudOff, Home, Inbox, ListTodo, Play, Plus, Search, Upload } from 'lucide-react'
+import {
+  BookOpen,
+  CloudOff,
+  GitGraph,
+  Home,
+  Inbox,
+  ListTodo,
+  Play,
+  Plus,
+  Search,
+  Upload
+} from 'lucide-react'
 import { toast } from 'sonner'
 
 import { cn } from '@/lib/utils'
@@ -94,6 +105,12 @@ const mainNav: {
     page: 'tasks',
     icon: ListTodo,
     iconColor: 'text-accent-orange'
+  },
+  {
+    title: 'Graph',
+    page: 'graph',
+    icon: GitGraph,
+    iconColor: 'text-accent-cyan'
   }
 ]
 
@@ -215,13 +232,15 @@ function AppSidebarInner({ currentPage, viewCounts, ...props }: AppSidebarProps)
       inbox: 'inbox',
       home: 'home',
       journal: 'journal',
-      tasks: 'tasks'
+      tasks: 'tasks',
+      graph: 'graph'
     }
     const pageToTitle: Record<AppPage, string> = {
       inbox: 'Inbox',
       home: 'Home',
       journal: 'Journal',
-      tasks: 'Tasks'
+      tasks: 'Tasks',
+      graph: 'Graph'
     }
 
     // Open as tab in active pane

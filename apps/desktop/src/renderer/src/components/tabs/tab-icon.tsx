@@ -21,6 +21,7 @@ import {
   File,
   LayoutTemplate,
   FileType2,
+  GitGraph,
   Image,
   Music,
   Video
@@ -62,7 +63,8 @@ const ICON_COMPONENTS: Record<string, React.ComponentType<{ className?: string }
   'file-pdf': FileType2,
   'file-image': Image,
   'file-audio': Music,
-  'file-video': Video
+  'file-video': Video,
+  'git-graph': GitGraph
 }
 
 /**
@@ -84,7 +86,8 @@ const TYPE_TO_ICON: Record<TabType, string> = {
   settings: 'settings',
   collection: 'bookmark',
   'template-editor': 'layout-template',
-  templates: 'layout-template'
+  templates: 'layout-template',
+  graph: 'git-graph'
 }
 
 /**
