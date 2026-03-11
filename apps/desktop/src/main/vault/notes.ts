@@ -44,6 +44,7 @@ import {
   getAllTagDefinitions,
   getOrCreateTag,
   ensureTagDefinitions,
+  deleteTagDefinition,
   getNotePropertiesAsRecord,
   getPropertiesForNotes,
   getOutgoingLinks,
@@ -57,6 +58,7 @@ import {
   getNoteSnapshotById,
   pruneOldSnapshots
 } from '@main/database/queries/notes'
+import { getAllTaskTags } from '@main/database/queries/tasks'
 import { SnapshotReasons, type SnapshotReason } from '@memry/db-schema/schema/notes-cache'
 import { getDatabase, getIndexDatabase } from '../database'
 import { NoteError, NoteErrorCode, VaultError, VaultErrorCode } from '../lib/errors'
@@ -925,30 +927,37 @@ export function getTagsWithCounts(): { tag: string; color: string; count: number
   const dataDb = getDatabase()
 
   const definitions = getAllTagDefinitions(dataDb)
-  const usageCounts = getAllTags(indexDb)
+  const noteUsage = getAllTags(indexDb)
+  const taskUsage = getAllTaskTags(dataDb)
 
+  const noteCountMap = new Map(noteUsage.map((u) => [u.tag, u.count]))
+  const taskCountMap = new Map(taskUsage.map((u) => [u.tag, u.count]))
   const defMap = new Map(definitions.map((d) => [d.name, d.color]))
-  const countMap = new Map(usageCounts.map((u) => [u.tag, u.count]))
 
   const results: { tag: string; color: string; count: number }[] = []
 
   for (const def of definitions) {
-    results.push({
-      tag: def.name,
-      color: def.color,
-      count: countMap.get(def.name) ?? 0
-    })
+    const totalCount = (noteCountMap.get(def.name) ?? 0) + (taskCountMap.get(def.name) ?? 0)
+    if (totalCount > 0) {
+      results.push({ tag: def.name, color: def.color, count: totalCount })
+    } else {
+      deleteTagDefinition(dataDb, def.name)
+    }
   }
 
-  for (const usage of usageCounts) {
+  for (const usage of noteUsage) {
     if (!defMap.has(usage.tag)) {
       const { color } = getOrCreateTag(dataDb, usage.tag)
       defMap.set(usage.tag, color)
-      results.push({
-        tag: usage.tag,
-        color,
-        count: usage.count
-      })
+      const totalCount = usage.count + (taskCountMap.get(usage.tag) ?? 0)
+      results.push({ tag: usage.tag, color, count: totalCount })
+    }
+  }
+
+  for (const usage of taskUsage) {
+    if (!defMap.has(usage.tag) && !noteCountMap.has(usage.tag)) {
+      const { color } = getOrCreateTag(dataDb, usage.tag)
+      results.push({ tag: usage.tag, color, count: usage.count })
     }
   }
 
