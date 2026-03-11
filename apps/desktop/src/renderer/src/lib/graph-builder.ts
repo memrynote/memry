@@ -52,9 +52,11 @@ export function buildGraphologyGraph(
     resolvedEdgeColors[type] = resolveVar(varName)
   }
 
+  const spread = Math.max(500, Math.sqrt(data.nodes.length) * 60)
+
   for (const node of data.nodes) {
     const angle = Math.random() * 2 * Math.PI
-    const radius = 100 + Math.random() * 400
+    const radius = spread * 0.2 + Math.random() * spread * 0.8
     const color = node.isUnresolved
       ? ghostColor
       : (resolvedNodeColors[node.type] ?? resolvedNodeColors.note)
@@ -103,7 +105,7 @@ export function buildGraphologyGraph(
           tagNodeId = `tag:${tag}`
           tagNodeIds.set(tag, tagNodeId)
           const angle = Math.random() * 2 * Math.PI
-          const radius = 150 + Math.random() * 300
+          const radius = spread * 0.3 + Math.random() * spread * 0.7
           graph.addNode(tagNodeId, {
             x: Math.cos(angle) * radius,
             y: Math.sin(angle) * radius,
