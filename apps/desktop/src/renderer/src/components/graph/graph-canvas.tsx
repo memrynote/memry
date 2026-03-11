@@ -352,17 +352,13 @@ function LayoutManager({
   animate: boolean
   graph: Graph
 }): React.JSX.Element | null {
-  const sigma = useSigma()
-
   useEffect(() => {
     if (layout === 'circular') {
       applyCircularLayout(graph)
-      sigma.refresh()
     } else if (layout === 'random') {
       applyRandomLayout(graph)
-      sigma.refresh()
     }
-  }, [layout, graph, sigma])
+  }, [layout, graph])
 
   if (layout === 'forceatlas2') {
     return (
