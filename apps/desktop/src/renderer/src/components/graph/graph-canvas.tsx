@@ -108,7 +108,8 @@ export function GraphCanvas({
       if (!hoveredNode) return attrs as Partial<NodeDisplayData>
 
       const isHovered = node === hoveredNode
-      const isNeighbor = graph.hasNode(hoveredNode) && graph.areNeighbors(node, hoveredNode)
+      const isNeighbor =
+        graph.hasNode(hoveredNode) && graph.hasNode(node) && graph.areNeighbors(node, hoveredNode)
 
       if (isHovered) {
         return {
@@ -133,6 +134,8 @@ export function GraphCanvas({
 
   const edgeReducer = useCallback(
     (edge: string, attrs: Record<string, unknown>): Partial<EdgeDisplayData> => {
+      if (!graph.hasEdge(edge)) return attrs as Partial<EdgeDisplayData>
+
       const [source, target] = graph.extremities(edge)
 
       const sourceAttrs = graph.getNodeAttributes(source)

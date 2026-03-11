@@ -73,7 +73,7 @@ export function LocalGraphPanel({
 
   const edgeReducer = useCallback(
     (edge: string, attrs: Record<string, unknown>): Partial<EdgeDisplayData> => {
-      if (!hoveredNode || !graph?.hasNode(hoveredNode)) {
+      if (!hoveredNode || !graph?.hasNode(hoveredNode) || !graph.hasEdge(edge)) {
         return attrs as Partial<EdgeDisplayData>
       }
 
