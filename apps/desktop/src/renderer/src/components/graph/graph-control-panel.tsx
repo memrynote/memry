@@ -246,15 +246,6 @@ export function GraphControlPanel({
                 })
               }}
             />
-
-            <Button
-              variant="outline"
-              size="sm"
-              className="w-full h-8 text-xs"
-              onClick={() => updateSettings({ animateLayout: !settings.animateLayout })}
-            >
-              {settings.animateLayout ? 'Stop animation' : 'Animate'}
-            </Button>
           </div>
         </PanelSection>
 

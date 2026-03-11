@@ -1247,7 +1247,6 @@ export interface MainIpcInvokeHandlers {
     fontSize: 'small' | 'medium' | 'large'
     fontFamily: 'system' | 'serif' | 'sans-serif' | 'monospace'
     accentColor: string
-    reducedMotion: boolean
     startOnBoot: boolean
     language: string
   }>
@@ -1258,7 +1257,6 @@ export interface MainIpcInvokeHandlers {
     linkDistance: number
     repulsionStrength: number
     showEdgeLabels: boolean
-    animateLayout: boolean
     showTagEdges: boolean
   }>
   'settings:getJournalSettings': (...args: []) => Awaited<{
@@ -1353,7 +1351,6 @@ export interface MainIpcInvokeHandlers {
         fontSize: 'small' | 'medium' | 'large'
         fontFamily: 'system' | 'serif' | 'sans-serif' | 'monospace'
         accentColor: string
-        reducedMotion: boolean
         startOnBoot: boolean
         language: string
       }>
@@ -1368,7 +1365,6 @@ export interface MainIpcInvokeHandlers {
         linkDistance: number
         repulsionStrength: number
         showEdgeLabels: boolean
-        animateLayout: boolean
         showTagEdges: boolean
       }>
     ]
@@ -1515,7 +1511,6 @@ export interface MainIpcInvokeHandlers {
           fontSize?: 'small' | 'medium' | 'large' | undefined
           fontFamily?: 'system' | 'serif' | 'sans-serif' | 'monospace' | undefined
           accentColor?: string | undefined
-          reducedMotion?: boolean | undefined
           startOnBoot?: boolean | undefined
           language?: string | undefined
         }

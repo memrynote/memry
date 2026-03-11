@@ -43,8 +43,4 @@ export function useThemeSync(): void {
       document.documentElement.style.removeProperty('--font-sans')
     }
   }, [settings.fontFamily])
-
-  useEffect(() => {
-    document.documentElement.classList.toggle('reduce-motion', settings.reducedMotion)
-  }, [settings.reducedMotion])
 }

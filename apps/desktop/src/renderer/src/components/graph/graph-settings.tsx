@@ -101,12 +101,6 @@ export function GraphSettingsPanel({
             />
 
             <SettingSwitch
-              label="Animate layout"
-              checked={settings.animateLayout}
-              onCheckedChange={(v) => updateSettings({ animateLayout: v })}
-            />
-
-            <SettingSwitch
               label="Show tag nodes"
               checked={settings.showTagEdges}
               onCheckedChange={(v) => updateSettings({ showTagEdges: v })}

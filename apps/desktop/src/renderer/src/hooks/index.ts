@@ -26,7 +26,6 @@ export * from './use-chord-shortcuts'
 export * from './use-pane-navigation'
 
 // Accessibility & polish
-export * from './use-reduced-motion'
 export * from './use-focus-management'
 export * from './use-throttled-tab-switch'
 
