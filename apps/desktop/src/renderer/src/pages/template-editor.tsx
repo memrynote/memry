@@ -163,10 +163,15 @@ export function TemplateEditorPage({ templateId }: TemplateEditorPageProps) {
   }, [templateId, getTemplate])
 
   // Convert tags to UI format
+  const pendingTagColorsRef = useRef(new Map<string, string>())
+
   const tagColorMap = useMemo(() => {
     const map = new Map<string, string>()
     for (const t of allAvailableTags) {
       map.set(t.tag, t.color)
+    }
+    for (const key of pendingTagColorsRef.current.keys()) {
+      if (map.has(key)) pendingTagColorsRef.current.delete(key)
     }
     return map
   }, [allAvailableTags])
@@ -175,7 +180,7 @@ export function TemplateEditorPage({ templateId }: TemplateEditorPageProps) {
     return tags.map((tagName) => ({
       id: tagName,
       name: tagName,
-      color: tagColorMap.get(tagName) ?? 'stone'
+      color: tagColorMap.get(tagName) ?? pendingTagColorsRef.current.get(tagName) ?? 'stone'
     }))
   }, [tags, tagColorMap])
 
@@ -310,8 +315,9 @@ export function TemplateEditorPage({ templateId }: TemplateEditorPageProps) {
   )
 
   const handleCreateTag = useCallback(
-    (tagName: string, _color: string) => {
+    (tagName: string, color: string) => {
       if (isBuiltIn) return
+      pendingTagColorsRef.current.set(tagName.toLowerCase(), color)
       if (!tags.includes(tagName)) {
         setTags([...tags, tagName])
       }
