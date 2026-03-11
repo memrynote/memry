@@ -1641,6 +1641,52 @@ export interface SearchClientAPI {
   getAllTags(): Promise<string[]>
 }
 
+// Graph API
+export interface GraphClientAPI {
+  getData(): Promise<{
+    nodes: Array<{
+      id: string
+      type: 'note' | 'task' | 'journal' | 'project'
+      label: string
+      tags: string[]
+      wordCount: number
+      connectionCount: number
+      emoji: string | null
+      color: string
+      isOrphan: boolean
+      isUnresolved: boolean
+    }>
+    edges: Array<{
+      id: string
+      source: string
+      target: string
+      type: 'wikilink' | 'task-note' | 'project-task' | 'tag-cooccurrence'
+      weight: number
+    }>
+  }>
+  getLocal(params: { noteId: string; depth?: number }): Promise<{
+    nodes: Array<{
+      id: string
+      type: 'note' | 'task' | 'journal' | 'project'
+      label: string
+      tags: string[]
+      wordCount: number
+      connectionCount: number
+      emoji: string | null
+      color: string
+      isOrphan: boolean
+      isUnresolved: boolean
+    }>
+    edges: Array<{
+      id: string
+      source: string
+      target: string
+      type: 'wikilink' | 'task-note' | 'project-task' | 'tag-cooccurrence'
+      weight: number
+    }>
+  }>
+}
+
 // Quick Capture types
 export interface QuickCaptureClientAPI {
   /** Close the quick capture window */
@@ -2036,6 +2082,17 @@ export interface BackupSettingsDTO {
   lastBackupAt: string | null
 }
 
+export interface GraphSettingsDTO {
+  layout: 'forceatlas2' | 'circular' | 'random'
+  nodeSizing: 'uniform' | 'by-connections' | 'by-word-count'
+  showLabels: boolean
+  linkDistance: number
+  repulsionStrength: number
+  showEdgeLabels: boolean
+  animateLayout: boolean
+  showTagEdges: boolean
+}
+
 // Settings client API interface
 export interface SettingsClientAPI {
   get(key: string): Promise<string | null>
@@ -2089,6 +2146,10 @@ export interface SettingsClientAPI {
   getBackupSettings(): Promise<BackupSettingsDTO>
   setBackupSettings(
     settings: Partial<BackupSettingsDTO>
+  ): Promise<{ success: boolean; error?: string }>
+  getGraphSettings(): Promise<GraphSettingsDTO>
+  setGraphSettings(
+    settings: Partial<GraphSettingsDTO>
   ): Promise<{ success: boolean; error?: string }>
 }
 
@@ -2370,6 +2431,7 @@ interface API extends WindowAPI {
   inbox: InboxClientAPI
   reminders: RemindersClientAPI
   search: SearchClientAPI
+  graph: GraphClientAPI
   quickCapture: QuickCaptureClientAPI
   folderView: FolderViewClientAPI
   syncAuth: SyncAuthClientAPI

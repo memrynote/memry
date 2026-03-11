@@ -17,6 +17,7 @@ import { registerPropertiesHandlers, unregisterPropertiesHandlers } from './prop
 import { registerSyncHandlers, unregisterSyncHandlers, checkSyncIntegrity } from './sync-handlers'
 import { registerCryptoHandlers, unregisterCryptoHandlers } from './crypto-handlers'
 import { registerSearchHandlers, unregisterSearchHandlers } from './search-handlers'
+import { registerGraphHandlers, unregisterGraphHandlers } from './graph-handlers'
 import { createLogger } from '../lib/logger'
 
 const ipcLog = createLogger('IPC')
@@ -93,6 +94,9 @@ export function registerAllHandlers(): void {
   // Register search handlers
   registerSearchHandlers()
 
+  // Register graph handlers
+  registerGraphHandlers()
+
   handlersRegistered = true
   ipcLog.info('all handlers registered')
 }
@@ -122,6 +126,7 @@ export function unregisterAllHandlers(): void {
   unregisterSyncHandlers()
   unregisterCryptoHandlers()
   unregisterSearchHandlers()
+  unregisterGraphHandlers()
 
   handlersRegistered = false
   ipcLog.info('all handlers unregistered')
@@ -154,3 +159,4 @@ export { registerPropertiesHandlers, unregisterPropertiesHandlers } from './prop
 export { registerSyncHandlers, unregisterSyncHandlers } from './sync-handlers'
 export { registerCryptoHandlers, unregisterCryptoHandlers } from './crypto-handlers'
 export { registerSearchHandlers, unregisterSearchHandlers } from './search-handlers'
+export { registerGraphHandlers, unregisterGraphHandlers } from './graph-handlers'

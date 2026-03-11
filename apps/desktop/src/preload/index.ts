@@ -16,7 +16,8 @@ import {
   ReminderChannels,
   FolderViewChannels,
   PropertiesChannels,
-  SearchChannels
+  SearchChannels,
+  GraphChannels
 } from '@memry/contracts/ipc-channels'
 import { SYNC_CHANNELS, SYNC_EVENTS } from '@memry/contracts/ipc-sync'
 import type {
@@ -509,7 +510,11 @@ export const api = {
     // Backup Settings (auto-backup, frequency, etc.)
     getBackupSettings: () => invoke(SettingsChannels.invoke.GET_BACKUP_SETTINGS),
     setBackupSettings: (settings: Record<string, unknown>) =>
-      invoke(SettingsChannels.invoke.SET_BACKUP_SETTINGS, settings)
+      invoke(SettingsChannels.invoke.SET_BACKUP_SETTINGS, settings),
+
+    getGraphSettings: () => invoke(SettingsChannels.invoke.GET_GRAPH_SETTINGS),
+    setGraphSettings: (settings: Record<string, unknown>) =>
+      invoke(SettingsChannels.invoke.SET_GRAPH_SETTINGS, settings)
   },
 
   // Bookmarks API
@@ -687,6 +692,13 @@ export const api = {
     // Undo operations
     undoFile: (id: string) => invoke(InboxChannels.invoke.UNDO_FILE, id),
     undoArchive: (id: string) => invoke(InboxChannels.invoke.UNDO_ARCHIVE, id)
+  },
+
+  // Graph API
+  graph: {
+    getData: () => invoke(GraphChannels.invoke.GET_GRAPH_DATA),
+    getLocal: (params: { noteId: string; depth?: number }) =>
+      invoke(GraphChannels.invoke.GET_LOCAL_GRAPH, params)
   },
 
   // Search API

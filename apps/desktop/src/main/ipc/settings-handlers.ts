@@ -25,6 +25,8 @@ import type {
   SyncSettings,
   BackupSettings
 } from '@memry/contracts/settings-schemas'
+import { GRAPH_SETTINGS_DEFAULTS } from '@memry/contracts/graph-api'
+import type { GraphSettings } from '@memry/contracts/graph-api'
 import { createLogger } from '../lib/logger'
 import { getDatabase } from '../database'
 import { getSetting, setSetting, deleteSetting } from '@main/database/queries/settings'
@@ -564,6 +566,15 @@ export function registerSettingsHandlers(): void {
       writeGroupSettings('backup', BACKUP_SETTINGS_DEFAULTS, updates)
   )
 
+  ipcMain.handle(SettingsChannels.invoke.GET_GRAPH_SETTINGS, () =>
+    readGroupSettings('graph', GRAPH_SETTINGS_DEFAULTS)
+  )
+  ipcMain.handle(
+    SettingsChannels.invoke.SET_GRAPH_SETTINGS,
+    (_event, updates: Partial<GraphSettings>) =>
+      writeGroupSettings('graph', GRAPH_SETTINGS_DEFAULTS, updates)
+  )
+
   // Keyboard shortcuts: reset to defaults
   ipcMain.handle(SettingsChannels.invoke.RESET_KEYBOARD_SETTINGS, () => {
     const db = getDbOrNull()
@@ -617,6 +628,8 @@ export function unregisterSettingsHandlers(): void {
   ipcMain.removeHandler(SettingsChannels.invoke.SET_SYNC_SETTINGS)
   ipcMain.removeHandler(SettingsChannels.invoke.GET_BACKUP_SETTINGS)
   ipcMain.removeHandler(SettingsChannels.invoke.SET_BACKUP_SETTINGS)
+  ipcMain.removeHandler(SettingsChannels.invoke.GET_GRAPH_SETTINGS)
+  ipcMain.removeHandler(SettingsChannels.invoke.SET_GRAPH_SETTINGS)
 
   logger.info('Settings handlers unregistered')
 }
