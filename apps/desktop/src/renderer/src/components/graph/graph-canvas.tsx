@@ -122,7 +122,7 @@ export function GraphCanvas({
         }
       }
       if (isNeighbor) {
-        return { ...(attrs as Partial<NodeDisplayData>), forceLabel: true }
+        return attrs as Partial<NodeDisplayData>
       }
       return {
         ...(attrs as Partial<NodeDisplayData>),
@@ -201,6 +201,7 @@ export function GraphCanvas({
           layout={graphSettings.layout}
           repulsionStrength={graphSettings.repulsionStrength}
           linkDistance={graphSettings.linkDistance}
+          animate={graphSettings.animateLayout}
           graph={graph}
         />
         <GraphEvents
@@ -342,11 +343,13 @@ function LayoutManager({
   layout,
   repulsionStrength,
   linkDistance,
+  animate,
   graph
 }: {
   layout: GraphSettings['layout']
   repulsionStrength: number
   linkDistance: number
+  animate: boolean
   graph: Graph
 }): React.JSX.Element | null {
   useEffect(() => {
@@ -358,7 +361,13 @@ function LayoutManager({
   }, [layout, graph])
 
   if (layout === 'forceatlas2') {
-    return <ForceAtlas2Layout repulsionStrength={repulsionStrength} linkDistance={linkDistance} />
+    return (
+      <ForceAtlas2Layout
+        repulsionStrength={repulsionStrength}
+        linkDistance={linkDistance}
+        animate={animate}
+      />
+    )
   }
 
   return null
@@ -385,10 +394,12 @@ function applyRandomLayout(graph: Graph): void {
 
 function ForceAtlas2Layout({
   repulsionStrength,
-  linkDistance
+  linkDistance,
+  animate
 }: {
   repulsionStrength: number
   linkDistance: number
+  animate: boolean
 }): null {
   const gravity = Math.max(0.05, 1 - linkDistance / 200)
   const scalingRatio = 5 + (repulsionStrength / 100) * 25
@@ -407,6 +418,10 @@ function ForceAtlas2Layout({
   const timerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
 
   useEffect(() => {
+    if (!animate) {
+      stop()
+      return
+    }
     start()
     timerRef.current = setTimeout(stop, 8000)
 
@@ -414,7 +429,7 @@ function ForceAtlas2Layout({
       clearTimeout(timerRef.current)
       stop()
     }
-  }, [start, stop, gravity, scalingRatio])
+  }, [start, stop, animate, gravity, scalingRatio])
 
   return null
 }

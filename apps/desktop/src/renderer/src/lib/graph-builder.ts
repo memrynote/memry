@@ -1,4 +1,5 @@
 import Graph from 'graphology'
+import forceAtlas2 from 'graphology-layout-forceatlas2'
 import type { GraphDataResponse } from '@memry/contracts/graph-api'
 
 const NODE_COLOR_VARS: Record<string, string> = {
@@ -139,6 +140,21 @@ export function buildGraphologyGraph(
       graph.setNodeAttribute(tagNodeId, 'size', 2.5 + Math.min(degree, 15) * 0.25)
       graph.setNodeAttribute(tagNodeId, 'connectionCount', degree)
     }
+  }
+
+  if (graph.order > 1) {
+    const iterations = Math.min(150, Math.max(50, 600 / Math.sqrt(graph.order)))
+    forceAtlas2.assign(graph, {
+      iterations,
+      settings: {
+        gravity: 0.5,
+        scalingRatio: 12,
+        slowDown: 5,
+        barnesHutOptimize: graph.order > 100,
+        strongGravityMode: true,
+        edgeWeightInfluence: 0
+      }
+    })
   }
 
   return graph

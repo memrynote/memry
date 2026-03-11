@@ -2088,6 +2088,7 @@ export interface GraphSettingsDTO {
   linkDistance: number
   repulsionStrength: number
   showEdgeLabels: boolean
+  animateLayout: boolean
   showTagEdges: boolean
 }
 

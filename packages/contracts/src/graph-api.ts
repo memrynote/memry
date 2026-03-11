@@ -46,6 +46,7 @@ export const GraphSettingsSchema = z.object({
   linkDistance: z.number().int().min(10).max(200),
   repulsionStrength: z.number().int().min(1).max(100),
   showEdgeLabels: z.boolean(),
+  animateLayout: z.boolean(),
   showTagEdges: z.boolean()
 })
 
@@ -58,5 +59,6 @@ export const GRAPH_SETTINGS_DEFAULTS: GraphSettings = {
   linkDistance: 50,
   repulsionStrength: 30,
   showEdgeLabels: false,
+  animateLayout: false,
   showTagEdges: false
 }
