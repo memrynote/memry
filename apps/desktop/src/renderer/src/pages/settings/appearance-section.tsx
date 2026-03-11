@@ -7,7 +7,6 @@ import {
   SelectTrigger,
   SelectValue
 } from '@/components/ui/select'
-import { Switch } from '@/components/ui/switch'
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
@@ -73,14 +72,6 @@ export function AppearanceSettings() {
       const fontFamily = value as 'system' | 'serif' | 'sans-serif' | 'monospace'
       const success = await updateSettings({ fontFamily })
       if (!success) toast.error('Failed to update font family')
-    },
-    [updateSettings]
-  )
-
-  const handleReducedMotionChange = useCallback(
-    async (enabled: boolean) => {
-      const success = await updateSettings({ reducedMotion: enabled })
-      if (!success) toast.error('Failed to update reduced motion')
     },
     [updateSettings]
   )
@@ -250,29 +241,6 @@ export function AppearanceSettings() {
               <SelectItem value="monospace">Monospace</SelectItem>
             </SelectContent>
           </Select>
-        </div>
-      </div>
-
-      <Separator />
-
-      {/* Accessibility */}
-      <div className="space-y-6">
-        <h4 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
-          Accessibility
-        </h4>
-
-        <div className="flex items-center justify-between">
-          <div className="space-y-0.5">
-            <Label htmlFor="reduced-motion">Reduced Motion</Label>
-            <p className="text-sm text-muted-foreground">
-              Minimize animations and transitions throughout the app
-            </p>
-          </div>
-          <Switch
-            id="reduced-motion"
-            checked={settings.reducedMotion}
-            onCheckedChange={handleReducedMotionChange}
-          />
         </div>
       </div>
     </div>

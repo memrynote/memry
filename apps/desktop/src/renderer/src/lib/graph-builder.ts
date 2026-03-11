@@ -52,7 +52,7 @@ export function buildGraphologyGraph(
     resolvedEdgeColors[type] = resolveVar(varName)
   }
 
-  const spread = Math.max(500, Math.sqrt(data.nodes.length) * 60)
+  const spread = Math.max(800, Math.sqrt(data.nodes.length) * 100)
 
   for (const node of data.nodes) {
     const angle = Math.random() * 2 * Math.PI
@@ -109,7 +109,7 @@ export function buildGraphologyGraph(
           graph.addNode(tagNodeId, {
             x: Math.cos(angle) * radius,
             y: Math.sin(angle) * radius,
-            size: 4,
+            size: 3,
             color: tagColor,
             label: `#${tag}`,
             nodeType: 'tag',
@@ -136,7 +136,7 @@ export function buildGraphologyGraph(
 
     for (const [, tagNodeId] of tagNodeIds) {
       const degree = graph.degree(tagNodeId)
-      graph.setNodeAttribute(tagNodeId, 'size', 3 + Math.min(degree, 15) * 0.4)
+      graph.setNodeAttribute(tagNodeId, 'size', 2.5 + Math.min(degree, 15) * 0.25)
       graph.setNodeAttribute(tagNodeId, 'connectionCount', degree)
     }
   }
@@ -150,17 +150,15 @@ function computeNodeSize(
   isUnresolved: boolean,
   sizing: 'uniform' | 'by-connections' | 'by-word-count'
 ): number {
-  if (isUnresolved) return 3
+  if (isUnresolved) return 2
   switch (sizing) {
     case 'uniform':
-      return 6
+      return 3
     case 'by-connections': {
-      const base = 5
-      return base + Math.min(connectionCount, 20) * 0.5
+      return 2.5 + Math.min(connectionCount, 20) * 0.3
     }
     case 'by-word-count': {
-      const base = 4
-      return base + Math.min(wordCount / 100, 12)
+      return 2.5 + Math.min(wordCount / 100, 8)
     }
   }
 }

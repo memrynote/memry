@@ -8,7 +8,6 @@ export const SyncedSettingsSchema = z.object({
       fontSize: z.enum(['small', 'medium', 'large']).optional(),
       fontFamily: z.enum(['system', 'serif', 'sans-serif', 'monospace']).optional(),
       accentColor: z.string().optional(),
-      reducedMotion: z.boolean().optional(),
       startOnBoot: z.boolean().optional(),
       language: z.string().optional()
     })

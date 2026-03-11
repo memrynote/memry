@@ -391,7 +391,7 @@ function ForceAtlas2Layout({
   linkDistance: number
 }): null {
   const gravity = Math.max(0.05, 1 - linkDistance / 200)
-  const scalingRatio = 2 + (repulsionStrength / 100) * 18
+  const scalingRatio = 5 + (repulsionStrength / 100) * 25
 
   const { start, stop } = useWorkerLayoutForceAtlas2({
     settings: {

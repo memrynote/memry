@@ -2035,7 +2035,6 @@ export interface GeneralSettingsDTO {
   fontSize: 'small' | 'medium' | 'large'
   fontFamily: 'system' | 'serif' | 'sans-serif' | 'monospace'
   accentColor: string
-  reducedMotion: boolean
   startOnBoot: boolean
   language: string
 }
@@ -2089,7 +2088,6 @@ export interface GraphSettingsDTO {
   linkDistance: number
   repulsionStrength: number
   showEdgeLabels: boolean
-  animateLayout: boolean
   showTagEdges: boolean
 }
 

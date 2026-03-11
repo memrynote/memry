@@ -18,7 +18,6 @@ export const GeneralSettingsSchema = z.object({
   fontSize: z.enum(['small', 'medium', 'large']),
   fontFamily: z.enum(['system', 'serif', 'sans-serif', 'monospace']),
   accentColor: z.string().regex(/^#[0-9a-fA-F]{6}$/),
-  reducedMotion: z.boolean(),
   startOnBoot: z.boolean(),
   language: z.string().min(2).max(5)
 })
@@ -30,7 +29,6 @@ export const GENERAL_SETTINGS_DEFAULTS: GeneralSettings = {
   fontSize: 'medium',
   fontFamily: 'system',
   accentColor: '#6366f1',
-  reducedMotion: false,
   startOnBoot: false,
   language: 'en'
 }
