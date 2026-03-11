@@ -17,7 +17,8 @@ const ENTITY_TYPE_VISIBILITY: Record<string, keyof GraphFilterState> = {
   note: 'showNotes',
   journal: 'showJournals',
   task: 'showTasks',
-  project: 'showProjects'
+  project: 'showProjects',
+  tag: 'showTags'
 }
 
 function resolveDimmedColor(): string {
@@ -47,7 +48,7 @@ export function GraphCanvas({
   const dimmedColor = useMemo(resolveDimmedColor, [])
 
   const graphBuildOptions: BuildGraphOptions = useMemo(
-    () => ({ showTagEdges: graphSettings.showTagEdges, nodeSizing: graphSettings.nodeSizing }),
+    () => ({ showTags: graphSettings.showTagEdges, nodeSizing: graphSettings.nodeSizing }),
     [graphSettings.showTagEdges, graphSettings.nodeSizing]
   )
 

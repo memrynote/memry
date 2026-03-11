@@ -1,10 +1,9 @@
 import { useMemo, useCallback } from 'react'
-import { Loader2, AlertCircle, Network, FileText, Link2, Lightbulb } from 'lucide-react'
+import { Loader2, AlertCircle, Network, Link2, Lightbulb } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useGraphData, useGraphReactivity } from '@/hooks/use-graph-data'
 import { useGraphFilters } from '@/hooks/use-graph-filters'
 import { useGraphSettings } from '@/hooks/use-graph-settings'
-import { extractAllTags } from '@/lib/graph-builder'
 import { GraphCanvas } from './graph-canvas'
 import { GraphFilters } from './graph-filters'
 import { GraphSearch } from './graph-search'
@@ -15,8 +14,6 @@ export function GraphPage(): React.JSX.Element {
   useGraphReactivity()
   const { filterState, dispatch, isFiltered } = useGraphFilters()
   const { settings: graphSettings, updateSettings } = useGraphSettings()
-
-  const allTags = useMemo(() => (data ? extractAllTags(data) : []), [data])
 
   const focusLabel = useMemo(() => {
     if (!filterState.focusNodeId || !data) return null
@@ -67,7 +64,6 @@ export function GraphPage(): React.JSX.Element {
       <GraphFilters
         filterState={filterState}
         dispatch={dispatch}
-        allTags={allTags}
         isFiltered={isFiltered}
         focusLabel={focusLabel}
       />

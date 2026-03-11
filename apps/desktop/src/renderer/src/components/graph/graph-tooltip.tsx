@@ -4,7 +4,8 @@ const TYPE_COLORS: Record<string, string> = {
   note: 'bg-accent-cyan/15 text-accent-cyan',
   journal: 'bg-accent-purple/15 text-accent-purple',
   task: 'bg-accent-orange/15 text-accent-orange',
-  project: 'bg-accent-green/15 text-accent-green'
+  project: 'bg-accent-green/15 text-accent-green',
+  tag: 'bg-[var(--graph-node-tag)]/15 text-[var(--graph-node-tag)]'
 }
 
 interface GraphTooltipProps {
