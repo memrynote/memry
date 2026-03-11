@@ -1,5 +1,5 @@
 import { useState, useCallback, useMemo } from 'react'
-import { SigmaContainer } from '@react-sigma/core'
+import { SigmaContainer, useSigma } from '@react-sigma/core'
 import { useWorkerLayoutForceAtlas2 } from '@react-sigma/layout-forceatlas2'
 import '@react-sigma/core/lib/style.css'
 import { X, Maximize2 } from 'lucide-react'
@@ -12,12 +12,15 @@ import { GraphTooltip } from './graph-tooltip'
 import { useEffect, useRef } from 'react'
 
 const CENTER_HIGHLIGHT_COLOR = '#f59e0b'
+const HOVER_FADE_IN_MS = 250
+const HOVER_FADE_OUT_MS = 180
 
-function resolveDimmedColor(): string {
-  return (
-    getComputedStyle(document.documentElement).getPropertyValue('--graph-dimmed-node').trim() ||
-    '#e4e4de'
-  )
+function resolveGraphVar(varName: string, fallback: string): string {
+  return getComputedStyle(document.documentElement).getPropertyValue(varName).trim() || fallback
+}
+
+function easeOutQuad(t: number): number {
+  return 1 - (1 - t) * (1 - t)
 }
 
 interface LocalGraphPanelProps {
@@ -35,8 +38,11 @@ export function LocalGraphPanel({
 
   const [hoveredNode, setHoveredNode] = useState<string | null>(null)
   const [tooltipPos, setTooltipPos] = useState<{ x: number; y: number } | null>(null)
+  const fadeRef = useRef(0)
+  const hoverTargetRef = useRef<string | null>(null)
 
-  const dimmedColor = useMemo(resolveDimmedColor, [])
+  const dimmedColor = useMemo(() => resolveGraphVar('--graph-dimmed-node', '#e4e4de'), [])
+  const softEdgeColor = useMemo(() => resolveGraphVar('--graph-edge-soft', '#d5d3cd'), [])
   const graph = useMemo(() => (data ? buildGraphologyGraph(data) : null), [data])
 
   const nodeReducer = useCallback(
@@ -55,10 +61,12 @@ export function LocalGraphPanel({
         }
       }
 
-      if (!hoveredNode) return baseAttrs
+      const activeHover = hoverTargetRef.current
+      const fade = fadeRef.current
+      if (!activeHover || fade === 0) return baseAttrs
 
-      const isHovered = node === hoveredNode
-      const isNeighbor = graph?.hasNode(hoveredNode) && graph.areNeighbors(node, hoveredNode)
+      const isHovered = node === activeHover
+      const isNeighbor = graph?.hasNode(activeHover) && graph.areNeighbors(node, activeHover)
 
       if (isHovered) {
         return { ...baseAttrs, highlighted: true, zIndex: 1 }
@@ -68,23 +76,34 @@ export function LocalGraphPanel({
       }
       return { ...baseAttrs, label: '', color: dimmedColor, zIndex: 0 }
     },
-    [hoveredNode, graph, noteId, dimmedColor]
+    [graph, noteId, dimmedColor]
   )
 
   const edgeReducer = useCallback(
     (edge: string, attrs: Record<string, unknown>): Partial<EdgeDisplayData> => {
-      if (!hoveredNode || !graph?.hasNode(hoveredNode) || !graph.hasEdge(edge)) {
-        return attrs as Partial<EdgeDisplayData>
+      if (!graph?.hasEdge(edge)) return attrs as Partial<EdgeDisplayData>
+
+      const activeHover = hoverTargetRef.current
+      const fade = fadeRef.current
+
+      if (!activeHover || fade === 0 || !graph.hasNode(activeHover)) {
+        return { ...(attrs as Partial<EdgeDisplayData>), color: softEdgeColor, size: 1 }
       }
 
       const [source, target] = graph.extremities(edge)
-      const connected = source === hoveredNode || target === hoveredNode
-      if (!connected) {
-        return { ...(attrs as Partial<EdgeDisplayData>), hidden: true }
+      const connected = source === activeHover || target === activeHover
+      if (connected) {
+        const targetSize = ((attrs.size as number) ?? 1) + 2
+        return {
+          ...(attrs as Partial<EdgeDisplayData>),
+          color: softEdgeColor,
+          size: 1 + (targetSize - 1) * fade
+        }
       }
-      return attrs as Partial<EdgeDisplayData>
+
+      return { ...(attrs as Partial<EdgeDisplayData>), hidden: true }
     },
-    [hoveredNode, graph]
+    [graph, softEdgeColor]
   )
 
   const sigmaSettings = useMemo(
@@ -94,7 +113,8 @@ export function LocalGraphPanel({
       labelRenderedSizeThreshold: 8,
       labelSize: 11,
       defaultEdgeType: 'line' as const,
-      renderEdgeLabels: false
+      renderEdgeLabels: false,
+      minEdgeThickness: 0.5
     }),
     [nodeReducer, edgeReducer]
   )
@@ -128,6 +148,11 @@ export function LocalGraphPanel({
       <PanelHeader onClose={onClose} onOpenFullGraph={onOpenFullGraph} />
 
       <SigmaContainer graph={graph} settings={sigmaSettings} className="h-full w-full">
+        <LocalHoverFadeAnimator
+          hoveredNode={hoveredNode}
+          fadeRef={fadeRef}
+          hoverTargetRef={hoverTargetRef}
+        />
         <LocalForceLayout />
         <GraphEvents
           onHoverNode={setHoveredNode}
@@ -174,6 +199,64 @@ function PanelHeader({
       </Button>
     </div>
   )
+}
+
+function LocalHoverFadeAnimator({
+  hoveredNode,
+  fadeRef,
+  hoverTargetRef
+}: {
+  hoveredNode: string | null
+  fadeRef: React.MutableRefObject<number>
+  hoverTargetRef: React.MutableRefObject<string | null>
+}): null {
+  const sigma = useSigma()
+  const animRef = useRef<number | null>(null)
+
+  useEffect(() => {
+    if (hoveredNode) {
+      hoverTargetRef.current = hoveredNode
+    }
+
+    const goal = hoveredNode ? 1 : 0
+    const startFade = fadeRef.current
+
+    if (startFade === goal) {
+      sigma.refresh()
+      return
+    }
+
+    const startTime = performance.now()
+    const duration = hoveredNode ? HOVER_FADE_IN_MS : HOVER_FADE_OUT_MS
+
+    const tick = (now: number): void => {
+      const t = Math.min((now - startTime) / duration, 1)
+      fadeRef.current = startFade + (goal - startFade) * easeOutQuad(t)
+      sigma.refresh()
+
+      if (t < 1) {
+        animRef.current = requestAnimationFrame(tick)
+      } else {
+        animRef.current = null
+        if (!hoveredNode) {
+          hoverTargetRef.current = null
+          sigma.refresh()
+        }
+      }
+    }
+
+    if (animRef.current !== null) cancelAnimationFrame(animRef.current)
+    animRef.current = requestAnimationFrame(tick)
+
+    return () => {
+      if (animRef.current !== null) {
+        cancelAnimationFrame(animRef.current)
+        animRef.current = null
+      }
+    }
+  }, [hoveredNode, sigma, fadeRef, hoverTargetRef])
+
+  return null
 }
 
 function LocalForceLayout(): null {

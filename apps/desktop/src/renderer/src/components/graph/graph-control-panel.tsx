@@ -15,7 +15,6 @@ import {
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
-import { Slider } from '@/components/ui/slider'
 import { Label } from '@/components/ui/label'
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '@/components/ui/collapsible'
 import type { GraphFilterState, GraphFilterAction } from '@/hooks/use-graph-filters'
@@ -220,59 +219,6 @@ export function GraphControlPanel({
               checked={settings.showTagEdges}
               onCheckedChange={(v) => updateSettings({ showTagEdges: v })}
             />
-
-            <PanelSlider
-              label="Text fade threshold"
-              value={settings.showLabels ? 6 : 0}
-              min={0}
-              max={20}
-              onChange={(v) => updateSettings({ showLabels: v > 0 })}
-            />
-            <PanelSlider
-              label="Node size"
-              value={
-                settings.nodeSizing === 'uniform'
-                  ? 50
-                  : settings.nodeSizing === 'by-connections'
-                    ? 75
-                    : 100
-              }
-              min={0}
-              max={100}
-              onChange={(v) => {
-                const sizing = v < 33 ? 'uniform' : v < 66 ? 'by-connections' : 'by-word-count'
-                updateSettings({
-                  nodeSizing: sizing as GraphSettings['nodeSizing']
-                })
-              }}
-            />
-          </div>
-        </PanelSection>
-
-        {/* Forces section */}
-        <PanelSection title="Forces" defaultOpen={false}>
-          <div className="space-y-3">
-            <PanelSlider
-              label="Center force"
-              value={Math.round(100 - settings.linkDistance / 2)}
-              min={0}
-              max={100}
-              onChange={(v) => updateSettings({ linkDistance: Math.round((100 - v) * 2) })}
-            />
-            <PanelSlider
-              label="Repel force"
-              value={settings.repulsionStrength}
-              min={1}
-              max={100}
-              onChange={(v) => updateSettings({ repulsionStrength: v })}
-            />
-            <PanelSlider
-              label="Link distance"
-              value={settings.linkDistance}
-              min={10}
-              max={200}
-              onChange={(v) => updateSettings({ linkDistance: v })}
-            />
           </div>
         </PanelSection>
       </div>
@@ -319,36 +265,6 @@ function FilterSwitch({
     <div className="flex items-center justify-between">
       <Label className="text-xs text-foreground font-normal">{label}</Label>
       <Switch checked={checked} onCheckedChange={onCheckedChange} />
-    </div>
-  )
-}
-
-function PanelSlider({
-  label,
-  value,
-  min,
-  max,
-  onChange
-}: {
-  label: string
-  value: number
-  min: number
-  max: number
-  onChange: (value: number) => void
-}): React.JSX.Element {
-  return (
-    <div className="space-y-1.5">
-      <div className="flex items-center justify-between">
-        <Label className="text-xs text-foreground font-normal">{label}</Label>
-      </div>
-      <Slider
-        value={[value]}
-        min={min}
-        max={max}
-        step={1}
-        onValueChange={([v]) => onChange(v)}
-        className="py-0.5"
-      />
     </div>
   )
 }

@@ -31,14 +31,13 @@ function resolveVar(varName: string, fallback = '#8c8c8c'): string {
 
 export interface BuildGraphOptions {
   showTags?: boolean
-  nodeSizing?: 'uniform' | 'by-connections' | 'by-word-count'
 }
 
 export function buildGraphologyGraph(
   data: GraphDataResponse,
   options: BuildGraphOptions = {}
 ): Graph {
-  const { showTags = true, nodeSizing = 'uniform' } = options
+  const { showTags = true } = options
   const graph = new Graph({ multi: true, type: 'undirected' })
 
   const ghostColor = resolveVar('--graph-ghost-node', '#c4c2bc')
@@ -65,7 +64,7 @@ export function buildGraphologyGraph(
     graph.addNode(node.id, {
       x: Math.cos(angle) * radius,
       y: Math.sin(angle) * radius,
-      size: computeNodeSize(node.connectionCount, node.wordCount, node.isUnresolved, nodeSizing),
+      size: computeNodeSize(node.connectionCount, node.isUnresolved),
       color,
       label: node.label,
       nodeType: node.type,
@@ -137,7 +136,8 @@ export function buildGraphologyGraph(
 
     for (const [, tagNodeId] of tagNodeIds) {
       const degree = graph.degree(tagNodeId)
-      graph.setNodeAttribute(tagNodeId, 'size', 2.5 + Math.min(degree, 15) * 0.25)
+      const tagSize = degree <= 1 ? 3 : 3 + Math.log2(degree) * 2
+      graph.setNodeAttribute(tagNodeId, 'size', tagSize)
       graph.setNodeAttribute(tagNodeId, 'connectionCount', degree)
     }
   }
@@ -160,23 +160,10 @@ export function buildGraphologyGraph(
   return graph
 }
 
-function computeNodeSize(
-  connectionCount: number,
-  wordCount: number,
-  isUnresolved: boolean,
-  sizing: 'uniform' | 'by-connections' | 'by-word-count'
-): number {
+function computeNodeSize(connectionCount: number, isUnresolved: boolean): number {
   if (isUnresolved) return 2
-  switch (sizing) {
-    case 'uniform':
-      return 3
-    case 'by-connections': {
-      return 2.5 + Math.min(connectionCount, 20) * 0.3
-    }
-    case 'by-word-count': {
-      return 2.5 + Math.min(wordCount / 100, 8)
-    }
-  }
+  if (connectionCount <= 1) return 3
+  return 3 + Math.log2(connectionCount) * 2
 }
 
 export function computeFocusSet(graph: Graph, nodeId: string, depth: number): Set<string> {

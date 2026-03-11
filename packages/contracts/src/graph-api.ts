@@ -41,10 +41,7 @@ export type LocalGraphRequest = z.infer<typeof LocalGraphRequestSchema>
 
 export const GraphSettingsSchema = z.object({
   layout: z.enum(['forceatlas2', 'circular', 'random']),
-  nodeSizing: z.enum(['uniform', 'by-connections', 'by-word-count']),
   showLabels: z.boolean(),
-  linkDistance: z.number().int().min(10).max(200),
-  repulsionStrength: z.number().int().min(1).max(100),
   showEdgeLabels: z.boolean(),
   animateLayout: z.boolean(),
   showTagEdges: z.boolean()
@@ -54,10 +51,7 @@ export type GraphSettings = z.infer<typeof GraphSettingsSchema>
 
 export const GRAPH_SETTINGS_DEFAULTS: GraphSettings = {
   layout: 'forceatlas2',
-  nodeSizing: 'uniform',
   showLabels: true,
-  linkDistance: 50,
-  repulsionStrength: 30,
   showEdgeLabels: false,
   animateLayout: false,
   showTagEdges: false

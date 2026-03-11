@@ -22,11 +22,34 @@ const ENTITY_TYPE_VISIBILITY: Record<string, keyof GraphFilterState> = {
   tag: 'showTags'
 }
 
-function resolveDimmedColor(): string {
-  return (
-    getComputedStyle(document.documentElement).getPropertyValue('--graph-dimmed-node').trim() ||
-    '#e4e4de'
-  )
+function resolveGraphVar(varName: string, fallback: string): string {
+  return getComputedStyle(document.documentElement).getPropertyValue(varName).trim() || fallback
+}
+
+const HOVER_FADE_IN_MS = 250
+const HOVER_FADE_OUT_MS = 180
+
+function easeOutQuad(t: number): number {
+  return 1 - (1 - t) * (1 - t)
+}
+
+function lerpColor(from: string, to: string, t: number): string {
+  const a = from.startsWith('#') ? from.slice(1) : from
+  const b = to.startsWith('#') ? to.slice(1) : to
+  const [ar, ag, ab] = [
+    parseInt(a.slice(0, 2), 16),
+    parseInt(a.slice(2, 4), 16),
+    parseInt(a.slice(4, 6), 16)
+  ]
+  const [br, bg, bb] = [
+    parseInt(b.slice(0, 2), 16),
+    parseInt(b.slice(2, 4), 16),
+    parseInt(b.slice(4, 6), 16)
+  ]
+  const r = Math.round(ar + (br - ar) * t)
+  const g = Math.round(ag + (bg - ag) * t)
+  const bl = Math.round(ab + (bb - ab) * t)
+  return `#${((r << 16) | (g << 8) | bl).toString(16).padStart(6, '0')}`
 }
 
 interface GraphCanvasProps {
@@ -45,12 +68,15 @@ export function GraphCanvas({
   const [hoveredNode, setHoveredNode] = useState<string | null>(null)
   const [tooltipPos, setTooltipPos] = useState<{ x: number; y: number } | null>(null)
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null)
+  const fadeRef = useRef(0)
+  const hoverTargetRef = useRef<string | null>(null)
 
-  const dimmedColor = useMemo(resolveDimmedColor, [])
+  const dimmedColor = useMemo(() => resolveGraphVar('--graph-dimmed-node', '#e4e4de'), [])
+  const softEdgeColor = useMemo(() => resolveGraphVar('--graph-edge-soft', '#d5d3cd'), [])
 
   const graphBuildOptions: BuildGraphOptions = useMemo(
-    () => ({ showTags: graphSettings.showTagEdges, nodeSizing: graphSettings.nodeSizing }),
-    [graphSettings.showTagEdges, graphSettings.nodeSizing]
+    () => ({ showTags: graphSettings.showTagEdges }),
+    [graphSettings.showTagEdges]
   )
 
   const graph = useMemo(
@@ -107,11 +133,14 @@ export function GraphCanvas({
         }
       }
 
-      if (!hoveredNode) return attrs as Partial<NodeDisplayData>
+      const activeHover = hoverTargetRef.current
+      const fade = fadeRef.current
 
-      const isHovered = node === hoveredNode
+      if (!activeHover || fade === 0) return attrs as Partial<NodeDisplayData>
+
+      const isHovered = node === activeHover
       const isNeighbor =
-        graph.hasNode(hoveredNode) && graph.hasNode(node) && graph.areNeighbors(node, hoveredNode)
+        graph.hasNode(activeHover) && graph.hasNode(node) && graph.areNeighbors(node, activeHover)
 
       if (isHovered) {
         return {
@@ -124,14 +153,16 @@ export function GraphCanvas({
       if (isNeighbor) {
         return attrs as Partial<NodeDisplayData>
       }
+
+      const originalColor = (attrs.color as string) || '#999'
       return {
         ...(attrs as Partial<NodeDisplayData>),
-        label: '',
-        color: dimmedColor,
+        label: fade > 0.5 ? '' : (attrs.label as string),
+        color: lerpColor(originalColor, dimmedColor, fade),
         zIndex: 0
       }
     },
-    [hoveredNode, graph, filterState, focusVisibleSet, searchLower, dimmedColor]
+    [graph, filterState, focusVisibleSet, searchLower, dimmedColor]
   )
 
   const edgeReducer = useCallback(
@@ -158,18 +189,26 @@ export function GraphCanvas({
         return { ...(attrs as Partial<EdgeDisplayData>), hidden: true }
       }
 
-      if (!hoveredNode || !graph.hasNode(hoveredNode)) {
-        return attrs as Partial<EdgeDisplayData>
+      const activeHover = hoverTargetRef.current
+      const fade = fadeRef.current
+
+      if (!activeHover || fade === 0 || !graph.hasNode(activeHover)) {
+        return { ...(attrs as Partial<EdgeDisplayData>), color: softEdgeColor, size: 1 }
       }
 
-      const connected = source === hoveredNode || target === hoveredNode
-      if (!connected) {
-        return { ...(attrs as Partial<EdgeDisplayData>), hidden: true }
+      const connected = source === activeHover || target === activeHover
+      if (connected) {
+        const targetSize = ((attrs.size as number) ?? 1) + 2
+        return {
+          ...(attrs as Partial<EdgeDisplayData>),
+          color: softEdgeColor,
+          size: 1 + (targetSize - 1) * fade
+        }
       }
 
-      return attrs as Partial<EdgeDisplayData>
+      return { ...(attrs as Partial<EdgeDisplayData>), hidden: true }
     },
-    [hoveredNode, graph, filterState, focusVisibleSet]
+    [graph, filterState, focusVisibleSet, softEdgeColor, dimmedColor]
   )
 
   const initialSigmaSettings = useMemo(
@@ -179,9 +218,9 @@ export function GraphCanvas({
       labelRenderedSizeThreshold: graphSettings.showLabels ? 6 : Infinity,
       labelSize: 12,
       defaultEdgeType: 'line' as const,
-      renderEdgeLabels: graphSettings.showEdgeLabels
+      renderEdgeLabels: graphSettings.showEdgeLabels,
+      minEdgeThickness: 0.5
     }),
-    // Only used for initial mount — dynamic updates handled by SigmaSettingsSync
     // eslint-disable-next-line react-hooks/exhaustive-deps
     []
   )
@@ -197,10 +236,13 @@ export function GraphCanvas({
           showLabels={graphSettings.showLabels}
           showEdgeLabels={graphSettings.showEdgeLabels}
         />
+        <HoverFadeAnimator
+          hoveredNode={hoveredNode}
+          fadeRef={fadeRef}
+          hoverTargetRef={hoverTargetRef}
+        />
         <LayoutManager
           layout={graphSettings.layout}
-          repulsionStrength={graphSettings.repulsionStrength}
-          linkDistance={graphSettings.linkDistance}
           animate={graphSettings.animateLayout}
           graph={graph}
         />
@@ -307,6 +349,64 @@ function ContextMenuWithTabAction({
   )
 }
 
+function HoverFadeAnimator({
+  hoveredNode,
+  fadeRef,
+  hoverTargetRef
+}: {
+  hoveredNode: string | null
+  fadeRef: React.MutableRefObject<number>
+  hoverTargetRef: React.MutableRefObject<string | null>
+}): null {
+  const sigma = useSigma()
+  const animRef = useRef<number | null>(null)
+
+  useEffect(() => {
+    if (hoveredNode) {
+      hoverTargetRef.current = hoveredNode
+    }
+
+    const goal = hoveredNode ? 1 : 0
+    const startFade = fadeRef.current
+
+    if (startFade === goal) {
+      sigma.refresh()
+      return
+    }
+
+    const startTime = performance.now()
+    const duration = hoveredNode ? HOVER_FADE_IN_MS : HOVER_FADE_OUT_MS
+
+    const tick = (now: number): void => {
+      const t = Math.min((now - startTime) / duration, 1)
+      fadeRef.current = startFade + (goal - startFade) * easeOutQuad(t)
+      sigma.refresh()
+
+      if (t < 1) {
+        animRef.current = requestAnimationFrame(tick)
+      } else {
+        animRef.current = null
+        if (!hoveredNode) {
+          hoverTargetRef.current = null
+          sigma.refresh()
+        }
+      }
+    }
+
+    if (animRef.current !== null) cancelAnimationFrame(animRef.current)
+    animRef.current = requestAnimationFrame(tick)
+
+    return () => {
+      if (animRef.current !== null) {
+        cancelAnimationFrame(animRef.current)
+        animRef.current = null
+      }
+    }
+  }, [hoveredNode, sigma, fadeRef, hoverTargetRef])
+
+  return null
+}
+
 function SigmaSettingsSync({
   nodeReducer,
   edgeReducer,
@@ -341,14 +441,10 @@ function SigmaSettingsSync({
 
 function LayoutManager({
   layout,
-  repulsionStrength,
-  linkDistance,
   animate,
   graph
 }: {
   layout: GraphSettings['layout']
-  repulsionStrength: number
-  linkDistance: number
   animate: boolean
   graph: Graph
 }): React.JSX.Element | null {
@@ -361,13 +457,7 @@ function LayoutManager({
   }, [layout, graph])
 
   if (layout === 'forceatlas2') {
-    return (
-      <ForceAtlas2Layout
-        repulsionStrength={repulsionStrength}
-        linkDistance={linkDistance}
-        animate={animate}
-      />
-    )
+    return <ForceAtlas2Layout animate={animate} />
   }
 
   return null
@@ -392,22 +482,11 @@ function applyRandomLayout(graph: Graph): void {
   })
 }
 
-function ForceAtlas2Layout({
-  repulsionStrength,
-  linkDistance,
-  animate
-}: {
-  repulsionStrength: number
-  linkDistance: number
-  animate: boolean
-}): null {
-  const gravity = Math.max(0.05, 1 - linkDistance / 200)
-  const scalingRatio = 5 + (repulsionStrength / 100) * 25
-
+function ForceAtlas2Layout({ animate }: { animate: boolean }): null {
   const { start, stop } = useWorkerLayoutForceAtlas2({
     settings: {
-      gravity,
-      scalingRatio,
+      gravity: 0.75,
+      scalingRatio: 12.5,
       slowDown: 3,
       barnesHutOptimize: true,
       strongGravityMode: true,
@@ -429,7 +508,7 @@ function ForceAtlas2Layout({
       clearTimeout(timerRef.current)
       stop()
     }
-  }, [start, stop, animate, gravity, scalingRatio])
+  }, [start, stop, animate])
 
   return null
 }
