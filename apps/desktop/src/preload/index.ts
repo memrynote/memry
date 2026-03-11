@@ -102,13 +102,15 @@ function applyStartupTheme(savedTheme: StartupTheme): void {
   }
 }
 
-const startupTheme = getStartupThemeSync()
-try {
-  window.localStorage.setItem(THEME_STORAGE_KEY, startupTheme)
-} catch {
-  // localStorage may be unavailable in some test or restricted environments
+if (typeof globalThis.window !== 'undefined') {
+  const startupTheme = getStartupThemeSync()
+  try {
+    window.localStorage.setItem(THEME_STORAGE_KEY, startupTheme)
+  } catch {
+    // localStorage may be unavailable in some test or restricted environments
+  }
+  applyStartupTheme(startupTheme)
 }
-applyStartupTheme(startupTheme)
 
 // Custom APIs for renderer
 export const api = {
@@ -541,7 +543,7 @@ export const api = {
     setNoteEditorSettings: (settings: { toolbarMode?: 'floating' | 'sticky' }) =>
       invoke(SettingsChannels.invoke.SET_NOTE_EDITOR_SETTINGS, settings),
     // General Settings (theme, font, accent, etc.)
-    getStartupThemeSync: (): StartupTheme => startupTheme,
+    getStartupThemeSync,
     getGeneralSettings: () => invoke(SettingsChannels.invoke.GET_GENERAL_SETTINGS),
     setGeneralSettings: (settings: Record<string, unknown>) =>
       invoke(SettingsChannels.invoke.SET_GENERAL_SETTINGS, settings),
