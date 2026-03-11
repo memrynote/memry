@@ -5,9 +5,7 @@ import { useGraphData, useGraphReactivity } from '@/hooks/use-graph-data'
 import { useGraphFilters } from '@/hooks/use-graph-filters'
 import { useGraphSettings } from '@/hooks/use-graph-settings'
 import { GraphCanvas } from './graph-canvas'
-import { GraphFilters } from './graph-filters'
-import { GraphSearch } from './graph-search'
-import { GraphSettingsPanel } from './graph-settings'
+import { GraphControlPanel } from './graph-control-panel'
 
 export function GraphPage(): React.JSX.Element {
   const { data, isLoading, error, refetch } = useGraphData()
@@ -61,14 +59,14 @@ export function GraphPage(): React.JSX.Element {
         graphSettings={graphSettings}
         onFocusNode={handleFocusNode}
       />
-      <GraphFilters
+      <GraphControlPanel
         filterState={filterState}
         dispatch={dispatch}
         isFiltered={isFiltered}
         focusLabel={focusLabel}
+        settings={graphSettings}
+        updateSettings={updateSettings}
       />
-      <GraphSearch filterState={filterState} dispatch={dispatch} />
-      <GraphSettingsPanel settings={graphSettings} updateSettings={updateSettings} />
     </div>
   )
 }
