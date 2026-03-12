@@ -1,4 +1,4 @@
-import { ChevronRight } from 'lucide-react'
+import { ChevronDown, ChevronRight } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 interface InfoHeaderProps {
@@ -28,12 +28,12 @@ export function InfoHeader({
       >
         <ChevronRight
           className={cn(
-            'h-3 w-3 text-stone-400',
+            'h-3 w-3 text-[#B5B0A6]',
             'transition-transform duration-200',
             isExpanded && 'rotate-90'
           )}
         />
-        <span className="text-[12px] font-medium text-stone-400">
+        <span className="text-[12px] font-medium text-[#B5B0A6]">
           Properties {propertyCount > 0 && <span className="opacity-60 ml-1">{propertyCount}</span>}
         </span>
       </button>
@@ -45,24 +45,19 @@ export function InfoHeader({
       type="button"
       onClick={onToggle}
       aria-expanded={isExpanded}
-      className={cn('flex items-center gap-2 py-2', 'cursor-pointer select-none', 'group')}
+      className={cn('flex items-center py-2.5 gap-2', 'cursor-pointer select-none', 'group')}
     >
-      <ChevronRight
-        className={cn(
-          'h-3 w-3 text-stone-400',
-          'transition-transform duration-200',
-          isExpanded && 'rotate-90'
-        )}
-      />
-      <span
-        className={cn(
-          'text-[13px] font-medium text-stone-500',
-          'transition-colors duration-150',
-          'group-hover:text-stone-700'
-        )}
-      >
+      {isExpanded ? (
+        <ChevronDown className="h-3 w-3 text-[#B5B0A6]" />
+      ) : (
+        <ChevronRight className="h-3 w-3 text-[#B5B0A6]" />
+      )}
+      <span className="text-[12px] font-semibold text-[#8A857A] font-sans leading-4">
         Properties
       </span>
+      {propertyCount > 0 && (
+        <span className="text-[11px] text-[#B5B0A6] font-sans leading-3.5">{propertyCount}</span>
+      )}
     </button>
   )
 }

@@ -196,7 +196,11 @@ export const InfoSection = memo(function InfoSection({
   )
 
   return (
-    <div className={cn(variant === 'default' && 'mb-4')} role="region" aria-label="Note properties">
+    <div
+      className={cn('flex flex-col', variant === 'default' && 'border-t border-b border-[#E8E5DF]')}
+      role="region"
+      aria-label="Note properties"
+    >
       {/* Toggle Header */}
       <InfoHeader
         isExpanded={isExpanded}
@@ -205,25 +209,13 @@ export const InfoSection = memo(function InfoSection({
         propertyCount={properties.length}
       />
 
-      {/* Collapsible Content - Only rendered when expanded to prevent focus trap */}
+      {/* Collapsible Content */}
       {isExpanded && (
-        <div
-          id="properties-content"
-          className={cn(
-            'mt-1 rounded-lg',
-            'bg-transparent',
-            variant === 'default' ? 'py-2 px-4' : 'py-0 px-0'
-          )}
-        >
+        <div id="properties-content">
           {/* Section Header */}
           {folderProperties && folderProperties.length > 0 && (
             <div className="mb-3 flex items-center gap-1">
-              <span
-                className={cn(
-                  'text-[11px] font-semibold uppercase tracking-wide',
-                  'text-stone-400'
-                )}
-              >
+              <span className="text-[11px] font-semibold uppercase tracking-wide text-[#B5B0A6]">
                 Workspace properties
               </span>
             </div>
@@ -237,7 +229,7 @@ export const InfoSection = memo(function InfoSection({
             modifiers={[restrictToVerticalAxis, restrictToParentElement]}
           >
             <SortableContext items={sortableIds} strategy={verticalListSortingStrategy}>
-              <div className="space-y-0.5" role="list" aria-label="Properties list">
+              <div role="list" aria-label="Properties list">
                 {visibleProperties.map((property) => (
                   <PropertyRow
                     key={property.id}
@@ -262,10 +254,10 @@ export const InfoSection = memo(function InfoSection({
               type="button"
               onClick={toggleShowMore}
               className={cn(
-                'mt-3 flex items-center gap-1',
-                'text-xs text-stone-500',
+                'mt-2 flex items-center gap-1',
+                'text-xs text-[#B5B0A6]',
                 'transition-colors duration-150',
-                'hover:text-stone-700 hover:underline'
+                'hover:text-[#8A857A]'
               )}
               aria-label={`Show ${hiddenProperties.length} more properties`}
             >
@@ -279,10 +271,10 @@ export const InfoSection = memo(function InfoSection({
               type="button"
               onClick={toggleShowMore}
               className={cn(
-                'mt-3 flex items-center gap-1',
-                'text-xs text-stone-500',
+                'mt-2 flex items-center gap-1',
+                'text-xs text-[#B5B0A6]',
                 'transition-colors duration-150',
-                'hover:text-stone-700 hover:underline'
+                'hover:text-[#8A857A]'
               )}
               aria-label="Show fewer properties"
             >
@@ -292,7 +284,7 @@ export const InfoSection = memo(function InfoSection({
           )}
 
           {/* Add Property Button */}
-          <div className="mt-1 pt-1">
+          <div className="pt-2 pb-2.5">
             <button
               ref={addButtonRef}
               type="button"
@@ -300,9 +292,9 @@ export const InfoSection = memo(function InfoSection({
               disabled={disabled}
               className={cn(
                 'flex items-center gap-1.5',
-                'text-[12px] text-stone-400',
+                'text-[12px] text-[#B5B0A6] font-sans',
                 'transition-colors duration-150',
-                'hover:text-stone-600',
+                'hover:text-[#8A857A]',
                 'disabled:opacity-50 disabled:cursor-not-allowed'
               )}
               aria-label="Add a new property to this note"
@@ -315,7 +307,7 @@ export const InfoSection = memo(function InfoSection({
         </div>
       )}
 
-      {/* Portal for AddPropertyPopup - renders at document body level */}
+      {/* Portal for AddPropertyPopup */}
       {isAddPopupOpen &&
         popupPosition &&
         createPortal(
