@@ -222,6 +222,12 @@ pnpm test
 
 ---
 
+## Star History
+
+[![Star History Chart](https://api.star-history.com/image?repos=memrynote/memry&type=date&legend=top-left)](https://www.star-history.com/?repos=memrynote%2Fmemry&type=date&legend=top-left)
+
+---
+
 <div align="center">
 <sub>Made with care for people who value their privacy.</sub>
 </div>
