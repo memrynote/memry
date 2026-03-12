@@ -30,6 +30,10 @@ function getLineWidth(level: number): number {
   }
 }
 
+const FADE_DURATION = 100
+const PINNED_LEAVE_DELAY = 200
+const HOVER_LEAVE_DELAY = 150
+
 export const OutlineInfoPanel = memo(function OutlineInfoPanel({
   headings = [],
   onHeadingClick,
@@ -37,35 +41,62 @@ export const OutlineInfoPanel = memo(function OutlineInfoPanel({
   activeHeadingId,
   stats
 }: OutlineInfoPanelProps) {
-  const [isHovered, setIsHovered] = useState(false)
+  const [isExpanded, setIsExpanded] = useState(false)
+  const [isPinned, setIsPinned] = useState(false)
+  const [isFadingOut, setIsFadingOut] = useState(false)
   const [activeTab, setActiveTab] = useState<string>('outline')
   const containerRef = useRef<HTMLDivElement>(null)
   const popupRef = useRef<HTMLDivElement>(null)
-  const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const delayRef = useRef<NodeJS.Timeout | null>(null)
+  const fadeRef = useRef<NodeJS.Timeout | null>(null)
+
+  const clearAllTimeouts = useCallback(() => {
+    if (delayRef.current) {
+      clearTimeout(delayRef.current)
+      delayRef.current = null
+    }
+    if (fadeRef.current) {
+      clearTimeout(fadeRef.current)
+      fadeRef.current = null
+    }
+  }, [])
+
+  const handleMouseEnter = useCallback(() => {
+    clearAllTimeouts()
+    setIsFadingOut(false)
+    setIsExpanded(true)
+  }, [clearAllTimeouts])
+
+  const handleMouseLeave = useCallback(() => {
+    const delay = isPinned ? PINNED_LEAVE_DELAY : HOVER_LEAVE_DELAY
+    delayRef.current = setTimeout(() => {
+      setIsFadingOut(true)
+      fadeRef.current = setTimeout(() => {
+        setIsExpanded(false)
+        setIsFadingOut(false)
+        setIsPinned(false)
+      }, FADE_DURATION)
+    }, delay)
+  }, [isPinned])
 
   const handleClick = useCallback(
     (headingId: string) => {
+      clearAllTimeouts()
+      setIsPinned(true)
+      setIsFadingOut(false)
       onHeadingClick?.(headingId)
     },
-    [onHeadingClick]
+    [onHeadingClick, clearAllTimeouts]
   )
 
-  const handleMouseEnter = useCallback(() => {
-    if (hoverTimeoutRef.current) {
-      clearTimeout(hoverTimeoutRef.current)
-      hoverTimeoutRef.current = null
-    }
-    setIsHovered(true)
-  }, [])
-
-  const handleMouseLeave = useCallback(() => {
-    hoverTimeoutRef.current = setTimeout(() => {
-      setIsHovered(false)
-    }, 150)
-  }, [])
-
   useEffect(() => {
-    if (isHovered && activeHeadingId && popupRef.current && activeTab === 'outline') {
+    if (
+      isExpanded &&
+      !isFadingOut &&
+      activeHeadingId &&
+      popupRef.current &&
+      activeTab === 'outline'
+    ) {
       requestAnimationFrame(() => {
         const activeElement = popupRef.current?.querySelector(
           `[data-heading-id="${activeHeadingId}"]`
@@ -75,15 +106,11 @@ export const OutlineInfoPanel = memo(function OutlineInfoPanel({
         }
       })
     }
-  }, [isHovered, activeHeadingId, activeTab])
+  }, [isExpanded, isFadingOut, activeHeadingId, activeTab])
 
   useEffect(() => {
-    return () => {
-      if (hoverTimeoutRef.current) {
-        clearTimeout(hoverTimeoutRef.current)
-      }
-    }
-  }, [])
+    return () => clearAllTimeouts()
+  }, [clearAllTimeouts])
 
   if (headings.length === 0 && !stats) {
     return null
@@ -105,7 +132,7 @@ export const OutlineInfoPanel = memo(function OutlineInfoPanel({
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
     >
-      {!isHovered ? (
+      {!isExpanded ? (
         <div className="flex items-start gap-0 cursor-pointer">
           {headings.length > 0 && (
             <div className="flex flex-col items-end gap-2.5 py-1">
@@ -156,8 +183,17 @@ export const OutlineInfoPanel = memo(function OutlineInfoPanel({
             'bg-white dark:bg-[#1c1b19] border border-[#E8E5DF] dark:border-[#3a3935]',
             'shadow-lg rounded-lg',
             'min-w-[240px] max-w-[300px]',
-            'animate-in fade-in-0 zoom-in-95 duration-150'
+            !isFadingOut && 'animate-in fade-in-0 zoom-in-95 duration-150'
           )}
+          style={
+            isFadingOut
+              ? {
+                opacity: 0,
+                transform: 'scale(0.98)',
+                transition: `opacity ${FADE_DURATION}ms ease, transform ${FADE_DURATION}ms ease`
+              }
+              : undefined
+          }
         >
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
             <TabsList className="w-full h-8 p-0.5 bg-[#F5F3EE] dark:bg-[#252420] rounded-t-lg rounded-b-none">

@@ -35,18 +35,18 @@ export function NoteLayout({
   })
 
   return (
-    <div className={cn('h-full w-full overflow-hidden flex flex-col', className)}>
-      <div className="flex-1 overflow-y-auto overflow-x-visible relative">
+    <div className={cn('h-full w-full overflow-hidden flex flex-col relative', className)}>
+      <div className="flex-1 overflow-y-auto overflow-x-visible">
         {actions && <div className="flex justify-end px-4 pt-3 pb-0">{actions}</div>}
         <div className="mx-auto w-full max-w-4xl px-20 pt-6 pb-10">{children}</div>
-
-        <OutlineInfoPanel
-          headings={headings}
-          activeHeadingId={activeHeadingId ?? undefined}
-          onHeadingClick={onHeadingClick}
-          stats={stats}
-        />
       </div>
+
+      <OutlineInfoPanel
+        headings={headings}
+        activeHeadingId={activeHeadingId ?? undefined}
+        onHeadingClick={onHeadingClick}
+        stats={stats}
+      />
     </div>
   )
 }
