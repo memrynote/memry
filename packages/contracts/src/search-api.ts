@@ -128,14 +128,17 @@ export interface QuickSearchResponse {
 }
 
 // ============================================================================
-// Recent Searches
+// Search Reasons (visited items from search)
 // ============================================================================
 
-export interface RecentSearch {
+export interface SearchReason {
   id: string
-  query: string
-  resultCount: number
-  searchedAt: string
+  itemId: string
+  itemType: ContentType
+  itemTitle: string
+  itemIcon: string | null
+  searchQuery: string
+  visitedAt: string
 }
 
 // ============================================================================
@@ -188,9 +191,12 @@ export const SearchQuerySchema = z.object({
 
 export type SearchQueryInput = z.infer<typeof SearchQuerySchema>
 
-export const AddRecentSchema = z.object({
-  query: z.string().min(1),
-  resultCount: z.number().min(0)
+export const AddReasonSchema = z.object({
+  itemId: z.string().min(1),
+  itemType: ContentTypeEnum,
+  itemTitle: z.string().min(1),
+  itemIcon: z.string().nullable().default(null),
+  searchQuery: z.string().min(1)
 })
 
-export type AddRecentInput = z.infer<typeof AddRecentSchema>
+export type AddReasonInput = z.infer<typeof AddReasonSchema>
