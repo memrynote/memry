@@ -1104,8 +1104,8 @@ div.react-sigma {
 
 /* Note title input placeholder styling */
 .note-title-input::placeholder {
-  font-family: var(--font-serif);
-  font-style: italic;
+  font-family: var(--font-sans);
+  font-style: normal;
   opacity: 0.4;
 }
 
