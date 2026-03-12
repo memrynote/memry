@@ -9,6 +9,7 @@
 
 import { useMemo, useCallback, useState, useRef, useEffect, type ReactNode } from 'react'
 import { extractErrorMessage } from '@/lib/ipc-error'
+import { SIDEBAR_REVEAL_FOLDER_EVENT } from '@/components/note/note-breadcrumb'
 import {
   TreeExpander,
   TreeIcon,
@@ -418,6 +419,57 @@ function RevealHandler({ pendingRevealNoteId, noteMap, onReveal, onClear }: Reve
       onReveal(pendingRevealNoteId)
     }, 50)
   }, [pendingRevealNoteId, noteMap, expandNode, onReveal, onClear])
+
+  return null
+}
+
+// ============================================================================
+// FolderRevealHandler — listens for breadcrumb folder clicks
+// ============================================================================
+
+function FolderRevealHandler() {
+  const { expandNode } = useTree()
+
+  useEffect(() => {
+    const handleRevealFolder = (event: CustomEvent<{ folderPath: string }>) => {
+      const { folderPath } = event.detail
+      if (!folderPath) return
+
+      try {
+        localStorage.setItem('sidebar-section-collections-expanded', 'true')
+        window.dispatchEvent(
+          new StorageEvent('storage', {
+            key: 'sidebar-section-collections-expanded',
+            newValue: 'true'
+          })
+        )
+      } catch {
+        // Ignore localStorage errors
+      }
+
+      const parts = folderPath.split('/')
+      let currentPath = ''
+      for (const part of parts) {
+        currentPath = currentPath ? `${currentPath}/${part}` : part
+        expandNode(`folder-${currentPath}`)
+      }
+
+      setTimeout(() => {
+        const nodeId = `folder-${folderPath}`
+        const element = document.querySelector(`[data-tree-node-id="${nodeId}"]`)
+        if (element) {
+          element.scrollIntoView({ behavior: 'smooth', block: 'center' })
+          element.classList.add('bg-accent')
+          setTimeout(() => element.classList.remove('bg-accent'), 2000)
+        }
+      }, 100)
+    }
+
+    window.addEventListener(SIDEBAR_REVEAL_FOLDER_EVENT, handleRevealFolder as EventListener)
+    return () => {
+      window.removeEventListener(SIDEBAR_REVEAL_FOLDER_EVENT, handleRevealFolder as EventListener)
+    }
+  }, [expandNode])
 
   return null
 }
@@ -1831,6 +1883,7 @@ export function NotesTree({ onActionsReady, onTargetFolderChange }: NotesTreePro
           onReveal={handleRevealComplete}
           onClear={() => setPendingRevealNoteId(null)}
         />
+        <FolderRevealHandler />
         <TreeView>
           {/* Folders first */}
           {tree.folders.map((folder, index) =>

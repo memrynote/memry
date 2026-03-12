@@ -16,6 +16,7 @@ interface NoteLayoutProps {
   onHeadingClick?: (headingId: string) => void
   className?: string
   actions?: ReactNode
+  breadcrumb?: ReactNode
   stats?: OutlineInfoPanelProps['stats']
 }
 
@@ -27,6 +28,7 @@ export function NoteLayout({
   onHeadingClick,
   className,
   actions,
+  breadcrumb,
   stats
 }: NoteLayoutProps) {
   const { activeHeadingId } = useActiveHeading({
@@ -37,7 +39,12 @@ export function NoteLayout({
   return (
     <div className={cn('h-full w-full overflow-hidden flex flex-col relative', className)}>
       <div className="flex-1 overflow-y-auto overflow-x-visible">
-        {actions && <div className="flex justify-end px-4 pt-3 pb-0">{actions}</div>}
+        {(breadcrumb || actions) && (
+          <div className="flex items-center justify-between px-4 pt-3 pb-0">
+            <div className="flex items-center">{breadcrumb}</div>
+            <div className="flex items-center">{actions}</div>
+          </div>
+        )}
         <div className="mx-auto w-full max-w-4xl px-20 pt-6 pb-10">{children}</div>
       </div>
 
