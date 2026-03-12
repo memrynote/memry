@@ -1,4 +1,5 @@
 import { useMemo, useCallback } from 'react'
+import { FileText } from 'lucide-react'
 import { useTabs } from '@/contexts/tabs'
 
 interface BreadcrumbSegment {
@@ -9,6 +10,7 @@ interface BreadcrumbSegment {
 interface NoteBreadcrumbProps {
   notePath: string
   noteTitle: string
+  noteEmoji: string | null
 }
 
 function parseBreadcrumbSegments(notePath: string): BreadcrumbSegment[] {
@@ -27,7 +29,10 @@ function parseBreadcrumbSegments(notePath: string): BreadcrumbSegment[] {
 
 export const SIDEBAR_REVEAL_FOLDER_EVENT = 'sidebar:reveal-folder'
 
-export function NoteBreadcrumb({ notePath, noteTitle }: NoteBreadcrumbProps) {
+const CRUMB_CLASS =
+  'text-xs text-muted-foreground hover:bg-muted rounded-sm px-1 py-0.5 transition-colors cursor-pointer bg-transparent border-none'
+
+export function NoteBreadcrumb({ notePath, noteTitle, noteEmoji }: NoteBreadcrumbProps) {
   const { openTab } = useTabs()
 
   const segments = useMemo(() => parseBreadcrumbSegments(notePath), [notePath])
@@ -51,40 +56,35 @@ export function NoteBreadcrumb({ notePath, noteTitle }: NoteBreadcrumbProps) {
     [openTab]
   )
 
-  const handleRootClick = useCallback(() => {
-    window.dispatchEvent(
-      new CustomEvent(SIDEBAR_REVEAL_FOLDER_EVENT, { detail: { folderPath: '' } })
-    )
-  }, [])
+  if (segments.length === 0) return null
 
   return (
     <nav
       aria-label="Note location"
-      className="flex items-center gap-1.5 text-xs leading-4 select-none"
+      className="flex items-center gap-0.5 text-xs leading-4 select-none"
     >
-      <button
-        type="button"
-        onClick={handleRootClick}
-        className="text-xs text-muted-foreground/60 hover:text-muted-foreground transition-colors cursor-pointer bg-transparent border-none p-0"
-      >
-        Notes
-      </button>
-
-      {segments.map((segment) => (
+      {segments.map((segment, i) => (
         <span key={segment.folderPath} className="contents">
-          <span className="text-xs text-muted-foreground/40">/</span>
+          {i > 0 && <span className="text-xs text-muted-foreground/40 px-0.5">/</span>}
           <button
             type="button"
             onClick={() => handleFolderClick(segment.folderPath, segment.label)}
-            className="text-xs text-muted-foreground/60 hover:text-muted-foreground transition-colors cursor-pointer bg-transparent border-none p-0"
+            className={CRUMB_CLASS}
           >
             {segment.label}
           </button>
         </span>
       ))}
 
-      <span className="text-xs text-muted-foreground/40">/</span>
-      <span className="text-xs text-foreground/70 font-medium">{noteTitle}</span>
+      <span className="text-xs text-muted-foreground/40 px-0.5">/</span>
+      <span className="text-xs text-muted-foreground font-medium inline-flex items-center gap-1 hover:bg-muted rounded-sm px-1 py-0.5 transition-colors">
+        {noteEmoji ? (
+          <span className="text-xs">{noteEmoji}</span>
+        ) : (
+          <FileText className="h-3 w-3" />
+        )}
+        {noteTitle}
+      </span>
     </nav>
   )
 }

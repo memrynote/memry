@@ -799,12 +799,17 @@ export function NotePage({ noteId }: NotePageProps) {
       headings={headings}
       onHeadingClick={handleHeadingClick}
       actions={actionIcons}
+      breadcrumb={
+        <NoteBreadcrumb
+          notePath={note.path}
+          noteTitle={note.title}
+          noteEmoji={note.emoji ?? null}
+        />
+      }
       stats={documentStats}
     >
       {/* Note content */}
       <div className="flex flex-col gap-6">
-        <NoteBreadcrumb notePath={note.path} noteTitle={note.title} />
-
         {/* Title + Tags */}
         <div className="flex flex-col gap-4">
           <NoteTitle
