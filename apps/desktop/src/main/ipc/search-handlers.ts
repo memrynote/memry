@@ -2,16 +2,16 @@
 
 import { ipcMain } from 'electron'
 import { SearchChannels } from '@memry/contracts/ipc-channels'
-import { SearchQuerySchema, AddRecentSchema } from '@memry/contracts/search-api'
-import type { RecentSearch } from '@memry/contracts/search-api'
+import { SearchQuerySchema, AddReasonSchema } from '@memry/contracts/search-api'
+import type { SearchReason } from '@memry/contracts/search-api'
 import { createLogger } from '../lib/logger'
 import { createValidatedHandler, createHandler, createStringHandler } from './validate'
 import { getDatabase, getIndexDatabase } from '../database'
 import { generateId } from '../lib/id'
 import * as searchQueries from '@main/database/queries/search'
 import { rebuildAllIndexes } from '@main/database/fts-rebuild'
-import { recentSearches } from '@memry/db-schema/schema/recent-searches'
-import { eq, desc, sql } from 'drizzle-orm'
+import { searchReasons } from '@memry/db-schema/schema/search-reasons'
+import { eq, desc, sql, and } from 'drizzle-orm'
 
 const logger = createLogger('IPC:Search')
 
@@ -81,87 +81,107 @@ export function registerSearchHandlers(): void {
   )
 
   ipcMain.handle(
-    SearchChannels.invoke.GET_RECENT,
+    SearchChannels.invoke.GET_REASONS,
     createHandler(async () => {
       try {
         const db = getDatabase()
         const rows = db
           .select()
-          .from(recentSearches)
-          .orderBy(desc(recentSearches.searchedAt))
-          .limit(5)
+          .from(searchReasons)
+          .orderBy(desc(searchReasons.visitedAt))
+          .limit(20)
           .all()
 
         return rows.map(
-          (row): RecentSearch => ({
+          (row): SearchReason => ({
             id: row.id,
-            query: row.query,
-            resultCount: row.resultCount,
-            searchedAt: row.searchedAt
+            itemId: row.itemId,
+            itemType: row.itemType as SearchReason['itemType'],
+            itemTitle: row.itemTitle,
+            itemIcon: row.itemIcon ?? null,
+            searchQuery: row.searchQuery,
+            visitedAt: row.visitedAt
           })
         )
       } catch (error) {
-        logger.error('search:get-recent failed:', error)
+        logger.error('search:get-reasons failed:', error)
         return []
       }
     })
   )
 
   ipcMain.handle(
-    SearchChannels.invoke.ADD_RECENT,
-    createValidatedHandler(AddRecentSchema, async (input) => {
+    SearchChannels.invoke.ADD_REASON,
+    createValidatedHandler(AddReasonSchema, async (input) => {
       try {
         const db = getDatabase()
+        const now = new Date().toISOString()
+        const id = generateId()
+
+        db.insert(searchReasons)
+          .values({
+            id,
+            itemId: input.itemId,
+            itemType: input.itemType,
+            itemTitle: input.itemTitle,
+            itemIcon: input.itemIcon ?? null,
+            searchQuery: input.searchQuery,
+            visitedAt: now
+          })
+          .onConflictDoUpdate({
+            target: [searchReasons.itemType, searchReasons.itemId],
+            set: {
+              itemTitle: input.itemTitle,
+              itemIcon: input.itemIcon ?? null,
+              searchQuery: input.searchQuery,
+              visitedAt: now
+            }
+          })
+          .run()
 
         const count = db
           .select({ count: sql<number>`count(*)` })
-          .from(recentSearches)
+          .from(searchReasons)
           .get()
 
-        if (count && count.count >= 5) {
+        if (count && count.count > 20) {
           const oldest = db
-            .select({ id: recentSearches.id })
-            .from(recentSearches)
-            .orderBy(recentSearches.searchedAt)
+            .select({ id: searchReasons.id })
+            .from(searchReasons)
+            .orderBy(searchReasons.visitedAt)
             .limit(1)
             .get()
 
           if (oldest) {
-            db.delete(recentSearches).where(eq(recentSearches.id, oldest.id)).run()
+            db.delete(searchReasons).where(eq(searchReasons.id, oldest.id)).run()
           }
         }
 
-        const newEntry = {
-          id: generateId(),
-          query: input.query,
-          resultCount: input.resultCount
-        }
-
-        db.insert(recentSearches).values(newEntry).run()
-
         const inserted = db
           .select()
-          .from(recentSearches)
-          .where(eq(recentSearches.id, newEntry.id))
+          .from(searchReasons)
+          .where(
+            and(eq(searchReasons.itemType, input.itemType), eq(searchReasons.itemId, input.itemId))
+          )
           .get()
 
-        return inserted as RecentSearch
+        return inserted as SearchReason
       } catch (error) {
-        logger.error('search:add-recent failed:', error)
+        logger.error('search:add-reason failed:', error)
         throw error
       }
     })
   )
 
   ipcMain.handle(
-    SearchChannels.invoke.CLEAR_RECENT,
+    SearchChannels.invoke.CLEAR_REASONS,
     createHandler(async () => {
       try {
         const db = getDatabase()
-        db.delete(recentSearches).run()
+        db.delete(searchReasons).run()
         return { cleared: true as const }
       } catch (error) {
-        logger.error('search:clear-recent failed:', error)
+        logger.error('search:clear-reasons failed:', error)
         throw error
       }
     })
@@ -203,8 +223,8 @@ export function unregisterSearchHandlers(): void {
   ipcMain.removeHandler(SearchChannels.invoke.QUICK)
   ipcMain.removeHandler(SearchChannels.invoke.GET_STATS)
   ipcMain.removeHandler(SearchChannels.invoke.REBUILD_INDEX)
-  ipcMain.removeHandler(SearchChannels.invoke.GET_RECENT)
-  ipcMain.removeHandler(SearchChannels.invoke.ADD_RECENT)
-  ipcMain.removeHandler(SearchChannels.invoke.CLEAR_RECENT)
+  ipcMain.removeHandler(SearchChannels.invoke.GET_REASONS)
+  ipcMain.removeHandler(SearchChannels.invoke.ADD_REASON)
+  ipcMain.removeHandler(SearchChannels.invoke.CLEAR_REASONS)
   ipcMain.removeHandler(SearchChannels.invoke.GET_ALL_TAGS)
 }

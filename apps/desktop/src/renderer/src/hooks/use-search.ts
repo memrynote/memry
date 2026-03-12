@@ -3,7 +3,7 @@ import type {
   SearchResponse,
   SearchResultGroup,
   ContentType,
-  RecentSearch,
+  SearchReason,
   DateRange
 } from '@memry/contracts/search-api'
 import { searchService } from '@/services/search-service'
@@ -36,9 +36,9 @@ interface UseSearchReturn {
   error: string | null
   filters: UseSearchFilters
   setFilters: (f: UseSearchFilters) => void
-  recentSearches: RecentSearch[]
-  loadRecentSearches: () => void
-  clearRecentSearches: () => void
+  reasons: SearchReason[]
+  loadReasons: () => void
+  clearReasons: () => void
   reset: () => void
 }
 
@@ -54,27 +54,26 @@ export function useSearch(): UseSearchReturn {
     error: null
   })
   const [filters, setFilters] = useState<UseSearchFilters>(INITIAL_FILTERS)
-  const [recentSearches, setRecentSearches] = useState<RecentSearch[]>([])
+  const [reasons, setReasons] = useState<SearchReason[]>([])
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const abortRef = useRef(0)
-  const lastSavedQueryRef = useRef('')
 
   const setQuery = useCallback((q: string) => {
     const clamped = q.length > MAX_QUERY_LENGTH ? q.slice(0, MAX_QUERY_LENGTH) : q
     setState((prev) => ({ ...prev, query: clamped, error: null }))
   }, [])
 
-  const loadRecentSearches = useCallback(() => {
+  const loadReasons = useCallback(() => {
     searchService
-      .getRecent()
-      .then(setRecentSearches)
+      .getReasons()
+      .then(setReasons)
       .catch(() => {})
   }, [])
 
-  const clearRecentSearches = useCallback(() => {
+  const clearReasons = useCallback(() => {
     searchService
-      .clearRecent()
-      .then(() => setRecentSearches([]))
+      .clearReasons()
+      .then(() => setReasons([]))
       .catch(() => {})
   }, [])
 
@@ -120,13 +119,6 @@ export function useSearch(): UseSearchReturn {
           loading: false,
           error: null
         }))
-
-        if (response.totalCount > 0 && trimmed !== lastSavedQueryRef.current) {
-          lastSavedQueryRef.current = trimmed
-          searchService
-            .addRecent({ query: trimmed, resultCount: response.totalCount })
-            .catch(() => {})
-        }
       } catch (err) {
         if (abortRef.current !== requestId) return
         setState((prev) => ({
@@ -145,7 +137,6 @@ export function useSearch(): UseSearchReturn {
   const reset = useCallback(() => {
     abortRef.current++
     if (timerRef.current) clearTimeout(timerRef.current)
-    lastSavedQueryRef.current = ''
     setState({
       query: '',
       results: [],
@@ -167,9 +158,9 @@ export function useSearch(): UseSearchReturn {
     error: state.error,
     filters,
     setFilters,
-    recentSearches,
-    loadRecentSearches,
-    clearRecentSearches,
+    reasons,
+    loadReasons,
+    clearReasons,
     reset
   }
 }

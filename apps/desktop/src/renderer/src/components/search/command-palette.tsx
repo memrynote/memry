@@ -4,13 +4,15 @@ import { Search, Loader2 } from 'lucide-react'
 import type {
   SearchResultItem as SearchResultItemType,
   ContentType,
-  DateRange
+  DateRange,
+  SearchReason
 } from '@memry/contracts/search-api'
 import { useTabs } from '@/contexts/tabs'
 import { useSearch } from '@/hooks/use-search'
+import { searchService } from '@/services/search-service'
 import { SearchResultGroup } from './search-result-group'
 import { SearchFilters } from './search-filters'
-import { RecentSearches } from './recent-searches'
+import { RecentReasons } from './recent-reasons'
 
 interface CommandPaletteProps {
   open: boolean
@@ -35,15 +37,15 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps): Rea
     error,
     filters,
     setFilters,
-    recentSearches,
-    loadRecentSearches,
-    clearRecentSearches,
+    reasons,
+    loadReasons,
+    clearReasons,
     reset
   } = useSearch()
 
   useEffect(() => {
-    if (open) loadRecentSearches()
-  }, [open, loadRecentSearches])
+    if (open) loadReasons()
+  }, [open, loadReasons])
 
   const handleClose = useCallback(() => {
     onOpenChange(false)
@@ -123,11 +125,14 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps): Rea
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [open, handleToggleType])
 
-  const handleSelect = useCallback(
-    (item: SearchResultItemType) => {
-      handleClose()
-
-      switch (item.metadata.type) {
+  const openItemTab = useCallback(
+    (item: {
+      id: string
+      title: string
+      type: ContentType
+      metadata?: SearchResultItemType['metadata']
+    }) => {
+      switch (item.type) {
         case 'note':
           openTab({
             type: 'note',
@@ -141,12 +146,13 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps): Rea
             isDeleted: false
           })
           break
-        case 'journal':
+        case 'journal': {
+          const date = item.metadata?.type === 'journal' ? item.metadata.date : item.id
           openTab({
             type: 'journal',
-            title: `Journal — ${item.metadata.date}`,
+            title: `Journal — ${date}`,
             icon: 'book-open',
-            path: `/journal/${item.metadata.date}`,
+            path: `/journal/${date}`,
             entityId: item.id,
             isPinned: false,
             isModified: false,
@@ -154,6 +160,7 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps): Rea
             isDeleted: false
           })
           break
+        }
         case 'task':
           openTab({
             type: 'tasks',
@@ -166,7 +173,7 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps): Rea
             isDeleted: false,
             viewState: {
               focusTaskId: item.id,
-              projectId: item.metadata.projectId
+              projectId: item.metadata?.type === 'task' ? item.metadata.projectId : undefined
             }
           })
           break
@@ -185,7 +192,44 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps): Rea
           break
       }
     },
-    [handleClose, openTab]
+    [openTab]
+  )
+
+  const handleSelect = useCallback(
+    (item: SearchResultItemType) => {
+      handleClose()
+      openItemTab({
+        id: item.id,
+        title: item.title,
+        type: item.metadata.type,
+        metadata: item.metadata
+      })
+
+      const itemIcon = item.metadata.type === 'note' ? (item.metadata.emoji ?? null) : null
+
+      searchService
+        .addReason({
+          itemId: item.id,
+          itemType: item.metadata.type,
+          itemTitle: item.title,
+          itemIcon,
+          searchQuery: query
+        })
+        .catch(() => {})
+    },
+    [handleClose, openItemTab, query]
+  )
+
+  const handleReasonSelect = useCallback(
+    (reason: SearchReason) => {
+      handleClose()
+      openItemTab({
+        id: reason.itemId,
+        title: reason.itemTitle,
+        type: reason.itemType
+      })
+    },
+    [handleClose, openItemTab]
   )
 
   const hasQuery = query.trim().length > 0
@@ -258,10 +302,10 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps): Rea
             )}
 
             {!hasQuery && (
-              <RecentSearches
-                searches={recentSearches}
-                onSelect={setQuery}
-                onClear={clearRecentSearches}
+              <RecentReasons
+                reasons={reasons}
+                onSelect={handleReasonSelect}
+                onClear={clearReasons}
               />
             )}
 

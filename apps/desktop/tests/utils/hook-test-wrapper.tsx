@@ -112,9 +112,9 @@ interface MockSearchAPI {
   query: Mock
   quick: Mock
   suggestions: Mock
-  getRecent: Mock
-  addRecent: Mock
-  clearRecent: Mock
+  getReasons: Mock
+  addReason: Mock
+  clearReasons: Mock
   getStats: Mock
   rebuildIndex: Mock
 }
@@ -265,9 +265,9 @@ export function createMockAPI(config?: MockAPIConfig): Record<string, unknown> {
       query: vi.fn().mockResolvedValue({ results: [], total: 0, hasMore: false, queryTime: 0 }),
       quick: vi.fn().mockResolvedValue({ notes: [] }),
       suggestions: vi.fn().mockResolvedValue([]),
-      getRecent: vi.fn().mockResolvedValue([]),
-      addRecent: vi.fn().mockResolvedValue({ success: true }),
-      clearRecent: vi.fn().mockResolvedValue({ success: true }),
+      getReasons: vi.fn().mockResolvedValue([]),
+      addReason: vi.fn().mockResolvedValue({ success: true }),
+      clearReasons: vi.fn().mockResolvedValue({ success: true }),
       getStats: vi.fn().mockResolvedValue({ indexed: 0, pending: 0 }),
       rebuildIndex: vi.fn().mockResolvedValue({ success: true }),
       ...config?.search
