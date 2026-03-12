@@ -13,6 +13,7 @@ import * as schema from '@memry/db-schema/schema'
 import type { NoteFrontmatter } from './frontmatter'
 import {
   extractTags,
+  extractInlineTagsFromMarkdown,
   extractProperties,
   extractWikiLinks,
   calculateWordCount,
@@ -129,8 +130,9 @@ export interface NoteSyncOptions {
 export function extractNoteMetadata(input: NoteSyncInput): NoteMetadata {
   const { id, path, fileContent, frontmatter, parsedContent } = input
 
-  // Extract tags from frontmatter
-  const tags = extractTags(frontmatter)
+  const frontmatterTags = extractTags(frontmatter)
+  const inlineTags = extractInlineTagsFromMarkdown(parsedContent)
+  const tags = [...new Set([...frontmatterTags, ...inlineTags])]
 
   // Extract custom properties (non-reserved frontmatter fields)
   const properties = extractProperties(frontmatter)

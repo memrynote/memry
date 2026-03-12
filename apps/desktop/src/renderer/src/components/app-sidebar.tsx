@@ -2,7 +2,18 @@
 
 import * as React from 'react'
 import { useMemo, useState, useCallback, useRef } from 'react'
-import { BookOpen, CloudOff, Home, Inbox, ListTodo, Play, Plus, Search, Upload } from 'lucide-react'
+import {
+  BookOpen,
+  CloudOff,
+  GitGraph,
+  Home,
+  Inbox,
+  ListTodo,
+  Play,
+  Plus,
+  Search,
+  Upload
+} from 'lucide-react'
 import { toast } from 'sonner'
 
 import { cn } from '@/lib/utils'
@@ -16,11 +27,9 @@ import {
   SidebarGroup,
   SidebarHeader,
   SidebarMenu,
-  SidebarMenuBadge,
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarRail,
-  SidebarSeparator,
   useSidebar
 } from '@/components/ui/sidebar'
 import { SidebarSection } from '@/components/sidebar-section'
@@ -46,7 +55,6 @@ import { extractErrorMessage } from '@/lib/ipc-error'
 
 const log = createLogger('Component:AppSidebar')
 
-// Quick actions data with soft utility colors
 const quickActions = [
   {
     title: 'Search',
@@ -64,37 +72,17 @@ const quickActions = [
   }
 ]
 
-// Main navigation data - now includes Tasks
 const mainNav: {
   title: string
   page: AppPage
   icon: typeof Inbox
   iconColor: string
 }[] = [
-  {
-    title: 'Inbox',
-    page: 'inbox',
-    icon: Inbox,
-    iconColor: 'text-accent-cyan'
-  },
-  {
-    title: 'Home',
-    page: 'home',
-    icon: Home,
-    iconColor: 'text-accent-green'
-  },
-  {
-    title: 'Journal',
-    page: 'journal',
-    icon: BookOpen,
-    iconColor: 'text-accent-purple'
-  },
-  {
-    title: 'Tasks',
-    page: 'tasks',
-    icon: ListTodo,
-    iconColor: 'text-accent-orange'
-  }
+  { title: 'Inbox', page: 'inbox', icon: Inbox, iconColor: 'text-accent-cyan' },
+  { title: 'Home', page: 'home', icon: Home, iconColor: 'text-accent-green' },
+  { title: 'Journal', page: 'journal', icon: BookOpen, iconColor: 'text-accent-purple' },
+  { title: 'Tasks', page: 'tasks', icon: ListTodo, iconColor: 'text-accent-orange' },
+  { title: 'Graph', page: 'graph', icon: GitGraph, iconColor: 'text-accent-cyan' }
 ]
 
 function SidebarHeaderContent() {
@@ -102,12 +90,12 @@ function SidebarHeaderContent() {
   const isCollapsed = state === 'collapsed'
 
   return (
-    <SidebarHeader>
+    <SidebarHeader className="pt-3 pb-0 px-2 gap-1">
       {/* Drag region + Traffic lights for macOS */}
       <div
         className={cn(
-          'drag-region flex items-center h-8 shrink-0 transition-all duration-200',
-          isCollapsed ? 'justify-center px-0' : 'justify-start px-2'
+          'drag-region flex items-center shrink-0',
+          isCollapsed ? 'justify-center' : 'justify-start px-2.5'
         )}
       >
         <TrafficLights compact={isCollapsed} />
@@ -215,13 +203,15 @@ function AppSidebarInner({ currentPage, viewCounts, ...props }: AppSidebarProps)
       inbox: 'inbox',
       home: 'home',
       journal: 'journal',
-      tasks: 'tasks'
+      tasks: 'tasks',
+      graph: 'graph'
     }
     const pageToTitle: Record<AppPage, string> = {
       inbox: 'Inbox',
       home: 'Home',
       journal: 'Journal',
-      tasks: 'Tasks'
+      tasks: 'Tasks',
+      graph: 'Graph'
     }
 
     // Open as tab in active pane
@@ -271,12 +261,16 @@ function AppSidebarInner({ currentPage, viewCounts, ...props }: AppSidebarProps)
       {/* FIXED SECTION - Quick Actions & Main Nav (doesn't scroll) */}
       <div className="flex-shrink-0">
         {/* Quick Actions: Search & New */}
-        <SidebarGroup>
+        <SidebarGroup className="px-2 pt-1 pb-0">
           <SidebarMenu>
             {quickActions.map((action) => (
               <SidebarMenuItem key={action.title}>
                 <SidebarMenuButton
                   tooltip={action.title}
+                  className={cn(
+                    'rounded-md h-auto py-[7px] px-2.5 gap-2.5',
+                    action.action === 'search' && 'bg-black/[0.04] dark:bg-white/[0.04]'
+                  )}
                   onClick={
                     action.action === 'new'
                       ? handleNewNote
@@ -285,10 +279,12 @@ function AppSidebarInner({ currentPage, viewCounts, ...props }: AppSidebarProps)
                         : undefined
                   }
                 >
-                  <action.icon className={cn('size-4', action.iconColor)} />
-                  <span>{action.title}</span>
+                  <action.icon className={cn('size-[15px]', action.iconColor)} />
+                  <span className="text-[13px] leading-4 text-sidebar-foreground">
+                    {action.title}
+                  </span>
                   <KbdGroup className="ml-auto">
-                    <Kbd>{action.kbd}</Kbd>
+                    <Kbd className="text-[11px] leading-3.5 text-sidebar-muted">{action.kbd}</Kbd>
                   </KbdGroup>
                 </SidebarMenuButton>
               </SidebarMenuItem>
@@ -296,13 +292,10 @@ function AppSidebarInner({ currentPage, viewCounts, ...props }: AppSidebarProps)
           </SidebarMenu>
         </SidebarGroup>
 
-        <SidebarSeparator className="w-auto!" />
-
         {/* Main Navigation: Inbox, Home, Journal, Tasks */}
-        <SidebarGroup>
+        <SidebarGroup className="px-2 pt-1 pb-0">
           <SidebarMenu>
             {mainNav.map((item) => {
-              // Create SidebarItem to check active state from tab system
               const sidebarItem: SidebarItem = {
                 type: item.page as TabType,
                 title: item.title,
@@ -314,41 +307,44 @@ function AppSidebarInner({ currentPage, viewCounts, ...props }: AppSidebarProps)
                     tooltip={item.title}
                     isActive={isActiveItem(sidebarItem)}
                     onClick={handleNavClick(item.page)}
+                    className="rounded-md h-auto py-[7px] px-2.5 gap-2.5"
                   >
-                    <item.icon className={cn('size-4', item.iconColor)} />
-                    <span>{item.title}</span>
+                    <item.icon className={cn('size-[15px]', item.iconColor)} />
+                    <span className="text-[13px] leading-4 text-sidebar-foreground">
+                      {item.title}
+                    </span>
+                    {item.page === 'inbox' && inboxCount > 0 && (
+                      <span className="ml-auto flex items-center gap-1">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            handleNavClick('inbox')(e as unknown as React.MouseEvent)
+                            requestAnimationFrame(() => {
+                              window.dispatchEvent(new CustomEvent('memry:enter-triage'))
+                            })
+                          }}
+                          className="opacity-0 group-hover/menu-item:opacity-100 transition-opacity rounded p-0.5 hover:bg-accent"
+                          title="Process Inbox"
+                        >
+                          <Play className="size-3 text-muted-foreground" />
+                        </button>
+                        <span className="size-[18px] flex items-center justify-center rounded-full bg-sidebar-terracotta/15 text-sidebar-terracotta text-[10px] font-semibold leading-none">
+                          {inboxCount}
+                        </span>
+                      </span>
+                    )}
+                    {item.page === 'tasks' && todayTasksCount > 0 && (
+                      <span className="ml-auto size-[18px] flex items-center justify-center rounded-full bg-sidebar-terracotta/15 text-sidebar-terracotta text-[10px] font-semibold leading-none">
+                        {todayTasksCount}
+                      </span>
+                    )}
                   </SidebarMenuButton>
-                  {/* Show inbox count badge + process action for Inbox */}
-                  {item.page === 'inbox' && inboxCount > 0 && (
-                    <div className="flex items-center gap-1">
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          handleNavClick('inbox')(e as unknown as React.MouseEvent)
-                          requestAnimationFrame(() => {
-                            window.dispatchEvent(new CustomEvent('memry:enter-triage'))
-                          })
-                        }}
-                        className="opacity-0 group-hover/menu-item:opacity-100 transition-opacity rounded p-0.5 hover:bg-accent"
-                        title="Process Inbox"
-                      >
-                        <Play className="size-3 text-muted-foreground" />
-                      </button>
-                      <SidebarMenuBadge>{inboxCount}</SidebarMenuBadge>
-                    </div>
-                  )}
-                  {/* Show today's task count badge for Tasks */}
-                  {item.page === 'tasks' && todayTasksCount > 0 && (
-                    <SidebarMenuBadge>{todayTasksCount}</SidebarMenuBadge>
-                  )}
                 </SidebarMenuItem>
               )
             })}
           </SidebarMenu>
         </SidebarGroup>
-
-        <SidebarSeparator className="w-auto!" />
       </div>
 
       {/* SCROLLABLE SECTION - Collections, Bookmarks, Tags — entire area is drop target */}
@@ -421,7 +417,7 @@ function AppSidebarInner({ currentPage, viewCounts, ...props }: AppSidebarProps)
   return (
     <Sidebar collapsible="icon" {...props}>
       <SidebarHeaderContent />
-      <SidebarContent className="flex flex-col overflow-hidden">
+      <SidebarContent className="flex flex-col overflow-hidden gap-0">
         <SidebarDrillDownContainer>{mainContent}</SidebarDrillDownContainer>
       </SidebarContent>
       <SidebarFooter>

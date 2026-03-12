@@ -7,7 +7,6 @@ const DEFAULTS: GeneralSettingsDTO = {
   fontSize: 'medium',
   fontFamily: 'system',
   accentColor: '#6366f1',
-  reducedMotion: false,
   startOnBoot: false,
   language: 'en'
 }

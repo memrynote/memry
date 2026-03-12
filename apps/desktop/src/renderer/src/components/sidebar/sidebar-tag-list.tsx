@@ -5,10 +5,8 @@
  */
 
 import * as React from 'react'
-import { Tag } from 'lucide-react'
 
 import { cn } from '@/lib/utils'
-import { SidebarMenuItem, SidebarMenuButton } from '@/components/ui/sidebar'
 import { useNoteTagsQuery } from '@/hooks/use-notes-query'
 import { getTagColors } from '@/components/note/tags-row/tag-colors'
 
@@ -73,51 +71,39 @@ export function SidebarTagList({
   }
 
   return (
-    <div className={className}>
+    <div className={cn('pl-5 pr-2.5 flex flex-wrap gap-1.5', className)}>
       {visibleTags.map((tag) => {
         const colors = getTagColors(tag.color)
-        const isSelected = selectedTag === tag.tag
 
         return (
-          <SidebarMenuItem key={tag.tag}>
-            <SidebarMenuButton
-              tooltip={`${tag.tag} (${tag.count})`}
-              isActive={isSelected}
-              onClick={handleTagClick(tag.tag, tag.color)}
-              className="group"
-            >
-              {/* Tag color dot */}
-              <span
-                className="size-2.5 rounded-full shrink-0"
-                style={{ backgroundColor: colors.background, border: `1.5px solid ${colors.text}` }}
-                aria-hidden="true"
-              />
-
-              {/* Tag name */}
-              <span className="flex-1 truncate">{tag.tag}</span>
-
-              {/* Count badge */}
-              <span className="text-xs text-muted-foreground tabular-nums opacity-60 group-hover:opacity-100 transition-opacity">
-                {tag.count}
-              </span>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
+          <button
+            key={tag.tag}
+            type="button"
+            onClick={handleTagClick(tag.tag, tag.color)}
+            title={`${tag.tag} (${tag.count})`}
+            className={cn(
+              'rounded-xl py-0.5 px-2.5 text-[11px] font-medium leading-3.5',
+              'transition-opacity hover:opacity-80',
+              selectedTag === tag.tag && 'ring-1 ring-current'
+            )}
+            style={{
+              backgroundColor: `${colors.text}1A`,
+              color: colors.text
+            }}
+          >
+            {tag.tag}
+          </button>
         )
       })}
 
-      {/* Show more/less button */}
       {hasMore && (
-        <SidebarMenuItem>
-          <SidebarMenuButton
-            onClick={() => setShowAll(!showAll)}
-            className="text-muted-foreground hover:text-foreground"
-          >
-            <Tag className="size-3.5 opacity-50" />
-            <span className="text-xs">
-              {showAll ? 'Show less' : `+${sortedTags.length - maxVisible} more`}
-            </span>
-          </SidebarMenuButton>
-        </SidebarMenuItem>
+        <button
+          type="button"
+          onClick={() => setShowAll(!showAll)}
+          className="rounded-xl py-0.5 px-2.5 text-[11px] font-medium leading-3.5 text-sidebar-muted hover:text-sidebar-foreground transition-colors"
+        >
+          {showAll ? 'Show less' : `+${sortedTags.length - maxVisible} more`}
+        </button>
       )}
     </div>
   )

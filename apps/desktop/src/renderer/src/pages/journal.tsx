@@ -323,10 +323,15 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
   }, [entry])
 
   // Tags & Properties
+  const pendingTagColorsRef = useRef(new Map<string, string>())
+
   const tagColorMap = useMemo(() => {
     const map = new Map<string, string>()
     for (const t of allAvailableTags) {
       map.set(t.tag, t.color)
+    }
+    for (const key of pendingTagColorsRef.current.keys()) {
+      if (map.has(key)) pendingTagColorsRef.current.delete(key)
     }
     return map
   }, [allAvailableTags])
@@ -335,7 +340,7 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
     return (entry?.tags || []).map((tagName) => ({
       id: tagName,
       name: tagName,
-      color: tagColorMap.get(tagName) ?? 'stone'
+      color: tagColorMap.get(tagName) ?? pendingTagColorsRef.current.get(tagName) ?? 'stone'
     }))
   }, [entry?.tags, tagColorMap])
 
@@ -539,7 +544,8 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
   )
 
   const handleCreateTag = useCallback(
-    (name: string, _color: string) => {
+    (name: string, color: string) => {
+      pendingTagColorsRef.current.set(name.toLowerCase(), color)
       const currentTags = entryTagsRef.current
       if (!currentTags.includes(name)) {
         updateTags([...currentTags, name])

@@ -19,32 +19,32 @@ const FONT_FAMILY_MAP = {
 } as const
 
 export function useThemeSync(): void {
-  const { settings } = useGeneralSettings()
+  const { settings, isLoading } = useGeneralSettings()
   const { setTheme } = useTheme()
 
   useEffect(() => {
+    if (isLoading) return
     log.debug('Syncing theme:', settings.theme)
     setTheme(settings.theme)
-  }, [settings.theme, setTheme])
+  }, [isLoading, settings.theme, setTheme])
 
   useEffect(() => {
+    if (isLoading) return
     document.documentElement.style.setProperty('--user-accent-color', settings.accentColor)
-  }, [settings.accentColor])
+  }, [isLoading, settings.accentColor])
 
   useEffect(() => {
+    if (isLoading) return
     document.documentElement.style.fontSize = FONT_SIZE_MAP[settings.fontSize]
-  }, [settings.fontSize])
+  }, [isLoading, settings.fontSize])
 
   useEffect(() => {
+    if (isLoading) return
     const family = FONT_FAMILY_MAP[settings.fontFamily]
     if (family) {
       document.documentElement.style.setProperty('--font-sans', family)
     } else {
       document.documentElement.style.removeProperty('--font-sans')
     }
-  }, [settings.fontFamily])
-
-  useEffect(() => {
-    document.documentElement.classList.toggle('reduce-motion', settings.reducedMotion)
-  }, [settings.reducedMotion])
+  }, [isLoading, settings.fontFamily])
 }

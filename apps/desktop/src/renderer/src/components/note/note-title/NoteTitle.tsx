@@ -58,7 +58,7 @@ export function NoteTitle({
   )
 
   return (
-    <div className={cn('relative mb-4 flex items-start gap-3')}>
+    <div className={cn('relative flex items-center gap-3')}>
       {/* Emoji Section */}
       <div className="relative" onKeyDown={handleKeyDown}>
         <EmojiButton emoji={emoji} onClick={handleEmojiButtonClick} disabled={disabled} />
@@ -72,7 +72,7 @@ export function NoteTitle({
       </div>
 
       {/* Title Section */}
-      <div className="min-w-0 flex-1 pt-1">
+      <div className="min-w-0 flex-1">
         <TitleInput
           value={title}
           placeholder={placeholder}

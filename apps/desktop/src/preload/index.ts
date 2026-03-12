@@ -16,7 +16,8 @@ import {
   ReminderChannels,
   FolderViewChannels,
   PropertiesChannels,
-  SearchChannels
+  SearchChannels,
+  GraphChannels
 } from '@memry/contracts/ipc-channels'
 import { SYNC_CHANNELS, SYNC_EVENTS } from '@memry/contracts/ipc-sync'
 import type {
@@ -53,6 +54,62 @@ function invoke<C extends MainIpcInvokeChannel>(
   ...args: MainIpcInvokeArgs<C>
 ): Promise<MainIpcInvokeResult<C>> {
   return ipcRenderer.invoke(channel, ...args) as Promise<MainIpcInvokeResult<C>>
+}
+
+type StartupTheme = 'light' | 'dark' | 'system'
+const THEME_STORAGE_KEY = 'memry-theme'
+
+function getStartupThemeSync(): StartupTheme {
+  try {
+    return ipcRenderer.sendSync(SettingsChannels.sync.GET_STARTUP_THEME) as StartupTheme
+  } catch {
+    return 'system'
+  }
+}
+
+function resolveStartupTheme(theme: StartupTheme): 'light' | 'dark' {
+  if (theme === 'system') {
+    return typeof globalThis.window !== 'undefined' &&
+      typeof window.matchMedia === 'function' &&
+      window.matchMedia('(prefers-color-scheme: dark)').matches
+      ? 'dark'
+      : 'light'
+  }
+
+  return theme
+}
+
+function applyStartupTheme(savedTheme: StartupTheme): void {
+  const resolvedTheme = resolveStartupTheme(savedTheme)
+
+  const applyToRoot = (): boolean => {
+    const root = document.documentElement
+    if (!root) return false
+
+    root.classList.toggle('dark', resolvedTheme === 'dark')
+    root.style.colorScheme = resolvedTheme
+    return true
+  }
+
+  if (!applyToRoot()) {
+    window.addEventListener(
+      'DOMContentLoaded',
+      () => {
+        applyToRoot()
+      },
+      { once: true }
+    )
+  }
+}
+
+if (typeof globalThis.window !== 'undefined') {
+  const startupTheme = getStartupThemeSync()
+  try {
+    window.localStorage.setItem(THEME_STORAGE_KEY, startupTheme)
+  } catch {
+    // localStorage may be unavailable in some test or restricted environments
+  }
+  applyStartupTheme(startupTheme)
 }
 
 // Custom APIs for renderer
@@ -486,6 +543,7 @@ export const api = {
     setNoteEditorSettings: (settings: { toolbarMode?: 'floating' | 'sticky' }) =>
       invoke(SettingsChannels.invoke.SET_NOTE_EDITOR_SETTINGS, settings),
     // General Settings (theme, font, accent, etc.)
+    getStartupThemeSync,
     getGeneralSettings: () => invoke(SettingsChannels.invoke.GET_GENERAL_SETTINGS),
     setGeneralSettings: (settings: Record<string, unknown>) =>
       invoke(SettingsChannels.invoke.SET_GENERAL_SETTINGS, settings),
@@ -509,7 +567,11 @@ export const api = {
     // Backup Settings (auto-backup, frequency, etc.)
     getBackupSettings: () => invoke(SettingsChannels.invoke.GET_BACKUP_SETTINGS),
     setBackupSettings: (settings: Record<string, unknown>) =>
-      invoke(SettingsChannels.invoke.SET_BACKUP_SETTINGS, settings)
+      invoke(SettingsChannels.invoke.SET_BACKUP_SETTINGS, settings),
+
+    getGraphSettings: () => invoke(SettingsChannels.invoke.GET_GRAPH_SETTINGS),
+    setGraphSettings: (settings: Record<string, unknown>) =>
+      invoke(SettingsChannels.invoke.SET_GRAPH_SETTINGS, settings)
   },
 
   // Bookmarks API
@@ -687,6 +749,13 @@ export const api = {
     // Undo operations
     undoFile: (id: string) => invoke(InboxChannels.invoke.UNDO_FILE, id),
     undoArchive: (id: string) => invoke(InboxChannels.invoke.UNDO_ARCHIVE, id)
+  },
+
+  // Graph API
+  graph: {
+    getData: () => invoke(GraphChannels.invoke.GET_GRAPH_DATA),
+    getLocal: (params: { noteId: string; depth?: number }) =>
+      invoke(GraphChannels.invoke.GET_LOCAL_GRAPH, params)
   },
 
   // Search API

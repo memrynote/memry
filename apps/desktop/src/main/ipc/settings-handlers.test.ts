@@ -11,6 +11,10 @@ import { SettingsChannels } from '@memry/contracts/ipc-channels'
 const handleCalls: unknown[][] = []
 const removeHandlerCalls: string[] = []
 const mockSend = vi.fn()
+const syncListeners = new Map<
+  string,
+  (event: { returnValue: unknown }, ...args: unknown[]) => void
+>()
 
 vi.mock('electron', () => ({
   ipcMain: {
@@ -18,9 +22,17 @@ vi.mock('electron', () => ({
       handleCalls.push([channel, handler])
       mockIpcMain.handle(channel, handler as Parameters<typeof mockIpcMain.handle>[1])
     }),
+    on: vi.fn(
+      (channel: string, handler: (event: { returnValue: unknown }, ...args: unknown[]) => void) => {
+        syncListeners.set(channel, handler)
+      }
+    ),
     removeHandler: vi.fn((channel: string) => {
       removeHandlerCalls.push(channel)
       mockIpcMain.removeHandler(channel)
+    }),
+    removeAllListeners: vi.fn((channel: string) => {
+      syncListeners.delete(channel)
     })
   },
   BrowserWindow: {
@@ -55,12 +67,24 @@ import { getDatabase } from '../database'
 import * as settingsQueries from '@main/database/queries/settings'
 import * as embeddings from '../lib/embeddings'
 
+function invokeSyncHandler<T>(channel: string, ...args: unknown[]): T {
+  const listener = syncListeners.get(channel)
+  if (!listener) {
+    throw new Error(`No sync listener registered for channel: ${channel}`)
+  }
+
+  const event = { returnValue: undefined as unknown }
+  listener(event, ...args)
+  return event.returnValue as T
+}
+
 describe('settings-handlers', () => {
   beforeEach(() => {
     resetIpcMocks()
     vi.clearAllMocks()
     handleCalls.length = 0
     removeHandlerCalls.length = 0
+    syncListeners.clear()
     mockSend.mockClear()
     ;(getDatabase as Mock).mockReturnValue({})
   })
@@ -86,6 +110,15 @@ describe('settings-handlers', () => {
       key: 'settings.key',
       value: 'value-2'
     })
+  })
+
+  it('returns the startup theme synchronously', () => {
+    registerSettingsHandlers()
+    ;(settingsQueries.getSetting as Mock).mockReturnValue(JSON.stringify({ theme: 'light' }))
+
+    const result = invokeSyncHandler<string>(SettingsChannels.sync.GET_STARTUP_THEME)
+
+    expect(result).toBe('light')
   })
 
   it('returns defaults when no database is open', async () => {

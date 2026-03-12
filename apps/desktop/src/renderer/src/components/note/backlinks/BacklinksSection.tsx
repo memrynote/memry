@@ -152,13 +152,13 @@ export function BacklinksSection({
 
   return (
     <section
-      className={cn('mt-12 pt-6 border-t border-stone-200')}
+      className="flex flex-col pt-5 gap-3 border-t border-[#E8E5DF]"
       role="region"
       aria-label={`Backlinks section with ${backlinks.length} ${backlinks.length === 1 ? 'link' : 'links'}`}
       aria-busy={isLoading}
     >
       {/* Header */}
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex items-center justify-between">
         <button
           onClick={collapsible ? toggleCollapse : undefined}
           className={cn(
@@ -170,35 +170,21 @@ export function BacklinksSection({
           aria-label={isCollapsed ? 'Expand backlinks section' : 'Collapse backlinks section'}
           disabled={!collapsible}
         >
-          {collapsible && (
-            <span className="text-stone-400" aria-hidden="true">
-              {isCollapsed ? (
-                <ChevronRight className="h-4 w-4" />
-              ) : (
-                <ChevronDown className="h-4 w-4" />
-              )}
-            </span>
-          )}
-          <Link2 className="h-4 w-4 text-stone-400" aria-hidden="true" />
-          <span className="text-xs font-semibold uppercase tracking-wide text-stone-500">
-            Backlinks
+          <Link2 className="h-3.5 w-3.5 text-[#B5B0A6]" aria-hidden="true" />
+          <span className="text-[11px] tracking-[0.06em] uppercase text-[#B5B0A6] font-sans font-semibold leading-3.5">
+            {backlinks.length} Backlinks
           </span>
-          {backlinks.length > 0 && (
-            <span className="text-xs text-stone-400" aria-hidden="true">
-              ({backlinks.length})
-            </span>
-          )}
         </button>
 
-        {/* Sort dropdown - only show when not collapsed and has backlinks */}
+        {/* Sort dropdown */}
         {!isCollapsed && backlinks.length > 1 && (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button
                 className={cn(
                   'inline-flex items-center gap-1 px-2 py-1',
-                  'text-xs text-stone-500',
-                  'hover:text-stone-700 hover:bg-stone-100 rounded',
+                  'text-xs text-[#B5B0A6]',
+                  'hover:text-[#8A857A] hover:bg-[#F5F3EE] rounded',
                   'transition-colors duration-150'
                 )}
                 aria-label={`Sort backlinks by ${SORT_LABELS[sortBy]}`}
@@ -230,10 +216,16 @@ export function BacklinksSection({
           ) : backlinks.length === 0 ? (
             <BacklinksEmptyState />
           ) : (
-            <div className="space-y-2">
-              {visibleBacklinks.map((backlink) => (
-                <BacklinkCard key={backlink.id} backlink={backlink} onClick={handleBacklinkClick} />
-              ))}
+            <>
+              <div className="flex gap-2.5">
+                {visibleBacklinks.map((backlink) => (
+                  <BacklinkCard
+                    key={backlink.id}
+                    backlink={backlink}
+                    onClick={handleBacklinkClick}
+                  />
+                ))}
+              </div>
 
               {/* Show More Button */}
               {hasMore && remainingCount > 0 && (
@@ -242,8 +234,8 @@ export function BacklinksSection({
                     onClick={handleShowMore}
                     className={cn(
                       'w-full py-3',
-                      'text-[13px] text-stone-500',
-                      'hover:text-stone-700 hover:underline',
+                      'text-[13px] text-[#8A857A]',
+                      'hover:text-[#5C5850] hover:underline',
                       'transition-colors duration-150',
                       'cursor-pointer'
                     )}
@@ -254,7 +246,7 @@ export function BacklinksSection({
                   </button>
                 </div>
               )}
-            </div>
+            </>
           )}
         </div>
       )}

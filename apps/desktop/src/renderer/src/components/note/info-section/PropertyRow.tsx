@@ -18,26 +18,26 @@ function PropertyValueDisplay({ property }: { property: Property }) {
   const value = property.value
 
   if (value === null || value === undefined || value === '') {
-    return <span className="text-[13px] text-muted-foreground/50">Empty</span>
+    return <span className="text-[13px] text-[#B5B0A6] font-sans">Empty</span>
   }
 
   switch (property.type) {
     case 'date':
       return (
-        <span className="text-[13px] text-foreground">
+        <span className="text-[13px] text-[#3D3A35] font-sans leading-4">
           {format(new Date(value as string | number | Date), 'dd.MM.yyyy')}
         </span>
       )
 
     case 'url':
       return (
-        <span className="text-[13px] text-blue-600 truncate max-w-[200px] hover:underline hover:text-blue-700">
+        <span className="text-[13px] text-[#4882BB] font-sans leading-4 truncate max-w-[200px] hover:underline">
           {String(value)}
         </span>
       )
 
     default:
-      return <span className="text-[13px] text-foreground">{String(value)}</span>
+      return <span className="text-[13px] text-[#3D3A35] font-sans leading-4">{String(value)}</span>
   }
 }
 
@@ -225,18 +225,18 @@ export function PropertyRow({
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
       className={cn(
-        'flex items-start py-1',
+        'flex items-center py-[7px]',
         'transition-colors duration-150',
         isDragging && 'opacity-60 bg-muted/20 rounded'
       )}
     >
       <div
-        className="flex items-start"
+        className="flex items-center"
         onMouseEnter={() => setIsNameHovered(true)}
         onMouseLeave={() => setIsNameHovered(false)}
       >
-        {/* Icon / Drag Handle */}
-        <span className="mr-2 mt-0.5 flex-shrink-0 text-muted-foreground/40">
+        {/* Icon / Drag Handle — fixed w-5 slot */}
+        <div className="flex items-center w-5 shrink-0">
           {showDragHandle ? (
             <button
               type="button"
@@ -246,8 +246,8 @@ export function PropertyRow({
               aria-label={`Drag to reorder property: ${property.name}`}
               className={cn(
                 'flex items-center justify-center',
-                'cursor-grab text-muted-foreground/60',
-                'hover:text-muted-foreground',
+                'cursor-grab text-[#B5B0A6]',
+                'hover:text-[#8A857A]',
                 'active:cursor-grabbing',
                 'touch-none'
               )}
@@ -255,11 +255,11 @@ export function PropertyRow({
               <GripVertical className="h-3.5 w-3.5" />
             </button>
           ) : (
-            <IconComponent className="h-3.5 w-3.5" aria-hidden="true" />
+            <IconComponent className="h-3.5 w-3.5 text-[#B5B0A6]" aria-hidden="true" />
           )}
-        </span>
+        </div>
 
-        {/* Label */}
+        {/* Label — fixed w-24 slot */}
         {isEditingName ? (
           <input
             ref={nameInputRef}
@@ -269,10 +269,10 @@ export function PropertyRow({
             onBlur={handleEndNameEdit}
             onKeyDown={handleNameKeyDown}
             className={cn(
-              'w-24 flex-shrink-0',
-              'text-[13px] text-muted-foreground',
-              'bg-transparent border-b border-muted-foreground/30',
-              'focus:outline-none focus:border-muted-foreground/60',
+              'w-24 shrink-0',
+              'text-[13px] text-[#8A857A] font-sans',
+              'bg-transparent border-b border-[#B5B0A6]/30',
+              'focus:outline-none focus:border-[#8A857A]',
               'px-0 py-0'
             )}
             aria-label="Edit property name"
@@ -281,10 +281,10 @@ export function PropertyRow({
           <span
             onClick={onNameChange ? handleStartNameEdit : undefined}
             className={cn(
-              'w-24 flex-shrink-0',
-              'text-[13px] text-muted-foreground/60',
+              'w-24 shrink-0',
+              'text-[13px] text-[#8A857A] font-sans leading-4',
               'truncate',
-              onNameChange && !disabled && 'cursor-pointer hover:text-muted-foreground'
+              onNameChange && !disabled && 'cursor-pointer hover:text-[#5C5850]'
             )}
             title={property.name}
             role={onNameChange ? 'button' : undefined}
@@ -318,7 +318,7 @@ export function PropertyRow({
         }}
         className={cn(
           'flex-1 min-w-0 transition-colors rounded px-1 -mx-1',
-          !isEditing && property.type !== 'checkbox' && 'cursor-pointer hover:bg-muted/10'
+          !isEditing && property.type !== 'checkbox' && 'cursor-pointer hover:bg-[#F5F3EE]'
         )}
       >
         <PropertyValueRenderer
@@ -329,7 +329,7 @@ export function PropertyRow({
         />
       </div>
 
-      {/* Delete button (only for custom properties) - always rendered to prevent layout shift */}
+      {/* Delete button */}
       {property.isCustom && onDelete && (
         <button
           type="button"
@@ -337,7 +337,7 @@ export function PropertyRow({
           aria-label={`Delete property: ${property.name}`}
           className={cn(
             'ml-2 flex h-6 w-6 items-center justify-center',
-            'rounded text-muted-foreground/50',
+            'rounded text-[#B5B0A6]',
             'transition-all duration-150',
             'hover:bg-destructive/10 hover:text-destructive',
             isHovered && !isEditing ? 'opacity-100' : 'opacity-0 pointer-events-none'

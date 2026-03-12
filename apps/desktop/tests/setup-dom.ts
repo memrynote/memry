@@ -171,7 +171,8 @@ const createMockApi = () => ({
     loadAIModel: vi.fn().mockResolvedValue({ success: true }),
     reindexEmbeddings: vi.fn().mockResolvedValue({ success: true }),
     getTabSettings: vi.fn().mockResolvedValue({}),
-    setTabSettings: vi.fn().mockResolvedValue({ success: true })
+    setTabSettings: vi.fn().mockResolvedValue({ success: true }),
+    getStartupThemeSync: vi.fn().mockReturnValue('system')
   },
 
   // Inbox API

@@ -12,6 +12,7 @@
     "./cbor-ordering": "./src/cbor-ordering.ts",
     "./crypto": "./src/crypto.ts",
     "./folder-view-api": "./src/folder-view-api.ts",
+    "./graph-api": "./src/graph-api.ts",
     "./inbox-api": "./src/inbox-api.ts",
     "./ipc-attachments": "./src/ipc-attachments.ts",
     "./ipc-auth": "./src/ipc-auth.ts",

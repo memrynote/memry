@@ -1,6 +1,8 @@
-import { useState, useMemo, useCallback, useEffect } from 'react'
+import { useState, useMemo, useCallback, useEffect, useRef } from 'react'
 import type { DragEndEvent } from '@dnd-kit/core'
 import { arrayMove } from '@dnd-kit/sortable'
+import { useQueryClient } from '@tanstack/react-query'
+import { Loader2 } from 'lucide-react'
 import { AppSidebar } from '@/components/app-sidebar'
 import { Separator } from '@/components/ui/separator'
 import { SidebarInset, SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar'
@@ -17,7 +19,7 @@ import { ThemeProvider } from 'next-themes'
 
 // Tab System imports
 import { TabProvider, useTabs, getOrderedGroupWidths } from '@/contexts/tabs'
-import { useTabPersistence, useSessionRestore } from '@/contexts/tabs/persistence'
+import { useTabPersistence, useSessionRestore, STORAGE_KEY } from '@/contexts/tabs/persistence'
 import { TasksProvider } from '@/contexts/tasks'
 import { TabBarWithDrag, TabDragProvider, TabErrorBoundary } from '@/components/tabs'
 import { SplitViewContainer, SinglePaneContent } from '@/components/split-view'
@@ -42,11 +44,13 @@ import { notesService } from '@/services/notes-service'
 import { VaultOnboarding } from '@/components/vault-onboarding'
 import { useThemeSync } from '@/hooks/use-theme-sync'
 import { createLogger } from '@/lib/logger'
+import { getStartupTheme, THEME_STORAGE_KEY } from '@/lib/startup-theme'
 
 const log = createLogger('App')
+const startupTheme = getStartupTheme()
 
 // Base pages (non-task)
-export type BasePage = 'inbox' | 'home' | 'journal'
+export type BasePage = 'inbox' | 'home' | 'journal' | 'graph'
 
 // Task view type for navigation within tasks
 export type TaskViewId = 'all' | 'today' | 'completed'
@@ -248,6 +252,19 @@ function App(): React.JSX.Element {
   // Vault state - check if vault is open
   const { status: vaultStatus, isLoading: vaultLoading } = useVault()
   const isVaultOpen = vaultStatus?.isOpen ?? false
+  const vaultPath = vaultStatus?.path ?? null
+  const queryClient = useQueryClient()
+  const prevVaultPathRef = useRef<string | null>(null)
+
+  useEffect(() => {
+    if (!vaultPath) return
+    if (prevVaultPathRef.current && prevVaultPathRef.current !== vaultPath) {
+      queryClient.clear()
+      localStorage.removeItem(STORAGE_KEY)
+      log.info('Vault switched, cleared query cache and tab state')
+    }
+    prevVaultPathRef.current = vaultPath
+  }, [vaultPath, queryClient])
 
   // Navigation state
   // Note: navigation is now handled by tabs
@@ -500,12 +517,21 @@ function App(): React.JSX.Element {
   )
 
   if (vaultLoading) {
-    return <></>
+    return (
+      <div className="flex h-screen items-center justify-center bg-white dark:bg-gray-900">
+        <Loader2 className="size-6 animate-spin text-sidebar-terracotta" />
+      </div>
+    )
   }
 
   if (!isVaultOpen) {
     return (
-      <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+      <ThemeProvider
+        attribute="class"
+        defaultTheme={startupTheme}
+        enableSystem
+        storageKey={THEME_STORAGE_KEY}
+      >
         <VaultOnboarding />
         <Toaster />
       </ThemeProvider>
@@ -513,9 +539,14 @@ function App(): React.JSX.Element {
   }
 
   return (
-    <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+    <ThemeProvider
+      attribute="class"
+      defaultTheme={startupTheme}
+      enableSystem
+      storageKey={THEME_STORAGE_KEY}
+    >
       <ThemeSyncManager>
-        <SidebarProvider>
+        <SidebarProvider key={vaultPath}>
           <DragProvider
             tasks={tasks}
             selectedIds={selectedTaskIds}

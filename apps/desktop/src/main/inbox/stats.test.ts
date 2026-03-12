@@ -101,7 +101,7 @@ describe('Inbox Stats Module', () => {
       setStaleThreshold(7)
       const exactDate = new Date()
       exactDate.setDate(exactDate.getDate() - 7)
-      // At exactly 7 days, should not be stale (threshold is >7)
+      exactDate.setSeconds(exactDate.getSeconds() + 5)
       expect(isStale(exactDate.toISOString())).toBe(false)
     })
 

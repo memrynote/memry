@@ -1,4 +1,4 @@
-import { ChevronRight } from 'lucide-react'
+import { ChevronDown, ChevronRight } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 interface InfoHeaderProps {
@@ -21,21 +21,42 @@ export function InfoHeader({
         onClick={onToggle}
         aria-expanded={isExpanded}
         className={cn(
-          'flex items-center gap-2 py-1',
+          'w-full flex items-center rounded-md py-1.5 px-2 gap-2',
           'cursor-pointer select-none',
-          'group transition-opacity hover:opacity-80'
+          'transition-colors duration-150',
+          'hover:bg-[var(--surface-active)]/50'
         )}
       >
-        <ChevronRight
+        <div
           className={cn(
-            'h-3 w-3 text-stone-400',
-            'transition-transform duration-200',
-            isExpanded && 'rotate-90'
+            'w-[3px] h-3.5 shrink-0 rounded-xs transition-colors duration-150',
+            isExpanded ? 'bg-[#C45D3E]' : 'bg-transparent'
           )}
         />
-        <span className="text-[12px] font-medium text-stone-400">
-          Properties {propertyCount > 0 && <span className="opacity-60 ml-1">{propertyCount}</span>}
+        <ChevronRight
+          className={cn(
+            'h-3 w-3 shrink-0 transition-transform duration-150',
+            isExpanded ? 'text-[#C45D3E] rotate-90' : 'text-[#B5B0A6]'
+          )}
+        />
+        <span
+          className={cn(
+            'text-[12px] font-sans leading-4 transition-colors duration-150',
+            isExpanded ? 'text-[#C45D3E] font-medium' : 'text-[#5C5850]'
+          )}
+        >
+          Properties
         </span>
+        {propertyCount > 0 && (
+          <span
+            className={cn(
+              'text-[11px] font-sans leading-3.5 transition-colors duration-150',
+              isExpanded ? 'text-[#C45D3E]/60' : 'text-[#B5B0A6]'
+            )}
+          >
+            {propertyCount}
+          </span>
+        )}
       </button>
     )
   }
@@ -45,24 +66,43 @@ export function InfoHeader({
       type="button"
       onClick={onToggle}
       aria-expanded={isExpanded}
-      className={cn('flex items-center gap-2 py-2', 'cursor-pointer select-none', 'group')}
+      className={cn(
+        'w-full flex items-center rounded-md py-1.5 px-2 gap-2',
+        'cursor-pointer select-none',
+        'transition-colors duration-150',
+        'hover:bg-[var(--surface-active)]/50'
+      )}
     >
+      <div
+        className={cn(
+          'w-[3px] h-3.5 shrink-0 rounded-xs transition-colors duration-150',
+          isExpanded ? 'bg-[#C45D3E]' : 'bg-transparent'
+        )}
+      />
       <ChevronRight
         className={cn(
-          'h-3 w-3 text-stone-400',
-          'transition-transform duration-200',
-          isExpanded && 'rotate-90'
+          'h-3 w-3 shrink-0 transition-transform duration-150',
+          isExpanded ? 'text-[#C45D3E] rotate-90' : 'text-[#B5B0A6]'
         )}
       />
       <span
         className={cn(
-          'text-[13px] font-medium text-stone-500',
-          'transition-colors duration-150',
-          'group-hover:text-stone-700'
+          'text-[12px] font-sans leading-4 transition-colors duration-150',
+          isExpanded ? 'text-[#C45D3E] font-medium' : 'text-[#5C5850]'
         )}
       >
         Properties
       </span>
+      {propertyCount > 0 && (
+        <span
+          className={cn(
+            'text-[11px] font-sans leading-3.5 transition-colors duration-150',
+            isExpanded ? 'text-[#C45D3E]/60' : 'text-[#B5B0A6]'
+          )}
+        >
+          {propertyCount}
+        </span>
+      )}
     </button>
   )
 }
