@@ -261,14 +261,14 @@ function AppSidebarInner({ currentPage, viewCounts, ...props }: AppSidebarProps)
       {/* FIXED SECTION - Quick Actions & Main Nav (doesn't scroll) */}
       <div className="flex-shrink-0">
         {/* Quick Actions: Search & New */}
-        <SidebarGroup className="px-4">
+        <SidebarGroup className="px-2">
           <SidebarMenu>
             {quickActions.map((action) => (
               <SidebarMenuItem key={action.title}>
                 <SidebarMenuButton
                   tooltip={action.title}
                   className={cn(
-                    'rounded-lg h-auto py-2 px-2.5 gap-2.5',
+                    'rounded-md h-auto py-2 px-2.5 gap-2.5',
                     action.action === 'search' && 'bg-black/[0.04] dark:bg-white/[0.04]'
                   )}
                   onClick={
@@ -307,7 +307,7 @@ function AppSidebarInner({ currentPage, viewCounts, ...props }: AppSidebarProps)
                     tooltip={item.title}
                     isActive={isActiveItem(sidebarItem)}
                     onClick={handleNavClick(item.page)}
-                    className="rounded-lg h-auto py-[7px] px-2.5 gap-2.5"
+                    className="rounded-md h-auto py-[7px] px-2.5 gap-2.5"
                   >
                     <item.icon className={cn('size-[15px]', item.iconColor)} />
                     <span className="text-[13px] leading-4 text-sidebar-foreground">

@@ -188,10 +188,10 @@ export const OutlineInfoPanel = memo(function OutlineInfoPanel({
           style={
             isFadingOut
               ? {
-                opacity: 0,
-                transform: 'scale(0.98)',
-                transition: `opacity ${FADE_DURATION}ms ease, transform ${FADE_DURATION}ms ease`
-              }
+                  opacity: 0,
+                  transform: 'scale(0.98)',
+                  transition: `opacity ${FADE_DURATION}ms ease, transform ${FADE_DURATION}ms ease`
+                }
               : undefined
           }
         >
