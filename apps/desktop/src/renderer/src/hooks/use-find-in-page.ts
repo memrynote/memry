@@ -1,0 +1,211 @@
+import { useState, useEffect, useCallback, useRef, type RefObject } from 'react'
+
+interface FindInPageResult {
+  isOpen: boolean
+  query: string
+  matchCount: number
+  currentIndex: number
+  open: () => void
+  close: () => void
+  setQuery: (query: string) => void
+  next: () => void
+  prev: () => void
+  inputRef: RefObject<HTMLInputElement | null>
+}
+
+function findTextRanges(element: HTMLElement, query: string): Range[] {
+  const ranges: Range[] = []
+  const lowerQuery = query.toLowerCase()
+  const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT)
+
+  let node: Node | null
+  while ((node = walker.nextNode())) {
+    const text = node.textContent?.toLowerCase() ?? ''
+    let startPos = 0
+    while (startPos < text.length) {
+      const index = text.indexOf(lowerQuery, startPos)
+      if (index === -1) break
+      try {
+        const range = new Range()
+        range.setStart(node, index)
+        range.setEnd(node, index + query.length)
+        ranges.push(range)
+      } catch {
+        // Node may have been removed between TreeWalker iteration and Range creation
+      }
+      startPos = index + 1
+    }
+  }
+
+  return ranges
+}
+
+export function useFindInPage(
+  containerRef: RefObject<HTMLElement | null>,
+  enabled = true
+): FindInPageResult {
+  const [isOpen, setIsOpen] = useState(false)
+  const [query, setQueryState] = useState('')
+  const [matchCount, setMatchCount] = useState(0)
+  const [currentIndex, setCurrentIndex] = useState(-1)
+  const matchesRef = useRef<Range[]>([])
+  const inputRef = useRef<HTMLInputElement | null>(null)
+
+  const clearHighlights = useCallback(() => {
+    try {
+      CSS.highlights.delete('find-matches')
+      CSS.highlights.delete('find-current')
+    } catch {
+      // CSS Highlight API not supported
+    }
+  }, [])
+
+  const performSearch = useCallback(
+    (searchQuery: string) => {
+      clearHighlights()
+
+      if (!searchQuery || !containerRef.current) {
+        matchesRef.current = []
+        setMatchCount(0)
+        setCurrentIndex(-1)
+        return
+      }
+
+      const ranges = findTextRanges(containerRef.current, searchQuery)
+      matchesRef.current = ranges
+      setMatchCount(ranges.length)
+
+      if (ranges.length > 0) {
+        try {
+          CSS.highlights.set('find-matches', new Highlight(...ranges))
+        } catch {
+          // CSS Highlight API not supported
+        }
+        setCurrentIndex(0)
+      } else {
+        setCurrentIndex(-1)
+      }
+    },
+    [containerRef, clearHighlights]
+  )
+
+  useEffect(() => {
+    if (isOpen) performSearch(query)
+  }, [query, isOpen, performSearch])
+
+  // Highlight current match + scroll into view
+  useEffect(() => {
+    try {
+      CSS.highlights.delete('find-current')
+    } catch {
+      return
+    }
+
+    const matches = matchesRef.current
+    if (currentIndex >= 0 && currentIndex < matches.length) {
+      try {
+        CSS.highlights.set('find-current', new Highlight(matches[currentIndex]))
+        const el = matches[currentIndex].startContainer.parentElement
+        el?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      } catch {
+        // Range may have been invalidated
+      }
+    }
+  }, [currentIndex])
+
+  // Re-search when editor DOM mutates while find bar is open
+  useEffect(() => {
+    if (!isOpen || !query || !containerRef.current) return
+
+    let timeoutId: ReturnType<typeof setTimeout>
+    const observer = new MutationObserver(() => {
+      clearTimeout(timeoutId)
+      timeoutId = setTimeout(() => performSearch(query), 300)
+    })
+
+    observer.observe(containerRef.current, {
+      childList: true,
+      subtree: true,
+      characterData: true
+    })
+
+    return () => {
+      clearTimeout(timeoutId)
+      observer.disconnect()
+    }
+  }, [isOpen, query, containerRef, performSearch])
+
+  const open = useCallback(() => {
+    setIsOpen(true)
+    requestAnimationFrame(() => {
+      inputRef.current?.focus()
+      inputRef.current?.select()
+    })
+  }, [])
+
+  const close = useCallback(() => {
+    setIsOpen(false)
+    setQueryState('')
+    clearHighlights()
+    matchesRef.current = []
+    setMatchCount(0)
+    setCurrentIndex(-1)
+  }, [clearHighlights])
+
+  const setQuery = useCallback((q: string) => {
+    setQueryState(q)
+  }, [])
+
+  const next = useCallback(() => {
+    const len = matchesRef.current.length
+    if (len === 0) return
+    setCurrentIndex((i) => (i + 1) % len)
+  }, [])
+
+  const prev = useCallback(() => {
+    const len = matchesRef.current.length
+    if (len === 0) return
+    setCurrentIndex((i) => (i - 1 + len) % len)
+  }, [])
+
+  // Cmd+F / Ctrl+F shortcut
+  useEffect(() => {
+    if (!enabled) return
+
+    const handler = (e: KeyboardEvent) => {
+      const isMac = navigator.platform.toUpperCase().includes('MAC')
+      const modifier = isMac ? e.metaKey : e.ctrlKey
+      if (modifier && e.key.toLowerCase() === 'f') {
+        e.preventDefault()
+        e.stopPropagation()
+        if (isOpen) {
+          inputRef.current?.focus()
+          inputRef.current?.select()
+        } else {
+          open()
+        }
+      }
+    }
+
+    window.addEventListener('keydown', handler, { capture: true })
+    return () => window.removeEventListener('keydown', handler, { capture: true })
+  }, [enabled, isOpen, open])
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => clearHighlights()
+  }, [clearHighlights])
+
+  return {
+    isOpen,
+    query,
+    matchCount,
+    currentIndex,
+    open,
+    close,
+    setQuery,
+    next,
+    prev,
+    inputRef
+  }
+}

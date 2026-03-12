@@ -5,7 +5,7 @@
  * Right: Mini calendar + Schedule + Tasks + AI Connections
  */
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type RefObject } from 'react'
 import { cn } from '@/lib/utils'
 import { Loader2, FileText } from 'lucide-react'
 import {
@@ -63,6 +63,8 @@ import { parseConnectionDate } from '@/services/ai-connections-service'
 import { journalService } from '@/services/journal-service'
 import { useIsBookmarked } from '@/hooks/use-bookmarks'
 import { createLogger } from '@/lib/logger'
+import { FindBar } from '@/components/find-bar/find-bar'
+import { useFindInPage } from '@/hooks/use-find-in-page'
 
 const log = createLogger('Page:Journal')
 
@@ -241,6 +243,14 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
 
   // View state for navigation
   const [viewState, setViewState] = useState<JournalViewState>({ type: 'day', date: initialDate })
+
+  // Find in page (Cmd+F)
+  const editorContainerRef = useRef<HTMLDivElement>(null)
+  const isActiveJournal = activeTab?.type === 'journal'
+  const findInPage = useFindInPage(
+    editorContainerRef as RefObject<HTMLElement | null>,
+    isActiveJournal && viewState.type === 'day'
+  )
 
   // Date parts and heatmap
   const isToday = selectedDate === today
@@ -730,6 +740,17 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
       <div className={cn('flex h-full w-full overflow-hidden bg-background', className)}>
         {/* Main Content Area */}
         <main className={cn('flex-1 min-w-0 h-full relative transition-all duration-500 ease-out')}>
+          <FindBar
+            isOpen={findInPage.isOpen}
+            query={findInPage.query}
+            matchCount={findInPage.matchCount}
+            currentIndex={findInPage.currentIndex}
+            inputRef={findInPage.inputRef}
+            onQueryChange={findInPage.setQuery}
+            onNext={findInPage.next}
+            onPrev={findInPage.prev}
+            onClose={findInPage.close}
+          />
           <div className={cn('h-full overflow-y-auto')}>
             <div className={cn('mx-auto min-h-full flex flex-col pt-0 pb-10 lg:pb-16')}>
               {/* Header */}
@@ -862,6 +883,7 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
                       )}
 
                       <div
+                        ref={editorContainerRef}
                         role="presentation"
                         className={cn(
                           'editor-click-area min-h-[300px] relative transition-all duration-500 ease-in-out overflow-visible',
