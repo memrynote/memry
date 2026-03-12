@@ -52,7 +52,6 @@ function NoteMetadata({
 }): React.JSX.Element {
   return (
     <div className="flex items-center gap-2 text-xs text-gray-400 dark:text-gray-500 mt-0.5">
-      {meta.emoji && <span>{meta.emoji}</span>}
       <span className="truncate max-w-48">{meta.path}</span>
       {meta.tags.length > 0 && (
         <span className="flex items-center gap-1">
@@ -150,6 +149,7 @@ export function SearchResultItem({
   onSelect
 }: SearchResultItemProps): React.JSX.Element {
   const Icon = TYPE_ICONS[item.type]
+  const noteEmoji = item.metadata.type === 'note' ? item.metadata.emoji : null
 
   return (
     <Command.Item
@@ -159,7 +159,13 @@ export function SearchResultItem({
         data-[selected=true]:bg-gray-100 dark:data-[selected=true]:bg-gray-800
         transition-colors duration-75"
     >
-      <Icon className="size-4 shrink-0 mt-0.5 text-gray-400 dark:text-gray-500" />
+      {noteEmoji ? (
+        <span className="size-4 shrink-0 mt-0.5 text-sm leading-none flex items-center justify-center">
+          {noteEmoji}
+        </span>
+      ) : (
+        <Icon className="size-4 shrink-0 mt-0.5 text-gray-400 dark:text-gray-500" />
+      )}
       <div className="flex-1 min-w-0">
         <div className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
           <HighlightedText text={item.title} query={query} />

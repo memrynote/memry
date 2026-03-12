@@ -790,12 +790,12 @@ export const SearchChannels = {
     GET_STATS: 'search:get-stats',
     /** Trigger full index rebuild (all types) */
     REBUILD_INDEX: 'search:rebuild-index',
-    /** Get recent search history */
-    GET_RECENT: 'search:get-recent',
-    /** Add a search to recent history */
-    ADD_RECENT: 'search:add-recent',
-    /** Clear all recent search history */
-    CLEAR_RECENT: 'search:clear-recent',
+    /** Get search reasons (visited items) */
+    GET_REASONS: 'search:get-reasons',
+    /** Add a search reason (item visited from search) */
+    ADD_REASON: 'search:add-reason',
+    /** Clear all search reasons */
+    CLEAR_REASONS: 'search:clear-reasons',
     /** Get all tags across all content types */
     GET_ALL_TAGS: 'search:get-all-tags'
   },

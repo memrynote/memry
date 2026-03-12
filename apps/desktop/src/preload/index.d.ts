@@ -1617,7 +1617,7 @@ import type {
   SearchResponse,
   QuickSearchResponse,
   SearchStats,
-  RecentSearch,
+  SearchReason,
   IndexRebuildProgress
 } from '@memry/contracts/search-api'
 
@@ -1635,9 +1635,14 @@ export interface SearchClientAPI {
   quick(text: string): Promise<QuickSearchResponse>
   getStats(): Promise<SearchStats>
   rebuildIndex(): Promise<{ started: true }>
-  getRecent(): Promise<RecentSearch[]>
-  addRecent(params: { query: string; resultCount: number }): Promise<RecentSearch>
-  clearRecent(): Promise<{ cleared: true }>
+  getReasons(): Promise<SearchReason[]>
+  addReason(params: {
+    itemId: string
+    itemType: 'note' | 'journal' | 'task' | 'inbox'
+    itemTitle: string
+    searchQuery: string
+  }): Promise<SearchReason>
+  clearReasons(): Promise<{ cleared: true }>
   getAllTags(): Promise<string[]>
 }
 

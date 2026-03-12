@@ -3,7 +3,8 @@ import type {
   SearchResponse,
   QuickSearchResponse,
   SearchStats,
-  RecentSearch,
+  SearchReason,
+  AddReasonInput,
   IndexRebuildProgress
 } from '@memry/contracts/search-api'
 
@@ -24,16 +25,16 @@ export const searchService = {
     return window.api.search.rebuildIndex()
   },
 
-  getRecent(): Promise<RecentSearch[]> {
-    return window.api.search.getRecent()
+  getReasons(): Promise<SearchReason[]> {
+    return window.api.search.getReasons()
   },
 
-  addRecent(params: { query: string; resultCount: number }): Promise<RecentSearch> {
-    return window.api.search.addRecent(params)
+  addReason(params: AddReasonInput): Promise<SearchReason> {
+    return window.api.search.addReason(params)
   },
 
-  clearRecent(): Promise<{ cleared: true }> {
-    return window.api.search.clearRecent()
+  clearReasons(): Promise<{ cleared: true }> {
+    return window.api.search.clearReasons()
   },
 
   getAllTags(): Promise<string[]> {

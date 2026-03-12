@@ -6,7 +6,8 @@ export function useSearchShortcut(onToggle: () => void): void {
       const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0
       const modifier = isMac ? e.metaKey : e.ctrlKey
 
-      if (modifier && e.key.toLowerCase() === 'k') {
+      const key = e.key.toLowerCase()
+      if (modifier && (key === 'k' || key === 'p')) {
         e.preventDefault()
         e.stopPropagation()
         onToggle()
