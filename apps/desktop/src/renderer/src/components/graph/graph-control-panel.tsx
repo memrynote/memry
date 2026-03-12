@@ -10,7 +10,8 @@ import {
   ListChecks,
   FolderOpen,
   Tag,
-  Unlink
+  Unlink,
+  Settings
 } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
@@ -64,7 +65,7 @@ export function GraphControlPanel({
   settings,
   updateSettings
 }: GraphControlPanelProps): React.JSX.Element {
-  const [isOpen, setIsOpen] = useState(true)
+  const [isOpen, setIsOpen] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
@@ -83,31 +84,26 @@ export function GraphControlPanel({
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [filterState.searchQuery, dispatch])
 
-  if (!isOpen) {
-    return (
-      <div className="absolute right-3 top-3 z-40">
-        <Button
-          variant="outline"
-          size="sm"
-          className="h-8 w-8 p-0 bg-popover/95 backdrop-blur-sm shadow-card"
-          onClick={() => setIsOpen(true)}
-        >
-          <ChevronRight className="size-4 text-muted-foreground rotate-180" />
-        </Button>
-      </div>
-    )
-  }
-
   return (
-    <div className="absolute right-0 top-0 bottom-0 z-40 w-[260px] border-l border-border bg-popover/95 backdrop-blur-sm overflow-y-auto">
-      <div className="p-3 space-y-0.5">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-2">
-          <span className="text-xs font-medium text-foreground tracking-wide uppercase">
-            Graph Controls
-          </span>
-          <div className="flex items-center gap-1">
-            {isFiltered && (
+    <>
+      {/* Gear toggle — always visible */}
+      <button
+        onClick={() => setIsOpen((v) => !v)}
+        className="absolute right-3 top-3 z-50 flex size-8 items-center justify-center rounded-md border border-border bg-popover/95 backdrop-blur-sm shadow-card transition-colors hover:bg-accent"
+        title={isOpen ? 'Hide settings' : 'Graph settings'}
+      >
+        <Settings
+          className={`size-4 text-muted-foreground transition-transform duration-300 ${isOpen ? 'rotate-90' : ''}`}
+        />
+      </button>
+
+      {/* Sliding drawer */}
+      <div
+        className={`absolute right-0 top-0 bottom-0 z-40 w-[260px] border-l border-border bg-popover/95 backdrop-blur-sm overflow-y-auto transition-transform duration-250 ease-out ${isOpen ? 'translate-x-0' : 'translate-x-full'}`}
+      >
+        <div className="p-3 space-y-0.5">
+          {isFiltered && (
+            <div className="flex justify-end mb-2">
               <Button
                 variant="ghost"
                 size="sm"
@@ -117,112 +113,93 @@ export function GraphControlPanel({
               >
                 <RotateCcw className="size-3 text-muted-foreground" />
               </Button>
-            )}
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-6 w-6 p-0"
-              onClick={() => setIsOpen(false)}
-              title="Close panel"
-            >
-              <X className="size-3.5 text-muted-foreground" />
-            </Button>
-          </div>
-        </div>
-
-        {/* Focus indicator */}
-        {filterState.focusNodeId && focusLabel && (
-          <div className="rounded-md border border-accent-cyan/30 bg-accent-cyan/5 px-2.5 py-1.5 mb-2 flex items-center gap-2">
-            <Focus className="size-3.5 text-accent-cyan shrink-0" />
-            <span className="text-xs text-foreground truncate">{focusLabel}</span>
-            <span className="text-[10px] text-muted-foreground shrink-0">
-              depth {filterState.focusDepth}
-            </span>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-5 w-5 p-0 ml-auto shrink-0"
-              onClick={() => dispatch({ type: 'CLEAR_FOCUS' })}
-            >
-              <X className="size-3 text-muted-foreground" />
-            </Button>
-          </div>
-        )}
-
-        {/* Filters section */}
-        <PanelSection title="Filters" defaultOpen>
-          <div className="space-y-2.5">
-            <div className="relative">
-              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground pointer-events-none" />
-              <Input
-                ref={inputRef}
-                placeholder="Search nodes..."
-                className="h-8 pl-8 pr-8 text-xs bg-background border-border"
-                value={filterState.searchQuery}
-                onChange={(e) => dispatch({ type: 'SET_SEARCH_QUERY', query: e.target.value })}
-              />
-              {filterState.searchQuery && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="absolute right-1 top-1/2 -translate-y-1/2 h-5 w-5 p-0"
-                  onClick={() => dispatch({ type: 'SET_SEARCH_QUERY', query: '' })}
-                >
-                  <X className="size-3 text-muted-foreground" />
-                </Button>
-              )}
             </div>
+          )}
 
-            {ENTITY_FILTERS.map(({ key, label, icon: Icon, colorVar }) => {
-              const isOrphan = key === 'showOrphans'
-              const checked = isOrphan ? filterState.showOrphans : (filterState[key] as boolean)
-              return (
-                <div key={key} className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Icon
-                      className="size-3.5"
-                      style={colorVar ? { color: `var(${colorVar})` } : undefined}
+          {/* Focus indicator */}
+          {filterState.focusNodeId && focusLabel && (
+            <div className="rounded-md border border-accent-cyan/30 bg-accent-cyan/5 px-2.5 py-1.5 mb-2 flex items-center gap-2">
+              <Focus className="size-3.5 text-accent-cyan shrink-0" />
+              <span className="text-xs text-foreground truncate">{focusLabel}</span>
+              <span className="text-[10px] text-muted-foreground shrink-0">
+                depth {filterState.focusDepth}
+              </span>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-5 w-5 p-0 ml-auto shrink-0"
+                onClick={() => dispatch({ type: 'CLEAR_FOCUS' })}
+              >
+                <X className="size-3 text-muted-foreground" />
+              </Button>
+            </div>
+          )}
+
+          {/* Filters section */}
+          <PanelSection title="Filters" defaultOpen>
+            <div className="space-y-2.5">
+              <div className="relative">
+                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground pointer-events-none" />
+                <Input
+                  ref={inputRef}
+                  placeholder="Search nodes..."
+                  className="h-8 pl-8 pr-8 text-xs bg-background border-border"
+                  value={filterState.searchQuery}
+                  onChange={(e) => dispatch({ type: 'SET_SEARCH_QUERY', query: e.target.value })}
+                />
+                {filterState.searchQuery && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="absolute right-1 top-1/2 -translate-y-1/2 h-5 w-5 p-0"
+                    onClick={() => dispatch({ type: 'SET_SEARCH_QUERY', query: '' })}
+                  >
+                    <X className="size-3 text-muted-foreground" />
+                  </Button>
+                )}
+              </div>
+
+              {ENTITY_FILTERS.map(({ key, label, icon: Icon, colorVar }) => {
+                const isOrphan = key === 'showOrphans'
+                const checked = isOrphan ? filterState.showOrphans : (filterState[key] as boolean)
+                return (
+                  <div key={key} className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Icon
+                        className="size-3.5"
+                        style={colorVar ? { color: `var(${colorVar})` } : undefined}
+                      />
+                      <Label className="text-xs text-foreground font-normal">{label}</Label>
+                    </div>
+                    <Switch
+                      checked={checked}
+                      onCheckedChange={() => {
+                        if (isOrphan) {
+                          dispatch({ type: 'TOGGLE_ORPHANS' })
+                        } else {
+                          dispatch({ type: 'TOGGLE_ENTITY_TYPE', entityType: KEY_TO_ENTITY[key] })
+                        }
+                      }}
                     />
-                    <Label className="text-xs text-foreground font-normal">{label}</Label>
                   </div>
-                  <Switch
-                    checked={checked}
-                    onCheckedChange={() => {
-                      if (isOrphan) {
-                        dispatch({ type: 'TOGGLE_ORPHANS' })
-                      } else {
-                        dispatch({ type: 'TOGGLE_ENTITY_TYPE', entityType: KEY_TO_ENTITY[key] })
-                      }
-                    }}
-                  />
-                </div>
-              )
-            })}
-          </div>
-        </PanelSection>
+                )
+              })}
+            </div>
+          </PanelSection>
 
-        {/* Display section */}
-        <PanelSection title="Display" defaultOpen>
-          <div className="space-y-3">
-            <FilterSwitch
-              label="Show labels"
-              checked={settings.showLabels}
-              onCheckedChange={(v) => updateSettings({ showLabels: v })}
-            />
-            <FilterSwitch
-              label="Edge labels"
-              checked={settings.showEdgeLabels}
-              onCheckedChange={(v) => updateSettings({ showEdgeLabels: v })}
-            />
-            <FilterSwitch
-              label="Tag nodes"
-              checked={settings.showTagEdges}
-              onCheckedChange={(v) => updateSettings({ showTagEdges: v })}
-            />
-          </div>
-        </PanelSection>
+          {/* Display section */}
+          <PanelSection title="Display" defaultOpen>
+            <div className="space-y-3">
+              <FilterSwitch
+                label="Show labels"
+                checked={settings.showLabels}
+                onCheckedChange={(v) => updateSettings({ showLabels: v })}
+              />
+            </div>
+          </PanelSection>
+        </div>
       </div>
-    </div>
+    </>
   )
 }
 

@@ -218,7 +218,7 @@ export function GraphCanvas({
       labelRenderedSizeThreshold: graphSettings.showLabels ? 6 : Infinity,
       labelSize: 12,
       defaultEdgeType: 'line' as const,
-      renderEdgeLabels: graphSettings.showEdgeLabels,
+      renderEdgeLabels: false,
       minEdgeThickness: 0.5
     }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -234,7 +234,6 @@ export function GraphCanvas({
           nodeReducer={nodeReducer}
           edgeReducer={edgeReducer}
           showLabels={graphSettings.showLabels}
-          showEdgeLabels={graphSettings.showEdgeLabels}
         />
         <HoverFadeAnimator
           hoveredNode={hoveredNode}
@@ -410,13 +409,11 @@ function HoverFadeAnimator({
 function SigmaSettingsSync({
   nodeReducer,
   edgeReducer,
-  showLabels,
-  showEdgeLabels
+  showLabels
 }: {
   nodeReducer: (node: string, attrs: Record<string, unknown>) => Partial<NodeDisplayData>
   edgeReducer: (edge: string, attrs: Record<string, unknown>) => Partial<EdgeDisplayData>
   showLabels: boolean
-  showEdgeLabels: boolean
 }): null {
   const sigma = useSigma()
 
@@ -431,10 +428,6 @@ function SigmaSettingsSync({
   useEffect(() => {
     sigma.setSetting('labelRenderedSizeThreshold', showLabels ? 6 : Infinity)
   }, [sigma, showLabels])
-
-  useEffect(() => {
-    sigma.setSetting('renderEdgeLabels', showEdgeLabels)
-  }, [sigma, showEdgeLabels])
 
   return null
 }
