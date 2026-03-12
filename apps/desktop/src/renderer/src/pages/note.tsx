@@ -47,6 +47,7 @@ import { extractErrorMessage } from '@/lib/ipc-error'
 import { createLogger } from '@/lib/logger'
 import { LocalGraphPanel } from '@/components/graph/local-graph-panel'
 import { graphKeys } from '@/hooks/use-graph-data'
+import { NoteBreadcrumb } from '@/components/note/note-breadcrumb'
 
 const log = createLogger('Page:Note')
 
@@ -798,6 +799,13 @@ export function NotePage({ noteId }: NotePageProps) {
       headings={headings}
       onHeadingClick={handleHeadingClick}
       actions={actionIcons}
+      breadcrumb={
+        <NoteBreadcrumb
+          notePath={note.path}
+          noteTitle={note.title}
+          noteEmoji={note.emoji ?? null}
+        />
+      }
       stats={documentStats}
     >
       {/* Note content */}
