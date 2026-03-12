@@ -3,7 +3,7 @@
 All notable changes to memry are documented here.
 Format: date-based entries grouped by merged PR.
 
-## 2026-03-12 — Graph View
+## 2026-03-12 — Graph View (#100)
 
 ### Added
 - Add interactive knowledge graph with note/tag/project nodes, filtering panel, and local graph sidebar
