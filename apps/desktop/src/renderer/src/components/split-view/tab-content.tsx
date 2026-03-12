@@ -23,6 +23,7 @@ import { FolderViewPage } from '@/pages/folder-view'
 import { SettingsPage } from '@/pages/settings'
 import { TemplateEditorPage } from '@/pages/template-editor'
 import { TemplatesPage } from '@/pages/templates'
+import { GraphPage } from '@/components/graph/graph-page'
 
 // =============================================================================
 // MEMOIZED PAGE COMPONENTS
@@ -38,6 +39,7 @@ const MemoizedFolderViewPage = React.memo(FolderViewPage)
 const MemoizedSettingsPage = React.memo(SettingsPage)
 const MemoizedTemplateEditorPage = React.memo(TemplateEditorPage)
 const MemoizedTemplatesPage = React.memo(TemplatesPage)
+const MemoizedGraphPage = React.memo(GraphPage)
 
 interface TabContentProps {
   /** Tab data */
@@ -161,6 +163,9 @@ export const TabContent = ({ tab, groupId, className }: TabContentProps): React.
 
       case 'templates':
         return <MemoizedTemplatesPage />
+
+      case 'graph':
+        return <MemoizedGraphPage />
 
       case 'collection':
         return (

@@ -6,6 +6,7 @@
  */
 
 import { useState, useCallback, useEffect, useRef, useMemo } from 'react'
+import { cn } from '@/lib/utils'
 import { useQueryClient } from '@tanstack/react-query'
 import { ExportDialog } from '@/components/note/export-dialog'
 import { VersionHistory } from '@/components/note/version-history'
@@ -28,7 +29,8 @@ import { useTasksLinkedToNote } from '@/hooks/use-tasks-linked-to-note'
 import { notesService, onNoteDeleted, onNoteUpdated, onNoteRenamed } from '@/services/notes-service'
 import { resolveWikiLink } from '@/lib/wikilink-resolver'
 import { useTabs, useActiveTab } from '@/contexts/tabs'
-import { MoreHorizontal, History, Bookmark, Monitor } from 'lucide-react'
+import { NoteReminderButton } from '@/components/note/note-reminder-button'
+import { Bookmark, MoreHorizontal, History, Monitor, GitGraph } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -40,10 +42,11 @@ import {
 import { toast } from 'sonner'
 import { registerPendingSave, unregisterPendingSave } from '@/lib/save-registry'
 import { useIsBookmarked } from '@/hooks/use-bookmarks'
-import { NoteReminderButton } from '@/components/note/note-reminder-button'
 import { useNoteEditorSettings } from '@/hooks/use-note-editor-settings'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { createLogger } from '@/lib/logger'
+import { LocalGraphPanel } from '@/components/graph/local-graph-panel'
+import { graphKeys } from '@/hooks/use-graph-data'
 
 const log = createLogger('Page:Note')
 
@@ -134,6 +137,7 @@ export function NotePage({ noteId }: NotePageProps) {
   const [isDeleted, setIsDeleted] = useState(false)
   const [isExportDialogOpen, setIsExportDialogOpen] = useState(false)
   const [isVersionHistoryOpen, setIsVersionHistoryOpen] = useState(false)
+  const [isLocalGraphOpen, setIsLocalGraphOpen] = useState(false)
   const [externalUpdateCount, setExternalUpdateCount] = useState(0)
 
   const handlePropertyBlocked = useCallback((action: PropertySectionAction) => {
@@ -168,13 +172,6 @@ export function NotePage({ noteId }: NotePageProps) {
   const { settings: editorSettings } = useNoteEditorSettings()
 
   // Content tracking for change detection
-  const lastSavedContent = useRef<string>('')
-
-  // Refs for debouncing
-  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null)
-  const pendingMarkdownRef = useRef<string | null>(null)
-
-  // Compute document stats for the Info tab in OutlineInfoPanel
   const documentStats = useMemo(() => {
     if (!note) return undefined
     return {
@@ -184,6 +181,12 @@ export function NotePage({ noteId }: NotePageProps) {
       modifiedAt: note.modified ?? null
     }
   }, [note])
+
+  const lastSavedContent = useRef<string>('')
+
+  // Refs for debouncing
+  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const pendingMarkdownRef = useRef<string | null>(null)
 
   // ============================================================================
   // Sync lastSavedContent with note data from query
@@ -300,11 +303,15 @@ export function NotePage({ noteId }: NotePageProps) {
   // Tags - Convert between string[] and Tag[]
   // ============================================================================
 
-  // Build a lookup map of tag colors from backend
+  const pendingTagColorsRef = useRef(new Map<string, string>())
+
   const tagColorMap = useMemo(() => {
     const map = new Map<string, string>()
     for (const t of allAvailableTags) {
       map.set(t.tag, t.color)
+    }
+    for (const key of pendingTagColorsRef.current.keys()) {
+      if (map.has(key)) pendingTagColorsRef.current.delete(key)
     }
     return map
   }, [allAvailableTags])
@@ -313,7 +320,7 @@ export function NotePage({ noteId }: NotePageProps) {
     return (note?.tags || []).map((tagName) => ({
       id: tagName,
       name: tagName,
-      color: tagColorMap.get(tagName) ?? 'stone' // Fallback to stone if not found
+      color: tagColorMap.get(tagName) ?? pendingTagColorsRef.current.get(tagName) ?? 'stone'
     }))
   }, [note?.tags, tagColorMap])
 
@@ -409,6 +416,9 @@ export function NotePage({ noteId }: NotePageProps) {
           await updateNote.mutateAsync({ id: noteId, content: markdown })
           lastSavedContent.current = markdown
           pendingMarkdownRef.current = null
+          if (isLocalGraphOpen) {
+            void queryClient.invalidateQueries({ queryKey: graphKeys.local(noteId) })
+          }
         } catch (err) {
           log.error('Failed to save note:', err)
         } finally {
@@ -416,7 +426,7 @@ export function NotePage({ noteId }: NotePageProps) {
         }
       }, 500)
     },
-    [noteId, note, updateNote.mutateAsync, isDeleted]
+    [noteId, note, updateNote.mutateAsync, isDeleted, isLocalGraphOpen, queryClient]
   )
 
   const handleContentChange = useCallback((_blocks: Block[]) => {
@@ -488,7 +498,7 @@ export function NotePage({ noteId }: NotePageProps) {
   )
 
   const handleCreateTag = useCallback(
-    async (name: string, _color: string) => {
+    async (name: string, color: string) => {
       if (!noteId || !note) return
 
       if (isDeleted) {
@@ -497,11 +507,12 @@ export function NotePage({ noteId }: NotePageProps) {
       }
 
       if (!note.tags.includes(name)) {
+        pendingTagColorsRef.current.set(name.toLowerCase(), color)
         const newTags = [...note.tags, name]
         try {
           await updateNote.mutateAsync({ id: noteId, tags: newTags })
-          // Note will be updated via TanStack Query cache invalidation
         } catch (err) {
+          pendingTagColorsRef.current.delete(name.toLowerCase())
           log.error('Failed to create tag:', err)
         }
       }
@@ -524,6 +535,51 @@ export function NotePage({ noteId }: NotePageProps) {
         // Note will be updated via TanStack Query cache invalidation
       } catch (err) {
         log.error('Failed to remove tag:', err)
+      }
+    },
+    [noteId, note, updateNote.mutateAsync, isDeleted]
+  )
+
+  // Inline #tag sync: track which tags come from editor content
+  // pendingTagsRef bridges concurrent async calls so the second update
+  // builds on top of the first instead of overwriting it with stale data
+  const inlineTagsRef = useRef<Set<string>>(new Set())
+  const pendingTagsRef = useRef<string[] | null>(null)
+
+  const handleInlineTagsChange = useCallback(
+    async (currentInlineTags: string[]) => {
+      if (!noteId || !note || isDeleted) return
+
+      const prev = inlineTagsRef.current
+      const current = new Set(currentInlineTags)
+
+      const baseTags = pendingTagsRef.current ?? note.tags
+
+      const tagsToAdd = currentInlineTags.filter((t) => !prev.has(t) && !baseTags.includes(t))
+      const tagsToRemove = Array.from(prev).filter((t) => !current.has(t) && baseTags.includes(t))
+
+      inlineTagsRef.current = current
+
+      if (tagsToAdd.length === 0 && tagsToRemove.length === 0) return
+
+      let newTags = [...baseTags]
+      for (const tag of tagsToAdd) {
+        if (!newTags.includes(tag)) newTags.push(tag)
+      }
+      for (const tag of tagsToRemove) {
+        newTags = newTags.filter((t) => t !== tag)
+      }
+
+      pendingTagsRef.current = newTags
+
+      try {
+        await updateNote.mutateAsync({ id: noteId, tags: newTags })
+      } catch (err) {
+        log.error('Failed to sync inline tags:', err)
+      } finally {
+        if (pendingTagsRef.current === newTags) {
+          pendingTagsRef.current = null
+        }
       }
     },
     [noteId, note, updateNote.mutateAsync, isDeleted]
@@ -684,171 +740,184 @@ export function NotePage({ noteId }: NotePageProps) {
     return null
   }
 
-  return (
-    <NoteLayout headings={headings} onHeadingClick={handleHeadingClick} stats={documentStats}>
-      {/* Note content wrapper with relative positioning for action bar */}
-      <div className="relative">
-        {/* Action bar - positioned at top-right of content area */}
-        <div className="absolute top-0 right-0 z-10 flex items-center gap-2">
-          {/* Reminder Button */}
-          {noteId && <NoteReminderButton noteId={noteId} disabled={isDeleted} />}
+  const actionIcons = (
+    <div className="flex items-center gap-0.5">
+      <NoteReminderButton noteId={noteId} disabled={isDeleted} />
 
-          {/* Bookmark Button */}
+      <Button
+        variant="ghost"
+        size="icon"
+        className="h-8 w-8 hover:bg-transparent"
+        onClick={toggleBookmark}
+        disabled={isDeleted}
+        title={isBookmarked ? 'Remove bookmark' : 'Add bookmark'}
+      >
+        <Bookmark
+          className={cn(
+            'h-4 w-4',
+            isBookmarked ? 'fill-[#D9770F] text-[#D9770F]' : 'text-[#8A857A]'
+          )}
+        />
+      </Button>
+
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
           <Button
             variant="ghost"
             size="icon"
-            className="h-8 w-8 hover:bg-muted/50"
-            onClick={toggleBookmark}
-            disabled={isDeleted || !noteId}
-            title={isBookmarked ? 'Remove bookmark' : 'Add bookmark'}
+            className="h-8 w-8 hover:bg-transparent"
+            disabled={isDeleted}
           >
-            <Bookmark className={`h-4 w-4 ${isBookmarked ? 'fill-current text-amber-500' : ''}`} />
-            <span className="sr-only">{isBookmarked ? 'Remove bookmark' : 'Add bookmark'}</span>
+            <MoreHorizontal className="h-4 w-4 text-[#8A857A]" />
           </Button>
-
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8 hover:bg-muted/50"
-                disabled={isDeleted}
-              >
-                <MoreHorizontal className="h-4 w-4" />
-                <span className="sr-only">More options</span>
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => setIsVersionHistoryOpen(true)}>
-                <History className="mr-2 h-4 w-4" />
-                Version History
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setIsExportDialogOpen(true)}>
-                Export
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
-                onClick={() => handleToggleLocalOnly(!(note.frontmatter.localOnly ?? false))}
-              >
-                <Monitor className="mr-2 h-4 w-4" />
-                {note.frontmatter.localOnly ? 'Disable local only' : 'Set local only'}
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
-
-        {/* Note content */}
-        <div className="space-y-8">
-          <div style={{ paddingInline: '54px' }}>
-            {/* Title section */}
-            <div className="space-y-4">
-              <div className="relative">
-                <div
-                  className="absolute -left-8 top-1/2 -translate-y-1/2 w-1 h-12 bg-gradient-to-b from-amber-400/40 via-amber-500/20 to-transparent rounded-full opacity-60"
-                  aria-hidden="true"
-                />
-                <NoteTitle
-                  emoji={note.emoji ?? null}
-                  title={note.title}
-                  onEmojiChange={handleEmojiChange}
-                  onTitleChange={handleTitleChange}
-                  placeholder="Untitled"
-                />
-              </div>
-            </div>
-
-            {/* Tags section */}
-            <div>
-              <TagsRow
-                tags={noteTags}
-                availableTags={availableTags}
-                recentTags={recentTags}
-                onAddTag={handleAddTag}
-                onCreateTag={handleCreateTag}
-                onRemoveTag={handleRemoveTag}
-              />
-            </div>
-
-            {/* Info Section (Properties) - always show for adding new properties */}
-            <div>
-              <InfoSection
-                properties={properties}
-                isExpanded={isInfoExpanded}
-                onToggleExpand={() => setIsInfoExpanded(!isInfoExpanded)}
-                onPropertyChange={handlePropertyChange}
-                onPropertyNameChange={handlePropertyNameChange}
-                onPropertyOrderChange={handlePropertyOrderChange}
-                onAddProperty={handleAddProperty}
-                onDeleteProperty={handleDeleteProperty}
-                disabled={isDeleted}
-              />
-            </div>
-          </div>
-
-          {/* Main content - BlockNote Editor with Markdown */}
-          <div
-            role="presentation"
-            className="editor-click-area min-h-[400px] relative"
-            onMouseDown={(e) => {
-              const target = e.target as HTMLElement
-              if (
-                target.closest('[contenteditable="true"]')?.contains(target) &&
-                target.closest('.bn-block-content')
-              ) {
-                return
-              }
-              if (target.closest('button, a, input')) {
-                return
-              }
-              const editor = (e.currentTarget as HTMLElement).querySelector(
-                '.bn-editor [contenteditable="true"]'
-              ) as HTMLElement
-              if (editor) {
-                e.preventDefault()
-                editor.focus()
-              }
-            }}
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          <DropdownMenuItem onClick={() => setIsLocalGraphOpen((prev) => !prev)}>
+            <GitGraph className="mr-2 h-4 w-4" />
+            {isLocalGraphOpen ? 'Hide local graph' : 'Show local graph'}
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => setIsVersionHistoryOpen(true)}>
+            <History className="mr-2 h-4 w-4" />
+            Version History
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => setIsExportDialogOpen(true)}>Export</DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem
+            onClick={() => handleToggleLocalOnly(!(note.frontmatter.localOnly ?? false))}
           >
-            <EditorErrorBoundary
-              noteId={noteId}
-              onRecover={refetchNote}
-              onError={(error) => log.error('Editor error:', error)}
-            >
-              <ContentArea
-                key={`${noteId}-${externalUpdateCount}`}
-                noteId={noteId}
-                initialContent={note.content}
-                contentType="markdown"
-                placeholder="Start writing, or press '/' for commands..."
-                stickyToolbar={editorSettings.toolbarMode === 'sticky'}
-                onContentChange={handleContentChange}
-                onMarkdownChange={handleMarkdownChange}
-                onHeadingsChange={handleHeadingsChange}
-                onLinkClick={handleLinkClick}
-                onInternalLinkClick={handleInternalLinkClick}
-                initialHighlight={initialHighlight}
-              />
-            </EditorErrorBoundary>
-          </div>
+            <Monitor className="mr-2 h-4 w-4" />
+            {note.frontmatter.localOnly ? 'Disable local only' : 'Set local only'}
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </div>
+  )
 
-          {/* Backlinks section */}
-          <div className="pt-8 mx-[54px] border-t border-border/30">
-            <BacklinksSection
-              backlinks={backlinks}
-              isLoading={backlinksLoading}
-              initialCount={5}
-              collapsible={true}
-              onBacklinkClick={handleBacklinkClick}
-            />
-
-            {/* Linked Tasks Section */}
-            <LinkedTasksSection
-              tasks={linkedTasks}
-              isLoading={linkedTasksLoading}
-              onTaskClick={handleLinkedTaskClick}
-            />
-          </div>
+  return (
+    <NoteLayout
+      headings={headings}
+      onHeadingClick={handleHeadingClick}
+      actions={actionIcons}
+      stats={documentStats}
+    >
+      {/* Note content */}
+      <div className="flex flex-col gap-6">
+        {/* Title + Tags */}
+        <div className="flex flex-col gap-4">
+          <NoteTitle
+            emoji={note.emoji ?? null}
+            title={note.title}
+            onEmojiChange={handleEmojiChange}
+            onTitleChange={handleTitleChange}
+            placeholder="Untitled"
+          />
+          <TagsRow
+            tags={noteTags}
+            availableTags={availableTags}
+            recentTags={recentTags}
+            onAddTag={handleAddTag}
+            onCreateTag={handleCreateTag}
+            onRemoveTag={handleRemoveTag}
+          />
         </div>
+
+        {/* Properties Section */}
+        <InfoSection
+          properties={properties}
+          isExpanded={isInfoExpanded}
+          onToggleExpand={() => setIsInfoExpanded(!isInfoExpanded)}
+          onPropertyChange={handlePropertyChange}
+          onPropertyNameChange={handlePropertyNameChange}
+          onPropertyOrderChange={handlePropertyOrderChange}
+          onAddProperty={handleAddProperty}
+          onDeleteProperty={handleDeleteProperty}
+          disabled={isDeleted}
+        />
+
+        {/* Main content - BlockNote Editor */}
+        <div
+          role="presentation"
+          className="editor-click-area min-h-[400px] relative"
+          onMouseDown={(e) => {
+            const target = e.target as HTMLElement
+            if (
+              target.closest('[contenteditable="true"]')?.contains(target) &&
+              target.closest('.bn-block-content')
+            ) {
+              return
+            }
+            if (target.closest('button, a, input')) {
+              return
+            }
+            const editor = (e.currentTarget as HTMLElement).querySelector(
+              '.bn-editor [contenteditable="true"]'
+            ) as HTMLElement
+            if (editor) {
+              e.preventDefault()
+              editor.focus()
+            }
+          }}
+        >
+          <EditorErrorBoundary
+            noteId={noteId}
+            onRecover={refetchNote}
+            onError={(error) => log.error('Editor error:', error)}
+          >
+            <ContentArea
+              key={`${noteId}-${externalUpdateCount}`}
+              noteId={noteId}
+              initialContent={note.content}
+              contentType="markdown"
+              placeholder="Start writing, or press '/' for commands..."
+              stickyToolbar={editorSettings.toolbarMode === 'sticky'}
+              onContentChange={handleContentChange}
+              onMarkdownChange={handleMarkdownChange}
+              onHeadingsChange={handleHeadingsChange}
+              onLinkClick={handleLinkClick}
+              onInternalLinkClick={handleInternalLinkClick}
+              initialHighlight={initialHighlight}
+              noteTags={note.tags}
+              tagColorMap={tagColorMap}
+              onInlineTagsChange={handleInlineTagsChange}
+            />
+          </EditorErrorBoundary>
+        </div>
+
+        {/* Local Graph Panel */}
+        {isLocalGraphOpen && noteId && (
+          <LocalGraphPanel
+            noteId={noteId}
+            onClose={() => setIsLocalGraphOpen(false)}
+            onOpenFullGraph={() => {
+              openTab({
+                type: 'graph',
+                title: 'Graph',
+                icon: 'git-graph',
+                path: '/graph',
+                isPinned: false,
+                isModified: false,
+                isPreview: false,
+                isDeleted: false
+              })
+            }}
+          />
+        )}
+
+        {/* Backlinks section */}
+        <BacklinksSection
+          backlinks={backlinks}
+          isLoading={backlinksLoading}
+          initialCount={5}
+          collapsible={false}
+          onBacklinkClick={handleBacklinkClick}
+        />
+
+        {/* Linked Tasks Section */}
+        <LinkedTasksSection
+          tasks={linkedTasks}
+          isLoading={linkedTasksLoading}
+          onTaskClick={handleLinkedTaskClick}
+        />
       </div>
 
       {/* Export Dialog */}
@@ -866,12 +935,10 @@ export function NotePage({ noteId }: NotePageProps) {
         noteId={noteId}
         noteTitle={note.title}
         onRestore={() => {
-          // Clear any pending save to prevent overwriting restored content
           if (saveTimeoutRef.current) {
             clearTimeout(saveTimeoutRef.current)
             saveTimeoutRef.current = null
           }
-          // Reload note with restored content
           refetchNote()
         }}
       />

@@ -1,0 +1,396 @@
+# Changelog
+
+All notable changes to memry are documented here.
+Format: weekly entries grouped by feature area.
+
+---
+
+## 2026-03-09 → 2026-03-12 — Graph View, Editor Tags, Design System
+
+### Added
+- Add interactive knowledge graph view with Sigma.js and Graphology
+- Add tags as first-class graph nodes with entity-tag edges
+- Add inline hash-tag system in editor with space-to-complete
+- Add clickable hash-tag pills with live color sync
+- Add Instrument Serif and JetBrains Mono font families
+- Add sticky outline panel with pin-on-click and smooth fade-out
+- Add synchronous theme preload to eliminate flash on startup
+
+### Fixed
+- Fix graph node overlapping by spreading nodes and reducing sizes
+- Fix pre-compute force layout so graph opens without animation jitter
+- Fix UI state reset when switching vaults
+
+### Changed
+- Redesign sidebar with warm editorial palette
+- Redesign note title with editorial typography
+- Redesign backlinks as horizontal compact cards
+- Convert graph controls to collapsible gear-icon drawer
+- Move action icons to layout top-right with hover outline
+- Aggregate task tags in sidebar tag counts
+- Compact sidebar header and vault switcher spacing
+
+---
+
+## 2026-03-02 → 2026-03-08 — Global Search, Inbox Redesign, Monorepo (#97, #98, #99)
+
+### Added
+- Add FTS5 search backend with fuzzy fallback and Cmd+K command palette (#97)
+- Add settings system with decomposed sections, tag management, and preferences (#98)
+- Add triage mode with AI note suggestions for inbox (#99)
+- Add inbox health metrics with ArcGauge and AgeStrata visualizations (#99)
+- Add duplicate detection for text and URL captures (#99)
+- Add undo toasts, processing streak badge, and triage celebration (#99)
+- Add captureSource tracking to inbox items (#99)
+- Add overdue tier styling and collapsible sections to tasks view
+- Add This Week accordion to Today view
+- Add token highlight overlay to quick-add input
+- Add convert-to-task IPC and note suggestion types
+
+### Fixed
+- Fix voice recorder autoStart and inbox transcription refresh
+- Fix link filing for folder, note, and multi-note targets
+- Fix date serialization to use local-time and prevent off-by-one day shift
+- Fix async CRDT close destroying reopened docs
+
+### Changed
+- Migrate to turborepo monorepo structure
+- Bump Node to 24
+- Remove Upcoming tab from task navigation
+- Replace project sidebar with dropdown selector
+- Replace shadcn Calendar with custom DatePickerCalendar
+- Split inbox.tsx monolith into focused modules
+- Move appearance settings to dedicated Appearance section
+- Remove internal docs, specs, and agent config from tracking
+
+---
+
+## 2026-02-23 → 2026-03-01 — Sync E2EE Phases 8–15, Security Hardening (#95)
+
+### Added
+- Add field-level merge logic for tasks and projects with per-field vector clocks
+- Add offline clock management for deviceless editing
+- Add attachment upload/download service with chunked transfer and thumbnails
+- Add file drop handling in sidebar via getFileDropPaths API
+- Add sync status UI to sidebar and settings panel
+- Add sync activity history panel
+- Add local-only flag to exclude notes from sync
+- Add worker thread for off-main-thread crypto
+- Add device management endpoints and device list UI
+- Add key rotation wizard with vault key re-wrapping
+- Add graceful sync shutdown with drain-before-quit
+- Add CryptoError class with diagnostic error codes
+- Add corrupt data detection and re-fetch recovery
+- Add CRDT doc compaction and payload size guard
+- Add device revocation warning dialog
+- Add storage quota handling and StorageUsageBar component
+- Add SAS verification codes for device linking
+- Add TLS certificate pinning and CSP headers
+- Add HMAC-SHA256 for OTP hashing (replacing unsalted SHA-256)
+- Add tombstone GC and orphaned blob cleanup on server
+- Add X-App-Version header for outdated client rejection
+- Add alarm-cycle revocation fallback for WebSocket connections
+
+### Fixed
+- Fix queue dequeue to atomically mark items in-flight
+- Fix binary file handling in applyUpsert (no .md writes for binaries)
+- Fix token rotation UNIQUE collision with retry
+- Fix timing oracle in /recovery endpoint
+- Fix body size limit enforcement on chunked transfer requests
+- Fix async close preventing reopened CRDT doc destruction
+- Zero newVaultKey and newMasterKey after key rotation
+
+### Changed
+- Extract SyncEngine God Object (2086 LOC) into focused modules
+- Harden engine with mutex, key cleanup, bounded retry, and pull validation
+- Streamline session management and logout process
+- Decouple auth from sync for instant post-auth redirect
+
+### Performance
+- Parallelize CRDT snapshots and prefetch pull pages
+- Cache device public keys during pull cycle
+- Skip push when sync queue is empty
+
+---
+
+## 2026-02-16 → 2026-02-22 — Sync E2EE Phases 3–7, CRDT Architecture
+
+### Added
+- Add hybrid CRDT sync architecture with Yjs for notes and journals
+- Add CRDT incremental update endpoints on server
+- Add Yjs collaboration to BlockNote editor with initial sync progress
+- Add text-based ping/pong keepalive to WebSocket
+- Add project sync handler, service, and schema
+- Add X25519 ECDH, linking key derivation, and master key encryption
+- Add device linking service with QR code, approval dialog, and setup wizard
+- Add recovery endpoint with anti-enumeration protection
+- Add recovery phrase input with stepped progress UI
+- Add tag definition sync type and pin state helpers
+- Add flush-on-quit protocol to prevent data loss on shutdown
+- Add CRDT snapshot creation during writeback
+
+### Fixed
+- Fix server security: remove DELETE bypass, rate-limit endpoints, check device revocation
+- Fix dead contentHash removal, crypto version validation
+- Fix sync engine decryption error handling and manifest integrity checks
+- Fix signingPublicKey NOT NULL constraint on sync_devices
+- Fix deletedAt inclusion in signature verification payload
+- Fix WebSocket alarm send+close error handling
+- Fix signing key mismatch with self-heal instead of state wipe
+- Fix sidebar note list invalidation on notes:updated event
+
+### Changed
+- Extract per-type item handler strategy pattern for sync
+- Extract ContentSyncService base class from note/journal sync
+- Add periodic pull interval with skip logging
+- Streamline pull and push coordination logic
+
+---
+
+## 2026-02-09 → 2026-02-15 — Sync E2EE Phases 1–2, Foundation (#95)
+
+### Added
+- Add sync/E2EE dependencies (libsodium, cborg, keytar)
+- Scaffold sync and crypto directory structure
+- Add D1 database schema with 14 tables for sync infrastructure
+- Add local Drizzle sync tables for device state and queue tracking
+- Add shared Zod contracts for auth, blob, linking, and CBOR ordering
+- Add crypto module with XChaCha20, Ed25519, BIP39, and keychain
+- Scaffold Cloudflare Workers sync server with D1 and R2 bindings
+- Wire sync/crypto IPC handlers, preload bridge, and deep link protocol
+- Add email/password auth with OTP verification
+- Add sign-in/sign-up forms with account setup wizard
+- Add settings panel integration for sync configuration
+- Add sync engine with push/pull loop, retry, and WebSocket
+- Add CSRF protection to OAuth deep link callback
+- Add contract sync automation to prevent client/server drift
+
+### Fixed
+- Fix server security: rate limiter schema, cleanup timestamps, JWT type validation
+- Fix crypto security: proper KDF derivation, buffer zeroing on exceptions
+- Fix 4xx client error retry (skip all except 429)
+- Fix clipboard promise rejection in recovery phrase cleanup
+
+### Changed
+- Split ipc-sync.ts omnibus into domain-specific contract files
+- Replace preload duplicate type declarations with shared contract imports
+
+---
+
+## 2026-01-26 → 2026-02-08 — Planning & Specification
+
+_Sync E2EE specification and architecture planning. No code changes._
+
+---
+
+## 2026-01-19 → 2026-01-25 — Sync Specification
+
+### Added
+- Add passwordless email OTP authentication specification
+- Add Ed25519 device-level signing specification
+- Add CRDT architecture plan (Yjs, IPC-backed provider, y-leveldb)
+- Add token refresh and secure memory cleanup specifications
+- Add Google OAuth integration specification
+
+### Changed
+- Transition sync spec from y-indexeddb to y-leveldb
+- Refine OAuth integration to support only Google authentication
+
+---
+
+## 2026-01-12 → 2026-01-18 — Journal Polish, Properties, Sync Spec
+
+### Added
+- Add journal settings for sidebar visibility and stats footer
+- Add settings keyboard shortcut
+- Add property renaming functionality
+- Add property drag-and-drop reordering
+- Add tag definitions table in database schema
+- Add binary file sync architecture specification
+- Add sync specification with key derivation, encryption, and rate limiting
+
+### Fixed
+- Fix journal entry handling for serialized frontmatter properties
+
+### Changed
+- Unify properties API for notes and journal entries
+- Integrate SidebarDrillDownProvider for folder view components
+
+---
+
+## 2026-01-05 → 2026-01-11 — Folder View PR, Platform Polish (#94)
+
+### Added
+- Add FTS and embedding queue systems for batched updates
+- Add WikiLink resolution for note and file navigation
+- Add inbox video file support
+- Add note reordering and position management
+- Add archived items and filing history features
+- Add advanced search with operators and filters
+
+### Fixed
+- Fix tab component re-renders with memoization and useCallback
+- Fix FTS queue update error handling
+
+### Changed
+- Merge PR #94: Folder View
+- Consolidate notes hooks into use-notes-query
+- Replace useTabs with useTabActions across components
+- Upgrade sharp to 0.34.5
+- Remove electron-devtools-installer (use session.extensions API)
+
+### Performance
+- Optimize TabContent and sidebar navigation rendering
+- Add batch tag queries for note retrieval
+
+---
+
+## 2025-12-29 → 2026-01-04 — Inbox Completion, Folder View, Test Infrastructure
+
+### Added
+- Add social media post extraction with dedicated social card component
+- Add AI filing suggestions with feedback tracking
+- Add sqlite-vec for local embedding vector similarity search
+- Add reminder system for notes, journals, and highlights
+- Add native context menu support for tab actions
+- Add reveal-in-sidebar functionality for notes
+- Add folder view with table layout, column management, and named views
+- Add column resizing, reordering, drag-and-drop, and highlighting
+- Add advanced filtering with filter builder and evaluator
+- Add formula columns and summary configurations
+- Add row grouping by property value
+- Add keyboard navigation in folder view (arrow keys, Enter, Escape, Cmd+A)
+- Add AI-powered folder suggestions for moving notes
+- Add Vitest and Playwright test infrastructure
+- Add unit tests for task filtering, sorting, grouping, and date utilities
+- Add database seeding for tests
+
+### Fixed
+- Fix inbox archive to use soft deletion instead of hard delete
+- Fix note deletion to clean up links and refresh backlinks
+- Fix TitleInput to trigger onChange only on blur (not every keystroke)
+
+### Changed
+- Replace delete operations with archive actions in inbox
+- Remove CardView and InboxCard components
+- Remove RemindersPanel from sidebar
+- Unify inbox detail panel (replace separate filing/preview panels)
+
+### Performance
+- Memoize property cells and group header rows in folder view
+- Add AST caching for formula expression evaluator
+- Virtualize folder view rows for large datasets
+
+---
+
+## 2025-12-22 → 2025-12-28 — Task Data Layer, Notes Features, Journal System, Inbox Capture
+
+### Added
+- Add task data layer with RepeatConfig, priority levels 0-4, project management
+- Add task persistence for kanban drag-drop and status changes
+- Add TanStack virtual scrolling for task lists
+- Add note properties with database schema and IPC channels
+- Add wiki-link rendering in note editor
+- Add attachment system (upload, list, delete) for notes
+- Add template management with folder default templates
+- Add version history and snapshot creation for notes
+- Add export functionality for notes
+- Add virtualized rendering and error boundaries for note editor
+- Add journal system with day cards, auto-save, word/character count
+- Add journal focus mode, year view, and AI suggestions
+- Add journal calendar with heatmap
+- Add bookmarks and tags functionality for journal
+- Add external change detection for journal entries
+- Add inbox capture phases 1-9 (text, URL, image, voice)
+- Add quick capture window with global shortcut
+- Add custom protocol for audio/video streaming
+- Add voice memo transcription
+- Add inline tag editing in inbox preview panel
+
+### Fixed
+- Fix note titles to fetch asynchronously in task detail and note page
+
+### Changed
+- Migrate rich text editor from Tiptap to BlockNote
+
+---
+
+## 2025-12-15 → 2025-12-21 — Core Data Layer, Specifications
+
+### Added
+- Add core data layer with Drizzle ORM and SQLite (tasks T001-T093)
+- Add database migrations and schema for notes, tasks, projects, settings
+- Add vault management system
+- Add shared IPC contracts between main and renderer
+- Add full-text search infrastructure
+- Add quick search with recent search history
+- Add folder management (rename, delete, multi-select operations)
+- Add link cleanup on note deletion
+- Add isDeleted state handling for tabs
+- Add feature specifications for tasks, notes, journal, inbox, sync, and search
+
+### Fixed
+- Fix shift+click selection to include folders
+
+### Changed
+- Move action icons to COLLECTIONS section header
+- Remove virtual folder concept
+- Initialize speckit tooling and constitution documents
+- Remove obsolete agent and command files
+
+---
+
+## 2025-12-08 → 2025-12-14 — Tab System, Journal, Note Page, AI Composer
+
+### Added
+- Add split view tab system with drag-and-drop between panes
+- Add keyboard shortcuts for tab and split view management
+- Add browser-like tab styling with rounded active tabs
+- Add journal page with two-column layout and infinite scroll
+- Add journal calendar with heatmap view
+- Add journal collapsible sections with animations
+- Add journal focus mode with keyboard shortcuts
+- Add wiki-link and tag extensions with fuzzy search autocomplete
+- Add note page with layout, right sidebar, and outline components
+- Add note title component with emoji picker
+- Add tag management UI with color picker
+- Add note InfoSection with property management
+- Add rich text editor with floating toolbar, slash commands, and callouts
+- Add AI agent composer with message input, model selection, and mode toggles
+- Add related notes tab with AI-discovered connections
+- Add note backlinks with snippet previews
+- Add unified Tasks tab with internal views
+- Add global AI agent panel
+
+### Changed
+- Extract tab drag-and-drop logic into dedicated provider
+- Remove Inbox 2 page and consolidate navigation
+- Derive task selection from active tab instead of props
+
+---
+
+## 2025-12-01 → 2025-12-07 — Initial UI Scaffold, Task Management
+
+### Added
+- Add sidebar with navigation, dropdown menus, and icon management
+- Add file tree component with drag-and-drop
+- Add IconPicker component for selecting icons
+- Add Inbox page with font and color scheme
+- Add keyboard shortcuts for navigation and folder selection
+- Add task list, creation, and detail panel
+- Add DueDatePicker and PrioritySelect with keyboard shortcuts
+- Add kanban board with quick edit and compact mode
+- Add repeating task functionality
+- Add task filtering, sorting, and bulk actions
+- Add drag-and-drop for task management and status changes
+- Add subtask management with tree lines and reordering
+- Add subtask progress dots and badge components
+- Add autocomplete in QuickAddInput
+- Add custom scrollbar styles
+
+### Changed
+- Lift drag-and-drop context from TasksPage to App.tsx
+- Remove FileTree component after redesign
+
+### Performance
+- Replace React state focus with direct DOM focus in TreeNodeTrigger

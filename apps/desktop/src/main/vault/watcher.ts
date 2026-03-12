@@ -13,13 +13,7 @@ import chokidar from 'chokidar'
 import type { FSWatcher } from 'chokidar'
 import { BrowserWindow } from 'electron'
 import { getConfig } from './index'
-import {
-  parseNote,
-  serializeNote,
-  extractTags,
-  generateContentHash,
-  extractProperties
-} from './frontmatter'
+import { parseNote, serializeNote, generateContentHash, extractProperties } from './frontmatter'
 import { safeRead, atomicWrite } from './file-ops'
 import { generateNoteId } from '../lib/id'
 import { syncNoteToCache, syncFileToCache } from './note-sync'
@@ -407,15 +401,13 @@ export class VaultWatcher {
       { isNew: true }
     )
 
-    // Extract tags and properties for event emission
-    const tags = extractTags(parsed.frontmatter)
+    const tags = syncResult.tags
     const properties = extractProperties(parsed.frontmatter)
 
     if (tags.length > 0) {
       ensureTagDefinitions(getDatabase(), tags)
     }
 
-    // Create list item for event
     const noteListItem: NoteListItem = {
       id: parsed.frontmatter.id,
       path: relativePath,
@@ -606,7 +598,7 @@ export class VaultWatcher {
       { isNew: false }
     )
 
-    const tags = extractTags(parsed.frontmatter)
+    const tags = syncResult.tags
     const properties = extractProperties(parsed.frontmatter)
     const title = parsed.frontmatter.title ?? path.basename(relativePath, '.md')
 

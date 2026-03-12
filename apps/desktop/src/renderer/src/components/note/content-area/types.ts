@@ -95,6 +95,12 @@ export interface ContentAreaProps {
   className?: string
   /** Initial highlight info to scroll to and highlight (from reminder navigation) */
   initialHighlight?: HighlightInfo
+  /** Note tags for hash tag normalization on markdown load */
+  noteTags?: string[]
+  /** Map of tag name to color name for hash tag styling */
+  tagColorMap?: Map<string, string>
+  /** Callback when inline #tags change in editor content */
+  onInlineTagsChange?: (tags: string[]) => void
 }
 
 // =============================================================================

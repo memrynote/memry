@@ -241,6 +241,33 @@ export function extractTags(frontmatter: NoteFrontmatter): string[] {
 }
 
 /**
+ * Extract inline #tag patterns from markdown body text.
+ * Strips code blocks and inline code first, then matches tags
+ * preceded by whitespace or start-of-string.
+ *
+ * Mirrors the editor's HASH_TAG_PATTERN from hash-tag.tsx.
+ *
+ * @param content - Markdown body (post-frontmatter)
+ * @returns Deduplicated, lowercase tag names
+ */
+export function extractInlineTagsFromMarkdown(content: string): string[] {
+  const withoutCode = content.replace(/```[\s\S]*?```/g, '')
+  const withoutInlineCode = withoutCode.replace(/`[^`]+`/g, '')
+
+  const tags = new Set<string>()
+  const pattern = /#([a-zA-Z][a-zA-Z0-9_-]*)/g
+  let match: RegExpExecArray | null
+
+  while ((match = pattern.exec(withoutInlineCode)) !== null) {
+    const precedingChar = match.index > 0 ? withoutInlineCode[match.index - 1] : ''
+    if (precedingChar && !/\s/.test(precedingChar)) continue
+    tags.add(match[1].toLowerCase())
+  }
+
+  return Array.from(tags)
+}
+
+/**
  * Calculate word count from markdown content.
  * Excludes code blocks and frontmatter.
  *

@@ -27,6 +27,7 @@ export type TabType =
   | 'collection'
   | 'template-editor' // Template editing (Phase 15)
   | 'templates' // Template list/management (Phase 15)
+  | 'graph' // Knowledge graph visualization
 
 /**
  * Singleton tab types - only one instance allowed
@@ -41,7 +42,8 @@ export const SINGLETON_TAB_TYPES: TabType[] = [
   'today', // Legacy
   'completed', // Legacy
   'settings',
-  'templates' // Template list
+  'templates', // Template list
+  'graph'
 ]
 
 /**

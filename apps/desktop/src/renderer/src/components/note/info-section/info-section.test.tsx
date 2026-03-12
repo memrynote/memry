@@ -79,7 +79,7 @@ describe('T513: InfoSection - basic display', () => {
     const user = userEvent.setup()
     render(<InfoSection {...defaultProps} />)
 
-    const header = screen.getByRole('button', { name: /^properties$/i })
+    const header = screen.getByRole('button', { name: /^properties/i })
     await user.click(header)
 
     expect(defaultProps.onToggleExpand).toHaveBeenCalled()
@@ -435,7 +435,7 @@ describe('InfoSection - accessibility', () => {
   it('should have aria-expanded on toggle header', () => {
     render(<InfoSection {...defaultProps} />)
 
-    const header = screen.getByRole('button', { name: /^properties$/i })
+    const header = screen.getByRole('button', { name: /^properties/i })
     expect(header).toHaveAttribute('aria-expanded', 'true')
   })
 })

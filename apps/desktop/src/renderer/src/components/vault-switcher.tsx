@@ -103,23 +103,27 @@ export function VaultSwitcher() {
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <SidebarMenuButton
-              size="lg"
-              className="bg-white rounded-lg gap-2 border border-gray-200/60 data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground group-data-[collapsible=icon]:justify-center"
+              size="default"
+              className="rounded-md gap-2 h-auto py-1.5 px-2 hover:bg-sidebar-accent/50 data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground group-data-[collapsible=icon]:justify-center"
             >
-              <div className="flex aspect-square size-6 items-center justify-center rounded-full bg-indigo-500 text-white">
+              <div className="flex aspect-square size-6 shrink-0 items-center justify-center rounded-md bg-sidebar-terracotta text-white">
                 {isLoading ? (
                   <Loader2 className="size-3 animate-spin" />
                 ) : (
                   <HardDrive className="size-3" />
                 )}
               </div>
-              <div className="grid flex-1 text-left text-sm leading-tight group-data-[collapsible=icon]:hidden">
-                <span className="truncate font-normal">{currentVaultName}</span>
+              <div className="grid flex-1 text-left leading-tight group-data-[collapsible=icon]:hidden">
+                <span className="truncate text-[13px] font-semibold text-sidebar-primary tracking-[-0.01em] leading-4">
+                  {currentVaultName}
+                </span>
                 {status?.isIndexing && (
-                  <span className="text-xs text-gray-500">Indexing... {status.indexProgress}%</span>
+                  <span className="text-xs text-sidebar-muted">
+                    Indexing... {status.indexProgress}%
+                  </span>
                 )}
               </div>
-              <ChevronsUpDown className="ml-auto size-4 group-data-[collapsible=icon]:hidden" />
+              <ChevronsUpDown className="ml-auto size-4 text-sidebar-muted opacity-0 group-hover:opacity-100 transition-opacity group-data-[collapsible=icon]:hidden" />
             </SidebarMenuButton>
           </DropdownMenuTrigger>
           <DropdownMenuContent
@@ -144,7 +148,7 @@ export function VaultSwitcher() {
                     className="group/vault rounded-lg cursor-pointer hover:bg-gray-100 focus:bg-gray-100 transition-colors"
                   >
                     <div className="flex size-7 items-center justify-center rounded-md border border-gray-200 bg-white">
-                      <FolderOpen className="size-4 shrink-0 text-indigo-500" />
+                      <FolderOpen className="size-4 shrink-0 text-sidebar-terracotta" />
                     </div>
                     <div className="flex-1 min-w-0">
                       <span className="font-medium text-gray-900 block truncate">{vault.name}</span>
@@ -153,7 +157,7 @@ export function VaultSwitcher() {
                       </span>
                     </div>
                     {isActive ? (
-                      <Check className="size-4 text-indigo-500 shrink-0" />
+                      <Check className="size-4 text-sidebar-terracotta shrink-0" />
                     ) : (
                       <button
                         onClick={(e) => handleRemoveClick(e, vault)}

@@ -62,21 +62,8 @@ function getBookmarkIcon(itemType: string) {
 /**
  * Get color class for bookmark item type
  */
-function getBookmarkIconColor(itemType: string): string {
-  switch (itemType) {
-    case BookmarkItemTypes.NOTE:
-      return 'text-accent-blue'
-    case BookmarkItemTypes.JOURNAL:
-      return 'text-accent-purple'
-    case BookmarkItemTypes.TASK:
-      return 'text-accent-orange'
-    case BookmarkItemTypes.IMAGE:
-      return 'text-accent-pink'
-    case BookmarkItemTypes.AUDIO:
-      return 'text-accent-cyan'
-    default:
-      return 'text-muted-foreground'
-  }
+function getBookmarkIconColor(_itemType: string): string {
+  return 'text-sidebar-foreground'
 }
 
 // Map bookmark item type to tab type
@@ -181,8 +168,9 @@ export function SidebarBookmarkList({
                 <Icon className={cn('size-4 shrink-0', iconColor)} aria-hidden="true" />
               )}
 
-              {/* Title */}
-              <span className="flex-1 truncate">{title}</span>
+              <span className="flex-1 truncate text-[13px] text-sidebar-text-folder font-medium">
+                {title}
+              </span>
             </SidebarMenuButton>
 
             {/* Actions dropdown */}

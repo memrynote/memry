@@ -456,10 +456,18 @@ export const SettingsChannels = {
     SET_API_KEY: 'settings:setApiKey',
     /** Test API provider connection */
     TEST_API_CONNECTION: 'settings:testApiConnection',
+    /** Get graph view settings */
+    GET_GRAPH_SETTINGS: 'settings:getGraphSettings',
+    /** Update graph view settings */
+    SET_GRAPH_SETTINGS: 'settings:setGraphSettings',
     /** Reset all settings to defaults */
     RESET_ALL: 'settings:resetAll',
     /** Trigger manual sync */
     TRIGGER_SYNC: 'settings:triggerSync'
+  },
+  sync: {
+    /** Get the saved startup theme synchronously for first-paint bootstrap */
+    GET_STARTUP_THEME: 'settings:getStartupThemeSync'
   },
   events: {
     /** Settings changed */
@@ -471,6 +479,7 @@ export const SettingsChannels = {
 
 export type SettingsInvokeChannel =
   (typeof SettingsChannels.invoke)[keyof typeof SettingsChannels.invoke]
+export type SettingsSyncChannel = (typeof SettingsChannels.sync)[keyof typeof SettingsChannels.sync]
 export type SettingsEventChannel =
   (typeof SettingsChannels.events)[keyof typeof SettingsChannels.events]
 
@@ -840,3 +849,18 @@ export type FolderViewInvokeChannel =
   (typeof FolderViewChannels.invoke)[keyof typeof FolderViewChannels.invoke]
 export type FolderViewEventChannel =
   (typeof FolderViewChannels.events)[keyof typeof FolderViewChannels.events]
+
+// ============================================================================
+// Graph Channels
+// ============================================================================
+
+export const GraphChannels = {
+  invoke: {
+    /** Get full graph data (all nodes + edges) */
+    GET_GRAPH_DATA: 'graph:get-graph-data',
+    /** Get local graph around a specific note */
+    GET_LOCAL_GRAPH: 'graph:get-local-graph'
+  }
+} as const
+
+export type GraphInvokeChannel = (typeof GraphChannels.invoke)[keyof typeof GraphChannels.invoke]

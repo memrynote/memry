@@ -8,6 +8,7 @@ import App from './App'
 import QuickCapture from './components/quick-capture'
 import { AuthProvider } from './contexts/auth-context'
 import { SyncProvider } from './contexts/sync-context'
+import { getStartupTheme, THEME_STORAGE_KEY } from './lib/startup-theme'
 
 // Create a client with default options for the entire app
 const queryClient = new QueryClient({
@@ -29,12 +30,18 @@ const queryClient = new QueryClient({
 // Handle both '#/quick-capture' and '#quick-capture' formats
 const isQuickCaptureWindow =
   window.location.hash === '#/quick-capture' || window.location.hash === '#quick-capture'
+const startupTheme = getStartupTheme()
 
 // Render appropriate component based on route
 const RootComponent = isQuickCaptureWindow ? (
   <StrictMode>
     <QueryClientProvider client={queryClient}>
-      <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
+      <ThemeProvider
+        attribute="class"
+        defaultTheme={startupTheme}
+        enableSystem
+        storageKey={THEME_STORAGE_KEY}
+      >
         <QuickCapture />
       </ThemeProvider>
     </QueryClientProvider>
