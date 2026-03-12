@@ -5,7 +5,7 @@
  * Loads real note data via useNotes() hook and saves changes via updateNote().
  */
 
-import { useState, useCallback, useEffect, useRef, useMemo } from 'react'
+import { useState, useCallback, useEffect, useRef, useMemo, type RefObject } from 'react'
 import { cn } from '@/lib/utils'
 import { useQueryClient } from '@tanstack/react-query'
 import { ExportDialog } from '@/components/note/export-dialog'
@@ -48,6 +48,8 @@ import { createLogger } from '@/lib/logger'
 import { LocalGraphPanel } from '@/components/graph/local-graph-panel'
 import { graphKeys } from '@/hooks/use-graph-data'
 import { NoteBreadcrumb } from '@/components/note/note-breadcrumb'
+import { FindBar } from '@/components/find-bar/find-bar'
+import { useFindInPage } from '@/hooks/use-find-in-page'
 
 const log = createLogger('Page:Note')
 
@@ -171,6 +173,14 @@ export function NotePage({ noteId }: NotePageProps) {
 
   // Editor settings (toolbar mode)
   const { settings: editorSettings } = useNoteEditorSettings()
+
+  // Find in page (Cmd+F)
+  const editorContainerRef = useRef<HTMLDivElement>(null)
+  const isActiveNote = activeTab?.entityId === noteId
+  const findInPage = useFindInPage(
+    editorContainerRef as RefObject<HTMLElement | null>,
+    isActiveNote
+  )
 
   // Content tracking for change detection
   const documentStats = useMemo(() => {
@@ -799,6 +809,19 @@ export function NotePage({ noteId }: NotePageProps) {
       headings={headings}
       onHeadingClick={handleHeadingClick}
       actions={actionIcons}
+      topBar={
+        <FindBar
+          isOpen={findInPage.isOpen}
+          query={findInPage.query}
+          matchCount={findInPage.matchCount}
+          currentIndex={findInPage.currentIndex}
+          inputRef={findInPage.inputRef}
+          onQueryChange={findInPage.setQuery}
+          onNext={findInPage.next}
+          onPrev={findInPage.prev}
+          onClose={findInPage.close}
+        />
+      }
       breadcrumb={
         <NoteBreadcrumb
           notePath={note.path}
@@ -844,6 +867,7 @@ export function NotePage({ noteId }: NotePageProps) {
 
         {/* Main content - BlockNote Editor */}
         <div
+          ref={editorContainerRef}
           role="presentation"
           className="editor-click-area min-h-[400px] relative"
           onMouseDown={(e) => {

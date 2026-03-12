@@ -14,7 +14,8 @@ const FONT_SIZE_MAP = {
 const FONT_FAMILY_MAP = {
   system: '',
   serif: "'Crimson Pro', Georgia, 'Times New Roman', serif",
-  'sans-serif': "'DM Sans', system-ui, -apple-system, BlinkMacSystemFont, sans-serif",
+  'sans-serif':
+    'ui-sans-serif, -apple-system, "system-ui", "Segoe UI Variable Display", "Segoe UI", Helvetica, "Apple Color Emoji", "Noto Sans Arabic", "Noto Sans Hebrew", Arial, sans-serif, "Segoe UI Emoji", "Segoe UI Symbol"',
   monospace: "'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace"
 } as const
 

@@ -222,6 +222,12 @@ pnpm test
 
 ---
 
+## License
+
+memry is licensed under the [GNU General Public License v3.0](LICENSE).
+
+---
+
 ## Star History
 
 [![Star History Chart](https://api.star-history.com/image?repos=memrynote/memry&type=date&legend=top-left)](https://www.star-history.com/?repos=memrynote%2Fmemry&type=date&legend=top-left)
