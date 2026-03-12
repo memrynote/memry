@@ -773,10 +773,14 @@ export const api = {
     quick: (text: string) => invoke(SearchChannels.invoke.QUICK, text),
     getStats: () => invoke(SearchChannels.invoke.GET_STATS),
     rebuildIndex: () => invoke(SearchChannels.invoke.REBUILD_INDEX),
-    getRecent: () => invoke(SearchChannels.invoke.GET_RECENT),
-    addRecent: (params: { query: string; resultCount: number }) =>
-      invoke(SearchChannels.invoke.ADD_RECENT, params),
-    clearRecent: () => invoke(SearchChannels.invoke.CLEAR_RECENT),
+    getReasons: () => invoke(SearchChannels.invoke.GET_REASONS),
+    addReason: (params: {
+      itemId: string
+      itemType: 'note' | 'journal' | 'task' | 'inbox'
+      itemTitle: string
+      searchQuery: string
+    }) => invoke(SearchChannels.invoke.ADD_REASON, params),
+    clearReasons: () => invoke(SearchChannels.invoke.CLEAR_REASONS),
     getAllTags: () => invoke(SearchChannels.invoke.GET_ALL_TAGS)
   },
 
