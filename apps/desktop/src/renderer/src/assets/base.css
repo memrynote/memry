@@ -168,7 +168,8 @@
     /* ===== TYPOGRAPHY - Font Families ===== */
     --font-sans: 'DM Sans', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
     --font-serif: 'Crimson Pro', Georgia, 'Times New Roman', serif;
-    --font-display: 'Playfair Display', 'Crimson Pro', Georgia, serif;
+    --font-display: 'Instrument Serif', 'Playfair Display', 'Crimson Pro', Georgia, serif;
+    --font-mono: 'JetBrains Mono', 'SF Mono', 'Fira Code', monospace;
 
     /* ===== BASE COLORS (Canvas) - "Warm Utility" Aesthetic ===== */
     --background: #f6f5f0;
@@ -295,7 +296,8 @@
     /* ===== TYPOGRAPHY - Font Families (same in dark mode) ===== */
     --font-sans: 'DM Sans', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
     --font-serif: 'Crimson Pro', Georgia, 'Times New Roman', serif;
-    --font-display: 'Playfair Display', 'Crimson Pro', Georgia, serif;
+    --font-display: 'Instrument Serif', 'Playfair Display', 'Crimson Pro', Georgia, serif;
+    --font-mono: 'JetBrains Mono', 'SF Mono', 'Fira Code', monospace;
 
     /* ===== BASE COLORS - Dark Mode (Warm Dark Variant) ===== */
     --background: #1c1b19;
@@ -936,6 +938,7 @@ div.react-sigma {
 
   /* ===== FONTS ===== */
   --font-display: var(--font-display);
+  --font-mono: var(--font-mono);
 }
 
 /* ===== JOURNAL PAGE SPECIFIC STYLES ===== */
