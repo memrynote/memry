@@ -236,7 +236,7 @@ export function AppearanceSettings() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="system">System Default</SelectItem>
-              <SelectItem value="sans-serif">Sans-serif (DM Sans)</SelectItem>
+              <SelectItem value="sans-serif">Sans-serif (System)</SelectItem>
               <SelectItem value="serif">Serif (Crimson Pro)</SelectItem>
               <SelectItem value="monospace">Monospace</SelectItem>
             </SelectContent>

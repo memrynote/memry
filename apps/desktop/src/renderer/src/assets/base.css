@@ -10,13 +10,14 @@
 :root .bn-editor,
 :root .bn-container {
   background-color: var(--background) !important;
+  color: #2c2c2b !important;
   padding-inline: 0px;
 }
 
 .dark .bn-editor,
 .dark .bn-container {
   background-color: var(--background) !important;
-  color: var(--foreground) !important;
+  color: #ffffff !important;
 }
 
 /* Make all text content in BlockNote white in dark mode */
@@ -97,6 +98,16 @@
   gap: 6px !important;
   min-height: 28px !important;
   border-radius: 4px !important;
+  transition: background-color 0.1s ease;
+}
+
+/* Highlighted/selected item when navigating with arrow keys */
+.bn-suggestion-menu [role='option'][aria-selected='true'] {
+  background-color: var(--surface-active) !important;
+}
+
+.dark .bn-suggestion-menu [role='option'][aria-selected='true'] {
+  background-color: #3a3935 !important;
 }
 
 /* HIDE SUBTEXT - removes descriptions like "Resizable image with caption" */
@@ -166,7 +177,10 @@
 @layer base {
   :root {
     /* ===== TYPOGRAPHY - Font Families ===== */
-    --font-sans: 'DM Sans', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+    --font-sans:
+      ui-sans-serif, -apple-system, 'system-ui', 'Segoe UI Variable Display', 'Segoe UI', Helvetica,
+      'Apple Color Emoji', 'Noto Sans Arabic', 'Noto Sans Hebrew', Arial, sans-serif,
+      'Segoe UI Emoji', 'Segoe UI Symbol';
     --font-serif: 'Crimson Pro', Georgia, 'Times New Roman', serif;
     --font-display: 'Instrument Serif', 'Playfair Display', 'Crimson Pro', Georgia, serif;
     --font-mono: 'JetBrains Mono', 'SF Mono', 'Fira Code', monospace;
@@ -294,7 +308,10 @@
 
   .dark {
     /* ===== TYPOGRAPHY - Font Families (same in dark mode) ===== */
-    --font-sans: 'DM Sans', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+    --font-sans:
+      ui-sans-serif, -apple-system, 'system-ui', 'Segoe UI Variable Display', 'Segoe UI', Helvetica,
+      'Apple Color Emoji', 'Noto Sans Arabic', 'Noto Sans Hebrew', Arial, sans-serif,
+      'Segoe UI Emoji', 'Segoe UI Symbol';
     --font-serif: 'Crimson Pro', Georgia, 'Times New Roman', serif;
     --font-display: 'Instrument Serif', 'Playfair Display', 'Crimson Pro', Georgia, serif;
     --font-mono: 'JetBrains Mono', 'SF Mono', 'Fira Code', monospace;
