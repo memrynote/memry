@@ -17,6 +17,7 @@ interface NoteLayoutProps {
   className?: string
   actions?: ReactNode
   breadcrumb?: ReactNode
+  topBar?: ReactNode
   stats?: OutlineInfoPanelProps['stats']
 }
 
@@ -29,6 +30,7 @@ export function NoteLayout({
   className,
   actions,
   breadcrumb,
+  topBar,
   stats
 }: NoteLayoutProps) {
   const { activeHeadingId } = useActiveHeading({
@@ -54,6 +56,8 @@ export function NoteLayout({
         onHeadingClick={onHeadingClick}
         stats={stats}
       />
+
+      {topBar}
     </div>
   )
 }

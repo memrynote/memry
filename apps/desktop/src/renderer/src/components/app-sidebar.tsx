@@ -262,7 +262,7 @@ function AppSidebarInner({ currentPage, viewCounts, ...props }: AppSidebarProps)
       <div className="flex-shrink-0">
         {/* Quick Actions: Search & New */}
         <SidebarGroup className="px-2 pt-1 pb-0">
-          <SidebarMenu>
+          <SidebarMenu className="gap-0">
             {quickActions.map((action) => (
               <SidebarMenuItem key={action.title}>
                 <SidebarMenuButton
@@ -280,7 +280,7 @@ function AppSidebarInner({ currentPage, viewCounts, ...props }: AppSidebarProps)
                   }
                 >
                   <action.icon className={cn('size-[15px]', action.iconColor)} />
-                  <span className="text-[13px] leading-4 text-sidebar-foreground">
+                  <span className="text-[13px] leading-4 font-medium text-sidebar-foreground">
                     {action.title}
                   </span>
                   <KbdGroup className="ml-auto">
@@ -294,7 +294,7 @@ function AppSidebarInner({ currentPage, viewCounts, ...props }: AppSidebarProps)
 
         {/* Main Navigation: Inbox, Home, Journal, Tasks */}
         <SidebarGroup className="px-2 pt-1 pb-0">
-          <SidebarMenu>
+          <SidebarMenu className="gap-0">
             {mainNav.map((item) => {
               const sidebarItem: SidebarItem = {
                 type: item.page as TabType,
@@ -310,7 +310,7 @@ function AppSidebarInner({ currentPage, viewCounts, ...props }: AppSidebarProps)
                     className="rounded-md h-auto py-[7px] px-2.5 gap-2.5"
                   >
                     <item.icon className={cn('size-[15px]', item.iconColor)} />
-                    <span className="text-[13px] leading-4 text-sidebar-foreground">
+                    <span className="text-[13px] leading-4 font-medium text-sidebar-foreground">
                       {item.title}
                     </span>
                     {item.page === 'inbox' && inboxCount > 0 && (
