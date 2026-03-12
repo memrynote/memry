@@ -824,6 +824,77 @@ div.react-sigma {
   }
 }
 
+/* ===== BLOCKNOTE XL-AI THEMING ===== */
+
+/* AI Menu (combobox) — match memry's warm palette */
+.bn-combobox {
+  background: var(--popover) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: var(--radius-lg) !important;
+  box-shadow: var(--shadow-card-hover) !important;
+}
+
+.bn-combobox-input {
+  background: transparent !important;
+  color: var(--foreground) !important;
+}
+
+.bn-combobox-input::placeholder {
+  color: var(--text-tertiary) !important;
+}
+
+/* AI suggestion items — consistent hover states */
+.bn-combobox-items [role='option'][aria-selected='true'] {
+  background-color: var(--surface-active) !important;
+}
+
+.dark .bn-combobox-items [role='option'][aria-selected='true'] {
+  background-color: #3a3935 !important;
+}
+
+/* AI diff highlighting — warm-tinted insertion/deletion for light mode */
+ins[data-type='modification'],
+ins.bn-inline-content {
+  background: rgba(74, 158, 142, 0.12) !important;
+  border-bottom-color: rgba(74, 158, 142, 0.25) !important;
+  color: #2d7a6a !important;
+}
+
+del,
+del.bn-inline-content {
+  color: rgba(100, 90, 75, 0.4) !important;
+}
+
+/* Dark mode diff highlighting */
+.dark ins[data-type='modification'],
+.dark ins.bn-inline-content {
+  background: rgba(90, 191, 173, 0.15) !important;
+  border-bottom-color: rgba(90, 191, 173, 0.3) !important;
+  color: #7dd3c4 !important;
+}
+
+.dark del,
+.dark del.bn-inline-content {
+  color: rgba(168, 166, 161, 0.35) !important;
+}
+
+/* AI agent cursor — warm accent */
+.bn-collaboration-cursor__caret {
+  background-color: var(--sidebar-terracotta) !important;
+}
+
+.bn-collaboration-cursor__label {
+  background-color: var(--sidebar-terracotta) !important;
+  color: white !important;
+  font-size: 11px !important;
+  border-radius: 3px 3px 3px 0 !important;
+}
+
+/* AI menu error state */
+.bn-combobox-error {
+  color: var(--destructive) !important;
+}
+
 /* macOS window drag region */
 .drag-region {
   -webkit-app-region: drag;
