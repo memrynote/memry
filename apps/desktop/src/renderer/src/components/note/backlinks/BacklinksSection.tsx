@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react'
 import { cn } from '@/lib/utils'
-import { Link2, ChevronDown, ChevronRight } from 'lucide-react'
+import { Link2, ChevronDown } from 'lucide-react'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -8,7 +8,6 @@ import {
   DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu'
 import { BacklinkCard } from './BacklinkCard'
-import { BacklinksEmptyState } from './BacklinksEmptyState'
 import { BacklinksLoadingState } from './BacklinksLoadingState'
 import type { BacklinksSectionProps, BacklinkSortOption, Backlink } from './types'
 import { createLogger } from '@/lib/logger'
@@ -99,6 +98,8 @@ export function BacklinksSection({
   // Use props or internal state
   const backlinks = propBacklinks ?? DEMO_BACKLINKS
   const sortBy = propSortBy ?? internalSortBy
+
+  if (!isLoading && backlinks.length === 0) return null
 
   // Sort backlinks
   const sortedBacklinks = useMemo(() => {
@@ -213,8 +214,6 @@ export function BacklinksSection({
         <div id="backlinks-content" aria-live="polite" role="list" aria-label="Backlinks list">
           {isLoading ? (
             <BacklinksLoadingState />
-          ) : backlinks.length === 0 ? (
-            <BacklinksEmptyState />
           ) : (
             <>
               <div className="flex gap-2.5">
