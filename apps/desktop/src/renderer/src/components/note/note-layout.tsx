@@ -47,7 +47,7 @@ export function NoteLayout({
             <div className="flex items-center">{actions}</div>
           </div>
         )}
-        <div className="mx-auto w-full max-w-4xl px-20 pt-6 pb-10">{children}</div>
+        <div className="mx-auto w-full max-w-4xl px-20 pt-6 pb-[30vh]">{children}</div>
       </div>
 
       <OutlineInfoPanel
