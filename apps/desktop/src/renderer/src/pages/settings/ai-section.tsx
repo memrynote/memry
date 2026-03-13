@@ -7,6 +7,7 @@ import { Brain, Info, Loader2, CheckCircle, XCircle, RefreshCw } from 'lucide-re
 import { toast } from 'sonner'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { createLogger } from '@/lib/logger'
+import { AIInlineSettings as AIInlineSettingsPanel } from './ai-inline-section'
 
 const log = createLogger('Page:Settings:AI')
 
@@ -330,6 +331,10 @@ export function AISettings() {
           </p>
         </div>
       </div>
+
+      <Separator />
+
+      <AIInlineSettingsPanel />
     </div>
   )
 }

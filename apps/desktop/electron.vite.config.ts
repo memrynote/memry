@@ -53,6 +53,7 @@ export default defineConfig({
           '@blocknote/server-util',
           '@blocknote/core',
           '@blocknote/react',
+          '@blocknote/xl-ai',
           '@handlewithcare/prosemirror-inputrules',
           'y-prosemirror'
         ]

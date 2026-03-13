@@ -9,10 +9,21 @@ log.transports.file.format = '{y}-{m}-{d} {h}:{i}:{s}.{ms} [{level}] [{scope}] {
 log.transports.console.level = isDev ? 'debug' : 'warn'
 log.transports.console.format = '{h}:{i}:{s}.{ms} [{level}] [{scope}] {text}'
 
-log.errorHandler.startCatching()
+log.errorHandler.startCatching({
+  showDialog: false,
+  onError({ error }) {
+    if (error?.message?.includes('EIO')) {
+      log.transports.console.level = false
+    }
+  }
+})
+
+function disableConsoleTransport(): void {
+  log.transports.console.level = false
+}
 
 function createLogger(scope: string) {
   return log.scope(scope)
 }
 
-export { log, createLogger }
+export { log, createLogger, disableConsoleTransport }

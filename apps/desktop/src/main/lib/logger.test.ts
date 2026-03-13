@@ -56,9 +56,24 @@ describe('logger', () => {
     expect(log.transports.console.format).toContain('[{scope}]')
   })
 
-  it('starts error handler', async () => {
+  it('starts error handler with showDialog disabled and onError callback', async () => {
     await import('./logger')
-    expect(mockStartCatching).toHaveBeenCalled()
+    expect(mockStartCatching).toHaveBeenCalledWith({
+      showDialog: false,
+      onError: expect.any(Function)
+    })
+  })
+
+  it('exports disableConsoleTransport that sets console level to false', async () => {
+    const { log, disableConsoleTransport } = await import('./logger')
+    // #given
+    log.transports.console.level = 'debug'
+
+    // #when
+    disableConsoleTransport()
+
+    // #then
+    expect(log.transports.console.level).toBe(false)
   })
 
   it('createLogger returns scoped logger with expected methods', async () => {

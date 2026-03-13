@@ -41,12 +41,20 @@ export const useTabKeyboardShortcuts = (): void => {
         description: 'New tab'
       },
 
-      // Close tab (⌘W)
+      // Close tab (⌘W) — if only inbox remains, close the window
       {
         key: 'w',
         modifiers: { meta: true },
         action: () => {
-          if (activeTab) {
+          if (!activeTab) return
+
+          const isOnlyTab = activeGroup?.tabs.length === 1
+          const isSingleGroup = Object.keys(state.tabGroups).length === 1
+          const isInboxTab = activeTab.type === 'inbox'
+
+          if (isOnlyTab && isSingleGroup && isInboxTab) {
+            window.api.windowClose()
+          } else {
             closeTab(activeTab.id, state.activeGroupId)
           }
         },

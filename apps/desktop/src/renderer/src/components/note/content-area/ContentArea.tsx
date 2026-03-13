@@ -8,7 +8,12 @@
 // BlockNote uses dynamic content types with 'any' internally - these errors are unavoidable
 
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { SuggestionMenuController, useCreateBlockNote, FormattingToolbar } from '@blocknote/react'
+import {
+  SuggestionMenuController,
+  useCreateBlockNote,
+  FormattingToolbar,
+  getDefaultReactSlashMenuItems
+} from '@blocknote/react'
 import { BlockNoteView } from '@blocknote/shadcn'
 import {
   BlockNoteSchema,
@@ -17,10 +22,16 @@ import {
   type Block
 } from '@blocknote/core'
 import { useTheme } from 'next-themes'
+import { AIExtension, AIMenuController, getAISlashMenuItems } from '@blocknote/xl-ai'
+import { CustomAIMenu } from './ai-menu'
+import { en as aiEn } from '@blocknote/xl-ai/locales'
+import { en as coreEn } from '@blocknote/core/locales'
+import { DefaultChatTransport } from 'ai'
 
 // BlockNote styles
 import '@blocknote/core/fonts/inter.css'
 import '@blocknote/shadcn/style.css'
+import '@blocknote/xl-ai/style.css'
 
 import type * as Y from 'yjs'
 import { cn } from '@/lib/utils'
@@ -54,6 +65,7 @@ import {
   type HighlightSelection
 } from '@/components/reminder'
 import { createLogger } from '@/lib/logger'
+import { useAIInline } from '@/hooks/use-ai-inline'
 
 const log = createLogger('Component:ContentArea')
 
@@ -403,6 +415,8 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
   const { resolvedTheme } = useTheme()
   const editorTheme = resolvedTheme === 'dark' ? 'dark' : 'light'
   const { openTag } = useSidebarDrillDown()
+  const { port: aiPort, error: aiError, retry: retryAI } = useAIInline()
+  const [aiReady, setAiReady] = useState(false)
 
   // T069: Drag state for visual feedback
   const [isDragging, setIsDragging] = useState(false)
@@ -534,6 +548,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
       numberedListItem: 'List item',
       checkListItem: 'To-do item'
     },
+    dictionary: { ...coreEn, ai: aiEn } as any,
     // T140: Yjs collaboration (when fragment is available from IPC provider)
     ...(yjsFragment
       ? {
@@ -544,6 +559,49 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
         }
       : {})
   })
+
+  useEffect(() => {
+    if (!aiPort) {
+      setAiReady(false)
+      return
+    }
+    if (editor.getExtension('ai')) {
+      setAiReady(true)
+      return
+    }
+
+    const transport = new DefaultChatTransport({
+      api: `http://127.0.0.1:${aiPort}/api/ai/chat`
+    })
+    const aiExtension = AIExtension({ transport: transport as any })
+    editor.registerExtension(aiExtension)
+    setAiReady(true)
+    log.info('AI extension registered, port:', aiPort)
+
+    return () => {
+      editor.unregisterExtension('ai')
+      setAiReady(false)
+    }
+  }, [aiPort, editor])
+
+  useEffect(() => {
+    if (!aiReady) return
+
+    const handleKeyDown = (e: KeyboardEvent): void => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'j') {
+        e.preventDefault()
+        const ai = editor.getExtension('ai') as any
+        if (!ai?.openAIMenuAtBlock) return
+        const cursor = editor.getTextCursorPosition()
+        if (cursor?.block?.id) {
+          ai.openAIMenuAtBlock(cursor.block.id)
+        }
+      }
+    }
+
+    document.addEventListener('keydown', handleKeyDown)
+    return () => document.removeEventListener('keydown', handleKeyDown)
+  }, [aiReady, editor])
 
   const notesCacheRef = useRef<{ notes: NoteSuggestion[]; fetchedAt: number } | null>(null)
 
@@ -1235,6 +1293,16 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
       {/* Empty document drop indicator - simple line at top when no blocks */}
       {isDragging && !dropTarget && <EmptyDocumentDropIndicator />}
 
+      {/* AI inline error banner */}
+      {aiError && (
+        <div className="flex items-center gap-2 px-3 py-1.5 text-xs text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30 border-b border-amber-200 dark:border-amber-800/40">
+          <span className="truncate">{aiError}</span>
+          <button onClick={retryAI} className="shrink-0 underline hover:no-underline">
+            Retry
+          </button>
+        </div>
+      )}
+
       {/* BlockNote Editor */}
       <div
         ref={editorContainerRef}
@@ -1253,8 +1321,25 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
           }}
           theme={editorTheme}
           formattingToolbar={!stickyToolbar}
+          slashMenu={false}
         >
           {stickyToolbar && <FormattingToolbar />}
+          {aiReady && <AIMenuController aiMenu={CustomAIMenu} />}
+          <SuggestionMenuController
+            triggerCharacter="/"
+            getItems={async (query) => {
+              const defaults = getDefaultReactSlashMenuItems(editor)
+              const aiItems = aiReady ? getAISlashMenuItems(editor) : []
+              const all = [...defaults, ...aiItems]
+              if (!query) return all
+              const lower = query.toLowerCase()
+              return all.filter(
+                (item) =>
+                  item.title.toLowerCase().includes(lower) ||
+                  item.aliases?.some((a) => a.toLowerCase().includes(lower))
+              )
+            }}
+          />
           <SuggestionMenuController
             triggerCharacter="[["
             getItems={getWikiLinkItems}
