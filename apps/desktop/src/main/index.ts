@@ -22,7 +22,7 @@ import { autoOpenLastVault, closeVault } from './vault'
 import { getCurrentVaultPath } from './store'
 import { startSnoozeScheduler, stopSnoozeScheduler, checkDueItemsOnStartup } from './inbox/snooze'
 import { startReminderScheduler, stopReminderScheduler } from './lib/reminders'
-import { log, createLogger } from './lib/logger'
+import { log, createLogger, disableConsoleTransport } from './lib/logger'
 import {
   computeSpkiHashFromPem,
   isPinningDisabled,
@@ -52,6 +52,13 @@ const configLog = createLogger('Config')
 const quickCaptureLog = createLogger('QuickCapture')
 const shutdownLog = createLogger('Shutdown')
 const deepLinkLog = createLogger('DeepLink')
+
+for (const signal of ['SIGINT', 'SIGTERM'] as const) {
+  process.on(signal, () => {
+    disableConsoleTransport()
+    app.quit()
+  })
+}
 
 // Load .env file from project root (must be before any env access)
 // In development, load from project root; in production, from app resources
@@ -143,7 +150,7 @@ function configureCsp(): void {
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
     "img-src 'self' data: memry-file:",
     "font-src 'self' data: https://fonts.gstatic.com",
-    "connect-src 'self' memry-file: https://*.memry.app wss://*.memry.app",
+    "connect-src 'self' memry-file: https://*.memrynote.com wss://*.memrynote.com http://127.0.0.1:*",
     "media-src 'self' memry-file:",
     "worker-src 'self' blob:",
     "object-src 'none'",
@@ -155,7 +162,7 @@ function configureCsp(): void {
   if (is.dev) {
     policy[1] = "script-src 'self' 'unsafe-eval' 'unsafe-inline'"
     policy[5] =
-      "connect-src 'self' memry-file: https://*.memry.app wss://*.memry.app ws://localhost:* http://localhost:*"
+      "connect-src 'self' memry-file: https://*.memrynote.com wss://*.memrynote.com ws://localhost:* http://localhost:* http://127.0.0.1:*"
   }
 
   const cspString = policy.join('; ')

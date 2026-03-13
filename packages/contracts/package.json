@@ -41,6 +41,7 @@
     "./tags-api": "./src/tags-api.ts",
     "./tasks-api": "./src/tasks-api.ts",
     "./templates-api": "./src/templates-api.ts",
+    "./ai-inline-channels": "./src/ai-inline-channels.ts",
     "./vault-api": "./src/vault-api.ts"
   },
   "types": "./src/index.ts",

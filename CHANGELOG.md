@@ -5,6 +5,26 @@ Format: weekly entries grouped by feature area.
 
 ---
 
+## 2026-03-13 — Inline AI Editing, Editor Polish, Domain Migration
+
+### Added
+- Add BlockNote xl-ai inline editing with local HTTP chat server (Ollama, OpenAI, Anthropic)
+- Add AI commands: rewrite, summarize, expand, simplify, fix grammar, continue writing, translate
+- Add custom AI menu with selection-aware command sets and Cmd+J shortcut
+- Add AI inline settings UI with provider/model selection, API key management, and connection test
+- Add graceful SIGINT/SIGTERM shutdown with EIO-safe console transport
+
+### Fixed
+- Fix Cmd+W to close window when only inbox tab remains (matching native macOS behavior)
+
+### Changed
+- Migrate CSP connect-src domain from memry.app to memrynote.com
+- Upgrade BlockNote from 0.45.0 to 0.47.1
+- Increase editor bottom padding to 30vh for scroll breathing room
+- Allow http://127.0.0.1:* in CSP for local AI chat server
+
+---
+
 ## 2026-03-09 → 2026-03-12 — Graph View, Editor Tags, Design System
 
 ### Added

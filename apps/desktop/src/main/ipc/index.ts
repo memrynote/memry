@@ -18,6 +18,7 @@ import { registerSyncHandlers, unregisterSyncHandlers, checkSyncIntegrity } from
 import { registerCryptoHandlers, unregisterCryptoHandlers } from './crypto-handlers'
 import { registerSearchHandlers, unregisterSearchHandlers } from './search-handlers'
 import { registerGraphHandlers, unregisterGraphHandlers } from './graph-handlers'
+import { registerAIInlineHandlers, unregisterAIInlineHandlers } from './ai-inline-handlers'
 import { createLogger } from '../lib/logger'
 
 const ipcLog = createLogger('IPC')
@@ -97,6 +98,9 @@ export function registerAllHandlers(): void {
   // Register graph handlers
   registerGraphHandlers()
 
+  // Register AI inline editing handlers
+  registerAIInlineHandlers()
+
   handlersRegistered = true
   ipcLog.info('all handlers registered')
 }
@@ -127,6 +131,7 @@ export function unregisterAllHandlers(): void {
   unregisterCryptoHandlers()
   unregisterSearchHandlers()
   unregisterGraphHandlers()
+  unregisterAIInlineHandlers()
 
   handlersRegistered = false
   ipcLog.info('all handlers unregistered')
@@ -160,3 +165,4 @@ export { registerSyncHandlers, unregisterSyncHandlers } from './sync-handlers'
 export { registerCryptoHandlers, unregisterCryptoHandlers } from './crypto-handlers'
 export { registerSearchHandlers, unregisterSearchHandlers } from './search-handlers'
 export { registerGraphHandlers, unregisterGraphHandlers } from './graph-handlers'
+export { registerAIInlineHandlers, unregisterAIInlineHandlers } from './ai-inline-handlers'
