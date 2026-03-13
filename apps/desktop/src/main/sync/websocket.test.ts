@@ -285,12 +285,12 @@ describe('WebSocketManager', () => {
 
   describe('#given https server URL #when connecting', () => {
     it('#then converts to wss protocol', async () => {
-      const deps = createMockDeps({ serverUrl: 'https://sync.memry.app' })
+      const deps = createMockDeps({ serverUrl: 'https://sync.memrynote.com' })
       const manager = new WebSocketManager(deps)
 
       await manager.connect()
 
-      expect(lastWs().url).toBe('wss://sync.memry.app/sync/ws')
+      expect(lastWs().url).toBe('wss://sync.memrynote.com/sync/ws')
     })
   })
 
@@ -476,7 +476,7 @@ describe('WebSocketManager', () => {
       // #when
       await manager.connect()
       const pinErr = new CertificatePinningError(
-        'Certificate pin mismatch for sync.memry.app',
+        'Certificate pin mismatch for sync.memrynote.com',
         'sha256/badHash',
         ['sha256/expectedHash']
       )
