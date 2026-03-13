@@ -766,7 +766,7 @@ export function NotePage({ noteId }: NotePageProps) {
         <Bookmark
           className={cn(
             'h-4 w-4',
-            isBookmarked ? 'fill-[#D9770F] text-[#D9770F]' : 'text-[#8A857A]'
+            isBookmarked ? 'fill-accent-orange text-accent-orange' : 'text-muted-foreground'
           )}
         />
       </Button>
@@ -779,7 +779,7 @@ export function NotePage({ noteId }: NotePageProps) {
             className="h-8 w-8 hover:bg-transparent"
             disabled={isDeleted}
           >
-            <MoreHorizontal className="h-4 w-4 text-[#8A857A]" />
+            <MoreHorizontal className="h-4 w-4 text-muted-foreground" />
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">

@@ -28,10 +28,7 @@ export const MiniProgressBar = ({
 
   return (
     <div
-      className={cn(
-        'w-5 h-1 rounded-full overflow-hidden bg-gray-200 dark:bg-gray-700 shrink-0',
-        className
-      )}
+      className={cn('w-5 h-1 rounded-full overflow-hidden bg-surface-active shrink-0', className)}
       role="progressbar"
       aria-valuenow={percentage}
       aria-valuemin={0}

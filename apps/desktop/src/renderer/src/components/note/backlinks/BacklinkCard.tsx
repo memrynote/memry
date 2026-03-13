@@ -39,23 +39,23 @@ export function BacklinkCard({ backlink, onClick }: BacklinkCardProps) {
       className={cn(
         'flex flex-col grow shrink basis-0',
         'rounded-[10px] py-3 px-3.5 gap-1.5',
-        'bg-white border border-[#E8E5DF]',
-        'hover:border-[#D9D5CE] hover:shadow-sm',
+        'bg-background border border-border',
+        'hover:border-border hover:shadow-sm',
         'transition-all duration-150',
         'cursor-pointer',
         'group',
-        'focus:outline-none focus:ring-2 focus:ring-[#C45D3E]/20 focus:ring-offset-1'
+        'focus:outline-none focus:ring-2 focus:ring-sidebar-terracotta/20 focus:ring-offset-1'
       )}
       aria-label={`Link from ${noteTitle}`}
     >
       {/* Title */}
-      <span className="text-[13px] text-[#1A1917] font-sans font-semibold leading-4 truncate">
+      <span className="text-[13px] text-foreground font-sans font-semibold leading-4 truncate">
         {noteTitle}
       </span>
 
       {/* Context Snippet (first mention only for compact view) */}
       {visibleMentions.length > 0 && (
-        <div className="text-[12px] leading-[18px] text-[#8A857A] font-sans line-clamp-2">
+        <div className="text-[12px] leading-[18px] text-muted-foreground font-sans line-clamp-2">
           <BacklinkSnippet mention={visibleMentions[0]} />
         </div>
       )}
@@ -64,7 +64,7 @@ export function BacklinkCard({ backlink, onClick }: BacklinkCardProps) {
       {hasMultipleMentions && !showAllMentions && hiddenMentionCount > 0 && (
         <button
           onClick={handleShowMoreClick}
-          className="text-[11px] text-[#B5B0A6] hover:text-[#8A857A] transition-colors"
+          className="text-[11px] text-text-tertiary hover:text-muted-foreground transition-colors"
         >
           +{hiddenMentionCount} more
         </button>

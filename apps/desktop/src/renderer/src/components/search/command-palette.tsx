@@ -250,27 +250,27 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps): Rea
       <div className="fixed inset-0 bg-black/50 backdrop-blur-sm" aria-hidden="true" />
       <div className="fixed inset-0 flex items-start justify-center pt-[15vh] px-4">
         <div
-          className="w-full max-w-xl bg-white dark:bg-gray-900 rounded-xl shadow-2xl
-            border border-gray-200 dark:border-gray-700 overflow-hidden"
+          className="w-full max-w-xl bg-background rounded-xl shadow-2xl
+            border border-border overflow-hidden"
         >
-          <div className="flex items-center gap-3 px-4 border-b border-gray-100 dark:border-gray-800">
+          <div className="flex items-center gap-3 px-4 border-b border-border">
             {loading ? (
-              <Loader2 className="size-4 shrink-0 text-gray-400 animate-spin" />
+              <Loader2 className="size-4 shrink-0 text-text-tertiary animate-spin" />
             ) : (
-              <Search className="size-4 shrink-0 text-gray-400" />
+              <Search className="size-4 shrink-0 text-text-tertiary" />
             )}
             <Command.Input
               value={query}
               onValueChange={setQuery}
               placeholder="Search notes, tasks, journal, inbox..."
               autoFocus
-              className="flex-1 h-12 bg-transparent border-0 text-sm text-gray-900 dark:text-gray-100
-                placeholder:text-gray-400 focus:outline-none focus:ring-0"
+              className="flex-1 h-12 bg-transparent border-0 text-sm text-foreground
+                placeholder:text-text-tertiary focus:outline-none focus:ring-0"
             />
             {hasQuery && (
               <kbd
-                className="hidden sm:inline-flex text-[10px] text-gray-400 border border-gray-200
-                dark:border-gray-700 rounded px-1.5 py-0.5"
+                className="hidden sm:inline-flex text-[10px] text-text-tertiary border border-border
+                rounded px-1.5 py-0.5"
               >
                 ESC
               </kbd>
@@ -292,7 +292,7 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps): Rea
               [&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:py-1.5"
           >
             {hasQuery && !loading && !hasResults && !error && (
-              <Command.Empty className="py-12 text-center text-sm text-gray-400">
+              <Command.Empty className="py-12 text-center text-sm text-text-tertiary">
                 No results for &ldquo;{query}&rdquo;
               </Command.Empty>
             )}
@@ -320,7 +320,7 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps): Rea
               ))}
 
             {hasQuery && hasResults && (
-              <div className="px-3 py-2 text-xs text-gray-400 dark:text-gray-500 text-right tabular-nums border-t border-gray-100 dark:border-gray-800 mt-1">
+              <div className="px-3 py-2 text-xs text-text-tertiary text-right tabular-nums border-t border-border mt-1">
                 {totalCount} result{totalCount !== 1 ? 's' : ''}
               </div>
             )}

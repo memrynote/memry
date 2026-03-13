@@ -51,7 +51,7 @@ function NoteMetadata({
   query: string
 }): React.JSX.Element {
   return (
-    <div className="flex items-center gap-2 text-xs text-gray-400 dark:text-gray-500 mt-0.5">
+    <div className="flex items-center gap-2 text-xs text-text-tertiary mt-0.5">
       <span className="truncate max-w-48">{meta.path}</span>
       {meta.tags.length > 0 && (
         <span className="flex items-center gap-1">
@@ -65,7 +65,7 @@ function NoteMetadata({
 
 function JournalMetadata({ meta }: { meta: JournalResultMetadata }): React.JSX.Element {
   return (
-    <div className="flex items-center gap-2 text-xs text-gray-400 dark:text-gray-500 mt-0.5">
+    <div className="flex items-center gap-2 text-xs text-text-tertiary mt-0.5">
       <Calendar className="size-3" />
       <span>{meta.date}</span>
       {meta.tags.length > 0 && (
@@ -86,7 +86,7 @@ function TaskMetadata({ meta }: { meta: TaskResultMetadata }): React.JSX.Element
     1: 'text-blue-400'
   }
   return (
-    <div className="flex items-center gap-2 text-xs text-gray-400 dark:text-gray-500 mt-0.5">
+    <div className="flex items-center gap-2 text-xs text-text-tertiary mt-0.5">
       <span
         className="inline-block size-2 rounded-full shrink-0"
         style={{ backgroundColor: meta.projectColor }}
@@ -101,16 +101,14 @@ function TaskMetadata({ meta }: { meta: TaskResultMetadata }): React.JSX.Element
       {meta.priority > 0 && (
         <span className={priorityColors[meta.priority] ?? ''}>P{meta.priority}</span>
       )}
-      {meta.statusName && (
-        <span className="text-gray-500 dark:text-gray-400">{meta.statusName}</span>
-      )}
+      {meta.statusName && <span className="text-muted-foreground">{meta.statusName}</span>}
     </div>
   )
 }
 
 function InboxMetadata({ meta }: { meta: InboxResultMetadata }): React.JSX.Element {
   return (
-    <div className="flex items-center gap-2 text-xs text-gray-400 dark:text-gray-500 mt-0.5">
+    <div className="flex items-center gap-2 text-xs text-text-tertiary mt-0.5">
       <span className="capitalize">{meta.itemType}</span>
       {meta.sourceUrl && (
         <span className="flex items-center gap-1 truncate max-w-48">
@@ -156,7 +154,7 @@ export function SearchResultItem({
       value={`${item.type}-${item.id}`}
       onSelect={() => onSelect(item)}
       className="flex items-start gap-3 px-3 py-2.5 rounded-lg cursor-pointer
-        data-[selected=true]:bg-gray-100 dark:data-[selected=true]:bg-gray-800
+        data-[selected=true]:bg-muted
         transition-colors duration-75"
     >
       {noteEmoji ? (
@@ -164,21 +162,21 @@ export function SearchResultItem({
           {noteEmoji}
         </span>
       ) : (
-        <Icon className="size-4 shrink-0 mt-0.5 text-gray-400 dark:text-gray-500" />
+        <Icon className="size-4 shrink-0 mt-0.5 text-text-tertiary" />
       )}
       <div className="flex-1 min-w-0">
-        <div className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
+        <div className="text-sm font-medium text-foreground truncate">
           <HighlightedText text={item.title} query={query} />
         </div>
         {item.snippet && (
-          <div className="text-xs text-gray-500 dark:text-gray-400 truncate mt-0.5">
+          <div className="text-xs text-muted-foreground truncate mt-0.5">
             <HighlightedText text={item.snippet} query={query} />
           </div>
         )}
         <MetadataRenderer item={item} query={query} />
       </div>
       {item.matchType === 'fuzzy' && (
-        <span className="text-[10px] text-gray-400 dark:text-gray-500 shrink-0 mt-1">fuzzy</span>
+        <span className="text-[10px] text-text-tertiary shrink-0 mt-1">fuzzy</span>
       )}
     </Command.Item>
   )

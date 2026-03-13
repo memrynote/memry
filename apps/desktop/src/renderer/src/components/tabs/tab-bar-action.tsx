@@ -41,15 +41,12 @@ export const TabBarAction = ({
             // Base styles with refined sizing
             'flex h-7 w-7 items-center justify-center rounded-md',
             // Colors with smooth transitions
-            'text-gray-400 hover:text-gray-600',
-            'hover:bg-gray-200/50',
-            // Dark mode
-            'dark:text-gray-500 dark:hover:text-gray-300',
-            'dark:hover:bg-gray-700/40',
+            'text-text-tertiary hover:text-foreground',
+            'hover:bg-surface-active/50',
             // Smooth transitions for all properties
             'transition-all duration-150 ease-out',
             // Active state
-            'active:scale-95 active:bg-gray-200/70 dark:active:bg-gray-700/60',
+            'active:scale-95 active:bg-surface-active/70',
             // Disabled state
             'disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:active:scale-100',
             className
@@ -61,7 +58,7 @@ export const TabBarAction = ({
       </TooltipTrigger>
       <TooltipContent
         side="bottom"
-        className="text-xs px-2.5 py-1.5 font-medium bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 border-0"
+        className="text-xs px-2.5 py-1.5 font-medium bg-primary text-primary-foreground border-0"
       >
         {tooltip}
       </TooltipContent>

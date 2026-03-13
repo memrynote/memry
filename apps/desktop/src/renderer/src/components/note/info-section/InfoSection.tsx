@@ -197,7 +197,7 @@ export const InfoSection = memo(function InfoSection({
 
   return (
     <div
-      className={cn('flex flex-col', variant === 'default' && 'border-t border-b border-[#E8E5DF]')}
+      className={cn('flex flex-col', variant === 'default' && 'border-t border-b border-border')}
       role="region"
       aria-label="Note properties"
     >
@@ -215,7 +215,7 @@ export const InfoSection = memo(function InfoSection({
           {/* Section Header */}
           {folderProperties && folderProperties.length > 0 && (
             <div className="mb-3 flex items-center gap-1">
-              <span className="text-[11px] font-semibold uppercase tracking-wide text-[#B5B0A6]">
+              <span className="text-[11px] font-semibold uppercase tracking-wide text-text-tertiary">
                 Workspace properties
               </span>
             </div>
@@ -255,9 +255,9 @@ export const InfoSection = memo(function InfoSection({
               onClick={toggleShowMore}
               className={cn(
                 'mt-2 flex items-center gap-1',
-                'text-xs text-[#B5B0A6]',
+                'text-xs text-text-tertiary',
                 'transition-colors duration-150',
-                'hover:text-[#8A857A]'
+                'hover:text-muted-foreground'
               )}
               aria-label={`Show ${hiddenProperties.length} more properties`}
             >
@@ -272,9 +272,9 @@ export const InfoSection = memo(function InfoSection({
               onClick={toggleShowMore}
               className={cn(
                 'mt-2 flex items-center gap-1',
-                'text-xs text-[#B5B0A6]',
+                'text-xs text-text-tertiary',
                 'transition-colors duration-150',
-                'hover:text-[#8A857A]'
+                'hover:text-muted-foreground'
               )}
               aria-label="Show fewer properties"
             >
@@ -292,9 +292,9 @@ export const InfoSection = memo(function InfoSection({
               disabled={disabled}
               className={cn(
                 'flex items-center gap-1.5',
-                'text-[12px] text-[#B5B0A6] font-sans',
+                'text-[12px] text-text-tertiary font-sans',
                 'transition-colors duration-150',
-                'hover:text-[#8A857A]',
+                'hover:text-muted-foreground',
                 'disabled:opacity-50 disabled:cursor-not-allowed'
               )}
               aria-label="Add a new property to this note"

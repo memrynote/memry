@@ -18,26 +18,28 @@ function PropertyValueDisplay({ property }: { property: Property }) {
   const value = property.value
 
   if (value === null || value === undefined || value === '') {
-    return <span className="text-[13px] text-[#B5B0A6] font-sans">Empty</span>
+    return <span className="text-[13px] text-text-tertiary font-sans">Empty</span>
   }
 
   switch (property.type) {
     case 'date':
       return (
-        <span className="text-[13px] text-[#3D3A35] font-sans leading-4">
+        <span className="text-[13px] text-foreground font-sans leading-4">
           {format(new Date(value as string | number | Date), 'dd.MM.yyyy')}
         </span>
       )
 
     case 'url':
       return (
-        <span className="text-[13px] text-[#4882BB] font-sans leading-4 truncate max-w-[200px] hover:underline">
+        <span className="text-[13px] text-blue-500 font-sans leading-4 truncate max-w-[200px] hover:underline">
           {String(value)}
         </span>
       )
 
     default:
-      return <span className="text-[13px] text-[#3D3A35] font-sans leading-4">{String(value)}</span>
+      return (
+        <span className="text-[13px] text-foreground font-sans leading-4">{String(value)}</span>
+      )
   }
 }
 
@@ -246,8 +248,8 @@ export function PropertyRow({
               aria-label={`Drag to reorder property: ${property.name}`}
               className={cn(
                 'flex items-center justify-center',
-                'cursor-grab text-[#B5B0A6]',
-                'hover:text-[#8A857A]',
+                'cursor-grab text-text-tertiary',
+                'hover:text-muted-foreground',
                 'active:cursor-grabbing',
                 'touch-none'
               )}
@@ -255,7 +257,7 @@ export function PropertyRow({
               <GripVertical className="h-3.5 w-3.5" />
             </button>
           ) : (
-            <IconComponent className="h-3.5 w-3.5 text-[#B5B0A6]" aria-hidden="true" />
+            <IconComponent className="h-3.5 w-3.5 text-text-tertiary" aria-hidden="true" />
           )}
         </div>
 
@@ -270,9 +272,9 @@ export function PropertyRow({
             onKeyDown={handleNameKeyDown}
             className={cn(
               'w-24 shrink-0',
-              'text-[13px] text-[#8A857A] font-sans',
-              'bg-transparent border-b border-[#B5B0A6]/30',
-              'focus:outline-none focus:border-[#8A857A]',
+              'text-[13px] text-muted-foreground font-sans',
+              'bg-transparent border-b border-border',
+              'focus:outline-none focus:border-muted-foreground',
               'px-0 py-0'
             )}
             aria-label="Edit property name"
@@ -282,9 +284,9 @@ export function PropertyRow({
             onClick={onNameChange ? handleStartNameEdit : undefined}
             className={cn(
               'w-24 shrink-0',
-              'text-[13px] text-[#8A857A] font-sans leading-4',
+              'text-[13px] text-muted-foreground font-sans leading-4',
               'truncate',
-              onNameChange && !disabled && 'cursor-pointer hover:text-[#5C5850]'
+              onNameChange && !disabled && 'cursor-pointer hover:text-text-secondary'
             )}
             title={property.name}
             role={onNameChange ? 'button' : undefined}
@@ -318,7 +320,7 @@ export function PropertyRow({
         }}
         className={cn(
           'flex-1 min-w-0 transition-colors rounded px-1 -mx-1',
-          !isEditing && property.type !== 'checkbox' && 'cursor-pointer hover:bg-[#F5F3EE]'
+          !isEditing && property.type !== 'checkbox' && 'cursor-pointer hover:bg-surface'
         )}
       >
         <PropertyValueRenderer
@@ -337,7 +339,7 @@ export function PropertyRow({
           aria-label={`Delete property: ${property.name}`}
           className={cn(
             'ml-2 flex h-6 w-6 items-center justify-center',
-            'rounded text-[#B5B0A6]',
+            'rounded text-text-tertiary',
             'transition-all duration-150',
             'hover:bg-destructive/10 hover:text-destructive',
             isHovered && !isEditing ? 'opacity-100' : 'opacity-0 pointer-events-none'

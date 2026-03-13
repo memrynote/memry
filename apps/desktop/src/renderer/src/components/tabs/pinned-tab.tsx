@@ -63,17 +63,12 @@ export const PinnedTab = ({
 
             // Active state - visible borders and content background
             isActive
-              ? [
-                  'bg-white dark:bg-gray-900',
-                  'border-gray-200 dark:border-gray-700',
-                  'border-b-transparent',
-                  'z-10'
-                ]
+              ? ['bg-background', 'border-border', 'border-b-transparent', 'z-10']
               : [
                   // Inactive tabs - transparent borders
                   'bg-transparent',
                   'border-transparent',
-                  'hover:bg-gray-200/50 dark:hover:bg-gray-700/40'
+                  'hover:bg-surface-active/50'
                 ],
 
             className
@@ -94,9 +89,7 @@ export const PinnedTab = ({
             emoji={tab.emoji}
             className={cn(
               'w-4 h-4 transition-colors duration-150',
-              isActive
-                ? 'text-gray-700 dark:text-gray-200'
-                : 'text-gray-400 dark:text-gray-500 hover:text-gray-500 dark:hover:text-gray-400'
+              isActive ? 'text-foreground' : 'text-text-tertiary hover:text-text-secondary'
             )}
           />
 
@@ -116,11 +109,11 @@ export const PinnedTab = ({
       </TooltipTrigger>
       <TooltipContent
         side="bottom"
-        className="text-xs px-2.5 py-1.5 font-medium bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 border-0"
+        className="text-xs px-2.5 py-1.5 font-medium bg-primary text-primary-foreground border-0"
       >
         <div className="flex items-center gap-1.5">
           <span>{tab.title}</span>
-          {tab.isModified && <span className="text-gray-400 dark:text-gray-500">(unsaved)</span>}
+          {tab.isModified && <span className="text-muted-foreground">(unsaved)</span>}
         </div>
       </TooltipContent>
     </Tooltip>

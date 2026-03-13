@@ -29,7 +29,7 @@ export const ResizeHandle = ({
       className={cn(
         // Base styles
         'relative flex-shrink-0 transition-colors',
-        'bg-gray-200 dark:bg-gray-700',
+        'bg-surface-active',
         'hover:bg-blue-400 dark:hover:bg-blue-500',
 
         // Direction-specific styles
@@ -56,10 +56,7 @@ export const ResizeHandle = ({
         )}
       >
         <div
-          className={cn(
-            'rounded-full bg-gray-400 dark:bg-gray-500',
-            isHorizontal ? 'w-0.5 h-6' : 'w-6 h-0.5'
-          )}
+          className={cn('rounded-full bg-text-tertiary', isHorizontal ? 'w-0.5 h-6' : 'w-6 h-0.5')}
         />
       </div>
     </div>

@@ -91,8 +91,8 @@ export function TitleInput({
       aria-label="Note title"
       className={cn(
         'w-full resize-none overflow-hidden bg-transparent',
-        'text-[42px] tracking-[-0.02em] leading-12 text-[#1A1917]',
-        'placeholder:text-[#B5B0A6] placeholder:font-normal',
+        'text-[42px] tracking-[-0.02em] leading-12 text-foreground',
+        'placeholder:text-text-tertiary placeholder:font-normal',
         'border-none outline-none',
         'focus:outline-none',
         'disabled:pointer-events-none disabled:opacity-50'

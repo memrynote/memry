@@ -96,7 +96,7 @@ export const SidebarNavItem = ({
           'outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-1',
 
           // Hover state
-          'hover:bg-gray-100 dark:hover:bg-gray-800',
+          'hover:bg-muted',
 
           // Active state (current tab)
           isActive && [
@@ -106,7 +106,7 @@ export const SidebarNavItem = ({
           ],
 
           // Selected state (keyboard nav)
-          isSelected && !isActive && 'bg-gray-100 dark:bg-gray-800',
+          isSelected && !isActive && 'bg-muted',
 
           // Open in tab indicator (not active)
           isOpenTab && !isActive && 'text-blue-600 dark:text-blue-400',
@@ -137,7 +137,7 @@ export const SidebarNavItem = ({
             icon={item.icon}
             className={cn(
               'w-4 h-4 flex-shrink-0',
-              isActive ? 'text-blue-600 dark:text-blue-400' : 'text-gray-500 dark:text-gray-400'
+              isActive ? 'text-blue-600 dark:text-blue-400' : 'text-muted-foreground'
             )}
           />
         )}
@@ -150,7 +150,7 @@ export const SidebarNavItem = ({
           <span
             className={cn(
               'text-xs tabular-nums',
-              isActive ? 'text-blue-500 dark:text-blue-400' : 'text-gray-400 dark:text-gray-500'
+              isActive ? 'text-blue-500 dark:text-blue-400' : 'text-text-tertiary'
             )}
           >
             {item.count}

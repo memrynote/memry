@@ -36,12 +36,10 @@ export function SearchResultGroup({
     <Command.Group
       heading={
         <div className="flex items-center justify-between px-1">
-          <span className="text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">
+          <span className="text-xs font-semibold uppercase tracking-wider text-text-tertiary">
             {TYPE_LABELS[group.type]}
           </span>
-          <span className="text-xs tabular-nums text-gray-400 dark:text-gray-500">
-            {group.totalInGroup}
-          </span>
+          <span className="text-xs tabular-nums text-text-tertiary">{group.totalInGroup}</span>
         </div>
       }
     >
@@ -52,8 +50,7 @@ export function SearchResultGroup({
         <button
           type="button"
           onClick={() => setExpanded(true)}
-          className="w-full px-3 py-1.5 text-xs text-center text-gray-400 hover:text-gray-600
-            dark:text-gray-500 dark:hover:text-gray-300 transition-colors"
+          className="w-full px-3 py-1.5 text-xs text-center text-text-tertiary hover:text-foreground transition-colors"
         >
           View all {group.totalInGroup} results
         </button>

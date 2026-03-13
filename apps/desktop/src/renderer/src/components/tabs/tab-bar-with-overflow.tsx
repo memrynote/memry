@@ -108,13 +108,13 @@ export const TabBarWithOverflow = ({
           onClick={() => scroll('left')}
           className={cn(
             'flex-shrink-0 w-6 h-full flex items-center justify-center',
-            'bg-gradient-to-r from-gray-100 dark:from-gray-800 to-transparent',
-            'hover:from-gray-200 dark:hover:from-gray-700',
+            'bg-gradient-to-r from-muted to-transparent',
+            'hover:from-surface-active',
             'transition-colors'
           )}
           aria-label="Scroll tabs left"
         >
-          <ChevronLeft className="w-4 h-4 text-gray-500" />
+          <ChevronLeft className="w-4 h-4 text-text-tertiary" />
         </button>
       )}
 
@@ -134,13 +134,13 @@ export const TabBarWithOverflow = ({
           onClick={() => scroll('right')}
           className={cn(
             'flex-shrink-0 w-6 h-full flex items-center justify-center',
-            'bg-gradient-to-l from-gray-100 dark:from-gray-800 to-transparent',
-            'hover:from-gray-200 dark:hover:from-gray-700',
+            'bg-gradient-to-l from-muted to-transparent',
+            'hover:from-surface-active',
             'transition-colors'
           )}
           aria-label="Scroll tabs right"
         >
-          <ChevronRight className="w-4 h-4 text-gray-500" />
+          <ChevronRight className="w-4 h-4 text-text-tertiary" />
         </button>
       )}
     </div>

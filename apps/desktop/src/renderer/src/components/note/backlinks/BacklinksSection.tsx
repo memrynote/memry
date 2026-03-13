@@ -153,7 +153,7 @@ export function BacklinksSection({
 
   return (
     <section
-      className="flex flex-col pt-5 gap-3 border-t border-[#E8E5DF]"
+      className="flex flex-col pt-5 gap-3 border-t border-border"
       role="region"
       aria-label={`Backlinks section with ${backlinks.length} ${backlinks.length === 1 ? 'link' : 'links'}`}
       aria-busy={isLoading}
@@ -171,8 +171,8 @@ export function BacklinksSection({
           aria-label={isCollapsed ? 'Expand backlinks section' : 'Collapse backlinks section'}
           disabled={!collapsible}
         >
-          <Link2 className="h-3.5 w-3.5 text-[#B5B0A6]" aria-hidden="true" />
-          <span className="text-[11px] tracking-[0.06em] uppercase text-[#B5B0A6] font-sans font-semibold leading-3.5">
+          <Link2 className="h-3.5 w-3.5 text-text-tertiary" aria-hidden="true" />
+          <span className="text-[11px] tracking-[0.06em] uppercase text-text-tertiary font-sans font-semibold leading-3.5">
             {backlinks.length} Backlinks
           </span>
         </button>
@@ -184,8 +184,8 @@ export function BacklinksSection({
               <button
                 className={cn(
                   'inline-flex items-center gap-1 px-2 py-1',
-                  'text-xs text-[#B5B0A6]',
-                  'hover:text-[#8A857A] hover:bg-[#F5F3EE] rounded',
+                  'text-xs text-text-tertiary',
+                  'hover:text-muted-foreground hover:bg-surface rounded',
                   'transition-colors duration-150'
                 )}
                 aria-label={`Sort backlinks by ${SORT_LABELS[sortBy]}`}
@@ -233,8 +233,8 @@ export function BacklinksSection({
                     onClick={handleShowMore}
                     className={cn(
                       'w-full py-3',
-                      'text-[13px] text-[#8A857A]',
-                      'hover:text-[#5C5850] hover:underline',
+                      'text-[13px] text-muted-foreground',
+                      'hover:text-text-secondary hover:underline',
                       'transition-colors duration-150',
                       'cursor-pointer'
                     )}
