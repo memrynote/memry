@@ -127,13 +127,13 @@ export function VaultSwitcher() {
             </SidebarMenuButton>
           </DropdownMenuTrigger>
           <DropdownMenuContent
-            className="w-[--radix-dropdown-menu-trigger-width] min-w-64 rounded-xl p-2 shadow-lg border border-gray-200/80"
+            className="w-[--radix-dropdown-menu-trigger-width] min-w-64 rounded-xl p-2 shadow-lg"
             align="start"
             side={isMobile ? 'bottom' : 'right'}
             sideOffset={8}
           >
             {/* Vault list header */}
-            <div className="px-2 py-1.5 text-xs font-medium text-gray-500 uppercase tracking-wider">
+            <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground uppercase tracking-wider">
               Vaults
             </div>
 
@@ -145,14 +145,16 @@ export function VaultSwitcher() {
                   <DropdownMenuItem
                     key={vault.path}
                     onClick={() => !isActive && handleSwitchVault(vault.path)}
-                    className="group/vault rounded-lg cursor-pointer hover:bg-gray-100 focus:bg-gray-100 transition-colors"
+                    className="group/vault rounded-lg cursor-pointer hover:bg-accent focus:bg-accent transition-colors"
                   >
-                    <div className="flex size-7 items-center justify-center rounded-md border border-gray-200 bg-white">
+                    <div className="flex size-7 items-center justify-center rounded-md border border-border bg-card">
                       <FolderOpen className="size-4 shrink-0 text-sidebar-terracotta" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <span className="font-medium text-gray-900 block truncate">{vault.name}</span>
-                      <span className="text-xs text-gray-500 block truncate">
+                      <span className="font-medium text-foreground block truncate">
+                        {vault.name}
+                      </span>
+                      <span className="text-xs text-muted-foreground block truncate">
                         {vault.noteCount} notes
                       </span>
                     </div>
@@ -161,54 +163,56 @@ export function VaultSwitcher() {
                     ) : (
                       <button
                         onClick={(e) => handleRemoveClick(e, vault)}
-                        className="size-6 flex items-center justify-center rounded-md opacity-0 group-hover/vault:opacity-100 hover:bg-gray-200 transition-all"
+                        className="size-6 flex items-center justify-center rounded-md opacity-0 group-hover/vault:opacity-100 hover:bg-accent transition-all"
                         aria-label={`Remove ${vault.name} from list`}
                       >
-                        <X className="size-3.5 text-gray-500" />
+                        <X className="size-3.5 text-muted-foreground" />
                       </button>
                     )}
                   </DropdownMenuItem>
                 )
               })
             ) : (
-              <div className="px-2 py-3 text-sm text-gray-500 text-center">No vaults yet</div>
+              <div className="px-2 py-3 text-sm text-muted-foreground text-center">
+                No vaults yet
+              </div>
             )}
 
-            <DropdownMenuSeparator className="my-2 -mx-2 bg-gray-200/80" />
+            <DropdownMenuSeparator className="my-2 -mx-2" />
 
             {/* Select new vault */}
             <DropdownMenuItem
               onClick={handleSelectNewVault}
-              className="rounded-lg cursor-pointer hover:bg-gray-100 focus:bg-gray-100 transition-colors"
+              className="rounded-lg cursor-pointer hover:bg-accent focus:bg-accent transition-colors"
             >
               <div className="flex size-7 items-center justify-center">
-                <Plus className="size-4 text-gray-500" />
+                <Plus className="size-4 text-muted-foreground" />
               </div>
-              <span className="text-gray-600">Open Another Vault</span>
+              <span className="text-muted-foreground">Open Another Vault</span>
             </DropdownMenuItem>
 
-            <DropdownMenuSeparator className="my-2 -mx-2 bg-gray-200/80" />
+            <DropdownMenuSeparator className="my-2 -mx-2" />
 
             {/* Templates */}
             <DropdownMenuItem
               onClick={handleOpenTemplates}
-              className="rounded-lg cursor-pointer hover:bg-gray-100 focus:bg-gray-100 transition-colors"
+              className="rounded-lg cursor-pointer hover:bg-accent focus:bg-accent transition-colors"
             >
               <div className="flex size-7 items-center justify-center">
-                <LayoutTemplate className="size-4 text-gray-500" />
+                <LayoutTemplate className="size-4 text-muted-foreground" />
               </div>
-              <span className="text-gray-600">Templates</span>
+              <span className="text-muted-foreground">Templates</span>
             </DropdownMenuItem>
 
             {/* Settings */}
             <DropdownMenuItem
               onClick={handleOpenSettings}
-              className="rounded-lg cursor-pointer hover:bg-gray-100 focus:bg-gray-100 transition-colors"
+              className="rounded-lg cursor-pointer hover:bg-accent focus:bg-accent transition-colors"
             >
               <div className="flex size-7 items-center justify-center">
-                <Settings className="size-4 text-gray-500" />
+                <Settings className="size-4 text-muted-foreground" />
               </div>
-              <span className="text-gray-600">Settings</span>
+              <span className="text-muted-foreground">Settings</span>
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
