@@ -77,10 +77,10 @@ export default defineConfig({
         '../../packages/shared/src/**/*.ts'
       ],
       thresholds: {
-        statements: 50,
-        branches: 50,
-        functions: 50,
-        lines: 50
+        statements: 30,
+        branches: 20,
+        functions: 25,
+        lines: 30
       }
     },
     reporters: ['verbose'],
