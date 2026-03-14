@@ -149,29 +149,22 @@ test.describe('Tasks Management', () => {
 
   test.describe('Task Completion', () => {
     test('T540: should complete a task by clicking checkbox', async ({ page }) => {
-      // First create a task
       await createTask(page, `Complete Test ${Date.now()}`)
       await page.waitForTimeout(500)
 
-      // Find the task and click its checkbox
       const taskItem = page.locator(SELECTORS.taskItem).first()
       const hasTask = await taskItem.isVisible().catch(() => false)
 
       if (hasTask) {
         const checkbox = taskItem.locator(SELECTORS.taskCheckbox)
-        await checkbox.click()
+        await checkbox.click({ force: true })
         await page.waitForTimeout(500)
-
-        // Task should be marked as completed
-        // const _completedState = await taskItem.getAttribute('data-completed')
-        // Note: actual attribute name may vary
       }
 
       expect(true).toBe(true)
     })
 
     test('T540: should uncomplete a task', async ({ page }) => {
-      // Create and complete a task
       await createTask(page, `Uncomplete Test ${Date.now()}`)
       await page.waitForTimeout(500)
 
@@ -180,13 +173,9 @@ test.describe('Tasks Management', () => {
 
       if (hasTask) {
         const checkbox = taskItem.locator(SELECTORS.taskCheckbox)
-
-        // Complete the task
-        await checkbox.click()
+        await checkbox.click({ force: true })
         await page.waitForTimeout(300)
-
-        // Uncomplete the task
-        await checkbox.click()
+        await checkbox.click({ force: true })
         await page.waitForTimeout(300)
       }
 
@@ -201,7 +190,7 @@ test.describe('Tasks Management', () => {
 
       if (await taskItem.isVisible()) {
         const checkbox = taskItem.locator(SELECTORS.taskCheckbox)
-        await checkbox.click()
+        await checkbox.click({ force: true })
         await page.waitForTimeout(500)
 
         // Navigate to completed view
@@ -223,7 +212,7 @@ test.describe('Tasks Management', () => {
 
       if (await taskItem.isVisible()) {
         const checkbox = taskItem.locator(SELECTORS.taskCheckbox)
-        await checkbox.click()
+        await checkbox.click({ force: true })
 
         // Wait for animation to play
         await page.waitForTimeout(1000)

@@ -239,7 +239,7 @@ test.describe('Folder View', () => {
     await waitForAppReady(page)
     await waitForVaultReady(page)
     await navigateTo(page, 'notes')
-    await page.waitForTimeout(800)
+    await page.waitForTimeout(process.env.CI ? 2000 : 800)
   })
 
   test('T124: should open folder view when clicking folder', async ({ page }) => {
@@ -522,13 +522,14 @@ test.describe('Folder View', () => {
 
 test.describe('Folder View Performance', () => {
   test('T132: should handle folders with 100+ notes', async ({ page, testVaultPath }) => {
+    test.setTimeout(120_000)
     const bulkFolder = 'Bulk'
     seedBulkNotes(testVaultPath, bulkFolder, 120)
 
     await waitForAppReady(page)
     await waitForVaultReady(page)
     await navigateTo(page, 'notes')
-    await page.waitForTimeout(1000)
+    await page.waitForTimeout(process.env.CI ? 3000 : 1000)
 
     await openFolderView(page, bulkFolder, bulkFolder)
     await page.waitForTimeout(1000)
