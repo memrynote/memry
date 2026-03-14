@@ -93,17 +93,12 @@ const RegularTabComponent = ({
 
         // Active state - visible borders and content background
         isActive
-          ? [
-              'bg-white dark:bg-gray-900',
-              'border-gray-200 dark:border-gray-700',
-              'border-b-transparent',
-              'z-10'
-            ]
+          ? ['bg-background', 'border-border', 'border-b-transparent', 'z-10']
           : [
               // Inactive tabs - transparent borders
               'bg-transparent',
               'border-transparent',
-              'hover:bg-gray-200/50 dark:hover:bg-gray-700/40'
+              'hover:bg-surface-active/50'
             ],
 
         // Preview tab styling - only show italic if preview mode is enabled
@@ -129,9 +124,7 @@ const RegularTabComponent = ({
         emoji={tab.emoji}
         className={cn(
           'w-4 h-4 flex-shrink-0 transition-colors duration-150',
-          isActive
-            ? 'text-gray-700 dark:text-gray-200'
-            : 'text-gray-400 dark:text-gray-500 group-hover:text-gray-500 dark:group-hover:text-gray-400'
+          isActive ? 'text-foreground' : 'text-text-tertiary group-hover:text-text-secondary'
         )}
       />
 
@@ -140,9 +133,7 @@ const RegularTabComponent = ({
         className={cn(
           'flex-1 truncate text-[13px] font-medium tracking-[-0.01em]',
           'transition-colors duration-150',
-          isActive
-            ? 'text-gray-800 dark:text-gray-100'
-            : 'text-gray-500 dark:text-gray-400 group-hover:text-gray-600 dark:group-hover:text-gray-300',
+          isActive ? 'text-foreground' : 'text-text-secondary group-hover:text-foreground',
           tab.isPreview && settings.previewMode && 'italic font-normal',
           tab.isDeleted && 'line-through opacity-50'
         )}
@@ -170,15 +161,15 @@ const RegularTabComponent = ({
             onClick={handleClose}
             className={cn(
               'w-5 h-5 -mr-0.5 rounded-md flex items-center justify-center',
-              'hover:bg-gray-200/70 dark:hover:bg-gray-600/50',
-              'active:bg-gray-300/70 dark:active:bg-gray-500/50',
+              'hover:bg-surface-active/70',
+              'active:bg-surface-active',
               'transition-all duration-100',
               // Smooth fade in/out
               !isActive && 'opacity-0 group-hover:opacity-100'
             )}
             aria-label={`Close ${tab.title}`}
           >
-            <X className="w-3 h-3 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 transition-colors" />
+            <X className="w-3 h-3 text-text-tertiary hover:text-foreground transition-colors" />
           </button>
         ) : null}
       </div>

@@ -60,8 +60,8 @@ export const SubtaskDots = ({
         onKeyDown={handleKeyDown}
         tabIndex={onClick ? 0 : -1}
         className={cn(
-          'text-xs text-gray-500 dark:text-gray-400 tabular-nums',
-          'hover:text-gray-700 dark:hover:text-gray-300 transition-colors',
+          'text-xs text-muted-foreground tabular-nums',
+          'hover:text-foreground transition-colors',
           'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 rounded',
           onClick ? 'cursor-pointer' : 'cursor-default',
           className
@@ -97,7 +97,7 @@ export const SubtaskDots = ({
       tabIndex={onClick ? 0 : -1}
       className={cn(
         'inline-flex items-center gap-1.5 px-1 py-0.5 rounded',
-        'hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors',
+        'hover:bg-muted transition-colors',
         'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1',
         onClick ? 'cursor-pointer' : 'cursor-default',
         className
@@ -113,14 +113,14 @@ export const SubtaskDots = ({
               'w-1.5 h-1.5 rounded-full transition-colors',
               i < completed
                 ? 'bg-green-500 dark:bg-green-400' // Completed
-                : 'bg-gray-300 dark:bg-gray-600' // Incomplete
+                : 'bg-border' // Incomplete
             )}
           />
         ))}
       </div>
 
       {/* Count label */}
-      <span className="text-xs text-gray-500 dark:text-gray-400 tabular-nums">
+      <span className="text-xs text-muted-foreground tabular-nums">
         {completed}/{total}
       </span>
     </button>

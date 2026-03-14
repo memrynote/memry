@@ -30,7 +30,7 @@ export const NoteOutlineSidebar = memo(function NoteOutlineSidebar({
     <div className="flex flex-col w-[200px] shrink-0 pt-12 pr-6 pb-10 gap-4">
       {/* Header */}
       <div className="flex items-center pb-3 gap-1.5 border-b border-[var(--border)]">
-        <span className="text-[11px] tracking-[0.06em] uppercase text-[#B5B0A6] font-sans font-semibold leading-3.5">
+        <span className="text-[11px] tracking-[0.06em] uppercase text-text-tertiary font-sans font-semibold leading-3.5">
           Outline
         </span>
       </div>
@@ -51,24 +51,24 @@ export const NoteOutlineSidebar = memo(function NoteOutlineSidebar({
                   'flex items-center rounded-md py-1.5 px-2 gap-2 text-left',
                   'transition-colors duration-150',
                   isSubHeading && 'pl-6',
-                  isActive ? 'bg-[#C45D3E14]' : 'hover:bg-[var(--surface-active)]/50'
+                  isActive ? 'bg-sidebar-terracotta/8' : 'hover:bg-[var(--surface-active)]/50'
                 )}
               >
                 {/* Active indicator bar */}
                 <div
                   className={cn(
                     'w-[3px] h-3.5 shrink-0 rounded-xs transition-colors duration-150',
-                    isActive ? 'bg-[#C45D3E]' : 'bg-transparent'
+                    isActive ? 'bg-sidebar-terracotta' : 'bg-transparent'
                   )}
                 />
                 <span
                   className={cn(
                     'text-[12px] font-sans leading-4 truncate',
                     isActive
-                      ? 'text-[#C45D3E] font-medium'
+                      ? 'text-sidebar-terracotta font-medium'
                       : isSubHeading
-                        ? 'text-[#8A857A]'
-                        : 'text-[#5C5850]'
+                        ? 'text-muted-foreground'
+                        : 'text-text-secondary'
                   )}
                 >
                   {heading.text}
@@ -78,7 +78,7 @@ export const NoteOutlineSidebar = memo(function NoteOutlineSidebar({
           })}
         </nav>
       ) : (
-        <span className="text-[12px] text-[#B5B0A6] font-sans">No headings yet</span>
+        <span className="text-[12px] text-text-tertiary font-sans">No headings yet</span>
       )}
     </div>
   )

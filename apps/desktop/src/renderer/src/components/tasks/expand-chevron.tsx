@@ -69,16 +69,14 @@ export const ExpandChevron = ({
         'flex items-center justify-center rounded shrink-0',
         'transition-all duration-150',
         // Enhanced hover and active states for better visibility
-        'text-gray-400 hover:text-gray-600 hover:bg-gray-100',
-        'active:bg-gray-200',
-        'dark:text-gray-500 dark:hover:text-gray-300 dark:hover:bg-gray-800',
-        'dark:active:bg-gray-700',
+        'text-text-tertiary hover:text-muted-foreground hover:bg-muted',
+        'active:bg-surface-active',
         // Focus states for accessibility
         'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1',
         // Size variants
         size === 'sm' ? 'w-5 h-5' : 'w-6 h-6',
         // Animation feedback on click
-        isAnimating && 'scale-110 bg-gray-100 dark:bg-gray-800',
+        isAnimating && 'scale-110 bg-muted',
         className
       )}
       aria-expanded={isExpanded}

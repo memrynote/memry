@@ -164,15 +164,12 @@ const AppContent = (): React.JSX.Element => {
       {/* Header with Tab Bar(s) - Browser-style tabs */}
       <header
         className="drag-region flex h-11 shrink-0 items-center relative overflow-hidden
-          bg-gray-100 dark:bg-gray-800"
+          bg-muted"
       >
         {/* Sidebar trigger with refined styling */}
         <div className="flex items-center gap-2.5 px-3 h-full shrink-0">
-          <SidebarTrigger className="-ml-1 no-drag text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors duration-150" />
-          <Separator
-            orientation="vertical"
-            className="mr-2 h-5 bg-gray-200/70 dark:bg-gray-700/50"
-          />
+          <SidebarTrigger className="-ml-1 no-drag text-text-tertiary hover:text-foreground transition-colors duration-150" />
+          <Separator orientation="vertical" className="mr-2 h-5 bg-border/70" />
         </div>
 
         {/* Tab Bar(s) - single or split with smooth transitions */}
@@ -184,7 +181,7 @@ const AppContent = (): React.JSX.Element => {
                 key={groupId}
                 style={{ width: `${width}%` }}
                 className={`h-full overflow-hidden shrink-0 transition-all duration-200 ease-out ${
-                  index > 0 ? 'border-l border-gray-200/60 dark:border-gray-700/40' : ''
+                  index > 0 ? 'border-l border-border/60' : ''
                 }`}
               >
                 <TabBarWithDrag groupId={groupId} />
@@ -200,7 +197,7 @@ const AppContent = (): React.JSX.Element => {
       </header>
 
       {/* Main Content Area - Split View or Single Pane */}
-      <div className="flex flex-1 overflow-hidden dark:bg-gray-900" id="main-content">
+      <div className="flex flex-1 overflow-hidden bg-background" id="main-content">
         {isSplitView ? (
           // Multiple panes - use SplitViewContainer with matching header spacers
           <>
@@ -518,7 +515,7 @@ function App(): React.JSX.Element {
 
   if (vaultLoading) {
     return (
-      <div className="flex h-screen items-center justify-center bg-white dark:bg-gray-900">
+      <div className="flex h-screen items-center justify-center bg-background">
         <Loader2 className="size-6 animate-spin text-sidebar-terracotta" />
       </div>
     )
@@ -530,6 +527,7 @@ function App(): React.JSX.Element {
         attribute="class"
         defaultTheme={startupTheme}
         enableSystem
+        themes={['light', 'dark', 'white', 'system']}
         storageKey={THEME_STORAGE_KEY}
       >
         <VaultOnboarding />
@@ -543,6 +541,7 @@ function App(): React.JSX.Element {
       attribute="class"
       defaultTheme={startupTheme}
       enableSystem
+      themes={['light', 'dark', 'white', 'system']}
       storageKey={THEME_STORAGE_KEY}
     >
       <ThemeSyncManager>

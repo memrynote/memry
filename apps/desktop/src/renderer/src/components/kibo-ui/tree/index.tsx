@@ -415,14 +415,7 @@ export const TreeProvider = ({
       }}
     >
       <LazyMotion features={domAnimation}>
-        <m.div
-          animate={{ opacity: 1, y: 0 }}
-          className={cn('w-full', className)}
-          initial={{ opacity: 0, y: 10 }}
-          transition={{ duration: 0.3, ease: 'easeOut' }}
-        >
-          {children}
-        </m.div>
+        <div className={cn('w-full', className)}>{children}</div>
       </LazyMotion>
     </TreeContext.Provider>
   )

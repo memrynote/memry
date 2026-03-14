@@ -34,7 +34,7 @@ export const SubtaskProgressBar = ({
       {/* Progress bar track */}
       <div
         className={cn(
-          'flex-1 rounded-full overflow-hidden bg-gray-200 dark:bg-gray-700',
+          'flex-1 rounded-full overflow-hidden bg-surface-active',
           size === 'sm' ? 'h-1.5 max-w-[120px]' : 'h-2 max-w-[160px]'
         )}
         role="progressbar"

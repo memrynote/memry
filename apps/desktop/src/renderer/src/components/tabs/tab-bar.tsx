@@ -94,10 +94,10 @@ export const TabBar = ({ groupId, className }: TabBarProps): React.JSX.Element |
       className={cn(
         // Container
         'flex items-center h-9',
-        'bg-gray-50 dark:bg-gray-900',
-        'border-b border-gray-200 dark:border-gray-700',
+        'bg-muted',
+        'border-b border-border',
         // Active group indicator
-        isActiveGroup && 'bg-gray-100/50 dark:bg-gray-800/50',
+        isActiveGroup && 'bg-surface-active/50',
         className
       )}
       role="tablist"
@@ -120,7 +120,7 @@ export const TabBar = ({ groupId, className }: TabBarProps): React.JSX.Element |
           </div>
 
           {/* Divider between pinned and regular tabs */}
-          <div className="w-px h-5 bg-gray-300 dark:bg-gray-600 mx-1" />
+          <div className="w-px h-5 bg-border mx-1" />
         </>
       )}
 
@@ -132,14 +132,13 @@ export const TabBar = ({ groupId, className }: TabBarProps): React.JSX.Element |
           className={cn(
             'flex items-center justify-center',
             'w-6 h-9',
-            'bg-gradient-to-r from-gray-50 to-transparent',
-            'dark:from-gray-900 dark:to-transparent',
-            'hover:from-gray-100 dark:hover:from-gray-800',
+            'bg-gradient-to-r from-muted to-transparent',
+            'hover:from-surface-active',
             'transition-colors z-10'
           )}
           aria-label="Scroll tabs left"
         >
-          <ChevronLeft className="w-4 h-4 text-gray-500" />
+          <ChevronLeft className="w-4 h-4 text-text-tertiary" />
         </button>
       )}
 
@@ -176,19 +175,18 @@ export const TabBar = ({ groupId, className }: TabBarProps): React.JSX.Element |
           className={cn(
             'flex items-center justify-center',
             'w-6 h-9',
-            'bg-gradient-to-l from-gray-50 to-transparent',
-            'dark:from-gray-900 dark:to-transparent',
-            'hover:from-gray-100 dark:hover:from-gray-800',
+            'bg-gradient-to-l from-muted to-transparent',
+            'hover:from-surface-active',
             'transition-colors z-10'
           )}
           aria-label="Scroll tabs right"
         >
-          <ChevronRight className="w-4 h-4 text-gray-500" />
+          <ChevronRight className="w-4 h-4 text-text-tertiary" />
         </button>
       )}
 
       {/* Tab actions */}
-      <div className="flex items-center px-1 gap-0.5 border-l border-gray-200 dark:border-gray-700">
+      <div className="flex items-center px-1 gap-0.5 border-l border-border">
         <TabBarAction
           icon={<Plus className="w-4 h-4" />}
           tooltip="New Tab"

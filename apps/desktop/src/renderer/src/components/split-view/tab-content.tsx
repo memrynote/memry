@@ -210,10 +210,10 @@ const PlaceholderView = ({
   subtitle
 }: PlaceholderViewProps): React.JSX.Element => {
   return (
-    <div className="h-full flex flex-col items-center justify-center text-gray-400 dark:text-gray-500 p-8">
+    <div className="h-full flex flex-col items-center justify-center text-text-tertiary p-8">
       <div className="text-6xl mb-4 opacity-30">📄</div>
-      <h2 className="text-xl font-medium text-gray-600 dark:text-gray-300 mb-2">{title}</h2>
-      {subtitle && <p className="text-sm text-gray-400 dark:text-gray-500">{subtitle}</p>}
+      <h2 className="text-xl font-medium text-foreground mb-2">{title}</h2>
+      {subtitle && <p className="text-sm text-text-tertiary">{subtitle}</p>}
     </div>
   )
 }

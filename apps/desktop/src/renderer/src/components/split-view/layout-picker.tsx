@@ -61,8 +61,8 @@ export const LayoutPicker = ({ className }: LayoutPickerProps): React.JSX.Elemen
           type="button"
           className={cn(
             'flex items-center justify-center w-8 h-8 rounded-md',
-            'text-gray-500 dark:text-gray-400',
-            'hover:bg-gray-100 dark:hover:bg-gray-800',
+            'text-muted-foreground',
+            'hover:bg-muted',
             'transition-colors',
             className
           )}
@@ -72,7 +72,7 @@ export const LayoutPicker = ({ className }: LayoutPickerProps): React.JSX.Elemen
         </button>
       </PopoverTrigger>
       <PopoverContent className="w-56 p-2" align="end">
-        <p className="text-xs text-gray-500 dark:text-gray-400 mb-2 px-1">Layout Presets</p>
+        <p className="text-xs text-muted-foreground mb-2 px-1">Layout Presets</p>
         <div className="grid grid-cols-3 gap-1">
           {layoutPresets.map((preset) => (
             <button
@@ -81,8 +81,8 @@ export const LayoutPicker = ({ className }: LayoutPickerProps): React.JSX.Elemen
               onClick={() => handleSelectPreset(preset.id)}
               className={cn(
                 'flex flex-col items-center gap-1 p-2 rounded-md',
-                'text-gray-600 dark:text-gray-300',
-                'hover:bg-gray-100 dark:hover:bg-gray-800',
+                'text-foreground',
+                'hover:bg-muted',
                 'transition-colors'
               )}
               title={preset.description}

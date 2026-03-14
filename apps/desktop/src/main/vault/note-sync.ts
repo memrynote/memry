@@ -114,6 +114,13 @@ export interface NoteSyncOptions {
    * @default false
    */
   skipLinks?: boolean
+
+  /**
+   * Authoritative tags to use instead of re-extracting from content.
+   * Prevents stale inline tags from being resurrected when content
+   * and tags are saved in separate IPC calls.
+   */
+  tagsOverride?: string[]
 }
 
 // ============================================================================
@@ -184,22 +191,14 @@ export function syncNoteToCache(
   input: NoteSyncInput,
   options: NoteSyncOptions
 ): NoteSyncResult {
-  const { isNew, skipFts = false, skipLinks = false } = options
+  const { isNew, skipFts = false, skipLinks = false, tagsOverride } = options
   const { id, path, frontmatter, parsedContent } = input
 
   // Extract all metadata
   const metadata = extractNoteMetadata(input)
-  const {
-    tags,
-    properties,
-    wikiLinks,
-    wordCount,
-    characterCount,
-    snippet,
-    contentHash,
-    date,
-    emoji
-  } = metadata
+  const { properties, wikiLinks, wordCount, characterCount, snippet, contentHash, date, emoji } =
+    metadata
+  const tags = tagsOverride ?? metadata.tags
 
   // Get title from frontmatter or path
   const title = frontmatter.title ?? path.split('/').pop()?.replace('.md', '') ?? 'Untitled'

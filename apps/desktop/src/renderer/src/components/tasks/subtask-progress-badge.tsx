@@ -59,7 +59,7 @@ export const SubtaskProgressBadge = ({
       tabIndex={onClick ? 0 : -1}
       className={cn(
         'inline-flex items-center gap-2 px-2 py-1 rounded',
-        'hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors',
+        'hover:bg-muted transition-colors',
         'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1',
         onClick ? 'cursor-pointer' : 'cursor-default',
         className
@@ -67,7 +67,7 @@ export const SubtaskProgressBadge = ({
       aria-label={`${completed} of ${total} subtasks complete (${percentage}%)`}
     >
       {/* Mini progress bar */}
-      <div className="w-12 h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+      <div className="w-12 h-1.5 bg-surface-active rounded-full overflow-hidden">
         <div
           className={cn(
             'h-full rounded-full transition-all duration-300 ease-out',
@@ -81,7 +81,7 @@ export const SubtaskProgressBadge = ({
       <span
         className={cn(
           'text-xs font-medium tabular-nums',
-          isComplete ? 'text-green-600 dark:text-green-400' : 'text-gray-600 dark:text-gray-400'
+          isComplete ? 'text-green-600 dark:text-green-400' : 'text-muted-foreground'
         )}
       >
         {completed}/{total}

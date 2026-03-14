@@ -98,8 +98,8 @@ export const AccessibleTab = ({
         'border-b-2 transition-colors outline-none',
         'focus:ring-2 focus:ring-blue-500 focus:ring-inset',
         isActive
-          ? 'bg-white dark:bg-gray-800 border-blue-500 text-gray-900 dark:text-white'
-          : 'bg-gray-100 dark:bg-gray-800/50 border-transparent text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700',
+          ? 'bg-background border-blue-500 text-foreground'
+          : 'bg-muted/50 border-transparent text-muted-foreground hover:bg-surface-active',
         className
       )}
     >
@@ -142,7 +142,7 @@ export const AccessibleTab = ({
           aria-label={`Close ${tab.title} tab`}
           className={cn(
             'p-0.5 rounded opacity-0 group-hover:opacity-100',
-            'hover:bg-gray-300 dark:hover:bg-gray-600',
+            'hover:bg-border',
             'focus:opacity-100 focus:outline-none focus:ring-1 focus:ring-blue-500',
             isActive && 'opacity-100'
           )}

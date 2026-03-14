@@ -5,6 +5,30 @@ Format: weekly entries grouped by feature area.
 
 ---
 
+## 2026-03-14 — White Theme, Tag Sync Fixes, Sidebar Polish
+
+### Added
+- Add tag search and sort (by count/name) to sidebar tag section with localStorage persistence
+- Add `--graph-label-color` semantic token for theme-aware graph labels
+- Add `tagsOverride` parameter to `syncNoteToCache` for authoritative tag syncing
+- Add pasted text tag extraction to `extractInlineTags` (not just hashTag nodes)
+
+### Fixed
+- Fix tag removal from editor not updating frontmatter and UI
+- Fix pasted tags not being highlighted or synced to frontmatter
+- Fix graph colors not updating on theme switch (dimmed nodes, edges, labels)
+- Fix graph labels defaulting to invisible color in dark mode
+
+### Changed
+- Redesign sidebar quick actions as horizontal search bar + compact new-note button
+- Replace sidebar accordion mount/unmount with CSS grid-rows transition (no remount)
+- Remove tree provider entry animation (opacity/translate) for instant render
+- Neutralize dark mode palette from warm (#1c1b19) to neutral (#191919)
+- Refine white theme sidebar background (#fbfbfa → #f9f8f7)
+- Default graph labels to hidden (`showLabels: false`)
+
+---
+
 ## 2026-03-13 — Inline AI Editing, Editor Polish, Domain Migration
 
 ### Added

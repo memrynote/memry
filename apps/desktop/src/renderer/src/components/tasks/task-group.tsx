@@ -42,15 +42,15 @@ const urgencyStyles: Record<UrgencyLevel, UrgencyStyleConfig> = {
   },
   normal: {
     containerClass: '',
-    headerClass: 'text-gray-600 dark:text-gray-400 font-medium',
-    countClass: 'bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400',
+    headerClass: 'text-muted-foreground font-medium',
+    countClass: 'bg-muted text-muted-foreground',
     accentClass: '',
     icon: null
   },
   low: {
     containerClass: '',
-    headerClass: 'text-gray-400 dark:text-gray-500 font-medium',
-    countClass: 'bg-gray-50 dark:bg-gray-800/50 text-gray-400 dark:text-gray-500',
+    headerClass: 'text-text-tertiary font-medium',
+    countClass: 'bg-muted/50 text-text-tertiary',
     accentClass: '',
     icon: null
   }

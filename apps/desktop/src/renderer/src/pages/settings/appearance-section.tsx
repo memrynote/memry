@@ -10,7 +10,7 @@ import {
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
-import { Sun, Moon, Monitor, Check, ALargeSmall } from 'lucide-react'
+import { Sun, Moon, Monitor, Check, ALargeSmall, FileText } from 'lucide-react'
 import { useGeneralSettings } from '@/hooks/use-general-settings'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
@@ -35,7 +35,7 @@ export function AppearanceSettings() {
   const handleThemeChange = useCallback(
     async (value: string) => {
       if (!value) return
-      const theme = value as 'light' | 'dark' | 'system'
+      const theme = value as 'light' | 'dark' | 'white' | 'system'
       const success = await updateSettings({ theme })
       if (!success) toast.error('Failed to update theme')
     },
@@ -105,7 +105,7 @@ export function AppearanceSettings() {
         <div className="space-y-2">
           <Label>Color Mode</Label>
           <p className="text-sm text-muted-foreground">
-            Choose between light, dark, or follow your system preference
+            Choose a color mode or follow your system preference
           </p>
           <ToggleGroup
             type="single"
@@ -115,7 +115,11 @@ export function AppearanceSettings() {
           >
             <ToggleGroupItem value="light" aria-label="Light theme" className="gap-2 px-4">
               <Sun className="w-4 h-4" />
-              Light
+              Warm
+            </ToggleGroupItem>
+            <ToggleGroupItem value="white" aria-label="White theme" className="gap-2 px-4">
+              <FileText className="w-4 h-4" />
+              White
             </ToggleGroupItem>
             <ToggleGroupItem value="dark" aria-label="Dark theme" className="gap-2 px-4">
               <Moon className="w-4 h-4" />
