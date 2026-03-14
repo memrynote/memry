@@ -66,6 +66,12 @@ export const SELECTORS = {
   toast: '[data-testid="toast"], [class*="toast"], [class*="sonner"]',
   loadingSpinner: '[data-testid="loading"], [class*="loading"], [class*="spinner"]',
 
+  // Search
+  searchResults: '[data-testid="search-results"], [class*="search-results"], [role="listbox"]',
+  searchResultItem: '[data-testid="search-result-item"], [class*="search-result"], [role="option"]',
+  searchInput:
+    '[data-testid="search-input"], input[placeholder*="Search"], input[aria-label*="Search"]',
+
   // Tab system
   tabBar: '[class*="tab-bar"], [role="tablist"]',
   tab: '[role="tab"]',
@@ -76,15 +82,17 @@ export const SELECTORS = {
  * Keyboard shortcuts for common actions
  * Based on actual app implementation
  */
+const MOD = process.platform === 'darwin' ? 'Meta' : 'Control'
+
 export const SHORTCUTS = {
-  newNote: 'Meta+n', // ⌘N - creates new note
-  newTask: 'Meta+t', // ⌘T - creates new task (if available)
-  save: 'Meta+s', // ⌘S - save
-  undo: 'Meta+z', // ⌘Z - undo
-  redo: 'Meta+Shift+z', // ⌘⇧Z - redo
-  delete: 'Backspace', // Delete
-  escape: 'Escape', // Close modals
-  enter: 'Enter' // Confirm
+  newNote: `${MOD}+n`,
+  newTask: `${MOD}+t`,
+  save: `${MOD}+s`,
+  undo: `${MOD}+z`,
+  redo: `${MOD}+Shift+z`,
+  delete: 'Backspace',
+  escape: 'Escape',
+  enter: 'Enter'
 }
 
 /**
@@ -283,16 +291,15 @@ export async function toggleTaskCompletion(page: Page, taskTitle: string): Promi
 
     if (taskVisible) {
       const checkbox = task.locator(SELECTORS.taskCheckbox).first()
-      await checkbox.click()
+      await checkbox.click({ force: true })
       await page.waitForTimeout(300)
       return
     }
 
-    // Fallback: find by text content
     const taskByText = page.locator(`${SELECTORS.taskItem}:has-text("${taskTitle}")`).first()
     if (await taskByText.isVisible().catch(() => false)) {
       const checkbox = taskByText.locator(SELECTORS.taskCheckbox).first()
-      await checkbox.click()
+      await checkbox.click({ force: true })
       await page.waitForTimeout(300)
     }
   } catch {
@@ -415,4 +422,50 @@ export async function isDevelopment(electronApp: ElectronApplication): Promise<b
   return electronApp.evaluate(async () => {
     return process.env.NODE_ENV === 'development'
   })
+}
+
+/**
+ * Open search and type a query.
+ * Uses Cmd/Ctrl+K or the search input directly.
+ */
+export async function search(page: Page, query: string): Promise<void> {
+  try {
+    await page.keyboard.press(`${MOD}+k`)
+    await page.waitForTimeout(300)
+
+    const searchInput = page.locator(SELECTORS.searchInput).first()
+    const hasInput = await searchInput.isVisible({ timeout: 2000 }).catch(() => false)
+
+    if (hasInput) {
+      await searchInput.fill(query)
+      await page.waitForTimeout(500)
+      return
+    }
+
+    const cmdPaletteInput = page
+      .locator('input[placeholder*="Search"], input[role="combobox"]')
+      .first()
+    if (await cmdPaletteInput.isVisible({ timeout: 1000 }).catch(() => false)) {
+      await cmdPaletteInput.fill(query)
+      await page.waitForTimeout(500)
+    }
+  } catch {
+    console.log(`Search: could not execute search for "${query}"`)
+  }
+}
+
+/**
+ * Select a result from the search results list
+ */
+export async function selectSearchResult(page: Page, text: string): Promise<void> {
+  try {
+    const result = page.locator(SELECTORS.searchResultItem).filter({ hasText: text }).first()
+    const isVisible = await result.isVisible({ timeout: 3000 }).catch(() => false)
+    if (isVisible) {
+      await result.click()
+      await page.waitForTimeout(300)
+    }
+  } catch {
+    console.log(`Select search result: could not find "${text}"`)
+  }
 }
