@@ -47,7 +47,7 @@ const LinkedNoteItem = ({
 
   if (isLoading) {
     return (
-      <div className="group flex items-center gap-2 rounded-md border border-border bg-muted/30 px-3 py-2">
+      <div className="group flex items-center gap-2 rounded-sm border border-border bg-muted/30 px-3 py-2">
         <Loader2 className="size-4 animate-spin text-muted-foreground" aria-hidden="true" />
         <span className="flex-1 truncate text-sm text-muted-foreground">Loading...</span>
       </div>
@@ -56,7 +56,7 @@ const LinkedNoteItem = ({
 
   if (!note) {
     return (
-      <div className="group flex items-center gap-2 rounded-md border border-border bg-muted/30 px-3 py-2">
+      <div className="group flex items-center gap-2 rounded-sm border border-border bg-muted/30 px-3 py-2">
         <FileText className="size-4 text-muted-foreground" aria-hidden="true" />
         <span className="flex-1 truncate text-sm text-muted-foreground italic">Note not found</span>
         <Button
@@ -78,7 +78,7 @@ const LinkedNoteItem = ({
   return (
     <div
       className={cn(
-        'group flex items-center gap-2 rounded-md border border-border bg-muted/30 px-3 py-2',
+        'group flex items-center gap-2 rounded-sm border border-border bg-muted/30 px-3 py-2',
         onClick && 'cursor-pointer hover:bg-muted/50 transition-colors'
       )}
       onClick={onClick}
@@ -153,7 +153,7 @@ export const TaskLinksSection = ({
         <button
           type="button"
           className={cn(
-            'flex items-center gap-2 rounded-md border border-dashed border-border px-3 py-2 text-sm text-muted-foreground transition-colors',
+            'flex items-center gap-2 rounded-sm border border-dashed border-border px-3 py-2 text-sm text-muted-foreground transition-colors',
             'hover:border-primary hover:text-foreground focus:outline-none focus:ring-2 focus:ring-ring'
           )}
         >

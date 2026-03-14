@@ -94,7 +94,7 @@ export const DroppableProjectItem = ({
       aria-label={`${project.name}, ${project.taskCount} tasks`}
       aria-pressed={isSelected}
       className={cn(
-        'group flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm transition-all duration-150',
+        'group flex w-full items-center gap-2 rounded-sm px-3 py-2 text-sm transition-all duration-150',
         'hover:bg-accent/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
         isSelected && 'bg-accent border-l-3 border-l-primary font-medium',
         // Drop zone styling
@@ -175,7 +175,7 @@ export const TrashDropZone = ({ className }: TrashDropZoneProps): React.JSX.Elem
     <div
       ref={setNodeRef}
       className={cn(
-        'flex items-center gap-2 px-3 py-2.5 mx-2 rounded-lg',
+        'flex items-center gap-2 px-3 py-2.5 mx-2 rounded-sm',
         'border-2 border-dashed transition-all duration-200',
         isOver
           ? 'border-destructive bg-destructive/10 text-destructive'
@@ -218,7 +218,7 @@ export const ArchiveDropZone = ({ className }: ArchiveDropZoneProps): React.JSX.
     <div
       ref={setNodeRef}
       className={cn(
-        'flex items-center gap-2 px-3 py-2.5 mx-2 rounded-lg',
+        'flex items-center gap-2 px-3 py-2.5 mx-2 rounded-sm',
         'border-2 border-dashed transition-all duration-200',
         isOver
           ? 'border-amber-500 bg-amber-500/10 text-amber-600 dark:text-amber-400'

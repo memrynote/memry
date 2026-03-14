@@ -14,10 +14,7 @@ import {
   estimateItemHeight,
   getTaskIdsFromVirtualItems,
   type VirtualItem,
-  type SectionHeaderItem,
-  type TaskItem,
-  type ParentTaskItem,
-  type AddTaskButtonItem
+  type SectionHeaderItem
 } from '@/lib/virtual-list-utils'
 import {
   startOfDay,
@@ -80,7 +77,7 @@ interface UrgencyStyleConfig {
 
 const urgencyStyles: Record<UrgencyLevel, UrgencyStyleConfig> = {
   critical: {
-    containerClass: 'rounded-lg',
+    containerClass: 'rounded-sm',
     headerClass: 'text-text-secondary font-semibold',
     countClass: 'bg-muted text-text-tertiary',
     accentClass: '',
@@ -88,7 +85,7 @@ const urgencyStyles: Record<UrgencyLevel, UrgencyStyleConfig> = {
   },
   high: {
     containerClass:
-      'bg-blue-50/30 dark:bg-blue-950/20 border border-blue-200/50 dark:border-blue-900/50 rounded-lg',
+      'bg-blue-50/30 dark:bg-blue-950/20 border border-blue-200/50 dark:border-blue-900/50 rounded-sm',
     headerClass: 'text-blue-700 dark:text-blue-400 font-semibold',
     countClass: 'bg-blue-100 dark:bg-blue-900/50 text-blue-600 dark:text-blue-400',
     accentClass: 'border-l-[3px] border-l-blue-500',
@@ -143,26 +140,51 @@ interface VirtualSectionHeaderProps {
   item: SectionHeaderItem
   isOver: boolean
   onToggleCollapse?: (sectionKey: string) => void
+  onAddTask?: (sectionKey: keyof TaskGroupByDate) => void
 }
 
 const VirtualSectionHeader = memo(
-  ({ item, isOver, onToggleCollapse }: VirtualSectionHeaderProps): React.JSX.Element => {
+  ({ item, isOver, onToggleCollapse, onAddTask }: VirtualSectionHeaderProps): React.JSX.Element => {
     const styles = urgencyStyles[item.urgency]
-    const hasUrgentStyling = item.urgency === 'critical' || item.urgency === 'high'
+    const isOverdue = item.sectionKey === 'overdue'
+    const hasUrgentStyling = item.urgency === 'high'
+
+    if (isOverdue) {
+      return (
+        <div
+          className={cn(
+            'flex items-center pb-2 gap-2',
+            isOver && 'ring-2 ring-primary/50 ring-inset rounded-sm'
+          )}
+        >
+          <span className="text-[12px] tracking-[0.04em] uppercase font-[family-name:var(--font-heading)] font-semibold leading-4 shrink-0 text-[#C4654A]">
+            {item.label}
+          </span>
+          <div className="h-px grow shrink basis-0 bg-[#F0DEDA] dark:bg-[#5a3030]" />
+          <span className="text-[11px] font-[family-name:var(--font-mono)] font-medium leading-3.5 shrink-0 text-[#C4654A]">
+            {item.count}
+          </span>
+        </div>
+      )
+    }
 
     return (
-      <button
-        type="button"
-        onClick={() => onToggleCollapse?.(item.sectionKey)}
+      <div
         className={cn(
           'flex w-full items-center justify-between px-3 py-2 transition-colors',
-          'hover:bg-accent/30 rounded-md cursor-pointer',
-          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+          'rounded-sm',
           hasUrgentStyling && styles.containerClass,
           isOver && 'ring-2 ring-primary/50 ring-inset'
         )}
       >
-        <div className="flex items-center gap-1.5">
+        <button
+          type="button"
+          onClick={() => onToggleCollapse?.(item.sectionKey)}
+          className={cn(
+            'flex items-center gap-1.5 hover:bg-accent/30 rounded-sm cursor-pointer',
+            'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring'
+          )}
+        >
           <ChevronRight
             className={cn(
               'size-3.5 text-text-tertiary transition-transform duration-200',
@@ -184,16 +206,34 @@ const VirtualSectionHeader = memo(
           >
             {item.label}
           </h3>
+        </button>
+        <div className="flex items-center gap-1">
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation()
+              onAddTask?.(item.sectionKey)
+            }}
+            className={cn(
+              'size-5 flex items-center justify-center rounded-sm',
+              'text-text-tertiary hover:text-text-secondary hover:bg-accent/50',
+              'transition-colors cursor-pointer',
+              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring'
+            )}
+            title={`Add task to ${item.label}`}
+          >
+            <Plus className="size-3.5" strokeWidth={2} />
+          </button>
+          <span
+            className={cn(
+              'text-xs px-1.5 py-0.5 rounded-full',
+              hasUrgentStyling ? styles.countClass : 'text-text-tertiary'
+            )}
+          >
+            {hasUrgentStyling ? item.count : `(${item.count})`}
+          </span>
         </div>
-        <span
-          className={cn(
-            'text-xs px-1.5 py-0.5 rounded-full',
-            hasUrgentStyling ? styles.countClass : 'text-text-tertiary'
-          )}
-        >
-          {hasUrgentStyling ? item.count : `(${item.count})`}
-        </span>
-      </button>
+      </div>
     )
   }
 )
@@ -207,10 +247,11 @@ VirtualSectionHeader.displayName = 'VirtualSectionHeader'
 interface DroppableSectionHeaderProps {
   item: SectionHeaderItem
   onToggleCollapse?: (sectionKey: string) => void
+  onAddTask?: (sectionKey: keyof TaskGroupByDate) => void
 }
 
 const DroppableSectionHeader = memo(
-  ({ item, onToggleCollapse }: DroppableSectionHeaderProps): React.JSX.Element => {
+  ({ item, onToggleCollapse, onAddTask }: DroppableSectionHeaderProps): React.JSX.Element => {
     const targetDate = getDateFromSectionKey(item.sectionKey)
     const sectionId = `group-${item.sectionKey}`
 
@@ -226,7 +267,12 @@ const DroppableSectionHeader = memo(
 
     return (
       <div ref={setNodeRef}>
-        <VirtualSectionHeader item={item} isOver={isOver} onToggleCollapse={onToggleCollapse} />
+        <VirtualSectionHeader
+          item={item}
+          isOver={isOver}
+          onToggleCollapse={onToggleCollapse}
+          onAddTask={onAddTask}
+        />
       </div>
     )
   }
@@ -288,7 +334,13 @@ const VirtualItemRenderer = memo(
   }: VirtualItemRendererProps): React.JSX.Element | null => {
     switch (item.type) {
       case 'section-header':
-        return <DroppableSectionHeader item={item} onToggleCollapse={onToggleCollapse} />
+        return (
+          <DroppableSectionHeader
+            item={item}
+            onToggleCollapse={onToggleCollapse}
+            onAddTask={onAddTaskForSection}
+          />
+        )
 
       case 'task': {
         const taskItem = item
@@ -357,25 +409,6 @@ const VirtualItemRenderer = memo(
             onReorderSubtasks={onReorderSubtasks}
             accentClass={hasUrgentStyling ? styles.accentClass : undefined}
           />
-        )
-      }
-
-      case 'add-task-button': {
-        const addItem = item
-        return (
-          <button
-            type="button"
-            onClick={() => onAddTaskForSection(addItem.sectionId as keyof TaskGroupByDate)}
-            className={cn(
-              'w-full flex items-center gap-2 px-4 py-2.5 text-sm text-text-tertiary',
-              'hover:bg-accent/50 hover:text-text-secondary',
-              'border-t border-border/50 transition-colors',
-              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset'
-            )}
-          >
-            <Plus className="size-4" aria-hidden="true" />
-            <span>Add task</span>
-          </button>
         )
       }
 

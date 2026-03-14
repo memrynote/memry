@@ -51,7 +51,7 @@ export const BulkAddSubtasks = ({ onAdd, className }: BulkAddSubtasksProps): Rea
 Design graphics
 Schedule newsletter`}
         className={cn(
-          'w-full p-3 text-sm border rounded-lg resize-none',
+          'w-full p-3 text-sm border rounded-sm resize-none',
           'bg-background focus:outline-none focus:ring-2 focus:ring-ring',
           'placeholder:text-muted-foreground/50'
         )}

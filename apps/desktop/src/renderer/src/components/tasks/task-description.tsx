@@ -114,7 +114,7 @@ export const TaskDescription = ({
         onBlur={handleBlur}
         placeholder="Add a description..."
         className={cn(
-          'min-h-[80px] w-full resize-none rounded-md border border-border bg-transparent px-3 py-2 text-sm',
+          'min-h-[80px] w-full resize-none rounded-sm border border-border bg-transparent px-3 py-2 text-sm',
           'placeholder:text-muted-foreground',
           'focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent',
           'transition-colors duration-150'

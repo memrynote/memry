@@ -82,7 +82,7 @@ export const DeleteProjectDialog = ({
                     {/* Option: Move to Personal */}
                     <label
                       className={cn(
-                        'flex cursor-pointer items-center gap-3 rounded-md border p-3 transition-colors',
+                        'flex cursor-pointer items-center gap-3 rounded-sm border p-3 transition-colors',
                         selectedOption === 'move'
                           ? 'border-primary bg-accent/50'
                           : 'hover:bg-accent/30'
@@ -113,7 +113,7 @@ export const DeleteProjectDialog = ({
                     {/* Option: Delete tasks */}
                     <label
                       className={cn(
-                        'flex cursor-pointer items-center gap-3 rounded-md border p-3 transition-colors',
+                        'flex cursor-pointer items-center gap-3 rounded-sm border p-3 transition-colors',
                         selectedOption === 'delete'
                           ? 'border-primary bg-accent/50'
                           : 'hover:bg-accent/30'
@@ -145,7 +145,7 @@ export const DeleteProjectDialog = ({
               )}
 
               {/* Warning */}
-              <div className="flex items-center gap-2 rounded-md bg-destructive/10 p-3 text-sm text-destructive">
+              <div className="flex items-center gap-2 rounded-sm bg-destructive/10 p-3 text-sm text-destructive">
                 <AlertTriangle className="size-4 shrink-0" />
                 <span>This action cannot be undone.</span>
               </div>

@@ -70,7 +70,7 @@ const VirtualStatusHeader = memo(
     return (
       <div
         className={cn(
-          'flex items-center justify-between px-3 py-2 transition-colors rounded-lg',
+          'flex items-center justify-between px-3 py-2 transition-colors rounded-sm',
           isOver && 'ring-2 ring-primary/50 ring-inset bg-primary/5'
         )}
       >

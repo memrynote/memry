@@ -63,7 +63,7 @@ export const SubtasksEmptyState = ({
         placeholder="Add subtask — one per line for multiple"
         rows={isFocused || text ? 3 : 1}
         className={cn(
-          'w-full px-3 py-2 text-sm rounded-lg border resize-none transition-all',
+          'w-full px-3 py-2 text-sm rounded-sm border resize-none transition-all',
           'bg-background placeholder:text-muted-foreground/50',
           'focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-0',
           isFocused || text

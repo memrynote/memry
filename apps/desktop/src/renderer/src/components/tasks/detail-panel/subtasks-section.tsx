@@ -71,7 +71,7 @@ const DetailAddSubtaskInput = ({
   return (
     <div
       className={cn(
-        'flex items-center rounded-lg border transition-colors mt-2',
+        'flex items-center rounded-sm border transition-colors mt-2',
         isActive
           ? 'border-ring bg-background shadow-sm'
           : 'border-dashed border-border hover:border-muted-foreground/50'

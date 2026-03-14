@@ -139,7 +139,7 @@ export const NoteSearchDropdown = ({
                 type="button"
                 onClick={() => handleSelectNote(note.id)}
                 className={cn(
-                  'flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors',
+                  'flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm transition-colors',
                   'hover:bg-accent focus:bg-accent focus:outline-none'
                 )}
               >

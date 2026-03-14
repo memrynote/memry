@@ -71,7 +71,7 @@ interface VirtualizedTodayViewProps {
 
 const urgencyStyles = {
   critical: {
-    containerClass: 'rounded-lg',
+    containerClass: 'rounded-sm',
     headerClass: 'text-text-secondary font-semibold',
     countClass: 'bg-muted text-text-tertiary',
     accentClass: '',
@@ -79,7 +79,7 @@ const urgencyStyles = {
   },
   high: {
     containerClass:
-      'bg-blue-50/30 dark:bg-blue-950/20 border border-blue-200/50 dark:border-blue-900/50 rounded-lg',
+      'bg-blue-50/30 dark:bg-blue-950/20 border border-blue-200/50 dark:border-blue-900/50 rounded-sm',
     headerClass: 'text-blue-700 dark:text-blue-400 font-semibold',
     countClass: 'bg-blue-100 dark:bg-blue-900/50 text-blue-600 dark:text-blue-400',
     accentClass: 'border-l-[3px] border-l-blue-500',
@@ -108,7 +108,7 @@ const VirtualSectionHeader = memo(
         onClick={() => onToggleCollapse?.(item.sectionKey)}
         className={cn(
           'flex w-full items-center justify-between px-3 py-2 transition-colors',
-          'hover:bg-accent/30 rounded-md cursor-pointer',
+          'hover:bg-accent/30 rounded-sm cursor-pointer',
           'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
           styles.containerClass,
           isOver && 'ring-2 ring-primary/50 ring-inset'
@@ -195,7 +195,7 @@ const DroppableDayHeader = memo(({ item }: DroppableDayHeaderProps): React.JSX.E
       <DaySectionHeader
         date={item.date}
         taskCount={item.taskCount}
-        className={cn(isOver && 'ring-2 ring-primary/50 ring-inset rounded-md')}
+        className={cn(isOver && 'ring-2 ring-primary/50 ring-inset rounded-sm')}
       />
     </div>
   )
@@ -405,7 +405,7 @@ const VirtualItemRenderer = memo(
             onClick={() => onToggleCollapse?.('this-week')}
             className={cn(
               'flex w-full items-center justify-between px-3 py-2 transition-colors mt-4',
-              'hover:bg-accent/30 rounded-md cursor-pointer',
+              'hover:bg-accent/30 rounded-sm cursor-pointer',
               'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring'
             )}
           >

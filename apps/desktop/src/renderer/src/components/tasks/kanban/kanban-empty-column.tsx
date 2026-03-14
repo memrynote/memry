@@ -48,7 +48,7 @@ export const KanbanEmptyColumn = ({
   return (
     <div
       className={cn(
-        'flex flex-1 flex-col items-center justify-center rounded-lg border-2 border-dashed p-6 text-center transition-colors',
+        'flex flex-1 flex-col items-center justify-center rounded-sm border-2 border-dashed p-6 text-center transition-colors',
         isDropTarget ? 'border-primary bg-primary/5' : 'border-border/50 bg-muted/20',
         className
       )}

@@ -10,10 +10,6 @@ import { createLookupContext, isTaskCompletedFast } from '@/lib/lookup-utils'
 import type { Task } from '@/data/sample-tasks'
 import type { Project } from '@/data/tasks-data'
 
-// ============================================================================
-// TYPES
-// ============================================================================
-
 type TaskSectionVariant = 'overdue' | 'today' | 'default'
 
 interface TaskSectionProps {
@@ -28,7 +24,6 @@ interface TaskSectionProps {
   emptyMessage?: string
   showAddTask?: boolean
   selectedTaskId?: string | null
-  /** Explicit date for this section (for reschedule on drop) */
   date?: Date | null
   onAddTask?: () => void
   onTaskClick?: (taskId: string) => void
@@ -37,62 +32,31 @@ interface TaskSectionProps {
   className?: string
 }
 
-// ============================================================================
-// SECTION HEADER COMPONENT
-// ============================================================================
-
-interface TaskSectionHeaderProps {
-  title: string
-  subtitle?: string
-  count: number
-  variant: TaskSectionVariant
-}
-
-const TaskSectionHeader = ({
-  title,
-  subtitle,
-  count,
-  variant
-}: TaskSectionHeaderProps): React.JSX.Element => {
-  return (
-    <div className="flex items-center justify-between px-4 py-2.5 border-b border-border/50">
-      <div className="flex items-center gap-2">
-        <span
-          className={cn(
-            'font-semibold text-sm uppercase tracking-wide',
-            variant === 'overdue' && 'text-text-secondary',
-            variant === 'today' && 'text-amber-600 dark:text-amber-500',
-            variant === 'default' && 'text-text-secondary'
-          )}
-        >
-          {title}
-        </span>
-        {subtitle && <span className="text-sm text-text-tertiary">· {subtitle}</span>}
-      </div>
-
-      <span
-        className={cn(
-          'text-xs px-2 py-0.5 rounded-full font-medium',
-          variant === 'overdue' && 'bg-muted text-text-tertiary',
-          variant === 'today' &&
-            'bg-amber-100 dark:bg-amber-950/50 text-amber-700 dark:text-amber-500',
-          variant === 'default' && 'bg-muted text-text-tertiary'
-        )}
-      >
-        {count}
-      </span>
-    </div>
-  )
-}
-
-// ============================================================================
-// TASK SECTION COMPONENT
-// ============================================================================
+const VARIANT_STYLES = {
+  overdue: {
+    label: 'text-[#C4654A]',
+    divider: 'bg-[#F0DEDA] dark:bg-[#5a3030]',
+    count: 'text-[#C4654A]',
+    borderColor: '#EF4444'
+  },
+  today: {
+    label: 'text-text-primary',
+    divider: 'bg-border',
+    count: 'text-text-secondary',
+    borderColor: undefined
+  },
+  default: {
+    label: 'text-text-secondary',
+    divider: 'bg-border',
+    count: 'text-text-tertiary',
+    borderColor: undefined
+  }
+} as const
 
 export const TaskSection = ({
   id,
   title,
-  subtitle,
+  subtitle: _subtitle,
   count,
   tasks,
   allTasks = [],
@@ -108,15 +72,14 @@ export const TaskSection = ({
   onUpdateTask,
   className
 }: TaskSectionProps): React.JSX.Element => {
-  // Section ID for drag-drop
   const sectionId = `section-${id}`
+  const styles = VARIANT_STYLES[variant]
 
-  // Determine target date based on variant if not explicitly provided
   const getDefaultDate = (): Date | null => {
     const today = startOfDay(new Date())
     switch (variant) {
       case 'overdue':
-        return addDays(today, -1) // Yesterday for overdue
+        return addDays(today, -1)
       case 'today':
         return today
       default:
@@ -125,11 +88,8 @@ export const TaskSection = ({
   }
 
   const targetDate = date !== undefined ? date : getDefaultDate()
-
-  // Create lookup context for O(1) project/status lookups
   const lookupContext = useMemo(() => createLookupContext(projects), [projects])
 
-  // Set up droppable for section-level drops
   const { setNodeRef, isOver } = useDroppable({
     id: sectionId,
     data: {
@@ -140,22 +100,8 @@ export const TaskSection = ({
     }
   })
 
-  // Get task IDs for SortableContext
   const taskIds = tasks.map((t) => t.id)
 
-  const accentBorderColor = {
-    overdue: 'border-l-border',
-    today: 'border-l-amber-500',
-    default: 'border-l-border'
-  }[variant]
-
-  const accentBgColor = {
-    overdue: 'bg-background',
-    today: 'bg-amber-50/30 dark:bg-amber-950/10',
-    default: 'bg-background'
-  }[variant]
-
-  // Use lookup context for O(1) completion checks
   const isTaskCompleted = (task: Task): boolean => {
     return isTaskCompletedFast(task, lookupContext.completionMap)
   }
@@ -163,25 +109,52 @@ export const TaskSection = ({
   return (
     <section
       ref={setNodeRef}
-      className={cn(
-        'rounded-lg border border-border overflow-hidden transition-all',
-        'border-l-2',
-        accentBorderColor,
-        accentBgColor,
-        isOver && 'border-dotted border-primary/60 bg-primary/5',
-        className
-      )}
+      className={cn('flex flex-col transition-all', isOver && 'bg-primary/5 rounded-sm', className)}
       aria-labelledby={sectionId}
     >
-      {/* Header */}
-      <TaskSectionHeader title={title} subtitle={subtitle} count={count} variant={variant} />
+      {/* Section Header — flat divider style */}
+      <div className="flex items-center pb-2 gap-2">
+        <span
+          className={cn(
+            'text-[12px] tracking-[0.04em] uppercase font-[family-name:var(--font-heading)] font-semibold leading-4 shrink-0',
+            styles.label
+          )}
+        >
+          {title}
+        </span>
+        <div className={cn('h-px grow shrink basis-0', styles.divider)} />
+        <div className="flex items-center gap-1 shrink-0">
+          {onAddTask && (
+            <button
+              type="button"
+              onClick={onAddTask}
+              className={cn(
+                'size-5 flex items-center justify-center rounded-sm',
+                'text-text-tertiary hover:text-text-secondary hover:bg-accent/50',
+                'transition-colors cursor-pointer',
+                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring'
+              )}
+              title={`Add task to ${title}`}
+            >
+              <Plus className="size-3.5" strokeWidth={2} />
+            </button>
+          )}
+          <span
+            className={cn(
+              'text-[11px] font-[family-name:var(--font-mono)] font-medium leading-3.5',
+              styles.count
+            )}
+          >
+            {count}
+          </span>
+        </div>
+      </div>
 
       {/* Task list */}
       <SortableContext items={taskIds} strategy={verticalListSortingStrategy}>
-        <div className="divide-y divide-border/50">
+        <div className="flex flex-col">
           {tasks.length > 0 ? (
             tasks.map((task) => {
-              // Use lookup context for O(1) project lookup
               const project = lookupContext.projectMap.get(task.projectId)
               if (!project) return null
 
@@ -223,28 +196,11 @@ export const TaskSection = ({
         </div>
       </SortableContext>
 
-      {/* Drop indicator message when hovering */}
+      {/* Drop indicator */}
       {isOver && (
-        <div className="px-4 py-2 text-center text-sm text-primary font-medium bg-primary/5 border-t border-primary/20">
+        <div className="px-4 py-2 text-center text-sm text-primary font-medium bg-primary/5 border-t border-primary/20 rounded-b-sm">
           Drop to move to {title}
         </div>
-      )}
-
-      {/* Add task footer (if tasks exist and showAddTask) */}
-      {tasks.length > 0 && showAddTask && onAddTask && (
-        <button
-          type="button"
-          onClick={onAddTask}
-          className={cn(
-            'w-full flex items-center gap-2 px-4 py-2.5 text-sm text-text-tertiary',
-            'hover:bg-accent/50 hover:text-text-secondary',
-            'border-t border-border/50 transition-colors',
-            'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset'
-          )}
-        >
-          <Plus className="size-4" aria-hidden="true" />
-          <span>Add task</span>
-        </button>
       )}
     </section>
   )

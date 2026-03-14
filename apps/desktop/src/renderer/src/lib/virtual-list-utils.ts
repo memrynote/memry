@@ -242,7 +242,8 @@ export const flattenTasksByDueDate = (
 
     if (tasksInGroup.length === 0) return
 
-    const isSectionCollapsed = collapsedSections.has(groupKey)
+    const isOverdueSection = groupKey === 'overdue'
+    const isSectionCollapsed = !isOverdueSection && collapsedSections.has(groupKey)
 
     items.push({
       id: `header-${groupKey}`,
@@ -285,12 +286,6 @@ export const flattenTasksByDueDate = (
           isOverdue: groupKey === 'overdue'
         })
       }
-    })
-
-    items.push({
-      id: `add-${groupKey}`,
-      type: 'add-task-button',
-      sectionId: groupKey
     })
   })
 

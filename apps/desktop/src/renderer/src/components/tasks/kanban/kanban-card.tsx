@@ -177,7 +177,7 @@ export const KanbanCard = ({
       aria-selected={isFocused || isSelected || isCheckedForSelection}
       className={cn(
         // Base styles
-        'group rounded-lg border-2 bg-card p-3 shadow-sm transition-all duration-150',
+        'group rounded-sm border-2 bg-card p-3 shadow-sm transition-all duration-150',
         'cursor-grab active:cursor-grabbing',
         'focus-visible:outline-none',
         // Hover state
@@ -306,7 +306,7 @@ export const KanbanCardSkeleton = ({
   return (
     <div
       className={cn(
-        'rounded-lg border bg-card p-3 shadow-xl transition-all duration-150',
+        'rounded-sm border bg-card p-3 shadow-xl transition-all duration-150',
         'rotate-3 scale-105',
         isOverdue && !isCompleted && 'bg-rose-50/60 dark:bg-rose-950/20',
         isCompleted && 'opacity-70 bg-muted/30'

@@ -199,7 +199,7 @@ export const SortableParentTaskRow = ({
         onClick={handleRowClick}
         onKeyDown={onClick ? handleRowKeyDown : undefined}
         className={cn(
-          'rounded-md px-2 py-2.5 transition-all duration-150',
+          'rounded-sm px-2 py-2.5 transition-all duration-150',
           'hover:bg-accent/50',
           onClick &&
             'cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',

@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react'
-import { ChevronDown, Check } from 'lucide-react'
+import { ChevronDown, ChevronRight, Clock, Calendar, RefreshCw } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
@@ -11,47 +11,47 @@ import type { Status, RepeatFilterType, HasTimeFilterType } from '@/data/tasks-d
 // ============================================================================
 
 interface MoreFiltersDropdownProps {
-  // Status filter
   statuses?: Status[]
   selectedStatusIds: string[]
   onStatusChange: (statusIds: string[]) => void
   showStatusFilter?: boolean
-
-  // Repeat type filter
   repeatType: RepeatFilterType
   onRepeatTypeChange: (type: RepeatFilterType) => void
-
-  // Has time filter
   hasTime: HasTimeFilterType
   onHasTimeChange: (type: HasTimeFilterType) => void
-
-  // Task counts
   taskCountByStatus?: Record<string, number>
   taskCountByRepeat?: { repeating: number; oneTime: number }
   taskCountByTime?: { withTime: number; withoutTime: number }
-
   className?: string
 }
 
 // ============================================================================
-// REPEAT OPTIONS
+// TOGGLE SWITCH
 // ============================================================================
 
-const repeatOptions: { value: RepeatFilterType; label: string }[] = [
-  { value: 'all', label: 'All tasks' },
-  { value: 'repeating', label: 'Repeating only' },
-  { value: 'one-time', label: 'One-time only' }
-]
-
-// ============================================================================
-// TIME OPTIONS
-// ============================================================================
-
-const timeOptions: { value: HasTimeFilterType; label: string }[] = [
-  { value: 'all', label: 'All tasks' },
-  { value: 'with-time', label: 'With time set' },
-  { value: 'without-time', label: 'Without time' }
-]
+const ToggleSwitch = ({
+  enabled,
+  onToggle
+}: {
+  enabled: boolean
+  onToggle: () => void
+}): React.JSX.Element => (
+  <button
+    type="button"
+    onClick={(e) => {
+      e.stopPropagation()
+      onToggle()
+    }}
+    className={cn(
+      'w-8 h-[18px] ml-auto flex items-center rounded-sm shrink-0 p-0.5 transition-colors',
+      enabled ? 'bg-[#1A1A1A] justify-end' : 'bg-[#D4D1CA]'
+    )}
+    role="switch"
+    aria-checked={enabled}
+  >
+    <div className="rounded-full bg-white shrink-0 size-3.5" />
+  </button>
+)
 
 // ============================================================================
 // MORE FILTERS DROPDOWN COMPONENT
@@ -72,8 +72,8 @@ export const MoreFiltersDropdown = ({
   className
 }: MoreFiltersDropdownProps): React.JSX.Element => {
   const [isOpen, setIsOpen] = useState(false)
+  const [showStatusPanel, setShowStatusPanel] = useState(false)
 
-  // Calculate active filter count
   const activeCount = useMemo(() => {
     let count = 0
     if (selectedStatusIds.length > 0) count++
@@ -91,13 +91,8 @@ export const MoreFiltersDropdown = ({
     onStatusChange(nextStatusIds)
   }
 
-  const handleClear = (): void => {
-    onStatusChange([])
-    onRepeatTypeChange('all')
-    onHasTimeChange('all')
-  }
-
   const handleOpenChange = (open: boolean): void => {
+    if (!open) setShowStatusPanel(false)
     setIsOpen(open)
   }
 
@@ -120,14 +115,82 @@ export const MoreFiltersDropdown = ({
         </Button>
       </PopoverTrigger>
 
-      <PopoverContent className="w-64 p-0" align="start">
-        <div className="p-2 max-h-96 overflow-y-auto">
-          {/* Status filter (only for Kanban view) */}
-          {showStatusFilter && statuses.length > 0 && (
-            <>
-              <div className="text-xs font-medium text-muted-foreground px-2 py-1.5 uppercase">
+      <PopoverContent
+        className="w-[260px] p-0 rounded-sm overflow-clip shadow-[0_4px_24px_rgba(0,0,0,0.08),0_1px_3px_rgba(0,0,0,0.04)]"
+        align="start"
+      >
+        {!showStatusPanel ? (
+          <div className="flex flex-col py-2">
+            {/* Status — navigable sub-filter */}
+            {showStatusFilter && statuses.length > 0 && (
+              <button
+                type="button"
+                onClick={() => setShowStatusPanel(true)}
+                className="flex items-center py-[9px] px-4 gap-2.5 hover:bg-[#F9F8F6] focus:outline-none transition-colors"
+              >
+                <Clock className="size-3.5 text-[#8A8A8A]" />
+                <span className="text-[13px] text-[#1A1A1A] font-['DM_Sans',system-ui,sans-serif] leading-4">
+                  Status
+                </span>
+                {selectedStatusIds.length > 0 && (
+                  <span className="text-[11px] text-[#8A8A8A] font-['DM_Sans',system-ui,sans-serif]">
+                    ({selectedStatusIds.length})
+                  </span>
+                )}
+                <ChevronRight className="size-2.5 text-[#C4C0B8] ml-auto" />
+              </button>
+            )}
+
+            {/* Has time */}
+            <button
+              type="button"
+              onClick={() => setShowStatusPanel(false)}
+              className="flex items-center py-[9px] px-4 gap-2.5 hover:bg-[#F9F8F6] focus:outline-none transition-colors"
+            >
+              <Calendar className="size-3.5 text-[#8A8A8A]" />
+              <span className="text-[13px] text-[#1A1A1A] font-['DM_Sans',system-ui,sans-serif] leading-4">
+                Has time set
+              </span>
+              <ToggleSwitch
+                enabled={hasTime === 'with-time'}
+                onToggle={() => onHasTimeChange(hasTime === 'with-time' ? 'all' : 'with-time')}
+              />
+            </button>
+
+            {/* Divider */}
+            <div className="h-px bg-[#F0EDE8] shrink-0 my-1 mx-4" />
+
+            {/* Recurring only */}
+            <button
+              type="button"
+              className="flex items-center py-[9px] px-4 gap-2.5 hover:bg-[#F9F8F6] focus:outline-none transition-colors"
+            >
+              <RefreshCw className="size-3.5 text-[#8A8A8A]" />
+              <span className="text-[13px] text-[#1A1A1A] font-['DM_Sans',system-ui,sans-serif] leading-4">
+                Recurring only
+              </span>
+              <ToggleSwitch
+                enabled={repeatType === 'repeating'}
+                onToggle={() =>
+                  onRepeatTypeChange(repeatType === 'repeating' ? 'all' : 'repeating')
+                }
+              />
+            </button>
+          </div>
+        ) : (
+          /* Status sub-panel */
+          <div className="flex flex-col">
+            <button
+              type="button"
+              onClick={() => setShowStatusPanel(false)}
+              className="flex items-center py-2.5 px-4 gap-1.5 bg-[#F5F3EF] border-b border-[#E8E5E0]"
+            >
+              <ChevronDown className="size-2.5 text-[#8A8A8A] rotate-90" />
+              <span className="text-[13px] text-[#1A1A1A] font-['DM_Sans',system-ui,sans-serif] font-semibold leading-4">
                 Status
-              </div>
+              </span>
+            </button>
+            <div className="flex flex-col py-2">
               {statuses.map((status) => {
                 const isSelected = selectedStatusIds.includes(status.id)
                 const taskCount = taskCountByStatus[status.id] || 0
@@ -137,120 +200,48 @@ export const MoreFiltersDropdown = ({
                     key={status.id}
                     type="button"
                     onClick={() => handleToggleStatus(status.id)}
-                    className={cn(
-                      'flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm transition-colors',
-                      'hover:bg-accent focus:outline-none focus:bg-accent',
-                      isSelected && 'font-medium'
-                    )}
+                    className="flex items-center gap-2.5 py-2 px-4 hover:bg-[#F9F8F6] focus:outline-none transition-colors"
                   >
-                    <span className="flex items-center justify-center size-4">
-                      {isSelected && <Check className="size-4 text-primary" />}
+                    <div
+                      className="flex items-center justify-center rounded-sm shrink-0 size-4"
+                      style={{
+                        borderWidth: '1.5px',
+                        borderStyle: 'solid',
+                        borderColor: isSelected ? status.color : '#D4D1CA',
+                        backgroundColor: isSelected ? `${status.color}15` : '#FFFFFF'
+                      }}
+                    >
+                      {isSelected && (
+                        <svg
+                          width="10"
+                          height="10"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke={status.color}
+                          strokeWidth="3"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        >
+                          <polyline points="20 6 9 17 4 12" />
+                        </svg>
+                      )}
+                    </div>
+                    <div
+                      className="shrink-0 rounded-full size-2"
+                      style={{ backgroundColor: status.color }}
+                    />
+                    <span className="text-[13px] text-[#1A1A1A] font-['DM_Sans',system-ui,sans-serif] leading-4">
+                      {status.name}
                     </span>
-                    <span className="flex items-center gap-2 flex-1">
-                      <span
-                        className="size-2 rounded-full"
-                        style={{ backgroundColor: status.color }}
-                      />
-                      <span>{status.name}</span>
+                    <span className="text-[11px] ml-auto text-[#8A8A8A] font-['DM_Sans',system-ui,sans-serif] leading-[14px]">
+                      {taskCount}
                     </span>
-                    <span className="text-xs text-text-tertiary">{taskCount}</span>
                   </button>
                 )
               })}
-              <div className="my-2 h-px bg-border" />
-            </>
-          )}
-
-          {/* Repeat type filter */}
-          <div className="text-xs font-medium text-muted-foreground px-2 py-1.5 uppercase">
-            Repeat Type
+            </div>
           </div>
-          {repeatOptions.map((option) => {
-            const isSelected = repeatType === option.value
-            let taskCount = 0
-            if (option.value === 'repeating') taskCount = taskCountByRepeat.repeating
-            if (option.value === 'one-time') taskCount = taskCountByRepeat.oneTime
-
-            return (
-              <button
-                key={option.value}
-                type="button"
-                onClick={() => onRepeatTypeChange(option.value)}
-                className={cn(
-                  'flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm transition-colors',
-                  'hover:bg-accent focus:outline-none focus:bg-accent',
-                  isSelected && 'font-medium bg-accent'
-                )}
-              >
-                <span className="flex items-center gap-2 flex-1">
-                  <span
-                    className={cn(
-                      'size-2 rounded-full',
-                      isSelected ? 'bg-primary' : 'bg-transparent'
-                    )}
-                  />
-                  <span>{option.label}</span>
-                </span>
-                {option.value !== 'all' && (
-                  <span className="text-xs text-text-tertiary">{taskCount}</span>
-                )}
-              </button>
-            )
-          })}
-
-          <div className="my-2 h-px bg-border" />
-
-          {/* Time filter */}
-          <div className="text-xs font-medium text-muted-foreground px-2 py-1.5 uppercase">
-            Time
-          </div>
-          {timeOptions.map((option) => {
-            const isSelected = hasTime === option.value
-            let taskCount = 0
-            if (option.value === 'with-time') taskCount = taskCountByTime.withTime
-            if (option.value === 'without-time') taskCount = taskCountByTime.withoutTime
-
-            return (
-              <button
-                key={option.value}
-                type="button"
-                onClick={() => onHasTimeChange(option.value)}
-                className={cn(
-                  'flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm transition-colors',
-                  'hover:bg-accent focus:outline-none focus:bg-accent',
-                  isSelected && 'font-medium bg-accent'
-                )}
-              >
-                <span className="flex items-center gap-2 flex-1">
-                  <span
-                    className={cn(
-                      'size-2 rounded-full',
-                      isSelected ? 'bg-primary' : 'bg-transparent'
-                    )}
-                  />
-                  <span>{option.label}</span>
-                </span>
-                {option.value !== 'all' && (
-                  <span className="text-xs text-text-tertiary">{taskCount}</span>
-                )}
-              </button>
-            )
-          })}
-
-          <div className="my-2 h-px bg-border" />
-
-          {/* Action buttons */}
-          <div className="flex items-center justify-end px-2 py-1">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleClear}
-              className="h-7 text-xs text-muted-foreground hover:text-foreground"
-            >
-              Clear All
-            </Button>
-          </div>
-        </div>
+        )}
       </PopoverContent>
     </Popover>
   )

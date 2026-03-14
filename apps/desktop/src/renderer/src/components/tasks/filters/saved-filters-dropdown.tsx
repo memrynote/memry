@@ -1,13 +1,7 @@
-import { ChevronDown, Star, Settings, Trash2 } from 'lucide-react'
+import { Star, Plus, Trash2, ChevronDown } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger
-} from '@/components/ui/dropdown-menu'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { cn } from '@/lib/utils'
 import type { SavedFilter } from '@/data/tasks-data'
 
@@ -20,6 +14,7 @@ interface SavedFiltersDropdownProps {
   onApply: (filter: SavedFilter) => void
   onDelete: (filterId: string) => void
   onManage?: () => void
+  onSaveCurrent?: () => void
   className?: string
 }
 
@@ -32,11 +27,12 @@ export const SavedFiltersDropdown = ({
   onApply,
   onDelete,
   onManage,
+  onSaveCurrent,
   className
 }: SavedFiltersDropdownProps): React.JSX.Element => {
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
+    <Popover>
+      <PopoverTrigger asChild>
         <Button
           variant="outline"
           size="sm"
@@ -47,49 +43,86 @@ export const SavedFiltersDropdown = ({
           <span className="hidden sm:inline">Saved</span>
           <ChevronDown className="size-4 opacity-50" />
         </Button>
-      </DropdownMenuTrigger>
+      </PopoverTrigger>
 
-      <DropdownMenuContent align="end" className="w-56">
-        {savedFilters.length > 0 ? (
-          <>
-            {savedFilters.map((filter) => (
-              <div key={filter.id} className="flex items-center justify-between group">
-                <DropdownMenuItem onClick={() => onApply(filter)} className="flex-1 cursor-pointer">
-                  <Star className="size-4 mr-2 text-amber-500" />
-                  <span className="truncate">{filter.name}</span>
-                </DropdownMenuItem>
+      <PopoverContent
+        className="w-[280px] p-0 rounded-sm overflow-clip shadow-[0_4px_24px_rgba(0,0,0,0.08),0_1px_3px_rgba(0,0,0,0.04)]"
+        align="end"
+      >
+        {/* Saved presets */}
+        <div className="flex flex-col py-2">
+          {savedFilters.length > 0 ? (
+            savedFilters.map((filter, index) => (
+              <div
+                key={filter.id}
+                className="flex items-center py-[9px] px-4 gap-2.5 group hover:bg-[#F5F3EF] transition-colors"
+              >
+                <button
+                  type="button"
+                  onClick={() => onApply(filter)}
+                  className="flex items-center gap-2.5 flex-1 min-w-0 focus:outline-none"
+                >
+                  <Star
+                    className={cn(
+                      'size-3.5 shrink-0',
+                      index === 0 ? 'fill-[#F59E0B] text-[#F59E0B]' : 'text-[#C4C0B8]'
+                    )}
+                  />
+                  <div className="flex flex-col gap-0.5 min-w-0">
+                    <span
+                      className={cn(
+                        "text-[13px] font-['DM_Sans',system-ui,sans-serif] leading-4 truncate",
+                        index === 0 ? 'font-medium text-[#1A1A1A]' : 'text-[#1A1A1A]'
+                      )}
+                    >
+                      {filter.name}
+                    </span>
+                  </div>
+                </button>
                 <button
                   type="button"
                   onClick={(e) => {
                     e.stopPropagation()
                     onDelete(filter.id)
                   }}
-                  className={cn(
-                    'p-1.5 mr-2 rounded text-muted-foreground',
-                    'opacity-0 group-hover:opacity-100 transition-opacity',
-                    'hover:text-destructive hover:bg-destructive/10',
-                    'focus:outline-none focus:opacity-100'
-                  )}
+                  className="p-1 rounded text-[#C4C0B8] opacity-0 group-hover:opacity-100 hover:text-[#E54D2E] hover:bg-[#FEF0EE] transition-all focus:outline-none focus:opacity-100 shrink-0"
                   aria-label={`Delete ${filter.name}`}
                 >
                   <Trash2 className="size-3.5" />
                 </button>
               </div>
-            ))}
-            <DropdownMenuSeparator />
-          </>
-        ) : (
-          <div className="px-3 py-2 text-sm text-muted-foreground">No saved filters yet</div>
-        )}
+            ))
+          ) : (
+            <div className="px-4 py-3 text-[13px] text-[#8A8A8A] font-['DM_Sans',system-ui,sans-serif]">
+              No saved filters yet
+            </div>
+          )}
+        </div>
 
-        {onManage && (
-          <DropdownMenuItem onClick={onManage}>
-            <Settings className="size-4 mr-2" />
-            Manage saved filters...
-          </DropdownMenuItem>
-        )}
-      </DropdownMenuContent>
-    </DropdownMenu>
+        {/* Save current footer */}
+        <div className="border-t border-[#E8E5E0]">
+          {onSaveCurrent ? (
+            <button
+              type="button"
+              onClick={onSaveCurrent}
+              className="flex items-center w-full py-2.5 px-4 gap-2 hover:bg-[#F9F8F6] transition-colors focus:outline-none"
+            >
+              <Plus className="size-3.5 text-[#8A8A8A]" />
+              <span className="text-[13px] text-[#8A8A8A] font-['DM_Sans',system-ui,sans-serif] font-medium leading-4">
+                Save current filters
+              </span>
+            </button>
+          ) : (
+            <div className="flex items-center py-2.5 px-4 gap-2 opacity-50">
+              <Plus className="size-3.5 text-[#8A8A8A]" />
+              <span className="text-[13px] text-[#8A8A8A] font-['DM_Sans',system-ui,sans-serif] font-medium leading-4">
+                Save current filters
+              </span>
+            </div>
+          )}
+        </div>
+      </PopoverContent>
+    </Popover>
   )
 }
 

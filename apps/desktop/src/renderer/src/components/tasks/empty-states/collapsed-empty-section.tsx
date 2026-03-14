@@ -68,7 +68,7 @@ export const CollapsedEmptySection = ({
     <div
       className={cn(
         'flex items-center justify-between',
-        'px-3 py-2.5 rounded-lg',
+        'px-3 py-2.5 rounded-sm',
         'bg-muted/30 border border-border/50',
         className
       )}

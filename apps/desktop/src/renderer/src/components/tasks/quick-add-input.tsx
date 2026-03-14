@@ -475,7 +475,7 @@ export const QuickAddInput = ({
         tabIndex={-1}
         onClick={handleContainerClick}
         className={cn(
-          'flex flex-col rounded-md border transition-all duration-150 overflow-hidden',
+          'flex flex-col rounded-sm border transition-all duration-150 overflow-hidden',
           isFocused
             ? 'border-primary bg-background shadow-sm'
             : 'border-transparent bg-muted/50 hover:bg-muted',

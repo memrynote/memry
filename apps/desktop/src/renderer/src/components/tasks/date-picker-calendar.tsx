@@ -107,7 +107,7 @@ export function DatePickerCalendar({
         <button
           type="button"
           onClick={goToPrevMonth}
-          className="flex size-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+          className="flex size-8 items-center justify-center rounded-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
           aria-label="Previous month"
         >
           <ChevronLeft className="size-4" />
@@ -116,7 +116,7 @@ export function DatePickerCalendar({
         <button
           type="button"
           onClick={goToNextMonth}
-          className="flex size-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+          className="flex size-8 items-center justify-center rounded-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
           aria-label="Next month"
         >
           <ChevronRight className="size-4" />
