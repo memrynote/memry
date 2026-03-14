@@ -30,12 +30,17 @@ export const test = base.extend<{
 
   // Launch Electron application
   electronApp: async ({ testVaultPath }, use) => {
+    const isCI = !!process.env.CI
     const app = await electron.launch({
-      args: [path.join(__dirname, '../../out/main/index.js')],
+      args: [
+        ...(isCI ? ['--no-sandbox', '--disable-gpu'] : []),
+        path.join(__dirname, '../../out/main/index.js')
+      ],
       env: {
         ...process.env,
         NODE_ENV: 'test',
-        TEST_VAULT_PATH: testVaultPath
+        TEST_VAULT_PATH: testVaultPath,
+        ...(isCI && { ELECTRON_DISABLE_SANDBOX: '1' })
       }
     })
 
