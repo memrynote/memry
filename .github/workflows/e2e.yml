@@ -15,6 +15,7 @@ concurrency:
 
 env:
   CI: true
+  ELECTRON_DISABLE_SANDBOX: 1
 
 jobs:
   e2e:
