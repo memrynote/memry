@@ -9,6 +9,7 @@ import { SidebarInset, SidebarProvider, SidebarTrigger } from '@/components/ui/s
 import { Toaster } from '@/components/ui/sonner'
 import { DragProvider, type DragState } from '@/contexts/drag-context'
 import { AIAgentProvider } from '@/contexts/ai-agent-context'
+import { AIInlineProvider } from '@/contexts/ai-inline-context'
 import { SidebarDrillDownProvider } from '@/contexts/sidebar-drill-down'
 import { GlobalAIPanel } from '@/components/ai-agent'
 import { TaskDragOverlay } from '@/components/tasks/drag-drop'
@@ -496,18 +497,20 @@ function App(): React.JSX.Element {
         onProjectsChange={handleProjectsChange}
       >
         <AIAgentProvider>
-          <TabProvider>
-            <TabPersistenceManager>
-              <SidebarDrillDownProvider>
-                <AppSidebar currentPage={currentPage} viewCounts={viewCounts} />
-                <SidebarInset className="flex flex-col overflow-hidden">
-                  <AppContent />
-                </SidebarInset>
-              </SidebarDrillDownProvider>
-              {/* Drag Overlay - only for task drag to sidebar */}
-              <TaskDragOverlay projects={projectsWithCounts} />
-            </TabPersistenceManager>
-          </TabProvider>
+          <AIInlineProvider>
+            <TabProvider>
+              <TabPersistenceManager>
+                <SidebarDrillDownProvider>
+                  <AppSidebar currentPage={currentPage} viewCounts={viewCounts} />
+                  <SidebarInset className="flex flex-col overflow-hidden">
+                    <AppContent />
+                  </SidebarInset>
+                </SidebarDrillDownProvider>
+                {/* Drag Overlay - only for task drag to sidebar */}
+                <TaskDragOverlay projects={projectsWithCounts} />
+              </TabPersistenceManager>
+            </TabProvider>
+          </AIInlineProvider>
         </AIAgentProvider>
       </TasksProvider>
     </TabErrorBoundary>
