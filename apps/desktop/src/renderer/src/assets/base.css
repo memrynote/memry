@@ -183,6 +183,7 @@
       'Segoe UI Emoji', 'Segoe UI Symbol';
     --font-serif: 'Crimson Pro', Georgia, 'Times New Roman', serif;
     --font-display: 'Instrument Serif', 'Playfair Display', 'Crimson Pro', Georgia, serif;
+    --font-heading: 'Space Grotesk', system-ui, sans-serif;
     --font-mono: 'JetBrains Mono', 'SF Mono', 'Fira Code', monospace;
 
     /* ===== BASE COLORS (Canvas) - "Warm Utility" Aesthetic ===== */
@@ -385,6 +386,7 @@
       'Segoe UI Emoji', 'Segoe UI Symbol';
     --font-serif: 'Crimson Pro', Georgia, 'Times New Roman', serif;
     --font-display: 'Instrument Serif', 'Playfair Display', 'Crimson Pro', Georgia, serif;
+    --font-heading: 'Space Grotesk', system-ui, sans-serif;
     --font-mono: 'JetBrains Mono', 'SF Mono', 'Fira Code', monospace;
 
     /* ===== BASE COLORS - Dark Mode (Warm Dark Variant) ===== */
@@ -1115,6 +1117,7 @@ del.bn-inline-content {
 
   /* ===== FONTS ===== */
   --font-display: var(--font-display);
+  --font-heading: var(--font-heading);
   --font-mono: var(--font-mono);
 }
 
