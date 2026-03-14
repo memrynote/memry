@@ -143,7 +143,7 @@ export const KanbanColumn = ({
     <div
       ref={setNodeRef}
       className={cn(
-        'flex h-full w-[280px] shrink-0 flex-col rounded-lg bg-muted/30 transition-colors border border-transparent',
+        'flex h-full w-[280px] shrink-0 flex-col rounded-sm bg-muted/30 transition-colors border border-transparent',
         isOver && 'bg-primary/5 border-dotted border-primary/60'
       )}
     >
@@ -242,7 +242,7 @@ export const KanbanColumn = ({
               placeholder="Task title..."
               autoFocus
               className={cn(
-                'w-full rounded-md border border-border bg-background px-3 py-2 text-sm',
+                'w-full rounded-sm border border-border bg-background px-3 py-2 text-sm',
                 'placeholder:text-muted-foreground',
                 'focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2'
               )}
@@ -252,7 +252,7 @@ export const KanbanColumn = ({
               type="button"
               onClick={handleAddClick}
               className={cn(
-                'flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm text-muted-foreground transition-colors',
+                'flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm text-muted-foreground transition-colors',
                 'hover:bg-accent hover:text-foreground',
                 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring'
               )}

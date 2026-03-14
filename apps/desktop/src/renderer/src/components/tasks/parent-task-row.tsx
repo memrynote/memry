@@ -102,7 +102,7 @@ export const ParentTaskRow = ({
         onClick={handleRowClick}
         onKeyDown={onClick ? handleRowKeyDown : undefined}
         className={cn(
-          'flex items-center gap-2 rounded-md px-2 py-2.5 transition-colors duration-150',
+          'flex items-center gap-2 rounded-sm px-2 py-2.5 transition-colors duration-150',
           'hover:bg-accent/50',
           onClick &&
             'cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',

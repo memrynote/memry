@@ -34,7 +34,7 @@ const StatCard = ({
   return (
     <div
       className={cn(
-        'flex items-center gap-3 rounded-lg border px-4 py-3',
+        'flex items-center gap-3 rounded-sm border px-4 py-3',
         variant === 'default' && 'border-border bg-background',
         variant === 'accent' &&
           'border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/30',
@@ -45,7 +45,7 @@ const StatCard = ({
     >
       <div
         className={cn(
-          'flex size-9 items-center justify-center rounded-lg',
+          'flex size-9 items-center justify-center rounded-sm',
           variant === 'default' && 'bg-muted',
           variant === 'accent' && 'bg-emerald-100 dark:bg-emerald-900/50'
         )}

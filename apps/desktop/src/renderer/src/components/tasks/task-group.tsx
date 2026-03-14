@@ -26,7 +26,7 @@ interface UrgencyStyleConfig {
 
 const urgencyStyles: Record<UrgencyLevel, UrgencyStyleConfig> = {
   critical: {
-    containerClass: 'rounded-lg',
+    containerClass: 'rounded-sm',
     headerClass: 'text-text-secondary font-semibold',
     countClass: 'bg-muted text-text-tertiary',
     accentClass: '',
@@ -34,7 +34,7 @@ const urgencyStyles: Record<UrgencyLevel, UrgencyStyleConfig> = {
   },
   high: {
     containerClass:
-      'bg-blue-50/30 dark:bg-blue-950/20 border border-blue-200/50 dark:border-blue-900/50 rounded-lg',
+      'bg-blue-50/30 dark:bg-blue-950/20 border border-blue-200/50 dark:border-blue-900/50 rounded-sm',
     headerClass: 'text-blue-700 dark:text-blue-400 font-semibold',
     countClass: 'bg-blue-100 dark:bg-blue-900/50 text-blue-600 dark:text-blue-400',
     accentClass: 'border-l-[3px] border-l-blue-500',
@@ -277,7 +277,7 @@ export const TaskGroup = ({
       ref={setNodeRef}
       className={cn(
         'mb-4 transition-colors border border-transparent',
-        hasUrgentStyling ? styles.containerClass : 'rounded-lg',
+        hasUrgentStyling ? styles.containerClass : 'rounded-sm',
         isOver && 'border-dotted border-primary/60',
         isOver && !hasUrgentStyling && 'bg-primary/5',
         className
@@ -429,7 +429,7 @@ export const StatusTaskGroup = ({
     <section
       ref={setNodeRef}
       className={cn(
-        'mb-4 rounded-lg border border-transparent',
+        'mb-4 rounded-sm border border-transparent',
         isOver && 'bg-primary/5 border-dotted border-primary/60',
         className
       )}

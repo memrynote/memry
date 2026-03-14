@@ -95,7 +95,7 @@ export const CompleteParentDialog = ({
             onValueChange={(value) => setOption(value as CompleteOption)}
             className="space-y-3"
           >
-            <div className="flex items-start space-x-3 rounded-lg border p-4 cursor-pointer hover:bg-accent/50 transition-colors">
+            <div className="flex items-start space-x-3 rounded-sm border p-4 cursor-pointer hover:bg-accent/50 transition-colors">
               <RadioGroupItem value="complete-all" id="complete-all" className="mt-0.5" />
               <Label htmlFor="complete-all" className="cursor-pointer flex-1">
                 <div className="font-medium">Complete all (parent + subtasks)</div>
@@ -105,7 +105,7 @@ export const CompleteParentDialog = ({
               </Label>
             </div>
 
-            <div className="flex items-start space-x-3 rounded-lg border p-4 cursor-pointer hover:bg-accent/50 transition-colors">
+            <div className="flex items-start space-x-3 rounded-sm border p-4 cursor-pointer hover:bg-accent/50 transition-colors">
               <RadioGroupItem
                 value="complete-parent-only"
                 id="complete-parent-only"

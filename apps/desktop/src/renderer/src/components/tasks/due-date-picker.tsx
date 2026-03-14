@@ -378,7 +378,7 @@ export const DueDatePicker = ({
                   type="button"
                   onClick={() => handleQuickSelect(option.getDate)}
                   className={cn(
-                    'flex w-full items-center justify-between rounded-md px-2 py-2 text-sm transition-colors',
+                    'flex w-full items-center justify-between rounded-sm px-2 py-2 text-sm transition-colors',
                     'hover:bg-accent focus:bg-accent focus:outline-none'
                   )}
                 >
@@ -407,7 +407,7 @@ export const DueDatePicker = ({
                 type="button"
                 onClick={() => setShowCalendar(true)}
                 className={cn(
-                  'flex w-full items-center gap-2 rounded-md px-2 py-2 text-sm transition-colors',
+                  'flex w-full items-center gap-2 rounded-sm px-2 py-2 text-sm transition-colors',
                   'hover:bg-accent focus:bg-accent focus:outline-none'
                 )}
               >
@@ -441,7 +441,7 @@ export const DueDatePicker = ({
                       type="button"
                       onClick={handleToggleTimePicker}
                       className={cn(
-                        'mt-1 flex items-center gap-2 rounded-md px-2 py-1.5 text-sm text-muted-foreground transition-colors',
+                        'mt-1 flex items-center gap-2 rounded-sm px-2 py-1.5 text-sm text-muted-foreground transition-colors',
                         'hover:bg-accent hover:text-foreground focus:bg-accent focus:outline-none'
                       )}
                     >
@@ -467,7 +467,7 @@ export const DueDatePicker = ({
                     type="button"
                     onClick={handleRemoveDate}
                     className={cn(
-                      'flex w-full items-center justify-between rounded-md px-2 py-2 text-sm text-destructive transition-colors',
+                      'flex w-full items-center justify-between rounded-sm px-2 py-2 text-sm text-destructive transition-colors',
                       'hover:bg-destructive/10 focus:bg-destructive/10 focus:outline-none'
                     )}
                   >

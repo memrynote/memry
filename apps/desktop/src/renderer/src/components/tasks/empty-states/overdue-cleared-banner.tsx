@@ -44,7 +44,7 @@ export const OverdueClearedBanner = ({
       exit={{ opacity: 0, height: 0, marginBottom: 0 }}
       transition={{ duration: 0.3, ease: 'easeOut' }}
       className={cn(
-        'overflow-hidden rounded-lg',
+        'overflow-hidden rounded-sm',
         'bg-emerald-50 dark:bg-emerald-950/30',
         'border border-emerald-200 dark:border-emerald-800/50',
         className
@@ -78,7 +78,7 @@ export const OverdueClearedBanner = ({
             type="button"
             onClick={onDismiss}
             className={cn(
-              'shrink-0 p-1 rounded-md',
+              'shrink-0 p-1 rounded-sm',
               'text-emerald-600 dark:text-emerald-400',
               'hover:bg-emerald-100 dark:hover:bg-emerald-900/50',
               'transition-colors',

@@ -55,7 +55,7 @@ export const SubtaskRow = ({
       onKeyDown={onClick ? handleKeyDown : undefined}
       className={cn(
         'flex items-center gap-2 px-3 py-1.5 ml-2',
-        'hover:bg-accent/50 cursor-pointer rounded-r-lg',
+        'hover:bg-accent/50 cursor-pointer rounded-r-sm',
         'transition-colors duration-150',
         onClick && 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
         className

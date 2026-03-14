@@ -127,7 +127,7 @@ export const ArchivedView = ({
                     {group.tasks.length} task{group.tasks.length !== 1 ? 's' : ''}
                   </span>
                 </div>
-                <div className="divide-y divide-border/50 rounded-lg border border-border">
+                <div className="divide-y divide-border/50 rounded-sm border border-border">
                   {group.tasks.map((task) => (
                     <ArchivedTaskRow
                       key={task.id}

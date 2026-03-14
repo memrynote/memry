@@ -205,7 +205,7 @@ const StatusRow = ({
       onDragOver={handleDragOver}
       onDragEnd={handleDragEnd}
       className={cn(
-        'flex items-center gap-2 rounded-md border bg-background px-2 py-1.5 transition-all',
+        'flex items-center gap-2 rounded-sm border bg-background px-2 py-1.5 transition-all',
         isDragging && 'opacity-50',
         isDragOver && 'border-primary bg-accent/50'
       )}

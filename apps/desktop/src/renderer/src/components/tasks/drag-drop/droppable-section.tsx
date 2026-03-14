@@ -88,7 +88,7 @@ export const DroppableSection = ({
     <div
       ref={setNodeRef}
       className={cn(
-        'rounded-lg border border-border overflow-hidden transition-all duration-200',
+        'rounded-sm border border-border overflow-hidden transition-all duration-200',
         'border-l-2',
         styles.accent,
         styles.bg,
@@ -181,7 +181,7 @@ export const EmptyDropZone = ({
   return (
     <div
       className={cn(
-        'flex items-center justify-center py-8 border-2 border-dashed rounded-lg mx-2 my-2 transition-colors',
+        'flex items-center justify-center py-8 border-2 border-dashed rounded-sm mx-2 my-2 transition-colors',
         isOver
           ? 'border-primary/50 bg-primary/5 text-primary'
           : 'border-muted-foreground/20 text-muted-foreground'

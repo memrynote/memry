@@ -199,7 +199,7 @@ export const SubtaskDetailItem = ({
       ref={setNodeRef}
       style={style}
       className={cn(
-        'group rounded-lg border transition-colors',
+        'group rounded-sm border transition-colors',
         isCompleted
           ? 'bg-muted/50 border-border'
           : 'bg-background border-border hover:border-muted-foreground/30',

@@ -40,7 +40,7 @@ export const MultiDragOverlay = ({
           <div
             key={task.id}
             className={cn(
-              'absolute bg-card rounded-lg shadow-lg border p-3 w-64',
+              'absolute bg-card rounded-sm shadow-lg border p-3 w-64',
               'transition-transform duration-150'
             )}
             style={{
@@ -117,7 +117,7 @@ export const SingleTaskPreview = ({
   return (
     <div
       className={cn(
-        'bg-card rounded-lg shadow-xl border p-3 w-64',
+        'bg-card rounded-sm shadow-xl border p-3 w-64',
         'rotate-2 scale-105',
         isOverdue && !isCompleted && 'bg-rose-50/60 dark:bg-rose-950/20',
         isCompleted && 'opacity-70 bg-muted/30'

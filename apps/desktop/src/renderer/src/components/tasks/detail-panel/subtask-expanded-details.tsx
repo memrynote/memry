@@ -153,7 +153,7 @@ export const SubtaskExpandedDetails = ({
             onChange={handleDescriptionChange}
             placeholder="Add notes..."
             className={cn(
-              'w-full p-2 text-sm border rounded-lg resize-none',
+              'w-full p-2 text-sm border rounded-sm resize-none',
               'bg-background focus:outline-none focus:ring-2 focus:ring-ring',
               'placeholder:text-muted-foreground/60'
             )}

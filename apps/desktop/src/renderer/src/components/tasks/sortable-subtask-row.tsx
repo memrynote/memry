@@ -82,7 +82,7 @@ export const SortableSubtaskRow = ({
         onKeyDown={onClick ? handleKeyDown : undefined}
         className={cn(
           'group/subtask flex items-center gap-2 pl-7 pr-2 py-1.5',
-          'hover:bg-accent/50 cursor-pointer rounded-r-lg',
+          'hover:bg-accent/50 cursor-pointer rounded-r-sm',
           'transition-all duration-150',
           onClick && 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
           isDragging && 'opacity-50 shadow-lg ring-2 ring-primary bg-background z-10'

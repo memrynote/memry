@@ -14,7 +14,6 @@ import type { Project } from '@/data/tasks-data'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { DatePickerCalendar } from './date-picker-calendar'
-import { Checkbox } from '@/components/ui/checkbox'
 
 // ============================================================================
 // PROJECT BADGE
@@ -224,7 +223,7 @@ export const DueDateBadge = ({
         dueDateStatusStyles[formatted.status],
         showBackground &&
           variant === 'default' &&
-          cn('rounded-md px-1.5 py-0.5', dueDateBackgroundStyles[formatted.status])
+          cn('rounded-sm px-1.5 py-0.5', dueDateBackgroundStyles[formatted.status])
       )}
     >
       {isRepeating && <Repeat className="size-3 shrink-0" aria-label="Repeating task" />}
@@ -266,59 +265,50 @@ export const TaskCheckbox = ({
   checked,
   onChange,
   disabled = false,
-  priority,
+  priority: _priority,
   className
 }: TaskCheckboxProps): React.JSX.Element => {
   const handleClick = (e: React.MouseEvent): void => {
     e.stopPropagation()
-    // Trigger onChange on click since Radix Checkbox might not fire it properly
     if (!disabled) {
       onChange()
     }
   }
 
-  // Get border color based on priority
-  const getPriorityBorderColor = (): string | undefined => {
-    if (checked) return undefined
-    if (!priority || priority === 'none') return undefined
-    return priorityConfig[priority]?.color ?? undefined
-  }
-
-  const priorityBorderColor = getPriorityBorderColor()
-
   return (
-    <div
-      className={cn(
-        'group/checkbox relative',
-        disabled ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'
-      )}
+    <button
+      type="button"
       onClick={handleClick}
+      disabled={disabled}
+      className={cn(
+        'shrink-0 size-[18px] rounded-full transition-all duration-200',
+        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+        disabled ? 'cursor-not-allowed opacity-50' : 'cursor-pointer',
+        className
+      )}
+      aria-label={checked ? 'Mark as incomplete' : 'Mark as complete'}
     >
-      {/* Invisible overlay to capture all clicks - ensures clicks work even when Radix internal elements override pointer-events */}
-      <div className="absolute inset-0 z-10" aria-hidden="true" />
-      <Checkbox
-        checked={checked}
-        disabled={disabled}
-        className={cn(
-          'size-[18px] rounded-[4px] border-[1.5px] transition-all duration-200 pointer-events-none',
-          'data-[state=unchecked]:border-muted-foreground/40',
-          'data-[state=unchecked]:hover:border-primary/70 data-[state=unchecked]:hover:bg-primary/8',
-          'data-[state=checked]:border-primary data-[state=checked]:bg-primary',
-          // Add hover effect for checked state too
-          'data-[state=checked]:hover:opacity-80',
-          className
-        )}
-        style={priorityBorderColor ? { borderColor: priorityBorderColor } : undefined}
-        aria-label={checked ? 'Mark as incomplete' : 'Mark as complete'}
-      />
-      {/* Hover state - soft checkmark preview (only for unchecked) */}
-      {!checked && !disabled && (
-        <Check
-          className="absolute inset-0 m-auto size-3 text-primary/25 opacity-0 group-hover/checkbox:opacity-100 transition-opacity duration-200 pointer-events-none"
-          strokeWidth={3}
+      {checked ? (
+        <div className="size-full rounded-full bg-[#7B9E87] flex items-center justify-center">
+          <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+            <path
+              d="M2 5l2.5 2.5L8 3"
+              stroke="#FAFAF8"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+        </div>
+      ) : (
+        <div
+          className={cn(
+            'size-full rounded-full border-[1.5px] border-[#DAD9D4] transition-colors',
+            'hover:border-text-tertiary'
+          )}
         />
       )}
-    </div>
+    </button>
   )
 }
 
@@ -625,7 +615,7 @@ export const InteractiveDueDateBadge = ({
         dueDateStatusStyles[formatted?.status || 'none'],
         showBackground &&
           variant === 'default' &&
-          cn('rounded-md px-1.5 py-0.5', dueDateBackgroundStyles[formatted?.status || 'none'])
+          cn('rounded-sm px-1.5 py-0.5', dueDateBackgroundStyles[formatted?.status || 'none'])
       )}
     >
       {isRepeating && <Repeat className="size-3 shrink-0" aria-label="Repeating task" />}
@@ -644,7 +634,7 @@ export const InteractiveDueDateBadge = ({
         <button
           type="button"
           className={cn(
-            'hover:bg-accent hover:ring-1 hover:ring-primary/30 rounded-md px-1 py-0.5 transition-all cursor-pointer',
+            'hover:bg-accent hover:ring-1 hover:ring-primary/30 rounded-sm px-1 py-0.5 transition-all cursor-pointer',
             'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
             fixedWidth && 'w-[110px] flex justify-end',
             className
@@ -662,7 +652,7 @@ export const InteractiveDueDateBadge = ({
               type="button"
               onClick={handleQuickDate(0)}
               className={cn(
-                'flex-1 rounded-md py-1.5 text-xs font-medium transition-colors',
+                'flex-1 rounded-sm py-1.5 text-xs font-medium transition-colors',
                 'hover:bg-accent',
                 isToday ? 'bg-accent text-foreground' : 'text-muted-foreground'
               )}
@@ -673,7 +663,7 @@ export const InteractiveDueDateBadge = ({
               type="button"
               onClick={handleQuickDate(1)}
               className={cn(
-                'flex-1 rounded-md py-1.5 text-xs font-medium transition-colors',
+                'flex-1 rounded-sm py-1.5 text-xs font-medium transition-colors',
                 'hover:bg-accent',
                 formatted?.status === 'tomorrow'
                   ? 'bg-accent text-foreground'
@@ -685,7 +675,7 @@ export const InteractiveDueDateBadge = ({
             <button
               type="button"
               onClick={handleQuickDate(7)}
-              className="flex-1 rounded-md py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-accent"
+              className="flex-1 rounded-sm py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-accent"
             >
               +1 Week
             </button>
@@ -703,7 +693,7 @@ export const InteractiveDueDateBadge = ({
               <button
                 type="button"
                 onClick={handleRemoveDate}
-                className="w-full rounded-md py-1.5 text-xs font-medium text-destructive transition-colors hover:bg-destructive/10"
+                className="w-full rounded-sm py-1.5 text-xs font-medium text-destructive transition-colors hover:bg-destructive/10"
               >
                 Remove due date
               </button>

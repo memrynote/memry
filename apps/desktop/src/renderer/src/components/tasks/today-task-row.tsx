@@ -101,7 +101,7 @@ export const TodayTaskRow = ({
       onClick={onClick ? handleRowClick : undefined}
       onKeyDown={onClick ? handleRowKeyDown : undefined}
       className={cn(
-        'group flex items-center gap-3 rounded-lg px-3 py-2.5 transition-colors duration-150',
+        'group flex items-center gap-3 rounded-sm px-3 py-2.5 transition-colors duration-150',
         'hover:bg-accent/50',
         onClick &&
           'cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
