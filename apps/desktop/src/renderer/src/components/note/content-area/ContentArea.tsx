@@ -65,7 +65,7 @@ import {
   type HighlightSelection
 } from '@/components/reminder'
 import { createLogger } from '@/lib/logger'
-import { useAIInline } from '@/hooks/use-ai-inline'
+import { useAIInlineContext } from '@/contexts/ai-inline-context'
 
 const log = createLogger('Component:ContentArea')
 
@@ -415,7 +415,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
   const { resolvedTheme } = useTheme()
   const editorTheme = resolvedTheme === 'dark' ? 'dark' : 'light'
   const { openTag } = useSidebarDrillDown()
-  const { port: aiPort, error: aiError, retry: retryAI } = useAIInline()
+  const { port: aiPort, error: aiError, retry: retryAI } = useAIInlineContext()
   const [aiReady, setAiReady] = useState(false)
 
   // T069: Drag state for visual feedback
