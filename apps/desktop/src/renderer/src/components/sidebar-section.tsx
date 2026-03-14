@@ -153,12 +153,21 @@ export const SidebarSection = ({
           )}
         </div>
 
-        {/* Section Content */}
-        {isExpanded && (
-          <div id={contentId} role="region" aria-labelledby={headerId}>
+        {/* Section Content — CSS grid rows trick for smooth accordion without remount */}
+        <div
+          id={contentId}
+          role="region"
+          aria-labelledby={headerId}
+          aria-hidden={!isExpanded}
+          className={cn(
+            'grid transition-[grid-template-rows] duration-100 ease-out',
+            isExpanded ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'
+          )}
+        >
+          <div className="overflow-hidden">
             <SidebarMenu>{children}</SidebarMenu>
           </div>
-        )}
+        </div>
       </SidebarGroup>
     </div>
   )
