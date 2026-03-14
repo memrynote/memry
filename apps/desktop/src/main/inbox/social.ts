@@ -150,16 +150,125 @@ function extractHandleFromUrl(authorUrl: string): string {
   }
 }
 
+/**
+ * Extract tweet ID from a Twitter/X URL
+ * e.g., "https://x.com/user/status/123456" -> "123456"
+ */
+function extractTweetId(url: string): string | null {
+  const match = url.match(/\/status\/(\d+)/)
+  return match ? match[1] : null
+}
+
 // ============================================================================
 // Platform-Specific Extractors
 // ============================================================================
 
 /**
- * Extract metadata from Twitter/X posts using oEmbed API
+ * Fetch full tweet text via Twitter's Syndication API.
+ * This endpoint powers Twitter's embed widget and returns the complete tweet
+ * text — including content behind the "Show more" fold that oEmbed omits.
+ */
+async function fetchTweetViaSyndication(tweetId: string): Promise<{
+  text: string
+  authorName: string
+  authorHandle: string
+  authorAvatar?: string
+  timestamp?: string
+  mediaUrls: string[]
+} | null> {
+  try {
+    const syndicationUrl = `https://cdn.syndication.twimg.com/tweet-result?id=${tweetId}&lang=en&token=x`
+    log.debug(`Fetching tweet via Syndication API: ${syndicationUrl}`)
+
+    const response = await fetchWithTimeout(syndicationUrl, {
+      headers: {
+        Accept: 'application/json',
+        'User-Agent': 'Memry/1.0'
+      }
+    })
+
+    if (!response.ok) {
+      log.debug(`Syndication API returned ${response.status}`)
+      return null
+    }
+
+    const data = await response.json()
+
+    log.info(`[DEBUG] Syndication API response keys: ${Object.keys(data).join(', ')}`)
+    log.info(`[DEBUG] Syndication text length: ${(data.text || '').length}`)
+    log.info(`[DEBUG] Syndication text:\n${data.text}`)
+
+    if (!data.text) {
+      log.debug('Syndication API returned no text')
+      return null
+    }
+
+    const mediaUrls: string[] = []
+    if (data.mediaDetails && Array.isArray(data.mediaDetails)) {
+      for (const media of data.mediaDetails) {
+        if (media.media_url_https) {
+          mediaUrls.push(media.media_url_https as string)
+        }
+      }
+    }
+    if (data.photos && Array.isArray(data.photos)) {
+      for (const photo of data.photos) {
+        if (photo.url) {
+          mediaUrls.push(photo.url as string)
+        }
+      }
+    }
+
+    return {
+      text: data.text,
+      authorName: data.user?.name || '',
+      authorHandle: data.user?.screen_name || '',
+      authorAvatar: data.user?.profile_image_url_https,
+      timestamp: data.created_at,
+      mediaUrls
+    }
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown error'
+    log.debug(`Syndication API failed: ${message}`)
+    return null
+  }
+}
+
+/**
+ * Extract metadata from Twitter/X posts.
  *
- * Twitter oEmbed API: https://developer.twitter.com/en/docs/twitter-for-websites/oembed-api
+ * Strategy:
+ * 1. Try Syndication API first — returns full tweet text (including "Show more" content)
+ * 2. Fall back to oEmbed API — only returns above-the-fold text for long tweets
  */
 async function extractTwitterPost(url: string): Promise<SocialExtractionResult> {
+  const tweetId = extractTweetId(url)
+
+  // --- Attempt 1: Syndication API (full text) ---
+  if (tweetId) {
+    const syndication = await fetchTweetViaSyndication(tweetId)
+    if (syndication) {
+      const metadata: SocialMetadata = {
+        platform: 'twitter',
+        postUrl: url,
+        authorName: syndication.authorName || 'Unknown',
+        authorHandle: syndication.authorHandle ? `@${syndication.authorHandle}` : '',
+        authorAvatar: syndication.authorAvatar,
+        postContent: syndication.text,
+        timestamp: syndication.timestamp,
+        mediaUrls: syndication.mediaUrls,
+        extractionStatus: 'full'
+      }
+
+      log.info(
+        `Twitter syndication extraction successful: ${metadata.authorHandle}, content length: ${metadata.postContent.length}`
+      )
+      return { success: true, metadata }
+    }
+    log.info('Syndication API failed, falling back to oEmbed')
+  }
+
+  // --- Attempt 2: oEmbed API (may truncate long tweets) ---
   const endpoint = OEMBED_ENDPOINTS.twitter
   if (!endpoint) {
     return {
@@ -181,27 +290,14 @@ async function extractTwitterPost(url: string): Promise<SocialExtractionResult> 
     })
 
     if (!response.ok) {
-      // Twitter returns 404 for protected/deleted tweets
       if (response.status === 404) {
-        return {
-          success: false,
-          metadata: null,
-          error: 'Tweet not found or protected'
-        }
+        return { success: false, metadata: null, error: 'Tweet not found or protected' }
       }
-      return {
-        success: false,
-        metadata: null,
-        error: `Twitter oEmbed returned ${response.status}`
-      }
+      return { success: false, metadata: null, error: `Twitter oEmbed returned ${response.status}` }
     }
 
     const data = (await response.json()) as TwitterOEmbedResponse
-
-    // Parse the HTML embed to extract content
     const parsed = parseTwitterEmbedHtml(data.html || '')
-
-    // Build author handle - prefer parsed, fallback to URL extraction
     const authorHandle = parsed.authorHandle || extractHandleFromUrl(data.author_url || '')
 
     const metadata: SocialMetadata = {
@@ -209,26 +305,21 @@ async function extractTwitterPost(url: string): Promise<SocialExtractionResult> 
       postUrl: url,
       authorName: data.author_name || parsed.authorName || 'Unknown',
       authorHandle: authorHandle ? `@${authorHandle}` : '',
-      authorAvatar: undefined, // Twitter oEmbed doesn't include avatar
+      authorAvatar: undefined,
       postContent: parsed.content || data.title || '',
       timestamp: parsed.timestamp,
-      mediaUrls: [], // oEmbed doesn't include media URLs directly
+      mediaUrls: [],
       extractionStatus: parsed.content ? 'full' : 'partial'
     }
 
     log.info(
-      `Twitter extraction successful: @${authorHandle}, content length: ${metadata.postContent.length}`
+      `Twitter oEmbed extraction successful: @${authorHandle}, content length: ${metadata.postContent.length}`
     )
-
     return { success: true, metadata }
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error'
     log.error('Twitter extraction failed:', message)
-    return {
-      success: false,
-      metadata: null,
-      error: `Twitter extraction failed: ${message}`
-    }
+    return { success: false, metadata: null, error: `Twitter extraction failed: ${message}` }
   }
 }
 
@@ -286,7 +377,6 @@ async function extractMastodonPost(url: string): Promise<SocialExtractionResult>
         .replace(/<[^>]+>/g, ' ')
         .replace(/\s+/g, ' ')
         .trim()
-        .substring(0, 500) // Limit length
     }
 
     const metadata: SocialMetadata = {
