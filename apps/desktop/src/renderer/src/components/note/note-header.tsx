@@ -40,9 +40,9 @@ export const NoteHeader = memo(function NoteHeader({
     <div className="flex items-center justify-end shrink-0 py-3.5 px-8 gap-3 border-b border-[var(--border)]">
       <div className="flex items-center gap-0.5">
         {/* Sync Badge */}
-        <div className="flex items-center rounded-md py-1 px-2 gap-1 bg-[#48BB781F]">
-          <div className="rounded-full bg-[#48BB78] shrink-0 size-1.5" />
-          <span className="text-[11px] text-[#48BB78] font-sans font-medium leading-3.5">
+        <div className="flex items-center rounded-md py-1 px-2 gap-1 bg-accent-green/12">
+          <div className="rounded-full bg-accent-green shrink-0 size-1.5" />
+          <span className="text-[11px] text-accent-green font-sans font-medium leading-3.5">
             Synced
           </span>
         </div>
@@ -64,7 +64,7 @@ export const NoteHeader = memo(function NoteHeader({
           <Bookmark
             className={cn(
               'h-4 w-4',
-              isBookmarked ? 'fill-[#D9770F] text-[#D9770F]' : 'text-[#8A857A]'
+              isBookmarked ? 'fill-accent-orange text-accent-orange' : 'text-muted-foreground'
             )}
           />
         </Button>
@@ -78,7 +78,7 @@ export const NoteHeader = memo(function NoteHeader({
               className="h-8 w-8 hover:bg-transparent"
               disabled={isDeleted}
             >
-              <MoreHorizontal className="h-4 w-4 text-[#8A857A]" />
+              <MoreHorizontal className="h-4 w-4 text-muted-foreground" />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">

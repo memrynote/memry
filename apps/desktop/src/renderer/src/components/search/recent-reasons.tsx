@@ -21,7 +21,7 @@ export function RecentReasons({
 }: RecentReasonsProps): React.JSX.Element {
   if (reasons.length === 0) {
     return (
-      <div className="py-8 text-center text-sm text-gray-400">
+      <div className="py-8 text-center text-sm text-text-tertiary">
         Search and click items to build your trail
       </div>
     )
@@ -30,14 +30,13 @@ export function RecentReasons({
   return (
     <div className="py-1">
       <div className="flex items-center justify-between px-3 py-1.5">
-        <span className="text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">
+        <span className="text-xs font-semibold uppercase tracking-wider text-text-tertiary">
           Reasons
         </span>
         <button
           type="button"
           onClick={onClear}
-          className="flex items-center gap-1 text-xs text-gray-400 hover:text-gray-600
-            dark:hover:text-gray-300 transition-colors"
+          className="flex items-center gap-1 text-xs text-text-tertiary hover:text-foreground transition-colors"
         >
           <Trash2 className="size-3" />
           Clear
@@ -51,20 +50,18 @@ export function RecentReasons({
             type="button"
             onClick={() => onSelect(reason)}
             className="flex items-center gap-3 w-full px-3 py-2 rounded-lg text-left
-              hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors duration-75 group"
+              hover:bg-muted transition-colors duration-75 group"
           >
             {reason.itemIcon ? (
               <span className="size-3.5 shrink-0 text-sm leading-none flex items-center justify-center">
                 {reason.itemIcon}
               </span>
             ) : (
-              <Icon className="size-3.5 text-gray-400 dark:text-gray-500 shrink-0" />
+              <Icon className="size-3.5 text-text-tertiary shrink-0" />
             )}
             <div className="flex-1 min-w-0">
-              <span className="text-sm text-gray-700 dark:text-gray-300 truncate block">
-                {reason.itemTitle}
-              </span>
-              <span className="text-xs text-gray-400 dark:text-gray-500 truncate block">
+              <span className="text-sm text-foreground truncate block">{reason.itemTitle}</span>
+              <span className="text-xs text-text-tertiary truncate block">
                 {reason.searchQuery}
               </span>
             </div>

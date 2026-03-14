@@ -101,26 +101,22 @@ export const KeyboardShortcutsDialog = ({
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
           {shortcutGroups.map((group) => (
             <div key={group.title}>
-              <h3 className="font-semibold text-sm text-gray-900 dark:text-gray-100 mb-3">
-                {group.title}
-              </h3>
+              <h3 className="font-semibold text-sm text-foreground mb-3">{group.title}</h3>
               <div className="space-y-2">
                 {group.shortcuts.map((shortcut) => (
                   <div
                     key={shortcut.description}
                     className="flex items-center justify-between gap-4"
                   >
-                    <span className="text-sm text-gray-600 dark:text-gray-400">
-                      {shortcut.description}
-                    </span>
+                    <span className="text-sm text-muted-foreground">{shortcut.description}</span>
                     <div className="flex gap-1 flex-shrink-0">
                       {shortcut.keys.map((key) => (
                         <kbd
                           key={key}
                           className={cn(
                             'px-1.5 py-0.5 text-xs font-mono',
-                            'bg-gray-100 dark:bg-gray-800',
-                            'border border-gray-200 dark:border-gray-700',
+                            'bg-muted',
+                            'border border-border',
                             'rounded'
                           )}
                         >
@@ -135,10 +131,10 @@ export const KeyboardShortcutsDialog = ({
           ))}
         </div>
 
-        <div className="mt-6 pt-4 border-t border-gray-200 dark:border-gray-700">
-          <p className="text-xs text-gray-500 dark:text-gray-400 text-center">
-            Press <kbd className="px-1 py-0.5 bg-gray-100 dark:bg-gray-800 rounded text-xs">?</kbd>{' '}
-            to toggle this dialog
+        <div className="mt-6 pt-4 border-t border-border">
+          <p className="text-xs text-muted-foreground text-center">
+            Press <kbd className="px-1 py-0.5 bg-muted rounded text-xs">?</kbd> to toggle this
+            dialog
           </p>
         </div>
       </DialogContent>

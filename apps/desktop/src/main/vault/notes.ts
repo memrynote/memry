@@ -613,7 +613,7 @@ export async function updateNote(input: NoteUpdateInput): Promise<Note> {
       frontmatter: newFrontmatter,
       parsedContent: newContent
     },
-    { isNew: false }
+    { isNew: false, tagsOverride: newTags }
   )
 
   // Check if tags changed (for event emission)

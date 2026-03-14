@@ -50,14 +50,12 @@ export class TabErrorBoundary extends Component<TabErrorBoundaryProps, TabErrorB
         <div className="h-full flex items-center justify-center p-8">
           <div className="flex flex-col items-center gap-4 text-center max-w-md">
             <AlertTriangle className="w-12 h-12 text-amber-500" />
-            <h2 className="text-lg font-medium text-gray-900 dark:text-white">
-              Something went wrong
-            </h2>
-            <p className="text-sm text-gray-500 dark:text-gray-400">
+            <h2 className="text-lg font-medium text-foreground">Something went wrong</h2>
+            <p className="text-sm text-muted-foreground">
               An error occurred while rendering this tab content.
             </p>
             {this.state.error && (
-              <code className="text-xs bg-gray-100 dark:bg-gray-800 p-2 rounded text-red-500 max-w-full overflow-auto">
+              <code className="text-xs bg-muted p-2 rounded text-red-500 max-w-full overflow-auto">
                 {this.state.error.message}
               </code>
             )}

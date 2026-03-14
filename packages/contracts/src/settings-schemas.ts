@@ -14,7 +14,7 @@ import { z } from 'zod'
 // ============================================================================
 
 export const GeneralSettingsSchema = z.object({
-  theme: z.enum(['light', 'dark', 'system']),
+  theme: z.enum(['light', 'dark', 'white', 'system']),
   fontSize: z.enum(['small', 'medium', 'large']),
   fontFamily: z.enum(['system', 'serif', 'sans-serif', 'monospace']),
   accentColor: z.string().regex(/^#[0-9a-fA-F]{6}$/),

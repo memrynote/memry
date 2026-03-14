@@ -2036,7 +2036,7 @@ export interface NoteEditorSettings {
 
 // New settings group types (from @memry/contracts/settings-schemas)
 export interface GeneralSettingsDTO {
-  theme: 'light' | 'dark' | 'system'
+  theme: 'light' | 'dark' | 'white' | 'system'
   fontSize: 'small' | 'medium' | 'large'
   fontFamily: 'system' | 'serif' | 'sans-serif' | 'monospace'
   accentColor: string
@@ -2125,7 +2125,7 @@ export interface SettingsClientAPI {
     settings: Partial<NoteEditorSettings>
   ): Promise<{ success: boolean; error?: string }>
   // General Settings
-  getStartupThemeSync(): 'light' | 'dark' | 'system'
+  getStartupThemeSync(): 'light' | 'dark' | 'white' | 'system'
   getGeneralSettings(): Promise<GeneralSettingsDTO>
   setGeneralSettings(
     settings: Partial<GeneralSettingsDTO>

@@ -1,6 +1,7 @@
-import { useState, useCallback, useMemo } from 'react'
+import { useState, useCallback, useMemo, useEffect, useRef } from 'react'
 import { SigmaContainer, useSigma } from '@react-sigma/core'
 import { useWorkerLayoutForceAtlas2 } from '@react-sigma/layout-forceatlas2'
+import { useTheme } from 'next-themes'
 import '@react-sigma/core/lib/style.css'
 import { X, Maximize2 } from 'lucide-react'
 import type { NodeDisplayData, EdgeDisplayData } from 'sigma/types'
@@ -9,7 +10,6 @@ import { useLocalGraphData } from '@/hooks/use-graph-data'
 import { buildGraphologyGraph } from '@/lib/graph-builder'
 import { GraphEvents } from './graph-events'
 import { GraphTooltip } from './graph-tooltip'
-import { useEffect, useRef } from 'react'
 
 const CENTER_HIGHLIGHT_COLOR = '#f59e0b'
 const HOVER_FADE_IN_MS = 250
@@ -34,6 +34,7 @@ export function LocalGraphPanel({
   onClose,
   onOpenFullGraph
 }: LocalGraphPanelProps): React.JSX.Element {
+  const { resolvedTheme } = useTheme()
   const { data, isLoading } = useLocalGraphData(noteId)
 
   const [hoveredNode, setHoveredNode] = useState<string | null>(null)
@@ -41,9 +42,23 @@ export function LocalGraphPanel({
   const fadeRef = useRef(0)
   const hoverTargetRef = useRef<string | null>(null)
 
-  const dimmedColor = useMemo(() => resolveGraphVar('--graph-dimmed-node', '#e4e4de'), [])
-  const softEdgeColor = useMemo(() => resolveGraphVar('--graph-edge-soft', '#d5d3cd'), [])
-  const graph = useMemo(() => (data ? buildGraphologyGraph(data) : null), [data])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const dimmedColor = useMemo(
+    () => resolveGraphVar('--graph-dimmed-node', '#e4e4de'),
+    [resolvedTheme]
+  )
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const softEdgeColor = useMemo(
+    () => resolveGraphVar('--graph-edge-soft', '#d5d3cd'),
+    [resolvedTheme]
+  )
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const labelColor = useMemo(
+    () => resolveGraphVar('--graph-label-color', '#1a1a1a'),
+    [resolvedTheme]
+  )
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const graph = useMemo(() => (data ? buildGraphologyGraph(data) : null), [data, resolvedTheme])
 
   const nodeReducer = useCallback(
     (node: string, attrs: Record<string, unknown>): Partial<NodeDisplayData> => {
@@ -111,12 +126,13 @@ export function LocalGraphPanel({
       nodeReducer,
       edgeReducer,
       labelRenderedSizeThreshold: 8,
+      labelColor: { color: labelColor },
       labelSize: 11,
       defaultEdgeType: 'line' as const,
       renderEdgeLabels: false,
       minEdgeThickness: 0.5
     }),
-    [nodeReducer, edgeReducer]
+    [nodeReducer, edgeReducer, labelColor]
   )
 
   const handleFocusNode = useCallback(() => {}, [])

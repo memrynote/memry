@@ -92,7 +92,7 @@ export const TabBarWithDrag = ({
           'bg-transparent',
           'relative',
           // Bottom border that active tabs will overlap
-          'border-b border-gray-200 dark:border-gray-700',
+          'border-b border-border',
           className
         )}
         role="tablist"
@@ -112,7 +112,7 @@ export const TabBarWithDrag = ({
             </div>
 
             {/* Divider */}
-            <div className="w-px h-5 bg-gray-200 dark:bg-gray-700 mx-1 mb-2" />
+            <div className="w-px h-5 bg-border mx-1 mb-2" />
           </>
         )}
 
@@ -123,15 +123,14 @@ export const TabBarWithDrag = ({
             onClick={scrollLeft}
             className={cn(
               'flex items-center justify-center w-7 h-[calc(100%-4px)]',
-              'bg-gradient-to-r from-gray-100/95 via-gray-100/70 to-transparent',
-              'dark:from-gray-800/95 dark:via-gray-800/70 dark:to-transparent',
-              'hover:from-gray-200/95 dark:hover:from-gray-700/95',
+              'bg-gradient-to-r from-muted/95 via-muted/70 to-transparent',
+              'hover:from-surface-active/95',
               'transition-all duration-150 ease-out z-20',
               'absolute left-0 bottom-px'
             )}
             aria-label="Scroll tabs left"
           >
-            <ChevronLeft className="w-3.5 h-3.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors" />
+            <ChevronLeft className="w-3.5 h-3.5 text-text-tertiary hover:text-foreground transition-colors" />
           </button>
         )}
 
@@ -171,15 +170,14 @@ export const TabBarWithDrag = ({
             onClick={scrollRight}
             className={cn(
               'flex items-center justify-center w-7 h-[calc(100%-4px)]',
-              'bg-gradient-to-l from-gray-100/95 via-gray-100/70 to-transparent',
-              'dark:from-gray-800/95 dark:via-gray-800/70 dark:to-transparent',
-              'hover:from-gray-200/95 dark:hover:from-gray-700/95',
+              'bg-gradient-to-l from-muted/95 via-muted/70 to-transparent',
+              'hover:from-surface-active/95',
               'transition-all duration-150 ease-out z-20',
               'absolute right-[72px] bottom-px'
             )}
             aria-label="Scroll tabs right"
           >
-            <ChevronRight className="w-3.5 h-3.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors" />
+            <ChevronRight className="w-3.5 h-3.5 text-text-tertiary hover:text-foreground transition-colors" />
           </button>
         )}
 

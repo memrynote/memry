@@ -18,7 +18,8 @@ vi.mock('../database', () => ({
   queueFtsUpdate: vi.fn()
 }))
 
-import { extractNoteMetadata, type NoteSyncInput } from './note-sync'
+import { extractNoteMetadata, syncNoteToCache, type NoteSyncInput } from './note-sync'
+import { setNoteTags } from '@main/database/queries/notes'
 import type { NoteFrontmatter } from './frontmatter'
 
 const FIXED_ISO = '2026-01-15T12:00:00.000Z'
@@ -137,5 +138,37 @@ describe('extractNoteMetadata', () => {
 
       expect(extractNoteMetadata(input).tags).toEqual(['react'])
     })
+  })
+})
+
+describe('syncNoteToCache — tagsOverride', () => {
+  it('uses tagsOverride instead of re-extracting inline tags from stale content', () => {
+    const db = {} as any
+
+    const input = buildInput({
+      frontmatter: {
+        id: 'abc123def456',
+        created: FIXED_ISO,
+        modified: FIXED_ISO,
+        tags: []
+      },
+      parsedContent: 'Still has #typescript in old content'
+    })
+
+    syncNoteToCache(db, input, { isNew: true, tagsOverride: [] })
+
+    expect(setNoteTags).toHaveBeenCalledWith(db, 'abc123def456', [])
+  })
+
+  it('falls back to extracted tags when tagsOverride is not provided', () => {
+    const db = {} as any
+
+    const input = buildInput({
+      parsedContent: 'Has #typescript inline'
+    })
+
+    syncNoteToCache(db, input, { isNew: true })
+
+    expect(setNoteTags).toHaveBeenCalledWith(db, 'abc123def456', ['typescript'])
   })
 })

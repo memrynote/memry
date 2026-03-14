@@ -16,10 +16,10 @@ export function AddTagButton({ onClick, disabled }: AddTagButtonProps) {
       className={cn(
         'flex items-center justify-center',
         'rounded-full shrink-0 size-6',
-        'border-[1.5px] border-dashed border-[#C8C3BA]',
-        'text-[#B5B0A6]',
+        'border-[1.5px] border-dashed border-border',
+        'text-text-tertiary',
         'transition-all duration-150',
-        'hover:border-[#8A857A] hover:text-[#8A857A]',
+        'hover:border-muted-foreground hover:text-muted-foreground',
         'focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
         'disabled:pointer-events-none disabled:opacity-50'
       )}

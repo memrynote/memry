@@ -180,7 +180,7 @@ export const OutlineInfoPanel = memo(function OutlineInfoPanel({
         <div
           ref={popupRef}
           className={cn(
-            'bg-white dark:bg-[#1c1b19] border border-[#E8E5DF] dark:border-[#3a3935]',
+            'bg-background border border-border',
             'shadow-lg rounded-lg',
             'min-w-[240px] max-w-[300px]',
             !isFadingOut && 'animate-in fade-in-0 zoom-in-95 duration-150'
@@ -196,12 +196,12 @@ export const OutlineInfoPanel = memo(function OutlineInfoPanel({
           }
         >
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="w-full h-8 p-0.5 bg-[#F5F3EE] dark:bg-[#252420] rounded-t-lg rounded-b-none">
+            <TabsList className="w-full h-8 p-0.5 bg-surface rounded-t-lg rounded-b-none">
               <TabsTrigger
                 value="outline"
                 className={cn(
                   'flex-1 h-7 text-xs font-medium rounded-md',
-                  'data-[state=active]:bg-white data-[state=active]:dark:bg-[#1c1b19]',
+                  'data-[state=active]:bg-background',
                   'data-[state=active]:shadow-sm',
                   !hasOutline && 'opacity-50 cursor-not-allowed'
                 )}
@@ -213,7 +213,7 @@ export const OutlineInfoPanel = memo(function OutlineInfoPanel({
                 value="info"
                 className={cn(
                   'flex-1 h-7 text-xs font-medium rounded-md',
-                  'data-[state=active]:bg-white data-[state=active]:dark:bg-[#1c1b19]',
+                  'data-[state=active]:bg-background',
                   'data-[state=active]:shadow-sm',
                   !hasInfo && 'opacity-50 cursor-not-allowed'
                 )}
@@ -243,23 +243,25 @@ export const OutlineInfoPanel = memo(function OutlineInfoPanel({
                           'transition-colors duration-150',
                           'focus:outline-none',
                           isSubHeading ? 'pr-2 pl-6' : 'px-2',
-                          isActive ? 'bg-[#C45D3E14]' : 'hover:bg-[var(--surface-active)]/50'
+                          isActive
+                            ? 'bg-sidebar-terracotta/8'
+                            : 'hover:bg-[var(--surface-active)]/50'
                         )}
                       >
                         <div
                           className={cn(
                             'w-[3px] h-3.5 shrink-0 rounded-xs transition-colors duration-150',
-                            isActive ? 'bg-[#C45D3E]' : 'bg-transparent'
+                            isActive ? 'bg-sidebar-terracotta' : 'bg-transparent'
                           )}
                         />
                         <span
                           className={cn(
                             'text-[12px] font-sans leading-4 truncate',
                             isActive
-                              ? 'text-[#C45D3E] font-medium'
+                              ? 'text-sidebar-terracotta font-medium'
                               : isSubHeading
-                                ? 'text-[#8A857A]'
-                                : 'text-[#5C5850]'
+                                ? 'text-muted-foreground'
+                                : 'text-text-secondary'
                           )}
                         >
                           {heading.text}
@@ -269,7 +271,7 @@ export const OutlineInfoPanel = memo(function OutlineInfoPanel({
                   })}
                 </nav>
               ) : (
-                <div className="py-6 text-center text-sm text-[#B5B0A6]">No headings found</div>
+                <div className="py-6 text-center text-sm text-text-tertiary">No headings found</div>
               )}
             </TabsContent>
 
@@ -277,7 +279,7 @@ export const OutlineInfoPanel = memo(function OutlineInfoPanel({
               {hasInfo && stats ? (
                 <DocumentInfoTab stats={stats} />
               ) : (
-                <div className="py-6 text-center text-sm text-[#B5B0A6]">No info available</div>
+                <div className="py-6 text-center text-sm text-text-tertiary">No info available</div>
               )}
             </TabsContent>
           </Tabs>

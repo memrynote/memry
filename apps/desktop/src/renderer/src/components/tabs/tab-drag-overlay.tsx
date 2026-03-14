@@ -30,9 +30,9 @@ export const TabDragOverlay = ({ tab }: TabDragOverlayProps): React.JSX.Element 
         // Rounded top corners like active tab
         'rounded-t-lg',
         // Same background as active tab
-        'bg-white dark:bg-gray-900',
+        'bg-background',
         // Border on all sides for visibility while dragging
-        'border border-gray-200 dark:border-gray-700',
+        'border border-border',
         // Prominent shadow for "lifted" effect
         'shadow-[0_8px_24px_rgba(0,0,0,0.15),0_4px_8px_rgba(0,0,0,0.1)]',
         'dark:shadow-[0_8px_24px_rgba(0,0,0,0.5),0_4px_8px_rgba(0,0,0,0.3)]',
@@ -45,14 +45,14 @@ export const TabDragOverlay = ({ tab }: TabDragOverlayProps): React.JSX.Element 
         type={tab.type}
         icon={tab.icon}
         emoji={tab.emoji}
-        className="w-4 h-4 flex-shrink-0 text-gray-700 dark:text-gray-200"
+        className="w-4 h-4 flex-shrink-0 text-foreground"
       />
 
       {/* Title */}
       <span
         className={cn(
           'flex-1 truncate text-[13px] font-medium',
-          'text-gray-800 dark:text-gray-100',
+          'text-foreground',
           tab.isPreview && settings.previewMode && 'italic font-normal'
         )}
       >

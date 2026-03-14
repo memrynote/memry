@@ -96,7 +96,7 @@ export function SearchFilters({
   )
 
   return (
-    <div className="border-b border-gray-100 dark:border-gray-800">
+    <div className="border-b border-border">
       <div className="flex items-center gap-1.5 px-3 py-2">
         {TYPE_CONFIG.map(({ type, label, icon: Icon, shortcut }) => {
           const isActive = activeTypes.includes(type)
@@ -109,8 +109,8 @@ export function SearchFilters({
                 transition-colors duration-75
                 ${
                   isActive
-                    ? 'bg-gray-900 text-white dark:bg-gray-100 dark:text-gray-900'
-                    : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:bg-gray-800'
+                    ? 'bg-primary text-primary-foreground'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-muted'
                 }`}
             >
               <Icon className="size-3.5" />
@@ -127,8 +127,8 @@ export function SearchFilters({
             transition-colors duration-75
             ${
               expanded
-                ? 'bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-200'
-                : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'
+                ? 'bg-surface-active text-foreground'
+                : 'text-text-tertiary hover:text-foreground'
             }`}
         >
           <Filter className="size-3" />
@@ -138,8 +138,8 @@ export function SearchFilters({
           <button
             type="button"
             onClick={onClear}
-            className="flex items-center gap-1 px-2 py-1 rounded-md text-xs text-gray-400
-              hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+            className="flex items-center gap-1 px-2 py-1 rounded-md text-xs text-text-tertiary
+              hover:text-foreground transition-colors"
           >
             <X className="size-3" />
             Clear
@@ -150,7 +150,7 @@ export function SearchFilters({
       {expanded && (
         <div className="px-3 pb-2 space-y-2">
           <div>
-            <div className="flex items-center gap-1.5 text-xs text-gray-400 mb-1">
+            <div className="flex items-center gap-1.5 text-xs text-text-tertiary mb-1">
               <Tag className="size-3" />
               Tags
             </div>
@@ -161,7 +161,7 @@ export function SearchFilters({
                   type="button"
                   onClick={() => onToggleTag(tag)}
                   className="flex items-center gap-1 px-2 py-0.5 rounded-full text-xs
-                    bg-gray-900 text-white dark:bg-gray-100 dark:text-gray-900"
+                    bg-primary text-primary-foreground"
                 >
                   {tag}
                   <X className="size-2.5" />
@@ -174,22 +174,22 @@ export function SearchFilters({
                 value={tagInput}
                 onChange={(e) => setTagInput(e.target.value)}
                 placeholder="Filter by tag..."
-                className="w-full h-7 px-2 text-xs bg-gray-50 dark:bg-gray-800 rounded
-                  border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300
-                  placeholder:text-gray-400 focus:outline-none focus:ring-1 focus:ring-gray-300"
+                className="w-full h-7 px-2 text-xs bg-muted rounded
+                  border border-border text-foreground
+                  placeholder:text-text-tertiary focus:outline-none focus:ring-1 focus:ring-border"
               />
               {filteredTags.length > 0 && (
                 <div
-                  className="absolute top-full mt-1 w-full bg-white dark:bg-gray-800 rounded
-                  border border-gray-200 dark:border-gray-700 shadow-lg max-h-32 overflow-y-auto z-10"
+                  className="absolute top-full mt-1 w-full bg-popover rounded
+                  border border-border shadow-lg max-h-32 overflow-y-auto z-10"
                 >
                   {filteredTags.slice(0, 10).map((tag) => (
                     <button
                       key={tag}
                       type="button"
                       onClick={() => handleTagSelect(tag)}
-                      className="block w-full text-left px-2 py-1 text-xs text-gray-600 dark:text-gray-300
-                        hover:bg-gray-100 dark:hover:bg-gray-700"
+                      className="block w-full text-left px-2 py-1 text-xs text-muted-foreground
+                        hover:bg-muted"
                     >
                       {tag}
                     </button>
@@ -200,7 +200,7 @@ export function SearchFilters({
           </div>
 
           <div>
-            <div className="flex items-center gap-1.5 text-xs text-gray-400 mb-1">
+            <div className="flex items-center gap-1.5 text-xs text-text-tertiary mb-1">
               <Calendar className="size-3" />
               Date Range
             </div>
@@ -217,8 +217,8 @@ export function SearchFilters({
                     className={`px-2 py-1 rounded text-xs transition-colors
                       ${
                         isActive
-                          ? 'bg-gray-900 text-white dark:bg-gray-100 dark:text-gray-900'
-                          : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:bg-gray-800'
+                          ? 'bg-primary text-primary-foreground'
+                          : 'text-muted-foreground hover:text-foreground hover:bg-muted'
                       }`}
                   >
                     {label}
@@ -229,7 +229,7 @@ export function SearchFilters({
                 <button
                   type="button"
                   onClick={() => onSetDateRange(null)}
-                  className="px-2 py-1 text-xs text-gray-400 hover:text-gray-600"
+                  className="px-2 py-1 text-xs text-text-tertiary hover:text-foreground"
                 >
                   <X className="size-3" />
                 </button>

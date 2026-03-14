@@ -56,7 +56,7 @@ function invoke<C extends MainIpcInvokeChannel>(
   return ipcRenderer.invoke(channel, ...args) as Promise<MainIpcInvokeResult<C>>
 }
 
-type StartupTheme = 'light' | 'dark' | 'system'
+type StartupTheme = 'light' | 'dark' | 'white' | 'system'
 const THEME_STORAGE_KEY = 'memry-theme'
 
 function getStartupThemeSync(): StartupTheme {
@@ -67,7 +67,7 @@ function getStartupThemeSync(): StartupTheme {
   }
 }
 
-function resolveStartupTheme(theme: StartupTheme): 'light' | 'dark' {
+function resolveStartupTheme(theme: StartupTheme): 'light' | 'dark' | 'white' {
   if (theme === 'system') {
     return typeof globalThis.window !== 'undefined' &&
       typeof window.matchMedia === 'function' &&
@@ -86,8 +86,10 @@ function applyStartupTheme(savedTheme: StartupTheme): void {
     const root = document.documentElement
     if (!root) return false
 
-    root.classList.toggle('dark', resolvedTheme === 'dark')
-    root.style.colorScheme = resolvedTheme
+    root.classList.remove('dark', 'white')
+    if (resolvedTheme === 'dark') root.classList.add('dark')
+    if (resolvedTheme === 'white') root.classList.add('white')
+    root.style.colorScheme = resolvedTheme === 'dark' ? 'dark' : 'light'
     return true
   }
 

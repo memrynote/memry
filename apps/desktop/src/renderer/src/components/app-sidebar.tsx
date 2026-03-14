@@ -55,23 +55,6 @@ import { extractErrorMessage } from '@/lib/ipc-error'
 
 const log = createLogger('Component:AppSidebar')
 
-const quickActions = [
-  {
-    title: 'Search',
-    icon: Search,
-    kbd: '⌘ K',
-    iconColor: 'text-soft-sage',
-    action: 'search' as const
-  },
-  {
-    title: 'New',
-    icon: Plus,
-    kbd: '⌘ N',
-    iconColor: 'text-soft-sage',
-    action: 'new' as const
-  }
-]
-
 const mainNav: {
   title: string
   page: AppPage
@@ -118,8 +101,9 @@ export function AppSidebar({ currentPage, viewCounts, ...props }: AppSidebarProp
  * Inner sidebar component that has access to the drill-down context.
  */
 function AppSidebarInner({ currentPage, viewCounts, ...props }: AppSidebarProps) {
-  // State to hold action buttons from NotesTree
+  // State to hold action buttons from NotesTree and TagList
   const [notesActions, setNotesActions] = useState<React.ReactNode>(null)
+  const [tagsActions, setTagsActions] = useState<React.ReactNode>(null)
   const sidebarScrollRef = useRef<HTMLDivElement>(null)
   const targetFolderRef = useRef('')
 
@@ -260,37 +244,28 @@ function AppSidebarInner({ currentPage, viewCounts, ...props }: AppSidebarProps)
     <>
       {/* FIXED SECTION - Quick Actions & Main Nav (doesn't scroll) */}
       <div className="flex-shrink-0">
-        {/* Quick Actions: Search & New */}
-        <SidebarGroup className="px-2 pt-1 pb-0">
-          <SidebarMenu className="gap-0">
-            {quickActions.map((action) => (
-              <SidebarMenuItem key={action.title}>
-                <SidebarMenuButton
-                  tooltip={action.title}
-                  className={cn(
-                    'rounded-md h-auto py-[7px] px-2.5 gap-2.5',
-                    action.action === 'search' && 'bg-black/[0.04] dark:bg-white/[0.04]'
-                  )}
-                  onClick={
-                    action.action === 'new'
-                      ? handleNewNote
-                      : action.action === 'search'
-                        ? () => window.dispatchEvent(new CustomEvent('memry:open-search'))
-                        : undefined
-                  }
-                >
-                  <action.icon className={cn('size-[15px]', action.iconColor)} />
-                  <span className="text-[13px] leading-4 font-medium text-sidebar-foreground">
-                    {action.title}
-                  </span>
-                  <KbdGroup className="ml-auto">
-                    <Kbd className="text-[11px] leading-3.5 text-sidebar-muted">{action.kbd}</Kbd>
-                  </KbdGroup>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            ))}
-          </SidebarMenu>
-        </SidebarGroup>
+        {/* Quick Actions: Search & New (side by side) */}
+        <div className="flex items-center gap-1.5 px-3 pt-1 pb-0">
+          <button
+            type="button"
+            onClick={() => window.dispatchEvent(new CustomEvent('memry:open-search'))}
+            className="flex flex-1 items-center gap-2 rounded-lg bg-black/[0.04] dark:bg-white/[0.04] py-[6px] px-2.5 cursor-pointer hover:bg-black/[0.06] dark:hover:bg-white/[0.06] transition-colors"
+          >
+            <Search className="size-[14px] text-muted-foreground/70" />
+            <span className="text-[13px] text-muted-foreground/70 font-normal">Search</span>
+            <KbdGroup className="ml-auto">
+              <Kbd className="text-[10px] leading-3 text-muted-foreground/50">⌘K</Kbd>
+            </KbdGroup>
+          </button>
+          <button
+            type="button"
+            onClick={handleNewNote}
+            className="flex items-center justify-center size-[30px] rounded-lg bg-black/[0.04] dark:bg-white/[0.04] hover:bg-black/[0.06] dark:hover:bg-white/[0.06] transition-colors cursor-pointer shrink-0"
+            title="New note (⌘N)"
+          >
+            <Plus className="size-[15px] text-muted-foreground/70" />
+          </button>
+        </div>
 
         {/* Main Navigation: Inbox, Home, Journal, Tasks */}
         <SidebarGroup className="px-2 pt-1 pb-0">
@@ -372,8 +347,12 @@ function AppSidebarInner({ currentPage, viewCounts, ...props }: AppSidebarProps)
         </SidebarSection>
 
         {/* TAGS Section */}
-        <SidebarSection id="tags" label="Tags" defaultExpanded={false}>
-          <SidebarTagList maxVisible={6} onTagClick={handleTagClick} />
+        <SidebarSection id="tags" label="Tags" defaultExpanded={false} actions={tagsActions}>
+          <SidebarTagList
+            maxVisible={6}
+            onTagClick={handleTagClick}
+            onActionsReady={setTagsActions}
+          />
         </SidebarSection>
 
         {/* Drop overlay — covers entire scrollable area, blocks pointer events when visible */}

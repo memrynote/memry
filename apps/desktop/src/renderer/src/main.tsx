@@ -40,6 +40,7 @@ const RootComponent = isQuickCaptureWindow ? (
         attribute="class"
         defaultTheme={startupTheme}
         enableSystem
+        themes={['light', 'dark', 'white', 'system']}
         storageKey={THEME_STORAGE_KEY}
       >
         <QuickCapture />

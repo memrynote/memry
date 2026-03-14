@@ -230,12 +230,29 @@ export function normalizeHashTags(
 
 export function extractInlineTags(blocks: Block[]): string[] {
   const tags = new Set<string>()
+  const tagPattern = new RegExp(HASH_TAG_PATTERN)
+
+  function extractFromText(text: string): void {
+    tagPattern.lastIndex = 0
+    let match: RegExpExecArray | null
+    while ((match = tagPattern.exec(text)) !== null) {
+      const precedingChar = match.index > 0 ? text[match.index - 1] : ''
+      if (precedingChar && !/\s/.test(precedingChar)) continue
+      tags.add(match[1].toLowerCase())
+    }
+  }
 
   function walkBlock(block: Block): void {
+    if (block.type === 'codeBlock') return
+
     if (Array.isArray(block.content)) {
       for (const item of block.content as any[]) {
         if (item?.type === 'hashTag' && item.props?.tag) {
           tags.add((item.props.tag as string).toLowerCase())
+        } else if (item?.type === 'text' && item.text) {
+          extractFromText(item.text as string)
+        } else if (typeof item === 'string') {
+          extractFromText(item)
         }
       }
     }
