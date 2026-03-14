@@ -287,10 +287,7 @@ async function fetchAndUpdateSocialMetadata(
         }
       }
 
-      // Use post content as description, truncated
-      const content = metadata.postContent
-        ? metadata.postContent.substring(0, 500) + (metadata.postContent.length > 500 ? '...' : '')
-        : null
+      const content = metadata.postContent || null
 
       // Update item with social metadata
       const now = new Date().toISOString()
