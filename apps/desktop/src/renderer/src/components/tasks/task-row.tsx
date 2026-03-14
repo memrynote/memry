@@ -114,7 +114,7 @@ export const TaskRow = ({
         borderLeftColor: leftBorderColor || 'transparent'
       }}
       className={cn(
-        'group flex items-center py-2 px-3 gap-2.5 rounded-r-md transition-colors duration-150',
+        'group flex items-center py-2 px-3 gap-2.5 rounded-r-sm transition-colors duration-150',
         'hover:bg-accent/50',
         onClick &&
           'cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
