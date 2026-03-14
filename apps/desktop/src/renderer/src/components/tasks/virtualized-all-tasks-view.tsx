@@ -146,27 +146,7 @@ interface VirtualSectionHeaderProps {
 const VirtualSectionHeader = memo(
   ({ item, isOver, onToggleCollapse, onAddTask }: VirtualSectionHeaderProps): React.JSX.Element => {
     const styles = urgencyStyles[item.urgency]
-    const isOverdue = item.sectionKey === 'overdue'
-    const hasUrgentStyling = item.urgency === 'high'
-
-    if (isOverdue) {
-      return (
-        <div
-          className={cn(
-            'flex items-center pb-2 gap-2',
-            isOver && 'ring-2 ring-primary/50 ring-inset rounded-sm'
-          )}
-        >
-          <span className="text-[12px] tracking-[0.04em] uppercase font-[family-name:var(--font-heading)] font-semibold leading-4 shrink-0 text-[#C4654A]">
-            {item.label}
-          </span>
-          <div className="h-px grow shrink basis-0 bg-[#F0DEDA] dark:bg-[#5a3030]" />
-          <span className="text-[11px] font-[family-name:var(--font-mono)] font-medium leading-3.5 shrink-0 text-[#C4654A]">
-            {item.count}
-          </span>
-        </div>
-      )
-    }
+    const hasUrgentStyling = item.urgency === 'critical' || item.urgency === 'high'
 
     return (
       <div
