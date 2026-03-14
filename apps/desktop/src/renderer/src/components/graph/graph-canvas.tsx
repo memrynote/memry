@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, useCallback, useMemo } from 'react'
 import { SigmaContainer, useSigma } from '@react-sigma/core'
 import { useWorkerLayoutForceAtlas2 } from '@react-sigma/layout-forceatlas2'
+import { useTheme } from 'next-themes'
 import '@react-sigma/core/lib/style.css'
 import type Graph from 'graphology'
 import type { GraphDataResponse } from '@memry/contracts/graph-api'
@@ -65,14 +66,28 @@ export function GraphCanvas({
   graphSettings,
   onFocusNode
 }: GraphCanvasProps): React.JSX.Element {
+  const { resolvedTheme } = useTheme()
   const [hoveredNode, setHoveredNode] = useState<string | null>(null)
   const [tooltipPos, setTooltipPos] = useState<{ x: number; y: number } | null>(null)
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null)
   const fadeRef = useRef(0)
   const hoverTargetRef = useRef<string | null>(null)
 
-  const dimmedColor = useMemo(() => resolveGraphVar('--graph-dimmed-node', '#e4e4de'), [])
-  const softEdgeColor = useMemo(() => resolveGraphVar('--graph-edge-soft', '#d5d3cd'), [])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const dimmedColor = useMemo(
+    () => resolveGraphVar('--graph-dimmed-node', '#e4e4de'),
+    [resolvedTheme]
+  )
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const softEdgeColor = useMemo(
+    () => resolveGraphVar('--graph-edge-soft', '#d5d3cd'),
+    [resolvedTheme]
+  )
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const labelColor = useMemo(
+    () => resolveGraphVar('--graph-label-color', '#1a1a1a'),
+    [resolvedTheme]
+  )
 
   const graphBuildOptions: BuildGraphOptions = useMemo(
     () => ({ showTags: graphSettings.showTagEdges }),
@@ -81,7 +96,8 @@ export function GraphCanvas({
 
   const graph = useMemo(
     () => buildGraphologyGraph(data, graphBuildOptions),
-    [data, graphBuildOptions]
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [data, graphBuildOptions, resolvedTheme]
   )
 
   const focusVisibleSet = useMemo(() => {
@@ -216,6 +232,7 @@ export function GraphCanvas({
       nodeReducer,
       edgeReducer,
       labelRenderedSizeThreshold: graphSettings.showLabels ? 6 : Infinity,
+      labelColor: { color: labelColor },
       labelSize: 12,
       defaultEdgeType: 'line' as const,
       renderEdgeLabels: false,
@@ -234,6 +251,7 @@ export function GraphCanvas({
           nodeReducer={nodeReducer}
           edgeReducer={edgeReducer}
           showLabels={graphSettings.showLabels}
+          labelColor={labelColor}
         />
         <HoverFadeAnimator
           hoveredNode={hoveredNode}
@@ -409,11 +427,13 @@ function HoverFadeAnimator({
 function SigmaSettingsSync({
   nodeReducer,
   edgeReducer,
-  showLabels
+  showLabels,
+  labelColor
 }: {
   nodeReducer: (node: string, attrs: Record<string, unknown>) => Partial<NodeDisplayData>
   edgeReducer: (edge: string, attrs: Record<string, unknown>) => Partial<EdgeDisplayData>
   showLabels: boolean
+  labelColor: string
 }): null {
   const sigma = useSigma()
 
@@ -428,6 +448,10 @@ function SigmaSettingsSync({
   useEffect(() => {
     sigma.setSetting('labelRenderedSizeThreshold', showLabels ? 6 : Infinity)
   }, [sigma, showLabels])
+
+  useEffect(() => {
+    sigma.setSetting('labelColor', { color: labelColor })
+  }, [sigma, labelColor])
 
   return null
 }

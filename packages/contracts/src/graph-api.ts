@@ -51,7 +51,7 @@ export type GraphSettings = z.infer<typeof GraphSettingsSchema>
 
 export const GRAPH_SETTINGS_DEFAULTS: GraphSettings = {
   layout: 'forceatlas2',
-  showLabels: true,
+  showLabels: false,
   showEdgeLabels: false,
   animateLayout: false,
   showTagEdges: false
