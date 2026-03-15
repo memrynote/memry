@@ -1399,6 +1399,15 @@ export const filterByProjects = (tasks: Task[], projectIds: string[]): Task[] =>
 }
 
 /**
+ * Scope tasks to a single project (dropdown filter).
+ * Returns all tasks when projectId is null.
+ */
+export const scopeTasksByProject = (tasks: Task[], projectId: string | null): Task[] => {
+  if (!projectId) return tasks
+  return tasks.filter((task) => task.projectId === projectId)
+}
+
+/**
  * Filter tasks by priorities (multi-select)
  */
 export const filterByPriorities = (tasks: Task[], priorities: Priority[]): Task[] => {
