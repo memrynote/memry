@@ -1,16 +1,13 @@
 import { cn } from '@/lib/utils'
-import { formatDueDate, getDaysOverdue, getOverdueTier } from '@/lib/task-utils'
-import {
-  TaskCheckbox,
-  InteractiveProjectBadge,
-  InteractivePriorityBadge,
-  InteractiveDueDateBadge
-} from '@/components/tasks/task-badges'
-import { RepeatIndicator } from '@/components/tasks/repeat-indicator'
+import { formatDueDate, formatDateShort, formatTime } from '@/lib/task-utils'
+import { StatusCircle, PriorityBars } from '@/components/tasks/task-icons'
 import { SelectionCheckbox } from '@/components/tasks/bulk-actions'
-import { priorityConfig, type Priority } from '@/data/sample-tasks'
 import type { Task } from '@/data/sample-tasks'
-import type { Project } from '@/data/tasks-data'
+import type { Project, Status } from '@/data/tasks-data'
+
+// ============================================================================
+// TYPES
+// ============================================================================
 
 interface TaskRowProps {
   task: Task
@@ -29,26 +26,34 @@ interface TaskRowProps {
   onShiftSelect?: (taskId: string) => void
 }
 
-const getLeftBorderColor = (task: Task, isCompleted: boolean): string | undefined => {
-  if (isCompleted) return undefined
-  const formattedDate = formatDueDate(task.dueDate, task.dueTime)
-  const isOverdue = formattedDate?.status === 'overdue'
-  if (isOverdue) return priorityConfig[task.priority]?.color ?? '#EF4444'
-  if (task.priority === 'urgent') return '#EF4444'
-  if (task.priority === 'high') return '#F97316'
-  if (task.priority === 'medium') return '#F59E0B'
-  return undefined
+// ============================================================================
+// HELPERS
+// ============================================================================
+
+const resolveStatus = (
+  task: Task,
+  statuses: Status[]
+): { type: 'todo' | 'in_progress' | 'done'; color: string } => {
+  const status = statuses.find((s) => s.id === task.statusId)
+  return {
+    type: (status?.type as 'todo' | 'in_progress' | 'done') || 'todo',
+    color: status?.color || 'var(--text-tertiary)'
+  }
 }
+
+// ============================================================================
+// TASK ROW — Linear-style flat row
+// ============================================================================
 
 export const TaskRow = ({
   task,
   project,
-  projects,
+  projects: _projects,
   isCompleted,
   isSelected = false,
   showProjectBadge = false,
   onToggleComplete,
-  onUpdateTask,
+  onUpdateTask: _onUpdateTask,
   onClick,
   className,
   isSelectionMode = false,
@@ -57,11 +62,8 @@ export const TaskRow = ({
   onShiftSelect
 }: TaskRowProps): React.JSX.Element => {
   const formattedDate = formatDueDate(task.dueDate, task.dueTime)
-  const isOverdue = formattedDate?.status === 'overdue'
-  const daysOver = isOverdue && !isCompleted ? getDaysOverdue(task.dueDate) : 0
-  const overdueTier = daysOver > 0 ? getOverdueTier(daysOver) : null
-  const leftBorderColor = getLeftBorderColor(task, isCompleted)
-  const priorityColor = priorityConfig[task.priority]?.color
+  const isOverdue = formattedDate?.status === 'overdue' && !isCompleted
+  const { type: statusType, color: statusColor } = resolveStatus(task, project.statuses)
 
   const handleRowClick = (e: React.MouseEvent): void => {
     if (e.shiftKey && isSelectionMode && onShiftSelect) {
@@ -88,19 +90,25 @@ export const TaskRow = ({
     }
   }
 
-  const handleProjectChange = (projectId: string): void => {
-    onUpdateTask?.(task.id, { projectId })
-  }
-
-  const handlePriorityChange = (priority: Priority): void => {
-    onUpdateTask?.(task.id, { priority })
-  }
-
-  const handleDateChange = (date: Date | null): void => {
-    onUpdateTask?.(task.id, { dueDate: date })
+  const handleToggleClick = (e: React.MouseEvent): void => {
+    e.stopPropagation()
+    onToggleComplete(task.id)
   }
 
   const showSelection = !!onToggleSelect
+
+  const compactDateLabel = (() => {
+    if (!task.dueDate) return null
+    const date = formatDateShort(task.dueDate)
+    return task.dueTime ? `${date}, ${formatTime(task.dueTime)}` : date
+  })()
+
+  const dueDateDisplay = (() => {
+    if (isCompleted) return { text: 'Done', colorStyle: statusColor }
+    if (!compactDateLabel) return null
+    if (isOverdue) return { text: compactDateLabel, colorClass: 'text-destructive' }
+    return { text: compactDateLabel, colorClass: 'text-text-tertiary' }
+  })()
 
   return (
     <div
@@ -108,26 +116,17 @@ export const TaskRow = ({
       tabIndex={onClick ? 0 : -1}
       onClick={handleRowClick}
       onKeyDown={onClick ? handleRowKeyDown : undefined}
-      style={{
-        borderLeftWidth: '3px',
-        borderLeftStyle: 'solid',
-        borderLeftColor: leftBorderColor || 'transparent'
-      }}
       className={cn(
-        'group flex items-center py-2 px-3 gap-2.5 rounded-r-sm transition-colors duration-150',
+        'group flex items-center py-[7px] px-6 gap-3 border-b border-border transition-colors',
         'hover:bg-accent/50',
         onClick &&
           'cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-        isOverdue && !isCompleted && 'bg-[#EF444405]',
-        overdueTier === 'severe' && 'overdue-pulse',
         isCheckedForSelection && 'bg-primary/10 hover:bg-primary/15',
         isSelected && !isCheckedForSelection && 'bg-primary/10 ring-2 ring-primary/30',
-        'mt-0.5',
         className
       )}
       aria-label={`Task: ${task.title}${isCompleted ? ', completed' : ''}`}
     >
-      {/* Selection checkbox */}
       {isSelectionMode && showSelection && (
         <div className="shrink-0" onClick={(e) => e.stopPropagation()}>
           <SelectionCheckbox
@@ -139,57 +138,46 @@ export const TaskRow = ({
         </div>
       )}
 
-      {/* Checkbox */}
-      <TaskCheckbox
-        checked={isCompleted}
-        onChange={() => onToggleComplete(task.id)}
-        disabled={isSelectionMode}
+      <StatusCircle
+        statusType={statusType}
+        statusColor={statusColor}
+        isCompleted={isCompleted}
+        onClick={handleToggleClick}
       />
 
-      {/* Title — flex-1 fills remaining space, min-w-0 enables truncation */}
+      <PriorityBars priority={task.priority} />
+
       <span
         className={cn(
-          'text-[13px] font-medium leading-4 truncate flex-1 min-w-0',
+          'text-[13px] leading-4 grow shrink basis-0 truncate',
           isCompleted
-            ? 'text-text-tertiary line-through decoration-text-tertiary'
+            ? 'text-text-tertiary line-through decoration-1 [text-underline-position:from-font]'
             : 'text-text-primary'
         )}
       >
         {task.title}
       </span>
 
-      {/* Pills — shrink-0 keeps them pinned right after the flex-1 title */}
-      <div className="flex items-center gap-[5px] shrink-0">
-        {task.isRepeating && task.repeatConfig && !isCompleted && (
-          <RepeatIndicator config={task.repeatConfig} size="sm" />
-        )}
+      {showProjectBadge && (
+        <div className="flex items-center shrink-0 gap-[5px]">
+          <div className="rounded-xs shrink-0 size-2" style={{ backgroundColor: project.color }} />
+          <div className="text-[11px] text-text-tertiary leading-3.5 truncate max-w-[100px]">
+            {project.name}
+          </div>
+        </div>
+      )}
 
-        {!isCompleted && task.priority !== 'none' && priorityColor && (
-          <InteractivePriorityBadge
-            priority={task.priority}
-            onPriorityChange={handlePriorityChange}
-            compact
-            className="!rounded-sm !py-px !px-1.5 !gap-[3px]"
-          />
-        )}
-
-        {!isCompleted && showProjectBadge && (
-          <InteractiveProjectBadge
-            project={project}
-            projects={projects}
-            onProjectChange={handleProjectChange}
-            className="!rounded-sm !py-px !px-1.5 !gap-[3px] !text-[10px]"
-          />
-        )}
-
-        <InteractiveDueDateBadge
-          dueDate={task.dueDate}
-          dueTime={task.dueTime}
-          onDateChange={handleDateChange}
-          isRepeating={task.isRepeating}
-          className={cn('!text-[10px]', isCompleted && 'opacity-60')}
-        />
-      </div>
+      {dueDateDisplay && (
+        <div
+          className={cn(
+            'text-[11px] shrink-0 text-right leading-3.5 whitespace-nowrap',
+            'colorClass' in dueDateDisplay && dueDateDisplay.colorClass
+          )}
+          style={'colorStyle' in dueDateDisplay ? { color: dueDateDisplay.colorStyle } : undefined}
+        >
+          {dueDateDisplay.text}
+        </div>
+      )}
     </div>
   )
 }
