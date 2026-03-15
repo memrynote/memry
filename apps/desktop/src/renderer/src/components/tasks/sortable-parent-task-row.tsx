@@ -4,20 +4,19 @@ import { CSS } from '@dnd-kit/utilities'
 import { GripVertical } from 'lucide-react'
 
 import { cn } from '@/lib/utils'
-import { formatDueDate } from '@/lib/task-utils'
 import { hasSubtasks, type SubtaskProgress } from '@/lib/subtask-utils'
-import { priorityConfig } from '@/data/sample-tasks'
-import { TaskCheckbox } from '@/components/tasks/task-badges'
-import { RepeatIndicator } from '@/components/tasks/repeat-indicator'
+import { formatDueDate, formatDateShort, formatTime } from '@/lib/task-utils'
+import { StatusCircle, PriorityBars } from '@/components/tasks/task-icons'
 import { SelectionCheckbox } from '@/components/tasks/bulk-actions'
 import { ExpandChevron } from '@/components/tasks/expand-chevron'
 import { SortableSubtaskList } from '@/components/tasks/sortable-subtask-list'
 import type { Task } from '@/data/sample-tasks'
-import type { Project } from '@/data/tasks-data'
+import type { Project, Status } from '@/data/tasks-data'
 
 interface SortableParentTaskRowProps {
   task: Task
   project: Project
+  projects?: Project[]
   sectionId: string
   subtasks: Task[]
   progress: SubtaskProgress
@@ -27,6 +26,7 @@ interface SortableParentTaskRowProps {
   showProjectBadge?: boolean
   onToggleExpand: (taskId: string) => void
   onToggleComplete: (taskId: string) => void
+  onUpdateTask?: (taskId: string, updates: Partial<Task>) => void
   onToggleSubtaskComplete?: (subtaskId: string) => void
   onClick?: (taskId: string) => void
   className?: string
@@ -39,9 +39,21 @@ interface SortableParentTaskRowProps {
   accentClass?: string
 }
 
+const resolveStatus = (
+  task: Task,
+  statuses: Status[]
+): { type: 'todo' | 'in_progress' | 'done'; color: string } => {
+  const status = statuses.find((s) => s.id === task.statusId)
+  return {
+    type: (status?.type as 'todo' | 'in_progress' | 'done') || 'todo',
+    color: status?.color || 'var(--text-tertiary)'
+  }
+}
+
 export const SortableParentTaskRow = ({
   task,
   project,
+  projects: _projects = [],
   sectionId,
   subtasks,
   progress,
@@ -51,6 +63,7 @@ export const SortableParentTaskRow = ({
   showProjectBadge = false,
   onToggleExpand,
   onToggleComplete,
+  onUpdateTask: _onUpdateTask,
   onToggleSubtaskComplete,
   onClick,
   className,
@@ -58,12 +71,15 @@ export const SortableParentTaskRow = ({
   isCheckedForSelection = false,
   onToggleSelect,
   onShiftSelect,
-  onAddSubtask,
-  onReorderSubtasks
+  onAddSubtask: _onAddSubtask,
+  onReorderSubtasks,
+  accentClass: _accentClass
 }: SortableParentTaskRowProps): React.JSX.Element => {
   const rowRef = useRef<HTMLDivElement>(null)
   const taskHasSubtasks = hasSubtasks(task)
-  const priorityColor = priorityConfig[task.priority]?.color
+  const formattedDate = formatDueDate(task.dueDate, task.dueTime)
+  const isOverdue = formattedDate?.status === 'overdue' && !isCompleted
+  const { type: statusType, color: statusColor } = resolveStatus(task, project.statuses)
 
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: task.id,
@@ -85,9 +101,6 @@ export const SortableParentTaskRow = ({
     transform: CSS.Transform.toString(transform),
     transition: transition || 'transform 200ms ease-out'
   }
-
-  const formattedDate = formatDueDate(task.dueDate, task.dueTime)
-  const isOverdue = formattedDate?.status === 'overdue' && !isCompleted
 
   const handleRowClick = (e: React.MouseEvent): void => {
     if ((e.target as HTMLElement).closest('[data-drag-handle]')) return
@@ -131,22 +144,35 @@ export const SortableParentTaskRow = ({
     if (taskHasSubtasks) onToggleExpand(task.id)
   }
 
+  const handleToggleClick = (e: React.MouseEvent): void => {
+    e.stopPropagation()
+    onToggleComplete(task.id)
+  }
+
+  const compactDateLabel = (() => {
+    if (!task.dueDate) return null
+    const date = formatDateShort(task.dueDate)
+    return task.dueTime ? `${date}, ${formatTime(task.dueTime)}` : date
+  })()
+
+  const dueDateDisplay = (() => {
+    if (isCompleted) return { text: 'Done', colorStyle: statusColor }
+    if (!compactDateLabel) return null
+    if (isOverdue) return { text: compactDateLabel, colorClass: 'text-destructive' }
+    return { text: compactDateLabel, colorClass: 'text-text-tertiary' }
+  })()
+
   return (
     <div className={cn('group relative', className)}>
       <div
         ref={setRefs}
-        style={{
-          ...style,
-          borderLeftColor: priorityColor && !isCompleted ? priorityColor : 'transparent',
-          backgroundColor: priorityColor && !isCompleted ? `${priorityColor}05` : undefined
-        }}
+        style={style}
         role="button"
         tabIndex={onClick ? 0 : -1}
         onClick={handleRowClick}
         onKeyDown={onClick ? handleRowKeyDown : undefined}
         className={cn(
-          'flex items-center gap-2.5 border-l-[3px] rounded-r-md',
-          'py-2 px-3 transition-all duration-150',
+          'flex items-center py-[7px] px-6 gap-3 border-b border-border transition-colors',
           'hover:bg-accent/50',
           onClick &&
             'cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
@@ -156,7 +182,6 @@ export const SortableParentTaskRow = ({
         )}
         aria-label={`Task: ${task.title}${isCompleted ? ', completed' : ''}${taskHasSubtasks ? `, ${subtasks.length} subtasks` : ''}`}
       >
-        {/* Drag Handle — absolute overlay, visible on hover */}
         <button
           type="button"
           data-drag-handle
@@ -164,8 +189,8 @@ export const SortableParentTaskRow = ({
           {...listeners}
           className={cn(
             'absolute left-0 top-0 bottom-0 w-5 items-center justify-center',
-            'cursor-grab touch-none text-muted-foreground/50',
-            'hover:text-muted-foreground active:cursor-grabbing',
+            'cursor-grab touch-none text-text-tertiary/50',
+            'hover:text-text-tertiary active:cursor-grabbing',
             'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:rounded',
             'hidden md:flex opacity-0 group-hover:opacity-100 transition-opacity z-10',
             isDragging && 'cursor-grabbing opacity-100'
@@ -175,7 +200,6 @@ export const SortableParentTaskRow = ({
           <GripVertical className="size-3.5" />
         </button>
 
-        {/* Selection Checkbox */}
         {isSelectionMode && onToggleSelect && (
           <div onClick={(e) => e.stopPropagation()}>
             <SelectionCheckbox
@@ -187,7 +211,6 @@ export const SortableParentTaskRow = ({
           </div>
         )}
 
-        {/* Expand chevron */}
         <ExpandChevron
           isExpanded={isExpanded}
           hasSubtasks={taskHasSubtasks}
@@ -195,86 +218,67 @@ export const SortableParentTaskRow = ({
           size="sm"
         />
 
-        {/* Task Checkbox */}
-        <TaskCheckbox checked={isCompleted} onChange={() => onToggleComplete(task.id)} />
+        <StatusCircle
+          statusType={statusType}
+          statusColor={statusColor}
+          isCompleted={isCompleted}
+          onClick={handleToggleClick}
+        />
 
-        {/* Title */}
+        <PriorityBars priority={task.priority} />
+
         <span
           className={cn(
-            'text-[13px] font-medium leading-4 whitespace-nowrap shrink-0',
-            isCompleted ? 'line-through text-muted-foreground' : 'text-foreground'
+            'text-[13px] leading-4 grow shrink basis-0 truncate',
+            isCompleted
+              ? 'text-text-tertiary line-through decoration-1 [text-underline-position:from-font]'
+              : 'text-text-primary'
           )}
         >
           {task.title}
         </span>
 
-        {/* Inline badges */}
-        {!isCompleted && (
-          <div className="flex items-center gap-[5px] ml-1">
-            {task.priority !== 'none' && priorityColor && (
-              <span
-                className="inline-flex items-center gap-[3px] rounded-[3px] px-1.5 py-px"
-                style={{ backgroundColor: `${priorityColor}14`, color: priorityColor }}
-              >
-                <span
-                  className="size-1 rounded-full shrink-0"
-                  style={{ backgroundColor: priorityColor }}
-                />
-                <span className="text-[10px] font-medium leading-3">
-                  {priorityConfig[task.priority].label}
-                </span>
-              </span>
-            )}
-
-            {showProjectBadge && (
-              <span
-                className="inline-flex items-center gap-[3px] rounded-[3px] px-1.5 py-px"
-                style={{ backgroundColor: `${project.color}0F`, color: project.color }}
-              >
-                <span
-                  className="size-1 rounded-full shrink-0"
-                  style={{ backgroundColor: project.color }}
-                />
-                <span className="text-[10px] font-medium leading-3">{project.name}</span>
-              </span>
-            )}
-          </div>
-        )}
-
-        {/* Repeat indicator */}
-        {task.isRepeating && task.repeatConfig && !isCompleted && (
-          <RepeatIndicator config={task.repeatConfig} size="sm" />
-        )}
-
-        {/* Due date — pushed right */}
-        {formattedDate && (
-          <span
-            className={cn(
-              'text-[10px] leading-3 shrink-0 ml-auto',
-              isOverdue ? 'text-[#C4654A]' : 'text-muted-foreground'
-            )}
-          >
-            {formattedDate.label}
-          </span>
-        )}
-
-        {/* Subtask progress bar + fraction */}
         {taskHasSubtasks && (
-          <div className={cn('flex items-center gap-[3px] shrink-0', !formattedDate && 'ml-auto')}>
-            <div className="w-5 h-[3px] rounded-sm overflow-clip bg-[#EDECE8]">
+          <div className="flex items-center gap-[3px] shrink-0">
+            <div className="w-5 h-[3px] rounded-sm overflow-clip bg-border">
               <div
-                className="h-full rounded-sm bg-[#7B9E87]"
-                style={{ width: `${progress.percentage}%` }}
+                className="h-full rounded-sm"
+                style={{ width: `${progress.percentage}%`, backgroundColor: statusColor }}
               />
             </div>
-            <span className="text-[9px] text-muted-foreground font-mono leading-3">
+            <span className="text-[9px] text-text-tertiary font-[family-name:var(--font-mono)] leading-3">
               {progress.completed}/{progress.total}
             </span>
           </div>
         )}
+
+        {showProjectBadge && (
+          <div className="flex items-center shrink-0 gap-[5px]">
+            <div
+              className="rounded-xs shrink-0 size-2"
+              style={{ backgroundColor: project.color }}
+            />
+            <div className="text-[11px] text-text-tertiary leading-3.5 truncate max-w-[100px]">
+              {project.name}
+            </div>
+          </div>
+        )}
+
+        {dueDateDisplay && (
+          <div
+            className={cn(
+              'text-[11px] shrink-0 text-right leading-3.5 whitespace-nowrap',
+              'colorClass' in dueDateDisplay && dueDateDisplay.colorClass
+            )}
+            style={
+              'colorStyle' in dueDateDisplay ? { color: dueDateDisplay.colorStyle } : undefined
+            }
+          >
+            {dueDateDisplay.text}
+          </div>
+        )}
       </div>
 
-      {/* Subtask list (expanded) */}
       {isExpanded && (
         <SortableSubtaskList
           parentId={task.id}
@@ -282,7 +286,6 @@ export const SortableParentTaskRow = ({
           subtasks={subtasks}
           onReorder={onReorderSubtasks || (() => {})}
           onToggleComplete={onToggleSubtaskComplete || onToggleComplete}
-          onAddSubtask={onAddSubtask}
           onClick={onClick}
         />
       )}

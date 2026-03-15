@@ -1,54 +1,96 @@
 import { cn } from '@/lib/utils'
-import { formatDueDate } from '@/lib/task-utils'
 import { hasSubtasks, type SubtaskProgress } from '@/lib/subtask-utils'
-import { priorityConfig } from '@/data/sample-tasks'
-import { TaskCheckbox } from '@/components/tasks/task-badges'
-import { RepeatIndicator } from '@/components/tasks/repeat-indicator'
+import { formatDueDate, formatDateShort, formatTime } from '@/lib/task-utils'
+import { StatusCircle, PriorityBars } from '@/components/tasks/task-icons'
 import { ExpandChevron } from '@/components/tasks/expand-chevron'
 import { SubtaskRow } from '@/components/tasks/subtask-row'
 import type { Task } from '@/data/sample-tasks'
-import type { Project } from '@/data/tasks-data'
+import type { Project, Status } from '@/data/tasks-data'
+
+// ============================================================================
+// TYPES
+// ============================================================================
 
 interface ParentTaskRowProps {
   task: Task
   subtasks: Task[]
   progress: SubtaskProgress
   project: Project
+  projects?: Project[]
   isExpanded: boolean
   isCompleted: boolean
   isSelected?: boolean
   showProjectBadge?: boolean
   onToggleExpand: (taskId: string) => void
   onToggleComplete: (taskId: string) => void
+  onUpdateTask?: (taskId: string, updates: Partial<Task>) => void
   onToggleSubtaskComplete?: (subtaskId: string) => void
   onClick?: (taskId: string) => void
   className?: string
 }
+
+// ============================================================================
+// HELPERS
+// ============================================================================
+
+const resolveStatus = (
+  task: Task,
+  statuses: Status[]
+): { type: 'todo' | 'in_progress' | 'done'; color: string } => {
+  const status = statuses.find((s) => s.id === task.statusId)
+  return {
+    type: (status?.type as 'todo' | 'in_progress' | 'done') || 'todo',
+    color: status?.color || 'var(--text-tertiary)'
+  }
+}
+
+// ============================================================================
+// PARENT TASK ROW — Linear-style with expand/collapse
+// ============================================================================
 
 export const ParentTaskRow = ({
   task,
   subtasks,
   progress,
   project,
+  projects: _projects = [],
   isExpanded,
   isCompleted,
   isSelected = false,
   showProjectBadge = false,
   onToggleExpand,
   onToggleComplete,
+  onUpdateTask: _onUpdateTask,
   onToggleSubtaskComplete,
   onClick,
   className
 }: ParentTaskRowProps): React.JSX.Element => {
   const taskHasSubtasks = hasSubtasks(task)
-  const priorityColor = priorityConfig[task.priority]?.color
-
   const formattedDate = formatDueDate(task.dueDate, task.dueTime)
   const isOverdue = formattedDate?.status === 'overdue' && !isCompleted
+  const { type: statusType, color: statusColor } = resolveStatus(task, project.statuses)
 
   const handleExpandToggle = (): void => {
     if (taskHasSubtasks) onToggleExpand(task.id)
   }
+
+  const handleToggleClick = (e: React.MouseEvent): void => {
+    e.stopPropagation()
+    onToggleComplete(task.id)
+  }
+
+  const compactDateLabel = (() => {
+    if (!task.dueDate) return null
+    const date = formatDateShort(task.dueDate)
+    return task.dueTime ? `${date}, ${formatTime(task.dueTime)}` : date
+  })()
+
+  const dueDateDisplay = (() => {
+    if (isCompleted) return { text: 'Done', colorStyle: statusColor }
+    if (!compactDateLabel) return null
+    if (isOverdue) return { text: compactDateLabel, colorClass: 'text-destructive' }
+    return { text: compactDateLabel, colorClass: 'text-text-tertiary' }
+  })()
 
   return (
     <div className={cn('group', className)}>
@@ -72,13 +114,8 @@ export const ParentTaskRow = ({
             }
           }
         }}
-        style={{
-          borderLeftColor: priorityColor && !isCompleted ? priorityColor : 'transparent',
-          backgroundColor: priorityColor && !isCompleted ? `${priorityColor}05` : undefined
-        }}
         className={cn(
-          'flex items-center gap-2.5 border-l-[3px] rounded-r-md',
-          'py-2 px-3 transition-all duration-150',
+          'flex items-center py-[7px] px-6 gap-3 border-b border-border transition-colors',
           'hover:bg-accent/50',
           onClick &&
             'cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
@@ -93,75 +130,63 @@ export const ParentTaskRow = ({
           size="sm"
         />
 
-        <TaskCheckbox checked={isCompleted} onChange={() => onToggleComplete(task.id)} />
+        <StatusCircle
+          statusType={statusType}
+          statusColor={statusColor}
+          isCompleted={isCompleted}
+          onClick={handleToggleClick}
+        />
+
+        <PriorityBars priority={task.priority} />
 
         <span
           className={cn(
-            'text-[13px] font-medium leading-4 whitespace-nowrap shrink-0',
-            isCompleted ? 'line-through text-muted-foreground' : 'text-foreground'
+            'text-[13px] leading-4 grow shrink basis-0 truncate',
+            isCompleted
+              ? 'text-text-tertiary line-through decoration-1 [text-underline-position:from-font]'
+              : 'text-text-primary'
           )}
         >
           {task.title}
         </span>
 
-        {!isCompleted && (
-          <div className="flex items-center gap-[5px] ml-1">
-            {task.priority !== 'none' && priorityColor && (
-              <span
-                className="inline-flex items-center gap-[3px] rounded-[3px] px-1.5 py-px"
-                style={{ backgroundColor: `${priorityColor}14`, color: priorityColor }}
-              >
-                <span
-                  className="size-1 rounded-full shrink-0"
-                  style={{ backgroundColor: priorityColor }}
-                />
-                <span className="text-[10px] font-medium leading-3">
-                  {priorityConfig[task.priority].label}
-                </span>
-              </span>
-            )}
-
-            {showProjectBadge && (
-              <span
-                className="inline-flex items-center gap-[3px] rounded-[3px] px-1.5 py-px"
-                style={{ backgroundColor: `${project.color}0F`, color: project.color }}
-              >
-                <span
-                  className="size-1 rounded-full shrink-0"
-                  style={{ backgroundColor: project.color }}
-                />
-                <span className="text-[10px] font-medium leading-3">{project.name}</span>
-              </span>
-            )}
+        {taskHasSubtasks && (
+          <div className="flex items-center gap-[3px] shrink-0">
+            <div className="w-5 h-[3px] rounded-sm overflow-clip bg-border">
+              <div
+                className="h-full rounded-sm"
+                style={{ width: `${progress.percentage}%`, backgroundColor: statusColor }}
+              />
+            </div>
+            <span className="text-[9px] text-text-tertiary font-[family-name:var(--font-mono)] leading-3">
+              {progress.completed}/{progress.total}
+            </span>
           </div>
         )}
 
-        {task.isRepeating && task.repeatConfig && !isCompleted && (
-          <RepeatIndicator config={task.repeatConfig} size="sm" />
-        )}
-
-        {formattedDate && (
-          <span
-            className={cn(
-              'text-[10px] leading-3 shrink-0 ml-auto',
-              isOverdue ? 'text-[#C4654A]' : 'text-muted-foreground'
-            )}
-          >
-            {formattedDate.label}
-          </span>
-        )}
-
-        {taskHasSubtasks && (
-          <div className={cn('flex items-center gap-[3px] shrink-0', !formattedDate && 'ml-auto')}>
-            <div className="w-5 h-[3px] rounded-sm overflow-clip bg-[#EDECE8]">
-              <div
-                className="h-full rounded-sm bg-[#7B9E87]"
-                style={{ width: `${progress.percentage}%` }}
-              />
+        {showProjectBadge && (
+          <div className="flex items-center shrink-0 gap-[5px]">
+            <div
+              className="rounded-xs shrink-0 size-2"
+              style={{ backgroundColor: project.color }}
+            />
+            <div className="text-[11px] text-text-tertiary leading-3.5 truncate max-w-[100px]">
+              {project.name}
             </div>
-            <span className="text-[9px] text-muted-foreground font-mono leading-3">
-              {progress.completed}/{progress.total}
-            </span>
+          </div>
+        )}
+
+        {dueDateDisplay && (
+          <div
+            className={cn(
+              'text-[11px] shrink-0 text-right leading-3.5 whitespace-nowrap',
+              'colorClass' in dueDateDisplay && dueDateDisplay.colorClass
+            )}
+            style={
+              'colorStyle' in dueDateDisplay ? { color: dueDateDisplay.colorStyle } : undefined
+            }
+          >
+            {dueDateDisplay.text}
           </div>
         )}
       </div>
