@@ -107,7 +107,7 @@
 }
 
 .dark .bn-suggestion-menu [role='option'][aria-selected='true'] {
-  background-color: #3a3935 !important;
+  background-color: #2a2a2e !important;
 }
 
 /* HIDE SUBTEXT - removes descriptions like "Resizable image with caption" */
@@ -391,22 +391,22 @@
     --font-heading: 'Space Grotesk Variable', system-ui, sans-serif;
     --font-mono: 'JetBrains Mono Variable', 'SF Mono', 'Fira Code', monospace;
 
-    /* ===== BASE COLORS - Dark Mode (Warm Dark Variant) ===== */
-    --background: #191919;
-    /* Neutral Dark */
+    /* ===== BASE COLORS - Dark Mode (Cool Dark Variant) ===== */
+    --background: #0e0e10;
+    /* Deep cool dark */
     --foreground: #e8e6e1;
     /* Light warm text */
-    --surface: #202020;
+    --surface: #161618;
     /* Dark panels */
-    --surface-active: #2a2a2a;
+    --surface-active: #1e1e21;
     /* Dark hover */
 
     /* ===== SEMANTIC PASTELS - Dark Mode (Muted versions) ===== */
-    --card-sage: #2a332a;
-    --card-rose: #332a2a;
-    --card-sand: #33312a;
-    --card-lavender: #2d2a33;
-    --card-grey: #2a2a2a;
+    --card-sage: #1a231a;
+    --card-rose: #231a1a;
+    --card-sand: #23211a;
+    --card-lavender: #1d1a23;
+    --card-grey: #1a1a1c;
 
     /* ===== TYPOGRAPHY COLORS - Dark Mode ===== */
     --text-primary: #e8e6e1;
@@ -420,19 +420,19 @@
     --accent-orange: #fb923c;
 
     /* ===== UI SEMANTIC COLORS - Dark Mode ===== */
-    --muted: #202020;
+    --muted: #161618;
     --muted-foreground: #a8a6a1;
-    --popover: #191919;
+    --popover: #131315;
     --popover-foreground: #e8e6e1;
-    --border: #3a3a3a;
-    --input: #3a3a3a;
-    --card: #202020;
+    --border: #2a2a2e;
+    --input: #2a2a2e;
+    --card: #161618;
     --card-foreground: #e8e6e1;
     --primary: #e8e6e1;
-    --primary-foreground: #191919;
-    --secondary: #202020;
+    --primary-foreground: #0e0e10;
+    --secondary: #161618;
     --secondary-foreground: #e8e6e1;
-    --accent: #2a2a2a;
+    --accent: #1e1e21;
     --accent-foreground: #e8e6e1;
     --destructive: #dc2626;
     --destructive-foreground: #fafafa;
@@ -448,8 +448,8 @@
     --radius-full: 9999px;
 
     /* ===== SHADOWS - Dark Mode ===== */
-    --shadow-card: 0 1px 2px 0 rgb(0 0 0 / 0.2), 0 1px 3px 0 rgb(0 0 0 / 0.3);
-    --shadow-card-hover: 0 4px 6px -1px rgb(0 0 0 / 0.3), 0 2px 4px -2px rgb(0 0 0 / 0.2);
+    --shadow-card: 0 1px 2px 0 rgb(0 0 0 / 0.3), 0 1px 3px 0 rgb(0 0 0 / 0.4);
+    --shadow-card-hover: 0 4px 6px -1px rgb(0 0 0 / 0.4), 0 2px 4px -2px rgb(0 0 0 / 0.3);
 
     /* ===== SPACING (Same in dark mode) ===== */
     --sidebar-width: 240px;
@@ -467,15 +467,15 @@
     --graph-edge-task-note: #b89a5a;
     --graph-edge-project-task: #8a7aad;
     --graph-edge-tag-cooccurrence: #5a5855;
-    --graph-ghost-node: #4a4845;
-    --graph-dimmed-node: #3a3835;
+    --graph-ghost-node: #3a3840;
+    --graph-dimmed-node: #2a2830;
     --graph-edge-soft: #6b6966;
-    --graph-bg: #191919;
+    --graph-bg: #0e0e10;
     --graph-label-color: #e8e6e1;
 
     /* ===== QUEUE LIST - Dark Mode ===== */
-    --queue-bg: #202020;
-    --queue-number-bg: #3a3a3a;
+    --queue-bg: #161618;
+    --queue-number-bg: #2a2a2e;
 
     /* ===== ANIMATION TOKENS (Same in dark mode) ===== */
     --duration-instant: 100ms;
@@ -925,7 +925,7 @@ div.react-sigma {
 }
 
 .dark .bn-combobox-items [role='option'][aria-selected='true'] {
-  background-color: #3a3935 !important;
+  background-color: #2a2a2e !important;
 }
 
 /* AI diff highlighting — warm-tinted insertion/deletion for light mode */
@@ -1019,20 +1019,20 @@ del.bn-inline-content {
 }
 
 .dark {
-  /* ===== SIDEBAR THEME - Warm Dark Palette ===== */
-  --sidebar: #202020;
+  /* ===== SIDEBAR THEME - Cool Dark Palette ===== */
+  --sidebar: #131315;
   --sidebar-foreground: #b5b3ae;
   --sidebar-primary: #e8e5df;
-  --sidebar-primary-foreground: #202020;
+  --sidebar-primary-foreground: #131315;
   --sidebar-accent: rgba(224, 122, 92, 0.15);
   --sidebar-accent-foreground: #e07a5c;
-  --sidebar-border: #3a3a3a;
+  --sidebar-border: #2a2a2e;
   --sidebar-ring: #e07a5c;
   --sidebar-muted: #6b6b6b;
   --sidebar-terracotta: #e07a5c;
   --sidebar-text-folder: #c5c0b8;
   --sidebar-text-child: #9a958d;
-  --sidebar-dot-inactive: #4a4a4a;
+  --sidebar-dot-inactive: #3a3a3e;
 }
 
 @theme inline {
