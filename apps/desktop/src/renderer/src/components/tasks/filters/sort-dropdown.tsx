@@ -58,23 +58,23 @@ export const SortDropdown = ({
           type="button"
           aria-label="Sort options"
           className={cn(
-            'flex items-center rounded-sm p-1.5 border transition-colors',
+            'flex items-center shrink-0 rounded-[5px] py-1 px-2 gap-1 border transition-colors',
             isOpen || isNonDefault
               ? 'border-foreground/20 bg-foreground/5 text-text-primary'
-              : 'border-border text-text-secondary hover:bg-accent/50',
+              : 'border-border text-text-secondary hover:bg-surface-active/50',
             className
           )}
         >
-          <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+          <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
             <path
-              d="M3 4l2-2 2 2M5 2v10M11 10l-2 2-2-2M9 12V2"
+              d="M4 3v7M4 10l-1.5-1.5M4 10l1.5-1.5M9 10V3M9 3l-1.5 1.5M9 3l1.5 1.5"
               stroke="currentColor"
-              strokeWidth="1.3"
+              strokeWidth="1.1"
               strokeLinecap="round"
               strokeLinejoin="round"
-              className="text-text-tertiary"
             />
           </svg>
+          <span className="text-[11px] leading-3.5">Sort</span>
         </button>
       </PopoverTrigger>
 
@@ -85,23 +85,24 @@ export const SortDropdown = ({
       >
         <div className="[font-synthesis:none] text-[12px] leading-4 flex flex-col antialiased">
           {/* Header */}
-          <div className="flex items-center py-2.5 px-4 gap-1.5 bg-[#F5F3EF] border-b border-[#E8E5E0]">
+          <div className="flex items-center py-2.5 px-4 gap-1.5 bg-surface border-b border-border">
             <svg
               width="14"
               height="14"
               viewBox="0 0 24 24"
               fill="none"
-              stroke="#1A1A1A"
+              stroke="currentColor"
               strokeWidth="2"
               strokeLinecap="round"
               strokeLinejoin="round"
+              className="text-foreground"
             >
               <path d="M3 6l3-3 3 3" />
               <path d="M6 3v18" />
               <path d="M21 18l-3 3-3-3" />
               <path d="M18 21V3" />
             </svg>
-            <span className={`text-[13px] leading-4 text-[#1A1A1A] ${FONT} font-semibold`}>
+            <span className={`text-[13px] leading-4 text-foreground ${FONT} font-semibold`}>
               Sort
             </span>
           </div>
@@ -117,7 +118,7 @@ export const SortDropdown = ({
                   key={field}
                   className={cn(
                     'flex items-center py-2 px-4 gap-2.5 transition-colors',
-                    isSelected ? 'bg-[#F9F8F6]' : 'hover:bg-[#F9F8F6]'
+                    isSelected ? 'bg-accent' : 'hover:bg-accent'
                   )}
                 >
                   {/* Radio circle */}
@@ -130,11 +131,11 @@ export const SortDropdown = ({
                     className={cn(
                       'flex items-center justify-center shrink-0 rounded-full size-4',
                       isSelected
-                        ? 'bg-[#1A1A1A15] border-[1.5px] border-[#1A1A1A]'
-                        : 'border-[1.5px] border-[#D4D1CA]'
+                        ? 'bg-foreground/10 border-[1.5px] border-foreground'
+                        : 'border-[1.5px] border-border'
                     )}
                   >
-                    {isSelected && <div className="rounded-full bg-[#1A1A1A] shrink-0 size-2" />}
+                    {isSelected && <div className="rounded-full bg-foreground shrink-0 size-2" />}
                   </button>
 
                   {/* Label */}
@@ -143,7 +144,7 @@ export const SortDropdown = ({
                     onClick={() => handleSelectField(field)}
                     className={cn(
                       `text-[13px] leading-4 grow shrink basis-0 text-left ${FONT}`,
-                      isSelected ? 'text-[#1A1A1A] font-medium' : 'text-[#1A1A1A]'
+                      isSelected ? 'text-foreground font-medium' : 'text-foreground'
                     )}
                   >
                     {label}
@@ -158,7 +159,7 @@ export const SortDropdown = ({
                         onClick={() => handleSetDirection('asc')}
                         className={cn(
                           'flex items-center justify-center w-[22px] h-[22px] rounded-sm shrink-0 transition-colors',
-                          sort.direction === 'asc' ? 'bg-[#1A1A1A]' : 'hover:bg-[#E8E5E0]'
+                          sort.direction === 'asc' ? 'bg-foreground' : 'hover:bg-surface-active'
                         )}
                       >
                         <svg
@@ -166,7 +167,11 @@ export const SortDropdown = ({
                           height="12"
                           viewBox="0 0 24 24"
                           fill="none"
-                          stroke={sort.direction === 'asc' ? '#FFFFFF' : '#8A8A8A'}
+                          stroke={
+                            sort.direction === 'asc'
+                              ? 'var(--primary-foreground)'
+                              : 'var(--text-tertiary)'
+                          }
                           strokeWidth="2.5"
                           strokeLinecap="round"
                           strokeLinejoin="round"
@@ -181,7 +186,7 @@ export const SortDropdown = ({
                         onClick={() => handleSetDirection('desc')}
                         className={cn(
                           'flex items-center justify-center w-[22px] h-[22px] rounded-sm shrink-0 transition-colors',
-                          sort.direction === 'desc' ? 'bg-[#1A1A1A]' : 'hover:bg-[#E8E5E0]'
+                          sort.direction === 'desc' ? 'bg-foreground' : 'hover:bg-surface-active'
                         )}
                       >
                         <svg
@@ -189,7 +194,11 @@ export const SortDropdown = ({
                           height="12"
                           viewBox="0 0 24 24"
                           fill="none"
-                          stroke={sort.direction === 'desc' ? '#FFFFFF' : '#8A8A8A'}
+                          stroke={
+                            sort.direction === 'desc'
+                              ? 'var(--primary-foreground)'
+                              : 'var(--text-tertiary)'
+                          }
                           strokeWidth="2.5"
                           strokeLinecap="round"
                           strokeLinejoin="round"
@@ -206,14 +215,14 @@ export const SortDropdown = ({
           </div>
 
           {/* Divider + Reset */}
-          <div className="w-[228px] h-px shrink-0 self-center bg-[#E8E5E0]" />
+          <div className="w-[228px] h-px shrink-0 self-center bg-border" />
           <button
             type="button"
             onClick={handleReset}
             className={cn(
-              'flex items-center py-2.5 px-4 transition-colors hover:bg-[#F9F8F6]',
+              'flex items-center py-2.5 px-4 transition-colors hover:bg-accent',
               `text-[12px] leading-4 ${FONT}`,
-              isNonDefault ? 'text-[#1A1A1A]' : 'text-[#8A8A8A]'
+              isNonDefault ? 'text-foreground' : 'text-text-tertiary'
             )}
           >
             Reset to default

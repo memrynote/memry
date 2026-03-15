@@ -61,8 +61,11 @@ export const DueDateFilter = ({
   const getDisplayLabel = (): string => {
     if (value.type === 'any') return 'Due Date'
     if (value.type === 'custom' && value.customStart && value.customEnd) {
-      const formatDate = (date: Date): string =>
-        date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+      const formatDate = (date: Date | string): string =>
+        (date instanceof Date ? date : new Date(date)).toLocaleDateString('en-US', {
+          month: 'short',
+          day: 'numeric'
+        })
       return `${formatDate(value.customStart)} - ${formatDate(value.customEnd)}`
     }
     const option = dueDateFilterOptions.find((o) => o.value === value.type)
@@ -124,7 +127,7 @@ export const DueDateFilter = ({
         align="start"
       >
         {/* Preset options */}
-        <div className="flex flex-col py-2 border-b border-[#F0EDE8]">
+        <div className="flex flex-col py-2 border-b border-border">
           {PRESET_OPTIONS.map((option) => {
             const isSelected = localType === option.value
             const taskCount = taskCountByDueDate[option.value] || 0
@@ -136,8 +139,10 @@ export const DueDateFilter = ({
                 onClick={() => handleSelectType(option.value)}
                 className={cn(
                   'flex items-center gap-2.5 py-2 px-4 transition-colors',
-                  'hover:bg-[#F9F8F6] focus:outline-none focus:bg-[#F9F8F6]',
-                  option.isOverdue && isSelected && 'bg-[#FEF0EE] hover:bg-[#FEF0EE]'
+                  'hover:bg-accent focus:outline-none focus:bg-accent',
+                  option.isOverdue &&
+                    isSelected &&
+                    'bg-red-50 dark:bg-red-500/10 hover:bg-red-50 dark:hover:bg-red-500/10'
                 )}
               >
                 <div
@@ -148,13 +153,13 @@ export const DueDateFilter = ({
                     borderColor: isSelected
                       ? option.isOverdue
                         ? '#E54D2E'
-                        : '#1A1A1A'
-                      : '#D4D1CA',
+                        : 'var(--foreground)'
+                      : 'var(--border)',
                     backgroundColor: isSelected
                       ? option.isOverdue
                         ? '#FEF0EE'
-                        : '#F5F3EF'
-                      : '#FFFFFF'
+                        : 'var(--surface)'
+                      : 'var(--card)'
                   }}
                 >
                   {isSelected && (
@@ -163,7 +168,7 @@ export const DueDateFilter = ({
                       height="10"
                       viewBox="0 0 24 24"
                       fill="none"
-                      stroke={option.isOverdue ? '#E54D2E' : '#1A1A1A'}
+                      stroke={option.isOverdue ? '#E54D2E' : 'var(--foreground)'}
                       strokeWidth="3"
                       strokeLinecap="round"
                       strokeLinejoin="round"
@@ -177,8 +182,8 @@ export const DueDateFilter = ({
                     "text-[13px] font-['DM_Sans_Variable',system-ui,sans-serif] leading-4",
                     option.isOverdue && isSelected
                       ? 'font-medium text-[#E54D2E]'
-                      : 'text-[#1A1A1A]',
-                    option.value === 'none' && !isSelected && 'text-[#6A6A6A]'
+                      : 'text-foreground',
+                    option.value === 'none' && !isSelected && 'text-text-secondary'
                   )}
                 >
                   {option.label}
@@ -186,7 +191,9 @@ export const DueDateFilter = ({
                 <span
                   className={cn(
                     "text-[11px] ml-auto font-['DM_Sans_Variable',system-ui,sans-serif] leading-[14px]",
-                    option.isOverdue && isSelected ? 'text-[#C4392B]' : 'text-[#8A8A8A]'
+                    option.isOverdue && isSelected
+                      ? 'text-red-700 dark:text-red-400'
+                      : 'text-text-tertiary'
                   )}
                 >
                   {taskCount}
@@ -197,8 +204,8 @@ export const DueDateFilter = ({
         </div>
 
         {/* Custom range */}
-        <div className="flex flex-col py-3 px-4 gap-2 border-b border-[#E8E5E0]">
-          <span className="text-[11px] tracking-[0.05em] uppercase text-[#8A8A8A] font-['DM_Sans_Variable',system-ui,sans-serif] font-semibold leading-[14px]">
+        <div className="flex flex-col py-3 px-4 gap-2 border-b border-border">
+          <span className="text-[11px] tracking-[0.05em] uppercase text-text-tertiary font-['DM_Sans_Variable',system-ui,sans-serif] font-semibold leading-[14px]">
             Custom Range
           </span>
           <div className="flex items-center gap-2">
@@ -206,10 +213,10 @@ export const DueDateFilter = ({
               <PopoverTrigger asChild>
                 <button
                   type="button"
-                  className="flex items-center grow shrink basis-0 rounded-sm py-1.5 px-2.5 gap-1.5 border border-[#E8E5E0] hover:border-[#C4C0B8] transition-colors"
+                  className="flex items-center grow shrink basis-0 rounded-sm py-1.5 px-2.5 gap-1.5 border border-border hover:border-text-tertiary transition-colors"
                 >
-                  <CalendarIcon className="size-3 text-[#8A8A8A]" />
-                  <span className="text-[12px] font-['DM_Sans_Variable',system-ui,sans-serif] leading-4 text-[#AAAAAA]">
+                  <CalendarIcon className="size-3 text-text-tertiary" />
+                  <span className="text-[12px] font-['DM_Sans_Variable',system-ui,sans-serif] leading-4 text-text-tertiary">
                     {customStart
                       ? customStart.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
                       : 'Start'}
@@ -231,7 +238,7 @@ export const DueDateFilter = ({
               </PopoverContent>
             </Popover>
 
-            <span className="text-[12px] text-[#8A8A8A] font-['DM_Sans_Variable',system-ui,sans-serif] leading-4">
+            <span className="text-[12px] text-text-tertiary font-['DM_Sans_Variable',system-ui,sans-serif] leading-4">
               —
             </span>
 
@@ -239,10 +246,10 @@ export const DueDateFilter = ({
               <PopoverTrigger asChild>
                 <button
                   type="button"
-                  className="flex items-center grow shrink basis-0 rounded-sm py-1.5 px-2.5 gap-1.5 border border-[#E8E5E0] hover:border-[#C4C0B8] transition-colors"
+                  className="flex items-center grow shrink basis-0 rounded-sm py-1.5 px-2.5 gap-1.5 border border-border hover:border-text-tertiary transition-colors"
                 >
-                  <CalendarIcon className="size-3 text-[#8A8A8A]" />
-                  <span className="text-[12px] font-['DM_Sans_Variable',system-ui,sans-serif] leading-4 text-[#AAAAAA]">
+                  <CalendarIcon className="size-3 text-text-tertiary" />
+                  <span className="text-[12px] font-['DM_Sans_Variable',system-ui,sans-serif] leading-4 text-text-tertiary">
                     {customEnd
                       ? customEnd.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
                       : 'End'}
@@ -265,20 +272,20 @@ export const DueDateFilter = ({
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-between py-2.5 px-4 bg-[#FAFAF8]">
+        <div className="flex items-center justify-between py-2.5 px-4 bg-surface">
           <button
             type="button"
             onClick={handleClear}
-            className="text-[12px] text-[#8A8A8A] font-['DM_Sans_Variable',system-ui,sans-serif] font-medium leading-4 hover:text-[#1A1A1A] transition-colors"
+            className="text-[12px] text-text-tertiary font-['DM_Sans_Variable',system-ui,sans-serif] font-medium leading-4 hover:text-foreground transition-colors"
           >
             Clear
           </button>
           <button
             type="button"
             onClick={() => setIsOpen(false)}
-            className="flex items-center rounded-sm py-[5px] px-3.5 gap-1 bg-[#1A1A1A] hover:bg-[#333] transition-colors"
+            className="flex items-center rounded-sm py-[5px] px-3.5 gap-1 bg-foreground hover:bg-foreground/80 transition-colors"
           >
-            <span className="text-[12px] text-white font-['DM_Sans_Variable',system-ui,sans-serif] font-semibold leading-4">
+            <span className="text-[12px] text-background font-['DM_Sans_Variable',system-ui,sans-serif] font-semibold leading-4">
               Apply
             </span>
           </button>
