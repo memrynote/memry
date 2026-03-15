@@ -1,10 +1,10 @@
 import { useMemo } from 'react'
-import { Plus } from 'lucide-react'
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { useDroppable } from '@dnd-kit/core'
 
 import { cn } from '@/lib/utils'
 import { SortableTaskRow } from '@/components/tasks/drag-drop'
+import { SectionDivider, type SectionDividerVariant } from '@/components/tasks/section-divider'
 import { startOfDay, addDays } from '@/lib/task-utils'
 import { createLookupContext, isTaskCompletedFast } from '@/lib/lookup-utils'
 import type { Task } from '@/data/sample-tasks'
@@ -32,26 +32,8 @@ interface TaskSectionProps {
   className?: string
 }
 
-const VARIANT_STYLES = {
-  overdue: {
-    label: 'text-[#C4654A]',
-    divider: 'bg-[#F0DEDA] dark:bg-[#5a3030]',
-    count: 'text-[#C4654A]',
-    borderColor: '#EF4444'
-  },
-  today: {
-    label: 'text-text-primary',
-    divider: 'bg-border',
-    count: 'text-text-secondary',
-    borderColor: undefined
-  },
-  default: {
-    label: 'text-text-secondary',
-    divider: 'bg-border',
-    count: 'text-text-tertiary',
-    borderColor: undefined
-  }
-} as const
+const toDividerVariant = (v: TaskSectionVariant): SectionDividerVariant =>
+  v === 'overdue' ? 'overdue' : 'default'
 
 export const TaskSection = ({
   id,
@@ -73,7 +55,7 @@ export const TaskSection = ({
   className
 }: TaskSectionProps): React.JSX.Element => {
   const sectionId = `section-${id}`
-  const styles = VARIANT_STYLES[variant]
+  const dividerVariant = toDividerVariant(variant)
 
   const getDefaultDate = (): Date | null => {
     const today = startOfDay(new Date())
@@ -112,43 +94,7 @@ export const TaskSection = ({
       className={cn('flex flex-col transition-all', isOver && 'bg-primary/5 rounded-sm', className)}
       aria-labelledby={sectionId}
     >
-      {/* Section Header — flat divider style */}
-      <div className="flex items-center pb-2 gap-2">
-        <span
-          className={cn(
-            'text-[12px] tracking-[0.04em] uppercase font-[family-name:var(--font-heading)] font-semibold leading-4 shrink-0',
-            styles.label
-          )}
-        >
-          {title}
-        </span>
-        <div className={cn('h-px grow shrink basis-0', styles.divider)} />
-        <div className="flex items-center gap-1 shrink-0">
-          {onAddTask && (
-            <button
-              type="button"
-              onClick={onAddTask}
-              className={cn(
-                'size-5 flex items-center justify-center rounded-sm',
-                'text-text-tertiary hover:text-text-secondary hover:bg-accent/50',
-                'transition-colors cursor-pointer',
-                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring'
-              )}
-              title={`Add task to ${title}`}
-            >
-              <Plus className="size-3.5" strokeWidth={2} />
-            </button>
-          )}
-          <span
-            className={cn(
-              'text-[11px] font-[family-name:var(--font-mono)] font-medium leading-3.5',
-              styles.count
-            )}
-          >
-            {count}
-          </span>
-        </div>
-      </div>
+      <SectionDivider label={title} count={count} variant={dividerVariant} onAddTask={onAddTask} />
 
       {/* Task list */}
       <SortableContext items={taskIds} strategy={verticalListSortingStrategy}>
