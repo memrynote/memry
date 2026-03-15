@@ -160,6 +160,10 @@ export const TaskRow = ({
 
       {/* Pills — shrink-0 keeps them pinned right after the flex-1 title */}
       <div className="flex items-center gap-[5px] shrink-0">
+        {task.isRepeating && task.repeatConfig && !isCompleted && (
+          <RepeatIndicator config={task.repeatConfig} size="sm" />
+        )}
+
         {!isCompleted && task.priority !== 'none' && priorityColor && (
           <InteractivePriorityBadge
             priority={task.priority}
