@@ -6,9 +6,7 @@ import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area'
 import { KanbanColumn, type KanbanColumnData } from './kanban-column'
 import {
   startOfDay,
-  isBefore,
   getDefaultTodoStatus,
-  getDefaultDoneStatus,
   addDays,
   formatDateKey,
   formatDayName
@@ -32,9 +30,9 @@ interface KanbanBoardProps {
   projects: Project[]
   selectedId: string
   selectedType: SelectionType
-  selectedTaskId: string | null
+  selectedTaskId?: string | null
   onUpdateTask: (taskId: string, updates: Partial<Task>) => void
-  onTaskClick: (taskId: string) => void
+  onTaskClick?: (taskId: string) => void
   onToggleComplete: (taskId: string) => void
   onDeleteTask: (taskId: string) => void
   onQuickAdd: (
@@ -199,14 +197,6 @@ export const KanbanBoard = ({
     [projects]
   )
 
-  // Check if a task is overdue
-  const isTaskOverdue = useCallback((task: Task): boolean => {
-    if (!task.dueDate) return false
-    const today = startOfDay(new Date())
-    const dueDate = startOfDay(task.dueDate)
-    return isBefore(dueDate, today)
-  }, [])
-
   // Drag-and-drop is handled by the shared DragProvider at app level.
 
   // Handle quick add from column
@@ -273,16 +263,6 @@ export const KanbanBoard = ({
     },
     [openQuickEdit]
   )
-
-  // Get statuses for the current project (for quick edit form)
-  const currentStatuses = useMemo(() => {
-    if (selectedType === 'project' && selectedProject) {
-      return selectedProject.statuses
-    }
-    // For "All Tasks" view, we don't have a single project's statuses
-    // Return empty array - the edit form will handle this
-    return []
-  }, [selectedType, selectedProject])
 
   // ========================================================================
   // LINEAR KEYBOARD NAVIGATION
@@ -540,7 +520,7 @@ export const KanbanBoard = ({
           e.preventDefault()
           if (focusedTaskId) {
             if (e.shiftKey) {
-              onTaskClick(focusedTaskId)
+              onTaskClick?.(focusedTaskId)
             } else {
               openQuickEdit(focusedTaskId)
             }
@@ -603,20 +583,22 @@ export const KanbanBoard = ({
     }
   }, [handleKeyDown])
 
+  const showProjectOnCards = selectedType === 'weekday'
+
   return (
     <div
       ref={boardRef}
       tabIndex={0}
-      className={cn('min-w-0 flex-1 overflow-hidden outline-none', className)}
+      className={cn(
+        'min-w-0 flex-1 overflow-hidden outline-none [font-synthesis:none] antialiased',
+        className
+      )}
       role="grid"
       aria-label="Kanban board. Use arrow keys to navigate cards."
     >
       <ScrollArea className="h-full" type="auto">
-        <div className="flex h-full gap-4 p-6 pb-10">
+        <div className="flex h-full gap-4 p-4 pb-8">
           {columns.map((column) => {
-            // Get the statuses for this column's context
-            // For project view: use the selected project's statuses
-            // For all tasks view: get the task's project statuses
             const columnStatuses =
               column.type === 'status' && selectedProject ? selectedProject.statuses : []
 
@@ -626,17 +608,18 @@ export const KanbanBoard = ({
                 column={column}
                 tasks={columnTasks[column.id] || []}
                 allTasks={tasks}
-                selectedTaskId={selectedTaskId}
+                projects={projects}
+                showProject={showProjectOnCards}
+                selectedTaskId={selectedTaskId ?? null}
                 focusedTaskId={focusedTaskId}
                 editingTaskId={editingTaskId}
                 statuses={columnStatuses}
                 getTaskIsCompleted={getTaskIsCompleted}
-                onTaskClick={onTaskClick}
+                onTaskClick={onTaskClick ?? (() => {})}
                 onTaskDoubleClick={handleTaskDoubleClick}
                 onQuickAdd={handleColumnQuickAdd}
                 onEditSave={handleEditSave}
                 onEditCancel={handleEditCancel}
-                // Selection props
                 isSelectionMode={isSelectionMode}
                 selectedIds={selectedIds}
                 onToggleSelect={onToggleSelect}
