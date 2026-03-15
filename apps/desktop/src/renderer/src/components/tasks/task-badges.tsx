@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { Repeat, Check } from 'lucide-react'
+import { Repeat } from 'lucide-react'
 
 import { cn } from '@/lib/utils'
 import {
@@ -10,7 +10,7 @@ import {
   type DueDateStatus
 } from '@/lib/task-utils'
 import { priorityConfig, type Priority } from '@/data/sample-tasks'
-import type { Project } from '@/data/tasks-data'
+import type { Project, Status } from '@/data/tasks-data'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { DatePickerCalendar } from './date-picker-calendar'
@@ -390,6 +390,12 @@ export const InteractiveProjectBadge = ({
   className
 }: InteractiveProjectBadgeProps): React.JSX.Element => {
   const [isOpen, setIsOpen] = React.useState(false)
+  const [projectSearch, setProjectSearch] = React.useState('')
+
+  const activeProjects = projects.filter((p) => !p.isArchived)
+  const filteredProjects = projectSearch
+    ? activeProjects.filter((p) => p.name.toLowerCase().includes(projectSearch.toLowerCase()))
+    : activeProjects
 
   // Safety check - if projects not provided, render static badge
   if (!projects || projects.length === 0) {
@@ -412,10 +418,315 @@ export const InteractiveProjectBadge = ({
     )
   }
 
-  const activeProjects = projects.filter((p) => !p.isArchived)
-
   const handleSelect = (projectId: string): void => {
     onProjectChange(projectId)
+    setIsOpen(false)
+    setProjectSearch('')
+  }
+
+  const handleTriggerClick = (e: React.MouseEvent): void => {
+    e.stopPropagation()
+  }
+
+  return (
+    <Popover open={isOpen} onOpenChange={setIsOpen}>
+      <PopoverTrigger asChild onClick={handleTriggerClick}>
+        <button
+          type="button"
+          className={cn(
+            'flex items-center rounded-sm py-0.5 px-2 gap-1 cursor-pointer transition-opacity',
+            'hover:opacity-80 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring',
+            fixedWidth && 'w-[120px] justify-start',
+            className
+          )}
+          style={{ backgroundColor: `${project.color}0F` }}
+          aria-label={`Project: ${project.name}. Click to change.`}
+        >
+          <div
+            className="w-[5px] h-[5px] rounded-full shrink-0"
+            style={{ backgroundColor: project.color }}
+          />
+          <div
+            className="text-[11px] font-['DM_Sans',system-ui,sans-serif] font-medium leading-3.5 truncate"
+            style={{ color: project.color }}
+          >
+            {project.name}
+          </div>
+        </button>
+      </PopoverTrigger>
+      <PopoverContent
+        className="w-[200px] p-0 rounded-[10px] bg-popover border-border shadow-lg"
+        align="start"
+        sideOffset={4}
+        onClick={handleTriggerClick}
+      >
+        <div className="flex flex-col p-1 [font-synthesis:none] antialiased">
+          <div className="flex items-center mb-1 py-2 px-3 gap-1.5 border-b border-border">
+            <svg
+              width="12"
+              height="12"
+              viewBox="0 0 12 12"
+              fill="none"
+              className="text-text-tertiary"
+            >
+              <circle cx="5.5" cy="5.5" r="3.5" stroke="currentColor" strokeWidth="1.2" />
+              <path
+                d="M8.5 8.5L11 11"
+                stroke="currentColor"
+                strokeWidth="1.2"
+                strokeLinecap="round"
+              />
+            </svg>
+            <input
+              type="text"
+              value={projectSearch}
+              onChange={(e) => setProjectSearch(e.target.value)}
+              placeholder="Search projects..."
+              className="flex-1 text-[12px] bg-transparent border-none outline-none placeholder:text-text-tertiary text-text-secondary leading-4"
+              onClick={(e) => e.stopPropagation()}
+            />
+          </div>
+          {filteredProjects.map((p) => {
+            const isSelected = p.id === project.id
+            return (
+              <button
+                key={p.id}
+                type="button"
+                onClick={() => handleSelect(p.id)}
+                className={cn(
+                  'flex items-center rounded-[7px] py-2 px-3 gap-2 transition-colors',
+                  'hover:bg-accent focus:outline-none'
+                )}
+                style={isSelected ? { backgroundColor: `${p.color}0F` } : undefined}
+              >
+                <div
+                  className="rounded-xs shrink-0 size-1.5"
+                  style={{ backgroundColor: p.color }}
+                />
+                <div
+                  className={cn(
+                    'text-[13px] leading-4',
+                    isSelected ? 'font-medium' : 'text-text-secondary'
+                  )}
+                  style={isSelected ? { color: p.color } : undefined}
+                >
+                  {p.name}
+                </div>
+                {isSelected && (
+                  <svg
+                    width="12"
+                    height="12"
+                    viewBox="0 0 12 12"
+                    fill="none"
+                    style={{ marginLeft: 'auto' }}
+                  >
+                    <path
+                      d="M3 6l2 2 4-4"
+                      stroke={p.color}
+                      strokeWidth="1.3"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                )}
+              </button>
+            )
+          })}
+        </div>
+      </PopoverContent>
+    </Popover>
+  )
+}
+
+// ============================================================================
+// INTERACTIVE PRIORITY BADGE (popover dropdown)
+// ============================================================================
+
+const PRIORITY_OPTIONS: { value: Priority; label: string; color: string; shortcut: string }[] = [
+  { value: 'urgent', label: 'Urgent', color: '#EF4444', shortcut: '1' },
+  { value: 'high', label: 'High', color: '#F97316', shortcut: '2' },
+  { value: 'medium', label: 'Medium', color: '#F59E0B', shortcut: '3' },
+  { value: 'low', label: 'Low', color: '#6B7280', shortcut: '4' },
+  { value: 'none', label: 'None', color: '', shortcut: '5' }
+]
+
+interface InteractivePriorityBadgeProps {
+  priority: Priority
+  onPriorityChange: (priority: Priority) => void
+  variant?: PriorityBadgeVariant
+  size?: 'sm' | 'md'
+  compact?: boolean
+  fixedWidth?: boolean
+  className?: string
+}
+
+export const InteractivePriorityBadge = ({
+  priority,
+  onPriorityChange,
+  variant: _variant = 'full',
+  size: _size = 'md',
+  compact = false,
+  fixedWidth = false,
+  className
+}: InteractivePriorityBadgeProps): React.JSX.Element => {
+  const [isOpen, setIsOpen] = React.useState(false)
+  const config = priorityConfig[priority]
+  const colorValue = config.color || '#9ca3af'
+
+  const compactLabels: Record<Priority, string> = {
+    none: 'None',
+    low: 'Low',
+    medium: 'Med',
+    high: 'High',
+    urgent: 'Urgent'
+  }
+  const displayLabel = compact ? compactLabels[priority] : config.label || 'None'
+
+  const handleSelect = (newPriority: Priority): void => {
+    onPriorityChange(newPriority)
+    setIsOpen(false)
+  }
+
+  const handleTriggerClick = (e: React.MouseEvent): void => {
+    e.stopPropagation()
+  }
+
+  const handleKeyDown = (e: React.KeyboardEvent): void => {
+    const option = PRIORITY_OPTIONS.find((o) => o.shortcut === e.key)
+    if (option) {
+      e.preventDefault()
+      handleSelect(option.value)
+    }
+  }
+
+  return (
+    <Popover open={isOpen} onOpenChange={setIsOpen}>
+      <PopoverTrigger asChild onClick={handleTriggerClick}>
+        <button
+          type="button"
+          className={cn(
+            'flex items-center rounded-sm py-0.5 px-2 gap-1 cursor-pointer transition-opacity',
+            'hover:opacity-80 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring',
+            fixedWidth && 'w-[70px] justify-start',
+            className
+          )}
+          style={{ backgroundColor: `${colorValue}14` }}
+          aria-label={`Priority: ${config.label || 'none'}. Click to change.`}
+        >
+          <div
+            className="w-[5px] h-[5px] rounded-full shrink-0"
+            style={{ backgroundColor: colorValue }}
+          />
+          <div
+            className="text-[11px] font-['DM_Sans',system-ui,sans-serif] font-medium leading-3.5"
+            style={{ color: colorValue }}
+          >
+            {displayLabel}
+          </div>
+        </button>
+      </PopoverTrigger>
+      <PopoverContent
+        className="w-auto p-0 rounded-[10px] bg-popover border-border shadow-lg"
+        align="start"
+        sideOffset={4}
+        onClick={handleTriggerClick}
+        onKeyDown={handleKeyDown}
+      >
+        <div className="flex flex-col p-1 [font-synthesis:none] antialiased">
+          {PRIORITY_OPTIONS.map((option) => {
+            const isSelected = option.value === priority
+            const isNone = option.value === 'none'
+            return (
+              <button
+                key={option.value}
+                type="button"
+                onClick={() => handleSelect(option.value)}
+                className={cn(
+                  'flex items-center rounded-[7px] py-2 px-3 gap-2 transition-colors',
+                  'hover:bg-accent focus:outline-none'
+                )}
+                style={isSelected && !isNone ? { backgroundColor: `${option.color}0F` } : undefined}
+              >
+                {isNone ? (
+                  <div className="rounded-full border border-border shrink-0 size-1.5" />
+                ) : (
+                  <div
+                    className="rounded-full shrink-0 size-1.5"
+                    style={{ backgroundColor: option.color }}
+                  />
+                )}
+                <div
+                  className={cn(
+                    'text-[13px] leading-4',
+                    isNone
+                      ? 'text-text-tertiary'
+                      : !isSelected
+                        ? 'text-text-secondary'
+                        : 'font-medium'
+                  )}
+                  style={isSelected && !isNone ? { color: option.color } : undefined}
+                >
+                  {option.label}
+                </div>
+                {isSelected && !isNone && (
+                  <svg
+                    width="12"
+                    height="12"
+                    viewBox="0 0 12 12"
+                    fill="none"
+                    style={{ marginLeft: 'auto' }}
+                  >
+                    <path
+                      d="M3 6l2 2 4-4"
+                      stroke={option.color}
+                      strokeWidth="1.3"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                )}
+                <div
+                  className={cn(
+                    "text-[10px] text-text-tertiary font-['JetBrains_Mono',monospace] leading-3",
+                    !(isSelected && !isNone) && 'ml-auto'
+                  )}
+                >
+                  {option.shortcut}
+                </div>
+              </button>
+            )
+          })}
+        </div>
+      </PopoverContent>
+    </Popover>
+  )
+}
+
+// ============================================================================
+// INTERACTIVE STATUS BADGE (popover dropdown)
+// ============================================================================
+
+interface InteractiveStatusBadgeProps {
+  statusId: string
+  statuses: Status[]
+  onStatusChange: (statusId: string) => void
+  className?: string
+}
+
+export const InteractiveStatusBadge = ({
+  statusId,
+  statuses,
+  onStatusChange,
+  className
+}: InteractiveStatusBadgeProps): React.JSX.Element => {
+  const [isOpen, setIsOpen] = React.useState(false)
+
+  const currentStatus = statuses.find((s) => s.id === statusId)
+  const statusColor = currentStatus?.color || '#6B7280'
+  const statusName = currentStatus?.name || 'Unknown'
+
+  const handleSelect = (newStatusId: string): void => {
+    onStatusChange(newStatusId)
     setIsOpen(false)
   }
 
@@ -429,141 +740,81 @@ export const InteractiveProjectBadge = ({
         <button
           type="button"
           className={cn(
-            'inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-xs',
-            'bg-muted text-text-secondary',
-            'hover:bg-accent hover:ring-1 hover:ring-primary/30 transition-all cursor-pointer',
-            'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-            fixedWidth && 'w-[120px] justify-start',
+            'flex items-center rounded-sm py-0.5 px-2 gap-1 cursor-pointer transition-opacity',
+            'hover:opacity-80 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring',
             className
           )}
-          aria-label={`Change project from ${project.name}`}
+          style={{ backgroundColor: `${statusColor}14` }}
+          aria-label={`Status: ${statusName}. Click to change.`}
         >
-          <span
-            className="size-2 shrink-0 rounded-full"
-            style={{ backgroundColor: project.color }}
-            aria-hidden="true"
+          <div
+            className="w-[5px] h-[5px] rounded-full shrink-0"
+            style={{ backgroundColor: statusColor }}
           />
-          <span className="truncate">{project.name}</span>
+          <div
+            className="text-[11px] font-['DM_Sans',system-ui,sans-serif] font-medium leading-3.5"
+            style={{ color: statusColor }}
+          >
+            {statusName}
+          </div>
         </button>
       </PopoverTrigger>
-      <PopoverContent className="w-[180px] p-1" align="start" onClick={handleTriggerClick}>
-        <div className="space-y-0.5">
-          <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground uppercase">
-            Move to Project
-          </div>
-          {activeProjects.map((p) => (
-            <button
-              key={p.id}
-              type="button"
-              onClick={() => handleSelect(p.id)}
-              className={cn(
-                'w-full flex items-center gap-2 rounded-sm px-2 py-1.5 text-sm transition-colors',
-                'hover:bg-accent focus:outline-none',
-                p.id === project.id && 'bg-accent font-medium'
-              )}
-            >
-              <span
-                className="size-2 shrink-0 rounded-full"
-                style={{ backgroundColor: p.color }}
-                aria-hidden="true"
-              />
-              <span className="truncate">{p.name}</span>
-              {p.id === project.id && <Check className="size-4 ml-auto text-primary" />}
-            </button>
-          ))}
+      <PopoverContent
+        className="w-auto p-0 rounded-[10px] bg-popover border-border shadow-lg"
+        align="start"
+        sideOffset={4}
+        onClick={handleTriggerClick}
+      >
+        <div className="flex flex-col p-1 [font-synthesis:none] antialiased">
+          {statuses.map((status) => {
+            const isSelected = status.id === statusId
+            return (
+              <button
+                key={status.id}
+                type="button"
+                onClick={() => handleSelect(status.id)}
+                className={cn(
+                  'flex items-center rounded-[7px] py-2 px-3 gap-2 transition-colors',
+                  'hover:bg-accent focus:outline-none'
+                )}
+                style={isSelected ? { backgroundColor: `${status.color}0F` } : undefined}
+              >
+                <div
+                  className="rounded-full shrink-0 size-1.5"
+                  style={{ backgroundColor: status.color }}
+                />
+                <div
+                  className={cn(
+                    'text-[13px] leading-4',
+                    isSelected ? 'font-medium' : 'text-text-secondary'
+                  )}
+                  style={isSelected ? { color: status.color } : undefined}
+                >
+                  {status.name}
+                </div>
+                {isSelected && (
+                  <svg
+                    width="12"
+                    height="12"
+                    viewBox="0 0 12 12"
+                    fill="none"
+                    style={{ marginLeft: 'auto' }}
+                  >
+                    <path
+                      d="M3 6l2 2 4-4"
+                      stroke={status.color}
+                      strokeWidth="1.3"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                )}
+              </button>
+            )
+          })}
         </div>
       </PopoverContent>
     </Popover>
-  )
-}
-
-// ============================================================================
-// INTERACTIVE PRIORITY BADGE (cycles through priorities on click)
-// ============================================================================
-
-/** Priority order for cycling */
-const priorityOrder: Priority[] = ['none', 'low', 'medium', 'high', 'urgent']
-
-interface InteractivePriorityBadgeProps {
-  priority: Priority
-  onPriorityChange: (priority: Priority) => void
-  variant?: PriorityBadgeVariant
-  size?: 'sm' | 'md'
-  /** Use compact short labels (Med instead of Medium) */
-  compact?: boolean
-  /** Use fixed width for grid alignment */
-  fixedWidth?: boolean
-  className?: string
-}
-
-export const InteractivePriorityBadge = ({
-  priority,
-  onPriorityChange,
-  variant = 'full',
-  size = 'md',
-  compact = false,
-  fixedWidth = false,
-  className
-}: InteractivePriorityBadgeProps): React.JSX.Element => {
-  const config = priorityConfig[priority]
-
-  /** Short labels for compact display */
-  const priorityShortLabels: Record<Priority, string | null> = {
-    none: 'None',
-    low: 'Low',
-    medium: 'Med',
-    high: 'High',
-    urgent: 'Urgent'
-  }
-
-  const handleClick = (e: React.MouseEvent): void => {
-    e.stopPropagation()
-    const currentIndex = priorityOrder.indexOf(priority)
-    const nextIndex = (currentIndex + 1) % priorityOrder.length
-    onPriorityChange(priorityOrder[nextIndex])
-  }
-
-  const displayLabel = compact ? priorityShortLabels[priority] : config.label || 'None'
-  const colorValue = config.color || '#9ca3af' // Gray for none
-
-  return (
-    <button
-      type="button"
-      onClick={handleClick}
-      className={cn(
-        'inline-flex items-center gap-1.5',
-        'hover:bg-accent hover:ring-1 hover:ring-primary/30 rounded-full px-1.5 py-0.5 transition-all cursor-pointer',
-        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-        size === 'sm' && 'text-xs',
-        size === 'md' && 'text-xs',
-        fixedWidth && 'w-[70px] justify-start',
-        className
-      )}
-      aria-label={`Change priority from ${config.label || 'none'}`}
-    >
-      {/* Priority dot */}
-      {(variant === 'dot' || variant === 'full') && (
-        <span
-          className={cn(
-            'shrink-0 rounded-full',
-            size === 'sm' && 'size-1.5',
-            size === 'md' && 'size-2'
-          )}
-          style={{ backgroundColor: colorValue }}
-          aria-hidden="true"
-        />
-      )}
-
-      {/* Priority label */}
-      {(variant === 'label' || variant === 'full') && (
-        <span
-          className={cn('font-medium', size === 'sm' && 'text-[10px]', size === 'md' && 'text-xs')}
-          style={{ color: colorValue }}
-        >
-          {displayLabel}
-        </span>
-      )}
-    </button>
   )
 }
 
@@ -587,7 +838,7 @@ export const InteractiveDueDateBadge = ({
   dueTime,
   onDateChange,
   isRepeating = false,
-  variant = 'default',
+  variant: _variant = 'default',
   fixedWidth = false,
   className
 }: InteractiveDueDateBadgeProps): React.JSX.Element => {
@@ -624,27 +875,12 @@ export const InteractiveDueDateBadge = ({
 
   const isOverdue = formatted?.status === 'overdue'
   const isToday = formatted?.status === 'today'
-  const showBackground = isOverdue || isToday
 
-  const badgeContent = (
-    <span
-      className={cn(
-        'inline-flex items-center gap-1 text-xs font-medium',
-        dueDateStatusStyles[formatted?.status || 'none'],
-        showBackground &&
-          variant === 'default' &&
-          cn('rounded-sm px-1.5 py-0.5', dueDateBackgroundStyles[formatted?.status || 'none'])
-      )}
-    >
-      {isRepeating && <Repeat className="size-3 shrink-0" aria-label="Repeating task" />}
-      <span className="truncate">{formatted?.label || 'No date'}</span>
-      {isOverdue && variant === 'default' && (
-        <span className="text-[10px] font-semibold uppercase tracking-wide opacity-80 shrink-0">
-          Overdue
-        </span>
-      )}
-    </span>
-  )
+  const dateColorClass = isOverdue
+    ? 'text-red-600 dark:text-red-400'
+    : isToday
+      ? 'text-amber-600 dark:text-amber-500'
+      : 'text-text-tertiary'
 
   return (
     <Popover open={isOpen} onOpenChange={setIsOpen}>
@@ -652,14 +888,25 @@ export const InteractiveDueDateBadge = ({
         <button
           type="button"
           className={cn(
-            'hover:bg-accent hover:ring-1 hover:ring-primary/30 rounded-sm px-1 py-0.5 transition-all cursor-pointer',
-            'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+            'flex items-center gap-1 cursor-pointer transition-opacity rounded-sm',
+            'hover:opacity-80 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring',
+            dateColorClass,
             fixedWidth && 'w-[110px] flex justify-end',
             className
           )}
-          aria-label={`Change due date from ${formatted?.label || 'no date'}`}
+          aria-label={`Due: ${formatted?.label || 'no date'}. Click to change.`}
         >
-          {badgeContent}
+          {isRepeating && <Repeat className="size-3 shrink-0" />}
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="none" className="shrink-0">
+            <path
+              d="M4 1v2M8 1v2M1.5 5h9M2 2.5h8a1 1 0 0 1 1 1v6.5a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1V3.5a1 1 0 0 1 1-1z"
+              stroke="currentColor"
+              strokeWidth="1.1"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+          <div className="text-[11px] leading-3.5">{formatted?.label || 'No date'}</div>
         </button>
       </PopoverTrigger>
       <PopoverContent className="w-[296px] p-3" align="end" onClick={handleTriggerClick}>
@@ -735,5 +982,6 @@ export default {
   StatusBadge,
   InteractiveProjectBadge,
   InteractivePriorityBadge,
+  InteractiveStatusBadge,
   InteractiveDueDateBadge
 }
