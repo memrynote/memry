@@ -147,9 +147,9 @@ function configureCsp(): void {
   const policy = [
     "default-src 'self' memry-file:",
     "script-src 'self'",
-    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+    "style-src 'self' 'unsafe-inline'",
     "img-src 'self' data: memry-file:",
-    "font-src 'self' data: https://fonts.gstatic.com",
+    "font-src 'self' data:",
     "connect-src 'self' memry-file: https://*.memrynote.com wss://*.memrynote.com http://127.0.0.1:*",
     "media-src 'self' memry-file:",
     "worker-src 'self' blob:",

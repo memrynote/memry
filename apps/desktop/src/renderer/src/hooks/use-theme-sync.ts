@@ -13,10 +13,10 @@ const FONT_SIZE_MAP = {
 
 const FONT_FAMILY_MAP = {
   system: '',
-  serif: "'Crimson Pro', Georgia, 'Times New Roman', serif",
+  serif: "'Crimson Pro Variable', Georgia, 'Times New Roman', serif",
   'sans-serif':
     'ui-sans-serif, -apple-system, "system-ui", "Segoe UI Variable Display", "Segoe UI", Helvetica, "Apple Color Emoji", "Noto Sans Arabic", "Noto Sans Hebrew", Arial, sans-serif, "Segoe UI Emoji", "Segoe UI Symbol"',
-  monospace: "'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace"
+  monospace: "'JetBrains Mono Variable', 'Fira Code', 'Cascadia Code', monospace"
 } as const
 
 export function useThemeSync(): void {
