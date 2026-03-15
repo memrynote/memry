@@ -28,7 +28,6 @@ interface ProjectsTabContentProps {
       statusId?: string | null
     }
   ) => void
-  onOpenModal: (prefillTitle: string) => void
   onProjectEdit?: (project: Project) => void
   onProjectArchive?: (project: Project) => void
   onProjectDelete?: (projectId: string) => void
@@ -54,7 +53,6 @@ export const ProjectsTabContent = ({
   onToggleSubtaskComplete,
   onTaskClick,
   onQuickAdd,
-  onOpenModal,
   onProjectEdit,
   onProjectArchive,
   onProjectDelete,
@@ -145,7 +143,6 @@ export const ProjectsTabContent = ({
             onToggleSubtaskComplete={onToggleSubtaskComplete}
             onTaskClick={onTaskClick}
             onQuickAdd={handleQuickAdd}
-            onOpenModal={onOpenModal}
             isSelectionMode={isSelectionMode}
             selectedIds={selectedIds}
             onToggleSelect={onToggleSelect}

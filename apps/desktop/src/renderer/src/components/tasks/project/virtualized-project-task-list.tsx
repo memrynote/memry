@@ -6,7 +6,6 @@ import { useDroppable } from '@dnd-kit/core'
 import { cn } from '@/lib/utils'
 import { SortableTaskRow } from '@/components/tasks/drag-drop'
 import { SortableParentTaskRow } from '@/components/tasks/sortable-parent-task-row'
-import { QuickAddInput } from '@/components/tasks/quick-add-input'
 import { TaskEmptyState } from '@/components/tasks/task-empty-state'
 import {
   flattenTasksByStatus,
@@ -43,7 +42,6 @@ interface VirtualizedProjectTaskListProps {
       projectId: string | null
     }
   ) => void
-  onOpenModal?: (prefillTitle: string) => void
   className?: string
   // Selection props
   isSelectionMode?: boolean
@@ -210,15 +208,17 @@ const VirtualItemRenderer = memo(
           <SortableParentTaskRow
             task={parentItem.task}
             project={parentItem.project}
+            projects={[parentItem.project]}
             sectionId={`status-${parentItem.sectionId}`}
             subtasks={parentItem.subtasks}
             progress={progress}
             isExpanded={isExpanded}
             isCompleted={isCompleted}
             isSelected={selectedTaskId === parentItem.task.id}
-            showProjectBadge={false} // Don't show project badge in project view
+            showProjectBadge={false}
             onToggleExpand={onToggleExpand}
             onToggleComplete={onToggleComplete}
+            onUpdateTask={onUpdateTask}
             onToggleSubtaskComplete={onToggleSubtaskComplete}
             onClick={onTaskClick}
             isSelectionMode={isSelectionMode}
@@ -252,7 +252,6 @@ export const VirtualizedProjectTaskList = ({
   onToggleSubtaskComplete,
   onTaskClick,
   onQuickAdd,
-  onOpenModal,
   className,
   isSelectionMode = false,
   selectedIds,
@@ -323,9 +322,6 @@ export const VirtualizedProjectTaskList = ({
   if (isEmpty && virtualItems.length === 0) {
     return (
       <div className={cn('flex-1 overflow-auto pt-4', className)}>
-        <div className="mb-4">
-          <QuickAddInput onAdd={handleQuickAdd} onOpenModal={onOpenModal} projects={[project]} />
-        </div>
         <TaskEmptyState
           variant="project"
           projectName={project.name}
@@ -337,12 +333,6 @@ export const VirtualizedProjectTaskList = ({
 
   return (
     <div className={cn('flex flex-1 flex-col overflow-hidden', className)}>
-      {/* Quick Add Input - fixed at top */}
-      <div className="pt-4">
-        <QuickAddInput onAdd={handleQuickAdd} onOpenModal={onOpenModal} projects={[project]} />
-      </div>
-
-      {/* Virtualized content */}
       <SortableContext items={allTaskIds} strategy={verticalListSortingStrategy}>
         <div ref={parentRef} className="flex-1 overflow-auto pt-4" style={{ contain: 'strict' }}>
           <div

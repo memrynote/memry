@@ -7,10 +7,10 @@ import { ProjectsTabContent } from '@/components/tasks/projects/projects-tab-con
 import { ProjectSelector } from '@/components/tasks/projects/project-selector'
 import { AddTaskModal } from '@/components/tasks/add-task-modal'
 import { ProjectModal } from '@/components/tasks/project-modal'
-import { TaskDetailPanel } from '@/components/tasks/task-detail-panel'
 import { KanbanBoard } from '@/components/tasks/kanban'
 import { CalendarView } from '@/components/tasks/calendar'
-import { TodayView } from '@/components/tasks/today'
+import { QuickAddInput } from '@/components/tasks/quick-add-input'
+import { TaskDetailDrawer } from '@/components/tasks/task-detail-drawer'
 import {
   ClearCompletedMenu,
   ArchiveConfirmDialog,
@@ -35,7 +35,6 @@ import {
   getTasksOlderThan,
   formatDateShort,
   getTodayTasks,
-  getTodayWithWeekTasks,
   countActiveFilters,
   scopeTasksByProject
 } from '@/lib/task-utils'
@@ -48,9 +47,8 @@ import {
   type CompletionFilterType
 } from '@/data/tasks-data'
 import { createDefaultTask, generateTaskId, type Task, type Priority } from '@/data/sample-tasks'
-import { addDays } from '@/lib/task-utils'
+import { addDays } from '@/lib/task-utils' // used by handleBulkChangeDueDate
 import { calculateNextOccurrence, shouldCreateNextOccurrence } from '@/lib/repeat-utils'
-import type { StopRepeatOption } from '@/components/tasks/stop-repeating-dialog'
 import {
   useFilterState,
   useSavedFilters,
@@ -149,15 +147,14 @@ export const TasksPage = ({
   // Track selected project for "All projects" filter dropdown
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null)
 
+  // Task detail drawer state
+  const [detailTaskId, setDetailTaskId] = useState<string | null>(null)
+
   // Modal states
   const [isAddTaskModalOpen, setIsAddTaskModalOpen] = useState(false)
   const [addTaskPrefillTitle, setAddTaskPrefillTitle] = useState('')
   const [addTaskPrefillDueDate, setAddTaskPrefillDueDate] = useState<Date | null>(null)
   const [addTaskPrefillProjectId, setAddTaskPrefillProjectId] = useState<string | null>(null)
-
-  // Task Detail Panel states
-  const [isDetailPanelOpen, setIsDetailPanelOpen] = useState(false)
-  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null)
 
   // Completed/Archive view states
   const [showArchivedView, setShowArchivedView] = useState(false)
@@ -189,6 +186,31 @@ export const TasksPage = ({
 
   // Saved filters
   const { savedFilters, saveFilter, deleteFilter: deleteSavedFilter } = useSavedFilters()
+  const [activeSavedFilterId, setActiveSavedFilterId] = useState<string | null>(null)
+
+  const updateFiltersAndClearSaved = useCallback(
+    (updates: Partial<TaskFilters>) => {
+      setActiveSavedFilterId(null)
+      updateFilters(updates)
+    },
+    [updateFilters]
+  )
+
+  const clearFiltersAndClearSaved = useCallback(() => {
+    setActiveSavedFilterId(null)
+    clearFilters()
+  }, [clearFilters])
+
+  const handleTabChange = useCallback(
+    (tab: TasksInternalTab) => {
+      if (activeSavedFilterId) {
+        setActiveSavedFilterId(null)
+        clearFilters()
+      }
+      setActiveInternalTab(tab)
+    },
+    [activeSavedFilterId, clearFilters]
+  )
 
   // Bulk delete dialog state
   const [isBulkDeleteDialogOpen, setIsBulkDeleteDialogOpen] = useState(false)
@@ -210,13 +232,9 @@ export const TasksPage = ({
     return null
   }, [selectedId, selectedType, projects])
 
-  // Derived: available views based on internal tab
   const availableViews = useMemo((): ViewMode[] => {
     if (activeInternalTab === 'today' || activeInternalTab === 'done') {
       return ['list']
-    }
-    if (activeInternalTab === 'thisWeek') {
-      return ['list', 'kanban']
     }
     return ['list', 'kanban', 'calendar']
   }, [activeInternalTab])
@@ -245,18 +263,15 @@ export const TasksPage = ({
   // Check if we should show the filter empty state
   const showFilterEmptyState = filtersActive && filteredCount === 0 && totalCount > 0
 
-  // Visible task IDs for selection (used by multi-select)
-  // Scope to what's actually rendered in the active internal tab.
+  // Derived: today tab tasks (overdue + today, flat)
+  const todayFilteredTasks = useMemo(() => {
+    const { overdue, today } = getTodayTasks(filteredTasks, projects)
+    return [...overdue, ...today]
+  }, [filteredTasks, projects])
+
   const selectionScopeTasks = useMemo(() => {
     if (activeInternalTab === 'today') {
-      const { overdue, today } = getTodayTasks(filteredTasks, projects)
-      return [...overdue, ...today]
-    }
-
-    if (activeInternalTab === 'thisWeek') {
-      const { overdue, today, weekByDay } = getTodayWithWeekTasks(filteredTasks, projects)
-      const weekTasks = Array.from(weekByDay.values()).flat()
-      return [...overdue, ...today, ...weekTasks]
+      return todayFilteredTasks
     }
 
     if (activeInternalTab === 'done') {
@@ -334,43 +349,33 @@ export const TasksPage = ({
     const allActive = getFilteredTasks(scopedTasks, 'all', 'view', projects)
     const todayResult = getTodayTasks(scopedTasks, projects)
     const todayCount = todayResult.overdue.length + todayResult.today.length
-
-    const now = startOfDay(new Date())
-    const weekEnd = addDays(now, 7)
-    const thisWeekCount = allActive.filter((t) => {
-      if (!t.dueDate) return false
-      return t.dueDate < weekEnd
-    }).length
-
     const doneCount = getCompletedTasks(scopedTasks).length
 
     return {
       today: todayCount,
-      thisWeek: thisWeekCount,
       all: allActive.length,
       done: doneCount
     }
   }, [tasks, projects, selectedProjectId])
 
-  // Derived: selected task for detail panel
-  const selectedTask = useMemo(() => {
-    if (!selectedTaskId) return null
-    return tasks.find((t) => t.id === selectedTaskId) || null
-  }, [selectedTaskId, tasks])
-
-  // Derived: is selected task completed
-  const isSelectedTaskCompleted = useMemo(() => {
-    if (!selectedTask) return false
-    const project = projects.find((p) => p.id === selectedTask.projectId)
-    if (!project) return false
-    const status = project.statuses.find((s) => s.id === selectedTask.statusId)
-    return status?.type === 'done'
-  }, [selectedTask, projects])
-
   // Visibility constants
   const showFilterBar = true
 
   // ========== HANDLERS ==========
+
+  // Task detail drawer
+  const detailTask = useMemo(
+    () => (detailTaskId ? (tasks.find((t) => t.id === detailTaskId) ?? null) : null),
+    [detailTaskId, tasks]
+  )
+
+  const handleTaskClick = useCallback((taskId: string) => {
+    setDetailTaskId((prev) => (prev === taskId ? null : taskId))
+  }, [])
+
+  const handleCloseDetail = useCallback(() => {
+    setDetailTaskId(null)
+  }, [])
 
   // Selection change handler (kept for interface compatibility)
   const _handleSelectView = (id: string): void => {
@@ -706,53 +711,6 @@ export const TasksPage = ({
     [tasks, projects, contextUpdateTask, contextAddTask]
   )
 
-  const handleSkipOccurrence = useCallback(
-    (taskId: string): void => {
-      const task = tasks.find((t) => t.id === taskId)
-      if (!task || !task.isRepeating || !task.repeatConfig || !task.dueDate) return
-
-      const nextDate = calculateNextOccurrence(task.dueDate, task.repeatConfig)
-      if (nextDate) {
-        // T-GAP-001: Use contextUpdateTask to persist to database
-        contextUpdateTask(taskId, { dueDate: nextDate })
-        toast.success('Occurrence skipped', {
-          description: `Moved to ${formatDateShort(nextDate)}`
-        })
-      }
-    },
-    [tasks, contextUpdateTask]
-  )
-
-  const handleStopRepeating = useCallback(
-    (taskId: string, option: StopRepeatOption): void => {
-      const task = tasks.find((t) => t.id === taskId)
-      if (!task) return
-
-      if (option === 'delete') {
-        // T-GAP-003: Use contextDeleteTask to persist to database
-        contextDeleteTask(taskId)
-        setIsDetailPanelOpen(false)
-        setSelectedTaskId(null)
-        toast.success('Repeating task deleted')
-      } else {
-        // T-GAP-002: Use contextUpdateTask to persist to database
-        contextUpdateTask(taskId, { isRepeating: false, repeatConfig: null })
-        toast.success('Task will no longer repeat')
-      }
-    },
-    [tasks, contextDeleteTask, contextUpdateTask]
-  )
-
-  const handleTaskClick = useCallback((taskId: string): void => {
-    setSelectedTaskId(taskId)
-    setIsDetailPanelOpen(true)
-  }, [])
-
-  const handleCloseDetailPanel = useCallback((): void => {
-    setIsDetailPanelOpen(false)
-    setSelectedTaskId(null)
-  }, [])
-
   const handleUpdateTask = useCallback(
     (taskId: string, updates: Partial<Task>): void => {
       // Use context updateTask to persist to database
@@ -768,10 +726,7 @@ export const TasksPage = ({
 
       const deletedTask = { ...task }
 
-      // Use context deleteTask to persist to database
       contextDeleteTask(taskId)
-      setIsDetailPanelOpen(false)
-      setSelectedTaskId(null)
 
       // T051-T054: Register undo for Cmd+Z support
       const undoFn = () => {
@@ -789,33 +744,6 @@ export const TasksPage = ({
       })
     },
     [tasks, contextDeleteTask, contextAddTask, registerUndo]
-  )
-
-  const handleDuplicateTask = useCallback(
-    async (taskId: string): Promise<void> => {
-      const task = tasks.find((t) => t.id === taskId)
-      if (!task) return
-
-      try {
-        // Use backend service which handles subtask duplication
-        const result = await tasksService.duplicate(taskId)
-
-        if (result.success && result.task) {
-          toast.success('Task duplicated', {
-            description: `"${result.task.title}" has been created.`
-          })
-          setSelectedTaskId(result.task.id)
-        } else {
-          toast.error('Failed to duplicate task', {
-            description: extractErrorMessage(result.error, 'Unknown error')
-          })
-        }
-      } catch (error) {
-        log.error('Failed to duplicate task:', error)
-        toast.error(extractErrorMessage(error, 'Failed to duplicate task'))
-      }
-    },
-    [tasks]
   )
 
   const handleAddTaskWithDate = useCallback(
@@ -1085,20 +1013,30 @@ export const TasksPage = ({
   const handleDeleteSavedFilter = useCallback(
     (filterId: string): void => {
       deleteSavedFilter(filterId)
+      if (activeSavedFilterId === filterId) {
+        setActiveSavedFilterId(null)
+        clearFilters()
+      }
       toast.success('Filter deleted')
     },
-    [deleteSavedFilter]
+    [deleteSavedFilter, activeSavedFilterId, clearFilters]
   )
 
   const handleApplySavedFilter = useCallback(
     (savedFilter: SavedFilter): void => {
+      if (activeSavedFilterId === savedFilter.id) {
+        clearFilters()
+        setActiveSavedFilterId(null)
+        return
+      }
       updateFilters(savedFilter.filters)
       if (savedFilter.sort) {
         updateSort(savedFilter.sort)
       }
+      setActiveSavedFilterId(savedFilter.id)
       toast.success(`Applied "${savedFilter.name}"`)
     },
-    [updateFilters, updateSort]
+    [activeSavedFilterId, updateFilters, updateSort, clearFilters]
   )
 
   // Get statuses for the current project (for Kanban filter)
@@ -1111,82 +1049,165 @@ export const TasksPage = ({
 
   return (
     <>
-      <div className={cn('relative h-full', className)}>
+      <div className={cn('h-full flex overflow-hidden', className)}>
         {/* Main Content Area */}
-        <main className="absolute inset-0 flex flex-col overflow-hidden py-6 px-6">
-          {/* Page Header — tabs + actions on one row */}
-          <div className="flex items-center gap-4 shrink-0 min-w-0">
+        <main className="flex-1 min-w-0 flex flex-col overflow-hidden py-6 px-6">
+          {/* Page Header — compact single-row toolbar */}
+          <div className="flex items-center gap-2.5 shrink-0 min-w-0 py-2.5 border-b border-border [font-synthesis:none] text-[12px] leading-4 antialiased">
             <TasksTabBar
               activeTab={activeInternalTab}
-              onTabChange={setActiveInternalTab}
+              onTabChange={handleTabChange}
               counts={tabCounts}
-              activeView={activeView}
-              availableViews={availableViews}
-              onViewChange={setActiveView}
               projects={projects}
               selectedProjectId={selectedProjectId}
               onProjectChange={setSelectedProjectId}
-              className="border-0 py-0"
+              onProjectEdit={handleEditProject}
+              savedFilters={savedFilters}
+              activeSavedFilterId={activeSavedFilterId}
+              onApplySavedFilter={handleApplySavedFilter}
+              onDeleteSavedFilter={handleDeleteSavedFilter}
             />
-            <div className="grow" />
-            <div className="flex items-center shrink-0 gap-1">
-              <FilterDropdown
-                open={isFilterDropdownOpen}
-                onOpenChange={setIsFilterDropdownOpen}
-                filters={filters}
-                onUpdateFilters={updateFilters}
-                onClearFilters={clearFilters}
-                tasks={baseFilteredTasks}
-                projects={projects}
-                savedFilters={savedFilters}
-                onDeleteSavedFilter={handleDeleteSavedFilter}
-                onApplySavedFilter={handleApplySavedFilter}
-                onSaveFilter={(name) => handleSaveFilter(name, filters, sort)}
-                showStatusFilter={activeView === 'kanban'}
-                statuses={currentProjectStatuses}
+
+            {/* Inline Quick-Add Input */}
+            <QuickAddInput
+              compact
+              onAdd={handleQuickAdd}
+              onOpenModal={handleOpenAddTaskModal}
+              projects={projects}
+            />
+
+            {/* Filter Button */}
+            <FilterDropdown
+              open={isFilterDropdownOpen}
+              onOpenChange={setIsFilterDropdownOpen}
+              filters={filters}
+              onUpdateFilters={updateFiltersAndClearSaved}
+              onClearFilters={clearFiltersAndClearSaved}
+              tasks={baseFilteredTasks}
+              projects={projects}
+              savedFilters={savedFilters}
+              onDeleteSavedFilter={handleDeleteSavedFilter}
+              onApplySavedFilter={handleApplySavedFilter}
+              onSaveFilter={(name) => handleSaveFilter(name, filters, sort)}
+              showStatusFilter={activeView === 'kanban'}
+              statuses={currentProjectStatuses}
+            >
+              <button
+                type="button"
+                className={cn(
+                  'flex items-center shrink-0 rounded-[5px] py-1 px-2 gap-1 border transition-colors',
+                  isFilterDropdownOpen || filtersActive
+                    ? 'border-foreground/20 bg-foreground/5 text-text-primary'
+                    : 'border-border text-text-secondary hover:bg-surface-active/50'
+                )}
+              >
+                <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
+                  <path
+                    d="M2 3h9M3.5 6.5h6M5 10h3"
+                    stroke="currentColor"
+                    strokeWidth="1.1"
+                    strokeLinecap="round"
+                  />
+                </svg>
+                <span className="text-[11px] leading-3.5">Filter</span>
+                {filtersActive && (
+                  <span className="flex items-center justify-center size-[14px] rounded-full bg-foreground text-background text-[9px] font-bold">
+                    {countActiveFilters(filters)}
+                  </span>
+                )}
+              </button>
+            </FilterDropdown>
+
+            {/* Sort Button */}
+            <SortDropdown sort={sort} onChange={updateSort} />
+
+            {/* View Mode Switcher */}
+            {availableViews.length > 1 && (
+              <div
+                className="flex items-center shrink-0 rounded-[5px] overflow-clip border border-border"
+                role="radiogroup"
+                aria-label="View mode"
               >
                 <button
                   type="button"
+                  role="radio"
+                  aria-checked={activeView === 'list'}
+                  aria-label="List view"
+                  onClick={() => setActiveView('list')}
                   className={cn(
-                    'flex items-center rounded-sm p-1.5 gap-1.5 border transition-colors',
-                    isFilterDropdownOpen || filtersActive
-                      ? 'border-foreground/20 bg-foreground/5 text-text-primary'
-                      : 'border-border text-text-secondary hover:bg-accent/50'
+                    'flex items-center justify-center w-[26px] h-6 shrink-0 transition-colors',
+                    activeView === 'list'
+                      ? 'bg-foreground/10 text-foreground'
+                      : 'text-text-tertiary hover:text-text-secondary'
                   )}
                 >
-                  <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                  <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
                     <path
-                      d="M1.5 3.5h11M3.5 7h7M5.5 10.5h3"
+                      d="M2 3.5h9M2 6.5h9M2 9.5h9"
                       stroke="currentColor"
-                      strokeWidth="1.3"
+                      strokeWidth="1.1"
                       strokeLinecap="round"
-                      className="text-text-tertiary"
                     />
                   </svg>
-                  {filtersActive && (
-                    <span className="flex items-center justify-center size-[18px] rounded-full bg-foreground text-background text-[10px] font-bold">
-                      {countActiveFilters(filters)}
-                    </span>
-                  )}
                 </button>
-              </FilterDropdown>
-              <SortDropdown sort={sort} onChange={updateSort} />
-            </div>
-            <button
-              type="button"
-              onClick={handleAddTask}
-              className="flex items-center shrink-0 whitespace-nowrap rounded-sm py-1.5 px-3.5 gap-1.5 bg-foreground text-background hover:opacity-90 transition-opacity"
-            >
-              <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-                <path
-                  d="M6 2v8M2 6h8"
-                  stroke="currentColor"
-                  strokeWidth="1.5"
-                  strokeLinecap="round"
-                />
-              </svg>
-              <span className="text-[13px] font-medium leading-4">Add task</span>
-            </button>
+                {availableViews.includes('kanban') && (
+                  <button
+                    type="button"
+                    role="radio"
+                    aria-checked={activeView === 'kanban'}
+                    aria-label="Kanban view"
+                    onClick={() => setActiveView('kanban')}
+                    className={cn(
+                      'flex items-center justify-center w-[26px] h-6 shrink-0 transition-colors',
+                      activeView === 'kanban'
+                        ? 'bg-foreground/10 text-foreground'
+                        : 'text-text-tertiary hover:text-text-secondary'
+                    )}
+                  >
+                    <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
+                      <rect x="1.5" y="2" width="2.5" height="9" rx="0.75" stroke="currentColor" />
+                      <rect
+                        x="5.25"
+                        y="2"
+                        width="2.5"
+                        height="6.5"
+                        rx="0.75"
+                        stroke="currentColor"
+                      />
+                      <rect x="9" y="2" width="2.5" height="4.5" rx="0.75" stroke="currentColor" />
+                    </svg>
+                  </button>
+                )}
+                {availableViews.includes('calendar') && (
+                  <button
+                    type="button"
+                    role="radio"
+                    aria-checked={activeView === 'calendar'}
+                    aria-label="Calendar view"
+                    onClick={() => setActiveView('calendar')}
+                    className={cn(
+                      'flex items-center justify-center w-[26px] h-6 shrink-0 transition-colors',
+                      activeView === 'calendar'
+                        ? 'bg-foreground/10 text-foreground'
+                        : 'text-text-tertiary hover:text-text-secondary'
+                    )}
+                  >
+                    <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
+                      <rect
+                        x="1.5"
+                        y="2.5"
+                        width="10"
+                        height="8.5"
+                        rx="1.25"
+                        stroke="currentColor"
+                      />
+                      <path d="M1.5 5h10" stroke="currentColor" />
+                      <path d="M4 1.5v2M9 1.5v2" stroke="currentColor" strokeLinecap="round" />
+                    </svg>
+                  </button>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Active Filter Chips */}
@@ -1194,8 +1215,8 @@ export const TasksPage = ({
             <FilterBar
               filters={filters}
               projects={projects}
-              onUpdateFilters={updateFilters}
-              onClearFilters={clearFilters}
+              onUpdateFilters={updateFiltersAndClearSaved}
+              onClearFilters={clearFiltersAndClearSaved}
             />
           )}
 
@@ -1232,20 +1253,28 @@ export const TasksPage = ({
             />
           )}
 
-          {/* Content Body - Today Tab */}
+          {/* Content Body - Today Tab (flat listing of overdue + today tasks) */}
           {activeInternalTab === 'today' && (
-            <div className="relative flex flex-1 flex-col overflow-hidden">
-              <TodayView
-                tasks={filteredTasks}
+            <div className="flex flex-1 flex-col overflow-hidden">
+              <TaskList
+                tasks={todayFilteredTasks}
                 projects={projects}
-                selectedTaskId={selectedTaskId}
+                selectedId="today"
+                selectedType="view"
                 onToggleComplete={handleToggleComplete}
                 onUpdateTask={handleUpdateTask}
-                onTaskClick={handleTaskClick}
+                onToggleSubtaskComplete={subtaskManagement.handleCompleteSubtask}
                 onQuickAdd={handleQuickAdd}
-                onOpenModal={handleOpenAddTaskModal}
-                onAddTaskWithDate={handleAddTaskWithDate}
-                showWeek={false}
+                onTaskClick={handleTaskClick}
+                selectedTaskId={detailTaskId}
+                isSelectionMode={selection.isSelectionMode}
+                selectedIds={selection.selectedIds}
+                onToggleSelect={toggleTask}
+                onShiftSelect={selectRange}
+                onReorderSubtasks={subtaskManagement.handleReorderSubtasks}
+                onAddSubtask={subtaskManagement.handleAddSubtask}
+                sortField={sort.field}
+                sortDirection={sort.direction}
               />
             </div>
           )}
@@ -1257,7 +1286,7 @@ export const TasksPage = ({
                 <FilterEmptyState
                   filters={filters}
                   projects={projects}
-                  onClearFilters={clearFilters}
+                  onClearFilters={clearFiltersAndClearSaved}
                 />
               ) : (
                 <TaskList
@@ -1265,66 +1294,20 @@ export const TasksPage = ({
                   projects={projects}
                   selectedId="all"
                   selectedType="view"
-                  selectedTaskId={selectedTaskId}
                   onToggleComplete={handleToggleComplete}
                   onUpdateTask={handleUpdateTask}
                   onToggleSubtaskComplete={subtaskManagement.handleCompleteSubtask}
-                  onTaskClick={handleTaskClick}
                   onQuickAdd={handleQuickAdd}
-                  onOpenModal={handleOpenAddTaskModal}
+                  onTaskClick={handleTaskClick}
+                  selectedTaskId={detailTaskId}
                   isSelectionMode={selection.isSelectionMode}
                   selectedIds={selection.selectedIds}
                   onToggleSelect={toggleTask}
                   onShiftSelect={selectRange}
                   onReorderSubtasks={subtaskManagement.handleReorderSubtasks}
                   onAddSubtask={subtaskManagement.handleAddSubtask}
-                />
-              )}
-            </div>
-          )}
-
-          {/* Content Body - This Week Tab (List) */}
-          {activeInternalTab === 'thisWeek' && activeView === 'list' && (
-            <div className="relative flex flex-1 flex-col overflow-hidden">
-              <TodayView
-                tasks={filteredTasks}
-                projects={projects}
-                selectedTaskId={selectedTaskId}
-                onToggleComplete={handleToggleComplete}
-                onUpdateTask={handleUpdateTask}
-                onTaskClick={handleTaskClick}
-                onQuickAdd={handleQuickAdd}
-                onOpenModal={handleOpenAddTaskModal}
-                onAddTaskWithDate={handleAddTaskWithDate}
-                showWeek={true}
-              />
-            </div>
-          )}
-
-          {/* Kanban View - This Week Tab */}
-          {activeInternalTab === 'thisWeek' && activeView === 'kanban' && (
-            <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
-              {showFilterEmptyState ? (
-                <FilterEmptyState
-                  filters={filters}
-                  projects={projects}
-                  onClearFilters={clearFilters}
-                />
-              ) : (
-                <KanbanBoard
-                  tasks={filteredTasks}
-                  projects={projects}
-                  selectedId="thisWeek"
-                  selectedType="weekday"
-                  selectedTaskId={selectedTaskId}
-                  onUpdateTask={handleUpdateTask}
-                  onTaskClick={handleTaskClick}
-                  onToggleComplete={handleToggleComplete}
-                  onDeleteTask={handleDeleteTask}
-                  onQuickAdd={handleQuickAdd}
-                  isSelectionMode={selection.isSelectionMode}
-                  selectedIds={selection.selectedIds}
-                  onToggleSelect={toggleTask}
+                  sortField={sort.field}
+                  sortDirection={sort.direction}
                 />
               )}
             </div>
@@ -1338,13 +1321,12 @@ export const TasksPage = ({
                 projects={projects}
                 selectedId="completed"
                 selectedType="view"
-                selectedTaskId={selectedTaskId}
                 onToggleComplete={handleToggleComplete}
                 onUpdateTask={handleUpdateTask}
                 onToggleSubtaskComplete={subtaskManagement.handleCompleteSubtask}
-                onTaskClick={handleTaskClick}
                 onQuickAdd={handleQuickAdd}
-                onOpenModal={handleOpenAddTaskModal}
+                onTaskClick={handleTaskClick}
+                selectedTaskId={detailTaskId}
                 isSelectionMode={selection.isSelectionMode}
                 selectedIds={selection.selectedIds}
                 onToggleSelect={toggleTask}
@@ -1362,7 +1344,7 @@ export const TasksPage = ({
                 <FilterEmptyState
                   filters={filters}
                   projects={projects}
-                  onClearFilters={clearFilters}
+                  onClearFilters={clearFiltersAndClearSaved}
                 />
               ) : (
                 <KanbanBoard
@@ -1370,12 +1352,11 @@ export const TasksPage = ({
                   projects={projects}
                   selectedId="all"
                   selectedType="view"
-                  selectedTaskId={selectedTaskId}
                   onUpdateTask={handleUpdateTask}
-                  onTaskClick={handleTaskClick}
                   onToggleComplete={handleToggleComplete}
                   onDeleteTask={handleDeleteTask}
                   onQuickAdd={handleQuickAdd}
+                  onTaskClick={handleTaskClick}
                   isSelectionMode={selection.isSelectionMode}
                   selectedIds={selection.selectedIds}
                   onToggleSelect={toggleTask}
@@ -1393,9 +1374,9 @@ export const TasksPage = ({
                 selectedId="all"
                 selectedType="view"
                 onUpdateTask={handleUpdateTask}
-                onTaskClick={handleTaskClick}
                 onAddTaskWithDate={handleAddTaskWithDate}
                 onToggleComplete={handleToggleComplete}
+                onTaskClick={handleTaskClick}
                 isSelectionMode={selection.isSelectionMode}
                 selectedIds={selection.selectedIds}
                 onToggleSelect={toggleTask}
@@ -1403,6 +1384,18 @@ export const TasksPage = ({
             </div>
           )}
         </main>
+
+        {/* Task Detail Drawer */}
+        <TaskDetailDrawer
+          task={detailTask}
+          isOpen={!!detailTaskId}
+          onClose={handleCloseDetail}
+          tasks={tasks}
+          projects={projects}
+          onToggleComplete={handleToggleComplete}
+          onUpdateTask={handleUpdateTask}
+          onAddSubtask={subtaskManagement.handleAddSubtask}
+        />
       </div>
 
       {/* Add Task Modal */}
@@ -1426,34 +1419,6 @@ export const TasksPage = ({
         onSave={handleSaveProject}
         onDelete={editingProject ? () => handleDeleteProject(editingProject.id) : undefined}
         project={editingProject}
-      />
-
-      {/* Task Detail Panel */}
-      <TaskDetailPanel
-        isOpen={isDetailPanelOpen}
-        task={selectedTask}
-        allTasks={tasks}
-        projects={projects}
-        isCompleted={isSelectedTaskCompleted}
-        onClose={handleCloseDetailPanel}
-        onUpdateTask={handleUpdateTask}
-        onToggleComplete={handleToggleComplete}
-        onDeleteTask={handleDeleteTask}
-        onDuplicateTask={handleDuplicateTask}
-        onSkipOccurrence={handleSkipOccurrence}
-        onStopRepeating={handleStopRepeating}
-        onAddSubtask={subtaskManagement.handleAddSubtask}
-        onBulkAddSubtasks={subtaskManagement.handleBulkAddSubtasks}
-        onUpdateSubtask={handleUpdateTask}
-        onToggleSubtaskComplete={subtaskManagement.handleCompleteSubtask}
-        onDeleteSubtask={subtaskManagement.handleDeleteSubtask}
-        onReorderSubtasks={subtaskManagement.handleReorderSubtasks}
-        onPromoteSubtask={subtaskManagement.handlePromoteToTask}
-        onCompleteAllSubtasks={subtaskManagement.handleCompleteAllSubtasks}
-        onMarkAllSubtasksIncomplete={subtaskManagement.handleMarkAllSubtasksIncomplete}
-        onOpenBulkDueDateDialog={subtaskManagement.openBulkDueDateDialog}
-        onOpenBulkPriorityDialog={subtaskManagement.openBulkPriorityDialog}
-        onOpenDeleteAllSubtasksDialog={subtaskManagement.openDeleteAllSubtasksDialog}
       />
 
       {/* Clear Completed Menu */}
