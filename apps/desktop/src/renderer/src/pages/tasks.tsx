@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useEffect, useRef } from 'react'
+import { useState, useMemo, useCallback, useEffect } from 'react'
 
 import { toast } from 'sonner'
 import { TaskList } from '@/components/tasks/task-list'
@@ -17,7 +17,12 @@ import {
   DeleteCompletedDialog,
   ArchivedView
 } from '@/components/tasks/completed'
-import { FilterBar, FilterEmptyState, type FilterBarRef } from '@/components/tasks/filters'
+import {
+  FilterBar,
+  FilterDropdown,
+  FilterEmptyState,
+  SortDropdown
+} from '@/components/tasks/filters'
 import { cn } from '@/lib/utils'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import {
@@ -30,7 +35,9 @@ import {
   getTasksOlderThan,
   formatDateShort,
   getTodayTasks,
-  countActiveFilters
+  getTodayWithWeekTasks,
+  countActiveFilters,
+  scopeTasksByProject
 } from '@/lib/task-utils'
 import {
   type Project,
@@ -163,9 +170,7 @@ export const TasksPage = ({
     'completed'
   )
 
-  // Filter bar ref + panel toggle
-  const filterBarRef = useRef<FilterBarRef>(null)
-  const [isFiltersPanelOpen, setIsFiltersPanelOpen] = useState(false)
+  const [isFilterDropdownOpen, setIsFilterDropdownOpen] = useState(false)
 
   // Filter state with persistence
   const {
@@ -207,12 +212,11 @@ export const TasksPage = ({
 
   // Derived: available views based on internal tab
   const availableViews = useMemo((): ViewMode[] => {
-    if (
-      activeInternalTab === 'today' ||
-      activeInternalTab === 'thisWeek' ||
-      activeInternalTab === 'done'
-    ) {
+    if (activeInternalTab === 'today' || activeInternalTab === 'done') {
       return ['list']
+    }
+    if (activeInternalTab === 'thisWeek') {
+      return ['list', 'kanban']
     }
     return ['list', 'kanban', 'calendar']
   }, [activeInternalTab])
@@ -224,44 +228,19 @@ export const TasksPage = ({
     }
   }, [availableViews, activeView])
 
-  // Derived: filtered tasks for current selection (base filter by view/project)
+  // Derived: filtered tasks for current selection, scoped by dropdown project
   const baseFilteredTasks = useMemo(() => {
-    return getFilteredTasks(tasks, selectedId, selectedType, projects)
-  }, [tasks, selectedId, selectedType, projects])
-
-  // Projects tab: scope tasks to selected project for filtering/counts
-  const projectsTabBaseTasks = useMemo(() => {
-    if (!selectedProjectId) return []
-    return getFilteredTasks(tasks, selectedProjectId, 'project', projects)
-  }, [tasks, selectedProjectId, projects])
-
-  // Project-scoped filter adjustments (used when project selected from dropdown)
-  const projectsTabFilters = useMemo(() => {
-    return filters
-  }, [filters])
+    const base = getFilteredTasks(tasks, selectedId, selectedType, projects)
+    return scopeTasksByProject(base, selectedProjectId)
+  }, [tasks, selectedId, selectedType, projects, selectedProjectId])
 
   // Apply advanced filters and sort to base filtered tasks
-  const {
-    filteredTasks: advancedFilteredTasks,
-    totalCount,
-    filteredCount
-  } = useFilteredAndSortedTasks({
+  const { filteredTasks, totalCount, filteredCount } = useFilteredAndSortedTasks({
     tasks: baseFilteredTasks,
     filters,
     sort,
     projects
   })
-
-  // Apply advanced filters and sort to selected project tasks (Projects tab)
-  const { filteredTasks: projectsTabFilteredTasks } = useFilteredAndSortedTasks({
-    tasks: projectsTabBaseTasks,
-    filters: projectsTabFilters,
-    sort,
-    projects
-  })
-
-  // Apply advanced filters for all selections (All/Today/Upcoming/Projects/Project)
-  const filteredTasks = advancedFilteredTasks
 
   // Check if we should show the filter empty state
   const showFilterEmptyState = filtersActive && filteredCount === 0 && totalCount > 0
@@ -274,12 +253,18 @@ export const TasksPage = ({
       return [...overdue, ...today]
     }
 
+    if (activeInternalTab === 'thisWeek') {
+      const { overdue, today, weekByDay } = getTodayWithWeekTasks(filteredTasks, projects)
+      const weekTasks = Array.from(weekByDay.values()).flat()
+      return [...overdue, ...today, ...weekTasks]
+    }
+
     if (activeInternalTab === 'done') {
-      return getCompletedTasks(filteredTasks)
+      return scopeTasksByProject(getCompletedTasks(tasks), selectedProjectId)
     }
 
     return filteredTasks
-  }, [activeInternalTab, filteredTasks, projects])
+  }, [activeInternalTab, filteredTasks, projects, tasks, selectedProjectId])
 
   const visibleTaskIds = useMemo(() => selectionScopeTasks.map((t) => t.id), [selectionScopeTasks])
 
@@ -343,13 +328,13 @@ export const TasksPage = ({
     }
   })
 
-  // Derived: tab counts for TasksTabBar
+  // Derived: tab counts for TasksTabBar (scoped by dropdown project)
   const tabCounts = useMemo(() => {
-    const allActive = getFilteredTasks(tasks, 'all', 'view', projects)
-    const todayResult = getTodayTasks(tasks, projects)
+    const scopedTasks = scopeTasksByProject(tasks, selectedProjectId)
+    const allActive = getFilteredTasks(scopedTasks, 'all', 'view', projects)
+    const todayResult = getTodayTasks(scopedTasks, projects)
     const todayCount = todayResult.overdue.length + todayResult.today.length
 
-    // This week: active tasks due within 7 days (including today + overdue)
     const now = startOfDay(new Date())
     const weekEnd = addDays(now, 7)
     const thisWeekCount = allActive.filter((t) => {
@@ -357,7 +342,7 @@ export const TasksPage = ({
       return t.dueDate < weekEnd
     }).length
 
-    const doneCount = getCompletedTasks(tasks).length
+    const doneCount = getCompletedTasks(scopedTasks).length
 
     return {
       today: todayCount,
@@ -365,7 +350,7 @@ export const TasksPage = ({
       all: allActive.length,
       done: doneCount
     }
-  }, [tasks, projects])
+  }, [tasks, projects, selectedProjectId])
 
   // Derived: selected task for detail panel
   const selectedTask = useMemo(() => {
@@ -472,12 +457,6 @@ export const TasksPage = ({
     }
 
     const handler = (e: KeyboardEvent): void => {
-      // "/" to focus search (only when filter bar is visible)
-      if (e.key === '/' && !isInputFocused() && showFilterBar) {
-        e.preventDefault()
-        filterBarRef.current?.focusSearch()
-      }
-
       // Shift+F to clear all filters
       if (e.key === 'F' && e.shiftKey && !isInputFocused() && showFilterBar) {
         e.preventDefault()
@@ -1134,65 +1113,69 @@ export const TasksPage = ({
     <>
       <div className={cn('relative h-full', className)}>
         {/* Main Content Area */}
-        <main className="absolute inset-0 flex flex-col overflow-hidden py-6 px-9">
-          {/* Page Header */}
-          <div className="flex items-center gap-4 shrink-0">
-            <h1 className="text-[24px] tracking-[-0.03em] text-text-primary font-[family-name:var(--font-heading)] font-bold leading-[30px]">
-              Tasks
-            </h1>
+        <main className="absolute inset-0 flex flex-col overflow-hidden py-6 px-6">
+          {/* Page Header — tabs + actions on one row */}
+          <div className="flex items-center gap-4 shrink-0 min-w-0">
+            <TasksTabBar
+              activeTab={activeInternalTab}
+              onTabChange={setActiveInternalTab}
+              counts={tabCounts}
+              activeView={activeView}
+              availableViews={availableViews}
+              onViewChange={setActiveView}
+              projects={projects}
+              selectedProjectId={selectedProjectId}
+              onProjectChange={setSelectedProjectId}
+              className="border-0 py-0"
+            />
             <div className="grow" />
-            <button
-              type="button"
-              onClick={() => setIsFiltersPanelOpen((prev) => !prev)}
-              className={cn(
-                'flex items-center rounded-sm py-1.5 px-3 gap-1.5 border transition-colors',
-                isFiltersPanelOpen || filtersActive
-                  ? 'border-foreground/20 bg-foreground/5 text-text-primary'
-                  : 'border-border text-text-secondary hover:bg-accent/50'
-              )}
-            >
-              <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                <path
-                  d="M1.5 3.5h11M3.5 7h7M5.5 10.5h3"
-                  stroke="currentColor"
-                  strokeWidth="1.3"
-                  strokeLinecap="round"
-                  className="text-text-tertiary"
-                />
-              </svg>
-              <span className="text-[13px] leading-4">Filter</span>
-              {filtersActive && (
-                <span className="flex items-center justify-center size-[18px] rounded-full bg-foreground text-background text-[10px] font-bold">
-                  {countActiveFilters(filters)}
-                </span>
-              )}
-            </button>
-            <button
-              type="button"
-              onClick={() =>
-                updateSort({
-                  field: sort.field === 'dueDate' ? 'priority' : 'dueDate',
-                  direction: sort.direction
-                })
-              }
-              className="flex items-center rounded-sm py-1.5 px-3 gap-1.5 border border-border text-text-secondary hover:bg-accent/50 transition-colors"
-            >
-              <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                <path
-                  d="M3 4l2-2 2 2M5 2v10M11 10l-2 2-2-2M9 12V2"
-                  stroke="currentColor"
-                  strokeWidth="1.3"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  className="text-text-tertiary"
-                />
-              </svg>
-              <span className="text-[13px] leading-4">Sort</span>
-            </button>
+            <div className="flex items-center shrink-0 gap-1">
+              <FilterDropdown
+                open={isFilterDropdownOpen}
+                onOpenChange={setIsFilterDropdownOpen}
+                filters={filters}
+                onUpdateFilters={updateFilters}
+                onClearFilters={clearFilters}
+                tasks={baseFilteredTasks}
+                projects={projects}
+                savedFilters={savedFilters}
+                onDeleteSavedFilter={handleDeleteSavedFilter}
+                onApplySavedFilter={handleApplySavedFilter}
+                onSaveFilter={(name) => handleSaveFilter(name, filters, sort)}
+                showStatusFilter={activeView === 'kanban'}
+                statuses={currentProjectStatuses}
+              >
+                <button
+                  type="button"
+                  className={cn(
+                    'flex items-center rounded-sm p-1.5 gap-1.5 border transition-colors',
+                    isFilterDropdownOpen || filtersActive
+                      ? 'border-foreground/20 bg-foreground/5 text-text-primary'
+                      : 'border-border text-text-secondary hover:bg-accent/50'
+                  )}
+                >
+                  <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                    <path
+                      d="M1.5 3.5h11M3.5 7h7M5.5 10.5h3"
+                      stroke="currentColor"
+                      strokeWidth="1.3"
+                      strokeLinecap="round"
+                      className="text-text-tertiary"
+                    />
+                  </svg>
+                  {filtersActive && (
+                    <span className="flex items-center justify-center size-[18px] rounded-full bg-foreground text-background text-[10px] font-bold">
+                      {countActiveFilters(filters)}
+                    </span>
+                  )}
+                </button>
+              </FilterDropdown>
+              <SortDropdown sort={sort} onChange={updateSort} />
+            </div>
             <button
               type="button"
               onClick={handleAddTask}
-              className="flex items-center rounded-sm py-1.5 px-3.5 gap-1.5 bg-foreground text-background hover:opacity-90 transition-opacity"
+              className="flex items-center shrink-0 whitespace-nowrap rounded-sm py-1.5 px-3.5 gap-1.5 bg-foreground text-background hover:opacity-90 transition-opacity"
             >
               <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
                 <path
@@ -1206,44 +1189,13 @@ export const TasksPage = ({
             </button>
           </div>
 
-          {/* Internal Tab Bar */}
-          <TasksTabBar
-            activeTab={activeInternalTab}
-            onTabChange={setActiveInternalTab}
-            counts={tabCounts}
-            activeView={activeView}
-            availableViews={availableViews}
-            onViewChange={setActiveView}
-            projects={projects}
-            selectedProjectId={selectedProjectId}
-            onProjectChange={setSelectedProjectId}
-          />
-
-          {/* Filter Bar */}
+          {/* Active Filter Chips */}
           {showFilterBar && (
             <FilterBar
-              ref={filterBarRef}
               filters={filters}
-              sort={sort}
-              onUpdateFilters={updateFilters}
-              onUpdateSort={updateSort}
-              onClearFilters={clearFilters}
               projects={projects}
-              tasks={baseFilteredTasks}
-              savedFilters={savedFilters}
-              onSaveFilter={handleSaveFilter}
-              onDeleteSavedFilter={handleDeleteSavedFilter}
-              onApplySavedFilter={handleApplySavedFilter}
-              showStatusFilter={activeView === 'kanban'}
-              statuses={currentProjectStatuses}
-              isFiltersPanelOpen={isFiltersPanelOpen}
-              isSelectionMode={selection.isSelectionMode}
-              onToggleSelectionMode={handleToggleSelectionMode}
-              showCompletionToggle={activeInternalTab === 'all'}
-              onViewArchived={activeInternalTab === 'all' ? handleViewArchived : undefined}
-              onArchiveOptions={activeInternalTab === 'all' ? handleOpenClearMenu : undefined}
-              completedCount={completedTasksForActions.length}
-              archivedCount={archivedTasksForActions.length}
+              onUpdateFilters={updateFilters}
+              onClearFilters={clearFilters}
             />
           )}
 
@@ -1292,6 +1244,8 @@ export const TasksPage = ({
                 onTaskClick={handleTaskClick}
                 onQuickAdd={handleQuickAdd}
                 onOpenModal={handleOpenAddTaskModal}
+                onAddTaskWithDate={handleAddTaskWithDate}
+                showWeek={false}
               />
             </div>
           )}
@@ -1329,8 +1283,8 @@ export const TasksPage = ({
             </div>
           )}
 
-          {/* Content Body - This Week Tab */}
-          {activeInternalTab === 'thisWeek' && (
+          {/* Content Body - This Week Tab (List) */}
+          {activeInternalTab === 'thisWeek' && activeView === 'list' && (
             <div className="relative flex flex-1 flex-col overflow-hidden">
               <TodayView
                 tasks={filteredTasks}
@@ -1341,7 +1295,38 @@ export const TasksPage = ({
                 onTaskClick={handleTaskClick}
                 onQuickAdd={handleQuickAdd}
                 onOpenModal={handleOpenAddTaskModal}
+                onAddTaskWithDate={handleAddTaskWithDate}
+                showWeek={true}
               />
+            </div>
+          )}
+
+          {/* Kanban View - This Week Tab */}
+          {activeInternalTab === 'thisWeek' && activeView === 'kanban' && (
+            <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
+              {showFilterEmptyState ? (
+                <FilterEmptyState
+                  filters={filters}
+                  projects={projects}
+                  onClearFilters={clearFilters}
+                />
+              ) : (
+                <KanbanBoard
+                  tasks={filteredTasks}
+                  projects={projects}
+                  selectedId="thisWeek"
+                  selectedType="weekday"
+                  selectedTaskId={selectedTaskId}
+                  onUpdateTask={handleUpdateTask}
+                  onTaskClick={handleTaskClick}
+                  onToggleComplete={handleToggleComplete}
+                  onDeleteTask={handleDeleteTask}
+                  onQuickAdd={handleQuickAdd}
+                  isSelectionMode={selection.isSelectionMode}
+                  selectedIds={selection.selectedIds}
+                  onToggleSelect={toggleTask}
+                />
+              )}
             </div>
           )}
 
@@ -1349,7 +1334,7 @@ export const TasksPage = ({
           {activeInternalTab === 'done' && (
             <div className="flex flex-1 flex-col overflow-hidden">
               <TaskList
-                tasks={getCompletedTasks(tasks)}
+                tasks={scopeTasksByProject(getCompletedTasks(tasks), selectedProjectId)}
                 projects={projects}
                 selectedId="completed"
                 selectedType="view"

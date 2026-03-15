@@ -236,13 +236,11 @@ const SortableTaskRowComponent = ({
       </button>
 
       {/* Checkbox */}
-      <div className="shrink-0">
-        <TaskCheckbox
-          checked={isCompleted}
-          onChange={handleToggleComplete}
-          disabled={isSelectionMode}
-        />
-      </div>
+      <TaskCheckbox
+        checked={isCompleted}
+        onChange={handleToggleComplete}
+        disabled={isSelectionMode}
+      />
 
       {/* Title */}
       <span

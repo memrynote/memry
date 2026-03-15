@@ -1,7 +1,8 @@
 import { useState, useRef, useCallback, useMemo } from 'react'
-import { Plus, Calendar, Folder, Flag } from 'lucide-react'
+import { Calendar, Folder, Flag } from 'lucide-react'
 
 import { cn } from '@/lib/utils'
+import { useKeyboardShortcuts } from '@/hooks/use-keyboard-shortcuts-base'
 
 // ============================================================================
 // TOKEN HIGHLIGHT OVERLAY
@@ -108,13 +109,7 @@ import {
 import { priorityConfig, type Priority } from '@/data/sample-tasks'
 import type { Project } from '@/data/tasks-data'
 import { formatDateShort } from '@/lib/task-utils'
-import {
-  QuickOptionsBar,
-  AutocompleteDropdown,
-  QuickAddHelp,
-  type AutocompleteType,
-  type AutocompleteOption
-} from './quick-add'
+import { AutocompleteDropdown, type AutocompleteType, type AutocompleteOption } from './quick-add'
 
 // ============================================================================
 // TYPES
@@ -240,13 +235,21 @@ export const QuickAddInput = ({
   onAdd,
   onOpenModal,
   projects,
-  placeholder = 'Add task...',
+  placeholder = 'Add a task...    !today  !!high  #project',
   className
 }: QuickAddInputProps): React.JSX.Element => {
   const [value, setValue] = useState('')
   const [isFocused, setIsFocused] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
   const overlayRef = useRef<HTMLDivElement>(null)
+
+  useKeyboardShortcuts([
+    {
+      key: 'q',
+      action: () => inputRef.current?.focus(),
+      description: 'Focus quick add input'
+    }
+  ])
 
   // Detect triggers for autocomplete - compute during render instead of useEffect
   const { showAutocomplete, autocompleteType, autocompleteQuery } = useMemo(() => {
@@ -439,15 +442,6 @@ export const QuickAddInput = ({
     inputRef.current?.focus()
   }
 
-  // Insert text from quick options or autocomplete
-  const handleInsert = useCallback((text: string): void => {
-    setValue((prev) => {
-      const trimmed = prev.trimEnd()
-      return trimmed ? `${trimmed} ${text}` : text
-    })
-    inputRef.current?.focus()
-  }, [])
-
   // Insert from autocomplete (replaces the trigger word)
   const handleAutocompleteSelect = useCallback((selectedValue: string): void => {
     setValue((prev) => {
@@ -466,7 +460,6 @@ export const QuickAddInput = ({
 
   const showPreview =
     isFocused && preview && (preview.hasDate || preview.hasPriority || preview.hasProject)
-  const showQuickOptions = isFocused && !showAutocomplete && !value.trim()
 
   return (
     <div className="relative">
@@ -475,23 +468,30 @@ export const QuickAddInput = ({
         tabIndex={-1}
         onClick={handleContainerClick}
         className={cn(
-          'flex flex-col rounded-sm border transition-all duration-150 overflow-hidden',
-          isFocused
-            ? 'border-primary bg-background shadow-sm'
-            : 'border-transparent bg-muted/50 hover:bg-muted',
+          'flex flex-col rounded-[10px] border-[1.5px] border-dashed transition-all duration-150 overflow-hidden',
+          isFocused ? 'border-[#C4654A]/60' : 'border-[#DAD9D4] hover:border-[#C4654A]/40',
           className
         )}
       >
-        <div className="flex items-center gap-3 px-3 py-2.5">
-          {/* Checkbox placeholder / Plus icon */}
-          <div
-            className={cn(
-              'flex size-5 shrink-0 items-center justify-center rounded-full border-2 transition-colors',
-              isFocused ? 'border-text-tertiary' : 'border-transparent'
-            )}
+        <div className="flex items-center gap-2.5 px-3.5 py-2">
+          <svg
+            width="16"
+            height="16"
+            viewBox="0 0 18 18"
+            fill="none"
+            className="shrink-0"
+            aria-hidden="true"
           >
-            {!isFocused && <Plus className="size-4 text-text-tertiary" aria-hidden="true" />}
-          </div>
+            <circle
+              cx="9"
+              cy="9"
+              r="7.5"
+              stroke="#C4654A"
+              strokeWidth="1.5"
+              strokeDasharray="3 3"
+            />
+            <path d="M9 6v6M6 9h6" stroke="#C4654A" strokeWidth="1.5" strokeLinecap="round" />
+          </svg>
 
           {/* Input with token highlight overlay */}
           <div className="relative flex-1 min-w-0">
@@ -515,17 +515,22 @@ export const QuickAddInput = ({
               className={cn(
                 'relative w-full bg-transparent text-sm outline-none caret-text-primary',
                 value && hasSpecialSyntax(value)
-                  ? 'text-transparent selection:bg-primary/20 selection:text-transparent placeholder:text-text-tertiary'
+                  ? 'text-transparent selection:bg-primary/20 selection:text-transparent placeholder:text-[#A3A09B]'
                   : isFocused
-                    ? 'text-text-primary placeholder:text-text-tertiary'
-                    : 'text-text-tertiary placeholder:text-text-tertiary'
+                    ? 'text-text-primary placeholder:text-[#A3A09B]'
+                    : 'text-[#A3A09B] placeholder:text-[#A3A09B]'
               )}
               aria-label="Quick add task"
             />
           </div>
 
-          {/* Help icon when not focused */}
-          {!isFocused && <QuickAddHelp />}
+          {!isFocused && (
+            <div className="flex items-center ml-auto">
+              <span className="rounded bg-[#EDECE8] px-1.5 py-px text-xs leading-4 font-medium font-sans text-foreground/70">
+                Q
+              </span>
+            </div>
+          )}
 
           {/* Keyboard hint when focused with content */}
           {isFocused && value.trim() && onOpenModal && (
@@ -536,26 +541,20 @@ export const QuickAddInput = ({
           )}
         </div>
 
-        {/* Bottom slot — smooth height animation prevents jarring layout shift */}
+        {/* Parse preview — shows when special syntax is detected */}
         <div
           className={cn(
             'grid transition-[grid-template-rows,opacity] duration-150 ease-out',
-            showPreview || showQuickOptions
-              ? 'grid-rows-[1fr] opacity-100'
-              : 'grid-rows-[0fr] opacity-0'
+            showPreview ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'
           )}
         >
           <div className="overflow-hidden min-h-0">
-            {showPreview && preview ? (
+            {showPreview && preview && (
               <ParsePreview
                 dueDate={preview.dueDate}
                 priority={preview.priority}
                 projectName={preview.projectName}
               />
-            ) : (
-              <div className="px-3 pb-2">
-                <QuickOptionsBar onInsert={handleInsert} />
-              </div>
             )}
           </div>
         </div>

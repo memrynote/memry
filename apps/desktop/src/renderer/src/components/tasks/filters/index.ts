@@ -1,4 +1,5 @@
-export { FilterBar, type FilterBarRef } from './filter-bar'
+export { FilterBar } from './filter-bar'
+export { FilterDropdown } from './filter-dropdown'
 export { SearchInput } from './search-input'
 export { ProjectFilter } from './project-filter'
 export { PriorityFilter } from './priority-filter'

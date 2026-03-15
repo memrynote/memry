@@ -1,23 +1,16 @@
 import { useMemo } from 'react'
-import { Search, Calendar, Repeat, Clock } from 'lucide-react'
+import { Calendar, Clock, Repeat } from 'lucide-react'
 
-import { Button } from '@/components/ui/button'
 import { FilterChip } from './filter-chip'
 import { cn } from '@/lib/utils'
 import type { TaskFilters, Project } from '@/data/tasks-data'
-import { priorityConfig, type Priority } from '@/data/sample-tasks'
-import { dueDateFilterOptions } from '@/data/tasks-data'
-
-// ============================================================================
-// TYPES
-// ============================================================================
+import type { Priority } from '@/data/sample-tasks'
 
 interface ActiveFiltersBarProps {
   filters: TaskFilters
   projects: Project[]
   onUpdateFilters: (updates: Partial<TaskFilters>) => void
   onClearAll: () => void
-  onSaveFilter?: () => void
   className?: string
 }
 
@@ -25,55 +18,97 @@ interface ChipData {
   id: string
   label: string
   icon?: React.ReactNode
-  color?: string
+  dot?: string
+  chipBg?: string
+  chipText?: string
+  chipBorder?: string
   onRemove: () => void
 }
 
-// ============================================================================
-// PRIORITY COLORS
-// ============================================================================
+const PRIORITY_STYLES: Record<Priority, { bg: string; text: string; border: string; dot: string }> =
+  {
+    urgent: { bg: '#FEF0EE', text: '#C4392B', border: '#FCCDC6', dot: '#E54D2E' },
+    high: { bg: '#FFF8EB', text: '#B45309', border: '#FDE68A', dot: '#F59E0B' },
+    medium: { bg: '#ECFDF5', text: '#059669', border: '#A7F3D0', dot: '#22C55E' },
+    low: { bg: '#EFF6FF', text: '#1D4ED8', border: '#BFDBFE', dot: '#3B82F6' },
+    none: { bg: '#F5F5F5', text: '#737373', border: '#E5E5E5', dot: '#D4D1CA' }
+  }
 
-const priorityColors: Record<Priority, string> = {
-  urgent: priorityConfig.urgent.color || '#ef4444',
-  high: priorityConfig.high.color || '#f97316',
-  medium: priorityConfig.medium.color || '#eab308',
-  low: priorityConfig.low.color || '#6b7280',
-  none: '#9ca3af'
+const DUE_DATE_STYLES: Record<string, { bg: string; text: string; border: string }> = {
+  overdue: { bg: '#FEF0EE', text: '#C4392B', border: '#FCCDC6' },
+  today: { bg: '#FFF8EB', text: '#B45309', border: '#FDE68A' },
+  tomorrow: { bg: '#EFF6FF', text: '#1D4ED8', border: '#BFDBFE' }
 }
 
-// ============================================================================
-// ACTIVE FILTERS BAR COMPONENT
-// ============================================================================
+const DUE_DATE_LABELS: Record<string, string> = {
+  overdue: 'Overdue',
+  today: 'Today',
+  tomorrow: 'Tomorrow',
+  'this-week': 'This Week',
+  'next-week': 'Next Week',
+  none: 'No due date',
+  'this-month': 'This Month',
+  custom: 'Custom'
+}
+
+const NEUTRAL_STYLE = { bg: '#F5F3EF', text: '#1A1A1A', border: '#E8E5E0' }
 
 export const ActiveFiltersBar = ({
   filters,
   projects,
   onUpdateFilters,
   onClearAll,
-  onSaveFilter,
   className
 }: ActiveFiltersBarProps): React.JSX.Element | null => {
-  // Generate chips from active filters
   const chips = useMemo((): ChipData[] => {
     const result: ChipData[] = []
 
-    // Search
-    if (filters.search) {
+    filters.priorities.forEach((priority) => {
+      const s = PRIORITY_STYLES[priority]
       result.push({
-        id: 'search',
-        label: `"${filters.search}"`,
-        icon: <Search className="size-3" />,
-        onRemove: () => onUpdateFilters({ search: '' })
+        id: `priority-${priority}`,
+        label: priority.charAt(0).toUpperCase() + priority.slice(1),
+        dot: s.dot,
+        chipBg: s.bg,
+        chipText: s.text,
+        chipBorder: s.border,
+        onRemove: () =>
+          onUpdateFilters({ priorities: filters.priorities.filter((p) => p !== priority) })
+      })
+    })
+
+    if (filters.dueDate.type !== 'any') {
+      const dueDateType = filters.dueDate.type
+      let label = DUE_DATE_LABELS[dueDateType] || dueDateType
+
+      if (dueDateType === 'custom' && filters.dueDate.customStart && filters.dueDate.customEnd) {
+        const fmt = (d: Date): string =>
+          d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+        label = `${fmt(filters.dueDate.customStart)} – ${fmt(filters.dueDate.customEnd)}`
+      }
+
+      const s = DUE_DATE_STYLES[dueDateType] || NEUTRAL_STYLE
+      result.push({
+        id: 'dueDate',
+        label,
+        icon: <Calendar className="size-3.5" style={{ color: s.text }} strokeWidth={2} />,
+        chipBg: s.bg,
+        chipText: s.text,
+        chipBorder: s.border,
+        onRemove: () =>
+          onUpdateFilters({ dueDate: { type: 'any', customStart: null, customEnd: null } })
       })
     }
 
-    // Projects - T032: Handle deleted projects gracefully
     filters.projectIds.forEach((projectId) => {
       const project = projects.find((p) => p.id === projectId)
       result.push({
         id: `project-${projectId}`,
         label: project?.name ?? 'Deleted Project',
-        color: project?.color ?? '#9ca3af', // Gray for deleted projects
+        dot: project?.color ?? '#9ca3af',
+        chipBg: NEUTRAL_STYLE.bg,
+        chipText: NEUTRAL_STYLE.text,
+        chipBorder: NEUTRAL_STYLE.border,
         onRemove: () =>
           onUpdateFilters({
             projectIds: filters.projectIds.filter((id) => id !== projectId)
@@ -81,49 +116,7 @@ export const ActiveFiltersBar = ({
       })
     })
 
-    // Priorities
-    filters.priorities.forEach((priority) => {
-      result.push({
-        id: `priority-${priority}`,
-        label: priority.charAt(0).toUpperCase() + priority.slice(1),
-        color: priorityColors[priority],
-        onRemove: () =>
-          onUpdateFilters({
-            priorities: filters.priorities.filter((p) => p !== priority)
-          })
-      })
-    })
-
-    // Due date
-    if (filters.dueDate.type !== 'any') {
-      let label = ''
-      if (
-        filters.dueDate.type === 'custom' &&
-        filters.dueDate.customStart &&
-        filters.dueDate.customEnd
-      ) {
-        const formatDate = (date: Date): string =>
-          date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-        label = `${formatDate(filters.dueDate.customStart)} - ${formatDate(filters.dueDate.customEnd)}`
-      } else {
-        const option = dueDateFilterOptions.find((o) => o.value === filters.dueDate.type)
-        label = option?.label || filters.dueDate.type
-      }
-
-      result.push({
-        id: 'dueDate',
-        label,
-        icon: <Calendar className="size-3" />,
-        onRemove: () =>
-          onUpdateFilters({
-            dueDate: { type: 'any', customStart: null, customEnd: null }
-          })
-      })
-    }
-
-    // Status IDs
     filters.statusIds.forEach((statusId) => {
-      // Find the status across all projects
       let statusName = statusId
       let statusColor = '#6b7280'
       for (const project of projects) {
@@ -134,89 +127,81 @@ export const ActiveFiltersBar = ({
           break
         }
       }
-
       result.push({
         id: `status-${statusId}`,
         label: statusName,
-        color: statusColor,
+        dot: statusColor,
+        chipBg: NEUTRAL_STYLE.bg,
+        chipText: NEUTRAL_STYLE.text,
+        chipBorder: NEUTRAL_STYLE.border,
         onRemove: () =>
-          onUpdateFilters({
-            statusIds: filters.statusIds.filter((id) => id !== statusId)
-          })
+          onUpdateFilters({ statusIds: filters.statusIds.filter((id) => id !== statusId) })
       })
     })
 
-    // Repeat type
     if (filters.repeatType !== 'all') {
       result.push({
         id: 'repeatType',
         label: filters.repeatType === 'repeating' ? 'Repeating' : 'One-time',
-        icon: <Repeat className="size-3" />,
+        icon: <Repeat className="size-3.5" style={{ color: NEUTRAL_STYLE.text }} />,
+        chipBg: NEUTRAL_STYLE.bg,
+        chipText: NEUTRAL_STYLE.text,
+        chipBorder: NEUTRAL_STYLE.border,
         onRemove: () => onUpdateFilters({ repeatType: 'all' })
       })
     }
 
-    // Has time
     if (filters.hasTime !== 'all') {
       result.push({
         id: 'hasTime',
         label: filters.hasTime === 'with-time' ? 'With time' : 'No time',
-        icon: <Clock className="size-3" />,
+        icon: <Clock className="size-3.5" style={{ color: NEUTRAL_STYLE.text }} />,
+        chipBg: NEUTRAL_STYLE.bg,
+        chipText: NEUTRAL_STYLE.text,
+        chipBorder: NEUTRAL_STYLE.border,
         onRemove: () => onUpdateFilters({ hasTime: 'all' })
       })
     }
 
-    // Completion (only if not default "active")
-    if (filters.completion !== 'active') {
+    if (filters.search) {
       result.push({
-        id: 'completion',
-        label: filters.completion === 'completed' ? 'Completed' : 'All',
-        onRemove: () => onUpdateFilters({ completion: 'active' })
+        id: 'search',
+        label: `"${filters.search}"`,
+        chipBg: NEUTRAL_STYLE.bg,
+        chipText: NEUTRAL_STYLE.text,
+        chipBorder: NEUTRAL_STYLE.border,
+        onRemove: () => onUpdateFilters({ search: '' })
       })
     }
 
     return result
   }, [filters, projects, onUpdateFilters])
 
-  // Don't render if no chips
   if (chips.length === 0) return null
 
   return (
-    <div className={cn('flex items-center gap-2 px-4 py-2 bg-muted/50 border-b', className)}>
-      <span className="text-sm text-muted-foreground shrink-0">Active:</span>
-
+    <div className={cn('flex items-center gap-2 py-2', className)}>
       <div className="flex flex-wrap gap-2 flex-1 min-w-0">
         {chips.map((chip) => (
           <FilterChip
             key={chip.id}
             label={chip.label}
             icon={chip.icon}
-            color={chip.color}
+            dot={chip.dot}
+            chipBg={chip.chipBg}
+            chipText={chip.chipText}
+            chipBorder={chip.chipBorder}
             onRemove={chip.onRemove}
           />
         ))}
       </div>
-
-      <div className="flex items-center gap-2 shrink-0">
-        {onSaveFilter && (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={onSaveFilter}
-            className="h-7 text-xs text-muted-foreground hover:text-foreground"
-          >
-            Save
-          </Button>
-        )}
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={onClearAll}
-          className="h-7 text-xs text-muted-foreground hover:text-foreground"
-        >
-          Clear all
-        </Button>
-      </div>
+      <button
+        type="button"
+        onClick={onClearAll}
+        className="text-[12px] text-[#8A8A8A] font-['DM_Sans_Variable',system-ui,sans-serif] font-medium hover:text-[#1A1A1A] transition-colors shrink-0"
+      >
+        Clear all
+      </button>
     </div>
   )
 }

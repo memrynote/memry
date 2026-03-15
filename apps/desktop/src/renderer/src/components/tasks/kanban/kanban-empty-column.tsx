@@ -5,7 +5,7 @@ import { cn } from '@/lib/utils'
 // ============================================================================
 
 interface KanbanEmptyColumnProps {
-  columnType: 'status' | 'project'
+  columnType: 'status' | 'project' | 'weekday'
   isDone?: boolean
   isDropTarget?: boolean
   className?: string
@@ -34,6 +34,13 @@ export const KanbanEmptyColumn = ({
       return {
         title: 'No tasks in this project',
         description: 'Drag tasks here or click add'
+      }
+    }
+
+    if (columnType === 'weekday') {
+      return {
+        title: 'Nothing scheduled',
+        description: 'Drag tasks here to reschedule'
       }
     }
 

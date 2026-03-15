@@ -174,7 +174,7 @@ export const DueDateFilter = ({
                 </div>
                 <span
                   className={cn(
-                    "text-[13px] font-['DM_Sans',system-ui,sans-serif] leading-4",
+                    "text-[13px] font-['DM_Sans_Variable',system-ui,sans-serif] leading-4",
                     option.isOverdue && isSelected
                       ? 'font-medium text-[#E54D2E]'
                       : 'text-[#1A1A1A]',
@@ -185,7 +185,7 @@ export const DueDateFilter = ({
                 </span>
                 <span
                   className={cn(
-                    "text-[11px] ml-auto font-['DM_Sans',system-ui,sans-serif] leading-[14px]",
+                    "text-[11px] ml-auto font-['DM_Sans_Variable',system-ui,sans-serif] leading-[14px]",
                     option.isOverdue && isSelected ? 'text-[#C4392B]' : 'text-[#8A8A8A]'
                   )}
                 >
@@ -198,7 +198,7 @@ export const DueDateFilter = ({
 
         {/* Custom range */}
         <div className="flex flex-col py-3 px-4 gap-2 border-b border-[#E8E5E0]">
-          <span className="text-[11px] tracking-[0.05em] uppercase text-[#8A8A8A] font-['DM_Sans',system-ui,sans-serif] font-semibold leading-[14px]">
+          <span className="text-[11px] tracking-[0.05em] uppercase text-[#8A8A8A] font-['DM_Sans_Variable',system-ui,sans-serif] font-semibold leading-[14px]">
             Custom Range
           </span>
           <div className="flex items-center gap-2">
@@ -209,7 +209,7 @@ export const DueDateFilter = ({
                   className="flex items-center grow shrink basis-0 rounded-sm py-1.5 px-2.5 gap-1.5 border border-[#E8E5E0] hover:border-[#C4C0B8] transition-colors"
                 >
                   <CalendarIcon className="size-3 text-[#8A8A8A]" />
-                  <span className="text-[12px] font-['DM_Sans',system-ui,sans-serif] leading-4 text-[#AAAAAA]">
+                  <span className="text-[12px] font-['DM_Sans_Variable',system-ui,sans-serif] leading-4 text-[#AAAAAA]">
                     {customStart
                       ? customStart.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
                       : 'Start'}
@@ -231,7 +231,7 @@ export const DueDateFilter = ({
               </PopoverContent>
             </Popover>
 
-            <span className="text-[12px] text-[#8A8A8A] font-['DM_Sans',system-ui,sans-serif] leading-4">
+            <span className="text-[12px] text-[#8A8A8A] font-['DM_Sans_Variable',system-ui,sans-serif] leading-4">
               —
             </span>
 
@@ -242,7 +242,7 @@ export const DueDateFilter = ({
                   className="flex items-center grow shrink basis-0 rounded-sm py-1.5 px-2.5 gap-1.5 border border-[#E8E5E0] hover:border-[#C4C0B8] transition-colors"
                 >
                   <CalendarIcon className="size-3 text-[#8A8A8A]" />
-                  <span className="text-[12px] font-['DM_Sans',system-ui,sans-serif] leading-4 text-[#AAAAAA]">
+                  <span className="text-[12px] font-['DM_Sans_Variable',system-ui,sans-serif] leading-4 text-[#AAAAAA]">
                     {customEnd
                       ? customEnd.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
                       : 'End'}
@@ -269,7 +269,7 @@ export const DueDateFilter = ({
           <button
             type="button"
             onClick={handleClear}
-            className="text-[12px] text-[#8A8A8A] font-['DM_Sans',system-ui,sans-serif] font-medium leading-4 hover:text-[#1A1A1A] transition-colors"
+            className="text-[12px] text-[#8A8A8A] font-['DM_Sans_Variable',system-ui,sans-serif] font-medium leading-4 hover:text-[#1A1A1A] transition-colors"
           >
             Clear
           </button>
@@ -278,7 +278,7 @@ export const DueDateFilter = ({
             onClick={() => setIsOpen(false)}
             className="flex items-center rounded-sm py-[5px] px-3.5 gap-1 bg-[#1A1A1A] hover:bg-[#333] transition-colors"
           >
-            <span className="text-[12px] text-white font-['DM_Sans',system-ui,sans-serif] font-semibold leading-4">
+            <span className="text-[12px] text-white font-['DM_Sans_Variable',system-ui,sans-serif] font-semibold leading-4">
               Apply
             </span>
           </button>

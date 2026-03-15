@@ -12,6 +12,7 @@ import {
 } from '@/lib/task-utils'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Button } from '@/components/ui/button'
+import { SectionDivider } from '@/components/tasks/section-divider'
 import { CompletedTaskRow } from './completed-task-row'
 import { CompletionStats } from './completion-stats'
 import { CompletedSearchInput } from './completed-search-input'
@@ -32,50 +33,6 @@ interface CompletedViewProps {
   onViewArchived: () => void
   onOpenClearMenu: () => void
   className?: string
-}
-
-interface TaskSectionHeaderProps {
-  title: string
-  count: number
-  variant?: 'default' | 'accent' | 'muted'
-  className?: string
-}
-
-// ============================================================================
-// TASK SECTION HEADER
-// ============================================================================
-
-const TaskSectionHeader = ({
-  title,
-  count,
-  variant = 'default',
-  className
-}: TaskSectionHeaderProps): React.JSX.Element => {
-  return (
-    <div className={cn('flex items-center justify-between py-2 px-1', className)}>
-      <span
-        className={cn(
-          'text-xs font-semibold uppercase tracking-wider',
-          variant === 'accent' && 'text-emerald-600 dark:text-emerald-500',
-          variant === 'muted' && 'text-text-tertiary',
-          variant === 'default' && 'text-text-secondary'
-        )}
-      >
-        {title}
-      </span>
-      <span
-        className={cn(
-          'text-xs tabular-nums rounded-full px-2 py-0.5',
-          variant === 'accent' &&
-            'bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-400',
-          variant === 'muted' && 'bg-muted text-text-tertiary',
-          variant === 'default' && 'bg-muted text-text-secondary'
-        )}
-      >
-        {count}
-      </span>
-    </div>
-  )
 }
 
 // ============================================================================
@@ -123,16 +80,9 @@ export const CompletedView = ({
   }
 
   // Get variant for period header
-  const getPeriodVariant = (period: CompletionPeriod): 'default' | 'accent' | 'muted' => {
-    const config = completionPeriodConfig[period]
-    if (config.accentColor) return 'accent'
-    if (config.isMuted) return 'muted'
-    return 'default'
-  }
-
   return (
     <ScrollArea className={cn('flex-1', className)}>
-      <div className="p-4 space-y-6">
+      <div className="pt-4 space-y-6">
         {/* Search and Actions Bar */}
         <div className="flex items-center gap-3">
           <CompletedSearchInput value={searchQuery} onChange={setSearchQuery} className="flex-1" />
@@ -155,7 +105,7 @@ export const CompletedView = ({
 
         {/* Grouped task list */}
         {hasFilteredResults && (
-          <div className="space-y-4">
+          <div className="space-y-6">
             {periods.map((period) => {
               const periodTasks = groupedTasks[period]
               if (periodTasks.length === 0) return null
@@ -164,11 +114,7 @@ export const CompletedView = ({
 
               return (
                 <section key={period}>
-                  <TaskSectionHeader
-                    title={config.label}
-                    count={periodTasks.length}
-                    variant={getPeriodVariant(period)}
-                  />
+                  <SectionDivider label={config.label} count={periodTasks.length} />
                   <div className="divide-y divide-border/50">
                     {periodTasks.map((task) => (
                       <CompletedTaskRow

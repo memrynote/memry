@@ -162,7 +162,7 @@ export const PriorityFilter = ({
                 {/* Label */}
                 <span
                   className={cn(
-                    "text-[13px] font-['DM_Sans',system-ui,sans-serif] leading-4",
+                    "text-[13px] font-['DM_Sans_Variable',system-ui,sans-serif] leading-4",
                     isSelected ? 'font-medium text-[#1A1A1A]' : 'text-[#1A1A1A]',
                     priority === 'none' && !isSelected && 'text-[#6A6A6A]'
                   )}
@@ -170,7 +170,7 @@ export const PriorityFilter = ({
                   {display.label}
                 </span>
                 {/* Count */}
-                <span className="text-[11px] ml-auto text-[#8A8A8A] font-['DM_Sans',system-ui,sans-serif] leading-[14px]">
+                <span className="text-[11px] ml-auto text-[#8A8A8A] font-['DM_Sans_Variable',system-ui,sans-serif] leading-[14px]">
                   {taskCount}
                 </span>
               </button>
@@ -183,7 +183,7 @@ export const PriorityFilter = ({
           <button
             type="button"
             onClick={handleClear}
-            className="text-[12px] text-[#8A8A8A] font-['DM_Sans',system-ui,sans-serif] font-medium leading-4 hover:text-[#1A1A1A] transition-colors"
+            className="text-[12px] text-[#8A8A8A] font-['DM_Sans_Variable',system-ui,sans-serif] font-medium leading-4 hover:text-[#1A1A1A] transition-colors"
           >
             Clear
           </button>
@@ -192,7 +192,7 @@ export const PriorityFilter = ({
             onClick={() => setIsOpen(false)}
             className="flex items-center rounded-sm py-[5px] px-3.5 gap-1 bg-[#1A1A1A] hover:bg-[#333] transition-colors"
           >
-            <span className="text-[12px] text-white font-['DM_Sans',system-ui,sans-serif] font-semibold leading-4">
+            <span className="text-[12px] text-white font-['DM_Sans_Variable',system-ui,sans-serif] font-semibold leading-4">
               Apply
             </span>
           </button>

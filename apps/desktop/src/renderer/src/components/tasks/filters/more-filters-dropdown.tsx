@@ -129,11 +129,11 @@ export const MoreFiltersDropdown = ({
                 className="flex items-center py-[9px] px-4 gap-2.5 hover:bg-[#F9F8F6] focus:outline-none transition-colors"
               >
                 <Clock className="size-3.5 text-[#8A8A8A]" />
-                <span className="text-[13px] text-[#1A1A1A] font-['DM_Sans',system-ui,sans-serif] leading-4">
+                <span className="text-[13px] text-[#1A1A1A] font-['DM_Sans_Variable',system-ui,sans-serif] leading-4">
                   Status
                 </span>
                 {selectedStatusIds.length > 0 && (
-                  <span className="text-[11px] text-[#8A8A8A] font-['DM_Sans',system-ui,sans-serif]">
+                  <span className="text-[11px] text-[#8A8A8A] font-['DM_Sans_Variable',system-ui,sans-serif]">
                     ({selectedStatusIds.length})
                   </span>
                 )}
@@ -148,7 +148,7 @@ export const MoreFiltersDropdown = ({
               className="flex items-center py-[9px] px-4 gap-2.5 hover:bg-[#F9F8F6] focus:outline-none transition-colors"
             >
               <Calendar className="size-3.5 text-[#8A8A8A]" />
-              <span className="text-[13px] text-[#1A1A1A] font-['DM_Sans',system-ui,sans-serif] leading-4">
+              <span className="text-[13px] text-[#1A1A1A] font-['DM_Sans_Variable',system-ui,sans-serif] leading-4">
                 Has time set
               </span>
               <ToggleSwitch
@@ -166,7 +166,7 @@ export const MoreFiltersDropdown = ({
               className="flex items-center py-[9px] px-4 gap-2.5 hover:bg-[#F9F8F6] focus:outline-none transition-colors"
             >
               <RefreshCw className="size-3.5 text-[#8A8A8A]" />
-              <span className="text-[13px] text-[#1A1A1A] font-['DM_Sans',system-ui,sans-serif] leading-4">
+              <span className="text-[13px] text-[#1A1A1A] font-['DM_Sans_Variable',system-ui,sans-serif] leading-4">
                 Recurring only
               </span>
               <ToggleSwitch
@@ -186,7 +186,7 @@ export const MoreFiltersDropdown = ({
               className="flex items-center py-2.5 px-4 gap-1.5 bg-[#F5F3EF] border-b border-[#E8E5E0]"
             >
               <ChevronDown className="size-2.5 text-[#8A8A8A] rotate-90" />
-              <span className="text-[13px] text-[#1A1A1A] font-['DM_Sans',system-ui,sans-serif] font-semibold leading-4">
+              <span className="text-[13px] text-[#1A1A1A] font-['DM_Sans_Variable',system-ui,sans-serif] font-semibold leading-4">
                 Status
               </span>
             </button>
@@ -230,10 +230,10 @@ export const MoreFiltersDropdown = ({
                       className="shrink-0 rounded-full size-2"
                       style={{ backgroundColor: status.color }}
                     />
-                    <span className="text-[13px] text-[#1A1A1A] font-['DM_Sans',system-ui,sans-serif] leading-4">
+                    <span className="text-[13px] text-[#1A1A1A] font-['DM_Sans_Variable',system-ui,sans-serif] leading-4">
                       {status.name}
                     </span>
-                    <span className="text-[11px] ml-auto text-[#8A8A8A] font-['DM_Sans',system-ui,sans-serif] leading-[14px]">
+                    <span className="text-[11px] ml-auto text-[#8A8A8A] font-['DM_Sans_Variable',system-ui,sans-serif] leading-[14px]">
                       {taskCount}
                     </span>
                   </button>

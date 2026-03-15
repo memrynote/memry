@@ -413,7 +413,7 @@ describe('virtual-list-utils', () => {
       expect(headers).toEqual(['overdue', 'today', 'tomorrow', 'upcoming', 'later', 'noDueDate'])
     })
 
-    it('should include add-task-button at end of each section', () => {
+    it('should not include add-task-button items', () => {
       const todayTask = createMockTask({ id: 'today-1' })
       vi.mocked(groupTasksByDueDate).mockReturnValue({
         overdue: [],
@@ -428,9 +428,8 @@ describe('virtual-list-utils', () => {
         todayTask
       ])
 
-      const addButton = result.find((item) => item.type === 'add-task-button') as AddTaskButtonItem
-      expect(addButton).toBeDefined()
-      expect(addButton.sectionId).toBe('today')
+      const addButtons = result.filter((item) => item.type === 'add-task-button')
+      expect(addButtons).toHaveLength(0)
     })
 
     it('should skip empty groups', () => {
@@ -756,7 +755,7 @@ describe('virtual-list-utils', () => {
       expect(parentItem.isOverdue).toBeUndefined()
     })
 
-    it('should include add-task-button at the end', () => {
+    it('should not include add-task-button items', () => {
       const todayTask = createMockTask({ id: 'today-1' })
       const todayData: TodayViewData = { overdue: [], today: [todayTask] }
 
@@ -768,9 +767,8 @@ describe('virtual-list-utils', () => {
         false
       )
 
-      const addButton = result[result.length - 1] as AddTaskButtonItem
-      expect(addButton.type).toBe('add-task-button')
-      expect(addButton.sectionId).toBe('today')
+      const addButtons = result.filter((item) => item.type === 'add-task-button')
+      expect(addButtons).toHaveLength(0)
     })
 
     it('should include both overdue and today tasks with correct structure', () => {
@@ -1243,6 +1241,60 @@ describe('virtual-list-utils', () => {
       const dayHeaders = items.filter((i) => i.type === 'day-header') as DayHeaderItem[]
       expect(dayHeaders).toHaveLength(1)
       expect(dayHeaders[0].dateKey).toBe('2026-03-06')
+    })
+
+    it('should produce zero week items when weekByDay is undefined (today-only mode)', () => {
+      // #given — data from getTodayTasks (no weekByDay field)
+      const todayTask = createMockTask({ id: 'today-1' })
+      const overdueTask = createMockTask({ id: 'overdue-1' })
+      const todayData: TodayViewData = {
+        overdue: [overdueTask],
+        today: [todayTask]
+      }
+
+      // #when
+      const items = flattenTodayTasks(
+        todayData,
+        [mockProject],
+        new Set(),
+        [overdueTask, todayTask],
+        false
+      )
+
+      // #then — no week-accordion-header, no day-header items
+      const weekHeaders = items.filter((i) => i.type === 'week-accordion-header')
+      const dayHeaders = items.filter((i) => i.type === 'day-header')
+      expect(weekHeaders).toHaveLength(0)
+      expect(dayHeaders).toHaveLength(0)
+    })
+
+    it('should produce week items when weekByDay is provided (this-week mode)', () => {
+      // #given — data from getTodayWithWeekTasks (has weekByDay)
+      const todayTask = createMockTask({ id: 'today-1' })
+      const weekTask = createMockTask({ id: 'week-1' })
+      const weekByDay = new Map<string, Task[]>()
+      weekByDay.set('2026-03-06', [weekTask])
+      weekByDay.set('2026-03-07', [])
+      const todayData: TodayViewData = {
+        overdue: [],
+        today: [todayTask],
+        weekByDay
+      }
+
+      // #when
+      const items = flattenTodayTasks(
+        todayData,
+        [mockProject],
+        new Set(),
+        [todayTask, weekTask],
+        false
+      )
+
+      // #then — has week-accordion-header and day-header items
+      const weekHeaders = items.filter((i) => i.type === 'week-accordion-header')
+      const dayHeaders = items.filter((i) => i.type === 'day-header')
+      expect(weekHeaders).toHaveLength(1)
+      expect(dayHeaders.length).toBeGreaterThan(0)
     })
   })
 })

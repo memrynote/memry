@@ -115,10 +115,12 @@ export const TasksTabBar = ({
     : null
 
   return (
-    <div className={cn('flex items-center py-[18px] gap-3 border-b border-border', className)}>
+    <div
+      className={cn('flex items-center shrink-0 py-[18px] gap-3 border-b border-border', className)}
+    >
       {/* Segmented Tab Control */}
       <div
-        className="flex items-center rounded-sm overflow-hidden border border-border"
+        className="flex items-center shrink-0 rounded-sm overflow-hidden border border-border"
         role="tablist"
         aria-label="Task views"
       >
@@ -138,7 +140,7 @@ export const TasksTabBar = ({
               onClick={() => onTabChange(tab.id)}
               onKeyDown={(e) => handleKeyDown(e, index)}
               className={cn(
-                'flex items-center py-[7px] px-4 gap-1.5 transition-colors',
+                'flex items-baseline whitespace-nowrap py-[7px] px-3.5 gap-1.5 transition-colors',
                 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset',
                 index > 0 && 'border-l border-border',
                 isActive
@@ -150,9 +152,8 @@ export const TasksTabBar = ({
               {count > 0 && (
                 <span
                   className={cn(
-                    isActive
-                      ? 'rounded-sm px-1.5 bg-white/15 text-[16px] font-sans leading-5 text-background'
-                      : 'text-[10px] font-[family-name:var(--font-mono)] leading-3 text-text-tertiary'
+                    'text-[10px] font-[family-name:var(--font-mono)] leading-3',
+                    isActive ? 'text-background/60' : 'text-text-tertiary'
                   )}
                 >
                   {count}
@@ -169,7 +170,7 @@ export const TasksTabBar = ({
           <PopoverTrigger asChild>
             <button
               type="button"
-              className="flex items-center rounded-sm py-[7px] px-3.5 gap-1.5 border border-border text-text-secondary hover:text-text-primary hover:bg-surface-active/50 transition-colors"
+              className="flex items-center shrink-0 whitespace-nowrap rounded-sm py-[7px] px-3.5 gap-1.5 border border-border text-text-secondary hover:text-text-primary hover:bg-surface-active/50 transition-colors"
             >
               <span
                 className="rounded-full shrink-0 size-1.5"
@@ -227,7 +228,7 @@ export const TasksTabBar = ({
       {/* View Mode Switcher (pushed right) */}
       {availableViews && availableViews.length > 1 && onViewChange && (
         <div
-          className="flex items-center ml-auto rounded-sm p-[3px] gap-0.5 bg-surface"
+          className="flex items-center shrink-0 ml-auto rounded-sm p-[3px] gap-0.5 bg-surface"
           role="radiogroup"
           aria-label="View mode"
         >

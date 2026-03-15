@@ -207,7 +207,7 @@ export const TaskList = ({
   if (selectedId === 'completed') {
     return (
       <ScrollArea className={cn('flex-1', className)}>
-        <div className="p-4">
+        <div className="pt-4">
           {isEmpty ? (
             <TaskEmptyState variant="completed" onAddTask={() => onQuickAdd('New Task')} />
           ) : (
