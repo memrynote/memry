@@ -146,10 +146,10 @@ export const TaskRow = ({
         disabled={isSelectionMode}
       />
 
-      {/* Title */}
+      {/* Title — flex-1 fills remaining space, min-w-0 enables truncation */}
       <span
         className={cn(
-          'text-[13px] font-medium leading-4 truncate shrink-0 max-w-[50%]',
+          'text-[13px] font-medium leading-4 truncate flex-1 min-w-0',
           isCompleted
             ? 'text-text-tertiary line-through decoration-text-tertiary'
             : 'text-text-primary'
@@ -158,13 +158,8 @@ export const TaskRow = ({
         {task.title}
       </span>
 
-      {/* Repeat indicator */}
-      {task.isRepeating && task.repeatConfig && !isCompleted && (
-        <RepeatIndicator config={task.repeatConfig} size="sm" />
-      )}
-
-      {/* Pills — all right-aligned */}
-      <div className="ml-auto flex items-center gap-[5px] shrink-0">
+      {/* Pills — shrink-0 keeps them pinned right after the flex-1 title */}
+      <div className="flex items-center gap-[5px] shrink-0">
         {!isCompleted && task.priority !== 'none' && priorityColor && (
           <InteractivePriorityBadge
             priority={task.priority}
