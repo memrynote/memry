@@ -42,23 +42,23 @@ const PRIORITY_DISPLAY: Record<
   medium: {
     label: 'Medium',
     dot: '#22C55E',
-    checkBorder: '#D4D1CA',
-    checkBg: '#FFFFFF',
+    checkBorder: 'var(--border)',
+    checkBg: 'var(--card)',
     checkStroke: '#22C55E'
   },
   low: {
     label: 'Low',
     dot: '#3B82F6',
-    checkBorder: '#D4D1CA',
-    checkBg: '#FFFFFF',
+    checkBorder: 'var(--border)',
+    checkBg: 'var(--card)',
     checkStroke: '#3B82F6'
   },
   none: {
     label: 'None',
-    dot: '#D4D1CA',
-    checkBorder: '#D4D1CA',
-    checkBg: '#FFFFFF',
-    checkStroke: '#D4D1CA'
+    dot: 'var(--border)',
+    checkBorder: 'var(--border)',
+    checkBg: 'var(--card)',
+    checkStroke: 'var(--border)'
   }
 }
 
@@ -126,7 +126,7 @@ export const PriorityFilter = ({
                 onClick={() => handleTogglePriority(priority)}
                 className={cn(
                   'flex items-center gap-2.5 py-2 px-4 transition-colors',
-                  'hover:bg-[#F9F8F6] focus:outline-none focus:bg-[#F9F8F6]'
+                  'hover:bg-accent focus:outline-none focus:bg-accent'
                 )}
               >
                 {/* Checkbox */}
@@ -135,8 +135,8 @@ export const PriorityFilter = ({
                   style={{
                     borderWidth: '1.5px',
                     borderStyle: 'solid',
-                    borderColor: isSelected ? display.checkBorder : '#D4D1CA',
-                    backgroundColor: isSelected ? display.checkBg : '#FFFFFF'
+                    borderColor: isSelected ? display.checkBorder : 'var(--border)',
+                    backgroundColor: isSelected ? display.checkBg : 'var(--card)'
                   }}
                 >
                   {isSelected && (
@@ -163,14 +163,14 @@ export const PriorityFilter = ({
                 <span
                   className={cn(
                     "text-[13px] font-['DM_Sans_Variable',system-ui,sans-serif] leading-4",
-                    isSelected ? 'font-medium text-[#1A1A1A]' : 'text-[#1A1A1A]',
-                    priority === 'none' && !isSelected && 'text-[#6A6A6A]'
+                    isSelected ? 'font-medium text-foreground' : 'text-foreground',
+                    priority === 'none' && !isSelected && 'text-text-secondary'
                   )}
                 >
                   {display.label}
                 </span>
                 {/* Count */}
-                <span className="text-[11px] ml-auto text-[#8A8A8A] font-['DM_Sans_Variable',system-ui,sans-serif] leading-[14px]">
+                <span className="text-[11px] ml-auto text-text-tertiary font-['DM_Sans_Variable',system-ui,sans-serif] leading-[14px]">
                   {taskCount}
                 </span>
               </button>
@@ -179,20 +179,20 @@ export const PriorityFilter = ({
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-between py-2.5 px-4 bg-[#FAFAF8] border-t border-[#E8E5E0]">
+        <div className="flex items-center justify-between py-2.5 px-4 bg-surface border-t border-border">
           <button
             type="button"
             onClick={handleClear}
-            className="text-[12px] text-[#8A8A8A] font-['DM_Sans_Variable',system-ui,sans-serif] font-medium leading-4 hover:text-[#1A1A1A] transition-colors"
+            className="text-[12px] text-text-tertiary font-['DM_Sans_Variable',system-ui,sans-serif] font-medium leading-4 hover:text-foreground transition-colors"
           >
             Clear
           </button>
           <button
             type="button"
             onClick={() => setIsOpen(false)}
-            className="flex items-center rounded-sm py-[5px] px-3.5 gap-1 bg-[#1A1A1A] hover:bg-[#333] transition-colors"
+            className="flex items-center rounded-sm py-[5px] px-3.5 gap-1 bg-foreground hover:bg-foreground/80 transition-colors"
           >
-            <span className="text-[12px] text-white font-['DM_Sans_Variable',system-ui,sans-serif] font-semibold leading-4">
+            <span className="text-[12px] text-background font-['DM_Sans_Variable',system-ui,sans-serif] font-semibold leading-4">
               Apply
             </span>
           </button>

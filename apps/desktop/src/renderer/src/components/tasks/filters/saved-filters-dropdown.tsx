@@ -1,4 +1,4 @@
-import { Star, Plus, Trash2, ChevronDown } from 'lucide-react'
+import { Star, Plus, X, ChevronDown } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
@@ -13,7 +13,6 @@ interface SavedFiltersDropdownProps {
   savedFilters: SavedFilter[]
   onApply: (filter: SavedFilter) => void
   onDelete: (filterId: string) => void
-  onManage?: () => void
   onSaveCurrent?: () => void
   className?: string
 }
@@ -26,7 +25,6 @@ export const SavedFiltersDropdown = ({
   savedFilters,
   onApply,
   onDelete,
-  onManage,
   onSaveCurrent,
   className
 }: SavedFiltersDropdownProps): React.JSX.Element => {
@@ -55,7 +53,7 @@ export const SavedFiltersDropdown = ({
             savedFilters.map((filter, index) => (
               <div
                 key={filter.id}
-                className="flex items-center py-[9px] px-4 gap-2.5 group hover:bg-[#F5F3EF] transition-colors"
+                className="flex items-center py-[9px] px-4 gap-2.5 group hover:bg-surface transition-colors"
               >
                 <button
                   type="button"
@@ -65,14 +63,14 @@ export const SavedFiltersDropdown = ({
                   <Star
                     className={cn(
                       'size-3.5 shrink-0',
-                      index === 0 ? 'fill-[#F59E0B] text-[#F59E0B]' : 'text-[#C4C0B8]'
+                      index === 0 ? 'fill-[#F59E0B] text-[#F59E0B]' : 'text-text-tertiary'
                     )}
                   />
                   <div className="flex flex-col gap-0.5 min-w-0">
                     <span
                       className={cn(
                         "text-[13px] font-['DM_Sans_Variable',system-ui,sans-serif] leading-4 truncate",
-                        index === 0 ? 'font-medium text-[#1A1A1A]' : 'text-[#1A1A1A]'
+                        index === 0 ? 'font-medium text-foreground' : 'text-foreground'
                       )}
                     >
                       {filter.name}
@@ -85,37 +83,37 @@ export const SavedFiltersDropdown = ({
                     e.stopPropagation()
                     onDelete(filter.id)
                   }}
-                  className="p-1 rounded text-[#C4C0B8] opacity-0 group-hover:opacity-100 hover:text-[#E54D2E] hover:bg-[#FEF0EE] transition-all focus:outline-none focus:opacity-100 shrink-0"
+                  className="p-1 rounded text-text-tertiary opacity-0 group-hover:opacity-100 hover:text-destructive hover:bg-destructive/5 transition-all focus:outline-none focus:opacity-100 shrink-0"
                   aria-label={`Delete ${filter.name}`}
                 >
-                  <Trash2 className="size-3.5" />
+                  <X className="size-3.5" />
                 </button>
               </div>
             ))
           ) : (
-            <div className="px-4 py-3 text-[13px] text-[#8A8A8A] font-['DM_Sans_Variable',system-ui,sans-serif]">
+            <div className="px-4 py-3 text-[13px] text-text-tertiary font-['DM_Sans_Variable',system-ui,sans-serif]">
               No saved filters yet
             </div>
           )}
         </div>
 
         {/* Save current footer */}
-        <div className="border-t border-[#E8E5E0]">
+        <div className="border-t border-border">
           {onSaveCurrent ? (
             <button
               type="button"
               onClick={onSaveCurrent}
-              className="flex items-center w-full py-2.5 px-4 gap-2 hover:bg-[#F9F8F6] transition-colors focus:outline-none"
+              className="flex items-center w-full py-2.5 px-4 gap-2 hover:bg-accent transition-colors focus:outline-none"
             >
-              <Plus className="size-3.5 text-[#8A8A8A]" />
-              <span className="text-[13px] text-[#8A8A8A] font-['DM_Sans_Variable',system-ui,sans-serif] font-medium leading-4">
+              <Plus className="size-3.5 text-text-tertiary" />
+              <span className="text-[13px] text-text-tertiary font-['DM_Sans_Variable',system-ui,sans-serif] font-medium leading-4">
                 Save current filters
               </span>
             </button>
           ) : (
             <div className="flex items-center py-2.5 px-4 gap-2 opacity-50">
-              <Plus className="size-3.5 text-[#8A8A8A]" />
-              <span className="text-[13px] text-[#8A8A8A] font-['DM_Sans_Variable',system-ui,sans-serif] font-medium leading-4">
+              <Plus className="size-3.5 text-text-tertiary" />
+              <span className="text-[13px] text-text-tertiary font-['DM_Sans_Variable',system-ui,sans-serif] font-medium leading-4">
                 Save current filters
               </span>
             </div>

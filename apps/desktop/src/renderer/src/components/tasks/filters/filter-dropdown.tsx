@@ -1,14 +1,4 @@
 import { useState, useMemo, useCallback } from 'react'
-import {
-  Activity,
-  Calendar,
-  MoreHorizontal,
-  Star,
-  ChevronDown,
-  ChevronRight,
-  Clock,
-  RefreshCw
-} from 'lucide-react'
 
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { cn } from '@/lib/utils'
@@ -17,12 +7,10 @@ import type {
   SavedFilter,
   Project,
   Status,
-  DueDateFilterType,
-  RepeatFilterType,
-  HasTimeFilterType
+  DueDateFilterType
 } from '@/data/tasks-data'
 import type { Priority, Task } from '@/data/sample-tasks'
-import { hasActiveFilters, startOfDay } from '@/lib/task-utils'
+import { defaultStatuses } from '@/data/tasks-data'
 
 interface FilterDropdownProps {
   open: boolean
@@ -41,139 +29,168 @@ interface FilterDropdownProps {
   children: React.ReactNode
 }
 
-type ExpandedSection = 'priority' | 'dueDate' | 'more' | 'saved' | null
+type ActivePanel = null | 'priority' | 'status' | 'dueDate' | 'project'
 
-const PRIORITIES: { key: Priority; label: string; dot: string }[] = [
-  { key: 'urgent', label: 'Urgent', dot: '#E54D2E' },
-  { key: 'high', label: 'High', dot: '#F59E0B' },
-  { key: 'medium', label: 'Medium', dot: '#22C55E' },
-  { key: 'low', label: 'Low', dot: '#3B82F6' },
-  { key: 'none', label: 'None', dot: '#D4D1CA' }
+const FONT = "font-['Inter',system-ui,sans-serif]"
+const PRIORITY_ORDER: Priority[] = ['urgent', 'high', 'medium', 'low', 'none']
+const PRIORITY_LABELS: Record<Priority, string> = {
+  urgent: 'Urgent',
+  high: 'High',
+  medium: 'Medium',
+  low: 'Low',
+  none: 'No priority'
+}
+const DAY_HEADERS = ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su']
+const MONTH_NAMES = [
+  'January',
+  'February',
+  'March',
+  'April',
+  'May',
+  'June',
+  'July',
+  'August',
+  'September',
+  'October',
+  'November',
+  'December'
 ]
 
-const DUE_DATE_PRESETS: { value: DueDateFilterType; label: string; isOverdue?: boolean }[] = [
-  { value: 'overdue', label: 'Overdue', isOverdue: true },
-  { value: 'today', label: 'Today' },
-  { value: 'tomorrow', label: 'Tomorrow' },
-  { value: 'this-week', label: 'This Week' },
-  { value: 'next-week', label: 'Next Week' },
-  { value: 'none', label: 'No due date' }
-]
+const V = {
+  destructive: 'var(--destructive)',
+  orange: 'var(--accent-orange)',
+  fg: 'var(--foreground)',
+  tertiary: 'var(--text-tertiary)',
+  border: 'var(--border)'
+} as const
 
-const FONT = "font-['DM_Sans_Variable',system-ui,sans-serif]"
+const PRIORITY_ICONS: Record<Priority, React.ReactNode> = {
+  urgent: (
+    <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
+      <rect x="1" y="7" width="2.2" height="4" rx="0.5" style={{ fill: V.destructive }} />
+      <rect x="5" y="4.5" width="2.2" height="6.5" rx="0.5" style={{ fill: V.destructive }} />
+      <rect x="9" y="2" width="2.2" height="9" rx="0.5" style={{ fill: V.destructive }} />
+    </svg>
+  ),
+  high: (
+    <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
+      <rect x="1" y="5.5" width="2.2" height="5.5" rx="0.5" style={{ fill: V.orange }} />
+      <rect x="5" y="3" width="2.2" height="8" rx="0.5" style={{ fill: V.orange }} />
+      <rect x="9" y="1" width="2.2" height="10" rx="0.5" style={{ fill: V.border }} />
+    </svg>
+  ),
+  medium: (
+    <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
+      <rect x="1" y="5.5" width="2.2" height="5.5" rx="0.5" style={{ fill: V.fg }} />
+      <rect x="5" y="3" width="2.2" height="8" rx="0.5" style={{ fill: V.border }} />
+      <rect x="9" y="1" width="2.2" height="10" rx="0.5" style={{ fill: V.border }} />
+    </svg>
+  ),
+  low: (
+    <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
+      <rect
+        x="1"
+        y="5.5"
+        width="2.2"
+        height="5.5"
+        rx="0.5"
+        style={{ fill: V.tertiary, opacity: 0.6 }}
+      />
+      <rect x="5" y="3" width="2.2" height="8" rx="0.5" style={{ fill: V.border }} />
+      <rect x="9" y="1" width="2.2" height="10" rx="0.5" style={{ fill: V.border }} />
+    </svg>
+  ),
+  none: (
+    <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
+      <path d="M3 6.5h7" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round" />
+    </svg>
+  )
+}
 
-const FilterCheckbox = ({ checked, color }: { checked: boolean; color: string }) => (
-  <div
-    className="flex items-center justify-center rounded-sm shrink-0 size-4"
-    style={{
-      borderWidth: '1.5px',
-      borderStyle: 'solid',
-      borderColor: checked ? color : '#D4D1CA',
-      backgroundColor: checked ? `${color}15` : '#FFFFFF'
-    }}
-  >
-    {checked && (
-      <svg
-        width="10"
-        height="10"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke={color}
-        strokeWidth="3"
+const BackButton = ({ onClick }: { onClick: () => void }): React.JSX.Element => (
+  <button type="button" onClick={onClick} className="shrink-0 p-0.5 -ml-0.5 text-text-tertiary">
+    <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+      <path
+        d="M7 3L4 6l3 3"
+        stroke="currentColor"
+        strokeWidth="1.2"
         strokeLinecap="round"
         strokeLinejoin="round"
-      >
-        <polyline points="20 6 9 17 4 12" />
-      </svg>
-    )}
-  </div>
-)
-
-const ToggleSwitch = ({ enabled, onToggle }: { enabled: boolean; onToggle: () => void }) => (
-  <button
-    type="button"
-    onClick={(e) => {
-      e.stopPropagation()
-      onToggle()
-    }}
-    className={cn(
-      'w-8 h-[18px] ml-auto flex items-center rounded-[9px] shrink-0 p-0.5 transition-colors',
-      enabled ? 'bg-[#1A1A1A] justify-end' : 'bg-[#D4D1CA]'
-    )}
-    role="switch"
-    aria-checked={enabled}
-  >
-    <div className="rounded-full bg-white shrink-0 size-3.5" />
+      />
+    </svg>
   </button>
 )
 
-const SectionHeader = ({
-  icon: Icon,
-  title,
-  expanded,
-  badge,
-  onClick,
-  isFirst
-}: {
-  icon: React.ComponentType<{ width?: number; height?: number; className?: string }>
-  title: string
-  expanded: boolean
-  badge?: number
-  onClick: () => void
-  isFirst?: boolean
-}) => (
-  <button
-    type="button"
-    onClick={onClick}
-    className={cn(
-      'flex items-center w-full py-2.5 px-4 gap-1.5 bg-[#F5F3EF] transition-colors hover:bg-[#EFECE6]',
-      !isFirst && 'border-t border-[#E8E5E0]',
-      expanded && 'border-b border-[#E8E5E0]'
+const StatusIcon = ({ type, color }: { type: string; color: string }): React.JSX.Element => (
+  <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+    {type === 'todo' && <circle cx="7" cy="7" r="5" stroke={color} strokeWidth="1.2" />}
+    {type === 'in_progress' && (
+      <>
+        <circle cx="7" cy="7" r="5" stroke={color} strokeWidth="1.2" />
+        <path d="M7 2A5 5 0 0 1 7 12" fill={color} />
+      </>
     )}
+    {type === 'done' && (
+      <>
+        <circle cx="7" cy="7" r="5" stroke={color} strokeWidth="1.2" fill={color} />
+        <path
+          d="M4.5 7l1.5 1.5L9.5 5"
+          stroke="var(--background)"
+          strokeWidth="1.3"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </>
+    )}
+  </svg>
+)
+
+const CheckMark = (): React.JSX.Element => (
+  <svg
+    width="12"
+    height="12"
+    viewBox="0 0 12 12"
+    fill="none"
+    className="ml-auto shrink-0 text-foreground"
   >
-    <Icon width={14} height={14} className="text-[#1A1A1A] shrink-0" />
-    <span className={`text-[13px] text-[#1A1A1A] ${FONT} font-semibold leading-4`}>{title}</span>
-    {badge != null && badge > 0 && !expanded && (
-      <span className="ml-1 text-[10px] font-semibold bg-[#1A1A1A] text-white px-1.5 py-0.5 rounded-full min-w-[18px] text-center">
-        {badge}
-      </span>
-    )}
-    <ChevronDown
-      width={10}
-      height={10}
-      className={cn(
-        'text-[#8A8A8A] ml-auto transition-transform duration-200',
-        !expanded && '-rotate-90'
-      )}
-      strokeWidth={2.5}
+    <path
+      d="M3 6l2 2 4-4"
+      stroke="currentColor"
+      strokeWidth="1.3"
+      strokeLinecap="round"
+      strokeLinejoin="round"
     />
-  </button>
+  </svg>
 )
 
-const describeSavedFilter = (filter: SavedFilter, projects: Project[]): string => {
-  const parts: string[] = []
-  if (filter.filters.priorities.length > 0) {
-    parts.push(filter.filters.priorities.map((p) => p[0].toUpperCase() + p.slice(1)).join(', '))
+type CalendarDay = { day: number; isCurrentMonth: boolean }
+
+const getCalendarWeeks = (year: number, month: number): CalendarDay[][] => {
+  const firstDay = new Date(year, month, 1)
+  const lastDay = new Date(year, month + 1, 0)
+  const startOffset = (firstDay.getDay() + 6) % 7
+
+  const days: CalendarDay[] = []
+  const prevMonthLastDay = new Date(year, month, 0).getDate()
+  for (let i = startOffset - 1; i >= 0; i--) {
+    days.push({ day: prevMonthLastDay - i, isCurrentMonth: false })
   }
-  if (filter.filters.dueDate.type !== 'any') {
-    const labels: Record<string, string> = {
-      overdue: 'Overdue',
-      today: 'Today',
-      tomorrow: 'Tomorrow',
-      'this-week': 'This Week',
-      'next-week': 'Next Week',
-      none: 'No due date',
-      custom: 'Custom range'
-    }
-    parts.push(labels[filter.filters.dueDate.type] || filter.filters.dueDate.type)
+  for (let d = 1; d <= lastDay.getDate(); d++) {
+    days.push({ day: d, isCurrentMonth: true })
   }
-  if (filter.filters.projectIds.length > 0) {
-    const names = filter.filters.projectIds
-      .map((id) => projects.find((p) => p.id === id)?.name)
-      .filter(Boolean)
-    if (names.length > 0) parts.push(`Project: ${names.join(', ')}`)
-  }
-  return parts.join(' + ') || 'All tasks'
+  let nextDay = 1
+  while (days.length % 7 !== 0) days.push({ day: nextDay++, isCurrentMonth: false })
+
+  const weeks: CalendarDay[][] = []
+  for (let i = 0; i < days.length; i += 7) weeks.push(days.slice(i, i + 7))
+  return weeks
+}
+
+const getNextMonday = (): Date => {
+  const d = new Date()
+  d.setDate(d.getDate() + ((8 - d.getDay()) % 7 || 7))
+  d.setHours(0, 0, 0, 0)
+  return d
 }
 
 export const FilterDropdown = ({
@@ -181,95 +198,45 @@ export const FilterDropdown = ({
   onOpenChange,
   filters,
   onUpdateFilters,
-  onClearFilters,
-  tasks,
+  onClearFilters: _onClearFilters,
+  tasks: _tasks,
   projects,
-  savedFilters,
+  savedFilters: _savedFilters,
   onDeleteSavedFilter: _onDeleteSavedFilter,
-  onApplySavedFilter,
-  onSaveFilter,
-  showStatusFilter = false,
-  statuses = [],
+  onApplySavedFilter: _onApplySavedFilter,
+  onSaveFilter: _onSaveFilter,
+  showStatusFilter: _showStatusFilter,
+  statuses: statusesProp = [],
   children
 }: FilterDropdownProps): React.JSX.Element => {
-  const [expanded, setExpanded] = useState<ExpandedSection>(null)
-  const [showStatusPanel, setShowStatusPanel] = useState(false)
-  const [saveFilterName, setSaveFilterName] = useState('')
+  const [activePanel, setActivePanel] = useState<ActivePanel>(null)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [calendarMonth, setCalendarMonth] = useState(() => {
+    const now = new Date()
+    return { year: now.getFullYear(), month: now.getMonth() }
+  })
 
-  const taskCountByPriority = useMemo(() => {
-    const counts: Record<Priority, number> = { urgent: 0, high: 0, medium: 0, low: 0, none: 0 }
-    tasks.forEach((t) => counts[t.priority]++)
-    return counts
-  }, [tasks])
-
-  const dueDateCounts = useMemo(() => {
-    const now = startOfDay(new Date())
-    const tmrw = new Date(now)
-    tmrw.setDate(tmrw.getDate() + 1)
-    const endWeek = new Date(now)
-    endWeek.setDate(endWeek.getDate() + (7 - endWeek.getDay()))
-    const endNextWeek = new Date(endWeek)
-    endNextWeek.setDate(endNextWeek.getDate() + 7)
-
-    const c: Record<string, number> = {
-      overdue: 0,
-      today: 0,
-      tomorrow: 0,
-      'this-week': 0,
-      'next-week': 0,
-      none: 0
-    }
-    tasks.forEach((t) => {
-      if (!t.dueDate) {
-        c['none']++
-        return
-      }
-      const d = startOfDay(t.dueDate instanceof Date ? t.dueDate : new Date(t.dueDate))
-      if (d < now) c['overdue']++
-      else if (d.getTime() === now.getTime()) c['today']++
-      else if (d.getTime() === tmrw.getTime()) c['tomorrow']++
-      else if (d <= endWeek) c['this-week']++
-      else if (d <= endNextWeek) c['next-week']++
-    })
-    return c
-  }, [tasks])
-
-  const taskCountByStatus = useMemo(() => {
-    const counts: Record<string, number> = {}
-    tasks.forEach((t) => {
-      counts[t.statusId] = (counts[t.statusId] || 0) + 1
-    })
-    return counts
-  }, [tasks])
-
-  const moreActiveCount = useMemo(() => {
-    let n = 0
-    if (filters.statusIds.length > 0) n++
-    if (filters.repeatType !== 'all') n++
-    if (filters.hasTime !== 'all') n++
-    return n
-  }, [filters.statusIds, filters.repeatType, filters.hasTime])
-
-  const isActive = hasActiveFilters(filters)
+  const statuses = statusesProp.length > 0 ? statusesProp : defaultStatuses
 
   const handleOpenChange = useCallback(
     (nextOpen: boolean) => {
       if (!nextOpen) {
-        setExpanded(null)
-        setShowStatusPanel(false)
-        setSaveFilterName('')
+        setActivePanel(null)
+        setSearchQuery('')
       }
       onOpenChange(nextOpen)
     },
     [onOpenChange]
   )
 
-  const toggleSection = useCallback((section: ExpandedSection) => {
-    setExpanded((prev) => {
-      const next = prev === section ? null : section
-      if (next !== 'more') setShowStatusPanel(false)
-      return next
-    })
+  const navigateTo = useCallback((panel: ActivePanel) => {
+    setActivePanel(panel)
+    setSearchQuery('')
+  }, [])
+
+  const goBack = useCallback(() => {
+    setActivePanel(null)
+    setSearchQuery('')
   }, [])
 
   const togglePriority = useCallback(
@@ -282,20 +249,7 @@ export const FilterDropdown = ({
     [filters.priorities, onUpdateFilters]
   )
 
-  const toggleDueDate = useCallback(
-    (value: DueDateFilterType) => {
-      onUpdateFilters({
-        dueDate: {
-          type: filters.dueDate.type === value ? 'any' : value,
-          customStart: null,
-          customEnd: null
-        }
-      })
-    },
-    [filters.dueDate.type, onUpdateFilters]
-  )
-
-  const handleToggleStatus = useCallback(
+  const toggleStatus = useCallback(
     (statusId: string) => {
       const next = filters.statusIds.includes(statusId)
         ? filters.statusIds.filter((id) => id !== statusId)
@@ -305,320 +259,620 @@ export const FilterDropdown = ({
     [filters.statusIds, onUpdateFilters]
   )
 
-  const handleApplySaved = useCallback(
-    (filter: SavedFilter) => {
-      onApplySavedFilter(filter)
-      handleOpenChange(false)
+  const selectDueDate = useCallback(
+    (type: DueDateFilterType) => {
+      onUpdateFilters({ dueDate: { type, customStart: null, customEnd: null } })
     },
-    [onApplySavedFilter, handleOpenChange]
+    [onUpdateFilters]
   )
 
-  const handleSaveCurrentFilter = useCallback(() => {
-    const name = saveFilterName.trim()
-    if (!name) return
-    onSaveFilter(name)
-    setSaveFilterName('')
-  }, [saveFilterName, onSaveFilter])
+  const selectCalendarDate = useCallback(
+    (day: number) => {
+      const date = new Date(calendarMonth.year, calendarMonth.month, day)
+      onUpdateFilters({ dueDate: { type: 'custom', customStart: date, customEnd: date } })
+    },
+    [calendarMonth, onUpdateFilters]
+  )
+
+  const clearDueDate = useCallback(() => {
+    onUpdateFilters({ dueDate: { type: 'any', customStart: null, customEnd: null } })
+  }, [onUpdateFilters])
+
+  const toggleProject = useCallback(
+    (projectId: string) => {
+      const next = filters.projectIds.includes(projectId)
+        ? filters.projectIds.filter((id) => id !== projectId)
+        : [...filters.projectIds, projectId]
+      onUpdateFilters({ projectIds: next })
+    },
+    [filters.projectIds, onUpdateFilters]
+  )
+
+  const clearProjectFilter = useCallback(() => {
+    onUpdateFilters({ projectIds: [] })
+  }, [onUpdateFilters])
+
+  const visibleProjects = useMemo(() => projects.filter((p) => !p.isArchived), [projects])
+
+  const today = useMemo(() => {
+    const d = new Date()
+    d.setHours(0, 0, 0, 0)
+    return d
+  }, [])
+
+  const calendarWeeks = useMemo(
+    () => getCalendarWeeks(calendarMonth.year, calendarMonth.month),
+    [calendarMonth]
+  )
+
+  const selectedCalendarDate = useMemo(() => {
+    if (filters.dueDate.type === 'today') {
+      return { year: today.getFullYear(), month: today.getMonth(), day: today.getDate() }
+    }
+    if (filters.dueDate.type === 'tomorrow') {
+      const tmrw = new Date(today)
+      tmrw.setDate(tmrw.getDate() + 1)
+      return { year: tmrw.getFullYear(), month: tmrw.getMonth(), day: tmrw.getDate() }
+    }
+    if (filters.dueDate.type === 'custom' && filters.dueDate.customStart) {
+      const d =
+        filters.dueDate.customStart instanceof Date
+          ? filters.dueDate.customStart
+          : new Date(filters.dueDate.customStart)
+      return { year: d.getFullYear(), month: d.getMonth(), day: d.getDate() }
+    }
+    return null
+  }, [filters.dueDate, today])
+
+  const dueDatePresets = useMemo(() => {
+    const tomorrow = new Date(today)
+    tomorrow.setDate(tomorrow.getDate() + 1)
+    const nextMon = getNextMonday()
+    const fmt = (d: Date): string =>
+      d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+    return [
+      { label: 'Today', date: fmt(today), type: 'today' as DueDateFilterType },
+      { label: 'Tomorrow', date: fmt(tomorrow), type: 'tomorrow' as DueDateFilterType },
+      { label: 'Next week', date: fmt(nextMon), type: 'next-week' as DueDateFilterType }
+    ]
+  }, [today])
+
+  const categories = useMemo(() => {
+    const items: { key: NonNullable<ActivePanel>; label: string; icon: React.ReactNode }[] = [
+      {
+        key: 'priority',
+        label: 'Priority',
+        icon: (
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 14 14"
+            fill="none"
+            className="text-muted-foreground"
+          >
+            <rect x="1.5" y="8" width="2.5" height="4.5" rx="0.5" fill="currentColor" />
+            <rect x="5.5" y="5" width="2.5" height="7.5" rx="0.5" fill="currentColor" />
+            <rect x="9.5" y="2" width="2.5" height="10.5" rx="0.5" fill="currentColor" />
+          </svg>
+        )
+      },
+      {
+        key: 'dueDate',
+        label: 'Due date',
+        icon: (
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 14 14"
+            fill="none"
+            className="text-muted-foreground"
+          >
+            <rect
+              x="2"
+              y="2.5"
+              width="10"
+              height="9.5"
+              rx="1.5"
+              stroke="currentColor"
+              strokeWidth="1.1"
+            />
+            <path d="M2 5.5h10" stroke="currentColor" strokeWidth="1.1" />
+          </svg>
+        )
+      },
+      {
+        key: 'project',
+        label: 'Project',
+        icon: (
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 14 14"
+            fill="none"
+            className="text-muted-foreground"
+          >
+            <path
+              d="M2 4.5V11a1.5 1.5 0 0 0 1.5 1.5h7A1.5 1.5 0 0 0 12 11V5.5A1.5 1.5 0 0 0 10.5 4H7L5.5 2H3.5A1.5 1.5 0 0 0 2 3.5v1z"
+              stroke="currentColor"
+              strokeWidth="1.1"
+            />
+          </svg>
+        )
+      }
+    ]
+    if (statuses.length > 0) {
+      items.splice(1, 0, {
+        key: 'status',
+        label: 'Status',
+        icon: (
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 14 14"
+            fill="none"
+            className="text-muted-foreground"
+          >
+            <circle cx="7" cy="7" r="5" stroke="currentColor" strokeWidth="1.2" />
+          </svg>
+        )
+      })
+    }
+    return items
+  }, [statuses])
+
+  const filteredCategories = useMemo(() => {
+    if (!searchQuery) return categories
+    const q = searchQuery.toLowerCase()
+    return categories.filter((c) => c.label.toLowerCase().includes(q))
+  }, [categories, searchQuery])
+
+  const filteredPriorities = useMemo(() => {
+    if (!searchQuery) return PRIORITY_ORDER
+    const q = searchQuery.toLowerCase()
+    return PRIORITY_ORDER.filter((p) => PRIORITY_LABELS[p].toLowerCase().includes(q))
+  }, [searchQuery])
+
+  const prevMonth = useCallback(() => {
+    setCalendarMonth((prev) => {
+      const d = new Date(prev.year, prev.month - 1, 1)
+      return { year: d.getFullYear(), month: d.getMonth() }
+    })
+  }, [])
+
+  const nextMonth = useCallback(() => {
+    setCalendarMonth((prev) => {
+      const d = new Date(prev.year, prev.month + 1, 1)
+      return { year: d.getFullYear(), month: d.getMonth() }
+    })
+  }, [])
 
   return (
     <Popover open={open} onOpenChange={handleOpenChange}>
       <PopoverTrigger asChild>{children}</PopoverTrigger>
       <PopoverContent
-        className="w-[280px] p-0 rounded-xl overflow-clip shadow-[0_4px_24px_rgba(0,0,0,0.08),0_1px_3px_rgba(0,0,0,0.04)] max-h-[calc(100vh-120px)] overflow-y-auto"
+        className="w-[220px] p-0 rounded-lg overflow-clip bg-popover border-border shadow-[var(--shadow-card-hover)] max-h-[calc(100vh-120px)] overflow-y-auto"
         align="end"
         sideOffset={8}
       >
-        <div className="flex flex-col [font-synthesis:none] antialiased">
-          {/* Priority */}
-          <SectionHeader
-            icon={Activity}
-            title="Priority"
-            expanded={expanded === 'priority'}
-            badge={filters.priorities.length}
-            onClick={() => toggleSection('priority')}
-            isFirst
-          />
-          {expanded === 'priority' && (
-            <div className="flex flex-col py-2">
-              {PRIORITIES.map((p) => {
-                const checked = filters.priorities.includes(p.key)
-                return (
+        <div
+          className={`flex flex-col text-[12px] leading-4 [font-synthesis:none] antialiased ${FONT}`}
+        >
+          {/* ── MAIN MENU ── */}
+          {activePanel === null && (
+            <>
+              <div className="flex items-center py-2 px-3 gap-2 border-b border-border">
+                <svg
+                  width="13"
+                  height="13"
+                  viewBox="0 0 13 13"
+                  fill="none"
+                  className="shrink-0 text-text-tertiary"
+                >
+                  <circle cx="5.5" cy="5.5" r="4" stroke="currentColor" strokeWidth="1.1" />
+                  <path
+                    d="M8.5 8.5l2.5 2.5"
+                    stroke="currentColor"
+                    strokeWidth="1.1"
+                    strokeLinecap="round"
+                  />
+                </svg>
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Filter by..."
+                  className={`flex-1 min-w-0 bg-transparent text-[12px] ${FONT} text-foreground placeholder:text-text-tertiary outline-none leading-4`}
+                />
+              </div>
+              <div className="flex flex-col p-1">
+                {filteredCategories.map((cat) => (
                   <button
-                    key={p.key}
+                    key={cat.key}
                     type="button"
-                    onClick={() => togglePriority(p.key)}
-                    className={cn(
-                      'flex items-center py-2 px-4 gap-2.5 transition-colors hover:bg-[#F9F8F6]',
-                      checked && 'bg-[#F9F8F6]'
-                    )}
+                    onClick={() => navigateTo(cat.key)}
+                    className="flex items-center rounded-[5px] py-1.5 px-2 gap-2 hover:bg-accent transition-colors"
                   >
-                    <FilterCheckbox checked={checked} color={p.dot} />
-                    <div
-                      className="shrink-0 rounded-full size-2"
-                      style={{ backgroundColor: p.dot }}
-                    />
-                    <span
-                      className={cn(
-                        `text-[13px] ${FONT} leading-4`,
-                        p.key === 'none' ? 'text-[#6A6A6A]' : 'text-[#1A1A1A] font-medium'
-                      )}
+                    {cat.icon}
+                    <span className="text-[12px] text-text-secondary leading-4">{cat.label}</span>
+                    <svg
+                      width="10"
+                      height="10"
+                      viewBox="0 0 10 10"
+                      fill="none"
+                      className="ml-auto text-text-tertiary"
                     >
-                      {p.label}
-                    </span>
-                    <span className={`text-[11px] ml-auto text-[#8A8A8A] ${FONT} leading-[14px]`}>
-                      {taskCountByPriority[p.key]}
-                    </span>
+                      <path
+                        d="M3.5 5l3 0"
+                        stroke="currentColor"
+                        strokeWidth="1.1"
+                        strokeLinecap="round"
+                      />
+                      <path
+                        d="M5.5 3L7.5 5 5.5 7"
+                        stroke="currentColor"
+                        strokeWidth="1.1"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    </svg>
                   </button>
-                )
-              })}
-            </div>
+                ))}
+              </div>
+            </>
           )}
 
-          {/* Due Date */}
-          <SectionHeader
-            icon={Calendar}
-            title="Due Date"
-            expanded={expanded === 'dueDate'}
-            badge={filters.dueDate.type !== 'any' ? 1 : 0}
-            onClick={() => toggleSection('dueDate')}
-          />
-          {expanded === 'dueDate' && (
-            <div className="flex flex-col py-2">
-              {DUE_DATE_PRESETS.map((preset) => {
-                const checked = filters.dueDate.type === preset.value
-                const isOd = preset.isOverdue
-                return (
-                  <button
-                    key={preset.value}
-                    type="button"
-                    onClick={() => toggleDueDate(preset.value)}
-                    className={cn(
-                      'flex items-center py-2 px-4 gap-2.5 transition-colors hover:bg-[#F9F8F6]',
-                      checked && isOd && 'bg-[#FEF0EE]',
-                      checked && !isOd && 'bg-[#F9F8F6]'
-                    )}
-                  >
-                    <FilterCheckbox checked={checked} color={isOd ? '#E54D2E' : '#D4D1CA'} />
-                    <span
+          {/* ── PRIORITY PANEL ── */}
+          {activePanel === 'priority' && (
+            <>
+              <div className="flex items-center py-2 px-3 gap-1.5 border-b border-border">
+                <BackButton onClick={goBack} />
+                <svg
+                  width="13"
+                  height="13"
+                  viewBox="0 0 13 13"
+                  fill="none"
+                  className="text-muted-foreground"
+                >
+                  <rect x="1" y="7" width="2.5" height="4.5" rx="0.5" fill="currentColor" />
+                  <rect x="5" y="4.5" width="2.5" height="7" rx="0.5" fill="currentColor" />
+                  <rect x="9" y="2" width="2.5" height="9.5" rx="0.5" fill="currentColor" />
+                </svg>
+                <span className="text-[12px] text-foreground font-medium leading-4">Priority</span>
+                <span className="text-[11px] ml-auto text-foreground leading-3.5">is</span>
+              </div>
+              <div className="flex items-center py-1.5 px-3 gap-2 border-b border-border">
+                <svg
+                  width="12"
+                  height="12"
+                  viewBox="0 0 12 12"
+                  fill="none"
+                  className="shrink-0 text-text-tertiary"
+                >
+                  <circle cx="5" cy="5" r="3.5" stroke="currentColor" />
+                  <path d="M7.5 7.5l2.5 2.5" stroke="currentColor" strokeLinecap="round" />
+                </svg>
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search..."
+                  className={`flex-1 min-w-0 bg-transparent text-[12px] ${FONT} text-foreground placeholder:text-text-tertiary outline-none leading-4`}
+                />
+              </div>
+              <div className="flex flex-col p-1">
+                {filteredPriorities.map((p) => {
+                  const checked = filters.priorities.includes(p)
+                  return (
+                    <button
+                      key={p}
+                      type="button"
+                      onClick={() => togglePriority(p)}
                       className={cn(
-                        `text-[13px] ${FONT} leading-4`,
-                        checked && isOd
-                          ? 'text-[#E54D2E] font-medium'
-                          : preset.value === 'none'
-                            ? 'text-[#6A6A6A]'
-                            : 'text-[#1A1A1A]'
+                        'flex items-center rounded-[5px] py-1.5 px-2 gap-2 transition-colors',
+                        checked ? 'bg-accent' : 'hover:bg-accent'
                       )}
                     >
-                      {preset.label}
-                    </span>
-                    <span
-                      className={cn(
-                        `text-[11px] ml-auto ${FONT} leading-[14px]`,
-                        checked && isOd ? 'text-[#C4392B]' : 'text-[#8A8A8A]'
-                      )}
-                    >
-                      {dueDateCounts[preset.value] ?? ''}
-                    </span>
-                  </button>
-                )
-              })}
-            </div>
-          )}
-
-          {/* More */}
-          <SectionHeader
-            icon={MoreHorizontal}
-            title="More"
-            expanded={expanded === 'more'}
-            badge={moreActiveCount}
-            onClick={() => toggleSection('more')}
-          />
-          {expanded === 'more' && !showStatusPanel && (
-            <div className="flex flex-col py-2">
-              {showStatusFilter && statuses.length > 0 && (
+                      <span className={cn(p === 'none' && 'text-text-tertiary')}>
+                        {PRIORITY_ICONS[p]}
+                      </span>
+                      <span
+                        className={cn(
+                          'text-[12px] leading-4',
+                          checked ? 'text-foreground' : 'text-text-secondary',
+                          p === 'none' && !checked && 'text-text-tertiary'
+                        )}
+                      >
+                        {PRIORITY_LABELS[p]}
+                      </span>
+                      {checked && <CheckMark />}
+                    </button>
+                  )
+                })}
+              </div>
+              <div className="flex items-center justify-between py-2 px-3 border-t border-border">
+                <span className="text-[11px] text-text-tertiary leading-3.5">
+                  {filters.priorities.length} selected
+                </span>
                 <button
                   type="button"
-                  onClick={() => setShowStatusPanel(true)}
-                  className="flex items-center py-[9px] px-4 gap-2.5 hover:bg-[#F9F8F6] transition-colors"
+                  onClick={() => handleOpenChange(false)}
+                  className="flex items-center rounded-sm py-[3px] px-2.5 bg-foreground hover:bg-foreground/80 transition-colors"
                 >
-                  <Clock width={14} height={14} className="text-[#8A8A8A]" />
-                  <span className={`text-[13px] text-[#1A1A1A] ${FONT} leading-4`}>Status</span>
-                  {filters.statusIds.length > 0 && (
-                    <span className={`text-[11px] text-[#8A8A8A] ${FONT}`}>
-                      ({filters.statusIds.length})
-                    </span>
-                  )}
-                  <ChevronRight width={10} height={10} className="text-[#C4C0B8] ml-auto" />
+                  <span className="text-[11px] text-background font-medium leading-3.5">Apply</span>
                 </button>
-              )}
-              <button
-                type="button"
-                className="flex items-center py-[9px] px-4 gap-2.5 hover:bg-[#F9F8F6] transition-colors"
-              >
-                <Calendar width={14} height={14} className="text-[#8A8A8A]" />
-                <span className={`text-[13px] text-[#1A1A1A] ${FONT} leading-4`}>Has time set</span>
-                <ToggleSwitch
-                  enabled={filters.hasTime === 'with-time'}
-                  onToggle={() =>
-                    onUpdateFilters({
-                      hasTime:
-                        filters.hasTime === 'with-time'
-                          ? ('all' as HasTimeFilterType)
-                          : ('with-time' as HasTimeFilterType)
-                    })
-                  }
-                />
-              </button>
-              <div className="h-px bg-[#F0EDE8] shrink-0 my-1 mx-4" />
-              <button
-                type="button"
-                className="flex items-center py-[9px] px-4 gap-2.5 hover:bg-[#F9F8F6] transition-colors"
-              >
-                <RefreshCw width={14} height={14} className="text-[#8A8A8A]" />
-                <span className={`text-[13px] text-[#1A1A1A] ${FONT} leading-4`}>
-                  Recurring only
-                </span>
-                <ToggleSwitch
-                  enabled={filters.repeatType === 'repeating'}
-                  onToggle={() =>
-                    onUpdateFilters({
-                      repeatType:
-                        filters.repeatType === 'repeating'
-                          ? ('all' as RepeatFilterType)
-                          : ('repeating' as RepeatFilterType)
-                    })
-                  }
-                />
-              </button>
-            </div>
+              </div>
+            </>
           )}
-          {expanded === 'more' && showStatusPanel && (
-            <div className="flex flex-col">
-              <button
-                type="button"
-                onClick={() => setShowStatusPanel(false)}
-                className="flex items-center py-2.5 px-4 gap-1.5 bg-[#F5F3EF] border-b border-[#E8E5E0]"
-              >
-                <ChevronDown width={10} height={10} className="text-[#8A8A8A] rotate-90" />
-                <span className={`text-[13px] text-[#1A1A1A] ${FONT} font-semibold leading-4`}>
-                  Status
-                </span>
-              </button>
-              <div className="flex flex-col py-2">
+
+          {/* ── STATUS PANEL ── */}
+          {activePanel === 'status' && (
+            <>
+              <div className="flex items-center py-2 px-3 gap-1.5 border-b border-border">
+                <BackButton onClick={goBack} />
+                <svg
+                  width="14"
+                  height="14"
+                  viewBox="0 0 14 14"
+                  fill="none"
+                  className="text-muted-foreground"
+                >
+                  <circle cx="7" cy="7" r="5" stroke="currentColor" strokeWidth="1.2" />
+                </svg>
+                <span className="text-[12px] text-foreground font-medium leading-4">Status</span>
+              </div>
+              <div className="flex flex-col p-1">
                 {statuses.map((status) => {
                   const selected = filters.statusIds.includes(status.id)
                   return (
                     <button
                       key={status.id}
                       type="button"
-                      onClick={() => handleToggleStatus(status.id)}
-                      className="flex items-center gap-2.5 py-2 px-4 hover:bg-[#F9F8F6] transition-colors"
+                      onClick={() => toggleStatus(status.id)}
+                      className={cn(
+                        'flex items-center rounded-[5px] py-1.5 px-2 gap-2 transition-colors',
+                        selected ? 'bg-accent' : 'hover:bg-accent'
+                      )}
                     >
-                      <FilterCheckbox checked={selected} color={status.color} />
-                      <div
-                        className="shrink-0 rounded-full size-2"
-                        style={{ backgroundColor: status.color }}
-                      />
-                      <span className={`text-[13px] text-[#1A1A1A] ${FONT} leading-4`}>
+                      <StatusIcon type={status.type} color={status.color} />
+                      <span
+                        className={cn(
+                          'text-[12px] leading-4',
+                          selected ? 'text-foreground' : 'text-text-secondary'
+                        )}
+                      >
                         {status.name}
                       </span>
-                      <span className={`text-[11px] ml-auto text-[#8A8A8A] ${FONT} leading-[14px]`}>
-                        {taskCountByStatus[status.id] || 0}
-                      </span>
+                      {selected && <CheckMark />}
                     </button>
                   )
                 })}
               </div>
-            </div>
+            </>
           )}
 
-          {/* Saved */}
-          <SectionHeader
-            icon={Star}
-            title="Saved"
-            expanded={expanded === 'saved'}
-            badge={savedFilters.length}
-            onClick={() => toggleSection('saved')}
-          />
-          {expanded === 'saved' && (
-            <div className="flex flex-col">
-              <div className="flex flex-col py-2">
-                {savedFilters.length === 0 && !isActive && (
-                  <div className={`py-3 px-4 text-[13px] text-[#8A8A8A] ${FONT} leading-4`}>
-                    No saved filters yet
-                  </div>
-                )}
-                {savedFilters.map((sf) => (
-                  <button
-                    key={sf.id}
-                    type="button"
-                    onClick={() => handleApplySaved(sf)}
-                    className="flex items-center py-[9px] px-4 gap-2.5 hover:bg-[#F5F3EF] transition-colors"
-                  >
-                    <Star width={14} height={14} className="text-[#C4C0B8] shrink-0" fill="none" />
-                    <div className="flex flex-col gap-0.5 min-w-0">
-                      <span className={`text-[13px] text-[#1A1A1A] ${FONT} leading-4 truncate`}>
-                        {sf.name}
-                      </span>
-                      <span
-                        className={`text-[11px] text-[#8A8A8A] ${FONT} leading-[14px] truncate`}
-                      >
-                        {describeSavedFilter(sf, projects)}
-                      </span>
-                    </div>
-                  </button>
-                ))}
+          {/* ── DUE DATE PANEL ── */}
+          {activePanel === 'dueDate' && (
+            <>
+              <div className="flex items-center py-2 px-3 gap-1.5 border-b border-border">
+                <BackButton onClick={goBack} />
+                <svg
+                  width="14"
+                  height="14"
+                  viewBox="0 0 14 14"
+                  fill="none"
+                  className="text-muted-foreground"
+                >
+                  <rect
+                    x="2"
+                    y="2.5"
+                    width="10"
+                    height="9.5"
+                    rx="1.5"
+                    stroke="currentColor"
+                    strokeWidth="1.1"
+                  />
+                  <path d="M2 5.5h10" stroke="currentColor" strokeWidth="1.1" />
+                </svg>
+                <span className="text-[12px] text-foreground font-medium leading-4">Due date</span>
               </div>
-              {isActive && (
-                <>
-                  <div className="h-px bg-[#E8E5E0] shrink-0" />
-                  <div className="flex items-center gap-2 py-2.5 px-3">
-                    <input
-                      type="text"
-                      value={saveFilterName}
-                      onChange={(e) => setSaveFilterName(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') handleSaveCurrentFilter()
-                      }}
-                      placeholder="Save current filters"
-                      className={`flex-1 min-w-0 text-[13px] ${FONT} leading-4 py-1.5 px-2.5 rounded-md border border-[#E8E5E0] bg-white text-[#1A1A1A] placeholder:text-[#AAAAAA] outline-none focus:border-[#1A1A1A] transition-colors`}
-                    />
+              <div className="flex flex-col p-1 border-b border-border">
+                {dueDatePresets.map((preset) => {
+                  const active = filters.dueDate.type === preset.type
+                  return (
                     <button
+                      key={preset.type}
                       type="button"
-                      onClick={handleSaveCurrentFilter}
-                      disabled={!saveFilterName.trim()}
+                      onClick={() => selectDueDate(preset.type)}
                       className={cn(
-                        'shrink-0 rounded-md py-[5px] px-3 text-[12px] font-semibold leading-4 transition-colors',
-                        FONT,
-                        saveFilterName.trim()
-                          ? 'bg-[#1A1A1A] text-white hover:bg-[#333]'
-                          : 'bg-[#E8E5E0] text-[#AAAAAA] cursor-not-allowed'
+                        'flex items-center rounded-[5px] py-1.5 px-2 gap-2 transition-colors',
+                        active ? 'bg-accent' : 'hover:bg-accent'
                       )}
                     >
-                      Save
+                      <span
+                        className={cn(
+                          'text-[12px] leading-4',
+                          active ? 'text-foreground' : 'text-text-secondary'
+                        )}
+                      >
+                        {preset.label}
+                      </span>
+                      <span className="text-[11px] ml-auto text-text-tertiary leading-3.5">
+                        {preset.date}
+                      </span>
                     </button>
+                  )
+                })}
+                <button
+                  type="button"
+                  onClick={clearDueDate}
+                  className="flex items-center rounded-[5px] py-1.5 px-2 gap-2 hover:bg-accent transition-colors"
+                >
+                  <span className="text-[12px] text-destructive leading-4">Remove date</span>
+                </button>
+              </div>
+              <div className="flex flex-col pt-2 pb-3 gap-1.5 px-3">
+                <div className="flex items-center justify-between py-0.5">
+                  <button
+                    type="button"
+                    onClick={prevMonth}
+                    className="p-0.5 hover:bg-accent rounded transition-colors text-text-tertiary"
+                  >
+                    <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                      <path
+                        d="M8.5 3.5L5 7l3.5 3.5"
+                        stroke="currentColor"
+                        strokeWidth="1.2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    </svg>
+                  </button>
+                  <span className="text-[12px] text-foreground font-medium leading-4">
+                    {MONTH_NAMES[calendarMonth.month]} {calendarMonth.year}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={nextMonth}
+                    className="p-0.5 hover:bg-accent rounded transition-colors text-text-tertiary"
+                  >
+                    <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                      <path
+                        d="M5.5 3.5L9 7l-3.5 3.5"
+                        stroke="currentColor"
+                        strokeWidth="1.2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    </svg>
+                  </button>
+                </div>
+                <div className="flex items-center">
+                  {DAY_HEADERS.map((dh) => (
+                    <div
+                      key={dh}
+                      className="text-[10px] w-7 text-center text-text-tertiary font-medium leading-3 shrink-0"
+                    >
+                      {dh}
+                    </div>
+                  ))}
+                </div>
+                {calendarWeeks.map((week, wi) => (
+                  <div key={wi} className="flex items-center">
+                    {week.map((cell, di) => {
+                      if (!cell.isCurrentMonth) {
+                        return (
+                          <div
+                            key={di}
+                            className="w-7 h-[26px] flex items-center justify-center shrink-0 text-[11px] text-border leading-3.5"
+                          >
+                            {cell.day}
+                          </div>
+                        )
+                      }
+                      const date = new Date(calendarMonth.year, calendarMonth.month, cell.day)
+                      const isToday = date.getTime() === today.getTime()
+                      const isPast = date < today
+                      const isSelected =
+                        selectedCalendarDate !== null &&
+                        selectedCalendarDate.year === calendarMonth.year &&
+                        selectedCalendarDate.month === calendarMonth.month &&
+                        selectedCalendarDate.day === cell.day
+
+                      return (
+                        <button
+                          key={di}
+                          type="button"
+                          onClick={() => selectCalendarDate(cell.day)}
+                          className={cn(
+                            'w-7 h-[26px] flex items-center justify-center shrink-0 rounded-[5px] transition-colors',
+                            isSelected && 'bg-foreground',
+                            isToday && !isSelected && 'border border-ring',
+                            !isSelected && !isToday && 'hover:bg-accent'
+                          )}
+                        >
+                          <span
+                            className={cn(
+                              'text-[11px] leading-3.5',
+                              isSelected && 'text-background font-semibold',
+                              isToday && !isSelected && 'text-foreground font-medium',
+                              !isSelected && !isToday && isPast && 'text-text-tertiary',
+                              !isSelected && !isToday && !isPast && 'text-muted-foreground'
+                            )}
+                          >
+                            {cell.day}
+                          </span>
+                        </button>
+                      )
+                    })}
                   </div>
-                </>
-              )}
-            </div>
+                ))}
+              </div>
+            </>
           )}
 
-          {/* Clear all footer */}
-          {isActive && (
-            <button
-              type="button"
-              onClick={() => {
-                onClearFilters()
-                handleOpenChange(false)
-              }}
-              className={cn(
-                'flex items-center justify-center w-full py-2.5 px-4 border-t border-[#E8E5E0]',
-                `text-[12px] text-[#E54D2E] ${FONT} font-medium leading-4`,
-                'hover:bg-[#FEF0EE] transition-colors'
-              )}
-            >
-              Clear all filters
-            </button>
+          {/* ── PROJECT PANEL ── */}
+          {activePanel === 'project' && (
+            <>
+              <div className="flex items-center py-2 px-3 gap-1.5 border-b border-border">
+                <BackButton onClick={goBack} />
+                <svg
+                  width="14"
+                  height="14"
+                  viewBox="0 0 14 14"
+                  fill="none"
+                  className="text-muted-foreground"
+                >
+                  <path
+                    d="M2 4.5V11a1.5 1.5 0 0 0 1.5 1.5h7A1.5 1.5 0 0 0 12 11V5.5A1.5 1.5 0 0 0 10.5 4H7L5.5 2H3.5A1.5 1.5 0 0 0 2 3.5v1z"
+                    stroke="currentColor"
+                    strokeWidth="1.1"
+                  />
+                </svg>
+                <span className="text-[12px] text-foreground font-medium leading-4">Project</span>
+              </div>
+              <div className="flex flex-col p-1">
+                <button
+                  type="button"
+                  onClick={clearProjectFilter}
+                  className={cn(
+                    'flex items-center rounded-[5px] py-1.5 px-2 gap-2 transition-colors',
+                    filters.projectIds.length === 0 ? 'bg-accent' : 'hover:bg-accent'
+                  )}
+                >
+                  <div className="shrink-0 rounded-[3px] border-[1.2px] border-solid border-border size-2.5" />
+                  <span className="text-[12px] text-text-tertiary leading-4">No project</span>
+                  {filters.projectIds.length === 0 && <CheckMark />}
+                </button>
+                {visibleProjects.map((project) => {
+                  const selected = filters.projectIds.includes(project.id)
+                  return (
+                    <button
+                      key={project.id}
+                      type="button"
+                      onClick={() => toggleProject(project.id)}
+                      className={cn(
+                        'flex items-center rounded-[5px] py-1.5 px-2 gap-2 transition-colors',
+                        selected ? 'bg-accent' : 'hover:bg-accent'
+                      )}
+                    >
+                      <div
+                        className="shrink-0 rounded-[3px] size-2.5"
+                        style={{ backgroundColor: project.color }}
+                      />
+                      <span
+                        className={cn(
+                          'text-[12px] leading-4',
+                          selected ? 'text-foreground' : 'text-text-secondary'
+                        )}
+                      >
+                        {project.name}
+                      </span>
+                      {selected && <CheckMark />}
+                    </button>
+                  )
+                })}
+              </div>
+            </>
           )}
         </div>
       </PopoverContent>

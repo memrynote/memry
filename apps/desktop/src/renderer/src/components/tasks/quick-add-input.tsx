@@ -2,6 +2,7 @@ import { useState, useRef, useCallback, useMemo } from 'react'
 import { Calendar, Folder, Flag } from 'lucide-react'
 
 import { cn } from '@/lib/utils'
+import { Kbd } from '@/components/ui/kbd'
 import { useKeyboardShortcuts } from '@/hooks/use-keyboard-shortcuts-base'
 
 // ============================================================================
@@ -128,6 +129,7 @@ interface QuickAddInputProps {
   projects: Project[]
   placeholder?: string
   className?: string
+  compact?: boolean
 }
 
 // ============================================================================
@@ -236,7 +238,8 @@ export const QuickAddInput = ({
   onOpenModal,
   projects,
   placeholder = 'Add a task...    !today  !!high  #project',
-  className
+  className,
+  compact = false
 }: QuickAddInputProps): React.JSX.Element => {
   const [value, setValue] = useState('')
   const [isFocused, setIsFocused] = useState(false)
@@ -462,35 +465,66 @@ export const QuickAddInput = ({
     isFocused && preview && (preview.hasDate || preview.hasPriority || preview.hasProject)
 
   return (
-    <div className="relative">
+    <div className={cn('relative', compact && 'grow shrink basis-0 min-w-0')}>
       <div
         role="button"
         tabIndex={-1}
         onClick={handleContainerClick}
         className={cn(
-          'flex flex-col rounded-[10px] border-[1.5px] border-dashed transition-all duration-150 overflow-hidden',
-          isFocused ? 'border-[#C4654A]/60' : 'border-[#DAD9D4] hover:border-[#C4654A]/40',
+          'flex flex-col border-[1.5px] border-dashed transition-all duration-150 overflow-hidden',
+          compact ? 'rounded-md' : 'rounded-[10px]',
+          isFocused
+            ? 'border-[#C4654A]/60'
+            : compact
+              ? 'border-border hover:border-text-tertiary'
+              : 'border-[#DAD9D4] hover:border-[#C4654A]/40',
           className
         )}
       >
-        <div className="flex items-center gap-2.5 px-3.5 py-2">
+        <div
+          className={cn(
+            'flex items-center',
+            compact ? 'gap-1.5 px-2.5 py-1' : 'gap-2.5 px-3.5 py-2'
+          )}
+        >
           <svg
-            width="16"
-            height="16"
-            viewBox="0 0 18 18"
+            width={compact ? '13' : '16'}
+            height={compact ? '13' : '16'}
+            viewBox={compact ? '0 0 13 13' : '0 0 18 18'}
             fill="none"
-            className="shrink-0"
+            className={cn('shrink-0', compact ? 'text-text-secondary' : undefined)}
             aria-hidden="true"
           >
-            <circle
-              cx="9"
-              cy="9"
-              r="7.5"
-              stroke="#C4654A"
-              strokeWidth="1.5"
-              strokeDasharray="3 3"
-            />
-            <path d="M9 6v6M6 9h6" stroke="#C4654A" strokeWidth="1.5" strokeLinecap="round" />
+            {compact ? (
+              <>
+                <circle
+                  cx="6.5"
+                  cy="6.5"
+                  r="5"
+                  stroke="currentColor"
+                  strokeWidth="1.1"
+                  strokeDasharray="2.5 2.5"
+                />
+                <path
+                  d="M6.5 4.5v4M4.5 6.5h4"
+                  stroke="currentColor"
+                  strokeWidth="1.1"
+                  strokeLinecap="round"
+                />
+              </>
+            ) : (
+              <>
+                <circle
+                  cx="9"
+                  cy="9"
+                  r="7.5"
+                  stroke="#C4654A"
+                  strokeWidth="1.5"
+                  strokeDasharray="3 3"
+                />
+                <path d="M9 6v6M6 9h6" stroke="#C4654A" strokeWidth="1.5" strokeLinecap="round" />
+              </>
+            )}
           </svg>
 
           {/* Input with token highlight overlay */}
@@ -498,7 +532,10 @@ export const QuickAddInput = ({
             <div
               ref={overlayRef}
               aria-hidden="true"
-              className="pointer-events-none absolute inset-0 overflow-hidden whitespace-pre text-sm leading-[normal]"
+              className={cn(
+                'pointer-events-none absolute inset-0 overflow-hidden whitespace-pre leading-[normal]',
+                compact ? 'text-[12px]' : 'text-sm'
+              )}
             >
               {value && hasSpecialSyntax(value) && <TokenOverlay value={value} />}
             </div>
@@ -513,22 +550,29 @@ export const QuickAddInput = ({
               onKeyDown={handleKeyDown}
               placeholder={placeholder}
               className={cn(
-                'relative w-full bg-transparent text-sm outline-none caret-text-primary',
+                'relative w-full bg-transparent outline-none caret-text-primary',
+                compact ? 'text-[12px] leading-4' : 'text-sm',
                 value && hasSpecialSyntax(value)
-                  ? 'text-transparent selection:bg-primary/20 selection:text-transparent placeholder:text-[#A3A09B]'
+                  ? 'text-transparent selection:bg-primary/20 selection:text-transparent placeholder:text-muted-foreground/40'
                   : isFocused
-                    ? 'text-text-primary placeholder:text-[#A3A09B]'
-                    : 'text-[#A3A09B] placeholder:text-[#A3A09B]'
+                    ? 'text-text-primary placeholder:text-muted-foreground/40'
+                    : 'text-muted-foreground placeholder:text-muted-foreground/40'
               )}
               aria-label="Quick add task"
             />
           </div>
 
           {!isFocused && (
-            <div className="flex items-center ml-auto">
-              <span className="rounded bg-[#EDECE8] px-1.5 py-px text-xs leading-4 font-medium font-sans text-foreground/70">
-                Q
-              </span>
+            <div className="flex items-center ml-auto shrink-0">
+              {compact ? (
+                <span className="rounded-[3px] px-1 bg-foreground/5 border border-border">
+                  <span className="text-[9px] text-text-tertiary font-[family-name:var(--font-mono)] font-medium leading-3">
+                    Q
+                  </span>
+                </span>
+              ) : (
+                <Kbd className="px-1.5 py-px text-xs leading-4">Q</Kbd>
+              )}
             </div>
           )}
 

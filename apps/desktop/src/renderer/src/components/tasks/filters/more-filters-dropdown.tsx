@@ -44,12 +44,12 @@ const ToggleSwitch = ({
     }}
     className={cn(
       'w-8 h-[18px] ml-auto flex items-center rounded-sm shrink-0 p-0.5 transition-colors',
-      enabled ? 'bg-[#1A1A1A] justify-end' : 'bg-[#D4D1CA]'
+      enabled ? 'bg-foreground justify-end' : 'bg-border'
     )}
     role="switch"
     aria-checked={enabled}
   >
-    <div className="rounded-full bg-white shrink-0 size-3.5" />
+    <div className="rounded-full bg-background shrink-0 size-3.5" />
   </button>
 )
 
@@ -126,18 +126,18 @@ export const MoreFiltersDropdown = ({
               <button
                 type="button"
                 onClick={() => setShowStatusPanel(true)}
-                className="flex items-center py-[9px] px-4 gap-2.5 hover:bg-[#F9F8F6] focus:outline-none transition-colors"
+                className="flex items-center py-[9px] px-4 gap-2.5 hover:bg-accent focus:outline-none transition-colors"
               >
-                <Clock className="size-3.5 text-[#8A8A8A]" />
-                <span className="text-[13px] text-[#1A1A1A] font-['DM_Sans_Variable',system-ui,sans-serif] leading-4">
+                <Clock className="size-3.5 text-text-tertiary" />
+                <span className="text-[13px] text-foreground font-['DM_Sans_Variable',system-ui,sans-serif] leading-4">
                   Status
                 </span>
                 {selectedStatusIds.length > 0 && (
-                  <span className="text-[11px] text-[#8A8A8A] font-['DM_Sans_Variable',system-ui,sans-serif]">
+                  <span className="text-[11px] text-text-tertiary font-['DM_Sans_Variable',system-ui,sans-serif]">
                     ({selectedStatusIds.length})
                   </span>
                 )}
-                <ChevronRight className="size-2.5 text-[#C4C0B8] ml-auto" />
+                <ChevronRight className="size-2.5 text-text-tertiary ml-auto" />
               </button>
             )}
 
@@ -145,10 +145,10 @@ export const MoreFiltersDropdown = ({
             <button
               type="button"
               onClick={() => setShowStatusPanel(false)}
-              className="flex items-center py-[9px] px-4 gap-2.5 hover:bg-[#F9F8F6] focus:outline-none transition-colors"
+              className="flex items-center py-[9px] px-4 gap-2.5 hover:bg-accent focus:outline-none transition-colors"
             >
-              <Calendar className="size-3.5 text-[#8A8A8A]" />
-              <span className="text-[13px] text-[#1A1A1A] font-['DM_Sans_Variable',system-ui,sans-serif] leading-4">
+              <Calendar className="size-3.5 text-text-tertiary" />
+              <span className="text-[13px] text-foreground font-['DM_Sans_Variable',system-ui,sans-serif] leading-4">
                 Has time set
               </span>
               <ToggleSwitch
@@ -158,15 +158,15 @@ export const MoreFiltersDropdown = ({
             </button>
 
             {/* Divider */}
-            <div className="h-px bg-[#F0EDE8] shrink-0 my-1 mx-4" />
+            <div className="h-px bg-border shrink-0 my-1 mx-4" />
 
             {/* Recurring only */}
             <button
               type="button"
-              className="flex items-center py-[9px] px-4 gap-2.5 hover:bg-[#F9F8F6] focus:outline-none transition-colors"
+              className="flex items-center py-[9px] px-4 gap-2.5 hover:bg-accent focus:outline-none transition-colors"
             >
-              <RefreshCw className="size-3.5 text-[#8A8A8A]" />
-              <span className="text-[13px] text-[#1A1A1A] font-['DM_Sans_Variable',system-ui,sans-serif] leading-4">
+              <RefreshCw className="size-3.5 text-text-tertiary" />
+              <span className="text-[13px] text-foreground font-['DM_Sans_Variable',system-ui,sans-serif] leading-4">
                 Recurring only
               </span>
               <ToggleSwitch
@@ -183,10 +183,10 @@ export const MoreFiltersDropdown = ({
             <button
               type="button"
               onClick={() => setShowStatusPanel(false)}
-              className="flex items-center py-2.5 px-4 gap-1.5 bg-[#F5F3EF] border-b border-[#E8E5E0]"
+              className="flex items-center py-2.5 px-4 gap-1.5 bg-surface border-b border-border"
             >
-              <ChevronDown className="size-2.5 text-[#8A8A8A] rotate-90" />
-              <span className="text-[13px] text-[#1A1A1A] font-['DM_Sans_Variable',system-ui,sans-serif] font-semibold leading-4">
+              <ChevronDown className="size-2.5 text-text-tertiary rotate-90" />
+              <span className="text-[13px] text-foreground font-['DM_Sans_Variable',system-ui,sans-serif] font-semibold leading-4">
                 Status
               </span>
             </button>
@@ -200,15 +200,15 @@ export const MoreFiltersDropdown = ({
                     key={status.id}
                     type="button"
                     onClick={() => handleToggleStatus(status.id)}
-                    className="flex items-center gap-2.5 py-2 px-4 hover:bg-[#F9F8F6] focus:outline-none transition-colors"
+                    className="flex items-center gap-2.5 py-2 px-4 hover:bg-accent focus:outline-none transition-colors"
                   >
                     <div
                       className="flex items-center justify-center rounded-sm shrink-0 size-4"
                       style={{
                         borderWidth: '1.5px',
                         borderStyle: 'solid',
-                        borderColor: isSelected ? status.color : '#D4D1CA',
-                        backgroundColor: isSelected ? `${status.color}15` : '#FFFFFF'
+                        borderColor: isSelected ? status.color : 'var(--border)',
+                        backgroundColor: isSelected ? `${status.color}15` : 'var(--card)'
                       }}
                     >
                       {isSelected && (
@@ -230,10 +230,10 @@ export const MoreFiltersDropdown = ({
                       className="shrink-0 rounded-full size-2"
                       style={{ backgroundColor: status.color }}
                     />
-                    <span className="text-[13px] text-[#1A1A1A] font-['DM_Sans_Variable',system-ui,sans-serif] leading-4">
+                    <span className="text-[13px] text-foreground font-['DM_Sans_Variable',system-ui,sans-serif] leading-4">
                       {status.name}
                     </span>
-                    <span className="text-[11px] ml-auto text-[#8A8A8A] font-['DM_Sans_Variable',system-ui,sans-serif] leading-[14px]">
+                    <span className="text-[11px] ml-auto text-text-tertiary font-['DM_Sans_Variable',system-ui,sans-serif] leading-[14px]">
                       {taskCount}
                     </span>
                   </button>

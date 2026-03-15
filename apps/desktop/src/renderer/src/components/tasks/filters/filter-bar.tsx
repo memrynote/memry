@@ -1,5 +1,4 @@
 import { ActiveFiltersBar } from './active-filters-bar'
-import { cn } from '@/lib/utils'
 import type { TaskFilters, Project } from '@/data/tasks-data'
 import { hasActiveFilters } from '@/lib/task-utils'
 
@@ -23,14 +22,13 @@ export const FilterBar = ({
   if (!isActive) return null
 
   return (
-    <div className={cn('border-b border-border/50', className)}>
-      <ActiveFiltersBar
-        filters={filters}
-        projects={projects}
-        onUpdateFilters={onUpdateFilters}
-        onClearAll={onClearFilters}
-      />
-    </div>
+    <ActiveFiltersBar
+      filters={filters}
+      projects={projects}
+      onUpdateFilters={onUpdateFilters}
+      onClearAll={onClearFilters}
+      className={className}
+    />
   )
 }
 

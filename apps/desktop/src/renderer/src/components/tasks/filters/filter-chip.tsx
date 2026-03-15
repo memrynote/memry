@@ -29,17 +29,17 @@ export const FilterChip = ({
       className
     )}
     style={{
-      backgroundColor: chipBg || '#F5F3EF',
+      backgroundColor: chipBg || 'var(--surface)',
       borderWidth: '1px',
       borderStyle: 'solid',
-      borderColor: chipBorder || '#E8E5E0'
+      borderColor: chipBorder || 'var(--border)'
     }}
   >
     {dot && <div className="rounded-full shrink-0 size-1.5" style={{ backgroundColor: dot }} />}
     {icon && <span className="shrink-0 flex items-center">{icon}</span>}
     <span
       className={`text-[12px] ${FONT} font-medium leading-4 truncate max-w-32`}
-      style={{ color: chipText || '#1A1A1A' }}
+      style={{ color: chipText || 'var(--foreground)' }}
     >
       {label}
     </span>
@@ -54,7 +54,7 @@ export const FilterChip = ({
         height="10"
         viewBox="0 0 24 24"
         fill="none"
-        stroke={chipText || '#1A1A1A'}
+        stroke={chipText || 'var(--foreground)'}
         strokeWidth="2.5"
         strokeLinecap="round"
         strokeLinejoin="round"
