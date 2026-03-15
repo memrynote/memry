@@ -600,36 +600,27 @@ export const TaskDetailDrawer = memo(function TaskDetailDrawer({
                     className="text-[12px] leading-4 text-text-primary placeholder:text-text-tertiary bg-foreground/[0.03] rounded-md py-1.5 px-2.5 outline-none border border-border focus:border-ring"
                   />
                   <div className="max-h-[160px] overflow-y-auto scrollbar-thin flex flex-col gap-0.5">
-                    {availableNotes
-                      .filter(
-                        (n) =>
-                          !task.linkedNoteIds.includes(n.id) &&
-                          n.title.toLowerCase().includes(noteSearchQuery.toLowerCase())
-                      )
-                      .map((note) => (
-                        <button
-                          key={note.id}
-                          type="button"
-                          onClick={() => {
-                            onUpdateTask?.(task.id, {
-                              linkedNoteIds: [...task.linkedNoteIds, note.id]
-                            })
-                            setNoteSearchQuery('')
-                            setIsLinkingNote(false)
-                          }}
-                          className="flex items-center rounded-md py-1.5 px-2.5 gap-2 text-left hover:bg-foreground/[0.05] transition-colors"
-                        >
-                          <NoteIcon color={project.color} />
-                          <span className="text-[12px] text-text-secondary leading-4 truncate">
-                            {note.title}
-                          </span>
-                        </button>
-                      ))}
-                    {availableNotes.filter(
-                      (n) =>
-                        !task.linkedNoteIds.includes(n.id) &&
-                        n.title.toLowerCase().includes(noteSearchQuery.toLowerCase())
-                    ).length === 0 && (
+                    {filteredSearchNotes.map((note) => (
+                      <button
+                        key={note.id}
+                        type="button"
+                        onClick={() => {
+                          onUpdateTask?.(task.id, {
+                            linkedNoteIds: [...task.linkedNoteIds, note.id]
+                          })
+                          setNoteNames((prev) => ({ ...prev, [note.id]: note.title }))
+                          setNoteSearchQuery('')
+                          setIsLinkingNote(false)
+                        }}
+                        className="flex items-center rounded-md py-1.5 px-2.5 gap-2 text-left hover:bg-foreground/[0.05] transition-colors"
+                      >
+                        <NoteIcon color={project.color} />
+                        <span className="text-[12px] text-text-secondary leading-4 truncate">
+                          {note.title}
+                        </span>
+                      </button>
+                    ))}
+                    {filteredSearchNotes.length === 0 && (
                       <span className="text-[11px] text-text-tertiary leading-3.5 py-1.5 px-2.5">
                         {noteSearchQuery ? 'No matching notes' : 'No notes available'}
                       </span>
