@@ -68,6 +68,7 @@ import {
   // Task Filtering - Basic (T082)
   filterBySearch,
   filterByProjects,
+  scopeTasksByProject,
   filterByPriorities,
   filterByStatuses,
   // Task Filtering - Date & Completion (T083)
@@ -82,6 +83,8 @@ import {
   formatTaskSubtitle,
   // Today & Upcoming View Helpers (T086)
   getTodayTasks,
+  getTodayWithWeekTasks,
+  formatDateKey,
   getUpcomingTasks,
   getDayHeaderText,
   // Completed Tasks & Archive (T087)
@@ -2699,6 +2702,72 @@ describe('Task Utils', () => {
       })
     })
 
+    describe('scopeTasksByProject', () => {
+      it('should return all tasks when projectId is null', () => {
+        // #given
+        const tasks = [
+          createMockTask({ id: 't1', projectId: 'p1' }),
+          createMockTask({ id: 't2', projectId: 'p2' }),
+          createMockTask({ id: 't3', projectId: 'p1' })
+        ]
+
+        // #when
+        const result = scopeTasksByProject(tasks, null)
+
+        // #then
+        expect(result).toHaveLength(3)
+        expect(result).toEqual(tasks)
+      })
+
+      it('should filter to single project when projectId is set', () => {
+        // #given
+        const tasks = [
+          createMockTask({ id: 't1', projectId: 'p1' }),
+          createMockTask({ id: 't2', projectId: 'p2' }),
+          createMockTask({ id: 't3', projectId: 'p1' })
+        ]
+
+        // #when
+        const result = scopeTasksByProject(tasks, 'p1')
+
+        // #then
+        expect(result).toHaveLength(2)
+        expect(result.every((t: Task) => t.projectId === 'p1')).toBe(true)
+      })
+
+      it('should scope completed tasks to project', () => {
+        // #given — simulates Done tab scenario
+        const now = new Date()
+        const tasks = [
+          createMockTask({ id: 't1', projectId: 'p1', completedAt: now }),
+          createMockTask({ id: 't2', projectId: 'p2', completedAt: now }),
+          createMockTask({ id: 't3', projectId: 'p1', completedAt: now }),
+          createMockTask({ id: 't4', projectId: 'p2' })
+        ]
+        const completedTasks = getCompletedTasks(tasks)
+
+        // #when
+        const result = scopeTasksByProject(completedTasks, 'p1')
+
+        // #then
+        expect(result).toHaveLength(2)
+        expect(result.every((t: Task) => t.projectId === 'p1')).toBe(true)
+      })
+
+      it('should return empty when no tasks match projectId', () => {
+        const tasks = [
+          createMockTask({ id: 't1', projectId: 'p1' }),
+          createMockTask({ id: 't2', projectId: 'p2' })
+        ]
+
+        expect(scopeTasksByProject(tasks, 'p99')).toHaveLength(0)
+      })
+
+      it('should handle empty tasks array', () => {
+        expect(scopeTasksByProject([], 'p1')).toHaveLength(0)
+      })
+    })
+
     describe('filterByPriorities', () => {
       it('should filter by single priority', () => {
         const tasks = [
@@ -3917,6 +3986,177 @@ describe('Task Utils', () => {
 
         expect(result.overdue).toHaveLength(0)
         expect(result.today).toHaveLength(0)
+      })
+    })
+
+    describe('getTodayWithWeekTasks', () => {
+      let project: Project
+      let projects: Project[]
+
+      beforeEach(() => {
+        project = createMockProject({ id: 'project-1' })
+        projects = [project]
+      })
+
+      it('should separate overdue, today, and week-by-day tasks', () => {
+        // #given
+        const now = new Date()
+        const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+        const yesterday = new Date(todayStart)
+        yesterday.setDate(yesterday.getDate() - 1)
+        const tomorrow = new Date(todayStart)
+        tomorrow.setDate(tomorrow.getDate() + 1)
+        const dayAfterTomorrow = new Date(todayStart)
+        dayAfterTomorrow.setDate(dayAfterTomorrow.getDate() + 2)
+
+        const tasks = [
+          createMockTask({
+            id: 'overdue-1',
+            projectId: 'project-1',
+            statusId: 'status-todo',
+            dueDate: yesterday
+          }),
+          createMockTask({
+            id: 'today-1',
+            projectId: 'project-1',
+            statusId: 'status-todo',
+            dueDate: todayStart
+          }),
+          createMockTask({
+            id: 'tomorrow-1',
+            projectId: 'project-1',
+            statusId: 'status-todo',
+            dueDate: tomorrow
+          }),
+          createMockTask({
+            id: 'day-after-1',
+            projectId: 'project-1',
+            statusId: 'status-todo',
+            dueDate: dayAfterTomorrow
+          })
+        ]
+
+        // #when
+        const result = getTodayWithWeekTasks(tasks, projects)
+
+        // #then
+        expect(result.overdue).toHaveLength(1)
+        expect(result.overdue[0].id).toBe('overdue-1')
+
+        expect(result.today).toHaveLength(1)
+        expect(result.today[0].id).toBe('today-1')
+
+        const tomorrowKey = formatDateKey(tomorrow)
+        const dayAfterKey = formatDateKey(dayAfterTomorrow)
+        expect(result.weekByDay.get(tomorrowKey)).toHaveLength(1)
+        expect(result.weekByDay.get(tomorrowKey)![0].id).toBe('tomorrow-1')
+        expect(result.weekByDay.get(dayAfterKey)).toHaveLength(1)
+        expect(result.weekByDay.get(dayAfterKey)![0].id).toBe('day-after-1')
+      })
+
+      it('should not include today tasks in weekByDay', () => {
+        // #given
+        const now = new Date()
+        const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+        const todayKey = formatDateKey(todayStart)
+
+        const tasks = [
+          createMockTask({
+            id: 'today-1',
+            projectId: 'project-1',
+            statusId: 'status-todo',
+            dueDate: todayStart
+          })
+        ]
+
+        // #when
+        const result = getTodayWithWeekTasks(tasks, projects)
+
+        // #then
+        expect(result.today).toHaveLength(1)
+        expect(result.weekByDay.has(todayKey)).toBe(false)
+      })
+
+      it('should exclude completed tasks', () => {
+        // #given
+        const now = new Date()
+        const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+        const tomorrow = new Date(todayStart)
+        tomorrow.setDate(tomorrow.getDate() + 1)
+
+        const tasks = [
+          createMockTask({
+            id: 'done-1',
+            projectId: 'project-1',
+            statusId: 'status-done',
+            dueDate: tomorrow,
+            completedAt: new Date()
+          }),
+          createMockTask({
+            id: 'active-1',
+            projectId: 'project-1',
+            statusId: 'status-todo',
+            dueDate: tomorrow
+          })
+        ]
+
+        // #when
+        const result = getTodayWithWeekTasks(tasks, projects)
+        const tomorrowKey = formatDateKey(tomorrow)
+
+        // #then
+        expect(result.weekByDay.get(tomorrowKey)).toHaveLength(1)
+        expect(result.weekByDay.get(tomorrowKey)![0].id).toBe('active-1')
+      })
+
+      it('should exclude tasks beyond the week range', () => {
+        // #given
+        const now = new Date()
+        const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+        const farFuture = new Date(todayStart)
+        farFuture.setDate(farFuture.getDate() + 10)
+
+        const tasks = [
+          createMockTask({
+            id: 'far-1',
+            projectId: 'project-1',
+            statusId: 'status-todo',
+            dueDate: farFuture
+          })
+        ]
+
+        // #when
+        const result = getTodayWithWeekTasks(tasks, projects)
+
+        // #then
+        let totalWeekTasks = 0
+        result.weekByDay.forEach((dayTasks) => {
+          totalWeekTasks += dayTasks.length
+        })
+        expect(totalWeekTasks).toBe(0)
+      })
+
+      it('should create empty arrays for all week days even with no tasks', () => {
+        // #given — no tasks at all
+
+        // #when
+        const result = getTodayWithWeekTasks([], projects)
+
+        // #then — should have 6 day entries (default weekDays=6)
+        expect(result.weekByDay.size).toBe(6)
+        result.weekByDay.forEach((dayTasks) => {
+          expect(dayTasks).toHaveLength(0)
+        })
+      })
+
+      it('should respect custom weekDays parameter', () => {
+        // #given — weekDays=3
+
+        // #when
+        const result = getTodayWithWeekTasks([], projects, 3)
+
+        // #then
+        expect(result.weekByDay.size).toBe(3)
       })
     })
 
