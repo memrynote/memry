@@ -258,6 +258,7 @@ interface TaskCheckboxProps {
   onChange: () => void
   disabled?: boolean
   priority?: Priority
+  size?: 'sm' | 'md'
   className?: string
 }
 
@@ -266,6 +267,7 @@ export const TaskCheckbox = ({
   onChange,
   disabled = false,
   priority: _priority,
+  size = 'md',
   className
 }: TaskCheckboxProps): React.JSX.Element => {
   const handleClick = (e: React.MouseEvent): void => {
@@ -275,13 +277,16 @@ export const TaskCheckbox = ({
     }
   }
 
+  const isSm = size === 'sm'
+
   return (
     <button
       type="button"
       onClick={handleClick}
       disabled={disabled}
       className={cn(
-        'shrink-0 size-[18px] rounded-full transition-all duration-200',
+        'shrink-0 rounded-full transition-all duration-200',
+        isSm ? 'size-3.5' : 'size-4',
         'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
         disabled ? 'cursor-not-allowed opacity-50' : 'cursor-pointer',
         className
@@ -290,20 +295,33 @@ export const TaskCheckbox = ({
     >
       {checked ? (
         <div className="size-full rounded-full bg-[#7B9E87] flex items-center justify-center">
-          <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
-            <path
-              d="M2 5l2.5 2.5L8 3"
-              stroke="#FAFAF8"
-              strokeWidth="1.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg>
+          {isSm ? (
+            <svg width="8" height="8" viewBox="0 0 8 8" fill="none">
+              <path
+                d="M1.5 4L3.2 5.8L6.5 2.2"
+                stroke="#FFFFFF"
+                strokeWidth="1.3"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          ) : (
+            <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+              <path
+                d="M2 5l2.5 2.5L8 3"
+                stroke="#FAFAF8"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          )}
         </div>
       ) : (
         <div
           className={cn(
-            'size-full rounded-full border-[1.5px] border-[#DAD9D4] transition-colors',
+            'size-full rounded-full border-[1.5px] transition-colors',
+            isSm ? 'border-[#D1D0CB]' : 'border-[#DAD9D4]',
             'hover:border-text-tertiary'
           )}
         />

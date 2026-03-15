@@ -22,8 +22,9 @@ export interface KanbanColumnData {
   title: string
   color: string
   icon?: string // For project columns
-  type: 'status' | 'project'
+  type: 'status' | 'project' | 'weekday'
   statusType?: StatusType // For status columns
+  date?: Date // For weekday columns
 }
 
 interface KanbanColumnProps {
@@ -79,11 +80,17 @@ export const KanbanColumn = ({
           projectId: column.id,
           project: { id: column.id, name: column.title }
         }
-      : {
-          type: 'column' as const,
-          columnId: column.id,
-          column
-        }
+      : column.type === 'weekday'
+        ? {
+            type: 'weekday' as const,
+            date: column.date,
+            label: column.title
+          }
+        : {
+            type: 'column' as const,
+            columnId: column.id,
+            column
+          }
 
   const { setNodeRef, isOver } = useDroppable({
     id: column.id,

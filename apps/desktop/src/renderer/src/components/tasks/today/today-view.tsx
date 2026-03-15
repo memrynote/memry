@@ -1,13 +1,11 @@
 import { useMemo } from 'react'
-import { AnimatePresence } from 'framer-motion'
 
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { TaskSection } from '@/components/tasks/task-section'
-import { CelebrationEmptyState, OverdueClearedBanner } from '@/components/tasks/empty-states'
+import { CelebrationEmptyState } from '@/components/tasks/empty-states'
 import { cn } from '@/lib/utils'
 import { getTodayTasks, startOfDay } from '@/lib/task-utils'
 import { getSectionVisibility } from '@/lib/section-visibility'
-import { useOverdueCelebration } from '@/hooks'
 import type { Task, Priority } from '@/data/sample-tasks'
 import type { Project } from '@/data/tasks-data'
 
@@ -58,7 +56,6 @@ export const TodayView = ({
   className
 }: TodayViewProps): React.JSX.Element => {
   const { overdue, today } = useMemo(() => getTodayTasks(tasks, projects), [tasks, projects])
-  const { showCelebration, dismiss: dismissCelebration } = useOverdueCelebration(overdue.length)
 
   const overdueVisibility = getSectionVisibility('overdue', overdue.length)
   const todayVisibility = getSectionVisibility('today', today.length)
@@ -103,11 +100,6 @@ export const TodayView = ({
             </>
           )}
         </div>
-
-        {/* Overdue Cleared Celebration Banner */}
-        <AnimatePresence>
-          {showCelebration && <OverdueClearedBanner onDismiss={dismissCelebration} />}
-        </AnimatePresence>
 
         {/* Overdue section */}
         {overdueVisibility.shouldShow && (

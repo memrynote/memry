@@ -322,14 +322,9 @@ export const VirtualizedProjectTaskList = ({
   // Empty state (but still show status headers as drop targets)
   if (isEmpty && virtualItems.length === 0) {
     return (
-      <div className={cn('flex-1 overflow-auto p-4', className)}>
+      <div className={cn('flex-1 overflow-auto pt-4', className)}>
         <div className="mb-4">
-          <QuickAddInput
-            onAdd={handleQuickAdd}
-            onOpenModal={onOpenModal}
-            projects={[project]}
-            placeholder={`Add task to ${project.name}...`}
-          />
+          <QuickAddInput onAdd={handleQuickAdd} onOpenModal={onOpenModal} projects={[project]} />
         </div>
         <TaskEmptyState
           variant="project"
@@ -343,22 +338,13 @@ export const VirtualizedProjectTaskList = ({
   return (
     <div className={cn('flex flex-1 flex-col overflow-hidden', className)}>
       {/* Quick Add Input - fixed at top */}
-      <div className="p-4 pb-0">
-        <QuickAddInput
-          onAdd={handleQuickAdd}
-          onOpenModal={onOpenModal}
-          projects={[project]}
-          placeholder={`Add task to ${project.name}...`}
-        />
+      <div className="pt-4">
+        <QuickAddInput onAdd={handleQuickAdd} onOpenModal={onOpenModal} projects={[project]} />
       </div>
 
       {/* Virtualized content */}
       <SortableContext items={allTaskIds} strategy={verticalListSortingStrategy}>
-        <div
-          ref={parentRef}
-          className="flex-1 overflow-auto px-4 pt-4"
-          style={{ contain: 'strict' }}
-        >
+        <div ref={parentRef} className="flex-1 overflow-auto pt-4" style={{ contain: 'strict' }}>
           <div
             style={{
               height: `${virtualizer.getTotalSize()}px`,

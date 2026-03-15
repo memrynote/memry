@@ -1,7 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import {
   getSectionVisibility,
-  shouldShowOverdueCelebration,
   getEmptyStateMessage,
   type SectionType,
   type SectionVisibilityContext
@@ -155,36 +154,6 @@ describe('section-visibility', () => {
         // Default hasTasksThisWeek is false, so should hide
         expect(result.shouldShow).toBe(false)
       })
-    })
-  })
-
-  describe('shouldShowOverdueCelebration', () => {
-    it('should return true when going from >0 to 0', () => {
-      expect(shouldShowOverdueCelebration(5, 0)).toBe(true)
-    })
-
-    it('should return true when going from 1 to 0', () => {
-      expect(shouldShowOverdueCelebration(1, 0)).toBe(true)
-    })
-
-    it('should return false when staying at 0', () => {
-      expect(shouldShowOverdueCelebration(0, 0)).toBe(false)
-    })
-
-    it('should return false when going from >0 to >0', () => {
-      expect(shouldShowOverdueCelebration(5, 3)).toBe(false)
-    })
-
-    it('should return false when increasing from 0', () => {
-      expect(shouldShowOverdueCelebration(0, 5)).toBe(false)
-    })
-
-    it('should return false when count increases', () => {
-      expect(shouldShowOverdueCelebration(2, 5)).toBe(false)
-    })
-
-    it('should handle large numbers correctly', () => {
-      expect(shouldShowOverdueCelebration(1000, 0)).toBe(true)
     })
   })
 

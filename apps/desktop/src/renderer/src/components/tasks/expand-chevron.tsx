@@ -1,29 +1,14 @@
 import { useState } from 'react'
-import { ChevronRight } from 'lucide-react'
 
 import { cn } from '@/lib/utils'
 
-// ============================================================================
-// TYPES
-// ============================================================================
-
 interface ExpandChevronProps {
-  /** Whether the subtasks are expanded */
   isExpanded: boolean
-  /** Whether this task has subtasks */
   hasSubtasks: boolean
-  /** Called when the chevron is clicked */
   onClick: () => void
-  /** Size variant */
   size?: 'sm' | 'md'
-  /** Additional class names */
   className?: string
 }
-
-// ============================================================================
-// EXPAND CHEVRON COMPONENT
-// Larger, more visible expand/collapse button with animation feedback
-// ============================================================================
 
 export const ExpandChevron = ({
   isExpanded,
@@ -34,10 +19,12 @@ export const ExpandChevron = ({
 }: ExpandChevronProps): React.JSX.Element => {
   const [isAnimating, setIsAnimating] = useState(false)
 
-  // Return empty spacer to maintain alignment when no subtasks
   if (!hasSubtasks) {
     return (
-      <div className={cn('shrink-0', size === 'sm' ? 'w-5 h-5' : 'w-6 h-6')} aria-hidden="true" />
+      <div
+        className={cn('shrink-0', size === 'sm' ? 'w-[10px] h-[10px]' : 'w-[10px] h-[10px]')}
+        aria-hidden="true"
+      />
     )
   }
 
@@ -66,31 +53,31 @@ export const ExpandChevron = ({
       onKeyDown={handleKeyDown}
       tabIndex={0}
       className={cn(
-        'flex items-center justify-center rounded shrink-0',
+        'flex items-center justify-center shrink-0',
         'transition-all duration-150',
-        // Enhanced hover and active states for better visibility
-        'text-text-tertiary hover:text-muted-foreground hover:bg-muted',
-        'active:bg-surface-active',
-        // Focus states for accessibility
-        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1',
-        // Size variants
-        size === 'sm' ? 'w-5 h-5' : 'w-6 h-6',
-        // Animation feedback on click
-        isAnimating && 'scale-110 bg-muted',
+        'text-text-tertiary hover:text-muted-foreground',
+        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 rounded',
+        isAnimating && 'scale-110',
         className
       )}
       aria-expanded={isExpanded}
       aria-label={isExpanded ? 'Collapse subtasks' : 'Expand subtasks'}
     >
-      <ChevronRight
-        className={cn(
-          'transition-transform duration-200 ease-out',
-          size === 'sm' ? 'w-4 h-4' : 'w-5 h-5',
-          isExpanded && 'rotate-90'
-        )}
-        strokeWidth={2.5}
-        aria-hidden="true"
-      />
+      <svg
+        width="10"
+        height="10"
+        viewBox="0 0 10 10"
+        fill="none"
+        className={cn('transition-transform duration-200 ease-out', !isExpanded && '-rotate-90')}
+      >
+        <path
+          d="M2.5 3.5L5 6.5L7.5 3.5"
+          stroke="currentColor"
+          strokeWidth="1.4"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </svg>
     </button>
   )
 }

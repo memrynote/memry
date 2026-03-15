@@ -147,8 +147,8 @@ export const ITEM_HEIGHTS = {
   'empty-state': 80,
   'empty-state-celebration': 200,
   'add-task-button': 40,
-  'week-accordion-header': 48,
-  'day-header': 40,
+  'week-accordion-header': 32,
+  'day-header': 32,
   'empty-day': 56
 } as const
 
@@ -427,12 +427,6 @@ export const flattenTodayTasks = (
         }
       })
     }
-
-    items.push({
-      id: 'add-today',
-      type: 'add-task-button',
-      sectionId: 'today'
-    })
   }
 
   if (todayData.weekByDay && todayData.weekByDay.size > 0) {
@@ -498,13 +492,6 @@ export const flattenTodayTasks = (
             }
           })
         }
-
-        items.push({
-          id: `add-${dateKey}`,
-          type: 'add-task-button',
-          sectionId: dateKey,
-          date
-        })
       })
     }
   }

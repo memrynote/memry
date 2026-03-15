@@ -1,23 +1,13 @@
 import { cn } from '@/lib/utils'
 import { formatDueDate } from '@/lib/task-utils'
 import { hasSubtasks, type SubtaskProgress } from '@/lib/subtask-utils'
-import {
-  TaskCheckbox,
-  ProjectBadge,
-  PriorityBadge,
-  DueDateBadge
-} from '@/components/tasks/task-badges'
+import { priorityConfig } from '@/data/sample-tasks'
+import { TaskCheckbox } from '@/components/tasks/task-badges'
 import { RepeatIndicator } from '@/components/tasks/repeat-indicator'
-
 import { ExpandChevron } from '@/components/tasks/expand-chevron'
-import { SubtaskBadge } from '@/components/tasks/subtask-badge'
 import { SubtaskRow } from '@/components/tasks/subtask-row'
 import type { Task } from '@/data/sample-tasks'
 import type { Project } from '@/data/tasks-data'
-
-// ============================================================================
-// TYPES
-// ============================================================================
 
 interface ParentTaskRowProps {
   task: Task
@@ -35,10 +25,6 @@ interface ParentTaskRowProps {
   className?: string
 }
 
-// ============================================================================
-// PARENT TASK ROW COMPONENT
-// ============================================================================
-
 export const ParentTaskRow = ({
   task,
   subtasks,
@@ -55,126 +41,133 @@ export const ParentTaskRow = ({
   className
 }: ParentTaskRowProps): React.JSX.Element => {
   const taskHasSubtasks = hasSubtasks(task)
+  const priorityColor = priorityConfig[task.priority]?.color
 
-  // Check if overdue
   const formattedDate = formatDueDate(task.dueDate, task.dueTime)
   const isOverdue = formattedDate?.status === 'overdue' && !isCompleted
 
-  const handleRowClick = (): void => {
-    onClick?.(task.id)
-  }
-
-  const handleRowKeyDown = (e: React.KeyboardEvent): void => {
-    if (e.key === 'Enter' && onClick) {
-      e.preventDefault()
-      onClick(task.id)
-    }
-
-    // Keyboard navigation for expand/collapse
-    if (taskHasSubtasks) {
-      if (e.key === 'ArrowRight' && !isExpanded) {
-        e.preventDefault()
-        onToggleExpand(task.id)
-      }
-      if (e.key === 'ArrowLeft' && isExpanded) {
-        e.preventDefault()
-        onToggleExpand(task.id)
-      }
-    }
-  }
-
   const handleExpandToggle = (): void => {
-    if (taskHasSubtasks) {
-      onToggleExpand(task.id)
-    }
-  }
-
-  const handleToggleComplete = (): void => {
-    onToggleComplete(task.id)
+    if (taskHasSubtasks) onToggleExpand(task.id)
   }
 
   return (
     <div className={cn('group', className)}>
-      {/* Parent task row */}
       <div
         role="button"
         tabIndex={onClick ? 0 : -1}
-        onClick={handleRowClick}
-        onKeyDown={onClick ? handleRowKeyDown : undefined}
+        onClick={() => onClick?.(task.id)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' && onClick) {
+            e.preventDefault()
+            onClick(task.id)
+          }
+          if (taskHasSubtasks) {
+            if (e.key === 'ArrowRight' && !isExpanded) {
+              e.preventDefault()
+              onToggleExpand(task.id)
+            }
+            if (e.key === 'ArrowLeft' && isExpanded) {
+              e.preventDefault()
+              onToggleExpand(task.id)
+            }
+          }
+        }}
+        style={{
+          borderLeftColor: priorityColor && !isCompleted ? priorityColor : 'transparent',
+          backgroundColor: priorityColor && !isCompleted ? `${priorityColor}05` : undefined
+        }}
         className={cn(
-          'flex items-center gap-2 rounded-sm px-2 py-2.5 transition-colors duration-150',
+          'flex items-center gap-2.5 border-l-[3px] rounded-r-md',
+          'py-2 px-3 transition-all duration-150',
           'hover:bg-accent/50',
           onClick &&
             'cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-          isOverdue && 'bg-rose-50/60 dark:bg-rose-950/20',
           isSelected && 'bg-primary/10 ring-2 ring-primary/30'
         )}
         aria-label={`Task: ${task.title}${isCompleted ? ', completed' : ''}${taskHasSubtasks ? `, ${subtasks.length} subtasks` : ''}`}
       >
-        {/* Task checkbox */}
-        <TaskCheckbox checked={isCompleted} onChange={handleToggleComplete} />
-
-        {/* Expand/collapse chevron - after checkbox for alignment */}
         <ExpandChevron
           isExpanded={isExpanded}
           hasSubtasks={taskHasSubtasks}
           onClick={handleExpandToggle}
-          size="md"
+          size="sm"
         />
 
-        {/* Task content */}
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2">
-            <span
-              className={cn(
-                'truncate text-sm',
-                isCompleted && 'line-through text-muted-foreground'
-              )}
-            >
-              {task.title}
-            </span>
-            {task.isRepeating && task.repeatConfig && !isCompleted && (
-              <RepeatIndicator config={task.repeatConfig} size="sm" />
+        <TaskCheckbox checked={isCompleted} onChange={() => onToggleComplete(task.id)} />
+
+        <span
+          className={cn(
+            'text-[13px] font-medium leading-4 whitespace-nowrap shrink-0',
+            isCompleted ? 'line-through text-muted-foreground' : 'text-foreground'
+          )}
+        >
+          {task.title}
+        </span>
+
+        {!isCompleted && (
+          <div className="flex items-center gap-[5px] ml-1">
+            {task.priority !== 'none' && priorityColor && (
+              <span
+                className="inline-flex items-center gap-[3px] rounded-[3px] px-1.5 py-px"
+                style={{ backgroundColor: `${priorityColor}14`, color: priorityColor }}
+              >
+                <span
+                  className="size-1 rounded-full shrink-0"
+                  style={{ backgroundColor: priorityColor }}
+                />
+                <span className="text-[10px] font-medium leading-3">
+                  {priorityConfig[task.priority].label}
+                </span>
+              </span>
             )}
-            {/* Subtask badge - always visible when has subtasks */}
-            {taskHasSubtasks && (
-              <SubtaskBadge
-                completed={progress.completed}
-                total={progress.total}
-                isExpanded={isExpanded}
-                onClick={handleExpandToggle}
-                size="sm"
-              />
+
+            {showProjectBadge && (
+              <span
+                className="inline-flex items-center gap-[3px] rounded-[3px] px-1.5 py-px"
+                style={{ backgroundColor: `${project.color}0F`, color: project.color }}
+              >
+                <span
+                  className="size-1 rounded-full shrink-0"
+                  style={{ backgroundColor: project.color }}
+                />
+                <span className="text-[10px] font-medium leading-3">{project.name}</span>
+              </span>
             )}
           </div>
-        </div>
+        )}
 
-        {/* Right side badges container */}
-        <div className="flex items-center gap-3 shrink-0">
-          {/* Project Badge (conditional) */}
-          {showProjectBadge && <ProjectBadge project={project} />}
+        {task.isRepeating && task.repeatConfig && !isCompleted && (
+          <RepeatIndicator config={task.repeatConfig} size="sm" />
+        )}
 
-          {/* Priority Badge (hidden when completed) */}
-          {!isCompleted && <PriorityBadge priority={task.priority} />}
+        {formattedDate && (
+          <span
+            className={cn(
+              'text-[10px] leading-3 shrink-0 ml-auto',
+              isOverdue ? 'text-[#C4654A]' : 'text-muted-foreground'
+            )}
+          >
+            {formattedDate.label}
+          </span>
+        )}
 
-          {/* Due Date Badge */}
-          <DueDateBadge
-            dueDate={task.dueDate}
-            dueTime={task.dueTime}
-            isRepeating={task.isRepeating}
-            className={cn('min-w-[80px] text-right', isCompleted && 'opacity-60')}
-          />
-        </div>
+        {taskHasSubtasks && (
+          <div className={cn('flex items-center gap-[3px] shrink-0', !formattedDate && 'ml-auto')}>
+            <div className="w-5 h-[3px] rounded-sm overflow-clip bg-[#EDECE8]">
+              <div
+                className="h-full rounded-sm bg-[#7B9E87]"
+                style={{ width: `${progress.percentage}%` }}
+              />
+            </div>
+            <span className="text-[9px] text-muted-foreground font-mono leading-3">
+              {progress.completed}/{progress.total}
+            </span>
+          </div>
+        )}
       </div>
 
-      {/* Subtasks (when expanded) */}
       {isExpanded && taskHasSubtasks && (
-        <div
-          id={`subtasks-${task.id}`}
-          role="group"
-          aria-label={`Subtasks of ${task.title}`}
-          className="ml-5 border-l border-border"
-        >
+        <div id={`subtasks-${task.id}`} role="group" aria-label={`Subtasks of ${task.title}`}>
           {subtasks.map((subtask, index) => (
             <SubtaskRow
               key={subtask.id}

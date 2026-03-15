@@ -140,13 +140,11 @@ export const TaskRow = ({
       )}
 
       {/* Checkbox */}
-      <div className="shrink-0">
-        <TaskCheckbox
-          checked={isCompleted}
-          onChange={() => onToggleComplete(task.id)}
-          disabled={isSelectionMode}
-        />
-      </div>
+      <TaskCheckbox
+        checked={isCompleted}
+        onChange={() => onToggleComplete(task.id)}
+        disabled={isSelectionMode}
+      />
 
       {/* Title */}
       <span
@@ -165,31 +163,26 @@ export const TaskRow = ({
         <RepeatIndicator config={task.repeatConfig} size="sm" />
       )}
 
-      {/* Inline badges */}
-      {!isCompleted && (
-        <div className="flex items-center gap-[5px] shrink-0">
-          {task.priority !== 'none' && priorityColor && (
-            <InteractivePriorityBadge
-              priority={task.priority}
-              onPriorityChange={handlePriorityChange}
-              compact
-              className="!rounded-sm !py-px !px-1.5 !gap-[3px]"
-            />
-          )}
+      {/* Pills — all right-aligned */}
+      <div className="ml-auto flex items-center gap-[5px] shrink-0">
+        {!isCompleted && task.priority !== 'none' && priorityColor && (
+          <InteractivePriorityBadge
+            priority={task.priority}
+            onPriorityChange={handlePriorityChange}
+            compact
+            className="!rounded-sm !py-px !px-1.5 !gap-[3px]"
+          />
+        )}
 
-          {showProjectBadge && (
-            <InteractiveProjectBadge
-              project={project}
-              projects={projects}
-              onProjectChange={handleProjectChange}
-              className="!rounded-sm !py-px !px-1.5 !gap-[3px] !text-[10px]"
-            />
-          )}
-        </div>
-      )}
+        {!isCompleted && showProjectBadge && (
+          <InteractiveProjectBadge
+            project={project}
+            projects={projects}
+            onProjectChange={handleProjectChange}
+            className="!rounded-sm !py-px !px-1.5 !gap-[3px] !text-[10px]"
+          />
+        )}
 
-      {/* Due date */}
-      <div className="ml-auto shrink-0">
         <InteractiveDueDateBadge
           dueDate={task.dueDate}
           dueTime={task.dueTime}
