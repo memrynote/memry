@@ -65,6 +65,8 @@ describe('useThemeSync', () => {
     expect(setTheme).toHaveBeenCalledWith('light')
     expect(document.documentElement.style.getPropertyValue('--user-accent-color')).toBe('#123456')
     expect(document.documentElement.style.fontSize).toBe('18px')
-    expect(document.documentElement.style.getPropertyValue('--font-sans')).toContain('Crimson Pro')
+    expect(document.documentElement.style.getPropertyValue('--font-sans')).toContain(
+      'Crimson Pro Variable'
+    )
   })
 })

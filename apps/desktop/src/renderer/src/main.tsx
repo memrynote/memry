@@ -1,3 +1,14 @@
+import '@fontsource-variable/crimson-pro'
+import '@fontsource-variable/crimson-pro/wght-italic.css'
+import '@fontsource-variable/dm-sans'
+import '@fontsource-variable/dm-sans/wght-italic.css'
+import '@fontsource/instrument-serif'
+import '@fontsource/instrument-serif/400-italic.css'
+import '@fontsource-variable/jetbrains-mono'
+import '@fontsource-variable/playfair-display'
+import '@fontsource-variable/playfair-display/wght-italic.css'
+import '@fontsource-variable/space-grotesk'
+
 import './assets/main.css'
 
 import { StrictMode } from 'react'

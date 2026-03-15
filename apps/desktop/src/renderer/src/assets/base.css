@@ -181,10 +181,11 @@
       ui-sans-serif, -apple-system, 'system-ui', 'Segoe UI Variable Display', 'Segoe UI', Helvetica,
       'Apple Color Emoji', 'Noto Sans Arabic', 'Noto Sans Hebrew', Arial, sans-serif,
       'Segoe UI Emoji', 'Segoe UI Symbol';
-    --font-serif: 'Crimson Pro', Georgia, 'Times New Roman', serif;
-    --font-display: 'Instrument Serif', 'Playfair Display', 'Crimson Pro', Georgia, serif;
-    --font-heading: 'Space Grotesk', system-ui, sans-serif;
-    --font-mono: 'JetBrains Mono', 'SF Mono', 'Fira Code', monospace;
+    --font-serif: 'Crimson Pro Variable', Georgia, 'Times New Roman', serif;
+    --font-display:
+      'Instrument Serif', 'Playfair Display Variable', 'Crimson Pro Variable', Georgia, serif;
+    --font-heading: 'Space Grotesk Variable', system-ui, sans-serif;
+    --font-mono: 'JetBrains Mono Variable', 'SF Mono', 'Fira Code', monospace;
 
     /* ===== BASE COLORS (Canvas) - "Warm Utility" Aesthetic ===== */
     --background: #f6f5f0;
@@ -384,10 +385,11 @@
       ui-sans-serif, -apple-system, 'system-ui', 'Segoe UI Variable Display', 'Segoe UI', Helvetica,
       'Apple Color Emoji', 'Noto Sans Arabic', 'Noto Sans Hebrew', Arial, sans-serif,
       'Segoe UI Emoji', 'Segoe UI Symbol';
-    --font-serif: 'Crimson Pro', Georgia, 'Times New Roman', serif;
-    --font-display: 'Instrument Serif', 'Playfair Display', 'Crimson Pro', Georgia, serif;
-    --font-heading: 'Space Grotesk', system-ui, sans-serif;
-    --font-mono: 'JetBrains Mono', 'SF Mono', 'Fira Code', monospace;
+    --font-serif: 'Crimson Pro Variable', Georgia, 'Times New Roman', serif;
+    --font-display:
+      'Instrument Serif', 'Playfair Display Variable', 'Crimson Pro Variable', Georgia, serif;
+    --font-heading: 'Space Grotesk Variable', system-ui, sans-serif;
+    --font-mono: 'JetBrains Mono Variable', 'SF Mono', 'Fira Code', monospace;
 
     /* ===== BASE COLORS - Dark Mode (Warm Dark Variant) ===== */
     --background: #191919;
