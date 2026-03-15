@@ -7,7 +7,7 @@ import { useMemo } from 'react'
 import { cn } from '@/lib/utils'
 import { getDaysInMonth, formatDateParts, getTodayString } from '@/lib/journal-utils'
 import { JournalEntryListItem } from './journal-entry-list-item'
-import type { HeatmapEntry } from './calendar-heatmap'
+import type { HeatmapEntry } from '@/hooks/use-journal'
 
 // =============================================================================
 // TYPES
