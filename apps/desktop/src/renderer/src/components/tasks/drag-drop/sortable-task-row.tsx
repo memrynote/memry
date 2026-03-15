@@ -3,14 +3,12 @@ import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 
 import { cn } from '@/lib/utils'
-import { formatDueDate, getDaysOverdue, getOverdueTier } from '@/lib/task-utils'
-import { TaskCheckbox, ProjectBadge, PriorityBadge } from '@/components/tasks/task-badges'
-import { RepeatIndicator } from '@/components/tasks/repeat-indicator'
+import { formatDueDate, formatDateShort, formatTime } from '@/lib/task-utils'
+import { StatusCircle, PriorityBars } from '@/components/tasks/task-icons'
 import { SelectionCheckbox } from '@/components/tasks/bulk-actions'
-import { priorityConfig, type Priority } from '@/data/sample-tasks'
 
 import type { Task } from '@/data/sample-tasks'
-import type { Project } from '@/data/tasks-data'
+import type { Project, Status } from '@/data/tasks-data'
 
 interface SortableTaskRowProps {
   task: Task
@@ -59,15 +57,15 @@ const arePropsEqual = (
   return true
 }
 
-const getLeftBorderColor = (task: Task, isCompleted: boolean): string | undefined => {
-  if (isCompleted) return undefined
-  const formattedDate = formatDueDate(task.dueDate, task.dueTime)
-  const isOverdue = formattedDate?.status === 'overdue'
-  if (isOverdue) return priorityConfig[task.priority]?.color ?? '#EF4444'
-  if (task.priority === 'urgent') return '#EF4444'
-  if (task.priority === 'high') return '#F97316'
-  if (task.priority === 'medium') return '#F59E0B'
-  return undefined
+const resolveStatus = (
+  task: Task,
+  statuses: Status[]
+): { type: 'todo' | 'in_progress' | 'done'; color: string } => {
+  const status = statuses.find((s) => s.id === task.statusId)
+  return {
+    type: (status?.type as 'todo' | 'in_progress' | 'done') || 'todo',
+    color: status?.color || 'var(--text-tertiary)'
+  }
 }
 
 const SortableTaskRowComponent = ({
@@ -80,7 +78,7 @@ const SortableTaskRowComponent = ({
   isSelected = false,
   showProjectBadge = false,
   onToggleComplete,
-  onUpdateTask,
+  onUpdateTask: _onUpdateTask,
   onClick,
   className,
   isSelectionMode = false,
@@ -121,10 +119,8 @@ const SortableTaskRowComponent = ({
       }
 
   const formattedDate = formatDueDate(task.dueDate, task.dueTime)
-  const isOverdue = formattedDate?.status === 'overdue'
-  const daysOver = isOverdue && !isCompleted ? getDaysOverdue(task.dueDate) : 0
-  const overdueTier = daysOver > 0 ? getOverdueTier(daysOver) : null
-  const leftBorderColor = getLeftBorderColor(task, isCompleted)
+  const isOverdue = formattedDate?.status === 'overdue' && !isCompleted
+  const { type: statusType, color: statusColor } = resolveStatus(task, project.statuses)
 
   const handleRowClick = (e: React.MouseEvent): void => {
     if ((e.target as HTMLElement).closest('[data-drag-handle]')) return
@@ -152,7 +148,8 @@ const SortableTaskRowComponent = ({
     }
   }
 
-  const handleToggleComplete = (): void => {
+  const handleToggleComplete = (e: React.MouseEvent): void => {
+    e.stopPropagation()
     if (!isCompleted) {
       setIsExiting(true)
       setTimeout(() => onToggleComplete(task.id), EXIT_ANIMATION_DURATION)
@@ -161,43 +158,42 @@ const SortableTaskRowComponent = ({
     }
   }
 
-  const handlePriorityChange = (priority: Priority): void => {
-    onUpdateTask?.(task.id, { priority })
-  }
-
   const showSelection = !!onToggleSelect
-  const priorityColor = priorityConfig[task.priority]?.color
+
+  const compactDateLabel = (() => {
+    if (!task.dueDate) return null
+    const date = formatDateShort(task.dueDate)
+    return task.dueTime ? `${date}, ${formatTime(task.dueTime)}` : date
+  })()
+
+  const dueDateDisplay = (() => {
+    if (isCompleted) return { text: 'Done', colorStyle: statusColor }
+    if (!compactDateLabel) return null
+    if (isOverdue) return { text: compactDateLabel, colorClass: 'text-destructive' }
+    return { text: compactDateLabel, colorClass: 'text-text-tertiary' }
+  })()
 
   return (
     <div
       ref={setRefs}
-      style={{
-        ...style,
-        borderLeftWidth: '3px',
-        borderLeftStyle: 'solid',
-        borderLeftColor: leftBorderColor || 'transparent'
-      }}
+      style={style}
       role="button"
       tabIndex={onClick ? 0 : -1}
       onClick={handleRowClick}
       onKeyDown={onClick ? handleRowKeyDown : undefined}
       className={cn(
-        'group flex items-center py-2 px-3 gap-2.5 rounded-r-sm transition-colors duration-150',
+        'group flex items-center py-[7px] px-6 gap-3 border-b border-border transition-colors',
         'hover:bg-accent/50',
         onClick &&
           'cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-        isOverdue && !isCompleted && 'bg-[#EF444405]',
-        overdueTier === 'severe' && 'overdue-pulse',
         isCheckedForSelection && 'bg-primary/10 hover:bg-primary/15',
         isSelected && !isCheckedForSelection && 'bg-primary/10 ring-2 ring-primary/30',
         isDragging && 'opacity-50 shadow-lg ring-2 ring-primary bg-background z-10',
         isExiting && 'select-none',
-        'mt-0.5',
         className
       )}
       aria-label={`Task: ${task.title}${isCompleted ? ', completed' : ''}`}
     >
-      {/* Selection checkbox (selection mode only) */}
       {isSelectionMode && showSelection && (
         <div className="shrink-0" onClick={(e) => e.stopPropagation()}>
           <SelectionCheckbox
@@ -209,7 +205,6 @@ const SortableTaskRowComponent = ({
         </div>
       )}
 
-      {/* Drag handle — hidden, appears on hover */}
       <button
         type="button"
         data-drag-handle
@@ -219,7 +214,7 @@ const SortableTaskRowComponent = ({
           'shrink-0 cursor-grab touch-none text-text-tertiary/50',
           'hover:text-text-tertiary active:cursor-grabbing',
           'focus-visible:outline-none',
-          'opacity-0 group-hover:opacity-100 transition-opacity -ml-1 mr-[-6px]',
+          'opacity-0 group-hover:opacity-100 transition-opacity -ml-3 mr-[-6px]',
           'hidden md:block',
           isDragging && 'cursor-grabbing opacity-100'
         )}
@@ -235,117 +230,44 @@ const SortableTaskRowComponent = ({
         </svg>
       </button>
 
-      {/* Checkbox */}
-      <TaskCheckbox
-        checked={isCompleted}
-        onChange={handleToggleComplete}
-        disabled={isSelectionMode}
+      <StatusCircle
+        statusType={statusType}
+        statusColor={statusColor}
+        isCompleted={isCompleted}
+        onClick={handleToggleComplete}
       />
 
-      {/* Title */}
+      <PriorityBars priority={task.priority} />
+
       <span
         className={cn(
-          'text-[13px] font-medium leading-4 truncate shrink-0 max-w-[50%]',
+          'text-[13px] leading-4 grow shrink basis-0 truncate',
           isExiting || isCompleted
-            ? 'text-text-tertiary line-through decoration-text-tertiary'
+            ? 'text-text-tertiary line-through decoration-1 [text-underline-position:from-font]'
             : 'text-text-primary'
         )}
       >
         {task.title}
       </span>
 
-      {/* Repeat indicator */}
-      {task.isRepeating && task.repeatConfig && !isCompleted && (
-        <RepeatIndicator config={task.repeatConfig} size="sm" />
-      )}
-
-      {/* Inline badges */}
-      {!isCompleted && (
-        <div className="flex items-center gap-[5px] shrink-0">
-          {task.priority !== 'none' && priorityColor && (
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation()
-                handlePriorityChange(
-                  task.priority === 'urgent'
-                    ? 'none'
-                    : task.priority === 'high'
-                      ? 'urgent'
-                      : task.priority === 'medium'
-                        ? 'high'
-                        : task.priority === 'low'
-                          ? 'medium'
-                          : 'low'
-                )
-              }}
-              className="flex items-center rounded-sm py-px px-1.5 gap-[3px] transition-opacity hover:opacity-80 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-              style={{ backgroundColor: `${priorityColor}14` }}
-              aria-label={`Priority: ${priorityConfig[task.priority]?.label}`}
-            >
-              <span
-                className="rounded-full shrink-0 size-1"
-                style={{ backgroundColor: priorityColor }}
-              />
-              <span className="text-[10px] font-medium leading-3" style={{ color: priorityColor }}>
-                {task.priority === 'urgent'
-                  ? 'Urgent'
-                  : task.priority === 'high'
-                    ? 'High'
-                    : task.priority === 'medium'
-                      ? 'Med'
-                      : 'Low'}
-              </span>
-            </button>
-          )}
-
-          {showProjectBadge && (
-            <button
-              type="button"
-              onClick={(e) => e.stopPropagation()}
-              className="flex items-center rounded-sm py-px px-1.5 gap-[3px] transition-opacity hover:opacity-80 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-              style={{ backgroundColor: `${project.color}0F` }}
-              aria-label={`Project: ${project.name}`}
-            >
-              <span
-                className="rounded-full shrink-0 size-1"
-                style={{ backgroundColor: project.color }}
-              />
-              <span className="text-[10px] font-medium leading-3" style={{ color: project.color }}>
-                {project.name}
-              </span>
-            </button>
-          )}
+      {showProjectBadge && (
+        <div className="flex items-center shrink-0 gap-[5px]">
+          <div className="rounded-xs shrink-0 size-2" style={{ backgroundColor: project.color }} />
+          <div className="text-[11px] text-text-tertiary leading-3.5 truncate max-w-[100px]">
+            {project.name}
+          </div>
         </div>
       )}
 
-      {/* Due date (pushed right) */}
-      {formattedDate && (
-        <span
+      {dueDateDisplay && (
+        <div
           className={cn(
-            'text-[10px] ml-auto shrink-0 leading-3',
-            isOverdue && !isCompleted ? 'text-[#C4654A]' : 'text-text-tertiary',
-            isCompleted && 'opacity-60'
+            'text-[11px] shrink-0 text-right leading-3.5 whitespace-nowrap',
+            'colorClass' in dueDateDisplay && dueDateDisplay.colorClass
           )}
+          style={'colorStyle' in dueDateDisplay ? { color: dueDateDisplay.colorStyle } : undefined}
         >
-          {formattedDate.label}
-        </span>
-      )}
-
-      {/* Subtask progress (if has subtasks) */}
-      {task.subtaskIds.length > 0 && (
-        <div className="flex items-center shrink-0 gap-[3px]">
-          <div className="w-5 h-[3px] flex rounded-xs overflow-hidden bg-border shrink-0">
-            <div
-              className="h-full rounded-xs bg-[#7B9E87]"
-              style={{
-                width: `${Math.round((task.subtaskIds.filter(() => false).length / task.subtaskIds.length) * 100)}%`
-              }}
-            />
-          </div>
-          <span className="text-[9px] text-text-tertiary font-[family-name:var(--font-mono)] leading-3">
-            0/{task.subtaskIds.length}
-          </span>
+          {dueDateDisplay.text}
         </div>
       )}
     </div>
@@ -364,37 +286,31 @@ export const TaskRowPreview = ({
   task,
   project,
   isCompleted = false
-}: TaskRowPreviewProps): React.JSX.Element => {
-  const formattedDate = formatDueDate(task.dueDate, task.dueTime)
-  const isOverdue = formattedDate?.status === 'overdue' && !isCompleted
-
-  return (
-    <div
+}: TaskRowPreviewProps): React.JSX.Element => (
+  <div
+    className={cn(
+      'flex items-center gap-3 rounded-sm border border-border bg-card py-[7px] px-4 shadow-xl',
+      'rotate-2 scale-105'
+    )}
+    style={{ width: '320px' }}
+  >
+    <PriorityBars priority={task.priority} />
+    <span
       className={cn(
-        'flex items-center gap-3 rounded-sm border bg-card p-3 shadow-xl',
-        'rotate-2 scale-105',
-        isOverdue && 'bg-rose-50/60 dark:bg-rose-950/20'
+        'truncate text-[13px] leading-4 flex-1 min-w-0',
+        isCompleted && 'text-text-tertiary line-through'
       )}
-      style={{ width: '320px' }}
     >
-      <TaskCheckbox checked={isCompleted} onChange={() => {}} />
-      <div className="flex flex-1 items-center gap-2 min-w-0">
-        <span
-          className={cn(
-            'truncate text-sm font-medium',
-            isCompleted && 'text-muted-foreground line-through'
-          )}
-        >
-          {task.title}
-        </span>
+      {task.title}
+    </span>
+    {project && (
+      <div className="flex items-center shrink-0 gap-[5px]">
+        <div className="rounded-xs shrink-0 size-2" style={{ backgroundColor: project.color }} />
+        <div className="text-[11px] text-text-tertiary leading-3.5">{project.name}</div>
       </div>
-      <div className="flex items-center gap-2 shrink-0">
-        {project && <ProjectBadge project={project} />}
-        {!isCompleted && <PriorityBadge priority={task.priority} />}
-      </div>
-    </div>
-  )
-}
+    )}
+  </div>
+)
 
 export default SortableTaskRow
 export type { SortableTaskRowProps }

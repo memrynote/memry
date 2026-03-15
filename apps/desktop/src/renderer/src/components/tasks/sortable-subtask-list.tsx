@@ -16,7 +16,6 @@ import { restrictToVerticalAxis, restrictToParentElement } from '@dnd-kit/modifi
 
 import { cn } from '@/lib/utils'
 import { SortableSubtaskRow } from '@/components/tasks/sortable-subtask-row'
-import { AddSubtaskInput } from '@/components/tasks/add-subtask-input'
 import type { Task } from '@/data/sample-tasks'
 
 // ============================================================================
@@ -29,7 +28,6 @@ interface SortableSubtaskListProps {
   subtasks: Task[]
   onReorder: (parentId: string, newOrder: string[]) => void
   onToggleComplete: (taskId: string) => void
-  onAddSubtask?: (parentId: string, title: string) => void
   onClick?: (taskId: string) => void
   className?: string
 }
@@ -55,7 +53,6 @@ export const SortableSubtaskList = ({
   subtasks,
   onReorder,
   onToggleComplete,
-  onAddSubtask,
   onClick,
   className
 }: SortableSubtaskListProps): React.JSX.Element => {
@@ -110,18 +107,13 @@ export const SortableSubtaskList = ({
               key={subtask.id}
               subtask={subtask}
               parentId={parentId}
-              isLast={index === subtasks.length - 1 && !onAddSubtask}
+              isLast={index === subtasks.length - 1}
               onToggleComplete={onToggleComplete}
               onClick={onClick}
             />
           ))}
         </SortableContext>
       </DndContext>
-
-      {/* Add subtask input */}
-      {onAddSubtask && (
-        <AddSubtaskInput parentId={parentId} onAdd={onAddSubtask} className="pl-2" />
-      )}
     </div>
   )
 }
