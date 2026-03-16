@@ -1,7 +1,9 @@
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useMemo, useRef, useState } from 'react'
 import { Settings, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { FilterSearchHeader } from '@/components/ui/filter-search-header'
+import { CheckMark } from '@/components/ui/check-mark'
 import type { Project, SavedFilter } from '@/data/tasks-data'
 
 export type TasksInternalTab = 'today' | 'all' | 'done'
@@ -141,16 +143,15 @@ export const TasksTabBar = ({
               )}
             >
               <span className="text-[12px] leading-4">{tab.label}</span>
-              {count > 0 && (
-                <span
-                  className={cn(
-                    'text-[9px] font-[family-name:var(--font-mono)] leading-3',
-                    isActive ? 'text-background/45' : 'text-text-tertiary'
-                  )}
-                >
-                  {count}
-                </span>
-              )}
+              <span
+                className={cn(
+                  'text-[9px] font-[family-name:var(--font-mono)] leading-3 tabular-nums min-w-[1ch] text-center',
+                  count === 0 && 'invisible',
+                  isActive ? 'text-background/45' : 'text-text-tertiary'
+                )}
+              >
+                {count}
+              </span>
             </button>
           )
         })}
@@ -194,94 +195,160 @@ export const TasksTabBar = ({
 
       {/* All Projects Dropdown */}
       {onProjectChange && (
-        <Popover open={isProjectDropdownOpen} onOpenChange={setIsProjectDropdownOpen}>
-          <PopoverTrigger asChild>
-            <button
-              type="button"
-              className="flex items-center shrink-0 whitespace-nowrap rounded-[5px] py-1 px-2.5 gap-[5px] border border-border text-text-secondary hover:text-text-primary hover:bg-surface-active/50 transition-colors"
-            >
-              <span
-                className={cn(
-                  'rounded-[3px] shrink-0 size-[5px]',
-                  !selectedProject && 'bg-foreground'
-                )}
-                style={selectedProject ? { backgroundColor: selectedProject.color } : undefined}
-              />
-              <span className="text-[12px] leading-4">
-                {selectedProject?.name ?? 'All projects'}
-              </span>
-              <svg
-                width="10"
-                height="10"
-                viewBox="0 0 10 10"
-                fill="none"
-                className="text-text-tertiary"
-              >
-                <path
-                  d="M2.5 3.75l2.5 2.5 2.5-2.5"
-                  stroke="currentColor"
-                  strokeWidth="1.1"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </svg>
-            </button>
-          </PopoverTrigger>
-          <PopoverContent className="w-[200px] p-1" align="start">
-            <button
-              type="button"
-              onClick={() => {
-                onProjectChange(null)
-                setIsProjectDropdownOpen(false)
-              }}
-              className={cn(
-                'w-full flex items-center gap-2 rounded-sm py-2 px-3 text-sm transition-colors',
-                'hover:bg-accent focus:outline-none',
-                !selectedProjectId && 'bg-accent font-medium'
-              )}
-            >
-              <span className="rounded-full shrink-0 size-1.5 bg-foreground" />
-              <span className="text-[13px] text-text-secondary">All projects</span>
-            </button>
-            {activeProjects.map((p) => (
-              <div key={p.id} className="group/project-item flex items-center">
-                <button
-                  type="button"
-                  onClick={() => {
-                    onProjectChange(p.id)
-                    setIsProjectDropdownOpen(false)
-                  }}
-                  className={cn(
-                    'flex-1 flex items-center gap-2 rounded-sm py-2 px-3 text-sm transition-colors',
-                    'hover:bg-accent focus:outline-none',
-                    p.id === selectedProjectId && 'bg-accent font-medium'
-                  )}
-                >
-                  <span
-                    className="rounded-full shrink-0 size-1.5"
-                    style={{ backgroundColor: p.color }}
-                  />
-                  <span className="text-[13px] text-text-secondary">{p.name}</span>
-                </button>
-                {onProjectEdit && (
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      onProjectEdit(p)
-                      setIsProjectDropdownOpen(false)
-                    }}
-                    className="shrink-0 p-1.5 mr-1 rounded-sm opacity-0 group-hover/project-item:opacity-100 transition-opacity hover:bg-accent"
-                    aria-label={`Edit ${p.name}`}
-                  >
-                    <Settings className="size-3 text-text-tertiary" />
-                  </button>
-                )}
-              </div>
-            ))}
-          </PopoverContent>
-        </Popover>
+        <ProjectDropdown
+          projects={activeProjects}
+          selectedProjectId={selectedProjectId ?? null}
+          onProjectChange={(id) => {
+            onProjectChange(id)
+            setIsProjectDropdownOpen(false)
+          }}
+          onProjectEdit={onProjectEdit}
+          open={isProjectDropdownOpen}
+          onOpenChange={setIsProjectDropdownOpen}
+          selectedProject={selectedProject ?? null}
+        />
       )}
     </div>
+  )
+}
+
+interface ProjectDropdownProps {
+  projects: Project[]
+  selectedProjectId: string | null
+  onProjectChange: (projectId: string | null) => void
+  onProjectEdit?: (project: Project) => void
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  selectedProject: Project | null
+}
+
+function ProjectDropdown({
+  projects,
+  selectedProjectId,
+  onProjectChange,
+  onProjectEdit,
+  open,
+  onOpenChange,
+  selectedProject
+}: ProjectDropdownProps): React.JSX.Element {
+  const [search, setSearch] = useState('')
+
+  const filtered = useMemo(() => {
+    if (!search) return projects
+    const q = search.toLowerCase()
+    return projects.filter((p) => p.name.toLowerCase().includes(q))
+  }, [projects, search])
+
+  const handleOpenChange = useCallback(
+    (next: boolean) => {
+      if (!next) setSearch('')
+      onOpenChange(next)
+    },
+    [onOpenChange]
+  )
+
+  return (
+    <Popover open={open} onOpenChange={handleOpenChange}>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          className="flex items-center shrink-0 whitespace-nowrap rounded-[5px] py-1 px-2.5 gap-[5px] border border-border text-text-secondary hover:text-text-primary hover:bg-surface-active/50 transition-colors"
+        >
+          <span
+            className={cn(
+              'rounded-[3px] shrink-0 size-2.5',
+              !selectedProject && 'border-[1.2px] border-solid border-border'
+            )}
+            style={selectedProject ? { backgroundColor: selectedProject.color } : undefined}
+          />
+          <span className="text-[12px] leading-4">{selectedProject?.name ?? 'All projects'}</span>
+          <svg
+            width="10"
+            height="10"
+            viewBox="0 0 10 10"
+            fill="none"
+            className="text-text-tertiary"
+          >
+            <path
+              d="M2.5 3.75l2.5 2.5 2.5-2.5"
+              stroke="currentColor"
+              strokeWidth="1.1"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+        </button>
+      </PopoverTrigger>
+      <PopoverContent
+        className="w-[200px] p-0 rounded-lg overflow-clip bg-popover border-border shadow-[var(--shadow-card-hover)]"
+        align="start"
+        sideOffset={8}
+      >
+        <div className="flex flex-col text-[12px] leading-4 [font-synthesis:none] antialiased">
+          <FilterSearchHeader
+            value={search}
+            onChange={setSearch}
+            placeholder="Search projects..."
+          />
+          <div className="flex flex-col p-1 max-h-64 overflow-y-auto">
+            <button
+              type="button"
+              onClick={() => onProjectChange(null)}
+              className={cn(
+                'flex items-center rounded-[5px] py-1.5 px-2 gap-2 transition-colors',
+                !selectedProjectId ? 'bg-accent' : 'hover:bg-accent'
+              )}
+            >
+              <div className="shrink-0 rounded-[3px] border-[1.2px] border-solid border-border size-2.5" />
+              <span className="text-[12px] text-text-tertiary leading-4">All projects</span>
+              {!selectedProjectId && <CheckMark className="ml-auto text-primary" />}
+            </button>
+            {filtered.map((p) => {
+              const isSelected = p.id === selectedProjectId
+              return (
+                <div key={p.id} className="group/project-item flex items-center">
+                  <button
+                    type="button"
+                    onClick={() => onProjectChange(p.id)}
+                    className={cn(
+                      'flex-1 flex items-center rounded-[5px] py-1.5 px-2 gap-2 transition-colors',
+                      isSelected ? 'bg-accent' : 'hover:bg-accent'
+                    )}
+                  >
+                    <div
+                      className="shrink-0 rounded-[3px] size-2.5"
+                      style={{ backgroundColor: p.color }}
+                    />
+                    <span
+                      className={cn(
+                        'text-[12px] leading-4',
+                        isSelected ? 'text-foreground' : 'text-text-secondary'
+                      )}
+                    >
+                      {p.name}
+                    </span>
+                    {isSelected && <CheckMark className="ml-auto text-primary" />}
+                  </button>
+                  {onProjectEdit && (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        onProjectEdit(p)
+                        handleOpenChange(false)
+                      }}
+                      className="shrink-0 p-1.5 mr-1 rounded-sm opacity-0 group-hover/project-item:opacity-100 transition-opacity hover:bg-accent"
+                      aria-label={`Edit ${p.name}`}
+                    >
+                      <Settings className="size-3 text-text-tertiary" />
+                    </button>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      </PopoverContent>
+    </Popover>
   )
 }
