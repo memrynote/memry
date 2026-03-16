@@ -3,11 +3,13 @@ import { CSS } from '@dnd-kit/utilities'
 import { GripVertical } from 'lucide-react'
 
 import { cn } from '@/lib/utils'
-import { TaskCheckbox } from '@/components/tasks/task-badges'
+import { StatusCircle } from '@/components/tasks/task-icons'
 import type { Task } from '@/data/sample-tasks'
+import type { Status } from '@/data/tasks-data'
 
 interface SortableSubtaskRowProps {
   subtask: Task
+  statuses: Status[]
   parentId: string
   isLast: boolean
   onToggleComplete: (taskId: string) => void
@@ -17,6 +19,7 @@ interface SortableSubtaskRowProps {
 
 export const SortableSubtaskRow = ({
   subtask,
+  statuses,
   parentId,
   isLast: _isLast,
   onToggleComplete,
@@ -24,6 +27,14 @@ export const SortableSubtaskRow = ({
   className
 }: SortableSubtaskRowProps): React.JSX.Element => {
   const isCompleted = !!subtask.completedAt
+  const status = statuses.find((s) => s.id === subtask.statusId)
+  const doneStatus = statuses.find((s) => s.type === 'done')
+  const statusType = isCompleted
+    ? 'done'
+    : ((status?.type ?? 'todo') as 'todo' | 'in_progress' | 'done')
+  const statusColor = isCompleted
+    ? (doneStatus?.color ?? status?.color ?? 'var(--text-tertiary)')
+    : (status?.color ?? 'var(--text-tertiary)')
 
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: subtask.id,
@@ -76,12 +87,12 @@ export const SortableSubtaskRow = ({
           <GripVertical className="size-3" />
         </button>
 
-        {/* Subtask checkbox (14px) */}
         <div onClick={(e) => e.stopPropagation()}>
-          <TaskCheckbox
-            checked={isCompleted}
-            onChange={() => onToggleComplete(subtask.id)}
-            size="sm"
+          <StatusCircle
+            statusType={statusType}
+            statusColor={statusColor}
+            isCompleted={isCompleted}
+            onClick={() => onToggleComplete(subtask.id)}
           />
         </div>
 

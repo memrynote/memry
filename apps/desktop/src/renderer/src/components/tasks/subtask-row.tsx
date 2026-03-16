@@ -1,9 +1,11 @@
 import { cn } from '@/lib/utils'
-import { TaskCheckbox } from '@/components/tasks/task-badges'
+import { StatusCircle } from '@/components/tasks/task-icons'
 import type { Task } from '@/data/sample-tasks'
+import type { Status } from '@/data/tasks-data'
 
 interface SubtaskRowProps {
   subtask: Task
+  statuses: Status[]
   isLast: boolean
   onToggleComplete: (taskId: string) => void
   onClick?: (taskId: string) => void
@@ -12,12 +14,21 @@ interface SubtaskRowProps {
 
 export const SubtaskRow = ({
   subtask,
+  statuses,
   isLast: _isLast,
   onToggleComplete,
   onClick,
   className
 }: SubtaskRowProps): React.JSX.Element => {
   const isCompleted = !!subtask.completedAt
+  const status = statuses.find((s) => s.id === subtask.statusId)
+  const doneStatus = statuses.find((s) => s.type === 'done')
+  const statusType = isCompleted
+    ? 'done'
+    : ((status?.type ?? 'todo') as 'todo' | 'in_progress' | 'done')
+  const statusColor = isCompleted
+    ? (doneStatus?.color ?? status?.color ?? 'var(--text-tertiary)')
+    : (status?.color ?? 'var(--text-tertiary)')
 
   return (
     <div
@@ -41,10 +52,11 @@ export const SubtaskRow = ({
       aria-label={`Subtask: ${subtask.title}${isCompleted ? ', completed' : ''}`}
     >
       <div onClick={(e) => e.stopPropagation()}>
-        <TaskCheckbox
-          checked={isCompleted}
-          onChange={() => onToggleComplete(subtask.id)}
-          size="sm"
+        <StatusCircle
+          statusType={statusType}
+          statusColor={statusColor}
+          isCompleted={isCompleted}
+          onClick={() => onToggleComplete(subtask.id)}
         />
       </div>
 

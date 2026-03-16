@@ -197,6 +197,7 @@ export const ParentTaskRow = ({
             <SubtaskRow
               key={subtask.id}
               subtask={subtask}
+              statuses={project.statuses}
               isLast={index === subtasks.length - 1}
               onToggleComplete={onToggleSubtaskComplete || onToggleComplete}
               onClick={onClick}

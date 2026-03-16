@@ -284,6 +284,7 @@ export const SortableParentTaskRow = ({
           parentId={task.id}
           parentTitle={task.title}
           subtasks={subtasks}
+          statuses={project.statuses}
           onReorder={onReorderSubtasks || (() => {})}
           onToggleComplete={onToggleSubtaskComplete || onToggleComplete}
           onClick={onClick}
