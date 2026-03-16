@@ -187,3 +187,103 @@ export const PriorityStar = ({
     />
   </svg>
 )
+
+// ============================================================================
+// STATUS ICON — Pure display icon for status type (14×14)
+// Used in filter panels, interactive badges, and task detail drawer
+// ============================================================================
+
+interface StatusIconProps {
+  type: 'todo' | 'in_progress' | 'done'
+  color: string
+  className?: string
+}
+
+export const StatusIcon = ({ type, color, className }: StatusIconProps): React.JSX.Element => (
+  <svg width="14" height="14" viewBox="0 0 14 14" fill="none" className={cn('shrink-0', className)}>
+    {type === 'todo' && <circle cx="7" cy="7" r="5" stroke={color} strokeWidth="1.2" />}
+    {type === 'in_progress' && (
+      <>
+        <circle cx="7" cy="7" r="5" stroke={color} strokeWidth="1.2" />
+        <path d="M7 2A5 5 0 0 1 7 12" fill={color} />
+      </>
+    )}
+    {type === 'done' && (
+      <>
+        <circle cx="7" cy="7" r="5" stroke={color} strokeWidth="1.2" fill={color} />
+        <path
+          d="M4.5 7l1.5 1.5L9.5 5"
+          stroke="var(--background)"
+          strokeWidth="1.3"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </>
+    )}
+  </svg>
+)
+
+// ============================================================================
+// PRIORITY ICON — Pure display icon for priority level (13×13)
+// Used in filter panels, interactive badges, and task detail drawer
+// ============================================================================
+
+const PI = {
+  destructive: 'var(--destructive)',
+  orange: 'var(--accent-orange)',
+  fg: 'var(--foreground)',
+  tertiary: 'var(--text-tertiary)',
+  border: 'var(--border)'
+} as const
+
+const PRIORITY_ICON_MAP: Record<Priority, React.ReactNode> = {
+  urgent: (
+    <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
+      <rect x="1" y="7" width="2.2" height="4" rx="0.5" style={{ fill: PI.destructive }} />
+      <rect x="5" y="4.5" width="2.2" height="6.5" rx="0.5" style={{ fill: PI.destructive }} />
+      <rect x="9" y="2" width="2.2" height="9" rx="0.5" style={{ fill: PI.destructive }} />
+    </svg>
+  ),
+  high: (
+    <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
+      <rect x="1" y="5.5" width="2.2" height="5.5" rx="0.5" style={{ fill: PI.orange }} />
+      <rect x="5" y="3" width="2.2" height="8" rx="0.5" style={{ fill: PI.orange }} />
+      <rect x="9" y="1" width="2.2" height="10" rx="0.5" style={{ fill: PI.border }} />
+    </svg>
+  ),
+  medium: (
+    <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
+      <rect x="1" y="5.5" width="2.2" height="5.5" rx="0.5" style={{ fill: PI.fg }} />
+      <rect x="5" y="3" width="2.2" height="8" rx="0.5" style={{ fill: PI.border }} />
+      <rect x="9" y="1" width="2.2" height="10" rx="0.5" style={{ fill: PI.border }} />
+    </svg>
+  ),
+  low: (
+    <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
+      <rect
+        x="1"
+        y="5.5"
+        width="2.2"
+        height="5.5"
+        rx="0.5"
+        style={{ fill: PI.tertiary, opacity: 0.6 }}
+      />
+      <rect x="5" y="3" width="2.2" height="8" rx="0.5" style={{ fill: PI.border }} />
+      <rect x="9" y="1" width="2.2" height="10" rx="0.5" style={{ fill: PI.border }} />
+    </svg>
+  ),
+  none: (
+    <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
+      <path d="M3 6.5h7" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round" />
+    </svg>
+  )
+}
+
+interface PriorityIconProps {
+  priority: Priority
+  className?: string
+}
+
+export const PriorityIcon = ({ priority, className }: PriorityIconProps): React.JSX.Element => (
+  <span className={cn('shrink-0 flex items-center', className)}>{PRIORITY_ICON_MAP[priority]}</span>
+)
