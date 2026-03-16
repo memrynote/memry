@@ -28,7 +28,7 @@ interface TasksTabBarProps {
   savedFilters?: SavedFilter[]
   activeSavedFilterId?: string | null
   onApplySavedFilter?: (filter: SavedFilter) => void
-  onDeleteSavedFilter?: (filterId: string) => void
+  onUnstarSavedFilter?: (filterId: string) => void
   className?: string
 }
 
@@ -49,7 +49,7 @@ export const TasksTabBar = ({
   savedFilters = [],
   activeSavedFilterId,
   onApplySavedFilter,
-  onDeleteSavedFilter,
+  onUnstarSavedFilter,
   className
 }: TasksTabBarProps): React.JSX.Element => {
   const tabRefs = useRef<Map<TasksInternalTab, HTMLButtonElement>>(new Map())
@@ -145,7 +145,7 @@ export const TasksTabBar = ({
               <span className="text-[12px] leading-4">{tab.label}</span>
               <span
                 className={cn(
-                  'text-[9px] font-[family-name:var(--font-mono)] leading-3 tabular-nums min-w-[1ch] text-center',
+                  'text-[9px] font-[family-name:var(--font-mono)] leading-3 tabular-nums min-w-[2ch] text-center',
                   count === 0 && 'invisible',
                   isActive ? 'text-background/45' : 'text-text-tertiary'
                 )}
@@ -179,12 +179,12 @@ export const TasksTabBar = ({
               </button>
               <button
                 type="button"
-                aria-label={`Remove ${sf.name}`}
+                aria-label={`Unstar ${sf.name}`}
                 onClick={(e) => {
                   e.stopPropagation()
-                  onDeleteSavedFilter?.(sf.id)
+                  onUnstarSavedFilter?.(sf.id)
                 }}
-                className="p-0.5 mr-0.5 rounded-sm opacity-0 group-hover/pill:opacity-100 focus:opacity-100 transition-opacity hover:text-[#E54D2E] focus-visible:outline-none"
+                className="p-0.5 mr-0.5 rounded-sm opacity-0 group-hover/pill:opacity-100 focus:opacity-100 transition-opacity hover:text-text-tertiary focus-visible:outline-none"
               >
                 <X className="size-3" />
               </button>
