@@ -5062,6 +5062,59 @@ describe('Task Utils', () => {
         expect(result[0].id).toBe('t1')
       })
 
+      it('should return empty when status=done but completion=active (filter interaction)', () => {
+        // #given — done-status task + default "active" completion filter
+        const tasks = [
+          createMockTask({
+            id: 't1',
+            projectId: 'project-1',
+            statusId: 'status-done',
+            completedAt: new Date()
+          }),
+          createMockTask({ id: 't2', projectId: 'project-1', statusId: 'status-todo' })
+        ]
+
+        // #when — user picks "Done" in status filter, completion stays "active"
+        const filters: TaskFilters = {
+          ...createDefaultFilters(),
+          statusIds: ['status-done'],
+          completion: 'active'
+        }
+        const sort = createDefaultSort()
+
+        const result = applyFiltersAndSort(tasks, filters, sort, projects)
+
+        // #then — status passes done, completion strips it → empty
+        expect(result).toHaveLength(0)
+      })
+
+      it('should show done tasks when both status=done and completion=all', () => {
+        // #given
+        const tasks = [
+          createMockTask({
+            id: 't1',
+            projectId: 'project-1',
+            statusId: 'status-done',
+            completedAt: new Date()
+          }),
+          createMockTask({ id: 't2', projectId: 'project-1', statusId: 'status-todo' })
+        ]
+
+        // #when — user picks "Done" status AND sets completion to "all"
+        const filters: TaskFilters = {
+          ...createDefaultFilters(),
+          statusIds: ['status-done'],
+          completion: 'all'
+        }
+        const sort = createDefaultSort()
+
+        const result = applyFiltersAndSort(tasks, filters, sort, projects)
+
+        // #then — only the done task is returned
+        expect(result).toHaveLength(1)
+        expect(result[0].id).toBe('t1')
+      })
+
       it('should apply completion filter - active', () => {
         const tasks = [
           createMockTask({ id: 't1', projectId: 'project-1', statusId: 'status-todo' }),
