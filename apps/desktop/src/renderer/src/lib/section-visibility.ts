@@ -107,17 +107,6 @@ export const getSectionVisibility = (
 // ============================================================================
 
 /**
- * Check if we should show the "overdue cleared" celebration.
- * This is triggered when the overdue count goes from >0 to 0.
- */
-export const shouldShowOverdueCelebration = (
-  previousCount: number,
-  currentCount: number
-): boolean => {
-  return previousCount > 0 && currentCount === 0
-}
-
-/**
  * Get the appropriate empty state message for a section type.
  */
 export const getEmptyStateMessage = (

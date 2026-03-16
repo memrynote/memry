@@ -290,8 +290,9 @@ function AppSidebarInner({ currentPage, viewCounts, ...props }: AppSidebarProps)
                     </span>
                     {item.page === 'inbox' && inboxCount > 0 && (
                       <span className="ml-auto flex items-center gap-1">
-                        <button
-                          type="button"
+                        <div
+                          role="button"
+                          tabIndex={0}
                           onClick={(e) => {
                             e.stopPropagation()
                             handleNavClick('inbox')(e as unknown as React.MouseEvent)
@@ -299,11 +300,21 @@ function AppSidebarInner({ currentPage, viewCounts, ...props }: AppSidebarProps)
                               window.dispatchEvent(new CustomEvent('memry:enter-triage'))
                             })
                           }}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' || e.key === ' ') {
+                              e.preventDefault()
+                              e.stopPropagation()
+                              handleNavClick('inbox')(e as unknown as React.MouseEvent)
+                              requestAnimationFrame(() => {
+                                window.dispatchEvent(new CustomEvent('memry:enter-triage'))
+                              })
+                            }
+                          }}
                           className="opacity-0 group-hover/menu-item:opacity-100 transition-opacity rounded p-0.5 hover:bg-accent"
                           title="Process Inbox"
                         >
                           <Play className="size-3 text-muted-foreground" />
-                        </button>
+                        </div>
                         <span className="size-[18px] flex items-center justify-center rounded-full bg-sidebar-terracotta/15 text-sidebar-terracotta text-[10px] font-semibold leading-none">
                           {inboxCount}
                         </span>
@@ -321,6 +332,9 @@ function AppSidebarInner({ currentPage, viewCounts, ...props }: AppSidebarProps)
           </SidebarMenu>
         </SidebarGroup>
       </div>
+
+      {/* Separator between nav and collections */}
+      <div className="h-px bg-[#E5E4DF] dark:bg-white/10 shrink-0 mx-3 my-2" />
 
       {/* SCROLLABLE SECTION - Collections, Bookmarks, Tags — entire area is drop target */}
       <div

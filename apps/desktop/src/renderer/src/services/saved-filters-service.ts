@@ -43,6 +43,7 @@ export interface TaskSortConfig {
 export interface SavedFilterConfig {
   filters: TaskFiltersConfig
   sort?: TaskSortConfig
+  starred?: boolean
 }
 
 export interface SavedFilter {

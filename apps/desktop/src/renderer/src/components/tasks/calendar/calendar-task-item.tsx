@@ -80,7 +80,7 @@ export const CalendarTaskItem = ({
         'flex items-center gap-1.5 rounded px-1.5 py-0.5 text-xs',
         'hover:bg-muted cursor-pointer truncate focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
         isCompleted && 'opacity-60 line-through',
-        isOverdue && 'bg-red-50'
+        isOverdue && 'bg-task-due-overdue-bg'
       )}
       aria-label={task.title}
     >

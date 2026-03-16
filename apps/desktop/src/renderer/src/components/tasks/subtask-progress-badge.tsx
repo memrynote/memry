@@ -71,7 +71,7 @@ export const SubtaskProgressBadge = ({
         <div
           className={cn(
             'h-full rounded-full transition-all duration-300 ease-out',
-            isComplete ? 'bg-green-500' : 'bg-blue-500'
+            isComplete ? 'bg-task-complete' : 'bg-task-progress'
           )}
           style={{ width: `${percentage}%` }}
         />
@@ -81,7 +81,7 @@ export const SubtaskProgressBadge = ({
       <span
         className={cn(
           'text-xs font-medium tabular-nums',
-          isComplete ? 'text-green-600 dark:text-green-400' : 'text-muted-foreground'
+          isComplete ? 'text-task-complete' : 'text-muted-foreground'
         )}
       >
         {completed}/{total}
@@ -89,11 +89,7 @@ export const SubtaskProgressBadge = ({
 
       {/* Checkmark when complete */}
       {isComplete && (
-        <Check
-          className="w-3 h-3 text-green-600 dark:text-green-400"
-          strokeWidth={3}
-          aria-hidden="true"
-        />
+        <Check className="w-3 h-3 text-task-complete" strokeWidth={3} aria-hidden="true" />
       )}
     </button>
   )

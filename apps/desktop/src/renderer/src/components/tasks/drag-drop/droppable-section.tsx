@@ -2,6 +2,7 @@ import { useDroppable } from '@dnd-kit/core'
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
 
 import { cn } from '@/lib/utils'
+import { SectionDivider, type SectionDividerVariant } from '@/components/tasks/section-divider'
 import { useDragContext } from '@/contexts/drag-context'
 import type { Task } from '@/data/sample-tasks'
 
@@ -71,14 +72,14 @@ export const DroppableSection = ({
       hoverBg: 'bg-accent/20'
     },
     today: {
-      accent: 'border-l-amber-500',
-      bg: 'bg-amber-50/30 dark:bg-amber-950/10',
-      hoverBg: 'bg-amber-100/50 dark:bg-amber-950/30'
+      accent: 'border-l-task-due-today',
+      bg: 'bg-task-due-today/[0.06]',
+      hoverBg: 'bg-task-due-today/[0.12]'
     },
     upcoming: {
-      accent: 'border-l-blue-500',
-      bg: 'bg-blue-50/30 dark:bg-blue-950/10',
-      hoverBg: 'bg-blue-100/50 dark:bg-blue-950/30'
+      accent: 'border-l-task-due-tomorrow',
+      bg: 'bg-task-due-tomorrow/[0.06]',
+      hoverBg: 'bg-task-due-tomorrow/[0.12]'
     }
   }
 
@@ -88,7 +89,7 @@ export const DroppableSection = ({
     <div
       ref={setNodeRef}
       className={cn(
-        'rounded-lg border border-border overflow-hidden transition-all duration-200',
+        'rounded-sm border border-border overflow-hidden transition-all duration-200',
         'border-l-2',
         styles.accent,
         styles.bg,
@@ -131,38 +132,10 @@ export const DroppableSectionHeader = ({
   count,
   variant = 'default'
 }: DroppableSectionHeaderProps): React.JSX.Element => {
-  return (
-    <div className="flex items-center justify-between px-4 py-2.5 border-b border-border/50">
-      <div className="flex items-center gap-2">
-        <span
-          className={cn(
-            'font-semibold text-sm uppercase tracking-wide',
-            variant === 'overdue' && 'text-red-600 dark:text-red-400',
-            variant === 'today' && 'text-amber-600 dark:text-amber-500',
-            variant === 'upcoming' && 'text-blue-600 dark:text-blue-400',
-            variant === 'default' && 'text-text-secondary'
-          )}
-        >
-          {title}
-        </span>
-        {subtitle && <span className="text-sm text-text-tertiary">· {subtitle}</span>}
-      </div>
+  const dividerVariant: SectionDividerVariant = variant === 'overdue' ? 'overdue' : 'default'
+  const label = subtitle ? `${title} · ${subtitle}` : title
 
-      <span
-        className={cn(
-          'text-xs px-2 py-0.5 rounded-full font-medium',
-          variant === 'overdue' && 'bg-red-100 dark:bg-red-950/50 text-red-700 dark:text-red-400',
-          variant === 'today' &&
-            'bg-amber-100 dark:bg-amber-950/50 text-amber-700 dark:text-amber-500',
-          variant === 'upcoming' &&
-            'bg-blue-100 dark:bg-blue-950/50 text-blue-700 dark:text-blue-400',
-          variant === 'default' && 'bg-muted text-text-tertiary'
-        )}
-      >
-        {count}
-      </span>
-    </div>
-  )
+  return <SectionDivider label={label} count={count} variant={dividerVariant} className="px-4" />
 }
 
 // ============================================================================
@@ -181,7 +154,7 @@ export const EmptyDropZone = ({
   return (
     <div
       className={cn(
-        'flex items-center justify-center py-8 border-2 border-dashed rounded-lg mx-2 my-2 transition-colors',
+        'flex items-center justify-center py-8 border-2 border-dashed rounded-sm mx-2 my-2 transition-colors',
         isOver
           ? 'border-primary/50 bg-primary/5 text-primary'
           : 'border-muted-foreground/20 text-muted-foreground'

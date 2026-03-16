@@ -73,7 +73,7 @@ export const CelebrationProgress = ({
               initial={{ scale: 1, opacity: 0.8 }}
               animate={{ scale: 1.5, opacity: 0 }}
               transition={{ duration: 0.8, ease: 'easeOut' }}
-              className="absolute inset-0 rounded-full border-2 border-green-500 pointer-events-none"
+              className="absolute inset-0 rounded-full border-2 border-task-complete pointer-events-none"
             />
           )}
         </AnimatePresence>
@@ -87,7 +87,7 @@ export const CelebrationProgress = ({
             animate={{ scale: 1, opacity: 1 }}
             exit={{ scale: 0, opacity: 0 }}
             transition={{ duration: 0.3, ease: 'easeOut' }}
-            className="ml-2 flex items-center justify-center w-4 h-4 rounded-full bg-green-500"
+            className="ml-2 flex items-center justify-center w-4 h-4 rounded-full bg-task-complete"
             aria-label="Complete"
           >
             <svg

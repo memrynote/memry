@@ -19,7 +19,8 @@ export const GeneralSettingsSchema = z.object({
   fontFamily: z.enum(['system', 'serif', 'sans-serif', 'monospace']),
   accentColor: z.string().regex(/^#[0-9a-fA-F]{6}$/),
   startOnBoot: z.boolean(),
-  language: z.string().min(2).max(5)
+  language: z.string().min(2).max(5),
+  onboardingCompleted: z.boolean()
 })
 
 export type GeneralSettings = z.infer<typeof GeneralSettingsSchema>
@@ -30,7 +31,8 @@ export const GENERAL_SETTINGS_DEFAULTS: GeneralSettings = {
   fontFamily: 'system',
   accentColor: '#6366f1',
   startOnBoot: false,
-  language: 'en'
+  language: 'en',
+  onboardingCompleted: false
 }
 
 // ============================================================================

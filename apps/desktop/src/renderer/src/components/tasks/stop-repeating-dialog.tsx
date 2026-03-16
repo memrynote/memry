@@ -68,7 +68,7 @@ export const StopRepeatingDialog = ({
           {/* Keep this task option */}
           <label
             className={cn(
-              'flex cursor-pointer items-start gap-3 rounded-lg border p-3 transition-colors',
+              'flex cursor-pointer items-start gap-3 rounded-sm border p-3 transition-colors',
               selectedOption === 'keep'
                 ? 'border-primary bg-primary/5'
                 : 'border-border hover:bg-accent/50'
@@ -92,7 +92,7 @@ export const StopRepeatingDialog = ({
           {/* Delete all option */}
           <label
             className={cn(
-              'flex cursor-pointer items-start gap-3 rounded-lg border p-3 transition-colors',
+              'flex cursor-pointer items-start gap-3 rounded-sm border p-3 transition-colors',
               selectedOption === 'delete'
                 ? 'border-destructive bg-destructive/5'
                 : 'border-border hover:bg-accent/50'

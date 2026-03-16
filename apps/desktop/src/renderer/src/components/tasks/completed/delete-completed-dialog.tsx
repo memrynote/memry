@@ -91,7 +91,7 @@ export const DeleteCompletedDialog = ({
         </AlertDialogHeader>
 
         <div className="my-4 space-y-3">
-          <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3">
+          <div className="rounded-sm border border-destructive/30 bg-destructive/5 p-3">
             <div className="flex items-start gap-2">
               <Trash2 className="size-4 text-destructive mt-0.5 shrink-0" aria-hidden="true" />
               <p className="text-sm text-destructive">

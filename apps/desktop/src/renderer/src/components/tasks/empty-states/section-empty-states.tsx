@@ -56,8 +56,8 @@ export const CelebrationEmptyState = ({
   return (
     <div className={cn('py-8 text-center', className)}>
       {/* Celebration icon */}
-      <div className="mb-4 mx-auto w-14 h-14 rounded-full bg-emerald-50 dark:bg-emerald-950/30 flex items-center justify-center">
-        <Check className="size-7 text-emerald-600 dark:text-emerald-500" aria-hidden="true" />
+      <div className="mb-4 mx-auto w-14 h-14 rounded-full bg-task-complete/[0.08] flex items-center justify-center">
+        <Check className="size-7 text-task-complete" aria-hidden="true" />
       </div>
 
       {/* Title */}

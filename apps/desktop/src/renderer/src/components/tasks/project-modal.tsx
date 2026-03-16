@@ -263,7 +263,7 @@ export const ProjectModal = ({
                   type="button"
                   onClick={handleIconClick}
                   className={cn(
-                    'flex size-12 shrink-0 items-center justify-center rounded-lg border-2 border-dashed',
+                    'flex size-12 shrink-0 items-center justify-center rounded-sm border-2 border-dashed',
                     'transition-colors hover:border-primary hover:bg-accent/50',
                     'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring'
                   )}
@@ -317,7 +317,7 @@ export const ProjectModal = ({
                 rows={2}
                 maxLength={200}
                 className={cn(
-                  'w-full resize-none rounded-md border bg-transparent px-3 py-2 text-sm',
+                  'w-full resize-none rounded-sm border bg-transparent px-3 py-2 text-sm',
                   'placeholder:text-muted-foreground',
                   'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring'
                 )}

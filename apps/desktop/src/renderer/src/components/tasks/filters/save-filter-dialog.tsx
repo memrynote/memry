@@ -73,8 +73,11 @@ export const SaveFilterDialog = ({
         filters.dueDate.customStart &&
         filters.dueDate.customEnd
       ) {
-        const formatDate = (date: Date): string =>
-          date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+        const formatDate = (date: Date | string): string =>
+          (date instanceof Date ? date : new Date(date)).toLocaleDateString('en-US', {
+            month: 'short',
+            day: 'numeric'
+          })
         items.push(
           `Due: ${formatDate(filters.dueDate.customStart)} - ${formatDate(filters.dueDate.customEnd)}`
         )

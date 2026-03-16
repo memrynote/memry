@@ -70,7 +70,7 @@ export const AddSubtaskInput = ({
       {/* Input container */}
       <div
         className={cn(
-          'flex items-center rounded-lg border transition-colors ml-7',
+          'flex items-center rounded-sm border transition-colors ml-7',
           isActive
             ? 'border-ring bg-background shadow-sm'
             : 'border-transparent hover:border-border'

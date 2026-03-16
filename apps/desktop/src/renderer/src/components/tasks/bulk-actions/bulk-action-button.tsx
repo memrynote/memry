@@ -65,7 +65,7 @@ export const BulkActionButton = ({
       onKeyDown={handleKeyDown}
       disabled={disabled}
       className={cn(
-        'flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm font-medium',
+        'flex items-center gap-1.5 rounded-sm border px-3 py-1.5 text-sm font-medium',
         'transition-colors duration-150',
         'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
         'disabled:cursor-not-allowed disabled:opacity-50',

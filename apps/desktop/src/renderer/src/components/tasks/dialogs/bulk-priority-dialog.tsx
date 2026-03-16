@@ -97,7 +97,7 @@ export const BulkPriorityDialog = ({
               <div
                 key={option.value}
                 className={cn(
-                  'flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors',
+                  'flex items-center gap-3 p-3 rounded-sm border cursor-pointer transition-colors',
                   selectedPriority === option.value
                     ? 'border-primary bg-primary/5'
                     : 'border-border hover:bg-accent/50'

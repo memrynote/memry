@@ -43,7 +43,9 @@ import { useFlushOnQuit } from '@/hooks/use-flush-on-quit'
 import { tasksService } from '@/services/tasks-service'
 import { notesService } from '@/services/notes-service'
 import { VaultOnboarding } from '@/components/vault-onboarding'
+import { FirstRunOnboarding } from '@/components/first-run-onboarding'
 import { useThemeSync } from '@/hooks/use-theme-sync'
+import { useGeneralSettings } from '@/hooks/use-general-settings'
 import { createLogger } from '@/lib/logger'
 import { getStartupTheme, THEME_STORAGE_KEY } from '@/lib/startup-theme'
 
@@ -252,6 +254,17 @@ function App(): React.JSX.Element {
   const isVaultOpen = vaultStatus?.isOpen ?? false
   const vaultPath = vaultStatus?.path ?? null
   const queryClient = useQueryClient()
+
+  // General settings — used to gate first-run onboarding
+  const {
+    settings: generalSettings,
+    isLoading: generalSettingsLoading,
+    updateSettings: updateGeneralSettings
+  } = useGeneralSettings()
+
+  const handleOnboardingComplete = useCallback(async () => {
+    await updateGeneralSettings({ onboardingCompleted: true })
+  }, [updateGeneralSettings])
   const prevVaultPathRef = useRef<string | null>(null)
 
   useEffect(() => {
@@ -557,6 +570,10 @@ function App(): React.JSX.Element {
             {mainContent}
           </DragProvider>
         </SidebarProvider>
+        {/* First-run onboarding overlay — shown until user completes or dismisses */}
+        {!generalSettingsLoading && !generalSettings.onboardingCompleted && (
+          <FirstRunOnboarding onComplete={() => void handleOnboardingComplete()} />
+        )}
         <Toaster />
       </ThemeSyncManager>
     </ThemeProvider>

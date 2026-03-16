@@ -61,7 +61,7 @@ export const EditRepeatingTaskDialog = ({
           {/* This occurrence only */}
           <label
             className={cn(
-              'flex cursor-pointer items-start gap-3 rounded-lg border p-3 transition-colors',
+              'flex cursor-pointer items-start gap-3 rounded-sm border p-3 transition-colors',
               selectedScope === 'this'
                 ? 'border-primary bg-primary/5'
                 : 'border-border hover:bg-accent/50'
@@ -85,7 +85,7 @@ export const EditRepeatingTaskDialog = ({
           {/* This and all future */}
           <label
             className={cn(
-              'flex cursor-pointer items-start gap-3 rounded-lg border p-3 transition-colors',
+              'flex cursor-pointer items-start gap-3 rounded-sm border p-3 transition-colors',
               selectedScope === 'all'
                 ? 'border-primary bg-primary/5'
                 : 'border-border hover:bg-accent/50'

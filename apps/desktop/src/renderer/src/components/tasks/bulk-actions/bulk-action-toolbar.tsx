@@ -250,7 +250,7 @@ export const BulkActionToolbar = ({
         type="button"
         onClick={onCancel}
         className={cn(
-          'flex items-center gap-1 rounded-lg px-3 py-1.5 text-sm',
+          'flex items-center gap-1 rounded-sm px-3 py-1.5 text-sm',
           'text-muted-foreground hover:text-foreground hover:bg-accent',
           'transition-colors duration-150',
           'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring'

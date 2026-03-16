@@ -445,7 +445,7 @@ export function createDefaultStatuses(db: DrizzleDb, projectId: string): Status[
     id: `${projectId}-in-progress`,
     projectId,
     name: 'In Progress',
-    color: '#3b82f6',
+    color: '#E5993E',
     position: 1,
     isDefault: false,
     isDone: false

@@ -102,7 +102,7 @@ describe('Social Media Post Extraction', () => {
         html: '<blockquote class="twitter-tweet"><p lang="en" dir="ltr">This is a test tweet!</p>&mdash; Test User (@testuser) <a href="https://twitter.com/testuser/status/123">December 28, 2025</a></blockquote>'
       }
 
-      mockFetch.mockResolvedValueOnce({
+      mockFetch.mockResolvedValueOnce({ ok: false, status: 500 }).mockResolvedValueOnce({
         ok: true,
         json: () => Promise.resolve(oembedResponse)
       })
@@ -118,10 +118,9 @@ describe('Social Media Post Extraction', () => {
     })
 
     it('should handle protected/deleted tweets', async () => {
-      mockFetch.mockResolvedValueOnce({
-        ok: false,
-        status: 404
-      })
+      mockFetch
+        .mockResolvedValueOnce({ ok: false, status: 404 })
+        .mockResolvedValueOnce({ ok: false, status: 404 })
 
       const result = await extractSocialPost('https://twitter.com/user/status/deleted')
 
@@ -130,10 +129,9 @@ describe('Social Media Post Extraction', () => {
     })
 
     it('should handle Twitter API errors', async () => {
-      mockFetch.mockResolvedValueOnce({
-        ok: false,
-        status: 500
-      })
+      mockFetch
+        .mockResolvedValueOnce({ ok: false, status: 500 })
+        .mockResolvedValueOnce({ ok: false, status: 500 })
 
       const result = await extractSocialPost('https://twitter.com/user/status/123')
 
@@ -148,7 +146,7 @@ describe('Social Media Post Extraction', () => {
         html: '<blockquote class="twitter-tweet"><p>Test &amp; more</p>&mdash; User (@user) <a href="#">Date</a></blockquote>'
       }
 
-      mockFetch.mockResolvedValueOnce({
+      mockFetch.mockResolvedValueOnce({ ok: false, status: 500 }).mockResolvedValueOnce({
         ok: true,
         json: () => Promise.resolve(oembedResponse)
       })
@@ -371,7 +369,9 @@ describe('Social Media Post Extraction', () => {
       vi.mocked(mockDetectSocialPlatform).mockReturnValue('twitter')
       vi.mocked(mockIsSocialPost).mockReturnValue(true)
 
-      mockFetch.mockRejectedValueOnce(new Error('Network timeout'))
+      mockFetch
+        .mockRejectedValueOnce(new Error('Network timeout'))
+        .mockRejectedValueOnce(new Error('Network timeout'))
 
       const result = await extractSocialPost('https://twitter.com/user/status/123')
 
@@ -385,7 +385,7 @@ describe('Social Media Post Extraction', () => {
 
       const abortError = new Error('Aborted')
       abortError.name = 'AbortError'
-      mockFetch.mockRejectedValueOnce(abortError)
+      mockFetch.mockRejectedValueOnce(abortError).mockRejectedValueOnce(abortError)
 
       const result = await extractSocialPost('https://twitter.com/user/status/123')
 

@@ -81,7 +81,7 @@ export const DeleteParentDialog = ({
             onValueChange={(value) => setOption(value as DeleteOption)}
             className="space-y-3"
           >
-            <div className="flex items-start space-x-3 rounded-lg border p-4 cursor-pointer hover:bg-accent/50 transition-colors">
+            <div className="flex items-start space-x-3 rounded-sm border p-4 cursor-pointer hover:bg-accent/50 transition-colors">
               <RadioGroupItem value="delete-all" id="delete-all" className="mt-0.5" />
               <Label htmlFor="delete-all" className="cursor-pointer flex-1">
                 <div className="font-medium">Delete task and all subtasks</div>
@@ -91,7 +91,7 @@ export const DeleteParentDialog = ({
               </Label>
             </div>
 
-            <div className="flex items-start space-x-3 rounded-lg border p-4 cursor-pointer hover:bg-accent/50 transition-colors">
+            <div className="flex items-start space-x-3 rounded-sm border p-4 cursor-pointer hover:bg-accent/50 transition-colors">
               <RadioGroupItem value="keep-subtasks" id="keep-subtasks" className="mt-0.5" />
               <Label htmlFor="keep-subtasks" className="cursor-pointer flex-1">
                 <div className="font-medium">Delete task, keep subtasks as standalone tasks</div>

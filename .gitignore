@@ -36,3 +36,4 @@ opencode.jsonc
 # Internal docs & specs
 prompts/
 specs/
+agents/

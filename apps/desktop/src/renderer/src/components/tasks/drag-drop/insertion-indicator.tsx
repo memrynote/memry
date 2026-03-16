@@ -92,7 +92,7 @@ export const ColumnDropIndicator = ({
     <div
       className={cn(
         'flex items-center justify-center',
-        'm-2 p-4 border-2 border-dashed border-primary/50 rounded-lg',
+        'm-2 p-4 border-2 border-dashed border-primary/50 rounded-sm',
         'bg-primary/5 text-primary text-sm font-medium',
         'transition-all duration-200',
         className
@@ -125,7 +125,7 @@ export const DateDropIndicator = ({
     <div
       className={cn(
         'absolute inset-0 flex items-center justify-center',
-        'bg-primary/10 border-2 border-primary rounded-md',
+        'bg-primary/10 border-2 border-primary rounded-sm',
         'pointer-events-none z-10',
         className
       )}
@@ -159,7 +159,7 @@ export const InvalidDropIndicator = ({
     <div
       className={cn(
         'absolute inset-0 flex flex-col items-center justify-center gap-1',
-        'bg-destructive/10 border-2 border-destructive/50 rounded-md',
+        'bg-destructive/10 border-2 border-destructive/50 rounded-sm',
         'pointer-events-none z-10',
         className
       )}

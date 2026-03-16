@@ -114,7 +114,7 @@ export const DayCell = ({
       onClick={handleCellClick}
       onKeyDown={handleDayKeyDown}
       className={cn(
-        'relative flex min-h-[110px] flex-col gap-1 rounded-md border border-border p-2 transition-colors cursor-pointer',
+        'relative flex min-h-[110px] flex-col gap-1 rounded-sm border border-border p-2 transition-colors cursor-pointer',
         'hover:bg-accent/40 hover:border-accent-foreground/20',
         day.isWeekend && 'bg-muted/30',
         isSelected && 'ring-2 ring-primary',

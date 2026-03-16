@@ -51,8 +51,8 @@ export const AllSubtasksCompleteDialog = ({
       <AlertDialogContent>
         <AlertDialogHeader>
           <div className="flex items-center gap-3 mb-2">
-            <div className="p-2 rounded-full bg-green-100 dark:bg-green-950">
-              <CheckCircle2 className="size-5 text-green-600 dark:text-green-400" />
+            <div className="p-2 rounded-full bg-task-complete/15">
+              <CheckCircle2 className="size-5 text-task-complete" />
             </div>
             <AlertDialogTitle>All subtasks complete!</AlertDialogTitle>
           </div>

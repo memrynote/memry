@@ -68,7 +68,7 @@ describe('T517: QuickAddInput - basic input', () => {
   it('should render with placeholder', () => {
     render(<QuickAddInput {...defaultProps} />)
 
-    expect(screen.getByPlaceholderText(/add task/i)).toBeInTheDocument()
+    expect(screen.getByPlaceholderText(/add a task/i)).toBeInTheDocument()
   })
 
   it('should render with custom placeholder', () => {

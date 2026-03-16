@@ -135,7 +135,7 @@ export const DayDetailPopover = ({
                   <button
                     type="button"
                     className={cn(
-                      'group flex w-full items-center gap-3 rounded-md px-2 py-2 text-left text-sm',
+                      'group flex w-full items-center gap-3 rounded-sm px-2 py-2 text-left text-sm',
                       'hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
                       isCheckedForSelection && 'bg-primary/10 hover:bg-primary/15'
                     )}
@@ -235,7 +235,7 @@ export const DayDetailPopover = ({
                             type="button"
                             onClick={() => handleTaskClick(subtask.id)}
                             className={cn(
-                              'flex w-full items-center gap-2 rounded-md px-2 py-1 text-left text-sm',
+                              'flex w-full items-center gap-2 rounded-sm px-2 py-1 text-left text-sm',
                               'hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring'
                             )}
                           >

@@ -1,60 +1,19 @@
 import { useMemo } from 'react'
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { useDroppable } from '@dnd-kit/core'
-import { Star } from 'lucide-react'
 
 import { cn } from '@/lib/utils'
 import { SortableTaskRow } from '@/components/tasks/drag-drop'
 import { SortableParentTaskRow } from '@/components/tasks/sortable-parent-task-row'
+import { SectionDivider, type SectionDividerVariant } from '@/components/tasks/section-divider'
 import { startOfDay, addDays, type UrgencyLevel } from '@/lib/task-utils'
 import { createLookupContext, isTaskCompletedFast } from '@/lib/lookup-utils'
 import { getTopLevelTasks, getSubtasks, calculateProgress } from '@/lib/subtask-utils'
 import type { Task } from '@/data/sample-tasks'
 import type { Project, Status } from '@/data/tasks-data'
 
-// ============================================================================
-// URGENCY-BASED STYLING CONFIG
-// ============================================================================
-
-interface UrgencyStyleConfig {
-  containerClass: string
-  headerClass: string
-  countClass: string
-  accentClass: string
-  icon: React.ReactNode | null
-}
-
-const urgencyStyles: Record<UrgencyLevel, UrgencyStyleConfig> = {
-  critical: {
-    containerClass: 'rounded-lg',
-    headerClass: 'text-text-secondary font-semibold',
-    countClass: 'bg-muted text-text-tertiary',
-    accentClass: '',
-    icon: null
-  },
-  high: {
-    containerClass:
-      'bg-blue-50/30 dark:bg-blue-950/20 border border-blue-200/50 dark:border-blue-900/50 rounded-lg',
-    headerClass: 'text-blue-700 dark:text-blue-400 font-semibold',
-    countClass: 'bg-blue-100 dark:bg-blue-900/50 text-blue-600 dark:text-blue-400',
-    accentClass: 'border-l-[3px] border-l-blue-500',
-    icon: <Star className="size-4" aria-hidden="true" />
-  },
-  normal: {
-    containerClass: '',
-    headerClass: 'text-muted-foreground font-medium',
-    countClass: 'bg-muted text-muted-foreground',
-    accentClass: '',
-    icon: null
-  },
-  low: {
-    containerClass: '',
-    headerClass: 'text-text-tertiary font-medium',
-    countClass: 'bg-muted/50 text-text-tertiary',
-    accentClass: '',
-    icon: null
-  }
-}
+const urgencyToDividerVariant = (urgency: UrgencyLevel): SectionDividerVariant =>
+  urgency === 'critical' ? 'overdue' : 'default'
 
 // ============================================================================
 // HELPER: Get date from label
@@ -98,8 +57,6 @@ interface TaskGroupHeaderProps {
   label: string
   count: number
   urgency?: UrgencyLevel
-  accentColor?: string
-  isMuted?: boolean
   className?: string
 }
 
@@ -165,42 +122,11 @@ const TaskGroupHeader = ({
   label,
   count,
   urgency = 'normal',
-  accentColor,
-  isMuted = false,
   className
 }: TaskGroupHeaderProps): React.JSX.Element => {
-  const styles = urgencyStyles[urgency]
-  const hasUrgentStyling = urgency === 'critical' || urgency === 'high'
+  const variant = urgencyToDividerVariant(urgency)
 
-  return (
-    <div className={cn('flex items-center justify-between px-3 py-2', className)}>
-      <div className="flex items-center gap-2">
-        {/* Urgency Icon */}
-        {styles.icon && <span className={styles.headerClass}>{styles.icon}</span>}
-        <h3
-          className={cn(
-            'text-xs uppercase tracking-wide',
-            hasUrgentStyling
-              ? styles.headerClass
-              : isMuted
-                ? 'text-text-tertiary font-medium'
-                : 'text-text-secondary font-semibold'
-          )}
-          style={!hasUrgentStyling && accentColor ? { color: accentColor } : undefined}
-        >
-          {label}
-        </h3>
-      </div>
-      <span
-        className={cn(
-          'text-xs px-1.5 py-0.5 rounded-full',
-          hasUrgentStyling ? styles.countClass : 'text-text-tertiary'
-        )}
-      >
-        {hasUrgentStyling ? count : `(${count})`}
-      </span>
-    </div>
-  )
+  return <SectionDivider label={label} count={count} variant={variant} className={className} />
 }
 
 // ============================================================================
@@ -213,8 +139,6 @@ export const TaskGroup = ({
   allTasks,
   projects,
   urgency = 'normal',
-  accentColor,
-  isMuted = false,
   showProjectBadge = false,
   selectedTaskId,
   onToggleComplete,
@@ -268,37 +192,23 @@ export const TaskGroup = ({
   // Create lookup context for O(1) project/status lookups
   const lookupContext = useMemo(() => createLookupContext(projects), [projects])
 
-  // Get urgency-based styles
-  const styles = urgencyStyles[urgency]
-  const hasUrgentStyling = urgency === 'critical' || urgency === 'high'
-
   return (
     <section
       ref={setNodeRef}
       className={cn(
-        'mb-4 transition-colors border border-transparent',
-        hasUrgentStyling ? styles.containerClass : 'rounded-lg',
-        isOver && 'border-dotted border-primary/60',
-        isOver && !hasUrgentStyling && 'bg-primary/5',
+        'mb-4 transition-colors border border-transparent rounded-sm',
+        isOver && 'border-dotted border-primary/60 bg-primary/5',
         className
       )}
       aria-labelledby={sectionId}
     >
-      <TaskGroupHeader
-        label={label}
-        count={topLevelCount}
-        urgency={urgency}
-        accentColor={accentColor}
-        isMuted={isMuted}
-      />
+      <TaskGroupHeader label={label} count={topLevelCount} urgency={urgency} />
       <SortableContext items={taskIds} strategy={verticalListSortingStrategy}>
-        <div className={cn('flex flex-col', hasUrgentStyling && 'px-1 pb-1')}>
+        <div className="flex flex-col">
           {topLevelTasks.map((task) => {
-            // Use lookup context for O(1) project lookup
             const project = lookupContext.projectMap.get(task.projectId)
             if (!project) return null
 
-            // Use lookup context for O(1) completion check
             const completed = isTaskCompletedFast(task, lookupContext.completionMap)
             const isCheckedForSelection = selectedIds?.has(task.id) ?? false
             const subtasks = getSubtasks(task.id, allTasks || tasks)
@@ -306,13 +216,13 @@ export const TaskGroup = ({
             const hasSubtasksFlag = subtasks.length > 0
             const isExpanded = expandedIds?.has(task.id) ?? false
 
-            // If task has subtasks and we have expand/collapse handlers, render with subtask support
             if (hasSubtasksFlag && onToggleExpand) {
               return (
                 <SortableParentTaskRow
                   key={task.id}
                   task={task}
                   project={project}
+                  projects={projects}
                   sectionId={sectionId}
                   subtasks={subtasks}
                   progress={progress}
@@ -322,23 +232,19 @@ export const TaskGroup = ({
                   showProjectBadge={showProjectBadge}
                   onToggleExpand={onToggleExpand}
                   onToggleComplete={onToggleComplete}
+                  onUpdateTask={onUpdateTask}
                   onToggleSubtaskComplete={onToggleSubtaskComplete}
                   onClick={onTaskClick}
-                  // Selection props
                   isSelectionMode={isSelectionMode}
                   isCheckedForSelection={isCheckedForSelection}
                   onToggleSelect={onToggleSelect}
                   onShiftSelect={onShiftSelect}
-                  // Subtask management props
                   onAddSubtask={onAddSubtask}
                   onReorderSubtasks={onReorderSubtasks}
-                  // Urgency styling
-                  accentClass={hasUrgentStyling ? styles.accentClass : undefined}
                 />
               )
             }
 
-            // Regular task without subtasks
             return (
               <SortableTaskRow
                 key={task.id}
@@ -352,13 +258,10 @@ export const TaskGroup = ({
                 onToggleComplete={onToggleComplete}
                 onUpdateTask={onUpdateTask}
                 onClick={onTaskClick}
-                // Selection props
                 isSelectionMode={isSelectionMode}
                 isCheckedForSelection={isCheckedForSelection}
                 onToggleSelect={onToggleSelect}
                 onShiftSelect={onShiftSelect}
-                // Urgency styling
-                accentClass={hasUrgentStyling ? styles.accentClass : undefined}
               />
             )
           })}
@@ -418,7 +321,6 @@ export const StatusTaskGroup = ({
   // Get task IDs for SortableContext (only top-level)
   const taskIds = topLevelTasks.map((t) => t.id)
 
-  const isDoneStatus = status.type === 'done'
   const topLevelCount = topLevelTasks.length
 
   // Don't render empty groups - same as TaskGroup
@@ -429,18 +331,13 @@ export const StatusTaskGroup = ({
     <section
       ref={setNodeRef}
       className={cn(
-        'mb-4 rounded-lg border border-transparent',
+        'mb-4 rounded-sm border border-transparent',
         isOver && 'bg-primary/5 border-dotted border-primary/60',
         className
       )}
       aria-labelledby={sectionId}
     >
-      <TaskGroupHeader
-        label={status.name.toUpperCase()}
-        count={topLevelCount}
-        accentColor={status.color}
-        isMuted={isDoneStatus}
-      />
+      <TaskGroupHeader label={status.name.toUpperCase()} count={topLevelCount} />
       <SortableContext items={taskIds} strategy={verticalListSortingStrategy}>
         <div className="flex flex-col">
           {topLevelTasks.map((task) => {
@@ -458,6 +355,7 @@ export const StatusTaskGroup = ({
                   key={task.id}
                   task={task}
                   project={project}
+                  projects={[project]}
                   sectionId={sectionId}
                   subtasks={subtasks}
                   progress={progress}
@@ -467,14 +365,13 @@ export const StatusTaskGroup = ({
                   showProjectBadge={false}
                   onToggleExpand={onToggleExpand}
                   onToggleComplete={onToggleComplete}
+                  onUpdateTask={onUpdateTask}
                   onToggleSubtaskComplete={onToggleSubtaskComplete}
                   onClick={onTaskClick}
-                  // Selection props
                   isSelectionMode={isSelectionMode}
                   isCheckedForSelection={isCheckedForSelection}
                   onToggleSelect={onToggleSelect}
                   onShiftSelect={onShiftSelect}
-                  // Subtask management props
                   onAddSubtask={onAddSubtask}
                   onReorderSubtasks={onReorderSubtasks}
                 />

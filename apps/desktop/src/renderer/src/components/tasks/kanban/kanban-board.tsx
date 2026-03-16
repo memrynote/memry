@@ -4,7 +4,13 @@ import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area'
 import { KanbanColumn, type KanbanColumnData } from './kanban-column'
-import { startOfDay, isBefore, getDefaultTodoStatus, getDefaultDoneStatus } from '@/lib/task-utils'
+import {
+  startOfDay,
+  getDefaultTodoStatus,
+  addDays,
+  formatDateKey,
+  formatDayName
+} from '@/lib/task-utils'
 import type { Task } from '@/data/sample-tasks'
 import type { Project } from '@/data/tasks-data'
 
@@ -12,7 +18,7 @@ import type { Project } from '@/data/tasks-data'
 // TYPES
 // ============================================================================
 
-type SelectionType = 'view' | 'project'
+type SelectionType = 'view' | 'project' | 'weekday'
 
 interface LinearCardItem {
   taskId: string
@@ -24,9 +30,9 @@ interface KanbanBoardProps {
   projects: Project[]
   selectedId: string
   selectedType: SelectionType
-  selectedTaskId: string | null
+  selectedTaskId?: string | null
   onUpdateTask: (taskId: string, updates: Partial<Task>) => void
-  onTaskClick: (taskId: string) => void
+  onTaskClick?: (taskId: string) => void
   onToggleComplete: (taskId: string) => void
   onDeleteTask: (taskId: string) => void
   onQuickAdd: (
@@ -66,6 +72,33 @@ const getKanbanColumns = (
       type: 'status' as const,
       statusType: status.type
     }))
+  }
+
+  // This Week view: columns = weekdays
+  if (selectedType === 'weekday') {
+    const todayStart = startOfDay(new Date())
+    const columns: KanbanColumnData[] = []
+
+    columns.push({
+      id: formatDateKey(todayStart),
+      title: 'Today',
+      color: '#3b82f6',
+      type: 'weekday' as const,
+      date: todayStart
+    })
+
+    for (let i = 1; i <= 6; i++) {
+      const date = addDays(todayStart, i)
+      columns.push({
+        id: formatDateKey(date),
+        title: i === 1 ? 'Tomorrow' : formatDayName(date),
+        color: '#6b7280',
+        type: 'weekday' as const,
+        date
+      })
+    }
+
+    return columns
   }
 
   // All Tasks view: columns = projects
@@ -132,11 +165,21 @@ export const KanbanBoard = ({
   const columnTasks = useMemo(() => {
     const grouped: Record<string, Task[]> = {}
 
+    const todayKey = formatDateKey(startOfDay(new Date()))
+
     columns.forEach((column) => {
       if (column.type === 'status') {
         grouped[column.id] = tasks.filter((t) => t.statusId === column.id)
       } else if (column.type === 'project') {
         grouped[column.id] = tasks.filter((t) => t.projectId === column.id)
+      } else if (column.type === 'weekday') {
+        const isToday = column.id === todayKey
+        grouped[column.id] = tasks.filter((t) => {
+          if (!t.dueDate) return false
+          const taskKey = formatDateKey(startOfDay(t.dueDate))
+          if (isToday) return taskKey <= todayKey
+          return taskKey === column.id
+        })
       }
     })
 
@@ -154,14 +197,6 @@ export const KanbanBoard = ({
     [projects]
   )
 
-  // Check if a task is overdue
-  const isTaskOverdue = useCallback((task: Task): boolean => {
-    if (!task.dueDate) return false
-    const today = startOfDay(new Date())
-    const dueDate = startOfDay(task.dueDate)
-    return isBefore(dueDate, today)
-  }, [])
-
   // Drag-and-drop is handled by the shared DragProvider at app level.
 
   // Handle quick add from column
@@ -171,19 +206,23 @@ export const KanbanBoard = ({
       if (!column) return
 
       if (column.type === 'status' && selectedProject) {
-        // Adding to a status column - use the current project and the column's status
         onQuickAdd(title, {
           dueDate: null,
           priority: 'none',
           projectId: selectedProject.id,
-          statusId: columnId // Pass the status ID from the column
+          statusId: columnId
         })
       } else if (column.type === 'project') {
-        // Adding to a project column - status will be default todo
         onQuickAdd(title, {
           dueDate: null,
           priority: 'none',
           projectId: columnId
+        })
+      } else if (column.type === 'weekday' && column.date) {
+        onQuickAdd(title, {
+          dueDate: column.date,
+          priority: 'none',
+          projectId: null
         })
       }
     },
@@ -224,16 +263,6 @@ export const KanbanBoard = ({
     },
     [openQuickEdit]
   )
-
-  // Get statuses for the current project (for quick edit form)
-  const currentStatuses = useMemo(() => {
-    if (selectedType === 'project' && selectedProject) {
-      return selectedProject.statuses
-    }
-    // For "All Tasks" view, we don't have a single project's statuses
-    // Return empty array - the edit form will handle this
-    return []
-  }, [selectedType, selectedProject])
 
   // ========================================================================
   // LINEAR KEYBOARD NAVIGATION
@@ -332,6 +361,12 @@ export const KanbanBoard = ({
       let currentColumnIndex: number
       if (selectedType === 'project') {
         currentColumnIndex = columns.findIndex((col) => col.id === task.statusId)
+      } else if (selectedType === 'weekday') {
+        const taskKey = task.dueDate ? formatDateKey(startOfDay(task.dueDate)) : ''
+        const todayKey = formatDateKey(startOfDay(new Date()))
+        currentColumnIndex = columns.findIndex((col) =>
+          col.id === todayKey ? taskKey <= todayKey : col.id === taskKey
+        )
       } else {
         currentColumnIndex = columns.findIndex((col) => col.id === task.projectId)
       }
@@ -355,7 +390,6 @@ export const KanbanBoard = ({
           statusId: targetColumn.id
         }
 
-        // Handle completedAt based on status type
         if (targetColumn.statusType === 'done' && !task.completedAt) {
           updates.completedAt = new Date()
         } else if (targetColumn.statusType !== 'done' && task.completedAt) {
@@ -368,7 +402,6 @@ export const KanbanBoard = ({
         const targetProject = projects.find((p) => p.id === targetColumn.id)
         if (!targetProject) return
 
-        // Find current status type and map to new project
         const currentProject = projects.find((p) => p.id === task.projectId)
         const currentStatus = currentProject?.statuses.find((s) => s.id === task.statusId)
         const currentStatusType = currentStatus?.type || 'todo'
@@ -383,6 +416,9 @@ export const KanbanBoard = ({
           statusId: newStatus?.id || targetProject.statuses[0]?.id
         })
         toast.success(`Moved to ${targetColumn.title}`)
+      } else if (targetColumn.type === 'weekday' && targetColumn.date) {
+        onUpdateTask(focusedTaskId, { dueDate: targetColumn.date })
+        toast.success(`Rescheduled to ${targetColumn.title}`)
       }
     },
     [focusedTaskId, tasks, columns, selectedType, projects, onUpdateTask]
@@ -484,7 +520,7 @@ export const KanbanBoard = ({
           e.preventDefault()
           if (focusedTaskId) {
             if (e.shiftKey) {
-              onTaskClick(focusedTaskId)
+              onTaskClick?.(focusedTaskId)
             } else {
               openQuickEdit(focusedTaskId)
             }
@@ -547,20 +583,22 @@ export const KanbanBoard = ({
     }
   }, [handleKeyDown])
 
+  const showProjectOnCards = selectedType === 'weekday'
+
   return (
     <div
       ref={boardRef}
       tabIndex={0}
-      className={cn('min-w-0 flex-1 overflow-hidden outline-none', className)}
+      className={cn(
+        'min-w-0 flex-1 overflow-hidden outline-none [font-synthesis:none] antialiased',
+        className
+      )}
       role="grid"
       aria-label="Kanban board. Use arrow keys to navigate cards."
     >
       <ScrollArea className="h-full" type="auto">
-        <div className="flex h-full gap-4 p-6 pb-10">
+        <div className="flex h-full gap-4 p-4 pb-8">
           {columns.map((column) => {
-            // Get the statuses for this column's context
-            // For project view: use the selected project's statuses
-            // For all tasks view: get the task's project statuses
             const columnStatuses =
               column.type === 'status' && selectedProject ? selectedProject.statuses : []
 
@@ -570,17 +608,18 @@ export const KanbanBoard = ({
                 column={column}
                 tasks={columnTasks[column.id] || []}
                 allTasks={tasks}
-                selectedTaskId={selectedTaskId}
+                projects={projects}
+                showProject={showProjectOnCards}
+                selectedTaskId={selectedTaskId ?? null}
                 focusedTaskId={focusedTaskId}
                 editingTaskId={editingTaskId}
                 statuses={columnStatuses}
                 getTaskIsCompleted={getTaskIsCompleted}
-                onTaskClick={onTaskClick}
+                onTaskClick={onTaskClick ?? (() => {})}
                 onTaskDoubleClick={handleTaskDoubleClick}
                 onQuickAdd={handleColumnQuickAdd}
                 onEditSave={handleEditSave}
                 onEditCancel={handleEditCancel}
-                // Selection props
                 isSelectionMode={isSelectionMode}
                 selectedIds={selectedIds}
                 onToggleSelect={onToggleSelect}

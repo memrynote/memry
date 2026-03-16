@@ -58,14 +58,14 @@ const getQuickDateOptions = (): QuickDateOption[] => {
     {
       id: 'today',
       label: 'Today',
-      icon: <Star className="size-4 text-amber-500" />,
+      icon: <Star className="size-4 text-task-star" />,
       getDate: () => today,
       shortcutNumber: 1
     },
     {
       id: 'tomorrow',
       label: 'Tomorrow',
-      icon: <CalendarIcon className="size-4 text-blue-500" />,
+      icon: <CalendarIcon className="size-4 text-task-due-tomorrow" />,
       getDate: () => tomorrow,
       shortcutNumber: 2
     }
@@ -75,7 +75,7 @@ const getQuickDateOptions = (): QuickDateOption[] => {
     options.push({
       id: 'weekend',
       label: 'This Weekend',
-      icon: <Sun className="size-4 text-orange-500" />,
+      icon: <Sun className="size-4 text-task-due-today" />,
       getDate: () => saturday,
       shortcutNumber: 3
     })
@@ -83,7 +83,7 @@ const getQuickDateOptions = (): QuickDateOption[] => {
     options.push({
       id: 'next-week',
       label: 'Next Week',
-      icon: <CalendarIcon className="size-4 text-indigo-500" />,
+      icon: <CalendarIcon className="size-4 text-task-due-upcoming" />,
       getDate: () => monday,
       shortcutNumber: 4
     })
@@ -92,7 +92,7 @@ const getQuickDateOptions = (): QuickDateOption[] => {
     options.push({
       id: 'next-week',
       label: 'Next Week',
-      icon: <CalendarIcon className="size-4 text-indigo-500" />,
+      icon: <CalendarIcon className="size-4 text-task-due-upcoming" />,
       getDate: () => monday,
       shortcutNumber: 3
     })
@@ -150,9 +150,9 @@ const formatQuickOptionDate = (date: Date): string => {
 // ============================================================================
 
 const statusColors: Record<DueDateStatus, string> = {
-  overdue: 'text-red-600 dark:text-red-400',
-  today: 'text-amber-600 dark:text-amber-400',
-  tomorrow: 'text-blue-600 dark:text-blue-400',
+  overdue: 'text-task-due-overdue',
+  today: 'text-task-due-today',
+  tomorrow: 'text-task-due-tomorrow',
   upcoming: 'text-foreground',
   later: 'text-muted-foreground',
   none: 'text-muted-foreground'
@@ -378,7 +378,7 @@ export const DueDatePicker = ({
                   type="button"
                   onClick={() => handleQuickSelect(option.getDate)}
                   className={cn(
-                    'flex w-full items-center justify-between rounded-md px-2 py-2 text-sm transition-colors',
+                    'flex w-full items-center justify-between rounded-sm px-2 py-2 text-sm transition-colors',
                     'hover:bg-accent focus:bg-accent focus:outline-none'
                   )}
                 >
@@ -407,7 +407,7 @@ export const DueDatePicker = ({
                 type="button"
                 onClick={() => setShowCalendar(true)}
                 className={cn(
-                  'flex w-full items-center gap-2 rounded-md px-2 py-2 text-sm transition-colors',
+                  'flex w-full items-center gap-2 rounded-sm px-2 py-2 text-sm transition-colors',
                   'hover:bg-accent focus:bg-accent focus:outline-none'
                 )}
               >
@@ -441,7 +441,7 @@ export const DueDatePicker = ({
                       type="button"
                       onClick={handleToggleTimePicker}
                       className={cn(
-                        'mt-1 flex items-center gap-2 rounded-md px-2 py-1.5 text-sm text-muted-foreground transition-colors',
+                        'mt-1 flex items-center gap-2 rounded-sm px-2 py-1.5 text-sm text-muted-foreground transition-colors',
                         'hover:bg-accent hover:text-foreground focus:bg-accent focus:outline-none'
                       )}
                     >
@@ -467,7 +467,7 @@ export const DueDatePicker = ({
                     type="button"
                     onClick={handleRemoveDate}
                     className={cn(
-                      'flex w-full items-center justify-between rounded-md px-2 py-2 text-sm text-destructive transition-colors',
+                      'flex w-full items-center justify-between rounded-sm px-2 py-2 text-sm text-destructive transition-colors',
                       'hover:bg-destructive/10 focus:bg-destructive/10 focus:outline-none'
                     )}
                   >

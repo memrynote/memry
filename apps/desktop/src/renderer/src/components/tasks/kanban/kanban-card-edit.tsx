@@ -125,7 +125,7 @@ export const KanbanCardEdit = ({
   return (
     <div
       className={cn(
-        'w-full max-w-[260px] box-border overflow-hidden rounded-lg border-2 border-primary bg-card p-2 shadow-md',
+        'w-full max-w-[260px] box-border overflow-hidden rounded-sm border-2 border-primary bg-card p-2 shadow-md',
         'mx-auto'
       )}
     >

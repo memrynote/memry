@@ -61,7 +61,7 @@ export const DuplicateWithSubtasksDialog = ({
         </DialogHeader>
 
         <div className="py-4">
-          <div className="flex items-start gap-3 p-4 rounded-lg border bg-muted/30">
+          <div className="flex items-start gap-3 p-4 rounded-sm border bg-muted/30">
             <Checkbox
               id="include-subtasks"
               checked={includeSubtasks}
