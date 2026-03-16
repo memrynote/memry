@@ -909,28 +909,25 @@ export const getTodayTasks = (tasks: Task[], projects: Project[]): TodayViewTask
   const today: Task[] = []
 
   tasks.forEach((task) => {
-    // Skip completed tasks
     if (isTaskCompleted(task, projects)) return
-
-    // Skip tasks without due date
+    if (task.parentId !== null) return
     if (!task.dueDate) return
 
     const dueDate = startOfDay(task.dueDate)
 
     if (isBefore(dueDate, todayStart)) {
-      // Overdue: due before today
       overdue.push(task)
     } else if (isWithinInterval(task.dueDate, { start: todayStart, end: todayEnd })) {
-      // Today: due today
       today.push(task)
     }
   })
 
-  // Return tasks preserving the order they came in (from user's sort preference)
-  // Don't re-sort here - the caller controls sort order
+  const overdueWithSubtasks = includeSubtasksForMatchingParents(overdue, tasks)
+  const todayWithSubtasks = includeSubtasksForMatchingParents(today, tasks)
+
   return {
-    overdue,
-    today
+    overdue: overdueWithSubtasks,
+    today: todayWithSubtasks
   }
 }
 
