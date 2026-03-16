@@ -7,10 +7,12 @@ interface DatePickerCalendarProps {
   selected?: Date
   onSelect: (date: Date | undefined) => void
   disabled?: (date: Date) => boolean
+  weekStartsOn?: 0 | 1
   className?: string
 }
 
-const WEEKDAYS = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'] as const
+const WEEKDAYS_SUNDAY = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'] as const
+const WEEKDAYS_MONDAY = ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'] as const
 
 function isSameDay(a: Date, b: Date): boolean {
   return (
@@ -24,14 +26,15 @@ function getDaysInMonth(year: number, month: number): number {
   return new Date(year, month + 1, 0).getDate()
 }
 
-function getMonthGrid(year: number, month: number): (Date | null)[][] {
+function getMonthGrid(year: number, month: number, weekStartsOn: 0 | 1 = 0): (Date | null)[][] {
   const firstDay = new Date(year, month, 1).getDay()
   const daysInMonth = getDaysInMonth(year, month)
+  const startOffset = weekStartsOn === 1 ? (firstDay + 6) % 7 : firstDay
 
   const weeks: (Date | null)[][] = []
   let currentWeek: (Date | null)[] = []
 
-  for (let i = 0; i < firstDay; i++) {
+  for (let i = 0; i < startOffset; i++) {
     currentWeek.push(null)
   }
 
@@ -57,6 +60,7 @@ export function DatePickerCalendar({
   selected,
   onSelect,
   disabled,
+  weekStartsOn = 0,
   className
 }: DatePickerCalendarProps): React.JSX.Element {
   const today = useMemo(() => {
@@ -69,7 +73,10 @@ export function DatePickerCalendar({
   const [viewYear, setViewYear] = useState(initialMonth.getFullYear())
   const [viewMonth, setViewMonth] = useState(initialMonth.getMonth())
 
-  const weeks = useMemo(() => getMonthGrid(viewYear, viewMonth), [viewYear, viewMonth])
+  const weeks = useMemo(
+    () => getMonthGrid(viewYear, viewMonth, weekStartsOn),
+    [viewYear, viewMonth, weekStartsOn]
+  )
 
   const monthLabel = useMemo(
     () =>
@@ -125,7 +132,7 @@ export function DatePickerCalendar({
 
       {/* Weekday headers */}
       <div className="grid grid-cols-7">
-        {WEEKDAYS.map((day) => (
+        {(weekStartsOn === 1 ? WEEKDAYS_MONDAY : WEEKDAYS_SUNDAY).map((day) => (
           <div
             key={day}
             className="flex h-9 items-center justify-center text-xs font-medium text-muted-foreground select-none"
