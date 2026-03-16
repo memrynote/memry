@@ -1,45 +1,35 @@
+import { useMemo } from 'react'
+
 import { cn } from '@/lib/utils'
 import { CheckMark } from '@/components/ui/check-mark'
 import type { Status } from '@/data/tasks-data'
+import type { Task } from '@/data/sample-tasks'
+import { StatusIcon } from '@/components/tasks/task-icons'
 import { BackButton } from './priority-panel'
-
-const StatusIcon = ({ type, color }: { type: string; color: string }): React.JSX.Element => (
-  <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-    {type === 'todo' && <circle cx="7" cy="7" r="5" stroke={color} strokeWidth="1.2" />}
-    {type === 'in_progress' && (
-      <>
-        <circle cx="7" cy="7" r="5" stroke={color} strokeWidth="1.2" />
-        <path d="M7 2A5 5 0 0 1 7 12" fill={color} />
-      </>
-    )}
-    {type === 'done' && (
-      <>
-        <circle cx="7" cy="7" r="5" stroke={color} strokeWidth="1.2" fill={color} />
-        <path
-          d="M4.5 7l1.5 1.5L9.5 5"
-          stroke="var(--background)"
-          strokeWidth="1.3"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-      </>
-    )}
-  </svg>
-)
 
 interface StatusPanelProps {
   statuses: Status[]
   selectedStatusIds: string[]
   onToggleStatus: (statusId: string) => void
   onGoBack: () => void
+  tasks: Task[]
 }
 
 export function StatusPanel({
   statuses,
   selectedStatusIds,
   onToggleStatus,
-  onGoBack
+  onGoBack,
+  tasks
 }: StatusPanelProps): React.JSX.Element {
+  const countsByStatus = useMemo(() => {
+    const counts: Record<string, number> = {}
+    for (const task of tasks) {
+      counts[task.statusId] = (counts[task.statusId] || 0) + 1
+    }
+    return counts
+  }, [tasks])
+
   return (
     <>
       <div className="flex items-center py-2 px-3 gap-1.5 border-b border-border">
@@ -58,6 +48,7 @@ export function StatusPanel({
       <div className="flex flex-col p-1">
         {statuses.map((status) => {
           const selected = selectedStatusIds.includes(status.id)
+          const count = countsByStatus[status.id] ?? 0
           return (
             <button
               key={status.id}
@@ -77,7 +68,15 @@ export function StatusPanel({
               >
                 {status.name}
               </span>
-              {selected && <CheckMark className="ml-auto text-foreground" />}
+              <span
+                className={cn(
+                  'ml-auto text-[11px] leading-3.5 tabular-nums',
+                  selected ? 'text-text-secondary' : 'text-text-tertiary'
+                )}
+              >
+                {count}
+              </span>
+              {selected && <CheckMark className="text-foreground" />}
             </button>
           )
         })}

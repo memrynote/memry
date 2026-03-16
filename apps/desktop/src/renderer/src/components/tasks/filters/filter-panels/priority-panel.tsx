@@ -4,7 +4,8 @@ import { cn } from '@/lib/utils'
 import { CheckMark } from '@/components/ui/check-mark'
 import { FilterSearchHeader } from '@/components/ui/filter-search-header'
 import { FilterFooter } from '@/components/ui/filter-footer'
-import type { Priority } from '@/data/sample-tasks'
+import type { Priority, Task } from '@/data/sample-tasks'
+import { PriorityIcon } from '@/components/tasks/task-icons'
 
 const PRIORITY_ORDER: Priority[] = ['urgent', 'high', 'medium', 'low', 'none']
 const PRIORITY_LABELS: Record<Priority, string> = {
@@ -13,57 +14,6 @@ const PRIORITY_LABELS: Record<Priority, string> = {
   medium: 'Medium',
   low: 'Low',
   none: 'No priority'
-}
-
-const V = {
-  destructive: 'var(--destructive)',
-  orange: 'var(--accent-orange)',
-  fg: 'var(--foreground)',
-  tertiary: 'var(--text-tertiary)',
-  border: 'var(--border)'
-} as const
-
-const PRIORITY_ICONS: Record<Priority, React.ReactNode> = {
-  urgent: (
-    <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
-      <rect x="1" y="7" width="2.2" height="4" rx="0.5" style={{ fill: V.destructive }} />
-      <rect x="5" y="4.5" width="2.2" height="6.5" rx="0.5" style={{ fill: V.destructive }} />
-      <rect x="9" y="2" width="2.2" height="9" rx="0.5" style={{ fill: V.destructive }} />
-    </svg>
-  ),
-  high: (
-    <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
-      <rect x="1" y="5.5" width="2.2" height="5.5" rx="0.5" style={{ fill: V.orange }} />
-      <rect x="5" y="3" width="2.2" height="8" rx="0.5" style={{ fill: V.orange }} />
-      <rect x="9" y="1" width="2.2" height="10" rx="0.5" style={{ fill: V.border }} />
-    </svg>
-  ),
-  medium: (
-    <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
-      <rect x="1" y="5.5" width="2.2" height="5.5" rx="0.5" style={{ fill: V.fg }} />
-      <rect x="5" y="3" width="2.2" height="8" rx="0.5" style={{ fill: V.border }} />
-      <rect x="9" y="1" width="2.2" height="10" rx="0.5" style={{ fill: V.border }} />
-    </svg>
-  ),
-  low: (
-    <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
-      <rect
-        x="1"
-        y="5.5"
-        width="2.2"
-        height="5.5"
-        rx="0.5"
-        style={{ fill: V.tertiary, opacity: 0.6 }}
-      />
-      <rect x="5" y="3" width="2.2" height="8" rx="0.5" style={{ fill: V.border }} />
-      <rect x="9" y="1" width="2.2" height="10" rx="0.5" style={{ fill: V.border }} />
-    </svg>
-  ),
-  none: (
-    <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
-      <path d="M3 6.5h7" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round" />
-    </svg>
-  )
 }
 
 const BackButton = ({ onClick }: { onClick: () => void }): React.JSX.Element => (
@@ -87,6 +37,7 @@ interface PriorityPanelProps {
   onTogglePriority: (priority: Priority) => void
   onClose: () => void
   onGoBack: () => void
+  tasks: Task[]
 }
 
 export function PriorityPanel({
@@ -95,13 +46,22 @@ export function PriorityPanel({
   selectedPriorities,
   onTogglePriority,
   onClose,
-  onGoBack
+  onGoBack,
+  tasks
 }: PriorityPanelProps): React.JSX.Element {
   const filteredPriorities = useMemo(() => {
     if (!searchQuery) return PRIORITY_ORDER
     const q = searchQuery.toLowerCase()
     return PRIORITY_ORDER.filter((p) => PRIORITY_LABELS[p].toLowerCase().includes(q))
   }, [searchQuery])
+
+  const countsByPriority = useMemo(() => {
+    const counts: Record<Priority, number> = { urgent: 0, high: 0, medium: 0, low: 0, none: 0 }
+    for (const task of tasks) {
+      counts[task.priority]++
+    }
+    return counts
+  }, [tasks])
 
   return (
     <>
@@ -140,7 +100,7 @@ export function PriorityPanel({
                 checked ? 'bg-accent' : 'hover:bg-accent'
               )}
             >
-              <span className={cn(p === 'none' && 'text-text-tertiary')}>{PRIORITY_ICONS[p]}</span>
+              <PriorityIcon priority={p} className={cn(p === 'none' && 'text-text-tertiary')} />
               <span
                 className={cn(
                   'text-[12px] leading-4',
@@ -150,7 +110,15 @@ export function PriorityPanel({
               >
                 {PRIORITY_LABELS[p]}
               </span>
-              {checked && <CheckMark className="ml-auto text-foreground" />}
+              <span
+                className={cn(
+                  'ml-auto text-[11px] leading-3.5 tabular-nums',
+                  checked ? 'text-text-secondary' : 'text-text-tertiary'
+                )}
+              >
+                {countsByPriority[p]}
+              </span>
+              {checked && <CheckMark className="text-foreground" />}
             </button>
           )
         })}
@@ -169,4 +137,4 @@ export function PriorityPanel({
   )
 }
 
-export { BackButton, PRIORITY_ICONS }
+export { BackButton }

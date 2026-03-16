@@ -5,12 +5,13 @@ import { FilterSearchHeader } from '@/components/ui/filter-search-header'
 import type { TaskFilters, Project, Status, DueDateFilterType } from '@/data/tasks-data'
 import type { Priority, Task } from '@/data/sample-tasks'
 import type { SavedFilter } from '@/data/tasks-data'
-import { defaultStatuses } from '@/data/tasks-data'
 
 import { PriorityPanel } from './filter-panels/priority-panel'
 import { StatusPanel } from './filter-panels/status-panel'
+import { StatusProjectPickerPanel } from './filter-panels/status-project-picker-panel'
 import { DueDatePanel } from './filter-panels/due-date-panel'
 import { ProjectPanel } from './filter-panels/project-panel'
+import { SavedFiltersSection } from './saved-filters-section'
 
 interface FilterDropdownProps {
   open: boolean
@@ -21,15 +22,17 @@ interface FilterDropdownProps {
   tasks: Task[]
   projects: Project[]
   savedFilters: SavedFilter[]
+  activeSavedFilterId?: string | null
+  hasActiveFilters: boolean
   onDeleteSavedFilter: (filterId: string) => void
   onApplySavedFilter: (filter: SavedFilter) => void
   onSaveFilter: (name: string) => void
-  showStatusFilter?: boolean
+  onToggleStarFilter: (filterId: string) => void
   statuses?: Status[]
   children: React.ReactNode
 }
 
-type ActivePanel = null | 'priority' | 'status' | 'dueDate' | 'project'
+type ActivePanel = null | 'priority' | 'status' | 'dueDate' | 'project' | 'status-project-picker'
 
 const CATEGORY_ICONS: Record<string, React.ReactNode> = {
   priority: (
@@ -75,26 +78,37 @@ export const FilterDropdown = ({
   filters,
   onUpdateFilters,
   onClearFilters: _onClearFilters,
-  tasks: _tasks,
+  tasks,
   projects,
-  savedFilters: _savedFilters,
-  onDeleteSavedFilter: _onDeleteSavedFilter,
-  onApplySavedFilter: _onApplySavedFilter,
-  onSaveFilter: _onSaveFilter,
-  showStatusFilter: _showStatusFilter,
+  savedFilters,
+  activeSavedFilterId,
+  hasActiveFilters,
+  onDeleteSavedFilter,
+  onApplySavedFilter,
+  onSaveFilter,
+  onToggleStarFilter,
   statuses: statusesProp = [],
   children
 }: FilterDropdownProps): React.JSX.Element => {
   const [activePanel, setActivePanel] = useState<ActivePanel>(null)
   const [searchQuery, setSearchQuery] = useState('')
+  const [statusFilterProjectId, setStatusFilterProjectId] = useState<string | null>(null)
 
-  const statuses = statusesProp.length > 0 ? statusesProp : defaultStatuses
+  const statuses = useMemo(() => {
+    if (statusesProp.length > 0) return statusesProp
+    if (statusFilterProjectId) {
+      const project = projects.find((p) => p.id === statusFilterProjectId)
+      return project?.statuses ?? []
+    }
+    return []
+  }, [statusesProp, statusFilterProjectId, projects])
 
   const handleOpenChange = useCallback(
     (nextOpen: boolean) => {
       if (!nextOpen) {
         setActivePanel(null)
         setSearchQuery('')
+        setStatusFilterProjectId(null)
       }
       onOpenChange(nextOpen)
     },
@@ -164,23 +178,18 @@ export const FilterDropdown = ({
     onUpdateFilters({ projectIds: [] })
   }, [onUpdateFilters])
 
-  const categories = useMemo(() => {
-    const items: { key: NonNullable<ActivePanel>; label: string }[] = [
-      { key: 'priority', label: 'Priority' },
-      { key: 'dueDate', label: 'Due date' },
-      { key: 'project', label: 'Project' }
-    ]
-    if (statuses.length > 0) {
-      items.splice(1, 0, { key: 'status', label: 'Status' })
-    }
-    return items
-  }, [statuses])
+  const categories: { key: NonNullable<ActivePanel>; label: string }[] = [
+    { key: 'priority', label: 'Priority' },
+    { key: 'status', label: 'Status' },
+    { key: 'dueDate', label: 'Due date' },
+    { key: 'project', label: 'Project' }
+  ]
 
   const filteredCategories = useMemo(() => {
     if (!searchQuery) return categories
     const q = searchQuery.toLowerCase()
     return categories.filter((c) => c.label.toLowerCase().includes(q))
-  }, [categories, searchQuery])
+  }, [searchQuery])
 
   return (
     <Popover open={open} onOpenChange={handleOpenChange}>
@@ -204,7 +213,13 @@ export const FilterDropdown = ({
                   <button
                     key={cat.key}
                     type="button"
-                    onClick={() => navigateTo(cat.key)}
+                    onClick={() => {
+                      if (cat.key === 'status' && statusesProp.length === 0) {
+                        navigateTo('status-project-picker')
+                      } else {
+                        navigateTo(cat.key)
+                      }
+                    }}
                     className="flex items-center rounded-[5px] py-1.5 px-2 gap-2 hover:bg-accent transition-colors"
                   >
                     {CATEGORY_ICONS[cat.key]}
@@ -233,6 +248,15 @@ export const FilterDropdown = ({
                   </button>
                 ))}
               </div>
+              <SavedFiltersSection
+                savedFilters={savedFilters}
+                activeSavedFilterId={activeSavedFilterId}
+                hasActiveFilters={hasActiveFilters}
+                onApply={onApplySavedFilter}
+                onDelete={onDeleteSavedFilter}
+                onToggleStar={onToggleStarFilter}
+                onSave={onSaveFilter}
+              />
             </>
           )}
 
@@ -244,6 +268,18 @@ export const FilterDropdown = ({
               onTogglePriority={togglePriority}
               onClose={() => handleOpenChange(false)}
               onGoBack={goBack}
+              tasks={tasks}
+            />
+          )}
+
+          {activePanel === 'status-project-picker' && (
+            <StatusProjectPickerPanel
+              projects={projects}
+              onSelectProject={(projectId) => {
+                setStatusFilterProjectId(projectId)
+                navigateTo('status')
+              }}
+              onGoBack={goBack}
             />
           )}
 
@@ -252,7 +288,10 @@ export const FilterDropdown = ({
               statuses={statuses}
               selectedStatusIds={filters.statusIds}
               onToggleStatus={toggleStatus}
-              onGoBack={goBack}
+              onGoBack={
+                statusesProp.length === 0 ? () => navigateTo('status-project-picker') : goBack
+              }
+              tasks={tasks}
             />
           )}
 
