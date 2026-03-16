@@ -57,6 +57,7 @@ export interface TaskSort {
 export interface SavedFilterConfig {
   filters: TaskFilters
   sort?: TaskSort
+  starred?: boolean
 }
 
 /**
@@ -108,7 +109,8 @@ const TaskSortSchema = z.object({
 
 const SavedFilterConfigSchema = z.object({
   filters: TaskFiltersSchema,
-  sort: TaskSortSchema.optional()
+  sort: TaskSortSchema.optional(),
+  starred: z.boolean().optional()
 })
 
 export const SavedFilterCreateSchema = z.object({
