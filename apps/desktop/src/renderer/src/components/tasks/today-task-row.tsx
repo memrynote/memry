@@ -18,7 +18,6 @@ type TodayTaskSection = 'overdue' | 'today'
 
 interface TodayTaskRowProps {
   task: Task
-  project: Project | undefined
   projects: Project[]
   section: TodayTaskSection
   isSelected?: boolean
@@ -34,7 +33,6 @@ interface TodayTaskRowProps {
 
 export const TodayTaskRow = ({
   task,
-  project,
   projects,
   section,
   isSelected = false,
@@ -133,13 +131,11 @@ export const TodayTaskRow = ({
       )}
 
       {/* Project badge - interactive */}
-      {project && (
-        <InteractiveProjectBadge
-          project={project}
-          projects={projects}
-          onProjectChange={handleProjectChange}
-        />
-      )}
+      <InteractiveProjectBadge
+        projectId={task.projectId}
+        projects={projects}
+        onProjectChange={handleProjectChange}
+      />
 
       {/* Priority - interactive */}
       <InteractivePriorityBadge

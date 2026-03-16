@@ -1,10 +1,10 @@
 import * as React from 'react'
 
 import { cn } from '@/lib/utils'
-import { StatusDot } from '@/components/ui/status-dot'
 import { CheckMark } from '@/components/ui/check-mark'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import type { Status } from '@/data/tasks-data'
+import { StatusIcon } from './task-icons'
 
 interface InteractiveStatusBadgeProps {
   statusId: string
@@ -47,7 +47,7 @@ export const InteractiveStatusBadge = ({
           style={{ backgroundColor: `${statusColor}14` }}
           aria-label={`Status: ${statusName}. Click to change.`}
         >
-          <StatusDot color={statusColor} size="xs" />
+          <StatusIcon type={currentStatus?.type ?? 'todo'} color={statusColor} />
           <div className="text-[11px] font-medium leading-3.5" style={{ color: statusColor }}>
             {statusName}
           </div>
@@ -73,7 +73,7 @@ export const InteractiveStatusBadge = ({
                 )}
                 style={isSelected ? { backgroundColor: `${status.color}0F` } : undefined}
               >
-                <StatusDot color={status.color} size="xs" />
+                <StatusIcon type={status.type} color={status.color} />
                 <div
                   className={cn(
                     'text-[13px] leading-4',

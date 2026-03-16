@@ -1,11 +1,11 @@
 import * as React from 'react'
 
 import { cn } from '@/lib/utils'
-import { StatusDot } from '@/components/ui/status-dot'
 import { CheckMark } from '@/components/ui/check-mark'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { priorityConfig, type Priority } from '@/data/sample-tasks'
 import type { PriorityBadgeVariant } from './task-badges'
+import { PriorityIcon } from './task-icons'
 
 const PRIORITY_OPTIONS: { value: Priority; label: string; color: string; shortcut: string }[] = [
   { value: 'urgent', label: 'Urgent', color: '#EF4444', shortcut: '1' },
@@ -78,7 +78,7 @@ export const InteractivePriorityBadge = ({
           style={{ backgroundColor: `${colorValue}14` }}
           aria-label={`Priority: ${config.label || 'none'}. Click to change.`}
         >
-          <StatusDot color={colorValue} size="xs" />
+          <PriorityIcon priority={priority} />
           <div className="text-[11px] font-medium leading-3.5" style={{ color: colorValue }}>
             {displayLabel}
           </div>
@@ -106,11 +106,10 @@ export const InteractivePriorityBadge = ({
                 )}
                 style={isSelected && !isNone ? { backgroundColor: `${option.color}0F` } : undefined}
               >
-                {isNone ? (
-                  <div className="rounded-full border border-border shrink-0 size-1.5" />
-                ) : (
-                  <StatusDot color={option.color} size="xs" />
-                )}
+                <PriorityIcon
+                  priority={option.value}
+                  className={cn(isNone && 'text-text-tertiary')}
+                />
                 <div
                   className={cn(
                     'text-[13px] leading-4',
