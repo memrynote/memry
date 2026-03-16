@@ -33,7 +33,7 @@ export const RepeatIndicator = ({
 
   const indicator = (
     <span
-      className={cn('inline-flex items-center text-blue-500', className)}
+      className={cn('inline-flex items-center text-task-repeat', className)}
       aria-label={`Repeating: ${displayText}`}
     >
       <RefreshCw className={iconSize} aria-hidden="true" />

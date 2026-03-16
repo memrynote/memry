@@ -181,7 +181,7 @@ function seedSampleProjects(db: DrizzleDb): void {
           id: `${project.id}-in-progress`,
           projectId: project.id,
           name: 'In Progress',
-          color: '#3b82f6',
+          color: '#E5993E',
           position: 1,
           isDefault: false,
           isDone: false,

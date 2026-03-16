@@ -88,7 +88,10 @@ export const RepeatPicker = ({
         >
           <div className="flex items-center gap-2 truncate">
             <RefreshCw
-              className={cn('size-4 shrink-0', value ? 'text-blue-500' : 'text-muted-foreground')}
+              className={cn(
+                'size-4 shrink-0',
+                value ? 'text-task-repeat' : 'text-muted-foreground'
+              )}
               aria-hidden="true"
             />
             <span className="truncate">{displayText}</span>

@@ -57,8 +57,8 @@ const CompletedCheckbox = ({ onClick, className }: CompletedCheckboxProps): Reac
             tabIndex={0}
             className={cn(
               'size-5 shrink-0 rounded-full transition-all duration-150',
-              'bg-emerald-500 dark:bg-emerald-600',
-              'hover:bg-emerald-600 dark:hover:bg-emerald-500',
+              'bg-task-checkbox-done',
+              'hover:bg-task-checkbox-done/80',
               'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
               className
             )}
@@ -126,7 +126,7 @@ export const CompletedTaskRow = ({
   return (
     <div
       className={cn(
-        'group flex items-center gap-3 rounded-md px-3 py-2.5 transition-colors duration-150',
+        'group flex items-center gap-3 rounded-sm px-3 py-2.5 transition-colors duration-150',
         'hover:bg-accent/50',
         className
       )}

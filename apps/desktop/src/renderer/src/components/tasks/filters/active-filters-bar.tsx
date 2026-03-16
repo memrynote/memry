@@ -1,16 +1,8 @@
 import { useMemo } from 'react'
-import { Search, Calendar, Repeat, Clock } from 'lucide-react'
 
-import { Button } from '@/components/ui/button'
-import { FilterChip } from './filter-chip'
 import { cn } from '@/lib/utils'
 import type { TaskFilters, Project } from '@/data/tasks-data'
-import { priorityConfig, type Priority } from '@/data/sample-tasks'
-import { dueDateFilterOptions } from '@/data/tasks-data'
-
-// ============================================================================
-// TYPES
-// ============================================================================
+import type { Priority } from '@/data/sample-tasks'
 
 interface ActiveFiltersBarProps {
   filters: TaskFilters
@@ -18,32 +10,65 @@ interface ActiveFiltersBarProps {
   onUpdateFilters: (updates: Partial<TaskFilters>) => void
   onClearAll: () => void
   onSaveFilter?: () => void
+  isSaved?: boolean
   className?: string
 }
 
-interface ChipData {
-  id: string
+const DUE_DATE_LABELS: Record<string, string> = {
+  overdue: 'Overdue',
+  today: 'Today',
+  tomorrow: 'Tomorrow',
+  'this-week': 'This Week',
+  'next-week': 'Next Week',
+  none: 'No due date',
+  'this-month': 'This Month',
+  custom: 'Custom'
+}
+
+const PRIORITY_LABELS: Record<Priority, string> = {
+  urgent: 'Urgent',
+  high: 'High',
+  medium: 'Medium',
+  low: 'Low',
+  none: 'None'
+}
+
+const RemoveButton = ({
+  onClick,
+  label
+}: {
+  onClick: () => void
   label: string
-  icon?: React.ReactNode
-  color?: string
-  onRemove: () => void
-}
+}): React.JSX.Element => (
+  <button
+    type="button"
+    onClick={onClick}
+    aria-label={`Remove ${label} filter`}
+    className="flex items-center justify-center shrink-0 rounded-[3px] size-4 hover:opacity-70 transition-opacity"
+  >
+    <svg width="10" height="10" viewBox="0 0 10 10" fill="none" className="text-text-tertiary">
+      <path d="M3 3l4 4M7 3l-4 4" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round" />
+    </svg>
+  </button>
+)
 
-// ============================================================================
-// PRIORITY COLORS
-// ============================================================================
-
-const priorityColors: Record<Priority, string> = {
-  urgent: priorityConfig.urgent.color || '#ef4444',
-  high: priorityConfig.high.color || '#f97316',
-  medium: priorityConfig.medium.color || '#eab308',
-  low: priorityConfig.low.color || '#6b7280',
-  none: '#9ca3af'
-}
-
-// ============================================================================
-// ACTIVE FILTERS BAR COMPONENT
-// ============================================================================
+const PillWrapper = ({
+  children,
+  className: cls
+}: {
+  children: React.ReactNode
+  className?: string
+}): React.JSX.Element => (
+  <div
+    className={cn(
+      'flex items-center rounded-[5px] pr-1 pl-2 gap-[5px] shrink-0 py-[3px] antialiased',
+      'bg-[#5E6AD21A] border border-[#5E6AD233]',
+      cls
+    )}
+  >
+    {children}
+  </div>
+)
 
 export const ActiveFiltersBar = ({
   filters,
@@ -51,171 +76,223 @@ export const ActiveFiltersBar = ({
   onUpdateFilters,
   onClearAll,
   onSaveFilter,
+  isSaved = false,
   className
 }: ActiveFiltersBarProps): React.JSX.Element | null => {
-  // Generate chips from active filters
-  const chips = useMemo((): ChipData[] => {
-    const result: ChipData[] = []
+  const pills = useMemo(() => {
+    const result: React.ReactNode[] = []
 
-    // Search
-    if (filters.search) {
-      result.push({
-        id: 'search',
-        label: `"${filters.search}"`,
-        icon: <Search className="size-3" />,
-        onRemove: () => onUpdateFilters({ search: '' })
-      })
+    if (filters.priorities.length > 0) {
+      const values = filters.priorities.map((p) => PRIORITY_LABELS[p]).join(', ')
+      result.push(
+        <PillWrapper key="priority">
+          <svg
+            width="11"
+            height="11"
+            viewBox="0 0 11 11"
+            fill="none"
+            className="text-muted-foreground shrink-0"
+          >
+            <rect x="1" y="6" width="2" height="4" rx="0.4" fill="currentColor" />
+            <rect x="4.5" y="4" width="2" height="6" rx="0.4" fill="currentColor" />
+            <rect x="8" y="2" width="2" height="8" rx="0.4" fill="currentColor" />
+          </svg>
+          <span
+            className={`text-[11px] text-text-secondary leading-3.5 shrink-0 whitespace-nowrap`}
+          >
+            Priority is
+          </span>
+          <span
+            className={`text-[11px] text-foreground font-medium leading-3.5 shrink-0 whitespace-nowrap`}
+          >
+            {values}
+          </span>
+          <RemoveButton label="priority" onClick={() => onUpdateFilters({ priorities: [] })} />
+        </PillWrapper>
+      )
     }
 
-    // Projects - T032: Handle deleted projects gracefully
-    filters.projectIds.forEach((projectId) => {
-      const project = projects.find((p) => p.id === projectId)
-      result.push({
-        id: `project-${projectId}`,
-        label: project?.name ?? 'Deleted Project',
-        color: project?.color ?? '#9ca3af', // Gray for deleted projects
-        onRemove: () =>
-          onUpdateFilters({
-            projectIds: filters.projectIds.filter((id) => id !== projectId)
-          })
+    if (filters.statusIds.length > 0) {
+      const statusNames = filters.statusIds.map((id) => {
+        for (const project of projects) {
+          const status = project.statuses.find((s) => s.id === id)
+          if (status) return status.name
+        }
+        return id
       })
-    })
+      result.push(
+        <PillWrapper key="status">
+          <svg
+            width="11"
+            height="11"
+            viewBox="0 0 11 11"
+            fill="none"
+            className="text-muted-foreground shrink-0"
+          >
+            <circle cx="5.5" cy="5.5" r="4" stroke="currentColor" strokeWidth="1" />
+          </svg>
+          <span
+            className={`text-[11px] text-text-secondary leading-3.5 shrink-0 whitespace-nowrap`}
+          >
+            Status is
+          </span>
+          <span
+            className={`text-[11px] text-foreground font-medium leading-3.5 shrink-0 whitespace-nowrap`}
+          >
+            {statusNames.join(', ')}
+          </span>
+          <RemoveButton label="status" onClick={() => onUpdateFilters({ statusIds: [] })} />
+        </PillWrapper>
+      )
+    }
 
-    // Priorities
-    filters.priorities.forEach((priority) => {
-      result.push({
-        id: `priority-${priority}`,
-        label: priority.charAt(0).toUpperCase() + priority.slice(1),
-        color: priorityColors[priority],
-        onRemove: () =>
-          onUpdateFilters({
-            priorities: filters.priorities.filter((p) => p !== priority)
-          })
-      })
-    })
+    if (filters.projectIds.length > 0) {
+      const projectEntries = filters.projectIds
+        .map((id) => projects.find((p) => p.id === id))
+        .filter(Boolean) as Project[]
+      const names = projectEntries.map((p) => p.name).join(', ')
+      const firstColor = projectEntries[0]?.color
+      result.push(
+        <PillWrapper key="project">
+          {firstColor && (
+            <div
+              className="w-[7px] h-[7px] shrink-0 rounded-xs"
+              style={{ backgroundColor: firstColor }}
+            />
+          )}
+          <span
+            className={`text-[11px] text-text-secondary leading-3.5 shrink-0 whitespace-nowrap`}
+          >
+            Project is
+          </span>
+          <span
+            className={`text-[11px] text-foreground font-medium leading-3.5 shrink-0 whitespace-nowrap`}
+          >
+            {names || 'Unknown'}
+          </span>
+          <RemoveButton label="project" onClick={() => onUpdateFilters({ projectIds: [] })} />
+        </PillWrapper>
+      )
+    }
 
-    // Due date
     if (filters.dueDate.type !== 'any') {
-      let label = ''
+      let label = DUE_DATE_LABELS[filters.dueDate.type] || filters.dueDate.type
       if (
         filters.dueDate.type === 'custom' &&
         filters.dueDate.customStart &&
         filters.dueDate.customEnd
       ) {
-        const formatDate = (date: Date): string =>
-          date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-        label = `${formatDate(filters.dueDate.customStart)} - ${formatDate(filters.dueDate.customEnd)}`
-      } else {
-        const option = dueDateFilterOptions.find((o) => o.value === filters.dueDate.type)
-        label = option?.label || filters.dueDate.type
-      }
-
-      result.push({
-        id: 'dueDate',
-        label,
-        icon: <Calendar className="size-3" />,
-        onRemove: () =>
-          onUpdateFilters({
-            dueDate: { type: 'any', customStart: null, customEnd: null }
+        const fmt = (d: Date | string): string =>
+          (d instanceof Date ? d : new Date(d)).toLocaleDateString('en-US', {
+            month: 'short',
+            day: 'numeric'
           })
-      })
-    }
-
-    // Status IDs
-    filters.statusIds.forEach((statusId) => {
-      // Find the status across all projects
-      let statusName = statusId
-      let statusColor = '#6b7280'
-      for (const project of projects) {
-        const status = project.statuses.find((s) => s.id === statusId)
-        if (status) {
-          statusName = status.name
-          statusColor = status.color
-          break
-        }
+        label = `${fmt(filters.dueDate.customStart)} – ${fmt(filters.dueDate.customEnd)}`
       }
-
-      result.push({
-        id: `status-${statusId}`,
-        label: statusName,
-        color: statusColor,
-        onRemove: () =>
-          onUpdateFilters({
-            statusIds: filters.statusIds.filter((id) => id !== statusId)
-          })
-      })
-    })
-
-    // Repeat type
-    if (filters.repeatType !== 'all') {
-      result.push({
-        id: 'repeatType',
-        label: filters.repeatType === 'repeating' ? 'Repeating' : 'One-time',
-        icon: <Repeat className="size-3" />,
-        onRemove: () => onUpdateFilters({ repeatType: 'all' })
-      })
+      result.push(
+        <PillWrapper key="dueDate">
+          <svg
+            width="11"
+            height="11"
+            viewBox="0 0 11 11"
+            fill="none"
+            className="text-muted-foreground shrink-0"
+          >
+            <rect
+              x="1"
+              y="2"
+              width="9"
+              height="7.5"
+              rx="1.2"
+              stroke="currentColor"
+              strokeWidth="0.9"
+            />
+            <path d="M1 4.5h9" stroke="currentColor" strokeWidth="0.9" />
+          </svg>
+          <span
+            className={`text-[11px] text-text-secondary leading-3.5 shrink-0 whitespace-nowrap`}
+          >
+            Due
+          </span>
+          <span
+            className={`text-[11px] text-foreground font-medium leading-3.5 shrink-0 whitespace-nowrap`}
+          >
+            {label}
+          </span>
+          <RemoveButton
+            label="due date"
+            onClick={() =>
+              onUpdateFilters({ dueDate: { type: 'any', customStart: null, customEnd: null } })
+            }
+          />
+        </PillWrapper>
+      )
     }
 
-    // Has time
-    if (filters.hasTime !== 'all') {
-      result.push({
-        id: 'hasTime',
-        label: filters.hasTime === 'with-time' ? 'With time' : 'No time',
-        icon: <Clock className="size-3" />,
-        onRemove: () => onUpdateFilters({ hasTime: 'all' })
-      })
-    }
-
-    // Completion (only if not default "active")
-    if (filters.completion !== 'active') {
-      result.push({
-        id: 'completion',
-        label: filters.completion === 'completed' ? 'Completed' : 'All',
-        onRemove: () => onUpdateFilters({ completion: 'active' })
-      })
+    if (filters.search) {
+      result.push(
+        <PillWrapper key="search">
+          <svg
+            width="11"
+            height="11"
+            viewBox="0 0 11 11"
+            fill="none"
+            className="text-muted-foreground shrink-0"
+          >
+            <circle cx="4.5" cy="4.5" r="3.5" stroke="currentColor" strokeWidth="0.9" />
+            <path d="M7 7l2.5 2.5" stroke="currentColor" strokeWidth="0.9" strokeLinecap="round" />
+          </svg>
+          <span
+            className={`text-[11px] text-foreground font-medium leading-3.5 shrink-0 whitespace-nowrap`}
+          >
+            "{filters.search}"
+          </span>
+          <RemoveButton label="search" onClick={() => onUpdateFilters({ search: '' })} />
+        </PillWrapper>
+      )
     }
 
     return result
   }, [filters, projects, onUpdateFilters])
 
-  // Don't render if no chips
-  if (chips.length === 0) return null
+  if (pills.length === 0) return null
 
   return (
-    <div className={cn('flex items-center gap-2 px-4 py-2 bg-muted/50 border-b', className)}>
-      <span className="text-sm text-muted-foreground shrink-0">Active:</span>
-
-      <div className="flex flex-wrap gap-2 flex-1 min-w-0">
-        {chips.map((chip) => (
-          <FilterChip
-            key={chip.id}
-            label={chip.label}
-            icon={chip.icon}
-            color={chip.color}
-            onRemove={chip.onRemove}
-          />
-        ))}
-      </div>
-
-      <div className="flex items-center gap-2 shrink-0">
+    <div
+      className={cn(
+        'flex items-center py-2 px-4 gap-2 flex-nowrap w-full',
+        'bg-popover border-x border-b border-border rounded-b-lg',
+        className
+      )}
+    >
+      {pills}
+      <div className="flex items-center gap-2.5 ml-auto shrink-0">
         {onSaveFilter && (
-          <Button
-            variant="ghost"
-            size="sm"
+          <button
+            type="button"
             onClick={onSaveFilter}
-            className="h-7 text-xs text-muted-foreground hover:text-foreground"
+            aria-label={isSaved ? 'Saved' : 'Save filter'}
+            className="flex items-center gap-1 text-[11px] shrink-0 whitespace-nowrap text-text-secondary leading-3.5 hover:text-foreground transition-colors"
           >
-            Save
-          </Button>
+            <svg width="11" height="11" viewBox="0 0 11 11" fill="none" className="shrink-0">
+              <path
+                d="M5.5 1.5l1.09 2.21 2.44.35-1.77 1.72.42 2.43L5.5 7.12 3.32 8.21l.42-2.43-1.77-1.72 2.44-.35L5.5 1.5z"
+                stroke="currentColor"
+                strokeWidth="0.8"
+                strokeLinejoin="round"
+                fill={isSaved ? 'currentColor' : 'none'}
+              />
+            </svg>
+            <span>{isSaved ? 'Saved' : 'Save'}</span>
+          </button>
         )}
-        <Button
-          variant="ghost"
-          size="sm"
+        <button
+          type="button"
           onClick={onClearAll}
-          className="h-7 text-xs text-muted-foreground hover:text-foreground"
+          className="text-[11px] shrink-0 whitespace-nowrap text-destructive leading-3.5 hover:text-destructive/70 transition-colors"
         >
           Clear all
-        </Button>
+        </button>
       </div>
     </div>
   )

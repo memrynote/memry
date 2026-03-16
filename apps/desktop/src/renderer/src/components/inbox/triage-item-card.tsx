@@ -40,7 +40,7 @@ export const TriageItemCard = memo(function TriageItemCard({
 
       {item.content && (
         <div className="text-foreground/90 whitespace-pre-wrap text-sm leading-relaxed">
-          {item.content.length > 500 ? `${item.content.slice(0, 500)}…` : item.content}
+          {item.content}
         </div>
       )}
 

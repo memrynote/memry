@@ -33,8 +33,8 @@ const sectionIcons: Record<SectionType, React.ElementType | null> = {
 }
 
 const sectionIconColors: Record<SectionType, string> = {
-  overdue: 'text-red-500',
-  today: 'text-amber-500',
+  overdue: 'text-task-due-overdue',
+  today: 'text-task-due-today',
   tomorrow: 'text-text-tertiary',
   upcoming: 'text-text-tertiary',
   'no-date': 'text-text-tertiary'
@@ -68,7 +68,7 @@ export const CollapsedEmptySection = ({
     <div
       className={cn(
         'flex items-center justify-between',
-        'px-3 py-2.5 rounded-lg',
+        'px-3 py-2.5 rounded-sm',
         'bg-muted/30 border border-border/50',
         className
       )}

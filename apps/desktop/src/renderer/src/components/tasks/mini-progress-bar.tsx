@@ -38,7 +38,7 @@ export const MiniProgressBar = ({
       <div
         className={cn(
           'h-full rounded-full transition-all duration-300',
-          isComplete ? 'bg-green-500' : 'bg-blue-500'
+          isComplete ? 'bg-task-complete' : 'bg-task-progress'
         )}
         style={{ width: `${percentage}%` }}
       />

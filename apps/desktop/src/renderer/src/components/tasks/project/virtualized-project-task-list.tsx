@@ -6,7 +6,6 @@ import { useDroppable } from '@dnd-kit/core'
 import { cn } from '@/lib/utils'
 import { SortableTaskRow } from '@/components/tasks/drag-drop'
 import { SortableParentTaskRow } from '@/components/tasks/sortable-parent-task-row'
-import { QuickAddInput } from '@/components/tasks/quick-add-input'
 import { TaskEmptyState } from '@/components/tasks/task-empty-state'
 import {
   flattenTasksByStatus,
@@ -43,7 +42,6 @@ interface VirtualizedProjectTaskListProps {
       projectId: string | null
     }
   ) => void
-  onOpenModal?: (prefillTitle: string) => void
   className?: string
   // Selection props
   isSelectionMode?: boolean
@@ -70,7 +68,7 @@ const VirtualStatusHeader = memo(
     return (
       <div
         className={cn(
-          'flex items-center justify-between px-3 py-2 transition-colors rounded-lg',
+          'flex items-center justify-between px-3 py-2 transition-colors rounded-sm',
           isOver && 'ring-2 ring-primary/50 ring-inset bg-primary/5'
         )}
       >
@@ -210,15 +208,17 @@ const VirtualItemRenderer = memo(
           <SortableParentTaskRow
             task={parentItem.task}
             project={parentItem.project}
+            projects={[parentItem.project]}
             sectionId={`status-${parentItem.sectionId}`}
             subtasks={parentItem.subtasks}
             progress={progress}
             isExpanded={isExpanded}
             isCompleted={isCompleted}
             isSelected={selectedTaskId === parentItem.task.id}
-            showProjectBadge={false} // Don't show project badge in project view
+            showProjectBadge={false}
             onToggleExpand={onToggleExpand}
             onToggleComplete={onToggleComplete}
+            onUpdateTask={onUpdateTask}
             onToggleSubtaskComplete={onToggleSubtaskComplete}
             onClick={onTaskClick}
             isSelectionMode={isSelectionMode}
@@ -252,7 +252,6 @@ export const VirtualizedProjectTaskList = ({
   onToggleSubtaskComplete,
   onTaskClick,
   onQuickAdd,
-  onOpenModal,
   className,
   isSelectionMode = false,
   selectedIds,
@@ -322,15 +321,7 @@ export const VirtualizedProjectTaskList = ({
   // Empty state (but still show status headers as drop targets)
   if (isEmpty && virtualItems.length === 0) {
     return (
-      <div className={cn('flex-1 overflow-auto p-4', className)}>
-        <div className="mb-4">
-          <QuickAddInput
-            onAdd={handleQuickAdd}
-            onOpenModal={onOpenModal}
-            projects={[project]}
-            placeholder={`Add task to ${project.name}...`}
-          />
-        </div>
+      <div className={cn('flex-1 overflow-auto pt-4', className)}>
         <TaskEmptyState
           variant="project"
           projectName={project.name}
@@ -342,23 +333,8 @@ export const VirtualizedProjectTaskList = ({
 
   return (
     <div className={cn('flex flex-1 flex-col overflow-hidden', className)}>
-      {/* Quick Add Input - fixed at top */}
-      <div className="p-4 pb-0">
-        <QuickAddInput
-          onAdd={handleQuickAdd}
-          onOpenModal={onOpenModal}
-          projects={[project]}
-          placeholder={`Add task to ${project.name}...`}
-        />
-      </div>
-
-      {/* Virtualized content */}
       <SortableContext items={allTaskIds} strategy={verticalListSortingStrategy}>
-        <div
-          ref={parentRef}
-          className="flex-1 overflow-auto px-4 pt-4"
-          style={{ contain: 'strict' }}
-        >
+        <div ref={parentRef} className="flex-1 overflow-auto pt-4" style={{ contain: 'strict' }}>
           <div
             style={{
               height: `${virtualizer.getTotalSize()}px`,

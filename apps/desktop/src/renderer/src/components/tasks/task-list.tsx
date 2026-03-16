@@ -14,7 +14,7 @@ import {
 import { getTopLevelTasks } from '@/lib/subtask-utils'
 import { useExpandedTasks } from '@/hooks'
 import type { Task } from '@/data/sample-tasks'
-import type { Project } from '@/data/tasks-data'
+import type { Project, SortField, SortDirection } from '@/data/tasks-data'
 
 // ============================================================================
 // TYPES
@@ -38,7 +38,6 @@ interface TaskListProps {
       projectId: string | null
     }
   ) => void
-  onOpenModal?: (prefillTitle: string) => void
   className?: string
   // Selection props
   isSelectionMode?: boolean
@@ -48,6 +47,9 @@ interface TaskListProps {
   // Subtask management props
   onAddSubtask?: (parentId: string, title: string) => void
   onReorderSubtasks?: (parentId: string, newOrder: string[]) => void
+  // Sort-aware grouping props
+  sortField?: SortField
+  sortDirection?: SortDirection
 }
 
 // ============================================================================
@@ -152,7 +154,6 @@ export const TaskList = ({
   onToggleSubtaskComplete,
   onTaskClick,
   onQuickAdd,
-  onOpenModal,
   className,
   // Selection props
   isSelectionMode = false,
@@ -161,7 +162,10 @@ export const TaskList = ({
   onShiftSelect,
   // Subtask management props
   onAddSubtask,
-  onReorderSubtasks
+  onReorderSubtasks,
+  // Sort-aware grouping
+  sortField,
+  sortDirection
 }: TaskListProps): React.JSX.Element => {
   // Expand/collapse state - only needed for non-virtualized completed view
   const { expandedIds, toggleExpanded } = useExpandedTasks({
@@ -189,7 +193,6 @@ export const TaskList = ({
         onToggleSubtaskComplete={onToggleSubtaskComplete}
         onTaskClick={onTaskClick}
         onQuickAdd={onQuickAdd}
-        onOpenModal={onOpenModal}
         className={className}
         // Selection props
         isSelectionMode={isSelectionMode}
@@ -207,7 +210,7 @@ export const TaskList = ({
   if (selectedId === 'completed') {
     return (
       <ScrollArea className={cn('flex-1', className)}>
-        <div className="p-4">
+        <div className="pt-4">
           {isEmpty ? (
             <TaskEmptyState variant="completed" onAddTask={() => onQuickAdd('New Task')} />
           ) : (
@@ -248,7 +251,6 @@ export const TaskList = ({
       onToggleSubtaskComplete={onToggleSubtaskComplete}
       onTaskClick={onTaskClick}
       onQuickAdd={onQuickAdd}
-      onOpenModal={onOpenModal}
       className={className}
       storageKey={selectedId}
       // Selection props
@@ -259,6 +261,9 @@ export const TaskList = ({
       // Subtask management props
       onAddSubtask={onAddSubtask}
       onReorderSubtasks={onReorderSubtasks}
+      // Sort-aware grouping
+      sortField={sortField}
+      sortDirection={sortDirection}
     />
   )
 }

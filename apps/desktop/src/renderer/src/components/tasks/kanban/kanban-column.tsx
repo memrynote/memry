@@ -1,7 +1,6 @@
 import { useMemo, useState, useCallback } from 'react'
 import { useDroppable } from '@dnd-kit/core'
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
-import { Plus } from 'lucide-react'
 
 import { cn } from '@/lib/utils'
 import { ScrollArea } from '@/components/ui/scroll-area'
@@ -11,7 +10,7 @@ import { KanbanEmptyColumn } from './kanban-empty-column'
 import { getIconByName } from '@/components/icon-picker'
 import { startOfDay, isBefore } from '@/lib/task-utils'
 import type { Task } from '@/data/sample-tasks'
-import type { Status, StatusType } from '@/data/tasks-data'
+import type { Project, Status, StatusType } from '@/data/tasks-data'
 
 // ============================================================================
 // TYPES
@@ -21,15 +20,18 @@ export interface KanbanColumnData {
   id: string
   title: string
   color: string
-  icon?: string // For project columns
-  type: 'status' | 'project'
-  statusType?: StatusType // For status columns
+  icon?: string
+  type: 'status' | 'project' | 'weekday'
+  statusType?: StatusType
+  date?: Date
 }
 
 interface KanbanColumnProps {
   column: KanbanColumnData
   tasks: Task[]
   allTasks: Task[]
+  projects: Project[]
+  showProject: boolean
   selectedTaskId: string | null
   focusedTaskId: string | null
   editingTaskId: string | null
@@ -40,20 +42,23 @@ interface KanbanColumnProps {
   onQuickAdd: (title: string, columnId: string) => void
   onEditSave: (taskId: string, updates: Partial<Task>) => void
   onEditCancel: () => void
-  // Selection props
   isSelectionMode?: boolean
   selectedIds?: Set<string>
   onToggleSelect?: (taskId: string) => void
 }
 
+const MAX_VISIBLE_DONE = 5
+
 // ============================================================================
-// KANBAN COLUMN COMPONENT
+// KANBAN COLUMN
 // ============================================================================
 
 export const KanbanColumn = ({
   column,
   tasks,
   allTasks,
+  projects,
+  showProject,
   selectedTaskId,
   focusedTaskId,
   editingTaskId,
@@ -64,13 +69,13 @@ export const KanbanColumn = ({
   onQuickAdd,
   onEditSave,
   onEditCancel,
-  // Selection props
   isSelectionMode = false,
   selectedIds,
   onToggleSelect
 }: KanbanColumnProps): React.JSX.Element => {
   const [isAddingTask, setIsAddingTask] = useState(false)
   const [newTaskTitle, setNewTaskTitle] = useState('')
+  const [showAllDone, setShowAllDone] = useState(false)
 
   const droppableData =
     column.type === 'project'
@@ -79,36 +84,45 @@ export const KanbanColumn = ({
           projectId: column.id,
           project: { id: column.id, name: column.title }
         }
-      : {
-          type: 'column' as const,
-          columnId: column.id,
-          column
-        }
+      : column.type === 'weekday'
+        ? {
+            type: 'weekday' as const,
+            date: column.date,
+            label: column.title
+          }
+        : {
+            type: 'column' as const,
+            columnId: column.id,
+            column
+          }
 
   const { setNodeRef, isOver } = useDroppable({
     id: column.id,
     data: droppableData
   })
 
-  const taskIds = useMemo(() => tasks.map((t) => t.id), [tasks])
-
   const isDoneColumn = column.statusType === 'done'
   const today = startOfDay(new Date())
 
-  // Check if a task is overdue
   const isTaskOverdue = useCallback(
     (task: Task): boolean => {
       if (!task.dueDate) return false
-      const dueDate = startOfDay(task.dueDate)
-      return isBefore(dueDate, today)
+      return isBefore(startOfDay(task.dueDate), today)
     },
     [today]
   )
 
-  // Handle inline add task
-  const handleAddClick = (): void => {
-    setIsAddingTask(true)
-  }
+  const visibleTasks = useMemo(() => {
+    if (!isDoneColumn || showAllDone) return tasks
+    return tasks.slice(0, MAX_VISIBLE_DONE)
+  }, [tasks, isDoneColumn, showAllDone])
+
+  const hiddenDoneCount =
+    isDoneColumn && !showAllDone ? Math.max(0, tasks.length - MAX_VISIBLE_DONE) : 0
+
+  const taskIds = useMemo(() => visibleTasks.map((t) => t.id), [visibleTasks])
+
+  const handleAddClick = (): void => setIsAddingTask(true)
 
   const handleAddSubmit = (): void => {
     if (newTaskTitle.trim()) {
@@ -129,69 +143,82 @@ export const KanbanColumn = ({
   }
 
   const handleAddBlur = (): void => {
-    if (newTaskTitle.trim()) {
-      handleAddSubmit()
-    } else {
-      setIsAddingTask(false)
-    }
+    if (newTaskTitle.trim()) handleAddSubmit()
+    else setIsAddingTask(false)
   }
 
-  // Get icon component for project columns
+  const getProject = (projectId: string): Project | null => {
+    return projects.find((p) => p.id === projectId) || null
+  }
+
   const IconComponent = column.icon ? getIconByName(column.icon) : null
 
   return (
     <div
       ref={setNodeRef}
       className={cn(
-        'flex h-full w-[280px] shrink-0 flex-col rounded-lg bg-muted/30 transition-colors border border-transparent',
-        isOver && 'bg-primary/5 border-dotted border-primary/60'
+        'flex h-full min-w-[250px] flex-1 flex-col gap-2.5 transition-colors',
+        isOver && 'bg-primary/[0.03] rounded-lg'
       )}
     >
       {/* Column Header */}
-      <div className="flex items-center gap-2 px-3 py-3">
-        {/* Color indicator / Icon */}
-        {column.type === 'project' && IconComponent ? (
-          <IconComponent
-            className="size-4 shrink-0"
-            style={{ color: column.color }}
-            aria-hidden="true"
-          />
-        ) : (
-          <span
-            className="size-2.5 shrink-0 rounded-full"
-            style={{ backgroundColor: column.color }}
-            aria-hidden="true"
-          />
+      <div className="flex items-center justify-between pb-2.5 border-b border-border px-1">
+        <div className="flex items-center gap-2">
+          {column.type === 'project' && IconComponent ? (
+            <IconComponent
+              className="size-3 shrink-0"
+              style={{ color: column.color }}
+              aria-hidden="true"
+            />
+          ) : (
+            <div
+              className="rounded-full shrink-0 size-2"
+              style={{ backgroundColor: column.color }}
+              aria-hidden="true"
+            />
+          )}
+          <span className="text-[13px] tracking-[-0.01em] font-heading font-semibold text-foreground leading-4">
+            {column.title}
+          </span>
+          <span className="text-[11px] text-text-tertiary leading-3.5">{tasks.length}</span>
+        </div>
+
+        {!isDoneColumn && (
+          <button
+            type="button"
+            onClick={handleAddClick}
+            className="text-muted-foreground/40 hover:text-muted-foreground transition-colors"
+            aria-label={`Add task to ${column.title}`}
+          >
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+              <path
+                d="M7 3v8M3 7h8"
+                stroke="currentColor"
+                strokeWidth="1.3"
+                strokeLinecap="round"
+              />
+            </svg>
+          </button>
         )}
-
-        {/* Title */}
-        <span className="flex-1 truncate text-sm font-medium text-foreground">{column.title}</span>
-
-        {/* Count */}
-        <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
-          {tasks.length}
-        </span>
       </div>
 
       {/* Card List */}
-      <ScrollArea className="flex-1 px-2">
+      <ScrollArea className="flex-1">
         <SortableContext items={taskIds} strategy={verticalListSortingStrategy}>
-          {/* Container with min-height ensures drop target area */}
-          <div className="flex min-h-[100px] flex-col gap-2 pb-2">
-            {tasks.length === 0 ? (
+          <div className="flex min-h-[100px] flex-col gap-2.5">
+            {visibleTasks.length === 0 && tasks.length === 0 ? (
               <KanbanEmptyColumn
                 columnType={column.type}
                 isDone={isDoneColumn}
                 isDropTarget={isOver}
               />
             ) : (
-              tasks.map((task) => {
+              visibleTasks.map((task) => {
                 const isCompleted = getTaskIsCompleted(task)
                 const isOverdue = isTaskOverdue(task) && !isCompleted
                 const isEditing = editingTaskId === task.id
                 const isCheckedForSelection = selectedIds?.has(task.id) ?? false
 
-                // Render edit form if this task is being edited
                 if (isEditing) {
                   return (
                     <KanbanCardEdit
@@ -204,20 +231,20 @@ export const KanbanColumn = ({
                   )
                 }
 
-                // Render normal card
                 return (
                   <KanbanCard
                     key={task.id}
                     task={task}
                     columnId={column.id}
                     allTasks={allTasks}
+                    project={getProject(task.projectId)}
+                    showProject={showProject}
                     isSelected={selectedTaskId === task.id}
                     isFocused={focusedTaskId === task.id}
                     isCompleted={isCompleted}
                     isOverdue={isOverdue}
                     onClick={() => onTaskClick(task.id)}
                     onDoubleClick={() => onTaskDoubleClick(task.id)}
-                    // Selection props
                     isSelectionMode={isSelectionMode}
                     isCheckedForSelection={isCheckedForSelection}
                     onToggleSelect={onToggleSelect}
@@ -229,9 +256,20 @@ export const KanbanColumn = ({
         </SortableContext>
       </ScrollArea>
 
+      {/* "N more completed tasks" for done column */}
+      {hiddenDoneCount > 0 && (
+        <button
+          type="button"
+          onClick={() => setShowAllDone(true)}
+          className="flex items-center justify-center rounded-md py-2 px-2.5 text-[12px] text-text-tertiary hover:text-muted-foreground transition-colors"
+        >
+          {hiddenDoneCount} more completed task{hiddenDoneCount !== 1 ? 's' : ''}
+        </button>
+      )}
+
       {/* Footer - Add Task (hidden for done columns) */}
       {!isDoneColumn && (
-        <div className="border-t border-border/50 px-2 py-2">
+        <div className="pt-0.5">
           {isAddingTask ? (
             <input
               type="text"
@@ -242,23 +280,26 @@ export const KanbanColumn = ({
               placeholder="Task title..."
               autoFocus
               className={cn(
-                'w-full rounded-md border border-border bg-background px-3 py-2 text-sm',
-                'placeholder:text-muted-foreground',
-                'focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2'
+                'w-full rounded-lg border border-border bg-card px-3.5 py-2.5 text-[13px]',
+                'placeholder:text-muted-foreground/40',
+                'focus:outline-none focus:ring-2 focus:ring-ring/30 focus:border-border'
               )}
             />
           ) : (
             <button
               type="button"
               onClick={handleAddClick}
-              className={cn(
-                'flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm text-muted-foreground transition-colors',
-                'hover:bg-accent hover:text-foreground',
-                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring'
-              )}
+              className="flex items-center rounded-md py-2 px-2.5 gap-1.5 text-muted-foreground/40 hover:text-muted-foreground transition-colors"
             >
-              <Plus className="size-4" />
-              <span>Add task</span>
+              <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
+                <path
+                  d="M6.5 2.5v8M2.5 6.5h8"
+                  stroke="currentColor"
+                  strokeWidth="1.3"
+                  strokeLinecap="round"
+                />
+              </svg>
+              <span className="text-[12px] leading-4">Add task</span>
             </button>
           )}
         </div>

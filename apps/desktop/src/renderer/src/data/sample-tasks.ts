@@ -83,6 +83,18 @@ export const priorityConfig: Record<
 }
 
 // ============================================================================
+// PRIORITY CSS VARIABLE MAPPING
+// ============================================================================
+
+export const PRIORITY_CSS_VARS: Record<Priority, { text: string; bg: string } | null> = {
+  none: null,
+  low: { text: 'var(--task-priority-low)', bg: 'var(--task-priority-medium-bg)' },
+  medium: { text: 'var(--task-priority-medium)', bg: 'var(--task-priority-medium-bg)' },
+  high: { text: 'var(--task-priority-high)', bg: 'var(--task-priority-high-bg)' },
+  urgent: { text: 'var(--task-priority-urgent)', bg: 'var(--task-priority-urgent-bg)' }
+}
+
+// ============================================================================
 // HELPER FUNCTIONS
 // ============================================================================
 

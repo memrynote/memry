@@ -5,14 +5,14 @@ import { cn } from '@/lib/utils'
 // ============================================================================
 
 interface KanbanEmptyColumnProps {
-  columnType: 'status' | 'project'
+  columnType: 'status' | 'project' | 'weekday'
   isDone?: boolean
   isDropTarget?: boolean
   className?: string
 }
 
 // ============================================================================
-// KANBAN EMPTY COLUMN COMPONENT
+// KANBAN EMPTY COLUMN
 // ============================================================================
 
 export const KanbanEmptyColumn = ({
@@ -21,7 +21,6 @@ export const KanbanEmptyColumn = ({
   isDropTarget = false,
   className
 }: KanbanEmptyColumnProps): React.JSX.Element => {
-  // Message based on column type and state
   const getMessage = (): { title: string; description: string } => {
     if (isDone) {
       return {
@@ -29,14 +28,18 @@ export const KanbanEmptyColumn = ({
         description: 'Complete tasks to see them here'
       }
     }
-
     if (columnType === 'project') {
       return {
         title: 'No tasks in this project',
         description: 'Drag tasks here or click add'
       }
     }
-
+    if (columnType === 'weekday') {
+      return {
+        title: 'Nothing scheduled',
+        description: 'Drag tasks here to reschedule'
+      }
+    }
     return {
       title: 'No tasks',
       description: 'Drag tasks here or click add'
@@ -48,13 +51,13 @@ export const KanbanEmptyColumn = ({
   return (
     <div
       className={cn(
-        'flex flex-1 flex-col items-center justify-center rounded-lg border-2 border-dashed p-6 text-center transition-colors',
-        isDropTarget ? 'border-primary bg-primary/5' : 'border-border/50 bg-muted/20',
+        'flex flex-1 flex-col items-center justify-center rounded-lg border border-dashed p-6 text-center transition-colors',
+        isDropTarget ? 'border-primary/40 bg-primary/[0.03]' : 'border-border/50',
         className
       )}
     >
-      <p className="text-sm font-medium text-muted-foreground">{title}</p>
-      <p className="mt-1 text-xs text-muted-foreground/70">{description}</p>
+      <p className="text-[13px] font-medium text-muted-foreground">{title}</p>
+      <p className="mt-1 text-[11px] text-text-tertiary">{description}</p>
     </div>
   )
 }

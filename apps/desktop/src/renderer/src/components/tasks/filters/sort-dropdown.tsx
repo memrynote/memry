@@ -1,15 +1,10 @@
-import { useState } from 'react'
-import { ChevronDown, ArrowUp, ArrowDown } from 'lucide-react'
+import { useState, useCallback } from 'react'
 
-import { Button } from '@/components/ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { CheckMark } from '@/components/ui/check-mark'
 import { cn } from '@/lib/utils'
 import type { TaskSort, SortField, SortDirection } from '@/data/tasks-data'
-import { sortFieldOptions } from '@/data/tasks-data'
-
-// ============================================================================
-// TYPES
-// ============================================================================
+import { defaultSort } from '@/data/tasks-data'
 
 interface SortDropdownProps {
   sort: TaskSort
@@ -17,9 +12,21 @@ interface SortDropdownProps {
   className?: string
 }
 
-// ============================================================================
-// SORT DROPDOWN COMPONENT
-// ============================================================================
+const SORT_FIELD_LABELS: Record<SortField, string> = {
+  dueDate: 'Due date',
+  priority: 'Priority',
+  createdAt: 'Created',
+  title: 'Title',
+  project: 'Project',
+  completedAt: 'Completed'
+}
+
+const VISIBLE_FIELDS: SortField[] = ['priority', 'dueDate', 'createdAt', 'title', 'project']
+
+const DIRECTION_LABELS: Record<SortDirection, string> = {
+  asc: 'Ascending',
+  desc: 'Descending'
+}
 
 export const SortDropdown = ({
   sort,
@@ -28,97 +35,135 @@ export const SortDropdown = ({
 }: SortDropdownProps): React.JSX.Element => {
   const [isOpen, setIsOpen] = useState(false)
 
-  const currentOption = sortFieldOptions.find((o) => o.value === sort.field)
-  const directionIcon = sort.direction === 'asc' ? '↑' : '↓'
+  const handleSelectField = useCallback(
+    (field: SortField) => {
+      onChange({ ...sort, field })
+    },
+    [sort, onChange]
+  )
 
-  const handleSelectField = (field: SortField): void => {
-    onChange({ ...sort, field })
-  }
+  const handleSetDirection = useCallback(
+    (direction: SortDirection) => {
+      onChange({ ...sort, direction })
+    },
+    [sort, onChange]
+  )
 
-  const handleToggleDirection = (direction: SortDirection): void => {
-    onChange({ ...sort, direction })
-  }
+  const isNonDefault = sort.field !== defaultSort.field || sort.direction !== defaultSort.direction
 
   return (
     <Popover open={isOpen} onOpenChange={setIsOpen}>
       <PopoverTrigger asChild>
-        <Button
-          variant="outline"
-          size="sm"
-          className={cn('h-9 gap-2', className)}
+        <button
+          type="button"
           aria-label="Sort options"
+          className={cn(
+            'flex items-center shrink-0 rounded-[5px] py-1 px-2 gap-1 border transition-colors',
+            isOpen || isNonDefault
+              ? 'border-foreground/20 bg-foreground/5 text-text-primary'
+              : 'border-border text-text-secondary hover:bg-surface-active/50',
+            className
+          )}
         >
-          <span>
-            Sort: {currentOption?.label} {directionIcon}
-          </span>
-          <ChevronDown className="size-4 opacity-50" />
-        </Button>
+          <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
+            <path
+              d="M4 3v7M4 10l-1.5-1.5M4 10l1.5-1.5M9 10V3M9 3l-1.5 1.5M9 3l1.5 1.5"
+              stroke="currentColor"
+              strokeWidth="1.1"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+          <span className="text-[11px] leading-3.5">Sort</span>
+        </button>
       </PopoverTrigger>
 
-      <PopoverContent className="w-56 p-0" align="end">
-        <div className="p-2">
-          <div className="text-xs font-medium text-muted-foreground px-2 py-1.5 uppercase">
-            Sort by
-          </div>
+      <PopoverContent
+        className="w-auto min-w-[180px] p-0 rounded-lg overflow-clip border-border shadow-[var(--shadow-card-hover)]"
+        align="end"
+        sideOffset={8}
+      >
+        <div className="[font-synthesis:none] text-[12px] leading-4 flex flex-col antialiased">
+          <div className="flex flex-col p-1">
+            {VISIBLE_FIELDS.map((field) => {
+              const isSelected = sort.field === field
 
-          {sortFieldOptions.map((option) => {
-            const isSelected = sort.field === option.value
-
-            return (
-              <div
-                key={option.value}
-                className={cn(
-                  'flex items-center justify-between rounded-sm px-2 py-1.5 transition-colors',
-                  'hover:bg-accent',
-                  isSelected && 'bg-accent'
-                )}
-              >
+              return (
                 <button
+                  key={field}
                   type="button"
-                  onClick={() => handleSelectField(option.value)}
+                  onClick={() => handleSelectField(field)}
                   className={cn(
-                    'flex-1 text-left text-sm focus:outline-none',
-                    isSelected && 'font-medium'
+                    'flex items-center rounded-[5px] py-1.5 px-2 gap-2 transition-colors',
+                    isSelected ? 'bg-accent' : 'hover:bg-accent'
                   )}
                 >
-                  {option.label}
+                  <span
+                    className={cn(
+                      'text-[12px] leading-4',
+                      isSelected ? 'text-foreground' : 'text-text-secondary'
+                    )}
+                  >
+                    {SORT_FIELD_LABELS[field]}
+                  </span>
+                  {isSelected && <CheckMark color="var(--primary)" className="ml-auto" />}
                 </button>
+              )
+            })}
+          </div>
 
-                {isSelected && (
-                  <div className="flex items-center gap-1">
-                    <button
-                      type="button"
-                      onClick={() => handleToggleDirection('asc')}
-                      className={cn(
-                        'p-1 rounded text-xs transition-colors focus:outline-none',
-                        sort.direction === 'asc'
-                          ? 'bg-primary text-primary-foreground'
-                          : 'text-muted-foreground hover:text-foreground hover:bg-accent'
-                      )}
-                      aria-label="Sort ascending"
-                      title="Ascending"
-                    >
-                      <ArrowUp className="size-3" />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleToggleDirection('desc')}
-                      className={cn(
-                        'p-1 rounded text-xs transition-colors focus:outline-none',
-                        sort.direction === 'desc'
-                          ? 'bg-primary text-primary-foreground'
-                          : 'text-muted-foreground hover:text-foreground hover:bg-accent'
-                      )}
-                      aria-label="Sort descending"
-                      title="Descending"
-                    >
-                      <ArrowDown className="size-3" />
-                    </button>
-                  </div>
-                )}
+          {/* Direction toggle */}
+          <div className="border-t border-border p-1">
+            <div className="flex items-center justify-between rounded-[5px] py-1.5 px-2">
+              <span className="text-[12px] text-text-secondary leading-4">
+                {DIRECTION_LABELS[sort.direction]}
+              </span>
+              <div className="flex items-center rounded-sm overflow-clip border border-border">
+                <button
+                  type="button"
+                  aria-label="Sort ascending"
+                  onClick={() => handleSetDirection('asc')}
+                  className={cn(
+                    'flex items-center justify-center w-[22px] h-5 shrink-0 transition-colors',
+                    sort.direction === 'asc' ? 'bg-foreground/8' : 'hover:bg-foreground/5'
+                  )}
+                >
+                  <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+                    <path
+                      d="M5 8V2M5 2L3 4M5 2l2 2"
+                      stroke={
+                        sort.direction === 'asc' ? 'var(--foreground)' : 'var(--text-tertiary)'
+                      }
+                      strokeWidth="1.1"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                </button>
+                <button
+                  type="button"
+                  aria-label="Sort descending"
+                  onClick={() => handleSetDirection('desc')}
+                  className={cn(
+                    'flex items-center justify-center w-[22px] h-5 shrink-0 transition-colors',
+                    sort.direction === 'desc' ? 'bg-foreground/8' : 'hover:bg-foreground/5'
+                  )}
+                >
+                  <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+                    <path
+                      d="M5 2v6M5 8L3 6M5 8l2-2"
+                      stroke={
+                        sort.direction === 'desc' ? 'var(--foreground)' : 'var(--text-tertiary)'
+                      }
+                      strokeWidth="1.1"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                </button>
               </div>
-            )
-          })}
+            </div>
+          </div>
         </div>
       </PopoverContent>
     </Popover>
