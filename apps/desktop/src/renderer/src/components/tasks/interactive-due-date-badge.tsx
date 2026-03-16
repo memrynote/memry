@@ -2,14 +2,15 @@ import * as React from 'react'
 import { Repeat } from 'lucide-react'
 
 import { cn } from '@/lib/utils'
-import { formatDueDate } from '@/lib/task-utils'
+import { formatDueDate, formatDateShort, formatTime } from '@/lib/task-utils'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
-import { DatePickerCalendar } from './date-picker-calendar'
+import { DatePickerContent } from './date-picker-content'
 
 interface InteractiveDueDateBadgeProps {
   dueDate: Date | null
   dueTime: string | null
   onDateChange: (date: Date | null) => void
+  onTimeChange?: (time: string | null) => void
   isRepeating?: boolean
   variant?: 'default' | 'compact'
   fixedWidth?: boolean
@@ -20,6 +21,7 @@ export const InteractiveDueDateBadge = ({
   dueDate,
   dueTime,
   onDateChange,
+  onTimeChange,
   isRepeating = false,
   variant: _variant = 'default',
   fixedWidth = false,
@@ -27,42 +29,42 @@ export const InteractiveDueDateBadge = ({
 }: InteractiveDueDateBadgeProps): React.JSX.Element => {
   const [isOpen, setIsOpen] = React.useState(false)
 
-  const formatted = formatDueDate(dueDate, dueTime)
+  const status = formatDueDate(dueDate, dueTime)
+
+  const dateLabel = React.useMemo(() => {
+    if (!dueDate) return 'No date'
+    const short = formatDateShort(dueDate)
+    return dueTime ? `${short} ${formatTime(dueTime)}` : short
+  }, [dueDate, dueTime])
 
   const handleTriggerClick = (e: React.MouseEvent): void => {
     e.stopPropagation()
   }
 
-  const handleDateSelect = (date: Date | undefined): void => {
-    onDateChange(date || null)
-    setIsOpen(false)
-  }
-
-  const handleQuickDate =
-    (days: number) =>
-    (e: React.MouseEvent): void => {
-      e.stopPropagation()
-      const targetDate = new Date()
-      targetDate.setDate(targetDate.getDate() + days)
-      targetDate.setHours(0, 0, 0, 0)
-      onDateChange(targetDate)
+  const handleSelect = React.useCallback(
+    (date: Date | null): void => {
+      onDateChange(date)
+      if (!date) onTimeChange?.(null)
       setIsOpen(false)
-    }
+    },
+    [onDateChange, onTimeChange]
+  )
 
-  const handleRemoveDate = (e: React.MouseEvent): void => {
-    e.stopPropagation()
-    onDateChange(null)
-    setIsOpen(false)
+  const dateStatus = status?.status ?? 'none'
+
+  const badgeStyles: Record<string, string> = {
+    overdue:
+      'text-red-600 dark:text-red-400 bg-red-500/[0.06] dark:bg-red-400/10 border-red-500/40 dark:border-red-400/25',
+    today:
+      'text-amber-600 dark:text-amber-500 bg-amber-500/[0.06] dark:bg-amber-400/10 border-amber-500/40 dark:border-amber-400/25',
+    tomorrow:
+      'text-blue-600 dark:text-blue-400 bg-blue-500/[0.06] dark:bg-blue-400/10 border-blue-500/40 dark:border-blue-400/25',
+    upcoming:
+      'text-indigo-600 dark:text-indigo-400 bg-indigo-500/[0.06] dark:bg-indigo-400/10 border-indigo-500/40 dark:border-indigo-400/25',
+    later:
+      'text-text-tertiary bg-foreground/[0.03] dark:bg-foreground/[0.06] border-foreground/10 dark:border-foreground/10',
+    none: 'text-text-tertiary bg-foreground/[0.03] dark:bg-foreground/[0.06] border-foreground/10 dark:border-foreground/10'
   }
-
-  const isOverdue = formatted?.status === 'overdue'
-  const isToday = formatted?.status === 'today'
-
-  const dateColorClass = isOverdue
-    ? 'text-red-600 dark:text-red-400'
-    : isToday
-      ? 'text-amber-600 dark:text-amber-500'
-      : 'text-text-tertiary'
 
   return (
     <Popover open={isOpen} onOpenChange={setIsOpen}>
@@ -70,80 +72,34 @@ export const InteractiveDueDateBadge = ({
         <button
           type="button"
           className={cn(
-            'flex items-center gap-1 cursor-pointer transition-opacity rounded-sm',
+            'flex items-center gap-1.5 cursor-pointer transition-opacity rounded-[5px] py-[3px] px-2 border border-solid',
             'hover:opacity-80 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring',
-            dateColorClass,
+            badgeStyles[dateStatus],
             fixedWidth && 'w-[110px] flex justify-end',
             className
           )}
-          aria-label={`Due: ${formatted?.label || 'no date'}. Click to change.`}
+          aria-label={`Due: ${dateLabel}. Click to change.`}
         >
           {isRepeating && <Repeat className="size-3 shrink-0" />}
           <svg width="12" height="12" viewBox="0 0 12 12" fill="none" className="shrink-0">
-            <path
-              d="M4 1v2M8 1v2M1.5 5h9M2 2.5h8a1 1 0 0 1 1 1v6.5a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1V3.5a1 1 0 0 1 1-1z"
-              stroke="currentColor"
-              strokeWidth="1.1"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
+            <rect x="1.5" y="2" width="9" height="8.5" rx="1.25" stroke="currentColor" />
+            <path d="M1.5 4.5h9" stroke="currentColor" />
           </svg>
-          <div className="text-[11px] leading-3.5">{formatted?.label || 'No date'}</div>
+          <div className="text-[12px] leading-4">{dateLabel}</div>
         </button>
       </PopoverTrigger>
-      <PopoverContent className="w-[296px] p-3" align="end" onClick={handleTriggerClick}>
-        <div className="flex flex-col gap-2">
-          <div className="flex gap-2">
-            <button
-              type="button"
-              onClick={handleQuickDate(0)}
-              className={cn(
-                'flex-1 rounded-sm py-1.5 text-xs font-medium transition-colors',
-                'hover:bg-accent',
-                isToday ? 'bg-accent text-foreground' : 'text-muted-foreground'
-              )}
-            >
-              Today
-            </button>
-            <button
-              type="button"
-              onClick={handleQuickDate(1)}
-              className={cn(
-                'flex-1 rounded-sm py-1.5 text-xs font-medium transition-colors',
-                'hover:bg-accent',
-                formatted?.status === 'tomorrow'
-                  ? 'bg-accent text-foreground'
-                  : 'text-muted-foreground'
-              )}
-            >
-              Tomorrow
-            </button>
-            <button
-              type="button"
-              onClick={handleQuickDate(7)}
-              className="flex-1 rounded-sm py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-accent"
-            >
-              +1 Week
-            </button>
-          </div>
-
-          <div className="h-px bg-border" />
-
-          <DatePickerCalendar selected={dueDate || undefined} onSelect={handleDateSelect} />
-
-          {dueDate && (
-            <>
-              <div className="h-px bg-border" />
-              <button
-                type="button"
-                onClick={handleRemoveDate}
-                className="w-full rounded-sm py-1.5 text-xs font-medium text-destructive transition-colors hover:bg-destructive/10"
-              >
-                Remove due date
-              </button>
-            </>
-          )}
-        </div>
+      <PopoverContent
+        className="w-auto p-0 rounded-lg overflow-clip"
+        align="end"
+        onClick={handleTriggerClick}
+      >
+        <DatePickerContent
+          selected={dueDate}
+          onSelect={handleSelect}
+          showRemoveDate={!!dueDate}
+          time={dueTime}
+          onTimeChange={onTimeChange}
+        />
       </PopoverContent>
     </Popover>
   )
