@@ -1,12 +1,15 @@
-import { useEffect, useRef, useState, useMemo, memo } from 'react'
+import { useEffect, useRef, useState, useMemo, memo, useCallback } from 'react'
 import { cn } from '@/lib/utils'
-import { PriorityBars } from '@/components/tasks/task-icons'
-import { priorityConfig, type Task, type RepeatConfig } from '@/data/sample-tasks'
+import { type Task, type Priority, type RepeatConfig } from '@/data/sample-tasks'
 import type { Project } from '@/data/tasks-data'
-import { formatDateShort } from '@/lib/task-utils'
 import { getSubtasks } from '@/lib/subtask-utils'
-import { getRepeatDisplayText } from '@/lib/repeat-utils'
+import { TaskRepeatSection } from '@/components/tasks/task-repeat-section'
 import { notesService } from '@/services/notes-service'
+import { InteractiveStatusBadge } from '@/components/tasks/interactive-status-badge'
+import { InteractivePriorityBadge } from '@/components/tasks/interactive-priority-badge'
+import { InteractiveDueDateBadge } from '@/components/tasks/interactive-due-date-badge'
+import { InteractiveProjectBadge } from '@/components/tasks/interactive-project-badge'
+import { StatusIcon } from '@/components/tasks/task-icons'
 
 // ============================================================================
 // TYPES
@@ -21,8 +24,7 @@ export interface TaskDetailDrawerProps {
   onToggleComplete?: (taskId: string) => void
   onUpdateTask?: (taskId: string, updates: Partial<Task>) => void
   onAddSubtask?: (parentId: string, title: string) => void
-  onEditRepeat?: (taskId: string) => void
-  onStopRepeating?: (taskId: string) => void
+  onNoteClick?: (noteId: string) => void
 }
 
 // ============================================================================
@@ -47,27 +49,6 @@ const MONTHS = [
 const formatCreated = (date: Date): string =>
   `Created ${MONTHS[date.getMonth()]} ${date.getDate()}, ${date.getFullYear()}`
 
-const getOverdueInfo = (dueDate: Date): { days: number; text: string } | null => {
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
-  const due = new Date(dueDate)
-  due.setHours(0, 0, 0, 0)
-  const diff = Math.floor((today.getTime() - due.getTime()) / 86400000)
-  if (diff <= 0) return null
-  return { days: diff, text: diff === 1 ? '1 day overdue' : `${diff} days overdue` }
-}
-
-const buildRepeatInfoLine = (config: RepeatConfig): string => {
-  const parts = ['From: Due date']
-  if (config.endType === 'never') parts.push('Ends: Never')
-  else if (config.endType === 'date' && config.endDate)
-    parts.push(`Ends: ${formatDateShort(config.endDate)}`)
-  else if (config.endType === 'count' && config.endCount)
-    parts.push(`Ends: After ${config.endCount}x`)
-  parts.push(`Done: ${config.completedCount}x`)
-  return parts.join(' | ')
-}
-
 // ============================================================================
 // SMALL DISPLAY COMPONENTS
 // ============================================================================
@@ -76,72 +57,6 @@ const SectionLabel = ({ children }: { children: React.ReactNode }): React.JSX.El
   <span className="text-[11px] [letter-spacing:0.05em] uppercase text-text-tertiary font-medium leading-3.5">
     {children}
   </span>
-)
-
-const StatusIcon = ({
-  type,
-  color
-}: {
-  type: 'todo' | 'in_progress' | 'done'
-  color: string
-}): React.JSX.Element => (
-  <svg width="14" height="14" viewBox="0 0 14 14" fill="none" className="shrink-0">
-    {type === 'done' ? (
-      <>
-        <circle cx="7" cy="7" r="4.5" stroke={color} strokeWidth="1.2" fill={color} />
-        <path
-          d="M4.5 7l1.5 1.5L9.5 5.5"
-          stroke="var(--background)"
-          strokeWidth="1.2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-      </>
-    ) : type === 'in_progress' ? (
-      <>
-        <circle cx="7" cy="7" r="4.5" stroke={color} strokeWidth="1.3" />
-        <path d="M7 2.5A4.5 4.5 0 0 1 7 11.5" fill={color} />
-      </>
-    ) : (
-      <circle cx="7" cy="7" r="4.5" stroke="var(--text-tertiary)" strokeWidth="1.2" />
-    )}
-  </svg>
-)
-
-const CalendarIcon = ({ overdue }: { overdue: boolean }): React.JSX.Element => {
-  const stroke = overdue ? 'var(--destructive)' : 'var(--text-tertiary)'
-  return (
-    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" className="shrink-0">
-      <rect x="1.5" y="2.5" width="11" height="10" rx="1.5" stroke={stroke} strokeWidth="1.2" />
-      <path d="M1.5 5.5h11" stroke={stroke} strokeWidth="1.2" />
-      <path d="M4.5 1v2M9.5 1v2" stroke={stroke} strokeWidth="1.2" strokeLinecap="round" />
-    </svg>
-  )
-}
-
-const RepeatIcon = ({ color }: { color: string }): React.JSX.Element => (
-  <svg
-    width="14"
-    height="14"
-    viewBox="0 0 14 14"
-    fill="none"
-    className="shrink-0"
-    style={{ color }}
-  >
-    <path
-      d="M2 7a5 5 0 0 1 9-3M12 7a5 5 0 0 1-9 3"
-      stroke="currentColor"
-      strokeWidth="1.2"
-      strokeLinecap="round"
-    />
-    <path
-      d="M11 2v2.5h-2.5M3 12V9.5h2.5"
-      stroke="currentColor"
-      strokeWidth="1.2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-  </svg>
 )
 
 const NoteIcon = ({ color }: { color: string }): React.JSX.Element => (
@@ -171,17 +86,20 @@ export const TaskDetailDrawer = memo(function TaskDetailDrawer({
   onToggleComplete,
   onUpdateTask,
   onAddSubtask,
-  onEditRepeat,
-  onStopRepeating
+  onNoteClick
 }: TaskDetailDrawerProps): React.JSX.Element {
-  const [noteNames, setNoteNames] = useState<Record<string, string>>({})
+  const [noteNames, setNoteNames] = useState<
+    Record<string, { title: string; emoji?: string | null }>
+  >({})
   const [isAddingSubtask, setIsAddingSubtask] = useState(false)
   const [newSubtaskTitle, setNewSubtaskTitle] = useState('')
   const subtaskInputRef = useRef<HTMLInputElement>(null)
 
   const [isLinkingNote, setIsLinkingNote] = useState(false)
   const [noteSearchQuery, setNoteSearchQuery] = useState('')
-  const [availableNotes, setAvailableNotes] = useState<Array<{ id: string; title: string }>>([])
+  const [availableNotes, setAvailableNotes] = useState<
+    Array<{ id: string; title: string; emoji?: string | null }>
+  >([])
   const noteSearchInputRef = useRef<HTMLInputElement>(null)
 
   const linkedNoteKey = task?.linkedNoteIds?.join(',') ?? ''
@@ -196,14 +114,14 @@ export const TaskDetailDrawer = memo(function TaskDetailDrawer({
       task.linkedNoteIds.map(async (id) => {
         try {
           const note = await notesService.get(id)
-          return note ? ([id, note.title] as const) : null
+          return note ? ([id, { title: note.title, emoji: note.emoji }] as const) : null
         } catch {
           return null
         }
       })
     ).then((results) => {
       if (cancelled) return
-      const names: Record<string, string> = {}
+      const names: Record<string, { title: string; emoji?: string | null }> = {}
       for (const r of results) if (r) names[r[0]] = r[1]
       setNoteNames(names)
     })
@@ -239,7 +157,7 @@ export const TaskDetailDrawer = memo(function TaskDetailDrawer({
     if (isLinkingNote) {
       noteSearchInputRef.current?.focus()
       notesService.list({ sortBy: 'modified', sortOrder: 'desc', limit: 50 }).then((res) => {
-        setAvailableNotes(res.notes.map((n) => ({ id: n.id, title: n.title })))
+        setAvailableNotes(res.notes.map((n) => ({ id: n.id, title: n.title, emoji: n.emoji })))
       })
     }
   }, [isLinkingNote])
@@ -256,15 +174,6 @@ export const TaskDetailDrawer = memo(function TaskDetailDrawer({
     [task?.projectId, projects]
   )
 
-  const status = useMemo(
-    () => (task && project ? (project.statuses.find((s) => s.id === task.statusId) ?? null) : null),
-    [task?.statusId, project]
-  )
-
-  const statusType = (status?.type ?? 'todo') as 'todo' | 'in_progress' | 'done'
-  const statusColor = status?.color ?? 'var(--text-tertiary)'
-  const isCompleted = task ? task.completedAt !== null : false
-
   const subtasks = useMemo(() => (task ? getSubtasks(task.id, tasks) : []), [task?.id, tasks])
 
   const completedSubtaskCount = useMemo(
@@ -272,19 +181,58 @@ export const TaskDetailDrawer = memo(function TaskDetailDrawer({
     [subtasks]
   )
 
-  const overdue = useMemo(
-    () => (task?.dueDate && !isCompleted ? getOverdueInfo(task.dueDate) : null),
-    [task?.dueDate, isCompleted]
-  )
-
-  const priorityInfo = task ? priorityConfig[task.priority] : null
-
   const filteredSearchNotes = useMemo(() => {
     if (!isLinkingNote || !task) return []
     const linked = new Set(task.linkedNoteIds)
     const q = noteSearchQuery.toLowerCase()
     return availableNotes.filter((n) => !linked.has(n.id) && n.title.toLowerCase().includes(q))
   }, [isLinkingNote, task?.linkedNoteIds, noteSearchQuery, availableNotes])
+
+  const handleStatusChange = useCallback(
+    (statusId: string) => {
+      if (task) onUpdateTask?.(task.id, { statusId })
+    },
+    [task?.id, onUpdateTask]
+  )
+
+  const handlePriorityChange = useCallback(
+    (priority: Priority) => {
+      if (task) onUpdateTask?.(task.id, { priority })
+    },
+    [task?.id, onUpdateTask]
+  )
+
+  const handleDueDateChange = useCallback(
+    (dueDate: Date | null) => {
+      if (task) onUpdateTask?.(task.id, { dueDate })
+    },
+    [task?.id, onUpdateTask]
+  )
+
+  const handleDueTimeChange = useCallback(
+    (dueTime: string | null) => {
+      if (task) onUpdateTask?.(task.id, { dueTime })
+    },
+    [task?.id, onUpdateTask]
+  )
+
+  const handleProjectChange = useCallback(
+    (projectId: string) => {
+      if (task) onUpdateTask?.(task.id, { projectId })
+    },
+    [task?.id, onUpdateTask]
+  )
+
+  const handleRepeatChange = useCallback(
+    (repeatConfig: RepeatConfig | null) => {
+      if (!task) return
+      onUpdateTask?.(task.id, {
+        repeatConfig,
+        isRepeating: repeatConfig !== null
+      })
+    },
+    [task?.id, onUpdateTask]
+  )
 
   return (
     <div
@@ -300,15 +248,15 @@ export const TaskDetailDrawer = memo(function TaskDetailDrawer({
       <div className="w-[380px] h-full flex flex-col overflow-y-auto scrollbar-thin [font-synthesis:none] text-[12px] leading-4 antialiased">
         {task && project && (
           <>
-            {/* ── Header ── */}
-            <div className="flex items-center justify-between shrink-0 py-3.5 px-5 border-b border-border">
-              <div className="flex items-center gap-1">
-                <div
-                  className="rounded-xs shrink-0 size-2"
-                  style={{ backgroundColor: project.color }}
-                />
-                <span className="text-[12px] text-text-tertiary leading-4">{project.name}</span>
-              </div>
+            {/* ── Header: editable title + close ── */}
+            <div className="flex items-center gap-2 shrink-0 py-3.5 px-5 border-b border-border">
+              <input
+                type="text"
+                value={task.title}
+                onChange={(e) => onUpdateTask?.(task.id, { title: e.target.value })}
+                className="flex-1 min-w-0 text-[14px] font-medium text-text-primary bg-transparent outline-none truncate"
+                placeholder="Task name"
+              />
               <button
                 type="button"
                 onClick={onClose}
@@ -326,90 +274,66 @@ export const TaskDetailDrawer = memo(function TaskDetailDrawer({
               </button>
             </div>
 
-            {/* ── Title ── */}
-            <div className="pt-5 pb-4 shrink-0 text-[16px] text-text-primary font-sans leading-5 px-5">
-              {task.title}
-            </div>
-
             {/* ── Properties Grid ── */}
-            <div className="flex flex-col pb-4 border-b border-border px-5">
-              {/* Status */}
+            <div className="flex flex-col pt-3 pb-4 border-b border-border px-5">
               <div className="flex items-center py-1.5">
                 <span className="text-[12px] w-[90px] shrink-0 text-text-tertiary leading-4">
                   Status
                 </span>
-                <div className="flex items-center gap-1.5">
-                  <StatusIcon type={isCompleted ? 'done' : statusType} color={statusColor} />
-                  <span className="text-[12px] text-text-primary leading-4">
-                    {status?.name ?? 'Unknown'}
-                  </span>
-                </div>
+                <InteractiveStatusBadge
+                  statusId={task.statusId}
+                  statuses={project.statuses}
+                  onStatusChange={handleStatusChange}
+                />
               </div>
 
-              {/* Priority (hidden when none) */}
-              {task.priority !== 'none' && priorityInfo?.label && (
-                <div className="flex items-center py-1.5">
-                  <span className="text-[12px] w-[90px] shrink-0 text-text-tertiary leading-4">
-                    Priority
-                  </span>
-                  <div className="flex items-center gap-1.5">
-                    <PriorityBars priority={task.priority} />
-                    <span
-                      className="text-[12px] leading-4"
-                      style={{ color: priorityInfo.color ?? undefined }}
-                    >
-                      {priorityInfo.label}
-                    </span>
-                  </div>
-                </div>
-              )}
+              <div className="flex items-center py-1.5">
+                <span className="text-[12px] w-[90px] shrink-0 text-text-tertiary leading-4">
+                  Priority
+                </span>
+                <InteractivePriorityBadge
+                  priority={task.priority}
+                  onPriorityChange={handlePriorityChange}
+                  compact
+                />
+              </div>
 
-              {/* Due date */}
-              {task.dueDate && (
-                <div className="flex items-center py-1.5">
-                  <span className="text-[12px] w-[90px] shrink-0 text-text-tertiary leading-4">
-                    Due date
-                  </span>
-                  <div className="flex items-center gap-1.5">
-                    <CalendarIcon overdue={!!overdue} />
-                    <span
-                      className={cn(
-                        'text-[12px] leading-4',
-                        overdue ? 'text-destructive' : 'text-text-primary'
-                      )}
-                    >
-                      {formatDateShort(task.dueDate)}
-                      {overdue && ` — ${overdue.text}`}
-                    </span>
-                  </div>
-                </div>
-              )}
+              <div className="flex items-center py-1.5">
+                <span className="text-[12px] w-[90px] shrink-0 text-text-tertiary leading-4">
+                  Due date
+                </span>
+                <InteractiveDueDateBadge
+                  dueDate={task.dueDate}
+                  dueTime={task.dueTime}
+                  onDateChange={handleDueDateChange}
+                  onTimeChange={handleDueTimeChange}
+                  isRepeating={task.isRepeating}
+                />
+              </div>
 
-              {/* Project chip */}
               <div className="flex items-center py-1.5">
                 <span className="text-[12px] w-[90px] shrink-0 text-text-tertiary leading-4">
                   Project
                 </span>
-                <div
-                  className="flex items-center rounded-full py-0.5 px-2 border"
-                  style={{ borderColor: `${project.color}4D` }}
-                >
-                  <span className="text-[11px] leading-3.5" style={{ color: project.color }}>
-                    {project.name}
-                  </span>
-                </div>
+                <InteractiveProjectBadge
+                  projectId={task.projectId}
+                  projects={projects}
+                  onProjectChange={handleProjectChange}
+                />
               </div>
             </div>
 
             {/* ── Description ── */}
-            {task.description && (
-              <div className="flex flex-col py-4 px-5 gap-2 border-b border-border">
-                <SectionLabel>Description</SectionLabel>
-                <p className="text-[13px] leading-5 text-text-secondary whitespace-pre-wrap">
-                  {task.description}
-                </p>
-              </div>
-            )}
+            <div className="flex flex-col py-4 px-5 gap-2 border-b border-border">
+              <SectionLabel>Description</SectionLabel>
+              <textarea
+                value={task.description ?? ''}
+                onChange={(e) => onUpdateTask?.(task.id, { description: e.target.value })}
+                placeholder="Add a description..."
+                rows={3}
+                className="text-[13px] leading-5 text-text-secondary bg-transparent outline-none resize-none placeholder:text-text-tertiary"
+              />
+            </div>
 
             {/* ── Sub-issues ── */}
             <div className="flex flex-col py-4 px-5 gap-2 border-b border-border">
@@ -443,10 +367,13 @@ export const TaskDetailDrawer = memo(function TaskDetailDrawer({
               {subtasks.map((sub) => {
                 const isDone = sub.completedAt !== null
                 const subStatus = project.statuses.find((s) => s.id === sub.statusId)
+                const doneStatus = project.statuses.find((s) => s.type === 'done')
                 const subType = isDone
                   ? 'done'
                   : ((subStatus?.type ?? 'todo') as 'todo' | 'in_progress' | 'done')
-                const subColor = subStatus?.color ?? 'var(--text-tertiary)'
+                const subColor = isDone
+                  ? (doneStatus?.color ?? subStatus?.color ?? 'var(--text-tertiary)')
+                  : (subStatus?.color ?? 'var(--text-tertiary)')
 
                 return (
                   <button
@@ -471,9 +398,7 @@ export const TaskDetailDrawer = memo(function TaskDetailDrawer({
               })}
               {isAddingSubtask && (
                 <div className="flex items-center py-1 gap-2">
-                  <svg width="14" height="14" viewBox="0 0 14 14" fill="none" className="shrink-0">
-                    <circle cx="7" cy="7" r="4.5" stroke="var(--text-tertiary)" strokeWidth="1.2" />
-                  </svg>
+                  <StatusIcon type="todo" color="var(--text-tertiary)" />
                   <input
                     ref={subtaskInputRef}
                     type="text"
@@ -508,49 +433,14 @@ export const TaskDetailDrawer = memo(function TaskDetailDrawer({
             </div>
 
             {/* ── Repeat ── */}
-            {task.isRepeating && task.repeatConfig && (
-              <div className="flex flex-col py-4 px-5 gap-2 border-b border-border">
-                <div className="flex items-center justify-between">
-                  <SectionLabel>Repeat</SectionLabel>
-                  <RepeatIcon color="var(--text-tertiary)" />
-                </div>
-                <div className="flex items-center rounded-md py-2 px-2.5 gap-2 bg-foreground/[0.03]">
-                  <RepeatIcon color={project.color} />
-                  <div className="flex flex-col gap-0.5">
-                    <span className="text-[12px] text-text-primary font-medium leading-4">
-                      {getRepeatDisplayText(task.repeatConfig)}
-                    </span>
-                    <span className="text-[11px] text-text-tertiary leading-3.5">
-                      {buildRepeatInfoLine(task.repeatConfig)}
-                    </span>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  {onEditRepeat && (
-                    <button
-                      type="button"
-                      onClick={() => onEditRepeat(task.id)}
-                      className="flex items-center rounded-[5px] py-1 px-2.5 border border-foreground/10"
-                    >
-                      <span className="text-[11px] text-text-primary font-medium leading-3.5">
-                        Edit
-                      </span>
-                    </button>
-                  )}
-                  {onStopRepeating && (
-                    <button
-                      type="button"
-                      onClick={() => onStopRepeating(task.id)}
-                      className="flex items-center rounded-[5px] py-1 px-2.5 border border-foreground/10"
-                    >
-                      <span className="text-[11px] text-text-primary font-medium leading-3.5">
-                        Stop repeating
-                      </span>
-                    </button>
-                  )}
-                </div>
-              </div>
-            )}
+            <TaskRepeatSection
+              taskTitle={task.title}
+              repeatConfig={task.repeatConfig}
+              isRepeating={task.isRepeating}
+              dueDate={task.dueDate}
+              projectColor={project.color}
+              onRepeatChange={handleRepeatChange}
+            />
 
             {/* ── Linked Notes ── */}
             <div className="flex flex-col py-4 px-5 gap-2 border-b border-border">
@@ -572,17 +462,60 @@ export const TaskDetailDrawer = memo(function TaskDetailDrawer({
                   </svg>
                 </button>
               </div>
-              {task.linkedNoteIds.map((noteId) => (
-                <div
-                  key={noteId}
-                  className="flex items-center rounded-md py-1.5 px-2.5 gap-2 bg-foreground/[0.03]"
-                >
-                  <NoteIcon color={project.color} />
-                  <span className="text-[12px] text-text-secondary leading-4 truncate">
-                    {noteNames[noteId] ?? 'Loading…'}
-                  </span>
-                </div>
-              ))}
+              {task.linkedNoteIds.map((noteId) => {
+                const info = noteNames[noteId]
+                return (
+                  <div
+                    key={noteId}
+                    className="group flex items-center rounded-md py-1.5 px-2.5 gap-2 bg-foreground/[0.03] hover:bg-foreground/[0.05] transition-colors cursor-pointer"
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => onNoteClick?.(noteId)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault()
+                        onNoteClick?.(noteId)
+                      }
+                    }}
+                  >
+                    {info?.emoji ? (
+                      <span className="size-3.5 text-center text-[13px] leading-3.5 shrink-0">
+                        {info.emoji}
+                      </span>
+                    ) : (
+                      <NoteIcon color={project.color} />
+                    )}
+                    <span className="flex-1 min-w-0 text-[12px] text-text-secondary leading-4 truncate">
+                      {info?.title ?? 'Loading…'}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        onUpdateTask?.(task.id, {
+                          linkedNoteIds: task.linkedNoteIds.filter((id) => id !== noteId)
+                        })
+                        setNoteNames((prev) => {
+                          const next = { ...prev }
+                          delete next[noteId]
+                          return next
+                        })
+                      }}
+                      className="shrink-0 rounded-sm p-0.5 text-text-tertiary opacity-0 group-hover:opacity-100 hover:text-text-secondary transition-all"
+                      aria-label={`Remove link to ${info?.title ?? 'note'}`}
+                    >
+                      <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                        <path
+                          d="M3 3l6 6M9 3l-6 6"
+                          stroke="currentColor"
+                          strokeWidth="1.2"
+                          strokeLinecap="round"
+                        />
+                      </svg>
+                    </button>
+                  </div>
+                )
+              })}
               {isLinkingNote && (
                 <div className="flex flex-col gap-1">
                   <input
@@ -608,13 +541,22 @@ export const TaskDetailDrawer = memo(function TaskDetailDrawer({
                           onUpdateTask?.(task.id, {
                             linkedNoteIds: [...task.linkedNoteIds, note.id]
                           })
-                          setNoteNames((prev) => ({ ...prev, [note.id]: note.title }))
+                          setNoteNames((prev) => ({
+                            ...prev,
+                            [note.id]: { title: note.title, emoji: note.emoji }
+                          }))
                           setNoteSearchQuery('')
                           setIsLinkingNote(false)
                         }}
                         className="flex items-center rounded-md py-1.5 px-2.5 gap-2 text-left hover:bg-foreground/[0.05] transition-colors"
                       >
-                        <NoteIcon color={project.color} />
+                        {note.emoji ? (
+                          <span className="size-3.5 text-center text-[13px] leading-3.5 shrink-0">
+                            {note.emoji}
+                          </span>
+                        ) : (
+                          <NoteIcon color={project.color} />
+                        )}
                         <span className="text-[12px] text-text-secondary leading-4 truncate">
                           {note.title}
                         </span>
