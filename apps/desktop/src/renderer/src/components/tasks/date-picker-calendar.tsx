@@ -1,5 +1,4 @@
 import { useState, useMemo, useCallback } from 'react'
-import { ChevronLeft, ChevronRight } from 'lucide-react'
 
 import { cn } from '@/lib/utils'
 
@@ -26,20 +25,29 @@ function getDaysInMonth(year: number, month: number): number {
   return new Date(year, month + 1, 0).getDate()
 }
 
-function getMonthGrid(year: number, month: number, weekStartsOn: 0 | 1 = 0): (Date | null)[][] {
+interface GridDate {
+  date: Date
+  isOutsideMonth: boolean
+}
+
+function getMonthGrid(year: number, month: number, weekStartsOn: 0 | 1 = 1): GridDate[][] {
   const firstDay = new Date(year, month, 1).getDay()
   const daysInMonth = getDaysInMonth(year, month)
   const startOffset = weekStartsOn === 1 ? (firstDay + 6) % 7 : firstDay
+  const prevMonthDays = getDaysInMonth(year, month - 1)
 
-  const weeks: (Date | null)[][] = []
-  let currentWeek: (Date | null)[] = []
+  const weeks: GridDate[][] = []
+  let currentWeek: GridDate[] = []
 
-  for (let i = 0; i < startOffset; i++) {
-    currentWeek.push(null)
+  for (let i = startOffset - 1; i >= 0; i--) {
+    currentWeek.push({
+      date: new Date(year, month - 1, prevMonthDays - i),
+      isOutsideMonth: true
+    })
   }
 
   for (let day = 1; day <= daysInMonth; day++) {
-    currentWeek.push(new Date(year, month, day))
+    currentWeek.push({ date: new Date(year, month, day), isOutsideMonth: false })
     if (currentWeek.length === 7) {
       weeks.push(currentWeek)
       currentWeek = []
@@ -47,8 +55,12 @@ function getMonthGrid(year: number, month: number, weekStartsOn: 0 | 1 = 0): (Da
   }
 
   if (currentWeek.length > 0) {
+    let nextDay = 1
     while (currentWeek.length < 7) {
-      currentWeek.push(null)
+      currentWeek.push({
+        date: new Date(year, month + 1, nextDay++),
+        isOutsideMonth: true
+      })
     }
     weeks.push(currentWeek)
   }
@@ -56,11 +68,35 @@ function getMonthGrid(year: number, month: number, weekStartsOn: 0 | 1 = 0): (Da
   return weeks
 }
 
+const ChevronLeftIcon = (): React.JSX.Element => (
+  <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+    <path
+      d="M8.5 3.5L5 7l3.5 3.5"
+      stroke="currentColor"
+      strokeWidth="1.2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </svg>
+)
+
+const ChevronRightIcon = (): React.JSX.Element => (
+  <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+    <path
+      d="M5.5 3.5L9 7l-3.5 3.5"
+      stroke="currentColor"
+      strokeWidth="1.2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </svg>
+)
+
 export function DatePickerCalendar({
   selected,
   onSelect,
   disabled,
-  weekStartsOn = 0,
+  weekStartsOn = 1,
   className
 }: DatePickerCalendarProps): React.JSX.Element {
   const today = useMemo(() => {
@@ -107,35 +143,44 @@ export function DatePickerCalendar({
     })
   }, [])
 
+  const weekdays = weekStartsOn === 1 ? WEEKDAYS_MONDAY : WEEKDAYS_SUNDAY
+
   return (
-    <div className={cn('flex flex-col gap-1', className)}>
+    <div
+      className={cn(
+        '[font-synthesis:none] text-[12px] leading-4 flex flex-col pt-2 pb-3 gap-1.5 antialiased',
+        className
+      )}
+    >
       {/* Month navigation */}
-      <div className="flex items-center justify-between px-1">
+      <div className="flex items-center justify-between py-0.5">
         <button
           type="button"
           onClick={goToPrevMonth}
-          className="flex size-8 items-center justify-center rounded-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+          className="text-text-tertiary hover:text-text-secondary transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring rounded-sm"
           aria-label="Previous month"
         >
-          <ChevronLeft className="size-4" />
+          <ChevronLeftIcon />
         </button>
-        <span className="text-sm font-medium select-none">{monthLabel}</span>
+        <span className="text-[12px] font-medium text-text-primary leading-4 select-none">
+          {monthLabel}
+        </span>
         <button
           type="button"
           onClick={goToNextMonth}
-          className="flex size-8 items-center justify-center rounded-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+          className="text-text-tertiary hover:text-text-secondary transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring rounded-sm"
           aria-label="Next month"
         >
-          <ChevronRight className="size-4" />
+          <ChevronRightIcon />
         </button>
       </div>
 
       {/* Weekday headers */}
-      <div className="grid grid-cols-7">
-        {(weekStartsOn === 1 ? WEEKDAYS_MONDAY : WEEKDAYS_SUNDAY).map((day) => (
+      <div className="flex items-center">
+        {weekdays.map((day) => (
           <div
             key={day}
-            className="flex h-9 items-center justify-center text-xs font-medium text-muted-foreground select-none"
+            className="text-[10px] w-[30px] text-center text-text-tertiary/60 font-medium leading-3 shrink-0 select-none"
           >
             {day}
           </div>
@@ -144,32 +189,38 @@ export function DatePickerCalendar({
 
       {/* Day grid */}
       {weeks.map((week, wi) => (
-        <div key={wi} className="grid grid-cols-7">
-          {week.map((date, di) => {
-            if (!date) {
-              return <div key={`empty-${di}`} className="h-9" />
-            }
-
+        <div key={wi} className="flex items-center">
+          {week.map(({ date, isOutsideMonth }, di) => {
             const isToday = isSameDay(date, today)
-            const isSelected = selected ? isSameDay(date, selected) : false
-            const isDisabled = disabled?.(date) ?? false
+            const isSelected = !isOutsideMonth && selected ? isSameDay(date, selected) : false
+            const isDisabled = isOutsideMonth || (disabled?.(date) ?? false)
 
             return (
               <button
-                key={date.getDate()}
+                key={`${wi}-${di}`}
                 type="button"
                 onClick={() => !isDisabled && onSelect(date)}
                 disabled={isDisabled}
                 className={cn(
-                  'mx-auto flex size-9 items-center justify-center rounded-full text-sm transition-colors duration-150',
-                  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-                  isDisabled && 'text-muted-foreground/30 cursor-not-allowed',
-                  !isDisabled && 'hover:bg-accent',
+                  'w-[30px] h-[26px] flex items-center justify-center shrink-0 text-[11px] leading-3.5 transition-colors rounded-[5px]',
+                  'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring',
+                  isOutsideMonth && 'text-text-tertiary/30 cursor-default',
+                  !isOutsideMonth && isDisabled && 'text-text-tertiary/30 cursor-not-allowed',
                   !isDisabled &&
-                    isSelected &&
-                    'bg-primary text-primary-foreground hover:bg-primary/90',
-                  !isDisabled && !isSelected && isToday && 'ring-1 ring-primary/40 font-semibold',
-                  !isDisabled && !isSelected && !isToday && 'text-foreground'
+                    !isSelected &&
+                    !isToday &&
+                    date < today &&
+                    'text-text-tertiary hover:bg-accent',
+                  !isDisabled &&
+                    !isSelected &&
+                    !isToday &&
+                    date >= today &&
+                    'text-text-secondary hover:bg-accent',
+                  !isDisabled && isSelected && 'bg-primary text-primary-foreground font-semibold',
+                  !isDisabled &&
+                    !isSelected &&
+                    isToday &&
+                    'border border-foreground/15 text-text-primary font-medium'
                 )}
                 aria-label={date.toLocaleDateString('en-US', {
                   weekday: 'long',
