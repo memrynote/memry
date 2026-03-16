@@ -324,6 +324,7 @@ export interface SavedFilter {
   name: string
   filters: TaskFilters
   sort?: TaskSort
+  starred: boolean
   createdAt: Date
 }
 

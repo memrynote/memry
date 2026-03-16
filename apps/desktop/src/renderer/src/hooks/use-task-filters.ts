@@ -264,6 +264,7 @@ interface UseSavedFiltersReturn {
   saveFilter: (name: string, filters: TaskFilters, sort?: TaskSort) => void
   deleteFilter: (id: string) => void
   updateFilter: (id: string, updates: Partial<SavedFilter>) => void
+  toggleStar: (id: string) => void
 }
 
 /**
@@ -300,6 +301,7 @@ function dbToFrontendFilter(dbFilter: DbSavedFilter): SavedFilter {
           direction: config.sort.direction
         }
       : undefined,
+    starred: config.starred ?? false,
     createdAt: new Date(dbFilter.createdAt)
   }
 }
@@ -307,7 +309,11 @@ function dbToFrontendFilter(dbFilter: DbSavedFilter): SavedFilter {
 /**
  * Convert frontend filter to DB format
  */
-function frontendToDbConfig(filters: TaskFilters, sort?: TaskSort): SavedFilterConfig {
+function frontendToDbConfig(
+  filters: TaskFilters,
+  sort?: TaskSort,
+  starred?: boolean
+): SavedFilterConfig {
   return {
     filters: {
       search: filters.search,
@@ -328,7 +334,8 @@ function frontendToDbConfig(filters: TaskFilters, sort?: TaskSort): SavedFilterC
           field: sort.field,
           direction: sort.direction
         }
-      : undefined
+      : undefined,
+    starred
   }
 }
 
@@ -423,11 +430,34 @@ export const useSavedFilters = (): UseSavedFiltersReturn => {
     [savedFilters]
   )
 
+  const toggleStar = useCallback(
+    async (id: string) => {
+      const current = savedFilters.find((f) => f.id === id)
+      if (!current) return
+
+      const newStarred = !current.starred
+
+      setSavedFilters((prev) => prev.map((f) => (f.id === id ? { ...f, starred: newStarred } : f)))
+
+      try {
+        const config = frontendToDbConfig(current.filters, current.sort, newStarred)
+        await savedFiltersService.update({ id, config })
+      } catch (error) {
+        log.error('Failed to toggle star:', error)
+        setSavedFilters((prev) =>
+          prev.map((f) => (f.id === id ? { ...f, starred: current.starred } : f))
+        )
+      }
+    },
+    [savedFilters]
+  )
+
   return {
     savedFilters,
     isLoading,
     saveFilter,
     deleteFilter,
-    updateFilter
+    updateFilter,
+    toggleStar
   }
 }
