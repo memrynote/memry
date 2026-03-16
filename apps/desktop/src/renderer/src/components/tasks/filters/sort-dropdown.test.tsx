@@ -22,18 +22,18 @@ describe('SortDropdown', () => {
   it('opens the dropdown popover on click', () => {
     renderSortDropdown()
     fireEvent.click(screen.getByRole('button', { name: /sort/i }))
-    expect(screen.getByText('Due Date')).toBeInTheDocument()
+    expect(screen.getByText('Due date')).toBeInTheDocument()
     expect(screen.getByText('Priority')).toBeInTheDocument()
     expect(screen.getByText('Created')).toBeInTheDocument()
-    expect(screen.getByText('Title (A–Z)')).toBeInTheDocument()
+    expect(screen.getByText('Title')).toBeInTheDocument()
     expect(screen.getByText('Project')).toBeInTheDocument()
   })
 
   it('shows the default sort field as selected', () => {
     renderSortDropdown({ sort: { field: 'dueDate', direction: 'asc' } })
     fireEvent.click(screen.getByRole('button', { name: /sort/i }))
-    const dueDateRadio = screen.getByRole('radio', { name: /due date/i })
-    expect(dueDateRadio).toBeChecked()
+    const dueDateButton = screen.getByText('Due date').closest('button')!
+    expect(dueDateButton.className).toMatch(/bg-accent/)
   })
 
   it('calls onChange with the new field when a different sort is selected', () => {
@@ -67,28 +67,29 @@ describe('SortDropdown', () => {
     expect(onChange).toHaveBeenCalledWith({ field: 'priority', direction: 'asc' })
   })
 
-  it('resets to default sort when "Reset to default" is clicked', () => {
+  it('resets to default sort when clicking default field', () => {
     const onChange = vi.fn()
     renderSortDropdown({ sort: { field: 'title', direction: 'desc' }, onChange })
     fireEvent.click(screen.getByRole('button', { name: /sort/i }))
-    fireEvent.click(screen.getByText('Reset to default'))
-    expect(onChange).toHaveBeenCalledWith(defaultSort)
+    fireEvent.click(screen.getByText('Priority'))
+    expect(onChange).toHaveBeenCalledWith({ field: 'priority', direction: 'desc' })
   })
 
-  it('does not show direction arrows for unselected fields', () => {
+  it('shows direction arrows only once (for active sort)', () => {
     renderSortDropdown({ sort: { field: 'dueDate', direction: 'asc' } })
     fireEvent.click(screen.getByRole('button', { name: /sort/i }))
-    const radios = screen.getAllByRole('radio')
-    expect(radios).toHaveLength(5)
     const arrows = screen.getAllByRole('button', { name: /ascending|descending/i })
     expect(arrows).toHaveLength(2)
   })
 
-  it('shows all five sort options as radio buttons', () => {
+  it('shows all five sort options as buttons', () => {
     renderSortDropdown()
     fireEvent.click(screen.getByRole('button', { name: /sort/i }))
-    const radios = screen.getAllByRole('radio')
-    expect(radios).toHaveLength(5)
+    expect(screen.getByText('Priority')).toBeInTheDocument()
+    expect(screen.getByText('Due date')).toBeInTheDocument()
+    expect(screen.getByText('Created')).toBeInTheDocument()
+    expect(screen.getByText('Title')).toBeInTheDocument()
+    expect(screen.getByText('Project')).toBeInTheDocument()
   })
 
   it('preserves direction when switching sort field', () => {
