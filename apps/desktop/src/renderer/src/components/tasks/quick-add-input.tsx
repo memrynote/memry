@@ -130,6 +130,7 @@ interface QuickAddInputProps {
   placeholder?: string
   className?: string
   compact?: boolean
+  projectColor?: string
 }
 
 // ============================================================================
@@ -239,7 +240,8 @@ export const QuickAddInput = ({
   projects,
   placeholder = 'Add a task...    !today  !!high  #project',
   className,
-  compact = false
+  compact = false,
+  projectColor = '#6B7280'
 }: QuickAddInputProps): React.JSX.Element => {
   const [value, setValue] = useState('')
   const [isFocused, setIsFocused] = useState(false)
@@ -473,13 +475,10 @@ export const QuickAddInput = ({
         className={cn(
           'flex flex-col border-[1.5px] border-dashed transition-all duration-150 overflow-hidden',
           compact ? 'rounded-md' : 'rounded-[10px]',
-          isFocused
-            ? 'border-[#C4654A]/60'
-            : compact
-              ? 'border-border hover:border-text-tertiary'
-              : 'border-[#DAD9D4] hover:border-[#C4654A]/40',
+          !isFocused && (compact ? 'border-border hover:border-text-tertiary' : 'border-[#DAD9D4]'),
           className
         )}
+        style={isFocused ? { borderColor: `${projectColor}99` } : undefined}
       >
         <div
           className={cn(
@@ -492,7 +491,8 @@ export const QuickAddInput = ({
             height={compact ? '13' : '16'}
             viewBox={compact ? '0 0 13 13' : '0 0 18 18'}
             fill="none"
-            className={cn('shrink-0', compact ? 'text-text-secondary' : undefined)}
+            className="shrink-0 transition-colors duration-150"
+            style={{ color: projectColor }}
             aria-hidden="true"
           >
             {compact ? (
@@ -518,11 +518,16 @@ export const QuickAddInput = ({
                   cx="9"
                   cy="9"
                   r="7.5"
-                  stroke="#C4654A"
+                  stroke="currentColor"
                   strokeWidth="1.5"
                   strokeDasharray="3 3"
                 />
-                <path d="M9 6v6M6 9h6" stroke="#C4654A" strokeWidth="1.5" strokeLinecap="round" />
+                <path
+                  d="M9 6v6M6 9h6"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                />
               </>
             )}
           </svg>
@@ -562,27 +567,22 @@ export const QuickAddInput = ({
             />
           </div>
 
-          {!isFocused && (
-            <div className="flex items-center ml-auto shrink-0">
-              {compact ? (
-                <span className="rounded-[3px] px-1 bg-foreground/5 border border-border">
-                  <span className="text-[9px] text-text-tertiary font-[family-name:var(--font-mono)] font-medium leading-3">
-                    Q
-                  </span>
+          <div
+            className={cn(
+              'flex items-center ml-auto shrink-0 transition-opacity duration-150',
+              isFocused ? 'opacity-0 pointer-events-none' : 'opacity-100'
+            )}
+          >
+            {compact ? (
+              <span className="rounded-[3px] px-1 bg-foreground/5 border border-border">
+                <span className="text-[9px] text-text-tertiary font-[family-name:var(--font-mono)] font-medium leading-3">
+                  Q
                 </span>
-              ) : (
-                <Kbd className="px-1.5 py-px text-xs leading-4">Q</Kbd>
-              )}
-            </div>
-          )}
-
-          {/* Keyboard hint when focused with content */}
-          {isFocused && value.trim() && onOpenModal && (
-            <span className="shrink-0 text-xs text-muted-foreground">
-              <kbd className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium">⌘↵</kbd> for
-              more options
-            </span>
-          )}
+              </span>
+            ) : (
+              <Kbd className="px-1.5 py-px text-xs leading-4">Q</Kbd>
+            )}
+          </div>
         </div>
 
         {/* Parse preview — shows when special syntax is detected */}
