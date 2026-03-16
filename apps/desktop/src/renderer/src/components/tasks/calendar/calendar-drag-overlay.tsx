@@ -29,7 +29,7 @@ export const CalendarDragOverlay = ({
         className={cn(
           'flex items-center gap-1.5 rounded border border-border bg-background px-2 py-1 text-xs shadow-lg',
           isCompleted && 'opacity-60 line-through',
-          isOverdue && 'border-red-300 bg-red-50'
+          isOverdue && 'border-task-due-overdue/30 bg-task-due-overdue-bg'
         )}
       >
         {activeTask.priority !== 'none' && (

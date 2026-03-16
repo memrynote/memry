@@ -44,7 +44,7 @@ export const SavedFiltersDropdown = ({
       </PopoverTrigger>
 
       <PopoverContent
-        className="w-[280px] p-0 rounded-sm overflow-clip shadow-[0_4px_24px_rgba(0,0,0,0.08),0_1px_3px_rgba(0,0,0,0.04)]"
+        className="w-[280px] p-0 rounded-sm overflow-clip shadow-dropdown"
         align="end"
       >
         {/* Saved presets */}
@@ -63,7 +63,7 @@ export const SavedFiltersDropdown = ({
                   <Star
                     className={cn(
                       'size-3.5 shrink-0',
-                      index === 0 ? 'fill-[#F59E0B] text-[#F59E0B]' : 'text-text-tertiary'
+                      index === 0 ? 'fill-task-star text-task-star' : 'text-text-tertiary'
                     )}
                   />
                   <div className="flex flex-col gap-0.5 min-w-0">

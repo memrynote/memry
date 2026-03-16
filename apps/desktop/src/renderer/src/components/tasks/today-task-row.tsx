@@ -103,7 +103,7 @@ export const TodayTaskRow = ({
         'hover:bg-accent/50',
         onClick &&
           'cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-        isOverdue && 'bg-red-50/50 dark:bg-red-950/20',
+        isOverdue && 'bg-task-due-overdue-bg/50',
         isSelected && 'bg-primary/10 ring-2 ring-primary/30',
         className
       )}
@@ -116,7 +116,7 @@ export const TodayTaskRow = ({
       <span
         className={cn(
           'w-20 text-sm tabular-nums shrink-0',
-          isOverdue ? 'text-red-600 dark:text-red-400 font-medium' : 'text-text-tertiary'
+          isOverdue ? 'text-task-due-overdue font-medium' : 'text-text-tertiary'
         )}
       >
         {timeDisplay || '—'}
@@ -157,7 +157,7 @@ export const TodayTaskRow = ({
 
       {/* Overdue label */}
       {isOverdue && daysOverdue > 0 && (
-        <span className="text-xs text-red-600 dark:text-red-400 whitespace-nowrap font-medium">
+        <span className="text-xs text-task-due-overdue whitespace-nowrap font-medium">
           {daysOverdue === 1 ? '1 day overdue' : `${daysOverdue} days overdue`}
         </span>
       )}

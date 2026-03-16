@@ -104,7 +104,7 @@ export const SavedFiltersSection = ({
                     className={cn(
                       'transition-colors',
                       filter.starred
-                        ? 'text-amber-500 fill-amber-500'
+                        ? 'text-task-star fill-task-star'
                         : 'text-text-tertiary group-hover/filter:text-text-secondary'
                     )}
                   >

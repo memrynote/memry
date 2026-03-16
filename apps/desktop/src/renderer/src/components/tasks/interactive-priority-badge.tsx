@@ -3,16 +3,46 @@ import * as React from 'react'
 import { cn } from '@/lib/utils'
 import { CheckMark } from '@/components/ui/check-mark'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
-import { priorityConfig, type Priority } from '@/data/sample-tasks'
+import { PRIORITY_CSS_VARS, priorityConfig, type Priority } from '@/data/sample-tasks'
 import type { PriorityBadgeVariant } from './task-badges'
 import { PriorityIcon } from './task-icons'
 
-const PRIORITY_OPTIONS: { value: Priority; label: string; color: string; shortcut: string }[] = [
-  { value: 'urgent', label: 'Urgent', color: '#EF4444', shortcut: '1' },
-  { value: 'high', label: 'High', color: '#F97316', shortcut: '2' },
-  { value: 'medium', label: 'Medium', color: '#F59E0B', shortcut: '3' },
-  { value: 'low', label: 'Low', color: '#6B7280', shortcut: '4' },
-  { value: 'none', label: 'None', color: '', shortcut: '5' }
+const PRIORITY_OPTIONS: {
+  value: Priority
+  label: string
+  color: string
+  bg: string
+  shortcut: string
+}[] = [
+  {
+    value: 'urgent',
+    label: 'Urgent',
+    color: 'var(--task-priority-urgent)',
+    bg: 'var(--task-priority-urgent-bg)',
+    shortcut: '1'
+  },
+  {
+    value: 'high',
+    label: 'High',
+    color: 'var(--task-priority-high)',
+    bg: 'var(--task-priority-high-bg)',
+    shortcut: '2'
+  },
+  {
+    value: 'medium',
+    label: 'Medium',
+    color: 'var(--task-priority-medium)',
+    bg: 'var(--task-priority-medium-bg)',
+    shortcut: '3'
+  },
+  {
+    value: 'low',
+    label: 'Low',
+    color: 'var(--task-priority-low)',
+    bg: 'var(--task-priority-medium-bg)',
+    shortcut: '4'
+  },
+  { value: 'none', label: 'None', color: '', bg: '', shortcut: '5' }
 ]
 
 interface InteractivePriorityBadgeProps {
@@ -36,7 +66,7 @@ export const InteractivePriorityBadge = ({
 }: InteractivePriorityBadgeProps): React.JSX.Element => {
   const [isOpen, setIsOpen] = React.useState(false)
   const config = priorityConfig[priority]
-  const colorValue = config.color || '#9ca3af'
+  const cssVars = PRIORITY_CSS_VARS[priority]
 
   const compactLabels: Record<Priority, string> = {
     none: 'None',
@@ -75,11 +105,14 @@ export const InteractivePriorityBadge = ({
             fixedWidth && 'w-[70px] justify-start',
             className
           )}
-          style={{ backgroundColor: `${colorValue}14` }}
+          style={cssVars ? { backgroundColor: cssVars.bg } : undefined}
           aria-label={`Priority: ${config.label || 'none'}. Click to change.`}
         >
           <PriorityIcon priority={priority} />
-          <div className="text-[11px] font-medium leading-3.5" style={{ color: colorValue }}>
+          <div
+            className="text-[11px] font-medium leading-3.5"
+            style={{ color: cssVars?.text ?? 'var(--text-tertiary)' }}
+          >
             {displayLabel}
           </div>
         </button>
@@ -104,7 +137,7 @@ export const InteractivePriorityBadge = ({
                   'flex items-center rounded-[7px] py-2 px-3 gap-2 transition-colors',
                   'hover:bg-accent focus:outline-none'
                 )}
-                style={isSelected && !isNone ? { backgroundColor: `${option.color}0F` } : undefined}
+                style={isSelected && !isNone ? { backgroundColor: option.bg } : undefined}
               >
                 <PriorityIcon
                   priority={option.value}

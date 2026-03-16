@@ -36,8 +36,7 @@ const StatCard = ({
       className={cn(
         'flex items-center gap-3 rounded-sm border px-4 py-3',
         variant === 'default' && 'border-border bg-background',
-        variant === 'accent' &&
-          'border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/30',
+        variant === 'accent' && 'border-task-complete/20 bg-task-complete/[0.06]',
         className
       )}
       role="status"
@@ -47,7 +46,7 @@ const StatCard = ({
         className={cn(
           'flex size-9 items-center justify-center rounded-sm',
           variant === 'default' && 'bg-muted',
-          variant === 'accent' && 'bg-emerald-100 dark:bg-emerald-900/50'
+          variant === 'accent' && 'bg-task-complete/15'
         )}
       >
         {icon}
@@ -57,7 +56,7 @@ const StatCard = ({
           className={cn(
             'text-lg font-semibold tabular-nums',
             variant === 'default' && 'text-text-primary',
-            variant === 'accent' && 'text-emerald-700 dark:text-emerald-400'
+            variant === 'accent' && 'text-task-complete'
           )}
         >
           {value}
@@ -83,12 +82,7 @@ export const CompletionStats = ({ stats, className }: CompletionStatsProps): Rea
         label="Today"
         value={stats.today}
         variant="accent"
-        icon={
-          <CheckCircle
-            className="size-5 text-emerald-600 dark:text-emerald-400"
-            aria-hidden="true"
-          />
-        }
+        icon={<CheckCircle className="size-5 text-task-complete" aria-hidden="true" />}
       />
       <StatCard
         label="This Week"
@@ -106,7 +100,7 @@ export const CompletionStats = ({ stats, className }: CompletionStatsProps): Rea
         variant={stats.streak >= 3 ? 'accent' : 'default'}
         icon={
           <Flame
-            className={cn('size-5', stats.streak >= 3 ? 'text-orange-500' : 'text-text-tertiary')}
+            className={cn('size-5', stats.streak >= 3 ? 'text-task-star' : 'text-text-tertiary')}
             aria-hidden="true"
           />
         }

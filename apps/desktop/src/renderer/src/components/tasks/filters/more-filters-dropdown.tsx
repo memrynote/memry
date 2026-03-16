@@ -114,7 +114,7 @@ export const MoreFiltersDropdown = ({
       </PopoverTrigger>
 
       <PopoverContent
-        className="w-[260px] p-0 rounded-sm overflow-clip shadow-[0_4px_24px_rgba(0,0,0,0.08),0_1px_3px_rgba(0,0,0,0.04)]"
+        className="w-[260px] p-0 rounded-sm overflow-clip shadow-dropdown"
         align="start"
       >
         {!showStatusPanel ? (

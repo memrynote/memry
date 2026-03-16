@@ -143,17 +143,17 @@ interface DueDateBadgeProps {
 }
 
 const dueDateStatusStyles: Record<DueDateStatus, string> = {
-  overdue: 'text-red-600 dark:text-red-400',
-  today: 'text-amber-600 dark:text-amber-500',
-  tomorrow: 'text-blue-600 dark:text-blue-400',
+  overdue: 'text-task-due-overdue',
+  today: 'text-task-due-today',
+  tomorrow: 'text-task-due-tomorrow',
   upcoming: 'text-foreground',
   later: 'text-muted-foreground',
   none: 'text-muted-foreground'
 }
 
 const dueDateBackgroundStyles: Record<DueDateStatus, string> = {
-  overdue: 'bg-red-50 dark:bg-red-950/50',
-  today: 'bg-amber-50 dark:bg-amber-950/50',
+  overdue: 'bg-task-due-overdue-bg',
+  today: 'bg-task-due-today-bg',
   tomorrow: '',
   upcoming: '',
   later: '',

@@ -45,8 +45,8 @@ export const TodayEmptyState = ({
   return (
     <div className={cn('text-center py-20', className)}>
       {/* Subtle checkmark icon */}
-      <div className="mb-6 mx-auto w-16 h-16 rounded-full bg-emerald-50 dark:bg-emerald-950/30 flex items-center justify-center">
-        <Check className="size-7 text-emerald-600 dark:text-emerald-500" aria-hidden="true" />
+      <div className="mb-6 mx-auto w-16 h-16 rounded-full bg-task-complete/[0.08] flex items-center justify-center">
+        <Check className="size-7 text-task-complete" aria-hidden="true" />
       </div>
 
       {/* Title */}

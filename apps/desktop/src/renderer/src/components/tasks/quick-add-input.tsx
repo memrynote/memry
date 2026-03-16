@@ -17,21 +17,21 @@ interface Token {
 }
 
 const TOKEN_STYLES: Record<Exclude<TokenKind, 'plain'>, string> = {
-  date: 'text-amber-500 bg-amber-500/10 rounded px-0.5 -mx-0.5',
+  date: 'text-task-token-date bg-task-token-date/10 rounded px-0.5 -mx-0.5',
   priority: 'rounded px-0.5 -mx-0.5',
-  project: 'text-blue-400 bg-blue-400/10 rounded px-0.5 -mx-0.5'
+  project: 'text-task-token-project bg-task-token-project/10 rounded px-0.5 -mx-0.5'
 }
 
 const PRIORITY_COLORS: Record<string, string> = {
-  urgent: 'text-red-400 bg-red-400/10',
-  u: 'text-red-400 bg-red-400/10',
-  high: 'text-orange-400 bg-orange-400/10',
-  h: 'text-orange-400 bg-orange-400/10',
-  medium: 'text-amber-400 bg-amber-400/10',
-  med: 'text-amber-400 bg-amber-400/10',
-  m: 'text-amber-400 bg-amber-400/10',
-  low: 'text-blue-400 bg-blue-400/10',
-  l: 'text-blue-400 bg-blue-400/10',
+  urgent: 'text-task-priority-urgent bg-task-priority-urgent/10',
+  u: 'text-task-priority-urgent bg-task-priority-urgent/10',
+  high: 'text-task-priority-high bg-task-priority-high/10',
+  h: 'text-task-priority-high bg-task-priority-high/10',
+  medium: 'text-task-priority-medium bg-task-priority-medium/10',
+  med: 'text-task-priority-medium bg-task-priority-medium/10',
+  m: 'text-task-priority-medium bg-task-priority-medium/10',
+  low: 'text-task-priority-low bg-task-priority-low/10',
+  l: 'text-task-priority-low bg-task-priority-low/10',
   none: 'text-muted-foreground bg-muted/50',
   n: 'text-muted-foreground bg-muted/50'
 }
@@ -81,7 +81,8 @@ const TokenOverlay = ({ value }: { value: string }): React.JSX.Element => {
 
         if (token.kind === 'priority') {
           const keyword = token.text.slice(2).toLowerCase()
-          const colorClass = PRIORITY_COLORS[keyword] ?? 'text-orange-400 bg-orange-400/10'
+          const colorClass =
+            PRIORITY_COLORS[keyword] ?? 'text-task-priority-high bg-task-priority-high/10'
           return (
             <span key={i} className={cn(TOKEN_STYLES.priority, colorClass)}>
               {token.text}
@@ -189,8 +190,8 @@ const ParsePreview = ({
 
     items.push(
       <span key="date" className="flex items-center gap-1.5">
-        <Calendar className="size-3.5 text-amber-500" />
-        <span className="text-amber-600">{dateLabel}</span>
+        <Calendar className="size-3.5 text-task-token-date" />
+        <span className="text-task-token-date">{dateLabel}</span>
       </span>
     )
   }
@@ -303,10 +304,10 @@ export const QuickAddInput = ({
     if (!autocompleteType) return []
 
     const PRIORITY_ICON_COLORS: Record<string, string> = {
-      '!!urgent': 'text-red-500',
-      '!!high': 'text-orange-500',
-      '!!medium': 'text-amber-500',
-      '!!low': 'text-blue-400'
+      '!!urgent': 'text-task-priority-urgent',
+      '!!high': 'text-task-priority-high',
+      '!!medium': 'text-task-priority-medium',
+      '!!low': 'text-task-priority-low'
     }
 
     switch (autocompleteType) {
@@ -319,7 +320,7 @@ export const QuickAddInput = ({
             value: o.value,
             label: o.label,
             icon: (
-              <span className="relative flex items-center justify-center w-4 h-4 text-amber-500">
+              <span className="relative flex items-center justify-center w-4 h-4 text-task-token-date">
                 <Calendar className="size-4" />
                 {day !== null && (
                   <span className="absolute text-[6px] font-bold leading-none mt-[3px]">{day}</span>
@@ -346,7 +347,7 @@ export const QuickAddInput = ({
         return opts.map((o) => ({
           value: o.value,
           label: o.label,
-          icon: <Folder className="size-4 text-blue-400" />
+          icon: <Folder className="size-4 text-task-token-project" />
         }))
       }
       default:

@@ -112,7 +112,7 @@ export const SubtaskDots = ({
             className={cn(
               'w-1.5 h-1.5 rounded-full transition-colors',
               i < completed
-                ? 'bg-green-500 dark:bg-green-400' // Completed
+                ? 'bg-task-complete' // Completed
                 : 'bg-border' // Incomplete
             )}
           />

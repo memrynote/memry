@@ -27,31 +27,31 @@ const PRIORITY_DISPLAY: Record<
 > = {
   urgent: {
     label: 'Urgent',
-    dot: '#E54D2E',
-    checkBorder: '#E54D2E',
-    checkBg: '#FEF0EE',
-    checkStroke: '#E54D2E'
+    dot: 'var(--task-priority-urgent)',
+    checkBorder: 'var(--task-priority-urgent)',
+    checkBg: 'var(--task-priority-urgent-bg)',
+    checkStroke: 'var(--task-priority-urgent)'
   },
   high: {
     label: 'High',
-    dot: '#F59E0B',
-    checkBorder: '#F59E0B',
-    checkBg: '#FFF8EB',
-    checkStroke: '#F59E0B'
+    dot: 'var(--task-priority-high)',
+    checkBorder: 'var(--task-priority-high)',
+    checkBg: 'var(--task-priority-high-bg)',
+    checkStroke: 'var(--task-priority-high)'
   },
   medium: {
     label: 'Medium',
-    dot: '#22C55E',
+    dot: 'var(--task-complete)',
     checkBorder: 'var(--border)',
     checkBg: 'var(--card)',
-    checkStroke: '#22C55E'
+    checkStroke: 'var(--task-complete)'
   },
   low: {
     label: 'Low',
-    dot: '#3B82F6',
+    dot: 'var(--task-progress)',
     checkBorder: 'var(--border)',
     checkBg: 'var(--card)',
-    checkStroke: '#3B82F6'
+    checkStroke: 'var(--task-progress)'
   },
   none: {
     label: 'None',
@@ -108,10 +108,7 @@ export const PriorityFilter = ({
         </Button>
       </PopoverTrigger>
 
-      <PopoverContent
-        className="w-60 p-0 rounded-sm overflow-clip shadow-[0_4px_24px_rgba(0,0,0,0.08),0_1px_3px_rgba(0,0,0,0.04)]"
-        align="start"
-      >
+      <PopoverContent className="w-60 p-0 rounded-sm overflow-clip shadow-dropdown" align="start">
         {/* Options list */}
         <div className="flex flex-col py-2">
           {PRIORITY_ORDER.map((priority) => {
