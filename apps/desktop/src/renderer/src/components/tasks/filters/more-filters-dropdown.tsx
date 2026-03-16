@@ -129,11 +129,9 @@ export const MoreFiltersDropdown = ({
                 className="flex items-center py-[9px] px-4 gap-2.5 hover:bg-accent focus:outline-none transition-colors"
               >
                 <Clock className="size-3.5 text-text-tertiary" />
-                <span className="text-[13px] text-foreground font-['DM_Sans_Variable',system-ui,sans-serif] leading-4">
-                  Status
-                </span>
+                <span className="text-[13px] text-foreground leading-4">Status</span>
                 {selectedStatusIds.length > 0 && (
-                  <span className="text-[11px] text-text-tertiary font-['DM_Sans_Variable',system-ui,sans-serif]">
+                  <span className="text-[11px] text-text-tertiary">
                     ({selectedStatusIds.length})
                   </span>
                 )}
@@ -148,9 +146,7 @@ export const MoreFiltersDropdown = ({
               className="flex items-center py-[9px] px-4 gap-2.5 hover:bg-accent focus:outline-none transition-colors"
             >
               <Calendar className="size-3.5 text-text-tertiary" />
-              <span className="text-[13px] text-foreground font-['DM_Sans_Variable',system-ui,sans-serif] leading-4">
-                Has time set
-              </span>
+              <span className="text-[13px] text-foreground leading-4">Has time set</span>
               <ToggleSwitch
                 enabled={hasTime === 'with-time'}
                 onToggle={() => onHasTimeChange(hasTime === 'with-time' ? 'all' : 'with-time')}
@@ -166,9 +162,7 @@ export const MoreFiltersDropdown = ({
               className="flex items-center py-[9px] px-4 gap-2.5 hover:bg-accent focus:outline-none transition-colors"
             >
               <RefreshCw className="size-3.5 text-text-tertiary" />
-              <span className="text-[13px] text-foreground font-['DM_Sans_Variable',system-ui,sans-serif] leading-4">
-                Recurring only
-              </span>
+              <span className="text-[13px] text-foreground leading-4">Recurring only</span>
               <ToggleSwitch
                 enabled={repeatType === 'repeating'}
                 onToggle={() =>
@@ -186,9 +180,7 @@ export const MoreFiltersDropdown = ({
               className="flex items-center py-2.5 px-4 gap-1.5 bg-surface border-b border-border"
             >
               <ChevronDown className="size-2.5 text-text-tertiary rotate-90" />
-              <span className="text-[13px] text-foreground font-['DM_Sans_Variable',system-ui,sans-serif] font-semibold leading-4">
-                Status
-              </span>
+              <span className="text-[13px] text-foreground font-semibold leading-4">Status</span>
             </button>
             <div className="flex flex-col py-2">
               {statuses.map((status) => {
@@ -230,10 +222,8 @@ export const MoreFiltersDropdown = ({
                       className="shrink-0 rounded-full size-2"
                       style={{ backgroundColor: status.color }}
                     />
-                    <span className="text-[13px] text-foreground font-['DM_Sans_Variable',system-ui,sans-serif] leading-4">
-                      {status.name}
-                    </span>
-                    <span className="text-[11px] ml-auto text-text-tertiary font-['DM_Sans_Variable',system-ui,sans-serif] leading-[14px]">
+                    <span className="text-[13px] text-foreground leading-4">{status.name}</span>
+                    <span className="text-[11px] ml-auto text-text-tertiary leading-[14px]">
                       {taskCount}
                     </span>
                   </button>

@@ -179,7 +179,7 @@ export const DueDateFilter = ({
                 </div>
                 <span
                   className={cn(
-                    "text-[13px] font-['DM_Sans_Variable',system-ui,sans-serif] leading-4",
+                    'text-[13px] leading-4',
                     option.isOverdue && isSelected
                       ? 'font-medium text-[#E54D2E]'
                       : 'text-foreground',
@@ -190,7 +190,7 @@ export const DueDateFilter = ({
                 </span>
                 <span
                   className={cn(
-                    "text-[11px] ml-auto font-['DM_Sans_Variable',system-ui,sans-serif] leading-[14px]",
+                    'text-[11px] ml-auto leading-[14px]',
                     option.isOverdue && isSelected
                       ? 'text-red-700 dark:text-red-400'
                       : 'text-text-tertiary'
@@ -205,7 +205,7 @@ export const DueDateFilter = ({
 
         {/* Custom range */}
         <div className="flex flex-col py-3 px-4 gap-2 border-b border-border">
-          <span className="text-[11px] tracking-[0.05em] uppercase text-text-tertiary font-['DM_Sans_Variable',system-ui,sans-serif] font-semibold leading-[14px]">
+          <span className="text-[11px] tracking-[0.05em] uppercase text-text-tertiary font-semibold leading-[14px]">
             Custom Range
           </span>
           <div className="flex items-center gap-2">
@@ -216,7 +216,7 @@ export const DueDateFilter = ({
                   className="flex items-center grow shrink basis-0 rounded-sm py-1.5 px-2.5 gap-1.5 border border-border hover:border-text-tertiary transition-colors"
                 >
                   <CalendarIcon className="size-3 text-text-tertiary" />
-                  <span className="text-[12px] font-['DM_Sans_Variable',system-ui,sans-serif] leading-4 text-text-tertiary">
+                  <span className="text-[12px] leading-4 text-text-tertiary">
                     {customStart
                       ? customStart.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
                       : 'Start'}
@@ -238,9 +238,7 @@ export const DueDateFilter = ({
               </PopoverContent>
             </Popover>
 
-            <span className="text-[12px] text-text-tertiary font-['DM_Sans_Variable',system-ui,sans-serif] leading-4">
-              —
-            </span>
+            <span className="text-[12px] text-text-tertiary leading-4">—</span>
 
             <Popover>
               <PopoverTrigger asChild>
@@ -249,7 +247,7 @@ export const DueDateFilter = ({
                   className="flex items-center grow shrink basis-0 rounded-sm py-1.5 px-2.5 gap-1.5 border border-border hover:border-text-tertiary transition-colors"
                 >
                   <CalendarIcon className="size-3 text-text-tertiary" />
-                  <span className="text-[12px] font-['DM_Sans_Variable',system-ui,sans-serif] leading-4 text-text-tertiary">
+                  <span className="text-[12px] leading-4 text-text-tertiary">
                     {customEnd
                       ? customEnd.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
                       : 'End'}
@@ -276,7 +274,7 @@ export const DueDateFilter = ({
           <button
             type="button"
             onClick={handleClear}
-            className="text-[12px] text-text-tertiary font-['DM_Sans_Variable',system-ui,sans-serif] font-medium leading-4 hover:text-foreground transition-colors"
+            className="text-[12px] text-text-tertiary font-medium leading-4 hover:text-foreground transition-colors"
           >
             Clear
           </button>
@@ -285,9 +283,7 @@ export const DueDateFilter = ({
             onClick={() => setIsOpen(false)}
             className="flex items-center rounded-sm py-[5px] px-3.5 gap-1 bg-foreground hover:bg-foreground/80 transition-colors"
           >
-            <span className="text-[12px] text-background font-['DM_Sans_Variable',system-ui,sans-serif] font-semibold leading-4">
-              Apply
-            </span>
+            <span className="text-[12px] text-background font-semibold leading-4">Apply</span>
           </button>
         </div>
       </PopoverContent>
