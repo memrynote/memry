@@ -26,12 +26,12 @@ const makeSavedFilter = (overrides: Partial<SavedFilter> = {}): SavedFilter => (
 const renderTabBar = (overrides: Partial<Parameters<typeof TasksTabBar>[0]> = {}) => {
   const onTabChange = overrides.onTabChange ?? vi.fn()
   const onApplySavedFilter = overrides.onApplySavedFilter ?? vi.fn()
-  const onDeleteSavedFilter = overrides.onDeleteSavedFilter ?? vi.fn()
+  const onUnstarSavedFilter = overrides.onUnstarSavedFilter ?? vi.fn()
 
   return {
     onTabChange,
     onApplySavedFilter,
-    onDeleteSavedFilter,
+    onUnstarSavedFilter,
     ...render(
       <TasksTabBar
         activeTab="all"
@@ -39,7 +39,7 @@ const renderTabBar = (overrides: Partial<Parameters<typeof TasksTabBar>[0]> = {}
         counts={defaultCounts}
         savedFilters={[]}
         onApplySavedFilter={onApplySavedFilter}
-        onDeleteSavedFilter={onDeleteSavedFilter}
+        onUnstarSavedFilter={onUnstarSavedFilter}
         {...overrides}
       />
     )
@@ -139,23 +139,23 @@ describe('TasksTabBar', () => {
       ]
       renderTabBar({ savedFilters: filters })
 
-      expect(screen.getByLabelText('Remove High Priority')).toBeInTheDocument()
-      expect(screen.getByLabelText('Remove Overdue Work')).toBeInTheDocument()
+      expect(screen.getByLabelText('Unstar High Priority')).toBeInTheDocument()
+      expect(screen.getByLabelText('Unstar Overdue Work')).toBeInTheDocument()
     })
 
-    it('calls onDeleteSavedFilter with filter id when delete button clicked', () => {
+    it('calls onUnstarSavedFilter with filter id when unstar button clicked', () => {
       const filter = makeSavedFilter({ id: 'sf-1', name: 'High Priority' })
-      const { onDeleteSavedFilter } = renderTabBar({ savedFilters: [filter] })
+      const { onUnstarSavedFilter } = renderTabBar({ savedFilters: [filter] })
 
-      fireEvent.click(screen.getByLabelText('Remove High Priority'))
-      expect(onDeleteSavedFilter).toHaveBeenCalledWith('sf-1')
+      fireEvent.click(screen.getByLabelText('Unstar High Priority'))
+      expect(onUnstarSavedFilter).toHaveBeenCalledWith('sf-1')
     })
 
-    it('does not trigger onApplySavedFilter when delete button clicked', () => {
+    it('does not trigger onApplySavedFilter when unstar button clicked', () => {
       const filter = makeSavedFilter({ id: 'sf-1', name: 'High Priority' })
       const { onApplySavedFilter } = renderTabBar({ savedFilters: [filter] })
 
-      fireEvent.click(screen.getByLabelText('Remove High Priority'))
+      fireEvent.click(screen.getByLabelText('Unstar High Priority'))
       expect(onApplySavedFilter).not.toHaveBeenCalled()
     })
   })
