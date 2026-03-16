@@ -3,13 +3,14 @@ import { useMemo } from 'react'
 import { cn } from '@/lib/utils'
 import type { TaskFilters, Project } from '@/data/tasks-data'
 import type { Priority } from '@/data/sample-tasks'
-import { defaultStatuses } from '@/data/tasks-data'
 
 interface ActiveFiltersBarProps {
   filters: TaskFilters
   projects: Project[]
   onUpdateFilters: (updates: Partial<TaskFilters>) => void
   onClearAll: () => void
+  onSaveFilter?: () => void
+  isSaved?: boolean
   className?: string
 }
 
@@ -60,8 +61,8 @@ const PillWrapper = ({
 }): React.JSX.Element => (
   <div
     className={cn(
-      'flex items-center rounded-[5px] pr-1 pl-2 gap-[5px] shrink-0 py-[3px]',
-      'bg-foreground/10 border border-foreground/20',
+      'flex items-center rounded-[5px] pr-1 pl-2 gap-[5px] shrink-0 py-[3px] antialiased',
+      'bg-[#5E6AD21A] border border-[#5E6AD233]',
       cls
     )}
   >
@@ -74,6 +75,8 @@ export const ActiveFiltersBar = ({
   projects,
   onUpdateFilters,
   onClearAll,
+  onSaveFilter,
+  isSaved = false,
   className
 }: ActiveFiltersBarProps): React.JSX.Element | null => {
   const pills = useMemo(() => {
@@ -115,8 +118,7 @@ export const ActiveFiltersBar = ({
           const status = project.statuses.find((s) => s.id === id)
           if (status) return status.name
         }
-        const def = defaultStatuses.find((s) => s.id === id)
-        return def?.name ?? id
+        return id
       })
       result.push(
         <PillWrapper key="status">
@@ -264,13 +266,34 @@ export const ActiveFiltersBar = ({
       )}
     >
       {pills}
-      <button
-        type="button"
-        onClick={onClearAll}
-        className={`text-[11px] ml-auto shrink-0 whitespace-nowrap text-destructive leading-3.5 hover:text-destructive/70 transition-colors`}
-      >
-        Clear all
-      </button>
+      <div className="flex items-center gap-2.5 ml-auto shrink-0">
+        {onSaveFilter && (
+          <button
+            type="button"
+            onClick={onSaveFilter}
+            aria-label={isSaved ? 'Saved' : 'Save filter'}
+            className="flex items-center gap-1 text-[11px] shrink-0 whitespace-nowrap text-text-secondary leading-3.5 hover:text-foreground transition-colors"
+          >
+            <svg width="11" height="11" viewBox="0 0 11 11" fill="none" className="shrink-0">
+              <path
+                d="M5.5 1.5l1.09 2.21 2.44.35-1.77 1.72.42 2.43L5.5 7.12 3.32 8.21l.42-2.43-1.77-1.72 2.44-.35L5.5 1.5z"
+                stroke="currentColor"
+                strokeWidth="0.8"
+                strokeLinejoin="round"
+                fill={isSaved ? 'currentColor' : 'none'}
+              />
+            </svg>
+            <span>{isSaved ? 'Saved' : 'Save'}</span>
+          </button>
+        )}
+        <button
+          type="button"
+          onClick={onClearAll}
+          className="text-[11px] shrink-0 whitespace-nowrap text-destructive leading-3.5 hover:text-destructive/70 transition-colors"
+        >
+          Clear all
+        </button>
+      </div>
     </div>
   )
 }

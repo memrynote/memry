@@ -14,7 +14,6 @@ interface MoreFiltersDropdownProps {
   statuses?: Status[]
   selectedStatusIds: string[]
   onStatusChange: (statusIds: string[]) => void
-  showStatusFilter?: boolean
   repeatType: RepeatFilterType
   onRepeatTypeChange: (type: RepeatFilterType) => void
   hasTime: HasTimeFilterType
@@ -61,7 +60,6 @@ export const MoreFiltersDropdown = ({
   statuses = [],
   selectedStatusIds,
   onStatusChange,
-  showStatusFilter = false,
   repeatType,
   onRepeatTypeChange,
   hasTime,
@@ -122,7 +120,7 @@ export const MoreFiltersDropdown = ({
         {!showStatusPanel ? (
           <div className="flex flex-col py-2">
             {/* Status — navigable sub-filter */}
-            {showStatusFilter && statuses.length > 0 && (
+            {statuses.length > 0 && (
               <button
                 type="button"
                 onClick={() => setShowStatusPanel(true)}
