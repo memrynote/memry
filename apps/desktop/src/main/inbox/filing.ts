@@ -263,6 +263,32 @@ function generateNoteContent(item: InboxItemRow): string {
       return content
     }
 
+    case 'social': {
+      const socialMeta = item.metadata as Record<string, unknown> | null
+      const url = item.sourceUrl || ''
+      const fullPostContent =
+        (typeof socialMeta?.postContent === 'string' && socialMeta.postContent) ||
+        item.content ||
+        ''
+
+      let content = `[Open Original](${url})\n\n`
+
+      if (socialMeta?.authorHandle && typeof socialMeta.authorHandle === 'string') {
+        content += `**${socialMeta.authorHandle}**`
+        if (socialMeta.authorName && typeof socialMeta.authorName === 'string') {
+          content += ` (${socialMeta.authorName})`
+        }
+        content += '\n\n'
+      }
+
+      if (fullPostContent) {
+        content += `> ${fullPostContent.replace(/\n/g, '\n> ')}\n\n`
+      }
+
+      content += `---\n*Filed from Inbox on ${filedDate}*`
+      return content
+    }
+
     case 'note':
     case 'clip':
     default: {

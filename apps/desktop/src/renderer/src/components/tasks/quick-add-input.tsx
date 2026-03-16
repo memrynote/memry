@@ -1,7 +1,9 @@
 import { useState, useRef, useCallback, useMemo } from 'react'
-import { Plus, Calendar, Folder, Flag } from 'lucide-react'
+import { Calendar, Folder, Flag } from 'lucide-react'
 
 import { cn } from '@/lib/utils'
+import { Kbd } from '@/components/ui/kbd'
+import { useKeyboardShortcuts } from '@/hooks/use-keyboard-shortcuts-base'
 
 // ============================================================================
 // TOKEN HIGHLIGHT OVERLAY
@@ -15,21 +17,21 @@ interface Token {
 }
 
 const TOKEN_STYLES: Record<Exclude<TokenKind, 'plain'>, string> = {
-  date: 'text-amber-500 bg-amber-500/10 rounded px-0.5 -mx-0.5',
+  date: 'text-task-token-date bg-task-token-date/10 rounded px-0.5 -mx-0.5',
   priority: 'rounded px-0.5 -mx-0.5',
-  project: 'text-blue-400 bg-blue-400/10 rounded px-0.5 -mx-0.5'
+  project: 'text-task-token-project bg-task-token-project/10 rounded px-0.5 -mx-0.5'
 }
 
 const PRIORITY_COLORS: Record<string, string> = {
-  urgent: 'text-red-400 bg-red-400/10',
-  u: 'text-red-400 bg-red-400/10',
-  high: 'text-orange-400 bg-orange-400/10',
-  h: 'text-orange-400 bg-orange-400/10',
-  medium: 'text-amber-400 bg-amber-400/10',
-  med: 'text-amber-400 bg-amber-400/10',
-  m: 'text-amber-400 bg-amber-400/10',
-  low: 'text-blue-400 bg-blue-400/10',
-  l: 'text-blue-400 bg-blue-400/10',
+  urgent: 'text-task-priority-urgent bg-task-priority-urgent/10',
+  u: 'text-task-priority-urgent bg-task-priority-urgent/10',
+  high: 'text-task-priority-high bg-task-priority-high/10',
+  h: 'text-task-priority-high bg-task-priority-high/10',
+  medium: 'text-task-priority-medium bg-task-priority-medium/10',
+  med: 'text-task-priority-medium bg-task-priority-medium/10',
+  m: 'text-task-priority-medium bg-task-priority-medium/10',
+  low: 'text-task-priority-low bg-task-priority-low/10',
+  l: 'text-task-priority-low bg-task-priority-low/10',
   none: 'text-muted-foreground bg-muted/50',
   n: 'text-muted-foreground bg-muted/50'
 }
@@ -79,7 +81,8 @@ const TokenOverlay = ({ value }: { value: string }): React.JSX.Element => {
 
         if (token.kind === 'priority') {
           const keyword = token.text.slice(2).toLowerCase()
-          const colorClass = PRIORITY_COLORS[keyword] ?? 'text-orange-400 bg-orange-400/10'
+          const colorClass =
+            PRIORITY_COLORS[keyword] ?? 'text-task-priority-high bg-task-priority-high/10'
           return (
             <span key={i} className={cn(TOKEN_STYLES.priority, colorClass)}>
               {token.text}
@@ -108,13 +111,7 @@ import {
 import { priorityConfig, type Priority } from '@/data/sample-tasks'
 import type { Project } from '@/data/tasks-data'
 import { formatDateShort } from '@/lib/task-utils'
-import {
-  QuickOptionsBar,
-  AutocompleteDropdown,
-  QuickAddHelp,
-  type AutocompleteType,
-  type AutocompleteOption
-} from './quick-add'
+import { AutocompleteDropdown, type AutocompleteType, type AutocompleteOption } from './quick-add'
 
 // ============================================================================
 // TYPES
@@ -133,6 +130,8 @@ interface QuickAddInputProps {
   projects: Project[]
   placeholder?: string
   className?: string
+  compact?: boolean
+  projectColor?: string
 }
 
 // ============================================================================
@@ -191,8 +190,8 @@ const ParsePreview = ({
 
     items.push(
       <span key="date" className="flex items-center gap-1.5">
-        <Calendar className="size-3.5 text-amber-500" />
-        <span className="text-amber-600">{dateLabel}</span>
+        <Calendar className="size-3.5 text-task-token-date" />
+        <span className="text-task-token-date">{dateLabel}</span>
       </span>
     )
   }
@@ -240,13 +239,23 @@ export const QuickAddInput = ({
   onAdd,
   onOpenModal,
   projects,
-  placeholder = 'Add task...',
-  className
+  placeholder = 'Add a task...    !today  !!high  #project',
+  className,
+  compact = false,
+  projectColor = '#6B7280'
 }: QuickAddInputProps): React.JSX.Element => {
   const [value, setValue] = useState('')
   const [isFocused, setIsFocused] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
   const overlayRef = useRef<HTMLDivElement>(null)
+
+  useKeyboardShortcuts([
+    {
+      key: 'q',
+      action: () => inputRef.current?.focus(),
+      description: 'Focus quick add input'
+    }
+  ])
 
   // Detect triggers for autocomplete - compute during render instead of useEffect
   const { showAutocomplete, autocompleteType, autocompleteQuery } = useMemo(() => {
@@ -295,10 +304,10 @@ export const QuickAddInput = ({
     if (!autocompleteType) return []
 
     const PRIORITY_ICON_COLORS: Record<string, string> = {
-      '!!urgent': 'text-red-500',
-      '!!high': 'text-orange-500',
-      '!!medium': 'text-amber-500',
-      '!!low': 'text-blue-400'
+      '!!urgent': 'text-task-priority-urgent',
+      '!!high': 'text-task-priority-high',
+      '!!medium': 'text-task-priority-medium',
+      '!!low': 'text-task-priority-low'
     }
 
     switch (autocompleteType) {
@@ -311,7 +320,7 @@ export const QuickAddInput = ({
             value: o.value,
             label: o.label,
             icon: (
-              <span className="relative flex items-center justify-center w-4 h-4 text-amber-500">
+              <span className="relative flex items-center justify-center w-4 h-4 text-task-token-date">
                 <Calendar className="size-4" />
                 {day !== null && (
                   <span className="absolute text-[6px] font-bold leading-none mt-[3px]">{day}</span>
@@ -338,7 +347,7 @@ export const QuickAddInput = ({
         return opts.map((o) => ({
           value: o.value,
           label: o.label,
-          icon: <Folder className="size-4 text-blue-400" />
+          icon: <Folder className="size-4 text-task-token-project" />
         }))
       }
       default:
@@ -439,15 +448,6 @@ export const QuickAddInput = ({
     inputRef.current?.focus()
   }
 
-  // Insert text from quick options or autocomplete
-  const handleInsert = useCallback((text: string): void => {
-    setValue((prev) => {
-      const trimmed = prev.trimEnd()
-      return trimmed ? `${trimmed} ${text}` : text
-    })
-    inputRef.current?.focus()
-  }, [])
-
   // Insert from autocomplete (replaces the trigger word)
   const handleAutocompleteSelect = useCallback((selectedValue: string): void => {
     setValue((prev) => {
@@ -466,39 +466,82 @@ export const QuickAddInput = ({
 
   const showPreview =
     isFocused && preview && (preview.hasDate || preview.hasPriority || preview.hasProject)
-  const showQuickOptions = isFocused && !showAutocomplete && !value.trim()
 
   return (
-    <div className="relative">
+    <div className={cn('relative', compact && 'grow shrink basis-0 min-w-0')}>
       <div
         role="button"
         tabIndex={-1}
         onClick={handleContainerClick}
         className={cn(
-          'flex flex-col rounded-md border transition-all duration-150 overflow-hidden',
-          isFocused
-            ? 'border-primary bg-background shadow-sm'
-            : 'border-transparent bg-muted/50 hover:bg-muted',
+          'flex flex-col border-[1.5px] border-dashed transition-all duration-150 overflow-hidden',
+          compact ? 'rounded-md' : 'rounded-[10px]',
+          !isFocused && (compact ? 'border-border hover:border-text-tertiary' : 'border-[#DAD9D4]'),
           className
         )}
+        style={isFocused ? { borderColor: `${projectColor}99` } : undefined}
       >
-        <div className="flex items-center gap-3 px-3 py-2.5">
-          {/* Checkbox placeholder / Plus icon */}
-          <div
-            className={cn(
-              'flex size-5 shrink-0 items-center justify-center rounded-full border-2 transition-colors',
-              isFocused ? 'border-text-tertiary' : 'border-transparent'
-            )}
+        <div
+          className={cn(
+            'flex items-center',
+            compact ? 'gap-1.5 px-2.5 py-1' : 'gap-2.5 px-3.5 py-2'
+          )}
+        >
+          <svg
+            width={compact ? '13' : '16'}
+            height={compact ? '13' : '16'}
+            viewBox={compact ? '0 0 13 13' : '0 0 18 18'}
+            fill="none"
+            className="shrink-0 transition-colors duration-150"
+            style={{ color: projectColor }}
+            aria-hidden="true"
           >
-            {!isFocused && <Plus className="size-4 text-text-tertiary" aria-hidden="true" />}
-          </div>
+            {compact ? (
+              <>
+                <circle
+                  cx="6.5"
+                  cy="6.5"
+                  r="5"
+                  stroke="currentColor"
+                  strokeWidth="1.1"
+                  strokeDasharray="2.5 2.5"
+                />
+                <path
+                  d="M6.5 4.5v4M4.5 6.5h4"
+                  stroke="currentColor"
+                  strokeWidth="1.1"
+                  strokeLinecap="round"
+                />
+              </>
+            ) : (
+              <>
+                <circle
+                  cx="9"
+                  cy="9"
+                  r="7.5"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  strokeDasharray="3 3"
+                />
+                <path
+                  d="M9 6v6M6 9h6"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                />
+              </>
+            )}
+          </svg>
 
           {/* Input with token highlight overlay */}
           <div className="relative flex-1 min-w-0">
             <div
               ref={overlayRef}
               aria-hidden="true"
-              className="pointer-events-none absolute inset-0 overflow-hidden whitespace-pre text-sm leading-[normal]"
+              className={cn(
+                'pointer-events-none absolute inset-0 overflow-hidden whitespace-pre leading-[normal]',
+                compact ? 'text-[12px]' : 'text-sm'
+              )}
             >
               {value && hasSpecialSyntax(value) && <TokenOverlay value={value} />}
             </div>
@@ -513,49 +556,50 @@ export const QuickAddInput = ({
               onKeyDown={handleKeyDown}
               placeholder={placeholder}
               className={cn(
-                'relative w-full bg-transparent text-sm outline-none caret-text-primary',
+                'relative w-full bg-transparent outline-none caret-text-primary',
+                compact ? 'text-[12px] leading-4' : 'text-sm',
                 value && hasSpecialSyntax(value)
-                  ? 'text-transparent selection:bg-primary/20 selection:text-transparent placeholder:text-text-tertiary'
+                  ? 'text-transparent selection:bg-primary/20 selection:text-transparent placeholder:text-muted-foreground/40'
                   : isFocused
-                    ? 'text-text-primary placeholder:text-text-tertiary'
-                    : 'text-text-tertiary placeholder:text-text-tertiary'
+                    ? 'text-text-primary placeholder:text-muted-foreground/40'
+                    : 'text-muted-foreground placeholder:text-muted-foreground/40'
               )}
               aria-label="Quick add task"
             />
           </div>
 
-          {/* Help icon when not focused */}
-          {!isFocused && <QuickAddHelp />}
-
-          {/* Keyboard hint when focused with content */}
-          {isFocused && value.trim() && onOpenModal && (
-            <span className="shrink-0 text-xs text-muted-foreground">
-              <kbd className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium">⌘↵</kbd> for
-              more options
-            </span>
-          )}
+          <div
+            className={cn(
+              'flex items-center ml-auto shrink-0 transition-opacity duration-150',
+              isFocused ? 'opacity-0 pointer-events-none' : 'opacity-100'
+            )}
+          >
+            {compact ? (
+              <span className="rounded-[3px] px-1 bg-foreground/5 border border-border">
+                <span className="text-[9px] text-text-tertiary font-[family-name:var(--font-mono)] font-medium leading-3">
+                  Q
+                </span>
+              </span>
+            ) : (
+              <Kbd className="px-1.5 py-px text-xs leading-4">Q</Kbd>
+            )}
+          </div>
         </div>
 
-        {/* Bottom slot — smooth height animation prevents jarring layout shift */}
+        {/* Parse preview — shows when special syntax is detected */}
         <div
           className={cn(
             'grid transition-[grid-template-rows,opacity] duration-150 ease-out',
-            showPreview || showQuickOptions
-              ? 'grid-rows-[1fr] opacity-100'
-              : 'grid-rows-[0fr] opacity-0'
+            showPreview ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'
           )}
         >
           <div className="overflow-hidden min-h-0">
-            {showPreview && preview ? (
+            {showPreview && preview && (
               <ParsePreview
                 dueDate={preview.dueDate}
                 priority={preview.priority}
                 projectName={preview.projectName}
               />
-            ) : (
-              <div className="px-3 pb-2">
-                <QuickOptionsBar onInsert={handleInsert} />
-              </div>
             )}
           </div>
         </div>

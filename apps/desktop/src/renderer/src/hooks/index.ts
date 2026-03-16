@@ -5,11 +5,8 @@ export * from './use-bulk-actions'
 export * from './use-drag-handlers'
 export * from './use-task-order'
 export * from './use-expanded-tasks'
-export * from './use-collapsed-sections'
 export * from './use-subtask-management'
 export * from './use-task-settings'
-export * from './use-overdue-celebration'
-
 // Sidebar navigation
 export * from './use-sidebar-navigation'
 export * from './use-reveal-in-sidebar'

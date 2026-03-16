@@ -9,7 +9,6 @@ import { useCallback, useEffect, useMemo, useRef, useState, type RefObject } fro
 import { cn } from '@/lib/utils'
 import { Loader2, FileText } from 'lucide-react'
 import {
-  JournalCalendar,
   AIConnectionsPanel,
   DayContextSidebar,
   JournalMonthView,
@@ -397,7 +396,6 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
     }
   }, [viewState, selectedDate, navigateToYear, navigateToDay])
 
-  const handleDayClick = useCallback((date: string) => navigateToDay(date), [navigateToDay])
   const handleTodayClick = useCallback(() => navigateToDay(today), [today, navigateToDay])
 
   const handlePreviousDay = useCallback(() => {
@@ -1005,13 +1003,6 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
               className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-bl from-amber-500/[0.04] to-transparent dark:from-amber-400/[0.03] rounded-bl-[60px] pointer-events-none"
               aria-hidden="true"
             />
-            <section className="relative">
-              <JournalCalendar
-                selectedDate={selectedDate}
-                onDayClick={handleDayClick}
-                heatmapData={heatmapData}
-              />
-            </section>
             {!isJournalSettingsLoading &&
               (journalSettings.showSchedule || journalSettings.showTasks) && (
                 <section className="relative">

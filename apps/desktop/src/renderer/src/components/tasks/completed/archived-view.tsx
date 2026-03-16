@@ -64,7 +64,7 @@ export const ArchivedView = ({
 
   return (
     <ScrollArea className={cn('flex-1', className)}>
-      <div className="p-4 space-y-4">
+      <div className="pt-4 space-y-4">
         {/* Header with Back button */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -127,7 +127,7 @@ export const ArchivedView = ({
                     {group.tasks.length} task{group.tasks.length !== 1 ? 's' : ''}
                   </span>
                 </div>
-                <div className="divide-y divide-border/50 rounded-lg border border-border">
+                <div className="divide-y divide-border/50 rounded-sm border border-border">
                   {group.tasks.map((task) => (
                     <ArchivedTaskRow
                       key={task.id}

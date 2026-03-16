@@ -35,7 +35,7 @@ interface CalendarViewProps {
   selectedId: string
   selectedType: SelectionType
   onUpdateTask: (taskId: string, updates: Partial<Task>) => void
-  onTaskClick: (taskId: string) => void
+  onTaskClick?: (taskId: string) => void
   onAddTaskWithDate: (date: Date) => void
   onToggleComplete: (taskId: string) => void
   // Selection props
@@ -322,7 +322,7 @@ export const CalendarView = ({
           maxVisibleTasks={isCompact ? 2 : 3}
           isCompact={isCompact}
           onOpenDay={handleOpenDay}
-          onTaskClick={onTaskClick}
+          onTaskClick={onTaskClick ?? (() => {})}
           onAddTask={handleAddTask}
         />
       </ScrollArea>
@@ -333,7 +333,7 @@ export const CalendarView = ({
         allTasks={tasks}
         isOpen={isDayDetailOpen}
         onClose={() => setIsDayDetailOpen(false)}
-        onTaskClick={onTaskClick}
+        onTaskClick={onTaskClick ?? (() => {})}
         onToggleComplete={onToggleComplete}
         onAddTask={handleAddTask}
         // Selection props

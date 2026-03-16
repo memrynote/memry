@@ -16,8 +16,8 @@ import { restrictToVerticalAxis, restrictToParentElement } from '@dnd-kit/modifi
 
 import { cn } from '@/lib/utils'
 import { SortableSubtaskRow } from '@/components/tasks/sortable-subtask-row'
-import { AddSubtaskInput } from '@/components/tasks/add-subtask-input'
 import type { Task } from '@/data/sample-tasks'
+import type { Status } from '@/data/tasks-data'
 
 // ============================================================================
 // TYPES
@@ -27,9 +27,9 @@ interface SortableSubtaskListProps {
   parentId: string
   parentTitle: string
   subtasks: Task[]
+  statuses: Status[]
   onReorder: (parentId: string, newOrder: string[]) => void
   onToggleComplete: (taskId: string) => void
-  onAddSubtask?: (parentId: string, title: string) => void
   onClick?: (taskId: string) => void
   className?: string
 }
@@ -53,9 +53,9 @@ export const SortableSubtaskList = ({
   parentId,
   parentTitle,
   subtasks,
+  statuses,
   onReorder,
   onToggleComplete,
-  onAddSubtask,
   onClick,
   className
 }: SortableSubtaskListProps): React.JSX.Element => {
@@ -96,7 +96,7 @@ export const SortableSubtaskList = ({
       id={`subtasks-${parentId}`}
       role="group"
       aria-label={`Subtasks of ${parentTitle}`}
-      className={cn('ml-[62px]', className)}
+      className={cn(className)}
     >
       <DndContext
         sensors={sensors}
@@ -109,19 +109,15 @@ export const SortableSubtaskList = ({
             <SortableSubtaskRow
               key={subtask.id}
               subtask={subtask}
+              statuses={statuses}
               parentId={parentId}
-              isLast={index === subtasks.length - 1 && !onAddSubtask}
+              isLast={index === subtasks.length - 1}
               onToggleComplete={onToggleComplete}
               onClick={onClick}
             />
           ))}
         </SortableContext>
       </DndContext>
-
-      {/* Add subtask input */}
-      {onAddSubtask && (
-        <AddSubtaskInput parentId={parentId} onAdd={onAddSubtask} className="pl-2" />
-      )}
     </div>
   )
 }

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { ChevronDown, Check } from 'lucide-react'
+import { ChevronDown } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
@@ -17,66 +17,52 @@ interface PriorityFilterProps {
   className?: string
 }
 
-interface PriorityOption {
-  value: Priority
-  label: string
-  color: string | null
+// ============================================================================
+// PRIORITY OPTIONS — Paper design colors
+// ============================================================================
+
+const PRIORITY_DISPLAY: Record<
+  Priority,
+  { label: string; dot: string; checkBorder: string; checkBg: string; checkStroke: string }
+> = {
+  urgent: {
+    label: 'Urgent',
+    dot: 'var(--task-priority-urgent)',
+    checkBorder: 'var(--task-priority-urgent)',
+    checkBg: 'var(--task-priority-urgent-bg)',
+    checkStroke: 'var(--task-priority-urgent)'
+  },
+  high: {
+    label: 'High',
+    dot: 'var(--task-priority-high)',
+    checkBorder: 'var(--task-priority-high)',
+    checkBg: 'var(--task-priority-high-bg)',
+    checkStroke: 'var(--task-priority-high)'
+  },
+  medium: {
+    label: 'Medium',
+    dot: 'var(--task-complete)',
+    checkBorder: 'var(--border)',
+    checkBg: 'var(--card)',
+    checkStroke: 'var(--task-complete)'
+  },
+  low: {
+    label: 'Low',
+    dot: 'var(--task-progress)',
+    checkBorder: 'var(--border)',
+    checkBg: 'var(--card)',
+    checkStroke: 'var(--task-progress)'
+  },
+  none: {
+    label: 'None',
+    dot: 'var(--border)',
+    checkBorder: 'var(--border)',
+    checkBg: 'var(--card)',
+    checkStroke: 'var(--border)'
+  }
 }
 
-// ============================================================================
-// PRIORITY OPTIONS
-// ============================================================================
-
-const priorityOptions: PriorityOption[] = [
-  { value: 'urgent', label: 'Urgent', color: priorityConfig.urgent.color },
-  { value: 'high', label: 'High', color: priorityConfig.high.color },
-  { value: 'medium', label: 'Medium', color: priorityConfig.medium.color },
-  { value: 'low', label: 'Low', color: priorityConfig.low.color },
-  { value: 'none', label: 'None', color: null }
-]
-
-// Quick presets
-const quickPresets = [
-  { id: 'high-urgent', label: 'High & Urgent', priorities: ['urgent', 'high'] as Priority[] },
-  { id: 'medium-plus', label: 'Medium+', priorities: ['urgent', 'high', 'medium'] as Priority[] },
-  {
-    id: 'has-priority',
-    label: 'Has Priority',
-    priorities: ['urgent', 'high', 'medium', 'low'] as Priority[]
-  }
-]
-
-// ============================================================================
-// PRIORITY DOT
-// ============================================================================
-
-const PriorityDot = ({
-  color,
-  className
-}: {
-  color: string | null
-  className?: string
-}): React.JSX.Element => {
-  if (!color) {
-    return (
-      <span
-        className={cn(
-          'size-3 shrink-0 rounded-full border-2 border-muted-foreground/40',
-          className
-        )}
-        aria-hidden="true"
-      />
-    )
-  }
-
-  return (
-    <span
-      className={cn('size-3 shrink-0 rounded-full', className)}
-      style={{ backgroundColor: color }}
-      aria-hidden="true"
-    />
-  )
-}
+const PRIORITY_ORDER: Priority[] = ['urgent', 'high', 'medium', 'low', 'none']
 
 // ============================================================================
 // PRIORITY FILTER COMPONENT
@@ -90,22 +76,13 @@ export const PriorityFilter = ({
 }: PriorityFilterProps): React.JSX.Element => {
   const [isOpen, setIsOpen] = useState(false)
 
-  const allSelected = selectedPriorities.length === 0
   const hasSelection = selectedPriorities.length > 0
-
-  const handleToggleAll = (): void => {
-    onChange([])
-  }
 
   const handleTogglePriority = (priority: Priority): void => {
     const nextSelection = selectedPriorities.includes(priority)
       ? selectedPriorities.filter((p) => p !== priority)
       : [...selectedPriorities, priority]
     onChange(nextSelection)
-  }
-
-  const handleApplyPreset = (priorities: Priority[]): void => {
-    onChange(priorities)
   }
 
   const handleClear = (): void => {
@@ -131,99 +108,89 @@ export const PriorityFilter = ({
         </Button>
       </PopoverTrigger>
 
-      <PopoverContent className="w-56 p-0" align="start">
-        <div className="p-2">
-          {/* Quick presets */}
-          <div className="mb-2">
-            <div className="text-xs font-medium text-muted-foreground px-2 py-1">QUICK SELECT</div>
-            <div className="flex flex-wrap gap-1 px-2">
-              {quickPresets.map((preset) => {
-                const isActive =
-                  selectedPriorities.length === preset.priorities.length &&
-                  preset.priorities.every((p) => selectedPriorities.includes(p))
+      <PopoverContent className="w-60 p-0 rounded-sm overflow-clip shadow-dropdown" align="start">
+        {/* Options list */}
+        <div className="flex flex-col py-2">
+          {PRIORITY_ORDER.map((priority) => {
+            const display = PRIORITY_DISPLAY[priority]
+            const isSelected = selectedPriorities.includes(priority)
+            const taskCount = taskCountByPriority[priority] || 0
 
-                return (
-                  <button
-                    key={preset.id}
-                    type="button"
-                    onClick={() => handleApplyPreset(preset.priorities)}
-                    className={cn(
-                      'px-2 py-1 text-xs rounded-md border transition-colors',
-                      isActive
-                        ? 'bg-primary text-primary-foreground border-primary'
-                        : 'bg-background border-border hover:bg-accent'
-                    )}
-                  >
-                    {preset.label}
-                  </button>
-                )
-              })}
-            </div>
-          </div>
-
-          <div className="my-2 h-px bg-border" />
-
-          {/* All Priorities option */}
-          <button
-            type="button"
-            onClick={handleToggleAll}
-            className={cn(
-              'flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm transition-colors',
-              'hover:bg-accent focus:outline-none focus:bg-accent',
-              allSelected && 'font-medium'
-            )}
-          >
-            <span className="flex items-center justify-center size-4">
-              {allSelected && <Check className="size-4 text-primary" />}
-            </span>
-            <span>All Priorities</span>
-          </button>
-
-          <div className="my-2 h-px bg-border" />
-
-          {/* Individual priorities */}
-          <div className="max-h-64 overflow-y-auto">
-            {priorityOptions.map((option) => {
-              const isSelected = selectedPriorities.includes(option.value)
-              const taskCount = taskCountByPriority[option.value] || 0
-
-              return (
-                <button
-                  key={option.value}
-                  type="button"
-                  onClick={() => handleTogglePriority(option.value)}
+            return (
+              <button
+                key={priority}
+                type="button"
+                onClick={() => handleTogglePriority(priority)}
+                className={cn(
+                  'flex items-center gap-2.5 py-2 px-4 transition-colors',
+                  'hover:bg-accent focus:outline-none focus:bg-accent'
+                )}
+              >
+                {/* Checkbox */}
+                <div
+                  className="flex items-center justify-center rounded-sm shrink-0 size-4"
+                  style={{
+                    borderWidth: '1.5px',
+                    borderStyle: 'solid',
+                    borderColor: isSelected ? display.checkBorder : 'var(--border)',
+                    backgroundColor: isSelected ? display.checkBg : 'var(--card)'
+                  }}
+                >
+                  {isSelected && (
+                    <svg
+                      width="10"
+                      height="10"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke={display.checkStroke}
+                      strokeWidth="3"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <polyline points="20 6 9 17 4 12" />
+                    </svg>
+                  )}
+                </div>
+                {/* Color dot */}
+                <div
+                  className="shrink-0 rounded-full size-2"
+                  style={{ backgroundColor: display.dot }}
+                />
+                {/* Label */}
+                <span
                   className={cn(
-                    'flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm transition-colors',
-                    'hover:bg-accent focus:outline-none focus:bg-accent',
-                    isSelected && 'font-medium'
+                    'text-[13px] leading-4',
+                    isSelected ? 'font-medium text-foreground' : 'text-foreground',
+                    priority === 'none' && !isSelected && 'text-text-secondary'
                   )}
                 >
-                  <span className="flex items-center justify-center size-4">
-                    {isSelected && <Check className="size-4 text-primary" />}
-                  </span>
-                  <span className="flex items-center gap-2 flex-1">
-                    <PriorityDot color={option.color} />
-                    <span>{option.label}</span>
-                  </span>
-                  <span className="text-xs text-text-tertiary">{taskCount}</span>
-                </button>
-              )
-            })}
-          </div>
+                  {display.label}
+                </span>
+                {/* Count */}
+                <span className="text-[11px] ml-auto text-text-tertiary leading-[14px]">
+                  {taskCount}
+                </span>
+              </button>
+            )
+          })}
+        </div>
 
-          <div className="my-2 h-px bg-border" />
-
-          {/* Action buttons */}
-          <div className="flex items-center justify-end px-2 py-1">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleClear}
-              className="h-7 text-xs text-muted-foreground hover:text-foreground"
-            >
-              Clear
-            </Button>
-          </div>
+        {/* Footer */}
+        <div className="flex items-center justify-between py-2.5 px-4 bg-surface border-t border-border">
+          <button
+            type="button"
+            onClick={handleClear}
+            className="text-[12px] text-text-tertiary font-medium leading-4 hover:text-foreground transition-colors"
+          >
+            Clear
+          </button>
+          <button
+            type="button"
+            onClick={() => setIsOpen(false)}
+            className="flex items-center rounded-sm py-[5px] px-3.5 gap-1 bg-foreground hover:bg-foreground/80 transition-colors"
+          >
+            <span className="text-[12px] text-background font-semibold leading-4">Apply</span>
+          </button>
         </div>
       </PopoverContent>
     </Popover>

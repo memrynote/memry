@@ -423,6 +423,15 @@ export const useDragHandlers = ({
           break
         }
 
+        case 'weekday': {
+          const weekdayDate = overData?.date as Date | undefined
+          const weekdayLabel = overData?.label as string
+          if (weekdayDate) {
+            handleSectionDrop(taskIds, weekdayDate, weekdayLabel)
+          }
+          break
+        }
+
         case 'date': {
           const targetDate = overData?.date as Date
           if (targetDate) {

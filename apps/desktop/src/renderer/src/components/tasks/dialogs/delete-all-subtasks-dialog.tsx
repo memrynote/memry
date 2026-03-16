@@ -60,15 +60,13 @@ export const DeleteAllSubtasksDialog = ({
               </p>
 
               {/* Subtask list */}
-              <ScrollArea className="max-h-[200px] rounded-lg border p-3">
+              <ScrollArea className="max-h-[200px] rounded-sm border p-3">
                 <ul className="space-y-1.5">
                   {subtasks.map((subtask) => (
                     <li key={subtask.id} className="flex items-center gap-2 text-sm">
                       <span className="text-muted-foreground">•</span>
                       <span className="truncate">{subtask.title}</span>
-                      {subtask.completedAt && (
-                        <span className="text-xs text-green-600 dark:text-green-400">✓</span>
-                      )}
+                      {subtask.completedAt && <span className="text-xs text-task-complete">✓</span>}
                     </li>
                   ))}
                 </ul>

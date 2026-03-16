@@ -1,98 +1,75 @@
-import { useCallback, useRef } from 'react'
-import { List, Star, FolderKanban, Plus, Settings, Columns3, Calendar } from 'lucide-react'
+import { useCallback, useMemo, useRef, useState } from 'react'
+import { Settings, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { Button } from '@/components/ui/button'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
-import type { ViewMode } from '@/data/tasks-data'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { FilterSearchHeader } from '@/components/ui/filter-search-header'
+import { CheckMark } from '@/components/ui/check-mark'
+import type { Project, SavedFilter } from '@/data/tasks-data'
 
-// ============================================================================
-// TYPES
-// ============================================================================
-
-export type TasksInternalTab = 'all' | 'today' | 'projects'
+export type TasksInternalTab = 'today' | 'all' | 'done'
 
 interface TabConfig {
   id: TasksInternalTab
   label: string
-  icon: React.ComponentType<{ className?: string }>
 }
-
-interface ViewModeConfig {
-  id: ViewMode
-  label: string
-  icon: React.ComponentType<{ className?: string }>
-}
-
-const viewModeButtons: ViewModeConfig[] = [
-  { id: 'list', label: 'List', icon: List },
-  { id: 'kanban', label: 'Kanban', icon: Columns3 },
-  { id: 'calendar', label: 'Calendar', icon: Calendar }
-]
 
 interface TasksTabBarProps {
   activeTab: TasksInternalTab
   onTabChange: (tab: TasksInternalTab) => void
-  onAddTask?: () => void
-  onProjectSettings?: () => void
-  showProjectSettings?: boolean
   counts: {
-    all: number
     today: number
-    projects: number
+    all: number
+    done: number
   }
-  activeView?: ViewMode
-  availableViews?: ViewMode[]
-  onViewChange?: (view: ViewMode) => void
+  projects?: Project[]
+  selectedProjectId?: string | null
+  onProjectChange?: (projectId: string | null) => void
+  onProjectEdit?: (project: Project) => void
+  savedFilters?: SavedFilter[]
+  activeSavedFilterId?: string | null
+  onApplySavedFilter?: (filter: SavedFilter) => void
+  onUnstarSavedFilter?: (filterId: string) => void
   className?: string
 }
 
-// ============================================================================
-// TAB CONFIGURATION
-// ============================================================================
-
-const tabs: TabConfig[] = [
-  { id: 'all', label: 'All', icon: List },
-  { id: 'today', label: 'Today', icon: Star },
-  { id: 'projects', label: 'Projects', icon: FolderKanban }
+const TABS: TabConfig[] = [
+  { id: 'today', label: 'Today' },
+  { id: 'all', label: 'All' },
+  { id: 'done', label: 'Done' }
 ]
-
-// ============================================================================
-// TASKS TAB BAR COMPONENT
-// ============================================================================
 
 export const TasksTabBar = ({
   activeTab,
   onTabChange,
-  onAddTask,
-  onProjectSettings,
-  showProjectSettings,
   counts,
-  activeView = 'list',
-  availableViews,
-  onViewChange,
+  projects = [],
+  selectedProjectId,
+  onProjectChange,
+  onProjectEdit,
+  savedFilters = [],
+  activeSavedFilterId,
+  onApplySavedFilter,
+  onUnstarSavedFilter,
   className
 }: TasksTabBarProps): React.JSX.Element => {
   const tabRefs = useRef<Map<TasksInternalTab, HTMLButtonElement>>(new Map())
+  const [isProjectDropdownOpen, setIsProjectDropdownOpen] = useState(false)
 
-  // Focus management for keyboard navigation
   const focusTab = useCallback((tabId: TasksInternalTab) => {
-    const button = tabRefs.current.get(tabId)
-    button?.focus()
+    tabRefs.current.get(tabId)?.focus()
   }, [])
 
-  // Handle keyboard navigation
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent, currentIndex: number) => {
       let nextIndex: number | null = null
-
       switch (e.key) {
         case 'ArrowLeft':
           e.preventDefault()
-          nextIndex = currentIndex > 0 ? currentIndex - 1 : tabs.length - 1
+          nextIndex = currentIndex > 0 ? currentIndex - 1 : TABS.length - 1
           break
         case 'ArrowRight':
           e.preventDefault()
-          nextIndex = currentIndex < tabs.length - 1 ? currentIndex + 1 : 0
+          nextIndex = currentIndex < TABS.length - 1 ? currentIndex + 1 : 0
           break
         case 'Home':
           e.preventDefault()
@@ -100,12 +77,11 @@ export const TasksTabBar = ({
           break
         case 'End':
           e.preventDefault()
-          nextIndex = tabs.length - 1
+          nextIndex = TABS.length - 1
           break
       }
-
       if (nextIndex !== null) {
-        const nextTab = tabs[nextIndex]
+        const nextTab = TABS[nextIndex]
         focusTab(nextTab.id)
         onTabChange(nextTab.id)
       }
@@ -113,7 +89,6 @@ export const TasksTabBar = ({
     [focusTab, onTabChange]
   )
 
-  // Set ref for each tab button
   const setTabRef = useCallback(
     (tabId: TasksInternalTab) => (el: HTMLButtonElement | null) => {
       if (el) {
@@ -125,13 +100,27 @@ export const TasksTabBar = ({
     []
   )
 
+  const activeProjects = projects.filter((p) => !p.isArchived)
+  const selectedProject = selectedProjectId
+    ? activeProjects.find((p) => p.id === selectedProjectId)
+    : null
+
   return (
-    <div className={cn('border-b border-border', className)} role="tablist" aria-label="Task views">
-      <div className="flex items-center gap-1 px-6">
-        {tabs.map((tab, index) => {
-          const isActive = activeTab === tab.id
+    <div
+      className={cn(
+        'flex items-center shrink-0 gap-2.5 [font-synthesis:none] text-[12px] leading-4 antialiased',
+        className
+      )}
+    >
+      {/* Segmented Tab Control */}
+      <div
+        className="flex items-center shrink-0 rounded-[5px] overflow-clip border border-border"
+        role="tablist"
+        aria-label="Task views"
+      >
+        {TABS.map((tab, index) => {
+          const isActive = activeTab === tab.id && !activeSavedFilterId
           const count = counts[tab.id]
-          const Icon = tab.icon
 
           return (
             <button
@@ -145,112 +134,221 @@ export const TasksTabBar = ({
               onClick={() => onTabChange(tab.id)}
               onKeyDown={(e) => handleKeyDown(e, index)}
               className={cn(
-                'relative flex items-center gap-2 px-3 py-2.5 text-sm font-medium transition-colors',
-                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
-                'rounded-t-md',
-                isActive ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'
+                'flex items-center py-1 px-2.5 gap-1 transition-colors',
+                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset',
+                index > 0 && 'border-l border-border',
+                isActive
+                  ? 'bg-foreground text-background font-medium'
+                  : 'text-text-secondary hover:text-text-primary hover:bg-surface-active/50'
               )}
             >
-              <Icon className="size-4" aria-hidden="true" />
-              <span>{tab.label}</span>
-              {count > 0 && (
-                <span
-                  className={cn(
-                    'inline-flex items-center justify-center rounded-full px-1.5 py-0.5 text-xs font-medium min-w-[20px]',
-                    isActive ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground'
-                  )}
-                >
-                  {count > 99 ? '99+' : count}
-                </span>
-              )}
-              {/* Active indicator */}
-              {isActive && (
-                <span
-                  className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary"
-                  aria-hidden="true"
-                />
-              )}
+              <span className="text-[12px] leading-4">{tab.label}</span>
+              <span
+                className={cn(
+                  'text-[9px] font-[family-name:var(--font-mono)] leading-3 tabular-nums min-w-[2ch] text-center',
+                  count === 0 && 'invisible',
+                  isActive ? 'text-background/45' : 'text-text-tertiary'
+                )}
+              >
+                {count}
+              </span>
             </button>
           )
         })}
-
-        {/* Spacer */}
-        <div className="flex-1" />
-
-        {/* Actions side */}
-        <div className="flex items-center gap-2 py-2">
-          {/* View Mode Toggle */}
-          {availableViews && availableViews.length > 1 && onViewChange && (
+        {/* Saved Filter Pills — inside segmented control */}
+        {savedFilters.map((sf) => {
+          const isActive = activeSavedFilterId === sf.id
+          return (
             <div
-              className="flex items-center rounded-md border border-border bg-muted/40 p-0.5"
-              role="radiogroup"
-              aria-label="View mode"
+              key={sf.id}
+              data-testid="saved-filter-pill"
+              className={cn(
+                'group/pill flex items-center whitespace-nowrap border-l border-border transition-colors',
+                isActive
+                  ? 'saved-filter-active bg-task-star/15 text-task-star font-medium'
+                  : 'text-text-tertiary hover:text-text-primary hover:bg-surface-active/50'
+              )}
             >
-              {viewModeButtons
-                .filter((vm) => availableViews.includes(vm.id))
-                .map((vm) => {
-                  const isActive = activeView === vm.id
-                  const Icon = vm.icon
-                  return (
-                    <Tooltip key={vm.id}>
-                      <TooltipTrigger asChild>
-                        <button
-                          type="button"
-                          role="radio"
-                          aria-checked={isActive}
-                          aria-label={`${vm.label} view`}
-                          onClick={() => onViewChange(vm.id)}
-                          className={cn(
-                            'rounded-sm p-1.5 transition-all duration-150',
-                            'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-                            isActive
-                              ? 'bg-background text-foreground shadow-sm'
-                              : 'text-muted-foreground hover:text-foreground'
-                          )}
-                        >
-                          <Icon className="size-3.5" />
-                        </button>
-                      </TooltipTrigger>
-                      <TooltipContent>{vm.label}</TooltipContent>
-                    </Tooltip>
-                  )
-                })}
+              <button
+                type="button"
+                aria-label={sf.name}
+                onClick={() => onApplySavedFilter?.(sf)}
+                className="flex items-baseline py-1 pl-2.5 pr-1 gap-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
+              >
+                <span className="text-[12px] leading-4">{sf.name}</span>
+              </button>
+              <button
+                type="button"
+                aria-label={`Unstar ${sf.name}`}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onUnstarSavedFilter?.(sf.id)
+                }}
+                className="p-0.5 mr-0.5 rounded-sm opacity-0 group-hover/pill:opacity-100 focus:opacity-100 transition-opacity hover:text-text-tertiary focus-visible:outline-none"
+              >
+                <X className="size-3" />
+              </button>
             </div>
-          )}
-
-          {showProjectSettings && onProjectSettings && (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  type="button"
-                  onClick={onProjectSettings}
-                  className={cn(
-                    'rounded-md p-1.5 text-muted-foreground transition-all duration-200',
-                    'hover:bg-accent hover:text-foreground',
-                    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring'
-                  )}
-                  aria-label="Project settings"
-                >
-                  <Settings className="size-4" />
-                </button>
-              </TooltipTrigger>
-              <TooltipContent>Project settings</TooltipContent>
-            </Tooltip>
-          )}
-
-          {onAddTask && (
-            <Button
-              onClick={onAddTask}
-              variant="default"
-              size="sm"
-              className="h-8 gap-1.5 px-3 shadow-sm transition-all duration-200"
-            >
-              <Plus className="size-3.5" aria-hidden="true" />
-              <span>Add Task</span>
-            </Button>
-          )}
-        </div>
+          )
+        })}
       </div>
+
+      {/* All Projects Dropdown */}
+      {onProjectChange && (
+        <ProjectDropdown
+          projects={activeProjects}
+          selectedProjectId={selectedProjectId ?? null}
+          onProjectChange={(id) => {
+            onProjectChange(id)
+            setIsProjectDropdownOpen(false)
+          }}
+          onProjectEdit={onProjectEdit}
+          open={isProjectDropdownOpen}
+          onOpenChange={setIsProjectDropdownOpen}
+          selectedProject={selectedProject ?? null}
+        />
+      )}
     </div>
+  )
+}
+
+interface ProjectDropdownProps {
+  projects: Project[]
+  selectedProjectId: string | null
+  onProjectChange: (projectId: string | null) => void
+  onProjectEdit?: (project: Project) => void
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  selectedProject: Project | null
+}
+
+function ProjectDropdown({
+  projects,
+  selectedProjectId,
+  onProjectChange,
+  onProjectEdit,
+  open,
+  onOpenChange,
+  selectedProject
+}: ProjectDropdownProps): React.JSX.Element {
+  const [search, setSearch] = useState('')
+
+  const filtered = useMemo(() => {
+    if (!search) return projects
+    const q = search.toLowerCase()
+    return projects.filter((p) => p.name.toLowerCase().includes(q))
+  }, [projects, search])
+
+  const handleOpenChange = useCallback(
+    (next: boolean) => {
+      if (!next) setSearch('')
+      onOpenChange(next)
+    },
+    [onOpenChange]
+  )
+
+  return (
+    <Popover open={open} onOpenChange={handleOpenChange}>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          className="flex items-center shrink-0 whitespace-nowrap rounded-[5px] py-1 px-2.5 gap-[5px] border border-border text-text-secondary hover:text-text-primary hover:bg-surface-active/50 transition-colors"
+        >
+          <span
+            className={cn(
+              'rounded-[3px] shrink-0 size-2.5',
+              !selectedProject && 'border-[1.2px] border-solid border-border'
+            )}
+            style={selectedProject ? { backgroundColor: selectedProject.color } : undefined}
+          />
+          <span className="text-[12px] leading-4">{selectedProject?.name ?? 'All projects'}</span>
+          <svg
+            width="10"
+            height="10"
+            viewBox="0 0 10 10"
+            fill="none"
+            className="text-text-tertiary"
+          >
+            <path
+              d="M2.5 3.75l2.5 2.5 2.5-2.5"
+              stroke="currentColor"
+              strokeWidth="1.1"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+        </button>
+      </PopoverTrigger>
+      <PopoverContent
+        className="w-[200px] p-0 rounded-lg overflow-clip bg-popover border-border shadow-[var(--shadow-card-hover)]"
+        align="start"
+        sideOffset={8}
+      >
+        <div className="flex flex-col text-[12px] leading-4 [font-synthesis:none] antialiased">
+          <FilterSearchHeader
+            value={search}
+            onChange={setSearch}
+            placeholder="Search projects..."
+          />
+          <div className="flex flex-col p-1 max-h-64 overflow-y-auto">
+            <button
+              type="button"
+              onClick={() => onProjectChange(null)}
+              className={cn(
+                'flex items-center rounded-[5px] py-1.5 px-2 gap-2 transition-colors',
+                !selectedProjectId ? 'bg-accent' : 'hover:bg-accent'
+              )}
+            >
+              <div className="shrink-0 rounded-[3px] border-[1.2px] border-solid border-border size-2.5" />
+              <span className="text-[12px] text-text-tertiary leading-4">All projects</span>
+              {!selectedProjectId && <CheckMark className="ml-auto text-primary" />}
+            </button>
+            {filtered.map((p) => {
+              const isSelected = p.id === selectedProjectId
+              return (
+                <div key={p.id} className="group/project-item flex items-center">
+                  <button
+                    type="button"
+                    onClick={() => onProjectChange(p.id)}
+                    className={cn(
+                      'flex-1 flex items-center rounded-[5px] py-1.5 px-2 gap-2 transition-colors',
+                      isSelected ? 'bg-accent' : 'hover:bg-accent'
+                    )}
+                  >
+                    <div
+                      className="shrink-0 rounded-[3px] size-2.5"
+                      style={{ backgroundColor: p.color }}
+                    />
+                    <span
+                      className={cn(
+                        'text-[12px] leading-4',
+                        isSelected ? 'text-foreground' : 'text-text-secondary'
+                      )}
+                    >
+                      {p.name}
+                    </span>
+                    {isSelected && <CheckMark className="ml-auto text-primary" />}
+                  </button>
+                  {onProjectEdit && (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        onProjectEdit(p)
+                        handleOpenChange(false)
+                      }}
+                      className="shrink-0 p-1.5 mr-1 rounded-sm opacity-0 group-hover/project-item:opacity-100 transition-opacity hover:bg-accent"
+                      aria-label={`Edit ${p.name}`}
+                    >
+                      <Settings className="size-3 text-text-tertiary" />
+                    </button>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      </PopoverContent>
+    </Popover>
   )
 }

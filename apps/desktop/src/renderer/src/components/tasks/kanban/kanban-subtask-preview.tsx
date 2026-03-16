@@ -41,7 +41,7 @@ export const KanbanSubtaskPreview = ({
             <div key={subtask.id} className="flex items-center gap-2 text-sm">
               {/* Completion icon */}
               {isCompleted ? (
-                <Check className="w-3 h-3 text-green-500 shrink-0" />
+                <Check className="w-3 h-3 text-task-complete shrink-0" />
               ) : (
                 <Circle className="w-3 h-3 text-gray-300 shrink-0" />
               )}

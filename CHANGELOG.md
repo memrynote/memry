@@ -5,6 +5,27 @@ Format: weekly entries grouped by feature area.
 
 ---
 
+## 2026-03-17 — Tasks Refinement
+
+### Added
+- Add shared task icon library (StatusIcon, PriorityIcon, StatusCircle, SectionDivider)
+- Add task grouping utility and group header components
+- Add starred field to saved filters with Cmd+S save shortcut
+- Add social inbox filing and tweet syndication
+
+### Changed
+- Redesign task rows with Linear-style status indicators and compact layout
+- Replace task detail panel with slide-out drawer
+- Redesign kanban cards with updated badge layout
+- Redesign date picker calendar with extracted DatePickerContent
+- Extract filter panels and interactive badges into standalone components
+- Replace sidebar chevron with custom SVG nav separator
+- Simplify virtual list rendering for flat and grouped modes
+- Remove calendar heatmap from journal
+- Migrate hardcoded task colors to CSS custom properties
+
+---
+
 ## 2026-03-14 — White Theme, Tag Sync Fixes, Sidebar Polish
 
 ### Added
