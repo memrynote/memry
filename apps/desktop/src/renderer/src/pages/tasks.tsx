@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useEffect } from 'react'
+import { useState, useMemo, useCallback, useEffect, useRef } from 'react'
 
 import { toast } from 'sonner'
 import { TaskList } from '@/components/tasks/task-list'
@@ -59,7 +59,13 @@ import {
   useUndoTracker
 } from '@/hooks'
 import { useTasksContext } from '@/contexts/tasks'
+import { useSaveFilterShortcut } from '@/hooks/use-save-filter-shortcut'
 import { useTaskPreferences } from '@/hooks/use-task-preferences'
+import {
+  resolveModalDefaultProject,
+  resolveInitialViewProject,
+  resolveQuickAddProject
+} from '@/lib/default-project-resolution'
 import {
   BulkActionToolbar,
   BulkDeleteDialog,
@@ -75,6 +81,8 @@ import { getSubtasks } from '@/lib/subtask-utils'
 import { tasksService } from '@/services/tasks-service'
 import type { TaskSelectionType } from '@/App'
 import { createLogger } from '@/lib/logger'
+import { useTabActions } from '@/contexts/tabs'
+import { notesService } from '@/services/notes-service'
 
 const log = createLogger('Page:Tasks')
 
@@ -125,6 +133,26 @@ export const TasksPage = ({
   const { registerUndo } = useUndoTracker()
 
   const { settings: taskPrefs } = useTaskPreferences()
+  const { openTab } = useTabActions()
+
+  const handleNoteClick = useCallback(
+    async (noteId: string) => {
+      const note = await notesService.get(noteId)
+      openTab({
+        type: 'note',
+        title: note?.title ?? 'Untitled',
+        icon: 'file-text',
+        emoji: note?.emoji,
+        path: `/notes/${noteId}`,
+        entityId: noteId,
+        isPinned: false,
+        isModified: false,
+        isPreview: true,
+        isDeleted: false
+      })
+    },
+    [openTab]
+  )
 
   // Local setter that updates via parent callback
   const setTasks = useCallback(
@@ -146,6 +174,16 @@ export const TasksPage = ({
 
   // Track selected project for "All projects" filter dropdown
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null)
+  const hasAppliedDefaultProject = useRef(false)
+
+  useEffect(() => {
+    if (hasAppliedDefaultProject.current) return
+    const resolved = resolveInitialViewProject(selectedType, taskPrefs.defaultProjectId, projects)
+    if (resolved) {
+      setSelectedProjectId(resolved)
+      hasAppliedDefaultProject.current = true
+    }
+  }, [selectedType, taskPrefs.defaultProjectId, projects])
 
   // Task detail drawer state
   const [detailTaskId, setDetailTaskId] = useState<string | null>(null)
@@ -185,8 +223,20 @@ export const TasksPage = ({
   })
 
   // Saved filters
-  const { savedFilters, saveFilter, deleteFilter: deleteSavedFilter } = useSavedFilters()
+  const {
+    savedFilters,
+    saveFilter,
+    deleteFilter: deleteSavedFilter,
+    toggleStar: toggleStarFilter
+  } = useSavedFilters()
   const [activeSavedFilterId, setActiveSavedFilterId] = useState<string | null>(null)
+
+  const starredFilters = useMemo(() => savedFilters.filter((f) => f.starred), [savedFilters])
+
+  useSaveFilterShortcut({
+    onSave: () => setIsFilterDropdownOpen(true),
+    hasActiveFilters: filtersActive
+  })
 
   const updateFiltersAndClearSaved = useCallback(
     (updates: Partial<TaskFilters>) => {
@@ -528,15 +578,27 @@ export const TasksPage = ({
   )
 
   // Get default project and due date for the modal based on current selection
-  const modalDefaultProjectId = useMemo(() => {
-    if (selectedType === 'project' && selectedProject) {
-      return selectedProject.id
-    }
-    if (taskPrefs.defaultProjectId) {
-      return taskPrefs.defaultProjectId
-    }
-    return 'personal'
-  }, [selectedType, selectedProject, taskPrefs.defaultProjectId])
+  const modalDefaultProjectId = useMemo(
+    () =>
+      resolveModalDefaultProject(
+        { selectedType, selectedProject },
+        taskPrefs.defaultProjectId,
+        selectedProjectId
+      ),
+    [selectedType, selectedProject, taskPrefs.defaultProjectId, selectedProjectId]
+  )
+
+  const quickAddProjectColor = useMemo((): string => {
+    const projectId = resolveQuickAddProject(
+      null,
+      { selectedType, selectedProject },
+      taskPrefs.defaultProjectId,
+      projects,
+      selectedProjectId
+    )
+    const project = projects.find((p) => p.id === projectId)
+    return project?.color || '#6B7280'
+  }, [selectedType, selectedProject, taskPrefs.defaultProjectId, projects, selectedProjectId])
 
   const modalDefaultDueDate = useMemo((): Date | null => {
     if (selectedId === 'today') {
@@ -555,22 +617,15 @@ export const TasksPage = ({
         statusId?: string | null
       }
     ): void => {
-      let projectId = parsedData?.projectId || 'personal'
+      const projectId = resolveQuickAddProject(
+        parsedData?.projectId,
+        { selectedType, selectedProject },
+        taskPrefs.defaultProjectId,
+        projects,
+        selectedProjectId
+      )
       let dueDate = parsedData?.dueDate || null
       const priority = parsedData?.priority || 'none'
-
-      if (!parsedData?.projectId) {
-        if (selectedType === 'project' && selectedProject) {
-          projectId = selectedProject.id
-        } else if (taskPrefs.defaultProjectId) {
-          projectId = taskPrefs.defaultProjectId
-        } else {
-          const personalProject = projects.find((p) => p.isDefault)
-          if (personalProject) {
-            projectId = personalProject.id
-          }
-        }
-      }
 
       if (!parsedData?.dueDate) {
         if (selectedId === 'today') {
@@ -598,6 +653,7 @@ export const TasksPage = ({
       selectedId,
       selectedType,
       selectedProject,
+      selectedProjectId,
       projects,
       contextAddTask,
       taskPrefs.defaultProjectId
@@ -748,14 +804,17 @@ export const TasksPage = ({
 
   const handleAddTaskWithDate = useCallback(
     (date: Date): void => {
-      const projectId =
-        selectedType === 'project' && selectedProject ? selectedProject.id : 'personal'
+      const projectId = resolveModalDefaultProject(
+        { selectedType, selectedProject },
+        taskPrefs.defaultProjectId,
+        selectedProjectId
+      )
       setAddTaskPrefillProjectId(projectId)
       setAddTaskPrefillDueDate(date)
       setAddTaskPrefillTitle('')
       setIsAddTaskModalOpen(true)
     },
-    [selectedProject, selectedType]
+    [selectedProject, selectedType, selectedProjectId, taskPrefs.defaultProjectId]
   )
 
   // ========== ARCHIVE HANDLERS (unused after refactor, kept for potential future use) ==========
@@ -1039,13 +1098,16 @@ export const TasksPage = ({
     [activeSavedFilterId, updateFilters, updateSort, clearFilters]
   )
 
-  // Get statuses for the current project (for Kanban filter)
   const currentProjectStatuses = useMemo(() => {
     if (selectedType === 'project' && selectedProject) {
       return selectedProject.statuses
     }
+    if (selectedProjectId) {
+      const proj = projects.find((p) => p.id === selectedProjectId)
+      if (proj) return proj.statuses
+    }
     return []
-  }, [selectedType, selectedProject])
+  }, [selectedType, selectedProject, selectedProjectId, projects])
 
   return (
     <>
@@ -1062,10 +1124,10 @@ export const TasksPage = ({
               selectedProjectId={selectedProjectId}
               onProjectChange={setSelectedProjectId}
               onProjectEdit={handleEditProject}
-              savedFilters={savedFilters}
+              savedFilters={starredFilters}
               activeSavedFilterId={activeSavedFilterId}
               onApplySavedFilter={handleApplySavedFilter}
-              onDeleteSavedFilter={handleDeleteSavedFilter}
+              onUnstarSavedFilter={toggleStarFilter}
             />
 
             {/* Inline Quick-Add Input */}
@@ -1074,6 +1136,7 @@ export const TasksPage = ({
               onAdd={handleQuickAdd}
               onOpenModal={handleOpenAddTaskModal}
               projects={projects}
+              projectColor={quickAddProjectColor}
             />
 
             {/* Filter Button */}
@@ -1086,10 +1149,12 @@ export const TasksPage = ({
               tasks={baseFilteredTasks}
               projects={projects}
               savedFilters={savedFilters}
+              activeSavedFilterId={activeSavedFilterId}
+              hasActiveFilters={filtersActive}
               onDeleteSavedFilter={handleDeleteSavedFilter}
               onApplySavedFilter={handleApplySavedFilter}
               onSaveFilter={(name) => handleSaveFilter(name, filters, sort)}
-              showStatusFilter={activeView === 'kanban'}
+              onToggleStarFilter={toggleStarFilter}
               statuses={currentProjectStatuses}
             >
               <button
@@ -1217,6 +1282,8 @@ export const TasksPage = ({
               projects={projects}
               onUpdateFilters={updateFiltersAndClearSaved}
               onClearFilters={clearFiltersAndClearSaved}
+              onSaveFilter={() => setIsFilterDropdownOpen(true)}
+              isSaved={activeSavedFilterId !== null}
             />
           )}
 
@@ -1395,6 +1462,7 @@ export const TasksPage = ({
           onToggleComplete={handleToggleComplete}
           onUpdateTask={handleUpdateTask}
           onAddSubtask={subtaskManagement.handleAddSubtask}
+          onNoteClick={handleNoteClick}
         />
       </div>
 
