@@ -38,7 +38,7 @@ const getGroupBgColor = (
   color?: string
 ): string | undefined => {
   if (DONE_GROUP_KEYS.has(groupKey)) {
-    return 'rgba(77, 166, 99, 0.10)'
+    return 'var(--task-complete-bg)'
   }
 
   if (!color) return undefined
@@ -70,12 +70,17 @@ export const GroupHeader = ({
   const labelColor = (() => {
     if (color && (sortField === 'priority' || sortField === 'dueDate' || sortField === 'createdAt'))
       return color
-    if (DONE_GROUP_KEYS.has(groupKey)) return '#4DA663'
+    if (DONE_GROUP_KEYS.has(groupKey)) return 'var(--task-complete)'
     return undefined
   })()
 
   const bgColor = getGroupBgColor(sortField, groupKey, color)
-  const hoverBgColor = bgColor ? bgColor.replace('0.10)', '0.16)') : undefined
+  const isDoneGroup = DONE_GROUP_KEYS.has(groupKey)
+  const hoverBgColor = isDoneGroup
+    ? 'var(--task-complete-bg)'
+    : bgColor
+      ? bgColor.replace('0.10)', '0.16)')
+      : undefined
 
   return (
     <button

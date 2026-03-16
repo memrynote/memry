@@ -289,6 +289,43 @@
     --queue-bg: #eae8e1;
     --queue-number-bg: #d4d1c5;
 
+    /* ===== TASK COLORS ===== */
+
+    /* Priority */
+    --task-priority-urgent: #ef4444;
+    --task-priority-urgent-bg: #fef2f2;
+    --task-priority-high: #f97316;
+    --task-priority-high-bg: #fff7ed;
+    --task-priority-medium: #f59e0b;
+    --task-priority-medium-bg: #fffbeb;
+    --task-priority-low: #6b7280;
+
+    /* Due date status */
+    --task-due-overdue: #dc2626;
+    --task-due-overdue-bg: #fef2f2;
+    --task-due-today: #d97706;
+    --task-due-today-bg: #fffbeb;
+    --task-due-tomorrow: #2563eb;
+    --task-due-tomorrow-bg: #eff6ff;
+    --task-due-upcoming: #4f46e5;
+
+    /* Completion / progress */
+    --task-complete: #22c55e;
+    --task-complete-bg: rgba(77, 166, 99, 0.1);
+    --task-progress: #3b82f6;
+
+    /* UI accents */
+    --task-star: #f59e0b;
+    --task-repeat: #3b82f6;
+    --task-token-date: #f59e0b;
+    --task-token-project: #60a5fa;
+
+    /* Checkbox */
+    --task-checkbox-done: #7b9e87;
+
+    /* Shadow */
+    --shadow-dropdown: 0 4px 24px rgba(0, 0, 0, 0.08), 0 1px 3px rgba(0, 0, 0, 0.04);
+
     /* ===== ANIMATION TOKENS ===== */
     --duration-instant: 100ms;
     /* Hover states, micro-feedback */
@@ -377,6 +414,43 @@
     /* ===== QUEUE LIST - White Mode ===== */
     --queue-bg: #f7f6f3;
     --queue-number-bg: #e3e2e0;
+
+    /* ===== TASK COLORS - White Mode ===== */
+
+    /* Priority */
+    --task-priority-urgent: #ef4444;
+    --task-priority-urgent-bg: #fef2f2;
+    --task-priority-high: #f97316;
+    --task-priority-high-bg: #fff7ed;
+    --task-priority-medium: #f59e0b;
+    --task-priority-medium-bg: #fffbeb;
+    --task-priority-low: #6b7280;
+
+    /* Due date status */
+    --task-due-overdue: #dc2626;
+    --task-due-overdue-bg: #fef2f2;
+    --task-due-today: #d97706;
+    --task-due-today-bg: #fffbeb;
+    --task-due-tomorrow: #2563eb;
+    --task-due-tomorrow-bg: #eff6ff;
+    --task-due-upcoming: #4f46e5;
+
+    /* Completion / progress */
+    --task-complete: #22c55e;
+    --task-complete-bg: rgba(77, 166, 99, 0.1);
+    --task-progress: #3b82f6;
+
+    /* UI accents */
+    --task-star: #f59e0b;
+    --task-repeat: #3b82f6;
+    --task-token-date: #f59e0b;
+    --task-token-project: #60a5fa;
+
+    /* Checkbox */
+    --task-checkbox-done: #7b9e87;
+
+    /* Shadow */
+    --shadow-dropdown: 0 4px 24px rgba(0, 0, 0, 0.1), 0 1px 3px rgba(0, 0, 0, 0.06);
   }
 
   .dark {
@@ -476,6 +550,43 @@
     /* ===== QUEUE LIST - Dark Mode ===== */
     --queue-bg: #161618;
     --queue-number-bg: #2a2a2e;
+
+    /* ===== TASK COLORS - Dark Mode ===== */
+
+    /* Priority (lighter for dark bg) */
+    --task-priority-urgent: #f87171;
+    --task-priority-urgent-bg: rgba(239, 68, 68, 0.1);
+    --task-priority-high: #fb923c;
+    --task-priority-high-bg: rgba(249, 115, 22, 0.1);
+    --task-priority-medium: #fbbf24;
+    --task-priority-medium-bg: rgba(245, 158, 11, 0.1);
+    --task-priority-low: #9ca3af;
+
+    /* Due date status */
+    --task-due-overdue: #f87171;
+    --task-due-overdue-bg: rgba(239, 68, 68, 0.1);
+    --task-due-today: #fbbf24;
+    --task-due-today-bg: rgba(217, 119, 6, 0.1);
+    --task-due-tomorrow: #60a5fa;
+    --task-due-tomorrow-bg: rgba(37, 99, 235, 0.1);
+    --task-due-upcoming: #818cf8;
+
+    /* Completion / progress */
+    --task-complete: #4ade80;
+    --task-complete-bg: rgba(77, 166, 99, 0.15);
+    --task-progress: #60a5fa;
+
+    /* UI accents */
+    --task-star: #fbbf24;
+    --task-repeat: #60a5fa;
+    --task-token-date: #fbbf24;
+    --task-token-project: #93c5fd;
+
+    /* Checkbox */
+    --task-checkbox-done: #7b9e87;
+
+    /* Shadow */
+    --shadow-dropdown: 0 4px 24px rgba(0, 0, 0, 0.3), 0 1px 3px rgba(0, 0, 0, 0.2);
 
     /* ===== ANIMATION TOKENS (Same in dark mode) ===== */
     --duration-instant: 100ms;
@@ -1087,6 +1198,30 @@ del.bn-inline-content {
   --color-queue-bg: var(--queue-bg);
   --color-queue-number-bg: var(--queue-number-bg);
 
+  /* ===== TASK COLORS ===== */
+  --color-task-priority-urgent: var(--task-priority-urgent);
+  --color-task-priority-urgent-bg: var(--task-priority-urgent-bg);
+  --color-task-priority-high: var(--task-priority-high);
+  --color-task-priority-high-bg: var(--task-priority-high-bg);
+  --color-task-priority-medium: var(--task-priority-medium);
+  --color-task-priority-medium-bg: var(--task-priority-medium-bg);
+  --color-task-priority-low: var(--task-priority-low);
+  --color-task-due-overdue: var(--task-due-overdue);
+  --color-task-due-overdue-bg: var(--task-due-overdue-bg);
+  --color-task-due-today: var(--task-due-today);
+  --color-task-due-today-bg: var(--task-due-today-bg);
+  --color-task-due-tomorrow: var(--task-due-tomorrow);
+  --color-task-due-tomorrow-bg: var(--task-due-tomorrow-bg);
+  --color-task-due-upcoming: var(--task-due-upcoming);
+  --color-task-complete: var(--task-complete);
+  --color-task-complete-bg: var(--task-complete-bg);
+  --color-task-progress: var(--task-progress);
+  --color-task-star: var(--task-star);
+  --color-task-repeat: var(--task-repeat);
+  --color-task-token-date: var(--task-token-date);
+  --color-task-token-project: var(--task-token-project);
+  --color-task-checkbox-done: var(--task-checkbox-done);
+
   /* ===== SIDEBAR ===== */
   --color-sidebar: var(--sidebar);
   --color-sidebar-foreground: var(--sidebar-foreground);
@@ -1113,6 +1248,7 @@ del.bn-inline-content {
   /* ===== SHADOWS ===== */
   --shadow-card: var(--shadow-card);
   --shadow-card-hover: var(--shadow-card-hover);
+  --shadow-dropdown: var(--shadow-dropdown);
 
   /* ===== SPACING ===== */
   --spacing-sidebar: var(--sidebar-width);

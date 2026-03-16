@@ -58,14 +58,14 @@ const getQuickDateOptions = (): QuickDateOption[] => {
     {
       id: 'today',
       label: 'Today',
-      icon: <Star className="size-4 text-amber-500" />,
+      icon: <Star className="size-4 text-task-star" />,
       getDate: () => today,
       shortcutNumber: 1
     },
     {
       id: 'tomorrow',
       label: 'Tomorrow',
-      icon: <CalendarIcon className="size-4 text-blue-500" />,
+      icon: <CalendarIcon className="size-4 text-task-due-tomorrow" />,
       getDate: () => tomorrow,
       shortcutNumber: 2
     }
@@ -75,7 +75,7 @@ const getQuickDateOptions = (): QuickDateOption[] => {
     options.push({
       id: 'weekend',
       label: 'This Weekend',
-      icon: <Sun className="size-4 text-orange-500" />,
+      icon: <Sun className="size-4 text-task-due-today" />,
       getDate: () => saturday,
       shortcutNumber: 3
     })
@@ -83,7 +83,7 @@ const getQuickDateOptions = (): QuickDateOption[] => {
     options.push({
       id: 'next-week',
       label: 'Next Week',
-      icon: <CalendarIcon className="size-4 text-indigo-500" />,
+      icon: <CalendarIcon className="size-4 text-task-due-upcoming" />,
       getDate: () => monday,
       shortcutNumber: 4
     })
@@ -92,7 +92,7 @@ const getQuickDateOptions = (): QuickDateOption[] => {
     options.push({
       id: 'next-week',
       label: 'Next Week',
-      icon: <CalendarIcon className="size-4 text-indigo-500" />,
+      icon: <CalendarIcon className="size-4 text-task-due-upcoming" />,
       getDate: () => monday,
       shortcutNumber: 3
     })
@@ -150,9 +150,9 @@ const formatQuickOptionDate = (date: Date): string => {
 // ============================================================================
 
 const statusColors: Record<DueDateStatus, string> = {
-  overdue: 'text-red-600 dark:text-red-400',
-  today: 'text-amber-600 dark:text-amber-400',
-  tomorrow: 'text-blue-600 dark:text-blue-400',
+  overdue: 'text-task-due-overdue',
+  today: 'text-task-due-today',
+  tomorrow: 'text-task-due-tomorrow',
   upcoming: 'text-foreground',
   later: 'text-muted-foreground',
   none: 'text-muted-foreground'

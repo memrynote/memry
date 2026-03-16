@@ -130,10 +130,10 @@ export const SingleTaskPreview = ({
             style={{
               backgroundColor:
                 task.priority === 'high'
-                  ? '#ef4444'
+                  ? 'var(--task-priority-high)'
                   : task.priority === 'medium'
-                    ? '#f59e0b'
-                    : '#6b7280'
+                    ? 'var(--task-priority-medium)'
+                    : 'var(--task-priority-low)'
             }}
           />
         )}

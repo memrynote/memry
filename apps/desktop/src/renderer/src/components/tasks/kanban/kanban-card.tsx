@@ -53,7 +53,7 @@ const animateLayoutChanges: AnimateLayoutChanges = (args) => {
 // ============================================================================
 
 const getStripColor = (priority: Priority, isCompleted: boolean): string => {
-  if (isCompleted) return '#22C55E'
+  if (isCompleted) return 'var(--task-complete)'
   return priorityConfig[priority]?.color || '#6B7280'
 }
 
@@ -205,10 +205,17 @@ export const KanbanCard = ({
               className="shrink-0"
               aria-label="Completed"
             >
-              <circle cx="7" cy="7" r="5.5" fill="#22C55E26" stroke="#22C55E" strokeWidth="1.2" />
+              <circle
+                cx="7"
+                cy="7"
+                r="5.5"
+                fill="var(--task-complete-bg)"
+                stroke="var(--task-complete)"
+                strokeWidth="1.2"
+              />
               <path
                 d="M4.5 7l2 2 3.5-3.5"
-                stroke="#22C55E"
+                stroke="var(--task-complete)"
                 strokeWidth="1.2"
                 strokeLinecap="round"
                 strokeLinejoin="round"
@@ -303,8 +310,8 @@ export const KanbanCard = ({
             )}
 
             {isOverdue && daysOverdue > 0 && (
-              <div className="flex items-center rounded-sm py-0.5 px-[7px] gap-[3px] bg-red-500/[0.08]">
-                <span className="text-[11px] text-red-500 dark:text-red-400 leading-3.5">
+              <div className="flex items-center rounded-sm py-0.5 px-[7px] gap-[3px] bg-task-due-overdue/[0.08]">
+                <span className="text-[11px] text-task-due-overdue leading-3.5">
                   Overdue {daysOverdue}d
                 </span>
               </div>
@@ -430,10 +437,17 @@ export const KanbanCardSkeleton = ({
         {isCompleted ? (
           <div className="flex items-center gap-2">
             <svg width="14" height="14" viewBox="0 0 14 14" fill="none" className="shrink-0">
-              <circle cx="7" cy="7" r="5.5" fill="#22C55E26" stroke="#22C55E" strokeWidth="1.2" />
+              <circle
+                cx="7"
+                cy="7"
+                r="5.5"
+                fill="var(--task-complete-bg)"
+                stroke="var(--task-complete)"
+                strokeWidth="1.2"
+              />
               <path
                 d="M4.5 7l2 2 3.5-3.5"
-                stroke="#22C55E"
+                stroke="var(--task-complete)"
                 strokeWidth="1.2"
                 strokeLinecap="round"
                 strokeLinejoin="round"

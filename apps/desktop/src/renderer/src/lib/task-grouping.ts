@@ -37,7 +37,7 @@ const DUE_DATE_LABELS: Record<
   keyof TaskGroupByDate,
   { label: string; color?: string; variant?: 'overdue' | 'default' }
 > = {
-  overdue: { label: 'Overdue', color: '#EB5757', variant: 'overdue' },
+  overdue: { label: 'Overdue', color: '#ef4444', variant: 'overdue' },
   today: { label: 'Today', color: '#E5993E' },
   tomorrow: { label: 'Tomorrow', color: '#3B82F6' },
   upcoming: { label: 'This Week', color: '#50505A' },

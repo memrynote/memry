@@ -221,7 +221,7 @@ export const ArchiveDropZone = ({ className }: ArchiveDropZoneProps): React.JSX.
         'flex items-center gap-2 px-3 py-2.5 mx-2 rounded-sm',
         'border-2 border-dashed transition-all duration-200',
         isOver
-          ? 'border-amber-500 bg-amber-500/10 text-amber-600 dark:text-amber-400'
+          ? 'border-task-star bg-task-star/10 text-task-star'
           : 'border-muted-foreground/30 text-muted-foreground',
         className
       )}

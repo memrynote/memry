@@ -33,8 +33,8 @@ const sectionIcons: Record<SectionType, React.ElementType | null> = {
 }
 
 const sectionIconColors: Record<SectionType, string> = {
-  overdue: 'text-red-500',
-  today: 'text-amber-500',
+  overdue: 'text-task-due-overdue',
+  today: 'text-task-due-today',
   tomorrow: 'text-text-tertiary',
   upcoming: 'text-text-tertiary',
   'no-date': 'text-text-tertiary'

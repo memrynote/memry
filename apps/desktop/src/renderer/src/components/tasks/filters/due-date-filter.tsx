@@ -123,7 +123,7 @@ export const DueDateFilter = ({
       </PopoverTrigger>
 
       <PopoverContent
-        className="w-[280px] p-0 rounded-sm overflow-clip shadow-[0_4px_24px_rgba(0,0,0,0.08),0_1px_3px_rgba(0,0,0,0.04)]"
+        className="w-[280px] p-0 rounded-sm overflow-clip shadow-dropdown"
         align="start"
       >
         {/* Preset options */}
@@ -142,7 +142,7 @@ export const DueDateFilter = ({
                   'hover:bg-accent focus:outline-none focus:bg-accent',
                   option.isOverdue &&
                     isSelected &&
-                    'bg-red-50 dark:bg-red-500/10 hover:bg-red-50 dark:hover:bg-red-500/10'
+                    'bg-task-due-overdue-bg hover:bg-task-due-overdue-bg'
                 )}
               >
                 <div
@@ -152,12 +152,12 @@ export const DueDateFilter = ({
                     borderStyle: 'solid',
                     borderColor: isSelected
                       ? option.isOverdue
-                        ? '#E54D2E'
+                        ? 'var(--task-due-overdue)'
                         : 'var(--foreground)'
                       : 'var(--border)',
                     backgroundColor: isSelected
                       ? option.isOverdue
-                        ? '#FEF0EE'
+                        ? 'var(--task-due-overdue-bg)'
                         : 'var(--surface)'
                       : 'var(--card)'
                   }}
@@ -168,7 +168,7 @@ export const DueDateFilter = ({
                       height="10"
                       viewBox="0 0 24 24"
                       fill="none"
-                      stroke={option.isOverdue ? '#E54D2E' : 'var(--foreground)'}
+                      stroke={option.isOverdue ? 'var(--task-due-overdue)' : 'var(--foreground)'}
                       strokeWidth="3"
                       strokeLinecap="round"
                       strokeLinejoin="round"
@@ -181,7 +181,7 @@ export const DueDateFilter = ({
                   className={cn(
                     'text-[13px] leading-4',
                     option.isOverdue && isSelected
-                      ? 'font-medium text-[#E54D2E]'
+                      ? 'font-medium text-task-due-overdue'
                       : 'text-foreground',
                     option.value === 'none' && !isSelected && 'text-text-secondary'
                   )}
@@ -191,9 +191,7 @@ export const DueDateFilter = ({
                 <span
                   className={cn(
                     'text-[11px] ml-auto leading-[14px]',
-                    option.isOverdue && isSelected
-                      ? 'text-red-700 dark:text-red-400'
-                      : 'text-text-tertiary'
+                    option.isOverdue && isSelected ? 'text-task-due-overdue' : 'text-text-tertiary'
                   )}
                 >
                   {taskCount}

@@ -72,14 +72,14 @@ export const DroppableSection = ({
       hoverBg: 'bg-accent/20'
     },
     today: {
-      accent: 'border-l-amber-500',
-      bg: 'bg-amber-50/30 dark:bg-amber-950/10',
-      hoverBg: 'bg-amber-100/50 dark:bg-amber-950/30'
+      accent: 'border-l-task-due-today',
+      bg: 'bg-task-due-today/[0.06]',
+      hoverBg: 'bg-task-due-today/[0.12]'
     },
     upcoming: {
-      accent: 'border-l-blue-500',
-      bg: 'bg-blue-50/30 dark:bg-blue-950/10',
-      hoverBg: 'bg-blue-100/50 dark:bg-blue-950/30'
+      accent: 'border-l-task-due-tomorrow',
+      bg: 'bg-task-due-tomorrow/[0.06]',
+      hoverBg: 'bg-task-due-tomorrow/[0.12]'
     }
   }
 

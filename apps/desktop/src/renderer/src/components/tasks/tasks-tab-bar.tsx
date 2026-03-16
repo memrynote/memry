@@ -165,7 +165,7 @@ export const TasksTabBar = ({
               className={cn(
                 'group/pill flex items-center whitespace-nowrap border-l border-border transition-colors',
                 isActive
-                  ? 'saved-filter-active bg-amber-500/15 text-amber-700 dark:text-amber-400 font-medium'
+                  ? 'saved-filter-active bg-task-star/15 text-task-star font-medium'
                   : 'text-text-tertiary hover:text-text-primary hover:bg-surface-active/50'
               )}
             >

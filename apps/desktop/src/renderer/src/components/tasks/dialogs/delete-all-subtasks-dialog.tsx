@@ -66,9 +66,7 @@ export const DeleteAllSubtasksDialog = ({
                     <li key={subtask.id} className="flex items-center gap-2 text-sm">
                       <span className="text-muted-foreground">•</span>
                       <span className="truncate">{subtask.title}</span>
-                      {subtask.completedAt && (
-                        <span className="text-xs text-green-600 dark:text-green-400">✓</span>
-                      )}
+                      {subtask.completedAt && <span className="text-xs text-task-complete">✓</span>}
                     </li>
                   ))}
                 </ul>

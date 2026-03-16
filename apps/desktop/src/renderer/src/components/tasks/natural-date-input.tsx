@@ -103,8 +103,8 @@ export const NaturalDateInput = forwardRef<NaturalDateInputRef, NaturalDateInput
             placeholder={placeholder}
             className={cn(
               'pl-9 pr-3',
-              isValid && 'border-green-500 focus-visible:ring-green-500/20',
-              isInvalid && 'border-amber-500 focus-visible:ring-amber-500/20'
+              isValid && 'border-task-complete focus-visible:ring-task-complete/20',
+              isInvalid && 'border-task-due-today focus-visible:ring-task-due-today/20'
             )}
             aria-label="Type a date in natural language"
             autoComplete="off"
@@ -116,32 +116,30 @@ export const NaturalDateInput = forwardRef<NaturalDateInputRef, NaturalDateInput
           <div
             className={cn(
               'flex items-center justify-between rounded-sm border px-3 py-2 text-sm',
-              isValid && 'border-green-200 bg-green-50 dark:border-green-900 dark:bg-green-950',
-              isInvalid && 'border-amber-200 bg-amber-50 dark:border-amber-900 dark:bg-amber-950'
+              isValid && 'border-task-complete/20 bg-task-complete/[0.06]',
+              isInvalid && 'border-task-due-today/20 bg-task-due-today/[0.06]'
             )}
           >
             {isValid ? (
               <>
                 <div className="flex items-center gap-2">
-                  <Check className="size-4 text-green-600 dark:text-green-400" />
-                  <span className="text-green-700 dark:text-green-300">
-                    {parseResult.displayText}
-                  </span>
+                  <Check className="size-4 text-task-complete" />
+                  <span className="text-task-complete">{parseResult.displayText}</span>
                 </div>
                 <Button
                   type="button"
                   variant="ghost"
                   size="sm"
                   onClick={handleSelect}
-                  className="h-7 px-2 text-green-700 hover:bg-green-100 hover:text-green-800 dark:text-green-300 dark:hover:bg-green-900 dark:hover:text-green-200"
+                  className="h-7 px-2 text-task-complete hover:bg-task-complete/10"
                 >
                   Select
                 </Button>
               </>
             ) : (
               <div className="flex items-center gap-2">
-                <AlertCircle className="size-4 text-amber-600 dark:text-amber-400" />
-                <span className="text-amber-700 dark:text-amber-300">{parseResult.error}</span>
+                <AlertCircle className="size-4 text-task-due-today" />
+                <span className="text-task-due-today">{parseResult.error}</span>
               </div>
             )}
           </div>
