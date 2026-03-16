@@ -52,7 +52,7 @@ export function ProjectPanel({
         >
           <div className="shrink-0 rounded-[3px] border-[1.2px] border-solid border-border size-2.5" />
           <span className="text-[12px] text-text-tertiary leading-4">No project</span>
-          {selectedProjectIds.length === 0 && <CheckMark className="ml-auto text-foreground" />}
+          {selectedProjectIds.length === 0 && <CheckMark className="ml-auto text-primary" />}
         </button>
         {visibleProjects.map((project) => {
           const selected = selectedProjectIds.includes(project.id)
@@ -78,7 +78,7 @@ export function ProjectPanel({
               >
                 {project.name}
               </span>
-              {selected && <CheckMark className="ml-auto text-foreground" />}
+              {selected && <CheckMark className="ml-auto text-primary" />}
             </button>
           )
         })}
