@@ -37,10 +37,10 @@ const DUE_DATE_LABELS: Record<
   keyof TaskGroupByDate,
   { label: string; color?: string; variant?: 'overdue' | 'default' }
 > = {
-  overdue: { label: 'Overdue', color: '#ef4444', variant: 'overdue' },
-  today: { label: 'Today', color: '#3b82f6' },
-  tomorrow: { label: 'Tomorrow' },
-  upcoming: { label: 'This Week' },
+  overdue: { label: 'Overdue', color: '#EB5757', variant: 'overdue' },
+  today: { label: 'Today', color: '#E5993E' },
+  tomorrow: { label: 'Tomorrow', color: '#3B82F6' },
+  upcoming: { label: 'This Week', color: '#50505A' },
   later: { label: 'Later' },
   noDueDate: { label: 'No Due Date' }
 }
@@ -132,11 +132,11 @@ export const groupByProject = (tasks: Task[], projects: Project[]): TaskGroup[] 
 
 const CREATED_DATE_ORDER = ['today', 'yesterday', 'thisWeek', 'earlier'] as const
 
-const CREATED_DATE_LABELS: Record<string, string> = {
-  today: 'Today',
-  yesterday: 'Yesterday',
-  thisWeek: 'This Week',
-  earlier: 'Earlier'
+const CREATED_DATE_LABELS: Record<string, { label: string; color?: string }> = {
+  today: { label: 'Today', color: '#E5993E' },
+  yesterday: { label: 'Yesterday', color: '#3B82F6' },
+  thisWeek: { label: 'This Week', color: '#50505A' },
+  earlier: { label: 'Earlier', color: '#6b7280' }
 }
 
 export const groupByCreatedDate = (tasks: Task[]): TaskGroup[] => {
@@ -160,8 +160,9 @@ export const groupByCreatedDate = (tasks: Task[]): TaskGroup[] => {
 
   return CREATED_DATE_ORDER.map((key) => ({
     key,
-    label: CREATED_DATE_LABELS[key],
-    tasks: buckets[key]
+    label: CREATED_DATE_LABELS[key].label,
+    tasks: buckets[key],
+    color: CREATED_DATE_LABELS[key].color
   })).filter((g) => g.tasks.length > 0)
 }
 

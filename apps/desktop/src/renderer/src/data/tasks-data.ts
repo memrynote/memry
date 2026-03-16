@@ -107,7 +107,7 @@ export const statusTypeOptions: { value: StatusType; label: string }[] = [
 
 export const defaultStatuses: Status[] = [
   { id: 'todo', name: 'To Do', color: '#6b7280', type: 'todo', order: 0 },
-  { id: 'in-progress', name: 'In Progress', color: '#3b82f6', type: 'in_progress', order: 1 },
+  { id: 'in-progress', name: 'In Progress', color: '#E5993E', type: 'in_progress', order: 1 },
   { id: 'done', name: 'Done', color: '#10b981', type: 'done', order: 2 }
 ]
 

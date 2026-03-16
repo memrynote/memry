@@ -20,33 +20,84 @@ interface GroupHeaderProps {
   onToggle?: () => void
 }
 
+const DONE_GROUP_KEYS = new Set(['done', 'completed'])
+
+const hexToRgb = (hex: string): { r: number; g: number; b: number } | null => {
+  const clean = hex.replace('#', '')
+  if (clean.length !== 6) return null
+  return {
+    r: parseInt(clean.slice(0, 2), 16),
+    g: parseInt(clean.slice(2, 4), 16),
+    b: parseInt(clean.slice(4, 6), 16)
+  }
+}
+
+const getGroupBgColor = (
+  sortField: SortField,
+  groupKey: string,
+  color?: string
+): string | undefined => {
+  if (DONE_GROUP_KEYS.has(groupKey)) {
+    return 'rgba(77, 166, 99, 0.10)'
+  }
+
+  if (!color) return undefined
+
+  const rgb = hexToRgb(color)
+  if (!rgb) return undefined
+
+  if (
+    sortField === 'dueDate' ||
+    sortField === 'priority' ||
+    sortField === 'project' ||
+    sortField === 'createdAt'
+  ) {
+    return `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.10)`
+  }
+
+  return undefined
+}
+
 export const GroupHeader = ({
   label,
   count,
   sortField,
   groupKey,
   color,
-  variant = 'default',
   isCollapsed = false,
   onToggle
 }: GroupHeaderProps): React.JSX.Element => {
-  const isOverdue = variant === 'overdue'
-
   const labelColor = (() => {
-    if (sortField === 'priority' && color) return color
-    if (isOverdue) return 'var(--destructive)'
+    if (color && (sortField === 'priority' || sortField === 'dueDate' || sortField === 'createdAt'))
+      return color
+    if (DONE_GROUP_KEYS.has(groupKey)) return '#4DA663'
     return undefined
   })()
+
+  const bgColor = getGroupBgColor(sortField, groupKey, color)
+  const hoverBgColor = bgColor ? bgColor.replace('0.10)', '0.16)') : undefined
 
   return (
     <button
       type="button"
       onClick={onToggle}
       className={cn(
-        'flex items-center w-full py-2 px-6 gap-2 bg-foreground/[0.02] border-b border-border',
-        'cursor-pointer select-none transition-colors hover:bg-foreground/[0.04]',
-        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring'
+        'flex items-center w-full py-2 px-6 gap-2 border-b border-border',
+        'cursor-pointer select-none transition-colors',
+        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+        !bgColor && 'bg-foreground/[0.02] hover:bg-foreground/[0.04]'
       )}
+      style={
+        bgColor
+          ? ({ backgroundColor: bgColor, '--hover-bg': hoverBgColor } as React.CSSProperties)
+          : undefined
+      }
+      onMouseEnter={(e) => {
+        if (hoverBgColor) e.currentTarget.style.backgroundColor = hoverBgColor
+      }}
+      onMouseLeave={(e) => {
+        if (bgColor) e.currentTarget.style.backgroundColor = bgColor
+      }}
       aria-expanded={!isCollapsed}
       aria-label={`${label}, ${count} tasks${isCollapsed ? ', collapsed' : ''}`}
     >
@@ -56,9 +107,11 @@ export const GroupHeader = ({
         viewBox="0 0 10 10"
         fill="none"
         className={cn(
-          'shrink-0 text-text-tertiary transition-transform duration-150',
+          'shrink-0 transition-transform duration-150',
+          labelColor ? '' : 'text-text-tertiary',
           isCollapsed ? '-rotate-90' : ''
         )}
+        style={labelColor ? { color: labelColor } : undefined}
       >
         <path
           d="M2.5 3.5L5 6.5L7.5 3.5"
@@ -78,7 +131,8 @@ export const GroupHeader = ({
 
       {sortField === 'dueDate' && (
         <Calendar
-          className={cn('size-3.5 shrink-0', isOverdue ? 'text-destructive' : 'text-text-tertiary')}
+          className="size-3.5 shrink-0"
+          style={labelColor ? { color: labelColor } : undefined}
         />
       )}
 
@@ -86,7 +140,12 @@ export const GroupHeader = ({
         <div className="rounded-xs shrink-0 size-2" style={{ backgroundColor: color }} />
       )}
 
-      {sortField === 'createdAt' && <Clock className="size-3.5 shrink-0 text-text-tertiary" />}
+      {sortField === 'createdAt' && (
+        <Clock
+          className="size-3.5 shrink-0"
+          style={labelColor ? { color: labelColor } : undefined}
+        />
+      )}
 
       <div
         className={cn(
@@ -98,7 +157,12 @@ export const GroupHeader = ({
         {label}
       </div>
 
-      <div className="text-[11px] text-text-tertiary leading-3.5">{count}</div>
+      <div
+        className="text-[11px] leading-3.5"
+        style={labelColor ? { color: labelColor, opacity: 0.7 } : undefined}
+      >
+        {count}
+      </div>
     </button>
   )
 }
