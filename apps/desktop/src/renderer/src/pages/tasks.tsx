@@ -7,7 +7,6 @@ import { ProjectsTabContent } from '@/components/tasks/projects/projects-tab-con
 import { ProjectSelector } from '@/components/tasks/projects/project-selector'
 import { AddTaskModal } from '@/components/tasks/add-task-modal'
 import { ProjectModal } from '@/components/tasks/project-modal'
-import { KanbanBoard } from '@/components/tasks/kanban'
 import { CalendarView } from '@/components/tasks/calendar'
 import { QuickAddInput } from '@/components/tasks/quick-add-input'
 import { TaskDetailDrawer } from '@/components/tasks/task-detail-drawer'
@@ -286,7 +285,7 @@ export const TasksPage = ({
     if (activeInternalTab === 'today' || activeInternalTab === 'done') {
       return ['list']
     }
-    return ['list', 'kanban', 'calendar']
+    return ['list', 'calendar']
   }, [activeInternalTab])
 
   // Reset to list view if current view becomes unavailable
@@ -1217,34 +1216,18 @@ export const TasksPage = ({
                     />
                   </svg>
                 </button>
-                {availableViews.includes('kanban') && (
-                  <button
-                    type="button"
-                    role="radio"
-                    aria-checked={activeView === 'kanban'}
-                    aria-label="Kanban view"
-                    onClick={() => setActiveView('kanban')}
-                    className={cn(
-                      'flex items-center justify-center w-[26px] h-6 shrink-0 transition-colors',
-                      activeView === 'kanban'
-                        ? 'bg-foreground/10 text-foreground'
-                        : 'text-text-tertiary hover:text-text-secondary'
-                    )}
-                  >
-                    <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
-                      <rect x="1.5" y="2" width="2.5" height="9" rx="0.75" stroke="currentColor" />
-                      <rect
-                        x="5.25"
-                        y="2"
-                        width="2.5"
-                        height="6.5"
-                        rx="0.75"
-                        stroke="currentColor"
-                      />
-                      <rect x="9" y="2" width="2.5" height="4.5" rx="0.75" stroke="currentColor" />
-                    </svg>
-                  </button>
-                )}
+                <button
+                  type="button"
+                  disabled
+                  aria-label="Kanban view (coming soon)"
+                  className="flex items-center justify-center w-[26px] h-6 shrink-0 opacity-40 cursor-not-allowed text-text-tertiary"
+                >
+                  <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
+                    <rect x="1.5" y="2" width="2.5" height="9" rx="0.75" stroke="currentColor" />
+                    <rect x="5.25" y="2" width="2.5" height="6.5" rx="0.75" stroke="currentColor" />
+                    <rect x="9" y="2" width="2.5" height="4.5" rx="0.75" stroke="currentColor" />
+                  </svg>
+                </button>
                 {availableViews.includes('calendar') && (
                   <button
                     type="button"
@@ -1306,7 +1289,7 @@ export const TasksPage = ({
               onCancel={deselectAll}
               projects={projects}
               statuses={currentProjectStatuses}
-              showStatusAction={activeView === 'kanban' && selectedType === 'project'}
+              showStatusAction={false}
             />
           )}
 
@@ -1403,34 +1386,6 @@ export const TasksPage = ({
                 onReorderSubtasks={subtaskManagement.handleReorderSubtasks}
                 onAddSubtask={subtaskManagement.handleAddSubtask}
               />
-            </div>
-          )}
-
-          {/* Kanban View - All Tab */}
-          {activeInternalTab === 'all' && activeView === 'kanban' && (
-            <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
-              {showFilterEmptyState ? (
-                <FilterEmptyState
-                  filters={filters}
-                  projects={projects}
-                  onClearFilters={clearFiltersAndClearSaved}
-                />
-              ) : (
-                <KanbanBoard
-                  tasks={filteredTasks}
-                  projects={projects}
-                  selectedId="all"
-                  selectedType="view"
-                  onUpdateTask={handleUpdateTask}
-                  onToggleComplete={handleToggleComplete}
-                  onDeleteTask={handleDeleteTask}
-                  onQuickAdd={handleQuickAdd}
-                  onTaskClick={handleTaskClick}
-                  isSelectionMode={selection.isSelectionMode}
-                  selectedIds={selection.selectedIds}
-                  onToggleSelect={toggleTask}
-                />
-              )}
             </div>
           )}
 

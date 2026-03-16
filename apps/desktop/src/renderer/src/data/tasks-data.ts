@@ -46,15 +46,13 @@ export interface TaskView {
 // VIEW MODE TYPES
 // ============================================================================
 
-export type ViewMode = 'list' | 'kanban' | 'calendar'
+export type ViewMode = 'list' | 'calendar'
 
 export const viewModes: { id: ViewMode; label: string }[] = [
   { id: 'list', label: 'List' },
-  { id: 'kanban', label: 'Kanban' },
   { id: 'calendar', label: 'Calendar' }
 ]
 
-// Views that only support List mode (no Kanban/Calendar)
 export const LIST_ONLY_VIEWS = ['today', 'completed']
 
 // ============================================================================
