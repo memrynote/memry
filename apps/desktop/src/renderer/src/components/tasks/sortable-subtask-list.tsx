@@ -17,6 +17,7 @@ import { restrictToVerticalAxis, restrictToParentElement } from '@dnd-kit/modifi
 import { cn } from '@/lib/utils'
 import { SortableSubtaskRow } from '@/components/tasks/sortable-subtask-row'
 import type { Task } from '@/data/sample-tasks'
+import type { Status } from '@/data/tasks-data'
 
 // ============================================================================
 // TYPES
@@ -26,6 +27,7 @@ interface SortableSubtaskListProps {
   parentId: string
   parentTitle: string
   subtasks: Task[]
+  statuses: Status[]
   onReorder: (parentId: string, newOrder: string[]) => void
   onToggleComplete: (taskId: string) => void
   onClick?: (taskId: string) => void
@@ -51,6 +53,7 @@ export const SortableSubtaskList = ({
   parentId,
   parentTitle,
   subtasks,
+  statuses,
   onReorder,
   onToggleComplete,
   onClick,
@@ -106,6 +109,7 @@ export const SortableSubtaskList = ({
             <SortableSubtaskRow
               key={subtask.id}
               subtask={subtask}
+              statuses={statuses}
               parentId={parentId}
               isLast={index === subtasks.length - 1}
               onToggleComplete={onToggleComplete}
