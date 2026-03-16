@@ -1116,6 +1116,7 @@ export interface MainIpcInvokeHandlers {
                 direction: 'asc' | 'desc'
               }
             | undefined
+          starred?: boolean | undefined
         }
       }
     ]
@@ -1182,6 +1183,7 @@ export interface MainIpcInvokeHandlers {
                     direction: 'asc' | 'desc'
                   }
                 | undefined
+              starred?: boolean | undefined
             }
           | undefined
         position?: number | undefined
@@ -1275,6 +1277,7 @@ export interface MainIpcInvokeHandlers {
     accentColor: string
     startOnBoot: boolean
     language: string
+    onboardingCompleted: boolean
   }>
   'settings:getGraphSettings': (...args: []) => Awaited<{
     layout: 'forceatlas2' | 'circular' | 'random'
@@ -1377,6 +1380,7 @@ export interface MainIpcInvokeHandlers {
         accentColor: string
         startOnBoot: boolean
         language: string
+        onboardingCompleted: boolean
       }>
     ]
   ) => Awaited<{ success: boolean; error?: string | undefined }>

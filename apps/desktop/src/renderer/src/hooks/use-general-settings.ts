@@ -8,7 +8,8 @@ const DEFAULTS: GeneralSettingsDTO = {
   fontFamily: 'system',
   accentColor: '#6366f1',
   startOnBoot: false,
-  language: 'en'
+  language: 'en',
+  onboardingCompleted: false
 }
 
 interface UseGeneralSettingsReturn {

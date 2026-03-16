@@ -2042,6 +2042,7 @@ export interface GeneralSettingsDTO {
   accentColor: string
   startOnBoot: boolean
   language: string
+  onboardingCompleted: boolean
 }
 
 export interface EditorSettingsDTO {
