@@ -13,8 +13,6 @@ interface ActiveFiltersBarProps {
   className?: string
 }
 
-const FONT = "font-['Inter',system-ui,sans-serif]"
-
 const DUE_DATE_LABELS: Record<string, string> = {
   overdue: 'Overdue',
   today: 'Today',
@@ -97,12 +95,12 @@ export const ActiveFiltersBar = ({
             <rect x="8" y="2" width="2" height="8" rx="0.4" fill="currentColor" />
           </svg>
           <span
-            className={`text-[11px] text-text-secondary ${FONT} leading-3.5 shrink-0 whitespace-nowrap`}
+            className={`text-[11px] text-text-secondary leading-3.5 shrink-0 whitespace-nowrap`}
           >
             Priority is
           </span>
           <span
-            className={`text-[11px] text-foreground ${FONT} font-medium leading-3.5 shrink-0 whitespace-nowrap`}
+            className={`text-[11px] text-foreground font-medium leading-3.5 shrink-0 whitespace-nowrap`}
           >
             {values}
           </span>
@@ -132,12 +130,12 @@ export const ActiveFiltersBar = ({
             <circle cx="5.5" cy="5.5" r="4" stroke="currentColor" strokeWidth="1" />
           </svg>
           <span
-            className={`text-[11px] text-text-secondary ${FONT} leading-3.5 shrink-0 whitespace-nowrap`}
+            className={`text-[11px] text-text-secondary leading-3.5 shrink-0 whitespace-nowrap`}
           >
             Status is
           </span>
           <span
-            className={`text-[11px] text-foreground ${FONT} font-medium leading-3.5 shrink-0 whitespace-nowrap`}
+            className={`text-[11px] text-foreground font-medium leading-3.5 shrink-0 whitespace-nowrap`}
           >
             {statusNames.join(', ')}
           </span>
@@ -161,12 +159,12 @@ export const ActiveFiltersBar = ({
             />
           )}
           <span
-            className={`text-[11px] text-text-secondary ${FONT} leading-3.5 shrink-0 whitespace-nowrap`}
+            className={`text-[11px] text-text-secondary leading-3.5 shrink-0 whitespace-nowrap`}
           >
             Project is
           </span>
           <span
-            className={`text-[11px] text-foreground ${FONT} font-medium leading-3.5 shrink-0 whitespace-nowrap`}
+            className={`text-[11px] text-foreground font-medium leading-3.5 shrink-0 whitespace-nowrap`}
           >
             {names || 'Unknown'}
           </span>
@@ -210,12 +208,12 @@ export const ActiveFiltersBar = ({
             <path d="M1 4.5h9" stroke="currentColor" strokeWidth="0.9" />
           </svg>
           <span
-            className={`text-[11px] text-text-secondary ${FONT} leading-3.5 shrink-0 whitespace-nowrap`}
+            className={`text-[11px] text-text-secondary leading-3.5 shrink-0 whitespace-nowrap`}
           >
             Due
           </span>
           <span
-            className={`text-[11px] text-foreground ${FONT} font-medium leading-3.5 shrink-0 whitespace-nowrap`}
+            className={`text-[11px] text-foreground font-medium leading-3.5 shrink-0 whitespace-nowrap`}
           >
             {label}
           </span>
@@ -243,7 +241,7 @@ export const ActiveFiltersBar = ({
             <path d="M7 7l2.5 2.5" stroke="currentColor" strokeWidth="0.9" strokeLinecap="round" />
           </svg>
           <span
-            className={`text-[11px] text-foreground ${FONT} font-medium leading-3.5 shrink-0 whitespace-nowrap`}
+            className={`text-[11px] text-foreground font-medium leading-3.5 shrink-0 whitespace-nowrap`}
           >
             "{filters.search}"
           </span>
@@ -269,7 +267,7 @@ export const ActiveFiltersBar = ({
       <button
         type="button"
         onClick={onClearAll}
-        className={`text-[11px] ml-auto shrink-0 whitespace-nowrap text-destructive ${FONT} leading-3.5 hover:text-destructive/70 transition-colors`}
+        className={`text-[11px] ml-auto shrink-0 whitespace-nowrap text-destructive leading-3.5 hover:text-destructive/70 transition-colors`}
       >
         Clear all
       </button>

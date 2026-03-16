@@ -69,7 +69,7 @@ export const SavedFiltersDropdown = ({
                   <div className="flex flex-col gap-0.5 min-w-0">
                     <span
                       className={cn(
-                        "text-[13px] font-['DM_Sans_Variable',system-ui,sans-serif] leading-4 truncate",
+                        'text-[13px] leading-4 truncate',
                         index === 0 ? 'font-medium text-foreground' : 'text-foreground'
                       )}
                     >
@@ -91,9 +91,7 @@ export const SavedFiltersDropdown = ({
               </div>
             ))
           ) : (
-            <div className="px-4 py-3 text-[13px] text-text-tertiary font-['DM_Sans_Variable',system-ui,sans-serif]">
-              No saved filters yet
-            </div>
+            <div className="px-4 py-3 text-[13px] text-text-tertiary">No saved filters yet</div>
           )}
         </div>
 
@@ -106,14 +104,14 @@ export const SavedFiltersDropdown = ({
               className="flex items-center w-full py-2.5 px-4 gap-2 hover:bg-accent transition-colors focus:outline-none"
             >
               <Plus className="size-3.5 text-text-tertiary" />
-              <span className="text-[13px] text-text-tertiary font-['DM_Sans_Variable',system-ui,sans-serif] font-medium leading-4">
+              <span className="text-[13px] text-text-tertiary font-medium leading-4">
                 Save current filters
               </span>
             </button>
           ) : (
             <div className="flex items-center py-2.5 px-4 gap-2 opacity-50">
               <Plus className="size-3.5 text-text-tertiary" />
-              <span className="text-[13px] text-text-tertiary font-['DM_Sans_Variable',system-ui,sans-serif] font-medium leading-4">
+              <span className="text-[13px] text-text-tertiary font-medium leading-4">
                 Save current filters
               </span>
             </div>

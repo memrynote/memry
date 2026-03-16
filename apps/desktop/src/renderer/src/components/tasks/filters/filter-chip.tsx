@@ -1,7 +1,5 @@
 import { cn } from '@/lib/utils'
 
-const FONT = "font-['DM_Sans_Variable',system-ui,sans-serif]"
-
 interface FilterChipProps {
   label: string
   icon?: React.ReactNode
@@ -38,7 +36,7 @@ export const FilterChip = ({
     {dot && <div className="rounded-full shrink-0 size-1.5" style={{ backgroundColor: dot }} />}
     {icon && <span className="shrink-0 flex items-center">{icon}</span>}
     <span
-      className={`text-[12px] ${FONT} font-medium leading-4 truncate max-w-32`}
+      className="text-[12px] font-medium leading-4 truncate max-w-32"
       style={{ color: chipText || 'var(--foreground)' }}
     >
       {label}

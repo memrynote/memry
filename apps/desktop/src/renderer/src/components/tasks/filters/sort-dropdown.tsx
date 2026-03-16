@@ -11,8 +11,6 @@ interface SortDropdownProps {
   className?: string
 }
 
-const FONT = "font-['DM_Sans_Variable',system-ui,sans-serif]"
-
 const SORT_FIELD_LABELS: Record<SortField, string> = {
   dueDate: 'Due Date',
   priority: 'Priority',
@@ -102,9 +100,7 @@ export const SortDropdown = ({
               <path d="M21 18l-3 3-3-3" />
               <path d="M18 21V3" />
             </svg>
-            <span className={`text-[13px] leading-4 text-foreground ${FONT} font-semibold`}>
-              Sort
-            </span>
+            <span className="text-[13px] leading-4 text-foreground font-semibold">Sort</span>
           </div>
 
           {/* Sort options */}
@@ -143,7 +139,7 @@ export const SortDropdown = ({
                     type="button"
                     onClick={() => handleSelectField(field)}
                     className={cn(
-                      `text-[13px] leading-4 grow shrink basis-0 text-left ${FONT}`,
+                      'text-[13px] leading-4 grow shrink basis-0 text-left',
                       isSelected ? 'text-foreground font-medium' : 'text-foreground'
                     )}
                   >
@@ -221,7 +217,7 @@ export const SortDropdown = ({
             onClick={handleReset}
             className={cn(
               'flex items-center py-2.5 px-4 transition-colors hover:bg-accent',
-              `text-[12px] leading-4 ${FONT}`,
+              'text-[12px] leading-4',
               isNonDefault ? 'text-foreground' : 'text-text-tertiary'
             )}
           >

@@ -162,7 +162,7 @@ export const PriorityFilter = ({
                 {/* Label */}
                 <span
                   className={cn(
-                    "text-[13px] font-['DM_Sans_Variable',system-ui,sans-serif] leading-4",
+                    'text-[13px] leading-4',
                     isSelected ? 'font-medium text-foreground' : 'text-foreground',
                     priority === 'none' && !isSelected && 'text-text-secondary'
                   )}
@@ -170,7 +170,7 @@ export const PriorityFilter = ({
                   {display.label}
                 </span>
                 {/* Count */}
-                <span className="text-[11px] ml-auto text-text-tertiary font-['DM_Sans_Variable',system-ui,sans-serif] leading-[14px]">
+                <span className="text-[11px] ml-auto text-text-tertiary leading-[14px]">
                   {taskCount}
                 </span>
               </button>
@@ -183,7 +183,7 @@ export const PriorityFilter = ({
           <button
             type="button"
             onClick={handleClear}
-            className="text-[12px] text-text-tertiary font-['DM_Sans_Variable',system-ui,sans-serif] font-medium leading-4 hover:text-foreground transition-colors"
+            className="text-[12px] text-text-tertiary font-medium leading-4 hover:text-foreground transition-colors"
           >
             Clear
           </button>
@@ -192,9 +192,7 @@ export const PriorityFilter = ({
             onClick={() => setIsOpen(false)}
             className="flex items-center rounded-sm py-[5px] px-3.5 gap-1 bg-foreground hover:bg-foreground/80 transition-colors"
           >
-            <span className="text-[12px] text-background font-['DM_Sans_Variable',system-ui,sans-serif] font-semibold leading-4">
-              Apply
-            </span>
+            <span className="text-[12px] text-background font-semibold leading-4">Apply</span>
           </button>
         </div>
       </PopoverContent>
