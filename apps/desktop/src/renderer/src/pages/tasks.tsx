@@ -398,7 +398,9 @@ export const TasksPage = ({
     const scopedTasks = scopeTasksByProject(tasks, selectedProjectId)
     const allActive = getFilteredTasks(scopedTasks, 'all', 'view', projects)
     const todayResult = getTodayTasks(scopedTasks, projects)
-    const todayCount = todayResult.overdue.length + todayResult.today.length
+    const todayCount =
+      todayResult.overdue.filter((t) => t.parentId === null).length +
+      todayResult.today.filter((t) => t.parentId === null).length
     const doneCount = getCompletedTasks(scopedTasks).length
 
     return {

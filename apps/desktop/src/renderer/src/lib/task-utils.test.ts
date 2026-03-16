@@ -3987,6 +3987,95 @@ describe('Task Utils', () => {
         expect(result.overdue).toHaveLength(0)
         expect(result.today).toHaveLength(0)
       })
+
+      it('should include subtasks of matching parent tasks', () => {
+        // #given - parent due today with subtasks that have no due date
+        const tasks = [
+          createMockTask({
+            id: 'parent-1',
+            projectId: 'project-1',
+            statusId: 'status-todo',
+            dueDate: new Date('2026-01-14'),
+            subtaskIds: ['sub-1', 'sub-2']
+          }),
+          createMockTask({
+            id: 'sub-1',
+            projectId: 'project-1',
+            statusId: 'status-todo',
+            parentId: 'parent-1',
+            dueDate: null
+          }),
+          createMockTask({
+            id: 'sub-2',
+            projectId: 'project-1',
+            statusId: 'status-todo',
+            parentId: 'parent-1',
+            dueDate: null
+          })
+        ]
+
+        // #when
+        const result = getTodayTasks(tasks, projects)
+
+        // #then - subtasks included alongside parent
+        expect(result.today.map((t) => t.id)).toContain('parent-1')
+        expect(result.today.map((t) => t.id)).toContain('sub-1')
+        expect(result.today.map((t) => t.id)).toContain('sub-2')
+      })
+
+      it('should include subtasks of overdue parent tasks', () => {
+        // #given - overdue parent with subtask
+        const tasks = [
+          createMockTask({
+            id: 'parent-1',
+            projectId: 'project-1',
+            statusId: 'status-todo',
+            dueDate: new Date('2026-01-10'),
+            subtaskIds: ['sub-1']
+          }),
+          createMockTask({
+            id: 'sub-1',
+            projectId: 'project-1',
+            statusId: 'status-todo',
+            parentId: 'parent-1',
+            dueDate: null
+          })
+        ]
+
+        // #when
+        const result = getTodayTasks(tasks, projects)
+
+        // #then
+        expect(result.overdue.map((t) => t.id)).toContain('parent-1')
+        expect(result.overdue.map((t) => t.id)).toContain('sub-1')
+      })
+
+      it('should not double-count subtasks as top-level tasks', () => {
+        // #given - subtask has its own due date matching today
+        const tasks = [
+          createMockTask({
+            id: 'parent-1',
+            projectId: 'project-1',
+            statusId: 'status-todo',
+            dueDate: new Date('2026-01-14'),
+            subtaskIds: ['sub-1']
+          }),
+          createMockTask({
+            id: 'sub-1',
+            projectId: 'project-1',
+            statusId: 'status-todo',
+            parentId: 'parent-1',
+            dueDate: new Date('2026-01-14')
+          })
+        ]
+
+        // #when
+        const result = getTodayTasks(tasks, projects)
+
+        // #then - subtask appears once (via parent inclusion), not duplicated
+        const subOccurrences = result.today.filter((t) => t.id === 'sub-1')
+        expect(subOccurrences).toHaveLength(1)
+      })
     })
 
     describe('getTodayWithWeekTasks', () => {

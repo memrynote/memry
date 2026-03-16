@@ -960,6 +960,7 @@ export const getTodayWithWeekTasks = (
 
   tasks.forEach((task) => {
     if (isTaskCompleted(task, projects)) return
+    if (task.parentId !== null) return
     if (!task.dueDate) return
 
     const dueDate = startOfDay(task.dueDate)
@@ -976,7 +977,19 @@ export const getTodayWithWeekTasks = (
     }
   })
 
-  return { overdue, today, weekByDay }
+  const overdueWithSubtasks = includeSubtasksForMatchingParents(overdue, tasks)
+  const todayWithSubtasks = includeSubtasksForMatchingParents(today, tasks)
+
+  const weekByDayWithSubtasks = new Map<string, Task[]>()
+  weekByDay.forEach((dayTasks, key) => {
+    weekByDayWithSubtasks.set(key, includeSubtasksForMatchingParents(dayTasks, tasks))
+  })
+
+  return {
+    overdue: overdueWithSubtasks,
+    today: todayWithSubtasks,
+    weekByDay: weekByDayWithSubtasks
+  }
 }
 
 /**
@@ -1011,19 +1024,15 @@ export const getUpcomingTasks = (
   }
 
   tasks.forEach((task) => {
-    // Skip completed tasks
     if (isTaskCompleted(task, projects)) return
-
-    // Skip tasks without due date
+    if (task.parentId !== null) return
     if (!task.dueDate) return
 
     const dueDate = startOfDay(task.dueDate)
 
     if (isBefore(dueDate, todayStart)) {
-      // Overdue
       overdue.push(task)
     } else if (isWithinInterval(task.dueDate, { start: todayStart, end: rangeEnd })) {
-      // Within range
       const key = formatDateKey(dueDate)
       if (byDay.has(key)) {
         byDay.get(key)!.push(task)
@@ -1031,9 +1040,14 @@ export const getUpcomingTasks = (
     }
   })
 
-  // Return tasks preserving the order they came in (from user's sort preference)
-  // Don't re-sort here - the caller controls sort order
-  return { overdue, byDay }
+  const overdueWithSubtasks = includeSubtasksForMatchingParents(overdue, tasks)
+
+  const byDayWithSubtasks = new Map<string, Task[]>()
+  byDay.forEach((dayTasks, key) => {
+    byDayWithSubtasks.set(key, includeSubtasksForMatchingParents(dayTasks, tasks))
+  })
+
+  return { overdue: overdueWithSubtasks, byDay: byDayWithSubtasks }
 }
 
 /**
