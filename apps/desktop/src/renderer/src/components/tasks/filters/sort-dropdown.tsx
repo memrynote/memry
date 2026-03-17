@@ -15,13 +15,21 @@ interface SortDropdownProps {
 const SORT_FIELD_LABELS: Record<SortField, string> = {
   dueDate: 'Due date',
   priority: 'Priority',
+  status: 'Status',
   createdAt: 'Created',
   title: 'Title',
   project: 'Project',
   completedAt: 'Completed'
 }
 
-const VISIBLE_FIELDS: SortField[] = ['priority', 'dueDate', 'createdAt', 'title', 'project']
+const VISIBLE_FIELDS: SortField[] = [
+  'priority',
+  'status',
+  'dueDate',
+  'createdAt',
+  'title',
+  'project'
+]
 
 const DIRECTION_LABELS: Record<SortDirection, string> = {
   asc: 'Ascending',
