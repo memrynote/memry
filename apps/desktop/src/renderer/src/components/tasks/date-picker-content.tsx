@@ -1,5 +1,6 @@
 import { useState, useMemo, useCallback } from 'react'
 
+import { Clock, X } from '@/lib/icons'
 import { cn } from '@/lib/utils'
 import { formatTime } from '@/lib/task-utils'
 import { DatePickerCalendar } from './date-picker-calendar'
@@ -38,18 +39,7 @@ function getDefaultTime(): string {
   return `${hour.toString().padStart(2, '0')}:00`
 }
 
-const ClockIcon = (): React.JSX.Element => (
-  <svg width="12" height="12" viewBox="0 0 12 12" fill="none" className="shrink-0">
-    <circle cx="6" cy="6" r="4.5" stroke="currentColor" strokeWidth="1.1" />
-    <path
-      d="M6 3.5V6l2 1.5"
-      stroke="currentColor"
-      strokeWidth="1.1"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-  </svg>
-)
+const ClockIcon = (): React.JSX.Element => <Clock size={12} className="shrink-0" />
 
 export function DatePickerContent({
   selected,
@@ -174,14 +164,7 @@ export function DatePickerContent({
                 className="rounded-[5px] p-1.5 text-text-tertiary hover:text-destructive hover:bg-accent transition-colors"
                 aria-label="Clear time"
               >
-                <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
-                  <path
-                    d="M2 2l6 6M8 2l-6 6"
-                    stroke="currentColor"
-                    strokeWidth="1.2"
-                    strokeLinecap="round"
-                  />
-                </svg>
+                <X size={10} />
               </button>
             </>
           ) : (

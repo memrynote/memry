@@ -252,7 +252,9 @@ import {
   LeftToRightBlockQuoteIcon,
   SummationCircleIcon,
   ChartDecreaseIcon,
-  NotificationOff01Icon
+  NotificationOff01Icon,
+  DashedLineCircleIcon,
+  Progress03Icon
 } from '@hugeicons/core-free-icons'
 import { createIcon } from './create-icon'
 
@@ -442,6 +444,8 @@ export const Loader2 = createIcon(Loading03Icon)
 export const RefreshCw = createIcon(Refresh01Icon)
 export const RotateCcw = createIcon(RotateLeft01Icon)
 export const RotateCw = createIcon(RotateRight01Icon)
+export const CircleDashed = createIcon(DashedLineCircleIcon)
+export const Progress = createIcon(Progress03Icon)
 export const BadgeCheck = createIcon(CheckmarkBadge01Icon)
 export const ShieldAlert = createIcon(Shield01Icon)
 export const Repeat = createIcon(RepeatIcon)

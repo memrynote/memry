@@ -6,11 +6,8 @@ import {
   SelectValue
 } from '@/components/ui/select'
 import { cn } from '@/lib/utils'
+import { StatusIcon } from '@/components/tasks/status-icon'
 import type { Status } from '@/data/tasks-data'
-
-// ============================================================================
-// TYPES
-// ============================================================================
 
 interface StatusSelectProps {
   value: string
@@ -19,32 +16,6 @@ interface StatusSelectProps {
   className?: string
   compact?: boolean
 }
-
-// ============================================================================
-// STATUS DOT COMPONENT
-// ============================================================================
-
-const StatusDot = ({
-  color,
-  className,
-  compact = false
-}: {
-  color: string
-  className?: string
-  compact?: boolean
-}): React.JSX.Element => {
-  return (
-    <span
-      className={cn('shrink-0 rounded-full', compact ? 'size-2' : 'size-3', className)}
-      style={{ backgroundColor: color }}
-      aria-hidden="true"
-    />
-  )
-}
-
-// ============================================================================
-// STATUS SELECT COMPONENT
-// ============================================================================
 
 export const StatusSelect = ({
   value,
@@ -72,7 +43,11 @@ export const StatusSelect = ({
         <SelectValue>
           {currentStatus ? (
             <div className="flex items-center gap-2">
-              <StatusDot color={currentStatus.color} compact={compact} />
+              <StatusIcon
+                type={currentStatus.type}
+                color={currentStatus.color}
+                size={compact ? 'sm' : 'md'}
+              />
               <span className={cn('truncate', compact && 'text-sm')}>{currentStatus.name}</span>
             </div>
           ) : (
@@ -84,7 +59,7 @@ export const StatusSelect = ({
         {sortedStatuses.map((status) => (
           <SelectItem key={status.id} value={status.id} className="cursor-pointer">
             <div className="flex items-center gap-2">
-              <StatusDot color={status.color} />
+              <StatusIcon type={status.type} color={status.color} />
               <span className="truncate">{status.name}</span>
             </div>
           </SelectItem>

@@ -6,7 +6,8 @@ import { GripVertical } from '@/lib/icons'
 import { cn } from '@/lib/utils'
 import { hasSubtasks, type SubtaskProgress } from '@/lib/subtask-utils'
 import { formatDueDate, formatDateShort, formatTime } from '@/lib/task-utils'
-import { StatusCircle, PriorityBars } from '@/components/tasks/task-icons'
+import { PriorityBars } from '@/components/tasks/task-icons'
+import { InteractiveStatusIcon } from '@/components/tasks/status-icon'
 import { SelectionCheckbox } from '@/components/tasks/bulk-actions'
 import { ExpandChevron } from '@/components/tasks/expand-chevron'
 import { SortableSubtaskList } from '@/components/tasks/sortable-subtask-list'
@@ -218,9 +219,9 @@ export const SortableParentTaskRow = ({
           size="sm"
         />
 
-        <StatusCircle
-          statusType={statusType}
-          statusColor={statusColor}
+        <InteractiveStatusIcon
+          type={statusType}
+          color={statusColor}
           isCompleted={isCompleted}
           onClick={handleToggleClick}
         />

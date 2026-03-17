@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react'
-import { ChevronDown, ChevronRight, Clock, Calendar, RefreshCw } from '@/lib/icons'
+import { Check, ChevronDown, ChevronRight, Clock, Calendar, RefreshCw } from '@/lib/icons'
 
 import { Button } from '@/components/ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
@@ -202,18 +202,7 @@ export const MoreFiltersDropdown = ({
                       }}
                     >
                       {isSelected && (
-                        <svg
-                          width="10"
-                          height="10"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke={status.color}
-                          strokeWidth="3"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        >
-                          <polyline points="20 6 9 17 4 12" />
-                        </svg>
+                        <Check size={10} strokeWidth={3} style={{ color: status.color }} />
                       )}
                     </div>
                     <div

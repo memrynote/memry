@@ -1,5 +1,5 @@
 import { cn } from '@/lib/utils'
-import { StatusCircle } from '@/components/tasks/task-icons'
+import { InteractiveStatusIcon } from '@/components/tasks/status-icon'
 import type { Task } from '@/data/sample-tasks'
 import type { Status } from '@/data/tasks-data'
 
@@ -52,9 +52,9 @@ export const SubtaskRow = ({
       aria-label={`Subtask: ${subtask.title}${isCompleted ? ', completed' : ''}`}
     >
       <div onClick={(e) => e.stopPropagation()}>
-        <StatusCircle
-          statusType={statusType}
-          statusColor={statusColor}
+        <InteractiveStatusIcon
+          type={statusType}
+          color={statusColor}
           isCompleted={isCompleted}
           onClick={() => onToggleComplete(subtask.id)}
         />

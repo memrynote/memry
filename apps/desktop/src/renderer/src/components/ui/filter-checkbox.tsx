@@ -1,3 +1,4 @@
+import { Check } from '@/lib/icons'
 import { cn } from '@/lib/utils'
 
 interface FilterCheckboxProps {
@@ -23,20 +24,7 @@ export function FilterCheckbox({
         backgroundColor: checked ? checkedBg : 'var(--card)'
       }}
     >
-      {checked && (
-        <svg
-          width="10"
-          height="10"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke={color}
-          strokeWidth="3"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        >
-          <polyline points="20 6 9 17 4 12" />
-        </svg>
-      )}
+      {checked && <Check size={10} strokeWidth={3} style={{ color }} />}
     </div>
   )
 }

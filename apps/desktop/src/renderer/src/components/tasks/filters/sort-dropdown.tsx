@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react'
 
+import { ArrowUp, ArrowDown } from '@/lib/icons'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { CheckMark } from '@/components/ui/check-mark'
 import { cn } from '@/lib/utils'
@@ -136,17 +137,12 @@ export const SortDropdown = ({
                     sort.direction === 'asc' ? 'bg-foreground/8' : 'hover:bg-foreground/5'
                   )}
                 >
-                  <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
-                    <path
-                      d="M5 8V2M5 2L3 4M5 2l2 2"
-                      stroke={
-                        sort.direction === 'asc' ? 'var(--foreground)' : 'var(--text-tertiary)'
-                      }
-                      strokeWidth="1.1"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                  </svg>
+                  <ArrowUp
+                    size={10}
+                    style={{
+                      color: sort.direction === 'asc' ? 'var(--foreground)' : 'var(--text-tertiary)'
+                    }}
+                  />
                 </button>
                 <button
                   type="button"
@@ -157,17 +153,13 @@ export const SortDropdown = ({
                     sort.direction === 'desc' ? 'bg-foreground/8' : 'hover:bg-foreground/5'
                   )}
                 >
-                  <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
-                    <path
-                      d="M5 2v6M5 8L3 6M5 8l2-2"
-                      stroke={
+                  <ArrowDown
+                    size={10}
+                    style={{
+                      color:
                         sort.direction === 'desc' ? 'var(--foreground)' : 'var(--text-tertiary)'
-                      }
-                      strokeWidth="1.1"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                  </svg>
+                    }}
+                  />
                 </button>
               </div>
             </div>

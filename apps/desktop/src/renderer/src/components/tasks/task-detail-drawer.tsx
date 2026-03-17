@@ -9,7 +9,8 @@ import { InteractiveStatusBadge } from '@/components/tasks/interactive-status-ba
 import { InteractivePriorityBadge } from '@/components/tasks/interactive-priority-badge'
 import { InteractiveDueDateBadge } from '@/components/tasks/interactive-due-date-badge'
 import { InteractiveProjectBadge } from '@/components/tasks/interactive-project-badge'
-import { StatusIcon } from '@/components/tasks/task-icons'
+import { StatusIcon } from '@/components/tasks/status-icon'
+import { X, Plus } from '@/lib/icons'
 
 // ============================================================================
 // TYPES
@@ -263,14 +264,7 @@ export const TaskDetailDrawer = memo(function TaskDetailDrawer({
                 className="shrink-0 rounded-sm p-0.5 text-text-tertiary hover:text-text-secondary transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 aria-label="Close task details"
               >
-                <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                  <path
-                    d="M4 4l8 8M12 4l-8 8"
-                    stroke="currentColor"
-                    strokeWidth="1.3"
-                    strokeLinecap="round"
-                  />
-                </svg>
+                <X size={16} />
               </button>
             </div>
 
@@ -352,14 +346,7 @@ export const TaskDetailDrawer = memo(function TaskDetailDrawer({
                       className="text-text-tertiary hover:text-text-secondary transition-colors"
                       aria-label="Add sub-issue"
                     >
-                      <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                        <path
-                          d="M7 3v8M3 7h8"
-                          stroke="currentColor"
-                          strokeWidth="1.2"
-                          strokeLinecap="round"
-                        />
-                      </svg>
+                      <Plus size={14} />
                     </button>
                   )}
                 </div>
@@ -452,14 +439,7 @@ export const TaskDetailDrawer = memo(function TaskDetailDrawer({
                   className="text-text-tertiary hover:text-text-secondary transition-colors"
                   aria-label="Link a note"
                 >
-                  <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                    <path
-                      d="M7 3v8M3 7h8"
-                      stroke="currentColor"
-                      strokeWidth="1.2"
-                      strokeLinecap="round"
-                    />
-                  </svg>
+                  <Plus size={14} />
                 </button>
               </div>
               {task.linkedNoteIds.map((noteId) => {
@@ -504,14 +484,7 @@ export const TaskDetailDrawer = memo(function TaskDetailDrawer({
                       className="shrink-0 rounded-sm p-0.5 text-text-tertiary opacity-0 group-hover:opacity-100 hover:text-text-secondary transition-all"
                       aria-label={`Remove link to ${info?.title ?? 'note'}`}
                     >
-                      <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-                        <path
-                          d="M3 3l6 6M9 3l-6 6"
-                          stroke="currentColor"
-                          strokeWidth="1.2"
-                          strokeLinecap="round"
-                        />
-                      </svg>
+                      <X size={12} />
                     </button>
                   </div>
                 )

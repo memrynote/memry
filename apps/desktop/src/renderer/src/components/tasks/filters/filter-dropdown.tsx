@@ -1,5 +1,6 @@
 import { useState, useCallback, useMemo } from 'react'
 
+import { ChevronRight } from '@/lib/icons'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { FilterSearchHeader } from '@/components/ui/filter-search-header'
 import type { TaskFilters, Project, Status, DueDateFilterType } from '@/data/tasks-data'
@@ -224,27 +225,7 @@ export const FilterDropdown = ({
                   >
                     {CATEGORY_ICONS[cat.key]}
                     <span className="text-[12px] text-text-secondary leading-4">{cat.label}</span>
-                    <svg
-                      width="10"
-                      height="10"
-                      viewBox="0 0 10 10"
-                      fill="none"
-                      className="ml-auto text-text-tertiary"
-                    >
-                      <path
-                        d="M3.5 5l3 0"
-                        stroke="currentColor"
-                        strokeWidth="1.1"
-                        strokeLinecap="round"
-                      />
-                      <path
-                        d="M5.5 3L7.5 5 5.5 7"
-                        stroke="currentColor"
-                        strokeWidth="1.1"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      />
-                    </svg>
+                    <ChevronRight size={10} className="ml-auto text-text-tertiary" />
                   </button>
                 ))}
               </div>

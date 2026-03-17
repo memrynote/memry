@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
 
+import { ChevronLeft } from '@/lib/icons'
 import { cn } from '@/lib/utils'
 import { CheckMark } from '@/components/ui/check-mark'
 import { FilterSearchHeader } from '@/components/ui/filter-search-header'
@@ -18,15 +19,7 @@ const PRIORITY_LABELS: Record<Priority, string> = {
 
 const BackButton = ({ onClick }: { onClick: () => void }): React.JSX.Element => (
   <button type="button" onClick={onClick} className="shrink-0 p-0.5 -ml-0.5 text-text-tertiary">
-    <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-      <path
-        d="M7 3L4 6l3 3"
-        stroke="currentColor"
-        strokeWidth="1.2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
+    <ChevronLeft size={12} />
   </button>
 )
 

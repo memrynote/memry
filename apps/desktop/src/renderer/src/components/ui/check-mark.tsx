@@ -1,3 +1,4 @@
+import { Check } from '@/lib/icons'
 import { cn } from '@/lib/utils'
 
 interface CheckMarkProps {
@@ -11,21 +12,5 @@ export function CheckMark({
   size = 12,
   className
 }: CheckMarkProps): React.JSX.Element {
-  return (
-    <svg
-      width={size}
-      height={size}
-      viewBox="0 0 12 12"
-      fill="none"
-      className={cn('shrink-0', className)}
-    >
-      <path
-        d="M3 6l2 2 4-4"
-        stroke={color}
-        strokeWidth="1.3"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  )
+  return <Check size={size} className={cn('shrink-0', className)} style={{ color }} />
 }

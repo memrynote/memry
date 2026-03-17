@@ -1,5 +1,6 @@
 import { useState, useMemo, useCallback } from 'react'
 
+import { ChevronLeft, ChevronRight } from '@/lib/icons'
 import { cn } from '@/lib/utils'
 
 interface DatePickerCalendarProps {
@@ -68,29 +69,9 @@ function getMonthGrid(year: number, month: number, weekStartsOn: 0 | 1 = 1): Gri
   return weeks
 }
 
-const ChevronLeftIcon = (): React.JSX.Element => (
-  <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-    <path
-      d="M8.5 3.5L5 7l3.5 3.5"
-      stroke="currentColor"
-      strokeWidth="1.2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-  </svg>
-)
+const ChevronLeftIcon = (): React.JSX.Element => <ChevronLeft size={14} />
 
-const ChevronRightIcon = (): React.JSX.Element => (
-  <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-    <path
-      d="M5.5 3.5L9 7l-3.5 3.5"
-      stroke="currentColor"
-      strokeWidth="1.2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-  </svg>
-)
+const ChevronRightIcon = (): React.JSX.Element => <ChevronRight size={14} />
 
 export function DatePickerCalendar({
   selected,

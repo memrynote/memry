@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
 
+import { X, Star } from '@/lib/icons'
 import { cn } from '@/lib/utils'
 import type { TaskFilters, Project } from '@/data/tasks-data'
 import type { Priority } from '@/data/sample-tasks'
@@ -46,9 +47,7 @@ const RemoveButton = ({
     aria-label={`Remove ${label} filter`}
     className="flex items-center justify-center shrink-0 rounded-[3px] size-4 hover:opacity-70 transition-opacity"
   >
-    <svg width="10" height="10" viewBox="0 0 10 10" fill="none" className="text-text-tertiary">
-      <path d="M3 3l4 4M7 3l-4 4" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round" />
-    </svg>
+    <X size={10} className="text-text-tertiary" />
   </button>
 )
 
@@ -274,15 +273,7 @@ export const ActiveFiltersBar = ({
             aria-label={isSaved ? 'Saved' : 'Save filter'}
             className="flex items-center gap-1 text-[11px] shrink-0 whitespace-nowrap text-text-secondary leading-3.5 hover:text-foreground transition-colors"
           >
-            <svg width="11" height="11" viewBox="0 0 11 11" fill="none" className="shrink-0">
-              <path
-                d="M5.5 1.5l1.09 2.21 2.44.35-1.77 1.72.42 2.43L5.5 7.12 3.32 8.21l.42-2.43-1.77-1.72 2.44-.35L5.5 1.5z"
-                stroke="currentColor"
-                strokeWidth="0.8"
-                strokeLinejoin="round"
-                fill={isSaved ? 'currentColor' : 'none'}
-              />
-            </svg>
+            <Star size={11} className="shrink-0" fill={isSaved ? 'currentColor' : 'none'} />
             <span>{isSaved ? 'Saved' : 'Save'}</span>
           </button>
         )}

@@ -1,4 +1,4 @@
-import { Calendar, Clock } from '@/lib/icons'
+import { Calendar, ChevronDown, Clock } from '@/lib/icons'
 
 import { cn } from '@/lib/utils'
 import { PriorityBars, PriorityStar } from '@/components/tasks/task-icons'
@@ -106,26 +106,15 @@ export const GroupHeader = ({
       aria-expanded={!isCollapsed}
       aria-label={`${label}, ${count} tasks${isCollapsed ? ', collapsed' : ''}`}
     >
-      <svg
-        width="10"
-        height="10"
-        viewBox="0 0 10 10"
-        fill="none"
+      <ChevronDown
+        size={10}
         className={cn(
           'shrink-0 transition-transform duration-150',
           labelColor ? '' : 'text-text-tertiary',
           isCollapsed ? '-rotate-90' : ''
         )}
         style={labelColor ? { color: labelColor } : undefined}
-      >
-        <path
-          d="M2.5 3.5L5 6.5L7.5 3.5"
-          stroke="currentColor"
-          strokeWidth="1.2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-      </svg>
+      />
 
       {sortField === 'priority' &&
         (groupKey === 'urgent' && color ? (

@@ -3,6 +3,7 @@ import { Repeat } from '@/lib/icons'
 
 import { cn } from '@/lib/utils'
 import { StatusDot } from '@/components/ui/status-dot'
+import { StatusIcon } from '@/components/tasks/status-icon'
 import {
   formatDueDate,
   getDaysOverdue,
@@ -334,7 +335,7 @@ export const StatusBadge = ({
         color: color
       }}
     >
-      <StatusDot color={color} size="xs" />
+      <StatusIcon type={type ?? 'todo'} color={color} size="sm" />
       <span>{label}</span>
     </span>
   )
