@@ -46,10 +46,11 @@ export interface TaskView {
 // VIEW MODE TYPES
 // ============================================================================
 
-export type ViewMode = 'list' | 'calendar'
+export type ViewMode = 'list' | 'kanban' | 'calendar'
 
 export const viewModes: { id: ViewMode; label: string }[] = [
   { id: 'list', label: 'List' },
+  { id: 'kanban', label: 'Kanban' },
   { id: 'calendar', label: 'Calendar' }
 ]
 

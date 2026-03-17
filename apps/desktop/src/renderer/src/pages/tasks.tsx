@@ -8,6 +8,7 @@ import { ProjectSelector } from '@/components/tasks/projects/project-selector'
 import { AddTaskModal } from '@/components/tasks/add-task-modal'
 import { ProjectModal } from '@/components/tasks/project-modal'
 import { CalendarView } from '@/components/tasks/calendar'
+import { KanbanBoard } from '@/components/tasks/kanban'
 import { QuickAddInput } from '@/components/tasks/quick-add-input'
 import { TaskDetailDrawer } from '@/components/tasks/task-detail-drawer'
 import {
@@ -166,7 +167,8 @@ export const TasksPage = ({
   )
 
   // View mode state
-  const [activeView, setActiveView] = useState<ViewMode>('list')
+  const [activeView, setActiveViewRaw] = useState<ViewMode>('list')
+  const preKanbanSortRef = useRef<import('@/data/tasks-data').TaskSort | null>(null)
 
   // Internal tab state for the new tab bar navigation (default to Today)
   const [activeInternalTab, setActiveInternalTab] = useState<TasksInternalTab>('today')
@@ -220,6 +222,20 @@ export const TasksPage = ({
     activeView,
     persistFilters: true
   })
+
+  const setActiveView = useCallback(
+    (view: ViewMode) => {
+      if (view === 'kanban' && activeView !== 'kanban') {
+        preKanbanSortRef.current = { ...sort }
+        updateSort({ field: 'status', direction: sort.direction })
+      } else if (view !== 'kanban' && activeView === 'kanban' && preKanbanSortRef.current) {
+        updateSort(preKanbanSortRef.current)
+        preKanbanSortRef.current = null
+      }
+      setActiveViewRaw(view)
+    },
+    [activeView, sort, updateSort]
+  )
 
   // Saved filters
   const {
@@ -285,7 +301,7 @@ export const TasksPage = ({
     if (activeInternalTab === 'today' || activeInternalTab === 'done') {
       return ['list']
     }
-    return ['list', 'calendar']
+    return ['list', 'kanban', 'calendar']
   }, [activeInternalTab])
 
   // Reset to list view if current view becomes unavailable
@@ -659,6 +675,26 @@ export const TasksPage = ({
       contextAddTask,
       taskPrefs.defaultProjectId
     ]
+  )
+
+  const handleKanbanQuickAdd = useCallback(
+    (title: string, columnId: string): void => {
+      const project = selectedProject || projects[0]
+      if (!project) return
+
+      const status = project.statuses.find((s) => s.id === columnId)
+      const statusId = status?.id || getDefaultTodoStatus(project)?.id || project.statuses[0]?.id
+      if (!statusId) return
+
+      const newTask = createDefaultTask(project.id, statusId, title)
+
+      if (status?.type === 'done') {
+        newTask.completedAt = new Date()
+      }
+
+      contextAddTask(newTask)
+    },
+    [selectedProject, projects, contextAddTask]
   )
 
   const handleToggleComplete = useCallback(
@@ -1216,18 +1252,34 @@ export const TasksPage = ({
                     />
                   </svg>
                 </button>
-                <button
-                  type="button"
-                  disabled
-                  aria-label="Kanban view (coming soon)"
-                  className="flex items-center justify-center w-[26px] h-6 shrink-0 opacity-40 cursor-not-allowed text-text-tertiary"
-                >
-                  <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
-                    <rect x="1.5" y="2" width="2.5" height="9" rx="0.75" stroke="currentColor" />
-                    <rect x="5.25" y="2" width="2.5" height="6.5" rx="0.75" stroke="currentColor" />
-                    <rect x="9" y="2" width="2.5" height="4.5" rx="0.75" stroke="currentColor" />
-                  </svg>
-                </button>
+                {availableViews.includes('kanban') && (
+                  <button
+                    type="button"
+                    role="radio"
+                    aria-checked={activeView === 'kanban'}
+                    aria-label="Kanban view"
+                    onClick={() => setActiveView('kanban')}
+                    className={cn(
+                      'flex items-center justify-center w-[26px] h-6 shrink-0 transition-colors',
+                      activeView === 'kanban'
+                        ? 'bg-foreground/10 text-foreground'
+                        : 'text-text-tertiary hover:text-text-secondary'
+                    )}
+                  >
+                    <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
+                      <rect x="1.5" y="2" width="2.5" height="9" rx="0.75" stroke="currentColor" />
+                      <rect
+                        x="5.25"
+                        y="2"
+                        width="2.5"
+                        height="6.5"
+                        rx="0.75"
+                        stroke="currentColor"
+                      />
+                      <rect x="9" y="2" width="2.5" height="4.5" rx="0.75" stroke="currentColor" />
+                    </svg>
+                  </button>
+                )}
                 {availableViews.includes('calendar') && (
                   <button
                     type="button"
@@ -1385,6 +1437,27 @@ export const TasksPage = ({
                 onShiftSelect={selectRange}
                 onReorderSubtasks={subtaskManagement.handleReorderSubtasks}
                 onAddSubtask={subtaskManagement.handleAddSubtask}
+              />
+            </div>
+          )}
+
+          {/* Kanban View - All Tab */}
+          {activeInternalTab === 'all' && activeView === 'kanban' && (
+            <div className="flex flex-1 flex-col overflow-hidden">
+              <KanbanBoard
+                tasks={filteredTasks}
+                projects={projects}
+                selectedId="all"
+                selectedType="view"
+                selectedProjectId={selectedProjectId}
+                sortField={sort.field}
+                onUpdateTask={handleUpdateTask}
+                onToggleComplete={handleToggleComplete}
+                onTaskClick={handleTaskClick}
+                onQuickAdd={handleKanbanQuickAdd}
+                isSelectionMode={selection.isSelectionMode}
+                selectedIds={selection.selectedIds}
+                onToggleSelect={toggleTask}
               />
             </div>
           )}
