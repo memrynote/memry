@@ -2,11 +2,26 @@ import React from 'react'
 import { DragOverlay } from '@dnd-kit/core'
 
 import { cn } from '@/lib/utils'
-import { priorityConfig, type Task } from '@/data/sample-tasks'
+import type { Task } from '@/data/sample-tasks'
 import { isBefore, startOfDay } from '@/lib/task-utils'
 
 interface CalendarDragOverlayProps {
   activeTask: Task | null
+}
+
+const getPriorityBarColor = (priority: Task['priority']): string => {
+  switch (priority) {
+    case 'urgent':
+      return 'var(--task-priority-urgent)'
+    case 'high':
+      return 'var(--task-priority-high)'
+    case 'medium':
+      return 'var(--task-priority-medium)'
+    case 'low':
+      return 'var(--task-priority-low)'
+    default:
+      return 'var(--cal-weekday)'
+  }
 }
 
 export const CalendarDragOverlay = ({
@@ -16,7 +31,6 @@ export const CalendarDragOverlay = ({
     return <DragOverlay dropAnimation={null} />
   }
 
-  const priorityColor = priorityConfig[activeTask.priority].color || '#9ca3af'
   const isCompleted = !!activeTask.completedAt
   const isOverdue =
     activeTask.dueDate !== null &&
@@ -27,18 +41,19 @@ export const CalendarDragOverlay = ({
     <DragOverlay dropAnimation={null}>
       <div
         className={cn(
-          'flex items-center gap-1.5 rounded border border-border bg-background px-2 py-1 text-xs shadow-lg',
-          isCompleted && 'opacity-60 line-through',
-          isOverdue && 'border-task-due-overdue/30 bg-task-due-overdue-bg'
+          'flex items-center gap-1 rounded px-1.5 py-[3px] text-[11px] leading-[14px] shadow-lg',
+          isOverdue ? 'bg-cal-task-overdue-bg' : 'bg-cal-task-bg-today',
+          isCompleted && 'opacity-50 line-through'
         )}
+        style={{
+          color: isOverdue ? 'var(--cal-task-overdue-text)' : 'var(--cal-task-text)'
+        }}
       >
-        {activeTask.priority !== 'none' && (
-          <span
-            className="block size-1.5 shrink-0 rounded-full"
-            style={{ backgroundColor: priorityColor }}
-            aria-hidden="true"
-          />
-        )}
+        <span
+          className="block w-[3px] h-3 shrink-0 rounded-sm"
+          style={{ backgroundColor: getPriorityBarColor(activeTask.priority) }}
+          aria-hidden="true"
+        />
         <span className="truncate">{activeTask.title}</span>
       </div>
     </DragOverlay>

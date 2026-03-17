@@ -285,6 +285,28 @@
     --graph-bg: #f6f5f0;
     --graph-label-color: #1a1a1a;
 
+    /* ===== CALENDAR VIEW ===== */
+    --cal-bg: #f6f5f0;
+    --cal-cell-bg: transparent;
+    --cal-cell-outside-bg: #efefe9;
+    --cal-cell-weekend-bg: #f0efe8;
+    --cal-today-bg: #fffbeb;
+    --cal-today-border: #f59e0b;
+    --cal-today-badge: #f59e0b;
+    --cal-today-label: #d97706;
+    --cal-date-current: #4a4a4a;
+    --cal-date-outside: #c4c4be;
+    --cal-weekday: #8c8c8c;
+    --cal-task-bg: #f6f5f0;
+    --cal-task-bg-today: rgba(255, 255, 255, 0.8);
+    --cal-task-text: #4a4a4a;
+    --cal-task-text-today: #1a1a1a;
+    --cal-task-overdue-bg: #fef2f2;
+    --cal-task-overdue-text: #dc2626;
+    --cal-overflow: #8c8c8c;
+    --cal-month-text: #1a1a1a;
+    --cal-grid-gap: 1px;
+
     /* ===== QUEUE LIST ===== */
     --queue-bg: #eae8e1;
     --queue-number-bg: #d4d1c5;
@@ -299,6 +321,7 @@
     --task-priority-medium: #f59e0b;
     --task-priority-medium-bg: #fffbeb;
     --task-priority-low: #6b7280;
+    --task-priority-low-bg: #f3f4f6;
 
     /* Due date status */
     --task-due-overdue: #dc2626;
@@ -425,6 +448,7 @@
     --task-priority-medium: #f59e0b;
     --task-priority-medium-bg: #fffbeb;
     --task-priority-low: #6b7280;
+    --task-priority-low-bg: #f9fafb;
 
     /* Due date status */
     --task-due-overdue: #dc2626;
@@ -547,6 +571,28 @@
     --graph-bg: #0e0e10;
     --graph-label-color: #e8e6e1;
 
+    /* ===== CALENDAR VIEW - Dark Mode ===== */
+    --cal-bg: #0e0e10;
+    --cal-cell-bg: transparent;
+    --cal-cell-outside-bg: rgba(255, 255, 255, 0.03);
+    --cal-cell-weekend-bg: rgba(255, 255, 255, 0.02);
+    --cal-today-bg: rgba(245, 158, 11, 0.08);
+    --cal-today-border: #d97706;
+    --cal-today-badge: #d97706;
+    --cal-today-label: #fbbf24;
+    --cal-date-current: #d4d4d4;
+    --cal-date-outside: #525252;
+    --cal-weekday: #737373;
+    --cal-task-bg: rgba(255, 255, 255, 0.04);
+    --cal-task-bg-today: rgba(255, 255, 255, 0.08);
+    --cal-task-text: #d4d4d4;
+    --cal-task-text-today: #f5f5f5;
+    --cal-task-overdue-bg: rgba(239, 68, 68, 0.1);
+    --cal-task-overdue-text: #f87171;
+    --cal-overflow: #737373;
+    --cal-month-text: #f5f5f5;
+    --cal-grid-gap: 1px;
+
     /* ===== QUEUE LIST - Dark Mode ===== */
     --queue-bg: #161618;
     --queue-number-bg: #2a2a2e;
@@ -561,6 +607,7 @@
     --task-priority-medium: #fbbf24;
     --task-priority-medium-bg: rgba(245, 158, 11, 0.1);
     --task-priority-low: #9ca3af;
+    --task-priority-low-bg: rgba(107, 114, 128, 0.1);
 
     /* Due date status */
     --task-due-overdue: #f87171;
@@ -1194,6 +1241,27 @@ del.bn-inline-content {
   --color-destructive-foreground: var(--destructive-foreground);
   --color-ring: var(--ring);
 
+  /* ===== CALENDAR VIEW ===== */
+  --color-cal-bg: var(--cal-bg);
+  --color-cal-cell-bg: var(--cal-cell-bg);
+  --color-cal-cell-outside-bg: var(--cal-cell-outside-bg);
+  --color-cal-cell-weekend-bg: var(--cal-cell-weekend-bg);
+  --color-cal-today-bg: var(--cal-today-bg);
+  --color-cal-today-border: var(--cal-today-border);
+  --color-cal-today-badge: var(--cal-today-badge);
+  --color-cal-today-label: var(--cal-today-label);
+  --color-cal-date-current: var(--cal-date-current);
+  --color-cal-date-outside: var(--cal-date-outside);
+  --color-cal-weekday: var(--cal-weekday);
+  --color-cal-task-bg: var(--cal-task-bg);
+  --color-cal-task-bg-today: var(--cal-task-bg-today);
+  --color-cal-task-text: var(--cal-task-text);
+  --color-cal-task-text-today: var(--cal-task-text-today);
+  --color-cal-task-overdue-bg: var(--cal-task-overdue-bg);
+  --color-cal-task-overdue-text: var(--cal-task-overdue-text);
+  --color-cal-overflow: var(--cal-overflow);
+  --color-cal-month-text: var(--cal-month-text);
+
   /* ===== QUEUE LIST ===== */
   --color-queue-bg: var(--queue-bg);
   --color-queue-number-bg: var(--queue-number-bg);
@@ -1206,6 +1274,7 @@ del.bn-inline-content {
   --color-task-priority-medium: var(--task-priority-medium);
   --color-task-priority-medium-bg: var(--task-priority-medium-bg);
   --color-task-priority-low: var(--task-priority-low);
+  --color-task-priority-low-bg: var(--task-priority-low-bg);
   --color-task-due-overdue: var(--task-due-overdue);
   --color-task-due-overdue-bg: var(--task-due-overdue-bg);
   --color-task-due-today: var(--task-due-today);
