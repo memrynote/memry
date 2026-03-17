@@ -295,7 +295,7 @@ export const CalendarView = ({
 
   return (
     <div
-      className="flex h-full flex-col gap-4 p-6 outline-none"
+      className="flex h-full flex-col gap-4 px-8 py-6 outline-none bg-cal-bg"
       tabIndex={0}
       onKeyDown={handleKeyDown}
       aria-label="Calendar view"
