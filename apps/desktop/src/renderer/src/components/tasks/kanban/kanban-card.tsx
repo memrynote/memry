@@ -17,6 +17,7 @@ interface KanbanCardProps {
   isFocused?: boolean
   isDone?: boolean
   isSelectionMode?: boolean
+  showProjectBadge?: boolean
   onClick?: () => void
   onToggleComplete?: () => void
   onToggleSelect?: () => void
@@ -38,20 +39,6 @@ const priorityStripColor = (priority: Priority, isDone: boolean): string | undef
   return vars?.text
 }
 
-const CompletionCheckmark = (): React.JSX.Element => (
-  <svg width="14" height="14" viewBox="0 0 14 14" fill="none" className="shrink-0">
-    <circle cx="7" cy="7" r="6" fill="var(--task-complete)" opacity="0.15" />
-    <circle cx="7" cy="7" r="6" stroke="var(--task-complete)" strokeWidth="1" />
-    <path
-      d="M4 7l2 2 4-4"
-      stroke="var(--task-complete)"
-      strokeWidth="1.2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-  </svg>
-)
-
 export const KanbanCardContent = forwardRef<HTMLDivElement, KanbanCardContentProps>(
   (
     {
@@ -63,8 +50,8 @@ export const KanbanCardContent = forwardRef<HTMLDivElement, KanbanCardContentPro
       isDone = false,
       isDragging = false,
       isSelectionMode = false,
+      showProjectBadge = true,
       onClick,
-      onToggleComplete,
       onToggleSelect,
       style,
       attributes,
@@ -89,11 +76,6 @@ export const KanbanCardContent = forwardRef<HTMLDivElement, KanbanCardContentPro
         return
       }
       onClick?.()
-    }
-
-    const handleCheckClick = (e: React.MouseEvent): void => {
-      e.stopPropagation()
-      onToggleComplete?.()
     }
 
     return (
@@ -137,29 +119,6 @@ export const KanbanCardContent = forwardRef<HTMLDivElement, KanbanCardContentPro
         <div className="flex flex-1 flex-col gap-1.5 p-2.5 min-w-0">
           {/* Title row */}
           <div className="flex items-start gap-1.5">
-            {isDone && (
-              <button type="button" onClick={handleCheckClick} className="mt-0.5 shrink-0">
-                <CompletionCheckmark />
-              </button>
-            )}
-            {!isDone && onToggleComplete && (
-              <button
-                type="button"
-                onClick={handleCheckClick}
-                className="mt-0.5 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
-              >
-                <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                  <circle
-                    cx="7"
-                    cy="7"
-                    r="6"
-                    stroke="currentColor"
-                    strokeWidth="1"
-                    className="text-text-tertiary"
-                  />
-                </svg>
-              </button>
-            )}
             <span
               className={cn(
                 'text-[13px] leading-[18px] font-medium line-clamp-2',
@@ -188,7 +147,7 @@ export const KanbanCardContent = forwardRef<HTMLDivElement, KanbanCardContentPro
             )}
 
             {/* Project badge */}
-            {project && (
+            {project && showProjectBadge && (
               <span className="inline-flex items-center gap-1 text-text-tertiary text-[11px]">
                 <span
                   className="w-[6px] h-[6px] rounded-full shrink-0"

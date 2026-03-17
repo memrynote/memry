@@ -1,7 +1,8 @@
 import { cn } from '@/lib/utils'
 import { hasSubtasks, type SubtaskProgress } from '@/lib/subtask-utils'
 import { formatDueDate, formatDateShort, formatTime } from '@/lib/task-utils'
-import { StatusCircle, PriorityBars } from '@/components/tasks/task-icons'
+import { PriorityBars } from '@/components/tasks/task-icons'
+import { InteractiveStatusIcon } from '@/components/tasks/status-icon'
 import { ExpandChevron } from '@/components/tasks/expand-chevron'
 import { SubtaskRow } from '@/components/tasks/subtask-row'
 import type { Task } from '@/data/sample-tasks'
@@ -130,9 +131,9 @@ export const ParentTaskRow = ({
           size="sm"
         />
 
-        <StatusCircle
-          statusType={statusType}
-          statusColor={statusColor}
+        <InteractiveStatusIcon
+          type={statusType}
+          color={statusColor}
           isCompleted={isCompleted}
           onClick={handleToggleClick}
         />

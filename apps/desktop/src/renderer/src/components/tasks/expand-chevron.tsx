@@ -1,5 +1,6 @@
 import { useState } from 'react'
 
+import { ChevronDown } from '@/lib/icons'
 import { cn } from '@/lib/utils'
 
 interface ExpandChevronProps {
@@ -63,21 +64,10 @@ export const ExpandChevron = ({
       aria-expanded={isExpanded}
       aria-label={isExpanded ? 'Collapse subtasks' : 'Expand subtasks'}
     >
-      <svg
-        width="10"
-        height="10"
-        viewBox="0 0 10 10"
-        fill="none"
+      <ChevronDown
+        size={10}
         className={cn('transition-transform duration-200 ease-out', !isExpanded && '-rotate-90')}
-      >
-        <path
-          d="M2.5 3.5L5 6.5L7.5 3.5"
-          stroke="currentColor"
-          strokeWidth="1.4"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-      </svg>
+      />
     </button>
   )
 }

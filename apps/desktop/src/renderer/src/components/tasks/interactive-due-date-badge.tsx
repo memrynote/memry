@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { Repeat } from '@/lib/icons'
+import { Calendar, Repeat } from '@/lib/icons'
 
 import { cn } from '@/lib/utils'
 import { formatDueDate, formatDateShort, formatTime } from '@/lib/task-utils'
@@ -76,10 +76,7 @@ export const InteractiveDueDateBadge = ({
           aria-label={`Due: ${dateLabel}. Click to change.`}
         >
           {isRepeating && <Repeat className="size-3 shrink-0" />}
-          <svg width="12" height="12" viewBox="0 0 12 12" fill="none" className="shrink-0">
-            <rect x="1.5" y="2" width="9" height="8.5" rx="1.25" stroke="currentColor" />
-            <path d="M1.5 4.5h9" stroke="currentColor" />
-          </svg>
+          <Calendar size={12} className="shrink-0" />
           <div className="text-[12px] leading-4">{dateLabel}</div>
         </button>
       </PopoverTrigger>

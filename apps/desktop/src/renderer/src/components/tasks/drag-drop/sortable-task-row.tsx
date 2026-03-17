@@ -2,9 +2,11 @@ import { useRef, useEffect, useState, memo } from 'react'
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 
+import { GripVertical } from '@/lib/icons'
 import { cn } from '@/lib/utils'
 import { formatDueDate, formatDateShort, formatTime } from '@/lib/task-utils'
-import { StatusCircle, PriorityBars } from '@/components/tasks/task-icons'
+import { PriorityBars } from '@/components/tasks/task-icons'
+import { InteractiveStatusIcon } from '@/components/tasks/status-icon'
 import { SelectionCheckbox } from '@/components/tasks/bulk-actions'
 
 import type { Task } from '@/data/sample-tasks'
@@ -220,19 +222,12 @@ const SortableTaskRowComponent = ({
         )}
         aria-label="Drag to reorder"
       >
-        <svg width="6" height="14" viewBox="0 0 6 14" fill="currentColor">
-          <circle cx="1.5" cy="2" r="1" />
-          <circle cx="4.5" cy="2" r="1" />
-          <circle cx="1.5" cy="7" r="1" />
-          <circle cx="4.5" cy="7" r="1" />
-          <circle cx="1.5" cy="12" r="1" />
-          <circle cx="4.5" cy="12" r="1" />
-        </svg>
+        <GripVertical size={14} />
       </button>
 
-      <StatusCircle
-        statusType={statusType}
-        statusColor={statusColor}
+      <InteractiveStatusIcon
+        type={statusType}
+        color={statusColor}
         isCompleted={isCompleted}
         onClick={handleToggleComplete}
       />

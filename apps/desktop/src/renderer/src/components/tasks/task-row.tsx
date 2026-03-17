@@ -1,6 +1,7 @@
 import { cn } from '@/lib/utils'
 import { formatDueDate, formatDateShort, formatTime } from '@/lib/task-utils'
-import { StatusCircle, PriorityBars } from '@/components/tasks/task-icons'
+import { PriorityBars } from '@/components/tasks/task-icons'
+import { InteractiveStatusIcon } from '@/components/tasks/status-icon'
 import { SelectionCheckbox } from '@/components/tasks/bulk-actions'
 import type { Task } from '@/data/sample-tasks'
 import type { Project, Status } from '@/data/tasks-data'
@@ -138,9 +139,9 @@ export const TaskRow = ({
         </div>
       )}
 
-      <StatusCircle
-        statusType={statusType}
-        statusColor={statusColor}
+      <InteractiveStatusIcon
+        type={statusType}
+        color={statusColor}
         isCompleted={isCompleted}
         onClick={handleToggleClick}
       />

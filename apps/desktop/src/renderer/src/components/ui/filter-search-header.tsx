@@ -1,3 +1,4 @@
+import { Search } from '@/lib/icons'
 import { cn } from '@/lib/utils'
 
 interface FilterSearchHeaderProps {
@@ -18,16 +19,7 @@ export function FilterSearchHeader({
   return (
     <div className={cn('flex items-center py-2 px-3 gap-2 border-b border-border', className)}>
       {leading}
-      <svg
-        width="12"
-        height="12"
-        viewBox="0 0 12 12"
-        fill="none"
-        className="shrink-0 text-text-tertiary"
-      >
-        <circle cx="5" cy="5" r="3.5" stroke="currentColor" strokeWidth="1.1" />
-        <path d="M7.5 7.5l2.5 2.5" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round" />
-      </svg>
+      <Search size={12} className="shrink-0 text-text-tertiary" />
       <input
         type="text"
         value={value}

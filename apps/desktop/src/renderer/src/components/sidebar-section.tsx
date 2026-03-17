@@ -2,6 +2,7 @@
 
 import * as React from 'react'
 
+import { ChevronRight } from '@/lib/icons'
 import { cn } from '@/lib/utils'
 import { SidebarGroup, SidebarMenu, useSidebar } from '@/components/ui/sidebar'
 
@@ -17,25 +18,15 @@ interface SidebarSectionProps {
 
 function SectionChevron({ expanded }: { expanded: boolean }): React.JSX.Element {
   return (
-    <svg
-      width="10"
-      height="10"
-      viewBox="0 0 10 10"
-      fill="none"
+    <ChevronRight
+      size={10}
       className={cn(
         'shrink-0 transition-transform duration-200 ease-in-out',
         expanded && 'rotate-90'
       )}
+      style={{ color: '#B8B5B0' }}
       aria-hidden="true"
-    >
-      <path
-        d="M3.5 2L7 5.5 3.5 9"
-        stroke="#B8B5B0"
-        strokeWidth="1.2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
+    />
   )
 }
 
