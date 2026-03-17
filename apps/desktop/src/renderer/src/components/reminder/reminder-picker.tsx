@@ -9,7 +9,7 @@
 
 import * as React from 'react'
 import { useState } from 'react'
-import { Bell, Calendar, Clock, ChevronRight } from 'lucide-react'
+import { Bell, Calendar, Clock, ChevronRight } from '@/lib/icons'
 import { Button } from '@/components/ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { DatePickerCalendar } from '@/components/tasks/date-picker-calendar'

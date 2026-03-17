@@ -11,7 +11,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle
 } from '@/components/ui/alert-dialog'
-import { CloudOff, RefreshCw, Pause, Play, LogOut, QrCode, RotateCw } from 'lucide-react'
+import { CloudOff, RefreshCw, Pause, Play, LogOut, QrCode, RotateCw } from '@/lib/icons'
 import { toast } from 'sonner'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { useAuth } from '@/contexts/auth-context'

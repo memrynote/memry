@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { CheckSquare, ChevronDown, ChevronRight, Loader2 } from 'lucide-react'
+import { CheckSquare, ChevronDown, ChevronRight, Loader2 } from '@/lib/icons'
 
 import { cn } from '@/lib/utils'
 import type { Task } from '@/services/tasks-service'

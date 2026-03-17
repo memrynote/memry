@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react'
-import { ArrowLeft, Trash2 } from 'lucide-react'
+import { ArrowLeft, Trash2 } from '@/lib/icons'
 
 import { cn } from '@/lib/utils'
 import { getArchivedTasks, groupArchivedByMonth, filterCompletedBySearch } from '@/lib/task-utils'

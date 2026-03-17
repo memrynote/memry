@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { Calendar, Flag, Folder } from 'lucide-react'
+import { Calendar, Flag, Folder } from '@/lib/icons'
 import { cn } from '@/lib/utils'
 
 // ============================================================================

@@ -1,5 +1,5 @@
 import React from 'react'
-import { Settings } from 'lucide-react'
+import { Settings } from '@/lib/icons'
 import { cn } from '@/lib/utils'
 import { createLogger } from '@/lib/logger'
 import { useSyncStatus } from '@/hooks/use-sync-status'

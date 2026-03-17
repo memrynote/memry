@@ -19,7 +19,7 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { SelectableListSection, SelectableListItem } from '@/components/ui/selectable-list'
 import { LabeledCheckbox } from '@/components/ui/labeled-checkbox'
 import { PrimaryActionButton } from '@/components/ui/primary-action-button'
-import { Search, Lock, Sparkles, PenLine } from 'lucide-react'
+import { Search, Lock, Sparkles, PenLine } from '@/lib/icons'
 import { useTemplates } from '@/hooks/use-templates'
 import { cn } from '@/lib/utils'
 

@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react'
-import { Plus } from 'lucide-react'
+import { Plus } from '@/lib/icons'
 
 import { cn } from '@/lib/utils'
 

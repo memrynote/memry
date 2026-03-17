@@ -9,7 +9,7 @@ import {
 } from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
 import { Label } from '@/components/ui/label'
-import { Info, Lock } from 'lucide-react'
+import { Info, Lock } from '@/lib/icons'
 import { useTemplates } from '@/hooks/use-templates'
 import { useJournalSettings } from '@/hooks/use-journal-settings'
 import { toast } from 'sonner'

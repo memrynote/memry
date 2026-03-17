@@ -1,6 +1,6 @@
 /**
  * Tab Icon Component
- * Maps tab types to Lucide React icons
+ * Maps tab types to Hugeicons
  * Memoized to prevent unnecessary re-renders
  */
 
@@ -25,7 +25,7 @@ import {
   Image,
   Music,
   Video
-} from 'lucide-react'
+} from '@/lib/icons'
 import type { TabType } from '@/contexts/tabs/types'
 import { cn } from '@/lib/utils'
 

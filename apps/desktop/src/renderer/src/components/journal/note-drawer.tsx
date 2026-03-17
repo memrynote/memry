@@ -14,7 +14,7 @@ import {
   Strikethrough,
   Link,
   Image
-} from 'lucide-react'
+} from '@/lib/icons'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import type { Note } from './notes-section'

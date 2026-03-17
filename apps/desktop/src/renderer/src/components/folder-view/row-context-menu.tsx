@@ -21,7 +21,7 @@ import {
   PanelLeft,
   Link,
   Trash2
-} from 'lucide-react'
+} from '@/lib/icons'
 import type { NoteWithProperties } from '@memry/contracts/folder-view-api'
 import { notesService } from '@/services/notes-service'
 import { createLogger } from '@/lib/logger'

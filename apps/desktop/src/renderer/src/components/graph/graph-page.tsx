@@ -1,5 +1,5 @@
 import { useMemo, useCallback } from 'react'
-import { Loader2, AlertCircle, Network, Link2, Lightbulb } from 'lucide-react'
+import { Loader2, AlertCircle, Network, Link2, Lightbulb } from '@/lib/icons'
 import { Button } from '@/components/ui/button'
 import { useGraphData, useGraphReactivity } from '@/hooks/use-graph-data'
 import { useGraphFilters } from '@/hooks/use-graph-filters'

@@ -8,7 +8,7 @@
  */
 
 import { useState, useMemo, useCallback } from 'react'
-import { Layers, X, Check, ArrowUpAZ, ArrowDownZA } from 'lucide-react'
+import { Layers, X, Check, ArrowUpAZ, ArrowDownZA } from '@/lib/icons'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'

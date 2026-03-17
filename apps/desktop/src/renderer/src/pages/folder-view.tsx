@@ -6,7 +6,7 @@
  */
 
 import { useMemo, useState, useEffect, useCallback, useRef } from 'react'
-import { ArrowLeft, Folder, LayoutGrid, List, Plus, Settings2 } from 'lucide-react'
+import { ArrowLeft, Folder, LayoutGrid, List, Plus, Settings2 } from '@/lib/icons'
 
 // ============================================================================
 // Debounce Hook

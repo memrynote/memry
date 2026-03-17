@@ -28,7 +28,7 @@ import {
   Image,
   Music,
   Video
-} from 'lucide-react'
+} from '@/lib/icons'
 import { cn } from '@/lib/utils'
 import { useTabActions } from '@/contexts/tabs'
 import type { NoteListItem } from '@/hooks/use-notes-query'

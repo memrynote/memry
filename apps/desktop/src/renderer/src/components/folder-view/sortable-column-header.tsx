@@ -12,7 +12,7 @@ import { useState, useRef, useEffect, useCallback } from 'react'
 import { useSortable } from '@dnd-kit/sortable'
 import type { Header } from '@tanstack/react-table'
 import type { NoteWithProperties, ColumnConfig } from '@memry/contracts/folder-view-api'
-import { GripVertical, type LucideIcon } from 'lucide-react'
+import { GripVertical, type AppIcon } from '@/lib/icons'
 import { cn } from '@/lib/utils'
 
 interface SortableColumnHeaderProps {
@@ -21,7 +21,7 @@ interface SortableColumnHeaderProps {
   /** Column configuration from view config */
   columnConfig: ColumnConfig
   /** Optional icon for the column */
-  icon?: LucideIcon
+  icon?: AppIcon
   /** Sort index for multi-sort (1-based, undefined if not sorted) */
   sortIndex?: number
   /** Total number of sorted columns (for showing sort index) */

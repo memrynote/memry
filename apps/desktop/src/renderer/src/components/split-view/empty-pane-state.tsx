@@ -3,7 +3,7 @@
  * Placeholder shown when a pane has no tabs
  */
 
-import { FileText, Inbox } from 'lucide-react'
+import { FileText, Inbox } from '@/lib/icons'
 import { useTabs } from '@/contexts/tabs'
 import { cn } from '@/lib/utils'
 

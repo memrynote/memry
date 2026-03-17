@@ -5,7 +5,7 @@
  */
 
 import { useState, useRef, useEffect, useCallback } from 'react'
-import { Link2, FileText, X, Loader2, Folder } from 'lucide-react'
+import { Link2, FileText, X, Loader2, Folder } from '@/lib/icons'
 import { useQuery } from '@tanstack/react-query'
 
 import { Input } from '@/components/ui/input'

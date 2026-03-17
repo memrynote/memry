@@ -627,7 +627,7 @@ export function onInboxProcessingError(
 /**
  * Get icon name for inbox item type.
  * @param type - Inbox item type
- * @returns Lucide icon name
+ * @returns Icon name
  */
 export function getInboxItemIcon(type: InboxItem['type']): string {
   const icons: Record<InboxItem['type'], string> = {

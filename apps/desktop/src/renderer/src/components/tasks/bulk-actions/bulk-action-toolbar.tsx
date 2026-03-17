@@ -1,4 +1,4 @@
-import { Check, Flag, Calendar, FolderOpen, Columns3, Archive, Trash2, X } from 'lucide-react'
+import { Check, Flag, Calendar, FolderOpen, Columns3, Archive, Trash2, X } from '@/lib/icons'
 
 import { cn } from '@/lib/utils'
 import { SelectionCheckbox } from './selection-checkbox'

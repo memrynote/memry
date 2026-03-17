@@ -4,7 +4,7 @@
  */
 
 import { forwardRef, memo, useMemo } from 'react'
-import { Calendar, Clock, Sun, Sunrise, Sunset, Moon, Square } from 'lucide-react'
+import { Calendar, Clock, Sun, Sunrise, Sunset, Moon, Square } from '@/lib/icons'
 import { cn } from '@/lib/utils'
 import { formatDayHeader, getTimeBasedGreeting, getSpecialDayLabel } from '@/lib/journal-utils'
 import { CollapsibleSection, JournalSection } from './collapsible-section'
@@ -206,7 +206,7 @@ DayCard.displayName = 'DayCard'
 // HEADER COMPONENT
 // =============================================================================
 
-import { Minimize2, Maximize2 } from 'lucide-react'
+import { Minimize2, Maximize2 } from '@/lib/icons'
 import { Button } from '@/components/ui/button'
 
 interface DayCardHeaderProps {

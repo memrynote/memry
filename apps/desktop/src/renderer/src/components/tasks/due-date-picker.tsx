@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useCallback, useRef } from 'react'
-import { Calendar as CalendarIcon, Star, X, Clock, Plus, Sun } from 'lucide-react'
+import { Calendar as CalendarIcon, Star, X, Clock, Plus, Sun } from '@/lib/icons'
 
 import { Button } from '@/components/ui/button'
 import { DatePickerCalendar } from './date-picker-calendar'

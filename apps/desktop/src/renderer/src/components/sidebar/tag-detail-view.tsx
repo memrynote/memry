@@ -23,7 +23,7 @@ import {
   Clock,
   Calendar,
   SortAsc
-} from 'lucide-react'
+} from '@/lib/icons'
 
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'

@@ -1,6 +1,6 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
-import { ShieldAlert, Copy, Check } from 'lucide-react'
+import { ShieldAlert, Copy, Check } from '@/lib/icons'
 
 interface RecoveryPhraseDisplayProps {
   phrase: string

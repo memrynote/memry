@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Calendar as CalendarIcon } from 'lucide-react'
+import { Calendar as CalendarIcon } from '@/lib/icons'
 
 import {
   Dialog,

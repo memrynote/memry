@@ -1,4 +1,4 @@
-import { Flame } from 'lucide-react'
+import { Flame } from '@/lib/icons'
 import { cn } from '@/lib/utils'
 
 interface StreakBadgeProps {

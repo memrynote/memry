@@ -7,7 +7,7 @@
  */
 
 import * as React from 'react'
-import { Clock, CalendarDays, ChevronRight, Moon, Sun, CalendarClock } from 'lucide-react'
+import { Clock, CalendarDays, ChevronRight, Moon, Sun, CalendarClock } from '@/lib/icons'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,

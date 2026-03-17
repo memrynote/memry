@@ -1,4 +1,4 @@
-import type { LucideIcon } from 'lucide-react'
+import type { AppIcon } from '@/lib/icons'
 import {
   FileText,
   Link2,
@@ -10,14 +10,14 @@ import {
   Bell,
   HelpCircle,
   File
-} from 'lucide-react'
+} from '@/lib/icons'
 import type { InboxStats } from '../../../../preload/index.d'
 
 export interface InboxTypeDistributionProps {
   stats: InboxStats | null
 }
 
-const TYPE_CONFIG: Record<string, { icon: LucideIcon; label: string }> = {
+const TYPE_CONFIG: Record<string, { icon: AppIcon; label: string }> = {
   text: { icon: FileText, label: 'Text' },
   note: { icon: StickyNote, label: 'Note' },
   link: { icon: Link2, label: 'Link' },

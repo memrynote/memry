@@ -8,7 +8,7 @@
  */
 
 import { useState, useCallback, useMemo, useRef } from 'react'
-import { AlertCircle, HelpCircle } from 'lucide-react'
+import { AlertCircle, HelpCircle } from '@/lib/icons'
 import {
   Dialog,
   DialogContent,

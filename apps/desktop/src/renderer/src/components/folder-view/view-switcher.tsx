@@ -6,7 +6,7 @@
  */
 
 import { useState, useCallback } from 'react'
-import { Plus, ChevronDown, Pencil, Copy, Star, Trash2, Check, MoreHorizontal } from 'lucide-react'
+import { Plus, ChevronDown, Pencil, Copy, Star, Trash2, Check, MoreHorizontal } from '@/lib/icons'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import {

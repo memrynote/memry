@@ -173,8 +173,8 @@ import {
   Droplet,
   Leaf,
   TreeDeciduous,
-  type LucideIcon
-} from 'lucide-react'
+  type AppIcon
+} from '@/lib/icons'
 
 // Icon kategorileri ve ikonları
 const ICON_CATEGORIES = {
@@ -361,13 +361,13 @@ const ICON_CATEGORIES = {
 } as const
 
 // Tüm ikonları düz bir map olarak export et
-export const ALL_ICONS: Record<string, LucideIcon> = Object.values(ICON_CATEGORIES).reduce(
+export const ALL_ICONS: Record<string, AppIcon> = Object.values(ICON_CATEGORIES).reduce(
   (acc, category) => ({ ...acc, ...category }),
   {}
 )
 
 // İkon adından bileşeni al
-export const getIconByName = (name: string): LucideIcon | undefined => {
+export const getIconByName = (name: string): AppIcon | undefined => {
   return ALL_ICONS[name]
 }
 
@@ -426,14 +426,14 @@ export const IconPicker = ({
       return ICON_CATEGORIES
     }
 
-    const result: Record<string, Record<string, LucideIcon>> = {}
+    const result: Record<string, Record<string, AppIcon>> = {}
 
     for (const [categoryName, icons] of Object.entries(ICON_CATEGORIES)) {
       if (selectedCategory && categoryName !== selectedCategory) {
         continue
       }
 
-      const filteredCategoryIcons: Record<string, LucideIcon> = {}
+      const filteredCategoryIcons: Record<string, AppIcon> = {}
 
       for (const [iconName, IconComponent] of Object.entries(icons)) {
         if (!query || iconName.toLowerCase().includes(query)) {

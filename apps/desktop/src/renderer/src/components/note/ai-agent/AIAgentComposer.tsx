@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback, type KeyboardEvent, type ChangeEvent } from 'react'
-import { Paperclip, Send, Square } from 'lucide-react'
+import { Paperclip, Send, Square } from '@/lib/icons'
 import { cn } from '@/lib/utils'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { AttachmentList } from './AttachmentList'

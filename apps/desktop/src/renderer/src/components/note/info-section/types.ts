@@ -1,4 +1,4 @@
-import { AlignLeft, Hash, Calendar, CheckSquare, Link, type LucideIcon } from 'lucide-react'
+import { AlignLeft, Hash, Calendar, CheckSquare, Link, type AppIcon } from '@/lib/icons'
 
 /**
  * Supported property types.
@@ -29,7 +29,7 @@ export interface NewProperty {
 
 export interface PropertyTypeConfig {
   label: string
-  icon: LucideIcon
+  icon: AppIcon
 }
 
 export const PROPERTY_TYPE_CONFIG: Record<PropertyType, PropertyTypeConfig> = {

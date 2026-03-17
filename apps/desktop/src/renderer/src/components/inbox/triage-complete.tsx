@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Check, ArrowLeft } from 'lucide-react'
+import { Check, ArrowLeft } from '@/lib/icons'
 import { cn } from '@/lib/utils'
 import { StreakBadge } from './streak-badge'
 

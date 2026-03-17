@@ -11,7 +11,7 @@
  */
 
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
-import { Archive, Check, Loader2, GripHorizontal } from 'lucide-react'
+import { Archive, Check, Loader2, GripHorizontal } from '@/lib/icons'
 import { useQuery } from '@tanstack/react-query'
 
 import { cn } from '@/lib/utils'

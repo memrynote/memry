@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback, useMemo, useEffect } from 'react'
-import { Search, Check } from 'lucide-react'
+import { Search, Check } from '@/lib/icons'
 import { cn } from '@/lib/utils'
 import { useClickOutside } from '../note-title/use-click-outside'
 import { Tag } from './TagChip'

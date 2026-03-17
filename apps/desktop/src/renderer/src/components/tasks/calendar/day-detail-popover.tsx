@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react'
-import { X, ChevronDown } from 'lucide-react'
+import { X, ChevronDown } from '@/lib/icons'
 
 import { Dialog, DialogContent } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'

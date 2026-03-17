@@ -1,5 +1,5 @@
 import { cn } from '@/lib/utils'
-import { Smile } from 'lucide-react'
+import { Smile } from '@/lib/icons'
 
 interface EmojiButtonProps {
   emoji: string | null

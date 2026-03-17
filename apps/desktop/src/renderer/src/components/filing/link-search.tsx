@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
-import { Search, FileText, Folder, Link2, X, Loader2 } from 'lucide-react'
+import { Search, FileText, Folder, Link2, X, Loader2 } from '@/lib/icons'
 
 import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'

@@ -6,7 +6,7 @@
  */
 
 import { useState, useCallback, useRef, useEffect } from 'react'
-import { ZoomIn, ZoomOut, RotateCw, Maximize2, Move } from 'lucide-react'
+import { ZoomIn, ZoomOut, RotateCw, Maximize2, Move } from '@/lib/icons'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 

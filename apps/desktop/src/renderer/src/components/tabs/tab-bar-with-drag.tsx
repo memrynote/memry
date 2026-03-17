@@ -6,7 +6,7 @@
 
 import { useRef, useState, useEffect, useCallback } from 'react'
 import { SortableContext, horizontalListSortingStrategy } from '@dnd-kit/sortable'
-import { ChevronLeft, ChevronRight, Bot } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Bot } from '@/lib/icons'
 import { useAIAgent } from '@/contexts/ai-agent-context'
 import { useTabGroup } from '@/contexts/tabs'
 import { SortableTab } from './sortable-tab'

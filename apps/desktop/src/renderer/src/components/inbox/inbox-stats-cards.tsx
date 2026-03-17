@@ -6,7 +6,7 @@ import {
   TrendingUp,
   TrendingDown,
   Minus
-} from 'lucide-react'
+} from '@/lib/icons'
 import type { InboxStats } from '../../../../preload/index.d'
 import { cn } from '@/lib/utils'
 

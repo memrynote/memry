@@ -3,7 +3,7 @@
  * Quick access to common layout presets
  */
 
-import { Square, Columns2, Rows2, LayoutGrid, Grid2X2, PanelRight } from 'lucide-react'
+import { Square, Columns2, Rows2, LayoutGrid, Grid2X2, PanelRight } from '@/lib/icons'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { useTabs } from '@/contexts/tabs'
 import { layoutPresets, applyLayoutPreset, type LayoutPreset } from './layout-presets'

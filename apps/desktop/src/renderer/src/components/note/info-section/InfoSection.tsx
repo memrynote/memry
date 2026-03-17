@@ -16,7 +16,7 @@ import {
   arrayMove
 } from '@dnd-kit/sortable'
 import { restrictToVerticalAxis, restrictToParentElement } from '@dnd-kit/modifiers'
-import { Plus, ChevronDown, ChevronUp } from 'lucide-react'
+import { Plus, ChevronDown, ChevronUp } from '@/lib/icons'
 import { cn } from '@/lib/utils'
 import { Property, PropertyTemplate, NewProperty } from './types'
 import { InfoHeader } from './InfoHeader'

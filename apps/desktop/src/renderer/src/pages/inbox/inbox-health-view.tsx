@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react'
-import { AlertTriangle, Flame, Archive, ArrowRight, Inbox, Clock, Zap, Moon } from 'lucide-react'
+import { AlertTriangle, Flame, Archive, ArrowRight, Inbox, Clock, Zap, Moon } from '@/lib/icons'
 import { useInboxStats, useInboxBankruptcy, useInboxFilingHistory } from '@/hooks/use-inbox'
 import { InboxFilingHistoryList } from '@/components/inbox/inbox-filing-history'
 import { cn } from '@/lib/utils'

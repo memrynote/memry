@@ -4,7 +4,7 @@
  */
 
 import { useState, useEffect, useCallback, useMemo } from 'react'
-import { Folder, Sparkles, Loader2, ChevronDown, Check, FileText, Link2 } from 'lucide-react'
+import { Folder, Sparkles, Loader2, ChevronDown, Check, FileText, Link2 } from '@/lib/icons'
 import { useQuery } from '@tanstack/react-query'
 
 import { Button } from '@/components/ui/button'

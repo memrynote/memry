@@ -18,7 +18,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu'
-import { FileText, Plus, MoreHorizontal, Pencil, Copy, Trash2, Lock } from 'lucide-react'
+import { FileText, Plus, MoreHorizontal, Pencil, Copy, Trash2, Lock } from '@/lib/icons'
 import { useTemplates } from '@/hooks/use-templates'
 import { useTabs } from '@/contexts/tabs'
 import { toast } from 'sonner'

@@ -1,4 +1,4 @@
-import { Calendar, Clock } from 'lucide-react'
+import { Calendar, Clock } from '@/lib/icons'
 
 import { cn } from '@/lib/utils'
 import { PriorityBars, PriorityStar } from '@/components/tasks/task-icons'

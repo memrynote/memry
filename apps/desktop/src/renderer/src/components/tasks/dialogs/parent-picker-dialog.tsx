@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react'
-import { Search, FolderKanban } from 'lucide-react'
+import { Search, FolderKanban } from '@/lib/icons'
 
 import {
   Dialog,

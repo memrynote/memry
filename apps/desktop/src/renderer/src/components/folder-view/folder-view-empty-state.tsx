@@ -16,7 +16,7 @@ import {
   X,
   FolderX,
   ArrowLeft
-} from 'lucide-react'
+} from '@/lib/icons'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 

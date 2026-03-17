@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react'
-import { ChevronDown, ChevronRight, Clock, Calendar, RefreshCw } from 'lucide-react'
+import { ChevronDown, ChevronRight, Clock, Calendar, RefreshCw } from '@/lib/icons'
 
 import { Button } from '@/components/ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'

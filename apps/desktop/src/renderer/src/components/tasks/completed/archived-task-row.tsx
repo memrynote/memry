@@ -1,4 +1,4 @@
-import { Archive, RotateCcw, Trash2 } from 'lucide-react'
+import { Archive, RotateCcw, Trash2 } from '@/lib/icons'
 
 import { cn } from '@/lib/utils'
 import { ProjectBadge } from '@/components/tasks/task-badges'

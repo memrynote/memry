@@ -7,7 +7,7 @@
 
 import { memo, useMemo } from 'react'
 import { cn } from '@/lib/utils'
-import { FileText, Type, Clock, Calendar, Pencil } from 'lucide-react'
+import { FileText, Type, Clock, Calendar, Pencil } from '@/lib/icons'
 import { format, parseISO, isValid } from 'date-fns'
 
 export interface DocumentStats {

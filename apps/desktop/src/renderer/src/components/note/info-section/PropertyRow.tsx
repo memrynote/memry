@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect, useRef } from 'react'
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { GripVertical, Trash2 } from 'lucide-react'
+import { GripVertical, Trash2 } from '@/lib/icons'
 import { format } from 'date-fns'
 import { cn } from '@/lib/utils'
 import { Property, PROPERTY_TYPE_CONFIG } from './types'

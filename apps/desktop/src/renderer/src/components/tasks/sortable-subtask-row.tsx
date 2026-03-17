@@ -1,6 +1,6 @@
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { GripVertical } from 'lucide-react'
+import { GripVertical } from '@/lib/icons'
 
 import { cn } from '@/lib/utils'
 import { StatusCircle } from '@/components/tasks/task-icons'

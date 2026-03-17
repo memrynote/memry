@@ -7,7 +7,7 @@
  * @module components/snooze/snooze-countdown
  */
 
-import { Clock } from 'lucide-react'
+import { Clock } from '@/lib/icons'
 import { useSnoozeCountdown } from './use-snooze-countdown'
 
 // ============================================================================

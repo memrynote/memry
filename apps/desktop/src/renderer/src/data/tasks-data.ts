@@ -22,7 +22,7 @@ export interface Project {
   id: string
   name: string
   description: string
-  icon: string // Lucide icon name
+  icon: string // Icon name
   color: string // hex color for project indicator
   statuses: Status[]
   isDefault: boolean // true only for "Personal"

@@ -31,7 +31,7 @@ import {
   Sparkles,
   LayoutTemplate,
   ChevronRight
-} from 'lucide-react'
+} from '@/lib/icons'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import { createLogger } from '@/lib/logger'

@@ -61,8 +61,8 @@ import {
   Star,
   Tag,
   Tags,
-  type LucideIcon
-} from 'lucide-react'
+  type AppIcon
+} from '@/lib/icons'
 import { cn } from '@/lib/utils'
 import { evaluateFormula } from '@/lib/expression-evaluator'
 import {
@@ -213,7 +213,7 @@ function getColumnType(columnId: string): PropertyType {
   }
 }
 
-const PROPERTY_TYPE_ICONS: Record<PropertyType, LucideIcon> = {
+const PROPERTY_TYPE_ICONS: Record<PropertyType, AppIcon> = {
   text: AlignLeft,
   number: Hash,
   checkbox: CheckSquare,
@@ -224,7 +224,7 @@ const PROPERTY_TYPE_ICONS: Record<PropertyType, LucideIcon> = {
   rating: Star
 }
 
-const BUILT_IN_COLUMN_ICONS: Record<string, LucideIcon> = {
+const BUILT_IN_COLUMN_ICONS: Record<string, AppIcon> = {
   title: FileText,
   folder: Folder,
   tags: Tag,
@@ -236,7 +236,7 @@ const BUILT_IN_COLUMN_ICONS: Record<string, LucideIcon> = {
 function getColumnIcon(
   columnId: string,
   propertyTypes: Record<string, PropertyType>
-): LucideIcon | undefined {
+): AppIcon | undefined {
   const builtInIcon = BUILT_IN_COLUMN_ICONS[columnId]
   if (builtInIcon) return builtInIcon
   if (columnId.startsWith('formula.')) return Sigma

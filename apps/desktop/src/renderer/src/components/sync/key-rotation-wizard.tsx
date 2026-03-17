@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { ShieldAlert, RotateCw, Check, AlertTriangle } from 'lucide-react'
+import { ShieldAlert, RotateCw, Check, AlertTriangle } from '@/lib/icons'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,

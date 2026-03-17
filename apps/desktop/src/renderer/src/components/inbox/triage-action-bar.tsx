@@ -7,7 +7,7 @@ import {
   Clock,
   ExternalLink,
   BellOff
-} from 'lucide-react'
+} from '@/lib/icons'
 import { cn } from '@/lib/utils'
 import { TriageFilePicker } from './triage-file-picker'
 import { TriageSnoozePicker } from './triage-snooze-picker'

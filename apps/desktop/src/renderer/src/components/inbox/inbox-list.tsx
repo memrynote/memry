@@ -21,7 +21,7 @@ import {
   RotateCcw,
   Bell,
   CheckCircle2
-} from 'lucide-react'
+} from '@/lib/icons'
 import type { ReminderMetadata } from '@memry/contracts/inbox-api'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Button } from '@/components/ui/button'

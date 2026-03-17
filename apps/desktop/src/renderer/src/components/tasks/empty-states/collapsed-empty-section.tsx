@@ -1,4 +1,4 @@
-import { Star, Calendar, AlertTriangle } from 'lucide-react'
+import { Star, Calendar, AlertTriangle } from '@/lib/icons'
 
 import { cn } from '@/lib/utils'
 import type { SectionType } from '@/lib/section-visibility'

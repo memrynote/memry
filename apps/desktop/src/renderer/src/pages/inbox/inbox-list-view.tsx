@@ -1,6 +1,6 @@
 import { useState, useCallback, useMemo, useEffect } from 'react'
 import { extractErrorMessage } from '@/lib/ipc-error'
-import { Check, Loader2, AlertCircle, Clock, Filter, Play } from 'lucide-react'
+import { Check, Loader2, AlertCircle, Clock, Filter, Play } from '@/lib/icons'
 import { useQueryClient } from '@tanstack/react-query'
 
 import { useTabs } from '@/contexts/tabs'

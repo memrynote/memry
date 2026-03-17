@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react'
-import { Sparkles, FileText, CheckSquare, RefreshCw, ArrowRight, X } from 'lucide-react'
+import { Sparkles, FileText, CheckSquare, RefreshCw, ArrowRight, X } from '@/lib/icons'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { notesService } from '@/services/notes-service'

@@ -1,4 +1,4 @@
-import type { LucideIcon } from 'lucide-react'
+import type { AppIcon } from '@/lib/icons'
 import {
   FileText,
   Link2,
@@ -12,7 +12,7 @@ import {
   MessageCircle,
   Bell,
   HelpCircle
-} from 'lucide-react'
+} from '@/lib/icons'
 import { formatDistanceToNow } from 'date-fns'
 import type { InboxFilingHistoryEntry } from '../../../../preload/index.d'
 
@@ -20,7 +20,7 @@ export interface InboxFilingHistoryListProps {
   items: InboxFilingHistoryEntry[]
 }
 
-const TYPE_ICONS: Record<string, LucideIcon> = {
+const TYPE_ICONS: Record<string, AppIcon> = {
   text: FileText,
   note: StickyNote,
   link: Link2,

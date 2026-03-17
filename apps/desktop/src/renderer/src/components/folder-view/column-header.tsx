@@ -10,7 +10,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import type { Header } from '@tanstack/react-table'
 import type { NoteWithProperties, ColumnConfig } from '@memry/contracts/folder-view-api'
-import { GripVertical } from 'lucide-react'
+import { GripVertical } from '@/lib/icons'
 import { cn } from '@/lib/utils'
 
 // ============================================================================

@@ -1,6 +1,6 @@
 'use client'
 
-import { Folder, Forward, MoreHorizontal, Trash2, type LucideIcon } from 'lucide-react'
+import { Folder, Forward, MoreHorizontal, Trash2, type AppIcon } from '@/lib/icons'
 
 import {
   DropdownMenu,
@@ -25,7 +25,7 @@ export function NavProjects({
   projects: {
     name: string
     url: string
-    icon: LucideIcon
+    icon: AppIcon
   }[]
 }) {
   const { isMobile } = useSidebar()

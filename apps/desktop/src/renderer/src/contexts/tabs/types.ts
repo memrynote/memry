@@ -67,7 +67,7 @@ export interface Tab {
   type: TabType
   /** Display title */
   title: string
-  /** Icon name (lucide icon) */
+  /** Icon name (icon) */
   icon: string
   /** Emoji icon (overrides icon for notes) */
   emoji?: string | null
@@ -280,7 +280,7 @@ export interface SidebarItem {
   type: TabType
   /** Display title */
   title: string
-  /** Icon name (lucide icon) */
+  /** Icon name (icon) */
   icon?: string
   /** Emoji icon (overrides icon for notes) */
   emoji?: string | null

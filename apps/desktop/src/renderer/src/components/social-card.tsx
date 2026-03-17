@@ -8,7 +8,7 @@
  */
 
 import { useState, useEffect } from 'react'
-import { ExternalLink, AlertCircle, Loader2 } from 'lucide-react'
+import { ExternalLink, AlertCircle, Loader2 } from '@/lib/icons'
 
 import { cn } from '@/lib/utils'
 import type { SocialMetadata, InboxMetadata } from '@/types'

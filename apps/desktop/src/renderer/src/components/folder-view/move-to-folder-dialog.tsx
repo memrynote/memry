@@ -11,7 +11,7 @@
 
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { Folder, Plus, Sparkles, Search } from 'lucide-react'
+import { Folder, Plus, Sparkles, Search } from '@/lib/icons'
 import {
   Dialog,
   DialogContent,

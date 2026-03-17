@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
-import { Send, Loader2, Link, FileText, Check, X, Image, Mic, FileIcon, Copy } from 'lucide-react'
+import { Send, Loader2, Link, FileText, Check, X, Image, Mic, FileIcon, Copy } from '@/lib/icons'
 import { cn } from '@/lib/utils'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { useCaptureText, useCaptureLink, useCaptureImage, useCaptureVoice } from '@/hooks/use-inbox'

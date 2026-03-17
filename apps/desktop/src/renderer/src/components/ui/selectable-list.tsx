@@ -6,7 +6,7 @@
  */
 
 import { useState, createContext, useContext } from 'react'
-import { ChevronRight, FileText } from 'lucide-react'
+import { ChevronRight, FileText } from '@/lib/icons'
 import { cn } from '@/lib/utils'
 
 // ============================================================================

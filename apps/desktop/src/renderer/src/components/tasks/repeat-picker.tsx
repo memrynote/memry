@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback } from 'react'
-import { RefreshCw, ChevronDown, Check } from 'lucide-react'
+import { RefreshCw, ChevronDown, Check } from '@/lib/icons'
 
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Button } from '@/components/ui/button'

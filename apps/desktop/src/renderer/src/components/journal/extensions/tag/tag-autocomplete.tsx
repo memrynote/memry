@@ -12,7 +12,7 @@ import {
   type KeyboardEvent
 } from 'react'
 import type { SuggestionProps } from '@tiptap/suggestion'
-import { Hash, Plus } from 'lucide-react'
+import { Hash, Plus } from '@/lib/icons'
 import { cn } from '@/lib/utils'
 import type { Tag } from '@/hooks/use-tags'
 

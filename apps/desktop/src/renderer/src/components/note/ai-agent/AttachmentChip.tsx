@@ -1,4 +1,4 @@
-import { FileText, StickyNote, X } from 'lucide-react'
+import { FileText, StickyNote, X } from '@/lib/icons'
 import { cn } from '@/lib/utils'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import type { Attachment } from './types'

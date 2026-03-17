@@ -1,4 +1,4 @@
-import { Plus, FolderKanban } from 'lucide-react'
+import { Plus, FolderKanban } from '@/lib/icons'
 import { cn } from '@/lib/utils'
 
 interface ProjectsEmptyStateProps {

@@ -1,4 +1,4 @@
-import { ClipboardList, Star, CheckCircle, FolderOpen, Plus } from 'lucide-react'
+import { ClipboardList, Star, CheckCircle, FolderOpen, Plus } from '@/lib/icons'
 
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'

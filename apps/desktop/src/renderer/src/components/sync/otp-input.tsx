@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { Button } from '@/components/ui/button'
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp'
-import { Loader2 } from 'lucide-react'
+import { Loader2 } from '@/lib/icons'
 
 interface OtpInputProps {
   onComplete: (code: string) => void

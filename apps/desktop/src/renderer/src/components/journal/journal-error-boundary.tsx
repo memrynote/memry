@@ -9,7 +9,7 @@
  */
 
 import { Component, type ErrorInfo, type ReactNode } from 'react'
-import { AlertTriangle, RefreshCw, Calendar } from 'lucide-react'
+import { AlertTriangle, RefreshCw, Calendar } from '@/lib/icons'
 import { Button } from '@/components/ui/button'
 import { createLogger } from '@/lib/logger'
 

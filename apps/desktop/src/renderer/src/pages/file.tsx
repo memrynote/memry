@@ -6,7 +6,7 @@
  */
 
 import { useQuery } from '@tanstack/react-query'
-import { Loader2, FileWarning, Download, ExternalLink } from 'lucide-react'
+import { Loader2, FileWarning, Download, ExternalLink } from '@/lib/icons'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { notesService } from '@/services/notes-service'
 import { PdfViewer, ImageViewer, AudioPlayer, VideoPlayer } from '@/components/viewers'

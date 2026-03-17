@@ -1,7 +1,7 @@
 'use client'
 
 import * as React from 'react'
-import { ChevronsUpDown, Plus, Check } from 'lucide-react'
+import { ChevronsUpDown, Plus, Check } from '@/lib/icons'
 import { useTheme } from 'next-themes'
 
 import {

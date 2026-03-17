@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Copy } from 'lucide-react'
+import { Copy } from '@/lib/icons'
 
 import {
   Dialog,

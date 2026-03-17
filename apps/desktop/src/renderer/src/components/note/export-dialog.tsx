@@ -28,7 +28,7 @@ import {
   SelectValue
 } from '@/components/ui/select'
 import { Checkbox } from '@/components/ui/checkbox'
-import { FileText, FileCode, Loader2, CheckCircle } from 'lucide-react'
+import { FileText, FileCode, Loader2, CheckCircle } from '@/lib/icons'
 import { notesService, type ExportNoteResponse } from '@/services/notes-service'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'

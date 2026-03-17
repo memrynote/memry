@@ -5,7 +5,7 @@
  */
 
 import { useState, useRef, useEffect, memo, useId } from 'react'
-import { ChevronDown, Pencil } from 'lucide-react'
+import { ChevronDown, Pencil } from '@/lib/icons'
 import { cn } from '@/lib/utils'
 import { JournalEditor } from './journal-editor'
 

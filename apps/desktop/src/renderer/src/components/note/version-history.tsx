@@ -39,7 +39,7 @@ import {
   Loader2,
   AlertCircle,
   ChevronRight
-} from 'lucide-react'
+} from '@/lib/icons'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
 import { notesService, type SnapshotListItem, type SnapshotDetail } from '@/services/notes-service'

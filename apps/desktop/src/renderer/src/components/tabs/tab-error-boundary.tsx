@@ -4,7 +4,7 @@
  */
 
 import { Component, type ErrorInfo, type ReactNode } from 'react'
-import { AlertTriangle, RefreshCw } from 'lucide-react'
+import { AlertTriangle, RefreshCw } from '@/lib/icons'
 import { createLogger } from '@/lib/logger'
 
 const log = createLogger('Component:TabErrorBoundary')

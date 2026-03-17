@@ -1,4 +1,4 @@
-import { Check, Calendar, Plus } from 'lucide-react'
+import { Check, Calendar, Plus } from '@/lib/icons'
 
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
