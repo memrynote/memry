@@ -1,4 +1,4 @@
-import { Sparkles, ChevronDown, Check, Monitor } from 'lucide-react'
+import { Sparkles, ChevronDown, Check, Monitor } from '@/lib/icons'
 import { cn } from '@/lib/utils'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { AVAILABLE_MODELS, type ModelOption } from './types'

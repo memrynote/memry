@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { AlertTriangle, Trash2 } from 'lucide-react'
+import { AlertTriangle, Trash2 } from '@/lib/icons'
 
 import { cn } from '@/lib/utils'
 import {

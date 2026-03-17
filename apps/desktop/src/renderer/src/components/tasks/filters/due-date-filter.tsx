@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { ChevronDown, Calendar as CalendarIcon } from 'lucide-react'
+import { ChevronDown, Calendar as CalendarIcon } from '@/lib/icons'
 
 import { Button } from '@/components/ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'

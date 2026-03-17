@@ -7,7 +7,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, type RefObject } from 'react'
 import { cn } from '@/lib/utils'
-import { Loader2, FileText } from 'lucide-react'
+import { Loader2, FileText } from '@/lib/icons'
 import {
   AIConnectionsPanel,
   DayContextSidebar,

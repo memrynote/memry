@@ -1,5 +1,5 @@
 import { memo } from 'react'
-import { Download, CheckCircle, AlertCircle } from 'lucide-react'
+import { Download, CheckCircle, AlertCircle } from '@/lib/icons'
 import { cn } from '@/lib/utils'
 
 export interface DownloadProgressProps {

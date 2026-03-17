@@ -4,7 +4,7 @@
  */
 
 import { useRef, useState, useEffect, useCallback } from 'react'
-import { ChevronLeft, ChevronRight, Plus } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Plus } from '@/lib/icons'
 import { useTabGroup, useTabs } from '@/contexts/tabs'
 import { RegularTab } from './regular-tab'
 import { PinnedTab } from './pinned-tab'

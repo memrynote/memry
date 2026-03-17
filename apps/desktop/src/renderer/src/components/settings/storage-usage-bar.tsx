@@ -1,7 +1,7 @@
 import { useStorageUsage } from '@/hooks/use-storage-usage'
 import { formatBytes } from '@/lib/format'
 import { Button } from '@/components/ui/button'
-import { RefreshCw } from 'lucide-react'
+import { RefreshCw } from '@/lib/icons'
 
 const CATEGORIES = [
   { key: 'notes' as const, label: 'Notes', color: 'hsl(var(--primary))' },

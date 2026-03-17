@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Flag } from 'lucide-react'
+import { Flag } from '@/lib/icons'
 
 import {
   Dialog,

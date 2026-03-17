@@ -1,4 +1,4 @@
-import { Archive, Search } from 'lucide-react'
+import { Archive, Search } from '@/lib/icons'
 
 import { cn } from '@/lib/utils'
 

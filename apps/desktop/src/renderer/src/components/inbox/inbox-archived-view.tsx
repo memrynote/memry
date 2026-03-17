@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { format } from 'date-fns'
-import { Archive, Loader2, ChevronRight } from 'lucide-react'
+import { Archive, Loader2, ChevronRight } from '@/lib/icons'
 import { cn } from '@/lib/utils'
 import {
   useInboxArchived,

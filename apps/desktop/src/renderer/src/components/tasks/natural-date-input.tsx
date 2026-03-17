@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef, useImperativeHandle, forwardRef } from 'react'
-import { Search, Check, AlertCircle } from 'lucide-react'
+import { Search, Check, AlertCircle } from '@/lib/icons'
 
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'

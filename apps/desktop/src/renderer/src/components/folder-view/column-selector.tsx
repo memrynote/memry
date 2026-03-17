@@ -12,7 +12,7 @@
  */
 
 import { useState, useMemo, useCallback } from 'react'
-import { SlidersHorizontal, Search, Plus, Pencil, Trash2 } from 'lucide-react'
+import { SlidersHorizontal, Search, Plus, Pencil, Trash2 } from '@/lib/icons'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'

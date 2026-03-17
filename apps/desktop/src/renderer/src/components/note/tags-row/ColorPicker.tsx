@@ -1,6 +1,6 @@
 import { cn } from '@/lib/utils'
 import { TAG_COLORS, COLOR_ROWS, getTagColors } from './tag-colors'
-import { Check } from 'lucide-react'
+import { Check } from '@/lib/icons'
 
 interface ColorPickerProps {
   selectedColor: string

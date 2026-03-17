@@ -5,7 +5,7 @@
  */
 
 import { useState, useRef, useEffect, useCallback } from 'react'
-import { X, Plus, Clock, TrendingUp } from 'lucide-react'
+import { X, Plus, Clock, TrendingUp } from '@/lib/icons'
 
 import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'

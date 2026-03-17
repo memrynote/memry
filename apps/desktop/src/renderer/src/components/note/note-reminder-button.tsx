@@ -8,7 +8,7 @@
  */
 
 import * as React from 'react'
-import { Bell, BellRing } from 'lucide-react'
+import { Bell, BellRing } from '@/lib/icons'
 import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { ReminderPicker } from '@/components/reminder'

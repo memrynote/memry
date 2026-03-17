@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react'
-import { Archive } from 'lucide-react'
+import { Archive } from '@/lib/icons'
 
 import { cn } from '@/lib/utils'
 import {

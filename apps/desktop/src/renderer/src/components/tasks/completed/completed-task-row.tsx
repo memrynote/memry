@@ -1,4 +1,4 @@
-import { Archive, Trash2, Check } from 'lucide-react'
+import { Archive, Trash2, Check } from '@/lib/icons'
 
 import { cn } from '@/lib/utils'
 import { formatTime } from '@/lib/task-utils'

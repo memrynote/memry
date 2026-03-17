@@ -1,4 +1,4 @@
-import { Flame, CheckCircle, Calendar, TrendingUp } from 'lucide-react'
+import { Flame, CheckCircle, Calendar, TrendingUp } from '@/lib/icons'
 
 import { cn } from '@/lib/utils'
 import type { CompletionStats as CompletionStatsType } from '@/lib/task-utils'

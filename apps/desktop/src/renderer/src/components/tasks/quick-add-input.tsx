@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback, useMemo } from 'react'
-import { Calendar, Folder, Flag } from 'lucide-react'
+import { Calendar, Folder, Flag } from '@/lib/icons'
 
 import { cn } from '@/lib/utils'
 import { Kbd } from '@/components/ui/kbd'

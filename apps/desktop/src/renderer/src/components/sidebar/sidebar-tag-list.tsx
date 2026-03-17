@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { Search, ArrowUpDown, ArrowDownAZ, ArrowUpAZ, X } from 'lucide-react'
+import { Search, ArrowUpDown, ArrowDownAZ, ArrowUpAZ, X } from '@/lib/icons'
 
 import { cn } from '@/lib/utils'
 import { useNoteTagsQuery } from '@/hooks/use-notes-query'

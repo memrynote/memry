@@ -10,7 +10,7 @@ import {
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
-import { Sun, Moon, Monitor, Check, ALargeSmall, FileText } from 'lucide-react'
+import { Sun, Moon, Monitor, Check, ALargeSmall, FileText } from '@/lib/icons'
 import { useGeneralSettings } from '@/hooks/use-general-settings'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'

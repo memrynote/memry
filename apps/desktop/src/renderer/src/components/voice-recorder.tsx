@@ -12,7 +12,7 @@
  */
 
 import { useState, useRef, useCallback, useEffect } from 'react'
-import { Mic, Square, X, Loader2, Settings, AlertCircle } from 'lucide-react'
+import { Mic, Square, X, Loader2, Settings, AlertCircle } from '@/lib/icons'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { extractErrorMessage } from '@/lib/ipc-error'

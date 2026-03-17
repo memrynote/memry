@@ -13,7 +13,7 @@
 
 import * as React from 'react'
 import { useState, useCallback, useEffect, useRef } from 'react'
-import { Bell, X } from 'lucide-react'
+import { Bell, X } from '@/lib/icons'
 import { Button } from '@/components/ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { cn } from '@/lib/utils'
