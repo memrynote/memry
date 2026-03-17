@@ -50,6 +50,7 @@ interface VirtualizedAllTasksViewProps {
   storageKey?: string
   sortField?: SortField
   sortDirection?: SortDirection
+  showProjectBadge?: boolean
 }
 
 // ============================================================================
@@ -75,6 +76,7 @@ interface VirtualItemRendererProps {
   onAddSubtask?: (parentId: string, title: string) => void
   onReorderSubtasks?: (parentId: string, newOrder: string[]) => void
   onToggleGroup?: (groupKey: string) => void
+  showProjectBadge?: boolean
 }
 
 const VirtualItemRenderer = memo(
@@ -96,7 +98,8 @@ const VirtualItemRenderer = memo(
     onToggleExpand,
     onAddSubtask,
     onReorderSubtasks,
-    onToggleGroup
+    onToggleGroup,
+    showProjectBadge = true
   }: VirtualItemRendererProps): React.JSX.Element | null => {
     switch (item.type) {
       case 'group-header':
@@ -126,7 +129,7 @@ const VirtualItemRenderer = memo(
             allTasks={allTasks}
             isCompleted={isCompleted}
             isSelected={selectedTaskId === item.task.id}
-            showProjectBadge={true}
+            showProjectBadge={showProjectBadge}
             onToggleComplete={onToggleComplete}
             onUpdateTask={onUpdateTask}
             onClick={onTaskClick}
@@ -155,7 +158,7 @@ const VirtualItemRenderer = memo(
             isExpanded={isExpanded}
             isCompleted={isCompleted}
             isSelected={selectedTaskId === item.task.id}
-            showProjectBadge={true}
+            showProjectBadge={showProjectBadge}
             onToggleExpand={onToggleExpand}
             onToggleComplete={onToggleComplete}
             onUpdateTask={onUpdateTask}
@@ -201,7 +204,8 @@ export const VirtualizedAllTasksView = ({
   onReorderSubtasks,
   storageKey = 'all',
   sortField,
-  sortDirection
+  sortDirection,
+  showProjectBadge = true
 }: VirtualizedAllTasksViewProps): React.JSX.Element => {
   const parentRef = useRef<HTMLDivElement>(null)
 
@@ -301,6 +305,7 @@ export const VirtualizedAllTasksView = ({
                     onAddSubtask={onAddSubtask}
                     onReorderSubtasks={onReorderSubtasks}
                     onToggleGroup={handleToggleGroup}
+                    showProjectBadge={showProjectBadge}
                   />
                 </div>
               )

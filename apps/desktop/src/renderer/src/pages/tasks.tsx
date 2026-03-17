@@ -1379,6 +1379,7 @@ export const TasksPage = ({
                 onAddSubtask={subtaskManagement.handleAddSubtask}
                 sortField={sort.field}
                 sortDirection={sort.direction}
+                showProjectBadge={!selectedProjectId}
               />
             </div>
           )}
@@ -1412,6 +1413,7 @@ export const TasksPage = ({
                   onAddSubtask={subtaskManagement.handleAddSubtask}
                   sortField={sort.field}
                   sortDirection={sort.direction}
+                  showProjectBadge={!selectedProjectId}
                 />
               )}
             </div>
@@ -1437,6 +1439,7 @@ export const TasksPage = ({
                 onShiftSelect={selectRange}
                 onReorderSubtasks={subtaskManagement.handleReorderSubtasks}
                 onAddSubtask={subtaskManagement.handleAddSubtask}
+                showProjectBadge={!selectedProjectId}
               />
             </div>
           )}
