@@ -157,7 +157,7 @@ export function seedTestData(db: TestDb): {
   `)
   db.run(sql`
     INSERT INTO statuses (id, project_id, name, color, position, is_default, is_done)
-    VALUES (${statusIds.inProgress}, ${projectId}, 'In Progress', '#E5993E', 1, 0, 0)
+    VALUES (${statusIds.inProgress}, ${projectId}, 'In Progress', '#F59E0B', 1, 0, 0)
   `)
   db.run(sql`
     INSERT INTO statuses (id, project_id, name, color, position, is_default, is_done)
