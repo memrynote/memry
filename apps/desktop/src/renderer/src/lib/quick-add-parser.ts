@@ -82,35 +82,43 @@ const getNextDayOfWeek = (targetDay: number): Date => {
   return addDays(today, daysUntil)
 }
 
+const buildDateWithRollover = (monthIndex: number, day: number): Date => {
+  const today = new Date()
+  const year = today.getFullYear()
+  const date = new Date(year, monthIndex, day)
+  date.setHours(0, 0, 0, 0)
+
+  if (date < startOfDay(today)) {
+    date.setFullYear(year + 1)
+  }
+
+  return date
+}
+
 /**
  * Parse date keyword to Date object
- * Supports: today, tomorrow, day names (mon, tue, etc.), month+day (dec20, dec 20)
+ * Supports: today, tomorrow, day names (mon, tue, etc.), month+day (dec20, 20dec)
  */
 export const parseDateKeyword = (keyword: string): Date | null => {
   const lower = keyword.toLowerCase().trim()
 
-  // today
   if (lower === 'today') {
     return startOfDay(new Date())
   }
 
-  // tomorrow
   if (lower === 'tomorrow' || lower === 'tmr' || lower === 'tom') {
     return addDays(startOfDay(new Date()), 1)
   }
 
-  // next week (7 days from now)
   if (lower === 'nextweek' || lower === 'next') {
     return addDays(startOfDay(new Date()), 7)
   }
 
-  // Day names: mon, tue, wed, etc.
   if (dayNameMap[lower] !== undefined) {
     return getNextDayOfWeek(dayNameMap[lower])
   }
 
-  // Month + day format: dec20, dec 20, december20, etc.
-  // Match pattern like "dec20" or "dec 20"
+  // Month + day: dec20, dec 20, december20
   const monthDayMatch = lower.match(/^([a-z]+)\s*(\d{1,2})$/)
   if (monthDayMatch) {
     const [, monthStr, dayStr] = monthDayMatch
@@ -118,19 +126,19 @@ export const parseDateKeyword = (keyword: string): Date | null => {
     const day = parseInt(dayStr, 10)
 
     if (monthIndex !== undefined && day >= 1 && day <= 31) {
-      const today = new Date()
-      const year = today.getFullYear()
+      return buildDateWithRollover(monthIndex, day)
+    }
+  }
 
-      // Create the date
-      const date = new Date(year, monthIndex, day)
-      date.setHours(0, 0, 0, 0)
+  // Day + month: 20dec, 21jan, 23may
+  const dayMonthMatch = lower.match(/^(\d{1,2})\s*([a-z]+)$/)
+  if (dayMonthMatch) {
+    const [, dayStr, monthStr] = dayMonthMatch
+    const monthIndex = monthNameMap[monthStr]
+    const day = parseInt(dayStr, 10)
 
-      // If the date is in the past, use next year
-      if (date < startOfDay(today)) {
-        date.setFullYear(year + 1)
-      }
-
-      return date
+    if (monthIndex !== undefined && day >= 1 && day <= 31) {
+      return buildDateWithRollover(monthIndex, day)
     }
   }
 
@@ -381,7 +389,7 @@ export const getProjectOptions = (query: string, projects: Project[]): Autocompl
 
   if (!query) {
     return activeProjects.map((p) => ({
-      value: `#${p.id}`,
+      value: `#${p.name}`,
       label: p.name
     }))
   }
@@ -392,7 +400,7 @@ export const getProjectOptions = (query: string, projects: Project[]): Autocompl
       (p) => p.name.toLowerCase().includes(lowerQuery) || p.id.toLowerCase().includes(lowerQuery)
     )
     .map((p) => ({
-      value: `#${p.id}`,
+      value: `#${p.name}`,
       label: p.name
     }))
 }

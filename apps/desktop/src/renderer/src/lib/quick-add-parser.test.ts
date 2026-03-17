@@ -195,6 +195,46 @@ describe('parseDateKeyword', () => {
     })
   })
 
+  describe('day + month format (day-first)', () => {
+    it("should parse '23may' to May 23, 2026", () => {
+      const result = parseDateKeyword('23may')
+      expect(result).toEqual(new Date(2026, 4, 23))
+    })
+
+    it("should parse '21jan' to Jan 21, 2026 (future date stays same year)", () => {
+      const result = parseDateKeyword('21jan')
+      expect(result).toEqual(new Date(2026, 0, 21))
+    })
+
+    it("should parse '5jan' to Jan 5, 2027 (past date rolls to next year)", () => {
+      const result = parseDateKeyword('5jan')
+      expect(result).toEqual(new Date(2027, 0, 5))
+    })
+
+    it("should parse '14february' to Feb 14, 2026", () => {
+      const result = parseDateKeyword('14february')
+      expect(result).toEqual(new Date(2026, 1, 14))
+    })
+
+    it("should parse '1mar' to Mar 1, 2026", () => {
+      const result = parseDateKeyword('1mar')
+      expect(result).toEqual(new Date(2026, 2, 1))
+    })
+
+    it("should parse '25dec' to Dec 25, 2026", () => {
+      const result = parseDateKeyword('25dec')
+      expect(result).toEqual(new Date(2026, 11, 25))
+    })
+
+    it("should return null for '32jan' (invalid day)", () => {
+      expect(parseDateKeyword('32jan')).toBeNull()
+    })
+
+    it("should return null for '0dec' (day 0 is invalid)", () => {
+      expect(parseDateKeyword('0dec')).toBeNull()
+    })
+  })
+
   describe('invalid keywords', () => {
     it("should return null for 'invalid'", () => {
       const result = parseDateKeyword('invalid')
@@ -888,10 +928,10 @@ describe('getProjectOptions', () => {
   })
 
   describe('option structure', () => {
-    it("should have correct value format '#project-id'", () => {
+    it("should have correct value format '#ProjectName'", () => {
       const result = getProjectOptions('', projects)
-      expect(result[0].value).toBe('#work')
-      expect(result[1].value).toBe('#personal')
+      expect(result[0].value).toBe('#Work')
+      expect(result[1].value).toBe('#Personal')
     })
 
     it('should have value and label for each option', () => {
