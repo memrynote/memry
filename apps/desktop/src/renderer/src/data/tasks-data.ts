@@ -304,7 +304,14 @@ export interface TaskFilters {
 // SORT TYPES AND INTERFACES
 // ============================================================================
 
-export type SortField = 'dueDate' | 'priority' | 'createdAt' | 'title' | 'project' | 'completedAt'
+export type SortField =
+  | 'dueDate'
+  | 'priority'
+  | 'status'
+  | 'createdAt'
+  | 'title'
+  | 'project'
+  | 'completedAt'
 
 export type SortDirection = 'asc' | 'desc'
 
@@ -371,6 +378,7 @@ export const dueDateFilterOptions: { value: DueDateFilterType; label: string }[]
 export const sortFieldOptions: { value: SortField; label: string }[] = [
   { value: 'dueDate', label: 'Due Date' },
   { value: 'priority', label: 'Priority' },
+  { value: 'status', label: 'Status' },
   { value: 'createdAt', label: 'Created' },
   { value: 'title', label: 'Title (A-Z)' },
   { value: 'project', label: 'Project' }

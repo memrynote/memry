@@ -668,7 +668,7 @@ export interface TaskFiltersConfig {
 }
 
 export interface TaskSortConfig {
-  field: 'dueDate' | 'priority' | 'createdAt' | 'title' | 'project' | 'completedAt'
+  field: 'dueDate' | 'priority' | 'status' | 'createdAt' | 'title' | 'project' | 'completedAt'
   direction: 'asc' | 'desc'
 }
 
