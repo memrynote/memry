@@ -1,5 +1,5 @@
 import { useDroppable } from '@dnd-kit/core'
-import { Trash2, Archive, Settings } from 'lucide-react'
+import { Trash2, Archive, Settings } from '@/lib/icons'
 
 import { cn } from '@/lib/utils'
 import { useDragContext } from '@/contexts/drag-context'

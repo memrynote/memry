@@ -1,7 +1,7 @@
 import React, { forwardRef } from 'react'
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { Link2, ListChecks } from 'lucide-react'
+import { Link2, ListChecks } from '@/lib/icons'
 
 import { cn } from '@/lib/utils'
 import { PRIORITY_CSS_VARS, priorityConfig, type Priority, type Task } from '@/data/sample-tasks'

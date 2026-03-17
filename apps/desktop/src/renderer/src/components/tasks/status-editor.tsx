@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef } from 'react'
-import { GripVertical, X, Plus } from 'lucide-react'
+import { GripVertical, X, Plus } from '@/lib/icons'
 
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'

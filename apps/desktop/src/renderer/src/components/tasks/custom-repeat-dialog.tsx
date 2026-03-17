@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback } from 'react'
-import { CalendarIcon } from 'lucide-react'
+import { CalendarIcon } from '@/lib/icons'
 import { format } from 'date-fns'
 
 import {

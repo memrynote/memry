@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect, useRef, type FormEvent } from 'react'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
-import { ArrowLeft, KeyRound, Loader2 } from 'lucide-react'
+import { ArrowLeft, KeyRound, Loader2 } from '@/lib/icons'
 
 interface RecoveryPhraseInputProps {
   onSubmit: (phrase: string) => void

@@ -11,7 +11,7 @@ import {
   SelectTrigger,
   SelectValue
 } from '@/components/ui/select'
-import { Sparkles, Info, Loader2, CheckCircle, XCircle, Eye, EyeOff } from 'lucide-react'
+import { Sparkles, Info, Loader2, CheckCircle, XCircle, Eye, EyeOff } from '@/lib/icons'
 import { toast } from 'sonner'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { createLogger } from '@/lib/logger'

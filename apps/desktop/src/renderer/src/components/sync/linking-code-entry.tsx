@@ -2,7 +2,7 @@ import { useState, useCallback, type FormEvent } from 'react'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { extractErrorMessage } from '@/lib/ipc-error'
-import { ArrowLeft, Link2, Loader2 } from 'lucide-react'
+import { ArrowLeft, Link2, Loader2 } from '@/lib/icons'
 
 interface LinkingCodeEntryProps {
   onLinked: (sessionId: string, verificationCode?: string) => void

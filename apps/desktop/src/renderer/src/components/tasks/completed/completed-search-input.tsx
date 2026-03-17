@@ -1,4 +1,4 @@
-import { Search, X } from 'lucide-react'
+import { Search, X } from '@/lib/icons'
 
 import { cn } from '@/lib/utils'
 import { Input } from '@/components/ui/input'

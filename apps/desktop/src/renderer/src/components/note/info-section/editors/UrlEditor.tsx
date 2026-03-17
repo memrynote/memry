@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
-import { ExternalLink } from 'lucide-react'
+import { ExternalLink } from '@/lib/icons'
 import { cn } from '@/lib/utils'
 
 interface UrlEditorProps {

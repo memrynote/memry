@@ -4,7 +4,7 @@
  */
 
 import { useState, useCallback, memo } from 'react'
-import { X } from 'lucide-react'
+import { X } from '@/lib/icons'
 import type { Tab } from '@/contexts/tabs/types'
 import { useTabs, useTabSettings } from '@/contexts/tabs'
 import { TabIcon } from './tab-icon'

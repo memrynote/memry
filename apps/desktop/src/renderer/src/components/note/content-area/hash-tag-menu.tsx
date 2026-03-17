@@ -1,5 +1,5 @@
 import type { SuggestionMenuProps } from '@blocknote/react'
-import { Hash, Plus } from 'lucide-react'
+import { Hash, Plus } from '@/lib/icons'
 import { cn } from '@/lib/utils'
 import { getTagColors } from '@/components/note/tags-row/tag-colors'
 

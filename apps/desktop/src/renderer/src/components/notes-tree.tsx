@@ -56,7 +56,7 @@ import {
   Music,
   Video,
   Monitor
-} from 'lucide-react'
+} from '@/lib/icons'
 import { toast } from 'sonner'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Button } from '@/components/ui/button'

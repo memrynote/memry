@@ -1,4 +1,4 @@
-import { Clock, Calendar } from 'lucide-react'
+import { Clock, Calendar } from '@/lib/icons'
 import { quickSnoozePresets, type SnoozePreset } from '@/components/snooze/snooze-presets'
 
 interface TriageSnoozPickerProps {

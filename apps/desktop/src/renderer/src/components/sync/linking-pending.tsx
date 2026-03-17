@@ -1,7 +1,7 @@
 import { useEffect, useRef, useCallback, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { extractErrorMessage } from '@/lib/ipc-error'
-import { Loader2, X, CheckCircle, AlertCircle } from 'lucide-react'
+import { Loader2, X, CheckCircle, AlertCircle } from '@/lib/icons'
 
 const POLL_INTERVAL_MS = 3000
 

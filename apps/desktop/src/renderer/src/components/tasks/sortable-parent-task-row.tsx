@@ -1,7 +1,7 @@
 import { useRef, useEffect } from 'react'
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { GripVertical } from 'lucide-react'
+import { GripVertical } from '@/lib/icons'
 
 import { cn } from '@/lib/utils'
 import { hasSubtasks, type SubtaskProgress } from '@/lib/subtask-utils'

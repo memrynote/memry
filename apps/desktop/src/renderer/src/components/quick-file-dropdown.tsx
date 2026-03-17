@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import { Folder } from 'lucide-react'
+import { Folder } from '@/lib/icons'
 
 import { cn } from '@/lib/utils'
 import type { Folder as FolderType } from '@/types'

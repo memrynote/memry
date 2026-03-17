@@ -1,4 +1,4 @@
-import { Star, Plus, X, ChevronDown } from 'lucide-react'
+import { Star, Plus, X, ChevronDown } from '@/lib/icons'
 
 import { Button } from '@/components/ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'

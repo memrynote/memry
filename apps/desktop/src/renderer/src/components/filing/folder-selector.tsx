@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react'
-import { Search, Folder, Check, ChevronRight, ChevronDown, Plus, Sparkles } from 'lucide-react'
+import { Search, Folder, Check, ChevronRight, ChevronDown, Plus, Sparkles } from '@/lib/icons'
 
 import { Input } from '@/components/ui/input'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'

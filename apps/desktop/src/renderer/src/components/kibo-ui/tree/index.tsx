@@ -1,6 +1,6 @@
 'use client'
 
-import { ChevronRight, File, Folder, FolderOpen, Palette } from 'lucide-react'
+import { ChevronRight, File, Folder, FolderOpen, Palette } from '@/lib/icons'
 import { AnimatePresence, LazyMotion, domAnimation, m } from 'motion/react'
 import {
   type ComponentProps,
@@ -1012,7 +1012,7 @@ export const TreeIcon = ({
   const effectiveIconName = iconName || customIcon || inheritedIcon || getEffectiveIcon(nodeId)
 
   const getIconComponent = () => {
-    // Eğer bir ikon adı varsa, lucide'dan al
+    // Eğer bir ikon adı varsa, hugeicons'dan al
     if (effectiveIconName) {
       const IconComponent = getIconByName(effectiveIconName)
       if (IconComponent) {

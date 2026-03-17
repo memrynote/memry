@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react'
-import { Folder, Check, ChevronDown, Sparkles, Loader2, FileText, Link2 } from 'lucide-react'
+import { Folder, Check, ChevronDown, Sparkles, Loader2, FileText, Link2 } from '@/lib/icons'
 import { useQuery } from '@tanstack/react-query'
 import { cn } from '@/lib/utils'
 import type { Folder as FolderType } from '@/types'

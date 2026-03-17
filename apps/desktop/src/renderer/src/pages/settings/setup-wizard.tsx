@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { QrCode, KeyRound } from 'lucide-react'
+import { QrCode, KeyRound } from '@/lib/icons'
 import { cn } from '@/lib/utils'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { useAuth, type WizardStep } from '@/contexts/auth-context'

@@ -1,5 +1,5 @@
 import { cn } from '@/lib/utils'
-import { Loader2 } from 'lucide-react'
+import { Loader2 } from '@/lib/icons'
 
 export function BacklinksLoadingState() {
   return (

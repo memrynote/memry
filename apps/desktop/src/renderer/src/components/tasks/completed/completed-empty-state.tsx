@@ -1,4 +1,4 @@
-import { CheckCircle, Search } from 'lucide-react'
+import { CheckCircle, Search } from '@/lib/icons'
 
 import { cn } from '@/lib/utils'
 

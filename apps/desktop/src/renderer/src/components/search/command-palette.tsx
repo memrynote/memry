@@ -1,6 +1,6 @@
 import { useCallback, useEffect } from 'react'
 import { Command } from 'cmdk'
-import { Search, Loader2 } from 'lucide-react'
+import { Search, Loader2 } from '@/lib/icons'
 import type {
   SearchResultItem as SearchResultItemType,
   ContentType,

@@ -13,7 +13,7 @@ import {
   Clock,
   Users,
   AlertCircle
-} from 'lucide-react'
+} from '@/lib/icons'
 import { cn } from '@/lib/utils'
 import type { ScheduleEvent, DayTask } from './day-context-sidebar'
 

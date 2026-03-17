@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react'
 import { useDroppable } from '@dnd-kit/core'
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
-import { Plus } from 'lucide-react'
+import { Plus } from '@/lib/icons'
 
 import { cn } from '@/lib/utils'
 import { useDragContext } from '@/contexts/drag-context'

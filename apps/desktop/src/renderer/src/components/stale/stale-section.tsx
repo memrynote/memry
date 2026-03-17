@@ -1,4 +1,4 @@
-import { AlertTriangle } from 'lucide-react'
+import { AlertTriangle } from '@/lib/icons'
 
 import { StaleItemRow } from '@/components/stale/stale-item-row'
 import { StaleActionFooter } from '@/components/stale/stale-action-footer'

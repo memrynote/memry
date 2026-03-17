@@ -1,4 +1,4 @@
-import { X } from 'lucide-react'
+import { X } from '@/lib/icons'
 
 import { AlertDialog, AlertDialogContent } from '@/components/ui/alert-dialog'
 import { getKeyboardShortcuts } from '@/hooks/use-keyboard-shortcuts'

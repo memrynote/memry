@@ -5,7 +5,7 @@
  * Positioned between the header and the table.
  */
 
-import { Search, X } from 'lucide-react'
+import { Search, X } from '@/lib/icons'
 import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
 import {

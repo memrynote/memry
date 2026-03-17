@@ -1,5 +1,5 @@
 import { memo } from 'react'
-import { ExternalLink } from 'lucide-react'
+import { ExternalLink } from '@/lib/icons'
 import { TypeIcon, ContentMetadata } from '@/components/inbox-detail/content-section'
 import { extractDomain } from '@/lib/inbox-utils'
 import { formatRelativeTime } from '@/services/inbox-service'

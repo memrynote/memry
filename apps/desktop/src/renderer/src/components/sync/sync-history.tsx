@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { formatDistanceToNow } from 'date-fns'
-import { ArrowUpFromLine, ArrowDownToLine, AlertCircle, ChevronRight, Loader2 } from 'lucide-react'
+import { ArrowUpFromLine, ArrowDownToLine, AlertCircle, ChevronRight, Loader2 } from '@/lib/icons'
 import { Button } from '@/components/ui/button'
 import {
   Select,

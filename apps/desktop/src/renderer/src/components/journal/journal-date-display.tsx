@@ -5,7 +5,7 @@
  */
 
 import { useMemo } from 'react'
-import { Sun, Sunset, Moon } from 'lucide-react'
+import { Sun, Sunset, Moon } from '@/lib/icons'
 import { cn } from '@/lib/utils'
 import { getMonthName } from '@/lib/journal-utils'
 import type { JournalViewState } from './date-breadcrumb'

@@ -30,7 +30,7 @@ import { notesService, onNoteDeleted, onNoteUpdated, onNoteRenamed } from '@/ser
 import { resolveWikiLink } from '@/lib/wikilink-resolver'
 import { useTabs, useActiveTab } from '@/contexts/tabs'
 import { NoteReminderButton } from '@/components/note/note-reminder-button'
-import { Bookmark, MoreHorizontal, History, Monitor, GitGraph } from 'lucide-react'
+import { Bookmark, MoreHorizontal, History, Monitor, GitGraph } from '@/lib/icons'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,

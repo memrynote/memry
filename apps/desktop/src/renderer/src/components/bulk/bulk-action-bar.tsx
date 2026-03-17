@@ -1,4 +1,4 @@
-import { Folder, Tag, Archive, Clock } from 'lucide-react'
+import { Folder, Tag, Archive, Clock } from '@/lib/icons'
 
 import { Button } from '@/components/ui/button'
 import { AIClusterSuggestion } from '@/components/bulk/ai-cluster-suggestion'

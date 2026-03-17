@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { FileText, BookOpen, CheckSquare, Inbox, X, Filter, Tag, Calendar } from 'lucide-react'
+import { FileText, BookOpen, CheckSquare, Inbox, X, Filter, Tag, Calendar } from '@/lib/icons'
 import type { ContentType, DateRange } from '@memry/contracts/search-api'
 import { searchService } from '@/services/search-service'
 

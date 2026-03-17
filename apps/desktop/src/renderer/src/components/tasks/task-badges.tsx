@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { Repeat } from 'lucide-react'
+import { Repeat } from '@/lib/icons'
 
 import { cn } from '@/lib/utils'
 import { StatusDot } from '@/components/ui/status-dot'

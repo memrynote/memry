@@ -5,7 +5,7 @@
  */
 
 import { useMemo } from 'react'
-import { ChevronLeft, ChevronRight } from 'lucide-react'
+import { ChevronLeft, ChevronRight } from '@/lib/icons'
 import { cn } from '@/lib/utils'
 import { formatDateParts, getMonthName, getTodayString } from '@/lib/journal-utils'
 

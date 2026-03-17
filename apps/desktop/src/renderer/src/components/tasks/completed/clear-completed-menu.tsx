@@ -1,4 +1,4 @@
-import { Archive, Trash2, Clock } from 'lucide-react'
+import { Archive, Trash2, Clock } from '@/lib/icons'
 
 import { AlertDialog, AlertDialogContent } from '@/components/ui/alert-dialog'
 import { Button } from '@/components/ui/button'

@@ -23,7 +23,7 @@ import {
   Minus,
   Code,
   Maximize2
-} from 'lucide-react'
+} from '@/lib/icons'
 import { cn } from '@/lib/utils'
 import { createLogger } from '@/lib/logger'
 import { Button } from '@/components/ui/button'

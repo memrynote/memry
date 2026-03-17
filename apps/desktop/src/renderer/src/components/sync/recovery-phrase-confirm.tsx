@@ -2,7 +2,7 @@ import { useState, useCallback, useMemo } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { ArrowLeft, Check, X } from 'lucide-react'
+import { ArrowLeft, Check, X } from '@/lib/icons'
 import { cn } from '@/lib/utils'
 
 interface RecoveryPhraseConfirmProps {

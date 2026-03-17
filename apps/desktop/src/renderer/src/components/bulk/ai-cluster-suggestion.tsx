@@ -1,4 +1,4 @@
-import { Lightbulb, Plus, X } from 'lucide-react'
+import { Lightbulb, Plus, X } from '@/lib/icons'
 
 import { Button } from '@/components/ui/button'
 import type { InboxItemListItem } from '@/types'
