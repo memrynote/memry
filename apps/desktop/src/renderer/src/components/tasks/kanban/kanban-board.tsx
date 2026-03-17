@@ -36,6 +36,7 @@ export const KanbanBoard = ({
   selectedIds,
   onToggleSelect
 }: KanbanBoardProps): React.JSX.Element => {
+  const showProjectBadge = !selectedProjectId
   const [focusedTaskId, setFocusedTaskId] = useState<string | null>(null)
   const boardRef = useRef<HTMLDivElement>(null)
 
@@ -143,6 +144,7 @@ export const KanbanBoard = ({
               onToggleComplete={onToggleComplete}
               onToggleSelect={onToggleSelect}
               onQuickAdd={onQuickAdd}
+              showProjectBadge={showProjectBadge}
             />
           ))}
         </div>

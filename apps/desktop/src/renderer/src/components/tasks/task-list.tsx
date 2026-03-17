@@ -50,6 +50,7 @@ interface TaskListProps {
   // Sort-aware grouping props
   sortField?: SortField
   sortDirection?: SortDirection
+  showProjectBadge?: boolean
 }
 
 // ============================================================================
@@ -75,6 +76,7 @@ interface TaskListByCompletionProps {
   // Subtask management props
   onAddSubtask?: (parentId: string, title: string) => void
   onReorderSubtasks?: (parentId: string, newOrder: string[]) => void
+  showProjectBadge?: boolean
 }
 
 const TaskListByCompletion = ({
@@ -95,7 +97,8 @@ const TaskListByCompletion = ({
   onToggleExpand,
   // Subtask management props
   onAddSubtask,
-  onReorderSubtasks
+  onReorderSubtasks,
+  showProjectBadge = true
 }: TaskListByCompletionProps): React.JSX.Element => {
   const groupedTasks = useMemo(() => groupTasksByCompletion(tasks), [tasks])
 
@@ -116,7 +119,7 @@ const TaskListByCompletion = ({
             projects={projects}
             accentColor={config.accentColor}
             isMuted={config.isMuted}
-            showProjectBadge={true}
+            showProjectBadge={showProjectBadge}
             selectedTaskId={selectedTaskId}
             onToggleComplete={onToggleComplete}
             onToggleSubtaskComplete={onToggleSubtaskComplete}
@@ -165,7 +168,8 @@ export const TaskList = ({
   onReorderSubtasks,
   // Sort-aware grouping
   sortField,
-  sortDirection
+  sortDirection,
+  showProjectBadge = true
 }: TaskListProps): React.JSX.Element => {
   // Expand/collapse state - only needed for non-virtualized completed view
   const { expandedIds, toggleExpanded } = useExpandedTasks({
@@ -233,6 +237,7 @@ export const TaskList = ({
               // Subtask management props
               onAddSubtask={onAddSubtask}
               onReorderSubtasks={onReorderSubtasks}
+              showProjectBadge={showProjectBadge}
             />
           )}
         </div>
@@ -264,6 +269,7 @@ export const TaskList = ({
       // Sort-aware grouping
       sortField={sortField}
       sortDirection={sortDirection}
+      showProjectBadge={showProjectBadge}
     />
   )
 }
