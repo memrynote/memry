@@ -1621,6 +1621,18 @@ export const sortTasksAdvanced = (tasks: Task[], sort: TaskSort, projects: Proje
         comparison = a.title.localeCompare(b.title)
         break
 
+      case 'status': {
+        const statusTypeOrder: Record<string, number> = { todo: 0, in_progress: 1, done: 2 }
+        const getStatusOrder = (task: Task): number => {
+          const proj = projects.find((p) => p.id === task.projectId)
+          const status = proj?.statuses.find((s) => s.id === task.statusId)
+          if (!status) return 99
+          return statusTypeOrder[status.type] * 100 + status.order
+        }
+        comparison = getStatusOrder(a) - getStatusOrder(b)
+        break
+      }
+
       case 'project': {
         const projectA = projects.find((p) => p.id === a.projectId)?.name || ''
         const projectB = projects.find((p) => p.id === b.projectId)?.name || ''
