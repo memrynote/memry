@@ -282,9 +282,13 @@ test.describe('Tasks Management', () => {
         throw new Error('Missing drop target geometry')
       }
 
-      await page.mouse.move(targetBox.x + targetBox.width * xRatio, targetBox.y + targetBox.height * yRatio, {
-        steps
-      })
+      await page.mouse.move(
+        targetBox.x + targetBox.width * xRatio,
+        targetBox.y + targetBox.height * yRatio,
+        {
+          steps
+        }
+      )
     }
 
     const dropDraggedTask = async (page: Page): Promise<void> => {
@@ -302,7 +306,9 @@ test.describe('Tasks Management', () => {
       await dropDraggedTask(page)
     }
 
-    test('T541: should insert at the top when dropping on a target priority header', async ({ page }) => {
+    test('T541: should insert at the top when dropping on a target priority header', async ({
+      page
+    }) => {
       const timestamp = Date.now()
       const sourceTitle = `List DnD Medium ${timestamp}`
       const firstHighTitle = `List DnD High A ${timestamp}`
@@ -326,7 +332,9 @@ test.describe('Tasks Management', () => {
       await expect(highGroupHeader).toBeVisible()
 
       await moveDraggedTaskToTarget(page, sourceRow, highGroupHeader)
-      await expect(page.locator('[data-testid="list-drop-indicator"][data-drop-indicator="column"]').first()).toBeVisible()
+      await expect(
+        page.locator('[data-testid="list-drop-indicator"][data-drop-indicator="column"]').first()
+      ).toBeVisible()
       await dropDraggedTask(page)
 
       await expect(page.getByRole('button', { name: /^High, 3 tasks$/ })).toBeVisible()
@@ -343,7 +351,9 @@ test.describe('Tasks Management', () => {
       expect(sourceIndex).toBeLessThan(firstHighIndex)
     })
 
-    test('T541: should highlight the full target section and insert at the hovered row position', async ({ page }) => {
+    test('T541: should highlight the full target section and insert at the hovered row position', async ({
+      page
+    }) => {
       const timestamp = Date.now()
       const sourceTitle = `List DnD Medium Row ${timestamp}`
       const firstHighTitle = `List DnD High Row A ${timestamp}`
@@ -370,7 +380,9 @@ test.describe('Tasks Management', () => {
 
       await expect(firstHighRow).toHaveAttribute('data-section-drag-state', 'target-highlighted')
       await expect(secondHighRow).toHaveAttribute('data-section-drag-state', 'target-highlighted')
-      await expect(page.locator('[data-testid="list-drop-indicator"][data-drop-indicator="reorder"]').first()).toBeVisible()
+      await expect(
+        page.locator('[data-testid="list-drop-indicator"][data-drop-indicator="reorder"]').first()
+      ).toBeVisible()
 
       await dropDraggedTask(page)
 
@@ -550,10 +562,7 @@ test.describe('Tasks Management', () => {
         .first()
       const ghostRows = page.locator('[data-testid="overlay-ghost-row"]')
 
-      await expect(multiOverlay).toHaveAttribute(
-        'data-overlay-variant',
-        'list-multi'
-      )
+      await expect(multiOverlay).toHaveAttribute('data-overlay-variant', 'list-multi')
       await expect(ghostRows).toHaveCount(2)
       await expect(ghostRows.first()).toBeVisible()
 

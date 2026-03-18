@@ -397,7 +397,8 @@ export const DragProvider = ({
             ? activeData.overlayRowVariant
             : null,
         overlayShowProjectBadge: Boolean(activeData?.overlayShowProjectBadge),
-        overlayParentProgress: (activeData?.overlayParentProgress as SubtaskProgress | undefined) ?? null,
+        overlayParentProgress:
+          (activeData?.overlayParentProgress as SubtaskProgress | undefined) ?? null,
         overlayParentExpanded: Boolean(activeData?.overlayParentExpanded),
         draggedTasks,
         lastDroppedId: null

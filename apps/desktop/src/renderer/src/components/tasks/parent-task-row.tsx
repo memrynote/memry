@@ -80,48 +80,12 @@ const DragHandleGrip = ({ isOverlay }: { isOverlay: boolean }): React.JSX.Elemen
     aria-label="Drag to reorder"
   >
     <svg width="10" height="14" viewBox="0 0 10 14" fill="none" aria-hidden="true">
-      <circle
-        cx="3"
-        cy="3"
-        r="1.5"
-        fill="currentColor"
-        className="text-text-tertiary"
-      />
-      <circle
-        cx="7"
-        cy="3"
-        r="1.5"
-        fill="currentColor"
-        className="text-text-tertiary"
-      />
-      <circle
-        cx="3"
-        cy="7"
-        r="1.5"
-        fill="currentColor"
-        className="text-text-tertiary"
-      />
-      <circle
-        cx="7"
-        cy="7"
-        r="1.5"
-        fill="currentColor"
-        className="text-text-tertiary"
-      />
-      <circle
-        cx="3"
-        cy="11"
-        r="1.5"
-        fill="currentColor"
-        className="text-text-tertiary"
-      />
-      <circle
-        cx="7"
-        cy="11"
-        r="1.5"
-        fill="currentColor"
-        className="text-text-tertiary"
-      />
+      <circle cx="3" cy="3" r="1.5" fill="currentColor" className="text-text-tertiary" />
+      <circle cx="7" cy="3" r="1.5" fill="currentColor" className="text-text-tertiary" />
+      <circle cx="3" cy="7" r="1.5" fill="currentColor" className="text-text-tertiary" />
+      <circle cx="7" cy="7" r="1.5" fill="currentColor" className="text-text-tertiary" />
+      <circle cx="3" cy="11" r="1.5" fill="currentColor" className="text-text-tertiary" />
+      <circle cx="7" cy="11" r="1.5" fill="currentColor" className="text-text-tertiary" />
     </svg>
   </div>
 )
@@ -316,7 +280,10 @@ export const ParentTaskRow = ({
             >
               <ChevronDown
                 size={10}
-                className={cn('transition-transform duration-200 ease-out', !isExpanded && '-rotate-90')}
+                className={cn(
+                  'transition-transform duration-200 ease-out',
+                  !isExpanded && '-rotate-90'
+                )}
               />
             </div>
           ) : (
@@ -346,9 +313,9 @@ export const ParentTaskRow = ({
 
         <span
           className={cn(
-          'text-[13px] leading-4 grow shrink basis-0 truncate',
-          isCompleted
-            ? isOverlay
+            'text-[13px] leading-4 grow shrink basis-0 truncate',
+            isCompleted
+              ? isOverlay
                 ? 'text-text-tertiary line-through decoration-1 [text-underline-position:from-font]'
                 : 'text-text-tertiary line-through decoration-1 [text-underline-position:from-font]'
               : isOverlay
@@ -373,12 +340,12 @@ export const ParentTaskRow = ({
 
         {showProjectBadge && (
           <div className="flex items-center shrink-0 gap-[5px]">
-            <div className="rounded-xs shrink-0 size-2" style={{ backgroundColor: project.color }} />
             <div
-              className={cn(
-                'text-[11px] leading-3.5 truncate max-w-[100px]',
-                'text-text-tertiary'
-              )}
+              className="rounded-xs shrink-0 size-2"
+              style={{ backgroundColor: project.color }}
+            />
+            <div
+              className={cn('text-[11px] leading-3.5 truncate max-w-[100px]', 'text-text-tertiary')}
             >
               {project.name}
             </div>

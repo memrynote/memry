@@ -3,7 +3,11 @@ import { useVirtualizer } from '@tanstack/react-virtual'
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
 
 import { cn } from '@/lib/utils'
-import { DroppableListHeader, SortableParentTaskRow, SortableTaskRow } from '@/components/tasks/drag-drop'
+import {
+  DroppableListHeader,
+  SortableParentTaskRow,
+  SortableTaskRow
+} from '@/components/tasks/drag-drop'
 import { TaskEmptyState } from '@/components/tasks/task-empty-state'
 import {
   flattenTasksByStatus,

@@ -11,18 +11,17 @@ import {
 } from './list-section-drag-state'
 import type { ParentTaskRowProps } from '@/components/tasks/parent-task-row'
 
-interface SortableParentTaskRowProps
-  extends Omit<
-    ParentTaskRowProps,
-    | 'isDragging'
-    | 'isJustDropped'
-    | 'showDragHandle'
-    | 'dragHandleListeners'
-    | 'dragHandleAttributes'
-    | 'droppedPriority'
-    | 'insertionIndicatorPosition'
-    | 'sectionDragState'
-  > {
+interface SortableParentTaskRowProps extends Omit<
+  ParentTaskRowProps,
+  | 'isDragging'
+  | 'isJustDropped'
+  | 'showDragHandle'
+  | 'dragHandleListeners'
+  | 'dragHandleAttributes'
+  | 'droppedPriority'
+  | 'insertionIndicatorPosition'
+  | 'sectionDragState'
+> {
   sectionId: string
   sectionTaskIds?: string[]
   columnId?: string
