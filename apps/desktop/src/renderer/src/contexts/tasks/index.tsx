@@ -205,6 +205,8 @@ interface TasksProviderProps {
   initialProjects: Project[]
   onTasksChange?: (tasks: Task[]) => void
   onProjectsChange?: (projects: Project[]) => void
+  selectedTaskIds?: Set<string>
+  onSelectedTaskIdsChange?: (ids: Set<string>) => void
   getOrderedTasks?: (sectionId: string, tasks: Task[]) => Task[]
 }
 
@@ -244,6 +246,8 @@ export const TasksProvider = ({
   initialProjects,
   onTasksChange,
   onProjectsChange,
+  selectedTaskIds: controlledSelectedTaskIds,
+  onSelectedTaskIdsChange,
   getOrderedTasks
 }: TasksProviderProps): React.JSX.Element => {
   // Get vault status to know if database is available
@@ -258,7 +262,20 @@ export const TasksProvider = ({
   // Selection state
   const [taskSelectedId, setTaskSelectedId] = useState<string>('all')
   const [taskSelectedType, setTaskSelectedType] = useState<TaskSelectionType>('view')
-  const [selectedTaskIds, setSelectedTaskIds] = useState<Set<string>>(new Set())
+  const [selectedTaskIdsState, setSelectedTaskIdsState] = useState<Set<string>>(new Set())
+  const selectedTaskIds = controlledSelectedTaskIds ?? selectedTaskIdsState
+
+  const setSelectedTaskIds = useCallback(
+    (ids: Set<string>) => {
+      if (onSelectedTaskIdsChange) {
+        onSelectedTaskIdsChange(ids)
+        return
+      }
+
+      setSelectedTaskIdsState(ids)
+    },
+    [onSelectedTaskIdsChange]
+  )
 
   // Load data from database when vault opens
   useEffect(() => {
