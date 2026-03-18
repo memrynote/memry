@@ -19,6 +19,9 @@ export interface StatusHeaderItem extends VirtualItemBase {
   type: 'status-header'
   status: Status
   count: number
+  sectionId?: string
+  sectionTaskIds?: string[]
+  columnId?: string
 }
 
 export interface GroupHeaderItem extends VirtualItemBase {
@@ -30,6 +33,9 @@ export interface GroupHeaderItem extends VirtualItemBase {
   color?: string
   variant?: 'overdue' | 'default'
   isCollapsed?: boolean
+  sectionId?: string
+  sectionTaskIds?: string[]
+  columnId?: string
 }
 
 export interface TaskItem extends VirtualItemBase {
@@ -37,6 +43,8 @@ export interface TaskItem extends VirtualItemBase {
   task: Task
   project: Project
   sectionId: string
+  sectionTaskIds?: string[]
+  columnId?: string
 }
 
 export interface ParentTaskItem extends VirtualItemBase {
@@ -45,6 +53,8 @@ export interface ParentTaskItem extends VirtualItemBase {
   project: Project
   subtasks: Task[]
   sectionId: string
+  sectionTaskIds?: string[]
+  columnId?: string
 }
 
 export type VirtualItem = StatusHeaderItem | GroupHeaderItem | TaskItem | ParentTaskItem
