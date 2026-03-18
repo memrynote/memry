@@ -402,7 +402,7 @@ export const TasksProvider = ({
     // T026: Subscribe to task completed events to update completedAt in state
     const unsubTaskCompleted = onTaskCompleted((event) => {
       const uiTask = dbTaskToUiTask(event.task)
-      setTasks((prev) => prev.map((t) => (t.id === event.id ? uiTask : t)))
+      setTasks((prev) => applyTaskUpdate(prev, uiTask, event.id))
     })
 
     const unsubProjectCreated = onProjectCreated((event) => {

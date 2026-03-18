@@ -4504,6 +4504,21 @@ describe('Task Utils', () => {
 
         expect(result).toHaveLength(0)
       })
+
+      it('should exclude completed subtasks (they stay with their parent)', () => {
+        // #given — a completed subtask and a completed top-level task
+        const tasks = [
+          createMockTask({ id: 't1', completedAt: new Date('2026-01-13'), parentId: null }),
+          createMockTask({ id: 'sub-1', completedAt: new Date('2026-01-13'), parentId: 't1' })
+        ]
+
+        // #when
+        const result = getCompletedTasks(tasks)
+
+        // #then — only top-level task appears in Done section
+        expect(result).toHaveLength(1)
+        expect(result[0].id).toBe('t1')
+      })
     })
 
     describe('getCompletedTodayTasks', () => {
@@ -4562,6 +4577,22 @@ describe('Task Utils', () => {
 
       it('should return empty array for empty input', () => {
         expect(getCompletedTodayTasks([])).toHaveLength(0)
+      })
+
+      it('should exclude subtasks completed today (they stay with their parent)', () => {
+        // #given — subtask and top-level task both completed today
+        const today = new Date()
+        const tasks = [
+          createMockTask({ id: 't1', completedAt: today, parentId: null }),
+          createMockTask({ id: 'sub-1', completedAt: today, parentId: 't1' })
+        ]
+
+        // #when
+        const result = getCompletedTodayTasks(tasks)
+
+        // #then — only top-level in Done Today
+        expect(result).toHaveLength(1)
+        expect(result[0].id).toBe('t1')
       })
     })
   })
@@ -5190,6 +5221,136 @@ describe('Task Utils', () => {
 
         expect(result[0].id).toBe('t2')
         expect(result[1].id).toBe('t1')
+      })
+
+      it('should keep completed subtask with active parent (completion=active)', () => {
+        // #given — active parent with a done subtask
+        const parent = createMockTask({
+          id: 'parent-1',
+          title: 'Parent task',
+          projectId: 'project-1',
+          statusId: 'status-todo',
+          parentId: null,
+          subtaskIds: ['sub-1']
+        })
+        const subtask = createMockTask({
+          id: 'sub-1',
+          title: 'Done subtask',
+          projectId: 'project-1',
+          statusId: 'status-done',
+          parentId: 'parent-1',
+          completedAt: new Date('2026-01-13')
+        })
+
+        // #when — filter for active tasks only
+        const filters: TaskFilters = { ...createDefaultFilters(), completion: 'active' }
+        const sort = createDefaultSort()
+        const result = applyFiltersAndSort([parent, subtask], filters, sort, projects)
+
+        // #then — both survive: subtask inherits parent's filter fate
+        expect(result.map((t) => t.id)).toContain('parent-1')
+        expect(result.map((t) => t.id)).toContain('sub-1')
+      })
+
+      it('should remove subtask when parent is filtered out by priority', () => {
+        // #given — low-priority parent with a subtask
+        const parent = createMockTask({
+          id: 'parent-1',
+          title: 'Low prio parent',
+          projectId: 'project-1',
+          statusId: 'status-todo',
+          priority: 'low',
+          parentId: null,
+          subtaskIds: ['sub-1']
+        })
+        const subtask = createMockTask({
+          id: 'sub-1',
+          title: 'Subtask',
+          projectId: 'project-1',
+          statusId: 'status-todo',
+          parentId: 'parent-1'
+        })
+
+        // #when — filter for high priority only
+        const filters: TaskFilters = { ...createDefaultFilters(), priorities: ['high'] }
+        const sort = createDefaultSort()
+        const result = applyFiltersAndSort([parent, subtask], filters, sort, projects)
+
+        // #then — neither survives
+        expect(result).toHaveLength(0)
+      })
+
+      it('should keep all subtasks when done parent passes completion=completed filter', () => {
+        // #given — done parent with an active subtask
+        const parent = createMockTask({
+          id: 'parent-1',
+          title: 'Done parent',
+          projectId: 'project-1',
+          statusId: 'status-done',
+          parentId: null,
+          completedAt: new Date('2026-01-13'),
+          subtaskIds: ['sub-1']
+        })
+        const subtask = createMockTask({
+          id: 'sub-1',
+          title: 'Active subtask under done parent',
+          projectId: 'project-1',
+          statusId: 'status-todo',
+          parentId: 'parent-1'
+        })
+
+        // #when — filter for completed tasks
+        const filters: TaskFilters = { ...createDefaultFilters(), completion: 'completed' }
+        const sort = createDefaultSort()
+        const result = applyFiltersAndSort([parent, subtask], filters, sort, projects)
+
+        // #then — both survive
+        expect(result.map((t) => t.id)).toContain('parent-1')
+        expect(result.map((t) => t.id)).toContain('sub-1')
+      })
+
+      it('should preserve all subtasks for parent with mixed completion (progress counter)', () => {
+        // #given — parent with 3 subtasks: 2 done, 1 active
+        const parent = createMockTask({
+          id: 'parent-1',
+          title: 'Parent with subtasks',
+          projectId: 'project-1',
+          statusId: 'status-todo',
+          parentId: null,
+          subtaskIds: ['sub-1', 'sub-2', 'sub-3']
+        })
+        const sub1 = createMockTask({
+          id: 'sub-1',
+          parentId: 'parent-1',
+          projectId: 'project-1',
+          statusId: 'status-done',
+          completedAt: new Date('2026-01-12')
+        })
+        const sub2 = createMockTask({
+          id: 'sub-2',
+          parentId: 'parent-1',
+          projectId: 'project-1',
+          statusId: 'status-done',
+          completedAt: new Date('2026-01-13')
+        })
+        const sub3 = createMockTask({
+          id: 'sub-3',
+          parentId: 'parent-1',
+          projectId: 'project-1',
+          statusId: 'status-todo'
+        })
+
+        // #when — filter for active tasks
+        const filters: TaskFilters = { ...createDefaultFilters(), completion: 'active' }
+        const sort = createDefaultSort()
+        const result = applyFiltersAndSort([parent, sub1, sub2, sub3], filters, sort, projects)
+
+        // #then — all 4 items present, progress would show 2/3
+        expect(result).toHaveLength(4)
+        expect(result.map((t) => t.id)).toContain('parent-1')
+        expect(result.map((t) => t.id)).toContain('sub-1')
+        expect(result.map((t) => t.id)).toContain('sub-2')
+        expect(result.map((t) => t.id)).toContain('sub-3')
       })
     })
 
