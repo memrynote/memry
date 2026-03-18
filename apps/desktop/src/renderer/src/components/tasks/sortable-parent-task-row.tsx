@@ -9,6 +9,7 @@ import { formatDueDate, formatDateShort, formatTime } from '@/lib/task-utils'
 import { PriorityBars } from '@/components/tasks/task-icons'
 import { InteractiveStatusIcon } from '@/components/tasks/status-icon'
 import { SelectionCheckbox } from '@/components/tasks/bulk-actions'
+import { RepeatIndicator } from '@/components/tasks/repeat-indicator'
 import { ExpandChevron } from '@/components/tasks/expand-chevron'
 import { SortableSubtaskList } from '@/components/tasks/sortable-subtask-list'
 import type { Task } from '@/data/sample-tasks'
@@ -251,6 +252,10 @@ export const SortableParentTaskRow = ({
               {progress.completed}/{progress.total}
             </span>
           </div>
+        )}
+
+        {task.isRepeating && task.repeatConfig && (
+          <RepeatIndicator config={task.repeatConfig} size="sm" />
         )}
 
         {showProjectBadge && (
