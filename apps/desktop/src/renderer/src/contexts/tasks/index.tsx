@@ -35,6 +35,7 @@ import {
 import { formatDateKey } from '@/lib/task-utils'
 import { useVault } from '@/hooks/use-vault'
 import { createLogger } from '@/lib/logger'
+import { applyTaskUpdate } from './apply-task-update'
 
 const log = createLogger('Context:Tasks')
 
@@ -374,29 +375,7 @@ export const TasksProvider = ({
 
     const unsubTaskUpdated = onTaskUpdated((event) => {
       const uiTask = dbTaskToUiTask(event.task)
-      setTasks((prev) => {
-        const oldTask = prev.find((t) => t.id === event.id)
-        let updated = prev.map((t) => (t.id === event.id ? uiTask : t))
-
-        // T042: Handle parentId changes (promote/demote)
-        if (oldTask && oldTask.parentId !== uiTask.parentId) {
-          // Remove from old parent's subtaskIds
-          if (oldTask.parentId) {
-            updated = updated.map((t) =>
-              t.id === oldTask.parentId
-                ? { ...t, subtaskIds: t.subtaskIds.filter((id) => id !== event.id) }
-                : t
-            )
-          }
-          // Add to new parent's subtaskIds
-          if (uiTask.parentId) {
-            updated = updated.map((t) =>
-              t.id === uiTask.parentId ? { ...t, subtaskIds: [...t.subtaskIds, event.id] } : t
-            )
-          }
-        }
-        return updated
-      })
+      setTasks((prev) => applyTaskUpdate(prev, uiTask, event.id))
     })
 
     const unsubTaskDeleted = onTaskDeleted((event) => {

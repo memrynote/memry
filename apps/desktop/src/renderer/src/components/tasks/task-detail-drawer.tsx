@@ -150,25 +150,18 @@ export const TaskDetailDrawer = memo(function TaskDetailDrawer({
     return () => document.removeEventListener('keydown', onKey)
   }, [isOpen, onClose, isAddingSubtask, isLinkingNote])
 
-  useEffect(() => {
-    if (isAddingSubtask) subtaskInputRef.current?.focus()
-  }, [isAddingSubtask])
+  const handleStartAddSubtask = useCallback(() => {
+    setIsAddingSubtask(true)
+    requestAnimationFrame(() => subtaskInputRef.current?.focus())
+  }, [])
 
-  useEffect(() => {
-    if (isLinkingNote) {
-      noteSearchInputRef.current?.focus()
-      notesService.list({ sortBy: 'modified', sortOrder: 'desc', limit: 50 }).then((res) => {
-        setAvailableNotes(res.notes.map((n) => ({ id: n.id, title: n.title, emoji: n.emoji })))
-      })
-    }
-  }, [isLinkingNote])
-
-  useEffect(() => {
-    setIsAddingSubtask(false)
-    setNewSubtaskTitle('')
-    setIsLinkingNote(false)
-    setNoteSearchQuery('')
-  }, [task?.id])
+  const handleStartLinkNote = useCallback(() => {
+    setIsLinkingNote(true)
+    requestAnimationFrame(() => noteSearchInputRef.current?.focus())
+    notesService.list({ sortBy: 'modified', sortOrder: 'desc', limit: 50 }).then((res) => {
+      setAvailableNotes(res.notes.map((n) => ({ id: n.id, title: n.title, emoji: n.emoji })))
+    })
+  }, [])
 
   const project = useMemo(
     () => (task ? (projects.find((p) => p.id === task.projectId) ?? null) : null),
@@ -342,7 +335,7 @@ export const TaskDetailDrawer = memo(function TaskDetailDrawer({
                   {onAddSubtask && (
                     <button
                       type="button"
-                      onClick={() => setIsAddingSubtask(true)}
+                      onClick={handleStartAddSubtask}
                       className="text-text-tertiary hover:text-text-secondary transition-colors"
                       aria-label="Add sub-issue"
                     >
@@ -435,7 +428,7 @@ export const TaskDetailDrawer = memo(function TaskDetailDrawer({
                 <SectionLabel>Linked Notes</SectionLabel>
                 <button
                   type="button"
-                  onClick={() => setIsLinkingNote(true)}
+                  onClick={handleStartLinkNote}
                   className="text-text-tertiary hover:text-text-secondary transition-colors"
                   aria-label="Link a note"
                 >

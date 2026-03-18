@@ -187,6 +187,10 @@ export function PropertyRow({
     if (!disabled && onNameChange) {
       setEditedName(property.name)
       setIsEditingName(true)
+      requestAnimationFrame(() => {
+        nameInputRef.current?.focus()
+        nameInputRef.current?.select()
+      })
     }
   }, [disabled, onNameChange, property.name])
 
@@ -211,14 +215,6 @@ export function PropertyRow({
     },
     [handleEndNameEdit, property.name]
   )
-
-  // Focus name input when editing starts
-  useEffect(() => {
-    if (isEditingName && nameInputRef.current) {
-      nameInputRef.current.focus()
-      nameInputRef.current.select()
-    }
-  }, [isEditingName])
 
   return (
     <div
