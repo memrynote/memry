@@ -29,6 +29,8 @@ interface UseTaskOrderReturn {
   getOrderedTasks: (sectionId: string, tasks: Task[]) => Task[]
   /** Set order for a section */
   setOrder: (sectionId: string, order: string[]) => void
+  /** Apply multiple section order updates atomically */
+  applyOrderUpdates: (updates: Record<string, string[] | null>) => void
   /** Move a task within a section */
   moveTask: (sectionId: string, taskId: string, direction: 'up' | 'down') => void
   /** Move a task to top of section */
@@ -134,6 +136,26 @@ export const useTaskOrder = ({
       },
       isManuallyOrdered: true
     }))
+  }, [])
+
+  const applyOrderUpdates = useCallback((updates: Record<string, string[] | null>) => {
+    setState((prev) => {
+      const nextOrders = { ...prev.orders }
+
+      Object.entries(updates).forEach(([sectionId, order]) => {
+        if (order === null) {
+          delete nextOrders[sectionId]
+          return
+        }
+
+        nextOrders[sectionId] = order
+      })
+
+      return {
+        orders: nextOrders,
+        isManuallyOrdered: Object.keys(nextOrders).length > 0
+      }
+    })
   }, [])
 
   // Get current order for a section
@@ -271,6 +293,7 @@ export const useTaskOrder = ({
   return {
     getOrderedTasks,
     setOrder,
+    applyOrderUpdates,
     moveTask,
     moveToTop,
     moveToBottom,
