@@ -9,6 +9,10 @@ interface InsertionIndicatorProps {
   position: 'before' | 'after'
   /** Additional class names */
   className?: string
+  /** Stable hook for tests */
+  dataTestId?: string
+  /** Drop indicator kind for tests */
+  kind?: 'reorder' | 'column'
 }
 
 // ============================================================================
@@ -21,10 +25,14 @@ interface InsertionIndicatorProps {
  */
 export const InsertionIndicator = ({
   position,
-  className
+  className,
+  dataTestId,
+  kind = 'reorder'
 }: InsertionIndicatorProps): React.JSX.Element => {
   return (
     <div
+      data-testid={dataTestId}
+      data-drop-indicator={kind}
       className={cn(
         'absolute left-0 right-0 h-0.5 bg-primary pointer-events-none z-20',
         position === 'before' ? '-top-0.5' : '-bottom-0.5',

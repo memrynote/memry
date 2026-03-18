@@ -29,7 +29,7 @@ export const MultiDragOverlay = ({
   const totalCount = tasks.length
 
   return (
-    <div className="relative">
+    <div className="relative" data-testid="drag-overlay">
       {/* Stacked cards effect - render in reverse order so first is on top */}
       {visibleTasks.map((task, index) => {
         // Calculate offset for stacking effect
@@ -116,6 +116,7 @@ export const SingleTaskPreview = ({
 }: SingleTaskPreviewProps): React.JSX.Element => {
   return (
     <div
+      data-testid="drag-overlay"
       className={cn(
         'bg-card rounded-sm shadow-xl border p-3 w-64',
         'rotate-2 scale-105',
