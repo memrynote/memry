@@ -94,6 +94,23 @@ describe('applyTaskUpdate', () => {
     expect(resultParent.subtaskIds).toEqual(['s1', 't2'])
   })
 
+  it('should preserve subtaskIds when parent is completed', () => {
+    // #given — parent has subtasks, all marked done
+    const parent = makeTask({ id: 'p1', subtaskIds: ['s1', 's2'] })
+    const sub1 = makeTask({ id: 's1', parentId: 'p1', completedAt: new Date() })
+    const sub2 = makeTask({ id: 's2', parentId: 'p1', completedAt: new Date() })
+    const prev = [parent, sub1, sub2]
+
+    // #when — parent completed (dbTaskToUiTask returns subtaskIds: [])
+    const completedParent = makeTask({ id: 'p1', subtaskIds: [], completedAt: new Date() })
+    const result = applyTaskUpdate(prev, completedParent, 'p1')
+
+    // #then — subtaskIds preserved from old state
+    const resultParent = result.find((t) => t.id === 'p1')!
+    expect(resultParent.completedAt).toBeTruthy()
+    expect(resultParent.subtaskIds).toEqual(['s1', 's2'])
+  })
+
   it('should handle group header count correctly after priority change', () => {
     // #given — parent(high) with 2 subtasks, all in task list
     const parent = makeTask({ id: 'p1', priority: 'high', subtaskIds: ['s1', 's2'] })

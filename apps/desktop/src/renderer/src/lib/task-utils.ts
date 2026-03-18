@@ -1066,14 +1066,19 @@ export const parseDateKey = (key: string): Date => {
  * Get completed tasks that are NOT archived
  */
 export const getCompletedTasks = (tasks: Task[]): Task[] => {
-  return tasks.filter((task) => task.completedAt !== null && task.archivedAt === null)
+  return tasks.filter(
+    (task) => task.completedAt !== null && task.archivedAt === null && task.parentId === null
+  )
 }
 
 export const getCompletedTodayTasks = (tasks: Task[]): Task[] => {
   const today = new Date()
   return tasks.filter(
     (task) =>
-      task.completedAt !== null && task.archivedAt === null && isSameDay(task.completedAt, today)
+      task.completedAt !== null &&
+      task.archivedAt === null &&
+      task.parentId === null &&
+      isSameDay(task.completedAt, today)
   )
 }
 
@@ -1374,7 +1379,10 @@ export const applyFiltersAndSort = (
   sort: TaskSort,
   projects: Project[]
 ): Task[] => {
-  let result = [...tasks]
+  const topLevel = tasks.filter((t) => t.parentId === null)
+  const subtasks = tasks.filter((t) => t.parentId !== null)
+
+  let result = [...topLevel]
 
   // 1. Search filter
   if (filters.search) {
@@ -1408,10 +1416,14 @@ export const applyFiltersAndSort = (
   // 8. Has time filter
   result = filterByHasTime(result, filters.hasTime)
 
-  // 9. Apply sort
-  result = sortTasksAdvanced(result, sort, projects)
+  // Re-attach subtasks belonging to surviving parents
+  const survivingParentIds = new Set(result.map((t) => t.id))
+  const attachedSubtasks = subtasks.filter(
+    (t) => t.parentId !== null && survivingParentIds.has(t.parentId)
+  )
 
-  return result
+  // 9. Apply sort
+  return sortTasksAdvanced([...result, ...attachedSubtasks], sort, projects)
 }
 
 /**
