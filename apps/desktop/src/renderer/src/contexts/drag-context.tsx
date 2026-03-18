@@ -34,23 +34,14 @@ export type DropTargetType =
   | null
 
 export interface DragState {
-  /** Whether a drag is currently in progress */
   isDragging: boolean
-  /** ID of the primary active item being dragged */
   activeId: string | null
-  /** All IDs being dragged (for multi-select) */
   activeIds: string[]
-  /** Source view type */
   sourceType: DragSourceType
-  /** Source container ID (section, column, or date) */
   sourceContainerId: string | null
-  /** Current drop target ID */
   overId: string | null
-  /** Type of drop target */
   overType: DropTargetType
-  /** Tasks being dragged (for overlay) */
   draggedTasks: Task[]
-  /** ID of the task that was just dropped (for flash animation) */
   lastDroppedId: string | null
 }
 
