@@ -462,13 +462,25 @@ function App(): React.JSX.Element {
     [isVaultOpen]
   )
 
+  const handleReorder = useCallback(
+    (updates: Record<string, string[] | null>) => {
+      taskOrder.applyOrderUpdates(updates)
+      for (const [, taskIds] of Object.entries(updates)) {
+        if (!taskIds) continue
+        const positions = taskIds.map((_, i) => i)
+        tasksService.reorder(taskIds, positions)
+      }
+    },
+    [taskOrder]
+  )
+
   // Use the comprehensive drag handlers hook
   const { handleDragEnd: taskDragEnd, droppedPriorities } = useDragHandlers({
     tasks,
     projects,
     onUpdateTask: handleUpdateTask,
     onDeleteTask: handleDeleteTask,
-    onReorder: taskOrder.applyOrderUpdates,
+    onReorder: handleReorder,
     getOrder: taskOrder.getOrder
   })
 

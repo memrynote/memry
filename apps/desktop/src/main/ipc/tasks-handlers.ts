@@ -217,17 +217,17 @@ export function registerTasksHandlers(): void {
           return { success: false, task: null, error: 'Task not found' }
         }
 
-        // Update tags if provided
+        const oldTags = tags !== undefined ? taskQueries.getTaskTags(db, id) : undefined
+        const oldNoteIds =
+          linkedNoteIds !== undefined ? taskQueries.getTaskNoteIds(db, id) : undefined
+
         if (tags !== undefined) {
           taskQueries.setTaskTags(db, id, tags)
         }
-
-        // Update linked notes if provided
         if (linkedNoteIds !== undefined) {
           taskQueries.setTaskNotes(db, id, linkedNoteIds)
         }
 
-        // Enrich task with linked note IDs for the response
         const enrichedTask = {
           ...task,
           linkedNoteIds: taskQueries.getTaskNoteIds(db, id)
@@ -240,6 +240,16 @@ export function registerTasksHandlers(): void {
               return JSON.stringify(oldVal) !== JSON.stringify(newVal)
             })
           : Object.keys(updates)
+
+        if (oldTags && JSON.stringify([...oldTags].sort()) !== JSON.stringify([...tags!].sort())) {
+          actualChanged.push('tags')
+        }
+        if (
+          oldNoteIds &&
+          JSON.stringify([...oldNoteIds].sort()) !== JSON.stringify([...linkedNoteIds!].sort())
+        ) {
+          actualChanged.push('linkedNoteIds')
+        }
 
         emitTaskEvent(TasksChannels.events.UPDATED, { id, task: enrichedTask, changes: updates })
         syncTaskUpdate(db, id, actualChanged)
@@ -494,6 +504,9 @@ export function registerTasksHandlers(): void {
       try {
         const db = requireDatabase()
         taskQueries.reorderTasks(db, input.taskIds, input.positions)
+        for (const taskId of input.taskIds) {
+          syncTaskUpdate(db, taskId, ['position'])
+        }
         return { success: true }
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Failed to reorder tasks'
