@@ -6,6 +6,7 @@ import { PriorityBars } from '@/components/tasks/task-icons'
 import { InteractiveStatusIcon } from '@/components/tasks/status-icon'
 import { SelectionCheckbox } from '@/components/tasks/bulk-actions'
 import { RepeatIndicator } from '@/components/tasks/repeat-indicator'
+import { InsertionIndicator } from './insertion-indicator'
 
 import type { Task, Priority } from '@/data/sample-tasks'
 import type { Project, Status } from '@/data/tasks-data'
@@ -35,6 +36,8 @@ interface TaskRowProps {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   dragHandleAttributes?: Record<string, any>
   droppedPriority?: Priority | null
+  insertionIndicatorPosition?: 'before' | 'after'
+  isCrossSectionTarget?: boolean
 }
 
 const EXIT_ANIMATION_DURATION = 200
@@ -62,6 +65,8 @@ const arePropsEqual = (prevProps: TaskRowProps, nextProps: TaskRowProps): boolea
   if (prevProps.isJustDropped !== nextProps.isJustDropped) return false
   if (prevProps.showDragHandle !== nextProps.showDragHandle) return false
   if (prevProps.droppedPriority !== nextProps.droppedPriority) return false
+  if (prevProps.insertionIndicatorPosition !== nextProps.insertionIndicatorPosition) return false
+  if (prevProps.isCrossSectionTarget !== nextProps.isCrossSectionTarget) return false
   return true
 }
 
@@ -106,7 +111,9 @@ const TaskRowComponent = ({
   showDragHandle = false,
   dragHandleListeners,
   dragHandleAttributes,
-  droppedPriority
+  droppedPriority,
+  insertionIndicatorPosition,
+  isCrossSectionTarget = false
 }: TaskRowProps): React.JSX.Element => {
   const rowRef = useRef<HTMLDivElement>(null)
   const [isExiting, setIsExiting] = useState(false)
@@ -189,7 +196,7 @@ const TaskRowComponent = ({
       onClick={handleRowClick}
       onKeyDown={onClick ? handleRowKeyDown : undefined}
       className={cn(
-        'group flex items-center py-[7px] px-6 gap-3 border-b border-border transition-colors',
+        'group relative flex items-center py-[7px] px-6 gap-3 border-b border-border transition-colors',
         'hover:bg-accent/50',
         onClick &&
           'cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
@@ -198,10 +205,28 @@ const TaskRowComponent = ({
         isExiting && 'select-none',
         isDragging && 'opacity-35 border-dashed border-primary/30 bg-primary/[0.03]',
         isJustDropped && 'animate-row-drop-flash',
+        isCrossSectionTarget && 'bg-primary/[0.05]',
         className
       )}
       aria-label={`Task: ${task.title}${isCompleted ? ', completed' : ''}`}
     >
+      {insertionIndicatorPosition && (
+        <InsertionIndicator
+          position={insertionIndicatorPosition}
+          className="left-6 right-6"
+          dataTestId="list-drop-indicator"
+        />
+      )}
+
+      {isCrossSectionTarget && (
+        <div
+          data-testid="list-drop-indicator"
+          data-drop-indicator="column"
+          className="absolute inset-x-6 bottom-0 h-0.5 rounded-full bg-primary/80 pointer-events-none"
+          aria-hidden="true"
+        />
+      )}
+
       {showDragHandle && (
         <div
           data-testid="drag-handle"

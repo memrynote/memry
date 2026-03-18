@@ -13,6 +13,7 @@
  * - T543: Test recurring task creation
  */
 
+import type { Locator, Page } from '@playwright/test'
 import { test, expect } from './fixtures'
 import {
   waitForAppReady,
@@ -232,87 +233,134 @@ test.describe('Tasks Management', () => {
   })
 
   test.describe('Task Drag and Drop', () => {
-    test('T541: should drag task between kanban columns', async ({ page }) => {
-      // Switch to kanban view if available
-      const kanbanToggle = page.locator('[data-testid="kanban-view-toggle"]')
-      const hasKanban = await kanbanToggle.isVisible().catch(() => false)
+    const showAllTasks = async (page: Page): Promise<void> => {
+      const allTab = page.getByRole('tab', { name: /^All/ }).first()
+      await allTab.click()
+      await page.waitForTimeout(500)
+    }
 
-      if (hasKanban) {
-        await kanbanToggle.click()
-        await page.waitForTimeout(500)
+    const createTaskViaModal = async (
+      page: Page,
+      input: string,
+      visibleTitle = input
+    ): Promise<void> => {
+      await createTask(page, input)
+      await expect(getTaskRow(page, visibleTitle)).toBeVisible()
+    }
 
-        // Create a task
-        await createTask(page, `Drag Test ${Date.now()}`)
-        await page.waitForTimeout(500)
+    const getTaskRow = (page: Page, title: string) =>
+      page.locator(SELECTORS.taskItem).filter({ hasText: title }).first()
 
-        // Find columns
-        const sourceColumn = page.locator(`${SELECTORS.kanbanColumn}`).first()
-        const targetColumn = page.locator(`${SELECTORS.kanbanColumn}`).nth(1)
+    const dragTaskHandleToRow = async (
+      page: Page,
+      sourceRow: Locator,
+      target: Locator
+    ): Promise<void> => {
+      await sourceRow.hover()
 
-        if ((await sourceColumn.isVisible()) && (await targetColumn.isVisible())) {
-          const task = sourceColumn.locator(SELECTORS.taskItem).first()
+      const handle = sourceRow.locator('[data-testid="drag-handle"]').first()
+      const handleBox = await handle.boundingBox()
+      const targetBox = await target.boundingBox()
 
-          if (await task.isVisible()) {
-            await task.dragTo(targetColumn)
-            await page.waitForTimeout(500)
-          }
-        }
+      if (!handleBox || !targetBox) {
+        throw new Error('Missing drag handle or drop target geometry')
       }
 
-      expect(true).toBe(true)
-    })
+      await page.mouse.move(handleBox.x + handleBox.width / 2, handleBox.y + handleBox.height / 2)
+      await page.mouse.down()
+      await page.mouse.move(targetBox.x + targetBox.width / 2, targetBox.y + targetBox.height / 2, {
+        steps: 14
+      })
+      await page.mouse.up()
+      await page.waitForTimeout(500)
+    }
 
-    test('T541: should update task status after drag', async ({ page: _page }) => {
-      // Verify task status changes after drag-drop
-      expect(true).toBe(true)
-    })
+    test('T541: should move a task into another priority group in list view', async ({ page }) => {
+      const timestamp = Date.now()
+      const sourceTitle = `List DnD None ${timestamp}`
+      const targetTitle = `List DnD High ${timestamp}`
 
-    test('T541: should reorder tasks within same column', async ({ page }) => {
-      // Create multiple tasks and reorder them
-      await createTask(page, 'Task 1')
-      await createTask(page, 'Task 2')
-      await createTask(page, 'Task 3')
+      await showAllTasks(page)
+      await createTaskViaModal(page, sourceTitle)
+      await createTaskViaModal(page, `${targetTitle} !!high`, targetTitle)
+
+      await page.getByRole('button', { name: 'Group by options' }).click()
+      await page.getByRole('button', { name: 'Priority', exact: true }).click()
       await page.waitForTimeout(500)
 
-      const tasks = page.locator(SELECTORS.taskItem)
-      const count = await tasks.count()
+      const sourceRow = getTaskRow(page, sourceTitle)
+      const targetRow = getTaskRow(page, targetTitle)
+      const highGroupHeader = page.getByRole('button', { name: /^High, 1 tasks$/ }).first()
 
-      if (count >= 2) {
-        const firstTask = tasks.first()
-        const secondTask = tasks.nth(1)
+      await expect(sourceRow).toBeVisible()
+      await expect(targetRow).toBeVisible()
+      await expect(highGroupHeader).toBeVisible()
 
-        if ((await firstTask.isVisible()) && (await secondTask.isVisible())) {
-          await firstTask.dragTo(secondTask)
-          await page.waitForTimeout(500)
-        }
-      }
+      await dragTaskHandleToRow(page, sourceRow, highGroupHeader)
 
-      expect(true).toBe(true)
+      await expect(page.getByRole('button', { name: /^High, 2 tasks$/ })).toBeVisible()
+    })
+
+    test('T541: should reorder tasks within the same list section', async ({ page }) => {
+      const timestamp = Date.now()
+      const titleA = `List DnD A ${timestamp}`
+      const titleB = `List DnD B ${timestamp}`
+
+      await showAllTasks(page)
+      await createTaskViaModal(page, titleA)
+      await createTaskViaModal(page, titleB)
+
+      const labelsBefore = await page
+        .locator(SELECTORS.taskItem)
+        .evaluateAll((nodes) => nodes.map((node) => node.getAttribute('aria-label') || ''))
+
+      const indexA = labelsBefore.findIndex((label) => label.includes(titleA))
+      const indexB = labelsBefore.findIndex((label) => label.includes(titleB))
+
+      expect(indexA).toBeGreaterThanOrEqual(0)
+      expect(indexB).toBeGreaterThanOrEqual(0)
+
+      const sourceTitle = indexA < indexB ? titleA : titleB
+      const targetTitle = indexA < indexB ? titleB : titleA
+
+      await dragTaskHandleToRow(page, getTaskRow(page, sourceTitle), getTaskRow(page, targetTitle))
+
+      const labelsAfter = await page
+        .locator(SELECTORS.taskItem)
+        .evaluateAll((nodes) => nodes.map((node) => node.getAttribute('aria-label') || ''))
+
+      const afterSourceIndex = labelsAfter.findIndex((label) => label.includes(sourceTitle))
+      const afterTargetIndex = labelsAfter.findIndex((label) => label.includes(targetTitle))
+
+      expect(afterSourceIndex).toBeGreaterThan(afterTargetIndex)
     })
 
     test('T541: should show drag preview overlay', async ({ page }) => {
-      await createTask(page, `Drag Preview Test ${Date.now()}`)
-      await page.waitForTimeout(500)
+      const title = `Drag Preview Test ${Date.now()}`
 
-      const taskItem = page.locator(SELECTORS.taskItem).first()
+      await showAllTasks(page)
+      await createTaskViaModal(page, title)
 
-      if (await taskItem.isVisible()) {
-        // Start dragging
-        const box = await taskItem.boundingBox()
-        if (box) {
-          await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2)
-          await page.mouse.down()
-          await page.mouse.move(box.x + 50, box.y + 50)
+      const taskRow = getTaskRow(page, title)
+      await expect(taskRow).toBeVisible()
+      await taskRow.hover()
 
-          // Look for drag overlay
-          const overlay = page.locator('[data-testid="drag-overlay"]')
-          await overlay.waitFor({ state: 'visible', timeout: 2000 }).catch(() => {})
+      const handle = taskRow.locator('[data-testid="drag-handle"]').first()
+      const handleBox = await handle.boundingBox()
 
-          await page.mouse.up()
-        }
+      if (!handleBox) {
+        throw new Error('Missing drag handle geometry')
       }
 
-      expect(true).toBe(true)
+      await page.mouse.move(handleBox.x + handleBox.width / 2, handleBox.y + handleBox.height / 2)
+      await page.mouse.down()
+      await page.mouse.move(handleBox.x + 60, handleBox.y + 32, { steps: 10 })
+
+      const overlay = page.locator('[data-testid="drag-overlay"]').first()
+      await expect(overlay).toBeVisible()
+      await expect(overlay).toContainText(title)
+
+      await page.mouse.up()
     })
   })
 

@@ -137,6 +137,26 @@ describe('TaskRow — Priority Change Badge', () => {
   })
 })
 
+describe('TaskRow — List Drop Indicators', () => {
+  it('renders a reorder insertion indicator when requested', () => {
+    render(<TaskRow {...defaultProps} insertionIndicatorPosition="before" />)
+
+    expect(screen.getByTestId('list-drop-indicator')).toHaveAttribute(
+      'data-drop-indicator',
+      'reorder'
+    )
+  })
+
+  it('renders a cross-section drop band when hovering another list target', () => {
+    render(<TaskRow {...defaultProps} isCrossSectionTarget />)
+
+    expect(screen.getByTestId('list-drop-indicator')).toHaveAttribute(
+      'data-drop-indicator',
+      'column'
+    )
+  })
+})
+
 describe('TaskRow — memo equality with drag props', () => {
   it('re-renders when isDragging changes', () => {
     const { rerender } = render(<TaskRow {...defaultProps} isDragging={false} />)

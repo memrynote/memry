@@ -462,10 +462,8 @@ function App(): React.JSX.Element {
     projects,
     onUpdateTask: handleUpdateTask,
     onDeleteTask: handleDeleteTask,
-    onReorder: (sectionId, taskIdsPair) => {
-      // taskIdsPair is [activeId, overId] from the drag operation
-      const [activeId, overId] = taskIdsPair
-      taskOrder.reorderByDrag(sectionId, activeId, overId, tasks)
+    onReorder: (sectionId, newOrder) => {
+      taskOrder.setOrder(sectionId, newOrder)
     }
   })
 

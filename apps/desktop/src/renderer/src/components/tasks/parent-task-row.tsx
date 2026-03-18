@@ -10,10 +10,11 @@ import { RepeatIndicator } from '@/components/tasks/repeat-indicator'
 import { SubtaskProgressIndicator } from '@/components/tasks/subtask-progress-indicator'
 import { ExpandChevron } from '@/components/tasks/expand-chevron'
 import { SortableSubtaskList } from '@/components/tasks/sortable-subtask-list'
-import type { Task } from '@/data/sample-tasks'
+import { InsertionIndicator } from '@/components/tasks/drag-drop/insertion-indicator'
+import type { Task, Priority } from '@/data/sample-tasks'
 import type { Project, Status } from '@/data/tasks-data'
 
-interface ParentTaskRowProps {
+export interface ParentTaskRowProps {
   task: Task
   project: Project
   projects?: Project[]
@@ -36,6 +37,24 @@ interface ParentTaskRowProps {
   onAddSubtask?: (parentId: string, title: string) => void
   onReorderSubtasks?: (parentId: string, newOrder: string[]) => void
   accentClass?: string
+  isDragging?: boolean
+  isJustDropped?: boolean
+  showDragHandle?: boolean
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  dragHandleListeners?: Record<string, any>
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  dragHandleAttributes?: Record<string, any>
+  droppedPriority?: Priority | null
+  insertionIndicatorPosition?: 'before' | 'after'
+  isCrossSectionTarget?: boolean
+}
+
+const PRIORITY_LABELS: Record<string, string> = {
+  urgent: 'Urgent',
+  high: 'High',
+  medium: 'Medium',
+  low: 'Low',
+  none: 'None'
 }
 
 const resolveStatus = (
@@ -71,7 +90,15 @@ export const ParentTaskRow = ({
   onShiftSelect,
   onAddSubtask: _onAddSubtask,
   onReorderSubtasks,
-  accentClass: _accentClass
+  accentClass: _accentClass,
+  isDragging = false,
+  isJustDropped = false,
+  showDragHandle = false,
+  dragHandleListeners,
+  dragHandleAttributes,
+  droppedPriority,
+  insertionIndicatorPosition,
+  isCrossSectionTarget = false
 }: ParentTaskRowProps): React.JSX.Element => {
   const rowRef = useRef<HTMLDivElement>(null)
   const taskHasSubtasks = hasSubtasks(task)
@@ -153,15 +180,58 @@ export const ParentTaskRow = ({
         onClick={handleRowClick}
         onKeyDown={onClick ? handleRowKeyDown : undefined}
         className={cn(
-          'flex items-center py-[7px] px-6 gap-3 border-b border-border transition-colors',
+          'relative flex items-center py-[7px] px-6 gap-3 border-b border-border transition-colors',
           'hover:bg-accent/50',
           onClick &&
             'cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
           isCheckedForSelection && 'bg-primary/10 hover:bg-primary/15',
-          isSelected && !isCheckedForSelection && 'bg-primary/10 ring-2 ring-primary/30'
+          isSelected && !isCheckedForSelection && 'bg-primary/10 ring-2 ring-primary/30',
+          isDragging && 'opacity-35 border-dashed border-primary/30 bg-primary/[0.03]',
+          isJustDropped && 'animate-row-drop-flash',
+          isCrossSectionTarget && 'bg-primary/[0.05]'
         )}
         aria-label={`Task: ${task.title}${isCompleted ? ', completed' : ''}${taskHasSubtasks ? `, ${subtasks.length} subtasks` : ''}`}
       >
+        {insertionIndicatorPosition && (
+          <InsertionIndicator
+            position={insertionIndicatorPosition}
+            className="left-6 right-6"
+            dataTestId="list-drop-indicator"
+          />
+        )}
+
+        {isCrossSectionTarget && (
+          <div
+            data-testid="list-drop-indicator"
+            data-drop-indicator="column"
+            className="absolute inset-x-6 bottom-0 h-0.5 rounded-full bg-primary/80 pointer-events-none"
+            aria-hidden="true"
+          />
+        )}
+
+        {showDragHandle && (
+          <div
+            data-testid="drag-handle"
+            className={cn(
+              'shrink-0 flex items-center justify-center w-5 h-5 cursor-grab',
+              'opacity-0 group-hover:opacity-100 transition-opacity duration-150',
+              isDragging && 'opacity-100 cursor-grabbing'
+            )}
+            {...dragHandleAttributes}
+            {...dragHandleListeners}
+            aria-label="Drag to reorder"
+          >
+            <svg width="10" height="14" viewBox="0 0 10 14" fill="none" aria-hidden="true">
+              <circle cx="3" cy="3" r="1.5" fill="currentColor" className="text-text-tertiary" />
+              <circle cx="7" cy="3" r="1.5" fill="currentColor" className="text-text-tertiary" />
+              <circle cx="3" cy="7" r="1.5" fill="currentColor" className="text-text-tertiary" />
+              <circle cx="7" cy="7" r="1.5" fill="currentColor" className="text-text-tertiary" />
+              <circle cx="3" cy="11" r="1.5" fill="currentColor" className="text-text-tertiary" />
+              <circle cx="7" cy="11" r="1.5" fill="currentColor" className="text-text-tertiary" />
+            </svg>
+          </div>
+        )}
+
         {isSelectionMode && onToggleSelect && (
           <div onClick={(e) => e.stopPropagation()}>
             <SelectionCheckbox
@@ -235,6 +305,12 @@ export const ParentTaskRow = ({
             }
           >
             {dueDateDisplay.text}
+          </div>
+        )}
+
+        {droppedPriority && (
+          <div className="flex items-center shrink-0 gap-1 px-2 py-0.5 bg-primary/10 rounded text-[10px] font-medium text-primary animate-fade-out">
+            priority: {PRIORITY_LABELS[droppedPriority] ?? droppedPriority}
           </div>
         )}
       </div>

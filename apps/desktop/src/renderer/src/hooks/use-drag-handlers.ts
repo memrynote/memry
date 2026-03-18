@@ -1,5 +1,6 @@
 import { useCallback, useRef, useState } from 'react'
 import type { DragEndEvent, DragStartEvent, DragOverEvent } from '@dnd-kit/core'
+import { arrayMove } from '@dnd-kit/sortable'
 import { toast } from 'sonner'
 
 import type { DragState } from '@/contexts/drag-context'
@@ -48,6 +49,32 @@ interface UseDragHandlersReturn {
   canUndo: boolean
   lastActionDescription: string | null
   droppedPriorities: Map<string, Priority>
+}
+
+const buildReorderedTaskIds = (
+  sectionTaskIds: string[] | undefined,
+  activeId: string,
+  overId: string
+): string[] => {
+  if (!sectionTaskIds || sectionTaskIds.length === 0) {
+    return [activeId, overId]
+  }
+
+  const currentOrder = Array.from(new Set(sectionTaskIds))
+  const oldIndex = currentOrder.indexOf(activeId)
+  const newIndex = currentOrder.indexOf(overId)
+
+  if (newIndex === -1) {
+    return currentOrder
+  }
+
+  if (oldIndex === -1) {
+    const nextOrder = [...currentOrder]
+    nextOrder.splice(newIndex, 0, activeId)
+    return nextOrder
+  }
+
+  return arrayMove(currentOrder, oldIndex, newIndex)
 }
 
 // ============================================================================
@@ -476,6 +503,7 @@ export const useDragHandlers = ({
       switch (overType) {
         case 'task': {
           const overSectionId = overData?.sectionId
+          const overSectionTaskIds = overData?.sectionTaskIds as string[] | undefined
           const overColumnId = overData?.columnId
           const sourceSectionId = dragState.sourceContainerId
 
@@ -485,21 +513,21 @@ export const useDragHandlers = ({
             overSectionId === sourceSectionId &&
             taskIds.length === 1
           ) {
-            onReorder?.(overSectionId, [taskIds[0], over.id as string])
+            onReorder?.(
+              overSectionId,
+              buildReorderedTaskIds(overSectionTaskIds, taskIds[0], over.id as string)
+            )
           } else if (
-            !overSectionId &&
             overColumnId &&
             sourceSectionId &&
             overColumnId === sourceSectionId &&
             taskIds.length === 1
           ) {
-            onReorder?.(overColumnId, [taskIds[0], over.id as string])
-          } else if (overSectionId && overSectionId !== sourceSectionId) {
-            const overTask = overData?.task as Task | undefined
-            if (overTask?.dueDate) {
-              handleSectionDrop(taskIds, overTask.dueDate, overSectionId)
-            }
-          } else if (!overSectionId && overColumnId && overColumnId !== sourceSectionId) {
+            onReorder?.(
+              overColumnId,
+              buildReorderedTaskIds(overSectionTaskIds, taskIds[0], over.id as string)
+            )
+          } else if (overColumnId) {
             const result = resolveColumnDrop(overColumnId, projects)
             if (result) {
               switch (result.type) {
@@ -517,11 +545,13 @@ export const useDragHandlers = ({
                   break
                 case 'projectStatus':
                   handleColumnDrop(taskIds, result.columnId, result.project)
-                  if (taskIds.length === 1) {
-                    onReorder?.(result.columnId, [taskIds[0], over.id as string])
-                  }
                   break
               }
+            }
+          } else if (overSectionId && overSectionId !== sourceSectionId) {
+            const overTask = overData?.task as Task | undefined
+            if (overTask?.dueDate) {
+              handleSectionDrop(taskIds, overTask.dueDate, overSectionId)
             }
           }
           break
