@@ -3,7 +3,7 @@
  * Tests for multi-select task functionality.
  */
 
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { renderHook, act } from '@testing-library/react'
 import { useTaskSelection } from './use-task-selection'
 
@@ -653,6 +653,52 @@ describe('useTaskSelection', () => {
       // Selection state is preserved (even if some IDs are no longer visible)
       // This is by design - selection persists
       expect(result.current.selectedCount).toBe(2)
+    })
+  })
+
+  describe('external selection sync', () => {
+    it('publishes selection changes synchronously', () => {
+      const onSelectionChange = vi.fn()
+      const { result } = renderHook(() =>
+        useTaskSelection(visibleTaskIds, {
+          onSelectionChange
+        })
+      )
+
+      act(() => {
+        result.current.selectTask('task-2')
+      })
+
+      expect(onSelectionChange).toHaveBeenCalledTimes(1)
+      expect(onSelectionChange).toHaveBeenCalledWith(new Set(['task-2']))
+    })
+
+    it('mirrors controlled selection updates from outside the hook', () => {
+      const { result, rerender } = renderHook(
+        ({ controlledSelectedIds }) =>
+          useTaskSelection(visibleTaskIds, {
+            controlledSelectedIds
+          }),
+        {
+          initialProps: {
+            controlledSelectedIds: new Set<string>()
+          }
+        }
+      )
+
+      act(() => {
+        result.current.selectTask('task-1')
+        result.current.selectTask('task-3')
+      })
+
+      expect(result.current.selectedTaskIds).toEqual(expect.arrayContaining(['task-1', 'task-3']))
+
+      rerender({
+        controlledSelectedIds: new Set<string>()
+      })
+
+      expect(result.current.selectedTaskIds).toEqual([])
+      expect(result.current.selection.isSelectionMode).toBe(false)
     })
   })
 })

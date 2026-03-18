@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from 'react'
+import { useState, useCallback, useMemo, useRef, useEffect } from 'react'
 
 // ============================================================================
 // TYPES
@@ -50,6 +50,13 @@ export interface UseTaskSelectionReturn {
   exitSelectionMode: () => void
 }
 
+export interface UseTaskSelectionOptions {
+  /** External selection to mirror, used when other layers need the same selected IDs */
+  controlledSelectedIds?: Set<string>
+  /** Called synchronously whenever selection changes */
+  onSelectionChange?: (ids: Set<string>) => void
+}
+
 // ============================================================================
 // INITIAL STATE
 // ============================================================================
@@ -61,6 +68,26 @@ const initialSelectionState: SelectionState = {
   selectAllState: 'none'
 }
 
+const areSetsEqual = (left: Set<string>, right: Set<string>): boolean => {
+  if (left.size !== right.size) return false
+  for (const value of left) {
+    if (!right.has(value)) return false
+  }
+  return true
+}
+
+const getNextLastSelectedId = (
+  selectedIds: Set<string>,
+  previousLastSelectedId: string | null
+): string | null => {
+  if (previousLastSelectedId && selectedIds.has(previousLastSelectedId)) {
+    return previousLastSelectedId
+  }
+
+  const selectedArray = Array.from(selectedIds)
+  return selectedArray[selectedArray.length - 1] ?? null
+}
+
 // ============================================================================
 // HOOK
 // ============================================================================
@@ -69,8 +96,13 @@ const initialSelectionState: SelectionState = {
  * Hook to manage task selection state for multi-select functionality
  * @param visibleTaskIds - Array of task IDs currently visible in the view
  */
-export const useTaskSelection = (visibleTaskIds: string[]): UseTaskSelectionReturn => {
-  const [selection, setSelection] = useState<SelectionState>(initialSelectionState)
+export const useTaskSelection = (
+  visibleTaskIds: string[],
+  options: UseTaskSelectionOptions = {}
+): UseTaskSelectionReturn => {
+  const { controlledSelectedIds, onSelectionChange } = options
+  const [selection, setSelectionState] = useState<SelectionState>(initialSelectionState)
+  const selectionRef = useRef(selection)
 
   // ========== DERIVED STATE ==========
 
@@ -90,6 +122,37 @@ export const useTaskSelection = (visibleTaskIds: string[]): UseTaskSelectionRetu
     },
     [visibleTaskIds.length]
   )
+
+  const setSelection = useCallback(
+    (updater: SelectionState | ((prev: SelectionState) => SelectionState)): void => {
+      const nextSelection =
+        typeof updater === 'function'
+          ? (updater as (prev: SelectionState) => SelectionState)(selectionRef.current)
+          : updater
+
+      selectionRef.current = nextSelection
+      setSelectionState(nextSelection)
+      onSelectionChange?.(nextSelection.selectedIds)
+    },
+    [onSelectionChange]
+  )
+
+  useEffect(() => {
+    selectionRef.current = selection
+  }, [selection])
+
+  useEffect(() => {
+    if (!controlledSelectedIds) return
+    if (areSetsEqual(controlledSelectedIds, selectionRef.current.selectedIds)) return
+
+    setSelection((prev) => ({
+      ...prev,
+      selectedIds: new Set(controlledSelectedIds),
+      isSelectionMode: controlledSelectedIds.size > 0,
+      lastSelectedId: getNextLastSelectedId(controlledSelectedIds, prev.lastSelectedId),
+      selectAllState: calculateSelectAllState(controlledSelectedIds.size)
+    }))
+  }, [calculateSelectAllState, controlledSelectedIds, setSelection])
 
   // ========== ACTIONS ==========
 
