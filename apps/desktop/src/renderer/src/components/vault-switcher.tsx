@@ -2,11 +2,10 @@
 
 import { useState } from 'react'
 import {
-  ChevronsUpDown,
+  ChevronDown,
   Plus,
   Check,
   FolderOpen,
-  HardDrive,
   Loader2,
   LayoutTemplate,
   Settings,
@@ -106,11 +105,13 @@ export function VaultSwitcher() {
               size="default"
               className="rounded-md gap-2 h-auto py-1.5 px-2 hover:bg-sidebar-accent/50 data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground group-data-[collapsible=icon]:justify-center"
             >
-              <div className="flex aspect-square size-6 shrink-0 items-center justify-center rounded-md bg-sidebar-terracotta text-white">
+              <div className="flex aspect-square size-[22px] shrink-0 items-center justify-center rounded-[5px] bg-sidebar-terracotta text-white">
                 {isLoading ? (
                   <Loader2 className="size-3 animate-spin" />
                 ) : (
-                  <HardDrive className="size-3" />
+                  <span className="text-white font-bold text-[11px] leading-none">
+                    {currentVaultName.charAt(0).toUpperCase()}
+                  </span>
                 )}
               </div>
               <div className="grid flex-1 text-left leading-tight group-data-[collapsible=icon]:hidden">
@@ -123,7 +124,7 @@ export function VaultSwitcher() {
                   </span>
                 )}
               </div>
-              <ChevronsUpDown className="ml-auto size-4 text-sidebar-muted opacity-0 group-hover:opacity-100 transition-opacity group-data-[collapsible=icon]:hidden" />
+              <ChevronDown className="ml-auto size-3.5 opacity-40 group-data-[collapsible=icon]:hidden" />
             </SidebarMenuButton>
           </DropdownMenuTrigger>
           <DropdownMenuContent
