@@ -1,16 +1,14 @@
 import { useMemo, useRef, useEffect, useCallback, useState, memo } from 'react'
 import { useVirtualizer } from '@tanstack/react-virtual'
-import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
 
 import { cn } from '@/lib/utils'
-import { SortableTaskRow } from '@/components/tasks/drag-drop'
-import { SortableParentTaskRow } from '@/components/tasks/sortable-parent-task-row'
+import { DraggableTaskRow } from '@/components/tasks/drag-drop'
+import { ParentTaskRow } from '@/components/tasks/parent-task-row'
 import { TaskEmptyState } from '@/components/tasks/task-empty-state'
 import {
   flattenTasksFlat,
   flattenTasksGrouped,
   estimateItemHeight,
-  getTaskIdsFromVirtualItems,
   type VirtualItem,
   type GroupHeaderItem
 } from '@/lib/virtual-list-utils'
@@ -124,12 +122,12 @@ const VirtualItemRenderer = memo(
         const isCheckedForSelection = selectedIds?.has(item.task.id) ?? false
 
         return (
-          <SortableTaskRow
+          <DraggableTaskRow
             task={item.task}
             project={item.project}
             projects={projects}
-            sectionId={item.sectionId}
             allTasks={allTasks}
+            sectionId={item.sectionId ?? 'all'}
             isCompleted={isCompleted}
             isSelected={selectedTaskId === item.task.id}
             showProjectBadge={showProjectBadge}
@@ -151,11 +149,10 @@ const VirtualItemRenderer = memo(
         const progress = calculateProgress(item.subtasks)
 
         return (
-          <SortableParentTaskRow
+          <ParentTaskRow
             task={item.task}
             project={item.project}
             projects={projects}
-            sectionId={item.sectionId}
             subtasks={item.subtasks}
             progress={progress}
             isExpanded={isExpanded}
@@ -235,20 +232,22 @@ export const VirtualizedAllTasksView = ({
 
   const lookupContext = useMemo(() => createLookupContext(projects), [projects])
 
+  const combinedTasks = useMemo(() => [...tasks, ...(doneTasks ?? [])], [tasks, doneTasks])
+
   const virtualItems = useMemo(() => {
     if (sortField && sortField !== 'title' && sortDirection) {
       return flattenTasksGrouped(
         tasks,
         projects,
-        tasks,
+        combinedTasks,
         sortField,
         sortDirection,
         collapsedGroups,
         getOrderedTasks
       )
     }
-    return flattenTasksFlat(tasks, projects, tasks, getOrderedTasks)
-  }, [tasks, projects, sortField, sortDirection, collapsedGroups, getOrderedTasks])
+    return flattenTasksFlat(tasks, projects, combinedTasks, getOrderedTasks)
+  }, [tasks, projects, combinedTasks, sortField, sortDirection, collapsedGroups, getOrderedTasks])
 
   const doneVirtualItems = useMemo((): VirtualItem[] => {
     if (!doneTasks || doneTasks.length === 0) return []
@@ -268,23 +267,21 @@ export const VirtualizedAllTasksView = ({
 
     if (isCollapsed) return [header]
 
-    const doneItems = flattenTasksFlat(doneTasks, projects, doneTasks, getOrderedTasks)
+    const doneItems = flattenTasksFlat(doneTasks, projects, combinedTasks, getOrderedTasks)
     return [header, ...doneItems]
-  }, [doneTasks, projects, collapsedGroups, getOrderedTasks])
+  }, [doneTasks, projects, combinedTasks, collapsedGroups, getOrderedTasks])
 
   const allVirtualItems = useMemo(
     () => [...virtualItems, ...doneVirtualItems],
     [virtualItems, doneVirtualItems]
   )
 
-  const allTaskIds = useMemo(() => getTaskIdsFromVirtualItems(virtualItems), [virtualItems])
-
   const isEmpty = virtualItems.length === 0 && doneVirtualItems.length === 0
 
   const virtualizer = useVirtualizer({
     count: allVirtualItems.length,
     getScrollElement: () => parentRef.current,
-    estimateSize: (index) => estimateItemHeight(allVirtualItems[index], expandedIds, tasks),
+    estimateSize: (index) => estimateItemHeight(allVirtualItems[index], expandedIds, combinedTasks),
     getItemKey: (index) => allVirtualItems[index]?.id ?? index,
     overscan: 5
   })
@@ -303,57 +300,55 @@ export const VirtualizedAllTasksView = ({
 
   return (
     <div className={cn('flex flex-1 flex-col overflow-hidden', className)}>
-      <SortableContext items={allTaskIds} strategy={verticalListSortingStrategy}>
-        <div ref={parentRef} className="flex-1 overflow-auto pt-4" style={{ contain: 'strict' }}>
-          <div
-            style={{
-              height: `${virtualizer.getTotalSize()}px`,
-              width: '100%',
-              position: 'relative'
-            }}
-          >
-            {virtualizer.getVirtualItems().map((virtualRow) => {
-              const item = allVirtualItems[virtualRow.index]
-              return (
-                <div
-                  key={item.id}
-                  data-index={virtualRow.index}
-                  ref={virtualizer.measureElement}
-                  style={{
-                    position: 'absolute',
-                    top: 0,
-                    left: 0,
-                    width: '100%',
-                    transform: `translateY(${virtualRow.start}px)`
-                  }}
-                >
-                  <VirtualItemRenderer
-                    item={item}
-                    lookupContext={lookupContext}
-                    allTasks={tasks}
-                    projects={projects}
-                    selectedTaskId={selectedTaskId}
-                    onToggleComplete={onToggleComplete}
-                    onUpdateTask={onUpdateTask}
-                    onToggleSubtaskComplete={onToggleSubtaskComplete}
-                    onTaskClick={onTaskClick}
-                    isSelectionMode={isSelectionMode}
-                    selectedIds={selectedIds}
-                    onToggleSelect={onToggleSelect}
-                    onShiftSelect={onShiftSelect}
-                    expandedIds={expandedIds}
-                    onToggleExpand={toggleExpanded}
-                    onAddSubtask={onAddSubtask}
-                    onReorderSubtasks={onReorderSubtasks}
-                    onToggleGroup={handleToggleGroup}
-                    showProjectBadge={showProjectBadge}
-                  />
-                </div>
-              )
-            })}
-          </div>
+      <div ref={parentRef} className="flex-1 overflow-auto pt-4" style={{ contain: 'strict' }}>
+        <div
+          style={{
+            height: `${virtualizer.getTotalSize()}px`,
+            width: '100%',
+            position: 'relative'
+          }}
+        >
+          {virtualizer.getVirtualItems().map((virtualRow) => {
+            const item = allVirtualItems[virtualRow.index]
+            return (
+              <div
+                key={item.id}
+                data-index={virtualRow.index}
+                ref={virtualizer.measureElement}
+                style={{
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  width: '100%',
+                  transform: `translateY(${virtualRow.start}px)`
+                }}
+              >
+                <VirtualItemRenderer
+                  item={item}
+                  lookupContext={lookupContext}
+                  allTasks={combinedTasks}
+                  projects={projects}
+                  selectedTaskId={selectedTaskId}
+                  onToggleComplete={onToggleComplete}
+                  onUpdateTask={onUpdateTask}
+                  onToggleSubtaskComplete={onToggleSubtaskComplete}
+                  onTaskClick={onTaskClick}
+                  isSelectionMode={isSelectionMode}
+                  selectedIds={selectedIds}
+                  onToggleSelect={onToggleSelect}
+                  onShiftSelect={onShiftSelect}
+                  expandedIds={expandedIds}
+                  onToggleExpand={toggleExpanded}
+                  onAddSubtask={onAddSubtask}
+                  onReorderSubtasks={onReorderSubtasks}
+                  onToggleGroup={handleToggleGroup}
+                  showProjectBadge={showProjectBadge}
+                />
+              </div>
+            )
+          })}
         </div>
-      </SortableContext>
+      </div>
     </div>
   )
 }

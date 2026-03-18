@@ -1,11 +1,12 @@
 import React, { forwardRef } from 'react'
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { Link2, ListChecks } from '@/lib/icons'
+import { Link2 } from '@/lib/icons'
 
 import { cn } from '@/lib/utils'
 import { useDragContext } from '@/contexts/drag-context'
 import { RepeatIndicator } from '@/components/tasks/repeat-indicator'
+import { SubtaskProgressIndicator } from '@/components/tasks/subtask-progress-indicator'
 import { priorityConfig, type Priority, type Task } from '@/data/sample-tasks'
 import type { Project } from '@/data/tasks-data'
 import { formatDueDate } from '@/lib/task-utils'
@@ -169,12 +170,11 @@ export const KanbanCardContent = forwardRef<HTMLDivElement, KanbanCardContentPro
               </span>
             )}
 
-            {/* Subtask count */}
             {hasSubtasks && (
-              <span className="inline-flex items-center gap-0.5 text-text-tertiary text-[11px]">
-                <ListChecks className="w-3 h-3" />
-                {completedSubtasks.length}/{subtasks.length}
-              </span>
+              <SubtaskProgressIndicator
+                completed={completedSubtasks.length}
+                total={subtasks.length}
+              />
             )}
 
             {/* Linked notes */}

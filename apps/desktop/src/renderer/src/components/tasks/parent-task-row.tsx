@@ -1,23 +1,24 @@
+import { useRef, useEffect } from 'react'
+
 import { cn } from '@/lib/utils'
 import { hasSubtasks, type SubtaskProgress } from '@/lib/subtask-utils'
 import { formatDueDate, formatDateShort, formatTime } from '@/lib/task-utils'
 import { PriorityBars } from '@/components/tasks/task-icons'
 import { InteractiveStatusIcon } from '@/components/tasks/status-icon'
+import { SelectionCheckbox } from '@/components/tasks/bulk-actions'
+import { RepeatIndicator } from '@/components/tasks/repeat-indicator'
+import { SubtaskProgressIndicator } from '@/components/tasks/subtask-progress-indicator'
 import { ExpandChevron } from '@/components/tasks/expand-chevron'
-import { SubtaskRow } from '@/components/tasks/subtask-row'
+import { SortableSubtaskList } from '@/components/tasks/sortable-subtask-list'
 import type { Task } from '@/data/sample-tasks'
 import type { Project, Status } from '@/data/tasks-data'
 
-// ============================================================================
-// TYPES
-// ============================================================================
-
 interface ParentTaskRowProps {
   task: Task
-  subtasks: Task[]
-  progress: SubtaskProgress
   project: Project
   projects?: Project[]
+  subtasks: Task[]
+  progress: SubtaskProgress
   isExpanded: boolean
   isCompleted: boolean
   isSelected?: boolean
@@ -28,11 +29,14 @@ interface ParentTaskRowProps {
   onToggleSubtaskComplete?: (subtaskId: string) => void
   onClick?: (taskId: string) => void
   className?: string
+  isSelectionMode?: boolean
+  isCheckedForSelection?: boolean
+  onToggleSelect?: (taskId: string) => void
+  onShiftSelect?: (taskId: string) => void
+  onAddSubtask?: (parentId: string, title: string) => void
+  onReorderSubtasks?: (parentId: string, newOrder: string[]) => void
+  accentClass?: string
 }
-
-// ============================================================================
-// HELPERS
-// ============================================================================
 
 const resolveStatus = (
   task: Task,
@@ -45,16 +49,12 @@ const resolveStatus = (
   }
 }
 
-// ============================================================================
-// PARENT TASK ROW — Linear-style with expand/collapse
-// ============================================================================
-
 export const ParentTaskRow = ({
   task,
-  subtasks,
-  progress,
   project,
   projects: _projects = [],
+  subtasks,
+  progress,
   isExpanded,
   isCompleted,
   isSelected = false,
@@ -64,12 +64,63 @@ export const ParentTaskRow = ({
   onUpdateTask: _onUpdateTask,
   onToggleSubtaskComplete,
   onClick,
-  className
+  className,
+  isSelectionMode = false,
+  isCheckedForSelection = false,
+  onToggleSelect,
+  onShiftSelect,
+  onAddSubtask: _onAddSubtask,
+  onReorderSubtasks,
+  accentClass: _accentClass
 }: ParentTaskRowProps): React.JSX.Element => {
+  const rowRef = useRef<HTMLDivElement>(null)
   const taskHasSubtasks = hasSubtasks(task)
   const formattedDate = formatDueDate(task.dueDate, task.dueTime)
   const isOverdue = formattedDate?.status === 'overdue' && !isCompleted
   const { type: statusType, color: statusColor } = resolveStatus(task, project.statuses)
+
+  useEffect(() => {
+    if (isSelected && rowRef.current) {
+      rowRef.current.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+    }
+  }, [isSelected])
+
+  const handleRowClick = (e: React.MouseEvent): void => {
+    if ((e.target as HTMLElement).closest('[data-expand-button]')) return
+
+    if (e.shiftKey && isSelectionMode && onShiftSelect) {
+      e.preventDefault()
+      onShiftSelect(task.id)
+      return
+    }
+    if ((e.metaKey || e.ctrlKey) && onToggleSelect) {
+      e.preventDefault()
+      onToggleSelect(task.id)
+      return
+    }
+    if (isSelectionMode && onToggleSelect) {
+      onToggleSelect(task.id)
+      return
+    }
+    onClick?.(task.id)
+  }
+
+  const handleRowKeyDown = (e: React.KeyboardEvent): void => {
+    if (e.key === 'Enter' && onClick) {
+      e.preventDefault()
+      onClick(task.id)
+    }
+    if (taskHasSubtasks) {
+      if (e.key === 'ArrowRight' && !isExpanded) {
+        e.preventDefault()
+        onToggleExpand(task.id)
+      }
+      if (e.key === 'ArrowLeft' && isExpanded) {
+        e.preventDefault()
+        onToggleExpand(task.id)
+      }
+    }
+  }
 
   const handleExpandToggle = (): void => {
     if (taskHasSubtasks) onToggleExpand(task.id)
@@ -94,36 +145,34 @@ export const ParentTaskRow = ({
   })()
 
   return (
-    <div className={cn('group', className)}>
+    <div className={cn('group relative', className)}>
       <div
+        ref={rowRef}
         role="button"
         tabIndex={onClick ? 0 : -1}
-        onClick={() => onClick?.(task.id)}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter' && onClick) {
-            e.preventDefault()
-            onClick(task.id)
-          }
-          if (taskHasSubtasks) {
-            if (e.key === 'ArrowRight' && !isExpanded) {
-              e.preventDefault()
-              onToggleExpand(task.id)
-            }
-            if (e.key === 'ArrowLeft' && isExpanded) {
-              e.preventDefault()
-              onToggleExpand(task.id)
-            }
-          }
-        }}
+        onClick={handleRowClick}
+        onKeyDown={onClick ? handleRowKeyDown : undefined}
         className={cn(
           'flex items-center py-[7px] px-6 gap-3 border-b border-border transition-colors',
           'hover:bg-accent/50',
           onClick &&
             'cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-          isSelected && 'bg-primary/10 ring-2 ring-primary/30'
+          isCheckedForSelection && 'bg-primary/10 hover:bg-primary/15',
+          isSelected && !isCheckedForSelection && 'bg-primary/10 ring-2 ring-primary/30'
         )}
         aria-label={`Task: ${task.title}${isCompleted ? ', completed' : ''}${taskHasSubtasks ? `, ${subtasks.length} subtasks` : ''}`}
       >
+        {isSelectionMode && onToggleSelect && (
+          <div onClick={(e) => e.stopPropagation()}>
+            <SelectionCheckbox
+              checked={isCheckedForSelection}
+              onChange={() => onToggleSelect(task.id)}
+              onClick={(e: React.MouseEvent) => e.stopPropagation()}
+              aria-label={`Select ${task.title}`}
+            />
+          </div>
+        )}
+
         <ExpandChevron
           isExpanded={isExpanded}
           hasSubtasks={taskHasSubtasks}
@@ -152,17 +201,15 @@ export const ParentTaskRow = ({
         </span>
 
         {taskHasSubtasks && (
-          <div className="flex items-center gap-[3px] shrink-0">
-            <div className="w-5 h-[3px] rounded-sm overflow-clip bg-border">
-              <div
-                className="h-full rounded-sm"
-                style={{ width: `${progress.percentage}%`, backgroundColor: statusColor }}
-              />
-            </div>
-            <span className="text-[9px] text-text-tertiary font-[family-name:var(--font-mono)] leading-3">
-              {progress.completed}/{progress.total}
-            </span>
-          </div>
+          <SubtaskProgressIndicator
+            completed={progress.completed}
+            total={progress.total}
+            accentColor={statusColor}
+          />
+        )}
+
+        {task.isRepeating && task.repeatConfig && (
+          <RepeatIndicator config={task.repeatConfig} size="sm" />
         )}
 
         {showProjectBadge && (
@@ -192,19 +239,16 @@ export const ParentTaskRow = ({
         )}
       </div>
 
-      {isExpanded && taskHasSubtasks && (
-        <div id={`subtasks-${task.id}`} role="group" aria-label={`Subtasks of ${task.title}`}>
-          {subtasks.map((subtask, index) => (
-            <SubtaskRow
-              key={subtask.id}
-              subtask={subtask}
-              statuses={project.statuses}
-              isLast={index === subtasks.length - 1}
-              onToggleComplete={onToggleSubtaskComplete || onToggleComplete}
-              onClick={onClick}
-            />
-          ))}
-        </div>
+      {isExpanded && (
+        <SortableSubtaskList
+          parentId={task.id}
+          parentTitle={task.title}
+          subtasks={subtasks}
+          statuses={project.statuses}
+          onReorder={onReorderSubtasks || (() => {})}
+          onToggleComplete={onToggleSubtaskComplete || onToggleComplete}
+          onClick={onClick}
+        />
       )}
     </div>
   )
