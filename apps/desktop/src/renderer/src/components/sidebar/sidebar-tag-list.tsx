@@ -229,7 +229,7 @@ export function SidebarTagList({
                 onClick={handleTagClick(tag.tag, tag.color)}
                 title={`${tag.tag} (${tag.count})`}
                 className={cn(
-                  'rounded-xl py-0.5 px-2.5 text-[11px] font-medium leading-3.5',
+                  'flex items-center gap-1.5 rounded-sm py-0.5 px-2 text-[11px] font-medium leading-3.5',
                   'transition-opacity hover:opacity-80',
                   selectedTag === tag.tag && 'ring-1 ring-current'
                 )}
@@ -238,6 +238,10 @@ export function SidebarTagList({
                   color: colors.text
                 }}
               >
+                <span
+                  className="size-1.5 rounded-full shrink-0"
+                  style={{ backgroundColor: colors.text }}
+                />
                 {tag.tag}
               </button>
             )
@@ -248,7 +252,7 @@ export function SidebarTagList({
           <button
             type="button"
             onClick={() => setShowAll(!showAll)}
-            className="rounded-xl py-0.5 px-2.5 text-[11px] font-medium leading-3.5 text-sidebar-muted hover:text-sidebar-foreground transition-colors"
+            className="rounded-sm py-0.5 px-2 text-[11px] font-medium leading-3.5 text-sidebar-muted hover:text-sidebar-foreground transition-colors"
           >
             {showAll ? 'Show less' : `+${processedTags.length - maxVisible} more`}
           </button>

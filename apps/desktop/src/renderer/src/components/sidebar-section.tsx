@@ -21,10 +21,9 @@ function SectionChevron({ expanded }: { expanded: boolean }): React.JSX.Element 
     <ChevronRight
       size={10}
       className={cn(
-        'shrink-0 transition-transform duration-200 ease-in-out',
+        'shrink-0 text-sidebar-muted transition-transform duration-200 ease-in-out',
         expanded && 'rotate-90'
       )}
-      style={{ color: '#B8B5B0' }}
       aria-hidden="true"
     />
   )
@@ -124,7 +123,7 @@ export const SidebarSection = ({
               'flex flex-1 min-w-0 cursor-pointer items-center gap-2 px-2.5 py-1.5',
               'text-[12px] leading-4 font-medium',
               "font-['DM_Sans',system-ui,sans-serif]",
-              'text-[#A3A09B] hover:text-sidebar-foreground',
+              'text-sidebar-muted hover:text-sidebar-foreground',
               'transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring'
             )}
             aria-expanded={isExpanded}
@@ -136,7 +135,7 @@ export const SidebarSection = ({
             <span className="flex-1 truncate text-left">{label}</span>
 
             {!isExpanded && totalCount !== undefined && totalCount > 0 && (
-              <span className="text-[#A3A09B]/60 tabular-nums text-[11px]">({totalCount})</span>
+              <span className="text-sidebar-muted/60 tabular-nums text-[11px]">({totalCount})</span>
             )}
           </button>
 
