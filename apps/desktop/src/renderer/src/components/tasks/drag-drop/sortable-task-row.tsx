@@ -4,6 +4,11 @@ import { CSS } from '@dnd-kit/utilities'
 import { TaskRow } from './task-row'
 import { useDragContext } from '@/contexts/drag-context'
 import { useDroppedPriorities } from '@/contexts/dropped-priority-context'
+import {
+  resolveSectionDragState,
+  resolveTaskInsertionIndicatorPosition,
+  shouldSuppressCrossSectionListTransform
+} from './list-section-drag-state'
 import type { TaskRowProps } from './task-row'
 
 interface SortableTaskRowProps extends Omit<
@@ -14,37 +19,11 @@ interface SortableTaskRowProps extends Omit<
   | 'dragHandleListeners'
   | 'dragHandleAttributes'
   | 'insertionIndicatorPosition'
-  | 'isCrossSectionTarget'
+  | 'sectionDragState'
 > {
   sectionId: string
   sectionTaskIds?: string[]
   columnId?: string
-}
-
-const resolveInsertionIndicatorPosition = (
-  dragState: ReturnType<typeof useDragContext>['dragState'],
-  taskId: string,
-  sectionId: string,
-  sectionTaskIds?: string[]
-): 'before' | 'after' | undefined => {
-  if (
-    !dragState.isDragging ||
-    dragState.overType !== 'task' ||
-    dragState.overId !== taskId ||
-    dragState.sourceContainerId !== sectionId ||
-    !dragState.activeId ||
-    dragState.activeId === taskId ||
-    !sectionTaskIds
-  ) {
-    return undefined
-  }
-
-  const activeIndex = sectionTaskIds.indexOf(dragState.activeId)
-  const overIndex = sectionTaskIds.indexOf(taskId)
-
-  if (activeIndex === -1 || overIndex === -1) return undefined
-
-  return activeIndex < overIndex ? 'after' : 'before'
 }
 
 export const SortableTaskRow = ({
@@ -52,33 +31,39 @@ export const SortableTaskRow = ({
   sectionTaskIds,
   columnId,
   task,
+  showProjectBadge = false,
   className,
   ...rest
 }: SortableTaskRowProps): React.JSX.Element => {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: task.id,
-    data: { type: 'task', task, sectionId, sectionTaskIds, columnId, sourceType: 'list' }
+    data: {
+      type: 'task',
+      task,
+      sectionId,
+      sectionTaskIds,
+      columnId,
+      sourceType: 'list',
+      overlayRowVariant: 'task',
+      overlayShowProjectBadge: showProjectBadge
+    }
   })
 
   const { dragState } = useDragContext()
   const droppedPriorities = useDroppedPriorities()
   const isJustDropped = dragState.lastDroppedId === task.id
   const droppedPriority = droppedPriorities.get(task.id) ?? null
-  const insertionIndicatorPosition = resolveInsertionIndicatorPosition(
+  const insertionIndicatorPosition = resolveTaskInsertionIndicatorPosition(
     dragState,
     task.id,
     sectionId,
     sectionTaskIds
   )
-  const isCrossSectionTarget =
-    dragState.isDragging &&
-    dragState.overType === 'task' &&
-    dragState.overId === task.id &&
-    dragState.sourceContainerId !== null &&
-    dragState.sourceContainerId !== sectionId
+  const sectionDragState = resolveSectionDragState(dragState, sectionId)
+  const suppressTransform = shouldSuppressCrossSectionListTransform(dragState)
 
   const style: React.CSSProperties = {
-    transform: CSS.Transform.toString(transform),
+    transform: suppressTransform ? undefined : CSS.Transform.toString(transform),
     transition: transition || 'transform 200ms ease-out'
   }
 
@@ -100,7 +85,8 @@ export const SortableTaskRow = ({
         dragHandleAttributes={attributes}
         droppedPriority={droppedPriority}
         insertionIndicatorPosition={insertionIndicatorPosition}
-        isCrossSectionTarget={isCrossSectionTarget}
+        sectionDragState={sectionDragState}
+        showProjectBadge={showProjectBadge}
         className={className}
         {...rest}
       />
