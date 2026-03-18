@@ -27,6 +27,8 @@ import {
   getElementCount as _getElementCount
 } from './utils/electron-helpers'
 
+const MULTI_SELECT_MODIFIER = process.platform === 'darwin' ? 'Meta' : 'Control'
+
 test.describe('Tasks Management', () => {
   test.beforeEach(async ({ page }) => {
     await waitForAppReady(page)
@@ -251,54 +253,189 @@ test.describe('Tasks Management', () => {
     const getTaskRow = (page: Page, title: string) =>
       page.locator(SELECTORS.taskItem).filter({ hasText: title }).first()
 
-    const dragTaskHandleToRow = async (
-      page: Page,
-      sourceRow: Locator,
-      target: Locator
-    ): Promise<void> => {
+    const startTaskHandleDrag = async (page: Page, sourceRow: Locator): Promise<void> => {
       await sourceRow.hover()
 
       const handle = sourceRow.locator('[data-testid="drag-handle"]').first()
       const handleBox = await handle.boundingBox()
-      const targetBox = await target.boundingBox()
 
-      if (!handleBox || !targetBox) {
-        throw new Error('Missing drag handle or drop target geometry')
+      if (!handleBox) {
+        throw new Error('Missing drag handle geometry')
       }
 
       await page.mouse.move(handleBox.x + handleBox.width / 2, handleBox.y + handleBox.height / 2)
       await page.mouse.down()
-      await page.mouse.move(targetBox.x + targetBox.width / 2, targetBox.y + targetBox.height / 2, {
-        steps: 14
+    }
+
+    const moveDraggedTaskToTarget = async (
+      page: Page,
+      sourceRow: Locator,
+      target: Locator,
+      options: { xRatio?: number; yRatio?: number; steps?: number } = {}
+    ): Promise<void> => {
+      const { xRatio = 0.5, yRatio = 0.5, steps = 14 } = options
+
+      await startTaskHandleDrag(page, sourceRow)
+      const targetBox = await target.boundingBox()
+
+      if (!targetBox) {
+        throw new Error('Missing drop target geometry')
+      }
+
+      await page.mouse.move(targetBox.x + targetBox.width * xRatio, targetBox.y + targetBox.height * yRatio, {
+        steps
       })
+    }
+
+    const dropDraggedTask = async (page: Page): Promise<void> => {
       await page.mouse.up()
       await page.waitForTimeout(500)
     }
 
-    test('T541: should move a task into another priority group in list view', async ({ page }) => {
+    const dragTaskHandleToRow = async (
+      page: Page,
+      sourceRow: Locator,
+      target: Locator,
+      options?: { xRatio?: number; yRatio?: number; steps?: number }
+    ): Promise<void> => {
+      await moveDraggedTaskToTarget(page, sourceRow, target, options)
+      await dropDraggedTask(page)
+    }
+
+    test('T541: should insert at the top when dropping on a target priority header', async ({ page }) => {
       const timestamp = Date.now()
-      const sourceTitle = `List DnD None ${timestamp}`
-      const targetTitle = `List DnD High ${timestamp}`
+      const sourceTitle = `List DnD Medium ${timestamp}`
+      const firstHighTitle = `List DnD High A ${timestamp}`
+      const secondHighTitle = `List DnD High B ${timestamp}`
 
       await showAllTasks(page)
-      await createTaskViaModal(page, sourceTitle)
-      await createTaskViaModal(page, `${targetTitle} !!high`, targetTitle)
+      await createTaskViaModal(page, `${sourceTitle} !!medium`, sourceTitle)
+      await createTaskViaModal(page, `${firstHighTitle} !!high`, firstHighTitle)
+      await createTaskViaModal(page, `${secondHighTitle} !!high`, secondHighTitle)
 
       await page.getByRole('button', { name: 'Group by options' }).click()
       await page.getByRole('button', { name: 'Priority', exact: true }).click()
       await page.waitForTimeout(500)
 
       const sourceRow = getTaskRow(page, sourceTitle)
-      const targetRow = getTaskRow(page, targetTitle)
-      const highGroupHeader = page.getByRole('button', { name: /^High, 1 tasks$/ }).first()
+      const firstHighRow = getTaskRow(page, firstHighTitle)
+      const highGroupHeader = page.getByRole('button', { name: /^High, 2 tasks$/ }).first()
 
       await expect(sourceRow).toBeVisible()
-      await expect(targetRow).toBeVisible()
+      await expect(firstHighRow).toBeVisible()
       await expect(highGroupHeader).toBeVisible()
 
-      await dragTaskHandleToRow(page, sourceRow, highGroupHeader)
+      await moveDraggedTaskToTarget(page, sourceRow, highGroupHeader)
+      await expect(page.locator('[data-testid="list-drop-indicator"][data-drop-indicator="column"]').first()).toBeVisible()
+      await dropDraggedTask(page)
 
-      await expect(page.getByRole('button', { name: /^High, 2 tasks$/ })).toBeVisible()
+      await expect(page.getByRole('button', { name: /^High, 3 tasks$/ })).toBeVisible()
+
+      const labelsAfter = await page
+        .locator(SELECTORS.taskItem)
+        .evaluateAll((nodes) => nodes.map((node) => node.getAttribute('aria-label') || ''))
+
+      const sourceIndex = labelsAfter.findIndex((label) => label.includes(sourceTitle))
+      const firstHighIndex = labelsAfter.findIndex((label) => label.includes(firstHighTitle))
+
+      expect(sourceIndex).toBeGreaterThanOrEqual(0)
+      expect(firstHighIndex).toBeGreaterThanOrEqual(0)
+      expect(sourceIndex).toBeLessThan(firstHighIndex)
+    })
+
+    test('T541: should highlight the full target section and insert at the hovered row position', async ({ page }) => {
+      const timestamp = Date.now()
+      const sourceTitle = `List DnD Medium Row ${timestamp}`
+      const firstHighTitle = `List DnD High Row A ${timestamp}`
+      const secondHighTitle = `List DnD High Row B ${timestamp}`
+
+      await showAllTasks(page)
+      await createTaskViaModal(page, `${sourceTitle} !!medium`, sourceTitle)
+      await createTaskViaModal(page, `${firstHighTitle} !!high`, firstHighTitle)
+      await createTaskViaModal(page, `${secondHighTitle} !!high`, secondHighTitle)
+
+      await page.getByRole('button', { name: 'Group by options' }).click()
+      await page.getByRole('button', { name: 'Priority', exact: true }).click()
+      await page.waitForTimeout(500)
+
+      const sourceRow = getTaskRow(page, sourceTitle)
+      const firstHighRow = getTaskRow(page, firstHighTitle)
+      const secondHighRow = getTaskRow(page, secondHighTitle)
+
+      await expect(sourceRow).toBeVisible()
+      await expect(firstHighRow).toBeVisible()
+      await expect(secondHighRow).toBeVisible()
+
+      await moveDraggedTaskToTarget(page, sourceRow, firstHighRow, { yRatio: 0.2 })
+
+      await expect(firstHighRow).toHaveAttribute('data-section-drag-state', 'target-highlighted')
+      await expect(secondHighRow).toHaveAttribute('data-section-drag-state', 'target-highlighted')
+      await expect(page.locator('[data-testid="list-drop-indicator"][data-drop-indicator="reorder"]').first()).toBeVisible()
+
+      await dropDraggedTask(page)
+
+      const labelsAfter = await page
+        .locator(SELECTORS.taskItem)
+        .evaluateAll((nodes) => nodes.map((node) => node.getAttribute('aria-label') || ''))
+
+      const secondHighIndex = labelsAfter.findIndex((label) => label.includes(secondHighTitle))
+      const sourceIndex = labelsAfter.findIndex((label) => label.includes(sourceTitle))
+      const firstHighIndex = labelsAfter.findIndex((label) => label.includes(firstHighTitle))
+
+      expect(firstHighIndex).toBeGreaterThanOrEqual(0)
+      expect(sourceIndex).toBeGreaterThanOrEqual(0)
+      expect(secondHighIndex).toBeGreaterThanOrEqual(0)
+      expect(secondHighIndex).toBeLessThan(sourceIndex)
+      expect(sourceIndex).toBeLessThan(firstHighIndex)
+    })
+
+    test('T541: should keep intermediate sections visually stable during cross-section drags', async ({
+      page
+    }) => {
+      const timestamp = Date.now()
+      const urgentTitle = `List DnD Urgent ${timestamp}`
+      const firstHighTitle = `List DnD High Stable A ${timestamp}`
+      const secondHighTitle = `List DnD High Stable B ${timestamp}`
+      const sourceTitle = `List DnD Medium Stable ${timestamp}`
+
+      await showAllTasks(page)
+      await createTaskViaModal(page, `${urgentTitle} !!urgent`, urgentTitle)
+      await createTaskViaModal(page, `${firstHighTitle} !!high`, firstHighTitle)
+      await createTaskViaModal(page, `${secondHighTitle} !!high`, secondHighTitle)
+      await createTaskViaModal(page, `${sourceTitle} !!medium`, sourceTitle)
+
+      await page.getByRole('button', { name: 'Group by options' }).click()
+      await page.getByRole('button', { name: 'Priority', exact: true }).click()
+      await page.waitForTimeout(500)
+
+      const sourceRow = getTaskRow(page, sourceTitle)
+      const urgentRow = getTaskRow(page, urgentTitle)
+      const lastHighRow = getTaskRow(page, secondHighTitle)
+      const mediumHeader = page.getByRole('button', { name: /^Medium/ }).first()
+
+      await expect(sourceRow).toBeVisible()
+      await expect(urgentRow).toBeVisible()
+      await expect(lastHighRow).toBeVisible()
+      await expect(mediumHeader).toBeVisible()
+
+      await moveDraggedTaskToTarget(page, sourceRow, urgentRow, { yRatio: 0.2 })
+
+      await expect(sourceRow).toHaveAttribute('data-section-drag-state', 'source-dimmed')
+      await expect(urgentRow).toHaveAttribute('data-section-drag-state', 'target-highlighted')
+      await expect(
+        page.locator('[data-testid="list-drop-indicator"][data-drop-indicator="reorder"]').first()
+      ).toBeVisible()
+
+      const lastHighBox = await lastHighRow.boundingBox()
+      const mediumHeaderBox = await mediumHeader.boundingBox()
+
+      if (!lastHighBox || !mediumHeaderBox) {
+        throw new Error('Missing intermediate section geometry during cross-section drag')
+      }
+
+      expect(lastHighBox.y + lastHighBox.height).toBeLessThan(mediumHeaderBox.y + 1)
+
+      await dropDraggedTask(page)
     })
 
     test('T541: should reorder tasks within the same list section', async ({ page }) => {
@@ -359,6 +496,66 @@ test.describe('Tasks Management', () => {
       const overlay = page.locator('[data-testid="drag-overlay"]').first()
       await expect(overlay).toBeVisible()
       await expect(overlay).toContainText(title)
+      await expect(overlay).toHaveAttribute('data-overlay-row-variant', 'task')
+
+      const rowBox = await taskRow.boundingBox()
+      const overlayBox = await overlay.boundingBox()
+
+      if (!rowBox || !overlayBox) {
+        throw new Error('Missing row or overlay geometry')
+      }
+
+      expect(Math.abs(overlayBox.width - rowBox.width)).toBeLessThanOrEqual(12)
+      expect(overlayBox.height).toBeLessThanOrEqual(44)
+
+      await page.mouse.up()
+    })
+
+    test('T541: should show stacked row ghosts for multi-select list drags', async ({ page }) => {
+      const timestamp = Date.now()
+      const firstTitle = `Multi Drag A ${timestamp}`
+      const secondTitle = `Multi Drag B ${timestamp}`
+
+      await showAllTasks(page)
+      await createTaskViaModal(page, firstTitle)
+      await createTaskViaModal(page, secondTitle)
+
+      const firstRow = getTaskRow(page, firstTitle)
+      const secondRow = getTaskRow(page, secondTitle)
+
+      await expect(firstRow).toBeVisible()
+      await expect(secondRow).toBeVisible()
+
+      await page.keyboard.down(MULTI_SELECT_MODIFIER)
+      await firstRow.click()
+      await secondRow.click()
+      await page.keyboard.up(MULTI_SELECT_MODIFIER)
+      await page.waitForTimeout(250)
+
+      await secondRow.hover()
+
+      const handle = secondRow.locator('[data-testid="drag-handle"]').first()
+      const handleBox = await handle.boundingBox()
+
+      if (!handleBox) {
+        throw new Error('Missing drag handle geometry for multi-drag')
+      }
+
+      await page.mouse.move(handleBox.x + handleBox.width / 2, handleBox.y + handleBox.height / 2)
+      await page.mouse.down()
+      await page.mouse.move(handleBox.x + 48, handleBox.y + 28, { steps: 10 })
+
+      const multiOverlay = page
+        .locator('[data-testid="drag-overlay"][data-overlay-variant="list-multi"]')
+        .first()
+      const ghostRows = page.locator('[data-testid="overlay-ghost-row"]')
+
+      await expect(multiOverlay).toHaveAttribute(
+        'data-overlay-variant',
+        'list-multi'
+      )
+      await expect(ghostRows).toHaveCount(2)
+      await expect(ghostRows.first()).toBeVisible()
 
       await page.mouse.up()
     })
