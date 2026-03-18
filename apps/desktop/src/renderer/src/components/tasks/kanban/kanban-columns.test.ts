@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import type { Task, Priority } from '@/data/sample-tasks'
 import type { Project, Status, StatusType } from '@/data/tasks-data'
 import { buildColumnConfig } from './kanban-columns'
+import { resolveColumnDrop } from '@/lib/kanban-drop-resolver'
 
 const createStatus = (overrides: Partial<Status> = {}): Status => ({
   id: 'status-todo',
@@ -291,6 +292,71 @@ describe('buildColumnConfig', () => {
       const doneTasks = config.tasksByColumn.get('done') ?? []
       expect(doneTasks).toHaveLength(1)
       expect(doneTasks[0].id).toBe('done-task')
+    })
+  })
+
+  describe('column ID patterns match resolver expectations', () => {
+    it('priority column IDs are resolvable by drop resolver', () => {
+      // #given
+      const tasks = [createTask({ priority: 'high' })]
+      const config = buildColumnConfig(tasks, projects, 'view', null, 'priority')
+
+      // #then — every generated column ID resolves to a priority result
+      for (const col of config.columns) {
+        const result = resolveColumnDrop(col.id, projects)
+        expect(result).not.toBeNull()
+        expect(result!.type).toBe('priority')
+      }
+    })
+
+    it('due date column IDs are resolvable by drop resolver', () => {
+      // #given
+      const config = buildColumnConfig([], projects, 'view', null, 'dueDate')
+
+      // #then
+      for (const col of config.columns) {
+        const result = resolveColumnDrop(col.id, projects)
+        expect(result).not.toBeNull()
+        expect(result!.type).toBe('dueDate')
+      }
+    })
+
+    it('project column IDs are resolvable by drop resolver', () => {
+      // #given
+      const config = buildColumnConfig([], projects, 'view', null, 'project')
+
+      // #then
+      for (const col of config.columns) {
+        const result = resolveColumnDrop(col.id, projects)
+        expect(result).not.toBeNull()
+        expect(result!.type).toBe('project')
+      }
+    })
+
+    it('canonical status column IDs are resolvable by drop resolver', () => {
+      // #given
+      const config = buildColumnConfig([], projects, 'view', null, 'status')
+
+      // #then — canonical columns (todo/in_progress/done)
+      expect(config.mode).toBe('canonical')
+      for (const col of config.columns) {
+        const result = resolveColumnDrop(col.id, projects)
+        expect(result).not.toBeNull()
+        expect(result!.type).toBe('canonicalStatus')
+      }
+    })
+
+    it('project-scoped status column IDs are resolvable by drop resolver', () => {
+      // #given
+      const tasks = [createTask({ projectId: 'project-a', statusId: 'pa-backlog' })]
+      const config = buildColumnConfig(tasks, projects, 'view', 'project-a', 'status')
+
+      // #then — project status columns resolve to projectStatus
+      for (const col of config.columns) {
+        const result = resolveColumnDrop(col.id, projects)
+        expect(result).not.toBeNull()
+        expect(result!.type).toBe('projectStatus')
+      }
     })
   })
 })
