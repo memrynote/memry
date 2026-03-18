@@ -3,6 +3,8 @@ import { useDroppable } from '@dnd-kit/core'
 
 import { cn } from '@/lib/utils'
 import { useDragContext } from '@/contexts/drag-context'
+import { getCrossSectionDropSpacerHeight, resolveSectionDragState } from './list-section-drag-state'
+import { InsertionIndicator } from './insertion-indicator'
 
 interface DroppableListHeaderProps {
   id: string
@@ -26,41 +28,50 @@ export const DroppableListHeader = ({
   const { dragState } = useDragContext()
   const isEnabled = Boolean(columnId)
 
-  const { setNodeRef, isOver } = useDroppable({
+  const { setNodeRef } = useDroppable({
     id,
     disabled: !isEnabled,
-    data: isEnabled
+        data: isEnabled
       ? {
           type: 'column',
           columnId,
           sectionId,
           sectionTaskIds,
+          sectionDropPosition: 'start',
           column: { title: label }
         }
       : undefined
   })
 
-  const isActiveDropTarget =
-    isEnabled && dragState.isDragging && isOver && dragState.sourceContainerId !== sectionId
+  const sectionDragState = resolveSectionDragState(dragState, sectionId)
+  const isTargetSection = sectionDragState === 'target-highlighted'
+  const isSourceSection = sectionDragState === 'source-dimmed'
+  const dropSpacerHeight = getCrossSectionDropSpacerHeight(dragState, sectionId)
 
   return (
     <div
       ref={isEnabled ? setNodeRef : undefined}
       className={cn(
-        'relative',
-        isActiveDropTarget && 'rounded-md ring-2 ring-primary/25',
+        'relative transition-[padding] duration-150',
+        isTargetSection && 'rounded-md border border-primary/25 bg-primary/[0.04]',
+        isSourceSection && 'opacity-50',
         className
       )}
-      data-testid={isActiveDropTarget ? 'list-drop-indicator' : undefined}
-      data-drop-indicator={isActiveDropTarget ? 'column' : undefined}
+      style={dropSpacerHeight > 0 ? { paddingBottom: `${dropSpacerHeight}px` } : undefined}
+      data-testid={isTargetSection ? 'list-drop-indicator' : undefined}
+      data-drop-indicator={isTargetSection ? 'column' : undefined}
+      data-drop-space={dropSpacerHeight > 0 ? String(dropSpacerHeight) : undefined}
+      data-section-drag-state={sectionDragState}
     >
-      {children}
-      {isActiveDropTarget && (
-        <div
-          className="absolute inset-x-6 bottom-0 h-0.5 rounded-full bg-primary/80 pointer-events-none"
-          aria-hidden="true"
+      {isTargetSection && dragState.sectionDropPosition === 'start' && (
+        <InsertionIndicator
+          position="after"
+          className="left-3 right-3"
+          dataTestId="list-drop-indicator"
+          kind="column"
         />
       )}
+      {children}
     </div>
   )
 }
