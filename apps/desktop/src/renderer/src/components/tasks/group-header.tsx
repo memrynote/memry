@@ -37,13 +37,7 @@ const getGroupBgColor = (
   groupKey: string,
   color?: string
 ): string | undefined => {
-  if (DONE_GROUP_KEYS.has(groupKey)) {
-    return 'var(--task-complete-bg)'
-  }
-
-  if (sortField === 'priority') {
-    return priorityConfig[groupKey as Priority]?.bgColor ?? undefined
-  }
+  if (DONE_GROUP_KEYS.has(groupKey)) return undefined
 
   if (!color) return undefined
 
@@ -77,7 +71,7 @@ export const GroupHeader = ({
   const isDoneGroup = DONE_GROUP_KEYS.has(groupKey)
   const isPriorityGroup = sortField === 'priority'
   const hoverBgColor = isDoneGroup
-    ? 'var(--task-complete-bg)'
+    ? undefined
     : isPriorityGroup
       ? bgColor
       : bgColor
@@ -154,8 +148,8 @@ export const GroupHeader = ({
       </div>
 
       <div
-        className="text-[11px] leading-3.5"
-        style={labelColor ? { color: labelColor, opacity: 0.7 } : undefined}
+        className="text-[12px] font-medium text-text-tertiary tabular-nums leading-4"
+        style={labelColor && !isPriorityGroup ? { color: labelColor, opacity: 0.7 } : undefined}
       >
         {count}
       </div>

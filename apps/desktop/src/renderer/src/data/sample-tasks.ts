@@ -75,7 +75,12 @@ export const priorityConfig: Record<
   Priority,
   { color: string | null; bgColor: string | null; label: string | null; order: number }
 > = {
-  none: { color: null, bgColor: null, label: null, order: 4 },
+  none: {
+    color: 'var(--task-priority-none)',
+    bgColor: 'var(--task-priority-none-bg)',
+    label: 'No Priority',
+    order: 4
+  },
   low: {
     color: 'var(--task-priority-low)',
     bgColor: 'var(--task-priority-low-bg)',
@@ -107,7 +112,7 @@ export const PRIORITY_TEXT_CLASSES: Record<Priority, string> = {
   high: 'text-task-priority-high',
   medium: 'text-task-priority-medium',
   low: 'text-task-priority-low',
-  none: 'text-muted-foreground'
+  none: 'text-task-priority-none'
 }
 
 // ============================================================================

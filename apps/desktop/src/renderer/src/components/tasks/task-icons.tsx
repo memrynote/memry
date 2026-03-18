@@ -8,7 +8,26 @@ interface PriorityBarsProps {
 
 export const PriorityBars = ({ priority, className }: PriorityBarsProps): React.JSX.Element => {
   if (priority === 'none') {
-    return <div className={cn('w-[14px] shrink-0', className)} aria-hidden="true" />
+    return (
+      <svg
+        width="14"
+        height="14"
+        viewBox="0 0 14 14"
+        fill="none"
+        className={cn('shrink-0', className)}
+        aria-label="no priority"
+      >
+        <line
+          x1="2"
+          y1="7"
+          x2="12"
+          y2="7"
+          stroke="var(--text-tertiary)"
+          strokeWidth="1.5"
+          strokeLinecap="round"
+        />
+      </svg>
+    )
   }
 
   const color = priorityConfig[priority].color!
