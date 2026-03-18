@@ -4,7 +4,9 @@ import { CSS } from '@dnd-kit/utilities'
 import { Link2, ListChecks } from '@/lib/icons'
 
 import { cn } from '@/lib/utils'
-import { PRIORITY_CSS_VARS, priorityConfig, type Priority, type Task } from '@/data/sample-tasks'
+import { useDragContext } from '@/contexts/drag-context'
+import { RepeatIndicator } from '@/components/tasks/repeat-indicator'
+import { priorityConfig, type Priority, type Task } from '@/data/sample-tasks'
 import type { Project } from '@/data/tasks-data'
 import { formatDueDate } from '@/lib/task-utils'
 import { getSubtasks } from '@/lib/subtask-utils'
@@ -13,6 +15,7 @@ interface KanbanCardProps {
   task: Task
   project?: Project
   allTasks: Task[]
+  columnId?: string
   isSelected?: boolean
   isFocused?: boolean
   isDone?: boolean
@@ -35,8 +38,7 @@ interface KanbanCardContentProps extends KanbanCardProps {
 
 const priorityStripColor = (priority: Priority, isDone: boolean): string | undefined => {
   if (isDone) return 'var(--task-complete)'
-  const vars = PRIORITY_CSS_VARS[priority]
-  return vars?.text
+  return priorityConfig[priority].color ?? undefined
 }
 
 export const KanbanCardContent = forwardRef<HTMLDivElement, KanbanCardContentProps>(
@@ -60,6 +62,9 @@ export const KanbanCardContent = forwardRef<HTMLDivElement, KanbanCardContentPro
     },
     ref
   ) => {
+    const { dragState } = useDragContext()
+    const isJustDropped = dragState.lastDroppedId === task.id
+
     const stripColor = priorityStripColor(task.priority, isDone)
     const subtasks = getSubtasks(task.id, allTasks)
     const completedSubtasks = subtasks.filter((s) => s.completedAt !== null)
@@ -93,22 +98,22 @@ export const KanbanCardContent = forwardRef<HTMLDivElement, KanbanCardContentPro
         style={style}
         className={cn(
           'group flex cursor-grab rounded-md overflow-clip transition-all duration-150',
-          isDragging &&
-            'opacity-40 border-[1.5px] border-dashed border-primary/30 bg-primary/[0.03]',
+          isDragging && 'border-[1.5px] border-dashed border-primary/30 bg-primary/[0.03]',
           !isDragging && 'border',
           !isDragging &&
             !isDone &&
             'bg-card border-border hover:bg-accent/30 hover:shadow-[var(--shadow-card)]',
           !isDragging && isDone && 'bg-muted/40 border-border/50',
           isSelected && !isDragging && 'ring-2 ring-primary/50 border-primary bg-primary/5',
-          isFocused && !isDragging && !isSelected && 'ring-2 ring-primary/40 border-primary/40'
+          isFocused && !isDragging && !isSelected && 'ring-2 ring-primary/40 border-primary/40',
+          isJustDropped && 'animate-drop-flash'
         )}
         {...attributes}
         {...listeners}
       >
         {/* Priority strip */}
         <div
-          className="w-[3px] shrink-0 rounded-l-md"
+          className={cn('w-[3px] shrink-0 rounded-l-md', isDragging && 'invisible')}
           style={{
             backgroundColor: stripColor,
             opacity: isDone ? 0.4 : 1
@@ -116,7 +121,9 @@ export const KanbanCardContent = forwardRef<HTMLDivElement, KanbanCardContentPro
         />
 
         {/* Content area */}
-        <div className="flex flex-1 flex-col gap-1.5 p-2.5 min-w-0">
+        <div
+          className={cn('flex flex-1 flex-col gap-1.5 p-2.5 min-w-0', isDragging && 'invisible')}
+        >
           {/* Title row */}
           <div className="flex items-start gap-1.5">
             <span
@@ -137,13 +144,18 @@ export const KanbanCardContent = forwardRef<HTMLDivElement, KanbanCardContentPro
             {/* Overdue badge */}
             {isOverdue && !isDone && (
               <span className="inline-flex items-center rounded-sm px-[7px] py-0.5 text-[11px] font-medium bg-task-due-overdue/[0.08] text-task-due-overdue">
-                Overdue
+                {dueDateInfo?.label}
               </span>
             )}
 
             {/* Due date */}
             {dueDateInfo && !isOverdue && !isDone && (
               <span className="text-text-tertiary text-[11px]">{dueDateInfo.label}</span>
+            )}
+
+            {/* Repeat indicator */}
+            {task.isRepeating && task.repeatConfig && (
+              <RepeatIndicator config={task.repeatConfig} size="sm" />
             )}
 
             {/* Project badge */}
@@ -189,16 +201,15 @@ export const KanbanCardContent = forwardRef<HTMLDivElement, KanbanCardContentPro
 KanbanCardContent.displayName = 'KanbanCardContent'
 
 const PriorityPill = ({ priority }: { priority: Priority }): React.JSX.Element | null => {
-  const vars = PRIORITY_CSS_VARS[priority]
-  const label = priorityConfig[priority].label
-  if (!vars || !label) return null
+  const config = priorityConfig[priority]
+  if (!config.color || !config.label) return null
 
   return (
     <span
       className="inline-flex items-center rounded-sm px-[7px] py-0.5 text-[11px] font-medium"
-      style={{ backgroundColor: vars.bg, color: vars.text }}
+      style={{ backgroundColor: config.bgColor ?? undefined, color: config.color }}
     >
-      {label}
+      {config.label}
     </span>
   )
 }
@@ -221,7 +232,8 @@ export const SortableKanbanCard = (props: KanbanCardProps): React.JSX.Element =>
     data: {
       type: 'task',
       task: props.task,
-      sourceType: 'kanban'
+      sourceType: 'kanban',
+      columnId: props.columnId
     }
   })
 

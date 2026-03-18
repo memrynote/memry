@@ -248,4 +248,49 @@ describe('buildColumnConfig', () => {
       expect(config.columns).toHaveLength(2)
     })
   })
+
+  describe('drag-to-done regression (completed tasks in kanban)', () => {
+    it('places completed task in done column when task has done statusId', () => {
+      // #given — task dropped to Done column gets statusId + completedAt set
+      const completedTask = createTask({
+        id: 'dropped-task',
+        projectId: 'project-a',
+        statusId: 'pa-done',
+        completedAt: new Date()
+      })
+      const tasks = [
+        createTask({ id: 'active-task', projectId: 'project-a', statusId: 'pa-backlog' }),
+        completedTask
+      ]
+
+      // #when — buildColumnConfig receives both active and completed tasks
+      const config = buildColumnConfig(tasks, projects, 'view', 'project-a', 'status')
+
+      // #then — completed task appears in done column
+      const doneTasks = config.tasksByColumn.get('pa-done') ?? []
+      expect(doneTasks).toHaveLength(1)
+      expect(doneTasks[0].id).toBe('dropped-task')
+    })
+
+    it('places completed task in canonical done column when no project selected', () => {
+      // #given — completed task with done status type
+      const tasks = [
+        createTask({ id: 'active', projectId: 'project-a', statusId: 'pa-backlog' }),
+        createTask({
+          id: 'done-task',
+          projectId: 'project-a',
+          statusId: 'pa-done',
+          completedAt: new Date()
+        })
+      ]
+
+      // #when — canonical mode (no project selected)
+      const config = buildColumnConfig(tasks, projects, 'view', null, 'status')
+
+      // #then — completed task in canonical 'done' column
+      const doneTasks = config.tasksByColumn.get('done') ?? []
+      expect(doneTasks).toHaveLength(1)
+      expect(doneTasks[0].id).toBe('done-task')
+    })
+  })
 })

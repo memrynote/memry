@@ -31,12 +31,21 @@ interface KanbanColumnProps {
 const MAX_VISIBLE_DONE = 5
 
 const DropPlaceholder = (): React.JSX.Element => (
-  <div className="flex flex-col items-center justify-center rounded-md py-8 px-4 gap-1.5 bg-[#3B82F608] border-[1.5px] border-dashed border-[#3B82F666]">
-    <Download size={20} style={{ color: '#3B82F680' }} />
-    <span className="text-[12px] text-[#3B82F699] leading-4">Drop here</span>
-    <span className="text-[11px] text-center text-[#3B82F659] leading-3.5">
+  <div className="flex flex-col items-center justify-center rounded-md py-8 px-4 gap-1.5 bg-primary/[0.03] border-[1.5px] border-dashed border-primary/40">
+    <Download size={20} className="text-primary/50" />
+    <span className="text-[12px] text-primary/60 leading-4">Drop here</span>
+    <span className="text-[11px] text-center text-primary/35 leading-3.5">
       Release to move task to this column
     </span>
+  </div>
+)
+
+const KanbanGhostCard = ({ title }: { title: string }): React.JSX.Element => (
+  <div
+    className="opacity-40 rounded-md py-2 px-2.5 bg-primary/[0.03] border-[1.5px] border-dashed border-primary/30 pointer-events-none"
+    aria-hidden="true"
+  >
+    <span className="text-[12px] text-muted-foreground leading-4 line-clamp-2">{title}</span>
   </div>
 )
 
@@ -77,6 +86,15 @@ export const KanbanColumn = ({
     isDoneColumn && !showAllDone ? Math.max(0, tasks.length - MAX_VISIBLE_DONE) : 0
   const visibleTasks = isDoneColumn && !showAllDone ? tasks.slice(0, MAX_VISIBLE_DONE) : tasks
   const taskIds = useMemo(() => visibleTasks.map((t) => t.id), [visibleTasks])
+
+  const crossColumnOverIndex = useMemo(() => {
+    if (!dragState.isDragging || !dragState.overId) return -1
+    if (dragState.sourceContainerId === column.id) return -1
+    return visibleTasks.findIndex((t) => t.id === dragState.overId)
+  }, [dragState.isDragging, dragState.overId, dragState.sourceContainerId, column.id, visibleTasks])
+
+  const isCrossColumnTarget = crossColumnOverIndex !== -1
+  const shouldHighlight = isOver || isCrossColumnTarget
 
   const projectMap = useMemo(() => {
     const map = new Map<string, Project>()
@@ -122,7 +140,7 @@ export const KanbanColumn = ({
         <span
           className={cn(
             'text-[11px] font-medium truncate',
-            isOver ? 'text-text-secondary' : 'text-text-tertiary'
+            shouldHighlight ? 'text-text-secondary' : 'text-text-tertiary'
           )}
         >
           {column.title}
@@ -146,7 +164,9 @@ export const KanbanColumn = ({
         ref={setNodeRef}
         className={cn(
           'flex flex-col rounded-lg border p-2 gap-1.5 transition-all duration-150',
-          isOver ? 'bg-primary/[0.03] border-[1.5px] border-primary/20' : 'bg-sidebar border-border'
+          shouldHighlight
+            ? 'bg-primary/[0.03] border-[1.5px] border-primary/20'
+            : 'bg-sidebar border-border'
         )}
       >
         <SortableContext items={taskIds} strategy={verticalListSortingStrategy}>
@@ -157,24 +177,29 @@ export const KanbanColumn = ({
 
             {visibleTasks.length === 0 && !isAddingTask && isOver && <DropPlaceholder />}
 
-            {visibleTasks.map((task) => (
-              <SortableKanbanCard
-                key={task.id}
-                task={task}
-                project={projectMap.get(task.projectId)}
-                allTasks={allTasks}
-                isDone={isDoneColumn || task.completedAt !== null}
-                isSelected={selectedTaskId === task.id || selectedIds?.has(task.id)}
-                isFocused={focusedTaskId === task.id}
-                isSelectionMode={isSelectionMode}
-                showProjectBadge={showProjectBadge}
-                onClick={() => onTaskClick?.(task.id)}
-                onToggleComplete={() => onToggleComplete?.(task.id)}
-                onToggleSelect={() => onToggleSelect?.(task.id)}
-              />
+            {visibleTasks.map((task, index) => (
+              <React.Fragment key={task.id}>
+                {index === crossColumnOverIndex && (
+                  <KanbanGhostCard title={dragState.draggedTasks[0]?.title ?? ''} />
+                )}
+                <SortableKanbanCard
+                  task={task}
+                  columnId={column.id}
+                  project={projectMap.get(task.projectId)}
+                  allTasks={allTasks}
+                  isDone={isDoneColumn || task.completedAt !== null}
+                  isSelected={selectedTaskId === task.id || selectedIds?.has(task.id)}
+                  isFocused={focusedTaskId === task.id}
+                  isSelectionMode={isSelectionMode}
+                  showProjectBadge={showProjectBadge}
+                  onClick={() => onTaskClick?.(task.id)}
+                  onToggleComplete={() => onToggleComplete?.(task.id)}
+                  onToggleSelect={() => onToggleSelect?.(task.id)}
+                />
+              </React.Fragment>
             ))}
 
-            {visibleTasks.length > 0 && isOver && <DropPlaceholder />}
+            {visibleTasks.length > 0 && isOver && !isCrossColumnTarget && <DropPlaceholder />}
           </div>
         </SortableContext>
 

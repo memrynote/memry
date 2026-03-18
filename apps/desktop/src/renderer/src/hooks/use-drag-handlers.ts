@@ -380,26 +380,37 @@ export const useDragHandlers = ({
 
       switch (overType) {
         case 'task': {
-          // Check if we're dropping within the same section (reorder) or different section (move)
           const overSectionId = overData?.sectionId
+          const overColumnId = overData?.columnId
           const sourceSectionId = dragState.sourceContainerId
 
-          // Only reorder if dropping within the same section
           if (
             overSectionId &&
             sourceSectionId &&
             overSectionId === sourceSectionId &&
             taskIds.length === 1
           ) {
-            // Same section - this is a reorder operation
-            // Pass the reorder to the callback which should handle it via useTaskOrder
             onReorder?.(overSectionId, [taskIds[0], over.id as string])
+          } else if (
+            !overSectionId &&
+            overColumnId &&
+            sourceSectionId &&
+            overColumnId === sourceSectionId &&
+            taskIds.length === 1
+          ) {
+            onReorder?.(overColumnId, [taskIds[0], over.id as string])
           } else if (overSectionId && overSectionId !== sourceSectionId) {
-            // Different section - treat as a section drop (change due date)
-            // Get the date from the over task's section if available
             const overTask = overData?.task as Task | undefined
             if (overTask?.dueDate) {
               handleSectionDrop(taskIds, overTask.dueDate, overSectionId)
+            }
+          } else if (!overSectionId && overColumnId && overColumnId !== sourceSectionId) {
+            const project = projects.find((p) => p.statuses.some((s) => s.id === overColumnId))
+            if (project) {
+              handleColumnDrop(taskIds, overColumnId, project)
+              if (taskIds.length === 1) {
+                onReorder?.(overColumnId, [taskIds[0], over.id as string])
+              }
             }
           }
           break
@@ -414,6 +425,8 @@ export const useDragHandlers = ({
 
         case 'column': {
           const targetColumnId = overData?.columnId || over.id
+          if (targetColumnId === dragState.sourceContainerId) break
+
           const project =
             overData?.project ||
             projects.find((p) => p.statuses.some((s) => s.id === targetColumnId))

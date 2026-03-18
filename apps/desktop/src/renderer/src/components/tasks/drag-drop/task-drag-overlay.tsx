@@ -57,11 +57,16 @@ const crossContainerDropAnimation: DropAnimation = {
  * Unified drag overlay that switches between single and multi-drag preview
  * based on the current drag state
  */
-export const TaskDragOverlay = ({ projects }: TaskDragOverlayProps): React.JSX.Element => {
+export const TaskDragOverlay = ({ projects }: TaskDragOverlayProps): React.JSX.Element | null => {
   const { dragState, isMultiDrag } = useDragContext()
   const { isDragging, draggedTasks, overType, sourceContainerId, overId } = dragState
 
   const wasCrossContainerRef = useRef(false)
+  const sourceTypeRef = useRef(dragState.sourceType)
+
+  if (isDragging) {
+    sourceTypeRef.current = dragState.sourceType
+  }
 
   const isCrossContainerDrop =
     (overType === 'column' && overId !== sourceContainerId) ||
@@ -76,11 +81,16 @@ export const TaskDragOverlay = ({ projects }: TaskDragOverlayProps): React.JSX.E
     wasCrossContainerRef.current = isCrossContainerDrop
   }
 
+  // Kanban has its own DragOverlay — skip entirely to avoid duplicate
+  // sideEffects racing on the same active element's inline opacity
+  if (sourceTypeRef.current === 'kanban') {
+    return null
+  }
+
   const effectiveDropAnimation = wasCrossContainerRef.current
     ? crossContainerDropAnimation
     : dropAnimation
 
-  // Don't render if not dragging or no tasks
   if (!isDragging || draggedTasks.length === 0) {
     return <DragOverlay dropAnimation={effectiveDropAnimation}>{null}</DragOverlay>
   }
