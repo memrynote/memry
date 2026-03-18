@@ -289,6 +289,12 @@ function App(): React.JSX.Element {
 
   // Task selection state for drag-drop (lifted from TasksPage)
   const [selectedTaskIds, setSelectedTaskIds] = useState<Set<string>>(new Set())
+  const selectedTaskIdsRef = useRef(selectedTaskIds)
+
+  const updateSelectedTaskIds = useCallback((ids: Set<string>) => {
+    selectedTaskIdsRef.current = ids
+    setSelectedTaskIds(ids)
+  }, [])
 
   // Calculate view counts dynamically
   const viewCounts = useMemo(() => {
@@ -462,9 +468,8 @@ function App(): React.JSX.Element {
     projects,
     onUpdateTask: handleUpdateTask,
     onDeleteTask: handleDeleteTask,
-    onReorder: (sectionId, newOrder) => {
-      taskOrder.setOrder(sectionId, newOrder)
-    }
+    onReorder: taskOrder.applyOrderUpdates,
+    getOrder: taskOrder.getOrder
   })
 
   // Combined drag-drop handler (task operations + project reordering)
@@ -490,10 +495,10 @@ function App(): React.JSX.Element {
 
       // Clear selection after task drag
       if (dragState.isDragging) {
-        setSelectedTaskIds(new Set())
+        updateSelectedTaskIds(new Set<string>())
       }
     },
-    [projects, taskDragEnd]
+    [projects, taskDragEnd, updateSelectedTaskIds]
   )
 
   // Main content with TabProvider and TasksProvider wrapping everything
@@ -507,6 +512,8 @@ function App(): React.JSX.Element {
         initialProjects={projectsWithCounts}
         onTasksChange={handleTasksChange}
         onProjectsChange={handleProjectsChange}
+        selectedTaskIds={selectedTaskIds}
+        onSelectedTaskIdsChange={updateSelectedTaskIds}
         getOrderedTasks={taskOrder.getOrderedTasks}
       >
         <AIAgentProvider>
@@ -565,6 +572,7 @@ function App(): React.JSX.Element {
           <DragProvider
             tasks={tasks}
             selectedIds={selectedTaskIds}
+            selectedIdsRef={selectedTaskIdsRef}
             onDragEnd={(event, state) => void handleDragEnd(event, state)}
           >
             <DroppedPriorityProvider value={droppedPriorities}>
