@@ -31,7 +31,7 @@ export const DroppableListHeader = ({
   const { setNodeRef } = useDroppable({
     id,
     disabled: !isEnabled,
-        data: isEnabled
+    data: isEnabled
       ? {
           type: 'column',
           columnId,

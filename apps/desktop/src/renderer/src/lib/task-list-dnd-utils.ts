@@ -69,7 +69,9 @@ const resolveMutableGroupColumnId = (
     case 'project':
       return groupKey === 'no-project' ? undefined : `project-${groupKey}`
     case 'status': {
-      const status = projects.flatMap((project) => project.statuses).find((entry) => entry.id === groupKey)
+      const status = projects
+        .flatMap((project) => project.statuses)
+        .find((entry) => entry.id === groupKey)
       if (!status || status.type === 'done') return undefined
       return status.type
     }
@@ -100,7 +102,10 @@ export const annotateGroupedVirtualItems = (
     const sectionId = activeHeader.groupKey
     const sectionTaskIds = activeItems.filter(isSectionItem).map((item) => item.task.id)
     const columnId =
-      sortField === 'priority' || sortField === 'dueDate' || sortField === 'project' || sortField === 'status'
+      sortField === 'priority' ||
+      sortField === 'dueDate' ||
+      sortField === 'project' ||
+      sortField === 'status'
         ? resolveMutableGroupColumnId(sortField, activeHeader.groupKey, projects)
         : undefined
 

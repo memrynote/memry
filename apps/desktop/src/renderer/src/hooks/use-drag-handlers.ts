@@ -573,11 +573,15 @@ export const useDragHandlers = ({
         }
 
         if (resolvedColumnDrop?.type === 'project') {
-          const targetProject = projects.find((project) => project.id === resolvedColumnDrop.projectId)
+          const targetProject = projects.find(
+            (project) => project.id === resolvedColumnDrop.projectId
+          )
           if (!targetProject) return
 
           const currentProject = projects.find((project) => project.id === task.projectId)
-          const currentStatus = currentProject?.statuses.find((status) => status.id === task.statusId)
+          const currentStatus = currentProject?.statuses.find(
+            (status) => status.id === task.statusId
+          )
           const currentStatusType = currentStatus?.type || 'todo'
           const newStatus =
             targetProject.statuses.find((status) => status.type === currentStatusType) ??

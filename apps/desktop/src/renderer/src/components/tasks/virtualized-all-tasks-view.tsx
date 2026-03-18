@@ -3,7 +3,11 @@ import { useVirtualizer } from '@tanstack/react-virtual'
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
 
 import { cn } from '@/lib/utils'
-import { DroppableListHeader, SortableParentTaskRow, SortableTaskRow } from '@/components/tasks/drag-drop'
+import {
+  DroppableListHeader,
+  SortableParentTaskRow,
+  SortableTaskRow
+} from '@/components/tasks/drag-drop'
 import { TaskEmptyState } from '@/components/tasks/task-empty-state'
 import {
   flattenTasksFlat,
@@ -277,7 +281,9 @@ export const VirtualizedAllTasksView = ({
         { sortField, projects }
       )
     }
-    return annotateFlatVirtualItems(flattenTasksFlat(tasks, projects, combinedTasks, getOrderedTasks))
+    return annotateFlatVirtualItems(
+      flattenTasksFlat(tasks, projects, combinedTasks, getOrderedTasks)
+    )
   }, [tasks, projects, combinedTasks, sortField, sortDirection, collapsedGroups, getOrderedTasks])
 
   const doneVirtualItems = useMemo((): VirtualItem[] => {
@@ -309,7 +315,10 @@ export const VirtualizedAllTasksView = ({
     () => [...virtualItems, ...doneVirtualItems],
     [virtualItems, doneVirtualItems]
   )
-  const sortableTaskIds = useMemo(() => getTaskIdsFromVirtualItems(allVirtualItems), [allVirtualItems])
+  const sortableTaskIds = useMemo(
+    () => getTaskIdsFromVirtualItems(allVirtualItems),
+    [allVirtualItems]
+  )
 
   const isEmpty = virtualItems.length === 0 && doneVirtualItems.length === 0
 

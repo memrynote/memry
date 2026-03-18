@@ -167,7 +167,9 @@ describe('TaskRow — List Drop Indicators', () => {
 
 describe('TaskRow — Overlay Theme Styling', () => {
   it('uses theme tokens for the drag ghost instead of a fixed dark shell', () => {
-    render(<TaskRow {...defaultProps} renderMode="overlay" dataTestId="drag-overlay" showDragHandle />)
+    render(
+      <TaskRow {...defaultProps} renderMode="overlay" dataTestId="drag-overlay" showDragHandle />
+    )
 
     const overlay = screen.getByTestId('drag-overlay')
     expect(overlay.className).toContain('bg-card')

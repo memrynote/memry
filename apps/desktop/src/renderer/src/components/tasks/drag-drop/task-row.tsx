@@ -107,48 +107,12 @@ const DragHandleGrip = ({
     aria-label="Drag to reorder"
   >
     <svg width="10" height="14" viewBox="0 0 10 14" fill="none" aria-hidden="true">
-      <circle
-        cx="3"
-        cy="3"
-        r="1.5"
-        fill="currentColor"
-        className="text-text-tertiary"
-      />
-      <circle
-        cx="7"
-        cy="3"
-        r="1.5"
-        fill="currentColor"
-        className="text-text-tertiary"
-      />
-      <circle
-        cx="3"
-        cy="7"
-        r="1.5"
-        fill="currentColor"
-        className="text-text-tertiary"
-      />
-      <circle
-        cx="7"
-        cy="7"
-        r="1.5"
-        fill="currentColor"
-        className="text-text-tertiary"
-      />
-      <circle
-        cx="3"
-        cy="11"
-        r="1.5"
-        fill="currentColor"
-        className="text-text-tertiary"
-      />
-      <circle
-        cx="7"
-        cy="11"
-        r="1.5"
-        fill="currentColor"
-        className="text-text-tertiary"
-      />
+      <circle cx="3" cy="3" r="1.5" fill="currentColor" className="text-text-tertiary" />
+      <circle cx="7" cy="3" r="1.5" fill="currentColor" className="text-text-tertiary" />
+      <circle cx="3" cy="7" r="1.5" fill="currentColor" className="text-text-tertiary" />
+      <circle cx="7" cy="7" r="1.5" fill="currentColor" className="text-text-tertiary" />
+      <circle cx="3" cy="11" r="1.5" fill="currentColor" className="text-text-tertiary" />
+      <circle cx="7" cy="11" r="1.5" fill="currentColor" className="text-text-tertiary" />
     </svg>
   </div>
 )
@@ -197,13 +161,13 @@ const TaskRowComponent = ({
       ? { width: `${overlayWidth}px` }
       : undefined
     : isExiting
-    ? {
-        opacity: 0,
-        transform: 'scale(0.98)',
-        transition: 'opacity 200ms ease-out, transform 200ms ease-out',
-        pointerEvents: 'none'
-      }
-    : undefined
+      ? {
+          opacity: 0,
+          transform: 'scale(0.98)',
+          transition: 'opacity 200ms ease-out, transform 200ms ease-out',
+          pointerEvents: 'none'
+        }
+      : undefined
 
   const formattedDate = formatDueDate(task.dueDate, task.dueTime)
   const isOverdue = formattedDate?.status === 'overdue' && !isCompleted
@@ -367,10 +331,7 @@ const TaskRowComponent = ({
         <div className="flex items-center shrink-0 gap-[5px]">
           <div className="rounded-xs shrink-0 size-2" style={{ backgroundColor: project.color }} />
           <div
-            className={cn(
-              'text-[11px] leading-3.5 truncate max-w-[100px]',
-              'text-text-tertiary'
-            )}
+            className={cn('text-[11px] leading-3.5 truncate max-w-[100px]', 'text-text-tertiary')}
           >
             {project.name}
           </div>
