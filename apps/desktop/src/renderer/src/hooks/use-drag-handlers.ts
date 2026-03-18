@@ -1,15 +1,11 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useRef, useState } from 'react'
 import type { DragEndEvent, DragStartEvent, DragOverEvent } from '@dnd-kit/core'
 import { toast } from 'sonner'
 
 import type { DragState } from '@/contexts/drag-context'
-import {
-  formatDateShort,
-  startOfDay,
-  getDefaultTodoStatus,
-  getDefaultDoneStatus
-} from '@/lib/task-utils'
-import type { Task } from '@/data/sample-tasks'
+import { formatDateShort, startOfDay, getDefaultTodoStatus } from '@/lib/task-utils'
+import { resolveColumnDrop } from '@/lib/kanban-drop-resolver'
+import type { Task, Priority } from '@/data/sample-tasks'
 import type { Project } from '@/data/tasks-data'
 
 // ============================================================================
@@ -17,10 +13,19 @@ import type { Project } from '@/data/tasks-data'
 // ============================================================================
 
 interface UndoAction {
-  type: 'move-project' | 'change-status' | 'reschedule' | 'reorder' | 'delete' | 'archive'
+  type:
+    | 'move-project'
+    | 'change-status'
+    | 'change-priority'
+    | 'reschedule'
+    | 'reorder'
+    | 'delete'
+    | 'archive'
   taskIds: string[]
   previousProjectId?: string
   previousStatusId?: string
+  previousStatusIds?: Map<string, string>
+  previousPriorities?: Map<string, Priority>
   previousDates?: Map<string, Date | null>
   previousOrder?: string[]
   sectionId?: string
@@ -36,18 +41,13 @@ interface UseDragHandlersProps {
 }
 
 interface UseDragHandlersReturn {
-  /** Handle drag end event */
   handleDragEnd: (event: DragEndEvent, dragState: DragState) => void
-  /** Handle drag start event */
   handleDragStart: (event: DragStartEvent, dragState: DragState) => void
-  /** Handle drag over event */
   handleDragOver: (event: DragOverEvent, dragState: DragState) => void
-  /** Undo the last drag action */
   undo: () => void
-  /** Whether undo is available */
   canUndo: boolean
-  /** Last action description for undo toast */
   lastActionDescription: string | null
+  droppedPriorities: Map<string, Priority>
 }
 
 // ============================================================================
@@ -63,6 +63,8 @@ export const useDragHandlers = ({
 }: UseDragHandlersProps): UseDragHandlersReturn => {
   const [undoStack, setUndoStack] = useState<UndoAction[]>([])
   const [lastActionDescription, setLastActionDescription] = useState<string | null>(null)
+  const [droppedPriorities, setDroppedPriorities] = useState<Map<string, Priority>>(new Map())
+  const priorityTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined)
 
   // Record an action for undo
   const recordAction = useCallback((action: UndoAction, description: string) => {
@@ -106,9 +108,21 @@ export const useDragHandlers = ({
         break
 
       case 'change-status':
-        if (lastAction.previousStatusId) {
+        if (lastAction.previousStatusIds) {
+          lastAction.previousStatusIds.forEach((statusId, taskId) => {
+            onUpdateTask(taskId, { statusId })
+          })
+        } else if (lastAction.previousStatusId) {
           lastAction.taskIds.forEach((id) => {
             onUpdateTask(id, { statusId: lastAction.previousStatusId })
+          })
+        }
+        break
+
+      case 'change-priority':
+        if (lastAction.previousPriorities) {
+          lastAction.previousPriorities.forEach((priority, taskId) => {
+            onUpdateTask(taskId, { priority })
           })
         }
         break
@@ -220,6 +234,87 @@ export const useDragHandlers = ({
       )
     },
     [tasks, onUpdateTask, recordAction]
+  )
+
+  // Handle dropping on a priority column
+  const handlePriorityDrop = useCallback(
+    (taskIds: string[], priority: Priority) => {
+      const previousPriorities = new Map<string, Priority>()
+      taskIds.forEach((id) => {
+        const task = tasks.find((t) => t.id === id)
+        if (task) previousPriorities.set(id, task.priority)
+      })
+
+      taskIds.forEach((id) => {
+        onUpdateTask(id, { priority })
+      })
+
+      const label =
+        priority === 'none' ? 'No Priority' : priority.charAt(0).toUpperCase() + priority.slice(1)
+
+      recordAction(
+        { type: 'change-priority', taskIds, previousPriorities },
+        `Priority set to ${label}`
+      )
+
+      const newDropped = new Map<string, Priority>()
+      taskIds.forEach((id) => newDropped.set(id, priority))
+      setDroppedPriorities(newDropped)
+
+      if (priorityTimerRef.current) clearTimeout(priorityTimerRef.current)
+      priorityTimerRef.current = setTimeout(() => setDroppedPriorities(new Map()), 2500)
+
+      toast.success(
+        taskIds.length === 1
+          ? `Priority set to ${label}`
+          : `${taskIds.length} tasks set to ${label}`
+      )
+    },
+    [tasks, onUpdateTask, recordAction]
+  )
+
+  // Handle dropping on a canonical status column (todo/in_progress/done without project context)
+  const handleCanonicalStatusDrop = useCallback(
+    (taskIds: string[], statusType: 'todo' | 'in_progress' | 'done') => {
+      const previousStatusIds = new Map<string, string>()
+
+      taskIds.forEach((id) => {
+        const task = tasks.find((t) => t.id === id)
+        if (!task) return
+
+        previousStatusIds.set(id, task.statusId)
+
+        const taskProject = projects.find((p) => p.id === task.projectId)
+        if (!taskProject) return
+
+        const targetStatus = taskProject.statuses.find((s) => s.type === statusType)
+        if (!targetStatus) return
+
+        const updates: Partial<Task> = { statusId: targetStatus.id }
+
+        if (targetStatus.type === 'done' && !task.completedAt) {
+          updates.completedAt = new Date()
+        } else if (targetStatus.type !== 'done' && task.completedAt) {
+          updates.completedAt = null
+        }
+
+        onUpdateTask(id, updates)
+      })
+
+      const statusLabels: Record<string, string> = {
+        todo: 'To Do',
+        in_progress: 'In Progress',
+        done: 'Done'
+      }
+      const label = statusLabels[statusType]
+
+      recordAction({ type: 'change-status', taskIds, previousStatusIds }, `Moved to ${label}`)
+
+      toast.success(
+        taskIds.length === 1 ? `Moved to ${label}` : `${taskIds.length} tasks moved to ${label}`
+      )
+    },
+    [tasks, projects, onUpdateTask, recordAction]
   )
 
   // Handle dropping on a date cell (calendar)
@@ -405,11 +500,27 @@ export const useDragHandlers = ({
               handleSectionDrop(taskIds, overTask.dueDate, overSectionId)
             }
           } else if (!overSectionId && overColumnId && overColumnId !== sourceSectionId) {
-            const project = projects.find((p) => p.statuses.some((s) => s.id === overColumnId))
-            if (project) {
-              handleColumnDrop(taskIds, overColumnId, project)
-              if (taskIds.length === 1) {
-                onReorder?.(overColumnId, [taskIds[0], over.id as string])
+            const result = resolveColumnDrop(overColumnId, projects)
+            if (result) {
+              switch (result.type) {
+                case 'priority':
+                  handlePriorityDrop(taskIds, result.priority)
+                  break
+                case 'dueDate':
+                  handleSectionDrop(taskIds, result.dueDate, result.bucketLabel)
+                  break
+                case 'project':
+                  handleProjectDrop(taskIds, result.projectId)
+                  break
+                case 'canonicalStatus':
+                  handleCanonicalStatusDrop(taskIds, result.statusType)
+                  break
+                case 'projectStatus':
+                  handleColumnDrop(taskIds, result.columnId, result.project)
+                  if (taskIds.length === 1) {
+                    onReorder?.(result.columnId, [taskIds[0], over.id as string])
+                  }
+                  break
               }
             }
           }
@@ -424,14 +535,28 @@ export const useDragHandlers = ({
         }
 
         case 'column': {
-          const targetColumnId = overData?.columnId || over.id
+          const targetColumnId = (overData?.columnId || over.id) as string
           if (targetColumnId === dragState.sourceContainerId) break
 
-          const project =
-            overData?.project ||
-            projects.find((p) => p.statuses.some((s) => s.id === targetColumnId))
-          if (project) {
-            handleColumnDrop(taskIds, targetColumnId as string, project)
+          const result = resolveColumnDrop(targetColumnId, projects)
+          if (!result) break
+
+          switch (result.type) {
+            case 'priority':
+              handlePriorityDrop(taskIds, result.priority)
+              break
+            case 'dueDate':
+              handleSectionDrop(taskIds, result.dueDate, result.bucketLabel)
+              break
+            case 'project':
+              handleProjectDrop(taskIds, result.projectId)
+              break
+            case 'canonicalStatus':
+              handleCanonicalStatusDrop(taskIds, result.statusType)
+              break
+            case 'projectStatus':
+              handleColumnDrop(taskIds, result.columnId, result.project)
+              break
           }
           break
         }
@@ -478,6 +603,8 @@ export const useDragHandlers = ({
       onReorder,
       handleSectionDrop,
       handleColumnDrop,
+      handlePriorityDrop,
+      handleCanonicalStatusDrop,
       handleDateDrop,
       handleProjectDrop,
       handleTrashDrop,
@@ -501,7 +628,8 @@ export const useDragHandlers = ({
     handleDragOver,
     undo,
     canUndo: undoStack.length > 0,
-    lastActionDescription
+    lastActionDescription,
+    droppedPriorities
   }
 }
 
