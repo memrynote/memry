@@ -94,7 +94,7 @@ describe('TaskRow — isDragging (Source Placeholder)', () => {
     render(<TaskRow {...defaultProps} isDragging />)
 
     const row = screen.getByLabelText(/^Task: Test Task/)
-    expect(row.className).toContain('opacity-35')
+    expect(row.className).toContain('opacity-[0.35]')
     expect(row.className).toContain('border-dashed')
   })
 
@@ -102,7 +102,7 @@ describe('TaskRow — isDragging (Source Placeholder)', () => {
     render(<TaskRow {...defaultProps} isDragging={false} />)
 
     const row = screen.getByLabelText(/^Task: Test Task/)
-    expect(row.className).not.toContain('opacity-35')
+    expect(row.className).not.toContain('opacity-[0.35]')
     expect(row.className).not.toContain('border-dashed')
   })
 })
@@ -141,19 +141,38 @@ describe('TaskRow — List Drop Indicators', () => {
   it('renders a reorder insertion indicator when requested', () => {
     render(<TaskRow {...defaultProps} insertionIndicatorPosition="before" />)
 
+    expect(screen.getByLabelText(/^Task: Test Task/).className).toContain('pt-1')
     expect(screen.getByTestId('list-drop-indicator')).toHaveAttribute(
       'data-drop-indicator',
       'reorder'
     )
   })
 
-  it('renders a cross-section drop band when hovering another list target', () => {
-    render(<TaskRow {...defaultProps} isCrossSectionTarget />)
+  it('renders target-section styling when requested', () => {
+    render(<TaskRow {...defaultProps} sectionDragState="target-highlighted" />)
 
-    expect(screen.getByTestId('list-drop-indicator')).toHaveAttribute(
-      'data-drop-indicator',
-      'column'
-    )
+    const row = screen.getByLabelText(/^Task: Test Task/)
+    expect(row).toHaveAttribute('data-section-drag-state', 'target-highlighted')
+    expect(row.className).toContain('bg-primary/[0.04]')
+  })
+
+  it('dims source-section rows during a cross-section drag', () => {
+    render(<TaskRow {...defaultProps} sectionDragState="source-dimmed" />)
+
+    const row = screen.getByLabelText(/^Task: Test Task/)
+    expect(row).toHaveAttribute('data-section-drag-state', 'source-dimmed')
+    expect(row.className).toContain('opacity-50')
+  })
+})
+
+describe('TaskRow — Overlay Theme Styling', () => {
+  it('uses theme tokens for the drag ghost instead of a fixed dark shell', () => {
+    render(<TaskRow {...defaultProps} renderMode="overlay" dataTestId="drag-overlay" showDragHandle />)
+
+    const overlay = screen.getByTestId('drag-overlay')
+    expect(overlay.className).toContain('bg-card')
+    expect(overlay.className).toContain('border-[#4C9EFF]')
+    expect(overlay.className).not.toContain('bg-[#27272A]')
   })
 })
 
@@ -162,10 +181,10 @@ describe('TaskRow — memo equality with drag props', () => {
     const { rerender } = render(<TaskRow {...defaultProps} isDragging={false} />)
 
     const row = screen.getByLabelText(/^Task: Test Task/)
-    expect(row.className).not.toContain('opacity-35')
+    expect(row.className).not.toContain('opacity-[0.35]')
 
     rerender(<TaskRow {...defaultProps} isDragging={true} />)
-    expect(screen.getByLabelText(/^Task: Test Task/).className).toContain('opacity-35')
+    expect(screen.getByLabelText(/^Task: Test Task/).className).toContain('opacity-[0.35]')
   })
 
   it('re-renders when isJustDropped changes', () => {
