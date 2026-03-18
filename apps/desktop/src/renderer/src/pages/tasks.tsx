@@ -110,7 +110,7 @@ export const TasksPage = ({
   projects,
   onTasksChange,
   onSelectionChange,
-  selectedTaskIds: _externalSelectedIds,
+  selectedTaskIds: externalSelectedIds,
   onSelectedTaskIdsChange
 }: TasksPageProps): React.JSX.Element => {
   // Get database-aware task operations from context
@@ -340,14 +340,10 @@ export const TasksPage = ({
     toggleSelectAll,
     enterSelectionMode,
     exitSelectionMode
-  } = useTaskSelection(visibleTaskIds)
-
-  // Sync selection state with App level for drag-drop
-  useEffect(() => {
-    if (onSelectedTaskIdsChange) {
-      onSelectedTaskIdsChange(selection.selectedIds)
-    }
-  }, [selection.selectedIds, onSelectedTaskIdsChange])
+  } = useTaskSelection(visibleTaskIds, {
+    controlledSelectedIds: externalSelectedIds,
+    onSelectionChange: onSelectedTaskIdsChange
+  })
 
   // Bulk actions hook - use context functions to persist to database
   const bulkActions = useBulkActions({
