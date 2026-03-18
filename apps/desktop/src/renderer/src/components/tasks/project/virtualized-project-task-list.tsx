@@ -1,18 +1,20 @@
 import { useMemo, useRef, useEffect, memo, useCallback } from 'react'
 import { useVirtualizer } from '@tanstack/react-virtual'
+import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
 
 import { cn } from '@/lib/utils'
-import { DraggableTaskRow } from '@/components/tasks/drag-drop'
-import { ParentTaskRow } from '@/components/tasks/parent-task-row'
+import { DroppableListHeader, SortableParentTaskRow, SortableTaskRow } from '@/components/tasks/drag-drop'
 import { TaskEmptyState } from '@/components/tasks/task-empty-state'
 import {
   flattenTasksByStatus,
   estimateItemHeight,
+  getTaskIdsFromVirtualItems,
   type VirtualItem
 } from '@/lib/virtual-list-utils'
 import { createLookupContext, isTaskCompletedFast } from '@/lib/lookup-utils'
 import { calculateProgress } from '@/lib/subtask-utils'
 import { useExpandedTasks } from '@/hooks'
+import { annotateProjectStatusVirtualItems } from '@/lib/task-list-dnd-utils'
 import type { Task, Priority } from '@/data/sample-tasks'
 import type { Project, Status } from '@/data/tasks-data'
 
@@ -123,7 +125,19 @@ const VirtualItemRenderer = memo(
   }: VirtualItemRendererProps): React.JSX.Element | null => {
     switch (item.type) {
       case 'status-header':
-        return <VirtualStatusHeader status={item.status} count={item.count} />
+        return item.columnId ? (
+          <DroppableListHeader
+            id={item.id}
+            label={item.status.name}
+            columnId={item.columnId}
+            sectionId={item.sectionId}
+            sectionTaskIds={item.sectionTaskIds}
+          >
+            <VirtualStatusHeader status={item.status} count={item.count} />
+          </DroppableListHeader>
+        ) : (
+          <VirtualStatusHeader status={item.status} count={item.count} />
+        )
 
       case 'task': {
         const taskItem = item
@@ -131,12 +145,14 @@ const VirtualItemRenderer = memo(
         const isCheckedForSelection = selectedIds?.has(taskItem.task.id) ?? false
 
         return (
-          <DraggableTaskRow
+          <SortableTaskRow
             task={taskItem.task}
             project={taskItem.project}
             projects={[project]}
             allTasks={allTasks}
             sectionId={taskItem.sectionId}
+            sectionTaskIds={taskItem.sectionTaskIds}
+            columnId={taskItem.columnId}
             isCompleted={isCompleted}
             isSelected={selectedTaskId === taskItem.task.id}
             showProjectBadge={false}
@@ -159,7 +175,7 @@ const VirtualItemRenderer = memo(
         const progress = calculateProgress(parentItem.subtasks)
 
         return (
-          <ParentTaskRow
+          <SortableParentTaskRow
             task={parentItem.task}
             project={parentItem.project}
             projects={[parentItem.project]}
@@ -167,6 +183,9 @@ const VirtualItemRenderer = memo(
             progress={progress}
             isExpanded={isExpanded}
             isCompleted={isCompleted}
+            sectionId={parentItem.sectionId}
+            sectionTaskIds={parentItem.sectionTaskIds}
+            columnId={parentItem.columnId}
             isSelected={selectedTaskId === parentItem.task.id}
             showProjectBadge={false}
             onToggleExpand={onToggleExpand}
@@ -224,9 +243,13 @@ export const VirtualizedProjectTaskList = ({
   const lookupContext = useMemo(() => createLookupContext([project]), [project])
 
   const virtualItems = useMemo(
-    () => flattenTasksByStatus(tasks, project, expandedIds, tasks, true, getOrderedTasks),
+    () =>
+      annotateProjectStatusVirtualItems(
+        flattenTasksByStatus(tasks, project, expandedIds, tasks, true, getOrderedTasks)
+      ),
     [tasks, project, expandedIds, getOrderedTasks]
   )
+  const sortableTaskIds = useMemo(() => getTaskIdsFromVirtualItems(virtualItems), [virtualItems])
 
   const isEmpty = virtualItems.every((item) => item.type === 'status-header')
 
@@ -284,43 +307,45 @@ export const VirtualizedProjectTaskList = ({
             position: 'relative'
           }}
         >
-          {virtualizer.getVirtualItems().map((virtualRow) => {
-            const item = virtualItems[virtualRow.index]
-            return (
-              <div
-                key={item.id}
-                data-index={virtualRow.index}
-                ref={virtualizer.measureElement}
-                style={{
-                  position: 'absolute',
-                  top: 0,
-                  left: 0,
-                  width: '100%',
-                  transform: `translateY(${virtualRow.start}px)`
-                }}
-              >
-                <VirtualItemRenderer
-                  item={item}
-                  lookupContext={lookupContext}
-                  allTasks={tasks}
-                  project={project}
-                  selectedTaskId={selectedTaskId}
-                  onToggleComplete={onToggleComplete}
-                  onUpdateTask={onUpdateTask}
-                  onToggleSubtaskComplete={onToggleSubtaskComplete}
-                  onTaskClick={onTaskClick}
-                  isSelectionMode={isSelectionMode}
-                  selectedIds={selectedIds}
-                  onToggleSelect={onToggleSelect}
-                  onShiftSelect={onShiftSelect}
-                  expandedIds={expandedIds}
-                  onToggleExpand={toggleExpanded}
-                  onAddSubtask={onAddSubtask}
-                  onReorderSubtasks={onReorderSubtasks}
-                />
-              </div>
-            )
-          })}
+          <SortableContext items={sortableTaskIds} strategy={verticalListSortingStrategy}>
+            {virtualizer.getVirtualItems().map((virtualRow) => {
+              const item = virtualItems[virtualRow.index]
+              return (
+                <div
+                  key={item.id}
+                  data-index={virtualRow.index}
+                  ref={virtualizer.measureElement}
+                  style={{
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    width: '100%',
+                    transform: `translateY(${virtualRow.start}px)`
+                  }}
+                >
+                  <VirtualItemRenderer
+                    item={item}
+                    lookupContext={lookupContext}
+                    allTasks={tasks}
+                    project={project}
+                    selectedTaskId={selectedTaskId}
+                    onToggleComplete={onToggleComplete}
+                    onUpdateTask={onUpdateTask}
+                    onToggleSubtaskComplete={onToggleSubtaskComplete}
+                    onTaskClick={onTaskClick}
+                    isSelectionMode={isSelectionMode}
+                    selectedIds={selectedIds}
+                    onToggleSelect={onToggleSelect}
+                    onShiftSelect={onShiftSelect}
+                    expandedIds={expandedIds}
+                    onToggleExpand={toggleExpanded}
+                    onAddSubtask={onAddSubtask}
+                    onReorderSubtasks={onReorderSubtasks}
+                  />
+                </div>
+              )
+            })}
+          </SortableContext>
         </div>
       </div>
     </div>

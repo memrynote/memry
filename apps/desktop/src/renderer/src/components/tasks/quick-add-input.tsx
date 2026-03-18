@@ -278,10 +278,19 @@ export const QuickAddInput = ({
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>): void => {
     // Let autocomplete handle navigation keys when visible
     if (showAutocomplete && autocompleteOptions.length > 0) {
+      const lastWord = value.trim().split(/\s+/).pop() ?? ''
+      const hasExactAutocompleteMatch = autocompleteOptions.some((option) => option.value === lastWord)
+
       if (['ArrowDown', 'ArrowUp', 'Tab'].includes(e.key)) {
         return // Let AutocompleteDropdown handle these
       }
       if (e.key === 'Enter') {
+        if (hasExactAutocompleteMatch) {
+          e.preventDefault()
+          e.stopPropagation()
+          handleSubmit()
+          return
+        }
         return // Let AutocompleteDropdown handle selection
       }
       if (e.key === 'Escape') {

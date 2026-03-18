@@ -1,13 +1,14 @@
 import { useMemo, useRef, useEffect, useCallback, useState, memo } from 'react'
 import { useVirtualizer } from '@tanstack/react-virtual'
+import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
 
 import { cn } from '@/lib/utils'
-import { DraggableTaskRow } from '@/components/tasks/drag-drop'
-import { ParentTaskRow } from '@/components/tasks/parent-task-row'
+import { DroppableListHeader, SortableParentTaskRow, SortableTaskRow } from '@/components/tasks/drag-drop'
 import { TaskEmptyState } from '@/components/tasks/task-empty-state'
 import {
   flattenTasksFlat,
   flattenTasksGrouped,
+  getTaskIdsFromVirtualItems,
   estimateItemHeight,
   type VirtualItem,
   type GroupHeaderItem
@@ -16,6 +17,7 @@ import { GroupHeader } from '@/components/tasks/group-header'
 import { createLookupContext, isTaskCompletedFast } from '@/lib/lookup-utils'
 import { calculateProgress, getTopLevelTasks } from '@/lib/subtask-utils'
 import { useExpandedTasks } from '@/hooks'
+import { annotateFlatVirtualItems, annotateGroupedVirtualItems } from '@/lib/task-list-dnd-utils'
 import type { Task, Priority } from '@/data/sample-tasks'
 import type { Project, SortField, SortDirection } from '@/data/tasks-data'
 
@@ -104,7 +106,26 @@ const VirtualItemRenderer = memo(
   }: VirtualItemRendererProps): React.JSX.Element | null => {
     switch (item.type) {
       case 'group-header':
-        return (
+        return item.columnId ? (
+          <DroppableListHeader
+            id={item.id}
+            label={item.label}
+            columnId={item.columnId}
+            sectionId={item.sectionId}
+            sectionTaskIds={item.sectionTaskIds}
+          >
+            <GroupHeader
+              label={item.label}
+              count={item.count}
+              sortField={item.sortField}
+              groupKey={item.groupKey}
+              color={item.color}
+              variant={item.variant}
+              isCollapsed={item.isCollapsed}
+              onToggle={() => onToggleGroup?.(item.groupKey)}
+            />
+          </DroppableListHeader>
+        ) : (
           <GroupHeader
             label={item.label}
             count={item.count}
@@ -122,12 +143,14 @@ const VirtualItemRenderer = memo(
         const isCheckedForSelection = selectedIds?.has(item.task.id) ?? false
 
         return (
-          <DraggableTaskRow
+          <SortableTaskRow
             task={item.task}
             project={item.project}
             projects={projects}
             allTasks={allTasks}
             sectionId={item.sectionId ?? 'all'}
+            sectionTaskIds={item.sectionTaskIds}
+            columnId={item.columnId}
             isCompleted={isCompleted}
             isSelected={selectedTaskId === item.task.id}
             showProjectBadge={showProjectBadge}
@@ -149,7 +172,7 @@ const VirtualItemRenderer = memo(
         const progress = calculateProgress(item.subtasks)
 
         return (
-          <ParentTaskRow
+          <SortableParentTaskRow
             task={item.task}
             project={item.project}
             projects={projects}
@@ -157,6 +180,9 @@ const VirtualItemRenderer = memo(
             progress={progress}
             isExpanded={isExpanded}
             isCompleted={isCompleted}
+            sectionId={item.sectionId}
+            sectionTaskIds={item.sectionTaskIds}
+            columnId={item.columnId}
             isSelected={selectedTaskId === item.task.id}
             showProjectBadge={showProjectBadge}
             onToggleExpand={onToggleExpand}
@@ -236,17 +262,20 @@ export const VirtualizedAllTasksView = ({
 
   const virtualItems = useMemo(() => {
     if (sortField && sortField !== 'title' && sortDirection) {
-      return flattenTasksGrouped(
-        tasks,
-        projects,
-        combinedTasks,
-        sortField,
-        sortDirection,
-        collapsedGroups,
-        getOrderedTasks
+      return annotateGroupedVirtualItems(
+        flattenTasksGrouped(
+          tasks,
+          projects,
+          combinedTasks,
+          sortField,
+          sortDirection,
+          collapsedGroups,
+          getOrderedTasks
+        ),
+        { sortField, projects }
       )
     }
-    return flattenTasksFlat(tasks, projects, combinedTasks, getOrderedTasks)
+    return annotateFlatVirtualItems(flattenTasksFlat(tasks, projects, combinedTasks, getOrderedTasks))
   }, [tasks, projects, combinedTasks, sortField, sortDirection, collapsedGroups, getOrderedTasks])
 
   const doneVirtualItems = useMemo((): VirtualItem[] => {
@@ -267,7 +296,10 @@ export const VirtualizedAllTasksView = ({
 
     if (isCollapsed) return [header]
 
-    const doneItems = flattenTasksFlat(doneTasks, projects, combinedTasks, getOrderedTasks)
+    const doneItems = annotateFlatVirtualItems(
+      flattenTasksFlat(doneTasks, projects, combinedTasks, getOrderedTasks),
+      { sectionId: 'done' }
+    )
     return [header, ...doneItems]
   }, [doneTasks, projects, combinedTasks, collapsedGroups, getOrderedTasks])
 
@@ -275,6 +307,7 @@ export const VirtualizedAllTasksView = ({
     () => [...virtualItems, ...doneVirtualItems],
     [virtualItems, doneVirtualItems]
   )
+  const sortableTaskIds = useMemo(() => getTaskIdsFromVirtualItems(allVirtualItems), [allVirtualItems])
 
   const isEmpty = virtualItems.length === 0 && doneVirtualItems.length === 0
 
@@ -308,45 +341,47 @@ export const VirtualizedAllTasksView = ({
             position: 'relative'
           }}
         >
-          {virtualizer.getVirtualItems().map((virtualRow) => {
-            const item = allVirtualItems[virtualRow.index]
-            return (
-              <div
-                key={item.id}
-                data-index={virtualRow.index}
-                ref={virtualizer.measureElement}
-                style={{
-                  position: 'absolute',
-                  top: 0,
-                  left: 0,
-                  width: '100%',
-                  transform: `translateY(${virtualRow.start}px)`
-                }}
-              >
-                <VirtualItemRenderer
-                  item={item}
-                  lookupContext={lookupContext}
-                  allTasks={combinedTasks}
-                  projects={projects}
-                  selectedTaskId={selectedTaskId}
-                  onToggleComplete={onToggleComplete}
-                  onUpdateTask={onUpdateTask}
-                  onToggleSubtaskComplete={onToggleSubtaskComplete}
-                  onTaskClick={onTaskClick}
-                  isSelectionMode={isSelectionMode}
-                  selectedIds={selectedIds}
-                  onToggleSelect={onToggleSelect}
-                  onShiftSelect={onShiftSelect}
-                  expandedIds={expandedIds}
-                  onToggleExpand={toggleExpanded}
-                  onAddSubtask={onAddSubtask}
-                  onReorderSubtasks={onReorderSubtasks}
-                  onToggleGroup={handleToggleGroup}
-                  showProjectBadge={showProjectBadge}
-                />
-              </div>
-            )
-          })}
+          <SortableContext items={sortableTaskIds} strategy={verticalListSortingStrategy}>
+            {virtualizer.getVirtualItems().map((virtualRow) => {
+              const item = allVirtualItems[virtualRow.index]
+              return (
+                <div
+                  key={item.id}
+                  data-index={virtualRow.index}
+                  ref={virtualizer.measureElement}
+                  style={{
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    width: '100%',
+                    transform: `translateY(${virtualRow.start}px)`
+                  }}
+                >
+                  <VirtualItemRenderer
+                    item={item}
+                    lookupContext={lookupContext}
+                    allTasks={combinedTasks}
+                    projects={projects}
+                    selectedTaskId={selectedTaskId}
+                    onToggleComplete={onToggleComplete}
+                    onUpdateTask={onUpdateTask}
+                    onToggleSubtaskComplete={onToggleSubtaskComplete}
+                    onTaskClick={onTaskClick}
+                    isSelectionMode={isSelectionMode}
+                    selectedIds={selectedIds}
+                    onToggleSelect={onToggleSelect}
+                    onShiftSelect={onShiftSelect}
+                    expandedIds={expandedIds}
+                    onToggleExpand={toggleExpanded}
+                    onAddSubtask={onAddSubtask}
+                    onReorderSubtasks={onReorderSubtasks}
+                    onToggleGroup={handleToggleGroup}
+                    showProjectBadge={showProjectBadge}
+                  />
+                </div>
+              )
+            })}
+          </SortableContext>
         </div>
       </div>
     </div>

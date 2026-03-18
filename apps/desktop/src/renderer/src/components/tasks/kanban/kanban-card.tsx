@@ -17,6 +17,7 @@ interface KanbanCardProps {
   project?: Project
   allTasks: Task[]
   columnId?: string
+  sectionTaskIds?: string[]
   isSelected?: boolean
   isFocused?: boolean
   isDone?: boolean
@@ -233,7 +234,8 @@ export const SortableKanbanCard = (props: KanbanCardProps): React.JSX.Element =>
       type: 'task',
       task: props.task,
       sourceType: 'kanban',
-      columnId: props.columnId
+      columnId: props.columnId,
+      sectionTaskIds: props.sectionTaskIds
     }
   })
 

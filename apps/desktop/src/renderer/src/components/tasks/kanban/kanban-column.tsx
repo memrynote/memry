@@ -194,6 +194,7 @@ export const KanbanColumn = ({
                 <SortableKanbanCard
                   task={task}
                   columnId={column.id}
+                  sectionTaskIds={taskIds}
                   project={projectMap.get(task.projectId)}
                   allTasks={allTasks}
                   isDone={isDoneColumn || task.completedAt !== null}
