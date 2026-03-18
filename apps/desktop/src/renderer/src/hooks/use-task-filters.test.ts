@@ -373,6 +373,88 @@ describe('useFilterState', () => {
         expect(result.current.filters.search).toBe('project-2-search')
       })
     })
+
+    it('should use status sort as default for kanban view when no persisted state', () => {
+      // #given — no persisted state for kanban view
+      const { result } = renderHook(() =>
+        useFilterState({ ...defaultOptions, activeView: 'kanban' })
+      )
+
+      // #then — kanban defaults to status/asc, not dueDate/asc
+      expect(result.current.sort).toEqual({ field: 'status', direction: 'asc' })
+    })
+
+    it('should preserve persisted kanban sort when switching back to kanban', async () => {
+      // #given — kanban view has persisted sort
+      const kanbanKey = 'project-project-1-kanban'
+      const kanbanSort: TaskSort = { field: 'priority', direction: 'desc' }
+      localStorageMock.setItem(
+        'taskFilters',
+        JSON.stringify({
+          [kanbanKey]: {
+            filters: defaultFilters,
+            sort: kanbanSort,
+            lastUpdated: new Date().toISOString()
+          }
+        })
+      )
+
+      // #when — render with kanban view
+      const { result } = renderHook(() =>
+        useFilterState({ ...defaultOptions, activeView: 'kanban' })
+      )
+
+      // #then — uses persisted sort, not the kanban default
+      expect(result.current.sort).toEqual(kanbanSort)
+    })
+
+    it('should preserve each view sort independently when switching list→kanban→list', async () => {
+      // #given — list has persisted priority sort, kanban has persisted status sort
+      const listKey = 'project-project-1-list'
+      const kanbanKey = 'project-project-1-kanban'
+      const listSort: TaskSort = { field: 'priority', direction: 'desc' }
+      const kanbanSort: TaskSort = { field: 'status', direction: 'asc' }
+
+      localStorageMock.setItem(
+        'taskFilters',
+        JSON.stringify({
+          [listKey]: {
+            filters: { ...defaultFilters, search: 'list-search' },
+            sort: listSort,
+            lastUpdated: new Date().toISOString()
+          },
+          [kanbanKey]: {
+            filters: { ...defaultFilters, search: 'kanban-search' },
+            sort: kanbanSort,
+            lastUpdated: new Date().toISOString()
+          }
+        })
+      )
+
+      // #when — start on list
+      const { result, rerender } = renderHook((props) => useFilterState(props), {
+        initialProps: { ...defaultOptions, activeView: 'list' }
+      })
+
+      expect(result.current.sort).toEqual(listSort)
+      expect(result.current.filters.search).toBe('list-search')
+
+      // #when — switch to kanban
+      rerender({ ...defaultOptions, activeView: 'kanban' })
+
+      await waitFor(() => {
+        expect(result.current.sort).toEqual(kanbanSort)
+        expect(result.current.filters.search).toBe('kanban-search')
+      })
+
+      // #when — switch back to list
+      rerender({ ...defaultOptions, activeView: 'list' })
+
+      await waitFor(() => {
+        expect(result.current.sort).toEqual(listSort)
+        expect(result.current.filters.search).toBe('list-search')
+      })
+    })
   })
 })
 

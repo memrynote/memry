@@ -16,6 +16,38 @@ vi.mock('@/lib/subtask-utils', () => ({
   hasSubtasks: vi.fn((task: Task) => task.subtaskIds?.length > 0)
 }))
 
+const PRIORITY_ORDER: Priority[] = ['urgent', 'high', 'medium', 'low', 'none']
+const PRIORITY_LABELS: Record<Priority, string> = {
+  urgent: 'Urgent',
+  high: 'High',
+  medium: 'Medium',
+  low: 'Low',
+  none: 'No Priority'
+}
+
+vi.mock('@/lib/task-grouping', () => ({
+  groupTasksForSort: vi.fn((tasks: Task[], sortField: string, sortDirection: string) => {
+    if (sortField === 'title' || sortField === 'completedAt') return []
+
+    if (sortField === 'priority') {
+      const buckets = new Map<Priority, Task[]>(PRIORITY_ORDER.map((p) => [p, []]))
+      tasks.forEach((t: Task) => buckets.get(t.priority || 'none')!.push(t))
+      const groups = PRIORITY_ORDER.map((p) => ({
+        key: p,
+        label: PRIORITY_LABELS[p],
+        tasks: buckets.get(p)!
+      })).filter((g) => g.tasks.length > 0)
+      return sortDirection === 'desc' ? groups.reverse() : groups
+    }
+
+    if (sortField === 'dueDate') {
+      return [{ key: 'today', label: 'Today', tasks }]
+    }
+
+    return []
+  })
+}))
+
 import {
   ITEM_HEIGHTS,
   estimateItemHeight,
@@ -439,6 +471,49 @@ describe('virtual-list-utils', () => {
       expect(descHeaders[0].label).toBe('Low')
     })
 
+    it('should not create separate group for subtask with different priority than parent', () => {
+      // #given — parent is high, subtask is medium → subtask must NOT create a "Medium" group
+      const parent = createMockTask({ id: 'p1', priority: 'high', subtaskIds: ['s1'] })
+      const subtask = createMockTask({ id: 's1', priority: 'medium', parentId: 'p1' })
+
+      // #when
+      const result = flattenTasksGrouped(
+        [parent, subtask],
+        [mockProject],
+        [parent, subtask],
+        'priority',
+        'asc'
+      )
+
+      // #then — only one group ("High") with the parent; no "Medium" ghost group
+      const groupHeaders = result.filter((i) => i.type === 'group-header') as GroupHeaderItem[]
+      expect(groupHeaders).toHaveLength(1)
+      expect(groupHeaders[0].label).toBe('High')
+      expect(result).toHaveLength(2) // group-header + parent-task
+      expect(result[1].type).toBe('parent-task')
+      expect((result[1] as ParentTaskItem).task.id).toBe('p1')
+    })
+
+    it('should count only top-level tasks in group header, not subtasks', () => {
+      // #given — 2 top-level high tasks, one with a high subtask
+      const parent = createMockTask({ id: 'p1', priority: 'high', subtaskIds: ['s1'] })
+      const subtask = createMockTask({ id: 's1', priority: 'high', parentId: 'p1' })
+      const standalone = createMockTask({ id: 't1', priority: 'high' })
+
+      // #when
+      const result = flattenTasksGrouped(
+        [parent, subtask, standalone],
+        [mockProject],
+        [parent, subtask, standalone],
+        'priority',
+        'asc'
+      )
+
+      // #then — header count = 2 (parent + standalone), not 3
+      const header = result.find((i) => i.type === 'group-header') as GroupHeaderItem
+      expect(header.count).toBe(2)
+    })
+
     it('should handle parent tasks with subtasks in grouped view', () => {
       // #given
       const parent = createMockTask({ id: 'p1', priority: 'high', subtaskIds: ['s1'] })
@@ -507,6 +582,152 @@ describe('virtual-list-utils', () => {
       ]
 
       expect(getTaskIdsFromVirtualItems(items)).toEqual([])
+    })
+  })
+
+  // ==========================================================================
+  // getOrderedTasks INTEGRATION
+  // ==========================================================================
+
+  describe('getOrderedTasks param', () => {
+    const mockProject = createMockProject()
+
+    beforeEach(() => {
+      vi.mocked(getTopLevelTasks).mockImplementation((tasks: Task[]) =>
+        tasks.filter((t) => t.parentId === null)
+      )
+      vi.mocked(hasSubtasks).mockImplementation((task: Task) => task.subtaskIds?.length > 0)
+      vi.mocked(getSubtasks).mockImplementation((id: string, tasks: Task[]) =>
+        tasks.filter((t) => t.parentId === id)
+      )
+    })
+
+    it('flattenTasksFlat should reorder tasks via getOrderedTasks', () => {
+      // #given
+      const t1 = createMockTask({ id: 't1' })
+      const t2 = createMockTask({ id: 't2' })
+      const t3 = createMockTask({ id: 't3' })
+      const allTasks = [t1, t2, t3]
+      const reorder = (_sectionId: string, tasks: Task[]): Task[] => [...tasks].reverse()
+
+      // #when
+      const result = flattenTasksFlat(allTasks, [mockProject], allTasks, reorder)
+
+      // #then
+      expect((result[0] as TaskItem).task.id).toBe('t3')
+      expect((result[1] as TaskItem).task.id).toBe('t2')
+      expect((result[2] as TaskItem).task.id).toBe('t1')
+    })
+
+    it('flattenTasksFlat should pass "flat" as sectionId', () => {
+      // #given
+      const t1 = createMockTask({ id: 't1' })
+      const capturedSections: string[] = []
+      const reorder = (sectionId: string, tasks: Task[]): Task[] => {
+        capturedSections.push(sectionId)
+        return tasks
+      }
+
+      // #when
+      flattenTasksFlat([t1], [mockProject], [t1], reorder)
+
+      // #then
+      expect(capturedSections).toEqual(['flat'])
+    })
+
+    it('flattenTasksGrouped should reorder tasks per group key', () => {
+      // #given
+      const urgent1 = createMockTask({ id: 'u1', priority: 'urgent' })
+      const urgent2 = createMockTask({ id: 'u2', priority: 'urgent' })
+      const capturedSections: string[] = []
+      const reorder = (sectionId: string, tasks: Task[]): Task[] => {
+        capturedSections.push(sectionId)
+        return [...tasks].reverse()
+      }
+
+      // #when
+      const result = flattenTasksGrouped(
+        [urgent1, urgent2],
+        [mockProject],
+        [urgent1, urgent2],
+        'priority',
+        'asc',
+        undefined,
+        reorder
+      )
+
+      // #then — tasks within the group are reversed
+      const taskItems = result.filter((i) => i.type === 'task') as TaskItem[]
+      expect(taskItems[0].task.id).toBe('u2')
+      expect(taskItems[1].task.id).toBe('u1')
+      expect(capturedSections).toContain('urgent')
+    })
+
+    it('flattenTasksGrouped should fall through to flattenTasksFlat with getOrderedTasks', () => {
+      // #given — title sort → falls back to flattenTasksFlat
+      const t1 = createMockTask({ id: 't1' })
+      const t2 = createMockTask({ id: 't2' })
+      const reorder = (_sectionId: string, tasks: Task[]): Task[] => [...tasks].reverse()
+
+      // #when
+      const result = flattenTasksGrouped(
+        [t1, t2],
+        [mockProject],
+        [t1, t2],
+        'title',
+        'asc',
+        undefined,
+        reorder
+      )
+
+      // #then — reversed by the callback in the flat fallback
+      expect((result[0] as TaskItem).task.id).toBe('t2')
+      expect((result[1] as TaskItem).task.id).toBe('t1')
+    })
+
+    it('flattenTasksByStatus should reorder tasks per status group', () => {
+      // #given
+      const t1 = createMockTask({ id: 't1', statusId: 'status-todo' })
+      const t2 = createMockTask({ id: 't2', statusId: 'status-todo' })
+      const capturedSections: string[] = []
+      const reorder = (sectionId: string, tasks: Task[]): Task[] => {
+        capturedSections.push(sectionId)
+        return [...tasks].reverse()
+      }
+
+      vi.mocked(groupTasksByStatus).mockReturnValue([
+        { status: mockProject.statuses[0], tasks: [t1, t2] }
+      ])
+
+      // #when
+      const result = flattenTasksByStatus(
+        [t1, t2],
+        mockProject,
+        new Set<string>(),
+        [t1, t2],
+        false,
+        reorder
+      )
+
+      // #then
+      const taskItems = result.filter((i) => i.type === 'task') as TaskItem[]
+      expect(taskItems[0].task.id).toBe('t2')
+      expect(taskItems[1].task.id).toBe('t1')
+      expect(capturedSections).toContain('status-todo')
+    })
+
+    it('should not affect ordering when getOrderedTasks is undefined', () => {
+      // #given
+      const t1 = createMockTask({ id: 't1' })
+      const t2 = createMockTask({ id: 't2' })
+
+      // #when
+      const withCallback = flattenTasksFlat([t1, t2], [mockProject], [t1, t2], undefined)
+      const without = flattenTasksFlat([t1, t2], [mockProject], [t1, t2])
+
+      // #then
+      expect((withCallback[0] as TaskItem).task.id).toBe((without[0] as TaskItem).task.id)
+      expect((withCallback[1] as TaskItem).task.id).toBe((without[1] as TaskItem).task.id)
     })
   })
 })

@@ -11,11 +11,12 @@ import {
   flattenTasksGrouped,
   estimateItemHeight,
   getTaskIdsFromVirtualItems,
-  type VirtualItem
+  type VirtualItem,
+  type GroupHeaderItem
 } from '@/lib/virtual-list-utils'
 import { GroupHeader } from '@/components/tasks/group-header'
 import { createLookupContext, isTaskCompletedFast } from '@/lib/lookup-utils'
-import { calculateProgress } from '@/lib/subtask-utils'
+import { calculateProgress, getTopLevelTasks } from '@/lib/subtask-utils'
 import { useExpandedTasks } from '@/hooks'
 import type { Task, Priority } from '@/data/sample-tasks'
 import type { Project, SortField, SortDirection } from '@/data/tasks-data'
@@ -51,6 +52,8 @@ interface VirtualizedAllTasksViewProps {
   sortField?: SortField
   sortDirection?: SortDirection
   showProjectBadge?: boolean
+  doneTasks?: Task[]
+  getOrderedTasks?: (sectionId: string, tasks: Task[]) => Task[]
 }
 
 // ============================================================================
@@ -205,7 +208,9 @@ export const VirtualizedAllTasksView = ({
   storageKey = 'all',
   sortField,
   sortDirection,
-  showProjectBadge = true
+  showProjectBadge = true,
+  doneTasks,
+  getOrderedTasks
 }: VirtualizedAllTasksViewProps): React.JSX.Element => {
   const parentRef = useRef<HTMLDivElement>(null)
 
@@ -214,7 +219,7 @@ export const VirtualizedAllTasksView = ({
     persist: true
   })
 
-  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set())
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(() => new Set(['done']))
 
   const handleToggleGroup = useCallback((groupKey: string) => {
     setCollapsedGroups((prev) => {
@@ -232,19 +237,55 @@ export const VirtualizedAllTasksView = ({
 
   const virtualItems = useMemo(() => {
     if (sortField && sortField !== 'title' && sortDirection) {
-      return flattenTasksGrouped(tasks, projects, tasks, sortField, sortDirection, collapsedGroups)
+      return flattenTasksGrouped(
+        tasks,
+        projects,
+        tasks,
+        sortField,
+        sortDirection,
+        collapsedGroups,
+        getOrderedTasks
+      )
     }
-    return flattenTasksFlat(tasks, projects, tasks)
-  }, [tasks, projects, sortField, sortDirection, collapsedGroups])
+    return flattenTasksFlat(tasks, projects, tasks, getOrderedTasks)
+  }, [tasks, projects, sortField, sortDirection, collapsedGroups, getOrderedTasks])
+
+  const doneVirtualItems = useMemo((): VirtualItem[] => {
+    if (!doneTasks || doneTasks.length === 0) return []
+
+    const isCollapsed = collapsedGroups.has('done')
+    const topLevel = getTopLevelTasks(doneTasks)
+
+    const header: GroupHeaderItem = {
+      id: 'group-header-done',
+      type: 'group-header',
+      groupKey: 'done',
+      label: 'Done',
+      count: topLevel.length,
+      sortField: 'status',
+      isCollapsed
+    }
+
+    if (isCollapsed) return [header]
+
+    const doneItems = flattenTasksFlat(doneTasks, projects, doneTasks, getOrderedTasks)
+    return [header, ...doneItems]
+  }, [doneTasks, projects, collapsedGroups, getOrderedTasks])
+
+  const allVirtualItems = useMemo(
+    () => [...virtualItems, ...doneVirtualItems],
+    [virtualItems, doneVirtualItems]
+  )
 
   const allTaskIds = useMemo(() => getTaskIdsFromVirtualItems(virtualItems), [virtualItems])
 
-  const isEmpty = virtualItems.length === 0
+  const isEmpty = virtualItems.length === 0 && doneVirtualItems.length === 0
 
   const virtualizer = useVirtualizer({
-    count: virtualItems.length,
+    count: allVirtualItems.length,
     getScrollElement: () => parentRef.current,
-    estimateSize: (index) => estimateItemHeight(virtualItems[index], expandedIds, tasks),
+    estimateSize: (index) => estimateItemHeight(allVirtualItems[index], expandedIds, tasks),
+    getItemKey: (index) => allVirtualItems[index]?.id ?? index,
     overscan: 5
   })
 
@@ -272,7 +313,7 @@ export const VirtualizedAllTasksView = ({
             }}
           >
             {virtualizer.getVirtualItems().map((virtualRow) => {
-              const item = virtualItems[virtualRow.index]
+              const item = allVirtualItems[virtualRow.index]
               return (
                 <div
                   key={item.id}

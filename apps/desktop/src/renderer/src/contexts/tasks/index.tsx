@@ -194,6 +194,9 @@ interface TasksContextValue {
   addProject: (project: Project) => void
   updateProject: (projectId: string, updates: Partial<Project>) => void
   deleteProject: (projectId: string) => void
+
+  // Ordering
+  getOrderedTasks?: (sectionId: string, tasks: Task[]) => Task[]
 }
 
 interface TasksProviderProps {
@@ -202,6 +205,7 @@ interface TasksProviderProps {
   initialProjects: Project[]
   onTasksChange?: (tasks: Task[]) => void
   onProjectsChange?: (projects: Project[]) => void
+  getOrderedTasks?: (sectionId: string, tasks: Task[]) => Task[]
 }
 
 // =============================================================================
@@ -239,7 +243,8 @@ export const TasksProvider = ({
   initialTasks,
   initialProjects,
   onTasksChange,
-  onProjectsChange
+  onProjectsChange,
+  getOrderedTasks
 }: TasksProviderProps): React.JSX.Element => {
   // Get vault status to know if database is available
   const { status: vaultStatus } = useVault()
@@ -813,7 +818,8 @@ export const TasksProvider = ({
       deleteTask,
       addProject,
       updateProject,
-      deleteProject
+      deleteProject,
+      getOrderedTasks
     }),
     [
       tasks,
@@ -829,7 +835,8 @@ export const TasksProvider = ({
       deleteTask,
       addProject,
       updateProject,
-      deleteProject
+      deleteProject,
+      getOrderedTasks
     ]
   )
 
