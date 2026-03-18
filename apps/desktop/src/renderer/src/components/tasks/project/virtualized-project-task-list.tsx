@@ -14,6 +14,7 @@ import {
 import { createLookupContext, isTaskCompletedFast } from '@/lib/lookup-utils'
 import { calculateProgress } from '@/lib/subtask-utils'
 import { useExpandedTasks } from '@/hooks'
+import { useDragContext } from '@/contexts/drag-context'
 import { annotateProjectStatusVirtualItems } from '@/lib/task-list-dnd-utils'
 import type { Task, Priority } from '@/data/sample-tasks'
 import type { Project, Status } from '@/data/tasks-data'
@@ -239,6 +240,7 @@ export const VirtualizedProjectTaskList = ({
     storageKey: `project-${project.id}`,
     persist: true
   })
+  const { dragState } = useDragContext()
 
   const lookupContext = useMemo(() => createLookupContext([project]), [project])
 
@@ -263,7 +265,19 @@ export const VirtualizedProjectTaskList = ({
 
   useEffect(() => {
     virtualizer.measure()
-  }, [expandedIds, virtualizer])
+  }, [
+    expandedIds,
+    virtualizer,
+    dragState.isDragging,
+    dragState.activeId,
+    dragState.activeIds.length,
+    dragState.sourceType,
+    dragState.sourceContainerId,
+    dragState.overId,
+    dragState.overType,
+    dragState.overSectionId,
+    dragState.sectionDropPosition
+  ])
 
   const handleQuickAdd = useCallback(
     (
