@@ -17,6 +17,7 @@ import { GroupHeader } from '@/components/tasks/group-header'
 import { createLookupContext, isTaskCompletedFast } from '@/lib/lookup-utils'
 import { calculateProgress, getTopLevelTasks } from '@/lib/subtask-utils'
 import { useExpandedTasks } from '@/hooks'
+import { useDragContext } from '@/contexts/drag-context'
 import { annotateFlatVirtualItems, annotateGroupedVirtualItems } from '@/lib/task-list-dnd-utils'
 import type { Task, Priority } from '@/data/sample-tasks'
 import type { Project, SortField, SortDirection } from '@/data/tasks-data'
@@ -241,6 +242,7 @@ export const VirtualizedAllTasksView = ({
     storageKey,
     persist: true
   })
+  const { dragState } = useDragContext()
 
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(() => new Set(['done']))
 
@@ -321,7 +323,19 @@ export const VirtualizedAllTasksView = ({
 
   useEffect(() => {
     virtualizer.measure()
-  }, [expandedIds, virtualizer])
+  }, [
+    expandedIds,
+    virtualizer,
+    dragState.isDragging,
+    dragState.activeId,
+    dragState.activeIds.length,
+    dragState.sourceType,
+    dragState.sourceContainerId,
+    dragState.overId,
+    dragState.overType,
+    dragState.overSectionId,
+    dragState.sectionDropPosition
+  ])
 
   if (isEmpty) {
     return (
