@@ -59,7 +59,20 @@ const crossContainerDropAnimation: DropAnimation = {
  */
 export const TaskDragOverlay = ({ projects }: TaskDragOverlayProps): React.JSX.Element | null => {
   const { dragState, isMultiDrag } = useDragContext()
-  const { isDragging, draggedTasks, overType, sourceContainerId, overId } = dragState
+  const {
+    isDragging,
+    draggedTasks,
+    overType,
+    sourceContainerId,
+    overId,
+    overSectionId,
+    overColumnId,
+    overlayWidth,
+    overlayRowVariant,
+    overlayShowProjectBadge,
+    overlayParentProgress,
+    overlayParentExpanded
+  } = dragState
 
   const wasCrossContainerRef = useRef(false)
   const sourceTypeRef = useRef(dragState.sourceType)
@@ -68,7 +81,15 @@ export const TaskDragOverlay = ({ projects }: TaskDragOverlayProps): React.JSX.E
     sourceTypeRef.current = dragState.sourceType
   }
 
+  const isListCrossSectionDrop =
+    dragState.sourceType === 'list' &&
+    sourceContainerId !== null &&
+    overSectionId !== null &&
+    overColumnId !== null &&
+    overSectionId !== sourceContainerId
+
   const isCrossContainerDrop =
+    isListCrossSectionDrop ||
     (overType === 'column' && overId !== sourceContainerId) ||
     overType === 'project' ||
     overType === 'trash' ||
@@ -107,13 +128,34 @@ export const TaskDragOverlay = ({ projects }: TaskDragOverlayProps): React.JSX.E
     primaryTask?.dueDate &&
     new Date(primaryTask.dueDate) < new Date(new Date().setHours(0, 0, 0, 0))
   )
+  const previewVariant = sourceTypeRef.current === 'list' ? 'list' : 'kanban'
 
   return (
     <DragOverlay dropAnimation={effectiveDropAnimation}>
       {isMultiDrag ? (
-        <MultiDragOverlay tasks={draggedTasks} />
+        <MultiDragOverlay
+          tasks={draggedTasks}
+          projects={projects}
+          variant={previewVariant}
+          overlayWidth={overlayWidth}
+          overlayRowVariant={overlayRowVariant}
+          overlayShowProjectBadge={overlayShowProjectBadge}
+          overlayParentProgress={overlayParentProgress}
+          overlayParentExpanded={overlayParentExpanded}
+        />
       ) : (
-        <SingleTaskPreview task={primaryTask} isCompleted={isCompleted} isOverdue={isOverdue} />
+        <SingleTaskPreview
+          task={primaryTask}
+          projects={projects}
+          isCompleted={isCompleted}
+          isOverdue={isOverdue}
+          variant={previewVariant}
+          overlayWidth={overlayWidth}
+          overlayRowVariant={overlayRowVariant}
+          overlayShowProjectBadge={overlayShowProjectBadge}
+          overlayParentProgress={overlayParentProgress}
+          overlayParentExpanded={overlayParentExpanded}
+        />
       )}
     </DragOverlay>
   )
