@@ -4,6 +4,11 @@ import { CSS } from '@dnd-kit/utilities'
 import { ParentTaskRow } from '@/components/tasks/parent-task-row'
 import { useDragContext } from '@/contexts/drag-context'
 import { useDroppedPriorities } from '@/contexts/dropped-priority-context'
+import {
+  resolveSectionDragState,
+  resolveTaskInsertionIndicatorPosition,
+  shouldSuppressCrossSectionListTransform
+} from './list-section-drag-state'
 import type { ParentTaskRowProps } from '@/components/tasks/parent-task-row'
 
 interface SortableParentTaskRowProps
@@ -16,37 +21,11 @@ interface SortableParentTaskRowProps
     | 'dragHandleAttributes'
     | 'droppedPriority'
     | 'insertionIndicatorPosition'
-    | 'isCrossSectionTarget'
+    | 'sectionDragState'
   > {
   sectionId: string
   sectionTaskIds?: string[]
   columnId?: string
-}
-
-const resolveInsertionIndicatorPosition = (
-  dragState: ReturnType<typeof useDragContext>['dragState'],
-  taskId: string,
-  sectionId: string,
-  sectionTaskIds?: string[]
-): 'before' | 'after' | undefined => {
-  if (
-    !dragState.isDragging ||
-    dragState.overType !== 'task' ||
-    dragState.overId !== taskId ||
-    dragState.sourceContainerId !== sectionId ||
-    !dragState.activeId ||
-    dragState.activeId === taskId ||
-    !sectionTaskIds
-  ) {
-    return undefined
-  }
-
-  const activeIndex = sectionTaskIds.indexOf(dragState.activeId)
-  const overIndex = sectionTaskIds.indexOf(taskId)
-
-  if (activeIndex === -1 || overIndex === -1) return undefined
-
-  return activeIndex < overIndex ? 'after' : 'before'
 }
 
 export const SortableParentTaskRow = ({
@@ -54,6 +33,9 @@ export const SortableParentTaskRow = ({
   sectionTaskIds,
   columnId,
   task,
+  showProjectBadge = false,
+  progress,
+  isExpanded,
   className,
   ...rest
 }: SortableParentTaskRowProps): React.JSX.Element => {
@@ -65,7 +47,11 @@ export const SortableParentTaskRow = ({
       sectionId,
       sectionTaskIds,
       columnId,
-      sourceType: 'list'
+      sourceType: 'list',
+      overlayRowVariant: 'parent',
+      overlayShowProjectBadge: showProjectBadge,
+      overlayParentProgress: progress,
+      overlayParentExpanded: isExpanded
     }
   })
 
@@ -73,21 +59,17 @@ export const SortableParentTaskRow = ({
   const droppedPriorities = useDroppedPriorities()
   const isJustDropped = dragState.lastDroppedId === task.id
   const droppedPriority = droppedPriorities.get(task.id) ?? null
-  const insertionIndicatorPosition = resolveInsertionIndicatorPosition(
+  const insertionIndicatorPosition = resolveTaskInsertionIndicatorPosition(
     dragState,
     task.id,
     sectionId,
     sectionTaskIds
   )
-  const isCrossSectionTarget =
-    dragState.isDragging &&
-    dragState.overType === 'task' &&
-    dragState.overId === task.id &&
-    dragState.sourceContainerId !== null &&
-    dragState.sourceContainerId !== sectionId
+  const sectionDragState = resolveSectionDragState(dragState, sectionId)
+  const suppressTransform = shouldSuppressCrossSectionListTransform(dragState)
 
   const style: React.CSSProperties = {
-    transform: CSS.Transform.toString(transform),
+    transform: suppressTransform ? undefined : CSS.Transform.toString(transform),
     transition: transition || 'transform 200ms ease-out'
   }
 
@@ -109,7 +91,10 @@ export const SortableParentTaskRow = ({
         dragHandleAttributes={attributes}
         droppedPriority={droppedPriority}
         insertionIndicatorPosition={insertionIndicatorPosition}
-        isCrossSectionTarget={isCrossSectionTarget}
+        sectionDragState={sectionDragState}
+        progress={progress}
+        isExpanded={isExpanded}
+        showProjectBadge={showProjectBadge}
         className={className}
         {...rest}
       />

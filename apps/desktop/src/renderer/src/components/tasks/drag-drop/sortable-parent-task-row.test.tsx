@@ -1,3 +1,4 @@
+import type React from 'react'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
 
@@ -10,13 +11,18 @@ const useDragContextMock = vi.fn()
 const useDroppedPrioritiesMock = vi.fn()
 
 vi.mock('@dnd-kit/sortable', () => ({
-  useSortable: (options: unknown) => useSortableMock(options)
+  useSortable: (options: unknown) => useSortableMock(options),
+  sortableKeyboardCoordinates: vi.fn(),
+  SortableContext: ({ children }: { children: React.ReactNode }) => children,
+  verticalListSortingStrategy: vi.fn()
 }))
 
 vi.mock('@dnd-kit/utilities', () => ({
   CSS: {
     Transform: {
-      toString: () => undefined
+      toString: (
+        transform: { x: number; y: number; scaleX?: number; scaleY?: number } | null
+      ) => (transform ? `translate3d(${transform.x}px, ${transform.y}px, 0)` : undefined)
     }
   }
 }))
@@ -103,6 +109,8 @@ describe('SortableParentTaskRow', () => {
         sourceContainerId: null,
         overId: null,
         overType: null,
+        overSectionId: null,
+        overColumnId: null,
         draggedTasks: [],
         lastDroppedId: null
       }
@@ -148,5 +156,279 @@ describe('SortableParentTaskRow', () => {
 
     expect(setNodeRef).toHaveBeenCalled()
     expect(screen.getByTestId('drag-handle')).toBeInTheDocument()
+  })
+
+  it('resolves source-section dimming from normalized drag metadata', () => {
+    const project = createProject()
+
+    useDragContextMock.mockReturnValue({
+      dragState: {
+        isDragging: true,
+        activeId: 'task-9',
+        activeIds: ['task-9'],
+        sourceType: 'list',
+        sourceContainerId: 'status-todo',
+        overId: 'task-2',
+        overType: 'task',
+        overSectionId: 'status-done',
+        overColumnId: 'status-done',
+        draggedTasks: [],
+        lastDroppedId: null
+      }
+    })
+
+    render(
+      <SortableParentTaskRow
+        task={createTask()}
+        project={project}
+        projects={[project]}
+        subtasks={[createTask({ id: 'subtask-1', parentId: 'task-1', title: 'Child Task' })]}
+        progress={{ completed: 0, total: 1 }}
+        isExpanded={false}
+        isCompleted={false}
+        sectionId="status-todo"
+        sectionTaskIds={['task-1']}
+        columnId="status-todo"
+        onToggleExpand={vi.fn()}
+        onToggleComplete={vi.fn()}
+      />
+    )
+
+    expect(screen.getByLabelText(/^Task: Parent Task/)).toHaveAttribute(
+      'data-section-drag-state',
+      'source-dimmed'
+    )
+  })
+
+  it('registers parent-row overlay metadata for list drag previews', () => {
+    const project = createProject()
+    const task = createTask()
+
+    render(
+      <SortableParentTaskRow
+        task={task}
+        project={project}
+        projects={[project]}
+        subtasks={[createTask({ id: 'subtask-1', parentId: task.id, title: 'Child Task' })]}
+        progress={{ completed: 1, total: 1 }}
+        isExpanded
+        isCompleted={false}
+        showProjectBadge
+        sectionId="status-todo"
+        sectionTaskIds={['task-1']}
+        columnId="status-todo"
+        onToggleExpand={vi.fn()}
+        onToggleComplete={vi.fn()}
+      />
+    )
+
+    expect(useSortableMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          overlayRowVariant: 'parent',
+          overlayShowProjectBadge: true,
+          overlayParentProgress: { completed: 1, total: 1 },
+          overlayParentExpanded: true
+        })
+      })
+    )
+  })
+
+  it('suppresses target-section transforms for parent rows during cross-section drags', () => {
+    const project = createProject()
+
+    useDragContextMock.mockReturnValue({
+      dragState: {
+        isDragging: true,
+        activeId: 'task-9',
+        activeIds: ['task-9'],
+        sourceType: 'list',
+        sourceContainerId: 'status-todo',
+        overId: 'task-2',
+        overType: 'task',
+        overSectionId: 'status-done',
+        overColumnId: 'status-done',
+        draggedTasks: [],
+        lastDroppedId: null
+      }
+    })
+
+    useSortableMock.mockReturnValue({
+      attributes: { role: 'button' },
+      listeners: { onPointerDown: vi.fn() },
+      setNodeRef,
+      transform: { x: 0, y: 48, scaleX: 1, scaleY: 1 },
+      transition: null,
+      isDragging: false
+    })
+
+    render(
+      <SortableParentTaskRow
+        task={createTask()}
+        project={project}
+        projects={[project]}
+        subtasks={[createTask({ id: 'subtask-1', parentId: 'task-1', title: 'Child Task' })]}
+        progress={{ completed: 0, total: 1 }}
+        isExpanded={false}
+        isCompleted={false}
+        sectionId="status-done"
+        sectionTaskIds={['task-1']}
+        columnId="status-done"
+        onToggleExpand={vi.fn()}
+        onToggleComplete={vi.fn()}
+      />
+    )
+
+    expect((screen.getByTestId('sortable-parent-task-row') as HTMLDivElement).style.transform).toBe(
+      ''
+    )
+  })
+
+  it('suppresses source-section transforms for active parent rows during cross-section drags', () => {
+    const project = createProject()
+
+    useDragContextMock.mockReturnValue({
+      dragState: {
+        isDragging: true,
+        activeId: 'task-1',
+        activeIds: ['task-1'],
+        sourceType: 'list',
+        sourceContainerId: 'status-todo',
+        overId: 'task-9',
+        overType: 'task',
+        overSectionId: 'status-done',
+        overColumnId: 'status-done',
+        overTaskEdge: 'after',
+        sectionDropPosition: null,
+        draggedTasks: [],
+        lastDroppedId: null
+      }
+    })
+
+    useSortableMock.mockReturnValue({
+      attributes: { role: 'button' },
+      listeners: { onPointerDown: vi.fn() },
+      setNodeRef,
+      transform: { x: 0, y: 48, scaleX: 1, scaleY: 1 },
+      transition: null,
+      isDragging: true
+    })
+
+    render(
+      <SortableParentTaskRow
+        task={createTask()}
+        project={project}
+        projects={[project]}
+        subtasks={[createTask({ id: 'subtask-1', parentId: 'task-1', title: 'Child Task' })]}
+        progress={{ completed: 0, total: 1 }}
+        isExpanded={false}
+        isCompleted={false}
+        sectionId="status-todo"
+        sectionTaskIds={['task-1']}
+        columnId="status-todo"
+        onToggleExpand={vi.fn()}
+        onToggleComplete={vi.fn()}
+      />
+    )
+
+    expect((screen.getByTestId('sortable-parent-task-row') as HTMLDivElement).style.transform).toBe(
+      ''
+    )
+  })
+
+  it('keeps sortable transforms enabled for same-section parent reorders', () => {
+    const project = createProject()
+
+    useDragContextMock.mockReturnValue({
+      dragState: {
+        isDragging: true,
+        activeId: 'task-9',
+        activeIds: ['task-9'],
+        sourceType: 'list',
+        sourceContainerId: 'status-done',
+        overId: 'task-1',
+        overType: 'task',
+        overSectionId: 'status-done',
+        overColumnId: 'status-done',
+        overTaskEdge: 'before',
+        sectionDropPosition: null,
+        draggedTasks: [],
+        lastDroppedId: null
+      }
+    })
+
+    useSortableMock.mockReturnValue({
+      attributes: { role: 'button' },
+      listeners: { onPointerDown: vi.fn() },
+      setNodeRef,
+      transform: { x: 0, y: 48, scaleX: 1, scaleY: 1 },
+      transition: null,
+      isDragging: false
+    })
+
+    render(
+      <SortableParentTaskRow
+        task={createTask()}
+        project={project}
+        projects={[project]}
+        subtasks={[createTask({ id: 'subtask-1', parentId: 'task-1', title: 'Child Task' })]}
+        progress={{ completed: 0, total: 1 }}
+        isExpanded={false}
+        isCompleted={false}
+        sectionId="status-done"
+        sectionTaskIds={['task-1', 'task-9']}
+        columnId="status-done"
+        onToggleExpand={vi.fn()}
+        onToggleComplete={vi.fn()}
+      />
+    )
+
+    expect((screen.getByTestId('sortable-parent-task-row') as HTMLDivElement).style.transform).toBe(
+      'translate3d(0px, 48px, 0)'
+    )
+  })
+
+  it('shows a cross-section insertion indicator on the hovered parent row', () => {
+    const project = createProject()
+
+    useDragContextMock.mockReturnValue({
+      dragState: {
+        isDragging: true,
+        activeId: 'task-9',
+        activeIds: ['task-9'],
+        sourceType: 'list',
+        sourceContainerId: 'status-todo',
+        overId: 'task-1',
+        overType: 'task',
+        overSectionId: 'status-done',
+        overColumnId: 'status-done',
+        overTaskEdge: 'before',
+        sectionDropPosition: null,
+        draggedTasks: [],
+        lastDroppedId: null
+      }
+    })
+
+    render(
+      <SortableParentTaskRow
+        task={createTask()}
+        project={project}
+        projects={[project]}
+        subtasks={[createTask({ id: 'subtask-1', parentId: 'task-1', title: 'Child Task' })]}
+        progress={{ completed: 0, total: 1 }}
+        isExpanded={false}
+        isCompleted={false}
+        sectionId="status-done"
+        sectionTaskIds={['task-1']}
+        columnId="status-done"
+        onToggleExpand={vi.fn()}
+        onToggleComplete={vi.fn()}
+      />
+    )
+
+    expect(screen.getByTestId('list-drop-indicator')).toHaveAttribute(
+      'data-drop-indicator',
+      'reorder'
+    )
   })
 })
