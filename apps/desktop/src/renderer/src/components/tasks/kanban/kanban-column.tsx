@@ -5,8 +5,9 @@ import { Download, Plus } from '@/lib/icons'
 
 import { cn } from '@/lib/utils'
 import { StatusIcon } from '@/components/tasks/status-icon'
+import { PriorityBars, PriorityStar } from '@/components/tasks/task-icons'
 import { useDragContext } from '@/contexts/drag-context'
-import type { Task } from '@/data/sample-tasks'
+import { priorityConfig, type Priority, type Task } from '@/data/sample-tasks'
 import type { Project } from '@/data/tasks-data'
 import { SortableKanbanCard } from './kanban-card'
 import { KanbanEmptyColumn } from './kanban-empty-column'
@@ -128,10 +129,16 @@ export const KanbanColumn = ({
       aria-label={`${column.title} column, ${tasks.length} tasks`}
     >
       {/* Column header — outside the bordered card area */}
-      <div className="flex items-center gap-2 py-1.5 px-2">
-        {column.statusType === 'custom' ? (
+      <div className="flex items-center gap-2.5 py-1.5 px-2">
+        {column.id.startsWith('priority-') ? (
+          column.id === 'priority-urgent' ? (
+            <PriorityStar color={priorityConfig.urgent.color!} />
+          ) : (
+            <PriorityBars priority={column.id.replace('priority-', '') as Priority} />
+          )
+        ) : column.statusType === 'custom' ? (
           <span
-            className="w-[10px] h-[10px] rounded-full shrink-0"
+            className="w-2.5 h-2.5 rounded-full shrink-0"
             style={{ backgroundColor: column.color || 'var(--muted-foreground)' }}
           />
         ) : (
@@ -139,13 +146,15 @@ export const KanbanColumn = ({
         )}
         <span
           className={cn(
-            'text-[11px] font-medium truncate',
-            shouldHighlight ? 'text-text-secondary' : 'text-text-tertiary'
+            'text-[13px]/4 font-medium truncate',
+            shouldHighlight ? 'text-text-primary' : 'text-text-secondary'
           )}
         >
           {column.title}
         </span>
-        <span className="text-[11px] text-text-tertiary tabular-nums">{tasks.length}</span>
+        <span className="text-[13px]/4 font-medium text-text-tertiary tabular-nums">
+          {tasks.length}
+        </span>
         <div className="flex-1" />
         {!isDoneColumn && onQuickAdd && !isDragging && (
           <button

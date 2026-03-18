@@ -8,6 +8,7 @@ import { Separator } from '@/components/ui/separator'
 import { SidebarInset, SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar'
 import { Toaster } from '@/components/ui/sonner'
 import { DragProvider, type DragState } from '@/contexts/drag-context'
+import { DroppedPriorityProvider } from '@/contexts/dropped-priority-context'
 import { AIAgentProvider } from '@/contexts/ai-agent-context'
 import { AIInlineProvider } from '@/contexts/ai-inline-context'
 import { SidebarDrillDownProvider } from '@/contexts/sidebar-drill-down'
@@ -456,7 +457,7 @@ function App(): React.JSX.Element {
   )
 
   // Use the comprehensive drag handlers hook
-  const { handleDragEnd: taskDragEnd } = useDragHandlers({
+  const { handleDragEnd: taskDragEnd, droppedPriorities } = useDragHandlers({
     tasks,
     projects,
     onUpdateTask: handleUpdateTask,
@@ -568,7 +569,9 @@ function App(): React.JSX.Element {
             selectedIds={selectedTaskIds}
             onDragEnd={(event, state) => void handleDragEnd(event, state)}
           >
-            {mainContent}
+            <DroppedPriorityProvider value={droppedPriorities}>
+              {mainContent}
+            </DroppedPriorityProvider>
           </DragProvider>
         </SidebarProvider>
         {/* First-run onboarding overlay — shown until user completes or dismisses */}

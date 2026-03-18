@@ -1,4 +1,4 @@
-import type { Task, Priority } from '@/data/sample-tasks'
+import { priorityConfig, type Task, type Priority } from '@/data/sample-tasks'
 import type { Project, SortField, StatusType } from '@/data/tasks-data'
 import { groupByPriority, groupByDueDate } from '@/lib/task-grouping'
 
@@ -112,7 +112,8 @@ export const buildColumnConfig = (
     const allColumns: KanbanColumnDef[] = PRIORITY_COLUMN_ORDER.map((p) => ({
       id: `priority-${p}`,
       title: PRIORITY_COLUMN_LABELS[p],
-      statusType: 'custom' as const
+      statusType: 'custom' as const,
+      color: priorityConfig[p].color ?? undefined
     }))
     const tasksByColumn = new Map<string, Task[]>()
     allColumns.forEach((col) => tasksByColumn.set(col.id, []))
