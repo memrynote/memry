@@ -3,10 +3,11 @@ import { useRef, useEffect, useState, memo } from 'react'
 import { cn } from '@/lib/utils'
 import { formatDueDate, formatDateShort, formatTime } from '@/lib/task-utils'
 import { PriorityBars } from '@/components/tasks/task-icons'
-import { InteractiveStatusIcon } from '@/components/tasks/status-icon'
+import { InteractiveStatusIcon, StatusIcon } from '@/components/tasks/status-icon'
 import { SelectionCheckbox } from '@/components/tasks/bulk-actions'
 import { RepeatIndicator } from '@/components/tasks/repeat-indicator'
 import { InsertionIndicator } from './insertion-indicator'
+import type { SectionDragState } from './list-section-drag-state'
 
 import type { Task, Priority } from '@/data/sample-tasks'
 import type { Project, Status } from '@/data/tasks-data'
@@ -37,7 +38,10 @@ interface TaskRowProps {
   dragHandleAttributes?: Record<string, any>
   droppedPriority?: Priority | null
   insertionIndicatorPosition?: 'before' | 'after'
-  isCrossSectionTarget?: boolean
+  sectionDragState?: SectionDragState
+  renderMode?: 'live' | 'overlay'
+  dataTestId?: string
+  overlayWidth?: number | null
 }
 
 const EXIT_ANIMATION_DURATION = 200
@@ -66,7 +70,8 @@ const arePropsEqual = (prevProps: TaskRowProps, nextProps: TaskRowProps): boolea
   if (prevProps.showDragHandle !== nextProps.showDragHandle) return false
   if (prevProps.droppedPriority !== nextProps.droppedPriority) return false
   if (prevProps.insertionIndicatorPosition !== nextProps.insertionIndicatorPosition) return false
-  if (prevProps.isCrossSectionTarget !== nextProps.isCrossSectionTarget) return false
+  if (prevProps.sectionDragState !== nextProps.sectionDragState) return false
+  if (prevProps.renderMode !== nextProps.renderMode) return false
   return true
 }
 
@@ -88,6 +93,65 @@ const PRIORITY_LABELS: Record<string, string> = {
   low: 'Low',
   none: 'None'
 }
+
+const DragHandleGrip = ({
+  isVisible: _isVisible,
+  className
+}: {
+  isVisible: boolean
+  className?: string
+}): React.JSX.Element => (
+  <div
+    data-testid={_isVisible ? 'overlay-drag-handle' : 'drag-handle'}
+    className={cn('shrink-0 flex items-center justify-center w-5 h-5', className)}
+    aria-label="Drag to reorder"
+  >
+    <svg width="10" height="14" viewBox="0 0 10 14" fill="none" aria-hidden="true">
+      <circle
+        cx="3"
+        cy="3"
+        r="1.5"
+        fill="currentColor"
+        className="text-text-tertiary"
+      />
+      <circle
+        cx="7"
+        cy="3"
+        r="1.5"
+        fill="currentColor"
+        className="text-text-tertiary"
+      />
+      <circle
+        cx="3"
+        cy="7"
+        r="1.5"
+        fill="currentColor"
+        className="text-text-tertiary"
+      />
+      <circle
+        cx="7"
+        cy="7"
+        r="1.5"
+        fill="currentColor"
+        className="text-text-tertiary"
+      />
+      <circle
+        cx="3"
+        cy="11"
+        r="1.5"
+        fill="currentColor"
+        className="text-text-tertiary"
+      />
+      <circle
+        cx="7"
+        cy="11"
+        r="1.5"
+        fill="currentColor"
+        className="text-text-tertiary"
+      />
+    </svg>
+  </div>
+)
 
 const TaskRowComponent = ({
   task,
@@ -113,8 +177,12 @@ const TaskRowComponent = ({
   dragHandleAttributes,
   droppedPriority,
   insertionIndicatorPosition,
-  isCrossSectionTarget = false
+  sectionDragState = 'none',
+  renderMode = 'live',
+  dataTestId,
+  overlayWidth
 }: TaskRowProps): React.JSX.Element => {
+  const isOverlay = renderMode === 'overlay'
   const rowRef = useRef<HTMLDivElement>(null)
   const [isExiting, setIsExiting] = useState(false)
 
@@ -124,7 +192,11 @@ const TaskRowComponent = ({
     }
   }, [isSelected])
 
-  const style: React.CSSProperties | undefined = isExiting
+  const style: React.CSSProperties | undefined = isOverlay
+    ? overlayWidth
+      ? { width: `${overlayWidth}px` }
+      : undefined
+    : isExiting
     ? {
         opacity: 0,
         transform: 'scale(0.98)',
@@ -191,26 +263,41 @@ const TaskRowComponent = ({
     <div
       ref={rowRef}
       style={style}
-      role="button"
-      tabIndex={onClick ? 0 : -1}
-      onClick={handleRowClick}
-      onKeyDown={onClick ? handleRowKeyDown : undefined}
+      role={isOverlay ? undefined : 'button'}
+      tabIndex={isOverlay ? undefined : onClick ? 0 : -1}
+      onClick={isOverlay ? undefined : handleRowClick}
+      onKeyDown={isOverlay ? undefined : onClick ? handleRowKeyDown : undefined}
       className={cn(
-        'group relative flex items-center py-[7px] px-6 gap-3 border-b border-border transition-colors',
-        'hover:bg-accent/50',
-        onClick &&
-          'cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-        isCheckedForSelection && 'bg-primary/10 hover:bg-primary/15',
-        isSelected && !isCheckedForSelection && 'bg-primary/10 ring-2 ring-primary/30',
-        isExiting && 'select-none',
-        isDragging && 'opacity-35 border-dashed border-primary/30 bg-primary/[0.03]',
-        isJustDropped && 'animate-row-drop-flash',
-        isCrossSectionTarget && 'bg-primary/[0.05]',
+        isOverlay
+          ? [
+              'flex w-full items-center gap-2 rounded-md bg-card px-3 py-[7px]',
+              'border-[1.5px] border-[#4C9EFF] cursor-grabbing select-none',
+              '[box-shadow:rgba(0,0,0,0.5)_0px_8px_24px,rgba(76,158,255,0.15)_0px_2px_8px]'
+            ]
+          : [
+              'group relative flex items-center py-[7px] px-6 gap-3 border-b border-border transition-colors',
+              'hover:bg-accent/50',
+              onClick &&
+                'cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+              isCheckedForSelection && 'bg-primary/10 hover:bg-primary/15',
+              isSelected && !isCheckedForSelection && 'bg-primary/10 ring-2 ring-primary/30',
+              isExiting && 'select-none',
+              sectionDragState === 'source-dimmed' && 'opacity-50',
+              sectionDragState === 'target-highlighted' && 'bg-primary/[0.04]',
+              insertionIndicatorPosition === 'before' && 'pt-1',
+              insertionIndicatorPosition === 'after' && 'pb-1',
+              isDragging && 'opacity-[0.35] border-dashed border-primary/30 bg-primary/[0.03]',
+              isJustDropped && 'animate-row-drop-flash'
+            ],
         className
       )}
-      aria-label={`Task: ${task.title}${isCompleted ? ', completed' : ''}`}
+      data-section-drag-state={sectionDragState}
+      data-overlay-row-variant={isOverlay ? 'task' : undefined}
+      data-testid={dataTestId}
+      aria-hidden={isOverlay ? true : undefined}
+      aria-label={isOverlay ? undefined : `Task: ${task.title}${isCompleted ? ', completed' : ''}`}
     >
-      {insertionIndicatorPosition && (
+      {!isOverlay && insertionIndicatorPosition && (
         <InsertionIndicator
           position={insertionIndicatorPosition}
           className="left-6 right-6"
@@ -218,35 +305,18 @@ const TaskRowComponent = ({
         />
       )}
 
-      {isCrossSectionTarget && (
-        <div
-          data-testid="list-drop-indicator"
-          data-drop-indicator="column"
-          className="absolute inset-x-6 bottom-0 h-0.5 rounded-full bg-primary/80 pointer-events-none"
-          aria-hidden="true"
-        />
-      )}
-
       {showDragHandle && (
         <div
-          data-testid="drag-handle"
           className={cn(
-            'shrink-0 flex items-center justify-center w-5 h-5 cursor-grab',
-            'opacity-0 group-hover:opacity-100 transition-opacity duration-150',
-            isDragging && 'opacity-100 cursor-grabbing'
+            isOverlay
+              ? 'cursor-grabbing'
+              : 'cursor-grab opacity-0 group-hover:opacity-100 transition-opacity duration-150',
+            isDragging && !isOverlay && 'opacity-100 cursor-grabbing'
           )}
-          {...dragHandleAttributes}
-          {...dragHandleListeners}
-          aria-label="Drag to reorder"
+          {...(isOverlay ? {} : dragHandleAttributes)}
+          {...(isOverlay ? {} : dragHandleListeners)}
         >
-          <svg width="10" height="14" viewBox="0 0 10 14" fill="none" aria-hidden="true">
-            <circle cx="3" cy="3" r="1.5" fill="currentColor" className="text-text-tertiary" />
-            <circle cx="7" cy="3" r="1.5" fill="currentColor" className="text-text-tertiary" />
-            <circle cx="3" cy="7" r="1.5" fill="currentColor" className="text-text-tertiary" />
-            <circle cx="7" cy="7" r="1.5" fill="currentColor" className="text-text-tertiary" />
-            <circle cx="3" cy="11" r="1.5" fill="currentColor" className="text-text-tertiary" />
-            <circle cx="7" cy="11" r="1.5" fill="currentColor" className="text-text-tertiary" />
-          </svg>
+          <DragHandleGrip isVisible={isOverlay} />
         </div>
       )}
 
@@ -261,12 +331,16 @@ const TaskRowComponent = ({
         </div>
       )}
 
-      <InteractiveStatusIcon
-        type={statusType}
-        color={statusColor}
-        isCompleted={isCompleted}
-        onClick={handleToggleComplete}
-      />
+      {isOverlay ? (
+        <StatusIcon type={isCompleted ? 'done' : statusType} color={statusColor} size="lg" />
+      ) : (
+        <InteractiveStatusIcon
+          type={statusType}
+          color={statusColor}
+          isCompleted={isCompleted}
+          onClick={handleToggleComplete}
+        />
+      )}
 
       <PriorityBars priority={task.priority} />
 
@@ -274,21 +348,30 @@ const TaskRowComponent = ({
         className={cn(
           'text-[13px] leading-4 grow shrink basis-0 truncate',
           isExiting || isCompleted
-            ? 'text-text-tertiary line-through decoration-1 [text-underline-position:from-font]'
-            : 'text-text-primary'
+            ? isOverlay
+              ? 'text-text-tertiary line-through decoration-1 [text-underline-position:from-font]'
+              : 'text-text-tertiary line-through decoration-1 [text-underline-position:from-font]'
+            : isOverlay
+              ? 'text-card-foreground font-medium'
+              : 'text-text-primary'
         )}
       >
         {task.title}
       </span>
 
       {task.isRepeating && task.repeatConfig && (
-        <RepeatIndicator config={task.repeatConfig} size="sm" />
+        <RepeatIndicator config={task.repeatConfig} size="sm" showTooltip={!isOverlay} />
       )}
 
       {showProjectBadge && (
         <div className="flex items-center shrink-0 gap-[5px]">
           <div className="rounded-xs shrink-0 size-2" style={{ backgroundColor: project.color }} />
-          <div className="text-[11px] text-text-tertiary leading-3.5 truncate max-w-[100px]">
+          <div
+            className={cn(
+              'text-[11px] leading-3.5 truncate max-w-[100px]',
+              'text-text-tertiary'
+            )}
+          >
             {project.name}
           </div>
         </div>
@@ -298,7 +381,11 @@ const TaskRowComponent = ({
         <div
           className={cn(
             'text-[11px] shrink-0 text-right leading-3.5 whitespace-nowrap',
-            'colorClass' in dueDateDisplay && dueDateDisplay.colorClass
+            'colorClass' in dueDateDisplay
+              ? dueDateDisplay.colorClass
+              : isOverlay
+                ? 'text-text-tertiary'
+                : null
           )}
           style={'colorStyle' in dueDateDisplay ? { color: dueDateDisplay.colorStyle } : undefined}
         >
@@ -306,7 +393,7 @@ const TaskRowComponent = ({
         </div>
       )}
 
-      {droppedPriority && (
+      {!isOverlay && droppedPriority && (
         <div className="flex items-center shrink-0 gap-1 px-2 py-0.5 bg-primary/10 rounded text-[10px] font-medium text-primary animate-fade-out">
           priority: {PRIORITY_LABELS[droppedPriority] ?? droppedPriority}
         </div>
