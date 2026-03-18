@@ -50,6 +50,8 @@ export interface DragState {
   overType: DropTargetType
   /** Tasks being dragged (for overlay) */
   draggedTasks: Task[]
+  /** ID of the task that was just dropped (for flash animation) */
+  lastDroppedId: string | null
 }
 
 export interface DragContextValue {
@@ -93,7 +95,8 @@ const initialDragState: DragState = {
   sourceContainerId: null,
   overId: null,
   overType: null,
-  draggedTasks: []
+  draggedTasks: [],
+  lastDroppedId: null
 }
 
 // ============================================================================
@@ -127,9 +130,45 @@ const createCollisionDetection = (): CollisionDetection => {
       return [dateCollision]
     }
 
-    // Check for column drop zones (status groups in list view)
-    // Use rectIntersection for larger hit area
+    // Compute rect intersections once — used by same-column gate, column check, and section check
     const rectCollisions = rectIntersection(args)
+
+    // Same-column task reorder for kanban:
+    // Only when the dragged card still physically overlaps its source column.
+    // Without this spatial gate, closestCenter (a global algorithm) always finds
+    // a source-column task even when the pointer is over a different column.
+    const activeColumnId = args.active?.data?.current?.columnId
+    if (activeColumnId) {
+      const isOverSourceColumn = rectCollisions.some((collision) => {
+        const data = collision.data?.droppableContainer?.data?.current
+        return data?.type === 'column' && data?.columnId === activeColumnId
+      })
+
+      if (isOverSourceColumn) {
+        const closestResults = closestCenter(args)
+        const sameColumnTask = closestResults.find((collision) => {
+          const data = collision.data?.droppableContainer?.data?.current
+          return data?.type === 'task' && data?.columnId === activeColumnId
+        })
+        if (sameColumnTask) return [sameColumnTask]
+      } else {
+        const targetColumn = rectCollisions.find((collision) => {
+          const data = collision.data?.droppableContainer?.data?.current
+          return data?.type === 'column' && data?.columnId !== activeColumnId
+        })
+        if (targetColumn) {
+          const targetColumnId = targetColumn.data?.droppableContainer?.data?.current?.columnId
+          const closestResults = closestCenter(args)
+          const crossColumnTask = closestResults.find((collision) => {
+            const data = collision.data?.droppableContainer?.data?.current
+            return data?.type === 'task' && data?.columnId === targetColumnId
+          })
+          if (crossColumnTask) return [crossColumnTask]
+        }
+      }
+    }
+
+    // Column drop zones (cross-column kanban drops, list view status groups)
     const columnCollision = rectCollisions.find((collision) => {
       const type = collision.data?.droppableContainer?.data?.current?.type
       return type === 'column'
@@ -264,7 +303,8 @@ export const DragProvider = ({
         sourceContainerId: activeData?.sectionId || activeData?.columnId || null,
         overId: null,
         overType: null,
-        draggedTasks
+        draggedTasks,
+        lastDroppedId: null
       }
 
       setDragStateInternal(newState)
@@ -312,9 +352,16 @@ export const DragProvider = ({
   // Handle drag end
   const handleDragEnd = useCallback(
     (event: DragEndEvent) => {
-      // Call external callback before reset
+      const droppedId = dragState.activeId
       onDragEndCallback?.(event, dragState)
       resetDragState()
+
+      if (droppedId && event.over) {
+        setTimeout(() => {
+          setDragStateInternal((prev) => ({ ...prev, lastDroppedId: droppedId }))
+          setTimeout(() => setDragStateInternal((prev) => ({ ...prev, lastDroppedId: null })), 1100)
+        }, 200)
+      }
     },
     [dragState, resetDragState, onDragEndCallback]
   )

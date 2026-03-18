@@ -73,25 +73,41 @@ export interface Task {
 
 export const priorityConfig: Record<
   Priority,
-  { color: string | null; label: string | null; order: number }
+  { color: string | null; bgColor: string | null; label: string | null; order: number }
 > = {
-  none: { color: null, label: null, order: 4 },
-  low: { color: '#6b7280', label: 'Low', order: 3 },
-  medium: { color: '#f59e0b', label: 'Medium', order: 2 },
-  high: { color: '#f97316', label: 'High', order: 1 },
-  urgent: { color: '#ef4444', label: 'Urgent', order: 0 }
+  none: { color: null, bgColor: null, label: null, order: 4 },
+  low: {
+    color: 'var(--task-priority-low)',
+    bgColor: 'var(--task-priority-low-bg)',
+    label: 'Low',
+    order: 3
+  },
+  medium: {
+    color: 'var(--task-priority-medium)',
+    bgColor: 'var(--task-priority-medium-bg)',
+    label: 'Medium',
+    order: 2
+  },
+  high: {
+    color: 'var(--task-priority-high)',
+    bgColor: 'var(--task-priority-high-bg)',
+    label: 'High',
+    order: 1
+  },
+  urgent: {
+    color: 'var(--task-priority-urgent)',
+    bgColor: 'var(--task-priority-urgent-bg)',
+    label: 'Urgent',
+    order: 0
+  }
 }
 
-// ============================================================================
-// PRIORITY CSS VARIABLE MAPPING
-// ============================================================================
-
-export const PRIORITY_CSS_VARS: Record<Priority, { text: string; bg: string } | null> = {
-  none: null,
-  low: { text: 'var(--task-priority-low)', bg: 'var(--task-priority-low-bg)' },
-  medium: { text: 'var(--task-priority-medium)', bg: 'var(--task-priority-medium-bg)' },
-  high: { text: 'var(--task-priority-high)', bg: 'var(--task-priority-high-bg)' },
-  urgent: { text: 'var(--task-priority-urgent)', bg: 'var(--task-priority-urgent-bg)' }
+export const PRIORITY_TEXT_CLASSES: Record<Priority, string> = {
+  urgent: 'text-task-priority-urgent',
+  high: 'text-task-priority-high',
+  medium: 'text-task-priority-medium',
+  low: 'text-task-priority-low',
+  none: 'text-muted-foreground'
 }
 
 // ============================================================================

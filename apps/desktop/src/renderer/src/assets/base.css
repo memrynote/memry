@@ -315,13 +315,13 @@
 
     /* Priority */
     --task-priority-urgent: #ef4444;
-    --task-priority-urgent-bg: #fef2f2;
+    --task-priority-urgent-bg: rgba(239, 68, 68, 0.12);
     --task-priority-high: #f97316;
-    --task-priority-high-bg: #fff7ed;
+    --task-priority-high-bg: rgba(249, 115, 22, 0.12);
     --task-priority-medium: #f59e0b;
-    --task-priority-medium-bg: #fffbeb;
+    --task-priority-medium-bg: rgba(245, 158, 11, 0.12);
     --task-priority-low: #6b7280;
-    --task-priority-low-bg: #f3f4f6;
+    --task-priority-low-bg: rgba(107, 114, 128, 0.12);
 
     /* Due date status */
     --task-due-overdue: #dc2626;
@@ -442,13 +442,13 @@
 
     /* Priority */
     --task-priority-urgent: #ef4444;
-    --task-priority-urgent-bg: #fef2f2;
+    --task-priority-urgent-bg: rgba(239, 68, 68, 0.12);
     --task-priority-high: #f97316;
-    --task-priority-high-bg: #fff7ed;
+    --task-priority-high-bg: rgba(249, 115, 22, 0.12);
     --task-priority-medium: #f59e0b;
-    --task-priority-medium-bg: #fffbeb;
+    --task-priority-medium-bg: rgba(245, 158, 11, 0.12);
     --task-priority-low: #6b7280;
-    --task-priority-low-bg: #f9fafb;
+    --task-priority-low-bg: rgba(107, 114, 128, 0.12);
 
     /* Due date status */
     --task-due-overdue: #dc2626;
@@ -1010,6 +1010,23 @@ div.react-sigma {
   100% {
     transform: scale(1);
   }
+}
+
+/* Drop flash — blue highlight fade on kanban card drop */
+@keyframes drop-flash {
+  0% {
+    background-color: rgb(59 130 246 / 0.12);
+    border-color: rgb(59 130 246 / 0.4);
+  }
+
+  100% {
+    background-color: transparent;
+    border-color: transparent;
+  }
+}
+
+.animate-drop-flash {
+  animation: drop-flash 1s var(--ease-out) forwards;
 }
 
 /* Checkmark draw animation (SVG) */

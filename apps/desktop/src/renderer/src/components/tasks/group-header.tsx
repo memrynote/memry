@@ -2,7 +2,7 @@ import { Calendar, ChevronDown, Clock } from '@/lib/icons'
 
 import { cn } from '@/lib/utils'
 import { PriorityBars, PriorityStar } from '@/components/tasks/task-icons'
-import type { Priority } from '@/data/sample-tasks'
+import { priorityConfig, type Priority } from '@/data/sample-tasks'
 import type { SortField } from '@/data/tasks-data'
 
 // ============================================================================
@@ -41,17 +41,16 @@ const getGroupBgColor = (
     return 'var(--task-complete-bg)'
   }
 
+  if (sortField === 'priority') {
+    return priorityConfig[groupKey as Priority]?.bgColor ?? undefined
+  }
+
   if (!color) return undefined
 
   const rgb = hexToRgb(color)
   if (!rgb) return undefined
 
-  if (
-    sortField === 'dueDate' ||
-    sortField === 'priority' ||
-    sortField === 'project' ||
-    sortField === 'createdAt'
-  ) {
+  if (sortField === 'dueDate' || sortField === 'project' || sortField === 'createdAt') {
     return `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.10)`
   }
 
@@ -68,19 +67,22 @@ export const GroupHeader = ({
   onToggle
 }: GroupHeaderProps): React.JSX.Element => {
   const labelColor = (() => {
-    if (color && (sortField === 'priority' || sortField === 'dueDate' || sortField === 'createdAt'))
-      return color
+    if (sortField === 'priority') return priorityConfig[groupKey as Priority]?.color ?? undefined
+    if (color && (sortField === 'dueDate' || sortField === 'createdAt')) return color
     if (DONE_GROUP_KEYS.has(groupKey)) return 'var(--task-complete)'
     return undefined
   })()
 
   const bgColor = getGroupBgColor(sortField, groupKey, color)
   const isDoneGroup = DONE_GROUP_KEYS.has(groupKey)
+  const isPriorityGroup = sortField === 'priority'
   const hoverBgColor = isDoneGroup
     ? 'var(--task-complete-bg)'
-    : bgColor
-      ? bgColor.replace('0.10)', '0.16)')
-      : undefined
+    : isPriorityGroup
+      ? bgColor
+      : bgColor
+        ? bgColor.replace('0.10)', '0.16)')
+        : undefined
 
   return (
     <button

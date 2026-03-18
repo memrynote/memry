@@ -3,47 +3,27 @@ import * as React from 'react'
 import { cn } from '@/lib/utils'
 import { CheckMark } from '@/components/ui/check-mark'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
-import { PRIORITY_CSS_VARS, priorityConfig, type Priority } from '@/data/sample-tasks'
+import { priorityConfig, type Priority } from '@/data/sample-tasks'
 import type { PriorityBadgeVariant } from './task-badges'
 import { PriorityIcon } from './task-icons'
 
 const PRIORITY_OPTIONS: {
   value: Priority
   label: string
-  color: string
-  bg: string
+  color: string | null
+  bg: string | null
   shortcut: string
 }[] = [
-  {
-    value: 'urgent',
-    label: 'Urgent',
-    color: 'var(--task-priority-urgent)',
-    bg: 'var(--task-priority-urgent-bg)',
-    shortcut: '1'
-  },
-  {
-    value: 'high',
-    label: 'High',
-    color: 'var(--task-priority-high)',
-    bg: 'var(--task-priority-high-bg)',
-    shortcut: '2'
-  },
-  {
-    value: 'medium',
-    label: 'Medium',
-    color: 'var(--task-priority-medium)',
-    bg: 'var(--task-priority-medium-bg)',
-    shortcut: '3'
-  },
-  {
-    value: 'low',
-    label: 'Low',
-    color: 'var(--task-priority-low)',
-    bg: 'var(--task-priority-medium-bg)',
-    shortcut: '4'
-  },
-  { value: 'none', label: 'None', color: '', bg: '', shortcut: '5' }
+  { value: 'urgent', ...pick(priorityConfig.urgent), shortcut: '1' },
+  { value: 'high', ...pick(priorityConfig.high), shortcut: '2' },
+  { value: 'medium', ...pick(priorityConfig.medium), shortcut: '3' },
+  { value: 'low', ...pick(priorityConfig.low), shortcut: '4' },
+  { value: 'none', ...pick(priorityConfig.none), shortcut: '5' }
 ]
+
+function pick(c: { color: string | null; bgColor: string | null; label: string | null }) {
+  return { label: c.label ?? 'None', color: c.color, bg: c.bgColor }
+}
 
 interface InteractivePriorityBadgeProps {
   priority: Priority
@@ -66,7 +46,6 @@ export const InteractivePriorityBadge = ({
 }: InteractivePriorityBadgeProps): React.JSX.Element => {
   const [isOpen, setIsOpen] = React.useState(false)
   const config = priorityConfig[priority]
-  const cssVars = PRIORITY_CSS_VARS[priority]
 
   const compactLabels: Record<Priority, string> = {
     none: 'None',
@@ -100,18 +79,18 @@ export const InteractivePriorityBadge = ({
         <button
           type="button"
           className={cn(
-            'flex items-center rounded-sm py-0.5 px-2 gap-1 cursor-pointer transition-opacity',
+            'flex items-center rounded-sm py-px px-[7px] gap-1 cursor-pointer transition-opacity [font-synthesis:none] antialiased',
             'hover:opacity-80 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring',
             fixedWidth && 'w-[70px] justify-start',
             className
           )}
-          style={cssVars ? { backgroundColor: cssVars.bg } : undefined}
+          style={config.bgColor ? { backgroundColor: config.bgColor } : undefined}
           aria-label={`Priority: ${config.label || 'none'}. Click to change.`}
         >
           <PriorityIcon priority={priority} />
           <div
             className="text-[11px] font-medium leading-3.5"
-            style={{ color: cssVars?.text ?? 'var(--text-tertiary)' }}
+            style={{ color: config.color ?? 'var(--text-tertiary)' }}
           >
             {displayLabel}
           </div>
@@ -137,7 +116,9 @@ export const InteractivePriorityBadge = ({
                   'flex items-center rounded-[7px] py-2 px-3 gap-2 transition-colors',
                   'hover:bg-accent focus:outline-none'
                 )}
-                style={isSelected && !isNone ? { backgroundColor: option.bg } : undefined}
+                style={
+                  isSelected && !isNone && option.bg ? { backgroundColor: option.bg } : undefined
+                }
               >
                 <PriorityIcon
                   priority={option.value}
@@ -152,11 +133,15 @@ export const InteractivePriorityBadge = ({
                         ? 'text-text-secondary'
                         : 'font-medium'
                   )}
-                  style={isSelected && !isNone ? { color: option.color } : undefined}
+                  style={
+                    isSelected && !isNone && option.color ? { color: option.color } : undefined
+                  }
                 >
                   {option.label}
                 </div>
-                {isSelected && !isNone && <CheckMark color={option.color} className="ml-auto" />}
+                {isSelected && !isNone && option.color && (
+                  <CheckMark color={option.color} className="ml-auto" />
+                )}
                 <div
                   className={cn(
                     'text-[10px] text-text-tertiary font-[family-name:var(--font-mono)] leading-3',
