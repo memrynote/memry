@@ -17,9 +17,8 @@ vi.mock('@dnd-kit/sortable', () => ({
 vi.mock('@dnd-kit/utilities', () => ({
   CSS: {
     Transform: {
-      toString: (
-        transform: { x: number; y: number; scaleX?: number; scaleY?: number } | null
-      ) => (transform ? `translate3d(${transform.x}px, ${transform.y}px, 0)` : undefined)
+      toString: (transform: { x: number; y: number; scaleX?: number; scaleY?: number } | null) =>
+        transform ? `translate3d(${transform.x}px, ${transform.y}px, 0)` : undefined
     }
   }
 }))

@@ -50,10 +50,8 @@ const isCompletedTask = (task: Task, projects: Project[]): boolean => {
 const resolveRowVariant = (task: Task, preferred?: OverlayRowVariant | null): OverlayRowVariant =>
   preferred ?? (task.subtaskIds.length > 0 ? 'parent' : 'task')
 
-const resolveParentProgress = (
-  task: Task,
-  progress?: SubtaskProgress | null
-): SubtaskProgress => progress ?? { completed: 0, total: task.subtaskIds.length }
+const resolveParentProgress = (task: Task, progress?: SubtaskProgress | null): SubtaskProgress =>
+  progress ?? { completed: 0, total: task.subtaskIds.length }
 
 const ListGhostRow = ({
   task,
@@ -112,11 +110,7 @@ const ListGhostRow = ({
       />
     )
 
-  return (
-    <div className="pointer-events-none">
-      {content}
-    </div>
-  )
+  return <div className="pointer-events-none">{content}</div>
 }
 
 export const MultiDragOverlay = ({

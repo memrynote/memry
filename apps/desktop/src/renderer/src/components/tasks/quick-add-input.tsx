@@ -279,7 +279,9 @@ export const QuickAddInput = ({
     // Let autocomplete handle navigation keys when visible
     if (showAutocomplete && autocompleteOptions.length > 0) {
       const lastWord = value.trim().split(/\s+/).pop() ?? ''
-      const hasExactAutocompleteMatch = autocompleteOptions.some((option) => option.value === lastWord)
+      const hasExactAutocompleteMatch = autocompleteOptions.some(
+        (option) => option.value === lastWord
+      )
 
       if (['ArrowDown', 'ArrowUp', 'Tab'].includes(e.key)) {
         return // Let AutocompleteDropdown handle these
