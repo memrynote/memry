@@ -12,16 +12,10 @@ import { KanbanBoard } from '@/components/tasks/kanban'
 import { QuickAddInput } from '@/components/tasks/quick-add-input'
 import { TaskDetailDrawer } from '@/components/tasks/task-detail-drawer'
 import {
-  ClearCompletedMenu,
-  ArchiveConfirmDialog,
-  DeleteCompletedDialog,
-  ArchivedView
-} from '@/components/tasks/completed'
-import {
   FilterBar,
   FilterDropdown,
   FilterEmptyState,
-  SortDropdown
+  GroupByDropdown
 } from '@/components/tasks/filters'
 import { cn } from '@/lib/utils'
 import { extractErrorMessage } from '@/lib/ipc-error'
@@ -31,12 +25,12 @@ import {
   getDefaultDoneStatus,
   startOfDay,
   getCompletedTasks,
-  getArchivedTasks,
-  getTasksOlderThan,
+  getCompletedTodayTasks,
   formatDateShort,
   getTodayTasks,
   countActiveFilters,
-  scopeTasksByProject
+  scopeTasksByProject,
+  applyFiltersAndSort
 } from '@/lib/task-utils'
 import {
   type Project,
@@ -126,7 +120,8 @@ export const TasksPage = ({
     deleteTask: contextDeleteTask,
     addProject: contextAddProject,
     updateProject: contextUpdateProject,
-    deleteProject: contextDeleteProject
+    deleteProject: contextDeleteProject,
+    getOrderedTasks
   } = useTasksContext()
 
   // T051-T054: Undo tracking for Cmd+Z support
@@ -168,7 +163,6 @@ export const TasksPage = ({
 
   // View mode state
   const [activeView, setActiveViewRaw] = useState<ViewMode>('list')
-  const preKanbanSortRef = useRef<import('@/data/tasks-data').TaskSort | null>(null)
 
   // Internal tab state for the new tab bar navigation (default to Today)
   const [activeInternalTab, setActiveInternalTab] = useState<TasksInternalTab>('today')
@@ -195,17 +189,6 @@ export const TasksPage = ({
   const [addTaskPrefillDueDate, setAddTaskPrefillDueDate] = useState<Date | null>(null)
   const [addTaskPrefillProjectId, setAddTaskPrefillProjectId] = useState<string | null>(null)
 
-  // Completed/Archive view states
-  const [showArchivedView, setShowArchivedView] = useState(false)
-  const [isClearMenuOpen, setIsClearMenuOpen] = useState(false)
-  const [isArchiveDialogOpen, setIsArchiveDialogOpen] = useState(false)
-  const [archiveDialogVariant, setArchiveDialogVariant] = useState<'all' | 'older-than'>('all')
-  const [archiveOlderThanDays, setArchiveOlderThanDays] = useState(7)
-  const [isDeleteCompletedDialogOpen, setIsDeleteCompletedDialogOpen] = useState(false)
-  const [deleteCompletedVariant, setDeleteCompletedVariant] = useState<'completed' | 'archived'>(
-    'completed'
-  )
-
   const [isFilterDropdownOpen, setIsFilterDropdownOpen] = useState(false)
 
   // Filter state with persistence
@@ -223,19 +206,9 @@ export const TasksPage = ({
     persistFilters: true
   })
 
-  const setActiveView = useCallback(
-    (view: ViewMode) => {
-      if (view === 'kanban' && activeView !== 'kanban') {
-        preKanbanSortRef.current = { ...sort }
-        updateSort({ field: 'status', direction: sort.direction })
-      } else if (view !== 'kanban' && activeView === 'kanban' && preKanbanSortRef.current) {
-        updateSort(preKanbanSortRef.current)
-        preKanbanSortRef.current = null
-      }
-      setActiveViewRaw(view)
-    },
-    [activeView, sort, updateSort]
-  )
+  const setActiveView = useCallback((view: ViewMode) => {
+    setActiveViewRaw(view)
+  }, [])
 
   // Saved filters
   const {
@@ -298,7 +271,7 @@ export const TasksPage = ({
   }, [selectedId, selectedType, projects])
 
   const availableViews = useMemo((): ViewMode[] => {
-    if (activeInternalTab === 'today' || activeInternalTab === 'done') {
+    if (activeInternalTab === 'today') {
       return ['list']
     }
     return ['list', 'kanban', 'calendar']
@@ -325,6 +298,14 @@ export const TasksPage = ({
     projects
   })
 
+  // Kanban needs completed tasks for the Done column — filteredTasks excludes them
+  const kanbanTasks = useMemo(() => {
+    if (activeView !== 'kanban') return filteredTasks
+    const nonArchived = tasks.filter((t) => !t.archivedAt)
+    const scoped = scopeTasksByProject(nonArchived, selectedProjectId)
+    return applyFiltersAndSort(scoped, { ...filters, completion: 'all' }, sort, projects)
+  }, [activeView, filteredTasks, tasks, selectedProjectId, filters, sort, projects])
+
   // Check if we should show the filter empty state
   const showFilterEmptyState = filtersActive && filteredCount === 0 && totalCount > 0
 
@@ -339,12 +320,8 @@ export const TasksPage = ({
       return todayFilteredTasks
     }
 
-    if (activeInternalTab === 'done') {
-      return scopeTasksByProject(getCompletedTasks(tasks), selectedProjectId)
-    }
-
     return filteredTasks
-  }, [activeInternalTab, filteredTasks, projects, tasks, selectedProjectId])
+  }, [activeInternalTab, filteredTasks, todayFilteredTasks])
 
   const visibleTaskIds = useMemo(() => selectionScopeTasks.map((t) => t.id), [selectionScopeTasks])
 
@@ -416,14 +393,22 @@ export const TasksPage = ({
     const todayCount =
       todayResult.overdue.filter((t) => t.parentId === null).length +
       todayResult.today.filter((t) => t.parentId === null).length
-    const doneCount = getCompletedTasks(scopedTasks).length
 
     return {
       today: todayCount,
-      all: allActive.length,
-      done: doneCount
+      all: allActive.length
     }
   }, [tasks, projects, selectedProjectId])
+
+  const allTabDoneTasks = useMemo(
+    () => scopeTasksByProject(getCompletedTasks(tasks), selectedProjectId),
+    [tasks, selectedProjectId]
+  )
+
+  const todayTabDoneTasks = useMemo(
+    () => scopeTasksByProject(getCompletedTodayTasks(tasks), selectedProjectId),
+    [tasks, selectedProjectId]
+  )
 
   // Visibility constants
   const showFilterBar = true
@@ -854,174 +839,6 @@ export const TasksPage = ({
     [selectedProject, selectedType, selectedProjectId, taskPrefs.defaultProjectId]
   )
 
-  // ========== ARCHIVE HANDLERS (unused after refactor, kept for potential future use) ==========
-
-  const _handleUncompleteTask = useCallback(
-    (taskId: string): void => {
-      const task = tasks.find((t) => t.id === taskId)
-      if (!task) return
-
-      const project = projects.find((p) => p.id === task.projectId)
-      if (!project) return
-
-      const todoStatus = getDefaultTodoStatus(project)
-
-      setTasks((prev) =>
-        prev.map((t) =>
-          t.id === taskId ? { ...t, statusId: todoStatus?.id || t.statusId, completedAt: null } : t
-        )
-      )
-
-      toast.success('Task restored to active')
-    },
-    [tasks, projects, setTasks]
-  )
-
-  const _handleArchiveTask = useCallback(
-    (taskId: string): void => {
-      setTasks((prev) => prev.map((t) => (t.id === taskId ? { ...t, archivedAt: new Date() } : t)))
-
-      toast.success('Task archived', {
-        duration: 10000, // T052: 10-second timeout for undo per spec
-        action: {
-          label: 'Undo',
-          onClick: () => {
-            setTasks((prev) => prev.map((t) => (t.id === taskId ? { ...t, archivedAt: null } : t)))
-          }
-        }
-      })
-    },
-    [setTasks]
-  )
-
-  const _handleUnarchiveTask = useCallback(
-    (taskId: string): void => {
-      setTasks((prev) => prev.map((t) => (t.id === taskId ? { ...t, archivedAt: null } : t)))
-
-      toast.success('Task restored to completed')
-    },
-    [setTasks]
-  )
-
-  const _handleDeleteCompletedTask = useCallback(
-    (taskId: string): void => {
-      const task = tasks.find((t) => t.id === taskId)
-      if (!task) return
-
-      const deletedTask = { ...task }
-
-      setTasks((prev) => prev.filter((t) => t.id !== taskId))
-
-      toast.success('Task deleted', {
-        duration: 10000, // T052: 10-second timeout for undo per spec
-        action: {
-          label: 'Undo',
-          onClick: () => {
-            setTasks((prev) => [...prev, deletedTask])
-          }
-        }
-      })
-    },
-    [tasks, setTasks]
-  )
-
-  // Calendar tasks for CalendarView (kept for potential future use)
-  const _calendarTasks = useMemo(() => {
-    if (selectedType === 'project') {
-      return tasks.filter((t) => t.projectId === selectedId)
-    }
-    return tasks
-  }, [selectedType, selectedId, tasks])
-
-  // ========== ARCHIVE ACTIONS ==========
-
-  const handleViewArchived = useCallback((): void => {
-    setShowArchivedView(true)
-  }, [])
-
-  const handleBackFromArchived = useCallback((): void => {
-    setShowArchivedView(false)
-  }, [])
-
-  const handleOpenClearMenu = useCallback((): void => {
-    setIsClearMenuOpen(true)
-  }, [])
-
-  const completedTasksForActions = useMemo(() => getCompletedTasks(tasks), [tasks])
-
-  const archivedTasksForActions = useMemo(() => getArchivedTasks(tasks), [tasks])
-
-  const handleArchiveAll = useCallback((): void => {
-    setArchiveDialogVariant('all')
-    setIsArchiveDialogOpen(true)
-  }, [])
-
-  const handleArchiveOlderThan = useCallback((days: number): void => {
-    setArchiveOlderThanDays(days)
-    setArchiveDialogVariant('older-than')
-    setIsArchiveDialogOpen(true)
-  }, [])
-
-  const handleConfirmArchive = useCallback(async (): Promise<void> => {
-    let tasksToArchive: Task[]
-    if (archiveDialogVariant === 'all') {
-      tasksToArchive = completedTasksForActions
-    } else {
-      tasksToArchive = getTasksOlderThan(completedTasksForActions, archiveOlderThanDays)
-    }
-
-    // Archive each task via handleUpdateTask to trigger database save
-    for (const task of tasksToArchive) {
-      await handleUpdateTask(task.id, { archivedAt: new Date() })
-    }
-
-    toast.success(`${tasksToArchive.length} task${tasksToArchive.length !== 1 ? 's' : ''} archived`)
-    setIsArchiveDialogOpen(false)
-  }, [archiveDialogVariant, archiveOlderThanDays, completedTasksForActions, handleUpdateTask])
-
-  const tasksToArchiveCount = useMemo((): number => {
-    if (archiveDialogVariant === 'all') {
-      return completedTasksForActions.length
-    }
-    return getTasksOlderThan(completedTasksForActions, archiveOlderThanDays).length
-  }, [archiveDialogVariant, archiveOlderThanDays, completedTasksForActions])
-
-  const handleDeleteAllCompleted = useCallback((): void => {
-    setDeleteCompletedVariant('completed')
-    setIsDeleteCompletedDialogOpen(true)
-  }, [])
-
-  const handleDeleteAllArchived = useCallback((): void => {
-    setDeleteCompletedVariant('archived')
-    setIsDeleteCompletedDialogOpen(true)
-  }, [])
-
-  const handleConfirmDeleteCompleted = useCallback(async (): Promise<void> => {
-    let tasksToDelete: Task[]
-    if (deleteCompletedVariant === 'completed') {
-      tasksToDelete = completedTasksForActions
-    } else {
-      tasksToDelete = archivedTasksForActions
-    }
-
-    // Delete each task via handleDeleteTask to trigger database delete
-    for (const task of tasksToDelete) {
-      await handleDeleteTask(task.id)
-    }
-
-    toast.success(
-      `${tasksToDelete.length} task${tasksToDelete.length !== 1 ? 's' : ''} deleted permanently`
-    )
-    setIsDeleteCompletedDialogOpen(false)
-  }, [deleteCompletedVariant, completedTasksForActions, archivedTasksForActions, handleDeleteTask])
-
-  const tasksToDeleteCount = useMemo((): number => {
-    if (deleteCompletedVariant === 'completed') {
-      return completedTasksForActions.length
-    }
-    return archivedTasksForActions.length
-  }, [deleteCompletedVariant, completedTasksForActions, archivedTasksForActions])
-
   // ========== BULK ACTION HANDLERS ==========
 
   const handleBulkChangePriority = useCallback(
@@ -1220,8 +1037,8 @@ export const TasksPage = ({
               </button>
             </FilterDropdown>
 
-            {/* Sort Button */}
-            <SortDropdown sort={sort} onChange={updateSort} />
+            {/* Group By Button */}
+            <GroupByDropdown sort={sort} onChange={updateSort} />
 
             {/* View Mode Switcher */}
             {availableViews.length > 1 && (
@@ -1345,18 +1162,6 @@ export const TasksPage = ({
             />
           )}
 
-          {/* T049: Archived View - shown when viewing archived tasks */}
-          {showArchivedView && (
-            <ArchivedView
-              tasks={tasks}
-              projects={projects}
-              onBack={handleBackFromArchived}
-              onRestore={(taskId) => handleUpdateTask(taskId, { archivedAt: null })}
-              onDelete={handleDeleteTask}
-              onDeleteAll={handleDeleteAllArchived}
-            />
-          )}
-
           {/* Content Body - Today Tab (flat listing of overdue + today tasks) */}
           {activeInternalTab === 'today' && (
             <div className="flex flex-1 flex-col overflow-hidden">
@@ -1380,6 +1185,8 @@ export const TasksPage = ({
                 sortField={sort.field}
                 sortDirection={sort.direction}
                 showProjectBadge={!selectedProjectId}
+                doneTasks={todayTabDoneTasks}
+                getOrderedTasks={getOrderedTasks}
               />
             </div>
           )}
@@ -1414,33 +1221,10 @@ export const TasksPage = ({
                   sortField={sort.field}
                   sortDirection={sort.direction}
                   showProjectBadge={!selectedProjectId}
+                  doneTasks={allTabDoneTasks}
+                  getOrderedTasks={getOrderedTasks}
                 />
               )}
-            </div>
-          )}
-
-          {/* Content Body - Done Tab */}
-          {activeInternalTab === 'done' && (
-            <div className="flex flex-1 flex-col overflow-hidden">
-              <TaskList
-                tasks={scopeTasksByProject(getCompletedTasks(tasks), selectedProjectId)}
-                projects={projects}
-                selectedId="completed"
-                selectedType="view"
-                onToggleComplete={handleToggleComplete}
-                onUpdateTask={handleUpdateTask}
-                onToggleSubtaskComplete={subtaskManagement.handleCompleteSubtask}
-                onQuickAdd={handleQuickAdd}
-                onTaskClick={handleTaskClick}
-                selectedTaskId={detailTaskId}
-                isSelectionMode={selection.isSelectionMode}
-                selectedIds={selection.selectedIds}
-                onToggleSelect={toggleTask}
-                onShiftSelect={selectRange}
-                onReorderSubtasks={subtaskManagement.handleReorderSubtasks}
-                onAddSubtask={subtaskManagement.handleAddSubtask}
-                showProjectBadge={!selectedProjectId}
-              />
             </div>
           )}
 
@@ -1448,12 +1232,13 @@ export const TasksPage = ({
           {activeInternalTab === 'all' && activeView === 'kanban' && (
             <div className="flex flex-1 flex-col overflow-hidden">
               <KanbanBoard
-                tasks={filteredTasks}
+                tasks={kanbanTasks}
                 projects={projects}
                 selectedId="all"
                 selectedType="view"
                 selectedProjectId={selectedProjectId}
                 sortField={sort.field}
+                getOrderedTasks={getOrderedTasks}
                 onUpdateTask={handleUpdateTask}
                 onToggleComplete={handleToggleComplete}
                 onTaskClick={handleTaskClick}
@@ -1487,6 +1272,7 @@ export const TasksPage = ({
 
         {/* Task Detail Drawer */}
         <TaskDetailDrawer
+          key={detailTask?.id ?? 'none'}
           task={detailTask}
           isOpen={!!detailTaskId}
           onClose={handleCloseDetail}
@@ -1520,37 +1306,6 @@ export const TasksPage = ({
         onSave={handleSaveProject}
         onDelete={editingProject ? () => handleDeleteProject(editingProject.id) : undefined}
         project={editingProject}
-      />
-
-      {/* Clear Completed Menu */}
-      <ClearCompletedMenu
-        open={isClearMenuOpen}
-        onOpenChange={setIsClearMenuOpen}
-        onArchiveAll={handleArchiveAll}
-        onArchiveOlderThan={handleArchiveOlderThan}
-        onDeleteAll={handleDeleteAllCompleted}
-        onViewArchived={handleViewArchived}
-        completedCount={completedTasksForActions.length}
-        archivedCount={archivedTasksForActions.length}
-      />
-
-      {/* Archive Confirm Dialog */}
-      <ArchiveConfirmDialog
-        open={isArchiveDialogOpen}
-        onOpenChange={setIsArchiveDialogOpen}
-        onConfirm={handleConfirmArchive}
-        taskCount={tasksToArchiveCount}
-        variant={archiveDialogVariant}
-        olderThanDays={archiveOlderThanDays}
-      />
-
-      {/* Delete Completed Dialog */}
-      <DeleteCompletedDialog
-        open={isDeleteCompletedDialogOpen}
-        onOpenChange={setIsDeleteCompletedDialogOpen}
-        onConfirm={handleConfirmDeleteCompleted}
-        taskCount={tasksToDeleteCount}
-        variant={deleteCompletedVariant}
       />
 
       {/* Bulk Delete Dialog */}

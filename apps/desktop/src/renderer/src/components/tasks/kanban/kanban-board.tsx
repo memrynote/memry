@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useCallback, useRef, useEffect } from 'react'
+import React, { useEffect, useMemo, useState, useCallback, useRef } from 'react'
 
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area'
 import type { Task } from '@/data/sample-tasks'
@@ -14,6 +14,7 @@ interface KanbanBoardProps {
   selectedType: 'view' | 'project'
   selectedProjectId: string | null
   sortField: SortField
+  getOrderedTasks?: (sectionId: string, tasks: Task[]) => Task[]
   onUpdateTask: (taskId: string, updates: Partial<Task>) => void
   onToggleComplete: (taskId: string) => void
   onTaskClick?: (taskId: string) => void
@@ -29,6 +30,7 @@ export const KanbanBoard = ({
   selectedType,
   selectedProjectId,
   sortField,
+  getOrderedTasks,
   onToggleComplete,
   onTaskClick,
   onQuickAdd,
@@ -40,10 +42,23 @@ export const KanbanBoard = ({
   const [focusedTaskId, setFocusedTaskId] = useState<string | null>(null)
   const boardRef = useRef<HTMLDivElement>(null)
 
-  const { columns, tasksByColumn } = useMemo(
+  useEffect(() => {
+    boardRef.current?.focus()
+  }, [])
+
+  const { columns, tasksByColumn: rawTasksByColumn } = useMemo(
     () => buildColumnConfig(tasks, projects, selectedType, selectedProjectId, sortField),
     [tasks, projects, selectedType, selectedProjectId, sortField]
   )
+
+  const tasksByColumn = useMemo(() => {
+    if (!getOrderedTasks) return rawTasksByColumn
+    const ordered = new Map<string, Task[]>()
+    rawTasksByColumn.forEach((colTasks, colId) => {
+      ordered.set(colId, getOrderedTasks(colId, colTasks))
+    })
+    return ordered
+  }, [rawTasksByColumn, getOrderedTasks])
 
   const flatTaskList = useMemo(() => {
     const result: { taskId: string; columnIndex: number }[] = []
@@ -58,6 +73,15 @@ export const KanbanBoard = ({
     (e: React.KeyboardEvent) => {
       const target = e.target as HTMLElement
       if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') return
+
+      if (!focusedTaskId && flatTaskList.length > 0) {
+        const navKeys = ['j', 'k', 'ArrowDown', 'ArrowUp', 'ArrowLeft', 'ArrowRight']
+        if (navKeys.includes(e.key)) {
+          e.preventDefault()
+          setFocusedTaskId(flatTaskList[0].taskId)
+          return
+        }
+      }
 
       const currentIndex = flatTaskList.findIndex((item) => item.taskId === focusedTaskId)
 
@@ -114,18 +138,13 @@ export const KanbanBoard = ({
     [focusedTaskId, flatTaskList, columns, onToggleComplete, onTaskClick]
   )
 
-  useEffect(() => {
-    if (!focusedTaskId && flatTaskList.length > 0) {
-      setFocusedTaskId(flatTaskList[0].taskId)
-    }
-  }, []) // Only on mount
-
   return (
     <div
       ref={boardRef}
       className="flex h-full flex-col outline-none"
       tabIndex={0}
       onKeyDown={handleKeyDown}
+      onClick={() => boardRef.current?.focus()}
       aria-label="Kanban board"
     >
       <ScrollArea className="h-full">

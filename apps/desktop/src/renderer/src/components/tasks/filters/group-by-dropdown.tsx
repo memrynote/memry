@@ -1,19 +1,19 @@
 import { useState, useCallback } from 'react'
 
-import { ArrowUp, ArrowDown } from '@/lib/icons'
+import { Layers, ArrowUp, ArrowDown } from '@/lib/icons'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { CheckMark } from '@/components/ui/check-mark'
 import { cn } from '@/lib/utils'
 import type { TaskSort, SortField, SortDirection } from '@/data/tasks-data'
 import { defaultSort } from '@/data/tasks-data'
 
-interface SortDropdownProps {
+interface GroupByDropdownProps {
   sort: TaskSort
   onChange: (sort: TaskSort) => void
   className?: string
 }
 
-const SORT_FIELD_LABELS: Record<SortField, string> = {
+const GROUP_FIELD_LABELS: Record<SortField, string> = {
   dueDate: 'Due date',
   priority: 'Priority',
   status: 'Status',
@@ -37,11 +37,11 @@ const DIRECTION_LABELS: Record<SortDirection, string> = {
   desc: 'Descending'
 }
 
-export const SortDropdown = ({
+export const GroupByDropdown = ({
   sort,
   onChange,
   className
-}: SortDropdownProps): React.JSX.Element => {
+}: GroupByDropdownProps): React.JSX.Element => {
   const [isOpen, setIsOpen] = useState(false)
 
   const handleSelectField = useCallback(
@@ -65,7 +65,7 @@ export const SortDropdown = ({
       <PopoverTrigger asChild>
         <button
           type="button"
-          aria-label="Sort options"
+          aria-label="Group by options"
           className={cn(
             'flex items-center shrink-0 rounded-[5px] py-1 px-2 gap-1 border transition-colors',
             isOpen || isNonDefault
@@ -74,16 +74,8 @@ export const SortDropdown = ({
             className
           )}
         >
-          <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
-            <path
-              d="M4 3v7M4 10l-1.5-1.5M4 10l1.5-1.5M9 10V3M9 3l-1.5 1.5M9 3l1.5 1.5"
-              stroke="currentColor"
-              strokeWidth="1.1"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg>
-          <span className="text-[11px] leading-3.5">Sort</span>
+          <Layers size={13} />
+          <span className="text-[11px] leading-3.5">Group by</span>
         </button>
       </PopoverTrigger>
 
@@ -113,7 +105,7 @@ export const SortDropdown = ({
                       isSelected ? 'text-foreground' : 'text-text-secondary'
                     )}
                   >
-                    {SORT_FIELD_LABELS[field]}
+                    {GROUP_FIELD_LABELS[field]}
                   </span>
                   {isSelected && <CheckMark color="var(--primary)" className="ml-auto" />}
                 </button>
@@ -170,4 +162,4 @@ export const SortDropdown = ({
   )
 }
 
-export default SortDropdown
+export default GroupByDropdown

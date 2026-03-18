@@ -508,6 +508,7 @@ function App(): React.JSX.Element {
         initialProjects={projectsWithCounts}
         onTasksChange={handleTasksChange}
         onProjectsChange={handleProjectsChange}
+        getOrderedTasks={taskOrder.getOrderedTasks}
       >
         <AIAgentProvider>
           <AIInlineProvider>

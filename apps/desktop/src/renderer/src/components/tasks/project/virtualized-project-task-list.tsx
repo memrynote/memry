@@ -12,9 +12,7 @@ import {
   estimateItemHeight,
   getTaskIdsFromVirtualItems,
   type VirtualItem,
-  type StatusHeaderItem,
-  type TaskItem,
-  type ParentTaskItem
+  type StatusHeaderItem
 } from '@/lib/virtual-list-utils'
 import { createLookupContext, isTaskCompletedFast } from '@/lib/lookup-utils'
 import { calculateProgress } from '@/lib/subtask-utils'
@@ -51,6 +49,7 @@ interface VirtualizedProjectTaskListProps {
   // Subtask management props
   onAddSubtask?: (parentId: string, title: string) => void
   onReorderSubtasks?: (parentId: string, newOrder: string[]) => void
+  getOrderedTasks?: (sectionId: string, tasks: Task[]) => Task[]
 }
 
 // ============================================================================
@@ -258,7 +257,8 @@ export const VirtualizedProjectTaskList = ({
   onToggleSelect,
   onShiftSelect,
   onAddSubtask,
-  onReorderSubtasks
+  onReorderSubtasks,
+  getOrderedTasks
 }: VirtualizedProjectTaskListProps): React.JSX.Element => {
   // Scroll container ref
   const parentRef = useRef<HTMLDivElement>(null)
@@ -274,8 +274,8 @@ export const VirtualizedProjectTaskList = ({
 
   // Flatten tasks into virtual items
   const virtualItems = useMemo(
-    () => flattenTasksByStatus(tasks, project, expandedIds, tasks, true),
-    [tasks, project, expandedIds]
+    () => flattenTasksByStatus(tasks, project, expandedIds, tasks, true, getOrderedTasks),
+    [tasks, project, expandedIds, getOrderedTasks]
   )
 
   // Get all task IDs for SortableContext
@@ -289,6 +289,7 @@ export const VirtualizedProjectTaskList = ({
     count: virtualItems.length,
     getScrollElement: () => parentRef.current,
     estimateSize: (index) => estimateItemHeight(virtualItems[index], expandedIds, tasks),
+    getItemKey: (index) => virtualItems[index]?.id ?? index,
     overscan: 5
   })
 
