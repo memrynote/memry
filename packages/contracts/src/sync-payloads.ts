@@ -17,6 +17,8 @@ export const TaskSyncPayloadSchema = z.object({
   sourceNoteId: z.string().nullable().optional(),
   completedAt: z.string().nullable().optional(),
   archivedAt: z.string().nullable().optional(),
+  tags: z.array(z.string()).optional(),
+  linkedNoteIds: z.array(z.string()).optional(),
   clock: VectorClockSchema.optional(),
   fieldClocks: FieldClocksSchema.optional(),
   createdAt: z.string().optional(),
