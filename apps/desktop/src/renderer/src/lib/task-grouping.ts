@@ -170,7 +170,7 @@ export const groupByCreatedDate = (tasks: Task[]): TaskGroup[] => {
 // STATUS GROUPING
 // ============================================================================
 
-const STATUS_TYPE_ORDER: StatusType[] = ['todo', 'in_progress', 'done']
+const STATUS_TYPE_ORDER: StatusType[] = ['todo', 'in_progress']
 
 export const groupByStatus = (tasks: Task[], projects: Project[]): TaskGroup[] => {
   const statusMap = new Map<
@@ -179,7 +179,7 @@ export const groupByStatus = (tasks: Task[], projects: Project[]): TaskGroup[] =
   >()
   projects.forEach((project, pIdx) => {
     project.statuses.forEach((status) => {
-      if (!statusMap.has(status.id)) {
+      if (!statusMap.has(status.id) && status.type !== 'done') {
         statusMap.set(status.id, {
           name: status.name,
           type: status.type,
@@ -199,6 +199,10 @@ export const groupByStatus = (tasks: Task[], projects: Project[]): TaskGroup[] =
       if (!buckets.has(task.statusId)) buckets.set(task.statusId, [])
       buckets.get(task.statusId)!.push(task)
     } else {
+      const isDone = projects.some((p) =>
+        p.statuses.some((s) => s.id === task.statusId && s.type === 'done')
+      )
+      if (isDone) return
       uncategorized.push(task)
     }
   })

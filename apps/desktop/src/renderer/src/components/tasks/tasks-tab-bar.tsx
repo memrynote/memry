@@ -6,7 +6,7 @@ import { FilterSearchHeader } from '@/components/ui/filter-search-header'
 import { CheckMark } from '@/components/ui/check-mark'
 import type { Project, SavedFilter } from '@/data/tasks-data'
 
-export type TasksInternalTab = 'today' | 'all' | 'done'
+export type TasksInternalTab = 'today' | 'all'
 
 interface TabConfig {
   id: TasksInternalTab
@@ -19,7 +19,6 @@ interface TasksTabBarProps {
   counts: {
     today: number
     all: number
-    done: number
   }
   projects?: Project[]
   selectedProjectId?: string | null
@@ -34,8 +33,7 @@ interface TasksTabBarProps {
 
 const TABS: TabConfig[] = [
   { id: 'today', label: 'Today' },
-  { id: 'all', label: 'All' },
-  { id: 'done', label: 'Done' }
+  { id: 'all', label: 'All' }
 ]
 
 export const TasksTabBar = ({

@@ -43,6 +43,9 @@ export const useDebouncedValue = <T>(value: T, delay: number): T => {
 // PERSISTENCE HELPERS
 // ============================================================================
 
+const getDefaultSortForView = (activeView: string): TaskSort =>
+  activeView === 'kanban' ? { field: 'status', direction: 'asc' } : defaultSort
+
 const FILTERS_STORAGE_KEY = 'taskFilters'
 const SAVED_FILTERS_KEY = 'savedTaskFilters'
 
@@ -148,11 +151,11 @@ export const useFilterState = ({
     return persisted?.filters || defaultFilters
   })
 
-  // Initialize sort from persisted state or defaults
+  // Initialize sort from persisted state or view-specific defaults
   const [sort, setSort] = useState<TaskSort>(() => {
-    if (!shouldPersist) return defaultSort
+    if (!shouldPersist) return getDefaultSortForView(activeView)
     const persisted = loadPersistedFilters(viewKey)
-    return persisted?.sort || defaultSort
+    return persisted?.sort || getDefaultSortForView(activeView)
   })
 
   // Reload filters when the view key changes.
@@ -164,7 +167,7 @@ export const useFilterState = ({
     isSwitchingViewRef.current = true
     previousViewKeyRef.current = viewKey
     setFilters(persisted?.filters || defaultFilters)
-    setSort(persisted?.sort || defaultSort)
+    setSort(persisted?.sort || getDefaultSortForView(activeView))
   }, [viewKey, shouldPersist])
 
   // Persist filters when they change.

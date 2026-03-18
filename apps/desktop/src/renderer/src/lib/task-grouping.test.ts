@@ -6,6 +6,7 @@ import {
   groupByPriority,
   groupByProject,
   groupByCreatedDate,
+  groupByStatus,
   groupTasksForSort
 } from './task-grouping'
 
@@ -275,6 +276,107 @@ describe('task-grouping', () => {
       // #then
       expect(result).toHaveLength(1)
       expect(result[0].key).toBe('today')
+    })
+  })
+
+  // ==========================================================================
+  // groupByStatus
+  // ==========================================================================
+
+  describe('groupByStatus', () => {
+    it('should return empty array for empty tasks', () => {
+      expect(groupByStatus([], [createMockProject()])).toEqual([])
+    })
+
+    it('should group tasks by non-done statuses only', () => {
+      // #given
+      const project = createMockProject({
+        id: 'p1',
+        statuses: [
+          createMockStatus({ id: 's-todo', name: 'Todo', type: 'todo', color: '#gray', order: 0 }),
+          createMockStatus({
+            id: 's-doing',
+            name: 'In Progress',
+            type: 'in_progress',
+            color: '#blue',
+            order: 1
+          }),
+          createMockStatus({ id: 's-done', name: 'Done', type: 'done', color: '#green', order: 2 })
+        ]
+      })
+      const todoTask = createMockTask({ id: 't1', statusId: 's-todo', projectId: 'p1' })
+      const doingTask = createMockTask({ id: 't2', statusId: 's-doing', projectId: 'p1' })
+      const doneTask = createMockTask({ id: 't3', statusId: 's-done', projectId: 'p1' })
+
+      // #when
+      const result = groupByStatus([todoTask, doingTask, doneTask], [project])
+
+      // #then — done group excluded
+      expect(result).toHaveLength(2)
+      expect(result.map((g) => g.key)).toEqual(['s-todo', 's-doing'])
+      expect(result.map((g) => g.label)).toEqual(['Todo', 'In Progress'])
+    })
+
+    it('should not place done tasks in uncategorized', () => {
+      // #given
+      const project = createMockProject({
+        id: 'p1',
+        statuses: [
+          createMockStatus({ id: 's-todo', name: 'Todo', type: 'todo', color: '#gray', order: 0 }),
+          createMockStatus({ id: 's-done', name: 'Done', type: 'done', color: '#green', order: 1 })
+        ]
+      })
+      const doneTask = createMockTask({ id: 't1', statusId: 's-done', projectId: 'p1' })
+
+      // #when
+      const result = groupByStatus([doneTask], [project])
+
+      // #then — no groups at all, done task silently excluded
+      expect(result).toHaveLength(0)
+    })
+
+    it('should place tasks with unknown status in uncategorized', () => {
+      // #given
+      const project = createMockProject({
+        id: 'p1',
+        statuses: [
+          createMockStatus({ id: 's-todo', name: 'Todo', type: 'todo', color: '#gray', order: 0 })
+        ]
+      })
+      const unknownTask = createMockTask({ id: 't1', statusId: 'nonexistent', projectId: 'p1' })
+
+      // #when
+      const result = groupByStatus([unknownTask], [project])
+
+      // #then
+      expect(result).toHaveLength(1)
+      expect(result[0]).toMatchObject({ key: 'uncategorized', label: 'Uncategorized' })
+    })
+
+    it('should sort groups by status type order then by status order', () => {
+      // #given
+      const project = createMockProject({
+        id: 'p1',
+        statuses: [
+          createMockStatus({
+            id: 's-doing',
+            name: 'Doing',
+            type: 'in_progress',
+            color: '#blue',
+            order: 1
+          }),
+          createMockStatus({ id: 's-todo', name: 'Todo', type: 'todo', color: '#gray', order: 0 })
+        ]
+      })
+      const doingTask = createMockTask({ id: 't1', statusId: 's-doing', projectId: 'p1' })
+      const todoTask = createMockTask({ id: 't2', statusId: 's-todo', projectId: 'p1' })
+
+      // #when
+      const result = groupByStatus([doingTask, todoTask], [project])
+
+      // #then — todo before in_progress
+      expect(result[0].key).toBe('s-todo')
+      expect(result[1].key).toBe('s-doing')
     })
   })
 

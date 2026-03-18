@@ -224,8 +224,15 @@ export const useTaskOrder = ({
         const oldIndex = currentOrder.indexOf(activeId)
         const newIndex = currentOrder.indexOf(overId)
 
-        if (oldIndex === -1 || newIndex === -1 || oldIndex === newIndex) {
-          return prev
+        if (newIndex === -1 || oldIndex === newIndex) return prev
+
+        if (oldIndex === -1) {
+          const newOrder = [...currentOrder]
+          newOrder.splice(newIndex, 0, activeId)
+          return {
+            orders: { ...prev.orders, [sectionId]: newOrder },
+            isManuallyOrdered: true
+          }
         }
 
         const newOrder = arrayMove(currentOrder, oldIndex, newIndex)
