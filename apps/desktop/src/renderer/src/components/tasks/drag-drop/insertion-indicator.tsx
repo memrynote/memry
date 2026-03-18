@@ -35,7 +35,7 @@ export const InsertionIndicator = ({
       data-drop-indicator={kind}
       className={cn(
         'absolute left-0 right-0 h-0.5 bg-primary pointer-events-none z-20',
-        position === 'before' ? '-top-0.5' : '-bottom-0.5',
+        position === 'before' ? 'top-0' : 'bottom-0',
         className
       )}
       aria-hidden="true"
