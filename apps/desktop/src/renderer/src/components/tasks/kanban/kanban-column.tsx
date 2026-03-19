@@ -68,6 +68,7 @@ export const KanbanColumn = ({
   const [showAllDone, setShowAllDone] = useState(false)
   const [isAddingTask, setIsAddingTask] = useState(false)
   const [newTaskTitle, setNewTaskTitle] = useState('')
+  const [showAllDone, setShowAllDone] = useState(false)
 
   const { dragState } = useDragContext()
 
