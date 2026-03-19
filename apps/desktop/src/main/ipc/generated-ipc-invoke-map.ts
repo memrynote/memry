@@ -1349,6 +1349,9 @@ export interface MainIpcInvokeHandlers {
       | { success: boolean; message?: undefined; error?: undefined }
     >
   >
+  'settings:registerGlobalCapture': (
+    ...args: []
+  ) => Awaited<Promise<import('./settings-handlers').GlobalCaptureResult>>
   'settings:reindexEmbeddings': (
     ...args: []
   ) => Awaited<
