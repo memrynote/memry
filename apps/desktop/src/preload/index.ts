@@ -17,7 +17,8 @@ import {
   FolderViewChannels,
   PropertiesChannels,
   SearchChannels,
-  GraphChannels
+  GraphChannels,
+  AccountChannels
 } from '@memry/contracts/ipc-channels'
 import { SYNC_CHANNELS, SYNC_EVENTS } from '@memry/contracts/ipc-sync'
 import type {
@@ -1490,6 +1491,12 @@ export const api = {
     getLinkingSas: (input: { sessionId: string }) => invoke(SYNC_CHANNELS.GET_LINKING_SAS, input),
     completeLinkingQr: (input: { sessionId: string }) =>
       invoke(SYNC_CHANNELS.COMPLETE_LINKING_QR, input)
+  },
+
+  // Account API
+  account: {
+    getInfo: () => invoke(AccountChannels.invoke.GET_INFO),
+    signOut: () => invoke(AccountChannels.invoke.SIGN_OUT)
   },
 
   // Device Management API

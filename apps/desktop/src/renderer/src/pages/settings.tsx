@@ -28,6 +28,8 @@ import { IntegrationsSettings } from './settings/integrations-section'
 import { TagsSettings } from './settings/tags-section'
 import { TasksSettings } from './settings/tasks-section'
 import { ShortcutsSettings } from './settings/shortcuts-section'
+import { AccountSettings } from './settings/account-section'
+import { User } from '@/lib/icons'
 
 type SettingsSection =
   | 'general'
@@ -42,6 +44,7 @@ type SettingsSection =
   | 'integrations'
   | 'tags'
   | 'shortcuts'
+  | 'account'
 
 export function SettingsPage() {
   const [activeSection, setActiveSection] = useState<SettingsSection>(() => {
@@ -122,6 +125,12 @@ export function SettingsPage() {
             onClick={() => setActiveSection('ai')}
           />
           <SettingsNavItem
+            icon={<User className="w-4 h-4" />}
+            label="Account"
+            isActive={activeSection === 'account'}
+            onClick={() => setActiveSection('account')}
+          />
+          <SettingsNavItem
             icon={<Cloud className="w-4 h-4" />}
             label="Sync"
             isActive={activeSection === 'sync'}
@@ -164,6 +173,7 @@ export function SettingsPage() {
             {activeSection === 'integrations' && <IntegrationsSettings />}
             {activeSection === 'tags' && <TagsSettings />}
             {activeSection === 'shortcuts' && <ShortcutsSettings />}
+            {activeSection === 'account' && <AccountSettings />}
           </div>
         </ScrollArea>
       </div>

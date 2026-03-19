@@ -2249,6 +2249,12 @@ interface SyncLinkingClientAPI {
   }>
 }
 
+// Account API
+interface AccountClientAPI {
+  getInfo: () => Promise<{ email: string | null; joinedAt: number | null }>
+  signOut: () => Promise<{ success: boolean; keychainWarning?: string }>
+}
+
 // Device Management API
 interface SyncDevicesClientAPI {
   getDevices: () => Promise<{
@@ -2443,6 +2449,7 @@ interface API extends WindowAPI {
   syncAuth: SyncAuthClientAPI
   syncSetup: SyncSetupClientAPI
   syncLinking: SyncLinkingClientAPI
+  account: AccountClientAPI
   syncDevices: SyncDevicesClientAPI
   syncOps: SyncOpsClientAPI
   crypto: CryptoClientAPI
