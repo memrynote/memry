@@ -38,11 +38,6 @@ interface KanbanCardContentProps extends KanbanCardProps {
   setNodeRef?: (node: HTMLElement | null) => void
 }
 
-const priorityStripColor = (priority: Priority, isDone: boolean): string | undefined => {
-  if (isDone) return 'var(--task-complete)'
-  return priorityConfig[priority].color ?? undefined
-}
-
 export const KanbanCardContent = forwardRef<HTMLDivElement, KanbanCardContentProps>(
   (
     {
@@ -67,7 +62,6 @@ export const KanbanCardContent = forwardRef<HTMLDivElement, KanbanCardContentPro
     const { dragState } = useDragContext()
     const isJustDropped = dragState.lastDroppedId === task.id
 
-    const stripColor = priorityStripColor(task.priority, isDone)
     const subtasks = getSubtasks(task.id, allTasks)
     const completedSubtasks = subtasks.filter((s) => s.completedAt !== null)
     const hasSubtasks = subtasks.length > 0
@@ -99,32 +93,31 @@ export const KanbanCardContent = forwardRef<HTMLDivElement, KanbanCardContentPro
         onClick={handleClick}
         style={style}
         className={cn(
-          'group flex cursor-grab rounded-md overflow-clip transition-all duration-150',
+          'group flex cursor-grab rounded-md overflow-clip antialiased transition-all duration-150',
           isDragging && 'border-[1.5px] border-dashed border-primary/30 bg-primary/[0.03]',
-          !isDragging && 'border',
+          !isDragging && 'border border-solid',
           !isDragging &&
             !isDone &&
             'bg-card border-border hover:bg-accent/30 hover:shadow-[var(--shadow-card)]',
           !isDragging && isDone && 'bg-muted/40 border-border/50',
-          isSelected && !isDragging && 'ring-2 ring-primary/50 border-primary bg-primary/5',
-          isFocused && !isDragging && !isSelected && 'ring-2 ring-primary/40 border-primary/40',
+          isSelected &&
+            !isDragging &&
+            'ring-1 ring-inset ring-primary/50 border-primary bg-primary/5',
+          isFocused &&
+            !isDragging &&
+            !isSelected &&
+            'ring-1 ring-inset ring-primary/40 border-primary/40',
           isJustDropped && 'animate-drop-flash'
         )}
         {...attributes}
         {...listeners}
       >
-        {/* Priority strip */}
-        <div
-          className={cn('w-[3px] shrink-0 rounded-l-md', isDragging && 'invisible')}
-          style={{
-            backgroundColor: stripColor,
-            opacity: isDone ? 0.4 : 1
-          }}
-        />
-
         {/* Content area */}
         <div
-          className={cn('flex flex-1 flex-col gap-1.5 p-2.5 min-w-0', isDragging && 'invisible')}
+          className={cn(
+            'flex flex-1 flex-col gap-1.5 py-2.5 px-3 min-w-0',
+            isDragging && 'invisible'
+          )}
         >
           {/* Title row */}
           <div className="flex items-start gap-1.5">

@@ -61,31 +61,19 @@ const defaultProps = {
   onClick: vi.fn()
 }
 
-describe('TaskRow — Drag Handle', () => {
-  it('renders a drag handle element', () => {
-    render(<TaskRow {...defaultProps} showDragHandle />)
+describe('TaskRow — Whole-Row Drag', () => {
+  it('applies cursor-grab when dragHandleListeners are provided', () => {
+    const listeners = { onPointerDown: vi.fn() }
+    render(<TaskRow {...defaultProps} dragHandleListeners={listeners} />)
 
-    expect(screen.getByTestId('drag-handle')).toBeInTheDocument()
+    const row = screen.getByLabelText(/^Task: Test Task/)
+    expect(row.className).toContain('cursor-grab')
   })
 
-  it('does not render drag handle when showDragHandle is false', () => {
-    render(<TaskRow {...defaultProps} showDragHandle={false} />)
-
-    expect(screen.queryByTestId('drag-handle')).not.toBeInTheDocument()
-  })
-
-  it('does not render drag handle by default', () => {
+  it('does not render a grip icon', () => {
     render(<TaskRow {...defaultProps} />)
 
     expect(screen.queryByTestId('drag-handle')).not.toBeInTheDocument()
-  })
-
-  it('passes drag handle listeners to the handle element', () => {
-    const listeners = { onPointerDown: vi.fn() }
-    render(<TaskRow {...defaultProps} showDragHandle dragHandleListeners={listeners} />)
-
-    const handle = screen.getByTestId('drag-handle')
-    expect(handle).toBeInTheDocument()
   })
 })
 
@@ -167,9 +155,7 @@ describe('TaskRow — List Drop Indicators', () => {
 
 describe('TaskRow — Overlay Theme Styling', () => {
   it('uses theme tokens for the drag ghost instead of a fixed dark shell', () => {
-    render(
-      <TaskRow {...defaultProps} renderMode="overlay" dataTestId="drag-overlay" showDragHandle />
-    )
+    render(<TaskRow {...defaultProps} renderMode="overlay" dataTestId="drag-overlay" />)
 
     const overlay = screen.getByTestId('drag-overlay')
     expect(overlay.className).toContain('bg-card')

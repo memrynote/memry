@@ -10,7 +10,9 @@ import { InsertionIndicator } from '@/components/tasks/drag-drop/insertion-indic
 import type { SectionDragState } from '@/components/tasks/drag-drop/list-section-drag-state'
 import { RepeatIndicator } from '@/components/tasks/repeat-indicator'
 import { SortableSubtaskList } from '@/components/tasks/sortable-subtask-list'
-import { InteractiveStatusIcon, StatusIcon } from '@/components/tasks/status-icon'
+import { StatusIcon } from '@/components/tasks/status-icon'
+import { InlineStatusPopover } from '@/components/tasks/inline-status-popover'
+import { InlinePriorityPopover } from '@/components/tasks/inline-priority-popover'
 import { SubtaskProgressIndicator } from '@/components/tasks/subtask-progress-indicator'
 import { PriorityBars } from '@/components/tasks/task-icons'
 import type { Priority, Task } from '@/data/sample-tasks'
@@ -41,7 +43,6 @@ export interface ParentTaskRowProps {
   accentClass?: string
   isDragging?: boolean
   isJustDropped?: boolean
-  showDragHandle?: boolean
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   dragHandleListeners?: Record<string, any>
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -73,23 +74,6 @@ const resolveStatus = (
   }
 }
 
-const DragHandleGrip = ({ isOverlay }: { isOverlay: boolean }): React.JSX.Element => (
-  <div
-    data-testid={isOverlay ? 'overlay-drag-handle' : 'drag-handle'}
-    className="shrink-0 flex items-center justify-center w-5 h-5"
-    aria-label="Drag to reorder"
-  >
-    <svg width="10" height="14" viewBox="0 0 10 14" fill="none" aria-hidden="true">
-      <circle cx="3" cy="3" r="1.5" fill="currentColor" className="text-text-tertiary" />
-      <circle cx="7" cy="3" r="1.5" fill="currentColor" className="text-text-tertiary" />
-      <circle cx="3" cy="7" r="1.5" fill="currentColor" className="text-text-tertiary" />
-      <circle cx="7" cy="7" r="1.5" fill="currentColor" className="text-text-tertiary" />
-      <circle cx="3" cy="11" r="1.5" fill="currentColor" className="text-text-tertiary" />
-      <circle cx="7" cy="11" r="1.5" fill="currentColor" className="text-text-tertiary" />
-    </svg>
-  </div>
-)
-
 export const ParentTaskRow = ({
   task,
   project,
@@ -102,7 +86,7 @@ export const ParentTaskRow = ({
   showProjectBadge = false,
   onToggleExpand,
   onToggleComplete,
-  onUpdateTask: _onUpdateTask,
+  onUpdateTask,
   onToggleSubtaskComplete,
   onClick,
   className,
@@ -115,7 +99,6 @@ export const ParentTaskRow = ({
   accentClass: _accentClass,
   isDragging = false,
   isJustDropped = false,
-  showDragHandle = false,
   dragHandleListeners,
   dragHandleAttributes,
   droppedPriority,
@@ -179,11 +162,6 @@ export const ParentTaskRow = ({
     if (taskHasSubtasks) onToggleExpand(task.id)
   }
 
-  const handleToggleClick = (e: React.MouseEvent): void => {
-    e.stopPropagation()
-    onToggleComplete(task.id)
-  }
-
   const compactDateLabel = (() => {
     if (!task.dueDate) return null
     const date = formatDateShort(task.dueDate)
@@ -206,6 +184,8 @@ export const ParentTaskRow = ({
         tabIndex={isOverlay ? undefined : onClick ? 0 : -1}
         onClick={isOverlay ? undefined : handleRowClick}
         onKeyDown={isOverlay ? undefined : onClick ? handleRowKeyDown : undefined}
+        {...(isOverlay ? {} : dragHandleAttributes)}
+        {...(isOverlay ? {} : dragHandleListeners)}
         className={cn(
           isOverlay
             ? [
@@ -214,18 +194,23 @@ export const ParentTaskRow = ({
                 '[box-shadow:rgba(0,0,0,0.5)_0px_8px_24px,rgba(76,158,255,0.15)_0px_2px_8px]'
               ]
             : [
-                'relative flex items-center py-[7px] px-6 gap-3 border-b border-border transition-colors',
-                'hover:bg-accent/50',
+                'relative flex items-center py-[7px] px-3 gap-3 transition-colors',
+                'rounded-md hover:bg-accent/60',
                 onClick &&
-                  'cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                  'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring',
+                dragHandleListeners && !isDragging && 'cursor-grab',
+                isDragging &&
+                  'cursor-grabbing opacity-[0.35] border-dashed border-primary/30 bg-primary/[0.03]',
+                !isDragging && !dragHandleListeners && onClick && 'cursor-pointer',
                 isCheckedForSelection && 'bg-primary/10 hover:bg-primary/15',
-                isSelected && !isCheckedForSelection && 'bg-primary/10 ring-2 ring-primary/30',
+                isSelected &&
+                  !isCheckedForSelection &&
+                  'bg-primary/10 ring-1 ring-inset ring-primary/30',
                 sectionDragState === 'source-dimmed' && 'opacity-50',
                 sectionDragState === 'target-highlighted' && 'bg-primary/[0.04]',
                 insertionIndicatorPosition === 'before' && 'pt-1',
                 insertionIndicatorPosition === 'after' && 'pb-1',
-                isDragging && 'opacity-[0.35] border-dashed border-primary/30 bg-primary/[0.03]',
-                isJustDropped && 'animate-row-drop-flash'
+                !isDragging && isJustDropped && 'animate-row-drop-flash'
               ]
         )}
         data-section-drag-state={sectionDragState}
@@ -241,24 +226,9 @@ export const ParentTaskRow = ({
         {!isOverlay && insertionIndicatorPosition && (
           <InsertionIndicator
             position={insertionIndicatorPosition}
-            className="left-6 right-6"
+            className="left-3 right-3"
             dataTestId="list-drop-indicator"
           />
-        )}
-
-        {showDragHandle && (
-          <div
-            className={cn(
-              isOverlay
-                ? 'cursor-grabbing'
-                : 'cursor-grab opacity-0 group-hover:opacity-100 transition-opacity duration-150',
-              isDragging && !isOverlay && 'opacity-100 cursor-grabbing'
-            )}
-            {...(isOverlay ? {} : dragHandleAttributes)}
-            {...(isOverlay ? {} : dragHandleListeners)}
-          >
-            <DragHandleGrip isOverlay={isOverlay} />
-          </div>
         )}
 
         {isSelectionMode && onToggleSelect && (
@@ -301,15 +271,25 @@ export const ParentTaskRow = ({
         {isOverlay ? (
           <StatusIcon type={isCompleted ? 'done' : statusType} color={statusColor} size="lg" />
         ) : (
-          <InteractiveStatusIcon
-            type={statusType}
-            color={statusColor}
+          <InlineStatusPopover
+            statusId={task.statusId}
+            statuses={project.statuses}
             isCompleted={isCompleted}
-            onClick={handleToggleClick}
+            onStatusChange={(statusId) => onUpdateTask?.(task.id, { statusId })}
+            onToggleComplete={() => onToggleComplete(task.id)}
+            disabled={isDragging}
           />
         )}
 
-        <PriorityBars priority={task.priority} />
+        {isOverlay ? (
+          <PriorityBars priority={task.priority} />
+        ) : (
+          <InlinePriorityPopover
+            priority={task.priority}
+            onPriorityChange={(priority) => onUpdateTask?.(task.id, { priority })}
+            disabled={isDragging}
+          />
+        )}
 
         <span
           className={cn(

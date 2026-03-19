@@ -154,7 +154,7 @@ describe('SortableParentTaskRow', () => {
     )
 
     expect(setNodeRef).toHaveBeenCalled()
-    expect(screen.getByTestId('drag-handle')).toBeInTheDocument()
+    expect(screen.queryByTestId('drag-handle')).not.toBeInTheDocument()
   })
 
   it('resolves source-section dimming from normalized drag metadata', () => {

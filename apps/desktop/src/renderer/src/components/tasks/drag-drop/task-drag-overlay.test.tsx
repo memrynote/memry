@@ -134,7 +134,7 @@ describe('TaskDragOverlay', () => {
     expect(overlay).toHaveStyle({ width: '512px' })
     expect(overlay.className).not.toContain('rotate-2')
     expect(overlay).toHaveAttribute('data-overlay-row-variant', 'task')
-    expect(screen.getByTestId('overlay-drag-handle')).toBeInTheDocument()
+    expect(screen.queryByTestId('overlay-drag-handle')).not.toBeInTheDocument()
     expect(screen.getByText('Review sync conflict edge cases')).toBeInTheDocument()
     expect(screen.getByText('Test Project')).toBeInTheDocument()
     expect(overlay.textContent).toContain('Mar 21')
