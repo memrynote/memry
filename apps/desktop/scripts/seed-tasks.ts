@@ -19,7 +19,7 @@ function main(): void {
     mkdirSync(resolve(dbPath, '..'), { recursive: true })
   }
 
-  console.log(`Seeding database at: ${dbPath}`)
+  console.log(`Seeding task data at: ${dbPath}`)
 
   const sqlite = new Database(dbPath)
   sqlite.pragma('journal_mode = WAL')
@@ -34,7 +34,7 @@ function main(): void {
   console.log('Seeding defaults...')
   seedDefaults(db)
 
-  console.log('Seeding sample tasks...')
+  console.log('Seeding sample tasks (4 projects × ~20 tasks)...')
   seedSampleTasks(db)
 
   sqlite.close()

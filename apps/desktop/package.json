@@ -48,7 +48,7 @@
     "db:push:index": "drizzle-kit push --config config/drizzle-index.config.ts",
     "db:studio:data": "drizzle-kit studio --config config/drizzle-data.config.ts",
     "db:studio:index": "drizzle-kit studio --config config/drizzle-index.config.ts",
-    "db:seed": "bash scripts/ensure-native.sh node && npx tsx scripts/seed-tasks.ts",
+    "db:seed:task": "bash scripts/ensure-native.sh node && npx tsx scripts/seed-tasks.ts",
     "db:seed:inbox": "bash scripts/ensure-native.sh node && npx tsx scripts/seed-inbox.ts",
     "build:unpack": "pnpm build && electron-builder --config config/electron-builder.yml --dir",
     "build:win": "pnpm build && electron-builder --config config/electron-builder.yml --win",

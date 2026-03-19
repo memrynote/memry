@@ -162,21 +162,9 @@ describe('task sync gap fixes — E2E', () => {
       seedMultipleTasks(deviceB)
 
       // #when Device A reorders: task-3 moves to position 0
-      deviceA.db
-        .update(tasks)
-        .set({ position: 2 })
-        .where(eq(tasks.id, 'task-1'))
-        .run()
-      deviceA.db
-        .update(tasks)
-        .set({ position: 1 })
-        .where(eq(tasks.id, 'task-2'))
-        .run()
-      deviceA.db
-        .update(tasks)
-        .set({ position: 0 })
-        .where(eq(tasks.id, 'task-3'))
-        .run()
+      deviceA.db.update(tasks).set({ position: 2 }).where(eq(tasks.id, 'task-1')).run()
+      deviceA.db.update(tasks).set({ position: 1 }).where(eq(tasks.id, 'task-2')).run()
+      deviceA.db.update(tasks).set({ position: 0 }).where(eq(tasks.id, 'task-3')).run()
 
       const serviceA = new TaskSyncService({
         queue: queueA,
@@ -338,11 +326,7 @@ describe('task sync gap fixes — E2E', () => {
         db: deviceB.db as any,
         getDeviceId: () => 'device-B'
       })
-      deviceB.db
-        .update(tasks)
-        .set({ title: 'Renamed Task' })
-        .where(eq(tasks.id, 'task-1'))
-        .run()
+      deviceB.db.update(tasks).set({ title: 'Renamed Task' }).where(eq(tasks.id, 'task-1')).run()
       serviceB.enqueueUpdate('task-1', ['title'])
 
       // Apply B's change to A
