@@ -61,6 +61,17 @@ type StartupTheme = 'light' | 'dark' | 'white' | 'system'
 const THEME_STORAGE_KEY = 'memry-theme'
 
 function getStartupThemeSync(): StartupTheme {
+  // Fast path: use the theme cached in localStorage from the previous run.
+  // This avoids a synchronous IPC round-trip on every launch after the first.
+  try {
+    const cached = window.localStorage.getItem(THEME_STORAGE_KEY)
+    if (cached === 'light' || cached === 'dark' || cached === 'white' || cached === 'system') {
+      return cached
+    }
+  } catch {
+    // localStorage may be unavailable; fall through to IPC
+  }
+  // First launch (or corrupted storage): fall back to synchronous IPC.
   try {
     return ipcRenderer.sendSync(SettingsChannels.sync.GET_STARTUP_THEME) as StartupTheme
   } catch {

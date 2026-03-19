@@ -589,32 +589,32 @@ void app.whenReady().then(async () => {
     registerQuickCaptureShortcut()
   }
 
-  // Auto-open the last vault if one was previously open
-  await autoOpenLastVault()
-
-  // Start the snooze scheduler for inbox items
-  // This checks for due items on startup and then every minute
-  try {
-    checkDueItemsOnStartup()
-    startSnoozeScheduler()
-  } catch (error) {
-    // Snooze scheduler is non-critical - log and continue
-    mainLog.warn('snooze scheduler failed to start:', error)
-  }
-
-  // Start the reminder scheduler for notes/journal/highlights
-  // This checks for due reminders on startup and then every minute
-  try {
-    startReminderScheduler()
-  } catch (error) {
-    // Reminder scheduler is non-critical - log and continue
-    mainLog.warn('reminder scheduler failed to start:', error)
-  }
-
+  // Configure CSP and cert pinning before the window loads
   configureCsp()
   configureCertificatePinning()
 
+  // Create the window immediately — the renderer handles the vault-not-open state
+  // (VaultOnboarding / loading spinner) while the vault opens in the background.
+  // This moves window creation ~300–600ms earlier on cold start.
   createWindow()
+
+  // Open the last vault and start schedulers concurrently with renderer load.
+  // The renderer subscribes to vault status events and updates automatically.
+  void autoOpenLastVault()
+    .then(() => {
+      try {
+        checkDueItemsOnStartup()
+        startSnoozeScheduler()
+      } catch (error) {
+        mainLog.warn('snooze scheduler failed to start:', error)
+      }
+      try {
+        startReminderScheduler()
+      } catch (error) {
+        mainLog.warn('reminder scheduler failed to start:', error)
+      }
+    })
+    .catch((err) => mainLog.error('autoOpenLastVault failed:', err))
 
   app.on('activate', function () {
     // On macOS it's common to re-create a window in the app when the
