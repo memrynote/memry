@@ -15,7 +15,7 @@ import {
   Expand,
   Shrink,
   PenLine
-} from 'lucide-react'
+} from '@/lib/icons'
 
 type CommandFactory = (editor: BlockNoteEditor<any, any, any>) => AIMenuSuggestionItem
 

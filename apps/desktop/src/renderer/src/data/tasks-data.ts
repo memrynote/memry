@@ -22,7 +22,7 @@ export interface Project {
   id: string
   name: string
   description: string
-  icon: string // Lucide icon name
+  icon: string // Icon name
   color: string // hex color for project indicator
   statuses: Status[]
   isDefault: boolean // true only for "Personal"
@@ -54,7 +54,6 @@ export const viewModes: { id: ViewMode; label: string }[] = [
   { id: 'calendar', label: 'Calendar' }
 ]
 
-// Views that only support List mode (no Kanban/Calendar)
 export const LIST_ONLY_VIEWS = ['today', 'completed']
 
 // ============================================================================
@@ -107,7 +106,7 @@ export const statusTypeOptions: { value: StatusType; label: string }[] = [
 
 export const defaultStatuses: Status[] = [
   { id: 'todo', name: 'To Do', color: '#6b7280', type: 'todo', order: 0 },
-  { id: 'in-progress', name: 'In Progress', color: '#E5993E', type: 'in_progress', order: 1 },
+  { id: 'in-progress', name: 'In Progress', color: '#F59E0B', type: 'in_progress', order: 1 },
   { id: 'done', name: 'Done', color: '#10b981', type: 'done', order: 2 }
 ]
 
@@ -306,7 +305,14 @@ export interface TaskFilters {
 // SORT TYPES AND INTERFACES
 // ============================================================================
 
-export type SortField = 'dueDate' | 'priority' | 'createdAt' | 'title' | 'project' | 'completedAt'
+export type SortField =
+  | 'dueDate'
+  | 'priority'
+  | 'status'
+  | 'createdAt'
+  | 'title'
+  | 'project'
+  | 'completedAt'
 
 export type SortDirection = 'asc' | 'desc'
 
@@ -373,6 +379,7 @@ export const dueDateFilterOptions: { value: DueDateFilterType; label: string }[]
 export const sortFieldOptions: { value: SortField; label: string }[] = [
   { value: 'dueDate', label: 'Due Date' },
   { value: 'priority', label: 'Priority' },
+  { value: 'status', label: 'Status' },
   { value: 'createdAt', label: 'Created' },
   { value: 'title', label: 'Title (A-Z)' },
   { value: 'project', label: 'Project' }

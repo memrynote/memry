@@ -10,7 +10,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import type { LinkingRequestEvent } from '@memry/contracts/ipc-events'
-import { Monitor, Smartphone, Loader2 } from 'lucide-react'
+import { Monitor, Smartphone, Loader2 } from '@/lib/icons'
 
 function formatSasCode(code: string): string {
   return `${code.slice(0, 3)} ${code.slice(3)}`

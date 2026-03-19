@@ -1,7 +1,7 @@
 'use client'
 
 import * as React from 'react'
-import { FolderOpen, Sparkles, FileText, Clock, Loader2 } from 'lucide-react'
+import { FolderOpen, Sparkles, FileText, Clock, Loader2 } from '@/lib/icons'
 import { Button } from '@/components/ui/button'
 import { useVault, useVaultList } from '@/hooks/use-vault'
 

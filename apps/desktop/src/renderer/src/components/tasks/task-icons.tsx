@@ -1,74 +1,6 @@
 import { cn } from '@/lib/utils'
 import { priorityConfig, type Priority } from '@/data/sample-tasks'
 
-// ============================================================================
-// STATUS CIRCLE — Replaces TaskCheckbox with Linear-style SVG status indicator
-// ============================================================================
-
-interface StatusCircleProps {
-  statusType: 'todo' | 'in_progress' | 'done'
-  statusColor: string
-  isCompleted: boolean
-  onClick: (e: React.MouseEvent) => void
-  className?: string
-}
-
-export const StatusCircle = ({
-  statusType,
-  statusColor,
-  isCompleted,
-  onClick,
-  className
-}: StatusCircleProps): React.JSX.Element => {
-  const effectiveType = isCompleted ? 'done' : statusType
-
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={cn(
-        'shrink-0 cursor-pointer rounded-full',
-        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-        className
-      )}
-      aria-label={isCompleted ? 'Mark as incomplete' : 'Mark as complete'}
-    >
-      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" style={{ flexShrink: 0 }}>
-        {effectiveType === 'done' ? (
-          <>
-            <circle
-              cx="8"
-              cy="8"
-              r="5.5"
-              stroke={statusColor}
-              strokeWidth="1.5"
-              fill={statusColor}
-            />
-            <path
-              d="M5.5 8l1.5 1.5L10.5 6"
-              stroke="var(--background)"
-              strokeWidth="1.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </>
-        ) : effectiveType === 'in_progress' ? (
-          <>
-            <circle cx="8" cy="8" r="5.5" stroke={statusColor} strokeWidth="1.5" />
-            <path d="M8 2.5A5.5 5.5 0 0 1 8 13.5" fill={statusColor} />
-          </>
-        ) : (
-          <circle cx="8" cy="8" r="5.5" stroke="var(--text-tertiary)" strokeWidth="1.5" />
-        )}
-      </svg>
-    </button>
-  )
-}
-
-// ============================================================================
-// PRIORITY BARS — Linear-style bar chart indicator
-// ============================================================================
-
 interface PriorityBarsProps {
   priority: Priority
   className?: string
@@ -76,7 +8,26 @@ interface PriorityBarsProps {
 
 export const PriorityBars = ({ priority, className }: PriorityBarsProps): React.JSX.Element => {
   if (priority === 'none') {
-    return <div className={cn('w-[14px] shrink-0', className)} aria-hidden="true" />
+    return (
+      <svg
+        width="14"
+        height="14"
+        viewBox="0 0 14 14"
+        fill="none"
+        className={cn('shrink-0', className)}
+        aria-label="no priority"
+      >
+        <line
+          x1="2"
+          y1="7"
+          x2="12"
+          y2="7"
+          stroke="var(--text-tertiary)"
+          strokeWidth="1.5"
+          strokeLinecap="round"
+        />
+      </svg>
+    )
   }
 
   const color = priorityConfig[priority].color!
@@ -185,41 +136,6 @@ export const PriorityStar = ({
       stroke={color}
       strokeWidth="0.5"
     />
-  </svg>
-)
-
-// ============================================================================
-// STATUS ICON — Pure display icon for status type (14×14)
-// Used in filter panels, interactive badges, and task detail drawer
-// ============================================================================
-
-interface StatusIconProps {
-  type: 'todo' | 'in_progress' | 'done'
-  color: string
-  className?: string
-}
-
-export const StatusIcon = ({ type, color, className }: StatusIconProps): React.JSX.Element => (
-  <svg width="14" height="14" viewBox="0 0 14 14" fill="none" className={cn('shrink-0', className)}>
-    {type === 'todo' && <circle cx="7" cy="7" r="5" stroke={color} strokeWidth="1.2" />}
-    {type === 'in_progress' && (
-      <>
-        <circle cx="7" cy="7" r="5" stroke={color} strokeWidth="1.2" />
-        <path d="M7 2A5 5 0 0 1 7 12" fill={color} />
-      </>
-    )}
-    {type === 'done' && (
-      <>
-        <circle cx="7" cy="7" r="5" stroke={color} strokeWidth="1.2" fill={color} />
-        <path
-          d="M4.5 7l1.5 1.5L9.5 5"
-          stroke="var(--background)"
-          strokeWidth="1.3"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-      </>
-    )}
   </svg>
 )
 

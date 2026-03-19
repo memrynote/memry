@@ -9,7 +9,7 @@ import {
 } from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
 import { Label } from '@/components/ui/label'
-import { Info } from 'lucide-react'
+import { Info } from '@/lib/icons'
 import { useTabPreferences } from '@/hooks/use-tab-preferences'
 import { useGeneralSettings } from '@/hooks/use-general-settings'
 import { useTabs } from '@/contexts/tabs'

@@ -289,6 +289,21 @@ describe('T518: QuickAddInput - parsing preview', () => {
       const call = defaultProps.onAdd.mock.calls[0]
       expect(call[0]).not.toContain('!!high')
     })
+
+    it('submits directly when Enter is pressed on an exact priority token match', async () => {
+      const user = userEvent.setup()
+      render(<QuickAddInput {...defaultProps} />)
+
+      const input = screen.getByRole('textbox', { name: /quick add task/i })
+      await user.type(input, 'Important task !!high')
+      await user.keyboard('{Enter}')
+
+      expect(defaultProps.onAdd).toHaveBeenCalledTimes(1)
+      const call = defaultProps.onAdd.mock.calls[0]
+      expect(call[0]).toBe('Important task')
+      expect(call[1]).toMatchObject({ priority: 'high' })
+      expect(input).toHaveValue('')
+    })
   })
 
   describe('project parsing', () => {

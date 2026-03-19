@@ -14,7 +14,7 @@ import { ContentArea } from '@/components/note/content-area'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { Separator } from '@/components/ui/separator'
-import { Loader2, Save, ArrowLeft, Lock } from 'lucide-react'
+import { Loader2, Save, ArrowLeft, Lock } from '@/lib/icons'
 import { useTemplates } from '@/hooks/use-templates'
 import { useNoteTagsQuery } from '@/hooks/use-notes-query'
 import { useTabs, useActiveTab } from '@/contexts/tabs'
@@ -434,7 +434,7 @@ export function TemplateEditorPage({ templateId }: TemplateEditorPageProps) {
                 value={description}
                 onChange={(e) => !isBuiltIn && setDescription(e.target.value)}
                 placeholder="Brief description of this template..."
-                className="mt-1.5 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 resize-none"
+                className="mt-1.5 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 resize-none"
                 rows={2}
                 disabled={isBuiltIn}
               />

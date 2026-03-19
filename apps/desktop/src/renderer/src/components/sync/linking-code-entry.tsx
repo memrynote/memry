@@ -2,7 +2,7 @@ import { useState, useCallback, type FormEvent } from 'react'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { extractErrorMessage } from '@/lib/ipc-error'
-import { ArrowLeft, Link2, Loader2 } from 'lucide-react'
+import { ArrowLeft, Link2, Loader2 } from '@/lib/icons'
 
 interface LinkingCodeEntryProps {
   onLinked: (sessionId: string, verificationCode?: string) => void
@@ -106,7 +106,7 @@ export function LinkingCodeEntry({
             autoFocus
             aria-describedby={error ? 'linking-error' : undefined}
             aria-invalid={!!error}
-            className="flex w-full rounded-md border border-input bg-background px-3 py-2.5 text-[15px] font-mono leading-relaxed ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-600/15 focus-visible:border-amber-600/50 dark:focus-visible:ring-amber-400/10 dark:focus-visible:border-amber-400/40 disabled:cursor-not-allowed disabled:opacity-50 resize-none"
+            className="flex w-full rounded-md border border-input bg-background px-3 py-2.5 text-[15px] font-mono leading-relaxed ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-amber-600/15 focus-visible:border-amber-600/50 dark:focus-visible:ring-amber-400/10 dark:focus-visible:border-amber-400/40 disabled:cursor-not-allowed disabled:opacity-50 resize-none"
           />
           {error && (
             <p id="linking-error" className="text-sm text-destructive" role="alert">

@@ -4,7 +4,7 @@ import { cn } from '@/lib/utils'
 import { CheckMark } from '@/components/ui/check-mark'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import type { Status } from '@/data/tasks-data'
-import { StatusIcon } from './task-icons'
+import { StatusIcon } from './status-icon'
 
 interface InteractiveStatusBadgeProps {
   statusId: string

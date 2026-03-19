@@ -3,7 +3,7 @@ import { QRCodeSVG } from 'qrcode.react'
 import { Button } from '@/components/ui/button'
 import { useCountdown } from '@/hooks/use-countdown'
 import { extractErrorMessage } from '@/lib/ipc-error'
-import { QrCode, RefreshCw, X, Loader2, Clock, AlertCircle } from 'lucide-react'
+import { QrCode, RefreshCw, X, Loader2, Clock, AlertCircle } from '@/lib/icons'
 
 type QrState = 'loading' | 'ready' | 'expired' | 'error'
 

@@ -1,4 +1,4 @@
-import { RefreshCw } from 'lucide-react'
+import { Repeat } from '@/lib/icons'
 
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
@@ -36,7 +36,7 @@ export const RepeatIndicator = ({
       className={cn('inline-flex items-center text-task-repeat', className)}
       aria-label={`Repeating: ${displayText}`}
     >
-      <RefreshCw className={iconSize} aria-hidden="true" />
+      <Repeat className={iconSize} aria-hidden="true" />
     </span>
   )
 

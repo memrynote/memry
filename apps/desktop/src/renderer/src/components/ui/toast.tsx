@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Check, X } from 'lucide-react'
+import { Check, X } from '@/lib/icons'
 
 import { cn } from '@/lib/utils'
 

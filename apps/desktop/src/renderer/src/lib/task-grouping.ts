@@ -1,5 +1,5 @@
 import type { Task, Priority } from '@/data/sample-tasks'
-import type { Project, SortField, SortDirection } from '@/data/tasks-data'
+import type { Project, SortField, SortDirection, StatusType } from '@/data/tasks-data'
 import { priorityConfig } from '@/data/sample-tasks'
 import {
   groupTasksByDueDate,
@@ -42,7 +42,7 @@ const DUE_DATE_LABELS: Record<
   tomorrow: { label: 'Tomorrow', color: '#3B82F6' },
   upcoming: { label: 'This Week', color: '#50505A' },
   later: { label: 'Later' },
-  noDueDate: { label: 'No Due Date' }
+  noDueDate: { label: 'No Due Date', color: '#50505A' }
 }
 
 export const groupByDueDate = (tasks: Task[]): TaskGroup[] => {
@@ -167,6 +167,76 @@ export const groupByCreatedDate = (tasks: Task[]): TaskGroup[] => {
 }
 
 // ============================================================================
+// STATUS GROUPING
+// ============================================================================
+
+const STATUS_TYPE_ORDER: StatusType[] = ['todo', 'in_progress']
+
+export const groupByStatus = (tasks: Task[], projects: Project[]): TaskGroup[] => {
+  const statusMap = new Map<
+    string,
+    { name: string; type: StatusType; color: string; order: number; projectOrder: number }
+  >()
+  projects.forEach((project, pIdx) => {
+    project.statuses.forEach((status) => {
+      if (!statusMap.has(status.id) && status.type !== 'done') {
+        statusMap.set(status.id, {
+          name: status.name,
+          type: status.type,
+          color: status.color,
+          order: status.order,
+          projectOrder: pIdx
+        })
+      }
+    })
+  })
+
+  const buckets = new Map<string, Task[]>()
+  const uncategorized: Task[] = []
+
+  tasks.forEach((task) => {
+    if (statusMap.has(task.statusId)) {
+      if (!buckets.has(task.statusId)) buckets.set(task.statusId, [])
+      buckets.get(task.statusId)!.push(task)
+    } else {
+      const isDone = projects.some((p) =>
+        p.statuses.some((s) => s.id === task.statusId && s.type === 'done')
+      )
+      if (isDone) return
+      uncategorized.push(task)
+    }
+  })
+
+  const result: TaskGroup[] = []
+
+  for (const [statusId, statusTasks] of buckets) {
+    const info = statusMap.get(statusId)!
+    result.push({
+      key: statusId,
+      label: info.name,
+      tasks: statusTasks,
+      color: info.color
+    })
+  }
+
+  result.sort((a, b) => {
+    const infoA = statusMap.get(a.key)!
+    const infoB = statusMap.get(b.key)!
+    const typeOrderA = STATUS_TYPE_ORDER.indexOf(infoA.type)
+    const typeOrderB = STATUS_TYPE_ORDER.indexOf(infoB.type)
+    if (typeOrderA !== typeOrderB) return typeOrderA - typeOrderB
+    if (infoA.projectOrder !== infoB.projectOrder) return infoA.projectOrder - infoB.projectOrder
+    return infoA.order - infoB.order
+  })
+
+  if (uncategorized.length > 0) {
+    result.push({ key: 'uncategorized', label: 'Uncategorized', tasks: uncategorized })
+  }
+
+  return result
+}
+
+// ============================================================================
 // DISPATCHER
 // ============================================================================
 
@@ -186,6 +256,9 @@ export const groupTasksForSort = (
       break
     case 'priority':
       groups = groupByPriority(tasks)
+      break
+    case 'status':
+      groups = groupByStatus(tasks, projects)
       break
     case 'project':
       groups = groupByProject(tasks, projects)

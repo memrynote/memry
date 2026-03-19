@@ -9,8 +9,8 @@ import {
   CloudOff,
   AlertCircle,
   Cloud,
-  type LucideIcon
-} from 'lucide-react'
+  type AppIcon
+} from '@/lib/icons'
 import { useSync } from '@/contexts/sync-context'
 import { notesService } from '@/services/notes-service'
 
@@ -19,7 +19,7 @@ type SyncStatusType = 'idle' | 'syncing' | 'paused' | 'error' | 'offline' | 'unk
 interface SyncStatusDisplay {
   label: string
   dotColor: string
-  IconComponent: LucideIcon
+  IconComponent: AppIcon
   isAnimating: boolean
 }
 

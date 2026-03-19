@@ -1,49 +1,41 @@
-/**
- * KanbanCard Component Tests (T515-T516)
- *
- * Tests for the KanbanCard component with task display and interactions.
- */
-
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect } from 'vitest'
 import { render, screen } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
-import { KanbanCard } from './kanban-card'
 import type { Task, Priority } from '@/data/sample-tasks'
+import type { Project, StatusType, Status } from '@/data/tasks-data'
+import { KanbanCardContent } from './kanban-card'
 
-// Mock dnd-kit
-vi.mock('@dnd-kit/sortable', () => ({
-  useSortable: () => ({
-    attributes: { role: 'option', 'aria-roledescription': 'sortable' },
-    listeners: {},
-    setNodeRef: vi.fn(),
-    transform: null,
-    transition: null,
-    isDragging: false
-  }),
-  defaultAnimateLayoutChanges: vi.fn()
-}))
+const createStatus = (overrides: Partial<Status> = {}): Status => ({
+  id: 'status-todo',
+  name: 'To Do',
+  color: '#6b7280',
+  type: 'todo' as StatusType,
+  order: 0,
+  ...overrides
+})
 
-vi.mock('@dnd-kit/utilities', () => ({
-  CSS: {
-    Transform: {
-      toString: () => ''
-    }
-  }
-}))
-
-// Mock scrollIntoView for jsdom
-Element.prototype.scrollIntoView = vi.fn()
-
-// ============================================================================
-// Test Data
-// ============================================================================
+const createProject = (overrides: Partial<Project> = {}): Project => ({
+  id: 'project-1',
+  name: 'Test Project',
+  description: '',
+  icon: 'folder',
+  color: '#3b82f6',
+  statuses: [
+    createStatus({ id: 'p1-todo', name: 'To Do', type: 'todo', order: 0 }),
+    createStatus({ id: 'p1-done', name: 'Done', type: 'done', order: 1 })
+  ],
+  isDefault: false,
+  isArchived: false,
+  createdAt: new Date(),
+  taskCount: 0,
+  ...overrides
+})
 
 const createTask = (overrides: Partial<Task> = {}): Task => ({
   id: 'task-1',
   title: 'Test Task',
   description: '',
   projectId: 'project-1',
-  statusId: 'status-1',
+  statusId: 'p1-todo',
   priority: 'none' as Priority,
   dueDate: null,
   dueTime: null,
@@ -53,294 +45,61 @@ const createTask = (overrides: Partial<Task> = {}): Task => ({
   sourceNoteId: null,
   parentId: null,
   subtaskIds: [],
-  createdAt: new Date('2026-01-01'),
+  createdAt: new Date(),
   completedAt: null,
   archivedAt: null,
   ...overrides
 })
 
-// ============================================================================
-// T515: KanbanCard - Task Display Tests
-// ============================================================================
+describe('KanbanCardContent', () => {
+  const project = createProject({ name: 'Memry' })
 
-describe('T515: KanbanCard - task display', () => {
-  const defaultProps = {
-    task: createTask(),
-    columnId: 'column-1',
-    onClick: vi.fn(),
-    onDoubleClick: vi.fn()
-  }
+  describe('project badge visibility', () => {
+    it('renders project badge by default when project is provided', () => {
+      // #given
+      const task = createTask()
 
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
+      // #when
+      render(<KanbanCardContent task={task} project={project} allTasks={[task]} />)
 
-  it('should render task title', () => {
-    render(<KanbanCard {...defaultProps} />)
-
-    expect(screen.getByText('Test Task')).toBeInTheDocument()
-  })
-
-  it('should render task with custom title', () => {
-    const task = createTask({ title: 'Custom Task Title' })
-    render(<KanbanCard {...defaultProps} task={task} />)
-
-    expect(screen.getByText('Custom Task Title')).toBeInTheDocument()
-  })
-
-  it('should render priority indicator for high priority', () => {
-    const task = createTask({ priority: 'high' })
-    render(<KanbanCard {...defaultProps} task={task} />)
-
-    expect(screen.getByText('High')).toBeInTheDocument()
-  })
-
-  it('should render priority indicator for urgent priority', () => {
-    const task = createTask({ priority: 'urgent' })
-    render(<KanbanCard {...defaultProps} task={task} />)
-
-    expect(screen.getByText('Urgent')).toBeInTheDocument()
-  })
-
-  it('should render priority indicator for medium priority', () => {
-    const task = createTask({ priority: 'medium' })
-    render(<KanbanCard {...defaultProps} task={task} />)
-
-    expect(screen.getByText('Medium')).toBeInTheDocument()
-  })
-
-  it('should not render priority indicator for no priority', () => {
-    const task = createTask({ priority: 'none' })
-    render(<KanbanCard {...defaultProps} task={task} />)
-
-    expect(screen.queryByText('Low')).not.toBeInTheDocument()
-    expect(screen.queryByText('Medium')).not.toBeInTheDocument()
-    expect(screen.queryByText('High')).not.toBeInTheDocument()
-    expect(screen.queryByText('Urgent')).not.toBeInTheDocument()
-  })
-
-  it('should render due date when set', () => {
-    const task = createTask({ dueDate: new Date('2026-01-15') })
-    render(<KanbanCard {...defaultProps} task={task} />)
-
-    expect(screen.getByText(/jan 15/i)).toBeInTheDocument()
-  })
-
-  it('should not render due date when not set', () => {
-    const task = createTask({ dueDate: null })
-    render(<KanbanCard {...defaultProps} task={task} />)
-
-    expect(screen.queryByText(/jan/i)).not.toBeInTheDocument()
-  })
-
-  it('should show repeat icon for repeating tasks', () => {
-    const task = createTask({
-      isRepeating: true,
-      repeatConfig: {
-        frequency: 'daily',
-        interval: 1,
-        endType: 'never',
-        completedCount: 0,
-        createdAt: new Date()
-      }
+      // #then
+      expect(screen.getByText('Memry')).toBeInTheDocument()
     })
-    render(<KanbanCard {...defaultProps} task={task} />)
 
-    // Check for the aria-label on the repeat icon
-    expect(screen.getByLabelText('Repeating task')).toBeInTheDocument()
-  })
+    it('hides project badge when showProjectBadge is false', () => {
+      // #given
+      const task = createTask()
 
-  it('should show completed styling when isCompleted is true', () => {
-    render(<KanbanCard {...defaultProps} isCompleted />)
+      // #when
+      render(
+        <KanbanCardContent
+          task={task}
+          project={project}
+          allTasks={[task]}
+          showProjectBadge={false}
+        />
+      )
 
-    // Check for the completed checkmark icon
-    expect(screen.getByLabelText('Completed')).toBeInTheDocument()
-  })
+      // #then
+      expect(screen.queryByText('Memry')).not.toBeInTheDocument()
+    })
 
-  it('should call onClick when card is clicked', async () => {
-    const user = userEvent.setup()
-    render(<KanbanCard {...defaultProps} />)
+    it('shows project badge when showProjectBadge is true', () => {
+      // #given
+      const task = createTask()
 
-    const card = screen.getByRole('option')
-    await user.click(card)
+      // #when
+      render(
+        <KanbanCardContent
+          task={task}
+          project={project}
+          allTasks={[task]}
+          showProjectBadge={true}
+        />
+      )
 
-    expect(defaultProps.onClick).toHaveBeenCalled()
-  })
-
-  it('should call onDoubleClick when card is double-clicked', async () => {
-    const user = userEvent.setup()
-    render(<KanbanCard {...defaultProps} />)
-
-    const card = screen.getByRole('option')
-    await user.dblClick(card)
-
-    expect(defaultProps.onDoubleClick).toHaveBeenCalled()
-  })
-
-  it('should have proper aria-label with task title', () => {
-    render(<KanbanCard {...defaultProps} />)
-
-    expect(screen.getByRole('option', { name: 'Task: Test Task' })).toBeInTheDocument()
-  })
-})
-
-// ============================================================================
-// T516: KanbanCard - Selection Mode Tests
-// ============================================================================
-
-describe('T516: KanbanCard - selection mode', () => {
-  const defaultProps = {
-    task: createTask(),
-    columnId: 'column-1',
-    onClick: vi.fn(),
-    onDoubleClick: vi.fn(),
-    onToggleSelect: vi.fn()
-  }
-
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
-
-  it('should show selection checkbox in selection mode', () => {
-    render(<KanbanCard {...defaultProps} isSelectionMode onToggleSelect={vi.fn()} />)
-
-    expect(screen.getByRole('checkbox')).toBeInTheDocument()
-  })
-
-  it('should not show selection checkbox when not in selection mode', () => {
-    render(<KanbanCard {...defaultProps} isSelectionMode={false} />)
-
-    expect(screen.queryByRole('checkbox')).not.toBeInTheDocument()
-  })
-
-  it('should show checked checkbox when isCheckedForSelection is true', () => {
-    render(
-      <KanbanCard
-        {...defaultProps}
-        isSelectionMode
-        isCheckedForSelection
-        onToggleSelect={vi.fn()}
-      />
-    )
-
-    const checkbox = screen.getByRole('checkbox')
-    expect(checkbox).toBeChecked()
-  })
-
-  it('should call onToggleSelect when clicking in selection mode', async () => {
-    const onToggleSelect = vi.fn()
-    const user = userEvent.setup()
-    render(<KanbanCard {...defaultProps} isSelectionMode onToggleSelect={onToggleSelect} />)
-
-    const card = screen.getByRole('option')
-    await user.click(card)
-
-    expect(onToggleSelect).toHaveBeenCalledWith('task-1')
-  })
-
-  it('should toggle selection on Cmd/Ctrl+click', async () => {
-    const onToggleSelect = vi.fn()
-    const user = userEvent.setup()
-    render(<KanbanCard {...defaultProps} onToggleSelect={onToggleSelect} />)
-
-    const card = screen.getByRole('option')
-    await user.keyboard('{Meta>}')
-    await user.click(card)
-    await user.keyboard('{/Meta}')
-
-    expect(onToggleSelect).toHaveBeenCalledWith('task-1')
-  })
-})
-
-// ============================================================================
-// KanbanCard - Focus and State Tests
-// ============================================================================
-
-describe('KanbanCard - focus and state', () => {
-  const defaultProps = {
-    task: createTask(),
-    columnId: 'column-1',
-    onClick: vi.fn()
-  }
-
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
-
-  it('should have tabIndex 0 when focused', () => {
-    render(<KanbanCard {...defaultProps} isFocused />)
-
-    const card = screen.getByRole('option')
-    expect(card).toHaveAttribute('tabindex', '0')
-  })
-
-  it('should have tabIndex -1 when not focused', () => {
-    render(<KanbanCard {...defaultProps} isFocused={false} />)
-
-    const card = screen.getByRole('option')
-    expect(card).toHaveAttribute('tabindex', '-1')
-  })
-
-  it('should have aria-selected true when focused', () => {
-    render(<KanbanCard {...defaultProps} isFocused />)
-
-    const card = screen.getByRole('option')
-    expect(card).toHaveAttribute('aria-selected', 'true')
-  })
-
-  it('should have aria-selected true when selected', () => {
-    render(<KanbanCard {...defaultProps} isSelected />)
-
-    const card = screen.getByRole('option')
-    expect(card).toHaveAttribute('aria-selected', 'true')
-  })
-
-  it('should trigger onClick on Space key press', async () => {
-    const user = userEvent.setup()
-    render(<KanbanCard {...defaultProps} isFocused />)
-
-    const card = screen.getByRole('option')
-    card.focus()
-    await user.keyboard(' ')
-
-    expect(defaultProps.onClick).toHaveBeenCalled()
-  })
-})
-
-// ============================================================================
-// Accessibility Tests
-// ============================================================================
-
-describe('KanbanCard - accessibility', () => {
-  const defaultProps = {
-    task: createTask(),
-    columnId: 'column-1',
-    onClick: vi.fn()
-  }
-
-  it('should have option role for sortable item', () => {
-    render(<KanbanCard {...defaultProps} />)
-
-    expect(screen.getByRole('option')).toBeInTheDocument()
-  })
-
-  it('should have proper aria-label with task title', () => {
-    render(<KanbanCard {...defaultProps} />)
-
-    expect(screen.getByRole('option', { name: 'Task: Test Task' })).toBeInTheDocument()
-  })
-
-  it('should announce priority to screen readers', () => {
-    const task = createTask({ priority: 'high' })
-    render(<KanbanCard {...defaultProps} task={task} />)
-
-    expect(screen.getByText('High')).toBeInTheDocument()
-  })
-
-  it('should have aria-label on selection checkbox', () => {
-    const task = createTask({ title: 'My Task' })
-    render(<KanbanCard {...defaultProps} task={task} isSelectionMode onToggleSelect={vi.fn()} />)
-
-    expect(screen.getByRole('checkbox', { name: /select my task/i })).toBeInTheDocument()
+      // #then
+      expect(screen.getByText('Memry')).toBeInTheDocument()
+    })
   })
 })

@@ -3,8 +3,9 @@
  * Functions to serialize/deserialize tab state for storage
  */
 
-import type { Tab, TabGroup, TabSystemState } from '@/contexts/tabs/types'
+import type { Tab, TabGroup, TabSystemState, SplitLayout } from '@/contexts/tabs/types'
 import { createDefaultTab, generateId } from '@/contexts/tabs/helpers'
+import { getGroupIdsFromLayout } from '@/components/split-view/layout-helpers'
 import type { PersistedTabState, PersistedTabGroup, PersistedTab } from './types'
 import { STORAGE_VERSION } from './types'
 import { migratePersistedState } from './migrations'
@@ -112,10 +113,21 @@ export const deserializeTabState = (persisted: PersistedTabState): Partial<TabSy
     }
   }
 
+  const layoutGroupIds = getGroupIdsFromLayout(migrated.layout)
+  const allGroupIdsExist = layoutGroupIds.every((id) => tabGroups[id])
+
+  const validLayout: SplitLayout = allGroupIdsExist
+    ? migrated.layout
+    : { type: 'leaf' as const, tabGroupId: Object.keys(tabGroups)[0] }
+
+  const validActiveGroupId = tabGroups[migrated.activeGroupId]
+    ? migrated.activeGroupId
+    : Object.keys(tabGroups)[0]
+
   return {
     tabGroups,
-    layout: migrated.layout,
-    activeGroupId: migrated.activeGroupId,
+    layout: validLayout,
+    activeGroupId: validActiveGroupId,
     settings: migrated.settings
   }
 }

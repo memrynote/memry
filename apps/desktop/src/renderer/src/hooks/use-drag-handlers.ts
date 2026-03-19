@@ -1,15 +1,12 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useRef, useState } from 'react'
 import type { DragEndEvent, DragStartEvent, DragOverEvent } from '@dnd-kit/core'
+import { arrayMove } from '@dnd-kit/sortable'
 import { toast } from 'sonner'
 
-import type { DragState } from '@/contexts/drag-context'
-import {
-  formatDateShort,
-  startOfDay,
-  getDefaultTodoStatus,
-  getDefaultDoneStatus
-} from '@/lib/task-utils'
-import type { Task } from '@/data/sample-tasks'
+import { resolveTaskEdgeFromDndEvent, type DragState } from '@/contexts/drag-context'
+import { formatDateShort, startOfDay, getDefaultTodoStatus } from '@/lib/task-utils'
+import { resolveColumnDrop } from '@/lib/kanban-drop-resolver'
+import type { Task, Priority } from '@/data/sample-tasks'
 import type { Project } from '@/data/tasks-data'
 
 // ============================================================================
@@ -17,12 +14,24 @@ import type { Project } from '@/data/tasks-data'
 // ============================================================================
 
 interface UndoAction {
-  type: 'move-project' | 'change-status' | 'reschedule' | 'reorder' | 'delete' | 'archive'
+  type:
+    | 'move-project'
+    | 'change-status'
+    | 'change-priority'
+    | 'cross-section-move'
+    | 'reschedule'
+    | 'reorder'
+    | 'delete'
+    | 'archive'
   taskIds: string[]
   previousProjectId?: string
   previousStatusId?: string
+  previousStatusIds?: Map<string, string>
+  previousPriorities?: Map<string, Priority>
   previousDates?: Map<string, Date | null>
   previousOrder?: string[]
+  previousOrderUpdates?: Record<string, string[] | null>
+  previousTaskState?: Map<string, Partial<Task>>
   sectionId?: string
   deletedTasks?: Task[]
 }
@@ -32,22 +41,102 @@ interface UseDragHandlersProps {
   projects: Project[]
   onUpdateTask: (taskId: string, updates: Partial<Task>) => void
   onDeleteTask: (taskId: string) => void
-  onReorder?: (sectionId: string, newOrder: string[]) => void
+  onReorder?: (updates: Record<string, string[] | null>) => void
+  getOrder?: (sectionId: string) => string[] | undefined
 }
 
 interface UseDragHandlersReturn {
-  /** Handle drag end event */
   handleDragEnd: (event: DragEndEvent, dragState: DragState) => void
-  /** Handle drag start event */
   handleDragStart: (event: DragStartEvent, dragState: DragState) => void
-  /** Handle drag over event */
   handleDragOver: (event: DragOverEvent, dragState: DragState) => void
-  /** Undo the last drag action */
   undo: () => void
-  /** Whether undo is available */
   canUndo: boolean
-  /** Last action description for undo toast */
   lastActionDescription: string | null
+  droppedPriorities: Map<string, Priority>
+}
+
+const buildReorderedTaskIds = (
+  sectionTaskIds: string[] | undefined,
+  activeId: string,
+  overId: string,
+  overTaskEdge: DragState['overTaskEdge'] = null
+): string[] => {
+  if (!sectionTaskIds || sectionTaskIds.length === 0) {
+    return [activeId, overId]
+  }
+
+  const currentOrder = Array.from(new Set(sectionTaskIds))
+  const oldIndex = currentOrder.indexOf(activeId)
+  const newIndex = currentOrder.indexOf(overId)
+
+  if (newIndex === -1) {
+    return currentOrder
+  }
+
+  if (oldIndex === -1) {
+    const nextOrder = [...currentOrder]
+    nextOrder.splice(overTaskEdge === 'after' ? newIndex + 1 : newIndex, 0, activeId)
+    return nextOrder
+  }
+
+  if (overTaskEdge !== 'after') {
+    return arrayMove(currentOrder, oldIndex, newIndex)
+  }
+
+  const withoutActive = currentOrder.filter((id) => id !== activeId)
+  const overIndexAfterRemoval = withoutActive.indexOf(overId)
+  if (overIndexAfterRemoval === -1) {
+    return currentOrder
+  }
+
+  const nextOrder = [...withoutActive]
+  nextOrder.splice(overIndexAfterRemoval + 1, 0, activeId)
+  return nextOrder
+}
+
+const buildCrossSectionOrderUpdates = ({
+  activeIds,
+  sourceSectionId,
+  sourceSectionTaskIds,
+  targetSectionId,
+  targetSectionTaskIds,
+  overId,
+  overTaskEdge,
+  sectionDropPosition
+}: {
+  activeIds: string[]
+  sourceSectionId: string
+  sourceSectionTaskIds: string[] | undefined
+  targetSectionId: string
+  targetSectionTaskIds: string[] | undefined
+  overId: string | null
+  overTaskEdge: DragState['overTaskEdge']
+  sectionDropPosition: DragState['sectionDropPosition']
+}): Record<string, string[]> => {
+  const draggedIds = Array.from(new Set(activeIds))
+  const sourceOrder = (sourceSectionTaskIds ?? []).filter((id) => !draggedIds.includes(id))
+  const targetOrder = (targetSectionTaskIds ?? []).filter((id) => !draggedIds.includes(id))
+
+  let insertIndex = targetOrder.length
+
+  if (sectionDropPosition === 'start') {
+    insertIndex = 0
+  } else if (sectionDropPosition === 'end') {
+    insertIndex = targetOrder.length
+  } else if (overId) {
+    const overIndex = targetOrder.indexOf(overId)
+    if (overIndex !== -1) {
+      insertIndex = overTaskEdge === 'after' ? overIndex + 1 : overIndex
+    }
+  }
+
+  const nextTargetOrder = [...targetOrder]
+  nextTargetOrder.splice(insertIndex, 0, ...draggedIds)
+
+  return {
+    [sourceSectionId]: sourceOrder,
+    [targetSectionId]: nextTargetOrder
+  }
 }
 
 // ============================================================================
@@ -59,10 +148,13 @@ export const useDragHandlers = ({
   projects,
   onUpdateTask,
   onDeleteTask,
-  onReorder
+  onReorder,
+  getOrder
 }: UseDragHandlersProps): UseDragHandlersReturn => {
   const [undoStack, setUndoStack] = useState<UndoAction[]>([])
   const [lastActionDescription, setLastActionDescription] = useState<string | null>(null)
+  const [droppedPriorities, setDroppedPriorities] = useState<Map<string, Priority>>(new Map())
+  const priorityTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined)
 
   // Record an action for undo
   const recordAction = useCallback((action: UndoAction, description: string) => {
@@ -106,9 +198,21 @@ export const useDragHandlers = ({
         break
 
       case 'change-status':
-        if (lastAction.previousStatusId) {
+        if (lastAction.previousStatusIds) {
+          lastAction.previousStatusIds.forEach((statusId, taskId) => {
+            onUpdateTask(taskId, { statusId })
+          })
+        } else if (lastAction.previousStatusId) {
           lastAction.taskIds.forEach((id) => {
             onUpdateTask(id, { statusId: lastAction.previousStatusId })
+          })
+        }
+        break
+
+      case 'change-priority':
+        if (lastAction.previousPriorities) {
+          lastAction.previousPriorities.forEach((priority, taskId) => {
+            onUpdateTask(taskId, { priority })
           })
         }
         break
@@ -123,7 +227,18 @@ export const useDragHandlers = ({
 
       case 'reorder':
         if (lastAction.sectionId && lastAction.previousOrder) {
-          onReorder?.(lastAction.sectionId, lastAction.previousOrder)
+          onReorder?.({ [lastAction.sectionId]: lastAction.previousOrder })
+        }
+        break
+
+      case 'cross-section-move':
+        if (lastAction.previousTaskState) {
+          lastAction.previousTaskState.forEach((updates, taskId) => {
+            onUpdateTask(taskId, updates)
+          })
+        }
+        if (lastAction.previousOrderUpdates) {
+          onReorder?.(lastAction.previousOrderUpdates)
         }
         break
 
@@ -222,6 +337,87 @@ export const useDragHandlers = ({
     [tasks, onUpdateTask, recordAction]
   )
 
+  // Handle dropping on a priority column
+  const handlePriorityDrop = useCallback(
+    (taskIds: string[], priority: Priority) => {
+      const previousPriorities = new Map<string, Priority>()
+      taskIds.forEach((id) => {
+        const task = tasks.find((t) => t.id === id)
+        if (task) previousPriorities.set(id, task.priority)
+      })
+
+      taskIds.forEach((id) => {
+        onUpdateTask(id, { priority })
+      })
+
+      const label =
+        priority === 'none' ? 'No Priority' : priority.charAt(0).toUpperCase() + priority.slice(1)
+
+      recordAction(
+        { type: 'change-priority', taskIds, previousPriorities },
+        `Priority set to ${label}`
+      )
+
+      const newDropped = new Map<string, Priority>()
+      taskIds.forEach((id) => newDropped.set(id, priority))
+      setDroppedPriorities(newDropped)
+
+      if (priorityTimerRef.current) clearTimeout(priorityTimerRef.current)
+      priorityTimerRef.current = setTimeout(() => setDroppedPriorities(new Map()), 2500)
+
+      toast.success(
+        taskIds.length === 1
+          ? `Priority set to ${label}`
+          : `${taskIds.length} tasks set to ${label}`
+      )
+    },
+    [tasks, onUpdateTask, recordAction]
+  )
+
+  // Handle dropping on a canonical status column (todo/in_progress/done without project context)
+  const handleCanonicalStatusDrop = useCallback(
+    (taskIds: string[], statusType: 'todo' | 'in_progress' | 'done') => {
+      const previousStatusIds = new Map<string, string>()
+
+      taskIds.forEach((id) => {
+        const task = tasks.find((t) => t.id === id)
+        if (!task) return
+
+        previousStatusIds.set(id, task.statusId)
+
+        const taskProject = projects.find((p) => p.id === task.projectId)
+        if (!taskProject) return
+
+        const targetStatus = taskProject.statuses.find((s) => s.type === statusType)
+        if (!targetStatus) return
+
+        const updates: Partial<Task> = { statusId: targetStatus.id }
+
+        if (targetStatus.type === 'done' && !task.completedAt) {
+          updates.completedAt = new Date()
+        } else if (targetStatus.type !== 'done' && task.completedAt) {
+          updates.completedAt = null
+        }
+
+        onUpdateTask(id, updates)
+      })
+
+      const statusLabels: Record<string, string> = {
+        todo: 'To Do',
+        in_progress: 'In Progress',
+        done: 'Done'
+      }
+      const label = statusLabels[statusType]
+
+      recordAction({ type: 'change-status', taskIds, previousStatusIds }, `Moved to ${label}`)
+
+      toast.success(
+        taskIds.length === 1 ? `Moved to ${label}` : `${taskIds.length} tasks moved to ${label}`
+      )
+    },
+    [tasks, projects, onUpdateTask, recordAction]
+  )
+
   // Handle dropping on a date cell (calendar)
   const handleDateDrop = useCallback(
     (taskIds: string[], targetDate: Date) => {
@@ -317,6 +513,205 @@ export const useDragHandlers = ({
     [tasks, projects, onUpdateTask, recordAction]
   )
 
+  const handleCrossSectionListDrop = useCallback(
+    ({
+      taskIds,
+      sourceSectionId,
+      sourceSectionTaskIds,
+      targetSectionId,
+      targetSectionTaskIds,
+      overId,
+      overColumnId,
+      overTask,
+      overTaskEdge,
+      sectionDropPosition
+    }: {
+      taskIds: string[]
+      sourceSectionId: string
+      sourceSectionTaskIds?: string[]
+      targetSectionId: string
+      targetSectionTaskIds?: string[]
+      overId: string | null
+      overColumnId?: string
+      overTask?: Task
+      overTaskEdge: DragState['overTaskEdge']
+      sectionDropPosition: DragState['sectionDropPosition']
+    }): boolean => {
+      const previousTaskState = new Map<string, Partial<Task>>()
+      let message: { single: string; multiple: string } | null = null
+      let droppedPriority: Priority | null = null
+
+      const resolvedColumnDrop = overColumnId ? resolveColumnDrop(overColumnId, projects) : null
+
+      taskIds.forEach((id) => {
+        const task = tasks.find((entry) => entry.id === id)
+        if (!task) return
+
+        if (resolvedColumnDrop?.type === 'priority') {
+          previousTaskState.set(id, { priority: task.priority })
+          onUpdateTask(id, { priority: resolvedColumnDrop.priority })
+          droppedPriority = resolvedColumnDrop.priority
+          const priorityLabel =
+            resolvedColumnDrop.priority === 'none'
+              ? 'No Priority'
+              : `${resolvedColumnDrop.priority.charAt(0).toUpperCase()}${resolvedColumnDrop.priority.slice(1)}`
+          message = {
+            single: `Priority set to ${priorityLabel}`,
+            multiple: `${taskIds.length} tasks set to ${priorityLabel}`
+          }
+          return
+        }
+
+        if (resolvedColumnDrop?.type === 'dueDate') {
+          previousTaskState.set(id, { dueDate: task.dueDate })
+          onUpdateTask(id, { dueDate: resolvedColumnDrop.dueDate })
+          message = {
+            single: `Rescheduled to ${resolvedColumnDrop.bucketLabel}`,
+            multiple: `${taskIds.length} tasks rescheduled to ${resolvedColumnDrop.bucketLabel}`
+          }
+          return
+        }
+
+        if (resolvedColumnDrop?.type === 'project') {
+          const targetProject = projects.find(
+            (project) => project.id === resolvedColumnDrop.projectId
+          )
+          if (!targetProject) return
+
+          const currentProject = projects.find((project) => project.id === task.projectId)
+          const currentStatus = currentProject?.statuses.find(
+            (status) => status.id === task.statusId
+          )
+          const currentStatusType = currentStatus?.type || 'todo'
+          const newStatus =
+            targetProject.statuses.find((status) => status.type === currentStatusType) ??
+            getDefaultTodoStatus(targetProject)
+
+          previousTaskState.set(id, { projectId: task.projectId, statusId: task.statusId })
+          onUpdateTask(id, {
+            projectId: resolvedColumnDrop.projectId,
+            statusId: newStatus?.id || targetProject.statuses[0]?.id
+          })
+          message = {
+            single: `Moved to ${targetProject.name}`,
+            multiple: `${taskIds.length} tasks moved to ${targetProject.name}`
+          }
+          return
+        }
+
+        if (resolvedColumnDrop?.type === 'canonicalStatus') {
+          const taskProject = projects.find((project) => project.id === task.projectId)
+          const targetStatus = taskProject?.statuses.find(
+            (status) => status.type === resolvedColumnDrop.statusType
+          )
+          if (!targetStatus) return
+
+          const updates: Partial<Task> = { statusId: targetStatus.id }
+          if (targetStatus.type === 'done' && !task.completedAt) {
+            updates.completedAt = new Date()
+          } else if (targetStatus.type !== 'done' && task.completedAt) {
+            updates.completedAt = null
+          }
+
+          previousTaskState.set(id, { statusId: task.statusId, completedAt: task.completedAt })
+          onUpdateTask(id, updates)
+
+          const statusLabels: Record<'todo' | 'in_progress' | 'done', string> = {
+            todo: 'To Do',
+            in_progress: 'In Progress',
+            done: 'Done'
+          }
+          const label = statusLabels[resolvedColumnDrop.statusType]
+          message = {
+            single: `Moved to ${label}`,
+            multiple: `${taskIds.length} tasks moved to ${label}`
+          }
+          return
+        }
+
+        if (resolvedColumnDrop?.type === 'projectStatus') {
+          const targetStatus = resolvedColumnDrop.project.statuses.find(
+            (status) => status.id === resolvedColumnDrop.columnId
+          )
+          if (!targetStatus) return
+
+          const updates: Partial<Task> = { statusId: resolvedColumnDrop.columnId }
+          if (targetStatus.type === 'done' && !task.completedAt) {
+            updates.completedAt = new Date()
+          } else if (targetStatus.type !== 'done' && task.completedAt) {
+            updates.completedAt = null
+          }
+
+          previousTaskState.set(id, { statusId: task.statusId, completedAt: task.completedAt })
+          onUpdateTask(id, updates)
+          message = {
+            single: `Moved to ${targetStatus.name}`,
+            multiple: `${taskIds.length} tasks moved to ${targetStatus.name}`
+          }
+          return
+        }
+
+        if (overTask?.dueDate) {
+          previousTaskState.set(id, { dueDate: task.dueDate })
+          onUpdateTask(id, { dueDate: overTask.dueDate })
+          const label = formatDateShort(overTask.dueDate)
+          message = {
+            single: `Rescheduled to ${label}`,
+            multiple: `${taskIds.length} tasks rescheduled to ${label}`
+          }
+        }
+      })
+
+      if (previousTaskState.size === 0) {
+        return false
+      }
+
+      const nextOrderUpdates = buildCrossSectionOrderUpdates({
+        activeIds: taskIds,
+        sourceSectionId,
+        sourceSectionTaskIds,
+        targetSectionId,
+        targetSectionTaskIds,
+        overId,
+        overTaskEdge,
+        sectionDropPosition
+      })
+
+      const previousOrderUpdates: Record<string, string[] | null> = {
+        [sourceSectionId]: getOrder?.(sourceSectionId) ?? null,
+        [targetSectionId]: getOrder?.(targetSectionId) ?? null
+      }
+
+      onReorder?.(nextOrderUpdates)
+
+      if (droppedPriority) {
+        const newDropped = new Map<string, Priority>()
+        taskIds.forEach((id) => newDropped.set(id, droppedPriority!))
+        setDroppedPriorities(newDropped)
+
+        if (priorityTimerRef.current) clearTimeout(priorityTimerRef.current)
+        priorityTimerRef.current = setTimeout(() => setDroppedPriorities(new Map()), 2500)
+      }
+
+      if (message) {
+        recordAction(
+          {
+            type: 'cross-section-move',
+            taskIds,
+            previousTaskState,
+            previousOrderUpdates
+          },
+          message.single
+        )
+
+        toast.success(taskIds.length === 1 ? message.single : message.multiple)
+      }
+
+      return true
+    },
+    [tasks, projects, onUpdateTask, onReorder, getOrder, recordAction]
+  )
+
   // Handle dropping on trash (delete)
   const handleTrashDrop = useCallback(
     (taskIds: string[]) => {
@@ -377,26 +772,86 @@ export const useDragHandlers = ({
       const overData = over.data.current
       const overType = overData?.type
       const taskIds = dragState.activeIds
+      const dropTaskEdge = overType === 'task' ? resolveTaskEdgeFromDndEvent(event) : null
 
       switch (overType) {
         case 'task': {
-          // Check if we're dropping within the same section (reorder) or different section (move)
           const overSectionId = overData?.sectionId
+          const overSectionTaskIds = overData?.sectionTaskIds as string[] | undefined
+          const overColumnId = overData?.columnId
           const sourceSectionId = dragState.sourceContainerId
+          const sourceSectionTaskIds =
+            (event.active.data.current?.sectionTaskIds as string[] | undefined) ?? taskIds
 
-          // Only reorder if dropping within the same section
           if (
             overSectionId &&
             sourceSectionId &&
             overSectionId === sourceSectionId &&
             taskIds.length === 1
           ) {
-            // Same section - this is a reorder operation
-            // Pass the reorder to the callback which should handle it via useTaskOrder
-            onReorder?.(overSectionId, [taskIds[0], over.id as string])
+            onReorder?.({
+              [overSectionId]: buildReorderedTaskIds(
+                overSectionTaskIds,
+                taskIds[0],
+                over.id as string,
+                dropTaskEdge
+              )
+            })
+          } else if (
+            overColumnId &&
+            sourceSectionId &&
+            overColumnId === sourceSectionId &&
+            taskIds.length === 1
+          ) {
+            onReorder?.({
+              [overColumnId]: buildReorderedTaskIds(
+                overSectionTaskIds,
+                taskIds[0],
+                over.id as string,
+                dropTaskEdge
+              )
+            })
+          } else if (
+            sourceSectionId &&
+            overSectionId &&
+            sourceSectionTaskIds &&
+            overSectionId !== sourceSectionId &&
+            handleCrossSectionListDrop({
+              taskIds,
+              sourceSectionId,
+              sourceSectionTaskIds,
+              targetSectionId: overSectionId,
+              targetSectionTaskIds: overSectionTaskIds,
+              overId: over.id as string,
+              overColumnId,
+              overTask: overData?.task as Task | undefined,
+              overTaskEdge: dropTaskEdge,
+              sectionDropPosition: dragState.sectionDropPosition
+            })
+          ) {
+            break
+          } else if (overColumnId) {
+            const result = resolveColumnDrop(overColumnId, projects)
+            if (result) {
+              switch (result.type) {
+                case 'priority':
+                  handlePriorityDrop(taskIds, result.priority)
+                  break
+                case 'dueDate':
+                  handleSectionDrop(taskIds, result.dueDate, result.bucketLabel)
+                  break
+                case 'project':
+                  handleProjectDrop(taskIds, result.projectId)
+                  break
+                case 'canonicalStatus':
+                  handleCanonicalStatusDrop(taskIds, result.statusType)
+                  break
+                case 'projectStatus':
+                  handleColumnDrop(taskIds, result.columnId, result.project)
+                  break
+              }
+            }
           } else if (overSectionId && overSectionId !== sourceSectionId) {
-            // Different section - treat as a section drop (change due date)
-            // Get the date from the over task's section if available
             const overTask = overData?.task as Task | undefined
             if (overTask?.dueDate) {
               handleSectionDrop(taskIds, overTask.dueDate, overSectionId)
@@ -413,12 +868,63 @@ export const useDragHandlers = ({
         }
 
         case 'column': {
-          const targetColumnId = overData?.columnId || over.id
-          const project =
-            overData?.project ||
-            projects.find((p) => p.statuses.some((s) => s.id === targetColumnId))
-          if (project) {
-            handleColumnDrop(taskIds, targetColumnId as string, project)
+          const targetColumnId = (overData?.columnId || over.id) as string
+          const sourceSectionId = dragState.sourceContainerId
+          const targetSectionId = (overData?.sectionId as string | undefined) ?? null
+          const sourceSectionTaskIds =
+            (event.active.data.current?.sectionTaskIds as string[] | undefined) ?? taskIds
+          const targetSectionTaskIds = overData?.sectionTaskIds as string[] | undefined
+
+          if (
+            sourceSectionId &&
+            targetSectionId &&
+            sourceSectionTaskIds &&
+            targetSectionId !== sourceSectionId &&
+            handleCrossSectionListDrop({
+              taskIds,
+              sourceSectionId,
+              sourceSectionTaskIds,
+              targetSectionId,
+              targetSectionTaskIds,
+              overId: null,
+              overColumnId: targetColumnId,
+              overTaskEdge: dragState.overTaskEdge,
+              sectionDropPosition: dragState.sectionDropPosition
+            })
+          ) {
+            break
+          }
+
+          if (targetColumnId === dragState.sourceContainerId) break
+
+          const result = resolveColumnDrop(targetColumnId, projects)
+          if (!result) break
+
+          switch (result.type) {
+            case 'priority':
+              handlePriorityDrop(taskIds, result.priority)
+              break
+            case 'dueDate':
+              handleSectionDrop(taskIds, result.dueDate, result.bucketLabel)
+              break
+            case 'project':
+              handleProjectDrop(taskIds, result.projectId)
+              break
+            case 'canonicalStatus':
+              handleCanonicalStatusDrop(taskIds, result.statusType)
+              break
+            case 'projectStatus':
+              handleColumnDrop(taskIds, result.columnId, result.project)
+              break
+          }
+          break
+        }
+
+        case 'weekday': {
+          const weekdayDate = overData?.date as Date | undefined
+          const weekdayLabel = overData?.label as string
+          if (weekdayDate) {
+            handleSectionDrop(taskIds, weekdayDate, weekdayLabel)
           }
           break
         }
@@ -460,13 +966,15 @@ export const useDragHandlers = ({
       }
     },
     [
-      tasks,
       projects,
       onReorder,
       handleSectionDrop,
       handleColumnDrop,
+      handlePriorityDrop,
+      handleCanonicalStatusDrop,
       handleDateDrop,
       handleProjectDrop,
+      handleCrossSectionListDrop,
       handleTrashDrop,
       handleArchiveDrop
     ]
@@ -488,7 +996,8 @@ export const useDragHandlers = ({
     handleDragOver,
     undo,
     canUndo: undoStack.length > 0,
-    lastActionDescription
+    lastActionDescription,
+    droppedPriorities
   }
 }
 

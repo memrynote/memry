@@ -29,6 +29,8 @@ interface UseTaskOrderReturn {
   getOrderedTasks: (sectionId: string, tasks: Task[]) => Task[]
   /** Set order for a section */
   setOrder: (sectionId: string, order: string[]) => void
+  /** Apply multiple section order updates atomically */
+  applyOrderUpdates: (updates: Record<string, string[] | null>) => void
   /** Move a task within a section */
   moveTask: (sectionId: string, taskId: string, direction: 'up' | 'down') => void
   /** Move a task to top of section */
@@ -136,6 +138,26 @@ export const useTaskOrder = ({
     }))
   }, [])
 
+  const applyOrderUpdates = useCallback((updates: Record<string, string[] | null>) => {
+    setState((prev) => {
+      const nextOrders = { ...prev.orders }
+
+      Object.entries(updates).forEach(([sectionId, order]) => {
+        if (order === null) {
+          delete nextOrders[sectionId]
+          return
+        }
+
+        nextOrders[sectionId] = order
+      })
+
+      return {
+        orders: nextOrders,
+        isManuallyOrdered: Object.keys(nextOrders).length > 0
+      }
+    })
+  }, [])
+
   // Get current order for a section
   const getOrder = useCallback(
     (sectionId: string): string[] | undefined => {
@@ -224,8 +246,15 @@ export const useTaskOrder = ({
         const oldIndex = currentOrder.indexOf(activeId)
         const newIndex = currentOrder.indexOf(overId)
 
-        if (oldIndex === -1 || newIndex === -1 || oldIndex === newIndex) {
-          return prev
+        if (newIndex === -1 || oldIndex === newIndex) return prev
+
+        if (oldIndex === -1) {
+          const newOrder = [...currentOrder]
+          newOrder.splice(newIndex, 0, activeId)
+          return {
+            orders: { ...prev.orders, [sectionId]: newOrder },
+            isManuallyOrdered: true
+          }
         }
 
         const newOrder = arrayMove(currentOrder, oldIndex, newIndex)
@@ -264,6 +293,7 @@ export const useTaskOrder = ({
   return {
     getOrderedTasks,
     setOrder,
+    applyOrderUpdates,
     moveTask,
     moveToTop,
     moveToBottom,

@@ -16,7 +16,7 @@ vi.mock('@/services/notes-service', () => ({
 
 const statuses: Status[] = [
   { id: 'todo', name: 'To Do', color: '#6B7280', type: 'todo', order: 0 },
-  { id: 'in-progress', name: 'In Progress', color: '#E5993E', type: 'in_progress', order: 1 },
+  { id: 'in-progress', name: 'In Progress', color: '#F59E0B', type: 'in_progress', order: 1 },
   { id: 'done', name: 'Done', color: '#10B981', type: 'done', order: 2 }
 ]
 

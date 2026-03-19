@@ -317,7 +317,7 @@ describe('projects queries', () => {
       id: 'status-12b',
       projectId: 'project-12',
       name: 'In Progress',
-      color: '#E5993E',
+      color: '#F59E0B',
       position: 1,
       isDefault: false,
       isDone: false

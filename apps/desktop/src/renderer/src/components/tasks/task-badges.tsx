@@ -1,8 +1,9 @@
 import * as React from 'react'
-import { Repeat } from 'lucide-react'
+import { Repeat } from '@/lib/icons'
 
 import { cn } from '@/lib/utils'
 import { StatusDot } from '@/components/ui/status-dot'
+import { StatusIcon } from '@/components/tasks/status-icon'
 import {
   formatDueDate,
   getDaysOverdue,
@@ -262,7 +263,7 @@ export const TaskCheckbox = ({
       className={cn(
         'shrink-0 rounded-full transition-all duration-200',
         isSm ? 'size-3.5' : 'size-4',
-        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+        'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring',
         disabled ? 'cursor-not-allowed opacity-50' : 'cursor-pointer',
         className
       )}
@@ -334,7 +335,7 @@ export const StatusBadge = ({
         color: color
       }}
     >
-      <StatusDot color={color} size="xs" />
+      <StatusIcon type={type ?? 'todo'} color={color} size="sm" />
       <span>{label}</span>
     </span>
   )

@@ -1,7 +1,7 @@
 import { useSortable } from '@dnd-kit/sortable'
 import { useDroppable } from '@dnd-kit/core'
 import { CSS } from '@dnd-kit/utilities'
-import { Settings } from 'lucide-react'
+import { Settings } from '@/lib/icons'
 import { cn } from '@/lib/utils'
 import {
   SidebarMenuAction,

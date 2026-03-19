@@ -1,4 +1,4 @@
-import { Plus } from 'lucide-react'
+import { Plus } from '@/lib/icons'
 
 import { cn } from '@/lib/utils'
 
@@ -59,7 +59,7 @@ export const SectionDivider = ({
             'size-5 flex items-center justify-center rounded-sm shrink-0',
             'text-text-tertiary hover:text-text-secondary hover:bg-accent/50',
             'opacity-0 group-hover/section:opacity-100 transition-all cursor-pointer',
-            'focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring'
+            'focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring'
           )}
           title={`Add task to ${label}`}
         >

@@ -1,6 +1,6 @@
 import { cn } from '@/lib/utils'
 import { TAG_COLORS, COLOR_ROWS, getTagColors } from './tag-colors'
-import { Check } from 'lucide-react'
+import { Check } from '@/lib/icons'
 
 interface ColorPickerProps {
   selectedColor: string
@@ -51,7 +51,7 @@ export function ColorPicker({
                     'flex h-6 w-6 items-center justify-center rounded-full',
                     'transition-all duration-150',
                     'hover:scale-110',
-                    'focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1',
+                    'focus:outline-none focus-visible:ring-1 focus-visible:ring-ring focus-visible:ring-offset-1',
                     isSelected && 'ring-2 ring-stone-400 ring-offset-1'
                   )}
                   style={{ backgroundColor: colors.background }}

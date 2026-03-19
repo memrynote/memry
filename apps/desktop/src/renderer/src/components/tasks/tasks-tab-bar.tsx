@@ -1,12 +1,12 @@
 import { useCallback, useMemo, useRef, useState } from 'react'
-import { Settings, X } from 'lucide-react'
+import { Settings, X } from '@/lib/icons'
 import { cn } from '@/lib/utils'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { FilterSearchHeader } from '@/components/ui/filter-search-header'
 import { CheckMark } from '@/components/ui/check-mark'
 import type { Project, SavedFilter } from '@/data/tasks-data'
 
-export type TasksInternalTab = 'today' | 'all' | 'done'
+export type TasksInternalTab = 'today' | 'all'
 
 interface TabConfig {
   id: TasksInternalTab
@@ -19,7 +19,6 @@ interface TasksTabBarProps {
   counts: {
     today: number
     all: number
-    done: number
   }
   projects?: Project[]
   selectedProjectId?: string | null
@@ -34,8 +33,7 @@ interface TasksTabBarProps {
 
 const TABS: TabConfig[] = [
   { id: 'today', label: 'Today' },
-  { id: 'all', label: 'All' },
-  { id: 'done', label: 'Done' }
+  { id: 'all', label: 'All' }
 ]
 
 export const TasksTabBar = ({
@@ -135,7 +133,7 @@ export const TasksTabBar = ({
               onKeyDown={(e) => handleKeyDown(e, index)}
               className={cn(
                 'flex items-center py-1 px-2.5 gap-1 transition-colors',
-                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset',
+                'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring focus-visible:ring-inset',
                 index > 0 && 'border-l border-border',
                 isActive
                   ? 'bg-foreground text-background font-medium'
@@ -173,7 +171,7 @@ export const TasksTabBar = ({
                 type="button"
                 aria-label={sf.name}
                 onClick={() => onApplySavedFilter?.(sf)}
-                className="flex items-baseline py-1 pl-2.5 pr-1 gap-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
+                className="flex items-baseline py-1 pl-2.5 pr-1 gap-1 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring focus-visible:ring-inset"
               >
                 <span className="text-[12px] leading-4">{sf.name}</span>
               </button>

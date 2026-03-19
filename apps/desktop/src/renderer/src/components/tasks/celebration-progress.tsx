@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 
+import { Check } from '@/lib/icons'
 import { SubtaskProgressBar } from './subtask-progress-bar'
 import { cn } from '@/lib/utils'
 import type { SubtaskProgress } from '@/lib/subtask-utils'
@@ -90,15 +91,7 @@ export const CelebrationProgress = ({
             className="ml-2 flex items-center justify-center w-4 h-4 rounded-full bg-task-complete"
             aria-label="Complete"
           >
-            <svg
-              className="w-2.5 h-2.5 text-white"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              strokeWidth={3}
-            >
-              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-            </svg>
+            <Check className="w-2.5 h-2.5 text-white" strokeWidth={3} />
           </motion.div>
         )}
       </AnimatePresence>

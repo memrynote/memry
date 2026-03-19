@@ -21,7 +21,7 @@ import {
   PanelLeft,
   ChevronLeft,
   ChevronRight
-} from 'lucide-react'
+} from '@/lib/icons'
 import { Button } from '@/components/ui/button'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { cn } from '@/lib/utils'

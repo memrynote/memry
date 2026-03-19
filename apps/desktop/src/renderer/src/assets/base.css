@@ -285,6 +285,28 @@
     --graph-bg: #f6f5f0;
     --graph-label-color: #1a1a1a;
 
+    /* ===== CALENDAR VIEW ===== */
+    --cal-bg: #f6f5f0;
+    --cal-cell-bg: transparent;
+    --cal-cell-outside-bg: #efefe9;
+    --cal-cell-weekend-bg: #f0efe8;
+    --cal-today-bg: #fffbeb;
+    --cal-today-border: #f59e0b;
+    --cal-today-badge: #f59e0b;
+    --cal-today-label: #d97706;
+    --cal-date-current: #4a4a4a;
+    --cal-date-outside: #c4c4be;
+    --cal-weekday: #8c8c8c;
+    --cal-task-bg: #f6f5f0;
+    --cal-task-bg-today: rgba(255, 255, 255, 0.8);
+    --cal-task-text: #4a4a4a;
+    --cal-task-text-today: #1a1a1a;
+    --cal-task-overdue-bg: #fef2f2;
+    --cal-task-overdue-text: #dc2626;
+    --cal-overflow: #8c8c8c;
+    --cal-month-text: #1a1a1a;
+    --cal-grid-gap: 1px;
+
     /* ===== QUEUE LIST ===== */
     --queue-bg: #eae8e1;
     --queue-number-bg: #d4d1c5;
@@ -293,12 +315,15 @@
 
     /* Priority */
     --task-priority-urgent: #ef4444;
-    --task-priority-urgent-bg: #fef2f2;
+    --task-priority-urgent-bg: rgba(239, 68, 68, 0.12);
     --task-priority-high: #f97316;
-    --task-priority-high-bg: #fff7ed;
-    --task-priority-medium: #f59e0b;
-    --task-priority-medium-bg: #fffbeb;
-    --task-priority-low: #6b7280;
+    --task-priority-high-bg: rgba(249, 115, 22, 0.12);
+    --task-priority-medium: #a0a0a8;
+    --task-priority-medium-bg: rgba(160, 160, 168, 0.12);
+    --task-priority-low: #50505a;
+    --task-priority-low-bg: rgba(80, 80, 90, 0.12);
+    --task-priority-none: #50505a;
+    --task-priority-none-bg: rgba(80, 80, 90, 0.12);
 
     /* Due date status */
     --task-due-overdue: #dc2626;
@@ -419,12 +444,15 @@
 
     /* Priority */
     --task-priority-urgent: #ef4444;
-    --task-priority-urgent-bg: #fef2f2;
+    --task-priority-urgent-bg: rgba(239, 68, 68, 0.12);
     --task-priority-high: #f97316;
-    --task-priority-high-bg: #fff7ed;
-    --task-priority-medium: #f59e0b;
-    --task-priority-medium-bg: #fffbeb;
-    --task-priority-low: #6b7280;
+    --task-priority-high-bg: rgba(249, 115, 22, 0.12);
+    --task-priority-medium: #a0a0a8;
+    --task-priority-medium-bg: rgba(160, 160, 168, 0.12);
+    --task-priority-low: #50505a;
+    --task-priority-low-bg: rgba(80, 80, 90, 0.12);
+    --task-priority-none: #50505a;
+    --task-priority-none-bg: rgba(80, 80, 90, 0.12);
 
     /* Due date status */
     --task-due-overdue: #dc2626;
@@ -484,7 +512,7 @@
 
     /* ===== TYPOGRAPHY COLORS - Dark Mode ===== */
     --text-primary: #e8e6e1;
-    --text-secondary: #a8a6a1;
+    --text-secondary: #fff;
     --text-tertiary: #6b6966;
 
     /* ===== ACCENT COLORS (Same in dark mode) ===== */
@@ -547,20 +575,45 @@
     --graph-bg: #0e0e10;
     --graph-label-color: #e8e6e1;
 
+    /* ===== CALENDAR VIEW - Dark Mode ===== */
+    --cal-bg: #0e0e10;
+    --cal-cell-bg: transparent;
+    --cal-cell-outside-bg: rgba(255, 255, 255, 0.03);
+    --cal-cell-weekend-bg: rgba(255, 255, 255, 0.02);
+    --cal-today-bg: rgba(245, 158, 11, 0.08);
+    --cal-today-border: #d97706;
+    --cal-today-badge: #d97706;
+    --cal-today-label: #fbbf24;
+    --cal-date-current: #d4d4d4;
+    --cal-date-outside: #525252;
+    --cal-weekday: #737373;
+    --cal-task-bg: rgba(255, 255, 255, 0.04);
+    --cal-task-bg-today: rgba(255, 255, 255, 0.08);
+    --cal-task-text: #d4d4d4;
+    --cal-task-text-today: #f5f5f5;
+    --cal-task-overdue-bg: rgba(239, 68, 68, 0.1);
+    --cal-task-overdue-text: #f87171;
+    --cal-overflow: #737373;
+    --cal-month-text: #f5f5f5;
+    --cal-grid-gap: 1px;
+
     /* ===== QUEUE LIST - Dark Mode ===== */
     --queue-bg: #161618;
     --queue-number-bg: #2a2a2e;
 
     /* ===== TASK COLORS - Dark Mode ===== */
 
-    /* Priority (lighter for dark bg) */
-    --task-priority-urgent: #f87171;
+    /* Priority */
+    --task-priority-urgent: #ef4444;
     --task-priority-urgent-bg: rgba(239, 68, 68, 0.1);
     --task-priority-high: #fb923c;
     --task-priority-high-bg: rgba(249, 115, 22, 0.1);
-    --task-priority-medium: #fbbf24;
-    --task-priority-medium-bg: rgba(245, 158, 11, 0.1);
-    --task-priority-low: #9ca3af;
+    --task-priority-medium: #a0a0a8;
+    --task-priority-medium-bg: rgba(160, 160, 168, 0.1);
+    --task-priority-low: #50505a;
+    --task-priority-low-bg: rgba(80, 80, 90, 0.1);
+    --task-priority-none: #50505a;
+    --task-priority-none-bg: rgba(80, 80, 90, 0.1);
 
     /* Due date status */
     --task-due-overdue: #f87171;
@@ -965,6 +1018,54 @@ div.react-sigma {
   }
 }
 
+/* Drop flash — blue highlight fade on kanban card drop */
+@keyframes drop-flash {
+  0% {
+    background-color: rgb(59 130 246 / 0.12);
+    border-color: rgb(59 130 246 / 0.4);
+  }
+
+  100% {
+    background-color: transparent;
+    border-color: transparent;
+  }
+}
+
+.animate-drop-flash {
+  animation: drop-flash 1s var(--ease-out) forwards;
+}
+
+/* Row drop flash — blue left-border + bg highlight for list view */
+@keyframes row-drop-flash {
+  0% {
+    background-color: rgb(59 130 246 / 0.08);
+    border-left: 3px solid rgb(59 130 246 / 0.6);
+  }
+  100% {
+    background-color: transparent;
+    border-left: 3px solid transparent;
+  }
+}
+
+.animate-row-drop-flash {
+  animation: row-drop-flash 300ms var(--ease-out) forwards;
+}
+
+/* Priority badge fade out after cross-section drop */
+.animate-fade-out {
+  animation: fade-out-badge 2s ease-in forwards;
+}
+
+@keyframes fade-out-badge {
+  0%,
+  70% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
 /* Checkmark draw animation (SVG) */
 @keyframes draw-check {
   0% {
@@ -1110,6 +1211,7 @@ del.bn-inline-content {
   --sidebar-text-folder: #3d3a35;
   --sidebar-text-child: #5c5850;
   --sidebar-dot-inactive: #d9d5ce;
+  --sidebar-surface: rgba(0, 0, 0, 0.04);
 }
 
 .white {
@@ -1127,6 +1229,7 @@ del.bn-inline-content {
   --sidebar-text-folder: #37352f;
   --sidebar-text-child: #6b6966;
   --sidebar-dot-inactive: #e3e2e0;
+  --sidebar-surface: rgba(0, 0, 0, 0.03);
 }
 
 .dark {
@@ -1144,6 +1247,7 @@ del.bn-inline-content {
   --sidebar-text-folder: #c5c0b8;
   --sidebar-text-child: #9a958d;
   --sidebar-dot-inactive: #3a3a3e;
+  --sidebar-surface: #222225;
 }
 
 @theme inline {
@@ -1194,6 +1298,27 @@ del.bn-inline-content {
   --color-destructive-foreground: var(--destructive-foreground);
   --color-ring: var(--ring);
 
+  /* ===== CALENDAR VIEW ===== */
+  --color-cal-bg: var(--cal-bg);
+  --color-cal-cell-bg: var(--cal-cell-bg);
+  --color-cal-cell-outside-bg: var(--cal-cell-outside-bg);
+  --color-cal-cell-weekend-bg: var(--cal-cell-weekend-bg);
+  --color-cal-today-bg: var(--cal-today-bg);
+  --color-cal-today-border: var(--cal-today-border);
+  --color-cal-today-badge: var(--cal-today-badge);
+  --color-cal-today-label: var(--cal-today-label);
+  --color-cal-date-current: var(--cal-date-current);
+  --color-cal-date-outside: var(--cal-date-outside);
+  --color-cal-weekday: var(--cal-weekday);
+  --color-cal-task-bg: var(--cal-task-bg);
+  --color-cal-task-bg-today: var(--cal-task-bg-today);
+  --color-cal-task-text: var(--cal-task-text);
+  --color-cal-task-text-today: var(--cal-task-text-today);
+  --color-cal-task-overdue-bg: var(--cal-task-overdue-bg);
+  --color-cal-task-overdue-text: var(--cal-task-overdue-text);
+  --color-cal-overflow: var(--cal-overflow);
+  --color-cal-month-text: var(--cal-month-text);
+
   /* ===== QUEUE LIST ===== */
   --color-queue-bg: var(--queue-bg);
   --color-queue-number-bg: var(--queue-number-bg);
@@ -1206,6 +1331,7 @@ del.bn-inline-content {
   --color-task-priority-medium: var(--task-priority-medium);
   --color-task-priority-medium-bg: var(--task-priority-medium-bg);
   --color-task-priority-low: var(--task-priority-low);
+  --color-task-priority-low-bg: var(--task-priority-low-bg);
   --color-task-due-overdue: var(--task-due-overdue);
   --color-task-due-overdue-bg: var(--task-due-overdue-bg);
   --color-task-due-today: var(--task-due-today);
@@ -1236,6 +1362,7 @@ del.bn-inline-content {
   --color-sidebar-text-folder: var(--sidebar-text-folder);
   --color-sidebar-text-child: var(--sidebar-text-child);
   --color-sidebar-dot-inactive: var(--sidebar-dot-inactive);
+  --color-sidebar-surface: var(--sidebar-surface);
 
   /* ===== BORDER RADIUS ===== */
   --radius-sm: var(--radius-sm);

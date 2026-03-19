@@ -9,7 +9,7 @@ import {
   X,
   RotateCcw,
   Focus
-} from 'lucide-react'
+} from '@/lib/icons'
 import { Toggle } from '@/components/ui/toggle'
 import { Button } from '@/components/ui/button'
 import type { GraphFilterState, GraphFilterAction } from '@/hooks/use-graph-filters'

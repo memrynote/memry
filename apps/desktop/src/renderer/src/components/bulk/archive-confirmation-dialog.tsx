@@ -1,5 +1,5 @@
 import { useEffect, useCallback } from 'react'
-import { Archive } from 'lucide-react'
+import { Archive } from '@/lib/icons'
 
 import {
   AlertDialog,

@@ -1,0 +1,1 @@
+- When user drag and drop card in kanban to Done section it's not works. 

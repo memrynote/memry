@@ -4,7 +4,7 @@
  */
 
 import { useRef, useEffect } from 'react'
-import { X } from 'lucide-react'
+import { X } from '@/lib/icons'
 import type { Tab } from '@/contexts/tabs/types'
 import { useTabs, useTabSettings } from '@/contexts/tabs'
 import { TabIcon } from './tab-icon'
@@ -96,7 +96,7 @@ export const AccessibleTab = ({
       className={cn(
         'flex items-center gap-2 px-3 h-8 min-w-0',
         'border-b-2 transition-colors outline-none',
-        'focus:ring-2 focus:ring-blue-500 focus:ring-inset',
+        'focus:ring-1 focus:ring-blue-500 focus:ring-inset',
         isActive
           ? 'bg-background border-blue-500 text-foreground'
           : 'bg-muted/50 border-transparent text-muted-foreground hover:bg-surface-active',

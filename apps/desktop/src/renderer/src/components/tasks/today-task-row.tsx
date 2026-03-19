@@ -102,9 +102,9 @@ export const TodayTaskRow = ({
         'group flex items-center gap-3 rounded-sm px-3 py-2.5 transition-colors duration-150',
         'hover:bg-accent/50',
         onClick &&
-          'cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+          'cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring',
         isOverdue && 'bg-task-due-overdue-bg/50',
-        isSelected && 'bg-primary/10 ring-2 ring-primary/30',
+        isSelected && 'bg-primary/10 ring-1 ring-inset ring-primary/30',
         className
       )}
       aria-label={`Task: ${task.title}${isOverdue ? ', overdue' : ''}`}

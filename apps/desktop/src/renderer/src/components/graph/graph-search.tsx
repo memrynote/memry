@@ -1,5 +1,5 @@
 import { type Dispatch, useRef, useEffect } from 'react'
-import { Search, X } from 'lucide-react'
+import { Search, X } from '@/lib/icons'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import type { GraphFilterState, GraphFilterAction } from '@/hooks/use-graph-filters'

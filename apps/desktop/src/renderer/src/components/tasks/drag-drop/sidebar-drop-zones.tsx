@@ -1,5 +1,5 @@
 import { useDroppable } from '@dnd-kit/core'
-import { Trash2, Archive, Settings } from 'lucide-react'
+import { Trash2, Archive, Settings } from '@/lib/icons'
 
 import { cn } from '@/lib/utils'
 import { useDragContext } from '@/contexts/drag-context'
@@ -95,7 +95,7 @@ export const DroppableProjectItem = ({
       aria-pressed={isSelected}
       className={cn(
         'group flex w-full items-center gap-2 rounded-sm px-3 py-2 text-sm transition-all duration-150',
-        'hover:bg-accent/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+        'hover:bg-accent/50 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring',
         isSelected && 'bg-accent border-l-3 border-l-primary font-medium',
         // Drop zone styling
         showAsDropZone && 'border border-dotted border-muted-foreground/40',
@@ -134,7 +134,7 @@ export const DroppableProjectItem = ({
           className={cn(
             'shrink-0 rounded p-0.5 text-text-tertiary opacity-0 transition-opacity',
             'hover:bg-accent hover:text-text-secondary',
-            'focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+            'focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring',
             'group-hover:opacity-100'
           )}
         >

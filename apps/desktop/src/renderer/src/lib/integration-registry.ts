@@ -1,5 +1,5 @@
-import type { LucideIcon } from 'lucide-react'
-import { Calendar, CalendarDays, FileInput, BookMarked, ListTodo } from 'lucide-react'
+import type { AppIcon } from '@/lib/icons'
+import { Calendar, CalendarDays, FileInput, BookMarked, ListTodo } from '@/lib/icons'
 
 export type AuthFlowType = 'oauth2' | 'api_key' | 'none'
 
@@ -7,7 +7,7 @@ export interface IntegrationDefinition {
   id: string
   name: string
   description: string
-  icon: LucideIcon
+  icon: AppIcon
   authFlow: AuthFlowType
   comingSoon: boolean
 }

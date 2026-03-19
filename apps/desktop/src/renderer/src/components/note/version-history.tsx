@@ -39,7 +39,7 @@ import {
   Loader2,
   AlertCircle,
   ChevronRight
-} from 'lucide-react'
+} from '@/lib/icons'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
 import { notesService, type SnapshotListItem, type SnapshotDetail } from '@/services/notes-service'
@@ -305,7 +305,7 @@ export function VersionHistory({
                           onClick={() => handleSelectVersion(version.id)}
                           className={cn(
                             'w-full text-left px-3 py-2.5 rounded-md transition-colors',
-                            'hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2',
+                            'hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-1',
                             'focus-visible:ring-ring focus-visible:ring-offset-2',
                             isSelected && 'bg-muted'
                           )}

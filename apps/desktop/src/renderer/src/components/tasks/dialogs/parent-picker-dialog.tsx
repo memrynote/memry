@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react'
-import { Search, FolderKanban } from 'lucide-react'
+import { Search, FolderKanban } from '@/lib/icons'
 
 import {
   Dialog,
@@ -102,7 +102,7 @@ export const ParentPickerDialog = ({
         className={cn(
           'w-full flex items-center gap-3 px-3 py-2.5 rounded-sm text-left',
           'hover:bg-accent transition-colors',
-          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring'
+          'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring'
         )}
       >
         <TaskCheckbox checked={isCompleted} onChange={() => {}} />

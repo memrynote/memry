@@ -19,7 +19,7 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { SelectableListSection, SelectableListItem } from '@/components/ui/selectable-list'
 import { LabeledCheckbox } from '@/components/ui/labeled-checkbox'
 import { PrimaryActionButton } from '@/components/ui/primary-action-button'
-import { Search, Lock, Sparkles, PenLine } from 'lucide-react'
+import { Search, Lock, Sparkles, PenLine } from '@/lib/icons'
 import { useTemplates } from '@/hooks/use-templates'
 import { cn } from '@/lib/utils'
 
@@ -164,7 +164,7 @@ export function TemplateSelector({
                 'bg-card/50',
                 'border-border',
                 'focus:border-amber-400 dark:focus:border-amber-600',
-                'focus:ring-2 focus:ring-amber-100 dark:focus:ring-amber-900/30',
+                'focus:ring-1 focus:ring-amber-100 dark:focus:ring-amber-900/30',
                 'placeholder:text-muted-foreground/50',
                 'transition-all duration-200'
               )}

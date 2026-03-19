@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react'
 
 import { cn } from '@/lib/utils'
-import { priorityConfig, type Task } from '@/data/sample-tasks'
+import type { Task } from '@/data/sample-tasks'
 import { isBefore, startOfDay } from '@/lib/task-utils'
 import { getSubtasks, calculateProgress } from '@/lib/subtask-utils'
 import { MiniProgressBar } from '@/components/tasks/mini-progress-bar'
@@ -10,34 +10,38 @@ interface CalendarTaskItemProps {
   task: Task
   allTasks?: Task[]
   compact?: boolean
+  isToday?: boolean
   onClick?: (taskId: string) => void
 }
 
-const getPriorityColor = (priority: Task['priority']): string | null => {
-  return priorityConfig[priority].color
-}
-
-const formatShortTime = (time: string | null): string | null => {
-  if (!time) return null
-  const [hours, minutes] = time.split(':').map(Number)
-  if (Number.isNaN(hours) || Number.isNaN(minutes)) return null
-  return `${hours}:${minutes.toString().padStart(2, '0')}`
+const getPriorityBarColor = (priority: Task['priority']): string => {
+  switch (priority) {
+    case 'urgent':
+      return 'var(--task-priority-urgent)'
+    case 'high':
+      return 'var(--task-priority-high)'
+    case 'medium':
+      return 'var(--task-priority-medium)'
+    case 'low':
+      return 'var(--task-priority-low)'
+    default:
+      return 'var(--cal-weekday)'
+  }
 }
 
 export const CalendarTaskItem = ({
   task,
   allTasks = [],
   compact = false,
+  isToday = false,
   onClick
 }: CalendarTaskItemProps): React.JSX.Element => {
-  const priorityColor = getPriorityColor(task.priority) || '#9ca3af'
   const isCompleted = !!task.completedAt
   const isOverdue =
     task.dueDate !== null &&
     isBefore(startOfDay(task.dueDate), startOfDay(new Date())) &&
     !isCompleted
 
-  // Calculate subtasks and progress
   const subtasks = useMemo(() => {
     if (allTasks.length === 0) return []
     return getSubtasks(task.id, allTasks)
@@ -53,7 +57,7 @@ export const CalendarTaskItem = ({
     return (
       <span
         className={cn('inline-flex size-2 rounded-full', isOverdue && 'ring-2 ring-red-300')}
-        style={{ backgroundColor: priorityColor }}
+        style={{ backgroundColor: getPriorityBarColor(task.priority) }}
         title={task.title}
       />
     )
@@ -77,42 +81,38 @@ export const CalendarTaskItem = ({
       onClick={handleClick}
       onKeyDown={handleKeyDown}
       className={cn(
-        'flex items-center gap-1.5 rounded px-1.5 py-0.5 text-xs',
-        'hover:bg-muted cursor-pointer truncate focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-        isCompleted && 'opacity-60 line-through',
-        isOverdue && 'bg-task-due-overdue-bg'
+        'flex items-center gap-1 rounded px-1.5 py-[3px] text-[11px] leading-[14px] font-normal',
+        'cursor-pointer truncate transition-colors',
+        'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring',
+        isOverdue
+          ? 'bg-cal-task-overdue-bg hover:bg-cal-task-overdue-bg/80'
+          : isToday
+            ? 'bg-cal-task-bg-today hover:bg-white/90'
+            : 'bg-cal-task-bg hover:bg-cal-cell-outside-bg',
+        isCompleted && 'opacity-50 line-through'
       )}
+      style={{
+        color: isOverdue
+          ? 'var(--cal-task-overdue-text)'
+          : isToday
+            ? 'var(--cal-task-text-today)'
+            : 'var(--cal-task-text)',
+        fontWeight: isToday ? 500 : 400
+      }}
       aria-label={task.title}
     >
-      {/* Priority dot */}
-      {task.priority !== 'none' && (
-        <span
-          className="block size-1.5 shrink-0 rounded-full"
-          style={{ backgroundColor: priorityColor }}
-          aria-hidden="true"
-        />
-      )}
+      {/* Priority bar */}
+      <span
+        className="block w-[3px] h-3 shrink-0 rounded-sm"
+        style={{ backgroundColor: getPriorityBarColor(task.priority) }}
+        aria-hidden="true"
+      />
 
       {/* Mini progress bar for subtasks */}
       {hasSubtasks && !isCompleted && <MiniProgressBar progress={subtaskProgress} />}
 
-      {/* Due time */}
-      {task.dueTime && (
-        <span className="shrink-0 text-muted-foreground">{formatShortTime(task.dueTime)}</span>
-      )}
-
       {/* Title */}
       <span className="truncate">{task.title}</span>
-
-      {/* Subtask count badge */}
-      {hasSubtasks && (
-        <span className="shrink-0 text-muted-foreground/70">
-          ({subtaskProgress.completed}/{subtaskProgress.total})
-        </span>
-      )}
-
-      {/* Repeating indicator */}
-      {task.isRepeating && <span className="shrink-0">🔄</span>}
     </div>
   )
 }

@@ -2,12 +2,12 @@ import { useState, useMemo, useCallback, useEffect, useRef } from 'react'
 import type { DragEndEvent } from '@dnd-kit/core'
 import { arrayMove } from '@dnd-kit/sortable'
 import { useQueryClient } from '@tanstack/react-query'
-import { Loader2 } from 'lucide-react'
+import { Loader2 } from '@/lib/icons'
 import { AppSidebar } from '@/components/app-sidebar'
-import { Separator } from '@/components/ui/separator'
-import { SidebarInset, SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar'
+import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar'
 import { Toaster } from '@/components/ui/sonner'
 import { DragProvider, type DragState } from '@/contexts/drag-context'
+import { DroppedPriorityProvider } from '@/contexts/dropped-priority-context'
 import { AIAgentProvider } from '@/contexts/ai-agent-context'
 import { AIInlineProvider } from '@/contexts/ai-inline-context'
 import { SidebarDrillDownProvider } from '@/contexts/sidebar-drill-down'
@@ -19,11 +19,11 @@ import { getFilteredTasks, formatDateKey } from '@/lib/task-utils'
 import { ThemeProvider } from 'next-themes'
 
 // Tab System imports
-import { TabProvider, useTabs, getOrderedGroupWidths } from '@/contexts/tabs'
+import { TabProvider, useTabs } from '@/contexts/tabs'
 import { useTabPersistence, useSessionRestore, STORAGE_KEY } from '@/contexts/tabs/persistence'
 import { TasksProvider } from '@/contexts/tasks'
-import { TabBarWithDrag, TabDragProvider, TabErrorBoundary } from '@/components/tabs'
-import { SplitViewContainer, SinglePaneContent } from '@/components/split-view'
+import { TabDragProvider, TabErrorBoundary } from '@/components/tabs'
+import { SplitViewContainer } from '@/components/split-view'
 import { ChordIndicator, KeyboardShortcutsDialog } from '@/components/keyboard'
 import {
   useTabKeyboardShortcuts,
@@ -96,7 +96,7 @@ function TabPersistenceManager({ children }: { children: React.ReactNode }): Rea
 // =============================================================================
 
 const AppContent = (): React.JSX.Element => {
-  const { state, openTab } = useTabs()
+  const { openTab } = useTabs()
   const [showShortcutsDialog, setShowShortcutsDialog] = useState(false)
   const [searchOpen, setSearchOpen] = useState(false)
 
@@ -154,75 +154,10 @@ const AppContent = (): React.JSX.Element => {
     return () => window.removeEventListener('memry:open-search', openSearch)
   }, [])
 
-  // Get active group for tab bar
-  const activeGroupId = state.activeGroupId
-  const groupIds = Object.keys(state.tabGroups)
-  const isSplitView = groupIds.length > 1
-
-  // Calculate ordered group widths from layout (syncs with split panel ratios)
-  const orderedGroupWidths = useMemo(() => getOrderedGroupWidths(state.layout), [state.layout])
-
   return (
     <TabDragProvider>
-      {/* Header with Tab Bar(s) - Browser-style tabs */}
-      <header
-        className="drag-region flex h-11 shrink-0 items-center relative overflow-hidden
-          bg-muted"
-      >
-        {/* Sidebar trigger with refined styling */}
-        <div className="flex items-center gap-2.5 px-3 h-full shrink-0">
-          <SidebarTrigger className="-ml-1 no-drag text-text-tertiary hover:text-foreground transition-colors duration-150" />
-          <Separator orientation="vertical" className="mr-2 h-5 bg-border/70" />
-        </div>
-
-        {/* Tab Bar(s) - single or split with smooth transitions */}
-        {isSplitView ? (
-          // Split view: show tab bars side by side with refined divider
-          <div className="flex-1 flex h-full">
-            {orderedGroupWidths.map(({ groupId, width }, index) => (
-              <div
-                key={groupId}
-                style={{ width: `${width}%` }}
-                className={`h-full overflow-hidden shrink-0 transition-all duration-200 ease-out ${
-                  index > 0 ? 'border-l border-border/60' : ''
-                }`}
-              >
-                <TabBarWithDrag groupId={groupId} />
-              </div>
-            ))}
-          </div>
-        ) : (
-          // Single pane: show one tab bar
-          <div className="flex-1 h-full overflow-hidden">
-            <TabBarWithDrag groupId={activeGroupId} />
-          </div>
-        )}
-      </header>
-
-      {/* Main Content Area - Split View or Single Pane */}
       <div className="flex flex-1 overflow-hidden bg-background" id="main-content">
-        {isSplitView ? (
-          // Multiple panes - use SplitViewContainer with matching header spacers
-          <>
-            {/* Left spacer - matches header's sidebar trigger area for alignment */}
-            <div className="flex items-center gap-2.5 px-3 shrink-0" aria-hidden="true">
-              <div className="size-7 -ml-1" />
-              <Separator orientation="vertical" className="mr-2 h-5 invisible" />
-            </div>
-
-            {/* Split view container with smooth transitions */}
-            <div className="flex-1 flex flex-col overflow-hidden min-w-0">
-              <SplitViewContainer hideTabBars />
-            </div>
-          </>
-        ) : (
-          // Single pane - render content directly (full width)
-          <div className="flex-1 flex flex-col overflow-hidden">
-            <SinglePaneContent />
-          </div>
-        )}
-
-        {/* Global AI Agent Panel - pushes content when open */}
+        <SplitViewContainer />
         <GlobalAIPanel />
       </div>
 
@@ -288,6 +223,12 @@ function App(): React.JSX.Element {
 
   // Task selection state for drag-drop (lifted from TasksPage)
   const [selectedTaskIds, setSelectedTaskIds] = useState<Set<string>>(new Set())
+  const selectedTaskIdsRef = useRef(selectedTaskIds)
+
+  const updateSelectedTaskIds = useCallback((ids: Set<string>) => {
+    selectedTaskIdsRef.current = ids
+    setSelectedTaskIds(ids)
+  }, [])
 
   // Calculate view counts dynamically
   const viewCounts = useMemo(() => {
@@ -455,17 +396,26 @@ function App(): React.JSX.Element {
     [isVaultOpen]
   )
 
+  const handleReorder = useCallback(
+    (updates: Record<string, string[] | null>) => {
+      taskOrder.applyOrderUpdates(updates)
+      for (const [, taskIds] of Object.entries(updates)) {
+        if (!taskIds) continue
+        const positions = taskIds.map((_, i) => i)
+        tasksService.reorder(taskIds, positions)
+      }
+    },
+    [taskOrder]
+  )
+
   // Use the comprehensive drag handlers hook
-  const { handleDragEnd: taskDragEnd } = useDragHandlers({
+  const { handleDragEnd: taskDragEnd, droppedPriorities } = useDragHandlers({
     tasks,
     projects,
     onUpdateTask: handleUpdateTask,
     onDeleteTask: handleDeleteTask,
-    onReorder: (sectionId, taskIdsPair) => {
-      // taskIdsPair is [activeId, overId] from the drag operation
-      const [activeId, overId] = taskIdsPair
-      taskOrder.reorderByDrag(sectionId, activeId, overId, tasks)
-    }
+    onReorder: handleReorder,
+    getOrder: taskOrder.getOrder
   })
 
   // Combined drag-drop handler (task operations + project reordering)
@@ -491,10 +441,10 @@ function App(): React.JSX.Element {
 
       // Clear selection after task drag
       if (dragState.isDragging) {
-        setSelectedTaskIds(new Set())
+        updateSelectedTaskIds(new Set<string>())
       }
     },
-    [projects, taskDragEnd]
+    [projects, taskDragEnd, updateSelectedTaskIds]
   )
 
   // Main content with TabProvider and TasksProvider wrapping everything
@@ -508,6 +458,9 @@ function App(): React.JSX.Element {
         initialProjects={projectsWithCounts}
         onTasksChange={handleTasksChange}
         onProjectsChange={handleProjectsChange}
+        selectedTaskIds={selectedTaskIds}
+        onSelectedTaskIdsChange={updateSelectedTaskIds}
+        getOrderedTasks={taskOrder.getOrderedTasks}
       >
         <AIAgentProvider>
           <AIInlineProvider>
@@ -565,9 +518,12 @@ function App(): React.JSX.Element {
           <DragProvider
             tasks={tasks}
             selectedIds={selectedTaskIds}
+            selectedIdsRef={selectedTaskIdsRef}
             onDragEnd={(event, state) => void handleDragEnd(event, state)}
           >
-            {mainContent}
+            <DroppedPriorityProvider value={droppedPriorities}>
+              {mainContent}
+            </DroppedPriorityProvider>
           </DragProvider>
         </SidebarProvider>
         {/* First-run onboarding overlay — shown until user completes or dismisses */}

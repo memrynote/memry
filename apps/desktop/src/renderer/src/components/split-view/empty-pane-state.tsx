@@ -3,7 +3,7 @@
  * Placeholder shown when a pane has no tabs
  */
 
-import { FileText, Inbox } from 'lucide-react'
+import { FileText, Inbox } from '@/lib/icons'
 import { useTabs } from '@/contexts/tabs'
 import { cn } from '@/lib/utils'
 
@@ -50,6 +50,7 @@ export const EmptyPaneState = ({ groupId, className }: EmptyPaneStateProps): Rea
 
   return (
     <div
+      data-testid="empty-pane-state"
       className={cn(
         'h-full flex flex-col items-center justify-center',
         'p-8',

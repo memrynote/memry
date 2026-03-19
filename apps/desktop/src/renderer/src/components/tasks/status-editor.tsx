@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef } from 'react'
-import { GripVertical, X, Plus } from 'lucide-react'
+import { GripVertical, X, Plus } from '@/lib/icons'
 
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -68,7 +68,7 @@ const StatusColorPicker = ({
       <PopoverTrigger asChild>
         <button
           type="button"
-          className="size-4 shrink-0 rounded-full transition-transform hover:scale-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="size-4 shrink-0 rounded-full transition-transform hover:scale-110 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
           style={{ backgroundColor: value }}
           aria-label="Change status color"
         />
@@ -82,7 +82,7 @@ const StatusColorPicker = ({
               onClick={handleColorSelect(color.value)}
               className={cn(
                 'size-6 rounded-full transition-transform hover:scale-110',
-                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring',
                 value === color.value && 'ring-2 ring-ring ring-offset-1'
               )}
               style={{ backgroundColor: color.value }}

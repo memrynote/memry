@@ -43,48 +43,65 @@ export const useDebouncedValue = <T>(value: T, delay: number): T => {
 // PERSISTENCE HELPERS
 // ============================================================================
 
+const getDefaultSortForView = (activeView: string): TaskSort =>
+  activeView === 'kanban' ? { field: 'status', direction: 'asc' } : defaultSort
+
 const FILTERS_STORAGE_KEY = 'taskFilters'
+const SORT_STORAGE_KEY = 'taskSortPrefs'
 const SAVED_FILTERS_KEY = 'savedTaskFilters'
 
 interface PersistedFilterState {
   filters: TaskFilters
+  lastUpdated: string
+}
+
+interface PersistedSortState {
   sort: TaskSort
   lastUpdated: string
 }
 
-/**
- * Generate a unique key for storing filters per view
- */
-const getViewKey = (selectedType: string, selectedId: string, activeView: string): string => {
-  return `${selectedType}-${selectedId}-${activeView}`
-}
+const getFilterKey = (selectedType: string, selectedId: string): string =>
+  `${selectedType}-${selectedId}`
 
-/**
- * Save filters to localStorage
- */
-const persistFilters = (viewKey: string, filters: TaskFilters, sort: TaskSort): void => {
+const getSortKey = (selectedType: string, selectedId: string, activeView: string): string =>
+  `${selectedType}-${selectedId}-${activeView}`
+
+const persistFilterState = (filterKey: string, filters: TaskFilters): void => {
   try {
     const stored = JSON.parse(localStorage.getItem(FILTERS_STORAGE_KEY) || '{}')
-    stored[viewKey] = {
-      filters,
-      sort,
-      lastUpdated: new Date().toISOString()
-    }
+    stored[filterKey] = { filters, lastUpdated: new Date().toISOString() }
     localStorage.setItem(FILTERS_STORAGE_KEY, JSON.stringify(stored))
   } catch (err) {
     log.error('Failed to persist filters:', err)
   }
 }
 
-/**
- * Load persisted filters from localStorage
- */
-const loadPersistedFilters = (viewKey: string): PersistedFilterState | null => {
+const persistSortState = (sortKey: string, sort: TaskSort): void => {
+  try {
+    const stored = JSON.parse(localStorage.getItem(SORT_STORAGE_KEY) || '{}')
+    stored[sortKey] = { sort, lastUpdated: new Date().toISOString() }
+    localStorage.setItem(SORT_STORAGE_KEY, JSON.stringify(stored))
+  } catch (err) {
+    log.error('Failed to persist sort:', err)
+  }
+}
+
+const loadPersistedFilterState = (filterKey: string): PersistedFilterState | null => {
   try {
     const stored = JSON.parse(localStorage.getItem(FILTERS_STORAGE_KEY) || '{}')
-    return stored[viewKey] || null
+    return stored[filterKey] || null
   } catch (err) {
     log.error('Failed to load persisted filters:', err)
+    return null
+  }
+}
+
+const loadPersistedSortState = (sortKey: string): PersistedSortState | null => {
+  try {
+    const stored = JSON.parse(localStorage.getItem(SORT_STORAGE_KEY) || '{}')
+    return stored[sortKey] || null
+  } catch (err) {
+    log.error('Failed to load persisted sort:', err)
     return null
   }
 }
@@ -137,48 +154,67 @@ export const useFilterState = ({
   activeView,
   persistFilters: shouldPersist = true
 }: UseFilterStateOptions): UseFilterStateReturn => {
-  const viewKey = getViewKey(selectedType, selectedId, activeView)
-  const isSwitchingViewRef = useRef(false)
-  const previousViewKeyRef = useRef(viewKey)
+  const filterKey = getFilterKey(selectedType, selectedId)
+  const sortKey = getSortKey(selectedType, selectedId, activeView)
 
-  // Initialize filters from persisted state or defaults
+  const isSwitchingFilterRef = useRef(false)
+  const isSwitchingSortRef = useRef(false)
+  const previousFilterKeyRef = useRef(filterKey)
+  const previousSortKeyRef = useRef(sortKey)
+
   const [filters, setFilters] = useState<TaskFilters>(() => {
     if (!shouldPersist) return defaultFilters
-    const persisted = loadPersistedFilters(viewKey)
+    const persisted = loadPersistedFilterState(filterKey)
     return persisted?.filters || defaultFilters
   })
 
-  // Initialize sort from persisted state or defaults
   const [sort, setSort] = useState<TaskSort>(() => {
-    if (!shouldPersist) return defaultSort
-    const persisted = loadPersistedFilters(viewKey)
-    return persisted?.sort || defaultSort
+    if (!shouldPersist) return getDefaultSortForView(activeView)
+    const persisted = loadPersistedSortState(sortKey)
+    return persisted?.sort || getDefaultSortForView(activeView)
   })
 
-  // Reload filters when the view key changes.
+  // Reload filters when project changes (filterKey does NOT include activeView)
   useEffect(() => {
     if (!shouldPersist) return
-    if (previousViewKeyRef.current === viewKey) return
+    if (previousFilterKeyRef.current === filterKey) return
 
-    const persisted = loadPersistedFilters(viewKey)
-    isSwitchingViewRef.current = true
-    previousViewKeyRef.current = viewKey
+    const persisted = loadPersistedFilterState(filterKey)
+    isSwitchingFilterRef.current = true
+    previousFilterKeyRef.current = filterKey
     setFilters(persisted?.filters || defaultFilters)
-    setSort(persisted?.sort || defaultSort)
-  }, [viewKey, shouldPersist])
+  }, [filterKey, shouldPersist])
 
-  // Persist filters when they change.
+  // Reload sort when project OR view changes (sortKey includes activeView)
   useEffect(() => {
     if (!shouldPersist) return
+    if (previousSortKeyRef.current === sortKey) return
 
-    // Skip one cycle right after a view-key change to avoid writing stale state.
-    if (isSwitchingViewRef.current) {
-      isSwitchingViewRef.current = false
+    const persisted = loadPersistedSortState(sortKey)
+    isSwitchingSortRef.current = true
+    previousSortKeyRef.current = sortKey
+    setSort(persisted?.sort || getDefaultSortForView(activeView))
+  }, [sortKey, shouldPersist, activeView])
+
+  // Persist filters when they change
+  useEffect(() => {
+    if (!shouldPersist) return
+    if (isSwitchingFilterRef.current) {
+      isSwitchingFilterRef.current = false
       return
     }
+    persistFilterState(filterKey, filters)
+  }, [filterKey, filters, shouldPersist])
 
-    persistFilters(viewKey, filters, sort)
-  }, [viewKey, filters, sort, shouldPersist])
+  // Persist sort when it changes
+  useEffect(() => {
+    if (!shouldPersist) return
+    if (isSwitchingSortRef.current) {
+      isSwitchingSortRef.current = false
+      return
+    }
+    persistSortState(sortKey, sort)
+  }, [sortKey, sort, shouldPersist])
 
   const updateFilters = useCallback((updates: Partial<TaskFilters>) => {
     setFilters((prev) => ({ ...prev, ...updates }))

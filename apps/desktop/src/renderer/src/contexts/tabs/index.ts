@@ -12,6 +12,7 @@ export type {
   TabAction,
   TabSettings,
   SplitLayout,
+  SplitDirection,
   OpenTabOptions,
   SidebarItem
 } from './types'
@@ -32,12 +33,6 @@ export {
   createTab,
   createInitialTabGroup,
   createEmptyTabGroup,
-  insertSplitAtGroup,
-  removeGroupFromLayout,
-  getAllGroupIds,
-  getGroupWidthPercentages,
-  getOrderedGroupWidths,
-  updateSplitRatio,
   sortTabsWithPinnedFirst,
   getInsertIndexAfterPinned,
   DEFAULT_TAB_SETTINGS,

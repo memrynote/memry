@@ -1,4 +1,4 @@
-import { Link, FileText, Image, Mic, Scissors, FileIcon, Share2 } from 'lucide-react'
+import { Link, FileText, Image, Mic, Scissors, FileIcon, Share2 } from '@/lib/icons'
 
 import { Checkbox } from '@/components/ui/checkbox'
 import { QuickActions } from '@/components/quick-actions'

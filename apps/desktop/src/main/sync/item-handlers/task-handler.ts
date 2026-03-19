@@ -1,5 +1,6 @@
 import { eq, isNull } from 'drizzle-orm'
 import { tasks } from '@memry/db-schema/schema/tasks'
+import { taskTags, taskNotes } from '@memry/db-schema/schema/task-relations'
 import { TaskSyncPayloadSchema, type TaskSyncPayload } from '@memry/contracts/sync-payloads'
 import { TasksChannels } from '@memry/contracts/ipc-channels'
 import type { VectorClock, FieldClocks } from '@memry/contracts/sync-api'
@@ -12,6 +13,42 @@ import { resolveClockConflict } from './types'
 import type { SyncItemHandler, ApplyContext, ApplyResult, DrizzleDb } from './types'
 
 const log = createLogger('TaskHandler')
+
+function queryTags(db: DrizzleDb, taskId: string): string[] {
+  return db
+    .select({ tag: taskTags.tag })
+    .from(taskTags)
+    .where(eq(taskTags.taskId, taskId))
+    .all()
+    .map((r) => r.tag)
+}
+
+function queryNoteIds(db: DrizzleDb, taskId: string): string[] {
+  return db
+    .select({ noteId: taskNotes.noteId })
+    .from(taskNotes)
+    .where(eq(taskNotes.taskId, taskId))
+    .all()
+    .map((r) => r.noteId)
+}
+
+function writeTags(db: DrizzleDb, taskId: string, tags: string[]): void {
+  db.delete(taskTags).where(eq(taskTags.taskId, taskId)).run()
+  if (tags.length > 0) {
+    db.insert(taskTags)
+      .values(tags.map((tag) => ({ taskId, tag: tag.toLowerCase().trim() })))
+      .run()
+  }
+}
+
+function writeNoteIds(db: DrizzleDb, taskId: string, noteIds: string[]): void {
+  db.delete(taskNotes).where(eq(taskNotes.taskId, taskId)).run()
+  if (noteIds.length > 0) {
+    db.insert(taskNotes)
+      .values(noteIds.map((noteId) => ({ taskId, noteId })))
+      .run()
+  }
+}
 
 export const taskHandler: SyncItemHandler<TaskSyncPayload> = {
   type: 'task',
@@ -74,6 +111,17 @@ export const taskHandler: SyncItemHandler<TaskSyncPayload> = {
             .where(eq(tasks.id, itemId))
             .run()
 
+          if (data.tags) {
+            const localTags = queryTags(tx as unknown as DrizzleDb, itemId)
+            const merged = [...new Set([...localTags, ...data.tags])]
+            writeTags(tx as unknown as DrizzleDb, itemId, merged)
+          }
+          if (data.linkedNoteIds) {
+            const localNotes = queryNoteIds(tx as unknown as DrizzleDb, itemId)
+            const merged = [...new Set([...localNotes, ...data.linkedNoteIds])]
+            writeNoteIds(tx as unknown as DrizzleDb, itemId, merged)
+          }
+
           const updated = tx.select().from(tasks).where(eq(tasks.id, itemId)).get()
           ctx.emit(TasksChannels.events.UPDATED, { id: itemId, task: updated, changes: {} })
           return result.hadConflicts ? 'conflict' : 'applied'
@@ -105,6 +153,9 @@ export const taskHandler: SyncItemHandler<TaskSyncPayload> = {
           })
           .where(eq(tasks.id, itemId))
           .run()
+
+        if (data.tags) writeTags(tx as unknown as DrizzleDb, itemId, data.tags)
+        if (data.linkedNoteIds) writeNoteIds(tx as unknown as DrizzleDb, itemId, data.linkedNoteIds)
 
         const updated = tx.select().from(tasks).where(eq(tasks.id, itemId)).get()
         ctx.emit(TasksChannels.events.UPDATED, { id: itemId, task: updated, changes: {} })
@@ -138,6 +189,9 @@ export const taskHandler: SyncItemHandler<TaskSyncPayload> = {
           modifiedAt: data.modifiedAt ?? now
         })
         .run()
+
+      if (data.tags) writeTags(tx as unknown as DrizzleDb, itemId, data.tags)
+      if (data.linkedNoteIds) writeNoteIds(tx as unknown as DrizzleDb, itemId, data.linkedNoteIds)
 
       const inserted = tx.select().from(tasks).where(eq(tasks.id, itemId)).get()
       ctx.emit(TasksChannels.events.CREATED, { task: inserted })
@@ -176,7 +230,9 @@ export const taskHandler: SyncItemHandler<TaskSyncPayload> = {
   ): string | null {
     const task = db.select().from(tasks).where(eq(tasks.id, itemId)).get()
     if (!task) return null
-    return JSON.stringify(task)
+    const tags = queryTags(db, itemId)
+    const linkedNoteIds = queryNoteIds(db, itemId)
+    return JSON.stringify({ ...task, tags, linkedNoteIds })
   },
 
   markPushSynced(db: DrizzleDb, itemId: string): void {
@@ -193,7 +249,13 @@ export const taskHandler: SyncItemHandler<TaskSyncPayload> = {
         type: 'task',
         itemId: item.id,
         operation: 'create',
-        payload: JSON.stringify({ ...item, clock, fieldClocks }),
+        payload: JSON.stringify({
+          ...item,
+          clock,
+          fieldClocks,
+          tags: queryTags(db, item.id),
+          linkedNoteIds: queryNoteIds(db, item.id)
+        }),
         priority: 0
       })
     }

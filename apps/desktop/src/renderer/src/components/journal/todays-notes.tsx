@@ -4,7 +4,7 @@
  */
 
 import { memo, useState } from 'react'
-import { FileText, ChevronRight, Plus } from 'lucide-react'
+import { FileText, ChevronRight, Plus } from '@/lib/icons'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import type { Note } from '@/hooks/use-notes-query'

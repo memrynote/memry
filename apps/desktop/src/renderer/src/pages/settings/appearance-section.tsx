@@ -10,7 +10,7 @@ import {
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
-import { Sun, Moon, Monitor, Check, ALargeSmall, FileText } from 'lucide-react'
+import { Sun, Moon, Monitor, Check, ALargeSmall, FileText } from '@/lib/icons'
 import { useGeneralSettings } from '@/hooks/use-general-settings'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
@@ -151,7 +151,7 @@ export function AppearanceSettings() {
                 onClick={() => void handleAccentChange(preset.value)}
                 className={cn(
                   'w-8 h-8 rounded-full transition-all duration-150 relative',
-                  'hover:scale-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                  'hover:scale-110 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring',
                   settings.accentColor === preset.value &&
                     'ring-2 ring-offset-2 ring-offset-background ring-foreground/50'
                 )}

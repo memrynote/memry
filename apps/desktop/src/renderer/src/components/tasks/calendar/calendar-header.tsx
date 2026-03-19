@@ -1,5 +1,5 @@
 import React from 'react'
-import { ChevronLeft, ChevronRight, Filter } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Filter } from '@/lib/icons'
 
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -10,7 +10,6 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSeparator
 } from '@/components/ui/dropdown-menu'
-import { cn } from '@/lib/utils'
 import type { Project } from '@/data/tasks-data'
 
 interface CalendarHeaderProps {
@@ -44,25 +43,52 @@ export const CalendarHeader = ({
   const selectedProject = projects?.find((p) => p.id === projectFilter)
 
   return (
-    <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-1 pb-4">
-      <div className="flex items-center gap-3">
-        <Button variant="ghost" size="icon" onClick={onPreviousMonth} aria-label="Previous month">
-          <ChevronLeft className="size-4" />
-        </Button>
+    <div className="flex flex-wrap items-center justify-between gap-3 pb-2">
+      <div className="flex items-center gap-2">
+        {/* Month navigation */}
+        <div className="flex items-center gap-1">
+          <button
+            type="button"
+            onClick={onPreviousMonth}
+            aria-label="Previous month"
+            className="flex items-center justify-center size-8 rounded-md text-cal-weekday hover:bg-cal-cell-outside-bg transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+          >
+            <ChevronLeft className="size-4" />
+          </button>
 
-        <div className={cn('text-lg font-semibold')}>{monthLabel}</div>
+          <h2
+            className="text-2xl font-semibold tracking-tight select-none min-w-[180px]"
+            style={{
+              color: 'var(--cal-month-text)',
+              fontFamily: 'var(--font-heading)',
+              letterSpacing: '-0.02em'
+            }}
+          >
+            {monthLabel}
+          </h2>
 
-        <Button variant="ghost" size="icon" onClick={onNextMonth} aria-label="Next month">
-          <ChevronRight className="size-4" />
-        </Button>
+          <button
+            type="button"
+            onClick={onNextMonth}
+            aria-label="Next month"
+            className="flex items-center justify-center size-8 rounded-md text-cal-weekday hover:bg-cal-cell-outside-bg transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+          >
+            <ChevronRight className="size-4" />
+          </button>
+        </div>
 
-        <Button variant="outline" size="sm" onClick={onToday}>
+        {/* Today pill */}
+        <button
+          type="button"
+          onClick={onToday}
+          className="rounded-full px-3 py-1 text-xs font-medium bg-cal-cell-outside-bg text-cal-date-current hover:bg-cal-cell-weekend-bg transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+        >
           Today
-        </Button>
+        </button>
       </div>
 
       <div className="flex items-center gap-4">
-        {/* Project Filter (only shown when projects prop is provided) */}
+        {/* Project Filter */}
         {projects && projects.length > 0 && (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>

@@ -197,7 +197,7 @@ describe('useFilterState', () => {
     })
 
     it('should load persisted filters on mount', () => {
-      const viewKey = 'project-project-1-all'
+      const filterKey = 'project-project-1'
       const persistedFilters = {
         ...defaultFilters,
         search: 'persisted search'
@@ -205,9 +205,8 @@ describe('useFilterState', () => {
       localStorageMock.setItem(
         'taskFilters',
         JSON.stringify({
-          [viewKey]: {
+          [filterKey]: {
             filters: persistedFilters,
-            sort: defaultSort,
             lastUpdated: new Date().toISOString()
           }
         })
@@ -219,13 +218,13 @@ describe('useFilterState', () => {
     })
 
     it('should not load persisted filters when persistence is disabled', () => {
-      const viewKey = 'project-project-1-all'
+      const filterKey = 'project-project-1'
       localStorageMock.setItem(
         'taskFilters',
         JSON.stringify({
-          [viewKey]: {
+          [filterKey]: {
             filters: { ...defaultFilters, search: 'persisted' },
-            sort: defaultSort
+            lastUpdated: new Date().toISOString()
           }
         })
       )
@@ -268,13 +267,12 @@ describe('useFilterState', () => {
         result.current.updateFilters({ search: 'persisted query' })
       })
 
-      // Wait for effect to run
       await waitFor(() => {
         expect(localStorageMock.setItem).toHaveBeenCalled()
       })
 
       const stored = JSON.parse(localStorageMock.store['taskFilters'])
-      expect(stored['project-project-1-all'].filters.search).toBe('persisted query')
+      expect(stored['project-project-1'].filters.search).toBe('persisted query')
     })
   })
 
@@ -343,34 +341,250 @@ describe('useFilterState', () => {
   })
 
   describe('view key changes', () => {
-    it('should reload filters when view changes', async () => {
-      const viewKey1 = 'project-project-1-all'
-      const viewKey2 = 'project-project-2-all'
-
+    it('should reload filters when project changes', async () => {
+      // #given — two projects with persisted filters (shared filterKey, no view suffix)
       localStorageMock.setItem(
         'taskFilters',
         JSON.stringify({
-          [viewKey1]: {
+          'project-project-1': {
             filters: { ...defaultFilters, search: 'project-1-search' },
-            sort: defaultSort
+            lastUpdated: new Date().toISOString()
           },
-          [viewKey2]: {
+          'project-project-2': {
             filters: { ...defaultFilters, search: 'project-2-search' },
-            sort: defaultSort
+            lastUpdated: new Date().toISOString()
           }
         })
       )
 
+      // #when — start on project-1
       const { result, rerender } = renderHook((props) => useFilterState(props), {
         initialProps: { ...defaultOptions, selectedId: 'project-1' }
       })
 
       expect(result.current.filters.search).toBe('project-1-search')
 
+      // #when — switch to project-2
       rerender({ ...defaultOptions, selectedId: 'project-2' })
 
+      // #then — loads project-2 filters
       await waitFor(() => {
         expect(result.current.filters.search).toBe('project-2-search')
+      })
+    })
+
+    it('should use status sort as default for kanban view when no persisted state', () => {
+      // #given — no persisted sort state for kanban view
+      const { result } = renderHook(() =>
+        useFilterState({ ...defaultOptions, activeView: 'kanban' })
+      )
+
+      // #then — kanban defaults to status/asc, not dueDate/asc
+      expect(result.current.sort).toEqual({ field: 'status', direction: 'asc' })
+    })
+
+    it('should preserve persisted kanban sort when switching back to kanban', async () => {
+      // #given — kanban view has persisted sort (sortKey includes view)
+      const kanbanSortKey = 'project-project-1-kanban'
+      const kanbanSort: TaskSort = { field: 'priority', direction: 'desc' }
+      localStorageMock.setItem(
+        'taskSortPrefs',
+        JSON.stringify({
+          [kanbanSortKey]: {
+            sort: kanbanSort,
+            lastUpdated: new Date().toISOString()
+          }
+        })
+      )
+
+      // #when — render with kanban view
+      const { result } = renderHook(() =>
+        useFilterState({ ...defaultOptions, activeView: 'kanban' })
+      )
+
+      // #then — uses persisted sort, not the kanban default
+      expect(result.current.sort).toEqual(kanbanSort)
+    })
+
+    it('should preserve each view sort independently when switching list→kanban→list', async () => {
+      // #given — list and kanban have separate persisted sorts
+      const listSort: TaskSort = { field: 'priority', direction: 'desc' }
+      const kanbanSort: TaskSort = { field: 'status', direction: 'asc' }
+
+      localStorageMock.setItem(
+        'taskSortPrefs',
+        JSON.stringify({
+          'project-project-1-list': {
+            sort: listSort,
+            lastUpdated: new Date().toISOString()
+          },
+          'project-project-1-kanban': {
+            sort: kanbanSort,
+            lastUpdated: new Date().toISOString()
+          }
+        })
+      )
+
+      // #given — shared filters across views
+      localStorageMock.setItem(
+        'taskFilters',
+        JSON.stringify({
+          'project-project-1': {
+            filters: { ...defaultFilters, search: 'shared-search' },
+            lastUpdated: new Date().toISOString()
+          }
+        })
+      )
+
+      // #when — start on list
+      const { result, rerender } = renderHook((props) => useFilterState(props), {
+        initialProps: { ...defaultOptions, activeView: 'list' }
+      })
+
+      expect(result.current.sort).toEqual(listSort)
+      expect(result.current.filters.search).toBe('shared-search')
+
+      // #when — switch to kanban
+      rerender({ ...defaultOptions, activeView: 'kanban' })
+
+      await waitFor(() => {
+        expect(result.current.sort).toEqual(kanbanSort)
+      })
+      // filters stay the same since filterKey didn't change
+      expect(result.current.filters.search).toBe('shared-search')
+
+      // #when — switch back to list
+      rerender({ ...defaultOptions, activeView: 'list' })
+
+      await waitFor(() => {
+        expect(result.current.sort).toEqual(listSort)
+      })
+      expect(result.current.filters.search).toBe('shared-search')
+    })
+
+    it('should preserve filters when switching between list and kanban views', async () => {
+      // #given — filters set in list view
+      const { result, rerender } = renderHook((props) => useFilterState(props), {
+        initialProps: { ...defaultOptions, activeView: 'list' }
+      })
+
+      act(() => {
+        result.current.updateFilters({ priorities: ['high'], search: 'urgent' })
+      })
+
+      expect(result.current.filters.priorities).toEqual(['high'])
+      expect(result.current.filters.search).toBe('urgent')
+
+      // #when — switch to kanban
+      rerender({ ...defaultOptions, activeView: 'kanban' })
+
+      // #then — filters carry over (filterKey is view-agnostic)
+      await waitFor(() => {
+        expect(result.current.filters.priorities).toEqual(['high'])
+        expect(result.current.filters.search).toBe('urgent')
+      })
+
+      // #when — switch back to list
+      rerender({ ...defaultOptions, activeView: 'list' })
+
+      // #then — filters still there
+      await waitFor(() => {
+        expect(result.current.filters.priorities).toEqual(['high'])
+        expect(result.current.filters.search).toBe('urgent')
+      })
+    })
+
+    it('should use view-specific sort defaults when no persisted sort exists', () => {
+      // #given — no persisted sort state at all
+      // #when — render kanban
+      const { result: kanbanResult } = renderHook(() =>
+        useFilterState({ ...defaultOptions, activeView: 'kanban' })
+      )
+
+      // #then — kanban defaults to status/asc
+      expect(kanbanResult.current.sort).toEqual({ field: 'status', direction: 'asc' })
+
+      // #when — render list
+      const { result: listResult } = renderHook(() =>
+        useFilterState({ ...defaultOptions, activeView: 'list' })
+      )
+
+      // #then — list defaults to dueDate/asc
+      expect(listResult.current.sort).toEqual(defaultSort)
+    })
+
+    it('should persist sort independently per view while sharing filters', async () => {
+      // #given — render in list view, set custom filter and sort
+      const { result, rerender } = renderHook((props) => useFilterState(props), {
+        initialProps: { ...defaultOptions, activeView: 'list' }
+      })
+
+      act(() => {
+        result.current.updateFilters({ priorities: ['medium'] })
+        result.current.updateSort({ field: 'priority', direction: 'desc' })
+      })
+
+      // wait for persist effects
+      await waitFor(() => {
+        expect(localStorageMock.setItem).toHaveBeenCalled()
+      })
+
+      // #then — filters stored under shared key, sort under view-specific key
+      const filterStore = JSON.parse(localStorageMock.store['taskFilters'])
+      const sortStore = JSON.parse(localStorageMock.store['taskSortPrefs'])
+
+      expect(filterStore['project-project-1'].filters.priorities).toEqual(['medium'])
+      expect(sortStore['project-project-1-list'].sort).toEqual({
+        field: 'priority',
+        direction: 'desc'
+      })
+
+      // #when — switch to kanban
+      rerender({ ...defaultOptions, activeView: 'kanban' })
+
+      // #then — filter carries over, sort is kanban default
+      await waitFor(() => {
+        expect(result.current.filters.priorities).toEqual(['medium'])
+        expect(result.current.sort).toEqual({ field: 'status', direction: 'asc' })
+      })
+    })
+
+    it('should reset only sort (not filters) when switching to a view with no persisted sort', async () => {
+      // #given — list has persisted sort, kanban has none
+      localStorageMock.setItem(
+        'taskSortPrefs',
+        JSON.stringify({
+          'project-project-1-list': {
+            sort: { field: 'priority', direction: 'desc' },
+            lastUpdated: new Date().toISOString()
+          }
+        })
+      )
+      localStorageMock.setItem(
+        'taskFilters',
+        JSON.stringify({
+          'project-project-1': {
+            filters: { ...defaultFilters, search: 'important' },
+            lastUpdated: new Date().toISOString()
+          }
+        })
+      )
+
+      // #when — start on list
+      const { result, rerender } = renderHook((props) => useFilterState(props), {
+        initialProps: { ...defaultOptions, activeView: 'list' }
+      })
+
+      expect(result.current.sort).toEqual({ field: 'priority', direction: 'desc' })
+      expect(result.current.filters.search).toBe('important')
+
+      // #when — switch to kanban (no persisted sort)
+      rerender({ ...defaultOptions, activeView: 'kanban' })
+
+      // #then — sort resets to kanban default, filters stay
+      await waitFor(() => {
+        expect(result.current.sort).toEqual({ field: 'status', direction: 'asc' })
+        expect(result.current.filters.search).toBe('important')
       })
     })
   })

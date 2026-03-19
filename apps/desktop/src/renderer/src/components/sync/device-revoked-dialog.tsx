@@ -8,7 +8,7 @@ import {
   AlertDialogTitle
 } from '@/components/ui/alert-dialog'
 import { Button } from '@/components/ui/button'
-import { AlertTriangle, Loader2 } from 'lucide-react'
+import { AlertTriangle, Loader2 } from '@/lib/icons'
 
 interface DeviceRevokedDialogProps {
   open: boolean

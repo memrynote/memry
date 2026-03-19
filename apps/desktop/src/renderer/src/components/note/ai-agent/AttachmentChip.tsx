@@ -1,4 +1,4 @@
-import { FileText, StickyNote, X } from 'lucide-react'
+import { FileText, StickyNote, X } from '@/lib/icons'
 import { cn } from '@/lib/utils'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import type { Attachment } from './types'
@@ -47,7 +47,7 @@ export function AttachmentChip({ attachment, onRemove }: AttachmentChipProps) {
               className={cn(
                 'text-stone-400 hover:text-stone-600',
                 'transition-colors duration-150',
-                'focus:outline-none focus:ring-2 focus:ring-stone-400 focus:ring-offset-1 rounded-full'
+                'focus:outline-none focus:ring-1 focus:ring-stone-400 focus:ring-offset-1 rounded-full'
               )}
               aria-label={`Remove ${displayName}`}
             >

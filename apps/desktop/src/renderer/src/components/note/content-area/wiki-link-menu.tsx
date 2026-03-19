@@ -3,7 +3,7 @@
  */
 
 import type { SuggestionMenuProps } from '@blocknote/react'
-import { FileText, Plus } from 'lucide-react'
+import { FileText, Plus } from '@/lib/icons'
 import { cn } from '@/lib/utils'
 import { formatRelativeTime } from '@/lib/wiki-link-utils'
 

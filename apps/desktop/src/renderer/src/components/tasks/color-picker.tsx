@@ -1,4 +1,4 @@
-import { Check } from 'lucide-react'
+import { Check } from '@/lib/icons'
 import { cn } from '@/lib/utils'
 import { projectColors } from '@/data/tasks-data'
 
@@ -61,7 +61,7 @@ export const ColorPicker = ({
             tabIndex={0}
             className={cn(
               'rounded-full transition-all duration-150',
-              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+              'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring focus-visible:ring-offset-2',
               'hover:scale-110',
               sizeClasses,
               isSelected && 'ring-2 ring-offset-2 ring-ring'

@@ -1,4 +1,4 @@
-import { Globe, FileText, Mic } from 'lucide-react'
+import { Globe, FileText, Mic } from '@/lib/icons'
 import { cn } from '@/lib/utils'
 
 interface CaptureMethod {

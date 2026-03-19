@@ -3,7 +3,7 @@ import Picker from '@emoji-mart/react'
 import data from '@emoji-mart/data'
 import { cn } from '@/lib/utils'
 import { useClickOutside } from './use-click-outside'
-import { X } from 'lucide-react'
+import { X } from '@/lib/icons'
 
 interface EmojiPickerProps {
   isOpen: boolean

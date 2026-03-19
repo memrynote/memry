@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react'
-import { X, ChevronDown } from 'lucide-react'
+import { X, ChevronDown } from '@/lib/icons'
 
 import { Dialog, DialogContent } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
@@ -108,7 +108,7 @@ export const DayDetailPopover = ({
           </div>
           <button
             type="button"
-            className="rounded p-2 text-muted-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="rounded p-2 text-muted-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
             onClick={onClose}
             aria-label="Close day details"
           >
@@ -136,7 +136,7 @@ export const DayDetailPopover = ({
                     type="button"
                     className={cn(
                       'group flex w-full items-center gap-3 rounded-sm px-2 py-2 text-left text-sm',
-                      'hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                      'hover:bg-muted focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring',
                       isCheckedForSelection && 'bg-primary/10 hover:bg-primary/15'
                     )}
                     onClick={() => handleTaskClick(task.id)}
@@ -236,7 +236,7 @@ export const DayDetailPopover = ({
                             onClick={() => handleTaskClick(subtask.id)}
                             className={cn(
                               'flex w-full items-center gap-2 rounded-sm px-2 py-1 text-left text-sm',
-                              'hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring'
+                              'hover:bg-muted focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring'
                             )}
                           >
                             {/* Tree connector */}

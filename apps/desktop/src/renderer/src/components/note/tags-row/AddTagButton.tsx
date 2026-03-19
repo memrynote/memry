@@ -1,4 +1,4 @@
-import { Plus } from 'lucide-react'
+import { Plus } from '@/lib/icons'
 import { cn } from '@/lib/utils'
 
 interface AddTagButtonProps {
@@ -20,7 +20,7 @@ export function AddTagButton({ onClick, disabled }: AddTagButtonProps) {
         'text-text-tertiary',
         'transition-all duration-150',
         'hover:border-muted-foreground hover:text-muted-foreground',
-        'focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+        'focus:outline-none focus-visible:ring-1 focus-visible:ring-ring focus-visible:ring-offset-2',
         'disabled:pointer-events-none disabled:opacity-50'
       )}
     >
