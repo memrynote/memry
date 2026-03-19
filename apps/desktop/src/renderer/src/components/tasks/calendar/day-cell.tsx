@@ -102,7 +102,7 @@ export const DayCell = ({
       onKeyDown={handleDayKeyDown}
       className={cn(
         'relative flex min-h-[110px] flex-col gap-1 rounded-[6px] p-2 transition-colors cursor-pointer',
-        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+        'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring',
         // Background
         day.isToday
           ? 'bg-cal-today-bg border-[1.5px] border-cal-today-border'
@@ -170,7 +170,7 @@ export const DayCell = ({
       {overflowCount > 0 && (
         <button
           type="button"
-          className="text-left text-[10px] font-medium pl-0.5 transition-colors hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="text-left text-[10px] font-medium pl-0.5 transition-colors hover:underline focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
           style={{ color: 'var(--cal-overflow)' }}
           onClick={(e) => {
             e.stopPropagation()

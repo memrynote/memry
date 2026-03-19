@@ -347,7 +347,7 @@ export function TagManager() {
                       onClick={() => void handleColorChange(colorName)}
                       className={cn(
                         'w-7 h-7 rounded-full transition-all hover:scale-110',
-                        'focus:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                        'focus:outline-none focus-visible:ring-1 focus-visible:ring-ring',
                         isSelected &&
                           'ring-2 ring-foreground/50 ring-offset-2 ring-offset-background'
                       )}

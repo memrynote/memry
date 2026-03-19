@@ -51,7 +51,7 @@ export const CalendarHeader = ({
             type="button"
             onClick={onPreviousMonth}
             aria-label="Previous month"
-            className="flex items-center justify-center size-8 rounded-md text-cal-weekday hover:bg-cal-cell-outside-bg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="flex items-center justify-center size-8 rounded-md text-cal-weekday hover:bg-cal-cell-outside-bg transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
           >
             <ChevronLeft className="size-4" />
           </button>
@@ -71,7 +71,7 @@ export const CalendarHeader = ({
             type="button"
             onClick={onNextMonth}
             aria-label="Next month"
-            className="flex items-center justify-center size-8 rounded-md text-cal-weekday hover:bg-cal-cell-outside-bg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="flex items-center justify-center size-8 rounded-md text-cal-weekday hover:bg-cal-cell-outside-bg transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
           >
             <ChevronRight className="size-4" />
           </button>
@@ -81,7 +81,7 @@ export const CalendarHeader = ({
         <button
           type="button"
           onClick={onToday}
-          className="rounded-full px-3 py-1 text-xs font-medium bg-cal-cell-outside-bg text-cal-date-current hover:bg-cal-cell-weekend-bg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="rounded-full px-3 py-1 text-xs font-medium bg-cal-cell-outside-bg text-cal-date-current hover:bg-cal-cell-weekend-bg transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
         >
           Today
         </button>
