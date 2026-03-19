@@ -463,7 +463,9 @@ export const SettingsChannels = {
     /** Reset all settings to defaults */
     RESET_ALL: 'settings:resetAll',
     /** Trigger manual sync */
-    TRIGGER_SYNC: 'settings:triggerSync'
+    TRIGGER_SYNC: 'settings:triggerSync',
+    /** Register (or unregister) the OS-level global capture shortcut */
+    REGISTER_GLOBAL_CAPTURE: 'settings:registerGlobalCapture'
   },
   sync: {
     /** Get the saved startup theme synchronously for first-paint bootstrap */

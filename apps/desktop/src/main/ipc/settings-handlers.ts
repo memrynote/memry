@@ -7,7 +7,7 @@
  * @module main/ipc/settings-handlers
  */
 
-import { ipcMain, BrowserWindow, app } from 'electron'
+import { ipcMain, BrowserWindow, app, globalShortcut, systemPreferences } from 'electron'
 import { SettingsChannels } from '@memry/contracts/ipc-channels'
 import {
   GENERAL_SETTINGS_DEFAULTS,
@@ -552,8 +552,13 @@ export function registerSettingsHandlers(): void {
   )
   ipcMain.handle(
     SettingsChannels.invoke.SET_KEYBOARD_SETTINGS,
-    (_event, updates: Partial<KeyboardShortcuts>) =>
-      writeGroupSettings('keyboard', KEYBOARD_SHORTCUTS_DEFAULTS, updates)
+    (_event, updates: Partial<KeyboardShortcuts>) => {
+      const result = writeGroupSettings('keyboard', KEYBOARD_SHORTCUTS_DEFAULTS, updates)
+      if ('globalCapture' in updates) {
+        applyGlobalCaptureShortcut()
+      }
+      return result
+    }
   )
 
   ipcMain.handle(SettingsChannels.invoke.GET_SYNC_SETTINGS, () =>
@@ -602,7 +607,72 @@ export function registerSettingsHandlers(): void {
     return { success: true }
   })
 
+  ipcMain.handle(SettingsChannels.invoke.REGISTER_GLOBAL_CAPTURE, async () => {
+    return applyGlobalCaptureShortcut()
+  })
+
   logger.info('Settings handlers registered')
+}
+
+// ============================================================================
+// Global Capture Shortcut
+// ============================================================================
+
+function toElectronAccelerator(binding: {
+  key: string
+  modifiers: { meta?: boolean; ctrl?: boolean; shift?: boolean; alt?: boolean }
+}): string {
+  const parts: string[] = []
+  if (binding.modifiers.meta) parts.push('CommandOrControl')
+  if (binding.modifiers.ctrl && !binding.modifiers.meta) parts.push('Control')
+  if (binding.modifiers.alt) parts.push('Alt')
+  if (binding.modifiers.shift) parts.push('Shift')
+  parts.push(binding.key)
+  return parts.join('+')
+}
+
+export interface GlobalCaptureResult {
+  success: boolean
+  registered: boolean
+  permissionRequired?: boolean
+  error?: string
+}
+
+/**
+ * Read keyboard.globalCapture from settings and register/unregister OS shortcut.
+ * Safe to call at startup and on settings change.
+ */
+export function applyGlobalCaptureShortcut(): GlobalCaptureResult {
+  globalShortcut.unregisterAll()
+
+  const settings = readGroupSettings('keyboard', KEYBOARD_SHORTCUTS_DEFAULTS)
+  const binding = settings.globalCapture
+  if (!binding) {
+    return { success: true, registered: false }
+  }
+
+  if (process.platform === 'darwin') {
+    const hasPerm = systemPreferences.isTrustedAccessibilityClient(false)
+    if (!hasPerm) {
+      logger.warn('Global capture: accessibility permission not granted on macOS')
+      return { success: false, registered: false, permissionRequired: true }
+    }
+  }
+
+  const accelerator = toElectronAccelerator(binding)
+  const registered = globalShortcut.register(accelerator, () => {
+    BrowserWindow.getAllWindows().forEach((win) => {
+      if (!win.isDestroyed()) win.webContents.send('quick-capture:open')
+    })
+  })
+
+  if (!registered) {
+    logger.warn(`Global capture: failed to register ${accelerator} (may be in use)`)
+    return { success: false, registered: false, error: `Shortcut ${accelerator} is already in use` }
+  }
+
+  logger.info(`Global capture: registered ${accelerator}`)
+  return { success: true, registered: true }
 }
 
 /**
@@ -639,6 +709,7 @@ export function unregisterSettingsHandlers(): void {
   ipcMain.removeHandler(SettingsChannels.invoke.SET_BACKUP_SETTINGS)
   ipcMain.removeHandler(SettingsChannels.invoke.GET_GRAPH_SETTINGS)
   ipcMain.removeHandler(SettingsChannels.invoke.SET_GRAPH_SETTINGS)
+  ipcMain.removeHandler(SettingsChannels.invoke.REGISTER_GLOBAL_CAPTURE)
 
   logger.info('Settings handlers unregistered')
 }

@@ -18,6 +18,7 @@ import { existsSync, readdirSync } from 'node:fs'
 import { config } from 'dotenv'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import { registerAllHandlers } from './ipc'
+import { applyGlobalCaptureShortcut } from './ipc/settings-handlers'
 import { autoOpenLastVault, closeVault } from './vault'
 import { getCurrentVaultPath } from './store'
 import { startSnoozeScheduler, stopSnoozeScheduler, checkDueItemsOnStartup } from './inbox/snooze'
@@ -582,8 +583,11 @@ void app.whenReady().then(async () => {
     .initPersistence()
     .catch((err) => mainLog.warn('Early CRDT persistence init failed (non-fatal)', err))
 
-  // Register global shortcut for quick capture (Cmd+Shift+Space)
-  registerQuickCaptureShortcut()
+  // Register global shortcut for quick capture from keyboard settings (fallback: hardcoded default)
+  const globalCaptureResult = applyGlobalCaptureShortcut()
+  if (!globalCaptureResult.registered) {
+    registerQuickCaptureShortcut()
+  }
 
   // Auto-open the last vault if one was previously open
   await autoOpenLastVault()

@@ -2157,6 +2157,12 @@ export interface SettingsClientAPI {
   setGraphSettings(
     settings: Partial<GraphSettingsDTO>
   ): Promise<{ success: boolean; error?: string }>
+  registerGlobalCapture(): Promise<{
+    success: boolean
+    registered: boolean
+    permissionRequired?: boolean
+    error?: string
+  }>
 }
 
 // Sync Auth API

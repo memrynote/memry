@@ -574,7 +574,8 @@ export const api = {
 
     getGraphSettings: () => invoke(SettingsChannels.invoke.GET_GRAPH_SETTINGS),
     setGraphSettings: (settings: Record<string, unknown>) =>
-      invoke(SettingsChannels.invoke.SET_GRAPH_SETTINGS, settings)
+      invoke(SettingsChannels.invoke.SET_GRAPH_SETTINGS, settings),
+    registerGlobalCapture: () => invoke(SettingsChannels.invoke.REGISTER_GLOBAL_CAPTURE)
   },
 
   // Bookmarks API
