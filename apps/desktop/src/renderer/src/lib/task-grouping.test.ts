@@ -171,7 +171,7 @@ describe('task-grouping', () => {
       const result = groupByPriority([urgent])
 
       // #then
-      expect(result[0].color).toBe('#ef4444')
+      expect(result[0].color).toBe('var(--task-priority-urgent)')
     })
 
     it('should handle tasks with undefined priority as none', () => {

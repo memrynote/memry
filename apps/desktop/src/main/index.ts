@@ -502,6 +502,7 @@ void app.whenReady().then(async () => {
     flushWindow(win)
       .then(() => createCloseSnapshots())
       .then(() => win.close())
+      .catch((err) => mainLog.error('Window close flush failed:', err))
   })
 
   // Quick Capture IPC handlers

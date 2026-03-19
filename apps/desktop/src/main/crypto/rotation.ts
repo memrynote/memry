@@ -186,7 +186,7 @@ export async function performKeyRotation(
   newKeyVerifier: string,
   newMasterKey: Uint8Array
 ): Promise<{ success: boolean; error?: string }> {
-  let state: RotationState = {
+  const state: RotationState = {
     inProgress: true,
     phase: 'preparing',
     totalItems: 0,

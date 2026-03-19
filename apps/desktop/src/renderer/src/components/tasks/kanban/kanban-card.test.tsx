@@ -1,8 +1,18 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import type { Task, Priority } from '@/data/sample-tasks'
 import type { Project, StatusType, Status } from '@/data/tasks-data'
 import { KanbanCardContent } from './kanban-card'
+
+vi.mock('@/contexts/drag-context', () => ({
+  useDragContext: () => ({
+    dragState: { lastDroppedId: null },
+    setDragState: vi.fn(),
+    resetDragState: vi.fn(),
+    isMultiDrag: false,
+    dragCount: 0
+  })
+}))
 
 const createStatus = (overrides: Partial<Status> = {}): Status => ({
   id: 'status-todo',

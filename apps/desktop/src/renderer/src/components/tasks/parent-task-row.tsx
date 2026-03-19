@@ -175,19 +175,6 @@ export const ParentTaskRow = ({
     return { text: compactDateLabel, colorClass: 'text-text-tertiary' }
   })()
 
-  const compactDateLabel = (() => {
-    if (!task.dueDate) return null
-    const date = formatDateShort(task.dueDate)
-    return task.dueTime ? `${date}, ${formatTime(task.dueTime)}` : date
-  })()
-
-  const dueDateDisplay = (() => {
-    if (isCompleted) return { text: 'Done', colorStyle: statusColor }
-    if (!compactDateLabel) return null
-    if (isOverdue) return { text: compactDateLabel, colorClass: 'text-destructive' }
-    return { text: compactDateLabel, colorClass: 'text-text-tertiary' }
-  })()
-
   return (
     <div className={cn('group relative', className)}>
       <div

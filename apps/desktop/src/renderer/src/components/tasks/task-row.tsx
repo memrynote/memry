@@ -55,7 +55,7 @@ export const TaskRow = ({
   isSelected = false,
   showProjectBadge = false,
   onToggleComplete,
-  onUpdateTask: _onUpdateTask,
+  onUpdateTask,
   onClick,
   className,
   isSelectionMode = false,

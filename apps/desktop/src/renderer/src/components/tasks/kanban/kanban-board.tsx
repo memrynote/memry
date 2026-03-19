@@ -138,7 +138,7 @@ export const KanbanBoard = ({
     [focusedTaskId, flatTaskList, columns, onToggleComplete, onTaskClick]
   )
 
-  const showProjectOnCards = selectedType === 'weekday'
+  const showProjectOnCards = (selectedType as string) === 'weekday'
 
   return (
     <div
