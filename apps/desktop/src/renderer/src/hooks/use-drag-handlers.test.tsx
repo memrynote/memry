@@ -535,4 +535,339 @@ describe('useDragHandlers', () => {
       high: ['task-2', 'task-3']
     })
   })
+
+  describe('kanban cross-column drops', () => {
+    it('respects drop position when dragging task across kanban columns', () => {
+      const project = createProject()
+      const tasks = [
+        createTask({ id: 'task-1', priority: 'high' }),
+        createTask({ id: 'task-2', priority: 'medium' }),
+        createTask({ id: 'task-3', priority: 'medium' })
+      ]
+      const onUpdateTask = vi.fn()
+      const onReorder = vi.fn()
+
+      const { result } = renderHook(() =>
+        useDragHandlers({
+          tasks,
+          projects: [project],
+          onUpdateTask,
+          onDeleteTask: vi.fn(),
+          onReorder,
+          getOrder: vi.fn()
+        })
+      )
+
+      const event = createDragEvent({
+        active: {
+          id: 'task-1',
+          data: {
+            current: {
+              type: 'task',
+              sourceType: 'kanban',
+              sectionId: 'priority-high',
+              sectionTaskIds: ['task-1'],
+              columnId: 'priority-high',
+              task: tasks[0]
+            }
+          }
+        },
+        over: {
+          id: 'task-3',
+          data: {
+            current: {
+              type: 'task',
+              sourceType: 'kanban',
+              sectionId: 'priority-medium',
+              sectionTaskIds: ['task-2', 'task-3'],
+              columnId: 'priority-medium',
+              task: tasks[2]
+            }
+          }
+        }
+      })
+
+      act(() => {
+        result.current.handleDragEnd(
+          event,
+          createDragState({
+            sourceType: 'kanban',
+            sourceContainerId: 'priority-high',
+            overSectionId: 'priority-medium',
+            overColumnId: 'priority-medium',
+            overTaskEdge: 'before'
+          })
+        )
+      })
+
+      expect(onUpdateTask).toHaveBeenCalledWith('task-1', { priority: 'medium' })
+      expect(onReorder).toHaveBeenCalledWith({
+        'priority-high': [],
+        'priority-medium': ['task-2', 'task-1', 'task-3']
+      })
+    })
+
+    it('places task at start when dropping on kanban column area', () => {
+      const project = createProject()
+      const tasks = [
+        createTask({ id: 'task-1', priority: 'high' }),
+        createTask({ id: 'task-2', priority: 'medium' }),
+        createTask({ id: 'task-3', priority: 'medium' })
+      ]
+      const onUpdateTask = vi.fn()
+      const onReorder = vi.fn()
+
+      const { result } = renderHook(() =>
+        useDragHandlers({
+          tasks,
+          projects: [project],
+          onUpdateTask,
+          onDeleteTask: vi.fn(),
+          onReorder,
+          getOrder: vi.fn()
+        })
+      )
+
+      const event = createDragEvent({
+        active: {
+          id: 'task-1',
+          data: {
+            current: {
+              type: 'task',
+              sourceType: 'kanban',
+              sectionId: 'priority-high',
+              sectionTaskIds: ['task-1'],
+              columnId: 'priority-high',
+              task: tasks[0]
+            }
+          }
+        },
+        over: {
+          id: 'column-priority-medium',
+          data: {
+            current: {
+              type: 'column',
+              sectionId: 'priority-medium',
+              sectionTaskIds: ['task-2', 'task-3'],
+              columnId: 'priority-medium'
+            }
+          }
+        }
+      })
+
+      act(() => {
+        result.current.handleDragEnd(
+          event,
+          createDragState({
+            sourceType: 'kanban',
+            sourceContainerId: 'priority-high',
+            overId: 'column-priority-medium',
+            overType: 'column',
+            overSectionId: 'priority-medium',
+            overColumnId: 'priority-medium',
+            sectionDropPosition: 'start'
+          })
+        )
+      })
+
+      expect(onUpdateTask).toHaveBeenCalledWith('task-1', { priority: 'medium' })
+      expect(onReorder).toHaveBeenCalledWith({
+        'priority-high': [],
+        'priority-medium': ['task-1', 'task-2', 'task-3']
+      })
+    })
+
+    it('respects position when returning task to original kanban column', () => {
+      const project = createProject()
+      const tasks = [
+        createTask({ id: 'task-1', priority: 'medium' }),
+        createTask({ id: 'task-2', priority: 'medium' }),
+        createTask({ id: 'task-3', priority: 'high' }),
+        createTask({ id: 'task-4', priority: 'high' })
+      ]
+      const onUpdateTask = vi.fn()
+      const onReorder = vi.fn()
+
+      const { result } = renderHook(() =>
+        useDragHandlers({
+          tasks,
+          projects: [project],
+          onUpdateTask,
+          onDeleteTask: vi.fn(),
+          onReorder,
+          getOrder: vi.fn()
+        })
+      )
+
+      const event = createDragEvent({
+        active: {
+          id: 'task-1',
+          data: {
+            current: {
+              type: 'task',
+              sourceType: 'kanban',
+              sectionId: 'priority-medium',
+              sectionTaskIds: ['task-1', 'task-2'],
+              columnId: 'priority-medium',
+              task: tasks[0]
+            }
+          }
+        },
+        over: {
+          id: 'task-4',
+          data: {
+            current: {
+              type: 'task',
+              sourceType: 'kanban',
+              sectionId: 'priority-high',
+              sectionTaskIds: ['task-3', 'task-4'],
+              columnId: 'priority-high',
+              task: tasks[3]
+            }
+          }
+        }
+      })
+
+      act(() => {
+        result.current.handleDragEnd(
+          event,
+          createDragState({
+            sourceType: 'kanban',
+            sourceContainerId: 'priority-medium',
+            overSectionId: 'priority-high',
+            overColumnId: 'priority-high',
+            overTaskEdge: 'before'
+          })
+        )
+      })
+
+      expect(onUpdateTask).toHaveBeenCalledWith('task-1', { priority: 'high' })
+      expect(onReorder).toHaveBeenCalledWith({
+        'priority-medium': ['task-2'],
+        'priority-high': ['task-3', 'task-1', 'task-4']
+      })
+
+      onUpdateTask.mockClear()
+      onReorder.mockClear()
+
+      const returnEvent = createDragEvent({
+        active: {
+          id: 'task-1',
+          data: {
+            current: {
+              type: 'task',
+              sourceType: 'kanban',
+              sectionId: 'priority-high',
+              sectionTaskIds: ['task-3', 'task-1', 'task-4'],
+              columnId: 'priority-high',
+              task: { ...tasks[0], priority: 'high' as Priority }
+            }
+          }
+        },
+        over: {
+          id: 'task-2',
+          data: {
+            current: {
+              type: 'task',
+              sourceType: 'kanban',
+              sectionId: 'priority-medium',
+              sectionTaskIds: ['task-2'],
+              columnId: 'priority-medium',
+              task: tasks[1]
+            }
+          }
+        }
+      })
+
+      act(() => {
+        result.current.handleDragEnd(
+          returnEvent,
+          createDragState({
+            activeId: 'task-1',
+            activeIds: ['task-1'],
+            sourceType: 'kanban',
+            sourceContainerId: 'priority-high',
+            overId: 'task-2',
+            overSectionId: 'priority-medium',
+            overColumnId: 'priority-medium',
+            overTaskEdge: 'before'
+          })
+        )
+      })
+
+      expect(onUpdateTask).toHaveBeenCalledWith('task-1', { priority: 'medium' })
+      expect(onReorder).toHaveBeenCalledWith({
+        'priority-high': ['task-3', 'task-4'],
+        'priority-medium': ['task-1', 'task-2']
+      })
+    })
+
+    it('handles same-column reorder in kanban with sectionId present', () => {
+      const project = createProject()
+      const tasks = [
+        createTask({ id: 'task-1', priority: 'high' }),
+        createTask({ id: 'task-2', priority: 'high' }),
+        createTask({ id: 'task-3', priority: 'high' })
+      ]
+      const onReorder = vi.fn()
+
+      const { result } = renderHook(() =>
+        useDragHandlers({
+          tasks,
+          projects: [project],
+          onUpdateTask: vi.fn(),
+          onDeleteTask: vi.fn(),
+          onReorder
+        })
+      )
+
+      const event = createDragEvent({
+        active: {
+          id: 'task-3',
+          data: {
+            current: {
+              type: 'task',
+              sourceType: 'kanban',
+              sectionId: 'priority-high',
+              sectionTaskIds: ['task-1', 'task-2', 'task-3'],
+              columnId: 'priority-high',
+              task: tasks[2]
+            }
+          }
+        },
+        over: {
+          id: 'task-1',
+          data: {
+            current: {
+              type: 'task',
+              sourceType: 'kanban',
+              sectionId: 'priority-high',
+              sectionTaskIds: ['task-1', 'task-2', 'task-3'],
+              columnId: 'priority-high',
+              task: tasks[0]
+            }
+          }
+        }
+      })
+
+      act(() => {
+        result.current.handleDragEnd(
+          event,
+          createDragState({
+            activeId: 'task-3',
+            activeIds: ['task-3'],
+            sourceType: 'kanban',
+            sourceContainerId: 'priority-high',
+            overSectionId: 'priority-high',
+            overColumnId: 'priority-high',
+            overTaskEdge: 'before'
+          })
+        )
+      })
+
+      expect(onReorder).toHaveBeenCalledWith({
+        'priority-high': ['task-3', 'task-1', 'task-2']
+      })
+    })
+  })
 })
