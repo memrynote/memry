@@ -508,14 +508,14 @@ test.describe('Tasks Management', () => {
       await expect(overlay).toContainText(title)
       await expect(overlay).toHaveAttribute('data-overlay-row-variant', 'task')
 
-      const rowBox = await taskRow.boundingBox()
+      const finalRowBox = await taskRow.boundingBox()
       const overlayBox = await overlay.boundingBox()
 
-      if (!rowBox || !overlayBox) {
+      if (!finalRowBox || !overlayBox) {
         throw new Error('Missing row or overlay geometry')
       }
 
-      expect(Math.abs(overlayBox.width - rowBox.width)).toBeLessThanOrEqual(12)
+      expect(Math.abs(overlayBox.width - finalRowBox.width)).toBeLessThanOrEqual(12)
       expect(overlayBox.height).toBeLessThanOrEqual(44)
 
       await page.mouse.up()
