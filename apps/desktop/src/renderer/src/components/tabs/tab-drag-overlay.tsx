@@ -23,44 +23,35 @@ export const TabDragOverlay = ({ tab }: TabDragOverlayProps): React.JSX.Element 
   return (
     <div
       className={cn(
-        // Base styles matching browser-style RegularTab
-        'flex items-center gap-2 h-9 px-3',
+        'flex items-center gap-2 h-9 px-4',
         'min-w-[100px] max-w-[180px]',
         'select-none pointer-events-none',
-        // Rounded top corners like active tab
-        'rounded-t-lg',
-        // Same background as active tab
-        'bg-background',
-        // Border on all sides for visibility while dragging
-        'border border-border',
-        // Prominent shadow for "lifted" effect
-        'shadow-[0_8px_24px_rgba(0,0,0,0.15),0_4px_8px_rgba(0,0,0,0.1)]',
-        'dark:shadow-[0_8px_24px_rgba(0,0,0,0.5),0_4px_8px_rgba(0,0,0,0.3)]',
-        // Slight scale up for emphasis
-        'scale-[1.02]'
+        'rounded',
+        'bg-sidebar-terracotta/[0.07]',
+        'border border-dashed border-sidebar-terracotta/25',
+        'shadow-sm'
       )}
     >
-      {/* Icon */}
       <TabIcon
         type={tab.type}
         icon={tab.icon}
         emoji={tab.emoji}
-        className="w-4 h-4 flex-shrink-0 text-foreground"
+        className="w-4 h-4 flex-shrink-0 text-sidebar-terracotta"
       />
 
-      {/* Title */}
       <span
         className={cn(
-          'flex-1 truncate text-[13px] font-medium',
-          'text-foreground',
-          tab.isPreview && settings.previewMode && 'italic font-normal'
+          'flex-1 truncate text-[13px] font-normal',
+          'text-sidebar-terracotta',
+          tab.isPreview && settings.previewMode && 'italic'
         )}
       >
         {tab.title}
       </span>
 
-      {/* Modified indicator */}
-      {tab.isModified && <div className="w-1.5 h-1.5 rounded-full bg-blue-500 flex-shrink-0" />}
+      {tab.isModified && (
+        <div className="w-1.5 h-1.5 rounded-full bg-sidebar-terracotta flex-shrink-0" />
+      )}
     </div>
   )
 }
