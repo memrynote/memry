@@ -73,9 +73,20 @@ export const SELECTORS = {
     '[data-testid="search-input"], input[placeholder*="Search"], input[aria-label*="Search"]',
 
   // Tab system
-  tabBar: '[class*="tab-bar"], [role="tablist"]',
+  tabBar: '[role="tablist"], [data-group-id]',
   tab: '[role="tab"]',
-  activeTab: '[role="tab"][aria-selected="true"]'
+  activeTab: '[role="tab"][aria-selected="true"]',
+  tabCloseButton: '[role="tab"] button[aria-label^="Close"]',
+
+  // Split view
+  splitViewContainer: '[data-testid="split-view-container"]',
+  splitPane: '[data-testid="split-pane"]',
+  tabPane: '[data-testid="tab-pane"]',
+  emptyPaneState: '[data-testid="empty-pane-state"]',
+  tabContent: '[data-tab-content]',
+
+  // Sidebar trigger (inside tab bar)
+  sidebarTrigger: '[data-testid="tab-pane"] button, [role="tablist"] button'
 }
 
 const FIRST_RUN_ONBOARDING = {
