@@ -744,4 +744,223 @@ describe('useBulkActions', () => {
       expect(mockOnDeleteTask).not.toHaveBeenCalled()
     })
   })
+
+  // ==========================================================================
+  // UNDO INTEGRATION (Cmd+Z)
+  // ==========================================================================
+
+  describe('undo integration', () => {
+    let mockRegisterUndo: ReturnType<typeof vi.fn>
+    let mockOnAddTask: ReturnType<typeof vi.fn>
+
+    beforeEach(() => {
+      mockRegisterUndo = vi.fn().mockReturnValue('undo-bulk-1')
+      mockOnAddTask = vi.fn()
+    })
+
+    const renderBulkWithUndo = (selectedIds: string[] = ['task-1', 'task-2']) => {
+      return renderHook(
+        () =>
+          useBulkActions({
+            selectedIds,
+            tasks: mockTasks,
+            projects: [mockProject],
+            onUpdateTask: mockOnUpdateTask,
+            onDeleteTask: mockOnDeleteTask,
+            onComplete: mockOnComplete,
+            registerUndo: mockRegisterUndo,
+            onAddTask: mockOnAddTask
+          }),
+        { wrapper }
+      )
+    }
+
+    it('bulkComplete should call registerUndo', async () => {
+      const { result } = renderBulkWithUndo(['task-1', 'task-2'])
+
+      await act(async () => {
+        await result.current.bulkComplete()
+      })
+
+      expect(mockRegisterUndo).toHaveBeenCalledWith(
+        expect.stringContaining('2'),
+        expect.any(Function)
+      )
+    })
+
+    it('bulkComplete undo should restore original states', async () => {
+      const { result } = renderBulkWithUndo(['task-1', 'task-2'])
+
+      await act(async () => {
+        await result.current.bulkComplete()
+      })
+
+      // #when — execute undo
+      mockOnUpdateTask.mockClear()
+      const undoFn = mockRegisterUndo.mock.calls[0][1]
+      undoFn()
+
+      expect(mockOnUpdateTask).toHaveBeenCalledWith(
+        'task-1',
+        expect.objectContaining({ statusId: 'todo-status' })
+      )
+      expect(mockOnUpdateTask).toHaveBeenCalledWith(
+        'task-2',
+        expect.objectContaining({ statusId: 'todo-status' })
+      )
+    })
+
+    it('bulkDelete should call registerUndo', async () => {
+      const { result } = renderBulkWithUndo(['task-1', 'task-2'])
+
+      await act(async () => {
+        await result.current.bulkDelete()
+      })
+
+      expect(mockRegisterUndo).toHaveBeenCalledWith(
+        expect.stringContaining('2'),
+        expect.any(Function)
+      )
+    })
+
+    it('bulkDelete undo should re-create all deleted tasks', async () => {
+      const { result } = renderBulkWithUndo(['task-1', 'task-2'])
+
+      await act(async () => {
+        await result.current.bulkDelete()
+      })
+
+      // #when — execute undo
+      const undoFn = mockRegisterUndo.mock.calls[0][1]
+      undoFn()
+
+      expect(mockOnAddTask).toHaveBeenCalledWith(expect.objectContaining({ id: 'task-1' }))
+      expect(mockOnAddTask).toHaveBeenCalledWith(expect.objectContaining({ id: 'task-2' }))
+    })
+
+    it('bulkArchive should call registerUndo', async () => {
+      const { result } = renderBulkWithUndo(['task-1', 'task-2'])
+
+      await act(async () => {
+        await result.current.bulkArchive()
+      })
+
+      expect(mockRegisterUndo).toHaveBeenCalledWith(
+        expect.stringContaining('2'),
+        expect.any(Function)
+      )
+    })
+
+    it('bulkArchive undo should unarchive all', async () => {
+      const { result } = renderBulkWithUndo(['task-1', 'task-2'])
+
+      await act(async () => {
+        await result.current.bulkArchive()
+      })
+
+      // #when — undo
+      mockOnUpdateTask.mockClear()
+      const undoFn = mockRegisterUndo.mock.calls[0][1]
+      undoFn()
+
+      expect(mockOnUpdateTask).toHaveBeenCalledWith('task-1', { archivedAt: null })
+      expect(mockOnUpdateTask).toHaveBeenCalledWith('task-2', { archivedAt: null })
+    })
+
+    it('bulkChangePriority should call registerUndo', () => {
+      const { result } = renderBulkWithUndo(['task-1', 'task-2'])
+
+      act(() => {
+        result.current.bulkChangePriority('high')
+      })
+
+      expect(mockRegisterUndo).toHaveBeenCalledWith(
+        expect.stringContaining('Priority'),
+        expect.any(Function)
+      )
+    })
+
+    it('bulkChangePriority undo should restore original priorities', () => {
+      const { result } = renderBulkWithUndo(['task-1', 'task-2'])
+
+      act(() => {
+        result.current.bulkChangePriority('high')
+      })
+
+      // #when — undo
+      mockOnUpdateTask.mockClear()
+      const undoFn = mockRegisterUndo.mock.calls[0][1]
+      undoFn()
+
+      expect(mockOnUpdateTask).toHaveBeenCalledWith('task-1', { priority: 'none' })
+      expect(mockOnUpdateTask).toHaveBeenCalledWith('task-2', { priority: 'none' })
+    })
+
+    it('bulkChangeDueDate should call registerUndo', () => {
+      const { result } = renderBulkWithUndo(['task-1', 'task-2'])
+
+      act(() => {
+        result.current.bulkChangeDueDate(new Date('2026-04-01'))
+      })
+
+      expect(mockRegisterUndo).toHaveBeenCalledWith(
+        expect.stringContaining('Due date'),
+        expect.any(Function)
+      )
+    })
+
+    it('bulkMoveToProject should call registerUndo', async () => {
+      const targetProject = createMockProject({ id: 'project-2', name: 'Target' })
+      const { result } = renderHook(
+        () =>
+          useBulkActions({
+            selectedIds: ['task-1', 'task-2'],
+            tasks: mockTasks,
+            projects: [mockProject, targetProject],
+            onUpdateTask: mockOnUpdateTask,
+            onDeleteTask: mockOnDeleteTask,
+            onComplete: mockOnComplete,
+            registerUndo: mockRegisterUndo,
+            onAddTask: mockOnAddTask
+          }),
+        { wrapper }
+      )
+
+      await act(async () => {
+        await result.current.bulkMoveToProject('project-2')
+      })
+
+      expect(mockRegisterUndo).toHaveBeenCalledWith(
+        expect.stringContaining('Move'),
+        expect.any(Function)
+      )
+    })
+
+    it('bulkChangeStatus should call registerUndo', () => {
+      const { result } = renderBulkWithUndo(['task-1', 'task-2'])
+
+      act(() => {
+        result.current.bulkChangeStatus('progress-status')
+      })
+
+      expect(mockRegisterUndo).toHaveBeenCalledWith(
+        expect.stringContaining('Status'),
+        expect.any(Function)
+      )
+    })
+
+    it('bulkUncomplete should call registerUndo', () => {
+      // Use task-3 which is already done
+      const { result } = renderBulkWithUndo(['task-3'])
+
+      act(() => {
+        result.current.bulkUncomplete()
+      })
+
+      expect(mockRegisterUndo).toHaveBeenCalledWith(
+        expect.stringContaining('1'),
+        expect.any(Function)
+      )
+    })
+  })
 })
