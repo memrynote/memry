@@ -100,7 +100,7 @@ export const CollapsedEmptySection = ({
           'shrink-0 ml-3',
           'text-xs font-medium text-primary hover:text-primary/80',
           'transition-colors',
-          'focus-visible:outline-none focus-visible:ring-2',
+          'focus-visible:outline-none focus-visible:ring-1',
           'focus-visible:ring-ring focus-visible:ring-offset-2 rounded'
         )}
         aria-label={`Add task for ${label.toLowerCase()}`}

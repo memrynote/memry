@@ -69,7 +69,7 @@ export function JournalEntryListItem({
         // Hover state
         'hover:bg-muted/60',
         // Focus state
-        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-purple/50',
+        'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent-purple/50',
         // Today highlight
         isToday && 'bg-accent-purple/5 ring-1 ring-accent-purple/20',
         // Future styling

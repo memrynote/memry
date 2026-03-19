@@ -26,7 +26,7 @@ export const SkipToContent = ({
         'sr-only focus:not-sr-only',
         'fixed top-2 left-2 z-50',
         'px-4 py-2 bg-blue-500 text-white rounded-md',
-        'focus:outline-none focus:ring-2 focus:ring-blue-300'
+        'focus:outline-none focus:ring-1 focus:ring-blue-300'
       )}
     >
       {children}

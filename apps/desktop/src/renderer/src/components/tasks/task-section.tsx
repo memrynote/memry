@@ -112,7 +112,7 @@ export const TaskSection = ({
                 className={cn(
                   'block mx-auto mt-3 text-primary hover:text-primary/80',
                   'text-sm font-medium transition-colors',
-                  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring'
+                  'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring'
                 )}
               >
                 + Add task

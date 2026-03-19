@@ -58,7 +58,7 @@ function MonthCard({ stat, isCurrent, onClick }: MonthCardProps) {
         // Hover state
         'hover:border-accent-purple/40 hover:bg-accent-purple/5 hover:shadow-sm',
         // Focus state
-        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-purple/50',
+        'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent-purple/50',
         // Active state
         'active:scale-[0.98]',
         // Current month highlight

@@ -133,7 +133,7 @@ export const TasksTabBar = ({
               onKeyDown={(e) => handleKeyDown(e, index)}
               className={cn(
                 'flex items-center py-1 px-2.5 gap-1 transition-colors',
-                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset',
+                'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring focus-visible:ring-inset',
                 index > 0 && 'border-l border-border',
                 isActive
                   ? 'bg-foreground text-background font-medium'
@@ -171,7 +171,7 @@ export const TasksTabBar = ({
                 type="button"
                 aria-label={sf.name}
                 onClick={() => onApplySavedFilter?.(sf)}
-                className="flex items-baseline py-1 pl-2.5 pr-1 gap-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
+                className="flex items-baseline py-1 pl-2.5 pr-1 gap-1 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring focus-visible:ring-inset"
               >
                 <span className="text-[12px] leading-4">{sf.name}</span>
               </button>

@@ -83,7 +83,7 @@ export const CalendarTaskItem = ({
       className={cn(
         'flex items-center gap-1 rounded px-1.5 py-[3px] text-[11px] leading-[14px] font-normal',
         'cursor-pointer truncate transition-colors',
-        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+        'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring',
         isOverdue
           ? 'bg-cal-task-overdue-bg hover:bg-cal-task-overdue-bg/80'
           : isToday

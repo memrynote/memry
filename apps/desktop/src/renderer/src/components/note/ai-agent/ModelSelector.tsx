@@ -43,7 +43,7 @@ export function ModelSelector({ selectedModel, onModelChange }: ModelSelectorPro
             'border border-stone-200 rounded-full',
             'px-3 py-1.5',
             'transition-colors duration-150',
-            'focus:outline-none focus:ring-2 focus:ring-stone-400 focus:ring-offset-1'
+            'focus:outline-none focus:ring-1 focus:ring-stone-400 focus:ring-offset-1'
           )}
         >
           <Sparkles className="h-3.5 w-3.5 text-stone-500" />

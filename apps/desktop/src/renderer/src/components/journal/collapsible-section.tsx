@@ -68,7 +68,7 @@ export const CollapsibleSection = memo(function CollapsibleSection({
         className={cn(
           'w-full flex items-center justify-between px-4 py-3',
           'hover:bg-muted/40 transition-colors duration-150',
-          'text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset'
+          'text-left focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring focus-visible:ring-inset'
         )}
       >
         <div className="flex items-center gap-2">
