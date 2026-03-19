@@ -39,7 +39,7 @@ const DUE_DATE_COLUMNS: { key: string; title: string; color?: string }[] = [
   { key: 'tomorrow', title: 'Tomorrow', color: '#3B82F6' },
   { key: 'upcoming', title: 'This Week', color: '#50505A' },
   { key: 'later', title: 'Later' },
-  { key: 'noDueDate', title: 'No Due Date' }
+  { key: 'noDueDate', title: 'No Due Date', color: '#50505A' }
 ]
 
 const getStatusTypeForTask = (task: Task, projects: Project[]): StatusType => {

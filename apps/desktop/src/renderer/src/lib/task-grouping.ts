@@ -42,7 +42,7 @@ const DUE_DATE_LABELS: Record<
   tomorrow: { label: 'Tomorrow', color: '#3B82F6' },
   upcoming: { label: 'This Week', color: '#50505A' },
   later: { label: 'Later' },
-  noDueDate: { label: 'No Due Date' }
+  noDueDate: { label: 'No Due Date', color: '#50505A' }
 }
 
 export const groupByDueDate = (tasks: Task[]): TaskGroup[] => {
