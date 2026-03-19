@@ -46,7 +46,7 @@ export const SubtaskRow = ({
         'py-1.5 pl-[44px] pr-3',
         'hover:bg-accent/50 cursor-pointer rounded-r-sm',
         'transition-colors duration-150',
-        onClick && 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+        onClick && 'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring',
         className
       )}
       aria-label={`Subtask: ${subtask.title}${isCompleted ? ', completed' : ''}`}

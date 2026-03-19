@@ -124,7 +124,7 @@ export const SidebarSection = ({
               'text-[12px] leading-4 font-medium',
               "font-['DM_Sans',system-ui,sans-serif]",
               'text-sidebar-muted hover:text-sidebar-foreground',
-              'transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring'
+              'transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring'
             )}
             aria-expanded={isExpanded}
             aria-controls={contentId}

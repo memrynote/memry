@@ -34,7 +34,7 @@ const LinkedTaskItem = ({ task, onClick }: LinkedTaskItemProps): React.JSX.Eleme
       className={cn(
         'flex items-center gap-2 w-full p-2 rounded-md text-left',
         'hover:bg-stone-100 dark:hover:bg-stone-800 transition-colors',
-        'focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1',
+        'focus:outline-none focus:ring-1 focus:ring-ring focus:ring-offset-1',
         isCompleted && 'opacity-60'
       )}
     >
