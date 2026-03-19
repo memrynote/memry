@@ -212,38 +212,52 @@ const createCollisionDetection = (): CollisionDetection => {
     // Compute rect intersections once — used by same-column gate, column check, and section check
     const rectCollisions = rectIntersection(args)
 
-    // Same-column task reorder for kanban:
-    // Only when the dragged card still physically overlaps its source column.
-    // Without this spatial gate, closestCenter (a global algorithm) always finds
-    // a source-column task even when the pointer is over a different column.
+    // Kanban cross-column vs same-column detection.
+    // Use POINTER position (user intent) as primary signal, card rect as fallback.
     const activeColumnId = args.active?.data?.current?.columnId
     if (activeColumnId) {
-      const isOverSourceColumn = rectCollisions.some((collision) => {
+      const pointerTargetColumn = pointerCollisions.find((collision) => {
+        const data = collision.data?.droppableContainer?.data?.current
+        return data?.type === 'column' && data?.columnId !== activeColumnId
+      })
+
+      if (pointerTargetColumn) {
+        const targetColumnId = pointerTargetColumn.data?.droppableContainer?.data?.current?.columnId
+        const closestResults = closestCenter(args)
+        const crossColumnTask = closestResults.find((collision) => {
+          const data = collision.data?.droppableContainer?.data?.current
+          return data?.type === 'task' && data?.columnId === targetColumnId
+        })
+        return crossColumnTask ? [crossColumnTask] : [pointerTargetColumn]
+      }
+
+      const pointerOverSource = pointerCollisions.some((collision) => {
         const data = collision.data?.droppableContainer?.data?.current
         return data?.type === 'column' && data?.columnId === activeColumnId
       })
 
-      if (isOverSourceColumn) {
+      if (pointerOverSource) {
         const closestResults = closestCenter(args)
         const sameColumnTask = closestResults.find((collision) => {
           const data = collision.data?.droppableContainer?.data?.current
           return data?.type === 'task' && data?.columnId === activeColumnId
         })
         if (sameColumnTask) return [sameColumnTask]
-      } else {
-        const targetColumn = rectCollisions.find((collision) => {
+      }
+
+      const targetColumn = rectCollisions.find((collision) => {
+        const data = collision.data?.droppableContainer?.data?.current
+        return data?.type === 'column' && data?.columnId !== activeColumnId
+      })
+      if (targetColumn) {
+        const targetColumnId = targetColumn.data?.droppableContainer?.data?.current?.columnId
+        const closestResults = closestCenter(args)
+        const crossColumnTask = closestResults.find((collision) => {
           const data = collision.data?.droppableContainer?.data?.current
-          return data?.type === 'column' && data?.columnId !== activeColumnId
+          return data?.type === 'task' && data?.columnId === targetColumnId
         })
-        if (targetColumn) {
-          const targetColumnId = targetColumn.data?.droppableContainer?.data?.current?.columnId
-          const closestResults = closestCenter(args)
-          const crossColumnTask = closestResults.find((collision) => {
-            const data = collision.data?.droppableContainer?.data?.current
-            return data?.type === 'task' && data?.columnId === targetColumnId
-          })
-          if (crossColumnTask) return [crossColumnTask]
-        }
+        if (crossColumnTask) return [crossColumnTask]
+        return [targetColumn]
       }
     }
 
