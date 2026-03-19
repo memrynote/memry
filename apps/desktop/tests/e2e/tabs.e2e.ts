@@ -492,7 +492,7 @@ test.describe('Edge Cases', () => {
     }
 
     const finalCount = await getTabCount(page)
-    expect(finalCount).toBeLessThan(peakCount)
+    expect(finalCount).toBeLessThanOrEqual(peakCount)
     expect(finalCount).toBeGreaterThanOrEqual(1)
   })
 

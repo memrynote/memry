@@ -256,14 +256,13 @@ test.describe('Tasks Management', () => {
     const startTaskHandleDrag = async (page: Page, sourceRow: Locator): Promise<void> => {
       await sourceRow.hover()
 
-      const handle = sourceRow.locator('[data-testid="drag-handle"]').first()
-      const handleBox = await handle.boundingBox()
+      const rowBox = await sourceRow.boundingBox()
 
-      if (!handleBox) {
-        throw new Error('Missing drag handle geometry')
+      if (!rowBox) {
+        throw new Error('Missing task row geometry')
       }
 
-      await page.mouse.move(handleBox.x + handleBox.width / 2, handleBox.y + handleBox.height / 2)
+      await page.mouse.move(rowBox.x + rowBox.width / 2, rowBox.y + rowBox.height / 2)
       await page.mouse.down()
     }
 
@@ -494,16 +493,15 @@ test.describe('Tasks Management', () => {
       await expect(taskRow).toBeVisible()
       await taskRow.hover()
 
-      const handle = taskRow.locator('[data-testid="drag-handle"]').first()
-      const handleBox = await handle.boundingBox()
+      const rowBox = await taskRow.boundingBox()
 
-      if (!handleBox) {
-        throw new Error('Missing drag handle geometry')
+      if (!rowBox) {
+        throw new Error('Missing task row geometry')
       }
 
-      await page.mouse.move(handleBox.x + handleBox.width / 2, handleBox.y + handleBox.height / 2)
+      await page.mouse.move(rowBox.x + rowBox.width / 2, rowBox.y + rowBox.height / 2)
       await page.mouse.down()
-      await page.mouse.move(handleBox.x + 60, handleBox.y + 32, { steps: 10 })
+      await page.mouse.move(rowBox.x + 60, rowBox.y + 32, { steps: 10 })
 
       const overlay = page.locator('[data-testid="drag-overlay"]').first()
       await expect(overlay).toBeVisible()
@@ -546,16 +544,15 @@ test.describe('Tasks Management', () => {
 
       await secondRow.hover()
 
-      const handle = secondRow.locator('[data-testid="drag-handle"]').first()
-      const handleBox = await handle.boundingBox()
+      const rowBox = await secondRow.boundingBox()
 
-      if (!handleBox) {
-        throw new Error('Missing drag handle geometry for multi-drag')
+      if (!rowBox) {
+        throw new Error('Missing task row geometry for multi-drag')
       }
 
-      await page.mouse.move(handleBox.x + handleBox.width / 2, handleBox.y + handleBox.height / 2)
+      await page.mouse.move(rowBox.x + rowBox.width / 2, rowBox.y + rowBox.height / 2)
       await page.mouse.down()
-      await page.mouse.move(handleBox.x + 48, handleBox.y + 28, { steps: 10 })
+      await page.mouse.move(rowBox.x + 48, rowBox.y + 28, { steps: 10 })
 
       const multiOverlay = page
         .locator('[data-testid="drag-overlay"][data-overlay-variant="list-multi"]')
