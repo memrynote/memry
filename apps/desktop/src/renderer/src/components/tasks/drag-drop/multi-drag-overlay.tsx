@@ -51,7 +51,11 @@ const resolveRowVariant = (task: Task, preferred?: OverlayRowVariant | null): Ov
   preferred ?? (task.subtaskIds.length > 0 ? 'parent' : 'task')
 
 const resolveParentProgress = (task: Task, progress?: SubtaskProgress | null): SubtaskProgress =>
-  progress ?? { completed: 0, total: task.subtaskIds.length }
+  progress ?? {
+    completed: 0,
+    total: task.subtaskIds.length,
+    percentage: task.subtaskIds.length > 0 ? 0 : 100
+  }
 
 const ListGhostRow = ({
   task,

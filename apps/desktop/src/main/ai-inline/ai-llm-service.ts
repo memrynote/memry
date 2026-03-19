@@ -26,6 +26,6 @@ export function createLanguageModel(settings: AIInlineSettings): LanguageModel {
       return createAnthropic({ apiKey: settings.apiKey })(settings.model)
 
     default:
-      throw new Error(`Unsupported provider: ${(settings as AIInlineSettings).provider}`)
+      throw new Error(`Unsupported provider: ${settings.provider}`)
   }
 }

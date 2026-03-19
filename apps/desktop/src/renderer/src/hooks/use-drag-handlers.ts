@@ -693,7 +693,8 @@ export const useDragHandlers = ({
         priorityTimerRef.current = setTimeout(() => setDroppedPriorities(new Map()), 2500)
       }
 
-      if (message) {
+      const resolvedMessage = message as { single: string; multiple: string } | null
+      if (resolvedMessage) {
         recordAction(
           {
             type: 'cross-section-move',
@@ -701,10 +702,10 @@ export const useDragHandlers = ({
             previousTaskState,
             previousOrderUpdates
           },
-          message.single
+          resolvedMessage.single
         )
 
-        toast.success(taskIds.length === 1 ? message.single : message.multiple)
+        toast.success(taskIds.length === 1 ? resolvedMessage.single : resolvedMessage.multiple)
       }
 
       return true
@@ -916,15 +917,6 @@ export const useDragHandlers = ({
             case 'projectStatus':
               handleColumnDrop(taskIds, result.columnId, result.project)
               break
-          }
-          break
-        }
-
-        case 'weekday': {
-          const weekdayDate = overData?.date as Date | undefined
-          const weekdayLabel = overData?.label as string
-          if (weekdayDate) {
-            handleSectionDrop(taskIds, weekdayDate, weekdayLabel)
           }
           break
         }
