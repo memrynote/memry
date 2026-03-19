@@ -51,14 +51,39 @@ export function GraphPage(): React.JSX.Element {
     return <GraphEmptyState />
   }
 
+  const nodeCount = data.nodes.length
+  const edgeCount = data.edges.length
+
+  const nodeSummary = useMemo(() => {
+    const counts: Record<string, number> = {}
+    data.nodes.forEach((n) => {
+      counts[n.type] = (counts[n.type] ?? 0) + 1
+    })
+    return Object.entries(counts)
+      .map(([type, count]) => `${count} ${type}${count !== 1 ? 's' : ''}`)
+      .join(', ')
+  }, [data.nodes])
+
+  const graphAriaLabel = `Knowledge graph with ${nodeCount} node${nodeCount !== 1 ? 's' : ''} and ${edgeCount} connection${edgeCount !== 1 ? 's' : ''}${nodeSummary ? `: ${nodeSummary}` : ''}.`
+
   return (
     <div className="relative h-full w-full">
-      <GraphCanvas
-        data={data}
-        filterState={filterState}
-        graphSettings={graphSettings}
-        onFocusNode={handleFocusNode}
-      />
+      <div role="img" aria-label={graphAriaLabel} className="h-full w-full">
+        <GraphCanvas
+          data={data}
+          filterState={filterState}
+          graphSettings={graphSettings}
+          onFocusNode={handleFocusNode}
+        />
+        {/* Visually-hidden node list for screen readers */}
+        <ul className="sr-only" aria-label="Graph nodes">
+          {data.nodes.map((node) => (
+            <li key={node.id}>
+              {node.label} ({node.type})
+            </li>
+          ))}
+        </ul>
+      </div>
       <GraphControlPanel
         filterState={filterState}
         dispatch={dispatch}

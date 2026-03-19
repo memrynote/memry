@@ -49,6 +49,7 @@ const TagPill = ({ tag, onRemove }: TagPillProps): React.JSX.Element => {
 
   return (
     <span
+      role="listitem"
       className={cn(
         'inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium',
         'tag-pill-enter motion-reduce:animate-none'
@@ -78,6 +79,7 @@ const TagPill = ({ tag, onRemove }: TagPillProps): React.JSX.Element => {
 
 interface SuggestionItemProps {
   tag: TagWithMeta
+  id: string
   isHighlighted: boolean
   onSelect: (tag: string) => void
   onMouseEnter: () => void
@@ -85,17 +87,20 @@ interface SuggestionItemProps {
 
 const SuggestionItem = ({
   tag,
+  id,
   isHighlighted,
   onSelect,
   onMouseEnter
 }: SuggestionItemProps): React.JSX.Element => {
   return (
-    <button
-      type="button"
+    <div
+      id={id}
+      role="option"
+      aria-selected={isHighlighted}
       onClick={() => onSelect(tag.name)}
       onMouseEnter={onMouseEnter}
       className={cn(
-        'w-full flex items-center justify-between px-3 py-1.5 text-sm text-left',
+        'w-full flex items-center justify-between px-3 py-1.5 text-sm text-left cursor-pointer',
         'transition-colors duration-75',
         isHighlighted ? 'bg-accent text-accent-foreground' : 'hover:bg-muted'
       )}
@@ -111,7 +116,7 @@ const SuggestionItem = ({
         <span>{tag.name}</span>
       </span>
       <span className="text-xs text-muted-foreground">{tag.count}</span>
-    </button>
+    </div>
   )
 }
 
@@ -170,6 +175,9 @@ interface TagAutocompleteProps {
   /** Class name for container */
   className?: string
 }
+
+const LISTBOX_ID = 'tag-autocomplete-listbox'
+const getOptionId = (index: number): string => `tag-autocomplete-option-${index}`
 
 export const TagAutocomplete = ({
   tags,
@@ -332,10 +340,15 @@ export const TagAutocomplete = ({
           onChange={handleInputChange}
           onKeyDown={handleKeyDown}
           onFocus={handleInputFocus}
+          role="combobox"
           aria-label="Add tags"
           aria-expanded={isDropdownOpen}
           aria-haspopup="listbox"
+          aria-controls={LISTBOX_ID}
           aria-autocomplete="list"
+          aria-activedescendant={
+            isDropdownOpen && highlightedIndex >= 0 ? getOptionId(highlightedIndex) : undefined
+          }
           autoComplete="off"
         />
 
@@ -344,11 +357,13 @@ export const TagAutocomplete = ({
           (suggestions.length > 0 || (!inputValue.trim() && popularTags.length > 0)) && (
             <div
               ref={dropdownRef}
+              id={LISTBOX_ID}
               className={cn(
                 'absolute z-50 w-full mt-1 py-1 rounded-md border border-border',
                 'bg-popover shadow-md max-h-48 overflow-y-auto'
               )}
               role="listbox"
+              aria-label="Tag suggestions"
             >
               {inputValue.trim() ? (
                 suggestions
@@ -356,6 +371,7 @@ export const TagAutocomplete = ({
                   .map((tag, index) => (
                     <SuggestionItem
                       key={tag.name}
+                      id={getOptionId(index)}
                       tag={tag}
                       isHighlighted={index === highlightedIndex}
                       onSelect={addTag}
@@ -371,6 +387,7 @@ export const TagAutocomplete = ({
                   {popularTags.slice(0, 5).map((tag, index) => (
                     <SuggestionItem
                       key={tag.name}
+                      id={getOptionId(index)}
                       tag={tag}
                       isHighlighted={index === highlightedIndex}
                       onSelect={addTag}

@@ -5,6 +5,23 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* ===== ACCESSIBILITY: GLOBAL FOCUS INDICATOR =====
+   Safety net for any focusable element without an explicit focus ring.
+   Components that manage their own focus styles (e.g. focus:ring-* classes)
+   override this via higher-specificity class selectors.
+   Uses :focus-visible so mouse users are not affected.
+*/
+:focus-visible {
+  outline: 2px solid var(--ring, #8c8c8c);
+  outline-offset: 2px;
+}
+
+/* Suppress the default outline only when a Tailwind ring is applied instead */
+.focus\:outline-none:focus-visible,
+.focus-visible\:outline-none:focus-visible {
+  outline: none;
+}
+
 /* Find in page — CSS Custom Highlight API */
 ::highlight(find-matches) {
   background-color: #fde68a;
