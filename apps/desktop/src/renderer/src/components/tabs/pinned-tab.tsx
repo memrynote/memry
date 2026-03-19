@@ -48,28 +48,16 @@ export const PinnedTab = ({
       <TooltipTrigger asChild>
         <div
           className={cn(
-            // Base styles - consistent sizing for all states
             'relative flex items-center justify-center',
             'w-9 h-9 cursor-pointer',
             'select-none',
-            // All tabs have border (transparent for inactive) to maintain consistent size
-            'border',
-            // All tabs extend down to overlap header border
-            '-mb-px',
-            // Rounded top corners for browser-style
-            'rounded-t-lg',
-            // Smooth color transitions only (not size)
+            'border-r border-r-border/40',
+            'border-b-2',
             'transition-colors duration-150 ease-out',
 
-            // Active state - visible borders and content background
             isActive
-              ? ['bg-background', 'border-border', 'border-b-transparent', 'z-10']
-              : [
-                  // Inactive tabs - transparent borders
-                  'bg-transparent',
-                  'border-transparent',
-                  'hover:bg-surface-active/50'
-                ],
+              ? ['bg-background', 'border-b-sidebar-terracotta']
+              : ['bg-transparent', 'border-b-transparent', 'hover:bg-foreground/[0.03]'],
 
             className
           )}

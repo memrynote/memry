@@ -51,10 +51,8 @@ export const SortableTab = ({ tab, groupId, isActive }: SortableTabProps): React
           'transition-opacity duration-150 ease-out',
           // Enhanced drop indicator with glow effect
           isOver && [
-            'before:absolute before:-left-0.5 before:top-1 before:bottom-1',
-            'before:w-0.5 before:bg-blue-500 before:rounded-full',
-            'before:shadow-[0_0_8px_rgba(59,130,246,0.5)]',
-            'before:animate-pulse'
+            'before:absolute before:-left-0.5 before:top-2 before:bottom-2',
+            'before:w-0.5 before:bg-sidebar-terracotta before:rounded-full'
           ]
         )}
         {...attributes}

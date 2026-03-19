@@ -92,12 +92,10 @@ export const TabBar = ({ groupId, className }: TabBarProps): React.JSX.Element |
   return (
     <div
       className={cn(
-        // Container
         'flex items-center h-9',
         'bg-muted',
         'border-b border-border',
-        // Active group indicator
-        isActiveGroup && 'bg-surface-active/50',
+        isActiveGroup && 'bg-surface-active/30',
         className
       )}
       role="tablist"

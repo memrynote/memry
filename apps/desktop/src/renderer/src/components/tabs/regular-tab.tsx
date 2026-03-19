@@ -78,32 +78,18 @@ const RegularTabComponent = ({
   return (
     <div
       className={cn(
-        // Base styles - consistent sizing for all states
-        'group relative flex items-center gap-2 h-9 px-3 cursor-pointer',
+        'group relative flex items-center gap-2 h-9 px-4 cursor-pointer',
         'min-w-[100px] max-w-[180px]',
         'select-none',
-        // All tabs have border (transparent for inactive) to maintain consistent size
-        'border',
-        // All tabs extend down to overlap header border
-        '-mb-px',
-        // Rounded top corners for browser-style
-        'rounded-t-lg',
-        // Smooth color transitions only (not size)
+        'border-r border-r-border/40',
+        'border-b-2',
         'transition-colors duration-150 ease-out',
 
-        // Active state - visible borders and content background
         isActive
-          ? ['bg-background', 'border-border', 'border-b-transparent', 'z-10']
-          : [
-              // Inactive tabs - transparent borders
-              'bg-transparent',
-              'border-transparent',
-              'hover:bg-surface-active/50'
-            ],
+          ? ['bg-background', 'border-b-sidebar-terracotta']
+          : ['bg-transparent', 'border-b-transparent', 'hover:bg-foreground/[0.03]'],
 
-        // Preview tab styling - only show italic if preview mode is enabled
         tab.isPreview && settings.previewMode && 'italic',
-
         className
       )}
       onClick={handleClick}
@@ -131,10 +117,12 @@ const RegularTabComponent = ({
       {/* Title with refined typography */}
       <span
         className={cn(
-          'flex-1 truncate text-[13px] font-medium tracking-[-0.01em]',
+          'flex-1 truncate text-[13px] tracking-[-0.01em]',
           'transition-colors duration-150',
-          isActive ? 'text-foreground' : 'text-text-secondary group-hover:text-foreground',
-          tab.isPreview && settings.previewMode && 'italic font-normal',
+          isActive
+            ? 'text-foreground font-medium'
+            : 'text-text-tertiary font-normal group-hover:text-text-secondary',
+          tab.isPreview && settings.previewMode && 'italic',
           tab.isDeleted && 'line-through opacity-50'
         )}
       >
