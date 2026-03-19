@@ -5,7 +5,7 @@
  */
 
 import { useMemo } from 'react'
-import { ChevronLeft, ChevronRight } from 'lucide-react'
+import { ChevronLeft, ChevronRight } from '@/lib/icons'
 import { cn } from '@/lib/utils'
 import { formatDateParts, getMonthName, getTodayString } from '@/lib/journal-utils'
 
@@ -72,7 +72,7 @@ function BreadcrumbSegment({
           ],
         isActive && 'text-foreground font-medium',
         !isClickable && 'text-muted-foreground/50 cursor-default',
-        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:rounded-md',
+        'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring/50 focus-visible:rounded-md',
         className
       )}
     >
@@ -111,7 +111,7 @@ function DayNavArrow({ direction, onClick }: DayNavArrowProps) {
         'text-muted-foreground/50 hover:text-foreground',
         'hover:bg-muted/50',
         'transition-all duration-200',
-        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50'
+        'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring/50'
       )}
     >
       <Icon className="size-3.5" />
@@ -139,7 +139,7 @@ function BackButton({ onClick, className }: BackButtonProps) {
         'text-muted-foreground/60 hover:text-foreground',
         'hover:bg-muted/50',
         'cursor-pointer transition-all duration-200',
-        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50',
+        'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring/50',
         className
       )}
     >

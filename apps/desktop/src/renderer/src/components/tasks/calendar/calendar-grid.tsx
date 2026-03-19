@@ -39,50 +39,67 @@ export const CalendarGrid = ({
     [weekStartsOn]
   )
 
+  const weeks = useMemo(() => {
+    const result: CalendarDay[][] = []
+    for (let i = 0; i < days.length; i += 7) {
+      result.push(days.slice(i, i + 7))
+    }
+    return result
+  }, [days])
+
   return (
-    <div className="flex flex-col gap-3">
+    <div className="flex flex-col" style={{ gap: 'var(--cal-grid-gap)' }}>
       {/* Weekday header */}
-      <div className="grid grid-cols-7 gap-1 text-center text-xs font-medium uppercase text-muted-foreground">
+      <div className="grid grid-cols-7 px-0 pb-2" style={{ gap: 'var(--cal-grid-gap)' }}>
         {weekdayLabels.map((day) => (
-          <div key={day} className="py-1">
+          <div
+            key={day}
+            className="py-1 px-2 text-[10px] font-medium uppercase tracking-[0.08em]"
+            style={{
+              color: 'var(--cal-weekday)',
+              fontFamily: 'var(--font-mono)'
+            }}
+          >
             {day}
           </div>
         ))}
       </div>
 
-      {/* Grid */}
-      <div className="grid flex-1 grid-cols-7 gap-1">
-        {days.map((day) => {
-          const dateKey = formatDateKey(day.date)
-          const dayTasks = tasksByDate.get(dateKey) || []
-          const isSelected =
-            selectedDate !== null &&
-            selectedDate.getFullYear() === day.date.getFullYear() &&
-            selectedDate.getMonth() === day.date.getMonth() &&
-            selectedDate.getDate() === day.date.getDate()
-          const isFocused =
-            focusedDate !== null &&
-            focusedDate.getFullYear() === day.date.getFullYear() &&
-            focusedDate.getMonth() === day.date.getMonth() &&
-            focusedDate.getDate() === day.date.getDate()
+      {/* Week rows */}
+      {weeks.map((week, weekIndex) => (
+        <div key={weekIndex} className="grid grid-cols-7" style={{ gap: 'var(--cal-grid-gap)' }}>
+          {week.map((day) => {
+            const dateKey = formatDateKey(day.date)
+            const dayTasks = tasksByDate.get(dateKey) || []
+            const isSelected =
+              selectedDate !== null &&
+              selectedDate.getFullYear() === day.date.getFullYear() &&
+              selectedDate.getMonth() === day.date.getMonth() &&
+              selectedDate.getDate() === day.date.getDate()
+            const isFocused =
+              focusedDate !== null &&
+              focusedDate.getFullYear() === day.date.getFullYear() &&
+              focusedDate.getMonth() === day.date.getMonth() &&
+              focusedDate.getDate() === day.date.getDate()
 
-          return (
-            <DayCell
-              key={dateKey}
-              day={day}
-              tasks={dayTasks}
-              allTasks={allTasks}
-              maxVisible={maxVisibleTasks}
-              isSelected={isSelected}
-              isFocused={isFocused}
-              isCompact={isCompact}
-              onOpenDay={onOpenDay}
-              onTaskClick={onTaskClick}
-              onAddTask={onAddTask}
-            />
-          )
-        })}
-      </div>
+            return (
+              <DayCell
+                key={dateKey}
+                day={day}
+                tasks={dayTasks}
+                allTasks={allTasks}
+                maxVisible={maxVisibleTasks}
+                isSelected={isSelected}
+                isFocused={isFocused}
+                isCompact={isCompact}
+                onOpenDay={onOpenDay}
+                onTaskClick={onTaskClick}
+                onAddTask={onAddTask}
+              />
+            )
+          })}
+        </div>
+      ))}
     </div>
   )
 }

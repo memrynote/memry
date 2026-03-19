@@ -4,7 +4,7 @@
  */
 
 import { useRef, useState, useEffect, useCallback } from 'react'
-import { ChevronLeft, ChevronRight, Plus } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Plus } from '@/lib/icons'
 import { useTabGroup, useTabs } from '@/contexts/tabs'
 import { RegularTab } from './regular-tab'
 import { PinnedTab } from './pinned-tab'
@@ -92,12 +92,10 @@ export const TabBar = ({ groupId, className }: TabBarProps): React.JSX.Element |
   return (
     <div
       className={cn(
-        // Container
         'flex items-center h-9',
         'bg-muted',
         'border-b border-border',
-        // Active group indicator
-        isActiveGroup && 'bg-surface-active/50',
+        isActiveGroup && 'bg-surface-active/30',
         className
       )}
       role="tablist"

@@ -8,7 +8,7 @@ export interface TreeDataItem {
   iconColor?: string
   disabled?: boolean
   draggable?: boolean
-  customIcon?: string // Kullanıcının seçtiği ikon adı (lucide icon name)
+  customIcon?: string // Kullanıcının seçtiği ikon adı (icon name)
   inheritedIcon?: string // Parent'tan gelen ikon adı
 }
 

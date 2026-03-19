@@ -2,7 +2,7 @@ import { useCallback } from 'react'
 import { Separator } from '@/components/ui/separator'
 import { Switch } from '@/components/ui/switch'
 import { Label } from '@/components/ui/label'
-import { Info } from 'lucide-react'
+import { Info } from '@/lib/icons'
 import { useNoteEditorSettings } from '@/hooks/use-note-editor-settings'
 import { toast } from 'sonner'
 

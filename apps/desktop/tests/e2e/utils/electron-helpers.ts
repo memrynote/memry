@@ -73,10 +73,26 @@ export const SELECTORS = {
     '[data-testid="search-input"], input[placeholder*="Search"], input[aria-label*="Search"]',
 
   // Tab system
-  tabBar: '[class*="tab-bar"], [role="tablist"]',
+  tabBar: '[role="tablist"], [data-group-id]',
   tab: '[role="tab"]',
-  activeTab: '[role="tab"][aria-selected="true"]'
+  activeTab: '[role="tab"][aria-selected="true"]',
+  tabCloseButton: '[role="tab"] button[aria-label^="Close"]',
+
+  // Split view
+  splitViewContainer: '[data-testid="split-view-container"]',
+  splitPane: '[data-testid="split-pane"]',
+  tabPane: '[data-testid="tab-pane"]',
+  emptyPaneState: '[data-testid="empty-pane-state"]',
+  tabContent: '[data-tab-content]',
+
+  // Sidebar trigger (inside tab bar)
+  sidebarTrigger: '[data-testid="tab-pane"] button, [role="tablist"] button'
 }
+
+const FIRST_RUN_ONBOARDING = {
+  root: 'button[aria-label="Skip onboarding"]',
+  skipButton: 'button[aria-label="Skip onboarding"]'
+} as const
 
 /**
  * Keyboard shortcuts for common actions
@@ -110,6 +126,8 @@ export async function waitForAppReady(page: Page, timeout = 30000): Promise<void
 
   // Small delay for React to hydrate
   await page.waitForTimeout(500)
+
+  await dismissFirstRunOnboarding(page)
 }
 
 /**
@@ -131,6 +149,8 @@ export async function waitForVaultReady(page: Page, timeout = 15000): Promise<vo
 
   // Wait for initial indexing to complete
   await page.waitForTimeout(1000)
+
+  await dismissFirstRunOnboarding(page)
 }
 
 /**
@@ -140,6 +160,8 @@ export async function navigateTo(
   page: Page,
   view: 'notes' | 'tasks' | 'inbox' | 'journal' | 'settings'
 ): Promise<void> {
+  await dismissFirstRunOnboarding(page)
+
   // Map view names to display text (capitalize first letter)
   const viewNames: Record<string, string> = {
     notes: 'Notes',
@@ -163,6 +185,23 @@ export async function navigateTo(
     // If navigation item not found, the view might already be active or app is on onboarding
     console.log(`Navigation to ${view} not found, may already be on that view`)
   }
+  await page.waitForTimeout(300)
+}
+
+export async function dismissFirstRunOnboarding(page: Page, timeout = 3000): Promise<void> {
+  const skipButton = page.locator(FIRST_RUN_ONBOARDING.skipButton).first()
+  const overlayVisible = await page
+    .locator(FIRST_RUN_ONBOARDING.root)
+    .first()
+    .isVisible({ timeout })
+    .catch(() => false)
+
+  if (!overlayVisible) {
+    return
+  }
+
+  await skipButton.click({ force: true })
+  await skipButton.waitFor({ state: 'hidden', timeout }).catch(() => {})
   await page.waitForTimeout(300)
 }
 
@@ -230,6 +269,8 @@ export async function createTask(
   }
 ): Promise<void> {
   try {
+    await dismissFirstRunOnboarding(page)
+
     // Strategy 1: Try Quick Add input (inline input in task list)
     const quickAddInput = page.locator(SELECTORS.taskInput).first()
     const hasQuickAdd = await quickAddInput.isVisible({ timeout: 2000 }).catch(() => false)
@@ -237,7 +278,7 @@ export async function createTask(
     if (hasQuickAdd) {
       await quickAddInput.click()
       await quickAddInput.fill(title)
-      await page.keyboard.press(SHORTCUTS.enter)
+      await quickAddInput.press('Enter')
       await page.waitForTimeout(500)
       return
     }

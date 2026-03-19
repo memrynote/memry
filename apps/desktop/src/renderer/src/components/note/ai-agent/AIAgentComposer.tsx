@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback, type KeyboardEvent, type ChangeEvent } from 'react'
-import { Paperclip, Send, Square } from 'lucide-react'
+import { Paperclip, Send, Square } from '@/lib/icons'
 import { cn } from '@/lib/utils'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { AttachmentList } from './AttachmentList'
@@ -158,7 +158,7 @@ export function AIAgentComposer({
                     'h-8 w-8 rounded-full flex items-center justify-center',
                     'bg-stone-100 hover:bg-stone-200',
                     'transition-colors duration-150',
-                    'focus:outline-none focus:ring-2 focus:ring-stone-400 focus:ring-offset-1'
+                    'focus:outline-none focus:ring-1 focus:ring-stone-400 focus:ring-offset-1'
                   )}
                   aria-label="Add attachment"
                 >
@@ -213,7 +213,7 @@ export function AIAgentComposer({
                     'hover:bg-stone-700',
                     'transition-all duration-150',
                     'hover:scale-105',
-                    'focus:outline-none focus:ring-2 focus:ring-stone-400 focus:ring-offset-1'
+                    'focus:outline-none focus:ring-1 focus:ring-stone-400 focus:ring-offset-1'
                   )}
                   aria-label="Stop generation"
                 >
@@ -227,7 +227,7 @@ export function AIAgentComposer({
                   className={cn(
                     'h-9 w-9 rounded-full flex items-center justify-center',
                     'transition-all duration-150',
-                    'focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-offset-1',
+                    'focus:outline-none focus:ring-1 focus:ring-blue-400 focus:ring-offset-1',
                     canSend
                       ? 'bg-blue-600 text-white hover:bg-blue-700 hover:scale-105'
                       : 'bg-stone-200 text-stone-400 cursor-not-allowed'

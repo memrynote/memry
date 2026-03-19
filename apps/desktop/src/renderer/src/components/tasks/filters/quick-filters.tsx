@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import { AlertTriangle, Flag, Calendar, Repeat, HelpCircle } from 'lucide-react'
+import { AlertTriangle, Flag, Calendar, Repeat, HelpCircle } from '@/lib/icons'
 
 import { cn } from '@/lib/utils'
 import type { TaskFilters, QuickFilterPreset } from '@/data/tasks-data'

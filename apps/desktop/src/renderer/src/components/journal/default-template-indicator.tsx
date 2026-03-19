@@ -8,7 +8,7 @@
  */
 
 import { useCallback, useState, useEffect } from 'react'
-import { FileText, RefreshCw, X } from 'lucide-react'
+import { FileText, RefreshCw, X } from '@/lib/icons'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 

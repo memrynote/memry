@@ -1,9 +1,7 @@
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { GripVertical } from 'lucide-react'
-
 import { cn } from '@/lib/utils'
-import { StatusCircle } from '@/components/tasks/task-icons'
+import { InteractiveStatusIcon } from '@/components/tasks/status-icon'
 import type { Task } from '@/data/sample-tasks'
 import type { Status } from '@/data/tasks-data'
 
@@ -49,6 +47,8 @@ export const SortableSubtaskRow = ({
   return (
     <div ref={setNodeRef} style={style} className={cn('group/subtask relative', className)}>
       <div
+        {...attributes}
+        {...listeners}
         role="button"
         tabIndex={onClick ? 0 : -1}
         onClick={() => onClick?.(subtask.id)}
@@ -61,36 +61,19 @@ export const SortableSubtaskRow = ({
         className={cn(
           'flex items-center gap-2 border-l-[3px] border-l-transparent',
           'py-1.5 pl-[44px] pr-3',
-          'hover:bg-accent/50 cursor-pointer rounded-r-sm',
+          'hover:bg-accent/50 rounded-r-sm',
           'transition-colors duration-150',
-          onClick && 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-          isDragging && 'opacity-50 shadow-lg ring-2 ring-primary bg-background z-10'
+          onClick && 'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring',
+          isDragging
+            ? 'cursor-grabbing opacity-50 shadow-lg ring-2 ring-primary bg-background z-10'
+            : 'cursor-grab'
         )}
         aria-label={`Subtask: ${subtask.title}${isCompleted ? ', completed' : ''}`}
       >
-        {/* Drag Handle — overlay, visible on hover */}
-        <button
-          type="button"
-          data-drag-handle
-          {...attributes}
-          {...listeners}
-          className={cn(
-            'absolute left-[30px] top-1/2 -translate-y-1/2',
-            'shrink-0 cursor-grab touch-none p-0.5 text-muted-foreground/50',
-            'hover:text-muted-foreground active:cursor-grabbing',
-            'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:rounded',
-            'opacity-0 group-hover/subtask:opacity-100 transition-opacity',
-            isDragging && 'cursor-grabbing opacity-100'
-          )}
-          aria-label="Drag to reorder subtask"
-        >
-          <GripVertical className="size-3" />
-        </button>
-
         <div onClick={(e) => e.stopPropagation()}>
-          <StatusCircle
-            statusType={statusType}
-            statusColor={statusColor}
+          <InteractiveStatusIcon
+            type={statusType}
+            color={statusColor}
             isCompleted={isCompleted}
             onClick={() => onToggleComplete(subtask.id)}
           />

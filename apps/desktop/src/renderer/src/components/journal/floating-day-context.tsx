@@ -13,8 +13,9 @@ import {
   Clock,
   Users,
   AlertCircle
-} from 'lucide-react'
+} from '@/lib/icons'
 import { cn } from '@/lib/utils'
+import { PRIORITY_TEXT_CLASSES, type Priority } from '@/data/sample-tasks'
 import type { ScheduleEvent, DayTask } from './day-context-sidebar'
 
 // =============================================================================
@@ -279,18 +280,8 @@ function TasksContent({
     )
   }
 
-  const getPriorityColor = (priority?: string) => {
-    switch (priority) {
-      case 'urgent':
-        return 'text-red-500'
-      case 'high':
-        return 'text-orange-500'
-      case 'medium':
-        return 'text-yellow-500'
-      default:
-        return 'text-muted-foreground'
-    }
-  }
+  const getPriorityColor = (priority?: string) =>
+    PRIORITY_TEXT_CLASSES[(priority ?? 'none') as Priority] ?? PRIORITY_TEXT_CLASSES.none
 
   return (
     <div className="p-2">

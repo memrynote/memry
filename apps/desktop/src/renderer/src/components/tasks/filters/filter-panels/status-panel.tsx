@@ -4,7 +4,7 @@ import { cn } from '@/lib/utils'
 import { CheckMark } from '@/components/ui/check-mark'
 import type { Status } from '@/data/tasks-data'
 import type { Task } from '@/data/sample-tasks'
-import { StatusIcon } from '@/components/tasks/task-icons'
+import { StatusIcon } from '@/components/tasks/status-icon'
 import { BackButton } from './priority-panel'
 
 interface StatusPanelProps {
@@ -34,15 +34,7 @@ export function StatusPanel({
     <>
       <div className="flex items-center py-2 px-3 gap-1.5 border-b border-border">
         <BackButton onClick={onGoBack} />
-        <svg
-          width="14"
-          height="14"
-          viewBox="0 0 14 14"
-          fill="none"
-          className="text-muted-foreground"
-        >
-          <circle cx="7" cy="7" r="5" stroke="currentColor" strokeWidth="1.2" />
-        </svg>
+        <StatusIcon type="todo" color="var(--muted-foreground)" size="md" />
         <span className="text-[12px] text-foreground font-medium leading-4">Status</span>
       </div>
       <div className="flex flex-col p-1">

@@ -1,4 +1,5 @@
 import { useState, useCallback } from 'react'
+import { Plus } from '@/lib/icons'
 import type { RepeatConfig } from '@/data/sample-tasks'
 import { getRepeatDisplayText } from '@/lib/repeat-utils'
 import { formatDateShort } from '@/lib/task-utils'
@@ -94,14 +95,7 @@ export const TaskRepeatSection = ({
             className="text-text-tertiary hover:text-text-secondary transition-colors"
             aria-label="Add repeat"
           >
-            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-              <path
-                d="M7 3v8M3 7h8"
-                stroke="currentColor"
-                strokeWidth="1.2"
-                strokeLinecap="round"
-              />
-            </svg>
+            <Plus size={14} />
           </button>
         )}
       </div>

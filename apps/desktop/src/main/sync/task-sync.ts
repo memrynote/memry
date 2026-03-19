@@ -1,5 +1,6 @@
 import { eq } from 'drizzle-orm'
 import { tasks } from '@memry/db-schema/schema/tasks'
+import { taskTags, taskNotes } from '@memry/db-schema/schema/task-relations'
 import type { VectorClock, FieldClocks } from '@memry/contracts/sync-api'
 import type { SyncQueueManager } from './queue'
 import { increment } from './vector-clock'
@@ -13,6 +14,26 @@ import { createLogger } from '../lib/logger'
 import type { DrizzleDb } from '../database/client'
 
 const log = createLogger('TaskSync')
+
+function enrichWithJunctionData(
+  db: DrizzleDb,
+  taskId: string,
+  base: Record<string, unknown>
+): Record<string, unknown> {
+  const tags = db
+    .select({ tag: taskTags.tag })
+    .from(taskTags)
+    .where(eq(taskTags.taskId, taskId))
+    .all()
+    .map((r) => r.tag)
+  const linkedNoteIds = db
+    .select({ noteId: taskNotes.noteId })
+    .from(taskNotes)
+    .where(eq(taskNotes.taskId, taskId))
+    .all()
+    .map((r) => r.noteId)
+  return { ...base, tags, linkedNoteIds }
+}
 
 interface TaskSyncDeps {
   queue: SyncQueueManager
@@ -62,11 +83,12 @@ export class TaskSyncService {
         return
       }
 
+      const enriched = enrichWithJunctionData(this.db, taskId, task as Record<string, unknown>)
       this.queue.enqueue({
         type: 'task',
         itemId: taskId,
         operation,
-        payload: JSON.stringify(task),
+        payload: JSON.stringify(enriched),
         priority: 0
       })
     } catch (err) {
@@ -110,15 +132,16 @@ export class TaskSyncService {
         .where(eq(tasks.id, taskId))
         .run()
 
+      const enriched = enrichWithJunctionData(this.db, taskId, {
+        ...(task as Record<string, unknown>),
+        clock: rebased.clock,
+        fieldClocks: rebased.fieldClocks
+      })
       this.queue.enqueue({
         type: 'task',
         itemId: taskId,
         operation: 'update',
-        payload: JSON.stringify({
-          ...task,
-          clock: rebased.clock,
-          fieldClocks: rebased.fieldClocks
-        }),
+        payload: JSON.stringify(enriched),
         priority: 0
       })
     } catch (err) {
@@ -190,8 +213,8 @@ export class TaskSyncService {
         .where(eq(tasks.id, taskId))
         .run()
 
-      const payload = JSON.stringify({
-        ...task,
+      const enriched = enrichWithJunctionData(this.db, taskId, {
+        ...(task as Record<string, unknown>),
         clock: newClock,
         fieldClocks: updatedFieldClocks
       })
@@ -200,7 +223,7 @@ export class TaskSyncService {
         type: 'task',
         itemId: taskId,
         operation,
-        payload,
+        payload: JSON.stringify(enriched),
         priority: 0
       })
     } catch (err) {

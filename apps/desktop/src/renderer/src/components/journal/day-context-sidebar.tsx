@@ -14,8 +14,9 @@ import {
   ChevronRight,
   AlertCircle,
   Users
-} from 'lucide-react'
+} from '@/lib/icons'
 import { cn } from '@/lib/utils'
+import { PRIORITY_TEXT_CLASSES, type Priority } from '@/data/sample-tasks'
 
 // =============================================================================
 // TYPES
@@ -343,18 +344,8 @@ interface TaskItemProps {
 }
 
 function TaskItem({ task, onClick, onToggle }: TaskItemProps): React.JSX.Element {
-  const getPriorityColor = (priority?: string) => {
-    switch (priority) {
-      case 'urgent':
-        return 'text-red-500'
-      case 'high':
-        return 'text-orange-500'
-      case 'medium':
-        return 'text-yellow-500'
-      default:
-        return 'text-muted-foreground'
-    }
-  }
+  const getPriorityColor = (priority?: string) =>
+    PRIORITY_TEXT_CLASSES[(priority ?? 'none') as Priority] ?? PRIORITY_TEXT_CLASSES.none
 
   const getPriorityLabel = (priority?: string) => {
     if (!priority || priority === 'none') return ''

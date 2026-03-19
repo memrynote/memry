@@ -1,24 +1,25 @@
 import { useMemo, useRef, useEffect, memo, useCallback } from 'react'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
-import { useDroppable } from '@dnd-kit/core'
 
 import { cn } from '@/lib/utils'
-import { SortableTaskRow } from '@/components/tasks/drag-drop'
-import { SortableParentTaskRow } from '@/components/tasks/sortable-parent-task-row'
+import {
+  DroppableListHeader,
+  SortableParentTaskRow,
+  SortableTaskRow
+} from '@/components/tasks/drag-drop'
 import { TaskEmptyState } from '@/components/tasks/task-empty-state'
 import {
   flattenTasksByStatus,
   estimateItemHeight,
   getTaskIdsFromVirtualItems,
-  type VirtualItem,
-  type StatusHeaderItem,
-  type TaskItem,
-  type ParentTaskItem
+  type VirtualItem
 } from '@/lib/virtual-list-utils'
 import { createLookupContext, isTaskCompletedFast } from '@/lib/lookup-utils'
 import { calculateProgress } from '@/lib/subtask-utils'
 import { useExpandedTasks } from '@/hooks'
+import { useDragContext } from '@/contexts/drag-context'
+import { annotateProjectStatusVirtualItems } from '@/lib/task-list-dnd-utils'
 import type { Task, Priority } from '@/data/sample-tasks'
 import type { Project, Status } from '@/data/tasks-data'
 
@@ -43,37 +44,29 @@ interface VirtualizedProjectTaskListProps {
     }
   ) => void
   className?: string
-  // Selection props
   isSelectionMode?: boolean
   selectedIds?: Set<string>
   onToggleSelect?: (taskId: string) => void
   onShiftSelect?: (taskId: string) => void
-  // Subtask management props
   onAddSubtask?: (parentId: string, title: string) => void
   onReorderSubtasks?: (parentId: string, newOrder: string[]) => void
+  getOrderedTasks?: (sectionId: string, tasks: Task[]) => Task[]
 }
 
 // ============================================================================
-// VIRTUAL STATUS HEADER (with droppable for status changes)
+// VIRTUAL STATUS HEADER
 // ============================================================================
 
 interface VirtualStatusHeaderProps {
   status: Status
   count: number
-  isOver: boolean
 }
 
 const VirtualStatusHeader = memo(
-  ({ status, count, isOver }: VirtualStatusHeaderProps): React.JSX.Element => {
+  ({ status, count }: VirtualStatusHeaderProps): React.JSX.Element => {
     return (
-      <div
-        className={cn(
-          'flex items-center justify-between px-3 py-2 transition-colors rounded-sm',
-          isOver && 'ring-2 ring-primary/50 ring-inset bg-primary/5'
-        )}
-      >
+      <div className="flex items-center justify-between px-3 py-2 transition-colors rounded-sm">
         <div className="flex items-center gap-2">
-          {/* Status color indicator */}
           <div
             className="size-2.5 rounded-full"
             style={{ backgroundColor: status.color }}
@@ -92,35 +85,6 @@ const VirtualStatusHeader = memo(
 VirtualStatusHeader.displayName = 'VirtualStatusHeader'
 
 // ============================================================================
-// DROPPABLE STATUS HEADER WRAPPER
-// ============================================================================
-
-interface DroppableStatusHeaderProps {
-  item: StatusHeaderItem
-}
-
-const DroppableStatusHeader = memo(({ item }: DroppableStatusHeaderProps): React.JSX.Element => {
-  // Use "column" type for status drops (like kanban columns)
-  const { setNodeRef, isOver } = useDroppable({
-    id: `status-${item.status.id}`,
-    data: {
-      type: 'column',
-      columnId: item.status.id,
-      statusId: item.status.id,
-      status: item.status
-    }
-  })
-
-  return (
-    <div ref={setNodeRef}>
-      <VirtualStatusHeader status={item.status} count={item.count} isOver={isOver} />
-    </div>
-  )
-})
-
-DroppableStatusHeader.displayName = 'DroppableStatusHeader'
-
-// ============================================================================
 // VIRTUAL ITEM RENDERER
 // ============================================================================
 
@@ -134,15 +98,12 @@ interface VirtualItemRendererProps {
   onUpdateTask?: (taskId: string, updates: Partial<Task>) => void
   onToggleSubtaskComplete?: (subtaskId: string) => void
   onTaskClick?: (taskId: string) => void
-  // Selection props
   isSelectionMode?: boolean
   selectedIds?: Set<string>
   onToggleSelect?: (taskId: string) => void
   onShiftSelect?: (taskId: string) => void
-  // Expand/collapse props
   expandedIds: Set<string>
   onToggleExpand: (taskId: string) => void
-  // Subtask management
   onAddSubtask?: (parentId: string, title: string) => void
   onReorderSubtasks?: (parentId: string, newOrder: string[]) => void
 }
@@ -169,7 +130,19 @@ const VirtualItemRenderer = memo(
   }: VirtualItemRendererProps): React.JSX.Element | null => {
     switch (item.type) {
       case 'status-header':
-        return <DroppableStatusHeader item={item} />
+        return item.columnId ? (
+          <DroppableListHeader
+            id={item.id}
+            label={item.status.name}
+            columnId={item.columnId}
+            sectionId={item.sectionId}
+            sectionTaskIds={item.sectionTaskIds}
+          >
+            <VirtualStatusHeader status={item.status} count={item.count} />
+          </DroppableListHeader>
+        ) : (
+          <VirtualStatusHeader status={item.status} count={item.count} />
+        )
 
       case 'task': {
         const taskItem = item
@@ -181,11 +154,13 @@ const VirtualItemRenderer = memo(
             task={taskItem.task}
             project={taskItem.project}
             projects={[project]}
-            sectionId={`status-${taskItem.sectionId}`}
             allTasks={allTasks}
+            sectionId={taskItem.sectionId}
+            sectionTaskIds={taskItem.sectionTaskIds}
+            columnId={taskItem.columnId}
             isCompleted={isCompleted}
             isSelected={selectedTaskId === taskItem.task.id}
-            showProjectBadge={false} // Don't show project badge in project view
+            showProjectBadge={false}
             onToggleComplete={onToggleComplete}
             onUpdateTask={onUpdateTask}
             onClick={onTaskClick}
@@ -209,11 +184,13 @@ const VirtualItemRenderer = memo(
             task={parentItem.task}
             project={parentItem.project}
             projects={[parentItem.project]}
-            sectionId={`status-${parentItem.sectionId}`}
             subtasks={parentItem.subtasks}
             progress={progress}
             isExpanded={isExpanded}
             isCompleted={isCompleted}
+            sectionId={parentItem.sectionId}
+            sectionTaskIds={parentItem.sectionTaskIds}
+            columnId={parentItem.columnId}
             isSelected={selectedTaskId === parentItem.task.id}
             showProjectBadge={false}
             onToggleExpand={onToggleExpand}
@@ -258,46 +235,54 @@ export const VirtualizedProjectTaskList = ({
   onToggleSelect,
   onShiftSelect,
   onAddSubtask,
-  onReorderSubtasks
+  onReorderSubtasks,
+  getOrderedTasks
 }: VirtualizedProjectTaskListProps): React.JSX.Element => {
-  // Scroll container ref
   const parentRef = useRef<HTMLDivElement>(null)
 
-  // Expand/collapse state with persistence per project
   const { expandedIds, toggleExpanded } = useExpandedTasks({
     storageKey: `project-${project.id}`,
     persist: true
   })
+  const { dragState } = useDragContext()
 
-  // Create lookup context for O(1) project/status lookups
   const lookupContext = useMemo(() => createLookupContext([project]), [project])
 
-  // Flatten tasks into virtual items
   const virtualItems = useMemo(
-    () => flattenTasksByStatus(tasks, project, expandedIds, tasks, true),
-    [tasks, project, expandedIds]
+    () =>
+      annotateProjectStatusVirtualItems(
+        flattenTasksByStatus(tasks, project, expandedIds, tasks, true, getOrderedTasks)
+      ),
+    [tasks, project, expandedIds, getOrderedTasks]
   )
+  const sortableTaskIds = useMemo(() => getTaskIdsFromVirtualItems(virtualItems), [virtualItems])
 
-  // Get all task IDs for SortableContext
-  const allTaskIds = useMemo(() => getTaskIdsFromVirtualItems(virtualItems), [virtualItems])
+  const isEmpty = virtualItems.every((item) => item.type === 'status-header')
 
-  // Check if empty (only status headers, no tasks)
-  const isEmpty = allTaskIds.length === 0
-
-  // Set up virtualizer with dynamic height support
   const virtualizer = useVirtualizer({
     count: virtualItems.length,
     getScrollElement: () => parentRef.current,
     estimateSize: (index) => estimateItemHeight(virtualItems[index], expandedIds, tasks),
+    getItemKey: (index) => virtualItems[index]?.id ?? index,
     overscan: 5
   })
 
-  // Remeasure when expanded state changes
   useEffect(() => {
     virtualizer.measure()
-  }, [expandedIds, virtualizer])
+  }, [
+    expandedIds,
+    virtualizer,
+    dragState.isDragging,
+    dragState.activeId,
+    dragState.activeIds.length,
+    dragState.sourceType,
+    dragState.sourceContainerId,
+    dragState.overId,
+    dragState.overType,
+    dragState.overSectionId,
+    dragState.sectionDropPosition
+  ])
 
-  // Handle quick add with project context
   const handleQuickAdd = useCallback(
     (
       title: string,
@@ -311,14 +296,13 @@ export const VirtualizedProjectTaskList = ({
         ...parsedData,
         dueDate: parsedData?.dueDate ?? null,
         priority: parsedData?.priority ?? ('none' as Priority),
-        projectId: project.id // Always use current project
+        projectId: project.id
       }
       onQuickAdd(title, finalData)
     },
     [onQuickAdd, project.id]
   )
 
-  // Empty state (but still show status headers as drop targets)
   if (isEmpty && virtualItems.length === 0) {
     return (
       <div className={cn('flex-1 overflow-auto pt-4', className)}>
@@ -333,15 +317,15 @@ export const VirtualizedProjectTaskList = ({
 
   return (
     <div className={cn('flex flex-1 flex-col overflow-hidden', className)}>
-      <SortableContext items={allTaskIds} strategy={verticalListSortingStrategy}>
-        <div ref={parentRef} className="flex-1 overflow-auto pt-4" style={{ contain: 'strict' }}>
-          <div
-            style={{
-              height: `${virtualizer.getTotalSize()}px`,
-              width: '100%',
-              position: 'relative'
-            }}
-          >
+      <div ref={parentRef} className="flex-1 overflow-auto pt-4" style={{ contain: 'strict' }}>
+        <div
+          style={{
+            height: `${virtualizer.getTotalSize()}px`,
+            width: '100%',
+            position: 'relative'
+          }}
+        >
+          <SortableContext items={sortableTaskIds} strategy={verticalListSortingStrategy}>
             {virtualizer.getVirtualItems().map((virtualRow) => {
               const item = virtualItems[virtualRow.index]
               return (
@@ -379,9 +363,9 @@ export const VirtualizedProjectTaskList = ({
                 </div>
               )
             })}
-          </div>
+          </SortableContext>
         </div>
-      </SortableContext>
+      </div>
     </div>
   )
 }

@@ -1,4 +1,12 @@
-import { createContext, useContext, useState, useCallback, useMemo, type ReactNode } from 'react'
+import {
+  createContext,
+  useContext,
+  useState,
+  useCallback,
+  useMemo,
+  type ReactNode,
+  type RefObject
+} from 'react'
 import {
   DndContext,
   KeyboardSensor,
@@ -16,6 +24,7 @@ import {
 } from '@dnd-kit/core'
 import { sortableKeyboardCoordinates } from '@dnd-kit/sortable'
 
+import type { SubtaskProgress } from '@/lib/subtask-utils'
 import type { Task } from '@/data/sample-tasks'
 
 // ============================================================================
@@ -34,22 +43,24 @@ export type DropTargetType =
   | null
 
 export interface DragState {
-  /** Whether a drag is currently in progress */
   isDragging: boolean
-  /** ID of the primary active item being dragged */
   activeId: string | null
-  /** All IDs being dragged (for multi-select) */
   activeIds: string[]
-  /** Source view type */
   sourceType: DragSourceType
-  /** Source container ID (section, column, or date) */
   sourceContainerId: string | null
-  /** Current drop target ID */
   overId: string | null
-  /** Type of drop target */
   overType: DropTargetType
-  /** Tasks being dragged (for overlay) */
+  overSectionId: string | null
+  overColumnId: string | null
+  overTaskEdge: 'before' | 'after' | null
+  sectionDropPosition: 'start' | 'end' | null
+  overlayWidth: number | null
+  overlayRowVariant: 'task' | 'parent' | null
+  overlayShowProjectBadge: boolean
+  overlayParentProgress: SubtaskProgress | null
+  overlayParentExpanded: boolean
   draggedTasks: Task[]
+  lastDroppedId: string | null
 }
 
 export interface DragContextValue {
@@ -71,6 +82,8 @@ export interface DragProviderProps {
   tasks: Task[]
   /** Selected task IDs for multi-drag */
   selectedIds: Set<string>
+  /** Live selected task IDs to use before React commits the next render */
+  selectedIdsRef?: RefObject<Set<string>>
   /** Callback when drag starts */
   onDragStart?: (event: DragStartEvent, state: DragState) => void
   /** Callback during drag over */
@@ -93,7 +106,60 @@ const initialDragState: DragState = {
   sourceContainerId: null,
   overId: null,
   overType: null,
-  draggedTasks: []
+  overSectionId: null,
+  overColumnId: null,
+  overTaskEdge: null,
+  sectionDropPosition: null,
+  overlayWidth: null,
+  overlayRowVariant: null,
+  overlayShowProjectBadge: false,
+  overlayParentProgress: null,
+  overlayParentExpanded: false,
+  draggedTasks: [],
+  lastDroppedId: null
+}
+
+const getActivatorClientY = (event: Event): number | null => {
+  if ('clientY' in event && typeof event.clientY === 'number') {
+    return event.clientY
+  }
+
+  if ('touches' in event && event.touches.length > 0) {
+    return event.touches[0]?.clientY ?? null
+  }
+
+  if ('changedTouches' in event && event.changedTouches.length > 0) {
+    return event.changedTouches[0]?.clientY ?? null
+  }
+
+  return null
+}
+
+export const resolveTaskEdgeFromDndEvent = (
+  event: Pick<DragOverEvent, 'over' | 'active' | 'activatorEvent' | 'delta'>
+): 'before' | 'after' | null => {
+  const overRect = event.over?.rect
+
+  if (!overRect) {
+    return null
+  }
+
+  const overMidY = overRect.top + overRect.height / 2
+  const activatorClientY = getActivatorClientY(event.activatorEvent)
+
+  if (activatorClientY !== null) {
+    const pointerY = activatorClientY + event.delta.y
+    return pointerY <= overMidY ? 'before' : 'after'
+  }
+
+  const activeRect = event.active.rect.current.translated
+  if (!activeRect) {
+    return null
+  }
+
+  const activeCenterY = activeRect.top + activeRect.height / 2
+
+  return activeCenterY <= overMidY ? 'before' : 'after'
 }
 
 // ============================================================================
@@ -108,6 +174,7 @@ const createCollisionDetection = (): CollisionDetection => {
   return (args) => {
     // First check for sidebar drop zones (project, trash, archive)
     const pointerCollisions = pointerWithin(args)
+    const activeSourceType = args.active?.data?.current?.sourceType
     const sidebarCollision = pointerCollisions.find((collision) => {
       const type = collision.data?.droppableContainer?.data?.current?.type
       return type === 'project' || type === 'trash' || type === 'archive'
@@ -127,9 +194,74 @@ const createCollisionDetection = (): CollisionDetection => {
       return [dateCollision]
     }
 
-    // Check for column drop zones (status groups in list view)
-    // Use rectIntersection for larger hit area
+    // Grouped list sections have both a section header drop zone and task rows.
+    // Prefer the row when the pointer is actually over a task so cross-section
+    // ordered drops can show row-level insertion indicators instead of sticking
+    // to the header target for the whole section.
+    if (activeSourceType === 'list') {
+      const listTaskCollision = pointerCollisions.find((collision) => {
+        const type = collision.data?.droppableContainer?.data?.current?.type
+        return type === 'task'
+      })
+
+      if (listTaskCollision) {
+        return [listTaskCollision]
+      }
+    }
+
+    // Compute rect intersections once — used by same-column gate, column check, and section check
     const rectCollisions = rectIntersection(args)
+
+    // Kanban cross-column vs same-column detection.
+    // Use POINTER position (user intent) as primary signal, card rect as fallback.
+    const activeColumnId = args.active?.data?.current?.columnId
+    if (activeColumnId) {
+      const pointerTargetColumn = pointerCollisions.find((collision) => {
+        const data = collision.data?.droppableContainer?.data?.current
+        return data?.type === 'column' && data?.columnId !== activeColumnId
+      })
+
+      if (pointerTargetColumn) {
+        const targetColumnId = pointerTargetColumn.data?.droppableContainer?.data?.current?.columnId
+        const closestResults = closestCenter(args)
+        const crossColumnTask = closestResults.find((collision) => {
+          const data = collision.data?.droppableContainer?.data?.current
+          return data?.type === 'task' && data?.columnId === targetColumnId
+        })
+        return crossColumnTask ? [crossColumnTask] : [pointerTargetColumn]
+      }
+
+      const pointerOverSource = pointerCollisions.some((collision) => {
+        const data = collision.data?.droppableContainer?.data?.current
+        return data?.type === 'column' && data?.columnId === activeColumnId
+      })
+
+      if (pointerOverSource) {
+        const closestResults = closestCenter(args)
+        const sameColumnTask = closestResults.find((collision) => {
+          const data = collision.data?.droppableContainer?.data?.current
+          return data?.type === 'task' && data?.columnId === activeColumnId
+        })
+        if (sameColumnTask) return [sameColumnTask]
+      }
+
+      const targetColumn = rectCollisions.find((collision) => {
+        const data = collision.data?.droppableContainer?.data?.current
+        return data?.type === 'column' && data?.columnId !== activeColumnId
+      })
+      if (targetColumn) {
+        const targetColumnId = targetColumn.data?.droppableContainer?.data?.current?.columnId
+        const closestResults = closestCenter(args)
+        const crossColumnTask = closestResults.find((collision) => {
+          const data = collision.data?.droppableContainer?.data?.current
+          return data?.type === 'task' && data?.columnId === targetColumnId
+        })
+        if (crossColumnTask) return [crossColumnTask]
+        return [targetColumn]
+      }
+    }
+
+    // Column drop zones (cross-column kanban drops, list view status groups)
     const columnCollision = rectCollisions.find((collision) => {
       const type = collision.data?.droppableContainer?.data?.current?.type
       return type === 'column'
@@ -180,6 +312,7 @@ export const DragProvider = ({
   children,
   tasks,
   selectedIds,
+  selectedIdsRef,
   onDragStart: onDragStartCallback,
   onDragOver: onDragOverCallback,
   onDragEnd: onDragEndCallback,
@@ -228,6 +361,9 @@ export const DragProvider = ({
       const { active } = event
       const draggedId = active.id as string
       const activeData = active.data.current
+      const overlayWidth = active.rect.current.initial?.width
+        ? Math.round(active.rect.current.initial.width)
+        : null
 
       // Only track task-based drags in this context
       const isTaskDrag =
@@ -239,11 +375,12 @@ export const DragProvider = ({
       }
 
       // Determine if this is part of a multi-select
-      const isPartOfSelection = selectedIds.has(draggedId)
-      const shouldMultiDrag = isPartOfSelection && selectedIds.size > 1
+      const activeSelectedIds = selectedIdsRef?.current ?? selectedIds
+      const isPartOfSelection = activeSelectedIds.has(draggedId)
+      const shouldMultiDrag = isPartOfSelection && activeSelectedIds.size > 1
 
       // Get the tasks being dragged
-      const draggedTaskIds = shouldMultiDrag ? Array.from(selectedIds) : [draggedId]
+      const draggedTaskIds = shouldMultiDrag ? Array.from(activeSelectedIds) : [draggedId]
       const draggedTasks = tasks.filter((t) => draggedTaskIds.includes(t.id))
 
       // Determine source type
@@ -264,7 +401,21 @@ export const DragProvider = ({
         sourceContainerId: activeData?.sectionId || activeData?.columnId || null,
         overId: null,
         overType: null,
-        draggedTasks
+        overSectionId: null,
+        overColumnId: null,
+        overTaskEdge: null,
+        sectionDropPosition: null,
+        overlayWidth,
+        overlayRowVariant:
+          activeData?.overlayRowVariant === 'parent' || activeData?.overlayRowVariant === 'task'
+            ? activeData.overlayRowVariant
+            : null,
+        overlayShowProjectBadge: Boolean(activeData?.overlayShowProjectBadge),
+        overlayParentProgress:
+          (activeData?.overlayParentProgress as SubtaskProgress | undefined) ?? null,
+        overlayParentExpanded: Boolean(activeData?.overlayParentExpanded),
+        draggedTasks,
+        lastDroppedId: null
       }
 
       setDragStateInternal(newState)
@@ -277,7 +428,7 @@ export const DragProvider = ({
       // Call external callback
       onDragStartCallback?.(event, newState)
     },
-    [tasks, selectedIds, onDragStartCallback]
+    [tasks, selectedIds, selectedIdsRef, onDragStartCallback]
   )
 
   // Handle drag over
@@ -291,20 +442,46 @@ export const DragProvider = ({
       const { over } = event
 
       if (!over) {
-        setDragState({ overId: null, overType: null })
+        setDragState({
+          overId: null,
+          overType: null,
+          overSectionId: null,
+          overColumnId: null,
+          overTaskEdge: null,
+          sectionDropPosition: null
+        })
         return
       }
 
       const overData = over.data.current
       const overType = (overData?.type as DropTargetType) || null
+      const overSectionId = (overData?.sectionId as string | undefined) ?? null
+      const overColumnId = (overData?.columnId as string | undefined) ?? null
+      const overTaskEdge = overType === 'task' ? resolveTaskEdgeFromDndEvent(event) : null
+      const sectionDropPosition =
+        overType === 'column'
+          ? ((overData?.sectionDropPosition as 'start' | 'end' | undefined) ?? 'start')
+          : null
 
       setDragState({
         overId: over.id as string,
-        overType
+        overType,
+        overSectionId,
+        overColumnId,
+        overTaskEdge,
+        sectionDropPosition
       })
 
       // Call external callback
-      onDragOverCallback?.(event, { ...dragState, overId: over.id as string, overType })
+      onDragOverCallback?.(event, {
+        ...dragState,
+        overId: over.id as string,
+        overType,
+        overSectionId,
+        overColumnId,
+        overTaskEdge,
+        sectionDropPosition
+      })
     },
     [dragState, setDragState, onDragOverCallback]
   )
@@ -312,9 +489,16 @@ export const DragProvider = ({
   // Handle drag end
   const handleDragEnd = useCallback(
     (event: DragEndEvent) => {
-      // Call external callback before reset
+      const droppedId = dragState.activeId
       onDragEndCallback?.(event, dragState)
       resetDragState()
+
+      if (droppedId && event.over) {
+        setTimeout(() => {
+          setDragStateInternal((prev) => ({ ...prev, lastDroppedId: droppedId }))
+          setTimeout(() => setDragStateInternal((prev) => ({ ...prev, lastDroppedId: null })), 1100)
+        }, 200)
+      }
     },
     [dragState, resetDragState, onDragEndCallback]
   )

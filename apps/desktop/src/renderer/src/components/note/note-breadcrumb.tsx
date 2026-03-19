@@ -1,5 +1,5 @@
 import { useMemo, useCallback } from 'react'
-import { FileText } from 'lucide-react'
+import { FileText } from '@/lib/icons'
 import { useTabs } from '@/contexts/tabs'
 
 interface BreadcrumbSegment {

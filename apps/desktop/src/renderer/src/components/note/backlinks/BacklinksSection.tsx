@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react'
 import { cn } from '@/lib/utils'
-import { Link2, ChevronDown } from 'lucide-react'
+import { Link2, ChevronDown } from '@/lib/icons'
 import {
   DropdownMenu,
   DropdownMenuContent,

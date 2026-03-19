@@ -1,5 +1,5 @@
 import { cn } from '@/lib/utils'
-import { Smile } from 'lucide-react'
+import { Smile } from '@/lib/icons'
 
 interface EmojiButtonProps {
   emoji: string | null
@@ -19,7 +19,7 @@ export function EmojiButton({ emoji, onClick, disabled }: EmojiButtonProps) {
         'rounded-xl bg-sidebar-terracotta/8',
         'transition-colors duration-150',
         'hover:bg-sidebar-terracotta/12',
-        'focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+        'focus:outline-none focus-visible:ring-1 focus-visible:ring-ring focus-visible:ring-offset-2',
         'disabled:pointer-events-none disabled:opacity-50'
       )}
     >

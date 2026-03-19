@@ -1,4 +1,4 @@
-import { Inbox } from 'lucide-react'
+import { Inbox } from '@/lib/icons'
 import { Button } from '@/components/ui/button'
 import { CaptureMethodsGrid } from '@/components/empty-state/capture-methods-grid'
 import { cn } from '@/lib/utils'

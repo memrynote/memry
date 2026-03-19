@@ -6,7 +6,7 @@
  */
 
 import { memo } from 'react'
-import { FileText, Type, Clock, Calendar } from 'lucide-react'
+import { FileText, Type, Clock, Calendar } from '@/lib/icons'
 import { cn } from '@/lib/utils'
 
 export interface JournalStatsFooterProps {

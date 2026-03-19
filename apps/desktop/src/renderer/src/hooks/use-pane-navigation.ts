@@ -46,7 +46,7 @@ export const calculateGroupPositions = (
   }
 
   // Split node - calculate bounds for each child
-  const isHorizontal = layout.type === 'horizontal'
+  const isHorizontal = layout.direction === 'horizontal'
   const firstSize = layout.ratio
   const secondSize = 1 - layout.ratio
 

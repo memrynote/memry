@@ -1,4 +1,4 @@
-import { ChevronDown } from 'lucide-react'
+import { ChevronDown } from '@/lib/icons'
 
 import { cn } from '@/lib/utils'
 import {
@@ -68,7 +68,7 @@ export const BulkActionDropdown = <T extends string | number = string>({
           'flex items-center gap-1.5 rounded-sm border px-3 py-1.5 text-sm font-medium',
           'bg-background border-border hover:bg-accent text-foreground',
           'transition-colors duration-150',
-          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+          'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring',
           'disabled:cursor-not-allowed disabled:opacity-50',
           className
         )}

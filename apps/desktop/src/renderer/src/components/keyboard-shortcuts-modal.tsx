@@ -1,4 +1,4 @@
-import { X } from 'lucide-react'
+import { X } from '@/lib/icons'
 
 import { AlertDialog, AlertDialogContent } from '@/components/ui/alert-dialog'
 import { getKeyboardShortcuts } from '@/hooks/use-keyboard-shortcuts'
@@ -44,7 +44,7 @@ const KeyboardShortcutsModal = ({
               'size-8 rounded-md flex items-center justify-center',
               'text-muted-foreground hover:text-foreground hover:bg-muted',
               'transition-colors duration-[var(--duration-instant)]',
-              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring'
+              'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring'
             )}
             aria-label="Close shortcuts help"
           >

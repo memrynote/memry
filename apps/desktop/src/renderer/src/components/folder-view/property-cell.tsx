@@ -13,7 +13,7 @@
 
 import { memo, useState, useRef, useEffect, useCallback } from 'react'
 import { format } from 'date-fns'
-import { Check, X, ExternalLink, Folder, FileText } from 'lucide-react'
+import { Check, X, ExternalLink, Folder, FileText } from '@/lib/icons'
 import { cn } from '@/lib/utils'
 import {
   TextEditor,

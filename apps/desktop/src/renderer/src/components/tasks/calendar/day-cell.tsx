@@ -92,19 +92,6 @@ export const DayCell = ({
     }
   }
 
-  const dayNumber = (
-    <span
-      className={cn(
-        'inline-flex size-7 items-center justify-center rounded-full text-sm font-medium',
-        day.isToday && 'bg-primary text-primary-foreground',
-        !day.isToday && day.isCurrentMonth && 'text-foreground',
-        !day.isToday && !day.isCurrentMonth && 'text-muted-foreground'
-      )}
-    >
-      {day.date.getDate()}
-    </span>
-  )
-
   return (
     <div
       ref={setNodeRef}
@@ -114,17 +101,55 @@ export const DayCell = ({
       onClick={handleCellClick}
       onKeyDown={handleDayKeyDown}
       className={cn(
-        'relative flex min-h-[110px] flex-col gap-1 rounded-sm border border-border p-2 transition-colors cursor-pointer',
-        'hover:bg-accent/40 hover:border-accent-foreground/20',
-        day.isWeekend && 'bg-muted/30',
-        isSelected && 'ring-2 ring-primary',
-        isFocused && 'ring-2 ring-ring bg-accent/30',
-        isOver && 'border-primary/60 bg-primary/5',
-        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring'
+        'relative flex min-h-[110px] flex-col gap-1 rounded-[6px] p-2 transition-colors cursor-pointer',
+        'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring',
+        // Background
+        day.isToday
+          ? 'bg-cal-today-bg border-[1.5px] border-cal-today-border'
+          : !day.isCurrentMonth
+            ? 'bg-cal-cell-outside-bg'
+            : day.isWeekend
+              ? 'bg-cal-cell-weekend-bg'
+              : 'bg-cal-cell-bg',
+        // States
+        isSelected && !day.isToday && 'ring-2 ring-primary',
+        isFocused && 'ring-2 ring-ring',
+        isOver && 'ring-2 ring-cal-today-border'
       )}
     >
-      <div className="flex items-center justify-between">{dayNumber}</div>
+      {/* Day number */}
+      <div className="flex items-center gap-1.5">
+        {day.isToday ? (
+          <>
+            <span
+              className="inline-flex size-[22px] items-center justify-center rounded-full text-[11px] font-semibold text-white"
+              style={{ backgroundColor: 'var(--cal-today-badge)' }}
+            >
+              {day.date.getDate()}
+            </span>
+            <span
+              className="text-[9px] font-medium uppercase tracking-[0.06em]"
+              style={{
+                color: 'var(--cal-today-label)',
+                fontFamily: 'var(--font-mono)'
+              }}
+            >
+              Today
+            </span>
+          </>
+        ) : (
+          <span
+            className={cn('text-xs', day.isCurrentMonth ? 'font-medium' : 'font-normal')}
+            style={{
+              color: day.isCurrentMonth ? 'var(--cal-date-current)' : 'var(--cal-date-outside)'
+            }}
+          >
+            {day.date.getDate()}
+          </span>
+        )}
+      </div>
 
+      {/* Tasks */}
       <div className="flex flex-1 flex-col gap-1">
         {visibleTasks.map((task) => (
           <DraggableCalendarTask key={task.id} task={task}>
@@ -133,6 +158,7 @@ export const DayCell = ({
                 task={task}
                 allTasks={allTasks}
                 compact={isCompact}
+                isToday={day.isToday}
                 onClick={() => onTaskClick(task.id)}
               />
             </div>
@@ -140,10 +166,12 @@ export const DayCell = ({
         ))}
       </div>
 
+      {/* Overflow */}
       {overflowCount > 0 && (
         <button
           type="button"
-          className="text-xs text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="text-left text-[10px] font-medium pl-0.5 transition-colors hover:underline focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+          style={{ color: 'var(--cal-overflow)' }}
           onClick={(e) => {
             e.stopPropagation()
             onOpenDay(day.date)

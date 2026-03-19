@@ -1,8 +1,8 @@
-import { Calendar, Clock } from 'lucide-react'
+import { Calendar, ChevronDown, Clock } from '@/lib/icons'
 
 import { cn } from '@/lib/utils'
 import { PriorityBars, PriorityStar } from '@/components/tasks/task-icons'
-import type { Priority } from '@/data/sample-tasks'
+import { priorityConfig, type Priority } from '@/data/sample-tasks'
 import type { SortField } from '@/data/tasks-data'
 
 // ============================================================================
@@ -37,21 +37,14 @@ const getGroupBgColor = (
   groupKey: string,
   color?: string
 ): string | undefined => {
-  if (DONE_GROUP_KEYS.has(groupKey)) {
-    return 'var(--task-complete-bg)'
-  }
+  if (DONE_GROUP_KEYS.has(groupKey)) return undefined
 
   if (!color) return undefined
 
   const rgb = hexToRgb(color)
   if (!rgb) return undefined
 
-  if (
-    sortField === 'dueDate' ||
-    sortField === 'priority' ||
-    sortField === 'project' ||
-    sortField === 'createdAt'
-  ) {
+  if (sortField === 'project' || sortField === 'createdAt') {
     return `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.10)`
   }
 
@@ -68,28 +61,31 @@ export const GroupHeader = ({
   onToggle
 }: GroupHeaderProps): React.JSX.Element => {
   const labelColor = (() => {
-    if (color && (sortField === 'priority' || sortField === 'dueDate' || sortField === 'createdAt'))
-      return color
+    if (sortField === 'priority') return priorityConfig[groupKey as Priority]?.color ?? undefined
+    if (color && (sortField === 'dueDate' || sortField === 'createdAt')) return color
     if (DONE_GROUP_KEYS.has(groupKey)) return 'var(--task-complete)'
     return undefined
   })()
 
   const bgColor = getGroupBgColor(sortField, groupKey, color)
   const isDoneGroup = DONE_GROUP_KEYS.has(groupKey)
+  const isPriorityGroup = sortField === 'priority'
   const hoverBgColor = isDoneGroup
-    ? 'var(--task-complete-bg)'
-    : bgColor
-      ? bgColor.replace('0.10)', '0.16)')
-      : undefined
+    ? undefined
+    : isPriorityGroup
+      ? bgColor
+      : bgColor
+        ? bgColor.replace('0.10)', '0.16)')
+        : undefined
 
   return (
     <button
       type="button"
       onClick={onToggle}
       className={cn(
-        'flex items-center w-full py-2 px-6 gap-2 border-b border-border',
+        'flex items-center w-full py-2 px-6 gap-2',
         'cursor-pointer select-none transition-colors',
-        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+        'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring',
         !bgColor && 'bg-foreground/[0.02] hover:bg-foreground/[0.04]'
       )}
       style={
@@ -106,26 +102,15 @@ export const GroupHeader = ({
       aria-expanded={!isCollapsed}
       aria-label={`${label}, ${count} tasks${isCollapsed ? ', collapsed' : ''}`}
     >
-      <svg
-        width="10"
-        height="10"
-        viewBox="0 0 10 10"
-        fill="none"
+      <ChevronDown
+        size={10}
         className={cn(
           'shrink-0 transition-transform duration-150',
           labelColor ? '' : 'text-text-tertiary',
           isCollapsed ? '-rotate-90' : ''
         )}
         style={labelColor ? { color: labelColor } : undefined}
-      >
-        <path
-          d="M2.5 3.5L5 6.5L7.5 3.5"
-          stroke="currentColor"
-          strokeWidth="1.2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-      </svg>
+      />
 
       {sortField === 'priority' &&
         (groupKey === 'urgent' && color ? (
@@ -163,8 +148,8 @@ export const GroupHeader = ({
       </div>
 
       <div
-        className="text-[11px] leading-3.5"
-        style={labelColor ? { color: labelColor, opacity: 0.7 } : undefined}
+        className="text-[12px] font-medium text-text-tertiary tabular-nums leading-4"
+        style={labelColor && !isPriorityGroup ? { color: labelColor, opacity: 0.7 } : undefined}
       >
         {count}
       </div>

@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react'
 
+import { Star, Trash } from '@/lib/icons'
 import { cn } from '@/lib/utils'
 import type { SavedFilter } from '@/data/tasks-data'
 
@@ -96,26 +97,16 @@ export const SavedFiltersSection = ({
                   aria-label={filter.starred ? `Unstar ${filter.name}` : `Star ${filter.name}`}
                   className="shrink-0 p-0.5 rounded-sm transition-colors hover:bg-foreground/10"
                 >
-                  <svg
-                    width="12"
-                    height="12"
-                    viewBox="0 0 12 12"
-                    fill="none"
+                  <Star
+                    size={12}
                     className={cn(
                       'transition-colors',
                       filter.starred
                         ? 'text-task-star fill-task-star'
                         : 'text-text-tertiary group-hover/filter:text-text-secondary'
                     )}
-                  >
-                    <path
-                      d="M6 1.5l1.18 2.4 2.65.38-1.92 1.87.45 2.64L6 7.73 3.64 8.79l.45-2.64L2.17 4.28l2.65-.38L6 1.5z"
-                      stroke="currentColor"
-                      strokeWidth="0.7"
-                      strokeLinejoin="round"
-                      fill={filter.starred ? 'currentColor' : 'none'}
-                    />
-                  </svg>
+                    fill={filter.starred ? 'currentColor' : 'none'}
+                  />
                 </button>
 
                 {/* Filter name — click to apply */}
@@ -144,15 +135,7 @@ export const SavedFiltersSection = ({
                   aria-label={`Delete ${filter.name}`}
                   className="shrink-0 p-0.5 rounded-sm opacity-0 group-hover/filter:opacity-100 focus:opacity-100 transition-all text-text-tertiary hover:text-destructive"
                 >
-                  <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-                    <path
-                      d="M3 4.5h6M4.5 4.5V10M7.5 4.5V10M3.5 4.5l.3-1.5A.5.5 0 0 1 4.3 2.5h3.4a.5.5 0 0 1 .5.5l.3 1.5M2.5 4.5h7"
-                      stroke="currentColor"
-                      strokeWidth="0.8"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                  </svg>
+                  <Trash size={12} />
                 </button>
               </div>
             )

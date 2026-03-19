@@ -74,6 +74,20 @@ vi.mock('@main/database/queries/tasks', () => ({
   getTasksLinkedToNote: vi.fn()
 }))
 
+// Mock sync modules
+vi.mock('../sync/task-sync', () => ({
+  getTaskSyncService: vi.fn()
+}))
+
+vi.mock('../sync/project-sync', () => ({
+  getProjectSyncService: vi.fn()
+}))
+
+vi.mock('../sync/offline-clock', () => ({
+  incrementTaskClocksOffline: vi.fn(),
+  incrementProjectClocksOffline: vi.fn()
+}))
+
 // Mock project queries
 vi.mock('@main/database/queries/projects', () => ({
   insertProject: vi.fn(),
@@ -102,13 +116,15 @@ import { getDatabase } from '../database'
 import { generateId } from '../lib/id'
 import * as taskQueries from '@main/database/queries/tasks'
 import * as projectQueries from '@main/database/queries/projects'
+import { getTaskSyncService } from '../sync/task-sync'
+import { incrementTaskClocksOffline } from '../sync/offline-clock'
 
 describe('tasks-handlers', () => {
   let mockDb: { run: Mock; get: Mock; all: Mock }
 
   beforeEach(() => {
     resetIpcMocks()
-    vi.clearAllMocks()
+    vi.resetAllMocks()
     handleCalls.length = 0
     removeHandlerCalls.length = 0
 
@@ -268,6 +284,28 @@ describe('tasks-handlers', () => {
         })
 
         expect(taskQueries.setTaskTags).toHaveBeenCalledWith(mockDb, 'task1', ['new-tag'])
+      })
+
+      it('should trigger sync when tags change', async () => {
+        // #given
+        const mockEnqueueUpdate = vi.fn()
+        ;(getTaskSyncService as Mock).mockReturnValue({
+          enqueueUpdate: mockEnqueueUpdate
+        })
+        const mockTask = { id: 'task1', title: 'Task' }
+        ;(taskQueries.getTaskById as Mock).mockReturnValue(mockTask)
+        ;(taskQueries.updateTask as Mock).mockReturnValue(mockTask)
+        ;(taskQueries.getTaskTags as Mock).mockReturnValue(['old-tag'])
+
+        // #when — only tags change, no scalar fields
+        await invokeHandler(TasksChannels.invoke.UPDATE, {
+          id: 'task1',
+          tags: ['new-tag']
+        })
+
+        // #then — sync enqueue is called with 'tags' in changed fields
+        expect(mockEnqueueUpdate).toHaveBeenCalledTimes(1)
+        expect(mockEnqueueUpdate).toHaveBeenCalledWith('task1', expect.arrayContaining(['tags']))
       })
 
       it('should map status when moving to different project', async () => {
@@ -776,6 +814,44 @@ describe('tasks-handlers', () => {
         })
 
         expect(result.success).toBe(true)
+      })
+
+      it('should enqueue sync update for each reordered task (online)', async () => {
+        // #given
+        const mockEnqueueUpdate = vi.fn()
+        ;(getTaskSyncService as Mock).mockReturnValue({
+          enqueueUpdate: mockEnqueueUpdate
+        })
+        ;(taskQueries.reorderTasks as Mock).mockReturnValue(undefined)
+
+        // #when
+        await invokeHandler(TasksChannels.invoke.REORDER, {
+          taskIds: ['task-a', 'task-b', 'task-c'],
+          positions: [0, 1, 2]
+        })
+
+        // #then
+        expect(mockEnqueueUpdate).toHaveBeenCalledTimes(3)
+        expect(mockEnqueueUpdate).toHaveBeenCalledWith('task-a', ['position'])
+        expect(mockEnqueueUpdate).toHaveBeenCalledWith('task-b', ['position'])
+        expect(mockEnqueueUpdate).toHaveBeenCalledWith('task-c', ['position'])
+      })
+
+      it('should increment offline clocks when sync service unavailable', async () => {
+        // #given
+        ;(getTaskSyncService as Mock).mockReturnValue(null)
+        ;(taskQueries.reorderTasks as Mock).mockReturnValue(undefined)
+
+        // #when
+        await invokeHandler(TasksChannels.invoke.REORDER, {
+          taskIds: ['task-x', 'task-y'],
+          positions: [0, 1]
+        })
+
+        // #then
+        expect(incrementTaskClocksOffline).toHaveBeenCalledTimes(2)
+        expect(incrementTaskClocksOffline).toHaveBeenCalledWith(mockDb, 'task-x', ['position'])
+        expect(incrementTaskClocksOffline).toHaveBeenCalledWith(mockDb, 'task-y', ['position'])
       })
     })
 

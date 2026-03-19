@@ -13,7 +13,7 @@ import {
   Plug,
   Tags,
   ListChecks
-} from 'lucide-react'
+} from '@/lib/icons'
 import { cn } from '@/lib/utils'
 import { GeneralSettings } from './settings/general-section'
 import { EditorSettings } from './settings/editor-section'

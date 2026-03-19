@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { Calendar, Flag, Folder } from 'lucide-react'
+import { Calendar, Flag, Folder } from '@/lib/icons'
 import { cn } from '@/lib/utils'
 
 // ============================================================================
@@ -38,10 +38,9 @@ const AutocompleteHeader = ({ type }: { type: AutocompleteType }): React.JSX.Ele
   const header = headers[type]
 
   return (
-    <div className="px-3 py-2 border-b border-border bg-muted/50 rounded-t-lg">
-      <span className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground uppercase tracking-wide">
-        {header.icon} {header.label}
-      </span>
+    <div className="flex items-center py-2 px-3 gap-1.5 border-b border-border">
+      <span className="text-muted-foreground">{header.icon}</span>
+      <span className="text-[12px] text-foreground font-medium leading-4">{header.label}</span>
     </div>
   )
 }
@@ -67,24 +66,28 @@ const OptionItem = ({
     <button
       type="button"
       onClick={onClick}
-      onMouseDown={(e) => e.preventDefault()} // Prevent input blur
+      onMouseDown={(e) => e.preventDefault()}
       className={cn(
-        'w-full flex items-center px-3 py-2 text-sm',
-        'transition-colors duration-100',
-        showValue ? 'justify-between' : 'gap-2',
-        isSelected ? 'bg-primary/10 text-primary' : 'hover:bg-muted/50'
+        'w-full flex items-center rounded-[5px] py-1.5 px-2 gap-2 transition-colors',
+        isSelected ? 'bg-accent' : 'hover:bg-accent'
       )}
       role="option"
       aria-selected={isSelected}
     >
-      <div className="flex items-center gap-2">
-        {option.icon && <span className="flex items-center justify-center w-4">{option.icon}</span>}
-        {showValue && (
-          <span className="font-mono text-xs text-muted-foreground">{option.value}</span>
+      {option.icon && <span className="flex items-center justify-center w-4">{option.icon}</span>}
+      <span
+        className={cn(
+          'text-[12px] leading-4',
+          isSelected ? 'text-foreground' : 'text-text-secondary'
         )}
-        {!showValue && <span className="text-foreground">{option.label}</span>}
-      </div>
-      {showValue && <span className="text-foreground">{option.label}</span>}
+      >
+        {option.label}
+      </span>
+      {showValue && (
+        <span className="ml-auto text-[11px] leading-3.5 tabular-nums text-text-tertiary">
+          {option.value}
+        </span>
+      )}
     </button>
   )
 }
@@ -160,9 +163,10 @@ export const AutocompleteDropdown = ({
   return (
     <div
       className={cn(
-        'absolute top-full left-0 mt-1 min-w-[16rem] w-fit',
-        'bg-popover rounded-sm shadow-lg border border-border',
-        'z-50 overflow-hidden',
+        'absolute top-full left-0 mt-1 w-[220px]',
+        'bg-popover rounded-lg border border-border shadow-[var(--shadow-card-hover)]',
+        'z-50 overflow-clip',
+        'text-[12px] leading-4 [font-synthesis:none] antialiased',
         'animate-in fade-in-0 zoom-in-95 duration-100',
         className
       )}
@@ -173,7 +177,7 @@ export const AutocompleteDropdown = ({
       <AutocompleteHeader type={type} />
 
       {/* Options */}
-      <div ref={listRef} className="py-1 max-h-48 overflow-y-auto">
+      <div ref={listRef} className="flex flex-col p-1 max-h-48 overflow-y-auto">
         {options.map((option, index) => (
           <div key={option.value} data-index={index}>
             <OptionItem

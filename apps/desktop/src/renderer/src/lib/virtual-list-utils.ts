@@ -19,6 +19,9 @@ export interface StatusHeaderItem extends VirtualItemBase {
   type: 'status-header'
   status: Status
   count: number
+  sectionId?: string
+  sectionTaskIds?: string[]
+  columnId?: string
 }
 
 export interface GroupHeaderItem extends VirtualItemBase {
@@ -30,6 +33,9 @@ export interface GroupHeaderItem extends VirtualItemBase {
   color?: string
   variant?: 'overdue' | 'default'
   isCollapsed?: boolean
+  sectionId?: string
+  sectionTaskIds?: string[]
+  columnId?: string
 }
 
 export interface TaskItem extends VirtualItemBase {
@@ -37,6 +43,8 @@ export interface TaskItem extends VirtualItemBase {
   task: Task
   project: Project
   sectionId: string
+  sectionTaskIds?: string[]
+  columnId?: string
 }
 
 export interface ParentTaskItem extends VirtualItemBase {
@@ -45,6 +53,8 @@ export interface ParentTaskItem extends VirtualItemBase {
   project: Project
   subtasks: Task[]
   sectionId: string
+  sectionTaskIds?: string[]
+  columnId?: string
 }
 
 export type VirtualItem = StatusHeaderItem | GroupHeaderItem | TaskItem | ParentTaskItem
@@ -96,10 +106,12 @@ export const estimateItemHeight = (
 export const flattenTasksFlat = (
   tasks: Task[],
   projects: Project[],
-  allTasks: Task[]
+  allTasks: Task[],
+  getOrderedTasks?: (sectionId: string, tasks: Task[]) => Task[]
 ): VirtualItem[] => {
   const items: VirtualItem[] = []
-  const topLevelTasks = getTopLevelTasks(tasks)
+  const raw = getTopLevelTasks(tasks)
+  const topLevelTasks = getOrderedTasks ? getOrderedTasks('flat', raw) : raw
   const projectMap = new Map(projects.map((p) => [p.id, p]))
 
   topLevelTasks.forEach((task) => {
@@ -139,21 +151,26 @@ export const flattenTasksByStatus = (
   project: Project,
   _expandedIds: Set<string>,
   allTasks: Task[],
-  preserveOrder: boolean = false
+  preserveOrder: boolean = false,
+  getOrderedTasks?: (sectionId: string, tasks: Task[]) => Task[]
 ): VirtualItem[] => {
   const items: VirtualItem[] = []
   const topLevelTasks = getTopLevelTasks(tasks)
   const groupedTasks = groupTasksByStatus(topLevelTasks, project.statuses, preserveOrder)
 
   groupedTasks.forEach((group: TaskGroupByStatus) => {
+    const orderedGroupTasks = getOrderedTasks
+      ? getOrderedTasks(group.status.id, group.tasks)
+      : group.tasks
+
     items.push({
       id: `status-header-${group.status.id}`,
       type: 'status-header',
       status: group.status,
-      count: group.tasks.length
+      count: orderedGroupTasks.length
     })
 
-    group.tasks.forEach((task) => {
+    orderedGroupTasks.forEach((task) => {
       const taskHasSubtasks = hasSubtasks(task)
 
       if (taskHasSubtasks) {
@@ -191,12 +208,14 @@ export const flattenTasksGrouped = (
   allTasks: Task[],
   sortField: SortField,
   sortDirection: SortDirection,
-  collapsedGroups?: Set<string>
+  collapsedGroups?: Set<string>,
+  getOrderedTasks?: (sectionId: string, tasks: Task[]) => Task[]
 ): VirtualItem[] => {
-  const groups = groupTasksForSort(tasks, sortField, sortDirection, projects)
+  const topLevel = getTopLevelTasks(tasks)
+  const groups = groupTasksForSort(topLevel, sortField, sortDirection, projects)
 
   if (groups.length === 0) {
-    return flattenTasksFlat(tasks, projects, allTasks)
+    return flattenTasksFlat(tasks, projects, allTasks, getOrderedTasks)
   }
 
   const items: VirtualItem[] = []
@@ -219,7 +238,8 @@ export const flattenTasksGrouped = (
 
     if (isCollapsed) return
 
-    const topLevelTasks = getTopLevelTasks(group.tasks)
+    const raw = getTopLevelTasks(group.tasks)
+    const topLevelTasks = getOrderedTasks ? getOrderedTasks(group.key, raw) : raw
 
     topLevelTasks.forEach((task) => {
       const project = projectMap.get(task.projectId)

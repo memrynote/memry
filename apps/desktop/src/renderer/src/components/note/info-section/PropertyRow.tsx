@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect, useRef } from 'react'
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { GripVertical, Trash2 } from 'lucide-react'
+import { GripVertical, Trash2 } from '@/lib/icons'
 import { format } from 'date-fns'
 import { cn } from '@/lib/utils'
 import { Property, PROPERTY_TYPE_CONFIG } from './types'
@@ -187,6 +187,10 @@ export function PropertyRow({
     if (!disabled && onNameChange) {
       setEditedName(property.name)
       setIsEditingName(true)
+      requestAnimationFrame(() => {
+        nameInputRef.current?.focus()
+        nameInputRef.current?.select()
+      })
     }
   }, [disabled, onNameChange, property.name])
 
@@ -211,14 +215,6 @@ export function PropertyRow({
     },
     [handleEndNameEdit, property.name]
   )
-
-  // Focus name input when editing starts
-  useEffect(() => {
-    if (isEditingName && nameInputRef.current) {
-      nameInputRef.current.focus()
-      nameInputRef.current.select()
-    }
-  }, [isEditingName])
 
   return (
     <div

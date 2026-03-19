@@ -1,4 +1,4 @@
-import { Loader2 } from 'lucide-react'
+import { Loader2 } from '@/lib/icons'
 import { useInboxStats, useInboxPatterns, useInboxFilingHistory } from '@/hooks/use-inbox'
 import { cn } from '@/lib/utils'
 import { InboxStatsCards } from './inbox-stats-cards'

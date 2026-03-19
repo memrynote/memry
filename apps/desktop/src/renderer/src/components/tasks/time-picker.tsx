@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import { Clock, X } from 'lucide-react'
+import { Clock, X } from '@/lib/icons'
 
 import {
   Select,

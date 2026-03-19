@@ -93,23 +93,15 @@ export const SidebarNavItem = ({
           // Base styles
           'group relative w-full flex items-center gap-2 py-1.5 rounded-md text-sm',
           'transition-colors duration-100 cursor-pointer',
-          'outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-1',
+          'outline-none focus-visible:ring-1 focus-visible:ring-sidebar-ring focus-visible:ring-offset-1',
 
-          // Hover state
           'hover:bg-muted',
 
-          // Active state (current tab)
-          isActive && [
-            'bg-blue-50 dark:bg-blue-900/20',
-            'text-blue-700 dark:text-blue-300',
-            'font-medium'
-          ],
+          isActive && ['bg-sidebar-accent', 'text-sidebar-accent-foreground', 'font-medium'],
 
-          // Selected state (keyboard nav)
           isSelected && !isActive && 'bg-muted',
 
-          // Open in tab indicator (not active)
-          isOpenTab && !isActive && 'text-blue-600 dark:text-blue-400',
+          isOpenTab && !isActive && 'text-sidebar-accent-foreground',
 
           className
         )}
@@ -119,7 +111,7 @@ export const SidebarNavItem = ({
       >
         {/* Active indicator bar */}
         {isActive && (
-          <div className={cn('absolute left-0 top-1 bottom-1 w-0.5 rounded-r', 'bg-blue-500')} />
+          <div className="absolute left-0 top-1 bottom-1 w-0.5 rounded-r bg-sidebar-accent-foreground" />
         )}
 
         {/* Color dot for projects */}
@@ -137,7 +129,7 @@ export const SidebarNavItem = ({
             icon={item.icon}
             className={cn(
               'w-4 h-4 flex-shrink-0',
-              isActive ? 'text-blue-600 dark:text-blue-400' : 'text-muted-foreground'
+              isActive ? 'text-sidebar-accent-foreground' : 'text-muted-foreground'
             )}
           />
         )}
@@ -150,7 +142,7 @@ export const SidebarNavItem = ({
           <span
             className={cn(
               'text-xs tabular-nums',
-              isActive ? 'text-blue-500 dark:text-blue-400' : 'text-text-tertiary'
+              isActive ? 'text-sidebar-accent-foreground' : 'text-text-tertiary'
             )}
           >
             {item.count}
@@ -159,7 +151,7 @@ export const SidebarNavItem = ({
 
         {/* Open in tab indicator dot */}
         {isOpenTab && !isActive && (
-          <div className="w-1.5 h-1.5 rounded-full bg-blue-500 flex-shrink-0" />
+          <div className="w-1.5 h-1.5 rounded-full bg-sidebar-accent-foreground flex-shrink-0" />
         )}
       </button>
     </SidebarItemContextMenu>

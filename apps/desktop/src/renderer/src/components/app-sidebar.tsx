@@ -2,24 +2,19 @@
 
 import * as React from 'react'
 import { useMemo, useState, useCallback, useRef } from 'react'
+import { CloudOff, Plus, Search, Upload } from '@/lib/icons'
 import {
-  BookOpen,
-  CloudOff,
-  GitGraph,
-  Home,
-  Inbox,
-  ListTodo,
-  Play,
-  Plus,
-  Search,
-  Upload
-} from 'lucide-react'
+  SidebarInbox,
+  SidebarHome,
+  SidebarJournal,
+  SidebarTasks,
+  SidebarGraph
+} from '@/lib/icons/sidebar-nav-icons'
 import { toast } from 'sonner'
 
 import { cn } from '@/lib/utils'
 import { VaultSwitcher } from '@/components/vault-switcher'
 import { TrafficLights } from '@/components/traffic-lights'
-import { Kbd, KbdGroup } from '@/components/ui/kbd'
 import {
   Sidebar,
   SidebarContent,
@@ -43,6 +38,7 @@ import { notesService } from '@/services/notes-service'
 import { useSidebarDrillDown } from '@/contexts/sidebar-drill-down'
 import { useAuth } from '@/contexts/auth-context'
 import { SyncStatus } from '@/components/sync/sync-status'
+import { SidebarUserProfile } from '@/components/sidebar/sidebar-user-profile'
 import { useInboxList } from '@/hooks/use-inbox'
 import type { SidebarItem, TabType } from '@/contexts/tabs/types'
 import type { AppPage } from '@/App'
@@ -58,14 +54,14 @@ const log = createLogger('Component:AppSidebar')
 const mainNav: {
   title: string
   page: AppPage
-  icon: typeof Inbox
-  iconColor: string
+  icon: typeof SidebarInbox
+  shortcut?: string
 }[] = [
-  { title: 'Inbox', page: 'inbox', icon: Inbox, iconColor: 'text-accent-cyan' },
-  { title: 'Home', page: 'home', icon: Home, iconColor: 'text-accent-green' },
-  { title: 'Journal', page: 'journal', icon: BookOpen, iconColor: 'text-accent-purple' },
-  { title: 'Tasks', page: 'tasks', icon: ListTodo, iconColor: 'text-accent-orange' },
-  { title: 'Graph', page: 'graph', icon: GitGraph, iconColor: 'text-accent-cyan' }
+  { title: 'Inbox', page: 'inbox', icon: SidebarInbox },
+  { title: 'Home', page: 'home', icon: SidebarHome },
+  { title: 'Journal', page: 'journal', icon: SidebarJournal, shortcut: '⌘J' },
+  { title: 'Tasks', page: 'tasks', icon: SidebarTasks },
+  { title: 'Graph', page: 'graph', icon: SidebarGraph, shortcut: '⌘G' }
 ]
 
 function SidebarHeaderContent() {
@@ -245,22 +241,24 @@ function AppSidebarInner({ currentPage, viewCounts, ...props }: AppSidebarProps)
       {/* FIXED SECTION - Quick Actions & Main Nav (doesn't scroll) */}
       <div className="flex-shrink-0">
         {/* Quick Actions: Search & New (side by side) */}
-        <div className="flex items-center gap-1.5 px-3 pt-1 pb-0">
+        <div className="flex items-center gap-1.5 px-3 pt-1 pb-0 group-data-[collapsible=icon]:px-1.5 group-data-[collapsible=icon]:justify-center">
           <button
             type="button"
             onClick={() => window.dispatchEvent(new CustomEvent('memry:open-search'))}
-            className="flex flex-1 items-center gap-2 rounded-lg bg-black/[0.04] dark:bg-white/[0.04] py-[6px] px-2.5 cursor-pointer hover:bg-black/[0.06] dark:hover:bg-white/[0.06] transition-colors"
+            className="flex flex-1 items-center gap-2 rounded-[5px] bg-sidebar-surface py-[6px] px-2.5 cursor-pointer hover:bg-black/[0.06] dark:hover:bg-white/[0.06] transition-colors group-data-[collapsible=icon]:flex-none group-data-[collapsible=icon]:size-8 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:p-0"
           >
-            <Search className="size-[14px] text-muted-foreground/70" />
-            <span className="text-[13px] text-muted-foreground/70 font-normal">Search</span>
-            <KbdGroup className="ml-auto">
-              <Kbd className="text-[10px] leading-3 text-muted-foreground/50">⌘K</Kbd>
-            </KbdGroup>
+            <Search className="size-[14px] text-muted-foreground/70 shrink-0" />
+            <span className="text-[13px] text-muted-foreground/70 font-normal group-data-[collapsible=icon]:hidden">
+              Search
+            </span>
+            <span className="ml-auto font-mono text-[9px] text-sidebar-muted/50 bg-sidebar-border rounded-[3px] px-1 py-0.5 group-data-[collapsible=icon]:hidden">
+              ⌘K
+            </span>
           </button>
           <button
             type="button"
             onClick={handleNewNote}
-            className="flex items-center justify-center size-[30px] rounded-lg bg-black/[0.04] dark:bg-white/[0.04] hover:bg-black/[0.06] dark:hover:bg-white/[0.06] transition-colors cursor-pointer shrink-0"
+            className="flex items-center justify-center size-[30px] rounded-[5px] bg-sidebar-surface hover:bg-black/[0.06] dark:hover:bg-white/[0.06] transition-colors cursor-pointer shrink-0 group-data-[collapsible=icon]:hidden"
             title="New note (⌘N)"
           >
             <Plus className="size-[15px] text-muted-foreground/70" />
@@ -269,60 +267,54 @@ function AppSidebarInner({ currentPage, viewCounts, ...props }: AppSidebarProps)
 
         {/* Main Navigation: Inbox, Home, Journal, Tasks */}
         <SidebarGroup className="px-2 pt-1 pb-0">
-          <SidebarMenu className="gap-0">
+          <SidebarMenu className="gap-px">
             {mainNav.map((item) => {
               const sidebarItem: SidebarItem = {
                 type: item.page as TabType,
                 title: item.title,
                 path: `/${item.page}`
               }
+              const active = isActiveItem(sidebarItem)
               return (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton
                     tooltip={item.title}
-                    isActive={isActiveItem(sidebarItem)}
+                    isActive={active}
                     onClick={handleNavClick(item.page)}
-                    className="rounded-md h-auto py-[7px] px-2.5 gap-2.5"
+                    className={cn(
+                      'relative rounded-[5px] h-7 px-2.5 gap-2.5',
+                      active && 'bg-sidebar-accent text-sidebar-accent-foreground font-medium'
+                    )}
                   >
-                    <item.icon className={cn('size-[15px]', item.iconColor)} />
-                    <span className="text-[13px] leading-4 font-medium text-sidebar-foreground">
+                    {active && (
+                      <div className="absolute left-0 inset-y-1.5 w-0.75 rounded-r-xs bg-sidebar-accent-foreground" />
+                    )}
+                    <item.icon
+                      className={cn('size-[15px]', active ? 'opacity-85' : 'opacity-45')}
+                    />
+                    <span
+                      className={cn(
+                        'text-[13px] leading-4',
+                        active
+                          ? 'text-sidebar-accent-foreground font-medium'
+                          : 'text-sidebar-foreground'
+                      )}
+                    >
                       {item.title}
                     </span>
                     {item.page === 'inbox' && inboxCount > 0 && (
-                      <span className="ml-auto flex items-center gap-1">
-                        <div
-                          role="button"
-                          tabIndex={0}
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            handleNavClick('inbox')(e as unknown as React.MouseEvent)
-                            requestAnimationFrame(() => {
-                              window.dispatchEvent(new CustomEvent('memry:enter-triage'))
-                            })
-                          }}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter' || e.key === ' ') {
-                              e.preventDefault()
-                              e.stopPropagation()
-                              handleNavClick('inbox')(e as unknown as React.MouseEvent)
-                              requestAnimationFrame(() => {
-                                window.dispatchEvent(new CustomEvent('memry:enter-triage'))
-                              })
-                            }
-                          }}
-                          className="opacity-0 group-hover/menu-item:opacity-100 transition-opacity rounded p-0.5 hover:bg-accent"
-                          title="Process Inbox"
-                        >
-                          <Play className="size-3 text-muted-foreground" />
-                        </div>
-                        <span className="size-[18px] flex items-center justify-center rounded-full bg-sidebar-terracotta/15 text-sidebar-terracotta text-[10px] font-semibold leading-none">
-                          {inboxCount}
-                        </span>
+                      <span className="ml-auto text-sidebar-muted font-medium text-[11px]">
+                        {inboxCount}
                       </span>
                     )}
                     {item.page === 'tasks' && todayTasksCount > 0 && (
                       <span className="ml-auto size-[18px] flex items-center justify-center rounded-full bg-sidebar-terracotta/15 text-sidebar-terracotta text-[10px] font-semibold leading-none">
                         {todayTasksCount}
+                      </span>
+                    )}
+                    {item.shortcut && item.page !== 'inbox' && item.page !== 'tasks' && (
+                      <span className="ml-auto font-mono text-[9px] text-sidebar-muted/50">
+                        {item.shortcut}
                       </span>
                     )}
                   </SidebarMenuButton>
@@ -334,7 +326,7 @@ function AppSidebarInner({ currentPage, viewCounts, ...props }: AppSidebarProps)
       </div>
 
       {/* Separator between nav and collections */}
-      <div className="h-px bg-[#E5E4DF] dark:bg-white/10 shrink-0 mx-3 my-2" />
+      <div className="h-px bg-sidebar-border shrink-0 mx-3 my-2 group-data-[collapsible=icon]:mx-1.5" />
 
       {/* SCROLLABLE SECTION - Collections, Bookmarks, Tags — entire area is drop target */}
       <div
@@ -413,7 +405,7 @@ function AppSidebarInner({ currentPage, viewCounts, ...props }: AppSidebarProps)
       <SidebarContent className="flex flex-col overflow-hidden gap-0">
         <SidebarDrillDownContainer>{mainContent}</SidebarDrillDownContainer>
       </SidebarContent>
-      <SidebarFooter>
+      <SidebarFooter className="gap-0">
         <SidebarMenu>
           <SidebarMenuItem>
             {authState.status === 'authenticated' ? (
@@ -426,6 +418,12 @@ function AppSidebarInner({ currentPage, viewCounts, ...props }: AppSidebarProps)
             )}
           </SidebarMenuItem>
         </SidebarMenu>
+        {authState.status === 'authenticated' && (
+          <>
+            <div className="h-px bg-sidebar-border mx-2 my-1" />
+            <SidebarUserProfile />
+          </>
+        )}
       </SidebarFooter>
       <SidebarRail />
     </Sidebar>

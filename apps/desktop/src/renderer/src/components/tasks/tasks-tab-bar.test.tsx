@@ -4,7 +4,7 @@ import { render, screen, fireEvent } from '@testing-library/react'
 import { TasksTabBar, type TasksInternalTab } from './tasks-tab-bar'
 import type { SavedFilter } from '@/data/tasks-data'
 
-const defaultCounts = { today: 3, all: 15, done: 2 }
+const defaultCounts = { today: 3, all: 15 }
 
 const makeSavedFilter = (overrides: Partial<SavedFilter> = {}): SavedFilter => ({
   id: 'sf-1',
@@ -47,12 +47,11 @@ const renderTabBar = (overrides: Partial<Parameters<typeof TasksTabBar>[0]> = {}
 }
 
 describe('TasksTabBar', () => {
-  it('renders three default tabs (Today, All, Done) — no This Week', () => {
+  it('renders two default tabs (Today, All)', () => {
     renderTabBar()
     expect(screen.getByRole('tab', { name: /today/i })).toBeInTheDocument()
     expect(screen.getByRole('tab', { name: /all/i })).toBeInTheDocument()
-    expect(screen.getByRole('tab', { name: /done/i })).toBeInTheDocument()
-    expect(screen.queryByRole('tab', { name: /this week/i })).not.toBeInTheDocument()
+    expect(screen.queryByRole('tab', { name: /done/i })).not.toBeInTheDocument()
   })
 
   it('calls onTabChange when a tab is clicked', () => {

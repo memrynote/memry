@@ -1,6 +1,9 @@
-// Sortable components
-export { SortableTaskRow, TaskRowPreview } from './sortable-task-row'
-export { DroppableSection, DroppableSectionHeader, EmptyDropZone } from './droppable-section'
+// Task row components
+export { TaskRow } from './task-row'
+export { SortableTaskRow } from './sortable-task-row'
+export { SortableParentTaskRow } from './sortable-parent-task-row'
+export { DraggableTaskRow } from './draggable-task-row'
+export { DroppableListHeader } from './droppable-list-header'
 
 // Drag overlays
 export { MultiDragOverlay, SingleTaskPreview, MultiTaskBadge } from './multi-drag-overlay'

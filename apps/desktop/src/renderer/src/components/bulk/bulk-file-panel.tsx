@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
-import { Link, FileText, Image, Mic, Check, Loader2 } from 'lucide-react'
+import { Link, FileText, Image, Mic, Check, Loader2 } from '@/lib/icons'
 import { useQuery } from '@tanstack/react-query'
 
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from '@/components/ui/sheet'

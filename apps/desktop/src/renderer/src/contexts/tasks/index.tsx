@@ -35,6 +35,7 @@ import {
 import { formatDateKey } from '@/lib/task-utils'
 import { useVault } from '@/hooks/use-vault'
 import { createLogger } from '@/lib/logger'
+import { applyTaskUpdate } from './apply-task-update'
 
 const log = createLogger('Context:Tasks')
 
@@ -193,6 +194,9 @@ interface TasksContextValue {
   addProject: (project: Project) => void
   updateProject: (projectId: string, updates: Partial<Project>) => void
   deleteProject: (projectId: string) => void
+
+  // Ordering
+  getOrderedTasks?: (sectionId: string, tasks: Task[]) => Task[]
 }
 
 interface TasksProviderProps {
@@ -201,6 +205,9 @@ interface TasksProviderProps {
   initialProjects: Project[]
   onTasksChange?: (tasks: Task[]) => void
   onProjectsChange?: (projects: Project[]) => void
+  selectedTaskIds?: Set<string>
+  onSelectedTaskIdsChange?: (ids: Set<string>) => void
+  getOrderedTasks?: (sectionId: string, tasks: Task[]) => Task[]
 }
 
 // =============================================================================
@@ -238,7 +245,10 @@ export const TasksProvider = ({
   initialTasks,
   initialProjects,
   onTasksChange,
-  onProjectsChange
+  onProjectsChange,
+  selectedTaskIds: controlledSelectedTaskIds,
+  onSelectedTaskIdsChange,
+  getOrderedTasks
 }: TasksProviderProps): React.JSX.Element => {
   // Get vault status to know if database is available
   const { status: vaultStatus } = useVault()
@@ -252,7 +262,20 @@ export const TasksProvider = ({
   // Selection state
   const [taskSelectedId, setTaskSelectedId] = useState<string>('all')
   const [taskSelectedType, setTaskSelectedType] = useState<TaskSelectionType>('view')
-  const [selectedTaskIds, setSelectedTaskIds] = useState<Set<string>>(new Set())
+  const [selectedTaskIdsState, setSelectedTaskIdsState] = useState<Set<string>>(new Set())
+  const selectedTaskIds = controlledSelectedTaskIds ?? selectedTaskIdsState
+
+  const setSelectedTaskIds = useCallback(
+    (ids: Set<string>) => {
+      if (onSelectedTaskIdsChange) {
+        onSelectedTaskIdsChange(ids)
+        return
+      }
+
+      setSelectedTaskIdsState(ids)
+    },
+    [onSelectedTaskIdsChange]
+  )
 
   // Load data from database when vault opens
   useEffect(() => {
@@ -374,29 +397,7 @@ export const TasksProvider = ({
 
     const unsubTaskUpdated = onTaskUpdated((event) => {
       const uiTask = dbTaskToUiTask(event.task)
-      setTasks((prev) => {
-        const oldTask = prev.find((t) => t.id === event.id)
-        let updated = prev.map((t) => (t.id === event.id ? uiTask : t))
-
-        // T042: Handle parentId changes (promote/demote)
-        if (oldTask && oldTask.parentId !== uiTask.parentId) {
-          // Remove from old parent's subtaskIds
-          if (oldTask.parentId) {
-            updated = updated.map((t) =>
-              t.id === oldTask.parentId
-                ? { ...t, subtaskIds: t.subtaskIds.filter((id) => id !== event.id) }
-                : t
-            )
-          }
-          // Add to new parent's subtaskIds
-          if (uiTask.parentId) {
-            updated = updated.map((t) =>
-              t.id === uiTask.parentId ? { ...t, subtaskIds: [...t.subtaskIds, event.id] } : t
-            )
-          }
-        }
-        return updated
-      })
+      setTasks((prev) => applyTaskUpdate(prev, uiTask, event.id))
     })
 
     const unsubTaskDeleted = onTaskDeleted((event) => {
@@ -418,7 +419,7 @@ export const TasksProvider = ({
     // T026: Subscribe to task completed events to update completedAt in state
     const unsubTaskCompleted = onTaskCompleted((event) => {
       const uiTask = dbTaskToUiTask(event.task)
-      setTasks((prev) => prev.map((t) => (t.id === event.id ? uiTask : t)))
+      setTasks((prev) => applyTaskUpdate(prev, uiTask, event.id))
     })
 
     const unsubProjectCreated = onProjectCreated((event) => {
@@ -834,7 +835,8 @@ export const TasksProvider = ({
       deleteTask,
       addProject,
       updateProject,
-      deleteProject
+      deleteProject,
+      getOrderedTasks
     }),
     [
       tasks,
@@ -850,7 +852,8 @@ export const TasksProvider = ({
       deleteTask,
       addProject,
       updateProject,
-      deleteProject
+      deleteProject,
+      getOrderedTasks
     ]
   )
 

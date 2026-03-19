@@ -10,8 +10,7 @@
  * - T084: Task Filtering - Main Filter Function (getFilteredTasks)
  * - T085: Task Counts & Formatting (getTaskCounts, formatTaskSubtitle)
  * - T086: Today & Upcoming View Helpers (getTodayTasks, getUpcomingTasks, getDayHeaderText)
- * - T087: Completed Tasks & Archive (getCompletedTasks, getArchivedTasks, groupCompletedByPeriod, groupArchivedByMonth)
- * - T088: Completion Statistics (getCompletionStats, calculateStreak, filterCompletedBySearch, getTasksOlderThan)
+ * - T087: Completed Tasks & Archive (getCompletedTasks, getCompletedTodayTasks)
  * - T089: Advanced Filters & Composition (applyFiltersAndSort, hasActiveFilters, countActiveFilters, group configs)
  */
 
@@ -46,6 +45,7 @@ import {
   formatDateShort,
   formatDayName,
   formatDueDate,
+  formatOverdueRelative,
   // Task Status Helpers (T076)
   isTaskCompleted,
   getDefaultTodoStatus,
@@ -59,7 +59,6 @@ import {
   // Task Grouping (T079-T080)
   groupTasksByDueDate,
   groupTasksByStatus,
-  groupTasksByCompletion,
   // Calendar Helpers (T081)
   formatDateKey,
   parseDateKey,
@@ -89,21 +88,12 @@ import {
   getDayHeaderText,
   // Completed Tasks & Archive (T087)
   getCompletedTasks,
-  getArchivedTasks,
-  groupCompletedByPeriod,
-  groupArchivedByMonth,
-  // Completion Statistics (T088)
-  getCompletionStats,
-  calculateStreak,
-  filterCompletedBySearch,
-  getTasksOlderThan,
+  getCompletedTodayTasks,
   // Advanced Filters & Composition (T089)
   applyFiltersAndSort,
   hasActiveFilters,
   countActiveFilters,
-  dueDateGroupConfig,
-  completionGroupConfig,
-  completionPeriodConfig
+  dueDateGroupConfig
 } from './task-utils'
 
 // ============================================================================
@@ -1065,18 +1055,25 @@ describe('Task Utils', () => {
         expect(result).toEqual({ label: 'Friday', status: 'upcoming' })
       })
 
-      it('should return formatted date for overdue dates', () => {
+      it('should return relative "Xd late" for overdue dates', () => {
         const overdue = new Date('2026-01-10T10:00:00Z')
         const result = formatDueDate(overdue, null)
 
-        expect(result).toEqual({ label: 'Jan 10', status: 'overdue' })
+        expect(result).toEqual({ label: '4d late', status: 'overdue' })
       })
 
-      it('should return formatted date with time for overdue dates', () => {
+      it('should return relative "Xd late" for overdue dates (ignores time)', () => {
         const overdue = new Date('2026-01-10T10:00:00Z')
         const result = formatDueDate(overdue, '16:00')
 
-        expect(result).toEqual({ label: 'Jan 10 4:00 PM', status: 'overdue' })
+        expect(result).toEqual({ label: '4d late', status: 'overdue' })
+      })
+
+      it('should return "1d late" for yesterday', () => {
+        const yesterday = new Date('2026-01-13T10:00:00Z')
+        const result = formatDueDate(yesterday, null)
+
+        expect(result).toEqual({ label: '1d late', status: 'overdue' })
       })
 
       it('should return formatted date for later dates (8+ days)', () => {
@@ -1098,6 +1095,28 @@ describe('Task Utils', () => {
         const result = formatDueDate(sevenDays, null)
 
         expect(result?.status).toBe('later')
+      })
+    })
+
+    describe('formatOverdueRelative', () => {
+      it('should return "Today" when dueDate is today', () => {
+        const today = new Date('2026-01-14T10:00:00Z')
+        expect(formatOverdueRelative(today)).toBe('Today')
+      })
+
+      it('should return "1d late" for yesterday', () => {
+        const yesterday = new Date('2026-01-13T10:00:00Z')
+        expect(formatOverdueRelative(yesterday)).toBe('1d late')
+      })
+
+      it('should return "7d late" for a week ago', () => {
+        const weekAgo = new Date('2026-01-07T10:00:00Z')
+        expect(formatOverdueRelative(weekAgo)).toBe('7d late')
+      })
+
+      it('should return "Today" for future dates', () => {
+        const tomorrow = new Date('2026-01-15T10:00:00Z')
+        expect(formatOverdueRelative(tomorrow)).toBe('Today')
       })
     })
   })
@@ -2208,88 +2227,6 @@ describe('Task Utils', () => {
         expect(groups).toEqual([])
       })
     })
-
-    describe('groupTasksByCompletion', () => {
-      it('should group tasks completed today', () => {
-        const tasks = [
-          createMockTask({ id: 't1', completedAt: new Date('2026-01-14T09:00:00Z') }),
-          createMockTask({ id: 't2', completedAt: new Date('2026-01-14T15:00:00Z') })
-        ]
-
-        const groups = groupTasksByCompletion(tasks)
-
-        expect(groups.today).toHaveLength(2)
-      })
-
-      it('should group tasks completed yesterday', () => {
-        const tasks = [
-          createMockTask({ id: 't1', completedAt: new Date('2026-01-13T10:00:00Z') }),
-          createMockTask({ id: 't2', completedAt: new Date('2026-01-13T20:00:00Z') })
-        ]
-
-        const groups = groupTasksByCompletion(tasks)
-
-        expect(groups.yesterday).toHaveLength(2)
-      })
-
-      it('should group tasks completed earlier', () => {
-        const tasks = [
-          createMockTask({ id: 't1', completedAt: new Date('2026-01-10T10:00:00Z') }),
-          createMockTask({ id: 't2', completedAt: new Date('2025-12-25T10:00:00Z') })
-        ]
-
-        const groups = groupTasksByCompletion(tasks)
-
-        expect(groups.earlier).toHaveLength(2)
-      })
-
-      it('should skip tasks without completedAt', () => {
-        const tasks = [
-          createMockTask({ id: 't1', completedAt: null }),
-          createMockTask({ id: 't2', completedAt: new Date('2026-01-14T10:00:00Z') })
-        ]
-
-        const groups = groupTasksByCompletion(tasks)
-
-        expect(groups.today).toHaveLength(1)
-        expect(groups.yesterday).toHaveLength(0)
-        expect(groups.earlier).toHaveLength(0)
-      })
-
-      it('should sort within groups by completion date (most recent first)', () => {
-        const tasks = [
-          createMockTask({ id: 't1', completedAt: new Date('2026-01-14T09:00:00Z') }),
-          createMockTask({ id: 't2', completedAt: new Date('2026-01-14T15:00:00Z') }),
-          createMockTask({ id: 't3', completedAt: new Date('2026-01-14T12:00:00Z') })
-        ]
-
-        const groups = groupTasksByCompletion(tasks)
-
-        expect(groups.today.map((t: Task) => t.id)).toEqual(['t2', 't3', 't1'])
-      })
-
-      it('should return empty groups for empty input', () => {
-        const groups = groupTasksByCompletion([])
-
-        expect(groups.today).toEqual([])
-        expect(groups.yesterday).toEqual([])
-        expect(groups.earlier).toEqual([])
-      })
-
-      it('should correctly categorize all completion periods', () => {
-        const tasks = [
-          createMockTask({ id: 'today', completedAt: new Date('2026-01-14T10:00:00Z') }),
-          createMockTask({ id: 'yesterday', completedAt: new Date('2026-01-13T10:00:00Z') }),
-          createMockTask({ id: 'earlier', completedAt: new Date('2026-01-01T10:00:00Z') })
-        ]
-
-        const groups = groupTasksByCompletion(tasks)
-
-        expect(groups.today.some((t: Task) => t.id === 'today')).toBe(true)
-        expect(groups.yesterday.some((t: Task) => t.id === 'yesterday')).toBe(true)
-        expect(groups.earlier.some((t: Task) => t.id === 'earlier')).toBe(true)
-      })
-    })
   })
 
   // ============================================================================
@@ -3298,6 +3235,82 @@ describe('Task Utils', () => {
 
           expect(result).toHaveLength(1)
           expect(result[0].id).toBe('t1')
+        })
+
+        it("should include completed tasks in 'all' view when includeCompleted is true (kanban)", () => {
+          // #given — one incomplete, one completed task
+          const tasks = [
+            createMockTask({ id: 't1', projectId: 'project-1', statusId: 'status-todo' }),
+            createMockTask({
+              id: 't2',
+              projectId: 'project-1',
+              statusId: 'status-done',
+              completedAt: new Date('2026-01-13')
+            })
+          ]
+
+          // #when — includeCompleted=true (for kanban Done column)
+          const result = getFilteredTasks(tasks, 'all', 'view', projects, true)
+
+          // #then — both tasks returned
+          expect(result).toHaveLength(2)
+          expect(result.map((t) => t.id)).toContain('t1')
+          expect(result.map((t) => t.id)).toContain('t2')
+        })
+
+        it('should still exclude archived tasks when includeCompleted is true', () => {
+          // #given
+          const tasks = [
+            createMockTask({ id: 't1', projectId: 'project-1', statusId: 'status-todo' }),
+            createMockTask({
+              id: 't2',
+              projectId: 'project-1',
+              statusId: 'status-done',
+              completedAt: new Date('2026-01-13')
+            }),
+            createMockTask({
+              id: 't3',
+              projectId: 'project-1',
+              statusId: 'status-todo',
+              archivedAt: new Date('2026-01-10')
+            })
+          ]
+
+          // #when
+          const result = getFilteredTasks(tasks, 'all', 'view', projects, true)
+
+          // #then — archived excluded, completed included
+          expect(result).toHaveLength(2)
+          expect(result.map((t) => t.id)).toContain('t1')
+          expect(result.map((t) => t.id)).toContain('t2')
+        })
+
+        it('should include subtasks of completed parents when includeCompleted is true', () => {
+          // #given — completed parent with a subtask
+          const tasks = [
+            createMockTask({
+              id: 'parent',
+              projectId: 'project-1',
+              statusId: 'status-done',
+              completedAt: new Date('2026-01-13'),
+              subtaskIds: ['child']
+            }),
+            createMockTask({
+              id: 'child',
+              projectId: 'project-1',
+              statusId: 'status-done',
+              completedAt: new Date('2026-01-13'),
+              parentId: 'parent'
+            })
+          ]
+
+          // #when
+          const result = getFilteredTasks(tasks, 'all', 'view', projects, true)
+
+          // #then — parent + subtask both included
+          expect(result).toHaveLength(2)
+          expect(result.map((t) => t.id)).toContain('parent')
+          expect(result.map((t) => t.id)).toContain('child')
         })
       })
 
@@ -4491,436 +4504,95 @@ describe('Task Utils', () => {
 
         expect(result).toHaveLength(0)
       })
-    })
 
-    describe('getArchivedTasks', () => {
-      it('should return only archived tasks', () => {
+      it('should exclude completed subtasks (they stay with their parent)', () => {
+        // #given — a completed subtask and a completed top-level task
         const tasks = [
-          createMockTask({ id: 't1', archivedAt: new Date('2026-01-10') }),
-          createMockTask({ id: 't2', archivedAt: new Date('2026-01-11') }),
-          createMockTask({ id: 't3', archivedAt: null })
+          createMockTask({ id: 't1', completedAt: new Date('2026-01-13'), parentId: null }),
+          createMockTask({ id: 'sub-1', completedAt: new Date('2026-01-13'), parentId: 't1' })
         ]
 
-        const result = getArchivedTasks(tasks)
+        // #when
+        const result = getCompletedTasks(tasks)
 
-        expect(result).toHaveLength(2)
-        expect(result.map((t) => t.id)).toContain('t1')
-        expect(result.map((t) => t.id)).toContain('t2')
-      })
-
-      it('should return empty array when no archived tasks', () => {
-        const tasks = [
-          createMockTask({ id: 't1', archivedAt: null }),
-          createMockTask({ id: 't2', archivedAt: null })
-        ]
-
-        const result = getArchivedTasks(tasks)
-
-        expect(result).toHaveLength(0)
+        // #then — only top-level task appears in Done section
+        expect(result).toHaveLength(1)
+        expect(result[0].id).toBe('t1')
       })
     })
 
-    describe('groupCompletedByPeriod', () => {
-      it('should group tasks completed today', () => {
+    describe('getCompletedTodayTasks', () => {
+      it('should return tasks completed today', () => {
+        // #given
+        const today = new Date()
+        const yesterday = new Date(today)
+        yesterday.setDate(yesterday.getDate() - 1)
+
         const tasks = [
-          createMockTask({ id: 't1', completedAt: new Date('2026-01-14T08:00:00Z') }),
-          createMockTask({ id: 't2', completedAt: new Date('2026-01-14T09:00:00Z') })
+          createMockTask({ id: 't1', completedAt: today, archivedAt: null }),
+          createMockTask({ id: 't2', completedAt: yesterday, archivedAt: null }),
+          createMockTask({ id: 't3', completedAt: null, archivedAt: null })
         ]
 
-        const result = groupCompletedByPeriod(tasks)
+        // #when
+        const result = getCompletedTodayTasks(tasks)
 
-        expect(result.today).toHaveLength(2)
-        expect(result.yesterday).toHaveLength(0)
-        expect(result.earlierThisWeek).toHaveLength(0)
-        expect(result.lastWeek).toHaveLength(0)
-        expect(result.older).toHaveLength(0)
+        // #then
+        expect(result).toHaveLength(1)
+        expect(result[0].id).toBe('t1')
       })
 
-      it('should group tasks completed yesterday', () => {
-        const tasks = [createMockTask({ id: 't1', completedAt: new Date('2026-01-13T15:00:00Z') })]
-
-        const result = groupCompletedByPeriod(tasks)
-
-        expect(result.today).toHaveLength(0)
-        expect(result.yesterday).toHaveLength(1)
-      })
-
-      it('should group tasks completed last week', () => {
-        const tasks = [createMockTask({ id: 't1', completedAt: new Date('2026-01-08T10:00:00Z') })]
-
-        const result = groupCompletedByPeriod(tasks)
-
-        expect(result.lastWeek).toHaveLength(1)
-      })
-
-      it('should group older tasks', () => {
-        const tasks = [createMockTask({ id: 't1', completedAt: new Date('2025-12-20T10:00:00Z') })]
-
-        const result = groupCompletedByPeriod(tasks)
-
-        expect(result.older).toHaveLength(1)
-      })
-
-      it('should sort tasks within each group by completion date (most recent first)', () => {
+      it('should exclude archived tasks completed today', () => {
+        // #given
+        const today = new Date()
         const tasks = [
-          createMockTask({ id: 't1', completedAt: new Date('2026-01-14T08:00:00Z') }),
-          createMockTask({ id: 't2', completedAt: new Date('2026-01-14T10:00:00Z') }),
-          createMockTask({ id: 't3', completedAt: new Date('2026-01-14T09:00:00Z') })
+          createMockTask({ id: 't1', completedAt: today, archivedAt: null }),
+          createMockTask({ id: 't2', completedAt: today, archivedAt: today })
         ]
 
-        const result = groupCompletedByPeriod(tasks)
+        // #when
+        const result = getCompletedTodayTasks(tasks)
 
-        expect(result.today[0].id).toBe('t2')
-        expect(result.today[1].id).toBe('t3')
-        expect(result.today[2].id).toBe('t1')
+        // #then
+        expect(result).toHaveLength(1)
+        expect(result[0].id).toBe('t1')
       })
 
-      it('should skip tasks without completedAt', () => {
+      it('should return empty array when nothing completed today', () => {
+        // #given
+        const yesterday = new Date()
+        yesterday.setDate(yesterday.getDate() - 1)
+
         const tasks = [
-          createMockTask({ id: 't1', completedAt: new Date('2026-01-14T08:00:00Z') }),
+          createMockTask({ id: 't1', completedAt: yesterday, archivedAt: null }),
           createMockTask({ id: 't2', completedAt: null })
         ]
 
-        const result = groupCompletedByPeriod(tasks)
+        // #when
+        const result = getCompletedTodayTasks(tasks)
 
-        expect(result.today).toHaveLength(1)
-      })
-    })
-
-    describe('groupArchivedByMonth', () => {
-      it('should group archived tasks by month', () => {
-        const tasks = [
-          createMockTask({ id: 't1', archivedAt: new Date('2026-01-10') }),
-          createMockTask({ id: 't2', archivedAt: new Date('2026-01-05') }),
-          createMockTask({ id: 't3', archivedAt: new Date('2025-12-15') })
-        ]
-
-        const result = groupArchivedByMonth(tasks)
-
-        expect(result).toHaveLength(2)
-        expect(result[0].monthKey).toBe('2026-01')
-        expect(result[0].tasks).toHaveLength(2)
-        expect(result[1].monthKey).toBe('2025-12')
-        expect(result[1].tasks).toHaveLength(1)
-      })
-
-      it('should format month labels correctly', () => {
-        const tasks = [createMockTask({ id: 't1', archivedAt: new Date('2026-01-10') })]
-
-        const result = groupArchivedByMonth(tasks)
-
-        expect(result[0].label).toBe('January 2026')
-      })
-
-      it('should sort months by most recent first', () => {
-        const tasks = [
-          createMockTask({ id: 't1', archivedAt: new Date('2025-10-10') }),
-          createMockTask({ id: 't2', archivedAt: new Date('2026-01-10') }),
-          createMockTask({ id: 't3', archivedAt: new Date('2025-12-15') })
-        ]
-
-        const result = groupArchivedByMonth(tasks)
-
-        expect(result[0].monthKey).toBe('2026-01')
-        expect(result[1].monthKey).toBe('2025-12')
-        expect(result[2].monthKey).toBe('2025-10')
-      })
-
-      it('should sort tasks within month by archived date (most recent first)', () => {
-        const tasks = [
-          createMockTask({ id: 't1', archivedAt: new Date('2026-01-05') }),
-          createMockTask({ id: 't2', archivedAt: new Date('2026-01-15') }),
-          createMockTask({ id: 't3', archivedAt: new Date('2026-01-10') })
-        ]
-
-        const result = groupArchivedByMonth(tasks)
-
-        expect(result[0].tasks[0].id).toBe('t2')
-        expect(result[0].tasks[1].id).toBe('t3')
-        expect(result[0].tasks[2].id).toBe('t1')
-      })
-
-      it('should return empty array when no archived tasks', () => {
-        const tasks = [createMockTask({ id: 't1', archivedAt: null })]
-
-        const result = groupArchivedByMonth(tasks)
-
-        expect(result).toHaveLength(0)
-      })
-    })
-  })
-
-  // ============================================================================
-  // T088: COMPLETION STATISTICS
-  // ============================================================================
-
-  describe('T088: Completion Statistics', () => {
-    describe('getCompletionStats', () => {
-      it('should count tasks completed today', () => {
-        const tasks = [
-          createMockTask({ id: 't1', completedAt: new Date('2026-01-14T08:00:00Z') }),
-          createMockTask({ id: 't2', completedAt: new Date('2026-01-14T09:00:00Z') }),
-          createMockTask({ id: 't3', completedAt: new Date('2026-01-13T10:00:00Z') })
-        ]
-
-        const stats = getCompletionStats(tasks)
-
-        expect(stats.today).toBe(2)
-      })
-
-      it('should count tasks completed this week (Monday start)', () => {
-        const tasks = [
-          createMockTask({ id: 't1', completedAt: new Date('2026-01-14T08:00:00Z') }),
-          createMockTask({ id: 't2', completedAt: new Date('2026-01-13T08:00:00Z') }),
-          createMockTask({ id: 't3', completedAt: new Date('2026-01-12T08:00:00Z') }),
-          createMockTask({ id: 't4', completedAt: new Date('2026-01-11T08:00:00Z') })
-        ]
-
-        const stats = getCompletionStats(tasks)
-
-        expect(stats.thisWeek).toBe(3)
-      })
-
-      it('should count tasks completed this month', () => {
-        const tasks = [
-          createMockTask({ id: 't1', completedAt: new Date('2026-01-14T08:00:00Z') }),
-          createMockTask({ id: 't2', completedAt: new Date('2026-01-05T08:00:00Z') }),
-          createMockTask({ id: 't3', completedAt: new Date('2026-01-01T08:00:00Z') }),
-          createMockTask({ id: 't4', completedAt: new Date('2025-12-31T08:00:00Z') })
-        ]
-
-        const stats = getCompletionStats(tasks)
-
-        expect(stats.thisMonth).toBe(3)
-      })
-
-      it('should return zeros when no completed tasks', () => {
-        const tasks = [createMockTask({ id: 't1', completedAt: null })]
-
-        const stats = getCompletionStats(tasks)
-
-        expect(stats.today).toBe(0)
-        expect(stats.thisWeek).toBe(0)
-        expect(stats.thisMonth).toBe(0)
-        expect(stats.streak).toBe(0)
-      })
-
-      it('should include streak in stats', () => {
-        const tasks = [
-          createMockTask({ id: 't1', completedAt: new Date('2026-01-14T08:00:00Z') }),
-          createMockTask({ id: 't2', completedAt: new Date('2026-01-13T08:00:00Z') }),
-          createMockTask({ id: 't3', completedAt: new Date('2026-01-12T08:00:00Z') })
-        ]
-
-        const stats = getCompletionStats(tasks)
-
-        expect(stats.streak).toBe(3)
-      })
-    })
-
-    describe('calculateStreak', () => {
-      it('should return 0 when no completed tasks', () => {
-        const streak = calculateStreak([])
-        expect(streak).toBe(0)
-      })
-
-      it('should return 1 for tasks completed only today', () => {
-        const tasks = [createMockTask({ id: 't1', completedAt: new Date('2026-01-14T08:00:00Z') })]
-
-        const streak = calculateStreak(tasks)
-
-        expect(streak).toBe(1)
-      })
-
-      it('should return 1 for tasks completed only yesterday', () => {
-        const tasks = [createMockTask({ id: 't1', completedAt: new Date('2026-01-13T08:00:00Z') })]
-
-        const streak = calculateStreak(tasks)
-
-        expect(streak).toBe(1)
-      })
-
-      it('should count consecutive days from today', () => {
-        const tasks = [
-          createMockTask({ id: 't1', completedAt: new Date('2026-01-14T08:00:00Z') }),
-          createMockTask({ id: 't2', completedAt: new Date('2026-01-13T08:00:00Z') }),
-          createMockTask({ id: 't3', completedAt: new Date('2026-01-12T08:00:00Z') }),
-          createMockTask({ id: 't4', completedAt: new Date('2026-01-11T08:00:00Z') })
-        ]
-
-        const streak = calculateStreak(tasks)
-
-        expect(streak).toBe(4)
-      })
-
-      it('should count consecutive days from yesterday when nothing completed today', () => {
-        const tasks = [
-          createMockTask({ id: 't1', completedAt: new Date('2026-01-13T08:00:00Z') }),
-          createMockTask({ id: 't2', completedAt: new Date('2026-01-12T08:00:00Z') })
-        ]
-
-        const streak = calculateStreak(tasks)
-
-        expect(streak).toBe(2)
-      })
-
-      it('should break streak on gap day', () => {
-        const tasks = [
-          createMockTask({ id: 't1', completedAt: new Date('2026-01-14T08:00:00Z') }),
-          createMockTask({ id: 't2', completedAt: new Date('2026-01-13T08:00:00Z') }),
-          createMockTask({ id: 't3', completedAt: new Date('2026-01-11T08:00:00Z') })
-        ]
-
-        const streak = calculateStreak(tasks)
-
-        expect(streak).toBe(2)
-      })
-
-      it('should return 0 when gap before yesterday', () => {
-        const tasks = [createMockTask({ id: 't1', completedAt: new Date('2026-01-12T08:00:00Z') })]
-
-        const streak = calculateStreak(tasks)
-
-        expect(streak).toBe(0)
-      })
-
-      it('should count multiple completions on same day as one day', () => {
-        const tasks = [
-          createMockTask({ id: 't1', completedAt: new Date('2026-01-14T08:00:00Z') }),
-          createMockTask({ id: 't2', completedAt: new Date('2026-01-14T10:00:00Z') }),
-          createMockTask({ id: 't3', completedAt: new Date('2026-01-14T12:00:00Z') })
-        ]
-
-        const streak = calculateStreak(tasks)
-
-        expect(streak).toBe(1)
-      })
-
-      it('should handle long streaks correctly', () => {
-        const tasks: Task[] = []
-        for (let i = 0; i < 10; i++) {
-          tasks.push(
-            createMockTask({
-              id: `t${i}`,
-              completedAt: subDays(new Date('2026-01-14T08:00:00Z'), i)
-            })
-          )
-        }
-
-        const streak = calculateStreak(tasks)
-
-        expect(streak).toBe(10)
-      })
-    })
-
-    describe('filterCompletedBySearch', () => {
-      it('should return all tasks when query is empty', () => {
-        const tasks = [
-          createMockTask({ id: 't1', title: 'Buy groceries' }),
-          createMockTask({ id: 't2', title: 'Walk the dog' })
-        ]
-
-        const result = filterCompletedBySearch(tasks, '')
-
-        expect(result).toHaveLength(2)
-      })
-
-      it('should return all tasks when query is whitespace', () => {
-        const tasks = [createMockTask({ id: 't1', title: 'Buy groceries' })]
-
-        const result = filterCompletedBySearch(tasks, '   ')
-
-        expect(result).toHaveLength(1)
-      })
-
-      it('should filter tasks by title (case insensitive)', () => {
-        const tasks = [
-          createMockTask({ id: 't1', title: 'Buy groceries' }),
-          createMockTask({ id: 't2', title: 'Walk the dog' }),
-          createMockTask({ id: 't3', title: 'GROCERY shopping' })
-        ]
-
-        const result = filterCompletedBySearch(tasks, 'grocer')
-
-        expect(result).toHaveLength(2)
-        expect(result.map((t) => t.id)).toContain('t1')
-        expect(result.map((t) => t.id)).toContain('t3')
-      })
-
-      it('should handle partial matches', () => {
-        const tasks = [
-          createMockTask({ id: 't1', title: 'Meeting with team' }),
-          createMockTask({ id: 't2', title: 'Team building' })
-        ]
-
-        const result = filterCompletedBySearch(tasks, 'team')
-
-        expect(result).toHaveLength(2)
-      })
-
-      it('should return empty array when no matches', () => {
-        const tasks = [createMockTask({ id: 't1', title: 'Buy groceries' })]
-
-        const result = filterCompletedBySearch(tasks, 'xyz')
-
-        expect(result).toHaveLength(0)
-      })
-    })
-
-    describe('getTasksOlderThan', () => {
-      it('should return tasks completed more than N days ago', () => {
-        const tasks = [
-          createMockTask({ id: 't1', completedAt: new Date('2026-01-14T08:00:00Z') }),
-          createMockTask({ id: 't2', completedAt: new Date('2026-01-07T08:00:00Z') }),
-          createMockTask({ id: 't3', completedAt: new Date('2026-01-01T08:00:00Z') })
-        ]
-
-        const result = getTasksOlderThan(tasks, 7)
-
-        expect(result).toHaveLength(1)
-        expect(result[0].id).toBe('t3')
-      })
-
-      it('should exclude tasks without completedAt', () => {
-        const tasks = [
-          createMockTask({ id: 't1', completedAt: null }),
-          createMockTask({ id: 't2', completedAt: new Date('2026-01-01T08:00:00Z') })
-        ]
-
-        const result = getTasksOlderThan(tasks, 7)
-
-        expect(result).toHaveLength(1)
-      })
-
-      it('should return empty array when all tasks are recent', () => {
-        const tasks = [
-          createMockTask({ id: 't1', completedAt: new Date('2026-01-14T08:00:00Z') }),
-          createMockTask({ id: 't2', completedAt: new Date('2026-01-13T08:00:00Z') })
-        ]
-
-        const result = getTasksOlderThan(tasks, 7)
-
+        // #then
         expect(result).toHaveLength(0)
       })
 
-      it('should handle edge case at exactly N days', () => {
-        const tasks = [createMockTask({ id: 't1', completedAt: new Date('2026-01-07T08:00:00Z') })]
-
-        const result = getTasksOlderThan(tasks, 7)
-
-        expect(result).toHaveLength(0)
+      it('should return empty array for empty input', () => {
+        expect(getCompletedTodayTasks([])).toHaveLength(0)
       })
 
-      it('should work with 0 days (all completed tasks from before today)', () => {
+      it('should exclude subtasks completed today (they stay with their parent)', () => {
+        // #given — subtask and top-level task both completed today
+        const today = new Date()
         const tasks = [
-          createMockTask({ id: 't1', completedAt: new Date('2026-01-14T00:00:00Z') }),
-          createMockTask({ id: 't2', completedAt: new Date('2026-01-13T00:00:00Z') })
+          createMockTask({ id: 't1', completedAt: today, parentId: null }),
+          createMockTask({ id: 'sub-1', completedAt: today, parentId: 't1' })
         ]
 
-        const result = getTasksOlderThan(tasks, 0)
+        // #when
+        const result = getCompletedTodayTasks(tasks)
 
+        // #then — only top-level in Done Today
         expect(result).toHaveLength(1)
-        expect(result[0].id).toBe('t2')
+        expect(result[0].id).toBe('t1')
       })
     })
   })
@@ -5550,6 +5222,136 @@ describe('Task Utils', () => {
         expect(result[0].id).toBe('t2')
         expect(result[1].id).toBe('t1')
       })
+
+      it('should keep completed subtask with active parent (completion=active)', () => {
+        // #given — active parent with a done subtask
+        const parent = createMockTask({
+          id: 'parent-1',
+          title: 'Parent task',
+          projectId: 'project-1',
+          statusId: 'status-todo',
+          parentId: null,
+          subtaskIds: ['sub-1']
+        })
+        const subtask = createMockTask({
+          id: 'sub-1',
+          title: 'Done subtask',
+          projectId: 'project-1',
+          statusId: 'status-done',
+          parentId: 'parent-1',
+          completedAt: new Date('2026-01-13')
+        })
+
+        // #when — filter for active tasks only
+        const filters: TaskFilters = { ...createDefaultFilters(), completion: 'active' }
+        const sort = createDefaultSort()
+        const result = applyFiltersAndSort([parent, subtask], filters, sort, projects)
+
+        // #then — both survive: subtask inherits parent's filter fate
+        expect(result.map((t) => t.id)).toContain('parent-1')
+        expect(result.map((t) => t.id)).toContain('sub-1')
+      })
+
+      it('should remove subtask when parent is filtered out by priority', () => {
+        // #given — low-priority parent with a subtask
+        const parent = createMockTask({
+          id: 'parent-1',
+          title: 'Low prio parent',
+          projectId: 'project-1',
+          statusId: 'status-todo',
+          priority: 'low',
+          parentId: null,
+          subtaskIds: ['sub-1']
+        })
+        const subtask = createMockTask({
+          id: 'sub-1',
+          title: 'Subtask',
+          projectId: 'project-1',
+          statusId: 'status-todo',
+          parentId: 'parent-1'
+        })
+
+        // #when — filter for high priority only
+        const filters: TaskFilters = { ...createDefaultFilters(), priorities: ['high'] }
+        const sort = createDefaultSort()
+        const result = applyFiltersAndSort([parent, subtask], filters, sort, projects)
+
+        // #then — neither survives
+        expect(result).toHaveLength(0)
+      })
+
+      it('should keep all subtasks when done parent passes completion=completed filter', () => {
+        // #given — done parent with an active subtask
+        const parent = createMockTask({
+          id: 'parent-1',
+          title: 'Done parent',
+          projectId: 'project-1',
+          statusId: 'status-done',
+          parentId: null,
+          completedAt: new Date('2026-01-13'),
+          subtaskIds: ['sub-1']
+        })
+        const subtask = createMockTask({
+          id: 'sub-1',
+          title: 'Active subtask under done parent',
+          projectId: 'project-1',
+          statusId: 'status-todo',
+          parentId: 'parent-1'
+        })
+
+        // #when — filter for completed tasks
+        const filters: TaskFilters = { ...createDefaultFilters(), completion: 'completed' }
+        const sort = createDefaultSort()
+        const result = applyFiltersAndSort([parent, subtask], filters, sort, projects)
+
+        // #then — both survive
+        expect(result.map((t) => t.id)).toContain('parent-1')
+        expect(result.map((t) => t.id)).toContain('sub-1')
+      })
+
+      it('should preserve all subtasks for parent with mixed completion (progress counter)', () => {
+        // #given — parent with 3 subtasks: 2 done, 1 active
+        const parent = createMockTask({
+          id: 'parent-1',
+          title: 'Parent with subtasks',
+          projectId: 'project-1',
+          statusId: 'status-todo',
+          parentId: null,
+          subtaskIds: ['sub-1', 'sub-2', 'sub-3']
+        })
+        const sub1 = createMockTask({
+          id: 'sub-1',
+          parentId: 'parent-1',
+          projectId: 'project-1',
+          statusId: 'status-done',
+          completedAt: new Date('2026-01-12')
+        })
+        const sub2 = createMockTask({
+          id: 'sub-2',
+          parentId: 'parent-1',
+          projectId: 'project-1',
+          statusId: 'status-done',
+          completedAt: new Date('2026-01-13')
+        })
+        const sub3 = createMockTask({
+          id: 'sub-3',
+          parentId: 'parent-1',
+          projectId: 'project-1',
+          statusId: 'status-todo'
+        })
+
+        // #when — filter for active tasks
+        const filters: TaskFilters = { ...createDefaultFilters(), completion: 'active' }
+        const sort = createDefaultSort()
+        const result = applyFiltersAndSort([parent, sub1, sub2, sub3], filters, sort, projects)
+
+        // #then — all 4 items present, progress would show 2/3
+        expect(result).toHaveLength(4)
+        expect(result.map((t) => t.id)).toContain('parent-1')
+        expect(result.map((t) => t.id)).toContain('sub-1')
+        expect(result.map((t) => t.id)).toContain('sub-2')
+        expect(result.map((t) => t.id)).toContain('sub-3')
+      })
     })
 
     describe('hasActiveFilters', () => {
@@ -5670,53 +5472,6 @@ describe('Task Utils', () => {
           expect(dueDateGroupConfig.upcoming.label).toBe('UPCOMING')
           expect(dueDateGroupConfig.later.label).toBe('LATER')
           expect(dueDateGroupConfig.noDueDate.label).toBe('NO DUE DATE')
-        })
-      })
-
-      describe('completionGroupConfig', () => {
-        it('should have correct urgency levels', () => {
-          expect(completionGroupConfig.today.urgency).toBe('high')
-          expect(completionGroupConfig.yesterday.urgency).toBe('normal')
-          expect(completionGroupConfig.earlier.urgency).toBe('low')
-        })
-
-        it('should have green accent color for today', () => {
-          expect(completionGroupConfig.today.accentColor).toBe('#10b981')
-        })
-
-        it('should have correct labels', () => {
-          expect(completionGroupConfig.today.label).toBe('TODAY')
-          expect(completionGroupConfig.yesterday.label).toBe('YESTERDAY')
-          expect(completionGroupConfig.earlier.label).toBe('EARLIER')
-        })
-      })
-
-      describe('completionPeriodConfig', () => {
-        it('should have all period keys', () => {
-          expect(completionPeriodConfig.today).toBeDefined()
-          expect(completionPeriodConfig.yesterday).toBeDefined()
-          expect(completionPeriodConfig.earlierThisWeek).toBeDefined()
-          expect(completionPeriodConfig.lastWeek).toBeDefined()
-          expect(completionPeriodConfig.older).toBeDefined()
-        })
-
-        it('should have correct urgency progression', () => {
-          expect(completionPeriodConfig.today.urgency).toBe('high')
-          expect(completionPeriodConfig.yesterday.urgency).toBe('normal')
-          expect(completionPeriodConfig.earlierThisWeek.urgency).toBe('normal')
-          expect(completionPeriodConfig.lastWeek.urgency).toBe('low')
-          expect(completionPeriodConfig.older.urgency).toBe('low')
-        })
-
-        it('should have isMuted for older periods', () => {
-          expect(completionPeriodConfig.lastWeek.isMuted).toBe(true)
-          expect(completionPeriodConfig.older.isMuted).toBe(true)
-        })
-
-        it('should have correct labels', () => {
-          expect(completionPeriodConfig.earlierThisWeek.label).toBe('EARLIER THIS WEEK')
-          expect(completionPeriodConfig.lastWeek.label).toBe('LAST WEEK')
-          expect(completionPeriodConfig.older.label).toBe('OLDER')
         })
       })
     })

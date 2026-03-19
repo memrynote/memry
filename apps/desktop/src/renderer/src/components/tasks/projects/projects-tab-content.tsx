@@ -1,5 +1,5 @@
 import { useMemo, useCallback, useEffect } from 'react'
-import { Plus, FolderKanban } from 'lucide-react'
+import { Plus, FolderKanban } from '@/lib/icons'
 import { Button } from '@/components/ui/button'
 import { TaskList } from '@/components/tasks/task-list'
 import { ProjectSelector } from '@/components/tasks/projects/project-selector'

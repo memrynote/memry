@@ -1,5 +1,5 @@
 import { useRef, useEffect } from 'react'
-import { Folder, CornerDownLeft } from 'lucide-react'
+import { Folder, CornerDownLeft } from '@/lib/icons'
 
 import { cn } from '@/lib/utils'
 import type { Folder as FolderType } from '@/types'

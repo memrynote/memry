@@ -1,4 +1,4 @@
-import { FileText, BookOpen, CheckSquare, Inbox, Trash2 } from 'lucide-react'
+import { FileText, BookOpen, CheckSquare, Inbox, Trash2 } from '@/lib/icons'
 import type { SearchReason } from '@memry/contracts/search-api'
 
 interface RecentReasonsProps {

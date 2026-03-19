@@ -11,8 +11,7 @@ import { useKeyboardShortcuts, type KeyboardShortcut } from './use-keyboard-shor
  * Hook providing all tab-related keyboard shortcuts
  */
 export const useTabKeyboardShortcuts = (): void => {
-  const { state, dispatch, openTab, closeTab, pinTab, unpinTab, splitView, moveTabToNewSplit } =
-    useTabs()
+  const { state, dispatch, openTab, closeTab, pinTab, unpinTab, splitView } = useTabs()
 
   const shortcuts = useMemo<KeyboardShortcut[]>(() => {
     const activeGroup = state.tabGroups[state.activeGroupId]
@@ -180,18 +179,24 @@ export const useTabKeyboardShortcuts = (): void => {
       // SPLIT VIEW
       // =====================================================================
 
-      // Split right (⌘\) - move active tab to new split
+      // Split right (⌘\)
       {
         key: '\\',
         modifiers: { meta: true },
         action: () => {
-          const group = state.tabGroups[state.activeGroupId]
-          const activeTabId = group?.activeTabId
-          if (activeTabId && group && group.tabs.length > 0) {
-            moveTabToNewSplit(activeTabId, state.activeGroupId, 'right')
-          }
+          splitView('horizontal', state.activeGroupId)
         },
-        description: 'Split right with active tab'
+        description: 'Split right'
+      },
+
+      // Split down (⌘⇧\)
+      {
+        key: '\\',
+        modifiers: { meta: true, shift: true },
+        action: () => {
+          splitView('vertical', state.activeGroupId)
+        },
+        description: 'Split down'
       },
 
       // Close split (⌘⌥W)

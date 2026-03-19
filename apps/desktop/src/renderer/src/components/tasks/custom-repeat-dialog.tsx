@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback } from 'react'
-import { CalendarIcon } from 'lucide-react'
+import { CalendarIcon } from '@/lib/icons'
 import { format } from 'date-fns'
 
 import {
@@ -79,7 +79,7 @@ const DayOfWeekPicker = ({ selectedDays, onChange }: DayOfWeekPickerProps): Reac
             onClick={() => handleToggleDay(index)}
             className={cn(
               'flex size-9 items-center justify-center rounded-full text-sm font-medium transition-colors',
-              'border focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1',
+              'border focus:outline-none focus:ring-1 focus:ring-ring focus:ring-offset-1',
               selectedDays.includes(index)
                 ? 'border-primary bg-primary text-primary-foreground'
                 : 'border-border bg-background text-muted-foreground hover:bg-accent hover:text-foreground'

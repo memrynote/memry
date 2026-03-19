@@ -1,5 +1,5 @@
 import { Command } from 'cmdk'
-import { FileText, BookOpen, CheckSquare, Inbox, Calendar, Tag, ExternalLink } from 'lucide-react'
+import { FileText, BookOpen, CheckSquare, Inbox, Calendar, Tag, ExternalLink } from '@/lib/icons'
 import type {
   SearchResultItem as SearchResultItemType,
   ContentType,

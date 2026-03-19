@@ -151,12 +151,12 @@ export function getFileTypeLabel(fileType: FileType): string {
 }
 
 // ============================================================================
-// File Type Icons (for use with Lucide icons)
+// File Type Icons (for use with @/lib/icons)
 // ============================================================================
 
 /**
- * Get the Lucide icon name for a file type
- * Use with: import { FileText, FileType2, Image, Music, Video } from 'lucide-react'
+ * Get the icon name for a file type
+ * Use with: import { FileText, FileType2, Image, Music, Video } from '@/lib/icons'
  */
 export function getFileTypeIconName(fileType: FileType): string {
   const icons: Record<FileType, string> = {

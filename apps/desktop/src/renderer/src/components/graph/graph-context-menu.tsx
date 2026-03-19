@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react'
-import { Focus, ExternalLink, Copy, FilePlus } from 'lucide-react'
+import { Focus, ExternalLink, Copy, FilePlus } from '@/lib/icons'
 import type Graph from 'graphology'
 
 export interface ContextMenuState {
