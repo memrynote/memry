@@ -28,7 +28,7 @@ export async function startChatServer(settings: AIInlineSettings): Promise<numbe
   const model = createLanguageModel(settings)
 
   return new Promise((resolve, reject) => {
-    server = http.createServer(async (req, res) => {
+    server = http.createServer((req, res) => {
       res.setHeader('Access-Control-Allow-Origin', '*')
       res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS')
       res.setHeader('Access-Control-Allow-Headers', 'Content-Type')
@@ -40,7 +40,13 @@ export async function startChatServer(settings: AIInlineSettings): Promise<numbe
       }
 
       if (req.method === 'POST' && req.url === '/api/ai/chat') {
-        await handleChatRequest(req, res, model)
+        handleChatRequest(req, res, model).catch((err) => {
+          logger.error('Unhandled chat request error:', err)
+          if (!res.headersSent) {
+            res.writeHead(500, { 'Content-Type': 'application/json' })
+          }
+          res.end(JSON.stringify({ error: 'Internal server error' }))
+        })
         return
       }
 

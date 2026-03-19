@@ -3237,7 +3237,7 @@ describe('Task Utils', () => {
           expect(result[0].id).toBe('t1')
         })
 
-        it("should include completed tasks in 'all' view when includeCompleted is true (kanban)", () => {
+        it("should still exclude completed tasks in 'all' view even when includeCompleted is true", () => {
           // #given — one incomplete, one completed task
           const tasks = [
             createMockTask({ id: 't1', projectId: 'project-1', statusId: 'status-todo' }),
@@ -3249,16 +3249,15 @@ describe('Task Utils', () => {
             })
           ]
 
-          // #when — includeCompleted=true (for kanban Done column)
+          // #when — 'all' view always returns incomplete only
           const result = getFilteredTasks(tasks, 'all', 'view', projects, true)
 
-          // #then — both tasks returned
-          expect(result).toHaveLength(2)
-          expect(result.map((t) => t.id)).toContain('t1')
-          expect(result.map((t) => t.id)).toContain('t2')
+          // #then — only incomplete tasks returned
+          expect(result).toHaveLength(1)
+          expect(result[0].id).toBe('t1')
         })
 
-        it('should still exclude archived tasks when includeCompleted is true', () => {
+        it('should exclude both archived and completed tasks when includeCompleted is true', () => {
           // #given
           const tasks = [
             createMockTask({ id: 't1', projectId: 'project-1', statusId: 'status-todo' }),
@@ -3279,13 +3278,12 @@ describe('Task Utils', () => {
           // #when
           const result = getFilteredTasks(tasks, 'all', 'view', projects, true)
 
-          // #then — archived excluded, completed included
-          expect(result).toHaveLength(2)
-          expect(result.map((t) => t.id)).toContain('t1')
-          expect(result.map((t) => t.id)).toContain('t2')
+          // #then — both archived and completed excluded
+          expect(result).toHaveLength(1)
+          expect(result[0].id).toBe('t1')
         })
 
-        it('should include subtasks of completed parents when includeCompleted is true', () => {
+        it('should exclude completed parents and their subtasks in all view', () => {
           // #given — completed parent with a subtask
           const tasks = [
             createMockTask({
@@ -3304,13 +3302,11 @@ describe('Task Utils', () => {
             })
           ]
 
-          // #when
+          // #when — 'all' view returns incomplete only
           const result = getFilteredTasks(tasks, 'all', 'view', projects, true)
 
-          // #then — parent + subtask both included
-          expect(result).toHaveLength(2)
-          expect(result.map((t) => t.id)).toContain('parent')
-          expect(result.map((t) => t.id)).toContain('child')
+          // #then — completed parent excluded, subtask not included
+          expect(result).toHaveLength(0)
         })
       })
 

@@ -124,12 +124,12 @@ const getActivatorClientY = (event: Event): number | null => {
     return event.clientY
   }
 
-  if ('touches' in event && event.touches.length > 0) {
-    return event.touches[0]?.clientY ?? null
+  if ('touches' in event && (event as TouchEvent).touches.length > 0) {
+    return (event as TouchEvent).touches[0]?.clientY ?? null
   }
 
-  if ('changedTouches' in event && event.changedTouches.length > 0) {
-    return event.changedTouches[0]?.clientY ?? null
+  if ('changedTouches' in event && (event as TouchEvent).changedTouches.length > 0) {
+    return (event as TouchEvent).changedTouches[0]?.clientY ?? null
   }
 
   return null
