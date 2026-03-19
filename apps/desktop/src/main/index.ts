@@ -14,7 +14,8 @@ import {
 } from 'electron'
 import { join, resolve, normalize } from 'path'
 import { homedir } from 'node:os'
-import { existsSync, readdirSync } from 'node:fs'
+import { existsSync, readdirSync, statSync, createReadStream } from 'node:fs'
+import { lookup as mimeLookup } from 'mime-types'
 import { config } from 'dotenv'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import { registerAllHandlers } from './ipc'
@@ -399,7 +400,6 @@ void app.whenReady().then(async () => {
       return new Response(null, { status: 403, statusText: 'Forbidden' })
     }
 
-    const { existsSync } = await import('fs')
     if (!existsSync(filePath)) {
       // Return empty 1x1 transparent PNG for missing image files (null thumbnails)
       // This avoids console errors and broken image icons
@@ -425,11 +425,9 @@ void app.whenReady().then(async () => {
     }
 
     try {
-      const { statSync, createReadStream } = await import('fs')
-      const { lookup } = await import('mime-types')
       const stats = statSync(filePath)
       const fileSize = stats.size
-      const mimeType = lookup(filePath) || 'application/octet-stream'
+      const mimeType = mimeLookup(filePath) || 'application/octet-stream'
 
       // Check for Range header (needed for video/audio seeking)
       const rangeHeader = request.headers.get('Range')
