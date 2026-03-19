@@ -13,7 +13,6 @@ export { SplitPane } from './split-pane'
 export { TabPane } from './tab-pane'
 export { TabPaneWithDropZones } from './tab-pane-with-drop-zones'
 export { TabContent } from './tab-content'
-export { SinglePaneContent } from './single-pane-content'
 export { EmptyPaneState } from './empty-pane-state'
 
 // UI components

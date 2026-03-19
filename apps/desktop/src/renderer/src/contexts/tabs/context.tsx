@@ -21,7 +21,8 @@ import type {
   TabAction,
   TabSettings,
   OpenTabOptions,
-  SidebarItem
+  SidebarItem,
+  SplitDirection
 } from './types'
 import { tabReducer } from './reducer'
 import { createInitialState, createTabFromSidebarItem } from './helpers'
@@ -163,7 +164,7 @@ interface TabContextType {
   /**
    * Split the view
    */
-  splitView: (direction: 'horizontal', groupId?: string) => void
+  splitView: (direction: SplitDirection, groupId?: string) => void
 
   /**
    * Close a split pane
@@ -173,7 +174,11 @@ interface TabContextType {
   /**
    * Move a tab to a new split
    */
-  moveTabToNewSplit: (tabId: string, fromGroupId: string, direction: 'left' | 'right') => void
+  moveTabToNewSplit: (
+    tabId: string,
+    fromGroupId: string,
+    direction: SplitDirection | 'left' | 'right' | 'up' | 'down'
+  ) => void
 
   /**
    * Update tab settings
@@ -515,7 +520,7 @@ export const TabProvider = ({
     []
   )
 
-  const splitView = useCallback((direction: 'horizontal', groupId?: string) => {
+  const splitView = useCallback((direction: SplitDirection, groupId?: string) => {
     const actualGroupId = groupId ?? activeGroupIdRef.current
     dispatch({
       type: 'SPLIT_VIEW',
@@ -531,7 +536,11 @@ export const TabProvider = ({
   }, [])
 
   const moveTabToNewSplit = useCallback(
-    (tabId: string, fromGroupId: string, direction: 'left' | 'right') => {
+    (
+      tabId: string,
+      fromGroupId: string,
+      direction: SplitDirection | 'left' | 'right' | 'up' | 'down'
+    ) => {
       dispatch({
         type: 'MOVE_TAB_TO_NEW_SPLIT',
         payload: { tabId, fromGroupId, direction }

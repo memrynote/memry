@@ -10,7 +10,7 @@ import type { TabType, TabSettings, SplitLayout } from '@/contexts/tabs/types'
 // =============================================================================
 
 /** Current schema version for migrations */
-export const STORAGE_VERSION = 1
+export const STORAGE_VERSION = 2
 
 /** Storage key for tab state */
 export const STORAGE_KEY = 'memry_tab_state'

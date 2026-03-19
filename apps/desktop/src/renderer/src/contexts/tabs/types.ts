@@ -118,12 +118,23 @@ export interface TabGroup {
 }
 
 /**
+ * Direction of a split between two panes
+ */
+export type SplitDirection = 'horizontal' | 'vertical'
+
+/**
  * Split layout tree structure (recursive)
  * Represents how tab groups are arranged in split views
  */
 export type SplitLayout =
   | { type: 'leaf'; tabGroupId: string }
-  | { type: 'horizontal'; ratio: number; first: SplitLayout; second: SplitLayout }
+  | {
+      type: 'split'
+      direction: SplitDirection
+      ratio: number
+      first: SplitLayout
+      second: SplitLayout
+    }
 
 // =============================================================================
 // TAB SETTINGS
@@ -235,7 +246,7 @@ export type TabAction =
     }
 
   // Split view
-  | { type: 'SPLIT_VIEW'; payload: { direction: 'horizontal'; groupId: string } }
+  | { type: 'SPLIT_VIEW'; payload: { direction: SplitDirection; groupId: string } }
   | { type: 'RESIZE_SPLIT'; payload: { path: number[]; ratio: number } }
   | { type: 'CLOSE_SPLIT'; payload: { groupId: string } }
   | {
@@ -245,7 +256,7 @@ export type TabAction =
         fromGroupId: string
         /** Target group to split (if different from fromGroupId) */
         targetGroupId?: string
-        direction: 'horizontal' | 'left' | 'right'
+        direction: SplitDirection | 'left' | 'right' | 'up' | 'down'
         /** Position of new pane relative to target */
         position?: 'first' | 'second'
       }

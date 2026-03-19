@@ -9,6 +9,7 @@ import { SortableContext, horizontalListSortingStrategy } from '@dnd-kit/sortabl
 import { ChevronLeft, ChevronRight, Bot } from '@/lib/icons'
 import { useAIAgent } from '@/contexts/ai-agent-context'
 import { useTabGroup } from '@/contexts/tabs'
+import { SidebarTrigger } from '@/components/ui/sidebar'
 import { SortableTab } from './sortable-tab'
 import { PinnedTab } from './pinned-tab'
 import { TabBarAction } from './tab-bar-action'
@@ -88,7 +89,7 @@ export const TabBarWithDrag = ({
       <div
         className={cn(
           // Container - align items to bottom for tab merge effect
-          'flex items-end h-full',
+          'drag-region flex items-end shrink-0',
           'bg-transparent',
           'relative',
           // Bottom border that active tabs will overlap
@@ -100,10 +101,15 @@ export const TabBarWithDrag = ({
         aria-orientation="horizontal"
         data-group-id={groupId}
       >
+        {/* Sidebar toggle */}
+        <div className="no-drag flex items-center px-2 self-center">
+          <SidebarTrigger className="text-text-tertiary hover:text-foreground transition-colors duration-150" />
+        </div>
+
         {/* Pinned tabs section (not in sortable context) */}
         {pinnedTabs.length > 0 && (
           <>
-            <div className="flex items-end px-1.5 gap-0.5 pb-0">
+            <div className="no-drag flex items-end px-1.5 gap-0.5 pb-0">
               {pinnedTabs.map((tab) => (
                 <TabContextMenu key={tab.id} tab={tab} groupId={groupId}>
                   <PinnedTab tab={tab} groupId={groupId} isActive={tab.id === group.activeTabId} />
@@ -122,6 +128,7 @@ export const TabBarWithDrag = ({
             type="button"
             onClick={scrollLeft}
             className={cn(
+              'no-drag',
               'flex items-center justify-center w-7 h-[calc(100%-4px)]',
               'bg-gradient-to-r from-muted/95 via-muted/70 to-transparent',
               'hover:from-surface-active/95',
@@ -150,7 +157,7 @@ export const TabBarWithDrag = ({
             items={regularTabs.map((t) => t.id)}
             strategy={horizontalListSortingStrategy}
           >
-            <div className="flex items-end gap-0.5 px-1 pb-0">
+            <div className="no-drag flex items-end gap-0.5 px-1 pb-0">
               {regularTabs.map((tab) => (
                 <SortableTab
                   key={tab.id}
@@ -169,6 +176,7 @@ export const TabBarWithDrag = ({
             type="button"
             onClick={scrollRight}
             className={cn(
+              'no-drag',
               'flex items-center justify-center w-7 h-[calc(100%-4px)]',
               'bg-gradient-to-l from-muted/95 via-muted/70 to-transparent',
               'hover:from-surface-active/95',
@@ -182,7 +190,7 @@ export const TabBarWithDrag = ({
         )}
 
         {/* Tab actions */}
-        <div className="flex items-center px-2 gap-1 mb-1.5 ml-auto self-center">
+        <div className="no-drag flex items-center px-2 gap-1 mb-1.5 ml-auto self-center">
           <TabBarAction
             icon={
               <Bot
