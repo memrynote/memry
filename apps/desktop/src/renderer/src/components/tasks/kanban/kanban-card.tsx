@@ -228,6 +228,7 @@ export const SortableKanbanCard = (props: KanbanCardProps): React.JSX.Element =>
       task: props.task,
       sourceType: 'kanban',
       columnId: props.columnId,
+      sectionId: props.columnId,
       sectionTaskIds: props.sectionTaskIds
     }
   })

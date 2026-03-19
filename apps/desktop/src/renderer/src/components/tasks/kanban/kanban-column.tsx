@@ -71,22 +71,24 @@ export const KanbanColumn = ({
 
   const { dragState } = useDragContext()
 
-  const { setNodeRef, isOver } = useDroppable({
-    id: `column-${column.id}`,
-    data: {
-      type: 'column',
-      columnId: column.id,
-      column: { title: column.title },
-      project: column.project
-    }
-  })
-
   const isDoneColumn = column.statusType === 'done'
   const isDragging = dragState.isDragging
   const hiddenCount =
     isDoneColumn && !showAllDone ? Math.max(0, tasks.length - MAX_VISIBLE_DONE) : 0
   const visibleTasks = isDoneColumn && !showAllDone ? tasks.slice(0, MAX_VISIBLE_DONE) : tasks
   const taskIds = useMemo(() => visibleTasks.map((t) => t.id), [visibleTasks])
+
+  const { setNodeRef, isOver } = useDroppable({
+    id: `column-${column.id}`,
+    data: {
+      type: 'column',
+      columnId: column.id,
+      sectionId: column.id,
+      sectionTaskIds: taskIds,
+      column: { title: column.title },
+      project: column.project
+    }
+  })
 
   const crossColumnOverIndex = useMemo(() => {
     if (!dragState.isDragging || !dragState.overId) return -1
