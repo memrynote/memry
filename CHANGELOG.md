@@ -5,24 +5,44 @@ Format: weekly entries grouped by feature area.
 
 ---
 
-## 2026-03-17 — Tasks Refinement
+## 2026-03-19 — Tasks Refinement
 
 ### Added
+- Add kanban board view with priority and status column drops
+- Add cross-section parent task reordering via drag-drop
+- Add inline status and priority popover editors in task rows
+- Add first-run onboarding wizard
+- Add tags, linkedNoteIds, and junction data to task sync payloads
+- Add status-based grouping and sort field for tasks
+- Add inline done sections with group-by (replace Done tab)
+- Add starred saved filters with Cmd+S shortcut
+- Add day-first date parsing and project names in quick-add input
+- Add repeat indicator to task row variants
 - Add shared task icon library (StatusIcon, PriorityIcon, StatusCircle, SectionDivider)
-- Add task grouping utility and group header components
-- Add starred field to saved filters with Cmd+S save shortcut
+- Add shared UI primitives and extended badge variants
+- Migrate icon library from lucide-react to Hugeicons
 - Add social inbox filing and tweet syndication
+- Hide project badge in single-project view
+
+### Fixed
+- Fix kanban cross-column detection to use pointer position
+- Exclude subtasks from completed-task lists and preserve subtaskIds on complete
+- Fix subtask visibility in Today, Week, and Upcoming views
 
 ### Changed
 - Redesign task rows with Linear-style status indicators and compact layout
 - Replace task detail panel with slide-out drawer
 - Redesign kanban cards with updated badge layout
 - Redesign date picker calendar with extracted DatePickerContent
+- Redesign sidebar with custom nav icons and user profile
+- Redesign tab bar from browser-style to underline indicators
 - Extract filter panels and interactive badges into standalone components
-- Replace sidebar chevron with custom SVG nav separator
 - Simplify virtual list rendering for flat and grouped modes
 - Remove calendar heatmap from journal
 - Migrate hardcoded task colors to CSS custom properties
+- Overhaul seed data with richer demo projects
+- Separate filter and sort persistence keys
+- Extract applyTaskUpdate for simplified derived state
 
 ---
 
