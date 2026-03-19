@@ -51,7 +51,18 @@ export function FirstRunOnboarding({ onComplete }: FirstRunOnboardingProps): Rea
     const title = taskTitle.trim() || 'My first task'
     setIsSubmitting(true)
     try {
-      await tasksService.create({ projectId: 'personal', title })
+      // Resolve a real project ID — use the first existing project, or create a default one
+      const listResult = await tasksService.listProjects()
+      let projectId: string
+      if (listResult.projects.length > 0) {
+        projectId = listResult.projects[0].id
+      } else {
+        const created = await tasksService.createProject({ name: 'Personal', color: '#6366f1' })
+        if (!created.success || !created.project)
+          throw new Error('Failed to create default project')
+        projectId = created.project.id
+      }
+      await tasksService.create({ projectId, title })
     } catch (err) {
       log.warn('Failed to create onboarding task:', err)
     } finally {
