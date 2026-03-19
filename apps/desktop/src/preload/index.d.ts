@@ -2253,6 +2253,7 @@ interface SyncLinkingClientAPI {
 interface AccountClientAPI {
   getInfo: () => Promise<{ email: string | null; joinedAt: number | null }>
   signOut: () => Promise<{ success: boolean; keychainWarning?: string }>
+  getRecoveryKey: () => Promise<{ success: boolean; key?: string; error?: string }>
 }
 
 // Device Management API

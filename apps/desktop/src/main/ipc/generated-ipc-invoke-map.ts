@@ -3,6 +3,14 @@
 
 export interface MainIpcInvokeHandlers {
   'account:getInfo': (...args: []) => Awaited<import('./account-handlers').AccountInfo>
+  'account:getRecoveryKey': (
+    ...args: []
+  ) => Awaited<
+    Promise<
+      | { success: boolean; error: string; key?: undefined }
+      | { success: boolean; key: string; error?: undefined }
+    >
+  >
   'account:signOut': (
     ...args: []
   ) => Awaited<Promise<{ keychainWarning?: string | undefined; success: boolean }>>

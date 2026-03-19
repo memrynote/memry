@@ -17,6 +17,7 @@ import { format } from 'date-fns'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { useAuth } from '@/contexts/auth-context'
 import { useAccountInfo } from '@/hooks/use-account-info'
+import { RecoveryKeyDialog } from '@/components/settings/recovery-key-dialog'
 import type { StorageBreakdownResult } from '@memry/contracts/ipc-sync-ops'
 
 function formatBytes(bytes: number): string {
@@ -30,6 +31,7 @@ export function AccountSettings() {
   const { accountInfo, isLoading: infoLoading } = useAccountInfo()
   const [storage, setStorage] = useState<StorageBreakdownResult | null>(null)
   const [showSignOutDialog, setShowSignOutDialog] = useState(false)
+  const [showRecoveryKey, setShowRecoveryKey] = useState(false)
   const [signingOut, setSigningOut] = useState(false)
 
   useEffect(() => {
@@ -159,7 +161,12 @@ export function AccountSettings() {
                 View your encrypted recovery key after re-authentication
               </p>
             </div>
-            <Button variant="outline" size="sm" className="gap-2" disabled>
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-2"
+              onClick={() => setShowRecoveryKey(true)}
+            >
               <Key className="w-4 h-4" />
               View
             </Button>
@@ -183,6 +190,8 @@ export function AccountSettings() {
           Your notes stay on this device. Sync will stop until you sign in again.
         </p>
       </div>
+
+      <RecoveryKeyDialog open={showRecoveryKey} onOpenChange={setShowRecoveryKey} />
 
       <AlertDialog open={showSignOutDialog} onOpenChange={setShowSignOutDialog}>
         <AlertDialogContent>

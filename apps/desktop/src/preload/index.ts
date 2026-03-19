@@ -1496,7 +1496,8 @@ export const api = {
   // Account API
   account: {
     getInfo: () => invoke(AccountChannels.invoke.GET_INFO),
-    signOut: () => invoke(AccountChannels.invoke.SIGN_OUT)
+    signOut: () => invoke(AccountChannels.invoke.SIGN_OUT),
+    getRecoveryKey: () => invoke(AccountChannels.invoke.GET_RECOVERY_KEY)
   },
 
   // Device Management API
