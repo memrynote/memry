@@ -122,18 +122,16 @@ export const TabPaneWithDropZones = ({
         })
       }
     } else {
-      // Create horizontal split and move tab
-      const direction = 'horizontal'
-      const position = zone === 'left' ? 'first' : 'second'
-
+      const directionMap = { left: 'left', right: 'right', top: 'up', bottom: 'down' } as const
+      const dir = directionMap[zone as keyof typeof directionMap]
       dispatch({
         type: 'MOVE_TAB_TO_NEW_SPLIT',
         payload: {
           tabId,
           fromGroupId,
           targetGroupId: groupId,
-          direction,
-          position
+          direction: dir,
+          position: zone === 'left' || zone === 'top' ? 'first' : 'second'
         }
       })
     }

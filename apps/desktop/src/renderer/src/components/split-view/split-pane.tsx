@@ -106,6 +106,8 @@ export const SplitPane = ({
   return (
     <div
       ref={containerRef}
+      data-testid="split-pane"
+      data-split-direction={direction}
       className={cn(
         'flex h-full w-full',
         isHorizontal ? 'flex-row' : 'flex-col',
