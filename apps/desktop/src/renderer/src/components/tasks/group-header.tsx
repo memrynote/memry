@@ -44,7 +44,7 @@ const getGroupBgColor = (
   const rgb = hexToRgb(color)
   if (!rgb) return undefined
 
-  if (sortField === 'dueDate' || sortField === 'project' || sortField === 'createdAt') {
+  if (sortField === 'project' || sortField === 'createdAt') {
     return `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.10)`
   }
 
@@ -83,9 +83,9 @@ export const GroupHeader = ({
       type="button"
       onClick={onToggle}
       className={cn(
-        'flex items-center w-full py-2 px-6 gap-2 border-b border-border',
+        'flex items-center w-full py-2 px-6 gap-2',
         'cursor-pointer select-none transition-colors',
-        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+        'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring',
         !bgColor && 'bg-foreground/[0.02] hover:bg-foreground/[0.04]'
       )}
       style={

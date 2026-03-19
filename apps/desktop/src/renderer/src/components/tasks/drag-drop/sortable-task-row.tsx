@@ -15,7 +15,6 @@ interface SortableTaskRowProps extends Omit<
   TaskRowProps,
   | 'isDragging'
   | 'isJustDropped'
-  | 'showDragHandle'
   | 'dragHandleListeners'
   | 'dragHandleAttributes'
   | 'insertionIndicatorPosition'
@@ -80,7 +79,6 @@ export const SortableTaskRow = ({
         task={task}
         isDragging={isDragging}
         isJustDropped={isJustDropped}
-        showDragHandle
         dragHandleListeners={listeners}
         dragHandleAttributes={attributes}
         droppedPriority={droppedPriority}

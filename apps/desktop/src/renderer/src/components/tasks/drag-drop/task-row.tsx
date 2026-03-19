@@ -3,7 +3,9 @@ import { useRef, useEffect, useState, memo } from 'react'
 import { cn } from '@/lib/utils'
 import { formatDueDate, formatDateShort, formatTime } from '@/lib/task-utils'
 import { PriorityBars } from '@/components/tasks/task-icons'
-import { InteractiveStatusIcon, StatusIcon } from '@/components/tasks/status-icon'
+import { StatusIcon } from '@/components/tasks/status-icon'
+import { InlineStatusPopover } from '@/components/tasks/inline-status-popover'
+import { InlinePriorityPopover } from '@/components/tasks/inline-priority-popover'
 import { SelectionCheckbox } from '@/components/tasks/bulk-actions'
 import { RepeatIndicator } from '@/components/tasks/repeat-indicator'
 import { InsertionIndicator } from './insertion-indicator'
@@ -31,7 +33,6 @@ interface TaskRowProps {
   accentClass?: string
   isDragging?: boolean
   isJustDropped?: boolean
-  showDragHandle?: boolean
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   dragHandleListeners?: Record<string, any>
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -67,7 +68,6 @@ const arePropsEqual = (prevProps: TaskRowProps, nextProps: TaskRowProps): boolea
   if (prevProps.project.id !== nextProps.project.id) return false
   if (prevProps.isDragging !== nextProps.isDragging) return false
   if (prevProps.isJustDropped !== nextProps.isJustDropped) return false
-  if (prevProps.showDragHandle !== nextProps.showDragHandle) return false
   if (prevProps.droppedPriority !== nextProps.droppedPriority) return false
   if (prevProps.insertionIndicatorPosition !== nextProps.insertionIndicatorPosition) return false
   if (prevProps.sectionDragState !== nextProps.sectionDragState) return false
@@ -94,29 +94,6 @@ const PRIORITY_LABELS: Record<string, string> = {
   none: 'None'
 }
 
-const DragHandleGrip = ({
-  isVisible: _isVisible,
-  className
-}: {
-  isVisible: boolean
-  className?: string
-}): React.JSX.Element => (
-  <div
-    data-testid={_isVisible ? 'overlay-drag-handle' : 'drag-handle'}
-    className={cn('shrink-0 flex items-center justify-center w-5 h-5', className)}
-    aria-label="Drag to reorder"
-  >
-    <svg width="10" height="14" viewBox="0 0 10 14" fill="none" aria-hidden="true">
-      <circle cx="3" cy="3" r="1.5" fill="currentColor" className="text-text-tertiary" />
-      <circle cx="7" cy="3" r="1.5" fill="currentColor" className="text-text-tertiary" />
-      <circle cx="3" cy="7" r="1.5" fill="currentColor" className="text-text-tertiary" />
-      <circle cx="7" cy="7" r="1.5" fill="currentColor" className="text-text-tertiary" />
-      <circle cx="3" cy="11" r="1.5" fill="currentColor" className="text-text-tertiary" />
-      <circle cx="7" cy="11" r="1.5" fill="currentColor" className="text-text-tertiary" />
-    </svg>
-  </div>
-)
-
 const TaskRowComponent = ({
   task,
   project,
@@ -126,7 +103,7 @@ const TaskRowComponent = ({
   isSelected = false,
   showProjectBadge = false,
   onToggleComplete,
-  onUpdateTask: _onUpdateTask,
+  onUpdateTask,
   onClick,
   className,
   isSelectionMode = false,
@@ -136,7 +113,6 @@ const TaskRowComponent = ({
   accentClass: _accentClass,
   isDragging = false,
   isJustDropped = false,
-  showDragHandle = false,
   dragHandleListeners,
   dragHandleAttributes,
   droppedPriority,
@@ -198,16 +174,6 @@ const TaskRowComponent = ({
     }
   }
 
-  const handleToggleComplete = (e: React.MouseEvent): void => {
-    e.stopPropagation()
-    if (!isCompleted) {
-      setIsExiting(true)
-      setTimeout(() => onToggleComplete(task.id), EXIT_ANIMATION_DURATION)
-    } else {
-      onToggleComplete(task.id)
-    }
-  }
-
   const showSelection = !!onToggleSelect
 
   const compactDateLabel = (() => {
@@ -231,6 +197,8 @@ const TaskRowComponent = ({
       tabIndex={isOverlay ? undefined : onClick ? 0 : -1}
       onClick={isOverlay ? undefined : handleRowClick}
       onKeyDown={isOverlay ? undefined : onClick ? handleRowKeyDown : undefined}
+      {...(isOverlay ? {} : dragHandleAttributes)}
+      {...(isOverlay ? {} : dragHandleListeners)}
       className={cn(
         isOverlay
           ? [
@@ -239,19 +207,23 @@ const TaskRowComponent = ({
               '[box-shadow:rgba(0,0,0,0.5)_0px_8px_24px,rgba(76,158,255,0.15)_0px_2px_8px]'
             ]
           : [
-              'group relative flex items-center py-[7px] px-6 gap-3 border-b border-border transition-colors',
-              'hover:bg-accent/50',
-              onClick &&
-                'cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+              'group relative flex items-center py-[7px] px-3 gap-3 transition-colors',
+              'rounded-md hover:bg-accent/60',
+              onClick && 'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring',
+              dragHandleListeners && !isDragging && 'cursor-grab',
+              isDragging &&
+                'cursor-grabbing opacity-[0.35] border-dashed border-primary/30 bg-primary/[0.03]',
+              !isDragging && !dragHandleListeners && onClick && 'cursor-pointer',
               isCheckedForSelection && 'bg-primary/10 hover:bg-primary/15',
-              isSelected && !isCheckedForSelection && 'bg-primary/10 ring-2 ring-primary/30',
+              isSelected &&
+                !isCheckedForSelection &&
+                'bg-primary/10 ring-1 ring-inset ring-primary/30',
               isExiting && 'select-none',
               sectionDragState === 'source-dimmed' && 'opacity-50',
               sectionDragState === 'target-highlighted' && 'bg-primary/[0.04]',
               insertionIndicatorPosition === 'before' && 'pt-1',
               insertionIndicatorPosition === 'after' && 'pb-1',
-              isDragging && 'opacity-[0.35] border-dashed border-primary/30 bg-primary/[0.03]',
-              isJustDropped && 'animate-row-drop-flash'
+              !isDragging && isJustDropped && 'animate-row-drop-flash'
             ],
         className
       )}
@@ -264,24 +236,9 @@ const TaskRowComponent = ({
       {!isOverlay && insertionIndicatorPosition && (
         <InsertionIndicator
           position={insertionIndicatorPosition}
-          className="left-6 right-6"
+          className="left-3 right-3"
           dataTestId="list-drop-indicator"
         />
-      )}
-
-      {showDragHandle && (
-        <div
-          className={cn(
-            isOverlay
-              ? 'cursor-grabbing'
-              : 'cursor-grab opacity-0 group-hover:opacity-100 transition-opacity duration-150',
-            isDragging && !isOverlay && 'opacity-100 cursor-grabbing'
-          )}
-          {...(isOverlay ? {} : dragHandleAttributes)}
-          {...(isOverlay ? {} : dragHandleListeners)}
-        >
-          <DragHandleGrip isVisible={isOverlay} />
-        </div>
       )}
 
       {isSelectionMode && showSelection && (
@@ -298,15 +255,28 @@ const TaskRowComponent = ({
       {isOverlay ? (
         <StatusIcon type={isCompleted ? 'done' : statusType} color={statusColor} size="lg" />
       ) : (
-        <InteractiveStatusIcon
-          type={statusType}
-          color={statusColor}
+        <InlineStatusPopover
+          statusId={task.statusId}
+          statuses={project.statuses}
           isCompleted={isCompleted}
-          onClick={handleToggleComplete}
+          onStatusChange={(statusId) => onUpdateTask?.(task.id, { statusId })}
+          onToggleComplete={() => {
+            setIsExiting(true)
+            setTimeout(() => onToggleComplete(task.id), EXIT_ANIMATION_DURATION)
+          }}
+          disabled={isDragging}
         />
       )}
 
-      <PriorityBars priority={task.priority} />
+      {isOverlay ? (
+        <PriorityBars priority={task.priority} />
+      ) : (
+        <InlinePriorityPopover
+          priority={task.priority}
+          onPriorityChange={(priority) => onUpdateTask?.(task.id, { priority })}
+          disabled={isDragging}
+        />
+      )}
 
       <span
         className={cn(

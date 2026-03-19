@@ -93,7 +93,6 @@ const ListGhostRow = ({
         renderMode="overlay"
         dataTestId={testId}
         overlayWidth={width}
-        showDragHandle
       />
     ) : (
       <TaskRow
@@ -106,7 +105,6 @@ const ListGhostRow = ({
         renderMode="overlay"
         dataTestId={testId}
         overlayWidth={width}
-        showDragHandle
       />
     )
 

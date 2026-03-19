@@ -1,7 +1,7 @@
 import { cn } from '@/lib/utils'
 import { formatDueDate, formatDateShort, formatTime } from '@/lib/task-utils'
-import { PriorityBars } from '@/components/tasks/task-icons'
-import { InteractiveStatusIcon } from '@/components/tasks/status-icon'
+import { InlineStatusPopover } from '@/components/tasks/inline-status-popover'
+import { InlinePriorityPopover } from '@/components/tasks/inline-priority-popover'
 import { SelectionCheckbox } from '@/components/tasks/bulk-actions'
 import { RepeatIndicator } from '@/components/tasks/repeat-indicator'
 import type { Task } from '@/data/sample-tasks'
@@ -55,7 +55,7 @@ export const TaskRow = ({
   isSelected = false,
   showProjectBadge = false,
   onToggleComplete,
-  onUpdateTask: _onUpdateTask,
+  onUpdateTask,
   onClick,
   className,
   isSelectionMode = false,
@@ -65,7 +65,7 @@ export const TaskRow = ({
 }: TaskRowProps): React.JSX.Element => {
   const formattedDate = formatDueDate(task.dueDate, task.dueTime)
   const isOverdue = formattedDate?.status === 'overdue' && !isCompleted
-  const { type: statusType, color: statusColor } = resolveStatus(task, project.statuses)
+  const { color: statusColor } = resolveStatus(task, project.statuses)
 
   const handleRowClick = (e: React.MouseEvent): void => {
     if (e.shiftKey && isSelectionMode && onShiftSelect) {
@@ -92,11 +92,6 @@ export const TaskRow = ({
     }
   }
 
-  const handleToggleClick = (e: React.MouseEvent): void => {
-    e.stopPropagation()
-    onToggleComplete(task.id)
-  }
-
   const showSelection = !!onToggleSelect
 
   const compactDateLabel = (() => {
@@ -119,12 +114,12 @@ export const TaskRow = ({
       onClick={handleRowClick}
       onKeyDown={onClick ? handleRowKeyDown : undefined}
       className={cn(
-        'group flex items-center py-[7px] px-6 gap-3 border-b border-border transition-colors',
-        'hover:bg-accent/50',
+        'group flex items-center py-[7px] px-6 gap-3 transition-colors',
+        'rounded-md hover:bg-accent/60',
         onClick &&
-          'cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+          'cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring',
         isCheckedForSelection && 'bg-primary/10 hover:bg-primary/15',
-        isSelected && !isCheckedForSelection && 'bg-primary/10 ring-2 ring-primary/30',
+        isSelected && !isCheckedForSelection && 'bg-primary/10 ring-1 ring-inset ring-primary/30',
         className
       )}
       aria-label={`Task: ${task.title}${isCompleted ? ', completed' : ''}`}
@@ -140,14 +135,18 @@ export const TaskRow = ({
         </div>
       )}
 
-      <InteractiveStatusIcon
-        type={statusType}
-        color={statusColor}
+      <InlineStatusPopover
+        statusId={task.statusId}
+        statuses={project.statuses}
         isCompleted={isCompleted}
-        onClick={handleToggleClick}
+        onStatusChange={(statusId) => onUpdateTask?.(task.id, { statusId })}
+        onToggleComplete={() => onToggleComplete(task.id)}
       />
 
-      <PriorityBars priority={task.priority} />
+      <InlinePriorityPopover
+        priority={task.priority}
+        onPriorityChange={(priority) => onUpdateTask?.(task.id, { priority })}
+      />
 
       <span
         className={cn(
