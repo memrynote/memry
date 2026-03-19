@@ -40,6 +40,7 @@ export * from './use-new-note-shortcut'
 
 // Undo
 export * from './use-undo'
+export * from './use-undoable-task-actions'
 
 // Bookmarks
 export * from './use-bookmarks'
