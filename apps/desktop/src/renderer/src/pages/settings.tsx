@@ -12,7 +12,8 @@ import {
   PenLine,
   Plug,
   Tags,
-  ListChecks
+  ListChecks,
+  Key
 } from '@/lib/icons'
 import { cn } from '@/lib/utils'
 import { GeneralSettings } from './settings/general-section'
@@ -26,6 +27,7 @@ import { SyncSettings } from './settings/sync-section'
 import { IntegrationsSettings } from './settings/integrations-section'
 import { TagsSettings } from './settings/tags-section'
 import { TasksSettings } from './settings/tasks-section'
+import { ShortcutsSettings } from './settings/shortcuts-section'
 
 type SettingsSection =
   | 'general'
@@ -39,6 +41,7 @@ type SettingsSection =
   | 'sync'
   | 'integrations'
   | 'tags'
+  | 'shortcuts'
 
 export function SettingsPage() {
   const [activeSection, setActiveSection] = useState<SettingsSection>(() => {
@@ -136,6 +139,12 @@ export function SettingsPage() {
             isActive={activeSection === 'tags'}
             onClick={() => setActiveSection('tags')}
           />
+          <SettingsNavItem
+            icon={<Key className="w-4 h-4" />}
+            label="Shortcuts"
+            isActive={activeSection === 'shortcuts'}
+            onClick={() => setActiveSection('shortcuts')}
+          />
         </nav>
       </div>
 
@@ -154,6 +163,7 @@ export function SettingsPage() {
             {activeSection === 'sync' && <SyncSettings />}
             {activeSection === 'integrations' && <IntegrationsSettings />}
             {activeSection === 'tags' && <TagsSettings />}
+            {activeSection === 'shortcuts' && <ShortcutsSettings />}
           </div>
         </ScrollArea>
       </div>
