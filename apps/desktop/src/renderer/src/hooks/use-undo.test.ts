@@ -373,6 +373,77 @@ describe('useUndoKeyboardShortcut', () => {
 })
 
 // ============================================================================
+// removeUndoEntry Tests
+// ============================================================================
+
+describe('removeUndoEntry', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('should remove a specific entry by ID', () => {
+    const { result } = renderHook(() => useUndoTracker())
+    const undoFn1 = vi.fn()
+    const undoFn2 = vi.fn()
+
+    let id1 = ''
+    act(() => {
+      id1 = result.current.registerUndo('Action 1', undoFn1)
+      result.current.registerUndo('Action 2', undoFn2)
+    })
+
+    // #when — remove the first entry
+    act(() => {
+      result.current.removeUndoEntry(id1)
+    })
+
+    // #then — only undoFn2 remains; undoing should call it
+    act(() => {
+      result.current.undo()
+    })
+    expect(undoFn2).toHaveBeenCalledTimes(1)
+    expect(undoFn1).not.toHaveBeenCalled()
+  })
+
+  it('should be a no-op for non-existent ID', () => {
+    const { result } = renderHook(() => useUndoTracker())
+    const undoFn = vi.fn()
+
+    act(() => {
+      result.current.registerUndo('Action', undoFn)
+    })
+
+    // #when — remove non-existent ID
+    act(() => {
+      result.current.removeUndoEntry('undo-does-not-exist')
+    })
+
+    // #then — original entry still works (verify by executing undo)
+    act(() => {
+      result.current.undo()
+    })
+    expect(undoFn).toHaveBeenCalledTimes(1)
+  })
+
+  it('should update canUndo when last entry is removed', () => {
+    const { result } = renderHook(() => useUndoTracker())
+
+    let id = ''
+    act(() => {
+      id = result.current.registerUndo('Only action', vi.fn())
+    })
+
+    act(() => {
+      result.current.removeUndoEntry(id)
+    })
+
+    // #then — fresh hook read sees empty stack
+    const { result: freshResult } = renderHook(() => useUndoTracker())
+    expect(freshResult.current.canUndo).toBe(false)
+  })
+})
+
+// ============================================================================
 // createUndoableAction Tests
 // ============================================================================
 

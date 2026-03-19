@@ -98,6 +98,18 @@ function popUndoEntry(): UndoEntry | undefined {
   return entry
 }
 
+function removeUndoEntryById(id: string): boolean {
+  const idx = globalUndoStack.findIndex((entry) => entry.id === id)
+  if (idx === -1) return false
+
+  globalUndoStack.splice(idx, 1)
+  if (globalUndoStack.length === 0) {
+    stopCleanupInterval()
+  }
+  notifyListeners()
+  return true
+}
+
 function getLastUndoEntry(): UndoEntry | undefined {
   // Filter out expired entries
   const now = Date.now()
@@ -115,6 +127,8 @@ function getLastUndoEntry(): UndoEntry | undefined {
 interface UseUndoTrackerReturn {
   /** Register an undo action */
   registerUndo: (description: string, undoFn: () => void) => string
+  /** Remove a specific undo entry by ID (prevents double-fire from toast + Cmd+Z) */
+  removeUndoEntry: (id: string) => void
   /** Execute the last undo action */
   undo: () => boolean
   /** Whether there's an action that can be undone */
@@ -146,6 +160,10 @@ export const useUndoTracker = (): UseUndoTrackerReturn => {
     return pushUndoEntry({ description, undoFn })
   }, [])
 
+  const removeUndoEntry = useCallback((id: string): void => {
+    removeUndoEntryById(id)
+  }, [])
+
   const undo = useCallback((): boolean => {
     const entry = popUndoEntry()
     if (!entry) {
@@ -168,6 +186,7 @@ export const useUndoTracker = (): UseUndoTrackerReturn => {
 
   return {
     registerUndo,
+    removeUndoEntry,
     undo,
     canUndo: !!lastEntry,
     lastActionDescription: lastEntry?.description ?? null
