@@ -167,24 +167,23 @@ const AppContent = (): React.JSX.Element => {
     <TabDragProvider>
       {/* Header with Tab Bar(s) - Browser-style tabs */}
       <header
-        className="drag-region flex h-11 shrink-0 items-center relative overflow-hidden
+        className="drag-region flex shrink-0 items-center relative overflow-hidden
           bg-muted"
       >
         {/* Sidebar trigger with refined styling */}
-        <div className="flex items-center gap-2.5 px-3 h-full shrink-0">
+        <div className="flex items-center px-3 shrink-0">
           <SidebarTrigger className="-ml-1 no-drag text-text-tertiary hover:text-foreground transition-colors duration-150" />
-          <Separator orientation="vertical" className="mr-2 h-5 bg-border/70" />
         </div>
 
         {/* Tab Bar(s) - single or split with smooth transitions */}
         {isSplitView ? (
           // Split view: show tab bars side by side with refined divider
-          <div className="flex-1 flex h-full">
+          <div className="flex-1 flex">
             {orderedGroupWidths.map(({ groupId, width }, index) => (
               <div
                 key={groupId}
                 style={{ width: `${width}%` }}
-                className={`h-full overflow-hidden shrink-0 transition-all duration-200 ease-out ${
+                className={`overflow-hidden shrink-0 transition-all duration-200 ease-out ${
                   index > 0 ? 'border-l border-border/60' : ''
                 }`}
               >
@@ -193,8 +192,7 @@ const AppContent = (): React.JSX.Element => {
             ))}
           </div>
         ) : (
-          // Single pane: show one tab bar
-          <div className="flex-1 h-full overflow-hidden">
+          <div className="flex-1 overflow-hidden">
             <TabBarWithDrag groupId={activeGroupId} />
           </div>
         )}
