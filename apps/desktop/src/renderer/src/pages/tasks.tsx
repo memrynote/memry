@@ -7,7 +7,6 @@ import { ProjectsTabContent } from '@/components/tasks/projects/projects-tab-con
 import { ProjectSelector } from '@/components/tasks/projects/project-selector'
 import { AddTaskModal } from '@/components/tasks/add-task-modal'
 import { ProjectModal } from '@/components/tasks/project-modal'
-import { CalendarView } from '@/components/tasks/calendar'
 import { KanbanBoard } from '@/components/tasks/kanban'
 import { QuickAddInput } from '@/components/tasks/quick-add-input'
 import { TaskDetailDrawer } from '@/components/tasks/task-detail-drawer'
@@ -281,7 +280,7 @@ export const TasksPage = ({
     if (activeInternalTab === 'today') {
       return ['list']
     }
-    return ['list', 'kanban', 'calendar']
+    return ['list', 'kanban']
   }, [activeInternalTab])
 
   // Reset to list view if current view becomes unavailable
@@ -719,21 +718,6 @@ export const TasksPage = ({
     [undoable]
   )
 
-  const handleAddTaskWithDate = useCallback(
-    (date: Date): void => {
-      const projectId = resolveModalDefaultProject(
-        { selectedType, selectedProject },
-        taskPrefs.defaultProjectId,
-        selectedProjectId
-      )
-      setAddTaskPrefillProjectId(projectId)
-      setAddTaskPrefillDueDate(date)
-      setAddTaskPrefillTitle('')
-      setIsAddTaskModalOpen(true)
-    },
-    [selectedProject, selectedType, selectedProjectId, taskPrefs.defaultProjectId]
-  )
-
   // ========== BULK ACTION HANDLERS ==========
 
   const handleBulkChangePriority = useCallback(
@@ -992,34 +976,6 @@ export const TasksPage = ({
                     </svg>
                   </button>
                 )}
-                {availableViews.includes('calendar') && (
-                  <button
-                    type="button"
-                    role="radio"
-                    aria-checked={activeView === 'calendar'}
-                    aria-label="Calendar view"
-                    onClick={() => setActiveView('calendar')}
-                    className={cn(
-                      'flex items-center justify-center w-[26px] h-6 shrink-0 transition-colors',
-                      activeView === 'calendar'
-                        ? 'bg-foreground/10 text-foreground'
-                        : 'text-text-tertiary hover:text-text-secondary'
-                    )}
-                  >
-                    <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
-                      <rect
-                        x="1.5"
-                        y="2.5"
-                        width="10"
-                        height="8.5"
-                        rx="1.25"
-                        stroke="currentColor"
-                      />
-                      <path d="M1.5 5h10" stroke="currentColor" />
-                      <path d="M4 1.5v2M9 1.5v2" stroke="currentColor" strokeLinecap="round" />
-                    </svg>
-                  </button>
-                )}
               </div>
             )}
           </div>
@@ -1138,25 +1094,6 @@ export const TasksPage = ({
                 onToggleComplete={handleToggleComplete}
                 onTaskClick={handleTaskClick}
                 onQuickAdd={handleKanbanQuickAdd}
-                isSelectionMode={selection.isSelectionMode}
-                selectedIds={selection.selectedIds}
-                onToggleSelect={toggleTask}
-              />
-            </div>
-          )}
-
-          {/* Calendar View - All Tab */}
-          {activeInternalTab === 'all' && activeView === 'calendar' && (
-            <div className="flex flex-1 flex-col overflow-hidden">
-              <CalendarView
-                tasks={filteredTasks}
-                projects={projects}
-                selectedId="all"
-                selectedType="view"
-                onUpdateTask={handleUpdateTask}
-                onAddTaskWithDate={handleAddTaskWithDate}
-                onToggleComplete={handleToggleComplete}
-                onTaskClick={handleTaskClick}
                 isSelectionMode={selection.isSelectionMode}
                 selectedIds={selection.selectedIds}
                 onToggleSelect={toggleTask}
