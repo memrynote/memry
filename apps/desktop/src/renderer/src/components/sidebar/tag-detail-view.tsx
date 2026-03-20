@@ -49,6 +49,8 @@ import { COLOR_NAMES, getTagColors } from '@/components/note/tags-row/tag-colors
 import { tagsService, type TagNoteItem } from '@/services/tags-service'
 import type { SidebarItem } from '@/contexts/tabs/types'
 import { createLogger } from '@/lib/logger'
+import { toast } from 'sonner'
+import { extractErrorMessage } from '@/lib/ipc-error'
 
 const log = createLogger('Component:TagDetailView')
 
@@ -319,6 +321,7 @@ function TagOverflowMenu({ tag, color }: TagOverflowMenuProps): React.JSX.Elemen
       }
     } catch (error) {
       log.error('Failed to update tag color', error)
+      toast.error(extractErrorMessage(error, 'Failed to update tag color'))
     } finally {
       setIsUpdatingColor(false)
     }

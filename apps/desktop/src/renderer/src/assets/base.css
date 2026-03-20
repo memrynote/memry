@@ -1210,6 +1210,7 @@ del.bn-inline-content {
   /* ===== FONT FAMILIES ===== */
   --font-sans: var(--font-sans);
   --font-serif: var(--font-serif);
+  --font-heading: var(--font-heading);
 
   /* ===== BASE COLORS ===== */
   --color-background: var(--background);

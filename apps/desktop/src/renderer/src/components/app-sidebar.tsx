@@ -172,6 +172,7 @@ function AppSidebarInner({ currentPage, viewCounts, ...props }: AppSidebarProps)
       }
     } catch (error) {
       log.error('Failed to create new note', error)
+      toast.error(extractErrorMessage(error, 'Failed to create note'))
     }
   }, [openTab])
 

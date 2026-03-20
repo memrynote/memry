@@ -32,7 +32,7 @@ import { useNoteTagsQuery } from '@/hooks/use-notes-query'
 import { usePropertySection } from '@/hooks/use-property-section'
 import { useTemplates } from '@/hooks/use-templates'
 import { useJournalSettings } from '@/hooks/use-journal-settings'
-import { useNoteEditorSettings } from '@/hooks/use-note-editor-settings'
+import { useEditorSettings } from '@/hooks/use-editor-settings'
 import { ExportDialog } from '@/components/note/export-dialog'
 import { VersionHistory } from '@/components/note/version-history'
 import { toast } from 'sonner'
@@ -157,7 +157,7 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
   } = useJournalSettings()
 
   // Editor settings
-  const { settings: editorSettings } = useNoteEditorSettings()
+  const { settings: editorSettings } = useEditorSettings()
 
   // Bookmark state - use entry.id (e.g., "j2026-01-13") to match notes_cache lookup
   const { isBookmarked, toggle: toggleBookmark } = useIsBookmarked('journal', entry?.id ?? '')

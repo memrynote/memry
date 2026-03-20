@@ -43,6 +43,8 @@ import { cn } from '@/lib/utils'
 import { DEFAULT_COLUMNS } from '@memry/contracts/folder-view-api'
 import type { ViewConfig } from '@/hooks/use-folder-view'
 import { createLogger } from '@/lib/logger'
+import { toast } from 'sonner'
+import { extractErrorMessage } from '@/lib/ipc-error'
 
 const log = createLogger('Component:ViewSwitcher')
 
@@ -144,7 +146,7 @@ export function ViewSwitcher({
       setCopyFromCurrent(true)
     } catch (err) {
       log.error('Failed to create view', err)
-      // Keep dialog open on error so user can retry
+      toast.error(extractErrorMessage(err, 'Failed to create view'))
     } finally {
       setIsSubmitting(false)
     }

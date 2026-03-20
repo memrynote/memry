@@ -29,6 +29,8 @@ import { evaluateFormula, getBuiltInFunctions } from '@/lib/expression-evaluator
 import { useAutocomplete, type AutocompleteSuggestion } from '@/hooks/use-autocomplete'
 import type { NoteWithProperties } from '@memry/contracts/folder-view-api'
 import { createLogger } from '@/lib/logger'
+import { toast } from 'sonner'
+import { extractErrorMessage } from '@/lib/ipc-error'
 
 const log = createLogger('Component:FormulaEditorModal')
 
@@ -326,6 +328,7 @@ export function FormulaEditorModal({
       handleOpenChange(false)
     } catch (err) {
       log.error('Failed to save formula', err)
+      toast.error(extractErrorMessage(err, 'Failed to save formula'))
     } finally {
       setIsSubmitting(false)
     }

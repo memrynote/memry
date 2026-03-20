@@ -79,6 +79,8 @@ export interface ContentAreaProps {
   autoFocus?: boolean
   /** Whether to show sticky formatting toolbar (always visible above editor) */
   stickyToolbar?: boolean
+  /** Whether to enable browser spell checking in the editor */
+  spellCheck?: boolean
   /** Callback when content changes (returns blocks) */
   onContentChange?: (blocks: Block[]) => void
   /** Callback when content changes (returns markdown string) */

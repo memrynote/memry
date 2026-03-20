@@ -25,6 +25,8 @@ import {
 import type { NoteWithProperties } from '@memry/contracts/folder-view-api'
 import { notesService } from '@/services/notes-service'
 import { createLogger } from '@/lib/logger'
+import { toast } from 'sonner'
+import { extractErrorMessage } from '@/lib/ipc-error'
 
 const log = createLogger('Component:RowContextMenu')
 
@@ -80,6 +82,7 @@ export function RowContextMenu({
       await notesService.openExternal(note.id)
     } catch (err) {
       log.error('Failed to open in external editor', err)
+      toast.error(extractErrorMessage(err, 'Failed to open in external editor'))
     }
   }
 
@@ -88,6 +91,7 @@ export function RowContextMenu({
       await notesService.revealInFinder(note.id)
     } catch (err) {
       log.error('Failed to reveal in Finder', err)
+      toast.error(extractErrorMessage(err, 'Failed to reveal in Finder'))
     }
   }
 
@@ -105,11 +109,11 @@ export function RowContextMenu({
 
   const handleCopyLink = async (): Promise<void> => {
     try {
-      // Copy memry:// link to clipboard
       const link = `memry://note/${note.id}`
       await navigator.clipboard.writeText(link)
     } catch (err) {
       log.error('Failed to copy link', err)
+      toast.error(extractErrorMessage(err, 'Failed to copy link'))
     }
   }
 

@@ -724,6 +724,7 @@ export function NotesTree({ onActionsReady, onTargetFolderChange }: NotesTreePro
       }
     } catch (err) {
       log.error('Failed to create note', err)
+      toast.error(extractErrorMessage(err, 'Failed to create note'))
     } finally {
       setIsCreating(false)
     }
@@ -811,6 +812,7 @@ export function NotesTree({ onActionsReady, onTargetFolderChange }: NotesTreePro
       }
     } catch (err) {
       log.error('Failed to create folder', err)
+      toast.error(extractErrorMessage(err, 'Failed to create folder'))
     } finally {
       setIsCreatingFolder(false)
     }
@@ -879,6 +881,7 @@ export function NotesTree({ onActionsReady, onTargetFolderChange }: NotesTreePro
         }
       } catch (err) {
         log.error('Failed to create note', err)
+        toast.error(extractErrorMessage(err, 'Failed to create note'))
       } finally {
         setIsCreating(false)
       }
@@ -910,6 +913,7 @@ export function NotesTree({ onActionsReady, onTargetFolderChange }: NotesTreePro
         }
       } catch (err) {
         log.error('Failed to create folder', err)
+        toast.error(extractErrorMessage(err, 'Failed to create folder'))
       } finally {
         setIsCreatingFolder(false)
       }
@@ -979,6 +983,7 @@ export function NotesTree({ onActionsReady, onTargetFolderChange }: NotesTreePro
       } catch (err) {
         log.error('Failed to rename note', err)
         revertOptimisticTitle(noteId)
+        toast.error(extractErrorMessage(err, 'Failed to rename note'))
       } finally {
         setIsRenaming(false)
         setRenamingNoteId(null)
@@ -1032,6 +1037,7 @@ export function NotesTree({ onActionsReady, onTargetFolderChange }: NotesTreePro
         await refreshFolders()
       } catch (err) {
         log.error('Failed to rename folder', err)
+        toast.error(extractErrorMessage(err, 'Failed to rename folder'))
       } finally {
         setIsFolderRenaming(false)
         setRenamingFolderPath(null)
