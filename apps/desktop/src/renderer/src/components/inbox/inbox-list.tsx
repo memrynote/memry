@@ -20,16 +20,22 @@ import {
   AlertCircle,
   RotateCcw,
   Bell,
-  CheckCircle2
+  CheckCircle2,
+  Video
 } from '@/lib/icons'
 import type { ReminderMetadata } from '@memry/contracts/inbox-api'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Button } from '@/components/ui/button'
+import { Pill } from '@/components/ui/pill'
 import { QuickActions } from '@/components/quick-actions'
 import { InlineQuickFile } from '@/components/inline-quick-file'
 import { QuickFileDropdown, getFilteredFolders } from '@/components/quick-file-dropdown'
-import { SnoozeCountdown } from '@/components/snooze'
-import { formatTimestamp, formatDuration, type TimePeriod } from '@/lib/inbox-utils'
+import {
+  formatDuration,
+  formatCompactRelativeTime,
+  extractDomain,
+  type TimePeriod
+} from '@/lib/inbox-utils'
 import { cn } from '@/lib/utils'
 import {
   type DisplayDensity,
@@ -64,40 +70,84 @@ function useInboxList() {
 }
 
 // ============================================================================
-// Type Icon - matches the inbox item type
+// Type Icon Colors — distinct color per capture type
+// ============================================================================
+
+const TYPE_ICON_COLORS: Record<string, string> = {
+  link: 'text-indigo-500 dark:text-indigo-400',
+  voice: 'text-amber-500 dark:text-amber-400',
+  image: 'text-emerald-500 dark:text-emerald-400',
+  clip: 'text-purple-400 dark:text-purple-300',
+  note: 'text-muted-foreground/60',
+  pdf: 'text-red-500 dark:text-red-400',
+  social: 'text-sky-400 dark:text-sky-300',
+  video: 'text-sky-500 dark:text-sky-400',
+  reminder: 'text-amber-500 dark:text-amber-400'
+}
+
+// ============================================================================
+// Type Icon - colored per capture type with transcription awareness
 // ============================================================================
 
 interface TypeIconProps {
   type: InboxItemType
   isViewed?: boolean
+  transcriptionStatus?: string | null
 }
 
-const TypeIcon = ({ type, isViewed }: TypeIconProps): React.JSX.Element => {
-  const iconClass = 'w-4 h-4 text-muted-foreground/60'
+const TypeIcon = ({ type, isViewed, transcriptionStatus }: TypeIconProps): React.JSX.Element => {
+  const iconSize = 'w-3.5 h-3.5'
+
+  if (type === 'voice') {
+    if (transcriptionStatus === 'pending' || transcriptionStatus === 'processing') {
+      return (
+        <Loader2
+          className={cn(iconSize, 'text-amber-500 dark:text-amber-400 animate-spin')}
+          aria-hidden="true"
+        />
+      )
+    }
+    if (transcriptionStatus === 'failed') {
+      return (
+        <AlertCircle
+          className={cn(iconSize, 'text-red-500 dark:text-red-400')}
+          aria-hidden="true"
+        />
+      )
+    }
+    return <Mic className={cn(iconSize, TYPE_ICON_COLORS.voice)} aria-hidden="true" />
+  }
+
+  if (type === 'reminder') {
+    return isViewed ? (
+      <CheckCircle2
+        className={cn(iconSize, 'text-emerald-500/70 dark:text-emerald-400/70')}
+        aria-hidden="true"
+      />
+    ) : (
+      <Bell className={cn(iconSize, TYPE_ICON_COLORS.reminder)} aria-hidden="true" />
+    )
+  }
+
+  const color = TYPE_ICON_COLORS[type] || TYPE_ICON_COLORS.note
 
   switch (type) {
     case 'link':
-      return <Link className={iconClass} aria-hidden="true" />
+      return <Link className={cn(iconSize, color)} aria-hidden="true" />
     case 'note':
-      return <FileText className={iconClass} aria-hidden="true" />
+      return <FileText className={cn(iconSize, color)} aria-hidden="true" />
     case 'image':
-      return <Image className={iconClass} aria-hidden="true" />
-    case 'voice':
-      return <Mic className={iconClass} aria-hidden="true" />
+      return <Image className={cn(iconSize, color)} aria-hidden="true" />
     case 'clip':
-      return <Scissors className={iconClass} aria-hidden="true" />
+      return <Scissors className={cn(iconSize, color)} aria-hidden="true" />
     case 'pdf':
-      return <FileIcon className={iconClass} aria-hidden="true" />
+      return <FileIcon className={cn(iconSize, color)} aria-hidden="true" />
     case 'social':
-      return <Share2 className={iconClass} aria-hidden="true" />
-    case 'reminder':
-      return isViewed ? (
-        <CheckCircle2 className="w-4 h-4 text-green-500/70" aria-hidden="true" />
-      ) : (
-        <Bell className="w-4 h-4 text-amber-500" aria-hidden="true" />
-      )
+      return <Share2 className={cn(iconSize, color)} aria-hidden="true" />
+    case 'video':
+      return <Video className={cn(iconSize, color)} aria-hidden="true" />
     default:
-      return <FileText className={iconClass} aria-hidden="true" />
+      return <FileText className={cn(iconSize, TYPE_ICON_COLORS.note)} aria-hidden="true" />
   }
 }
 
@@ -242,6 +292,8 @@ export function InboxListSection({
   const isInBulkMode = selectedIds.size > 0
   const densityConfig = DENSITY_CONFIG[density]
 
+  const formattedTitle = title.charAt(0).toUpperCase() + title.slice(1).toLowerCase()
+
   return (
     <InboxListContext.Provider
       value={{ selectedIds, focusedId, isInBulkMode, densityConfig, onSelect, onFocus }}
@@ -254,8 +306,7 @@ export function InboxListSection({
           type="button"
           onClick={() => collapsible && setIsCollapsed(!isCollapsed)}
           className={cn(
-            'flex items-center gap-2 w-full text-left',
-            densityConfig.sectionHeaderMargin,
+            'flex items-center gap-1.5 w-full text-left py-2 px-2',
             collapsible && 'cursor-pointer group'
           )}
           disabled={!collapsible}
@@ -264,32 +315,28 @@ export function InboxListSection({
           {collapsible && (
             <ChevronRight
               className={cn(
-                'w-3.5 h-3.5 text-muted-foreground/40 transition-transform duration-200',
-                'group-hover:text-amber-600 dark:group-hover:text-amber-500',
+                'w-2.5 h-2.5 text-muted-foreground/40 transition-transform duration-200',
                 !isCollapsed && 'rotate-90'
               )}
             />
           )}
-          {icon && <span className="text-amber-600 dark:text-amber-500">{icon}</span>}
-          <h3
+          {icon && <span>{icon}</span>}
+          <span
             className={cn(
-              densityConfig.sectionTitleSize,
-              'font-semibold uppercase tracking-wider text-muted-foreground/60',
-              collapsible && 'group-hover:text-amber-600 dark:group-hover:text-amber-500',
+              'text-xs font-semibold tracking-[0.02em] text-muted-foreground',
               'transition-colors'
             )}
           >
-            {title}
-          </h3>
+            {formattedTitle}
+          </span>
           {count !== undefined && (
-            <span className={cn(densityConfig.metaSize, 'text-muted-foreground/40 tabular-nums')}>
+            <span className="text-[11px] leading-[14px] text-muted-foreground/40 tabular-nums">
               {count}
             </span>
           )}
-          <div className="flex-1 h-px bg-gradient-to-r from-amber-200/30 dark:from-amber-800/30 to-transparent" />
         </button>
 
-        {!isCollapsed && <div className="space-y-0.5">{children}</div>}
+        {!isCollapsed && <div className="space-y-px">{children}</div>}
       </section>
     </InboxListContext.Provider>
   )
@@ -379,24 +426,21 @@ export function InboxListItem({
       className={cn(
         'group relative w-full',
         'flex items-center',
-        densityConfig.itemGap,
+        'gap-2.5',
         densityConfig.itemPadding,
         densityConfig.itemRadius,
         'transition-all duration-150 ease-out',
         'cursor-pointer',
-        // Exit animation
         isExiting && 'item-removing',
-        // Base hover state
         'hover:bg-muted/50',
-        // Selected state - warm amber
         isSelected && [
           'bg-amber-50 dark:bg-amber-950/30',
           'hover:bg-amber-50 dark:hover:bg-amber-950/30',
           'ring-1 ring-inset ring-amber-200 dark:ring-amber-800/50'
         ],
-        // Focused state (not selected)
         !isSelected &&
           isFocused && ['bg-muted', 'ring-2 ring-inset ring-amber-400/50 dark:ring-amber-600/50'],
+        item.isStale && 'opacity-60',
         className
       )}
       role="listitem"
@@ -406,7 +450,7 @@ export function InboxListItem({
       onClick={handleClick}
       data-item-id={item.id}
     >
-      {/* Checkbox with amber styling */}
+      {/* Checkbox */}
       <div
         className={cn(
           'flex-shrink-0 transition-opacity duration-150',
@@ -431,25 +475,15 @@ export function InboxListItem({
         />
       </div>
 
-      {/* Icon or Thumbnail */}
-      <div
-        className={cn(
-          'flex-shrink-0 flex items-center justify-center',
-          densityConfig.iconSize,
-          densityConfig.itemRadius,
-          'transition-colors duration-150',
-          isSelected ? 'bg-amber-100 dark:bg-amber-900/40' : 'bg-muted/60 dark:bg-muted/40',
-          'group-hover:bg-muted dark:group-hover:bg-muted/60'
-        )}
-      >
-        {item.type === 'image' && item.thumbnailUrl ? (
-          <ItemThumbnail item={item} />
-        ) : (
-          <TypeIcon type={item.type} isViewed={isReminderViewed} />
-        )}
+      {/* Type icon — bare, colored per type */}
+      <div className="flex-shrink-0">
+        <TypeIcon
+          type={item.type}
+          isViewed={isReminderViewed}
+          transcriptionStatus={item.transcriptionStatus}
+        />
       </div>
 
-      {/* Content area - shows title or Quick-File input */}
       {isQuickFileActive && onQuickFileFolderSelect ? (
         <>
           <span
@@ -479,51 +513,81 @@ export function InboxListItem({
         </>
       ) : (
         <>
-          {/* Title and metadata */}
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2">
-              <span
-                className={cn(
-                  'font-medium truncate',
-                  densityConfig.titleSize,
-                  isReminderViewed ? 'text-muted-foreground/60' : 'text-foreground/90'
-                )}
-              >
-                {displayTitle}
-              </span>
-              {/* Reminder badge for reminder items */}
-              {item.type === 'reminder' && reminderMetadata && (
-                <span
-                  className={cn(
-                    'shrink-0 inline-flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-medium rounded-full',
-                    isReminderViewed
-                      ? 'bg-muted text-muted-foreground'
-                      : 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'
-                  )}
-                >
-                  {isReminderViewed ? 'Viewed' : 'Reminder'}
-                </span>
-              )}
-              {/* Snooze badge with warm styling - live countdown */}
-              <SnoozeCountdown
-                snoozedUntil={item.snoozedUntil}
-                className="shrink-0 inline-flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-medium rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400"
-              />
-            </div>
-            <TranscriptionStatus item={item} onRetry={onRetryTranscription} />
-          </div>
-
-          {/* Timestamp - fades out on hover when actions show */}
+          {/* Title — single line, truncated */}
           <span
-            className={cn('shrink-0 text-muted-foreground/60 tabular-nums', densityConfig.metaSize)}
+            className={cn(
+              'grow shrink min-w-0 truncate font-medium',
+              densityConfig.titleSize,
+              isReminderViewed
+                ? 'text-muted-foreground/60'
+                : item.snoozedUntil
+                  ? 'text-muted-foreground'
+                  : 'text-foreground/90'
+            )}
           >
-            {formatTimestamp(
-              item.createdAt instanceof Date ? item.createdAt : new Date(item.createdAt),
-              period
+            {displayTitle}
+          </span>
+
+          {/* Voice duration pill */}
+          {item.type === 'voice' && item.duration != null && (
+            <Pill variant="bordered" color="amber">
+              {formatDuration(item.duration)}
+            </Pill>
+          )}
+
+          {/* PDF page count pill */}
+          {item.type === 'pdf' && item.pageCount != null && (
+            <Pill variant="bordered" color="red">
+              {item.pageCount} page{item.pageCount !== 1 ? 's' : ''}
+            </Pill>
+          )}
+
+          {/* Reminder status indicator */}
+          {item.type === 'reminder' && reminderMetadata && (
+            <span
+              className={cn(
+                'shrink-0',
+                densityConfig.metaSize,
+                isReminderViewed ? 'text-muted-foreground/60' : 'text-amber-500 dark:text-amber-400'
+              )}
+            >
+              {isReminderViewed ? 'viewed' : 'unviewed'}
+            </span>
+          )}
+
+          {/* Snooze pill */}
+          {item.snoozedUntil && (
+            <Pill variant="filled" color="gray">
+              snoozed til{' '}
+              {new Date(item.snoozedUntil).toLocaleDateString('en-US', {
+                month: 'short',
+                day: 'numeric'
+              })}
+            </Pill>
+          )}
+
+          {/* Source domain for link/social/clip */}
+          {item.sourceUrl &&
+            (item.type === 'link' || item.type === 'social' || item.type === 'clip') && (
+              <span className={cn('shrink-0', densityConfig.metaSize, 'text-muted-foreground/60')}>
+                {extractDomain(item.sourceUrl)}
+              </span>
+            )}
+
+          {/* Compact relative time */}
+          <span
+            className={cn(
+              'shrink-0 w-9 text-right tabular-nums',
+              densityConfig.metaSize,
+              item.isStale ? 'text-red-500 dark:text-red-400' : 'text-muted-foreground/60'
+            )}
+          >
+            {formatCompactRelativeTime(
+              item.createdAt instanceof Date ? item.createdAt : new Date(item.createdAt)
             )}
           </span>
 
-          {/* Quick Actions - slide in from right on hover (hidden in bulk mode) */}
+          {/* Quick Actions — slide in on hover */}
           {!isInBulkMode && (
             <div className="shrink-0 quick-actions-reveal">
               <QuickActions

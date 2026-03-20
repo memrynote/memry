@@ -1,241 +1,328 @@
 import { useState, useMemo } from 'react'
-import { AlertTriangle, Flame, Archive, ArrowRight, Inbox, Clock, Zap, Moon } from '@/lib/icons'
-import { useInboxStats, useInboxBankruptcy, useInboxFilingHistory } from '@/hooks/use-inbox'
-import { InboxFilingHistoryList } from '@/components/inbox/inbox-filing-history'
+import {
+  AlertTriangle,
+  Archive,
+  ArrowRight,
+  Link2,
+  Mic,
+  StickyNote,
+  Paperclip,
+  Image,
+  MessageCircle,
+  File,
+  Bell,
+  HelpCircle,
+  CheckCircle
+} from '@/lib/icons'
+import type { AppIcon } from '@/lib/icons'
+import {
+  useInboxStats,
+  useInboxBankruptcy,
+  useInboxFilingHistory,
+  useInboxPatterns
+} from '@/hooks/use-inbox'
 import { cn } from '@/lib/utils'
+import type { InboxCapturePattern, InboxFilingHistoryEntry } from '../../../../preload/index.d'
 
 export interface InboxHealthViewProps {
   className?: string
 }
 
-// ---------------------------------------------------------------------------
-// Arc Gauge — SVG ratio visualization
-// ---------------------------------------------------------------------------
+const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'] as const
+const HEATMAP_HOURS = [6, 8, 10, 12, 14, 16, 18, 20, 22] as const
 
-function ArcGauge({
-  ratio,
-  captured,
-  processed
-}: {
-  ratio: number
-  captured: number
-  processed: number
-}) {
-  const clampedRatio = Math.min(ratio, 8)
-  const progress = Math.min(clampedRatio / 5, 1)
-  const isHealthy = ratio <= 2
-  const isWarning = ratio > 2 && ratio <= 3
-  const isDanger = ratio > 3
+const TYPE_ICONS: Record<string, AppIcon> = {
+  link: Link2,
+  voice: Mic,
+  note: StickyNote,
+  clip: Paperclip,
+  image: Image,
+  social: MessageCircle,
+  pdf: File,
+  reminder: Bell
+}
 
-  const size = 160
-  const stroke = 10
-  const r = (size - stroke) / 2
-  const cx = size / 2
-  const cy = size / 2
+const TYPE_BAR_COLORS: Record<string, string> = {
+  link: 'bg-indigo-500 dark:bg-indigo-400',
+  voice: 'bg-accent-orange',
+  note: 'bg-muted-foreground/60',
+  clip: 'bg-accent-purple',
+  image: 'bg-accent-green',
+  social: 'bg-accent-cyan',
+  pdf: 'bg-rose-500 dark:bg-rose-400',
+  reminder: 'bg-amber-500 dark:bg-amber-400'
+}
 
-  const startAngle = 135
-  const endAngle = 405
-  const totalAngle = endAngle - startAngle
-  const valueAngle = startAngle + totalAngle * progress
+const TYPE_ICON_COLORS: Record<string, string> = {
+  link: 'text-indigo-500 dark:text-indigo-400',
+  voice: 'text-accent-orange',
+  note: 'text-muted-foreground',
+  clip: 'text-accent-purple',
+  image: 'text-accent-green',
+  social: 'text-accent-cyan',
+  pdf: 'text-rose-500 dark:text-rose-400',
+  reminder: 'text-amber-500 dark:text-amber-400'
+}
 
-  const toRad = (deg: number) => ((deg - 90) * Math.PI) / 180
-  const arcPath = (start: number, end: number) => {
-    const s = { x: cx + r * Math.cos(toRad(start)), y: cy + r * Math.sin(toRad(start)) }
-    const e = { x: cx + r * Math.cos(toRad(end)), y: cy + r * Math.sin(toRad(end)) }
-    const large = end - start > 180 ? 1 : 0
-    return `M ${s.x} ${s.y} A ${r} ${r} 0 ${large} 1 ${e.x} ${e.y}`
+function formatAvgTime(minutes: number): string {
+  if (minutes <= 0) return '—'
+  if (minutes < 60) return `${Math.round(minutes)}m`
+  if (minutes < 1440) return `${(minutes / 60).toFixed(1)}h`
+  return `${(minutes / 1440).toFixed(1)}d`
+}
+
+function timeAgo(date: Date): string {
+  const ms = Date.now() - date.getTime()
+  const mins = Math.floor(ms / 60_000)
+  if (mins < 1) return 'now'
+  if (mins < 60) return `${mins}m ago`
+  const hrs = Math.floor(mins / 60)
+  if (hrs < 24) return `${hrs}h ago`
+  const days = Math.floor(hrs / 24)
+  return `${days}d ago`
+}
+
+function computePeakInfo(heatmap: number[][]): string {
+  const dayNames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+  let maxVal = 0
+  let peakHour = 0
+  let peakDay = 0
+
+  heatmap.forEach((hourRow, hour) => {
+    hourRow.forEach((count, day) => {
+      if (count > maxVal) {
+        maxVal = count
+        peakHour = hour
+        peakDay = day
+      }
+    })
+  })
+
+  if (maxVal === 0) return 'No captures yet'
+
+  const fmtH = (h: number) => {
+    if (h === 0 || h === 24) return '12 AM'
+    if (h < 12) return `${h} AM`
+    if (h === 12) return '12 PM'
+    return `${h - 12} PM`
   }
 
-  const strokeColor = isDanger
-    ? 'stroke-red-500 dark:stroke-red-400'
-    : isWarning
-      ? 'stroke-amber-500 dark:stroke-amber-400'
-      : 'stroke-emerald-500 dark:stroke-emerald-400'
+  return `Peak: ${dayNames[peakDay]} ${fmtH(peakHour)}\u2013${fmtH(Math.min(peakHour + 2, 24))}`
+}
 
-  const textColor = isDanger
-    ? 'text-red-600 dark:text-red-400'
-    : isWarning
-      ? 'text-amber-600 dark:text-amber-400'
-      : 'text-emerald-600 dark:text-emerald-400'
+// ---------------------------------------------------------------------------
+// Stat Card
+// ---------------------------------------------------------------------------
 
+function StatCard({
+  label,
+  value,
+  subValue,
+  subColor = 'text-text-tertiary',
+  borderColor = 'border-border/50'
+}: {
+  label: string
+  value: string | number
+  subValue: string
+  subColor?: string
+  borderColor?: string
+}): React.JSX.Element {
   return (
-    <div className="flex flex-col items-center">
-      <svg
-        width={size}
-        height={size - 20}
-        viewBox={`0 0 ${size} ${size - 10}`}
-        className="overflow-visible"
-      >
-        <path
-          d={arcPath(startAngle, endAngle)}
-          fill="none"
-          className="stroke-border/40"
-          strokeWidth={stroke}
-          strokeLinecap="round"
-        />
-        {progress > 0 && (
-          <path
-            d={arcPath(startAngle, valueAngle)}
-            fill="none"
-            className={strokeColor}
-            strokeWidth={stroke}
-            strokeLinecap="round"
-            style={{
-              filter: isDanger ? 'drop-shadow(0 0 6px rgba(239,68,68,0.3))' : undefined
-            }}
-          />
-        )}
-        <text
-          x={cx}
-          y={cy - 6}
-          textAnchor="middle"
-          className={cn('font-display text-[42px] font-bold', textColor)}
-          fill="currentColor"
-        >
-          {ratio > 0 ? `${ratio}` : '0'}
-        </text>
-        <text
-          x={cx}
-          y={cy + 16}
-          textAnchor="middle"
-          className="fill-muted-foreground font-serif text-[13px]"
-          fill="currentColor"
-        >
-          : 1 ratio
-        </text>
-      </svg>
-      <div className="mt-1 flex items-center gap-4 text-xs">
-        <span className="text-muted-foreground">
-          <strong className="text-foreground font-display tabular-nums">{captured}</strong> in
+    <div
+      className={cn('flex flex-col grow basis-0 rounded-[10px] gap-1.5 border p-4', borderColor)}
+    >
+      <div className="uppercase tracking-[0.04em] text-text-tertiary font-sans text-[11px]/3.5">
+        {label}
+      </div>
+      <div className="flex items-baseline gap-1.5">
+        <span className="text-foreground font-sans font-semibold text-[28px]/8 tabular-nums">
+          {value}
         </span>
-        <span className="bg-border/60 h-3 w-px" />
-        <span className="text-muted-foreground">
-          <strong className="text-foreground font-display tabular-nums">{processed}</strong> out
-        </span>
+        {subValue && <span className={cn('font-sans text-[11px]/3.5', subColor)}>{subValue}</span>}
       </div>
     </div>
   )
 }
 
 // ---------------------------------------------------------------------------
-// Age Strata — vertical layered visualization
+// Capture Heatmap
 // ---------------------------------------------------------------------------
 
-function AgeStrata({ fresh, aging, stale }: { fresh: number; aging: number; stale: number }) {
-  const total = fresh + aging + stale
+function CaptureHeatmap({
+  patterns
+}: {
+  patterns: InboxCapturePattern | undefined
+}): React.JSX.Element {
+  const { maxCount, peakText } = useMemo(() => {
+    if (!patterns?.timeHeatmap) return { maxCount: 0, peakText: '' }
 
-  if (total === 0) {
+    const heatmap = patterns.timeHeatmap
+    let max = 0
+
+    for (let day = 0; day < 7; day++) {
+      for (const hour of HEATMAP_HOURS) {
+        const val = (heatmap[hour]?.[day] ?? 0) + (heatmap[hour + 1]?.[day] ?? 0)
+        if (val > max) max = val
+      }
+    }
+
+    return { maxCount: max, peakText: computePeakInfo(heatmap) }
+  }, [patterns])
+
+  if (!patterns?.timeHeatmap) {
     return (
-      <div className="flex h-full items-center justify-center">
-        <p className="text-muted-foreground font-serif text-sm italic">Inbox clear</p>
+      <div className="flex flex-col grow basis-0 rounded-[10px] border border-border/50 p-4 items-center justify-center min-h-[180px]">
+        <span className="text-muted-foreground font-serif text-sm italic">No capture data</span>
       </div>
     )
   }
 
-  const layers = [
-    {
-      label: 'Fresh',
-      count: fresh,
-      range: '<3d',
-      color: 'bg-emerald-500/60 dark:bg-emerald-400/50',
-      dot: 'bg-emerald-500'
-    },
-    {
-      label: 'Aging',
-      count: aging,
-      range: '3–7d',
-      color: 'bg-amber-500/50 dark:bg-amber-400/40',
-      dot: 'bg-amber-500'
-    },
-    {
-      label: 'Stale',
-      count: stale,
-      range: '>7d',
-      color: 'bg-red-500/40 dark:bg-red-400/30',
-      dot: 'bg-red-500'
-    }
-  ]
+  const heatmap = patterns.timeHeatmap
 
   return (
-    <div className="flex flex-col gap-2">
-      {layers.map((layer) => {
-        const pct = total > 0 ? (layer.count / total) * 100 : 0
-        return (
-          <div key={layer.label} className="group flex items-center gap-3">
-            <div className="w-20 flex-shrink-0">
-              <div className="flex items-center gap-1.5">
-                <span className={cn('size-1.5 rounded-full', layer.dot)} />
-                <span className="text-muted-foreground text-[11px] font-medium uppercase tracking-wider">
-                  {layer.label}
-                </span>
-              </div>
-              <span className="text-muted-foreground/50 ml-3 text-[10px]">{layer.range}</span>
+    <div className="flex flex-col grow basis-0 rounded-[10px] gap-3.5 border border-border/50 p-4">
+      <div className="text-muted-foreground font-sans font-medium text-xs/4">Capture Activity</div>
+      <div className="flex gap-1.5">
+        <div className="flex flex-col pt-4 gap-[3px]">
+          {DAYS.map((day) => (
+            <div key={day} className="h-3 text-text-tertiary font-sans shrink-0 text-[9px]/3">
+              {day}
             </div>
-            <div className="relative h-7 min-w-0 flex-1 overflow-hidden rounded">
+          ))}
+        </div>
+        <div className="flex flex-col gap-[3px]">
+          <div className="flex h-3 gap-[3px] shrink-0">
+            {HEATMAP_HOURS.map((hour) => (
               <div
-                className={cn(
-                  'absolute inset-y-0 left-0 rounded transition-all duration-700 ease-out',
-                  layer.color
-                )}
-                style={{ width: `${Math.max(pct, 2)}%` }}
-              />
-              <span className="relative z-10 flex h-full items-center px-2.5 text-xs font-bold tabular-nums">
-                {layer.count}
-              </span>
-            </div>
+                key={hour}
+                className="w-3 text-center text-text-tertiary font-sans shrink-0 text-[9px]/3"
+              >
+                {hour}
+              </div>
+            ))}
           </div>
-        )
-      })}
-      <div className="text-muted-foreground/60 mt-1 text-right text-[10px] tabular-nums">
-        {total} pending
+          {DAYS.map((_, dayIdx) => (
+            <div key={dayIdx} className="flex gap-[3px]">
+              {HEATMAP_HOURS.map((hour) => {
+                const val = (heatmap[hour]?.[dayIdx] ?? 0) + (heatmap[hour + 1]?.[dayIdx] ?? 0)
+                const intensity = maxCount > 0 ? val / maxCount : 0
+                return (
+                  <div
+                    key={hour}
+                    className={cn(
+                      'rounded-[2px] shrink-0 size-3',
+                      intensity === 0 && 'bg-muted/30'
+                    )}
+                    style={
+                      intensity > 0
+                        ? {
+                            backgroundColor: `color-mix(in srgb, var(--accent-orange) ${Math.round(Math.max(intensity * 90, 5))}%, transparent)`
+                          }
+                        : undefined
+                    }
+                    title={`${val} captures`}
+                  />
+                )
+              })}
+            </div>
+          ))}
+        </div>
+      </div>
+      <div className="text-text-tertiary font-sans text-[10px]/3.5">{peakText}</div>
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Type Distribution
+// ---------------------------------------------------------------------------
+
+function TypeDistribution({
+  itemsByType
+}: {
+  itemsByType: Record<string, number>
+}): React.JSX.Element {
+  const sortedTypes = useMemo(
+    () =>
+      Object.entries(itemsByType)
+        .filter(([, count]) => count > 0)
+        .sort(([, a], [, b]) => b - a),
+    [itemsByType]
+  )
+
+  const maxCount = sortedTypes.length > 0 ? sortedTypes[0][1] : 0
+
+  if (sortedTypes.length === 0) {
+    return (
+      <div className="flex flex-col grow basis-0 rounded-[10px] border border-border/50 p-4 items-center justify-center min-h-[180px]">
+        <span className="text-muted-foreground font-serif text-sm italic">No items yet</span>
+      </div>
+    )
+  }
+
+  return (
+    <div className="flex flex-col grow basis-0 rounded-[10px] gap-3.5 border border-border/50 p-4">
+      <div className="text-muted-foreground font-sans font-medium text-xs/4">By Type</div>
+      <div className="flex flex-col gap-2.5">
+        {sortedTypes.map(([type, count]) => {
+          const pct = maxCount > 0 ? (count / maxCount) * 100 : 0
+          const barColor = TYPE_BAR_COLORS[type] ?? 'bg-muted-foreground/40'
+          const label = type.charAt(0).toUpperCase() + type.slice(1)
+
+          return (
+            <div key={type} className="flex items-center gap-2.5">
+              <div className="w-[50px] shrink-0 text-muted-foreground font-sans text-[11px]/3.5">
+                {label}
+              </div>
+              <div className="flex grow h-2 rounded-sm overflow-clip bg-muted/30">
+                <div
+                  className={cn('h-2 rounded-sm transition-all duration-500 ease-out', barColor)}
+                  style={{ width: `${Math.max(pct, 4)}%` }}
+                />
+              </div>
+              <div className="w-5 shrink-0 text-right text-text-tertiary font-sans text-[11px]/3.5 tabular-nums">
+                {count}
+              </div>
+            </div>
+          )
+        })}
       </div>
     </div>
   )
 }
 
 // ---------------------------------------------------------------------------
-// Streak dots — visual habit tracker
+// Filing Row
 // ---------------------------------------------------------------------------
 
-function StreakDots({ streak }: { streak: number }) {
-  const dots = useMemo(() => {
-    const filled = Math.min(streak, 14)
-    const empty = 14 - filled
-    return { filled, empty }
-  }, [streak])
+function FilingRow({ item }: { item: InboxFilingHistoryEntry }): React.JSX.Element {
+  const isLinked = item.filedAction === 'linked'
+  const Icon = isLinked ? CheckCircle : (TYPE_ICONS[item.itemType] ?? HelpCircle)
+  const iconColor = isLinked
+    ? 'text-indigo-500 dark:text-indigo-400'
+    : (TYPE_ICON_COLORS[item.itemType] ?? 'text-muted-foreground')
 
   return (
-    <div className="flex items-center gap-3">
-      <Flame
-        className={cn(
-          'size-5 shrink-0',
-          streak > 0 ? 'text-orange-500' : 'text-muted-foreground/30'
-        )}
-      />
-      <div className="flex min-w-0 flex-1 items-center gap-[3px]">
-        {Array.from({ length: dots.filled }, (_, i) => (
-          <div
-            key={`f-${i}`}
-            className="size-2 rounded-full bg-orange-500/80 dark:bg-orange-400/70"
-            style={{ animationDelay: `${i * 40}ms` }}
-          />
-        ))}
-        {Array.from({ length: dots.empty }, (_, i) => (
-          <div key={`e-${i}`} className="bg-border/50 size-2 rounded-full" />
-        ))}
-      </div>
-      <div className="shrink-0 text-right">
-        <span className="font-display text-lg font-bold tabular-nums leading-none">{streak}</span>
-        <span className="text-muted-foreground ml-1 text-[10px]">
-          {streak === 1 ? 'day' : 'days'}
+    <div className="flex items-center rounded-md py-1.5 px-3 gap-2.5 hover:bg-surface-active/50 transition-colors">
+      <Icon className={cn('size-3 shrink-0', iconColor)} />
+      <div className="grow overflow-clip min-w-0">
+        <span className="text-foreground font-sans text-xs/4 line-clamp-1">
+          {item.itemTitle || 'Untitled'}
         </span>
       </div>
+      <ArrowRight className="size-2.5 shrink-0 text-text-tertiary" />
+      <span className="shrink-0 text-text-tertiary font-sans text-[11px]/3.5 truncate max-w-[160px]">
+        {isLinked ? 'Converted to task' : item.filedTo}
+      </span>
+      <span className="shrink-0 text-text-tertiary font-sans text-[11px]/3.5 tabular-nums">
+        {timeAgo(new Date(item.filedAt))}
+      </span>
     </div>
   )
 }
 
 // ---------------------------------------------------------------------------
-// Collector warning — editorial pull-quote
+// Collector Warning
 // ---------------------------------------------------------------------------
 
 function CollectorWarning({
@@ -246,7 +333,7 @@ function CollectorWarning({
   ratio: number
   oldestDays: number
   onDeclare: () => void
-}) {
+}): React.JSX.Element | null {
   if (ratio <= 3 && oldestDays < 21) return null
 
   const message =
@@ -260,7 +347,7 @@ function CollectorWarning({
       : 'Items lose context as they age. Archive what you no longer need.'
 
   return (
-    <div className="relative overflow-hidden rounded-xl border border-amber-600/20 dark:border-amber-400/15">
+    <div className="relative overflow-hidden rounded-[10px] border border-amber-600/20 dark:border-amber-400/15">
       <div className="absolute inset-y-0 left-0 w-1 bg-amber-500 dark:bg-amber-400" />
       <div className="bg-amber-500/[0.04] px-5 py-4 pl-6">
         <div className="flex items-start gap-3">
@@ -286,7 +373,7 @@ function CollectorWarning({
 }
 
 // ---------------------------------------------------------------------------
-// Bankruptcy dialog
+// Bankruptcy Dialog
 // ---------------------------------------------------------------------------
 
 function BankruptcyDialog({
@@ -299,7 +386,7 @@ function BankruptcyDialog({
   onConfirm: (days: number) => void
   onCancel: () => void
   isPending: boolean
-}) {
+}): React.JSX.Element {
   const presets = [
     { label: '2 weeks', days: 14 },
     { label: '1 month', days: 30 },
@@ -325,12 +412,10 @@ function BankruptcyDialog({
             </div>
           </div>
         </div>
-
         <div className="p-5">
           <p className="text-muted-foreground mb-4 text-xs leading-relaxed">
             Move all unfiled items older than the threshold to Archive. This is reversible.
           </p>
-
           <div className="flex gap-2">
             {presets.map((p) => (
               <button
@@ -348,7 +433,6 @@ function BankruptcyDialog({
             ))}
           </div>
         </div>
-
         <div className="flex justify-end gap-2 border-t px-5 py-3">
           <button
             onClick={onCancel}
@@ -371,90 +455,64 @@ function BankruptcyDialog({
 }
 
 // ---------------------------------------------------------------------------
-// Stat pill — compact inline stat
-// ---------------------------------------------------------------------------
-
-function StatPill({
-  icon: Icon,
-  label,
-  value
-}: {
-  icon: typeof Inbox
-  label: string
-  value: string | number
-}) {
-  return (
-    <div className="flex items-center gap-2.5 rounded-lg border border-border/40 bg-card px-3 py-2">
-      <Icon className="text-muted-foreground/60 size-3.5" />
-      <div className="flex items-baseline gap-1.5">
-        <span className="font-display text-base font-bold tabular-nums leading-none">{value}</span>
-        <span className="text-muted-foreground text-[10px] uppercase tracking-wider">{label}</span>
-      </div>
-    </div>
-  )
-}
-
-// ---------------------------------------------------------------------------
-// Main health view
+// Main
 // ---------------------------------------------------------------------------
 
 export function InboxHealthView({ className }: InboxHealthViewProps): React.JSX.Element {
   const { stats, isLoading } = useInboxStats()
   const { data: historyData } = useInboxFilingHistory()
+  const { data: patterns } = useInboxPatterns()
   const bankruptcy = useInboxBankruptcy()
   const [showBankruptcy, setShowBankruptcy] = useState(false)
 
   if (isLoading || !stats) {
     return (
       <div className={cn('flex h-64 items-center justify-center', className)}>
-        <div className="size-6 animate-spin rounded-full border-2 border-amber-500/30 border-t-amber-500" />
+        <div className="size-6 animate-spin rounded-full border-2 border-accent-orange/30 border-t-accent-orange" />
       </div>
     )
   }
 
-  const filingHistory = historyData?.entries ?? []
+  const filingHistory = historyData?.entries?.slice(0, 6) ?? []
+  const processRate =
+    stats.capturedThisWeek > 0
+      ? Math.round((stats.processedThisWeek / stats.capturedThisWeek) * 100)
+      : 0
 
   return (
-    <div className={cn('mx-auto max-w-2xl space-y-6 px-6 py-6 pb-12', className)}>
-      {/* Section: Pulse */}
-      <div className="fade-in-up stagger-1">
-        <div className="journal-section-label mb-3">Weekly Pulse</div>
-        <div className="grid grid-cols-[auto_1fr] gap-6 rounded-xl border border-border/50 bg-card p-5">
-          <ArcGauge
-            ratio={stats.captureProcessRatio}
-            captured={stats.capturedThisWeek}
-            processed={stats.processedThisWeek}
-          />
-          <div className="flex flex-col justify-between py-1">
-            <div className="flex flex-wrap gap-2">
-              <StatPill icon={Inbox} label="pending" value={stats.totalItems} />
-              <StatPill icon={Zap} label="today" value={stats.processedToday} />
-              <StatPill
-                icon={Clock}
-                label="avg"
-                value={stats.avgTimeToProcess > 0 ? `${Math.round(stats.avgTimeToProcess)}m` : '—'}
-              />
-              <StatPill icon={Moon} label="snoozed" value={stats.snoozedCount} />
-            </div>
-            <StreakDots streak={stats.currentStreak} />
-          </div>
-        </div>
+    <div className={cn('flex flex-col grow overflow-y-auto antialiased', className)}>
+      <div className="fade-in-up stagger-1 flex shrink-0 pt-6 gap-3 px-6">
+        <StatCard
+          label="Captured"
+          value={stats.totalItems}
+          subValue={`+${stats.capturedThisWeek} this week`}
+          subColor="text-accent-green"
+        />
+        <StatCard
+          label="Processed"
+          value={stats.processedThisWeek}
+          subValue={`${processRate}% rate`}
+        />
+        <StatCard
+          label="Stale"
+          value={stats.staleCount}
+          subValue={stats.staleCount > 0 ? 'needs attention' : 'all clear'}
+          subColor={stats.staleCount > 0 ? 'text-destructive' : 'text-accent-green'}
+          borderColor={stats.staleCount > 0 ? 'border-destructive/15' : 'border-border/50'}
+        />
+        <StatCard
+          label="Avg Time to File"
+          value={formatAvgTime(stats.avgTimeToProcess)}
+          subValue=""
+        />
       </div>
 
-      {/* Section: Age */}
-      <div className="fade-in-up stagger-2">
-        <div className="journal-section-label mb-3">Item Age</div>
-        <div className="rounded-xl border border-border/50 bg-card p-5">
-          <AgeStrata
-            fresh={stats.ageDistribution.fresh}
-            aging={stats.ageDistribution.aging}
-            stale={stats.ageDistribution.stale}
-          />
-        </div>
+      <div className="fade-in-up stagger-2 flex shrink-0 pt-4 gap-3 px-6">
+        <CaptureHeatmap patterns={patterns} />
+        <TypeDistribution itemsByType={stats.itemsByType} />
       </div>
 
-      {/* Section: Warning */}
-      <div className="fade-in-up stagger-3">
+      <div className="fade-in-up stagger-3 shrink-0 pt-4 px-6">
         <CollectorWarning
           ratio={stats.captureProcessRatio}
           oldestDays={stats.oldestItemDays}
@@ -462,10 +520,19 @@ export function InboxHealthView({ className }: InboxHealthViewProps): React.JSX.
         />
       </div>
 
-      {/* Section: History */}
-      <div className="fade-in-up stagger-4">
-        <div className="journal-section-label mb-3">Recent Activity</div>
-        <InboxFilingHistoryList items={filingHistory} />
+      <div className="fade-in-up stagger-4 flex flex-col shrink-0 pt-4 gap-3 px-6 pb-6">
+        <div className="text-muted-foreground font-sans font-medium text-xs/4">Recent Filings</div>
+        {filingHistory.length > 0 ? (
+          <div className="flex flex-col gap-0.5">
+            {filingHistory.map((item) => (
+              <FilingRow key={item.id} item={item} />
+            ))}
+          </div>
+        ) : (
+          <div className="py-6 text-center text-muted-foreground font-serif text-sm italic">
+            No items filed yet
+          </div>
+        )}
       </div>
 
       {showBankruptcy && (

@@ -84,6 +84,22 @@ export const formatDuration = (seconds: number): string => {
   return `${mins}:${secs.toString().padStart(2, '0')}`
 }
 
+// Compact relative time (Paper-style: "2m", "1h", "3d")
+export const formatCompactRelativeTime = (date: Date | string): string => {
+  const d = typeof date === 'string' ? new Date(date) : date
+  const now = new Date()
+  const diffMs = now.getTime() - d.getTime()
+  const diffMins = Math.floor(diffMs / 60000)
+  const diffHours = Math.floor(diffMins / 60)
+  const diffDays = Math.floor(diffHours / 24)
+
+  if (diffMins < 1) return 'now'
+  if (diffMins < 60) return `${diffMins}m`
+  if (diffHours < 24) return `${diffHours}h`
+  if (diffDays < 30) return `${diffDays}d`
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+}
+
 // Helper to extract domain from URL
 export const extractDomain = (url: string): string => {
   try {

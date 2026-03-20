@@ -1,18 +1,10 @@
 import { useState, useCallback, useMemo, useEffect } from 'react'
 import { extractErrorMessage } from '@/lib/ipc-error'
-import { Check, Loader2, AlertCircle, Clock, Filter, Play } from '@/lib/icons'
+import { Check, Loader2, AlertCircle } from '@/lib/icons'
 import { useQueryClient } from '@tanstack/react-query'
 
 import { useTabs } from '@/contexts/tabs'
 import { Button } from '@/components/ui/button'
-import {
-  DropdownMenu,
-  DropdownMenuTrigger,
-  DropdownMenuContent,
-  DropdownMenuCheckboxItem,
-  DropdownMenuSeparator,
-  DropdownMenuLabel
-} from '@/components/ui/dropdown-menu'
 import { ListView } from '@/components/list-view'
 import { InboxDetailPanel } from '@/components/inbox-detail'
 import { BulkActionBar, type ClusterSuggestion } from '@/components/bulk/bulk-action-bar'
@@ -21,11 +13,9 @@ import { BulkTagPopover } from '@/components/bulk/bulk-tag-popover'
 import { ArchiveConfirmationDialog } from '@/components/bulk/archive-confirmation-dialog'
 import { EmptyState } from '@/components/empty-state/empty-state'
 import { KeyboardShortcutsModal } from '@/components/keyboard-shortcuts-modal'
-import { CaptureInput } from '@/components/capture-input'
 import { inboxService } from '@/services/inbox-service'
 import type { ReminderMetadata, InboxItemType } from '@memry/contracts/inbox-api'
 import { detectClusters, getClusterKey } from '@/lib/ai-clustering'
-import { getStaleItems, getNonStaleItems } from '@/lib/stale-utils'
 import { cn } from '@/lib/utils'
 import { isInputFocused } from '@/hooks/use-keyboard-shortcuts'
 import { DENSITY_CONFIG } from '@/hooks/use-display-density'
@@ -35,7 +25,6 @@ import {
   useArchiveInboxItem,
   useBulkArchiveInboxItems,
   useFileInboxItem,
-  useInboxSnoozed,
   useInboxStats,
   useInboxFilingHistory,
   inboxKeys
@@ -45,42 +34,20 @@ import { notesKeys } from '@/hooks/use-notes-query'
 import { useInboxKeyboard } from '@/hooks/use-inbox-keyboard'
 import type { UseInboxNotificationsResult } from '@/hooks/use-inbox-notifications'
 
-const INBOX_ITEM_TYPES: InboxItemType[] = [
-  'link',
-  'note',
-  'image',
-  'voice',
-  'video',
-  'clip',
-  'pdf',
-  'social',
-  'reminder'
-]
-
-const INBOX_TYPE_LABELS: Record<InboxItemType, string> = {
-  link: 'Links',
-  note: 'Notes',
-  image: 'Images',
-  voice: 'Voice',
-  video: 'Video',
-  clip: 'Clips',
-  pdf: 'PDFs',
-  social: 'Social',
-  reminder: 'Reminders'
-}
-
 const ALLOWED_IMAGE_TYPES = ['image/png', 'image/jpeg', 'image/gif', 'image/webp', 'image/svg+xml']
 
 export interface InboxListViewProps {
   notifications: UseInboxNotificationsResult
   className?: string
-  onEnterTriage?: () => void
+  selectedTypes: Set<InboxItemType>
+  showSnoozedItems: boolean
 }
 
 export function InboxListView({
   notifications,
   className,
-  onEnterTriage
+  selectedTypes,
+  showSnoozedItems
 }: InboxListViewProps): React.JSX.Element {
   const { addToast } = notifications
   const queryClient = useQueryClient()
@@ -89,9 +56,6 @@ export function InboxListView({
   const density = 'compact'
   const densityConfig = DENSITY_CONFIG.compact
 
-  // Local UI state (declared before hooks that depend on them)
-  const [showSnoozedItems, setShowSnoozedItems] = useState(false)
-
   // Data hooks
   const {
     items: backendItems,
@@ -99,13 +63,10 @@ export function InboxListView({
     error,
     refetch
   } = useInboxList({ includeSnoozed: showSnoozedItems })
-  const { data: snoozedItems = [] } = useInboxSnoozed()
-  const snoozedCount = snoozedItems.length
   const fileItemMutation = useFileInboxItem()
   const archiveItemMutation = useArchiveInboxItem()
   const bulkArchiveMutation = useBulkArchiveInboxItems()
   const { archiveWithUndo } = useUndoableAction(addToast)
-  const [selectedTypes, setSelectedTypes] = useState<Set<InboxItemType>>(new Set())
   const [pendingArchiveIds, setPendingArchiveIds] = useState<Set<string>>(new Set())
   const [exitingItemIds, setExitingItemIds] = useState<Set<string>>(new Set())
   const [isEmptyStateExiting] = useState(false)
@@ -133,24 +94,6 @@ export function InboxListView({
       return true
     })
   }, [backendItems, pendingArchiveIds, selectedTypes])
-
-  const itemCountsByType = useMemo(() => {
-    const counts: Record<InboxItemType, number> = {
-      link: 0,
-      note: 0,
-      image: 0,
-      voice: 0,
-      video: 0,
-      clip: 0,
-      pdf: 0,
-      social: 0,
-      reminder: 0
-    }
-    backendItems.forEach((item) => {
-      if (!pendingArchiveIds.has(item.id)) counts[item.type]++
-    })
-    return counts
-  }, [backendItems, pendingArchiveIds])
 
   // Empty state data
   const { stats: inboxStats } = useInboxStats()
@@ -192,9 +135,6 @@ export function InboxListView({
     if (dismissedSuggestionKeys.has(key)) return null
     return suggestion
   }, [selectedItems, items, dismissedSuggestionKeys])
-
-  const staleItems = useMemo(() => getStaleItems(items), [items])
-  const nonStaleItems = useMemo(() => getNonStaleItems(items), [items])
 
   // === OPTIMISTIC ARCHIVE HELPER ===
   const archiveWithAnimation = useCallback(
@@ -249,8 +189,6 @@ export function InboxListView({
     isInBulkMode,
     focusedItemId,
     items,
-    staleItems,
-    nonStaleItems,
     onOpenShortcutsModal: () => setIsShortcutsModalOpen(true),
     onRefresh: () => refetch(),
     onArchiveFocusedItem: (itemId, nextItemId) => archiveWithAnimation(itemId, nextItemId),
@@ -704,59 +642,6 @@ export function InboxListView({
     [selectedItemIds, items, activeDetailItemId, addToast, queryClient]
   )
 
-  // === STALE ITEMS HANDLERS ===
-
-  const handleFileAllStaleToUnsorted = useCallback((): void => {
-    if (staleItems.length === 0) return
-
-    const staleIds = staleItems.map((i) => i.id)
-    setExitingItemIds(new Set(staleIds))
-
-    setTimeout(async () => {
-      setPendingArchiveIds((prev) => {
-        const next = new Set(prev)
-        staleIds.forEach((id) => next.add(id))
-        return next
-      })
-      setExitingItemIds(new Set())
-      setSelectedItemIds((prev) => {
-        const next = new Set(prev)
-        staleItems.forEach((item) => next.delete(item.id))
-        return next
-      })
-
-      try {
-        const result = await window.api.inbox.fileAllStale()
-        if (result.success || result.processedCount > 0) {
-          queryClient.invalidateQueries({ queryKey: inboxKeys.lists() })
-          addToast({
-            message: `Filed ${result.processedCount} stale items to Unsorted`,
-            type: 'success'
-          })
-        } else {
-          throw new Error('Failed to file stale items')
-        }
-      } catch (error) {
-        setPendingArchiveIds((prev) => {
-          const next = new Set(prev)
-          staleIds.forEach((id) => next.delete(id))
-          return next
-        })
-        addToast({
-          message: extractErrorMessage(error, 'Failed to file stale items'),
-          type: 'error'
-        })
-      }
-    }, 200)
-  }, [staleItems, addToast, queryClient])
-
-  const handleReviewStaleItems = useCallback((): void => {
-    if (staleItems.length === 0) return
-    const staleIds = new Set(staleItems.map((i) => i.id))
-    setSelectedItemIds(staleIds)
-    if (staleItems[0]) setFocusedItemId(staleItems[0].id)
-  }, [staleItems])
-
   // === IMAGE CAPTURE HANDLERS ===
 
   const handleImageCapture = useCallback(
@@ -853,7 +738,7 @@ export function InboxListView({
     <div
       className={cn(
         'flex flex-col h-full relative',
-        densityConfig.pagePadding,
+        'px-4 lg:px-6 pt-3 pb-4 lg:pb-6',
         isDraggingOver && 'ring-2 ring-primary/50 ring-inset bg-primary/5',
         className
       )}
@@ -894,153 +779,25 @@ export function InboxListView({
         </div>
       )}
 
-      {/* Header */}
-      <header className={cn('relative', densityConfig.headerMargin)}>
-        <div className="relative z-10">
-          {isInBulkMode ? (
-            <div className="flex items-start justify-between gap-6">
-              <div>
-                <div className="flex items-center gap-3 mb-1">
-                  <Check className="size-5 text-amber-600 dark:text-amber-400" aria-hidden="true" />
-                  <h1 className="font-display text-2xl lg:text-3xl font-normal tracking-tight text-foreground/90">
-                    {selectedCount} selected
-                  </h1>
-                </div>
-                <p className="font-serif text-sm text-muted-foreground/70 tracking-wide pl-8">
-                  Ready to process
-                </p>
-              </div>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleDeselectAll}
-                className={cn(
-                  'text-muted-foreground/60 hover:text-foreground',
-                  'hover:bg-foreground/5'
-                )}
-              >
-                Deselect all
-              </Button>
+      {/* Bulk selection header */}
+      {isInBulkMode && (
+        <header className={cn('relative', densityConfig.headerMargin)}>
+          <div className="flex items-center justify-between gap-6">
+            <div className="flex items-center gap-3">
+              <Check className="size-4 text-amber-600 dark:text-amber-400" aria-hidden="true" />
+              <span className="text-sm font-medium text-foreground">{selectedCount} selected</span>
             </div>
-          ) : (
-            <div className="flex items-start justify-between gap-4">
-              <div className="flex-1">
-                <CaptureInput
-                  density={density}
-                  onCaptureSuccess={() => addToast({ message: 'Item captured', type: 'success' })}
-                  onCaptureError={(errorMsg) => addToast({ message: errorMsg, type: 'error' })}
-                />
-              </div>
-              <div className="flex items-center gap-2 mt-1.5">
-                {onEnterTriage && nonStaleItems.length > 0 && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={onEnterTriage}
-                    className="text-muted-foreground/60 hover:text-foreground hover:bg-foreground/5 gap-1.5"
-                    title="Process inbox (Cmd+P)"
-                  >
-                    <Play className="size-3.5" />
-                    <span className="text-xs">Process</span>
-                  </Button>
-                )}
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className={cn(
-                        'size-8 relative',
-                        'text-muted-foreground/60 hover:text-foreground',
-                        'hover:bg-foreground/5',
-                        selectedTypes.size > 0 && 'text-amber-600 dark:text-amber-400'
-                      )}
-                      title={
-                        selectedTypes.size > 0
-                          ? `Filtering by ${selectedTypes.size} type${selectedTypes.size > 1 ? 's' : ''}`
-                          : 'Filter by type'
-                      }
-                    >
-                      <Filter className="size-4" />
-                      {selectedTypes.size > 0 && (
-                        <span className="absolute -top-1 -right-1 size-4 text-[10px] font-medium bg-amber-600 dark:bg-amber-500 text-white rounded-full flex items-center justify-center">
-                          {selectedTypes.size}
-                        </span>
-                      )}
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-48">
-                    <DropdownMenuLabel className="text-xs text-muted-foreground/70">
-                      Filter by type
-                    </DropdownMenuLabel>
-                    <DropdownMenuSeparator />
-                    {INBOX_ITEM_TYPES.map((type) => {
-                      const count = itemCountsByType[type]
-                      return (
-                        <DropdownMenuCheckboxItem
-                          key={type}
-                          checked={selectedTypes.has(type)}
-                          onCheckedChange={(checked) => {
-                            setSelectedTypes((prev) => {
-                              const next = new Set(prev)
-                              if (checked) next.add(type)
-                              else next.delete(type)
-                              return next
-                            })
-                          }}
-                          onSelect={(e) => e.preventDefault()}
-                          disabled={count === 0}
-                          className={cn(count === 0 && 'opacity-50')}
-                        >
-                          <span className="flex-1">{INBOX_TYPE_LABELS[type]}</span>
-                          <span className="text-xs text-muted-foreground/60 ml-2">{count}</span>
-                        </DropdownMenuCheckboxItem>
-                      )
-                    })}
-                    {selectedTypes.size > 0 && (
-                      <>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuCheckboxItem
-                          checked={false}
-                          onCheckedChange={() => setSelectedTypes(new Set())}
-                          onSelect={(e) => e.preventDefault()}
-                          className="text-muted-foreground/70"
-                        >
-                          Clear all
-                        </DropdownMenuCheckboxItem>
-                      </>
-                    )}
-                  </DropdownMenuContent>
-                </DropdownMenu>
-
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => setShowSnoozedItems(!showSnoozedItems)}
-                  className={cn(
-                    'size-8 relative',
-                    'text-muted-foreground/60 hover:text-foreground',
-                    'hover:bg-foreground/5',
-                    showSnoozedItems && 'bg-amber-500/10 text-amber-600 dark:text-amber-400'
-                  )}
-                  title={
-                    showSnoozedItems
-                      ? 'Hide snoozed items'
-                      : `Show snoozed items${snoozedCount > 0 ? ` (${snoozedCount})` : ''}`
-                  }
-                >
-                  <Clock className="size-4" />
-                  {snoozedCount > 0 && (
-                    <span className="absolute -top-1 -right-1 size-4 text-[10px] font-medium bg-amber-600 dark:bg-amber-500 text-white rounded-full flex items-center justify-center">
-                      {snoozedCount}
-                    </span>
-                  )}
-                </Button>
-              </div>
-            </div>
-          )}
-        </div>
-      </header>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleDeselectAll}
+              className="text-muted-foreground/60 hover:text-foreground hover:bg-foreground/5"
+            >
+              Deselect all
+            </Button>
+          </div>
+        </header>
+      )}
 
       {/* Content */}
       <div className={cn('flex-1 overflow-y-auto', isInBulkMode && 'pb-32')}>
@@ -1065,8 +822,7 @@ export function InboxListView({
           />
         ) : (
           <ListView
-            items={nonStaleItems}
-            staleItems={staleItems}
+            items={items}
             selectedItemIds={selectedItemIds}
             exitingItemIds={exitingItemIds}
             density={density}
@@ -1075,8 +831,6 @@ export function InboxListView({
             onSnooze={handleSnooze}
             onQuickFile={handleQuickFile}
             onSelectionChange={handleSelectionChange}
-            onFileAllStale={handleFileAllStaleToUnsorted}
-            onReviewStale={handleReviewStaleItems}
             focusedItemId={focusedItemId}
             onFocusedItemChange={handleFocusedItemChange}
             isPreviewOpen={isDetailPanelOpen}

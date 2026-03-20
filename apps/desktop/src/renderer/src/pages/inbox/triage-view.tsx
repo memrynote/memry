@@ -10,9 +10,14 @@ import { TriageComplete } from '@/components/inbox/triage-complete'
 import { StreakBadge } from '@/components/inbox/streak-badge'
 import { cn } from '@/lib/utils'
 import { Loader2 } from '@/lib/icons'
+import { createLogger } from '@/lib/logger'
+import { extractErrorMessage } from '@/lib/ipc-error'
+import { toast } from 'sonner'
 import type { Toast } from '@/components/ui/toast'
 import type { FileItemInput, SnoozeInput } from '@/services/inbox-service'
 import type { ReminderMetadata } from '@memry/contracts/inbox-api'
+
+const log = createLogger('Component:TriageView')
 
 type SlideDirection = 'left' | 'right' | null
 
@@ -59,7 +64,8 @@ export function TriageView({ onExit, addToast }: TriageViewProps): React.JSX.Ele
         try {
           await action()
         } catch (err) {
-          console.error('Triage action failed:', err)
+          log.error('Triage action failed:', err)
+          toast.error(extractErrorMessage(err, 'Action failed'))
         } finally {
           setSlideDir(null)
           setIsAnimating(false)

@@ -10,8 +10,6 @@ export interface UseInboxKeyboardOptions {
   isInBulkMode: boolean
   focusedItemId: string | null
   items: InboxItemListItem[]
-  staleItems: InboxItemListItem[]
-  nonStaleItems: InboxItemListItem[]
   onOpenShortcutsModal: () => void
   onRefresh: () => void
   onArchiveFocusedItem: (itemId: string, nextItemId: string | null) => void
@@ -29,8 +27,6 @@ export function useInboxKeyboard(options: UseInboxKeyboardOptions): void {
     isInBulkMode,
     focusedItemId,
     items,
-    staleItems,
-    nonStaleItems,
     onOpenShortcutsModal,
     onRefresh,
     onArchiveFocusedItem,
@@ -71,9 +67,8 @@ export function useInboxKeyboard(options: UseInboxKeyboardOptions): void {
           e.preventDefault()
           const focusedItem = items.find((i) => i.id === focusedItemId)
           if (focusedItem) {
-            const allItems = [...staleItems, ...nonStaleItems]
-            const currentIndex = allItems.findIndex((i) => i.id === focusedItemId)
-            const nextItem = allItems[currentIndex + 1] || allItems[currentIndex - 1]
+            const currentIndex = items.findIndex((i) => i.id === focusedItemId)
+            const nextItem = items[currentIndex + 1] || items[currentIndex - 1]
             onArchiveFocusedItem(focusedItemId, nextItem?.id ?? null)
           }
         }
@@ -102,8 +97,6 @@ export function useInboxKeyboard(options: UseInboxKeyboardOptions): void {
     isInBulkMode,
     focusedItemId,
     items,
-    staleItems,
-    nonStaleItems,
     onOpenShortcutsModal,
     onRefresh,
     onArchiveFocusedItem,

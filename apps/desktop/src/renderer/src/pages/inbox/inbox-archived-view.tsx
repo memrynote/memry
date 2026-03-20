@@ -1,9 +1,10 @@
-import { InboxArchivedView as ArchivedViewComponent } from '@/components/inbox/inbox-archived-view'
+import {
+  InboxArchivedView as ArchivedViewComponent,
+  type InboxArchivedViewProps
+} from '@/components/inbox/inbox-archived-view'
 
-export interface InboxArchivedViewProps {
-  className?: string
-}
+export type { InboxArchivedViewProps }
 
-export function InboxArchivedView({ className }: InboxArchivedViewProps): React.JSX.Element {
-  return <ArchivedViewComponent className={className} />
+export function InboxArchivedView(props: InboxArchivedViewProps): React.JSX.Element {
+  return <ArchivedViewComponent {...props} />
 }
