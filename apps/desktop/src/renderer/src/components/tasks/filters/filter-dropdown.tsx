@@ -200,7 +200,7 @@ export const FilterDropdown = ({
         align="end"
         sideOffset={8}
       >
-        <div className="flex flex-col text-[12px] leading-4 [font-synthesis:none] antialiased">
+        <div className="flex flex-col text-[13px] leading-4 [font-synthesis:none] antialiased">
           {/* Main menu */}
           {activePanel === null && (
             <>
@@ -224,8 +224,8 @@ export const FilterDropdown = ({
                     className="flex items-center rounded-[5px] py-1.5 px-2 gap-2 hover:bg-accent transition-colors"
                   >
                     {CATEGORY_ICONS[cat.key]}
-                    <span className="text-[12px] text-text-secondary leading-4">{cat.label}</span>
-                    <ChevronRight size={10} className="ml-auto text-text-tertiary" />
+                    <span className="text-[13px] text-muted-foreground leading-4">{cat.label}</span>
+                    <ChevronRight size={10} className="ml-auto text-muted-foreground/60" />
                   </button>
                 ))}
               </div>

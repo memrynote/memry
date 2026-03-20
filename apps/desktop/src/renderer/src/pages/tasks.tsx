@@ -848,7 +848,7 @@ export const TasksPage = ({
         {/* Main Content Area */}
         <main className="flex-1 min-w-0 flex flex-col overflow-hidden py-2 px-2">
           {/* Page Header — compact single-row toolbar */}
-          <div className="flex items-center gap-2.5 shrink-0 min-w-0 py-0.5 border-b border-border [font-synthesis:none] text-[12px] leading-4 antialiased">
+          <div className="flex items-center gap-2.5 shrink-0 min-w-0 py-0.5 border-b border-border [font-synthesis:none] text-[13px] leading-4 antialiased">
             <TasksTabBar
               activeTab={activeInternalTab}
               onTabChange={handleTabChange}
@@ -895,8 +895,8 @@ export const TasksPage = ({
                 className={cn(
                   'flex items-center shrink-0 rounded-[5px] py-1 px-2 gap-1 border transition-colors',
                   isFilterDropdownOpen || filtersActive
-                    ? 'border-foreground/20 bg-foreground/5 text-text-primary'
-                    : 'border-border text-text-secondary hover:bg-surface-active/50'
+                    ? 'border-foreground/20 bg-foreground/5 text-foreground/90'
+                    : 'border-border text-muted-foreground hover:bg-surface-active/50'
                 )}
               >
                 <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
@@ -907,7 +907,7 @@ export const TasksPage = ({
                     strokeLinecap="round"
                   />
                 </svg>
-                <span className="text-[11px] leading-3.5">Filter</span>
+                <span className="text-[13px] font-medium">Filter</span>
                 {filtersActive && (
                   <span className="flex items-center justify-center size-[14px] rounded-full bg-foreground text-background text-[9px] font-bold">
                     {countActiveFilters(filters)}

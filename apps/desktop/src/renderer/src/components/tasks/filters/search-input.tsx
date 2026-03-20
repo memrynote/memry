@@ -64,7 +64,7 @@ export const SearchInput = forwardRef<HTMLInputElement, SearchInputProps>(
     return (
       <div className={cn('relative group', className)}>
         <Search
-          className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-text-tertiary pointer-events-none"
+          className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground/60 pointer-events-none"
           aria-hidden="true"
         />
         <Input
@@ -75,7 +75,7 @@ export const SearchInput = forwardRef<HTMLInputElement, SearchInputProps>(
           onKeyDown={handleKeyDown}
           placeholder={placeholder}
           className={cn(
-            'pl-9 pr-8 h-9 text-sm',
+            'pl-9 pr-8 h-9 text-[13px]',
             expandOnFocus && 'w-48 focus:w-64 transition-all duration-200'
           )}
           aria-label="Search tasks"
@@ -89,7 +89,7 @@ export const SearchInput = forwardRef<HTMLInputElement, SearchInputProps>(
             aria-label="Clear search"
             tabIndex={0}
           >
-            <X className="size-4 text-text-tertiary" />
+            <X className="size-4 text-muted-foreground/60" />
           </Button>
         )}
       </div>

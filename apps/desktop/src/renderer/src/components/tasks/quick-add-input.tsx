@@ -441,7 +441,7 @@ export const QuickAddInput = ({
               aria-hidden="true"
               className={cn(
                 'pointer-events-none absolute inset-0 overflow-hidden whitespace-pre leading-[normal]',
-                compact ? 'text-[12px]' : 'text-sm'
+                compact ? 'text-[13px]' : 'text-sm'
               )}
             >
               {value && hasSpecialSyntax(value) && <TokenOverlay value={value} />}
@@ -457,12 +457,12 @@ export const QuickAddInput = ({
               onKeyDown={handleKeyDown}
               placeholder={placeholder}
               className={cn(
-                'relative w-full bg-transparent outline-none caret-text-primary',
-                compact ? 'text-[12px] leading-4' : 'text-sm',
+                'relative w-full bg-transparent outline-none caret-foreground',
+                compact ? 'text-[13px] leading-4' : 'text-sm',
                 value && hasSpecialSyntax(value)
                   ? 'text-transparent selection:bg-primary/20 selection:text-transparent placeholder:text-muted-foreground/40'
                   : isFocused
-                    ? 'text-text-primary placeholder:text-muted-foreground/40'
+                    ? 'text-foreground/90 placeholder:text-muted-foreground/40'
                     : 'text-muted-foreground placeholder:text-muted-foreground/40'
               )}
               aria-label="Quick add task"

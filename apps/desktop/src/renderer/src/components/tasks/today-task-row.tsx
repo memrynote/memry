@@ -123,7 +123,9 @@ export const TodayTaskRow = ({
       </span>
 
       {/* Title */}
-      <span className="flex-1 truncate text-sm font-medium text-text-primary">{task.title}</span>
+      <span className="flex-1 truncate text-[13px] font-medium text-foreground/90">
+        {task.title}
+      </span>
 
       {/* Repeat indicator */}
       {task.isRepeating && task.repeatConfig && (

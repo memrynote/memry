@@ -150,10 +150,10 @@ export const TaskRow = ({
 
       <span
         className={cn(
-          'text-[13px] leading-4 grow shrink basis-0 truncate',
+          'text-[13px] font-medium grow shrink min-w-0 truncate',
           isCompleted
-            ? 'text-text-tertiary line-through decoration-1 [text-underline-position:from-font]'
-            : 'text-text-primary'
+            ? 'text-muted-foreground/60 line-through decoration-1 [text-underline-position:from-font]'
+            : 'text-foreground/90'
         )}
       >
         {task.title}

@@ -148,8 +148,8 @@ export const KanbanColumn = ({
         )}
         <span
           className={cn(
-            'text-[13px]/4 font-medium truncate',
-            shouldHighlight ? 'text-text-primary' : 'text-text-secondary'
+            'text-[13px] font-medium truncate',
+            shouldHighlight ? 'text-foreground/90' : 'text-foreground/60'
           )}
         >
           {column.title}

@@ -28,7 +28,7 @@ export function FilterFooter({
         <button
           type="button"
           onClick={onClear}
-          className="text-[12px] text-text-tertiary font-medium leading-4 hover:text-foreground transition-colors"
+          className="text-[13px] text-muted-foreground/60 font-medium leading-4 hover:text-foreground transition-colors"
         >
           {clearLabel}
         </button>
@@ -38,7 +38,7 @@ export function FilterFooter({
         onClick={onApply}
         className="flex items-center rounded-sm py-[5px] px-3.5 gap-1 bg-foreground hover:bg-foreground/80 transition-colors"
       >
-        <span className="text-[12px] text-background font-semibold leading-4">{applyLabel}</span>
+        <span className="text-[13px] text-background font-semibold leading-4">{applyLabel}</span>
       </button>
     </div>
   )

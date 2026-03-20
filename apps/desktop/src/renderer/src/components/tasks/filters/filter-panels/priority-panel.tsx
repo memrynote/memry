@@ -71,7 +71,7 @@ export function PriorityPanel({
           <rect x="5" y="4.5" width="2.5" height="7" rx="0.5" fill="currentColor" />
           <rect x="9" y="2" width="2.5" height="9.5" rx="0.5" fill="currentColor" />
         </svg>
-        <span className="text-[12px] text-foreground font-medium leading-4">Priority</span>
+        <span className="text-[13px] text-foreground font-medium leading-4">Priority</span>
         <span className="text-[11px] ml-auto text-foreground leading-3.5">is</span>
       </div>
       <FilterSearchHeader
@@ -96,9 +96,9 @@ export function PriorityPanel({
               <PriorityIcon priority={p} className={cn(p === 'none' && 'text-text-tertiary')} />
               <span
                 className={cn(
-                  'text-[12px] leading-4',
-                  checked ? 'text-foreground' : 'text-text-secondary',
-                  p === 'none' && !checked && 'text-text-tertiary'
+                  'text-[13px] leading-4',
+                  checked ? 'text-foreground' : 'text-muted-foreground',
+                  p === 'none' && !checked && 'text-muted-foreground/60'
                 )}
               >
                 {PRIORITY_LABELS[p]}

@@ -140,8 +140,8 @@ export const KanbanCardContent = forwardRef<HTMLDivElement, KanbanCardContentPro
           <div className="flex items-start gap-1.5">
             <span
               className={cn(
-                'text-[13px] leading-[18px] font-medium line-clamp-2',
-                isDone ? 'text-muted-foreground line-through' : 'text-foreground'
+                'text-[13px] font-medium line-clamp-2',
+                isDone ? 'text-muted-foreground/60 line-through' : 'text-foreground/90'
               )}
             >
               {task.title}

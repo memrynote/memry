@@ -30,10 +30,10 @@ export function StatusProjectPickerPanel({
         >
           <circle cx="7" cy="7" r="5" stroke="currentColor" strokeWidth="1.2" />
         </svg>
-        <span className="text-[12px] text-foreground font-medium leading-4">Status</span>
+        <span className="text-[13px] text-foreground font-medium leading-4">Status</span>
       </div>
       <div className="px-3 pt-1.5 pb-1">
-        <span className="text-[11px] text-text-tertiary leading-3.5">Pick a project</span>
+        <span className="text-[11px] text-muted-foreground/60 leading-3.5">Pick a project</span>
       </div>
       <div className="flex flex-col p-1">
         {visibleProjects.map((project) => (
@@ -47,8 +47,8 @@ export function StatusProjectPickerPanel({
               className="shrink-0 rounded-[3px] size-2.5"
               style={{ backgroundColor: project.color }}
             />
-            <span className="text-[12px] text-text-secondary leading-4">{project.name}</span>
-            <ChevronRight size={10} className="ml-auto text-text-tertiary" />
+            <span className="text-[13px] text-muted-foreground leading-4">{project.name}</span>
+            <ChevronRight size={10} className="ml-auto text-muted-foreground/60" />
           </button>
         ))}
       </div>
