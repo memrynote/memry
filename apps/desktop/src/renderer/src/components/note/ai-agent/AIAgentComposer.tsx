@@ -113,7 +113,7 @@ export function AIAgentComposer({
       className={cn(
         'bg-white border border-stone-200 rounded-2xl',
         'transition-all duration-200',
-        'focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-500/10'
+        'focus-within:border-tint focus-within:ring-2 focus-within:ring-tint-ring'
       )}
     >
       {/* Attachment Chips Area */}
@@ -227,9 +227,9 @@ export function AIAgentComposer({
                   className={cn(
                     'h-9 w-9 rounded-full flex items-center justify-center',
                     'transition-all duration-150',
-                    'focus:outline-none focus:ring-1 focus:ring-blue-400 focus:ring-offset-1',
+                    'focus:outline-none focus:ring-1 focus:ring-tint focus:ring-offset-1',
                     canSend
-                      ? 'bg-blue-600 text-white hover:bg-blue-700 hover:scale-105'
+                      ? 'bg-tint text-tint-foreground hover:bg-tint-hover hover:scale-105'
                       : 'bg-stone-200 text-stone-400 cursor-not-allowed'
                   )}
                   aria-label="Send message"

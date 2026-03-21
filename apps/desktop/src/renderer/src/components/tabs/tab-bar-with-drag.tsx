@@ -196,7 +196,7 @@ export const TabBarWithDrag = ({
               <Bot
                 className={cn(
                   'w-4 h-4 transition-colors duration-150',
-                  isAIAgentOpen && 'text-blue-500 dark:text-blue-400'
+                  isAIAgentOpen && 'text-tint'
                 )}
               />
             }

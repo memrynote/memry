@@ -31,7 +31,7 @@ function PropertyValueDisplay({ property }: { property: Property }) {
 
     case 'url':
       return (
-        <span className="text-[13px] text-blue-500 font-sans leading-4 truncate max-w-[200px] hover:underline">
+        <span className="text-[13px] text-tint font-sans leading-4 truncate max-w-[200px] hover:underline">
           {String(value)}
         </span>
       )

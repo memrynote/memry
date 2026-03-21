@@ -108,7 +108,7 @@ export const LinkedTasksSection = ({
         ) : (
           <ChevronDown className="size-4 text-stone-400" aria-hidden="true" />
         )}
-        <CheckSquare className="size-4 text-blue-500" aria-hidden="true" />
+        <CheckSquare className="size-4 text-tint" aria-hidden="true" />
         <span className="text-xs font-semibold uppercase tracking-wide text-stone-500">
           Linked Tasks
         </span>

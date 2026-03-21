@@ -12,7 +12,7 @@ export function ModeToggle({ mode, enabled, onToggle }: ModeToggleProps) {
   const config = {
     web: {
       icon: Globe,
-      activeClass: 'bg-blue-100 text-blue-600',
+      activeClass: 'bg-tint-light text-tint',
       tooltipEnabled: 'Web search enabled',
       tooltipDisabled: 'Web search'
     },

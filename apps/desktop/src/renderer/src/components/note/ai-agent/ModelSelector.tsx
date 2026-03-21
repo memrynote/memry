@@ -71,7 +71,7 @@ export function ModelSelector({ selectedModel, onModelChange }: ModelSelectorPro
                 <p className="text-sm font-medium text-stone-900 truncate">{model.name}</p>
                 <p className="text-xs text-stone-500 truncate">{model.description}</p>
               </div>
-              {selectedModel === model.id && <Check className="h-4 w-4 text-blue-600 shrink-0" />}
+              {selectedModel === model.id && <Check className="h-4 w-4 text-tint shrink-0" />}
             </button>
           ))}
         </div>
