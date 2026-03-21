@@ -57,6 +57,13 @@ vi.mock('../lib/embeddings', () => ({
   isModelLoading: vi.fn()
 }))
 
+const mockUpdateField = vi.fn()
+vi.mock('../sync/settings-sync', () => ({
+  getSettingsSyncManager: vi.fn(() => ({
+    updateField: mockUpdateField
+  }))
+}))
+
 vi.mock('../inbox/suggestions', () => ({
   getEmbeddingCount: vi.fn(() => 4),
   reindexAllEmbeddings: vi.fn(() => Promise.resolve({ success: true, computed: 1, skipped: 0 }))
@@ -66,6 +73,7 @@ import { registerSettingsHandlers, unregisterSettingsHandlers } from './settings
 import { getDatabase } from '../database'
 import * as settingsQueries from '@main/database/queries/settings'
 import * as embeddings from '../lib/embeddings'
+import { getSettingsSyncManager } from '../sync/settings-sync'
 
 function invokeSyncHandler<T>(channel: string, ...args: unknown[]): T {
   const listener = syncListeners.get(channel)
@@ -86,6 +94,7 @@ describe('settings-handlers', () => {
     removeHandlerCalls.length = 0
     syncListeners.clear()
     mockSend.mockClear()
+    mockUpdateField.mockClear()
     ;(getDatabase as Mock).mockReturnValue({})
   })
 
@@ -112,13 +121,17 @@ describe('settings-handlers', () => {
     })
   })
 
-  it('returns the startup theme synchronously', () => {
+  it('returns the startup theme and accent color synchronously', () => {
     registerSettingsHandlers()
-    ;(settingsQueries.getSetting as Mock).mockReturnValue(JSON.stringify({ theme: 'light' }))
+    ;(settingsQueries.getSetting as Mock).mockReturnValue(
+      JSON.stringify({ theme: 'light', accentColor: '#6366f1' })
+    )
 
-    const result = invokeSyncHandler<string>(SettingsChannels.sync.GET_STARTUP_THEME)
+    const result = invokeSyncHandler<{ theme: string; accentColor?: string }>(
+      SettingsChannels.sync.GET_STARTUP_THEME
+    )
 
-    expect(result).toBe('light')
+    expect(result).toEqual({ theme: 'light', accentColor: '#6366f1' })
   })
 
   it('returns defaults when no database is open', async () => {
@@ -319,5 +332,124 @@ describe('settings-handlers', () => {
       toolbarMode: 'sticky'
     })
     expect(result).toEqual({ success: false, error: 'No vault open' })
+  })
+
+  describe('cross-device settings sync', () => {
+    it('#given sync manager exists #when accentColor is set #then syncs via updateField', async () => {
+      registerSettingsHandlers()
+
+      // #when
+      await invokeHandler(SettingsChannels.invoke.SET_GENERAL_SETTINGS, {
+        accentColor: '#ef4444'
+      })
+
+      // #then
+      expect(mockUpdateField).toHaveBeenCalledWith('general.accentColor', '#ef4444', 'local')
+    })
+
+    it('#given sync manager exists #when theme is set #then syncs via updateField', async () => {
+      registerSettingsHandlers()
+
+      // #when
+      await invokeHandler(SettingsChannels.invoke.SET_GENERAL_SETTINGS, { theme: 'dark' })
+
+      // #then
+      expect(mockUpdateField).toHaveBeenCalledWith('general.theme', 'dark', 'local')
+    })
+
+    it('#given sync manager exists #when fontSize is set #then syncs via updateField', async () => {
+      registerSettingsHandlers()
+
+      // #when
+      await invokeHandler(SettingsChannels.invoke.SET_GENERAL_SETTINGS, { fontSize: 'large' })
+
+      // #then
+      expect(mockUpdateField).toHaveBeenCalledWith('general.fontSize', 'large', 'local')
+    })
+
+    it('#given sync manager exists #when fontFamily is set #then syncs via updateField', async () => {
+      registerSettingsHandlers()
+
+      // #when
+      await invokeHandler(SettingsChannels.invoke.SET_GENERAL_SETTINGS, {
+        fontFamily: 'monospace'
+      })
+
+      // #then
+      expect(mockUpdateField).toHaveBeenCalledWith('general.fontFamily', 'monospace', 'local')
+    })
+
+    it('#given sync manager exists #when startOnBoot is set #then does NOT sync (device-specific)', async () => {
+      registerSettingsHandlers()
+
+      // #when
+      await invokeHandler(SettingsChannels.invoke.SET_GENERAL_SETTINGS, { startOnBoot: true })
+
+      // #then
+      expect(mockUpdateField).not.toHaveBeenCalled()
+    })
+
+    it('#given sync manager exists #when multiple syncable fields updated #then syncs each', async () => {
+      registerSettingsHandlers()
+
+      // #when
+      await invokeHandler(SettingsChannels.invoke.SET_GENERAL_SETTINGS, {
+        accentColor: '#10b981',
+        theme: 'white'
+      })
+
+      // #then
+      expect(mockUpdateField).toHaveBeenCalledWith('general.accentColor', '#10b981', 'local')
+      expect(mockUpdateField).toHaveBeenCalledWith('general.theme', 'white', 'local')
+      expect(mockUpdateField).toHaveBeenCalledTimes(2)
+    })
+
+    it('#given no sync manager #when accentColor is set #then does not throw', async () => {
+      registerSettingsHandlers()
+      ;(getSettingsSyncManager as Mock).mockReturnValue(null)
+
+      // #when / #then — should not throw
+      const result = await invokeHandler(SettingsChannels.invoke.SET_GENERAL_SETTINGS, {
+        accentColor: '#ef4444'
+      })
+      expect(result).toEqual({ success: true })
+    })
+  })
+
+  describe('startup accent color', () => {
+    it('#given general settings with accentColor #when startup theme requested #then returns accent color', () => {
+      registerSettingsHandlers()
+      ;(settingsQueries.getSetting as Mock).mockReturnValue(
+        JSON.stringify({ theme: 'dark', accentColor: '#ef4444' })
+      )
+
+      const result = invokeSyncHandler<{ theme: string; accentColor?: string }>(
+        SettingsChannels.sync.GET_STARTUP_THEME
+      )
+
+      expect(result).toEqual({ theme: 'dark', accentColor: '#ef4444' })
+    })
+
+    it('#given no accentColor saved #when startup theme requested #then returns theme with default accent', () => {
+      registerSettingsHandlers()
+      ;(settingsQueries.getSetting as Mock).mockReturnValue(JSON.stringify({ theme: 'white' }))
+
+      const result = invokeSyncHandler<{ theme: string; accentColor?: string }>(
+        SettingsChannels.sync.GET_STARTUP_THEME
+      )
+
+      expect(result).toEqual({ theme: 'white', accentColor: '#6366f1' })
+    })
+
+    it('#given no settings in db #when startup theme requested #then returns defaults', () => {
+      registerSettingsHandlers()
+      ;(settingsQueries.getSetting as Mock).mockReturnValue(null)
+
+      const result = invokeSyncHandler<{ theme: string; accentColor?: string }>(
+        SettingsChannels.sync.GET_STARTUP_THEME
+      )
+
+      expect(result).toEqual({ theme: 'system', accentColor: '#6366f1' })
+    })
   })
 })

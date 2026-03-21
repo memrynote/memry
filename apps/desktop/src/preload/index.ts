@@ -59,24 +59,47 @@ function invoke<C extends MainIpcInvokeChannel>(
 
 type StartupTheme = 'light' | 'dark' | 'white' | 'system'
 const THEME_STORAGE_KEY = 'memry-theme'
+const ACCENT_STORAGE_KEY = 'memry-accent'
 
-function getStartupThemeSync(): StartupTheme {
-  // Fast path: use the theme cached in localStorage from the previous run.
-  // This avoids a synchronous IPC round-trip on every launch after the first.
+interface StartupAppearance {
+  theme: StartupTheme
+  accentColor?: string
+}
+
+function getStartupAppearanceSync(): StartupAppearance {
+  // Fast path: use values cached in localStorage from the previous run.
   try {
-    const cached = window.localStorage.getItem(THEME_STORAGE_KEY)
-    if (cached === 'light' || cached === 'dark' || cached === 'white' || cached === 'system') {
-      return cached
+    const cachedTheme = window.localStorage.getItem(THEME_STORAGE_KEY)
+    if (
+      cachedTheme === 'light' ||
+      cachedTheme === 'dark' ||
+      cachedTheme === 'white' ||
+      cachedTheme === 'system'
+    ) {
+      return {
+        theme: cachedTheme,
+        accentColor: window.localStorage.getItem(ACCENT_STORAGE_KEY) ?? undefined
+      }
     }
   } catch {
     // localStorage may be unavailable; fall through to IPC
   }
   // First launch (or corrupted storage): fall back to synchronous IPC.
   try {
-    return ipcRenderer.sendSync(SettingsChannels.sync.GET_STARTUP_THEME) as StartupTheme
+    const result = ipcRenderer.sendSync(SettingsChannels.sync.GET_STARTUP_THEME) as
+      | StartupAppearance
+      | StartupTheme
+    if (typeof result === 'object' && result !== null) {
+      return result
+    }
+    return { theme: (result as StartupTheme) ?? 'system' }
   } catch {
-    return 'system'
+    return { theme: 'system' }
   }
+}
+
+function getStartupThemeSync(): StartupTheme {
+  return getStartupAppearanceSync().theme
 }
 
 function resolveStartupTheme(theme: StartupTheme): 'light' | 'dark' | 'white' {
@@ -91,8 +114,8 @@ function resolveStartupTheme(theme: StartupTheme): 'light' | 'dark' | 'white' {
   return theme
 }
 
-function applyStartupTheme(savedTheme: StartupTheme): void {
-  const resolvedTheme = resolveStartupTheme(savedTheme)
+function applyStartupAppearance(appearance: StartupAppearance): void {
+  const resolvedTheme = resolveStartupTheme(appearance.theme)
 
   const applyToRoot = (): boolean => {
     const root = document.documentElement
@@ -102,6 +125,10 @@ function applyStartupTheme(savedTheme: StartupTheme): void {
     if (resolvedTheme === 'dark') root.classList.add('dark')
     if (resolvedTheme === 'white') root.classList.add('white')
     root.style.colorScheme = resolvedTheme === 'dark' ? 'dark' : 'light'
+
+    if (appearance.accentColor) {
+      root.style.setProperty('--user-accent-color', appearance.accentColor)
+    }
     return true
   }
 
@@ -117,13 +144,16 @@ function applyStartupTheme(savedTheme: StartupTheme): void {
 }
 
 if (typeof globalThis.window !== 'undefined') {
-  const startupTheme = getStartupThemeSync()
+  const appearance = getStartupAppearanceSync()
   try {
-    window.localStorage.setItem(THEME_STORAGE_KEY, startupTheme)
+    window.localStorage.setItem(THEME_STORAGE_KEY, appearance.theme)
+    if (appearance.accentColor) {
+      window.localStorage.setItem(ACCENT_STORAGE_KEY, appearance.accentColor)
+    }
   } catch {
     // localStorage may be unavailable in some test or restricted environments
   }
-  applyStartupTheme(startupTheme)
+  applyStartupAppearance(appearance)
 }
 
 // Custom APIs for renderer
@@ -665,7 +695,7 @@ export const api = {
     get: (id: string) => invoke(InboxChannels.invoke.GET, id),
     list: (options?: {
       type?: string
-      includeSnoozed?: boolean
+      includeScheduled?: boolean
       sortBy?: 'created' | 'modified' | 'title'
       sortOrder?: 'asc' | 'desc'
       limit?: number
@@ -733,8 +763,6 @@ export const api = {
     bulkTag: (input: { itemIds: string[]; tags: string[] }) =>
       invoke(InboxChannels.invoke.BULK_TAG, input),
     fileAllStale: () => invoke(InboxChannels.invoke.FILE_ALL_STALE),
-    bulkArchiveOlderThan: (olderThanDays: number) =>
-      invoke(InboxChannels.invoke.BULK_ARCHIVE_OLDER_THAN, { olderThanDays }),
 
     // Transcription
     retryTranscription: (itemId: string) =>

@@ -28,6 +28,7 @@ import type {
 import { GRAPH_SETTINGS_DEFAULTS } from '@memry/contracts/graph-api'
 import type { GraphSettings } from '@memry/contracts/graph-api'
 import { createLogger } from '../lib/logger'
+import { getSettingsSyncManager } from '../sync/settings-sync'
 import { getDatabase } from '../database'
 import { getSetting, setSetting, deleteSetting } from '@main/database/queries/settings'
 import { initEmbeddingModel, getModelInfo, isModelLoaded, isModelLoading } from '../lib/embeddings'
@@ -37,6 +38,14 @@ import { initEmbeddingModel, getModelInfo, isModelLoaded, isModelLoading } from 
 // ============================================================================
 
 const logger = createLogger('IPC:Settings')
+
+const GENERAL_SYNCABLE_FIELDS: (keyof GeneralSettings)[] = [
+  'theme',
+  'fontSize',
+  'fontFamily',
+  'accentColor',
+  'language'
+]
 
 const SETTINGS_KEYS = {
   JOURNAL_DEFAULT_TEMPLATE: 'journal.defaultTemplate',
@@ -157,8 +166,15 @@ function readGroupSettings<T extends Record<string, unknown>>(groupKey: string, 
   }
 }
 
-function getStartupTheme(): GeneralSettings['theme'] {
-  return readGroupSettings('general', GENERAL_SETTINGS_DEFAULTS).theme
+function getStartupTheme(): { theme: GeneralSettings['theme']; accentColor?: string } {
+  const settings = readGroupSettings('general', GENERAL_SETTINGS_DEFAULTS)
+  const result: { theme: GeneralSettings['theme']; accentColor?: string } = {
+    theme: settings.theme
+  }
+  if (settings.accentColor) {
+    result.accentColor = settings.accentColor
+  }
+  return result
 }
 
 /**
@@ -517,12 +533,23 @@ export function registerSettingsHandlers(): void {
     SettingsChannels.invoke.SET_GENERAL_SETTINGS,
     (_event, updates: Partial<GeneralSettings>) => {
       const result = writeGroupSettings('general', GENERAL_SETTINGS_DEFAULTS, updates)
-      if (result.success && updates.startOnBoot !== undefined) {
-        try {
-          app.setLoginItemSettings({ openAtLogin: updates.startOnBoot })
-          logger.info(`Start on boot ${updates.startOnBoot ? 'enabled' : 'disabled'}`)
-        } catch (err) {
-          logger.warn('Failed to set login item:', err)
+      if (result.success) {
+        if (updates.startOnBoot !== undefined) {
+          try {
+            app.setLoginItemSettings({ openAtLogin: updates.startOnBoot })
+            logger.info(`Start on boot ${updates.startOnBoot ? 'enabled' : 'disabled'}`)
+          } catch (err) {
+            logger.warn('Failed to set login item:', err)
+          }
+        }
+
+        const manager = getSettingsSyncManager()
+        if (manager) {
+          for (const field of GENERAL_SYNCABLE_FIELDS) {
+            if (updates[field] !== undefined) {
+              manager.updateField(`general.${field}`, updates[field], 'local')
+            }
+          }
         }
       }
       return result
