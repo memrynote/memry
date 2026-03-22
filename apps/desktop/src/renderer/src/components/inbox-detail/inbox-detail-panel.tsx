@@ -16,36 +16,18 @@ import { useQuery } from '@tanstack/react-query'
 
 import { cn } from '@/lib/utils'
 
-import { X } from '@/lib/icons'
 import { Button } from '@/components/ui/button'
 
-import { ContentSection, ContentMetadata, ContentSkeleton, TypeIcon } from './content-section'
+import { ContentSection, ContentSkeleton } from './content-section'
+import { DetailHeader } from './detail-header'
+import { NoteDetail } from './note-detail'
 import { FilingSection, useFilingState } from './filing-section'
-import { getTypeLabel, getTypeAccentClass } from './type-accents'
 import { useRetryTranscription, useUpdateInboxItem } from '@/hooks/use-inbox'
 import { isMac, isInputFocused } from '@/hooks/use-keyboard-shortcuts'
 import type { InboxItem, InboxItemListItem, Folder } from '@/types'
 import { createLogger } from '@/lib/logger'
 
 const log = createLogger('Component:InboxDetailPanel')
-
-const formatRelativeTime = (date: Date | string): string => {
-  const d = date instanceof Date ? date : new Date(date)
-  const now = Date.now()
-  const diffMs = now - d.getTime()
-  const diffMin = Math.floor(diffMs / 60_000)
-
-  if (diffMin < 1) return 'just now'
-  if (diffMin < 60) return `${diffMin} min ago`
-
-  const diffHr = Math.floor(diffMin / 60)
-  if (diffHr < 24) return `${diffHr}h ago`
-
-  const diffDay = Math.floor(diffHr / 24)
-  if (diffDay < 7) return `${diffDay}d ago`
-
-  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-}
 
 // Panel can work with either full or list item types
 type DetailItem = InboxItem | InboxItemListItem
@@ -327,53 +309,10 @@ export const InboxDetailPanel = ({
           <ContentSkeleton />
         ) : item ? (
           <>
-            {/* Header — compact badge for link, standard for others */}
-            {item.type === 'link' ? (
-              <div className="flex items-center justify-between px-5 py-4 border-b border-border shrink-0">
-                <div className="flex items-center gap-1.5">
-                  <TypeIcon type={item.type} className="size-3.5" />
-                  <span
-                    className={cn(
-                      'text-[11px] leading-3.5 font-medium',
-                      getTypeAccentClass(item.type)
-                    )}
-                  >
-                    {getTypeLabel(item.type)}
-                  </span>
-                  <span className="text-[11px] leading-3.5 text-muted-foreground/60">
-                    · {formatRelativeTime(item.createdAt)}
-                  </span>
-                </div>
-                <button
-                  onClick={onClose}
-                  className="p-1 rounded-md text-muted-foreground/50 hover:text-foreground transition-colors"
-                  aria-label="Close panel"
-                >
-                  <X className="size-3.5" />
-                </button>
-              </div>
-            ) : (
-              <>
-                <div className="flex items-start gap-3 px-5 py-4 border-b border-border shrink-0">
-                  <TypeIcon type={item.type} />
-                  <h2 className="text-[15px] font-semibold flex-1 line-clamp-2 text-foreground leading-5">
-                    {item.title}
-                  </h2>
-                  <button
-                    onClick={onClose}
-                    className="p-1 rounded-md text-muted-foreground/50 hover:text-foreground transition-colors shrink-0"
-                    aria-label="Close panel"
-                  >
-                    <X className="size-3.5" />
-                  </button>
-                </div>
-                <ContentMetadata item={item} />
-              </>
-            )}
+            <DetailHeader type={item.type} createdAt={item.createdAt} onClose={onClose} />
 
             {/* Main Content Area */}
             <div ref={containerRef} className="flex-1 min-h-0 flex flex-col">
-              {/* Content Area — auto-height by default, handle sits right after content */}
               <div
                 ref={contentRef}
                 className={cn('overflow-y-auto', readOnly ? 'flex-1 min-h-0' : 'shrink-0')}
@@ -385,14 +324,26 @@ export const InboxDetailPanel = ({
                       : { maxHeight: '60%' }
                 }
               >
-                <div className="px-6 py-4">
-                  <ContentSection
+                {item.type === 'note' ? (
+                  <NoteDetail
                     item={item}
-                    onRetryTranscription={handleRetryTranscription}
-                    isRetrying={retryTranscriptionMutation.isPending}
                     onContentChange={readOnly ? undefined : handleContentChange}
                   />
-                </div>
+                ) : (
+                  <div className="px-5 py-4">
+                    {item.type !== 'link' && (
+                      <h3 className="text-[15px] leading-5 font-medium text-foreground mb-3.5">
+                        {item.title}
+                      </h3>
+                    )}
+                    <ContentSection
+                      item={item}
+                      onRetryTranscription={handleRetryTranscription}
+                      isRetrying={retryTranscriptionMutation.isPending}
+                      onContentChange={readOnly ? undefined : handleContentChange}
+                    />
+                  </div>
+                )}
               </div>
 
               {!readOnly && (

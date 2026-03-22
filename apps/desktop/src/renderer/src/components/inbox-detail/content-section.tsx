@@ -639,8 +639,6 @@ export const ContentSection = ({
   switch (item.type) {
     case 'link':
       return <LinkPreview item={item} />
-    case 'note':
-      return <SimpleContent item={item} onContentChange={onContentChange} />
     case 'image':
       return <ImagePreview item={item} />
     case 'voice':
