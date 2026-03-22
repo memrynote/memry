@@ -20,6 +20,7 @@ import type { NoteListItem } from '@/hooks/use-notes-query'
 export interface FolderNode {
   name: string
   path: string
+  icon?: string | null
   children: FolderNode[]
   notes: NoteListItem[]
 }

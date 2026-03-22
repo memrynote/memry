@@ -161,7 +161,7 @@ async function ensureFolderExists(folderPath: string): Promise<void> {
 
   try {
     const existingFolders = await getFolders()
-    if (!existingFolders.includes(folderPath)) {
+    if (!existingFolders.some((f) => f.path === folderPath)) {
       await createFolder(folderPath)
       log.debug(`Created folder: ${folderPath}`)
     }

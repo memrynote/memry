@@ -773,7 +773,7 @@ export interface MainIpcInvokeHandlers {
     Promise<import('../../../../../packages/contracts/src/templates-api').FolderConfig | null>
   >
   'notes:get-folder-template': (...args: [string]) => Awaited<Promise<string | null>>
-  'notes:get-folders': (...args: []) => Awaited<Promise<string[]>>
+  'notes:get-folders': (...args: []) => Awaited<Promise<{ path: string; icon?: string | null }[]>>
   'notes:get-links': (
     ...args: [string]
   ) => Awaited<Promise<import('../vault/notes').NoteLinksResponse>>

@@ -187,6 +187,7 @@ export function useInboxList(options: UseInboxListOptions = {}): UseInboxListRes
     const unsubArchived = onInboxArchived(() => {
       void queryClient.invalidateQueries({ queryKey: inboxKeys.lists() })
       void queryClient.invalidateQueries({ queryKey: inboxKeys.stats() })
+      void queryClient.invalidateQueries({ queryKey: inboxKeys.archived({}) })
     })
 
     const unsubFiled = onInboxFiled(() => {

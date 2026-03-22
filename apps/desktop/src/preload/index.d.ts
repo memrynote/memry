@@ -211,8 +211,14 @@ export interface TemplateListResponse {
 }
 
 export interface FolderConfig {
+  icon?: string | null
   template?: string
   inherit?: boolean
+}
+
+export interface FolderInfo {
+  path: string
+  icon?: string | null
 }
 
 // Export types (T106, T108)
@@ -866,7 +872,7 @@ export interface NotesClientAPI {
   list(options?: NoteListOptions): Promise<NoteListResponse>
   getTags(): Promise<{ tag: string; color: string; count: number }[]>
   getLinks(id: string): Promise<NoteLinksResponse>
-  getFolders(): Promise<string[]>
+  getFolders(): Promise<FolderInfo[]>
   createFolder(path: string): Promise<{ success: boolean; error?: string }>
   renameFolder(oldPath: string, newPath: string): Promise<{ success: boolean; error?: string }>
   deleteFolder(path: string): Promise<{ success: boolean; error?: string }>

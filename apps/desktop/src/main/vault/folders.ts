@@ -64,6 +64,8 @@ function parseFolderConfig(content: string): FolderConfig {
   const { data } = matter(content)
 
   return {
+    // Icon
+    icon: typeof data.icon === 'string' ? data.icon : undefined,
     // Template configuration
     template: typeof data.template === 'string' ? data.template : undefined,
     inherit: data.inherit !== false, // Default to true
@@ -91,6 +93,11 @@ function parseFolderConfig(content: string): FolderConfig {
  */
 function serializeFolderConfig(config: FolderConfig): string {
   const frontmatter: Record<string, unknown> = {}
+
+  // Icon
+  if (config.icon) {
+    frontmatter.icon = config.icon
+  }
 
   // Template configuration
   if (config.template) {
@@ -174,6 +181,7 @@ export async function writeFolderConfig(folderPath: string, config: FolderConfig
   }
 
   // Check if config has any meaningful content
+  const hasIconConfig = !!config.icon
   const hasTemplateConfig = config.template || config.inherit === false
   const hasViewConfig =
     (config.views && config.views.length > 0) ||
@@ -182,7 +190,7 @@ export async function writeFolderConfig(folderPath: string, config: FolderConfig
     (config.summaries && Object.keys(config.summaries).length > 0)
 
   // If config is empty, delete the file
-  if (!hasTemplateConfig && !hasViewConfig) {
+  if (!hasIconConfig && !hasTemplateConfig && !hasViewConfig) {
     if (existsSync(configPath)) {
       await fs.unlink(configPath)
     }

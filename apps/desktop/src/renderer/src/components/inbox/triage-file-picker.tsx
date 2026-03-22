@@ -33,15 +33,15 @@ export function TriageFilePicker({
   const { data: vaultFolders = [] } = useQuery({
     queryKey: ['vault', 'folders'],
     queryFn: async () => {
-      const paths = await window.api.notes.getFolders()
+      const folderInfos = await window.api.notes.getFolders()
       const folders: FolderType[] = [{ id: '', name: 'Notes (root)', path: '' }]
-      for (const p of paths) {
-        if (p) {
+      for (const fi of folderInfos) {
+        if (fi.path) {
           folders.push({
-            id: p,
-            name: p.split('/').pop() || p,
-            path: p,
-            parent: p.includes('/') ? p.split('/').slice(0, -1).join('/') : undefined
+            id: fi.path,
+            name: fi.path.split('/').pop() || fi.path,
+            path: fi.path,
+            parent: fi.path.includes('/') ? fi.path.split('/').slice(0, -1).join('/') : undefined
           })
         }
       }
