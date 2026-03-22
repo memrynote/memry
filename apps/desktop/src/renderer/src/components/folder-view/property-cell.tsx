@@ -23,6 +23,7 @@ import {
   UrlEditor
 } from '@/components/note/info-section/editors'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import { NoteIconDisplay } from '@/lib/render-note-icon'
 
 // ============================================================================
 // Types
@@ -686,7 +687,7 @@ export const TitleCell = memo(function TitleCell({
       title={title}
     >
       {emoji ? (
-        <span className="flex-shrink-0 text-base">{emoji}</span>
+        <NoteIconDisplay value={emoji} className="flex-shrink-0 text-base" />
       ) : (
         <FileText className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
       )}

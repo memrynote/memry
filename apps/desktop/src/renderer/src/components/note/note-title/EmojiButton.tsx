@@ -1,5 +1,7 @@
 import { cn } from '@/lib/utils'
 import { Smile } from '@/lib/icons'
+import { isIconValue, parseIconName } from './emoji-icon-utils'
+import { HugeIconByName } from '@/lib/hugeicon-renderer'
 
 interface EmojiButtonProps {
   emoji: string | null
@@ -23,7 +25,9 @@ export function EmojiButton({ emoji, onClick, disabled }: EmojiButtonProps) {
         'disabled:pointer-events-none disabled:opacity-50'
       )}
     >
-      {emoji ? (
+      {emoji && isIconValue(emoji) ? (
+        <HugeIconByName name={parseIconName(emoji)} className="h-5 w-5 text-text-tertiary" />
+      ) : emoji ? (
         <span className="text-[22px] leading-7">{emoji}</span>
       ) : (
         <Smile className="h-5 w-5 text-text-tertiary" />

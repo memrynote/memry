@@ -2,7 +2,7 @@
 
 import * as React from 'react'
 import { useMemo, useState, useCallback, useRef } from 'react'
-import { CloudOff, Plus, Search, Upload } from '@/lib/icons'
+import { CloudOff, FilePlus, FolderPlus, Plus, Search, Upload } from '@/lib/icons'
 import {
   SidebarInbox,
   SidebarHome,
@@ -97,9 +97,8 @@ export function AppSidebar({ currentPage, viewCounts, ...props }: AppSidebarProp
  * Inner sidebar component that has access to the drill-down context.
  */
 function AppSidebarInner({ currentPage, viewCounts, ...props }: AppSidebarProps) {
-  // State to hold action buttons from NotesTree and TagList
-  const [notesActions, setNotesActions] = useState<React.ReactNode>(null)
   const [tagsActions, setTagsActions] = useState<React.ReactNode>(null)
+  const notesActionsRef = useRef<{ createNote: () => void; createFolder: () => void } | null>(null)
   const sidebarScrollRef = useRef<HTMLDivElement>(null)
   const targetFolderRef = useRef('')
 
@@ -295,10 +294,8 @@ function AppSidebarInner({ currentPage, viewCounts, ...props }: AppSidebarProps)
                     />
                     <span
                       className={cn(
-                        'text-[13px] leading-4',
-                        active
-                          ? 'text-sidebar-accent-foreground font-medium'
-                          : 'text-sidebar-foreground'
+                        'text-[13px] leading-4 font-medium',
+                        active ? 'text-sidebar-accent-foreground' : 'text-sidebar-foreground'
                       )}
                     >
                       {item.title}
@@ -340,10 +337,31 @@ function AppSidebarInner({ currentPage, viewCounts, ...props }: AppSidebarProps)
           id="collections"
           label="Collections"
           defaultExpanded={false}
-          actions={notesActions}
+          actions={
+            <>
+              <button
+                type="button"
+                onClick={() => notesActionsRef.current?.createNote()}
+                className="p-0.5 rounded cursor-pointer hover:bg-sidebar-accent transition-colors"
+                aria-label="New note"
+              >
+                <FilePlus className="size-3.5 text-sidebar-muted hover:text-sidebar-foreground" />
+              </button>
+              <button
+                type="button"
+                onClick={() => notesActionsRef.current?.createFolder()}
+                className="p-0.5 rounded cursor-pointer hover:bg-sidebar-accent transition-colors"
+                aria-label="New folder"
+              >
+                <FolderPlus className="size-3.5 text-sidebar-muted hover:text-sidebar-foreground" />
+              </button>
+            </>
+          }
         >
           <NotesTree
-            onActionsReady={setNotesActions}
+            onActionsReady={(actions) => {
+              notesActionsRef.current = actions
+            }}
             onTargetFolderChange={handleTargetFolderChange}
           />
         </SidebarSection>

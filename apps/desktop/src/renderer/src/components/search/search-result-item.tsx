@@ -9,6 +9,7 @@ import type {
   InboxResultMetadata
 } from '@memry/contracts/search-api'
 import { highlightTerms, stripMarkTags } from '@/services/search-service'
+import { NoteIconDisplay } from '@/lib/render-note-icon'
 
 interface SearchResultItemProps {
   item: SearchResultItemType
@@ -158,9 +159,10 @@ export function SearchResultItem({
         transition-colors duration-75"
     >
       {noteEmoji ? (
-        <span className="size-4 shrink-0 mt-0.5 text-sm leading-none flex items-center justify-center">
-          {noteEmoji}
-        </span>
+        <NoteIconDisplay
+          value={noteEmoji}
+          className="size-4 shrink-0 mt-0.5 text-sm leading-none flex items-center justify-center"
+        />
       ) : (
         <Icon className="size-4 shrink-0 mt-0.5 text-text-tertiary" />
       )}
