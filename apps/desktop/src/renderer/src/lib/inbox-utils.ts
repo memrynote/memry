@@ -28,7 +28,8 @@ const getItemDate = (item: InboxItem | InboxItemListItem): Date => {
 
 // Helper to group items by time period
 export const groupItemsByTimePeriod = <T extends InboxItem | InboxItemListItem>(
-  items: T[]
+  items: T[],
+  dateAccessor?: (item: T) => Date
 ): GroupedItems<T>[] => {
   const now = new Date()
   const yesterday = new Date(now)
@@ -41,7 +42,7 @@ export const groupItemsByTimePeriod = <T extends InboxItem | InboxItemListItem>(
   }
 
   items.forEach((item) => {
-    const itemDate = getItemDate(item)
+    const itemDate = dateAccessor ? dateAccessor(item) : getItemDate(item)
     if (isSameDay(itemDate, now)) {
       groups.TODAY.push(item)
     } else if (isSameDay(itemDate, yesterday)) {

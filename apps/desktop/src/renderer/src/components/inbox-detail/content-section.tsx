@@ -14,6 +14,7 @@ import {
   Clock,
   User,
   ExternalLink,
+  Link,
   Play,
   Pause,
   Copy,
@@ -28,6 +29,7 @@ import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { extractDomain } from '@/lib/inbox-utils'
 import { InboxContentEditor } from './inbox-content-editor'
+import { LinkDetailContent } from './link-detail-content'
 import type {
   InboxItem,
   InboxItemListItem,
@@ -96,28 +98,55 @@ const formatDate = (date: Date | string): string => {
 interface TypeIconProps {
   type: InboxItemType
   className?: string
+  style?: React.CSSProperties
+  variant?: 'default' | 'badge'
 }
 
-export const TypeIcon = ({ type, className = 'size-5' }: TypeIconProps): React.JSX.Element => {
-  const iconClass = `${className} text-[var(--muted-foreground)]`
+export const TypeIcon = ({
+  type,
+  className = 'size-5',
+  style,
+  variant = 'default'
+}: TypeIconProps): React.JSX.Element => {
+  const iconClass = style?.color ? className : `${className} text-[var(--muted-foreground)]`
+  const props = { className: iconClass, style, 'aria-hidden': true as const }
+
+  if (variant === 'badge') {
+    switch (type) {
+      case 'link':
+        return <Link {...props} />
+      case 'voice':
+        return <Mic {...props} />
+      case 'image':
+        return <Image {...props} />
+      case 'note':
+        return <FileText {...props} />
+      case 'video':
+        return <Video {...props} />
+      case 'pdf':
+        return <FileType {...props} />
+      default:
+        return <FileText {...props} />
+    }
+  }
 
   switch (type) {
     case 'link':
-      return <Globe className={iconClass} aria-hidden="true" />
+      return <Globe {...props} />
     case 'note':
-      return <FileText className={iconClass} aria-hidden="true" />
+      return <FileText {...props} />
     case 'image':
-      return <Image className={iconClass} aria-hidden="true" />
+      return <Image {...props} />
     case 'voice':
-      return <Mic className={iconClass} aria-hidden="true" />
+      return <Mic {...props} />
     case 'pdf':
-      return <FileType className={iconClass} aria-hidden="true" />
+      return <FileType {...props} />
     case 'video':
-      return <Video className={iconClass} aria-hidden="true" />
+      return <Video {...props} />
     case 'clip':
     case 'social':
     default:
-      return <FileText className={iconClass} aria-hidden="true" />
+      return <FileText {...props} />
   }
 }
 
@@ -212,90 +241,7 @@ export const ContentMetadata = ({ item }: ContentMetadataProps): React.JSX.Eleme
   )
 }
 
-// =============================================================================
-// Link Preview Content
-// =============================================================================
-
-interface LinkPreviewProps {
-  item: InboxItem | InboxItemListItem
-}
-
-const LinkPreview = ({ item }: LinkPreviewProps): React.JSX.Element => {
-  const metadata = 'metadata' in item ? (item.metadata as LinkMetadata | null) : null
-  const heroImage = metadata?.heroImage || item.thumbnailUrl
-
-  return (
-    <div className="space-y-4">
-      {/* Hero image - full size */}
-      {heroImage && (
-        <div className="relative overflow-hidden rounded-lg bg-[var(--muted)]">
-          <img
-            src={heroImage}
-            alt=""
-            className="w-full object-cover max-h-[280px]"
-            onError={(e) => {
-              e.currentTarget.style.display = 'none'
-            }}
-          />
-        </div>
-      )}
-
-      {/* Site name badge */}
-      {metadata?.siteName && (
-        <div className="flex items-center gap-2">
-          {metadata.favicon && (
-            <img
-              src={metadata.favicon}
-              alt=""
-              className="size-4 rounded"
-              onError={(e) => {
-                e.currentTarget.style.display = 'none'
-              }}
-            />
-          )}
-          <span className="text-xs font-medium text-[var(--muted-foreground)] uppercase tracking-wide">
-            {metadata.siteName}
-          </span>
-        </div>
-      )}
-
-      {/* Description/Excerpt */}
-      <div className="prose prose-sm dark:prose-invert max-w-none">
-        <p className="text-[var(--foreground)] leading-relaxed">
-          {metadata?.description ||
-            metadata?.excerpt ||
-            item.content ||
-            'No description available.'}
-        </p>
-      </div>
-
-      {/* Published date if available */}
-      {metadata?.publishedDate && (
-        <p className="text-xs text-[var(--muted-foreground)]">
-          Published:{' '}
-          {new Date(metadata.publishedDate).toLocaleDateString('en-US', {
-            month: 'long',
-            day: 'numeric',
-            year: 'numeric'
-          })}
-        </p>
-      )}
-
-      {/* Open in browser button */}
-      {item.sourceUrl && (
-        <a
-          href={item.sourceUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-[var(--primary)] bg-[var(--primary)]/10 rounded-lg hover:bg-[var(--primary)]/20 transition-colors"
-        >
-          <ExternalLink className="size-4" />
-          Open in browser
-        </a>
-      )}
-    </div>
-  )
-}
+// LinkPreview replaced by LinkDetailContent (link-detail-content.tsx)
 
 // =============================================================================
 // Image Preview Content
@@ -720,7 +666,7 @@ export const ContentSection = ({
 }: ContentSectionProps): React.JSX.Element => {
   switch (item.type) {
     case 'link':
-      return <LinkPreview item={item} />
+      return <LinkDetailContent item={item} />
     case 'note':
       return <SimpleContent item={item} onContentChange={onContentChange} />
     case 'image':

@@ -528,11 +528,13 @@ export function InboxListItem({
             {displayTitle}
           </span>
 
-          {/* Voice duration pill */}
+          {/* Voice duration pill — hidden on hover when actions show */}
           {item.type === 'voice' && item.duration != null && (
-            <Pill variant="bordered" color="amber">
-              {formatDuration(item.duration)}
-            </Pill>
+            <div className={cn('shrink-0', !isInBulkMode && 'group-hover:opacity-0')}>
+              <Pill variant="bordered" color="amber">
+                {formatDuration(item.duration)}
+              </Pill>
+            </div>
           )}
 
           {/* PDF page count pill */}
@@ -566,38 +568,50 @@ export function InboxListItem({
             </Pill>
           )}
 
-          {/* Source domain for link/social/clip */}
-          {item.sourceUrl &&
-            (item.type === 'link' || item.type === 'social' || item.type === 'clip') && (
-              <span className={cn('shrink-0', densityConfig.metaSize, 'text-muted-foreground/60')}>
-                {extractDomain(item.sourceUrl)}
+          {/* Right slot: metadata swaps to actions on hover */}
+          <div className="relative shrink-0 flex items-center">
+            {/* Metadata — visible by default, hidden on hover */}
+            <div
+              className={cn('flex items-center gap-2', !isInBulkMode && 'group-hover:opacity-0')}
+            >
+              {item.sourceUrl &&
+                (item.type === 'link' || item.type === 'social' || item.type === 'clip') && (
+                  <span
+                    className={cn('shrink-0', densityConfig.metaSize, 'text-muted-foreground/60')}
+                  >
+                    {extractDomain(item.sourceUrl)}
+                  </span>
+                )}
+              <span
+                className={cn(
+                  'shrink-0 w-9 text-right tabular-nums',
+                  densityConfig.metaSize,
+                  item.isStale ? 'text-red-500 dark:text-red-400' : 'text-muted-foreground/60'
+                )}
+              >
+                {formatCompactRelativeTime(
+                  item.createdAt instanceof Date ? item.createdAt : new Date(item.createdAt)
+                )}
               </span>
-            )}
-
-          {/* Compact relative time */}
-          <span
-            className={cn(
-              'shrink-0 w-9 text-right tabular-nums',
-              densityConfig.metaSize,
-              item.isStale ? 'text-red-500 dark:text-red-400' : 'text-muted-foreground/60'
-            )}
-          >
-            {formatCompactRelativeTime(
-              item.createdAt instanceof Date ? item.createdAt : new Date(item.createdAt)
-            )}
-          </span>
-
-          {/* Quick Actions — slide in on hover */}
-          {!isInBulkMode && (
-            <div className="shrink-0 quick-actions-reveal">
-              <QuickActions
-                itemId={item.id}
-                onArchive={onArchive}
-                onSnooze={onSnooze}
-                variant="row"
-              />
             </div>
-          )}
+
+            {/* Actions — overlaid, visible on hover */}
+            {!isInBulkMode && (
+              <div
+                className={cn(
+                  'absolute inset-0 flex items-center justify-end',
+                  'opacity-0 group-hover:opacity-100'
+                )}
+              >
+                <QuickActions
+                  itemId={item.id}
+                  onArchive={onArchive}
+                  onSnooze={onSnooze}
+                  variant="row"
+                />
+              </div>
+            )}
+          </div>
         </>
       )}
     </div>
