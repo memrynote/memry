@@ -9,7 +9,7 @@
 import { useState, useEffect, createContext, useContext } from 'react'
 import {
   ChevronRight,
-  Link,
+  Link2,
   FileText,
   Image,
   Mic,
@@ -20,7 +20,6 @@ import {
   AlertCircle,
   RotateCcw,
   Bell,
-  CheckCircle2,
   Video
 } from '@/lib/icons'
 import type { ReminderMetadata } from '@memry/contracts/inbox-api'
@@ -91,11 +90,10 @@ const TYPE_ICON_COLORS: Record<string, string> = {
 
 interface TypeIconProps {
   type: InboxItemType
-  isViewed?: boolean
   transcriptionStatus?: string | null
 }
 
-const TypeIcon = ({ type, isViewed, transcriptionStatus }: TypeIconProps): React.JSX.Element => {
+const TypeIcon = ({ type, transcriptionStatus }: TypeIconProps): React.JSX.Element => {
   const iconSize = 'w-3.5 h-3.5'
 
   if (type === 'voice') {
@@ -119,21 +117,14 @@ const TypeIcon = ({ type, isViewed, transcriptionStatus }: TypeIconProps): React
   }
 
   if (type === 'reminder') {
-    return isViewed ? (
-      <CheckCircle2
-        className={cn(iconSize, 'text-emerald-500/70 dark:text-emerald-400/70')}
-        aria-hidden="true"
-      />
-    ) : (
-      <Bell className={cn(iconSize, TYPE_ICON_COLORS.reminder)} aria-hidden="true" />
-    )
+    return <Bell className={cn(iconSize, TYPE_ICON_COLORS.reminder)} aria-hidden="true" />
   }
 
   const color = TYPE_ICON_COLORS[type] || TYPE_ICON_COLORS.note
 
   switch (type) {
     case 'link':
-      return <Link className={cn(iconSize, color)} aria-hidden="true" />
+      return <Link2 className={cn(iconSize, color)} aria-hidden="true" />
     case 'note':
       return <FileText className={cn(iconSize, color)} aria-hidden="true" />
     case 'image':
@@ -477,11 +468,7 @@ export function InboxListItem({
 
       {/* Type icon — bare, colored per type */}
       <div className="flex-shrink-0">
-        <TypeIcon
-          type={item.type}
-          isViewed={isReminderViewed}
-          transcriptionStatus={item.transcriptionStatus}
-        />
+        <TypeIcon type={item.type} transcriptionStatus={item.transcriptionStatus} />
       </div>
 
       {isQuickFileActive && onQuickFileFolderSelect ? (
@@ -542,19 +529,6 @@ export function InboxListItem({
             <Pill variant="bordered" color="red">
               {item.pageCount} page{item.pageCount !== 1 ? 's' : ''}
             </Pill>
-          )}
-
-          {/* Reminder status indicator */}
-          {item.type === 'reminder' && reminderMetadata && (
-            <span
-              className={cn(
-                'shrink-0',
-                densityConfig.metaSize,
-                isReminderViewed ? 'text-muted-foreground/60' : 'text-amber-500 dark:text-amber-400'
-              )}
-            >
-              {isReminderViewed ? 'viewed' : 'unviewed'}
-            </span>
           )}
 
           {/* Snooze pill */}
