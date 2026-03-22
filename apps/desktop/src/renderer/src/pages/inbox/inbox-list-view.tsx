@@ -735,142 +735,150 @@ export function InboxListView({
   // === RENDER ===
 
   return (
-    <div
-      className={cn(
-        'flex flex-col h-full relative',
-        'px-4 lg:px-6 pt-3 pb-4 lg:pb-6',
-        isDraggingOver && 'ring-2 ring-primary/50 ring-inset bg-primary/5',
-        className
-      )}
-      onDragOver={handleDragOver}
-      onDragLeave={handleDragLeave}
-      onDrop={handleDrop}
-    >
-      {isDraggingOver && (
-        <div className="absolute inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm pointer-events-none">
-          <div className="flex flex-col items-center gap-3 p-8 rounded-xl border-2 border-dashed border-primary/50 bg-background/90">
-            <div className="size-12 rounded-full bg-primary/10 flex items-center justify-center">
-              <svg
-                className="size-6 text-primary"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
-                />
-              </svg>
-            </div>
-            <p className="text-sm font-medium text-foreground">Drop image to capture</p>
-            <p className="text-xs text-muted-foreground">PNG, JPEG, GIF, WebP, SVG</p>
-          </div>
-        </div>
-      )}
-
-      {isCapturingImage && (
-        <div className="absolute inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm pointer-events-none">
-          <div className="flex flex-col items-center gap-3">
-            <Loader2 className="size-8 text-primary animate-spin" />
-            <p className="text-sm text-muted-foreground">Capturing image...</p>
-          </div>
-        </div>
-      )}
-
-      {/* Bulk selection header */}
-      {isInBulkMode && (
-        <header className={cn('relative', densityConfig.headerMargin)}>
-          <div className="flex items-center justify-between gap-6">
-            <div className="flex items-center gap-3">
-              <Check className="size-4 text-amber-600 dark:text-amber-400" aria-hidden="true" />
-              <span className="text-sm font-medium text-foreground">{selectedCount} selected</span>
-            </div>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleDeselectAll}
-              className="text-muted-foreground/60 hover:text-foreground hover:bg-foreground/5"
-            >
-              Deselect all
-            </Button>
-          </div>
-        </header>
-      )}
-
-      {/* Content */}
-      <div className={cn('flex-1 overflow-y-auto', isInBulkMode && 'pb-32')}>
-        {isLoading ? (
-          <div className="flex flex-col items-center justify-center h-64 gap-4">
-            <Loader2 className="size-8 text-muted-foreground/50 animate-spin" />
-            <p className="text-sm text-muted-foreground/60 font-serif">Loading inbox...</p>
-          </div>
-        ) : error ? (
-          <div className="flex flex-col items-center justify-center h-64 gap-4">
-            <AlertCircle className="size-8 text-destructive/60" />
-            <p className="text-sm text-destructive/80 font-serif">Failed to load inbox</p>
-            <Button variant="outline" size="sm" onClick={() => refetch()}>
-              Try again
-            </Button>
-          </div>
-        ) : showEmptyState ? (
-          <EmptyState
-            itemsProcessedToday={itemsProcessedToday}
-            hasFilingHistory={hasFilingHistory}
-            isExiting={isEmptyStateExiting}
-          />
-        ) : (
-          <ListView
-            items={items}
-            selectedItemIds={selectedItemIds}
-            exitingItemIds={exitingItemIds}
-            density={density}
-            onPreview={handlePreview}
-            onArchive={handleArchive}
-            onSnooze={handleSnooze}
-            onQuickFile={handleQuickFile}
-            onSelectionChange={handleSelectionChange}
-            focusedItemId={focusedItemId}
-            onFocusedItemChange={handleFocusedItemChange}
-            isPreviewOpen={isDetailPanelOpen}
-          />
+    <div className={cn('flex h-full overflow-hidden', className)}>
+      <div
+        className={cn(
+          'flex flex-col flex-1 min-w-0 h-full relative',
+          'px-4 lg:px-6 pt-3 pb-4 lg:pb-6',
+          isDraggingOver && 'ring-2 ring-primary/50 ring-inset bg-primary/5'
         )}
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
+      >
+        {isDraggingOver && (
+          <div className="absolute inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm pointer-events-none">
+            <div className="flex flex-col items-center gap-3 p-8 rounded-xl border-2 border-dashed border-primary/50 bg-background/90">
+              <div className="size-12 rounded-full bg-primary/10 flex items-center justify-center">
+                <svg
+                  className="size-6 text-primary"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+                  />
+                </svg>
+              </div>
+              <p className="text-sm font-medium text-foreground">Drop image to capture</p>
+              <p className="text-xs text-muted-foreground">PNG, JPEG, GIF, WebP, SVG</p>
+            </div>
+          </div>
+        )}
+
+        {isCapturingImage && (
+          <div className="absolute inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm pointer-events-none">
+            <div className="flex flex-col items-center gap-3">
+              <Loader2 className="size-8 text-primary animate-spin" />
+              <p className="text-sm text-muted-foreground">Capturing image...</p>
+            </div>
+          </div>
+        )}
+
+        {/* Bulk selection header */}
+        {isInBulkMode && (
+          <header className={cn('relative', densityConfig.headerMargin)}>
+            <div className="flex items-center justify-between gap-6">
+              <div className="flex items-center gap-3">
+                <Check className="size-4 text-amber-600 dark:text-amber-400" aria-hidden="true" />
+                <span className="text-sm font-medium text-foreground">
+                  {selectedCount} selected
+                </span>
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleDeselectAll}
+                className="text-muted-foreground/60 hover:text-foreground hover:bg-foreground/5"
+              >
+                Deselect all
+              </Button>
+            </div>
+          </header>
+        )}
+
+        {/* Content */}
+        <div className={cn('flex-1 overflow-y-auto', isInBulkMode && 'pb-32')}>
+          {isLoading ? (
+            <div className="flex flex-col items-center justify-center h-64 gap-4">
+              <Loader2 className="size-8 text-muted-foreground/50 animate-spin" />
+              <p className="text-sm text-muted-foreground/60 font-serif">Loading inbox...</p>
+            </div>
+          ) : error ? (
+            <div className="flex flex-col items-center justify-center h-64 gap-4">
+              <AlertCircle className="size-8 text-destructive/60" />
+              <p className="text-sm text-destructive/80 font-serif">Failed to load inbox</p>
+              <Button variant="outline" size="sm" onClick={() => refetch()}>
+                Try again
+              </Button>
+            </div>
+          ) : showEmptyState ? (
+            <EmptyState
+              itemsProcessedToday={itemsProcessedToday}
+              hasFilingHistory={hasFilingHistory}
+              isExiting={isEmptyStateExiting}
+            />
+          ) : (
+            <ListView
+              items={items}
+              selectedItemIds={selectedItemIds}
+              exitingItemIds={exitingItemIds}
+              density={density}
+              onPreview={handlePreview}
+              onArchive={handleArchive}
+              onSnooze={handleSnooze}
+              onQuickFile={handleQuickFile}
+              onSelectionChange={handleSelectionChange}
+              focusedItemId={focusedItemId}
+              onFocusedItemChange={handleFocusedItemChange}
+              isPreviewOpen={isDetailPanelOpen}
+            />
+          )}
+        </div>
+
+        {/* Bulk & Detail components */}
+        <BulkActionBar
+          selectedCount={selectedCount}
+          onFileAll={() => setIsBulkFilePanelOpen(true)}
+          onTagAll={() => setIsBulkTagPopoverOpen(true)}
+          onArchiveAll={() => setIsArchiveDialogOpen(true)}
+          onSnoozeAll={handleBulkSnoozeAll}
+          aiSuggestion={aiSuggestion}
+          onAddSuggestionToSelection={handleAddSuggestionToSelection}
+          onDismissSuggestion={handleDismissSuggestion}
+        />
+
+        <BulkFilePanel
+          isOpen={isBulkFilePanelOpen}
+          items={selectedItems}
+          onClose={() => setIsBulkFilePanelOpen(false)}
+          onFile={handleBulkFileComplete}
+        />
+
+        <BulkTagPopover
+          isOpen={isBulkTagPopoverOpen}
+          itemCount={selectedCount}
+          trigger={<span />}
+          onOpenChange={setIsBulkTagPopoverOpen}
+          onApplyTags={handleBulkTagApply}
+        />
+
+        <ArchiveConfirmationDialog
+          isOpen={isArchiveDialogOpen}
+          itemCount={selectedCount}
+          onConfirm={handleBulkArchiveConfirm}
+          onCancel={() => setIsArchiveDialogOpen(false)}
+        />
+
+        <KeyboardShortcutsModal
+          isOpen={isShortcutsModalOpen}
+          onClose={() => setIsShortcutsModalOpen(false)}
+        />
       </div>
-
-      {/* Bulk & Detail components */}
-      <BulkActionBar
-        selectedCount={selectedCount}
-        onFileAll={() => setIsBulkFilePanelOpen(true)}
-        onTagAll={() => setIsBulkTagPopoverOpen(true)}
-        onArchiveAll={() => setIsArchiveDialogOpen(true)}
-        onSnoozeAll={handleBulkSnoozeAll}
-        aiSuggestion={aiSuggestion}
-        onAddSuggestionToSelection={handleAddSuggestionToSelection}
-        onDismissSuggestion={handleDismissSuggestion}
-      />
-
-      <BulkFilePanel
-        isOpen={isBulkFilePanelOpen}
-        items={selectedItems}
-        onClose={() => setIsBulkFilePanelOpen(false)}
-        onFile={handleBulkFileComplete}
-      />
-
-      <BulkTagPopover
-        isOpen={isBulkTagPopoverOpen}
-        itemCount={selectedCount}
-        trigger={<span />}
-        onOpenChange={setIsBulkTagPopoverOpen}
-        onApplyTags={handleBulkTagApply}
-      />
-
-      <ArchiveConfirmationDialog
-        isOpen={isArchiveDialogOpen}
-        itemCount={selectedCount}
-        onConfirm={handleBulkArchiveConfirm}
-        onCancel={() => setIsArchiveDialogOpen(false)}
-      />
 
       <InboxDetailPanel
         isOpen={isDetailPanelOpen}
@@ -879,11 +887,6 @@ export function InboxListView({
         onClose={() => setActiveDetailItemId(null)}
         onFile={handleFilingComplete}
         onArchive={handleArchive}
-      />
-
-      <KeyboardShortcutsModal
-        isOpen={isShortcutsModalOpen}
-        onClose={() => setIsShortcutsModalOpen(false)}
       />
     </div>
   )

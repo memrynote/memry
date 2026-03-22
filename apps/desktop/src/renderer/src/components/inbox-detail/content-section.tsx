@@ -6,15 +6,13 @@
 import { useRef, useState } from 'react'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import {
-  Globe,
   Image,
   Mic,
   FileText,
   Calendar,
   Clock,
   User,
-  ExternalLink,
-  Link,
+  Globe,
   Play,
   Pause,
   Copy,
@@ -23,13 +21,15 @@ import {
   AlertCircle,
   RefreshCw,
   FileType,
-  Video
+  Video,
+  Link2
 } from '@/lib/icons'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { extractDomain } from '@/lib/inbox-utils'
 import { InboxContentEditor } from './inbox-content-editor'
-import { LinkDetailContent } from './link-detail-content'
+import { LinkPreview } from './link-preview'
+import { getTypeAccentClass } from './type-accents'
 import type {
   InboxItem,
   InboxItemListItem,
@@ -98,55 +98,29 @@ const formatDate = (date: Date | string): string => {
 interface TypeIconProps {
   type: InboxItemType
   className?: string
-  style?: React.CSSProperties
-  variant?: 'default' | 'badge'
 }
 
-export const TypeIcon = ({
-  type,
-  className = 'size-5',
-  style,
-  variant = 'default'
-}: TypeIconProps): React.JSX.Element => {
-  const iconClass = style?.color ? className : `${className} text-[var(--muted-foreground)]`
-  const props = { className: iconClass, style, 'aria-hidden': true as const }
-
-  if (variant === 'badge') {
-    switch (type) {
-      case 'link':
-        return <Link {...props} />
-      case 'voice':
-        return <Mic {...props} />
-      case 'image':
-        return <Image {...props} />
-      case 'note':
-        return <FileText {...props} />
-      case 'video':
-        return <Video {...props} />
-      case 'pdf':
-        return <FileType {...props} />
-      default:
-        return <FileText {...props} />
-    }
-  }
+export const TypeIcon = ({ type, className = 'size-5' }: TypeIconProps): React.JSX.Element => {
+  const accentClass = getTypeAccentClass(type)
+  const iconClass = `${className} ${accentClass}`
 
   switch (type) {
     case 'link':
-      return <Globe {...props} />
+      return <Link2 className={iconClass} aria-hidden="true" />
     case 'note':
-      return <FileText {...props} />
+      return <FileText className={iconClass} aria-hidden="true" />
     case 'image':
-      return <Image {...props} />
+      return <Image className={iconClass} aria-hidden="true" />
     case 'voice':
-      return <Mic {...props} />
+      return <Mic className={iconClass} aria-hidden="true" />
     case 'pdf':
-      return <FileType {...props} />
+      return <FileType className={iconClass} aria-hidden="true" />
     case 'video':
-      return <Video {...props} />
+      return <Video className={iconClass} aria-hidden="true" />
     case 'clip':
     case 'social':
     default:
-      return <FileText {...props} />
+      return <FileText className={iconClass} aria-hidden="true" />
   }
 }
 
@@ -240,8 +214,6 @@ export const ContentMetadata = ({ item }: ContentMetadataProps): React.JSX.Eleme
     </div>
   )
 }
-
-// LinkPreview replaced by LinkDetailContent (link-detail-content.tsx)
 
 // =============================================================================
 // Image Preview Content
@@ -666,7 +638,7 @@ export const ContentSection = ({
 }: ContentSectionProps): React.JSX.Element => {
   switch (item.type) {
     case 'link':
-      return <LinkDetailContent item={item} />
+      return <LinkPreview item={item} />
     case 'note':
       return <SimpleContent item={item} onContentChange={onContentChange} />
     case 'image':

@@ -246,52 +246,54 @@ export function InboxArchivedView({
   }
 
   return (
-    <div className={cn('flex flex-col px-4 lg:px-6 pt-3 pb-4 lg:pb-6', className)}>
-      {sortedItems.length === 0 && !isLoading ? (
-        <div className="flex flex-col items-center justify-center py-16 text-center">
-          <Archive className="size-6 text-muted-foreground/30 mb-3" strokeWidth={1.5} />
-          <p className="text-sm text-muted-foreground/50">
-            {searchQuery ? 'No matching archived items' : 'No archived items'}
-          </p>
-        </div>
-      ) : (
-        <div className="space-y-1" role="list" aria-label="Archived items">
-          {groupedItems.map((group) => (
-            <InboxListSection
-              key={group.period}
-              title={group.period}
-              count={group.items.length}
-              collapsible
-              selectedIds={new Set<string>()}
-              focusedId={focusedItemId}
-              density="compact"
-              onSelect={() => {}}
-              onFocus={setFocusedItemId}
-            >
-              {group.items.map((item) => (
-                <ArchivedListItem
-                  key={item.id}
-                  item={item}
-                  onPreview={handlePreview}
-                  onUnarchive={handleUnarchive}
-                  onDelete={handleDelete}
-                  isFocused={focusedItemId === item.id}
-                  isUnarchiving={
-                    unarchiveMutation.isPending && unarchiveMutation.variables === item.id
-                  }
-                  isDeleting={deleteMutation.isPending && deleteMutation.variables === item.id}
-                />
-              ))}
-            </InboxListSection>
-          ))}
-        </div>
-      )}
+    <div className={cn('flex h-full overflow-hidden', className)}>
+      <div className="flex flex-col flex-1 min-w-0 h-full px-4 lg:px-6 pt-3 pb-4 lg:pb-6 overflow-y-auto">
+        {sortedItems.length === 0 && !isLoading ? (
+          <div className="flex flex-col items-center justify-center py-16 text-center">
+            <Archive className="size-6 text-muted-foreground/30 mb-3" strokeWidth={1.5} />
+            <p className="text-sm text-muted-foreground/50">
+              {searchQuery ? 'No matching archived items' : 'No archived items'}
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-1" role="list" aria-label="Archived items">
+            {groupedItems.map((group) => (
+              <InboxListSection
+                key={group.period}
+                title={group.period}
+                count={group.items.length}
+                collapsible
+                selectedIds={new Set<string>()}
+                focusedId={focusedItemId}
+                density="compact"
+                onSelect={() => {}}
+                onFocus={setFocusedItemId}
+              >
+                {group.items.map((item) => (
+                  <ArchivedListItem
+                    key={item.id}
+                    item={item}
+                    onPreview={handlePreview}
+                    onUnarchive={handleUnarchive}
+                    onDelete={handleDelete}
+                    isFocused={focusedItemId === item.id}
+                    isUnarchiving={
+                      unarchiveMutation.isPending && unarchiveMutation.variables === item.id
+                    }
+                    isDeleting={deleteMutation.isPending && deleteMutation.variables === item.id}
+                  />
+                ))}
+              </InboxListSection>
+            ))}
+          </div>
+        )}
 
-      {hasMore && (
-        <div ref={observerTarget} className="py-6 flex justify-center">
-          {isLoadingMore && <Loader2 className="size-5 text-muted-foreground/40 animate-spin" />}
-        </div>
-      )}
+        {hasMore && (
+          <div ref={observerTarget} className="py-6 flex justify-center">
+            {isLoadingMore && <Loader2 className="size-5 text-muted-foreground/40 animate-spin" />}
+          </div>
+        )}
+      </div>
 
       <InboxDetailPanel
         isOpen={isDetailPanelOpen}
