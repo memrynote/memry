@@ -433,9 +433,6 @@ export interface MainIpcInvokeHandlers {
   'inbox:bulk-archive': (
     ...args: [any]
   ) => Awaited<Promise<import('../../../../../packages/contracts/src/inbox-api').BulkResponse>>
-  'inbox:bulk-archive-older-than': (
-    ...args: [any]
-  ) => Awaited<Promise<import('../../../../../packages/contracts/src/inbox-api').BulkResponse>>
   'inbox:bulk-file': (
     ...args: [any]
   ) => Awaited<Promise<import('../../../../../packages/contracts/src/inbox-api').BulkResponse>>

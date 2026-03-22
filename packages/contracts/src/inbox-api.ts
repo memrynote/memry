@@ -434,10 +434,6 @@ export const BulkArchiveSchema = z.object({
   itemIds: z.array(z.string()).min(1).max(100)
 })
 
-export const BulkArchiveOlderThanSchema = z.object({
-  olderThanDays: z.number().int().min(1).max(365)
-})
-
 export const BulkTagSchema = z.object({
   itemIds: z.array(z.string()).min(1).max(100),
   tags: z.array(z.string().max(50)).min(1).max(20)
@@ -604,9 +600,6 @@ export interface InboxHandlers {
   ) => Promise<BulkResponse>
   [InboxChannels.invoke.BULK_TAG]: (input: z.infer<typeof BulkTagSchema>) => Promise<BulkResponse>
   [InboxChannels.invoke.FILE_ALL_STALE]: () => Promise<BulkResponse>
-  [InboxChannels.invoke.BULK_ARCHIVE_OLDER_THAN]: (
-    input: z.infer<typeof BulkArchiveOlderThanSchema>
-  ) => Promise<BulkResponse>
 
   // Transcription
   [InboxChannels.invoke.RETRY_TRANSCRIPTION]: (
@@ -748,7 +741,6 @@ export interface InboxClientAPI {
   bulkArchive(input: z.infer<typeof BulkArchiveSchema>): Promise<BulkResponse>
   bulkTag(input: z.infer<typeof BulkTagSchema>): Promise<BulkResponse>
   fileAllStale(): Promise<BulkResponse>
-  bulkArchiveOlderThan(input: z.infer<typeof BulkArchiveOlderThanSchema>): Promise<BulkResponse>
 
   // Transcription
   retryTranscription(itemId: string): Promise<{ success: boolean; error?: string }>

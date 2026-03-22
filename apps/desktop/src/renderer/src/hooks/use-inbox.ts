@@ -989,19 +989,3 @@ export function useInboxOperations() {
     isRetryMetadataPending: retryMetadata.isPending
   }
 }
-
-// =============================================================================
-// useInboxBankruptcy Hook
-// =============================================================================
-
-export function useInboxBankruptcy() {
-  const queryClient = useQueryClient()
-
-  return useMutation({
-    mutationFn: (olderThanDays: number) => inboxService.bulkArchiveOlderThan(olderThanDays),
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: inboxKeys.lists() })
-      void queryClient.invalidateQueries({ queryKey: inboxKeys.stats() })
-    }
-  })
-}

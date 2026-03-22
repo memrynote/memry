@@ -1579,7 +1579,6 @@ export interface InboxClientAPI {
     reason?: string
   }): Promise<InboxBulkResponse>
   fileAllStale(): Promise<InboxBulkResponse>
-  bulkArchiveOlderThan(olderThanDays: number): Promise<InboxBulkResponse>
 
   // Transcription
   retryTranscription(itemId: string): Promise<{ success: boolean; error?: string }>
