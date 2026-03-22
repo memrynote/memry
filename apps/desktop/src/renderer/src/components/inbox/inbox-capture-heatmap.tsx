@@ -1,84 +1,75 @@
 import type { InboxCapturePattern } from '../../../../preload/index.d'
-import { cn } from '@/lib/utils'
 
 export interface InboxCaptureHeatmapProps {
   patterns: InboxCapturePattern | undefined
 }
 
-const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
-const HOURS = Array.from({ length: 24 }, (_, i) => i)
+const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'] as const
+const HEATMAP_HOURS = [6, 8, 10, 12, 14, 16, 18, 20, 22] as const
 
-function getIntensityClass(count: number, max: number): string {
-  if (count === 0) return 'bg-muted/30'
-
-  const ratio = max > 0 ? count / max : 0
-
-  if (ratio < 0.25) return 'bg-primary/20'
-  if (ratio < 0.5) return 'bg-primary/40'
-  if (ratio < 0.75) return 'bg-primary/60'
-  return 'bg-primary/80'
-}
-
-function formatHour(hour: number): string {
-  if (hour === 0) return '12am'
-  if (hour === 12) return '12pm'
-  return hour > 12 ? `${hour - 12}pm` : `${hour}am`
+function intensityToAlpha(intensity: number): string {
+  if (intensity <= 0) return '0D'
+  if (intensity < 0.1) return '1A'
+  if (intensity < 0.2) return '26'
+  if (intensity < 0.3) return '40'
+  if (intensity < 0.4) return '59'
+  if (intensity < 0.5) return '73'
+  if (intensity < 0.6) return '8C'
+  if (intensity < 0.7) return '99'
+  if (intensity < 0.8) return 'B3'
+  if (intensity < 0.9) return 'CC'
+  return 'E6'
 }
 
 export function InboxCaptureHeatmap({ patterns }: InboxCaptureHeatmapProps): React.JSX.Element {
-  if (!patterns?.timeHeatmap) {
-    return (
-      <div className="p-6 rounded-xl border border-border/50 bg-card h-full min-h-[400px] flex items-center justify-center">
-        <span className="text-muted-foreground font-serif italic">No capture data available</span>
-      </div>
-    )
-  }
+  const heatmap = patterns?.timeHeatmap
 
   let maxCount = 0
-  patterns.timeHeatmap.forEach((row) => {
-    row.forEach((count) => {
-      if (count > maxCount) maxCount = count
-    })
-  })
-
-  const grid = patterns.timeHeatmap
+  if (Array.isArray(heatmap) && heatmap.length > 0) {
+    for (let day = 0; day < 7; day++) {
+      for (const hour of HEATMAP_HOURS) {
+        const val = (heatmap[hour]?.[day] ?? 0) + (heatmap[hour + 1]?.[day] ?? 0)
+        if (val > maxCount) maxCount = val
+      }
+    }
+  }
 
   return (
-    <div className="p-6 rounded-xl border border-border/50 bg-card flex flex-col h-full">
-      <div className="mb-6">
-        <h3 className="text-lg font-serif font-medium text-foreground">Capture Patterns</h3>
-        <p className="text-sm text-muted-foreground mt-1">When you add items to your inbox</p>
-      </div>
-
-      <div className="flex-1 flex flex-col items-center justify-center">
-        <div className="grid grid-cols-[auto_repeat(7,1fr)] gap-x-2 gap-y-1 w-full max-w-md">
-          <div className="h-6 w-8" />
+    <div className="flex flex-col rounded-[10px] gap-3.5 border border-border/50 p-4">
+      <div className="text-muted-foreground font-sans font-medium text-xs/4">Capture Activity</div>
+      <div className="[font-synthesis:none] flex gap-1.5 antialiased text-xs/4">
+        <div className="flex flex-col pt-4 gap-0.75">
           {DAYS.map((day) => (
-            <div key={day} className="h-6 flex items-center justify-center">
-              <span className="text-xs font-medium text-muted-foreground">{day}</span>
+            <div
+              key={day}
+              className="h-3 inline-block text-[#50505A] font-sans shrink-0 text-[9px]/3"
+            >
+              {day}
             </div>
           ))}
-
-          {HOURS.map((hour) => (
-            <div key={`row-${hour}`} className="contents">
-              <div className="h-6 w-8 flex items-center justify-end pr-2">
-                {hour % 4 === 0 && (
-                  <span className="text-[10px] text-muted-foreground font-medium">
-                    {formatHour(hour)}
-                  </span>
-                )}
+        </div>
+        <div className="flex flex-col gap-0.75">
+          <div className="flex h-3 gap-0.75 shrink-0">
+            {HEATMAP_HOURS.map((hour) => (
+              <div
+                key={hour}
+                className="w-3 text-center inline-block text-[#50505A] font-sans shrink-0 text-[9px]/3"
+              >
+                {hour}
               </div>
-
-              {DAYS.map((_, dayIndex) => {
-                const count = grid[hour]?.[dayIndex] || 0
+            ))}
+          </div>
+          {DAYS.map((_, dayIdx) => (
+            <div key={dayIdx} className="flex gap-0.75">
+              {HEATMAP_HOURS.map((hour) => {
+                const val = (heatmap?.[hour]?.[dayIdx] ?? 0) + (heatmap?.[hour + 1]?.[dayIdx] ?? 0)
+                const intensity = maxCount > 0 ? val / maxCount : 0
                 return (
                   <div
-                    key={`${hour}-${dayIndex}`}
-                    className={cn(
-                      'h-6 w-full rounded-sm transition-colors duration-200',
-                      getIntensityClass(count, maxCount)
-                    )}
-                    title={`${count} captures on ${DAYS[dayIndex]} at ${formatHour(hour)}`}
+                    key={hour}
+                    className="rounded-xs shrink-0 size-3"
+                    style={{ backgroundColor: `#E8A44A${intensityToAlpha(intensity)}` }}
+                    title={`${val} captures`}
                   />
                 )
               })}
