@@ -26,6 +26,17 @@ export function GraphPage(): React.JSX.Element {
     [dispatch]
   )
 
+  const nodeSummary = useMemo(() => {
+    if (!data?.nodes) return ''
+    const counts: Record<string, number> = {}
+    data.nodes.forEach((n) => {
+      counts[n.type] = (counts[n.type] ?? 0) + 1
+    })
+    return Object.entries(counts)
+      .map(([type, count]) => `${count} ${type}${count !== 1 ? 's' : ''}`)
+      .join(', ')
+  }, [data?.nodes])
+
   if (isLoading) {
     return (
       <div className="flex h-full flex-col items-center justify-center gap-4">
@@ -53,17 +64,6 @@ export function GraphPage(): React.JSX.Element {
 
   const nodeCount = data.nodes.length
   const edgeCount = data.edges.length
-
-  const nodeSummary = useMemo(() => {
-    const counts: Record<string, number> = {}
-    data.nodes.forEach((n) => {
-      counts[n.type] = (counts[n.type] ?? 0) + 1
-    })
-    return Object.entries(counts)
-      .map(([type, count]) => `${count} ${type}${count !== 1 ? 's' : ''}`)
-      .join(', ')
-  }, [data.nodes])
-
   const graphAriaLabel = `Knowledge graph with ${nodeCount} node${nodeCount !== 1 ? 's' : ''} and ${edgeCount} connection${edgeCount !== 1 ? 's' : ''}${nodeSummary ? `: ${nodeSummary}` : ''}.`
 
   return (
@@ -117,7 +117,7 @@ function GraphEmptyState(): React.JSX.Element {
         </div>
 
         <div className="space-y-3 text-left">
-          <div className="flex items-start gap-3 rounded-lg border border-border/50 p-3">
+          <div className="flex items-start gap-3 rounded-md border border-border/50 p-3">
             <Link2 className="size-4 mt-0.5 text-accent-cyan shrink-0" />
             <div>
               <p className="text-xs font-medium text-foreground">Link your notes</p>
@@ -126,7 +126,7 @@ function GraphEmptyState(): React.JSX.Element {
               </p>
             </div>
           </div>
-          <div className="flex items-start gap-3 rounded-lg border border-border/50 p-3">
+          <div className="flex items-start gap-3 rounded-md border border-border/50 p-3">
             <Lightbulb className="size-4 mt-0.5 text-accent-orange shrink-0" />
             <div>
               <p className="text-xs font-medium text-foreground">Discover patterns</p>
