@@ -201,7 +201,7 @@ export function SidebarTagList({
     <div className={cn('flex flex-col gap-1.5', className)}>
       {/* Search input — only visible when toggled */}
       {searchOpen && (
-        <div className="px-5">
+        <div className="px-2">
           <input
             ref={searchInputRef}
             type="text"
@@ -215,7 +215,7 @@ export function SidebarTagList({
       )}
 
       {/* Tag pills */}
-      <div className="pl-5 pr-2.5 flex flex-wrap gap-1.5">
+      <div className="pl-2 pr-2.5 flex flex-wrap gap-1.5">
         {visibleTags.length === 0 && searchQuery ? (
           <span className="text-[11px] text-muted-foreground">No matching tags</span>
         ) : (

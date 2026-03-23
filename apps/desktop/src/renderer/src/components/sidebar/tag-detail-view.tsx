@@ -51,6 +51,7 @@ import type { SidebarItem } from '@/contexts/tabs/types'
 import { createLogger } from '@/lib/logger'
 import { toast } from 'sonner'
 import { extractErrorMessage } from '@/lib/ipc-error'
+import { NoteIconDisplay } from '@/lib/render-note-icon'
 
 const log = createLogger('Component:TagDetailView')
 
@@ -241,7 +242,7 @@ function NoteItem({ note, isPinned, onClick, onPin, onUnpin }: NoteItemProps): R
         {/* Icon */}
         <div className="mt-0.5 shrink-0">
           {note.emoji ? (
-            <span className="text-sm">{note.emoji}</span>
+            <NoteIconDisplay value={note.emoji} className="text-sm" />
           ) : (
             <FileText className="h-4 w-4 text-muted-foreground" />
           )}

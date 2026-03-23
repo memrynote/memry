@@ -306,13 +306,8 @@ function AppSidebarInner({ currentPage, viewCounts, ...props }: AppSidebarProps)
                       </span>
                     )}
                     {item.page === 'tasks' && todayTasksCount > 0 && (
-                      <span className="ml-auto size-[18px] flex items-center justify-center rounded-full bg-sidebar-terracotta/15 text-sidebar-terracotta text-[10px] font-semibold leading-none">
+                      <span className="ml-auto text-sidebar-muted font-medium text-[11px]">
                         {todayTasksCount}
-                      </span>
-                    )}
-                    {item.shortcut && item.page !== 'inbox' && item.page !== 'tasks' && (
-                      <span className="ml-auto font-mono text-[9px] text-sidebar-muted/50">
-                        {item.shortcut}
                       </span>
                     )}
                   </SidebarMenuButton>
@@ -387,7 +382,7 @@ function AppSidebarInner({ currentPage, viewCounts, ...props }: AppSidebarProps)
             isDraggingFiles ? 'opacity-100' : 'opacity-0 invisible pointer-events-none'
           )}
         >
-          <div className="flex flex-col items-center gap-2 rounded-lg border-2 border-dashed border-primary/50 px-6 py-4">
+          <div className="flex flex-col items-center gap-2 rounded-md border-2 border-dashed border-primary/50 px-6 py-4">
             <Upload className="size-6 text-primary" />
             <span className="text-sm font-medium">Drop files to import</span>
             <span className="text-xs text-muted-foreground">
