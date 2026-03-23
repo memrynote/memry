@@ -45,7 +45,7 @@ const LinkedNoteCard = ({ note, onRemove }: LinkedNoteCardProps): React.JSX.Elem
   return (
     <div
       className={cn(
-        'group flex items-center gap-3 px-3 py-2.5 rounded-lg',
+        'group flex items-center gap-3 px-3 py-2.5 rounded-md',
         'bg-muted/40 border border-border/50',
         'transition-colors hover:bg-muted/60'
       )}
@@ -295,7 +295,7 @@ export const LinkInput = ({
         {isDropdownOpen && (
           <div
             ref={dropdownRef}
-            className="absolute z-50 w-full mt-1 p-0 rounded-lg border border-border bg-popover shadow-[0_8px_24px_rgba(0,0,0,0.25)] max-h-48 overflow-y-auto"
+            className="absolute z-50 w-full mt-1 p-0 rounded-md border border-border bg-popover shadow-[0_8px_24px_rgba(0,0,0,0.25)] max-h-48 overflow-y-auto"
             role="listbox"
           >
             {isSearching ? (

@@ -12,7 +12,7 @@
 
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { Archive, Check, Loader2, GripHorizontal, RotateCcw, Trash2 } from '@/lib/icons'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { cn } from '@/lib/utils'
 
@@ -63,6 +63,8 @@ export const InboxDetailPanel = ({
   onRestore,
   onDelete
 }: InboxDetailPanelProps): React.JSX.Element => {
+  const queryClient = useQueryClient()
+
   // Retry transcription mutation
   const retryTranscriptionMutation = useRetryTranscription()
 
@@ -254,23 +256,36 @@ export const InboxDetailPanel = ({
 
   // Debounce timer for content changes
   const contentChangeTimerRef = useRef<NodeJS.Timeout | null>(null)
+  const pendingTitleRef = useRef<string | null>(null)
 
-  // Handle content change (debounced save - 500ms delay)
+  const handleTitleChange = useCallback((title: string): void => {
+    pendingTitleRef.current = title
+  }, [])
+
   const handleContentChange = useCallback(
     (content: string): void => {
       if (!item) return
 
-      // Clear any pending save
       if (contentChangeTimerRef.current) {
         clearTimeout(contentChangeTimerRef.current)
       }
 
-      // Debounce the save
       contentChangeTimerRef.current = setTimeout(() => {
-        updateItemMutation.mutate({ id: item.id, content })
-      }, 500)
+        const update: { id: string; content: string; title?: string } = { id: item.id, content }
+        if (pendingTitleRef.current !== null) {
+          update.title = pendingTitleRef.current
+          pendingTitleRef.current = null
+        }
+        updateItemMutation.mutate(update, {
+          onSuccess: () => {
+            void queryClient.invalidateQueries({
+              queryKey: ['inbox', 'suggestions', item.id]
+            })
+          }
+        })
+      }, 1500)
     },
-    [item, updateItemMutation]
+    [item, updateItemMutation, queryClient]
   )
 
   // Cleanup timer on unmount
@@ -328,10 +343,11 @@ export const InboxDetailPanel = ({
                   <NoteDetail
                     item={item}
                     onContentChange={readOnly ? undefined : handleContentChange}
+                    onTitleChange={readOnly ? undefined : handleTitleChange}
                   />
                 ) : (
                   <div className="px-5 py-4">
-                    {item.type !== 'link' && (
+                    {item.type !== 'link' && item.type !== 'image' && item.type !== 'pdf' && (
                       <h3 className="text-[15px] leading-5 font-medium text-foreground mb-3.5">
                         {item.title}
                       </h3>

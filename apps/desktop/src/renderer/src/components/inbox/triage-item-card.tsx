@@ -2,7 +2,7 @@ import { memo } from 'react'
 import { ExternalLink } from '@/lib/icons'
 import { TypeIcon, ContentMetadata } from '@/components/inbox-detail/content-section'
 import { extractDomain } from '@/lib/inbox-utils'
-import { formatRelativeTime } from '@/services/inbox-service'
+import { formatCompactDate } from '@/services/inbox-service'
 import type { InboxItemListItem } from '@/types'
 
 interface TriageItemCardProps {
@@ -21,13 +21,13 @@ export const TriageItemCard = memo(function TriageItemCard({
           <div className="text-muted-foreground mt-1 flex items-center gap-2 text-xs">
             <span className="capitalize">{item.type}</span>
             <span className="opacity-40">·</span>
-            <span>{formatRelativeTime(item.createdAt)}</span>
+            <span>{formatCompactDate(item.createdAt)}</span>
           </div>
         </div>
       </div>
 
       {item.thumbnailUrl && (
-        <div className="overflow-hidden rounded-lg">
+        <div className="overflow-hidden rounded-md">
           <img
             src={item.thumbnailUrl}
             alt=""

@@ -15,6 +15,7 @@ import '@blocknote/shadcn/style.css'
 
 import { cn } from '@/lib/utils'
 import { createLogger } from '@/lib/logger'
+import { extractTitleFromBlocks } from '@/lib/blocknote-title'
 
 const log = createLogger('Component:InboxContentEditor')
 
@@ -23,6 +24,8 @@ interface InboxContentEditorProps {
   initialContent: string | null
   /** Called when content changes */
   onContentChange?: (content: string) => void
+  /** Called when the first line (title) changes */
+  onTitleChange?: (title: string) => void
   /** Whether the editor is editable */
   editable?: boolean
   /** Optional placeholder text */
@@ -43,6 +46,7 @@ interface InboxContentEditorProps {
 export const InboxContentEditor = memo(function InboxContentEditor({
   initialContent,
   onContentChange,
+  onTitleChange,
   editable = true,
   placeholder = 'Edit your captured text...',
   className
@@ -109,16 +113,19 @@ export const InboxContentEditor = memo(function InboxContentEditor({
 
   // Handle content changes - convert to HTML and notify parent
   const handleChange = useCallback(async () => {
-    if (!onContentChange || !isContentReadyRef.current) return
+    if (!isContentReadyRef.current) return
 
     try {
-      // Convert blocks to HTML for storage
-      const html = await editor.blocksToHTMLLossy(editor.document)
-      onContentChange(html)
+      onTitleChange?.(extractTitleFromBlocks(editor.document))
+
+      if (onContentChange) {
+        const html = await editor.blocksToHTMLLossy(editor.document)
+        onContentChange(html)
+      }
     } catch (error) {
       log.error('Failed to convert content', error)
     }
-  }, [editor, onContentChange])
+  }, [editor, onContentChange, onTitleChange])
 
   const handleContainerMouseDown = useCallback(
     (e: React.MouseEvent<HTMLDivElement>) => {
@@ -155,7 +162,7 @@ export const InboxContentEditor = memo(function InboxContentEditor({
         'inbox-content-editor prose prose-sm dark:prose-invert max-w-none',
         'min-h-[300px] flex flex-col',
         '[&_.bn-editor]:min-h-[280px] [&_.bn-editor]:flex-1',
-        '[&_.bn-container]:bg-transparent [&_.bn-container]:flex-1',
+        '[&_.bn-container]:flex-1',
         editable && 'cursor-text',
         className
       )}

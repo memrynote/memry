@@ -660,25 +660,27 @@ export function getInboxItemColor(type: InboxItem['type']): string {
   return colors[type] || 'text-muted-foreground'
 }
 
-/**
- * Format relative time for inbox items.
- * @param date - Date to format
- * @returns Relative time string (e.g., "2 hours ago")
- */
-export function formatRelativeTime(date: Date | string): string {
-  const d = typeof date === 'string' ? new Date(date) : date
-  const now = new Date()
-  const diffMs = now.getTime() - d.getTime()
-  const diffMins = Math.floor(diffMs / 60000)
-  const diffHours = Math.floor(diffMins / 60)
-  const diffDays = Math.floor(diffHours / 24)
+const SHORT_MONTHS = [
+  'Jan',
+  'Feb',
+  'Mar',
+  'Apr',
+  'May',
+  'Jun',
+  'Jul',
+  'Aug',
+  'Sep',
+  'Oct',
+  'Nov',
+  'Dec'
+] as const
 
-  if (diffMins < 1) return 'just now'
-  if (diffMins < 60) return `${diffMins}m ago`
-  if (diffHours < 24) return `${diffHours}h ago`
-  if (diffDays < 7) return `${diffDays}d ago`
-  if (diffDays < 30) return `${Math.floor(diffDays / 7)}w ago`
-  return d.toLocaleDateString()
+export function formatCompactDate(date: Date | string): string {
+  const d = typeof date === 'string' ? new Date(date) : date
+  const day = String(d.getDate()).padStart(2, '0')
+  const month = SHORT_MONTHS[d.getMonth()]
+  const year = String(d.getFullYear()).slice(-2)
+  return `${day} ${month} ${year}`
 }
 
 /**

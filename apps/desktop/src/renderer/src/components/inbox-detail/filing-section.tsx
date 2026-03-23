@@ -228,7 +228,7 @@ export const FilingSection = ({
           <PopoverTrigger asChild>
             <button
               className={cn(
-                'flex items-center w-full rounded-lg py-2.5 px-3.5 transition-colors',
+                'flex items-center w-full rounded-md py-2.5 px-3.5 transition-colors',
                 hasAISuggestions
                   ? 'bg-[var(--tint)]/[0.03] border border-[var(--tint)]/12'
                   : 'bg-foreground/[0.02] border border-border'
@@ -256,7 +256,7 @@ export const FilingSection = ({
             </button>
           </PopoverTrigger>
           <PopoverContent
-            className="w-[var(--radix-popover-trigger-width)] p-0 rounded-lg bg-[var(--popover)] border-border shadow-[0_8px_24px_rgba(0,0,0,0.25)]"
+            className="w-[var(--radix-popover-trigger-width)] p-0 rounded-md bg-[var(--popover)] border-border shadow-[0_8px_24px_rgba(0,0,0,0.25)]"
             align="start"
             sideOffset={4}
           >

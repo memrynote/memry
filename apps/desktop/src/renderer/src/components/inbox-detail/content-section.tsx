@@ -21,6 +21,7 @@ import {
   AlertCircle,
   RefreshCw,
   FileType,
+  FilePdf,
   Video,
   Link2
 } from '@/lib/icons'
@@ -36,6 +37,7 @@ import type {
   InboxItemType,
   LinkMetadata,
   ImageMetadata,
+  PdfMetadata,
   VoiceMetadata
 } from '@/types'
 import { createLogger } from '@/lib/logger'
@@ -130,7 +132,7 @@ export const TypeIcon = ({ type, className = 'size-5' }: TypeIconProps): React.J
 
 export const ContentSkeleton = (): React.JSX.Element => (
   <div className="space-y-4 p-6">
-    <Skeleton className="h-[200px] w-full rounded-lg" />
+    <Skeleton className="h-[200px] w-full rounded-md" />
     <Skeleton className="h-4 w-3/4" />
     <Skeleton className="h-4 w-1/2" />
     <div className="space-y-2 mt-6">
@@ -228,36 +230,51 @@ const ImagePreview = ({ item }: ImagePreviewProps): React.JSX.Element => {
   const imageUrl = ('attachmentUrl' in item && item.attachmentUrl) || item.thumbnailUrl
 
   return (
-    <div className="space-y-4">
+    <div className="flex flex-col gap-3.5">
       {imageUrl ? (
-        <div className="relative overflow-hidden rounded-lg bg-[var(--muted)]">
-          <img
-            src={imageUrl}
-            alt={item.title}
-            className="w-full object-contain max-h-[400px] mx-auto"
-          />
+        <div className="overflow-hidden rounded-lg bg-muted">
+          <img src={imageUrl} alt={item.title} className="w-full object-contain max-h-[400px]" />
         </div>
       ) : (
-        <div className="flex items-center justify-center h-[200px] bg-[var(--muted)] rounded-lg">
-          <Image className="size-12 text-[var(--muted-foreground)]" />
+        <div className="flex items-center justify-center aspect-[34/22] rounded-lg bg-muted">
+          <Image className="size-8 text-muted-foreground/25" />
         </div>
       )}
 
-      {/* Image metadata */}
+      {metadata?.originalFilename && (
+        <span
+          className="text-[11px] leading-3.5 text-muted-foreground truncate"
+          title={metadata.originalFilename}
+        >
+          {metadata.originalFilename}
+        </span>
+      )}
+
       {metadata && (
-        <div className="flex flex-wrap gap-x-4 gap-y-2 text-sm text-[var(--muted-foreground)] px-1">
+        <div className="flex items-center gap-4">
           {metadata.width && metadata.height && (
-            <span className="flex items-center gap-1">
-              <span className="font-medium">{metadata.width}</span> x{' '}
-              <span className="font-medium">{metadata.height}</span> px
-            </span>
+            <div className="flex items-center gap-1">
+              <span className="text-[11px] leading-3.5 text-text-tertiary">Dimensions</span>
+              <span className="text-[11px] leading-3.5 text-muted-foreground">
+                {metadata.width} x {metadata.height}
+              </span>
+            </div>
           )}
-          {metadata.format && <span className="uppercase font-medium">{metadata.format}</span>}
-          {metadata.fileSize && <span>{formatFileSize(metadata.fileSize)}</span>}
-          {metadata.originalFilename && (
-            <span className="truncate max-w-[200px]" title={metadata.originalFilename}>
-              {metadata.originalFilename}
-            </span>
+          {metadata.format && (
+            <div className="flex items-center gap-1">
+              <span className="text-[11px] leading-3.5 text-text-tertiary">Format</span>
+              <span className="text-[11px] leading-3.5 text-muted-foreground uppercase">
+                {metadata.format}
+              </span>
+            </div>
+          )}
+          {metadata.fileSize && (
+            <div className="flex items-center gap-1">
+              <span className="text-[11px] leading-3.5 text-text-tertiary">Size</span>
+              <span className="text-[11px] leading-3.5 text-muted-foreground">
+                {formatFileSize(metadata.fileSize)}
+              </span>
+            </div>
           )}
         </div>
       )}
@@ -351,7 +368,7 @@ const VoicePreview = ({
     <div className="space-y-4">
       {/* Audio Player */}
       {audioUrl ? (
-        <div className="bg-[var(--muted)] rounded-lg p-4 space-y-3">
+        <div className="bg-[var(--muted)] rounded-md p-4 space-y-3">
           <audio
             ref={audioRef}
             src={audioUrl}
@@ -366,7 +383,7 @@ const VoicePreview = ({
 
           {/* Audio error display */}
           {audioError && (
-            <div className="flex items-center gap-2 p-3 bg-red-500/10 rounded-lg text-sm text-red-600 dark:text-red-400">
+            <div className="flex items-center gap-2 p-3 bg-red-500/10 rounded-md text-sm text-red-600 dark:text-red-400">
               <AlertCircle className="size-4 shrink-0" />
               <span>Audio error: {audioError}</span>
             </div>
@@ -395,7 +412,7 @@ const VoicePreview = ({
                 max={displayDuration || 100}
                 value={currentTime}
                 onChange={handleSeek}
-                className="w-full h-2 bg-[var(--border)] rounded-lg appearance-none cursor-pointer accent-[var(--primary)]"
+                className="w-full h-2 bg-[var(--border)] rounded-md appearance-none cursor-pointer accent-[var(--primary)]"
               />
               {/* Time display */}
               <div className="flex justify-between text-xs text-[var(--muted-foreground)]">
@@ -415,7 +432,7 @@ const VoicePreview = ({
           )}
         </div>
       ) : (
-        <div className="flex items-center gap-4 p-4 bg-[var(--muted)] rounded-lg">
+        <div className="flex items-center gap-4 p-4 bg-[var(--muted)] rounded-md">
           <div className="size-12 rounded-full bg-[var(--primary)] flex items-center justify-center">
             <Mic className="size-6 text-[var(--primary-foreground)]" />
           </div>
@@ -457,21 +474,21 @@ const VoicePreview = ({
         </div>
 
         {transcriptionStatus === 'complete' && transcription ? (
-          <div className="p-4 bg-[var(--muted)]/50 rounded-lg">
+          <div className="p-4 bg-[var(--muted)]/50 rounded-md">
             <p className="text-sm whitespace-pre-wrap leading-relaxed">{transcription}</p>
           </div>
         ) : transcriptionStatus === 'pending' ? (
-          <div className="flex items-center gap-2 p-4 bg-[var(--muted)]/30 rounded-lg text-sm text-[var(--muted-foreground)]">
+          <div className="flex items-center gap-2 p-4 bg-[var(--muted)]/30 rounded-md text-sm text-[var(--muted-foreground)]">
             <Loader2 className="size-4 animate-spin" />
             <span>Transcription pending...</span>
           </div>
         ) : transcriptionStatus === 'processing' ? (
-          <div className="flex items-center gap-2 p-4 bg-[var(--muted)]/30 rounded-lg text-sm text-[var(--muted-foreground)]">
+          <div className="flex items-center gap-2 p-4 bg-[var(--muted)]/30 rounded-md text-sm text-[var(--muted-foreground)]">
             <Loader2 className="size-4 animate-spin" />
             <span>Transcribing audio...</span>
           </div>
         ) : transcriptionStatus === 'failed' ? (
-          <div className="flex items-center justify-between p-4 bg-red-500/10 rounded-lg">
+          <div className="flex items-center justify-between p-4 bg-red-500/10 rounded-md">
             <div className="flex items-center gap-2 text-sm text-red-600 dark:text-red-400">
               <AlertCircle className="size-4" />
               <span>Transcription failed</span>
@@ -494,7 +511,7 @@ const VoicePreview = ({
             )}
           </div>
         ) : (
-          <div className="p-4 bg-[var(--muted)]/30 rounded-lg text-sm text-[var(--muted-foreground)] italic">
+          <div className="p-4 bg-[var(--muted)]/30 rounded-md text-sm text-[var(--muted-foreground)] italic">
             No transcription available
           </div>
         )}
@@ -512,42 +529,31 @@ interface PdfPreviewProps {
 }
 
 const PdfPreview = ({ item }: PdfPreviewProps): React.JSX.Element => {
-  const pdfUrl = 'attachmentUrl' in item ? item.attachmentUrl : null
-  const metadata = 'metadata' in item ? (item.metadata as Record<string, unknown> | null) : null
+  const metadata = 'metadata' in item ? (item.metadata as PdfMetadata | null) : null
+
+  const metaParts: string[] = []
+  if (metadata?.pageCount) metaParts.push(`${metadata.pageCount} pages`)
+  if (metadata?.fileSize) metaParts.push(formatFileSize(metadata.fileSize))
 
   return (
-    <div className="space-y-4">
-      {pdfUrl ? (
-        <div className="relative overflow-hidden rounded-lg bg-[var(--muted)] border border-[var(--border)]">
-          <iframe
-            src={pdfUrl}
-            title={item.title}
-            className="w-full h-[400px]"
-            style={{ border: 'none' }}
-          />
-        </div>
-      ) : (
-        <div className="flex items-center justify-center h-[200px] bg-[var(--muted)] rounded-lg">
-          <FileText className="size-12 text-[var(--muted-foreground)]" />
-        </div>
-      )}
+    <div className="flex flex-col gap-3.5">
+      <div className="flex flex-col items-center justify-center gap-2.5 aspect-[34/18] rounded-lg bg-muted border border-border">
+        <FilePdf className="size-9 text-destructive" />
+        {metaParts.length > 0 && (
+          <span className="text-[11px] leading-3.5 text-text-tertiary">
+            {metaParts.join(' · ')}
+          </span>
+        )}
+      </div>
 
-      {/* PDF metadata */}
-      {(() => {
-        const fileSize = metadata?.fileSize
-        const originalFilename = metadata?.originalFilename
-        return (
-          <div className="flex flex-wrap gap-x-4 gap-y-2 text-sm text-[var(--muted-foreground)] px-1">
-            <span className="uppercase font-medium">PDF</span>
-            {typeof fileSize === 'number' && <span>{formatFileSize(fileSize)}</span>}
-            {typeof originalFilename === 'string' && (
-              <span className="truncate max-w-[200px]" title={originalFilename}>
-                {originalFilename}
-              </span>
-            )}
-          </div>
-        )
-      })()}
+      {metadata?.originalFilename && (
+        <span
+          className="text-[11px] leading-3.5 text-muted-foreground truncate"
+          title={metadata.originalFilename}
+        >
+          {metadata.originalFilename}
+        </span>
+      )}
     </div>
   )
 }
@@ -567,13 +573,13 @@ const VideoPreview = ({ item }: VideoPreviewProps): React.JSX.Element => {
   return (
     <div className="space-y-4">
       {videoUrl ? (
-        <div className="relative overflow-hidden rounded-lg bg-black">
+        <div className="relative overflow-hidden rounded-md bg-black">
           <video src={videoUrl} controls className="w-full max-h-[400px]" preload="metadata">
             Your browser does not support the video tag.
           </video>
         </div>
       ) : (
-        <div className="flex items-center justify-center h-[200px] bg-[var(--muted)] rounded-lg">
+        <div className="flex items-center justify-center h-[200px] bg-[var(--muted)] rounded-md">
           <FileText className="size-12 text-[var(--muted-foreground)]" />
         </div>
       )}

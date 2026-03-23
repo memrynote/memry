@@ -14,7 +14,7 @@ import {
   Image,
   Mic,
   Scissors,
-  FileIcon,
+  FilePdf,
   Share2,
   Loader2,
   AlertCircle,
@@ -132,7 +132,7 @@ const TypeIcon = ({ type, transcriptionStatus }: TypeIconProps): React.JSX.Eleme
     case 'clip':
       return <Scissors className={cn(iconSize, color)} aria-hidden="true" />
     case 'pdf':
-      return <FileIcon className={cn(iconSize, color)} aria-hidden="true" />
+      return <FilePdf className={cn(iconSize, color)} aria-hidden="true" />
     case 'social':
       return <Share2 className={cn(iconSize, color)} aria-hidden="true" />
     case 'video':
@@ -222,7 +222,7 @@ const ItemThumbnail = ({ item }: { item: InboxItem }): React.JSX.Element | null 
   }
 
   return (
-    <div className="w-9 h-9 rounded-lg overflow-hidden bg-muted shrink-0 ring-1 ring-border/50">
+    <div className="w-9 h-9 rounded-md overflow-hidden bg-muted shrink-0 ring-1 ring-border/50">
       <img
         src={item.thumbnailUrl}
         alt=""

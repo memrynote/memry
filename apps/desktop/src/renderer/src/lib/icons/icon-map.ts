@@ -254,7 +254,8 @@ import {
   ChartDecreaseIcon,
   NotificationOff01Icon,
   DashedLineCircleIcon,
-  Progress03Icon
+  Progress03Icon,
+  Pdf01Icon
 } from '@hugeicons/core-free-icons'
 import { createIcon } from './create-icon'
 
@@ -277,6 +278,7 @@ export const FileSearch = createIcon(FileSearchIcon)
 export const Files = createIcon(Files01Icon)
 export const FileInput = createIcon(FileInputIcon)
 export const FileWarning = createIcon(FileExclamationPointIcon)
+export const FilePdf = createIcon(Pdf01Icon)
 export const FileType2 = createIcon(FileTypeIcon)
 export const FileIcon_ = File
 
