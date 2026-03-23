@@ -79,6 +79,7 @@ export interface PdfMetadata {
 
 export interface SocialMetadata {
   platform: 'twitter' | 'other'
+  tweetId?: string
   postUrl: string
   authorName: string
   authorHandle: string
