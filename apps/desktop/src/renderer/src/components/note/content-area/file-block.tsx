@@ -107,7 +107,7 @@ function PdfPreview({ url, name }: PdfPreviewProps) {
 
   if (error) {
     return (
-      <div className="pdf-preview-error rounded-lg border border-red-200 bg-red-50 p-4 dark:border-red-900 dark:bg-red-950">
+      <div className="pdf-preview-error rounded-md border border-red-200 bg-red-50 p-4 dark:border-red-900 dark:bg-red-950">
         <div className="flex items-center gap-2 text-red-600 dark:text-red-400">
           <FileText className="h-5 w-5" />
           <span className="font-medium">{name}</span>
@@ -118,7 +118,7 @@ function PdfPreview({ url, name }: PdfPreviewProps) {
   }
 
   return (
-    <div className="pdf-preview rounded-lg border border-border bg-muted/30 overflow-hidden">
+    <div className="pdf-preview rounded-md border border-border bg-muted/30 overflow-hidden">
       {/* Header */}
       <div className="flex items-center justify-between gap-2 px-3 py-2 border-b border-border bg-muted/50">
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -319,7 +319,7 @@ function FilePreview({ url, name, size, mimeType }: FilePreviewProps) {
   const transferDirection: 'upload' | 'download' = uploadEntry ? 'upload' : 'download'
 
   return (
-    <div className="file-attachment relative flex items-center gap-3 rounded-lg border border-border bg-muted/30 p-3">
+    <div className="file-attachment relative flex items-center gap-3 rounded-md border border-border bg-muted/30 p-3">
       {getFileIcon(mimeType)}
       <div className="flex-1 min-w-0">
         <p className="truncate font-medium text-sm">{name}</p>

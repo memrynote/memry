@@ -29,7 +29,7 @@ export function GraphTooltip({ nodeId, graph, x, y }: GraphTooltipProps): React.
 
   return (
     <div
-      className="pointer-events-none absolute z-50 max-w-[240px] rounded-lg border border-border bg-popover p-2.5 shadow-card"
+      className="pointer-events-none absolute z-50 max-w-[240px] rounded-md border border-border bg-popover p-2.5 shadow-card"
       style={{
         left: x + 12,
         top: y + 12

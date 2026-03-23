@@ -54,7 +54,7 @@ export function RecoveryPhraseDisplay({
         </p>
       </div>
 
-      <div className="wizard-step-enter wiz-delay-2 flex items-start gap-3 p-3.5 rounded-lg border border-amber-500/20 bg-amber-500/[0.07]">
+      <div className="wizard-step-enter wiz-delay-2 flex items-start gap-3 p-3.5 rounded-md border border-amber-500/20 bg-amber-500/[0.07]">
         <ShieldAlert className="w-4 h-4 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
         <p className="text-[13px] leading-relaxed text-amber-800 dark:text-amber-300/90">
           Write this down and store it somewhere safe. You will not see it again.

@@ -42,7 +42,7 @@ const ToastItem = ({ toast, onDismiss }: ToastItemProps): React.JSX.Element => {
   return (
     <div
       className={cn(
-        'flex items-center gap-3 px-4 py-3 rounded-lg shadow-lg',
+        'flex items-center gap-3 px-4 py-3 rounded-md shadow-lg',
         'transition-[transform,opacity] duration-[var(--duration-normal)] ease-[var(--ease-out)]',
         'bg-foreground text-background',
         isVisible ? 'translate-y-0 opacity-100' : 'translate-y-2 opacity-0'

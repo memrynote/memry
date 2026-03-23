@@ -157,7 +157,7 @@ export function TagInputPopup({
     >
       {/* Search input */}
       <div className="border-b border-stone-200 p-2">
-        <div className="flex items-center gap-2 rounded-lg bg-stone-50 px-3 py-2">
+        <div className="flex items-center gap-2 rounded-md bg-stone-50 px-3 py-2">
           <Search className="h-4 w-4 text-stone-400" />
           <input
             ref={inputRef}

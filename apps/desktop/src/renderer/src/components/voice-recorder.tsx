@@ -269,7 +269,7 @@ export function VoiceRecorder({
     return (
       <div
         className={cn(
-          'flex items-center gap-2 px-3 py-2 rounded-lg bg-muted/50',
+          'flex items-center gap-2 px-3 py-2 rounded-md bg-muted/50',
           'text-sm text-muted-foreground',
           className
         )}
@@ -284,7 +284,7 @@ export function VoiceRecorder({
     return (
       <div
         className={cn(
-          'flex items-center gap-2 px-3 py-2 rounded-lg bg-destructive/10',
+          'flex items-center gap-2 px-3 py-2 rounded-md bg-destructive/10',
           'text-sm',
           className
         )}
@@ -313,7 +313,7 @@ export function VoiceRecorder({
     return (
       <div
         className={cn(
-          'flex items-center gap-2 px-3 py-2 rounded-lg bg-muted/50',
+          'flex items-center gap-2 px-3 py-2 rounded-md bg-muted/50',
           'text-sm text-muted-foreground',
           className
         )}
@@ -328,7 +328,7 @@ export function VoiceRecorder({
   return (
     <div
       className={cn(
-        'flex items-center gap-3 px-3 py-2 rounded-lg',
+        'flex items-center gap-3 px-3 py-2 rounded-md',
         'bg-red-500/10 border border-red-500/20',
         className
       )}

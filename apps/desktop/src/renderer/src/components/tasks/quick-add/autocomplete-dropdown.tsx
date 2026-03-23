@@ -164,7 +164,7 @@ export const AutocompleteDropdown = ({
     <div
       className={cn(
         'absolute top-full left-0 mt-1 w-[220px]',
-        'bg-popover rounded-lg border border-border shadow-[var(--shadow-card-hover)]',
+        'bg-popover rounded-md border border-border shadow-[var(--shadow-card-hover)]',
         'z-50 overflow-clip',
         'text-[12px] leading-4 [font-synthesis:none] antialiased',
         'animate-in fade-in-0 zoom-in-95 duration-100',

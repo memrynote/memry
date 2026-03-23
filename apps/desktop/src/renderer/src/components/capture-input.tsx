@@ -421,7 +421,7 @@ export function CaptureInput({
 
       {/* Duplicate notice */}
       {duplicateMatch && (
-        <div className="mt-2 flex items-center gap-2 rounded-lg border border-amber-500/30 bg-amber-500/5 px-3 py-2">
+        <div className="mt-2 flex items-center gap-2 rounded-md border border-amber-500/30 bg-amber-500/5 px-3 py-2">
           <Copy className="size-3.5 shrink-0 text-amber-600 dark:text-amber-400" />
           <p className="flex-1 text-xs text-muted-foreground">
             Already captured: &ldquo;{duplicateMatch.title.slice(0, 50)}

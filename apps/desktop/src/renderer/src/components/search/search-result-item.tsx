@@ -154,7 +154,7 @@ export function SearchResultItem({
     <Command.Item
       value={`${item.type}-${item.id}`}
       onSelect={() => onSelect(item)}
-      className="flex items-start gap-3 px-3 py-2.5 rounded-lg cursor-pointer
+      className="flex items-start gap-3 px-3 py-2.5 rounded-md cursor-pointer
         data-[selected=true]:bg-muted
         transition-colors duration-75"
     >

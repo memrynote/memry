@@ -67,7 +67,7 @@ export function JournalReminderButton({
                 variant="ghost"
                 size="icon"
                 className={cn(
-                  'size-8 rounded-lg text-muted-foreground/60 hover:text-foreground hover:bg-foreground/5 transition-all duration-200',
+                  'size-8 rounded-md text-muted-foreground/60 hover:text-foreground hover:bg-foreground/5 transition-all duration-200',
                   className
                 )}
                 disabled={disabled}

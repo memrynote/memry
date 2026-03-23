@@ -56,7 +56,7 @@ export const CollapsibleSection = memo(function CollapsibleSection({
 
   return (
     <div
-      className={cn('rounded-lg border border-border/40 bg-muted/20 overflow-hidden', className)}
+      className={cn('rounded-md border border-border/40 bg-muted/20 overflow-hidden', className)}
     >
       {/* Header - always visible */}
       <button
@@ -136,7 +136,7 @@ export const JournalSection = memo(function JournalSection({
   onContentChange
 }: JournalSectionProps): React.JSX.Element {
   return (
-    <div className="rounded-lg border border-border/40 bg-muted/20">
+    <div className="rounded-md border border-border/40 bg-muted/20">
       {/* Header */}
       <div className="px-4 py-3 border-b border-border/30">
         <div className="flex items-center gap-2">

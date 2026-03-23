@@ -192,7 +192,7 @@ export function ExportDialog({
               <Label
                 htmlFor="format-pdf"
                 className={cn(
-                  'flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors',
+                  'flex items-center gap-3 p-3 rounded-md border cursor-pointer transition-colors',
                   format === 'pdf'
                     ? 'border-primary bg-primary/5'
                     : 'border-border hover:bg-muted/50'
@@ -214,7 +214,7 @@ export function ExportDialog({
               <Label
                 htmlFor="format-html"
                 className={cn(
-                  'flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors',
+                  'flex items-center gap-3 p-3 rounded-md border cursor-pointer transition-colors',
                   format === 'html'
                     ? 'border-primary bg-primary/5'
                     : 'border-border hover:bg-muted/50'

@@ -95,7 +95,7 @@ export class JournalErrorBoundary extends Component<
 
             {/* Pending content recovery */}
             {this.props.pendingContent && (
-              <div className="w-full p-3 bg-amber-50 dark:bg-amber-900/20 rounded-lg border border-amber-200 dark:border-amber-800/50">
+              <div className="w-full p-3 bg-amber-50 dark:bg-amber-900/20 rounded-md border border-amber-200 dark:border-amber-800/50">
                 <p className="text-xs text-amber-700 dark:text-amber-400 mb-2">
                   Unsaved content detected ({this.props.pendingContent.length} characters)
                 </p>

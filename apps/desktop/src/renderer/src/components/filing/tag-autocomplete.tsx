@@ -362,7 +362,7 @@ export const TagAutocomplete = ({
       <div className="relative">
         <div
           className={cn(
-            'flex items-center flex-wrap rounded-lg py-2 px-3 gap-1.5 bg-foreground/[0.02] border transition-colors cursor-text',
+            'flex items-center flex-wrap rounded-md py-2 px-3 gap-1.5 bg-foreground/[0.02] border transition-colors cursor-text',
             isFocused ? 'border-[var(--accent-purple)]/30' : 'border-border'
           )}
           onClick={() => inputRef.current?.focus()}
@@ -402,7 +402,7 @@ export const TagAutocomplete = ({
           <div
             ref={dropdownRef}
             id={LISTBOX_ID}
-            className="absolute z-50 w-full mt-1 p-0 rounded-lg border border-border bg-popover shadow-[0_8px_24px_rgba(0,0,0,0.25)] overflow-hidden"
+            className="absolute z-50 w-full mt-1 p-0 rounded-md border border-border bg-popover shadow-[0_8px_24px_rgba(0,0,0,0.25)] overflow-hidden"
             role="listbox"
             aria-label="Tag suggestions"
           >

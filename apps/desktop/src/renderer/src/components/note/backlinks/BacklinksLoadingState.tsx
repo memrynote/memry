@@ -5,7 +5,7 @@ export function BacklinksLoadingState() {
   return (
     <div
       className={cn(
-        'bg-stone-50 border border-stone-200 rounded-lg',
+        'bg-stone-50 border border-stone-200 rounded-md',
         'p-6 flex items-center justify-center gap-2'
       )}
     >

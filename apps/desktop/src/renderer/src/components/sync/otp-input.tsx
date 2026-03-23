@@ -121,7 +121,7 @@ export function OtpInput({
               <InputOTPSlot
                 key={`otp-${i}`}
                 index={i}
-                className="h-12 w-11 text-lg font-semibold border rounded-lg"
+                className="h-12 w-11 text-lg font-semibold border rounded-md"
                 style={{ animationDelay: `${i * 60}ms` }}
               />
             ))}
@@ -136,7 +136,7 @@ export function OtpInput({
               <InputOTPSlot
                 key={`otp-${i}`}
                 index={i}
-                className="h-12 w-11 text-lg font-semibold border rounded-lg"
+                className="h-12 w-11 text-lg font-semibold border rounded-md"
                 style={{ animationDelay: `${(i + 1) * 60}ms` }}
               />
             ))}

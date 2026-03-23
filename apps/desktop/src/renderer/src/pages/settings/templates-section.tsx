@@ -227,7 +227,7 @@ interface TemplateListItemProps {
 
 function TemplateListItem({ template, onEdit, onDuplicate, onDelete }: TemplateListItemProps) {
   return (
-    <div className="flex items-center gap-3 p-3 rounded-lg border bg-card hover:bg-accent/30 transition-colors group">
+    <div className="flex items-center gap-3 p-3 rounded-md border bg-card hover:bg-accent/30 transition-colors group">
       {/* Icon */}
       <div className="flex-shrink-0 w-10 h-10 flex items-center justify-center rounded-md bg-muted text-xl">
         {template.icon || <FileText className="w-5 h-5 text-muted-foreground" />}

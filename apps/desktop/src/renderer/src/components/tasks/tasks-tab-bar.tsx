@@ -278,7 +278,7 @@ function ProjectDropdown({
         </button>
       </PopoverTrigger>
       <PopoverContent
-        className="w-[200px] p-0 rounded-lg overflow-clip bg-popover border-border shadow-[var(--shadow-card-hover)]"
+        className="w-[200px] p-0 rounded-md overflow-clip bg-popover border-border shadow-[var(--shadow-card-hover)]"
         align="start"
         sideOffset={8}
       >

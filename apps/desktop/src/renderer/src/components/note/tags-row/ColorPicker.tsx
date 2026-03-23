@@ -84,7 +84,7 @@ export function ColorPicker({
           type="button"
           onClick={onCancel}
           className={cn(
-            'rounded-lg px-3 py-1.5',
+            'rounded-md px-3 py-1.5',
             'text-sm text-stone-600',
             'transition-colors duration-150',
             'hover:bg-stone-100'
@@ -96,7 +96,7 @@ export function ColorPicker({
           type="button"
           onClick={onConfirm}
           className={cn(
-            'rounded-lg px-3 py-1.5',
+            'rounded-md px-3 py-1.5',
             'text-sm font-medium text-white',
             'bg-stone-900',
             'transition-colors duration-150',

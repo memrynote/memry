@@ -49,7 +49,7 @@ export function RecentReasons({
             key={reason.id}
             type="button"
             onClick={() => onSelect(reason)}
-            className="flex items-center gap-3 w-full px-3 py-2 rounded-lg text-left
+            className="flex items-center gap-3 w-full px-3 py-2 rounded-md text-left
               hover:bg-muted transition-colors duration-75 group"
           >
             {reason.itemIcon ? (

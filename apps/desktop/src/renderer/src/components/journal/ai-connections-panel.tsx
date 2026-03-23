@@ -78,7 +78,7 @@ export const AIConnectionsPanel = memo(function AIConnectionsPanel({
       role="region"
       aria-label="AI Connections"
       aria-live="polite"
-      className="rounded-lg border border-border/40 bg-card overflow-hidden"
+      className="rounded-md border border-border/40 bg-card overflow-hidden"
     >
       {/* Header */}
       <PanelHeader
@@ -217,7 +217,7 @@ function ConnectionItem({ connection, onClick }: ConnectionItemProps): React.JSX
     <button
       onClick={onClick}
       className={cn(
-        'w-full text-left p-3 rounded-lg',
+        'w-full text-left p-3 rounded-md',
         'bg-muted/30 hover:bg-muted/60',
         'border border-transparent hover:border-border/40',
         'transition-all duration-150',

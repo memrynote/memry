@@ -179,7 +179,7 @@ export function DeviceList(): React.JSX.Element {
           return (
             <div
               key={device.id}
-              className="flex items-center gap-3 p-3 rounded-lg hover:bg-muted/50 transition-colors group"
+              className="flex items-center gap-3 p-3 rounded-md hover:bg-muted/50 transition-colors group"
             >
               <div className="flex items-center justify-center w-8 h-8 rounded-full bg-muted shrink-0">
                 <Icon className="w-4 h-4 text-muted-foreground" />

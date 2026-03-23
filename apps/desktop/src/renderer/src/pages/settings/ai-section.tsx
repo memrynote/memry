@@ -184,7 +184,7 @@ export function AISettings() {
         </div>
 
         {/* Model Info Card */}
-        <div className="rounded-lg border p-4 space-y-3">
+        <div className="rounded-md border p-4 space-y-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Brain className="w-5 h-5 text-muted-foreground" />
@@ -255,7 +255,7 @@ export function AISettings() {
         </div>
 
         {/* Info hint */}
-        <div className="flex items-start gap-2 p-3 rounded-lg bg-muted/50 text-sm">
+        <div className="flex items-start gap-2 p-3 rounded-md bg-muted/50 text-sm">
           <Info className="w-4 h-4 text-muted-foreground mt-0.5 flex-shrink-0" />
           <p className="text-muted-foreground">
             The model (~23MB) will be downloaded once and cached locally. All embedding generation
@@ -323,7 +323,7 @@ export function AISettings() {
           )}
 
         {/* Info hint */}
-        <div className="flex items-start gap-2 p-3 rounded-lg bg-muted/50 text-sm">
+        <div className="flex items-start gap-2 p-3 rounded-md bg-muted/50 text-sm">
           <Info className="w-4 h-4 text-muted-foreground mt-0.5 flex-shrink-0" />
           <p className="text-muted-foreground">
             The embedding index is built automatically when notes are created or modified. Use this

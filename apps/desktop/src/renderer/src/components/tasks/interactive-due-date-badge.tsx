@@ -81,7 +81,7 @@ export const InteractiveDueDateBadge = ({
         </button>
       </PopoverTrigger>
       <PopoverContent
-        className="w-auto p-0 rounded-lg overflow-clip"
+        className="w-auto p-0 rounded-md overflow-clip"
         align="end"
         onClick={handleTriggerClick}
       >

@@ -106,7 +106,7 @@ export function TriageComplete({
         type="button"
         onClick={onReturnToInbox}
         className={cn(
-          'inline-flex items-center gap-2 rounded-lg px-6 py-2.5 text-sm font-medium',
+          'inline-flex items-center gap-2 rounded-md px-6 py-2.5 text-sm font-medium',
           'bg-foreground/5 hover:bg-foreground/10 text-foreground',
           'transition-all duration-500 ease-out',
           showButton ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0'

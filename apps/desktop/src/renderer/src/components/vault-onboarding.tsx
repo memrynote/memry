@@ -57,14 +57,14 @@ export function VaultOnboarding() {
 
           {/* Features */}
           <div className="mt-6 grid grid-cols-2 gap-4">
-            <div className="flex items-start gap-3 p-3 rounded-lg bg-gray-50">
+            <div className="flex items-start gap-3 p-3 rounded-md bg-gray-50">
               <FileText className="w-5 h-5 text-indigo-500 shrink-0 mt-0.5" />
               <div>
                 <p className="text-sm font-medium text-gray-900">Plain Markdown</p>
                 <p className="text-xs text-gray-500">Your notes stay portable</p>
               </div>
             </div>
-            <div className="flex items-start gap-3 p-3 rounded-lg bg-gray-50">
+            <div className="flex items-start gap-3 p-3 rounded-md bg-gray-50">
               <Clock className="w-5 h-5 text-indigo-500 shrink-0 mt-0.5" />
               <div>
                 <p className="text-sm font-medium text-gray-900">Sync Anywhere</p>
@@ -86,7 +86,7 @@ export function VaultOnboarding() {
                   disabled={isLoading}
                   className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-gray-50 transition-colors text-left group"
                 >
-                  <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-gray-100 group-hover:bg-indigo-100 transition-colors">
+                  <div className="flex items-center justify-center w-10 h-10 rounded-md bg-gray-100 group-hover:bg-indigo-100 transition-colors">
                     <FolderOpen className="w-5 h-5 text-gray-500 group-hover:text-indigo-500 transition-colors" />
                   </div>
                   <div className="flex-1 min-w-0">

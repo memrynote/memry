@@ -66,7 +66,7 @@ export const FloatingDayContext = memo(function FloatingDayContext({
           onClick={() => setIsExpanded(true)}
           className={cn(
             'flex flex-col items-center gap-2 p-2',
-            'rounded-lg border border-border/60 bg-background/95 backdrop-blur-sm',
+            'rounded-md border border-border/60 bg-background/95 backdrop-blur-sm',
             'shadow-sm hover:shadow-md hover:border-border',
             'transition-all duration-150'
           )}
@@ -98,7 +98,7 @@ export const FloatingDayContext = memo(function FloatingDayContext({
       {isExpanded && (
         <div
           className={cn(
-            'w-64 rounded-lg border border-border/60 bg-background/95 backdrop-blur-sm',
+            'w-64 rounded-md border border-border/60 bg-background/95 backdrop-blur-sm',
             'shadow-lg overflow-hidden',
             'animate-in slide-in-from-right-2 fade-in duration-200'
           )}

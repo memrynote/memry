@@ -188,7 +188,7 @@ function ConfirmStep({ onStart }: { onStart: () => void }): React.JSX.Element {
 
   return (
     <div className="space-y-5 pt-1">
-      <div className="flex items-start gap-3 p-3.5 rounded-lg border border-amber-500/20 bg-amber-500/[0.07]">
+      <div className="flex items-start gap-3 p-3.5 rounded-md border border-amber-500/20 bg-amber-500/[0.07]">
         <ShieldAlert className="w-4 h-4 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
         <div className="text-[13px] leading-relaxed text-amber-800 dark:text-amber-300/90 space-y-1.5">
           <p className="font-medium">This action will:</p>
@@ -305,7 +305,7 @@ function ErrorStep({
   return (
     <div className="space-y-5 pt-1">
       <div
-        className="flex items-start gap-3 p-3.5 rounded-lg border border-red-500/20 bg-red-500/[0.07]"
+        className="flex items-start gap-3 p-3.5 rounded-md border border-red-500/20 bg-red-500/[0.07]"
         role="alert"
       >
         <AlertTriangle

@@ -53,7 +53,7 @@ export function GraphContextMenu({
   return (
     <div
       ref={menuRef}
-      className="absolute z-50 min-w-[160px] rounded-lg border border-border bg-popover p-1 shadow-card animate-in fade-in-0 zoom-in-95"
+      className="absolute z-50 min-w-[160px] rounded-md border border-border bg-popover p-1 shadow-card animate-in fade-in-0 zoom-in-95"
       style={{ left: menu.x, top: menu.y }}
     >
       <div className="px-2 py-1.5 mb-0.5">

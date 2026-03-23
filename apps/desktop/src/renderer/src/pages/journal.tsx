@@ -796,7 +796,7 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
                   }}
                 >
                   {entryError && (
-                    <div className="mb-4 px-4 py-3 rounded-lg bg-destructive/10 border border-destructive/20 text-destructive text-sm">
+                    <div className="mb-4 px-4 py-3 rounded-md bg-destructive/10 border border-destructive/20 text-destructive text-sm">
                       <span className="font-medium">Error:</span> {entryError}
                     </div>
                   )}
@@ -817,13 +817,13 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
                             <button
                               onClick={() => setShowTemplateSelector(true)}
                               className={cn(
-                                'w-full flex items-center gap-3 px-4 py-3 rounded-lg',
+                                'w-full flex items-center gap-3 px-4 py-3 rounded-md',
                                 'border border-dashed border-amber-300/50 dark:border-amber-700/50',
                                 'bg-gradient-to-r from-amber-50/50 to-orange-50/30 dark:from-amber-950/20 dark:to-orange-950/10',
                                 'hover:border-amber-400/60 dark:hover:border-amber-600/60 transition-all duration-200 text-left group'
                               )}
                             >
-                              <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-amber-100 to-orange-100 dark:from-amber-900/40 dark:to-orange-900/30 flex items-center justify-center border border-amber-200/50 dark:border-amber-800/30 shadow-sm">
+                              <div className="w-9 h-9 rounded-md bg-gradient-to-br from-amber-100 to-orange-100 dark:from-amber-900/40 dark:to-orange-900/30 flex items-center justify-center border border-amber-200/50 dark:border-amber-800/30 shadow-sm">
                                 <FileText className="w-4 h-4 text-amber-700 dark:text-amber-400" />
                               </div>
                               <div className="flex-1">

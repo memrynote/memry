@@ -80,7 +80,7 @@ export const GroupByDropdown = ({
       </PopoverTrigger>
 
       <PopoverContent
-        className="w-auto min-w-[180px] p-0 rounded-lg overflow-clip border-border shadow-[var(--shadow-card-hover)]"
+        className="w-auto min-w-[180px] p-0 rounded-md overflow-clip border-border shadow-[var(--shadow-card-hover)]"
         align="end"
         sideOffset={8}
       >

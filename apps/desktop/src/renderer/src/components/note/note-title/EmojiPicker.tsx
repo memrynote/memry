@@ -169,7 +169,7 @@ export function EmojiPicker({ isOpen, onClose, onSelect, onRemove, hasEmoji }: E
             type="button"
             onClick={handleRemove}
             className={cn(
-              'flex w-full items-center justify-center gap-2 rounded-lg px-3 py-2',
+              'flex w-full items-center justify-center gap-2 rounded-md px-3 py-2',
               'text-sm text-muted-foreground',
               'transition-colors duration-150',
               'hover:bg-muted hover:text-foreground'

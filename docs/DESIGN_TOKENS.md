@@ -393,7 +393,7 @@ Value: text-[28px]/8 font-semibold tracking-tight tabular-nums
 Compact: px-2 py-1 rounded-md
 Title: text-xs (compact) | text-sm (default)
 Meta: text-[11px]
-Thumbnail: w-9 h-9 rounded-lg ring-1 ring-border/50
+Thumbnail: w-9 h-9 rounded-md ring-1 ring-border/50
 Type icon: size-3.5, colored per TYPE_ICON_COLORS map
 ```
 
@@ -401,7 +401,7 @@ Type icon: size-3.5, colored per TYPE_ICON_COLORS map
 
 ```
 p-0 or p-2 | w-[280px]
-rounded-lg or rounded-[10px]
+rounded-md or rounded-[10px]
 shadow-dropdown
 ```
 

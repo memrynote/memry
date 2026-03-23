@@ -30,7 +30,7 @@ export const ChordIndicator = ({
         'fixed bottom-4 right-4 z-50',
         'bg-primary',
         'text-primary-foreground',
-        'px-4 py-2 rounded-lg shadow-lg',
+        'px-4 py-2 rounded-md shadow-lg',
         'animate-in fade-in slide-in-from-bottom-2 duration-200',
         className
       )}

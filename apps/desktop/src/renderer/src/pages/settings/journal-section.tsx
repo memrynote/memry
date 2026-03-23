@@ -151,7 +151,7 @@ export function JournalSettings() {
         </Select>
 
         {/* Info hint */}
-        <div className="flex items-start gap-2 p-3 rounded-lg bg-muted/50 text-sm">
+        <div className="flex items-start gap-2 p-3 rounded-md bg-muted/50 text-sm">
           <Info className="w-4 h-4 text-muted-foreground mt-0.5 flex-shrink-0" />
           <p className="text-muted-foreground">
             When a default template is set, new journal entries will be created with the template
@@ -218,7 +218,7 @@ export function JournalSettings() {
         </div>
 
         {/* Info hint */}
-        <div className="flex items-start gap-2 p-3 rounded-lg bg-muted/50 text-sm">
+        <div className="flex items-start gap-2 p-3 rounded-md bg-muted/50 text-sm">
           <Info className="w-4 h-4 text-muted-foreground mt-0.5 flex-shrink-0" />
           <p className="text-muted-foreground">
             The mini calendar at the top of the sidebar is always visible for quick navigation.

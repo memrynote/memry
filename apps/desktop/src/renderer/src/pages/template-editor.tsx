@@ -488,7 +488,7 @@ export function TemplateEditorPage({ templateId }: TemplateEditorPageProps) {
             <Separator className="my-6" />
 
             {/* Content editor */}
-            <div className="min-h-[300px] border rounded-lg p-4 bg-card">
+            <div className="min-h-[300px] border rounded-md p-4 bg-card">
               <ContentArea
                 key={templateId || 'new'}
                 initialContent={content}

@@ -512,7 +512,7 @@ export const IconPicker = ({
     <div
       ref={popoverRef}
       className={cn(
-        'fixed z-[100] w-80 rounded-lg border bg-popover text-popover-foreground shadow-xl',
+        'fixed z-[100] w-80 rounded-md border bg-popover text-popover-foreground shadow-xl',
         'animate-in fade-in-0 zoom-in-95 duration-200'
       )}
       style={positionStyle}

@@ -20,6 +20,12 @@
   color: #ffffff !important;
 }
 
+/* Inbox detail drawer: editor inherits drawer surface bg, not page bg */
+.inbox-content-editor .bn-editor,
+.inbox-content-editor .bn-container {
+  background-color: transparent !important;
+}
+
 /* Make all text content in BlockNote white in dark mode */
 .dark .bn-editor *,
 .dark .bn-container * {
@@ -471,22 +477,18 @@
     --font-heading: 'Space Grotesk Variable', system-ui, sans-serif;
     --font-mono: 'JetBrains Mono Variable', 'SF Mono', 'Fira Code', monospace;
 
-    /* ===== BASE COLORS - Dark Mode (Cool Dark Variant) ===== */
-    --background: #0e0e10;
-    /* Deep cool dark */
+    /* ===== BASE COLORS - Dark Mode (Neutral Charcoal) ===== */
+    --background: #191919;
     --foreground: #e8e6e1;
-    /* Light warm text */
-    --surface: #161618;
-    /* Dark panels */
-    --surface-active: #1e1e21;
-    /* Dark hover */
+    --surface: #222222;
+    --surface-active: #2a2a2a;
 
     /* ===== SEMANTIC PASTELS - Dark Mode (Muted versions) ===== */
-    --card-sage: #1a231a;
-    --card-rose: #231a1a;
-    --card-sand: #23211a;
-    --card-lavender: #1d1a23;
-    --card-grey: #1a1a1c;
+    --card-sage: #1e261e;
+    --card-rose: #261e1e;
+    --card-sand: #26241e;
+    --card-lavender: #211e26;
+    --card-grey: #222222;
 
     /* ===== TYPOGRAPHY COLORS - Dark Mode ===== */
     --text-primary: #e8e6e1;
@@ -500,23 +502,23 @@
     --accent-orange: #fb923c;
 
     /* ===== UI SEMANTIC COLORS - Dark Mode ===== */
-    --muted: #161618;
+    --muted: #222222;
     --muted-foreground: #a8a6a1;
-    --popover: #131315;
+    --popover: #1e1e1e;
     --popover-foreground: #e8e6e1;
-    --border: #2a2a2e;
-    --input: #2a2a2e;
-    --card: #161618;
+    --border: #333333;
+    --input: #333333;
+    --card: #222222;
     --card-foreground: #e8e6e1;
     --primary: #e8e6e1;
-    --primary-foreground: #0e0e10;
-    --secondary: #161618;
+    --primary-foreground: #191919;
+    --secondary: #222222;
     --secondary-foreground: #e8e6e1;
-    --accent: #1e1e21;
+    --accent: #2a2a2a;
     --accent-foreground: #e8e6e1;
     --destructive: #dc2626;
     --destructive-foreground: #fafafa;
-    --ring: #6b6966;
+    --ring: #6b6b6b;
 
     /* ===== BORDER RADIUS (Same in dark mode) ===== */
     --radius: 0.5rem;
@@ -1203,21 +1205,21 @@ del.bn-inline-content {
 }
 
 .dark {
-  /* ===== SIDEBAR THEME - Cool Dark Palette ===== */
-  --sidebar: #131315;
+  /* ===== SIDEBAR THEME - Neutral Charcoal ===== */
+  --sidebar: #202020;
   --sidebar-foreground: #b5b3ae;
   --sidebar-primary: #e8e5df;
-  --sidebar-primary-foreground: #131315;
+  --sidebar-primary-foreground: #202020;
   --sidebar-accent: color-mix(in srgb, var(--tint) 15%, transparent);
   --sidebar-accent-foreground: var(--tint);
-  --sidebar-border: #2a2a2e;
+  --sidebar-border: #333333;
   --sidebar-ring: var(--tint);
   --sidebar-muted: #6b6b6b;
   --sidebar-terracotta: var(--tint);
   --sidebar-text-folder: #c5c0b8;
   --sidebar-text-child: #9a958d;
-  --sidebar-dot-inactive: #3a3a3e;
-  --sidebar-surface: #222225;
+  --sidebar-dot-inactive: #444444;
+  --sidebar-surface: #2a2a2a;
 }
 
 @theme inline {

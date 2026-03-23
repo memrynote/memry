@@ -174,7 +174,7 @@ export const KanbanColumn = ({
       <div
         ref={setNodeRef}
         className={cn(
-          'flex flex-col rounded-lg border p-2 gap-1.5 transition-all duration-150',
+          'flex flex-col rounded-md border p-2 gap-1.5 transition-all duration-150',
           shouldHighlight
             ? 'bg-primary/[0.03] border-[1.5px] border-primary/20'
             : 'bg-sidebar border-border'

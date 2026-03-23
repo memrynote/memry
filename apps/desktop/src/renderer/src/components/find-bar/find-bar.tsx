@@ -54,7 +54,7 @@ export const FindBar = memo(function FindBar({
       <div
         className={cn(
           'flex items-center gap-2',
-          'bg-background border border-border/60 rounded-lg shadow-sm',
+          'bg-background border border-border/60 rounded-md shadow-sm',
           'px-3 py-1.5'
         )}
       >

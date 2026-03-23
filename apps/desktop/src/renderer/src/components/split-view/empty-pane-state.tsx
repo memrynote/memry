@@ -79,7 +79,7 @@ export const EmptyPaneState = ({ groupId, className }: EmptyPaneStateProps): Rea
           type="button"
           onClick={handleOpenInbox}
           className={cn(
-            'flex items-center gap-2 px-4 py-2.5 rounded-lg',
+            'flex items-center gap-2 px-4 py-2.5 rounded-md',
             'bg-primary',
             'text-primary-foreground',
             'text-sm font-medium',
@@ -99,7 +99,7 @@ export const EmptyPaneState = ({ groupId, className }: EmptyPaneStateProps): Rea
             type="button"
             onClick={handleClosePane}
             className={cn(
-              'px-4 py-2.5 rounded-lg',
+              'px-4 py-2.5 rounded-md',
               'bg-muted/80',
               'text-muted-foreground',
               'text-sm font-medium',

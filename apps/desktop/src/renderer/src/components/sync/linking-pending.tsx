@@ -117,7 +117,7 @@ export function LinkingPending({
         </p>
       </div>
       {verificationCode && (
-        <div className="rounded-lg border border-amber-200 dark:border-amber-900/50 bg-amber-50/50 dark:bg-amber-950/20 px-6 py-3 text-center space-y-1">
+        <div className="rounded-md border border-amber-200 dark:border-amber-900/50 bg-amber-50/50 dark:bg-amber-950/20 px-6 py-3 text-center space-y-1">
           <p className="text-xs font-semibold tracking-widest uppercase text-muted-foreground">
             Verification code
           </p>

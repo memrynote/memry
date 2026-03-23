@@ -196,7 +196,7 @@ export function TriageActionBar({
               }
             }}
             className={cn(
-              'inline-flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium transition-colors',
+              'inline-flex items-center gap-2 rounded-md px-4 py-2.5 text-sm font-medium transition-colors',
               'disabled:pointer-events-none disabled:opacity-50',
               action.variant === 'destructive'
                 ? 'hover:bg-destructive/10 hover:text-destructive text-muted-foreground'

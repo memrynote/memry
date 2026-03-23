@@ -146,7 +146,7 @@ export function VaultSwitcher() {
                   <DropdownMenuItem
                     key={vault.path}
                     onClick={() => !isActive && handleSwitchVault(vault.path)}
-                    className="group/vault rounded-lg cursor-pointer hover:bg-accent focus:bg-accent transition-colors"
+                    className="group/vault rounded-md cursor-pointer hover:bg-accent focus:bg-accent transition-colors"
                   >
                     <div className="flex size-7 items-center justify-center rounded-md border border-border bg-card">
                       <FolderOpen className="size-4 shrink-0 text-sidebar-terracotta" />
@@ -184,7 +184,7 @@ export function VaultSwitcher() {
             {/* Select new vault */}
             <DropdownMenuItem
               onClick={handleSelectNewVault}
-              className="rounded-lg cursor-pointer hover:bg-accent focus:bg-accent transition-colors"
+              className="rounded-md cursor-pointer hover:bg-accent focus:bg-accent transition-colors"
             >
               <div className="flex size-7 items-center justify-center">
                 <Plus className="size-4 text-muted-foreground" />
@@ -197,7 +197,7 @@ export function VaultSwitcher() {
             {/* Templates */}
             <DropdownMenuItem
               onClick={handleOpenTemplates}
-              className="rounded-lg cursor-pointer hover:bg-accent focus:bg-accent transition-colors"
+              className="rounded-md cursor-pointer hover:bg-accent focus:bg-accent transition-colors"
             >
               <div className="flex size-7 items-center justify-center">
                 <LayoutTemplate className="size-4 text-muted-foreground" />
@@ -208,7 +208,7 @@ export function VaultSwitcher() {
             {/* Settings */}
             <DropdownMenuItem
               onClick={handleOpenSettings}
-              className="rounded-lg cursor-pointer hover:bg-accent focus:bg-accent transition-colors"
+              className="rounded-md cursor-pointer hover:bg-accent focus:bg-accent transition-colors"
             >
               <div className="flex size-7 items-center justify-center">
                 <Settings className="size-4 text-muted-foreground" />

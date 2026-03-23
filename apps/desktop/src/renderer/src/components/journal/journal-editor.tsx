@@ -217,7 +217,7 @@ export const JournalEditor = memo(function JournalEditor({
             'prose-blockquote:border-l-2 prose-blockquote:border-primary/40 prose-blockquote:pl-4 prose-blockquote:italic',
             // Code
             'prose-code:bg-muted prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded prose-code:text-sm',
-            'prose-pre:bg-muted prose-pre:p-4 prose-pre:rounded-lg'
+            'prose-pre:bg-muted prose-pre:p-4 prose-pre:rounded-md'
           )
         }
       }
@@ -248,7 +248,7 @@ export const JournalEditor = memo(function JournalEditor({
 
       <div
         className={cn(
-          'rounded-lg border bg-background overflow-hidden',
+          'rounded-md border bg-background overflow-hidden',
           isActive ? 'border-border ring-1 ring-primary/20' : 'border-border/50',
           className
         )}

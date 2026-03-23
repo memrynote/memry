@@ -430,13 +430,13 @@ export function QuickCapture(): React.JSX.Element {
                 setDuplicateMatch(null)
                 handleSubmit(true)
               }}
-              className="rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-foreground transition-colors hover:bg-muted"
+              className="rounded-md border border-border px-3 py-1.5 text-xs font-medium text-foreground transition-colors hover:bg-muted"
             >
               Capture Anyway
             </button>
             <button
               onClick={() => window.api.quickCapture.close()}
-              className="rounded-lg bg-amber-600 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-amber-700 dark:bg-amber-500 dark:hover:bg-amber-600"
+              className="rounded-md bg-amber-600 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-amber-700 dark:bg-amber-500 dark:hover:bg-amber-600"
             >
               Close
             </button>
@@ -522,7 +522,7 @@ export function QuickCapture(): React.JSX.Element {
       <div className="flex flex-1 flex-col min-h-0">
         {/* Image preview (clipboard or dropped image) */}
         {clipboardImageUrl && (
-          <div className="relative mb-3 overflow-hidden rounded-lg border border-border/50">
+          <div className="relative mb-3 overflow-hidden rounded-md border border-border/50">
             <img
               src={clipboardImageUrl}
               alt="Clipboard image"
@@ -540,7 +540,7 @@ export function QuickCapture(): React.JSX.Element {
 
         {/* Dropped non-image file preview */}
         {droppedFile && !clipboardImageUrl && (
-          <div className="relative mb-3 flex items-center gap-2 rounded-lg border border-border/50 bg-muted/20 px-3 py-2">
+          <div className="relative mb-3 flex items-center gap-2 rounded-md border border-border/50 bg-muted/20 px-3 py-2">
             <FileIcon className="size-4 text-muted-foreground" />
             <span className="flex-1 truncate text-sm text-foreground">{droppedFile.name}</span>
             <button
@@ -557,7 +557,7 @@ export function QuickCapture(): React.JSX.Element {
         <div
           className={cn(
             'relative flex items-start gap-3',
-            'rounded-lg border border-border/50 bg-muted/30 px-3 py-2.5',
+            'rounded-md border border-border/50 bg-muted/30 px-3 py-2.5',
             'transition-all duration-200',
             'focus-within:border-border focus-within:bg-muted/50'
           )}

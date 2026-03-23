@@ -65,7 +65,7 @@ export function JournalEntryListItem({
       className={cn(
         // Base styling
         'w-full flex items-center gap-3 px-3 py-2.5 text-left',
-        'rounded-lg transition-all duration-150',
+        'rounded-md transition-all duration-150',
         // Hover state
         'hover:bg-muted/60',
         // Focus state

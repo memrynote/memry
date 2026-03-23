@@ -69,7 +69,7 @@ export const TaskSection = ({
       role="region"
       className={cn(
         'flex flex-col transition-all duration-200',
-        isDropTarget && 'ring-2 ring-primary/25 bg-primary/[0.04] rounded-lg',
+        isDropTarget && 'ring-2 ring-primary/25 bg-primary/[0.04] rounded-md',
         isDragSource && 'opacity-50',
         className
       )}

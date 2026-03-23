@@ -196,7 +196,7 @@ export const FilterDropdown = ({
     <Popover open={open} onOpenChange={handleOpenChange}>
       <PopoverTrigger asChild>{children}</PopoverTrigger>
       <PopoverContent
-        className="w-[220px] p-0 rounded-lg overflow-clip bg-popover border-border shadow-[var(--shadow-card-hover)] max-h-[calc(100vh-120px)] overflow-y-auto"
+        className="w-[220px] p-0 rounded-md overflow-clip bg-popover border-border shadow-[var(--shadow-card-hover)] max-h-[calc(100vh-120px)] overflow-y-auto"
         align="end"
         sideOffset={8}
       >

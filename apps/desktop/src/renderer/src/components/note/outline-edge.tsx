@@ -163,7 +163,7 @@ export const OutlineEdge = memo(function OutlineEdge({
           ref={popupRef}
           className={cn(
             'bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700',
-            'shadow-lg rounded-lg',
+            'shadow-lg rounded-md',
             'py-2 min-w-[220px] max-w-[280px] max-h-[70vh] overflow-y-auto',
             'animate-in fade-in-0 zoom-in-95 duration-150'
           )}

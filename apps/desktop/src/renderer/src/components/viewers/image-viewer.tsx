@@ -136,7 +136,7 @@ export function ImageViewer({ src, alt = 'Image', className }: ImageViewerProps)
   if (error) {
     return (
       <div
-        className={cn('flex h-full items-center justify-center bg-muted/30 rounded-lg', className)}
+        className={cn('flex h-full items-center justify-center bg-muted/30 rounded-md', className)}
       >
         <div className="text-center p-8">
           <p className="text-destructive font-medium mb-2">Failed to load image</p>

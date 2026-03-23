@@ -99,7 +99,7 @@ export function AccountSettings() {
       {/* Identity */}
       <div className="space-y-3">
         <h4 className="text-sm font-medium">Identity</h4>
-        <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/50">
+        <div className="flex items-start gap-3 p-3 rounded-md bg-muted/50">
           <div className="flex items-center justify-center w-9 h-9 rounded-full bg-primary/10 shrink-0">
             <User className="w-4 h-4 text-primary" />
           </div>
