@@ -137,12 +137,9 @@ export const FilingSection = ({
 
   // Track whether auto-selection already fired for this item
   const didAutoSelectFolder = useRef(false)
-  const didAutoLinkNote = useRef(false)
-
   // Reset flags when item changes
   useEffect(() => {
     didAutoSelectFolder.current = false
-    didAutoLinkNote.current = false
   }, [item?.id])
 
   // Auto-select top AI-suggested folder (once per item)
@@ -152,15 +149,6 @@ export const FilingSection = ({
       onFolderSelect(suggestedFolders[0])
     }
   }, [suggestedFolders, selectedFolder, onFolderSelect])
-
-  // Auto-link first AI-suggested note (once per item)
-  useEffect(() => {
-    if (!didAutoLinkNote.current && noteSuggestions.length > 0 && linkedNotes.length === 0) {
-      didAutoLinkNote.current = true
-      const firstNote = noteSuggestions[0].note
-      onLinkedNotesChange([{ id: firstNote.id, title: firstNote.title, type: 'note' }])
-    }
-  }, [noteSuggestions, linkedNotes.length, onLinkedNotesChange])
 
   // Derive display info for the folder dropdown trigger
   const displayFolder = selectedFolder
