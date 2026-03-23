@@ -73,8 +73,7 @@ vi.mock('../inbox/filing', () => ({
 vi.mock('../inbox/social', () => ({
   extractSocialPost: vi.fn(),
   detectSocialPlatform: vi.fn(),
-  isSocialPost: vi.fn(),
-  createFallbackSocialMetadata: vi.fn()
+  isSocialPost: vi.fn()
 }))
 
 vi.mock('../inbox/capture', () => ({

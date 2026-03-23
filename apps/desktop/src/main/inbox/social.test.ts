@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
+import { describe, it, expect, beforeEach, vi } from 'vitest'
 import {
   extractSocialPost,
   detectSocialPlatform,
@@ -6,19 +6,9 @@ import {
   createFallbackSocialMetadata
 } from './social'
 
-const mockFetch = vi.fn()
-global.fetch = mockFetch
-
 vi.mock('../lib/url-utils', () => ({
   detectSocialPlatform: vi.fn(),
-  isSocialPost: vi.fn(),
-  extractDomain: vi.fn((url) => {
-    try {
-      return new URL(url).hostname
-    } catch {
-      return url
-    }
-  })
+  isSocialPost: vi.fn()
 }))
 
 import {
@@ -28,101 +18,112 @@ import {
 
 describe('Social Media Post Extraction', () => {
   beforeEach(() => {
-    mockFetch.mockReset()
     vi.mocked(mockDetectSocialPlatform).mockReset()
     vi.mocked(mockIsSocialPost).mockReset()
   })
 
-  afterEach(() => {
-    vi.clearAllMocks()
-  })
-
-  describe('Platform Detection', () => {
-    it('should detect Twitter/X URLs', () => {
+  describe('Platform Detection (re-exports)', () => {
+    it('should re-export detectSocialPlatform', () => {
       vi.mocked(mockDetectSocialPlatform).mockReturnValue('twitter')
       expect(detectSocialPlatform('https://twitter.com/user/status/123')).toBe('twitter')
-      expect(detectSocialPlatform('https://x.com/user/status/123')).toBe('twitter')
     })
 
-    it('should return null for non-social URLs', () => {
-      vi.mocked(mockDetectSocialPlatform).mockReturnValue(null)
-      expect(detectSocialPlatform('https://example.com')).toBeNull()
-    })
-
-    it('should identify post URLs vs profile URLs', () => {
-      vi.mocked(mockIsSocialPost).mockReturnValueOnce(true).mockReturnValueOnce(false)
-
+    it('should re-export isSocialPost', () => {
+      vi.mocked(mockIsSocialPost).mockReturnValue(true)
       expect(isSocialPost('https://twitter.com/user/status/123')).toBe(true)
-      expect(isSocialPost('https://twitter.com/user')).toBe(false)
     })
   })
 
-  describe('extractSocialPost - Twitter/X', () => {
-    beforeEach(() => {
-      vi.mocked(mockDetectSocialPlatform).mockReturnValue('twitter')
-      vi.mocked(mockIsSocialPost).mockReturnValue(true)
+  describe('extractSocialPost', () => {
+    it('should return error for non-social URLs', () => {
+      vi.mocked(mockDetectSocialPlatform).mockReturnValue(null)
+
+      const result = extractSocialPost('https://example.com/not-social')
+
+      expect(result.success).toBe(false)
+      expect(result.error).toContain('not from a recognized')
     })
 
-    it('should extract metadata from Twitter oEmbed', async () => {
-      const oembedResponse = {
-        author_name: 'Test User',
-        author_url: 'https://twitter.com/testuser',
-        html: '<blockquote class="twitter-tweet"><p lang="en" dir="ltr">This is a test tweet!</p>&mdash; Test User (@testuser) <a href="https://twitter.com/testuser/status/123">December 28, 2025</a></blockquote>'
-      }
+    it('should return partial metadata for profile URLs (not posts)', () => {
+      vi.mocked(mockDetectSocialPlatform).mockReturnValue('twitter')
+      vi.mocked(mockIsSocialPost).mockReturnValue(false)
 
-      mockFetch.mockResolvedValueOnce({ ok: false, status: 500 }).mockResolvedValueOnce({
-        ok: true,
-        json: () => Promise.resolve(oembedResponse)
-      })
-
-      const result = await extractSocialPost('https://twitter.com/testuser/status/123')
+      const result = extractSocialPost('https://twitter.com/user')
 
       expect(result.success).toBe(true)
-      expect(result.metadata).toBeDefined()
+      expect(result.metadata?.extractionStatus).toBe('partial')
+      expect(result.metadata?.tweetId).toBeUndefined()
+    })
+
+    it('should extract tweetId from twitter.com status URL', () => {
+      vi.mocked(mockDetectSocialPlatform).mockReturnValue('twitter')
+      vi.mocked(mockIsSocialPost).mockReturnValue(true)
+
+      const result = extractSocialPost('https://twitter.com/elonmusk/status/1234567890')
+
+      expect(result.success).toBe(true)
+      expect(result.metadata?.tweetId).toBe('1234567890')
       expect(result.metadata?.platform).toBe('twitter')
-      expect(result.metadata?.authorName).toBe('Test User')
-      expect(result.metadata?.authorHandle).toBe('@testuser')
-      expect(result.metadata?.postContent).toContain('test tweet')
+      expect(result.metadata?.postUrl).toBe('https://twitter.com/elonmusk/status/1234567890')
     })
 
-    it('should handle protected/deleted tweets', async () => {
-      mockFetch
-        .mockResolvedValueOnce({ ok: false, status: 404 })
-        .mockResolvedValueOnce({ ok: false, status: 404 })
+    it('should extract tweetId from x.com status URL', () => {
+      vi.mocked(mockDetectSocialPlatform).mockReturnValue('twitter')
+      vi.mocked(mockIsSocialPost).mockReturnValue(true)
 
-      const result = await extractSocialPost('https://twitter.com/user/status/deleted')
+      const result = extractSocialPost('https://x.com/user/status/9876543210')
 
-      expect(result.success).toBe(false)
-      expect(result.error).toContain('not found')
+      expect(result.success).toBe(true)
+      expect(result.metadata?.tweetId).toBe('9876543210')
     })
 
-    it('should handle Twitter API errors', async () => {
-      mockFetch
-        .mockResolvedValueOnce({ ok: false, status: 500 })
-        .mockResolvedValueOnce({ ok: false, status: 500 })
+    it('should handle URLs with query params and fragments', () => {
+      vi.mocked(mockDetectSocialPlatform).mockReturnValue('twitter')
+      vi.mocked(mockIsSocialPost).mockReturnValue(true)
 
-      const result = await extractSocialPost('https://twitter.com/user/status/123')
+      const result = extractSocialPost('https://twitter.com/user/status/111222333?s=20&t=abc#top')
 
-      expect(result.success).toBe(false)
-      expect(result.error).toContain('500')
+      expect(result.success).toBe(true)
+      expect(result.metadata?.tweetId).toBe('111222333')
     })
 
-    it('should parse HTML entities in tweet content', async () => {
-      const oembedResponse = {
-        author_name: 'User',
-        author_url: 'https://twitter.com/user',
-        html: '<blockquote class="twitter-tweet"><p>Test &amp; more</p>&mdash; User (@user) <a href="#">Date</a></blockquote>'
-      }
+    it('should extract handle from URL path', () => {
+      vi.mocked(mockDetectSocialPlatform).mockReturnValue('twitter')
+      vi.mocked(mockIsSocialPost).mockReturnValue(true)
 
-      mockFetch.mockResolvedValueOnce({ ok: false, status: 500 }).mockResolvedValueOnce({
-        ok: true,
-        json: () => Promise.resolve(oembedResponse)
-      })
+      const result = extractSocialPost('https://twitter.com/rauchg/status/123456')
 
-      const result = await extractSocialPost('https://twitter.com/user/status/123')
+      expect(result.metadata?.authorHandle).toBe('@rauchg')
+    })
 
-      expect(result.metadata?.postContent).toContain('&')
-      expect(result.metadata?.postContent).toContain('more')
+    it('should be synchronous (no network requests)', () => {
+      vi.mocked(mockDetectSocialPlatform).mockReturnValue('twitter')
+      vi.mocked(mockIsSocialPost).mockReturnValue(true)
+
+      const mockFetch = vi.fn()
+      global.fetch = mockFetch
+
+      extractSocialPost('https://twitter.com/user/status/123')
+
+      expect(mockFetch).not.toHaveBeenCalled()
+    })
+
+    it('should set extractionStatus to partial (react-tweet handles full fetch)', () => {
+      vi.mocked(mockDetectSocialPlatform).mockReturnValue('twitter')
+      vi.mocked(mockIsSocialPost).mockReturnValue(true)
+
+      const result = extractSocialPost('https://twitter.com/user/status/123')
+
+      expect(result.metadata?.extractionStatus).toBe('partial')
+    })
+
+    it('should return empty postContent (react-tweet handles display)', () => {
+      vi.mocked(mockDetectSocialPlatform).mockReturnValue('twitter')
+      vi.mocked(mockIsSocialPost).mockReturnValue(true)
+
+      const result = extractSocialPost('https://twitter.com/user/status/123')
+
+      expect(result.metadata?.postContent).toBe('')
     })
   })
 
@@ -150,56 +151,7 @@ describe('Social Media Post Extraction', () => {
 
     it('should handle "other" platform type', () => {
       const fallback = createFallbackSocialMetadata('https://unknown.social/post', 'other')
-
       expect(fallback.platform).toBe('other')
-    })
-  })
-
-  describe('extractSocialPost - Edge Cases', () => {
-    it('should return error for unrecognized platform', async () => {
-      vi.mocked(mockDetectSocialPlatform).mockReturnValue(null)
-
-      const result = await extractSocialPost('https://example.com/not-social')
-
-      expect(result.success).toBe(false)
-      expect(result.error).toContain('not from a recognized')
-    })
-
-    it('should handle non-post URLs (profile pages)', async () => {
-      vi.mocked(mockDetectSocialPlatform).mockReturnValue('twitter')
-      vi.mocked(mockIsSocialPost).mockReturnValue(false)
-
-      const result = await extractSocialPost('https://twitter.com/user')
-
-      expect(result.success).toBe(true)
-      expect(result.metadata?.extractionStatus).toBe('partial')
-    })
-
-    it('should handle network timeouts gracefully', async () => {
-      vi.mocked(mockDetectSocialPlatform).mockReturnValue('twitter')
-      vi.mocked(mockIsSocialPost).mockReturnValue(true)
-
-      mockFetch
-        .mockRejectedValueOnce(new Error('Network timeout'))
-        .mockRejectedValueOnce(new Error('Network timeout'))
-
-      const result = await extractSocialPost('https://twitter.com/user/status/123')
-
-      expect(result.success).toBe(false)
-      expect(result.error).toContain('timeout')
-    })
-
-    it('should handle AbortError for timeouts', async () => {
-      vi.mocked(mockDetectSocialPlatform).mockReturnValue('twitter')
-      vi.mocked(mockIsSocialPost).mockReturnValue(true)
-
-      const abortError = new Error('Aborted')
-      abortError.name = 'AbortError'
-      mockFetch.mockRejectedValueOnce(abortError).mockRejectedValueOnce(abortError)
-
-      const result = await extractSocialPost('https://twitter.com/user/status/123')
-
-      expect(result.success).toBe(false)
     })
   })
 })
