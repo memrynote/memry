@@ -198,6 +198,47 @@ describe('getAllTagsWithCounts', () => {
     expect(result[1].name).toBe('alpha')
   })
 
+  it('returns numeric count values for merged note + task tags', () => {
+    // #given: "work" on 3 notes + 2 tasks = 5 (not "32" from string concat)
+    insertNote(indexDb, 'n1')
+    insertNote(indexDb, 'n2')
+    insertNote(indexDb, 'n3')
+    insertNoteTag(indexDb, 'n1', 'work')
+    insertNoteTag(indexDb, 'n2', 'work')
+    insertNoteTag(indexDb, 'n3', 'work')
+    insertTask(dataDb, 't1')
+    insertTask(dataDb, 't2')
+    insertTaskTag(dataDb, 't1', 'work')
+    insertTaskTag(dataDb, 't2', 'work')
+
+    // #when
+    const result = getAllTagsWithCounts(indexDb, dataDb)
+
+    // #then
+    const work = result.find((t) => t.name === 'work')
+    expect(work?.count).toBe(5)
+    expect(typeof work?.count).toBe('number')
+  })
+
+  it('all count values are typeof number', () => {
+    // #given
+    insertNote(indexDb, 'n1')
+    insertNote(indexDb, 'n2')
+    insertNoteTag(indexDb, 'n1', 'alpha')
+    insertNoteTag(indexDb, 'n2', 'alpha')
+    insertNoteTag(indexDb, 'n1', 'beta')
+    insertTask(dataDb, 't1')
+    insertTaskTag(dataDb, 't1', 'gamma')
+
+    // #when
+    const result = getAllTagsWithCounts(indexDb, dataDb)
+
+    // #then
+    for (const tag of result) {
+      expect(typeof tag.count).toBe('number')
+    }
+  })
+
   it('normalises tag casing when merging counts', () => {
     // #given: "Work" in notes, "work" in tasks — same tag, different case stored
     insertNote(indexDb, 'n1')

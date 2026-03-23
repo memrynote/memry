@@ -317,6 +317,7 @@ export function getAllTags(db: DrizzleDb): { tag: string; count: number }[] {
     .groupBy(noteTags.tag)
     .orderBy(desc(count()))
     .all()
+    .map((row) => ({ tag: row.tag, count: Number(row.count) }))
 }
 
 /**

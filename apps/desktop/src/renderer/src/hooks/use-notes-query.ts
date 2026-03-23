@@ -26,6 +26,7 @@ import {
   onNoteExternalChange,
   onTagsChanged
 } from '@/services/notes-service'
+import { tagsService } from '@/services/tags-service'
 
 // =============================================================================
 // Query Keys
@@ -267,7 +268,10 @@ export function useNoteTagsQuery(options: { enabled?: boolean } = {}) {
 
   const query = useQuery({
     queryKey: notesKeys.tags(),
-    queryFn: () => notesService.getTags(),
+    queryFn: async () => {
+      const { tags } = await tagsService.getAllWithCounts()
+      return tags.map((t) => ({ tag: t.name, color: t.color ?? '', count: t.count }))
+    },
     enabled,
     staleTime: METADATA_STALE_TIME,
     gcTime: NOTE_GC_TIME

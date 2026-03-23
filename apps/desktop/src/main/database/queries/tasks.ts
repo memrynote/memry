@@ -626,6 +626,7 @@ export function getAllTaskTags(db: DrizzleDb): { tag: string; count: number }[] 
     .groupBy(taskTags.tag)
     .orderBy(desc(count()))
     .all()
+    .map((row) => ({ tag: row.tag, count: Number(row.count) }))
 }
 
 // ============================================================================
