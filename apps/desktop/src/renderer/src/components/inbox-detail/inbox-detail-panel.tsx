@@ -330,9 +330,12 @@ export const InboxDetailPanel = ({
             <div ref={containerRef} className="flex-1 min-h-0 flex flex-col">
               <div
                 ref={contentRef}
-                className={cn('overflow-y-auto', readOnly ? 'flex-1 min-h-0' : 'shrink-0')}
+                className={cn(
+                  'overflow-y-auto',
+                  readOnly || item.type === 'reminder' ? 'flex-1 min-h-0' : 'shrink-0'
+                )}
                 style={
-                  readOnly
+                  readOnly || item.type === 'reminder'
                     ? undefined
                     : manualContentHeight !== null
                       ? { height: manualContentHeight }
@@ -346,12 +349,20 @@ export const InboxDetailPanel = ({
                     onTitleChange={readOnly ? undefined : handleTitleChange}
                   />
                 ) : (
-                  <div className="px-5 py-4">
-                    {item.type !== 'link' && item.type !== 'image' && item.type !== 'pdf' && (
-                      <h3 className="text-[15px] leading-5 font-medium text-foreground mb-3.5">
-                        {item.title}
-                      </h3>
-                    )}
+                  <div
+                    className={
+                      item.type === 'reminder' || item.type === 'social' ? '' : 'px-5 py-4'
+                    }
+                  >
+                    {item.type !== 'link' &&
+                      item.type !== 'image' &&
+                      item.type !== 'pdf' &&
+                      item.type !== 'reminder' &&
+                      item.type !== 'social' && (
+                        <h3 className="text-[15px] leading-5 font-medium text-foreground mb-3.5">
+                          {item.title}
+                        </h3>
+                      )}
                     <ContentSection
                       item={item}
                       onRetryTranscription={handleRetryTranscription}
@@ -362,7 +373,7 @@ export const InboxDetailPanel = ({
                 )}
               </div>
 
-              {!readOnly && (
+              {!readOnly && item.type !== 'reminder' && (
                 <>
                   {/* Resize Handle */}
                   <div
@@ -426,6 +437,15 @@ export const InboxDetailPanel = ({
                     Delete
                   </Button>
                 </div>
+              ) : item?.type === 'reminder' ? (
+                <Button
+                  variant="outline"
+                  onClick={handleArchive}
+                  className="w-full text-muted-foreground border-border"
+                >
+                  <Archive className="size-4 mr-1.5" aria-hidden="true" />
+                  Archive
+                </Button>
               ) : (
                 <>
                   <div className="flex items-center w-full gap-2">

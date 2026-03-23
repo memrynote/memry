@@ -4,6 +4,7 @@
  */
 
 import { useRef, useState } from 'react'
+import { TweetCard } from './tweet-card'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import {
   Image,
@@ -23,13 +24,15 @@ import {
   FileType,
   FilePdf,
   Video,
-  Link2
+  Link2,
+  Bell
 } from '@/lib/icons'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { extractDomain } from '@/lib/inbox-utils'
 import { InboxContentEditor } from './inbox-content-editor'
 import { LinkPreview } from './link-preview'
+import { ReminderDetail } from './reminder-detail'
 import { getTypeAccentClass } from './type-accents'
 import type {
   InboxItem,
@@ -119,6 +122,8 @@ export const TypeIcon = ({ type, className = 'size-5' }: TypeIconProps): React.J
       return <FileType className={iconClass} aria-hidden="true" />
     case 'video':
       return <Video className={iconClass} aria-hidden="true" />
+    case 'reminder':
+      return <Bell className={iconClass} aria-hidden="true" />
     case 'clip':
     case 'social':
     default:
@@ -659,8 +664,11 @@ export const ContentSection = ({
       return <PdfPreview item={item} />
     case 'video':
       return <VideoPreview item={item} />
-    case 'clip':
     case 'social':
+      return <TweetCard item={item} />
+    case 'reminder':
+      return <ReminderDetail item={item} />
+    case 'clip':
     default:
       return <SimpleContent item={item} onContentChange={onContentChange} />
   }

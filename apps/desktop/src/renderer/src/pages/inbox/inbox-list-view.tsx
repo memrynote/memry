@@ -372,11 +372,6 @@ export function InboxListView({
       const item = items.find((i) => i.id === id)
       if (!item) return
 
-      if (item.type === 'reminder') {
-        openReminderTarget(item)
-        return
-      }
-
       if (isDetailPanelOpen && activeDetailItemId === id) {
         setActiveDetailItemId(null)
       } else {
@@ -384,7 +379,7 @@ export function InboxListView({
         setFocusedItemId(id)
       }
     },
-    [isDetailPanelOpen, activeDetailItemId, items, openReminderTarget]
+    [isDetailPanelOpen, activeDetailItemId, items]
   )
 
   const handleFocusedItemChange = useCallback(
