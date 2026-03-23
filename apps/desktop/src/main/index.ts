@@ -150,9 +150,9 @@ function configureCsp(): void {
     "default-src 'self' memry-file:",
     "script-src 'self'",
     "style-src 'self' 'unsafe-inline'",
-    "img-src 'self' data: memry-file:",
+    "img-src 'self' data: memry-file: https://pbs.twimg.com",
     "font-src 'self' data:",
-    "connect-src 'self' memry-file: https://*.memrynote.com wss://*.memrynote.com http://127.0.0.1:*",
+    "connect-src 'self' memry-file: https://*.memrynote.com wss://*.memrynote.com https://cdn.syndication.twimg.com https://react-tweet.vercel.app http://127.0.0.1:*",
     "media-src 'self' memry-file:",
     "worker-src 'self' blob:",
     "object-src 'none'",
@@ -164,7 +164,7 @@ function configureCsp(): void {
   if (is.dev) {
     policy[1] = "script-src 'self' 'unsafe-eval' 'unsafe-inline'"
     policy[5] =
-      "connect-src 'self' memry-file: https://*.memrynote.com wss://*.memrynote.com ws://localhost:* http://localhost:* http://127.0.0.1:*"
+      "connect-src 'self' memry-file: https://*.memrynote.com wss://*.memrynote.com https://cdn.syndication.twimg.com https://react-tweet.vercel.app ws://localhost:* http://localhost:* http://127.0.0.1:*"
   }
 
   const cspString = policy.join('; ')

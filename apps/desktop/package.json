@@ -186,6 +186,7 @@
     "react-day-picker": "^9.13.0",
     "react-pdf": "^10.3.0",
     "react-player": "^3.4.0",
+    "react-tweet": "^3.3.0",
     "sharp": "0.34.5",
     "sigma": "^3.0.2",
     "sodium-native": "^5.0.10",
