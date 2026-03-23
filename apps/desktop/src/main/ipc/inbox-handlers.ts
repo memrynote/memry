@@ -39,7 +39,7 @@ import {
   ALLOWED_VIDEO_TYPES,
   ALLOWED_DOCUMENT_TYPES
 } from '../inbox/attachments'
-import { fetchUrlMetadata, downloadImage } from '../inbox/metadata'
+import { fetchUrlMetadata, downloadImage, titleFromUrl, isBotPageTitle } from '../inbox/metadata'
 import {
   fileToFolder,
   convertToNote,
@@ -154,7 +154,8 @@ async function fetchAndUpdateMetadata(itemId: string, url: string, retryCount = 
     const now = new Date().toISOString()
     db.update(inboxItems)
       .set({
-        title: metadata.title || url,
+        title:
+          metadata.title && !isBotPageTitle(metadata.title) ? metadata.title : titleFromUrl(url),
         content: metadata.description || null,
         thumbnailPath,
         processingStatus: 'complete',
@@ -163,7 +164,12 @@ async function fetchAndUpdateMetadata(itemId: string, url: string, retryCount = 
         metadata: {
           url,
           fetchStatus: 'complete',
-          ...metadata
+          siteName: metadata.publisher || undefined,
+          description: metadata.description || undefined,
+          heroImage: metadata.image || undefined,
+          favicon: metadata.logo || undefined,
+          author: metadata.author || undefined,
+          publishedDate: metadata.date || undefined
         }
       })
       .where(eq(inboxItems.id, itemId))
@@ -198,6 +204,7 @@ async function fetchAndUpdateMetadata(itemId: string, url: string, retryCount = 
     try {
       db.update(inboxItems)
         .set({
+          title: titleFromUrl(url),
           processingStatus: 'failed',
           processingError: errorMessage,
           modifiedAt: new Date().toISOString(),
@@ -465,7 +472,7 @@ async function handleCaptureLink(input: unknown): Promise<CaptureResponse> {
       .values({
         id,
         type: itemType,
-        title: parsed.url, // Will be updated when metadata is fetched
+        title: titleFromUrl(parsed.url),
         content: null,
         sourceUrl: parsed.url,
         createdAt: now,
