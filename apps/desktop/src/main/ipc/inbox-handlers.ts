@@ -234,7 +234,7 @@ async function fetchAndUpdateMetadata(itemId: string, url: string, retryCount = 
 /**
  * Fetch social post metadata in background and update the inbox item
  *
- * Uses platform-specific extractors (oEmbed for Twitter, API for Bluesky, etc.)
+ * Uses Twitter Syndication API with oEmbed fallback.
  * Falls back to regular metadata extraction if social extraction fails.
  *
  * @param itemId - The inbox item ID to update
@@ -577,8 +577,8 @@ async function handleCaptureText(input: unknown): Promise<CaptureResponse> {
 /**
  * Capture a URL with background metadata extraction
  *
- * Automatically detects social media posts (Twitter, Bluesky, Mastodon, etc.)
- * and uses specialized extraction for richer metadata display.
+ * Automatically detects Twitter/X posts and uses specialized extraction
+ * for richer metadata display.
  */
 async function handleCaptureLink(input: unknown): Promise<CaptureResponse> {
   try {

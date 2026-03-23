@@ -98,7 +98,7 @@ export interface PdfMetadata {
 }
 
 export interface SocialMetadata {
-  platform: 'twitter' | 'linkedin' | 'mastodon' | 'bluesky' | 'threads' | 'other'
+  platform: 'twitter' | 'other'
   postUrl: string
   authorName: string
   authorHandle: string

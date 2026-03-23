@@ -11,7 +11,7 @@
 // Types
 // ============================================================================
 
-export type SocialPlatform = 'twitter' | 'linkedin' | 'mastodon' | 'bluesky' | 'threads'
+export type SocialPlatform = 'twitter'
 
 // ============================================================================
 // URL Validation
@@ -123,37 +123,8 @@ export function detectSocialPlatform(url: string): SocialPlatform | null {
 
   const lowerDomain = domain.toLowerCase()
 
-  // Twitter/X
   if (lowerDomain === 'twitter.com' || lowerDomain === 'x.com') {
     return 'twitter'
-  }
-
-  // LinkedIn
-  if (lowerDomain === 'linkedin.com' || lowerDomain.endsWith('.linkedin.com')) {
-    return 'linkedin'
-  }
-
-  // Threads
-  if (lowerDomain === 'threads.net') {
-    return 'threads'
-  }
-
-  // Bluesky
-  if (lowerDomain === 'bsky.app' || lowerDomain === 'bsky.social') {
-    return 'bluesky'
-  }
-
-  // Mastodon - various instances
-  const mastodonIndicators = [
-    'mastodon',
-    'fosstodon',
-    'hachyderm',
-    'infosec.exchange',
-    'mstdn',
-    'social.coop'
-  ]
-  if (mastodonIndicators.some((indicator) => lowerDomain.includes(indicator))) {
-    return 'mastodon'
   }
 
   return null
@@ -176,20 +147,7 @@ export function isSocialPost(url: string): boolean {
 
   switch (platform) {
     case 'twitter':
-      // Format: /username/status/12345
       return /\/[^/]+\/status\/\d+/.test(path)
-    case 'linkedin':
-      // Format: /posts/... or /feed/update/...
-      return path.includes('/posts/') || path.includes('/feed/update/')
-    case 'threads':
-      // Format: /@username/post/...
-      return path.includes('/post/')
-    case 'bluesky':
-      // Format: /profile/user/post/...
-      return path.includes('/post/')
-    case 'mastodon':
-      // Format: /@username/12345 (numeric post ID)
-      return /\/@[^/]+\/\d+/.test(path)
     default:
       return false
   }
