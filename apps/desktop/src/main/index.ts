@@ -246,7 +246,7 @@ function createWindow(): void {
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
       sandbox: false
-    }
+    },
   })
 
   mainWindow.on('ready-to-show', () => {
@@ -513,6 +513,13 @@ void app.whenReady().then(async () => {
     return clipboard.readText()
   })
 
+  ipcMain.on('quick-capture:resize', (_event, height: number) => {
+    if (!quickCaptureWindow || quickCaptureWindow.isDestroyed()) return
+    const clamped = Math.max(120, Math.min(400, Math.round(height)))
+    const [width] = quickCaptureWindow.getSize()
+    quickCaptureWindow.setSize(width, clamped)
+  })
+
   // Deep link handler for memry:// protocol (T041e)
   // macOS: deep links arrive via open-url event
   app.on('open-url', (event, url) => {
@@ -644,7 +651,7 @@ function showQuickCaptureWindow(): void {
   const { width: screenWidth, height: screenHeight } = primaryDisplay.workAreaSize
 
   const windowWidth = 480
-  const windowHeight = 200
+  const windowHeight = 82
 
   // Calculate center position
   const x = Math.round((screenWidth - windowWidth) / 2)

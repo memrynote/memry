@@ -594,6 +594,8 @@ export const InboxChannels = {
     CAPTURE_TEXT: 'inbox:capture-text',
     /** Capture a URL with metadata extraction */
     CAPTURE_LINK: 'inbox:capture-link',
+    /** Preview link metadata without creating inbox item */
+    PREVIEW_LINK: 'inbox:preview-link',
     /** Capture an image (from drag-drop or clipboard) */
     CAPTURE_IMAGE: 'inbox:capture-image',
     /** Capture a voice recording */

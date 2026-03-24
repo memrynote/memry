@@ -39,7 +39,13 @@ import {
   ALLOWED_VIDEO_TYPES,
   ALLOWED_DOCUMENT_TYPES
 } from '../inbox/attachments'
-import { fetchUrlMetadata, downloadImage, titleFromUrl, isBotPageTitle } from '../inbox/metadata'
+import {
+  fetchUrlMetadata,
+  downloadImage,
+  titleFromUrl,
+  isBotPageTitle,
+  extractDomain
+} from '../inbox/metadata'
 import {
   fileToFolder,
   convertToNote,
@@ -1116,6 +1122,25 @@ export function registerInboxHandlers(): void {
 
   // Metadata handlers
   ipcMain.handle(InboxChannels.invoke.RETRY_METADATA, (_, id) => handleRetryMetadata(id))
+
+  ipcMain.handle(InboxChannels.invoke.PREVIEW_LINK, async (_, url: string) => {
+    try {
+      const metadata = await fetchUrlMetadata(url)
+      const domain = extractDomain(url)
+      const title =
+        metadata.title && !isBotPageTitle(metadata.title) ? metadata.title : titleFromUrl(url)
+      return {
+        title,
+        domain,
+        favicon: metadata.logo,
+        image: metadata.image,
+        description: metadata.description
+      }
+    } catch {
+      const domain = extractDomain(url)
+      return { title: titleFromUrl(url), domain }
+    }
+  })
 
   logger.info('Inbox handlers registered')
 }

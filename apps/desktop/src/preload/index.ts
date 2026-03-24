@@ -636,6 +636,7 @@ export const api = {
       invoke(InboxChannels.invoke.CAPTURE_TEXT, input),
     captureLink: (input: { url: string; tags?: string[] }) =>
       invoke(InboxChannels.invoke.CAPTURE_LINK, input),
+    previewLink: (url: string) => invoke(InboxChannels.invoke.PREVIEW_LINK, url),
     captureImage: (input: {
       data: ArrayBuffer
       filename: string
@@ -834,7 +835,9 @@ export const api = {
     /** Close the quick capture window */
     close: (): void => ipcRenderer.send('quick-capture:close'),
     /** Get current clipboard text content */
-    getClipboard: (): Promise<string> => invoke('quick-capture:get-clipboard')
+    getClipboard: (): Promise<string> => invoke('quick-capture:get-clipboard'),
+    /** Resize the quick capture window height */
+    resize: (height: number): void => ipcRenderer.send('quick-capture:resize', height)
   },
 
   // Native context menu

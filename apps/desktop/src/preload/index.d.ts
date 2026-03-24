@@ -1474,6 +1474,14 @@ export interface InboxProcessingErrorEvent {
   error: string
 }
 
+export interface LinkPreviewData {
+  title: string
+  domain: string
+  favicon?: string
+  image?: string
+  description?: string
+}
+
 // Inbox client API interface
 export interface InboxClientAPI {
   // Capture
@@ -1589,6 +1597,9 @@ export interface InboxClientAPI {
   // Transcription
   retryTranscription(itemId: string): Promise<{ success: boolean; error?: string }>
 
+  // Preview
+  previewLink(url: string): Promise<LinkPreviewData>
+
   // Metadata
   retryMetadata(itemId: string): Promise<{ success: boolean; error?: string }>
 
@@ -1703,6 +1714,8 @@ export interface QuickCaptureClientAPI {
   close(): void
   /** Get current clipboard text content */
   getClipboard(): Promise<string>
+  /** Resize the quick capture window height */
+  resize(height: number): void
 }
 
 // Native context menu types
