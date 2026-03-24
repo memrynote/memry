@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { Check, Clock, Filter, Search, X } from '@/lib/icons'
 import { cn } from '@/lib/utils'
-import { ToastContainer } from '@/components/ui/toast'
+import { toast } from 'sonner'
 import { SRAnnouncer } from '@/components/sr-announcer'
 import { PageToolbar, ToolbarButton } from '@/components/ui/page-toolbar'
 import { InboxSegmentControl, type InboxView } from '@/components/inbox/inbox-segment-control'
@@ -59,7 +59,7 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
   const [isArchivedSearchOpen, setIsArchivedSearchOpen] = useState(false)
   const [archivedSearchQuery, setArchivedSearchQuery] = useState('')
   const archivedSearchRef = useRef<HTMLInputElement>(null)
-  const notifications = useInboxNotifications()
+  useInboxNotifications()
   const { items } = useInboxList()
   const { data: snoozedItems = [] } = useInboxSnoozed()
   const snoozedCount = snoozedItems.length
@@ -133,22 +133,18 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
   return (
     <>
       {isTriageMode ? (
-        <TriageView onExit={exitTriage} addToast={notifications.addToast} />
+        <TriageView onExit={exitTriage} />
       ) : (
         <div className="flex h-full flex-col">
-          <PageToolbar className="px-2 py-1">
+          <PageToolbar className="px-2 py-1 min-h-[38px]">
             <InboxSegmentControl value={currentView} onChange={setCurrentView} />
 
             {currentView === 'inbox' && (
               <CaptureInput
                 compact
                 density="compact"
-                onCaptureSuccess={() =>
-                  notifications.addToast({ message: 'Item captured', type: 'success' })
-                }
-                onCaptureError={(errorMsg) =>
-                  notifications.addToast({ message: errorMsg, type: 'error' })
-                }
+                onCaptureSuccess={() => toast.success('Item captured')}
+                onCaptureError={(errorMsg) => toast.error(errorMsg)}
               />
             )}
 
@@ -316,7 +312,6 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
           <div className="min-h-0 flex-1">
             {currentView === 'inbox' && (
               <InboxListView
-                notifications={notifications}
                 className={className}
                 selectedTypes={selectedTypes}
                 showSnoozedItems={showSnoozedItems}
@@ -330,7 +325,6 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
         </div>
       )}
 
-      <ToastContainer toasts={notifications.toasts} onDismiss={notifications.removeToast} />
       <SRAnnouncer />
     </>
   )

@@ -1,4 +1,5 @@
 import { useEffect } from 'react'
+import { toast } from 'sonner'
 import { isInputFocused } from '@/hooks/use-keyboard-shortcuts'
 import type { InboxItemListItem } from '../../../preload/index.d'
 
@@ -15,7 +16,6 @@ export interface UseInboxKeyboardOptions {
   onArchiveFocusedItem: (itemId: string, nextItemId: string | null) => void
   onOpenBulkArchiveDialog: () => void
   onOpenSourceUrl: (url: string) => void
-  addToast: (toast: { message: string; type: 'success' | 'error' | 'info' }) => void
 }
 
 export function useInboxKeyboard(options: UseInboxKeyboardOptions): void {
@@ -31,8 +31,7 @@ export function useInboxKeyboard(options: UseInboxKeyboardOptions): void {
     onRefresh,
     onArchiveFocusedItem,
     onOpenBulkArchiveDialog,
-    onOpenSourceUrl,
-    addToast
+    onOpenSourceUrl
   } = options
 
   useEffect(() => {
@@ -52,7 +51,7 @@ export function useInboxKeyboard(options: UseInboxKeyboardOptions): void {
       if (e.key.toLowerCase() === 'r' && !e.metaKey && !e.ctrlKey && !e.altKey) {
         e.preventDefault()
         onRefresh()
-        addToast({ message: 'Inbox refreshed', type: 'success' })
+        toast.success('Inbox refreshed')
         return
       }
 
@@ -101,7 +100,6 @@ export function useInboxKeyboard(options: UseInboxKeyboardOptions): void {
     onRefresh,
     onArchiveFocusedItem,
     onOpenBulkArchiveDialog,
-    onOpenSourceUrl,
-    addToast
+    onOpenSourceUrl
   ])
 }

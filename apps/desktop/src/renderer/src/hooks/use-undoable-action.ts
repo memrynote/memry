@@ -1,8 +1,8 @@
 import { useCallback, useRef } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
+import { toast } from 'sonner'
 import { inboxService } from '@/services/inbox-service'
 import { inboxKeys } from './use-inbox'
-import type { Toast } from '@/components/ui/toast'
 
 const UNDO_WINDOW_MS = 5000
 
@@ -15,14 +15,12 @@ interface PendingUndo {
   timer: ReturnType<typeof setTimeout>
 }
 
-type AddToast = (toast: Omit<Toast, 'id'>) => void
-
 export interface UseUndoableActionResult {
   archiveWithUndo: (id: string, title: string) => Promise<void>
   fileWithUndo: (id: string, title: string) => Promise<void>
 }
 
-export function useUndoableAction(addToast: AddToast): UseUndoableActionResult {
+export function useUndoableAction(): UseUndoableActionResult {
   const queryClient = useQueryClient()
   const pendingRef = useRef<Map<string, PendingUndo>>(new Map())
 
@@ -46,22 +44,10 @@ export function useUndoableAction(addToast: AddToast): UseUndoableActionResult {
 
       if (result.success) {
         invalidateAll()
-        addToast({ message: `"${pending.title}" restored`, type: 'info' })
+        toast.info(`"${pending.title}" restored`)
       }
     },
-    [invalidateAll, addToast]
-  )
-
-  const showUndoToast = useCallback(
-    (key: string, title: string, verb: string) => {
-      addToast({
-        message: `${verb} "${title}"`,
-        type: 'success',
-        duration: UNDO_WINDOW_MS,
-        onUndo: () => void performUndo(key)
-      })
-    },
-    [addToast, performUndo]
+    [invalidateAll]
   )
 
   const enqueue = useCallback(
@@ -75,9 +61,15 @@ export function useUndoableAction(addToast: AddToast): UseUndoableActionResult {
       pendingRef.current.set(key, { id, type, title, timer })
 
       const verb = type === 'archive' ? 'Archived' : 'Filed'
-      showUndoToast(key, title, verb)
+      toast.success(`${verb} "${title}"`, {
+        duration: UNDO_WINDOW_MS,
+        action: {
+          label: 'Undo',
+          onClick: () => void performUndo(key)
+        }
+      })
     },
-    [showUndoToast]
+    [performUndo]
   )
 
   const archiveWithUndo = useCallback(

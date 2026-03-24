@@ -26,30 +26,26 @@ import {
   useBulkArchiveInboxItems,
   useFileInboxItem,
   useInboxStats,
-  useInboxFilingHistory,
   inboxKeys
 } from '@/hooks/use-inbox'
 import { useUndoableAction } from '@/hooks/use-undoable-action'
 import { notesKeys } from '@/hooks/use-notes-query'
 import { useInboxKeyboard } from '@/hooks/use-inbox-keyboard'
-import type { UseInboxNotificationsResult } from '@/hooks/use-inbox-notifications'
+import { toast } from 'sonner'
 
 const ALLOWED_IMAGE_TYPES = ['image/png', 'image/jpeg', 'image/gif', 'image/webp', 'image/svg+xml']
 
 export interface InboxListViewProps {
-  notifications: UseInboxNotificationsResult
   className?: string
   selectedTypes: Set<InboxItemType>
   showSnoozedItems: boolean
 }
 
 export function InboxListView({
-  notifications,
   className,
   selectedTypes,
   showSnoozedItems
 }: InboxListViewProps): React.JSX.Element {
-  const { addToast } = notifications
   const queryClient = useQueryClient()
   const { openTab } = useTabs()
 
@@ -66,7 +62,7 @@ export function InboxListView({
   const fileItemMutation = useFileInboxItem()
   const archiveItemMutation = useArchiveInboxItem()
   const bulkArchiveMutation = useBulkArchiveInboxItems()
-  const { archiveWithUndo } = useUndoableAction(addToast)
+  const { archiveWithUndo } = useUndoableAction()
   const [pendingArchiveIds, setPendingArchiveIds] = useState<Set<string>>(new Set())
   const [exitingItemIds, setExitingItemIds] = useState<Set<string>>(new Set())
   const [isEmptyStateExiting] = useState(false)
@@ -97,9 +93,9 @@ export function InboxListView({
 
   // Empty state data
   const { stats: inboxStats } = useInboxStats()
-  const { data: filingHistoryData } = useInboxFilingHistory()
   const itemsProcessedToday = inboxStats?.processedToday ?? 0
-  const hasFilingHistory = (filingHistoryData?.entries?.length ?? 0) > 0
+  const processedThisWeek = inboxStats?.processedThisWeek ?? 0
+  const currentStreak = inboxStats?.currentStreak ?? 0
 
   // Sync empty state
   useEffect(() => {
@@ -173,11 +169,11 @@ export function InboxListView({
             next.delete(id)
             return next
           })
-          addToast({ message: 'Failed to archive item', type: 'error' })
+          toast.error('Failed to archive item')
         }
       }, 200)
     },
-    [items, addToast, activeDetailItemId, archiveWithUndo]
+    [items, activeDetailItemId, archiveWithUndo]
   )
 
   // === KEYBOARD SHORTCUTS ===
@@ -193,8 +189,7 @@ export function InboxListView({
     onRefresh: () => refetch(),
     onArchiveFocusedItem: (itemId, nextItemId) => archiveWithAnimation(itemId, nextItemId),
     onOpenBulkArchiveDialog: () => setIsArchiveDialogOpen(true),
-    onOpenSourceUrl: (url) => window.open(url, '_blank', 'noopener,noreferrer'),
-    addToast
+    onOpenSourceUrl: (url) => window.open(url, '_blank', 'noopener,noreferrer')
   })
 
   // === HANDLERS ===
@@ -245,15 +240,13 @@ export function InboxListView({
                 queryClient.invalidateQueries({ queryKey: notesKeys.note(noteId) })
               })
             }
-            addToast({
-              message:
-                linkedNoteIds.length > 1
-                  ? `Linked to ${linkedNoteIds.length} notes`
-                  : linkedNoteIds.length === 1
-                    ? 'Linked to note'
-                    : `Filed to ${folderId || 'Notes'}`,
-              type: 'success'
-            })
+            toast.success(
+              linkedNoteIds.length > 1
+                ? `Linked to ${linkedNoteIds.length} notes`
+                : linkedNoteIds.length === 1
+                  ? 'Linked to note'
+                  : `Filed to ${folderId || 'Notes'}`
+            )
           } else {
             throw new Error(result.error || 'Failed to file')
           }
@@ -263,11 +256,11 @@ export function InboxListView({
             next.delete(itemId)
             return next
           })
-          addToast({ message: extractErrorMessage(error, 'Failed to file item'), type: 'error' })
+          toast.error(extractErrorMessage(error, 'Failed to file item'))
         }
       }, 200)
     },
-    [items, addToast, fileItemMutation, queryClient]
+    [items, fileItemMutation, queryClient]
   )
 
   const handleQuickFile = useCallback(
@@ -302,7 +295,7 @@ export function InboxListView({
 
           if (result.success) {
             queryClient.invalidateQueries({ queryKey: inboxKeys.lists() })
-            addToast({ message: `Filed to ${folderId || 'Notes'}`, type: 'success' })
+            toast.success(`Filed to ${folderId || 'Notes'}`)
           } else {
             throw new Error(result.error || 'Failed to file')
           }
@@ -312,11 +305,11 @@ export function InboxListView({
             next.delete(itemId)
             return next
           })
-          addToast({ message: extractErrorMessage(error, 'Failed to file item'), type: 'error' })
+          toast.error(extractErrorMessage(error, 'Failed to file item'))
         }
       }, 200)
     },
-    [items, addToast, fileItemMutation, queryClient]
+    [items, fileItemMutation, queryClient]
   )
 
   const openReminderTarget = useCallback(
@@ -439,7 +432,7 @@ export function InboxListView({
               hour: 'numeric',
               minute: '2-digit'
             })
-            addToast({ message: `Snoozed until ${timeString}`, type: 'success' })
+            toast.success(`Snoozed until ${timeString}`)
           } else {
             throw new Error(result.error || 'Failed to snooze')
           }
@@ -449,11 +442,11 @@ export function InboxListView({
             next.delete(id)
             return next
           })
-          addToast({ message: extractErrorMessage(error, 'Failed to snooze item'), type: 'error' })
+          toast.error(extractErrorMessage(error, 'Failed to snooze item'))
         }
       }, 200)
     },
-    [items, addToast, activeDetailItemId, queryClient]
+    [items, activeDetailItemId, queryClient]
   )
 
   // === BULK HANDLERS ===
@@ -476,16 +469,10 @@ export function InboxListView({
 
         if (result.success) {
           queryClient.invalidateQueries({ queryKey: inboxKeys.lists() })
-          addToast({
-            message: `Filed ${itemIds.length} items to ${folderId || 'Notes'}`,
-            type: 'success'
-          })
+          toast.success(`Filed ${itemIds.length} items to ${folderId || 'Notes'}`)
         } else if (result.errors.length > 0) {
           queryClient.invalidateQueries({ queryKey: inboxKeys.lists() })
-          addToast({
-            message: `Filed ${result.processedCount} of ${itemIds.length} items`,
-            type: 'success'
-          })
+          toast.success(`Filed ${result.processedCount} of ${itemIds.length} items`)
         } else {
           throw new Error('Failed to file items')
         }
@@ -495,10 +482,10 @@ export function InboxListView({
           itemIds.forEach((id) => next.delete(id))
           return next
         })
-        addToast({ message: extractErrorMessage(error, 'Failed to file items'), type: 'error' })
+        toast.error(extractErrorMessage(error, 'Failed to file items'))
       }
     },
-    [addToast, queryClient]
+    [queryClient]
   )
 
   const handleBulkTagApply = useCallback(
@@ -508,18 +495,17 @@ export function InboxListView({
         const result = await window.api.inbox.bulkTag({ itemIds, tags })
         if (result.success || result.processedCount > 0) {
           queryClient.invalidateQueries({ queryKey: inboxKeys.lists() })
-          addToast({
-            message: `Applied ${tags.length} tag${tags.length !== 1 ? 's' : ''} to ${result.processedCount} item${result.processedCount !== 1 ? 's' : ''}`,
-            type: 'success'
-          })
+          toast.success(
+            `Applied ${tags.length} tag${tags.length !== 1 ? 's' : ''} to ${result.processedCount} item${result.processedCount !== 1 ? 's' : ''}`
+          )
         } else {
           throw new Error('Failed to apply tags')
         }
       } catch (error) {
-        addToast({ message: extractErrorMessage(error, 'Failed to apply tags'), type: 'error' })
+        toast.error(extractErrorMessage(error, 'Failed to apply tags'))
       }
     },
-    [selectedItemIds, queryClient, addToast]
+    [selectedItemIds, queryClient]
   )
 
   const handleBulkArchiveConfirm = useCallback((): void => {
@@ -546,20 +532,17 @@ export function InboxListView({
 
       try {
         await bulkArchiveMutation.mutateAsync({ itemIds: idsToArchive })
-        addToast({
-          message: `Archived ${idsToArchive.length} item${idsToArchive.length !== 1 ? 's' : ''}`,
-          type: 'success'
-        })
+        toast.success(`Archived ${idsToArchive.length} item${idsToArchive.length !== 1 ? 's' : ''}`)
       } catch {
         setPendingArchiveIds((prev) => {
           const next = new Set(prev)
           idsToArchive.forEach((id) => next.delete(id))
           return next
         })
-        addToast({ message: 'Failed to archive items', type: 'error' })
+        toast.error('Failed to archive items')
       }
     }, 200)
-  }, [selectedItemIds, items, activeDetailItemId, addToast, bulkArchiveMutation])
+  }, [selectedItemIds, items, activeDetailItemId, bulkArchiveMutation])
 
   const handleAddSuggestionToSelection = useCallback((): void => {
     if (!aiSuggestion) return
@@ -614,10 +597,9 @@ export function InboxListView({
               hour: 'numeric',
               minute: '2-digit'
             })
-            addToast({
-              message: `Snoozed ${result.processedCount} item${result.processedCount !== 1 ? 's' : ''} until ${timeString}`,
-              type: 'success'
-            })
+            toast.success(
+              `Snoozed ${result.processedCount} item${result.processedCount !== 1 ? 's' : ''} until ${timeString}`
+            )
           } else {
             throw new Error('Failed to snooze items')
           }
@@ -627,52 +609,46 @@ export function InboxListView({
             idsToSnooze.forEach((id) => next.delete(id))
             return next
           })
-          addToast({
-            message: extractErrorMessage(error, 'Failed to snooze items'),
-            type: 'error'
-          })
+          toast.error(extractErrorMessage(error, 'Failed to snooze items'))
         }
       }, 200)
     },
-    [selectedItemIds, items, activeDetailItemId, addToast, queryClient]
+    [selectedItemIds, items, activeDetailItemId, queryClient]
   )
 
   // === IMAGE CAPTURE HANDLERS ===
 
-  const handleImageCapture = useCallback(
-    async (file: File): Promise<void> => {
-      if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
-        addToast({ message: `Unsupported image type: ${file.type}`, type: 'error' })
-        return
-      }
+  const handleImageCapture = useCallback(async (file: File): Promise<void> => {
+    if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
+      toast.error(`Unsupported image type: ${file.type}`)
+      return
+    }
 
-      const MAX_SIZE = 50 * 1024 * 1024
-      if (file.size > MAX_SIZE) {
-        addToast({ message: 'Image too large (max 50MB)', type: 'error' })
-        return
-      }
+    const MAX_SIZE = 50 * 1024 * 1024
+    if (file.size > MAX_SIZE) {
+      toast.error('Image too large (max 50MB)')
+      return
+    }
 
-      setIsCapturingImage(true)
-      try {
-        const arrayBuffer = await file.arrayBuffer()
-        const result = await inboxService.captureImage({
-          data: arrayBuffer,
-          filename: file.name,
-          mimeType: file.type
-        })
-        if (result.success) {
-          addToast({ message: 'Image captured', type: 'success' })
-        } else {
-          throw new Error(result.error || 'Failed to capture image')
-        }
-      } catch (error) {
-        addToast({ message: extractErrorMessage(error, 'Failed to capture image'), type: 'error' })
-      } finally {
-        setIsCapturingImage(false)
+    setIsCapturingImage(true)
+    try {
+      const arrayBuffer = await file.arrayBuffer()
+      const result = await inboxService.captureImage({
+        data: arrayBuffer,
+        filename: file.name,
+        mimeType: file.type
+      })
+      if (result.success) {
+        toast.success('Image captured')
+      } else {
+        throw new Error(result.error || 'Failed to capture image')
       }
-    },
-    [addToast]
-  )
+    } catch (error) {
+      toast.error(extractErrorMessage(error, 'Failed to capture image'))
+    } finally {
+      setIsCapturingImage(false)
+    }
+  }, [])
 
   const handleDragOver = useCallback((e: React.DragEvent): void => {
     e.preventDefault()
@@ -814,7 +790,8 @@ export function InboxListView({
           ) : showEmptyState ? (
             <EmptyState
               itemsProcessedToday={itemsProcessedToday}
-              hasFilingHistory={hasFilingHistory}
+              processedThisWeek={processedThisWeek}
+              currentStreak={currentStreak}
               isExiting={isEmptyStateExiting}
             />
           ) : (
