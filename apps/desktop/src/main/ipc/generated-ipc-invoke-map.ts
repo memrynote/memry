@@ -2669,6 +2669,7 @@ export interface MainIpcInvokeHandlers {
   ) => Awaited<Promise<import('../../../../../packages/contracts/src/vault-api').VaultStatus>>
   'vault:reindex': (...args: []) => Awaited<Promise<void>>
   'vault:remove': (...args: [string]) => Awaited<Promise<void>>
+  'vault:reveal': (...args: []) => Awaited<Promise<void>>
   'vault:select': (
     ...args: [{ path?: string | undefined }]
   ) => Awaited<

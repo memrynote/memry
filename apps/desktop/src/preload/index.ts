@@ -149,7 +149,8 @@ export const api = {
     close: () => invoke(VaultChannels.invoke.CLOSE),
     switch: (vaultPath: string) => invoke(VaultChannels.invoke.SWITCH, vaultPath),
     remove: (vaultPath: string) => invoke(VaultChannels.invoke.REMOVE, vaultPath),
-    reindex: () => invoke(VaultChannels.invoke.REINDEX)
+    reindex: () => invoke(VaultChannels.invoke.REINDEX),
+    reveal: () => invoke(VaultChannels.invoke.REVEAL)
   },
 
   // Notes API

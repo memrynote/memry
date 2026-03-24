@@ -23,7 +23,9 @@ export const VaultChannels = {
     CLOSE: 'vault:close',
     SWITCH: 'vault:switch',
     REMOVE: 'vault:remove',
-    REINDEX: 'vault:reindex'
+    REINDEX: 'vault:reindex',
+    /** Reveal vault folder in OS file manager */
+    REVEAL: 'vault:reveal'
   },
   events: {
     STATUS_CHANGED: 'vault:status-changed',

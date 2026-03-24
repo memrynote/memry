@@ -104,6 +104,8 @@ export interface VaultHandlers {
   [VaultChannels.invoke.REMOVE]: (vaultPath: string) => Promise<void>
 
   [VaultChannels.invoke.REINDEX]: () => Promise<void>
+
+  [VaultChannels.invoke.REVEAL]: () => Promise<void>
 }
 
 // ============================================================================
@@ -140,4 +142,5 @@ export interface VaultClientAPI {
   switch(vaultPath: string): Promise<SelectVaultResponse>
   remove(vaultPath: string): Promise<void>
   reindex(): Promise<void>
+  reveal(): Promise<void>
 }
