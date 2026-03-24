@@ -12,9 +12,10 @@ const log = createLogger('SyncStatus')
 
 interface SyncStatusProps {
   onOpenSettings: () => void
+  iconOnly?: boolean
 }
 
-export function SyncStatus({ onOpenSettings }: SyncStatusProps): React.JSX.Element {
+export function SyncStatus({ onOpenSettings, iconOnly }: SyncStatusProps): React.JSX.Element {
   const {
     status,
     label,
@@ -79,7 +80,7 @@ export function SyncStatus({ onOpenSettings }: SyncStatusProps): React.JSX.Eleme
               aria-hidden="true"
             />
           </span>
-          <span className="text-xs">{label}</span>
+          {!iconOnly && <span className="text-xs">{label}</span>}
         </SidebarMenuButton>
       </PopoverTrigger>
 

@@ -272,25 +272,10 @@ export function CaptureInput({
     [captureImage, onCaptureSuccess, onCaptureError]
   )
 
-  // Show voice recorder when recording
-  if (isRecording) {
-    return (
-      <div className={cn('relative group', 'transition-all duration-300', className)}>
-        <VoiceRecorder
-          onRecordingComplete={handleRecordingComplete}
-          onCancel={handleRecordingCancel}
-          maxDuration={300}
-          autoStart
-          className="w-full"
-        />
-      </div>
-    )
-  }
-
   return (
     <div
       className={cn(
-        'relative group',
+        'relative group flex flex-col gap-2',
         compact && 'grow shrink basis-0 min-w-0',
         'transition-all duration-300',
         className
@@ -434,6 +419,16 @@ export function CaptureInput({
             Capture Anyway
           </button>
         </div>
+      )}
+
+      {isRecording && (
+        <VoiceRecorder
+          onRecordingComplete={handleRecordingComplete}
+          onCancel={handleRecordingCancel}
+          maxDuration={300}
+          autoStart
+          className="w-full"
+        />
       )}
     </div>
   )

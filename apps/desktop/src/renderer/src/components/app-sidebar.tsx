@@ -38,7 +38,6 @@ import { notesService } from '@/services/notes-service'
 import { useSidebarDrillDown } from '@/contexts/sidebar-drill-down'
 import { useAuth } from '@/contexts/auth-context'
 import { SyncStatus } from '@/components/sync/sync-status'
-import { SidebarUserProfile } from '@/components/sidebar/sidebar-user-profile'
 import { useInboxList } from '@/hooks/use-inbox'
 import type { SidebarItem, TabType } from '@/contexts/tabs/types'
 import type { AppPage } from '@/App'
@@ -69,17 +68,18 @@ function SidebarHeaderContent() {
   const isCollapsed = state === 'collapsed'
 
   return (
-    <SidebarHeader className="pt-3 pb-0 px-2 gap-1">
-      {/* Drag region + Traffic lights for macOS */}
+    <SidebarHeader className="pt-3 pb-0 px-2 gap-0">
       <div
         className={cn(
           'drag-region flex items-center shrink-0',
-          isCollapsed ? 'justify-center' : 'justify-start px-2.5'
+          isCollapsed ? 'justify-center' : 'px-1'
         )}
       >
         <TrafficLights compact={isCollapsed} />
+        <div className="group-data-[collapsible=icon]:hidden">
+          <VaultSwitcher />
+        </div>
       </div>
-      <VaultSwitcher />
     </SidebarHeader>
   )
 }
@@ -423,21 +423,14 @@ function AppSidebarInner({ currentPage, viewCounts, ...props }: AppSidebarProps)
         <SidebarMenu>
           <SidebarMenuItem>
             {authState.status === 'authenticated' ? (
-              <SyncStatus onOpenSettings={handleSyncClick} />
+              <SyncStatus onOpenSettings={handleSyncClick} iconOnly />
             ) : authState.status === 'checking' ? null : (
               <SidebarMenuButton tooltip="Sync disabled" onClick={handleSyncClick}>
                 <CloudOff className="size-4 text-muted-foreground" />
-                <span className="text-muted-foreground">Sync disabled</span>
               </SidebarMenuButton>
             )}
           </SidebarMenuItem>
         </SidebarMenu>
-        {authState.status === 'authenticated' && (
-          <>
-            <div className="h-px bg-sidebar-border mx-2 my-1" />
-            <SidebarUserProfile />
-          </>
-        )}
       </SidebarFooter>
       <SidebarRail />
     </Sidebar>
