@@ -70,16 +70,10 @@ export function SyncStatus({ onOpenSettings, iconOnly }: SyncStatusProps): React
           aria-label={`Sync status: ${label}`}
           className={cn('text-muted-foreground', hasIssues && 'text-destructive')}
         >
-          <span className="relative">
-            <IconComponent
-              className={cn('size-4', isAnimating && 'animate-spin')}
-              aria-hidden="true"
-            />
-            <span
-              className={cn('absolute -top-0.5 -right-0.5 size-2 rounded-full', dotColor)}
-              aria-hidden="true"
-            />
-          </span>
+          <IconComponent
+            className={cn('size-4', isAnimating && 'animate-spin')}
+            aria-hidden="true"
+          />
           {!iconOnly && <span className="text-xs">{label}</span>}
         </SidebarMenuButton>
       </PopoverTrigger>

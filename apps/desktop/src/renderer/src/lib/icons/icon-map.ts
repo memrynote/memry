@@ -23,6 +23,7 @@ import {
   Clock01Icon,
   CloudIcon,
   CloudOffIcon,
+  CloudSavingDone01Icon,
   CodeIcon,
   CogIcon,
   CopyIcon,
@@ -483,6 +484,7 @@ export const Database = createIcon(DatabaseIcon)
 export const Server = createIcon(ServerStack01Icon)
 export const Cloud = createIcon(CloudIcon)
 export const CloudOff = createIcon(CloudOffIcon)
+export const CloudSavingDone = createIcon(CloudSavingDone01Icon)
 export const Wifi = createIcon(Wifi01Icon)
 export const Globe = createIcon(GlobeIcon)
 export const Smartphone = createIcon(SmartPhone01Icon)

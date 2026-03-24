@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query'
 import { formatDistanceToNow } from 'date-fns'
 import {
   ArrowUpFromLine,
-  Check,
+  CloudSavingDone,
   Loader2,
   Pause,
   CloudOff,
@@ -48,7 +48,12 @@ interface SyncStatusResult extends SyncStatusDisplay {
 }
 
 const STATUS_MAP: Record<string, SyncStatusDisplay> = {
-  idle: { label: 'Synced', dotColor: 'bg-green-500', IconComponent: Check, isAnimating: false },
+  idle: {
+    label: 'Synced',
+    dotColor: 'bg-green-500',
+    IconComponent: CloudSavingDone,
+    isAnimating: false
+  },
   syncing: {
     label: 'Syncing...',
     dotColor: 'bg-blue-500',
