@@ -262,6 +262,17 @@ export const InboxDetailPanel = ({
     pendingTitleRef.current = title
   }, [])
 
+  const handleVoiceTitleSave = useCallback(
+    (title: string): void => {
+      if (!item) return
+      const trimmed = title.trim()
+      if (trimmed && trimmed !== item.title) {
+        updateItemMutation.mutate({ id: item.id, title: trimmed })
+      }
+    },
+    [item, updateItemMutation]
+  )
+
   const handleContentChange = useCallback(
     (content: string): void => {
       if (!item) return
@@ -354,7 +365,22 @@ export const InboxDetailPanel = ({
                       item.type === 'reminder' || item.type === 'social' ? '' : 'px-5 py-4'
                     }
                   >
-                    {item.type !== 'link' &&
+                    {item.type === 'voice' ? (
+                      <input
+                        type="text"
+                        defaultValue={item.title}
+                        key={item.id + item.title}
+                        onBlur={(e) => handleVoiceTitleSave(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.currentTarget.blur()
+                          }
+                        }}
+                        className="text-[15px] leading-5 font-medium text-foreground mb-3.5 w-full bg-transparent focus:outline-none border-b border-transparent focus:border-muted-foreground/20 transition-colors"
+                        placeholder="Name this voice memo..."
+                      />
+                    ) : (
+                      item.type !== 'link' &&
                       item.type !== 'image' &&
                       item.type !== 'pdf' &&
                       item.type !== 'reminder' &&
@@ -362,7 +388,8 @@ export const InboxDetailPanel = ({
                         <h3 className="text-[15px] leading-5 font-medium text-foreground mb-3.5">
                           {item.title}
                         </h3>
-                      )}
+                      )
+                    )}
                     <ContentSection
                       item={item}
                       onRetryTranscription={handleRetryTranscription}
