@@ -689,6 +689,23 @@ export function formatCompactDate(date: Date | string): string {
  * @param thresholdDays - Stale threshold in days
  * @returns Whether the item is stale
  */
+export function formatTimeAgo(date: Date | string): string {
+  const d = typeof date === 'string' ? new Date(date) : date
+  const ms = Date.now() - d.getTime()
+  const seconds = Math.floor(ms / 1000)
+  if (seconds < 60) return 'just now'
+  const minutes = Math.floor(seconds / 60)
+  if (minutes === 1) return '1 minute ago'
+  if (minutes < 60) return `${minutes} minutes ago`
+  const hours = Math.floor(minutes / 60)
+  if (hours === 1) return '1 hour ago'
+  if (hours < 24) return `${hours} hours ago`
+  const days = Math.floor(hours / 24)
+  if (days === 1) return 'yesterday'
+  if (days < 7) return `${days} days ago`
+  return formatCompactDate(d)
+}
+
 export function isItemStale(createdAt: Date | string, thresholdDays: number = 7): boolean {
   const d = typeof createdAt === 'string' ? new Date(createdAt) : createdAt
   const now = new Date()

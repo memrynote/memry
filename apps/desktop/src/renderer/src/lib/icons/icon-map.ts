@@ -2,6 +2,7 @@ import {
   // Direct matches
   AlertCircleIcon,
   AlignLeftIcon,
+  Archive03Icon,
   ArchiveIcon,
   ArrowDown01Icon,
   ArrowDownAZIcon,
@@ -255,7 +256,8 @@ import {
   NotificationOff01Icon,
   DashedLineCircleIcon,
   Progress03Icon,
-  Pdf01Icon
+  Pdf01Icon,
+  ArrowTurnBackwardIcon
 } from '@hugeicons/core-free-icons'
 import { createIcon } from './create-icon'
 
@@ -308,6 +310,7 @@ export const BookMarked = createIcon(BookBookmark01Icon)
 export const Box = createIcon(CubeIcon)
 export const Package = createIcon(PackageIcon)
 export const Archive = createIcon(ArchiveIcon)
+export const Archive03 = createIcon(Archive03Icon)
 export const Inbox = createIcon(InboxIcon)
 export const Mail = createIcon(Mail01Icon)
 export const MailOpen = createIcon(MailOpenIcon)
@@ -378,6 +381,7 @@ export const MoveDown = createIcon(NodeMoveDownIcon)
 export const Move = createIcon(MoveIcon)
 export const Forward = createIcon(Forward01Icon)
 export const ExternalLink = createIcon(LinkForwardIcon)
+export const ArrowTurnBackward = createIcon(ArrowTurnBackwardIcon)
 
 // ── Aliases (Icon suffix variants used in codebase) ─
 

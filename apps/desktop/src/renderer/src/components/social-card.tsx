@@ -472,6 +472,7 @@ export {
   AuthorAvatar,
   getPlatformName,
   getPlatformColor,
-  detectPlatformFromUrl
+  detectPlatformFromUrl,
+  extractHandleFromUrl
 }
 export type { SocialCardContentProps, SocialPreviewProps }
