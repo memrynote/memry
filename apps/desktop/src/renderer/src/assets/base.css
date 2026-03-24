@@ -1149,6 +1149,7 @@ del.bn-inline-content {
 .drag-region button,
 .drag-region a,
 .drag-region input,
+.drag-region textarea,
 .drag-region [role='button'],
 .no-drag {
   -webkit-app-region: no-drag;
