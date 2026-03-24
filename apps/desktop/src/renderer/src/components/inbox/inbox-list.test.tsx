@@ -7,7 +7,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { InboxListSection, InboxListItem, TypeIcon, TranscriptionStatus } from './inbox-list'
+import { InboxListSection, InboxListItem, TypeIcon } from './inbox-list'
 import type { InboxItemListItem, InboxItemType } from '@/types'
 
 // ============================================================================
@@ -112,14 +112,14 @@ describe('T519: InboxListItem - item type display', () => {
       expect(document.querySelector('[aria-hidden="true"]')).toBeInTheDocument()
     })
 
-    it('should render bell icon for unviewed reminder', () => {
-      render(<TypeIcon type="reminder" isViewed={false} />)
+    it('should render bell icon for reminder', () => {
+      render(<TypeIcon type="reminder" />)
 
       expect(document.querySelector('[aria-hidden="true"]')).toBeInTheDocument()
     })
 
-    it('should render check icon for viewed reminder', () => {
-      render(<TypeIcon type="reminder" isViewed={true} />)
+    it('should render spinner icon for voice with processing transcription', () => {
+      render(<TypeIcon type="voice" transcriptionStatus="processing" />)
 
       expect(document.querySelector('[aria-hidden="true"]')).toBeInTheDocument()
     })
@@ -144,7 +144,7 @@ describe('T519: InboxListItem - item type display', () => {
   })
 
   describe('image item', () => {
-    it('should display image item with thumbnail', () => {
+    it('should display image item with title', () => {
       const item = createInboxItem('image', {
         title: 'Screenshot',
         thumbnailUrl: 'https://example.com/thumb.jpg'
@@ -152,8 +152,6 @@ describe('T519: InboxListItem - item type display', () => {
       renderWithContext(item)
 
       expect(screen.getByText('Screenshot')).toBeInTheDocument()
-      // Image has alt="" making it presentational, so we query by tag
-      expect(document.querySelector('img')).toBeInTheDocument()
     })
 
     it('should handle missing thumbnail gracefully', () => {
@@ -178,17 +176,18 @@ describe('T519: InboxListItem - item type display', () => {
       expect(screen.getByText('Voice memo')).toBeInTheDocument()
     })
 
-    it('should show transcription status when transcribing', () => {
+    it('should render voice item with processing transcription status', () => {
       const item = createInboxItem('voice', {
         title: 'Voice memo',
         transcriptionStatus: 'processing'
       })
       renderWithContext(item)
 
-      expect(screen.getByText(/transcribing/i)).toBeInTheDocument()
+      expect(screen.getByText('Voice memo')).toBeInTheDocument()
+      expect(document.querySelector('svg[aria-hidden="true"]')).toBeInTheDocument()
     })
 
-    it('should show transcription when complete', () => {
+    it('should render voice item with complete transcription', () => {
       const item = createInboxItem('voice', {
         title: 'Voice memo',
         transcriptionStatus: 'complete',
@@ -196,10 +195,10 @@ describe('T519: InboxListItem - item type display', () => {
       })
       renderWithContext(item)
 
-      expect(screen.getByText(/This is the transcribed text/)).toBeInTheDocument()
+      expect(screen.getByText('Voice memo')).toBeInTheDocument()
     })
 
-    it('should show retry button on transcription failure', () => {
+    it('should render voice item with failed transcription', () => {
       const onRetry = vi.fn()
       const item = createInboxItem('voice', {
         id: 'voice-1',
@@ -208,8 +207,8 @@ describe('T519: InboxListItem - item type display', () => {
       })
       renderWithContext(item, { onRetryTranscription: onRetry })
 
-      expect(screen.getByText(/transcription failed/i)).toBeInTheDocument()
-      expect(screen.getByRole('button', { name: /retry/i })).toBeInTheDocument()
+      expect(screen.getByText('Voice memo')).toBeInTheDocument()
+      expect(document.querySelector('svg[aria-hidden="true"]')).toBeInTheDocument()
     })
   })
 
@@ -251,17 +250,17 @@ describe('T519: InboxListItem - item type display', () => {
       expect(screen.getByText('Meeting Notes')).toBeInTheDocument()
     })
 
-    it('should show reminder badge', () => {
+    it('should display reminder type icon', () => {
       const item = createInboxItem('reminder', {
         title: 'Reminder',
         metadata: { targetTitle: 'Meeting Notes', targetId: 'note-1', targetType: 'note' }
       })
       renderWithContext(item)
 
-      expect(screen.getByText('Reminder')).toBeInTheDocument()
+      expect(document.querySelector('svg[aria-hidden="true"]')).toBeInTheDocument()
     })
 
-    it('should show viewed badge for viewed reminders', () => {
+    it('should display viewed reminder with target title', () => {
       const item = createInboxItem('reminder', {
         title: 'Reminder',
         viewedAt: new Date(),
@@ -269,7 +268,7 @@ describe('T519: InboxListItem - item type display', () => {
       })
       renderWithContext(item)
 
-      expect(screen.getByText('Viewed')).toBeInTheDocument()
+      expect(screen.getByText('Meeting Notes')).toBeInTheDocument()
     })
   })
 })

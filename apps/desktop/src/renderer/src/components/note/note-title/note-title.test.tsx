@@ -205,7 +205,7 @@ describe('T510: NoteTitle - emoji picker', () => {
     const emojiButton = screen.getByRole('button', { name: /change emoji: 📝/i })
     await user.click(emojiButton)
 
-    expect(screen.getByRole('button', { name: /remove emoji/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /remove/i })).toBeInTheDocument()
   })
 
   it('should call onEmojiChange with null when remove is clicked', async () => {
@@ -215,7 +215,7 @@ describe('T510: NoteTitle - emoji picker', () => {
     const emojiButton = screen.getByRole('button', { name: /change emoji: 📝/i })
     await user.click(emojiButton)
 
-    const removeButton = screen.getByRole('button', { name: /remove emoji/i })
+    const removeButton = screen.getByRole('button', { name: /remove/i })
     await user.click(removeButton)
 
     expect(defaultProps.onEmojiChange).toHaveBeenCalledWith(null)

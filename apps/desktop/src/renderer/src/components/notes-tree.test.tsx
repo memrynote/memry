@@ -10,6 +10,7 @@ import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { NotesTree } from './notes-tree'
 import type { NoteListItem } from '@/hooks/use-notes-query'
+import type { FolderInfo } from '../../../preload/index.d'
 import { TooltipProvider } from '@/components/ui/tooltip'
 
 // Wrapper for tests that provides TooltipProvider
@@ -45,14 +46,16 @@ vi.mock('@/contexts/tabs', () => ({
   }),
   useTabActions: () => ({
     openTab: vi.fn(),
-    closeTab: vi.fn()
+    closeTab: vi.fn(),
+    updateTabTitleByEntityId: vi.fn()
   })
 }))
 
 vi.mock('@/hooks/use-notes-query', () => ({
   useNotesList: vi.fn(),
   useNoteFoldersQuery: vi.fn(),
-  useNoteMutations: vi.fn()
+  useNoteMutations: vi.fn(),
+  notesKeys: { notes: () => ['notes'], note: (id: string) => ['notes', id] }
 }))
 
 vi.mock('@/services/notes-service', () => ({
@@ -63,7 +66,9 @@ vi.mock('@/services/notes-service', () => ({
     openExternal: vi.fn().mockResolvedValue({}),
     revealInFinder: vi.fn().mockResolvedValue({}),
     deleteFolder: vi.fn().mockResolvedValue({}),
-    renameFolder: vi.fn().mockResolvedValue({})
+    renameFolder: vi.fn().mockResolvedValue({}),
+    getAllPositions: vi.fn().mockResolvedValue({ success: true, positions: {} }),
+    reorder: vi.fn().mockResolvedValue({ success: true })
   }
 }))
 
@@ -110,11 +115,14 @@ const mockNotes: NoteListItem[] = [
   createNote('note-5', 'notes/Daily Journal.md', { emoji: '📝' })
 ]
 
-const mockFolders = ['Projects', 'Archive']
+const mockFolders: FolderInfo[] = [
+  { path: 'Projects', icon: null },
+  { path: 'Archive', icon: null }
+]
 
 const setupMocks = (
   notes: NoteListItem[] = mockNotes,
-  folders: string[] = mockFolders,
+  folders: FolderInfo[] = mockFolders,
   loading = false,
   error: Error | null = null
 ) => {
@@ -132,7 +140,9 @@ const setupMocks = (
     isLoading: false,
     error: null,
     refetch: vi.fn(),
-    createFolder: vi.fn().mockResolvedValue(true)
+    refreshFolders: vi.fn(),
+    createFolder: vi.fn().mockResolvedValue(true),
+    setFolderIcon: vi.fn().mockResolvedValue(true)
   })
   ;(useNoteMutations as ReturnType<typeof vi.fn>).mockReturnValue({
     createNote: {
@@ -156,9 +166,19 @@ const setupMocks = (
 // T521: NotesTree - Folder Tree Display Tests
 // ============================================================================
 
+const patchTemplatesMock = () => {
+  const w = window as Window & { api?: Record<string, unknown> }
+  if (w.api?.templates) {
+    ;(w.api.templates as Record<string, unknown>).list = vi
+      .fn()
+      .mockResolvedValue({ templates: [] })
+  }
+}
+
 describe('T521: NotesTree - folder tree display', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    patchTemplatesMock()
     setupMocks()
   })
 
@@ -279,6 +299,7 @@ describe('T521: NotesTree - folder tree display', () => {
 describe('T522: NotesTree - context menu', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    patchTemplatesMock()
     setupMocks()
   })
 
@@ -371,6 +392,7 @@ describe('T522: NotesTree - context menu', () => {
 describe('T522: NotesTree - inline rename', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    patchTemplatesMock()
     setupMocks()
   })
 
@@ -408,6 +430,7 @@ describe('T522: NotesTree - inline rename', () => {
 describe('T522: NotesTree - delete', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    patchTemplatesMock()
     setupMocks()
   })
 
@@ -454,6 +477,7 @@ describe('T522: NotesTree - delete', () => {
 describe('T522: NotesTree - multi-selection', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    patchTemplatesMock()
     setupMocks()
   })
 
@@ -496,6 +520,7 @@ describe('T522: NotesTree - multi-selection', () => {
 describe('T522: NotesTree - keyboard navigation', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    patchTemplatesMock()
     setupMocks()
   })
 
@@ -530,6 +555,7 @@ describe('T522: NotesTree - keyboard navigation', () => {
 describe('NotesTree - accessibility', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    patchTemplatesMock()
     setupMocks()
   })
 

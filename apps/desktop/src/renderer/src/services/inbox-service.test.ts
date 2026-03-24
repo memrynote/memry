@@ -139,7 +139,9 @@ describe('inbox-service', () => {
     expect(formatCompactDate('2025-03-15T12:00:00Z')).toBe('15 Mar 25')
     expect(formatCompactDate('2024-07-04T12:00:00Z')).toBe('04 Jul 24')
 
-    expect(isItemStale('2024-12-20T00:00:00Z', 7)).toBe(true)
-    expect(isItemStale('2024-12-31T00:00:00Z', 7)).toBe(false)
+    const oldDate = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()
+    const recentDate = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString()
+    expect(isItemStale(oldDate, 7)).toBe(true)
+    expect(isItemStale(recentDate, 7)).toBe(false)
   })
 })
