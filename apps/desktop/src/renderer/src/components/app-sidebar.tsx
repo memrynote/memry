@@ -397,9 +397,9 @@ function AppSidebarInner({ currentPage, viewCounts, ...props }: AppSidebarProps)
   const { state: authState } = useAuth()
 
   const handleSyncClick = useCallback(() => {
-    localStorage.setItem('memry_settings_section', 'sync')
+    localStorage.setItem('memry_settings_section', 'account')
     window.dispatchEvent(
-      new StorageEvent('storage', { key: 'memry_settings_section', newValue: 'sync' })
+      new StorageEvent('storage', { key: 'memry_settings_section', newValue: 'account' })
     )
     openTab({
       type: 'settings',

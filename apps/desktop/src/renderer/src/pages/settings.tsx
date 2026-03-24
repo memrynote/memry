@@ -7,7 +7,6 @@ import {
   Palette,
   BookOpen,
   Brain,
-  Cloud,
   PenLine,
   Plug,
   Tags,
@@ -23,7 +22,6 @@ import { JournalSettings } from './settings/journal-section'
 import { VaultSettings } from './settings/vault-section'
 import { AppearanceSettings } from './settings/appearance-section'
 import { AISettings } from './settings/ai-section'
-import { SyncSettings } from './settings/sync-section'
 import { IntegrationsSettings } from './settings/integrations-section'
 import { TagsSettings } from './settings/tags-section'
 import { TasksSettings } from './settings/tasks-section'
@@ -39,7 +37,6 @@ type SettingsSection =
   | 'vault'
   | 'appearance'
   | 'ai'
-  | 'sync'
   | 'integrations'
   | 'tags'
   | 'shortcuts'
@@ -75,6 +72,12 @@ export function SettingsPage() {
         </div>
 
         <SettingsNavGroup label="Workspace">
+          <SettingsNavItem
+            icon={<User className="w-3.5 h-3.5" />}
+            label="Account"
+            isActive={activeSection === 'account'}
+            onClick={() => setActiveSection('account')}
+          />
           <SettingsNavItem
             icon={<SettingsIcon className="w-3.5 h-3.5" />}
             label="General"
@@ -130,12 +133,6 @@ export function SettingsPage() {
             onClick={() => setActiveSection('ai')}
           />
           <SettingsNavItem
-            icon={<Cloud className="w-3.5 h-3.5" />}
-            label="Sync"
-            isActive={activeSection === 'sync'}
-            onClick={() => setActiveSection('sync')}
-          />
-          <SettingsNavItem
             icon={<Plug className="w-3.5 h-3.5" />}
             label="Integrations"
             isActive={activeSection === 'integrations'}
@@ -156,12 +153,6 @@ export function SettingsPage() {
             isActive={activeSection === 'tags'}
             onClick={() => setActiveSection('tags')}
           />
-          <SettingsNavItem
-            icon={<User className="w-3.5 h-3.5" />}
-            label="Account"
-            isActive={activeSection === 'account'}
-            onClick={() => setActiveSection('account')}
-          />
         </SettingsNavGroup>
       </div>
 
@@ -176,7 +167,6 @@ export function SettingsPage() {
             {activeSection === 'vault' && <VaultSettings />}
             {activeSection === 'appearance' && <AppearanceSettings />}
             {activeSection === 'ai' && <AISettings />}
-            {activeSection === 'sync' && <SyncSettings />}
             {activeSection === 'integrations' && <IntegrationsSettings />}
             {activeSection === 'tags' && <TagsSettings />}
             {activeSection === 'shortcuts' && <ShortcutsSettings />}

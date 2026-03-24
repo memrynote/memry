@@ -1,5 +1,4 @@
 import { useState, useEffect, useCallback } from 'react'
-import { Button } from '@/components/ui/button'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -10,18 +9,27 @@ import {
   AlertDialogHeader,
   AlertDialogTitle
 } from '@/components/ui/alert-dialog'
+import { Button } from '@/components/ui/button'
+import { Dialog, DialogContent } from '@/components/ui/dialog'
+import { Switch } from '@/components/ui/switch'
 import { RefreshCw } from '@/lib/icons'
 import { toast } from 'sonner'
-import { format } from 'date-fns'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { useAuth } from '@/contexts/auth-context'
-import { useAccountInfo } from '@/hooks/use-account-info'
+import { useSync } from '@/contexts/sync-context'
+import { useSyncStatus } from '@/hooks/use-sync-status'
+import { SetupWizard } from './setup-wizard'
+import { QrLinking } from '@/components/sync/qr-linking'
+import { LinkingApprovalDialog } from '@/components/sync/linking-approval-dialog'
+import { DeviceList } from '@/components/sync/device-list'
+import { KeyRotationWizard } from '@/components/sync/key-rotation-wizard'
 import { RecoveryKeyDialog } from '@/components/settings/recovery-key-dialog'
 import type { StorageBreakdownResult } from '@memry/contracts/ipc-sync-ops'
 import {
   SettingsHeader,
   SettingsGroup,
-  SettingRow
+  SettingRow,
+  ACCENT_SWITCH
 } from '@/components/settings/settings-primitives'
 
 function formatBytes(bytes: number): string {
@@ -39,11 +47,14 @@ const STORAGE_COLORS: Record<string, string> = {
 
 export function AccountSettings() {
   const { state, logout } = useAuth()
-  const { accountInfo, isLoading: infoLoading } = useAccountInfo()
+  const { linkingRequest, clearLinkingRequest } = useSync()
+  const syncStatus = useSyncStatus()
   const [storage, setStorage] = useState<StorageBreakdownResult | null>(null)
   const [showSignOutDialog, setShowSignOutDialog] = useState(false)
-  const [showRecoveryKey, setShowRecoveryKey] = useState(false)
   const [signingOut, setSigningOut] = useState(false)
+  const [showLinkingQr, setShowLinkingQr] = useState(false)
+  const [showRotationWizard, setShowRotationWizard] = useState(false)
+  const [showRecoveryKey, setShowRecoveryKey] = useState(false)
   const [isRefreshing, setIsRefreshing] = useState(false)
 
   const loadStorage = useCallback(async () => {
@@ -53,7 +64,7 @@ export function AccountSettings() {
       const result = await window.api.syncOps.getStorageBreakdown()
       setStorage(result)
     } catch {
-      /* ignore */
+      /* storage is non-critical */
     } finally {
       setIsRefreshing(false)
     }
@@ -76,7 +87,7 @@ export function AccountSettings() {
     }
   }, [logout])
 
-  if (state.status === 'checking' || infoLoading) {
+  if (state.status === 'checking') {
     return (
       <div className="flex flex-col antialiased">
         <SettingsHeader title="Account" subtitle="Loading..." />
@@ -86,25 +97,22 @@ export function AccountSettings() {
 
   if (state.status !== 'authenticated') {
     return (
-      <div className="flex flex-col antialiased text-xs/4">
-        <SettingsHeader title="Account" subtitle="Not signed in" />
-        <p className="text-xs/4 text-muted-foreground">
-          Sign in via the Sync section to access account settings.
-        </p>
+      <div className="flex flex-col items-center antialiased text-xs/4">
+        <div className="w-full max-w-sm">
+          <SetupWizard />
+        </div>
       </div>
     )
   }
 
-  const email = accountInfo?.email ?? state.email
-  const joinedAt = accountInfo?.joinedAt
+  const email = state.email
   const initial = (email ?? 'U').charAt(0).toUpperCase()
-
-  const storageUsedPct =
-    storage && storage.limit > 0 ? Math.min(100, (storage.used / storage.limit) * 100) : null
+  const isSyncActive = syncStatus.status !== 'paused'
+  const isToggleDisabled = syncStatus.status === 'syncing' || syncStatus.status === 'offline'
 
   return (
     <div className="flex flex-col antialiased text-xs/4">
-      <SettingsHeader title="Account" subtitle="Manage your account and data" />
+      <SettingsHeader title="Account" subtitle="Your account, sync, and security" />
 
       <SettingsGroup label="Identity">
         <div className="flex items-center gap-3 h-14 py-3 px-4">
@@ -118,12 +126,29 @@ export function AccountSettings() {
             <span className="font-medium text-[13px]/4 text-foreground truncate">
               {email ?? 'Unknown'}
             </span>
-            {joinedAt && (
-              <span className="text-xs/4 text-muted-foreground">
-                Member since {format(new Date(joinedAt), 'MMMM yyyy')}
-              </span>
-            )}
+            <span className="text-xs/4 text-muted-foreground">Pro plan</span>
           </div>
+        </div>
+      </SettingsGroup>
+
+      <SettingsGroup label="Sync">
+        <div className="flex items-center justify-between h-11 px-4 shrink-0">
+          <div className="flex items-center gap-2">
+            <div className={`shrink-0 rounded-sm size-2 ${syncStatus.dotColor}`} />
+            <div className="flex flex-col gap-px">
+              <span className="font-medium text-[13px]/4 text-foreground">{syncStatus.label}</span>
+              <span className="text-xs/4 text-muted-foreground">
+                Last synced {syncStatus.lastSyncLabel}
+                {syncStatus.pendingCount > 0 && ` · ${syncStatus.pendingCount} pending`}
+              </span>
+            </div>
+          </div>
+          <Switch
+            checked={isSyncActive}
+            disabled={isToggleDisabled}
+            onCheckedChange={(checked) => void (checked ? syncStatus.resume() : syncStatus.pause())}
+            className={ACCENT_SWITCH}
+          />
         </div>
       </SettingsGroup>
 
@@ -176,19 +201,39 @@ export function AccountSettings() {
         </SettingsGroup>
       )}
 
-      <SettingsGroup label="Account Actions">
-        <SettingRow label="Recovery Key" description="View your encrypted recovery key">
+      <SettingsGroup label="Devices">
+        <DeviceList onLinkDevice={() => setShowLinkingQr(true)} />
+      </SettingsGroup>
+
+      <SettingsGroup label="Security">
+        <SettingRow label="Recovery Key" description="View your recovery key for data access">
           <Button
             variant="outline"
             size="sm"
             onClick={() => setShowRecoveryKey(true)}
             className="h-7 px-3 text-xs/4"
           >
-            View
+            View Key
           </Button>
         </SettingRow>
 
-        <SettingRow label="Sign Out" description="Notes stay on this device. Sync stops.">
+        <SettingRow
+          label="Rotate Encryption Keys"
+          description="Generate new keys and re-encrypt all data"
+        >
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowRotationWizard(true)}
+            className="h-7 px-3 text-xs/4"
+          >
+            Rotate
+          </Button>
+        </SettingRow>
+      </SettingsGroup>
+
+      <SettingsGroup>
+        <SettingRow label="Sign Out" description="Disconnect this device from sync">
           <Button
             variant="outline"
             size="sm"
@@ -200,21 +245,19 @@ export function AccountSettings() {
         </SettingRow>
       </SettingsGroup>
 
-      <RecoveryKeyDialog open={showRecoveryKey} onOpenChange={setShowRecoveryKey} />
-
       <AlertDialog open={showSignOutDialog} onOpenChange={setShowSignOutDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Sign out of sync?</AlertDialogTitle>
             <AlertDialogDescription>
               Sync will stop and encryption keys will be removed from this device. Your notes will
-              remain. You&apos;ll need your recovery phrase to set up sync again.
+              remain on this device. You&apos;ll need your recovery phrase to set up sync again.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={signingOut}>Cancel</AlertDialogCancel>
             <AlertDialogAction
-              onClick={() => void handleSignOut()}
+              onClick={handleSignOut}
               disabled={signingOut}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
@@ -223,6 +266,25 @@ export function AccountSettings() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <KeyRotationWizard open={showRotationWizard} onOpenChange={setShowRotationWizard} />
+      <RecoveryKeyDialog open={showRecoveryKey} onOpenChange={setShowRecoveryKey} />
+
+      <Dialog open={showLinkingQr} onOpenChange={setShowLinkingQr}>
+        <DialogContent className="sm:max-w-[400px] rounded-xl">
+          <QrLinking onCancel={() => setShowLinkingQr(false)} />
+        </DialogContent>
+      </Dialog>
+
+      <LinkingApprovalDialog
+        open={!!linkingRequest}
+        event={linkingRequest}
+        onApprove={() => {
+          clearLinkingRequest()
+          toast.success('Device linked successfully')
+        }}
+        onReject={clearLinkingRequest}
+      />
     </div>
   )
 }
