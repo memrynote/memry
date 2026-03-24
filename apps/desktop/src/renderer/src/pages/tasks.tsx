@@ -7,7 +7,6 @@ import { ProjectsTabContent } from '@/components/tasks/projects/projects-tab-con
 import { ProjectSelector } from '@/components/tasks/projects/project-selector'
 import { AddTaskModal } from '@/components/tasks/add-task-modal'
 import { ProjectModal } from '@/components/tasks/project-modal'
-import { CalendarView } from '@/components/tasks/calendar'
 import { KanbanBoard } from '@/components/tasks/kanban'
 import { QuickAddInput } from '@/components/tasks/quick-add-input'
 import { TaskDetailDrawer } from '@/components/tasks/task-detail-drawer'
@@ -18,15 +17,12 @@ import {
   GroupByDropdown
 } from '@/components/tasks/filters'
 import { cn } from '@/lib/utils'
-import { extractErrorMessage } from '@/lib/ipc-error'
 import {
   getFilteredTasks,
   getDefaultTodoStatus,
-  getDefaultDoneStatus,
   startOfDay,
   getCompletedTasks,
   getCompletedTodayTasks,
-  formatDateShort,
   getTodayTasks,
   countActiveFilters,
   scopeTasksByProject,
@@ -40,9 +36,8 @@ import {
   type SavedFilter,
   type CompletionFilterType
 } from '@/data/tasks-data'
-import { createDefaultTask, generateTaskId, type Task, type Priority } from '@/data/sample-tasks'
+import { createDefaultTask, type Task, type Priority } from '@/data/sample-tasks'
 import { addDays } from '@/lib/task-utils' // used by handleBulkChangeDueDate
-import { calculateNextOccurrence, shouldCreateNextOccurrence } from '@/lib/repeat-utils'
 import {
   useFilterState,
   useSavedFilters,
@@ -52,6 +47,7 @@ import {
   useSubtaskManagement,
   useUndoTracker
 } from '@/hooks'
+import { useUndoableTaskActions } from '@/hooks/use-undoable-task-actions'
 import { useTasksContext } from '@/contexts/tasks'
 import { useSaveFilterShortcut } from '@/hooks/use-save-filter-shortcut'
 import { useTaskPreferences } from '@/hooks/use-task-preferences'
@@ -125,7 +121,17 @@ export const TasksPage = ({
   } = useTasksContext()
 
   // T051-T054: Undo tracking for Cmd+Z support
-  const { registerUndo } = useUndoTracker()
+  const { registerUndo, removeUndoEntry } = useUndoTracker()
+
+  const undoable = useUndoableTaskActions({
+    tasks,
+    projects,
+    addTask: contextAddTask,
+    updateTask: contextUpdateTask,
+    deleteTask: contextDeleteTask,
+    registerUndo,
+    removeUndoEntry
+  })
 
   const { settings: taskPrefs } = useTaskPreferences()
   const { openTab } = useTabActions()
@@ -274,7 +280,7 @@ export const TasksPage = ({
     if (activeInternalTab === 'today') {
       return ['list']
     }
-    return ['list', 'kanban', 'calendar']
+    return ['list', 'kanban']
   }, [activeInternalTab])
 
   // Reset to list view if current view becomes unavailable
@@ -352,7 +358,9 @@ export const TasksPage = ({
     projects,
     onUpdateTask: contextUpdateTask,
     onDeleteTask: contextDeleteTask,
-    onComplete: deselectAll
+    onComplete: deselectAll,
+    registerUndo,
+    onAddTask: contextAddTask
   })
 
   // Toggle selection mode handler
@@ -569,10 +577,9 @@ export const TasksPage = ({
 
   const handleAddTaskFromModal = useCallback(
     (newTask: Task): void => {
-      // Use context addTask to persist to database
-      contextAddTask(newTask)
+      undoable.createTask(newTask)
     },
-    [contextAddTask]
+    [undoable]
   )
 
   // Get default project and due date for the modal based on current selection
@@ -644,8 +651,7 @@ export const TasksPage = ({
       const newTask = createDefaultTask(projectId, statusId, title, dueDate)
       newTask.priority = priority
 
-      // Use context addTask to persist to database
-      contextAddTask(newTask)
+      undoable.createTask(newTask)
     },
     [
       selectedId,
@@ -653,7 +659,7 @@ export const TasksPage = ({
       selectedProject,
       selectedProjectId,
       projects,
-      contextAddTask,
+      undoable,
       taskPrefs.defaultProjectId
     ]
   )
@@ -673,166 +679,43 @@ export const TasksPage = ({
         newTask.completedAt = new Date()
       }
 
-      contextAddTask(newTask)
+      undoable.createTask(newTask)
     },
-    [selectedProject, projects, contextAddTask]
+    [selectedProject, projects, undoable]
   )
 
   const handleToggleComplete = useCallback(
     (taskId: string): void => {
-      const taskToComplete = tasks.find((t) => t.id === taskId)
-      if (!taskToComplete) return
+      const task = tasks.find((t) => t.id === taskId)
+      if (!task) return
 
-      const project = projects.find((p) => p.id === taskToComplete.projectId)
+      const project = projects.find((p) => p.id === task.projectId)
       if (!project) return
 
-      const currentStatus = project.statuses.find((s) => s.id === taskToComplete.statusId)
+      const currentStatus = project.statuses.find((s) => s.id === task.statusId)
       if (!currentStatus) return
 
       if (currentStatus.type === 'done') {
-        // Uncomplete: move back to todo status
-        const todoStatus = getDefaultTodoStatus(project)
-        contextUpdateTask(taskId, {
-          statusId: todoStatus?.id || taskToComplete.statusId,
-          completedAt: null
-        })
-        return
-      }
-
-      const doneStatus = getDefaultDoneStatus(project)
-      const completedAt = new Date()
-
-      // Get subtasks to also complete them
-      const subtasks = getSubtasks(taskId, tasks)
-      const hasSubtasks = subtasks.length > 0
-
-      if (taskToComplete.isRepeating && taskToComplete.repeatConfig && taskToComplete.dueDate) {
-        const config = taskToComplete.repeatConfig
-        const newCompletedCount = config.completedCount + 1
-        const nextDate = calculateNextOccurrence(taskToComplete.dueDate, config)
-        const shouldCreateNext = shouldCreateNextOccurrence({
-          ...config,
-          completedCount: newCompletedCount
-        })
-
-        // Mark the completed task as done (no longer repeating)
-        contextUpdateTask(taskId, {
-          statusId: doneStatus?.id || taskToComplete.statusId,
-          completedAt,
-          isRepeating: false,
-          repeatConfig: null
-        })
-
-        // Also complete all subtasks
-        if (hasSubtasks) {
-          subtasks.forEach((subtask) => {
-            if (!subtask.completedAt) {
-              contextUpdateTask(subtask.id, {
-                statusId: doneStatus?.id || subtask.statusId,
-                completedAt
-              })
-            }
-          })
-        }
-
-        // Create the next occurrence if needed
-        if (shouldCreateNext && nextDate) {
-          const newTask: Task = {
-            ...taskToComplete,
-            id: generateTaskId(),
-            dueDate: nextDate,
-            statusId: getDefaultTodoStatus(project)?.id || taskToComplete.statusId,
-            completedAt: null,
-            createdAt: new Date(),
-            repeatConfig: {
-              ...config,
-              completedCount: newCompletedCount
-            }
-          }
-          contextAddTask(newTask)
-          toast.success('Task completed!', {
-            description: `Next occurrence: ${formatDateShort(nextDate)}`
-          })
-        } else {
-          toast.success('Series complete!', {
-            description: 'This was the final occurrence.'
-          })
-        }
+        undoable.uncompleteTask(taskId)
       } else {
-        // Simple completion: mark as done
-        contextUpdateTask(taskId, {
-          statusId: doneStatus?.id || taskToComplete.statusId,
-          completedAt
-        })
-
-        // Also complete all subtasks
-        if (hasSubtasks) {
-          const incompleteSubtasks = subtasks.filter((s) => !s.completedAt)
-          incompleteSubtasks.forEach((subtask) => {
-            contextUpdateTask(subtask.id, {
-              statusId: doneStatus?.id || subtask.statusId,
-              completedAt
-            })
-          })
-          if (incompleteSubtasks.length > 0) {
-            toast.success('Task completed!', {
-              description: `Also marked ${incompleteSubtasks.length} subtask(s) as done.`
-            })
-          }
-        }
+        undoable.completeTask(taskId)
       }
     },
-    [tasks, projects, contextUpdateTask, contextAddTask]
+    [tasks, projects, undoable]
   )
 
   const handleUpdateTask = useCallback(
     (taskId: string, updates: Partial<Task>): void => {
-      // Use context updateTask to persist to database
-      contextUpdateTask(taskId, updates)
+      undoable.updateTaskWithUndo(taskId, updates)
     },
-    [contextUpdateTask]
+    [undoable]
   )
 
   const handleDeleteTask = useCallback(
     (taskId: string): void => {
-      const task = tasks.find((t) => t.id === taskId)
-      if (!task) return
-
-      const deletedTask = { ...task }
-
-      contextDeleteTask(taskId)
-
-      // T051-T054: Register undo for Cmd+Z support
-      const undoFn = () => {
-        contextAddTask(deletedTask)
-      }
-      registerUndo(`Delete "${task.title}"`, undoFn)
-
-      toast.success('Task deleted', {
-        description: `"${task.title}" has been deleted.`,
-        duration: 10000, // T052: 10-second timeout for undo per spec
-        action: {
-          label: 'Undo',
-          onClick: undoFn
-        }
-      })
+      undoable.deleteTask(taskId)
     },
-    [tasks, contextDeleteTask, contextAddTask, registerUndo]
-  )
-
-  const handleAddTaskWithDate = useCallback(
-    (date: Date): void => {
-      const projectId = resolveModalDefaultProject(
-        { selectedType, selectedProject },
-        taskPrefs.defaultProjectId,
-        selectedProjectId
-      )
-      setAddTaskPrefillProjectId(projectId)
-      setAddTaskPrefillDueDate(date)
-      setAddTaskPrefillTitle('')
-      setIsAddTaskModalOpen(true)
-    },
-    [selectedProject, selectedType, selectedProjectId, taskPrefs.defaultProjectId]
+    [undoable]
   )
 
   // ========== BULK ACTION HANDLERS ==========
@@ -965,7 +848,7 @@ export const TasksPage = ({
         {/* Main Content Area */}
         <main className="flex-1 min-w-0 flex flex-col overflow-hidden py-2 px-2">
           {/* Page Header — compact single-row toolbar */}
-          <div className="flex items-center gap-2.5 shrink-0 min-w-0 py-0.5 border-b border-border [font-synthesis:none] text-[12px] leading-4 antialiased">
+          <div className="flex items-center gap-2.5 shrink-0 min-w-0 py-0.5 border-b border-border [font-synthesis:none] text-[13px] leading-4 antialiased">
             <TasksTabBar
               activeTab={activeInternalTab}
               onTabChange={handleTabChange}
@@ -1012,8 +895,8 @@ export const TasksPage = ({
                 className={cn(
                   'flex items-center shrink-0 rounded-[5px] py-1 px-2 gap-1 border transition-colors',
                   isFilterDropdownOpen || filtersActive
-                    ? 'border-foreground/20 bg-foreground/5 text-text-primary'
-                    : 'border-border text-text-secondary hover:bg-surface-active/50'
+                    ? 'border-foreground/20 bg-foreground/5 text-foreground/90'
+                    : 'border-border text-muted-foreground hover:bg-surface-active/50'
                 )}
               >
                 <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
@@ -1024,7 +907,7 @@ export const TasksPage = ({
                     strokeLinecap="round"
                   />
                 </svg>
-                <span className="text-[11px] leading-3.5">Filter</span>
+                <span className="text-[13px] font-medium">Filter</span>
                 {filtersActive && (
                   <span className="flex items-center justify-center size-[14px] rounded-full bg-foreground text-background text-[9px] font-bold">
                     {countActiveFilters(filters)}
@@ -1090,34 +973,6 @@ export const TasksPage = ({
                         stroke="currentColor"
                       />
                       <rect x="9" y="2" width="2.5" height="4.5" rx="0.75" stroke="currentColor" />
-                    </svg>
-                  </button>
-                )}
-                {availableViews.includes('calendar') && (
-                  <button
-                    type="button"
-                    role="radio"
-                    aria-checked={activeView === 'calendar'}
-                    aria-label="Calendar view"
-                    onClick={() => setActiveView('calendar')}
-                    className={cn(
-                      'flex items-center justify-center w-[26px] h-6 shrink-0 transition-colors',
-                      activeView === 'calendar'
-                        ? 'bg-foreground/10 text-foreground'
-                        : 'text-text-tertiary hover:text-text-secondary'
-                    )}
-                  >
-                    <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
-                      <rect
-                        x="1.5"
-                        y="2.5"
-                        width="10"
-                        height="8.5"
-                        rx="1.25"
-                        stroke="currentColor"
-                      />
-                      <path d="M1.5 5h10" stroke="currentColor" />
-                      <path d="M4 1.5v2M9 1.5v2" stroke="currentColor" strokeLinecap="round" />
                     </svg>
                   </button>
                 )}
@@ -1239,25 +1094,6 @@ export const TasksPage = ({
                 onToggleComplete={handleToggleComplete}
                 onTaskClick={handleTaskClick}
                 onQuickAdd={handleKanbanQuickAdd}
-                isSelectionMode={selection.isSelectionMode}
-                selectedIds={selection.selectedIds}
-                onToggleSelect={toggleTask}
-              />
-            </div>
-          )}
-
-          {/* Calendar View - All Tab */}
-          {activeInternalTab === 'all' && activeView === 'calendar' && (
-            <div className="flex flex-1 flex-col overflow-hidden">
-              <CalendarView
-                tasks={filteredTasks}
-                projects={projects}
-                selectedId="all"
-                selectedType="view"
-                onUpdateTask={handleUpdateTask}
-                onAddTaskWithDate={handleAddTaskWithDate}
-                onToggleComplete={handleToggleComplete}
-                onTaskClick={handleTaskClick}
                 isSelectionMode={selection.isSelectionMode}
                 selectedIds={selection.selectedIds}
                 onToggleSelect={toggleTask}

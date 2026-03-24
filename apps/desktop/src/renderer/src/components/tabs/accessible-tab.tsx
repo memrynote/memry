@@ -96,9 +96,8 @@ export const AccessibleTab = ({
       className={cn(
         'flex items-center gap-2 px-3 h-8 min-w-0',
         'border-b-2 transition-colors outline-none',
-        'focus:ring-1 focus:ring-blue-500 focus:ring-inset',
         isActive
-          ? 'bg-background border-blue-500 text-foreground'
+          ? 'bg-background border-tint text-foreground'
           : 'bg-muted/50 border-transparent text-muted-foreground hover:bg-surface-active',
         className
       )}
@@ -121,7 +120,7 @@ export const AccessibleTab = ({
 
       {/* Modified indicator */}
       {tab.isModified && (
-        <span className="w-2 h-2 rounded-full bg-blue-500 flex-shrink-0" aria-hidden="true" />
+        <span className="w-2 h-2 rounded-full bg-tint flex-shrink-0" aria-hidden="true" />
       )}
 
       {/* Preview indicator - only show when preview mode is enabled */}
@@ -143,7 +142,7 @@ export const AccessibleTab = ({
           className={cn(
             'p-0.5 rounded opacity-0 group-hover:opacity-100',
             'hover:bg-border',
-            'focus:opacity-100 focus:outline-none focus:ring-1 focus:ring-blue-500',
+            'focus:opacity-100 focus:outline-none',
             isActive && 'opacity-100'
           )}
           tabIndex={-1}

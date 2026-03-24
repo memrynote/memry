@@ -55,7 +55,7 @@ export const SavedFiltersSection = ({
             placeholder={hasActiveFilters ? 'Save current filter...' : 'Set filters first'}
             disabled={!hasActiveFilters}
             aria-label="Filter name"
-            className="flex-1 min-w-0 bg-transparent text-[12px] leading-4 text-foreground placeholder:text-text-tertiary outline-none disabled:opacity-40"
+            className="flex-1 min-w-0 bg-transparent text-[13px] leading-4 text-foreground placeholder:text-muted-foreground/40 outline-none disabled:opacity-40"
           />
         </div>
         <button
@@ -67,7 +67,7 @@ export const SavedFiltersSection = ({
             'shrink-0 rounded-[5px] px-2 py-1 text-[11px] font-medium leading-4 transition-colors',
             filterName.trim() && hasActiveFilters
               ? 'bg-foreground text-background hover:bg-foreground/80'
-              : 'bg-foreground/10 text-text-tertiary cursor-not-allowed'
+              : 'bg-foreground/10 text-muted-foreground/60 cursor-not-allowed'
           )}
         >
           Save
@@ -117,8 +117,8 @@ export const SavedFiltersSection = ({
                 >
                   <span
                     className={cn(
-                      'text-[12px] leading-4 truncate block',
-                      isActive ? 'text-foreground font-medium' : 'text-text-secondary'
+                      'text-[13px] leading-4 truncate block',
+                      isActive ? 'text-foreground font-medium' : 'text-muted-foreground'
                     )}
                   >
                     {filter.name}

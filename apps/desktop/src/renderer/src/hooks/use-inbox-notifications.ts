@@ -1,32 +1,11 @@
-import { useState, useCallback, useEffect } from 'react'
+import { useEffect } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
-import type { Toast } from '@/components/ui/toast'
+import { toast } from 'sonner'
 import { onInboxSnoozeDue } from '@/services/inbox-service'
 import { inboxKeys } from '@/hooks/use-inbox'
 
-export interface UseInboxNotificationsResult {
-  toasts: Toast[]
-  addToast: (toast: Omit<Toast, 'id'>) => string
-  removeToast: (id: string) => void
-}
-
-function generateToastId(): string {
-  return `toast-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`
-}
-
-export function useInboxNotifications(): UseInboxNotificationsResult {
-  const [toasts, setToasts] = useState<Toast[]>([])
+export function useInboxNotifications(): void {
   const queryClient = useQueryClient()
-
-  const addToast = useCallback((toast: Omit<Toast, 'id'>): string => {
-    const id = generateToastId()
-    setToasts((prev) => [...prev, { ...toast, id }])
-    return id
-  }, [])
-
-  const removeToast = useCallback((id: string): void => {
-    setToasts((prev) => prev.filter((toast) => toast.id !== id))
-  }, [])
 
   useEffect(() => {
     const unsubscribe = onInboxSnoozeDue((event) => {
@@ -42,13 +21,11 @@ export function useInboxNotifications(): UseInboxNotificationsResult {
           new Notification(title, { body, icon: '/icon.png' })
         }
 
-        addToast({
-          message:
-            dueItems.length === 1
-              ? `"${dueItems[0].title}" is back from snooze`
-              : `${dueItems.length} snoozed items are back`,
-          type: 'info'
-        })
+        toast.info(
+          dueItems.length === 1
+            ? `"${dueItems[0].title}" is back from snooze`
+            : `${dueItems.length} snoozed items are back`
+        )
       }
     })
 
@@ -57,7 +34,5 @@ export function useInboxNotifications(): UseInboxNotificationsResult {
     }
 
     return () => unsubscribe()
-  }, [queryClient, addToast])
-
-  return { toasts, addToast, removeToast }
+  }, [queryClient])
 }

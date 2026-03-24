@@ -1,5 +1,4 @@
 import { useCallback } from 'react'
-import { Separator } from '@/components/ui/separator'
 import {
   Select,
   SelectContent,
@@ -7,12 +6,17 @@ import {
   SelectTrigger,
   SelectValue
 } from '@/components/ui/select'
-import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { useTaskPreferences } from '@/hooks/use-task-preferences'
 import { useTasksContext } from '@/contexts/tasks'
 import { toast } from 'sonner'
+import {
+  SettingsHeader,
+  SettingsGroup,
+  SettingRow,
+  COMPACT_SELECT
+} from '@/components/settings/settings-primitives'
 
 const SORT_OPTIONS = [
   { value: 'manual', label: 'Manual (drag & drop)' },
@@ -67,39 +71,23 @@ export function TasksSettings() {
 
   if (isLoading) {
     return (
-      <div className="space-y-6">
-        <div>
-          <h3 className="text-lg font-semibold">Tasks</h3>
-          <p className="text-sm text-muted-foreground">Loading settings...</p>
-        </div>
+      <div className="flex flex-col antialiased">
+        <SettingsHeader title="Tasks" subtitle="Loading settings..." />
       </div>
     )
   }
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h3 className="text-lg font-semibold">Tasks</h3>
-        <p className="text-sm text-muted-foreground">Configure task defaults and behavior</p>
-      </div>
+    <div className="flex flex-col antialiased text-xs/4">
+      <SettingsHeader title="Tasks" subtitle="Configure task defaults and behavior" />
 
-      <Separator />
-
-      <div className="space-y-6">
-        <h4 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
-          Defaults
-        </h4>
-
-        <div className="space-y-2">
-          <Label>Default Project</Label>
-          <p className="text-sm text-muted-foreground">
-            New tasks are assigned to this project when no project is explicitly selected
-          </p>
+      <SettingsGroup label="Defaults">
+        <SettingRow label="Default Project" description="Assigned when no project is selected">
           <Select
             value={settings.defaultProjectId ?? 'none'}
             onValueChange={handleDefaultProjectChange}
           >
-            <SelectTrigger className="w-full max-w-xs">
+            <SelectTrigger className={COMPACT_SELECT}>
               <SelectValue placeholder="No default project" />
             </SelectTrigger>
             <SelectContent>
@@ -108,7 +96,7 @@ export function TasksSettings() {
                 <SelectItem key={project.id} value={project.id}>
                   <span className="flex items-center gap-2">
                     <span
-                      className="w-2.5 h-2.5 rounded-full shrink-0"
+                      className="w-2 h-2 rounded-full shrink-0"
                       style={{ backgroundColor: project.color }}
                     />
                     {project.name}
@@ -117,15 +105,11 @@ export function TasksSettings() {
               ))}
             </SelectContent>
           </Select>
-        </div>
+        </SettingRow>
 
-        <div className="space-y-2">
-          <Label>Default Sort Order</Label>
-          <p className="text-sm text-muted-foreground">
-            How tasks are ordered by default in list view
-          </p>
+        <SettingRow label="Default Sort Order" description="How tasks are ordered in list view">
           <Select value={settings.defaultSortOrder} onValueChange={handleSortOrderChange}>
-            <SelectTrigger className="w-full max-w-xs">
+            <SelectTrigger className={COMPACT_SELECT}>
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -136,60 +120,53 @@ export function TasksSettings() {
               ))}
             </SelectContent>
           </Select>
-        </div>
-      </div>
+        </SettingRow>
+      </SettingsGroup>
 
-      <Separator />
-
-      <div className="space-y-6">
-        <h4 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
-          Calendar
-        </h4>
-
-        <div className="space-y-2">
-          <Label>Week Starts On</Label>
-          <p className="text-sm text-muted-foreground">
-            First day of the week in calendar and date views
-          </p>
+      <SettingsGroup label="Calendar">
+        <SettingRow label="Week Starts On" description="First day of the week in calendar views">
           <ToggleGroup
             type="single"
             value={settings.weekStartDay}
             onValueChange={handleWeekStartChange}
-            className="justify-start"
+            className="gap-0 rounded-md border border-border overflow-clip"
           >
-            <ToggleGroupItem value="sunday" aria-label="Sunday" className="px-4">
+            <ToggleGroupItem
+              value="sunday"
+              aria-label="Sunday"
+              className="rounded-none border-none px-3 h-7 text-xs/4 font-medium data-[state=on]:bg-[var(--tint)] data-[state=on]:text-white"
+            >
               Sunday
             </ToggleGroupItem>
-            <ToggleGroupItem value="monday" aria-label="Monday" className="px-4">
+            <ToggleGroupItem
+              value="monday"
+              aria-label="Monday"
+              className="rounded-none border-none border-l border-border px-3 h-7 text-xs/4 font-medium data-[state=on]:bg-[var(--tint)] data-[state=on]:text-white"
+            >
               Monday
             </ToggleGroupItem>
           </ToggleGroup>
-        </div>
-      </div>
+        </SettingRow>
+      </SettingsGroup>
 
-      <Separator />
-
-      <div className="space-y-6">
-        <h4 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
-          Inbox
-        </h4>
-
-        <div className="space-y-2">
-          <Label htmlFor="stale-inbox-days">Stale Inbox Threshold (days)</Label>
-          <p className="text-sm text-muted-foreground">
-            Tasks in the inbox older than this are highlighted as stale
-          </p>
-          <Input
-            id="stale-inbox-days"
-            type="number"
-            min={1}
-            max={90}
-            value={settings.staleInboxDays}
-            onChange={(e) => void handleStaleInboxChange(e.target.value)}
-            className="w-24"
-          />
-        </div>
-      </div>
+      <SettingsGroup label="Inbox">
+        <SettingRow
+          label="Stale Inbox Threshold"
+          description="Tasks older than this are highlighted as stale"
+        >
+          <div className="flex items-center gap-1.5">
+            <Input
+              type="number"
+              min={1}
+              max={90}
+              value={settings.staleInboxDays}
+              onChange={(e) => void handleStaleInboxChange(e.target.value)}
+              className="w-14 h-7 text-center text-xs/4 px-2"
+            />
+            <span className="text-xs/4 text-muted-foreground">days</span>
+          </div>
+        </SettingRow>
+      </SettingsGroup>
     </div>
   )
 }

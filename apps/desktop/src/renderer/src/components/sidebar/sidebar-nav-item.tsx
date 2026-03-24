@@ -93,7 +93,7 @@ export const SidebarNavItem = ({
           // Base styles
           'group relative w-full flex items-center gap-2 py-1.5 rounded-md text-sm',
           'transition-colors duration-100 cursor-pointer',
-          'outline-none focus-visible:ring-1 focus-visible:ring-sidebar-ring focus-visible:ring-offset-1',
+          'outline-none',
 
           'hover:bg-muted',
 

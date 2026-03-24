@@ -74,7 +74,7 @@ export function AddPropertyPopup({
       className={cn(
         'fixed z-[9999]',
         'w-[240px] max-h-[400px] overflow-y-auto',
-        'rounded-lg border border-stone-200 bg-white dark:border-stone-700 dark:bg-stone-900',
+        'rounded-md border border-stone-200 bg-white dark:border-stone-700 dark:bg-stone-900',
         'shadow-lg',
         'py-1',
         'animate-in fade-in-0 zoom-in-95 duration-150'
@@ -95,7 +95,7 @@ export function AddPropertyPopup({
             'bg-stone-50 dark:bg-stone-800',
             'border border-stone-200 dark:border-stone-700 rounded',
             'placeholder:text-stone-400 dark:placeholder:text-stone-500',
-            'focus:outline-none focus:ring-1 focus:ring-stone-400 dark:focus:ring-stone-500'
+            'focus:outline-none'
           )}
           aria-label="Property name"
         />

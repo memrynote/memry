@@ -30,13 +30,13 @@ export const ResizeHandle = ({
         // Base styles
         'relative flex-shrink-0 transition-colors',
         'bg-surface-active',
-        'hover:bg-blue-400 dark:hover:bg-blue-500',
+        'hover:bg-tint',
 
         // Direction-specific styles
         isHorizontal ? 'w-1 cursor-col-resize' : 'h-1 cursor-row-resize',
 
         // Active state
-        isResizing && 'bg-blue-500 dark:bg-blue-400',
+        isResizing && 'bg-tint',
 
         // Expand hit area with pseudo-element
         'before:absolute before:inset-0',

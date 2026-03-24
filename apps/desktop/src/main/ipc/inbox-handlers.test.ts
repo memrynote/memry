@@ -59,12 +59,22 @@ vi.mock('../inbox/attachments', () => ({
 
 vi.mock('../inbox/metadata', () => ({
   fetchUrlMetadata: vi.fn(),
-  downloadImage: vi.fn()
+  downloadImage: vi.fn(),
+  titleFromUrl: vi.fn((url: string) => url),
+  isBotPageTitle: vi.fn(() => false),
+  extractDomain: vi.fn((url: string) => {
+    try {
+      return new URL(url).hostname
+    } catch {
+      return url
+    }
+  })
 }))
 
 vi.mock('../inbox/filing', () => ({
   fileToFolder: vi.fn(),
   convertToNote: vi.fn(),
+  convertToTask: vi.fn(),
   linkToNote: vi.fn(),
   linkToNotes: vi.fn(),
   bulkFileToFolder: vi.fn()
@@ -73,8 +83,7 @@ vi.mock('../inbox/filing', () => ({
 vi.mock('../inbox/social', () => ({
   extractSocialPost: vi.fn(),
   detectSocialPlatform: vi.fn(),
-  isSocialPost: vi.fn(),
-  createFallbackSocialMetadata: vi.fn()
+  isSocialPost: vi.fn()
 }))
 
 vi.mock('../inbox/capture', () => ({
@@ -121,6 +130,23 @@ vi.mock('../inbox/snooze', () => ({
   unsnoozeItem: vi.fn(),
   getSnoozedItems: vi.fn(),
   bulkSnoozeItems: vi.fn()
+}))
+
+vi.mock('../sync/inbox-sync', () => ({
+  getInboxSyncService: vi.fn(() => null)
+}))
+
+vi.mock('../sync/offline-clock', () => ({
+  incrementInboxClockOffline: vi.fn()
+}))
+
+vi.mock('../lib/logger', () => ({
+  createLogger: () => ({
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+    debug: vi.fn()
+  })
 }))
 
 // Import after mocking

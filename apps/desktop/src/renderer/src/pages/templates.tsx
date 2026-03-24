@@ -381,7 +381,7 @@ function TemplateListRow({ template, onEdit, onDuplicate, onDelete }: TemplateLi
       className={cn(
         'group relative flex items-center gap-4',
         'px-4 py-3 -mx-4',
-        'rounded-lg',
+        'rounded-md',
         'transition-all duration-200 ease-out',
         'hover:bg-muted/50',
         'cursor-pointer'
@@ -401,7 +401,7 @@ function TemplateListRow({ template, onEdit, onDuplicate, onDelete }: TemplateLi
       <div
         className={cn(
           'flex-shrink-0',
-          'w-10 h-10 rounded-lg',
+          'w-10 h-10 rounded-md',
           'bg-muted/60 dark:bg-muted/40',
           'flex items-center justify-center',
           'transition-all duration-200',

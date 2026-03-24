@@ -85,7 +85,7 @@ export const GroupHeader = ({
       className={cn(
         'flex items-center w-full py-2 px-6 gap-2',
         'cursor-pointer select-none transition-colors',
-        'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring',
+        'focus-visible:outline-none',
         !bgColor && 'bg-foreground/[0.02] hover:bg-foreground/[0.04]'
       )}
       style={

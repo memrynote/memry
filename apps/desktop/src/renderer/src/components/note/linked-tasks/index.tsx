@@ -34,7 +34,7 @@ const LinkedTaskItem = ({ task, onClick }: LinkedTaskItemProps): React.JSX.Eleme
       className={cn(
         'flex items-center gap-2 w-full p-2 rounded-md text-left',
         'hover:bg-stone-100 dark:hover:bg-stone-800 transition-colors',
-        'focus:outline-none focus:ring-1 focus:ring-ring focus:ring-offset-1',
+        'focus:outline-none',
         isCompleted && 'opacity-60'
       )}
     >
@@ -108,7 +108,7 @@ export const LinkedTasksSection = ({
         ) : (
           <ChevronDown className="size-4 text-stone-400" aria-hidden="true" />
         )}
-        <CheckSquare className="size-4 text-blue-500" aria-hidden="true" />
+        <CheckSquare className="size-4 text-tint" aria-hidden="true" />
         <span className="text-xs font-semibold uppercase tracking-wide text-stone-500">
           Linked Tasks
         </span>

@@ -1,5 +1,4 @@
 import { useCallback } from 'react'
-import { Separator } from '@/components/ui/separator'
 import {
   Select,
   SelectContent,
@@ -8,12 +7,17 @@ import {
   SelectValue
 } from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
-import { Label } from '@/components/ui/label'
-import { Info } from '@/lib/icons'
 import { useTabPreferences } from '@/hooks/use-tab-preferences'
 import { useGeneralSettings } from '@/hooks/use-general-settings'
 import { useTabs } from '@/contexts/tabs'
 import { toast } from 'sonner'
+import {
+  SettingsHeader,
+  SettingsGroup,
+  SettingRow,
+  ACCENT_SWITCH,
+  COMPACT_SELECT
+} from '@/components/settings/settings-primitives'
 
 export function GeneralSettings() {
   const {
@@ -43,7 +47,6 @@ export function GeneralSettings() {
       const success = await updateTabSettings({ previewMode: enabled })
       if (success) {
         updateContextSettings({ previewMode: enabled })
-        toast.success(enabled ? 'Preview mode enabled' : 'Preview mode disabled')
       } else {
         toast.error('Failed to update setting')
       }
@@ -56,7 +59,6 @@ export function GeneralSettings() {
       const success = await updateTabSettings({ restoreSessionOnStart: enabled })
       if (success) {
         updateContextSettings({ restoreSessionOnStart: enabled })
-        toast.success(enabled ? 'Session will be restored on start' : 'Session restore disabled')
       } else {
         toast.error('Failed to update setting')
       }
@@ -69,7 +71,6 @@ export function GeneralSettings() {
       const success = await updateTabSettings({ tabCloseButton: value })
       if (success) {
         updateContextSettings({ tabCloseButton: value })
-        toast.success('Close button visibility updated')
       } else {
         toast.error('Failed to update setting')
       }
@@ -79,86 +80,52 @@ export function GeneralSettings() {
 
   if (isLoading) {
     return (
-      <div className="space-y-6">
-        <div>
-          <h3 className="text-lg font-semibold">General</h3>
-          <p className="text-sm text-muted-foreground">Loading settings...</p>
-        </div>
+      <div className="flex flex-col antialiased">
+        <SettingsHeader title="General" subtitle="Loading settings..." />
       </div>
     )
   }
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h3 className="text-lg font-semibold">General</h3>
-        <p className="text-sm text-muted-foreground">General application settings</p>
-      </div>
+    <div className="flex flex-col antialiased text-xs/4">
+      <SettingsHeader title="General" subtitle="Application startup and tab behavior" />
 
-      <Separator />
-
-      {/* Startup */}
-      <div className="space-y-6">
-        <h4 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
-          Startup
-        </h4>
-
-        <div className="flex items-center justify-between">
-          <div className="space-y-0.5">
-            <Label htmlFor="start-on-boot">Launch at Login</Label>
-            <p className="text-sm text-muted-foreground">
-              Automatically start Memry when you log in to your computer
-            </p>
-          </div>
+      <SettingsGroup label="Startup">
+        <SettingRow label="Launch at Login" description="Start Memry when you log in">
           <Switch
-            id="start-on-boot"
             checked={generalSettings.startOnBoot}
             onCheckedChange={handleStartOnBootChange}
+            className={ACCENT_SWITCH}
           />
-        </div>
-      </div>
+        </SettingRow>
+      </SettingsGroup>
 
-      <Separator />
-
-      {/* Tab Behavior */}
-      <div className="space-y-6">
-        <h4 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
-          Tab Behavior
-        </h4>
-
-        <div className="flex items-center justify-between">
-          <div className="space-y-0.5">
-            <Label htmlFor="preview-mode">Preview Mode</Label>
-            <p className="text-sm text-muted-foreground">
-              Single-click opens a preview tab, double-click opens permanently
-            </p>
-          </div>
+      <SettingsGroup label="Tab Behavior">
+        <SettingRow
+          label="Preview Mode"
+          description="Single-click opens preview, double-click keeps open"
+        >
           <Switch
-            id="preview-mode"
             checked={tabSettings.previewMode}
             onCheckedChange={handlePreviewModeChange}
+            className={ACCENT_SWITCH}
           />
-        </div>
+        </SettingRow>
 
-        <div className="flex items-center justify-between">
-          <div className="space-y-0.5">
-            <Label htmlFor="restore-session">Restore Session on Start</Label>
-            <p className="text-sm text-muted-foreground">
-              Reopen your tabs from your last session when the app starts
-            </p>
-          </div>
+        <SettingRow
+          label="Restore Session on Start"
+          description="Reopen tabs from your last session"
+        >
           <Switch
-            id="restore-session"
             checked={tabSettings.restoreSessionOnStart}
             onCheckedChange={handleRestoreSessionChange}
+            className={ACCENT_SWITCH}
           />
-        </div>
+        </SettingRow>
 
-        <div className="space-y-2">
-          <Label>Tab Close Button</Label>
-          <p className="text-sm text-muted-foreground">When to show the close button on tabs</p>
+        <SettingRow label="Tab Close Button" description="When to show the close button">
           <Select value={tabSettings.tabCloseButton} onValueChange={handleCloseButtonChange}>
-            <SelectTrigger className="w-full max-w-xs">
+            <SelectTrigger className={COMPACT_SELECT}>
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -167,16 +134,8 @@ export function GeneralSettings() {
               <SelectItem value="active">Only on active tab</SelectItem>
             </SelectContent>
           </Select>
-        </div>
-
-        <div className="flex items-start gap-2 p-3 rounded-lg bg-muted/50 text-sm">
-          <Info className="w-4 h-4 text-muted-foreground mt-0.5 flex-shrink-0" />
-          <p className="text-muted-foreground">
-            Tab settings take effect immediately. Preview mode is useful for quickly browsing items
-            - single-click to preview, double-click to keep open.
-          </p>
-        </div>
-      </div>
+        </SettingRow>
+      </SettingsGroup>
     </div>
   )
 }

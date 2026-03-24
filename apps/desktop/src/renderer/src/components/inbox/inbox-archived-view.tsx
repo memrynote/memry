@@ -1,14 +1,17 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
-import { format } from 'date-fns'
-import { Archive, Loader2, ChevronRight } from '@/lib/icons'
+import { useEffect, useMemo, useRef, useState, useCallback } from 'react'
+import { Archive, ArrowTurnBackward, Loader2, Trash2 } from '@/lib/icons'
 import { cn } from '@/lib/utils'
 import {
   useInboxArchived,
+  useInboxItem,
   useUnarchiveInboxItem,
   useDeletePermanentInboxItem
 } from '@/hooks/use-inbox'
-import { InboxArchivedItemRow } from './inbox-archived-item-row'
-import type { InboxItemListItem } from '../../../../preload/index.d'
+import { InboxListSection, ListTypeIcon } from '@/components/inbox'
+import { InboxDetailPanel } from '@/components/inbox-detail'
+import { groupItemsByTimePeriod, formatCompactRelativeTime, extractDomain } from '@/lib/inbox-utils'
+import { DENSITY_CONFIG } from '@/hooks/use-display-density'
+import type { InboxItemListItem } from '@/types'
 
 interface ArchivedInboxItem extends InboxItemListItem {
   archivedAt?: Date | string
@@ -16,52 +19,166 @@ interface ArchivedInboxItem extends InboxItemListItem {
 
 export interface InboxArchivedViewProps {
   className?: string
+  searchQuery?: string
 }
 
-export function InboxArchivedView({ className }: InboxArchivedViewProps): React.JSX.Element {
-  const { items, hasMore, isLoading, loadMore, isLoadingMore } = useInboxArchived()
-  const [collapsedMonths, setCollapsedMonths] = useState<Set<string>>(new Set())
+const densityConfig = DENSITY_CONFIG.compact
 
-  const toggleMonth = (month: string): void => {
-    setCollapsedMonths((prev) => {
-      const next = new Set(prev)
-      if (next.has(month)) {
-        next.delete(month)
-      } else {
-        next.add(month)
-      }
-      return next
-    })
-  }
+function ArchivedListItem({
+  item,
+  onPreview,
+  onUnarchive,
+  onDelete,
+  isFocused,
+  isUnarchiving,
+  isDeleting
+}: {
+  item: ArchivedInboxItem
+  onPreview: (id: string) => void
+  onUnarchive: (id: string) => void
+  onDelete: (id: string) => void
+  isFocused: boolean
+  isUnarchiving: boolean
+  isDeleting: boolean
+}): React.JSX.Element {
+  return (
+    <div
+      className={cn(
+        'group relative w-full',
+        'flex items-center',
+        'gap-2.5',
+        densityConfig.itemPadding,
+        densityConfig.itemRadius,
+        'transition-all duration-150 ease-out',
+        'cursor-pointer',
+        'hover:bg-muted/50',
+        isFocused && 'bg-muted'
+      )}
+      role="listitem"
+      aria-label={`${item.type}: ${item.title}`}
+      onClick={() => onPreview(item.id)}
+      data-item-id={item.id}
+    >
+      <div className="flex-shrink-0">
+        <ListTypeIcon type={item.type} />
+      </div>
+
+      <span
+        className={cn(
+          'grow shrink min-w-0 truncate font-medium',
+          densityConfig.titleSize,
+          'text-foreground/90'
+        )}
+      >
+        {item.title || 'Untitled'}
+      </span>
+
+      {item.sourceUrl &&
+        (item.type === 'link' || item.type === 'social' || item.type === 'clip') && (
+          <span className={cn('shrink-0', densityConfig.metaSize, 'text-muted-foreground/60')}>
+            {extractDomain(item.sourceUrl)}
+          </span>
+        )}
+
+      <span
+        className={cn(
+          'shrink-0 w-9 text-right tabular-nums',
+          densityConfig.metaSize,
+          'text-muted-foreground/60'
+        )}
+      >
+        {formatCompactRelativeTime(
+          item.archivedAt
+            ? new Date(item.archivedAt)
+            : item.createdAt instanceof Date
+              ? item.createdAt
+              : new Date(item.createdAt)
+        )}
+      </span>
+
+      <div className="shrink-0 quick-actions-reveal flex items-center gap-0.5">
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation()
+            onUnarchive(item.id)
+          }}
+          disabled={isUnarchiving || isDeleting}
+          className={cn(
+            'p-1.5 rounded-md transition-colors',
+            'text-muted-foreground/50 hover:text-foreground hover:bg-muted',
+            isUnarchiving && 'animate-spin'
+          )}
+          title="Restore to inbox"
+          aria-label="Restore to inbox"
+        >
+          {isUnarchiving ? (
+            <Loader2 className="size-3.5" />
+          ) : (
+            <ArrowTurnBackward className="size-3.5" />
+          )}
+        </button>
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation()
+            onDelete(item.id)
+          }}
+          disabled={isUnarchiving || isDeleting}
+          className={cn(
+            'p-1.5 rounded-md transition-colors',
+            'text-muted-foreground/50 hover:text-destructive hover:bg-destructive/10',
+            isDeleting && 'animate-spin'
+          )}
+          title="Delete permanently"
+          aria-label="Delete permanently"
+        >
+          {isDeleting ? <Loader2 className="size-3.5" /> : <Trash2 className="size-3.5" />}
+        </button>
+      </div>
+    </div>
+  )
+}
+
+export function InboxArchivedView({
+  className,
+  searchQuery = ''
+}: InboxArchivedViewProps): React.JSX.Element {
+  const [debouncedSearch, setDebouncedSearch] = useState('')
+  const [activeDetailItemId, setActiveDetailItemId] = useState<string | null>(null)
+  const [focusedItemId, setFocusedItemId] = useState<string | null>(null)
+
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(searchQuery), 250)
+    return () => clearTimeout(timer)
+  }, [searchQuery])
+
+  const { items, hasMore, isLoading, loadMore, isLoadingMore } = useInboxArchived({
+    search: debouncedSearch || undefined
+  })
 
   const unarchiveMutation = useUnarchiveInboxItem()
   const deleteMutation = useDeletePermanentInboxItem()
   const observerTarget = useRef<HTMLDivElement>(null)
 
-  const groupedItems = useMemo(() => {
-    if (!items || items.length === 0) return {}
+  const sortedItems = useMemo(() => {
+    if (!items || items.length === 0) return []
 
-    const groups: Record<string, ArchivedInboxItem[]> = {}
     const archivedItems = items as ArchivedInboxItem[]
-
-    const sortedItems = [...archivedItems].sort((a, b) => {
+    return [...archivedItems].sort((a, b) => {
       const dateA = a.archivedAt ? new Date(a.archivedAt) : new Date(a.createdAt)
       const dateB = b.archivedAt ? new Date(b.archivedAt) : new Date(b.createdAt)
       return dateB.getTime() - dateA.getTime()
     })
-
-    sortedItems.forEach((item) => {
-      const date = item.archivedAt ? new Date(item.archivedAt) : new Date(item.createdAt)
-      const key = format(date, 'MMMM yyyy')
-
-      if (!groups[key]) {
-        groups[key] = []
-      }
-      groups[key].push(item)
-    })
-
-    return groups
   }, [items])
+
+  const groupedItems = useMemo(
+    () =>
+      groupItemsByTimePeriod(sortedItems, (item: ArchivedInboxItem) =>
+        item.archivedAt ? new Date(item.archivedAt) : new Date(item.createdAt)
+      ),
+    [sortedItems]
+  )
 
   useEffect(() => {
     const currentTarget = observerTarget.current
@@ -85,108 +202,114 @@ export function InboxArchivedView({ className }: InboxArchivedViewProps): React.
     }
   }, [hasMore, isLoadingMore, loadMore])
 
-  const handleUnarchive = (id: string): void => {
-    unarchiveMutation.mutate(id)
-  }
+  const handleUnarchive = useCallback(
+    (id: string): void => {
+      unarchiveMutation.mutate(id)
+      if (activeDetailItemId === id) setActiveDetailItemId(null)
+    },
+    [unarchiveMutation, activeDetailItemId]
+  )
 
-  const handleDelete = (id: string): void => {
-    deleteMutation.mutate(id)
-  }
+  const handleDelete = useCallback(
+    (id: string): void => {
+      deleteMutation.mutate(id)
+      if (activeDetailItemId === id) setActiveDetailItemId(null)
+    },
+    [deleteMutation, activeDetailItemId]
+  )
 
-  if (isLoading && items.length === 0) {
+  const handlePreview = useCallback(
+    (id: string): void => {
+      if (activeDetailItemId === id) {
+        setActiveDetailItemId(null)
+      } else {
+        setActiveDetailItemId(id)
+        setFocusedItemId(id)
+      }
+    },
+    [activeDetailItemId]
+  )
+
+  const { item: fullDetailItem, isLoading: isDetailLoading } = useInboxItem(activeDetailItemId)
+  const activeDetailItem = useMemo(() => {
+    if (!activeDetailItemId) return null
+    if (fullDetailItem) return fullDetailItem
+    return sortedItems.find((item) => item.id === activeDetailItemId) || null
+  }, [activeDetailItemId, fullDetailItem, sortedItems])
+
+  const isDetailPanelOpen = activeDetailItemId !== null
+
+  const noopFile = useCallback((): void => {}, [])
+
+  if (isLoading && items.length === 0 && !searchQuery) {
     return (
       <div className={cn('flex flex-col items-center justify-center h-64 gap-4', className)}>
         <Loader2 className="size-8 text-muted-foreground/50 animate-spin" />
-        <p className="text-sm text-muted-foreground/60 font-serif">Loading archives...</p>
-      </div>
-    )
-  }
-
-  if (!isLoading && items.length === 0) {
-    return (
-      <div
-        className={cn(
-          'flex flex-col items-center justify-center h-full w-full p-8 text-center',
-          className
-        )}
-      >
-        <div className="size-16 rounded-full bg-primary/10 flex items-center justify-center mb-4">
-          <Archive className="size-8 text-primary" strokeWidth={1.5} />
-        </div>
-        <h3 className="text-2xl font-medium text-foreground mb-2">No archived items</h3>
-        <p className="text-sm text-muted-foreground max-w-xs leading-relaxed">
-          Items you archive from your inbox will appear here for safekeeping.
-        </p>
       </div>
     )
   }
 
   return (
-    <div className={cn('space-y-6', className)}>
-      {Object.entries(groupedItems).map(([month, monthItems]) => {
-        const isCollapsed = collapsedMonths.has(month)
+    <div className={cn('flex h-full overflow-hidden', className)}>
+      <div className="flex flex-col flex-1 min-w-0 h-full px-4 lg:px-6 pt-3 pb-4 lg:pb-6 overflow-y-auto">
+        {sortedItems.length === 0 && !isLoading ? (
+          <div className="flex flex-col items-center justify-center py-16 text-center">
+            <Archive className="size-6 text-muted-foreground/30 mb-3" strokeWidth={1.5} />
+            <p className="text-sm text-muted-foreground/50">
+              {searchQuery ? 'No matching archived items' : 'No archived items'}
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-1" role="list" aria-label="Archived items">
+            {groupedItems.map((group) => (
+              <InboxListSection
+                key={group.period}
+                title={group.period}
+                count={group.items.length}
+                collapsible
+                selectedIds={new Set<string>()}
+                focusedId={focusedItemId}
+                density="compact"
+                onSelect={() => {}}
+                onFocus={setFocusedItemId}
+              >
+                {group.items.map((item) => (
+                  <ArchivedListItem
+                    key={item.id}
+                    item={item}
+                    onPreview={handlePreview}
+                    onUnarchive={handleUnarchive}
+                    onDelete={handleDelete}
+                    isFocused={focusedItemId === item.id}
+                    isUnarchiving={
+                      unarchiveMutation.isPending && unarchiveMutation.variables === item.id
+                    }
+                    isDeleting={deleteMutation.isPending && deleteMutation.variables === item.id}
+                  />
+                ))}
+              </InboxListSection>
+            ))}
+          </div>
+        )}
 
-        return (
-          <section key={month}>
-            <button
-              type="button"
-              onClick={() => toggleMonth(month)}
-              className={cn(
-                'flex items-center gap-2 w-full px-1 py-1.5 -mx-1 rounded-md',
-                'hover:bg-muted/50 transition-colors duration-150',
-                'cursor-pointer select-none'
-              )}
-              aria-expanded={!isCollapsed}
-              aria-controls={`month-${month}`}
-            >
-              <ChevronRight
-                className={cn(
-                  'size-4 text-muted-foreground/50 transition-transform duration-200',
-                  !isCollapsed && 'rotate-90'
-                )}
-              />
-              <h3 className="text-sm font-medium text-muted-foreground/70 tracking-wide uppercase">
-                {month}
-              </h3>
-              <span className="text-xs text-muted-foreground/50">
-                ({monthItems.length} item{monthItems.length !== 1 ? 's' : ''})
-              </span>
-            </button>
+        {hasMore && (
+          <div ref={observerTarget} className="py-6 flex justify-center">
+            {isLoadingMore && <Loader2 className="size-5 text-muted-foreground/40 animate-spin" />}
+          </div>
+        )}
+      </div>
 
-            <div
-              id={`month-${month}`}
-              className={cn(
-                'space-y-0.5 overflow-hidden transition-all duration-200',
-                isCollapsed ? 'max-h-0 opacity-0' : 'max-h-[5000px] opacity-100'
-              )}
-              role="list"
-            >
-              {monthItems.map((item) => (
-                <InboxArchivedItemRow
-                  key={item.id}
-                  item={item}
-                  onUnarchive={handleUnarchive}
-                  onDelete={handleDelete}
-                  isUnarchiving={
-                    unarchiveMutation.isPending && unarchiveMutation.variables === item.id
-                  }
-                  isDeleting={deleteMutation.isPending && deleteMutation.variables === item.id}
-                />
-              ))}
-            </div>
-          </section>
-        )
-      })}
-
-      {hasMore && (
-        <div ref={observerTarget} className="py-8 flex justify-center">
-          {isLoadingMore ? (
-            <Loader2 className="size-6 text-muted-foreground animate-spin" />
-          ) : (
-            <div className="h-4" />
-          )}
-        </div>
-      )}
+      <InboxDetailPanel
+        isOpen={isDetailPanelOpen}
+        item={activeDetailItem}
+        isLoading={isDetailLoading}
+        readOnly
+        onClose={() => setActiveDetailItemId(null)}
+        onFile={noopFile}
+        onArchive={noopFile}
+        onRestore={handleUnarchive}
+        onDelete={handleDelete}
+      />
     </div>
   )
 }

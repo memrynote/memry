@@ -57,7 +57,7 @@ export const ExpandChevron = ({
         'flex items-center justify-center shrink-0',
         'transition-all duration-150',
         'text-text-tertiary hover:text-muted-foreground',
-        'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring focus-visible:ring-offset-1 rounded',
+        'focus-visible:outline-none rounded',
         isAnimating && 'scale-110',
         className
       )}

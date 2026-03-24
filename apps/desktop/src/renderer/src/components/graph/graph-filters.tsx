@@ -70,7 +70,7 @@ export function GraphFilters({
 }: GraphFiltersProps): React.JSX.Element {
   return (
     <div className="absolute left-3 top-3 z-40 flex flex-col gap-2">
-      <div className="rounded-lg border border-border bg-popover/95 backdrop-blur-sm p-2 shadow-card">
+      <div className="rounded-md border border-border bg-popover/95 backdrop-blur-sm p-2 shadow-card">
         <div className="flex items-center gap-1">
           {ENTITY_TOGGLES.map(({ type, icon: Icon, label, colorClass }) => (
             <Toggle
@@ -116,7 +116,7 @@ export function GraphFilters({
       </div>
 
       {filterState.focusNodeId && focusLabel && (
-        <div className="rounded-lg border border-border bg-popover/95 backdrop-blur-sm px-2.5 py-1.5 shadow-card flex items-center gap-2">
+        <div className="rounded-md border border-border bg-popover/95 backdrop-blur-sm px-2.5 py-1.5 shadow-card flex items-center gap-2">
           <Focus className="size-3.5 text-accent-cyan shrink-0" />
           <span className="text-xs text-foreground truncate max-w-[140px]">{focusLabel}</span>
           <span className="text-[10px] text-muted-foreground">depth {filterState.focusDepth}</span>

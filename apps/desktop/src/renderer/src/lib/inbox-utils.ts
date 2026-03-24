@@ -28,7 +28,8 @@ const getItemDate = (item: InboxItem | InboxItemListItem): Date => {
 
 // Helper to group items by time period
 export const groupItemsByTimePeriod = <T extends InboxItem | InboxItemListItem>(
-  items: T[]
+  items: T[],
+  dateAccessor?: (item: T) => Date
 ): GroupedItems<T>[] => {
   const now = new Date()
   const yesterday = new Date(now)
@@ -41,7 +42,7 @@ export const groupItemsByTimePeriod = <T extends InboxItem | InboxItemListItem>(
   }
 
   items.forEach((item) => {
-    const itemDate = getItemDate(item)
+    const itemDate = dateAccessor ? dateAccessor(item) : getItemDate(item)
     if (isSameDay(itemDate, now)) {
       groups.TODAY.push(item)
     } else if (isSameDay(itemDate, yesterday)) {
@@ -82,6 +83,22 @@ export const formatDuration = (seconds: number): string => {
   const mins = Math.floor(seconds / 60)
   const secs = Math.floor(seconds % 60)
   return `${mins}:${secs.toString().padStart(2, '0')}`
+}
+
+// Compact relative time (Paper-style: "2m", "1h", "3d")
+export const formatCompactRelativeTime = (date: Date | string): string => {
+  const d = typeof date === 'string' ? new Date(date) : date
+  const now = new Date()
+  const diffMs = now.getTime() - d.getTime()
+  const diffMins = Math.floor(diffMs / 60000)
+  const diffHours = Math.floor(diffMins / 60)
+  const diffDays = Math.floor(diffHours / 24)
+
+  if (diffMins < 1) return 'now'
+  if (diffMins < 60) return `${diffMins}m`
+  if (diffHours < 24) return `${diffHours}h`
+  if (diffDays < 30) return `${diffDays}d`
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
 }
 
 // Helper to extract domain from URL

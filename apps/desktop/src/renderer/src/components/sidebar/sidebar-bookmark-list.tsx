@@ -18,6 +18,7 @@ import {
 } from '@/lib/icons'
 
 import { cn } from '@/lib/utils'
+import { NoteIconDisplay } from '@/lib/render-note-icon'
 import { SidebarMenuItem, SidebarMenuButton, SidebarMenuAction } from '@/components/ui/sidebar'
 import {
   DropdownMenu,
@@ -158,12 +159,10 @@ export function SidebarBookmarkList({
             >
               {/* Icon or emoji */}
               {emoji ? (
-                <span
-                  className="size-4 flex items-center justify-center text-sm"
-                  aria-hidden="true"
-                >
-                  {emoji}
-                </span>
+                <NoteIconDisplay
+                  value={emoji}
+                  className="size-4 flex items-center justify-center text-sm shrink-0"
+                />
               ) : (
                 <Icon className={cn('size-4 shrink-0', iconColor)} aria-hidden="true" />
               )}

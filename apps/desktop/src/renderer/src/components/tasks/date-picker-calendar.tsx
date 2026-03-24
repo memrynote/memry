@@ -138,7 +138,7 @@ export function DatePickerCalendar({
         <button
           type="button"
           onClick={goToPrevMonth}
-          className="text-text-tertiary hover:text-text-secondary transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring rounded-sm"
+          className="text-text-tertiary hover:text-text-secondary transition-colors focus-visible:outline-none rounded-sm"
           aria-label="Previous month"
         >
           <ChevronLeftIcon />
@@ -149,7 +149,7 @@ export function DatePickerCalendar({
         <button
           type="button"
           onClick={goToNextMonth}
-          className="text-text-tertiary hover:text-text-secondary transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring rounded-sm"
+          className="text-text-tertiary hover:text-text-secondary transition-colors focus-visible:outline-none rounded-sm"
           aria-label="Next month"
         >
           <ChevronRightIcon />
@@ -184,7 +184,7 @@ export function DatePickerCalendar({
                 disabled={isDisabled}
                 className={cn(
                   'w-[30px] h-[26px] flex items-center justify-center shrink-0 text-[11px] leading-3.5 transition-colors rounded-[5px]',
-                  'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring',
+                  'focus-visible:outline-none',
                   isOutsideMonth && 'text-text-tertiary/30 cursor-default',
                   !isOutsideMonth && isDisabled && 'text-text-tertiary/30 cursor-not-allowed',
                   !isDisabled &&

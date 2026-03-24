@@ -67,16 +67,15 @@ const BulkFilePanel = ({
   const { data: vaultFolders = [] } = useQuery({
     queryKey: ['vault', 'folders'],
     queryFn: async () => {
-      const paths = await window.api.notes.getFolders()
-      // Add root folder option and convert paths to Folder objects
+      const folderInfos = await window.api.notes.getFolders()
       const folders: Folder[] = [{ id: '', name: 'Notes (root)', path: '' }]
-      for (const path of paths) {
-        if (path) {
+      for (const fi of folderInfos) {
+        if (fi.path) {
           folders.push({
-            id: path,
-            name: path.split('/').pop() || path,
-            path: path,
-            parent: path.includes('/') ? path.split('/').slice(0, -1).join('/') : undefined
+            id: fi.path,
+            name: fi.path.split('/').pop() || fi.path,
+            path: fi.path,
+            parent: fi.path.includes('/') ? fi.path.split('/').slice(0, -1).join('/') : undefined
           })
         }
       }
@@ -182,7 +181,7 @@ const BulkFilePanel = ({
             <h3 className="text-xs font-semibold uppercase tracking-wider text-[var(--muted-foreground)]">
               Items to file
             </h3>
-            <div className="rounded-lg border border-[var(--border)] bg-[var(--muted)]/20">
+            <div className="rounded-md border border-[var(--border)] bg-[var(--muted)]/20">
               <ScrollArea className="max-h-[160px]">
                 <div className="p-3 space-y-1">
                   {items.map((item) => (

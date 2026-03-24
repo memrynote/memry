@@ -126,7 +126,7 @@ export const MoreFiltersDropdown = ({
                 onClick={() => setShowStatusPanel(true)}
                 className="flex items-center py-[9px] px-4 gap-2.5 hover:bg-accent focus:outline-none transition-colors"
               >
-                <Clock className="size-3.5 text-text-tertiary" />
+                <Clock className="size-3.5 text-muted-foreground/60" />
                 <span className="text-[13px] text-foreground leading-4">Status</span>
                 {selectedStatusIds.length > 0 && (
                   <span className="text-[11px] text-text-tertiary">
@@ -143,7 +143,7 @@ export const MoreFiltersDropdown = ({
               onClick={() => setShowStatusPanel(false)}
               className="flex items-center py-[9px] px-4 gap-2.5 hover:bg-accent focus:outline-none transition-colors"
             >
-              <Calendar className="size-3.5 text-text-tertiary" />
+              <Calendar className="size-3.5 text-muted-foreground/60" />
               <span className="text-[13px] text-foreground leading-4">Has time set</span>
               <ToggleSwitch
                 enabled={hasTime === 'with-time'}
@@ -159,7 +159,7 @@ export const MoreFiltersDropdown = ({
               type="button"
               className="flex items-center py-[9px] px-4 gap-2.5 hover:bg-accent focus:outline-none transition-colors"
             >
-              <RefreshCw className="size-3.5 text-text-tertiary" />
+              <RefreshCw className="size-3.5 text-muted-foreground/60" />
               <span className="text-[13px] text-foreground leading-4">Recurring only</span>
               <ToggleSwitch
                 enabled={repeatType === 'repeating'}
@@ -177,7 +177,7 @@ export const MoreFiltersDropdown = ({
               onClick={() => setShowStatusPanel(false)}
               className="flex items-center py-2.5 px-4 gap-1.5 bg-surface border-b border-border"
             >
-              <ChevronDown className="size-2.5 text-text-tertiary rotate-90" />
+              <ChevronDown className="size-2.5 text-muted-foreground/60 rotate-90" />
               <span className="text-[13px] text-foreground font-semibold leading-4">Status</span>
             </button>
             <div className="flex flex-col py-2">

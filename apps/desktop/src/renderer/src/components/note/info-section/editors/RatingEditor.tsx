@@ -63,7 +63,7 @@ export function RatingEditor({ value, onChange, maxRating = 5 }: RatingEditorPro
             className={cn(
               'p-0 transition-opacity duration-100',
               'hover:opacity-80',
-              'focus:outline-none focus-visible:ring-1 focus-visible:ring-border/40 focus-visible:rounded'
+              'focus:outline-none focus-visible:rounded'
             )}
           >
             <Star

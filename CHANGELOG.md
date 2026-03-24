@@ -5,6 +5,44 @@ Format: weekly entries grouped by feature area.
 
 ---
 
+## 2026-03-25 — Desktop Polish
+
+### Added
+- Add inbox redesign with toolbar, filters, triage mode, link previews, and waveform visualizer
+- Add embedded tweet rendering with TweetCard component
+- Add reminder detail view with content routing
+- Add live URL title extraction and bot-page-title detection
+- Auto-title voice memos from first transcribed sentence
+- Add folder icon picker and NoteIconDisplay across tree and sidebar
+- Add HugeIcons rendering infrastructure
+- Sync accent color across devices with tint CSS variables
+- Add compact capture mode
+- Add PageToolbar and Pill UI primitives
+- Add Cmd+Z undo for all task CRUD and bulk operations
+- Add WCAG 2.1 AA accessibility pass — keyboard nav, ARIA, focus indicators
+- Add account section, recovery key dialog, shortcuts section, and capture shortcut to settings
+- Add Gelasio, Geist, and Inter font families
+
+### Fixed
+- Fix inbox filing auto-link and metascraper field mapping
+- Fix graph crash on null node data
+- Fix tag count casting and prune orphaned definitions
+- Fix project ID resolution before creating onboarding task
+
+### Changed
+- Extract shared settings primitives and redesign all settings pages
+- Replace custom toast notifications with Sonner
+- Remove non-Twitter platform support and simplify social URL parsing
+- Simplify sidebar with NoteIconDisplay and compact task count
+- Extract DetailHeader and simplify reminder TypeIcon
+- Migrate task design tokens and wire undoable task actions
+
+### Performance
+- Parallelize vault open with window creation to reduce cold-start time
+- Optimize startup I/O and large-vault indexing speed
+
+---
+
 ## 2026-03-19 — Tasks Refinement
 
 ### Added

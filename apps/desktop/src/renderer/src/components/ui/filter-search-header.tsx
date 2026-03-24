@@ -19,13 +19,13 @@ export function FilterSearchHeader({
   return (
     <div className={cn('flex items-center py-2 px-3 gap-2 border-b border-border', className)}>
       {leading}
-      <Search size={12} className="shrink-0 text-text-tertiary" />
+      <Search size={12} className="shrink-0 text-muted-foreground/60" />
       <input
         type="text"
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
-        className="flex-1 min-w-0 bg-transparent text-[12px] text-foreground placeholder:text-text-tertiary outline-none leading-4"
+        className="flex-1 min-w-0 bg-transparent text-[13px] text-foreground placeholder:text-muted-foreground/40 outline-none leading-4"
         onClick={(e) => e.stopPropagation()}
       />
     </div>

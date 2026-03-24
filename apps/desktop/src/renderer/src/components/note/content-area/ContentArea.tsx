@@ -398,6 +398,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
   placeholder = "Start writing, or press '/' for commands...",
   editable = true,
   stickyToolbar = false,
+  spellCheck,
   onContentChange,
   onMarkdownChange,
   onHeadingsChange,
@@ -454,6 +455,21 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
       if (headingsDebounceRef.current) clearTimeout(headingsDebounceRef.current)
     }
   }, [])
+
+  // Apply spellCheck setting imperatively to BlockNote's contenteditable element
+  useEffect(() => {
+    if (spellCheck === undefined) return
+    const container = editorContainerRef.current
+    if (!container) return
+    const applySpellCheck = (): void => {
+      const ce = container.querySelector<HTMLElement>('[contenteditable="true"]')
+      if (ce) ce.spellcheck = spellCheck
+    }
+    applySpellCheck()
+    // Short delay to ensure editor DOM is mounted on first render
+    const t = setTimeout(applySpellCheck, 100)
+    return () => clearTimeout(t)
+  }, [spellCheck])
 
   // Global event listeners to reset drag state when drag is cancelled or tab loses focus
   // This fixes the bug where the overlay gets stuck when user cancels the drag

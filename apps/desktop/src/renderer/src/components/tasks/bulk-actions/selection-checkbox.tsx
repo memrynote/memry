@@ -77,7 +77,7 @@ export const SelectionCheckbox = ({
       aria-label={ariaLabel}
       className={cn(
         'size-4 shrink-0 cursor-pointer rounded border-gray-300',
-        'text-primary focus:ring-primary focus:ring-offset-0',
+        'text-primary',
         'transition-colors duration-150',
         'disabled:cursor-not-allowed disabled:opacity-50',
         // Custom styling for indeterminate state

@@ -106,7 +106,7 @@ export const TasksTabBar = ({
   return (
     <div
       className={cn(
-        'flex items-center shrink-0 gap-2.5 [font-synthesis:none] text-[12px] leading-4 antialiased',
+        'flex items-center shrink-0 gap-2.5 [font-synthesis:none] text-[13px] leading-4 antialiased',
         className
       )}
     >
@@ -133,19 +133,19 @@ export const TasksTabBar = ({
               onKeyDown={(e) => handleKeyDown(e, index)}
               className={cn(
                 'flex items-center py-1 px-2.5 gap-1 transition-colors',
-                'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring focus-visible:ring-inset',
+                'focus-visible:outline-none',
                 index > 0 && 'border-l border-border',
                 isActive
                   ? 'bg-foreground text-background font-medium'
-                  : 'text-text-secondary hover:text-text-primary hover:bg-surface-active/50'
+                  : 'text-muted-foreground hover:text-foreground/90 hover:bg-surface-active/50'
               )}
             >
-              <span className="text-[12px] leading-4">{tab.label}</span>
+              <span className="text-[13px] leading-4">{tab.label}</span>
               <span
                 className={cn(
                   'text-[9px] font-[family-name:var(--font-mono)] leading-3 tabular-nums min-w-[2ch] text-center',
                   count === 0 && 'invisible',
-                  isActive ? 'text-background/45' : 'text-text-tertiary'
+                  isActive ? 'text-background/45' : 'text-muted-foreground/60'
                 )}
               >
                 {count}
@@ -164,16 +164,16 @@ export const TasksTabBar = ({
                 'group/pill flex items-center whitespace-nowrap border-l border-border transition-colors',
                 isActive
                   ? 'saved-filter-active bg-task-star/15 text-task-star font-medium'
-                  : 'text-text-tertiary hover:text-text-primary hover:bg-surface-active/50'
+                  : 'text-muted-foreground/60 hover:text-foreground/90 hover:bg-surface-active/50'
               )}
             >
               <button
                 type="button"
                 aria-label={sf.name}
                 onClick={() => onApplySavedFilter?.(sf)}
-                className="flex items-baseline py-1 pl-2.5 pr-1 gap-1 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring focus-visible:ring-inset"
+                className="flex items-baseline py-1 pl-2.5 pr-1 gap-1 focus-visible:outline-none"
               >
-                <span className="text-[12px] leading-4">{sf.name}</span>
+                <span className="text-[13px] leading-4">{sf.name}</span>
               </button>
               <button
                 type="button"
@@ -250,7 +250,7 @@ function ProjectDropdown({
       <PopoverTrigger asChild>
         <button
           type="button"
-          className="flex items-center shrink-0 whitespace-nowrap rounded-[5px] py-1 px-2.5 gap-[5px] border border-border text-text-secondary hover:text-text-primary hover:bg-surface-active/50 transition-colors"
+          className="flex items-center shrink-0 whitespace-nowrap rounded-[5px] py-1 px-2.5 gap-[5px] border border-border text-muted-foreground hover:text-foreground/90 hover:bg-surface-active/50 transition-colors"
         >
           <span
             className={cn(
@@ -259,13 +259,13 @@ function ProjectDropdown({
             )}
             style={selectedProject ? { backgroundColor: selectedProject.color } : undefined}
           />
-          <span className="text-[12px] leading-4">{selectedProject?.name ?? 'All projects'}</span>
+          <span className="text-[13px] leading-4">{selectedProject?.name ?? 'All projects'}</span>
           <svg
             width="10"
             height="10"
             viewBox="0 0 10 10"
             fill="none"
-            className="text-text-tertiary"
+            className="text-muted-foreground/60"
           >
             <path
               d="M2.5 3.75l2.5 2.5 2.5-2.5"
@@ -278,11 +278,11 @@ function ProjectDropdown({
         </button>
       </PopoverTrigger>
       <PopoverContent
-        className="w-[200px] p-0 rounded-lg overflow-clip bg-popover border-border shadow-[var(--shadow-card-hover)]"
+        className="w-[200px] p-0 rounded-md overflow-clip bg-popover border-border shadow-[var(--shadow-card-hover)]"
         align="start"
         sideOffset={8}
       >
-        <div className="flex flex-col text-[12px] leading-4 [font-synthesis:none] antialiased">
+        <div className="flex flex-col text-[13px] leading-4 [font-synthesis:none] antialiased">
           <FilterSearchHeader
             value={search}
             onChange={setSearch}
@@ -298,48 +298,67 @@ function ProjectDropdown({
               )}
             >
               <div className="shrink-0 rounded-[3px] border-[1.2px] border-solid border-border size-2.5" />
-              <span className="text-[12px] text-text-tertiary leading-4">All projects</span>
+              <span className="text-[13px] text-muted-foreground/60 leading-4">All projects</span>
               {!selectedProjectId && <CheckMark className="ml-auto text-primary" />}
             </button>
             {filtered.map((p) => {
               const isSelected = p.id === selectedProjectId
               return (
-                <div key={p.id} className="group/project-item flex items-center">
-                  <button
-                    type="button"
-                    onClick={() => onProjectChange(p.id)}
+                <div
+                  key={p.id}
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => onProjectChange(p.id)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault()
+                      onProjectChange(p.id)
+                    }
+                  }}
+                  className={cn(
+                    'group/project-item flex items-center rounded-[5px] py-1.5 px-2 gap-2 cursor-pointer transition-colors',
+                    isSelected ? 'bg-accent' : 'hover:bg-accent'
+                  )}
+                >
+                  <div
+                    className="shrink-0 rounded-[3px] size-2.5"
+                    style={{ backgroundColor: p.color }}
+                  />
+                  <span
                     className={cn(
-                      'flex-1 flex items-center rounded-[5px] py-1.5 px-2 gap-2 transition-colors',
-                      isSelected ? 'bg-accent' : 'hover:bg-accent'
+                      'text-[13px] leading-4',
+                      isSelected ? 'text-foreground' : 'text-muted-foreground'
                     )}
                   >
-                    <div
-                      className="shrink-0 rounded-[3px] size-2.5"
-                      style={{ backgroundColor: p.color }}
-                    />
-                    <span
-                      className={cn(
-                        'text-[12px] leading-4',
-                        isSelected ? 'text-foreground' : 'text-text-secondary'
+                    {p.name}
+                  </span>
+                  {(isSelected || onProjectEdit) && (
+                    <div className="ml-auto shrink-0 size-3 relative">
+                      {isSelected && (
+                        <span
+                          className={cn(
+                            'absolute inset-0 flex items-center justify-center transition-opacity',
+                            onProjectEdit && 'group-hover/project-item:opacity-0'
+                          )}
+                        >
+                          <CheckMark className="text-primary" />
+                        </span>
                       )}
-                    >
-                      {p.name}
-                    </span>
-                    {isSelected && <CheckMark className="ml-auto text-primary" />}
-                  </button>
-                  {onProjectEdit && (
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        onProjectEdit(p)
-                        handleOpenChange(false)
-                      }}
-                      className="shrink-0 p-1.5 mr-1 rounded-sm opacity-0 group-hover/project-item:opacity-100 transition-opacity hover:bg-accent"
-                      aria-label={`Edit ${p.name}`}
-                    >
-                      <Settings className="size-3 text-text-tertiary" />
-                    </button>
+                      {onProjectEdit && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            onProjectEdit(p)
+                            handleOpenChange(false)
+                          }}
+                          className="absolute inset-0 flex items-center justify-center opacity-0 group-hover/project-item:opacity-100 transition-opacity"
+                          aria-label={`Edit ${p.name}`}
+                        >
+                          <Settings className="size-3 text-text-tertiary" />
+                        </button>
+                      )}
+                    </div>
                   )}
                 </div>
               )

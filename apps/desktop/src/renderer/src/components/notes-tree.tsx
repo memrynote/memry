@@ -33,6 +33,7 @@ import {
   useNoteMutations,
   type NoteListItem
 } from '@/hooks/use-notes-query'
+import type { FolderInfo } from '../../../preload/index.d'
 import { notesService } from '@/services/notes-service'
 import {
   FileText,
@@ -47,7 +48,6 @@ import {
   FolderOpen,
   FilePlus,
   FolderPlus,
-  Import,
   LayoutTemplate,
   LayoutGrid,
   X,
@@ -55,12 +55,12 @@ import {
   Image,
   Music,
   Video,
-  Monitor
+  Monitor,
+  Smile
 } from '@/lib/icons'
 import { toast } from 'sonner'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Button } from '@/components/ui/button'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { ContextMenuItem, ContextMenuSeparator } from '@/components/ui/context-menu'
 import {
   AlertDialog,
@@ -73,6 +73,8 @@ import {
   AlertDialogTitle
 } from '@/components/ui/alert-dialog'
 import { TemplateSelector } from '@/components/note/template-selector'
+import { NoteIconDisplay } from '@/lib/render-note-icon'
+import { FolderIconButton } from '@/components/folder-icon-button'
 import { getTabIconForFileType, type FileType } from '@memry/shared/file-types'
 import { createLogger } from '@/lib/logger'
 
@@ -85,6 +87,7 @@ const log = createLogger('Component:NotesTree')
 interface FolderNode {
   name: string
   path: string
+  icon?: string | null
   children: FolderNode[]
   notes: NoteListItem[]
 }
@@ -92,6 +95,30 @@ interface FolderNode {
 interface TreeStructure {
   folders: FolderNode[]
   rootNotes: NoteListItem[]
+}
+
+/**
+ * Wrapper that reads tree expand state and passes it to FolderIconButton.
+ * Must be rendered inside TreeProvider.
+ */
+function TreeFolderIcon({
+  nodeId,
+  hasChildren,
+  ...props
+}: Omit<React.ComponentProps<typeof FolderIconButton>, 'isExpanded'> & {
+  nodeId: string
+}) {
+  const { expandedIds, toggleExpanded } = useTree()
+  const isExpanded = expandedIds.has(nodeId)
+
+  return (
+    <FolderIconButton
+      {...props}
+      isExpanded={isExpanded}
+      hasChildren={hasChildren}
+      onToggleExpand={() => toggleExpanded(nodeId)}
+    />
+  )
 }
 
 /**
@@ -109,13 +136,9 @@ function getDisplayName(notePath: string): string {
  * Returns the icon element to render in the tree.
  */
 function getFileIcon(note: NoteListItem): React.ReactElement {
-  // Emoji takes priority for markdown files
+  // Emoji/icon takes priority for markdown files
   if (note.emoji) {
-    return (
-      <span className="text-sm leading-none" role="img" aria-label="note icon">
-        {note.emoji}
-      </span>
-    )
+    return <NoteIconDisplay value={note.emoji} className="text-sm leading-none" />
   }
 
   // Get icon based on file type
@@ -130,7 +153,7 @@ function getFileIcon(note: NoteListItem): React.ReactElement {
     case 'audio':
       return <Music className={`${iconClass} text-green-500`} />
     case 'video':
-      return <Video className={`${iconClass} text-purple-500`} />
+      return <Video className={iconClass} />
     case 'markdown':
     default:
       return <FileText className={iconClass} />
@@ -226,11 +249,16 @@ function getFoldersInParent(tree: TreeStructure, parentPath: string): string[] {
  */
 function buildTreeFromNotes(
   notes: NoteListItem[],
-  folders: string[],
+  folders: FolderInfo[],
   positions: Record<string, number>
 ): TreeStructure {
   const folderMap = new Map<string, FolderNode>()
   const rootNotes: NoteListItem[] = []
+
+  const folderIconMap = new Map<string, string | null>()
+  for (const f of folders) {
+    folderIconMap.set(f.path, f.icon ?? null)
+  }
 
   const ensureFolderInMap = (folderPath: string): FolderNode => {
     const existing = folderMap.get(folderPath)
@@ -248,6 +276,7 @@ function buildTreeFromNotes(
         const node: FolderNode = {
           name: part,
           path: currentPath,
+          icon: folderIconMap.get(currentPath) ?? null,
           children: [],
           notes: []
         }
@@ -268,8 +297,8 @@ function buildTreeFromNotes(
     return lastNode!
   }
 
-  folders.forEach((folderPath) => {
-    ensureFolderInMap(folderPath)
+  folders.forEach((f) => {
+    ensureFolderInMap(f.path)
   })
 
   notes.forEach((note) => {
@@ -478,14 +507,17 @@ function FolderRevealHandler() {
 // Main Component
 // ============================================================================
 
-interface NotesTreeProps {
-  /** Callback to receive action buttons for external rendering */
-  onActionsReady?: (actions: React.ReactNode) => void
-  /** Callback when the focused target folder changes */
-  onTargetFolderChange?: (folder: string) => void
+interface NotesTreeActions {
+  createNote: () => void
+  createFolder: () => void
 }
 
-export function NotesTree({ onActionsReady, onTargetFolderChange }: NotesTreeProps = {}) {
+interface NotesTreeProps {
+  onTargetFolderChange?: (folder: string) => void
+  onActionsReady?: (actions: NotesTreeActions) => void
+}
+
+export function NotesTree({ onTargetFolderChange, onActionsReady }: NotesTreeProps = {}) {
   // Load all notes so the tree can correctly show files in all folders
   // Tree views need complete data - pagination doesn't make sense here
   const { notes, isLoading, error } = useNotesList({ limit: 10000 })
@@ -496,7 +528,7 @@ export function NotesTree({ onActionsReady, onTargetFolderChange }: NotesTreePro
   const deleteNoteMutateAsync = mutations.deleteNote.mutateAsync
   const renameNoteMutateAsync = mutations.renameNote.mutateAsync
   const moveNoteMutateAsync = mutations.moveNote.mutateAsync
-  const { folders, createFolder, refetch: refreshFolders } = useNoteFoldersQuery()
+  const { folders, createFolder, setFolderIcon, refetch: refreshFolders } = useNoteFoldersQuery()
   const { openTab, closeTab, updateTabTitleByEntityId } = useTabActions()
   const queryClient = useQueryClient()
   const originalRenameTitle = useRef<string>('')
@@ -521,6 +553,9 @@ export function NotesTree({ onActionsReady, onTargetFolderChange }: NotesTreePro
   const treeContainerRef = useRef<HTMLDivElement>(null)
   const [isTreeFocused, setIsTreeFocused] = useState(false)
   const isTreeFocusedRef = useRef(false)
+
+  // Folder icon picker state
+  const [iconPickerFolderPath, setIconPickerFolderPath] = useState<string | null>(null)
 
   // Inline rename state for folders
   const [renamingFolderPath, setRenamingFolderPath] = useState<string | null>(null)
@@ -560,13 +595,13 @@ export function NotesTree({ onActionsReady, onTargetFolderChange }: NotesTreePro
         // Fetch configs for all folders and build names map
         const namesMap = new Map<string, string>()
         await Promise.all(
-          folders.map(async (folderPath) => {
+          folders.map(async (f) => {
             try {
-              const config = await notesService.getFolderConfig(folderPath)
+              const config = await notesService.getFolderConfig(f.path)
               if (config?.template) {
                 const templateName = templatesMap.get(config.template)
                 if (templateName) {
-                  namesMap.set(folderPath, templateName)
+                  namesMap.set(f.path, templateName)
                 }
               }
             } catch {
@@ -724,6 +759,7 @@ export function NotesTree({ onActionsReady, onTargetFolderChange }: NotesTreePro
       }
     } catch (err) {
       log.error('Failed to create note', err)
+      toast.error(extractErrorMessage(err, 'Failed to create note'))
     } finally {
       setIsCreating(false)
     }
@@ -797,7 +833,7 @@ export function NotesTree({ onActionsReady, onTargetFolderChange }: NotesTreePro
       let counter = 1
       const targetPath = folder ? `${folder}/` : ''
 
-      while (folders.includes(`${targetPath}${folderName}`)) {
+      while (folders.some((f) => f.path === `${targetPath}${folderName}`)) {
         folderName = `${baseName} ${counter++}`
       }
 
@@ -811,39 +847,19 @@ export function NotesTree({ onActionsReady, onTargetFolderChange }: NotesTreePro
       }
     } catch (err) {
       log.error('Failed to create folder', err)
+      toast.error(extractErrorMessage(err, 'Failed to create folder'))
     } finally {
       setIsCreatingFolder(false)
     }
   }, [isCreatingFolder, createFolder, folders, targetFolder, refreshFolders])
 
-  const handleImportFiles = useCallback(async () => {
-    const folder = isTreeFocusedRef.current ? targetFolder : ''
-    try {
-      const dialogResult = await notesService.showImportDialog()
-      if (dialogResult.canceled || dialogResult.filePaths.length === 0) {
-        return
-      }
-
-      const result = await notesService.importFiles(dialogResult.filePaths, folder || '')
-
-      if (result.imported > 0) {
-        toast.success(`Imported ${result.imported} file${result.imported > 1 ? 's' : ''}`)
-      }
-
-      if (result.failed > 0) {
-        toast.error(`Failed to import ${result.failed} file${result.failed > 1 ? 's' : ''}`, {
-          description: result.errors.join('\n')
-        })
-      }
-    } catch (err) {
-      log.error('Failed to import files', err)
-      toast.error('Failed to import files')
-    }
-  }, [targetFolder])
-
   useEffect(() => {
     onTargetFolderChange?.(targetFolder)
   }, [targetFolder, onTargetFolderChange])
+
+  useEffect(() => {
+    onActionsReady?.({ createNote: handleCreateNote, createFolder: handleCreateFolder })
+  }, [onActionsReady, handleCreateNote, handleCreateFolder])
 
   // Handle creating a note in a specific folder (from context menu)
   const handleCreateNoteInFolder = useCallback(
@@ -879,6 +895,7 @@ export function NotesTree({ onActionsReady, onTargetFolderChange }: NotesTreePro
         }
       } catch (err) {
         log.error('Failed to create note', err)
+        toast.error(extractErrorMessage(err, 'Failed to create note'))
       } finally {
         setIsCreating(false)
       }
@@ -898,7 +915,7 @@ export function NotesTree({ onActionsReady, onTargetFolderChange }: NotesTreePro
         let counter = 1
         const targetPath = parentPath ? `${parentPath}/` : ''
 
-        while (folders.includes(`${targetPath}${folderName}`)) {
+        while (folders.some((f) => f.path === `${targetPath}${folderName}`)) {
           folderName = `${baseName} ${counter++}`
         }
 
@@ -910,6 +927,7 @@ export function NotesTree({ onActionsReady, onTargetFolderChange }: NotesTreePro
         }
       } catch (err) {
         log.error('Failed to create folder', err)
+        toast.error(extractErrorMessage(err, 'Failed to create folder'))
       } finally {
         setIsCreatingFolder(false)
       }
@@ -979,6 +997,7 @@ export function NotesTree({ onActionsReady, onTargetFolderChange }: NotesTreePro
       } catch (err) {
         log.error('Failed to rename note', err)
         revertOptimisticTitle(noteId)
+        toast.error(extractErrorMessage(err, 'Failed to rename note'))
       } finally {
         setIsRenaming(false)
         setRenamingNoteId(null)
@@ -1032,6 +1051,7 @@ export function NotesTree({ onActionsReady, onTargetFolderChange }: NotesTreePro
         await refreshFolders()
       } catch (err) {
         log.error('Failed to rename folder', err)
+        toast.error(extractErrorMessage(err, 'Failed to rename folder'))
       } finally {
         setIsFolderRenaming(false)
         setRenamingFolderPath(null)
@@ -1565,83 +1585,6 @@ export function NotesTree({ onActionsReady, onTargetFolderChange }: NotesTreePro
     [setSelectedIds]
   )
 
-  // Render action buttons (must be before early returns to follow Rules of Hooks)
-  const actionButtons = useMemo(
-    () => (
-      <>
-        {/* New Note button */}
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-6 w-6"
-              onClick={handleCreateNote}
-              disabled={isCreating}
-            >
-              {isCreating ? (
-                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-              ) : (
-                <FilePlus className="h-3.5 w-3.5" />
-              )}
-              <span className="sr-only">New Note</span>
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent side="bottom">
-            <p>New note{targetFolder ? ` in ${targetFolder}` : ''}</p>
-          </TooltipContent>
-        </Tooltip>
-        {/* New Folder button */}
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-6 w-6"
-              onClick={handleCreateFolder}
-              disabled={isCreatingFolder}
-            >
-              {isCreatingFolder ? (
-                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-              ) : (
-                <FolderPlus className="h-3.5 w-3.5" />
-              )}
-              <span className="sr-only">New Folder</span>
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent side="bottom">
-            <p>New folder{targetFolder ? ` in ${targetFolder}` : ''}</p>
-          </TooltipContent>
-        </Tooltip>
-        {/* Import Files button */}
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={handleImportFiles}>
-              <Import className="h-3.5 w-3.5" />
-              <span className="sr-only">Import Files</span>
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent side="bottom">
-            <p>Import files{targetFolder ? ` to ${targetFolder}` : ''}</p>
-          </TooltipContent>
-        </Tooltip>
-      </>
-    ),
-    [
-      handleCreateNote,
-      handleCreateFolder,
-      handleImportFiles,
-      isCreating,
-      isCreatingFolder,
-      targetFolder
-    ]
-  )
-
-  // Notify parent about action buttons (must be before early returns)
-  useEffect(() => {
-    onActionsReady?.(actionButtons)
-  }, [onActionsReady, actionButtons])
-
   // Render loading state
   if (isLoading) {
     return <NotesTreeSkeleton />
@@ -1658,14 +1601,14 @@ export function NotesTree({ onActionsReady, onTargetFolderChange }: NotesTreePro
   }
 
   // Render note item with context menu
-  const renderNote = (note: NoteListItem, level: number, isLast: boolean) => {
+  const renderNote = (note: NoteListItem, level: number, isLast: boolean, hideLines = false) => {
     const isBeingRenamed = renamingNoteId === note.id
     const isSelected = selectedIds.includes(note.id)
     const hasMultipleSelected = selectedIds.length > 1
     const isPartOfSelection = isSelected && hasMultipleSelected
 
     return (
-      <TreeNode key={note.id} nodeId={note.id} level={level} isLast={isLast}>
+      <TreeNode key={note.id} nodeId={note.id} level={level} isLast={isLast} hideLines={hideLines}>
         <TreeNodeTrigger
           contextMenuContent={
             <>
@@ -1702,7 +1645,6 @@ export function NotesTree({ onActionsReady, onTargetFolderChange }: NotesTreePro
             </>
           }
         >
-          <TreeExpander />
           <TreeIcon icon={getFileIcon(note)} />
           {isBeingRenamed ? (
             <input
@@ -1723,7 +1665,7 @@ export function NotesTree({ onActionsReady, onTargetFolderChange }: NotesTreePro
               onBlur={() => handleRenameSubmit(note.id, note.path)}
               onClick={(e) => e.stopPropagation()}
               disabled={isRenaming}
-              className="flex-1 h-5 px-1 text-sm bg-background border border-input rounded focus:outline-none focus:ring-1 focus:ring-ring"
+              className="flex-1 h-5 px-1 text-sm bg-background border border-input rounded focus:outline-none"
             />
           ) : (
             <TreeLabel>{getDisplayName(note.path)}</TreeLabel>
@@ -1749,6 +1691,7 @@ export function NotesTree({ onActionsReady, onTargetFolderChange }: NotesTreePro
       >
         <TreeNodeTrigger
           expandOnly
+          className="group/folderrow"
           contextMenuContent={
             <>
               <ContextMenuItem onClick={() => handleCreateNoteInFolder(folder.path)}>
@@ -1774,6 +1717,17 @@ export function NotesTree({ onActionsReady, onTargetFolderChange }: NotesTreePro
                 Clear Default Template
               </ContextMenuItem>
               <ContextMenuSeparator />
+              <ContextMenuItem onClick={() => setIconPickerFolderPath(folder.path)}>
+                <Smile className="mr-2 h-4 w-4" />
+                Set Icon
+              </ContextMenuItem>
+              {folder.icon && (
+                <ContextMenuItem onClick={() => void setFolderIcon(folder.path, null)}>
+                  <X className="mr-2 h-4 w-4" />
+                  Remove Icon
+                </ContextMenuItem>
+              )}
+              <ContextMenuSeparator />
               <ContextMenuItem onClick={() => handleRenameFolderClick(folder.path)}>
                 <Pencil className="mr-2 h-4 w-4" />
                 Rename
@@ -1788,8 +1742,14 @@ export function NotesTree({ onActionsReady, onTargetFolderChange }: NotesTreePro
             </>
           }
         >
-          <TreeExpander hasChildren={hasChildren} />
-          <TreeIcon hasChildren={hasChildren} icon={<Folder className="h-4 w-4" />} />
+          <TreeFolderIcon
+            nodeId={`folder-${folder.path}`}
+            icon={folder.icon ?? null}
+            hasChildren={hasChildren}
+            onIconChange={(icon) => void setFolderIcon(folder.path, icon)}
+            pickerOpen={iconPickerFolderPath === folder.path}
+            onPickerOpenChange={(open) => setIconPickerFolderPath(open ? folder.path : null)}
+          />
           {isBeingRenamed ? (
             <input
               ref={folderRenameCallbackRef}
@@ -1809,7 +1769,7 @@ export function NotesTree({ onActionsReady, onTargetFolderChange }: NotesTreePro
               onBlur={() => handleFolderRenameSubmit(folder.path)}
               onClick={(e) => e.stopPropagation()}
               disabled={isFolderRenaming}
-              className="flex-1 h-5 px-1 text-sm bg-background border border-input rounded focus:outline-none focus:ring-1 focus:ring-ring"
+              className="flex-1 h-5 px-1 text-sm bg-background border border-input rounded focus:outline-none"
             />
           ) : (
             <div className="group/folder flex flex-1 items-center min-w-0">
@@ -1822,7 +1782,7 @@ export function NotesTree({ onActionsReady, onTargetFolderChange }: NotesTreePro
                     e.stopPropagation()
                     handleOpenFolderView(folder.path)
                   }}
-                  className="p-1 cursor-pointer rounded hover:bg-accent/80 transition-colors"
+                  className="p-1 cursor-pointer rounded"
                   aria-label="Open folder view"
                 >
                   <LayoutGrid className="h-3.5 w-3.5 text-muted-foreground hover:text-foreground" />
@@ -1874,7 +1834,7 @@ export function NotesTree({ onActionsReady, onTargetFolderChange }: NotesTreePro
         onMove={handleMove}
         animateExpand={false}
         multiSelect={true}
-        indent={16}
+        indent={26}
       >
         {/* Handle reveal-in-sidebar requests */}
         <RevealHandler
@@ -1894,9 +1854,9 @@ export function NotesTree({ onActionsReady, onTargetFolderChange }: NotesTreePro
             )
           )}
 
-          {/* Root notes after folders */}
+          {/* Root notes — indented to align with folder children, no indent lines */}
           {tree.rootNotes.map((note, index) =>
-            renderNote(note, 0, index === tree.rootNotes.length - 1)
+            renderNote(note, 1, index === tree.rootNotes.length - 1, true)
           )}
         </TreeView>
       </TreeProvider>

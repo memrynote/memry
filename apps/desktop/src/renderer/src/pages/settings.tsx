@@ -2,17 +2,17 @@ import { useState, useEffect } from 'react'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import {
   FileText,
-  ChevronRight,
   Settings as SettingsIcon,
   FolderOpen,
   Palette,
   BookOpen,
   Brain,
-  Cloud,
   PenLine,
   Plug,
   Tags,
-  ListChecks
+  ListChecks,
+  Key,
+  User
 } from '@/lib/icons'
 import { cn } from '@/lib/utils'
 import { GeneralSettings } from './settings/general-section'
@@ -22,10 +22,11 @@ import { JournalSettings } from './settings/journal-section'
 import { VaultSettings } from './settings/vault-section'
 import { AppearanceSettings } from './settings/appearance-section'
 import { AISettings } from './settings/ai-section'
-import { SyncSettings } from './settings/sync-section'
 import { IntegrationsSettings } from './settings/integrations-section'
 import { TagsSettings } from './settings/tags-section'
 import { TasksSettings } from './settings/tasks-section'
+import { ShortcutsSettings } from './settings/shortcuts-section'
+import { AccountSettings } from './settings/account-section'
 
 type SettingsSection =
   | 'general'
@@ -36,14 +37,15 @@ type SettingsSection =
   | 'vault'
   | 'appearance'
   | 'ai'
-  | 'sync'
   | 'integrations'
   | 'tags'
+  | 'shortcuts'
+  | 'account'
 
 export function SettingsPage() {
   const [activeSection, setActiveSection] = useState<SettingsSection>(() => {
     const saved = localStorage.getItem('memry_settings_section')
-    return (saved as SettingsSection) || 'templates'
+    return (saved as SettingsSection) || 'general'
   })
 
   useEffect(() => {
@@ -62,84 +64,98 @@ export function SettingsPage() {
 
   return (
     <div className="h-full flex">
-      {/* Sidebar */}
-      <div className="w-48 border-r bg-muted/30 flex-shrink-0">
-        <div className="p-4">
-          <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
+      <div className="w-60 shrink-0 pt-5 pb-4 bg-sidebar border-r border-border text-xs/4 font-[family-name:var(--font-sans)]">
+        <div className="flex items-center pb-4 px-5">
+          <span className="text-sm/4.5 font-semibold text-foreground tracking-[-0.01em]">
             Settings
-          </h2>
+          </span>
         </div>
-        <nav className="px-2">
+
+        <SettingsNavGroup label="Workspace">
           <SettingsNavItem
-            icon={<SettingsIcon className="w-4 h-4" />}
+            icon={<User className="w-3.5 h-3.5" />}
+            label="Account"
+            isActive={activeSection === 'account'}
+            onClick={() => setActiveSection('account')}
+          />
+          <SettingsNavItem
+            icon={<SettingsIcon className="w-3.5 h-3.5" />}
             label="General"
             isActive={activeSection === 'general'}
             onClick={() => setActiveSection('general')}
           />
           <SettingsNavItem
-            icon={<FileText className="w-4 h-4" />}
+            icon={<FileText className="w-3.5 h-3.5" />}
             label="Templates"
             isActive={activeSection === 'templates'}
             onClick={() => setActiveSection('templates')}
           />
           <SettingsNavItem
-            icon={<PenLine className="w-4 h-4" />}
+            icon={<PenLine className="w-3.5 h-3.5" />}
             label="Editor"
             isActive={activeSection === 'editor'}
             onClick={() => setActiveSection('editor')}
           />
           <SettingsNavItem
-            icon={<BookOpen className="w-4 h-4" />}
+            icon={<BookOpen className="w-3.5 h-3.5" />}
             label="Journal"
             isActive={activeSection === 'journal'}
             onClick={() => setActiveSection('journal')}
           />
           <SettingsNavItem
-            icon={<ListChecks className="w-4 h-4" />}
+            icon={<ListChecks className="w-3.5 h-3.5" />}
             label="Tasks"
             isActive={activeSection === 'tasks'}
             onClick={() => setActiveSection('tasks')}
           />
+        </SettingsNavGroup>
+
+        <SettingsNavGroup label="Preferences">
           <SettingsNavItem
-            icon={<FolderOpen className="w-4 h-4" />}
-            label="Vault"
-            isActive={activeSection === 'vault'}
-            onClick={() => setActiveSection('vault')}
-          />
-          <SettingsNavItem
-            icon={<Palette className="w-4 h-4" />}
+            icon={<Palette className="w-3.5 h-3.5" />}
             label="Appearance"
             isActive={activeSection === 'appearance'}
             onClick={() => setActiveSection('appearance')}
           />
           <SettingsNavItem
-            icon={<Brain className="w-4 h-4" />}
+            icon={<Key className="w-3.5 h-3.5" />}
+            label="Shortcuts"
+            isActive={activeSection === 'shortcuts'}
+            onClick={() => setActiveSection('shortcuts')}
+          />
+        </SettingsNavGroup>
+
+        <SettingsNavGroup label="Services">
+          <SettingsNavItem
+            icon={<Brain className="w-3.5 h-3.5" />}
             label="AI Assistant"
             isActive={activeSection === 'ai'}
             onClick={() => setActiveSection('ai')}
           />
           <SettingsNavItem
-            icon={<Cloud className="w-4 h-4" />}
-            label="Sync"
-            isActive={activeSection === 'sync'}
-            onClick={() => setActiveSection('sync')}
-          />
-          <SettingsNavItem
-            icon={<Plug className="w-4 h-4" />}
+            icon={<Plug className="w-3.5 h-3.5" />}
             label="Integrations"
             isActive={activeSection === 'integrations'}
             onClick={() => setActiveSection('integrations')}
           />
+        </SettingsNavGroup>
+
+        <SettingsNavGroup label="Data">
           <SettingsNavItem
-            icon={<Tags className="w-4 h-4" />}
+            icon={<FolderOpen className="w-3.5 h-3.5" />}
+            label="Vault"
+            isActive={activeSection === 'vault'}
+            onClick={() => setActiveSection('vault')}
+          />
+          <SettingsNavItem
+            icon={<Tags className="w-3.5 h-3.5" />}
             label="Tags"
             isActive={activeSection === 'tags'}
             onClick={() => setActiveSection('tags')}
           />
-        </nav>
+        </SettingsNavGroup>
       </div>
 
-      {/* Content */}
       <div className="flex-1 overflow-hidden">
         <ScrollArea className="h-full">
           <div className="p-6 max-w-3xl mx-auto">
@@ -151,12 +167,24 @@ export function SettingsPage() {
             {activeSection === 'vault' && <VaultSettings />}
             {activeSection === 'appearance' && <AppearanceSettings />}
             {activeSection === 'ai' && <AISettings />}
-            {activeSection === 'sync' && <SyncSettings />}
             {activeSection === 'integrations' && <IntegrationsSettings />}
             {activeSection === 'tags' && <TagsSettings />}
+            {activeSection === 'shortcuts' && <ShortcutsSettings />}
+            {activeSection === 'account' && <AccountSettings />}
           </div>
         </ScrollArea>
       </div>
+    </div>
+  )
+}
+
+function SettingsNavGroup({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="flex flex-col mt-4 first:mt-0 px-2 gap-px">
+      <span className="uppercase pb-1.5 px-3 text-[11px]/3.5 font-medium tracking-[0.05em] text-muted-foreground/60">
+        {label}
+      </span>
+      {children}
     </div>
   )
 }
@@ -174,14 +202,15 @@ function SettingsNavItem({ icon, label, isActive, onClick }: SettingsNavItemProp
       type="button"
       onClick={onClick}
       className={cn(
-        'w-full flex items-center gap-2 px-3 py-2 rounded-md text-sm transition-colors',
-        'hover:bg-accent/50',
-        isActive && 'bg-accent text-accent-foreground'
+        'relative flex items-center h-7 shrink-0 rounded-[5px] px-3 transition-colors',
+        isActive ? 'bg-accent text-foreground' : 'text-muted-foreground hover:bg-accent/50'
       )}
     >
-      {icon}
-      <span>{label}</span>
-      {isActive && <ChevronRight className="w-4 h-4 ml-auto" />}
+      <span className="shrink-0">{icon}</span>
+      <span className="pl-2 text-[13px]/4 font-medium">{label}</span>
+      {isActive && (
+        <span className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-4 bg-[var(--tint)] rounded-r-sm" />
+      )}
     </button>
   )
 }

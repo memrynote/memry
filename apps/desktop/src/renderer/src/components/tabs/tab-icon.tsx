@@ -28,6 +28,7 @@ import {
 } from '@/lib/icons'
 import type { TabType } from '@/contexts/tabs/types'
 import { cn } from '@/lib/utils'
+import { NoteIconDisplay } from '@/lib/render-note-icon'
 
 interface TabIconProps {
   /** Tab type for default icon lookup */
@@ -96,9 +97,13 @@ const TYPE_TO_ICON: Record<TabType, string> = {
  * Memoized to prevent unnecessary re-renders
  */
 const TabIconComponent = ({ type, icon, emoji, className }: TabIconProps): React.JSX.Element => {
-  // If emoji is provided, render it instead of icon
   if (emoji) {
-    return <span className={cn('shrink-0 text-center leading-none', className)}>{emoji}</span>
+    return (
+      <NoteIconDisplay
+        value={emoji}
+        className={cn('shrink-0 text-center leading-none', className)}
+      />
+    )
   }
 
   // Use provided icon name or fall back to type-based default

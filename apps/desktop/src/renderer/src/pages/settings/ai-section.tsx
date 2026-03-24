@@ -1,13 +1,17 @@
 import { useState, useCallback, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
-import { Separator } from '@/components/ui/separator'
 import { Switch } from '@/components/ui/switch'
-import { Label } from '@/components/ui/label'
-import { Brain, Info, Loader2, CheckCircle, XCircle, RefreshCw } from '@/lib/icons'
+import { Brain, Loader2, CheckCircle, XCircle, RefreshCw } from '@/lib/icons'
 import { toast } from 'sonner'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { createLogger } from '@/lib/logger'
 import { AIInlineSettings as AIInlineSettingsPanel } from './ai-inline-section'
+import {
+  SettingsHeader,
+  SettingsGroup,
+  SettingRow,
+  ACCENT_SWITCH
+} from '@/components/settings/settings-primitives'
 
 const log = createLogger('Page:Settings:AI')
 
@@ -139,104 +143,92 @@ export function AISettings() {
 
   if (isLoading) {
     return (
-      <div className="space-y-6">
-        <div>
-          <h3 className="text-lg font-semibold">AI Assistant</h3>
-          <p className="text-sm text-muted-foreground">Loading settings...</p>
-        </div>
+      <div className="flex flex-col antialiased">
+        <SettingsHeader title="AI Assistant" subtitle="Loading settings..." />
       </div>
     )
   }
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h3 className="text-lg font-semibold">AI Assistant</h3>
-        <p className="text-sm text-muted-foreground">
-          Configure AI-powered features like smart filing suggestions. All AI processing runs
-          locally on your device.
-        </p>
-      </div>
+    <div className="flex flex-col antialiased text-xs/4">
+      <SettingsHeader
+        title="AI Assistant"
+        subtitle="All AI processing runs locally on your device"
+      />
 
-      <Separator />
+      <SettingsGroup>
+        <SettingRow
+          label="Enable AI Features"
+          description="Smart filing suggestions and note connections"
+        >
+          <Switch
+            checked={settings.enabled}
+            onCheckedChange={handleToggleEnabled}
+            className={ACCENT_SWITCH}
+          />
+        </SettingRow>
+      </SettingsGroup>
 
-      {/* Enable/Disable AI */}
-      <div className="flex items-center justify-between">
-        <div className="space-y-0.5">
-          <Label htmlFor="ai-enabled">Enable AI Features</Label>
-          <p className="text-sm text-muted-foreground">
-            Use AI to suggest folders and tags when filing items
-          </p>
-        </div>
-        <Switch id="ai-enabled" checked={settings.enabled} onCheckedChange={handleToggleEnabled} />
-      </div>
-
-      <Separator />
-
-      {/* Local Model Status */}
-      <div className="space-y-4">
-        <div>
-          <Label>Local Embedding Model</Label>
-          <p className="text-sm text-muted-foreground mt-1">
-            Embeddings are generated locally using the all-MiniLM-L6-v2 model. No data is sent to
-            external servers.
-          </p>
-        </div>
-
-        {/* Model Info Card */}
-        <div className="rounded-lg border p-4 space-y-3">
+      <SettingsGroup label="Local Embedding Model">
+        <div className="py-3 px-4 space-y-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Brain className="w-5 h-5 text-muted-foreground" />
-              <span className="font-medium">{modelStatus?.name || 'all-MiniLM-L6-v2'}</span>
-            </div>
-            <div className="flex items-center gap-2">
+              <Brain className="w-4 h-4 text-muted-foreground" />
+              <span className="font-medium text-[13px]/4">
+                {modelStatus?.name || 'all-MiniLM-L6-v2'}
+              </span>
               {modelStatus?.loaded ? (
-                <span className="flex items-center gap-1 text-sm text-green-600">
-                  <CheckCircle className="w-4 h-4" />
+                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px]/3 font-medium bg-green-500/15 text-green-600">
                   Loaded
                 </span>
               ) : modelStatus?.loading || isLoadingModel ? (
-                <span className="flex items-center gap-1 text-sm text-amber-600">
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  Loading...
+                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px]/3 font-medium bg-amber-500/15 text-amber-600">
+                  <Loader2 className="w-3 h-3 animate-spin" />
+                  Loading
                 </span>
-              ) : (
-                <span className="flex items-center gap-1 text-sm text-muted-foreground">
-                  <XCircle className="w-4 h-4" />
-                  Not loaded
-                </span>
-              )}
+              ) : null}
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4 text-sm">
+          <div className="text-xs/4 text-muted-foreground">
+            ~23MB · Cached locally · All on-device
+          </div>
+
+          <div className="flex gap-6">
             <div>
-              <span className="text-muted-foreground">Dimensions:</span>
-              <span className="ml-2">{modelStatus?.dimension || 384}</span>
+              <span className="uppercase text-[10px]/3 font-medium tracking-[0.05em] text-muted-foreground">
+                Dimensions
+              </span>
+              <p className="text-[13px]/4 font-semibold text-foreground">
+                {modelStatus?.dimension || 384}
+              </p>
             </div>
             <div>
-              <span className="text-muted-foreground">Embeddings:</span>
-              <span className="ml-2">{modelStatus?.embeddingCount ?? 0}</span>
+              <span className="uppercase text-[10px]/3 font-medium tracking-[0.05em] text-muted-foreground">
+                Embeddings
+              </span>
+              <p className="text-[13px]/4 font-semibold text-foreground">
+                {(modelStatus?.embeddingCount ?? 0).toLocaleString()}
+              </p>
             </div>
           </div>
 
           {modelStatus?.error && (
-            <div className="text-sm text-red-600 flex items-center gap-1">
-              <XCircle className="w-4 h-4" />
+            <div className="text-xs text-destructive flex items-center gap-1">
+              <XCircle className="w-3.5 h-3.5" />
               {modelStatus.error}
             </div>
           )}
 
           {!modelStatus?.loaded && !isLoadingModel && (
-            <Button onClick={handleLoadModel} className="w-full">
+            <Button onClick={handleLoadModel} size="sm" className="w-full">
               Download & Load Model
             </Button>
           )}
 
           {isLoadingModel && reindexProgress && (
-            <div className="space-y-2">
-              <div className="flex justify-between text-sm text-muted-foreground">
+            <div className="space-y-1.5">
+              <div className="flex justify-between text-[10px]/3 text-muted-foreground">
                 <span>
                   {reindexProgress.phase === 'downloading'
                     ? 'Downloading model...'
@@ -244,62 +236,40 @@ export function AISettings() {
                 </span>
                 <span>{Math.round(reindexProgress.current)}%</span>
               </div>
-              <div className="h-2 bg-muted rounded-full overflow-hidden">
+              <div className="h-1.5 bg-muted rounded-full overflow-hidden">
                 <div
-                  className="h-full bg-primary transition-all duration-300"
+                  className="h-full bg-[var(--tint)] transition-all duration-300 rounded-full"
                   style={{ width: `${reindexProgress.current}%` }}
                 />
               </div>
             </div>
           )}
         </div>
+      </SettingsGroup>
 
-        {/* Info hint */}
-        <div className="flex items-start gap-2 p-3 rounded-lg bg-muted/50 text-sm">
-          <Info className="w-4 h-4 text-muted-foreground mt-0.5 flex-shrink-0" />
-          <p className="text-muted-foreground">
-            The model (~23MB) will be downloaded once and cached locally. All embedding generation
-            happens on your device for complete privacy.
-          </p>
-        </div>
-      </div>
-
-      <Separator />
-
-      {/* Reindex Embeddings */}
-      <div className="space-y-4">
-        <div>
-          <Label>Embedding Index</Label>
-          <p className="text-sm text-muted-foreground mt-1">
-            Rebuild the AI embeddings index for all notes. This enables better similarity matching
-            for filing suggestions.
-          </p>
-        </div>
-
-        <Button
-          variant="outline"
-          onClick={handleReindexEmbeddings}
-          disabled={isReindexing || !modelStatus?.loaded || !settings.enabled}
-        >
-          {isReindexing ? (
-            <>
-              <Loader2 className="w-4 h-4 animate-spin mr-2" />
-              Reindexing...
-            </>
-          ) : (
-            <>
-              <RefreshCw className="w-4 h-4 mr-2" />
-              Rebuild Index
-            </>
-          )}
-        </Button>
-
+      <SettingsGroup label="Embedding Index">
+        <SettingRow label="Rebuild Index" description="Regenerate embeddings for all notes">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleReindexEmbeddings}
+            disabled={isReindexing || !modelStatus?.loaded || !settings.enabled}
+            className="gap-1.5"
+          >
+            {isReindexing ? (
+              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+            ) : (
+              <RefreshCw className="w-3.5 h-3.5" />
+            )}
+            Rebuild
+          </Button>
+        </SettingRow>
         {isReindexing &&
           reindexProgress &&
           reindexProgress.phase !== 'downloading' &&
           reindexProgress.phase !== 'loading' && (
-            <div className="space-y-2">
-              <div className="flex justify-between text-sm text-muted-foreground">
+            <div className="px-4 pb-3 space-y-1.5">
+              <div className="flex justify-between text-[10px]/3 text-muted-foreground">
                 <span>
                   {reindexProgress.phase === 'scanning'
                     ? 'Scanning notes...'
@@ -311,9 +281,9 @@ export function AISettings() {
                   {reindexProgress.current} / {reindexProgress.total}
                 </span>
               </div>
-              <div className="h-2 bg-muted rounded-full overflow-hidden">
+              <div className="h-1.5 bg-muted rounded-full overflow-hidden">
                 <div
-                  className="h-full bg-primary transition-all duration-300"
+                  className="h-full bg-[var(--tint)] transition-all duration-300 rounded-full"
                   style={{
                     width: `${reindexProgress.total > 0 ? (reindexProgress.current / reindexProgress.total) * 100 : 0}%`
                   }}
@@ -321,18 +291,7 @@ export function AISettings() {
               </div>
             </div>
           )}
-
-        {/* Info hint */}
-        <div className="flex items-start gap-2 p-3 rounded-lg bg-muted/50 text-sm">
-          <Info className="w-4 h-4 text-muted-foreground mt-0.5 flex-shrink-0" />
-          <p className="text-muted-foreground">
-            The embedding index is built automatically when notes are created or modified. Use this
-            button to rebuild from scratch if suggestions seem inaccurate.
-          </p>
-        </div>
-      </div>
-
-      <Separator />
+      </SettingsGroup>
 
       <AIInlineSettingsPanel />
     </div>

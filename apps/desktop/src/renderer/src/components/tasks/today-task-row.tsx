@@ -101,8 +101,7 @@ export const TodayTaskRow = ({
       className={cn(
         'group flex items-center gap-3 rounded-sm px-3 py-2.5 transition-colors duration-150',
         'hover:bg-accent/50',
-        onClick &&
-          'cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring',
+        onClick && 'cursor-pointer focus-visible:outline-none',
         isOverdue && 'bg-task-due-overdue-bg/50',
         isSelected && 'bg-primary/10 ring-1 ring-inset ring-primary/30',
         className
@@ -123,7 +122,9 @@ export const TodayTaskRow = ({
       </span>
 
       {/* Title */}
-      <span className="flex-1 truncate text-sm font-medium text-text-primary">{task.title}</span>
+      <span className="flex-1 truncate text-[13px] font-medium text-foreground/90">
+        {task.title}
+      </span>
 
       {/* Repeat indicator */}
       {task.isRepeating && task.repeatConfig && (

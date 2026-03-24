@@ -35,7 +35,7 @@ export function StatusPanel({
       <div className="flex items-center py-2 px-3 gap-1.5 border-b border-border">
         <BackButton onClick={onGoBack} />
         <StatusIcon type="todo" color="var(--muted-foreground)" size="md" />
-        <span className="text-[12px] text-foreground font-medium leading-4">Status</span>
+        <span className="text-[13px] text-foreground font-medium leading-4">Status</span>
       </div>
       <div className="flex flex-col p-1">
         {statuses.map((status) => {
@@ -54,8 +54,8 @@ export function StatusPanel({
               <StatusIcon type={status.type} color={status.color} />
               <span
                 className={cn(
-                  'text-[12px] leading-4',
-                  selected ? 'text-foreground' : 'text-text-secondary'
+                  'text-[13px] leading-4',
+                  selected ? 'text-foreground' : 'text-muted-foreground'
                 )}
               >
                 {status.name}

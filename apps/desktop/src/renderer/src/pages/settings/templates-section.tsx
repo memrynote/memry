@@ -1,7 +1,6 @@
 import { useState, useCallback } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Separator } from '@/components/ui/separator'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -22,6 +21,7 @@ import { FileText, Plus, MoreHorizontal, Pencil, Copy, Trash2, Lock } from '@/li
 import { useTemplates } from '@/hooks/use-templates'
 import { useTabs } from '@/contexts/tabs'
 import { toast } from 'sonner'
+import { SettingsHeader, SettingsGroup } from '@/components/settings/settings-primitives'
 
 export function TemplatesSettings() {
   const { templates, isLoading, deleteTemplate, duplicateTemplate } = useTemplates()
@@ -89,83 +89,71 @@ export function TemplatesSettings() {
   const customTemplates = templates.filter((t) => !t.isBuiltIn)
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h3 className="text-lg font-semibold">Templates</h3>
-          <p className="text-sm text-muted-foreground">
-            Manage note templates for quick note creation
-          </p>
-        </div>
-        <Button onClick={handleCreateTemplate}>
-          <Plus className="w-4 h-4 mr-2" />
-          New Template
-        </Button>
-      </div>
-
-      <Separator />
+    <div className="flex flex-col antialiased text-xs/4">
+      <SettingsHeader
+        title="Templates"
+        subtitle="Manage note templates for quick creation"
+        action={
+          <Button
+            onClick={handleCreateTemplate}
+            variant="outline"
+            size="sm"
+            className="gap-1.5 border-[var(--tint)] text-[var(--tint)] hover:bg-[var(--tint)]/10"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            New Template
+          </Button>
+        }
+      />
 
       {isLoading ? (
-        <div className="text-muted-foreground text-sm">Loading templates...</div>
+        <div className="text-muted-foreground text-xs/4 py-4">Loading templates...</div>
       ) : (
-        <div className="space-y-6">
-          {/* Built-in Templates */}
+        <>
           {builtInTemplates.length > 0 && (
-            <div>
-              <h4 className="text-sm font-medium text-muted-foreground uppercase tracking-wider mb-3">
-                Built-in Templates
-              </h4>
-              <div className="space-y-2">
-                {builtInTemplates.map((template) => (
-                  <TemplateListItem
-                    key={template.id}
-                    template={template}
-                    onEdit={() => handleEditTemplate(template.id, template.name)}
-                    onDuplicate={() => {
-                      setDuplicateId(template.id)
-                      setDuplicateName(`${template.name} (Copy)`)
-                    }}
-                    onDelete={null} // Can't delete built-in
-                  />
-                ))}
-              </div>
-            </div>
+            <SettingsGroup label="Built-in">
+              {builtInTemplates.map((template) => (
+                <TemplateRow
+                  key={template.id}
+                  template={template}
+                  onEdit={() => handleEditTemplate(template.id, template.name)}
+                  onDuplicate={() => {
+                    setDuplicateId(template.id)
+                    setDuplicateName(`${template.name} (Copy)`)
+                  }}
+                  onDelete={null}
+                />
+              ))}
+            </SettingsGroup>
           )}
 
-          {/* Custom Templates */}
           {customTemplates.length > 0 && (
-            <div>
-              <h4 className="text-sm font-medium text-muted-foreground uppercase tracking-wider mb-3">
-                My Templates
-              </h4>
-              <div className="space-y-2">
-                {customTemplates.map((template) => (
-                  <TemplateListItem
-                    key={template.id}
-                    template={template}
-                    onEdit={() => handleEditTemplate(template.id, template.name)}
-                    onDuplicate={() => {
-                      setDuplicateId(template.id)
-                      setDuplicateName(`${template.name} (Copy)`)
-                    }}
-                    onDelete={() => setDeleteConfirm(template.id)}
-                  />
-                ))}
-              </div>
-            </div>
+            <SettingsGroup label="My Templates">
+              {customTemplates.map((template) => (
+                <TemplateRow
+                  key={template.id}
+                  template={template}
+                  onEdit={() => handleEditTemplate(template.id, template.name)}
+                  onDuplicate={() => {
+                    setDuplicateId(template.id)
+                    setDuplicateName(`${template.name} (Copy)`)
+                  }}
+                  onDelete={() => setDeleteConfirm(template.id)}
+                />
+              ))}
+            </SettingsGroup>
           )}
 
           {customTemplates.length === 0 && (
             <div className="text-center py-8 text-muted-foreground">
-              <FileText className="w-12 h-12 mx-auto mb-3 opacity-50" />
-              <p>No custom templates yet</p>
-              <p className="text-sm">Create a template to get started</p>
+              <FileText className="w-10 h-10 mx-auto mb-2 opacity-40" />
+              <p className="text-[13px]/4 font-medium">No custom templates yet</p>
+              <p className="text-xs/4">Create a template to get started</p>
             </div>
           )}
-        </div>
+        </>
       )}
 
-      {/* Delete Confirmation Dialog */}
       <AlertDialog open={!!deleteConfirm} onOpenChange={() => setDeleteConfirm(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -187,7 +175,6 @@ export function TemplatesSettings() {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Duplicate Dialog */}
       <AlertDialog open={!!duplicateId} onOpenChange={() => setDuplicateId(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -212,7 +199,7 @@ export function TemplatesSettings() {
   )
 }
 
-interface TemplateListItemProps {
+interface TemplateRowProps {
   template: {
     id: string
     name: string
@@ -225,58 +212,49 @@ interface TemplateListItemProps {
   onDelete: (() => void) | null
 }
 
-function TemplateListItem({ template, onEdit, onDuplicate, onDelete }: TemplateListItemProps) {
+function TemplateRow({ template, onEdit, onDuplicate, onDelete }: TemplateRowProps) {
   return (
-    <div className="flex items-center gap-3 p-3 rounded-lg border bg-card hover:bg-accent/30 transition-colors group">
-      {/* Icon */}
-      <div className="flex-shrink-0 w-10 h-10 flex items-center justify-center rounded-md bg-muted text-xl">
-        {template.icon || <FileText className="w-5 h-5 text-muted-foreground" />}
-      </div>
-
-      {/* Content */}
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2">
-          <span className="font-medium">{template.name}</span>
-          {template.isBuiltIn && (
-            <span className="flex items-center gap-1 text-xs text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
-              <Lock className="w-3 h-3" />
-              Built-in
-            </span>
+    <div className="flex items-center justify-between h-11 py-3 px-4 shrink-0 group">
+      <div className="flex items-center gap-2.5 min-w-0">
+        <span className="text-muted-foreground shrink-0">
+          {template.icon || <FileText className="w-3.5 h-3.5" />}
+        </span>
+        <div className="flex flex-col gap-px min-w-0">
+          <span className="font-medium text-[13px]/4 text-foreground">{template.name}</span>
+          {template.description && (
+            <span className="text-xs/4 text-muted-foreground truncate">{template.description}</span>
           )}
         </div>
-        {template.description && (
-          <p className="text-sm text-muted-foreground truncate">{template.description}</p>
+      </div>
+      <div className="flex items-center gap-1 shrink-0 ml-4">
+        {template.isBuiltIn ? (
+          <Lock className="w-3.5 h-3.5 text-muted-foreground/50" />
+        ) : (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button className="p-1 rounded text-muted-foreground/50 opacity-0 group-hover:opacity-100 hover:text-foreground transition-all">
+                <MoreHorizontal className="w-3.5 h-3.5" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={onEdit}>
+                <Pencil className="w-4 h-4 mr-2" />
+                Edit
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={onDuplicate}>
+                <Copy className="w-4 h-4 mr-2" />
+                Duplicate
+              </DropdownMenuItem>
+              {onDelete && (
+                <DropdownMenuItem onClick={onDelete} className="text-destructive">
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  Delete
+                </DropdownMenuItem>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
         )}
       </div>
-
-      {/* Actions */}
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="opacity-0 group-hover:opacity-100 transition-opacity"
-          >
-            <MoreHorizontal className="w-4 h-4" />
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
-          <DropdownMenuItem onClick={onEdit}>
-            <Pencil className="w-4 h-4 mr-2" />
-            {template.isBuiltIn ? 'View' : 'Edit'}
-          </DropdownMenuItem>
-          <DropdownMenuItem onClick={onDuplicate}>
-            <Copy className="w-4 h-4 mr-2" />
-            Duplicate
-          </DropdownMenuItem>
-          {onDelete && (
-            <DropdownMenuItem onClick={onDelete} className="text-destructive">
-              <Trash2 className="w-4 h-4 mr-2" />
-              Delete
-            </DropdownMenuItem>
-          )}
-        </DropdownMenuContent>
-      </DropdownMenu>
     </div>
   )
 }

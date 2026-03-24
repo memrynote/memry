@@ -19,7 +19,7 @@ export function StorageUsageBar() {
 
   if (error || !data) {
     return (
-      <div className="rounded-lg border p-4">
+      <div className="rounded-md border p-4">
         <div className="flex items-center justify-between">
           <p className="text-sm text-muted-foreground">
             {error || 'Sign in to view storage usage'}
@@ -41,7 +41,7 @@ export function StorageUsageBar() {
 
   return (
     <div className="space-y-4">
-      <div className="rounded-lg border p-4 space-y-4">
+      <div className="rounded-md border p-4 space-y-4">
         {/* Header */}
         <div className="flex items-center justify-between">
           <h4 className="text-sm font-medium">Storage</h4>
@@ -102,7 +102,7 @@ export function StorageUsageBar() {
 
       {/* Warning Banner */}
       {showWarning && (
-        <div className="rounded-lg bg-amber-500/10 border border-amber-500/20 p-3" role="alert">
+        <div className="rounded-md bg-amber-500/10 border border-amber-500/20 p-3" role="alert">
           <p className="text-sm font-medium text-amber-600 dark:text-amber-400">
             Storage almost full
           </p>
@@ -117,7 +117,7 @@ export function StorageUsageBar() {
 
 function StorageSkeleton() {
   return (
-    <div className="rounded-lg border p-4 space-y-4 animate-pulse">
+    <div className="rounded-md border p-4 space-y-4 animate-pulse">
       <div className="flex items-center justify-between">
         <div className="h-4 w-16 rounded bg-muted" />
         <div className="h-4 w-24 rounded bg-muted" />

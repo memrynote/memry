@@ -9,15 +9,18 @@ import {
   clipboard,
   screen,
   session,
+  nativeImage,
   Menu,
   MenuItem
 } from 'electron'
 import { join, resolve, normalize } from 'path'
 import { homedir } from 'node:os'
-import { existsSync, readdirSync } from 'node:fs'
+import { existsSync, readdirSync, statSync, createReadStream } from 'node:fs'
+import { lookup as mimeLookup } from 'mime-types'
 import { config } from 'dotenv'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import { registerAllHandlers } from './ipc'
+import { applyGlobalCaptureShortcut } from './ipc/settings-handlers'
 import { autoOpenLastVault, closeVault } from './vault'
 import { getCurrentVaultPath } from './store'
 import { startSnoozeScheduler, stopSnoozeScheduler, checkDueItemsOnStartup } from './inbox/snooze'
@@ -148,9 +151,9 @@ function configureCsp(): void {
     "default-src 'self' memry-file:",
     "script-src 'self'",
     "style-src 'self' 'unsafe-inline'",
-    "img-src 'self' data: memry-file:",
+    "img-src 'self' data: memry-file: https://pbs.twimg.com",
     "font-src 'self' data:",
-    "connect-src 'self' memry-file: https://*.memrynote.com wss://*.memrynote.com http://127.0.0.1:*",
+    "connect-src 'self' memry-file: https://*.memrynote.com wss://*.memrynote.com https://cdn.syndication.twimg.com https://react-tweet.vercel.app http://127.0.0.1:*",
     "media-src 'self' memry-file:",
     "worker-src 'self' blob:",
     "object-src 'none'",
@@ -162,7 +165,7 @@ function configureCsp(): void {
   if (is.dev) {
     policy[1] = "script-src 'self' 'unsafe-eval' 'unsafe-inline'"
     policy[5] =
-      "connect-src 'self' memry-file: https://*.memrynote.com wss://*.memrynote.com ws://localhost:* http://localhost:* http://127.0.0.1:*"
+      "connect-src 'self' memry-file: https://*.memrynote.com wss://*.memrynote.com https://cdn.syndication.twimg.com https://react-tweet.vercel.app ws://localhost:* http://localhost:* http://127.0.0.1:*"
   }
 
   const cspString = policy.join('; ')
@@ -234,6 +237,7 @@ function createWindow(): void {
     height: 900,
     show: false,
     autoHideMenuBar: true,
+    icon: join(__dirname, '../../build/icon.png'),
     ...(process.platform === 'darwin'
       ? {
           titleBarStyle: 'hidden',
@@ -398,7 +402,6 @@ void app.whenReady().then(async () => {
       return new Response(null, { status: 403, statusText: 'Forbidden' })
     }
 
-    const { existsSync } = await import('fs')
     if (!existsSync(filePath)) {
       // Return empty 1x1 transparent PNG for missing image files (null thumbnails)
       // This avoids console errors and broken image icons
@@ -424,11 +427,9 @@ void app.whenReady().then(async () => {
     }
 
     try {
-      const { statSync, createReadStream } = await import('fs')
-      const { lookup } = await import('mime-types')
       const stats = statSync(filePath)
       const fileSize = stats.size
-      const mimeType = lookup(filePath) || 'application/octet-stream'
+      const mimeType = mimeLookup(filePath) || 'application/octet-stream'
 
       // Check for Range header (needed for video/audio seeking)
       const rangeHeader = request.headers.get('Range')
@@ -514,6 +515,13 @@ void app.whenReady().then(async () => {
     return clipboard.readText()
   })
 
+  ipcMain.on('quick-capture:resize', (_event, height: number) => {
+    if (!quickCaptureWindow || quickCaptureWindow.isDestroyed()) return
+    const clamped = Math.max(120, Math.min(400, Math.round(height)))
+    const [width] = quickCaptureWindow.getSize()
+    quickCaptureWindow.setSize(width, clamped)
+  })
+
   // Deep link handler for memry:// protocol (T041e)
   // macOS: deep links arrive via open-url event
   app.on('open-url', (event, url) => {
@@ -582,35 +590,40 @@ void app.whenReady().then(async () => {
     .initPersistence()
     .catch((err) => mainLog.warn('Early CRDT persistence init failed (non-fatal)', err))
 
-  // Register global shortcut for quick capture (Cmd+Shift+Space)
-  registerQuickCaptureShortcut()
-
-  // Auto-open the last vault if one was previously open
-  await autoOpenLastVault()
-
-  // Start the snooze scheduler for inbox items
-  // This checks for due items on startup and then every minute
-  try {
-    checkDueItemsOnStartup()
-    startSnoozeScheduler()
-  } catch (error) {
-    // Snooze scheduler is non-critical - log and continue
-    mainLog.warn('snooze scheduler failed to start:', error)
+  // Register global shortcut for quick capture from keyboard settings (fallback: hardcoded default)
+  const globalCaptureResult = applyGlobalCaptureShortcut()
+  if (!globalCaptureResult.registered) {
+    registerQuickCaptureShortcut()
   }
 
-  // Start the reminder scheduler for notes/journal/highlights
-  // This checks for due reminders on startup and then every minute
-  try {
-    startReminderScheduler()
-  } catch (error) {
-    // Reminder scheduler is non-critical - log and continue
-    mainLog.warn('reminder scheduler failed to start:', error)
-  }
-
+  // Configure CSP and cert pinning before the window loads
   configureCsp()
   configureCertificatePinning()
 
+  if (process.platform === 'darwin' && !app.isPackaged) {
+    const iconPath = join(__dirname, '../../build/icon.png')
+    app.dock?.setIcon(nativeImage.createFromPath(iconPath))
+  }
+
   createWindow()
+
+  // Open the last vault and start schedulers concurrently with renderer load.
+  // The renderer subscribes to vault status events and updates automatically.
+  void autoOpenLastVault()
+    .then(() => {
+      try {
+        checkDueItemsOnStartup()
+        startSnoozeScheduler()
+      } catch (error) {
+        mainLog.warn('snooze scheduler failed to start:', error)
+      }
+      try {
+        startReminderScheduler()
+      } catch (error) {
+        mainLog.warn('reminder scheduler failed to start:', error)
+      }
+    })
+    .catch((err) => mainLog.error('autoOpenLastVault failed:', err))
 
   app.on('activate', function () {
     // On macOS it's common to re-create a window in the app when the
@@ -642,7 +655,7 @@ function showQuickCaptureWindow(): void {
   const { width: screenWidth, height: screenHeight } = primaryDisplay.workAreaSize
 
   const windowWidth = 480
-  const windowHeight = 200
+  const windowHeight = 82
 
   // Calculate center position
   const x = Math.round((screenWidth - windowWidth) / 2)

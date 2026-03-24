@@ -1,15 +1,21 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { Button } from '@/components/ui/button'
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp'
-import { Loader2 } from '@/lib/icons'
+import { Loader2, Clock } from '@/lib/icons'
 
 interface OtpInputProps {
   onComplete: (code: string) => void
   onResend: () => void
+  onBack: () => void
   isVerifying: boolean
   isResending: boolean
   error: string | null
   expiresIn: number
+}
+
+function formatCountdown(s: number): string {
+  const mins = Math.floor(s / 60)
+  const secs = s % 60
+  return `${mins}:${secs.toString().padStart(2, '0')}`
 }
 
 function useCountdown(onResend: () => void): {
@@ -63,6 +69,7 @@ function useCountdown(onResend: () => void): {
 export function OtpInput({
   onComplete,
   onResend,
+  onBack,
   isVerifying,
   isResending,
   error,
@@ -105,9 +112,12 @@ export function OtpInput({
     [onComplete]
   )
 
+  const slotClassName =
+    'h-14 w-12 rounded-lg bg-foreground/[0.03] border border-foreground/10 data-[filled]:border-[var(--tint)]/40 font-mono font-medium text-[22px]/7 shadow-none'
+
   return (
     <div className="space-y-5">
-      <div className="flex justify-center">
+      <div className="flex justify-center pb-1">
         <InputOTP
           maxLength={6}
           value={value}
@@ -121,14 +131,14 @@ export function OtpInput({
               <InputOTPSlot
                 key={`otp-${i}`}
                 index={i}
-                className="h-12 w-11 text-lg font-semibold border rounded-lg"
+                className={slotClassName}
                 style={{ animationDelay: `${i * 60}ms` }}
               />
             ))}
           </InputOTPGroup>
 
-          <div className="flex items-center px-2" role="separator" aria-hidden="true">
-            <div className="w-1.5 h-1.5 rounded-full bg-border" />
+          <div className="flex items-center justify-center w-5" role="separator" aria-hidden="true">
+            <div className="size-1 rounded-xs bg-muted-foreground/50" />
           </div>
 
           <InputOTPGroup className="gap-1.5">
@@ -136,7 +146,7 @@ export function OtpInput({
               <InputOTPSlot
                 key={`otp-${i}`}
                 index={i}
-                className="h-12 w-11 text-lg font-semibold border rounded-lg"
+                className={slotClassName}
                 style={{ animationDelay: `${(i + 1) * 60}ms` }}
               />
             ))}
@@ -161,25 +171,34 @@ export function OtpInput({
         </p>
       )}
 
-      <div className="text-center">
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={reset}
-          disabled={!canResend || isResending || isVerifying}
-          className="text-muted-foreground"
+      <div className="flex flex-col items-center gap-3">
+        {isResending ? (
+          <div className="flex items-center gap-1.5 text-muted-foreground">
+            <Loader2 className="w-3 h-3 animate-spin" />
+            <span className="text-xs">Resending...</span>
+          </div>
+        ) : canResend ? (
+          <button
+            type="button"
+            onClick={reset}
+            disabled={isVerifying}
+            className="text-[var(--tint)] text-[13px] hover:underline disabled:opacity-50"
+          >
+            Resend code
+          </button>
+        ) : (
+          <div className="flex items-center gap-1.5 text-muted-foreground/70">
+            <Clock className="w-3 h-3" />
+            <span className="text-xs tabular-nums">Resend in {formatCountdown(seconds)}</span>
+          </div>
+        )}
+        <button
+          type="button"
+          onClick={onBack}
+          className="text-[var(--tint)] text-[13px] hover:underline"
         >
-          {isResending ? (
-            <>
-              <Loader2 className="w-3 h-3 animate-spin" />
-              Resending...
-            </>
-          ) : canResend ? (
-            'Resend code'
-          ) : (
-            <span className="tabular-nums">Resend in {seconds}s</span>
-          )}
-        </Button>
+          Use a different email
+        </button>
       </div>
     </div>
   )

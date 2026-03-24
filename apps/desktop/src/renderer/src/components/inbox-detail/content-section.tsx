@@ -3,17 +3,17 @@
  * Displays type-specific content previews (link, image, voice, text)
  */
 
-import { useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { TweetCard } from './tweet-card'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import {
-  Globe,
   Image,
   Mic,
   FileText,
   Calendar,
   Clock,
   User,
-  ExternalLink,
+  Globe,
   Play,
   Pause,
   Copy,
@@ -22,18 +22,25 @@ import {
   AlertCircle,
   RefreshCw,
   FileType,
-  Video
+  FilePdf,
+  Video,
+  Link2,
+  Bell
 } from '@/lib/icons'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { extractDomain } from '@/lib/inbox-utils'
 import { InboxContentEditor } from './inbox-content-editor'
+import { LinkPreview } from './link-preview'
+import { ReminderDetail } from './reminder-detail'
+import { getTypeAccentClass } from './type-accents'
 import type {
   InboxItem,
   InboxItemListItem,
   InboxItemType,
   LinkMetadata,
   ImageMetadata,
+  PdfMetadata,
   VoiceMetadata
 } from '@/types'
 import { createLogger } from '@/lib/logger'
@@ -89,6 +96,10 @@ const formatDate = (date: Date | string): string => {
   )
 }
 
+const PLAYBACK_BAR_COUNT = 60
+const PLAYBACK_MIN_HEIGHT = 3
+const PLAYBACK_MAX_HEIGHT = 32
+
 // =============================================================================
 // Type Icon Component
 // =============================================================================
@@ -99,11 +110,12 @@ interface TypeIconProps {
 }
 
 export const TypeIcon = ({ type, className = 'size-5' }: TypeIconProps): React.JSX.Element => {
-  const iconClass = `${className} text-[var(--muted-foreground)]`
+  const accentClass = getTypeAccentClass(type)
+  const iconClass = `${className} ${accentClass}`
 
   switch (type) {
     case 'link':
-      return <Globe className={iconClass} aria-hidden="true" />
+      return <Link2 className={iconClass} aria-hidden="true" />
     case 'note':
       return <FileText className={iconClass} aria-hidden="true" />
     case 'image':
@@ -114,6 +126,8 @@ export const TypeIcon = ({ type, className = 'size-5' }: TypeIconProps): React.J
       return <FileType className={iconClass} aria-hidden="true" />
     case 'video':
       return <Video className={iconClass} aria-hidden="true" />
+    case 'reminder':
+      return <Bell className={iconClass} aria-hidden="true" />
     case 'clip':
     case 'social':
     default:
@@ -127,7 +141,7 @@ export const TypeIcon = ({ type, className = 'size-5' }: TypeIconProps): React.J
 
 export const ContentSkeleton = (): React.JSX.Element => (
   <div className="space-y-4 p-6">
-    <Skeleton className="h-[200px] w-full rounded-lg" />
+    <Skeleton className="h-[200px] w-full rounded-md" />
     <Skeleton className="h-4 w-3/4" />
     <Skeleton className="h-4 w-1/2" />
     <div className="space-y-2 mt-6">
@@ -213,91 +227,6 @@ export const ContentMetadata = ({ item }: ContentMetadataProps): React.JSX.Eleme
 }
 
 // =============================================================================
-// Link Preview Content
-// =============================================================================
-
-interface LinkPreviewProps {
-  item: InboxItem | InboxItemListItem
-}
-
-const LinkPreview = ({ item }: LinkPreviewProps): React.JSX.Element => {
-  const metadata = 'metadata' in item ? (item.metadata as LinkMetadata | null) : null
-  const heroImage = metadata?.heroImage || item.thumbnailUrl
-
-  return (
-    <div className="space-y-4">
-      {/* Hero image - full size */}
-      {heroImage && (
-        <div className="relative overflow-hidden rounded-lg bg-[var(--muted)]">
-          <img
-            src={heroImage}
-            alt=""
-            className="w-full object-cover max-h-[280px]"
-            onError={(e) => {
-              e.currentTarget.style.display = 'none'
-            }}
-          />
-        </div>
-      )}
-
-      {/* Site name badge */}
-      {metadata?.siteName && (
-        <div className="flex items-center gap-2">
-          {metadata.favicon && (
-            <img
-              src={metadata.favicon}
-              alt=""
-              className="size-4 rounded"
-              onError={(e) => {
-                e.currentTarget.style.display = 'none'
-              }}
-            />
-          )}
-          <span className="text-xs font-medium text-[var(--muted-foreground)] uppercase tracking-wide">
-            {metadata.siteName}
-          </span>
-        </div>
-      )}
-
-      {/* Description/Excerpt */}
-      <div className="prose prose-sm dark:prose-invert max-w-none">
-        <p className="text-[var(--foreground)] leading-relaxed">
-          {metadata?.description ||
-            metadata?.excerpt ||
-            item.content ||
-            'No description available.'}
-        </p>
-      </div>
-
-      {/* Published date if available */}
-      {metadata?.publishedDate && (
-        <p className="text-xs text-[var(--muted-foreground)]">
-          Published:{' '}
-          {new Date(metadata.publishedDate).toLocaleDateString('en-US', {
-            month: 'long',
-            day: 'numeric',
-            year: 'numeric'
-          })}
-        </p>
-      )}
-
-      {/* Open in browser button */}
-      {item.sourceUrl && (
-        <a
-          href={item.sourceUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-[var(--primary)] bg-[var(--primary)]/10 rounded-lg hover:bg-[var(--primary)]/20 transition-colors"
-        >
-          <ExternalLink className="size-4" />
-          Open in browser
-        </a>
-      )}
-    </div>
-  )
-}
-
-// =============================================================================
 // Image Preview Content
 // =============================================================================
 
@@ -310,36 +239,51 @@ const ImagePreview = ({ item }: ImagePreviewProps): React.JSX.Element => {
   const imageUrl = ('attachmentUrl' in item && item.attachmentUrl) || item.thumbnailUrl
 
   return (
-    <div className="space-y-4">
+    <div className="flex flex-col gap-3.5">
       {imageUrl ? (
-        <div className="relative overflow-hidden rounded-lg bg-[var(--muted)]">
-          <img
-            src={imageUrl}
-            alt={item.title}
-            className="w-full object-contain max-h-[400px] mx-auto"
-          />
+        <div className="overflow-hidden rounded-lg bg-muted">
+          <img src={imageUrl} alt={item.title} className="w-full object-contain max-h-[400px]" />
         </div>
       ) : (
-        <div className="flex items-center justify-center h-[200px] bg-[var(--muted)] rounded-lg">
-          <Image className="size-12 text-[var(--muted-foreground)]" />
+        <div className="flex items-center justify-center aspect-[34/22] rounded-lg bg-muted">
+          <Image className="size-8 text-muted-foreground/25" />
         </div>
       )}
 
-      {/* Image metadata */}
+      {metadata?.originalFilename && (
+        <span
+          className="text-[11px] leading-3.5 text-muted-foreground truncate"
+          title={metadata.originalFilename}
+        >
+          {metadata.originalFilename}
+        </span>
+      )}
+
       {metadata && (
-        <div className="flex flex-wrap gap-x-4 gap-y-2 text-sm text-[var(--muted-foreground)] px-1">
+        <div className="flex items-center gap-4">
           {metadata.width && metadata.height && (
-            <span className="flex items-center gap-1">
-              <span className="font-medium">{metadata.width}</span> x{' '}
-              <span className="font-medium">{metadata.height}</span> px
-            </span>
+            <div className="flex items-center gap-1">
+              <span className="text-[11px] leading-3.5 text-text-tertiary">Dimensions</span>
+              <span className="text-[11px] leading-3.5 text-muted-foreground">
+                {metadata.width} x {metadata.height}
+              </span>
+            </div>
           )}
-          {metadata.format && <span className="uppercase font-medium">{metadata.format}</span>}
-          {metadata.fileSize && <span>{formatFileSize(metadata.fileSize)}</span>}
-          {metadata.originalFilename && (
-            <span className="truncate max-w-[200px]" title={metadata.originalFilename}>
-              {metadata.originalFilename}
-            </span>
+          {metadata.format && (
+            <div className="flex items-center gap-1">
+              <span className="text-[11px] leading-3.5 text-text-tertiary">Format</span>
+              <span className="text-[11px] leading-3.5 text-muted-foreground uppercase">
+                {metadata.format}
+              </span>
+            </div>
+          )}
+          {metadata.fileSize && (
+            <div className="flex items-center gap-1">
+              <span className="text-[11px] leading-3.5 text-text-tertiary">Size</span>
+              <span className="text-[11px] leading-3.5 text-muted-foreground">
+                {formatFileSize(metadata.fileSize)}
+              </span>
+            </div>
           )}
         </div>
       )}
@@ -363,20 +307,74 @@ const VoicePreview = ({
   isRetrying
 }: VoicePreviewProps): React.JSX.Element => {
   const audioRef = useRef<HTMLAudioElement>(null)
+  const waveformRef = useRef<HTMLDivElement>(null)
   const [isPlaying, setIsPlaying] = useState(false)
   const [currentTime, setCurrentTime] = useState(0)
   const [duration, setDuration] = useState(0)
   const [copied, setCopied] = useState(false)
   const [audioError, setAudioError] = useState<string | null>(null)
+  const [waveformBars, setWaveformBars] = useState<number[]>(() =>
+    Array.from({ length: PLAYBACK_BAR_COUNT }, () => PLAYBACK_MIN_HEIGHT)
+  )
 
   const metadata = 'metadata' in item ? (item.metadata as VoiceMetadata | null) : null
   const audioUrl = 'attachmentUrl' in item ? item.attachmentUrl : null
   const transcription = 'transcription' in item ? item.transcription : null
   const transcriptionStatus = 'transcriptionStatus' in item ? item.transcriptionStatus : null
 
-  // Get duration from metadata or audio element
   const displayDuration =
     duration || metadata?.duration || ('duration' in item ? item.duration : 0) || 0
+
+  useEffect(() => {
+    if (!audioUrl) return
+
+    let cancelled = false
+    const decodeWaveform = async (): Promise<void> => {
+      try {
+        const response = await fetch(audioUrl)
+        const arrayBuffer = await response.arrayBuffer()
+        const audioContext = new AudioContext()
+        const audioBuffer = await audioContext.decodeAudioData(arrayBuffer)
+
+        if (cancelled) {
+          void audioContext.close()
+          return
+        }
+
+        const rawData = audioBuffer.getChannelData(0)
+        const samplesPerBar = Math.floor(rawData.length / PLAYBACK_BAR_COUNT)
+
+        const bars: number[] = []
+        for (let i = 0; i < PLAYBACK_BAR_COUNT; i++) {
+          let sum = 0
+          const start = i * samplesPerBar
+          const end = Math.min(start + samplesPerBar, rawData.length)
+          for (let j = start; j < end; j++) {
+            sum += rawData[j] * rawData[j]
+          }
+          bars.push(Math.sqrt(sum / samplesPerBar))
+        }
+
+        const maxRms = Math.max(...bars, 0.001)
+        const normalized = bars.map(
+          (b) => PLAYBACK_MIN_HEIGHT + (b / maxRms) * (PLAYBACK_MAX_HEIGHT - PLAYBACK_MIN_HEIGHT)
+        )
+
+        if (!cancelled) {
+          setWaveformBars(normalized)
+        }
+
+        void audioContext.close()
+      } catch (err) {
+        log.error('Failed to decode waveform', err)
+      }
+    }
+
+    void decodeWaveform()
+    return () => {
+      cancelled = true
+    }
+  }, [audioUrl])
 
   const handlePlayPause = async (): Promise<void> => {
     if (!audioRef.current) return
@@ -413,13 +411,17 @@ const VoicePreview = ({
     }
   }
 
-  const handleSeek = (e: React.ChangeEvent<HTMLInputElement>): void => {
-    const time = parseFloat(e.target.value)
-    if (audioRef.current) {
-      audioRef.current.currentTime = time
-      setCurrentTime(time)
-    }
-  }
+  const handleWaveformClick = useCallback(
+    (e: React.MouseEvent<HTMLDivElement>) => {
+      if (!audioRef.current || !waveformRef.current || !displayDuration) return
+      const rect = waveformRef.current.getBoundingClientRect()
+      const ratio = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width))
+      const seekTime = ratio * displayDuration
+      audioRef.current.currentTime = seekTime
+      setCurrentTime(seekTime)
+    },
+    [displayDuration]
+  )
 
   const handleCopyTranscription = async (): Promise<void> => {
     if (transcription) {
@@ -429,158 +431,161 @@ const VoicePreview = ({
     }
   }
 
+  const progress = displayDuration > 0 ? currentTime / displayDuration : 0
+
+  const metaParts: string[] = []
+  if (metadata?.format) metaParts.push(metadata.format.toUpperCase())
+  if (metadata?.sampleRate) metaParts.push(`${(metadata.sampleRate / 1000).toFixed(0)}kHz`)
+  if (metadata?.fileSize) metaParts.push(formatFileSize(metadata.fileSize))
+
   return (
-    <div className="space-y-4">
-      {/* Audio Player */}
+    <div className="flex flex-col gap-4">
+      <audio
+        ref={audioRef}
+        src={audioUrl ?? undefined}
+        preload="metadata"
+        onPlay={() => setIsPlaying(true)}
+        onPause={() => setIsPlaying(false)}
+        onEnded={() => setIsPlaying(false)}
+        onTimeUpdate={handleTimeUpdate}
+        onLoadedMetadata={handleLoadedMetadata}
+        onError={handleAudioError}
+      />
+
+      {audioError && (
+        <div className="flex items-center gap-2 p-3 bg-destructive/10 rounded-md text-sm text-destructive">
+          <AlertCircle className="size-4 shrink-0" />
+          <span>{audioError}</span>
+        </div>
+      )}
+
       {audioUrl ? (
-        <div className="bg-[var(--muted)] rounded-lg p-4 space-y-3">
-          <audio
-            ref={audioRef}
-            src={audioUrl}
-            preload="metadata"
-            onPlay={() => setIsPlaying(true)}
-            onPause={() => setIsPlaying(false)}
-            onEnded={() => setIsPlaying(false)}
-            onTimeUpdate={handleTimeUpdate}
-            onLoadedMetadata={handleLoadedMetadata}
-            onError={handleAudioError}
-          />
+        <div className="flex items-center rounded-[10px] gap-2.5 bg-muted-foreground/[0.04] border border-muted-foreground/10 py-2.5 px-3.5">
+          <button
+            onClick={() => void handlePlayPause()}
+            className="flex items-center justify-center rounded-full bg-muted-foreground shrink-0 size-8 hover:opacity-90 transition-opacity"
+            aria-label={isPlaying ? 'Pause' : 'Play'}
+          >
+            {isPlaying ? (
+              <Pause className="size-3.5 text-background" />
+            ) : (
+              <Play className="size-3.5 text-background ml-0.5" />
+            )}
+          </button>
 
-          {/* Audio error display */}
-          {audioError && (
-            <div className="flex items-center gap-2 p-3 bg-red-500/10 rounded-lg text-sm text-red-600 dark:text-red-400">
-              <AlertCircle className="size-4 shrink-0" />
-              <span>Audio error: {audioError}</span>
-            </div>
-          )}
-
-          {/* Play button and waveform area */}
-          <div className="flex items-center gap-4">
-            <Button
-              size="icon"
-              variant="secondary"
-              onClick={() => void handlePlayPause()}
-              className="size-12 rounded-full bg-[var(--primary)] hover:bg-[var(--primary)]/90"
-            >
-              {isPlaying ? (
-                <Pause className="size-5 text-[var(--primary-foreground)]" />
-              ) : (
-                <Play className="size-5 text-[var(--primary-foreground)] ml-0.5" />
-              )}
-            </Button>
-
-            <div className="flex-1 space-y-1">
-              {/* Progress bar */}
-              <input
-                type="range"
-                min={0}
-                max={displayDuration || 100}
-                value={currentTime}
-                onChange={handleSeek}
-                className="w-full h-2 bg-[var(--border)] rounded-lg appearance-none cursor-pointer accent-[var(--primary)]"
-              />
-              {/* Time display */}
-              <div className="flex justify-between text-xs text-[var(--muted-foreground)]">
-                <span>{formatDuration(currentTime)}</span>
-                <span>{formatDuration(displayDuration)}</span>
-              </div>
-            </div>
+          <div
+            ref={waveformRef}
+            className="flex items-center grow h-8 gap-0.5 cursor-pointer"
+            onClick={handleWaveformClick}
+            role="slider"
+            aria-label="Audio position"
+            aria-valuemin={0}
+            aria-valuemax={displayDuration || 100}
+            aria-valuenow={currentTime}
+            tabIndex={0}
+          >
+            {waveformBars.map((height, i) => {
+              const isPlayed = i / PLAYBACK_BAR_COUNT < progress
+              return (
+                <div
+                  key={i}
+                  className="flex-1 min-w-0 rounded-xs transition-colors duration-150"
+                  style={{
+                    height: `${height}px`,
+                    backgroundColor: isPlayed
+                      ? 'color-mix(in srgb, var(--muted-foreground) 80%, transparent)'
+                      : 'color-mix(in srgb, var(--muted-foreground) 30%, transparent)'
+                  }}
+                />
+              )
+            })}
           </div>
 
-          {/* Metadata */}
-          {metadata && (
-            <div className="flex gap-4 text-xs text-[var(--muted-foreground)] pt-2 border-t border-[var(--border)]">
-              {metadata.format && <span className="uppercase">{metadata.format}</span>}
-              {metadata.fileSize && <span>{formatFileSize(metadata.fileSize)}</span>}
-              {metadata.sampleRate && <span>{(metadata.sampleRate / 1000).toFixed(1)}kHz</span>}
-            </div>
-          )}
+          <div className="flex items-center shrink-0 gap-0.5 text-xs tabular-nums">
+            <span className="text-foreground font-medium">{formatDuration(currentTime)}</span>
+            <span className="text-text-tertiary">/ {formatDuration(displayDuration)}</span>
+          </div>
         </div>
       ) : (
-        <div className="flex items-center gap-4 p-4 bg-[var(--muted)] rounded-lg">
-          <div className="size-12 rounded-full bg-[var(--primary)] flex items-center justify-center">
-            <Mic className="size-6 text-[var(--primary-foreground)]" />
+        <div className="flex items-center gap-3 p-3.5 bg-muted rounded-[10px]">
+          <div className="size-8 rounded-full bg-muted-foreground flex items-center justify-center">
+            <Mic className="size-4 text-background" />
           </div>
           <div className="flex-1">
-            <p className="font-medium">{item.title}</p>
-            <p className="text-sm text-[var(--muted-foreground)]">
+            <p className="font-medium text-sm">{item.title}</p>
+            <p className="text-xs text-muted-foreground">
               {displayDuration > 0 ? formatDuration(displayDuration) : 'Voice memo'}
             </p>
           </div>
         </div>
       )}
 
-      {/* Transcription Section */}
-      <div className="space-y-2">
-        <div className="flex items-center justify-between">
-          <span className="text-xs font-medium text-[var(--muted-foreground)] uppercase tracking-wide">
+      <div className="flex flex-col gap-1.5">
+        <div className="flex items-center gap-1.5">
+          <span className="uppercase tracking-[0.04em] text-text-tertiary font-medium text-[11px]/3.5">
             Transcription
           </span>
+          {transcriptionStatus === 'processing' && (
+            <div className="flex items-center gap-1 rounded-[10px] py-px px-1.5 bg-muted-foreground/10">
+              <Loader2 className="size-2.5 animate-spin text-muted-foreground" />
+              <span className="text-muted-foreground text-[10px]/3.5">processing</span>
+            </div>
+          )}
+          {transcriptionStatus === 'pending' && (
+            <div className="flex items-center rounded-[10px] py-px px-1.5 bg-muted-foreground/10">
+              <span className="text-muted-foreground text-[10px]/3.5">pending</span>
+            </div>
+          )}
+          {transcriptionStatus === 'failed' && (
+            <div className="flex items-center rounded-[10px] py-px px-1.5 bg-destructive/10">
+              <span className="text-destructive text-[10px]/3.5">failed</span>
+            </div>
+          )}
           {transcription && (
-            <Button
-              size="sm"
-              variant="ghost"
+            <button
               onClick={handleCopyTranscription}
-              className="h-7 px-2 text-xs"
+              className="ml-auto text-muted-foreground hover:text-foreground transition-colors"
+              aria-label="Copy transcription"
             >
-              {copied ? (
-                <>
-                  <Check className="size-3 mr-1" />
-                  Copied
-                </>
-              ) : (
-                <>
-                  <Copy className="size-3 mr-1" />
-                  Copy
-                </>
-              )}
-            </Button>
+              {copied ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
+            </button>
           )}
         </div>
 
-        {transcriptionStatus === 'complete' && transcription ? (
-          <div className="p-4 bg-[var(--muted)]/50 rounded-lg">
-            <p className="text-sm whitespace-pre-wrap leading-relaxed">{transcription}</p>
-          </div>
-        ) : transcriptionStatus === 'pending' ? (
-          <div className="flex items-center gap-2 p-4 bg-[var(--muted)]/30 rounded-lg text-sm text-[var(--muted-foreground)]">
-            <Loader2 className="size-4 animate-spin" />
-            <span>Transcription pending...</span>
-          </div>
-        ) : transcriptionStatus === 'processing' ? (
-          <div className="flex items-center gap-2 p-4 bg-[var(--muted)]/30 rounded-lg text-sm text-[var(--muted-foreground)]">
-            <Loader2 className="size-4 animate-spin" />
-            <span>Transcribing audio...</span>
-          </div>
+        {transcription ? (
+          <p className="text-muted-foreground text-xs/[18px]">{transcription}</p>
+        ) : transcriptionStatus === 'processing' || transcriptionStatus === 'pending' ? (
+          <p className="text-muted-foreground text-xs italic">
+            {transcriptionStatus === 'processing'
+              ? 'Transcribing audio...'
+              : 'Awaiting transcription...'}
+          </p>
         ) : transcriptionStatus === 'failed' ? (
-          <div className="flex items-center justify-between p-4 bg-red-500/10 rounded-lg">
-            <div className="flex items-center gap-2 text-sm text-red-600 dark:text-red-400">
-              <AlertCircle className="size-4" />
-              <span>Transcription failed</span>
-            </div>
+          <div className="flex items-center gap-2">
+            <span className="text-destructive text-xs">Transcription failed</span>
             {onRetryTranscription && (
-              <Button
-                size="sm"
-                variant="outline"
+              <button
                 onClick={onRetryTranscription}
                 disabled={isRetrying}
-                className="h-7"
+                className="text-muted-foreground hover:text-foreground text-xs flex items-center gap-1 transition-colors disabled:opacity-50"
               >
                 {isRetrying ? (
-                  <Loader2 className="size-3 animate-spin mr-1" />
+                  <Loader2 className="size-3 animate-spin" />
                 ) : (
-                  <RefreshCw className="size-3 mr-1" />
+                  <RefreshCw className="size-3" />
                 )}
                 Retry
-              </Button>
+              </button>
             )}
           </div>
         ) : (
-          <div className="p-4 bg-[var(--muted)]/30 rounded-lg text-sm text-[var(--muted-foreground)] italic">
-            No transcription available
-          </div>
+          <p className="text-muted-foreground text-xs italic">No transcription available</p>
         )}
       </div>
+
+      {metaParts.length > 0 && (
+        <div className="text-text-tertiary text-[11px]/3.5">{metaParts.join(' · ')}</div>
+      )}
     </div>
   )
 }
@@ -594,42 +599,31 @@ interface PdfPreviewProps {
 }
 
 const PdfPreview = ({ item }: PdfPreviewProps): React.JSX.Element => {
-  const pdfUrl = 'attachmentUrl' in item ? item.attachmentUrl : null
-  const metadata = 'metadata' in item ? (item.metadata as Record<string, unknown> | null) : null
+  const metadata = 'metadata' in item ? (item.metadata as PdfMetadata | null) : null
+
+  const metaParts: string[] = []
+  if (metadata?.pageCount) metaParts.push(`${metadata.pageCount} pages`)
+  if (metadata?.fileSize) metaParts.push(formatFileSize(metadata.fileSize))
 
   return (
-    <div className="space-y-4">
-      {pdfUrl ? (
-        <div className="relative overflow-hidden rounded-lg bg-[var(--muted)] border border-[var(--border)]">
-          <iframe
-            src={pdfUrl}
-            title={item.title}
-            className="w-full h-[400px]"
-            style={{ border: 'none' }}
-          />
-        </div>
-      ) : (
-        <div className="flex items-center justify-center h-[200px] bg-[var(--muted)] rounded-lg">
-          <FileText className="size-12 text-[var(--muted-foreground)]" />
-        </div>
-      )}
+    <div className="flex flex-col gap-3.5">
+      <div className="flex flex-col items-center justify-center gap-2.5 aspect-[34/18] rounded-lg bg-muted border border-border">
+        <FilePdf className="size-9 text-destructive" />
+        {metaParts.length > 0 && (
+          <span className="text-[11px] leading-3.5 text-text-tertiary">
+            {metaParts.join(' · ')}
+          </span>
+        )}
+      </div>
 
-      {/* PDF metadata */}
-      {(() => {
-        const fileSize = metadata?.fileSize
-        const originalFilename = metadata?.originalFilename
-        return (
-          <div className="flex flex-wrap gap-x-4 gap-y-2 text-sm text-[var(--muted-foreground)] px-1">
-            <span className="uppercase font-medium">PDF</span>
-            {typeof fileSize === 'number' && <span>{formatFileSize(fileSize)}</span>}
-            {typeof originalFilename === 'string' && (
-              <span className="truncate max-w-[200px]" title={originalFilename}>
-                {originalFilename}
-              </span>
-            )}
-          </div>
-        )
-      })()}
+      {metadata?.originalFilename && (
+        <span
+          className="text-[11px] leading-3.5 text-muted-foreground truncate"
+          title={metadata.originalFilename}
+        >
+          {metadata.originalFilename}
+        </span>
+      )}
     </div>
   )
 }
@@ -649,13 +643,13 @@ const VideoPreview = ({ item }: VideoPreviewProps): React.JSX.Element => {
   return (
     <div className="space-y-4">
       {videoUrl ? (
-        <div className="relative overflow-hidden rounded-lg bg-black">
+        <div className="relative overflow-hidden rounded-md bg-black">
           <video src={videoUrl} controls className="w-full max-h-[400px]" preload="metadata">
             Your browser does not support the video tag.
           </video>
         </div>
       ) : (
-        <div className="flex items-center justify-center h-[200px] bg-[var(--muted)] rounded-lg">
+        <div className="flex items-center justify-center h-[200px] bg-[var(--muted)] rounded-md">
           <FileText className="size-12 text-[var(--muted-foreground)]" />
         </div>
       )}
@@ -721,8 +715,6 @@ export const ContentSection = ({
   switch (item.type) {
     case 'link':
       return <LinkPreview item={item} />
-    case 'note':
-      return <SimpleContent item={item} onContentChange={onContentChange} />
     case 'image':
       return <ImagePreview item={item} />
     case 'voice':
@@ -737,8 +729,11 @@ export const ContentSection = ({
       return <PdfPreview item={item} />
     case 'video':
       return <VideoPreview item={item} />
-    case 'clip':
     case 'social':
+      return <TweetCard item={item as Parameters<typeof TweetCard>[0]['item']} />
+    case 'reminder':
+      return <ReminderDetail item={item} />
+    case 'clip':
     default:
       return <SimpleContent item={item} onContentChange={onContentChange} />
   }

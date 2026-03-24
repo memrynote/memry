@@ -1,4 +1,4 @@
-import { Flame } from '@/lib/icons'
+import { Star } from '@/lib/icons'
 import { cn } from '@/lib/utils'
 
 interface StreakBadgeProps {
@@ -14,32 +14,19 @@ export function StreakBadge({
 }: StreakBadgeProps): React.JSX.Element | null {
   if (streak <= 0) return null
 
-  const isHot = streak >= 7
-  const isBurning = streak >= 14
-
   return (
     <div
       className={cn(
-        'inline-flex items-center gap-1 rounded-full font-medium tabular-nums',
-        size === 'sm' && 'px-2 py-0.5 text-xs',
+        'inline-flex items-center gap-1.5 rounded-xl font-medium tabular-nums',
+        size === 'sm' && 'px-2.5 py-0.5 text-[11px]/3.5',
         size === 'md' && 'px-3 py-1 text-sm',
-        isBurning
-          ? 'bg-orange-500/15 text-orange-600 dark:text-orange-400'
-          : isHot
-            ? 'bg-amber-500/15 text-amber-600 dark:text-amber-400'
-            : 'bg-muted text-muted-foreground',
+        'bg-tint/10 text-tint',
         className
       )}
       title={`${streak} day processing streak`}
     >
-      <Flame
-        className={cn(
-          size === 'sm' ? 'size-3' : 'size-3.5',
-          isBurning && 'animate-pulse',
-          isBurning ? 'text-orange-500' : isHot ? 'text-amber-500' : 'text-muted-foreground/70'
-        )}
-      />
-      <span>{streak}d</span>
+      <Star className={cn(size === 'sm' ? 'size-3' : 'size-3.5')} />
+      <span>{streak} streak</span>
     </div>
   )
 }

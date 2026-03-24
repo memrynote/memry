@@ -87,7 +87,7 @@ export const DENSITY_CONFIG = {
     // List items
     itemPadding: 'px-3 py-2.5',
     itemGap: 'gap-3',
-    itemRadius: 'rounded-lg',
+    itemRadius: 'rounded-md',
     iconSize: 'w-9 h-9',
     iconInnerSize: 'w-4 h-4',
     checkboxSize: '',
@@ -117,7 +117,7 @@ export const DENSITY_CONFIG = {
     captureMargin: 'mb-4',
     capturePadding: 'px-3 py-2',
     captureGap: 'gap-2',
-    captureRadius: 'rounded-lg',
+    captureRadius: 'rounded-md',
 
     // List items
     itemPadding: 'px-2 py-1.5',

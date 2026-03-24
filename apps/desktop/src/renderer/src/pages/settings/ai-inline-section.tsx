@@ -1,9 +1,7 @@
 import { useState, useCallback, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Separator } from '@/components/ui/separator'
 import { Switch } from '@/components/ui/switch'
-import { Label } from '@/components/ui/label'
 import {
   Select,
   SelectContent,
@@ -11,19 +9,26 @@ import {
   SelectTrigger,
   SelectValue
 } from '@/components/ui/select'
-import { Sparkles, Info, Loader2, CheckCircle, XCircle, Eye, EyeOff } from '@/lib/icons'
+import { Loader2, CheckCircle, XCircle, Eye, EyeOff } from '@/lib/icons'
 import { toast } from 'sonner'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { createLogger } from '@/lib/logger'
 import type { AIInlineSettings } from '@memry/contracts/ai-inline-channels'
 import { AI_INLINE_SETTINGS_DEFAULTS } from '@memry/contracts/ai-inline-channels'
+import {
+  SettingsGroup,
+  SettingRow,
+  SettingRowTall,
+  ACCENT_SWITCH,
+  COMPACT_SELECT
+} from '@/components/settings/settings-primitives'
 
 const log = createLogger('Page:Settings:AIInline')
 
 const PROVIDER_OPTIONS = [
-  { value: 'ollama', label: 'Ollama (Local)', description: 'Free, runs on your device' },
-  { value: 'openai', label: 'OpenAI', description: 'GPT-4, GPT-4o, etc.' },
-  { value: 'anthropic', label: 'Anthropic', description: 'Claude Sonnet, Opus, etc.' }
+  { value: 'ollama', label: 'Ollama (Local)' },
+  { value: 'openai', label: 'OpenAI' },
+  { value: 'anthropic', label: 'Anthropic' }
 ] as const
 
 const MODEL_PRESETS: Record<string, string[]> = {
@@ -132,14 +137,11 @@ export function AIInlineSettings(): React.JSX.Element {
 
   if (isLoading) {
     return (
-      <div className="space-y-4">
-        <div>
-          <h4 className="text-base font-semibold flex items-center gap-2">
-            <Sparkles className="w-4 h-4" />
-            Inline AI Editing
-          </h4>
-          <p className="text-sm text-muted-foreground">Loading...</p>
-        </div>
+      <div className="pb-6">
+        <h4 className="uppercase pb-2 text-muted-foreground font-medium text-[11px]/3.5 tracking-[0.05em]">
+          Inline AI Editing
+        </h4>
+        <p className="text-xs/4 text-muted-foreground">Loading...</p>
       </div>
     )
   }
@@ -148,157 +150,117 @@ export function AIInlineSettings(): React.JSX.Element {
   const models = MODEL_PRESETS[settings.provider] ?? []
 
   return (
-    <div className="space-y-4">
-      <div>
-        <h4 className="text-base font-semibold flex items-center gap-2">
-          <Sparkles className="w-4 h-4" />
-          Inline AI Editing
-        </h4>
-        <p className="text-sm text-muted-foreground">
-          Select text in the editor to access AI commands like rewrite, summarize, and translate.
-        </p>
-      </div>
-
-      <div className="flex items-center justify-between">
-        <div className="space-y-0.5">
-          <Label htmlFor="ai-inline-enabled">Enable Inline AI</Label>
-          <p className="text-sm text-muted-foreground">Show AI menu when editing notes</p>
-        </div>
+    <SettingsGroup label="Inline AI Editing">
+      <SettingRow label="Enable Inline AI" description="Show AI menu when editing notes">
         <Switch
-          id="ai-inline-enabled"
           checked={settings.enabled}
           onCheckedChange={handleToggleEnabled}
+          className={ACCENT_SWITCH}
         />
-      </div>
+      </SettingRow>
 
       {settings.enabled && (
         <>
-          <Separator />
+          <SettingRow label="Provider" description="AI service for text operations">
+            <Select value={settings.provider} onValueChange={handleProviderChange}>
+              <SelectTrigger className={COMPACT_SELECT}>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {PROVIDER_OPTIONS.map((opt) => (
+                  <SelectItem key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </SettingRow>
 
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label>Provider</Label>
-              <Select value={settings.provider} onValueChange={handleProviderChange}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {PROVIDER_OPTIONS.map((opt) => (
-                    <SelectItem key={opt.value} value={opt.value}>
-                      <div className="flex flex-col">
-                        <span>{opt.label}</span>
-                        <span className="text-xs text-muted-foreground">{opt.description}</span>
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+          <SettingRow label="Model" description="Language model for rewrite and summarize">
+            <Select value={settings.model} onValueChange={(model) => void updateSetting({ model })}>
+              <SelectTrigger className={COMPACT_SELECT}>
+                <SelectValue placeholder="Select a model" />
+              </SelectTrigger>
+              <SelectContent>
+                {models.map((model) => (
+                  <SelectItem key={model} value={model}>
+                    {model}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </SettingRow>
 
-            <div className="space-y-2">
-              <Label>Model</Label>
-              <Select
-                value={settings.model}
-                onValueChange={(model) => void updateSetting({ model })}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select a model" />
-                </SelectTrigger>
-                <SelectContent>
-                  {models.map((model) => (
-                    <SelectItem key={model} value={model}>
-                      {model}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <p className="text-xs text-muted-foreground">
-                {settings.provider === 'ollama'
-                  ? 'Make sure this model is pulled in Ollama first'
-                  : 'Choose the model for AI editing'}
-              </p>
-            </div>
-
-            {needsApiKey && (
-              <div className="space-y-2">
-                <Label>API Key</Label>
-                <div className="flex gap-2">
-                  <div className="relative flex-1">
-                    <Input
-                      type={showApiKey ? 'text' : 'password'}
-                      value={settings.apiKey}
-                      onChange={(e) => setSettings((prev) => ({ ...prev, apiKey: e.target.value }))}
-                      onBlur={() => void updateSetting({ apiKey: settings.apiKey })}
-                      placeholder={`Enter ${settings.provider === 'openai' ? 'OpenAI' : 'Anthropic'} API key`}
-                    />
-                  </div>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => setShowApiKey((v) => !v)}
-                    tabIndex={-1}
-                  >
-                    {showApiKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                  </Button>
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  Stored securely in your local vault. Never sent anywhere except the provider.
-                </p>
-              </div>
-            )}
-
-            {settings.provider === 'ollama' && (
-              <div className="space-y-2">
-                <Label>Ollama URL</Label>
+          {needsApiKey && (
+            <SettingRowTall label="API Key" description="Stored locally, sent only to the provider">
+              <div className="flex gap-2">
                 <Input
-                  value={settings.baseUrl}
-                  onChange={(e) => setSettings((prev) => ({ ...prev, baseUrl: e.target.value }))}
-                  onBlur={() => void updateSetting({ baseUrl: settings.baseUrl })}
-                  placeholder="http://localhost:11434/v1"
+                  type={showApiKey ? 'text' : 'password'}
+                  value={settings.apiKey}
+                  onChange={(e) => setSettings((prev) => ({ ...prev, apiKey: e.target.value }))}
+                  onBlur={() => void updateSetting({ apiKey: settings.apiKey })}
+                  placeholder={`Enter ${settings.provider === 'openai' ? 'OpenAI' : 'Anthropic'} API key`}
+                  className="flex-1 h-7 text-xs/4"
                 />
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowApiKey((v) => !v)}
+                  tabIndex={-1}
+                  className="h-7 w-7 p-0"
+                >
+                  {showApiKey ? (
+                    <EyeOff className="w-3.5 h-3.5" />
+                  ) : (
+                    <Eye className="w-3.5 h-3.5" />
+                  )}
+                </Button>
               </div>
-            )}
+            </SettingRowTall>
+          )}
 
-            <div className="flex items-center gap-3">
-              <Button
-                variant="outline"
-                onClick={handleTestConnection}
-                disabled={isTesting || (needsApiKey && !settings.apiKey)}
-              >
-                {isTesting ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                    Testing...
-                  </>
-                ) : (
-                  'Test Connection'
-                )}
-              </Button>
-              {serverPort && (
-                <span className="flex items-center gap-1 text-sm text-green-600">
-                  <CheckCircle className="w-4 h-4" />
-                  Active on port {serverPort}
-                </span>
-              )}
-              {!serverPort && !isTesting && (
-                <span className="flex items-center gap-1 text-sm text-muted-foreground">
-                  <XCircle className="w-4 h-4" />
-                  Not connected
-                </span>
+          {settings.provider === 'ollama' && (
+            <SettingRowTall label="Ollama URL" description="Local server address">
+              <Input
+                value={settings.baseUrl}
+                onChange={(e) => setSettings((prev) => ({ ...prev, baseUrl: e.target.value }))}
+                onBlur={() => void updateSetting({ baseUrl: settings.baseUrl })}
+                placeholder="http://localhost:11434/v1"
+                className="h-7 text-xs/4"
+              />
+            </SettingRowTall>
+          )}
+
+          <div className="flex items-center justify-between h-11 py-3 px-4 shrink-0">
+            <div className="flex items-center gap-2 min-w-0">
+              {serverPort ? (
+                <>
+                  <span className="w-2 h-2 rounded-full bg-green-500 shrink-0" />
+                  <span className="text-[13px]/4 font-medium text-foreground">Connection</span>
+                  <span className="text-xs/4 text-muted-foreground">
+                    Active on port {serverPort}
+                  </span>
+                </>
+              ) : (
+                <>
+                  <span className="w-2 h-2 rounded-full bg-muted-foreground/40 shrink-0" />
+                  <span className="text-[13px]/4 font-medium text-foreground">Connection</span>
+                  <span className="text-xs/4 text-muted-foreground">Not connected</span>
+                </>
               )}
             </div>
-          </div>
-
-          <div className="flex items-start gap-2 p-3 rounded-lg bg-muted/50 text-sm">
-            <Info className="w-4 h-4 text-muted-foreground mt-0.5 flex-shrink-0" />
-            <p className="text-muted-foreground">
-              {settings.provider === 'ollama'
-                ? 'Ollama runs entirely on your device. Install it from ollama.com and pull a model (e.g. ollama pull llama3.2).'
-                : `API calls are sent directly to ${settings.provider === 'openai' ? 'OpenAI' : 'Anthropic'}. Usage is billed by the provider.`}
-            </p>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleTestConnection}
+              disabled={isTesting || (needsApiKey && !settings.apiKey)}
+              className="h-7 px-3 text-xs/4"
+            >
+              {isTesting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : 'Test'}
+            </Button>
           </div>
         </>
       )}
-    </div>
+    </SettingsGroup>
   )
 }

@@ -29,11 +29,7 @@ export const AccessibleTabPanel = ({
       id={`tabpanel-${tab.id}`}
       aria-labelledby={`tab-${tab.id}`}
       tabIndex={0}
-      className={cn(
-        'h-full outline-none',
-        'focus:ring-1 focus:ring-blue-500 focus:ring-inset',
-        className
-      )}
+      className={cn('h-full outline-none', className)}
     >
       {children}
     </div>

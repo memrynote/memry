@@ -7,7 +7,7 @@
  * @module main/ipc/settings-handlers
  */
 
-import { ipcMain, BrowserWindow, app } from 'electron'
+import { ipcMain, BrowserWindow, app, globalShortcut, systemPreferences } from 'electron'
 import { SettingsChannels } from '@memry/contracts/ipc-channels'
 import {
   GENERAL_SETTINGS_DEFAULTS,
@@ -28,6 +28,7 @@ import type {
 import { GRAPH_SETTINGS_DEFAULTS } from '@memry/contracts/graph-api'
 import type { GraphSettings } from '@memry/contracts/graph-api'
 import { createLogger } from '../lib/logger'
+import { getSettingsSyncManager } from '../sync/settings-sync'
 import { getDatabase } from '../database'
 import { getSetting, setSetting, deleteSetting } from '@main/database/queries/settings'
 import { initEmbeddingModel, getModelInfo, isModelLoaded, isModelLoading } from '../lib/embeddings'
@@ -37,6 +38,14 @@ import { initEmbeddingModel, getModelInfo, isModelLoaded, isModelLoading } from 
 // ============================================================================
 
 const logger = createLogger('IPC:Settings')
+
+const GENERAL_SYNCABLE_FIELDS: (keyof GeneralSettings)[] = [
+  'theme',
+  'fontSize',
+  'fontFamily',
+  'accentColor',
+  'language'
+]
 
 const SETTINGS_KEYS = {
   JOURNAL_DEFAULT_TEMPLATE: 'journal.defaultTemplate',
@@ -157,8 +166,15 @@ function readGroupSettings<T extends Record<string, unknown>>(groupKey: string, 
   }
 }
 
-function getStartupTheme(): GeneralSettings['theme'] {
-  return readGroupSettings('general', GENERAL_SETTINGS_DEFAULTS).theme
+function getStartupTheme(): { theme: GeneralSettings['theme']; accentColor?: string } {
+  const settings = readGroupSettings('general', GENERAL_SETTINGS_DEFAULTS)
+  const result: { theme: GeneralSettings['theme']; accentColor?: string } = {
+    theme: settings.theme
+  }
+  if (settings.accentColor) {
+    result.accentColor = settings.accentColor
+  }
+  return result
 }
 
 /**
@@ -517,12 +533,23 @@ export function registerSettingsHandlers(): void {
     SettingsChannels.invoke.SET_GENERAL_SETTINGS,
     (_event, updates: Partial<GeneralSettings>) => {
       const result = writeGroupSettings('general', GENERAL_SETTINGS_DEFAULTS, updates)
-      if (result.success && updates.startOnBoot !== undefined) {
-        try {
-          app.setLoginItemSettings({ openAtLogin: updates.startOnBoot })
-          logger.info(`Start on boot ${updates.startOnBoot ? 'enabled' : 'disabled'}`)
-        } catch (err) {
-          logger.warn('Failed to set login item:', err)
+      if (result.success) {
+        if (updates.startOnBoot !== undefined) {
+          try {
+            app.setLoginItemSettings({ openAtLogin: updates.startOnBoot })
+            logger.info(`Start on boot ${updates.startOnBoot ? 'enabled' : 'disabled'}`)
+          } catch (err) {
+            logger.warn('Failed to set login item:', err)
+          }
+        }
+
+        const manager = getSettingsSyncManager()
+        if (manager) {
+          for (const field of GENERAL_SYNCABLE_FIELDS) {
+            if (updates[field] !== undefined) {
+              manager.updateField(`general.${field}`, updates[field], 'local')
+            }
+          }
         }
       }
       return result
@@ -552,8 +579,13 @@ export function registerSettingsHandlers(): void {
   )
   ipcMain.handle(
     SettingsChannels.invoke.SET_KEYBOARD_SETTINGS,
-    (_event, updates: Partial<KeyboardShortcuts>) =>
-      writeGroupSettings('keyboard', KEYBOARD_SHORTCUTS_DEFAULTS, updates)
+    (_event, updates: Partial<KeyboardShortcuts>) => {
+      const result = writeGroupSettings('keyboard', KEYBOARD_SHORTCUTS_DEFAULTS, updates)
+      if ('globalCapture' in updates) {
+        applyGlobalCaptureShortcut()
+      }
+      return result
+    }
   )
 
   ipcMain.handle(SettingsChannels.invoke.GET_SYNC_SETTINGS, () =>
@@ -602,7 +634,72 @@ export function registerSettingsHandlers(): void {
     return { success: true }
   })
 
+  ipcMain.handle(SettingsChannels.invoke.REGISTER_GLOBAL_CAPTURE, async () => {
+    return applyGlobalCaptureShortcut()
+  })
+
   logger.info('Settings handlers registered')
+}
+
+// ============================================================================
+// Global Capture Shortcut
+// ============================================================================
+
+function toElectronAccelerator(binding: {
+  key: string
+  modifiers: { meta?: boolean; ctrl?: boolean; shift?: boolean; alt?: boolean }
+}): string {
+  const parts: string[] = []
+  if (binding.modifiers.meta) parts.push('CommandOrControl')
+  if (binding.modifiers.ctrl && !binding.modifiers.meta) parts.push('Control')
+  if (binding.modifiers.alt) parts.push('Alt')
+  if (binding.modifiers.shift) parts.push('Shift')
+  parts.push(binding.key)
+  return parts.join('+')
+}
+
+export interface GlobalCaptureResult {
+  success: boolean
+  registered: boolean
+  permissionRequired?: boolean
+  error?: string
+}
+
+/**
+ * Read keyboard.globalCapture from settings and register/unregister OS shortcut.
+ * Safe to call at startup and on settings change.
+ */
+export function applyGlobalCaptureShortcut(): GlobalCaptureResult {
+  globalShortcut.unregisterAll()
+
+  const settings = readGroupSettings('keyboard', KEYBOARD_SHORTCUTS_DEFAULTS)
+  const binding = settings.globalCapture
+  if (!binding) {
+    return { success: true, registered: false }
+  }
+
+  if (process.platform === 'darwin') {
+    const hasPerm = systemPreferences.isTrustedAccessibilityClient(false)
+    if (!hasPerm) {
+      logger.warn('Global capture: accessibility permission not granted on macOS')
+      return { success: false, registered: false, permissionRequired: true }
+    }
+  }
+
+  const accelerator = toElectronAccelerator(binding)
+  const registered = globalShortcut.register(accelerator, () => {
+    BrowserWindow.getAllWindows().forEach((win) => {
+      if (!win.isDestroyed()) win.webContents.send('quick-capture:open')
+    })
+  })
+
+  if (!registered) {
+    logger.warn(`Global capture: failed to register ${accelerator} (may be in use)`)
+    return { success: false, registered: false, error: `Shortcut ${accelerator} is already in use` }
+  }
+
+  logger.info(`Global capture: registered ${accelerator}`)
+  return { success: true, registered: true }
 }
 
 /**
@@ -639,6 +736,7 @@ export function unregisterSettingsHandlers(): void {
   ipcMain.removeHandler(SettingsChannels.invoke.SET_BACKUP_SETTINGS)
   ipcMain.removeHandler(SettingsChannels.invoke.GET_GRAPH_SETTINGS)
   ipcMain.removeHandler(SettingsChannels.invoke.SET_GRAPH_SETTINGS)
+  ipcMain.removeHandler(SettingsChannels.invoke.REGISTER_GLOBAL_CAPTURE)
 
   logger.info('Settings handlers unregistered')
 }

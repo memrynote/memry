@@ -1,15 +1,13 @@
 import { IntegrationList } from '@/components/settings/integration-list'
+import { SettingsHeader } from '@/components/settings/settings-primitives'
 
 export function IntegrationsSettings() {
   return (
-    <div className="space-y-6">
-      <div>
-        <h3 className="text-lg font-semibold">Integrations</h3>
-        <p className="text-sm text-muted-foreground">
-          Connect external services to enrich your workflow
-        </p>
-      </div>
-
+    <div className="flex flex-col antialiased text-xs/4">
+      <SettingsHeader
+        title="Integrations"
+        subtitle="Connect external services to enrich your workflow"
+      />
       <IntegrationList />
     </div>
   )

@@ -17,11 +17,11 @@ const STEP_MAP: Record<WizardStep, number> = {
   idle: 0,
   'sign-in': 0,
   'otp-verification': 1,
-  'recovery-display': 2,
-  'recovery-confirm': 2,
-  'recovery-input': 2,
+  'recovery-display': 1,
+  'recovery-confirm': 1,
+  'recovery-input': 1,
   'linking-choice': 2,
-  'linking-scan': 2,
+  'linking-scan': 1,
   'linking-pending': 2
 }
 
@@ -195,16 +195,18 @@ export function SetupWizard(): React.JSX.Element {
   const currentStepIndex = STEP_MAP[wizardStep]
 
   return (
-    <div className="space-y-8" ref={containerRef}>
+    <div className="flex flex-col" ref={containerRef}>
       <WizardProgress currentStep={currentStepIndex} />
 
       {wizardStep === 'sign-in' && (
-        <div className="wizard-step-enter space-y-6">
-          <div className="space-y-2">
-            <h3 className="font-display text-2xl tracking-tight">Set up Sync</h3>
-            <p className="font-serif text-[15px] text-muted-foreground leading-relaxed">
+        <div className="wizard-step-enter space-y-6 text-center">
+          <div className="flex flex-col pb-7 gap-1.5">
+            <div className="tracking-[-0.02em] font-semibold text-xl/6.5 text-foreground">
+              Set up Sync
+            </div>
+            <div className="text-[13px]/4.5 text-muted-foreground">
               Create an account to sync your data across devices with end-to-end encryption.
-            </p>
+            </div>
           </div>
 
           <EmailEntryForm onSubmit={handleEmailSubmit} isLoading={isLoading} error={wizardError} />
@@ -214,7 +216,7 @@ export function SetupWizard(): React.JSX.Element {
               <div className="w-full h-px bg-gradient-to-r from-transparent via-border to-transparent" />
             </div>
             <div className="relative flex justify-center">
-              <span className="bg-background px-3 text-[10px] font-semibold tracking-widest uppercase text-muted-foreground/60">
+              <span className="bg-background px-3 uppercase tracking-[0.05em] font-medium text-[10px]/3.5 text-muted-foreground/50">
                 or
               </span>
             </div>
@@ -311,11 +313,12 @@ function LinkingChoiceStep({
 }): React.JSX.Element {
   return (
     <div className="wizard-step-enter space-y-6">
-      <div className="space-y-2">
-        <h3 className="font-display text-2xl tracking-tight">Link this device</h3>
-        <p className="font-serif text-[15px] text-muted-foreground leading-relaxed">
-          This account already exists. Transfer your encryption keys from another device or restore
-          from your recovery phrase.
+      <div className="space-y-1.5">
+        <h3 className="font-semibold text-base/5 tracking-[-0.01em] text-foreground">
+          Link this device
+        </h3>
+        <p className="text-xs/4 text-muted-foreground">
+          Transfer encryption keys from another device or restore from your recovery phrase.
         </p>
       </div>
 
@@ -325,8 +328,8 @@ function LinkingChoiceStep({
           onClick={onChooseQr}
           className="w-full flex items-center gap-4 p-4 rounded-xl border border-border bg-background hover:bg-muted/50 transition-colors text-left group"
         >
-          <div className="w-11 h-11 rounded-xl bg-amber-500/10 dark:bg-amber-400/10 flex items-center justify-center flex-shrink-0">
-            <QrCode className="w-5 h-5 text-amber-700 dark:text-amber-400" />
+          <div className="w-11 h-11 rounded-xl bg-[var(--tint)]/10 flex items-center justify-center flex-shrink-0">
+            <QrCode className="w-5 h-5 text-[var(--tint)]" />
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-sm font-medium group-hover:text-foreground transition-colors">
@@ -361,32 +364,27 @@ function LinkingChoiceStep({
 }
 
 function WizardProgress({ currentStep }: { currentStep: number }): React.JSX.Element {
-  const progress = (currentStep / (STEPS.length - 1)) * 100
+  const widthPct = STEPS.length > 1 ? ((currentStep + 1) / STEPS.length) * 100 : 100
 
   return (
     <div
       role="group"
       aria-label={`Step ${currentStep + 1} of ${STEPS.length}: ${STEPS[currentStep]}`}
-      className="space-y-3"
+      className="[font-synthesis:none] flex flex-col pb-8 gap-2 antialiased text-xs/4"
     >
-      <div className="relative h-1 bg-border/50 rounded-full overflow-hidden">
+      <div className="flex h-0.5 rounded-[1px] overflow-clip bg-foreground/[0.06] shrink-0">
         <div
-          className="absolute inset-y-0 left-0 rounded-full transition-all duration-500 ease-out"
-          style={{
-            width: `${progress}%`,
-            background: 'linear-gradient(90deg, rgb(180, 83, 9), rgb(245, 158, 11))'
-          }}
+          className="h-0.5 rounded-[1px] bg-[var(--tint)] transition-all duration-500 ease-out"
+          style={{ width: `${widthPct}%` }}
         />
       </div>
-      <div className="flex justify-between">
+      <div className="flex items-center justify-between">
         {STEPS.map((label, i) => (
           <span
             key={label}
             className={cn(
-              'text-[10px] tracking-widest uppercase transition-colors duration-300',
-              i <= currentStep
-                ? 'text-amber-700 dark:text-amber-400 font-semibold'
-                : 'text-muted-foreground/50'
+              'uppercase tracking-[0.05em] font-medium text-[10px]/3.5 transition-colors duration-300',
+              i <= currentStep ? 'text-[var(--tint)]' : 'text-muted-foreground/50'
             )}
           >
             {label}

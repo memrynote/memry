@@ -97,7 +97,7 @@ export function PdfViewer({ src, className }: PdfViewerProps) {
   if (error) {
     return (
       <div
-        className={cn('flex h-full items-center justify-center bg-muted/30 rounded-lg', className)}
+        className={cn('flex h-full items-center justify-center bg-muted/30 rounded-md', className)}
       >
         <div className="text-center p-8">
           <p className="text-destructive font-medium mb-2">Failed to load PDF</p>

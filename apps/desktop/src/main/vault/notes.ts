@@ -64,6 +64,8 @@ import { getDatabase, getIndexDatabase } from '../database'
 import { NoteError, NoteErrorCode, VaultError, VaultErrorCode } from '../lib/errors'
 import { generateNoteId } from '../lib/id'
 import { NotesChannels } from '@memry/contracts/notes-api'
+import type { FolderInfo } from '@memry/contracts/templates-api'
+import { readFolderConfig } from './folders'
 import { queueEmbeddingUpdate } from '../inbox/embedding-queue'
 import { createLogger } from '../lib/logger'
 import { getFileType, getExtension, isBinaryFileType } from '@memry/shared/file-types'
@@ -1000,11 +1002,18 @@ export function getNoteLinks(id: string): NoteLinksResponse {
 // ============================================================================
 
 /**
- * Get all folders in the notes directory.
+ * Get all folders in the notes directory with their icons.
  */
-export async function getFolders(): Promise<string[]> {
+export async function getFolders(): Promise<FolderInfo[]> {
   const notesDir = getNotesDir()
-  return listDirectories(notesDir, notesDir)
+  const paths = await listDirectories(notesDir, notesDir)
+
+  return Promise.all(
+    paths.map(async (folderPath) => {
+      const config = await readFolderConfig(folderPath)
+      return { path: folderPath, icon: config?.icon ?? null }
+    })
+  )
 }
 
 /**

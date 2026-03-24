@@ -106,10 +106,7 @@ export function LinkingPending({
       role="status"
       aria-live="polite"
     >
-      <Loader2
-        className="w-10 h-10 animate-spin text-amber-600 dark:text-amber-400"
-        aria-hidden="true"
-      />
+      <Loader2 className="w-10 h-10 animate-spin text-[var(--tint)]" aria-hidden="true" />
       <div className="text-center space-y-1">
         <p className="font-display text-lg tracking-tight">Waiting for approval</p>
         <p className="font-serif text-[15px] text-muted-foreground leading-relaxed max-w-xs">
@@ -117,11 +114,11 @@ export function LinkingPending({
         </p>
       </div>
       {verificationCode && (
-        <div className="rounded-lg border border-amber-200 dark:border-amber-900/50 bg-amber-50/50 dark:bg-amber-950/20 px-6 py-3 text-center space-y-1">
+        <div className="rounded-md border border-border bg-muted/50 px-6 py-3 text-center space-y-1">
           <p className="text-xs font-semibold tracking-widest uppercase text-muted-foreground">
             Verification code
           </p>
-          <p className="font-mono text-2xl tracking-[0.3em] font-semibold text-amber-700 dark:text-amber-400">
+          <p className="font-mono text-2xl tracking-[0.3em] font-semibold text-[var(--tint)]">
             {formatSasCode(verificationCode)}
           </p>
           <p className="text-xs text-muted-foreground">

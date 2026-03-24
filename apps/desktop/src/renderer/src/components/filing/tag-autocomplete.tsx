@@ -1,152 +1,38 @@
 /**
  * TagAutocomplete Component
- * Enhanced tag input with autocomplete dropdown, recent tags, and popular tags.
- * Used across FilingPanel, BulkFilePanel, and BulkTagPopover.
+ * Inline tag input with dropdown showing AI suggestions, matching tags, and create option.
  */
 
-import { useState, useRef, useEffect, useCallback } from 'react'
-import { X, Plus, Clock, TrendingUp } from '@/lib/icons'
+import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
+import { Plus } from '@/lib/icons'
 
-import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
-import { useAllTags, type TagWithMeta } from '@/hooks/use-all-tags'
+import { useAllTags } from '@/hooks/use-all-tags'
 import { COLOR_NAMES, getTagColors } from '@/components/note/tags-row/tag-colors'
 
-// Hash function to get consistent color for a tag name
 function getColorForTag(tagName: string): string {
   let hash = 0
   for (let i = 0; i < tagName.length; i++) {
     hash = tagName.charCodeAt(i) + ((hash << 5) - hash)
   }
-  const index = Math.abs(hash) % COLOR_NAMES.length
-  return COLOR_NAMES[index]
+  return COLOR_NAMES[Math.abs(hash) % COLOR_NAMES.length]
 }
 
 // =============================================================================
-// TagPill Component
+// TagPill — inline pill for selected tags
 // =============================================================================
 
-interface TagPillProps {
-  tag: string
-  onRemove: (tag: string) => void
-}
-
-const TagPill = ({ tag, onRemove }: TagPillProps): React.JSX.Element => {
-  const colorName = getColorForTag(tag)
-  const colors = getTagColors(colorName)
-
-  const handleRemove = (e: React.MouseEvent): void => {
-    e.stopPropagation()
-    onRemove(tag)
-  }
-
-  const handleKeyDown = (e: React.KeyboardEvent): void => {
-    if (e.key === 'Enter' || e.key === ' ' || e.key === 'Backspace') {
-      e.preventDefault()
-      onRemove(tag)
-    }
-  }
+const TagPill = ({ tag }: { tag: string }): React.JSX.Element => {
+  const colors = getTagColors(getColorForTag(tag))
 
   return (
     <span
-      className={cn(
-        'inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium',
-        'tag-pill-enter motion-reduce:animate-none'
-      )}
-      style={{
-        backgroundColor: colors.background,
-        color: colors.text
-      }}
+      role="listitem"
+      className="inline-flex items-center rounded-[10px] py-0.5 px-2 text-[11px] leading-3.5 tag-pill-enter motion-reduce:animate-none"
+      style={{ backgroundColor: `${colors.text}15`, color: colors.text }}
     >
       {tag}
-      <button
-        type="button"
-        onClick={handleRemove}
-        onKeyDown={handleKeyDown}
-        className="rounded-full p-0.5 transition-opacity hover:opacity-70"
-        aria-label={`Remove tag ${tag}`}
-      >
-        <X className="size-3" aria-hidden="true" />
-      </button>
     </span>
-  )
-}
-
-// =============================================================================
-// SuggestionItem Component
-// =============================================================================
-
-interface SuggestionItemProps {
-  tag: TagWithMeta
-  isHighlighted: boolean
-  onSelect: (tag: string) => void
-  onMouseEnter: () => void
-}
-
-const SuggestionItem = ({
-  tag,
-  isHighlighted,
-  onSelect,
-  onMouseEnter
-}: SuggestionItemProps): React.JSX.Element => {
-  return (
-    <button
-      type="button"
-      onClick={() => onSelect(tag.name)}
-      onMouseEnter={onMouseEnter}
-      className={cn(
-        'w-full flex items-center justify-between px-3 py-1.5 text-sm text-left',
-        'transition-colors duration-75',
-        isHighlighted ? 'bg-accent text-accent-foreground' : 'hover:bg-muted'
-      )}
-    >
-      <span className="flex items-center gap-2">
-        {tag.color && (
-          <span
-            className="size-2 rounded-full"
-            style={{ backgroundColor: tag.color }}
-            aria-hidden="true"
-          />
-        )}
-        <span>{tag.name}</span>
-      </span>
-      <span className="text-xs text-muted-foreground">{tag.count}</span>
-    </button>
-  )
-}
-
-// =============================================================================
-// QuickTagButton Component
-// =============================================================================
-
-interface QuickTagButtonProps {
-  tag: string
-  onAdd: (tag: string) => void
-  disabled?: boolean
-}
-
-const QuickTagButton = ({ tag, onAdd, disabled }: QuickTagButtonProps): React.JSX.Element => {
-  const colorName = getColorForTag(tag)
-  const colors = getTagColors(colorName)
-
-  return (
-    <button
-      type="button"
-      onClick={() => onAdd(tag)}
-      disabled={disabled}
-      className={cn(
-        'inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium',
-        'transition-opacity duration-[var(--duration-instant)]',
-        disabled ? 'opacity-40 cursor-not-allowed' : 'hover:opacity-80 cursor-pointer'
-      )}
-      style={{
-        backgroundColor: disabled ? undefined : `${colors.background}80`, // 50% opacity
-        color: disabled ? undefined : colors.text
-      }}
-    >
-      <Plus className="size-3" aria-hidden="true" />
-      {tag}
-    </button>
   )
 }
 
@@ -155,21 +41,17 @@ const QuickTagButton = ({ tag, onAdd, disabled }: QuickTagButtonProps): React.JS
 // =============================================================================
 
 interface TagAutocompleteProps {
-  /** Currently selected tags */
   tags: string[]
-  /** Callback when tags change */
   onTagsChange: (tags: string[]) => void
-  /** Placeholder text for input */
   placeholder?: string
-  /** Show section labels (Recent, Popular) */
   showSections?: boolean
-  /** Maximum suggestions to show in dropdown */
   maxSuggestions?: number
-  /** Auto focus input on mount */
   autoFocus?: boolean
-  /** Class name for container */
+  aiSuggestedTags?: string[]
   className?: string
 }
+
+const LISTBOX_ID = 'tag-autocomplete-listbox'
 
 export const TagAutocomplete = ({
   tags,
@@ -178,64 +60,105 @@ export const TagAutocomplete = ({
   showSections = true,
   maxSuggestions = 8,
   autoFocus = false,
+  aiSuggestedTags = [],
   className
 }: TagAutocompleteProps): React.JSX.Element => {
   const [inputValue, setInputValue] = useState('')
   const [isDropdownOpen, setIsDropdownOpen] = useState(false)
   const [highlightedIndex, setHighlightedIndex] = useState(-1)
+  const [isFocused, setIsFocused] = useState(false)
 
   const inputRef = useRef<HTMLInputElement>(null)
   const dropdownRef = useRef<HTMLDivElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
 
-  const { searchTags, getPopularTags, getRecentTags, isLoading } = useAllTags()
+  const { searchTags, getPopularTags } = useAllTags()
 
-  // Get filtered suggestions based on input
-  const suggestions = inputValue.trim()
-    ? searchTags(inputValue).filter((t) => !tags.includes(t.name))
-    : []
+  const trimmedInput = inputValue.trim()
 
-  // Get quick suggestions (recent + popular) when no input
-  const recentTags = getRecentTags(5).filter((t) => !tags.includes(t.name))
-  const popularTags = getPopularTags(8).filter((t) => !tags.includes(t.name))
+  // AI suggested tags not yet added
+  const availableAiTags = useMemo(
+    () => aiSuggestedTags.filter((t) => !tags.includes(t)),
+    [aiSuggestedTags, tags]
+  )
 
-  useEffect(() => {
-    if (inputValue.trim() && suggestions.length > 0) {
-      setHighlightedIndex(0)
-    } else if (!inputValue.trim() && isDropdownOpen && popularTags.length > 0) {
-      setHighlightedIndex(0)
-    } else {
-      setHighlightedIndex(-1)
+  // Search results when typing
+  const matchingTags = useMemo(
+    () => (trimmedInput ? searchTags(trimmedInput).filter((t) => !tags.includes(t.name)) : []),
+    [trimmedInput, searchTags, tags]
+  )
+
+  // Popular tags for idle state
+  const popularTags = useMemo(
+    () => getPopularTags(maxSuggestions).filter((t) => !tags.includes(t.name)),
+    [getPopularTags, maxSuggestions, tags]
+  )
+
+  // Check if exact match exists (to decide whether to show "Create")
+  const exactMatchExists = useMemo(
+    () =>
+      trimmedInput
+        ? tags.includes(trimmedInput.toLowerCase()) ||
+          matchingTags.some((t) => t.name.toLowerCase() === trimmedInput.toLowerCase())
+        : true,
+    [trimmedInput, tags, matchingTags]
+  )
+
+  // Build flat list for keyboard navigation
+  const flatItems = useMemo(() => {
+    const items: Array<{
+      type: 'ai' | 'match' | 'popular' | 'create'
+      value: string
+      count?: number
+    }> = []
+
+    if (!trimmedInput && availableAiTags.length > 0) {
+      availableAiTags.slice(0, 2).forEach((t) => items.push({ type: 'ai', value: t }))
     }
-  }, [inputValue, suggestions.length, isDropdownOpen, popularTags.length])
 
-  // Close dropdown on click outside
+    if (trimmedInput) {
+      matchingTags
+        .slice(0, maxSuggestions)
+        .forEach((t) => items.push({ type: 'match', value: t.name, count: t.count }))
+    } else {
+      popularTags
+        .slice(0, 5)
+        .forEach((t) => items.push({ type: 'popular', value: t.name, count: t.count }))
+    }
+
+    if (trimmedInput && !exactMatchExists) {
+      items.push({ type: 'create', value: trimmedInput.toLowerCase() })
+    }
+
+    return items
+  }, [trimmedInput, availableAiTags, matchingTags, popularTags, maxSuggestions, exactMatchExists])
+
   useEffect(() => {
-    const handleClickOutside = (e: MouseEvent): void => {
+    setHighlightedIndex(flatItems.length > 0 ? 0 : -1)
+  }, [flatItems.length, trimmedInput])
+
+  // Close on click outside
+  useEffect(() => {
+    const handler = (e: MouseEvent): void => {
       if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
         setIsDropdownOpen(false)
       }
     }
-
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
   }, [])
 
-  // Auto focus
   useEffect(() => {
-    if (autoFocus) {
-      setTimeout(() => inputRef.current?.focus(), 100)
-    }
+    if (autoFocus) setTimeout(() => inputRef.current?.focus(), 100)
   }, [autoFocus])
 
   const addTag = useCallback(
     (tag: string): void => {
-      const normalizedTag = tag.trim().toLowerCase()
-      if (normalizedTag && !tags.includes(normalizedTag)) {
-        onTagsChange([...tags, normalizedTag])
+      const normalized = tag.trim().toLowerCase()
+      if (normalized && !tags.includes(normalized)) {
+        onTagsChange([...tags, normalized])
       }
       setInputValue('')
-      setIsDropdownOpen(false)
       setHighlightedIndex(-1)
       inputRef.current?.focus()
     },
@@ -251,181 +174,244 @@ export const TagAutocomplete = ({
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>): void => {
     const value = e.target.value
-    // Check for comma to add tag
-    if (value.includes(',')) {
-      const parts = value.split(',')
-      const tagToAdd = parts[0]
-      if (tagToAdd.trim()) {
+
+    // Space or comma creates tag
+    if (value.endsWith(' ') || value.includes(',')) {
+      const tagToAdd = value.replace(',', '').trim()
+      if (tagToAdd) {
         addTag(tagToAdd)
       }
-      setInputValue(parts.slice(1).join(','))
-    } else {
-      setInputValue(value)
+      return
     }
+
+    setInputValue(value)
+    if (!isDropdownOpen) setIsDropdownOpen(true)
   }
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>): void => {
-    const hasSearchResults = inputValue.trim() && suggestions.length > 0
-    const hasPopularTags = !inputValue.trim() && popularTags.length > 0
-    const activeList = hasSearchResults ? suggestions : popularTags.slice(0, 5)
-    const hasDropdownItems = isDropdownOpen && (hasSearchResults || hasPopularTags)
+    // Escape closes dropdown first, then lets panel handle it
+    if (e.key === 'Escape') {
+      if (isDropdownOpen) {
+        e.preventDefault()
+        e.stopPropagation()
+        setIsDropdownOpen(false)
+        return
+      }
+      return
+    }
 
-    if (hasDropdownItems) {
+    if (isDropdownOpen && flatItems.length > 0) {
       switch (e.key) {
         case 'ArrowDown':
           e.preventDefault()
-          setHighlightedIndex((prev) => (prev < activeList.length - 1 ? prev + 1 : 0))
-          break
+          setHighlightedIndex((prev) => (prev < flatItems.length - 1 ? prev + 1 : 0))
+          return
         case 'ArrowUp':
           e.preventDefault()
-          setHighlightedIndex((prev) => (prev > 0 ? prev - 1 : activeList.length - 1))
-          break
+          setHighlightedIndex((prev) => (prev > 0 ? prev - 1 : flatItems.length - 1))
+          return
         case 'Enter':
           e.preventDefault()
-          if (highlightedIndex >= 0 && highlightedIndex < activeList.length) {
-            addTag(activeList[highlightedIndex].name)
-          } else if (inputValue.trim()) {
-            addTag(inputValue)
+          if (highlightedIndex >= 0 && highlightedIndex < flatItems.length) {
+            addTag(flatItems[highlightedIndex].value)
+          } else if (trimmedInput) {
+            addTag(trimmedInput)
           }
-          break
-        case 'Escape':
-          e.preventDefault()
-          setIsDropdownOpen(false)
-          setHighlightedIndex(-1)
-          break
+          return
         case 'Tab':
-          if (highlightedIndex >= 0 && highlightedIndex < activeList.length) {
+          if (highlightedIndex >= 0 && highlightedIndex < flatItems.length) {
             e.preventDefault()
-            addTag(activeList[highlightedIndex].name)
+            addTag(flatItems[highlightedIndex].value)
           }
-          break
+          return
       }
-    } else {
-      if (e.key === 'Enter' && inputValue.trim()) {
-        e.preventDefault()
-        addTag(inputValue)
-      } else if (e.key === 'Backspace' && !inputValue && tags.length > 0) {
-        removeTag(tags[tags.length - 1])
-      }
+    }
+
+    if (e.key === 'Enter' && trimmedInput) {
+      e.preventDefault()
+      addTag(trimmedInput)
+    } else if (e.key === 'Backspace' && !inputValue && tags.length > 0) {
+      removeTag(tags[tags.length - 1])
     }
   }
 
-  const handleInputFocus = (): void => {
-    setIsDropdownOpen(true)
+  // Render helpers for dropdown sections
+  const renderAiSection = (): React.JSX.Element | null => {
+    if (trimmedInput || availableAiTags.length === 0) return null
+    const aiItems = availableAiTags.slice(0, 2)
+    const startIdx = 0
+
+    return (
+      <div className="flex flex-col py-1">
+        <div className="flex items-center py-0.5 px-2">
+          <span className="text-[11px] [letter-spacing:0.05em] uppercase text-text-tertiary font-medium leading-3.5">
+            Suggested
+          </span>
+        </div>
+        {aiItems.map((tag, i) => {
+          const idx = startIdx + i
+          return (
+            <button
+              key={tag}
+              type="button"
+              onClick={() => addTag(tag)}
+              onMouseEnter={() => setHighlightedIndex(idx)}
+              className={cn(
+                'flex items-center gap-2 rounded-sm py-2 px-3 mx-1 my-0.5 text-left transition-colors',
+                highlightedIndex === idx ? 'bg-[var(--tint)]/[0.03]' : 'hover:bg-foreground/[0.03]'
+              )}
+            >
+              <span className="inline-flex items-center rounded-[10px] py-0.5 px-2 bg-[var(--tint)]/[0.08] text-[var(--tint)] text-[11px] leading-3.5">
+                {tag}
+              </span>
+              <span className="text-[10px] leading-3 text-[var(--tint)]/40">AI</span>
+            </button>
+          )
+        })}
+      </div>
+    )
   }
 
-  return (
-    <div ref={containerRef} className={cn('space-y-3', className)}>
-      {/* Section Label */}
-      <div className="flex items-center gap-2">
-        <h3 className="text-sm font-medium text-foreground">Tags</h3>
-        <span className="text-xs text-muted-foreground">(optional)</span>
-      </div>
+  const renderMatchingSection = (): React.JSX.Element | null => {
+    const aiCount = !trimmedInput ? availableAiTags.slice(0, 2).length : 0
+    const itemsToShow = trimmedInput
+      ? matchingTags.slice(0, maxSuggestions)
+      : popularTags.slice(0, 5)
+    if (itemsToShow.length === 0) return null
 
-      {/* Input with autocomplete dropdown */}
-      <div className="relative">
-        <Input
-          ref={inputRef}
-          type="text"
-          placeholder={placeholder}
-          value={inputValue}
-          onChange={handleInputChange}
-          onKeyDown={handleKeyDown}
-          onFocus={handleInputFocus}
-          aria-label="Add tags"
-          aria-expanded={isDropdownOpen}
-          aria-haspopup="listbox"
-          aria-autocomplete="list"
-          autoComplete="off"
-        />
+    const sectionLabel = trimmedInput ? 'Matching' : 'Popular'
 
-        {/* Autocomplete Dropdown */}
-        {isDropdownOpen &&
-          (suggestions.length > 0 || (!inputValue.trim() && popularTags.length > 0)) && (
-            <div
-              ref={dropdownRef}
+    return (
+      <div className={cn('flex flex-col py-1', aiCount > 0 && 'border-t border-border/40')}>
+        <div className="flex items-center py-0.5 px-2">
+          <span className="text-[11px] [letter-spacing:0.05em] uppercase text-text-tertiary font-medium leading-3.5">
+            {sectionLabel}
+          </span>
+        </div>
+        {itemsToShow.map((tag, i) => {
+          const idx = aiCount + i
+          const colors = getTagColors(getColorForTag(tag.name))
+          return (
+            <button
+              key={tag.name}
+              type="button"
+              onClick={() => addTag(tag.name)}
+              onMouseEnter={() => setHighlightedIndex(idx)}
               className={cn(
-                'absolute z-50 w-full mt-1 py-1 rounded-md border border-border',
-                'bg-popover shadow-md max-h-48 overflow-y-auto'
+                'flex items-center gap-2 rounded-sm py-2 px-3 mx-1 my-0.5 text-left transition-colors',
+                highlightedIndex === idx ? 'bg-foreground/[0.03]' : 'hover:bg-foreground/[0.03]'
               )}
-              role="listbox"
             >
-              {inputValue.trim() ? (
-                suggestions
-                  .slice(0, maxSuggestions)
-                  .map((tag, index) => (
-                    <SuggestionItem
-                      key={tag.name}
-                      tag={tag}
-                      isHighlighted={index === highlightedIndex}
-                      onSelect={addTag}
-                      onMouseEnter={() => setHighlightedIndex(index)}
-                    />
-                  ))
-              ) : (
-                <>
-                  <p className="flex items-center gap-1.5 px-3 py-1.5 text-[10px] uppercase tracking-wider text-muted-foreground/70 border-b border-border/50">
-                    <TrendingUp className="size-3" aria-hidden="true" />
-                    Popular
-                  </p>
-                  {popularTags.slice(0, 5).map((tag, index) => (
-                    <SuggestionItem
-                      key={tag.name}
-                      tag={tag}
-                      isHighlighted={index === highlightedIndex}
-                      onSelect={addTag}
-                      onMouseEnter={() => setHighlightedIndex(index)}
-                    />
-                  ))}
-                </>
+              <span
+                className="inline-flex items-center rounded-[10px] py-0.5 px-2 text-[11px] leading-3.5"
+                style={{ backgroundColor: `${colors.text}15`, color: colors.text }}
+              >
+                {tag.name}
+              </span>
+              {tag.count > 0 && (
+                <span className="text-[10px] leading-3 text-muted-foreground/30">
+                  used {tag.count} times
+                </span>
               )}
-            </div>
-          )}
+            </button>
+          )
+        })}
       </div>
+    )
+  }
 
-      {/* Current Tags */}
-      {tags.length > 0 && (
-        <div className="flex flex-wrap gap-1.5" role="list" aria-label="Selected tags">
+  const renderCreateFooter = (): React.JSX.Element | null => {
+    if (!trimmedInput || exactMatchExists) return null
+    const normalized = trimmedInput.toLowerCase()
+    const colors = getTagColors(getColorForTag(normalized))
+    const idx = flatItems.length - 1
+
+    return (
+      <button
+        type="button"
+        onClick={() => addTag(normalized)}
+        onMouseEnter={() => setHighlightedIndex(idx)}
+        className={cn(
+          'flex items-center w-full py-2 px-3 gap-1.5 border-t border-border/40 text-left transition-colors',
+          highlightedIndex === idx ? 'bg-foreground/[0.03]' : 'hover:bg-foreground/[0.03]'
+        )}
+      >
+        <Plus className="size-3 text-muted-foreground/30" aria-hidden="true" />
+        <span className="text-[11px] leading-3.5 text-muted-foreground/30">Create</span>
+        <span
+          className="inline-flex items-center rounded-md py-px px-1.5 text-[11px] leading-3.5"
+          style={{ backgroundColor: `${colors.text}15`, color: colors.text }}
+        >
+          {normalized}
+        </span>
+      </button>
+    )
+  }
+
+  const showDropdown = isDropdownOpen && flatItems.length > 0
+
+  return (
+    <div
+      ref={containerRef}
+      className={cn('flex flex-col gap-2 py-4 px-5 border-b border-border', className)}
+    >
+      <span className="text-[11px] [letter-spacing:0.05em] uppercase text-text-tertiary font-medium leading-3.5">
+        Tags
+      </span>
+
+      <div className="relative">
+        <div
+          className={cn(
+            'flex items-center flex-wrap rounded-md py-2 px-3 gap-1.5 bg-foreground/[0.02] border transition-colors cursor-text',
+            isFocused ? 'border-[var(--accent-purple)]/30' : 'border-border'
+          )}
+          onClick={() => inputRef.current?.focus()}
+          role="list"
+          aria-label="Selected tags"
+        >
           {tags.map((tag) => (
-            <TagPill key={tag} tag={tag} onRemove={removeTag} />
+            <TagPill key={tag} tag={tag} />
           ))}
+          <input
+            ref={inputRef}
+            type="text"
+            placeholder={tags.length === 0 ? placeholder : ''}
+            value={inputValue}
+            onChange={handleInputChange}
+            onKeyDown={handleKeyDown}
+            onFocus={() => {
+              setIsDropdownOpen(true)
+              setIsFocused(true)
+            }}
+            onBlur={() => {
+              setIsFocused(false)
+              setTimeout(() => setIsDropdownOpen(false), 150)
+            }}
+            role="combobox"
+            aria-label="Add tags"
+            aria-expanded={isDropdownOpen}
+            aria-haspopup="listbox"
+            aria-controls={LISTBOX_ID}
+            aria-autocomplete="list"
+            autoComplete="off"
+            className="flex-1 min-w-[60px] bg-transparent border-0 p-0 text-xs text-foreground placeholder:text-muted-foreground/30 outline-none focus:outline-none"
+          />
         </div>
-      )}
 
-      {/* Quick Suggestions (when not typing) */}
-      {showSections && !inputValue.trim() && !isLoading && (
-        <div className="space-y-3">
-          {/* Recent Tags */}
-          {recentTags.length > 0 && (
-            <div className="space-y-1.5">
-              <p className="flex items-center gap-1 text-[10px] uppercase tracking-wider text-muted-foreground/70">
-                <Clock className="size-3" aria-hidden="true" />
-                Recent
-              </p>
-              <div className="flex flex-wrap gap-1.5">
-                {recentTags.slice(0, 5).map((tag) => (
-                  <QuickTagButton key={tag.name} tag={tag.name} onAdd={addTag} />
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Popular Tags */}
-          {popularTags.length > 0 && (
-            <div className="space-y-1.5">
-              <p className="flex items-center gap-1 text-[10px] uppercase tracking-wider text-muted-foreground/70">
-                <TrendingUp className="size-3" aria-hidden="true" />
-                Popular
-              </p>
-              <div className="flex flex-wrap gap-1.5">
-                {popularTags.slice(0, 8).map((tag) => (
-                  <QuickTagButton key={tag.name} tag={tag.name} onAdd={addTag} />
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
-      )}
+        {showDropdown && (
+          <div
+            ref={dropdownRef}
+            id={LISTBOX_ID}
+            className="absolute z-50 w-full mt-1 p-0 rounded-md border border-border bg-popover shadow-[0_8px_24px_rgba(0,0,0,0.25)] overflow-hidden"
+            role="listbox"
+            aria-label="Tag suggestions"
+          >
+            {renderAiSection()}
+            {renderMatchingSection()}
+            {renderCreateFooter()}
+          </div>
+        )}
+      </div>
     </div>
   )
 }

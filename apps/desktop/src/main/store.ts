@@ -45,6 +45,9 @@ const defaultData: StoreSchema = {
   sync: {}
 }
 
+/** In-memory cache — populated on first read, updated on every write. */
+let cache: StoreSchema | null = null
+
 /**
  * Get the config file path in the app's userData directory
  */
@@ -54,7 +57,7 @@ function getConfigPath(): string {
 }
 
 /**
- * Read the config file
+ * Read the config file (only called when cache is cold).
  */
 function readConfig(): StoreSchema {
   try {
@@ -67,19 +70,27 @@ function readConfig(): StoreSchema {
   } catch (error) {
     logger.error('Error reading config:', error)
   }
-  return defaultData
+  return { ...defaultData }
 }
 
 /**
- * Write the config file
+ * Write the config file and keep the cache in sync.
  */
 function writeConfig(data: StoreSchema): void {
   try {
     const configPath = getConfigPath()
     fs.writeFileSync(configPath, JSON.stringify(data, null, 2), 'utf-8')
+    cache = data
   } catch (error) {
     logger.error('Error writing config:', error)
   }
+}
+
+function getCache(): StoreSchema {
+  if (!cache) {
+    cache = readConfig()
+  }
+  return cache
 }
 
 /**
@@ -87,13 +98,11 @@ function writeConfig(data: StoreSchema): void {
  */
 export const store = {
   get<K extends keyof StoreSchema>(key: K): StoreSchema[K] {
-    const data = readConfig()
-    return data[key]
+    return getCache()[key]
   },
 
   set<K extends keyof StoreSchema>(key: K, value: StoreSchema[K]): void {
-    const data = readConfig()
-    data[key] = value
+    const data = { ...getCache(), [key]: value }
     writeConfig(data)
   }
 }

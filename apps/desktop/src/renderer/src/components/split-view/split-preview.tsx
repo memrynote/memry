@@ -36,7 +36,7 @@ export const SplitPreview = ({ zone }: SplitPreviewProps): React.JSX.Element | n
     <div
       className={cn(
         'absolute pointer-events-none z-40',
-        'bg-blue-500/10 border-2 border-blue-500/50 rounded-lg',
+        'bg-tint-lighter border-2 border-tint-border rounded-md',
         'transition-all duration-200'
       )}
       style={getPreviewStyle()}

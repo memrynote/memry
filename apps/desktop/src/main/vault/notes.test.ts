@@ -873,10 +873,11 @@ describe('notes operations', () => {
         await notes.createNote({ title: 'C', content: 'C.', folder: 'folder1/nested' })
 
         const folders = await notes.getFolders()
+        const folderPaths = folders.map((f) => f.path)
 
-        expect(folders).toContain('folder1')
-        expect(folders).toContain('folder2')
-        expect(folders).toContain('folder1/nested')
+        expect(folderPaths).toContain('folder1')
+        expect(folderPaths).toContain('folder2')
+        expect(folderPaths).toContain('folder1/nested')
       })
     })
 

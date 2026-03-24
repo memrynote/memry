@@ -2,6 +2,7 @@ import {
   // Direct matches
   AlertCircleIcon,
   AlignLeftIcon,
+  Archive03Icon,
   ArchiveIcon,
   ArrowDown01Icon,
   ArrowDownAZIcon,
@@ -22,6 +23,7 @@ import {
   Clock01Icon,
   CloudIcon,
   CloudOffIcon,
+  CloudSavingDone01Icon,
   CodeIcon,
   CogIcon,
   CopyIcon,
@@ -254,7 +256,9 @@ import {
   ChartDecreaseIcon,
   NotificationOff01Icon,
   DashedLineCircleIcon,
-  Progress03Icon
+  Progress03Icon,
+  Pdf01Icon,
+  ArrowTurnBackwardIcon
 } from '@hugeicons/core-free-icons'
 import { createIcon } from './create-icon'
 
@@ -277,6 +281,7 @@ export const FileSearch = createIcon(FileSearchIcon)
 export const Files = createIcon(Files01Icon)
 export const FileInput = createIcon(FileInputIcon)
 export const FileWarning = createIcon(FileExclamationPointIcon)
+export const FilePdf = createIcon(Pdf01Icon)
 export const FileType2 = createIcon(FileTypeIcon)
 export const FileIcon_ = File
 
@@ -306,6 +311,7 @@ export const BookMarked = createIcon(BookBookmark01Icon)
 export const Box = createIcon(CubeIcon)
 export const Package = createIcon(PackageIcon)
 export const Archive = createIcon(ArchiveIcon)
+export const Archive03 = createIcon(Archive03Icon)
 export const Inbox = createIcon(InboxIcon)
 export const Mail = createIcon(Mail01Icon)
 export const MailOpen = createIcon(MailOpenIcon)
@@ -376,6 +382,7 @@ export const MoveDown = createIcon(NodeMoveDownIcon)
 export const Move = createIcon(MoveIcon)
 export const Forward = createIcon(Forward01Icon)
 export const ExternalLink = createIcon(LinkForwardIcon)
+export const ArrowTurnBackward = createIcon(ArrowTurnBackwardIcon)
 
 // ── Aliases (Icon suffix variants used in codebase) ─
 
@@ -477,6 +484,7 @@ export const Database = createIcon(DatabaseIcon)
 export const Server = createIcon(ServerStack01Icon)
 export const Cloud = createIcon(CloudIcon)
 export const CloudOff = createIcon(CloudOffIcon)
+export const CloudSavingDone = createIcon(CloudSavingDone01Icon)
 export const Wifi = createIcon(Wifi01Icon)
 export const Globe = createIcon(GlobeIcon)
 export const Smartphone = createIcon(SmartPhone01Icon)

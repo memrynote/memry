@@ -116,8 +116,7 @@ export const TaskRow = ({
       className={cn(
         'group flex items-center py-[7px] px-6 gap-3 transition-colors',
         'rounded-md hover:bg-accent/60',
-        onClick &&
-          'cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring',
+        onClick && 'cursor-pointer focus-visible:outline-none',
         isCheckedForSelection && 'bg-primary/10 hover:bg-primary/15',
         isSelected && !isCheckedForSelection && 'bg-primary/10 ring-1 ring-inset ring-primary/30',
         className
@@ -150,10 +149,10 @@ export const TaskRow = ({
 
       <span
         className={cn(
-          'text-[13px] leading-4 grow shrink basis-0 truncate',
+          'text-[13px] font-medium grow shrink min-w-0 truncate',
           isCompleted
-            ? 'text-text-tertiary line-through decoration-1 [text-underline-position:from-font]'
-            : 'text-text-primary'
+            ? 'text-muted-foreground/60 line-through decoration-1 [text-underline-position:from-font]'
+            : 'text-foreground/90'
         )}
       >
         {task.title}

@@ -62,7 +62,7 @@ export const SubtaskDots = ({
         className={cn(
           'text-xs text-muted-foreground tabular-nums',
           'hover:text-foreground transition-colors',
-          'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring focus-visible:ring-offset-1 rounded',
+          'focus-visible:outline-none rounded',
           onClick ? 'cursor-pointer' : 'cursor-default',
           className
         )}
@@ -98,7 +98,7 @@ export const SubtaskDots = ({
       className={cn(
         'inline-flex items-center gap-1.5 px-1 py-0.5 rounded',
         'hover:bg-muted transition-colors',
-        'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring focus-visible:ring-offset-1',
+        'focus-visible:outline-none',
         onClick ? 'cursor-pointer' : 'cursor-default',
         className
       )}

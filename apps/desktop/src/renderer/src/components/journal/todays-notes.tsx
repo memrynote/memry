@@ -59,7 +59,7 @@ export const TodaysNotesSection = memo(function TodaysNotesSection({
       role="region"
       aria-label="Today's Notes"
       aria-live="polite"
-      className="rounded-lg border border-border/40 bg-card overflow-hidden"
+      className="rounded-md border border-border/40 bg-card overflow-hidden"
     >
       {/* Header */}
       <NotesSectionHeader count={notes.length} onCreate={onCreate ? handleCreateNote : undefined} />
@@ -181,7 +181,7 @@ function NoteItem({ note, isActive, onClick }: NoteItemProps): React.JSX.Element
     <button
       onClick={onClick}
       className={cn(
-        'w-full text-left p-3 rounded-lg',
+        'w-full text-left p-3 rounded-md',
         'border transition-all duration-150',
         'group cursor-pointer',
         isActive

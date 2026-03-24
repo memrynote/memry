@@ -438,17 +438,6 @@ export const groupTasksByStatus = (
 // TASK GROUPING - BY COMPLETION DATE
 // ============================================================================
 
-// ============================================================================
-// CALENDAR HELPERS
-// ============================================================================
-
-export interface CalendarDay {
-  date: Date
-  isCurrentMonth: boolean
-  isToday: boolean
-  isWeekend: boolean
-}
-
 /**
  * Format date to yyyy-MM-dd key
  */
@@ -457,105 +446,6 @@ export const formatDateKey = (date: Date): string => {
   const month = String(date.getMonth() + 1).padStart(2, '0')
   const day = String(date.getDate()).padStart(2, '0')
   return `${year}-${month}-${day}`
-}
-
-/**
- * Build visible calendar days for a month (includes overflow days)
- */
-export const getCalendarDays = (month: Date, weekStartsOn: 0 | 1 = 0): CalendarDay[] => {
-  const start = startOfWeek(startOfMonth(month), weekStartsOn)
-  const end = endOfWeek(endOfMonth(month), weekStartsOn)
-
-  const days: CalendarDay[] = []
-  let current = start
-
-  while (current <= end) {
-    const dayDate = new Date(current)
-    days.push({
-      date: dayDate,
-      isCurrentMonth: isSameMonth(dayDate, month),
-      isToday: isSameDay(dayDate, startOfDay(new Date())),
-      isWeekend: [0, 6].includes(dayDate.getDay())
-    })
-    current = addDays(current, 1)
-  }
-
-  return days
-}
-
-/**
- * Convert HH:MM to minutes since midnight
- */
-const timeToMinutes = (time: string | null): number | null => {
-  if (!time) return null
-  const [hoursStr, minutesStr] = time.split(':')
-  const hours = Number(hoursStr)
-  const minutes = Number(minutesStr)
-  if (Number.isNaN(hours) || Number.isNaN(minutes)) return null
-  return hours * 60 + minutes
-}
-
-/**
- * Sort tasks for a single day:
- * 1) Timed tasks first (chronological)
- * 2) Untimed tasks next (by priority)
- * 3) Tie-breaker by title
- */
-export const sortTasksForDay = (tasks: Task[]): Task[] => {
-  return [...tasks].sort((a, b) => {
-    const aMinutes = timeToMinutes(a.dueTime)
-    const bMinutes = timeToMinutes(b.dueTime)
-
-    const aHasTime = aMinutes !== null
-    const bHasTime = bMinutes !== null
-
-    // Timed before untimed
-    if (aHasTime && !bHasTime) return -1
-    if (!aHasTime && bHasTime) return 1
-
-    // Both timed: chronological
-    if (aHasTime && bHasTime && aMinutes !== bMinutes) {
-      return aMinutes - bMinutes
-    }
-
-    // Priority (lower order is higher priority)
-    const pa = priorityConfig[a.priority].order
-    const pb = priorityConfig[b.priority].order
-    if (pa !== pb) return pa - pb
-
-    // Title
-    return a.title.localeCompare(b.title)
-  })
-}
-
-/**
- * Group tasks by date key within a visible range
- */
-export const groupTasksByCalendarDate = (
-  tasks: Task[],
-  visibleStart: Date,
-  visibleEnd: Date
-): Map<string, Task[]> => {
-  const map = new Map<string, Task[]>()
-
-  tasks.forEach((task) => {
-    if (!task.dueDate) return
-    const taskDate = startOfDay(task.dueDate)
-    if (!isWithinInterval(taskDate, { start: visibleStart, end: visibleEnd })) return
-
-    const key = formatDateKey(taskDate)
-    if (!map.has(key)) {
-      map.set(key, [])
-    }
-    map.get(key)!.push(task)
-  })
-
-  // Sort each bucket for consistent display
-  map.forEach((value, key) => {
-    map.set(key, sortTasksForDay(value))
-  })
-
-  return map
 }
 
 // ============================================================================

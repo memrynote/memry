@@ -5,6 +5,10 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+*:focus-visible {
+  outline: none;
+}
+
 /* Find in page — CSS Custom Highlight API */
 ::highlight(find-matches) {
   background-color: #fde68a;

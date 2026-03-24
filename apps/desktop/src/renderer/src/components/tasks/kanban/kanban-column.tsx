@@ -148,8 +148,8 @@ export const KanbanColumn = ({
         )}
         <span
           className={cn(
-            'text-[13px]/4 font-medium truncate',
-            shouldHighlight ? 'text-text-primary' : 'text-text-secondary'
+            'text-[13px] font-medium truncate',
+            shouldHighlight ? 'text-foreground/90' : 'text-foreground/60'
           )}
         >
           {column.title}
@@ -174,7 +174,7 @@ export const KanbanColumn = ({
       <div
         ref={setNodeRef}
         className={cn(
-          'flex flex-col rounded-lg border p-2 gap-1.5 transition-all duration-150',
+          'flex flex-col rounded-md border p-2 gap-1.5 transition-all duration-150',
           shouldHighlight
             ? 'bg-primary/[0.03] border-[1.5px] border-primary/20'
             : 'bg-sidebar border-border'
@@ -245,7 +245,7 @@ export const KanbanColumn = ({
               onBlur={handleAddSubmit}
               placeholder="Task title..."
               autoFocus
-              className="w-full rounded-md border border-border bg-card px-2.5 py-1.5 text-[13px] text-foreground placeholder:text-text-tertiary outline-none focus:ring-1 focus:ring-primary/40"
+              className="w-full rounded-md border border-border bg-card px-2.5 py-1.5 text-[13px] text-foreground placeholder:text-text-tertiary outline-none"
             />
           </div>
         )}

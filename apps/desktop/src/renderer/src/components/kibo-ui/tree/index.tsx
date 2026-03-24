@@ -1,6 +1,6 @@
 'use client'
 
-import { ChevronRight, File, Folder, FolderOpen, Palette } from '@/lib/icons'
+import { ChevronRight, ChevronDown, File, Folder, FolderOpen, Palette } from '@/lib/icons'
 import { AnimatePresence, LazyMotion, domAnimation, m } from 'motion/react'
 import {
   type ComponentProps,
@@ -106,6 +106,7 @@ type TreeNodeContextType = {
   hasChildren: boolean
   setHasChildren: (value: boolean) => void
   acceptsDropInside: boolean
+  hideLines: boolean
   customIcon?: string
   inheritedIcon?: string
   setCustomIcon: (iconName: string | undefined) => void
@@ -424,7 +425,7 @@ export const TreeProvider = ({
 export type TreeViewProps = HTMLAttributes<HTMLDivElement>
 
 export const TreeView = ({ className, children, ...props }: TreeViewProps) => (
-  <div className={cn('py-2 h-full', className)} data-tree-view {...props}>
+  <div className={cn('h-full', className)} data-tree-view {...props}>
     {children}
   </div>
 )
@@ -436,6 +437,7 @@ export type TreeNodeProps = HTMLAttributes<HTMLDivElement> & {
   parentPath?: boolean[]
   children?: ReactNode
   acceptsDropInside?: boolean
+  hideLines?: boolean
   customIcon?: string
   inheritedIcon?: string
 }
@@ -449,6 +451,7 @@ export const TreeNode = ({
   className,
   onClick,
   acceptsDropInside = false,
+  hideLines: hideLinesProp = false,
   customIcon: initialCustomIcon,
   inheritedIcon: initialInheritedIcon,
   ...props
@@ -500,13 +503,14 @@ export const TreeNode = ({
         hasChildren,
         setHasChildren,
         acceptsDropInside,
+        hideLines: hideLinesProp,
         customIcon,
         inheritedIcon,
         setCustomIcon,
         setInheritedIcon
       }}
     >
-      <div className={cn('select-none', className)} {...props}>
+      <div className={cn('select-none pb-px', className)} {...props}>
         {children}
       </div>
     </TreeNodeContext.Provider>
@@ -749,10 +753,10 @@ export const TreeNodeTrigger = ({
             data-tree-node-id={nodeId}
             draggable={draggable}
             className={cn(
-              'group relative flex cursor-pointer items-center rounded-md px-3 py-1 outline-none',
+              'group relative flex cursor-pointer items-center rounded-[5px] h-7 pr-2.5 ml-(--tree-indent) pl-1 gap-1.5 outline-none text-sidebar-foreground',
               'hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
               'focus:bg-sidebar-accent focus:text-sidebar-accent-foreground',
-              isSelected && 'bg-sidebar-accent text-sidebar-accent-foreground',
+              isSelected && 'bg-sidebar-accent text-sidebar-accent-foreground font-medium',
               isDragging && 'opacity-50',
               draggable && 'cursor-default',
               className
@@ -775,7 +779,7 @@ export const TreeNodeTrigger = ({
             onDragOverCapture={handleDragOver as unknown as React.DragEventHandler}
             onDragLeaveCapture={handleDragLeave as unknown as React.DragEventHandler}
             onDropCapture={handleDropEvent as unknown as React.DragEventHandler}
-            style={{ paddingLeft: level * (indent ?? 0) + 8 }}
+            style={{ '--tree-indent': `${level * (indent ?? 0) + 4}px` } as React.CSSProperties}
             {...props}
           >
             {/* Drop indicator - before */}
@@ -847,53 +851,24 @@ export const TreeNodeTrigger = ({
 
 export const TreeLines = () => {
   const { showLines, indent } = useTree()
-  const { level, isLast, parentPath } = useTreeNode()
+  const { level, hideLines } = useTreeNode()
 
-  if (!showLines || level === 0) {
+  if (!showLines || level === 0 || hideLines) {
     return null
   }
 
+  const indentPx = indent ?? 0
+  const marginOffset = level * indentPx + 4
+
   return (
-    <div className="pointer-events-none absolute top-0 bottom-0 left-0">
-      {/* Render vertical lines for all parent levels */}
-      {Array.from({ length: level }, (_, index) => {
-        const shouldHideLine = parentPath[index] === true
-        if (shouldHideLine && index === level - 1) {
-          return null
-        }
-
-        return (
-          <div
-            className="absolute top-0 bottom-0 border-border border-l"
-            key={`indent-${index}`}
-            style={{
-              left: index * (indent ?? 0) + 12,
-              display: shouldHideLine ? 'none' : 'block'
-            }}
-          />
-        )
-      })}
-
-      {/* Horizontal connector line */}
-      <div
-        className="absolute top-1/2 border-border border-t"
-        style={{
-          left: (level - 1) * (indent ?? 0) + 12,
-          width: (indent ?? 0) - 4,
-          transform: 'translateY(-1px)'
-        }}
-      />
-
-      {/* Vertical line to midpoint for last items */}
-      {isLast && (
+    <div className="pointer-events-none absolute top-0 bottom-0" style={{ left: -marginOffset }}>
+      {Array.from({ length: level }, (_, index) => (
         <div
-          className="absolute top-0 border-border border-l"
-          style={{
-            left: (level - 1) * (indent ?? 0) + 12,
-            height: '50%'
-          }}
+          className="absolute top-0 bottom-0 border-sidebar-border/50 border-l"
+          key={`indent-${index}`}
+          style={{ left: index * indentPx + 12 }}
         />
-      )}
+      ))}
     </div>
   )
 }
@@ -921,7 +896,7 @@ export const TreeNodeContent = ({
       {hasChildrenProp && isExpanded && (
         <m.div
           animate={{ height: 'auto', opacity: 1 }}
-          className="overflow-hidden"
+          className="overflow-clip"
           exit={{ height: 0, opacity: 0 }}
           initial={{ height: 0, opacity: 0 }}
           transition={{
@@ -967,22 +942,22 @@ export const TreeExpander = ({
   }
 
   if (!hasChildrenProp) {
-    return <div className="mr-1 h-4 w-4" />
+    return null
   }
+
+  const Icon = isExpanded ? ChevronDown : ChevronRight
 
   return (
     <m.div
-      animate={{ rotate: isExpanded ? 90 : 0 }}
-      className={cn('mr-1 flex h-4 w-4 cursor-pointer items-center justify-center', className)}
+      className={cn('flex h-4 w-4 cursor-pointer items-center justify-center shrink-0', className)}
       onClick={(e) => {
         e.stopPropagation()
         toggleExpanded(nodeId)
         onClick?.(e)
       }}
-      transition={{ duration: 0.2, ease: 'easeInOut' }}
       {...props}
     >
-      <ChevronRight className="h-3 w-3 text-muted-foreground" />
+      <Icon className="size-[10px] text-sidebar-muted" />
     </m.div>
   )
 }
@@ -1040,7 +1015,7 @@ export const TreeIcon = ({
   return (
     <m.div
       className={cn(
-        'mr-2 flex h-4 w-4 items-center justify-center text-muted-foreground',
+        'flex h-4 w-4 items-center justify-center text-muted-foreground shrink-0',
         className
       )}
       transition={{ duration: 0.15 }}
@@ -1055,5 +1030,5 @@ export const TreeIcon = ({
 export type TreeLabelProps = HTMLAttributes<HTMLSpanElement>
 
 export const TreeLabel = ({ className, ...props }: TreeLabelProps) => (
-  <span className={cn('font flex-1 truncate text-sm', className)} {...props} />
+  <span className={cn('flex-1 truncate text-[13px] leading-4 font-medium', className)} {...props} />
 )

@@ -44,7 +44,7 @@ export function BacklinkCard({ backlink, onClick }: BacklinkCardProps) {
         'transition-all duration-150',
         'cursor-pointer',
         'group',
-        'focus:outline-none focus:ring-1 focus:ring-sidebar-terracotta/20 focus:ring-offset-1'
+        'focus:outline-none'
       )}
       aria-label={`Link from ${noteTitle}`}
     >
