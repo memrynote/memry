@@ -245,7 +245,7 @@ export const KanbanColumn = ({
               onBlur={handleAddSubmit}
               placeholder="Task title..."
               autoFocus
-              className="w-full rounded-md border border-border bg-card px-2.5 py-1.5 text-[13px] text-foreground placeholder:text-text-tertiary outline-none focus:ring-1 focus:ring-primary/40"
+              className="w-full rounded-md border border-border bg-card px-2.5 py-1.5 text-[13px] text-foreground placeholder:text-text-tertiary outline-none"
             />
           </div>
         )}

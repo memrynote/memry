@@ -20,7 +20,7 @@ export function AddTagButton({ onClick, disabled }: AddTagButtonProps) {
         'text-text-tertiary',
         'transition-all duration-150',
         'hover:border-muted-foreground hover:text-muted-foreground',
-        'focus:outline-none focus-visible:ring-1 focus-visible:ring-ring focus-visible:ring-offset-2',
+        'focus:outline-none',
         'disabled:pointer-events-none disabled:opacity-50'
       )}
     >

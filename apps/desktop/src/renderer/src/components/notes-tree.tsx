@@ -1665,7 +1665,7 @@ export function NotesTree({ onTargetFolderChange, onActionsReady }: NotesTreePro
               onBlur={() => handleRenameSubmit(note.id, note.path)}
               onClick={(e) => e.stopPropagation()}
               disabled={isRenaming}
-              className="flex-1 h-5 px-1 text-sm bg-background border border-input rounded focus:outline-none focus:ring-1 focus:ring-ring"
+              className="flex-1 h-5 px-1 text-sm bg-background border border-input rounded focus:outline-none"
             />
           ) : (
             <TreeLabel>{getDisplayName(note.path)}</TreeLabel>
@@ -1769,7 +1769,7 @@ export function NotesTree({ onTargetFolderChange, onActionsReady }: NotesTreePro
               onBlur={() => handleFolderRenameSubmit(folder.path)}
               onClick={(e) => e.stopPropagation()}
               disabled={isFolderRenaming}
-              className="flex-1 h-5 px-1 text-sm bg-background border border-input rounded focus:outline-none focus:ring-1 focus:ring-ring"
+              className="flex-1 h-5 px-1 text-sm bg-background border border-input rounded focus:outline-none"
             />
           ) : (
             <div className="group/folder flex flex-1 items-center min-w-0">

@@ -116,8 +116,7 @@ export const TaskRow = ({
       className={cn(
         'group flex items-center py-[7px] px-6 gap-3 transition-colors',
         'rounded-md hover:bg-accent/60',
-        onClick &&
-          'cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring',
+        onClick && 'cursor-pointer focus-visible:outline-none',
         isCheckedForSelection && 'bg-primary/10 hover:bg-primary/15',
         isSelected && !isCheckedForSelection && 'bg-primary/10 ring-1 ring-inset ring-primary/30',
         className

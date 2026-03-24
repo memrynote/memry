@@ -354,10 +354,7 @@ export const EditablePropertyCell = memo(function EditablePropertyCell({
     return (
       <div
         role="presentation"
-        className={cn(
-          'w-full focus-within:ring-1 focus-within:ring-amber-400/60 dark:focus-within:ring-amber-600/60',
-          className
-        )}
+        className={cn('w-full', className)}
         onClick={stopPropagation}
         onDoubleClick={stopPropagation}
         onKeyDown={stopPropagation}
@@ -390,10 +387,7 @@ export const EditablePropertyCell = memo(function EditablePropertyCell({
     return (
       <div
         role="presentation"
-        className={cn(
-          'w-full focus-within:ring-1 focus-within:ring-amber-400/60 dark:focus-within:ring-amber-600/60',
-          className
-        )}
+        className={cn('w-full', className)}
         onMouseDown={stopPropagation}
         onClick={stopPropagation}
         onDoubleClick={stopPropagation}
@@ -766,10 +760,7 @@ export const TagsCell = memo(function TagsCell({
                 e.stopPropagation()
                 onTagClick?.(tag)
               }}
-              className={cn(
-                'px-1.5 py-0.5',
-                'focus:outline-none focus:ring-1 focus:ring-primary/50 rounded'
-              )}
+              className={cn('px-1.5 py-0.5', 'focus:outline-none rounded')}
             >
               #{shouldHighlight ? highlightText(tag, highlightQuery) : tag}
             </button>
@@ -784,7 +775,7 @@ export const TagsCell = memo(function TagsCell({
                 className={cn(
                   'pr-1.5 pl-0.5 py-0.5',
                   'opacity-70 hover:opacity-100',
-                  'focus:outline-none focus:ring-1 focus:ring-primary/50 rounded'
+                  'focus:outline-none rounded'
                 )}
               >
                 <X className="h-3 w-3" />

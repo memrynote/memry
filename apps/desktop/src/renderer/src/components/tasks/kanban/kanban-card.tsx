@@ -123,7 +123,7 @@ export const KanbanCardContent = forwardRef<HTMLDivElement, KanbanCardContentPro
             !isDragging &&
             !isSelected &&
             'ring-1 ring-inset ring-primary/40 border-primary/40',
-          'focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none',
+          'focus-visible:outline-none',
           isJustDropped && 'animate-drop-flash'
         )}
         {...attributes}

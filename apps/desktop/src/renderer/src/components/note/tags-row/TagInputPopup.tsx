@@ -256,7 +256,7 @@ function TagOption({ tag, isSelected, isFocused = false, onClick }: TagOptionPro
         'inline-flex items-center gap-1 rounded-full px-2.5 py-1',
         'text-xs font-medium',
         'transition-all duration-150',
-        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-1',
+        'focus-visible:outline-none',
         isSelected ? 'opacity-50 cursor-default' : 'hover:opacity-80 cursor-pointer',
         isFocused && !isSelected && 'ring-2 ring-offset-1 opacity-100'
       )}

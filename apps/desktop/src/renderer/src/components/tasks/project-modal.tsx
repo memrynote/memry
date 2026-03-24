@@ -265,7 +265,7 @@ export const ProjectModal = ({
                   className={cn(
                     'flex size-12 shrink-0 items-center justify-center rounded-sm border-2 border-dashed',
                     'transition-colors hover:border-primary hover:bg-accent/50',
-                    'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring'
+                    'focus-visible:outline-none'
                   )}
                   aria-label="Select icon"
                 >
@@ -319,7 +319,7 @@ export const ProjectModal = ({
                 className={cn(
                   'w-full resize-none rounded-sm border bg-transparent px-3 py-2 text-sm',
                   'placeholder:text-muted-foreground',
-                  'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring'
+                  'focus-visible:outline-none'
                 )}
               />
             </div>

@@ -63,7 +63,7 @@ export const SortableSubtaskRow = ({
           'py-1.5 pl-[44px] pr-3',
           'hover:bg-accent/50 rounded-r-sm',
           'transition-colors duration-150',
-          onClick && 'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring',
+          onClick && 'focus-visible:outline-none',
           isDragging
             ? 'cursor-grabbing opacity-50 shadow-lg ring-2 ring-primary bg-background z-10'
             : 'cursor-grab'

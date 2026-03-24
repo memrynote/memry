@@ -96,7 +96,6 @@ export const AccessibleTab = ({
       className={cn(
         'flex items-center gap-2 px-3 h-8 min-w-0',
         'border-b-2 transition-colors outline-none',
-        'focus:ring-1 focus:ring-tint focus:ring-inset',
         isActive
           ? 'bg-background border-tint text-foreground'
           : 'bg-muted/50 border-transparent text-muted-foreground hover:bg-surface-active',
@@ -143,7 +142,7 @@ export const AccessibleTab = ({
           className={cn(
             'p-0.5 rounded opacity-0 group-hover:opacity-100',
             'hover:bg-border',
-            'focus:opacity-100 focus:outline-none focus:ring-1 focus:ring-tint',
+            'focus:opacity-100 focus:outline-none',
             isActive && 'opacity-100'
           )}
           tabIndex={-1}

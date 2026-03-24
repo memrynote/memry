@@ -40,7 +40,7 @@ export const ProjectsEmptyState = ({
           'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md',
           'text-sm text-sidebar-foreground/70 hover:text-sidebar-foreground',
           'hover:bg-sidebar-accent transition-colors',
-          'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring'
+          'focus-visible:outline-none'
         )}
         tabIndex={0}
         aria-label="Create your first project"

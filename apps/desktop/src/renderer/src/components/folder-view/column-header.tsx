@@ -308,7 +308,7 @@ export function ColumnHeader({
             className={cn(
               'flex-1 min-w-0 px-1 py-0.5 -mx-1 -my-0.5',
               'bg-background border border-primary rounded text-sm',
-              'focus:outline-none focus:ring-1 focus:ring-primary'
+              'focus:outline-none'
             )}
           />
         ) : (

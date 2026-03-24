@@ -263,7 +263,7 @@ export const TaskCheckbox = ({
       className={cn(
         'shrink-0 rounded-full transition-all duration-200',
         isSm ? 'size-3.5' : 'size-4',
-        'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring',
+        'focus-visible:outline-none',
         disabled ? 'cursor-not-allowed opacity-50' : 'cursor-pointer',
         className
       )}

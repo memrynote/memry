@@ -71,7 +71,7 @@ export function ToolbarSegmentTab({
       onClick={onClick}
       className={cn(
         'flex items-center py-1 px-2.5 gap-1 transition-colors',
-        'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring focus-visible:ring-inset',
+        'focus-visible:outline-none',
         showBorder && 'border-l border-border',
         isActive
           ? 'bg-foreground text-background font-medium'

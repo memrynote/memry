@@ -254,7 +254,7 @@ export const TaskDetailDrawer = memo(function TaskDetailDrawer({
               <button
                 type="button"
                 onClick={onClose}
-                className="shrink-0 rounded-sm p-0.5 text-text-tertiary hover:text-text-secondary transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                className="shrink-0 rounded-sm p-0.5 text-text-tertiary hover:text-text-secondary transition-colors focus-visible:outline-none"
                 aria-label="Close task details"
               >
                 <X size={16} />

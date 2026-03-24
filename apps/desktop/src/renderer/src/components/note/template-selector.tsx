@@ -164,7 +164,6 @@ export function TemplateSelector({
                 'bg-card/50',
                 'border-border',
                 'focus:border-amber-400 dark:focus:border-amber-600',
-                'focus:ring-1 focus:ring-amber-100 dark:focus:ring-amber-900/30',
                 'placeholder:text-muted-foreground/50',
                 'transition-all duration-200'
               )}

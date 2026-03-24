@@ -80,7 +80,7 @@ export const InteractivePriorityBadge = ({
           type="button"
           className={cn(
             'flex items-center rounded-sm py-px px-[7px] gap-1 cursor-pointer transition-opacity [font-synthesis:none] antialiased',
-            'hover:opacity-80 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring',
+            'hover:opacity-80 focus-visible:outline-none',
             fixedWidth && 'w-[70px] justify-start',
             className
           )}

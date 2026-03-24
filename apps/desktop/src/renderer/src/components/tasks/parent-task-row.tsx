@@ -196,8 +196,7 @@ export const ParentTaskRow = ({
             : [
                 'relative flex items-center py-[7px] px-3 gap-3 transition-colors',
                 'rounded-md hover:bg-accent/60',
-                onClick &&
-                  'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring',
+                onClick && 'focus-visible:outline-none',
                 dragHandleListeners && !isDragging && 'cursor-grab',
                 isDragging &&
                   'cursor-grabbing opacity-[0.35] border-dashed border-primary/30 bg-primary/[0.03]',

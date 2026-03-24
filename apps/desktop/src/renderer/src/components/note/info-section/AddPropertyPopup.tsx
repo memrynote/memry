@@ -95,7 +95,7 @@ export function AddPropertyPopup({
             'bg-stone-50 dark:bg-stone-800',
             'border border-stone-200 dark:border-stone-700 rounded',
             'placeholder:text-stone-400 dark:placeholder:text-stone-500',
-            'focus:outline-none focus:ring-1 focus:ring-stone-400 dark:focus:ring-stone-500'
+            'focus:outline-none'
           )}
           aria-label="Property name"
         />

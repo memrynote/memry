@@ -58,7 +58,7 @@ export const InlineStatusPopover = ({
           className={cn(
             'shrink-0 rounded-sm p-0.5 transition-colors cursor-pointer',
             'hover:bg-accent/80',
-            'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring',
+            'focus-visible:outline-none',
             disabled && 'pointer-events-none'
           )}
           aria-label={`Status: ${currentStatus?.name || 'Unknown'}. Click to change.`}

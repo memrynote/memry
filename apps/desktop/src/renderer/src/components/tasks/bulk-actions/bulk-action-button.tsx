@@ -67,7 +67,7 @@ export const BulkActionButton = ({
       className={cn(
         'flex items-center gap-1.5 rounded-sm border px-3 py-1.5 text-sm font-medium',
         'transition-colors duration-150',
-        'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring',
+        'focus-visible:outline-none',
         'disabled:cursor-not-allowed disabled:opacity-50',
         variantStyles[variant],
         className

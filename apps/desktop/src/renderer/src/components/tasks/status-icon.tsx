@@ -54,7 +54,7 @@ export const InteractiveStatusIcon = ({
       onClick={onClick}
       className={cn(
         'shrink-0 cursor-pointer rounded-full',
-        'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring',
+        'focus-visible:outline-none',
         className
       )}
       aria-label={isCompleted ? 'Mark as incomplete' : 'Mark as complete'}

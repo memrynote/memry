@@ -305,8 +305,7 @@ export function VersionHistory({
                           onClick={() => handleSelectVersion(version.id)}
                           className={cn(
                             'w-full text-left px-3 py-2.5 rounded-md transition-colors',
-                            'hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-1',
-                            'focus-visible:ring-ring focus-visible:ring-offset-2',
+                            'hover:bg-muted/50 focus-visible:outline-none',
                             isSelected && 'bg-muted'
                           )}
                         >
