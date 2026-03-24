@@ -2056,7 +2056,7 @@ export interface NoteEditorSettings {
 export interface GeneralSettingsDTO {
   theme: 'light' | 'dark' | 'white' | 'system'
   fontSize: 'small' | 'medium' | 'large'
-  fontFamily: 'system' | 'serif' | 'sans-serif' | 'monospace'
+  fontFamily: 'system' | 'serif' | 'sans-serif' | 'monospace' | 'gelasio' | 'geist' | 'inter'
   accentColor: string
   startOnBoot: boolean
   language: string

@@ -9,6 +9,7 @@ import {
   clipboard,
   screen,
   session,
+  nativeImage,
   Menu,
   MenuItem
 } from 'electron'
@@ -236,6 +237,7 @@ function createWindow(): void {
     height: 900,
     show: false,
     autoHideMenuBar: true,
+    icon: join(__dirname, '../../build/icon.png'),
     ...(process.platform === 'darwin'
       ? {
           titleBarStyle: 'hidden',
@@ -246,7 +248,7 @@ function createWindow(): void {
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
       sandbox: false
-    },
+    }
   })
 
   mainWindow.on('ready-to-show', () => {
@@ -598,9 +600,11 @@ void app.whenReady().then(async () => {
   configureCsp()
   configureCertificatePinning()
 
-  // Create the window immediately — the renderer handles the vault-not-open state
-  // (VaultOnboarding / loading spinner) while the vault opens in the background.
-  // This moves window creation ~300–600ms earlier on cold start.
+  if (process.platform === 'darwin' && !app.isPackaged) {
+    const iconPath = join(__dirname, '../../build/icon.png')
+    app.dock.setIcon(nativeImage.createFromPath(iconPath))
+  }
+
   createWindow()
 
   // Open the last vault and start schedulers concurrently with renderer load.

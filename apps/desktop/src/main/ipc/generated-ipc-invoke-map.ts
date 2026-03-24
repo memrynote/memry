@@ -515,6 +515,24 @@ export interface MainIpcInvokeHandlers {
   'inbox:mark-viewed': (
     ...args: [any]
   ) => Awaited<Promise<{ success: boolean; error?: string | undefined }>>
+  'inbox:preview-link': (...args: [string]) => Awaited<
+    Promise<
+      | {
+          title: string
+          domain: string
+          favicon: string | undefined
+          image: string | undefined
+          description: string | undefined
+        }
+      | {
+          title: string
+          domain: string
+          favicon?: undefined
+          image?: undefined
+          description?: undefined
+        }
+    >
+  >
   'inbox:remove-tag': (
     ...args: [any, any]
   ) => Awaited<Promise<{ success: boolean; error?: string | undefined }>>
@@ -773,7 +791,9 @@ export interface MainIpcInvokeHandlers {
     Promise<import('../../../../../packages/contracts/src/templates-api').FolderConfig | null>
   >
   'notes:get-folder-template': (...args: [string]) => Awaited<Promise<string | null>>
-  'notes:get-folders': (...args: []) => Awaited<Promise<{ path: string; icon?: string | null }[]>>
+  'notes:get-folders': (
+    ...args: []
+  ) => Awaited<Promise<import('../../../../../packages/contracts/src/templates-api').FolderInfo[]>>
   'notes:get-links': (
     ...args: [string]
   ) => Awaited<Promise<import('../vault/notes').NoteLinksResponse>>
@@ -875,7 +895,11 @@ export interface MainIpcInvokeHandlers {
     ...args: [
       {
         folderPath: string
-        config: { template?: string | undefined; inherit?: boolean | undefined }
+        config: {
+          icon?: string | null | undefined
+          template?: string | undefined
+          inherit?: boolean | undefined
+        }
       }
     ]
   ) => Awaited<
@@ -1283,7 +1307,7 @@ export interface MainIpcInvokeHandlers {
   'settings:getGeneralSettings': (...args: []) => Awaited<{
     theme: 'light' | 'dark' | 'white' | 'system'
     fontSize: 'small' | 'medium' | 'large'
-    fontFamily: 'system' | 'serif' | 'sans-serif' | 'monospace'
+    fontFamily: 'system' | 'serif' | 'sans-serif' | 'monospace' | 'gelasio' | 'geist' | 'inter'
     accentColor: string
     startOnBoot: boolean
     language: string
@@ -1389,7 +1413,7 @@ export interface MainIpcInvokeHandlers {
       Partial<{
         theme: 'light' | 'dark' | 'white' | 'system'
         fontSize: 'small' | 'medium' | 'large'
-        fontFamily: 'system' | 'serif' | 'sans-serif' | 'monospace'
+        fontFamily: 'system' | 'serif' | 'sans-serif' | 'monospace' | 'gelasio' | 'geist' | 'inter'
         accentColor: string
         startOnBoot: boolean
         language: string
@@ -1548,7 +1572,15 @@ export interface MainIpcInvokeHandlers {
       | {
           theme?: 'light' | 'dark' | 'white' | 'system' | undefined
           fontSize?: 'small' | 'medium' | 'large' | undefined
-          fontFamily?: 'system' | 'serif' | 'sans-serif' | 'monospace' | undefined
+          fontFamily?:
+            | 'system'
+            | 'serif'
+            | 'sans-serif'
+            | 'monospace'
+            | 'gelasio'
+            | 'geist'
+            | 'inter'
+            | undefined
           accentColor?: string | undefined
           startOnBoot?: boolean | undefined
           language?: string | undefined
@@ -2264,8 +2296,8 @@ export interface MainIpcInvokeHandlers {
             modifiedAt: string
             position: number
             color: string
-            description: string | null
             icon: string | null
+            description: string | null
             isInbox: boolean
             archivedAt: string | null
             fieldClocks: import('../../../../../packages/contracts/src/sync-api').FieldClocks | null
@@ -2324,8 +2356,8 @@ export interface MainIpcInvokeHandlers {
             modifiedAt: string
             position: number
             color: string
-            description: string | null
             icon: string | null
+            description: string | null
             isInbox: boolean
             archivedAt: string | null
             fieldClocks: import('../../../../../packages/contracts/src/sync-api').FieldClocks | null
