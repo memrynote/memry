@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useCallback } from 'react'
-import { ChevronDown, Plus, Check, Loader2, Settings, X, LogOut, Cloud } from '@/lib/icons'
+import { Plus, Check, Loader2, Settings, X, LogOut, Cloud } from '@/lib/icons'
 
 import {
   DropdownMenu,
@@ -109,24 +109,24 @@ export function VaultSwitcher() {
           <DropdownMenuTrigger asChild>
             <SidebarMenuButton
               size="default"
-              className="rounded-md gap-2 h-auto py-1.5 px-2 hover:bg-sidebar-accent/50 data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground group-data-[collapsible=icon]:justify-center"
+              className="rounded-[5px] gap-2 h-6 px-2 hover:bg-sidebar-accent/50 data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground group-data-[collapsible=icon]:justify-center"
             >
-              <div className="flex aspect-square size-[20px] shrink-0 items-center justify-center rounded-[5px] bg-sidebar-terracotta text-white">
+              <div className="flex aspect-square size-[16px] shrink-0 items-center justify-center rounded-[4px] bg-sidebar-terracotta text-white">
                 {isLoading ? (
                   <Loader2 className="size-3 animate-spin" />
                 ) : (
-                  <span className="text-white font-bold text-[10px] leading-none">
+                  <span className="text-white font-bold text-[8px] leading-none">
                     {currentVaultName.charAt(0).toUpperCase()}
                   </span>
                 )}
               </div>
-              <span className="truncate text-[13px] font-semibold text-sidebar-primary tracking-[-0.01em] leading-4 group-data-[collapsible=icon]:hidden">
+              <span className="truncate text-[12px] font-semibold text-sidebar-primary tracking-[-0.01em] leading-none group-data-[collapsible=icon]:hidden">
                 {currentVaultName}
               </span>
-              <ChevronDown className="ml-auto size-3 opacity-40 group-data-[collapsible=icon]:hidden" />
             </SidebarMenuButton>
           </DropdownMenuTrigger>
           <DropdownMenuContent
+            onCloseAutoFocus={(e) => e.preventDefault()}
             className="min-w-56 rounded-lg p-1 shadow-lg"
             align="start"
             side={isMobile ? 'bottom' : 'right'}
@@ -150,7 +150,7 @@ export function VaultSwitcher() {
                   <DropdownMenuItem
                     key={vault.path}
                     onClick={() => !isActive && handleSwitchVault(vault.path)}
-                    className={`group/vault gap-2 rounded-md cursor-pointer ${isActive ? 'bg-accent' : ''}`}
+                    className={`group/vault gap-2.5 rounded-[5px] cursor-pointer ${isActive ? 'bg-accent' : ''}`}
                   >
                     <Check
                       className={`size-3.5 shrink-0 ${isActive ? 'text-sidebar-terracotta opacity-100' : 'opacity-0'}`}
@@ -183,14 +183,14 @@ export function VaultSwitcher() {
             {/* Actions */}
             <DropdownMenuItem
               onClick={handleSelectNewVault}
-              className="gap-2 rounded-md cursor-pointer"
+              className="gap-2.5 rounded-[5px] cursor-pointer"
             >
               <Plus className="size-3.5 text-muted-foreground" />
               <span className="text-muted-foreground text-[13px]">Open vault</span>
             </DropdownMenuItem>
             <DropdownMenuItem
               onClick={handleOpenSettings}
-              className="gap-2 rounded-md cursor-pointer"
+              className="gap-2.5 rounded-[5px] cursor-pointer"
             >
               <Settings className="size-3.5 text-muted-foreground" />
               <span className="text-muted-foreground text-[13px]">Settings</span>
@@ -202,13 +202,16 @@ export function VaultSwitcher() {
             {isAuthenticated ? (
               <DropdownMenuItem
                 onClick={() => void handleLogout()}
-                className="gap-2 rounded-md cursor-pointer"
+                className="gap-2.5 rounded-[5px] cursor-pointer"
               >
                 <LogOut className="size-3.5 text-muted-foreground" />
                 <span className="text-muted-foreground text-[13px]">Log out</span>
               </DropdownMenuItem>
             ) : (
-              <DropdownMenuItem onClick={handleSignIn} className="gap-2 rounded-md cursor-pointer">
+              <DropdownMenuItem
+                onClick={handleSignIn}
+                className="gap-2.5 rounded-[5px] cursor-pointer"
+              >
                 <Cloud className="size-3.5 text-sidebar-terracotta" />
                 <span className="text-sidebar-terracotta font-medium text-[13px]">
                   Sign in to sync
