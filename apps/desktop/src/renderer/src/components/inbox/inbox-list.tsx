@@ -425,12 +425,12 @@ export function InboxListItem({
         isExiting && 'item-removing',
         'hover:bg-muted/50',
         isSelected && [
-          'bg-amber-50 dark:bg-amber-950/30',
-          'hover:bg-amber-50 dark:hover:bg-amber-950/30',
-          'ring-1 ring-inset ring-amber-200 dark:ring-amber-800/50'
+          'bg-[var(--user-accent-color)]/[0.04]',
+          'hover:bg-[var(--user-accent-color)]/[0.06]',
+          'ring-1 ring-inset ring-[var(--user-accent-color)]/25'
         ],
         !isSelected &&
-          isFocused && ['bg-muted', 'ring-2 ring-inset ring-amber-400/50 dark:ring-amber-600/50'],
+          isFocused && ['bg-muted', 'ring-1 ring-inset ring-[var(--user-accent-color)]/40'],
         item.isStale && 'opacity-60',
         className
       )}

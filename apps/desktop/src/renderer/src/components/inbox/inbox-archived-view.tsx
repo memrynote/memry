@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, useCallback } from 'react'
-import { Archive, Loader2, RotateCcw, Trash2 } from '@/lib/icons'
+import { Archive, ArrowTurnBackward, Loader2, Trash2 } from '@/lib/icons'
 import { cn } from '@/lib/utils'
 import {
   useInboxArchived,
@@ -112,7 +112,11 @@ function ArchivedListItem({
           title="Restore to inbox"
           aria-label="Restore to inbox"
         >
-          {isUnarchiving ? <Loader2 className="size-3.5" /> : <RotateCcw className="size-3.5" />}
+          {isUnarchiving ? (
+            <Loader2 className="size-3.5" />
+          ) : (
+            <ArrowTurnBackward className="size-3.5" />
+          )}
         </button>
         <button
           type="button"
