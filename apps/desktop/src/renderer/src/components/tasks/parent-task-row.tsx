@@ -196,8 +196,7 @@ export const ParentTaskRow = ({
             : [
                 'relative flex items-center py-[7px] px-3 gap-3 transition-colors',
                 'rounded-md hover:bg-accent/60',
-                onClick &&
-                  'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring',
+                onClick && 'focus-visible:outline-none',
                 dragHandleListeners && !isDragging && 'cursor-grab',
                 isDragging &&
                   'cursor-grabbing opacity-[0.35] border-dashed border-primary/30 bg-primary/[0.03]',
@@ -293,14 +292,14 @@ export const ParentTaskRow = ({
 
         <span
           className={cn(
-            'text-[13px] leading-4 grow shrink basis-0 truncate',
+            'text-[13px] font-medium grow shrink min-w-0 truncate',
             isCompleted
               ? isOverlay
-                ? 'text-text-tertiary line-through decoration-1 [text-underline-position:from-font]'
-                : 'text-text-tertiary line-through decoration-1 [text-underline-position:from-font]'
+                ? 'text-muted-foreground/60 line-through decoration-1 [text-underline-position:from-font]'
+                : 'text-muted-foreground/60 line-through decoration-1 [text-underline-position:from-font]'
               : isOverlay
-                ? 'text-card-foreground font-medium'
-                : 'text-text-primary'
+                ? 'text-foreground/90'
+                : 'text-foreground/90'
           )}
         >
           {task.title}

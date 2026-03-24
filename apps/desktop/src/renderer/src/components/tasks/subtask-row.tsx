@@ -46,7 +46,7 @@ export const SubtaskRow = ({
         'py-1.5 pl-[44px] pr-3',
         'hover:bg-accent/50 cursor-pointer rounded-r-sm',
         'transition-colors duration-150',
-        onClick && 'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring',
+        onClick && 'focus-visible:outline-none',
         className
       )}
       aria-label={`Subtask: ${subtask.title}${isCompleted ? ', completed' : ''}`}
@@ -62,10 +62,8 @@ export const SubtaskRow = ({
 
       <span
         className={cn(
-          'text-xs leading-4 whitespace-nowrap',
-          isCompleted
-            ? 'line-through text-[#A3A09B] decoration-1'
-            : 'text-[#4A4A46] dark:text-foreground/80'
+          'text-[13px] font-medium whitespace-nowrap',
+          isCompleted ? 'line-through text-muted-foreground/60 decoration-1' : 'text-foreground/90'
         )}
       >
         {subtask.title}

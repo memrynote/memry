@@ -39,7 +39,7 @@ export function OAuthButtons({
     <div className="space-y-3">
       <Button
         variant="outline"
-        className="w-full h-11 gap-2.5 text-[14px]"
+        className="w-full h-9 gap-2.5 text-sm border-border bg-muted/30"
         onClick={onGoogleClick}
         disabled={isLoading}
       >

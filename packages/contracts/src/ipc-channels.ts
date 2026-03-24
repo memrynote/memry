@@ -23,7 +23,9 @@ export const VaultChannels = {
     CLOSE: 'vault:close',
     SWITCH: 'vault:switch',
     REMOVE: 'vault:remove',
-    REINDEX: 'vault:reindex'
+    REINDEX: 'vault:reindex',
+    /** Reveal vault folder in OS file manager */
+    REVEAL: 'vault:reveal'
   },
   events: {
     STATUS_CHANGED: 'vault:status-changed',
@@ -463,7 +465,9 @@ export const SettingsChannels = {
     /** Reset all settings to defaults */
     RESET_ALL: 'settings:resetAll',
     /** Trigger manual sync */
-    TRIGGER_SYNC: 'settings:triggerSync'
+    TRIGGER_SYNC: 'settings:triggerSync',
+    /** Register (or unregister) the OS-level global capture shortcut */
+    REGISTER_GLOBAL_CAPTURE: 'settings:registerGlobalCapture'
   },
   sync: {
     /** Get the saved startup theme synchronously for first-paint bootstrap */
@@ -592,6 +596,8 @@ export const InboxChannels = {
     CAPTURE_TEXT: 'inbox:capture-text',
     /** Capture a URL with metadata extraction */
     CAPTURE_LINK: 'inbox:capture-link',
+    /** Preview link metadata without creating inbox item */
+    PREVIEW_LINK: 'inbox:preview-link',
     /** Capture an image (from drag-drop or clipboard) */
     CAPTURE_IMAGE: 'inbox:capture-image',
     /** Capture a voice recording */
@@ -656,9 +662,6 @@ export const InboxChannels = {
     BULK_TAG: 'inbox:bulk-tag',
     /** File all stale items to unsorted */
     FILE_ALL_STALE: 'inbox:file-all-stale',
-    /** Archive all unfiled items older than N days (inbox bankruptcy) */
-    BULK_ARCHIVE_OLDER_THAN: 'inbox:bulk-archive-older-than',
-
     // Transcription
     /** Retry transcription for a voice item */
     RETRY_TRANSCRIPTION: 'inbox:retry-transcription',

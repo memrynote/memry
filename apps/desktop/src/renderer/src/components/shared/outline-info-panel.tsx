@@ -181,7 +181,7 @@ export const OutlineInfoPanel = memo(function OutlineInfoPanel({
           ref={popupRef}
           className={cn(
             'bg-background border border-border',
-            'shadow-lg rounded-lg',
+            'shadow-lg rounded-md',
             'min-w-[240px] max-w-[300px]',
             !isFadingOut && 'animate-in fade-in-0 zoom-in-95 duration-150'
           )}

@@ -102,7 +102,7 @@ export const SimpleEmptyState = ({
         className={cn(
           'inline-flex items-center gap-1 text-sm text-primary hover:text-primary/80',
           'transition-colors',
-          'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring focus-visible:ring-offset-2 rounded'
+          'focus-visible:outline-none rounded'
         )}
         aria-label={`Add task for ${label.toLowerCase()}`}
       >

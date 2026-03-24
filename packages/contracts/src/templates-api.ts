@@ -67,6 +67,8 @@ export interface TemplateListItem {
  * Stored in .folder.md files in each folder.
  */
 export interface FolderConfig {
+  /** Emoji or icon identifier (raw emoji "🎉" or prefixed "icon:StarIcon") */
+  icon?: string | null
   /** Default template ID for new notes in this folder */
   template?: string
   /** Whether to inherit template from parent folder (default: true) */
@@ -81,6 +83,15 @@ export interface FolderConfig {
   properties?: Record<string, PropertyDisplay>
   /** Column summary configurations */
   summaries?: Record<string, SummaryConfig>
+}
+
+/**
+ * Lightweight folder info returned by getFolders().
+ * Carries path + icon without the full FolderConfig payload.
+ */
+export interface FolderInfo {
+  path: string
+  icon?: string | null
 }
 
 // ============================================================================
@@ -119,6 +130,7 @@ export const TemplateDuplicateSchema = z.object({
 })
 
 export const FolderConfigSchema = z.object({
+  icon: z.string().nullable().optional(),
   template: z.string().optional(),
   inherit: z.boolean().optional().default(true)
 })

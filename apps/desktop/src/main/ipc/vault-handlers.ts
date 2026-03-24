@@ -1,4 +1,4 @@
-import { ipcMain } from 'electron'
+import { ipcMain, shell } from 'electron'
 import {
   VaultChannels,
   SelectVaultSchema,
@@ -63,6 +63,15 @@ export function registerVaultHandlers(): void {
 
   // vault:reindex - Trigger manual reindex
   ipcMain.handle(VaultChannels.invoke.REINDEX, createHandler(reindex))
+
+  // vault:reveal - Reveal vault folder in OS file manager
+  ipcMain.handle(
+    VaultChannels.invoke.REVEAL,
+    createHandler(async () => {
+      const status = getStatus()
+      if (status.path) shell.showItemInFolder(status.path)
+    })
+  )
 }
 
 /**

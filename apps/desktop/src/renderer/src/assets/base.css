@@ -20,6 +20,12 @@
   color: #ffffff !important;
 }
 
+/* Inbox detail drawer: editor inherits drawer surface bg, not page bg */
+.inbox-content-editor .bn-editor,
+.inbox-content-editor .bn-container {
+  background-color: transparent !important;
+}
+
 /* Make all text content in BlockNote white in dark mode */
 .dark .bn-editor *,
 .dark .bn-container * {
@@ -285,28 +291,6 @@
     --graph-bg: #f6f5f0;
     --graph-label-color: #1a1a1a;
 
-    /* ===== CALENDAR VIEW ===== */
-    --cal-bg: #f6f5f0;
-    --cal-cell-bg: transparent;
-    --cal-cell-outside-bg: #efefe9;
-    --cal-cell-weekend-bg: #f0efe8;
-    --cal-today-bg: #fffbeb;
-    --cal-today-border: #f59e0b;
-    --cal-today-badge: #f59e0b;
-    --cal-today-label: #d97706;
-    --cal-date-current: #4a4a4a;
-    --cal-date-outside: #c4c4be;
-    --cal-weekday: #8c8c8c;
-    --cal-task-bg: #f6f5f0;
-    --cal-task-bg-today: rgba(255, 255, 255, 0.8);
-    --cal-task-text: #4a4a4a;
-    --cal-task-text-today: #1a1a1a;
-    --cal-task-overdue-bg: #fef2f2;
-    --cal-task-overdue-text: #dc2626;
-    --cal-overflow: #8c8c8c;
-    --cal-month-text: #1a1a1a;
-    --cal-grid-gap: 1px;
-
     /* ===== QUEUE LIST ===== */
     --queue-bg: #eae8e1;
     --queue-number-bg: #d4d1c5;
@@ -493,22 +477,18 @@
     --font-heading: 'Space Grotesk Variable', system-ui, sans-serif;
     --font-mono: 'JetBrains Mono Variable', 'SF Mono', 'Fira Code', monospace;
 
-    /* ===== BASE COLORS - Dark Mode (Cool Dark Variant) ===== */
-    --background: #0e0e10;
-    /* Deep cool dark */
+    /* ===== BASE COLORS - Dark Mode (Neutral Charcoal) ===== */
+    --background: #191919;
     --foreground: #e8e6e1;
-    /* Light warm text */
-    --surface: #161618;
-    /* Dark panels */
-    --surface-active: #1e1e21;
-    /* Dark hover */
+    --surface: #222222;
+    --surface-active: #2a2a2a;
 
     /* ===== SEMANTIC PASTELS - Dark Mode (Muted versions) ===== */
-    --card-sage: #1a231a;
-    --card-rose: #231a1a;
-    --card-sand: #23211a;
-    --card-lavender: #1d1a23;
-    --card-grey: #1a1a1c;
+    --card-sage: #1e261e;
+    --card-rose: #261e1e;
+    --card-sand: #26241e;
+    --card-lavender: #211e26;
+    --card-grey: #222222;
 
     /* ===== TYPOGRAPHY COLORS - Dark Mode ===== */
     --text-primary: #e8e6e1;
@@ -522,23 +502,23 @@
     --accent-orange: #fb923c;
 
     /* ===== UI SEMANTIC COLORS - Dark Mode ===== */
-    --muted: #161618;
+    --muted: #222222;
     --muted-foreground: #a8a6a1;
-    --popover: #131315;
+    --popover: #1e1e1e;
     --popover-foreground: #e8e6e1;
-    --border: #2a2a2e;
-    --input: #2a2a2e;
-    --card: #161618;
+    --border: #333333;
+    --input: #333333;
+    --card: #222222;
     --card-foreground: #e8e6e1;
     --primary: #e8e6e1;
-    --primary-foreground: #0e0e10;
-    --secondary: #161618;
+    --primary-foreground: #191919;
+    --secondary: #222222;
     --secondary-foreground: #e8e6e1;
-    --accent: #1e1e21;
+    --accent: #2a2a2a;
     --accent-foreground: #e8e6e1;
     --destructive: #dc2626;
     --destructive-foreground: #fafafa;
-    --ring: #6b6966;
+    --ring: #6b6b6b;
 
     /* ===== BORDER RADIUS (Same in dark mode) ===== */
     --radius: 0.5rem;
@@ -574,28 +554,6 @@
     --graph-edge-soft: #6b6966;
     --graph-bg: #0e0e10;
     --graph-label-color: #e8e6e1;
-
-    /* ===== CALENDAR VIEW - Dark Mode ===== */
-    --cal-bg: #0e0e10;
-    --cal-cell-bg: transparent;
-    --cal-cell-outside-bg: rgba(255, 255, 255, 0.03);
-    --cal-cell-weekend-bg: rgba(255, 255, 255, 0.02);
-    --cal-today-bg: rgba(245, 158, 11, 0.08);
-    --cal-today-border: #d97706;
-    --cal-today-badge: #d97706;
-    --cal-today-label: #fbbf24;
-    --cal-date-current: #d4d4d4;
-    --cal-date-outside: #525252;
-    --cal-weekday: #737373;
-    --cal-task-bg: rgba(255, 255, 255, 0.04);
-    --cal-task-bg-today: rgba(255, 255, 255, 0.08);
-    --cal-task-text: #d4d4d4;
-    --cal-task-text-today: #f5f5f5;
-    --cal-task-overdue-bg: rgba(239, 68, 68, 0.1);
-    --cal-task-overdue-text: #f87171;
-    --cal-overflow: #737373;
-    --cal-month-text: #f5f5f5;
-    --cal-grid-gap: 1px;
 
     /* ===== QUEUE LIST - Dark Mode ===== */
     --queue-bg: #161618;
@@ -1191,9 +1149,24 @@ del.bn-inline-content {
 .drag-region button,
 .drag-region a,
 .drag-region input,
+.drag-region textarea,
 .drag-region [role='button'],
 .no-drag {
   -webkit-app-region: no-drag;
+}
+
+/* ===== USER ACCENT COLOR (tint) ===== */
+:root,
+.white,
+.dark {
+  --tint: var(--user-accent-color, #6366f1);
+  --tint-foreground: #ffffff;
+  --tint-hover: color-mix(in srgb, var(--tint) 85%, black);
+  --tint-light: color-mix(in srgb, var(--tint) 15%, transparent);
+  --tint-lighter: color-mix(in srgb, var(--tint) 10%, transparent);
+  --tint-muted: color-mix(in srgb, var(--tint) 50%, transparent);
+  --tint-ring: color-mix(in srgb, var(--tint) 30%, transparent);
+  --tint-border: color-mix(in srgb, var(--tint) 50%, transparent);
 }
 
 :root {
@@ -1202,12 +1175,12 @@ del.bn-inline-content {
   --sidebar-foreground: #8a857a;
   --sidebar-primary: #1a1917;
   --sidebar-primary-foreground: #edeae4;
-  --sidebar-accent: rgba(196, 93, 62, 0.1);
-  --sidebar-accent-foreground: #c45d3e;
+  --sidebar-accent: color-mix(in srgb, var(--tint) 10%, transparent);
+  --sidebar-accent-foreground: var(--tint);
   --sidebar-border: #d9d5ce;
-  --sidebar-ring: #c45d3e;
+  --sidebar-ring: var(--tint);
   --sidebar-muted: #b5b0a6;
-  --sidebar-terracotta: #c45d3e;
+  --sidebar-terracotta: var(--tint);
   --sidebar-text-folder: #3d3a35;
   --sidebar-text-child: #5c5850;
   --sidebar-dot-inactive: #d9d5ce;
@@ -1217,15 +1190,15 @@ del.bn-inline-content {
 .white {
   /* ===== SIDEBAR THEME - Clean White Palette ===== */
   --sidebar: #f9f8f7;
-  --sidebar-foreground: #9b9a97;
+  --sidebar-foreground: #5f5e59;
   --sidebar-primary: #37352f;
   --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: rgba(35, 131, 226, 0.08);
-  --sidebar-accent-foreground: #2383e2;
+  --sidebar-accent: color-mix(in srgb, var(--tint) 8%, transparent);
+  --sidebar-accent-foreground: var(--tint);
   --sidebar-border: #e9e9e7;
-  --sidebar-ring: #2383e2;
+  --sidebar-ring: var(--tint);
   --sidebar-muted: #b0afab;
-  --sidebar-terracotta: #2383e2;
+  --sidebar-terracotta: var(--tint);
   --sidebar-text-folder: #37352f;
   --sidebar-text-child: #6b6966;
   --sidebar-dot-inactive: #e3e2e0;
@@ -1233,27 +1206,28 @@ del.bn-inline-content {
 }
 
 .dark {
-  /* ===== SIDEBAR THEME - Cool Dark Palette ===== */
-  --sidebar: #131315;
+  /* ===== SIDEBAR THEME - Neutral Charcoal ===== */
+  --sidebar: #202020;
   --sidebar-foreground: #b5b3ae;
   --sidebar-primary: #e8e5df;
-  --sidebar-primary-foreground: #131315;
-  --sidebar-accent: rgba(224, 122, 92, 0.15);
-  --sidebar-accent-foreground: #e07a5c;
-  --sidebar-border: #2a2a2e;
-  --sidebar-ring: #e07a5c;
+  --sidebar-primary-foreground: #202020;
+  --sidebar-accent: color-mix(in srgb, var(--tint) 15%, transparent);
+  --sidebar-accent-foreground: var(--tint);
+  --sidebar-border: #333333;
+  --sidebar-ring: var(--tint);
   --sidebar-muted: #6b6b6b;
-  --sidebar-terracotta: #e07a5c;
+  --sidebar-terracotta: var(--tint);
   --sidebar-text-folder: #c5c0b8;
   --sidebar-text-child: #9a958d;
-  --sidebar-dot-inactive: #3a3a3e;
-  --sidebar-surface: #222225;
+  --sidebar-dot-inactive: #444444;
+  --sidebar-surface: #2a2a2a;
 }
 
 @theme inline {
   /* ===== FONT FAMILIES ===== */
   --font-sans: var(--font-sans);
   --font-serif: var(--font-serif);
+  --font-heading: var(--font-heading);
 
   /* ===== BASE COLORS ===== */
   --color-background: var(--background);
@@ -1294,30 +1268,20 @@ del.bn-inline-content {
   --color-secondary-foreground: var(--secondary-foreground);
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
+
+  /* ===== USER ACCENT (tint) ===== */
+  --color-tint: var(--tint);
+  --color-tint-foreground: var(--tint-foreground);
+  --color-tint-hover: var(--tint-hover);
+  --color-tint-light: var(--tint-light);
+  --color-tint-lighter: var(--tint-lighter);
+  --color-tint-muted: var(--tint-muted);
+  --color-tint-ring: var(--tint-ring);
+  --color-tint-border: var(--tint-border);
+
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
   --color-ring: var(--ring);
-
-  /* ===== CALENDAR VIEW ===== */
-  --color-cal-bg: var(--cal-bg);
-  --color-cal-cell-bg: var(--cal-cell-bg);
-  --color-cal-cell-outside-bg: var(--cal-cell-outside-bg);
-  --color-cal-cell-weekend-bg: var(--cal-cell-weekend-bg);
-  --color-cal-today-bg: var(--cal-today-bg);
-  --color-cal-today-border: var(--cal-today-border);
-  --color-cal-today-badge: var(--cal-today-badge);
-  --color-cal-today-label: var(--cal-today-label);
-  --color-cal-date-current: var(--cal-date-current);
-  --color-cal-date-outside: var(--cal-date-outside);
-  --color-cal-weekday: var(--cal-weekday);
-  --color-cal-task-bg: var(--cal-task-bg);
-  --color-cal-task-bg-today: var(--cal-task-bg-today);
-  --color-cal-task-text: var(--cal-task-text);
-  --color-cal-task-text-today: var(--cal-task-text-today);
-  --color-cal-task-overdue-bg: var(--cal-task-overdue-bg);
-  --color-cal-task-overdue-text: var(--cal-task-overdue-text);
-  --color-cal-overflow: var(--cal-overflow);
-  --color-cal-month-text: var(--cal-month-text);
 
   /* ===== QUEUE LIST ===== */
   --color-queue-bg: var(--queue-bg);

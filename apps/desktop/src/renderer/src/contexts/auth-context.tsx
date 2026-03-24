@@ -113,7 +113,7 @@ const authReducer = (state: AuthState, action: AuthAction): AuthState => {
         ...WIZARD_IDLE_FIELDS
       }
     case 'CHECK_UNAUTHENTICATED':
-      return { ...state, status: 'unauthenticated', error: null }
+      return { ...state, status: 'unauthenticated', wizardStep: 'sign-in', error: null }
     case 'SET_AUTHENTICATING':
       return { ...state, status: 'authenticating', error: null }
     case 'OTP_REQUESTED':
@@ -161,7 +161,7 @@ const authReducer = (state: AuthState, action: AuthAction): AuthState => {
         status: state.status === 'error' ? 'unauthenticated' : state.status
       }
     case 'RESET_AUTH':
-      return { ...initialState, status: 'unauthenticated' }
+      return { ...initialState, status: 'unauthenticated', wizardStep: 'sign-in' }
     case 'WIZARD_SET_STEP':
       return {
         ...state,

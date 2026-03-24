@@ -47,7 +47,7 @@ export function AttachmentChip({ attachment, onRemove }: AttachmentChipProps) {
               className={cn(
                 'text-stone-400 hover:text-stone-600',
                 'transition-colors duration-150',
-                'focus:outline-none focus:ring-1 focus:ring-stone-400 focus:ring-offset-1 rounded-full'
+                'focus:outline-none rounded-full'
               )}
               aria-label={`Remove ${displayName}`}
             >

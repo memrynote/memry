@@ -81,7 +81,7 @@ function NavArrow({ direction, onClick, label }: NavArrowProps) {
       onClick={onClick}
       aria-label={label}
       className={cn(
-        'size-8 rounded-lg',
+        'size-8 rounded-md',
         'text-foreground/60 hover:text-foreground',
         'hover:bg-foreground/10',
         'transition-all duration-200'
@@ -107,7 +107,7 @@ function TodayButton({ onClick }: TodayButtonProps) {
       size="sm"
       onClick={onClick}
       className={cn(
-        'h-8 px-4 rounded-lg',
+        'h-8 px-4 rounded-md',
         'text-xs font-semibold',
         'border-foreground/10 bg-background/90 shadow-sm backdrop-blur-md',
         'hover:bg-background hover:border-foreground/20',
@@ -184,7 +184,7 @@ export function JournalNavigationRow({
             variant="ghost"
             size="icon"
             className={cn(
-              'size-8 rounded-lg',
+              'size-8 rounded-md',
               'text-foreground/60 hover:text-foreground',
               'hover:bg-foreground/10',
               'transition-all duration-200'
@@ -205,7 +205,7 @@ export function JournalNavigationRow({
                 variant="ghost"
                 size="icon"
                 className={cn(
-                  'size-8 rounded-lg',
+                  'size-8 rounded-md',
                   'text-foreground/60 hover:text-foreground',
                   'hover:bg-foreground/10',
                   'transition-all duration-200'

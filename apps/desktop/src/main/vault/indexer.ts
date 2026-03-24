@@ -259,8 +259,34 @@ async function indexNonMarkdownFile(
 }
 
 // ============================================================================
+// Concurrency Limiter
+// ============================================================================
+
+/**
+ * Run tasks with a bounded concurrency limit.
+ * Avoids exhausting file-descriptors or SQLite write slots on large vaults.
+ */
+async function withConcurrency<T>(tasks: (() => Promise<T>)[], limit: number): Promise<T[]> {
+  const results: T[] = new Array(tasks.length)
+  let next = 0
+
+  async function worker(): Promise<void> {
+    while (next < tasks.length) {
+      const i = next++
+      results[i] = await tasks[i]()
+    }
+  }
+
+  const workers = Array.from({ length: Math.min(limit, tasks.length) }, () => worker())
+  await Promise.all(workers)
+  return results
+}
+
+// ============================================================================
 // Main Indexer
 // ============================================================================
+
+const INDEX_CONCURRENCY = 8
 
 /**
  * Index all files in the vault.
@@ -309,11 +335,25 @@ export async function indexVault(vaultPath: string): Promise<IndexResult> {
     return result
   }
 
-  // Index each file
-  for (let i = 0; i < allFiles.length; i++) {
-    const file = allFiles[i]
-    const status = await indexFile(vaultPath, file)
+  // Track completed count for progress reporting (thread-safe increment via closure)
+  let completed = 0
 
+  const tasks = allFiles.map((file, i) => async () => {
+    const status = await indexFile(vaultPath, file)
+    completed++
+
+    // Emit progress every 10 completions to reduce IPC overhead
+    if (completed % 10 === 0 || completed === allFiles.length) {
+      const progress = Math.round((completed / allFiles.length) * 100)
+      emitIndexProgress(progress)
+    }
+
+    return { i, status }
+  })
+
+  const statuses = await withConcurrency(tasks, INDEX_CONCURRENCY)
+
+  for (const { status } of statuses) {
     switch (status) {
       case 'indexed':
         result.indexed++
@@ -324,12 +364,6 @@ export async function indexVault(vaultPath: string): Promise<IndexResult> {
       case 'error':
         result.errors++
         break
-    }
-
-    // Emit progress (batch every 10 files to reduce IPC overhead)
-    if (i % 10 === 0 || i === allFiles.length - 1) {
-      const progress = Math.round(((i + 1) / allFiles.length) * 100)
-      emitIndexProgress(progress)
     }
   }
 

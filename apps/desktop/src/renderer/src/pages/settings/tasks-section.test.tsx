@@ -90,7 +90,7 @@ describe('TasksSettings', () => {
     expect(screen.getByText('Default Project')).toBeInTheDocument()
     expect(screen.getByText('Default Sort Order')).toBeInTheDocument()
     expect(screen.getByText('Week Starts On')).toBeInTheDocument()
-    expect(screen.getByText('Stale Inbox Threshold (days)')).toBeInTheDocument()
+    expect(screen.getByText('Stale Inbox Threshold')).toBeInTheDocument()
   })
 
   it('shows active projects in dropdown (excludes archived)', async () => {

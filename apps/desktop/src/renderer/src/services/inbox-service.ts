@@ -415,10 +415,6 @@ export const inboxService = {
     return window.api.inbox.fileAllStale()
   },
 
-  bulkArchiveOlderThan: (olderThanDays: number): Promise<BulkResponse> => {
-    return window.api.inbox.bulkArchiveOlderThan(olderThanDays)
-  },
-
   // =========================================================================
   // Transcription
   // =========================================================================
@@ -664,25 +660,27 @@ export function getInboxItemColor(type: InboxItem['type']): string {
   return colors[type] || 'text-muted-foreground'
 }
 
-/**
- * Format relative time for inbox items.
- * @param date - Date to format
- * @returns Relative time string (e.g., "2 hours ago")
- */
-export function formatRelativeTime(date: Date | string): string {
-  const d = typeof date === 'string' ? new Date(date) : date
-  const now = new Date()
-  const diffMs = now.getTime() - d.getTime()
-  const diffMins = Math.floor(diffMs / 60000)
-  const diffHours = Math.floor(diffMins / 60)
-  const diffDays = Math.floor(diffHours / 24)
+const SHORT_MONTHS = [
+  'Jan',
+  'Feb',
+  'Mar',
+  'Apr',
+  'May',
+  'Jun',
+  'Jul',
+  'Aug',
+  'Sep',
+  'Oct',
+  'Nov',
+  'Dec'
+] as const
 
-  if (diffMins < 1) return 'just now'
-  if (diffMins < 60) return `${diffMins}m ago`
-  if (diffHours < 24) return `${diffHours}h ago`
-  if (diffDays < 7) return `${diffDays}d ago`
-  if (diffDays < 30) return `${Math.floor(diffDays / 7)}w ago`
-  return d.toLocaleDateString()
+export function formatCompactDate(date: Date | string): string {
+  const d = typeof date === 'string' ? new Date(date) : date
+  const day = String(d.getDate()).padStart(2, '0')
+  const month = SHORT_MONTHS[d.getMonth()]
+  const year = String(d.getFullYear()).slice(-2)
+  return `${day} ${month} ${year}`
 }
 
 /**
@@ -691,6 +689,23 @@ export function formatRelativeTime(date: Date | string): string {
  * @param thresholdDays - Stale threshold in days
  * @returns Whether the item is stale
  */
+export function formatTimeAgo(date: Date | string): string {
+  const d = typeof date === 'string' ? new Date(date) : date
+  const ms = Date.now() - d.getTime()
+  const seconds = Math.floor(ms / 1000)
+  if (seconds < 60) return 'just now'
+  const minutes = Math.floor(seconds / 60)
+  if (minutes === 1) return '1 minute ago'
+  if (minutes < 60) return `${minutes} minutes ago`
+  const hours = Math.floor(minutes / 60)
+  if (hours === 1) return '1 hour ago'
+  if (hours < 24) return `${hours} hours ago`
+  const days = Math.floor(hours / 24)
+  if (days === 1) return 'yesterday'
+  if (days < 7) return `${days} days ago`
+  return formatCompactDate(d)
+}
+
 export function isItemStale(createdAt: Date | string, thresholdDays: number = 7): boolean {
   const d = typeof createdAt === 'string' ? new Date(createdAt) : createdAt
   const now = new Date()

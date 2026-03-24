@@ -2,7 +2,7 @@ import { eq, and, inArray } from 'drizzle-orm'
 import { noteTags } from '@memry/db-schema/schema/notes-cache'
 import { taskTags } from '@memry/db-schema/schema/task-relations'
 import type { TagWithCount } from '@memry/contracts/tags-api'
-import { getAllTags, getAllTagDefinitions, getOrCreateTag } from './notes'
+import { getAllTags, getAllTagDefinitions, getOrCreateTag, deleteTagDefinition } from './notes'
 import { getAllTaskTags } from './tasks'
 
 type IndexDb = Parameters<typeof getAllTags>[0]
@@ -38,7 +38,13 @@ export function getAllTagsWithCounts(indexDb: IndexDb, dataDb: DataDb): TagWithC
     }
   }
 
-  return [...merged.values()].sort((a, b) => b.count - a.count)
+  for (const def of definitions) {
+    if (!merged.has(def.name)) {
+      deleteTagDefinition(dataDb, def.name)
+    }
+  }
+
+  return [...merged.values()].filter((tag) => tag.count > 0).sort((a, b) => b.count - a.count)
 }
 
 export function mergeTagInNotes(

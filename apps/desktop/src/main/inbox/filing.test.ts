@@ -114,7 +114,7 @@ describe('Inbox Filing Operations', () => {
     })
 
     it('should not create folder if it already exists', async () => {
-      mockGetFolders.mockResolvedValue(['existing-folder'])
+      mockGetFolders.mockResolvedValue([{ path: 'existing-folder', icon: null }])
       const itemId = seedInboxItem(testDb.db, { id: 'item-1', title: 'Test Item' })
 
       await fileToFolder(itemId, 'existing-folder')

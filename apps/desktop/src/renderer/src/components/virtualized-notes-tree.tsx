@@ -14,8 +14,6 @@ import {
   FileText,
   Folder,
   FolderOpen,
-  ChevronRight,
-  ChevronDown,
   LayoutGrid,
   FilePlus,
   FolderPlus,
@@ -47,6 +45,9 @@ import {
   ContextMenuTrigger
 } from '@/components/ui/context-menu'
 import { getTabIconForFileType, type FileType } from '@memry/shared/file-types'
+import { NoteIconDisplay } from '@/lib/render-note-icon'
+import { FolderIconButton } from '@/components/folder-icon-button'
+import { Smile } from '@/lib/icons'
 
 // ============================================================================
 // Types
@@ -99,6 +100,8 @@ interface VirtualizedNotesTreeProps {
   onClearFolderTemplate?: (folderPath: string) => void
   /** Map of folder paths to template names */
   folderTemplateNames?: Map<string, string>
+  /** Callback when setting folder icon */
+  onSetFolderIcon?: (folderPath: string, icon: string | null) => void
   /** Map of note IDs to notes for quick lookup */
   noteMap: Map<string, NoteListItem>
   /** Whether drag operations are disabled */
@@ -128,13 +131,9 @@ function getDisplayName(notePath: string): string {
  * Returns the icon element to render in the tree.
  */
 function getFileIcon(note: NoteListItem): React.ReactElement {
-  // Emoji takes priority for markdown files
+  // Emoji/icon takes priority for markdown files
   if (note.emoji) {
-    return (
-      <span className="text-sm leading-none shrink-0" role="img" aria-label="note icon">
-        {note.emoji}
-      </span>
-    )
+    return <NoteIconDisplay value={note.emoji} className="text-sm leading-none shrink-0" />
   }
 
   // Get icon based on file type
@@ -216,6 +215,9 @@ interface FolderRowProps {
   onDeleteFolder?: (folderPath: string) => void
   onSetFolderTemplate?: (folderPath: string) => void
   onClearFolderTemplate?: (folderPath: string) => void
+  onSetFolderIcon?: (folderPath: string, icon: string | null) => void
+  iconPickerFolderPath?: string | null
+  onIconPickerOpenChange?: (folderPath: string | null) => void
   onBulkDelete?: () => void
   onDragStart: (e: React.DragEvent, itemId: string) => void
   onDragEnd: () => void
@@ -243,6 +245,9 @@ function FolderRow({
   onDeleteFolder,
   onSetFolderTemplate,
   onClearFolderTemplate,
+  onSetFolderIcon,
+  iconPickerFolderPath,
+  onIconPickerOpenChange,
   onBulkDelete,
   onDragStart,
   onDragEnd,
@@ -316,8 +321,8 @@ function FolderRow({
           tabIndex={0}
           draggable={draggable}
           className={cn(
-            'group/folder relative flex items-center gap-1 px-2 py-1 cursor-pointer rounded-sm transition-colors min-w-0',
-            'hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring',
+            'group/folder group/folderrow relative flex items-center gap-1 px-2 py-1 cursor-pointer rounded-sm transition-colors min-w-0',
+            'hover:bg-muted/50 focus-visible:outline-none',
             isSelected && 'bg-sidebar-accent text-sidebar-accent-foreground',
             isDragging && 'opacity-50',
             draggable && 'cursor-default'
@@ -355,30 +360,16 @@ function FolderRow({
             />
           )}
 
-          {/* Expand/Collapse button */}
-          <button
-            type="button"
-            className="p-0.5 hover:bg-muted rounded-sm"
-            onClick={handleExpandClick}
-            aria-label={item.isExpanded ? 'Collapse folder' : 'Expand folder'}
-          >
-            {item.hasChildren ? (
-              item.isExpanded ? (
-                <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
-              ) : (
-                <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
-              )
-            ) : (
-              <span className="w-3.5" />
-            )}
-          </button>
-
-          {/* Folder icon */}
-          {item.isExpanded ? (
-            <FolderOpen className="h-4 w-4 text-muted-foreground shrink-0" aria-hidden="true" />
-          ) : (
-            <Folder className="h-4 w-4 text-muted-foreground shrink-0" aria-hidden="true" />
-          )}
+          {/* Folder icon — shows chevron on hover for expand/collapse */}
+          <FolderIconButton
+            icon={item.folder.icon ?? null}
+            isExpanded={item.isExpanded}
+            hasChildren={item.hasChildren}
+            onIconChange={(icon) => onSetFolderIcon?.(item.folder.path, icon)}
+            onToggleExpand={() => onToggleExpand(item.id)}
+            pickerOpen={iconPickerFolderPath === item.folder.path}
+            onPickerOpenChange={(open) => onIconPickerOpenChange?.(open ? item.folder.path : null)}
+          />
 
           {/* Folder name */}
           <span className="text-sm truncate flex-1">{item.folder.name}</span>
@@ -438,6 +429,17 @@ function FolderRow({
               <X className="mr-2 h-4 w-4" />
               Clear Default Template
             </ContextMenuItem>
+            <ContextMenuSeparator />
+            <ContextMenuItem onClick={() => onIconPickerOpenChange?.(item.folder.path)}>
+              <Smile className="mr-2 h-4 w-4" />
+              Set Icon
+            </ContextMenuItem>
+            {item.folder.icon && (
+              <ContextMenuItem onClick={() => onSetFolderIcon?.(item.folder.path, null)}>
+                <X className="mr-2 h-4 w-4" />
+                Remove Icon
+              </ContextMenuItem>
+            )}
             <ContextMenuSeparator />
             <ContextMenuItem onClick={() => onRenameFolder?.(item.folder.path)}>
               <Pencil className="mr-2 h-4 w-4" />
@@ -553,7 +555,7 @@ function NoteRow({
           draggable={draggable}
           className={cn(
             'group/note relative flex items-center gap-1 px-2 py-1 cursor-pointer rounded-sm transition-colors',
-            'hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring',
+            'hover:bg-muted/50 focus-visible:outline-none',
             isSelected && 'bg-sidebar-accent text-sidebar-accent-foreground',
             isDragging && 'opacity-50',
             draggable && 'cursor-default'
@@ -662,6 +664,7 @@ export function VirtualizedNotesTree({
   onSetFolderTemplate,
   onClearFolderTemplate,
   folderTemplateNames,
+  onSetFolderIcon,
   noteMap,
   isDragDisabled = false,
   className,
@@ -681,6 +684,9 @@ export function VirtualizedNotesTree({
     dropTargetId: null,
     dropPosition: null
   })
+
+  // Folder icon picker state
+  const [iconPickerFolderPath, setIconPickerFolderPath] = useState<string | null>(null)
 
   // Anchor for shift-click range selection
   const [anchorId, setAnchorId] = useState<string | null>(null)
@@ -1004,6 +1010,9 @@ export function VirtualizedNotesTree({
                   onDeleteFolder={onDeleteFolder}
                   onSetFolderTemplate={onSetFolderTemplate}
                   onClearFolderTemplate={onClearFolderTemplate}
+                  onSetFolderIcon={(path, icon) => onSetFolderIcon?.(path, icon)}
+                  iconPickerFolderPath={iconPickerFolderPath}
+                  onIconPickerOpenChange={setIconPickerFolderPath}
                   onBulkDelete={onBulkDelete}
                   onDragStart={handleDragStart}
                   onDragEnd={handleDragEnd}

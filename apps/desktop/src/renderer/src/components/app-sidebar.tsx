@@ -2,7 +2,7 @@
 
 import * as React from 'react'
 import { useMemo, useState, useCallback, useRef } from 'react'
-import { CloudOff, Plus, Search, Upload } from '@/lib/icons'
+import { CloudOff, FilePlus, FolderPlus, Plus, Search, Upload } from '@/lib/icons'
 import {
   SidebarInbox,
   SidebarHome,
@@ -38,7 +38,6 @@ import { notesService } from '@/services/notes-service'
 import { useSidebarDrillDown } from '@/contexts/sidebar-drill-down'
 import { useAuth } from '@/contexts/auth-context'
 import { SyncStatus } from '@/components/sync/sync-status'
-import { SidebarUserProfile } from '@/components/sidebar/sidebar-user-profile'
 import { useInboxList } from '@/hooks/use-inbox'
 import type { SidebarItem, TabType } from '@/contexts/tabs/types'
 import type { AppPage } from '@/App'
@@ -69,17 +68,18 @@ function SidebarHeaderContent() {
   const isCollapsed = state === 'collapsed'
 
   return (
-    <SidebarHeader className="pt-3 pb-0 px-2 gap-1">
-      {/* Drag region + Traffic lights for macOS */}
+    <SidebarHeader className="pt-3 pb-0 px-2 gap-0">
       <div
         className={cn(
           'drag-region flex items-center shrink-0',
-          isCollapsed ? 'justify-center' : 'justify-start px-2.5'
+          isCollapsed ? 'justify-center' : 'px-1'
         )}
       >
         <TrafficLights compact={isCollapsed} />
+        <div className="group-data-[collapsible=icon]:hidden">
+          <VaultSwitcher />
+        </div>
       </div>
-      <VaultSwitcher />
     </SidebarHeader>
   )
 }
@@ -97,9 +97,8 @@ export function AppSidebar({ currentPage, viewCounts, ...props }: AppSidebarProp
  * Inner sidebar component that has access to the drill-down context.
  */
 function AppSidebarInner({ currentPage, viewCounts, ...props }: AppSidebarProps) {
-  // State to hold action buttons from NotesTree and TagList
-  const [notesActions, setNotesActions] = useState<React.ReactNode>(null)
   const [tagsActions, setTagsActions] = useState<React.ReactNode>(null)
+  const notesActionsRef = useRef<{ createNote: () => void; createFolder: () => void } | null>(null)
   const sidebarScrollRef = useRef<HTMLDivElement>(null)
   const targetFolderRef = useRef('')
 
@@ -172,6 +171,7 @@ function AppSidebarInner({ currentPage, viewCounts, ...props }: AppSidebarProps)
       }
     } catch (error) {
       log.error('Failed to create new note', error)
+      toast.error(extractErrorMessage(error, 'Failed to create note'))
     }
   }, [openTab])
 
@@ -294,10 +294,8 @@ function AppSidebarInner({ currentPage, viewCounts, ...props }: AppSidebarProps)
                     />
                     <span
                       className={cn(
-                        'text-[13px] leading-4',
-                        active
-                          ? 'text-sidebar-accent-foreground font-medium'
-                          : 'text-sidebar-foreground'
+                        'text-[13px] leading-4 font-medium',
+                        active ? 'text-sidebar-accent-foreground' : 'text-sidebar-foreground'
                       )}
                     >
                       {item.title}
@@ -308,13 +306,8 @@ function AppSidebarInner({ currentPage, viewCounts, ...props }: AppSidebarProps)
                       </span>
                     )}
                     {item.page === 'tasks' && todayTasksCount > 0 && (
-                      <span className="ml-auto size-[18px] flex items-center justify-center rounded-full bg-sidebar-terracotta/15 text-sidebar-terracotta text-[10px] font-semibold leading-none">
+                      <span className="ml-auto text-sidebar-muted font-medium text-[11px]">
                         {todayTasksCount}
-                      </span>
-                    )}
-                    {item.shortcut && item.page !== 'inbox' && item.page !== 'tasks' && (
-                      <span className="ml-auto font-mono text-[9px] text-sidebar-muted/50">
-                        {item.shortcut}
                       </span>
                     )}
                   </SidebarMenuButton>
@@ -339,10 +332,31 @@ function AppSidebarInner({ currentPage, viewCounts, ...props }: AppSidebarProps)
           id="collections"
           label="Collections"
           defaultExpanded={false}
-          actions={notesActions}
+          actions={
+            <>
+              <button
+                type="button"
+                onClick={() => notesActionsRef.current?.createNote()}
+                className="p-0.5 rounded cursor-pointer hover:bg-sidebar-accent transition-colors"
+                aria-label="New note"
+              >
+                <FilePlus className="size-3.5 text-sidebar-muted hover:text-sidebar-foreground" />
+              </button>
+              <button
+                type="button"
+                onClick={() => notesActionsRef.current?.createFolder()}
+                className="p-0.5 rounded cursor-pointer hover:bg-sidebar-accent transition-colors"
+                aria-label="New folder"
+              >
+                <FolderPlus className="size-3.5 text-sidebar-muted hover:text-sidebar-foreground" />
+              </button>
+            </>
+          }
         >
           <NotesTree
-            onActionsReady={setNotesActions}
+            onActionsReady={(actions) => {
+              notesActionsRef.current = actions
+            }}
             onTargetFolderChange={handleTargetFolderChange}
           />
         </SidebarSection>
@@ -368,7 +382,7 @@ function AppSidebarInner({ currentPage, viewCounts, ...props }: AppSidebarProps)
             isDraggingFiles ? 'opacity-100' : 'opacity-0 invisible pointer-events-none'
           )}
         >
-          <div className="flex flex-col items-center gap-2 rounded-lg border-2 border-dashed border-primary/50 px-6 py-4">
+          <div className="flex flex-col items-center gap-2 rounded-md border-2 border-dashed border-primary/50 px-6 py-4">
             <Upload className="size-6 text-primary" />
             <span className="text-sm font-medium">Drop files to import</span>
             <span className="text-xs text-muted-foreground">
@@ -383,9 +397,9 @@ function AppSidebarInner({ currentPage, viewCounts, ...props }: AppSidebarProps)
   const { state: authState } = useAuth()
 
   const handleSyncClick = useCallback(() => {
-    localStorage.setItem('memry_settings_section', 'sync')
+    localStorage.setItem('memry_settings_section', 'account')
     window.dispatchEvent(
-      new StorageEvent('storage', { key: 'memry_settings_section', newValue: 'sync' })
+      new StorageEvent('storage', { key: 'memry_settings_section', newValue: 'account' })
     )
     openTab({
       type: 'settings',
@@ -409,21 +423,14 @@ function AppSidebarInner({ currentPage, viewCounts, ...props }: AppSidebarProps)
         <SidebarMenu>
           <SidebarMenuItem>
             {authState.status === 'authenticated' ? (
-              <SyncStatus onOpenSettings={handleSyncClick} />
+              <SyncStatus onOpenSettings={handleSyncClick} iconOnly />
             ) : authState.status === 'checking' ? null : (
               <SidebarMenuButton tooltip="Sync disabled" onClick={handleSyncClick}>
                 <CloudOff className="size-4 text-muted-foreground" />
-                <span className="text-muted-foreground">Sync disabled</span>
               </SidebarMenuButton>
             )}
           </SidebarMenuItem>
         </SidebarMenu>
-        {authState.status === 'authenticated' && (
-          <>
-            <div className="h-px bg-sidebar-border mx-2 my-1" />
-            <SidebarUserProfile />
-          </>
-        )}
       </SidebarFooter>
       <SidebarRail />
     </Sidebar>

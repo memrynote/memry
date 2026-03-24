@@ -48,7 +48,7 @@ const QuickActions = ({
             className={cn(
               'rounded-md',
               'transition-[background-color,color,transform] duration-[var(--duration-instant)] ease-[var(--ease-out)]',
-              'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring',
+              'focus-visible:outline-none',
               'hover:scale-110 active:scale-95',
               isRow
                 ? 'p-1.5 text-muted-foreground hover:text-foreground hover:bg-accent'

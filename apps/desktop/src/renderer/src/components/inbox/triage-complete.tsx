@@ -42,27 +42,27 @@ export function TriageComplete({
   }, [])
 
   return (
-    <div className="flex flex-1 flex-col items-center justify-center gap-8 p-12">
+    <div className="flex flex-1 flex-col items-center justify-center gap-8 bg-background p-12">
       <div
         className={cn(
-          'flex h-24 w-24 items-center justify-center rounded-full',
-          'bg-emerald-500/10 dark:bg-emerald-500/15',
+          'flex size-24 items-center justify-center rounded-full',
+          'bg-accent-green/10',
           'transition-all duration-700 ease-out',
           showCheck ? 'scale-100 opacity-100' : 'scale-50 opacity-0'
         )}
       >
         <div
           className={cn(
-            'flex h-16 w-16 items-center justify-center rounded-full',
-            'bg-emerald-500/20 dark:bg-emerald-500/25',
-            'transition-all duration-500 delay-200 ease-out',
+            'flex size-16 items-center justify-center rounded-full',
+            'bg-accent-green/20',
+            'transition-all delay-200 duration-500 ease-out',
             showCheck ? 'scale-100' : 'scale-75'
           )}
         >
           <Check
             className={cn(
-              'h-8 w-8 text-emerald-600 dark:text-emerald-400',
-              'transition-all duration-300 delay-400',
+              'size-8 text-accent-green',
+              'transition-all delay-400 duration-300',
               showCheck ? 'opacity-100' : 'opacity-0'
             )}
             strokeWidth={3}
@@ -76,12 +76,14 @@ export function TriageComplete({
           showStats ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0'
         )}
       >
-        <h2 className="text-3xl font-semibold tracking-tight">Inbox Zero</h2>
+        <h2 className="text-3xl font-semibold tracking-tight text-foreground">Inbox Zero</h2>
 
         <div className="mt-4 flex items-center justify-center gap-4">
           <div className="text-center">
-            <div className="text-2xl font-semibold tabular-nums">{processedCount}</div>
-            <div className="text-xs text-muted-foreground">
+            <div className="text-2xl font-semibold tabular-nums text-foreground">
+              {processedCount}
+            </div>
+            <div className="text-[11px] text-muted-foreground">
               {processedCount === 1 ? 'item' : 'items'} processed
             </div>
           </div>
@@ -91,13 +93,13 @@ export function TriageComplete({
               <div className="h-8 w-px bg-border" />
               <div className="flex flex-col items-center gap-1">
                 <StreakBadge streak={streak} size="md" />
-                <div className="text-xs text-muted-foreground">streak</div>
+                <div className="text-[11px] text-muted-foreground">streak</div>
               </div>
             </>
           )}
         </div>
 
-        <p className="text-muted-foreground mt-4 text-sm italic">
+        <p className="mt-4 text-sm italic text-muted-foreground">
           {pickMotivation(processedCount)}
         </p>
       </div>
@@ -106,8 +108,8 @@ export function TriageComplete({
         type="button"
         onClick={onReturnToInbox}
         className={cn(
-          'inline-flex items-center gap-2 rounded-lg px-6 py-2.5 text-sm font-medium',
-          'bg-foreground/5 hover:bg-foreground/10 text-foreground',
+          'inline-flex items-center gap-2 rounded-xl px-6 py-2.5 text-sm font-medium',
+          'bg-foreground/5 text-foreground hover:bg-foreground/10',
           'transition-all duration-500 ease-out',
           showButton ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0'
         )}

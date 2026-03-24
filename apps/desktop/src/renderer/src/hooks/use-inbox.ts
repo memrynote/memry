@@ -187,6 +187,7 @@ export function useInboxList(options: UseInboxListOptions = {}): UseInboxListRes
     const unsubArchived = onInboxArchived(() => {
       void queryClient.invalidateQueries({ queryKey: inboxKeys.lists() })
       void queryClient.invalidateQueries({ queryKey: inboxKeys.stats() })
+      void queryClient.invalidateQueries({ queryKey: inboxKeys.archived({}) })
     })
 
     const unsubFiled = onInboxFiled(() => {
@@ -988,20 +989,4 @@ export function useInboxOperations() {
     retryMetadata: retryMetadata.mutateAsync,
     isRetryMetadataPending: retryMetadata.isPending
   }
-}
-
-// =============================================================================
-// useInboxBankruptcy Hook
-// =============================================================================
-
-export function useInboxBankruptcy() {
-  const queryClient = useQueryClient()
-
-  return useMutation({
-    mutationFn: (olderThanDays: number) => inboxService.bulkArchiveOlderThan(olderThanDays),
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: inboxKeys.lists() })
-      void queryClient.invalidateQueries({ queryKey: inboxKeys.stats() })
-    }
-  })
 }

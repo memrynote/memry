@@ -11,7 +11,14 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { mkdirSync, rmSync } from 'fs'
 import * as path from 'path'
 import * as os from 'os'
-import { fetchUrlMetadata, downloadImage, isValidUrl, extractDomain } from './metadata'
+import {
+  fetchUrlMetadata,
+  downloadImage,
+  isValidUrl,
+  extractDomain,
+  titleFromUrl,
+  isBotPageTitle
+} from './metadata'
 
 // Mock fetch globally
 const mockFetch = vi.fn()
@@ -193,6 +200,133 @@ describe('URL Metadata Extraction', () => {
 
     it('should return original string for invalid URLs', () => {
       expect(extractDomain('not a url')).toBe('not a url')
+    })
+  })
+
+  // ==========================================================================
+  // titleFromUrl
+  // ==========================================================================
+  describe('titleFromUrl', () => {
+    it('should extract readable title from URL slug with trailing ID', () => {
+      // #given
+      const url = 'https://eksisozluk.com/okunmasi-gereken-kitaplar--77859'
+
+      // #when
+      const result = titleFromUrl(url)
+
+      // #then
+      expect(result).toBe('Okunmasi Gereken Kitaplar')
+    })
+
+    it('should handle slugs with double-dash numeric IDs', () => {
+      const url =
+        'https://eksisozluk.com/23-mart-2026-donald-trump-aciklamalari--8085786?day=2026-03-23'
+
+      const result = titleFromUrl(url)
+
+      expect(result).toBe('23 Mart 2026 Donald Trump Aciklamalari')
+    })
+
+    it('should strip file extensions', () => {
+      const url = 'https://martinfowler.com/articles/practical-test-pyramid.html'
+
+      const result = titleFromUrl(url)
+
+      expect(result).toBe('Practical Test Pyramid')
+    })
+
+    it('should take the last meaningful path segment', () => {
+      const url = 'https://example.com/blog/2026/my-awesome-post'
+
+      const result = titleFromUrl(url)
+
+      expect(result).toBe('My Awesome Post')
+    })
+
+    it('should fallback to domain when path is empty', () => {
+      const url = 'https://example.com/'
+
+      const result = titleFromUrl(url)
+
+      expect(result).toBe('example.com')
+    })
+
+    it('should fallback to domain for root URL without trailing slash', () => {
+      const url = 'https://example.com'
+
+      const result = titleFromUrl(url)
+
+      expect(result).toBe('example.com')
+    })
+
+    it('should handle underscores as word separators', () => {
+      const url = 'https://example.com/my_great_article'
+
+      const result = titleFromUrl(url)
+
+      expect(result).toBe('My Great Article')
+    })
+
+    it('should handle single trailing numeric ID with single dash', () => {
+      const url = 'https://example.com/some-article-12345'
+
+      const result = titleFromUrl(url)
+
+      expect(result).toBe('Some Article')
+    })
+
+    it('should return raw string for invalid URLs', () => {
+      const result = titleFromUrl('not a url')
+
+      expect(result).toBe('not a url')
+    })
+
+    it('should handle URLs with query params', () => {
+      const url = 'https://example.com/great-post?ref=twitter&utm_source=x'
+
+      const result = titleFromUrl(url)
+
+      expect(result).toBe('Great Post')
+    })
+
+    it('should strip www from domain fallback', () => {
+      const url = 'https://www.example.com'
+
+      const result = titleFromUrl(url)
+
+      expect(result).toBe('example.com')
+    })
+  })
+
+  // ==========================================================================
+  // isBotPageTitle
+  // ==========================================================================
+  describe('isBotPageTitle', () => {
+    it('should detect Cloudflare challenge page', () => {
+      expect(isBotPageTitle('Just a moment...')).toBe(true)
+    })
+
+    it('should detect attention required page', () => {
+      expect(isBotPageTitle('Attention Required! | Cloudflare')).toBe(true)
+    })
+
+    it('should detect access denied page', () => {
+      expect(isBotPageTitle('Access Denied')).toBe(true)
+    })
+
+    it('should be case-insensitive', () => {
+      expect(isBotPageTitle('JUST A MOMENT...')).toBe(true)
+      expect(isBotPageTitle('access denied')).toBe(true)
+    })
+
+    it('should not flag legitimate titles', () => {
+      expect(isBotPageTitle('How to Build Offline-First Apps')).toBe(false)
+      expect(isBotPageTitle('23 mart 2026 donald trump açıklamaları')).toBe(false)
+    })
+
+    it('should not flag empty or undefined', () => {
+      expect(isBotPageTitle('')).toBe(false)
+      expect(isBotPageTitle(undefined as unknown as string)).toBe(false)
     })
   })
 

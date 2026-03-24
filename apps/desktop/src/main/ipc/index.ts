@@ -19,6 +19,7 @@ import { registerCryptoHandlers, unregisterCryptoHandlers } from './crypto-handl
 import { registerSearchHandlers, unregisterSearchHandlers } from './search-handlers'
 import { registerGraphHandlers, unregisterGraphHandlers } from './graph-handlers'
 import { registerAIInlineHandlers, unregisterAIInlineHandlers } from './ai-inline-handlers'
+import { registerAccountHandlers, unregisterAccountHandlers } from './account-handlers'
 import { createLogger } from '../lib/logger'
 
 const ipcLog = createLogger('IPC')
@@ -101,6 +102,9 @@ export function registerAllHandlers(): void {
   // Register AI inline editing handlers
   registerAIInlineHandlers()
 
+  // Register account handlers
+  registerAccountHandlers()
+
   handlersRegistered = true
   ipcLog.info('all handlers registered')
 }
@@ -132,6 +136,7 @@ export function unregisterAllHandlers(): void {
   unregisterSearchHandlers()
   unregisterGraphHandlers()
   unregisterAIInlineHandlers()
+  unregisterAccountHandlers()
 
   handlersRegistered = false
   ipcLog.info('all handlers unregistered')

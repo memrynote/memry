@@ -43,24 +43,15 @@ describe('url-utils', () => {
   })
 
   describe('social platform detection', () => {
-    it('detects common social platforms', () => {
+    it('detects Twitter/X URLs', () => {
       expect(detectSocialPlatform('https://twitter.com/user/status/123')).toBe('twitter')
       expect(detectSocialPlatform('https://x.com/user/status/123')).toBe('twitter')
-      expect(detectSocialPlatform('https://www.linkedin.com/feed/update/123')).toBe('linkedin')
-      expect(detectSocialPlatform('https://threads.net/@user/post/123')).toBe('threads')
-      expect(detectSocialPlatform('https://bsky.app/profile/user/post/123')).toBe('bluesky')
-      expect(detectSocialPlatform('https://mastodon.social/@user/123')).toBe('mastodon')
       expect(detectSocialPlatform('https://example.com')).toBeNull()
     })
 
-    it('identifies social post urls', () => {
+    it('identifies Twitter post urls vs profiles', () => {
       expect(isSocialPost('https://twitter.com/user/status/123')).toBe(true)
       expect(isSocialPost('https://twitter.com/user')).toBe(false)
-      expect(isSocialPost('https://www.linkedin.com/feed/update/123')).toBe(true)
-      expect(isSocialPost('https://www.linkedin.com/in/user')).toBe(false)
-      expect(isSocialPost('https://threads.net/@user/post/123')).toBe(true)
-      expect(isSocialPost('https://bsky.app/profile/user/post/123')).toBe(true)
-      expect(isSocialPost('https://mastodon.social/@user/123')).toBe(true)
       expect(isSocialPost('https://example.com')).toBe(false)
     })
   })

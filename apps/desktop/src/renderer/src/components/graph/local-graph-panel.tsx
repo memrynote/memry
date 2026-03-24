@@ -139,7 +139,7 @@ export function LocalGraphPanel({
 
   if (isLoading || !graph) {
     return (
-      <div className="relative h-[250px] rounded-lg border border-border bg-muted/30">
+      <div className="relative h-[250px] rounded-md border border-border bg-muted/30">
         <div className="flex h-full items-center justify-center">
           <span className="text-xs text-muted-foreground">Loading graph...</span>
         </div>
@@ -150,7 +150,7 @@ export function LocalGraphPanel({
 
   if (graph.order === 0) {
     return (
-      <div className="relative h-[250px] rounded-lg border border-border bg-muted/30">
+      <div className="relative h-[250px] rounded-md border border-border bg-muted/30">
         <div className="flex h-full items-center justify-center">
           <span className="text-xs text-muted-foreground">No connections found</span>
         </div>
@@ -160,7 +160,7 @@ export function LocalGraphPanel({
   }
 
   return (
-    <div className="relative h-[250px] rounded-lg border border-border bg-muted/30 overflow-hidden">
+    <div className="relative h-[250px] rounded-md border border-border bg-muted/30 overflow-hidden">
       <PanelHeader onClose={onClose} onOpenFullGraph={onOpenFullGraph} />
 
       <SigmaContainer graph={graph} settings={sigmaSettings} className="h-full w-full">

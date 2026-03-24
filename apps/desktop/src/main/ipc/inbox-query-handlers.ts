@@ -10,10 +10,14 @@ import {
   type ArchivedListResponse,
   type FilingHistoryResponse,
   type FilingHistoryEntry,
-  type CapturePattern
+  type CapturePattern,
+  type InboxItemType
 } from '@memry/contracts/inbox-api'
 import { inboxItems, inboxItemTags } from '@memry/db-schema/schema/inbox'
-import { eq, desc, asc, and, isNull, sql } from 'drizzle-orm'
+import { eq, desc, asc, and, isNull, sql, gte } from 'drizzle-orm'
+import { createLogger } from '../lib/logger'
+
+const logger = createLogger('IPC:InboxQuery')
 import {
   getStaleThreshold as getStaleThresholdDays,
   setStaleThreshold as setStaleThresholdDays,
@@ -271,11 +275,113 @@ export function createInboxQueryHandlers(deps: InboxQueryHandlerDeps): InboxQuer
   }
 
   async function handleGetPatterns(): Promise<CapturePattern> {
-    return {
-      timeHeatmap: [],
+    const emptyResult: CapturePattern = {
+      timeHeatmap: Array.from({ length: 24 }, () => new Array<number>(7).fill(0)),
       typeDistribution: [],
       topDomains: [],
       topTags: []
+    }
+
+    let db: ReturnType<typeof deps.requireDatabase>
+    try {
+      db = deps.requireDatabase()
+    } catch (err) {
+      logger.warn('Database not ready for patterns query', err)
+      return emptyResult
+    }
+
+    try {
+      const twelveWeeksAgo = new Date()
+      twelveWeeksAgo.setDate(twelveWeeksAgo.getDate() - 84)
+      const cutoff = twelveWeeksAgo.toISOString()
+
+      const heatmapRows = db
+        .select({
+          hour: sql<number>`cast(strftime('%H', ${inboxItems.createdAt}) as integer)`,
+          dow: sql<number>`cast(strftime('%w', ${inboxItems.createdAt}) as integer)`,
+          count: sql<number>`count(*)`
+        })
+        .from(inboxItems)
+        .where(gte(inboxItems.createdAt, cutoff))
+        .groupBy(
+          sql`strftime('%H', ${inboxItems.createdAt})`,
+          sql`strftime('%w', ${inboxItems.createdAt})`
+        )
+        .all()
+
+      const timeHeatmap: number[][] = Array.from({ length: 24 }, () => new Array<number>(7).fill(0))
+      for (const row of heatmapRows) {
+        const dayIdx = (row.dow + 6) % 7
+        if (row.hour >= 0 && row.hour < 24 && dayIdx >= 0 && dayIdx < 7) {
+          timeHeatmap[row.hour][dayIdx] = row.count
+        }
+      }
+
+      const typeRows = db
+        .select({
+          type: inboxItems.type,
+          count: sql<number>`count(*)`
+        })
+        .from(inboxItems)
+        .where(gte(inboxItems.createdAt, cutoff))
+        .groupBy(inboxItems.type)
+        .orderBy(desc(sql`count(*)`))
+        .all()
+
+      const totalForTypes = typeRows.reduce((sum, r) => sum + r.count, 0)
+      const typeDistribution = typeRows.map((r) => ({
+        type: r.type as InboxItemType,
+        count: r.count,
+        percentage: totalForTypes > 0 ? Math.round((r.count / totalForTypes) * 100) : 0,
+        trend: 'stable' as const
+      }))
+
+      const tagRows = db
+        .select({
+          tag: inboxItemTags.tag,
+          count: sql<number>`count(*)`
+        })
+        .from(inboxItemTags)
+        .groupBy(inboxItemTags.tag)
+        .orderBy(desc(sql`count(*)`))
+        .limit(10)
+        .all()
+
+      const linkRows = db
+        .select({ sourceUrl: inboxItems.sourceUrl })
+        .from(inboxItems)
+        .where(
+          and(
+            sql`${inboxItems.sourceUrl} IS NOT NULL`,
+            sql`${inboxItems.sourceUrl} != ''`,
+            gte(inboxItems.createdAt, cutoff)
+          )
+        )
+        .all()
+
+      const domainCounts = new Map<string, number>()
+      for (const row of linkRows) {
+        try {
+          const hostname = new URL(row.sourceUrl!).hostname.replace(/^www\./, '')
+          domainCounts.set(hostname, (domainCounts.get(hostname) ?? 0) + 1)
+        } catch {
+          // skip malformed URLs
+        }
+      }
+      const topDomains = [...domainCounts.entries()]
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 10)
+        .map(([domain, count]) => ({ domain, count }))
+
+      return {
+        timeHeatmap,
+        typeDistribution,
+        topDomains,
+        topTags: tagRows
+      }
+    } catch (err) {
+      logger.error('Failed to compute capture patterns', err)
+      return emptyResult
     }
   }
 

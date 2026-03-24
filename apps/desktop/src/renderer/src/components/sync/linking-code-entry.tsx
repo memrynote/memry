@@ -2,7 +2,8 @@ import { useState, useCallback, type FormEvent } from 'react'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { extractErrorMessage } from '@/lib/ipc-error'
-import { ArrowLeft, Link2, Loader2 } from '@/lib/icons'
+import { ArrowLeft, Loader2, CheckCircle, AlertCircle } from '@/lib/icons'
+import { cn } from '@/lib/utils'
 
 interface LinkingCodeEntryProps {
   onLinked: (sessionId: string, verificationCode?: string) => void
@@ -73,26 +74,43 @@ export function LinkingCodeEntry({
 
   return (
     <div className="wizard-step-enter space-y-6">
-      <div className="space-y-2">
-        <div className="flex items-center gap-2.5 mb-1">
-          <div className="w-9 h-9 rounded-xl bg-amber-500/10 dark:bg-amber-400/10 flex items-center justify-center">
-            <Link2 className="w-4.5 h-4.5 text-amber-700 dark:text-amber-400" />
-          </div>
-          <h3 className="font-display text-xl tracking-tight">Enter linking code</h3>
+      <div className="flex flex-col pb-1 gap-1.5">
+        <div className="tracking-[-0.02em] font-semibold text-xl/6.5 text-foreground">
+          Enter linking code
         </div>
-        <p className="font-serif text-[15px] text-muted-foreground leading-relaxed">
+        <div className="text-[13px]/4.5 text-muted-foreground">
           Paste the linking code from your other device to securely transfer your encryption keys.
-        </p>
+        </div>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-5">
         <div className="space-y-2.5">
-          <Label
-            htmlFor="linking-code"
-            className="text-[11px] font-semibold tracking-widest uppercase text-muted-foreground"
-          >
-            Linking code
-          </Label>
+          <div className="flex items-center justify-between">
+            <Label
+              htmlFor="linking-code"
+              className="text-[11px] font-semibold tracking-widest uppercase text-muted-foreground"
+            >
+              Linking code
+            </Label>
+            {code.trim() && (
+              <span
+                className={cn(
+                  'flex items-center gap-1 text-[11px] font-mono',
+                  isValid ? 'text-green-500' : 'text-muted-foreground/70'
+                )}
+              >
+                {isValid ? (
+                  <>
+                    <CheckCircle className="w-3 h-3" /> Valid
+                  </>
+                ) : (
+                  <>
+                    <AlertCircle className="w-3 h-3" /> Invalid format
+                  </>
+                )}
+              </span>
+            )}
+          </div>
           <textarea
             id="linking-code"
             value={code}
@@ -106,7 +124,12 @@ export function LinkingCodeEntry({
             autoFocus
             aria-describedby={error ? 'linking-error' : undefined}
             aria-invalid={!!error}
-            className="flex w-full rounded-md border border-input bg-background px-3 py-2.5 text-[15px] font-mono leading-relaxed ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-amber-600/15 focus-visible:border-amber-600/50 dark:focus-visible:ring-amber-400/10 dark:focus-visible:border-amber-400/40 disabled:cursor-not-allowed disabled:opacity-50 resize-none"
+            className={cn(
+              'flex w-full rounded-md border bg-background px-3 py-2.5 text-[15px] font-mono leading-relaxed placeholder:text-muted-foreground focus-visible:outline-none focus-visible:border-[var(--tint)]/50 disabled:cursor-not-allowed disabled:opacity-50 resize-none',
+              !code.trim() && 'border-input',
+              code.trim() && !isValid && 'border-[var(--tint-border)]',
+              isValid && 'border-green-500'
+            )}
           />
           {error && (
             <p id="linking-error" className="text-sm text-destructive" role="alert">
@@ -114,8 +137,8 @@ export function LinkingCodeEntry({
             </p>
           )}
           {code.trim() && !isValid && !error && (
-            <p className="text-sm text-muted-foreground">
-              Invalid format. The linking code should be a JSON string from your other device.
+            <p className="text-[13px] text-muted-foreground/70">
+              Paste the JSON linking code from your other device
             </p>
           )}
         </div>
@@ -123,16 +146,20 @@ export function LinkingCodeEntry({
         <div className="flex items-center gap-3">
           <Button
             type="button"
-            variant="ghost"
+            variant="outline"
             size="sm"
             onClick={onBack}
             disabled={isLoading}
-            className="gap-1.5 text-muted-foreground"
+            className="gap-1.5"
           >
             <ArrowLeft className="w-3.5 h-3.5" />
             Back
           </Button>
-          <Button type="submit" className="flex-1 h-11" disabled={isLoading || !isValid}>
+          <Button
+            type="submit"
+            className="flex-1 h-9 bg-[var(--tint)] text-tint-foreground hover:bg-[var(--tint)]/90"
+            disabled={isLoading || !isValid}
+          >
             {isLoading ? (
               <>
                 <Loader2 className="w-4 h-4 animate-spin" />

@@ -11,7 +11,8 @@ import type {
   Note,
   NoteListItem,
   NoteListResponse,
-  NoteLinksResponse
+  NoteLinksResponse,
+  FolderInfo
 } from '../../../preload/index.d'
 
 // Types are re-exported at the end of this file
@@ -25,6 +26,7 @@ import {
   onNoteExternalChange,
   onTagsChanged
 } from '@/services/notes-service'
+import { tagsService } from '@/services/tags-service'
 
 // =============================================================================
 // Query Keys
@@ -114,7 +116,7 @@ const METADATA_STALE_TIME = 60_000
 const NOTE_GC_TIME = 5 * 60 * 1000
 
 /** Stable empty arrays/objects to avoid recreating on every render */
-const EMPTY_FOLDERS: string[] = []
+const EMPTY_FOLDERS: FolderInfo[] = []
 const EMPTY_TAGS: Array<{ tag: string; color: string; count: number }> = []
 const EMPTY_NOTES_LIST: NoteListResponse = { notes: [], total: 0, hasMore: false }
 const EMPTY_LINKS: NoteLinksResponse = { outgoing: [], incoming: [] }
@@ -266,7 +268,10 @@ export function useNoteTagsQuery(options: { enabled?: boolean } = {}) {
 
   const query = useQuery({
     queryKey: notesKeys.tags(),
-    queryFn: () => notesService.getTags(),
+    queryFn: async () => {
+      const { tags } = await tagsService.getAllWithCounts()
+      return tags.map((t) => ({ tag: t.name, color: t.color ?? '', count: t.count }))
+    },
     enabled,
     staleTime: METADATA_STALE_TIME,
     gcTime: NOTE_GC_TIME
@@ -348,6 +353,28 @@ export function useNoteFoldersQuery(options: { enabled?: boolean } = {}) {
     [createFolderMutation.mutateAsync]
   )
 
+  const setFolderIconMutation = useMutation({
+    mutationFn: async ({ folderPath, icon }: { folderPath: string; icon: string | null }) => {
+      const existing = await notesService.getFolderConfig(folderPath)
+      return notesService.setFolderConfig(folderPath, { ...existing, icon })
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: notesKeys.folders() })
+    }
+  })
+
+  const setFolderIcon = useCallback(
+    async (folderPath: string, icon: string | null): Promise<boolean> => {
+      try {
+        const result = await setFolderIconMutation.mutateAsync({ folderPath, icon })
+        return result.success
+      } catch {
+        return false
+      }
+    },
+    [setFolderIconMutation.mutateAsync]
+  )
+
   // Memoize folders to avoid recreating array reference
   const folders = useMemo(() => query.data ?? EMPTY_FOLDERS, [query.data])
 
@@ -356,7 +383,8 @@ export function useNoteFoldersQuery(options: { enabled?: boolean } = {}) {
     isLoading: query.isLoading,
     error: query.error,
     refetch: query.refetch,
-    createFolder
+    createFolder,
+    setFolderIcon
   }
 }
 

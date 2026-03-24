@@ -44,7 +44,7 @@ const KeyboardShortcutsModal = ({
               'size-8 rounded-md flex items-center justify-center',
               'text-muted-foreground hover:text-foreground hover:bg-muted',
               'transition-colors duration-[var(--duration-instant)]',
-              'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring'
+              'focus-visible:outline-none'
             )}
             aria-label="Close shortcuts help"
           >

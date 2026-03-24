@@ -51,6 +51,7 @@ export const KanbanCardContent = forwardRef<HTMLDivElement, KanbanCardContentPro
       isSelectionMode = false,
       showProjectBadge = true,
       onClick,
+      onToggleComplete,
       onToggleSelect,
       style,
       attributes,
@@ -79,6 +80,20 @@ export const KanbanCardContent = forwardRef<HTMLDivElement, KanbanCardContentPro
       onClick?.()
     }
 
+    const handleKeyDown = (e: React.KeyboardEvent): void => {
+      if (e.key === 'Enter') {
+        e.preventDefault()
+        onClick?.()
+      } else if (e.key === ' ') {
+        e.preventDefault()
+        if (isSelectionMode && onToggleSelect) {
+          onToggleSelect()
+        } else {
+          onToggleComplete?.()
+        }
+      }
+    }
+
     return (
       <div
         ref={(node) => {
@@ -91,6 +106,7 @@ export const KanbanCardContent = forwardRef<HTMLDivElement, KanbanCardContentPro
         aria-selected={isSelected}
         aria-label={task.title}
         onClick={handleClick}
+        onKeyDown={handleKeyDown}
         style={style}
         className={cn(
           'group flex cursor-grab rounded-md overflow-clip antialiased transition-all duration-150',
@@ -107,6 +123,7 @@ export const KanbanCardContent = forwardRef<HTMLDivElement, KanbanCardContentPro
             !isDragging &&
             !isSelected &&
             'ring-1 ring-inset ring-primary/40 border-primary/40',
+          'focus-visible:outline-none',
           isJustDropped && 'animate-drop-flash'
         )}
         {...attributes}
@@ -123,8 +140,8 @@ export const KanbanCardContent = forwardRef<HTMLDivElement, KanbanCardContentPro
           <div className="flex items-start gap-1.5">
             <span
               className={cn(
-                'text-[13px] leading-[18px] font-medium line-clamp-2',
-                isDone ? 'text-muted-foreground line-through' : 'text-foreground'
+                'text-[13px] font-medium line-clamp-2',
+                isDone ? 'text-muted-foreground/60 line-through' : 'text-foreground/90'
               )}
             >
               {task.title}

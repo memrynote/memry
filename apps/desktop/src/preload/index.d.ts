@@ -211,8 +211,14 @@ export interface TemplateListResponse {
 }
 
 export interface FolderConfig {
+  icon?: string | null
   template?: string
   inherit?: boolean
+}
+
+export interface FolderInfo {
+  path: string
+  icon?: string | null
 }
 
 // Export types (T106, T108)
@@ -850,6 +856,7 @@ export interface VaultClientAPI {
   switch(vaultPath: string): Promise<SelectVaultResponse>
   remove(vaultPath: string): Promise<void>
   reindex(): Promise<void>
+  reveal(): Promise<void>
 }
 
 // Notes client API interface
@@ -866,7 +873,7 @@ export interface NotesClientAPI {
   list(options?: NoteListOptions): Promise<NoteListResponse>
   getTags(): Promise<{ tag: string; color: string; count: number }[]>
   getLinks(id: string): Promise<NoteLinksResponse>
-  getFolders(): Promise<string[]>
+  getFolders(): Promise<FolderInfo[]>
   createFolder(path: string): Promise<{ success: boolean; error?: string }>
   renameFolder(oldPath: string, newPath: string): Promise<{ success: boolean; error?: string }>
   deleteFolder(path: string): Promise<{ success: boolean; error?: string }>
@@ -1468,6 +1475,14 @@ export interface InboxProcessingErrorEvent {
   error: string
 }
 
+export interface LinkPreviewData {
+  title: string
+  domain: string
+  favicon?: string
+  image?: string
+  description?: string
+}
+
 // Inbox client API interface
 export interface InboxClientAPI {
   // Capture
@@ -1579,10 +1594,12 @@ export interface InboxClientAPI {
     reason?: string
   }): Promise<InboxBulkResponse>
   fileAllStale(): Promise<InboxBulkResponse>
-  bulkArchiveOlderThan(olderThanDays: number): Promise<InboxBulkResponse>
 
   // Transcription
   retryTranscription(itemId: string): Promise<{ success: boolean; error?: string }>
+
+  // Preview
+  previewLink(url: string): Promise<LinkPreviewData>
 
   // Metadata
   retryMetadata(itemId: string): Promise<{ success: boolean; error?: string }>
@@ -1698,6 +1715,8 @@ export interface QuickCaptureClientAPI {
   close(): void
   /** Get current clipboard text content */
   getClipboard(): Promise<string>
+  /** Resize the quick capture window height */
+  resize(height: number): void
 }
 
 // Native context menu types
@@ -2038,7 +2057,7 @@ export interface NoteEditorSettings {
 export interface GeneralSettingsDTO {
   theme: 'light' | 'dark' | 'white' | 'system'
   fontSize: 'small' | 'medium' | 'large'
-  fontFamily: 'system' | 'serif' | 'sans-serif' | 'monospace'
+  fontFamily: 'system' | 'serif' | 'sans-serif' | 'monospace' | 'gelasio' | 'geist' | 'inter'
   accentColor: string
   startOnBoot: boolean
   language: string
@@ -2157,6 +2176,12 @@ export interface SettingsClientAPI {
   setGraphSettings(
     settings: Partial<GraphSettingsDTO>
   ): Promise<{ success: boolean; error?: string }>
+  registerGlobalCapture(): Promise<{
+    success: boolean
+    registered: boolean
+    permissionRequired?: boolean
+    error?: string
+  }>
 }
 
 // Sync Auth API
@@ -2247,6 +2272,13 @@ interface SyncLinkingClientAPI {
     deviceId?: string
     error?: string
   }>
+}
+
+// Account API
+interface AccountClientAPI {
+  getInfo: () => Promise<{ email: string | null; joinedAt: number | null }>
+  signOut: () => Promise<{ success: boolean; keychainWarning?: string }>
+  getRecoveryKey: () => Promise<{ success: boolean; key?: string; error?: string }>
 }
 
 // Device Management API
@@ -2443,6 +2475,7 @@ interface API extends WindowAPI {
   syncAuth: SyncAuthClientAPI
   syncSetup: SyncSetupClientAPI
   syncLinking: SyncLinkingClientAPI
+  account: AccountClientAPI
   syncDevices: SyncDevicesClientAPI
   syncOps: SyncOpsClientAPI
   crypto: CryptoClientAPI

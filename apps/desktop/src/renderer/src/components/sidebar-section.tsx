@@ -21,7 +21,7 @@ function SectionChevron({ expanded }: { expanded: boolean }): React.JSX.Element 
     <ChevronRight
       size={10}
       className={cn(
-        'shrink-0 text-sidebar-muted transition-transform duration-200 ease-in-out',
+        'shrink-0 text-sidebar-muted transition-transform duration-200 ease-in-out opacity-0 group-hover/section:opacity-100',
         expanded && 'rotate-90'
       )}
       aria-hidden="true"
@@ -111,31 +111,33 @@ export const SidebarSection = ({
 
   return (
     <div className={cn('group/section', className)}>
-      <SidebarGroup className="py-0">
+      <SidebarGroup className="p-0 px-2">
         {/* Section Header */}
-        <div className="flex items-center [font-synthesis:none] antialiased">
+        <div className="flex items-center h-6 [font-synthesis:none] antialiased">
           <button
             id={headerId}
             type="button"
             onClick={handleToggle}
             onKeyDown={handleKeyDown}
             className={cn(
-              'flex flex-1 min-w-0 cursor-pointer items-center gap-2 px-2.5 py-1.5',
-              'text-[12px] leading-4 font-medium',
+              'flex flex-1 min-w-0 cursor-pointer items-center gap-1.5 px-2 py-1 h-6 shrink-0',
+              'text-[11px] leading-3.5 font-medium tracking-[0.04em]',
               "font-['DM_Sans',system-ui,sans-serif]",
               'text-sidebar-muted hover:text-sidebar-foreground',
-              'transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring'
+              'transition-colors focus-visible:outline-none'
             )}
             aria-expanded={isExpanded}
             aria-controls={contentId}
             aria-label={`${label} section, ${isExpanded ? 'expanded' : 'collapsed'}${totalCount !== undefined ? `, ${totalCount} items` : ''}`}
             tabIndex={0}
           >
+            <span className="truncate text-left uppercase">{label}</span>
             <SectionChevron expanded={isExpanded} />
-            <span className="flex-1 truncate text-left">{label}</span>
 
             {!isExpanded && totalCount !== undefined && totalCount > 0 && (
-              <span className="text-sidebar-muted/60 tabular-nums text-[11px]">({totalCount})</span>
+              <span className="text-sidebar-muted/60 tabular-nums text-[10px] leading-3">
+                ({totalCount})
+              </span>
             )}
           </button>
 
@@ -161,7 +163,7 @@ export const SidebarSection = ({
           )}
         >
           <div className="overflow-hidden">
-            <SidebarMenu>{children}</SidebarMenu>
+            <SidebarMenu className="gap-0">{children}</SidebarMenu>
           </div>
         </div>
       </SidebarGroup>

@@ -1,18 +1,10 @@
 import { useState, useCallback, useMemo, useEffect } from 'react'
 import { extractErrorMessage } from '@/lib/ipc-error'
-import { Check, Loader2, AlertCircle, Clock, Filter, Play } from '@/lib/icons'
+import { Check, Loader2, AlertCircle } from '@/lib/icons'
 import { useQueryClient } from '@tanstack/react-query'
 
 import { useTabs } from '@/contexts/tabs'
 import { Button } from '@/components/ui/button'
-import {
-  DropdownMenu,
-  DropdownMenuTrigger,
-  DropdownMenuContent,
-  DropdownMenuCheckboxItem,
-  DropdownMenuSeparator,
-  DropdownMenuLabel
-} from '@/components/ui/dropdown-menu'
 import { ListView } from '@/components/list-view'
 import { InboxDetailPanel } from '@/components/inbox-detail'
 import { BulkActionBar, type ClusterSuggestion } from '@/components/bulk/bulk-action-bar'
@@ -21,11 +13,9 @@ import { BulkTagPopover } from '@/components/bulk/bulk-tag-popover'
 import { ArchiveConfirmationDialog } from '@/components/bulk/archive-confirmation-dialog'
 import { EmptyState } from '@/components/empty-state/empty-state'
 import { KeyboardShortcutsModal } from '@/components/keyboard-shortcuts-modal'
-import { CaptureInput } from '@/components/capture-input'
 import { inboxService } from '@/services/inbox-service'
 import type { ReminderMetadata, InboxItemType } from '@memry/contracts/inbox-api'
 import { detectClusters, getClusterKey } from '@/lib/ai-clustering'
-import { getStaleItems, getNonStaleItems } from '@/lib/stale-utils'
 import { cn } from '@/lib/utils'
 import { isInputFocused } from '@/hooks/use-keyboard-shortcuts'
 import { DENSITY_CONFIG } from '@/hooks/use-display-density'
@@ -35,62 +25,32 @@ import {
   useArchiveInboxItem,
   useBulkArchiveInboxItems,
   useFileInboxItem,
-  useInboxSnoozed,
   useInboxStats,
-  useInboxFilingHistory,
   inboxKeys
 } from '@/hooks/use-inbox'
 import { useUndoableAction } from '@/hooks/use-undoable-action'
 import { notesKeys } from '@/hooks/use-notes-query'
 import { useInboxKeyboard } from '@/hooks/use-inbox-keyboard'
-import type { UseInboxNotificationsResult } from '@/hooks/use-inbox-notifications'
-
-const INBOX_ITEM_TYPES: InboxItemType[] = [
-  'link',
-  'note',
-  'image',
-  'voice',
-  'video',
-  'clip',
-  'pdf',
-  'social',
-  'reminder'
-]
-
-const INBOX_TYPE_LABELS: Record<InboxItemType, string> = {
-  link: 'Links',
-  note: 'Notes',
-  image: 'Images',
-  voice: 'Voice',
-  video: 'Video',
-  clip: 'Clips',
-  pdf: 'PDFs',
-  social: 'Social',
-  reminder: 'Reminders'
-}
+import { toast } from 'sonner'
 
 const ALLOWED_IMAGE_TYPES = ['image/png', 'image/jpeg', 'image/gif', 'image/webp', 'image/svg+xml']
 
 export interface InboxListViewProps {
-  notifications: UseInboxNotificationsResult
   className?: string
-  onEnterTriage?: () => void
+  selectedTypes: Set<InboxItemType>
+  showSnoozedItems: boolean
 }
 
 export function InboxListView({
-  notifications,
   className,
-  onEnterTriage
+  selectedTypes,
+  showSnoozedItems
 }: InboxListViewProps): React.JSX.Element {
-  const { addToast } = notifications
   const queryClient = useQueryClient()
   const { openTab } = useTabs()
 
   const density = 'compact'
   const densityConfig = DENSITY_CONFIG.compact
-
-  // Local UI state (declared before hooks that depend on them)
-  const [showSnoozedItems, setShowSnoozedItems] = useState(false)
 
   // Data hooks
   const {
@@ -99,13 +59,10 @@ export function InboxListView({
     error,
     refetch
   } = useInboxList({ includeSnoozed: showSnoozedItems })
-  const { data: snoozedItems = [] } = useInboxSnoozed()
-  const snoozedCount = snoozedItems.length
   const fileItemMutation = useFileInboxItem()
   const archiveItemMutation = useArchiveInboxItem()
   const bulkArchiveMutation = useBulkArchiveInboxItems()
-  const { archiveWithUndo } = useUndoableAction(addToast)
-  const [selectedTypes, setSelectedTypes] = useState<Set<InboxItemType>>(new Set())
+  const { archiveWithUndo } = useUndoableAction()
   const [pendingArchiveIds, setPendingArchiveIds] = useState<Set<string>>(new Set())
   const [exitingItemIds, setExitingItemIds] = useState<Set<string>>(new Set())
   const [isEmptyStateExiting] = useState(false)
@@ -134,29 +91,11 @@ export function InboxListView({
     })
   }, [backendItems, pendingArchiveIds, selectedTypes])
 
-  const itemCountsByType = useMemo(() => {
-    const counts: Record<InboxItemType, number> = {
-      link: 0,
-      note: 0,
-      image: 0,
-      voice: 0,
-      video: 0,
-      clip: 0,
-      pdf: 0,
-      social: 0,
-      reminder: 0
-    }
-    backendItems.forEach((item) => {
-      if (!pendingArchiveIds.has(item.id)) counts[item.type]++
-    })
-    return counts
-  }, [backendItems, pendingArchiveIds])
-
   // Empty state data
   const { stats: inboxStats } = useInboxStats()
-  const { data: filingHistoryData } = useInboxFilingHistory()
   const itemsProcessedToday = inboxStats?.processedToday ?? 0
-  const hasFilingHistory = (filingHistoryData?.entries?.length ?? 0) > 0
+  const processedThisWeek = inboxStats?.processedThisWeek ?? 0
+  const currentStreak = inboxStats?.currentStreak ?? 0
 
   // Sync empty state
   useEffect(() => {
@@ -192,9 +131,6 @@ export function InboxListView({
     if (dismissedSuggestionKeys.has(key)) return null
     return suggestion
   }, [selectedItems, items, dismissedSuggestionKeys])
-
-  const staleItems = useMemo(() => getStaleItems(items), [items])
-  const nonStaleItems = useMemo(() => getNonStaleItems(items), [items])
 
   // === OPTIMISTIC ARCHIVE HELPER ===
   const archiveWithAnimation = useCallback(
@@ -233,11 +169,11 @@ export function InboxListView({
             next.delete(id)
             return next
           })
-          addToast({ message: 'Failed to archive item', type: 'error' })
+          toast.error('Failed to archive item')
         }
       }, 200)
     },
-    [items, addToast, activeDetailItemId, archiveWithUndo]
+    [items, activeDetailItemId, archiveWithUndo]
   )
 
   // === KEYBOARD SHORTCUTS ===
@@ -249,14 +185,11 @@ export function InboxListView({
     isInBulkMode,
     focusedItemId,
     items,
-    staleItems,
-    nonStaleItems,
     onOpenShortcutsModal: () => setIsShortcutsModalOpen(true),
     onRefresh: () => refetch(),
     onArchiveFocusedItem: (itemId, nextItemId) => archiveWithAnimation(itemId, nextItemId),
     onOpenBulkArchiveDialog: () => setIsArchiveDialogOpen(true),
-    onOpenSourceUrl: (url) => window.open(url, '_blank', 'noopener,noreferrer'),
-    addToast
+    onOpenSourceUrl: (url) => window.open(url, '_blank', 'noopener,noreferrer')
   })
 
   // === HANDLERS ===
@@ -307,15 +240,13 @@ export function InboxListView({
                 queryClient.invalidateQueries({ queryKey: notesKeys.note(noteId) })
               })
             }
-            addToast({
-              message:
-                linkedNoteIds.length > 1
-                  ? `Linked to ${linkedNoteIds.length} notes`
-                  : linkedNoteIds.length === 1
-                    ? 'Linked to note'
-                    : `Filed to ${folderId || 'Notes'}`,
-              type: 'success'
-            })
+            toast.success(
+              linkedNoteIds.length > 1
+                ? `Linked to ${linkedNoteIds.length} notes`
+                : linkedNoteIds.length === 1
+                  ? 'Linked to note'
+                  : `Filed to ${folderId || 'Notes'}`
+            )
           } else {
             throw new Error(result.error || 'Failed to file')
           }
@@ -325,11 +256,11 @@ export function InboxListView({
             next.delete(itemId)
             return next
           })
-          addToast({ message: extractErrorMessage(error, 'Failed to file item'), type: 'error' })
+          toast.error(extractErrorMessage(error, 'Failed to file item'))
         }
       }, 200)
     },
-    [items, addToast, fileItemMutation, queryClient]
+    [items, fileItemMutation, queryClient]
   )
 
   const handleQuickFile = useCallback(
@@ -364,7 +295,7 @@ export function InboxListView({
 
           if (result.success) {
             queryClient.invalidateQueries({ queryKey: inboxKeys.lists() })
-            addToast({ message: `Filed to ${folderId || 'Notes'}`, type: 'success' })
+            toast.success(`Filed to ${folderId || 'Notes'}`)
           } else {
             throw new Error(result.error || 'Failed to file')
           }
@@ -374,11 +305,11 @@ export function InboxListView({
             next.delete(itemId)
             return next
           })
-          addToast({ message: extractErrorMessage(error, 'Failed to file item'), type: 'error' })
+          toast.error(extractErrorMessage(error, 'Failed to file item'))
         }
       }, 200)
     },
-    [items, addToast, fileItemMutation, queryClient]
+    [items, fileItemMutation, queryClient]
   )
 
   const openReminderTarget = useCallback(
@@ -434,11 +365,6 @@ export function InboxListView({
       const item = items.find((i) => i.id === id)
       if (!item) return
 
-      if (item.type === 'reminder') {
-        openReminderTarget(item)
-        return
-      }
-
       if (isDetailPanelOpen && activeDetailItemId === id) {
         setActiveDetailItemId(null)
       } else {
@@ -446,7 +372,7 @@ export function InboxListView({
         setFocusedItemId(id)
       }
     },
-    [isDetailPanelOpen, activeDetailItemId, items, openReminderTarget]
+    [isDetailPanelOpen, activeDetailItemId, items]
   )
 
   const handleFocusedItemChange = useCallback(
@@ -506,7 +432,7 @@ export function InboxListView({
               hour: 'numeric',
               minute: '2-digit'
             })
-            addToast({ message: `Snoozed until ${timeString}`, type: 'success' })
+            toast.success(`Snoozed until ${timeString}`)
           } else {
             throw new Error(result.error || 'Failed to snooze')
           }
@@ -516,11 +442,11 @@ export function InboxListView({
             next.delete(id)
             return next
           })
-          addToast({ message: extractErrorMessage(error, 'Failed to snooze item'), type: 'error' })
+          toast.error(extractErrorMessage(error, 'Failed to snooze item'))
         }
       }, 200)
     },
-    [items, addToast, activeDetailItemId, queryClient]
+    [items, activeDetailItemId, queryClient]
   )
 
   // === BULK HANDLERS ===
@@ -543,16 +469,10 @@ export function InboxListView({
 
         if (result.success) {
           queryClient.invalidateQueries({ queryKey: inboxKeys.lists() })
-          addToast({
-            message: `Filed ${itemIds.length} items to ${folderId || 'Notes'}`,
-            type: 'success'
-          })
+          toast.success(`Filed ${itemIds.length} items to ${folderId || 'Notes'}`)
         } else if (result.errors.length > 0) {
           queryClient.invalidateQueries({ queryKey: inboxKeys.lists() })
-          addToast({
-            message: `Filed ${result.processedCount} of ${itemIds.length} items`,
-            type: 'success'
-          })
+          toast.success(`Filed ${result.processedCount} of ${itemIds.length} items`)
         } else {
           throw new Error('Failed to file items')
         }
@@ -562,10 +482,10 @@ export function InboxListView({
           itemIds.forEach((id) => next.delete(id))
           return next
         })
-        addToast({ message: extractErrorMessage(error, 'Failed to file items'), type: 'error' })
+        toast.error(extractErrorMessage(error, 'Failed to file items'))
       }
     },
-    [addToast, queryClient]
+    [queryClient]
   )
 
   const handleBulkTagApply = useCallback(
@@ -575,18 +495,17 @@ export function InboxListView({
         const result = await window.api.inbox.bulkTag({ itemIds, tags })
         if (result.success || result.processedCount > 0) {
           queryClient.invalidateQueries({ queryKey: inboxKeys.lists() })
-          addToast({
-            message: `Applied ${tags.length} tag${tags.length !== 1 ? 's' : ''} to ${result.processedCount} item${result.processedCount !== 1 ? 's' : ''}`,
-            type: 'success'
-          })
+          toast.success(
+            `Applied ${tags.length} tag${tags.length !== 1 ? 's' : ''} to ${result.processedCount} item${result.processedCount !== 1 ? 's' : ''}`
+          )
         } else {
           throw new Error('Failed to apply tags')
         }
       } catch (error) {
-        addToast({ message: extractErrorMessage(error, 'Failed to apply tags'), type: 'error' })
+        toast.error(extractErrorMessage(error, 'Failed to apply tags'))
       }
     },
-    [selectedItemIds, queryClient, addToast]
+    [selectedItemIds, queryClient]
   )
 
   const handleBulkArchiveConfirm = useCallback((): void => {
@@ -613,20 +532,17 @@ export function InboxListView({
 
       try {
         await bulkArchiveMutation.mutateAsync({ itemIds: idsToArchive })
-        addToast({
-          message: `Archived ${idsToArchive.length} item${idsToArchive.length !== 1 ? 's' : ''}`,
-          type: 'success'
-        })
+        toast.success(`Archived ${idsToArchive.length} item${idsToArchive.length !== 1 ? 's' : ''}`)
       } catch {
         setPendingArchiveIds((prev) => {
           const next = new Set(prev)
           idsToArchive.forEach((id) => next.delete(id))
           return next
         })
-        addToast({ message: 'Failed to archive items', type: 'error' })
+        toast.error('Failed to archive items')
       }
     }, 200)
-  }, [selectedItemIds, items, activeDetailItemId, addToast, bulkArchiveMutation])
+  }, [selectedItemIds, items, activeDetailItemId, bulkArchiveMutation])
 
   const handleAddSuggestionToSelection = useCallback((): void => {
     if (!aiSuggestion) return
@@ -681,10 +597,9 @@ export function InboxListView({
               hour: 'numeric',
               minute: '2-digit'
             })
-            addToast({
-              message: `Snoozed ${result.processedCount} item${result.processedCount !== 1 ? 's' : ''} until ${timeString}`,
-              type: 'success'
-            })
+            toast.success(
+              `Snoozed ${result.processedCount} item${result.processedCount !== 1 ? 's' : ''} until ${timeString}`
+            )
           } else {
             throw new Error('Failed to snooze items')
           }
@@ -694,105 +609,46 @@ export function InboxListView({
             idsToSnooze.forEach((id) => next.delete(id))
             return next
           })
-          addToast({
-            message: extractErrorMessage(error, 'Failed to snooze items'),
-            type: 'error'
-          })
+          toast.error(extractErrorMessage(error, 'Failed to snooze items'))
         }
       }, 200)
     },
-    [selectedItemIds, items, activeDetailItemId, addToast, queryClient]
+    [selectedItemIds, items, activeDetailItemId, queryClient]
   )
-
-  // === STALE ITEMS HANDLERS ===
-
-  const handleFileAllStaleToUnsorted = useCallback((): void => {
-    if (staleItems.length === 0) return
-
-    const staleIds = staleItems.map((i) => i.id)
-    setExitingItemIds(new Set(staleIds))
-
-    setTimeout(async () => {
-      setPendingArchiveIds((prev) => {
-        const next = new Set(prev)
-        staleIds.forEach((id) => next.add(id))
-        return next
-      })
-      setExitingItemIds(new Set())
-      setSelectedItemIds((prev) => {
-        const next = new Set(prev)
-        staleItems.forEach((item) => next.delete(item.id))
-        return next
-      })
-
-      try {
-        const result = await window.api.inbox.fileAllStale()
-        if (result.success || result.processedCount > 0) {
-          queryClient.invalidateQueries({ queryKey: inboxKeys.lists() })
-          addToast({
-            message: `Filed ${result.processedCount} stale items to Unsorted`,
-            type: 'success'
-          })
-        } else {
-          throw new Error('Failed to file stale items')
-        }
-      } catch (error) {
-        setPendingArchiveIds((prev) => {
-          const next = new Set(prev)
-          staleIds.forEach((id) => next.delete(id))
-          return next
-        })
-        addToast({
-          message: extractErrorMessage(error, 'Failed to file stale items'),
-          type: 'error'
-        })
-      }
-    }, 200)
-  }, [staleItems, addToast, queryClient])
-
-  const handleReviewStaleItems = useCallback((): void => {
-    if (staleItems.length === 0) return
-    const staleIds = new Set(staleItems.map((i) => i.id))
-    setSelectedItemIds(staleIds)
-    if (staleItems[0]) setFocusedItemId(staleItems[0].id)
-  }, [staleItems])
 
   // === IMAGE CAPTURE HANDLERS ===
 
-  const handleImageCapture = useCallback(
-    async (file: File): Promise<void> => {
-      if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
-        addToast({ message: `Unsupported image type: ${file.type}`, type: 'error' })
-        return
-      }
+  const handleImageCapture = useCallback(async (file: File): Promise<void> => {
+    if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
+      toast.error(`Unsupported image type: ${file.type}`)
+      return
+    }
 
-      const MAX_SIZE = 50 * 1024 * 1024
-      if (file.size > MAX_SIZE) {
-        addToast({ message: 'Image too large (max 50MB)', type: 'error' })
-        return
-      }
+    const MAX_SIZE = 50 * 1024 * 1024
+    if (file.size > MAX_SIZE) {
+      toast.error('Image too large (max 50MB)')
+      return
+    }
 
-      setIsCapturingImage(true)
-      try {
-        const arrayBuffer = await file.arrayBuffer()
-        const result = await inboxService.captureImage({
-          data: arrayBuffer,
-          filename: file.name,
-          mimeType: file.type
-        })
-        if (result.success) {
-          addToast({ message: 'Image captured', type: 'success' })
-        } else {
-          throw new Error(result.error || 'Failed to capture image')
-        }
-      } catch (error) {
-        addToast({ message: extractErrorMessage(error, 'Failed to capture image'), type: 'error' })
-      } finally {
-        setIsCapturingImage(false)
+    setIsCapturingImage(true)
+    try {
+      const arrayBuffer = await file.arrayBuffer()
+      const result = await inboxService.captureImage({
+        data: arrayBuffer,
+        filename: file.name,
+        mimeType: file.type
+      })
+      if (result.success) {
+        toast.success('Image captured')
+      } else {
+        throw new Error(result.error || 'Failed to capture image')
       }
-    },
-    [addToast]
-  )
+    } catch (error) {
+      toast.error(extractErrorMessage(error, 'Failed to capture image'))
+    } finally {
+      setIsCapturingImage(false)
+    }
+  }, [])
 
   const handleDragOver = useCallback((e: React.DragEvent): void => {
     e.preventDefault()
@@ -850,273 +706,151 @@ export function InboxListView({
   // === RENDER ===
 
   return (
-    <div
-      className={cn(
-        'flex flex-col h-full relative',
-        densityConfig.pagePadding,
-        isDraggingOver && 'ring-2 ring-primary/50 ring-inset bg-primary/5',
-        className
-      )}
-      onDragOver={handleDragOver}
-      onDragLeave={handleDragLeave}
-      onDrop={handleDrop}
-    >
-      {isDraggingOver && (
-        <div className="absolute inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm pointer-events-none">
-          <div className="flex flex-col items-center gap-3 p-8 rounded-xl border-2 border-dashed border-primary/50 bg-background/90">
-            <div className="size-12 rounded-full bg-primary/10 flex items-center justify-center">
-              <svg
-                className="size-6 text-primary"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
-                />
-              </svg>
+    <div className={cn('flex h-full overflow-hidden', className)}>
+      <div
+        className={cn(
+          'flex flex-col flex-1 min-w-0 h-full relative',
+          'px-4 lg:px-6 pt-3 pb-4 lg:pb-6',
+          isDraggingOver && 'ring-2 ring-primary/50 ring-inset bg-primary/5'
+        )}
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
+      >
+        {isDraggingOver && (
+          <div className="absolute inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm pointer-events-none">
+            <div className="flex flex-col items-center gap-3 p-8 rounded-xl border-2 border-dashed border-primary/50 bg-background/90">
+              <div className="size-12 rounded-full bg-primary/10 flex items-center justify-center">
+                <svg
+                  className="size-6 text-primary"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+                  />
+                </svg>
+              </div>
+              <p className="text-sm font-medium text-foreground">Drop image to capture</p>
+              <p className="text-xs text-muted-foreground">PNG, JPEG, GIF, WebP, SVG</p>
             </div>
-            <p className="text-sm font-medium text-foreground">Drop image to capture</p>
-            <p className="text-xs text-muted-foreground">PNG, JPEG, GIF, WebP, SVG</p>
           </div>
-        </div>
-      )}
+        )}
 
-      {isCapturingImage && (
-        <div className="absolute inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm pointer-events-none">
-          <div className="flex flex-col items-center gap-3">
-            <Loader2 className="size-8 text-primary animate-spin" />
-            <p className="text-sm text-muted-foreground">Capturing image...</p>
+        {isCapturingImage && (
+          <div className="absolute inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm pointer-events-none">
+            <div className="flex flex-col items-center gap-3">
+              <Loader2 className="size-8 text-primary animate-spin" />
+              <p className="text-sm text-muted-foreground">Capturing image...</p>
+            </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {/* Header */}
-      <header className={cn('relative', densityConfig.headerMargin)}>
-        <div className="relative z-10">
-          {isInBulkMode ? (
-            <div className="flex items-start justify-between gap-6">
-              <div>
-                <div className="flex items-center gap-3 mb-1">
-                  <Check className="size-5 text-amber-600 dark:text-amber-400" aria-hidden="true" />
-                  <h1 className="font-display text-2xl lg:text-3xl font-normal tracking-tight text-foreground/90">
-                    {selectedCount} selected
-                  </h1>
-                </div>
-                <p className="font-serif text-sm text-muted-foreground/70 tracking-wide pl-8">
-                  Ready to process
-                </p>
+        {/* Bulk selection header */}
+        {isInBulkMode && (
+          <header className={cn('relative', densityConfig.headerMargin)}>
+            <div className="flex items-center justify-between gap-6">
+              <div className="flex items-center gap-3">
+                <Check className="size-4 text-amber-600 dark:text-amber-400" aria-hidden="true" />
+                <span className="text-sm font-medium text-foreground">
+                  {selectedCount} selected
+                </span>
               </div>
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={handleDeselectAll}
-                className={cn(
-                  'text-muted-foreground/60 hover:text-foreground',
-                  'hover:bg-foreground/5'
-                )}
+                className="text-muted-foreground/60 hover:text-foreground hover:bg-foreground/5"
               >
                 Deselect all
               </Button>
             </div>
-          ) : (
-            <div className="flex items-start justify-between gap-4">
-              <div className="flex-1">
-                <CaptureInput
-                  density={density}
-                  onCaptureSuccess={() => addToast({ message: 'Item captured', type: 'success' })}
-                  onCaptureError={(errorMsg) => addToast({ message: errorMsg, type: 'error' })}
-                />
-              </div>
-              <div className="flex items-center gap-2 mt-1.5">
-                {onEnterTriage && nonStaleItems.length > 0 && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={onEnterTriage}
-                    className="text-muted-foreground/60 hover:text-foreground hover:bg-foreground/5 gap-1.5"
-                    title="Process inbox (Cmd+P)"
-                  >
-                    <Play className="size-3.5" />
-                    <span className="text-xs">Process</span>
-                  </Button>
-                )}
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className={cn(
-                        'size-8 relative',
-                        'text-muted-foreground/60 hover:text-foreground',
-                        'hover:bg-foreground/5',
-                        selectedTypes.size > 0 && 'text-amber-600 dark:text-amber-400'
-                      )}
-                      title={
-                        selectedTypes.size > 0
-                          ? `Filtering by ${selectedTypes.size} type${selectedTypes.size > 1 ? 's' : ''}`
-                          : 'Filter by type'
-                      }
-                    >
-                      <Filter className="size-4" />
-                      {selectedTypes.size > 0 && (
-                        <span className="absolute -top-1 -right-1 size-4 text-[10px] font-medium bg-amber-600 dark:bg-amber-500 text-white rounded-full flex items-center justify-center">
-                          {selectedTypes.size}
-                        </span>
-                      )}
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-48">
-                    <DropdownMenuLabel className="text-xs text-muted-foreground/70">
-                      Filter by type
-                    </DropdownMenuLabel>
-                    <DropdownMenuSeparator />
-                    {INBOX_ITEM_TYPES.map((type) => {
-                      const count = itemCountsByType[type]
-                      return (
-                        <DropdownMenuCheckboxItem
-                          key={type}
-                          checked={selectedTypes.has(type)}
-                          onCheckedChange={(checked) => {
-                            setSelectedTypes((prev) => {
-                              const next = new Set(prev)
-                              if (checked) next.add(type)
-                              else next.delete(type)
-                              return next
-                            })
-                          }}
-                          onSelect={(e) => e.preventDefault()}
-                          disabled={count === 0}
-                          className={cn(count === 0 && 'opacity-50')}
-                        >
-                          <span className="flex-1">{INBOX_TYPE_LABELS[type]}</span>
-                          <span className="text-xs text-muted-foreground/60 ml-2">{count}</span>
-                        </DropdownMenuCheckboxItem>
-                      )
-                    })}
-                    {selectedTypes.size > 0 && (
-                      <>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuCheckboxItem
-                          checked={false}
-                          onCheckedChange={() => setSelectedTypes(new Set())}
-                          onSelect={(e) => e.preventDefault()}
-                          className="text-muted-foreground/70"
-                        >
-                          Clear all
-                        </DropdownMenuCheckboxItem>
-                      </>
-                    )}
-                  </DropdownMenuContent>
-                </DropdownMenu>
+          </header>
+        )}
 
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => setShowSnoozedItems(!showSnoozedItems)}
-                  className={cn(
-                    'size-8 relative',
-                    'text-muted-foreground/60 hover:text-foreground',
-                    'hover:bg-foreground/5',
-                    showSnoozedItems && 'bg-amber-500/10 text-amber-600 dark:text-amber-400'
-                  )}
-                  title={
-                    showSnoozedItems
-                      ? 'Hide snoozed items'
-                      : `Show snoozed items${snoozedCount > 0 ? ` (${snoozedCount})` : ''}`
-                  }
-                >
-                  <Clock className="size-4" />
-                  {snoozedCount > 0 && (
-                    <span className="absolute -top-1 -right-1 size-4 text-[10px] font-medium bg-amber-600 dark:bg-amber-500 text-white rounded-full flex items-center justify-center">
-                      {snoozedCount}
-                    </span>
-                  )}
-                </Button>
-              </div>
+        {/* Content */}
+        <div className={cn('flex-1 overflow-y-auto', isInBulkMode && 'pb-32')}>
+          {isLoading ? (
+            <div className="flex flex-col items-center justify-center h-64 gap-4">
+              <Loader2 className="size-8 text-muted-foreground/50 animate-spin" />
+              <p className="text-sm text-muted-foreground/60 font-serif">Loading inbox...</p>
             </div>
+          ) : error ? (
+            <div className="flex flex-col items-center justify-center h-64 gap-4">
+              <AlertCircle className="size-8 text-destructive/60" />
+              <p className="text-sm text-destructive/80 font-serif">Failed to load inbox</p>
+              <Button variant="outline" size="sm" onClick={() => refetch()}>
+                Try again
+              </Button>
+            </div>
+          ) : showEmptyState ? (
+            <EmptyState
+              itemsProcessedToday={itemsProcessedToday}
+              processedThisWeek={processedThisWeek}
+              currentStreak={currentStreak}
+              isExiting={isEmptyStateExiting}
+            />
+          ) : (
+            <ListView
+              items={items}
+              selectedItemIds={selectedItemIds}
+              exitingItemIds={exitingItemIds}
+              density={density}
+              onPreview={handlePreview}
+              onArchive={handleArchive}
+              onSnooze={handleSnooze}
+              onQuickFile={handleQuickFile}
+              onSelectionChange={handleSelectionChange}
+              focusedItemId={focusedItemId}
+              onFocusedItemChange={handleFocusedItemChange}
+              isPreviewOpen={isDetailPanelOpen}
+            />
           )}
         </div>
-      </header>
 
-      {/* Content */}
-      <div className={cn('flex-1 overflow-y-auto', isInBulkMode && 'pb-32')}>
-        {isLoading ? (
-          <div className="flex flex-col items-center justify-center h-64 gap-4">
-            <Loader2 className="size-8 text-muted-foreground/50 animate-spin" />
-            <p className="text-sm text-muted-foreground/60 font-serif">Loading inbox...</p>
-          </div>
-        ) : error ? (
-          <div className="flex flex-col items-center justify-center h-64 gap-4">
-            <AlertCircle className="size-8 text-destructive/60" />
-            <p className="text-sm text-destructive/80 font-serif">Failed to load inbox</p>
-            <Button variant="outline" size="sm" onClick={() => refetch()}>
-              Try again
-            </Button>
-          </div>
-        ) : showEmptyState ? (
-          <EmptyState
-            itemsProcessedToday={itemsProcessedToday}
-            hasFilingHistory={hasFilingHistory}
-            isExiting={isEmptyStateExiting}
-          />
-        ) : (
-          <ListView
-            items={nonStaleItems}
-            staleItems={staleItems}
-            selectedItemIds={selectedItemIds}
-            exitingItemIds={exitingItemIds}
-            density={density}
-            onPreview={handlePreview}
-            onArchive={handleArchive}
-            onSnooze={handleSnooze}
-            onQuickFile={handleQuickFile}
-            onSelectionChange={handleSelectionChange}
-            onFileAllStale={handleFileAllStaleToUnsorted}
-            onReviewStale={handleReviewStaleItems}
-            focusedItemId={focusedItemId}
-            onFocusedItemChange={handleFocusedItemChange}
-            isPreviewOpen={isDetailPanelOpen}
-          />
-        )}
+        {/* Bulk & Detail components */}
+        <BulkActionBar
+          selectedCount={selectedCount}
+          onFileAll={() => setIsBulkFilePanelOpen(true)}
+          onTagAll={() => setIsBulkTagPopoverOpen(true)}
+          onArchiveAll={() => setIsArchiveDialogOpen(true)}
+          onSnoozeAll={handleBulkSnoozeAll}
+          aiSuggestion={aiSuggestion}
+          onAddSuggestionToSelection={handleAddSuggestionToSelection}
+          onDismissSuggestion={handleDismissSuggestion}
+        />
+
+        <BulkFilePanel
+          isOpen={isBulkFilePanelOpen}
+          items={selectedItems}
+          onClose={() => setIsBulkFilePanelOpen(false)}
+          onFile={handleBulkFileComplete}
+        />
+
+        <BulkTagPopover
+          isOpen={isBulkTagPopoverOpen}
+          itemCount={selectedCount}
+          trigger={<span />}
+          onOpenChange={setIsBulkTagPopoverOpen}
+          onApplyTags={handleBulkTagApply}
+        />
+
+        <ArchiveConfirmationDialog
+          isOpen={isArchiveDialogOpen}
+          itemCount={selectedCount}
+          onConfirm={handleBulkArchiveConfirm}
+          onCancel={() => setIsArchiveDialogOpen(false)}
+        />
+
+        <KeyboardShortcutsModal
+          isOpen={isShortcutsModalOpen}
+          onClose={() => setIsShortcutsModalOpen(false)}
+        />
       </div>
-
-      {/* Bulk & Detail components */}
-      <BulkActionBar
-        selectedCount={selectedCount}
-        onFileAll={() => setIsBulkFilePanelOpen(true)}
-        onTagAll={() => setIsBulkTagPopoverOpen(true)}
-        onArchiveAll={() => setIsArchiveDialogOpen(true)}
-        onSnoozeAll={handleBulkSnoozeAll}
-        aiSuggestion={aiSuggestion}
-        onAddSuggestionToSelection={handleAddSuggestionToSelection}
-        onDismissSuggestion={handleDismissSuggestion}
-      />
-
-      <BulkFilePanel
-        isOpen={isBulkFilePanelOpen}
-        items={selectedItems}
-        onClose={() => setIsBulkFilePanelOpen(false)}
-        onFile={handleBulkFileComplete}
-      />
-
-      <BulkTagPopover
-        isOpen={isBulkTagPopoverOpen}
-        itemCount={selectedCount}
-        trigger={<span />}
-        onOpenChange={setIsBulkTagPopoverOpen}
-        onApplyTags={handleBulkTagApply}
-      />
-
-      <ArchiveConfirmationDialog
-        isOpen={isArchiveDialogOpen}
-        itemCount={selectedCount}
-        onConfirm={handleBulkArchiveConfirm}
-        onCancel={() => setIsArchiveDialogOpen(false)}
-      />
 
       <InboxDetailPanel
         isOpen={isDetailPanelOpen}
@@ -1125,11 +859,6 @@ export function InboxListView({
         onClose={() => setActiveDetailItemId(null)}
         onFile={handleFilingComplete}
         onArchive={handleArchive}
-      />
-
-      <KeyboardShortcutsModal
-        isOpen={isShortcutsModalOpen}
-        onClose={() => setIsShortcutsModalOpen(false)}
       />
     </div>
   )

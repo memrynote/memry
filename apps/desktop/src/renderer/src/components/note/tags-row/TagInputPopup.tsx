@@ -29,6 +29,7 @@ export function TagInputPopup({
   const inputRef = useRef<HTMLInputElement>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [newTagColor, setNewTagColor] = useState(getRandomColor())
+  const [focusedIndex, setFocusedIndex] = useState(-1)
 
   useClickOutside(popupRef, onClose, isOpen)
 
@@ -44,6 +45,7 @@ export function TagInputPopup({
     if (!isOpen) {
       setSearchQuery('')
       setNewTagColor(getRandomColor())
+      setFocusedIndex(-1)
     }
   }, [isOpen])
 
@@ -65,22 +67,44 @@ export function TagInputPopup({
     return recentTags.filter((tag) => !currentTagIds.includes(tag.id))
   }, [recentTags, currentTagIds])
 
+  const visibleTags = filteredTags
+
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
       if (e.key === 'Escape') {
         e.preventDefault()
         onClose()
+        return
       }
+
+      if (e.key === 'ArrowDown') {
+        e.preventDefault()
+        setFocusedIndex((prev) => (prev < visibleTags.length - 1 ? prev + 1 : 0))
+        return
+      }
+
+      if (e.key === 'ArrowUp') {
+        e.preventDefault()
+        setFocusedIndex((prev) => (prev > 0 ? prev - 1 : visibleTags.length - 1))
+        return
+      }
+
       if (e.key === 'Enter') {
         e.preventDefault()
+        if (focusedIndex >= 0 && focusedIndex < visibleTags.length) {
+          const tag = visibleTags[focusedIndex]
+          if (!currentTagIds.includes(tag.id)) {
+            onAddTag(tag.id)
+            onClose()
+          }
+          return
+        }
         const trimmedQuery = searchQuery.trim()
         if (trimmedQuery) {
           if (!exactMatchExists) {
-            // Create new tag with random color
             onCreateTag(trimmedQuery, newTagColor)
             onClose()
           } else if (filteredTags.length > 0) {
-            // Select the first matching tag if it exists and not already added
             const firstTag = filteredTags[0]
             if (!currentTagIds.includes(firstTag.id)) {
               onAddTag(firstTag.id)
@@ -98,7 +122,9 @@ export function TagInputPopup({
       onCreateTag,
       filteredTags,
       currentTagIds,
-      onAddTag
+      onAddTag,
+      focusedIndex,
+      visibleTags
     ]
   )
 
@@ -131,14 +157,26 @@ export function TagInputPopup({
     >
       {/* Search input */}
       <div className="border-b border-stone-200 p-2">
-        <div className="flex items-center gap-2 rounded-lg bg-stone-50 px-3 py-2">
+        <div className="flex items-center gap-2 rounded-md bg-stone-50 px-3 py-2">
           <Search className="h-4 w-4 text-stone-400" />
           <input
             ref={inputRef}
             type="text"
             value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+            onChange={(e) => {
+              setSearchQuery(e.target.value)
+              setFocusedIndex(-1)
+            }}
             placeholder="Type tag name..."
+            role="combobox"
+            aria-label="Search or create tag"
+            aria-expanded={filteredTags.length > 0}
+            aria-haspopup="listbox"
+            aria-autocomplete="list"
+            aria-controls="tag-input-popup-listbox"
+            aria-activedescendant={
+              focusedIndex >= 0 ? `tag-input-option-${focusedIndex}` : undefined
+            }
             className={cn(
               'flex-1 bg-transparent text-sm',
               'placeholder:text-stone-400',
@@ -173,12 +211,13 @@ export function TagInputPopup({
               <div className="mb-1.5 px-1 text-xs font-medium uppercase text-stone-400">
                 {searchQuery ? 'Matching' : 'All Tags'}
               </div>
-              <div className="flex flex-wrap gap-1.5">
-                {filteredTags.map((tag) => (
+              <div className="flex flex-wrap gap-1.5" role="listbox" aria-label="Available tags">
+                {filteredTags.map((tag, index) => (
                   <TagOption
                     key={tag.id}
                     tag={tag}
                     isSelected={currentTagIds.includes(tag.id)}
+                    isFocused={index === focusedIndex}
                     onClick={() => handleTagClick(tag)}
                   />
                 ))}
@@ -199,10 +238,11 @@ export function TagInputPopup({
 interface TagOptionProps {
   tag: Tag
   isSelected: boolean
+  isFocused?: boolean
   onClick: () => void
 }
 
-function TagOption({ tag, isSelected, onClick }: TagOptionProps) {
+function TagOption({ tag, isSelected, isFocused = false, onClick }: TagOptionProps) {
   const colors = getTagColors(tag.color)
 
   return (
@@ -216,11 +256,14 @@ function TagOption({ tag, isSelected, onClick }: TagOptionProps) {
         'inline-flex items-center gap-1 rounded-full px-2.5 py-1',
         'text-xs font-medium',
         'transition-all duration-150',
-        isSelected ? 'opacity-50 cursor-default' : 'hover:opacity-80 cursor-pointer'
+        'focus-visible:outline-none',
+        isSelected ? 'opacity-50 cursor-default' : 'hover:opacity-80 cursor-pointer',
+        isFocused && !isSelected && 'ring-2 ring-offset-1 opacity-100'
       )}
       style={{
         backgroundColor: colors.background,
-        color: colors.text
+        color: colors.text,
+        ...(isFocused && !isSelected ? { ringColor: colors.text } : {})
       }}
     >
       {tag.name}

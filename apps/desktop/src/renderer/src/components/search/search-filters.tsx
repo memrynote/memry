@@ -176,7 +176,7 @@ export function SearchFilters({
                 placeholder="Filter by tag..."
                 className="w-full h-7 px-2 text-xs bg-muted rounded
                   border border-border text-foreground
-                  placeholder:text-text-tertiary focus:outline-none focus:ring-1 focus:ring-border"
+                  placeholder:text-text-tertiary focus:outline-none"
               />
               {filteredTags.length > 0 && (
                 <div

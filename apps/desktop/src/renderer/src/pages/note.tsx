@@ -42,7 +42,7 @@ import {
 import { toast } from 'sonner'
 import { registerPendingSave, unregisterPendingSave } from '@/lib/save-registry'
 import { useIsBookmarked } from '@/hooks/use-bookmarks'
-import { useNoteEditorSettings } from '@/hooks/use-note-editor-settings'
+import { useEditorSettings } from '@/hooks/use-editor-settings'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { createLogger } from '@/lib/logger'
 import { LocalGraphPanel } from '@/components/graph/local-graph-panel'
@@ -171,8 +171,15 @@ export function NotePage({ noteId }: NotePageProps) {
   // Bookmark state
   const { isBookmarked, toggle: toggleBookmark } = useIsBookmarked('note', noteId ?? '')
 
-  // Editor settings (toolbar mode)
-  const { settings: editorSettings } = useNoteEditorSettings()
+  // Editor settings (toolbar mode, width, spellCheck, autoSaveDelay, showWordCount)
+  const { settings: editorSettings } = useEditorSettings()
+
+  const editorWidthClass =
+    {
+      narrow: 'max-w-2xl',
+      medium: 'max-w-3xl',
+      wide: 'max-w-5xl'
+    }[editorSettings.width] ?? 'max-w-3xl'
 
   // Find in page (Cmd+F)
   const editorContainerRef = useRef<HTMLDivElement>(null)
@@ -420,7 +427,7 @@ export function NotePage({ noteId }: NotePageProps) {
         clearTimeout(saveTimeoutRef.current)
       }
 
-      // Debounce save (500ms)
+      // Debounce save (configurable via editor settings, default 1000ms)
       saveTimeoutRef.current = setTimeout(async () => {
         isSavingRef.current = true
         try {
@@ -435,9 +442,17 @@ export function NotePage({ noteId }: NotePageProps) {
         } finally {
           isSavingRef.current = false
         }
-      }, 500)
+      }, editorSettings.autoSaveDelay)
     },
-    [noteId, note, updateNote.mutateAsync, isDeleted, isLocalGraphOpen, queryClient]
+    [
+      noteId,
+      note,
+      updateNote.mutateAsync,
+      isDeleted,
+      isLocalGraphOpen,
+      queryClient,
+      editorSettings.autoSaveDelay
+    ]
   )
 
   const handleContentChange = useCallback((_blocks: Block[]) => {
@@ -829,10 +844,10 @@ export function NotePage({ noteId }: NotePageProps) {
           noteEmoji={note.emoji ?? null}
         />
       }
-      stats={documentStats}
+      stats={editorSettings.showWordCount ? documentStats : undefined}
     >
       {/* Note content */}
-      <div className="flex flex-col gap-6">
+      <div className={cn('flex flex-col gap-6 mx-auto w-full', editorWidthClass)}>
         {/* Title + Tags */}
         <div className="flex flex-col gap-4">
           <NoteTitle
@@ -902,6 +917,7 @@ export function NotePage({ noteId }: NotePageProps) {
               contentType="markdown"
               placeholder="Start writing, or press '/' for commands..."
               stickyToolbar={editorSettings.toolbarMode === 'sticky'}
+              spellCheck={editorSettings.spellCheck}
               onContentChange={handleContentChange}
               onMarkdownChange={handleMarkdownChange}
               onHeadingsChange={handleHeadingsChange}

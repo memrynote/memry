@@ -150,7 +150,7 @@ export const PriorityFilter = ({
                   className={cn(
                     'text-[13px] leading-4',
                     isSelected ? 'font-medium text-foreground' : 'text-foreground',
-                    priority === 'none' && !isSelected && 'text-text-secondary'
+                    priority === 'none' && !isSelected && 'text-muted-foreground'
                   )}
                 >
                   {display.label}

@@ -26,6 +26,17 @@ export function GraphPage(): React.JSX.Element {
     [dispatch]
   )
 
+  const nodeSummary = useMemo(() => {
+    if (!data?.nodes) return ''
+    const counts: Record<string, number> = {}
+    data.nodes.forEach((n) => {
+      counts[n.type] = (counts[n.type] ?? 0) + 1
+    })
+    return Object.entries(counts)
+      .map(([type, count]) => `${count} ${type}${count !== 1 ? 's' : ''}`)
+      .join(', ')
+  }, [data?.nodes])
+
   if (isLoading) {
     return (
       <div className="flex h-full flex-col items-center justify-center gap-4">
@@ -51,14 +62,28 @@ export function GraphPage(): React.JSX.Element {
     return <GraphEmptyState />
   }
 
+  const nodeCount = data.nodes.length
+  const edgeCount = data.edges.length
+  const graphAriaLabel = `Knowledge graph with ${nodeCount} node${nodeCount !== 1 ? 's' : ''} and ${edgeCount} connection${edgeCount !== 1 ? 's' : ''}${nodeSummary ? `: ${nodeSummary}` : ''}.`
+
   return (
     <div className="relative h-full w-full">
-      <GraphCanvas
-        data={data}
-        filterState={filterState}
-        graphSettings={graphSettings}
-        onFocusNode={handleFocusNode}
-      />
+      <div role="img" aria-label={graphAriaLabel} className="h-full w-full">
+        <GraphCanvas
+          data={data}
+          filterState={filterState}
+          graphSettings={graphSettings}
+          onFocusNode={handleFocusNode}
+        />
+        {/* Visually-hidden node list for screen readers */}
+        <ul className="sr-only" aria-label="Graph nodes">
+          {data.nodes.map((node) => (
+            <li key={node.id}>
+              {node.label} ({node.type})
+            </li>
+          ))}
+        </ul>
+      </div>
       <GraphControlPanel
         filterState={filterState}
         dispatch={dispatch}
@@ -92,7 +117,7 @@ function GraphEmptyState(): React.JSX.Element {
         </div>
 
         <div className="space-y-3 text-left">
-          <div className="flex items-start gap-3 rounded-lg border border-border/50 p-3">
+          <div className="flex items-start gap-3 rounded-md border border-border/50 p-3">
             <Link2 className="size-4 mt-0.5 text-accent-cyan shrink-0" />
             <div>
               <p className="text-xs font-medium text-foreground">Link your notes</p>
@@ -101,7 +126,7 @@ function GraphEmptyState(): React.JSX.Element {
               </p>
             </div>
           </div>
-          <div className="flex items-start gap-3 rounded-lg border border-border/50 p-3">
+          <div className="flex items-start gap-3 rounded-md border border-border/50 p-3">
             <Lightbulb className="size-4 mt-0.5 text-accent-orange shrink-0" />
             <div>
               <p className="text-xs font-medium text-foreground">Discover patterns</p>

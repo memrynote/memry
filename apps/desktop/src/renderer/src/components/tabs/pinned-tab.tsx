@@ -87,7 +87,7 @@ export const PinnedTab = ({
               className={cn(
                 'absolute top-1 right-1',
                 'w-1.5 h-1.5 rounded-full',
-                'bg-blue-400 dark:bg-blue-500',
+                'bg-tint',
                 'animate-pulse'
               )}
               aria-label="Unsaved changes"

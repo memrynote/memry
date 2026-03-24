@@ -1,8 +1,6 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
 import { Input } from '@/components/ui/input'
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Separator } from '@/components/ui/separator'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -141,128 +139,116 @@ export function TagManager() {
   )
 
   if (isLoading) {
-    return <p className="text-sm text-muted-foreground">Loading tags...</p>
+    return <p className="text-xs/4 text-muted-foreground">Loading tags...</p>
   }
 
   if (error) {
-    return <p className="text-sm text-destructive">{error}</p>
+    return <p className="text-xs/4 text-destructive">{error}</p>
   }
 
   if (tags.length === 0) {
     return (
-      <p className="text-sm text-muted-foreground">
+      <p className="text-xs/4 text-muted-foreground">
         No tags yet. Tags will appear here as you add them to notes and tasks.
       </p>
     )
   }
 
   return (
-    <div className="space-y-4">
-      {/* Search */}
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+    <div className="flex flex-col">
+      <div className="relative pb-6">
+        <Search className="absolute left-3 top-2 w-3.5 h-3.5 text-muted-foreground" />
         <Input
           placeholder="Filter tags..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="pl-9"
+          className="pl-8 h-8 text-xs/4 rounded-lg border-border bg-transparent"
         />
       </div>
 
-      {/* Tag list */}
-      <div className="space-y-1">
+      <div className="flex flex-col rounded-lg overflow-clip border border-border">
         {filteredTags.length === 0 && (
-          <p className="text-sm text-muted-foreground py-4 text-center">
+          <p className="text-xs/4 text-muted-foreground py-4 text-center">
             No tags matching &ldquo;{search}&rdquo;
           </p>
         )}
-        {filteredTags.map((tag) => {
+        {filteredTags.map((tag, i) => {
           const colors = tag.color ? getTagColors(tag.color) : null
 
           return (
-            <div
-              key={tag.name}
-              className="flex items-center gap-3 px-3 py-2 rounded-md hover:bg-muted/50 group"
-            >
-              {/* Color dot */}
-              <div
-                className="w-3 h-3 rounded-full shrink-0"
-                style={{
-                  backgroundColor: colors?.background ?? '#e5e7eb',
-                  border: `1px solid ${colors?.text ?? '#6b7280'}40`
-                }}
-              />
-
-              {/* Tag name (inline edit) */}
-              <div className="flex-1 min-w-0">
-                {editingTag === tag.name ? (
-                  <Input
-                    ref={editInputRef}
-                    value={editValue}
-                    onChange={(e) => setEditValue(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') void handleConfirmRename()
-                      if (e.key === 'Escape') handleCancelRename()
+            <div key={tag.name}>
+              {i > 0 && <div className="h-px bg-border" />}
+              <div className="flex items-center justify-between h-11 py-3 px-4 shrink-0 group">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div
+                    className="w-2.5 h-2.5 rounded-full shrink-0"
+                    style={{
+                      backgroundColor: colors?.background ?? '#6366f1'
                     }}
-                    onBlur={() => void handleConfirmRename()}
-                    className="h-7 text-sm"
                   />
-                ) : (
-                  <span className="text-sm truncate block">{tag.name}</span>
-                )}
+                  {editingTag === tag.name ? (
+                    <Input
+                      ref={editInputRef}
+                      value={editValue}
+                      onChange={(e) => setEditValue(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') void handleConfirmRename()
+                        if (e.key === 'Escape') handleCancelRename()
+                      }}
+                      onBlur={() => void handleConfirmRename()}
+                      className="h-6 text-[13px]/4 px-1.5 w-40"
+                    />
+                  ) : (
+                    <span className="font-medium text-[13px]/4 text-foreground truncate">
+                      {tag.name}
+                    </span>
+                  )}
+                </div>
+
+                <div className="flex items-center gap-1.5 shrink-0 ml-4">
+                  <span className="inline-flex items-center justify-center min-w-5 h-5 px-1.5 rounded-full bg-muted text-[10px]/3 font-medium text-muted-foreground tabular-nums">
+                    {tag.count}
+                  </span>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <button className="p-1 rounded text-muted-foreground/50 opacity-0 group-hover:opacity-100 hover:text-foreground transition-all">
+                        <MoreHorizontal className="w-3.5 h-3.5" />
+                      </button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem onClick={() => handleStartRename(tag.name)}>
+                        <Pencil className="w-4 h-4 mr-2" />
+                        Rename
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => setColorTarget(tag.name)}>
+                        <Palette className="w-4 h-4 mr-2" />
+                        Change color
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => setMergeSource(tag.name)}>
+                        <Merge className="w-4 h-4 mr-2" />
+                        Merge into...
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem
+                        onClick={() => setDeleteTarget({ name: tag.name, count: tag.count })}
+                        className="text-destructive focus:text-destructive"
+                      >
+                        <Trash2 className="w-4 h-4 mr-2" />
+                        Delete
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
               </div>
-
-              {/* Count badge */}
-              <Badge variant="secondary" className="text-xs tabular-nums shrink-0">
-                {tag.count}
-              </Badge>
-
-              {/* Action menu */}
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
-                  >
-                    <MoreHorizontal className="w-4 h-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={() => handleStartRename(tag.name)}>
-                    <Pencil className="w-4 h-4 mr-2" />
-                    Rename
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setColorTarget(tag.name)}>
-                    <Palette className="w-4 h-4 mr-2" />
-                    Change color
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setMergeSource(tag.name)}>
-                    <Merge className="w-4 h-4 mr-2" />
-                    Merge into...
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem
-                    onClick={() => setDeleteTarget({ name: tag.name, count: tag.count })}
-                    className="text-destructive focus:text-destructive"
-                  >
-                    <Trash2 className="w-4 h-4 mr-2" />
-                    Delete
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
             </div>
           )
         })}
       </div>
 
-      <Separator />
-
-      <p className="text-xs text-muted-foreground">
+      <p className="text-xs/4 text-muted-foreground pt-3">
         {tags.length} tag{tags.length !== 1 ? 's' : ''} across notes and tasks
       </p>
 
-      {/* Delete confirmation dialog */}
       <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -284,7 +270,6 @@ export function TagManager() {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Merge dialog */}
       <Dialog open={!!mergeSource} onOpenChange={(open) => !open && setMergeSource(null)}>
         <DialogContent>
           <DialogHeader>
@@ -326,7 +311,6 @@ export function TagManager() {
         </DialogContent>
       </Dialog>
 
-      {/* Color picker dialog */}
       <Dialog open={!!colorTarget} onOpenChange={(open) => !open && setColorTarget(null)}>
         <DialogContent className="max-w-sm">
           <DialogHeader>
@@ -336,7 +320,7 @@ export function TagManager() {
             {COLOR_ROWS.map((row, rowIndex) => (
               <div key={rowIndex} className="flex gap-2 justify-center">
                 {row.map((colorName) => {
-                  const colors = TAG_COLORS[colorName]
+                  const clrs = TAG_COLORS[colorName]
                   const currentTag = tags.find((t) => t.name === colorTarget)
                   const isSelected = currentTag?.color === colorName
 
@@ -347,11 +331,11 @@ export function TagManager() {
                       onClick={() => void handleColorChange(colorName)}
                       className={cn(
                         'w-7 h-7 rounded-full transition-all hover:scale-110',
-                        'focus:outline-none focus-visible:ring-1 focus-visible:ring-ring',
+                        'focus:outline-none',
                         isSelected &&
                           'ring-2 ring-foreground/50 ring-offset-2 ring-offset-background'
                       )}
-                      style={{ backgroundColor: colors.background }}
+                      style={{ backgroundColor: clrs.background }}
                       title={colorName}
                     />
                   )

@@ -69,7 +69,7 @@ export const TaskSection = ({
       role="region"
       className={cn(
         'flex flex-col transition-all duration-200',
-        isDropTarget && 'ring-2 ring-primary/25 bg-primary/[0.04] rounded-lg',
+        isDropTarget && 'ring-2 ring-primary/25 bg-primary/[0.04] rounded-md',
         isDragSource && 'opacity-50',
         className
       )}
@@ -112,7 +112,7 @@ export const TaskSection = ({
                 className={cn(
                   'block mx-auto mt-3 text-primary hover:text-primary/80',
                   'text-sm font-medium transition-colors',
-                  'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring'
+                  'focus-visible:outline-none'
                 )}
               >
                 + Add task

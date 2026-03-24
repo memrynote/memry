@@ -69,22 +69,22 @@ export const GroupByDropdown = ({
           className={cn(
             'flex items-center shrink-0 rounded-[5px] py-1 px-2 gap-1 border transition-colors',
             isOpen || isNonDefault
-              ? 'border-foreground/20 bg-foreground/5 text-text-primary'
-              : 'border-border text-text-secondary hover:bg-surface-active/50',
+              ? 'border-foreground/20 bg-foreground/5 text-foreground/90'
+              : 'border-border text-muted-foreground hover:bg-surface-active/50',
             className
           )}
         >
           <Layers size={13} />
-          <span className="text-[11px] leading-3.5">Group by</span>
+          <span className="text-[13px]">Group by</span>
         </button>
       </PopoverTrigger>
 
       <PopoverContent
-        className="w-auto min-w-[180px] p-0 rounded-lg overflow-clip border-border shadow-[var(--shadow-card-hover)]"
+        className="w-auto min-w-[180px] p-0 rounded-md overflow-clip border-border shadow-[var(--shadow-card-hover)]"
         align="end"
         sideOffset={8}
       >
-        <div className="[font-synthesis:none] text-[12px] leading-4 flex flex-col antialiased">
+        <div className="[font-synthesis:none] text-[13px] leading-4 flex flex-col antialiased">
           <div className="flex flex-col p-1">
             {VISIBLE_FIELDS.map((field) => {
               const isSelected = sort.field === field
@@ -101,8 +101,8 @@ export const GroupByDropdown = ({
                 >
                   <span
                     className={cn(
-                      'text-[12px] leading-4',
-                      isSelected ? 'text-foreground' : 'text-text-secondary'
+                      'text-[13px] leading-4',
+                      isSelected ? 'text-foreground' : 'text-muted-foreground'
                     )}
                   >
                     {GROUP_FIELD_LABELS[field]}
@@ -116,7 +116,7 @@ export const GroupByDropdown = ({
           {/* Direction toggle */}
           <div className="border-t border-border p-1">
             <div className="flex items-center justify-between rounded-[5px] py-1.5 px-2">
-              <span className="text-[12px] text-text-secondary leading-4">
+              <span className="text-[13px] text-muted-foreground leading-4">
                 {DIRECTION_LABELS[sort.direction]}
               </span>
               <div className="flex items-center rounded-sm overflow-clip border border-border">

@@ -13,7 +13,7 @@ import {
   onInboxProcessingError,
   getInboxItemIcon,
   getInboxItemColor,
-  formatRelativeTime,
+  formatCompactDate,
   isItemStale
 } from './inbox-service'
 
@@ -136,13 +136,12 @@ describe('inbox-service', () => {
     expect(getInboxItemIcon('link')).toBe('Link')
     expect(getInboxItemColor('image')).toBe('text-purple-500')
 
-    vi.useFakeTimers()
-    vi.setSystemTime(new Date('2025-01-01T00:00:00Z'))
+    expect(formatCompactDate('2025-03-15T12:00:00Z')).toBe('15 Mar 25')
+    expect(formatCompactDate('2024-07-04T12:00:00Z')).toBe('04 Jul 24')
 
-    expect(formatRelativeTime('2025-01-01T00:00:00Z')).toBe('just now')
-    expect(formatRelativeTime('2024-12-31T22:00:00Z')).toBe('2h ago')
-
-    expect(isItemStale('2024-12-20T00:00:00Z', 7)).toBe(true)
-    expect(isItemStale('2024-12-31T00:00:00Z', 7)).toBe(false)
+    const oldDate = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()
+    const recentDate = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString()
+    expect(isItemStale(oldDate, 7)).toBe(true)
+    expect(isItemStale(recentDate, 7)).toBe(false)
   })
 })

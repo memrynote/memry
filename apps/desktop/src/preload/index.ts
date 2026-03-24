@@ -17,7 +17,8 @@ import {
   FolderViewChannels,
   PropertiesChannels,
   SearchChannels,
-  GraphChannels
+  GraphChannels,
+  AccountChannels
 } from '@memry/contracts/ipc-channels'
 import { SYNC_CHANNELS, SYNC_EVENTS } from '@memry/contracts/ipc-sync'
 import type {
@@ -60,6 +61,17 @@ type StartupTheme = 'light' | 'dark' | 'white' | 'system'
 const THEME_STORAGE_KEY = 'memry-theme'
 
 function getStartupThemeSync(): StartupTheme {
+  // Fast path: use the theme cached in localStorage from the previous run.
+  // This avoids a synchronous IPC round-trip on every launch after the first.
+  try {
+    const cached = window.localStorage.getItem(THEME_STORAGE_KEY)
+    if (cached === 'light' || cached === 'dark' || cached === 'white' || cached === 'system') {
+      return cached
+    }
+  } catch {
+    // localStorage may be unavailable; fall through to IPC
+  }
+  // First launch (or corrupted storage): fall back to synchronous IPC.
   try {
     return ipcRenderer.sendSync(SettingsChannels.sync.GET_STARTUP_THEME) as StartupTheme
   } catch {
@@ -137,7 +149,8 @@ export const api = {
     close: () => invoke(VaultChannels.invoke.CLOSE),
     switch: (vaultPath: string) => invoke(VaultChannels.invoke.SWITCH, vaultPath),
     remove: (vaultPath: string) => invoke(VaultChannels.invoke.REMOVE, vaultPath),
-    reindex: () => invoke(VaultChannels.invoke.REINDEX)
+    reindex: () => invoke(VaultChannels.invoke.REINDEX),
+    reveal: () => invoke(VaultChannels.invoke.REVEAL)
   },
 
   // Notes API
@@ -229,8 +242,10 @@ export const api = {
     // Folder config API (T096.5)
     getFolderConfig: (folderPath: string) =>
       invoke(NotesChannels.invoke.GET_FOLDER_CONFIG, folderPath),
-    setFolderConfig: (folderPath: string, config: { template?: string; inherit?: boolean }) =>
-      invoke(NotesChannels.invoke.SET_FOLDER_CONFIG, { folderPath, config }),
+    setFolderConfig: (
+      folderPath: string,
+      config: { icon?: string | null; template?: string; inherit?: boolean }
+    ) => invoke(NotesChannels.invoke.SET_FOLDER_CONFIG, { folderPath, config }),
     getFolderTemplate: (folderPath: string) =>
       invoke(NotesChannels.invoke.GET_FOLDER_TEMPLATE, folderPath),
 
@@ -573,7 +588,8 @@ export const api = {
 
     getGraphSettings: () => invoke(SettingsChannels.invoke.GET_GRAPH_SETTINGS),
     setGraphSettings: (settings: Record<string, unknown>) =>
-      invoke(SettingsChannels.invoke.SET_GRAPH_SETTINGS, settings)
+      invoke(SettingsChannels.invoke.SET_GRAPH_SETTINGS, settings),
+    registerGlobalCapture: () => invoke(SettingsChannels.invoke.REGISTER_GLOBAL_CAPTURE)
   },
 
   // Bookmarks API
@@ -621,6 +637,7 @@ export const api = {
       invoke(InboxChannels.invoke.CAPTURE_TEXT, input),
     captureLink: (input: { url: string; tags?: string[] }) =>
       invoke(InboxChannels.invoke.CAPTURE_LINK, input),
+    previewLink: (url: string) => invoke(InboxChannels.invoke.PREVIEW_LINK, url),
     captureImage: (input: {
       data: ArrayBuffer
       filename: string
@@ -720,8 +737,6 @@ export const api = {
     bulkTag: (input: { itemIds: string[]; tags: string[] }) =>
       invoke(InboxChannels.invoke.BULK_TAG, input),
     fileAllStale: () => invoke(InboxChannels.invoke.FILE_ALL_STALE),
-    bulkArchiveOlderThan: (olderThanDays: number) =>
-      invoke(InboxChannels.invoke.BULK_ARCHIVE_OLDER_THAN, { olderThanDays }),
 
     // Transcription
     retryTranscription: (itemId: string) =>
@@ -821,7 +836,9 @@ export const api = {
     /** Close the quick capture window */
     close: (): void => ipcRenderer.send('quick-capture:close'),
     /** Get current clipboard text content */
-    getClipboard: (): Promise<string> => invoke('quick-capture:get-clipboard')
+    getClipboard: (): Promise<string> => invoke('quick-capture:get-clipboard'),
+    /** Resize the quick capture window height */
+    resize: (height: number): void => ipcRenderer.send('quick-capture:resize', height)
   },
 
   // Native context menu
@@ -1490,6 +1507,13 @@ export const api = {
     getLinkingSas: (input: { sessionId: string }) => invoke(SYNC_CHANNELS.GET_LINKING_SAS, input),
     completeLinkingQr: (input: { sessionId: string }) =>
       invoke(SYNC_CHANNELS.COMPLETE_LINKING_QR, input)
+  },
+
+  // Account API
+  account: {
+    getInfo: () => invoke(AccountChannels.invoke.GET_INFO),
+    signOut: () => invoke(AccountChannels.invoke.SIGN_OUT),
+    getRecoveryKey: () => invoke(AccountChannels.invoke.GET_RECOVERY_KEY)
   },
 
   // Device Management API

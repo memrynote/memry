@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import type { InboxItem, InboxItemListItem } from '@/types'
 import {
+  formatCompactRelativeTime,
   groupItemsByTimePeriod,
   formatTimestamp,
   formatDuration,
@@ -114,6 +115,56 @@ describe('inbox-utils', () => {
       expect(result).toHaveLength(1)
       expect(result[0].period).toBe('TODAY')
     })
+
+    describe('dateAccessor parameter', () => {
+      it('should use custom dateAccessor when provided', () => {
+        const items = [
+          createItem('1', 5), // createdAt = 5 days ago (OLDER)
+          createItem('2', 5) // createdAt = 5 days ago (OLDER)
+        ]
+        const accessor = (_item: InboxItem) => new Date(2026, 0, 15) // today
+        const result = groupItemsByTimePeriod(items, accessor)
+
+        expect(result).toHaveLength(1)
+        expect(result[0].period).toBe('TODAY')
+        expect(result[0].items).toHaveLength(2)
+      })
+
+      it('should group by accessor date, not createdAt', () => {
+        const items = [
+          createItem('1', 0), // createdAt = today
+          createItem('2', 0) // createdAt = today
+        ]
+        const accessor = (_item: InboxItem) => new Date(2026, 0, 10) // 5 days ago → OLDER
+        const result = groupItemsByTimePeriod(items, accessor)
+
+        expect(result).toHaveLength(1)
+        expect(result[0].period).toBe('OLDER')
+      })
+
+      it('should split items across groups via accessor', () => {
+        const items = [createItem('1', 0), createItem('2', 0), createItem('3', 0)]
+        const dates = [
+          new Date(2026, 0, 15), // today
+          new Date(2026, 0, 14), // yesterday
+          new Date(2026, 0, 10) // older
+        ]
+        let callIndex = 0
+        const accessor = (_item: InboxItem) => dates[callIndex++]
+        const result = groupItemsByTimePeriod(items, accessor)
+
+        expect(result).toHaveLength(3)
+        expect(result[0].period).toBe('TODAY')
+        expect(result[1].period).toBe('YESTERDAY')
+        expect(result[2].period).toBe('OLDER')
+      })
+
+      it('should fall back to createdAt without dateAccessor', () => {
+        const items = [createItem('1', 0)]
+        const result = groupItemsByTimePeriod(items)
+        expect(result[0].period).toBe('TODAY')
+      })
+    })
   })
 
   describe('formatTimestamp', () => {
@@ -184,6 +235,131 @@ describe('inbox-utils', () => {
       expect(formatDuration(61)).toBe('1:01')
       expect(formatDuration(65)).toBe('1:05')
       expect(formatDuration(69)).toBe('1:09')
+    })
+  })
+
+  describe('formatCompactRelativeTime', () => {
+    const NOW_MS = new Date(2026, 0, 15, 14, 30).getTime()
+
+    const minutesAgo = (n: number) => new Date(NOW_MS - n * 60_000)
+    const hoursAgo = (n: number) => new Date(NOW_MS - n * 3_600_000)
+    const daysAgo = (n: number) => new Date(NOW_MS - n * 86_400_000)
+
+    describe('"now" — less than 1 minute', () => {
+      it('should return "now" for 0 seconds ago', () => {
+        expect(formatCompactRelativeTime(new Date(NOW_MS))).toBe('now')
+      })
+
+      it('should return "now" for 30 seconds ago', () => {
+        expect(formatCompactRelativeTime(new Date(NOW_MS - 30_000))).toBe('now')
+      })
+
+      it('should return "now" for 59.9 seconds ago', () => {
+        expect(formatCompactRelativeTime(new Date(NOW_MS - 59_999))).toBe('now')
+      })
+    })
+
+    describe('minutes — 1m to 59m', () => {
+      it('should return "1m" at exactly 1 minute', () => {
+        expect(formatCompactRelativeTime(minutesAgo(1))).toBe('1m')
+      })
+
+      it('should return "30m"', () => {
+        expect(formatCompactRelativeTime(minutesAgo(30))).toBe('30m')
+      })
+
+      it('should return "59m"', () => {
+        expect(formatCompactRelativeTime(minutesAgo(59))).toBe('59m')
+      })
+    })
+
+    describe('hours — 1h to 23h', () => {
+      it('should return "1h" at exactly 60 minutes', () => {
+        expect(formatCompactRelativeTime(minutesAgo(60))).toBe('1h')
+      })
+
+      it('should return "12h"', () => {
+        expect(formatCompactRelativeTime(hoursAgo(12))).toBe('12h')
+      })
+
+      it('should return "23h"', () => {
+        expect(formatCompactRelativeTime(hoursAgo(23))).toBe('23h')
+      })
+    })
+
+    describe('days — 1d to 29d', () => {
+      it('should return "1d" at exactly 24 hours', () => {
+        expect(formatCompactRelativeTime(hoursAgo(24))).toBe('1d')
+      })
+
+      it('should return "15d"', () => {
+        expect(formatCompactRelativeTime(daysAgo(15))).toBe('15d')
+      })
+
+      it('should return "29d"', () => {
+        expect(formatCompactRelativeTime(daysAgo(29))).toBe('29d')
+      })
+    })
+
+    describe('older than 30 days — formatted date', () => {
+      it('should return formatted date at exactly 30 days', () => {
+        const result = formatCompactRelativeTime(daysAgo(30))
+        expect(result).toMatch(/Dec\s+16/)
+      })
+
+      it('should return formatted date at 90 days', () => {
+        const result = formatCompactRelativeTime(daysAgo(90))
+        expect(result).toMatch(/Oct\s+17/)
+      })
+
+      it('should not return a "d" suffix', () => {
+        const result = formatCompactRelativeTime(daysAgo(30))
+        expect(result).not.toMatch(/^\d+d$/)
+      })
+    })
+
+    describe('boundary precision', () => {
+      it('59 minutes 59 seconds → still minutes', () => {
+        const almostHour = new Date(NOW_MS - 59 * 60_000 - 59_000)
+        expect(formatCompactRelativeTime(almostHour)).toBe('59m')
+      })
+
+      it('60 minutes exactly → hours', () => {
+        expect(formatCompactRelativeTime(minutesAgo(60))).toBe('1h')
+      })
+
+      it('23 hours 59 minutes → still hours', () => {
+        const almostDay = new Date(NOW_MS - 23 * 3_600_000 - 59 * 60_000)
+        expect(formatCompactRelativeTime(almostDay)).toBe('23h')
+      })
+
+      it('24 hours exactly → days', () => {
+        expect(formatCompactRelativeTime(hoursAgo(24))).toBe('1d')
+      })
+
+      it('29 days 23 hours → still days', () => {
+        const almost30 = new Date(NOW_MS - 29 * 86_400_000 - 23 * 3_600_000)
+        expect(formatCompactRelativeTime(almost30)).toBe('29d')
+      })
+
+      it('30 days exactly → formatted date', () => {
+        const result = formatCompactRelativeTime(daysAgo(30))
+        expect(result).not.toMatch(/^\d+[mhd]$/)
+      })
+    })
+
+    describe('input types', () => {
+      it('should accept Date object', () => {
+        expect(formatCompactRelativeTime(minutesAgo(5))).toBe('5m')
+      })
+
+      it('should accept ISO date string', () => {
+        expect(formatCompactRelativeTime(minutesAgo(5).toISOString())).toBe('5m')
+      })
+
+      it('should accept non-ISO date string', () => {
+        expect(formatCompactRelativeTime(hoursAgo(2).toString())).toBe('2h')
+      })
     })
   })
 

@@ -8,8 +8,8 @@ import { useState, useRef, useEffect, useCallback } from 'react'
 import { Link2, FileText, X, Loader2, Folder } from '@/lib/icons'
 import { useQuery } from '@tanstack/react-query'
 
-import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
+import { NoteIconDisplay } from '@/lib/render-note-icon'
 import type { LinkedNote } from '@/types'
 
 // =============================================================================
@@ -45,24 +45,22 @@ const LinkedNoteCard = ({ note, onRemove }: LinkedNoteCardProps): React.JSX.Elem
   return (
     <div
       className={cn(
-        'group flex items-center gap-3 px-3 py-2.5 rounded-lg',
+        'group flex items-center gap-3 px-3 py-2.5 rounded-md',
         'bg-muted/40 border border-border/50',
         'transition-colors hover:bg-muted/60'
       )}
     >
-      <div className="flex items-center justify-center size-8 rounded-md bg-background border border-border/50 shrink-0">
+      <div className="flex items-center justify-center size-7 rounded-md bg-foreground/[0.03] border border-border/50 shrink-0">
         {note.emoji ? (
-          <span className="text-base" aria-hidden="true">
-            {note.emoji}
-          </span>
+          <NoteIconDisplay value={note.emoji} className="size-3.5" />
         ) : (
-          <Icon className="size-4 text-muted-foreground" aria-hidden="true" />
+          <Icon className="size-3.5 text-muted-foreground" aria-hidden="true" />
         )}
       </div>
       <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium truncate">{note.title}</p>
+        <p className="text-[13px] leading-4 font-medium truncate text-foreground">{note.title}</p>
         {note.type === 'note' && (
-          <p className="text-xs text-muted-foreground truncate opacity-70">Note</p>
+          <p className="text-[11px] leading-3.5 text-muted-foreground/60 truncate">Note</p>
         )}
       </div>
       <button
@@ -105,21 +103,19 @@ const SearchResultItem = ({
       onClick={() => onSelect(note)}
       onMouseEnter={onMouseEnter}
       className={cn(
-        'w-full flex items-center gap-2 px-3 py-2 text-left',
+        'w-full flex items-center gap-2 px-3 py-2 mx-1 my-0.5 rounded-sm text-left',
         'transition-colors duration-75',
-        isHighlighted ? 'bg-accent text-accent-foreground' : 'hover:bg-muted'
+        isHighlighted ? 'bg-foreground/[0.03]' : 'hover:bg-foreground/[0.03]'
       )}
       role="option"
       aria-selected={isHighlighted}
     >
       {note.emoji ? (
-        <span className="size-4 text-center shrink-0" aria-hidden="true">
-          {note.emoji}
-        </span>
+        <NoteIconDisplay value={note.emoji} className="size-3.5 shrink-0" />
       ) : (
-        <Icon className="size-4 text-muted-foreground shrink-0" aria-hidden="true" />
+        <Icon className="size-3.5 text-muted-foreground shrink-0" aria-hidden="true" />
       )}
-      <span className="text-sm truncate flex-1">{note.title}</span>
+      <span className="text-[13px] leading-4 truncate flex-1 text-foreground">{note.title}</span>
     </button>
   )
 }
@@ -276,43 +272,39 @@ export const LinkInput = ({
     <div ref={containerRef} className={cn('space-y-3', className)}>
       {/* Search Input */}
       <div className="relative">
-        <Link2
-          className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground pointer-events-none"
-          aria-hidden="true"
-        />
-        <Input
-          ref={inputRef}
-          type="text"
-          placeholder="Link notes..."
-          value={searchQuery}
-          onChange={handleInputChange}
-          onFocus={handleInputFocus}
-          onKeyDown={handleKeyDown}
-          className="pl-9"
-          aria-label="Search notes to link"
-          aria-expanded={isDropdownOpen}
-          aria-haspopup="listbox"
-          aria-autocomplete="list"
-          autoComplete="off"
-        />
+        <div className="flex items-center rounded-md py-2 px-3 gap-2 bg-foreground/[0.02] border border-border">
+          <Link2 className="size-3.5 text-muted-foreground/30 shrink-0" aria-hidden="true" />
+          <input
+            ref={inputRef}
+            type="text"
+            placeholder="Link notes..."
+            value={searchQuery}
+            onChange={handleInputChange}
+            onFocus={handleInputFocus}
+            onKeyDown={handleKeyDown}
+            aria-label="Search notes to link"
+            aria-expanded={isDropdownOpen}
+            aria-haspopup="listbox"
+            aria-autocomplete="list"
+            autoComplete="off"
+            className="flex-1 min-w-0 bg-transparent border-0 p-0 text-[13px] leading-4 text-foreground placeholder:text-muted-foreground/30 outline-none focus:outline-none"
+          />
+        </div>
 
         {/* Dropdown Results */}
         {isDropdownOpen && (
           <div
             ref={dropdownRef}
-            className={cn(
-              'absolute z-50 w-full mt-1 py-1 rounded-md border border-border',
-              'bg-popover shadow-md max-h-48 overflow-y-auto'
-            )}
+            className="absolute z-50 w-full mt-1 p-0 rounded-md border border-border bg-popover shadow-[0_8px_24px_rgba(0,0,0,0.25)] max-h-48 overflow-y-auto"
             role="listbox"
           >
             {isSearching ? (
               <div className="flex items-center gap-2 px-3 py-2">
-                <Loader2 className="size-4 animate-spin text-muted-foreground" />
-                <span className="text-sm text-muted-foreground">Searching...</span>
+                <Loader2 className="size-3.5 animate-spin text-muted-foreground" />
+                <span className="text-xs text-muted-foreground">Searching...</span>
               </div>
             ) : availableResults.length === 0 ? (
-              <p className="text-sm text-muted-foreground text-center py-2">
+              <p className="text-xs text-muted-foreground text-center py-3">
                 {searchResults.length > 0 ? 'All matches already linked' : 'No notes found'}
               </p>
             ) : (

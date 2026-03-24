@@ -12,7 +12,7 @@ export function ModeToggle({ mode, enabled, onToggle }: ModeToggleProps) {
   const config = {
     web: {
       icon: Globe,
-      activeClass: 'bg-blue-100 text-blue-600',
+      activeClass: 'bg-tint-light text-tint',
       tooltipEnabled: 'Web search enabled',
       tooltipDisabled: 'Web search'
     },
@@ -38,7 +38,7 @@ export function ModeToggle({ mode, enabled, onToggle }: ModeToggleProps) {
             className={cn(
               'h-8 w-8 rounded-full flex items-center justify-center',
               'transition-all duration-150',
-              'focus:outline-none focus:ring-1 focus:ring-stone-400 focus:ring-offset-1',
+              'focus:outline-none',
               enabled ? activeClass : 'text-stone-400 hover:bg-stone-100 hover:text-stone-600',
               enabled && 'animate-pulse-once'
             )}

@@ -40,8 +40,8 @@ export function FilterOptionRow({
       {icon}
       <span
         className={cn(
-          'text-[12px] leading-4',
-          selected ? 'text-foreground' : 'text-text-secondary'
+          'text-[13px] leading-4',
+          selected ? 'text-foreground' : 'text-muted-foreground'
         )}
       >
         {label}

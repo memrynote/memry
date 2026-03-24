@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useState, useEffect, useCallback, useMemo, Fragment } from 'react'
 import { formatDistanceToNow } from 'date-fns'
 import {
   Monitor,
@@ -6,11 +6,10 @@ import {
   Laptop,
   MoreHorizontal,
   Pencil,
-  Trash2,
   Loader2,
-  Shield,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  QrCode
 } from '@/lib/icons'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -51,6 +50,10 @@ interface Device {
   linkedAt: number
 }
 
+interface DeviceListProps {
+  onLinkDevice?: () => void
+}
+
 const PLATFORM_ICONS: Record<string, typeof Monitor> = {
   macos: Laptop,
   windows: Monitor,
@@ -72,7 +75,7 @@ const platformLabel = (platform: string): string => {
 
 const COLLAPSED_LIMIT = 3
 
-export function DeviceList(): React.JSX.Element {
+export function DeviceList({ onLinkDevice }: DeviceListProps): React.JSX.Element {
   const [devices, setDevices] = useState<Device[]>([])
   const [loading, setLoading] = useState(true)
   const [expanded, setExpanded] = useState(false)
@@ -153,7 +156,7 @@ export function DeviceList(): React.JSX.Element {
   if (loading) {
     return (
       <div
-        className="flex items-center gap-2 py-4 text-sm text-muted-foreground"
+        className="flex items-center gap-2 py-4 text-xs text-muted-foreground"
         role="status"
         aria-label="Loading devices"
       >
@@ -164,105 +167,138 @@ export function DeviceList(): React.JSX.Element {
   }
 
   if (devices.length === 0) {
-    return <p className="text-sm text-muted-foreground py-2">No devices linked yet.</p>
+    return (
+      <div className="flex flex-col rounded-lg border border-border overflow-clip">
+        <div className="flex items-center justify-center h-12 px-4 text-xs text-muted-foreground">
+          No devices linked yet
+        </div>
+        {onLinkDevice && (
+          <>
+            <div className="h-px bg-border shrink-0" />
+            <button
+              onClick={onLinkDevice}
+              className="flex items-center gap-2.5 h-12 px-4 text-xs text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <QrCode className="w-4 h-4" />
+              Link new device
+            </button>
+          </>
+        )}
+      </div>
+    )
   }
 
   return (
     <>
-      <div className="space-y-1">
-        {visibleDevices.map((device) => {
+      <div className="flex flex-col rounded-lg border border-border overflow-clip">
+        {visibleDevices.map((device, i) => {
           const Icon = PLATFORM_ICONS[device.platform] ?? Monitor
           const syncLabel = device.lastSyncAt
-            ? `Synced ${formatDistanceToNow(device.lastSyncAt, { addSuffix: true })}`
-            : `Linked ${formatDistanceToNow(device.linkedAt, { addSuffix: true })}`
+            ? `Last seen ${formatDistanceToNow(device.lastSyncAt, { addSuffix: false })} ago`
+            : `Linked ${formatDistanceToNow(device.linkedAt, { addSuffix: false })} ago`
 
           return (
-            <div
-              key={device.id}
-              className="flex items-center gap-3 p-3 rounded-lg hover:bg-muted/50 transition-colors group"
-            >
-              <div className="flex items-center justify-center w-8 h-8 rounded-full bg-muted shrink-0">
-                <Icon className="w-4 h-4 text-muted-foreground" />
-              </div>
-
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2">
-                  <span className="text-sm font-medium truncate">{device.name}</span>
-                  {device.isCurrentDevice && (
-                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-medium rounded bg-primary/10 text-primary shrink-0">
-                      <Shield className="w-3 h-3" />
-                      This device
+            <Fragment key={device.id}>
+              {i > 0 && <div className="h-px bg-border shrink-0" />}
+              <div className="flex items-center justify-between h-12 px-4 shrink-0 group">
+                <div className="flex items-center gap-2.5">
+                  <Icon className="w-4 h-4 text-muted-foreground shrink-0" />
+                  <div className="flex flex-col gap-px">
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[13px]/4 font-medium text-foreground">
+                        {device.name}
+                      </span>
+                      {device.isCurrentDevice && (
+                        <span className="rounded-[10px] px-1.5 py-px text-[10px]/3.5 font-medium bg-green-500/15 text-green-600 dark:text-green-400">
+                          This device
+                        </span>
+                      )}
+                    </div>
+                    <span className="text-[11px]/3.5 text-muted-foreground">
+                      {platformLabel(device.platform)} &middot; {syncLabel}
                     </span>
-                  )}
+                  </div>
                 </div>
-                <p className="text-xs text-muted-foreground">
-                  {platformLabel(device.platform)} &middot; {syncLabel}
-                </p>
-              </div>
 
-              {!device.isCurrentDevice && (
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
-                      aria-label={`Actions for ${device.name}`}
-                    >
-                      <MoreHorizontal className="w-4 h-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem onClick={() => openRenameDialog(device)}>
-                      <Pencil className="w-4 h-4 mr-2" />
-                      Rename
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
+                {!device.isCurrentDevice && (
+                  <div className="flex items-center gap-2">
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity"
+                          aria-label={`Rename ${device.name}`}
+                        >
+                          <MoreHorizontal className="w-3.5 h-3.5" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => openRenameDialog(device)}>
+                          <Pencil className="w-4 h-4 mr-2" />
+                          Rename
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                    <button
                       onClick={() => setRemoveTarget(device)}
-                      className="text-destructive focus:text-destructive"
+                      className="text-xs text-destructive hover:text-destructive/80 transition-colors"
                     >
-                      <Trash2 className="w-4 h-4 mr-2" />
-                      Remove
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              )}
-            </div>
+                      Revoke
+                    </button>
+                  </div>
+                )}
+              </div>
+            </Fragment>
           )
         })}
 
         {hasMore && (
-          <Button
-            variant="ghost"
-            size="sm"
-            className="w-full text-xs text-muted-foreground hover:text-foreground"
-            onClick={() => setExpanded((prev) => !prev)}
-            aria-expanded={expanded}
-            aria-label={
-              expanded
-                ? 'Show fewer devices'
-                : `Show ${hiddenCount} more ${hiddenCount === 1 ? 'device' : 'devices'}`
-            }
-          >
-            {expanded ? (
-              <>
-                <ChevronUp className="w-3.5 h-3.5 mr-1.5" />
-                Show less
-              </>
-            ) : (
-              <>
-                <ChevronDown className="w-3.5 h-3.5 mr-1.5" />
-                {hiddenCount} more {hiddenCount === 1 ? 'device' : 'devices'}
-              </>
-            )}
-          </Button>
+          <>
+            <div className="h-px bg-border shrink-0" />
+            <button
+              className="flex items-center justify-center gap-1.5 h-10 text-xs text-muted-foreground hover:text-foreground transition-colors"
+              onClick={() => setExpanded((prev) => !prev)}
+              aria-expanded={expanded}
+              aria-label={
+                expanded
+                  ? 'Show fewer devices'
+                  : `Show ${hiddenCount} more ${hiddenCount === 1 ? 'device' : 'devices'}`
+              }
+            >
+              {expanded ? (
+                <>
+                  <ChevronUp className="w-3.5 h-3.5" />
+                  Show less
+                </>
+              ) : (
+                <>
+                  <ChevronDown className="w-3.5 h-3.5" />
+                  {hiddenCount} more {hiddenCount === 1 ? 'device' : 'devices'}
+                </>
+              )}
+            </button>
+          </>
+        )}
+
+        {onLinkDevice && (
+          <>
+            <div className="h-px bg-border shrink-0" />
+            <button
+              onClick={onLinkDevice}
+              className="flex items-center gap-2.5 h-12 px-4 text-xs text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <QrCode className="w-4 h-4" />
+              Link new device
+            </button>
+          </>
         )}
       </div>
 
       <AlertDialog open={!!removeTarget} onOpenChange={(open) => !open && setRemoveTarget(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Remove &ldquo;{removeTarget?.name}&rdquo;?</AlertDialogTitle>
+            <AlertDialogTitle>Revoke &ldquo;{removeTarget?.name}&rdquo;?</AlertDialogTitle>
             <AlertDialogDescription>
               This device will lose access to your synced data. It will need to be linked again to
               restore sync. Local data on that device will remain.
@@ -275,7 +311,7 @@ export function DeviceList(): React.JSX.Element {
               disabled={busy}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              {busy ? 'Removing...' : 'Remove device'}
+              {busy ? 'Revoking...' : 'Revoke device'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

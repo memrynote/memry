@@ -10,7 +10,6 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { useQuery } from '@tanstack/react-query'
 
 import { InboxListSection, InboxListItem } from '@/components/inbox'
-import { StaleSection } from '@/components/stale/stale-section'
 import { getFilteredFolders } from '@/components/quick-file-dropdown'
 import { groupItemsByTimePeriod } from '@/lib/inbox-utils'
 import { useRetryTranscription } from '@/hooks/use-inbox'
@@ -22,7 +21,6 @@ type InboxItem = InboxItemListItem
 
 interface ListViewProps {
   items: InboxItem[]
-  staleItems?: InboxItem[]
   selectedItemIds: Set<string>
   exitingItemIds?: Set<string>
   density?: DisplayDensity
@@ -31,8 +29,6 @@ interface ListViewProps {
   onSnooze?: (id: string, snoozeUntil: string) => void
   onQuickFile: (itemId: string, folderId: string) => void
   onSelectionChange: (selectedIds: Set<string>) => void
-  onFileAllStale?: () => void
-  onReviewStale?: () => void
   focusedItemId?: string | null
   onFocusedItemChange?: (id: string | null) => void
   isPreviewOpen?: boolean
@@ -40,7 +36,6 @@ interface ListViewProps {
 
 const ListView = ({
   items,
-  staleItems = [],
   selectedItemIds,
   exitingItemIds = new Set(),
   density = 'comfortable',
@@ -49,8 +44,6 @@ const ListView = ({
   onSnooze,
   onQuickFile,
   onSelectionChange,
-  onFileAllStale,
-  onReviewStale,
   focusedItemId: controlledFocusedItemId,
   onFocusedItemChange,
   isPreviewOpen = false
@@ -69,8 +62,7 @@ const ListView = ({
     [retryTranscription]
   )
 
-  // Flatten all items (stale + regular) for keyboard navigation
-  const flatItems = [...staleItems, ...groupedItems.flatMap((group) => group.items)]
+  const flatItems = groupedItems.flatMap((group) => group.items)
 
   // Track last selected item for shift-click range selection
   const lastSelectedIdRef = useRef<string | null>(null)
@@ -79,15 +71,15 @@ const ListView = ({
   const { data: vaultFolders = [] } = useQuery({
     queryKey: ['vault', 'folders'],
     queryFn: async () => {
-      const paths = await window.api.notes.getFolders()
+      const folderInfos = await window.api.notes.getFolders()
       const folders: Folder[] = [{ id: '', name: 'Notes (root)', path: '' }]
-      for (const path of paths) {
-        if (path) {
+      for (const fi of folderInfos) {
+        if (fi.path) {
           folders.push({
-            id: path,
-            name: path.split('/').pop() || path,
-            path: path,
-            parent: path.includes('/') ? path.split('/').slice(0, -1).join('/') : undefined
+            id: fi.path,
+            name: fi.path.split('/').pop() || fi.path,
+            path: fi.path,
+            parent: fi.path.includes('/') ? fi.path.split('/').slice(0, -1).join('/') : undefined
           })
         }
       }
@@ -434,25 +426,7 @@ const ListView = ({
       role="list"
       aria-label="Inbox items"
     >
-      {/* Stale Items Section - appears at top when there are stale items */}
-      {staleItems.length > 0 && onFileAllStale && onReviewStale && (
-        <StaleSection
-          items={staleItems}
-          selectedItemIds={selectedItemIds}
-          exitingItemIds={exitingItemIds}
-          focusedItemId={focusedItemId}
-          density={density}
-          onArchive={onArchive}
-          onSnooze={onSnooze}
-          onFocus={handleItemFocus}
-          onPreview={onPreview}
-          onSelectionToggle={handleSelectionToggle}
-          onFileAllToUnsorted={onFileAllStale}
-          onReviewOneByOne={onReviewStale}
-        />
-      )}
-
-      {/* Regular time-grouped items using InboxListSection */}
+      {/* Time-grouped items */}
       {groupedItems.map((group, groupIndex) => (
         <InboxListSection
           key={group.period}
@@ -487,14 +461,6 @@ const ListView = ({
               onRetryTranscription={handleRetryTranscription}
             />
           ))}
-
-          {/* Visual separator between sections (except last) */}
-          {groupIndex < groupedItems.length - 1 && (
-            <div
-              className="h-px bg-gradient-to-r from-border/30 to-transparent mt-4"
-              aria-hidden="true"
-            />
-          )}
         </InboxListSection>
       ))}
     </div>

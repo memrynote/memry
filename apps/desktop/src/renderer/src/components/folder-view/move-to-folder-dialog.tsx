@@ -151,8 +151,8 @@ export function MoveToFolderDialog({
 
     // Filter and add folders
     const filteredFolders = allFolders
+      .map((f) => f.path)
       .filter((path) => {
-        // Filter by search query
         if (query && !path.toLowerCase().includes(query)) return false
         return true
       })
@@ -188,7 +188,7 @@ export function MoveToFolderDialog({
   const canCreateFolder = useMemo(() => {
     if (!searchQuery.trim()) return false
     // Check if the exact folder already exists
-    const exists = allFolders.some((f) => f.toLowerCase() === searchQuery.toLowerCase())
+    const exists = allFolders.some((f) => f.path.toLowerCase() === searchQuery.toLowerCase())
     return !exists
   }, [searchQuery, allFolders])
 

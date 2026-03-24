@@ -95,7 +95,7 @@ export function LinkingApprovalDialog({
         </DialogHeader>
 
         {event && (
-          <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
+          <div className="flex items-center gap-3 p-3 rounded-md bg-muted/50">
             <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-amber-500/10 dark:bg-amber-400/10">
               <PlatformIcon className="w-5 h-5 text-amber-700 dark:text-amber-400" />
             </div>
@@ -110,7 +110,7 @@ export function LinkingApprovalDialog({
           </div>
         )}
 
-        <div className="rounded-lg border border-amber-200 dark:border-amber-900/50 bg-amber-50/50 dark:bg-amber-950/20 p-3 space-y-1.5">
+        <div className="rounded-md border border-amber-200 dark:border-amber-900/50 bg-amber-50/50 dark:bg-amber-950/20 p-3 space-y-1.5">
           <p className="text-xs font-semibold tracking-widest uppercase text-muted-foreground">
             Verification code
           </p>

@@ -42,7 +42,7 @@ export const SubtaskBadge = ({
       tabIndex={onClick ? 0 : -1}
       className={cn(
         'inline-flex items-center gap-[3px] shrink-0',
-        'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring focus-visible:ring-offset-1 rounded',
+        'focus-visible:outline-none rounded',
         onClick ? 'cursor-pointer' : 'cursor-default',
         className
       )}

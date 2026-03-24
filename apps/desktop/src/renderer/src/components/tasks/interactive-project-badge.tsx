@@ -48,7 +48,7 @@ export const InteractiveProjectBadge = ({
           type="button"
           className={cn(
             'flex items-center rounded-sm py-0.5 px-2 gap-1.5 cursor-pointer transition-opacity',
-            'hover:opacity-80 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring',
+            'hover:opacity-80 focus-visible:outline-none',
             className
           )}
           style={{ backgroundColor: `${projectColor}14` }}

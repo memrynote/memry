@@ -68,7 +68,7 @@ export const InteractiveDueDateBadge = ({
           type="button"
           className={cn(
             'flex items-center gap-1.5 cursor-pointer transition-opacity rounded-[5px] py-[3px] px-2 border border-solid',
-            'hover:opacity-80 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring',
+            'hover:opacity-80 focus-visible:outline-none',
             badgeStyles[dateStatus],
             fixedWidth && 'w-[110px] flex justify-end',
             className
@@ -81,7 +81,7 @@ export const InteractiveDueDateBadge = ({
         </button>
       </PopoverTrigger>
       <PopoverContent
-        className="w-auto p-0 rounded-lg overflow-clip"
+        className="w-auto p-0 rounded-md overflow-clip"
         align="end"
         onClick={handleTriggerClick}
       >

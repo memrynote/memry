@@ -1,82 +1,145 @@
 import { useCallback } from 'react'
-import { Separator } from '@/components/ui/separator'
 import { Switch } from '@/components/ui/switch'
-import { Label } from '@/components/ui/label'
-import { Info } from '@/lib/icons'
-import { useNoteEditorSettings } from '@/hooks/use-note-editor-settings'
+import { Slider } from '@/components/ui/slider'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from '@/components/ui/select'
+import { useEditorSettings } from '@/hooks/use-editor-settings'
 import { toast } from 'sonner'
+import {
+  SettingsHeader,
+  SettingsGroup,
+  SettingRow,
+  SettingRowTall,
+  ACCENT_SWITCH,
+  COMPACT_SELECT
+} from '@/components/settings/settings-primitives'
 
 export function EditorSettings() {
-  const { settings, isLoading, setToolbarMode } = useNoteEditorSettings()
+  const { settings, isLoading, updateSettings } = useEditorSettings()
+
+  const handleWidthChange = useCallback(
+    async (value: string) => {
+      const success = await updateSettings({ width: value as 'narrow' | 'medium' | 'wide' })
+      if (!success) toast.error('Failed to update editor width')
+    },
+    [updateSettings]
+  )
 
   const handleToolbarModeChange = useCallback(
     async (enabled: boolean) => {
-      const newMode = enabled ? 'sticky' : 'floating'
-      const success = await setToolbarMode(newMode)
-      if (success) {
-        toast.success(
-          enabled ? 'Sticky toolbar enabled' : 'Floating toolbar enabled (shows on text selection)'
-        )
-      } else {
-        toast.error('Failed to update setting')
-      }
+      const success = await updateSettings({ toolbarMode: enabled ? 'sticky' : 'floating' })
+      if (!success) toast.error('Failed to update toolbar mode')
     },
-    [setToolbarMode]
+    [updateSettings]
+  )
+
+  const handleSpellCheckChange = useCallback(
+    async (enabled: boolean) => {
+      const success = await updateSettings({ spellCheck: enabled })
+      if (!success) toast.error('Failed to update spell check')
+    },
+    [updateSettings]
+  )
+
+  const handleAutoSaveDelayChange = useCallback(
+    async (value: number[]) => {
+      const success = await updateSettings({ autoSaveDelay: value[0] })
+      if (!success) toast.error('Failed to update auto-save delay')
+    },
+    [updateSettings]
+  )
+
+  const handleWordCountChange = useCallback(
+    async (enabled: boolean) => {
+      const success = await updateSettings({ showWordCount: enabled })
+      if (!success) toast.error('Failed to update word count display')
+    },
+    [updateSettings]
   )
 
   if (isLoading) {
     return (
-      <div className="space-y-6">
-        <div>
-          <h3 className="text-lg font-semibold">Editor</h3>
-          <p className="text-sm text-muted-foreground">Loading settings...</p>
-        </div>
+      <div className="flex flex-col antialiased">
+        <SettingsHeader title="Editor" subtitle="Loading settings..." />
       </div>
     )
   }
 
+  const autoSaveSeconds = Math.round(settings.autoSaveDelay / 1000)
+
   return (
-    <div className="space-y-6">
-      <div>
-        <h3 className="text-lg font-semibold">Editor</h3>
-        <p className="text-sm text-muted-foreground">Note editor settings and preferences</p>
-      </div>
+    <div className="flex flex-col antialiased text-xs/4">
+      <SettingsHeader title="Editor" subtitle="Note editor settings and preferences" />
 
-      <Separator />
+      <SettingsGroup label="Layout">
+        <SettingRow label="Editor Width" description="Maximum width of the writing area">
+          <Select value={settings.width} onValueChange={handleWidthChange}>
+            <SelectTrigger className={COMPACT_SELECT}>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="narrow">Narrow</SelectItem>
+              <SelectItem value="medium">Medium</SelectItem>
+              <SelectItem value="wide">Wide</SelectItem>
+            </SelectContent>
+          </Select>
+        </SettingRow>
+      </SettingsGroup>
 
-      {/* Toolbar Mode Section */}
-      <div className="space-y-6">
-        <div>
-          <h4 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
-            Toolbar
-          </h4>
-        </div>
-
-        {/* Sticky Toolbar Toggle */}
-        <div className="flex items-center justify-between">
-          <div className="space-y-0.5">
-            <Label htmlFor="sticky-toolbar">Sticky Formatting Toolbar</Label>
-            <p className="text-sm text-muted-foreground">
-              Always show the formatting toolbar above the editor instead of on text selection
-            </p>
-          </div>
+      <SettingsGroup label="Toolbar">
+        <SettingRow
+          label="Sticky Formatting Toolbar"
+          description="Always show toolbar above the editor"
+        >
           <Switch
-            id="sticky-toolbar"
             checked={settings.toolbarMode === 'sticky'}
             onCheckedChange={handleToolbarModeChange}
+            className={ACCENT_SWITCH}
           />
-        </div>
+        </SettingRow>
+      </SettingsGroup>
 
-        {/* Info hint */}
-        <div className="flex items-start gap-2 p-3 rounded-lg bg-muted/50 text-sm">
-          <Info className="w-4 h-4 text-muted-foreground mt-0.5 flex-shrink-0" />
-          <p className="text-muted-foreground">
-            When disabled (floating mode), the formatting toolbar appears only when you select text.
-            Enable sticky mode to always have quick access to Bold, Italic, and other formatting
-            options.
-          </p>
-        </div>
-      </div>
+      <SettingsGroup label="Writing">
+        <SettingRow label="Spell Check" description="Underline misspelled words while typing">
+          <Switch
+            checked={settings.spellCheck}
+            onCheckedChange={handleSpellCheckChange}
+            className={ACCENT_SWITCH}
+          />
+        </SettingRow>
+
+        <SettingRowTall
+          label="Auto-Save Delay"
+          description="Wait time after typing stops before saving"
+        >
+          <div className="flex items-center gap-3">
+            <Slider
+              min={0}
+              max={30000}
+              step={1000}
+              value={[settings.autoSaveDelay]}
+              onValueCommit={handleAutoSaveDelayChange}
+              className="flex-1 max-w-xs"
+            />
+            <span className="text-xs/4 font-medium text-muted-foreground w-8 text-right shrink-0">
+              {autoSaveSeconds === 0 ? '0s' : `${autoSaveSeconds}s`}
+            </span>
+          </div>
+        </SettingRowTall>
+
+        <SettingRow label="Word Count" description="Show word count in the editor footer">
+          <Switch
+            checked={settings.showWordCount}
+            onCheckedChange={handleWordCountChange}
+            className={ACCENT_SWITCH}
+          />
+        </SettingRow>
+      </SettingsGroup>
     </div>
   )
 }

@@ -136,7 +136,7 @@ const RegularTabComponent = ({
           <div
             className={cn(
               'w-1.5 h-1.5 rounded-full',
-              'bg-blue-400 dark:bg-blue-500',
+              'bg-tint',
               'transition-transform duration-150',
               'animate-pulse'
             )}

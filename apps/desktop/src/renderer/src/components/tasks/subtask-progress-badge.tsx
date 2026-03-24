@@ -60,7 +60,7 @@ export const SubtaskProgressBadge = ({
       className={cn(
         'inline-flex items-center gap-2 px-2 py-1 rounded',
         'hover:bg-muted transition-colors',
-        'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring focus-visible:ring-offset-1',
+        'focus-visible:outline-none',
         onClick ? 'cursor-pointer' : 'cursor-default',
         className
       )}

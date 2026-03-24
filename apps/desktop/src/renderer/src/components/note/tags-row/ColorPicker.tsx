@@ -51,7 +51,7 @@ export function ColorPicker({
                     'flex h-6 w-6 items-center justify-center rounded-full',
                     'transition-all duration-150',
                     'hover:scale-110',
-                    'focus:outline-none focus-visible:ring-1 focus-visible:ring-ring focus-visible:ring-offset-1',
+                    'focus:outline-none',
                     isSelected && 'ring-2 ring-stone-400 ring-offset-1'
                   )}
                   style={{ backgroundColor: colors.background }}
@@ -84,7 +84,7 @@ export function ColorPicker({
           type="button"
           onClick={onCancel}
           className={cn(
-            'rounded-lg px-3 py-1.5',
+            'rounded-md px-3 py-1.5',
             'text-sm text-stone-600',
             'transition-colors duration-150',
             'hover:bg-stone-100'
@@ -96,7 +96,7 @@ export function ColorPicker({
           type="button"
           onClick={onConfirm}
           className={cn(
-            'rounded-lg px-3 py-1.5',
+            'rounded-md px-3 py-1.5',
             'text-sm font-medium text-white',
             'bg-stone-900',
             'transition-colors duration-150',

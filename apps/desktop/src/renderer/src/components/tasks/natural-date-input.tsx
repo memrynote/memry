@@ -103,8 +103,8 @@ export const NaturalDateInput = forwardRef<NaturalDateInputRef, NaturalDateInput
             placeholder={placeholder}
             className={cn(
               'pl-9 pr-3',
-              isValid && 'border-task-complete focus-visible:ring-task-complete/20',
-              isInvalid && 'border-task-due-today focus-visible:ring-task-due-today/20'
+              isValid && 'border-task-complete',
+              isInvalid && 'border-task-due-today'
             )}
             aria-label="Type a date in natural language"
             autoComplete="off"

@@ -206,7 +206,9 @@ export const MultiDragOverlay = ({
           >
             {index === 0 ? (
               <>
-                <div className="font-medium truncate text-sm">{task.title}</div>
+                <div className="font-medium truncate text-[13px] text-foreground/90">
+                  {task.title}
+                </div>
                 {totalCount > 1 && (
                   <div className="text-sm text-primary mt-1">
                     +{totalCount - 1} more task{totalCount > 2 ? 's' : ''}
@@ -272,7 +274,7 @@ export const SingleTaskPreview = ({
       )}
     >
       <div className="flex items-center gap-2">
-        <span className="font-medium truncate text-sm">{task.title}</span>
+        <span className="font-medium truncate text-[13px] text-foreground/90">{task.title}</span>
       </div>
 
       {!isCompleted && (task.dueDate || task.priority !== 'none') && (

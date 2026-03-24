@@ -8,7 +8,7 @@ const InputGroup = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDiv
       <div
         ref={ref}
         className={cn(
-          'flex h-9 w-full items-center overflow-hidden rounded-md border border-input bg-transparent text-sm shadow-xs transition-[color,box-shadow] focus-within:border-ring focus-within:ring-ring/50 focus-within:ring-[3px]',
+          'flex h-9 w-full items-center overflow-hidden rounded-md border border-input bg-transparent text-sm shadow-xs transition-[color,box-shadow]',
           className
         )}
         {...props}

@@ -20,6 +20,7 @@ import type {
   AttachmentInfo,
   DeleteAttachmentResponse,
   FolderConfig,
+  FolderInfo,
   ExportNoteInput,
   ExportNoteResponse,
   // Version history types (T114)
@@ -142,7 +143,7 @@ export const notesService: NotesClientAPI = {
   /**
    * Get all folders containing notes.
    */
-  getFolders: (): Promise<string[]> => {
+  getFolders: (): Promise<FolderInfo[]> => {
     return window.api.notes.getFolders()
   },
 

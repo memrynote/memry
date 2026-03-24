@@ -73,7 +73,7 @@ export function DefaultTemplateIndicator({
     >
       <div
         className={cn(
-          'flex items-center gap-3 px-4 py-3 rounded-lg',
+          'flex items-center gap-3 px-4 py-3 rounded-md',
           'border border-dashed',
           'border-amber-300/60 dark:border-amber-700/50',
           'bg-gradient-to-r from-amber-50/60 to-orange-50/40',
@@ -82,7 +82,7 @@ export function DefaultTemplateIndicator({
         )}
       >
         {/* Template icon */}
-        <div className="flex-shrink-0 w-8 h-8 rounded-lg bg-gradient-to-br from-amber-100 to-orange-100 dark:from-amber-900/50 dark:to-orange-900/40 flex items-center justify-center border border-amber-200/50 dark:border-amber-800/30 shadow-sm">
+        <div className="flex-shrink-0 w-8 h-8 rounded-md bg-gradient-to-br from-amber-100 to-orange-100 dark:from-amber-900/50 dark:to-orange-900/40 flex items-center justify-center border border-amber-200/50 dark:border-amber-800/30 shadow-sm">
           {templateIcon ? (
             <span className="text-base">{templateIcon}</span>
           ) : (

@@ -12,7 +12,7 @@ import { Send, Loader2, Link, FileText, Mic, Paperclip, Copy } from '@/lib/icons
 import { cn } from '@/lib/utils'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { useCaptureText, useCaptureLink, useCaptureVoice, useCaptureImage } from '@/hooks/use-inbox'
-import { type DisplayDensity, DENSITY_CONFIG } from '@/hooks/use-display-density'
+import type { DisplayDensity } from '@/hooks/use-display-density'
 import { VoiceRecorder } from './voice-recorder'
 
 /**
@@ -52,6 +52,7 @@ interface CaptureInputProps {
   onCaptureSuccess?: () => void
   onCaptureError?: (error: string) => void
   density?: DisplayDensity
+  compact?: boolean
   className?: string
 }
 
@@ -91,6 +92,7 @@ export function CaptureInput({
   onCaptureSuccess,
   onCaptureError,
   density = 'comfortable',
+  compact = false,
   className
 }: CaptureInputProps): React.JSX.Element {
   const [value, setValue] = useState('')
@@ -103,8 +105,6 @@ export function CaptureInput({
   } | null>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
-
-  const densityConfig = DENSITY_CONFIG[density]
 
   const captureText = useCaptureText()
   const captureLink = useCaptureLink()
@@ -272,57 +272,41 @@ export function CaptureInput({
     [captureImage, onCaptureSuccess, onCaptureError]
   )
 
-  // Show voice recorder when recording
-  if (isRecording) {
-    return (
-      <div className={cn('relative group', 'transition-all duration-300', className)}>
-        <VoiceRecorder
-          onRecordingComplete={handleRecordingComplete}
-          onCancel={handleRecordingCancel}
-          maxDuration={300}
-          autoStart
-          className="w-full"
-        />
-      </div>
-    )
-  }
-
   return (
-    <div className={cn('relative group', 'transition-all duration-300', className)}>
-      {/* Input container with editorial styling */}
+    <div
+      className={cn(
+        'relative group flex flex-col gap-2',
+        compact && 'grow shrink basis-0 min-w-0',
+        'transition-all duration-300',
+        className
+      )}
+    >
       <div
         className={cn(
           'relative flex items-center',
-          densityConfig.captureGap,
-          densityConfig.capturePadding,
-          // Enhanced foundation - soft gradient with depth
-          'bg-linear-to-r from-muted/30 via-muted/40 to-muted/30',
-          'hover:from-muted/35 hover:via-muted/45 hover:to-muted/35',
-          'border border-border/60',
-          'shadow-[inset_0_1px_2px_rgba(0,0,0,0.04)]',
-          densityConfig.captureRadius,
-          'transition-all duration-300',
-          // Focused state with warm amber glow
-          isFocused && 'bg-muted/50 border-border shadow-sm ring-1 ring-amber-500/20'
+          compact ? 'gap-1.5 px-2.5 py-1 rounded-md' : 'gap-2.5 px-3.5 py-2.5 rounded-[10px]',
+          'border-[1.5px] border-dashed transition-all duration-150',
+          !isFocused &&
+            (compact ? 'border-border hover:border-text-tertiary' : 'border-border/30 bg-muted/20'),
+          isFocused &&
+            (compact
+              ? 'border-amber-500/60 bg-muted/10'
+              : 'bg-muted/30 border-border/50 ring-1 ring-amber-500/20')
         )}
       >
-        {/* Type indicator icon */}
         <div
           className={cn(
-            'shrink-0',
-            'text-muted-foreground/70', // More visible
-            'transition-colors duration-200',
-            isFocused && 'text-amber-600 dark:text-amber-400' // Amber on focus
+            'shrink-0 text-muted-foreground/50 transition-colors duration-200',
+            isFocused && 'text-amber-600 dark:text-amber-400'
           )}
         >
           {isUrl ? (
-            <Link className="size-4" aria-hidden="true" />
+            <Link className={compact ? 'size-3.5' : 'size-4'} aria-hidden="true" />
           ) : (
-            <FileText className="size-4" aria-hidden="true" />
+            <FileText className={compact ? 'size-3.5' : 'size-4'} aria-hidden="true" />
           )}
         </div>
 
-        {/* Textarea */}
         <textarea
           ref={textareaRef}
           value={value}
@@ -333,130 +317,96 @@ export function CaptureInput({
           onFocus={() => setIsFocused(true)}
           onBlur={() => setIsFocused(false)}
           onKeyDown={handleKeyDown}
-          placeholder="What's on your mind?"
+          placeholder={
+            compact
+              ? 'Capture a link or thought...'
+              : 'Quick capture — paste a link, jot a thought...'
+          }
           disabled={isCapturing}
           rows={1}
           className={cn(
-            'flex-1 min-h-[24px] max-h-[200px]',
-            'bg-transparent',
-            'text-sm text-foreground/90 leading-6',
-            // Editorial placeholder - serif, italic, more visible
-            'placeholder:font-serif placeholder:italic',
-            'placeholder:text-muted-foreground/60',
-            'resize-none',
-            'focus:outline-none',
+            'flex-1 bg-transparent resize-none focus:outline-none',
             'disabled:opacity-50 disabled:cursor-not-allowed',
-            'tracking-wide'
+            compact
+              ? 'min-h-[18px] max-h-[18px] text-[12px] leading-[18px] placeholder:text-text-tertiary'
+              : 'min-h-[24px] max-h-[200px] text-sm text-foreground/90 leading-6 placeholder:text-muted-foreground/40'
           )}
           aria-label="Capture input"
         />
 
-        {/* Attachment button */}
-        <button
-          onClick={handleAttachClick}
-          disabled={isCapturing}
-          className={cn(
-            'shrink-0',
-            'p-1.5 rounded-lg',
-            'text-muted-foreground/60', // More visible
-            'transition-all duration-200',
-            'hover:bg-amber-500/10 hover:text-amber-600 dark:hover:text-amber-400', // Amber hover
-            'disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-transparent'
-          )}
-          aria-label="Attach file"
-          title="Attach file (Images, Audio, Video, PDF)"
-        >
-          <Paperclip className="size-4" aria-hidden="true" />
-        </button>
+        <div className={cn('flex shrink-0 items-center', compact ? 'gap-0.5' : 'gap-1')}>
+          <button
+            onClick={handleAttachClick}
+            disabled={isCapturing}
+            className={cn(
+              'flex items-center justify-center rounded-md',
+              'text-muted-foreground/50 transition-colors duration-200',
+              'hover:text-muted-foreground',
+              'disabled:opacity-30 disabled:cursor-not-allowed',
+              compact ? 'size-5' : 'size-7'
+            )}
+            aria-label="Attach file"
+            title="Attach file (Images, Audio, Video, PDF)"
+          >
+            <Paperclip className={compact ? 'size-3' : 'size-[15px]'} aria-hidden="true" />
+          </button>
 
-        {/* Microphone button */}
-        <button
-          onClick={handleMicClick}
-          disabled={isCapturing}
-          className={cn(
-            'shrink-0',
-            'p-1.5 rounded-lg',
-            'text-muted-foreground/60', // More visible
-            'transition-all duration-200',
-            'hover:bg-amber-500/10 hover:text-amber-600 dark:hover:text-amber-400', // Amber hover
-            'disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-transparent'
-          )}
-          aria-label="Record voice memo"
-          title="Record voice memo"
-        >
-          <Mic className="size-4" aria-hidden="true" />
-        </button>
+          <button
+            onClick={handleMicClick}
+            disabled={isCapturing}
+            className={cn(
+              'flex items-center justify-center rounded-md',
+              'text-muted-foreground/50 transition-colors duration-200',
+              'hover:text-muted-foreground',
+              'disabled:opacity-30 disabled:cursor-not-allowed',
+              compact ? 'size-5' : 'size-7'
+            )}
+            aria-label="Record voice memo"
+            title="Record voice memo"
+          >
+            <Mic className={compact ? 'size-3' : 'size-[15px]'} aria-hidden="true" />
+          </button>
 
-        {/* Hidden file input */}
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept={ALLOWED_ATTACHMENT_TYPES.join(',')}
-          onChange={handleFileSelect}
-          className="hidden"
-          aria-hidden="true"
-        />
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept={ALLOWED_ATTACHMENT_TYPES.join(',')}
+            onChange={handleFileSelect}
+            className="hidden"
+            aria-hidden="true"
+          />
 
-        {/* Submit button */}
-        <button
-          onClick={() => handleSubmit()}
-          disabled={!value.trim() || isCapturing}
-          className={cn(
-            'shrink-0',
-            'p-1.5 rounded-lg',
-            'text-muted-foreground/60', // More visible
-            'transition-all duration-200',
-            'hover:bg-amber-500/10 hover:text-amber-600 dark:hover:text-amber-400', // Amber hover
-            'disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-transparent',
-            // Active state when there's content
-            value.trim() && !isCapturing && 'text-amber-600 dark:text-amber-400 bg-amber-500/10'
-          )}
-          aria-label={isUrl ? 'Capture link' : 'Capture note'}
-        >
-          {isCapturing ? (
-            <Loader2 className="size-4 animate-spin" aria-hidden="true" />
-          ) : (
-            <Send className="size-4" aria-hidden="true" />
-          )}
-        </button>
-      </div>
-
-      {/* Hint text */}
-      <div
-        className={cn(
-          'mt-2 px-4',
-          'text-xs text-muted-foreground/60', // More visible
-          'transition-all duration-200',
-          !isFocused && 'opacity-0 translate-y-1',
-          isFocused && 'opacity-100 translate-y-0'
-        )}
-      >
-        {isUrl ? (
-          <span>
-            Press{' '}
-            <kbd className="px-1.5 py-0.5 bg-muted/70 rounded border border-border/50 text-[10px] font-medium">
-              Enter
-            </kbd>{' '}
-            to capture link
-          </span>
-        ) : (
-          <span>
-            Press{' '}
-            <kbd className="px-1.5 py-0.5 bg-muted/70 rounded border border-border/50 text-[10px] font-medium">
-              Enter
-            </kbd>{' '}
-            to capture,{' '}
-            <kbd className="px-1.5 py-0.5 bg-muted/70 rounded border border-border/50 text-[10px] font-medium">
-              Shift+Enter
-            </kbd>{' '}
-            for new line
-          </span>
-        )}
+          <button
+            onClick={() => handleSubmit()}
+            disabled={!value.trim() || isCapturing}
+            className={cn(
+              'flex items-center justify-center rounded-md',
+              'transition-all duration-200',
+              value.trim() && !isCapturing
+                ? 'bg-amber-500 text-background dark:text-black'
+                : compact
+                  ? 'text-muted-foreground/30'
+                  : 'bg-muted/40 text-muted-foreground/30',
+              'disabled:cursor-not-allowed',
+              compact ? 'size-5' : 'size-7'
+            )}
+            aria-label={isUrl ? 'Capture link' : 'Capture note'}
+          >
+            {isCapturing ? (
+              <Loader2
+                className={cn('animate-spin', compact ? 'size-3' : 'size-3.5')}
+                aria-hidden="true"
+              />
+            ) : (
+              <Send className={compact ? 'size-3' : 'size-3.5'} aria-hidden="true" />
+            )}
+          </button>
+        </div>
       </div>
 
       {/* Duplicate notice */}
       {duplicateMatch && (
-        <div className="mt-2 flex items-center gap-2 rounded-lg border border-amber-500/30 bg-amber-500/5 px-3 py-2">
+        <div className="mt-2 flex items-center gap-2 rounded-md border border-amber-500/30 bg-amber-500/5 px-3 py-2">
           <Copy className="size-3.5 shrink-0 text-amber-600 dark:text-amber-400" />
           <p className="flex-1 text-xs text-muted-foreground">
             Already captured: &ldquo;{duplicateMatch.title.slice(0, 50)}
@@ -469,6 +419,16 @@ export function CaptureInput({
             Capture Anyway
           </button>
         </div>
+      )}
+
+      {isRecording && (
+        <VoiceRecorder
+          onRecordingComplete={handleRecordingComplete}
+          onCancel={handleRecordingCancel}
+          maxDuration={300}
+          autoStart
+          className="w-full"
+        />
       )}
     </div>
   )

@@ -56,16 +56,16 @@ export const DropZone = ({ zone, groupId, className }: DropZoneProps): React.JSX
       {/* Visual indicator when hovering */}
       <div
         className={cn(
-          'absolute inset-2 rounded-lg transition-all duration-150',
+          'absolute inset-2 rounded-md transition-all duration-150',
           isOver
-            ? 'bg-blue-500/20 border-2 border-dashed border-blue-500'
+            ? 'bg-tint-light border-2 border-dashed border-tint'
             : 'bg-transparent border-2 border-transparent'
         )}
       >
         {/* Zone label */}
         {isOver && (
           <div className="absolute inset-0 flex items-center justify-center">
-            <div className="bg-blue-500 text-white px-3 py-1.5 rounded-md text-sm font-medium shadow-lg">
+            <div className="bg-tint text-tint-foreground px-3 py-1.5 rounded-md text-sm font-medium shadow-lg">
               {getDropZoneLabel(zone)}
             </div>
           </div>

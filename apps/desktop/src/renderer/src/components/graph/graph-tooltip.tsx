@@ -1,4 +1,5 @@
 import type Graph from 'graphology'
+import { NoteIconDisplay } from '@/lib/render-note-icon'
 
 const TYPE_COLORS: Record<string, string> = {
   note: 'bg-accent-cyan/15 text-accent-cyan',
@@ -28,14 +29,14 @@ export function GraphTooltip({ nodeId, graph, x, y }: GraphTooltipProps): React.
 
   return (
     <div
-      className="pointer-events-none absolute z-50 max-w-[240px] rounded-lg border border-border bg-popover p-2.5 shadow-card"
+      className="pointer-events-none absolute z-50 max-w-[240px] rounded-md border border-border bg-popover p-2.5 shadow-card"
       style={{
         left: x + 12,
         top: y + 12
       }}
     >
       <div className="flex items-center gap-1.5 mb-1">
-        {emoji && <span className="text-sm">{emoji}</span>}
+        {emoji && <NoteIconDisplay value={emoji} className="text-sm" />}
         <span className="text-sm font-medium text-foreground truncate">{label}</span>
       </div>
 

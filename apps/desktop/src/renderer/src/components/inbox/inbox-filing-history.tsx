@@ -13,7 +13,7 @@ import {
   Bell,
   HelpCircle
 } from '@/lib/icons'
-import { formatDistanceToNow } from 'date-fns'
+import { formatCompactDate } from '@/services/inbox-service'
 import type { InboxFilingHistoryEntry } from '../../../../preload/index.d'
 
 export interface InboxFilingHistoryListProps {
@@ -64,7 +64,7 @@ export function InboxFilingHistoryList({ items }: InboxFilingHistoryListProps): 
                 key={item.id}
                 className="group flex items-center gap-3 py-2 border-b border-border/30 last:border-0"
               >
-                <div className="p-2 rounded-lg bg-muted/50 text-muted-foreground group-hover:bg-primary/10 group-hover:text-primary transition-colors">
+                <div className="p-2 rounded-md bg-muted/50 text-muted-foreground group-hover:bg-primary/10 group-hover:text-primary transition-colors">
                   <Icon className="size-4" />
                 </div>
 
@@ -88,7 +88,7 @@ export function InboxFilingHistoryList({ items }: InboxFilingHistoryListProps): 
 
                   <div className="flex items-center justify-between">
                     <span className="text-xs text-muted-foreground/70">
-                      {formatDistanceToNow(new Date(item.filedAt), { addSuffix: true })}
+                      {formatCompactDate(item.filedAt)}
                     </span>
                     {item.filedAction === 'linked' && (
                       <span className="text-[10px] uppercase tracking-wider font-bold text-primary bg-primary/10 px-1.5 py-0.5 rounded-sm">
