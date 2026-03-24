@@ -1,7 +1,5 @@
 import { useCallback } from 'react'
-import { Separator } from '@/components/ui/separator'
 import { Switch } from '@/components/ui/switch'
-import { Label } from '@/components/ui/label'
 import { Slider } from '@/components/ui/slider'
 import {
   Select,
@@ -12,6 +10,14 @@ import {
 } from '@/components/ui/select'
 import { useEditorSettings } from '@/hooks/use-editor-settings'
 import { toast } from 'sonner'
+import {
+  SettingsHeader,
+  SettingsGroup,
+  SettingRow,
+  SettingRowTall,
+  ACCENT_SWITCH,
+  COMPACT_SELECT
+} from '@/components/settings/settings-primitives'
 
 export function EditorSettings() {
   const { settings, isLoading, updateSettings } = useEditorSettings()
@@ -58,11 +64,8 @@ export function EditorSettings() {
 
   if (isLoading) {
     return (
-      <div className="space-y-6">
-        <div>
-          <h3 className="text-lg font-semibold">Editor</h3>
-          <p className="text-sm text-muted-foreground">Loading settings...</p>
-        </div>
+      <div className="flex flex-col antialiased">
+        <SettingsHeader title="Editor" subtitle="Loading settings..." />
       </div>
     )
   }
@@ -70,27 +73,13 @@ export function EditorSettings() {
   const autoSaveSeconds = Math.round(settings.autoSaveDelay / 1000)
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h3 className="text-lg font-semibold">Editor</h3>
-        <p className="text-sm text-muted-foreground">Note editor settings and preferences</p>
-      </div>
+    <div className="flex flex-col antialiased text-xs/4">
+      <SettingsHeader title="Editor" subtitle="Note editor settings and preferences" />
 
-      <Separator />
-
-      {/* Layout */}
-      <div className="space-y-6">
-        <h4 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
-          Layout
-        </h4>
-
-        <div className="space-y-2">
-          <Label>Editor Width</Label>
-          <p className="text-sm text-muted-foreground">
-            Controls the maximum width of the writing area
-          </p>
+      <SettingsGroup label="Layout">
+        <SettingRow label="Editor Width" description="Maximum width of the writing area">
           <Select value={settings.width} onValueChange={handleWidthChange}>
-            <SelectTrigger className="w-full max-w-xs">
+            <SelectTrigger className={COMPACT_SELECT}>
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -99,86 +88,58 @@ export function EditorSettings() {
               <SelectItem value="wide">Wide</SelectItem>
             </SelectContent>
           </Select>
-        </div>
-      </div>
+        </SettingRow>
+      </SettingsGroup>
 
-      <Separator />
-
-      {/* Toolbar */}
-      <div className="space-y-6">
-        <h4 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
-          Toolbar
-        </h4>
-
-        <div className="flex items-center justify-between">
-          <div className="space-y-0.5">
-            <Label htmlFor="sticky-toolbar">Sticky Formatting Toolbar</Label>
-            <p className="text-sm text-muted-foreground">
-              Always show the formatting toolbar above the editor instead of on text selection
-            </p>
-          </div>
+      <SettingsGroup label="Toolbar">
+        <SettingRow
+          label="Sticky Formatting Toolbar"
+          description="Always show toolbar above the editor"
+        >
           <Switch
-            id="sticky-toolbar"
             checked={settings.toolbarMode === 'sticky'}
             onCheckedChange={handleToolbarModeChange}
+            className={ACCENT_SWITCH}
           />
-        </div>
-      </div>
+        </SettingRow>
+      </SettingsGroup>
 
-      <Separator />
-
-      {/* Writing */}
-      <div className="space-y-6">
-        <h4 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
-          Writing
-        </h4>
-
-        <div className="flex items-center justify-between">
-          <div className="space-y-0.5">
-            <Label htmlFor="spell-check">Spell Check</Label>
-            <p className="text-sm text-muted-foreground">Underline misspelled words while typing</p>
-          </div>
+      <SettingsGroup label="Writing">
+        <SettingRow label="Spell Check" description="Underline misspelled words while typing">
           <Switch
-            id="spell-check"
             checked={settings.spellCheck}
             onCheckedChange={handleSpellCheckChange}
+            className={ACCENT_SWITCH}
           />
-        </div>
+        </SettingRow>
 
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <div className="space-y-0.5">
-              <Label>Auto-Save Delay</Label>
-              <p className="text-sm text-muted-foreground">
-                How long to wait after typing stops before saving
-              </p>
-            </div>
-            <span className="text-sm font-medium text-muted-foreground w-16 text-right">
-              {autoSaveSeconds === 0 ? 'Instant' : `${autoSaveSeconds}s`}
+        <SettingRowTall
+          label="Auto-Save Delay"
+          description="Wait time after typing stops before saving"
+        >
+          <div className="flex items-center gap-3">
+            <Slider
+              min={0}
+              max={30000}
+              step={1000}
+              value={[settings.autoSaveDelay]}
+              onValueCommit={handleAutoSaveDelayChange}
+              className="flex-1 max-w-xs"
+            />
+            <span className="text-xs/4 font-medium text-muted-foreground w-8 text-right shrink-0">
+              {autoSaveSeconds === 0 ? '0s' : `${autoSaveSeconds}s`}
             </span>
           </div>
-          <Slider
-            min={0}
-            max={30000}
-            step={1000}
-            value={[settings.autoSaveDelay]}
-            onValueCommit={handleAutoSaveDelayChange}
-            className="max-w-xs"
-          />
-        </div>
+        </SettingRowTall>
 
-        <div className="flex items-center justify-between">
-          <div className="space-y-0.5">
-            <Label htmlFor="word-count">Word Count</Label>
-            <p className="text-sm text-muted-foreground">Show word count in the editor footer</p>
-          </div>
+        <SettingRow label="Word Count" description="Show word count in the editor footer">
           <Switch
-            id="word-count"
             checked={settings.showWordCount}
             onCheckedChange={handleWordCountChange}
+            className={ACCENT_SWITCH}
           />
-        </div>
-      </div>
+        </SettingRow>
+      </SettingsGroup>
     </div>
   )
 }

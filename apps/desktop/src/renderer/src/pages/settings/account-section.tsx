@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Button } from '@/components/ui/button'
-import { Separator } from '@/components/ui/separator'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -11,7 +10,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle
 } from '@/components/ui/alert-dialog'
-import { User, LogOut, HardDrive, CalendarDays, Key } from '@/lib/icons'
+import { RefreshCw } from '@/lib/icons'
 import { toast } from 'sonner'
 import { format } from 'date-fns'
 import { extractErrorMessage } from '@/lib/ipc-error'
@@ -19,11 +18,23 @@ import { useAuth } from '@/contexts/auth-context'
 import { useAccountInfo } from '@/hooks/use-account-info'
 import { RecoveryKeyDialog } from '@/components/settings/recovery-key-dialog'
 import type { StorageBreakdownResult } from '@memry/contracts/ipc-sync-ops'
+import {
+  SettingsHeader,
+  SettingsGroup,
+  SettingRow
+} from '@/components/settings/settings-primitives'
 
 function formatBytes(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+}
+
+const STORAGE_COLORS: Record<string, string> = {
+  notes: '#6366f1',
+  attachments: '#f97316',
+  crdt: '#22c55e',
+  other: '#8c8c8c'
 }
 
 export function AccountSettings() {
@@ -33,14 +44,24 @@ export function AccountSettings() {
   const [showSignOutDialog, setShowSignOutDialog] = useState(false)
   const [showRecoveryKey, setShowRecoveryKey] = useState(false)
   const [signingOut, setSigningOut] = useState(false)
+  const [isRefreshing, setIsRefreshing] = useState(false)
+
+  const loadStorage = useCallback(async () => {
+    if (state.status !== 'authenticated') return
+    setIsRefreshing(true)
+    try {
+      const result = await window.api.syncOps.getStorageBreakdown()
+      setStorage(result)
+    } catch {
+      /* ignore */
+    } finally {
+      setIsRefreshing(false)
+    }
+  }, [state.status])
 
   useEffect(() => {
-    if (state.status !== 'authenticated') return
-    window.api.syncOps
-      .getStorageBreakdown()
-      .then(setStorage)
-      .catch(() => null)
-  }, [state.status])
+    loadStorage()
+  }, [loadStorage])
 
   const handleSignOut = useCallback(async () => {
     setSigningOut(true)
@@ -57,24 +78,17 @@ export function AccountSettings() {
 
   if (state.status === 'checking' || infoLoading) {
     return (
-      <div className="space-y-6">
-        <div>
-          <h3 className="text-lg font-semibold">Account</h3>
-          <p className="text-sm text-muted-foreground">Loading...</p>
-        </div>
+      <div className="flex flex-col antialiased">
+        <SettingsHeader title="Account" subtitle="Loading..." />
       </div>
     )
   }
 
   if (state.status !== 'authenticated') {
     return (
-      <div className="space-y-6">
-        <div>
-          <h3 className="text-lg font-semibold">Account</h3>
-          <p className="text-sm text-muted-foreground">Not signed in</p>
-        </div>
-        <Separator />
-        <p className="text-sm text-muted-foreground">
+      <div className="flex flex-col antialiased text-xs/4">
+        <SettingsHeader title="Account" subtitle="Not signed in" />
+        <p className="text-xs/4 text-muted-foreground">
           Sign in via the Sync section to access account settings.
         </p>
       </div>
@@ -83,113 +97,108 @@ export function AccountSettings() {
 
   const email = accountInfo?.email ?? state.email
   const joinedAt = accountInfo?.joinedAt
+  const initial = (email ?? 'U').charAt(0).toUpperCase()
 
   const storageUsedPct =
     storage && storage.limit > 0 ? Math.min(100, (storage.used / storage.limit) * 100) : null
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h3 className="text-lg font-semibold">Account</h3>
-        <p className="text-sm text-muted-foreground">Manage your account and sign out</p>
-      </div>
+    <div className="flex flex-col antialiased text-xs/4">
+      <SettingsHeader title="Account" subtitle="Manage your account and data" />
 
-      <Separator />
-
-      {/* Identity */}
-      <div className="space-y-3">
-        <h4 className="text-sm font-medium">Identity</h4>
-        <div className="flex items-start gap-3 p-3 rounded-md bg-muted/50">
-          <div className="flex items-center justify-center w-9 h-9 rounded-full bg-primary/10 shrink-0">
-            <User className="w-4 h-4 text-primary" />
+      <SettingsGroup label="Identity">
+        <div className="flex items-center gap-3 h-14 py-3 px-4">
+          <div
+            className="w-9 h-9 rounded-full flex items-center justify-center shrink-0 text-white text-sm font-semibold"
+            style={{ backgroundColor: 'var(--tint)' }}
+          >
+            {initial}
           </div>
-          <div className="space-y-0.5 min-w-0">
-            <p className="text-sm font-medium truncate">{email ?? 'Unknown'}</p>
+          <div className="flex flex-col gap-px min-w-0">
+            <span className="font-medium text-[13px]/4 text-foreground truncate">
+              {email ?? 'Unknown'}
+            </span>
             {joinedAt && (
-              <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                <CalendarDays className="w-3 h-3" />
-                <span>Member since {format(new Date(joinedAt), 'MMMM yyyy')}</span>
-              </div>
+              <span className="text-xs/4 text-muted-foreground">
+                Member since {format(new Date(joinedAt), 'MMMM yyyy')}
+              </span>
             )}
           </div>
         </div>
-      </div>
+      </SettingsGroup>
 
-      {/* Storage */}
       {storage && (
-        <>
-          <Separator />
-          <div className="space-y-3">
-            <h4 className="text-sm font-medium flex items-center gap-2">
-              <HardDrive className="w-4 h-4" />
-              Storage
-            </h4>
-            <div className="space-y-2">
-              <div className="flex justify-between text-xs text-muted-foreground">
-                <span>{formatBytes(storage.used)} used</span>
-                <span>{formatBytes(storage.limit)} total</span>
-              </div>
-              <div className="h-2 rounded-full bg-muted overflow-hidden">
-                <div
-                  className="h-full rounded-full bg-primary transition-all"
-                  style={{ width: `${storageUsedPct ?? 0}%` }}
-                />
-              </div>
-              <div className="grid grid-cols-4 gap-2 pt-1">
-                {Object.entries(storage.breakdown).map(([key, bytes]) => (
-                  <div key={key} className="text-center">
-                    <p className="text-xs font-medium">{formatBytes(bytes)}</p>
-                    <p className="text-xs text-muted-foreground capitalize">{key}</p>
-                  </div>
-                ))}
-              </div>
+        <SettingsGroup label="Storage">
+          <div className="py-3 px-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="font-semibold text-[13px]/4 text-foreground">
+                {formatBytes(storage.used)} of {formatBytes(storage.limit)} used
+              </span>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => void loadStorage()}
+                disabled={isRefreshing}
+                className="h-7 w-7 p-0"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin' : ''}`} />
+              </Button>
+            </div>
+
+            <div className="h-2 rounded-full bg-muted overflow-hidden flex">
+              {Object.entries(storage.breakdown).map(([key, bytes]) => {
+                const pct = storage.limit > 0 ? (bytes / storage.limit) * 100 : 0
+                return (
+                  <div
+                    key={key}
+                    className="h-full first:rounded-l-full last:rounded-r-full"
+                    style={{
+                      width: `${pct}%`,
+                      backgroundColor: STORAGE_COLORS[key] ?? '#8c8c8c'
+                    }}
+                  />
+                )
+              })}
+            </div>
+
+            <div className="flex items-center gap-4 flex-wrap">
+              {Object.entries(storage.breakdown).map(([key, bytes]) => (
+                <div key={key} className="flex items-center gap-1.5">
+                  <span
+                    className="w-2 h-2 rounded-full shrink-0"
+                    style={{ backgroundColor: STORAGE_COLORS[key] ?? '#8c8c8c' }}
+                  />
+                  <span className="text-xs/4 text-muted-foreground capitalize">{key}</span>
+                </div>
+              ))}
             </div>
           </div>
-        </>
+        </SettingsGroup>
       )}
 
-      <Separator />
+      <SettingsGroup label="Account Actions">
+        <SettingRow label="Recovery Key" description="View your encrypted recovery key">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowRecoveryKey(true)}
+            className="h-7 px-3 text-xs/4"
+          >
+            View
+          </Button>
+        </SettingRow>
 
-      {/* Actions */}
-      <div className="space-y-3">
-        <h4 className="text-sm font-medium">Account actions</h4>
-        <div className="flex flex-col gap-2">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm">Recovery key</p>
-              <p className="text-xs text-muted-foreground">
-                View your encrypted recovery key after re-authentication
-              </p>
-            </div>
-            <Button
-              variant="outline"
-              size="sm"
-              className="gap-2"
-              onClick={() => setShowRecoveryKey(true)}
-            >
-              <Key className="w-4 h-4" />
-              View
-            </Button>
-          </div>
-        </div>
-      </div>
-
-      <Separator />
-
-      <div>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => setShowSignOutDialog(true)}
-          className="text-destructive hover:text-destructive hover:bg-destructive/10 gap-2"
-        >
-          <LogOut className="w-4 h-4" />
-          Sign out
-        </Button>
-        <p className="text-xs text-muted-foreground mt-2">
-          Your notes stay on this device. Sync will stop until you sign in again.
-        </p>
-      </div>
+        <SettingRow label="Sign Out" description="Notes stay on this device. Sync stops.">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowSignOutDialog(true)}
+            className="h-7 px-3 text-xs/4 text-destructive border-destructive/30 hover:bg-destructive/10"
+          >
+            Sign Out
+          </Button>
+        </SettingRow>
+      </SettingsGroup>
 
       <RecoveryKeyDialog open={showRecoveryKey} onOpenChange={setShowRecoveryKey} />
 

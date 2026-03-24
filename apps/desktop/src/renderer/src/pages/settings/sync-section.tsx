@@ -1,6 +1,4 @@
-import { useState, useCallback, useEffect } from 'react'
-import { Button } from '@/components/ui/button'
-import { Separator } from '@/components/ui/separator'
+import { useState, useCallback } from 'react'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -11,7 +9,9 @@ import {
   AlertDialogHeader,
   AlertDialogTitle
 } from '@/components/ui/alert-dialog'
-import { CloudOff, RefreshCw, Pause, Play, LogOut, QrCode, RotateCw } from '@/lib/icons'
+import { Button } from '@/components/ui/button'
+import { Dialog, DialogContent } from '@/components/ui/dialog'
+import { Switch } from '@/components/ui/switch'
 import { toast } from 'sonner'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { useAuth } from '@/contexts/auth-context'
@@ -20,24 +20,25 @@ import { useSyncStatus } from '@/hooks/use-sync-status'
 import { SetupWizard } from './setup-wizard'
 import { QrLinking } from '@/components/sync/qr-linking'
 import { LinkingApprovalDialog } from '@/components/sync/linking-approval-dialog'
-import { SyncHistoryPanel } from '@/components/sync/sync-history'
 import { DeviceList } from '@/components/sync/device-list'
 import { KeyRotationWizard } from '@/components/sync/key-rotation-wizard'
+import { RecoveryKeyDialog } from '@/components/settings/recovery-key-dialog'
+import {
+  SettingsHeader,
+  SettingsGroup,
+  SettingRow,
+  ACCENT_SWITCH
+} from '@/components/settings/settings-primitives'
 
 export function SyncSettings() {
-  const { state, logout, setWizardStep } = useAuth()
+  const { state, logout } = useAuth()
   const { linkingRequest, clearLinkingRequest } = useSync()
   const syncStatus = useSyncStatus()
   const [showSignOutDialog, setShowSignOutDialog] = useState(false)
   const [signingOut, setSigningOut] = useState(false)
   const [showLinkingQr, setShowLinkingQr] = useState(false)
   const [showRotationWizard, setShowRotationWizard] = useState(false)
-
-  useEffect(() => {
-    if (state.status === 'unauthenticated' && state.wizardStep === 'idle') {
-      setWizardStep('sign-in')
-    }
-  }, [state.status, state.wizardStep, setWizardStep])
+  const [showRecoveryKey, setShowRecoveryKey] = useState(false)
 
   const handleSignOut = useCallback(async () => {
     setSigningOut(true)
@@ -52,148 +53,92 @@ export function SyncSettings() {
     }
   }, [logout])
 
-  const isSyncBusy = syncStatus.status === 'syncing' || syncStatus.status === 'offline'
+  const isSyncActive = syncStatus.status !== 'paused'
+  const isToggleDisabled = syncStatus.status === 'syncing' || syncStatus.status === 'offline'
 
   if (state.status === 'checking') {
     return (
-      <div className="space-y-6">
-        <div>
-          <h3 className="text-lg font-semibold">Sync</h3>
-          <p className="text-sm text-muted-foreground">Loading...</p>
-        </div>
+      <div className="flex flex-col antialiased">
+        <SettingsHeader title="Sync" subtitle="Loading..." />
       </div>
     )
   }
 
   if (state.status === 'authenticated') {
     return (
-      <div className="space-y-6">
-        <div>
-          <h3 className="text-lg font-semibold">Sync</h3>
-          <p className="text-sm text-muted-foreground">End-to-end encrypted</p>
-        </div>
-        <Separator />
+      <div className="flex flex-col antialiased text-xs/4">
+        <SettingsHeader title="Sync" subtitle="End-to-end encrypted sync across your devices" />
 
-        <div className="space-y-4">
-          <div className="flex items-center gap-3 p-3 rounded-md bg-muted/50">
-            <div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary/10">
-              <syncStatus.IconComponent className="w-4 h-4 text-primary" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2">
-                <span className={`w-2 h-2 rounded-full ${syncStatus.dotColor}`} />
-                <p className="text-sm font-medium">
+        <SettingsGroup label="Status">
+          <div className="flex items-center justify-between h-11 px-4 shrink-0">
+            <div className="flex items-center gap-2">
+              <div className={`shrink-0 rounded-sm size-2 ${syncStatus.dotColor}`} />
+              <div className="flex flex-col gap-px">
+                <span className="font-medium text-[13px]/4 text-foreground">
                   {syncStatus.label}
-                  <span className="text-muted-foreground font-normal">
-                    {' · '}Last synced {syncStatus.lastSyncLabel}
-                    {syncStatus.pendingCount > 0 && ` · ${syncStatus.pendingCount} pending`}
-                  </span>
-                </p>
+                </span>
+                <span className="text-xs/4 text-muted-foreground">
+                  Last synced {syncStatus.lastSyncLabel}
+                  {syncStatus.pendingCount > 0 && ` · ${syncStatus.pendingCount} pending`}
+                </span>
               </div>
-              <p className="text-xs text-muted-foreground">
-                Signed in{state.email ? ` as ${state.email}` : ''}
-              </p>
             </div>
+            <Switch
+              checked={isSyncActive}
+              disabled={isToggleDisabled}
+              onCheckedChange={(checked) =>
+                void (checked ? syncStatus.resume() : syncStatus.pause())
+              }
+              className={ACCENT_SWITCH}
+            />
           </div>
 
-          {showLinkingQr ? (
-            <QrLinking onCancel={() => setShowLinkingQr(false)} />
-          ) : (
-            <div className="flex flex-wrap gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={isSyncBusy}
-                onClick={() => void syncStatus.triggerSync()}
-                className="gap-2"
-              >
-                <RefreshCw className="w-4 h-4" />
-                {syncStatus.status === 'syncing'
-                  ? 'Syncing...'
-                  : syncStatus.status === 'idle' && syncStatus.pendingCount > 0
-                    ? `Sync ${syncStatus.pendingCount} ${syncStatus.pendingCount === 1 ? 'change' : 'changes'}`
-                    : 'Sync Now'}
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() =>
-                  void (syncStatus.status === 'paused' ? syncStatus.resume() : syncStatus.pause())
-                }
-                className="gap-2"
-              >
-                {syncStatus.status === 'paused' ? (
-                  <>
-                    <Play className="w-4 h-4" />
-                    Resume
-                  </>
-                ) : (
-                  <>
-                    <Pause className="w-4 h-4" />
-                    Pause
-                  </>
-                )}
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setShowLinkingQr(true)}
-                className="gap-2"
-              >
-                <QrCode className="w-4 h-4" />
-                Link Device
-              </Button>
-            </div>
-          )}
-        </div>
+          <SettingRow label="Account" description={state.email ?? 'Unknown'}>
+            <span className="text-xs/4 text-muted-foreground">Pro plan</span>
+          </SettingRow>
+        </SettingsGroup>
 
-        <Separator />
+        <SettingsGroup label="Devices">
+          <DeviceList onLinkDevice={() => setShowLinkingQr(true)} />
+        </SettingsGroup>
 
-        <div className="space-y-3">
-          <h4 className="text-sm font-medium">Devices</h4>
-          <DeviceList />
-        </div>
+        <SettingsGroup label="Security">
+          <SettingRow label="Recovery Key" description="View your recovery key for data access">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowRecoveryKey(true)}
+              className="h-7 px-3 text-xs/4"
+            >
+              View Key
+            </Button>
+          </SettingRow>
 
-        <Separator />
-
-        <div className="space-y-3">
-          <h4 className="text-sm font-medium">Security</h4>
-          <p className="text-xs text-muted-foreground">
-            Rotate encryption keys to generate a new recovery phrase. Your data stays intact.
-          </p>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setShowRotationWizard(true)}
-            className="gap-2"
+          <SettingRow
+            label="Rotate Encryption Keys"
+            description="Generate new keys and re-encrypt all data"
           >
-            <RotateCw className="w-4 h-4" />
-            Rotate Encryption Keys
-          </Button>
-        </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowRotationWizard(true)}
+              className="h-7 px-3 text-xs/4"
+            >
+              Rotate
+            </Button>
+          </SettingRow>
 
-        <KeyRotationWizard open={showRotationWizard} onOpenChange={setShowRotationWizard} />
-
-        <Separator />
-
-        <SyncHistoryPanel />
-
-        <Separator />
-
-        <div>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setShowSignOutDialog(true)}
-            className="text-destructive hover:text-destructive hover:bg-destructive/10"
-          >
-            <LogOut className="w-4 h-4 mr-2" />
-            Sign out
-          </Button>
-          <p className="text-xs text-muted-foreground mt-2">
-            Your notes stay on this device. Sync will stop until you sign in again.
-          </p>
-        </div>
+          <SettingRow label="Sign Out" description="Disconnect this device from sync">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowSignOutDialog(true)}
+              className="h-7 px-3 text-xs/4 text-destructive border-destructive/30 hover:bg-destructive/10"
+            >
+              Sign Out
+            </Button>
+          </SettingRow>
+        </SettingsGroup>
 
         <AlertDialog open={showSignOutDialog} onOpenChange={setShowSignOutDialog}>
           <AlertDialogContent>
@@ -217,6 +162,15 @@ export function SyncSettings() {
           </AlertDialogContent>
         </AlertDialog>
 
+        <KeyRotationWizard open={showRotationWizard} onOpenChange={setShowRotationWizard} />
+        <RecoveryKeyDialog open={showRecoveryKey} onOpenChange={setShowRecoveryKey} />
+
+        <Dialog open={showLinkingQr} onOpenChange={setShowLinkingQr}>
+          <DialogContent className="sm:max-w-md">
+            <QrLinking onCancel={() => setShowLinkingQr(false)} />
+          </DialogContent>
+        </Dialog>
+
         <LinkingApprovalDialog
           open={!!linkingRequest}
           event={linkingRequest}
@@ -231,24 +185,10 @@ export function SyncSettings() {
   }
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h3 className="text-lg font-semibold">Sync</h3>
-        <p className="text-sm text-muted-foreground">
-          Sync your data across devices with end-to-end encryption
-        </p>
+    <div className="flex flex-col items-center antialiased text-xs/4">
+      <div className="w-full max-w-sm">
+        <SetupWizard />
       </div>
-      <Separator />
-      <div className="flex items-center gap-3 p-3 rounded-md bg-muted/50">
-        <div className="flex items-center justify-center w-8 h-8 rounded-full bg-muted">
-          <CloudOff className="w-4 h-4 text-muted-foreground" />
-        </div>
-        <div className="flex-1 min-w-0">
-          <p className="text-sm font-medium">Sync disabled</p>
-          <p className="text-xs text-muted-foreground">Your notes are only stored on this device</p>
-        </div>
-      </div>
-      <SetupWizard />
     </div>
   )
 }

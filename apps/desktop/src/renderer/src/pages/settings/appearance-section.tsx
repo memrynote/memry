@@ -1,5 +1,4 @@
-import { useCallback, useState } from 'react'
-import { Separator } from '@/components/ui/separator'
+import { type ComponentType, Fragment, useCallback, useState } from 'react'
 import {
   Select,
   SelectContent,
@@ -7,13 +6,17 @@ import {
   SelectTrigger,
   SelectValue
 } from '@/components/ui/select'
-import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
-import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
-import { Sun, Moon, Monitor, Check, ALargeSmall, FileText } from '@/lib/icons'
+import { Sun, Moon, Monitor, FileText } from '@/lib/icons'
 import { useGeneralSettings } from '@/hooks/use-general-settings'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
+import {
+  SettingsHeader,
+  SettingsGroup,
+  SettingRow,
+  COMPACT_SELECT
+} from '@/components/settings/settings-primitives'
 
 const ACCENT_PRESETS = [
   { value: '#6366f1', label: 'Indigo' },
@@ -27,6 +30,71 @@ const ACCENT_PRESETS = [
 ] as const
 
 const HEX_COLOR_REGEX = /^#[0-9a-fA-F]{6}$/
+
+interface SegmentOption {
+  value: string
+  label: string
+  icon?: ComponentType<{ className?: string }>
+}
+
+function SegmentedControl({
+  options,
+  value,
+  onValueChange,
+  ariaLabel
+}: {
+  options: readonly SegmentOption[]
+  value: string
+  onValueChange: (v: string) => void
+  ariaLabel: string
+}) {
+  return (
+    <div
+      role="group"
+      aria-label={ariaLabel}
+      className="flex items-center shrink-0 rounded-lg overflow-hidden border border-border"
+    >
+      {options.map((opt, i) => {
+        const isActive = value === opt.value
+        const prevActive = i > 0 && value === options[i - 1].value
+        const Icon = opt.icon
+
+        return (
+          <Fragment key={opt.value}>
+            {i > 0 && !isActive && !prevActive && <div className="w-px h-5 bg-border shrink-0" />}
+            <button
+              type="button"
+              aria-pressed={isActive}
+              onClick={() => onValueChange(opt.value)}
+              className={cn(
+                'flex items-center gap-1.5 py-1.5 px-3 text-xs transition-colors cursor-pointer',
+                isActive
+                  ? 'bg-tint text-tint-foreground font-semibold'
+                  : 'bg-foreground/[0.04] text-muted-foreground hover:text-foreground'
+              )}
+            >
+              {Icon && <Icon className="size-3" />}
+              {opt.label}
+            </button>
+          </Fragment>
+        )
+      })}
+    </div>
+  )
+}
+
+const THEME_OPTIONS: SegmentOption[] = [
+  { value: 'light', label: 'Warm', icon: Sun },
+  { value: 'white', label: 'White', icon: FileText },
+  { value: 'dark', label: 'Dark', icon: Moon },
+  { value: 'system', label: 'System', icon: Monitor }
+]
+
+const FONT_SIZE_OPTIONS: SegmentOption[] = [
+  { value: 'small', label: 'S' },
+  { value: 'medium', label: 'M' },
+  { value: 'large', label: 'L' }
+]
 
 export function AppearanceSettings() {
   const { settings, isLoading, updateSettings } = useGeneralSettings()
@@ -69,7 +137,14 @@ export function AppearanceSettings() {
 
   const handleFontFamilyChange = useCallback(
     async (value: string) => {
-      const fontFamily = value as 'system' | 'serif' | 'sans-serif' | 'monospace'
+      const fontFamily = value as
+        | 'system'
+        | 'serif'
+        | 'sans-serif'
+        | 'monospace'
+        | 'gelasio'
+        | 'geist'
+        | 'inter'
       const success = await updateSettings({ fontFamily })
       if (!success) toast.error('Failed to update font family')
     },
@@ -78,175 +153,103 @@ export function AppearanceSettings() {
 
   if (isLoading) {
     return (
-      <div className="space-y-6">
-        <div>
-          <h3 className="text-lg font-semibold">Appearance</h3>
-          <p className="text-sm text-muted-foreground">Loading settings...</p>
-        </div>
+      <div className="flex flex-col antialiased">
+        <SettingsHeader title="Appearance" subtitle="Loading settings..." />
       </div>
     )
   }
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h3 className="text-lg font-semibold">Appearance</h3>
-        <p className="text-sm text-muted-foreground">Customize the look and feel</p>
-      </div>
+    <div className="flex flex-col antialiased text-xs/4">
+      <SettingsHeader title="Appearance" subtitle="Customize the look and feel" />
 
-      <Separator />
-
-      {/* Theme */}
-      <div className="space-y-6">
-        <h4 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
-          Theme
-        </h4>
-
-        <div className="space-y-2">
-          <Label>Color Mode</Label>
-          <p className="text-sm text-muted-foreground">
-            Choose a color mode or follow your system preference
-          </p>
-          <ToggleGroup
-            type="single"
+      <SettingsGroup label="Theme">
+        <SettingRow label="Color Mode" description="Choose your preferred theme">
+          <SegmentedControl
+            options={THEME_OPTIONS}
             value={settings.theme}
             onValueChange={handleThemeChange}
-            className="justify-start"
-          >
-            <ToggleGroupItem value="light" aria-label="Light theme" className="gap-2 px-4">
-              <Sun className="w-4 h-4" />
-              Warm
-            </ToggleGroupItem>
-            <ToggleGroupItem value="white" aria-label="White theme" className="gap-2 px-4">
-              <FileText className="w-4 h-4" />
-              White
-            </ToggleGroupItem>
-            <ToggleGroupItem value="dark" aria-label="Dark theme" className="gap-2 px-4">
-              <Moon className="w-4 h-4" />
-              Dark
-            </ToggleGroupItem>
-            <ToggleGroupItem value="system" aria-label="System theme" className="gap-2 px-4">
-              <Monitor className="w-4 h-4" />
-              System
-            </ToggleGroupItem>
-          </ToggleGroup>
-        </div>
-      </div>
+            ariaLabel="Color mode"
+          />
+        </SettingRow>
+      </SettingsGroup>
 
-      <Separator />
-
-      {/* Accent Color */}
-      <div className="space-y-6">
-        <h4 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
-          Accent Color
-        </h4>
-
-        <div className="space-y-3">
-          <Label>Pick an accent color</Label>
-          <div className="flex flex-wrap gap-2">
+      <SettingsGroup label="Accent Color">
+        <div className="flex items-center justify-between py-3.5 px-4">
+          <span className="font-medium text-[13px]/4 text-foreground">Pick an accent color</span>
+          <div className="flex items-center shrink-0 gap-2">
             {ACCENT_PRESETS.map((preset) => (
               <button
                 key={preset.value}
                 type="button"
                 onClick={() => void handleAccentChange(preset.value)}
-                className={cn(
-                  'w-8 h-8 rounded-full transition-all duration-150 relative',
-                  'hover:scale-110 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring',
-                  settings.accentColor === preset.value &&
-                    'ring-2 ring-offset-2 ring-offset-background ring-foreground/50'
-                )}
-                style={{ backgroundColor: preset.value }}
+                className="size-6 rounded-xl shrink-0 transition-all duration-150 cursor-pointer hover:scale-110 focus-visible:outline-none"
+                style={{
+                  backgroundColor: preset.value,
+                  boxShadow:
+                    settings.accentColor === preset.value
+                      ? `var(--background) 0px 0px 0px 2px, ${preset.value}80 0px 0px 0px 3.5px`
+                      : 'none'
+                }}
                 title={preset.label}
-              >
-                {settings.accentColor === preset.value && (
-                  <Check className="w-4 h-4 text-white absolute inset-0 m-auto drop-shadow-sm" />
-                )}
-              </button>
+              />
             ))}
           </div>
+        </div>
 
-          <div className="flex items-center gap-2 max-w-xs">
+        <SettingRow label="Custom Color" description="Enter a hex value">
+          <div className="flex items-center shrink-0 gap-2">
             <Input
-              placeholder="#hex"
-              value={customHex}
+              placeholder="#000000"
+              value={customHex || settings.accentColor}
               onChange={(e) => setCustomHex(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleCustomHexSubmit()}
-              className="w-28 font-mono text-sm"
+              onFocus={() => {
+                if (!customHex) setCustomHex(settings.accentColor)
+              }}
+              onBlur={() => {
+                if (customHex === settings.accentColor) setCustomHex('')
+              }}
+              className="w-24 h-7 font-mono text-xs bg-muted/50 border-border"
               maxLength={7}
             />
-            {customHex && HEX_COLOR_REGEX.test(customHex) && (
-              <button
-                type="button"
-                onClick={handleCustomHexSubmit}
-                className="w-8 h-8 rounded-full border-2 border-border shrink-0 transition-transform hover:scale-110"
-                style={{ backgroundColor: customHex }}
-                title="Apply custom color"
-              />
-            )}
-            {settings.accentColor &&
-              !ACCENT_PRESETS.some((p) => p.value === settings.accentColor) && (
-                <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
-                  <div
-                    className="w-4 h-4 rounded-full ring-1 ring-border"
-                    style={{ backgroundColor: settings.accentColor }}
-                  />
-                  <span className="font-mono">{settings.accentColor}</span>
-                </div>
-              )}
+            <div
+              className="size-5 rounded-[10px] shrink-0"
+              style={{
+                backgroundColor: HEX_COLOR_REGEX.test(customHex) ? customHex : settings.accentColor
+              }}
+            />
           </div>
-        </div>
-      </div>
+        </SettingRow>
+      </SettingsGroup>
 
-      <Separator />
-
-      {/* Typography */}
-      <div className="space-y-6">
-        <h4 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
-          Typography
-        </h4>
-
-        <div className="space-y-2">
-          <Label>Font Size</Label>
-          <p className="text-sm text-muted-foreground">Adjust the base text size across the app</p>
-          <ToggleGroup
-            type="single"
+      <SettingsGroup label="Typography">
+        <SettingRow label="Font Size" description="Adjust the base text size">
+          <SegmentedControl
+            options={FONT_SIZE_OPTIONS}
             value={settings.fontSize}
             onValueChange={handleFontSizeChange}
-            className="justify-start"
-          >
-            <ToggleGroupItem value="small" aria-label="Small font size" className="gap-2 px-4">
-              <ALargeSmall className="w-3.5 h-3.5" />
-              Small
-            </ToggleGroupItem>
-            <ToggleGroupItem value="medium" aria-label="Medium font size" className="gap-2 px-4">
-              <ALargeSmall className="w-4 h-4" />
-              Medium
-            </ToggleGroupItem>
-            <ToggleGroupItem value="large" aria-label="Large font size" className="gap-2 px-4">
-              <ALargeSmall className="w-5 h-5" />
-              Large
-            </ToggleGroupItem>
-          </ToggleGroup>
-        </div>
+            ariaLabel="Font size"
+          />
+        </SettingRow>
 
-        <div className="space-y-2">
-          <Label>Font Family</Label>
-          <p className="text-sm text-muted-foreground">
-            Choose the primary typeface for the interface
-          </p>
+        <SettingRow label="Font Family" description="Primary typeface for the interface">
           <Select value={settings.fontFamily} onValueChange={handleFontFamilyChange}>
-            <SelectTrigger className="w-full max-w-xs">
+            <SelectTrigger className={COMPACT_SELECT}>
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="system">System Default</SelectItem>
-              <SelectItem value="sans-serif">Sans-serif (System)</SelectItem>
+              <SelectItem value="sans-serif">Sans-serif</SelectItem>
               <SelectItem value="serif">Serif (Crimson Pro)</SelectItem>
+              <SelectItem value="gelasio">Gelasio</SelectItem>
+              <SelectItem value="geist">Geist</SelectItem>
+              <SelectItem value="inter">Inter</SelectItem>
               <SelectItem value="monospace">Monospace</SelectItem>
             </SelectContent>
           </Select>
-        </div>
-      </div>
+        </SettingRow>
+      </SettingsGroup>
     </div>
   )
 }

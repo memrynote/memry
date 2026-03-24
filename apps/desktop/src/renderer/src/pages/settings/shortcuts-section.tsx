@@ -1,7 +1,6 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Separator } from '@/components/ui/separator'
 import { Kbd, KbdGroup } from '@/components/ui/kbd'
 import { Badge } from '@/components/ui/badge'
 import { Search, RotateCcw, X, AlertTriangle, Info } from '@/lib/icons'
@@ -19,10 +18,7 @@ import {
   getGroupedShortcuts,
   type ShortcutEntry
 } from '@/lib/shortcut-registry'
-
-// ============================================================================
-// Key Capture Row
-// ============================================================================
+import { SettingsHeader, SettingsGroup } from '@/components/settings/settings-primitives'
 
 interface ShortcutRowProps {
   entry: ShortcutEntry
@@ -62,13 +58,11 @@ function ShortcutRow({
       e.preventDefault()
       e.stopPropagation()
 
-      // Escape cancels capture
       if (e.key === 'Escape') {
         stopCapture()
         return
       }
 
-      // Ignore bare modifier presses
       if (['Meta', 'Control', 'Alt', 'Shift'].includes(e.key)) return
 
       const newBinding: ShortcutBinding = {
@@ -95,7 +89,6 @@ function ShortcutRow({
     return () => window.removeEventListener('keydown', handleKeyDown, { capture: true })
   }, [isCapturing, entry.id, overrides, onRebind, stopCapture])
 
-  // Close on outside click
   useEffect(() => {
     if (!isCapturing) return
     const handleClick = (e: MouseEvent): void => {
@@ -108,24 +101,24 @@ function ShortcutRow({
   }, [isCapturing, stopCapture])
 
   return (
-    <div className="space-y-1">
-      <div className="flex items-center justify-between py-2 group">
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2">
-            <span className="text-sm font-medium">{entry.label}</span>
-            {!isDefault && (
-              <Badge variant="secondary" className="text-xs">
-                Custom
-              </Badge>
-            )}
-          </div>
-          <p className="text-xs text-muted-foreground truncate">{entry.description}</p>
+    <>
+      <div className="flex items-center justify-between h-11 py-3 px-4 shrink-0 group">
+        <div className="flex items-center gap-2 min-w-0">
+          <span className="font-medium text-[13px]/4 text-foreground">{entry.label}</span>
+          {!isDefault && (
+            <Badge
+              variant="secondary"
+              className="text-[10px]/3 px-1.5 py-0 h-4 bg-[var(--tint)]/15 text-[var(--tint)] border-0"
+            >
+              Custom
+            </Badge>
+          )}
         </div>
 
-        <div ref={captureRef} className="flex items-center gap-2 ml-4">
+        <div ref={captureRef} className="flex items-center gap-2 ml-4 shrink-0">
           {isCapturing ? (
             <div className="flex items-center gap-2">
-              <div className="flex items-center gap-1 px-2 py-1 rounded border border-primary bg-primary/5 text-sm text-primary animate-pulse">
+              <div className="flex items-center gap-1 px-2 py-1 rounded border border-[var(--tint)] bg-[var(--tint)]/5 text-xs text-[var(--tint)] animate-pulse">
                 Press shortcut…
               </div>
               <Button
@@ -168,15 +161,10 @@ function ShortcutRow({
           )}
         </div>
       </div>
-
-      {conflict && <p className="text-xs text-destructive pb-1">{conflict}</p>}
-    </div>
+      {conflict && <p className="text-[10px]/3 text-destructive px-4 pb-2">{conflict}</p>}
+    </>
   )
 }
-
-// ============================================================================
-// Global Capture Row
-// ============================================================================
 
 const PLATFORM = window.navigator.platform.toLowerCase()
 const IS_MACOS = PLATFORM.includes('mac')
@@ -258,32 +246,31 @@ function GlobalCaptureRow({
   }, [isCapturing, stopCapture])
 
   return (
-    <div className="space-y-2">
-      <div className="flex items-center justify-between py-2 group">
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2">
-            <span className="text-sm font-medium">Global Capture</span>
-            {permissionStatus === 'required' && (
-              <Badge variant="destructive" className="text-xs gap-1">
-                <AlertTriangle className="w-3 h-3" />
-                Permission needed
-              </Badge>
-            )}
-            {permissionStatus === 'granted' && binding && (
-              <Badge variant="secondary" className="text-xs">
-                Active
-              </Badge>
-            )}
-          </div>
-          <p className="text-xs text-muted-foreground">
-            Capture a note from anywhere, even when memry is in the background
-          </p>
+    <>
+      <div className="flex items-center justify-between h-11 py-3 px-4 shrink-0 group">
+        <div className="flex items-center gap-2 min-w-0">
+          <span className="font-medium text-[13px]/4 text-foreground">Global Capture</span>
+          {permissionStatus === 'required' && (
+            <Badge variant="destructive" className="text-[10px]/3 px-1.5 py-0 h-4 gap-1">
+              <AlertTriangle className="w-3 h-3" />
+              Permission needed
+            </Badge>
+          )}
+          {permissionStatus === 'granted' && binding && (
+            <Badge
+              variant="secondary"
+              className="text-[10px]/3 px-1.5 py-0 h-4 bg-green-500/15 text-green-600 border-0"
+            >
+              Active
+            </Badge>
+          )}
+          <span className="text-xs/4 text-muted-foreground">Capture a note from anywhere</span>
         </div>
 
-        <div ref={captureRef} className="flex items-center gap-2 ml-4">
+        <div ref={captureRef} className="flex items-center gap-2 ml-4 shrink-0">
           {isCapturing ? (
             <div className="flex items-center gap-2">
-              <div className="flex items-center gap-1 px-2 py-1 rounded border border-primary bg-primary/5 text-sm text-primary animate-pulse">
+              <div className="flex items-center gap-1 px-2 py-1 rounded border border-[var(--tint)] bg-[var(--tint)]/5 text-xs text-[var(--tint)] animate-pulse">
                 Press shortcut…
               </div>
               <Button
@@ -315,7 +302,7 @@ function GlobalCaptureRow({
                   onClick={startCapture}
                   className="text-xs text-muted-foreground hover:text-foreground transition-colors px-2 py-1 rounded border border-dashed border-border"
                 >
-                  Click to set shortcut
+                  Click to set
                 </button>
               )}
               {binding && (
@@ -333,24 +320,18 @@ function GlobalCaptureRow({
           )}
         </div>
       </div>
-
       {permissionStatus === 'required' && IS_MACOS && (
-        <div className="flex items-start gap-2 rounded-md bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 px-3 py-2 text-xs text-amber-800 dark:text-amber-300">
-          <Info className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+        <div className="flex items-start gap-2 mx-4 mb-3 rounded-md bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 px-3 py-2 text-[10px]/3 text-amber-800 dark:text-amber-300">
+          <Info className="w-3 h-3 mt-0.5 shrink-0" />
           <span>
-            Global shortcuts require Accessibility permission on macOS. Go to{' '}
-            <strong>System Settings → Privacy &amp; Security → Accessibility</strong> and enable
-            memry.
+            Global shortcuts require Accessibility permission. Go to{' '}
+            <strong>System Settings → Privacy → Accessibility</strong> and enable memry.
           </span>
         </div>
       )}
-    </div>
+    </>
   )
 }
-
-// ============================================================================
-// Shortcuts Section
-// ============================================================================
 
 export function ShortcutsSettings() {
   const { settings, isLoading, updateSettings, resetToDefaults } = useKeyboardSettings()
@@ -372,7 +353,6 @@ export function ShortcutsSettings() {
       const entry = SHORTCUT_REGISTRY.find((e) => e.id === id)
       if (!entry) return
 
-      // If new binding equals default, clear the override
       if (bindingsEqual(binding, entry.defaultBinding)) {
         const newOverrides = { ...overrides }
         delete newOverrides[id]
@@ -422,79 +402,65 @@ export function ShortcutsSettings() {
 
   if (isLoading) {
     return (
-      <div className="space-y-6">
-        <div>
-          <h3 className="text-lg font-semibold">Keyboard Shortcuts</h3>
-          <p className="text-sm text-muted-foreground">Loading settings...</p>
-        </div>
+      <div className="flex flex-col antialiased">
+        <SettingsHeader title="Keyboard Shortcuts" subtitle="Loading settings..." />
       </div>
     )
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-start justify-between">
-        <div>
-          <h3 className="text-lg font-semibold">Keyboard Shortcuts</h3>
-          <p className="text-sm text-muted-foreground">
-            Click any shortcut to rebind it. Press Escape to cancel.
-          </p>
-        </div>
-        {hasCustomBindings && (
-          <Button variant="outline" size="sm" onClick={handleResetAll}>
-            <RotateCcw className="w-3.5 h-3.5 mr-1.5" />
-            Reset All
-          </Button>
-        )}
-      </div>
+    <div className="flex flex-col antialiased text-xs/4">
+      <SettingsHeader
+        title="Keyboard Shortcuts"
+        subtitle="Click any shortcut to rebind it"
+        action={
+          hasCustomBindings ? (
+            <Button variant="outline" size="sm" onClick={handleResetAll} className="gap-1.5">
+              <RotateCcw className="w-3.5 h-3.5" />
+              Reset All
+            </Button>
+          ) : undefined
+        }
+      />
 
-      <Separator />
-
-      {/* Global Capture */}
-      <GlobalCaptureRow binding={globalCapture} onSave={handleGlobalCaptureSave} />
-
-      <Separator />
-
-      {/* Search */}
-      <div className="relative">
-        <Search className="absolute left-2.5 top-2.5 w-4 h-4 text-muted-foreground" />
+      <div className="relative pb-6">
+        <Search className="absolute left-3 top-2 w-3.5 h-3.5 text-muted-foreground" />
         <Input
-          placeholder="Search shortcuts…"
+          placeholder="Search shortcuts..."
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          className="pl-8"
+          className="pl-8 h-8 text-xs/4 rounded-lg border-border bg-transparent"
         />
       </div>
 
+      <SettingsGroup label="Global Capture">
+        <GlobalCaptureRow binding={globalCapture} onSave={handleGlobalCaptureSave} />
+      </SettingsGroup>
+
       {filteredGroups.length === 0 && (
-        <p className="text-sm text-muted-foreground text-center py-4">
+        <p className="text-xs/4 text-muted-foreground text-center py-4">
           No shortcuts match your search
         </p>
       )}
 
       {filteredGroups.map(([category, entries]) => (
-        <div key={category} className="space-y-1">
-          <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wider py-1">
-            {category}
-          </h4>
-          <div className="divide-y divide-border/50">
-            {entries.map((entry) => {
-              const effectiveBinding = resolveBinding(entry, overrides)
-              const isDefault = !overrides[entry.id]
-              return (
-                <ShortcutRow
-                  key={entry.id}
-                  entry={entry}
-                  effectiveBinding={effectiveBinding}
-                  isDefault={isDefault}
-                  overrides={overrides}
-                  onRebind={handleRebind}
-                  onClearOverride={handleClearOverride}
-                />
-              )
-            })}
-          </div>
-        </div>
+        <SettingsGroup key={category} label={category}>
+          {entries.map((entry) => {
+            const effectiveBinding = resolveBinding(entry, overrides)
+            const isDefault = !overrides[entry.id]
+            return (
+              <ShortcutRow
+                key={entry.id}
+                entry={entry}
+                effectiveBinding={effectiveBinding}
+                isDefault={isDefault}
+                overrides={overrides}
+                onRebind={handleRebind}
+                onClearOverride={handleClearOverride}
+              />
+            )
+          })}
+        </SettingsGroup>
       ))}
     </div>
   )
