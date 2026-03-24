@@ -45,11 +45,7 @@ export function VaultSettings() {
 
   const handleReveal = useCallback(async () => {
     if (!vaultPath) return
-    try {
-      await window.electron.ipcRenderer.invoke('shell:open-path', vaultPath)
-    } catch {
-      /* shell:open-path not available yet */
-    }
+    await window.api.vault.reveal()
   }, [vaultPath])
 
   return (

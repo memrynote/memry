@@ -19,9 +19,9 @@ const STEP_MAP: Record<WizardStep, number> = {
   'otp-verification': 1,
   'recovery-display': 1,
   'recovery-confirm': 1,
-  'recovery-input': 2,
+  'recovery-input': 1,
   'linking-choice': 2,
-  'linking-scan': 2,
+  'linking-scan': 1,
   'linking-pending': 2
 }
 

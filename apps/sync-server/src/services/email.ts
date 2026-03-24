@@ -1,7 +1,7 @@
 import { AppError, ErrorCodes } from '../lib/errors'
 
 const RESEND_API_URL = 'https://api.resend.com/emails'
-const FROM_ADDRESS = 'Memry <noreply@memrynote.ai>'
+const FROM_ADDRESS = 'Memry <noreply@memrynote.com>'
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
