@@ -81,6 +81,10 @@ export const vaultService: VaultClientAPI = {
    */
   reindex: (): Promise<void> => {
     return window.api.vault.reindex()
+  },
+
+  reveal: (): Promise<void> => {
+    return window.api.vault.reveal()
   }
 }
 
