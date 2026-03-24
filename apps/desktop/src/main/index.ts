@@ -602,7 +602,7 @@ void app.whenReady().then(async () => {
 
   if (process.platform === 'darwin' && !app.isPackaged) {
     const iconPath = join(__dirname, '../../build/icon.png')
-    app.dock.setIcon(nativeImage.createFromPath(iconPath))
+    app.dock?.setIcon(nativeImage.createFromPath(iconPath))
   }
 
   createWindow()
