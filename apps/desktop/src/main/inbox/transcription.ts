@@ -253,12 +253,26 @@ export async function transcribeAudio(
 
     log.info(`Success for item ${itemId}: "${transcription.substring(0, 50)}..."`)
 
-    // Update item with transcription
+    // Auto-title from transcription if still using default name
+    const currentItem = db
+      .select({ title: inboxItems.title })
+      .from(inboxItems)
+      .where(eq(inboxItems.id, itemId))
+      .get()
+    let autoTitle: string | undefined
+    if (currentItem?.title.startsWith('Voice memo (') && transcription.length > 0) {
+      const firstSentence = transcription.match(/^[^.!?]+[.!?]?/)?.[0] ?? transcription
+      autoTitle =
+        firstSentence.length > 60 ? firstSentence.slice(0, 57).trim() + '...' : firstSentence.trim()
+    }
+
+    // Update item with transcription (+ auto-title if applicable)
     db.update(inboxItems)
       .set({
         transcription,
         transcriptionStatus: 'complete',
         processingError: null,
+        ...(autoTitle ? { title: autoTitle } : {}),
         modifiedAt: new Date().toISOString()
       })
       .where(eq(inboxItems.id, itemId))
