@@ -1,9 +1,10 @@
 import { useState, useCallback, useEffect } from 'react'
 import { QRCodeSVG } from 'qrcode.react'
+import { DialogDescription, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { useCountdown } from '@/hooks/use-countdown'
 import { extractErrorMessage } from '@/lib/ipc-error'
-import { QrCode, RefreshCw, X, Loader2, Clock, AlertCircle } from '@/lib/icons'
+import { QrCode, RefreshCw, Loader2, Clock, AlertCircle, Copy, Lock } from '@/lib/icons'
 
 type QrState = 'loading' | 'ready' | 'expired' | 'error'
 
@@ -52,30 +53,31 @@ export function QrLinking({ onCancel }: QrLinkingProps): React.JSX.Element {
   }, [generateQr])
 
   return (
-    <div className="space-y-5">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2.5">
-          <div className="w-9 h-9 rounded-xl bg-amber-500/10 dark:bg-amber-400/10 flex items-center justify-center">
-            <QrCode className="w-4.5 h-4.5 text-amber-700 dark:text-amber-400" />
-          </div>
-          <h3 className="font-display text-xl tracking-tight">Link a device</h3>
-        </div>
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={onCancel}
-          className="h-8 w-8"
-          aria-label="Cancel device linking"
-        >
-          <X className="w-4 h-4" aria-hidden="true" />
-        </Button>
+    <div className="flex flex-col items-center gap-5">
+      <div className="w-12 h-12 rounded-xl bg-amber-500/10 dark:bg-amber-400/10 flex items-center justify-center">
+        <QrCode className="w-5 h-5 text-amber-600 dark:text-amber-400" />
       </div>
 
-      <p className="font-serif text-[15px] text-muted-foreground leading-relaxed">
-        Scan this code from your new device, or copy the linking code below.
-      </p>
+      <div className="flex flex-col items-center gap-1.5 text-center">
+        <DialogTitle className="font-heading text-xl font-semibold tracking-tight text-foreground">
+          Link new device
+        </DialogTitle>
+        <DialogDescription className="text-sm text-muted-foreground">
+          Scan this QR code from the device you want to link to transfer your encryption keys
+          securely.
+        </DialogDescription>
+      </div>
 
       <QrDisplay qrState={qrState} session={session} error={error} onRegenerate={generateQr} />
+
+      <Button variant="outline" className="w-full rounded-[10px]" onClick={onCancel}>
+        Cancel
+      </Button>
+
+      <div className="flex items-center gap-1.5 text-muted-foreground/60">
+        <Lock className="w-3 h-3" />
+        <span className="text-[11px]">End-to-end encrypted</span>
+      </div>
     </div>
   )
 }
@@ -153,7 +155,7 @@ function QrReady({
     return (
       <div className="flex flex-col items-center justify-center py-10 gap-3">
         <div className="w-12 h-12 rounded-2xl bg-amber-500/10 dark:bg-amber-400/10 flex items-center justify-center">
-          <Clock className="w-6 h-6 text-amber-700 dark:text-amber-400" />
+          <Clock className="w-6 h-6 text-amber-600 dark:text-amber-400" />
         </div>
         <p className="text-sm text-muted-foreground">Linking code expired</p>
         <Button variant="outline" size="sm" onClick={onRegenerate} className="gap-1.5">
@@ -165,14 +167,14 @@ function QrReady({
   }
 
   return (
-    <div className="flex flex-col items-center gap-4">
+    <div className="flex flex-col items-center gap-4 w-full">
       <div
-        className="p-4 bg-white rounded-2xl border shadow-sm"
+        className="p-5 bg-white rounded-[14px] shadow-sm"
         aria-label="QR code for device linking"
       >
         <QRCodeSVG
           value={session.qrData}
-          size={200}
+          size={180}
           level="M"
           marginSize={0}
           role="img"
@@ -180,14 +182,36 @@ function QrReady({
         />
       </div>
 
-      <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-        <Clock className="w-3 h-3" />
-        <span className="tabular-nums">Expires in {formattedTime}</span>
+      <div className="flex items-center gap-1.5 text-amber-600 dark:text-amber-400">
+        <Clock className="w-3.5 h-3.5" />
+        <span className="text-[13px] font-medium tabular-nums">Expires in {formattedTime}</span>
       </div>
 
-      <Button variant="outline" size="sm" onClick={handleCopy} className="w-full max-w-[260px]">
-        {copied ? 'Copied!' : 'Copy linking code'}
-      </Button>
+      <div className="flex items-center gap-3 w-full">
+        <div className="flex-1 h-px bg-border" />
+        <span className="text-xs text-muted-foreground">or</span>
+        <div className="flex-1 h-px bg-border" />
+      </div>
+
+      <div className="w-full space-y-2">
+        <span className="text-[11px] font-semibold tracking-widest uppercase text-muted-foreground">
+          Linking code
+        </span>
+        <div className="flex items-center gap-2 rounded-[10px] bg-foreground/[0.04] border border-border px-3.5 py-2.5">
+          <code className="flex-1 font-mono text-[13px] text-muted-foreground truncate select-all">
+            {session.qrData}
+          </code>
+          <button
+            type="button"
+            onClick={handleCopy}
+            className="shrink-0 flex items-center gap-1.5 rounded-md bg-foreground/[0.06] px-2.5 py-1 text-muted-foreground transition-colors hover:bg-foreground/[0.1]"
+            aria-label={copied ? 'Copied' : 'Copy linking code'}
+          >
+            <Copy className="w-3.5 h-3.5" />
+            <span className="text-xs font-medium">{copied ? 'Copied!' : 'Copy'}</span>
+          </button>
+        </div>
+      </div>
     </div>
   )
 }

@@ -166,7 +166,7 @@ export function SyncSettings() {
         <RecoveryKeyDialog open={showRecoveryKey} onOpenChange={setShowRecoveryKey} />
 
         <Dialog open={showLinkingQr} onOpenChange={setShowLinkingQr}>
-          <DialogContent className="sm:max-w-md">
+          <DialogContent className="sm:max-w-[400px] rounded-xl">
             <QrLinking onCancel={() => setShowLinkingQr(false)} />
           </DialogContent>
         </Dialog>
