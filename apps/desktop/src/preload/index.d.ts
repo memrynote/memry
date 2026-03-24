@@ -856,6 +856,7 @@ export interface VaultClientAPI {
   switch(vaultPath: string): Promise<SelectVaultResponse>
   remove(vaultPath: string): Promise<void>
   reindex(): Promise<void>
+  reveal(): Promise<void>
 }
 
 // Notes client API interface

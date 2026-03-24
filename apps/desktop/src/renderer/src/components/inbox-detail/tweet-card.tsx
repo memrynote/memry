@@ -245,10 +245,10 @@ export function TweetCard({ item }: TweetCardProps): React.JSX.Element {
       {/* Metrics */}
       <TweetMetrics
         likes={tweet.favorite_count}
-        retweets={(tweet as Record<string, unknown>).retweet_count as number | undefined}
+        retweets={(tweet as unknown as Record<string, unknown>).retweet_count as number | undefined}
         views={
-          (tweet as Record<string, unknown>).views_count
-            ? Number((tweet as Record<string, unknown>).views_count)
+          (tweet as unknown as Record<string, unknown>).views_count
+            ? Number((tweet as unknown as Record<string, unknown>).views_count)
             : undefined
         }
       />

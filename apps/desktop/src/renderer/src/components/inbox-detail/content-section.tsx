@@ -730,7 +730,7 @@ export const ContentSection = ({
     case 'video':
       return <VideoPreview item={item} />
     case 'social':
-      return <TweetCard item={item} />
+      return <TweetCard item={item as Parameters<typeof TweetCard>[0]['item']} />
     case 'reminder':
       return <ReminderDetail item={item} />
     case 'clip':

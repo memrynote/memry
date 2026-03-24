@@ -31,7 +31,7 @@ export function VaultSettings() {
   useEffect(() => {
     window.api.vault
       .getStatus()
-      .then((status: { path?: string }) => {
+      .then((status) => {
         if (status?.path) setVaultPath(status.path)
       })
       .catch(() => null)
