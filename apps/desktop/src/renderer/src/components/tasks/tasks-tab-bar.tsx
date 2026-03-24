@@ -304,42 +304,61 @@ function ProjectDropdown({
             {filtered.map((p) => {
               const isSelected = p.id === selectedProjectId
               return (
-                <div key={p.id} className="group/project-item flex items-center">
-                  <button
-                    type="button"
-                    onClick={() => onProjectChange(p.id)}
+                <div
+                  key={p.id}
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => onProjectChange(p.id)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault()
+                      onProjectChange(p.id)
+                    }
+                  }}
+                  className={cn(
+                    'group/project-item flex items-center rounded-[5px] py-1.5 px-2 gap-2 cursor-pointer transition-colors',
+                    isSelected ? 'bg-accent' : 'hover:bg-accent'
+                  )}
+                >
+                  <div
+                    className="shrink-0 rounded-[3px] size-2.5"
+                    style={{ backgroundColor: p.color }}
+                  />
+                  <span
                     className={cn(
-                      'flex-1 flex items-center rounded-[5px] py-1.5 px-2 gap-2 transition-colors',
-                      isSelected ? 'bg-accent' : 'hover:bg-accent'
+                      'text-[13px] leading-4',
+                      isSelected ? 'text-foreground' : 'text-muted-foreground'
                     )}
                   >
-                    <div
-                      className="shrink-0 rounded-[3px] size-2.5"
-                      style={{ backgroundColor: p.color }}
-                    />
-                    <span
-                      className={cn(
-                        'text-[13px] leading-4',
-                        isSelected ? 'text-foreground' : 'text-muted-foreground'
+                    {p.name}
+                  </span>
+                  {(isSelected || onProjectEdit) && (
+                    <div className="ml-auto shrink-0 size-3 relative">
+                      {isSelected && (
+                        <span
+                          className={cn(
+                            'absolute inset-0 flex items-center justify-center transition-opacity',
+                            onProjectEdit && 'group-hover/project-item:opacity-0'
+                          )}
+                        >
+                          <CheckMark className="text-primary" />
+                        </span>
                       )}
-                    >
-                      {p.name}
-                    </span>
-                    {isSelected && <CheckMark className="ml-auto text-primary" />}
-                  </button>
-                  {onProjectEdit && (
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        onProjectEdit(p)
-                        handleOpenChange(false)
-                      }}
-                      className="shrink-0 p-1.5 mr-1 rounded-sm opacity-0 group-hover/project-item:opacity-100 transition-opacity hover:bg-accent"
-                      aria-label={`Edit ${p.name}`}
-                    >
-                      <Settings className="size-3 text-text-tertiary" />
-                    </button>
+                      {onProjectEdit && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            onProjectEdit(p)
+                            handleOpenChange(false)
+                          }}
+                          className="absolute inset-0 flex items-center justify-center opacity-0 group-hover/project-item:opacity-100 transition-opacity"
+                          aria-label={`Edit ${p.name}`}
+                        >
+                          <Settings className="size-3 text-text-tertiary" />
+                        </button>
+                      )}
+                    </div>
                   )}
                 </div>
               )
