@@ -4,7 +4,7 @@ import { DialogDescription, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { useCountdown } from '@/hooks/use-countdown'
 import { extractErrorMessage } from '@/lib/ipc-error'
-import { QrCode, RefreshCw, Loader2, Clock, AlertCircle, Copy, Lock } from '@/lib/icons'
+import { RefreshCw, Loader2, Clock, AlertCircle, Copy, Lock } from '@/lib/icons'
 
 type QrState = 'loading' | 'ready' | 'expired' | 'error'
 
@@ -16,6 +16,12 @@ interface QrSession {
 
 interface QrLinkingProps {
   onCancel: () => void
+}
+
+function truncateCode(code: string, maxLen = 32): string {
+  if (code.length <= maxLen) return code
+  const half = Math.floor((maxLen - 3) / 2)
+  return `${code.slice(0, half)}...${code.slice(-half)}`
 }
 
 export function QrLinking({ onCancel }: QrLinkingProps): React.JSX.Element {
@@ -54,10 +60,6 @@ export function QrLinking({ onCancel }: QrLinkingProps): React.JSX.Element {
 
   return (
     <div className="flex flex-col items-center gap-5">
-      <div className="w-12 h-12 rounded-xl bg-amber-500/10 dark:bg-amber-400/10 flex items-center justify-center">
-        <QrCode className="w-5 h-5 text-amber-600 dark:text-amber-400" />
-      </div>
-
       <div className="flex flex-col items-center gap-1.5 text-center">
         <DialogTitle className="font-heading text-xl font-semibold tracking-tight text-foreground">
           Link new device
@@ -197,9 +199,9 @@ function QrReady({
         <span className="text-[11px] font-semibold tracking-widest uppercase text-muted-foreground">
           Linking code
         </span>
-        <div className="flex items-center gap-2 rounded-[10px] bg-foreground/[0.04] border border-border px-3.5 py-2.5">
-          <code className="flex-1 font-mono text-[13px] text-muted-foreground truncate select-all">
-            {session.qrData}
+        <div className="flex items-center gap-2 rounded-[10px] bg-foreground/[0.04] border border-border px-3.5 py-2.5 min-w-0">
+          <code className="min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap font-mono text-[13px] text-muted-foreground">
+            {truncateCode(session.qrData)}
           </code>
           <button
             type="button"

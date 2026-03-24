@@ -68,12 +68,12 @@ export function RecoveryPhraseConfirm({
   return (
     <div className="[font-synthesis:none] flex flex-col antialiased text-xs/4">
       <div className="wizard-step-enter flex flex-col pb-7 gap-1.5">
-        <h3 className="tracking-[-0.02em] font-semibold text-xl/6.5 text-foreground">
+        <div className="tracking-[-0.02em] font-semibold text-xl/6.5 text-foreground">
           Confirm your recovery phrase
-        </h3>
-        <p className="text-[13px]/4.5 text-muted-foreground">
+        </div>
+        <div className="text-[13px]/4.5 text-muted-foreground">
           Enter the requested words to verify you&apos;ve saved it correctly.
-        </p>
+        </div>
       </div>
 
       <div className="flex flex-col pb-7 gap-3 wizard-step-enter wiz-delay-2">
@@ -117,11 +117,17 @@ export function RecoveryPhraseConfirm({
         <Button variant="outline" onClick={onBack} className="h-9 px-5">
           Back
         </Button>
-        <Button onClick={onConfirmed} disabled={!allCorrect} className="flex-1 h-9">
+        <Button
+          onClick={onConfirmed}
+          disabled={!allCorrect}
+          className="flex-1 h-9 bg-[var(--tint)] text-tint-foreground hover:bg-[var(--tint)]/90"
+        >
           Verify
         </Button>
       </div>
-      <p className="pt-2.5 text-xs/4 text-muted-foreground">All 3 words must match to continue</p>
+      <p className="pt-2.5 text-[13px] text-muted-foreground/70">
+        All 3 words must match to continue
+      </p>
     </div>
   )
 }

@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect, useRef, type FormEvent } from 'react'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
-import { ArrowLeft, KeyRound, Loader2 } from '@/lib/icons'
+import { ArrowLeft, Loader2 } from '@/lib/icons'
 import { cn } from '@/lib/utils'
 
 interface RecoveryPhraseInputProps {
@@ -61,17 +61,13 @@ export function RecoveryPhraseInput({
 
   return (
     <div className="wizard-step-enter space-y-6">
-      <div className="space-y-2">
-        <div className="flex items-center gap-2.5 mb-1">
-          <div className="w-9 h-9 rounded-xl bg-[var(--tint)]/10 flex items-center justify-center">
-            <KeyRound className="w-4.5 h-4.5 text-[var(--tint)]" />
-          </div>
-          <h3 className="font-display text-xl tracking-tight">Enter recovery phrase</h3>
+      <div className="flex flex-col pb-1 gap-1.5">
+        <div className="tracking-[-0.02em] font-semibold text-xl/6.5 text-foreground">
+          Enter recovery phrase
         </div>
-        <p className="font-serif text-[15px] text-muted-foreground leading-relaxed">
-          This device was previously signed out. Enter your 24-word recovery phrase to restore
-          access to your encrypted data.
-        </p>
+        <div className="text-[13px]/4.5 text-muted-foreground">
+          Enter your 24-word recovery phrase to restore access to your encrypted data.
+        </div>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-5">
@@ -119,11 +115,11 @@ export function RecoveryPhraseInput({
         <div className="flex items-center gap-3">
           <Button
             type="button"
-            variant="ghost"
+            variant="outline"
             size="sm"
             onClick={onBack}
             disabled={isLoading}
-            className="gap-1.5 text-muted-foreground"
+            className="gap-1.5"
           >
             <ArrowLeft className="w-3.5 h-3.5" />
             Back

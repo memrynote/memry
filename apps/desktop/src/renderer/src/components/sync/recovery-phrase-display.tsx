@@ -47,13 +47,13 @@ export function RecoveryPhraseDisplay({
   return (
     <div className="[font-synthesis:none] flex flex-col antialiased text-xs/4">
       <div className="wizard-step-enter flex flex-col pb-5 gap-1.5">
-        <h3 className="tracking-[-0.02em] font-semibold text-xl/6.5 text-foreground">
+        <div className="tracking-[-0.02em] font-semibold text-xl/6.5 text-foreground">
           Save your recovery phrase
-        </h3>
-        <p className="text-[13px]/4.5 text-muted-foreground">
+        </div>
+        <div className="text-[13px]/4.5 text-muted-foreground">
           This is the only way to recover your encrypted data if you lose access to all your
           devices.
-        </p>
+        </div>
       </div>
 
       <div className="wizard-step-enter wiz-delay-2 flex items-center mb-5 rounded-lg py-2.5 px-3.5 gap-2.5 bg-amber-500/[0.08] border border-amber-500/15">
@@ -105,7 +105,10 @@ export function RecoveryPhraseDisplay({
         </div>
       </div>
 
-      <Button onClick={onContinue} className="w-full h-9 wizard-step-enter wiz-delay-3">
+      <Button
+        onClick={onContinue}
+        className="w-full h-9 bg-[var(--tint)] text-tint-foreground hover:bg-[var(--tint)]/90 wizard-step-enter wiz-delay-3"
+      >
         I&apos;ve saved my recovery phrase
       </Button>
     </div>
