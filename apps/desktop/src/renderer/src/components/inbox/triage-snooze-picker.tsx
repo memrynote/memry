@@ -17,8 +17,8 @@ export function TriageSnoozePicker({
   }
 
   return (
-    <div className="flex flex-col gap-2">
-      <div className="text-muted-foreground flex items-center gap-2 text-xs font-medium">
+    <div className="flex flex-col gap-2 rounded-xl border border-foreground/[0.08] bg-card p-4">
+      <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
         <Clock className="size-3.5" />
         <span>Snooze until…</span>
       </div>
@@ -29,7 +29,7 @@ export function TriageSnoozePicker({
             key={preset.id}
             type="button"
             onClick={() => handlePresetClick(preset)}
-            className="border-border bg-background hover:bg-accent inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs font-medium transition-colors"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-foreground/[0.08] bg-card px-3 py-1.5 text-xs font-medium transition-colors hover:bg-surface-active"
           >
             <Calendar className="size-3" />
             {preset.label}
@@ -40,7 +40,7 @@ export function TriageSnoozePicker({
       <button
         type="button"
         onClick={onCancel}
-        className="text-muted-foreground hover:text-foreground text-xs transition-colors"
+        className="text-xs text-muted-foreground transition-colors hover:text-foreground"
       >
         Cancel
       </button>
