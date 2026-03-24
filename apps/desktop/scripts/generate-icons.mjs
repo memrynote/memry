@@ -9,8 +9,60 @@ const BUILD_DIR = join(__dirname, '..', 'build')
 
 const ICON_SVG = `<?xml version="1.0" encoding="UTF-8"?>
 <svg width="1024" height="1024" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <rect x="10" y="10" width="80" height="80" rx="16" ry="16" fill="#1a1a1a"/>
-  <g transform="translate(10, 10) scale(0.8)">
+  <defs>
+    <linearGradient id="bg" x1="50" y1="10" x2="50" y2="90" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#2a2a2a"/>
+      <stop offset="1" stop-color="#111111"/>
+    </linearGradient>
+    <linearGradient id="topShine" x1="50" y1="10" x2="50" y2="30" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.12"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="borderGrad" x1="50" y1="10" x2="50" y2="90" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.15"/>
+      <stop offset="1" stop-color="#000000" stop-opacity="0.3"/>
+    </linearGradient>
+    <filter id="logoShadow" x="-10%" y="-10%" width="130%" height="130%">
+      <feDropShadow dx="0" dy="1.5" stdDeviation="1.8" flood-color="#000000" flood-opacity="0.55"/>
+    </filter>
+    <filter id="cardShadow" x="-5%" y="-5%" width="115%" height="118%">
+      <feDropShadow dx="0" dy="1.5" stdDeviation="2" flood-color="#000000" flood-opacity="0.4"/>
+    </filter>
+
+    <linearGradient id="borderTop" x1="10" y1="10" x2="90" y2="10" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#4a9e8e"/>
+      <stop offset="0.5" stop-color="#6366f1"/>
+      <stop offset="1" stop-color="#8b5cf6"/>
+    </linearGradient>
+    <linearGradient id="borderRight" x1="90" y1="10" x2="90" y2="90" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#8b5cf6"/>
+      <stop offset="1" stop-color="#d4944a"/>
+    </linearGradient>
+    <linearGradient id="borderBottom" x1="90" y1="90" x2="10" y2="90" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#d4944a"/>
+      <stop offset="0.5" stop-color="#d4944a"/>
+      <stop offset="1" stop-color="#4a9e8e"/>
+    </linearGradient>
+    <linearGradient id="borderLeft" x1="10" y1="90" x2="10" y2="10" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#4a9e8e"/>
+      <stop offset="1" stop-color="#4a9e8e"/>
+    </linearGradient>
+    <mask id="topMask"><rect x="10" y="8" width="80" height="20" fill="white"/></mask>
+    <mask id="rightMask"><rect x="70" y="10" width="22" height="80" fill="white"/></mask>
+    <mask id="bottomMask"><rect x="10" y="72" width="80" height="20" fill="white"/></mask>
+    <mask id="leftMask"><rect x="8" y="10" width="20" height="80" fill="white"/></mask>
+  </defs>
+
+  <rect x="10" y="10" width="80" height="80" rx="16" ry="16" fill="url(#bg)" filter="url(#cardShadow)"/>
+  <rect x="10" y="10" width="80" height="80" rx="16" ry="16" fill="none" stroke="url(#borderGrad)" stroke-width="0.8"/>
+  <rect x="10" y="10" width="80" height="20" rx="16" ry="16" fill="url(#topShine)"/>
+
+  <rect x="10" y="10" width="80" height="80" rx="16" ry="16" fill="none" stroke="url(#borderTop)" stroke-width="1.5" mask="url(#topMask)"/>
+  <rect x="10" y="10" width="80" height="80" rx="16" ry="16" fill="none" stroke="url(#borderRight)" stroke-width="1.5" mask="url(#rightMask)"/>
+  <rect x="10" y="10" width="80" height="80" rx="16" ry="16" fill="none" stroke="url(#borderBottom)" stroke-width="1.5" mask="url(#bottomMask)"/>
+  <rect x="10" y="10" width="80" height="80" rx="16" ry="16" fill="none" stroke="url(#borderLeft)" stroke-width="1.5" mask="url(#leftMask)"/>
+
+  <g transform="translate(10, 10) scale(0.8)" filter="url(#logoShadow)">
     <path d="M20 70 L20 30 L35 45 L50 25 L65 45 L80 30 L80 70 L50 70"
           stroke="#FFFFFF" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
     <path d="M50 70 L50 85 L80 70"
