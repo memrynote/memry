@@ -150,15 +150,15 @@ export function TagInputPopup({
       className={cn(
         'absolute left-0 top-full z-50 mt-2',
         'w-[280px] overflow-hidden',
-        'rounded-xl border border-stone-200 bg-white',
+        'rounded-xl border border-border bg-popover text-popover-foreground',
         'shadow-lg',
         'animate-in fade-in-0 zoom-in-95 duration-150'
       )}
     >
       {/* Search input */}
-      <div className="border-b border-stone-200 p-2">
-        <div className="flex items-center gap-2 rounded-md bg-stone-50 px-3 py-2">
-          <Search className="h-4 w-4 text-stone-400" />
+      <div className="border-b border-border p-2">
+        <div className="flex items-center gap-2 rounded-md bg-muted px-3 py-2">
+          <Search className="h-4 w-4 text-muted-foreground" />
           <input
             ref={inputRef}
             type="text"
@@ -178,8 +178,8 @@ export function TagInputPopup({
               focusedIndex >= 0 ? `tag-input-option-${focusedIndex}` : undefined
             }
             className={cn(
-              'flex-1 bg-transparent text-sm',
-              'placeholder:text-stone-400',
+              'flex-1 bg-transparent text-sm text-popover-foreground',
+              'placeholder:text-muted-foreground',
               'outline-none'
             )}
           />
@@ -191,7 +191,9 @@ export function TagInputPopup({
           {/* Recent tags */}
           {filteredRecentTags.length > 0 && !searchQuery && (
             <div className="mb-3">
-              <div className="mb-1.5 px-1 text-xs font-medium uppercase text-stone-400">Recent</div>
+              <div className="mb-1.5 px-1 text-xs font-medium uppercase text-muted-foreground">
+                Recent
+              </div>
               <div className="flex flex-wrap gap-1.5">
                 {filteredRecentTags.slice(0, 8).map((tag) => (
                   <TagOption
@@ -208,7 +210,7 @@ export function TagInputPopup({
           {/* All/Filtered tags */}
           {filteredTags.length > 0 && (
             <div className="mb-2">
-              <div className="mb-1.5 px-1 text-xs font-medium uppercase text-stone-400">
+              <div className="mb-1.5 px-1 text-xs font-medium uppercase text-muted-foreground">
                 {searchQuery ? 'Matching' : 'All Tags'}
               </div>
               <div className="flex flex-wrap gap-1.5" role="listbox" aria-label="Available tags">
@@ -227,7 +229,7 @@ export function TagInputPopup({
 
           {/* Empty state */}
           {filteredTags.length === 0 && searchQuery && (
-            <div className="py-4 text-center text-sm text-stone-400">No tags found</div>
+            <div className="py-4 text-center text-sm text-muted-foreground">No tags found</div>
           )}
         </div>
       </ScrollArea>
@@ -258,7 +260,7 @@ function TagOption({ tag, isSelected, isFocused = false, onClick }: TagOptionPro
         'transition-all duration-150',
         'focus-visible:outline-none',
         isSelected ? 'opacity-50 cursor-default' : 'hover:opacity-80 cursor-pointer',
-        isFocused && !isSelected && 'ring-2 ring-offset-1 opacity-100'
+        isFocused && !isSelected && 'ring-2 ring-offset-1 ring-offset-popover opacity-100'
       )}
       style={{
         backgroundColor: colors.background,
