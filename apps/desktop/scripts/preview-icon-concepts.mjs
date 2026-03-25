@@ -44,7 +44,9 @@ function svg(extraDefs, content) {
 }
 
 // --- C01: Neural Network M ---
-const c01 = svg('', `
+const c01 = svg(
+  '',
+  `
   <g transform="translate(10,10) scale(0.8)">
     <path d="M20 70 L20 30 L35 45 L50 25 L65 45 L80 30 L80 70 L50 70"
           stroke="rgba(255,255,255,0.25)" stroke-width="1.5" fill="none"/>
@@ -65,10 +67,13 @@ const c01 = svg('', `
     <circle cx="80" cy="70" r="4.5" fill="${C.task}" filter="url(#glow)"/>
     <circle cx="50" cy="70" r="3" fill="${C.note}" filter="url(#glow)" opacity="0.7"/>
     <circle cx="50" cy="85" r="3" fill="${C.note}" filter="url(#glow)" opacity="0.7"/>
-  </g>`)
+  </g>`
+)
 
 // --- C02: Origami M ---
-const c02 = svg('', `
+const c02 = svg(
+  '',
+  `
   <g transform="translate(10,10) scale(0.8)">
     <polygon points="20,70 20,30 35,45" fill="#5a8a7e"/>
     <polygon points="20,30 35,45 50,25" fill="#6a70a5"/>
@@ -87,15 +92,18 @@ const c02 = svg('', `
     <line x1="20" y1="30" x2="50" y2="25" stroke="#fff" stroke-width="0.5" opacity="0.3"/>
     <line x1="50" y1="25" x2="80" y2="30" stroke="#fff" stroke-width="0.5" opacity="0.3"/>
     <path d="M50,70 L50,85 L80,70 Z" stroke="#fff" stroke-width="0.6" fill="none" opacity="0.4"/>
-  </g>`)
+  </g>`
+)
 
 // --- C03: Memory Palace Door ---
-const c03 = svg(`
+const c03 = svg(
+  `
     <radialGradient id="warmGlow" cx="50" cy="60" r="22" gradientUnits="userSpaceOnUse">
       <stop offset="0" stop-color="#ffd700" stop-opacity="0.3"/>
       <stop offset="0.6" stop-color="#ff8c00" stop-opacity="0.1"/>
       <stop offset="1" stop-opacity="0"/>
-    </radialGradient>`, `
+    </radialGradient>`,
+  `
   <g transform="translate(10,10) scale(0.8)">
     <ellipse cx="50" cy="60" rx="20" ry="25" fill="url(#warmGlow)"/>
     <path d="M28,85 L28,45 A22,14 0 0 1 72,45 L72,85"
@@ -109,10 +117,13 @@ const c03 = svg(`
             stroke="#ddd" stroke-width="7" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
     </g>
     <line x1="18" y1="85" x2="82" y2="85" stroke="#555" stroke-width="0.8"/>
-  </g>`)
+  </g>`
+)
 
 // --- C04: Stacked Layers ---
-const c04 = svg('', `
+const c04 = svg(
+  '',
+  `
   <g transform="translate(10,10) scale(0.8)">
     <rect x="20" y="33" width="60" height="52" rx="6" fill="#1a1a1a" stroke="${C.note}" stroke-width="1.2"/>
     <rect x="20" y="28" width="60" height="52" rx="6" fill="#1e1e1e" stroke="${C.task}" stroke-width="1.2"/>
@@ -124,10 +135,12 @@ const c04 = svg('', `
       <path d="M50 70 L50 85 L80 70"
             stroke="#fff" stroke-width="7" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
     </g>
-  </g>`)
+  </g>`
+)
 
 // --- C05: Constellation M ---
-const c05 = svg(`
+const c05 = svg(
+  `
     <radialGradient id="nebula" cx="50" cy="45" r="35" gradientUnits="userSpaceOnUse">
       <stop offset="0" stop-color="${C.journal}" stop-opacity="0.08"/>
       <stop offset="0.5" stop-color="${C.inbox}" stop-opacity="0.04"/>
@@ -136,7 +149,8 @@ const c05 = svg(`
     <filter id="starGlow" x="-100%" y="-100%" width="300%" height="300%">
       <feGaussianBlur stdDeviation="1.2" result="b"/>
       <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
-    </filter>`, `
+    </filter>`,
+  `
   <g transform="translate(10,10) scale(0.8)">
     <rect x="0" y="0" width="100" height="100" fill="url(#nebula)"/>
     <circle cx="12" cy="15" r="0.4" fill="#fff" opacity="0.25"/>
@@ -166,10 +180,13 @@ const c05 = svg(`
     <circle cx="65" cy="45" r="1.5" fill="#fff" filter="url(#starGlow)" opacity="0.5"/>
     <circle cx="50" cy="70" r="1.2" fill="${C.note}" filter="url(#starGlow)" opacity="0.5"/>
     <circle cx="50" cy="85" r="1.2" fill="${C.note}" filter="url(#starGlow)" opacity="0.5"/>
-  </g>`)
+  </g>`
+)
 
 // --- C06: Infinity-M ---
-const c06 = svg('', `
+const c06 = svg(
+  '',
+  `
   <g transform="translate(10,10) scale(0.8)" filter="url(#logoSh)">
     <line x1="22" y1="75" x2="22" y2="30" stroke="#fff" stroke-width="6" stroke-linecap="round"/>
     <line x1="78" y1="75" x2="78" y2="30" stroke="#fff" stroke-width="6" stroke-linecap="round"/>
@@ -178,10 +195,12 @@ const c06 = svg('', `
     <line x1="22" y1="75" x2="78" y2="75" stroke="#fff" stroke-width="6" stroke-linecap="round"/>
     <path d="M50,52 C50,38 36,38 36,52 C36,66 50,66 50,52 C50,66 64,66 64,52 C64,38 50,38 50,52"
           stroke="#fff" stroke-width="5" fill="none" stroke-linejoin="round"/>
-  </g>`)
+  </g>`
+)
 
 // --- C07: Gem / Crystal M ---
-const c07 = svg(`
+const c07 = svg(
+  `
     <linearGradient id="g1" x1="20" y1="30" x2="35" y2="70" gradientUnits="userSpaceOnUse">
       <stop offset="0" stop-color="${C.note}"/><stop offset="1" stop-color="${C.note}" stop-opacity="0.4"/>
     </linearGradient>
@@ -196,7 +215,8 @@ const c07 = svg(`
     </linearGradient>
     <linearGradient id="g5" x1="65" y1="30" x2="80" y2="70" gradientUnits="userSpaceOnUse">
       <stop offset="0" stop-color="${C.task}"/><stop offset="1" stop-color="${C.task}" stop-opacity="0.4"/>
-    </linearGradient>`, `
+    </linearGradient>`,
+  `
   <g transform="translate(10,10) scale(0.8)">
     <polygon points="20,70 20,30 35,45" fill="url(#g1)"/>
     <polygon points="20,30 35,45 50,25" fill="url(#g2)"/>
@@ -218,7 +238,8 @@ const c07 = svg(`
     <circle cx="70" cy="35" r="1.2" fill="#fff" opacity="0.35"/>
     <line x1="48" y1="23" x2="52" y2="23" stroke="#fff" stroke-width="1.2" opacity="0.7" stroke-linecap="round"/>
     <line x1="50" y1="21" x2="50" y2="27" stroke="#fff" stroke-width="1.2" opacity="0.7" stroke-linecap="round"/>
-  </g>`)
+  </g>`
+)
 
 // --- C08: Seal / Stamp ---
 function sealEdge(cx, cy, outer, inner, n) {
@@ -231,7 +252,9 @@ function sealEdge(cx, cy, outer, inner, n) {
   return `M${pts.join(' L')} Z`
 }
 
-const c08 = svg('', `
+const c08 = svg(
+  '',
+  `
   <g transform="translate(10,10) scale(0.8)">
     <path d="${sealEdge(50, 52, 37, 33, 24)}" fill="none" stroke="#999" stroke-width="1.2" opacity="0.6"/>
     <circle cx="50" cy="52" r="30" fill="none" stroke="#777" stroke-width="0.6" opacity="0.4"/>
@@ -242,10 +265,13 @@ const c08 = svg('', `
       <path d="M50 70 L50 85 L80 70"
             stroke="#fff" stroke-width="8" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
     </g>
-  </g>`)
+  </g>`
+)
 
 // --- C09: Brainwave M ---
-const c09 = svg('', `
+const c09 = svg(
+  '',
+  `
   <g transform="translate(10,10) scale(0.8)">
     <line x1="8" y1="62" x2="92" y2="62" stroke="#444" stroke-width="0.8" stroke-dasharray="2,2"/>
     <path d="M5,62 C10,62 16,62 20,30 C24,10 30,58 35,50 C40,42 44,18 50,22 C56,26 60,58 65,50 C70,42 76,10 80,30 C84,62 90,62 95,62"
@@ -253,10 +279,13 @@ const c09 = svg('', `
     <circle cx="20" cy="30" r="2.5" fill="${C.inbox}" filter="url(#glow)"/>
     <circle cx="50" cy="22" r="3" fill="${C.journal}" filter="url(#glow)"/>
     <circle cx="80" cy="30" r="2.5" fill="${C.task}" filter="url(#glow)"/>
-  </g>`)
+  </g>`
+)
 
 // --- C10: Book ---
-const c10 = svg('', `
+const c10 = svg(
+  '',
+  `
   <g transform="translate(10,10) scale(0.8)">
     <path d="M50,22 C42,22 22,22 20,25 L20,82 C22,79 42,79 50,80" fill="#2d2d2d" stroke="#444" stroke-width="0.5"/>
     <path d="M50,22 C58,22 78,22 80,25 L80,82 C78,79 58,79 50,80" fill="#323232" stroke="#444" stroke-width="0.5"/>
@@ -277,27 +306,37 @@ const c10 = svg('', `
       <path d="M50 70 L50 85 L80 70"
             stroke="#fff" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="0.9"/>
     </g>
-  </g>`)
+  </g>`
+)
 
 // --- C11: Fingerprint M ---
 const fpOffsets = [-9, -6, -3, 0, 3, 6, 9]
 const fpOpacities = [0.15, 0.3, 0.55, 0.9, 0.55, 0.3, 0.15]
-const fpLines = fpOffsets.map((dy, i) => `
+const fpLines = fpOffsets
+  .map(
+    (dy, i) => `
     <path d="M20 ${70 + dy} L20 ${30 + dy} L35 ${45 + dy} L50 ${25 + dy} L65 ${45 + dy} L80 ${30 + dy} L80 ${70 + dy} L50 ${70 + dy}"
           stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="${fpOpacities[i]}"/>
     <path d="M50 ${70 + dy} L50 ${85 + dy} L80 ${70 + dy}"
-          stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="${fpOpacities[i]}"/>`).join('')
+          stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="${fpOpacities[i]}"/>`
+  )
+  .join('')
 
-const c11 = svg('', `
+const c11 = svg(
+  '',
+  `
   <g transform="translate(10,10) scale(0.8)">
     ${fpLines}
-  </g>`)
+  </g>`
+)
 
 // --- C12: Prism ---
-const c12 = svg(`
+const c12 = svg(
+  `
     <linearGradient id="prismFace" x1="35" y1="28" x2="60" y2="72" gradientUnits="userSpaceOnUse">
       <stop offset="0" stop-color="#2a2a3a"/><stop offset="1" stop-color="#1a1a2a"/>
-    </linearGradient>`, `
+    </linearGradient>`,
+  `
   <g transform="translate(10,10) scale(0.8)">
     <line x1="5" y1="50" x2="35" y2="50" stroke="#fff" stroke-width="2.5" opacity="0.8"/>
     <polygon points="35,28 35,72 68,50" fill="url(#prismFace)" stroke="#666" stroke-width="1.5"/>
@@ -307,7 +346,8 @@ const c12 = svg(`
     <line x1="68" y1="50" x2="95" y2="59" stroke="${C.task}" stroke-width="2.5" opacity="0.9"/>
     <line x1="68" y1="50" x2="95" y2="72" stroke="${C.note}" stroke-width="2.5" opacity="0.9"/>
     <line x1="35" y1="29" x2="35" y2="40" stroke="#fff" stroke-width="0.6" opacity="0.3"/>
-  </g>`)
+  </g>`
+)
 
 // --- Generate all ---
 const CONCEPTS = [
@@ -336,4 +376,7 @@ async function main() {
   console.log(`\nDone → ${OUT}`)
 }
 
-main().catch(err => { console.error(err); process.exit(1) })
+main().catch((err) => {
+  console.error(err)
+  process.exit(1)
+})
