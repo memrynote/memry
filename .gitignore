@@ -23,6 +23,7 @@ public.pem
 identifier.sqlite
 test-data.db
 test-index.db
+dev-data/
 .codex
 .pnpm-store
 .turbo
@@ -37,3 +38,4 @@ opencode.jsonc
 prompts/
 specs/
 agents/
+.gstack/
