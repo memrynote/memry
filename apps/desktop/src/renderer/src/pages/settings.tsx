@@ -203,10 +203,12 @@ function SettingsNavItem({ icon, label, isActive, onClick }: SettingsNavItemProp
       onClick={onClick}
       className={cn(
         'relative flex items-center h-7 shrink-0 rounded-[5px] px-3 transition-colors',
-        isActive ? 'bg-accent text-foreground' : 'text-muted-foreground hover:bg-accent/50'
+        isActive
+          ? 'bg-sidebar-accent text-foreground font-medium'
+          : 'text-muted-foreground hover:bg-sidebar-accent'
       )}
     >
-      <span className="shrink-0">{icon}</span>
+      <span className="shrink-0 text-muted-foreground">{icon}</span>
       <span className="pl-2 text-[13px]/4 font-medium">{label}</span>
       {isActive && (
         <span className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-4 bg-[var(--tint)] rounded-r-sm" />

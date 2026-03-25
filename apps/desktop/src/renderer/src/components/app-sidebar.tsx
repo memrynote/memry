@@ -287,10 +287,13 @@ function AppSidebarInner({ currentPage, viewCounts, ...props }: AppSidebarProps)
                     )}
                   >
                     {active && (
-                      <div className="absolute left-0 inset-y-1.5 w-0.75 rounded-r-xs bg-sidebar-accent-foreground" />
+                      <div className="absolute left-0 inset-y-1.5 w-0.75 rounded-r-xs bg-tint" />
                     )}
                     <item.icon
-                      className={cn('size-[15px]', active ? 'opacity-85' : 'opacity-45')}
+                      className={cn(
+                        'size-[15px] text-sidebar-foreground',
+                        active ? 'opacity-85' : 'opacity-45'
+                      )}
                     />
                     <span
                       className={cn(
