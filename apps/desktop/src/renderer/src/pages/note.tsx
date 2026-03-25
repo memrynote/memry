@@ -29,8 +29,10 @@ import { useTasksLinkedToNote } from '@/hooks/use-tasks-linked-to-note'
 import { notesService, onNoteDeleted, onNoteUpdated, onNoteRenamed } from '@/services/notes-service'
 import { resolveWikiLink } from '@/lib/wikilink-resolver'
 import { useTabs, useActiveTab } from '@/contexts/tabs'
-import { NoteReminderButton } from '@/components/note/note-reminder-button'
-import { Bookmark, MoreHorizontal, History, Monitor, GitGraph } from '@/lib/icons'
+import { ReminderPicker } from '@/components/reminder'
+import { useNoteReminders } from '@/hooks/use-note-reminders'
+import { Bookmark2, MoreVertical, FilePaste, Download, AlarmClock, Monitor } from '@/lib/icons'
+import { SidebarGraph } from '@/lib/icons/sidebar-nav-icons'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -170,6 +172,15 @@ export function NotePage({ noteId }: NotePageProps) {
 
   // Bookmark state
   const { isBookmarked, toggle: toggleBookmark } = useIsBookmarked('note', noteId ?? '')
+
+  // Reminder state
+  const { hasActiveReminder, actions: reminderActions } = useNoteReminders(noteId ?? null)
+  const handleSetReminder = useCallback(
+    async (date: Date, reminderNote?: string): Promise<void> => {
+      await reminderActions.setReminder(date, reminderNote)
+    },
+    [reminderActions]
+  )
 
   // Editor settings (toolbar mode, width, spellCheck, autoSaveDelay, showWordCount)
   const { settings: editorSettings } = useEditorSettings()
@@ -768,19 +779,40 @@ export function NotePage({ noteId }: NotePageProps) {
 
   const actionIcons = (
     <div className="flex items-center gap-0.5">
-      <NoteReminderButton noteId={noteId} disabled={isDeleted} />
+      <ReminderPicker
+        onSelect={(date, _title, reminderNote) => void handleSetReminder(date, reminderNote)}
+        presetType="standard"
+        showNote
+        disabled={isDeleted}
+        trigger={
+          <Button
+            variant="ghost"
+            size="icon"
+            className="size-7 hover:bg-transparent"
+            disabled={isDeleted}
+            title={hasActiveReminder ? 'Reminder set' : 'Set reminder'}
+          >
+            <AlarmClock
+              className={cn(
+                'h-3.5 w-3.5',
+                hasActiveReminder ? 'text-amber-500' : 'text-muted-foreground'
+              )}
+            />
+          </Button>
+        }
+      />
 
       <Button
         variant="ghost"
         size="icon"
-        className="h-8 w-8 hover:bg-transparent"
+        className="size-7 hover:bg-transparent"
         onClick={toggleBookmark}
         disabled={isDeleted}
         title={isBookmarked ? 'Remove bookmark' : 'Add bookmark'}
       >
-        <Bookmark
+        <Bookmark2
           className={cn(
-            'h-4 w-4',
+            'h-3.5 w-3.5',
             isBookmarked ? 'fill-accent-orange text-accent-orange' : 'text-muted-foreground'
           )}
         />
@@ -791,22 +823,25 @@ export function NotePage({ noteId }: NotePageProps) {
           <Button
             variant="ghost"
             size="icon"
-            className="h-8 w-8 hover:bg-transparent"
+            className="size-7 hover:bg-transparent"
             disabled={isDeleted}
           >
-            <MoreHorizontal className="h-4 w-4 text-muted-foreground" />
+            <MoreVertical className="h-3.5 w-3.5 text-muted-foreground" />
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
           <DropdownMenuItem onClick={() => setIsLocalGraphOpen((prev) => !prev)}>
-            <GitGraph className="mr-2 h-4 w-4" />
+            <SidebarGraph className="mr-2 h-4 w-4" />
             {isLocalGraphOpen ? 'Hide local graph' : 'Show local graph'}
           </DropdownMenuItem>
           <DropdownMenuItem onClick={() => setIsVersionHistoryOpen(true)}>
-            <History className="mr-2 h-4 w-4" />
-            Version History
+            <FilePaste className="mr-2 h-4 w-4" />
+            Version history
           </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => setIsExportDialogOpen(true)}>Export</DropdownMenuItem>
+          <DropdownMenuItem onClick={() => setIsExportDialogOpen(true)}>
+            <Download className="mr-2 h-4 w-4" />
+            Export
+          </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem
             onClick={() => handleToggleLocalOnly(!(note.frontmatter.localOnly ?? false))}
@@ -837,13 +872,7 @@ export function NotePage({ noteId }: NotePageProps) {
           onClose={findInPage.close}
         />
       }
-      breadcrumb={
-        <NoteBreadcrumb
-          notePath={note.path}
-          noteTitle={note.title}
-          noteEmoji={note.emoji ?? null}
-        />
-      }
+      breadcrumb={<NoteBreadcrumb notePath={note.path} noteTitle={note.title} />}
       stats={editorSettings.showWordCount ? documentStats : undefined}
     >
       {/* Note content */}
