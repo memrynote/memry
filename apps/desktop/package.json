@@ -218,7 +218,6 @@
     "@fontsource-variable/playfair-display": "^5.2.8",
     "@fontsource-variable/space-grotesk": "^5.2.10",
     "@fontsource/gelasio": "^5.2.8",
-    "@fontsource/instrument-serif": "^5.2.8",
     "@playwright/test": "^1.57.0",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.1",
