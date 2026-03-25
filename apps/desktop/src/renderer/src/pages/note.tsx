@@ -15,6 +15,7 @@ import { NoteLayout, HeadingItem, ContentArea, HeadingInfo, Block } from '@/comp
 import { NoteTitle } from '@/components/note/note-title'
 import { TagsRow, Tag } from '@/components/note/tags-row'
 import { InfoSection } from '@/components/note/info-section'
+import { GhostAffordanceRow } from '@/components/note/ghost-affordance-row'
 import { BacklinksSection, Backlink } from '@/components/note/backlinks'
 import { LinkedTasksSection } from '@/components/note/linked-tasks'
 import {
@@ -138,7 +139,6 @@ export function NotePage({ noteId }: NotePageProps) {
 
   // Local state (UI-only, not data loading)
   const [headings, setHeadings] = useState<HeadingItem[]>([])
-  const [isInfoExpanded, setIsInfoExpanded] = useState(false)
   const [isDeleted, setIsDeleted] = useState(false)
   const [isExportDialogOpen, setIsExportDialogOpen] = useState(false)
   const [isVersionHistoryOpen, setIsVersionHistoryOpen] = useState(false)
@@ -877,8 +877,8 @@ export function NotePage({ noteId }: NotePageProps) {
     >
       {/* Note content */}
       <div className={cn('flex flex-col gap-6 mx-auto w-full', editorWidthClass)}>
-        {/* Title + Tags */}
-        <div className="flex flex-col gap-4">
+        {/* Title + Metadata zone — ghost affordance appears on hover */}
+        <div className="group/metadata flex flex-col gap-2">
           <NoteTitle
             emoji={note.emoji ?? null}
             title={note.title}
@@ -886,6 +886,8 @@ export function NotePage({ noteId }: NotePageProps) {
             onTitleChange={handleTitleChange}
             placeholder="Untitled"
           />
+
+          {/* Tags: visible when tags exist */}
           <TagsRow
             tags={noteTags}
             availableTags={availableTags}
@@ -893,21 +895,39 @@ export function NotePage({ noteId }: NotePageProps) {
             onAddTag={handleAddTag}
             onCreateTag={handleCreateTag}
             onRemoveTag={handleRemoveTag}
+            hideWhenEmpty
+          />
+
+          {/* Properties: visible when properties exist, inline (no toggle header) */}
+          {properties.length > 0 && (
+            <InfoSection
+              properties={properties}
+              isExpanded
+              onToggleExpand={() => {}}
+              onPropertyChange={handlePropertyChange}
+              onPropertyNameChange={handlePropertyNameChange}
+              onPropertyOrderChange={handlePropertyOrderChange}
+              onAddProperty={handleAddProperty}
+              onDeleteProperty={handleDeleteProperty}
+              disabled={isDeleted}
+              variant="inline"
+              hideAddButton
+            />
+          )}
+
+          {/* Ghost affordance: fades in on hover/focus */}
+          <GhostAffordanceRow
+            availableTags={availableTags}
+            recentTags={recentTags}
+            currentTagIds={noteTags.map((t) => t.id)}
+            onAddTag={handleAddTag}
+            onCreateTag={handleCreateTag}
+            onAddProperty={handleAddProperty}
+            existingPropertyNames={properties.map((p) => p.name)}
+            hasTags={noteTags.length > 0}
+            disabled={isDeleted}
           />
         </div>
-
-        {/* Properties Section */}
-        <InfoSection
-          properties={properties}
-          isExpanded={isInfoExpanded}
-          onToggleExpand={() => setIsInfoExpanded(!isInfoExpanded)}
-          onPropertyChange={handlePropertyChange}
-          onPropertyNameChange={handlePropertyNameChange}
-          onPropertyOrderChange={handlePropertyOrderChange}
-          onAddProperty={handleAddProperty}
-          onDeleteProperty={handleDeleteProperty}
-          disabled={isDeleted}
-        />
 
         {/* Main content - BlockNote Editor */}
         <div

@@ -13,6 +13,7 @@ export interface TagsRowProps {
   onRemoveTag: (tagId: string) => void
   disabled?: boolean
   className?: string
+  hideWhenEmpty?: boolean
 }
 
 export const TagsRow = memo(function TagsRow({
@@ -23,7 +24,8 @@ export const TagsRow = memo(function TagsRow({
   onCreateTag,
   onRemoveTag,
   disabled = false,
-  className
+  className,
+  hideWhenEmpty = false
 }: TagsRowProps) {
   const [isPopupOpen, setIsPopupOpen] = useState(false)
 
@@ -39,11 +41,13 @@ export const TagsRow = memo(function TagsRow({
 
   const currentTagIds = tags.map((t) => t.id)
 
+  if (hideWhenEmpty && tags.length === 0) return null
+
   return (
     <div
       role="list"
       aria-label="Tags"
-      className={cn('relative flex min-h-8 flex-wrap items-center gap-2', className || 'mb-4')}
+      className={cn('relative flex min-h-8 flex-wrap items-center gap-2', className)}
     >
       {/* Tag chips */}
       {tags.map((tag) => (
@@ -70,8 +74,10 @@ export const TagsRow = memo(function TagsRow({
         />
       </div>
 
-      {/* Empty state helper text */}
-      {tags.length === 0 && <span className="text-[13px] text-stone-400">Add tags</span>}
+      {/* Empty state helper text (hidden when ghost affordance is active) */}
+      {tags.length === 0 && !hideWhenEmpty && (
+        <span className="text-[13px] text-stone-400">Add tags</span>
+      )}
     </div>
   )
 })

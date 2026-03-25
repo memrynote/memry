@@ -48,7 +48,8 @@ export interface InfoSectionProps {
   onDeleteProperty: (propertyId: string) => void
   disabled?: boolean
   initialVisibleCount?: number
-  variant?: 'default' | 'embedded'
+  variant?: 'default' | 'embedded' | 'inline'
+  hideAddButton?: boolean
 }
 
 export const InfoSection = memo(function InfoSection({
@@ -63,7 +64,8 @@ export const InfoSection = memo(function InfoSection({
   onDeleteProperty,
   disabled = false,
   initialVisibleCount = 4,
-  variant = 'default'
+  variant = 'default',
+  hideAddButton = false
 }: InfoSectionProps) {
   const [showAllProperties, setShowAllProperties] = useState(false)
   const [isAddPopupOpen, setIsAddPopupOpen] = useState(false)
@@ -195,22 +197,28 @@ export const InfoSection = memo(function InfoSection({
     [visibleProperties]
   )
 
+  const isInline = variant === 'inline'
+  const effectiveExpanded = isInline || isExpanded
+  const showAddBtn = !hideAddButton && !isInline
+
   return (
     <div
       className={cn('flex flex-col', variant === 'default' && 'border-t border-b border-border')}
       role="region"
       aria-label="Note properties"
     >
-      {/* Toggle Header */}
-      <InfoHeader
-        isExpanded={isExpanded}
-        onToggle={onToggleExpand}
-        variant={variant}
-        propertyCount={properties.length}
-      />
+      {/* Toggle Header — hidden in inline mode */}
+      {!isInline && (
+        <InfoHeader
+          isExpanded={isExpanded}
+          onToggle={onToggleExpand}
+          variant={variant as 'default' | 'embedded'}
+          propertyCount={properties.length}
+        />
+      )}
 
       {/* Collapsible Content */}
-      {isExpanded && (
+      {effectiveExpanded && (
         <div id="properties-content">
           {/* Section Header */}
           {folderProperties && folderProperties.length > 0 && (
@@ -283,27 +291,29 @@ export const InfoSection = memo(function InfoSection({
             </button>
           )}
 
-          {/* Add Property Button */}
-          <div className="pt-2 pb-2.5">
-            <button
-              ref={addButtonRef}
-              type="button"
-              onClick={handleOpenAddPopup}
-              disabled={disabled}
-              className={cn(
-                'flex items-center gap-1.5',
-                'text-[12px] text-text-tertiary font-sans',
-                'transition-colors duration-150',
-                'hover:text-muted-foreground',
-                'disabled:opacity-50 disabled:cursor-not-allowed'
-              )}
-              aria-label="Add a new property to this note"
-              aria-haspopup="dialog"
-            >
-              <Plus className="h-3 w-3" aria-hidden="true" />
-              Add property
-            </button>
-          </div>
+          {/* Add Property Button — hidden when ghost affordance handles it */}
+          {showAddBtn && (
+            <div className="pt-2 pb-2.5">
+              <button
+                ref={addButtonRef}
+                type="button"
+                onClick={handleOpenAddPopup}
+                disabled={disabled}
+                className={cn(
+                  'flex items-center gap-1.5',
+                  'text-[12px] text-text-tertiary font-sans',
+                  'transition-colors duration-150',
+                  'hover:text-muted-foreground',
+                  'disabled:opacity-50 disabled:cursor-not-allowed'
+                )}
+                aria-label="Add a new property to this note"
+                aria-haspopup="dialog"
+              >
+                <Plus className="h-3 w-3" aria-hidden="true" />
+                Add property
+              </button>
+            </div>
+          )}
         </div>
       )}
 
