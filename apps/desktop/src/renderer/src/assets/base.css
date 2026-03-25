@@ -479,7 +479,7 @@
 
     /* ===== BASE COLORS - Dark Mode (Neutral Charcoal) ===== */
     --background: #191919;
-    --foreground: #e8e6e1;
+    --foreground: #bcbab6;
     --surface: #222222;
     --surface-active: #2a2a2a;
 
@@ -491,9 +491,9 @@
     --card-grey: #222222;
 
     /* ===== TYPOGRAPHY COLORS - Dark Mode ===== */
-    --text-primary: #e8e6e1;
-    --text-secondary: #fff;
-    --text-tertiary: #6b6966;
+    --text-primary: #bcbab6;
+    --text-secondary: #bcbab6;
+    --text-tertiary: #ada9a3;
 
     /* ===== ACCENT COLORS (Same in dark mode) ===== */
     --accent-cyan: #22d3ee;
@@ -503,19 +503,19 @@
 
     /* ===== UI SEMANTIC COLORS - Dark Mode ===== */
     --muted: #222222;
-    --muted-foreground: #a8a6a1;
+    --muted-foreground: #ada9a3;
     --popover: #1e1e1e;
-    --popover-foreground: #e8e6e1;
+    --popover-foreground: #bcbab6;
     --border: #333333;
     --input: #333333;
     --card: #222222;
-    --card-foreground: #e8e6e1;
+    --card-foreground: #bcbab6;
     --primary: #e8e6e1;
     --primary-foreground: #191919;
     --secondary: #222222;
-    --secondary-foreground: #e8e6e1;
+    --secondary-foreground: #bcbab6;
     --accent: #2a2a2a;
-    --accent-foreground: #e8e6e1;
+    --accent-foreground: #bcbab6;
     --destructive: #dc2626;
     --destructive-foreground: #fafafa;
     --ring: #6b6b6b;
@@ -553,7 +553,7 @@
     --graph-dimmed-node: #2a2830;
     --graph-edge-soft: #6b6966;
     --graph-bg: #0e0e10;
-    --graph-label-color: #e8e6e1;
+    --graph-label-color: #bcbab6;
 
     /* ===== QUEUE LIST - Dark Mode ===== */
     --queue-bg: #161618;
@@ -1175,8 +1175,8 @@ del.bn-inline-content {
   --sidebar-foreground: #8a857a;
   --sidebar-primary: #1a1917;
   --sidebar-primary-foreground: #edeae4;
-  --sidebar-accent: color-mix(in srgb, var(--tint) 10%, transparent);
-  --sidebar-accent-foreground: var(--tint);
+  --sidebar-accent: rgba(0, 0, 0, 0.05);
+  --sidebar-accent-foreground: var(--sidebar-foreground);
   --sidebar-border: #d9d5ce;
   --sidebar-ring: var(--tint);
   --sidebar-muted: #b5b0a6;
@@ -1193,8 +1193,8 @@ del.bn-inline-content {
   --sidebar-foreground: #5f5e59;
   --sidebar-primary: #37352f;
   --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: color-mix(in srgb, var(--tint) 8%, transparent);
-  --sidebar-accent-foreground: var(--tint);
+  --sidebar-accent: rgba(0, 0, 0, 0.04);
+  --sidebar-accent-foreground: var(--sidebar-foreground);
   --sidebar-border: #e9e9e7;
   --sidebar-ring: var(--tint);
   --sidebar-muted: #b0afab;
@@ -1211,8 +1211,8 @@ del.bn-inline-content {
   --sidebar-foreground: #b5b3ae;
   --sidebar-primary: #e8e5df;
   --sidebar-primary-foreground: #202020;
-  --sidebar-accent: color-mix(in srgb, var(--tint) 15%, transparent);
-  --sidebar-accent-foreground: var(--tint);
+  --sidebar-accent: #2a2a2a;
+  --sidebar-accent-foreground: var(--sidebar-primary);
   --sidebar-border: #333333;
   --sidebar-ring: var(--tint);
   --sidebar-muted: #6b6b6b;

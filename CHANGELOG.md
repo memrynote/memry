@@ -5,6 +5,21 @@ Format: weekly entries grouped by feature area.
 
 ---
 
+## 2026-03-25 — Settings Modal & Sidebar Polish
+
+### Added
+- Add settings modal dialog with `SettingsModalProvider` context, replacing settings-as-tab pattern
+
+### Changed
+- Remove `settings` tab type from TabType union and singleton list
+- Replace tint-mixed sidebar accent with neutral background tones across all themes
+- Switch active sidebar indicators from `bg-sidebar-accent-foreground` to `bg-tint`
+- Tone dark mode foreground from `#e8e6e1` to `#bcbab6` for reduced glare
+- Unify sidebar icon color with `text-sidebar-foreground` on menu buttons
+- Restyle settings nav items with `bg-sidebar-accent` instead of `bg-accent`
+
+---
+
 ## 2026-03-25 — Desktop Polish
 
 ### Added

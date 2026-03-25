@@ -23,7 +23,6 @@ export type TabType =
   | 'folder' // Folder view (Bases-like database view)
   | 'journal'
   | 'search'
-  | 'settings'
   | 'collection'
   | 'template-editor' // Template editing (Phase 15)
   | 'templates' // Template list/management (Phase 15)
@@ -41,7 +40,6 @@ export const SINGLETON_TAB_TYPES: TabType[] = [
   'all-tasks', // Legacy
   'today', // Legacy
   'completed', // Legacy
-  'settings',
   'templates', // Template list
   'graph'
 ]
