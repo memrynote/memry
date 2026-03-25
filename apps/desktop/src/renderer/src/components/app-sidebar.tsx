@@ -34,6 +34,7 @@ import { SidebarBookmarkList } from '@/components/sidebar/sidebar-bookmark-list'
 import { SidebarDrillDownContainer } from '@/components/sidebar/sidebar-drill-down-container'
 import { useSidebarNavigation } from '@/hooks/use-sidebar-navigation'
 import { useTabActions } from '@/contexts/tabs'
+import { useSettingsModal } from '@/contexts/settings-modal-context'
 import { notesService } from '@/services/notes-service'
 import { useSidebarDrillDown } from '@/contexts/sidebar-drill-down'
 import { useAuth } from '@/contexts/auth-context'
@@ -398,23 +399,11 @@ function AppSidebarInner({ currentPage, viewCounts, ...props }: AppSidebarProps)
   )
 
   const { state: authState } = useAuth()
+  const { open: openSettings } = useSettingsModal()
 
   const handleSyncClick = useCallback(() => {
-    localStorage.setItem('memry_settings_section', 'account')
-    window.dispatchEvent(
-      new StorageEvent('storage', { key: 'memry_settings_section', newValue: 'account' })
-    )
-    openTab({
-      type: 'settings',
-      title: 'Settings',
-      icon: 'settings',
-      path: '/settings',
-      isPinned: false,
-      isModified: false,
-      isPreview: false,
-      isDeleted: false
-    })
-  }, [openTab])
+    openSettings('account')
+  }, [openSettings])
 
   return (
     <Sidebar collapsible="icon" {...props}>
