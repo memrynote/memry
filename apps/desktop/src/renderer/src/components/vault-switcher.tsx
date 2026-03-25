@@ -26,7 +26,7 @@ import {
 } from '@/components/ui/alert-dialog'
 import { Button } from '@/components/ui/button'
 import { useVault, useVaultList } from '@/hooks/use-vault'
-import { useTabActions } from '@/contexts/tabs'
+import { useSettingsModal } from '@/contexts/settings-modal-context'
 import { useAuth } from '@/contexts/auth-context'
 import type { VaultInfo } from '../../../preload/index.d'
 
@@ -34,7 +34,7 @@ export function VaultSwitcher() {
   const { isMobile } = useSidebar()
   const { status, isLoading, selectVault, switchVault } = useVault()
   const { vaults, removeVault } = useVaultList()
-  const { openTab } = useTabActions()
+  const { open: openSettings } = useSettingsModal()
   const { state: authState, logout } = useAuth()
   const [vaultToRemove, setVaultToRemove] = useState<VaultInfo | null>(null)
 
@@ -56,34 +56,12 @@ export function VaultSwitcher() {
   )
 
   const handleOpenSettings = useCallback(() => {
-    openTab({
-      type: 'settings',
-      title: 'Settings',
-      icon: 'settings',
-      path: '/settings',
-      isPinned: false,
-      isModified: false,
-      isPreview: false,
-      isDeleted: false
-    })
-  }, [openTab])
+    openSettings()
+  }, [openSettings])
 
   const handleSignIn = useCallback(() => {
-    localStorage.setItem('memry_settings_section', 'account')
-    window.dispatchEvent(
-      new StorageEvent('storage', { key: 'memry_settings_section', newValue: 'account' })
-    )
-    openTab({
-      type: 'settings',
-      title: 'Settings',
-      icon: 'settings',
-      path: '/settings',
-      isPinned: false,
-      isModified: false,
-      isPreview: false,
-      isDeleted: false
-    })
-  }, [openTab])
+    openSettings('account')
+  }, [openSettings])
 
   const handleLogout = useCallback(async () => {
     await logout()

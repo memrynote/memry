@@ -34,6 +34,7 @@ import { SidebarBookmarkList } from '@/components/sidebar/sidebar-bookmark-list'
 import { SidebarDrillDownContainer } from '@/components/sidebar/sidebar-drill-down-container'
 import { useSidebarNavigation } from '@/hooks/use-sidebar-navigation'
 import { useTabActions } from '@/contexts/tabs'
+import { useSettingsModal } from '@/contexts/settings-modal-context'
 import { notesService } from '@/services/notes-service'
 import { useSidebarDrillDown } from '@/contexts/sidebar-drill-down'
 import { useAuth } from '@/contexts/auth-context'
@@ -287,10 +288,13 @@ function AppSidebarInner({ currentPage, viewCounts, ...props }: AppSidebarProps)
                     )}
                   >
                     {active && (
-                      <div className="absolute left-0 inset-y-1.5 w-0.75 rounded-r-xs bg-sidebar-accent-foreground" />
+                      <div className="absolute left-0 inset-y-1.5 w-0.75 rounded-r-xs bg-tint" />
                     )}
                     <item.icon
-                      className={cn('size-[15px]', active ? 'opacity-85' : 'opacity-45')}
+                      className={cn(
+                        'size-[15px] text-sidebar-foreground',
+                        active ? 'opacity-85' : 'opacity-45'
+                      )}
                     />
                     <span
                       className={cn(
@@ -395,23 +399,11 @@ function AppSidebarInner({ currentPage, viewCounts, ...props }: AppSidebarProps)
   )
 
   const { state: authState } = useAuth()
+  const { open: openSettings } = useSettingsModal()
 
   const handleSyncClick = useCallback(() => {
-    localStorage.setItem('memry_settings_section', 'account')
-    window.dispatchEvent(
-      new StorageEvent('storage', { key: 'memry_settings_section', newValue: 'account' })
-    )
-    openTab({
-      type: 'settings',
-      title: 'Settings',
-      icon: 'settings',
-      path: '/settings',
-      isPinned: false,
-      isModified: false,
-      isPreview: false,
-      isDeleted: false
-    })
-  }, [openTab])
+    openSettings('account')
+  }, [openSettings])
 
   return (
     <Sidebar collapsible="icon" {...props}>

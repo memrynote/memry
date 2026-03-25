@@ -96,7 +96,6 @@ const TAB_ICONS: Record<TabType, string> = {
   folder: 'folder',
   journal: 'book-open',
   search: 'search',
-  settings: 'settings',
   collection: 'bookmark',
   'template-editor': 'layout-template',
   templates: 'layout-template',
@@ -122,8 +121,7 @@ const TAB_PATHS: Partial<Record<TabType, string>> = {
   home: '/home',
   'all-tasks': '/tasks/all',
   today: '/tasks/today',
-  completed: '/tasks/completed',
-  settings: '/settings'
+  completed: '/tasks/completed'
 }
 
 /**

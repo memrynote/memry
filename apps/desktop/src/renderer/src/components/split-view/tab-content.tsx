@@ -20,7 +20,6 @@ import { TasksPage } from '@/pages/tasks'
 import { NotePage } from '@/pages/note'
 import { FilePage } from '@/pages/file'
 import { FolderViewPage } from '@/pages/folder-view'
-import { SettingsPage } from '@/pages/settings'
 import { TemplateEditorPage } from '@/pages/template-editor'
 import { TemplatesPage } from '@/pages/templates'
 import { GraphPage } from '@/components/graph/graph-page'
@@ -36,7 +35,6 @@ const MemoizedTasksPage = React.memo(TasksPage)
 const MemoizedNotePage = React.memo(NotePage)
 const MemoizedFilePage = React.memo(FilePage)
 const MemoizedFolderViewPage = React.memo(FolderViewPage)
-const MemoizedSettingsPage = React.memo(SettingsPage)
 const MemoizedTemplateEditorPage = React.memo(TemplateEditorPage)
 const MemoizedTemplatesPage = React.memo(TemplatesPage)
 const MemoizedGraphPage = React.memo(GraphPage)
@@ -154,9 +152,6 @@ export const TabContent = ({ tab, groupId, className }: TabContentProps): React.
             subtitle={`Query: ${tab.viewState?.query ?? ''}`}
           />
         )
-
-      case 'settings':
-        return <MemoizedSettingsPage />
 
       case 'template-editor':
         return <MemoizedTemplateEditorPage templateId={tab.entityId} />

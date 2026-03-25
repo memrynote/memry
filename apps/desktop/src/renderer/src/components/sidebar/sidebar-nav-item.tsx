@@ -110,9 +110,7 @@ export const SidebarNavItem = ({
         data-item-type={item.type}
       >
         {/* Active indicator bar */}
-        {isActive && (
-          <div className="absolute left-0 top-1 bottom-1 w-0.5 rounded-r bg-sidebar-accent-foreground" />
-        )}
+        {isActive && <div className="absolute left-0 top-1 bottom-1 w-0.5 rounded-r bg-tint" />}
 
         {/* Color dot for projects */}
         {item.color && (
@@ -127,10 +125,7 @@ export const SidebarNavItem = ({
           <TabIcon
             type={item.type}
             icon={item.icon}
-            className={cn(
-              'w-4 h-4 flex-shrink-0',
-              isActive ? 'text-sidebar-accent-foreground' : 'text-muted-foreground'
-            )}
+            className="w-4 h-4 flex-shrink-0 text-muted-foreground"
           />
         )}
 
@@ -151,7 +146,7 @@ export const SidebarNavItem = ({
 
         {/* Open in tab indicator dot */}
         {isOpenTab && !isActive && (
-          <div className="w-1.5 h-1.5 rounded-full bg-sidebar-accent-foreground flex-shrink-0" />
+          <div className="w-1.5 h-1.5 rounded-full bg-tint flex-shrink-0" />
         )}
       </button>
     </SidebarItemContextMenu>
