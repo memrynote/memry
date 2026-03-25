@@ -38,6 +38,8 @@ import {
   useSearchShortcut
 } from '@/hooks'
 import { CommandPalette } from '@/components/search/command-palette'
+import { SettingsModalProvider, useSettingsModal } from '@/contexts/settings-modal-context'
+import { SettingsModal } from '@/components/settings-modal'
 import { useFolderViewEvents } from '@/hooks/use-folder-view-events'
 import { useFlushOnQuit } from '@/hooks/use-flush-on-quit'
 import { tasksService } from '@/services/tasks-service'
@@ -129,18 +131,8 @@ const AppContent = (): React.JSX.Element => {
   // Keyboard shortcuts
   useTabKeyboardShortcuts()
   const isChordActive = useChordShortcuts()
-  useSettingsShortcut(() => {
-    openTab({
-      type: 'settings',
-      title: 'Settings',
-      icon: 'settings',
-      path: '/settings',
-      isPinned: false,
-      isModified: false,
-      isPreview: false,
-      isDeleted: false
-    })
-  })
+  const { open: openSettings } = useSettingsModal()
+  useSettingsShortcut(openSettings)
   useNewNoteShortcut(() => void handleNewNote())
   useUndoKeyboardShortcut() // T051-T054: Cmd+Z for task undo
   useReminderNotifications() // T231-T233: In-app toast notifications for reminders
@@ -172,6 +164,9 @@ const AppContent = (): React.JSX.Element => {
 
       {/* Global Search Command Palette */}
       <CommandPalette open={searchOpen} onOpenChange={setSearchOpen} />
+
+      {/* Settings Modal */}
+      <SettingsModal />
     </TabDragProvider>
   )
 }
@@ -466,14 +461,16 @@ function App(): React.JSX.Element {
           <AIInlineProvider>
             <TabProvider>
               <TabPersistenceManager>
-                <SidebarDrillDownProvider>
-                  <AppSidebar currentPage={currentPage} viewCounts={viewCounts} />
-                  <SidebarInset className="flex flex-col overflow-hidden">
-                    <AppContent />
-                  </SidebarInset>
-                </SidebarDrillDownProvider>
-                {/* Drag Overlay - only for task drag to sidebar */}
-                <TaskDragOverlay projects={projectsWithCounts} />
+                <SettingsModalProvider>
+                  <SidebarDrillDownProvider>
+                    <AppSidebar currentPage={currentPage} viewCounts={viewCounts} />
+                    <SidebarInset className="flex flex-col overflow-hidden">
+                      <AppContent />
+                    </SidebarInset>
+                  </SidebarDrillDownProvider>
+                  {/* Drag Overlay - only for task drag to sidebar */}
+                  <TaskDragOverlay projects={projectsWithCounts} />
+                </SettingsModalProvider>
               </TabPersistenceManager>
             </TabProvider>
           </AIInlineProvider>
