@@ -1,5 +1,5 @@
-import { useState, useRef, useCallback, useMemo } from 'react'
-import { Search } from '@/lib/icons'
+import { useState, useCallback, useMemo } from 'react'
+import { FilterSearchHeader } from '@/components/ui/filter-search-header'
 import { Picker } from '@/components/ui/picker'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { TagChip, Tag } from './TagChip'
@@ -28,7 +28,6 @@ export function TagInputPopup({
   disabled = false,
   children
 }: TagInputPopupProps) {
-  const inputRef = useRef<HTMLInputElement>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [newTagColor, setNewTagColor] = useState(getRandomColor())
   const [focusedIndex, setFocusedIndex] = useState(-1)
@@ -46,10 +45,11 @@ export function TagInputPopup({
   }, [])
 
   const filteredTags = useMemo(() => {
-    if (!searchQuery.trim()) return availableTags
-    const query = searchQuery.toLowerCase()
-    return availableTags.filter((tag) => tag.name.toLowerCase().includes(query))
-  }, [availableTags, searchQuery])
+    const base = searchQuery.trim()
+      ? availableTags.filter((t) => t.name.toLowerCase().includes(searchQuery.toLowerCase()))
+      : availableTags
+    return base.filter((t) => !currentTagIds.includes(t.id))
+  }, [availableTags, searchQuery, currentTagIds])
 
   const exactMatchExists = useMemo(() => {
     const query = searchQuery.trim().toLowerCase()
@@ -60,6 +60,11 @@ export function TagInputPopup({
     () => recentTags.filter((tag) => !currentTagIds.includes(tag.id)),
     [recentTags, currentTagIds]
   )
+
+  const handleSearchChange = useCallback((value: string) => {
+    setSearchQuery(value)
+    setFocusedIndex(-1)
+  }, [])
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
@@ -76,11 +81,8 @@ export function TagInputPopup({
       if (e.key === 'Enter') {
         e.preventDefault()
         if (focusedIndex >= 0 && focusedIndex < filteredTags.length) {
-          const tag = filteredTags[focusedIndex]
-          if (!currentTagIds.includes(tag.id)) {
-            onAddTag(tag.id)
-            handleOpenChange(false)
-          }
+          onAddTag(filteredTags[focusedIndex].id)
+          handleOpenChange(false)
           return
         }
         const trimmed = searchQuery.trim()
@@ -89,11 +91,8 @@ export function TagInputPopup({
             onCreateTag(trimmed, newTagColor)
             handleOpenChange(false)
           } else if (filteredTags.length > 0) {
-            const firstTag = filteredTags[0]
-            if (!currentTagIds.includes(firstTag.id)) {
-              onAddTag(firstTag.id)
-              handleOpenChange(false)
-            }
+            onAddTag(filteredTags[0].id)
+            handleOpenChange(false)
           }
         }
       }
@@ -104,7 +103,6 @@ export function TagInputPopup({
       newTagColor,
       onCreateTag,
       filteredTags,
-      currentTagIds,
       onAddTag,
       focusedIndex,
       handleOpenChange
@@ -113,12 +111,10 @@ export function TagInputPopup({
 
   const handleTagClick = useCallback(
     (tag: Tag) => {
-      if (!currentTagIds.includes(tag.id)) {
-        onAddTag(tag.id)
-        handleOpenChange(false)
-      }
+      onAddTag(tag.id)
+      handleOpenChange(false)
     },
-    [currentTagIds, onAddTag, handleOpenChange]
+    [onAddTag, handleOpenChange]
   )
 
   return (
@@ -127,68 +123,41 @@ export function TagInputPopup({
         {children}
       </Picker.Trigger>
       <Picker.Content width={280} align="start" sideOffset={8} onKeyDown={handleKeyDown}>
-        <div className="border-b border-border p-2">
-          <div className="flex items-center gap-2 rounded-md bg-muted px-3 py-2">
-            <Search className="h-4 w-4 text-muted-foreground" />
-            <input
-              ref={inputRef}
-              type="text"
-              value={searchQuery}
-              onChange={(e) => {
-                setSearchQuery(e.target.value)
-                setFocusedIndex(-1)
-              }}
-              onClick={(e) => e.stopPropagation()}
-              placeholder="Type tag name..."
-              aria-label="Search or create tag"
-              className="flex-1 bg-transparent text-sm text-popover-foreground placeholder:text-muted-foreground outline-none"
-            />
-          </div>
-        </div>
+        <FilterSearchHeader
+          value={searchQuery}
+          onChange={handleSearchChange}
+          placeholder="Type tag name..."
+        />
 
         <ScrollArea className="max-h-[260px]">
-          <div className="p-2">
+          <Picker.List className="flex-wrap gap-1.5">
             {filteredRecentTags.length > 0 && !searchQuery && (
-              <div className="mb-3">
-                <div className="mb-1.5 px-1 text-xs font-medium uppercase text-muted-foreground">
-                  Recent
-                </div>
-                <div className="flex flex-wrap gap-1.5">
+              <Picker.Section label="Recent">
+                <div className="flex flex-wrap gap-1.5 px-2 pb-1">
                   {filteredRecentTags.slice(0, 8).map((tag) => (
-                    <TagChip
-                      key={tag.id}
-                      tag={tag}
-                      isSelected={currentTagIds.includes(tag.id)}
-                      onClick={() => handleTagClick(tag)}
-                    />
+                    <TagChip key={tag.id} tag={tag} onClick={() => handleTagClick(tag)} />
                   ))}
                 </div>
-              </div>
+              </Picker.Section>
             )}
 
             {filteredTags.length > 0 && (
-              <div className="mb-2">
-                <div className="mb-1.5 px-1 text-xs font-medium uppercase text-muted-foreground">
-                  {searchQuery ? 'Matching' : 'All Tags'}
-                </div>
-                <div className="flex flex-wrap gap-1.5" role="listbox" aria-label="Available tags">
+              <Picker.Section label={searchQuery ? 'Matching' : 'All Tags'}>
+                <div className="flex flex-wrap gap-1.5 px-2 pb-1">
                   {filteredTags.map((tag, index) => (
                     <TagChip
                       key={tag.id}
                       tag={tag}
-                      isSelected={currentTagIds.includes(tag.id)}
                       isFocused={index === focusedIndex}
                       onClick={() => handleTagClick(tag)}
                     />
                   ))}
                 </div>
-              </div>
+              </Picker.Section>
             )}
 
-            {filteredTags.length === 0 && searchQuery && (
-              <div className="py-4 text-center text-sm text-muted-foreground">No tags found</div>
-            )}
-          </div>
+            {filteredTags.length === 0 && searchQuery && <Picker.Empty message="No tags found" />}
+          </Picker.List>
         </ScrollArea>
       </Picker.Content>
     </Picker>
