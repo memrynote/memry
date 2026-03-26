@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-explicit-any */
 
 import { createInlineContentSpec, type Block } from '@blocknote/core'
-import { TAG_COLORS } from '@/components/note/tags-row/tag-colors'
+import { TAG_COLORS, withAlpha } from '@/components/note/tags-row/tag-colors'
 
 export function createHashTagInlineContent(tag: string, color: string = 'stone') {
   return {
@@ -32,9 +32,9 @@ export const HashTag = createInlineContentSpec(
       dom.setAttribute('contenteditable', 'false')
       dom.textContent = `#${tag}`
 
-      dom.style.backgroundColor = colors.background
+      dom.style.backgroundColor = withAlpha(colors.text, 0.12)
       dom.style.color = colors.text
-      dom.style.padding = '1px 6px'
+      dom.style.padding = '1px 8px'
       dom.style.borderRadius = '10px'
       dom.style.fontSize = '0.9em'
       dom.style.fontWeight = '500'
