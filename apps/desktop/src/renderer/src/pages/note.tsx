@@ -30,18 +30,13 @@ import { useTasksLinkedToNote } from '@/hooks/use-tasks-linked-to-note'
 import { notesService, onNoteDeleted, onNoteUpdated, onNoteRenamed } from '@/services/notes-service'
 import { resolveWikiLink } from '@/lib/wikilink-resolver'
 import { useTabs, useActiveTab } from '@/contexts/tabs'
+import { useSidebarDrillDown } from '@/contexts/sidebar-drill-down'
 import { ReminderPicker } from '@/components/reminder'
 import { useNoteReminders } from '@/hooks/use-note-reminders'
 import { Bookmark2, MoreVertical, FilePaste, Download, AlarmClock, Monitor } from '@/lib/icons'
 import { SidebarGraph } from '@/lib/icons/sidebar-nav-icons'
 import { Button } from '@/components/ui/button'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger
-} from '@/components/ui/dropdown-menu'
+import { Picker } from '@/components/ui/picker'
 import { toast } from 'sonner'
 import { registerPendingSave, unregisterPendingSave } from '@/lib/save-registry'
 import { useIsBookmarked } from '@/hooks/use-bookmarks'
@@ -112,6 +107,7 @@ export function NotePage({ noteId }: NotePageProps) {
   const { tags: allAvailableTags } = useNoteTagsQuery()
   const { openTab, setTabDeleted, updateTabTitleByEntityId } = useTabs()
   const activeTab = useActiveTab()
+  const { openTag } = useSidebarDrillDown()
   const queryClient = useQueryClient()
 
   // Extract highlight info from tab viewState (from reminder navigation)
@@ -797,8 +793,16 @@ export function NotePage({ noteId }: NotePageProps) {
         />
       </Button>
 
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
+      <Picker
+        value={null}
+        onValueChange={(action) => {
+          if (action === 'local-graph') setIsLocalGraphOpen((prev) => !prev)
+          if (action === 'version-history') setIsVersionHistoryOpen(true)
+          if (action === 'export') setIsExportDialogOpen(true)
+          if (action === 'local-only') handleToggleLocalOnly(!(note.frontmatter.localOnly ?? false))
+        }}
+      >
+        <Picker.Trigger asChild disabled={isDeleted}>
           <Button
             variant="ghost"
             size="icon"
@@ -807,29 +811,29 @@ export function NotePage({ noteId }: NotePageProps) {
           >
             <MoreVertical className="h-3.5 w-3.5 text-muted-foreground" />
           </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
-          <DropdownMenuItem onClick={() => setIsLocalGraphOpen((prev) => !prev)}>
-            <SidebarGraph className="mr-2 h-4 w-4" />
-            {isLocalGraphOpen ? 'Hide local graph' : 'Show local graph'}
-          </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => setIsVersionHistoryOpen(true)}>
-            <FilePaste className="mr-2 h-4 w-4" />
-            Version history
-          </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => setIsExportDialogOpen(true)}>
-            <Download className="mr-2 h-4 w-4" />
-            Export
-          </DropdownMenuItem>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem
-            onClick={() => handleToggleLocalOnly(!(note.frontmatter.localOnly ?? false))}
-          >
-            <Monitor className="mr-2 h-4 w-4" />
-            {note.frontmatter.localOnly ? 'Disable local only' : 'Set local only'}
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
+        </Picker.Trigger>
+        <Picker.Content align="end">
+          <Picker.List>
+            <Picker.Item
+              value="local-graph"
+              label={isLocalGraphOpen ? 'Hide local graph' : 'Show local graph'}
+              icon={<SidebarGraph className="size-4" />}
+            />
+            <Picker.Item
+              value="version-history"
+              label="Version history"
+              icon={<FilePaste className="size-4" />}
+            />
+            <Picker.Item value="export" label="Export" icon={<Download className="size-4" />} />
+            <Picker.Separator />
+            <Picker.Item
+              value="local-only"
+              label={note.frontmatter.localOnly ? 'Disable local only' : 'Set local only'}
+              icon={<Monitor className="size-4" />}
+            />
+          </Picker.List>
+        </Picker.Content>
+      </Picker>
     </div>
   )
 
@@ -873,6 +877,7 @@ export function NotePage({ noteId }: NotePageProps) {
             onAddTag={handleAddTag}
             onCreateTag={handleCreateTag}
             onRemoveTag={handleRemoveTag}
+            onTagClick={(tag) => openTag(tag.name, tag.color)}
             hideWhenEmpty
           />
 
