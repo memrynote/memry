@@ -489,27 +489,6 @@ export function NotePage({ noteId }: NotePageProps) {
     [noteId, note, renameNote.mutateAsync, isDeleted]
   )
 
-  // T026: Handle emoji changes - save to backend
-  const handleEmojiChange = useCallback(
-    async (newEmoji: string | null) => {
-      if (!noteId || !note) return
-
-      if (isDeleted) {
-        toast.error('Cannot update emoji - this note was deleted')
-        return
-      }
-
-      try {
-        await updateNote.mutateAsync({ id: noteId, emoji: newEmoji })
-        // Note will be updated via TanStack Query cache invalidation
-      } catch (err) {
-        log.error('Failed to update emoji:', err)
-        toast.error('Failed to update emoji')
-      }
-    },
-    [noteId, note, updateNote.mutateAsync, isDeleted]
-  )
-
   // Tag handlers
   const handleAddTag = useCallback(
     async (tagId: string) => {
@@ -882,7 +861,6 @@ export function NotePage({ noteId }: NotePageProps) {
           <NoteTitle
             emoji={note.emoji ?? null}
             title={note.title}
-            onEmojiChange={handleEmojiChange}
             onTitleChange={handleTitleChange}
             placeholder="Untitled"
           />
