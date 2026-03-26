@@ -43,7 +43,13 @@ import { useSidebarDrillDown } from '@/contexts/sidebar-drill-down'
 import type { ContentAreaProps, HeadingInfo } from './types'
 import { createWikiLinkInlineContent, WikiLink } from './wiki-link'
 import { WikiLinkMenu, type WikiLinkSuggestionItem } from './wiki-link-menu'
-import { HashTag, normalizeHashTags, extractInlineTags } from './hash-tag'
+import {
+  HashTag,
+  createHashTagInlineContent,
+  normalizeHashTags,
+  extractInlineTags
+} from './hash-tag'
+import { HashTagMenu, type HashTagSuggestionItem } from './hash-tag-menu'
 import { createHashTagInlinePlugin } from './hash-tag-inline-plugin'
 import { BlockDropIndicator, EmptyDocumentDropIndicator } from './block-drop-indicator'
 import { findDropTarget, type DropTarget } from './drop-target-utils'
@@ -683,9 +689,11 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
   )
 
   // =========================================================================
-  // HASH TAG INLINE EDITING
+  // HASH TAG INLINE EDITING + AUTOCOMPLETE
   // =========================================================================
 
+  type TagCacheEntry = { tag: string; count: number; color: string }
+  const tagsCacheRef = useRef<{ tags: TagCacheEntry[]; fetchedAt: number } | null>(null)
   const prevInlineTagsRef = useRef<string[]>([])
   const lastNormalizedTagsRef = useRef<string>('')
   const tagColorMapRef = useRef(tagColorMap)
@@ -694,8 +702,80 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
   }, [tagColorMap])
 
   const getTagColor = useCallback((tag: string): string => {
-    return tagColorMapRef.current?.get(tag) || 'stone'
+    const fromMap = tagColorMapRef.current?.get(tag)
+    if (fromMap) return fromMap
+    const cached = tagsCacheRef.current?.tags.find((t) => t.tag === tag)
+    return cached?.color || 'stone'
   }, [])
+
+  const getHashTagItems = useCallback(async (query: string): Promise<HashTagSuggestionItem[]> => {
+    const now = Date.now()
+    const cache = tagsCacheRef.current
+    if (!cache || now - cache.fetchedAt > 5000) {
+      try {
+        const result = await notesService.getTags()
+        tagsCacheRef.current = {
+          tags: result.map((t) => ({ tag: t.tag, count: t.count, color: t.color })),
+          fetchedAt: now
+        }
+      } catch (error) {
+        log.error('Failed to load tag suggestions', error)
+        tagsCacheRef.current = { tags: [], fetchedAt: now }
+      }
+    }
+
+    const colorMap = tagColorMapRef.current
+    const allTags = tagsCacheRef.current?.tags ?? []
+    const normalizedQuery = query.toLowerCase().trim()
+    const filtered = normalizedQuery
+      ? allTags.filter((t) => t.tag.includes(normalizedQuery))
+      : allTags
+
+    const sorted = filtered
+      .sort((a, b) => {
+        if (normalizedQuery) {
+          const aStarts = a.tag.startsWith(normalizedQuery)
+          const bStarts = b.tag.startsWith(normalizedQuery)
+          if (aStarts && !bStarts) return -1
+          if (!aStarts && bStarts) return 1
+        }
+        return b.count - a.count
+      })
+      .slice(0, 10)
+
+    const suggestions: HashTagSuggestionItem[] = sorted.map((t) => ({
+      name: t.tag,
+      color: colorMap?.get(t.tag) || t.color || 'stone',
+      count: t.count,
+      type: 'existing'
+    }))
+
+    const hasExactMatch = normalizedQuery ? filtered.some((t) => t.tag === normalizedQuery) : true
+
+    if (normalizedQuery && !hasExactMatch) {
+      suggestions.push({
+        name: normalizedQuery,
+        color: 'stone',
+        count: 0,
+        type: 'create'
+      })
+    }
+
+    return suggestions
+  }, [])
+
+  const handleHashTagSelect = useCallback(
+    (item: HashTagSuggestionItem) => {
+      if (!item.name) return
+      const tag = item.name.toLowerCase()
+      const color = item.color || 'stone'
+      editor.insertInlineContent([createHashTagInlineContent(tag, color)], {
+        updateSelection: true
+      })
+      editor.insertInlineContent([' '], { updateSelection: true })
+    },
+    [editor]
+  )
 
   useEffect(() => {
     const tiptap = (editor as any)._tiptapEditor
@@ -708,6 +788,38 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
       tiptap.unregisterPlugin(plugin.spec.key!)
     }
   }, [editor, getTagColor])
+
+  // Re-color existing hashTag nodes when tagColorMap changes
+  useEffect(() => {
+    if (!tagColorMap || tagColorMap.size === 0) return
+
+    const blocks = editor.document as Block[]
+    let didChange = false
+
+    const updateColors = (block: Block): Block => {
+      if (!Array.isArray(block.content)) return block
+      let blockChanged = false
+      const newContent = (block.content as any[]).map((item: any) => {
+        if (item?.type === 'hashTag' && item.props?.tag) {
+          const correctColor = tagColorMap.get(item.props.tag as string) || 'stone'
+          if (item.props.color !== correctColor) {
+            blockChanged = true
+            return { ...item, props: { ...item.props, color: correctColor } }
+          }
+        }
+        return item
+      })
+      if (!blockChanged) return block
+      didChange = true
+      return { ...block, content: newContent as any }
+    }
+
+    const updatedBlocks = blocks.map(updateColors)
+    if (didChange) {
+      editor.replaceBlocks(editor.document, updatedBlocks)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editor, tagColorMap])
 
   useEffect(() => {
     const container = editorContainerRef.current
@@ -1268,6 +1380,12 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
             getItems={getWikiLinkItems}
             suggestionMenuComponent={WikiLinkMenu}
             onItemClick={handleWikiLinkSelect}
+          />
+          <SuggestionMenuController
+            triggerCharacter="#"
+            getItems={getHashTagItems}
+            suggestionMenuComponent={HashTagMenu}
+            onItemClick={handleHashTagSelect}
           />
         </BlockNoteView>
 
