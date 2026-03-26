@@ -1,8 +1,7 @@
 import * as React from 'react'
 
 import { cn } from '@/lib/utils'
-import { CheckMark } from '@/components/ui/check-mark'
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { Picker } from '@/components/ui/picker'
 import type { Status } from '@/data/tasks-data'
 import { StatusIcon } from './status-icon'
 
@@ -19,24 +18,13 @@ export const InteractiveStatusBadge = ({
   onStatusChange,
   className
 }: InteractiveStatusBadgeProps): React.JSX.Element => {
-  const [isOpen, setIsOpen] = React.useState(false)
-
   const currentStatus = statuses.find((s) => s.id === statusId)
   const statusColor = currentStatus?.color || '#6B7280'
   const statusName = currentStatus?.name || 'Unknown'
 
-  const handleSelect = (newStatusId: string): void => {
-    onStatusChange(newStatusId)
-    setIsOpen(false)
-  }
-
-  const handleTriggerClick = (e: React.MouseEvent): void => {
-    e.stopPropagation()
-  }
-
   return (
-    <Popover open={isOpen} onOpenChange={setIsOpen}>
-      <PopoverTrigger asChild onClick={handleTriggerClick}>
+    <Picker value={statusId} onValueChange={onStatusChange}>
+      <Picker.Trigger asChild>
         <button
           type="button"
           className={cn(
@@ -52,43 +40,21 @@ export const InteractiveStatusBadge = ({
             {statusName}
           </div>
         </button>
-      </PopoverTrigger>
-      <PopoverContent
-        className="w-auto p-0 rounded-[10px] bg-popover border-border shadow-lg"
-        align="start"
-        sideOffset={4}
-        onClick={handleTriggerClick}
-      >
-        <div className="flex flex-col p-1 [font-synthesis:none] antialiased">
-          {statuses.map((status) => {
-            const isSelected = status.id === statusId
-            return (
-              <button
-                key={status.id}
-                type="button"
-                onClick={() => handleSelect(status.id)}
-                className={cn(
-                  'flex items-center rounded-[7px] py-2 px-3 gap-2 transition-colors',
-                  'hover:bg-accent focus:outline-none'
-                )}
-                style={isSelected ? { backgroundColor: `${status.color}0F` } : undefined}
-              >
-                <StatusIcon type={status.type} color={status.color} />
-                <div
-                  className={cn(
-                    'text-[13px] leading-4',
-                    isSelected ? 'font-medium' : 'text-text-secondary'
-                  )}
-                  style={isSelected ? { color: status.color } : undefined}
-                >
-                  {status.name}
-                </div>
-                {isSelected && <CheckMark color={status.color} className="ml-auto" />}
-              </button>
-            )
-          })}
-        </div>
-      </PopoverContent>
-    </Popover>
+      </Picker.Trigger>
+      <Picker.Content width="auto" align="start" sideOffset={4}>
+        <Picker.List>
+          {statuses.map((status) => (
+            <Picker.Item
+              key={status.id}
+              value={status.id}
+              label={status.name}
+              icon={<StatusIcon type={status.type} color={status.color} />}
+              indicator="check"
+              indicatorColor={status.color}
+            />
+          ))}
+        </Picker.List>
+      </Picker.Content>
+    </Picker>
   )
 }

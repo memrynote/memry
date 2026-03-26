@@ -1,14 +1,10 @@
-import { useState } from 'react'
 import { Check, ChevronDown } from '@/lib/icons'
 
 import { Button } from '@/components/ui/button'
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { FilterFooter } from '@/components/ui/filter-footer'
+import { Picker } from '@/components/ui/picker'
 import { cn } from '@/lib/utils'
-import { type Priority, priorityConfig } from '@/data/sample-tasks'
-
-// ============================================================================
-// TYPES
-// ============================================================================
+import { type Priority } from '@/data/sample-tasks'
 
 interface PriorityFilterProps {
   selectedPriorities: Priority[]
@@ -16,10 +12,6 @@ interface PriorityFilterProps {
   taskCountByPriority?: Record<Priority, number>
   className?: string
 }
-
-// ============================================================================
-// PRIORITY OPTIONS — Paper design colors
-// ============================================================================
 
 const PRIORITY_DISPLAY: Record<
   Priority,
@@ -64,34 +56,25 @@ const PRIORITY_DISPLAY: Record<
 
 const PRIORITY_ORDER: Priority[] = ['urgent', 'high', 'medium', 'low', 'none']
 
-// ============================================================================
-// PRIORITY FILTER COMPONENT
-// ============================================================================
-
 export const PriorityFilter = ({
   selectedPriorities,
   onChange,
   taskCountByPriority = {} as Record<Priority, number>,
   className
 }: PriorityFilterProps): React.JSX.Element => {
-  const [isOpen, setIsOpen] = useState(false)
-
   const hasSelection = selectedPriorities.length > 0
 
-  const handleTogglePriority = (priority: Priority): void => {
-    const nextSelection = selectedPriorities.includes(priority)
-      ? selectedPriorities.filter((p) => p !== priority)
-      : [...selectedPriorities, priority]
-    onChange(nextSelection)
-  }
-
-  const handleClear = (): void => {
-    onChange([])
+  const handleToggle = (value: string): void => {
+    const p = value as Priority
+    const next = selectedPriorities.includes(p)
+      ? selectedPriorities.filter((x) => x !== p)
+      : [...selectedPriorities, p]
+    onChange(next)
   }
 
   return (
-    <Popover open={isOpen} onOpenChange={setIsOpen}>
-      <PopoverTrigger asChild>
+    <Picker mode="multi" value={selectedPriorities} onValueChange={handleToggle}>
+      <Picker.Trigger asChild>
         <Button
           variant="outline"
           size="sm"
@@ -106,83 +89,65 @@ export const PriorityFilter = ({
           )}
           <ChevronDown className="size-4 opacity-50" />
         </Button>
-      </PopoverTrigger>
-
-      <PopoverContent className="w-60 p-0 rounded-sm overflow-clip shadow-dropdown" align="start">
-        {/* Options list */}
-        <div className="flex flex-col py-2">
+      </Picker.Trigger>
+      <Picker.Content width={240} align="start">
+        <Picker.List>
           {PRIORITY_ORDER.map((priority) => {
             const display = PRIORITY_DISPLAY[priority]
             const isSelected = selectedPriorities.includes(priority)
             const taskCount = taskCountByPriority[priority] || 0
 
             return (
-              <button
+              <Picker.Item
                 key={priority}
-                type="button"
-                onClick={() => handleTogglePriority(priority)}
+                value={priority}
+                label={display.label}
+                icon={
+                  <>
+                    <div
+                      className="flex items-center justify-center rounded-sm shrink-0 size-4"
+                      style={{
+                        borderWidth: '1.5px',
+                        borderStyle: 'solid',
+                        borderColor: isSelected ? display.checkBorder : 'var(--border)',
+                        backgroundColor: isSelected ? display.checkBg : 'var(--card)'
+                      }}
+                    >
+                      {isSelected && (
+                        <Check size={10} strokeWidth={3} style={{ color: display.checkStroke }} />
+                      )}
+                    </div>
+                    <div
+                      className="shrink-0 rounded-full size-2"
+                      style={{ backgroundColor: display.dot }}
+                    />
+                  </>
+                }
+                trailing={
+                  <span className="text-[11px] text-text-tertiary leading-[14px] tabular-nums">
+                    {taskCount}
+                  </span>
+                }
                 className={cn(
-                  'flex items-center gap-2.5 py-2 px-4 transition-colors',
-                  'hover:bg-accent focus:outline-none focus:bg-accent'
+                  'gap-2.5 py-2 px-4',
+                  priority === 'none' &&
+                    !isSelected &&
+                    '[&_[class*=text-muted]]:text-muted-foreground'
                 )}
-              >
-                {/* Checkbox */}
-                <div
-                  className="flex items-center justify-center rounded-sm shrink-0 size-4"
-                  style={{
-                    borderWidth: '1.5px',
-                    borderStyle: 'solid',
-                    borderColor: isSelected ? display.checkBorder : 'var(--border)',
-                    backgroundColor: isSelected ? display.checkBg : 'var(--card)'
-                  }}
-                >
-                  {isSelected && (
-                    <Check size={10} strokeWidth={3} style={{ color: display.checkStroke }} />
-                  )}
-                </div>
-                {/* Color dot */}
-                <div
-                  className="shrink-0 rounded-full size-2"
-                  style={{ backgroundColor: display.dot }}
-                />
-                {/* Label */}
-                <span
-                  className={cn(
-                    'text-[13px] leading-4',
-                    isSelected ? 'font-medium text-foreground' : 'text-foreground',
-                    priority === 'none' && !isSelected && 'text-muted-foreground'
-                  )}
-                >
-                  {display.label}
-                </span>
-                {/* Count */}
-                <span className="text-[11px] ml-auto text-text-tertiary leading-[14px]">
-                  {taskCount}
-                </span>
-              </button>
+              />
             )
           })}
-        </div>
-
-        {/* Footer */}
-        <div className="flex items-center justify-between py-2.5 px-4 bg-surface border-t border-border">
-          <button
-            type="button"
-            onClick={handleClear}
-            className="text-[12px] text-text-tertiary font-medium leading-4 hover:text-foreground transition-colors"
-          >
-            Clear
-          </button>
-          <button
-            type="button"
-            onClick={() => setIsOpen(false)}
-            className="flex items-center rounded-sm py-[5px] px-3.5 gap-1 bg-foreground hover:bg-foreground/80 transition-colors"
-          >
-            <span className="text-[12px] text-background font-semibold leading-4">Apply</span>
-          </button>
-        </div>
-      </PopoverContent>
-    </Popover>
+        </Picker.List>
+        <Picker.Footer>
+          <FilterFooter
+            onClear={() => onChange([])}
+            onApply={() => {}}
+            clearLabel="Clear"
+            applyLabel="Apply"
+          />
+        </Picker.Footer>
+      </Picker.Content>
+    </Picker>
   )
 }
 
