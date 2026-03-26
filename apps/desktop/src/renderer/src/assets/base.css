@@ -1539,7 +1539,13 @@ del.bn-inline-content {
   color: rgb(251, 191, 36) !important;
 }
 
-/* Inline hash tag hover effect */
+/* Inline hash tag styles — needs .dark .bn-editor prefix to beat the wildcard rule */
+.dark .bn-editor .inline-hash-tag,
+.dark .bn-container .inline-hash-tag,
+.inline-hash-tag {
+  color: var(--hash-tag-color) !important;
+}
+
 .inline-hash-tag:hover {
   opacity: 0.8;
 }

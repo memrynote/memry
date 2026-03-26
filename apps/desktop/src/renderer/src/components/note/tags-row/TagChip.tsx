@@ -76,6 +76,8 @@ export function TagChip({ tag, onRemove, onClick, isSelected, isFocused, disable
         role="option"
         aria-selected={isSelected}
         onClick={onClick}
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
         disabled={isSelected || disabled}
         className={pillClasses}
         style={pillStyle}

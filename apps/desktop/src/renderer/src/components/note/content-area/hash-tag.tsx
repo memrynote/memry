@@ -33,7 +33,7 @@ export const HashTag = createInlineContentSpec(
       dom.textContent = `#${tag}`
 
       dom.style.backgroundColor = withAlpha(colors.text, 0.12)
-      dom.style.color = colors.text
+      dom.style.setProperty('--hash-tag-color', colors.text)
       dom.style.padding = '1px 8px'
       dom.style.borderRadius = '10px'
       dom.style.fontSize = '0.9em'
