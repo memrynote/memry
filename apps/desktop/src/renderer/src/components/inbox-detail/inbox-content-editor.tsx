@@ -10,7 +10,7 @@ import { BlockNoteView } from '@blocknote/shadcn'
 import { useTheme } from 'next-themes'
 
 // BlockNote styles
-import '@blocknote/core/fonts/inter.css'
+
 import '@blocknote/shadcn/style.css'
 
 import { cn } from '@/lib/utils'

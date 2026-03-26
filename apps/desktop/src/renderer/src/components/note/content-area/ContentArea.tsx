@@ -29,7 +29,7 @@ import { en as coreEn } from '@blocknote/core/locales'
 import { DefaultChatTransport } from 'ai'
 
 // BlockNote styles
-import '@blocknote/core/fonts/inter.css'
+
 import '@blocknote/shadcn/style.css'
 import '@blocknote/xl-ai/style.css'
 

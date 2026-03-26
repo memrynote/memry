@@ -10,7 +10,8 @@
 :root .bn-editor,
 :root .bn-container {
   background-color: var(--background) !important;
-  color: #2c2c2b !important;
+  color: #37352f !important;
+  caret-color: #37352f;
   padding-inline: 0px;
 }
 
@@ -18,6 +19,7 @@
 .dark .bn-container {
   background-color: var(--background) !important;
   color: #ffffff !important;
+  caret-color: #f0efed;
 }
 
 /* Inbox detail drawer: editor inherits drawer surface bg, not page bg */
@@ -30,6 +32,34 @@
 .dark .bn-editor *,
 .dark .bn-container * {
   color: inherit !important;
+}
+
+/* ===== NOTION-LIKE TYPOGRAPHY OVERRIDES ===== */
+/* Override BlockNote's Inter font with system font stack */
+:root .bn-default-styles,
+:root .bn-container {
+  font-family: var(--font-sans) !important;
+  -webkit-font-smoothing: auto !important;
+  -moz-osx-font-smoothing: auto !important;
+}
+
+:root .bn-container {
+  --bn-font-family: var(--font-sans);
+}
+
+/* Block spacing: match Notion's vertical rhythm */
+:root .bn-block-content {
+  padding: 2px 0 !important;
+}
+
+:root .bn-block-outer {
+  padding: 1px 0;
+}
+
+/* Text behavior: match Notion's wrapping */
+:root .bn-inline-content {
+  white-space: break-spaces;
+  word-break: break-word;
 }
 
 /* Make BlockNote editor fill available height */
