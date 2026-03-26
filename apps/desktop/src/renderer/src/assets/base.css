@@ -188,8 +188,7 @@
       'Apple Color Emoji', 'Noto Sans Arabic', 'Noto Sans Hebrew', Arial, sans-serif,
       'Segoe UI Emoji', 'Segoe UI Symbol';
     --font-serif: 'Crimson Pro Variable', Georgia, 'Times New Roman', serif;
-    --font-display:
-      'Playfair Display Variable', 'Crimson Pro Variable', Georgia, serif;
+    --font-display: 'Playfair Display Variable', 'Crimson Pro Variable', Georgia, serif;
     --font-heading: 'Space Grotesk Variable', system-ui, sans-serif;
     --font-mono: 'JetBrains Mono Variable', 'SF Mono', 'Fira Code', monospace;
 
@@ -472,8 +471,7 @@
       'Apple Color Emoji', 'Noto Sans Arabic', 'Noto Sans Hebrew', Arial, sans-serif,
       'Segoe UI Emoji', 'Segoe UI Symbol';
     --font-serif: 'Crimson Pro Variable', Georgia, 'Times New Roman', serif;
-    --font-display:
-      'Playfair Display Variable', 'Crimson Pro Variable', Georgia, serif;
+    --font-display: 'Playfair Display Variable', 'Crimson Pro Variable', Georgia, serif;
     --font-heading: 'Space Grotesk Variable', system-ui, sans-serif;
     --font-mono: 'JetBrains Mono Variable', 'SF Mono', 'Fira Code', monospace;
 
