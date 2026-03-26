@@ -11,6 +11,7 @@ export interface TagsRowProps {
   onAddTag: (tagId: string) => void
   onCreateTag: (name: string, color: string) => void
   onRemoveTag: (tagId: string) => void
+  onTagClick?: (tag: Tag) => void
   disabled?: boolean
   className?: string
   hideWhenEmpty?: boolean
@@ -23,6 +24,7 @@ export const TagsRow = memo(function TagsRow({
   onAddTag,
   onCreateTag,
   onRemoveTag,
+  onTagClick,
   disabled = false,
   className,
   hideWhenEmpty = false
@@ -42,6 +44,7 @@ export const TagsRow = memo(function TagsRow({
           key={tag.id}
           tag={tag}
           onRemove={disabled ? undefined : onRemoveTag}
+          onClick={onTagClick ? () => onTagClick(tag) : undefined}
           disabled={disabled}
         />
       ))}
