@@ -43,14 +43,8 @@ import { useSidebarDrillDown } from '@/contexts/sidebar-drill-down'
 import type { ContentAreaProps, HeadingInfo } from './types'
 import { createWikiLinkInlineContent, WikiLink } from './wiki-link'
 import { WikiLinkMenu, type WikiLinkSuggestionItem } from './wiki-link-menu'
-import {
-  HashTag,
-  createHashTagInlineContent,
-  normalizeHashTags,
-  extractInlineTags
-} from './hash-tag'
-import { HashTagMenu, type HashTagSuggestionItem } from './hash-tag-menu'
-import { createHashTagSpacePlugin } from './hash-tag-space-plugin'
+import { HashTag, normalizeHashTags, extractInlineTags } from './hash-tag'
+import { createHashTagInlinePlugin } from './hash-tag-inline-plugin'
 import { BlockDropIndicator, EmptyDocumentDropIndicator } from './block-drop-indicator'
 import { findDropTarget, type DropTarget } from './drop-target-utils'
 import {
@@ -447,12 +441,14 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
   // Debounce timers for expensive operations (prevents lag during typing)
   const markdownDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const headingsDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const inlineTagsDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // Cleanup debounce timers on unmount
   useEffect(() => {
     return () => {
       if (markdownDebounceRef.current) clearTimeout(markdownDebounceRef.current)
       if (headingsDebounceRef.current) clearTimeout(headingsDebounceRef.current)
+      if (inlineTagsDebounceRef.current) clearTimeout(inlineTagsDebounceRef.current)
     }
   }, [])
 
@@ -687,11 +683,9 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
   )
 
   // =========================================================================
-  // HASH TAG AUTOCOMPLETE
+  // HASH TAG INLINE EDITING
   // =========================================================================
 
-  type TagCacheEntry = { tag: string; count: number; color: string }
-  const tagsCacheRef = useRef<{ tags: TagCacheEntry[]; fetchedAt: number } | null>(null)
   const prevInlineTagsRef = useRef<string[]>([])
   const lastNormalizedTagsRef = useRef<string>('')
   const tagColorMapRef = useRef(tagColorMap)
@@ -699,87 +693,15 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
     tagColorMapRef.current = tagColorMap
   }, [tagColorMap])
 
-  const getHashTagItems = useCallback(async (query: string): Promise<HashTagSuggestionItem[]> => {
-    const now = Date.now()
-    const cache = tagsCacheRef.current
-    if (!cache || now - cache.fetchedAt > 5000) {
-      try {
-        const result = await notesService.getTags()
-        tagsCacheRef.current = {
-          tags: result.map((t) => ({ tag: t.tag, count: t.count, color: t.color })),
-          fetchedAt: now
-        }
-      } catch (error) {
-        log.error('Failed to load tag suggestions', error)
-        tagsCacheRef.current = { tags: [], fetchedAt: now }
-      }
-    }
-
-    const colorMap = tagColorMapRef.current
-    const allTags = tagsCacheRef.current?.tags ?? []
-    const normalizedQuery = query.toLowerCase().trim()
-    const filtered = normalizedQuery
-      ? allTags.filter((t) => t.tag.includes(normalizedQuery))
-      : allTags
-
-    const sorted = filtered
-      .sort((a, b) => {
-        if (normalizedQuery) {
-          const aStarts = a.tag.startsWith(normalizedQuery)
-          const bStarts = b.tag.startsWith(normalizedQuery)
-          if (aStarts && !bStarts) return -1
-          if (!aStarts && bStarts) return 1
-        }
-        return b.count - a.count
-      })
-      .slice(0, 10)
-
-    const suggestions: HashTagSuggestionItem[] = sorted.map((t) => ({
-      name: t.tag,
-      color: colorMap?.get(t.tag) || t.color || 'stone',
-      count: t.count,
-      type: 'existing'
-    }))
-
-    const hasExactMatch = normalizedQuery ? filtered.some((t) => t.tag === normalizedQuery) : true
-
-    if (normalizedQuery && !hasExactMatch) {
-      suggestions.push({
-        name: normalizedQuery,
-        color: 'stone',
-        count: 0,
-        type: 'create'
-      })
-    }
-
-    return suggestions
-  }, [])
-
-  const handleHashTagSelect = useCallback(
-    (item: HashTagSuggestionItem) => {
-      if (!item.name) return
-      const tag = item.name.toLowerCase()
-      const color = item.color || 'stone'
-      editor.insertInlineContent([createHashTagInlineContent(tag, color)], {
-        updateSelection: true
-      })
-      editor.insertInlineContent([' '], { updateSelection: true })
-    },
-    [editor]
-  )
-
   const getTagColor = useCallback((tag: string): string => {
-    const fromMap = tagColorMapRef.current?.get(tag)
-    if (fromMap) return fromMap
-    const cached = tagsCacheRef.current?.tags.find((t) => t.tag === tag)
-    return cached?.color || 'stone'
+    return tagColorMapRef.current?.get(tag) || 'stone'
   }, [])
 
   useEffect(() => {
     const tiptap = (editor as any)._tiptapEditor
     if (!tiptap) return
 
-    const plugin = createHashTagSpacePlugin(getTagColor)
+    const plugin = createHashTagInlinePlugin(getTagColor)
     tiptap.registerPlugin(plugin)
 
     return () => {
@@ -912,25 +834,6 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editor])
 
-  useEffect(() => {
-    if (!isContentReadyRef.current) return
-    if (!noteTags?.length || !tagColorMap) return
-
-    const tagsKey = noteTags.slice().sort().join(',')
-    if (tagsKey === lastNormalizedTagsRef.current) return
-
-    const tagSet = new Set(noteTags.map((t) => t.toLowerCase()))
-    const blocks = editor.document as Block[]
-    const { blocks: normalizedBlocks, didChange } = normalizeHashTags(blocks, tagSet, tagColorMap)
-
-    lastNormalizedTagsRef.current = tagsKey
-
-    if (didChange) {
-      editor.replaceBlocks(editor.document, normalizedBlocks)
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [editor, noteTags, tagColorMap])
-
   // Handle content changes with debouncing for expensive operations
   // This prevents typing lag by deferring markdown conversion and heading extraction
   const handleChange = useCallback(() => {
@@ -994,15 +897,19 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
       }, 200)
     }
 
-    // Extract inline hash tags and notify parent if changed
+    // Extract inline hash tags — debounced to avoid feedback loop during tag editing
     if (onInlineTagsChange) {
-      const tags = extractInlineTags(blocks as Block[])
-      const tagsKey = tags.sort().join(',')
-      const prevKey = [...prevInlineTagsRef.current].sort().join(',')
-      if (tagsKey !== prevKey) {
-        prevInlineTagsRef.current = tags
-        onInlineTagsChange(tags)
-      }
+      if (inlineTagsDebounceRef.current) clearTimeout(inlineTagsDebounceRef.current)
+      inlineTagsDebounceRef.current = setTimeout(() => {
+        const currentBlocks = editor.document as Block[]
+        const tags = extractInlineTags(currentBlocks)
+        const tagsKey = tags.sort().join(',')
+        const prevKey = [...prevInlineTagsRef.current].sort().join(',')
+        if (tagsKey !== prevKey) {
+          prevInlineTagsRef.current = tags
+          onInlineTagsChange(tags)
+        }
+      }, 300)
     }
   }, [editor, onContentChange, onMarkdownChange, onHeadingsChange, onInlineTagsChange])
 
@@ -1361,12 +1268,6 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
             getItems={getWikiLinkItems}
             suggestionMenuComponent={WikiLinkMenu}
             onItemClick={handleWikiLinkSelect}
-          />
-          <SuggestionMenuController
-            triggerCharacter="#"
-            getItems={getHashTagItems}
-            suggestionMenuComponent={HashTagMenu}
-            onItemClick={handleHashTagSelect}
           />
         </BlockNoteView>
 
