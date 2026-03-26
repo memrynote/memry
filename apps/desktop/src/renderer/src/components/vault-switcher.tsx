@@ -3,13 +3,7 @@
 import { useState, useCallback } from 'react'
 import { Plus, Check, Loader2, Settings, X, LogOut, Cloud } from '@/lib/icons'
 
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger
-} from '@/components/ui/dropdown-menu'
+import { Picker } from '@/components/ui/picker'
 import {
   SidebarMenu,
   SidebarMenuButton,
@@ -25,6 +19,7 @@ import {
   AlertDialogTitle
 } from '@/components/ui/alert-dialog'
 import { Button } from '@/components/ui/button'
+import { cn } from '@/lib/utils'
 import { useVault, useVaultList } from '@/hooks/use-vault'
 import { useSettingsModal } from '@/contexts/settings-modal-context'
 import { useAuth } from '@/contexts/auth-context'
@@ -37,6 +32,7 @@ export function VaultSwitcher() {
   const { open: openSettings } = useSettingsModal()
   const { state: authState, logout } = useAuth()
   const [vaultToRemove, setVaultToRemove] = useState<VaultInfo | null>(null)
+  const [open, setOpen] = useState(false)
 
   const isAuthenticated = authState.status === 'authenticated'
 
@@ -50,6 +46,7 @@ export function VaultSwitcher() {
 
   const handleSwitchVault = useCallback(
     async (path: string) => {
+      setOpen(false)
       await switchVault(path)
     },
     [switchVault]
@@ -60,6 +57,7 @@ export function VaultSwitcher() {
   }, [openSettings])
 
   const handleSignIn = useCallback(() => {
+    setOpen(false)
     openSettings('account')
   }, [openSettings])
 
@@ -83,8 +81,17 @@ export function VaultSwitcher() {
   return (
     <SidebarMenu>
       <SidebarMenuItem>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
+        <Picker
+          value={null}
+          onValueChange={(action) => {
+            if (action === 'open-vault') void handleSelectNewVault()
+            if (action === 'settings') handleOpenSettings()
+            if (action === 'logout') void handleLogout()
+          }}
+          open={open}
+          onOpenChange={setOpen}
+        >
+          <Picker.Trigger asChild>
             <SidebarMenuButton
               size="default"
               className="rounded-[5px] gap-2 h-6 px-2 hover:bg-sidebar-accent/50 data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground group-data-[collapsible=icon]:justify-center"
@@ -102,106 +109,111 @@ export function VaultSwitcher() {
                 {currentVaultName}
               </span>
             </SidebarMenuButton>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent
+          </Picker.Trigger>
+          <Picker.Content
+            width="auto"
             onCloseAutoFocus={(e) => e.preventDefault()}
-            className="min-w-56 rounded-lg p-1 shadow-lg"
+            className="min-w-56"
             align="start"
             side={isMobile ? 'bottom' : 'right'}
             sideOffset={8}
           >
-            {/* Email context (signed in only) */}
-            {isAuthenticated && authState.email && (
-              <>
-                <div className="px-2.5 py-2 text-[11px] text-muted-foreground/60">
-                  {authState.email}
-                </div>
-                <DropdownMenuSeparator />
-              </>
-            )}
+            <Picker.List>
+              {isAuthenticated && authState.email && (
+                <>
+                  <div className="px-3 py-2 text-[11px] text-muted-foreground/60">
+                    {authState.email}
+                  </div>
+                  <Picker.Separator />
+                </>
+              )}
 
-            {/* Vault list */}
-            {vaults.length > 0 ? (
-              vaults.map((vault) => {
-                const isActive = status?.path === vault.path
-                return (
-                  <DropdownMenuItem
-                    key={vault.path}
-                    onClick={() => !isActive && handleSwitchVault(vault.path)}
-                    className={`group/vault gap-2.5 rounded-[5px] cursor-pointer ${isActive ? 'bg-accent' : ''}`}
-                  >
-                    <Check
-                      className={`size-3.5 shrink-0 ${isActive ? 'text-sidebar-terracotta opacity-100' : 'opacity-0'}`}
-                    />
-                    <span
-                      className={`flex-1 truncate text-[13px] ${isActive ? 'font-medium' : 'text-muted-foreground'}`}
+              {vaults.length > 0 ? (
+                vaults.map((vault) => {
+                  const isActive = status?.path === vault.path
+                  return (
+                    <button
+                      key={vault.path}
+                      type="button"
+                      onClick={() => !isActive && void handleSwitchVault(vault.path)}
+                      className={cn(
+                        'group/vault flex w-full items-center gap-2.5 rounded-[5px] px-2 py-1.5 transition-colors',
+                        isActive ? 'bg-accent' : 'hover:bg-accent cursor-pointer'
+                      )}
                     >
-                      {vault.name}
-                    </span>
-                    {!isActive && (
-                      <button
-                        onClick={(e) => handleRemoveClick(e, vault)}
-                        className="size-5 flex items-center justify-center rounded opacity-0 group-hover/vault:opacity-100 hover:bg-accent transition-all"
-                        aria-label={`Remove ${vault.name} from list`}
+                      <Check
+                        className={cn(
+                          'size-3.5 shrink-0',
+                          isActive ? 'text-sidebar-terracotta opacity-100' : 'opacity-0'
+                        )}
+                      />
+                      <span
+                        className={cn(
+                          'flex-1 truncate text-left',
+                          isActive ? 'font-medium' : 'text-muted-foreground'
+                        )}
                       >
-                        <X className="size-3 text-muted-foreground" />
-                      </button>
-                    )}
-                  </DropdownMenuItem>
-                )
-              })
-            ) : (
-              <div className="px-2.5 py-2 text-[13px] text-muted-foreground text-center">
-                No vaults yet
-              </div>
-            )}
+                        {vault.name}
+                      </span>
+                      {!isActive && (
+                        <span
+                          role="button"
+                          tabIndex={0}
+                          onClick={(e) => handleRemoveClick(e, vault)}
+                          onKeyDown={(e) =>
+                            e.key === 'Enter' &&
+                            handleRemoveClick(e as unknown as React.MouseEvent, vault)
+                          }
+                          className="size-5 flex items-center justify-center rounded opacity-0 group-hover/vault:opacity-100 hover:bg-accent transition-all"
+                          aria-label={`Remove ${vault.name} from list`}
+                        >
+                          <X className="size-3 text-muted-foreground" />
+                        </span>
+                      )}
+                    </button>
+                  )
+                })
+              ) : (
+                <Picker.Empty message="No vaults yet" />
+              )}
 
-            <DropdownMenuSeparator />
+              <Picker.Separator />
 
-            {/* Actions */}
-            <DropdownMenuItem
-              onClick={handleSelectNewVault}
-              className="gap-2.5 rounded-[5px] cursor-pointer"
-            >
-              <Plus className="size-3.5 text-muted-foreground" />
-              <span className="text-muted-foreground text-[13px]">Open vault</span>
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={handleOpenSettings}
-              className="gap-2.5 rounded-[5px] cursor-pointer"
-            >
-              <Settings className="size-3.5 text-muted-foreground" />
-              <span className="text-muted-foreground text-[13px]">Settings</span>
-            </DropdownMenuItem>
+              <Picker.Item
+                value="open-vault"
+                label="Open vault"
+                icon={<Plus className="size-3.5" />}
+              />
+              <Picker.Item
+                value="settings"
+                label="Settings"
+                icon={<Settings className="size-3.5" />}
+              />
 
-            <DropdownMenuSeparator />
+              <Picker.Separator />
 
-            {/* Auth action */}
-            {isAuthenticated ? (
-              <DropdownMenuItem
-                onClick={() => void handleLogout()}
-                className="gap-2.5 rounded-[5px] cursor-pointer"
-              >
-                <LogOut className="size-3.5 text-muted-foreground" />
-                <span className="text-muted-foreground text-[13px]">Log out</span>
-              </DropdownMenuItem>
-            ) : (
-              <DropdownMenuItem
-                onClick={handleSignIn}
-                className="gap-2.5 rounded-[5px] cursor-pointer"
-              >
-                <Cloud className="size-3.5 text-sidebar-terracotta" />
-                <span className="text-sidebar-terracotta font-medium text-[13px]">
-                  Sign in to sync
-                </span>
-              </DropdownMenuItem>
-            )}
-          </DropdownMenuContent>
-        </DropdownMenu>
+              {isAuthenticated ? (
+                <Picker.Item
+                  value="logout"
+                  label="Log out"
+                  icon={<LogOut className="size-3.5" />}
+                />
+              ) : (
+                <button
+                  type="button"
+                  onClick={handleSignIn}
+                  className="flex w-full items-center gap-2.5 rounded-[5px] px-2 py-1.5 hover:bg-accent transition-colors cursor-pointer"
+                >
+                  <Cloud className="size-3.5 text-sidebar-terracotta" />
+                  <span className="text-sidebar-terracotta font-medium">Sign in to sync</span>
+                </button>
+              )}
+            </Picker.List>
+          </Picker.Content>
+        </Picker>
       </SidebarMenuItem>
 
-      {/* Remove Vault Confirmation Dialog */}
-      <AlertDialog open={!!vaultToRemove} onOpenChange={(open) => !open && setVaultToRemove(null)}>
+      <AlertDialog open={!!vaultToRemove} onOpenChange={(o) => !o && setVaultToRemove(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>

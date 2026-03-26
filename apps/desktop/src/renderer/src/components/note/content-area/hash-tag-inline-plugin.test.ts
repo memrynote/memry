@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import {
-  matchHashTagWithSpace,
+  matchHashTagImmediate,
   matchTrailingTagChars,
   isTagChar,
   extendTagName,
@@ -8,53 +8,45 @@ import {
 } from './hash-tag-inline-plugin'
 
 describe('hash-tag-inline-plugin', () => {
-  describe('matchHashTagWithSpace', () => {
-    it('matches #tag followed by space at end of text', () => {
-      expect(matchHashTagWithSpace('#abc ')).toBe('abc')
-    })
-
-    it('matches single-letter tag', () => {
-      expect(matchHashTagWithSpace('#a ')).toBe('a')
-    })
-
-    it('matches after whitespace', () => {
-      expect(matchHashTagWithSpace('hello #test ')).toBe('test')
-    })
-
-    it('matches after object replacement char', () => {
-      expect(matchHashTagWithSpace('\ufffc#car ')).toBe('car')
-    })
-
-    it('matches tags with digits', () => {
-      expect(matchHashTagWithSpace('#v2 ')).toBe('v2')
-    })
-
-    it('matches tags with hyphens and underscores', () => {
-      expect(matchHashTagWithSpace('#my-tag_v2 ')).toBe('my-tag_v2')
-    })
-
-    it('returns null without trailing space', () => {
-      expect(matchHashTagWithSpace('#abc')).toBeNull()
-    })
-
-    it('returns null for hash only', () => {
-      expect(matchHashTagWithSpace('# ')).toBeNull()
-    })
-
-    it('returns null for hash with digit start', () => {
-      expect(matchHashTagWithSpace('#1abc ')).toBeNull()
-    })
-
-    it('returns null when hash not preceded by whitespace or start', () => {
-      expect(matchHashTagWithSpace('word#abc ')).toBeNull()
-    })
-
-    it('normalizes to lowercase', () => {
-      expect(matchHashTagWithSpace('#Japan ')).toBe('japan')
+  describe('matchHashTagImmediate', () => {
+    it('matches # followed by a single letter at end of text', () => {
+      expect(matchHashTagImmediate('#a')).toBe('a')
     })
 
     it('matches at start of text', () => {
-      expect(matchHashTagWithSpace('#design ')).toBe('design')
+      expect(matchHashTagImmediate('#z')).toBe('z')
+    })
+
+    it('matches after whitespace', () => {
+      expect(matchHashTagImmediate('hello #b')).toBe('b')
+    })
+
+    it('matches after object replacement char (inline node before #)', () => {
+      expect(matchHashTagImmediate('\ufffc #c')).toBe('c')
+    })
+
+    it('returns null when no hash', () => {
+      expect(matchHashTagImmediate('abc')).toBeNull()
+    })
+
+    it('returns null for hash only (no letter)', () => {
+      expect(matchHashTagImmediate('#')).toBeNull()
+    })
+
+    it('returns null for hash with digit', () => {
+      expect(matchHashTagImmediate('#1')).toBeNull()
+    })
+
+    it('returns null when hash not preceded by whitespace or start', () => {
+      expect(matchHashTagImmediate('word#a')).toBeNull()
+    })
+
+    it('returns null for multi-char tag (already a word)', () => {
+      expect(matchHashTagImmediate('#abc')).toBeNull()
+    })
+
+    it('normalizes to lowercase', () => {
+      expect(matchHashTagImmediate('#A')).toBe('a')
     })
   })
 

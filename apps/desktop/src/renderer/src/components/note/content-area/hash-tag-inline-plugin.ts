@@ -5,12 +5,12 @@ import type { EditorView } from '@tiptap/pm/view'
 import type { Node as ProseMirrorNode } from '@tiptap/pm/model'
 
 const PLUGIN_KEY = new PluginKey('hashTagInline')
-const HASH_TAG_WITH_SPACE = /(^|[\s\ufffc])#([a-zA-Z][a-zA-Z0-9_-]*) $/
+const HASH_TAG_IMMEDIATE = /(^|[\s\ufffc])#([a-zA-Z])$/
 const TAG_CHAR_PATTERN = /^[a-zA-Z0-9_-]$/
 const TRAILING_TAG_CHARS = /\ufffc([a-zA-Z0-9_-]+)$/
 
-export function matchHashTagWithSpace(text: string): string | null {
-  const match = text.match(HASH_TAG_WITH_SPACE)
+export function matchHashTagImmediate(text: string): string | null {
+  const match = text.match(HASH_TAG_IMMEDIATE)
   return match ? match[2].toLowerCase() : null
 }
 
@@ -98,22 +98,21 @@ export function createHashTagInlinePlugin(getTagColor: GetTagColor): Plugin {
       const hashTagNodeType = newState.schema.nodes.hashTag
       if (!hashTagNodeType) return null
 
-      // Pattern 1: Space-based creation — #tag[space] → create hashTag node
-      const createTag = matchHashTagWithSpace(textUpToCursor)
+      // Pattern 1: Immediate creation — #[letter] → create hashTag node
+      const createTag = matchHashTagImmediate(textUpToCursor)
       if (createTag) {
         const endPos = $from.start() + parentOffset
-        const leadingMatch = textUpToCursor.match(HASH_TAG_WITH_SPACE)!
+        const leadingMatch = textUpToCursor.match(HASH_TAG_IMMEDIATE)!
         const prefixLen = leadingMatch[1].length
-        const hashPos = endPos - createTag.length - 2 - prefixLen
+        const hashPos = endPos - 2 - prefixLen
 
         const color = getTagColor(createTag)
         const hashTagNode = hashTagNodeType.create({ tag: createTag, color })
-        const spaceText = newState.schema.text(' ')
 
         const tr = newState.tr.replaceWith(
           hashPos + prefixLen,
           endPos,
-          Fragment.from([hashTagNode, spaceText])
+          Fragment.from([hashTagNode])
         )
         tr.setMeta(PLUGIN_KEY, true)
         return tr
