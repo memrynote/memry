@@ -1,5 +1,4 @@
 import { useState, useCallback, useMemo, useRef, useEffect, memo } from 'react'
-import { createPortal } from 'react-dom'
 import {
   DndContext,
   closestCenter,
@@ -68,10 +67,7 @@ export const InfoSection = memo(function InfoSection({
   hideAddButton = false
 }: InfoSectionProps) {
   const [showAllProperties, setShowAllProperties] = useState(false)
-  const [isAddPopupOpen, setIsAddPopupOpen] = useState(false)
-  const [popupPosition, setPopupPosition] = useState<{ top: number; left: number } | null>(null)
   const [newlyAddedPropertyId, setNewlyAddedPropertyId] = useState<string | null>(null)
-  const addButtonRef = useRef<HTMLButtonElement>(null)
   const isSortable = Boolean(onPropertyOrderChange) && !disabled && properties.length > 1
 
   const sensors = useSensors(
@@ -121,22 +117,6 @@ export const InfoSection = memo(function InfoSection({
 
   const toggleShowMore = useCallback(() => {
     setShowAllProperties((prev) => !prev)
-  }, [])
-
-  const handleOpenAddPopup = useCallback(() => {
-    if (addButtonRef.current) {
-      const rect = addButtonRef.current.getBoundingClientRect()
-      setPopupPosition({
-        top: rect.bottom + 8,
-        left: rect.left
-      })
-    }
-    setIsAddPopupOpen(true)
-  }, [])
-
-  const handleCloseAddPopup = useCallback(() => {
-    setIsAddPopupOpen(false)
-    setPopupPosition(null)
   }, [])
 
   // Track the previous properties length to detect new additions
@@ -291,45 +271,29 @@ export const InfoSection = memo(function InfoSection({
             </button>
           )}
 
-          {/* Add Property Button — hidden when ghost affordance handles it */}
           {showAddBtn && (
             <div className="pt-2 pb-2.5">
-              <button
-                ref={addButtonRef}
-                type="button"
-                onClick={handleOpenAddPopup}
-                disabled={disabled}
-                className={cn(
-                  'flex items-center gap-1.5',
-                  'text-[12px] text-text-tertiary font-sans',
-                  'transition-colors duration-150',
-                  'hover:text-muted-foreground',
-                  'disabled:opacity-50 disabled:cursor-not-allowed'
-                )}
-                aria-label="Add a new property to this note"
-                aria-haspopup="dialog"
-              >
-                <Plus className="h-3 w-3" aria-hidden="true" />
-                Add property
-              </button>
+              <AddPropertyPopup onAdd={handleAddProperty} disabled={disabled}>
+                <button
+                  type="button"
+                  disabled={disabled}
+                  className={cn(
+                    'flex items-center gap-1.5',
+                    'text-[12px] text-text-tertiary font-sans',
+                    'transition-colors duration-150',
+                    'hover:text-muted-foreground',
+                    'disabled:opacity-50 disabled:cursor-not-allowed'
+                  )}
+                  aria-label="Add a new property to this note"
+                >
+                  <Plus className="h-3 w-3" aria-hidden="true" />
+                  Add property
+                </button>
+              </AddPropertyPopup>
             </div>
           )}
         </div>
       )}
-
-      {/* Portal for AddPropertyPopup */}
-      {isAddPopupOpen &&
-        popupPosition &&
-        createPortal(
-          <AddPropertyPopup
-            isOpen={isAddPopupOpen}
-            onClose={handleCloseAddPopup}
-            onAdd={handleAddProperty}
-            position={popupPosition}
-            existingPropertyNames={existingPropertyNames}
-          />,
-          document.body
-        )}
     </div>
   )
 })
