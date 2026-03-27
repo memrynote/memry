@@ -69,11 +69,8 @@ const resolveMutableGroupColumnId = (
     case 'project':
       return groupKey === 'no-project' ? undefined : `project-${groupKey}`
     case 'status': {
-      const status = projects
-        .flatMap((project) => project.statuses)
-        .find((entry) => entry.id === groupKey)
-      if (!status || status.type === 'done') return undefined
-      return status.type
+      const validTypes = new Set(['todo', 'in_progress'])
+      return validTypes.has(groupKey) ? groupKey : undefined
     }
   }
 }
