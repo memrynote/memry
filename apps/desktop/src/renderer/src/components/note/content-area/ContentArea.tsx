@@ -46,6 +46,8 @@ import { WikiLinkMenu, type WikiLinkSuggestionItem } from './wiki-link-menu'
 import { HashTag, normalizeHashTags, extractInlineTags } from './hash-tag'
 import { createHashTagInlinePlugin } from './hash-tag-inline-plugin'
 import { TagSuggestionPopover } from './tag-suggestion-popover'
+import { WikiLinkPreviewCard } from './wiki-link-preview-card'
+import { useWikiLinkHover } from '@/hooks/use-wiki-link-hover'
 import { BlockDropIndicator, EmptyDocumentDropIndicator } from './block-drop-indicator'
 import { findDropTarget, type DropTarget } from './drop-target-utils'
 import {
@@ -423,6 +425,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
   // T220-T222: Text selection state for highlight reminders
   const [highlightSelection, setHighlightSelection] = useState<HighlightSelection | null>(null)
   const editorContainerRef = useRef<HTMLDivElement>(null)
+  const wikiLinkHover = useWikiLinkHover(editorContainerRef)
 
   // Container ref for drag-drop position calculations (intercepts drops before BlockNote)
   const containerRef = useRef<HTMLDivElement>(null)
@@ -1332,6 +1335,18 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
             onClose={() => setHighlightSelection(null)}
             onReminderCreated={handleHighlightReminderCreated}
             containerRef={editorContainerRef}
+          />
+        )}
+
+        {/* WikiLink hover preview card */}
+        {wikiLinkHover.isVisible && wikiLinkHover.preview && wikiLinkHover.position && (
+          <WikiLinkPreviewCard
+            preview={wikiLinkHover.preview}
+            position={wikiLinkHover.position}
+            onMouseEnter={wikiLinkHover.handleCardMouseEnter}
+            onMouseLeave={wikiLinkHover.handleCardMouseLeave}
+            onTagClick={openTag}
+            onNoteClick={onInternalLinkClick}
           />
         )}
       </div>

@@ -856,6 +856,16 @@ export interface MainIpcInvokeHandlers {
     >
   >
   'notes:open-external': (...args: [string]) => Awaited<Promise<void>>
+  'notes:preview-by-title': (...args: [string]) => Awaited<
+    Promise<{
+      id: string
+      title: string
+      emoji: string | null
+      snippet: string | null
+      tags: { name: string; color: string }[]
+      createdAt: string
+    } | null>
+  >
   'notes:rename': (
     ...args: [{ id: string; newTitle: string }]
   ) => Awaited<

@@ -2,6 +2,7 @@ import type {
   NotesClientAPI,
   Note,
   NoteListItem,
+  WikiLinkPreview,
   NoteCreateResponse,
   NoteUpdateResponse,
   NoteListResponse,
@@ -75,6 +76,10 @@ export const notesService: NotesClientAPI = {
    */
   resolveByTitle: (title: string) => {
     return window.api.notes.resolveByTitle(title)
+  },
+
+  previewByTitle: (title: string) => {
+    return window.api.notes.previewByTitle(title)
   },
 
   /**
@@ -454,6 +459,7 @@ export function onTagsChanged(callback: () => void): () => void {
 export type {
   Note,
   NoteListItem,
+  WikiLinkPreview,
   NoteCreateResponse,
   NoteUpdateResponse,
   NoteListResponse,

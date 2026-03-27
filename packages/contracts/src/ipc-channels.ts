@@ -115,6 +115,8 @@ export const NotesChannels = {
     GET_FILE: 'notes:get-file',
     /** Resolve a WikiLink target by title (returns note or file metadata) */
     RESOLVE_BY_TITLE: 'notes:resolve-by-title',
+    /** Get preview data for a WikiLink hover card */
+    PREVIEW_BY_TITLE: 'notes:preview-by-title',
     /** Import files from external paths into the vault */
     IMPORT_FILES: 'notes:import-files',
     /** Open a file dialog to select files for import */

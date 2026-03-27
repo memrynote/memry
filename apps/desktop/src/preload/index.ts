@@ -161,6 +161,7 @@ export const api = {
     getByPath: (path: string) => invoke(NotesChannels.invoke.GET_BY_PATH, path),
     getFile: (id: string) => invoke(NotesChannels.invoke.GET_FILE, id),
     resolveByTitle: (title: string) => invoke(NotesChannels.invoke.RESOLVE_BY_TITLE, title),
+    previewByTitle: (title: string) => invoke(NotesChannels.invoke.PREVIEW_BY_TITLE, title),
     update: (input: {
       id: string
       title?: string

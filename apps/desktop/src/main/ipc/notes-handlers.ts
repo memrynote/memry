@@ -64,7 +64,9 @@ import {
   updatePropertyDefinition,
   resolveNoteByTitle,
   updateNoteCache,
-  getLocalOnlyCount
+  getLocalOnlyCount,
+  getNoteTags,
+  getAllTagDefinitions
 } from '@main/database/queries/notes'
 import { getIndexDatabase, getDatabase } from '../database'
 import {
@@ -196,6 +198,30 @@ export function registerNotesHandlers(): void {
         path: result.path,
         title: result.title,
         fileType: result.fileType ?? 'markdown'
+      }
+    })
+  )
+
+  // notes:preview-by-title - Get hover preview data for a WikiLink target
+  ipcMain.handle(
+    NotesChannels.invoke.PREVIEW_BY_TITLE,
+    createStringHandler((title) => {
+      const indexDb = getIndexDatabase()
+      const result = resolveNoteByTitle(indexDb, title)
+      if (!result || result.fileType !== 'markdown') return null
+
+      const tags = getNoteTags(indexDb, result.id)
+      const dataDb = getDatabase()
+      const definitions = getAllTagDefinitions(dataDb)
+      const colorMap = new Map(definitions.map((d) => [d.name, d.color]))
+
+      return {
+        id: result.id,
+        title: result.title,
+        emoji: result.emoji ?? null,
+        snippet: result.snippet ?? null,
+        tags: tags.map((t) => ({ name: t, color: colorMap.get(t) ?? 'stone' })),
+        createdAt: result.createdAt
       }
     })
   )
