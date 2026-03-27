@@ -1,11 +1,27 @@
-import { useState, useCallback, useEffect, useRef } from 'react'
+import { useState, useCallback, useEffect, useRef, useMemo } from 'react'
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { GripVertical, Trash2 } from '@/lib/icons'
 import { format } from 'date-fns'
 import { cn } from '@/lib/utils'
 import { Property, PROPERTY_TYPE_CONFIG } from './types'
-import { TextEditor, NumberEditor, CheckboxEditor, DateEditor, UrlEditor } from './editors'
+import {
+  TextEditor,
+  NumberEditor,
+  CheckboxEditor,
+  DateEditor,
+  UrlEditor,
+  SelectEditor,
+  MultiselectEditor,
+  StatusEditor
+} from './editors'
+import { usePropertyDefinitions } from '@/hooks/use-property-definitions'
+import {
+  DEFAULT_STATUS_DEFINITION,
+  type SelectOption,
+  type StatusCategories,
+  type StatusCategoryKey
+} from '@memry/contracts/property-types'
 
 interface PropertyValueRendererProps {
   property: Property
@@ -100,6 +116,92 @@ function PropertyValueEditor({
   }
 }
 
+const SELECT_TYPES = new Set(['select', 'multiselect', 'status'])
+
+function SelectPropertyRenderer({
+  property,
+  onValueChange
+}: {
+  property: Property
+  onValueChange: (value: unknown) => void
+}) {
+  const { getDefinition, refresh } = usePropertyDefinitions()
+  const definition = getDefinition(property.name)
+
+  const options: SelectOption[] = useMemo(() => {
+    if (!definition?.options) return []
+    try {
+      const parsed = JSON.parse(definition.options)
+      if (Array.isArray(parsed)) return parsed
+      return []
+    } catch {
+      return []
+    }
+  }, [definition?.options])
+
+  const categories: StatusCategories | undefined = useMemo(() => {
+    if (property.type !== 'status') return undefined
+    if (!definition?.options) return DEFAULT_STATUS_DEFINITION.categories
+    try {
+      const parsed = JSON.parse(definition.options)
+      if (parsed?.categories) return parsed.categories as StatusCategories
+      return DEFAULT_STATUS_DEFINITION.categories
+    } catch {
+      return DEFAULT_STATUS_DEFINITION.categories
+    }
+  }, [property.type, definition?.options])
+
+  const handleAddOption = useCallback(
+    async (option: SelectOption) => {
+      const { notesService } = await import('@/services/notes-service')
+      await notesService.addPropertyOption(property.name, option)
+      await refresh()
+    },
+    [property.name, refresh]
+  )
+
+  const handleAddStatusOption = useCallback(
+    async (categoryKey: StatusCategoryKey, option: SelectOption) => {
+      const { notesService } = await import('@/services/notes-service')
+      await notesService.addStatusOption(property.name, categoryKey, option)
+      await refresh()
+    },
+    [property.name, refresh]
+  )
+
+  if (property.type === 'status' && categories) {
+    return (
+      <StatusEditor
+        value={(property.value as string) ?? null}
+        categories={categories}
+        onChange={onValueChange}
+        onAddOption={handleAddStatusOption}
+      />
+    )
+  }
+
+  if (property.type === 'multiselect') {
+    const val = Array.isArray(property.value) ? (property.value as string[]) : []
+    return (
+      <MultiselectEditor
+        value={val}
+        options={options}
+        onChange={onValueChange}
+        onAddOption={handleAddOption}
+      />
+    )
+  }
+
+  return (
+    <SelectEditor
+      value={(property.value as string) ?? null}
+      options={options}
+      onChange={onValueChange}
+      onAddOption={handleAddOption}
+    />
+  )
+}
+
 function PropertyValueRenderer({
   property,
   isEditing,
@@ -108,6 +210,10 @@ function PropertyValueRenderer({
 }: PropertyValueRendererProps) {
   if (property.type === 'checkbox') {
     return <CheckboxEditor value={Boolean(property.value)} onChange={onValueChange} />
+  }
+
+  if (SELECT_TYPES.has(property.type)) {
+    return <SelectPropertyRenderer property={property} onValueChange={onValueChange} />
   }
 
   if (isEditing) {
@@ -142,7 +248,9 @@ export function PropertyRow({
   autoFocus = false,
   isSortable = false
 }: PropertyRowProps) {
-  const [isEditing, setIsEditing] = useState(autoFocus && property.type !== 'checkbox')
+  const [isEditing, setIsEditing] = useState(
+    autoFocus && property.type !== 'checkbox' && !SELECT_TYPES.has(property.type)
+  )
   const [isEditingName, setIsEditingName] = useState(false)
   const [editedName, setEditedName] = useState(property.name)
   const [isHovered, setIsHovered] = useState(false)
@@ -164,19 +272,20 @@ export function PropertyRow({
   }
 
   const showDragHandle = isDragEnabled && !isEditingName && (isNameHovered || isDragging)
+  const isAlwaysInteractive = property.type === 'checkbox' || SELECT_TYPES.has(property.type)
 
   // Handle autoFocus - start editing when mounted with autoFocus
   useEffect(() => {
-    if (autoFocus && property.type !== 'checkbox') {
+    if (autoFocus && !isAlwaysInteractive) {
       setIsEditing(true)
     }
-  }, [autoFocus, property.type])
+  }, [autoFocus, isAlwaysInteractive])
 
   const handleStartEdit = useCallback(() => {
-    if (!disabled && property.type !== 'checkbox') {
+    if (!disabled && !isAlwaysInteractive) {
       setIsEditing(true)
     }
-  }, [disabled, property.type])
+  }, [disabled, isAlwaysInteractive])
 
   const handleEndEdit = useCallback(() => {
     setIsEditing(false)
@@ -316,7 +425,7 @@ export function PropertyRow({
         }}
         className={cn(
           'flex-1 min-w-0 transition-colors rounded px-1 -mx-1',
-          !isEditing && property.type !== 'checkbox' && 'cursor-pointer hover:bg-surface'
+          !isEditing && !isAlwaysInteractive && 'cursor-pointer hover:bg-surface'
         )}
       >
         <PropertyValueRenderer

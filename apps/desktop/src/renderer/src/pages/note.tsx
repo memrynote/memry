@@ -908,7 +908,6 @@ export function NotePage({ noteId }: NotePageProps) {
             onAddTag={handleAddTag}
             onCreateTag={handleCreateTag}
             onAddProperty={handleAddProperty}
-            existingPropertyNames={properties.map((p) => p.name)}
             hasTags={noteTags.length > 0}
             disabled={isDeleted}
           />

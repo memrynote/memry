@@ -13,7 +13,6 @@ export interface GhostAffordanceRowProps {
   onAddTag: (tagId: string) => void
   onCreateTag: (name: string, color: string) => void
   onAddProperty: (property: NewProperty) => void
-  existingPropertyNames: string[]
   hasTags?: boolean
   disabled?: boolean
 }

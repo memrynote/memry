@@ -22,19 +22,6 @@ import { InfoHeader } from './InfoHeader'
 import { PropertyRow } from './PropertyRow'
 import { AddPropertyPopup } from './AddPropertyPopup'
 
-/**
- * Generate a unique property name by adding incrementing suffix if needed.
- * E.g., "URL" → "URL", "URL 1", "URL 2", etc.
- */
-function getUniquePropertyName(baseName: string, existingNames: string[]): string {
-  if (!existingNames.includes(baseName)) return baseName
-  let counter = 1
-  while (existingNames.includes(`${baseName} ${counter}`)) {
-    counter++
-  }
-  return `${baseName} ${counter}`
-}
-
 export interface InfoSectionProps {
   properties: Property[]
   folderProperties?: PropertyTemplate[]
@@ -137,16 +124,11 @@ export const InfoSection = memo(function InfoSection({
     prevPropertiesLength.current = properties.length
   }, [properties])
 
-  // Get list of existing property names for uniqueness check
-  const existingPropertyNames = useMemo(() => properties.map((p) => p.name), [properties])
-
-  // Handle adding new property with auto-increment for duplicate names
   const handleAddProperty = useCallback(
     (newProp: NewProperty) => {
-      const uniqueName = getUniquePropertyName(newProp.name, existingPropertyNames)
-      onAddProperty({ ...newProp, name: uniqueName })
+      onAddProperty(newProp)
     },
-    [onAddProperty, existingPropertyNames]
+    [onAddProperty]
   )
 
   const handleDragEnd = useCallback(

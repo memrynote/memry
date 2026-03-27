@@ -1,10 +1,24 @@
-import { AlignLeft, Hash, Calendar, CheckSquare, Link, type AppIcon } from '@/lib/icons'
+import {
+  AlignLeft,
+  Hash,
+  Calendar,
+  CheckSquare,
+  Link,
+  ListChecks,
+  List,
+  Layers,
+  type AppIcon
+} from '@/lib/icons'
 
-/**
- * Supported property types.
- * Matches the persisted note property types in shared contracts.
- */
-export type PropertyType = 'text' | 'number' | 'date' | 'checkbox' | 'url'
+export type PropertyType =
+  | 'text'
+  | 'number'
+  | 'date'
+  | 'checkbox'
+  | 'url'
+  | 'status'
+  | 'select'
+  | 'multiselect'
 
 export interface Property {
   id: string
@@ -37,7 +51,10 @@ export const PROPERTY_TYPE_CONFIG: Record<PropertyType, PropertyTypeConfig> = {
   number: { label: 'Number', icon: Hash },
   date: { label: 'Date', icon: Calendar },
   checkbox: { label: 'Checkbox', icon: CheckSquare },
-  url: { label: 'URL', icon: Link }
+  url: { label: 'URL', icon: Link },
+  status: { label: 'Status', icon: ListChecks },
+  select: { label: 'Select', icon: List },
+  multiselect: { label: 'Multiselect', icon: Layers }
 }
 
 export const PROPERTY_TYPES = Object.keys(PROPERTY_TYPE_CONFIG) as PropertyType[]
