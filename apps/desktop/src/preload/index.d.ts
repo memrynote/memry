@@ -914,6 +914,18 @@ export interface NotesClientAPI {
     categoryKey: string,
     option: { value: string; color: string }
   ): Promise<{ success: boolean }>
+  removePropertyOption(propertyName: string, optionValue: string): Promise<{ success: boolean }>
+  renamePropertyOption(
+    propertyName: string,
+    oldValue: string,
+    newValue: string
+  ): Promise<{ success: boolean }>
+  updateOptionColor(
+    propertyName: string,
+    optionValue: string,
+    newColor: string
+  ): Promise<{ success: boolean }>
+  deletePropertyDefinition(name: string): Promise<{ success: boolean }>
   // T070: Attachments API
   uploadAttachment(noteId: string, file: File): Promise<AttachmentResult>
   listAttachments(noteId: string): Promise<AttachmentInfo[]>

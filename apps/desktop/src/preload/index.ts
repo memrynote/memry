@@ -237,6 +237,27 @@ export const api = {
         categoryKey,
         option
       } as MainIpcInvokeArgs<typeof NotesChannels.invoke.ADD_STATUS_OPTION>[0]),
+    removePropertyOption: (propertyName: string, optionValue: string) =>
+      invoke(NotesChannels.invoke.REMOVE_PROPERTY_OPTION, {
+        propertyName,
+        optionValue
+      } as MainIpcInvokeArgs<typeof NotesChannels.invoke.REMOVE_PROPERTY_OPTION>[0]),
+    renamePropertyOption: (propertyName: string, oldValue: string, newValue: string) =>
+      invoke(NotesChannels.invoke.RENAME_PROPERTY_OPTION, {
+        propertyName,
+        oldValue,
+        newValue
+      } as MainIpcInvokeArgs<typeof NotesChannels.invoke.RENAME_PROPERTY_OPTION>[0]),
+    updateOptionColor: (propertyName: string, optionValue: string, newColor: string) =>
+      invoke(NotesChannels.invoke.UPDATE_OPTION_COLOR, {
+        propertyName,
+        optionValue,
+        newColor
+      } as MainIpcInvokeArgs<typeof NotesChannels.invoke.UPDATE_OPTION_COLOR>[0]),
+    deletePropertyDefinition: (name: string) =>
+      invoke(NotesChannels.invoke.DELETE_PROPERTY_DEFINITION, { name } as MainIpcInvokeArgs<
+        typeof NotesChannels.invoke.DELETE_PROPERTY_DEFINITION
+      >[0]),
 
     // T070: Attachments API
     uploadAttachment: (noteId: string, file: File) => {
