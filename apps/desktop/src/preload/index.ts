@@ -218,6 +218,26 @@ export const api = {
         input as MainIpcInvokeArgs<typeof NotesChannels.invoke.UPDATE_PROPERTY_DEFINITION>[0]
       ),
 
+    ensurePropertyDefinition: (name: string, type: string) =>
+      invoke(NotesChannels.invoke.ENSURE_PROPERTY_DEFINITION, { name, type } as MainIpcInvokeArgs<
+        typeof NotesChannels.invoke.ENSURE_PROPERTY_DEFINITION
+      >[0]),
+    addPropertyOption: (propertyName: string, option: { value: string; color: string }) =>
+      invoke(NotesChannels.invoke.ADD_PROPERTY_OPTION, {
+        propertyName,
+        option
+      } as MainIpcInvokeArgs<typeof NotesChannels.invoke.ADD_PROPERTY_OPTION>[0]),
+    addStatusOption: (
+      propertyName: string,
+      categoryKey: string,
+      option: { value: string; color: string }
+    ) =>
+      invoke(NotesChannels.invoke.ADD_STATUS_OPTION, {
+        propertyName,
+        categoryKey,
+        option
+      } as MainIpcInvokeArgs<typeof NotesChannels.invoke.ADD_STATUS_OPTION>[0]),
+
     // T070: Attachments API
     uploadAttachment: (noteId: string, file: File) => {
       return new Promise((resolve, reject) => {

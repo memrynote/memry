@@ -59,7 +59,7 @@ export interface Note {
   emoji?: string | null // T028: Emoji icon for visual identification
 }
 
-// T020: Property types
+// T020: Property types — canonical set from @memry/contracts/property-types
 export type PropertyType =
   | 'text'
   | 'number'
@@ -67,6 +67,7 @@ export type PropertyType =
   | 'date'
   | 'select'
   | 'multiselect'
+  | 'status'
   | 'url'
   | 'rating'
 
@@ -903,6 +904,16 @@ export interface NotesClientAPI {
   updatePropertyDefinition(
     input: UpdatePropertyDefinitionInput
   ): Promise<CreatePropertyDefinitionResponse>
+  ensurePropertyDefinition(name: string, type: string): Promise<{ success: boolean }>
+  addPropertyOption(
+    propertyName: string,
+    option: { value: string; color: string }
+  ): Promise<{ success: boolean }>
+  addStatusOption(
+    propertyName: string,
+    categoryKey: string,
+    option: { value: string; color: string }
+  ): Promise<{ success: boolean }>
   // T070: Attachments API
   uploadAttachment(noteId: string, file: File): Promise<AttachmentResult>
   listAttachments(noteId: string): Promise<AttachmentInfo[]>

@@ -223,6 +223,25 @@ export const notesService: NotesClientAPI = {
     return window.api.notes.updatePropertyDefinition(input)
   },
 
+  ensurePropertyDefinition: (name: string, type: string): Promise<{ success: boolean }> => {
+    return window.api.notes.ensurePropertyDefinition(name, type)
+  },
+
+  addPropertyOption: (
+    propertyName: string,
+    option: { value: string; color: string }
+  ): Promise<{ success: boolean }> => {
+    return window.api.notes.addPropertyOption(propertyName, option)
+  },
+
+  addStatusOption: (
+    propertyName: string,
+    categoryKey: string,
+    option: { value: string; color: string }
+  ): Promise<{ success: boolean }> => {
+    return window.api.notes.addStatusOption(propertyName, categoryKey, option)
+  },
+
   // =========================================================================
   // T070: Attachments API
   // =========================================================================
