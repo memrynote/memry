@@ -26,9 +26,9 @@ export function TagChip({ tag, onRemove, onClick, isSelected, isFocused, disable
   const pillClasses = cn(
     '[font-synthesis:none] relative inline-flex items-center gap-1',
     'rounded-[10px] px-2 py-0.5',
-    'text-[11px]/3.5 font-medium antialiased',
+    'text-[11px]/3.5 font-medium',
     'shrink-0 select-none',
-    'transition-all duration-150',
+    'transition-colors transition-opacity duration-150',
     isClickable ? 'cursor-pointer hover:opacity-80' : 'cursor-default',
     (disabled || isSelected) && 'opacity-50',
     isFocused && !isSelected && 'ring-2 ring-offset-1 ring-offset-popover'
@@ -50,9 +50,16 @@ export function TagChip({ tag, onRemove, onClick, isSelected, isFocused, disable
       <span>{tag.name}</span>
       {isSelected && <Check className="h-3 w-3" />}
       {onRemove && !disabled && isHovered && (
-        <button
-          type="button"
+        <span
+          role="button"
+          tabIndex={0}
           onClick={handleRemove}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault()
+              handleRemove(e as unknown as React.MouseEvent)
+            }
+          }}
           aria-label={`Remove tag: ${tag.name}`}
           className={cn(
             'absolute -right-1 -top-1',
@@ -64,7 +71,7 @@ export function TagChip({ tag, onRemove, onClick, isSelected, isFocused, disable
           )}
         >
           <X className="h-2 w-2" strokeWidth={3} />
-        </button>
+        </span>
       )}
     </>
   )

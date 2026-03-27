@@ -311,6 +311,15 @@ export interface WikiLinkResolution {
   fileType: 'markdown' | 'pdf' | 'image' | 'audio' | 'video'
 }
 
+export interface WikiLinkPreview {
+  id: string
+  title: string
+  emoji: string | null
+  snippet: string | null
+  tags: Array<{ name: string; color: string }>
+  createdAt: string
+}
+
 export interface NoteCreateInput {
   title: string
   content?: string
@@ -359,15 +368,19 @@ export interface NoteLink {
   sourceId: string
   targetId: string | null
   targetTitle: string
-  lineNumber: number
+}
+
+export interface BacklinkContext {
+  snippet: string
+  linkStart: number
+  linkEnd: number
 }
 
 export interface Backlink {
   sourceId: string
   sourcePath: string
   sourceTitle: string
-  context: string
-  lineNumber: number
+  contexts: BacklinkContext[]
 }
 
 export interface NoteLinksResponse {
@@ -866,6 +879,7 @@ export interface NotesClientAPI {
   getByPath(path: string): Promise<Note | null>
   getFile(id: string): Promise<FileMetadata | null>
   resolveByTitle(title: string): Promise<WikiLinkResolution | null>
+  previewByTitle(title: string): Promise<WikiLinkPreview | null>
   update(input: NoteUpdateInput): Promise<NoteUpdateResponse>
   rename(id: string, newTitle: string): Promise<NoteUpdateResponse>
   move(id: string, newFolder: string): Promise<NoteUpdateResponse>

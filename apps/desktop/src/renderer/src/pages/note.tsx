@@ -16,7 +16,7 @@ import { NoteTitle } from '@/components/note/note-title'
 import { TagsRow, Tag } from '@/components/note/tags-row'
 import { InfoSection } from '@/components/note/info-section'
 import { GhostAffordanceRow } from '@/components/note/ghost-affordance-row'
-import { BacklinksSection, Backlink } from '@/components/note/backlinks'
+import { BacklinksSection, Backlink, Mention } from '@/components/note/backlinks'
 import { LinkedTasksSection } from '@/components/note/linked-tasks'
 import {
   useNote,
@@ -377,16 +377,12 @@ export function NotePage({ noteId }: NotePageProps) {
         noteTitle: bl.sourceTitle,
         folder: folderPath,
         date: new Date(),
-        mentions: bl.context
-          ? [
-              {
-                id: `mention-${bl.sourceId}`,
-                snippet: bl.context,
-                linkStart: 0,
-                linkEnd: 0
-              }
-            ]
-          : []
+        mentions: (bl.contexts ?? []).map((ctx, i) => ({
+          id: `mention-${bl.sourceId}-${i}`,
+          snippet: ctx.snippet,
+          linkStart: ctx.linkStart,
+          linkEnd: ctx.linkEnd
+        }))
       }
     })
   }, [rawBacklinks])
@@ -696,10 +692,15 @@ export function NotePage({ noteId }: NotePageProps) {
   )
 
   const handleBacklinkClick = useCallback(
-    (backlinkNoteId: string) => {
-      // Look up the title from the backlinks array
+    (backlinkNoteId: string, mention?: Mention) => {
       const backlink = backlinks.find((bl) => bl.noteId === backlinkNoteId)
       const noteTitle = backlink?.noteTitle || 'Note'
+
+      const viewState = mention
+        ? {
+            highlightText: mention.snippet.replace(/\[\[([^\]|]+)(?:\|[^\]]+)?\]\]/g, '$1').trim()
+          }
+        : undefined
 
       openTab({
         type: 'note',
@@ -710,7 +711,8 @@ export function NotePage({ noteId }: NotePageProps) {
         isPinned: false,
         isModified: false,
         isPreview: true,
-        isDeleted: false
+        isDeleted: false,
+        ...(viewState && { viewState })
       })
     },
     [openTab, backlinks]
@@ -763,7 +765,7 @@ export function NotePage({ noteId }: NotePageProps) {
           <Button
             variant="ghost"
             size="icon"
-            className="size-7 hover:bg-transparent"
+            className="size-7 hover:bg-surface-active"
             disabled={isDeleted}
             title={hasActiveReminder ? 'Reminder set' : 'Set reminder'}
           >
@@ -780,7 +782,7 @@ export function NotePage({ noteId }: NotePageProps) {
       <Button
         variant="ghost"
         size="icon"
-        className="size-7 hover:bg-transparent"
+        className="size-7 hover:bg-surface-active"
         onClick={toggleBookmark}
         disabled={isDeleted}
         title={isBookmarked ? 'Remove bookmark' : 'Add bookmark'}
@@ -806,7 +808,7 @@ export function NotePage({ noteId }: NotePageProps) {
           <Button
             variant="ghost"
             size="icon"
-            className="size-7 hover:bg-transparent"
+            className="size-7 hover:bg-surface-active"
             disabled={isDeleted}
           >
             <MoreVertical className="h-3.5 w-3.5 text-muted-foreground" />
@@ -856,12 +858,12 @@ export function NotePage({ noteId }: NotePageProps) {
         />
       }
       breadcrumb={<NoteBreadcrumb notePath={note.path} noteTitle={note.title} />}
-      stats={editorSettings.showWordCount ? documentStats : undefined}
+      stats={documentStats}
     >
       {/* Note content */}
       <div className={cn('flex flex-col gap-6 mx-auto w-full', editorWidthClass)}>
         {/* Title + Metadata zone — ghost affordance appears on hover */}
-        <div className="group/metadata flex flex-col gap-2">
+        <div className="group/metadata flex flex-col gap-3">
           <NoteTitle
             emoji={note.emoji ?? null}
             title={note.title}
@@ -988,7 +990,6 @@ export function NotePage({ noteId }: NotePageProps) {
           backlinks={backlinks}
           isLoading={backlinksLoading}
           initialCount={5}
-          collapsible={false}
           onBacklinkClick={handleBacklinkClick}
         />
 
