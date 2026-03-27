@@ -80,14 +80,14 @@ export function GeneralSettings() {
 
   if (isLoading) {
     return (
-      <div className="flex flex-col antialiased">
+      <div className="flex flex-col">
         <SettingsHeader title="General" subtitle="Loading settings..." />
       </div>
     )
   }
 
   return (
-    <div className="flex flex-col antialiased text-xs/4">
+    <div className="flex flex-col text-xs/4">
       <SettingsHeader title="General" subtitle="Application startup and tab behavior" />
 
       <SettingsGroup label="Startup">

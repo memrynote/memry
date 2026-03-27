@@ -49,7 +49,7 @@ export function VaultSettings() {
   }, [vaultPath])
 
   return (
-    <div className="flex flex-col antialiased text-xs/4">
+    <div className="flex flex-col text-xs/4">
       <SettingsHeader title="Vault" subtitle="Vault configuration and storage" />
 
       <SettingsGroup label="Storage Usage">

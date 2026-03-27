@@ -22,8 +22,8 @@ export function NoteTitle({
   return (
     <div className={cn('relative flex items-center gap-3')}>
       {emoji && (
-        <div className="flex items-center justify-center shrink-0 size-11 rounded-xl bg-sidebar-terracotta/8">
-          <NoteIconDisplay value={emoji} className="text-[22px] leading-7" />
+        <div className="flex items-center justify-center shrink-0 size-14 rounded-xl bg-sidebar-terracotta/8">
+          <NoteIconDisplay value={emoji} className="text-[28px] leading-8" />
         </div>
       )}
 

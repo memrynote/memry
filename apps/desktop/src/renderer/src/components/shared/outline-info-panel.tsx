@@ -162,7 +162,9 @@ export const OutlineInfoPanel = memo(function OutlineInfoPanel({
                     style={{
                       width: `${width}px`,
                       height: isActive ? '2px' : '1px',
-                      backgroundColor: isActive ? '#C45D3E' : '#B5B0A6',
+                      backgroundColor: isActive
+                        ? 'var(--sidebar-terracotta)'
+                        : 'var(--text-tertiary)',
                       opacity: isActive ? 1 : 0.4
                     }}
                   />

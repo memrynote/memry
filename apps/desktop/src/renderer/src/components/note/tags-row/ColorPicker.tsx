@@ -68,7 +68,7 @@ export function ColorPicker({
       <div className="mb-4">
         <div className="mb-1 text-xs font-medium text-muted-foreground">Preview:</div>
         <span
-          className="inline-flex items-center rounded-[10px] px-2 py-0.5 text-[11px]/3.5 font-medium antialiased [font-synthesis:none]"
+          className="inline-flex items-center rounded-[10px] px-2 py-0.5 text-[11px]/3.5 font-medium [font-synthesis:none]"
           style={{
             backgroundColor: withAlpha(previewColors.text, 0.12),
             color: previewColors.text

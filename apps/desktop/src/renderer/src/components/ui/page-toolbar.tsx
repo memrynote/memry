@@ -10,7 +10,7 @@ export function PageToolbar({ children, className }: PageToolbarProps): React.JS
     <div
       className={cn(
         'flex items-center gap-2.5 shrink-0 min-w-0 py-0.5 border-b border-border',
-        '[font-synthesis:none] text-[12px] leading-4 antialiased',
+        '[font-synthesis:none] text-[12px] leading-4',
         className
       )}
     >

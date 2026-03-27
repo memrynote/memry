@@ -24,7 +24,7 @@ export const FilterChip = ({
 }: FilterChipProps): React.JSX.Element => (
   <div
     className={cn(
-      '[font-synthesis:none] antialiased flex items-center rounded-md py-[5px] px-2.5 gap-[5px]',
+      '[font-synthesis:none] flex items-center rounded-md py-[5px] px-2.5 gap-[5px]',
       className
     )}
     style={{

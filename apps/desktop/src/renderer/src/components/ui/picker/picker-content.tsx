@@ -32,9 +32,7 @@ export const PickerContent = React.forwardRef<
       onClick={(e) => e.stopPropagation()}
       {...props}
     >
-      <div className="flex flex-col text-[13px] leading-4 [font-synthesis:none] antialiased">
-        {children}
-      </div>
+      <div className="flex flex-col text-[13px] leading-4 [font-synthesis:none]">{children}</div>
     </PopoverContent>
   )
 })

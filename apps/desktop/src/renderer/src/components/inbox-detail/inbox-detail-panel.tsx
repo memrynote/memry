@@ -330,7 +330,7 @@ export const InboxDetailPanel = ({
         isOpen ? 'w-[380px] opacity-100 border-border' : 'w-0 opacity-0 border-transparent'
       )}
     >
-      <div className="w-[380px] h-full flex flex-col overflow-hidden [font-synthesis:none] text-[12px] leading-4 antialiased">
+      <div className="w-[380px] h-full flex flex-col overflow-hidden [font-synthesis:none] text-[12px] leading-4">
         {isLoading ? (
           <ContentSkeleton />
         ) : item ? (

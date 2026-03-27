@@ -223,7 +223,7 @@ export function PropertyRow({
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
       className={cn(
-        'flex items-center py-[7px]',
+        'flex items-center py-[0px]',
         'transition-colors duration-150',
         isDragging && 'opacity-60 bg-muted/20 rounded'
       )}

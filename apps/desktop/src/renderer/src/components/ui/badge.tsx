@@ -18,8 +18,7 @@ const badgeVariants = cva(
         status: 'border-transparent gap-1.5',
         priority: 'border-transparent gap-1.5',
         project: 'border-transparent bg-muted text-muted-foreground gap-1.5',
-        filter:
-          'rounded-md border border-border bg-surface [font-synthesis:none] antialiased gap-[5px]',
+        filter: 'rounded-md border border-border bg-surface [font-synthesis:none] gap-[5px]',
         quickFilter: 'border border-border bg-background hover:bg-accent transition-colors gap-1.5',
         active: 'bg-primary text-primary-foreground border-primary gap-1.5'
       },

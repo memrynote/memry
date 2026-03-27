@@ -18,7 +18,7 @@
 .dark .bn-editor,
 .dark .bn-container {
   background-color: var(--background) !important;
-  color: #ffffff !important;
+  color: var(--text-bright) !important;
   caret-color: #f0efed;
 }
 
@@ -28,7 +28,7 @@
   background-color: transparent !important;
 }
 
-/* Make all text content in BlockNote white in dark mode */
+/* Make all text content in BlockNote inherit in dark mode */
 .dark .bn-editor *,
 .dark .bn-container * {
   color: inherit !important;
@@ -39,8 +39,6 @@
 :root .bn-default-styles,
 :root .bn-container {
   font-family: var(--font-sans) !important;
-  -webkit-font-smoothing: auto !important;
-  -moz-osx-font-smoothing: auto !important;
 }
 
 :root .bn-container {
@@ -252,6 +250,7 @@
     /* Body text, sidebar items */
     --text-tertiary: #8c8c8c;
     /* Meta data, dates, unused icons */
+    --text-bright: #1a1a1a;
 
     /* ===== ACCENT COLORS (Category Dots) ===== */
     --accent-cyan: #06b6d4;
@@ -402,6 +401,7 @@
     --text-primary: #37352f;
     --text-secondary: #6b6966;
     --text-tertiary: #9b9a97;
+    --text-bright: #37352f;
 
     /* ===== ACCENT COLORS ===== */
     --accent-cyan: #0891b2;
@@ -522,6 +522,7 @@
     --text-primary: #bcbab6;
     --text-secondary: #bcbab6;
     --text-tertiary: #ada9a3;
+    --text-bright: #dadada;
 
     /* ===== ACCENT COLORS (Same in dark mode) ===== */
     --accent-cyan: #22d3ee;
@@ -1274,6 +1275,7 @@ del.bn-inline-content {
   --color-text-primary: var(--text-primary);
   --color-text-secondary: var(--text-secondary);
   --color-text-tertiary: var(--text-tertiary);
+  --color-text-bright: var(--text-bright);
 
   /* ===== ACCENT COLORS (Category Dots) ===== */
   --color-accent-cyan: var(--accent-cyan);

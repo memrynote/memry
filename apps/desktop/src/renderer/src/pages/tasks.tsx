@@ -848,7 +848,7 @@ export const TasksPage = ({
         {/* Main Content Area */}
         <main className="flex-1 min-w-0 flex flex-col overflow-hidden py-2 px-2">
           {/* Page Header — compact single-row toolbar */}
-          <div className="flex items-center gap-2.5 shrink-0 min-w-0 py-0.5 border-b border-border [font-synthesis:none] text-[13px] leading-4 antialiased">
+          <div className="flex items-center gap-2.5 shrink-0 min-w-0 py-0.5 border-b border-border [font-synthesis:none] text-[13px] leading-4">
             <TasksTabBar
               activeTab={activeInternalTab}
               onTabChange={handleTabChange}

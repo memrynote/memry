@@ -79,14 +79,14 @@ export function JournalSettings() {
 
   if (isLoadingSettings) {
     return (
-      <div className="flex flex-col antialiased">
+      <div className="flex flex-col">
         <SettingsHeader title="Journal" subtitle="Loading settings..." />
       </div>
     )
   }
 
   return (
-    <div className="flex flex-col antialiased text-xs/4">
+    <div className="flex flex-col text-xs/4">
       <SettingsHeader title="Journal" subtitle="Journal settings and preferences" />
 
       <SettingsGroup label="Default Template">

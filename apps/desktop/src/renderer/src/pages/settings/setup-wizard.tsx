@@ -370,7 +370,7 @@ function WizardProgress({ currentStep }: { currentStep: number }): React.JSX.Ele
     <div
       role="group"
       aria-label={`Step ${currentStep + 1} of ${STEPS.length}: ${STEPS[currentStep]}`}
-      className="[font-synthesis:none] flex flex-col pb-8 gap-2 antialiased text-xs/4"
+      className="[font-synthesis:none] flex flex-col pb-8 gap-2 text-xs/4"
     >
       <div className="flex h-0.5 rounded-[1px] overflow-clip bg-foreground/[0.06] shrink-0">
         <div

@@ -45,7 +45,7 @@ export function RecoveryPhraseDisplay({
   }, [phrase])
 
   return (
-    <div className="[font-synthesis:none] flex flex-col antialiased text-xs/4">
+    <div className="[font-synthesis:none] flex flex-col text-xs/4">
       <div className="wizard-step-enter flex flex-col pb-5 gap-1.5">
         <div className="tracking-[-0.02em] font-semibold text-xl/6.5 text-foreground">
           Save your recovery phrase

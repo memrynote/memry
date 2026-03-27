@@ -64,7 +64,7 @@ export function EditorSettings() {
 
   if (isLoading) {
     return (
-      <div className="flex flex-col antialiased">
+      <div className="flex flex-col">
         <SettingsHeader title="Editor" subtitle="Loading settings..." />
       </div>
     )
@@ -73,7 +73,7 @@ export function EditorSettings() {
   const autoSaveSeconds = Math.round(settings.autoSaveDelay / 1000)
 
   return (
-    <div className="flex flex-col antialiased text-xs/4">
+    <div className="flex flex-col text-xs/4">
       <SettingsHeader title="Editor" subtitle="Note editor settings and preferences" />
 
       <SettingsGroup label="Layout">
