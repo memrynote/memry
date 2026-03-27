@@ -87,6 +87,14 @@ export const NotesChannels = {
     ADD_PROPERTY_OPTION: 'notes:add-property-option',
     /** Add an option to a status property definition within a category */
     ADD_STATUS_OPTION: 'notes:add-status-option',
+    /** Remove an option from a property definition */
+    REMOVE_PROPERTY_OPTION: 'notes:remove-property-option',
+    /** Rename an option in a property definition */
+    RENAME_PROPERTY_OPTION: 'notes:rename-property-option',
+    /** Update an option's color in a property definition */
+    UPDATE_OPTION_COLOR: 'notes:update-option-color',
+    /** Delete an entire property definition */
+    DELETE_PROPERTY_DEFINITION: 'notes:delete-property-definition',
     /** Upload an attachment to a note (T070) */
     UPLOAD_ATTACHMENT: 'notes:upload-attachment',
     /** List attachments for a note */
