@@ -170,7 +170,15 @@ export function tabCrudReducer(state: TabSystemState, action: CrudAction): TabSy
                 ...targetGroup,
                 activeTabId: background ? targetGroup.activeTabId : existingInGroup.id,
                 tabs: targetGroup.tabs.map((t) =>
-                  t.id === existingInGroup.id ? { ...t, lastAccessedAt: Date.now() } : t
+                  t.id === existingInGroup.id
+                    ? {
+                        ...t,
+                        lastAccessedAt: Date.now(),
+                        ...(tab.viewState && {
+                          viewState: { ...t.viewState, ...tab.viewState }
+                        })
+                      }
+                    : t
                 )
               }
             },
@@ -193,7 +201,15 @@ export function tabCrudReducer(state: TabSystemState, action: CrudAction): TabSy
                     ? state.tabGroups[existingElsewhere.groupId].activeTabId
                     : existingElsewhere.tab.id,
                   tabs: state.tabGroups[existingElsewhere.groupId].tabs.map((t) =>
-                    t.id === existingElsewhere.tab.id ? { ...t, lastAccessedAt: Date.now() } : t
+                    t.id === existingElsewhere.tab.id
+                      ? {
+                          ...t,
+                          lastAccessedAt: Date.now(),
+                          ...(tab.viewState && {
+                            viewState: { ...t.viewState, ...tab.viewState }
+                          })
+                        }
+                      : t
                   )
                 }
               },
