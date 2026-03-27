@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Plus } from '@/lib/icons'
+import { Plus, Trash2 } from '@/lib/icons'
 import { Picker } from '@/components/ui/picker'
 import { getTagColors } from '../../tags-row/tag-colors'
 import { SelectChip } from './SelectChip'
@@ -11,9 +11,16 @@ interface SelectEditorProps {
   options: SelectOption[]
   onChange: (value: string | null) => void
   onAddOption?: (option: SelectOption) => void
+  onRemoveOption?: (optionValue: string) => void
 }
 
-export function SelectEditor({ value, options, onChange, onAddOption }: SelectEditorProps) {
+export function SelectEditor({
+  value,
+  options,
+  onChange,
+  onAddOption,
+  onRemoveOption
+}: SelectEditorProps) {
   const [newOptionName, setNewOptionName] = useState('')
   const [isCreating, setIsCreating] = useState(false)
 
@@ -54,6 +61,21 @@ export function SelectEditor({ value, options, onChange, onAddOption }: SelectEd
               label={opt.value}
               indicator="dot"
               indicatorColor={getTagColors(opt.color).text}
+              trailing={
+                onRemoveOption ? (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      if (value === opt.value) onChange(null)
+                      onRemoveOption(opt.value)
+                    }}
+                    className="p-0.5 rounded text-muted-foreground/30 hover:text-destructive opacity-0 group-hover/option:opacity-100"
+                  >
+                    <Trash2 className="size-3" />
+                  </button>
+                ) : undefined
+              }
             />
           ))}
         </Picker.List>

@@ -169,6 +169,15 @@ function SelectPropertyRenderer({
     [property.name, refresh]
   )
 
+  const handleRemoveOption = useCallback(
+    async (optionValue: string) => {
+      const { notesService } = await import('@/services/notes-service')
+      await notesService.removePropertyOption(property.name, optionValue)
+      await refresh()
+    },
+    [property.name, refresh]
+  )
+
   if (property.type === 'status' && categories) {
     return (
       <StatusEditor
@@ -176,6 +185,7 @@ function SelectPropertyRenderer({
         categories={categories}
         onChange={onValueChange}
         onAddOption={handleAddStatusOption}
+        onRemoveOption={handleRemoveOption}
       />
     )
   }
@@ -188,6 +198,7 @@ function SelectPropertyRenderer({
         options={options}
         onChange={onValueChange}
         onAddOption={handleAddOption}
+        onRemoveOption={handleRemoveOption}
       />
     )
   }
@@ -198,6 +209,7 @@ function SelectPropertyRenderer({
       options={options}
       onChange={onValueChange}
       onAddOption={handleAddOption}
+      onRemoveOption={handleRemoveOption}
     />
   )
 }

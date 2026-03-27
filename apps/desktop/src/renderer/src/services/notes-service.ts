@@ -242,6 +242,33 @@ export const notesService: NotesClientAPI = {
     return window.api.notes.addStatusOption(propertyName, categoryKey, option)
   },
 
+  removePropertyOption: (
+    propertyName: string,
+    optionValue: string
+  ): Promise<{ success: boolean }> => {
+    return window.api.notes.removePropertyOption(propertyName, optionValue)
+  },
+
+  renamePropertyOption: (
+    propertyName: string,
+    oldValue: string,
+    newValue: string
+  ): Promise<{ success: boolean }> => {
+    return window.api.notes.renamePropertyOption(propertyName, oldValue, newValue)
+  },
+
+  updateOptionColor: (
+    propertyName: string,
+    optionValue: string,
+    newColor: string
+  ): Promise<{ success: boolean }> => {
+    return window.api.notes.updateOptionColor(propertyName, optionValue, newColor)
+  },
+
+  deletePropertyDefinition: (name: string): Promise<{ success: boolean }> => {
+    return window.api.notes.deletePropertyDefinition(name)
+  },
+
   // =========================================================================
   // T070: Attachments API
   // =========================================================================

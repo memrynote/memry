@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Plus } from '@/lib/icons'
+import { Plus, Trash2 } from '@/lib/icons'
 import { Picker } from '@/components/ui/picker'
 import { getTagColors, COLOR_NAMES } from '../../tags-row/tag-colors'
 import { SelectChip } from './SelectChip'
@@ -10,13 +10,15 @@ interface MultiselectEditorProps {
   options: SelectOption[]
   onChange: (value: string[]) => void
   onAddOption?: (option: SelectOption) => void
+  onRemoveOption?: (optionValue: string) => void
 }
 
 export function MultiselectEditor({
   value,
   options,
   onChange,
-  onAddOption
+  onAddOption,
+  onRemoveOption
 }: MultiselectEditorProps) {
   const [newOptionName, setNewOptionName] = useState('')
   const [isCreating, setIsCreating] = useState(false)
@@ -70,6 +72,21 @@ export function MultiselectEditor({
               label={opt.value}
               indicator="checkbox"
               indicatorColor={getTagColors(opt.color).text}
+              trailing={
+                onRemoveOption ? (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      onChange(value.filter((v) => v !== opt.value))
+                      onRemoveOption(opt.value)
+                    }}
+                    className="p-0.5 rounded text-muted-foreground/30 hover:text-destructive"
+                  >
+                    <Trash2 className="size-3" />
+                  </button>
+                ) : undefined
+              }
             />
           ))}
         </Picker.List>
