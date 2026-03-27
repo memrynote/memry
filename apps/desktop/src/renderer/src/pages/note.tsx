@@ -861,7 +861,7 @@ export function NotePage({ noteId }: NotePageProps) {
       stats={documentStats}
     >
       {/* Note content */}
-      <div className={cn('flex flex-col gap-6 mx-auto w-full', editorWidthClass)}>
+      <div className={cn('flex flex-col mx-auto w-full', editorWidthClass)}>
         {/* Title + Metadata zone — ghost affordance appears on hover */}
         <div className="group/metadata flex flex-col gap-3">
           <NoteTitle
@@ -913,6 +913,9 @@ export function NotePage({ noteId }: NotePageProps) {
             disabled={isDeleted}
           />
         </div>
+
+        {/* Subtle separator between metadata and content */}
+        <div className="my-4 h-px bg-border/40" role="separator" />
 
         {/* Main content - BlockNote Editor */}
         <div
@@ -985,20 +988,21 @@ export function NotePage({ noteId }: NotePageProps) {
           />
         )}
 
-        {/* Backlinks section */}
-        <BacklinksSection
-          backlinks={backlinks}
-          isLoading={backlinksLoading}
-          initialCount={5}
-          onBacklinkClick={handleBacklinkClick}
-        />
+        {/* Backlinks & linked tasks — separated from content */}
+        <div className="mt-10 flex flex-col gap-6">
+          <BacklinksSection
+            backlinks={backlinks}
+            isLoading={backlinksLoading}
+            initialCount={5}
+            onBacklinkClick={handleBacklinkClick}
+          />
 
-        {/* Linked Tasks Section */}
-        <LinkedTasksSection
-          tasks={linkedTasks}
-          isLoading={linkedTasksLoading}
-          onTaskClick={handleLinkedTaskClick}
-        />
+          <LinkedTasksSection
+            tasks={linkedTasks}
+            isLoading={linkedTasksLoading}
+            onTaskClick={handleLinkedTaskClick}
+          />
+        </div>
       </div>
 
       {/* Export Dialog */}
