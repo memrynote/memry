@@ -118,7 +118,7 @@ export const TaskRow = ({
         'rounded-md hover:bg-accent/60',
         onClick && 'cursor-pointer focus-visible:outline-none',
         isCheckedForSelection && 'bg-primary/10 hover:bg-primary/15',
-        isSelected && !isCheckedForSelection && 'bg-primary/[0.08] border-l-2 border-l-primary',
+        isSelected && !isCheckedForSelection && 'bg-primary/10 ring-1 ring-inset ring-primary/30',
         className
       )}
       aria-label={`Task: ${task.title}${isCompleted ? ', completed' : ''}`}

@@ -217,7 +217,7 @@ const TaskRowComponent = ({
               isCheckedForSelection && 'bg-primary/10 hover:bg-primary/15',
               isSelected &&
                 !isCheckedForSelection &&
-                'bg-primary/[0.08] border-l-2 border-l-primary',
+                'bg-primary/[0.08] ring-inset ring-primary/30',
               isExiting && 'select-none',
               sectionDragState === 'source-dimmed' && 'opacity-50',
               sectionDragState === 'target-highlighted' && 'bg-primary/[0.04]',

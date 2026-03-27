@@ -83,7 +83,9 @@ export const TaskRepeatSection = ({
   return (
     <div className="flex flex-col py-4 px-5 gap-2 border-b border-border">
       <div className="flex items-center justify-between">
-        <span className="text-[11px] text-text-tertiary font-medium leading-3.5">Repeat</span>
+        <span className="text-[11px] [letter-spacing:0.05em] uppercase text-text-tertiary font-medium leading-3.5">
+          Repeat
+        </span>
         {active ? (
           <RepeatIcon color="var(--text-tertiary)" />
         ) : (
@@ -116,18 +118,18 @@ export const TaskRepeatSection = ({
             <button
               type="button"
               onClick={() => setIsEditDialogOpen(true)}
-              className="flex items-center rounded-[5px] py-1 px-2.5 border border-foreground/10 hover:bg-foreground/[0.04] transition-colors"
+              className="flex items-center rounded-[5px] py-1 px-2.5 border border-foreground/10"
               aria-label="Edit"
             >
-              <span className="text-[11px] text-text-secondary font-medium leading-3.5">Edit</span>
+              <span className="text-[11px] text-text-primary font-medium leading-3.5">Edit</span>
             </button>
             <button
               type="button"
               onClick={() => setIsStopDialogOpen(true)}
-              className="flex items-center rounded-[5px] py-1 px-2.5 border border-foreground/10 hover:bg-foreground/[0.04] transition-colors"
+              className="flex items-center rounded-[5px] py-1 px-2.5 border border-foreground/10"
               aria-label="Stop repeating"
             >
-              <span className="text-[11px] text-text-secondary font-medium leading-3.5">
+              <span className="text-[11px] text-text-primary font-medium leading-3.5">
                 Stop repeating
               </span>
             </button>

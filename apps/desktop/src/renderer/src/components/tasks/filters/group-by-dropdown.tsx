@@ -72,7 +72,7 @@ export const GroupByDropdown = ({
           )}
         >
           <Layers size={13} />
-          <span className="text-[13px]">Group by</span>
+          <span className="text-[12px]">Group by</span>
         </button>
       </Picker.Trigger>
       <Picker.Content width="auto" align="end" sideOffset={8}>
