@@ -321,7 +321,7 @@ export function InboxListSection({
             {formattedTitle}
           </span>
           {count !== undefined && (
-            <span className="text-[11px] leading-[14px] text-muted-foreground/40 tabular-nums">
+            <span className="text-[11px] leading-[14px] text-muted-foreground/50 tabular-nums">
               {count}
             </span>
           )}
@@ -560,7 +560,7 @@ export function InboxListItem({
                 className={cn(
                   'shrink-0 w-9 text-right tabular-nums',
                   densityConfig.metaSize,
-                  item.isStale ? 'text-red-500 dark:text-red-400' : 'text-muted-foreground/60'
+                  item.isStale ? 'text-amber-600 dark:text-amber-500' : 'text-muted-foreground/60'
                 )}
               >
                 {formatCompactRelativeTime(

@@ -407,8 +407,8 @@ export const InboxDetailPanel = ({
                     onMouseDown={handleResizeStart}
                     className={cn(
                       'relative h-2 shrink-0 cursor-row-resize group',
-                      'border-y border-border bg-muted/30',
-                      'hover:bg-muted/60 transition-colors',
+                      'border-t border-border/50 bg-muted/20',
+                      'hover:bg-muted/50 transition-colors',
                       isResizing && 'bg-primary/20'
                     )}
                     role="separator"
@@ -498,7 +498,7 @@ export const InboxDetailPanel = ({
                       <kbd className="ml-2 text-[11px] opacity-60">{modifierKeyDisplay}⏎</kbd>
                     </Button>
                   </div>
-                  <p className="text-[10px] text-muted-foreground/40 text-center w-full">
+                  <p className="text-[10px] text-muted-foreground/50 text-center w-full">
                     {keyboardHint}
                   </p>
                 </>
