@@ -271,6 +271,18 @@ export class PullCoordinator {
       })
       this.ctx.requestPush()
     }
+
+    if (runState.pulledCount > 0) {
+      try {
+        const { PropertyDefinitionsService } = require('../../vault/property-definitions')
+        const service = PropertyDefinitionsService.get()
+        service.reload().catch((err: unknown) => {
+          log.warn('Failed to reload property definitions after pull:', err)
+        })
+      } catch {
+        // Service not initialized yet — skip
+      }
+    }
   }
 
   private handlePullError(error: unknown, startedAt: number): void {
