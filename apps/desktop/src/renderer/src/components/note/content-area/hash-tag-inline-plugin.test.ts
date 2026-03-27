@@ -33,8 +33,13 @@ describe('hash-tag-inline-plugin', () => {
       expect(matchHashTagImmediate('#')).toBeNull()
     })
 
-    it('returns null for hash with digit', () => {
-      expect(matchHashTagImmediate('#1')).toBeNull()
+    it('matches hash with digit', () => {
+      expect(matchHashTagImmediate('#1')).toBe('1')
+      expect(matchHashTagImmediate('#9')).toBe('9')
+    })
+
+    it('matches hash with digit after whitespace', () => {
+      expect(matchHashTagImmediate('hello #5')).toBe('5')
     })
 
     it('returns null when hash not preceded by whitespace or start', () => {
