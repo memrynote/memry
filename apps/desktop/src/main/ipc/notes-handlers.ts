@@ -576,6 +576,66 @@ export function registerNotesHandlers(): void {
     )
   )
 
+  ipcMain.handle(
+    NotesChannels.invoke.REMOVE_PROPERTY_OPTION,
+    createValidatedHandler(
+      z.object({
+        propertyName: z.string().min(1),
+        optionValue: z.string().min(1)
+      }),
+      async (input) => {
+        const { PropertyDefinitionsService } = await import('../vault/property-definitions')
+        const service = PropertyDefinitionsService.get()
+        await service.removeOption(input.propertyName, input.optionValue)
+        return { success: true }
+      }
+    )
+  )
+
+  ipcMain.handle(
+    NotesChannels.invoke.RENAME_PROPERTY_OPTION,
+    createValidatedHandler(
+      z.object({
+        propertyName: z.string().min(1),
+        oldValue: z.string().min(1),
+        newValue: z.string().min(1)
+      }),
+      async (input) => {
+        const { PropertyDefinitionsService } = await import('../vault/property-definitions')
+        const service = PropertyDefinitionsService.get()
+        await service.renameOption(input.propertyName, input.oldValue, input.newValue)
+        return { success: true }
+      }
+    )
+  )
+
+  ipcMain.handle(
+    NotesChannels.invoke.UPDATE_OPTION_COLOR,
+    createValidatedHandler(
+      z.object({
+        propertyName: z.string().min(1),
+        optionValue: z.string().min(1),
+        newColor: z.string().min(1)
+      }),
+      async (input) => {
+        const { PropertyDefinitionsService } = await import('../vault/property-definitions')
+        const service = PropertyDefinitionsService.get()
+        await service.updateOptionColor(input.propertyName, input.optionValue, input.newColor)
+        return { success: true }
+      }
+    )
+  )
+
+  ipcMain.handle(
+    NotesChannels.invoke.DELETE_PROPERTY_DEFINITION,
+    createValidatedHandler(z.object({ name: z.string().min(1) }), async (input) => {
+      const { PropertyDefinitionsService } = await import('../vault/property-definitions')
+      const service = PropertyDefinitionsService.get()
+      await service.remove(input.name)
+      return { success: true }
+    })
+  )
+
   // =========================================================================
   // T070: Attachment IPC Handlers
   // =========================================================================

@@ -114,6 +114,55 @@ export class PropertyDefinitionsService {
     await this.upsert(updated)
   }
 
+  async removeOption(propertyName: string, optionValue: string): Promise<void> {
+    const def = this.cache.get(propertyName)
+    if (!def) return
+
+    if (def.type === 'status' && def.categories) {
+      const categories = { ...def.categories }
+      for (const key of Object.keys(categories) as (keyof StatusCategories)[]) {
+        categories[key] = {
+          ...categories[key],
+          options: categories[key].options.filter((o) => o.value !== optionValue)
+        }
+      }
+      await this.upsert({ ...def, categories })
+    } else {
+      await this.upsert({
+        ...def,
+        options: def.options?.filter((o) => o.value !== optionValue)
+      })
+    }
+  }
+
+  async updateOptionColor(
+    propertyName: string,
+    optionValue: string,
+    newColor: string
+  ): Promise<void> {
+    const def = this.cache.get(propertyName)
+    if (!def) return
+
+    const updateColor = (o: SelectOption) =>
+      o.value === optionValue ? { ...o, color: newColor } : o
+
+    if (def.type === 'status' && def.categories) {
+      const categories = { ...def.categories }
+      for (const key of Object.keys(categories) as (keyof StatusCategories)[]) {
+        categories[key] = {
+          ...categories[key],
+          options: categories[key].options.map(updateColor)
+        }
+      }
+      await this.upsert({ ...def, categories })
+    } else {
+      await this.upsert({
+        ...def,
+        options: def.options?.map(updateColor)
+      })
+    }
+  }
+
   async addStatusOption(
     propertyName: string,
     categoryKey: string,

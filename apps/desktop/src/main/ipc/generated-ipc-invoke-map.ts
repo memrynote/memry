@@ -107,6 +107,7 @@ export interface MainIpcInvokeHandlers {
   "notes:delete": (...args: [string]) => Awaited<Promise<{ success: boolean; error?: undefined; } | { success: boolean; error: string; }>>
   "notes:delete-attachment": (...args: [{ noteId: string; filename: string; }]) => Awaited<Promise<{ success: boolean; error?: undefined; } | { success: boolean; error: string; }>>
   "notes:delete-folder": (...args: [string]) => Awaited<Promise<{ success: boolean; error?: undefined; } | { success: boolean; error: string; }>>
+  "notes:delete-property-definition": (...args: [{ name: string; }]) => Awaited<Promise<{ success: boolean; }>>
   "notes:delete-version": (...args: [string]) => Awaited<Promise<{ success: boolean; error?: undefined; } | { success: boolean; error: string; }>>
   "notes:ensure-property-definition": (...args: [{ name: string; type: "select" | "status" | "multiselect"; }]) => Awaited<Promise<{ success: boolean; }>>
   "notes:exists": (...args: [string]) => Awaited<Promise<boolean>>
@@ -132,8 +133,10 @@ export interface MainIpcInvokeHandlers {
   "notes:move": (...args: [{ id: string; newFolder: string; }]) => Awaited<Promise<{ success: boolean; note: import("../vault/notes").Note; error?: undefined; } | { success: boolean; note: null; error: string; }>>
   "notes:open-external": (...args: [string]) => Awaited<Promise<void>>
   "notes:preview-by-title": (...args: [string]) => Awaited<Promise<{ id: string; title: string; emoji: string | null; snippet: string | null; tags: { name: string; color: string; }[]; createdAt: string; } | null>>
+  "notes:remove-property-option": (...args: [{ propertyName: string; optionValue: string; }]) => Awaited<Promise<{ success: boolean; }>>
   "notes:rename": (...args: [{ id: string; newTitle: string; }]) => Awaited<Promise<{ success: boolean; note: import("../vault/notes").Note; error?: undefined; } | { success: boolean; note: null; error: string; }>>
   "notes:rename-folder": (...args: [{ oldPath: string; newPath: string; }]) => Awaited<Promise<{ success: boolean; error?: undefined; } | { success: boolean; error: string; }>>
+  "notes:rename-property-option": (...args: [{ propertyName: string; oldValue: string; newValue: string; }]) => Awaited<Promise<{ success: boolean; }>>
   "notes:reorder": (...args: [{ folderPath: string; notePaths: string[]; }]) => Awaited<Promise<{ success: boolean; error?: undefined; } | { success: boolean; error: string; }>>
   "notes:resolve-by-title": (...args: [string]) => Awaited<Promise<{ id: string; path: string; title: string; fileType: import("../../../../../packages/shared/src/file-types").FileType; } | null>>
   "notes:restore-version": (...args: [string]) => Awaited<Promise<{ success: boolean; note: import("../vault/notes").Note; error?: undefined; } | { success: boolean; note: null; error: string; }>>
@@ -142,6 +145,7 @@ export interface MainIpcInvokeHandlers {
   "notes:set-local-only": (...args: [{ id: string; localOnly: boolean; }]) => Awaited<Promise<{ success: boolean; note: import("../vault/notes").Note; error?: undefined; } | { success: boolean; note: null; error: string; }>>
   "notes:show-import-dialog": (...args: []) => Awaited<Promise<{ canceled: boolean; filePaths: string[]; }>>
   "notes:update": (...args: [{ id: string; title?: string | undefined; content?: string | undefined; tags?: string[] | undefined; frontmatter?: Record<string, unknown> | undefined; emoji?: string | null | undefined; }]) => Awaited<Promise<{ success: boolean; note: import("../vault/notes").Note; error?: undefined; } | { success: boolean; note: null; error: string; }>>
+  "notes:update-option-color": (...args: [{ propertyName: string; optionValue: string; newColor: string; }]) => Awaited<Promise<{ success: boolean; }>>
   "notes:update-property-definition": (...args: [{ name: string; type?: "number" | "date" | "text" | "select" | "checkbox" | "url" | "status" | "multiselect" | undefined; options?: { value: string; color: string; default?: boolean | undefined; }[] | undefined; defaultValue?: unknown; color?: string | undefined; }]) => Awaited<Promise<{ success: boolean; definition: null; error: string; } | { success: boolean; definition: import("../../../../../packages/contracts/src/property-types").PropertyDefinition | undefined; error?: undefined; } | { success: boolean; definition: { type: string; name: string; createdAt: string; options: string | null; defaultValue: string | null; color: string | null; } | undefined; error?: undefined; }>>
   "notes:upload-attachment": (...args: [{ noteId: string; filename: string; data: number[] | ArrayBuffer; }]) => Awaited<Promise<import("../vault/attachments").AttachmentResult>>
   "properties:get": (...args: [{ entityId: string; }]) => Awaited<Promise<import("../database/queries/notes").PropertyValue[]>>
