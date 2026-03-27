@@ -81,6 +81,12 @@ export const NotesChannels = {
     CREATE_PROPERTY_DEFINITION: 'notes:create-property-definition',
     /** Update a property definition */
     UPDATE_PROPERTY_DEFINITION: 'notes:update-property-definition',
+    /** Ensure a property definition exists (creates with defaults if missing) */
+    ENSURE_PROPERTY_DEFINITION: 'notes:ensure-property-definition',
+    /** Add an option to a select/multiselect property definition */
+    ADD_PROPERTY_OPTION: 'notes:add-property-option',
+    /** Add an option to a status property definition within a category */
+    ADD_STATUS_OPTION: 'notes:add-status-option',
     /** Upload an attachment to a note (T070) */
     UPLOAD_ATTACHMENT: 'notes:upload-attachment',
     /** List attachments for a note */
