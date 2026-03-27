@@ -55,9 +55,7 @@ const formatCreated = (date: Date): string =>
 // ============================================================================
 
 const SectionLabel = ({ children }: { children: React.ReactNode }): React.JSX.Element => (
-  <span className="text-[11px] [letter-spacing:0.05em] uppercase text-text-tertiary font-medium leading-3.5">
-    {children}
-  </span>
+  <span className="text-[11px] text-text-tertiary font-medium leading-3.5">{children}</span>
 )
 
 const NoteIcon = ({ color }: { color: string }): React.JSX.Element => (
@@ -264,7 +262,7 @@ export const TaskDetailDrawer = memo(function TaskDetailDrawer({
             {/* ── Properties Grid ── */}
             <div className="flex flex-col pt-3 pb-4 border-b border-border px-5">
               <div className="flex items-center py-1.5">
-                <span className="text-[12px] w-[90px] shrink-0 text-text-tertiary leading-4">
+                <span className="text-[12px] w-[76px] shrink-0 text-text-tertiary leading-4">
                   Status
                 </span>
                 <InteractiveStatusBadge
@@ -275,7 +273,7 @@ export const TaskDetailDrawer = memo(function TaskDetailDrawer({
               </div>
 
               <div className="flex items-center py-1.5">
-                <span className="text-[12px] w-[90px] shrink-0 text-text-tertiary leading-4">
+                <span className="text-[12px] w-[76px] shrink-0 text-text-tertiary leading-4">
                   Priority
                 </span>
                 <InteractivePriorityBadge
@@ -286,7 +284,7 @@ export const TaskDetailDrawer = memo(function TaskDetailDrawer({
               </div>
 
               <div className="flex items-center py-1.5">
-                <span className="text-[12px] w-[90px] shrink-0 text-text-tertiary leading-4">
+                <span className="text-[12px] w-[76px] shrink-0 text-text-tertiary leading-4">
                   Due date
                 </span>
                 <InteractiveDueDateBadge
@@ -299,7 +297,7 @@ export const TaskDetailDrawer = memo(function TaskDetailDrawer({
               </div>
 
               <div className="flex items-center py-1.5">
-                <span className="text-[12px] w-[90px] shrink-0 text-text-tertiary leading-4">
+                <span className="text-[12px] w-[76px] shrink-0 text-text-tertiary leading-4">
                   Project
                 </span>
                 <InteractiveProjectBadge
@@ -406,9 +404,13 @@ export const TaskDetailDrawer = memo(function TaskDetailDrawer({
                 </div>
               )}
               {subtasks.length === 0 && !isAddingSubtask && (
-                <span className="text-[11px] text-text-tertiary leading-3.5">
-                  No sub-issues yet
-                </span>
+                <button
+                  type="button"
+                  onClick={onAddSubtask ? handleStartAddSubtask : undefined}
+                  className="text-[11px] text-text-tertiary leading-3.5 hover:text-text-secondary transition-colors text-left cursor-pointer"
+                >
+                  {onAddSubtask ? 'Add a sub-issue…' : 'No sub-issues yet'}
+                </button>
               )}
             </div>
 
@@ -537,15 +539,19 @@ export const TaskDetailDrawer = memo(function TaskDetailDrawer({
                 </div>
               )}
               {task.linkedNoteIds.length === 0 && !isLinkingNote && (
-                <span className="text-[11px] text-text-tertiary leading-3.5">
-                  No linked notes yet
-                </span>
+                <button
+                  type="button"
+                  onClick={handleStartLinkNote}
+                  className="text-[11px] text-text-tertiary leading-3.5 hover:text-text-secondary transition-colors text-left cursor-pointer"
+                >
+                  Link a note…
+                </button>
               )}
             </div>
 
             {/* ── Footer ── */}
-            <div className="flex flex-col py-3 px-5 gap-1 mt-auto">
-              <span className="text-[11px] text-text-tertiary/60 leading-3.5">
+            <div className="flex flex-col py-4 px-5 gap-1">
+              <span className="text-[10px] text-text-tertiary/50 leading-3.5">
                 {formatCreated(task.createdAt)}
               </span>
             </div>
