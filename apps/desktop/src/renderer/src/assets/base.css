@@ -13,6 +13,7 @@
   color: #37352f !important;
   caret-color: #37352f;
   padding-inline: 0px;
+  -webkit-font-smoothing: auto !important;
 }
 
 .dark .bn-editor,
@@ -47,17 +48,114 @@
 
 /* Block spacing: match Notion's vertical rhythm */
 :root .bn-block-content {
-  padding: 2px 0 !important;
+  padding: 3px 0 !important;
 }
 
 :root .bn-block-outer {
-  padding: 1px 0;
+  padding: 4px 0;
 }
 
 /* Text behavior: match Notion's wrapping */
 :root .bn-inline-content {
   white-space: break-spaces;
   word-break: break-word;
+}
+
+/* ===== NOTION-LIKE HEADING SIZES ===== */
+/* Notion: H1=1.875em, H2=1.5em, H3=1.25em (BlockNote defaults are 3em/2em/1.3em — too large) */
+[data-content-type='heading'] {
+  --level: 1.875em !important;
+}
+
+[data-content-type='heading'][data-level='2'] {
+  --level: 1.5em !important;
+}
+
+[data-content-type='heading'][data-level='3'] {
+  --level: 1.25em !important;
+}
+
+/* Prev-level overrides (used during block type transition animations) */
+[data-prev-level='1'] {
+  --prev-level: 1.875em !important;
+}
+
+[data-prev-level='2'] {
+  --prev-level: 1.5em !important;
+}
+
+[data-prev-level='3'] {
+  --prev-level: 1.25em !important;
+}
+
+/* Heading weight, line-height, and vertical spacing */
+:root .bn-block-content[data-content-type='heading'] {
+  font-weight: 600 !important;
+  line-height: 1.3 !important;
+  margin-top: 24px;
+  padding: 2px 0 !important;
+}
+
+:root .bn-block-content[data-content-type='heading'][data-level='2'] {
+  margin-top: 20px;
+}
+
+:root .bn-block-content[data-content-type='heading'][data-level='3'] {
+  margin-top: 16px;
+}
+
+/* First heading in editor needs no extra top margin */
+:root
+  .bn-block-group
+  > .bn-block-outer:first-child
+  > .bn-block
+  > .bn-block-content[data-content-type='heading'] {
+  margin-top: 0;
+}
+
+/* ===== NOTION-LIKE LIST SPACING ===== */
+/* Tighter gap between consecutive list items (Notion uses 1px vs 6px for text) */
+:root
+  .bn-block-outer[data-prev-type='bulletListItem']:has(
+    > .bn-block > .bn-block-content[data-content-type='bulletListItem']
+  ) {
+  padding-top: 1px;
+}
+
+:root
+  .bn-block-outer[data-prev-type='numberedListItem']:has(
+    > .bn-block > .bn-block-content[data-content-type='numberedListItem']
+  ) {
+  padding-top: 1px;
+}
+
+:root
+  .bn-block-outer[data-prev-type='checkListItem']:has(
+    > .bn-block > .bn-block-content[data-content-type='checkListItem']
+  ) {
+  padding-top: 1px;
+}
+
+/* ===== NOTION-LIKE TABLE CELLS ===== */
+:root .bn-editor [data-content-type='table'] th,
+:root .bn-editor [data-content-type='table'] td {
+  padding: 7px 9px !important;
+  font-size: 14px !important;
+  line-height: 20px !important;
+  border-color: var(--border) !important;
+}
+
+:root .bn-editor [data-content-type='table'] th {
+  font-weight: 500 !important;
+}
+
+.dark .bn-editor [data-content-type='table'] th,
+.dark .bn-editor [data-content-type='table'] td {
+  border-color: #383836 !important;
+}
+
+.dark .bn-editor [data-content-type='table'] th {
+  background-color: rgba(255, 255, 255, 0.03) !important;
 }
 
 /* Make BlockNote editor fill available height */
@@ -660,6 +758,7 @@ div.react-sigma {
     color: var(--text-primary);
     line-height: 1.5;
     user-select: none;
+    -webkit-font-smoothing: auto;
   }
 
   /* Serif font utility for content titles */
@@ -680,7 +779,7 @@ div.react-sigma {
   h5,
   h6 {
     font-weight: 600;
-    line-height: 1.2;
+    line-height: 1.3;
     letter-spacing: -0.01em;
   }
 
