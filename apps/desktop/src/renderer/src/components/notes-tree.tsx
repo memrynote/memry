@@ -694,7 +694,7 @@ export function NotesTree({ onTargetFolderChange, onActionsReady }: NotesTreePro
             entityId: note.id,
             isPinned: false,
             isModified: false,
-            isPreview: true,
+            isPreview: false,
             isDeleted: false
           })
         }
@@ -715,7 +715,7 @@ export function NotesTree({ onTargetFolderChange, onActionsReady }: NotesTreePro
         entityId: folderPath,
         isPinned: false,
         isModified: false,
-        isPreview: true,
+        isPreview: false,
         isDeleted: false
       })
     },
@@ -1828,6 +1828,7 @@ export function NotesTree({ onTargetFolderChange, onActionsReady }: NotesTreePro
       }}
     >
       <TreeProvider
+        persistKey="sidebar-tree-expanded"
         selectedIds={selectedIds}
         onSelectionChange={handleSelectionChange}
         draggable={!renamingNoteId && !renamingFolderPath && !isMoving}

@@ -202,6 +202,7 @@ function App(): React.JSX.Element {
     if (prevVaultPathRef.current && prevVaultPathRef.current !== vaultPath) {
       queryClient.clear()
       localStorage.removeItem(STORAGE_KEY)
+      localStorage.removeItem('sidebar-tree-expanded')
       log.info('Vault switched, cleared query cache and tab state')
     }
     prevVaultPathRef.current = vaultPath
