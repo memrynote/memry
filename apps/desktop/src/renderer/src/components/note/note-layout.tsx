@@ -1,4 +1,4 @@
-import { ReactNode } from 'react'
+import { ReactNode, useCallback, useRef } from 'react'
 import { cn } from '@/lib/utils'
 import { useActiveHeading } from '@/hooks/use-active-heading'
 import { OutlineInfoPanel, type OutlineInfoPanelProps } from '../shared/outline-info-panel'
@@ -33,27 +33,37 @@ export function NoteLayout({
   topBar,
   stats
 }: NoteLayoutProps) {
-  const { activeHeadingId } = useActiveHeading({
+  const scrollRef = useRef<HTMLDivElement>(null)
+  const { activeHeadingId, setActiveHeading } = useActiveHeading({
     headings,
-    offset: 120
+    offset: 120,
+    scrollContainerRef: scrollRef
   })
+
+  const handleHeadingClick = useCallback(
+    (headingId: string) => {
+      setActiveHeading(headingId)
+      onHeadingClick?.(headingId)
+    },
+    [onHeadingClick, setActiveHeading]
+  )
 
   return (
     <div className={cn('h-full w-full overflow-hidden flex flex-col relative', className)}>
       {(breadcrumb || actions) && (
-        <div className="flex items-center justify-between h-11 py-3 px-6 shrink-0 text-xs/4 antialiased [font-synthesis:none]">
+        <div className="flex items-center justify-between h-9 py-2 px-6 shrink-0 text-xs/4 [font-synthesis:none]">
           <div className="flex items-center">{breadcrumb}</div>
           <div className="flex items-center">{actions}</div>
         </div>
       )}
-      <div className="flex-1 overflow-y-auto overflow-x-visible">
-        <div className="mx-auto w-full max-w-4xl px-20 pt-6 pb-[30vh]">{children}</div>
+      <div ref={scrollRef} className="flex-1 overflow-y-auto overflow-x-visible">
+        <div className="mx-auto w-full max-w-5xl px-20 pt-6 pb-[30vh]">{children}</div>
       </div>
 
       <OutlineInfoPanel
         headings={headings}
         activeHeadingId={activeHeadingId ?? undefined}
-        onHeadingClick={onHeadingClick}
+        onHeadingClick={handleHeadingClick}
         stats={stats}
       />
 
