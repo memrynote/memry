@@ -52,6 +52,12 @@ import {
   FILE_BLOCK_REGEX
 } from './file-block'
 import {
+  getCalloutSlashMenuItem,
+  serializeCalloutBlock,
+  splitMarkdownByCallouts
+} from './callout-block'
+import { editorSchema } from './editor-schema'
+import {
   splitMarkdownPreservingBlanks,
   assembleMarkdownWithBlanks,
   type MarkdownSegment
@@ -380,22 +386,39 @@ function isEmptyParagraph(block: Block): boolean {
 }
 
 async function parseMarkdownPreservingBlanks(editor: any, markdown: string): Promise<Block[]> {
-  const segments = splitMarkdownPreservingBlanks(markdown)
+  // First split by callout blocks so they don't get parsed as regular blockquotes,
+  // then process each non-callout segment through blank-preserving logic.
+  const calloutSegments = splitMarkdownByCallouts(markdown)
   const blocks: Block[] = []
 
-  for (const seg of segments) {
-    if (seg.type === 'content') {
-      const parsed = await editor.tryParseMarkdownToBlocks(seg.text)
-      blocks.push(...parsed)
+  for (const cseg of calloutSegments) {
+    if (cseg.kind === 'callout') {
+      // Parse callout content as markdown to preserve inline formatting (bold, wikilinks)
+      const parsed = await editor.tryParseMarkdownToBlocks(cseg.content)
+      const inlineContent = parsed[0]?.content ?? cseg.content
+      blocks.push({
+        type: 'callout' as const,
+        props: { type: cseg.type },
+        content: inlineContent
+      } as unknown as Block)
     } else {
-      for (let i = 0; i < seg.extraLines; i++) {
-        blocks.push({
-          type: 'paragraph',
-          content: [],
-          children: [],
-          id: '',
-          props: {}
-        } as unknown as Block)
+      // Regular markdown: split by blank lines to preserve empty paragraphs
+      const blankSegments = splitMarkdownPreservingBlanks(cseg.text)
+      for (const seg of blankSegments) {
+        if (seg.type === 'content') {
+          const parsed = await editor.tryParseMarkdownToBlocks(seg.text)
+          blocks.push(...parsed)
+        } else {
+          for (let i = 0; i < seg.extraLines; i++) {
+            blocks.push({
+              type: 'paragraph',
+              content: [],
+              children: [],
+              id: '',
+              props: {}
+            } as unknown as Block)
+          }
+        }
       }
     }
   }
@@ -408,19 +431,31 @@ async function serializeBlocksPreservingBlanks(editor: any, blocks: Block[]): Pr
   let contentGroup: Block[] = []
   let emptyCount = 0
 
+  const flushContent = async (): Promise<void> => {
+    if (contentGroup.length === 0) return
+    const md = await editor.blocksToMarkdownLossy(contentGroup)
+    segments.push({ type: 'content', text: md })
+    contentGroup = []
+  }
+
+  const flushGap = (): void => {
+    if (emptyCount === 0) return
+    segments.push({ type: 'gap', extraLines: emptyCount })
+    emptyCount = 0
+  }
+
   for (const block of blocks) {
-    if (isEmptyParagraph(block)) {
-      if (contentGroup.length > 0) {
-        const md = await editor.blocksToMarkdownLossy(contentGroup)
-        segments.push({ type: 'content', text: md })
-        contentGroup = []
-      }
+    if ((block.type as string) === 'callout') {
+      await flushContent()
+      flushGap()
+      const calloutType = (block.props as any).type as string
+      const contentMd = await editor.blocksToMarkdownLossy([block])
+      segments.push({ type: 'content', text: serializeCalloutBlock(calloutType, contentMd.trim()) })
+    } else if (isEmptyParagraph(block)) {
+      await flushContent()
       emptyCount++
     } else {
-      if (emptyCount > 0) {
-        segments.push({ type: 'gap', extraLines: emptyCount })
-        emptyCount = 0
-      }
+      flushGap()
       contentGroup.push(block)
     }
   }
@@ -1353,7 +1388,8 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
             getItems={async (query) => {
               const defaults = getDefaultReactSlashMenuItems(editor)
               const aiItems = aiReady ? getAISlashMenuItems(editor) : []
-              const all = [...defaults, ...aiItems]
+              const calloutItem = getCalloutSlashMenuItem(editor)
+              const all = [...defaults, calloutItem, ...aiItems]
               if (!query) return all
               const lower = query.toLowerCase()
               return all.filter(

@@ -284,6 +284,16 @@
   min-height: 100%;
 }
 
+/* ===== CALLOUT BLOCK ===== */
+:root .bn-block-content[data-content-type='callout'] {
+  padding: 0 !important;
+}
+
+[data-content-type='callout'] .bn-inline-content {
+  flex-grow: 1;
+  min-height: 24px;
+}
+
 /* Ensure clicking anywhere in the editor area focuses it */
 .content-area .bn-editor [data-content-editable-root='true'] {
   min-height: 100%;
