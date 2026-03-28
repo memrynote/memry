@@ -57,6 +57,11 @@ import {
   FILE_BLOCK_REGEX
 } from './file-block'
 import {
+  splitMarkdownPreservingBlanks,
+  assembleMarkdownWithBlanks,
+  type MarkdownSegment
+} from '@memry/shared/empty-lines'
+import {
   HighlightReminderPopover,
   useTextSelection,
   type HighlightSelection
@@ -367,6 +372,73 @@ function normalizeMarkdownHardBreaks(markdown: string): string {
   }
 
   return normalized.join('\n')
+}
+
+// =============================================================================
+// Empty-line-preserving markdown conversion
+// =============================================================================
+
+function isEmptyParagraph(block: Block): boolean {
+  if (block.type !== 'paragraph') return false
+  const content = block.content as unknown[]
+  return !content || content.length === 0
+}
+
+async function parseMarkdownPreservingBlanks(editor: any, markdown: string): Promise<Block[]> {
+  const segments = splitMarkdownPreservingBlanks(markdown)
+  const blocks: Block[] = []
+
+  for (const seg of segments) {
+    if (seg.type === 'content') {
+      const parsed = await editor.tryParseMarkdownToBlocks(seg.text)
+      blocks.push(...parsed)
+    } else {
+      for (let i = 0; i < seg.extraLines; i++) {
+        blocks.push({
+          type: 'paragraph',
+          content: [],
+          children: [],
+          id: '',
+          props: {}
+        } as unknown as Block)
+      }
+    }
+  }
+
+  return blocks
+}
+
+async function serializeBlocksPreservingBlanks(editor: any, blocks: Block[]): Promise<string> {
+  const segments: MarkdownSegment[] = []
+  let contentGroup: Block[] = []
+  let emptyCount = 0
+
+  for (const block of blocks) {
+    if (isEmptyParagraph(block)) {
+      if (contentGroup.length > 0) {
+        const md = await editor.blocksToMarkdownLossy(contentGroup)
+        segments.push({ type: 'content', text: md })
+        contentGroup = []
+      }
+      emptyCount++
+    } else {
+      if (emptyCount > 0) {
+        segments.push({ type: 'gap', extraLines: emptyCount })
+        emptyCount = 0
+      }
+      contentGroup.push(block)
+    }
+  }
+
+  if (contentGroup.length > 0) {
+    const md = await editor.blocksToMarkdownLossy(contentGroup)
+    segments.push({ type: 'content', text: md })
+  }
+  if (emptyCount > 0) {
+    segments.push({ type: 'gap', extraLines: emptyCount })
+  }
+
+  return assembleMarkdownWithBlanks(segments)
 }
 
 // =============================================================================
@@ -825,8 +897,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
 
             let blocks
             if (contentType === 'markdown') {
-              // eslint-disable-next-line @typescript-eslint/await-thenable -- BlockNote types are incorrect, this is async
-              blocks = await editor.tryParseMarkdownToBlocks(content)
+              blocks = await parseMarkdownPreservingBlanks(editor, content)
             } else {
               // Default to HTML parsing
               // eslint-disable-next-line @typescript-eslint/await-thenable -- BlockNote types are incorrect, this is async
@@ -910,8 +981,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
       }
       markdownDebounceRef.current = setTimeout(async () => {
         try {
-          // eslint-disable-next-line @typescript-eslint/await-thenable -- BlockNote types are incorrect, this is async
-          let markdown = await editor.blocksToMarkdownLossy(editor.document)
+          let markdown = await serializeBlocksPreservingBlanks(editor, editor.document as Block[])
 
           // Serialize file blocks to markers (they're lost in markdown conversion)
           const fileBlocks = (editor.document as Block[]).filter((b) => b.type === 'file')
