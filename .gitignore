@@ -28,6 +28,9 @@ dev-data/
 .pnpm-store
 .turbo
 
+# Worktrees
+.worktrees/
+
 # Agent/AI tooling
 .claude/
 CLAUDE.md
