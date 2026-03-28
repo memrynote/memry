@@ -2099,6 +2099,7 @@ export interface GeneralSettingsDTO {
   startOnBoot: boolean
   language: string
   onboardingCompleted: boolean
+  createInSelectedFolder: boolean
 }
 
 export interface EditorSettingsDTO {
