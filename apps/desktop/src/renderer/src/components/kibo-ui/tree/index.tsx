@@ -72,6 +72,9 @@ type TreeContextType = {
   getNodeInfo: (nodeId: string) => NodeInfo | undefined
   expandNode: (nodeId: string) => void
   collapseNode: (nodeId: string) => void
+  expandAll: () => void
+  expandNodes: (nodeIds: string[]) => void
+  collapseAll: () => void
   setDragState: (state: Partial<DragState>) => void
   handleDrop: () => void
   setNodeIcon: (nodeId: string, iconName: string | null) => void
@@ -359,6 +362,22 @@ export const TreeProvider = ({
     })
   }, [])
 
+  const expandAll = useCallback(() => {
+    const allFolderIds = new Set<string>()
+    for (const [id, info] of nodesRef.current.entries()) {
+      if (info.hasChildren) allFolderIds.add(id)
+    }
+    setExpandedIds(allFolderIds)
+  }, [])
+
+  const expandNodes = useCallback((nodeIds: string[]) => {
+    setExpandedIds(new Set(nodeIds))
+  }, [])
+
+  const collapseAll = useCallback(() => {
+    setExpandedIds(new Set())
+  }, [])
+
   const toggleExpanded = useCallback((nodeId: string) => {
     setExpandedIds((prev) => {
       const newSet = new Set(prev)
@@ -442,6 +461,9 @@ export const TreeProvider = ({
         getNodeInfo,
         expandNode,
         collapseNode,
+        expandAll,
+        expandNodes,
+        collapseAll,
         setDragState,
         handleDrop,
         setNodeIcon,
