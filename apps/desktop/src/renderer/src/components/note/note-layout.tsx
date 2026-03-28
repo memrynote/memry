@@ -19,6 +19,7 @@ interface NoteLayoutProps {
   breadcrumb?: ReactNode
   topBar?: ReactNode
   stats?: OutlineInfoPanelProps['stats']
+  fullWidth?: boolean
 }
 
 const EMPTY_HEADINGS: HeadingItem[] = []
@@ -31,7 +32,8 @@ export function NoteLayout({
   actions,
   breadcrumb,
   topBar,
-  stats
+  stats,
+  fullWidth = false
 }: NoteLayoutProps) {
   const scrollRef = useRef<HTMLDivElement>(null)
   const { activeHeadingId, setActiveHeading } = useActiveHeading({
@@ -57,7 +59,12 @@ export function NoteLayout({
         </div>
       )}
       <div ref={scrollRef} className="flex-1 overflow-y-auto overflow-x-visible">
-        <div className="mx-auto w-full max-w-5xl px-20 pt-6 pb-[30vh]">{children}</div>
+        <div
+          className="mx-auto w-full px-24 pt-6 pb-[30vh] transition-[max-width] duration-300 ease-in-out"
+          style={{ maxWidth: fullWidth ? '100%' : '64rem' }}
+        >
+          {children}
+        </div>
       </div>
 
       <OutlineInfoPanel

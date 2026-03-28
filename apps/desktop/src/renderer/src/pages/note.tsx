@@ -33,10 +33,19 @@ import { useTabs, useActiveTab } from '@/contexts/tabs'
 import { useSidebarDrillDown } from '@/contexts/sidebar-drill-down'
 import { ReminderPicker } from '@/components/reminder'
 import { useNoteReminders } from '@/hooks/use-note-reminders'
-import { Bookmark2, MoreVertical, FilePaste, Download, AlarmClock, Monitor } from '@/lib/icons'
+import {
+  Bookmark2,
+  MoreVertical,
+  FilePaste,
+  Download,
+  AlarmClock,
+  Monitor,
+  Maximize
+} from '@/lib/icons'
 import { SidebarGraph } from '@/lib/icons/sidebar-nav-icons'
 import { Button } from '@/components/ui/button'
 import { Picker } from '@/components/ui/picker'
+import { Switch } from '@/components/ui/switch'
 import { toast } from 'sonner'
 import { registerPendingSave, unregisterPendingSave } from '@/lib/save-registry'
 import { useIsBookmarked } from '@/hooks/use-bookmarks'
@@ -139,6 +148,7 @@ export function NotePage({ noteId }: NotePageProps) {
   const [isExportDialogOpen, setIsExportDialogOpen] = useState(false)
   const [isVersionHistoryOpen, setIsVersionHistoryOpen] = useState(false)
   const [isLocalGraphOpen, setIsLocalGraphOpen] = useState(false)
+  const [moreMenuOpen, setMoreMenuOpen] = useState(false)
   const [externalUpdateCount, setExternalUpdateCount] = useState(0)
 
   const handlePropertyBlocked = useCallback((action: PropertySectionAction) => {
@@ -181,12 +191,11 @@ export function NotePage({ noteId }: NotePageProps) {
   // Editor settings (toolbar mode, width, spellCheck, autoSaveDelay, showWordCount)
   const { settings: editorSettings } = useEditorSettings()
 
-  const editorWidthClass =
-    {
-      narrow: 'max-w-2xl',
-      medium: 'max-w-3xl',
-      wide: 'max-w-5xl'
-    }[editorSettings.width] ?? 'max-w-3xl'
+  const NOTE_CONTENT_WIDTH = { narrow: '640px', medium: '640px', wide: '864px' } as const
+  const isFullWidth = note?.frontmatter.fullWidth === true
+  const noteContentWidth = isFullWidth
+    ? undefined
+    : (NOTE_CONTENT_WIDTH[editorSettings.width] ?? '640px')
 
   // Find in page (Cmd+F)
   const editorContainerRef = useRef<HTMLDivElement>(null)
@@ -613,6 +622,19 @@ export function NotePage({ noteId }: NotePageProps) {
     [noteId, isDeleted, refetchNote, queryClient]
   )
 
+  const handleToggleFullWidth = useCallback(
+    async (value: boolean) => {
+      if (!noteId || isDeleted) return
+      try {
+        await notesService.update({ id: noteId, frontmatter: { fullWidth: value } })
+        refetchNote()
+      } catch (err) {
+        toast.error(extractErrorMessage(err, 'Failed to toggle full width'))
+      }
+    },
+    [noteId, isDeleted, refetchNote]
+  )
+
   // Link handlers
   const handleLinkClick = useCallback((href: string) => {
     window.open(href, '_blank', 'noopener,noreferrer')
@@ -797,12 +819,20 @@ export function NotePage({ noteId }: NotePageProps) {
 
       <Picker
         value={null}
+        closeOnSelect={false}
         onValueChange={(action) => {
+          if (action === 'full-width') {
+            handleToggleFullWidth(!isFullWidth)
+            return
+          }
+          setMoreMenuOpen(false)
           if (action === 'local-graph') setIsLocalGraphOpen((prev) => !prev)
           if (action === 'version-history') setIsVersionHistoryOpen(true)
           if (action === 'export') setIsExportDialogOpen(true)
           if (action === 'local-only') handleToggleLocalOnly(!(note.frontmatter.localOnly ?? false))
         }}
+        open={moreMenuOpen}
+        onOpenChange={setMoreMenuOpen}
       >
         <Picker.Trigger asChild disabled={isDeleted}>
           <Button
@@ -827,6 +857,18 @@ export function NotePage({ noteId }: NotePageProps) {
               icon={<FilePaste className="size-4" />}
             />
             <Picker.Item value="export" label="Export" icon={<Download className="size-4" />} />
+            <Picker.Item
+              value="full-width"
+              label="Full width"
+              icon={<Maximize className="size-4" />}
+              trailing={
+                <Switch
+                  checked={isFullWidth}
+                  className="pointer-events-none h-4 w-7"
+                  tabIndex={-1}
+                />
+              }
+            />
             <Picker.Separator />
             <Picker.Item
               value="local-only"
@@ -844,6 +886,7 @@ export function NotePage({ noteId }: NotePageProps) {
       headings={headings}
       onHeadingClick={handleHeadingClick}
       actions={actionIcons}
+      fullWidth={isFullWidth}
       topBar={
         <FindBar
           isOpen={findInPage.isOpen}
@@ -861,7 +904,10 @@ export function NotePage({ noteId }: NotePageProps) {
       stats={documentStats}
     >
       {/* Note content */}
-      <div className={cn('flex flex-col mx-auto w-full', editorWidthClass)}>
+      <div
+        className="flex flex-col mx-auto w-full transition-[max-width] duration-300 ease-in-out"
+        style={{ maxWidth: noteContentWidth ?? '100%' }}
+      >
         {/* Title + Metadata zone — ghost affordance appears on hover */}
         <div className="group/metadata flex flex-col gap-3">
           <NoteTitle
