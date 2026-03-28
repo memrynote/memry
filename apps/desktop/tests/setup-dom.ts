@@ -75,6 +75,8 @@ const createMockApi = () => ({
     createFolder: vi.fn().mockResolvedValue({ success: true }),
     renameFolder: vi.fn().mockResolvedValue({ success: true }),
     deleteFolder: vi.fn().mockResolvedValue({ success: true }),
+    resolveByTitle: vi.fn().mockResolvedValue(null),
+    previewByTitle: vi.fn().mockResolvedValue(null),
     exists: vi.fn().mockResolvedValue(false),
     openExternal: vi.fn().mockResolvedValue({ success: true }),
     revealInFinder: vi.fn().mockResolvedValue({ success: true }),
