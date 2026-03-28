@@ -5,6 +5,36 @@ Format: weekly entries grouped by feature area.
 
 ---
 
+## 2026-03-29 — Note Page
+
+### Added
+- Redesign note page header with compact Paper-inspired layout
+- Add full-width toggle for note pages
+- Add hover preview cards for wiki-links and note tabs
+- Reorganize nav with horizontal sidebar icons and new-tab menu
+- Add context-aware note/folder creation with tree expand/collapse persistence
+- Add callout block with Obsidian-style markdown serialization
+- Add code block syntax highlighting with language support
+- Preserve empty lines across markdown round-trips
+- Add select, multiselect, and status property editors with settings management
+- Add backlinks section to journal page with collapsible multi-context cards
+- Add inline hash-tag editing plugin with digit-starting tag support
+- Add Picker compound component
+- Add ghost affordance row for note metadata
+
+### Fixed
+- Persist emoji in tab state for icon restoration on reopen
+- Omit current year in compact inbox date format
+- Quit app on all windows closed regardless of platform
+
+### Changed
+- Migrate popups, menus, and form controls to Picker primitive (tags, properties, tasks, reminders, inbox filter, vault switcher, overflow menu)
+- Simplify NoteTitle to display-only emoji
+- Remove Instrument Serif font
+- Widen note layout with active heading tracking and viewState merge on tab reopen
+
+---
+
 ## 2026-03-25 — Settings Modal & Sidebar Polish
 
 ### Added
