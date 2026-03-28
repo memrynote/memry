@@ -7,7 +7,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-explicit-any */
 // BlockNote uses dynamic content types with 'any' internally - these errors are unavoidable
 
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { memo, useCallback, useEffect, useRef, useState } from 'react'
 import {
   SuggestionMenuController,
   useCreateBlockNote,
@@ -15,12 +15,7 @@ import {
   getDefaultReactSlashMenuItems
 } from '@blocknote/react'
 import { BlockNoteView } from '@blocknote/shadcn'
-import {
-  BlockNoteSchema,
-  defaultInlineContentSpecs,
-  defaultBlockSpecs,
-  type Block
-} from '@blocknote/core'
+import { type Block } from '@blocknote/core'
 import { useTheme } from 'next-themes'
 import { AIExtension, AIMenuController, getAISlashMenuItems } from '@blocknote/xl-ai'
 import { CustomAIMenu } from './ai-menu'
@@ -41,7 +36,7 @@ import { useYjsCollaboration } from '@/sync/use-yjs-collaboration'
 import { useSync } from '@/contexts/sync-context'
 import { useSidebarDrillDown } from '@/contexts/sidebar-drill-down'
 import type { ContentAreaProps, HeadingInfo } from './types'
-import { createWikiLinkInlineContent, WikiLink } from './wiki-link'
+import { createWikiLinkInlineContent } from './wiki-link'
 import { WikiLinkMenu, type WikiLinkSuggestionItem } from './wiki-link-menu'
 import { HashTag, normalizeHashTags, extractInlineTags } from './hash-tag'
 import { createHashTagInlinePlugin } from './hash-tag-inline-plugin'
@@ -588,22 +583,8 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
     }
   }, [dropTarget])
 
-  // T069/T071: Schema with FileBlock + HashTag inline content
-  const schema = useMemo(
-    () =>
-      BlockNoteSchema.create({
-        blockSpecs: {
-          ...defaultBlockSpecs,
-          file: createFileBlock()
-        },
-        inlineContentSpecs: {
-          ...defaultInlineContentSpecs,
-          wikiLink: WikiLink,
-          hashTag: HashTag
-        }
-      }),
-    []
-  )
+  // T069/T071: Schema with FileBlock + HashTag inline content + code block syntax highlighting
+  const schema = editorSchema
 
   // T069: Upload function for BlockNote's built-in file handling
   // This handles images dropped directly into the editor

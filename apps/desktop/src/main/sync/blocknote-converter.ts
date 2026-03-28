@@ -1,5 +1,12 @@
 import { ServerBlockNoteEditor } from '@blocknote/server-util'
-import type { Block, PartialBlock } from '@blocknote/core'
+import {
+  type Block,
+  type PartialBlock,
+  BlockNoteSchema,
+  defaultBlockSpecs,
+  createCodeBlockSpec
+} from '@blocknote/core'
+import { codeBlockOptions } from '@blocknote/code-block'
 import type * as Y from 'yjs'
 import { CRDT_FRAGMENT_NAME } from '@memry/contracts/ipc-crdt'
 import {
@@ -11,11 +18,18 @@ import { createLogger } from '../lib/logger'
 
 const log = createLogger('BlockNoteConverter')
 
+const serverSchema = BlockNoteSchema.create({
+  blockSpecs: {
+    ...defaultBlockSpecs,
+    codeBlock: createCodeBlockSpec(codeBlockOptions)
+  }
+})
+
 let serverEditor: ServerBlockNoteEditor | null = null
 
 function getEditor(): ServerBlockNoteEditor {
   if (!serverEditor) {
-    serverEditor = ServerBlockNoteEditor.create()
+    serverEditor = ServerBlockNoteEditor.create({ schema: serverSchema })
   }
   return serverEditor
 }

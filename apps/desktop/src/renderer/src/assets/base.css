@@ -6,7 +6,13 @@
 @custom-variant dark (&:is(.dark *));
 
 /* ===== BLOCKNOTE EDITOR CUSTOMIZATION ===== */
-/* Override BlockNote's default white background to match theme */
+/* Override BlockNote's CSS variables + defaults to match app theme.
+   Uses CSS inheritance (not a wildcard * rule) so Shiki inline token styles still work. */
+:root .bn-container {
+  --bn-colors-editor-text: var(--foreground);
+  --bn-colors-editor-background: var(--background);
+}
+
 :root .bn-editor,
 :root .bn-container {
   background-color: var(--background) !important;
@@ -29,10 +35,15 @@
   background-color: transparent !important;
 }
 
-/* Make all text content in BlockNote inherit in dark mode */
-.dark .bn-editor *,
-.dark .bn-container * {
-  color: inherit !important;
+/* Code block: always dark background regardless of theme (matches github-dark Shiki theme) */
+.bn-block-content[data-content-type='codeBlock'] {
+  background-color: #24292e !important;
+  color: #e1e4e8 !important;
+}
+
+/* Language selector: theme-aware text color */
+.dark .bn-block-content[data-content-type='codeBlock'] > div > select {
+  color: #e1e4e8 !important;
 }
 
 /* ===== TYPOGRAPHY OVERRIDES ===== */
