@@ -36,9 +36,9 @@ export const TabBarWithDrag = ({
 }: TabBarWithDragProps): React.JSX.Element | null => {
   const group = useTabGroup(groupId)
   const { toggle: toggleAIAgent, isOpen: isAIAgentOpen } = useAIAgent()
-  const { openTab, activeTab } = useTabs()
+  const { openTab, getActiveTab } = useTabs()
 
-  const isGraphActive = activeTab?.type === 'graph'
+  const isGraphActive = getActiveTab()?.type === 'graph'
 
   const handleGraphClick = useCallback(() => {
     openTab({

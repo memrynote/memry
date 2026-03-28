@@ -465,7 +465,6 @@ export function TemplateEditorPage({ templateId }: TemplateEditorPageProps) {
                 emoji={icon}
                 title={name}
                 placeholder="Template Name"
-                onEmojiChange={handleEmojiChange}
                 onTitleChange={handleNameChange}
                 disabled={isBuiltIn}
               />
