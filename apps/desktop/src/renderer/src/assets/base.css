@@ -57,18 +57,27 @@
   --bn-font-family: var(--font-sans);
 }
 
+/* ===== PROSEMIRROR OVERRIDES ===== */
+/* ProseMirror disables ligatures by default — re-enable for Notion-like text density */
+:root .bn-editor .ProseMirror {
+  font-variant-ligatures: normal;
+  font-feature-settings: normal;
+  font-synthesis: none;
+}
+
 /* ===== BLOCK SPACING ===== */
 :root .bn-block-content {
-  padding: 2px 0 !important;
+  padding: 1px 0 !important;
 }
 
 :root .bn-block-outer {
-  padding: 4px 0;
+  padding: 1px 0;
 }
 
 :root .bn-inline-content {
   white-space: break-spaces;
   word-break: break-word;
+  padding: 2px 0;
 }
 
 /* ===== HEADING SIZES ===== */
@@ -100,16 +109,16 @@
 :root .bn-block-content[data-content-type='heading'] {
   font-weight: 600 !important;
   line-height: 1.3 !important;
-  margin-top: 28px;
-  padding: 2px 0 !important;
+  margin-top: 24px;
+  padding: 1px 0 !important;
 }
 
 :root .bn-block-content[data-content-type='heading'][data-level='2'] {
-  margin-top: 22px;
+  margin-top: 18px;
 }
 
 :root .bn-block-content[data-content-type='heading'][data-level='3'] {
-  margin-top: 18px;
+  margin-top: 14px;
 }
 
 :root

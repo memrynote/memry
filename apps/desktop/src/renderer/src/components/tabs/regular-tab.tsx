@@ -78,7 +78,7 @@ const RegularTabComponent = ({
   return (
     <div
       className={cn(
-        'group relative flex items-center gap-2 h-9 px-4 cursor-pointer',
+        'group relative flex items-center gap-2 h-9 pt-0.5 px-4 cursor-pointer',
         'min-w-[100px] max-w-[180px]',
         'select-none',
         'border-r border-r-border/40',
