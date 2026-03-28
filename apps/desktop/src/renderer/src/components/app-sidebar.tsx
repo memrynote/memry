@@ -2,13 +2,21 @@
 
 import * as React from 'react'
 import { useMemo, useState, useCallback, useRef } from 'react'
-import { CloudOff, FilePlus, FolderPlus, Plus, Search, Upload } from '@/lib/icons'
+import {
+  CloudOff,
+  ChevronsDown,
+  ChevronsUp,
+  FilePlus,
+  FolderPlus,
+  Plus,
+  Search,
+  Upload
+} from '@/lib/icons'
 import {
   SidebarInbox,
   SidebarHome,
   SidebarJournal,
-  SidebarTasks,
-  SidebarGraph
+  SidebarTasks
 } from '@/lib/icons/sidebar-nav-icons'
 import { toast } from 'sonner'
 
@@ -19,7 +27,6 @@ import {
   Sidebar,
   SidebarContent,
   SidebarFooter,
-  SidebarGroup,
   SidebarHeader,
   SidebarMenu,
   SidebarMenuButton,
@@ -27,11 +34,15 @@ import {
   SidebarRail,
   useSidebar
 } from '@/components/ui/sidebar'
+import { HorizontalNav } from '@/components/sidebar/horizontal-nav'
 import { SidebarSection } from '@/components/sidebar-section'
 import { NotesTree } from '@/components/notes-tree'
 import { SidebarTagList } from '@/components/sidebar/sidebar-tag-list'
 import { SidebarBookmarkList } from '@/components/sidebar/sidebar-bookmark-list'
 import { SidebarDrillDownContainer } from '@/components/sidebar/sidebar-drill-down-container'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import { useSelectedFolder } from '@/contexts/selected-folder-context'
+import { useGeneralSettings } from '@/hooks/use-general-settings'
 import { useSidebarNavigation } from '@/hooks/use-sidebar-navigation'
 import { useTabActions } from '@/contexts/tabs'
 import { useSettingsModal } from '@/contexts/settings-modal-context'
@@ -47,6 +58,7 @@ import { BookmarkItemTypes } from '@memry/contracts/bookmarks-api'
 import { getAllSupportedExtensions } from '@memry/shared/file-types'
 import { createLogger } from '@/lib/logger'
 import { useFileDrop } from '@/hooks/use-file-drop'
+import { useKeyboardShortcuts } from '@/hooks/use-keyboard-shortcuts-base'
 import { extractErrorMessage } from '@/lib/ipc-error'
 
 const log = createLogger('Component:AppSidebar')
@@ -57,14 +69,25 @@ const mainNav: {
   icon: typeof SidebarInbox
   shortcut?: string
 }[] = [
-  { title: 'Inbox', page: 'inbox', icon: SidebarInbox },
-  { title: 'Home', page: 'home', icon: SidebarHome },
-  { title: 'Journal', page: 'journal', icon: SidebarJournal, shortcut: '⌘J' },
-  { title: 'Tasks', page: 'tasks', icon: SidebarTasks },
-  { title: 'Graph', page: 'graph', icon: SidebarGraph, shortcut: '⌘G' }
+  { title: 'Inbox', page: 'inbox', icon: SidebarInbox, shortcut: '⌘⌥1' },
+  { title: 'Home', page: 'home', icon: SidebarHome, shortcut: '⌘⌥2' },
+  { title: 'Journal', page: 'journal', icon: SidebarJournal, shortcut: '⌘⌥3' },
+  { title: 'Tasks', page: 'tasks', icon: SidebarTasks, shortcut: '⌘⌥4' }
 ]
 
-function SidebarHeaderContent() {
+function SidebarHeaderContent({
+  items,
+  isActive,
+  onNavClick,
+  inboxCount,
+  todayTasksCount
+}: {
+  items: typeof mainNav
+  isActive: (item: import('@/contexts/tabs/types').SidebarItem) => boolean
+  onNavClick: (page: AppPage) => (e: React.MouseEvent) => void
+  inboxCount: number
+  todayTasksCount: number
+}) {
   const { state } = useSidebar()
   const isCollapsed = state === 'collapsed'
 
@@ -81,6 +104,16 @@ function SidebarHeaderContent() {
           <VaultSwitcher />
         </div>
       </div>
+
+      {/* Horizontal icon nav — between traffic lights and search */}
+      <HorizontalNav
+        items={items}
+        isActive={isActive}
+        onNavClick={onNavClick}
+        inboxCount={inboxCount}
+        todayTasksCount={todayTasksCount}
+        isCollapsed={isCollapsed}
+      />
     </SidebarHeader>
   )
 }
@@ -99,7 +132,13 @@ export function AppSidebar({ currentPage, viewCounts, ...props }: AppSidebarProp
  */
 function AppSidebarInner({ currentPage, viewCounts, ...props }: AppSidebarProps) {
   const [tagsActions, setTagsActions] = useState<React.ReactNode>(null)
-  const notesActionsRef = useRef<{ createNote: () => void; createFolder: () => void } | null>(null)
+  const notesActionsRef = useRef<{
+    createNote: () => void
+    createFolder: () => void
+    collapseAll: () => void
+    expandAll: () => void
+  } | null>(null)
+  const [foldersExpanded, setFoldersExpanded] = useState(false)
   const sidebarScrollRef = useRef<HTMLDivElement>(null)
   const targetFolderRef = useRef('')
 
@@ -121,9 +160,15 @@ function AppSidebarInner({ currentPage, viewCounts, ...props }: AppSidebarProps)
     }
   }, [])
 
-  const handleTargetFolderChange = useCallback((folder: string) => {
-    targetFolderRef.current = folder
-  }, [])
+  const { setSelectedFolder } = useSelectedFolder()
+
+  const handleTargetFolderChange = useCallback(
+    (folder: string) => {
+      targetFolderRef.current = folder
+      setSelectedFolder(folder)
+    },
+    [setSelectedFolder]
+  )
 
   const { isDraggingFiles, dropHandlers } = useFileDrop({ onDrop: handleFileDrop })
 
@@ -149,12 +194,17 @@ function AppSidebarInner({ currentPage, viewCounts, ...props }: AppSidebarProps)
   // Drill-down context for tag navigation
   const { openTag } = useSidebarDrillDown()
 
-  // Handle creating a new note
+  const { settings: generalSettings } = useGeneralSettings()
+
+  // Handle creating a new note (⌘N shortcut target)
   const handleNewNote = useCallback(async () => {
+    const folder = generalSettings.createInSelectedFolder ? targetFolderRef.current : ''
+
     try {
       const result = await notesService.create({
         title: 'Untitled Note',
-        content: ''
+        content: '',
+        folder: folder || undefined
       })
 
       if (result.success && result.note) {
@@ -174,7 +224,7 @@ function AppSidebarInner({ currentPage, viewCounts, ...props }: AppSidebarProps)
       log.error('Failed to create new note', error)
       toast.error(extractErrorMessage(error, 'Failed to create note'))
     }
-  }, [openTab])
+  }, [openTab, generalSettings.createInSelectedFolder])
 
   const handleNavClick = (page: AppPage) => (e: React.MouseEvent) => {
     e.preventDefault()
@@ -203,6 +253,37 @@ function AppSidebarInner({ currentPage, viewCounts, ...props }: AppSidebarProps)
     }
     openSidebarItem(item)
   }
+
+  const navigateTo = useCallback(
+    (page: AppPage) => {
+      const titles: Record<AppPage, string> = {
+        inbox: 'Inbox',
+        home: 'Home',
+        journal: 'Journal',
+        tasks: 'Tasks',
+        graph: 'Graph'
+      }
+      openSidebarItem({
+        type: page as TabType,
+        title: titles[page],
+        path: `/${page}`
+      })
+    },
+    [openSidebarItem]
+  )
+
+  useKeyboardShortcuts(
+    useMemo(
+      () =>
+        mainNav.map((item, i) => ({
+          key: String(i + 1),
+          modifiers: { meta: true, alt: true } as const,
+          action: () => navigateTo(item.page),
+          description: `Go to ${item.title}`
+        })),
+      [navigateTo]
+    )
+  )
 
   // Handle tag click - open tag drill-down view
   const handleTagClick = useCallback(
@@ -239,7 +320,7 @@ function AppSidebarInner({ currentPage, viewCounts, ...props }: AppSidebarProps)
   // Main sidebar content (shown when not drilling down)
   const mainContent = (
     <>
-      {/* FIXED SECTION - Quick Actions & Main Nav (doesn't scroll) */}
+      {/* FIXED SECTION - Quick Actions (doesn't scroll) */}
       <div className="flex-shrink-0">
         {/* Quick Actions: Search & New (side by side) */}
         <div className="flex items-center gap-1.5 px-3 pt-1 pb-0 group-data-[collapsible=icon]:px-1.5 group-data-[collapsible=icon]:justify-center">
@@ -265,61 +346,6 @@ function AppSidebarInner({ currentPage, viewCounts, ...props }: AppSidebarProps)
             <Plus className="size-[15px] text-muted-foreground/70" />
           </button>
         </div>
-
-        {/* Main Navigation: Inbox, Home, Journal, Tasks */}
-        <SidebarGroup className="px-2 pt-1 pb-0">
-          <SidebarMenu className="gap-px">
-            {mainNav.map((item) => {
-              const sidebarItem: SidebarItem = {
-                type: item.page as TabType,
-                title: item.title,
-                path: `/${item.page}`
-              }
-              const active = isActiveItem(sidebarItem)
-              return (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton
-                    tooltip={item.title}
-                    isActive={active}
-                    onClick={handleNavClick(item.page)}
-                    className={cn(
-                      'relative rounded-[5px] h-7 px-2.5 gap-2.5',
-                      active && 'bg-sidebar-accent text-sidebar-accent-foreground font-medium'
-                    )}
-                  >
-                    {active && (
-                      <div className="absolute left-0 inset-y-1.5 w-0.75 rounded-r-xs bg-tint" />
-                    )}
-                    <item.icon
-                      className={cn(
-                        'size-[15px] text-sidebar-foreground',
-                        active ? 'opacity-85' : 'opacity-45'
-                      )}
-                    />
-                    <span
-                      className={cn(
-                        'text-[13px] leading-4 font-medium',
-                        active ? 'text-sidebar-accent-foreground' : 'text-sidebar-foreground'
-                      )}
-                    >
-                      {item.title}
-                    </span>
-                    {item.page === 'inbox' && inboxCount > 0 && (
-                      <span className="ml-auto text-sidebar-muted font-medium text-[11px]">
-                        {inboxCount}
-                      </span>
-                    )}
-                    {item.page === 'tasks' && todayTasksCount > 0 && (
-                      <span className="ml-auto text-sidebar-muted font-medium text-[11px]">
-                        {todayTasksCount}
-                      </span>
-                    )}
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              )
-            })}
-          </SidebarMenu>
-        </SidebarGroup>
       </div>
 
       {/* Separator between nav and collections */}
@@ -338,22 +364,62 @@ function AppSidebarInner({ currentPage, viewCounts, ...props }: AppSidebarProps)
           defaultExpanded={false}
           actions={
             <>
-              <button
-                type="button"
-                onClick={() => notesActionsRef.current?.createNote()}
-                className="p-0.5 rounded cursor-pointer hover:bg-sidebar-accent transition-colors"
-                aria-label="New note"
-              >
-                <FilePlus className="size-3.5 text-sidebar-muted hover:text-sidebar-foreground" />
-              </button>
-              <button
-                type="button"
-                onClick={() => notesActionsRef.current?.createFolder()}
-                className="p-0.5 rounded cursor-pointer hover:bg-sidebar-accent transition-colors"
-                aria-label="New folder"
-              >
-                <FolderPlus className="size-3.5 text-sidebar-muted hover:text-sidebar-foreground" />
-              </button>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (foldersExpanded) {
+                        notesActionsRef.current?.collapseAll()
+                      } else {
+                        notesActionsRef.current?.expandAll()
+                      }
+                      setFoldersExpanded(!foldersExpanded)
+                    }}
+                    className="p-0.5 rounded cursor-pointer hover:bg-sidebar-accent transition-colors"
+                    aria-label={foldersExpanded ? 'Collapse all folders' : 'Expand all folders'}
+                  >
+                    {foldersExpanded ? (
+                      <ChevronsDown className="size-3.5 text-sidebar-muted hover:text-sidebar-foreground" />
+                    ) : (
+                      <ChevronsUp className="size-3.5 text-sidebar-muted hover:text-sidebar-foreground" />
+                    )}
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="text-xs">
+                  {foldersExpanded ? 'Collapse all folders' : 'Expand all folders'}
+                </TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    onClick={() => notesActionsRef.current?.createNote()}
+                    className="p-0.5 rounded cursor-pointer hover:bg-sidebar-accent transition-colors"
+                    aria-label="New note"
+                  >
+                    <FilePlus className="size-3.5 text-sidebar-muted hover:text-sidebar-foreground" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="text-xs">
+                  New note
+                </TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    onClick={() => notesActionsRef.current?.createFolder()}
+                    className="p-0.5 rounded cursor-pointer hover:bg-sidebar-accent transition-colors"
+                    aria-label="New folder"
+                  >
+                    <FolderPlus className="size-3.5 text-sidebar-muted hover:text-sidebar-foreground" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="text-xs">
+                  New folder
+                </TooltipContent>
+              </Tooltip>
             </>
           }
         >
@@ -362,6 +428,7 @@ function AppSidebarInner({ currentPage, viewCounts, ...props }: AppSidebarProps)
               notesActionsRef.current = actions
             }}
             onTargetFolderChange={handleTargetFolderChange}
+            scrollContainerRef={sidebarScrollRef as React.RefObject<HTMLElement>}
           />
         </SidebarSection>
 
@@ -407,7 +474,13 @@ function AppSidebarInner({ currentPage, viewCounts, ...props }: AppSidebarProps)
 
   return (
     <Sidebar collapsible="icon" {...props}>
-      <SidebarHeaderContent />
+      <SidebarHeaderContent
+        items={mainNav}
+        isActive={isActiveItem}
+        onNavClick={handleNavClick}
+        inboxCount={inboxCount}
+        todayTasksCount={todayTasksCount}
+      />
       <SidebarContent className="flex flex-col overflow-hidden gap-0">
         <SidebarDrillDownContainer>{mainContent}</SidebarDrillDownContainer>
       </SidebarContent>

@@ -4,11 +4,11 @@
  */
 
 import { useRef, useState, useEffect, useCallback } from 'react'
-import { ChevronLeft, ChevronRight, Plus } from '@/lib/icons'
+import { ChevronLeft, ChevronRight } from '@/lib/icons'
 import { useTabGroup, useTabs } from '@/contexts/tabs'
 import { RegularTab } from './regular-tab'
 import { PinnedTab } from './pinned-tab'
-import { TabBarAction } from './tab-bar-action'
+import { NewTabMenu } from './new-tab-menu'
 import { cn } from '@/lib/utils'
 
 interface TabBarProps {
@@ -22,7 +22,7 @@ interface TabBarProps {
  * Tab bar component with pinned tabs, regular tabs, and action buttons
  */
 export const TabBar = ({ groupId, className }: TabBarProps): React.JSX.Element | null => {
-  const { state, openTab } = useTabs()
+  const { state } = useTabs()
   const group = useTabGroup(groupId)
 
   // Scroll state
@@ -70,23 +70,6 @@ export const TabBar = ({ groupId, className }: TabBarProps): React.JSX.Element |
   const scrollRight = (): void => {
     if (!scrollRef.current) return
     scrollRef.current.scrollBy({ left: 200, behavior: 'smooth' })
-  }
-
-  // Handle new tab
-  const handleNewTab = (): void => {
-    openTab(
-      {
-        type: 'inbox',
-        title: 'Inbox',
-        icon: 'inbox',
-        path: '/inbox',
-        isPinned: false,
-        isModified: false,
-        isPreview: false,
-        isDeleted: false
-      },
-      { groupId }
-    )
   }
 
   return (
@@ -185,11 +168,7 @@ export const TabBar = ({ groupId, className }: TabBarProps): React.JSX.Element |
 
       {/* Tab actions */}
       <div className="flex items-center px-1 gap-0.5 border-l border-border">
-        <TabBarAction
-          icon={<Plus className="w-4 h-4" />}
-          tooltip="New Tab"
-          onClick={handleNewTab}
-        />
+        <NewTabMenu groupId={groupId} />
       </div>
     </div>
   )
