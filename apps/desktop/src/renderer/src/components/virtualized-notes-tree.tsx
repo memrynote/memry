@@ -57,6 +57,7 @@ import { getTabIconForFileType, type FileType } from '@memry/shared/file-types'
 import { NoteIconDisplay } from '@/lib/render-note-icon'
 import { FolderIconButton } from '@/components/folder-icon-button'
 import { Smile } from '@/lib/icons'
+import { getDisplayName } from './notes-tree-utils'
 
 // ============================================================================
 // Types
@@ -133,16 +134,6 @@ interface VirtualizedNotesTreeProps {
 // ============================================================================
 // Helper Functions
 // ============================================================================
-
-/**
- * Get display name from note path (filename without extension)
- */
-function getDisplayName(notePath: string): string {
-  const filename = notePath.split('/').pop() || notePath
-  // Remove any extension (not just .md)
-  const lastDot = filename.lastIndexOf('.')
-  return lastDot > 0 ? filename.slice(0, lastDot) : filename
-}
 
 /**
  * Get the appropriate icon component for a file based on its type.
