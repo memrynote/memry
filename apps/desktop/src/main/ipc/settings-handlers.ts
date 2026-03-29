@@ -32,6 +32,8 @@ import { getSettingsSyncManager } from '../sync/settings-sync'
 import { getDatabase } from '../database'
 import { getSetting, setSetting, deleteSetting } from '@main/database/queries/settings'
 import { initEmbeddingModel, getModelInfo, isModelLoaded, isModelLoading } from '../lib/embeddings'
+import { writePreferences, PORTABLE_GENERAL_FIELDS } from '../vault/vault-preferences'
+import { getCurrentVaultPath } from '../store'
 
 // ============================================================================
 // Settings Keys
@@ -533,6 +535,8 @@ export function registerSettingsHandlers(): void {
   ipcMain.handle(
     SettingsChannels.invoke.SET_GENERAL_SETTINGS,
     (_event, updates: Partial<GeneralSettings>) => {
+      writePortableGeneralToConfig(updates)
+
       const result = writeGroupSettings('general', GENERAL_SETTINGS_DEFAULTS, updates)
       if (result.success) {
         if (updates.startOnBoot !== undefined) {
@@ -562,8 +566,10 @@ export function registerSettingsHandlers(): void {
   )
   ipcMain.handle(
     SettingsChannels.invoke.SET_EDITOR_SETTINGS,
-    (_event, updates: Partial<EditorSettings>) =>
-      writeGroupSettings('editor', EDITOR_SETTINGS_DEFAULTS, updates)
+    (_event, updates: Partial<EditorSettings>) => {
+      writeEditorToConfig(updates)
+      return writeGroupSettings('editor', EDITOR_SETTINGS_DEFAULTS, updates)
+    }
   )
 
   ipcMain.handle(SettingsChannels.invoke.GET_TASK_SETTINGS, () =>
@@ -701,6 +707,37 @@ export function applyGlobalCaptureShortcut(): GlobalCaptureResult {
 
   logger.info(`Global capture: registered ${accelerator}`)
   return { success: true, registered: true }
+}
+
+function writePortableGeneralToConfig(updates: Partial<GeneralSettings>): void {
+  const vaultPath = getCurrentVaultPath()
+  if (!vaultPath) return
+
+  const portable: Record<string, unknown> = {}
+  for (const field of PORTABLE_GENERAL_FIELDS) {
+    if (updates[field] !== undefined) {
+      portable[field] = updates[field]
+    }
+  }
+
+  if (Object.keys(portable).length > 0) {
+    try {
+      writePreferences(vaultPath, portable)
+    } catch (err) {
+      logger.warn('Failed to write preferences to config.json:', err)
+    }
+  }
+}
+
+function writeEditorToConfig(updates: Partial<EditorSettings>): void {
+  const vaultPath = getCurrentVaultPath()
+  if (!vaultPath) return
+
+  try {
+    writePreferences(vaultPath, { editor: updates })
+  } catch (err) {
+    logger.warn('Failed to write editor preferences to config.json:', err)
+  }
 }
 
 /**

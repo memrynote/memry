@@ -69,6 +69,23 @@ vi.mock('../inbox/suggestions', () => ({
   reindexAllEmbeddings: vi.fn(() => Promise.resolve({ success: true, computed: 1, skipped: 0 }))
 }))
 
+const mockWritePreferences = vi.fn()
+const mockGetCurrentVaultPath = vi.fn(() => '/test/vault')
+vi.mock('../vault/vault-preferences', () => ({
+  writePreferences: (...args: unknown[]) => mockWritePreferences(...args),
+  PORTABLE_GENERAL_FIELDS: [
+    'theme',
+    'fontSize',
+    'fontFamily',
+    'accentColor',
+    'language',
+    'createInSelectedFolder'
+  ]
+}))
+vi.mock('../store', () => ({
+  getCurrentVaultPath: () => mockGetCurrentVaultPath()
+}))
+
 import { registerSettingsHandlers, unregisterSettingsHandlers } from './settings-handlers'
 import { getDatabase } from '../database'
 import * as settingsQueries from '@main/database/queries/settings'
@@ -95,6 +112,8 @@ describe('settings-handlers', () => {
     syncListeners.clear()
     mockSend.mockClear()
     mockUpdateField.mockClear()
+    mockWritePreferences.mockClear()
+    mockGetCurrentVaultPath.mockReturnValue('/test/vault')
     ;(getDatabase as Mock).mockReturnValue({})
   })
 
@@ -413,6 +432,72 @@ describe('settings-handlers', () => {
         accentColor: '#ef4444'
       })
       expect(result).toEqual({ success: true })
+    })
+  })
+
+  describe('config.json write-through', () => {
+    it('#given vault open #when portable general setting changed #then writes to config.json', async () => {
+      registerSettingsHandlers()
+
+      await invokeHandler(SettingsChannels.invoke.SET_GENERAL_SETTINGS, { theme: 'dark' })
+
+      expect(mockWritePreferences).toHaveBeenCalledWith('/test/vault', { theme: 'dark' })
+    })
+
+    it('#given vault open #when multiple portable fields changed #then writes all to config.json', async () => {
+      registerSettingsHandlers()
+
+      await invokeHandler(SettingsChannels.invoke.SET_GENERAL_SETTINGS, {
+        theme: 'dark',
+        accentColor: '#ef4444',
+        language: 'tr'
+      })
+
+      expect(mockWritePreferences).toHaveBeenCalledWith('/test/vault', {
+        theme: 'dark',
+        accentColor: '#ef4444',
+        language: 'tr'
+      })
+    })
+
+    it('#given vault open #when machine-local field changed #then does NOT write to config.json', async () => {
+      registerSettingsHandlers()
+
+      await invokeHandler(SettingsChannels.invoke.SET_GENERAL_SETTINGS, { startOnBoot: true })
+
+      expect(mockWritePreferences).not.toHaveBeenCalled()
+    })
+
+    it('#given vault open #when mix of portable+local fields #then writes only portable to config.json', async () => {
+      registerSettingsHandlers()
+
+      await invokeHandler(SettingsChannels.invoke.SET_GENERAL_SETTINGS, {
+        theme: 'dark',
+        startOnBoot: true,
+        onboardingCompleted: true
+      })
+
+      expect(mockWritePreferences).toHaveBeenCalledWith('/test/vault', { theme: 'dark' })
+    })
+
+    it('#given vault open #when editor settings changed #then writes to config.json', async () => {
+      registerSettingsHandlers()
+
+      await invokeHandler(SettingsChannels.invoke.SET_EDITOR_SETTINGS, { width: 'wide' })
+
+      expect(mockWritePreferences).toHaveBeenCalledWith('/test/vault', {
+        editor: { width: 'wide' }
+      })
+    })
+
+    it('#given no vault path #when setting changed #then skips config.json write gracefully', async () => {
+      registerSettingsHandlers()
+      mockGetCurrentVaultPath.mockReturnValue(null)
+
+      await invokeHandler(SettingsChannels.invoke.SET_GENERAL_SETTINGS, { theme: 'dark' })
+
+      expect(mockWritePreferences).not.toHaveBeenCalled()
+      expect(settingsQueries.setSetting).toHaveBeenCalled()
     })
   })
 
