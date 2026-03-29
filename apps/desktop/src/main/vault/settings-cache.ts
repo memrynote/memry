@@ -1,5 +1,5 @@
 import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3'
-import type * as schema from '@memry/db-schema/data-schema'
+import type * as schema from '@memry/db-schema/schema'
 import { getSetting, setSetting } from '@main/database/queries/settings'
 import {
   GENERAL_SETTINGS_DEFAULTS,
@@ -67,12 +67,15 @@ export function migrateSettingsToConfig(db: DrizzleDb, vaultPath: string): void 
   if (rawEditor) {
     try {
       const editor = JSON.parse(rawEditor) as Partial<EditorSettings>
-      seedPrefs.editor = {}
-      if (editor.width) seedPrefs.editor.width = editor.width
-      if (editor.spellCheck !== undefined) seedPrefs.editor.spellCheck = editor.spellCheck
-      if (editor.autoSaveDelay !== undefined) seedPrefs.editor.autoSaveDelay = editor.autoSaveDelay
-      if (editor.showWordCount !== undefined) seedPrefs.editor.showWordCount = editor.showWordCount
-      if (editor.toolbarMode) seedPrefs.editor.toolbarMode = editor.toolbarMode
+      const editorSeed: Partial<EditorSettings> = {}
+      if (editor.width) editorSeed.width = editor.width
+      if (editor.spellCheck !== undefined) editorSeed.spellCheck = editor.spellCheck
+      if (editor.autoSaveDelay !== undefined) editorSeed.autoSaveDelay = editor.autoSaveDelay
+      if (editor.showWordCount !== undefined) editorSeed.showWordCount = editor.showWordCount
+      if (editor.toolbarMode) editorSeed.toolbarMode = editor.toolbarMode
+      if (Object.keys(editorSeed).length > 0) {
+        seedPrefs.editor = { ...EDITOR_SETTINGS_DEFAULTS, ...editorSeed }
+      }
     } catch {
       log.warn('Failed to parse existing editor settings for migration')
     }
