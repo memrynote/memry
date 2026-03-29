@@ -17,6 +17,7 @@ import {
   calculateWordCount,
   generateContentHash,
   createSnippet,
+  extractInlineTagsFromMarkdown,
   type NoteFrontmatter
 } from './frontmatter'
 import { syncNoteToCache, deleteNoteFromCache } from './note-sync'
@@ -162,15 +163,19 @@ export interface NoteLink {
   sourceId: string
   targetId: string | null
   targetTitle: string
-  lineNumber: number
+}
+
+export interface BacklinkContext {
+  snippet: string
+  linkStart: number
+  linkEnd: number
 }
 
 export interface Backlink {
   sourceId: string
   sourcePath: string
   sourceTitle: string
-  context: string
-  lineNumber: number
+  contexts: BacklinkContext[]
 }
 
 export interface NoteLinksResponse {
@@ -548,7 +553,22 @@ export async function updateNote(input: NoteUpdateInput): Promise<Note> {
   // Merge updates
   const newTitle = input.title ?? existing.title
   const newContent = input.content ?? existing.content
-  const newTags = input.tags ?? existing.tags
+  let newTags = input.tags ?? existing.tags
+
+  if (input.content !== undefined && input.tags === undefined) {
+    const oldInline = new Set(extractInlineTagsFromMarkdown(existing.content))
+    const newInline = new Set(extractInlineTagsFromMarkdown(input.content))
+
+    const removedInline = [...oldInline].filter((t) => !newInline.has(t))
+    const addedInline = [...newInline].filter((t) => !oldInline.has(t))
+
+    if (removedInline.length > 0 || addedInline.length > 0) {
+      newTags = newTags.filter((t) => !removedInline.includes(t))
+      for (const tag of addedInline) {
+        if (!newTags.includes(tag)) newTags.push(tag)
+      }
+    }
+  }
   const newProperties = input.properties ?? existing.properties // T013: Properties support
   // T028: Handle emoji - use input.emoji if provided, otherwise keep existing
   const newEmoji = input.emoji !== undefined ? input.emoji : existing.emoji
@@ -966,33 +986,82 @@ export function getTagsWithCounts(): { tag: string; color: string; count: number
   return results.sort((a, b) => b.count - a.count)
 }
 
+interface LinkContext {
+  snippet: string
+  linkStart: number
+  linkEnd: number
+}
+
+/**
+ * Extract context snippets around ALL [[targetTitle]] mentions in content.
+ * Returns one LinkContext per occurrence with ~150 char radius.
+ */
+function extractAllLinkContexts(content: string, targetTitle: string): LinkContext[] {
+  const escaped = targetTitle.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  const pattern = new RegExp(`\\[\\[${escaped}(?:\\|[^\\]]+)?\\]\\]`, 'gi')
+  const matches = [...content.matchAll(pattern)]
+  if (matches.length === 0) return []
+
+  const radius = 75
+
+  return matches.map((match) => {
+    const matchIndex = match.index!
+    const matchText = match[0]
+    const start = Math.max(0, matchIndex - radius)
+    const end = Math.min(content.length, matchIndex + matchText.length + radius)
+
+    let snippet = content.slice(start, end)
+    const prefixOffset = start > 0 ? 3 : 0
+    if (start > 0) snippet = '...' + snippet
+    if (end < content.length) snippet = snippet + '...'
+
+    snippet = snippet.replace(/\n+/g, ' ').trim()
+
+    const linkStart = matchIndex - start + prefixOffset
+    const linkEnd = linkStart + matchText.length
+
+    return { snippet, linkStart, linkEnd }
+  })
+}
+
 /**
  * Get links for a note (outgoing and incoming).
  */
-export function getNoteLinks(id: string): NoteLinksResponse {
+export async function getNoteLinks(id: string): Promise<NoteLinksResponse> {
   const db = getIndexDatabase()
 
-  // Get outgoing links
   const outgoing = getOutgoingLinks(db, id)
   const outgoingLinks: NoteLink[] = outgoing.map((link) => ({
     sourceId: link.sourceId,
     targetId: link.targetId,
-    targetTitle: link.targetTitle,
-    lineNumber: 0 // TODO: Calculate line number from content
+    targetTitle: link.targetTitle
   }))
 
-  // Get incoming links (backlinks)
   const incoming = getIncomingLinks(db, id)
-  const backlinks: Backlink[] = incoming.map((link) => {
-    const sourceCache = getNoteCacheById(db, link.sourceId)
-    return {
-      sourceId: link.sourceId,
-      sourcePath: sourceCache?.path ?? '',
-      sourceTitle: sourceCache?.title ?? '',
-      context: '', // TODO: Extract context from content
-      lineNumber: 0
-    }
-  })
+  const targetCache = getNoteCacheById(db, id)
+  const targetTitle = targetCache?.title ?? ''
+
+  const backlinks: Backlink[] = await Promise.all(
+    incoming.map(async (link) => {
+      const sourceCache = getNoteCacheById(db, link.sourceId)
+      let contexts: Backlink['contexts'] = []
+
+      if (sourceCache?.path && targetTitle) {
+        const absolutePath = toAbsolutePath(sourceCache.path)
+        const content = await safeRead(absolutePath)
+        if (content) {
+          contexts = extractAllLinkContexts(content, targetTitle)
+        }
+      }
+
+      return {
+        sourceId: link.sourceId,
+        sourcePath: sourceCache?.path ?? '',
+        sourceTitle: sourceCache?.title ?? '',
+        contexts
+      }
+    })
+  )
 
   return { outgoing: outgoingLinks, incoming: backlinks }
 }

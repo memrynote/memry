@@ -129,7 +129,7 @@ export function DatePickerCalendar({
   return (
     <div
       className={cn(
-        '[font-synthesis:none] text-[12px] leading-4 flex flex-col pt-2 pb-3 gap-1.5 antialiased',
+        '[font-synthesis:none] text-[12px] leading-4 flex flex-col pt-2 pb-3 gap-1.5',
         className
       )}
     >

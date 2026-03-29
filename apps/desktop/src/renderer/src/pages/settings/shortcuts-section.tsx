@@ -402,14 +402,14 @@ export function ShortcutsSettings() {
 
   if (isLoading) {
     return (
-      <div className="flex flex-col antialiased">
+      <div className="flex flex-col">
         <SettingsHeader title="Keyboard Shortcuts" subtitle="Loading settings..." />
       </div>
     )
   }
 
   return (
-    <div className="flex flex-col antialiased text-xs/4">
+    <div className="flex flex-col text-xs/4">
       <SettingsHeader
         title="Keyboard Shortcuts"
         subtitle="Click any shortcut to rebind it"

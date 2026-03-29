@@ -11,6 +11,7 @@ import {
   Plug,
   Tags,
   ListChecks,
+  List,
   Key,
   User
 } from '@/lib/icons'
@@ -24,6 +25,7 @@ import { AppearanceSettings } from './settings/appearance-section'
 import { AISettings } from './settings/ai-section'
 import { IntegrationsSettings } from './settings/integrations-section'
 import { TagsSettings } from './settings/tags-section'
+import { PropertiesSettings } from './settings/properties-section'
 import { TasksSettings } from './settings/tasks-section'
 import { ShortcutsSettings } from './settings/shortcuts-section'
 import { AccountSettings } from './settings/account-section'
@@ -39,6 +41,7 @@ type SettingsSection =
   | 'ai'
   | 'integrations'
   | 'tags'
+  | 'properties'
   | 'shortcuts'
   | 'account'
 
@@ -153,6 +156,12 @@ export function SettingsPage() {
             isActive={activeSection === 'tags'}
             onClick={() => setActiveSection('tags')}
           />
+          <SettingsNavItem
+            icon={<List className="w-3.5 h-3.5" />}
+            label="Properties"
+            isActive={activeSection === 'properties'}
+            onClick={() => setActiveSection('properties')}
+          />
         </SettingsNavGroup>
       </div>
 
@@ -169,6 +178,7 @@ export function SettingsPage() {
             {activeSection === 'ai' && <AISettings />}
             {activeSection === 'integrations' && <IntegrationsSettings />}
             {activeSection === 'tags' && <TagsSettings />}
+            {activeSection === 'properties' && <PropertiesSettings />}
             {activeSection === 'shortcuts' && <ShortcutsSettings />}
             {activeSection === 'account' && <AccountSettings />}
           </div>

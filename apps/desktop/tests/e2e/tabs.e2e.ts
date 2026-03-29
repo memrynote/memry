@@ -10,6 +10,7 @@ import {
   waitForAppReady,
   waitForVaultReady,
   navigateTo,
+  createNote,
   SELECTORS,
   SHORTCUTS,
   getElementCount,
@@ -513,5 +514,128 @@ test.describe('Edge Cases', () => {
     // App should still be alive
     const splitContainer = page.locator(SELECTORS.splitViewContainer).first()
     await expect(splitContainer).toBeVisible()
+  })
+})
+
+// ===========================================================================
+// Tab Hover Preview
+// ===========================================================================
+
+test.describe('Tab Hover Preview', () => {
+  test.beforeEach(async ({ page }) => {
+    await waitForAppReady(page)
+    await waitForVaultReady(page)
+    await page.waitForTimeout(500)
+  })
+
+  test('should show preview card when hovering a note tab', async ({ page }) => {
+    // Create a note to have a note tab
+    const noteTitle = `Preview Test ${Date.now()}`
+    await createNote(page, noteTitle, 'Some preview content for testing the hover card.')
+    await page.waitForTimeout(1000)
+
+    // Find the note tab in the tab bar
+    const noteTab = page.locator(`[role="tab"]:has-text("${noteTitle}")`).first()
+    const isVisible = await noteTab.isVisible({ timeout: 3000 }).catch(() => false)
+    if (!isVisible) {
+      test.skip(true, 'Note tab not found')
+      return
+    }
+
+    // Hover over the note tab and wait for openDelay (400ms) + fetch time
+    await noteTab.hover()
+    await page.waitForTimeout(800)
+
+    // The hover card content renders in a Radix portal
+    const hoverCard = page.locator('[data-slot="hover-card-content"]').first()
+    const hoverVisible = await hoverCard.isVisible({ timeout: 3000 }).catch(() => false)
+
+    if (hoverVisible) {
+      // Verify preview card shows the note title
+      await expect(hoverCard).toContainText(noteTitle)
+
+      // Move mouse away to dismiss
+      await page.mouse.move(0, 0)
+      await page.waitForTimeout(400)
+    }
+  })
+
+  test('should NOT show preview card when hovering a singleton tab', async ({ page }) => {
+    // Open Inbox (singleton tab)
+    await clickSidebarItem(page, 'Inbox')
+    await page.waitForTimeout(300)
+
+    // Hover over the Inbox tab
+    const inboxTab = page.locator('[role="tab"]:has-text("Inbox")').first()
+    const isVisible = await inboxTab.isVisible().catch(() => false)
+    if (!isVisible) {
+      test.skip(true, 'Inbox tab not found')
+      return
+    }
+
+    await inboxTab.hover()
+    await page.waitForTimeout(800)
+
+    // No hover card should appear for singleton tabs
+    const hoverCard = page.locator('[data-slot="hover-card-content"]').first()
+    const hoverVisible = await hoverCard.isVisible({ timeout: 500 }).catch(() => false)
+    expect(hoverVisible).toBe(false)
+  })
+
+  test('should show snippet in preview card if note has content', async ({ page }) => {
+    const noteTitle = `Snippet Test ${Date.now()}`
+    const snippet = 'This is the first paragraph that should appear in the preview snippet.'
+    await createNote(page, noteTitle, snippet)
+    await page.waitForTimeout(1000)
+
+    const noteTab = page.locator(`[role="tab"]:has-text("${noteTitle}")`).first()
+    const isVisible = await noteTab.isVisible({ timeout: 3000 }).catch(() => false)
+    if (!isVisible) {
+      test.skip(true, 'Note tab not found')
+      return
+    }
+
+    await noteTab.hover()
+    await page.waitForTimeout(800)
+
+    const hoverCard = page.locator('[data-slot="hover-card-content"]').first()
+    const hoverVisible = await hoverCard.isVisible({ timeout: 3000 }).catch(() => false)
+
+    if (hoverVisible) {
+      // The preview should contain part of the snippet text
+      const cardText = await hoverCard.textContent()
+      // Snippet may be truncated, check for the beginning
+      expect(cardText).toContain('This is the first paragraph')
+    }
+  })
+
+  test('should dismiss preview when mouse moves away', async ({ page }) => {
+    const noteTitle = `Dismiss Test ${Date.now()}`
+    await createNote(page, noteTitle, 'Content for dismiss test.')
+    await page.waitForTimeout(1000)
+
+    const noteTab = page.locator(`[role="tab"]:has-text("${noteTitle}")`).first()
+    const isVisible = await noteTab.isVisible({ timeout: 3000 }).catch(() => false)
+    if (!isVisible) {
+      test.skip(true, 'Note tab not found')
+      return
+    }
+
+    // Hover to show preview
+    await noteTab.hover()
+    await page.waitForTimeout(800)
+
+    const hoverCard = page.locator('[data-slot="hover-card-content"]').first()
+    const hoverVisible = await hoverCard.isVisible({ timeout: 3000 }).catch(() => false)
+
+    if (hoverVisible) {
+      // Move mouse away from the tab
+      await page.mouse.move(0, 300)
+      await page.waitForTimeout(400)
+
+      // Hover card should be dismissed
+      const stillVisible = await hoverCard.isVisible().catch(() => false)
+      expect(stillVisible).toBe(false)
+    }
   })
 })

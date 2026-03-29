@@ -161,6 +161,7 @@ export const api = {
     getByPath: (path: string) => invoke(NotesChannels.invoke.GET_BY_PATH, path),
     getFile: (id: string) => invoke(NotesChannels.invoke.GET_FILE, id),
     resolveByTitle: (title: string) => invoke(NotesChannels.invoke.RESOLVE_BY_TITLE, title),
+    previewByTitle: (title: string) => invoke(NotesChannels.invoke.PREVIEW_BY_TITLE, title),
     update: (input: {
       id: string
       title?: string
@@ -216,6 +217,47 @@ export const api = {
         NotesChannels.invoke.UPDATE_PROPERTY_DEFINITION,
         input as MainIpcInvokeArgs<typeof NotesChannels.invoke.UPDATE_PROPERTY_DEFINITION>[0]
       ),
+
+    ensurePropertyDefinition: (name: string, type: string) =>
+      invoke(NotesChannels.invoke.ENSURE_PROPERTY_DEFINITION, { name, type } as MainIpcInvokeArgs<
+        typeof NotesChannels.invoke.ENSURE_PROPERTY_DEFINITION
+      >[0]),
+    addPropertyOption: (propertyName: string, option: { value: string; color: string }) =>
+      invoke(NotesChannels.invoke.ADD_PROPERTY_OPTION, {
+        propertyName,
+        option
+      } as MainIpcInvokeArgs<typeof NotesChannels.invoke.ADD_PROPERTY_OPTION>[0]),
+    addStatusOption: (
+      propertyName: string,
+      categoryKey: string,
+      option: { value: string; color: string }
+    ) =>
+      invoke(NotesChannels.invoke.ADD_STATUS_OPTION, {
+        propertyName,
+        categoryKey,
+        option
+      } as MainIpcInvokeArgs<typeof NotesChannels.invoke.ADD_STATUS_OPTION>[0]),
+    removePropertyOption: (propertyName: string, optionValue: string) =>
+      invoke(NotesChannels.invoke.REMOVE_PROPERTY_OPTION, {
+        propertyName,
+        optionValue
+      } as MainIpcInvokeArgs<typeof NotesChannels.invoke.REMOVE_PROPERTY_OPTION>[0]),
+    renamePropertyOption: (propertyName: string, oldValue: string, newValue: string) =>
+      invoke(NotesChannels.invoke.RENAME_PROPERTY_OPTION, {
+        propertyName,
+        oldValue,
+        newValue
+      } as MainIpcInvokeArgs<typeof NotesChannels.invoke.RENAME_PROPERTY_OPTION>[0]),
+    updateOptionColor: (propertyName: string, optionValue: string, newColor: string) =>
+      invoke(NotesChannels.invoke.UPDATE_OPTION_COLOR, {
+        propertyName,
+        optionValue,
+        newColor
+      } as MainIpcInvokeArgs<typeof NotesChannels.invoke.UPDATE_OPTION_COLOR>[0]),
+    deletePropertyDefinition: (name: string) =>
+      invoke(NotesChannels.invoke.DELETE_PROPERTY_DEFINITION, { name } as MainIpcInvokeArgs<
+        typeof NotesChannels.invoke.DELETE_PROPERTY_DEFINITION
+      >[0]),
 
     // T070: Attachments API
     uploadAttachment: (noteId: string, file: File) => {

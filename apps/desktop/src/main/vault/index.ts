@@ -52,6 +52,7 @@ import { flushFtsUpdates, hasPendingFtsUpdates } from '../database'
 import { clearEmbeddingQueue, hasPendingEmbeddings } from '../inbox/embedding-queue'
 import { createLogger } from '../lib/logger'
 import { startSyncRuntime, stopSyncRuntime } from '../sync/runtime'
+import { PropertyDefinitionsService } from './property-definitions'
 
 const logger = createLogger('Vault')
 
@@ -218,6 +219,10 @@ async function openVault(vaultPath: string): Promise<void> {
   const indexHealth: IndexHealth = checkIndexHealth(indexDbPath)
   logger.info(`Index health check: ${indexHealth}`)
 
+  // Initialize property definitions service BEFORE indexing
+  // so getPropertyType() finds correct types during note sync
+  const propDefService = PropertyDefinitionsService.init(vaultPath)
+
   updateStatus({ isIndexing: true, indexProgress: 0 })
 
   try {
@@ -238,6 +243,9 @@ async function openVault(vaultPath: string): Promise<void> {
         runIndexMigrations(indexDbPath)
         initIndexDatabase(indexDbPath)
         initializeFts(getIndexDatabase())
+
+        // Reload property definitions into DB cache before indexing
+        await propDefService.reload()
 
         // Run indexing to pick up any new/missing notes
         // This will skip files already in cache, so it's fast for subsequent opens
@@ -407,6 +415,8 @@ export async function closeVault(): Promise<void> {
   }
 
   await stopSyncRuntime()
+
+  PropertyDefinitionsService.destroy()
 
   // Close databases
   closeAllDatabases()

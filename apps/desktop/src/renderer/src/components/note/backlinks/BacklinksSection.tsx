@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react'
 import { cn } from '@/lib/utils'
-import { Link2, ChevronDown } from '@/lib/icons'
+import { ChevronDown } from '@/lib/icons'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -9,7 +9,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { BacklinkCard } from './BacklinkCard'
 import { BacklinksLoadingState } from './BacklinksLoadingState'
-import type { BacklinksSectionProps, BacklinkSortOption, Backlink } from './types'
+import type { BacklinksSectionProps, BacklinkSortOption, Mention } from './types'
 import { createLogger } from '@/lib/logger'
 
 const log = createLogger('Component:BacklinksSection')
@@ -20,64 +20,41 @@ const SORT_LABELS: Record<BacklinkSortOption, string> = {
   mentions: 'Most mentions'
 }
 
-// Demo data for development
-const DEMO_BACKLINKS: Backlink[] = [
-  {
-    id: 'bl-1',
-    noteId: 'note-123',
-    noteTitle: 'Film Analysis Project',
-    folder: 'Projects',
-    date: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
-    mentions: [
-      {
-        id: 'm-1',
-        snippet:
-          "...studying the cinematography of [[The Godfather]] reveals Coppola's masterful use of low-key lighting...",
-        linkStart: 32,
-        linkEnd: 48
-      }
-    ]
-  },
-  {
-    id: 'bl-2',
-    noteId: 'note-456',
-    noteTitle: 'Team Meeting Dec 5',
-    folder: 'Meetings',
-    date: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000),
-    mentions: [
-      {
-        id: 'm-2',
-        snippet:
-          '...decided to use [[The Godfather]] as our case study for the presentation next week...',
-        linkStart: 19,
-        linkEnd: 35
-      }
-    ]
-  },
-  {
-    id: 'bl-3',
-    noteId: 'note-789',
-    noteTitle: 'Classic Cinema Notes',
-    folder: 'Research',
-    date: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
-    mentions: [
-      {
-        id: 'm-3',
-        snippet:
-          '...alongside Citizen Kane, [[The Godfather]] represents a turning point in American filmmaking...',
-        linkStart: 27,
-        linkEnd: 43
-      },
-      {
-        id: 'm-4',
-        snippet:
-          "...the baptism scene in [[The Godfather]] is often cited as one of cinema's greatest...",
-        linkStart: 23,
-        linkEnd: 39
-      }
-    ]
-  }
-]
+function BacklinksIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 14 14"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      className={className}
+      style={{ flexShrink: 0 }}
+    >
+      <path
+        d="M6 3L3 3a2 2 0 00-2 2v0a2 2 0 002 2h3"
+        stroke="currentColor"
+        strokeWidth="1.2"
+        strokeLinecap="round"
+      />
+      <path
+        d="M8 11l3 0a2 2 0 002-2v0a2 2 0 00-2-2H8"
+        stroke="currentColor"
+        strokeWidth="1.2"
+        strokeLinecap="round"
+      />
+      <line
+        x1="4.5"
+        y1="7"
+        x2="9.5"
+        y2="7"
+        stroke="currentColor"
+        strokeWidth="1.2"
+        strokeLinecap="round"
+      />
+    </svg>
+  )
+}
 
 export function BacklinksSection({
   backlinks: propBacklinks,
@@ -90,18 +67,13 @@ export function BacklinksSection({
   onBacklinkClick: propOnBacklinkClick,
   onShowMore: propOnShowMore
 }: Partial<BacklinksSectionProps>) {
-  // Internal state for demo mode
   const [internalSortBy, setInternalSortBy] = useState<BacklinkSortOption>('recent')
   const [isCollapsed, setIsCollapsed] = useState(defaultCollapsed)
   const [visibleCount, setVisibleCount] = useState(initialCount)
 
-  // Use props or internal state
-  const backlinks = propBacklinks ?? DEMO_BACKLINKS
+  const backlinks = propBacklinks ?? []
   const sortBy = propSortBy ?? internalSortBy
 
-  if (!isLoading && backlinks.length === 0) return null
-
-  // Sort backlinks
   const sortedBacklinks = useMemo(() => {
     const sorted = [...backlinks]
     switch (sortBy) {
@@ -118,11 +90,17 @@ export function BacklinksSection({
     return sorted
   }, [backlinks, sortBy])
 
+  const totalReferences = useMemo(
+    () => backlinks.reduce((sum, bl) => sum + bl.mentions.length, 0),
+    [backlinks]
+  )
+
+  if (!isLoading && backlinks.length === 0) return null
+
   const visibleBacklinks = sortedBacklinks.slice(0, visibleCount)
   const hasMore = visibleCount < sortedBacklinks.length
   const remainingCount = sortedBacklinks.length - visibleCount
 
-  // Handlers
   const handleSortChange = (sort: BacklinkSortOption) => {
     if (propOnSortChange) {
       propOnSortChange(sort)
@@ -131,9 +109,9 @@ export function BacklinksSection({
     }
   }
 
-  const handleBacklinkClick = (noteId: string) => {
+  const handleBacklinkClick = (noteId: string, mention?: Mention) => {
     if (propOnBacklinkClick) {
-      propOnBacklinkClick(noteId)
+      propOnBacklinkClick(noteId, mention)
     } else {
       log.info('Navigate to note:', noteId)
     }
@@ -153,17 +131,16 @@ export function BacklinksSection({
 
   return (
     <section
-      className="flex flex-col pt-5 gap-3 border-t border-border"
+      className="flex flex-col gap-1"
       role="region"
       aria-label={`Backlinks section with ${backlinks.length} ${backlinks.length === 1 ? 'link' : 'links'}`}
       aria-busy={isLoading}
     >
-      {/* Header */}
       <div className="flex items-center justify-between">
         <button
           onClick={collapsible ? toggleCollapse : undefined}
           className={cn(
-            'flex items-center gap-2',
+            'flex items-center gap-1.5',
             collapsible && 'cursor-pointer hover:opacity-80 transition-opacity'
           )}
           aria-expanded={!isCollapsed}
@@ -171,21 +148,33 @@ export function BacklinksSection({
           aria-label={isCollapsed ? 'Expand backlinks section' : 'Collapse backlinks section'}
           disabled={!collapsible}
         >
-          <Link2 className="h-3.5 w-3.5 text-text-tertiary" aria-hidden="true" />
-          <span className="text-[11px] tracking-[0.06em] uppercase text-text-tertiary font-sans font-semibold leading-3.5">
-            {backlinks.length} Backlinks
+          {collapsible && (
+            <ChevronDown
+              className={cn(
+                'h-3 w-3 text-text-tertiary flex-shrink-0 transition-transform duration-150',
+                isCollapsed && '-rotate-90'
+              )}
+              aria-hidden="true"
+            />
+          )}
+          <BacklinksIcon className="text-text-tertiary" />
+          <span className="text-xs/4 font-medium text-text-tertiary">
+            {backlinks.length} {backlinks.length === 1 ? 'note' : 'notes'}
+            <span className="text-text-tertiary/50">
+              {' '}
+              &middot; {totalReferences} {totalReferences === 1 ? 'reference' : 'references'}
+            </span>
           </span>
         </button>
 
-        {/* Sort dropdown */}
         {!isCollapsed && backlinks.length > 1 && (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button
                 className={cn(
-                  'inline-flex items-center gap-1 px-2 py-1',
-                  'text-xs text-text-tertiary',
-                  'hover:text-muted-foreground hover:bg-surface rounded',
+                  'inline-flex items-center gap-1 px-1.5 py-0.5',
+                  'text-[11px] text-text-tertiary',
+                  'hover:text-muted-foreground hover:bg-surface-active/40 rounded',
                   'transition-colors duration-150'
                 )}
                 aria-label={`Sort backlinks by ${SORT_LABELS[sortBy]}`}
@@ -199,7 +188,7 @@ export function BacklinksSection({
                 <DropdownMenuItem
                   key={option}
                   onClick={() => handleSortChange(option)}
-                  className={cn(sortBy === option && 'bg-stone-100')}
+                  className={cn(sortBy === option && 'bg-surface-active')}
                 >
                   {SORT_LABELS[option]}
                 </DropdownMenuItem>
@@ -209,41 +198,37 @@ export function BacklinksSection({
         )}
       </div>
 
-      {/* Content */}
       {!isCollapsed && (
         <div id="backlinks-content" aria-live="polite" role="list" aria-label="Backlinks list">
           {isLoading ? (
             <BacklinksLoadingState />
           ) : (
             <>
-              <div className="flex gap-2.5">
-                {visibleBacklinks.map((backlink) => (
+              <div className="flex flex-col">
+                {visibleBacklinks.map((backlink, index) => (
                   <BacklinkCard
                     key={backlink.id}
                     backlink={backlink}
+                    defaultExpanded={index < 2}
                     onClick={handleBacklinkClick}
                   />
                 ))}
               </div>
 
-              {/* Show More Button */}
               {hasMore && remainingCount > 0 && (
-                <div className="pt-2">
-                  <button
-                    onClick={handleShowMore}
-                    className={cn(
-                      'w-full py-3',
-                      'text-[13px] text-muted-foreground',
-                      'hover:text-text-secondary hover:underline',
-                      'transition-colors duration-150',
-                      'cursor-pointer'
-                    )}
-                    aria-label={`Show ${remainingCount} more backlink${remainingCount > 1 ? 's' : ''}`}
-                  >
-                    Show {remainingCount} more backlink
-                    {remainingCount > 1 ? 's' : ''}
-                  </button>
-                </div>
+                <button
+                  onClick={handleShowMore}
+                  className={cn(
+                    'w-full py-1.5 mt-0.5',
+                    'text-[11px] text-text-tertiary',
+                    'hover:text-muted-foreground',
+                    'transition-colors duration-150',
+                    'cursor-pointer'
+                  )}
+                  aria-label={`Show ${remainingCount} more backlink${remainingCount > 1 ? 's' : ''}`}
+                >
+                  {remainingCount} more
+                </button>
               )}
             </>
           )}

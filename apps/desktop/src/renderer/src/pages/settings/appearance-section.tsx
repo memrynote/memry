@@ -153,14 +153,14 @@ export function AppearanceSettings() {
 
   if (isLoading) {
     return (
-      <div className="flex flex-col antialiased">
+      <div className="flex flex-col">
         <SettingsHeader title="Appearance" subtitle="Loading settings..." />
       </div>
     )
   }
 
   return (
-    <div className="flex flex-col antialiased text-xs/4">
+    <div className="flex flex-col text-xs/4">
       <SettingsHeader title="Appearance" subtitle="Customize the look and feel" />
 
       <SettingsGroup label="Theme">

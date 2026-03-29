@@ -81,6 +81,20 @@ export const NotesChannels = {
     CREATE_PROPERTY_DEFINITION: 'notes:create-property-definition',
     /** Update a property definition */
     UPDATE_PROPERTY_DEFINITION: 'notes:update-property-definition',
+    /** Ensure a property definition exists (creates with defaults if missing) */
+    ENSURE_PROPERTY_DEFINITION: 'notes:ensure-property-definition',
+    /** Add an option to a select/multiselect property definition */
+    ADD_PROPERTY_OPTION: 'notes:add-property-option',
+    /** Add an option to a status property definition within a category */
+    ADD_STATUS_OPTION: 'notes:add-status-option',
+    /** Remove an option from a property definition */
+    REMOVE_PROPERTY_OPTION: 'notes:remove-property-option',
+    /** Rename an option in a property definition */
+    RENAME_PROPERTY_OPTION: 'notes:rename-property-option',
+    /** Update an option's color in a property definition */
+    UPDATE_OPTION_COLOR: 'notes:update-option-color',
+    /** Delete an entire property definition */
+    DELETE_PROPERTY_DEFINITION: 'notes:delete-property-definition',
     /** Upload an attachment to a note (T070) */
     UPLOAD_ATTACHMENT: 'notes:upload-attachment',
     /** List attachments for a note */
@@ -115,6 +129,8 @@ export const NotesChannels = {
     GET_FILE: 'notes:get-file',
     /** Resolve a WikiLink target by title (returns note or file metadata) */
     RESOLVE_BY_TITLE: 'notes:resolve-by-title',
+    /** Get preview data for a WikiLink hover card */
+    PREVIEW_BY_TITLE: 'notes:preview-by-title',
     /** Import files from external paths into the vault */
     IMPORT_FILES: 'notes:import-files',
     /** Open a file dialog to select files for import */

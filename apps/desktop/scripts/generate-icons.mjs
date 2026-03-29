@@ -57,16 +57,16 @@ const ICON_SVG = `<?xml version="1.0" encoding="UTF-8"?>
   <rect x="10" y="10" width="80" height="80" rx="16" ry="16" fill="none" stroke="url(#borderGrad)" stroke-width="0.8"/>
   <rect x="10" y="10" width="80" height="20" rx="16" ry="16" fill="url(#topShine)"/>
 
-  <rect x="10" y="10" width="80" height="80" rx="16" ry="16" fill="none" stroke="url(#borderTop)" stroke-width="1.5" mask="url(#topMask)"/>
-  <rect x="10" y="10" width="80" height="80" rx="16" ry="16" fill="none" stroke="url(#borderRight)" stroke-width="1.5" mask="url(#rightMask)"/>
-  <rect x="10" y="10" width="80" height="80" rx="16" ry="16" fill="none" stroke="url(#borderBottom)" stroke-width="1.5" mask="url(#bottomMask)"/>
-  <rect x="10" y="10" width="80" height="80" rx="16" ry="16" fill="none" stroke="url(#borderLeft)" stroke-width="1.5" mask="url(#leftMask)"/>
+  <rect x="10" y="10" width="80" height="80" rx="16" ry="16" fill="none" stroke="url(#borderTop)" stroke-width="2.5" mask="url(#topMask)"/>
+  <rect x="10" y="10" width="80" height="80" rx="16" ry="16" fill="none" stroke="url(#borderRight)" stroke-width="2.5" mask="url(#rightMask)"/>
+  <rect x="10" y="10" width="80" height="80" rx="16" ry="16" fill="none" stroke="url(#borderBottom)" stroke-width="2.5" mask="url(#bottomMask)"/>
+  <rect x="10" y="10" width="80" height="80" rx="16" ry="16" fill="none" stroke="url(#borderLeft)" stroke-width="2.5" mask="url(#leftMask)"/>
 
   <g transform="translate(10, 10) scale(0.8)" filter="url(#logoShadow)">
     <path d="M20 70 L20 30 L35 45 L50 25 L65 45 L80 30 L80 70 L50 70"
-          stroke="#FFFFFF" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+          stroke="#FFFFFF" stroke-width="8" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
     <path d="M50 70 L50 85 L80 70"
-          stroke="#FFFFFF" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+          stroke="#FFFFFF" stroke-width="8" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
   </g>
 </svg>`
 

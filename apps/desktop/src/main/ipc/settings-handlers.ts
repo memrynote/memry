@@ -44,7 +44,8 @@ const GENERAL_SYNCABLE_FIELDS: (keyof GeneralSettings)[] = [
   'fontSize',
   'fontFamily',
   'accentColor',
-  'language'
+  'language',
+  'createInSelectedFolder'
 ]
 
 const SETTINGS_KEYS = {

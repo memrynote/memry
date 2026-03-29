@@ -109,7 +109,7 @@ export const KanbanCardContent = forwardRef<HTMLDivElement, KanbanCardContentPro
         onKeyDown={handleKeyDown}
         style={style}
         className={cn(
-          'group flex cursor-grab rounded-md overflow-clip antialiased transition-all duration-150',
+          'group flex cursor-grab rounded-md overflow-clip transition-all duration-150',
           isDragging && 'border-[1.5px] border-dashed border-primary/30 bg-primary/[0.03]',
           !isDragging && 'border border-solid',
           !isDragging &&

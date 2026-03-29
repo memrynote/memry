@@ -405,6 +405,96 @@ describe('notes operations', () => {
         })
       )
     })
+
+    it('removes tag from frontmatter when #tag deleted from content', async () => {
+      // #given — note with inline #project tag
+      const created = await notes.createNote({
+        title: 'Inline Tag Removal',
+        content: 'Hello #project world',
+        tags: ['project']
+      })
+
+      // #when — content saved without the #tag (no explicit tags in input)
+      const updated = await notes.updateNote({
+        id: created.id,
+        content: 'Hello world'
+      })
+
+      // #then — tag removed from frontmatter
+      expect(updated.tags).toEqual([])
+    })
+
+    it('adds tag to frontmatter when #tag appears in new content', async () => {
+      // #given — note with no tags
+      const created = await notes.createNote({
+        title: 'Inline Tag Addition',
+        content: 'Hello world'
+      })
+
+      // #when — content saved with a new #tag
+      const updated = await notes.updateNote({
+        id: created.id,
+        content: 'Hello #design world'
+      })
+
+      // #then — tag added to frontmatter
+      expect(updated.tags).toContain('design')
+    })
+
+    it('preserves tags when content changes without inline tag changes', async () => {
+      // #given — note with UI-added tag and matching inline tag
+      const created = await notes.createNote({
+        title: 'Tag Preserve',
+        content: 'Hello #keep this',
+        tags: ['keep']
+      })
+
+      // #when — content changes but #keep stays
+      const updated = await notes.updateNote({
+        id: created.id,
+        content: 'Goodbye #keep this'
+      })
+
+      // #then — tag preserved
+      expect(updated.tags).toEqual(['keep'])
+    })
+
+    it('preserves UI-only tags when inline tags are removed', async () => {
+      // #given — note with UI tag (ui-only) + inline tag (#inline)
+      const created = await notes.createNote({
+        title: 'Mixed Tags',
+        content: 'Hello #inline world',
+        tags: ['ui-only', 'inline']
+      })
+
+      // #when — inline tag removed, ui-only never appeared in content
+      const updated = await notes.updateNote({
+        id: created.id,
+        content: 'Hello world'
+      })
+
+      // #then — ui-only preserved, inline removed
+      expect(updated.tags).toEqual(['ui-only'])
+    })
+
+    it('skips reconciliation when explicit tags are provided', async () => {
+      // #given — note with inline tag
+      const created = await notes.createNote({
+        title: 'Explicit Tags',
+        content: 'Hello #old world',
+        tags: ['old']
+      })
+
+      // #when — content changes AND explicit tags are passed
+      const updated = await notes.updateNote({
+        id: created.id,
+        content: 'Hello world',
+        tags: ['explicit']
+      })
+
+      // #then — explicit tags win, no reconciliation
+      expect(updated.tags).toEqual(['explicit'])
+    })
   })
 
   // ==========================================================================

@@ -15,7 +15,15 @@
  * - date: ISO date string (YYYY-MM-DD)
  * - url: Valid URL string
  */
-export type PropertyType = 'text' | 'number' | 'checkbox' | 'date' | 'url'
+export type PropertyType =
+  | 'text'
+  | 'number'
+  | 'checkbox'
+  | 'date'
+  | 'url'
+  | 'status'
+  | 'select'
+  | 'multiselect'
 
 /**
  * Property value interface.
@@ -59,8 +67,12 @@ export function getDefaultValueForType(type: PropertyType): unknown {
     case 'number':
       return 0
     case 'date':
-      // Return current date so inferType() recognizes it as date
       return new Date().toISOString()
+    case 'multiselect':
+      return []
+    case 'status':
+    case 'select':
+      return null
     case 'url':
       return ''
     case 'text':
@@ -76,13 +88,25 @@ export function getDefaultValueForType(type: PropertyType): unknown {
  * @param backendType - Type string from backend
  * @returns Mapped PropertyType
  */
+export function getUniquePropertyName(baseName: string, existingNames: string[]): string {
+  if (!existingNames.includes(baseName)) return baseName
+  let counter = 2
+  while (existingNames.includes(`${baseName} ${counter}`)) {
+    counter++
+  }
+  return `${baseName} ${counter}`
+}
+
 export function mapPropertyType(backendType: string): PropertyType {
   const typeMap: Record<string, PropertyType> = {
     text: 'text',
     number: 'number',
     checkbox: 'checkbox',
     date: 'date',
-    url: 'url'
+    url: 'url',
+    status: 'status',
+    select: 'select',
+    multiselect: 'multiselect'
   }
   return typeMap[backendType] ?? 'text'
 }

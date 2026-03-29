@@ -2,6 +2,7 @@ import type {
   NotesClientAPI,
   Note,
   NoteListItem,
+  WikiLinkPreview,
   NoteCreateResponse,
   NoteUpdateResponse,
   NoteListResponse,
@@ -75,6 +76,10 @@ export const notesService: NotesClientAPI = {
    */
   resolveByTitle: (title: string) => {
     return window.api.notes.resolveByTitle(title)
+  },
+
+  previewByTitle: (title: string) => {
+    return window.api.notes.previewByTitle(title)
   },
 
   /**
@@ -216,6 +221,52 @@ export const notesService: NotesClientAPI = {
     input: UpdatePropertyDefinitionInput
   ): Promise<CreatePropertyDefinitionResponse> => {
     return window.api.notes.updatePropertyDefinition(input)
+  },
+
+  ensurePropertyDefinition: (name: string, type: string): Promise<{ success: boolean }> => {
+    return window.api.notes.ensurePropertyDefinition(name, type)
+  },
+
+  addPropertyOption: (
+    propertyName: string,
+    option: { value: string; color: string }
+  ): Promise<{ success: boolean }> => {
+    return window.api.notes.addPropertyOption(propertyName, option)
+  },
+
+  addStatusOption: (
+    propertyName: string,
+    categoryKey: string,
+    option: { value: string; color: string }
+  ): Promise<{ success: boolean }> => {
+    return window.api.notes.addStatusOption(propertyName, categoryKey, option)
+  },
+
+  removePropertyOption: (
+    propertyName: string,
+    optionValue: string
+  ): Promise<{ success: boolean }> => {
+    return window.api.notes.removePropertyOption(propertyName, optionValue)
+  },
+
+  renamePropertyOption: (
+    propertyName: string,
+    oldValue: string,
+    newValue: string
+  ): Promise<{ success: boolean }> => {
+    return window.api.notes.renamePropertyOption(propertyName, oldValue, newValue)
+  },
+
+  updateOptionColor: (
+    propertyName: string,
+    optionValue: string,
+    newColor: string
+  ): Promise<{ success: boolean }> => {
+    return window.api.notes.updateOptionColor(propertyName, optionValue, newColor)
+  },
+
+  deletePropertyDefinition: (name: string): Promise<{ success: boolean }> => {
+    return window.api.notes.deletePropertyDefinition(name)
   },
 
   // =========================================================================
@@ -454,6 +505,7 @@ export function onTagsChanged(callback: () => void): () => void {
 export type {
   Note,
   NoteListItem,
+  WikiLinkPreview,
   NoteCreateResponse,
   NoteUpdateResponse,
   NoteListResponse,

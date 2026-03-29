@@ -37,7 +37,7 @@ export function InboxCaptureHeatmap({ patterns }: InboxCaptureHeatmapProps): Rea
   return (
     <div className="flex flex-col rounded-[10px] gap-3.5 border border-border/50 p-4">
       <div className="text-muted-foreground font-sans font-medium text-xs/4">Capture Activity</div>
-      <div className="[font-synthesis:none] flex gap-1.5 antialiased text-xs/4">
+      <div className="[font-synthesis:none] flex gap-1.5 text-xs/4">
         <div className="flex flex-col pt-4 gap-0.75">
           {DAYS.map((day) => (
             <div

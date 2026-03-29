@@ -89,7 +89,7 @@ export function TemplatesSettings() {
   const customTemplates = templates.filter((t) => !t.isBuiltIn)
 
   return (
-    <div className="flex flex-col antialiased text-xs/4">
+    <div className="flex flex-col text-xs/4">
       <SettingsHeader
         title="Templates"
         subtitle="Manage note templates for quick creation"

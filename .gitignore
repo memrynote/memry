@@ -23,9 +23,13 @@ public.pem
 identifier.sqlite
 test-data.db
 test-index.db
+dev-data/
 .codex
 .pnpm-store
 .turbo
+
+# Worktrees
+.worktrees/
 
 # Agent/AI tooling
 .claude/
@@ -37,3 +41,4 @@ opencode.jsonc
 prompts/
 specs/
 agents/
+.gstack/

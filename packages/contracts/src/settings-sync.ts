@@ -11,7 +11,8 @@ export const SyncedSettingsSchema = z.object({
         .optional(),
       accentColor: z.string().optional(),
       startOnBoot: z.boolean().optional(),
-      language: z.string().optional()
+      language: z.string().optional(),
+      createInSelectedFolder: z.boolean().optional()
     })
     .optional(),
   editor: z

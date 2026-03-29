@@ -50,6 +50,7 @@
     "db:studio:index": "drizzle-kit studio --config config/drizzle-index.config.ts",
     "db:seed:task": "bash scripts/ensure-native.sh node && npx tsx scripts/seed-tasks.ts",
     "db:seed:inbox": "bash scripts/ensure-native.sh node && npx tsx scripts/seed-inbox.ts",
+    "seed:notes": "node --experimental-strip-types --experimental-transform-types scripts/seed-notes.ts",
     "build:unpack": "pnpm build && electron-builder --config config/electron-builder.yml --dir",
     "build:win": "pnpm build && electron-builder --config config/electron-builder.yml --win",
     "build:mac": "pnpm build && electron-builder --config config/electron-builder.yml --mac",
@@ -72,6 +73,7 @@
   "dependencies": {
     "@ai-sdk/anthropic": "^3.0.58",
     "@ai-sdk/openai": "^3.0.41",
+    "@blocknote/code-block": "^0.47.1",
     "@blocknote/core": "^0.47.1",
     "@blocknote/react": "^0.47.1",
     "@blocknote/server-util": "0.47.1",
@@ -217,7 +219,6 @@
     "@fontsource-variable/playfair-display": "^5.2.8",
     "@fontsource-variable/space-grotesk": "^5.2.10",
     "@fontsource/gelasio": "^5.2.8",
-    "@fontsource/instrument-serif": "^5.2.8",
     "@playwright/test": "^1.57.0",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.1",

@@ -1,73 +1,95 @@
 import { useState } from 'react'
 import { cn } from '@/lib/utils'
+import { ChevronDown } from '@/lib/icons'
 import { BacklinkSnippet } from './BacklinkSnippet'
-import type { Backlink } from './types'
+import type { Backlink, Mention } from './types'
 
 interface BacklinkCardProps {
   backlink: Backlink
-  onClick: (noteId: string) => void
+  defaultExpanded?: boolean
+  onClick: (noteId: string, mention?: Mention) => void
 }
 
-export function BacklinkCard({ backlink, onClick }: BacklinkCardProps) {
-  const [showAllMentions, setShowAllMentions] = useState(false)
-  const { noteId, noteTitle, folder, date, mentions } = backlink
-
-  const hasMultipleMentions = mentions.length > 1
-  const visibleMentions = showAllMentions ? mentions : mentions.slice(0, 1)
-  const hiddenMentionCount = mentions.length - 1
-
-  const handleClick = () => {
-    onClick(noteId)
-  }
-
-  const handleShowMoreClick = (e: React.MouseEvent) => {
-    e.stopPropagation()
-    setShowAllMentions(!showAllMentions)
-  }
+export function BacklinkCard({ backlink, defaultExpanded = false, onClick }: BacklinkCardProps) {
+  const { noteId, noteTitle, mentions } = backlink
+  const [isExpanded, setIsExpanded] = useState(defaultExpanded)
 
   return (
-    <div
-      role="button"
-      tabIndex={0}
-      onClick={handleClick}
-      onKeyDown={(e) => {
-        if (e.key === 'Enter' || e.key === ' ') {
-          e.preventDefault()
-          handleClick()
-        }
-      }}
-      className={cn(
-        'flex flex-col grow shrink basis-0',
-        'rounded-[10px] py-3 px-3.5 gap-1.5',
-        'bg-background border border-border',
-        'hover:border-border hover:shadow-sm',
-        'transition-all duration-150',
-        'cursor-pointer',
-        'group',
-        'focus:outline-none'
-      )}
-      aria-label={`Link from ${noteTitle}`}
-    >
-      {/* Title */}
-      <span className="text-[13px] text-foreground font-sans font-semibold leading-4 truncate">
-        {noteTitle}
-      </span>
-
-      {/* Context Snippet (first mention only for compact view) */}
-      {visibleMentions.length > 0 && (
-        <div className="text-[12px] leading-[18px] text-muted-foreground font-sans line-clamp-2">
-          <BacklinkSnippet mention={visibleMentions[0]} />
-        </div>
-      )}
-
-      {/* Show More Mentions */}
-      {hasMultipleMentions && !showAllMentions && hiddenMentionCount > 0 && (
+    <div role="group" aria-label={`Backlinks from ${noteTitle}`}>
+      <div
+        className={cn(
+          'flex items-center gap-1.5 px-1.5 py-1',
+          'rounded cursor-pointer select-none',
+          'hover:bg-surface-active/40',
+          'transition-colors duration-150'
+        )}
+      >
         <button
-          onClick={handleShowMoreClick}
-          className="text-[11px] text-text-tertiary hover:text-muted-foreground transition-colors"
+          onClick={() => setIsExpanded(!isExpanded)}
+          className="flex items-center gap-1.5 flex-1 min-w-0 focus:outline-none focus-visible:ring-1 focus-visible:ring-border rounded"
+          aria-expanded={isExpanded}
+          aria-label={isExpanded ? `Collapse ${noteTitle}` : `Expand ${noteTitle}`}
         >
-          +{hiddenMentionCount} more
+          <ChevronDown
+            className={cn(
+              'h-3 w-3 text-text-tertiary flex-shrink-0 transition-transform duration-150',
+              !isExpanded && '-rotate-90'
+            )}
+            aria-hidden="true"
+          />
+          <span
+            role="link"
+            tabIndex={0}
+            onClick={(e) => {
+              e.stopPropagation()
+              onClick(noteId)
+            }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault()
+                e.stopPropagation()
+                onClick(noteId)
+              }
+            }}
+            className="text-[13px]/4 font-medium text-text-bright truncate hover:underline"
+          >
+            {noteTitle}
+          </span>
         </button>
+
+        {mentions.length > 1 && (
+          <span className="flex-shrink-0 text-[11px] tabular-nums text-text-tertiary">
+            {mentions.length}
+          </span>
+        )}
+      </div>
+
+      {isExpanded && mentions.length > 0 && (
+        <div className="ml-5 flex flex-col gap-px" role="list">
+          {mentions.map((mention) => (
+            <div
+              key={mention.id}
+              role="button"
+              tabIndex={0}
+              onClick={() => onClick(noteId, mention)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault()
+                  onClick(noteId, mention)
+                }
+              }}
+              className={cn(
+                'rounded px-1.5 py-1',
+                'hover:bg-surface-active/30',
+                'transition-colors duration-150',
+                'cursor-pointer',
+                'focus:outline-none focus-visible:ring-1 focus-visible:ring-border'
+              )}
+            >
+              <BacklinkSnippet mention={mention} />
+            </div>
+          ))}
+        </div>
       )}
     </div>
   )

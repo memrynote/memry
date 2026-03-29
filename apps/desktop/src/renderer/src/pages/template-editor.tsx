@@ -10,6 +10,7 @@ import { extractErrorMessage } from '@/lib/ipc-error'
 import { NoteTitle } from '@/components/note/note-title'
 import { TagsRow, Tag } from '@/components/note/tags-row'
 import { InfoSection, Property, NewProperty, PropertyType } from '@/components/note/info-section'
+import { getUniquePropertyName } from '@/lib/property-utils'
 import { ContentArea } from '@/components/note/content-area'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
@@ -55,7 +56,10 @@ function mapToTemplatePropertyType(type: PropertyType): TemplateProperty['type']
     number: 'number',
     date: 'date',
     checkbox: 'checkbox',
-    url: 'url'
+    url: 'url',
+    status: 'select',
+    select: 'select',
+    multiselect: 'multiselect'
   }
   return typeMap[type] ?? 'text'
 }
@@ -352,14 +356,18 @@ export function TemplateEditorPage({ templateId }: TemplateEditorPageProps) {
     (newProp: NewProperty) => {
       if (isBuiltIn) return
       const defaultValue = getDefaultValueForType(newProp.type)
-      setProperties((prev) => [
-        ...prev,
-        {
-          name: newProp.name,
-          type: mapToTemplatePropertyType(newProp.type),
-          value: defaultValue
-        }
-      ])
+      setProperties((prev) => {
+        const existingNames = prev.map((p) => p.name)
+        const uniqueName = getUniquePropertyName(newProp.name, existingNames)
+        return [
+          ...prev,
+          {
+            name: uniqueName,
+            type: mapToTemplatePropertyType(newProp.type),
+            value: defaultValue
+          }
+        ]
+      })
     },
     [isBuiltIn]
   )
@@ -457,7 +465,6 @@ export function TemplateEditorPage({ templateId }: TemplateEditorPageProps) {
                 emoji={icon}
                 title={name}
                 placeholder="Template Name"
-                onEmojiChange={handleEmojiChange}
                 onTitleChange={handleNameChange}
                 disabled={isBuiltIn}
               />

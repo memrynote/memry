@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react'
 import { createLogger } from '@/lib/logger'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { propertiesService, type PropertyValue } from '@/services/properties-service'
-import { inferType } from '@/lib/property-utils'
+import { inferType, getUniquePropertyName } from '@/lib/property-utils'
 import { toast } from 'sonner'
 
 const log = createLogger('Hook:Properties')
@@ -100,7 +100,9 @@ export function useProperties(entityId: string | null): UsePropertiesReturn {
       const type = explicitType ?? inferType(value)
       let record: Record<string, unknown> = {}
       setProperties((prev) => {
-        const next = [...prev, { name, value, type }]
+        const existingNames = prev.map((p) => p.name)
+        const uniqueName = getUniquePropertyName(name, existingNames)
+        const next = [...prev, { name: uniqueName, value, type }]
         record = toRecord(next)
         return next
       })

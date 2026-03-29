@@ -72,6 +72,9 @@ type TreeContextType = {
   getNodeInfo: (nodeId: string) => NodeInfo | undefined
   expandNode: (nodeId: string) => void
   collapseNode: (nodeId: string) => void
+  expandAll: () => void
+  expandNodes: (nodeIds: string[]) => void
+  collapseAll: () => void
   setDragState: (state: Partial<DragState>) => void
   handleDrop: () => void
   setNodeIcon: (nodeId: string, iconName: string | null) => void
@@ -129,6 +132,7 @@ const EMPTY_PATH: boolean[] = []
 export type TreeProviderProps = {
   children: ReactNode
   defaultExpandedIds?: string[]
+  persistKey?: string
   showLines?: boolean
   showIcons?: boolean
   selectable?: boolean
@@ -146,6 +150,7 @@ export type TreeProviderProps = {
 export const TreeProvider = ({
   children,
   defaultExpandedIds = EMPTY_IDS,
+  persistKey,
   showLines = true,
   showIcons = true,
   selectable = true,
@@ -159,7 +164,20 @@ export const TreeProvider = ({
   animateExpand = true,
   className
 }: TreeProviderProps) => {
-  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set(defaultExpandedIds))
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(() => {
+    if (persistKey) {
+      try {
+        const stored = localStorage.getItem(persistKey)
+        if (stored) {
+          const parsed = JSON.parse(stored)
+          if (Array.isArray(parsed)) return new Set(parsed)
+        }
+      } catch {
+        // Fall through to default
+      }
+    }
+    return new Set(defaultExpandedIds)
+  })
   const [internalSelectedIds, setInternalSelectedIds] = useState<string[]>(selectedIds ?? [])
   const [focusedId, setFocusedId] = useState<string | null>(null)
   const [anchorId, setAnchorId] = useState<string | null>(null) // For shift+click range selection
@@ -172,6 +190,33 @@ export const TreeProvider = ({
   const nodeOrderRef = useRef<string[]>([])
   // İkon state'i için re-render tetiklemek için
   const [iconVersion, setIconVersion] = useState(0)
+
+  // Persist expandedIds to localStorage (debounced)
+  useEffect(() => {
+    if (!persistKey) return
+    const timer = setTimeout(() => {
+      try {
+        localStorage.setItem(persistKey, JSON.stringify(Array.from(expandedIds)))
+      } catch {
+        // Ignore storage errors
+      }
+    }, 500)
+    return () => clearTimeout(timer)
+  }, [expandedIds, persistKey])
+
+  // Sync save on app close (catches the debounce window)
+  useEffect(() => {
+    if (!persistKey) return
+    const handleBeforeUnload = () => {
+      try {
+        localStorage.setItem(persistKey, JSON.stringify(Array.from(expandedIds)))
+      } catch {
+        // Ignore storage errors
+      }
+    }
+    window.addEventListener('beforeunload', handleBeforeUnload)
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload)
+  }, [expandedIds, persistKey])
 
   const isControlled = selectedIds !== undefined && onSelectionChange !== undefined
   const currentSelectedIds = isControlled ? selectedIds : internalSelectedIds
@@ -317,6 +362,22 @@ export const TreeProvider = ({
     })
   }, [])
 
+  const expandAll = useCallback(() => {
+    const allFolderIds = new Set<string>()
+    for (const [id, info] of nodesRef.current.entries()) {
+      if (info.hasChildren) allFolderIds.add(id)
+    }
+    setExpandedIds(allFolderIds)
+  }, [])
+
+  const expandNodes = useCallback((nodeIds: string[]) => {
+    setExpandedIds(new Set(nodeIds))
+  }, [])
+
+  const collapseAll = useCallback(() => {
+    setExpandedIds(new Set())
+  }, [])
+
   const toggleExpanded = useCallback((nodeId: string) => {
     setExpandedIds((prev) => {
       const newSet = new Set(prev)
@@ -400,6 +461,9 @@ export const TreeProvider = ({
         getNodeInfo,
         expandNode,
         collapseNode,
+        expandAll,
+        expandNodes,
+        collapseAll,
         setDragState,
         handleDrop,
         setNodeIcon,

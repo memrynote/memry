@@ -24,7 +24,7 @@ export interface BacklinksSectionProps {
   defaultCollapsed?: boolean
   sortBy?: BacklinkSortOption
   onSortChange?: (sort: BacklinkSortOption) => void
-  onBacklinkClick: (noteId: string) => void
+  onBacklinkClick: (noteId: string, mention?: Mention) => void
   onShowMore?: () => void // For lazy loading
 }
 

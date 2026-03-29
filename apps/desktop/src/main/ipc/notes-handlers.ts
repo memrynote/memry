@@ -64,7 +64,9 @@ import {
   updatePropertyDefinition,
   resolveNoteByTitle,
   updateNoteCache,
-  getLocalOnlyCount
+  getLocalOnlyCount,
+  getNoteTags,
+  getAllTagDefinitions
 } from '@main/database/queries/notes'
 import { getIndexDatabase, getDatabase } from '../database'
 import {
@@ -85,9 +87,14 @@ const CreatePropertyDefinitionSchema = z.object({
     PropertyTypes.NUMBER,
     PropertyTypes.CHECKBOX,
     PropertyTypes.DATE,
-    PropertyTypes.URL
+    PropertyTypes.URL,
+    PropertyTypes.STATUS,
+    PropertyTypes.SELECT,
+    PropertyTypes.MULTISELECT
   ]),
-  options: z.array(z.string()).optional(),
+  options: z
+    .array(z.object({ value: z.string(), color: z.string(), default: z.boolean().optional() }))
+    .optional(),
   defaultValue: z.unknown().optional(),
   color: z.string().optional()
 })
@@ -115,10 +122,15 @@ const UpdatePropertyDefinitionSchema = z.object({
       PropertyTypes.NUMBER,
       PropertyTypes.CHECKBOX,
       PropertyTypes.DATE,
-      PropertyTypes.URL
+      PropertyTypes.URL,
+      PropertyTypes.STATUS,
+      PropertyTypes.SELECT,
+      PropertyTypes.MULTISELECT
     ])
     .optional(),
-  options: z.array(z.string()).optional(),
+  options: z
+    .array(z.object({ value: z.string(), color: z.string(), default: z.boolean().optional() }))
+    .optional(),
   defaultValue: z.unknown().optional(),
   color: z.string().optional()
 })
@@ -196,6 +208,30 @@ export function registerNotesHandlers(): void {
         path: result.path,
         title: result.title,
         fileType: result.fileType ?? 'markdown'
+      }
+    })
+  )
+
+  // notes:preview-by-title - Get hover preview data for a WikiLink target
+  ipcMain.handle(
+    NotesChannels.invoke.PREVIEW_BY_TITLE,
+    createStringHandler((title) => {
+      const indexDb = getIndexDatabase()
+      const result = resolveNoteByTitle(indexDb, title)
+      if (!result || result.fileType !== 'markdown') return null
+
+      const tags = getNoteTags(indexDb, result.id)
+      const dataDb = getDatabase()
+      const definitions = getAllTagDefinitions(dataDb)
+      const colorMap = new Map(definitions.map((d) => [d.name, d.color]))
+
+      return {
+        id: result.id,
+        title: result.title,
+        emoji: result.emoji ?? null,
+        snippet: result.snippet ?? null,
+        tags: tags.map((t) => ({ name: t, color: colorMap.get(t) ?? 'stone' })),
+        createdAt: result.createdAt
       }
     })
   )
@@ -384,8 +420,23 @@ export function registerNotesHandlers(): void {
   // T018: notes:create-property-definition - Create a new property definition
   ipcMain.handle(
     NotesChannels.invoke.CREATE_PROPERTY_DEFINITION,
-    createValidatedHandler(CreatePropertyDefinitionSchema, (input) => {
+    createValidatedHandler(CreatePropertyDefinitionSchema, async (input) => {
       try {
+        const isSelectType =
+          input.type === 'status' || input.type === 'select' || input.type === 'multiselect'
+
+        if (isSelectType) {
+          const { PropertyDefinitionsService } = await import('../vault/property-definitions')
+          const service = PropertyDefinitionsService.get()
+          await service.upsert({
+            name: input.name,
+            type: input.type,
+            options: input.type !== 'status' ? input.options : undefined,
+            defaultValue: input.defaultValue != null ? String(input.defaultValue) : undefined
+          })
+          return { success: true, definition: service.get(input.name) }
+        }
+
         const db = getIndexDatabase()
         const definition = insertPropertyDefinition(db, {
           name: input.name,
@@ -406,8 +457,28 @@ export function registerNotesHandlers(): void {
   // notes:update-property-definition - Update a property definition
   ipcMain.handle(
     NotesChannels.invoke.UPDATE_PROPERTY_DEFINITION,
-    createValidatedHandler(UpdatePropertyDefinitionSchema, (input) => {
+    createValidatedHandler(UpdatePropertyDefinitionSchema, async (input) => {
       try {
+        const isSelectType =
+          input.type === 'status' || input.type === 'select' || input.type === 'multiselect'
+
+        if (isSelectType) {
+          const { PropertyDefinitionsService } = await import('../vault/property-definitions')
+          const service = PropertyDefinitionsService.get()
+          const existing = service.get(input.name)
+          if (!existing) return { success: false, definition: null, error: 'Definition not found' }
+
+          await service.upsert({
+            ...existing,
+            name: input.name,
+            type: input.type ?? existing.type,
+            options: input.options ?? existing.options,
+            defaultValue:
+              input.defaultValue != null ? String(input.defaultValue) : existing.defaultValue
+          })
+          return { success: true, definition: service.get(input.name) }
+        }
+
         const db = getIndexDatabase()
         const { name, ...updates } = input
         const definition = updatePropertyDefinition(db, name, {
@@ -422,6 +493,146 @@ export function registerNotesHandlers(): void {
           error instanceof Error ? error.message : 'Failed to update property definition'
         return { success: false, definition: null, error: message }
       }
+    })
+  )
+
+  // =========================================================================
+  // Property Option Mutations (select/multiselect/status)
+  // =========================================================================
+
+  ipcMain.handle(
+    NotesChannels.invoke.ENSURE_PROPERTY_DEFINITION,
+    createValidatedHandler(
+      z.object({
+        name: z.string().min(1),
+        type: z.enum(['status', 'select', 'multiselect'])
+      }),
+      async (input) => {
+        const { PropertyDefinitionsService, DEFAULT_STATUS_DEFINITION } =
+          await import('../vault/property-definitions')
+        const service = PropertyDefinitionsService.get()
+        if (service.get(input.name)) return { success: true }
+
+        if (input.type === 'status') {
+          await service.upsert({ ...DEFAULT_STATUS_DEFINITION, name: input.name })
+        } else {
+          await service.upsert({ name: input.name, type: input.type, options: [] })
+        }
+        return { success: true }
+      }
+    )
+  )
+
+  ipcMain.handle(
+    NotesChannels.invoke.ADD_PROPERTY_OPTION,
+    createValidatedHandler(
+      z.object({
+        propertyName: z.string().min(1),
+        option: z.object({ value: z.string().min(1), color: z.string().min(1) })
+      }),
+      async (input) => {
+        const { PropertyDefinitionsService } = await import('../vault/property-definitions')
+        const service = PropertyDefinitionsService.get()
+        const existing = service.get(input.propertyName)
+        if (!existing) {
+          await service.upsert({
+            name: input.propertyName,
+            type: 'select',
+            options: [input.option]
+          })
+        } else {
+          await service.addOption(input.propertyName, input.option)
+        }
+        return { success: true }
+      }
+    )
+  )
+
+  ipcMain.handle(
+    NotesChannels.invoke.ADD_STATUS_OPTION,
+    createValidatedHandler(
+      z.object({
+        propertyName: z.string().min(1),
+        categoryKey: z.enum(['todo', 'in_progress', 'done']),
+        option: z.object({ value: z.string().min(1), color: z.string().min(1) })
+      }),
+      async (input) => {
+        const { PropertyDefinitionsService, DEFAULT_STATUS_DEFINITION } =
+          await import('../vault/property-definitions')
+        const service = PropertyDefinitionsService.get()
+        const existing = service.get(input.propertyName)
+        if (!existing) {
+          const def = {
+            ...DEFAULT_STATUS_DEFINITION,
+            name: input.propertyName
+          }
+          await service.upsert(def)
+          await service.addStatusOption(input.propertyName, input.categoryKey, input.option)
+        } else {
+          await service.addStatusOption(input.propertyName, input.categoryKey, input.option)
+        }
+        return { success: true }
+      }
+    )
+  )
+
+  ipcMain.handle(
+    NotesChannels.invoke.REMOVE_PROPERTY_OPTION,
+    createValidatedHandler(
+      z.object({
+        propertyName: z.string().min(1),
+        optionValue: z.string().min(1)
+      }),
+      async (input) => {
+        const { PropertyDefinitionsService } = await import('../vault/property-definitions')
+        const service = PropertyDefinitionsService.get()
+        await service.removeOption(input.propertyName, input.optionValue)
+        return { success: true }
+      }
+    )
+  )
+
+  ipcMain.handle(
+    NotesChannels.invoke.RENAME_PROPERTY_OPTION,
+    createValidatedHandler(
+      z.object({
+        propertyName: z.string().min(1),
+        oldValue: z.string().min(1),
+        newValue: z.string().min(1)
+      }),
+      async (input) => {
+        const { PropertyDefinitionsService } = await import('../vault/property-definitions')
+        const service = PropertyDefinitionsService.get()
+        await service.renameOption(input.propertyName, input.oldValue, input.newValue)
+        return { success: true }
+      }
+    )
+  )
+
+  ipcMain.handle(
+    NotesChannels.invoke.UPDATE_OPTION_COLOR,
+    createValidatedHandler(
+      z.object({
+        propertyName: z.string().min(1),
+        optionValue: z.string().min(1),
+        newColor: z.string().min(1)
+      }),
+      async (input) => {
+        const { PropertyDefinitionsService } = await import('../vault/property-definitions')
+        const service = PropertyDefinitionsService.get()
+        await service.updateOptionColor(input.propertyName, input.optionValue, input.newColor)
+        return { success: true }
+      }
+    )
+  )
+
+  ipcMain.handle(
+    NotesChannels.invoke.DELETE_PROPERTY_DEFINITION,
+    createValidatedHandler(z.object({ name: z.string().min(1) }), async (input) => {
+      const { PropertyDefinitionsService } = await import('../vault/property-definitions')
+      const service = PropertyDefinitionsService.get()
+      await service.remove(input.name)
+      return { success: true }
     })
   )
 

@@ -91,14 +91,14 @@ export function TitleInput({
       aria-label="Note title"
       className={cn(
         'w-full resize-none overflow-hidden bg-transparent',
-        'text-[42px] tracking-[-0.02em] leading-12 text-foreground',
+        'text-[42px] tracking-[-0.02em] leading-12 text-text-bright',
         'placeholder:text-text-tertiary placeholder:font-normal',
         'border-none outline-none',
         'focus:outline-none',
         'disabled:pointer-events-none disabled:opacity-50'
       )}
       style={{
-        fontFamily: 'var(--font-sans)'
+        fontFamily: 'var(--font-heading)'
       }}
     />
   )

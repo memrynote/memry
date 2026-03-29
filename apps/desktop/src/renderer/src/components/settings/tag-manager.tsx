@@ -166,7 +166,7 @@ export function TagManager() {
         />
       </div>
 
-      <div className="flex flex-col rounded-lg overflow-clip border border-border">
+      <div className="flex flex-col rounded-lg overflow-y-auto max-h-[60vh] border border-border">
         {filteredTags.length === 0 && (
           <p className="text-xs/4 text-muted-foreground py-4 text-center">
             No tags matching &ldquo;{search}&rdquo;

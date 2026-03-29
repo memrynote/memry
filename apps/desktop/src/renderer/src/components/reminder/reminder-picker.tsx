@@ -1,17 +1,8 @@
-/**
- * Reminder Picker Component
- *
- * A dropdown/popover for selecting reminder times with presets
- * and custom date/time picker option.
- *
- * @module components/reminder/reminder-picker
- */
-
 import * as React from 'react'
 import { useState } from 'react'
 import { Bell, Calendar, Clock, ChevronRight } from '@/lib/icons'
 import { Button } from '@/components/ui/button'
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { Picker } from '@/components/ui/picker'
 import { DatePickerCalendar } from '@/components/tasks/date-picker-calendar'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -24,38 +15,20 @@ import {
   formatReminderDate
 } from './reminder-presets'
 
-// ============================================================================
-// Types
-// ============================================================================
-
 export interface ReminderPickerProps {
-  /** Called when a reminder time is selected */
   onSelect: (date: Date, title?: string, note?: string) => void
-  /** Type of presets to show */
   presetType?: 'standard' | 'journal'
-  /** Variant - affects layout */
   variant?: 'default' | 'highlight'
-  /** Custom trigger button (optional) */
   trigger?: React.ReactNode
-  /** Size variant */
   size?: 'sm' | 'md' | 'lg'
-  /** Whether to show the note field */
   showNote?: boolean
-  /** Whether to show the note field (alias for showNote) */
   showNoteField?: boolean
-  /** Disabled state */
   disabled?: boolean
-  /** Loading state */
   isLoading?: boolean
-  /** Class name for the trigger */
   className?: string
 }
 
 type PickerMode = 'presets' | 'custom'
-
-// ============================================================================
-// Component
-// ============================================================================
 
 export function ReminderPicker({
   onSelect,
@@ -77,7 +50,6 @@ export function ReminderPicker({
 
   const presets = presetType === 'journal' ? journalPresets : standardPresets
   const shouldShowNote = showNote || showNoteField
-  // Note: variant is available for future styling variations
 
   const handlePresetSelect = (preset: ReminderPreset): void => {
     const date = preset.getDate()
@@ -107,9 +79,16 @@ export function ReminderPicker({
 
   const handleOpenChange = (isOpen: boolean): void => {
     setOpen(isOpen)
-    if (!isOpen) {
-      resetState()
+    if (!isOpen) resetState()
+  }
+
+  const handleValueChange = (id: string): void => {
+    if (id === 'pick-custom') {
+      setMode('custom')
+      return
     }
+    const preset = presets.find((p) => p.id === id)
+    if (preset) handlePresetSelect(preset)
   }
 
   const sizeClasses = {
@@ -119,8 +98,14 @@ export function ReminderPicker({
   }
 
   return (
-    <Popover open={open} onOpenChange={handleOpenChange}>
-      <PopoverTrigger asChild>
+    <Picker
+      value={null}
+      onValueChange={handleValueChange}
+      open={open}
+      onOpenChange={handleOpenChange}
+      closeOnSelect={false}
+    >
+      <Picker.Trigger asChild>
         {trigger || (
           <Button
             variant="ghost"
@@ -132,45 +117,41 @@ export function ReminderPicker({
             <span>Remind</span>
           </Button>
         )}
-      </PopoverTrigger>
+      </Picker.Trigger>
 
-      <PopoverContent className="w-80 p-0" align="start">
+      <Picker.Content className="w-80" align="start">
         {mode === 'presets' ? (
-          <div className="p-2">
-            <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground">Remind me</div>
-
-            <div className="space-y-0.5">
-              {presets.map((preset) => (
-                <button
-                  key={preset.id}
-                  onClick={() => handlePresetSelect(preset)}
-                  className="flex w-full items-center justify-between rounded-sm px-2 py-2 text-sm hover:bg-accent"
-                >
-                  <span>{preset.label}</span>
-                  {preset.description && (
-                    <span className="text-xs text-muted-foreground">{preset.description}</span>
-                  )}
-                </button>
-              ))}
-            </div>
-
-            <div className="my-2 h-px bg-border" />
-
-            <button
-              onClick={() => setMode('custom')}
-              className="flex w-full items-center justify-between rounded-sm px-2 py-2 text-sm hover:bg-accent"
-            >
-              <span className="flex items-center gap-2">
-                <Calendar className="h-4 w-4" />
-                Pick date & time
-              </span>
-              <ChevronRight className="h-4 w-4 text-muted-foreground" />
-            </button>
+          <>
+            <Picker.List>
+              <Picker.Section label="Remind me">
+                {presets.map((preset) => (
+                  <Picker.Item
+                    key={preset.id}
+                    value={preset.id}
+                    label={preset.label}
+                    trailing={
+                      preset.description ? (
+                        <span className="text-[11px] text-muted-foreground/70">
+                          {preset.description}
+                        </span>
+                      ) : undefined
+                    }
+                  />
+                ))}
+              </Picker.Section>
+              <Picker.Separator />
+              <Picker.Item
+                value="pick-custom"
+                label="Pick date & time"
+                icon={<Calendar className="size-4" />}
+                trailing={<ChevronRight className="size-4 text-muted-foreground" />}
+              />
+            </Picker.List>
 
             {shouldShowNote && (
               <>
-                <div className="my-2 h-px bg-border" />
-                <div className="px-2 py-1">
+                <Picker.Separator />
+                <div className="px-3 py-2">
                   <Textarea
                     placeholder="Add a note (optional)"
                     value={note}
@@ -180,7 +161,7 @@ export function ReminderPicker({
                 </div>
               </>
             )}
-          </div>
+          </>
         ) : (
           <div className="p-2">
             <button
@@ -252,13 +233,9 @@ export function ReminderPicker({
             </div>
           </div>
         )}
-      </PopoverContent>
-    </Popover>
+      </Picker.Content>
+    </Picker>
   )
 }
-
-// ============================================================================
-// Exports
-// ============================================================================
 
 export { standardPresets, journalPresets } from './reminder-presets'

@@ -60,7 +60,7 @@ const PillWrapper = ({
 }): React.JSX.Element => (
   <div
     className={cn(
-      'flex items-center rounded-[5px] pr-1 pl-2 gap-[5px] shrink-0 py-[3px] antialiased',
+      'flex items-center rounded-[5px] pr-1 pl-2 gap-[5px] shrink-0 py-[3px]',
       'bg-[#5E6AD21A] border border-[#5E6AD233]',
       cls
     )}

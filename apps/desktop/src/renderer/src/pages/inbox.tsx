@@ -1,19 +1,26 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
-import { Check, Clock, Filter, Search, X } from '@/lib/icons'
+import {
+  Bell,
+  Check,
+  AlarmClock,
+  FileText,
+  FilePdf,
+  Image,
+  Link2,
+  Mic,
+  Scissors,
+  Search,
+  Share2,
+  Video,
+  X
+} from '@/lib/icons'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
 import { SRAnnouncer } from '@/components/sr-announcer'
-import { PageToolbar, ToolbarButton } from '@/components/ui/page-toolbar'
+import { PageToolbar } from '@/components/ui/page-toolbar'
 import { InboxSegmentControl, type InboxView } from '@/components/inbox/inbox-segment-control'
 import { CaptureInput } from '@/components/capture-input'
-import {
-  DropdownMenu,
-  DropdownMenuTrigger,
-  DropdownMenuContent,
-  DropdownMenuCheckboxItem,
-  DropdownMenuSeparator,
-  DropdownMenuLabel
-} from '@/components/ui/dropdown-menu'
+import { Picker } from '@/components/ui/picker'
 import { useInboxNotifications } from '@/hooks/use-inbox-notifications'
 import { useInboxList, useInboxSnoozed } from '@/hooks/use-inbox'
 import type { InboxItemType } from '@memry/contracts/inbox-api'
@@ -44,6 +51,18 @@ const INBOX_TYPE_LABELS: Record<InboxItemType, string> = {
   pdf: 'PDFs',
   social: 'Social',
   reminder: 'Reminders'
+}
+
+const INBOX_TYPE_ICONS: Record<InboxItemType, React.ComponentType<{ className?: string }>> = {
+  link: Link2,
+  note: FileText,
+  image: Image,
+  voice: Mic,
+  video: Video,
+  clip: Scissors,
+  pdf: FilePdf,
+  social: Share2,
+  reminder: Bell
 }
 
 interface InboxPageProps {
@@ -83,6 +102,17 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
   }, [items])
 
   const hasActiveFilters = selectedTypes.size > 0
+  const selectedTypesArray = useMemo(() => Array.from(selectedTypes), [selectedTypes])
+
+  const handleTypeToggle = useCallback((value: string) => {
+    const type = value as InboxItemType
+    setSelectedTypes((prev) => {
+      const next = new Set(prev)
+      if (next.has(type)) next.delete(type)
+      else next.add(type)
+      return next
+    })
+  }, [])
 
   const enterTriage = useCallback(() => setIsTriageMode(true), [])
   const exitTriage = useCallback(() => setIsTriageMode(false), [])
@@ -219,16 +249,22 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
 
             {currentView === 'inbox' && (
               <>
-                <ToolbarButton
-                  isActive={showSnoozedItems}
+                <button
+                  type="button"
                   onClick={() => setShowSnoozedItems(!showSnoozedItems)}
                   title={
                     showSnoozedItems
                       ? 'Hide snoozed items'
                       : `Show snoozed items${snoozedCount > 0 ? ` (${snoozedCount})` : ''}`
                   }
+                  className={cn(
+                    'flex items-center shrink-0 rounded-[5px] py-1 px-2 gap-1 border transition-colors',
+                    showSnoozedItems
+                      ? 'border-foreground/20 bg-foreground/5 text-foreground/90'
+                      : 'border-border text-muted-foreground hover:bg-surface-active/50'
+                  )}
                 >
-                  <Clock className="size-3" />
+                  <AlarmClock className="size-3" />
                   {snoozedCount > 0 && (
                     <span
                       className={cn(
@@ -241,70 +277,82 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
                       {snoozedCount}
                     </span>
                   )}
-                </ToolbarButton>
+                </button>
 
-                <DropdownMenu open={isFilterOpen} onOpenChange={setIsFilterOpen}>
-                  <DropdownMenuTrigger asChild>
-                    <ToolbarButton
-                      isActive={isFilterOpen || hasActiveFilters}
+                <Picker
+                  mode="multi"
+                  value={selectedTypesArray}
+                  onValueChange={handleTypeToggle}
+                  open={isFilterOpen}
+                  onOpenChange={setIsFilterOpen}
+                >
+                  <Picker.Trigger asChild>
+                    <button
+                      type="button"
                       title={
                         hasActiveFilters
                           ? `Filtering by ${selectedTypes.size} type${selectedTypes.size > 1 ? 's' : ''}`
                           : 'Filter by type'
                       }
+                      className={cn(
+                        'flex items-center shrink-0 rounded-[5px] py-1 px-2 gap-1 border transition-colors',
+                        isFilterOpen || hasActiveFilters
+                          ? 'border-foreground/20 bg-foreground/5 text-foreground/90'
+                          : 'border-border text-muted-foreground hover:bg-surface-active/50'
+                      )}
                     >
-                      <Filter className="size-3" />
-                      <span className="text-[11px] leading-3.5">Filter</span>
+                      <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
+                        <path
+                          d="M2 3h9M3.5 6.5h6M5 10h3"
+                          stroke="currentColor"
+                          strokeWidth="1.1"
+                          strokeLinecap="round"
+                        />
+                      </svg>
+                      <span className="text-[12px] font-medium">Filter</span>
                       {hasActiveFilters && (
                         <span className="flex items-center justify-center size-[14px] rounded-full bg-foreground text-background text-[9px] font-bold">
                           {selectedTypes.size}
                         </span>
                       )}
-                    </ToolbarButton>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-48">
-                    <DropdownMenuLabel className="text-xs text-muted-foreground/70">
-                      Filter by type
-                    </DropdownMenuLabel>
-                    <DropdownMenuSeparator />
-                    {INBOX_ITEM_TYPES.map((type) => {
-                      const count = itemCountsByType[type]
-                      return (
-                        <DropdownMenuCheckboxItem
-                          key={type}
-                          checked={selectedTypes.has(type)}
-                          onCheckedChange={(checked) => {
-                            setSelectedTypes((prev) => {
-                              const next = new Set(prev)
-                              if (checked) next.add(type)
-                              else next.delete(type)
-                              return next
-                            })
-                          }}
-                          onSelect={(e) => e.preventDefault()}
-                          disabled={count === 0}
-                          className={cn(count === 0 && 'opacity-50')}
-                        >
-                          <span className="flex-1">{INBOX_TYPE_LABELS[type]}</span>
-                          <span className="text-xs text-muted-foreground/60 ml-2">{count}</span>
-                        </DropdownMenuCheckboxItem>
-                      )
-                    })}
+                    </button>
+                  </Picker.Trigger>
+                  <Picker.Content width={200} align="end">
+                    <Picker.List>
+                      {INBOX_ITEM_TYPES.map((type) => {
+                        const count = itemCountsByType[type]
+                        const Icon = INBOX_TYPE_ICONS[type]
+                        return (
+                          <Picker.Item
+                            key={type}
+                            value={type}
+                            label={INBOX_TYPE_LABELS[type]}
+                            indicator="checkbox"
+                            icon={<Icon className="size-3.5" />}
+                            disabled={count === 0}
+                            trailing={
+                              <span className="text-[11px] text-muted-foreground/60 tabular-nums">
+                                {count}
+                              </span>
+                            }
+                            className={cn(count === 0 && 'opacity-50')}
+                          />
+                        )
+                      })}
+                    </Picker.List>
                     {hasActiveFilters && (
-                      <>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuCheckboxItem
-                          checked={false}
-                          onCheckedChange={() => setSelectedTypes(new Set())}
-                          onSelect={(e) => e.preventDefault()}
-                          className="text-muted-foreground/70"
+                      <Picker.Footer className="py-1.5 px-1">
+                        <button
+                          type="button"
+                          onClick={() => setSelectedTypes(new Set())}
+                          className="flex w-full items-center rounded-[5px] py-1.5 px-2 text-[13px] text-muted-foreground/60 hover:bg-accent hover:text-foreground transition-colors"
                         >
                           Clear all
-                        </DropdownMenuCheckboxItem>
-                      </>
+                        </button>
+                      </Picker.Footer>
                     )}
-                  </DropdownMenuContent>
-                </DropdownMenu>
+                  </Picker.Content>
+                </Picker>
               </>
             )}
           </PageToolbar>

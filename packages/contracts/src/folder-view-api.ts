@@ -52,6 +52,7 @@ export const PropertyTypes = {
   NUMBER: 'number',
   CHECKBOX: 'checkbox',
   DATE: 'date',
+  STATUS: 'status',
   SELECT: 'select',
   MULTISELECT: 'multiselect',
   URL: 'url',

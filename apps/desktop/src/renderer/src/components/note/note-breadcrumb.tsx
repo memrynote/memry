@@ -1,5 +1,5 @@
 import { useMemo, useCallback } from 'react'
-import { FileText } from '@/lib/icons'
+import { ChevronLeft } from '@/lib/icons'
 import { useTabs } from '@/contexts/tabs'
 
 interface BreadcrumbSegment {
@@ -10,7 +10,6 @@ interface BreadcrumbSegment {
 interface NoteBreadcrumbProps {
   notePath: string
   noteTitle: string
-  noteEmoji: string | null
 }
 
 function parseBreadcrumbSegments(notePath: string): BreadcrumbSegment[] {
@@ -32,7 +31,7 @@ export const SIDEBAR_REVEAL_FOLDER_EVENT = 'sidebar:reveal-folder'
 const CRUMB_CLASS =
   'text-xs text-muted-foreground hover:bg-muted rounded-sm px-1 py-0.5 transition-colors cursor-pointer bg-transparent border-none'
 
-export function NoteBreadcrumb({ notePath, noteTitle, noteEmoji }: NoteBreadcrumbProps) {
+export function NoteBreadcrumb({ notePath, noteTitle }: NoteBreadcrumbProps) {
   const { openTab } = useTabs()
 
   const segments = useMemo(() => parseBreadcrumbSegments(notePath), [notePath])
@@ -56,16 +55,31 @@ export function NoteBreadcrumb({ notePath, noteTitle, noteEmoji }: NoteBreadcrum
     [openTab]
   )
 
+  const handleBackClick = useCallback(() => {
+    if (segments.length === 0) return
+    const lastSegment = segments[segments.length - 1]
+    handleFolderClick(lastSegment.folderPath, lastSegment.label)
+  }, [segments, handleFolderClick])
+
   if (segments.length === 0) return null
 
   return (
     <nav
       aria-label="Note location"
-      className="flex items-center gap-0.5 text-xs leading-4 select-none"
+      className="flex items-center gap-1.5 text-xs leading-4 select-none"
     >
+      <button
+        type="button"
+        onClick={handleBackClick}
+        className="flex items-center justify-center shrink-0 text-muted-foreground hover:text-foreground transition-colors bg-transparent border-none cursor-pointer p-0"
+        aria-label="Go to parent folder"
+      >
+        <ChevronLeft className="h-3.5 w-3.5" />
+      </button>
+
       {segments.map((segment, i) => (
         <span key={segment.folderPath} className="contents">
-          {i > 0 && <span className="text-xs text-muted-foreground/40 px-0.5">/</span>}
+          {i > 0 && <span className="text-xs text-text-secondary px-0.5">/</span>}
           <button
             type="button"
             onClick={() => handleFolderClick(segment.folderPath, segment.label)}
@@ -76,15 +90,8 @@ export function NoteBreadcrumb({ notePath, noteTitle, noteEmoji }: NoteBreadcrum
         </span>
       ))}
 
-      <span className="text-xs text-muted-foreground/40 px-0.5">/</span>
-      <span className="text-xs text-muted-foreground font-medium inline-flex items-center gap-1 hover:bg-muted rounded-sm px-1 py-0.5 transition-colors">
-        {noteEmoji ? (
-          <span className="text-xs">{noteEmoji}</span>
-        ) : (
-          <FileText className="h-3 w-3" />
-        )}
-        {noteTitle}
-      </span>
+      <span className="text-xs text-text-secondary px-0.5">/</span>
+      <span className="text-xs text-muted-foreground/60 truncate max-w-[200px]">{noteTitle}</span>
     </nav>
   )
 }

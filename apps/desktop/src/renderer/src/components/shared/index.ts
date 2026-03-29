@@ -7,7 +7,6 @@
 export {
   OutlineInfoPanel,
   type HeadingItem,
-  type OutlineInfoPanelProps
+  type OutlineInfoPanelProps,
+  type DocumentStats
 } from './outline-info-panel'
-
-export { DocumentInfoTab, type DocumentStats } from './document-info-tab'

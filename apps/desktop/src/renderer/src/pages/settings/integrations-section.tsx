@@ -3,7 +3,7 @@ import { SettingsHeader } from '@/components/settings/settings-primitives'
 
 export function IntegrationsSettings() {
   return (
-    <div className="flex flex-col antialiased text-xs/4">
+    <div className="flex flex-col text-xs/4">
       <SettingsHeader
         title="Integrations"
         subtitle="Connect external services to enrich your workflow"

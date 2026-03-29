@@ -51,7 +51,7 @@ export const NoteOutlineSidebar = memo(function NoteOutlineSidebar({
                   'flex items-center rounded-md py-1.5 px-2 gap-2 text-left',
                   'transition-colors duration-150',
                   isSubHeading && 'pl-6',
-                  isActive ? 'bg-sidebar-terracotta/8' : 'hover:bg-[var(--surface-active)]/50'
+                  !isActive && 'hover:bg-[var(--surface-active)]/50'
                 )}
               >
                 {/* Active indicator bar */}
@@ -65,7 +65,7 @@ export const NoteOutlineSidebar = memo(function NoteOutlineSidebar({
                   className={cn(
                     'text-[12px] font-sans leading-4 truncate',
                     isActive
-                      ? 'text-sidebar-terracotta font-medium'
+                      ? 'text-foreground font-medium'
                       : isSubHeading
                         ? 'text-muted-foreground'
                         : 'text-text-secondary'

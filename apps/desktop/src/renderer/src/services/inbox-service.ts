@@ -677,10 +677,10 @@ const SHORT_MONTHS = [
 
 export function formatCompactDate(date: Date | string): string {
   const d = typeof date === 'string' ? new Date(date) : date
-  const day = String(d.getDate()).padStart(2, '0')
+  const day = d.getDate()
   const month = SHORT_MONTHS[d.getMonth()]
-  const year = String(d.getFullYear()).slice(-2)
-  return `${day} ${month} ${year}`
+  const isCurrentYear = d.getFullYear() === new Date().getFullYear()
+  return isCurrentYear ? `${day} ${month}` : `${day} ${month} ${d.getFullYear()}`
 }
 
 /**

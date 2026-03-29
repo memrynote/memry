@@ -15,7 +15,8 @@ import { NoteLayout, HeadingItem, ContentArea, HeadingInfo, Block } from '@/comp
 import { NoteTitle } from '@/components/note/note-title'
 import { TagsRow, Tag } from '@/components/note/tags-row'
 import { InfoSection } from '@/components/note/info-section'
-import { BacklinksSection, Backlink } from '@/components/note/backlinks'
+import { GhostAffordanceRow } from '@/components/note/ghost-affordance-row'
+import { BacklinksSection, Backlink, Mention } from '@/components/note/backlinks'
 import { LinkedTasksSection } from '@/components/note/linked-tasks'
 import {
   useNote,
@@ -29,16 +30,22 @@ import { useTasksLinkedToNote } from '@/hooks/use-tasks-linked-to-note'
 import { notesService, onNoteDeleted, onNoteUpdated, onNoteRenamed } from '@/services/notes-service'
 import { resolveWikiLink } from '@/lib/wikilink-resolver'
 import { useTabs, useActiveTab } from '@/contexts/tabs'
-import { NoteReminderButton } from '@/components/note/note-reminder-button'
-import { Bookmark, MoreHorizontal, History, Monitor, GitGraph } from '@/lib/icons'
-import { Button } from '@/components/ui/button'
+import { useSidebarDrillDown } from '@/contexts/sidebar-drill-down'
+import { ReminderPicker } from '@/components/reminder'
+import { useNoteReminders } from '@/hooks/use-note-reminders'
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger
-} from '@/components/ui/dropdown-menu'
+  Bookmark2,
+  MoreVertical,
+  FilePaste,
+  Download,
+  AlarmClock,
+  Monitor,
+  Maximize
+} from '@/lib/icons'
+import { SidebarGraph } from '@/lib/icons/sidebar-nav-icons'
+import { Button } from '@/components/ui/button'
+import { Picker } from '@/components/ui/picker'
+import { Switch } from '@/components/ui/switch'
 import { toast } from 'sonner'
 import { registerPendingSave, unregisterPendingSave } from '@/lib/save-registry'
 import { useIsBookmarked } from '@/hooks/use-bookmarks'
@@ -109,6 +116,7 @@ export function NotePage({ noteId }: NotePageProps) {
   const { tags: allAvailableTags } = useNoteTagsQuery()
   const { openTab, setTabDeleted, updateTabTitleByEntityId } = useTabs()
   const activeTab = useActiveTab()
+  const { openTag } = useSidebarDrillDown()
   const queryClient = useQueryClient()
 
   // Extract highlight info from tab viewState (from reminder navigation)
@@ -136,11 +144,11 @@ export function NotePage({ noteId }: NotePageProps) {
 
   // Local state (UI-only, not data loading)
   const [headings, setHeadings] = useState<HeadingItem[]>([])
-  const [isInfoExpanded, setIsInfoExpanded] = useState(false)
   const [isDeleted, setIsDeleted] = useState(false)
   const [isExportDialogOpen, setIsExportDialogOpen] = useState(false)
   const [isVersionHistoryOpen, setIsVersionHistoryOpen] = useState(false)
   const [isLocalGraphOpen, setIsLocalGraphOpen] = useState(false)
+  const [moreMenuOpen, setMoreMenuOpen] = useState(false)
   const [externalUpdateCount, setExternalUpdateCount] = useState(0)
 
   const handlePropertyBlocked = useCallback((action: PropertySectionAction) => {
@@ -171,15 +179,23 @@ export function NotePage({ noteId }: NotePageProps) {
   // Bookmark state
   const { isBookmarked, toggle: toggleBookmark } = useIsBookmarked('note', noteId ?? '')
 
+  // Reminder state
+  const { hasActiveReminder, actions: reminderActions } = useNoteReminders(noteId ?? null)
+  const handleSetReminder = useCallback(
+    async (date: Date, reminderNote?: string): Promise<void> => {
+      await reminderActions.setReminder(date, reminderNote)
+    },
+    [reminderActions]
+  )
+
   // Editor settings (toolbar mode, width, spellCheck, autoSaveDelay, showWordCount)
   const { settings: editorSettings } = useEditorSettings()
 
-  const editorWidthClass =
-    {
-      narrow: 'max-w-2xl',
-      medium: 'max-w-3xl',
-      wide: 'max-w-5xl'
-    }[editorSettings.width] ?? 'max-w-3xl'
+  const NOTE_CONTENT_WIDTH = { narrow: '640px', medium: '640px', wide: '864px' } as const
+  const isFullWidth = note?.frontmatter.fullWidth === true
+  const noteContentWidth = isFullWidth
+    ? undefined
+    : (NOTE_CONTENT_WIDTH[editorSettings.width] ?? '640px')
 
   // Find in page (Cmd+F)
   const editorContainerRef = useRef<HTMLDivElement>(null)
@@ -370,16 +386,12 @@ export function NotePage({ noteId }: NotePageProps) {
         noteTitle: bl.sourceTitle,
         folder: folderPath,
         date: new Date(),
-        mentions: bl.context
-          ? [
-              {
-                id: `mention-${bl.sourceId}`,
-                snippet: bl.context,
-                linkStart: 0,
-                linkEnd: 0
-              }
-            ]
-          : []
+        mentions: (bl.contexts ?? []).map((ctx, i) => ({
+          id: `mention-${bl.sourceId}-${i}`,
+          snippet: ctx.snippet,
+          linkStart: ctx.linkStart,
+          linkEnd: ctx.linkEnd
+        }))
       }
     })
   }, [rawBacklinks])
@@ -476,27 +488,6 @@ export function NotePage({ noteId }: NotePageProps) {
       }
     },
     [noteId, note, renameNote.mutateAsync, isDeleted]
-  )
-
-  // T026: Handle emoji changes - save to backend
-  const handleEmojiChange = useCallback(
-    async (newEmoji: string | null) => {
-      if (!noteId || !note) return
-
-      if (isDeleted) {
-        toast.error('Cannot update emoji - this note was deleted')
-        return
-      }
-
-      try {
-        await updateNote.mutateAsync({ id: noteId, emoji: newEmoji })
-        // Note will be updated via TanStack Query cache invalidation
-      } catch (err) {
-        log.error('Failed to update emoji:', err)
-        toast.error('Failed to update emoji')
-      }
-    },
-    [noteId, note, updateNote.mutateAsync, isDeleted]
   )
 
   // Tag handlers
@@ -631,6 +622,19 @@ export function NotePage({ noteId }: NotePageProps) {
     [noteId, isDeleted, refetchNote, queryClient]
   )
 
+  const handleToggleFullWidth = useCallback(
+    async (value: boolean) => {
+      if (!noteId || isDeleted) return
+      try {
+        await notesService.update({ id: noteId, frontmatter: { fullWidth: value } })
+        refetchNote()
+      } catch (err) {
+        toast.error(extractErrorMessage(err, 'Failed to toggle full width'))
+      }
+    },
+    [noteId, isDeleted, refetchNote]
+  )
+
   // Link handlers
   const handleLinkClick = useCallback((href: string) => {
     window.open(href, '_blank', 'noopener,noreferrer')
@@ -710,10 +714,15 @@ export function NotePage({ noteId }: NotePageProps) {
   )
 
   const handleBacklinkClick = useCallback(
-    (backlinkNoteId: string) => {
-      // Look up the title from the backlinks array
+    (backlinkNoteId: string, mention?: Mention) => {
       const backlink = backlinks.find((bl) => bl.noteId === backlinkNoteId)
       const noteTitle = backlink?.noteTitle || 'Note'
+
+      const viewState = mention
+        ? {
+            highlightText: mention.snippet.replace(/\[\[([^\]|]+)(?:\|[^\]]+)?\]\]/g, '$1').trim()
+          }
+        : undefined
 
       openTab({
         type: 'note',
@@ -724,7 +733,8 @@ export function NotePage({ noteId }: NotePageProps) {
         isPinned: false,
         isModified: false,
         isPreview: true,
-        isDeleted: false
+        isDeleted: false,
+        ...(viewState && { viewState })
       })
     },
     [openTab, backlinks]
@@ -768,54 +778,106 @@ export function NotePage({ noteId }: NotePageProps) {
 
   const actionIcons = (
     <div className="flex items-center gap-0.5">
-      <NoteReminderButton noteId={noteId} disabled={isDeleted} />
+      <ReminderPicker
+        onSelect={(date, _title, reminderNote) => void handleSetReminder(date, reminderNote)}
+        presetType="standard"
+        showNote
+        disabled={isDeleted}
+        trigger={
+          <Button
+            variant="ghost"
+            size="icon"
+            className="size-7 hover:bg-surface-active"
+            disabled={isDeleted}
+            title={hasActiveReminder ? 'Reminder set' : 'Set reminder'}
+          >
+            <AlarmClock
+              className={cn(
+                'h-3.5 w-3.5',
+                hasActiveReminder ? 'text-amber-500' : 'text-muted-foreground'
+              )}
+            />
+          </Button>
+        }
+      />
 
       <Button
         variant="ghost"
         size="icon"
-        className="h-8 w-8 hover:bg-transparent"
+        className="size-7 hover:bg-surface-active"
         onClick={toggleBookmark}
         disabled={isDeleted}
         title={isBookmarked ? 'Remove bookmark' : 'Add bookmark'}
       >
-        <Bookmark
+        <Bookmark2
           className={cn(
-            'h-4 w-4',
+            'h-3.5 w-3.5',
             isBookmarked ? 'fill-accent-orange text-accent-orange' : 'text-muted-foreground'
           )}
         />
       </Button>
 
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
+      <Picker
+        value={null}
+        closeOnSelect={false}
+        onValueChange={(action) => {
+          if (action === 'full-width') {
+            handleToggleFullWidth(!isFullWidth)
+            return
+          }
+          setMoreMenuOpen(false)
+          if (action === 'local-graph') setIsLocalGraphOpen((prev) => !prev)
+          if (action === 'version-history') setIsVersionHistoryOpen(true)
+          if (action === 'export') setIsExportDialogOpen(true)
+          if (action === 'local-only') handleToggleLocalOnly(!(note.frontmatter.localOnly ?? false))
+        }}
+        open={moreMenuOpen}
+        onOpenChange={setMoreMenuOpen}
+      >
+        <Picker.Trigger asChild disabled={isDeleted}>
           <Button
             variant="ghost"
             size="icon"
-            className="h-8 w-8 hover:bg-transparent"
+            className="size-7 hover:bg-surface-active"
             disabled={isDeleted}
           >
-            <MoreHorizontal className="h-4 w-4 text-muted-foreground" />
+            <MoreVertical className="h-3.5 w-3.5 text-muted-foreground" />
           </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
-          <DropdownMenuItem onClick={() => setIsLocalGraphOpen((prev) => !prev)}>
-            <GitGraph className="mr-2 h-4 w-4" />
-            {isLocalGraphOpen ? 'Hide local graph' : 'Show local graph'}
-          </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => setIsVersionHistoryOpen(true)}>
-            <History className="mr-2 h-4 w-4" />
-            Version History
-          </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => setIsExportDialogOpen(true)}>Export</DropdownMenuItem>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem
-            onClick={() => handleToggleLocalOnly(!(note.frontmatter.localOnly ?? false))}
-          >
-            <Monitor className="mr-2 h-4 w-4" />
-            {note.frontmatter.localOnly ? 'Disable local only' : 'Set local only'}
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
+        </Picker.Trigger>
+        <Picker.Content align="end">
+          <Picker.List>
+            <Picker.Item
+              value="local-graph"
+              label={isLocalGraphOpen ? 'Hide local graph' : 'Show local graph'}
+              icon={<SidebarGraph className="size-4" />}
+            />
+            <Picker.Item
+              value="version-history"
+              label="Version history"
+              icon={<FilePaste className="size-4" />}
+            />
+            <Picker.Item value="export" label="Export" icon={<Download className="size-4" />} />
+            <Picker.Item
+              value="full-width"
+              label="Full width"
+              icon={<Maximize className="size-4" />}
+              trailing={
+                <Switch
+                  checked={isFullWidth}
+                  className="pointer-events-none h-4 w-7"
+                  tabIndex={-1}
+                />
+              }
+            />
+            <Picker.Separator />
+            <Picker.Item
+              value="local-only"
+              label={note.frontmatter.localOnly ? 'Disable local only' : 'Set local only'}
+              icon={<Monitor className="size-4" />}
+            />
+          </Picker.List>
+        </Picker.Content>
+      </Picker>
     </div>
   )
 
@@ -824,6 +886,7 @@ export function NotePage({ noteId }: NotePageProps) {
       headings={headings}
       onHeadingClick={handleHeadingClick}
       actions={actionIcons}
+      fullWidth={isFullWidth}
       topBar={
         <FindBar
           isOpen={findInPage.isOpen}
@@ -837,26 +900,24 @@ export function NotePage({ noteId }: NotePageProps) {
           onClose={findInPage.close}
         />
       }
-      breadcrumb={
-        <NoteBreadcrumb
-          notePath={note.path}
-          noteTitle={note.title}
-          noteEmoji={note.emoji ?? null}
-        />
-      }
-      stats={editorSettings.showWordCount ? documentStats : undefined}
+      breadcrumb={<NoteBreadcrumb notePath={note.path} noteTitle={note.title} />}
+      stats={documentStats}
     >
       {/* Note content */}
-      <div className={cn('flex flex-col gap-6 mx-auto w-full', editorWidthClass)}>
-        {/* Title + Tags */}
-        <div className="flex flex-col gap-4">
+      <div
+        className="flex flex-col mx-auto w-full transition-[max-width] duration-300 ease-in-out"
+        style={{ maxWidth: noteContentWidth ?? '100%' }}
+      >
+        {/* Title + Metadata zone — ghost affordance appears on hover */}
+        <div className="group/metadata flex flex-col gap-3">
           <NoteTitle
             emoji={note.emoji ?? null}
             title={note.title}
-            onEmojiChange={handleEmojiChange}
             onTitleChange={handleTitleChange}
             placeholder="Untitled"
           />
+
+          {/* Tags: visible when tags exist */}
           <TagsRow
             tags={noteTags}
             availableTags={availableTags}
@@ -864,21 +925,42 @@ export function NotePage({ noteId }: NotePageProps) {
             onAddTag={handleAddTag}
             onCreateTag={handleCreateTag}
             onRemoveTag={handleRemoveTag}
+            onTagClick={(tag) => openTag(tag.name, tag.color)}
+            hideWhenEmpty
+          />
+
+          {/* Properties: visible when properties exist, inline (no toggle header) */}
+          {properties.length > 0 && (
+            <InfoSection
+              properties={properties}
+              isExpanded
+              onToggleExpand={() => {}}
+              onPropertyChange={handlePropertyChange}
+              onPropertyNameChange={handlePropertyNameChange}
+              onPropertyOrderChange={handlePropertyOrderChange}
+              onAddProperty={handleAddProperty}
+              onDeleteProperty={handleDeleteProperty}
+              disabled={isDeleted}
+              variant="inline"
+              hideAddButton
+            />
+          )}
+
+          {/* Ghost affordance: fades in on hover/focus */}
+          <GhostAffordanceRow
+            availableTags={availableTags}
+            recentTags={recentTags}
+            currentTagIds={noteTags.map((t) => t.id)}
+            onAddTag={handleAddTag}
+            onCreateTag={handleCreateTag}
+            onAddProperty={handleAddProperty}
+            hasTags={noteTags.length > 0}
+            disabled={isDeleted}
           />
         </div>
 
-        {/* Properties Section */}
-        <InfoSection
-          properties={properties}
-          isExpanded={isInfoExpanded}
-          onToggleExpand={() => setIsInfoExpanded(!isInfoExpanded)}
-          onPropertyChange={handlePropertyChange}
-          onPropertyNameChange={handlePropertyNameChange}
-          onPropertyOrderChange={handlePropertyOrderChange}
-          onAddProperty={handleAddProperty}
-          onDeleteProperty={handleDeleteProperty}
-          disabled={isDeleted}
-        />
+        {/* Subtle separator between metadata and content */}
+        <div className="my-4 h-px bg-border/40" role="separator" />
 
         {/* Main content - BlockNote Editor */}
         <div
@@ -951,21 +1033,21 @@ export function NotePage({ noteId }: NotePageProps) {
           />
         )}
 
-        {/* Backlinks section */}
-        <BacklinksSection
-          backlinks={backlinks}
-          isLoading={backlinksLoading}
-          initialCount={5}
-          collapsible={false}
-          onBacklinkClick={handleBacklinkClick}
-        />
+        {/* Backlinks & linked tasks — separated from content */}
+        <div className="mt-10 flex flex-col gap-6">
+          <BacklinksSection
+            backlinks={backlinks}
+            isLoading={backlinksLoading}
+            initialCount={5}
+            onBacklinkClick={handleBacklinkClick}
+          />
 
-        {/* Linked Tasks Section */}
-        <LinkedTasksSection
-          tasks={linkedTasks}
-          isLoading={linkedTasksLoading}
-          onTaskClick={handleLinkedTaskClick}
-        />
+          <LinkedTasksSection
+            tasks={linkedTasks}
+            isLoading={linkedTasksLoading}
+            onTaskClick={handleLinkedTaskClick}
+          />
+        </div>
       </div>
 
       {/* Export Dialog */}
