@@ -7,7 +7,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-explicit-any */
 // BlockNote uses dynamic content types with 'any' internally - these errors are unavoidable
 
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { memo, useCallback, useEffect, useRef, useState } from 'react'
 import {
   SuggestionMenuController,
   useCreateBlockNote,
@@ -15,12 +15,7 @@ import {
   getDefaultReactSlashMenuItems
 } from '@blocknote/react'
 import { BlockNoteView } from '@blocknote/shadcn'
-import {
-  BlockNoteSchema,
-  defaultInlineContentSpecs,
-  defaultBlockSpecs,
-  type Block
-} from '@blocknote/core'
+import { type Block } from '@blocknote/core'
 import { useTheme } from 'next-themes'
 import { AIExtension, AIMenuController, getAISlashMenuItems } from '@blocknote/xl-ai'
 import { CustomAIMenu } from './ai-menu'
@@ -29,7 +24,7 @@ import { en as coreEn } from '@blocknote/core/locales'
 import { DefaultChatTransport } from 'ai'
 
 // BlockNote styles
-import '@blocknote/core/fonts/inter.css'
+
 import '@blocknote/shadcn/style.css'
 import '@blocknote/xl-ai/style.css'
 
@@ -41,16 +36,13 @@ import { useYjsCollaboration } from '@/sync/use-yjs-collaboration'
 import { useSync } from '@/contexts/sync-context'
 import { useSidebarDrillDown } from '@/contexts/sidebar-drill-down'
 import type { ContentAreaProps, HeadingInfo } from './types'
-import { createWikiLinkInlineContent, WikiLink } from './wiki-link'
+import { createWikiLinkInlineContent } from './wiki-link'
 import { WikiLinkMenu, type WikiLinkSuggestionItem } from './wiki-link-menu'
-import {
-  HashTag,
-  createHashTagInlineContent,
-  normalizeHashTags,
-  extractInlineTags
-} from './hash-tag'
-import { HashTagMenu, type HashTagSuggestionItem } from './hash-tag-menu'
-import { createHashTagSpacePlugin } from './hash-tag-space-plugin'
+import { HashTag, normalizeHashTags, extractInlineTags } from './hash-tag'
+import { createHashTagInlinePlugin } from './hash-tag-inline-plugin'
+import { TagSuggestionPopover } from './tag-suggestion-popover'
+import { WikiLinkPreviewCard } from './wiki-link-preview-card'
+import { useWikiLinkHover } from '@/hooks/use-wiki-link-hover'
 import { BlockDropIndicator, EmptyDocumentDropIndicator } from './block-drop-indicator'
 import { findDropTarget, type DropTarget } from './drop-target-utils'
 import {
@@ -60,18 +52,23 @@ import {
   FILE_BLOCK_REGEX
 } from './file-block'
 import {
+  getCalloutSlashMenuItem,
+  serializeCalloutBlock,
+  splitMarkdownByCallouts
+} from './callout-block'
+import { editorSchema } from './editor-schema'
+import {
+  splitMarkdownPreservingBlanks,
+  assembleMarkdownWithBlanks,
+  type MarkdownSegment
+} from '@memry/shared/empty-lines'
+import {
   HighlightReminderPopover,
   useTextSelection,
   type HighlightSelection
 } from '@/components/reminder'
 import { createLogger } from '@/lib/logger'
 import { useAIInlineContext } from '@/contexts/ai-inline-context'
-import {
-  extractHeadings,
-  splitWikiLinkQuery,
-  normalizeWikiLinks,
-  normalizeMarkdownHardBreaks
-} from './wiki-link-utils'
 
 const log = createLogger('Component:ContentArea')
 
@@ -79,6 +76,399 @@ type NoteSuggestion = {
   id: string
   title: string
   modified?: Date | string
+}
+
+// =============================================================================
+// HEADING EXTRACTION
+// =============================================================================
+
+/**
+ * Extract headings from BlockNote blocks for outline navigation
+ */
+function extractHeadings(blocks: Block[]): HeadingInfo[] {
+  const headings: HeadingInfo[] = []
+  let position = 0
+
+  function processBlock(block: Block): void {
+    if (block.type === 'heading') {
+      const level = (block.props?.level as 1 | 2 | 3) || 1
+      // Extract text from inline content
+      const text = Array.isArray(block.content)
+        ? block.content
+            .map((item) => {
+              if (typeof item === 'string') return item
+              if (item && typeof item === 'object' && 'text' in item) return item.text
+              return ''
+            })
+            .join('')
+        : ''
+
+      if (text.trim()) {
+        headings.push({
+          id: block.id,
+          text: text.trim(),
+          level,
+          position: position * 40 // Approximate position
+        })
+      }
+      position++
+    }
+
+    // Process children recursively
+    if (block.children && Array.isArray(block.children)) {
+      block.children.forEach((child) => processBlock(child as Block))
+    }
+  }
+
+  blocks.forEach((block) => processBlock(block))
+  return headings
+}
+
+// =============================================================================
+// WIKI LINK UTILITIES
+// =============================================================================
+
+const WIKI_LINK_PATTERN = /\[\[([^\]|]+)(?:\|([^\]]+))?\]\]/g
+
+function splitWikiLinkQuery(query: string): { search: string; alias: string } {
+  const [rawTarget, rawAlias] = query.split('|', 2)
+  return {
+    search: rawTarget?.trim() ?? '',
+    alias: rawAlias?.trim() ?? ''
+  }
+}
+
+function createStyledText(
+  text: string,
+  styles: Record<string, boolean | string>
+): { type: string; text: string; styles: Record<string, boolean | string> } {
+  return { type: 'text', text, styles }
+}
+
+function splitTextWithWikiLinks(
+  text: string,
+  styles?: Record<string, boolean | string>
+): { segments: Array<string | Record<string, unknown>>; didChange: boolean } {
+  const segments: Array<string | Record<string, unknown>> = []
+  const pattern = new RegExp(WIKI_LINK_PATTERN)
+  let didChange = false
+  let lastIndex = 0
+  let match: RegExpExecArray | null
+
+  while ((match = pattern.exec(text)) !== null) {
+    const [full, rawTarget, rawAlias] = match
+    const target = rawTarget?.trim()
+    const alias = rawAlias?.trim() ?? ''
+
+    if (!target) {
+      continue
+    }
+
+    if (match.index > lastIndex) {
+      const before = text.slice(lastIndex, match.index)
+      if (before) {
+        segments.push(styles ? createStyledText(before, styles) : before)
+      }
+    }
+
+    segments.push(createWikiLinkInlineContent(target, alias))
+    didChange = true
+    lastIndex = match.index + full.length
+  }
+
+  if (!didChange) {
+    return { segments: [styles ? createStyledText(text, styles) : text], didChange: false }
+  }
+
+  const trailing = text.slice(lastIndex)
+  if (trailing) {
+    segments.push(styles ? createStyledText(trailing, styles) : trailing)
+  }
+
+  return { segments, didChange: true }
+}
+
+function normalizeInlineContent(content: string | Array<any>): {
+  content: string | Array<any>
+  didChange: boolean
+} {
+  if (typeof content === 'string') {
+    const { segments, didChange } = splitTextWithWikiLinks(content)
+    if (!didChange) return { content, didChange: false }
+    return { content: segments, didChange: true }
+  }
+
+  if (!Array.isArray(content)) {
+    return { content, didChange: false }
+  }
+
+  let didChange = false
+  const next: Array<any> = []
+
+  for (const item of content) {
+    if (typeof item === 'string') {
+      const { segments, didChange: itemChanged } = splitTextWithWikiLinks(item)
+      if (itemChanged) {
+        didChange = true
+        next.push(...segments)
+      } else {
+        next.push(item as any)
+      }
+      continue
+    }
+
+    if (item?.type === 'text') {
+      const styles = item.styles ?? {}
+      const { segments, didChange: itemChanged } = splitTextWithWikiLinks(item.text ?? '', styles)
+      if (itemChanged) {
+        didChange = true
+        next.push(...segments)
+      } else {
+        next.push(item)
+      }
+      continue
+    }
+
+    if (item?.type === 'wikiLink') {
+      next.push(item)
+      continue
+    }
+
+    next.push(item)
+  }
+
+  return { content: didChange ? next : content, didChange }
+}
+
+function normalizeTableContent(tableContent: any): { content: any; didChange: boolean } {
+  if (!tableContent?.rows) {
+    return { content: tableContent, didChange: false }
+  }
+
+  let didChange = false
+  const rows = tableContent.rows.map((row: any) => {
+    let rowChanged = false
+    const cells = row.cells.map((cell: any) => {
+      if (Array.isArray(cell)) {
+        const normalized = normalizeInlineContent(cell)
+        if (normalized.didChange) {
+          rowChanged = true
+        }
+        return normalized.content
+      }
+
+      if (cell?.type === 'tableCell') {
+        const normalized = normalizeInlineContent(cell.content ?? '')
+        if (normalized.didChange) {
+          rowChanged = true
+          return { ...cell, content: normalized.content }
+        }
+      }
+
+      return cell
+    })
+
+    if (rowChanged) {
+      didChange = true
+      return { ...row, cells }
+    }
+    return row
+  })
+
+  if (!didChange) {
+    return { content: tableContent, didChange: false }
+  }
+
+  return { content: { ...tableContent, rows }, didChange: true }
+}
+
+function normalizeWikiLinks(blocks: Block[]): { blocks: Block[]; didChange: boolean } {
+  // Quick check: if no wiki link markers exist in the content, skip the expensive tree walk
+  // This is a performance optimization since most content won't have wiki links
+  const blockStr = JSON.stringify(blocks)
+  if (!blockStr.includes('[[')) {
+    return { blocks, didChange: false }
+  }
+
+  let didChange = false
+
+  const nextBlocks = blocks.map((block) => {
+    if (block.type === 'codeBlock') {
+      return block
+    }
+
+    let blockChanged = false
+    let nextBlock: Block = block
+
+    if (block.content) {
+      if (typeof block.content === 'string' || Array.isArray(block.content)) {
+        const normalized = normalizeInlineContent(block.content as any)
+        if (normalized.didChange) {
+          blockChanged = true
+          nextBlock = { ...nextBlock, content: normalized.content as any }
+        }
+      } else if ((block.content as any).type === 'tableContent') {
+        const normalized = normalizeTableContent(block.content)
+        if (normalized.didChange) {
+          blockChanged = true
+          nextBlock = { ...nextBlock, content: normalized.content }
+        }
+      }
+    }
+
+    if (block.children?.length) {
+      const normalizedChildren = normalizeWikiLinks(block.children as Block[])
+      if (normalizedChildren.didChange) {
+        blockChanged = true
+        nextBlock = { ...nextBlock, children: normalizedChildren.blocks }
+      }
+    }
+
+    if (blockChanged) {
+      didChange = true
+    }
+
+    return blockChanged ? nextBlock : block
+  })
+
+  return { blocks: didChange ? nextBlocks : blocks, didChange }
+}
+
+function normalizeMarkdownHardBreaks(markdown: string): string {
+  const lines = markdown.split('\n')
+  const normalized: string[] = []
+  let inCodeBlock = false
+
+  for (const line of lines) {
+    let lineBody = line
+    let lineEnding = ''
+
+    if (lineBody.endsWith('\r')) {
+      lineEnding = '\r'
+      lineBody = lineBody.slice(0, -1)
+    }
+
+    const trimmed = lineBody.trimStart()
+    const isFence = trimmed.startsWith('```') || trimmed.startsWith('~~~')
+
+    if (isFence) {
+      inCodeBlock = !inCodeBlock
+      normalized.push(lineBody + lineEnding)
+      continue
+    }
+
+    if (!inCodeBlock) {
+      const match = lineBody.match(/(\\+)$/)
+      if (match && match[1].length % 2 === 1) {
+        const nextLine = lineBody.slice(0, -1)
+        if (nextLine.trim() === '') {
+          continue
+        }
+        normalized.push(nextLine + lineEnding)
+        continue
+      }
+    }
+
+    normalized.push(lineBody + lineEnding)
+  }
+
+  return normalized.join('\n')
+}
+
+// =============================================================================
+// Empty-line-preserving markdown conversion
+// =============================================================================
+
+function isEmptyParagraph(block: Block): boolean {
+  if (block.type !== 'paragraph') return false
+  const content = block.content as unknown[]
+  return !content || content.length === 0
+}
+
+async function parseMarkdownPreservingBlanks(editor: any, markdown: string): Promise<Block[]> {
+  // First split by callout blocks so they don't get parsed as regular blockquotes,
+  // then process each non-callout segment through blank-preserving logic.
+  const calloutSegments = splitMarkdownByCallouts(markdown)
+  const blocks: Block[] = []
+
+  for (const cseg of calloutSegments) {
+    if (cseg.kind === 'callout') {
+      // Parse callout content as markdown to preserve inline formatting (bold, wikilinks)
+      const parsed = await editor.tryParseMarkdownToBlocks(cseg.content)
+      const inlineContent = parsed[0]?.content ?? cseg.content
+      blocks.push({
+        type: 'callout' as const,
+        props: { type: cseg.type },
+        content: inlineContent
+      } as unknown as Block)
+    } else {
+      // Regular markdown: split by blank lines to preserve empty paragraphs
+      const blankSegments = splitMarkdownPreservingBlanks(cseg.text)
+      for (const seg of blankSegments) {
+        if (seg.type === 'content') {
+          const parsed = await editor.tryParseMarkdownToBlocks(seg.text)
+          blocks.push(...parsed)
+        } else {
+          for (let i = 0; i < seg.extraLines; i++) {
+            blocks.push({
+              type: 'paragraph',
+              content: [],
+              children: [],
+              id: '',
+              props: {}
+            } as unknown as Block)
+          }
+        }
+      }
+    }
+  }
+
+  return blocks
+}
+
+async function serializeBlocksPreservingBlanks(editor: any, blocks: Block[]): Promise<string> {
+  const segments: MarkdownSegment[] = []
+  let contentGroup: Block[] = []
+  let emptyCount = 0
+
+  const flushContent = async (): Promise<void> => {
+    if (contentGroup.length === 0) return
+    const md = await editor.blocksToMarkdownLossy(contentGroup)
+    segments.push({ type: 'content', text: md })
+    contentGroup = []
+  }
+
+  const flushGap = (): void => {
+    if (emptyCount === 0) return
+    segments.push({ type: 'gap', extraLines: emptyCount })
+    emptyCount = 0
+  }
+
+  for (const block of blocks) {
+    if ((block.type as string) === 'callout') {
+      await flushContent()
+      flushGap()
+      const calloutType = (block.props as any).type as string
+      const contentMd = await editor.blocksToMarkdownLossy([block])
+      segments.push({ type: 'content', text: serializeCalloutBlock(calloutType, contentMd.trim()) })
+    } else if (isEmptyParagraph(block)) {
+      await flushContent()
+      emptyCount++
+    } else {
+      flushGap()
+      contentGroup.push(block)
+    }
+  }
+
+  if (contentGroup.length > 0) {
+    const md = await editor.blocksToMarkdownLossy(contentGroup)
+    segments.push({ type: 'content', text: md })
+  }
+  if (emptyCount > 0) {
+    segments.push({ type: 'gap', extraLines: emptyCount })
+  }
+
+  return assembleMarkdownWithBlanks(segments)
 }
 
 // =============================================================================
@@ -137,6 +527,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
   // T220-T222: Text selection state for highlight reminders
   const [highlightSelection, setHighlightSelection] = useState<HighlightSelection | null>(null)
   const editorContainerRef = useRef<HTMLDivElement>(null)
+  const wikiLinkHover = useWikiLinkHover(editorContainerRef)
 
   // Container ref for drag-drop position calculations (intercepts drops before BlockNote)
   const containerRef = useRef<HTMLDivElement>(null)
@@ -156,12 +547,14 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
   // Debounce timers for expensive operations (prevents lag during typing)
   const markdownDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const headingsDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const inlineTagsDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // Cleanup debounce timers on unmount
   useEffect(() => {
     return () => {
       if (markdownDebounceRef.current) clearTimeout(markdownDebounceRef.current)
       if (headingsDebounceRef.current) clearTimeout(headingsDebounceRef.current)
+      if (inlineTagsDebounceRef.current) clearTimeout(inlineTagsDebounceRef.current)
     }
   }, [])
 
@@ -225,22 +618,8 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
     }
   }, [dropTarget])
 
-  // T069/T071: Schema with FileBlock + HashTag inline content
-  const schema = useMemo(
-    () =>
-      BlockNoteSchema.create({
-        blockSpecs: {
-          ...defaultBlockSpecs,
-          file: createFileBlock()
-        },
-        inlineContentSpecs: {
-          ...defaultInlineContentSpecs,
-          wikiLink: WikiLink,
-          hashTag: HashTag
-        }
-      }),
-    []
-  )
+  // T069/T071: Schema with FileBlock + HashTag inline content + code block syntax highlighting
+  const schema = editorSchema
 
   // T069: Upload function for BlockNote's built-in file handling
   // This handles images dropped directly into the editor
@@ -396,11 +775,9 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
   )
 
   // =========================================================================
-  // HASH TAG AUTOCOMPLETE
+  // HASH TAG INLINE EDITING + AUTOCOMPLETE
   // =========================================================================
 
-  type TagCacheEntry = { tag: string; count: number; color: string }
-  const tagsCacheRef = useRef<{ tags: TagCacheEntry[]; fetchedAt: number } | null>(null)
   const prevInlineTagsRef = useRef<string[]>([])
   const lastNormalizedTagsRef = useRef<string>('')
   const tagColorMapRef = useRef(tagColorMap)
@@ -408,93 +785,48 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
     tagColorMapRef.current = tagColorMap
   }, [tagColorMap])
 
-  const getHashTagItems = useCallback(async (query: string): Promise<HashTagSuggestionItem[]> => {
-    const now = Date.now()
-    const cache = tagsCacheRef.current
-    if (!cache || now - cache.fetchedAt > 5000) {
-      try {
-        const result = await notesService.getTags()
-        tagsCacheRef.current = {
-          tags: result.map((t) => ({ tag: t.tag, count: t.count, color: t.color })),
-          fetchedAt: now
-        }
-      } catch (error) {
-        log.error('Failed to load tag suggestions', error)
-        tagsCacheRef.current = { tags: [], fetchedAt: now }
-      }
-    }
-
-    const colorMap = tagColorMapRef.current
-    const allTags = tagsCacheRef.current?.tags ?? []
-    const normalizedQuery = query.toLowerCase().trim()
-    const filtered = normalizedQuery
-      ? allTags.filter((t) => t.tag.includes(normalizedQuery))
-      : allTags
-
-    const sorted = filtered
-      .sort((a, b) => {
-        if (normalizedQuery) {
-          const aStarts = a.tag.startsWith(normalizedQuery)
-          const bStarts = b.tag.startsWith(normalizedQuery)
-          if (aStarts && !bStarts) return -1
-          if (!aStarts && bStarts) return 1
-        }
-        return b.count - a.count
-      })
-      .slice(0, 10)
-
-    const suggestions: HashTagSuggestionItem[] = sorted.map((t) => ({
-      name: t.tag,
-      color: colorMap?.get(t.tag) || t.color || 'stone',
-      count: t.count,
-      type: 'existing'
-    }))
-
-    const hasExactMatch = normalizedQuery ? filtered.some((t) => t.tag === normalizedQuery) : true
-
-    if (normalizedQuery && !hasExactMatch) {
-      suggestions.push({
-        name: normalizedQuery,
-        color: 'stone',
-        count: 0,
-        type: 'create'
-      })
-    }
-
-    return suggestions
-  }, [])
-
-  const handleHashTagSelect = useCallback(
-    (item: HashTagSuggestionItem) => {
-      if (!item.name) return
-      const tag = item.name.toLowerCase()
-      const color = item.color || 'stone'
-      editor.insertInlineContent([createHashTagInlineContent(tag, color)], {
-        updateSelection: true
-      })
-      editor.insertInlineContent([' '], { updateSelection: true })
-    },
-    [editor]
-  )
-
   const getTagColor = useCallback((tag: string): string => {
-    const fromMap = tagColorMapRef.current?.get(tag)
-    if (fromMap) return fromMap
-    const cached = tagsCacheRef.current?.tags.find((t) => t.tag === tag)
-    return cached?.color || 'stone'
+    return tagColorMapRef.current?.get(tag) || 'stone'
   }, [])
 
   useEffect(() => {
     const tiptap = (editor as any)._tiptapEditor
     if (!tiptap) return
 
-    const plugin = createHashTagSpacePlugin(getTagColor)
+    const plugin = createHashTagInlinePlugin(getTagColor)
     tiptap.registerPlugin(plugin)
 
     return () => {
       tiptap.unregisterPlugin(plugin.spec.key!)
     }
   }, [editor, getTagColor])
+
+  // Re-color existing hashTag nodes when tagColorMap changes (in-place, preserves cursor)
+  useEffect(() => {
+    if (!tagColorMap || tagColorMap.size === 0) return
+
+    const tiptap = (editor as any)._tiptapEditor
+    if (!tiptap) return
+
+    const { state } = tiptap
+    let tr = state.tr
+    let changed = false
+
+    state.doc.descendants((node: any, pos: number) => {
+      if (node.type.name === 'hashTag') {
+        const correctColor = tagColorMap.get(node.attrs.tag as string) || 'stone'
+        if (node.attrs.color !== correctColor) {
+          tr = tr.setNodeMarkup(pos, undefined, { ...node.attrs, color: correctColor })
+          changed = true
+        }
+      }
+    })
+
+    if (changed) {
+      tiptap.view.dispatch(tr)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editor, tagColorMap])
 
   useEffect(() => {
     const container = editorContainerRef.current
@@ -512,6 +844,24 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
     container.addEventListener('click', handleTagClick)
     return () => container.removeEventListener('click', handleTagClick)
   }, [openTag])
+
+  const handleTagSuggestionSelect = useCallback(
+    (tag: string, color: string, nodePos: number) => {
+      const tiptap = (editor as any)._tiptapEditor
+      if (!tiptap) return
+
+      const hashTagNodeType = tiptap.state.schema.nodes.hashTag
+      if (!hashTagNodeType) return
+
+      const oldNode = tiptap.state.doc.nodeAt(nodePos)
+      if (!oldNode || oldNode.type.name !== 'hashTag') return
+
+      const newNode = hashTagNodeType.create({ tag, color })
+      const tr = tiptap.state.tr.replaceWith(nodePos, nodePos + oldNode.nodeSize, newNode)
+      tiptap.view.dispatch(tr)
+    },
+    [editor]
+  )
 
   // Parse content based on content type (only on initial mount)
   // We use a ref to prevent re-loading when the parent updates initialContent
@@ -563,8 +913,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
 
             let blocks
             if (contentType === 'markdown') {
-              // eslint-disable-next-line @typescript-eslint/await-thenable -- BlockNote types are incorrect, this is async
-              blocks = await editor.tryParseMarkdownToBlocks(content)
+              blocks = await parseMarkdownPreservingBlanks(editor, content)
             } else {
               // Default to HTML parsing
               // eslint-disable-next-line @typescript-eslint/await-thenable -- BlockNote types are incorrect, this is async
@@ -621,25 +970,6 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editor])
 
-  useEffect(() => {
-    if (!isContentReadyRef.current) return
-    if (!noteTags?.length || !tagColorMap) return
-
-    const tagsKey = noteTags.slice().sort().join(',')
-    if (tagsKey === lastNormalizedTagsRef.current) return
-
-    const tagSet = new Set(noteTags.map((t) => t.toLowerCase()))
-    const blocks = editor.document as Block[]
-    const { blocks: normalizedBlocks, didChange } = normalizeHashTags(blocks, tagSet, tagColorMap)
-
-    lastNormalizedTagsRef.current = tagsKey
-
-    if (didChange) {
-      editor.replaceBlocks(editor.document, normalizedBlocks)
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [editor, noteTags, tagColorMap])
-
   // Handle content changes with debouncing for expensive operations
   // This prevents typing lag by deferring markdown conversion and heading extraction
   const handleChange = useCallback(() => {
@@ -667,8 +997,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
       }
       markdownDebounceRef.current = setTimeout(async () => {
         try {
-          // eslint-disable-next-line @typescript-eslint/await-thenable -- BlockNote types are incorrect, this is async
-          let markdown = await editor.blocksToMarkdownLossy(editor.document)
+          let markdown = await serializeBlocksPreservingBlanks(editor, editor.document as Block[])
 
           // Serialize file blocks to markers (they're lost in markdown conversion)
           const fileBlocks = (editor.document as Block[]).filter((b) => b.type === 'file')
@@ -703,15 +1032,19 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
       }, 200)
     }
 
-    // Extract inline hash tags and notify parent if changed
+    // Extract inline hash tags — debounced to avoid feedback loop during tag editing
     if (onInlineTagsChange) {
-      const tags = extractInlineTags(blocks as Block[])
-      const tagsKey = tags.sort().join(',')
-      const prevKey = [...prevInlineTagsRef.current].sort().join(',')
-      if (tagsKey !== prevKey) {
-        prevInlineTagsRef.current = tags
-        onInlineTagsChange(tags)
-      }
+      if (inlineTagsDebounceRef.current) clearTimeout(inlineTagsDebounceRef.current)
+      inlineTagsDebounceRef.current = setTimeout(() => {
+        const currentBlocks = editor.document as Block[]
+        const tags = extractInlineTags(currentBlocks)
+        const tagsKey = tags.sort().join(',')
+        const prevKey = [...prevInlineTagsRef.current].sort().join(',')
+        if (tagsKey !== prevKey) {
+          prevInlineTagsRef.current = tags
+          onInlineTagsChange(tags)
+        }
+      }, 300)
     }
   }, [editor, onContentChange, onMarkdownChange, onHeadingsChange, onInlineTagsChange])
 
@@ -1055,7 +1388,8 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
             getItems={async (query) => {
               const defaults = getDefaultReactSlashMenuItems(editor)
               const aiItems = aiReady ? getAISlashMenuItems(editor) : []
-              const all = [...defaults, ...aiItems]
+              const calloutItem = getCalloutSlashMenuItem(editor)
+              const all = [...defaults, calloutItem, ...aiItems]
               if (!query) return all
               const lower = query.toLowerCase()
               return all.filter(
@@ -1071,13 +1405,14 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
             suggestionMenuComponent={WikiLinkMenu}
             onItemClick={handleWikiLinkSelect}
           />
-          <SuggestionMenuController
-            triggerCharacter="#"
-            getItems={getHashTagItems}
-            suggestionMenuComponent={HashTagMenu}
-            onItemClick={handleHashTagSelect}
-          />
         </BlockNoteView>
+
+        {/* Tag suggestion popover — positioned relative to editor container */}
+        <TagSuggestionPopover
+          editor={editor}
+          editorContainerRef={editorContainerRef}
+          onSelect={handleTagSuggestionSelect}
+        />
 
         {/* T220-T222: Highlight reminder popover */}
         {noteId && highlightSelection && (
@@ -1087,6 +1422,18 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
             onClose={() => setHighlightSelection(null)}
             onReminderCreated={handleHighlightReminderCreated}
             containerRef={editorContainerRef}
+          />
+        )}
+
+        {/* WikiLink hover preview card */}
+        {wikiLinkHover.isVisible && wikiLinkHover.preview && wikiLinkHover.position && (
+          <WikiLinkPreviewCard
+            preview={wikiLinkHover.preview}
+            position={wikiLinkHover.position}
+            onMouseEnter={wikiLinkHover.handleCardMouseEnter}
+            onMouseLeave={wikiLinkHover.handleCardMouseLeave}
+            onTagClick={openTag}
+            onNoteClick={onInternalLinkClick}
           />
         )}
       </div>
