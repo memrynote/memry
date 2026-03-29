@@ -53,6 +53,7 @@ import { clearEmbeddingQueue, hasPendingEmbeddings } from '../inbox/embedding-qu
 import { createLogger } from '../lib/logger'
 import { startSyncRuntime, stopSyncRuntime } from '../sync/runtime'
 import { PropertyDefinitionsService } from './property-definitions'
+import { migrateSettingsToConfig } from './settings-cache'
 
 const logger = createLogger('Vault')
 
@@ -214,6 +215,9 @@ async function openVault(vaultPath: string): Promise<void> {
 
   // Seed default data (inbox project, etc.)
   seedDefaults(dataDb)
+
+  // Migrate settings: config.json ↔ SQLite cache
+  migrateSettingsToConfig(dataDb, vaultPath)
 
   // Check index database health before proceeding
   const indexHealth: IndexHealth = checkIndexHealth(indexDbPath)
