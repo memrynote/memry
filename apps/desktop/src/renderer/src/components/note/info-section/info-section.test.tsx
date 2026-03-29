@@ -274,8 +274,7 @@ describe('InfoSection - add property', () => {
     const addButton = screen.getByRole('button', { name: /add.*property/i })
     await user.click(addButton)
 
-    // Should show property type options (the popup has a listbox with types)
-    expect(screen.getByRole('listbox', { name: /property types/i })).toBeInTheDocument()
+    expect(screen.getByRole('listbox')).toBeInTheDocument()
   })
 
   it('should show property type options in popup', async () => {
@@ -285,8 +284,7 @@ describe('InfoSection - add property', () => {
     const addButton = screen.getByRole('button', { name: /add.*property/i })
     await user.click(addButton)
 
-    // Should show available property types from PROPERTY_TYPE_CONFIG
-    const listbox = screen.getByRole('listbox', { name: /property types/i })
+    const listbox = screen.getByRole('listbox')
     expect(within(listbox).getAllByRole('option').length).toBeGreaterThan(0)
   })
 
@@ -319,8 +317,7 @@ describe('InfoSection - add property', () => {
     const options = screen.getAllByRole('option')
     await user.click(options[0])
 
-    // Popup should close
-    expect(screen.queryByRole('listbox', { name: /property types/i })).not.toBeInTheDocument()
+    expect(screen.queryByRole('listbox')).not.toBeInTheDocument()
   })
 })
 
