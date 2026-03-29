@@ -73,6 +73,7 @@ import { NoteIconDisplay } from '@/lib/render-note-icon'
 import { FolderIconButton } from '@/components/folder-icon-button'
 import { getTabIconForFileType, type FileType } from '@memry/shared/file-types'
 import { createLogger } from '@/lib/logger'
+import { useGeneralSettings } from '@/hooks/use-general-settings'
 import {
   type FolderNode,
   type TreeStructure,
@@ -289,20 +290,55 @@ function FolderRevealHandler() {
 }
 
 // ============================================================================
+// TreeActionsExposer — bridges tree context methods to parent via ref
+// ============================================================================
+
+type TreeActionsHandle = {
+  collapseAll: () => void
+  expandAll: () => void
+  expandNode: (nodeId: string) => void
+  expandNodes: (nodeIds: string[]) => void
+}
+
+function TreeActionsExposer({
+  actionsRef
+}: {
+  actionsRef: React.MutableRefObject<TreeActionsHandle | null>
+}) {
+  const { collapseAll, expandAll, expandNode, expandNodes } = useTree()
+
+  useEffect(() => {
+    actionsRef.current = { collapseAll, expandAll, expandNode, expandNodes }
+    return () => {
+      actionsRef.current = null
+    }
+  }, [collapseAll, expandAll, expandNode, expandNodes, actionsRef])
+
+  return null
+}
+
+// ============================================================================
 // Main Component
 // ============================================================================
 
 interface NotesTreeActions {
   createNote: () => void
   createFolder: () => void
+  collapseAll: () => void
+  expandAll: () => void
 }
 
 interface NotesTreeProps {
   onTargetFolderChange?: (folder: string) => void
   onActionsReady?: (actions: NotesTreeActions) => void
+  scrollContainerRef?: React.RefObject<HTMLElement>
 }
 
-export function NotesTree({ onTargetFolderChange, onActionsReady }: NotesTreeProps = {}) {
+export function NotesTree({
+  onTargetFolderChange,
+  onActionsReady,
+  scrollContainerRef
+}: NotesTreeProps = {}) {
   // Load all notes so the tree can correctly show files in all folders
   // Tree views need complete data - pagination doesn't make sense here
   const { notes, isLoading, error } = useNotesList({ limit: 10000 })
@@ -316,8 +352,10 @@ export function NotesTree({ onTargetFolderChange, onActionsReady }: NotesTreePro
   const { folders, createFolder, setFolderIcon, refetch: refreshFolders } = useNoteFoldersQuery()
   const { openTab, closeTab, updateTabTitleByEntityId } = useTabActions()
   const queryClient = useQueryClient()
+  const { settings: generalSettings } = useGeneralSettings()
   const [isCreating, setIsCreating] = useState(false)
   const [isCreatingFolder, setIsCreatingFolder] = useState(false)
+  const treeActionsRef = useRef<TreeActionsHandle | null>(null)
 
   // Multi-selection state (controlled mode)
   const [selectedIds, setSelectedIds] = useState<string[]>([])
@@ -432,7 +470,6 @@ export function NotesTree({ onTargetFolderChange, onActionsReady }: NotesTreePro
   // Compute target folder from selection — only when tree is focused so toolbar
   // buttons create at root when the user clicks away from the tree
   const targetFolder = useMemo(() => {
-    if (!isTreeFocused) return ''
     if (selectedIds.length === 0) return ''
 
     const selectedId = selectedIds[0]
@@ -509,7 +546,7 @@ export function NotesTree({ onTargetFolderChange, onActionsReady }: NotesTreePro
   const handleCreateNote = useCallback(async () => {
     if (isCreating) return
 
-    const folder = isTreeFocusedRef.current ? targetFolder : ''
+    const folder = generalSettings.createInSelectedFolder ? targetFolder : ''
 
     setIsCreating(true)
     try {
@@ -607,7 +644,7 @@ export function NotesTree({ onTargetFolderChange, onActionsReady }: NotesTreePro
   const handleCreateFolder = useCallback(async () => {
     if (isCreatingFolder) return
 
-    const folder = isTreeFocusedRef.current ? targetFolder : ''
+    const folder = generalSettings.createInSelectedFolder ? targetFolder : ''
 
     setIsCreatingFolder(true)
     try {
@@ -641,7 +678,12 @@ export function NotesTree({ onTargetFolderChange, onActionsReady }: NotesTreePro
   }, [targetFolder, onTargetFolderChange])
 
   useEffect(() => {
-    onActionsReady?.({ createNote: handleCreateNote, createFolder: handleCreateFolder })
+    onActionsReady?.({
+      createNote: handleCreateNote,
+      createFolder: handleCreateFolder,
+      collapseAll: () => treeActionsRef.current?.collapseAll(),
+      expandAll: () => treeActionsRef.current?.expandAll()
+    })
   }, [onActionsReady, handleCreateNote, handleCreateFolder])
 
   // Handle creating a note in a specific folder (from context menu)
@@ -1066,6 +1108,7 @@ export function NotesTree({ onTargetFolderChange, onActionsReady }: NotesTreePro
         multiSelect={true}
         indent={26}
       >
+        <TreeActionsExposer actionsRef={treeActionsRef} />
         {/* Handle reveal-in-sidebar requests */}
         <RevealHandler
           pendingRevealNoteId={pendingRevealNoteId}

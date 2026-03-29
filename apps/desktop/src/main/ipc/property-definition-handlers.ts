@@ -69,7 +69,7 @@ export function registerPropertyDefinitionHandlers(): void {
           const service = PropertyDefinitionsService.get()
           await service.upsert({
             name: input.name,
-            type: input.type,
+            type: input.type!,
             options: input.options,
             defaultValue: input.defaultValue != null ? String(input.defaultValue) : undefined
           })
@@ -79,7 +79,7 @@ export function registerPropertyDefinitionHandlers(): void {
         const db = getIndexDatabase()
         const { name, ...updates } = input
         const definition = updatePropertyDefinition(db, name, {
-          type: updates.type,
+          type: updates.type as string | undefined,
           options: updates.options ? JSON.stringify(updates.options) : undefined,
           defaultValue: updates.defaultValue ? JSON.stringify(updates.defaultValue) : undefined,
           color: updates.color
@@ -96,6 +96,31 @@ export function registerPropertyDefinitionHandlers(): void {
   )
 
   // Property option CRUD handlers (select/status/multiselect)
+  ipcMain.handle(
+    NotesChannels.invoke.ADD_PROPERTY_OPTION,
+    createValidatedHandler(
+      z.object({
+        propertyName: z.string().min(1),
+        option: z.object({ value: z.string().min(1), color: z.string().min(1) })
+      }),
+      async (input) => {
+        const { PropertyDefinitionsService } = await import('../vault/property-definitions')
+        const service = PropertyDefinitionsService.get()
+        const existing = service.get(input.propertyName)
+        if (!existing) {
+          await service.upsert({
+            name: input.propertyName,
+            type: 'select',
+            options: [input.option]
+          })
+        } else {
+          await service.addOption(input.propertyName, input.option)
+        }
+        return { success: true }
+      }
+    )
+  )
+
   ipcMain.handle(
     NotesChannels.invoke.ENSURE_PROPERTY_DEFINITION,
     createValidatedHandler(
@@ -217,6 +242,7 @@ export function unregisterPropertyDefinitionHandlers(): void {
   ipcMain.removeHandler(NotesChannels.invoke.GET_PROPERTY_DEFINITIONS)
   ipcMain.removeHandler(NotesChannels.invoke.CREATE_PROPERTY_DEFINITION)
   ipcMain.removeHandler(NotesChannels.invoke.UPDATE_PROPERTY_DEFINITION)
+  ipcMain.removeHandler(NotesChannels.invoke.ADD_PROPERTY_OPTION)
   ipcMain.removeHandler(NotesChannels.invoke.ENSURE_PROPERTY_DEFINITION)
   ipcMain.removeHandler(NotesChannels.invoke.ADD_STATUS_OPTION)
   ipcMain.removeHandler(NotesChannels.invoke.REMOVE_PROPERTY_OPTION)
