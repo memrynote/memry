@@ -68,9 +68,14 @@ describe('extractInlineTags', () => {
       expect(extractInlineTags(blocks)).toEqual(['my-tag', 'my_tag'])
     })
 
-    it('rejects tags starting with a digit', () => {
-      const blocks = [textBlock([textItem('#123invalid but #valid')])]
-      expect(extractInlineTags(blocks)).toEqual(['valid'])
+    it('extracts tags starting with a digit', () => {
+      const blocks = [textBlock([textItem('#123invalid and #valid')])]
+      expect(extractInlineTags(blocks)).toEqual(['123invalid', 'valid'])
+    })
+
+    it('extracts pure numeric tags', () => {
+      const blocks = [textBlock([textItem('#2024 goals')])]
+      expect(extractInlineTags(blocks)).toEqual(['2024'])
     })
   })
 

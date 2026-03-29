@@ -30,6 +30,7 @@ export const serializeTabState = (state: TabSystemState): PersistedTabState => {
         type: tab.type,
         title: tab.title,
         icon: tab.icon,
+        emoji: tab.emoji,
         path: tab.path,
         entityId: tab.entityId,
         isPinned: tab.isPinned,

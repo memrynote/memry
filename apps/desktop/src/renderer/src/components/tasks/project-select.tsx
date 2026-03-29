@@ -1,17 +1,8 @@
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue
-} from '@/components/ui/select'
+import { useMemo } from 'react'
 import { getIconByName } from '@/components/icon-picker'
 import { cn } from '@/lib/utils'
+import { Picker } from '@/components/ui/picker'
 import type { Project } from '@/data/tasks-data'
-
-// ============================================================================
-// TYPES
-// ============================================================================
 
 interface ProjectSelectProps {
   value: string
@@ -20,23 +11,13 @@ interface ProjectSelectProps {
   className?: string
 }
 
-// ============================================================================
-// PROJECT INDICATOR COMPONENT
-// ============================================================================
-
-const ProjectIndicator = ({
-  project,
-  className
-}: {
-  project: Project
-  className?: string
-}): React.JSX.Element => {
+const ProjectIndicator = ({ project }: { project: Project }): React.JSX.Element => {
   const IconComponent = getIconByName(project.icon)
 
   if (IconComponent) {
     return (
       <IconComponent
-        className={cn('size-4 shrink-0', className)}
+        className="size-4 shrink-0"
         style={{ color: project.color }}
         aria-hidden="true"
       />
@@ -45,16 +26,12 @@ const ProjectIndicator = ({
 
   return (
     <span
-      className={cn('size-3 shrink-0 rounded-full', className)}
+      className="size-3 shrink-0 rounded-full"
       style={{ backgroundColor: project.color }}
       aria-hidden="true"
     />
   )
 }
-
-// ============================================================================
-// PROJECT SELECT COMPONENT
-// ============================================================================
 
 export const ProjectSelect = ({
   value,
@@ -62,41 +39,41 @@ export const ProjectSelect = ({
   projects,
   className
 }: ProjectSelectProps): React.JSX.Element => {
-  // Filter out archived projects
-  const availableProjects = projects.filter((p) => !p.isArchived)
-
-  // Find current project
+  const availableProjects = useMemo(() => projects.filter((p) => !p.isArchived), [projects])
   const currentProject = availableProjects.find((p) => p.id === value)
 
-  const handleValueChange = (newValue: string): void => {
-    onChange(newValue)
-  }
-
   return (
-    <Select value={value} onValueChange={handleValueChange}>
-      <SelectTrigger className={cn('w-full', className)} aria-label="Select project">
-        <SelectValue>
-          {currentProject ? (
-            <div className="flex items-center gap-2">
-              <ProjectIndicator project={currentProject} />
-              <span className="truncate">{currentProject.name}</span>
-            </div>
-          ) : (
-            <span className="text-muted-foreground">Select project</span>
-          )}
-        </SelectValue>
-      </SelectTrigger>
-      <SelectContent>
-        {availableProjects.map((project) => (
-          <SelectItem key={project.id} value={project.id} className="cursor-pointer">
-            <div className="flex items-center gap-2">
-              <ProjectIndicator project={project} />
-              <span className="truncate">{project.name}</span>
-            </div>
-          </SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
+    <Picker value={value} onValueChange={onChange}>
+      <Picker.Trigger
+        variant="button"
+        chevron
+        className={cn('w-full', className)}
+        aria-label="Select project"
+      >
+        {currentProject ? (
+          <span className="flex items-center gap-2 min-w-0">
+            <ProjectIndicator project={currentProject} />
+            <span className="truncate">{currentProject.name}</span>
+          </span>
+        ) : (
+          <span className="text-muted-foreground">Select project</span>
+        )}
+      </Picker.Trigger>
+      <Picker.Content width="trigger" align="start">
+        <Picker.List>
+          {availableProjects.map((project) => (
+            <Picker.Item
+              key={project.id}
+              value={project.id}
+              label={project.name}
+              icon={<ProjectIndicator project={project} />}
+              indicator="check"
+              indicatorColor={project.color}
+            />
+          ))}
+        </Picker.List>
+      </Picker.Content>
+    </Picker>
   )
 }
 

@@ -17,6 +17,7 @@ import {
   GroupByDropdown
 } from '@/components/tasks/filters'
 import { cn } from '@/lib/utils'
+import { PageToolbar } from '@/components/ui/page-toolbar'
 import {
   getFilteredTasks,
   getDefaultTodoStatus,
@@ -846,9 +847,9 @@ export const TasksPage = ({
     <>
       <div className={cn('h-full flex overflow-hidden', className)}>
         {/* Main Content Area */}
-        <main className="flex-1 min-w-0 flex flex-col overflow-hidden py-2 px-2">
+        <main className="flex-1 min-w-0 flex flex-col overflow-hidden">
           {/* Page Header — compact single-row toolbar */}
-          <div className="flex items-center gap-2.5 shrink-0 min-w-0 py-0.5 border-b border-border [font-synthesis:none] text-[13px] leading-4 antialiased">
+          <PageToolbar className="px-2 py-1 min-h-[38px]">
             <TasksTabBar
               activeTab={activeInternalTab}
               onTabChange={handleTabChange}
@@ -907,7 +908,7 @@ export const TasksPage = ({
                     strokeLinecap="round"
                   />
                 </svg>
-                <span className="text-[13px] font-medium">Filter</span>
+                <span className="text-[12px] font-medium">Filter</span>
                 {filtersActive && (
                   <span className="flex items-center justify-center size-[14px] rounded-full bg-foreground text-background text-[9px] font-bold">
                     {countActiveFilters(filters)}
@@ -978,7 +979,7 @@ export const TasksPage = ({
                 )}
               </div>
             )}
-          </div>
+          </PageToolbar>
 
           {/* Active Filter Chips */}
           {showFilterBar && (

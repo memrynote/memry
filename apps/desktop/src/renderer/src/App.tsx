@@ -11,6 +11,7 @@ import { DroppedPriorityProvider } from '@/contexts/dropped-priority-context'
 import { AIAgentProvider } from '@/contexts/ai-agent-context'
 import { AIInlineProvider } from '@/contexts/ai-inline-context'
 import { SidebarDrillDownProvider } from '@/contexts/sidebar-drill-down'
+import { SelectedFolderProvider } from '@/contexts/selected-folder-context'
 import { GlobalAIPanel } from '@/components/ai-agent'
 import { TaskDragOverlay } from '@/components/tasks/drag-drop'
 import { initialProjects, taskViews, type Project } from '@/data/tasks-data'
@@ -202,6 +203,7 @@ function App(): React.JSX.Element {
     if (prevVaultPathRef.current && prevVaultPathRef.current !== vaultPath) {
       queryClient.clear()
       localStorage.removeItem(STORAGE_KEY)
+      localStorage.removeItem('sidebar-tree-expanded')
       log.info('Vault switched, cleared query cache and tab state')
     }
     prevVaultPathRef.current = vaultPath
@@ -462,14 +464,16 @@ function App(): React.JSX.Element {
             <TabProvider>
               <TabPersistenceManager>
                 <SettingsModalProvider>
-                  <SidebarDrillDownProvider>
-                    <AppSidebar currentPage={currentPage} viewCounts={viewCounts} />
-                    <SidebarInset className="flex flex-col overflow-hidden">
-                      <AppContent />
-                    </SidebarInset>
-                  </SidebarDrillDownProvider>
-                  {/* Drag Overlay - only for task drag to sidebar */}
-                  <TaskDragOverlay projects={projectsWithCounts} />
+                  <SelectedFolderProvider>
+                    <SidebarDrillDownProvider>
+                      <AppSidebar currentPage={currentPage} viewCounts={viewCounts} />
+                      <SidebarInset className="flex flex-col overflow-hidden">
+                        <AppContent />
+                      </SidebarInset>
+                    </SidebarDrillDownProvider>
+                    {/* Drag Overlay - only for task drag to sidebar */}
+                    <TaskDragOverlay projects={projectsWithCounts} />
+                  </SelectedFolderProvider>
                 </SettingsModalProvider>
               </TabPersistenceManager>
             </TabProvider>

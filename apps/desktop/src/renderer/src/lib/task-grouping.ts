@@ -172,62 +172,47 @@ export const groupByCreatedDate = (tasks: Task[]): TaskGroup[] => {
 
 const STATUS_TYPE_ORDER: StatusType[] = ['todo', 'in_progress']
 
+const STATUS_TYPE_LABELS: Record<StatusType, string> = {
+  todo: 'To Do',
+  in_progress: 'In Progress',
+  done: 'Done'
+}
+
 export const groupByStatus = (tasks: Task[], projects: Project[]): TaskGroup[] => {
-  const statusMap = new Map<
-    string,
-    { name: string; type: StatusType; color: string; order: number; projectOrder: number }
-  >()
-  projects.forEach((project, pIdx) => {
+  const statusLookup = new Map<string, { type: StatusType; color: string }>()
+  projects.forEach((project) => {
     project.statuses.forEach((status) => {
-      if (!statusMap.has(status.id) && status.type !== 'done') {
-        statusMap.set(status.id, {
-          name: status.name,
-          type: status.type,
-          color: status.color,
-          order: status.order,
-          projectOrder: pIdx
-        })
+      if (!statusLookup.has(status.id)) {
+        statusLookup.set(status.id, { type: status.type, color: status.color })
       }
     })
   })
 
-  const buckets = new Map<string, Task[]>()
+  const typeColors = new Map<StatusType, string>()
+  for (const { type, color } of statusLookup.values()) {
+    if (!typeColors.has(type)) typeColors.set(type, color)
+  }
+
+  const buckets = new Map<StatusType, Task[]>()
   const uncategorized: Task[] = []
 
   tasks.forEach((task) => {
-    if (statusMap.has(task.statusId)) {
-      if (!buckets.has(task.statusId)) buckets.set(task.statusId, [])
-      buckets.get(task.statusId)!.push(task)
+    const info = statusLookup.get(task.statusId)
+    if (info) {
+      if (info.type === 'done') return
+      if (!buckets.has(info.type)) buckets.set(info.type, [])
+      buckets.get(info.type)!.push(task)
     } else {
-      const isDone = projects.some((p) =>
-        p.statuses.some((s) => s.id === task.statusId && s.type === 'done')
-      )
-      if (isDone) return
       uncategorized.push(task)
     }
   })
 
-  const result: TaskGroup[] = []
-
-  for (const [statusId, statusTasks] of buckets) {
-    const info = statusMap.get(statusId)!
-    result.push({
-      key: statusId,
-      label: info.name,
-      tasks: statusTasks,
-      color: info.color
-    })
-  }
-
-  result.sort((a, b) => {
-    const infoA = statusMap.get(a.key)!
-    const infoB = statusMap.get(b.key)!
-    const typeOrderA = STATUS_TYPE_ORDER.indexOf(infoA.type)
-    const typeOrderB = STATUS_TYPE_ORDER.indexOf(infoB.type)
-    if (typeOrderA !== typeOrderB) return typeOrderA - typeOrderB
-    if (infoA.projectOrder !== infoB.projectOrder) return infoA.projectOrder - infoB.projectOrder
-    return infoA.order - infoB.order
-  })
+  const result: TaskGroup[] = STATUS_TYPE_ORDER.filter((type) => buckets.has(type)).map((type) => ({
+    key: type,
+    label: STATUS_TYPE_LABELS[type],
+    tasks: buckets.get(type)!,
+    color: typeColors.get(type)
+  }))
 
   if (uncategorized.length > 0) {
     result.push({ key: 'uncategorized', label: 'Uncategorized', tasks: uncategorized })

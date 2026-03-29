@@ -66,6 +66,14 @@ export function GeneralSettings() {
     [updateTabSettings, updateContextSettings]
   )
 
+  const handleCreateInSelectedFolderChange = useCallback(
+    async (enabled: boolean) => {
+      const success = await updateGeneralSettings({ createInSelectedFolder: enabled })
+      if (!success) toast.error('Failed to update setting')
+    },
+    [updateGeneralSettings]
+  )
+
   const handleCloseButtonChange = useCallback(
     async (value: 'always' | 'hover' | 'active') => {
       const success = await updateTabSettings({ tabCloseButton: value })
@@ -80,14 +88,14 @@ export function GeneralSettings() {
 
   if (isLoading) {
     return (
-      <div className="flex flex-col antialiased">
+      <div className="flex flex-col">
         <SettingsHeader title="General" subtitle="Loading settings..." />
       </div>
     )
   }
 
   return (
-    <div className="flex flex-col antialiased text-xs/4">
+    <div className="flex flex-col text-xs/4">
       <SettingsHeader title="General" subtitle="Application startup and tab behavior" />
 
       <SettingsGroup label="Startup">
@@ -134,6 +142,19 @@ export function GeneralSettings() {
               <SelectItem value="active">Only on active tab</SelectItem>
             </SelectContent>
           </Select>
+        </SettingRow>
+      </SettingsGroup>
+
+      <SettingsGroup label="File Creation">
+        <SettingRow
+          label="Create in Selected Folder"
+          description="New notes and folders are created inside the currently selected folder. When off, items are always created at root."
+        >
+          <Switch
+            checked={generalSettings.createInSelectedFolder}
+            onCheckedChange={handleCreateInSelectedFolderChange}
+            className={ACCENT_SWITCH}
+          />
         </SettingRow>
       </SettingsGroup>
     </div>

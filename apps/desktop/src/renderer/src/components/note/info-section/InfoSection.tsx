@@ -1,5 +1,4 @@
 import { useState, useCallback, useMemo, useRef, useEffect, memo } from 'react'
-import { createPortal } from 'react-dom'
 import {
   DndContext,
   closestCenter,
@@ -23,19 +22,6 @@ import { InfoHeader } from './InfoHeader'
 import { PropertyRow } from './PropertyRow'
 import { AddPropertyPopup } from './AddPropertyPopup'
 
-/**
- * Generate a unique property name by adding incrementing suffix if needed.
- * E.g., "URL" → "URL", "URL 1", "URL 2", etc.
- */
-function getUniquePropertyName(baseName: string, existingNames: string[]): string {
-  if (!existingNames.includes(baseName)) return baseName
-  let counter = 1
-  while (existingNames.includes(`${baseName} ${counter}`)) {
-    counter++
-  }
-  return `${baseName} ${counter}`
-}
-
 export interface InfoSectionProps {
   properties: Property[]
   folderProperties?: PropertyTemplate[]
@@ -48,7 +34,8 @@ export interface InfoSectionProps {
   onDeleteProperty: (propertyId: string) => void
   disabled?: boolean
   initialVisibleCount?: number
-  variant?: 'default' | 'embedded'
+  variant?: 'default' | 'embedded' | 'inline'
+  hideAddButton?: boolean
 }
 
 export const InfoSection = memo(function InfoSection({
@@ -63,13 +50,11 @@ export const InfoSection = memo(function InfoSection({
   onDeleteProperty,
   disabled = false,
   initialVisibleCount = 4,
-  variant = 'default'
+  variant = 'default',
+  hideAddButton = false
 }: InfoSectionProps) {
   const [showAllProperties, setShowAllProperties] = useState(false)
-  const [isAddPopupOpen, setIsAddPopupOpen] = useState(false)
-  const [popupPosition, setPopupPosition] = useState<{ top: number; left: number } | null>(null)
   const [newlyAddedPropertyId, setNewlyAddedPropertyId] = useState<string | null>(null)
-  const addButtonRef = useRef<HTMLButtonElement>(null)
   const isSortable = Boolean(onPropertyOrderChange) && !disabled && properties.length > 1
 
   const sensors = useSensors(
@@ -121,22 +106,6 @@ export const InfoSection = memo(function InfoSection({
     setShowAllProperties((prev) => !prev)
   }, [])
 
-  const handleOpenAddPopup = useCallback(() => {
-    if (addButtonRef.current) {
-      const rect = addButtonRef.current.getBoundingClientRect()
-      setPopupPosition({
-        top: rect.bottom + 8,
-        left: rect.left
-      })
-    }
-    setIsAddPopupOpen(true)
-  }, [])
-
-  const handleCloseAddPopup = useCallback(() => {
-    setIsAddPopupOpen(false)
-    setPopupPosition(null)
-  }, [])
-
   // Track the previous properties length to detect new additions
   const prevPropertiesLength = useRef(properties.length)
 
@@ -155,16 +124,11 @@ export const InfoSection = memo(function InfoSection({
     prevPropertiesLength.current = properties.length
   }, [properties])
 
-  // Get list of existing property names for uniqueness check
-  const existingPropertyNames = useMemo(() => properties.map((p) => p.name), [properties])
-
-  // Handle adding new property with auto-increment for duplicate names
   const handleAddProperty = useCallback(
     (newProp: NewProperty) => {
-      const uniqueName = getUniquePropertyName(newProp.name, existingPropertyNames)
-      onAddProperty({ ...newProp, name: uniqueName })
+      onAddProperty(newProp)
     },
-    [onAddProperty, existingPropertyNames]
+    [onAddProperty]
   )
 
   const handleDragEnd = useCallback(
@@ -195,22 +159,28 @@ export const InfoSection = memo(function InfoSection({
     [visibleProperties]
   )
 
+  const isInline = variant === 'inline'
+  const effectiveExpanded = isInline || isExpanded
+  const showAddBtn = !hideAddButton && !isInline
+
   return (
     <div
       className={cn('flex flex-col', variant === 'default' && 'border-t border-b border-border')}
       role="region"
       aria-label="Note properties"
     >
-      {/* Toggle Header */}
-      <InfoHeader
-        isExpanded={isExpanded}
-        onToggle={onToggleExpand}
-        variant={variant}
-        propertyCount={properties.length}
-      />
+      {/* Toggle Header — hidden in inline mode */}
+      {!isInline && (
+        <InfoHeader
+          isExpanded={isExpanded}
+          onToggle={onToggleExpand}
+          variant={variant as 'default' | 'embedded'}
+          propertyCount={properties.length}
+        />
+      )}
 
       {/* Collapsible Content */}
-      {isExpanded && (
+      {effectiveExpanded && (
         <div id="properties-content">
           {/* Section Header */}
           {folderProperties && folderProperties.length > 0 && (
@@ -283,43 +253,29 @@ export const InfoSection = memo(function InfoSection({
             </button>
           )}
 
-          {/* Add Property Button */}
-          <div className="pt-2 pb-2.5">
-            <button
-              ref={addButtonRef}
-              type="button"
-              onClick={handleOpenAddPopup}
-              disabled={disabled}
-              className={cn(
-                'flex items-center gap-1.5',
-                'text-[12px] text-text-tertiary font-sans',
-                'transition-colors duration-150',
-                'hover:text-muted-foreground',
-                'disabled:opacity-50 disabled:cursor-not-allowed'
-              )}
-              aria-label="Add a new property to this note"
-              aria-haspopup="dialog"
-            >
-              <Plus className="h-3 w-3" aria-hidden="true" />
-              Add property
-            </button>
-          </div>
+          {showAddBtn && (
+            <div className="pt-2 pb-2.5">
+              <AddPropertyPopup onAdd={handleAddProperty} disabled={disabled}>
+                <button
+                  type="button"
+                  disabled={disabled}
+                  className={cn(
+                    'flex items-center gap-1.5',
+                    'text-[12px] text-text-tertiary font-sans',
+                    'transition-colors duration-150',
+                    'hover:text-muted-foreground',
+                    'disabled:opacity-50 disabled:cursor-not-allowed'
+                  )}
+                  aria-label="Add a new property to this note"
+                >
+                  <Plus className="h-3 w-3" aria-hidden="true" />
+                  Add property
+                </button>
+              </AddPropertyPopup>
+            </div>
+          )}
         </div>
       )}
-
-      {/* Portal for AddPropertyPopup */}
-      {isAddPopupOpen &&
-        popupPosition &&
-        createPortal(
-          <AddPropertyPopup
-            isOpen={isAddPopupOpen}
-            onClose={handleCloseAddPopup}
-            onAdd={handleAddProperty}
-            position={popupPosition}
-            existingPropertyNames={existingPropertyNames}
-          />,
-          document.body
-        )}
     </div>
   )
 })

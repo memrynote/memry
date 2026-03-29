@@ -247,11 +247,15 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps): Rea
       loop
       className="fixed inset-0 z-50"
     >
-      <div className="fixed inset-0 bg-black/50 backdrop-blur-sm" aria-hidden="true" />
-      <div className="fixed inset-0 flex items-start justify-center pt-[15vh] px-4">
+      <div className="fixed inset-0 bg-black/50" aria-hidden="true" />
+      <div
+        className="fixed inset-0 flex items-start justify-center pt-[15vh] px-4"
+        onClick={handleClose}
+      >
         <div
           className="w-full max-w-xl bg-background rounded-xl shadow-2xl
             border border-border overflow-hidden"
+          onClick={(e) => e.stopPropagation()}
         >
           <div className="flex items-center gap-3 px-4 border-b border-border">
             {loading ? (

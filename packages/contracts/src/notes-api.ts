@@ -56,15 +56,19 @@ export interface NoteLink {
   sourceId: string
   targetId: string | null
   targetTitle: string
-  lineNumber: number
+}
+
+export interface BacklinkContext {
+  snippet: string
+  linkStart: number
+  linkEnd: number
 }
 
 export interface Backlink {
   sourceId: string
   sourcePath: string
   sourceTitle: string
-  context: string // Surrounding text
-  lineNumber: number
+  contexts: BacklinkContext[]
 }
 
 // ============================================================================

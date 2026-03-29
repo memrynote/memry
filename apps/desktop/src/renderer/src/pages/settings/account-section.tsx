@@ -89,7 +89,7 @@ export function AccountSettings() {
 
   if (state.status === 'checking') {
     return (
-      <div className="flex flex-col antialiased">
+      <div className="flex flex-col">
         <SettingsHeader title="Account" subtitle="Loading..." />
       </div>
     )
@@ -97,7 +97,7 @@ export function AccountSettings() {
 
   if (state.status !== 'authenticated') {
     return (
-      <div className="flex flex-col items-center antialiased text-xs/4">
+      <div className="flex flex-col items-center text-xs/4">
         <div className="w-full max-w-sm">
           <SetupWizard />
         </div>
@@ -111,7 +111,7 @@ export function AccountSettings() {
   const isToggleDisabled = syncStatus.status === 'syncing' || syncStatus.status === 'offline'
 
   return (
-    <div className="flex flex-col antialiased text-xs/4">
+    <div className="flex flex-col text-xs/4">
       <SettingsHeader title="Account" subtitle="Your account, sync, and security" />
 
       <SettingsGroup label="Identity">

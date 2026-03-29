@@ -22,13 +22,14 @@ import {
   type JournalViewState
 } from '@/components/journal'
 import { ContentArea, type Block, type HeadingInfo } from '@/components/note'
+import { BacklinksSection, type Backlink } from '@/components/note/backlinks'
 
 import { TemplateSelector } from '@/components/note/template-selector'
 import { TagsRow, type Tag } from '@/components/note/tags-row'
 import { InfoSection } from '@/components/note/info-section'
 import { OutlineInfoPanel, type HeadingItem } from '@/components/shared'
 import { useActiveHeading } from '@/hooks/use-active-heading'
-import { useNoteTagsQuery } from '@/hooks/use-notes-query'
+import { useNoteTagsQuery, useNoteLinksQuery } from '@/hooks/use-notes-query'
 import { usePropertySection } from '@/hooks/use-property-section'
 import { useTemplates } from '@/hooks/use-templates'
 import { useJournalSettings } from '@/hooks/use-journal-settings'
@@ -138,6 +139,11 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
 
   // Day context hook
   const { tasks: dayTasks, overdueCount } = useDayContext(selectedDate)
+
+  // Backlinks hook
+  const { incoming: rawBacklinks, isLoading: backlinksLoading } = useNoteLinksQuery(
+    entry?.id ?? null
+  )
 
   // Tags hook
   const { tags: allAvailableTags } = useNoteTagsQuery()
@@ -316,9 +322,11 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
     return getMonthStats(year, heatmapData)
   }, [yearStatsData, viewState, dateParts.year, heatmapData])
 
+  const journalScrollRef = useRef<HTMLDivElement>(null)
   const { activeHeadingId } = useActiveHeading({
     headings,
-    offset: 120
+    offset: 120,
+    scrollContainerRef: journalScrollRef
   })
 
   const documentStats = useMemo(() => {
@@ -698,6 +706,55 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
     [navigateToDay]
   )
 
+  // Backlinks transform
+  const backlinks: Backlink[] = useMemo(() => {
+    return rawBacklinks.map((bl) => {
+      const folderPath = bl.sourcePath
+        .split('/')
+        .slice(0, -1)
+        .join('/')
+        .replace(/^notes\//, '')
+      return {
+        id: bl.sourceId,
+        noteId: bl.sourceId,
+        noteTitle: bl.sourceTitle,
+        folder: folderPath,
+        date: new Date(),
+        mentions: (bl.contexts ?? []).map((ctx, i) => ({
+          id: `mention-${bl.sourceId}-${i}`,
+          snippet: ctx.snippet,
+          linkStart: ctx.linkStart,
+          linkEnd: ctx.linkEnd
+        }))
+      }
+    })
+  }, [rawBacklinks])
+
+  const handleBacklinkClick = useCallback(
+    (backlinkNoteId: string) => {
+      const backlink = backlinks.find((bl) => bl.noteId === backlinkNoteId)
+      const noteTitle = backlink?.noteTitle || 'Note'
+
+      if (backlinkNoteId.startsWith('j')) {
+        const dateStr = backlinkNoteId.slice(1)
+        navigateToDay(dateStr)
+      } else {
+        openTab({
+          type: 'note',
+          title: noteTitle,
+          icon: 'file-text',
+          path: `/notes/${backlinkNoteId}`,
+          entityId: backlinkNoteId,
+          isPinned: false,
+          isModified: false,
+          isPreview: true,
+          isDeleted: false
+        })
+      }
+    },
+    [openTab, backlinks, navigateToDay]
+  )
+
   // Keyboard Shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -749,7 +806,7 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
             onPrev={findInPage.prev}
             onClose={findInPage.close}
           />
-          <div className={cn('h-full overflow-y-auto')}>
+          <div ref={journalScrollRef} className={cn('h-full overflow-y-auto')}>
             <div className={cn('mx-auto min-h-full flex flex-col pt-0 pb-10 lg:pb-16')}>
               {/* Header */}
               <header className="relative mb-8 lg:mb-6 w-full">
@@ -931,6 +988,23 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
                           />
                         )}
                       </div>
+
+                      {/* Backlinks section */}
+                      {entry && backlinks.length > 0 && (
+                        <div
+                          className={cn(
+                            'mt-6 transition-all duration-500 ease-in-out',
+                            isCompactMode ? 'pl-0' : 'pl-6 lg:pl-8'
+                          )}
+                        >
+                          <BacklinksSection
+                            backlinks={backlinks}
+                            isLoading={backlinksLoading}
+                            initialCount={5}
+                            onBacklinkClick={handleBacklinkClick}
+                          />
+                        </div>
+                      )}
                     </>
                   )}
 

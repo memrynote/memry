@@ -13,6 +13,7 @@ import {
   Book01Icon,
   BookOpen01Icon,
   Bookmark01Icon,
+  Bookmark02Icon,
   BotIcon,
   BrainIcon,
   BrushIcon,
@@ -41,6 +42,7 @@ import {
   FileImageIcon,
   FileInputIcon,
   FileMinusIcon,
+  FilePasteIcon,
   FilePenIcon,
   FilePlusIcon,
   FileSearchIcon,
@@ -281,6 +283,7 @@ export const FileSearch = createIcon(FileSearchIcon)
 export const Files = createIcon(Files01Icon)
 export const FileInput = createIcon(FileInputIcon)
 export const FileWarning = createIcon(FileExclamationPointIcon)
+export const FilePaste = createIcon(FilePasteIcon)
 export const FilePdf = createIcon(Pdf01Icon)
 export const FileType2 = createIcon(FileTypeIcon)
 export const FileIcon_ = File
@@ -307,6 +310,7 @@ export const FolderKanban = createIcon(FolderKanbanIcon)
 export const Book = createIcon(Book01Icon)
 export const BookOpen = createIcon(BookOpen01Icon)
 export const Bookmark = createIcon(Bookmark01Icon)
+export const Bookmark2 = createIcon(Bookmark02Icon)
 export const BookMarked = createIcon(BookBookmark01Icon)
 export const Box = createIcon(CubeIcon)
 export const Package = createIcon(PackageIcon)

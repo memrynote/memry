@@ -313,8 +313,8 @@ describe('task-grouping', () => {
 
       // #then — done group excluded
       expect(result).toHaveLength(2)
-      expect(result.map((g) => g.key)).toEqual(['s-todo', 's-doing'])
-      expect(result.map((g) => g.label)).toEqual(['Todo', 'In Progress'])
+      expect(result.map((g) => g.key)).toEqual(['todo', 'in_progress'])
+      expect(result.map((g) => g.label)).toEqual(['To Do', 'In Progress'])
     })
 
     it('should not place done tasks in uncategorized', () => {
@@ -375,8 +375,8 @@ describe('task-grouping', () => {
       const result = groupByStatus([doingTask, todoTask], [project])
 
       // #then — todo before in_progress
-      expect(result[0].key).toBe('s-todo')
-      expect(result[1].key).toBe('s-doing')
+      expect(result[0].key).toBe('todo')
+      expect(result[1].key).toBe('in_progress')
     })
   })
 

@@ -1,5 +1,5 @@
 import { cn } from '@/lib/utils'
-import { TAG_COLORS, COLOR_ROWS, getTagColors } from './tag-colors'
+import { TAG_COLORS, COLOR_ROWS, getTagColors, withAlpha } from './tag-colors'
 import { Check } from '@/lib/icons'
 
 interface ColorPickerProps {
@@ -22,15 +22,15 @@ export function ColorPicker({
   return (
     <div className="p-3">
       {/* Header */}
-      <div className="mb-3 text-sm font-medium text-stone-700">
+      <div className="mb-3 text-sm font-medium text-foreground">
         Create tag: &ldquo;{tagName}&rdquo;
       </div>
 
       {/* Divider */}
-      <div className="mb-3 border-t border-stone-200" />
+      <div className="mb-3 border-t border-border" />
 
       {/* Color label */}
-      <div className="mb-2 text-xs font-medium text-stone-500">Choose color:</div>
+      <div className="mb-2 text-xs font-medium text-muted-foreground">Choose color:</div>
 
       {/* Color grid */}
       <div className="mb-4 space-y-2">
@@ -52,11 +52,11 @@ export function ColorPicker({
                     'transition-all duration-150',
                     'hover:scale-110',
                     'focus:outline-none',
-                    isSelected && 'ring-2 ring-stone-400 ring-offset-1'
+                    isSelected && 'ring-2 ring-white/30 ring-offset-1 ring-offset-background'
                   )}
                   style={{ backgroundColor: colors.background }}
                 >
-                  {isSelected && <Check className="h-3 w-3" style={{ color: colors.text }} />}
+                  {isSelected && <Check className="h-3 w-3 text-background" />}
                 </button>
               )
             })}
@@ -66,11 +66,11 @@ export function ColorPicker({
 
       {/* Preview */}
       <div className="mb-4">
-        <div className="mb-1 text-xs font-medium text-stone-500">Preview:</div>
+        <div className="mb-1 text-xs font-medium text-muted-foreground">Preview:</div>
         <span
-          className="inline-flex items-center rounded-full px-3 py-1 text-[13px] font-medium"
+          className="inline-flex items-center rounded-[10px] px-2 py-0.5 text-[11px]/3.5 font-medium [font-synthesis:none]"
           style={{
-            backgroundColor: previewColors.background,
+            backgroundColor: withAlpha(previewColors.text, 0.12),
             color: previewColors.text
           }}
         >
@@ -85,9 +85,9 @@ export function ColorPicker({
           onClick={onCancel}
           className={cn(
             'rounded-md px-3 py-1.5',
-            'text-sm text-stone-600',
+            'text-sm text-muted-foreground',
             'transition-colors duration-150',
-            'hover:bg-stone-100'
+            'hover:bg-muted'
           )}
         >
           Cancel
@@ -97,10 +97,10 @@ export function ColorPicker({
           onClick={onConfirm}
           className={cn(
             'rounded-md px-3 py-1.5',
-            'text-sm font-medium text-white',
-            'bg-stone-900',
+            'text-sm font-medium text-background',
+            'bg-foreground',
             'transition-colors duration-150',
-            'hover:bg-stone-800'
+            'hover:bg-foreground/90'
           )}
         >
           Create

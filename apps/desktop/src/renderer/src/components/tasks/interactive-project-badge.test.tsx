@@ -89,12 +89,10 @@ describe('InteractiveProjectBadge', () => {
 
     await user.click(screen.getByRole('button', { name: /project:.*click to change/i }))
 
-    const popoverButtons = screen
-      .getAllByRole('button')
-      .filter((btn) => btn.closest('[data-radix-popper-content-wrapper]'))
-    const popoverLabels = popoverButtons.map((btn) => btn.textContent)
-    expect(popoverLabels).toContain('Personal')
-    expect(popoverLabels).toContain('Work')
+    const options = screen.getAllByRole('option')
+    const optionLabels = options.map((opt) => opt.textContent)
+    expect(optionLabels).toContain('Personal')
+    expect(optionLabels).toContain('Work')
   })
 
   it('excludes archived projects from the dropdown', async () => {
@@ -128,7 +126,7 @@ describe('InteractiveProjectBadge', () => {
     expect(onProjectChange).toHaveBeenCalledWith('proj-2')
   })
 
-  it('highlights currently selected project with font-medium', async () => {
+  it('highlights currently selected project with aria-selected', async () => {
     const user = userEvent.setup()
     render(
       <InteractiveProjectBadge
@@ -140,11 +138,10 @@ describe('InteractiveProjectBadge', () => {
 
     await user.click(screen.getByRole('button', { name: /project:.*click to change/i }))
 
-    const options = screen
-      .getAllByRole('button')
-      .filter((btn) => btn.closest('[data-radix-popper-content-wrapper]'))
-    const personalOption = options.find((btn) => btn.textContent?.includes('Personal'))
+    const options = screen.getAllByRole('option')
+    const personalOption = options.find((opt) => opt.textContent?.includes('Personal'))
     expect(personalOption).toBeDefined()
+    expect(personalOption).toHaveAttribute('aria-selected', 'true')
   })
 
   it('does not call onProjectChange when selecting the same project', async () => {
@@ -159,10 +156,8 @@ describe('InteractiveProjectBadge', () => {
 
     await user.click(screen.getByRole('button', { name: /project:.*click to change/i }))
 
-    const popoverButtons = screen
-      .getAllByRole('button')
-      .filter((btn) => btn.closest('[data-radix-popper-content-wrapper]'))
-    const personalOption = popoverButtons.find((btn) => btn.textContent?.includes('Personal'))!
+    const options = screen.getAllByRole('option')
+    const personalOption = options.find((opt) => opt.textContent?.includes('Personal'))!
     await user.click(personalOption)
 
     expect(onProjectChange).not.toHaveBeenCalled()

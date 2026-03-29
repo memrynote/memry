@@ -1,6 +1,5 @@
 export { NoteTitle } from './NoteTitle'
 export type { NoteTitleProps } from './NoteTitle'
-export { EmojiButton } from './EmojiButton'
 export { EmojiPicker } from './EmojiPicker'
 export { TitleInput } from './TitleInput'
 export { useClickOutside } from './use-click-outside'

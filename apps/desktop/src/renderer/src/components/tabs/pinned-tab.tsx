@@ -49,7 +49,7 @@ export const PinnedTab = ({
         <div
           className={cn(
             'relative flex items-center justify-center',
-            'w-9 h-9 cursor-pointer',
+            'w-9 h-9 pt-0.5 cursor-pointer',
             'select-none',
             'border-r border-r-border/40',
             'border-b-2',

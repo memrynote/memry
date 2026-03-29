@@ -9,9 +9,11 @@ import type { TabSystemState } from '@/contexts/tabs/types'
 import { getDefaultStorage, saveSync } from './storage'
 import { serializeTabState, deserializeTabState, extractPinnedTabs } from './serialization'
 import type { TabStorage } from './types'
+import { registerPendingSave, unregisterPendingSave } from '@/lib/save-registry'
 import { createLogger } from '@/lib/logger'
 
 const log = createLogger('TabPersistence:Hooks')
+const FLUSH_REGISTRY_KEY = 'tab-state'
 
 // =============================================================================
 // AUTO-SAVE HOOK
@@ -34,27 +36,47 @@ export const useTabPersistence = (options: UseTabPersistenceOptions = {}): void 
   const { state } = useTabs()
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const lastSavedRef = useRef<string>('')
+  const stateRef = useRef(state)
+
+  // Keep ref in sync for flush registry access
+  useEffect(() => {
+    stateRef.current = state
+  })
+
+  // Register with flush registry so Cmd+Q saves tab state before exit
+  useEffect(() => {
+    if (!enabled) return
+
+    registerPendingSave(FLUSH_REGISTRY_KEY, () => {
+      const serialized = serializeTabState(stateRef.current)
+      saveSync(serialized)
+      log.info('flushed tab state via registry')
+    })
+
+    return () => unregisterPendingSave(FLUSH_REGISTRY_KEY)
+  }, [enabled])
 
   // Debounced save
   useEffect(() => {
     if (!enabled) return
 
-    // Serialize current state
     const serialized = serializeTabState(state)
     const json = JSON.stringify(serialized)
 
-    // Skip if nothing changed
     if (json === lastSavedRef.current) return
 
-    // Clear previous timeout
     if (saveTimeoutRef.current) {
       clearTimeout(saveTimeoutRef.current)
     }
 
-    // Save after debounce delay
+    const tabTypes = Object.values(state.tabGroups)
+      .flatMap((g) => g.tabs)
+      .map((t) => `${t.type}${t.isPreview ? '(preview)' : ''}`)
+
     saveTimeoutRef.current = setTimeout(() => {
       void storage.save(serialized).then(() => {
         lastSavedRef.current = json
+        log.info('debounced save complete', { tabs: tabTypes })
       })
     }, debounceMs)
 
@@ -65,7 +87,7 @@ export const useTabPersistence = (options: UseTabPersistenceOptions = {}): void 
     }
   }, [state, storage, debounceMs, enabled])
 
-  // Save immediately on page unload
+  // Save immediately on page unload (fallback)
   useEffect(() => {
     if (!enabled) return
 
@@ -123,18 +145,29 @@ export const useSessionRestore = (
       const persisted = await storage.load()
 
       if (persisted) {
+        const persistedTabs = Object.values(persisted.tabGroups).flatMap((g) => g.tabs)
+        log.info('loaded persisted state', {
+          version: persisted.version,
+          groups: Object.keys(persisted.tabGroups).length,
+          tabs: persistedTabs.map((t) => t.type),
+          restoreEnabled: state.settings.restoreSessionOnStart
+        })
+
         if (state.settings.restoreSessionOnStart) {
-          // Full restore
           const restored = deserializeTabState(persisted)
+          const restoredTabs = Object.values((restored as TabSystemState).tabGroups).flatMap(
+            (g) => g.tabs
+          )
           dispatch({
             type: 'RESTORE_SESSION',
             payload: restored as TabSystemState
           })
+          log.info('session restored', {
+            tabs: restoredTabs.map((t) => `${t.type}:${t.entityId ?? 'none'}`)
+          })
         } else {
-          // Only restore pinned tabs
           const pinnedTabs = extractPinnedTabs(persisted)
           if (pinnedTabs.length > 0) {
-            // Add pinned tabs to current state
             for (const tab of pinnedTabs) {
               dispatch({
                 type: 'OPEN_TAB',
@@ -157,7 +190,10 @@ export const useSessionRestore = (
               })
             }
           }
+          log.info('restored pinned tabs only', { count: pinnedTabs.length })
         }
+      } else {
+        log.info('no persisted tab state found')
       }
 
       hasRestoredRef.current = true

@@ -239,7 +239,7 @@ export const TaskDetailDrawer = memo(function TaskDetailDrawer({
         isOpen ? 'w-[380px] opacity-100 border-border' : 'w-0 opacity-0 border-transparent'
       )}
     >
-      <div className="w-[380px] h-full flex flex-col overflow-y-auto scrollbar-thin [font-synthesis:none] text-[12px] leading-4 antialiased">
+      <div className="w-[380px] h-full flex flex-col overflow-y-auto scrollbar-thin [font-synthesis:none] text-[12px] leading-4">
         {task && project && (
           <>
             {/* ── Header: editable title + close ── */}

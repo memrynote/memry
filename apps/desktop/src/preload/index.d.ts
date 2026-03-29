@@ -59,7 +59,7 @@ export interface Note {
   emoji?: string | null // T028: Emoji icon for visual identification
 }
 
-// T020: Property types
+// T020: Property types — canonical set from @memry/contracts/property-types
 export type PropertyType =
   | 'text'
   | 'number'
@@ -67,6 +67,7 @@ export type PropertyType =
   | 'date'
   | 'select'
   | 'multiselect'
+  | 'status'
   | 'url'
   | 'rating'
 
@@ -311,6 +312,15 @@ export interface WikiLinkResolution {
   fileType: 'markdown' | 'pdf' | 'image' | 'audio' | 'video'
 }
 
+export interface WikiLinkPreview {
+  id: string
+  title: string
+  emoji: string | null
+  snippet: string | null
+  tags: Array<{ name: string; color: string }>
+  createdAt: string
+}
+
 export interface NoteCreateInput {
   title: string
   content?: string
@@ -359,15 +369,19 @@ export interface NoteLink {
   sourceId: string
   targetId: string | null
   targetTitle: string
-  lineNumber: number
+}
+
+export interface BacklinkContext {
+  snippet: string
+  linkStart: number
+  linkEnd: number
 }
 
 export interface Backlink {
   sourceId: string
   sourcePath: string
   sourceTitle: string
-  context: string
-  lineNumber: number
+  contexts: BacklinkContext[]
 }
 
 export interface NoteLinksResponse {
@@ -866,6 +880,7 @@ export interface NotesClientAPI {
   getByPath(path: string): Promise<Note | null>
   getFile(id: string): Promise<FileMetadata | null>
   resolveByTitle(title: string): Promise<WikiLinkResolution | null>
+  previewByTitle(title: string): Promise<WikiLinkPreview | null>
   update(input: NoteUpdateInput): Promise<NoteUpdateResponse>
   rename(id: string, newTitle: string): Promise<NoteUpdateResponse>
   move(id: string, newFolder: string): Promise<NoteUpdateResponse>
@@ -889,6 +904,28 @@ export interface NotesClientAPI {
   updatePropertyDefinition(
     input: UpdatePropertyDefinitionInput
   ): Promise<CreatePropertyDefinitionResponse>
+  ensurePropertyDefinition(name: string, type: string): Promise<{ success: boolean }>
+  addPropertyOption(
+    propertyName: string,
+    option: { value: string; color: string }
+  ): Promise<{ success: boolean }>
+  addStatusOption(
+    propertyName: string,
+    categoryKey: string,
+    option: { value: string; color: string }
+  ): Promise<{ success: boolean }>
+  removePropertyOption(propertyName: string, optionValue: string): Promise<{ success: boolean }>
+  renamePropertyOption(
+    propertyName: string,
+    oldValue: string,
+    newValue: string
+  ): Promise<{ success: boolean }>
+  updateOptionColor(
+    propertyName: string,
+    optionValue: string,
+    newColor: string
+  ): Promise<{ success: boolean }>
+  deletePropertyDefinition(name: string): Promise<{ success: boolean }>
   // T070: Attachments API
   uploadAttachment(noteId: string, file: File): Promise<AttachmentResult>
   listAttachments(noteId: string): Promise<AttachmentInfo[]>
@@ -2062,6 +2099,7 @@ export interface GeneralSettingsDTO {
   startOnBoot: boolean
   language: string
   onboardingCompleted: boolean
+  createInSelectedFolder: boolean
 }
 
 export interface EditorSettingsDTO {

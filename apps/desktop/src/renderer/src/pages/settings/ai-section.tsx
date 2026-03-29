@@ -143,14 +143,14 @@ export function AISettings() {
 
   if (isLoading) {
     return (
-      <div className="flex flex-col antialiased">
+      <div className="flex flex-col">
         <SettingsHeader title="AI Assistant" subtitle="Loading settings..." />
       </div>
     )
   }
 
   return (
-    <div className="flex flex-col antialiased text-xs/4">
+    <div className="flex flex-col text-xs/4">
       <SettingsHeader
         title="AI Assistant"
         subtitle="All AI processing runs locally on your device"

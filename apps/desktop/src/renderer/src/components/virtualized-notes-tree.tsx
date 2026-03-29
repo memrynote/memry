@@ -8,7 +8,15 @@
  * @module components/virtualized-notes-tree
  */
 
-import { useRef, useCallback, useMemo, useState, useEffect, useLayoutEffect } from 'react'
+import {
+  useRef,
+  useCallback,
+  useMemo,
+  useState,
+  useEffect,
+  useLayoutEffect,
+  useImperativeHandle
+} from 'react'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import {
   FileText,
@@ -32,6 +40,7 @@ import { useTabActions } from '@/contexts/tabs'
 import type { NoteListItem } from '@/hooks/use-notes-query'
 import {
   flattenTree,
+  getAllFolderIds,
   TREE_ROW_HEIGHT,
   type TreeStructure,
   type FolderVirtualItem,
@@ -67,7 +76,16 @@ type DragState = {
   dropPosition: DropPosition | null
 }
 
+export interface VirtualizedTreeActions {
+  expandAll: () => void
+  collapseAll: () => void
+  expandNode: (nodeId: string) => void
+  expandNodes: (nodeIds: string[]) => void
+}
+
 interface VirtualizedNotesTreeProps {
+  /** Ref to expose expand/collapse actions to the parent */
+  actionsRef?: React.RefObject<VirtualizedTreeActions | null>
   /** Tree structure with folders and notes */
   tree: TreeStructure
   /** Currently selected note/folder IDs */
@@ -158,7 +176,7 @@ function getFileIcon(note: NoteListItem): React.ReactElement {
 /**
  * Storage key for expanded folders
  */
-const EXPANDED_FOLDERS_KEY = 'memry:notes-tree:expanded-folders'
+const EXPANDED_FOLDERS_KEY = 'sidebar-tree-expanded'
 
 /**
  * Load expanded folder IDs from localStorage
@@ -648,6 +666,7 @@ function NoteRow({
 // ============================================================================
 
 export function VirtualizedNotesTree({
+  actionsRef,
   tree,
   selectedIds,
   onSelectionChange,
@@ -677,6 +696,30 @@ export function VirtualizedNotesTree({
 
   // Expanded folders state (persisted to localStorage)
   const [expandedIds, setExpandedIds] = useState<Set<string>>(() => loadExpandedFolders())
+
+  // Expose expand/collapse actions to parent
+  useImperativeHandle(
+    actionsRef,
+    () => ({
+      expandAll: () => {
+        setExpandedIds(new Set(getAllFolderIds(tree)))
+      },
+      collapseAll: () => {
+        setExpandedIds(new Set())
+      },
+      expandNode: (nodeId: string) => {
+        setExpandedIds((prev) => {
+          const next = new Set(prev)
+          next.add(nodeId)
+          return next
+        })
+      },
+      expandNodes: (nodeIds: string[]) => {
+        setExpandedIds(new Set(nodeIds))
+      }
+    }),
+    [tree]
+  )
 
   // Drag state
   const [dragState, setDragState] = useState<DragState>({

@@ -1,6 +1,5 @@
-import { Sparkles, ChevronDown, Check, Monitor } from '@/lib/icons'
-import { cn } from '@/lib/utils'
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { Sparkles, Monitor } from '@/lib/icons'
+import { Picker } from '@/components/ui/picker'
 import { AVAILABLE_MODELS, type ModelOption } from './types'
 
 interface ModelSelectorProps {
@@ -8,7 +7,6 @@ interface ModelSelectorProps {
   onModelChange: (modelId: string) => void
 }
 
-// Simple OpenAI logo SVG
 function OpenAILogo({ className }: { className?: string }) {
   return (
     <svg
@@ -22,60 +20,42 @@ function OpenAILogo({ className }: { className?: string }) {
   )
 }
 
+function getProviderIcon(model: ModelOption) {
+  if (model.provider === 'openai') {
+    return <OpenAILogo className="h-3.5 w-3.5" />
+  }
+  return <Monitor className="h-3.5 w-3.5" />
+}
+
 export function ModelSelector({ selectedModel, onModelChange }: ModelSelectorProps) {
   const currentModel = AVAILABLE_MODELS.find((m) => m.id === selectedModel) || AVAILABLE_MODELS[0]
 
-  const getProviderIcon = (model: ModelOption) => {
-    if (model.provider === 'openai') {
-      return <OpenAILogo className="h-3.5 w-3.5" />
-    }
-    return <Monitor className="h-3.5 w-3.5" />
-  }
-
   return (
-    <Popover>
-      <PopoverTrigger asChild>
+    <Picker value={selectedModel} onValueChange={onModelChange}>
+      <Picker.Trigger asChild>
         <button
           type="button"
-          className={cn(
-            'inline-flex items-center gap-1.5',
-            'bg-stone-50 hover:bg-stone-100',
-            'border border-stone-200 rounded-full',
-            'px-3 py-1.5',
-            'transition-colors duration-150',
-            'focus:outline-none'
-          )}
+          className="inline-flex items-center gap-1.5 bg-muted hover:bg-accent border border-border rounded-full px-3 py-1.5 transition-colors duration-150 focus:outline-none"
         >
-          <Sparkles className="h-3.5 w-3.5 text-stone-500" />
-          <span className="text-xs font-medium text-stone-600">{currentModel.name}</span>
-          <ChevronDown className="h-3 w-3 text-stone-400" />
+          <Sparkles className="h-3.5 w-3.5 text-muted-foreground" />
+          <span className="text-xs font-medium text-foreground">{currentModel.name}</span>
         </button>
-      </PopoverTrigger>
-      <PopoverContent side="top" align="center" className="w-56 p-1">
-        <div className="space-y-0.5">
+      </Picker.Trigger>
+      <Picker.Content width={224} side="top" align="center">
+        <Picker.List>
           {AVAILABLE_MODELS.map((model) => (
-            <button
+            <Picker.Item
               key={model.id}
-              type="button"
-              onClick={() => onModelChange(model.id)}
-              className={cn(
-                'w-full flex items-center gap-3 px-3 py-2 rounded-md',
-                'text-left transition-colors duration-150',
-                'hover:bg-stone-100',
-                'focus:outline-none focus:bg-stone-100',
-                selectedModel === model.id && 'bg-stone-100'
-              )}
-            >
-              <span className="text-stone-500">{getProviderIcon(model)}</span>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-stone-900 truncate">{model.name}</p>
-                <p className="text-xs text-stone-500 truncate">{model.description}</p>
-              </div>
-              {selectedModel === model.id && <Check className="h-4 w-4 text-tint shrink-0" />}
-            </button>
+              value={model.id}
+              label={model.name}
+              description={model.description}
+              icon={<span className="text-muted-foreground">{getProviderIcon(model)}</span>}
+              indicator="check"
+              indicatorColor="var(--tint)"
+            />
           ))}
-        </div>
-      </PopoverContent>
-    </Popover>
+        </Picker.List>
+      </Picker.Content>
+    </Picker>
   )
 }

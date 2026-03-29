@@ -22,21 +22,13 @@ export const useTabKeyboardShortcuts = (): void => {
       // TAB CRUD
       // =====================================================================
 
-      // New tab (⌘T)
+      // New tab (⌘T) — opens the new-tab dropdown menu
       {
         key: 't',
         modifiers: { meta: true },
-        action: () =>
-          openTab({
-            type: 'inbox',
-            title: 'Inbox',
-            icon: 'inbox',
-            path: '/inbox',
-            isPinned: false,
-            isModified: false,
-            isPreview: false,
-            isDeleted: false
-          }),
+        action: () => {
+          window.dispatchEvent(new CustomEvent('memry:new-tab-menu'))
+        },
         description: 'New tab'
       },
 

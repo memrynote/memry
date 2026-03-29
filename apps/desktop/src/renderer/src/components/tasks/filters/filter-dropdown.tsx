@@ -1,8 +1,7 @@
 import { useState, useCallback, useMemo } from 'react'
 
 import { ChevronRight } from '@/lib/icons'
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
-import { FilterSearchHeader } from '@/components/ui/filter-search-header'
+import { Picker } from '@/components/ui/picker'
 import type { TaskFilters, Project, Status, DueDateFilterType } from '@/data/tasks-data'
 import type { Priority, Task } from '@/data/sample-tasks'
 import type { SavedFilter } from '@/data/tasks-data'
@@ -193,110 +192,104 @@ export const FilterDropdown = ({
   }, [searchQuery])
 
   return (
-    <Popover open={open} onOpenChange={handleOpenChange}>
-      <PopoverTrigger asChild>{children}</PopoverTrigger>
-      <PopoverContent
-        className="w-[220px] p-0 rounded-md overflow-clip bg-popover border-border shadow-[var(--shadow-card-hover)] max-h-[calc(100vh-120px)] overflow-y-auto"
+    <Picker open={open} onOpenChange={handleOpenChange} closeOnSelect={false}>
+      <Picker.Trigger asChild>{children}</Picker.Trigger>
+      <Picker.Content
+        width={220}
         align="end"
         sideOffset={8}
+        className="max-h-[calc(100vh-120px)] overflow-y-auto"
       >
-        <div className="flex flex-col text-[13px] leading-4 [font-synthesis:none] antialiased">
-          {/* Main menu */}
-          {activePanel === null && (
-            <>
-              <FilterSearchHeader
-                value={searchQuery}
-                onChange={setSearchQuery}
-                placeholder="Filter by..."
-              />
-              <div className="flex flex-col p-1">
-                {filteredCategories.map((cat) => (
-                  <button
-                    key={cat.key}
-                    type="button"
-                    onClick={() => {
-                      if (cat.key === 'status' && statusesProp.length === 0) {
-                        navigateTo('status-project-picker')
-                      } else {
-                        navigateTo(cat.key)
-                      }
-                    }}
-                    className="flex items-center rounded-[5px] py-1.5 px-2 gap-2 hover:bg-accent transition-colors"
-                  >
-                    {CATEGORY_ICONS[cat.key]}
-                    <span className="text-[13px] text-muted-foreground leading-4">{cat.label}</span>
-                    <ChevronRight size={10} className="ml-auto text-muted-foreground/60" />
-                  </button>
-                ))}
-              </div>
-              <SavedFiltersSection
-                savedFilters={savedFilters}
-                activeSavedFilterId={activeSavedFilterId}
-                hasActiveFilters={hasActiveFilters}
-                onApply={onApplySavedFilter}
-                onDelete={onDeleteSavedFilter}
-                onToggleStar={onToggleStarFilter}
-                onSave={onSaveFilter}
-              />
-            </>
-          )}
-
-          {activePanel === 'priority' && (
-            <PriorityPanel
-              searchQuery={searchQuery}
-              onSearchChange={setSearchQuery}
-              selectedPriorities={filters.priorities}
-              onTogglePriority={togglePriority}
-              onClose={() => handleOpenChange(false)}
-              onGoBack={goBack}
-              tasks={tasks}
+        {activePanel === null && (
+          <>
+            <Picker.Search placeholder="Filter by..." />
+            <Picker.List>
+              {filteredCategories.map((cat) => (
+                <button
+                  key={cat.key}
+                  type="button"
+                  onClick={() => {
+                    if (cat.key === 'status' && statusesProp.length === 0) {
+                      navigateTo('status-project-picker')
+                    } else {
+                      navigateTo(cat.key)
+                    }
+                  }}
+                  className="flex items-center rounded-[5px] py-1.5 px-2 gap-2 hover:bg-accent transition-colors"
+                >
+                  {CATEGORY_ICONS[cat.key]}
+                  <span className="text-muted-foreground">{cat.label}</span>
+                  <ChevronRight size={10} className="ml-auto text-muted-foreground/60" />
+                </button>
+              ))}
+            </Picker.List>
+            <SavedFiltersSection
+              savedFilters={savedFilters}
+              activeSavedFilterId={activeSavedFilterId}
+              hasActiveFilters={hasActiveFilters}
+              onApply={onApplySavedFilter}
+              onDelete={onDeleteSavedFilter}
+              onToggleStar={onToggleStarFilter}
+              onSave={onSaveFilter}
             />
-          )}
+          </>
+        )}
 
-          {activePanel === 'status-project-picker' && (
-            <StatusProjectPickerPanel
-              projects={projects}
-              onSelectProject={(projectId) => {
-                setStatusFilterProjectId(projectId)
-                navigateTo('status')
-              }}
-              onGoBack={goBack}
-            />
-          )}
+        {activePanel === 'priority' && (
+          <PriorityPanel
+            searchQuery={searchQuery}
+            onSearchChange={setSearchQuery}
+            selectedPriorities={filters.priorities}
+            onTogglePriority={togglePriority}
+            onClose={() => handleOpenChange(false)}
+            onGoBack={goBack}
+            tasks={tasks}
+          />
+        )}
 
-          {activePanel === 'status' && (
-            <StatusPanel
-              statuses={statuses}
-              selectedStatusIds={filters.statusIds}
-              onToggleStatus={toggleStatus}
-              onGoBack={
-                statusesProp.length === 0 ? () => navigateTo('status-project-picker') : goBack
-              }
-              tasks={tasks}
-            />
-          )}
+        {activePanel === 'status-project-picker' && (
+          <StatusProjectPickerPanel
+            projects={projects}
+            onSelectProject={(projectId) => {
+              setStatusFilterProjectId(projectId)
+              navigateTo('status')
+            }}
+            onGoBack={goBack}
+          />
+        )}
 
-          {activePanel === 'dueDate' && (
-            <DueDatePanel
-              dueDate={filters.dueDate}
-              onSelectDueDate={selectDueDate}
-              onSelectCalendarDate={selectCalendarDate}
-              onClearDueDate={clearDueDate}
-              onGoBack={goBack}
-            />
-          )}
+        {activePanel === 'status' && (
+          <StatusPanel
+            statuses={statuses}
+            selectedStatusIds={filters.statusIds}
+            onToggleStatus={toggleStatus}
+            onGoBack={
+              statusesProp.length === 0 ? () => navigateTo('status-project-picker') : goBack
+            }
+            tasks={tasks}
+          />
+        )}
 
-          {activePanel === 'project' && (
-            <ProjectPanel
-              projects={projects}
-              selectedProjectIds={filters.projectIds}
-              onToggleProject={toggleProject}
-              onClearProjectFilter={clearProjectFilter}
-              onGoBack={goBack}
-            />
-          )}
-        </div>
-      </PopoverContent>
-    </Popover>
+        {activePanel === 'dueDate' && (
+          <DueDatePanel
+            dueDate={filters.dueDate}
+            onSelectDueDate={selectDueDate}
+            onSelectCalendarDate={selectCalendarDate}
+            onClearDueDate={clearDueDate}
+            onGoBack={goBack}
+          />
+        )}
+
+        {activePanel === 'project' && (
+          <ProjectPanel
+            projects={projects}
+            selectedProjectIds={filters.projectIds}
+            onToggleProject={toggleProject}
+            onClearProjectFilter={clearProjectFilter}
+            onGoBack={goBack}
+          />
+        )}
+      </Picker.Content>
+    </Picker>
   )
 }

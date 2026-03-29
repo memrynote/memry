@@ -9,7 +9,8 @@ const DEFAULTS: GeneralSettingsDTO = {
   accentColor: '#6366f1',
   startOnBoot: false,
   language: 'en',
-  onboardingCompleted: false
+  onboardingCompleted: false,
+  createInSelectedFolder: true
 }
 
 interface UseGeneralSettingsReturn {

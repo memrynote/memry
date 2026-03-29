@@ -504,35 +504,27 @@ export function removeTagFromNote(db: DrizzleDb, noteId: string, tag: string): v
 // Tag Definition Operations (vault-wide tag registry with colors)
 // ============================================================================
 
-/**
- * 24-color palette for auto-assigning tag colors.
- * Colors are soft pastels from tag-colors.ts.
- */
 const TAG_COLOR_PALETTE = [
   'rose',
-  'pink',
-  'fuchsia',
-  'purple',
-  'violet',
-  'indigo',
-  'blue',
-  'sky',
-  'cyan',
-  'teal',
-  'emerald',
-  'green',
-  'lime',
-  'yellow',
+  'coral',
+  'tangerine',
   'amber',
-  'orange',
-  'stone',
+  'lemon',
+  'sage',
+  'emerald',
+  'mint',
+  'teal',
+  'cyan',
+  'sky',
+  'cobalt',
+  'indigo',
+  'violet',
+  'plum',
+  'magenta',
   'slate',
-  'gray',
-  'zinc',
-  'neutral',
-  'warm',
-  'red',
-  'coral'
+  'sand',
+  'stone',
+  'mauve'
 ]
 
 /**
@@ -964,6 +956,16 @@ function deserializeValue(value: string | null, type: PropertyType): unknown {
       return Number(value)
     case 'checkbox':
       return value === 'true'
+    case 'multiselect': {
+      try {
+        const parsed = JSON.parse(value)
+        return Array.isArray(parsed) ? parsed : [value]
+      } catch {
+        return [value]
+      }
+    }
+    case 'select':
+    case 'status':
     default:
       return value
   }

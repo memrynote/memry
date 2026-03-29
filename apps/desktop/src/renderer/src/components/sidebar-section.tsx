@@ -113,7 +113,7 @@ export const SidebarSection = ({
     <div className={cn('group/section', className)}>
       <SidebarGroup className="p-0 px-2">
         {/* Section Header */}
-        <div className="flex items-center h-6 [font-synthesis:none] antialiased">
+        <div className="flex items-center h-6 [font-synthesis:none]">
           <button
             id={headerId}
             type="button"

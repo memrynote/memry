@@ -6,18 +6,27 @@
 @custom-variant dark (&:is(.dark *));
 
 /* ===== BLOCKNOTE EDITOR CUSTOMIZATION ===== */
-/* Override BlockNote's default white background to match theme */
+/* Override BlockNote's CSS variables + defaults to match app theme.
+   Uses CSS inheritance (not a wildcard * rule) so Shiki inline token styles still work. */
+:root .bn-container {
+  --bn-colors-editor-text: var(--foreground);
+  --bn-colors-editor-background: var(--background);
+}
+
 :root .bn-editor,
 :root .bn-container {
   background-color: var(--background) !important;
-  color: #2c2c2b !important;
+  color: #37352f !important;
+  caret-color: #37352f;
   padding-inline: 0px;
+  -webkit-font-smoothing: auto !important;
 }
 
 .dark .bn-editor,
 .dark .bn-container {
   background-color: var(--background) !important;
-  color: #ffffff !important;
+  color: var(--text-bright) !important;
+  caret-color: #f0efed;
 }
 
 /* Inbox detail drawer: editor inherits drawer surface bg, not page bg */
@@ -26,10 +35,136 @@
   background-color: transparent !important;
 }
 
-/* Make all text content in BlockNote white in dark mode */
-.dark .bn-editor *,
-.dark .bn-container * {
+/* Code block: always dark background regardless of theme (matches github-dark Shiki theme) */
+.bn-block-content[data-content-type='codeBlock'] {
+  background-color: #24292e !important;
+  color: #e1e4e8 !important;
+}
+
+/* Language selector: theme-aware text color */
+.dark .bn-block-content[data-content-type='codeBlock'] > div > select {
+  color: #e1e4e8 !important;
+}
+
+/* ===== TYPOGRAPHY OVERRIDES ===== */
+/* Override BlockNote's Inter font with system font stack */
+:root .bn-default-styles,
+:root .bn-container {
+  font-family: var(--font-sans) !important;
+}
+
+:root .bn-container {
+  --bn-font-family: var(--font-sans);
+}
+
+/* ===== PROSEMIRROR OVERRIDES ===== */
+/* ProseMirror disables ligatures by default — re-enable for Notion-like text density */
+:root .bn-editor .ProseMirror {
+  font-variant-ligatures: normal;
+  font-feature-settings: normal;
+  font-synthesis: none;
+}
+
+/* ===== BLOCK SPACING ===== */
+:root .bn-block-content {
+  padding: 1px 0 !important;
+}
+
+:root .bn-block-outer {
+  padding: 1px 0;
+}
+
+:root .bn-inline-content {
+  white-space: break-spaces;
+  word-break: break-word;
+  padding: 2px 0;
+}
+
+/* ===== HEADING SIZES ===== */
+[data-content-type='heading'] {
+  --level: 1.875em !important;
+}
+
+[data-content-type='heading'][data-level='2'] {
+  --level: 1.5em !important;
+}
+
+[data-content-type='heading'][data-level='3'] {
+  --level: 1.25em !important;
+}
+
+[data-prev-level='1'] {
+  --prev-level: 1.875em !important;
+}
+
+[data-prev-level='2'] {
+  --prev-level: 1.5em !important;
+}
+
+[data-prev-level='3'] {
+  --prev-level: 1.25em !important;
+}
+
+/* ===== HEADING TYPOGRAPHY ===== */
+:root .bn-block-content[data-content-type='heading'] {
+  font-weight: 600 !important;
+  line-height: 1.3 !important;
+  margin-top: 24px;
+  padding: 1px 0 !important;
+}
+
+:root .bn-block-content[data-content-type='heading'][data-level='2'] {
+  margin-top: 18px;
+}
+
+:root .bn-block-content[data-content-type='heading'][data-level='3'] {
+  margin-top: 14px;
+}
+
+:root
+  .bn-block-group
+  > .bn-block-outer:first-child
+  > .bn-block
+  > .bn-block-content[data-content-type='heading'] {
+  margin-top: 0;
+}
+
+/* ===== LIST SPACING ===== */
+:root .bn-block-outer:has(> .bn-block > .bn-block-content[data-content-type='bulletListItem']),
+:root .bn-block-outer:has(> .bn-block > .bn-block-content[data-content-type='numberedListItem']),
+:root .bn-block-outer:has(> .bn-block > .bn-block-content[data-content-type='checkListItem']) {
+  padding: 1px 0;
+}
+
+/* ===== TABLE CELLS ===== */
+:root .bn-editor [data-content-type='table'] th,
+:root .bn-editor [data-content-type='table'] td {
+  padding: 7px 9px !important;
+  font-size: 14px !important;
+  line-height: 20px !important;
+  border-color: var(--border) !important;
+}
+
+:root .bn-editor [data-content-type='table'] th {
+  font-weight: 500 !important;
+}
+
+.dark .bn-editor [data-content-type='table'] th,
+.dark .bn-editor [data-content-type='table'] td {
+  border-color: #383836 !important;
+}
+
+.dark .bn-editor [data-content-type='table'] th {
+  background-color: rgba(255, 255, 255, 0.03) !important;
+}
+
+/* ===== QUOTE BLOCK ===== */
+:root [data-content-type='quote'] blockquote {
+  border-left-width: 3px !important;
+  border-left-color: currentcolor !important;
   color: inherit !important;
+  padding-left: 14px !important;
+  padding-right: 14px !important;
 }
 
 /* Make BlockNote editor fill available height */
@@ -158,6 +293,16 @@
   min-height: 100%;
 }
 
+/* ===== CALLOUT BLOCK ===== */
+:root .bn-block-content[data-content-type='callout'] {
+  padding: 0 !important;
+}
+
+[data-content-type='callout'] .bn-inline-content {
+  flex-grow: 1;
+  min-height: 24px;
+}
+
 /* Ensure clicking anywhere in the editor area focuses it */
 .content-area .bn-editor [data-content-editable-root='true'] {
   min-height: 100%;
@@ -188,8 +333,7 @@
       'Apple Color Emoji', 'Noto Sans Arabic', 'Noto Sans Hebrew', Arial, sans-serif,
       'Segoe UI Emoji', 'Segoe UI Symbol';
     --font-serif: 'Crimson Pro Variable', Georgia, 'Times New Roman', serif;
-    --font-display:
-      'Instrument Serif', 'Playfair Display Variable', 'Crimson Pro Variable', Georgia, serif;
+    --font-display: 'Playfair Display Variable', 'Crimson Pro Variable', Georgia, serif;
     --font-heading: 'Space Grotesk Variable', system-ui, sans-serif;
     --font-mono: 'JetBrains Mono Variable', 'SF Mono', 'Fira Code', monospace;
 
@@ -223,6 +367,7 @@
     /* Body text, sidebar items */
     --text-tertiary: #8c8c8c;
     /* Meta data, dates, unused icons */
+    --text-bright: #1a1a1a;
 
     /* ===== ACCENT COLORS (Category Dots) ===== */
     --accent-cyan: #06b6d4;
@@ -356,7 +501,7 @@
   }
 
   .white {
-    /* ===== BASE COLORS - White Mode (Notion-inspired Clean White) ===== */
+    /* ===== BASE COLORS - White Mode ===== */
     --background: #ffffff;
     --foreground: #37352f;
     --surface: #f7f6f3;
@@ -373,6 +518,7 @@
     --text-primary: #37352f;
     --text-secondary: #6b6966;
     --text-tertiary: #9b9a97;
+    --text-bright: #37352f;
 
     /* ===== ACCENT COLORS ===== */
     --accent-cyan: #0891b2;
@@ -472,8 +618,7 @@
       'Apple Color Emoji', 'Noto Sans Arabic', 'Noto Sans Hebrew', Arial, sans-serif,
       'Segoe UI Emoji', 'Segoe UI Symbol';
     --font-serif: 'Crimson Pro Variable', Georgia, 'Times New Roman', serif;
-    --font-display:
-      'Instrument Serif', 'Playfair Display Variable', 'Crimson Pro Variable', Georgia, serif;
+    --font-display: 'Playfair Display Variable', 'Crimson Pro Variable', Georgia, serif;
     --font-heading: 'Space Grotesk Variable', system-ui, sans-serif;
     --font-mono: 'JetBrains Mono Variable', 'SF Mono', 'Fira Code', monospace;
 
@@ -494,6 +639,7 @@
     --text-primary: #bcbab6;
     --text-secondary: #bcbab6;
     --text-tertiary: #ada9a3;
+    --text-bright: #dadada;
 
     /* ===== ACCENT COLORS (Same in dark mode) ===== */
     --accent-cyan: #22d3ee;
@@ -631,6 +777,7 @@ div.react-sigma {
     color: var(--text-primary);
     line-height: 1.5;
     user-select: none;
+    -webkit-font-smoothing: auto;
   }
 
   /* Serif font utility for content titles */
@@ -651,7 +798,7 @@ div.react-sigma {
   h5,
   h6 {
     font-weight: 600;
-    line-height: 1.2;
+    line-height: 1.3;
     letter-spacing: -0.01em;
   }
 
@@ -1246,6 +1393,7 @@ del.bn-inline-content {
   --color-text-primary: var(--text-primary);
   --color-text-secondary: var(--text-secondary);
   --color-text-tertiary: var(--text-tertiary);
+  --color-text-bright: var(--text-bright);
 
   /* ===== ACCENT COLORS (Category Dots) ===== */
   --color-accent-cyan: var(--accent-cyan);
@@ -1541,7 +1689,13 @@ del.bn-inline-content {
   color: rgb(251, 191, 36) !important;
 }
 
-/* Inline hash tag hover effect */
+/* Inline hash tag styles — needs .dark .bn-editor prefix to beat the wildcard rule */
+.dark .bn-editor .inline-hash-tag,
+.dark .bn-container .inline-hash-tag,
+.inline-hash-tag {
+  color: var(--hash-tag-color) !important;
+}
+
 .inline-hash-tag:hover {
   opacity: 0.8;
 }

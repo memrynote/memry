@@ -77,6 +77,12 @@ import { NoteIconDisplay } from '@/lib/render-note-icon'
 import { FolderIconButton } from '@/components/folder-icon-button'
 import { getTabIconForFileType, type FileType } from '@memry/shared/file-types'
 import { createLogger } from '@/lib/logger'
+import { useGeneralSettings } from '@/hooks/use-general-settings'
+import { shouldVirtualize } from '@/lib/virtualized-tree-utils'
+import {
+  VirtualizedNotesTree,
+  type VirtualizedTreeActions
+} from '@/components/virtualized-notes-tree'
 
 const log = createLogger('Component:NotesTree')
 
@@ -353,6 +359,18 @@ function buildTreeFromNotes(
   }
 }
 
+function collectAllFolderIds(tree: TreeStructure): string[] {
+  const ids: string[] = []
+  const walk = (folders: FolderNode[]): void => {
+    for (const folder of folders) {
+      ids.push(`folder-${folder.path}`)
+      walk(folder.children)
+    }
+  }
+  walk(tree.folders)
+  return ids
+}
+
 // ============================================================================
 // Sub-components
 // ============================================================================
@@ -504,20 +522,57 @@ function FolderRevealHandler() {
 }
 
 // ============================================================================
+// TreeActionsExposer — bridges tree context methods to parent via ref
+// ============================================================================
+
+type TreeActionsHandle = {
+  collapseAll: () => void
+  expandAll: () => void
+  expandNode: (nodeId: string) => void
+  expandNodes: (nodeIds: string[]) => void
+}
+
+function TreeActionsExposer({
+  actionsRef
+}: {
+  actionsRef: React.MutableRefObject<TreeActionsHandle | null>
+}) {
+  const { collapseAll, expandAll, expandNode, expandNodes } = useTree()
+
+  useEffect(() => {
+    actionsRef.current = { collapseAll, expandAll, expandNode, expandNodes }
+    return () => {
+      actionsRef.current = null
+    }
+  }, [collapseAll, expandAll, expandNode, expandNodes, actionsRef])
+
+  return null
+}
+
+// ============================================================================
 // Main Component
 // ============================================================================
 
 interface NotesTreeActions {
   createNote: () => void
   createFolder: () => void
+  collapseAll: () => void
+  expandAll: () => void
 }
 
 interface NotesTreeProps {
   onTargetFolderChange?: (folder: string) => void
   onActionsReady?: (actions: NotesTreeActions) => void
+  scrollContainerRef?: React.RefObject<HTMLElement>
 }
 
-export function NotesTree({ onTargetFolderChange, onActionsReady }: NotesTreeProps = {}) {
+export function NotesTree({
+  onTargetFolderChange,
+  onActionsReady,
+  scrollContainerRef
+}: NotesTreeProps = {}) {
+  const { settings: generalSettings } = useGeneralSettings()
+
   // Load all notes so the tree can correctly show files in all folders
   // Tree views need complete data - pagination doesn't make sense here
   const { notes, isLoading, error } = useNotesList({ limit: 10000 })
@@ -551,6 +606,8 @@ export function NotesTree({ onTargetFolderChange, onActionsReady }: NotesTreePro
   const [isRenaming, setIsRenaming] = useState(false)
   const renameInputRef = useRef<HTMLInputElement>(null)
   const treeContainerRef = useRef<HTMLDivElement>(null)
+  const treeActionsRef = useRef<TreeActionsHandle | null>(null)
+  const virtualTreeActionsRef = useRef<VirtualizedTreeActions | null>(null)
   const [isTreeFocused, setIsTreeFocused] = useState(false)
   const isTreeFocusedRef = useRef(false)
 
@@ -646,10 +703,9 @@ export function NotesTree({ onTargetFolderChange, onActionsReady }: NotesTreePro
     return map
   }, [notes])
 
-  // Compute target folder from selection — only when tree is focused so toolbar
-  // buttons create at root when the user clicks away from the tree
+  // Compute target folder from current selection — persists across focus changes
+  // so header buttons (New Note / New Folder) create inside the last-selected folder
   const targetFolder = useMemo(() => {
-    if (!isTreeFocused) return ''
     if (selectedIds.length === 0) return ''
 
     const selectedId = selectedIds[0]
@@ -669,7 +725,7 @@ export function NotesTree({ onTargetFolderChange, onActionsReady }: NotesTreePro
     }
 
     return ''
-  }, [selectedIds, noteMap, isTreeFocused])
+  }, [selectedIds, noteMap])
 
   // Handle note selection - update state and optionally open in tab
   const handleSelectionChange = useCallback(
@@ -694,7 +750,7 @@ export function NotesTree({ onTargetFolderChange, onActionsReady }: NotesTreePro
             entityId: note.id,
             isPinned: false,
             isModified: false,
-            isPreview: true,
+            isPreview: false,
             isDeleted: false
           })
         }
@@ -715,18 +771,31 @@ export function NotesTree({ onTargetFolderChange, onActionsReady }: NotesTreePro
         entityId: folderPath,
         isPinned: false,
         isModified: false,
-        isPreview: true,
+        isPreview: false,
         isDeleted: false
       })
     },
     [openTab]
   )
 
+  const expandFolderPath = useCallback((folderPath: string) => {
+    if (!folderPath) return
+    const parts = folderPath.split('/')
+    let current = ''
+    for (const part of parts) {
+      current = current ? `${current}/${part}` : part
+      const nodeId = `folder-${current}`
+      treeActionsRef.current?.expandNode(nodeId)
+      virtualTreeActionsRef.current?.expandNode(nodeId)
+    }
+  }, [])
+
   // Handle creating a new note - uses folder default template automatically
   const handleCreateNote = useCallback(async () => {
     if (isCreating) return
 
-    const folder = isTreeFocusedRef.current ? targetFolder : ''
+    const folder = generalSettings.createInSelectedFolder ? targetFolder : ''
+    expandFolderPath(folder)
 
     setIsCreating(true)
     try {
@@ -763,7 +832,13 @@ export function NotesTree({ onTargetFolderChange, onActionsReady }: NotesTreePro
     } finally {
       setIsCreating(false)
     }
-  }, [isCreating, createNoteMutateAsync, openTab, targetFolder])
+  }, [
+    isCreating,
+    createNoteMutateAsync,
+    openTab,
+    targetFolder,
+    generalSettings.createInSelectedFolder
+  ])
 
   // Handle opening template selector for folder configuration
   const handleSetFolderTemplate = useCallback((folderPath: string) => {
@@ -824,7 +899,8 @@ export function NotesTree({ onTargetFolderChange, onActionsReady }: NotesTreePro
   const handleCreateFolder = useCallback(async () => {
     if (isCreatingFolder) return
 
-    const folder = isTreeFocusedRef.current ? targetFolder : ''
+    const folder = generalSettings.createInSelectedFolder ? targetFolder : ''
+    expandFolderPath(folder)
 
     setIsCreatingFolder(true)
     try {
@@ -851,15 +927,38 @@ export function NotesTree({ onTargetFolderChange, onActionsReady }: NotesTreePro
     } finally {
       setIsCreatingFolder(false)
     }
-  }, [isCreatingFolder, createFolder, folders, targetFolder, refreshFolders])
+  }, [
+    isCreatingFolder,
+    createFolder,
+    folders,
+    targetFolder,
+    refreshFolders,
+    generalSettings.createInSelectedFolder
+  ])
 
   useEffect(() => {
     onTargetFolderChange?.(targetFolder)
   }, [targetFolder, onTargetFolderChange])
 
+  const handleCollapseAll = useCallback(() => {
+    treeActionsRef.current?.collapseAll()
+    virtualTreeActionsRef.current?.collapseAll()
+  }, [])
+
+  const handleExpandAll = useCallback(() => {
+    const allIds = collectAllFolderIds(tree)
+    treeActionsRef.current?.expandNodes(allIds)
+    virtualTreeActionsRef.current?.expandAll()
+  }, [tree])
+
   useEffect(() => {
-    onActionsReady?.({ createNote: handleCreateNote, createFolder: handleCreateFolder })
-  }, [onActionsReady, handleCreateNote, handleCreateFolder])
+    onActionsReady?.({
+      createNote: handleCreateNote,
+      createFolder: handleCreateFolder,
+      collapseAll: handleCollapseAll,
+      expandAll: handleExpandAll
+    })
+  }, [onActionsReady, handleCreateNote, handleCreateFolder, handleCollapseAll, handleExpandAll])
 
   // Handle creating a note in a specific folder (from context menu)
   const handleCreateNoteInFolder = useCallback(
@@ -1600,6 +1699,8 @@ export function NotesTree({ onTargetFolderChange, onActionsReady }: NotesTreePro
     return <NotesTreeEmpty onCreateNote={handleCreateNote} isCreating={isCreating} />
   }
 
+  const useVirtualizedTree = shouldVirtualize(tree)
+
   // Render note item with context menu
   const renderNote = (note: NoteListItem, level: number, isLast: boolean, hideLines = false) => {
     const isBeingRenamed = renamingNoteId === note.id
@@ -1690,7 +1791,6 @@ export function NotesTree({ onTargetFolderChange, onActionsReady }: NotesTreePro
         acceptsDropInside
       >
         <TreeNodeTrigger
-          expandOnly
           className="group/folderrow"
           contextMenuContent={
             <>
@@ -1827,39 +1927,67 @@ export function NotesTree({ onTargetFolderChange, onActionsReady }: NotesTreePro
         }
       }}
     >
-      <TreeProvider
-        selectedIds={selectedIds}
-        onSelectionChange={handleSelectionChange}
-        draggable={!renamingNoteId && !renamingFolderPath && !isMoving}
-        onMove={handleMove}
-        animateExpand={false}
-        multiSelect={true}
-        indent={26}
-      >
-        {/* Handle reveal-in-sidebar requests */}
-        <RevealHandler
-          pendingRevealNoteId={pendingRevealNoteId}
+      {useVirtualizedTree ? (
+        <VirtualizedNotesTree
+          actionsRef={virtualTreeActionsRef}
+          tree={tree}
+          selectedIds={selectedIds}
+          onSelectionChange={handleSelectionChange}
+          onMove={handleMove}
+          onBulkDelete={handleBulkDelete}
+          onRenameNote={handleRenameClick}
+          onDeleteNote={handleDeleteClick}
+          onOpenExternal={handleOpenExternal}
+          onRevealInFinder={handleRevealInFinder}
+          onDeleteFolder={handleDeleteFolderClick}
+          onCreateNote={handleCreateNoteInFolder}
+          onCreateFolder={handleCreateSubfolder}
+          onRenameFolder={handleRenameFolderClick}
+          onSetFolderTemplate={handleSetFolderTemplate}
+          onClearFolderTemplate={handleClearFolderTemplate}
+          folderTemplateNames={folderTemplateNames}
+          onSetFolderIcon={(path, icon) => void setFolderIcon(path, icon)}
           noteMap={noteMap}
-          onReveal={handleRevealComplete}
-          onClear={() => setPendingRevealNoteId(null)}
+          isDragDisabled={!!renamingNoteId || !!renamingFolderPath || isMoving}
+          scrollContainerRef={scrollContainerRef}
         />
-        <FolderRevealHandler />
-        <TreeView>
-          {/* Folders first */}
-          {tree.folders.map((folder, index) =>
-            renderFolder(
-              folder,
-              0,
-              index === tree.folders.length - 1 && tree.rootNotes.length === 0
-            )
-          )}
+      ) : (
+        <TreeProvider
+          persistKey="sidebar-tree-expanded"
+          selectedIds={selectedIds}
+          onSelectionChange={handleSelectionChange}
+          draggable={!renamingNoteId && !renamingFolderPath && !isMoving}
+          onMove={handleMove}
+          animateExpand={false}
+          multiSelect={true}
+          indent={26}
+        >
+          <TreeActionsExposer actionsRef={treeActionsRef} />
+          {/* Handle reveal-in-sidebar requests */}
+          <RevealHandler
+            pendingRevealNoteId={pendingRevealNoteId}
+            noteMap={noteMap}
+            onReveal={handleRevealComplete}
+            onClear={() => setPendingRevealNoteId(null)}
+          />
+          <FolderRevealHandler />
+          <TreeView>
+            {/* Folders first */}
+            {tree.folders.map((folder, index) =>
+              renderFolder(
+                folder,
+                0,
+                index === tree.folders.length - 1 && tree.rootNotes.length === 0
+              )
+            )}
 
-          {/* Root notes — indented to align with folder children, no indent lines */}
-          {tree.rootNotes.map((note, index) =>
-            renderNote(note, 1, index === tree.rootNotes.length - 1, true)
-          )}
-        </TreeView>
-      </TreeProvider>
+            {/* Root notes — indented to align with folder children, no indent lines */}
+            {tree.rootNotes.map((note, index) =>
+              renderNote(note, 1, index === tree.rootNotes.length - 1, true)
+            )}
+          </TreeView>
+        </TreeProvider>
+      )}
 
       {/* Delete Confirmation Dialog */}
       <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>

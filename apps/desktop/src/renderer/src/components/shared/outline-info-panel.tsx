@@ -1,13 +1,19 @@
 import { useState, useCallback, useRef, useEffect, memo } from 'react'
 import { cn } from '@/lib/utils'
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
-import { DocumentInfoTab, type DocumentStats } from './document-info-tab'
+import { format, parseISO, isValid } from 'date-fns'
 
 export interface HeadingItem {
   id: string
   level: number
   text: string
   position: number
+}
+
+export interface DocumentStats {
+  wordCount: number
+  characterCount: number
+  createdAt: string | Date | null
+  modifiedAt: string | Date | null
 }
 
 export interface OutlineInfoPanelProps {
@@ -30,6 +36,23 @@ function getLineWidth(level: number): number {
   }
 }
 
+function formatStatsDate(date: string | Date | null): string {
+  if (!date) return '—'
+  try {
+    const dateObj = typeof date === 'string' ? parseISO(date) : date
+    if (!isValid(dateObj)) return '—'
+    return format(dateObj, 'MMM d, yyyy')
+  } catch {
+    return '—'
+  }
+}
+
+function formatReadingTime(wordCount: number): string {
+  if (wordCount === 0) return '0 min read'
+  const minutes = Math.ceil(wordCount / 200)
+  return minutes === 1 ? '1 min read' : `${minutes} min read`
+}
+
 const FADE_DURATION = 100
 const PINNED_LEAVE_DELAY = 200
 const HOVER_LEAVE_DELAY = 150
@@ -44,7 +67,6 @@ export const OutlineInfoPanel = memo(function OutlineInfoPanel({
   const [isExpanded, setIsExpanded] = useState(false)
   const [isPinned, setIsPinned] = useState(false)
   const [isFadingOut, setIsFadingOut] = useState(false)
-  const [activeTab, setActiveTab] = useState<string>('outline')
   const containerRef = useRef<HTMLDivElement>(null)
   const popupRef = useRef<HTMLDivElement>(null)
   const delayRef = useRef<NodeJS.Timeout | null>(null)
@@ -90,13 +112,7 @@ export const OutlineInfoPanel = memo(function OutlineInfoPanel({
   )
 
   useEffect(() => {
-    if (
-      isExpanded &&
-      !isFadingOut &&
-      activeHeadingId &&
-      popupRef.current &&
-      activeTab === 'outline'
-    ) {
+    if (isExpanded && !isFadingOut && activeHeadingId && popupRef.current) {
       requestAnimationFrame(() => {
         const activeElement = popupRef.current?.querySelector(
           `[data-heading-id="${activeHeadingId}"]`
@@ -106,7 +122,7 @@ export const OutlineInfoPanel = memo(function OutlineInfoPanel({
         }
       })
     }
-  }, [isExpanded, isFadingOut, activeHeadingId, activeTab])
+  }, [isExpanded, isFadingOut, activeHeadingId])
 
   useEffect(() => {
     return () => clearAllTimeouts()
@@ -118,7 +134,6 @@ export const OutlineInfoPanel = memo(function OutlineInfoPanel({
 
   const verticalLineHeight = headings.length > 0 ? Math.max(0, (headings.length - 1) * 14 + 4) : 0
   const hasOutline = headings.length > 0
-  const hasInfo = !!stats
 
   return (
     <div
@@ -147,7 +162,9 @@ export const OutlineInfoPanel = memo(function OutlineInfoPanel({
                     style={{
                       width: `${width}px`,
                       height: isActive ? '2px' : '1px',
-                      backgroundColor: isActive ? '#C45D3E' : '#B5B0A6',
+                      backgroundColor: isActive
+                        ? 'var(--sidebar-terracotta)'
+                        : 'var(--text-tertiary)',
                       opacity: isActive ? 1 : 0.4
                     }}
                   />
@@ -169,7 +186,7 @@ export const OutlineInfoPanel = memo(function OutlineInfoPanel({
             />
           )}
 
-          {headings.length === 0 && hasInfo && (
+          {headings.length === 0 && !!stats && (
             <div
               className="w-2 h-2 rounded-full bg-stone-400/40 hover:bg-stone-400/60 transition-colors"
               aria-label="Document info available"
@@ -180,8 +197,8 @@ export const OutlineInfoPanel = memo(function OutlineInfoPanel({
         <div
           ref={popupRef}
           className={cn(
-            'bg-background border border-border',
-            'shadow-lg rounded-md',
+            'bg-background border border-border/10',
+            'shadow-lg rounded-[10px]',
             'min-w-[240px] max-w-[300px]',
             !isFadingOut && 'animate-in fade-in-0 zoom-in-95 duration-150'
           )}
@@ -195,98 +212,96 @@ export const OutlineInfoPanel = memo(function OutlineInfoPanel({
               : undefined
           }
         >
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="w-full h-8 p-0.5 bg-surface rounded-t-lg rounded-b-none">
-              <TabsTrigger
-                value="outline"
-                className={cn(
-                  'flex-1 h-7 text-xs font-medium rounded-md',
-                  'data-[state=active]:bg-background',
-                  'data-[state=active]:shadow-sm',
-                  !hasOutline && 'opacity-50 cursor-not-allowed'
-                )}
-                disabled={!hasOutline}
-              >
+          <div className="py-3 px-3.5 flex flex-col gap-2">
+            <div className="flex items-center gap-1.5">
+              <span className="text-[11px] tracking-[0.05em] uppercase text-text-tertiary font-medium leading-3.5">
                 Outline
-              </TabsTrigger>
-              <TabsTrigger
-                value="info"
-                className={cn(
-                  'flex-1 h-7 text-xs font-medium rounded-md',
-                  'data-[state=active]:bg-background',
-                  'data-[state=active]:shadow-sm',
-                  !hasInfo && 'opacity-50 cursor-not-allowed'
-                )}
-                disabled={!hasInfo}
+              </span>
+            </div>
+
+            {hasOutline ? (
+              <nav
+                aria-label="Document outline"
+                className="flex flex-col gap-0.5 max-h-[50vh] overflow-y-auto"
               >
-                Info
-              </TabsTrigger>
-            </TabsList>
+                {headings.map((heading) => {
+                  const isActive = heading.id === activeHeadingId
+                  const isSubHeading = heading.level >= 3
 
-            <TabsContent value="outline" className="mt-0 max-h-[70vh] overflow-y-auto">
-              {hasOutline ? (
-                <nav
-                  aria-label="Document outline"
-                  className="[font-synthesis:none] text-[12px] leading-4 flex flex-col gap-1 antialiased p-2"
-                >
-                  {headings.map((heading) => {
-                    const isActive = heading.id === activeHeadingId
-                    const isSubHeading = heading.level >= 3
-
-                    return (
-                      <button
-                        key={heading.id}
-                        data-heading-id={heading.id}
-                        onClick={() => handleClick(heading.id)}
+                  return (
+                    <button
+                      key={heading.id}
+                      data-heading-id={heading.id}
+                      onClick={() => handleClick(heading.id)}
+                      className={cn(
+                        'flex items-center rounded-sm py-[3px] px-1.5 gap-1.5 text-left',
+                        'transition-colors duration-150',
+                        'focus:outline-none',
+                        !isActive && 'hover:bg-[var(--surface-active)]/50'
+                      )}
+                    >
+                      <div
                         className={cn(
-                          'flex items-center rounded-md py-1.5 gap-2 text-left',
-                          'transition-colors duration-150',
-                          'focus:outline-none',
-                          isSubHeading ? 'pr-2 pl-6' : 'px-2',
+                          'w-0.5 h-3 shrink-0 rounded-[1px] transition-colors duration-150',
+                          isActive ? 'bg-sidebar-terracotta' : 'bg-transparent'
+                        )}
+                      />
+                      <span
+                        className={cn(
+                          'text-xs font-sans leading-4 truncate',
                           isActive
-                            ? 'bg-sidebar-terracotta/8'
-                            : 'hover:bg-[var(--surface-active)]/50'
+                            ? 'text-foreground font-medium'
+                            : isSubHeading
+                              ? 'text-muted-foreground'
+                              : 'text-text-secondary'
                         )}
                       >
-                        <div
-                          className={cn(
-                            'w-[3px] h-3.5 shrink-0 rounded-xs transition-colors duration-150',
-                            isActive ? 'bg-sidebar-terracotta' : 'bg-transparent'
-                          )}
-                        />
-                        <span
-                          className={cn(
-                            'text-[12px] font-sans leading-4 truncate',
-                            isActive
-                              ? 'text-sidebar-terracotta font-medium'
-                              : isSubHeading
-                                ? 'text-muted-foreground'
-                                : 'text-text-secondary'
-                          )}
-                        >
-                          {heading.text}
-                        </span>
-                      </button>
-                    )
-                  })}
-                </nav>
-              ) : (
-                <div className="py-6 text-center text-sm text-text-tertiary">No headings found</div>
-              )}
-            </TabsContent>
+                        {heading.text}
+                      </span>
+                    </button>
+                  )
+                })}
+              </nav>
+            ) : (
+              <span className="text-xs text-text-tertiary">No headings</span>
+            )}
 
-            <TabsContent value="info" className="mt-0">
-              {hasInfo && stats ? (
-                <DocumentInfoTab stats={stats} />
-              ) : (
-                <div className="py-6 text-center text-sm text-text-tertiary">No info available</div>
-              )}
-            </TabsContent>
-          </Tabs>
+            {stats && (
+              <>
+                <div className="h-px bg-border/50" />
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] text-text-tertiary leading-3.5">
+                    {stats.wordCount.toLocaleString()} words
+                  </span>
+                  <span className="text-[11px] text-text-tertiary leading-3.5">
+                    {formatReadingTime(stats.wordCount)}
+                  </span>
+                </div>
+                {(stats.createdAt || stats.modifiedAt) && (
+                  <div className="flex flex-col gap-0.5">
+                    {stats.createdAt && (
+                      <div className="flex items-center justify-between">
+                        <span className="text-[11px] text-text-tertiary leading-3.5">Created</span>
+                        <span className="text-[11px] text-text-tertiary leading-3.5">
+                          {formatStatsDate(stats.createdAt)}
+                        </span>
+                      </div>
+                    )}
+                    {stats.modifiedAt && (
+                      <div className="flex items-center justify-between">
+                        <span className="text-[11px] text-text-tertiary leading-3.5">Modified</span>
+                        <span className="text-[11px] text-text-tertiary leading-3.5">
+                          {formatStatsDate(stats.modifiedAt)}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </>
+            )}
+          </div>
         </div>
       )}
     </div>
   )
 })
-
-export type { DocumentStats }

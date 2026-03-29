@@ -140,7 +140,7 @@ describe('T512: TagsRow - tag add and autocomplete', () => {
     await user.click(addButton)
 
     // Should show popup with input
-    expect(screen.getByRole('combobox')).toBeInTheDocument()
+    expect(screen.getByRole('textbox')).toBeInTheDocument()
   })
 
   it('should close popup when add button is clicked again', async () => {
@@ -150,12 +150,12 @@ describe('T512: TagsRow - tag add and autocomplete', () => {
     const addButton = screen.getByRole('button', { name: /add tag/i })
     await user.click(addButton)
 
-    expect(screen.getByRole('combobox')).toBeInTheDocument()
+    expect(screen.getByRole('textbox')).toBeInTheDocument()
 
     // Click somewhere else or close
     await user.keyboard('{Escape}')
 
-    expect(screen.queryByRole('combobox')).not.toBeInTheDocument()
+    expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
   })
 
   it('should not open popup when disabled', async () => {
@@ -165,7 +165,7 @@ describe('T512: TagsRow - tag add and autocomplete', () => {
     const addButton = screen.getByRole('button', { name: /add tag/i })
     await user.click(addButton)
 
-    expect(screen.queryByRole('combobox')).not.toBeInTheDocument()
+    expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
   })
 
   it('should call onAddTag when existing tag is selected', async () => {
@@ -176,7 +176,7 @@ describe('T512: TagsRow - tag add and autocomplete', () => {
     await user.click(addButton)
 
     // Type to filter
-    const input = screen.getByRole('combobox')
+    const input = screen.getByRole('textbox')
     await user.type(input, 'type')
 
     // Click on the typescript option (it should appear in filtered results)
@@ -207,7 +207,7 @@ describe('T512: TagsRow - tag add and autocomplete', () => {
     const addButton = screen.getByRole('button', { name: /add tag/i })
     await user.click(addButton)
 
-    const input = screen.getByRole('combobox')
+    const input = screen.getByRole('textbox')
     await user.type(input, 'new-tag{enter}')
 
     // Should create new tag with default color
@@ -229,7 +229,7 @@ describe('T512: TagsRow - tag add and autocomplete', () => {
     await user.click(typescriptOption)
 
     // Popup should close
-    expect(screen.queryByRole('combobox')).not.toBeInTheDocument()
+    expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
   })
 
   it('should show recent tags section', async () => {
@@ -252,7 +252,7 @@ describe('T512: TagsRow - tag add and autocomplete', () => {
     const addButton = screen.getByRole('button', { name: /add tag/i })
     await user.click(addButton)
 
-    const input = screen.getByRole('combobox')
+    const input = screen.getByRole('textbox')
     await user.type(input, 'java')
 
     // Should show javascript (may appear multiple times)

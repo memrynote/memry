@@ -8,6 +8,7 @@ import { CSS } from '@dnd-kit/utilities'
 import type { Tab } from '@/contexts/tabs/types'
 import { RegularTab } from './regular-tab'
 import { TabContextMenu } from './tab-context-menu'
+import { TabHoverPreview } from './tab-hover-preview'
 import { cn } from '@/lib/utils'
 
 interface SortableTabProps {
@@ -58,15 +59,17 @@ export const SortableTab = ({ tab, groupId, isActive }: SortableTabProps): React
         {...attributes}
         {...listeners}
       >
-        <RegularTab
-          tab={tab}
-          groupId={groupId}
-          isActive={isActive}
-          className={cn(
-            isDragging && 'opacity-40 scale-[0.98]',
-            'transition-all duration-150 ease-out'
-          )}
-        />
+        <TabHoverPreview tab={tab}>
+          <RegularTab
+            tab={tab}
+            groupId={groupId}
+            isActive={isActive}
+            className={cn(
+              isDragging && 'opacity-40 scale-[0.98]',
+              'transition-all duration-150 ease-out'
+            )}
+          />
+        </TabHoverPreview>
       </div>
     </TabContextMenu>
   )

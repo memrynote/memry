@@ -61,6 +61,8 @@ export interface PersistedTab {
   title: string
   /** Icon name */
   icon: string
+  /** Emoji icon (overrides icon for notes) */
+  emoji?: string | null
   /** Route path */
   path: string
   /** Entity ID (for notes, projects, etc.) */

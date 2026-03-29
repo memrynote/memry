@@ -225,6 +225,21 @@ function make3dLogoSvg(borderDefs, borderContent, logoContent) {
 </svg>`
 }
 
+// --- V1.1: Bolder M + bolder border ---
+const V1_1_LOGO = `
+  <g transform="translate(10, 10) scale(0.8)" filter="url(#logoShadow)">
+    <path d="M20 70 L20 30 L35 45 L50 25 L65 45 L80 30 L80 70 L50 70"
+          stroke="#FFFFFF" stroke-width="8" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+    <path d="M50 70 L50 85 L80 70"
+          stroke="#FFFFFF" stroke-width="8" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+  </g>`
+
+const V1_1_CONTENT = `
+  <rect x="10" y="10" width="80" height="80" rx="16" ry="16" fill="none" stroke="url(#borderTop)" stroke-width="2.5" mask="url(#topMask)"/>
+  <rect x="10" y="10" width="80" height="80" rx="16" ry="16" fill="none" stroke="url(#borderRight)" stroke-width="2.5" mask="url(#rightMask)"/>
+  <rect x="10" y="10" width="80" height="80" rx="16" ry="16" fill="none" stroke="url(#borderBottom)" stroke-width="2.5" mask="url(#bottomMask)"/>
+  <rect x="10" y="10" width="80" height="80" rx="16" ry="16" fill="none" stroke="url(#borderLeft)" stroke-width="2.5" mask="url(#leftMask)"/>`
+
 // --- V7: Subtle emboss — light shadow + highlight edges ---
 const V7_LOGO = `
   <g transform="translate(10, 10) scale(0.8)">
@@ -346,6 +361,7 @@ const V9_LOGO = `
 
 const VARIANTS = [
   { name: 'v1-conic-sweep', svg: makeSvg(V1_DEFS, V1_CONTENT) },
+  { name: 'v1.1-conic-sweep-bold', svg: make3dLogoSvg(V1_DEFS, V1_1_CONTENT, V1_1_LOGO) },
   { name: 'v2-corner-gems', svg: makeSvg(V2_DEFS, V2_CONTENT) },
   { name: 'v3-edge-accents', svg: makeSvg(V3_DEFS, V3_CONTENT) },
   { name: 'v4-bottom-spectrum', svg: makeSvg(V4_DEFS, V4_CONTENT) },

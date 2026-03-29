@@ -39,6 +39,10 @@ const renderWithProviders = (ui: React.ReactElement) => {
 // Mocks
 // ============================================================================
 
+vi.mock('@/lib/ipc-error', () => ({
+  extractErrorMessage: (err: unknown, fallback: string) => fallback
+}))
+
 vi.mock('@/contexts/tabs', () => ({
   useTabs: () => ({
     openTab: vi.fn(),
@@ -70,6 +74,26 @@ vi.mock('@/services/notes-service', () => ({
     getAllPositions: vi.fn().mockResolvedValue({ success: true, positions: {} }),
     reorder: vi.fn().mockResolvedValue({ success: true })
   }
+}))
+
+const mockGeneralSettings = {
+  createInSelectedFolder: true,
+  theme: 'system' as const,
+  fontSize: 'medium' as const,
+  fontFamily: 'system' as const,
+  accentColor: '#6366f1',
+  startOnBoot: false,
+  language: 'en',
+  onboardingCompleted: false
+}
+
+vi.mock('@/hooks/use-general-settings', () => ({
+  useGeneralSettings: () => ({
+    settings: mockGeneralSettings,
+    isLoading: false,
+    error: null,
+    updateSettings: vi.fn().mockResolvedValue(true)
+  })
 }))
 
 vi.mock('@/lib/virtualized-tree-utils', () => ({
@@ -545,6 +569,217 @@ describe('T522: NotesTree - keyboard navigation', () => {
 
     // Delete confirmation should appear
     expect(screen.getByRole('alertdialog')).toBeInTheDocument()
+  })
+})
+
+// ============================================================================
+// T523: Context-aware creation — create in selected folder
+// ============================================================================
+
+describe('T523: NotesTree - context-aware note/folder creation', () => {
+  let createNoteMock: ReturnType<typeof vi.fn>
+  let createFolderMock: ReturnType<typeof vi.fn>
+  let capturedActions: {
+    createNote: () => void
+    createFolder: () => void
+    collapseAll: () => void
+    expandAll: () => void
+  } | null = null
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    patchTemplatesMock()
+    capturedActions = null
+
+    createNoteMock = vi.fn().mockResolvedValue({
+      success: true,
+      note: { id: 'new-note', path: 'notes/Untitled.md' }
+    })
+    createFolderMock = vi.fn().mockResolvedValue(true)
+    ;(useNotesList as ReturnType<typeof vi.fn>).mockReturnValue({
+      notes: mockNotes,
+      isLoading: false,
+      isFetching: false,
+      error: null,
+      refetch: vi.fn(),
+      total: mockNotes.length,
+      hasMore: false
+    })
+    ;(useNoteFoldersQuery as ReturnType<typeof vi.fn>).mockReturnValue({
+      folders: mockFolders,
+      isLoading: false,
+      error: null,
+      refetch: vi.fn(),
+      refreshFolders: vi.fn().mockResolvedValue(undefined),
+      createFolder: createFolderMock,
+      setFolderIcon: vi.fn().mockResolvedValue(true)
+    })
+    ;(useNoteMutations as ReturnType<typeof vi.fn>).mockReturnValue({
+      createNote: { mutateAsync: createNoteMock },
+      deleteNote: { mutateAsync: vi.fn().mockResolvedValue({ success: true }) },
+      renameNote: { mutateAsync: vi.fn().mockResolvedValue({ success: true, note: {} }) },
+      moveNote: { mutateAsync: vi.fn().mockResolvedValue({ success: true, note: {} }) }
+    })
+  })
+
+  it('should create note inside selected folder when folder is clicked', async () => {
+    const user = userEvent.setup()
+    renderWithProviders(
+      <NotesTree
+        onActionsReady={(actions) => {
+          capturedActions = actions
+        }}
+      />
+    )
+
+    // Click on "Projects" folder to select it
+    const projectsFolder = screen.getByText('Projects')
+    await user.click(projectsFolder)
+
+    // Call createNote via the exposed action (simulates clicking header button)
+    await waitFor(() => expect(capturedActions).not.toBeNull())
+    capturedActions!.createNote()
+
+    await waitFor(() => {
+      expect(createNoteMock).toHaveBeenCalledWith(expect.objectContaining({ folder: 'Projects' }))
+    })
+  })
+
+  it('should create note in parent folder when a note inside folder is selected', async () => {
+    const user = userEvent.setup()
+    renderWithProviders(
+      <NotesTree
+        onActionsReady={(actions) => {
+          capturedActions = actions
+        }}
+      />
+    )
+
+    // Expand Projects folder first
+    const projectsFolder = screen.getByText('Projects')
+    await user.click(projectsFolder)
+
+    // Click on "Project Alpha" (inside Projects folder)
+    const noteInFolder = screen.getByText('Project Alpha')
+    await user.click(noteInFolder)
+
+    await waitFor(() => expect(capturedActions).not.toBeNull())
+    capturedActions!.createNote()
+
+    await waitFor(() => {
+      expect(createNoteMock).toHaveBeenCalledWith(expect.objectContaining({ folder: 'Projects' }))
+    })
+  })
+
+  it('should create folder inside selected folder', async () => {
+    const user = userEvent.setup()
+    renderWithProviders(
+      <NotesTree
+        onActionsReady={(actions) => {
+          capturedActions = actions
+        }}
+      />
+    )
+
+    // Click on "Projects" folder to select it
+    const projectsFolder = screen.getByText('Projects')
+    await user.click(projectsFolder)
+
+    await waitFor(() => expect(capturedActions).not.toBeNull())
+    capturedActions!.createFolder()
+
+    await waitFor(() => {
+      expect(createFolderMock).toHaveBeenCalledWith(expect.stringContaining('Projects/'))
+    })
+  })
+
+  it('should auto-expand collapsed folder when creating note inside it', async () => {
+    const user = userEvent.setup()
+    renderWithProviders(
+      <NotesTree
+        onActionsReady={(actions) => {
+          capturedActions = actions
+        }}
+      />
+    )
+
+    // Click "Projects" folder to select it (this also expands it)
+    const projectsFolder = screen.getByText('Projects')
+    await user.click(projectsFolder)
+
+    // Notes inside should be visible (expanded)
+    expect(screen.getByText('Project Alpha')).toBeInTheDocument()
+
+    // Click again to collapse it
+    await user.click(projectsFolder)
+    await waitFor(() => {
+      expect(screen.queryByText('Project Alpha')).not.toBeInTheDocument()
+    })
+
+    // Now create a note — folder should auto-expand
+    await waitFor(() => expect(capturedActions).not.toBeNull())
+    capturedActions!.createNote()
+
+    await waitFor(() => {
+      expect(createNoteMock).toHaveBeenCalledWith(expect.objectContaining({ folder: 'Projects' }))
+    })
+
+    // The folder should now be expanded again so user sees the new note
+    await waitFor(() => {
+      expect(screen.getByText('Project Alpha')).toBeInTheDocument()
+    })
+  })
+
+  it('should create at root when createInSelectedFolder setting is OFF, even with folder selected', async () => {
+    mockGeneralSettings.createInSelectedFolder = false
+
+    const user = userEvent.setup()
+    renderWithProviders(
+      <NotesTree
+        onActionsReady={(actions) => {
+          capturedActions = actions
+        }}
+      />
+    )
+
+    // Click on "Projects" folder to select it
+    const projectsFolder = screen.getByText('Projects')
+    await user.click(projectsFolder)
+
+    await waitFor(() => expect(capturedActions).not.toBeNull())
+    capturedActions!.createNote()
+
+    await waitFor(() => {
+      // folder should be undefined (root) because setting is OFF
+      expect(createNoteMock).toHaveBeenCalledWith(
+        expect.objectContaining({ title: 'Untitled', folder: undefined })
+      )
+    })
+
+    // Reset for other tests
+    mockGeneralSettings.createInSelectedFolder = true
+  })
+
+  it('should create at root when no folder is selected', async () => {
+    renderWithProviders(
+      <NotesTree
+        onActionsReady={(actions) => {
+          capturedActions = actions
+        }}
+      />
+    )
+
+    // Don't click anything — no selection
+    await waitFor(() => expect(capturedActions).not.toBeNull())
+    capturedActions!.createNote()
+
+    await waitFor(() => {
+      expect(createNoteMock).toHaveBeenCalledWith(expect.objectContaining({ title: 'Untitled' }))
+      // folder should be undefined (root)
+      expect(createNoteMock).toHaveBeenCalledWith(
+        expect.not.objectContaining({ folder: expect.any(String) })
+      )
+    })
   })
 })
 

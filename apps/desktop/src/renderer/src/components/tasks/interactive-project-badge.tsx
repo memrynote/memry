@@ -1,8 +1,7 @@
 import * as React from 'react'
 
 import { cn } from '@/lib/utils'
-import { CheckMark } from '@/components/ui/check-mark'
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { Picker } from '@/components/ui/picker'
 import type { Project } from '@/data/tasks-data'
 
 interface InteractiveProjectBadgeProps {
@@ -20,30 +19,20 @@ export const InteractiveProjectBadge = ({
   onProjectChange,
   className
 }: InteractiveProjectBadgeProps): React.JSX.Element => {
-  const [isOpen, setIsOpen] = React.useState(false)
-
   const currentProject = projects.find((p) => p.id === projectId)
   const projectColor = currentProject?.color || '#6B7280'
   const projectName = currentProject?.name || 'No project'
 
   const availableProjects = React.useMemo(() => projects.filter((p) => !p.isArchived), [projects])
 
-  const handleSelect = (newProjectId: string): void => {
-    if (newProjectId === projectId) {
-      setIsOpen(false)
-      return
-    }
-    onProjectChange(newProjectId)
-    setIsOpen(false)
-  }
-
-  const handleTriggerClick = (e: React.MouseEvent): void => {
-    e.stopPropagation()
-  }
-
   return (
-    <Popover open={isOpen} onOpenChange={setIsOpen}>
-      <PopoverTrigger asChild onClick={handleTriggerClick}>
+    <Picker
+      value={projectId}
+      onValueChange={(val) => {
+        if (val !== projectId) onProjectChange(val)
+      }}
+    >
+      <Picker.Trigger asChild>
         <button
           type="button"
           className={cn(
@@ -52,6 +41,7 @@ export const InteractiveProjectBadge = ({
             className
           )}
           style={{ backgroundColor: `${projectColor}14` }}
+          onClick={(e) => e.stopPropagation()}
           aria-label={`Project: ${projectName}. Click to change.`}
         >
           <div className="rounded-xs shrink-0 size-2" style={{ backgroundColor: projectColor }} />
@@ -59,46 +49,26 @@ export const InteractiveProjectBadge = ({
             {projectName}
           </div>
         </button>
-      </PopoverTrigger>
-      <PopoverContent
-        className="w-auto p-0 rounded-[10px] bg-popover border-border shadow-lg"
-        align="start"
-        sideOffset={4}
-        onClick={handleTriggerClick}
-      >
-        <div className="flex flex-col p-1 [font-synthesis:none] antialiased">
-          {availableProjects.map((proj) => {
-            const isSelected = proj.id === projectId
-            return (
-              <button
-                key={proj.id}
-                type="button"
-                onClick={() => handleSelect(proj.id)}
-                className={cn(
-                  'flex items-center rounded-[7px] py-2 px-3 gap-2 transition-colors',
-                  'hover:bg-accent focus:outline-none'
-                )}
-                style={isSelected ? { backgroundColor: `${proj.color}0F` } : undefined}
-              >
+      </Picker.Trigger>
+      <Picker.Content width="auto" align="start" sideOffset={4}>
+        <Picker.List>
+          {availableProjects.map((proj) => (
+            <Picker.Item
+              key={proj.id}
+              value={proj.id}
+              label={proj.name}
+              icon={
                 <div
                   className="rounded-xs shrink-0 size-2"
                   style={{ backgroundColor: proj.color }}
                 />
-                <div
-                  className={cn(
-                    'text-[13px] leading-4',
-                    isSelected ? 'font-medium' : 'text-text-secondary'
-                  )}
-                  style={isSelected ? { color: proj.color } : undefined}
-                >
-                  {proj.name}
-                </div>
-                {isSelected && <CheckMark color={proj.color} className="ml-auto" />}
-              </button>
-            )
-          })}
-        </div>
-      </PopoverContent>
-    </Popover>
+              }
+              indicator="check"
+              indicatorColor={proj.color}
+            />
+          ))}
+        </Picker.List>
+      </Picker.Content>
+    </Picker>
   )
 }

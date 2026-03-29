@@ -8,7 +8,7 @@
  * being enabled via setIdAttribute: true
  */
 
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useRef, type RefObject } from 'react'
 
 interface HeadingItem {
   id: string
@@ -24,11 +24,15 @@ interface UseActiveHeadingOptions {
   offset?: number
   /** Throttle interval in ms for scroll events */
   throttleMs?: number
+  /** Ref to the scroll container element */
+  scrollContainerRef?: RefObject<HTMLElement | null>
 }
 
 interface UseActiveHeadingResult {
   /** The ID of the currently active heading */
   activeHeadingId: string | null
+  /** Immediately set active heading (e.g. on outline click) — scroll tracking takes over after */
+  setActiveHeading: (id: string) => void
 }
 
 /**
@@ -38,7 +42,8 @@ interface UseActiveHeadingResult {
 export function useActiveHeading({
   headings,
   offset = 120,
-  throttleMs = 50
+  throttleMs = 50,
+  scrollContainerRef
 }: UseActiveHeadingOptions): UseActiveHeadingResult {
   const [activeHeadingId, setActiveHeadingId] = useState<string | null>(null)
   const lastScrollTimeRef = useRef(0)
@@ -50,18 +55,34 @@ export function useActiveHeading({
       return
     }
 
+    const container = scrollContainerRef?.current
+
+    // When scrolled to bottom, pick the last visible heading
+    if (container) {
+      const atBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 2
+      if (atBottom) {
+        for (let i = headings.length - 1; i >= 0; i--) {
+          const el = document.querySelector(`[data-id="${headings[i].id}"]`)
+          if (el) {
+            const rect = el.getBoundingClientRect()
+            if (rect.top < window.innerHeight && rect.bottom > 0) {
+              setActiveHeadingId(headings[i].id)
+              return
+            }
+          }
+        }
+      }
+    }
+
     let activeId: string | null = null
 
-    // Iterate through headings and find the last one above the offset threshold
     for (const heading of headings) {
       const element = document.querySelector(`[data-id="${heading.id}"]`)
       if (element) {
         const rect = element.getBoundingClientRect()
-        // The heading is "active" if its top is at or above the offset threshold
         if (rect.top <= offset) {
           activeId = heading.id
         } else {
-          // Once we find a heading below the threshold, stop
           break
         }
       }
@@ -72,7 +93,6 @@ export function useActiveHeading({
       const firstElement = document.querySelector(`[data-id="${headings[0].id}"]`)
       if (firstElement) {
         const rect = firstElement.getBoundingClientRect()
-        // If first heading is in the viewport, make it active
         if (rect.top < window.innerHeight && rect.bottom > 0) {
           activeId = headings[0].id
         }
@@ -80,7 +100,7 @@ export function useActiveHeading({
     }
 
     setActiveHeadingId(activeId)
-  }, [headings, offset])
+  }, [headings, offset, scrollContainerRef])
 
   const handleScroll = useCallback(() => {
     const now = Date.now()
@@ -110,9 +130,7 @@ export function useActiveHeading({
     // Initial calculation
     findActiveHeading()
 
-    // Find the scroll container - the note content area
-    const scrollContainer = document.querySelector('.h-full.overflow-y-auto')
-    const target = scrollContainer || window
+    const target = scrollContainerRef?.current ?? window
 
     // Add scroll listener
     target.addEventListener('scroll', handleScroll, { passive: true })
@@ -131,8 +149,13 @@ export function useActiveHeading({
     }
   }, [headings, handleScroll, findActiveHeading])
 
+  const setActiveHeading = useCallback((id: string) => {
+    setActiveHeadingId(id)
+  }, [])
+
   return {
-    activeHeadingId
+    activeHeadingId,
+    setActiveHeading
   }
 }
 

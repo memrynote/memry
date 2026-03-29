@@ -106,7 +106,7 @@ export const TasksTabBar = ({
   return (
     <div
       className={cn(
-        'flex items-center shrink-0 gap-2.5 [font-synthesis:none] text-[13px] leading-4 antialiased',
+        'flex items-center shrink-0 gap-2.5 [font-synthesis:none] text-[12px] leading-4',
         className
       )}
     >
@@ -140,7 +140,7 @@ export const TasksTabBar = ({
                   : 'text-muted-foreground hover:text-foreground/90 hover:bg-surface-active/50'
               )}
             >
-              <span className="text-[13px] leading-4">{tab.label}</span>
+              <span className="text-[12px] leading-4">{tab.label}</span>
               <span
                 className={cn(
                   'text-[9px] font-[family-name:var(--font-mono)] leading-3 tabular-nums min-w-[2ch] text-center',
@@ -173,7 +173,7 @@ export const TasksTabBar = ({
                 onClick={() => onApplySavedFilter?.(sf)}
                 className="flex items-baseline py-1 pl-2.5 pr-1 gap-1 focus-visible:outline-none"
               >
-                <span className="text-[13px] leading-4">{sf.name}</span>
+                <span className="text-[12px] leading-4">{sf.name}</span>
               </button>
               <button
                 type="button"
@@ -259,7 +259,7 @@ function ProjectDropdown({
             )}
             style={selectedProject ? { backgroundColor: selectedProject.color } : undefined}
           />
-          <span className="text-[13px] leading-4">{selectedProject?.name ?? 'All projects'}</span>
+          <span className="text-[12px] leading-4">{selectedProject?.name ?? 'All projects'}</span>
           <svg
             width="10"
             height="10"
@@ -282,7 +282,7 @@ function ProjectDropdown({
         align="start"
         sideOffset={8}
       >
-        <div className="flex flex-col text-[13px] leading-4 [font-synthesis:none] antialiased">
+        <div className="flex flex-col text-[13px] leading-4 [font-synthesis:none]">
           <FilterSearchHeader
             value={search}
             onChange={setSearch}

@@ -1,138 +1,95 @@
-import { useRef, useCallback, useState } from 'react'
-import { cn } from '@/lib/utils'
-import { useClickOutside } from '../note-title/use-click-outside'
-import { PropertyType, PROPERTY_TYPE_CONFIG, PROPERTY_TYPES, NewProperty } from './types'
+import { useCallback, useState } from 'react'
+import { Picker } from '@/components/ui/picker'
+import { type PropertyType, PROPERTY_TYPE_CONFIG, PROPERTY_TYPES, type NewProperty } from './types'
 
 interface AddPropertyPopupProps {
-  isOpen: boolean
-  onClose: () => void
   onAdd: (property: NewProperty) => void
-  position?: { top: number; left: number }
-  existingPropertyNames?: string[]
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
+  disabled?: boolean
+  children: React.ReactNode
 }
 
-const EMPTY_PROPERTY_NAMES: string[] = []
-
 export function AddPropertyPopup({
-  isOpen,
-  onClose,
   onAdd,
-  position,
-  existingPropertyNames = EMPTY_PROPERTY_NAMES
-}: AddPropertyPopupProps) {
-  const popupRef = useRef<HTMLDivElement>(null)
-  const inputRef = useRef<HTMLInputElement>(null)
+  open: controlledOpen,
+  onOpenChange: controlledOnOpenChange,
+  disabled = false,
+  children
+}: AddPropertyPopupProps): React.JSX.Element {
   const [propertyName, setPropertyName] = useState('')
+  const [internalOpen, setInternalOpen] = useState(false)
+  const open = controlledOpen ?? internalOpen
 
-  useClickOutside(popupRef, onClose, isOpen)
-
-  const handleKeyDown = useCallback(
-    (e: React.KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        e.preventDefault()
-        onClose()
-      }
+  const handleTypeSelect = useCallback(
+    (type: string) => {
+      const config = PROPERTY_TYPE_CONFIG[type as PropertyType]
+      const baseName = propertyName.trim() || config.label
+      onAdd({ name: baseName, type: type as PropertyType })
+      setPropertyName('')
     },
-    [onClose]
+    [onAdd, propertyName]
+  )
+
+  const handleOpenChange = useCallback(
+    (next: boolean) => {
+      if (controlledOpen === undefined) setInternalOpen(next)
+      controlledOnOpenChange?.(next)
+      if (!next) setPropertyName('')
+    },
+    [controlledOpen, controlledOnOpenChange]
   )
 
   const handleInputKeyDown = useCallback((e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
       e.preventDefault()
-      // Focus the first type button when Enter is pressed
-      const firstButton = popupRef.current?.querySelector(
-        'button[role="option"]'
-      ) as HTMLButtonElement
-      firstButton?.focus()
+      const list = e.currentTarget.closest('[data-slot="picker-content"]')
+      const firstItem = list?.querySelector('[data-slot="picker-item"]') as HTMLButtonElement
+      firstItem?.focus()
     }
   }, [])
 
-  const handleTypeSelect = useCallback(
-    (type: PropertyType) => {
-      const config = PROPERTY_TYPE_CONFIG[type]
-      // Use custom name if provided, otherwise use type label
-      const baseName = propertyName.trim() || config.label
-      onAdd({ name: baseName, type })
-      onClose()
-    },
-    [onAdd, onClose, propertyName]
-  )
-
-  const focusInput = useCallback((node: HTMLInputElement | null) => {
-    inputRef.current = node
-    node?.focus()
-  }, [])
-
-  if (!isOpen) return null
-
   return (
-    <div
-      ref={popupRef}
-      role="listbox"
-      aria-label="Property types"
-      onKeyDown={handleKeyDown}
-      className={cn(
-        'fixed z-[9999]',
-        'w-[240px] max-h-[400px] overflow-y-auto',
-        'rounded-md border border-stone-200 bg-white dark:border-stone-700 dark:bg-stone-900',
-        'shadow-lg',
-        'py-1',
-        'animate-in fade-in-0 zoom-in-95 duration-150'
-      )}
-      style={position ? { top: position.top, left: position.left } : undefined}
-    >
-      {/* Property name input */}
-      <div className="px-3 py-2 border-b border-stone-100 dark:border-stone-800">
-        <input
-          ref={focusInput}
-          type="text"
-          value={propertyName}
-          onChange={(e) => setPropertyName(e.target.value)}
-          onKeyDown={handleInputKeyDown}
-          placeholder="Property name"
-          className={cn(
-            'w-full px-2 py-1.5 text-sm',
-            'bg-stone-50 dark:bg-stone-800',
-            'border border-stone-200 dark:border-stone-700 rounded',
-            'placeholder:text-stone-400 dark:placeholder:text-stone-500',
-            'focus:outline-none'
-          )}
-          aria-label="Property name"
-        />
-      </div>
-
-      {/* Type section header */}
-      <div className="px-3 py-2 text-[11px] font-medium text-stone-400 dark:text-stone-500 uppercase tracking-wide">
-        Type
-      </div>
-
-      {/* Property types list */}
-      {PROPERTY_TYPES.map((propType) => {
-        const config = PROPERTY_TYPE_CONFIG[propType]
-        const IconComponent = config.icon
-
-        return (
-          <button
-            key={propType}
-            type="button"
-            role="option"
-            aria-selected={false}
-            onClick={() => handleTypeSelect(propType)}
-            className={cn(
-              'flex w-full items-center gap-3',
-              'px-3 py-2 text-left text-sm',
-              'transition-colors duration-100',
-              'text-stone-700 dark:text-stone-300 hover:bg-stone-50 dark:hover:bg-stone-800',
-              'focus:bg-stone-100 dark:focus:bg-stone-800 focus:outline-none'
-            )}
-          >
-            <span className="text-stone-400 dark:text-stone-500">
-              <IconComponent className="h-4 w-4" />
-            </span>
-            <span>{config.label}</span>
-          </button>
-        )
-      })}
-    </div>
+    <Picker open={open} onOpenChange={handleOpenChange} onValueChange={handleTypeSelect}>
+      <Picker.Trigger asChild disabled={disabled}>
+        {children}
+      </Picker.Trigger>
+      <Picker.Content width={240} align="start">
+        <div className="flex items-center gap-1.5 px-2 py-1.5 border-b border-border">
+          <div className="flex-1 flex items-center gap-1.5 rounded-[5px] bg-surface px-2 py-1 border border-border">
+            <input
+              type="text"
+              value={propertyName}
+              onChange={(e) => setPropertyName(e.target.value)}
+              onKeyDown={handleInputKeyDown}
+              onClick={(e) => e.stopPropagation()}
+              placeholder="Property name"
+              className="flex-1 min-w-0 bg-transparent text-[13px] leading-4 text-foreground placeholder:text-muted-foreground/40 outline-none"
+              aria-label="Property name"
+            />
+          </div>
+        </div>
+        <Picker.Section label="Type">
+          <Picker.List>
+            {PROPERTY_TYPES.map((propType) => {
+              const config = PROPERTY_TYPE_CONFIG[propType]
+              const IconComponent = config.icon
+              return (
+                <Picker.Item
+                  key={propType}
+                  value={propType}
+                  label={config.label}
+                  icon={
+                    <span className="text-muted-foreground">
+                      <IconComponent className="size-4" />
+                    </span>
+                  }
+                />
+              )
+            })}
+          </Picker.List>
+        </Picker.Section>
+      </Picker.Content>
+    </Picker>
   )
 }

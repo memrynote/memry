@@ -185,8 +185,8 @@ describe('task-list-dnd-utils', () => {
       {
         id: 'group-header-progress',
         type: 'group-header',
-        groupKey: 'p1-progress',
-        label: 'Doing',
+        groupKey: 'in_progress',
+        label: 'In Progress',
         count: 1,
         sortField: 'status'
       } satisfies GroupHeaderItem,
@@ -195,7 +195,7 @@ describe('task-list-dnd-utils', () => {
         type: 'task',
         task: createTask({ id: 'progress-task', statusId: 'p1-progress' }),
         project,
-        sectionId: 'p1-progress'
+        sectionId: 'in_progress'
       } satisfies TaskItem
     ]
 

@@ -1,28 +1,25 @@
 import * as React from 'react'
 
 import { cn } from '@/lib/utils'
-import { CheckMark } from '@/components/ui/check-mark'
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { Picker } from '@/components/ui/picker'
 import { priorityConfig, type Priority } from '@/data/sample-tasks'
 import type { PriorityBadgeVariant } from './task-badges'
 import { PriorityIcon } from './task-icons'
 
-const PRIORITY_OPTIONS: {
-  value: Priority
-  label: string
-  color: string | null
-  bg: string | null
-  shortcut: string
-}[] = [
-  { value: 'urgent', ...pick(priorityConfig.urgent), shortcut: '1' },
-  { value: 'high', ...pick(priorityConfig.high), shortcut: '2' },
-  { value: 'medium', ...pick(priorityConfig.medium), shortcut: '3' },
-  { value: 'low', ...pick(priorityConfig.low), shortcut: '4' },
-  { value: 'none', ...pick(priorityConfig.none), shortcut: '5' }
+const PRIORITY_OPTIONS: { value: Priority; label: string; shortcut: string }[] = [
+  { value: 'urgent', label: priorityConfig.urgent.label ?? 'Urgent', shortcut: '1' },
+  { value: 'high', label: priorityConfig.high.label ?? 'High', shortcut: '2' },
+  { value: 'medium', label: priorityConfig.medium.label ?? 'Medium', shortcut: '3' },
+  { value: 'low', label: priorityConfig.low.label ?? 'Low', shortcut: '4' },
+  { value: 'none', label: priorityConfig.none.label ?? 'None', shortcut: '5' }
 ]
 
-function pick(c: { color: string | null; bgColor: string | null; label: string | null }) {
-  return { label: c.label ?? 'None', color: c.color, bg: c.bgColor }
+const COMPACT_LABELS: Record<Priority, string> = {
+  none: 'None',
+  low: 'Low',
+  medium: 'Med',
+  high: 'High',
+  urgent: 'Urgent'
 }
 
 interface InteractivePriorityBadgeProps {
@@ -44,42 +41,27 @@ export const InteractivePriorityBadge = ({
   fixedWidth = false,
   className
 }: InteractivePriorityBadgeProps): React.JSX.Element => {
-  const [isOpen, setIsOpen] = React.useState(false)
   const config = priorityConfig[priority]
+  const displayLabel = compact ? COMPACT_LABELS[priority] : config.label || 'None'
 
-  const compactLabels: Record<Priority, string> = {
-    none: 'None',
-    low: 'Low',
-    medium: 'Med',
-    high: 'High',
-    urgent: 'Urgent'
-  }
-  const displayLabel = compact ? compactLabels[priority] : config.label || 'None'
-
-  const handleSelect = (newPriority: Priority): void => {
-    onPriorityChange(newPriority)
-    setIsOpen(false)
-  }
-
-  const handleTriggerClick = (e: React.MouseEvent): void => {
-    e.stopPropagation()
-  }
-
-  const handleKeyDown = (e: React.KeyboardEvent): void => {
-    const option = PRIORITY_OPTIONS.find((o) => o.shortcut === e.key)
-    if (option) {
-      e.preventDefault()
-      handleSelect(option.value)
-    }
-  }
+  const handleKeyDown = React.useCallback(
+    (e: React.KeyboardEvent) => {
+      const option = PRIORITY_OPTIONS.find((o) => o.shortcut === e.key)
+      if (option) {
+        e.preventDefault()
+        onPriorityChange(option.value)
+      }
+    },
+    [onPriorityChange]
+  )
 
   return (
-    <Popover open={isOpen} onOpenChange={setIsOpen}>
-      <PopoverTrigger asChild onClick={handleTriggerClick}>
+    <Picker value={priority} onValueChange={(v) => onPriorityChange(v as Priority)}>
+      <Picker.Trigger asChild>
         <button
           type="button"
           className={cn(
-            'flex items-center rounded-sm py-px px-[7px] gap-1 cursor-pointer transition-opacity [font-synthesis:none] antialiased',
+            'flex items-center rounded-sm py-px px-[7px] gap-1 cursor-pointer transition-opacity [font-synthesis:none]',
             'hover:opacity-80 focus-visible:outline-none',
             fixedWidth && 'w-[70px] justify-start',
             className
@@ -95,66 +77,31 @@ export const InteractivePriorityBadge = ({
             {displayLabel}
           </div>
         </button>
-      </PopoverTrigger>
-      <PopoverContent
-        className="w-auto p-0 rounded-[10px] bg-popover border-border shadow-lg"
-        align="start"
-        sideOffset={4}
-        onClick={handleTriggerClick}
-        onKeyDown={handleKeyDown}
-      >
-        <div className="flex flex-col p-1 [font-synthesis:none] antialiased">
+      </Picker.Trigger>
+      <Picker.Content width="auto" align="start" sideOffset={4} onKeyDown={handleKeyDown}>
+        <Picker.List>
           {PRIORITY_OPTIONS.map((option) => {
-            const isSelected = option.value === priority
             const isNone = option.value === 'none'
+            const pc = priorityConfig[option.value]
             return (
-              <button
+              <Picker.Item
                 key={option.value}
-                type="button"
-                onClick={() => handleSelect(option.value)}
-                className={cn(
-                  'flex items-center rounded-[7px] py-2 px-3 gap-2 transition-colors',
-                  'hover:bg-accent focus:outline-none'
-                )}
-                style={
-                  isSelected && !isNone && option.bg ? { backgroundColor: option.bg } : undefined
+                value={option.value}
+                label={option.label}
+                icon={
+                  <PriorityIcon
+                    priority={option.value}
+                    className={cn(isNone && 'text-text-tertiary')}
+                  />
                 }
-              >
-                <PriorityIcon
-                  priority={option.value}
-                  className={cn(isNone && 'text-text-tertiary')}
-                />
-                <div
-                  className={cn(
-                    'text-[13px] leading-4',
-                    isNone
-                      ? 'text-text-tertiary'
-                      : !isSelected
-                        ? 'text-text-secondary'
-                        : 'font-medium'
-                  )}
-                  style={
-                    isSelected && !isNone && option.color ? { color: option.color } : undefined
-                  }
-                >
-                  {option.label}
-                </div>
-                {isSelected && !isNone && option.color && (
-                  <CheckMark color={option.color} className="ml-auto" />
-                )}
-                <div
-                  className={cn(
-                    'text-[10px] text-text-tertiary font-[family-name:var(--font-mono)] leading-3',
-                    !(isSelected && !isNone) && 'ml-auto'
-                  )}
-                >
-                  {option.shortcut}
-                </div>
-              </button>
+                indicator={isNone ? 'none' : 'check'}
+                indicatorColor={pc.color ?? undefined}
+                shortcut={option.shortcut}
+              />
             )
           })}
-        </div>
-      </PopoverContent>
-    </Popover>
+        </Picker.List>
+      </Picker.Content>
+    </Picker>
   )
 }

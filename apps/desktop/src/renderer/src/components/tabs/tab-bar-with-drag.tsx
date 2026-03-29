@@ -7,12 +7,14 @@
 import { useRef, useState, useEffect, useCallback } from 'react'
 import { SortableContext, horizontalListSortingStrategy } from '@dnd-kit/sortable'
 import { ChevronLeft, ChevronRight, Bot } from '@/lib/icons'
+import { SidebarGraph } from '@/lib/icons/sidebar-nav-icons'
 import { useAIAgent } from '@/contexts/ai-agent-context'
-import { useTabGroup } from '@/contexts/tabs'
+import { useTabGroup, useTabs } from '@/contexts/tabs'
 import { SidebarTrigger } from '@/components/ui/sidebar'
 import { SortableTab } from './sortable-tab'
 import { PinnedTab } from './pinned-tab'
 import { TabBarAction } from './tab-bar-action'
+import { NewTabMenu } from './new-tab-menu'
 import { TabBarContextMenu } from './tab-bar-context-menu'
 import { TabContextMenu } from './tab-context-menu'
 import { cn } from '@/lib/utils'
@@ -34,6 +36,22 @@ export const TabBarWithDrag = ({
 }: TabBarWithDragProps): React.JSX.Element | null => {
   const group = useTabGroup(groupId)
   const { toggle: toggleAIAgent, isOpen: isAIAgentOpen } = useAIAgent()
+  const { openTab, getActiveTab } = useTabs()
+
+  const isGraphActive = getActiveTab()?.type === 'graph'
+
+  const handleGraphClick = useCallback(() => {
+    openTab({
+      type: 'graph',
+      title: 'Graph',
+      icon: 'graph',
+      path: '/graph',
+      isPinned: false,
+      isModified: false,
+      isPreview: false,
+      isDeleted: false
+    })
+  }, [openTab])
 
   // Scroll state
   const scrollRef = useRef<HTMLDivElement>(null)
@@ -168,6 +186,11 @@ export const TabBarWithDrag = ({
               ))}
             </div>
           </SortableContext>
+
+          {/* New tab — inline after last tab, Chrome-style */}
+          <div className="no-drag flex items-center shrink-0 px-1 self-center">
+            <NewTabMenu groupId={groupId} />
+          </div>
         </div>
 
         {/* Scroll right button */}
@@ -190,7 +213,19 @@ export const TabBarWithDrag = ({
         )}
 
         {/* Tab actions */}
-        <div className="no-drag flex items-center px-2 gap-1 mb-1.5 ml-auto self-center">
+        <div className="no-drag flex items-center px-2 gap-1 ml-auto self-center">
+          <TabBarAction
+            icon={
+              <SidebarGraph
+                className={cn(
+                  'w-4 h-4 transition-colors duration-150',
+                  isGraphActive && 'text-tint'
+                )}
+              />
+            }
+            tooltip="Graph (⌘G)"
+            onClick={handleGraphClick}
+          />
           <TabBarAction
             icon={
               <Bot

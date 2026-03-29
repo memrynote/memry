@@ -71,14 +71,14 @@ export function TasksSettings() {
 
   if (isLoading) {
     return (
-      <div className="flex flex-col antialiased">
+      <div className="flex flex-col">
         <SettingsHeader title="Tasks" subtitle="Loading settings..." />
       </div>
     )
   }
 
   return (
-    <div className="flex flex-col antialiased text-xs/4">
+    <div className="flex flex-col text-xs/4">
       <SettingsHeader title="Tasks" subtitle="Configure task defaults and behavior" />
 
       <SettingsGroup label="Defaults">
