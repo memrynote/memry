@@ -26,7 +26,12 @@ export const InteractiveProjectBadge = ({
   const availableProjects = React.useMemo(() => projects.filter((p) => !p.isArchived), [projects])
 
   return (
-    <Picker value={projectId} onValueChange={onProjectChange}>
+    <Picker
+      value={projectId}
+      onValueChange={(val) => {
+        if (val !== projectId) onProjectChange(val)
+      }}
+    >
       <Picker.Trigger asChild>
         <button
           type="button"
@@ -36,6 +41,7 @@ export const InteractiveProjectBadge = ({
             className
           )}
           style={{ backgroundColor: `${projectColor}14` }}
+          onClick={(e) => e.stopPropagation()}
           aria-label={`Project: ${projectName}. Click to change.`}
         >
           <div className="rounded-xs shrink-0 size-2" style={{ backgroundColor: projectColor }} />
