@@ -5,6 +5,20 @@ Format: weekly entries grouped by feature area.
 
 ---
 
+## 2026-03-29 — Major Refactor
+
+### Changed
+- Split `queries/notes.ts` (1590 LOC) into 6 domain modules: tag, link, property, snapshot, journal queries + shared helpers
+- Split `notes-handlers.ts` (1040 LOC) into focused modules: Zod schemas, export handlers, property definition handlers
+- Consolidate duplicate PDF/HTML export logic into shared `exportNote()` with format parameter
+- Extract tree-building utilities and `getDisplayName` into `notes-tree-utils.ts`, deduplicate across virtualized tree
+- Extract wiki-link processing and markdown hard-break normalization into `wiki-link-utils.ts`
+- Extract `useTreeDragDrop`, `useTreeRename`, `useTreeDelete` hooks from 2089-LOC `NotesTree` component
+- Replace duplicated activity-level thresholds with shared `ACTIVITY_THRESHOLDS` constants used by both TypeScript and SQL
+- Replace inline `error instanceof Error` patterns with shared `extractError()` utility across IPC handlers
+
+---
+
 ## 2026-03-29 — Settings Config.json Migration
 
 ### Changed
