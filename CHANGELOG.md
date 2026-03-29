@@ -5,6 +5,15 @@ Format: weekly entries grouped by feature area.
 
 ---
 
+## 2026-03-29 — Settings Config.json Migration
+
+### Changed
+- Move portable user preferences (theme, font, editor width) from SQLite to config.json as source of truth
+- Propagate synced remote settings to config.json and broadcast CHANGED events to renderer (fixes sync gap)
+- Populate SQLite settings cache from config.json on vault open with one-time migration for old vaults
+
+---
+
 ## 2026-03-29 — Note Page
 
 ### Added
