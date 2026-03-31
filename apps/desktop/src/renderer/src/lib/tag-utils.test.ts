@@ -5,7 +5,13 @@ import {
   formatTagDisplay,
   extractTagsFromText,
   sanitizeTagInput,
-  isTagTerminator
+  isTagTerminator,
+  getTagSegments,
+  getParentTag,
+  getTagDepth,
+  getTagLeaf,
+  isDescendantOf,
+  getAncestorTags
 } from './tag-utils'
 
 describe('tag-utils', () => {
@@ -58,6 +64,33 @@ describe('tag-utils', () => {
       expect(isValidTagName('tag!')).toBe(false)
       expect(isValidTagName('tag?')).toBe(false)
       expect(isValidTagName('tag@email')).toBe(false)
+    })
+
+    it('should return true for hierarchical tags with slashes', () => {
+      expect(isValidTagName('movies/oscar')).toBe(true)
+      expect(isValidTagName('movies/oscar/2025')).toBe(true)
+      expect(isValidTagName('a/b/c/d')).toBe(true)
+      expect(isValidTagName('work-project/frontend')).toBe(true)
+      expect(isValidTagName('q1_2024/goals')).toBe(true)
+    })
+
+    it('should return false for tags with leading/trailing slashes', () => {
+      expect(isValidTagName('/movies')).toBe(false)
+      expect(isValidTagName('movies/')).toBe(false)
+      expect(isValidTagName('/movies/')).toBe(false)
+    })
+
+    it('should return false for tags with double slashes', () => {
+      expect(isValidTagName('movies//oscar')).toBe(false)
+    })
+
+    it('should return false for tags with empty segments', () => {
+      expect(isValidTagName('movies//oscar')).toBe(false)
+    })
+
+    it('should return false for segments starting with special chars', () => {
+      expect(isValidTagName('movies/-oscar')).toBe(false)
+      expect(isValidTagName('movies/_oscar')).toBe(false)
     })
   })
 
@@ -161,6 +194,26 @@ describe('tag-utils', () => {
       const result = extractTagsFromText('Line 1 #tag1\nLine 2 #tag2')
       expect(result).toEqual(['tag1', 'tag2'])
     })
+
+    it('should extract hierarchical tags with slashes', () => {
+      const result = extractTagsFromText('Check out #movies/oscar and #movies/grammy')
+      expect(result).toEqual(['movies/oscar', 'movies/grammy'])
+    })
+
+    it('should extract deeply nested hierarchical tags', () => {
+      const result = extractTagsFromText('#a/b/c/d is deep')
+      expect(result).toEqual(['a/b/c/d'])
+    })
+
+    it('should not match trailing slashes as part of tag', () => {
+      const result = extractTagsFromText('#movies/ is not complete')
+      expect(result).toEqual(['movies'])
+    })
+
+    it('should handle mixed flat and hierarchical tags', () => {
+      const result = extractTagsFromText('#react #movies/oscar #typescript')
+      expect(result).toEqual(['react', 'movies/oscar', 'typescript'])
+    })
   })
 
   describe('sanitizeTagInput', () => {
@@ -192,6 +245,19 @@ describe('tag-utils', () => {
     it('should return empty string when all chars invalid', () => {
       expect(sanitizeTagInput('###')).toBe('')
       expect(sanitizeTagInput('@!?')).toBe('')
+    })
+
+    it('should preserve slashes for hierarchical tags', () => {
+      expect(sanitizeTagInput('movies/oscar')).toBe('movies/oscar')
+      expect(sanitizeTagInput('#movies/oscar')).toBe('movies/oscar')
+    })
+
+    it('should collapse double slashes', () => {
+      expect(sanitizeTagInput('movies//oscar')).toBe('movies/oscar')
+    })
+
+    it('should strip leading and trailing slashes', () => {
+      expect(sanitizeTagInput('/movies/oscar/')).toBe('movies/oscar')
     })
   })
 
@@ -233,6 +299,82 @@ describe('tag-utils', () => {
       expect(isTagTerminator('@')).toBe(false)
       expect(isTagTerminator('#')).toBe(false)
       expect(isTagTerminator('$')).toBe(false)
+    })
+  })
+
+  describe('getTagSegments', () => {
+    it('should split hierarchical tag into segments', () => {
+      expect(getTagSegments('movies/oscar')).toEqual(['movies', 'oscar'])
+      expect(getTagSegments('a/b/c')).toEqual(['a', 'b', 'c'])
+    })
+
+    it('should return single segment for flat tag', () => {
+      expect(getTagSegments('react')).toEqual(['react'])
+    })
+  })
+
+  describe('getParentTag', () => {
+    it('should return parent for hierarchical tag', () => {
+      expect(getParentTag('movies/oscar')).toBe('movies')
+      expect(getParentTag('a/b/c')).toBe('a/b')
+    })
+
+    it('should return null for flat tag', () => {
+      expect(getParentTag('react')).toBeNull()
+    })
+  })
+
+  describe('getTagDepth', () => {
+    it('should return 0 for flat tags', () => {
+      expect(getTagDepth('react')).toBe(0)
+    })
+
+    it('should return correct depth for hierarchical tags', () => {
+      expect(getTagDepth('movies/oscar')).toBe(1)
+      expect(getTagDepth('a/b/c')).toBe(2)
+      expect(getTagDepth('a/b/c/d')).toBe(3)
+    })
+  })
+
+  describe('getTagLeaf', () => {
+    it('should return last segment', () => {
+      expect(getTagLeaf('movies/oscar')).toBe('oscar')
+      expect(getTagLeaf('a/b/c')).toBe('c')
+    })
+
+    it('should return the tag itself for flat tags', () => {
+      expect(getTagLeaf('react')).toBe('react')
+    })
+  })
+
+  describe('isDescendantOf', () => {
+    it('should return true for direct children', () => {
+      expect(isDescendantOf('movies/oscar', 'movies')).toBe(true)
+    })
+
+    it('should return true for deep descendants', () => {
+      expect(isDescendantOf('movies/oscar/2025', 'movies')).toBe(true)
+      expect(isDescendantOf('movies/oscar/2025', 'movies/oscar')).toBe(true)
+    })
+
+    it('should return false for non-descendants', () => {
+      expect(isDescendantOf('movies', 'movies')).toBe(false)
+      expect(isDescendantOf('movies-extra', 'movies')).toBe(false)
+      expect(isDescendantOf('books/fiction', 'movies')).toBe(false)
+    })
+  })
+
+  describe('getAncestorTags', () => {
+    it('should return empty for flat tags', () => {
+      expect(getAncestorTags('react')).toEqual([])
+    })
+
+    it('should return parent for depth-1 tag', () => {
+      expect(getAncestorTags('movies/oscar')).toEqual(['movies'])
+    })
+
+    it('should return all ancestors for deep tag', () => {
+      expect(getAncestorTags('a/b/c/d')).toEqual(['a', 'a/b', 'a/b/c'])
     })
   })
 })

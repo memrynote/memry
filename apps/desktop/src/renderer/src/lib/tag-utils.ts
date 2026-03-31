@@ -8,18 +8,13 @@
  * Tags must:
  * - Start with letter or number
  * - Contain only letters, numbers, hyphens, underscores
- * - No spaces or special punctuation
+ * - Optionally contain / for hierarchical sub-tags (e.g. movies/oscar)
+ * - No leading/trailing slash, no double slashes, no empty segments
  */
 export function isValidTagName(name: string): boolean {
   if (!name || name.length === 0) return false
-
-  // Must start with letter or number
   if (!/^[a-zA-Z0-9]/.test(name)) return false
-
-  // Can only contain letters, numbers, hyphens, underscores
-  if (!/^[a-zA-Z0-9_-]+$/.test(name)) return false
-
-  return true
+  return /^[a-zA-Z0-9][a-zA-Z0-9_-]*(?:\/[a-zA-Z0-9][a-zA-Z0-9_-]*)*$/.test(name)
 }
 
 /**
@@ -44,11 +39,10 @@ export function formatTagDisplay(name: string): string {
  * Finds all #tag patterns in text
  */
 export function extractTagsFromText(text: string): string[] {
-  const tagRegex = /#([a-zA-Z0-9_-]+)/g
+  const tagRegex = /#([a-zA-Z0-9][a-zA-Z0-9_-]*(?:\/[a-zA-Z0-9][a-zA-Z0-9_-]*)*)/g
   const matches = text.matchAll(tagRegex)
   const tags = Array.from(matches, (m) => m[1])
 
-  // Return unique tags
   return Array.from(new Set(tags))
 }
 
@@ -56,12 +50,10 @@ export function extractTagsFromText(text: string): string[] {
  * Sanitize tag input (remove invalid characters)
  */
 export function sanitizeTagInput(input: string): string {
-  // Remove # prefix
   let sanitized = input.replace(/^#/, '')
-
-  // Remove spaces and invalid characters
-  sanitized = sanitized.replace(/[^a-zA-Z0-9_-]/g, '')
-
+  sanitized = sanitized.replace(/[^a-zA-Z0-9_\-/]/g, '')
+  sanitized = sanitized.replace(/\/{2,}/g, '/')
+  sanitized = sanitized.replace(/^\/|\/$/g, '')
   return sanitized
 }
 
@@ -71,4 +63,35 @@ export function sanitizeTagInput(input: string): string {
  */
 export function isTagTerminator(char: string): boolean {
   return /[\s,.!?;:()[\]{}]/.test(char)
+}
+
+export function getTagSegments(tag: string): string[] {
+  return tag.split('/')
+}
+
+export function getParentTag(tag: string): string | null {
+  const idx = tag.lastIndexOf('/')
+  return idx === -1 ? null : tag.slice(0, idx)
+}
+
+export function getTagDepth(tag: string): number {
+  return tag.split('/').length - 1
+}
+
+export function getTagLeaf(tag: string): string {
+  const segments = tag.split('/')
+  return segments[segments.length - 1]
+}
+
+export function isDescendantOf(tag: string, ancestor: string): boolean {
+  return tag.startsWith(ancestor + '/')
+}
+
+export function getAncestorTags(tag: string): string[] {
+  const segments = tag.split('/')
+  const ancestors: string[] = []
+  for (let i = 1; i < segments.length; i++) {
+    ancestors.push(segments.slice(0, i).join('/'))
+  }
+  return ancestors
 }
