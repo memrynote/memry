@@ -283,6 +283,53 @@ describe('TaskDetailDrawer — editable properties', () => {
     })
   })
 
+  describe('delete task', () => {
+    it('renders delete button when onDeleteTask is provided', () => {
+      render(<TaskDetailDrawer {...defaultProps} onDeleteTask={vi.fn()} />)
+
+      const deleteBtn = screen.getByRole('button', { name: /delete task/i })
+      expect(deleteBtn).toBeInTheDocument()
+    })
+
+    it('does not render delete button when onDeleteTask is not provided', () => {
+      render(<TaskDetailDrawer {...defaultProps} />)
+
+      expect(screen.queryByRole('button', { name: /delete task/i })).not.toBeInTheDocument()
+    })
+
+    it('shows confirmation dialog when delete button clicked', async () => {
+      const user = userEvent.setup()
+      render(<TaskDetailDrawer {...defaultProps} onDeleteTask={vi.fn()} />)
+
+      await user.click(screen.getByRole('button', { name: /delete task/i }))
+
+      expect(screen.getByText('Delete task?')).toBeInTheDocument()
+      expect(screen.getByText(/will be permanently deleted/)).toBeInTheDocument()
+    })
+
+    it('calls onDeleteTask with task id when deletion confirmed', async () => {
+      const user = userEvent.setup()
+      const onDeleteTask = vi.fn()
+      render(<TaskDetailDrawer {...defaultProps} onDeleteTask={onDeleteTask} />)
+
+      await user.click(screen.getByRole('button', { name: /delete task/i }))
+      await user.click(screen.getByRole('button', { name: /^delete task$/i }))
+
+      expect(onDeleteTask).toHaveBeenCalledWith('task-1')
+    })
+
+    it('does not call onDeleteTask when cancel is clicked', async () => {
+      const user = userEvent.setup()
+      const onDeleteTask = vi.fn()
+      render(<TaskDetailDrawer {...defaultProps} onDeleteTask={onDeleteTask} />)
+
+      await user.click(screen.getByRole('button', { name: /delete task/i }))
+      await user.click(screen.getByRole('button', { name: /cancel/i }))
+
+      expect(onDeleteTask).not.toHaveBeenCalled()
+    })
+  })
+
   describe('linked notes', () => {
     const mockNoteData = {
       id: 'note-1',
