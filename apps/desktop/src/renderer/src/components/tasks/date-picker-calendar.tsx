@@ -3,12 +3,32 @@ import { useState, useMemo, useCallback } from 'react'
 import { ChevronLeft, ChevronRight } from '@/lib/icons'
 import { cn } from '@/lib/utils'
 
+interface ActivityData {
+  [dateISO: string]: number
+}
+
 interface DatePickerCalendarProps {
   selected?: Date
   onSelect: (date: Date | undefined) => void
   disabled?: (date: Date) => boolean
   weekStartsOn?: 0 | 1
+  activityData?: ActivityData
   className?: string
+}
+
+const ACTIVITY_DOT_COLORS = [
+  '',
+  'bg-emerald-500/50',
+  'bg-emerald-500/70',
+  'bg-amber-500/80',
+  'bg-amber-500'
+] as const
+
+function toISO(date: Date): string {
+  const y = date.getFullYear()
+  const m = String(date.getMonth() + 1).padStart(2, '0')
+  const d = String(date.getDate()).padStart(2, '0')
+  return `${y}-${m}-${d}`
 }
 
 const WEEKDAYS_SUNDAY = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'] as const
@@ -78,6 +98,7 @@ export function DatePickerCalendar({
   onSelect,
   disabled,
   weekStartsOn = 1,
+  activityData,
   className
 }: DatePickerCalendarProps): React.JSX.Element {
   const today = useMemo(() => {
@@ -161,7 +182,7 @@ export function DatePickerCalendar({
         {weekdays.map((day) => (
           <div
             key={day}
-            className="text-[10px] w-[30px] text-center text-text-tertiary/60 font-medium leading-3 shrink-0 select-none"
+            className="flex-1 min-w-0 text-[10px] text-center text-text-tertiary/60 font-medium leading-3 select-none"
           >
             {day}
           </div>
@@ -175,6 +196,7 @@ export function DatePickerCalendar({
             const isToday = isSameDay(date, today)
             const isSelected = !isOutsideMonth && selected ? isSameDay(date, selected) : false
             const isDisabled = isOutsideMonth || (disabled?.(date) ?? false)
+            const activity = !isOutsideMonth && activityData ? (activityData[toISO(date)] ?? 0) : 0
 
             return (
               <button
@@ -183,7 +205,7 @@ export function DatePickerCalendar({
                 onClick={() => !isDisabled && onSelect(date)}
                 disabled={isDisabled}
                 className={cn(
-                  'w-[30px] h-[26px] flex items-center justify-center shrink-0 text-[11px] leading-3.5 transition-colors rounded-[5px]',
+                  'flex-1 min-w-0 aspect-square max-h-10 flex flex-col items-center justify-center gap-0.5 text-[11px] leading-3.5 transition-colors rounded-[5px]',
                   'focus-visible:outline-none',
                   isOutsideMonth && 'text-text-tertiary/30 cursor-default',
                   !isOutsideMonth && isDisabled && 'text-text-tertiary/30 cursor-not-allowed',
@@ -212,6 +234,12 @@ export function DatePickerCalendar({
                 aria-disabled={isDisabled}
               >
                 {date.getDate()}
+                {activity > 0 && (
+                  <span
+                    className={cn('size-1 rounded-full', ACTIVITY_DOT_COLORS[activity])}
+                    aria-hidden="true"
+                  />
+                )}
               </button>
             )
           })}
