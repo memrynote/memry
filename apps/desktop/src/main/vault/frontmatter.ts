@@ -255,7 +255,7 @@ export function extractInlineTagsFromMarkdown(content: string): string[] {
   const withoutInlineCode = withoutCode.replace(/`[^`]+`/g, '')
 
   const tags = new Set<string>()
-  const pattern = /#([a-zA-Z][a-zA-Z0-9_-]*)/g
+  const pattern = /#([a-zA-Z][a-zA-Z0-9_-]*(?:\/[a-zA-Z0-9][a-zA-Z0-9_-]*)*)/g
   let match: RegExpExecArray | null
 
   while ((match = pattern.exec(withoutInlineCode)) !== null) {

@@ -6,8 +6,8 @@ import type { Node as ProseMirrorNode } from '@tiptap/pm/model'
 
 const PLUGIN_KEY = new PluginKey('hashTagInline')
 const HASH_TAG_IMMEDIATE = /(^|[\s\ufffc])#([a-zA-Z0-9])$/
-const TAG_CHAR_PATTERN = /^[a-zA-Z0-9_-]$/
-const TRAILING_TAG_CHARS = /\ufffc([a-zA-Z0-9_-]+)$/
+const TAG_CHAR_PATTERN = /^[a-zA-Z0-9_\-/]$/
+const TRAILING_TAG_CHARS = /\ufffc([a-zA-Z0-9_\-/]+)$/
 
 export function matchHashTagImmediate(text: string): string | null {
   const match = text.match(HASH_TAG_IMMEDIATE)

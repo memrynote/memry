@@ -2,7 +2,7 @@ import { Plugin, PluginKey } from '@tiptap/pm/state'
 import { Fragment } from '@tiptap/pm/model'
 
 const PLUGIN_KEY = new PluginKey('hashTagSpaceComplete')
-const HASH_TAG_BEFORE_CURSOR = /(^|[\s\ufffc])#([a-zA-Z0-9][a-zA-Z0-9_-]*) $/
+const HASH_TAG_BEFORE_CURSOR = /(^|[\s\ufffc])#([a-zA-Z0-9][a-zA-Z0-9_\-/]*[a-zA-Z0-9_-]) $/
 
 export function matchHashTagBeforeCursor(text: string): string | null {
   const match = text.match(HASH_TAG_BEFORE_CURSOR)
