@@ -24,6 +24,7 @@ export interface UseTagDetailOptions {
   sortBy?: TagSortBy
   sortOrder?: TagSortOrder
   fallbackColor?: string
+  includeDescendants?: boolean
 }
 
 export interface UseTagDetailReturn {
@@ -56,7 +57,7 @@ export interface UseTagDetailReturn {
  * Fetches notes for a tag and provides actions for pinning/unpinning.
  */
 export function useTagDetail(options: UseTagDetailOptions): UseTagDetailReturn {
-  const { tag, fallbackColor } = options
+  const { tag, fallbackColor, includeDescendants = true } = options
   const [data, setData] = useState<GetNotesByTagResponse | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -74,7 +75,8 @@ export function useTagDetail(options: UseTagDetailOptions): UseTagDetailReturn {
       const response = await tagsService.getNotesByTag({
         tag,
         sortBy,
-        sortOrder
+        sortOrder,
+        includeDescendants
       })
       setData(response)
     } catch (err) {
@@ -84,7 +86,7 @@ export function useTagDetail(options: UseTagDetailOptions): UseTagDetailReturn {
     } finally {
       setIsLoading(false)
     }
-  }, [tag, sortBy, sortOrder])
+  }, [tag, sortBy, sortOrder, includeDescendants])
 
   // Initial fetch
   useEffect(() => {
