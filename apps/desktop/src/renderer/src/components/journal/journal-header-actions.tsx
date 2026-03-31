@@ -8,7 +8,8 @@ import {
   Settings,
   ChevronLeft,
   ChevronRight,
-  Download
+  Download,
+  PanelRight
 } from '@/lib/icons'
 import { Switch } from '@/components/ui/switch'
 import {
@@ -18,6 +19,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu'
+import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip'
+import { Kbd } from '@/components/ui/kbd'
 import { JournalReminderButton } from './journal-reminder-button'
 import type { JournalViewState } from './date-breadcrumb'
 
@@ -25,11 +28,13 @@ interface JournalHeaderActionsProps {
   viewState: JournalViewState
   isBookmarked: boolean
   isFullWidth: boolean
+  isSidebarCollapsed: boolean
   hasEntry: boolean
   journalDate: string | null
   onPrevious: () => void
   onNext: () => void
   onToggleFullWidth: () => void
+  onToggleSidebar: () => void
   onBookmarkToggle: () => void
   onVersionHistory: () => void
   onExport: () => void
@@ -42,11 +47,13 @@ export function JournalHeaderActions({
   viewState,
   isBookmarked,
   isFullWidth,
+  isSidebarCollapsed,
   hasEntry,
   journalDate,
   onPrevious,
   onNext,
   onToggleFullWidth,
+  onToggleSidebar,
   onBookmarkToggle,
   onVersionHistory,
   onExport,
@@ -132,6 +139,25 @@ export function JournalHeaderActions({
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
+
+      {isSidebarCollapsed && (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className={cn(ACTION_BTN, 'hidden lg:inline-flex')}
+              onClick={onToggleSidebar}
+            >
+              <PanelRight className="h-3.5 w-3.5 text-muted-foreground" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="bottom" className="flex items-center gap-2 text-xs">
+            Show sidebar
+            <Kbd>⌘.</Kbd>
+          </TooltipContent>
+        </Tooltip>
+      )}
     </div>
   )
 }

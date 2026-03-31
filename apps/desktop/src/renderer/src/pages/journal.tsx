@@ -15,7 +15,10 @@ import {
   type PointerEvent as ReactPointerEvent
 } from 'react'
 import { cn } from '@/lib/utils'
-import { Loader2 } from '@/lib/icons'
+import { Loader2, PanelRight } from '@/lib/icons'
+import { Button } from '@/components/ui/button'
+import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip'
+import { Kbd } from '@/components/ui/kbd'
 import {
   JournalMonthView,
   JournalYearView,
@@ -96,6 +99,10 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
 
   const [isExportDialogOpen, setIsExportDialogOpen] = useState(false)
   const [isVersionHistoryOpen, setIsVersionHistoryOpen] = useState(false)
+
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(() => {
+    return localStorage.getItem('memry_journal_sidebar_collapsed') === 'true'
+  })
 
   // Right sidebar resize
   const SIDEBAR_MIN = 220
@@ -662,6 +669,14 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
         e.preventDefault()
         setIsFullWidth((prev) => !prev)
       }
+      if ((e.metaKey || e.ctrlKey) && e.key === '.') {
+        e.preventDefault()
+        setIsSidebarCollapsed((prev) => {
+          const next = !prev
+          localStorage.setItem('memry_journal_sidebar_collapsed', String(next))
+          return next
+        })
+      }
     }
     document.addEventListener('keydown', handleKeyDown)
     return () => document.removeEventListener('keydown', handleKeyDown)
@@ -699,7 +714,7 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
             onClose={findInPage.close}
           />
 
-          <div className="flex items-center justify-between h-9 py-2 px-6 shrink-0 text-xs/4 [font-synthesis:none]">
+          <div className="flex items-center justify-between h-9 py-2 pl-6 pr-3 shrink-0 text-xs/4 [font-synthesis:none]">
             <JournalBreadcrumb
               viewState={viewState}
               isToday={isToday}
@@ -713,11 +728,19 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
               viewState={viewState}
               isBookmarked={isBookmarked}
               isFullWidth={isFullWidth}
+              isSidebarCollapsed={isSidebarCollapsed}
               hasEntry={!!entry}
               journalDate={entry?.date ?? null}
               onPrevious={handleNavigationPrevious}
               onNext={handleNavigationNext}
               onToggleFullWidth={() => setIsFullWidth(!isFullWidth)}
+              onToggleSidebar={() => {
+                setIsSidebarCollapsed((prev) => {
+                  const next = !prev
+                  localStorage.setItem('memry_journal_sidebar_collapsed', String(next))
+                  return next
+                })
+              }}
               onBookmarkToggle={toggleBookmark}
               onVersionHistory={() => setIsVersionHistoryOpen(true)}
               onExport={() => setIsExportDialogOpen(true)}
@@ -886,23 +909,52 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
 
         {/* Right Sidebar — Calendar with resize handle */}
         {viewState.type === 'day' && (
-          <div className="relative shrink-0 h-full hidden lg:flex">
+          <div
+            className="relative shrink-0 h-full hidden lg:flex transition-[width] duration-200 ease-out overflow-hidden"
+            style={{ width: isSidebarCollapsed ? 0 : sidebarWidth }}
+          >
             {/* Resize handle */}
-            <div
-              className="absolute left-0 top-0 bottom-0 w-1 z-10 cursor-col-resize group"
-              onPointerDown={handleResizeStart}
-              role="separator"
-              aria-orientation="vertical"
-              aria-label="Resize sidebar"
-            >
-              <div className="absolute inset-y-0 -left-1 -right-1" />
-              <div className="absolute inset-y-0 left-0 w-px bg-border/30 group-hover:bg-tint transition-colors" />
-            </div>
+            {!isSidebarCollapsed && (
+              <div
+                className="absolute left-0 top-0 bottom-0 w-1 z-10 cursor-col-resize group"
+                onPointerDown={handleResizeStart}
+                role="separator"
+                aria-orientation="vertical"
+                aria-label="Resize sidebar"
+              >
+                <div className="absolute inset-y-0 -left-1 -right-1" />
+                <div className="absolute inset-y-0 left-0 w-px bg-border/30 group-hover:bg-tint transition-colors" />
+              </div>
+            )}
             <aside
               className="h-full overflow-y-auto border-l border-border/30 bg-sidebar"
-              style={{ width: sidebarWidth }}
+              style={{ width: sidebarWidth, minWidth: sidebarWidth }}
             >
-              <div className="p-4 pt-5 w-full">
+              <div className="flex items-center justify-end h-9 px-2 shrink-0">
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="size-7 hover:bg-surface-active"
+                      onClick={() => {
+                        setIsSidebarCollapsed((prev) => {
+                          const next = !prev
+                          localStorage.setItem('memry_journal_sidebar_collapsed', String(next))
+                          return next
+                        })
+                      }}
+                    >
+                      <PanelRight className="h-3.5 w-3.5 text-foreground" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom" className="flex items-center gap-2 text-xs">
+                    Hide sidebar
+                    <Kbd>⌘.</Kbd>
+                  </TooltipContent>
+                </Tooltip>
+              </div>
+              <div className="px-4 pb-4 w-full">
                 <DatePickerCalendar
                   selected={selectedDateObj}
                   onSelect={(date) => {
@@ -910,6 +962,8 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
                   }}
                   activityData={calendarActivityData}
                   className="w-full"
+                  showWeekNumbers
+                  onTodayClick={handleTodayClick}
                 />
               </div>
               <div className="h-px mx-4 bg-border/30" />
