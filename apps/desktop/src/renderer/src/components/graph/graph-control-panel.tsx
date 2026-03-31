@@ -99,7 +99,7 @@ export function GraphControlPanel({
 
       {/* Sliding drawer */}
       <div
-        className={`absolute right-0 top-0 bottom-0 z-40 w-[260px] border-l border-border bg-popover/95 backdrop-blur-sm overflow-y-auto transition-transform duration-250 ease-out ${isOpen ? 'translate-x-0' : 'translate-x-full'}`}
+        className={`absolute right-0 top-0 z-40 w-[260px] max-h-full border-l border-border bg-popover/95 backdrop-blur-sm rounded-bl-lg overflow-y-auto transition-transform duration-250 ease-out ${isOpen ? 'translate-x-0' : 'translate-x-full'}`}
       >
         <div className="p-3 space-y-0.5">
           {isFiltered && (
