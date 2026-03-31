@@ -46,7 +46,8 @@ export type TagSortOrder = 'asc' | 'desc'
 export const GetNotesByTagSchema = z.object({
   tag: z.string().min(1),
   sortBy: z.enum(['modified', 'created', 'title']).default('modified'),
-  sortOrder: z.enum(['asc', 'desc']).default('desc')
+  sortOrder: z.enum(['asc', 'desc']).default('desc'),
+  includeDescendants: z.boolean().default(false)
 })
 
 export const PinNoteToTagSchema = z.object({
