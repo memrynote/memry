@@ -16,6 +16,7 @@ import { SubtaskProgressIndicator } from '@/components/tasks/subtask-progress-in
 import { StatusDot } from '@/components/ui/status-dot'
 import type { Priority } from '@/data/sample-tasks'
 import type { Status, Project } from '@/data/tasks-data'
+import { ChevronUp, ChevronDown } from '@/lib/icons'
 import { createLogger } from '@/lib/logger'
 
 const log = createLogger('JournalDayPanel')
@@ -308,9 +309,12 @@ export function JournalDayPanel({ date, className }: JournalDayPanelProps) {
         <span className="tracking-[0.06em] uppercase inline-block text-muted-foreground font-semibold shrink-0 text-[11px]">
           {isToday ? 'Today' : formatShortDate(date)}
         </span>
-        <span className="inline-block text-foreground/70 shrink-0 text-[11px]">
-          {isCollapsed ? '▾' : '▴'}
-        </span>
+        <ChevronDown
+          className={cn(
+            'size-4 text-foreground/70 shrink-0 transition-transform duration-200',
+            !isCollapsed && 'rotate-180'
+          )}
+        />
       </button>
 
       {!isCollapsed && (
