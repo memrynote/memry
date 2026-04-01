@@ -1,4 +1,6 @@
 import { useTabGroup, useTabs } from '@/contexts/tabs'
+import { useAIAgent } from '@/contexts/ai-agent-context'
+import { useDayPanel } from '@/contexts/day-panel-context'
 import { TabBarWithDrag } from '@/components/tabs'
 import { TabContent } from './tab-content'
 import { EmptyPaneState } from './empty-pane-state'
@@ -17,6 +19,9 @@ export const TabPane = ({
 }: TabPaneProps): React.JSX.Element | null => {
   const { dispatch } = useTabs()
   const group = useTabGroup(groupId)
+  const { isOpen: isAIOpen } = useAIAgent()
+  const { isOpen: isDayPanelOpen } = useDayPanel()
+  const hasRightPanel = isAIOpen || isDayPanelOpen
 
   if (!group) return null
 
@@ -38,7 +43,12 @@ export const TabPane = ({
     >
       <TabBarWithDrag groupId={groupId} />
 
-      <div className="flex-1 overflow-hidden">
+      <div
+        className={cn(
+          'flex-1 overflow-hidden transition-[margin] duration-200 ease-linear',
+          hasRightPanel && 'mr-80'
+        )}
+      >
         {activeTab ? (
           <TabContent tab={activeTab} groupId={groupId} />
         ) : (
