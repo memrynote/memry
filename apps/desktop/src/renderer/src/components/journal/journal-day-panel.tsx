@@ -13,7 +13,6 @@ import { useTabActions } from '@/contexts/tabs'
 import { InlineStatusPopover } from '@/components/tasks/inline-status-popover'
 import { InlinePriorityPopover } from '@/components/tasks/inline-priority-popover'
 import { SubtaskProgressIndicator } from '@/components/tasks/subtask-progress-indicator'
-import { StatusDot } from '@/components/ui/status-dot'
 import type { Priority } from '@/data/sample-tasks'
 import type { Status, Project } from '@/data/tasks-data'
 import { ChevronUp, ChevronDown } from '@/lib/icons'
@@ -86,7 +85,6 @@ function getDummySchedule(date: string): ScheduleEvent[] {
 interface TaskRowProps {
   task: TaskListItem
   statuses: Status[]
-  project: Project | undefined
   onToggleComplete: (id: string, isCompleted: boolean) => void
   onStatusChange: (id: string, statusId: string) => void
   onPriorityChange: (id: string, priority: Priority) => void
@@ -96,7 +94,6 @@ interface TaskRowProps {
 function TaskRow({
   task,
   statuses,
-  project,
   onToggleComplete,
   onStatusChange,
   onPriorityChange,
@@ -141,22 +138,15 @@ function TaskRow({
         </span>
       </div>
 
-      <div className="flex items-center gap-2 pl-[52px] flex-wrap">
-        {project && (
-          <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
-            <StatusDot color={project.color} size="xs" />
-            <span className="truncate max-w-[100px]">{project.name}</span>
-          </span>
-        )}
-
-        {task.subtaskCount > 0 && (
+      {task.subtaskCount > 0 && (
+        <div className="pl-[52px]">
           <SubtaskProgressIndicator
             completed={task.completedSubtaskCount}
             total={task.subtaskCount}
             accentColor={statusColor}
           />
-        )}
-      </div>
+        </div>
+      )}
     </div>
   )
 }
@@ -373,7 +363,6 @@ export function JournalDayPanel({ date, className }: JournalDayPanelProps) {
                     key={task.id}
                     task={task}
                     statuses={statuses}
-                    project={proj}
                     onToggleComplete={handleToggleComplete}
                     onStatusChange={handleStatusChange}
                     onPriorityChange={handlePriorityChange}
