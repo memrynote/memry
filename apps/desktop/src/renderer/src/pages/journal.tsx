@@ -1,24 +1,13 @@
 /**
  * Journal Page - Contemplative Editorial Design
  * A refined, warm aesthetic that makes journaling feel premium
- * Left: Large journal writing area with dramatic date display
- * Right: Mini calendar + Schedule + Tasks + AI Connections
+ * Full-width journal writing area with breadcrumb navigation
+ * Day context (calendar + tasks) available via global Day Panel
  */
 
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  type RefObject,
-  type PointerEvent as ReactPointerEvent
-} from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type RefObject } from 'react'
 import { cn } from '@/lib/utils'
-import { Loader2, PanelRight } from '@/lib/icons'
-import { Button } from '@/components/ui/button'
-import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip'
-import { Kbd } from '@/components/ui/kbd'
+import { Loader2 } from '@/lib/icons'
 import {
   JournalMonthView,
   JournalYearView,
@@ -27,13 +16,11 @@ import {
   JournalHeaderActions,
   JournalDateDisplay,
   JournalStatsFooter,
-  JournalDayPanel,
   type JournalViewState
 } from '@/components/journal'
 import { ContentArea, type Block, type HeadingInfo } from '@/components/note'
 import { BacklinksSection, type Backlink } from '@/components/note/backlinks'
 
-import { DatePickerCalendar } from '@/components/tasks/date-picker-calendar'
 import { TagsRow, type Tag } from '@/components/note/tags-row'
 import { InfoSection } from '@/components/note/info-section'
 import { OutlineInfoPanel, type HeadingItem } from '@/components/shared'
@@ -99,56 +86,6 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
 
   const [isExportDialogOpen, setIsExportDialogOpen] = useState(false)
   const [isVersionHistoryOpen, setIsVersionHistoryOpen] = useState(false)
-
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(() => {
-    return localStorage.getItem('memry_journal_sidebar_collapsed') === 'true'
-  })
-
-  // Right sidebar resize
-  const SIDEBAR_MIN = 220
-  const SIDEBAR_MAX = 480
-  const SIDEBAR_DEFAULT = 280
-  const [sidebarWidth, setSidebarWidth] = useState(() => {
-    const saved = localStorage.getItem('memry_journal_sidebar_width')
-    return saved ? Math.max(SIDEBAR_MIN, Math.min(SIDEBAR_MAX, Number(saved))) : SIDEBAR_DEFAULT
-  })
-  const isResizingRef = useRef(false)
-  const startXRef = useRef(0)
-  const startWidthRef = useRef(SIDEBAR_DEFAULT)
-
-  const handleResizeStart = useCallback(
-    (e: ReactPointerEvent<HTMLDivElement>) => {
-      e.preventDefault()
-      isResizingRef.current = true
-      startXRef.current = e.clientX
-      startWidthRef.current = sidebarWidth
-      document.body.style.cursor = 'col-resize'
-      document.body.style.userSelect = 'none'
-
-      const handleMove = (ev: globalThis.PointerEvent) => {
-        if (!isResizingRef.current) return
-        const delta = startXRef.current - ev.clientX
-        const next = Math.max(SIDEBAR_MIN, Math.min(SIDEBAR_MAX, startWidthRef.current + delta))
-        setSidebarWidth(next)
-      }
-
-      const handleUp = () => {
-        isResizingRef.current = false
-        document.body.style.cursor = ''
-        document.body.style.userSelect = ''
-        document.removeEventListener('pointermove', handleMove)
-        document.removeEventListener('pointerup', handleUp)
-        setSidebarWidth((w) => {
-          localStorage.setItem('memry_journal_sidebar_width', String(w))
-          return w
-        })
-      }
-
-      document.addEventListener('pointermove', handleMove)
-      document.addEventListener('pointerup', handleUp)
-    },
-    [sidebarWidth]
-  )
 
   // Headings state for outline panel
   const [headings, setHeadings] = useState<HeadingItem[]>([])
@@ -284,14 +221,6 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
 
   const currentYear = dateParts.year
   const { data: heatmapData } = useJournalHeatmap(currentYear)
-
-  const calendarActivityData = useMemo(() => {
-    const map: Record<string, number> = {}
-    for (const entry of heatmapData) {
-      map[entry.date] = entry.level
-    }
-    return map
-  }, [heatmapData])
 
   const viewMonth = viewState.type === 'month' ? viewState.month : dateParts.monthIndex
   const viewYear =
@@ -669,14 +598,6 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
         e.preventDefault()
         setIsFullWidth((prev) => !prev)
       }
-      if ((e.metaKey || e.ctrlKey) && e.key === '.') {
-        e.preventDefault()
-        setIsSidebarCollapsed((prev) => {
-          const next = !prev
-          localStorage.setItem('memry_journal_sidebar_collapsed', String(next))
-          return next
-        })
-      }
     }
     document.addEventListener('keydown', handleKeyDown)
     return () => document.removeEventListener('keydown', handleKeyDown)
@@ -728,19 +649,11 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
               viewState={viewState}
               isBookmarked={isBookmarked}
               isFullWidth={isFullWidth}
-              isSidebarCollapsed={isSidebarCollapsed}
               hasEntry={!!entry}
               journalDate={entry?.date ?? null}
               onPrevious={handleNavigationPrevious}
               onNext={handleNavigationNext}
               onToggleFullWidth={() => setIsFullWidth(!isFullWidth)}
-              onToggleSidebar={() => {
-                setIsSidebarCollapsed((prev) => {
-                  const next = !prev
-                  localStorage.setItem('memry_journal_sidebar_collapsed', String(next))
-                  return next
-                })
-              }}
               onBookmarkToggle={toggleBookmark}
               onVersionHistory={() => setIsVersionHistoryOpen(true)}
               onExport={() => setIsExportDialogOpen(true)}
@@ -906,73 +819,6 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
             />
           )}
         </main>
-
-        {/* Right Sidebar — Calendar with resize handle */}
-        {viewState.type === 'day' && (
-          <div
-            className="relative shrink-0 h-full hidden lg:flex transition-[width] duration-200 ease-out overflow-hidden"
-            style={{ width: isSidebarCollapsed ? 0 : sidebarWidth }}
-          >
-            {/* Resize handle */}
-            {!isSidebarCollapsed && (
-              <div
-                className="absolute left-0 top-0 bottom-0 w-1 z-10 cursor-col-resize group"
-                onPointerDown={handleResizeStart}
-                role="separator"
-                aria-orientation="vertical"
-                aria-label="Resize sidebar"
-              >
-                <div className="absolute inset-y-0 -left-1 -right-1" />
-                <div className="absolute inset-y-0 left-0 w-px bg-border/30 group-hover:bg-tint transition-colors" />
-              </div>
-            )}
-            <aside
-              className="h-full overflow-y-auto border-l border-border/30 bg-sidebar"
-              style={{ width: sidebarWidth, minWidth: sidebarWidth }}
-            >
-              <div className="flex items-center justify-end h-9 px-2 shrink-0">
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="size-7 hover:bg-surface-active"
-                      onClick={() => {
-                        setIsSidebarCollapsed((prev) => {
-                          const next = !prev
-                          localStorage.setItem('memry_journal_sidebar_collapsed', String(next))
-                          return next
-                        })
-                      }}
-                    >
-                      <PanelRight className="h-3.5 w-3.5 text-foreground" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent side="bottom" className="flex items-center gap-2 text-xs">
-                    Hide sidebar
-                    <Kbd>⌘.</Kbd>
-                  </TooltipContent>
-                </Tooltip>
-              </div>
-              <div className="px-4 pb-4 w-full">
-                <DatePickerCalendar
-                  selected={selectedDateObj}
-                  onSelect={(date) => {
-                    if (date) navigateToDay(formatDateToISO(date))
-                  }}
-                  activityData={calendarActivityData}
-                  className="w-full"
-                  showWeekNumbers
-                  onTodayClick={handleTodayClick}
-                />
-              </div>
-              <div className="h-px mx-4 bg-border/30" />
-              <div className="p-4 w-full">
-                <JournalDayPanel date={selectedDate} />
-              </div>
-            </aside>
-          </div>
-        )}
 
         {/* Dialogs */}
         {entry && (

@@ -10,9 +10,11 @@ import { DragProvider, type DragState } from '@/contexts/drag-context'
 import { DroppedPriorityProvider } from '@/contexts/dropped-priority-context'
 import { AIAgentProvider } from '@/contexts/ai-agent-context'
 import { AIInlineProvider } from '@/contexts/ai-inline-context'
+import { DayPanelProvider } from '@/contexts/day-panel-context'
 import { SidebarDrillDownProvider } from '@/contexts/sidebar-drill-down'
 import { SelectedFolderProvider } from '@/contexts/selected-folder-context'
 import { GlobalAIPanel } from '@/components/ai-agent'
+import { GlobalDayPanel } from '@/components/day-panel'
 import { TaskDragOverlay } from '@/components/tasks/drag-drop'
 import { initialProjects, taskViews, type Project } from '@/data/tasks-data'
 import { sampleTasks, type Task } from '@/data/sample-tasks'
@@ -151,6 +153,7 @@ const AppContent = (): React.JSX.Element => {
     <TabDragProvider>
       <div className="flex flex-1 overflow-hidden bg-background" id="main-content">
         <SplitViewContainer />
+        <GlobalDayPanel />
         <GlobalAIPanel />
       </div>
 
@@ -460,24 +463,26 @@ function App(): React.JSX.Element {
         getOrderedTasks={taskOrder.getOrderedTasks}
       >
         <AIAgentProvider>
-          <AIInlineProvider>
-            <TabProvider>
-              <TabPersistenceManager>
-                <SettingsModalProvider>
-                  <SelectedFolderProvider>
-                    <SidebarDrillDownProvider>
-                      <AppSidebar currentPage={currentPage} viewCounts={viewCounts} />
-                      <SidebarInset className="flex flex-col overflow-hidden">
-                        <AppContent />
-                      </SidebarInset>
-                    </SidebarDrillDownProvider>
-                    {/* Drag Overlay - only for task drag to sidebar */}
-                    <TaskDragOverlay projects={projectsWithCounts} />
-                  </SelectedFolderProvider>
-                </SettingsModalProvider>
-              </TabPersistenceManager>
-            </TabProvider>
-          </AIInlineProvider>
+          <DayPanelProvider>
+            <AIInlineProvider>
+              <TabProvider>
+                <TabPersistenceManager>
+                  <SettingsModalProvider>
+                    <SelectedFolderProvider>
+                      <SidebarDrillDownProvider>
+                        <AppSidebar currentPage={currentPage} viewCounts={viewCounts} />
+                        <SidebarInset className="flex flex-col overflow-hidden">
+                          <AppContent />
+                        </SidebarInset>
+                      </SidebarDrillDownProvider>
+                      {/* Drag Overlay - only for task drag to sidebar */}
+                      <TaskDragOverlay projects={projectsWithCounts} />
+                    </SelectedFolderProvider>
+                  </SettingsModalProvider>
+                </TabPersistenceManager>
+              </TabProvider>
+            </AIInlineProvider>
+          </DayPanelProvider>
         </AIAgentProvider>
       </TasksProvider>
     </TabErrorBoundary>
