@@ -6,7 +6,6 @@
 import { useState } from 'react'
 import { useDndMonitor } from '@dnd-kit/core'
 import { useTabGroup, useTabs } from '@/contexts/tabs'
-import { useAIAgent } from '@/contexts/ai-agent-context'
 import { useDayPanel } from '@/contexts/day-panel-context'
 import { TabBarWithDrag } from '@/components/tabs'
 import { TabContent } from './tab-content'
@@ -35,9 +34,8 @@ export const TabPaneWithDropZones = ({
 }: TabPaneWithDropZonesProps): React.JSX.Element | null => {
   const { dispatch } = useTabs()
   const group = useTabGroup(groupId)
-  const { isOpen: isAIOpen } = useAIAgent()
   const { isOpen: isDayPanelOpen } = useDayPanel()
-  const hasRightPanel = isAIOpen || isDayPanelOpen
+  const hasRightPanel = isDayPanelOpen
 
   // Drag state
   const [isDraggingTab, setIsDraggingTab] = useState(false)

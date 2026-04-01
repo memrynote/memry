@@ -6,9 +6,8 @@
 
 import { useRef, useState, useEffect, useCallback } from 'react'
 import { SortableContext, horizontalListSortingStrategy } from '@dnd-kit/sortable'
-import { ChevronLeft, ChevronRight, Bot, Calendar } from '@/lib/icons'
+import { ChevronLeft, ChevronRight, Calendar } from '@/lib/icons'
 import { SidebarGraph } from '@/lib/icons/sidebar-nav-icons'
-import { useAIAgent } from '@/contexts/ai-agent-context'
 import { useDayPanel } from '@/contexts/day-panel-context'
 import { useTabGroup, useTabs } from '@/contexts/tabs'
 import { SidebarTrigger } from '@/components/ui/sidebar'
@@ -36,19 +35,8 @@ export const TabBarWithDrag = ({
   className
 }: TabBarWithDragProps): React.JSX.Element | null => {
   const group = useTabGroup(groupId)
-  const { toggle: toggleAIAgent, isOpen: isAIAgentOpen, close: closeAIAgent } = useAIAgent()
-  const { toggle: toggleDayPanel, isOpen: isDayPanelOpen, close: closeDayPanel } = useDayPanel()
+  const { toggle: toggleDayPanel, isOpen: isDayPanelOpen } = useDayPanel()
   const { openTab, getActiveTab } = useTabs()
-
-  const handleToggleAIAgent = useCallback(() => {
-    if (!isAIAgentOpen) closeDayPanel()
-    toggleAIAgent()
-  }, [isAIAgentOpen, closeDayPanel, toggleAIAgent])
-
-  const handleToggleDayPanel = useCallback(() => {
-    if (!isDayPanelOpen) closeAIAgent()
-    toggleDayPanel()
-  }, [isDayPanelOpen, closeAIAgent, toggleDayPanel])
 
   const isGraphActive = getActiveTab()?.type === 'graph'
 
@@ -248,19 +236,7 @@ export const TabBarWithDrag = ({
               />
             }
             tooltip="Day Panel"
-            onClick={handleToggleDayPanel}
-          />
-          <TabBarAction
-            icon={
-              <Bot
-                className={cn(
-                  'w-4 h-4 transition-colors duration-150',
-                  isAIAgentOpen && 'text-tint'
-                )}
-              />
-            }
-            tooltip="AI Agent"
-            onClick={handleToggleAIAgent}
+            onClick={toggleDayPanel}
           />
         </div>
       </div>
