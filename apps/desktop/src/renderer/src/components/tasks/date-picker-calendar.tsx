@@ -204,7 +204,7 @@ export function DatePickerCalendar({
           >
             <ChevronRightIcon />
           </button>
-          {onTodayClick && !isViewingTodayMonth && (
+          {onTodayClick && (
             <button
               type="button"
               onClick={goToToday}
