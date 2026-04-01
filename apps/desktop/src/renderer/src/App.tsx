@@ -3,14 +3,13 @@ import type { DragEndEvent } from '@dnd-kit/core'
 import { arrayMove } from '@dnd-kit/sortable'
 import { useQueryClient } from '@tanstack/react-query'
 import { Loader2 } from '@/lib/icons'
-import { cn } from '@/lib/utils'
 import { AppSidebar } from '@/components/app-sidebar'
 import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar'
 import { Toaster } from '@/components/ui/sonner'
 import { DragProvider, type DragState } from '@/contexts/drag-context'
 import { DroppedPriorityProvider } from '@/contexts/dropped-priority-context'
 import { AIInlineProvider } from '@/contexts/ai-inline-context'
-import { DayPanelProvider, useDayPanel } from '@/contexts/day-panel-context'
+import { DayPanelProvider } from '@/contexts/day-panel-context'
 import { SidebarDrillDownProvider } from '@/contexts/sidebar-drill-down'
 import { SelectedFolderProvider } from '@/contexts/selected-folder-context'
 import { GlobalDayPanel } from '@/components/day-panel'
@@ -101,7 +100,6 @@ function TabPersistenceManager({ children }: { children: React.ReactNode }): Rea
 
 const AppContent = (): React.JSX.Element => {
   const { openTab } = useTabs()
-  const { isOpen: dayPanelOpen, width: dayPanelWidth, isResizing: dayPanelResizing } = useDayPanel()
   const [showShortcutsDialog, setShowShortcutsDialog] = useState(false)
   const [searchOpen, setSearchOpen] = useState(false)
 
@@ -151,14 +149,7 @@ const AppContent = (): React.JSX.Element => {
 
   return (
     <TabDragProvider>
-      <div
-        className={cn(
-          'flex flex-1 overflow-hidden bg-background',
-          !dayPanelResizing && 'transition-[margin-right] duration-200 ease-linear'
-        )}
-        id="main-content"
-        style={{ marginRight: dayPanelOpen ? `${dayPanelWidth}px` : 0 }}
-      >
+      <div className="flex flex-1 overflow-hidden bg-background" id="main-content">
         <SplitViewContainer />
       </div>
       <GlobalDayPanel />

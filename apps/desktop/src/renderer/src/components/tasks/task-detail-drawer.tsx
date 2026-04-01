@@ -93,7 +93,7 @@ export const TaskDetailDrawer = memo(function TaskDetailDrawer({
   onNoteClick,
   onDeleteTask
 }: TaskDetailDrawerProps): React.JSX.Element {
-  const { isOpen: isDayPanelOpen } = useDayPanel()
+  const { isOpen: isDayPanelOpen, width: dayPanelWidth } = useDayPanel()
   const [noteNames, setNoteNames] = useState<
     Record<string, { title: string; emoji?: string | null }>
   >({})
@@ -242,9 +242,9 @@ export const TaskDetailDrawer = memo(function TaskDetailDrawer({
       className={cn(
         'fixed top-10 bottom-0 z-10 border-l bg-surface overflow-hidden',
         'transition-[width,opacity,right] duration-200 ease-out',
-        isOpen ? 'w-[380px] opacity-100 border-border' : 'w-0 opacity-0 border-transparent',
-        isDayPanelOpen ? 'right-80' : 'right-0'
+        isOpen ? 'w-[380px] opacity-100 border-border' : 'w-0 opacity-0 border-transparent'
       )}
+      style={{ right: isDayPanelOpen ? `${dayPanelWidth}px` : 0 }}
     >
       <div className="w-[380px] h-full flex flex-col overflow-y-auto scrollbar-thin [font-synthesis:none] text-[12px] leading-4">
         {task && project && (

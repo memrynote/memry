@@ -34,8 +34,11 @@ export const TabPaneWithDropZones = ({
 }: TabPaneWithDropZonesProps): React.JSX.Element | null => {
   const { dispatch } = useTabs()
   const group = useTabGroup(groupId)
-  const { isOpen: isDayPanelOpen } = useDayPanel()
-  const hasRightPanel = isDayPanelOpen
+  const {
+    isOpen: isDayPanelOpen,
+    width: dayPanelWidth,
+    isResizing: dayPanelResizing
+  } = useDayPanel()
 
   // Drag state
   const [isDraggingTab, setIsDraggingTab] = useState(false)
@@ -156,9 +159,10 @@ export const TabPaneWithDropZones = ({
       {/* Content area */}
       <div
         className={cn(
-          'flex-1 overflow-hidden relative transition-[margin] duration-200 ease-linear',
-          hasRightPanel && 'mr-80'
+          'flex-1 overflow-hidden relative',
+          !dayPanelResizing && 'transition-[margin] duration-200 ease-linear'
         )}
+        style={{ marginRight: isDayPanelOpen ? `${dayPanelWidth}px` : 0 }}
       >
         {activeTab ? (
           <TabContent tab={activeTab} groupId={groupId} />

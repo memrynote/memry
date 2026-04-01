@@ -18,8 +18,11 @@ export const TabPane = ({
 }: TabPaneProps): React.JSX.Element | null => {
   const { dispatch } = useTabs()
   const group = useTabGroup(groupId)
-  const { isOpen: isDayPanelOpen } = useDayPanel()
-  const hasRightPanel = isDayPanelOpen
+  const {
+    isOpen: isDayPanelOpen,
+    width: dayPanelWidth,
+    isResizing: dayPanelResizing
+  } = useDayPanel()
 
   if (!group) return null
 
@@ -43,9 +46,10 @@ export const TabPane = ({
 
       <div
         className={cn(
-          'flex-1 overflow-hidden transition-[margin] duration-200 ease-linear',
-          hasRightPanel && 'mr-80'
+          'flex-1 overflow-hidden',
+          !dayPanelResizing && 'transition-[margin] duration-200 ease-linear'
         )}
+        style={{ marginRight: isDayPanelOpen ? `${dayPanelWidth}px` : 0 }}
       >
         {activeTab ? (
           <TabContent tab={activeTab} groupId={groupId} />

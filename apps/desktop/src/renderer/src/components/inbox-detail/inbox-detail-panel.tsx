@@ -64,7 +64,7 @@ export const InboxDetailPanel = ({
   onRestore,
   onDelete
 }: InboxDetailPanelProps): React.JSX.Element => {
-  const { isOpen: isDayPanelOpen } = useDayPanel()
+  const { isOpen: isDayPanelOpen, width: dayPanelWidth } = useDayPanel()
   const queryClient = useQueryClient()
 
   // Retry transcription mutation
@@ -329,9 +329,9 @@ export const InboxDetailPanel = ({
       className={cn(
         'fixed top-10 bottom-0 z-10 border-l bg-surface overflow-hidden',
         'transition-[width,opacity,right] duration-200 ease-out',
-        isOpen ? 'w-[380px] opacity-100 border-border' : 'w-0 opacity-0 border-transparent',
-        isDayPanelOpen ? 'right-80' : 'right-0'
+        isOpen ? 'w-[380px] opacity-100 border-border' : 'w-0 opacity-0 border-transparent'
       )}
+      style={{ right: isDayPanelOpen ? `${dayPanelWidth}px` : 0 }}
     >
       <div className="w-[380px] h-full flex flex-col overflow-hidden [font-synthesis:none] text-[12px] leading-4">
         {isLoading ? (
