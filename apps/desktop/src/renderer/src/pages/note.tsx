@@ -57,6 +57,7 @@ import { graphKeys } from '@/hooks/use-graph-data'
 import { NoteBreadcrumb } from '@/components/note/note-breadcrumb'
 import { FindBar } from '@/components/find-bar/find-bar'
 import { useFindInPage } from '@/hooks/use-find-in-page'
+import { ContentDivider } from '@renderer/components/note/content-area'
 
 const log = createLogger('Page:Note')
 
@@ -164,6 +165,7 @@ export function NotePage({ noteId }: NotePageProps) {
 
   const {
     properties,
+    newlyAddedPropertyId,
     handlePropertyChange,
     handleAddProperty,
     handleDeleteProperty,
@@ -196,6 +198,9 @@ export function NotePage({ noteId }: NotePageProps) {
   const noteContentWidth = isFullWidth
     ? undefined
     : (NOTE_CONTENT_WIDTH[editorSettings.width] ?? '640px')
+
+  // Focus editor at end when clicking empty space
+  const focusAtEndRef = useRef<(() => void) | null>(null)
 
   // Find in page (Cmd+F)
   const editorContainerRef = useRef<HTMLDivElement>(null)
@@ -905,13 +910,13 @@ export function NotePage({ noteId }: NotePageProps) {
     >
       {/* Note content */}
       <div
-        className="flex flex-col mx-auto w-full transition-[max-width] duration-300 ease-in-out"
+        className="flex flex-col flex-1 mx-auto w-full transition-[max-width] duration-300 ease-in-out"
         style={{ maxWidth: noteContentWidth ?? '100%' }}
       >
         {/* Title + Metadata zone — ghost affordance appears on hover */}
-        <div className="group/metadata flex flex-col gap-3">
+        <div className="group/metadata flex flex-col pb-[15px]">
           <NoteTitle
-            emoji={note.emoji ?? null}
+            emoji={null}
             title={note.title}
             onTitleChange={handleTitleChange}
             placeholder="Untitled"
@@ -933,6 +938,7 @@ export function NotePage({ noteId }: NotePageProps) {
           {properties.length > 0 && (
             <InfoSection
               properties={properties}
+              newlyAddedPropertyId={newlyAddedPropertyId}
               isExpanded
               onToggleExpand={() => {}}
               onPropertyChange={handlePropertyChange}
@@ -959,32 +965,21 @@ export function NotePage({ noteId }: NotePageProps) {
           />
         </div>
 
-        {/* Subtle separator between metadata and content */}
-        <div className="my-4 h-px bg-border/40" role="separator" />
-
         {/* Main content - BlockNote Editor */}
         <div
           ref={editorContainerRef}
           role="presentation"
-          className="editor-click-area min-h-[400px] relative"
+          className="editor-click-area flex-1 pb-[30vh] relative"
           onMouseDown={(e) => {
             const target = e.target as HTMLElement
             if (
               target.closest('[contenteditable="true"]')?.contains(target) &&
               target.closest('.bn-block-content')
-            ) {
+            )
               return
-            }
-            if (target.closest('button, a, input')) {
-              return
-            }
-            const editor = (e.currentTarget as HTMLElement).querySelector(
-              '.bn-editor [contenteditable="true"]'
-            ) as HTMLElement
-            if (editor) {
-              e.preventDefault()
-              editor.focus()
-            }
+            if (target.closest('button, a, input')) return
+            e.preventDefault()
+            focusAtEndRef.current?.()
           }}
         >
           <EditorErrorBoundary
@@ -1009,6 +1004,7 @@ export function NotePage({ noteId }: NotePageProps) {
               noteTags={note.tags}
               tagColorMap={tagColorMap}
               onInlineTagsChange={handleInlineTagsChange}
+              focusAtEndRef={focusAtEndRef}
             />
           </EditorErrorBoundary>
         </div>
