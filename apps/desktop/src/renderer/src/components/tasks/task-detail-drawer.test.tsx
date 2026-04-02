@@ -14,6 +14,10 @@ vi.mock('@/services/notes-service', () => ({
   }
 }))
 
+vi.mock('@/contexts/day-panel-context', () => ({
+  useDayPanel: () => ({ isOpen: false, width: 320 })
+}))
+
 const statuses: Status[] = [
   { id: 'todo', name: 'To Do', color: '#6B7280', type: 'todo', order: 0 },
   { id: 'in-progress', name: 'In Progress', color: '#F59E0B', type: 'in_progress', order: 1 },

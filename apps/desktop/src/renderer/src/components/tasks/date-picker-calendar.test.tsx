@@ -217,7 +217,7 @@ describe('DatePickerCalendar', () => {
       expect(screen.queryByLabelText('Go to today')).not.toBeInTheDocument()
     })
 
-    it('does not render when already viewing the current month', () => {
+    it('renders when viewing the current month and onTodayClick is provided', () => {
       vi.useFakeTimers()
       vi.setSystemTime(new Date(2026, 2, 15))
 
@@ -225,7 +225,7 @@ describe('DatePickerCalendar', () => {
         selected: new Date(2026, 2, 15),
         onTodayClick: vi.fn()
       })
-      expect(screen.queryByLabelText('Go to today')).not.toBeInTheDocument()
+      expect(screen.getByLabelText('Go to today')).toBeInTheDocument()
     })
 
     it('renders when viewing a different month', () => {
@@ -255,7 +255,7 @@ describe('DatePickerCalendar', () => {
       expect(screen.getByText('March 2026')).toBeInTheDocument()
     })
 
-    it('appears after navigating away from current month', () => {
+    it('remains visible after navigating away from current month', () => {
       vi.useFakeTimers()
       vi.setSystemTime(new Date(2026, 2, 15))
 
@@ -264,7 +264,7 @@ describe('DatePickerCalendar', () => {
         onTodayClick: vi.fn()
       })
 
-      expect(screen.queryByLabelText('Go to today')).not.toBeInTheDocument()
+      expect(screen.getByLabelText('Go to today')).toBeInTheDocument()
 
       fireEvent.click(screen.getByLabelText('Next month'))
       expect(screen.getByText('April 2026')).toBeInTheDocument()
