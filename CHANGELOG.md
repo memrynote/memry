@@ -5,6 +5,29 @@ Format: weekly entries grouped by feature area.
 
 ---
 
+## 2026-04-02 — Journal Redesign and Task Improvements
+
+### Added
+- Add resizable journal page with sidebar, day panel, calendar, and task list
+- Add hierarchical `#parent/child` tags with prefix queries, cascade operations, tree sidebar, and autocomplete
+- Add task deletion from drawer and deep-link from journal
+- Add focusAtEnd click-to-focus behavior and auto-open for select-type property pickers
+
+### Fixed
+- Fix find-in-page to scroll to match on search and navigation
+- Fix task status rollback from completed state
+- Fix graph panel overflow and settings shortcut capture in input fields
+- Fix Today button visibility regardless of current calendar month
+- Fix vault indexer and editor plugins for hierarchical tags
+
+### Changed
+- Redesign journal day view with ghost affordance layout and tab bar toggle
+- Convert right panels to fixed overlays with dynamic day panel width
+- Remove AI Agent panel and all related code
+- Wire auto-focus into note and info-section layout
+
+---
+
 ## 2026-03-29 — Settings Config.json Migration
 
 ### Changed

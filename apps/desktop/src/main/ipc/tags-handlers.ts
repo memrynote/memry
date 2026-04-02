@@ -168,10 +168,10 @@ export function registerTagsHandlers(): void {
       // Get tag definition for color (create if missing)
       const { color } = getOrCreateTag(dataDb, input.tag)
 
-      // Get notes with pinned info
       const notes = findNotesWithTagInfo(indexDb, input.tag, {
         sortBy: input.sortBy,
-        sortOrder: input.sortOrder
+        sortOrder: input.sortOrder,
+        includeDescendants: input.includeDescendants
       })
 
       // Separate pinned and unpinned

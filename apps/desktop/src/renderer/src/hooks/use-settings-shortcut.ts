@@ -18,7 +18,8 @@ export function useSettingsShortcut(onOpen: () => void): void {
         key: ',',
         modifiers: { meta: true },
         action: onOpen,
-        description: 'Open Settings'
+        description: 'Open Settings',
+        allowInInput: true
       }
     ],
     [onOpen]

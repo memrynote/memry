@@ -72,7 +72,7 @@ import { getSubtasks } from '@/lib/subtask-utils'
 import { tasksService } from '@/services/tasks-service'
 import type { TaskSelectionType } from '@/App'
 import { createLogger } from '@/lib/logger'
-import { useTabActions } from '@/contexts/tabs'
+import { useTabActions, useActiveTab } from '@/contexts/tabs'
 import { notesService } from '@/services/notes-service'
 
 const log = createLogger('Page:Tasks')
@@ -136,6 +136,7 @@ export const TasksPage = ({
 
   const { settings: taskPrefs } = useTaskPreferences()
   const { openTab } = useTabActions()
+  const activeTab = useActiveTab()
 
   const handleNoteClick = useCallback(
     async (noteId: string) => {
@@ -189,6 +190,21 @@ export const TasksPage = ({
 
   // Task detail drawer state
   const [detailTaskId, setDetailTaskId] = useState<string | null>(null)
+
+  // Restore viewState from tab (e.g. navigating from journal sidebar)
+  const lastAppliedTaskId = useRef<string | null>(null)
+  const incomingTaskId = (activeTab?.viewState?.openTaskId as string) ?? null
+  const incomingProjectId = (activeTab?.viewState?.selectedProjectId as string) ?? null
+
+  useEffect(() => {
+    if (!incomingTaskId || incomingTaskId === lastAppliedTaskId.current) return
+    lastAppliedTaskId.current = incomingTaskId
+    setDetailTaskId(incomingTaskId)
+    if (incomingProjectId) {
+      setSelectedProjectId(incomingProjectId)
+      hasAppliedDefaultProject.current = true
+    }
+  }, [incomingTaskId, incomingProjectId])
 
   // Modal states
   const [isAddTaskModalOpen, setIsAddTaskModalOpen] = useState(false)
@@ -719,6 +735,14 @@ export const TasksPage = ({
     [undoable]
   )
 
+  const handleDeleteTaskFromDrawer = useCallback(
+    (taskId: string): void => {
+      undoable.deleteTask(taskId)
+      setDetailTaskId(null)
+    },
+    [undoable]
+  )
+
   // ========== BULK ACTION HANDLERS ==========
 
   const handleBulkChangePriority = useCallback(
@@ -1115,6 +1139,7 @@ export const TasksPage = ({
           onUpdateTask={handleUpdateTask}
           onAddSubtask={subtaskManagement.handleAddSubtask}
           onNoteClick={handleNoteClick}
+          onDeleteTask={handleDeleteTaskFromDrawer}
         />
       </div>
 

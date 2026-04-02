@@ -145,8 +145,7 @@ export const Tag = Node.create<TagOptions>({
           // Extract text after #
           const tagText = text.slice(1) // Remove # character
 
-          // Allow if empty (just typed #) or if valid tag characters
-          return tagText === '' || /^[a-zA-Z0-9_-]*$/.test(tagText)
+          return tagText === '' || /^[a-zA-Z0-9_\-/]*$/.test(tagText)
         }
       })
     ]

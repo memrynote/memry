@@ -5,7 +5,7 @@
  * @module db/queries/notes
  */
 
-import { eq, desc, asc, and, like, inArray, sql, count, type SQL } from 'drizzle-orm'
+import { eq, desc, asc, and, or, like, inArray, sql, count, type SQL } from 'drizzle-orm'
 import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3'
 import {
   noteCache,
@@ -356,20 +356,25 @@ export function findNotesWithTagInfo(
   options: {
     sortBy?: 'modified' | 'created' | 'title'
     sortOrder?: 'asc' | 'desc'
+    includeDescendants?: boolean
   } = {}
 ): NoteWithTagInfo[] {
-  const { sortBy = 'modified', sortOrder = 'desc' } = options
+  const { sortBy = 'modified', sortOrder = 'desc', includeDescendants = false } = options
   const normalizedTag = tag.toLowerCase()
 
-  // Get note IDs and pinned status for this tag
+  const whereClause = includeDescendants
+    ? or(eq(noteTags.tag, normalizedTag), like(noteTags.tag, `${normalizedTag}/%`))
+    : eq(noteTags.tag, normalizedTag)
+
   const tagRecords = db
     .select({
       noteId: noteTags.noteId,
       pinnedAt: noteTags.pinnedAt
     })
     .from(noteTags)
-    .where(eq(noteTags.tag, normalizedTag))
+    .where(whereClause)
     .all()
+    .filter((r, i, arr) => arr.findIndex((x) => x.noteId === r.noteId) === i)
 
   if (tagRecords.length === 0) {
     return []

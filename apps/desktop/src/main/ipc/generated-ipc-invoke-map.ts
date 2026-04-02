@@ -238,7 +238,7 @@ export interface MainIpcInvokeHandlers {
   "sync:upload-attachment": (...args: [{ noteId: string; filePath: string; }]) => Awaited<Promise<{ success: boolean; error: string; attachmentId?: undefined; sessionId?: undefined; } | { success: boolean; attachmentId: string; sessionId: string; error?: undefined; }>>
   "tags:delete": (...args: [string]) => Awaited<Promise<import("../../../../../packages/contracts/src/tags-api").DeleteTagResponse>>
   "tags:get-all-with-counts": (...args: []) => Awaited<Promise<import("../../../../../packages/contracts/src/tags-api").GetAllWithCountsResponse>>
-  "tags:get-notes-by-tag": (...args: [{ tag: string; sortBy?: "title" | "modified" | "created" | undefined; sortOrder?: "asc" | "desc" | undefined; }]) => Awaited<Promise<import("../../../../../packages/contracts/src/tags-api").GetNotesByTagResponse>>
+  "tags:get-notes-by-tag": (...args: [{ tag: string; sortBy?: "title" | "modified" | "created" | undefined; sortOrder?: "asc" | "desc" | undefined; includeDescendants?: boolean | undefined; }]) => Awaited<Promise<import("../../../../../packages/contracts/src/tags-api").GetNotesByTagResponse>>
   "tags:merge": (...args: [{ source: string; target: string; }]) => Awaited<Promise<import("../../../../../packages/contracts/src/tags-api").MergeTagResponse>>
   "tags:pin-note-to-tag": (...args: [{ noteId: string; tag: string; }]) => Awaited<Promise<import("../../../../../packages/contracts/src/tags-api").TagOperationResponse>>
   "tags:remove-from-note": (...args: [{ noteId: string; tag: string; }]) => Awaited<Promise<import("../../../../../packages/contracts/src/tags-api").TagOperationResponse>>

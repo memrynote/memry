@@ -508,6 +508,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
   noteTags,
   tagColorMap,
   onInlineTagsChange,
+  focusAtEndRef,
   yjsFragment,
   isRemoteUpdateRef
 }: ContentAreaEditorProps) {
@@ -663,6 +664,18 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
         }
       : {})
   })
+
+  useEffect(() => {
+    if (!focusAtEndRef) return
+    focusAtEndRef.current = () => {
+      editor.focus()
+      const blocks = editor.document
+      if (blocks.length > 0) {
+        const lastBlock = blocks[blocks.length - 1]
+        editor.setTextCursorPosition(lastBlock.id, 'end')
+      }
+    }
+  }, [editor, focusAtEndRef])
 
   useEffect(() => {
     if (!aiPort) {

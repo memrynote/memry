@@ -6,9 +6,9 @@
 
 import { useRef, useState, useEffect, useCallback } from 'react'
 import { SortableContext, horizontalListSortingStrategy } from '@dnd-kit/sortable'
-import { ChevronLeft, ChevronRight, Bot } from '@/lib/icons'
+import { ChevronLeft, ChevronRight, Calendar } from '@/lib/icons'
 import { SidebarGraph } from '@/lib/icons/sidebar-nav-icons'
-import { useAIAgent } from '@/contexts/ai-agent-context'
+import { useDayPanel } from '@/contexts/day-panel-context'
 import { useTabGroup, useTabs } from '@/contexts/tabs'
 import { SidebarTrigger } from '@/components/ui/sidebar'
 import { SortableTab } from './sortable-tab'
@@ -35,7 +35,7 @@ export const TabBarWithDrag = ({
   className
 }: TabBarWithDragProps): React.JSX.Element | null => {
   const group = useTabGroup(groupId)
-  const { toggle: toggleAIAgent, isOpen: isAIAgentOpen } = useAIAgent()
+  const { toggle: toggleDayPanel, isOpen: isDayPanelOpen } = useDayPanel()
   const { openTab, getActiveTab } = useTabs()
 
   const isGraphActive = getActiveTab()?.type === 'graph'
@@ -213,7 +213,14 @@ export const TabBarWithDrag = ({
         )}
 
         {/* Tab actions */}
-        <div className="no-drag flex items-center px-2 gap-1 ml-auto self-center">
+        <div
+          className={cn(
+            'no-drag flex items-center pr-[13px] pl-2 gap-1 ml-auto',
+            isDayPanelOpen
+              ? 'self-stretch bg-sidebar border-l border-sidebar-border rounded-tl-md relative z-10 mb-[-1px] pb-px'
+              : 'self-center'
+          )}
+        >
           <TabBarAction
             icon={
               <SidebarGraph
@@ -228,15 +235,16 @@ export const TabBarWithDrag = ({
           />
           <TabBarAction
             icon={
-              <Bot
+              <Calendar
                 className={cn(
                   'w-4 h-4 transition-colors duration-150',
-                  isAIAgentOpen && 'text-tint'
+                  isDayPanelOpen && 'text-tint'
                 )}
               />
             }
-            tooltip="AI Agent"
-            onClick={toggleAIAgent}
+            tooltip="Day Panel"
+            onClick={toggleDayPanel}
+            isActive={isDayPanelOpen}
           />
         </div>
       </div>

@@ -60,7 +60,7 @@ export function NoteLayout({
       )}
       <div ref={scrollRef} className="flex-1 overflow-y-auto overflow-x-visible">
         <div
-          className="mx-auto w-full px-24 pt-6 pb-[30vh] transition-[max-width] duration-300 ease-in-out"
+          className="mx-auto w-full px-24 pt-6 pb-10 min-h-full flex flex-col transition-[max-width] duration-300 ease-in-out"
           style={{ maxWidth: fullWidth ? '100%' : '64rem' }}
         >
           {children}

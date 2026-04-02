@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, useMemo, memo, useCallback } from 'react'
 import { cn } from '@/lib/utils'
+import { useDayPanel } from '@/contexts/day-panel-context'
 import { type Task, type Priority, type RepeatConfig } from '@/data/sample-tasks'
 import type { Project } from '@/data/tasks-data'
 import { getSubtasks } from '@/lib/subtask-utils'
@@ -10,7 +11,8 @@ import { InteractivePriorityBadge } from '@/components/tasks/interactive-priorit
 import { InteractiveDueDateBadge } from '@/components/tasks/interactive-due-date-badge'
 import { InteractiveProjectBadge } from '@/components/tasks/interactive-project-badge'
 import { StatusIcon } from '@/components/tasks/status-icon'
-import { X, Plus } from '@/lib/icons'
+import { X, Plus, Trash } from '@/lib/icons'
+import { DeleteTaskDialog } from '@/components/tasks/delete-task-dialog'
 
 // ============================================================================
 // TYPES
@@ -26,6 +28,7 @@ export interface TaskDetailDrawerProps {
   onUpdateTask?: (taskId: string, updates: Partial<Task>) => void
   onAddSubtask?: (parentId: string, title: string) => void
   onNoteClick?: (noteId: string) => void
+  onDeleteTask?: (taskId: string) => void
 }
 
 // ============================================================================
@@ -87,11 +90,14 @@ export const TaskDetailDrawer = memo(function TaskDetailDrawer({
   onToggleComplete,
   onUpdateTask,
   onAddSubtask,
-  onNoteClick
+  onNoteClick,
+  onDeleteTask
 }: TaskDetailDrawerProps): React.JSX.Element {
+  const { isOpen: isDayPanelOpen, width: dayPanelWidth } = useDayPanel()
   const [noteNames, setNoteNames] = useState<
     Record<string, { title: string; emoji?: string | null }>
   >({})
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
   const [isAddingSubtask, setIsAddingSubtask] = useState(false)
   const [newSubtaskTitle, setNewSubtaskTitle] = useState('')
   const subtaskInputRef = useRef<HTMLInputElement>(null)
@@ -234,10 +240,11 @@ export const TaskDetailDrawer = memo(function TaskDetailDrawer({
       aria-label="Task details"
       aria-hidden={!isOpen}
       className={cn(
-        'shrink-0 h-full border-l bg-surface overflow-hidden',
-        'transition-[width,opacity] duration-200 ease-out',
+        'fixed top-10 bottom-0 z-10 border-l bg-surface overflow-hidden',
+        'transition-[width,opacity,right] duration-200 ease-out',
         isOpen ? 'w-[380px] opacity-100 border-border' : 'w-0 opacity-0 border-transparent'
       )}
+      style={{ right: isDayPanelOpen ? `${dayPanelWidth}px` : 0 }}
     >
       <div className="w-[380px] h-full flex flex-col overflow-y-auto scrollbar-thin [font-synthesis:none] text-[12px] leading-4">
         {task && project && (
@@ -544,11 +551,31 @@ export const TaskDetailDrawer = memo(function TaskDetailDrawer({
             </div>
 
             {/* ── Footer ── */}
-            <div className="flex flex-col py-3 px-5 gap-1 mt-auto">
+            <div className="flex flex-col py-3 px-5 gap-3 mt-auto">
+              {onDeleteTask && (
+                <button
+                  type="button"
+                  onClick={() => setIsDeleteDialogOpen(true)}
+                  className="flex items-center gap-2 py-1.5 px-2.5 rounded-md text-[12px] leading-4 text-destructive hover:bg-destructive/10 transition-colors w-full"
+                  aria-label="Delete task"
+                >
+                  <Trash size={14} />
+                  Delete task
+                </button>
+              )}
               <span className="text-[11px] text-text-tertiary/60 leading-3.5">
                 {formatCreated(task.createdAt)}
               </span>
             </div>
+
+            {onDeleteTask && (
+              <DeleteTaskDialog
+                isOpen={isDeleteDialogOpen}
+                onClose={() => setIsDeleteDialogOpen(false)}
+                onConfirm={() => onDeleteTask(task.id)}
+                taskTitle={task.title}
+              />
+            )}
           </>
         )}
       </div>

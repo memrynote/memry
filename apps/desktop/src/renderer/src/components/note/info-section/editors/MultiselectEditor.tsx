@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Plus, Trash2 } from '@/lib/icons'
 import { Picker } from '@/components/ui/picker'
 import { getTagColors, COLOR_NAMES } from '../../tags-row/tag-colors'
@@ -8,6 +8,7 @@ import type { SelectOption } from '@memry/contracts/property-types'
 interface MultiselectEditorProps {
   value: string[]
   options: SelectOption[]
+  defaultOpen?: boolean
   onChange: (value: string[]) => void
   onAddOption?: (option: SelectOption) => void
   onRemoveOption?: (optionValue: string) => void
@@ -16,12 +17,18 @@ interface MultiselectEditorProps {
 export function MultiselectEditor({
   value,
   options,
+  defaultOpen,
   onChange,
   onAddOption,
   onRemoveOption
 }: MultiselectEditorProps) {
+  const [isOpen, setIsOpen] = useState(defaultOpen ?? false)
   const [newOptionName, setNewOptionName] = useState('')
   const [isCreating, setIsCreating] = useState(false)
+
+  useEffect(() => {
+    if (defaultOpen) setIsOpen(true)
+  }, [defaultOpen])
 
   const selectedOptions = value
     .map((v) => options.find((o) => o.value === v))
@@ -44,7 +51,14 @@ export function MultiselectEditor({
   }
 
   return (
-    <Picker mode="multi" value={value} onValueChange={handleToggle} closeOnSelect={false}>
+    <Picker
+      mode="multi"
+      open={isOpen}
+      onOpenChange={setIsOpen}
+      value={value}
+      onValueChange={handleToggle}
+      closeOnSelect={false}
+    >
       <Picker.Trigger variant="inline" asChild>
         <span>
           {selectedOptions.length > 0 || orphanValues.length > 0 ? (
@@ -61,7 +75,7 @@ export function MultiselectEditor({
           )}
         </span>
       </Picker.Trigger>
-      <Picker.Content width={220}>
+      <Picker.Content width={220} align="start">
         <Picker.Search placeholder="Search options..." />
         <Picker.List>
           {options.length === 0 && !isCreating && <Picker.Empty message="No options yet" />}

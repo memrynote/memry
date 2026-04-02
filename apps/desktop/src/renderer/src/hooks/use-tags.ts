@@ -56,6 +56,26 @@ export function useTags() {
       if (!query || query.trim() === '') {
         return [...tags].sort((a, b) => b.count - a.count)
       }
+
+      const lastSlash = query.lastIndexOf('/')
+      if (lastSlash !== -1) {
+        const prefix = query.slice(0, lastSlash).toLowerCase()
+        const leafQuery = query.slice(lastSlash + 1).toLowerCase()
+        const prefixWithSlash = prefix + '/'
+        const prefixDepth = prefix.split('/').length
+
+        return tags
+          .filter((t) => {
+            if (!t.name.startsWith(prefixWithSlash)) return false
+            const segments = t.name.split('/')
+            if (segments.length !== prefixDepth + 1) return false
+            if (!leafQuery) return true
+            const leaf = segments[segments.length - 1]
+            return leaf.includes(leafQuery)
+          })
+          .sort((a, b) => b.count - a.count)
+      }
+
       const filtered = fuzzySearch(tags, query, ['name'])
       return filtered.sort((a, b) => b.count - a.count)
     },

@@ -1286,6 +1286,7 @@ export interface TagsClientAPI {
     tag: string
     sortBy?: 'modified' | 'created' | 'title'
     sortOrder?: 'asc' | 'desc'
+    includeDescendants?: boolean
   }): Promise<GetNotesByTagResponse>
   pinNoteToTag(input: { noteId: string; tag: string }): Promise<TagOperationResponse>
   unpinNoteFromTag(input: { noteId: string; tag: string }): Promise<TagOperationResponse>

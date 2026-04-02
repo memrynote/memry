@@ -91,11 +91,15 @@ describe('T513: InfoSection - basic display', () => {
     expect(screen.getByRole('region', { name: /note properties/i })).toBeInTheDocument()
   })
 
-  it('should show "show more" button when properties exceed visible count', () => {
-    render(<InfoSection {...defaultProps} initialVisibleCount={2} />)
+  it('should show all properties without truncation', () => {
+    render(<InfoSection {...defaultProps} />)
 
-    // Should show button to reveal more properties
-    expect(screen.getByText(/more properties/i)).toBeInTheDocument()
+    expect(screen.getByText('Status')).toBeInTheDocument()
+    expect(screen.getByText('Priority')).toBeInTheDocument()
+    expect(screen.getByText('Due Date')).toBeInTheDocument()
+    expect(screen.getByText('Completed')).toBeInTheDocument()
+    expect(screen.getByText('Notes')).toBeInTheDocument()
+    expect(screen.getByText('URL')).toBeInTheDocument()
   })
 
   it('should show workspace properties label when folder properties exist', () => {
@@ -128,8 +132,7 @@ describe('T514: InfoSection - property editors', () => {
     onToggleExpand: vi.fn(),
     onPropertyChange: vi.fn(),
     onAddProperty: vi.fn(),
-    onDeleteProperty: vi.fn(),
-    initialVisibleCount: 10 // Show all properties for editor tests
+    onDeleteProperty: vi.fn()
   }
 
   beforeEach(() => {
@@ -322,75 +325,6 @@ describe('InfoSection - add property', () => {
 })
 
 // ============================================================================
-// InfoSection - Show More/Less Tests
-// ============================================================================
-
-describe('InfoSection - show more/less', () => {
-  const defaultProps = {
-    properties: mockProperties,
-    isExpanded: true,
-    onToggleExpand: vi.fn(),
-    onPropertyChange: vi.fn(),
-    onAddProperty: vi.fn(),
-    onDeleteProperty: vi.fn(),
-    initialVisibleCount: 2
-  }
-
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
-
-  it('should show limited properties initially', () => {
-    render(<InfoSection {...defaultProps} />)
-
-    // With initialVisibleCount of 2, should show "X more properties" button
-    expect(screen.getByText(/more properties/i)).toBeInTheDocument()
-  })
-
-  it('should expand to show all properties on "show more" click', async () => {
-    const user = userEvent.setup()
-    render(<InfoSection {...defaultProps} />)
-
-    const showMoreButton = screen.getByText(/more properties/i)
-    await user.click(showMoreButton)
-
-    // Now should show all properties
-    expect(screen.getByText('Status')).toBeInTheDocument()
-    expect(screen.getByText('Priority')).toBeInTheDocument()
-    expect(screen.getByText('Due Date')).toBeInTheDocument()
-    expect(screen.getByText('Completed')).toBeInTheDocument()
-    expect(screen.getByText('Notes')).toBeInTheDocument()
-    expect(screen.getByText('URL')).toBeInTheDocument()
-  })
-
-  it('should show "show less" button when expanded', async () => {
-    const user = userEvent.setup()
-    render(<InfoSection {...defaultProps} />)
-
-    const showMoreButton = screen.getByText(/more properties/i)
-    await user.click(showMoreButton)
-
-    expect(screen.getByText(/show less/i)).toBeInTheDocument()
-  })
-
-  it('should collapse back on "show less" click', async () => {
-    const user = userEvent.setup()
-    render(<InfoSection {...defaultProps} />)
-
-    // Expand
-    const showMoreButton = screen.getByText(/more properties/i)
-    await user.click(showMoreButton)
-
-    // Collapse
-    const showLessButton = screen.getByText(/show less/i)
-    await user.click(showLessButton)
-
-    // Should show "more properties" again
-    expect(screen.getByText(/more properties/i)).toBeInTheDocument()
-  })
-})
-
-// ============================================================================
 // Accessibility Tests
 // ============================================================================
 
@@ -420,13 +354,6 @@ describe('InfoSection - accessibility', () => {
     render(<InfoSection {...defaultProps} />)
 
     expect(screen.getByRole('button', { name: /add.*property/i })).toBeInTheDocument()
-  })
-
-  it('should have proper aria-label on show more button', () => {
-    render(<InfoSection {...defaultProps} initialVisibleCount={2} />)
-
-    const showMoreButton = screen.getByRole('button', { name: /show.*more properties/i })
-    expect(showMoreButton).toBeInTheDocument()
   })
 
   it('should have aria-expanded on toggle header', () => {

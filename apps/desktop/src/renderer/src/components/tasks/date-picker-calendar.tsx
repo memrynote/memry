@@ -1,14 +1,41 @@
 import { useState, useMemo, useCallback } from 'react'
+import { getISOWeek } from 'date-fns'
 
 import { ChevronLeft, ChevronRight } from '@/lib/icons'
 import { cn } from '@/lib/utils'
+
+interface ActivityData {
+  [dateISO: string]: number
+}
 
 interface DatePickerCalendarProps {
   selected?: Date
   onSelect: (date: Date | undefined) => void
   disabled?: (date: Date) => boolean
   weekStartsOn?: 0 | 1
+  activityData?: ActivityData
   className?: string
+  showWeekNumbers?: boolean
+  onTodayClick?: () => void
+}
+
+export function getISOWeekNumber(date: Date): number {
+  return getISOWeek(date)
+}
+
+const ACTIVITY_DOT_COLORS = [
+  '',
+  'bg-emerald-500/50',
+  'bg-emerald-500/70',
+  'bg-amber-500/80',
+  'bg-amber-500'
+] as const
+
+function toISO(date: Date): string {
+  const y = date.getFullYear()
+  const m = String(date.getMonth() + 1).padStart(2, '0')
+  const d = String(date.getDate()).padStart(2, '0')
+  return `${y}-${m}-${d}`
 }
 
 const WEEKDAYS_SUNDAY = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'] as const
@@ -78,7 +105,10 @@ export function DatePickerCalendar({
   onSelect,
   disabled,
   weekStartsOn = 1,
-  className
+  activityData,
+  className,
+  showWeekNumbers = false,
+  onTodayClick
 }: DatePickerCalendarProps): React.JSX.Element {
   const today = useMemo(() => {
     const d = new Date()
@@ -124,7 +154,26 @@ export function DatePickerCalendar({
     })
   }, [])
 
+  const isViewingTodayMonth = viewYear === today.getFullYear() && viewMonth === today.getMonth()
+
+  const goToToday = useCallback(() => {
+    setViewYear(today.getFullYear())
+    setViewMonth(today.getMonth())
+    onTodayClick?.()
+  }, [today, onTodayClick])
+
   const weekdays = weekStartsOn === 1 ? WEEKDAYS_MONDAY : WEEKDAYS_SUNDAY
+
+  const handleDayClick = useCallback(
+    (date: Date, isOutsideMonth: boolean) => {
+      if (isOutsideMonth) {
+        setViewYear(date.getFullYear())
+        setViewMonth(date.getMonth())
+      }
+      onSelect(date)
+    },
+    [onSelect]
+  )
 
   return (
     <div
@@ -146,22 +195,39 @@ export function DatePickerCalendar({
         <span className="text-[12px] font-medium text-text-primary leading-4 select-none">
           {monthLabel}
         </span>
-        <button
-          type="button"
-          onClick={goToNextMonth}
-          className="text-text-tertiary hover:text-text-secondary transition-colors focus-visible:outline-none rounded-sm"
-          aria-label="Next month"
-        >
-          <ChevronRightIcon />
-        </button>
+        <div className="flex items-center gap-1">
+          <button
+            type="button"
+            onClick={goToNextMonth}
+            className="text-text-tertiary hover:text-text-secondary transition-colors focus-visible:outline-none rounded-sm"
+            aria-label="Next month"
+          >
+            <ChevronRightIcon />
+          </button>
+          {onTodayClick && (
+            <button
+              type="button"
+              onClick={goToToday}
+              className="text-[10px] text-text-tertiary hover:text-text-secondary hover:bg-surface-active/50 transition-colors focus-visible:outline-none rounded-md px-1.5 py-0.5 font-medium select-none border border-border/60"
+              aria-label="Go to today"
+            >
+              Today
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Weekday headers */}
       <div className="flex items-center">
+        {showWeekNumbers && (
+          <div className="w-6 shrink-0 text-[10px] text-center text-text-tertiary/40 font-medium leading-3 select-none">
+            W
+          </div>
+        )}
         {weekdays.map((day) => (
           <div
             key={day}
-            className="text-[10px] w-[30px] text-center text-text-tertiary/60 font-medium leading-3 shrink-0 select-none"
+            className="flex-1 min-w-0 text-[10px] text-center text-text-tertiary/60 font-medium leading-3 select-none"
           >
             {day}
           </div>
@@ -171,35 +237,49 @@ export function DatePickerCalendar({
       {/* Day grid */}
       {weeks.map((week, wi) => (
         <div key={wi} className="flex items-center">
+          {showWeekNumbers && (
+            <div
+              className="w-6 shrink-0 text-[10px] text-center text-text-tertiary/40 leading-3.5 select-none"
+              aria-label={`Week ${getISOWeekNumber(week[0].date)}`}
+            >
+              {getISOWeekNumber(week[0].date)}
+            </div>
+          )}
           {week.map(({ date, isOutsideMonth }, di) => {
             const isToday = isSameDay(date, today)
-            const isSelected = !isOutsideMonth && selected ? isSameDay(date, selected) : false
-            const isDisabled = isOutsideMonth || (disabled?.(date) ?? false)
+            const isSelected = selected ? isSameDay(date, selected) : false
+            const isDisabled = disabled?.(date) ?? false
+            const activity = activityData ? (activityData[toISO(date)] ?? 0) : 0
 
             return (
               <button
                 key={`${wi}-${di}`}
                 type="button"
-                onClick={() => !isDisabled && onSelect(date)}
+                onClick={() => !isDisabled && handleDayClick(date, isOutsideMonth)}
                 disabled={isDisabled}
                 className={cn(
-                  'w-[30px] h-[26px] flex items-center justify-center shrink-0 text-[11px] leading-3.5 transition-colors rounded-[5px]',
+                  'flex-1 min-w-0 aspect-square max-h-10 flex flex-col items-center justify-center gap-0.5 text-[11px] leading-3.5 transition-colors rounded-[5px]',
                   'focus-visible:outline-none',
-                  isOutsideMonth && 'text-text-tertiary/30 cursor-default',
+                  isOutsideMonth &&
+                    !isSelected &&
+                    'text-text-tertiary/30 hover:text-text-tertiary/60 hover:bg-accent cursor-pointer',
                   !isOutsideMonth && isDisabled && 'text-text-tertiary/30 cursor-not-allowed',
-                  !isDisabled &&
+                  !isOutsideMonth &&
+                    !isDisabled &&
                     !isSelected &&
                     !isToday &&
                     date < today &&
                     'text-text-tertiary hover:bg-accent',
-                  !isDisabled &&
+                  !isOutsideMonth &&
+                    !isDisabled &&
                     !isSelected &&
                     !isToday &&
                     date >= today &&
                     'text-text-secondary hover:bg-accent',
-                  !isDisabled && isSelected && 'bg-primary text-primary-foreground font-semibold',
-                  !isDisabled &&
-                    !isSelected &&
+                  isSelected && 'bg-primary text-primary-foreground font-semibold',
+                  !isSelected &&
+                    !isOutsideMonth &&
+                    !isDisabled &&
                     isToday &&
                     'border border-foreground/15 text-text-primary font-medium'
                 )}
@@ -212,6 +292,12 @@ export function DatePickerCalendar({
                 aria-disabled={isDisabled}
               >
                 {date.getDate()}
+                {activity > 0 && (
+                  <span
+                    className={cn('size-1 rounded-full', ACTIVITY_DOT_COLORS[activity])}
+                    aria-hidden="true"
+                  />
+                )}
               </button>
             )
           })}

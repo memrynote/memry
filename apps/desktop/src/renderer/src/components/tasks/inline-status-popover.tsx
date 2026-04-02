@@ -35,6 +35,8 @@ export const InlineStatusPopover = ({
 
       if (newStatus?.type === 'done' && !isCompleted) {
         onToggleComplete()
+      } else if (newStatus?.type !== 'done' && isCompleted) {
+        onToggleComplete()
       }
     },
     [statusId, statuses, onStatusChange, isCompleted, onToggleComplete]

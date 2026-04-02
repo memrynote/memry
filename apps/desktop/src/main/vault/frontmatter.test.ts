@@ -291,6 +291,21 @@ describe('extractInlineTagsFromMarkdown', () => {
   it('handles tag at very start of content', () => {
     expect(extractInlineTagsFromMarkdown('#first word')).toEqual(['first'])
   })
+
+  it('extracts hierarchical tags with slashes', () => {
+    expect(extractInlineTagsFromMarkdown('#movies/oscar and #movies/grammy')).toEqual([
+      'movies/oscar',
+      'movies/grammy'
+    ])
+  })
+
+  it('extracts deeply nested hierarchical tags', () => {
+    expect(extractInlineTagsFromMarkdown('#a/b/c/d')).toEqual(['a/b/c/d'])
+  })
+
+  it('does not capture trailing slash', () => {
+    expect(extractInlineTagsFromMarkdown('#movies/ rest')).toEqual(['movies'])
+  })
 })
 
 describe('snippet helpers', () => {

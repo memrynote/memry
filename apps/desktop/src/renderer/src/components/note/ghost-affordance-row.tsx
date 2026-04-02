@@ -35,7 +35,7 @@ export const GhostAffordanceRow = memo(function GhostAffordanceRow({
   return (
     <div
       className={cn(
-        'flex items-center gap-3 py-1',
+        'flex items-center gap-3',
         'transition-opacity duration-200',
         isAnyPopupOpen
           ? 'opacity-100 pointer-events-auto'

@@ -17,7 +17,9 @@ export * from './journal-entry-list-item'
 export * from './journal-month-view'
 export * from './journal-year-view'
 
-// New Navigation Components
+// Navigation Components
+export * from './journal-breadcrumb'
+export * from './journal-header-actions'
 export * from './journal-navigation-row'
 export * from './journal-date-display'
 
@@ -29,3 +31,6 @@ export * from './journal-error-boundary'
 
 // Stats Footer
 export * from './journal-stats-footer'
+
+// Day Panel (sidebar schedule + tasks)
+export * from './journal-day-panel'

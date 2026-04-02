@@ -15,6 +15,8 @@ interface TabBarActionProps {
   onClick: () => void
   /** Disabled state */
   disabled?: boolean
+  /** Active/toggled state */
+  isActive?: boolean
   /** Additional CSS classes */
   className?: string
 }
@@ -28,6 +30,7 @@ export const TabBarAction = ({
   tooltip,
   onClick,
   disabled = false,
+  isActive = false,
   className
 }: TabBarActionProps): React.JSX.Element => {
   return (
@@ -42,7 +45,7 @@ export const TabBarAction = ({
             'flex h-7 w-7 items-center justify-center rounded-md',
             // Colors with smooth transitions
             'text-text-tertiary hover:text-foreground',
-            'hover:bg-surface-active/50',
+            isActive ? 'bg-surface-active/70 text-foreground' : 'hover:bg-surface-active/50',
             // Smooth transitions for all properties
             'transition-all duration-150 ease-out',
             // Active state

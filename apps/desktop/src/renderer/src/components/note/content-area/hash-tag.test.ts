@@ -99,6 +99,33 @@ describe('extractInlineTags', () => {
     })
   })
 
+  describe('hierarchical tags', () => {
+    it('extracts hierarchical hashTag inline content nodes', () => {
+      const blocks = [textBlock([hashTagItem('movies/oscar')])]
+      expect(extractInlineTags(blocks)).toEqual(['movies/oscar'])
+    })
+
+    it('extracts hierarchical #tags from text content', () => {
+      const blocks = [textBlock([textItem('tagged #movies/oscar and #movies/grammy')])]
+      expect(extractInlineTags(blocks)).toEqual(['movies/oscar', 'movies/grammy'])
+    })
+
+    it('extracts deeply nested hierarchical tags from text', () => {
+      const blocks = [textBlock([textItem('#a/b/c/d')])]
+      expect(extractInlineTags(blocks)).toEqual(['a/b/c/d'])
+    })
+
+    it('handles mix of flat and hierarchical tags', () => {
+      const blocks = [textBlock([hashTagItem('react'), textItem(' and #movies/oscar here')])]
+      expect(extractInlineTags(blocks)).toEqual(['react', 'movies/oscar'])
+    })
+
+    it('does not capture trailing slash as part of tag', () => {
+      const blocks = [textBlock([textItem('#movies/ text')])]
+      expect(extractInlineTags(blocks)).toEqual(['movies'])
+    })
+  })
+
   describe('empty / edge cases', () => {
     it('returns empty for no blocks', () => {
       expect(extractInlineTags([])).toEqual([])

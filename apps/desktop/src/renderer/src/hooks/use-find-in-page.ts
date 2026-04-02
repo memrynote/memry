@@ -60,6 +60,26 @@ export function useFindInPage(
     }
   }, [])
 
+  const highlightAndScroll = useCallback((index: number) => {
+    try {
+      CSS.highlights.delete('find-current')
+    } catch {
+      return
+    }
+    const matches = matchesRef.current
+    if (index >= 0 && index < matches.length) {
+      try {
+        CSS.highlights.set('find-current', new Highlight(matches[index]))
+        const el = matches[index].startContainer.parentElement
+        el?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      } catch {
+        // Range may have been invalidated
+      }
+    }
+  }, [])
+
+  const currentIndexRef = useRef(-1)
+
   const performSearch = useCallback(
     (searchQuery: string) => {
       clearHighlights()
@@ -68,6 +88,7 @@ export function useFindInPage(
         matchesRef.current = []
         setMatchCount(0)
         setCurrentIndex(-1)
+        currentIndexRef.current = -1
         return
       }
 
@@ -82,36 +103,24 @@ export function useFindInPage(
           // CSS Highlight API not supported
         }
         setCurrentIndex(0)
+        currentIndexRef.current = 0
+        highlightAndScroll(0)
       } else {
         setCurrentIndex(-1)
+        currentIndexRef.current = -1
       }
     },
-    [containerRef, clearHighlights]
+    [containerRef, clearHighlights, highlightAndScroll]
   )
 
   useEffect(() => {
     if (isOpen) performSearch(query)
   }, [query, isOpen, performSearch])
 
-  // Highlight current match + scroll into view
+  // Highlight current match + scroll into view on navigation (next/prev)
   useEffect(() => {
-    try {
-      CSS.highlights.delete('find-current')
-    } catch {
-      return
-    }
-
-    const matches = matchesRef.current
-    if (currentIndex >= 0 && currentIndex < matches.length) {
-      try {
-        CSS.highlights.set('find-current', new Highlight(matches[currentIndex]))
-        const el = matches[currentIndex].startContainer.parentElement
-        el?.scrollIntoView({ behavior: 'smooth', block: 'center' })
-      } catch {
-        // Range may have been invalidated
-      }
-    }
-  }, [currentIndex])
+    highlightAndScroll(currentIndex)
+  }, [currentIndex, highlightAndScroll])
 
   // Re-search when editor DOM mutates while find bar is open
   useEffect(() => {
@@ -150,6 +159,7 @@ export function useFindInPage(
     matchesRef.current = []
     setMatchCount(0)
     setCurrentIndex(-1)
+    currentIndexRef.current = -1
   }, [clearHighlights])
 
   const setQuery = useCallback((q: string) => {
@@ -159,14 +169,20 @@ export function useFindInPage(
   const next = useCallback(() => {
     const len = matchesRef.current.length
     if (len === 0) return
-    setCurrentIndex((i) => (i + 1) % len)
-  }, [])
+    const newIndex = (currentIndexRef.current + 1) % len
+    currentIndexRef.current = newIndex
+    setCurrentIndex(newIndex)
+    highlightAndScroll(newIndex)
+  }, [highlightAndScroll])
 
   const prev = useCallback(() => {
     const len = matchesRef.current.length
     if (len === 0) return
-    setCurrentIndex((i) => (i - 1 + len) % len)
-  }, [])
+    const newIndex = (currentIndexRef.current - 1 + len) % len
+    currentIndexRef.current = newIndex
+    setCurrentIndex(newIndex)
+    highlightAndScroll(newIndex)
+  }, [highlightAndScroll])
 
   // Cmd+F / Ctrl+F shortcut
   useEffect(() => {
