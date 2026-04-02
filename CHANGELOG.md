@@ -5,6 +5,15 @@ Format: weekly entries grouped by feature area.
 
 ---
 
+## 2026-04-03 — Tag Sort Picker
+
+### Changed
+- Replace DropdownMenu with Picker component for sidebar tag sort control
+- Shorten sort labels to compact single-line names (Most used, Least used, A → Z, Z → A)
+- Add leading icons to all sort options for visual clarity
+
+---
+
 ## 2026-04-02 — Journal Redesign and Task Improvements
 
 ### Added
