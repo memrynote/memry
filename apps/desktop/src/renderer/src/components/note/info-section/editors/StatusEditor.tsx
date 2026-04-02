@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Plus, Trash2 } from '@/lib/icons'
 import { Picker } from '@/components/ui/picker'
 import { getTagColors, COLOR_NAMES } from '../../tags-row/tag-colors'
@@ -13,6 +13,7 @@ import type {
 interface StatusEditorProps {
   value: string | null
   categories: StatusCategories
+  defaultOpen?: boolean
   onChange: (value: string | null) => void
   onAddOption?: (categoryKey: StatusCategoryKey, option: SelectOption) => void
   onRemoveOption?: (optionValue: string) => void
@@ -23,12 +24,18 @@ const CATEGORY_ORDER: StatusCategoryKey[] = ['todo', 'in_progress', 'done']
 export function StatusEditor({
   value,
   categories,
+  defaultOpen,
   onChange,
   onAddOption,
   onRemoveOption
 }: StatusEditorProps) {
+  const [isOpen, setIsOpen] = useState(defaultOpen ?? false)
   const [creatingInCategory, setCreatingInCategory] = useState<StatusCategoryKey | null>(null)
   const [newOptionName, setNewOptionName] = useState('')
+
+  useEffect(() => {
+    if (defaultOpen) setIsOpen(true)
+  }, [defaultOpen])
 
   const allOptions = CATEGORY_ORDER.flatMap((key) => categories[key].options)
   const selectedOption = allOptions.find((o) => o.value === value)
@@ -46,7 +53,12 @@ export function StatusEditor({
   }
 
   return (
-    <Picker value={value} onValueChange={(val) => onChange(val === value ? null : val)}>
+    <Picker
+      open={isOpen}
+      onOpenChange={setIsOpen}
+      value={value}
+      onValueChange={(val) => onChange(val === value ? null : val)}
+    >
       <Picker.Trigger variant="inline" asChild>
         <span>
           {selectedOption ? (
@@ -58,7 +70,7 @@ export function StatusEditor({
           )}
         </span>
       </Picker.Trigger>
-      <Picker.Content width={220}>
+      <Picker.Content width={220} align="start">
         <Picker.List>
           {CATEGORY_ORDER.map((categoryKey) => {
             const category = categories[categoryKey]

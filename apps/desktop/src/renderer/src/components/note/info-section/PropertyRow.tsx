@@ -26,6 +26,7 @@ import {
 interface PropertyValueRendererProps {
   property: Property
   isEditing: boolean
+  autoOpen?: boolean
   onValueChange: (value: unknown) => void
   onEndEdit: () => void
 }
@@ -120,9 +121,11 @@ const SELECT_TYPES = new Set(['select', 'multiselect', 'status'])
 
 function SelectPropertyRenderer({
   property,
+  autoOpen,
   onValueChange
 }: {
   property: Property
+  autoOpen?: boolean
   onValueChange: (value: unknown) => void
 }) {
   const { getDefinition, refresh } = usePropertyDefinitions()
@@ -183,6 +186,7 @@ function SelectPropertyRenderer({
       <StatusEditor
         value={(property.value as string) ?? null}
         categories={categories}
+        defaultOpen={autoOpen}
         onChange={onValueChange}
         onAddOption={handleAddStatusOption}
         onRemoveOption={handleRemoveOption}
@@ -196,6 +200,7 @@ function SelectPropertyRenderer({
       <MultiselectEditor
         value={val}
         options={options}
+        defaultOpen={autoOpen}
         onChange={onValueChange}
         onAddOption={handleAddOption}
         onRemoveOption={handleRemoveOption}
@@ -207,6 +212,7 @@ function SelectPropertyRenderer({
     <SelectEditor
       value={(property.value as string) ?? null}
       options={options}
+      defaultOpen={autoOpen}
       onChange={onValueChange}
       onAddOption={handleAddOption}
       onRemoveOption={handleRemoveOption}
@@ -217,6 +223,7 @@ function SelectPropertyRenderer({
 function PropertyValueRenderer({
   property,
   isEditing,
+  autoOpen,
   onValueChange,
   onEndEdit
 }: PropertyValueRendererProps) {
@@ -225,7 +232,13 @@ function PropertyValueRenderer({
   }
 
   if (SELECT_TYPES.has(property.type)) {
-    return <SelectPropertyRenderer property={property} onValueChange={onValueChange} />
+    return (
+      <SelectPropertyRenderer
+        property={property}
+        autoOpen={autoOpen}
+        onValueChange={onValueChange}
+      />
+    )
   }
 
   if (isEditing) {
@@ -443,6 +456,7 @@ export function PropertyRow({
         <PropertyValueRenderer
           property={property}
           isEditing={isEditing}
+          autoOpen={autoFocus && isAlwaysInteractive}
           onValueChange={onValueChange}
           onEndEdit={handleEndEdit}
         />

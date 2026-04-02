@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Plus, Trash2 } from '@/lib/icons'
 import { Picker } from '@/components/ui/picker'
 import { getTagColors } from '../../tags-row/tag-colors'
@@ -9,6 +9,7 @@ import { COLOR_NAMES } from '../../tags-row/tag-colors'
 interface SelectEditorProps {
   value: string | null
   options: SelectOption[]
+  defaultOpen?: boolean
   onChange: (value: string | null) => void
   onAddOption?: (option: SelectOption) => void
   onRemoveOption?: (optionValue: string) => void
@@ -17,12 +18,18 @@ interface SelectEditorProps {
 export function SelectEditor({
   value,
   options,
+  defaultOpen,
   onChange,
   onAddOption,
   onRemoveOption
 }: SelectEditorProps) {
+  const [isOpen, setIsOpen] = useState(defaultOpen ?? false)
   const [newOptionName, setNewOptionName] = useState('')
   const [isCreating, setIsCreating] = useState(false)
+
+  useEffect(() => {
+    if (defaultOpen) setIsOpen(true)
+  }, [defaultOpen])
 
   const selectedOption = options.find((o) => o.value === value)
   const isOrphan = value && !selectedOption
@@ -38,7 +45,12 @@ export function SelectEditor({
   }
 
   return (
-    <Picker value={value} onValueChange={(val) => onChange(val === value ? null : val)}>
+    <Picker
+      open={isOpen}
+      onOpenChange={setIsOpen}
+      value={value}
+      onValueChange={(val) => onChange(val === value ? null : val)}
+    >
       <Picker.Trigger variant="inline" asChild>
         <span>
           {selectedOption ? (
@@ -50,7 +62,7 @@ export function SelectEditor({
           )}
         </span>
       </Picker.Trigger>
-      <Picker.Content width={220}>
+      <Picker.Content width={220} align="start">
         <Picker.Search placeholder="Search options..." />
         <Picker.List>
           {options.length === 0 && !isCreating && <Picker.Empty message="No options yet" />}
