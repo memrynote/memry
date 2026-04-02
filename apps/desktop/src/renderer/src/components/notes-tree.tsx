@@ -1791,7 +1791,7 @@ export function NotesTree({
         acceptsDropInside
       >
         <TreeNodeTrigger
-          className="group/folderrow"
+          className=""
           contextMenuContent={
             <>
               <ContextMenuItem onClick={() => handleCreateNoteInFolder(folder.path)}>
@@ -1958,7 +1958,7 @@ export function NotesTree({
           onSelectionChange={handleSelectionChange}
           draggable={!renamingNoteId && !renamingFolderPath && !isMoving}
           onMove={handleMove}
-          animateExpand={false}
+          animateExpand
           multiSelect={true}
           indent={26}
         >

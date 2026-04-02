@@ -968,17 +968,7 @@ export const TreeNodeContent = ({
             ease: 'easeInOut'
           }}
         >
-          <m.div
-            animate={{ y: 0 }}
-            className={className}
-            exit={{ y: -10 }}
-            initial={{ y: -10 }}
-            transition={{
-              duration: animateExpand ? 0.2 : 0,
-              delay: animateExpand ? 0.1 : 0
-            }}
-            {...props}
-          >
+          <m.div className={className} {...props}>
             {children}
           </m.div>
         </m.div>
