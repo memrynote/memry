@@ -23,6 +23,7 @@ import { BacklinksSection, type Backlink } from '@/components/note/backlinks'
 
 import { TagsRow, type Tag } from '@/components/note/tags-row'
 import { InfoSection } from '@/components/note/info-section'
+import { GhostAffordanceRow } from '@/components/note/ghost-affordance-row'
 import { OutlineInfoPanel, type HeadingItem } from '@/components/shared'
 import { useActiveHeading } from '@/hooks/use-active-heading'
 import { useNoteTagsQuery, useNoteLinksQuery } from '@/hooks/use-notes-query'
@@ -206,6 +207,8 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
   // View state for navigation
   const [viewState, setViewState] = useState<JournalViewState>({ type: 'day', date: initialDate })
 
+  const focusAtEndRef = useRef<(() => void) | null>(null)
+
   // Find in page (Cmd+F)
   const editorContainerRef = useRef<HTMLDivElement>(null)
   const isActiveJournal = activeTab?.type === 'journal'
@@ -331,13 +334,16 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
   }, [availableTags])
 
   const {
-    properties,
+    properties: rawProperties,
+    newlyAddedPropertyId,
     handlePropertyChange,
     handleAddProperty,
     handleDeleteProperty,
     handlePropertyNameChange,
     handlePropertyOrderChange
-  } = usePropertySection({ entityId: entry?.id ?? null })
+  } = usePropertySection({ entityId: entry?.id ?? null, includeExplicitType: true })
+
+  const properties = useMemo(() => rawProperties.filter((p) => p.name !== 'date'), [rawProperties])
 
   // Navigation
   const navigateToMonth = useCallback((year: number, month: number) => {
@@ -348,10 +354,24 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
     setViewState({ type: 'year', year })
   }, [])
 
-  const navigateToDay = useCallback((date: string) => {
-    setSelectedDate(date)
-    setViewState({ type: 'day', date })
-  }, [])
+  const navigateToDay = useCallback(
+    (date: string) => {
+      setSelectedDate(date)
+      setViewState({ type: 'day', date })
+      openTab({
+        type: 'journal',
+        title: 'Journal',
+        icon: 'book-open',
+        path: '/journal',
+        isPinned: false,
+        isModified: false,
+        isPreview: false,
+        isDeleted: false,
+        viewState: { date }
+      })
+    },
+    [openTab]
+  )
 
   const navigateBack = useCallback(() => {
     if (viewState.type === 'month') {
@@ -663,11 +683,11 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
 
           <div ref={journalScrollRef} className="flex-1 overflow-y-auto">
             <div
-              className="mx-auto w-full px-8 lg:px-12 min-h-full pt-6 pb-10 lg:pb-16 transition-[max-width] duration-300 ease-in-out"
+              className="mx-auto w-full px-8 lg:px-12 min-h-full flex flex-col pt-6 pb-10 lg:pb-16 transition-[max-width] duration-300 ease-in-out"
               style={{ maxWidth: isFullWidth ? '100%' : '64rem' }}
             >
               <div
-                className="flex flex-col mx-auto w-full transition-[max-width] duration-300 ease-in-out"
+                className="flex flex-col flex-1 mx-auto w-full transition-[max-width] duration-300 ease-in-out"
                 style={{ maxWidth: journalContentWidth ?? '100%' }}
               >
                 {entryError && (
@@ -678,7 +698,8 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
 
                 {viewState.type === 'day' && (
                   <>
-                    <div className="flex flex-col gap-3 mb-4">
+                    <div className="group/metadata flex flex-col pb-[15px]">
+                      <JournalDateDisplay viewState={viewState} dateParts={dateParts} />
                       <TagsRow
                         tags={journalTags}
                         availableTags={availableTags}
@@ -687,10 +708,12 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
                         onCreateTag={handleCreateTag}
                         onRemoveTag={handleRemoveTag}
                         className="mb-0"
+                        hideWhenEmpty
                       />
                       {properties.length > 0 && (
                         <InfoSection
                           properties={properties}
+                          newlyAddedPropertyId={newlyAddedPropertyId}
                           isExpanded
                           variant="inline"
                           onToggleExpand={() => {}}
@@ -702,14 +725,21 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
                           hideAddButton
                         />
                       )}
+                      <GhostAffordanceRow
+                        availableTags={availableTags}
+                        recentTags={recentTags}
+                        currentTagIds={journalTags.map((t) => t.id)}
+                        onAddTag={handleAddTag}
+                        onCreateTag={handleCreateTag}
+                        onAddProperty={handleAddProperty}
+                        hasTags={journalTags.length > 0}
+                      />
                     </div>
-
-                    <div className="h-px w-full bg-border/40 mb-5" />
 
                     <div
                       ref={editorContainerRef}
                       role="presentation"
-                      className="editor-click-area min-h-[300px] relative overflow-visible"
+                      className="editor-click-area flex-1 pb-[30vh] relative overflow-visible"
                       style={{ wordBreak: 'break-word', overflowWrap: 'break-word' }}
                       onMouseDown={(e) => {
                         const target = e.target as HTMLElement
@@ -719,13 +749,8 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
                         )
                           return
                         if (target.closest('button, a, input')) return
-                        const editor = (e.currentTarget as HTMLElement).querySelector(
-                          '.bn-editor [contenteditable="true"]'
-                        ) as HTMLElement
-                        if (editor) {
-                          e.preventDefault()
-                          editor.focus()
-                        }
+                        e.preventDefault()
+                        focusAtEndRef.current?.()
                       }}
                     >
                       {showEditorLoading ? (
@@ -751,6 +776,7 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
                           onHeadingsChange={handleHeadingsChange}
                           onLinkClick={handleLinkClick}
                           onInternalLinkClick={handleInternalLinkClick}
+                          focusAtEndRef={focusAtEndRef}
                         />
                       )}
                     </div>

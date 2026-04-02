@@ -41,7 +41,10 @@ export function JournalDateDisplay({ viewState, dateParts, className }: JournalD
   if (viewState.type === 'day' && dateParts) {
     return (
       <div className={cn('flex flex-col', className)}>
-        <h1 className="font-display text-4xl lg:text-5xl font-bold tracking-tight text-foreground">
+        <h1
+          className="text-[42px] tracking-[-0.02em] leading-12 font-normal text-text-bright"
+          style={{ fontFamily: 'var(--font-heading)' }}
+        >
           {dateParts.dayName}, {dateParts.month} {dateParts.day}
         </h1>
         <div className="flex items-center gap-2 mt-1.5">
