@@ -8,11 +8,11 @@ import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar'
 import { Toaster } from '@/components/ui/sonner'
 import { DragProvider, type DragState } from '@/contexts/drag-context'
 import { DroppedPriorityProvider } from '@/contexts/dropped-priority-context'
-import { AIAgentProvider } from '@/contexts/ai-agent-context'
 import { AIInlineProvider } from '@/contexts/ai-inline-context'
+import { DayPanelProvider } from '@/contexts/day-panel-context'
 import { SidebarDrillDownProvider } from '@/contexts/sidebar-drill-down'
 import { SelectedFolderProvider } from '@/contexts/selected-folder-context'
-import { GlobalAIPanel } from '@/components/ai-agent'
+import { GlobalDayPanel } from '@/components/day-panel'
 import { TaskDragOverlay } from '@/components/tasks/drag-drop'
 import { initialProjects, taskViews, type Project } from '@/data/tasks-data'
 import { sampleTasks, type Task } from '@/data/sample-tasks'
@@ -151,8 +151,8 @@ const AppContent = (): React.JSX.Element => {
     <TabDragProvider>
       <div className="flex flex-1 overflow-hidden bg-background" id="main-content">
         <SplitViewContainer />
-        <GlobalAIPanel />
       </div>
+      <GlobalDayPanel />
 
       {/* Chord Indicator */}
       <ChordIndicator isActive={isChordActive} />
@@ -459,7 +459,7 @@ function App(): React.JSX.Element {
         onSelectedTaskIdsChange={updateSelectedTaskIds}
         getOrderedTasks={taskOrder.getOrderedTasks}
       >
-        <AIAgentProvider>
+        <DayPanelProvider>
           <AIInlineProvider>
             <TabProvider>
               <TabPersistenceManager>
@@ -478,7 +478,7 @@ function App(): React.JSX.Element {
               </TabPersistenceManager>
             </TabProvider>
           </AIInlineProvider>
-        </AIAgentProvider>
+        </DayPanelProvider>
       </TasksProvider>
     </TabErrorBoundary>
   )

@@ -24,6 +24,7 @@ export const tagsService: TagsClientAPI = {
     tag: string
     sortBy?: 'modified' | 'created' | 'title'
     sortOrder?: 'asc' | 'desc'
+    includeDescendants?: boolean
   }): Promise<GetNotesByTagResponse> => {
     return window.api.tags.getNotesByTag(input)
   },

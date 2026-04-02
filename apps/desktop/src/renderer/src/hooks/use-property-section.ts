@@ -1,7 +1,11 @@
-import { useCallback, useMemo } from 'react'
+import { useCallback, useMemo, useState, useRef } from 'react'
 import { type NewProperty, type Property } from '@/components/note/info-section'
 import { useProperties } from '@/hooks/use-properties'
-import { getDefaultValueForType, mapPropertyType } from '@/lib/property-utils'
+import {
+  getDefaultValueForType,
+  getUniquePropertyName,
+  mapPropertyType
+} from '@/lib/property-utils'
 
 export type PropertySectionAction = 'update' | 'add' | 'remove' | 'rename' | 'reorder'
 
@@ -15,6 +19,7 @@ export interface UsePropertySectionOptions {
 
 export interface UsePropertySectionResult {
   properties: Property[]
+  newlyAddedPropertyId: string | null
   handlePropertyChange: (propertyId: string, value: unknown) => void
   handleAddProperty: (property: NewProperty) => void
   handleDeleteProperty: (propertyId: string) => void
@@ -37,6 +42,9 @@ export function usePropertySection({
     renameProperty,
     reorderProperties
   } = useProperties(entityId)
+
+  const [newlyAddedPropertyId, setNewlyAddedPropertyId] = useState<string | null>(null)
+  const clearTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined)
 
   const properties: Property[] = useMemo(() => {
     return backendProperties.map((prop) => ({
@@ -80,6 +88,11 @@ export function usePropertySection({
           const { notesService } = await import('@/services/notes-service')
           await notesService.ensurePropertyDefinition(newProp.name, newProp.type)
         }
+        const existingNames = properties.map((p) => p.name)
+        const uniqueName = getUniquePropertyName(newProp.name, existingNames)
+        clearTimeout(clearTimerRef.current)
+        setNewlyAddedPropertyId(uniqueName)
+        clearTimerRef.current = setTimeout(() => setNewlyAddedPropertyId(null), 2000)
         await addProperty(
           newProp.name,
           defaultValue,
@@ -130,6 +143,7 @@ export function usePropertySection({
 
   return {
     properties,
+    newlyAddedPropertyId,
     handlePropertyChange,
     handleAddProperty,
     handleDeleteProperty,

@@ -39,6 +39,8 @@ export interface UseAllTagsResult {
   getPopularTags: (limit?: number) => TagWithMeta[]
   /** Get recent tags (based on recent notes/inbox usage) */
   getRecentTags: (limit?: number) => TagWithMeta[]
+  /** Get immediate children of a parent tag prefix */
+  getChildTags: (prefix: string, leafQuery?: string) => TagWithMeta[]
   /** Refetch tags */
   refetch: () => void
 }
@@ -188,6 +190,29 @@ export function useAllTags(): UseAllTagsResult {
     [combinedTags]
   )
 
+  const getChildTags = useCallback(
+    (prefix: string, leafQuery?: string): TagWithMeta[] => {
+      const normalizedPrefix = prefix.toLowerCase()
+      const prefixWithSlash = normalizedPrefix + '/'
+      const depth = normalizedPrefix.split('/').length
+
+      const children = combinedTags.filter((tag) => {
+        if (!tag.name.startsWith(prefixWithSlash)) return false
+        const segments = tag.name.split('/')
+        return segments.length === depth + 1
+      })
+
+      if (!leafQuery) return children
+
+      const normalizedLeaf = leafQuery.toLowerCase()
+      return children.filter((tag) => {
+        const leaf = tag.name.split('/').pop() ?? ''
+        return leaf.includes(normalizedLeaf)
+      })
+    },
+    [combinedTags]
+  )
+
   const refetch = useCallback(() => {
     void notesQuery.refetch()
     void inboxQuery.refetch()
@@ -200,6 +225,7 @@ export function useAllTags(): UseAllTagsResult {
     searchTags,
     getPopularTags,
     getRecentTags,
+    getChildTags,
     refetch
   }
 }

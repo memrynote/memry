@@ -6,6 +6,7 @@
 import { useState } from 'react'
 import { useDndMonitor } from '@dnd-kit/core'
 import { useTabGroup, useTabs } from '@/contexts/tabs'
+import { useDayPanel } from '@/contexts/day-panel-context'
 import { TabBarWithDrag } from '@/components/tabs'
 import { TabContent } from './tab-content'
 import { EmptyPaneState } from './empty-pane-state'
@@ -33,6 +34,11 @@ export const TabPaneWithDropZones = ({
 }: TabPaneWithDropZonesProps): React.JSX.Element | null => {
   const { dispatch } = useTabs()
   const group = useTabGroup(groupId)
+  const {
+    isOpen: isDayPanelOpen,
+    width: dayPanelWidth,
+    isResizing: dayPanelResizing
+  } = useDayPanel()
 
   // Drag state
   const [isDraggingTab, setIsDraggingTab] = useState(false)
@@ -151,7 +157,13 @@ export const TabPaneWithDropZones = ({
       <TabBarWithDrag groupId={groupId} />
 
       {/* Content area */}
-      <div className="flex-1 overflow-hidden relative">
+      <div
+        className={cn(
+          'flex-1 overflow-hidden relative',
+          !dayPanelResizing && 'transition-[margin] duration-200 ease-linear'
+        )}
+        style={{ marginRight: isDayPanelOpen ? `${dayPanelWidth}px` : 0 }}
+      >
         {activeTab ? (
           <TabContent tab={activeTab} groupId={groupId} />
         ) : (

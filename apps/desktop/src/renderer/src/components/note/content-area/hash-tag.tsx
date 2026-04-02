@@ -69,7 +69,7 @@ export const HashTag = createInlineContentSpec(
 // HASH TAG TEXT SPLITTING (for normalization on load)
 // =============================================================================
 
-const HASH_TAG_PATTERN = /#([a-zA-Z0-9][a-zA-Z0-9_-]*)/g
+const HASH_TAG_PATTERN = /#([a-zA-Z0-9][a-zA-Z0-9_-]*(?:\/[a-zA-Z0-9][a-zA-Z0-9_-]*)*)/g
 
 function createStyledText(
   text: string,

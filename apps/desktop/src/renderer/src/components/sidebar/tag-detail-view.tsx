@@ -117,7 +117,22 @@ export function TagDetailView({ tag, color, className }: TagDetailViewProps): Re
                 border: `1.5px solid ${tagColors.text}`
               }}
             />
-            <span className="font-medium truncate">{tag}</span>
+            <span className="font-medium truncate">
+              {tag.includes('/') ? (
+                <span className="flex items-center gap-0.5">
+                  {tag.split('/').map((segment, i, arr) => (
+                    <span key={i} className="flex items-center gap-0.5">
+                      {i > 0 && <span className="text-muted-foreground/40 text-xs">/</span>}
+                      <span className={i < arr.length - 1 ? 'text-muted-foreground' : ''}>
+                        {segment}
+                      </span>
+                    </span>
+                  ))}
+                </span>
+              ) : (
+                tag
+              )}
+            </span>
           </div>
           <p className="text-xs text-muted-foreground">{count} notes</p>
         </div>

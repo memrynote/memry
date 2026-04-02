@@ -901,6 +901,7 @@ export const api = {
       tag: string
       sortBy?: 'modified' | 'created' | 'title'
       sortOrder?: 'asc' | 'desc'
+      includeDescendants?: boolean
     }) => invoke(TagsChannels.invoke.GET_NOTES_BY_TAG, input),
     /** Pin a note to a tag */
     pinNoteToTag: (input: { noteId: string; tag: string }) =>

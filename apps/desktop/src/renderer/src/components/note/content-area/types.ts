@@ -103,6 +103,8 @@ export interface ContentAreaProps {
   tagColorMap?: Map<string, string>
   /** Callback when inline #tags change in editor content */
   onInlineTagsChange?: (tags: string[]) => void
+  /** Ref that receives a focusAtEnd function to focus the editor at the end of the document */
+  focusAtEndRef?: React.RefObject<(() => void) | null>
 }
 
 // =============================================================================

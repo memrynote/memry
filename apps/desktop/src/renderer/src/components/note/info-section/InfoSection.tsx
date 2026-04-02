@@ -15,7 +15,7 @@ import {
   arrayMove
 } from '@dnd-kit/sortable'
 import { restrictToVerticalAxis, restrictToParentElement } from '@dnd-kit/modifiers'
-import { Plus, ChevronDown, ChevronUp } from '@/lib/icons'
+import { Plus } from '@/lib/icons'
 import { cn } from '@/lib/utils'
 import { Property, PropertyTemplate, NewProperty } from './types'
 import { InfoHeader } from './InfoHeader'
@@ -25,6 +25,7 @@ import { AddPropertyPopup } from './AddPropertyPopup'
 export interface InfoSectionProps {
   properties: Property[]
   folderProperties?: PropertyTemplate[]
+  newlyAddedPropertyId?: string | null
   isExpanded: boolean
   onToggleExpand: () => void
   onPropertyChange: (propertyId: string, value: unknown) => void
@@ -33,7 +34,6 @@ export interface InfoSectionProps {
   onAddProperty: (property: NewProperty) => void
   onDeleteProperty: (propertyId: string) => void
   disabled?: boolean
-  initialVisibleCount?: number
   variant?: 'default' | 'embedded' | 'inline'
   hideAddButton?: boolean
 }
@@ -41,6 +41,7 @@ export interface InfoSectionProps {
 export const InfoSection = memo(function InfoSection({
   properties,
   folderProperties,
+  newlyAddedPropertyId: externalNewlyAddedId,
   isExpanded,
   onToggleExpand,
   onPropertyChange,
@@ -49,12 +50,11 @@ export const InfoSection = memo(function InfoSection({
   onAddProperty,
   onDeleteProperty,
   disabled = false,
-  initialVisibleCount = 4,
   variant = 'default',
   hideAddButton = false
 }: InfoSectionProps) {
-  const [showAllProperties, setShowAllProperties] = useState(false)
-  const [newlyAddedPropertyId, setNewlyAddedPropertyId] = useState<string | null>(null)
+  const [internalNewlyAddedId, setInternalNewlyAddedId] = useState<string | null>(null)
+  const newlyAddedPropertyId = externalNewlyAddedId ?? internalNewlyAddedId
   const isSortable = Boolean(onPropertyOrderChange) && !disabled && properties.length > 1
 
   const sensors = useSensors(
@@ -68,18 +68,7 @@ export const InfoSection = memo(function InfoSection({
     })
   )
 
-  // Split properties into visible and hidden (keep insertion order)
-  const { visibleProperties, hiddenProperties } = useMemo(() => {
-    if (showAllProperties) {
-      return { visibleProperties: properties, hiddenProperties: [] }
-    }
-
-    // Keep insertion order - no sorting
-    const visible = properties.slice(0, initialVisibleCount)
-    const hidden = properties.slice(initialVisibleCount)
-
-    return { visibleProperties: visible, hiddenProperties: hidden }
-  }, [properties, showAllProperties, initialVisibleCount])
+  const sortableIds = useMemo(() => properties.map((property) => property.id), [properties])
 
   const handlePropertyChange = useCallback(
     (propertyId: string) => (value: unknown) => {
@@ -102,23 +91,14 @@ export const InfoSection = memo(function InfoSection({
     [onDeleteProperty]
   )
 
-  const toggleShowMore = useCallback(() => {
-    setShowAllProperties((prev) => !prev)
-  }, [])
-
-  // Track the previous properties length to detect new additions
   const prevPropertiesLength = useRef(properties.length)
 
-  // Detect when a new property is added and set it for auto-focus
   useEffect(() => {
     if (properties.length > prevPropertiesLength.current) {
-      // A new property was added - it should be the last one
       const newProperty = properties[properties.length - 1]
       if (newProperty) {
-        setNewlyAddedPropertyId(newProperty.id)
-        setShowAllProperties(true)
-        // Clear after a short delay
-        setTimeout(() => setNewlyAddedPropertyId(null), 100)
+        setInternalNewlyAddedId(newProperty.id)
+        setTimeout(() => setInternalNewlyAddedId(null), 500)
       }
     }
     prevPropertiesLength.current = properties.length
@@ -152,11 +132,6 @@ export const InfoSection = memo(function InfoSection({
       onPropertyOrderChange(newOrder)
     },
     [onPropertyOrderChange, properties]
-  )
-
-  const sortableIds = useMemo(
-    () => visibleProperties.map((property) => property.id),
-    [visibleProperties]
   )
 
   const isInline = variant === 'inline'
@@ -200,7 +175,7 @@ export const InfoSection = memo(function InfoSection({
           >
             <SortableContext items={sortableIds} strategy={verticalListSortingStrategy}>
               <div role="list" aria-label="Properties list">
-                {visibleProperties.map((property) => (
+                {properties.map((property) => (
                   <PropertyRow
                     key={property.id}
                     property={property}
@@ -217,41 +192,6 @@ export const InfoSection = memo(function InfoSection({
               </div>
             </SortableContext>
           </DndContext>
-
-          {/* Show More Toggle */}
-          {hiddenProperties.length > 0 && (
-            <button
-              type="button"
-              onClick={toggleShowMore}
-              className={cn(
-                'mt-2 flex items-center gap-1',
-                'text-xs text-text-tertiary',
-                'transition-colors duration-150',
-                'hover:text-muted-foreground'
-              )}
-              aria-label={`Show ${hiddenProperties.length} more properties`}
-            >
-              <ChevronDown className="h-3 w-3" aria-hidden="true" />
-              {hiddenProperties.length} more properties
-            </button>
-          )}
-
-          {showAllProperties && properties.length > initialVisibleCount && (
-            <button
-              type="button"
-              onClick={toggleShowMore}
-              className={cn(
-                'mt-2 flex items-center gap-1',
-                'text-xs text-text-tertiary',
-                'transition-colors duration-150',
-                'hover:text-muted-foreground'
-              )}
-              aria-label="Show fewer properties"
-            >
-              <ChevronUp className="h-3 w-3" aria-hidden="true" />
-              Show less
-            </button>
-          )}
 
           {showAddBtn && (
             <div className="pt-2 pb-2.5">

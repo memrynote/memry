@@ -72,29 +72,39 @@ export const TagAutocomplete = ({
   const dropdownRef = useRef<HTMLDivElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
 
-  const { searchTags, getPopularTags } = useAllTags()
+  const { searchTags, getPopularTags, getChildTags } = useAllTags()
 
   const trimmedInput = inputValue.trim()
 
-  // AI suggested tags not yet added
+  const hierarchyContext = useMemo(() => {
+    const lastSlash = trimmedInput.lastIndexOf('/')
+    if (lastSlash === -1) return null
+    return {
+      prefix: trimmedInput.slice(0, lastSlash),
+      leafQuery: trimmedInput.slice(lastSlash + 1)
+    }
+  }, [trimmedInput])
+
   const availableAiTags = useMemo(
     () => aiSuggestedTags.filter((t) => !tags.includes(t)),
     [aiSuggestedTags, tags]
   )
 
-  // Search results when typing
-  const matchingTags = useMemo(
-    () => (trimmedInput ? searchTags(trimmedInput).filter((t) => !tags.includes(t.name)) : []),
-    [trimmedInput, searchTags, tags]
-  )
+  const matchingTags = useMemo(() => {
+    if (!trimmedInput) return []
+    if (hierarchyContext) {
+      return getChildTags(hierarchyContext.prefix, hierarchyContext.leafQuery || undefined).filter(
+        (t) => !tags.includes(t.name)
+      )
+    }
+    return searchTags(trimmedInput).filter((t) => !tags.includes(t.name))
+  }, [trimmedInput, hierarchyContext, searchTags, getChildTags, tags])
 
-  // Popular tags for idle state
   const popularTags = useMemo(
     () => getPopularTags(maxSuggestions).filter((t) => !tags.includes(t.name)),
     [getPopularTags, maxSuggestions, tags]
   )
 
-  // Check if exact match exists (to decide whether to show "Create")
   const exactMatchExists = useMemo(
     () =>
       trimmedInput
@@ -279,7 +289,11 @@ export const TagAutocomplete = ({
       : popularTags.slice(0, 5)
     if (itemsToShow.length === 0) return null
 
-    const sectionLabel = trimmedInput ? 'Matching' : 'Popular'
+    const sectionLabel = hierarchyContext
+      ? `Sub-tags of ${hierarchyContext.prefix}`
+      : trimmedInput
+        ? 'Matching'
+        : 'Popular'
 
     return (
       <div className={cn('flex flex-col py-1', aiCount > 0 && 'border-t border-border/40')}>

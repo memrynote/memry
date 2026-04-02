@@ -1,4 +1,4 @@
-import { eq, and, inArray, count, desc } from 'drizzle-orm'
+import { eq, and, or, inArray, like, count, desc, sql } from 'drizzle-orm'
 import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3'
 import {
   noteCache,
@@ -97,6 +97,21 @@ export function findNotesByTag(db: DrizzleDb, tag: string): NoteCache[] {
   return db.select().from(noteCache).where(inArray(noteCache.id, noteIds)).all()
 }
 
+export function findNotesByTagPrefix(db: DrizzleDb, tag: string): NoteCache[] {
+  const normalizedTag = tag.toLowerCase()
+  const noteIds = db
+    .select({ noteId: noteTags.noteId })
+    .from(noteTags)
+    .where(or(eq(noteTags.tag, normalizedTag), like(noteTags.tag, `${normalizedTag}/%`)))
+    .all()
+    .map((r) => r.noteId)
+
+  const uniqueIds = [...new Set(noteIds)]
+  if (uniqueIds.length === 0) return []
+
+  return db.select().from(noteCache).where(inArray(noteCache.id, uniqueIds)).all()
+}
+
 export interface NoteWithTagInfo extends NoteCache {
   isPinned: boolean
   pinnedAt: string | null
@@ -108,10 +123,15 @@ export function findNotesWithTagInfo(
   options: {
     sortBy?: 'modified' | 'created' | 'title'
     sortOrder?: 'asc' | 'desc'
+    includeDescendants?: boolean
   } = {}
 ): NoteWithTagInfo[] {
-  const { sortBy = 'modified', sortOrder = 'desc' } = options
+  const { sortBy = 'modified', sortOrder = 'desc', includeDescendants = false } = options
   const normalizedTag = tag.toLowerCase()
+
+  const whereClause = includeDescendants
+    ? or(eq(noteTags.tag, normalizedTag), like(noteTags.tag, `${normalizedTag}/%`))
+    : eq(noteTags.tag, normalizedTag)
 
   const tagRecords = db
     .select({
@@ -119,8 +139,9 @@ export function findNotesWithTagInfo(
       pinnedAt: noteTags.pinnedAt
     })
     .from(noteTags)
-    .where(eq(noteTags.tag, normalizedTag))
+    .where(whereClause)
     .all()
+    .filter((r, i, arr) => arr.findIndex((x) => x.noteId === r.noteId) === i)
 
   if (tagRecords.length === 0) {
     return []
@@ -198,25 +219,39 @@ export function renameTag(db: DrizzleDb, oldName: string, newName: string): numb
   const normalizedOld = oldName.toLowerCase().trim()
   const normalizedNew = newName.toLowerCase().trim()
 
-  if (normalizedOld === normalizedNew) {
-    return 0
-  }
+  if (normalizedOld === normalizedNew) return 0
 
-  const result = db
+  const exactResult = db
     .update(noteTags)
     .set({ tag: normalizedNew })
     .where(eq(noteTags.tag, normalizedOld))
     .run()
 
-  return result.changes
+  const childResult = db
+    .update(noteTags)
+    .set({
+      tag: sql`replace(${noteTags.tag}, ${normalizedOld + '/'}, ${normalizedNew + '/'})`
+    })
+    .where(like(noteTags.tag, `${normalizedOld}/%`))
+    .run()
+
+  return exactResult.changes + childResult.changes
 }
 
-export function deleteTag(db: DrizzleDb, tag: string): number {
+export function deleteTag(db: DrizzleDb, tag: string, options: { cascade?: boolean } = {}): number {
   const normalizedTag = tag.toLowerCase().trim()
+  const { cascade = false } = options
 
-  const result = db.delete(noteTags).where(eq(noteTags.tag, normalizedTag)).run()
+  const exactResult = db.delete(noteTags).where(eq(noteTags.tag, normalizedTag)).run()
 
-  return result.changes
+  if (!cascade) return exactResult.changes
+
+  const childResult = db
+    .delete(noteTags)
+    .where(like(noteTags.tag, `${normalizedTag}/%`))
+    .run()
+
+  return exactResult.changes + childResult.changes
 }
 
 export function removeTagFromNote(db: DrizzleDb, noteId: string, tag: string): void {
@@ -299,9 +334,7 @@ export function renameTagDefinition(db: DrizzleDb, oldName: string, newName: str
   const normalizedOld = oldName.toLowerCase().trim()
   const normalizedNew = newName.toLowerCase().trim()
 
-  if (normalizedOld === normalizedNew) {
-    return
-  }
+  if (normalizedOld === normalizedNew) return
 
   const existingNew = db
     .select()
@@ -317,11 +350,45 @@ export function renameTagDefinition(db: DrizzleDb, oldName: string, newName: str
       .where(eq(tagDefinitions.name, normalizedOld))
       .run()
   }
+
+  const children = db
+    .select({ name: tagDefinitions.name })
+    .from(tagDefinitions)
+    .where(like(tagDefinitions.name, `${normalizedOld}/%`))
+    .all()
+
+  for (const child of children) {
+    const newChildName = normalizedNew + child.name.slice(normalizedOld.length)
+    const existingChild = db
+      .select()
+      .from(tagDefinitions)
+      .where(eq(tagDefinitions.name, newChildName))
+      .get()
+
+    if (existingChild) {
+      db.delete(tagDefinitions).where(eq(tagDefinitions.name, child.name)).run()
+    } else {
+      db.update(tagDefinitions)
+        .set({ name: newChildName })
+        .where(eq(tagDefinitions.name, child.name))
+        .run()
+    }
+  }
 }
 
-export function deleteTagDefinition(db: DrizzleDb, name: string): void {
+export function deleteTagDefinition(
+  db: DrizzleDb,
+  name: string,
+  options: { cascade?: boolean } = {}
+): void {
   const normalizedName = name.toLowerCase().trim()
   db.delete(tagDefinitions).where(eq(tagDefinitions.name, normalizedName)).run()
+
+  if (options.cascade) {
+    db.delete(tagDefinitions)
+      .where(like(tagDefinitions.name, `${normalizedName}/%`))
+      .run()
+  }
 }
 
 export function ensureTagDefinitions(

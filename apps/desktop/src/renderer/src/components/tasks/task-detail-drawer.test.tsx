@@ -14,6 +14,10 @@ vi.mock('@/services/notes-service', () => ({
   }
 }))
 
+vi.mock('@/contexts/day-panel-context', () => ({
+  useDayPanel: () => ({ isOpen: false, width: 320 })
+}))
+
 const statuses: Status[] = [
   { id: 'todo', name: 'To Do', color: '#6B7280', type: 'todo', order: 0 },
   { id: 'in-progress', name: 'In Progress', color: '#F59E0B', type: 'in_progress', order: 1 },
@@ -280,6 +284,53 @@ describe('TaskDetailDrawer — editable properties', () => {
       const result = subIssuesLabel.compareDocumentPosition(repeatLabel)
       const FOLLOWING = Node.DOCUMENT_POSITION_FOLLOWING
       expect(result & FOLLOWING).toBe(FOLLOWING)
+    })
+  })
+
+  describe('delete task', () => {
+    it('renders delete button when onDeleteTask is provided', () => {
+      render(<TaskDetailDrawer {...defaultProps} onDeleteTask={vi.fn()} />)
+
+      const deleteBtn = screen.getByRole('button', { name: /delete task/i })
+      expect(deleteBtn).toBeInTheDocument()
+    })
+
+    it('does not render delete button when onDeleteTask is not provided', () => {
+      render(<TaskDetailDrawer {...defaultProps} />)
+
+      expect(screen.queryByRole('button', { name: /delete task/i })).not.toBeInTheDocument()
+    })
+
+    it('shows confirmation dialog when delete button clicked', async () => {
+      const user = userEvent.setup()
+      render(<TaskDetailDrawer {...defaultProps} onDeleteTask={vi.fn()} />)
+
+      await user.click(screen.getByRole('button', { name: /delete task/i }))
+
+      expect(screen.getByText('Delete task?')).toBeInTheDocument()
+      expect(screen.getByText(/will be permanently deleted/)).toBeInTheDocument()
+    })
+
+    it('calls onDeleteTask with task id when deletion confirmed', async () => {
+      const user = userEvent.setup()
+      const onDeleteTask = vi.fn()
+      render(<TaskDetailDrawer {...defaultProps} onDeleteTask={onDeleteTask} />)
+
+      await user.click(screen.getByRole('button', { name: /delete task/i }))
+      await user.click(screen.getByRole('button', { name: /^delete task$/i }))
+
+      expect(onDeleteTask).toHaveBeenCalledWith('task-1')
+    })
+
+    it('does not call onDeleteTask when cancel is clicked', async () => {
+      const user = userEvent.setup()
+      const onDeleteTask = vi.fn()
+      render(<TaskDetailDrawer {...defaultProps} onDeleteTask={onDeleteTask} />)
+
+      await user.click(screen.getByRole('button', { name: /delete task/i }))
+      await user.click(screen.getByRole('button', { name: /cancel/i }))
+
+      expect(onDeleteTask).not.toHaveBeenCalled()
     })
   })
 
