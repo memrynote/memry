@@ -208,7 +208,7 @@ export function DatePickerCalendar({
             <button
               type="button"
               onClick={goToToday}
-              className="text-[10px] text-text-tertiary hover:text-text-secondary transition-colors focus-visible:outline-none rounded-sm px-1 py-0.5 font-medium select-none"
+              className="text-[10px] text-text-tertiary hover:text-text-secondary hover:bg-surface-active/50 transition-colors focus-visible:outline-none rounded-md px-1.5 py-0.5 font-medium select-none border border-border/60"
               aria-label="Go to today"
             >
               Today
