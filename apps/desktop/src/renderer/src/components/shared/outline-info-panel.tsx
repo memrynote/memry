@@ -128,7 +128,7 @@ export const OutlineInfoPanel = memo(function OutlineInfoPanel({
     return () => clearAllTimeouts()
   }, [clearAllTimeouts])
 
-  if (headings.length === 0 && !stats) {
+  if (headings.length === 0) {
     return null
   }
 
@@ -183,13 +183,6 @@ export const OutlineInfoPanel = memo(function OutlineInfoPanel({
                   'linear-gradient(to bottom, transparent 0%, rgb(214, 211, 209) 8%, rgb(214, 211, 209) 92%, transparent 100%)'
               }}
               aria-hidden="true"
-            />
-          )}
-
-          {headings.length === 0 && !!stats && (
-            <div
-              className="w-2 h-2 rounded-full bg-stone-400/40 hover:bg-stone-400/60 transition-colors"
-              aria-label="Document info available"
             />
           )}
         </div>
