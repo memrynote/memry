@@ -44,7 +44,7 @@ export function usePropertySection({
   } = useProperties(entityId)
 
   const [newlyAddedPropertyId, setNewlyAddedPropertyId] = useState<string | null>(null)
-  const clearTimerRef = useRef<ReturnType<typeof setTimeout>>()
+  const clearTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined)
 
   const properties: Property[] = useMemo(() => {
     return backendProperties.map((prop) => ({
