@@ -213,7 +213,14 @@ export const TabBarWithDrag = ({
         )}
 
         {/* Tab actions */}
-        <div className="no-drag flex items-center px-2 gap-1 ml-auto self-center">
+        <div
+          className={cn(
+            'no-drag flex items-center pr-[13px] pl-2 gap-1 ml-auto',
+            isDayPanelOpen
+              ? 'self-stretch bg-sidebar border-l border-sidebar-border rounded-tl-md relative z-10 mb-[-1px] pb-px'
+              : 'self-center'
+          )}
+        >
           <TabBarAction
             icon={
               <SidebarGraph
@@ -237,6 +244,7 @@ export const TabBarWithDrag = ({
             }
             tooltip="Day Panel"
             onClick={toggleDayPanel}
+            isActive={isDayPanelOpen}
           />
         </div>
       </div>

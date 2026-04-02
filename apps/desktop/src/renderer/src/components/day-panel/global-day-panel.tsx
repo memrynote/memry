@@ -1,7 +1,5 @@
 import { useCallback, useMemo, useRef } from 'react'
-import { X } from '@/lib/icons'
 import { cn } from '@/lib/utils'
-import { Button } from '@/components/ui/button'
 import {
   useDayPanel,
   DAY_PANEL_WIDTH_DEFAULT_PX,
@@ -76,7 +74,7 @@ function DayPanelResizeRail() {
 }
 
 export function GlobalDayPanel({ className }: GlobalDayPanelProps) {
-  const { isOpen, selectedDate, width, isResizing, close, setDate } = useDayPanel()
+  const { isOpen, selectedDate, width, isResizing, setDate } = useDayPanel()
   const { openTab } = useTabs()
 
   const selectedDateObj = parseISODate(selectedDate)
@@ -129,7 +127,7 @@ export function GlobalDayPanel({ className }: GlobalDayPanelProps) {
       data-slot="day-panel-container"
       style={{ width: isOpen ? `${width}px` : 0 }}
       className={cn(
-        'fixed top-10 bottom-0 right-0 z-10',
+        'fixed top-[37px] bottom-0 right-0 z-10',
         !isResizing && 'transition-[width] duration-200 ease-linear',
         'flex flex-col bg-sidebar border-l border-sidebar-border',
         className
@@ -146,20 +144,7 @@ export function GlobalDayPanel({ className }: GlobalDayPanelProps) {
       >
         {isOpen && <DayPanelResizeRail />}
 
-        <div className="flex items-center justify-between px-4 py-3 border-b border-sidebar-border shrink-0">
-          <h2 className="text-sm font-medium text-sidebar-primary">Day Panel</h2>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-6 w-6"
-            onClick={close}
-            aria-label="Close Day Panel"
-          >
-            <X className="h-4 w-4" />
-          </Button>
-        </div>
-
-        <div className="flex-1 overflow-y-auto">
+        <div className="flex-1 overflow-y-auto pt-3">
           <div className="px-4 pb-3">
             <DatePickerCalendar
               selected={selectedDateObj}
