@@ -14,13 +14,7 @@ import { useNoteTagsQuery } from '@/hooks/use-notes-query'
 import { getTagColors } from '@/components/note/tags-row/tag-colors'
 import { buildTagTree, type TagTreeNode } from '@/lib/tag-tree'
 import { Button } from '@/components/ui/button'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
-  DropdownMenuTrigger
-} from '@/components/ui/dropdown-menu'
+import { Picker } from '@/components/ui/picker'
 
 type TagSortOption = 'count-desc' | 'count-asc' | 'alpha-asc' | 'alpha-desc'
 
@@ -28,11 +22,18 @@ const SORT_STORAGE_KEY = 'sidebar-tags-sort'
 const EXPANDED_STORAGE_KEY = 'sidebar-tags-expanded'
 
 const SORT_OPTIONS: ReadonlyArray<{ value: TagSortOption; label: string }> = [
-  { value: 'count-desc', label: 'Count: High → Low' },
-  { value: 'count-asc', label: 'Count: Low → High' },
-  { value: 'alpha-asc', label: 'Name: A → Z' },
-  { value: 'alpha-desc', label: 'Name: Z → A' }
+  { value: 'count-desc', label: 'Most used' },
+  { value: 'count-asc', label: 'Least used' },
+  { value: 'alpha-asc', label: 'A → Z' },
+  { value: 'alpha-desc', label: 'Z → A' }
 ] as const
+
+const SORT_ICONS: Record<TagSortOption, React.ReactNode> = {
+  'count-desc': <ArrowUpDown className="h-3.5 w-3.5" />,
+  'count-asc': <ArrowUpDown className="h-3.5 w-3.5" />,
+  'alpha-asc': <ArrowDownAZ className="h-3.5 w-3.5" />,
+  'alpha-desc': <ArrowUpAZ className="h-3.5 w-3.5" />
+}
 
 function loadSortPreference(): TagSortOption {
   try {
@@ -233,32 +234,28 @@ export function SidebarTagList({
           {searchOpen ? <X className="h-3 w-3" /> : <Search className="h-3 w-3" />}
         </Button>
 
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-5 w-5"
-              aria-label={`Sort tags: ${currentSortLabel}`}
-            >
-              <ArrowUpDown className="h-3 w-3" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-44">
-            <DropdownMenuRadioGroup value={sortBy} onValueChange={handleSortChange}>
-              <DropdownMenuRadioItem value="count-desc">Count: High → Low</DropdownMenuRadioItem>
-              <DropdownMenuRadioItem value="count-asc">Count: Low → High</DropdownMenuRadioItem>
-              <DropdownMenuRadioItem value="alpha-asc">
-                <ArrowDownAZ className="h-3.5 w-3.5 mr-1.5" />
-                Name: A → Z
-              </DropdownMenuRadioItem>
-              <DropdownMenuRadioItem value="alpha-desc">
-                <ArrowUpAZ className="h-3.5 w-3.5 mr-1.5" />
-                Name: Z → A
-              </DropdownMenuRadioItem>
-            </DropdownMenuRadioGroup>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <Picker value={sortBy} onValueChange={handleSortChange}>
+          <Picker.Trigger
+            variant="icon"
+            className="h-5 w-5"
+            aria-label={`Sort tags: ${currentSortLabel}`}
+          >
+            <ArrowUpDown className="h-3 w-3" />
+          </Picker.Trigger>
+          <Picker.Content align="end" width={180}>
+            <Picker.List>
+              {SORT_OPTIONS.map((opt) => (
+                <Picker.Item
+                  key={opt.value}
+                  value={opt.value}
+                  label={opt.label}
+                  icon={SORT_ICONS[opt.value]}
+                  indicator="check"
+                />
+              ))}
+            </Picker.List>
+          </Picker.Content>
+        </Picker>
       </>
     )
   }, [searchOpen, sortBy, currentSortLabel, toggleSearch, onActionsReady])
