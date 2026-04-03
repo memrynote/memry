@@ -41,7 +41,7 @@ export {
 // Phase 9: Voice capture and transcription
 export { captureVoice } from './capture'
 export type { CaptureVoiceInput } from './capture'
-export { transcribeAudio, retryTranscription, isTranscriptionAvailable } from './transcription'
+export { transcribeAudio, retryTranscription, getVoiceRecordingReadiness } from './transcription'
 export type { TranscriptionResult } from './transcription'
 
 // Phase 16: Social media post extraction

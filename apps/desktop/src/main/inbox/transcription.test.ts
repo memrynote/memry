@@ -15,6 +15,9 @@ import { BrowserWindow } from 'electron'
 
 const mockCreate = vi.hoisted(() => vi.fn())
 const mockToFile = vi.hoisted(() => vi.fn())
+const mockTranscribeWithLocalModel = vi.hoisted(() => vi.fn())
+const mockGetVoiceTranscriptionSettings = vi.hoisted(() => vi.fn())
+const mockGetVoiceTranscriptionOpenAIApiKey = vi.hoisted(() => vi.fn())
 const mockEnvConfig = vi.hoisted(() => ({
   openaiApiKey: undefined as string | undefined,
   whisperModel: 'whisper-1',
@@ -58,6 +61,18 @@ vi.mock('../vault', () => ({
   getStatus: vi.fn()
 }))
 
+vi.mock('./voice-model', () => ({
+  transcribeWithLocalModel: mockTranscribeWithLocalModel
+}))
+
+vi.mock('./voice-transcription-settings', () => ({
+  getVoiceTranscriptionSettings: mockGetVoiceTranscriptionSettings
+}))
+
+vi.mock('./voice-transcription-keychain', () => ({
+  getVoiceTranscriptionOpenAIApiKey: mockGetVoiceTranscriptionOpenAIApiKey
+}))
+
 import { getDatabase } from '../database'
 import { getStatus } from '../vault'
 import { transcribeAudio, retryTranscription } from './transcription'
@@ -86,6 +101,9 @@ describe('inbox transcription', () => {
 
     mockCreate.mockReset()
     mockToFile.mockReset().mockResolvedValue({ file: 'mock' })
+    mockTranscribeWithLocalModel.mockReset()
+    mockGetVoiceTranscriptionSettings.mockReset().mockReturnValue({ provider: 'local' })
+    mockGetVoiceTranscriptionOpenAIApiKey.mockReset().mockResolvedValue(null)
     mockEnvConfig.openaiApiKey = undefined
   })
 
@@ -115,11 +133,11 @@ describe('inbox transcription', () => {
   // ==========================================================================
   // T611: transcription pipeline (mocked provider)
   // ==========================================================================
-  it('transcribes audio and updates item status', async () => {
-    mockEnvConfig.openaiApiKey = 'test-key'
-    mockCreate.mockResolvedValue('Hello world')
+  it('transcribes audio locally and updates item status', async () => {
+    mockGetVoiceTranscriptionSettings.mockReturnValue({ provider: 'local' })
+    mockTranscribeWithLocalModel.mockResolvedValue('Hello world')
 
-    const relativePath = 'attachments/inbox/item-1/audio.webm'
+    const relativePath = 'attachments/inbox/item-1/audio.wav'
     const fullPath = path.join(vaultPath, relativePath)
     fs.mkdirSync(path.dirname(fullPath), { recursive: true })
     fs.writeFileSync(fullPath, Buffer.from('audio'))
@@ -136,6 +154,8 @@ describe('inbox transcription', () => {
     expect(updated?.transcriptionStatus).toBe('complete')
     expect(updated?.transcription).toBe('Hello world')
     expect(updated?.processingError).toBeNull()
+    expect(mockTranscribeWithLocalModel).toHaveBeenCalledWith(expect.any(Buffer))
+    expect(mockCreate).not.toHaveBeenCalled()
 
     expect(window.webContents.send).toHaveBeenCalledWith(
       InboxChannels.events.TRANSCRIPTION_COMPLETE,
@@ -146,7 +166,9 @@ describe('inbox transcription', () => {
   // ==========================================================================
   // T612: error handling and retry flows
   // ==========================================================================
-  it('fails when API key is missing', async () => {
+  it('fails when OpenAI BYOK is missing', async () => {
+    mockGetVoiceTranscriptionSettings.mockReturnValue({ provider: 'openai' })
+
     const relativePath = 'attachments/inbox/item-2/audio.webm'
     const fullPath = path.join(vaultPath, relativePath)
     fs.mkdirSync(path.dirname(fullPath), { recursive: true })
@@ -157,7 +179,7 @@ describe('inbox transcription', () => {
     const result = await transcribeAudio('item-2', relativePath)
 
     expect(result.success).toBe(false)
-    expect(result.error).toContain('OpenAI API key not configured')
+    expect(result.error).toContain('OpenAI API key not configured in Settings')
 
     expect(window.webContents.send).toHaveBeenCalledWith(
       InboxChannels.events.PROCESSING_ERROR,
@@ -166,7 +188,8 @@ describe('inbox transcription', () => {
   })
 
   it('fails on unsupported formats', async () => {
-    mockEnvConfig.openaiApiKey = 'test-key'
+    mockGetVoiceTranscriptionSettings.mockReturnValue({ provider: 'openai' })
+    mockGetVoiceTranscriptionOpenAIApiKey.mockResolvedValue('sk-test')
 
     const relativePath = 'attachments/inbox/item-3/audio.txt'
     const fullPath = path.join(vaultPath, relativePath)
@@ -185,8 +208,46 @@ describe('inbox transcription', () => {
     expect(updated?.transcriptionStatus).toBe('failed')
   })
 
+  it('transcribes audio with OpenAI when selected', async () => {
+    mockGetVoiceTranscriptionSettings.mockReturnValue({ provider: 'openai' })
+    mockGetVoiceTranscriptionOpenAIApiKey.mockResolvedValue('sk-test')
+    mockCreate.mockResolvedValue('Cloud transcript')
+
+    const relativePath = 'attachments/inbox/item-openai/audio.wav'
+    const fullPath = path.join(vaultPath, relativePath)
+    fs.mkdirSync(path.dirname(fullPath), { recursive: true })
+    fs.writeFileSync(fullPath, Buffer.from('audio'))
+
+    seedVoiceItem('item-openai', relativePath)
+
+    const result = await transcribeAudio('item-openai', relativePath)
+
+    expect(result).toEqual({ success: true, transcription: 'Cloud transcript' })
+    expect(mockToFile).toHaveBeenCalledOnce()
+    expect(mockCreate).toHaveBeenCalledOnce()
+  })
+
+  it('does not fall back when the selected local provider fails', async () => {
+    mockGetVoiceTranscriptionSettings.mockReturnValue({ provider: 'local' })
+    mockTranscribeWithLocalModel.mockRejectedValue(new Error('Local model unavailable'))
+
+    const relativePath = 'attachments/inbox/item-local-fail/audio.wav'
+    const fullPath = path.join(vaultPath, relativePath)
+    fs.mkdirSync(path.dirname(fullPath), { recursive: true })
+    fs.writeFileSync(fullPath, Buffer.from('audio'))
+
+    seedVoiceItem('item-local-fail', relativePath)
+
+    const result = await transcribeAudio('item-local-fail', relativePath)
+
+    expect(result.success).toBe(false)
+    expect(result.error).toContain('Local model unavailable')
+    expect(mockCreate).not.toHaveBeenCalled()
+  })
+
   it('maps provider errors and supports retry', async () => {
-    mockEnvConfig.openaiApiKey = 'test-key'
+    mockGetVoiceTranscriptionSettings.mockReturnValue({ provider: 'openai' })
+    mockGetVoiceTranscriptionOpenAIApiKey.mockResolvedValue('sk-test')
     mockCreate.mockRejectedValue(new Error('rate_limit'))
 
     const relativePath = 'attachments/inbox/item-4/audio.webm'

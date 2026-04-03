@@ -13,7 +13,7 @@ import { BrowserWindow } from 'electron'
 const mockStoreInboxAttachment = vi.hoisted(() => vi.fn())
 const mockResolveAttachmentUrl = vi.hoisted(() => vi.fn())
 const mockTranscribeAudio = vi.hoisted(() => vi.fn())
-const mockIsTranscriptionAvailable = vi.hoisted(() => vi.fn())
+const mockGetVoiceRecordingReadiness = vi.hoisted(() => vi.fn())
 
 vi.mock('electron', () => ({
   BrowserWindow: {
@@ -32,7 +32,7 @@ vi.mock('./attachments', () => ({
 
 vi.mock('./transcription', () => ({
   transcribeAudio: mockTranscribeAudio,
-  isTranscriptionAvailable: mockIsTranscriptionAvailable
+  getVoiceRecordingReadiness: mockGetVoiceRecordingReadiness
 }))
 
 import { getDatabase } from '../database'
@@ -54,7 +54,10 @@ describe('inbox capture', () => {
       value ? `memry-file://${value}` : null
     )
     mockTranscribeAudio.mockReset()
-    mockIsTranscriptionAvailable.mockReset()
+    mockGetVoiceRecordingReadiness.mockReset().mockResolvedValue({
+      ready: true,
+      provider: 'local'
+    })
   })
 
   afterEach(() => {
@@ -66,7 +69,6 @@ describe('inbox capture', () => {
   // T605: capture voice flow
   // ==========================================================================
   it('captures a voice memo, stores tags, and triggers transcription', async () => {
-    mockIsTranscriptionAvailable.mockReturnValue(true)
     mockStoreInboxAttachment.mockImplementation(async (id: string) => ({
       success: true,
       path: `attachments/inbox/${id}/voice-memo.webm`
@@ -127,7 +129,12 @@ describe('inbox capture', () => {
   })
 
   it('marks transcription as failed when unavailable', async () => {
-    mockIsTranscriptionAvailable.mockReturnValue(false)
+    mockGetVoiceRecordingReadiness.mockResolvedValue({
+      ready: false,
+      provider: 'local',
+      reason: 'missing-model',
+      message: 'Download Whisper Small in Settings to record voice memos.'
+    })
     mockStoreInboxAttachment.mockResolvedValue({
       success: true,
       path: 'attachments/inbox/item-1/voice-memo.webm'
@@ -142,12 +149,13 @@ describe('inbox capture', () => {
 
     expect(response.success).toBe(true)
     expect(response.item?.transcriptionStatus).toBe('failed')
-    expect(response.item?.processingError).toContain('OpenAI API key not configured')
+    expect(response.item?.processingError).toContain(
+      'Download Whisper Small in Settings to record voice memos.'
+    )
     expect(mockTranscribeAudio).not.toHaveBeenCalled()
   })
 
   it('returns an error when attachment storage fails', async () => {
-    mockIsTranscriptionAvailable.mockReturnValue(true)
     mockStoreInboxAttachment.mockResolvedValue({
       success: false,
       error: 'Storage failed'

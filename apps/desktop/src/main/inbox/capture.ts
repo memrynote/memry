@@ -24,7 +24,7 @@ import {
   type VoiceMetadata
 } from '@memry/contracts/inbox-api'
 import { storeInboxAttachment, resolveAttachmentUrl } from './attachments'
-import { transcribeAudio, isTranscriptionAvailable } from './transcription'
+import { transcribeAudio, getVoiceRecordingReadiness } from './transcription'
 
 const log = createLogger('Inbox:Capture')
 
@@ -184,8 +184,29 @@ export async function captureVoice(input: CaptureVoiceInput): Promise<CaptureRes
     const id = generateId()
     const now = new Date().toISOString()
 
-    // Determine if we should transcribe
-    const shouldTranscribe = parsed.transcribe !== false && isTranscriptionAvailable()
+    let transcriptionReadiness:
+      | Awaited<ReturnType<typeof getVoiceRecordingReadiness>>
+      | {
+          ready: false
+          provider: 'local'
+          message: string
+        }
+      | null = null
+
+    if (parsed.transcribe !== false) {
+      try {
+        transcriptionReadiness = await getVoiceRecordingReadiness()
+      } catch (error) {
+        transcriptionReadiness = {
+          ready: false,
+          provider: 'local',
+          message:
+            error instanceof Error ? error.message : 'Selected transcription provider is not ready.'
+        }
+      }
+    }
+
+    const shouldTranscribe = parsed.transcribe !== false && transcriptionReadiness?.ready === true
 
     // Store audio file
     const filename = `voice-memo.${parsed.format}`
@@ -219,11 +240,12 @@ export async function captureVoice(input: CaptureVoiceInput): Promise<CaptureRes
     let processingError: string | null = null
 
     if (parsed.transcribe !== false) {
-      if (isTranscriptionAvailable()) {
+      if (transcriptionReadiness?.ready) {
         transcriptionStatus = 'pending'
       } else {
         transcriptionStatus = 'failed'
-        processingError = 'OpenAI API key not configured'
+        processingError =
+          transcriptionReadiness?.message ?? 'Selected transcription provider is not ready.'
       }
     }
 
