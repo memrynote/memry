@@ -22,7 +22,6 @@ import {
   onInboxSnoozeDue,
   onInboxTranscriptionComplete,
   onInboxMetadataComplete,
-  onInboxProcessingError,
   onInboxSnoozed,
   type InboxListInput
 } from '@/services/inbox-service'
@@ -414,13 +413,4 @@ export function useInboxFilingHistory(options?: {
     queryFn: () => inboxService.getFilingHistory(options),
     staleTime: ITEM_STALE_TIME
   })
-}
-
-export function useInboxProcessingErrors(
-  callback: (event: { id: string; operation: string; error: string }) => void
-): void {
-  useEffect(() => {
-    const unsub = onInboxProcessingError(callback)
-    return unsub
-  }, [callback])
 }

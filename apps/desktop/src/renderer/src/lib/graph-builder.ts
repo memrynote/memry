@@ -188,13 +188,3 @@ export function computeFocusSet(graph: Graph, nodeId: string, depth: number): Se
 
   return visited
 }
-
-export function extractAllTags(data: GraphDataResponse): string[] {
-  const tagSet = new Set<string>()
-  for (const node of data.nodes) {
-    for (const tag of node.tags) {
-      tagSet.add(tag)
-    }
-  }
-  return Array.from(tagSet).sort()
-}

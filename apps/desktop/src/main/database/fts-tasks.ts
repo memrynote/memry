@@ -83,11 +83,6 @@ export function clearFtsTasksTable(db: DrizzleDb): void {
   db.run(sql`DELETE FROM fts_tasks`)
 }
 
-export function getFtsTasksCount(db: DrizzleDb): number {
-  const result = db.get<{ count: number }>(sql`SELECT COUNT(*) as count FROM fts_tasks`)
-  return result?.count ?? 0
-}
-
 export function initializeFtsTasks(db: DrizzleDb): void {
   createFtsTasksTable(db)
   createFtsTasksTriggers(db)
