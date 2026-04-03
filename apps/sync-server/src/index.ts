@@ -20,7 +20,10 @@ import {
   cleanupOrphanedBlobChunks,
   cleanupStaleRateLimits
 } from './services/cleanup'
+import { createLogger } from './lib/logger'
 import type { Bindings, AppContext } from './types'
+
+const logger = createLogger('Server')
 
 // Electron routes all requests through main process (no browser CORS).
 // Only development servers need explicit origins; staging/production
@@ -127,7 +130,7 @@ app.use('*', async (c, next) => {
     }
 
     if (missing && env === 'development') {
-      console.warn(`[dev] Missing secret binding: ${key}`)
+      logger.warn('Missing secret binding', { key })
     }
   }
 
@@ -157,7 +160,7 @@ const scheduled: ExportedHandlerScheduledHandler<Bindings> = async (_event, env,
 
   for (const [i, result] of results.entries()) {
     if (result.status === 'rejected') {
-      console.error(`Cleanup task ${i} failed:`, result.reason)
+      logger.error('Cleanup task failed', { taskIndex: i, reason: String(result.reason) })
     }
   }
 }
