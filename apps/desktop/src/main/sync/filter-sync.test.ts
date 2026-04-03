@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
-import { createTestDataDb, type TestDatabaseResult } from '@tests/utils/test-db'
+import { createTestDataDb, asClientDb, asSyncDb, type TestDatabaseResult } from '@tests/utils/test-db'
 import { savedFilters } from '@memry/db-schema/schema/settings'
 import type { VectorClock } from '@memry/contracts/sync-api'
 import { SyncQueueManager } from './queue'
@@ -24,10 +24,8 @@ describe('FilterSyncService', () => {
 
   beforeEach(() => {
     testDb = createTestDataDb()
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    queue = new SyncQueueManager(testDb.db as any)
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    service = new FilterSyncService({ queue, db: testDb.db as any, getDeviceId: () => 'device-A' })
+    queue = new SyncQueueManager(asClientDb(testDb.db))
+    service = new FilterSyncService({ queue, db: asSyncDb(testDb.db), getDeviceId: () => 'device-A' })
   })
 
   afterEach(() => {
@@ -80,10 +78,9 @@ describe('FilterSyncService', () => {
 
   describe('#given no device ID #when enqueue called', () => {
     it('#then skips silently', () => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const noDeviceService = new FilterSyncService({
         queue,
-        db: testDb.db as any,
+        db: asSyncDb(testDb.db),
         getDeviceId: () => null
       })
       testDb.db.insert(savedFilters).values(TEST_FILTER).run()
@@ -121,14 +118,12 @@ describe('FilterSyncService', () => {
     })
 
     it('#then getFilterSyncService returns instance after init', () => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const svc = initFilterSyncService({ queue, db: testDb.db as any, getDeviceId: () => 'dev-1' })
+      const svc = initFilterSyncService({ queue, db: asSyncDb(testDb.db), getDeviceId: () => 'dev-1' })
       expect(getFilterSyncService()).toBe(svc)
     })
 
     it('#then resetFilterSyncService clears instance', () => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      initFilterSyncService({ queue, db: testDb.db as any, getDeviceId: () => 'dev-1' })
+      initFilterSyncService({ queue, db: asSyncDb(testDb.db), getDeviceId: () => 'dev-1' })
       resetFilterSyncService()
       expect(getFilterSyncService()).toBeNull()
     })
