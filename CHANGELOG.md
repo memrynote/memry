@@ -5,6 +5,17 @@ Format: weekly entries grouped by feature area.
 
 ---
 
+## 2026-04-03 — Sidebar Chevron Always Visible
+
+### Added
+- Add always-visible expand/collapse chevron to folder rows in sidebar tree
+
+### Changed
+- Remove hover-dependent show/hide pattern for folder chevrons
+- Simplify tree node expand animation by removing slide transition
+
+---
+
 ## 2026-04-03 — Tag Sort Picker
 
 ### Changed
