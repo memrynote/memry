@@ -390,30 +390,36 @@ export function registerSettingsHandlers(): void {
   })
 
   // Load AI model
-  ipcMain.handle(SettingsChannels.invoke.LOAD_AI_MODEL, withErrorHandler(async () => {
-    if (isModelLoaded()) {
-      return { success: true, message: 'Model already loaded' }
-    }
+  ipcMain.handle(
+    SettingsChannels.invoke.LOAD_AI_MODEL,
+    withErrorHandler(async () => {
+      if (isModelLoaded()) {
+        return { success: true, message: 'Model already loaded' }
+      }
 
-    if (isModelLoading()) {
-      return { success: false, error: 'Model is already loading' }
-    }
+      if (isModelLoading()) {
+        return { success: false, error: 'Model is already loading' }
+      }
 
-    const success = await initEmbeddingModel()
-    if (success) {
-      return { success: true }
-    } else {
-      const info = getModelInfo()
-      return { success: false, error: info.error || 'Failed to load model' }
-    }
-  }, 'Unknown error'))
+      const success = await initEmbeddingModel()
+      if (success) {
+        return { success: true }
+      } else {
+        const info = getModelInfo()
+        return { success: false, error: info.error || 'Failed to load model' }
+      }
+    }, 'Unknown error')
+  )
 
   // Reindex embeddings
-  ipcMain.handle(SettingsChannels.invoke.REINDEX_EMBEDDINGS, withErrorHandler(async () => {
-    const { reindexAllEmbeddings } = await import('../inbox/suggestions')
-    const result = await reindexAllEmbeddings()
-    return result
-  }, 'Unknown error'))
+  ipcMain.handle(
+    SettingsChannels.invoke.REINDEX_EMBEDDINGS,
+    withErrorHandler(async () => {
+      const { reindexAllEmbeddings } = await import('../inbox/suggestions')
+      const result = await reindexAllEmbeddings()
+      return result
+    }, 'Unknown error')
+  )
 
   // Get tab settings
   ipcMain.handle(SettingsChannels.invoke.GET_TAB_SETTINGS, () => {

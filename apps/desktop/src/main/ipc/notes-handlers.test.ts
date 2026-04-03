@@ -205,7 +205,6 @@ describe('notes-handlers', () => {
 
       expect(result).toEqual({
         success: false,
-        note: null,
         error: 'File system error'
       })
     })
@@ -314,7 +313,6 @@ describe('notes-handlers', () => {
 
       expect(result).toEqual({
         success: false,
-        note: null,
         error: 'Update failed'
       })
     })
@@ -553,7 +551,6 @@ describe('notes-handlers', () => {
 
       expect(result).toEqual({
         success: false,
-        note: null,
         error: 'Version not found'
       })
     })
@@ -815,7 +812,6 @@ describe('notes-handlers', () => {
 
       expect(result).toEqual({
         success: false,
-        positions: [],
         error: 'Database error'
       })
     })
@@ -863,7 +859,6 @@ describe('notes-handlers', () => {
 
       expect(result).toEqual({
         success: false,
-        positions: {},
         error: 'Database connection failed'
       })
     })

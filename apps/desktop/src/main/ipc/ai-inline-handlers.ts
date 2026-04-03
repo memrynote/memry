@@ -75,14 +75,17 @@ export function registerAIInlineHandlers(): void {
     return getServerPort()
   })
 
-  ipcMain.handle(AIInlineChannels.invoke.START_SERVER, withErrorHandler(async () => {
-    const settings = readSettings()
-    if (!settings.enabled) {
-      return { success: false, error: 'AI inline editing is disabled' }
-    }
-    const port = await startChatServer(settings)
-    return { success: true, port }
-  }, 'Unknown error'))
+  ipcMain.handle(
+    AIInlineChannels.invoke.START_SERVER,
+    withErrorHandler(async () => {
+      const settings = readSettings()
+      if (!settings.enabled) {
+        return { success: false, error: 'AI inline editing is disabled' }
+      }
+      const port = await startChatServer(settings)
+      return { success: true, port }
+    }, 'Unknown error')
+  )
 
   ipcMain.handle(AIInlineChannels.invoke.STOP_SERVER, async () => {
     await stopChatServer()

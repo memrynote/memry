@@ -85,202 +85,220 @@ export function createInboxCrudHandlers(deps: InboxCrudHandlerDeps): InboxCrudHa
     }
   }
 
-  const handleArchive = withErrorHandler(async (id: string): Promise<{ success: boolean; error?: string }> => {
-    const db = deps.requireDatabase()
+  const handleArchive = withErrorHandler(
+    async (id: string): Promise<{ success: boolean; error?: string }> => {
+      const db = deps.requireDatabase()
 
-    const existing = db.select().from(inboxItems).where(eq(inboxItems.id, id)).get()
-    if (!existing) {
-      return { success: false, error: 'Item not found' }
-    }
+      const existing = db.select().from(inboxItems).where(eq(inboxItems.id, id)).get()
+      if (!existing) {
+        return { success: false, error: 'Item not found' }
+      }
 
-    db.update(inboxItems)
-      .set({ archivedAt: new Date().toISOString() })
-      .where(eq(inboxItems.id, id))
-      .run()
+      db.update(inboxItems)
+        .set({ archivedAt: new Date().toISOString() })
+        .where(eq(inboxItems.id, id))
+        .run()
 
-    incrementArchivedCount()
+      incrementArchivedCount()
 
-    deps.emitInboxEvent(InboxChannels.events.ARCHIVED, { id })
-    deps.syncInboxUpdate(db, id)
+      deps.emitInboxEvent(InboxChannels.events.ARCHIVED, { id })
+      deps.syncInboxUpdate(db, id)
 
-    return { success: true }
-  }, 'Unknown error')
-
-  const handleAddTag = withErrorHandler(async (
-    itemId: string,
-    tag: string
-  ): Promise<{ success: boolean; error?: string }> => {
-    const db = deps.requireDatabase()
-
-    const existing = db.select().from(inboxItems).where(eq(inboxItems.id, itemId)).get()
-    if (!existing) {
-      return { success: false, error: 'Item not found' }
-    }
-
-    const existingTag = db
-      .select()
-      .from(inboxItemTags)
-      .where(and(eq(inboxItemTags.itemId, itemId), eq(inboxItemTags.tag, tag)))
-      .get()
-
-    if (existingTag) {
       return { success: true }
-    }
+    },
+    'Unknown error'
+  )
 
-    db.insert(inboxItemTags)
-      .values({
-        id: generateId(),
-        itemId,
-        tag,
-        createdAt: new Date().toISOString()
+  const handleAddTag = withErrorHandler(
+    async (itemId: string, tag: string): Promise<{ success: boolean; error?: string }> => {
+      const db = deps.requireDatabase()
+
+      const existing = db.select().from(inboxItems).where(eq(inboxItems.id, itemId)).get()
+      if (!existing) {
+        return { success: false, error: 'Item not found' }
+      }
+
+      const existingTag = db
+        .select()
+        .from(inboxItemTags)
+        .where(and(eq(inboxItemTags.itemId, itemId), eq(inboxItemTags.tag, tag)))
+        .get()
+
+      if (existingTag) {
+        return { success: true }
+      }
+
+      db.insert(inboxItemTags)
+        .values({
+          id: generateId(),
+          itemId,
+          tag,
+          createdAt: new Date().toISOString()
+        })
+        .run()
+
+      return { success: true }
+    },
+    'Unknown error'
+  )
+
+  const handleRemoveTag = withErrorHandler(
+    async (itemId: string, tag: string): Promise<{ success: boolean; error?: string }> => {
+      const db = deps.requireDatabase()
+
+      db.delete(inboxItemTags)
+        .where(and(eq(inboxItemTags.itemId, itemId), eq(inboxItemTags.tag, tag)))
+        .run()
+
+      return { success: true }
+    },
+    'Unknown error'
+  )
+
+  const handleMarkViewed = withErrorHandler(
+    async (itemId: string): Promise<{ success: boolean; error?: string }> => {
+      if (!itemId) {
+        return { success: false, error: 'itemId is required' }
+      }
+
+      const db = deps.requireDatabase()
+      const now = new Date().toISOString()
+
+      db.update(inboxItems)
+        .set({
+          viewedAt: now,
+          modifiedAt: now
+        })
+        .where(eq(inboxItems.id, itemId))
+        .run()
+
+      deps.emitInboxEvent(InboxChannels.events.UPDATED, {
+        id: itemId,
+        changes: { viewedAt: now }
       })
-      .run()
+      deps.syncInboxUpdate(db, itemId)
 
-    return { success: true }
-  }, 'Unknown error')
+      deps.logger.info(`Marked item ${itemId} as viewed`)
+      return { success: true }
+    },
+    'Unknown error'
+  )
 
-  const handleRemoveTag = withErrorHandler(async (
-    itemId: string,
-    tag: string
-  ): Promise<{ success: boolean; error?: string }> => {
-    const db = deps.requireDatabase()
+  const handleUnarchive = withErrorHandler(
+    async (id: string): Promise<{ success: boolean; error?: string }> => {
+      const db = deps.requireDatabase()
 
-    db.delete(inboxItemTags)
-      .where(and(eq(inboxItemTags.itemId, itemId), eq(inboxItemTags.tag, tag)))
-      .run()
+      const existing = db.select().from(inboxItems).where(eq(inboxItems.id, id)).get()
+      if (!existing) {
+        return { success: false, error: 'Item not found' }
+      }
 
-    return { success: true }
-  }, 'Unknown error')
+      if (!existing.archivedAt) {
+        return { success: false, error: 'Item is not archived' }
+      }
 
-  const handleMarkViewed = withErrorHandler(async (itemId: string): Promise<{ success: boolean; error?: string }> => {
-    if (!itemId) {
-      return { success: false, error: 'itemId is required' }
-    }
+      db.update(inboxItems)
+        .set({
+          archivedAt: null,
+          modifiedAt: new Date().toISOString()
+        })
+        .where(eq(inboxItems.id, id))
+        .run()
 
-    const db = deps.requireDatabase()
-    const now = new Date().toISOString()
+      deps.emitInboxEvent(InboxChannels.events.UPDATED, { id, changes: { archivedAt: null } })
+      deps.syncInboxUpdate(db, id)
 
-    db.update(inboxItems)
-      .set({
-        viewedAt: now,
-        modifiedAt: now
+      return { success: true }
+    },
+    'Unknown error'
+  )
+
+  const handleDeletePermanent = withErrorHandler(
+    async (id: string): Promise<{ success: boolean; error?: string }> => {
+      const db = deps.requireDatabase()
+
+      const existing = db.select().from(inboxItems).where(eq(inboxItems.id, id)).get()
+      if (!existing) {
+        return { success: false, error: 'Item not found' }
+      }
+
+      await deleteInboxAttachments(id)
+
+      db.delete(inboxItemTags).where(eq(inboxItemTags.itemId, id)).run()
+
+      const snapshot = JSON.stringify(existing)
+      db.delete(inboxItems).where(eq(inboxItems.id, id)).run()
+      getInboxSyncService()?.enqueueDelete(id, snapshot)
+
+      return { success: true }
+    },
+    'Unknown error'
+  )
+
+  const handleUndoFile = withErrorHandler(
+    async (id: string): Promise<{ success: boolean; error?: string }> => {
+      const db = deps.requireDatabase()
+
+      const existing = db.select().from(inboxItems).where(eq(inboxItems.id, id)).get()
+      if (!existing) {
+        return { success: false, error: 'Item not found' }
+      }
+
+      if (!existing.filedAt) {
+        return { success: false, error: 'Item is not filed' }
+      }
+
+      db.update(inboxItems)
+        .set({
+          filedAt: null,
+          filedTo: null,
+          filedAction: null,
+          modifiedAt: new Date().toISOString()
+        })
+        .where(eq(inboxItems.id, id))
+        .run()
+
+      deps.emitInboxEvent(InboxChannels.events.UPDATED, {
+        id,
+        changes: { filedAt: null, filedTo: null, filedAction: null }
       })
-      .where(eq(inboxItems.id, itemId))
-      .run()
+      deps.syncInboxUpdate(db, id)
 
-    deps.emitInboxEvent(InboxChannels.events.UPDATED, {
-      id: itemId,
-      changes: { viewedAt: now }
-    })
-    deps.syncInboxUpdate(db, itemId)
+      deps.logger.info(`Undo file for item ${id}`)
+      return { success: true }
+    },
+    'Unknown error'
+  )
 
-    deps.logger.info(`Marked item ${itemId} as viewed`)
-    return { success: true }
-  }, 'Unknown error')
+  const handleUndoArchive = withErrorHandler(
+    async (id: string): Promise<{ success: boolean; error?: string }> => {
+      const db = deps.requireDatabase()
 
-  const handleUnarchive = withErrorHandler(async (id: string): Promise<{ success: boolean; error?: string }> => {
-    const db = deps.requireDatabase()
+      const existing = db.select().from(inboxItems).where(eq(inboxItems.id, id)).get()
+      if (!existing) {
+        return { success: false, error: 'Item not found' }
+      }
 
-    const existing = db.select().from(inboxItems).where(eq(inboxItems.id, id)).get()
-    if (!existing) {
-      return { success: false, error: 'Item not found' }
-    }
+      if (!existing.archivedAt) {
+        return { success: false, error: 'Item is not archived' }
+      }
 
-    if (!existing.archivedAt) {
-      return { success: false, error: 'Item is not archived' }
-    }
+      db.update(inboxItems)
+        .set({
+          archivedAt: null,
+          modifiedAt: new Date().toISOString()
+        })
+        .where(eq(inboxItems.id, id))
+        .run()
 
-    db.update(inboxItems)
-      .set({
-        archivedAt: null,
-        modifiedAt: new Date().toISOString()
-      })
-      .where(eq(inboxItems.id, id))
-      .run()
+      deps.emitInboxEvent(InboxChannels.events.UPDATED, { id, changes: { archivedAt: null } })
+      deps.syncInboxUpdate(db, id)
 
-    deps.emitInboxEvent(InboxChannels.events.UPDATED, { id, changes: { archivedAt: null } })
-    deps.syncInboxUpdate(db, id)
-
-    return { success: true }
-  }, 'Unknown error')
-
-  const handleDeletePermanent = withErrorHandler(async (id: string): Promise<{ success: boolean; error?: string }> => {
-    const db = deps.requireDatabase()
-
-    const existing = db.select().from(inboxItems).where(eq(inboxItems.id, id)).get()
-    if (!existing) {
-      return { success: false, error: 'Item not found' }
-    }
-
-    await deleteInboxAttachments(id)
-
-    db.delete(inboxItemTags).where(eq(inboxItemTags.itemId, id)).run()
-
-    const snapshot = JSON.stringify(existing)
-    db.delete(inboxItems).where(eq(inboxItems.id, id)).run()
-    getInboxSyncService()?.enqueueDelete(id, snapshot)
-
-    return { success: true }
-  }, 'Unknown error')
-
-  const handleUndoFile = withErrorHandler(async (id: string): Promise<{ success: boolean; error?: string }> => {
-    const db = deps.requireDatabase()
-
-    const existing = db.select().from(inboxItems).where(eq(inboxItems.id, id)).get()
-    if (!existing) {
-      return { success: false, error: 'Item not found' }
-    }
-
-    if (!existing.filedAt) {
-      return { success: false, error: 'Item is not filed' }
-    }
-
-    db.update(inboxItems)
-      .set({
-        filedAt: null,
-        filedTo: null,
-        filedAction: null,
-        modifiedAt: new Date().toISOString()
-      })
-      .where(eq(inboxItems.id, id))
-      .run()
-
-    deps.emitInboxEvent(InboxChannels.events.UPDATED, {
-      id,
-      changes: { filedAt: null, filedTo: null, filedAction: null }
-    })
-    deps.syncInboxUpdate(db, id)
-
-    deps.logger.info(`Undo file for item ${id}`)
-    return { success: true }
-  }, 'Unknown error')
-
-  const handleUndoArchive = withErrorHandler(async (id: string): Promise<{ success: boolean; error?: string }> => {
-    const db = deps.requireDatabase()
-
-    const existing = db.select().from(inboxItems).where(eq(inboxItems.id, id)).get()
-    if (!existing) {
-      return { success: false, error: 'Item not found' }
-    }
-
-    if (!existing.archivedAt) {
-      return { success: false, error: 'Item is not archived' }
-    }
-
-    db.update(inboxItems)
-      .set({
-        archivedAt: null,
-        modifiedAt: new Date().toISOString()
-      })
-      .where(eq(inboxItems.id, id))
-      .run()
-
-    deps.emitInboxEvent(InboxChannels.events.UPDATED, { id, changes: { archivedAt: null } })
-    deps.syncInboxUpdate(db, id)
-
-    deps.logger.info(`Undo archive for item ${id}`)
-    return { success: true }
-  }, 'Unknown error')
+      deps.logger.info(`Undo archive for item ${id}`)
+      return { success: true }
+    },
+    'Unknown error'
+  )
 
   return {
     handleGet,
