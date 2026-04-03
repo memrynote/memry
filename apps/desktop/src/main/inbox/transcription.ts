@@ -21,6 +21,9 @@ import { getDatabase } from '../database'
 import { getStatus } from '../vault'
 import { inboxItems } from '@memry/db-schema/schema/inbox'
 import { InboxChannels } from '@memry/contracts/ipc-channels'
+import { transcribeWithLocalModel } from './voice-model'
+import { getVoiceTranscriptionSettings } from './voice-transcription-settings'
+import { getVoiceTranscriptionOpenAIApiKey } from './voice-transcription-keychain'
 
 const log = createLogger('Inbox:Transcription')
 
@@ -49,20 +52,10 @@ const MAX_FILE_SIZE = 25 * 1024 * 1024
 // ============================================================================
 
 /**
- * Check if transcription service is available (API key configured)
- */
-export function isTranscriptionAvailable(): boolean {
-  return !!envConfig.openaiApiKey
-}
-
-/**
  * Get the OpenAI client instance
  */
-function getOpenAIClient(): OpenAI | null {
-  if (!envConfig.openaiApiKey) {
-    return null
-  }
-  return new OpenAI({ apiKey: envConfig.openaiApiKey })
+function getOpenAIClient(apiKey: string): OpenAI {
+  return new OpenAI({ apiKey })
 }
 
 /**
@@ -106,6 +99,28 @@ function getExtension(filePath: string): string {
   return path.extname(filePath).slice(1).toLowerCase()
 }
 
+function createFailureResult(
+  db: ReturnType<typeof requireDatabase>,
+  itemId: string,
+  error: string
+) {
+  db.update(inboxItems)
+    .set({
+      transcriptionStatus: 'failed',
+      processingError: error,
+      modifiedAt: new Date().toISOString()
+    })
+    .where(eq(inboxItems.id, itemId))
+    .run()
+
+  emitTranscriptionEvent(InboxChannels.events.PROCESSING_ERROR, {
+    id: itemId,
+    error
+  })
+
+  return { success: false, error } satisfies TranscriptionResult
+}
+
 // ============================================================================
 // Main Transcription Function
 // ============================================================================
@@ -139,117 +154,69 @@ export async function transcribeAudio(
     .run()
 
   try {
-    // Check if API key is available
-    const openai = getOpenAIClient()
-    if (!openai) {
-      const error = 'OpenAI API key not configured. Set OPENAI_API_KEY environment variable.'
-      log.warn(error)
-
-      // Update status to failed
-      db.update(inboxItems)
-        .set({
-          transcriptionStatus: 'failed',
-          processingError: error,
-          modifiedAt: new Date().toISOString()
-        })
-        .where(eq(inboxItems.id, itemId))
-        .run()
-
-      emitTranscriptionEvent(InboxChannels.events.PROCESSING_ERROR, {
-        id: itemId,
-        error
-      })
-
-      return { success: false, error }
-    }
+    const settings = getVoiceTranscriptionSettings()
 
     // Resolve absolute path
     const absolutePath = resolveAttachmentPath(attachmentPath)
     if (!absolutePath || !existsSync(absolutePath)) {
       const error = `Audio file not found: ${attachmentPath}`
       log.error(error)
-
-      db.update(inboxItems)
-        .set({
-          transcriptionStatus: 'failed',
-          processingError: error,
-          modifiedAt: new Date().toISOString()
-        })
-        .where(eq(inboxItems.id, itemId))
-        .run()
-
-      emitTranscriptionEvent(InboxChannels.events.PROCESSING_ERROR, {
-        id: itemId,
-        error
-      })
-
-      return { success: false, error }
+      return createFailureResult(db, itemId, error)
     }
 
-    // Check file format
     const ext = getExtension(absolutePath)
-    if (!SUPPORTED_FORMATS.includes(ext)) {
+    const isSupportedOpenAIFormat = SUPPORTED_FORMATS.includes(ext)
+    const isSupportedLocalFormat = ext === 'wav'
+
+    if (settings.provider === 'openai' && !isSupportedOpenAIFormat) {
       const error = `Unsupported audio format: ${ext}. Supported: ${SUPPORTED_FORMATS.join(', ')}`
       log.error(error)
-
-      db.update(inboxItems)
-        .set({
-          transcriptionStatus: 'failed',
-          processingError: error,
-          modifiedAt: new Date().toISOString()
-        })
-        .where(eq(inboxItems.id, itemId))
-        .run()
-
-      emitTranscriptionEvent(InboxChannels.events.PROCESSING_ERROR, {
-        id: itemId,
-        error
-      })
-
-      return { success: false, error }
+      return createFailureResult(db, itemId, error)
     }
 
-    // Read audio file
+    if (settings.provider === 'local' && !isSupportedLocalFormat) {
+      const error =
+        'Local transcription requires WAV voice memos. Record a new memo or switch to OpenAI.'
+      log.error(error)
+      return createFailureResult(db, itemId, error)
+    }
+
     const audioBuffer = await readFile(absolutePath)
 
-    // Check file size
-    if (audioBuffer.length > MAX_FILE_SIZE) {
+    if (settings.provider === 'openai' && audioBuffer.length > MAX_FILE_SIZE) {
       const sizeMB = Math.round(audioBuffer.length / 1024 / 1024)
       const error = `Audio file too large: ${sizeMB}MB. Maximum size is 25MB.`
       log.error(error)
-
-      db.update(inboxItems)
-        .set({
-          transcriptionStatus: 'failed',
-          processingError: error,
-          modifiedAt: new Date().toISOString()
-        })
-        .where(eq(inboxItems.id, itemId))
-        .run()
-
-      emitTranscriptionEvent(InboxChannels.events.PROCESSING_ERROR, {
-        id: itemId,
-        error
-      })
-
-      return { success: false, error }
+      return createFailureResult(db, itemId, error)
     }
 
-    log.info(`Starting transcription for item ${itemId} (${ext} format)`)
+    let transcription = ''
 
-    // Call Whisper API
-    const file = await toFile(audioBuffer, `audio.${ext}`, {
-      type: `audio/${ext}`
-    })
+    if (settings.provider === 'local') {
+      log.info(`Starting local transcription for item ${itemId}`)
+      transcription = await transcribeWithLocalModel(audioBuffer)
+    } else {
+      const apiKey = await getVoiceTranscriptionOpenAIApiKey()
+      if (!apiKey) {
+        const error = 'OpenAI API key not configured in Settings.'
+        log.warn(error)
+        return createFailureResult(db, itemId, error)
+      }
 
-    const response = await openai.audio.transcriptions.create({
-      file,
-      model: envConfig.whisperModel || 'whisper-1',
-      response_format: 'text'
-    })
+      log.info(`Starting OpenAI transcription for item ${itemId} (${ext} format)`)
+      const openai = getOpenAIClient(apiKey)
+      const file = await toFile(audioBuffer, `audio.${ext}`, {
+        type: `audio/${ext}`
+      })
 
-    // When response_format is 'text', the API returns a string directly
-    const transcription = response as unknown as string
+      const response = await openai.audio.transcriptions.create({
+        file,
+        model: envConfig.whisperModel || 'whisper-1',
+        response_format: 'text'
+      })
+
+      transcription = response as unknown as string
+    }
 
     log.info(`Success for item ${itemId}: "${transcription.substring(0, 50)}..."`)
 
@@ -299,25 +266,11 @@ export async function transcribeAudio(
       userFriendlyError = 'OpenAI quota exceeded. Please check your billing.'
     }
 
-    // Update status to failed
-    db.update(inboxItems)
-      .set({
-        transcriptionStatus: 'failed',
-        processingError: userFriendlyError,
-        modifiedAt: new Date().toISOString()
-      })
-      .where(eq(inboxItems.id, itemId))
-      .run()
-
-    // Emit error event
-    emitTranscriptionEvent(InboxChannels.events.PROCESSING_ERROR, {
-      id: itemId,
-      error: userFriendlyError
-    })
-
-    return { success: false, error: userFriendlyError }
+    return createFailureResult(db, itemId, userFriendlyError)
   }
 }
+
+export { getVoiceRecordingReadiness } from './voice-transcription-settings'
 
 /**
  * Retry transcription for a failed voice item

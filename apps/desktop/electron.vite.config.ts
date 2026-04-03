@@ -61,7 +61,11 @@ export default defineConfig({
       rollupOptions: {
         input: {
           index: resolve(appRoot, 'src/main/index.ts'),
-          'sync-worker': resolve(appRoot, 'src/main/sync/worker.ts')
+          'sync-worker': resolve(appRoot, 'src/main/sync/worker.ts'),
+          'voice-transcription-worker': resolve(
+            appRoot,
+            'src/main/inbox/voice-transcription-worker.ts'
+          )
         },
         external: ['better-sqlite3', 'jsdom', 'canvas']
       }

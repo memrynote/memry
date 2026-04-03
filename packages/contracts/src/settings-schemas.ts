@@ -142,6 +142,20 @@ export const AI_SETTINGS_DEFAULTS: AISettings = {
 }
 
 // ============================================================================
+// Voice Transcription Settings
+// ============================================================================
+
+export const VoiceTranscriptionSettingsSchema = z.object({
+  provider: z.enum(['local', 'openai'])
+})
+
+export type VoiceTranscriptionSettings = z.infer<typeof VoiceTranscriptionSettingsSchema>
+
+export const VOICE_TRANSCRIPTION_SETTINGS_DEFAULTS: VoiceTranscriptionSettings = {
+  provider: 'local'
+}
+
+// ============================================================================
 // Backup Settings
 // ============================================================================
 

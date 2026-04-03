@@ -587,6 +587,17 @@ export const api = {
     getAISettings: () => invoke(SettingsChannels.invoke.GET_AI_SETTINGS),
     setAISettings: (settings: { enabled?: boolean }) =>
       invoke(SettingsChannels.invoke.SET_AI_SETTINGS, settings),
+    getVoiceTranscriptionSettings: () =>
+      invoke(SettingsChannels.invoke.GET_VOICE_TRANSCRIPTION_SETTINGS),
+    setVoiceTranscriptionSettings: (settings: { provider?: 'local' | 'openai' }) =>
+      invoke(SettingsChannels.invoke.SET_VOICE_TRANSCRIPTION_SETTINGS, settings),
+    getVoiceModelStatus: () => invoke(SettingsChannels.invoke.GET_VOICE_MODEL_STATUS),
+    downloadVoiceModel: () => invoke(SettingsChannels.invoke.DOWNLOAD_VOICE_MODEL),
+    getVoiceRecordingReadiness: () => invoke(SettingsChannels.invoke.GET_VOICE_RECORDING_READINESS),
+    getVoiceTranscriptionOpenAIKeyStatus: () =>
+      invoke(SettingsChannels.invoke.GET_VOICE_TRANSCRIPTION_OPENAI_KEY_STATUS),
+    setVoiceTranscriptionOpenAIKey: (apiKey: string) =>
+      invoke(SettingsChannels.invoke.SET_VOICE_TRANSCRIPTION_OPENAI_KEY, { apiKey }),
     getAIModelStatus: () => invoke(SettingsChannels.invoke.GET_AI_MODEL_STATUS),
     loadAIModel: () => invoke(SettingsChannels.invoke.LOAD_AI_MODEL),
     reindexEmbeddings: () => invoke(SettingsChannels.invoke.REINDEX_EMBEDDINGS),
@@ -880,7 +891,10 @@ export const api = {
     /** Get current clipboard text content */
     getClipboard: (): Promise<string> => invoke('quick-capture:get-clipboard'),
     /** Resize the quick capture window height */
-    resize: (height: number): void => ipcRenderer.send('quick-capture:resize', height)
+    resize: (height: number): void => ipcRenderer.send('quick-capture:resize', height),
+    /** Open the main settings modal to a section */
+    openSettings: (section?: string): void =>
+      ipcRenderer.send('quick-capture:open-settings', section)
   },
 
   // Native context menu
@@ -1251,6 +1265,29 @@ export const api = {
     ): void => callback(data)
     ipcRenderer.on(SettingsChannels.events.EMBEDDING_PROGRESS, handler)
     return () => ipcRenderer.removeListener(SettingsChannels.events.EMBEDDING_PROGRESS, handler)
+  },
+
+  onVoiceModelProgress: (
+    callback: (event: {
+      current?: number
+      total?: number
+      progress?: number
+      phase: string
+      status?: string
+    }) => void
+  ): (() => void) => {
+    const handler = (
+      _event: Electron.IpcRendererEvent,
+      data: { current?: number; total?: number; progress?: number; phase: string; status?: string }
+    ): void => callback(data)
+    ipcRenderer.on(SettingsChannels.events.VOICE_MODEL_PROGRESS, handler)
+    return () => ipcRenderer.removeListener(SettingsChannels.events.VOICE_MODEL_PROGRESS, handler)
+  },
+
+  onSettingsOpenRequested: (callback: (section: string) => void): (() => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, section: string): void => callback(section)
+    ipcRenderer.on(SettingsChannels.events.OPEN_SECTION, handler)
+    return () => ipcRenderer.removeListener(SettingsChannels.events.OPEN_SECTION, handler)
   },
 
   // Bookmarks event subscription helpers
