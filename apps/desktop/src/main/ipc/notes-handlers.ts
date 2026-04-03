@@ -21,7 +21,7 @@ import {
 } from '@memry/contracts/notes-api'
 import { PropertyTypes } from '@memry/contracts/property-types'
 import { RenameFolderSchema } from '@memry/contracts/tasks-api'
-import { createValidatedHandler, createHandler, createStringHandler } from './validate'
+import { createValidatedHandler, createHandler, createStringHandler, withErrorHandler } from './validate'
 import { getNoteSyncService } from '../sync/note-sync'
 import { getCrdtProvider } from '../sync/crdt-provider'
 import {
@@ -153,19 +153,14 @@ export function registerNotesHandlers(): void {
   // notes:create - Create a new note
   ipcMain.handle(
     NotesChannels.invoke.CREATE,
-    createValidatedHandler(NoteCreateSchema, async (input) => {
-      try {
-        const note = await createNote(input)
-        getNoteSyncService()?.enqueueCreate(note.id)
-        getCrdtProvider()
-          .initForNote(note.id, { title: note.title }, note.tags)
-          .catch(() => {})
-        return { success: true, note }
-      } catch (error) {
-        const message = error instanceof Error ? error.message : 'Failed to create note'
-        return { success: false, note: null, error: message }
-      }
-    })
+    createValidatedHandler(NoteCreateSchema, withErrorHandler(async (input) => {
+      const note = await createNote(input)
+      getNoteSyncService()?.enqueueCreate(note.id)
+      getCrdtProvider()
+        .initForNote(note.id, { title: note.title }, note.tags)
+        .catch(() => {})
+      return { success: true, note }
+    }, 'Failed to create note'))
   )
 
   // notes:get - Get a note by ID
@@ -239,70 +234,50 @@ export function registerNotesHandlers(): void {
   // notes:update - Update note content/metadata
   ipcMain.handle(
     NotesChannels.invoke.UPDATE,
-    createValidatedHandler(NoteUpdateSchema, async (input) => {
-      try {
-        const note = await updateNote(input)
-        const hasMetadataChanges =
-          input.title !== undefined ||
-          input.tags !== undefined ||
-          input.frontmatter !== undefined ||
-          input.emoji !== undefined
-        if (hasMetadataChanges) {
-          getNoteSyncService()?.enqueueUpdate(input.id)
-        }
-        if (input.title) getCrdtProvider()?.updateMeta(input.id, { title: input.title })
-        return { success: true, note }
-      } catch (error) {
-        const message = error instanceof Error ? error.message : 'Failed to update note'
-        return { success: false, note: null, error: message }
+    createValidatedHandler(NoteUpdateSchema, withErrorHandler(async (input) => {
+      const note = await updateNote(input)
+      const hasMetadataChanges =
+        input.title !== undefined ||
+        input.tags !== undefined ||
+        input.frontmatter !== undefined ||
+        input.emoji !== undefined
+      if (hasMetadataChanges) {
+        getNoteSyncService()?.enqueueUpdate(input.id)
       }
-    })
+      if (input.title) getCrdtProvider()?.updateMeta(input.id, { title: input.title })
+      return { success: true, note }
+    }, 'Failed to update note'))
   )
 
   // notes:rename - Rename a note
   ipcMain.handle(
     NotesChannels.invoke.RENAME,
-    createValidatedHandler(NoteRenameSchema, async (input) => {
-      try {
-        const note = await renameNote(input.id, input.newTitle)
-        getNoteSyncService()?.enqueueUpdate(input.id)
-        getCrdtProvider()?.updateMeta(input.id, { title: input.newTitle })
-        return { success: true, note }
-      } catch (error) {
-        const message = error instanceof Error ? error.message : 'Failed to rename note'
-        return { success: false, note: null, error: message }
-      }
-    })
+    createValidatedHandler(NoteRenameSchema, withErrorHandler(async (input) => {
+      const note = await renameNote(input.id, input.newTitle)
+      getNoteSyncService()?.enqueueUpdate(input.id)
+      getCrdtProvider()?.updateMeta(input.id, { title: input.newTitle })
+      return { success: true, note }
+    }, 'Failed to rename note'))
   )
 
   // notes:move - Move note to different folder
   ipcMain.handle(
     NotesChannels.invoke.MOVE,
-    createValidatedHandler(NoteMoveSchema, async (input) => {
-      try {
-        const note = await moveNote(input.id, input.newFolder)
-        getNoteSyncService()?.enqueueUpdate(input.id)
-        return { success: true, note }
-      } catch (error) {
-        const message = error instanceof Error ? error.message : 'Failed to move note'
-        return { success: false, note: null, error: message }
-      }
-    })
+    createValidatedHandler(NoteMoveSchema, withErrorHandler(async (input) => {
+      const note = await moveNote(input.id, input.newFolder)
+      getNoteSyncService()?.enqueueUpdate(input.id)
+      return { success: true, note }
+    }, 'Failed to move note'))
   )
 
   // notes:delete - Delete a note
   ipcMain.handle(
     NotesChannels.invoke.DELETE,
-    createStringHandler(async (id) => {
-      try {
-        getNoteSyncService()?.enqueueDelete(id)
-        await deleteNote(id)
-        return { success: true }
-      } catch (error) {
-        const message = error instanceof Error ? error.message : 'Failed to delete note'
-        return { success: false, error: message }
-      }
-    })
+    createStringHandler(withErrorHandler(async (id) => {
+      getNoteSyncService()?.enqueueDelete(id)
+      await deleteNote(id)
+      return { success: true }
+    }, 'Failed to delete note'))
   )
 
   // notes:list - List notes with filtering
@@ -340,43 +315,28 @@ export function registerNotesHandlers(): void {
   // notes:create-folder - Create a new folder
   ipcMain.handle(
     NotesChannels.invoke.CREATE_FOLDER,
-    createStringHandler(async (path) => {
-      try {
-        await createFolder(path)
-        return { success: true }
-      } catch (error) {
-        const message = error instanceof Error ? error.message : 'Failed to create folder'
-        return { success: false, error: message }
-      }
-    })
+    createStringHandler(withErrorHandler(async (path) => {
+      await createFolder(path)
+      return { success: true }
+    }, 'Failed to create folder'))
   )
 
   // notes:rename-folder - Rename a folder
   ipcMain.handle(
     NotesChannels.invoke.RENAME_FOLDER,
-    createValidatedHandler(RenameFolderSchema, async (input) => {
-      try {
-        await renameFolder(input.oldPath, input.newPath)
-        return { success: true }
-      } catch (error) {
-        const message = error instanceof Error ? error.message : 'Failed to rename folder'
-        return { success: false, error: message }
-      }
-    })
+    createValidatedHandler(RenameFolderSchema, withErrorHandler(async (input) => {
+      await renameFolder(input.oldPath, input.newPath)
+      return { success: true }
+    }, 'Failed to rename folder'))
   )
 
   // notes:delete-folder - Delete a folder and all its contents
   ipcMain.handle(
     NotesChannels.invoke.DELETE_FOLDER,
-    createStringHandler(async (folderPath) => {
-      try {
-        await deleteFolder(folderPath)
-        return { success: true }
-      } catch (error) {
-        const message = error instanceof Error ? error.message : 'Failed to delete folder'
-        return { success: false, error: message }
-      }
-    })
+    createStringHandler(withErrorHandler(async (folderPath) => {
+      await deleteFolder(folderPath)
+      return { success: true }
+    }, 'Failed to delete folder'))
   )
 
   // notes:exists - Check if note exists
@@ -420,80 +380,68 @@ export function registerNotesHandlers(): void {
   // T018: notes:create-property-definition - Create a new property definition
   ipcMain.handle(
     NotesChannels.invoke.CREATE_PROPERTY_DEFINITION,
-    createValidatedHandler(CreatePropertyDefinitionSchema, async (input) => {
-      try {
-        const isSelectType =
-          input.type === 'status' || input.type === 'select' || input.type === 'multiselect'
+    createValidatedHandler(CreatePropertyDefinitionSchema, withErrorHandler(async (input) => {
+      const isSelectType =
+        input.type === 'status' || input.type === 'select' || input.type === 'multiselect'
 
-        if (isSelectType) {
-          const { PropertyDefinitionsService } = await import('../vault/property-definitions')
-          const service = PropertyDefinitionsService.get()
-          await service.upsert({
-            name: input.name,
-            type: input.type,
-            options: input.type !== 'status' ? input.options : undefined,
-            defaultValue: input.defaultValue != null ? String(input.defaultValue) : undefined
-          })
-          return { success: true, definition: service.get(input.name) }
-        }
-
-        const db = getIndexDatabase()
-        const definition = insertPropertyDefinition(db, {
+      if (isSelectType) {
+        const { PropertyDefinitionsService } = await import('../vault/property-definitions')
+        const service = PropertyDefinitionsService.get()
+        await service.upsert({
           name: input.name,
           type: input.type,
-          options: input.options ? JSON.stringify(input.options) : null,
-          defaultValue: input.defaultValue ? JSON.stringify(input.defaultValue) : null,
-          color: input.color ?? null
+          options: input.type !== 'status' ? input.options : undefined,
+          defaultValue: input.defaultValue != null ? String(input.defaultValue) : undefined
         })
-        return { success: true, definition }
-      } catch (error) {
-        const message =
-          error instanceof Error ? error.message : 'Failed to create property definition'
-        return { success: false, definition: null, error: message }
+        return { success: true, definition: service.get(input.name) }
       }
-    })
+
+      const db = getIndexDatabase()
+      const definition = insertPropertyDefinition(db, {
+        name: input.name,
+        type: input.type,
+        options: input.options ? JSON.stringify(input.options) : null,
+        defaultValue: input.defaultValue ? JSON.stringify(input.defaultValue) : null,
+        color: input.color ?? null
+      })
+      return { success: true, definition }
+    }, 'Failed to create property definition'))
   )
 
   // notes:update-property-definition - Update a property definition
   ipcMain.handle(
     NotesChannels.invoke.UPDATE_PROPERTY_DEFINITION,
-    createValidatedHandler(UpdatePropertyDefinitionSchema, async (input) => {
-      try {
-        const isSelectType =
-          input.type === 'status' || input.type === 'select' || input.type === 'multiselect'
+    createValidatedHandler(UpdatePropertyDefinitionSchema, withErrorHandler(async (input) => {
+      const isSelectType =
+        input.type === 'status' || input.type === 'select' || input.type === 'multiselect'
 
-        if (isSelectType) {
-          const { PropertyDefinitionsService } = await import('../vault/property-definitions')
-          const service = PropertyDefinitionsService.get()
-          const existing = service.get(input.name)
-          if (!existing) return { success: false, definition: null, error: 'Definition not found' }
+      if (isSelectType) {
+        const { PropertyDefinitionsService } = await import('../vault/property-definitions')
+        const service = PropertyDefinitionsService.get()
+        const existing = service.get(input.name)
+        if (!existing) return { success: false, definition: null, error: 'Definition not found' }
 
-          await service.upsert({
-            ...existing,
-            name: input.name,
-            type: input.type ?? existing.type,
-            options: input.options ?? existing.options,
-            defaultValue:
-              input.defaultValue != null ? String(input.defaultValue) : existing.defaultValue
-          })
-          return { success: true, definition: service.get(input.name) }
-        }
-
-        const db = getIndexDatabase()
-        const { name, ...updates } = input
-        const definition = updatePropertyDefinition(db, name, {
-          type: updates.type,
-          options: updates.options ? JSON.stringify(updates.options) : undefined,
-          defaultValue: updates.defaultValue ? JSON.stringify(updates.defaultValue) : undefined,
-          color: updates.color
+        await service.upsert({
+          ...existing,
+          name: input.name,
+          type: input.type ?? existing.type,
+          options: input.options ?? existing.options,
+          defaultValue:
+            input.defaultValue != null ? String(input.defaultValue) : existing.defaultValue
         })
-        return { success: true, definition }
-      } catch (error) {
-        const message =
-          error instanceof Error ? error.message : 'Failed to update property definition'
-        return { success: false, definition: null, error: message }
+        return { success: true, definition: service.get(input.name) }
       }
-    })
+
+      const db = getIndexDatabase()
+      const { name, ...updates } = input
+      const definition = updatePropertyDefinition(db, name, {
+        type: updates.type,
+        options: updates.options ? JSON.stringify(updates.options) : undefined,
+        defaultValue: updates.defaultValue ? JSON.stringify(updates.defaultValue) : undefined,
+        color: updates.color
+      })
+      return { success: true, definition }
+    }, 'Failed to update property definition'))
   )
 
   // =========================================================================
@@ -671,15 +619,10 @@ export function registerNotesHandlers(): void {
   // notes:delete-attachment - Delete an attachment
   ipcMain.handle(
     NotesChannels.invoke.DELETE_ATTACHMENT,
-    createValidatedHandler(DeleteAttachmentSchema, async (input) => {
-      try {
-        await deleteAttachment(input.noteId, input.filename)
-        return { success: true }
-      } catch (error) {
-        const message = error instanceof Error ? error.message : 'Failed to delete attachment'
-        return { success: false, error: message }
-      }
-    })
+    createValidatedHandler(DeleteAttachmentSchema, withErrorHandler(async (input) => {
+      await deleteAttachment(input.noteId, input.filename)
+      return { success: true }
+    }, 'Failed to delete attachment'))
   )
 
   // =========================================================================
@@ -697,15 +640,10 @@ export function registerNotesHandlers(): void {
   // notes:set-folder-config - Set folder config
   ipcMain.handle(
     NotesChannels.invoke.SET_FOLDER_CONFIG,
-    createValidatedHandler(SetFolderConfigSchema, async (input) => {
-      try {
-        await writeFolderConfig(input.folderPath, input.config)
-        return { success: true }
-      } catch (error) {
-        const message = error instanceof Error ? error.message : 'Failed to set folder config'
-        return { success: false, error: message }
-      }
-    })
+    createValidatedHandler(SetFolderConfigSchema, withErrorHandler(async (input) => {
+      await writeFolderConfig(input.folderPath, input.config)
+      return { success: true }
+    }, 'Failed to set folder config'))
   )
 
   // notes:get-folder-template - Get resolved folder template (with inheritance)
@@ -722,87 +660,70 @@ export function registerNotesHandlers(): void {
 
   ipcMain.handle(
     NotesChannels.invoke.EXPORT_PDF,
-    createValidatedHandler(ExportNoteSchema, async (input) => {
-      try {
-        // Get the note
-        const note = await getNoteById(input.noteId)
-        if (!note) {
-          return { success: false, error: 'Note not found' }
-        }
-
-        // Show save dialog
-        const defaultFilename = `${sanitizeFilename(note.title)}.pdf`
-        const result = await dialog.showSaveDialog({
-          title: 'Export as PDF',
-          defaultPath: defaultFilename,
-          filters: [{ name: 'PDF Document', extensions: ['pdf'] }]
-        })
-
-        if (result.canceled || !result.filePath) {
-          return { success: false, error: 'Export cancelled' }
-        }
-
-        // Generate HTML for the note
-        const html = renderNoteAsHtml(
-          {
-            id: note.id,
-            title: note.title,
-            content: note.content,
-            emoji: note.emoji,
-            tags: note.tags,
-            created: note.created,
-            modified: note.modified
-          },
-          { includeMetadata: input.includeMetadata }
-        )
-
-        // Create a hidden browser window to render the HTML
-        const win = new BrowserWindow({
-          show: false,
-          width: 800,
-          height: 600,
-          webPreferences: {
-            javascript: false // Security: disable JS for export
-          }
-        })
-
-        // Load the HTML content
-        await win.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(html)}`)
-
-        // Wait a moment for content to render
-        await new Promise((resolve) => setTimeout(resolve, 100))
-
-        // Map page size to Electron format
-        const pageSizeMap: Record<string, Electron.PrintToPDFOptions['pageSize']> = {
-          A4: 'A4',
-          Letter: 'Letter',
-          Legal: 'Legal'
-        }
-
-        // Generate PDF
-        const pdfData = await win.webContents.printToPDF({
-          printBackground: true,
-          pageSize: pageSizeMap[input.pageSize] || 'A4',
-          margins: {
-            top: 0.5,
-            bottom: 0.5,
-            left: 0.5,
-            right: 0.5
-          }
-        })
-
-        // Clean up the window
-        win.destroy()
-
-        // Write the PDF file
-        await fs.writeFile(result.filePath, pdfData)
-
-        return { success: true, path: result.filePath }
-      } catch (error) {
-        const message = error instanceof Error ? error.message : 'Failed to export PDF'
-        return { success: false, error: message }
+    createValidatedHandler(ExportNoteSchema, withErrorHandler(async (input) => {
+      const note = await getNoteById(input.noteId)
+      if (!note) {
+        return { success: false, error: 'Note not found' }
       }
-    })
+
+      const defaultFilename = `${sanitizeFilename(note.title)}.pdf`
+      const result = await dialog.showSaveDialog({
+        title: 'Export as PDF',
+        defaultPath: defaultFilename,
+        filters: [{ name: 'PDF Document', extensions: ['pdf'] }]
+      })
+
+      if (result.canceled || !result.filePath) {
+        return { success: false, error: 'Export cancelled' }
+      }
+
+      const html = renderNoteAsHtml(
+        {
+          id: note.id,
+          title: note.title,
+          content: note.content,
+          emoji: note.emoji,
+          tags: note.tags,
+          created: note.created,
+          modified: note.modified
+        },
+        { includeMetadata: input.includeMetadata }
+      )
+
+      const win = new BrowserWindow({
+        show: false,
+        width: 800,
+        height: 600,
+        webPreferences: {
+          javascript: false
+        }
+      })
+
+      await win.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(html)}`)
+      await new Promise((resolve) => setTimeout(resolve, 100))
+
+      const pageSizeMap: Record<string, Electron.PrintToPDFOptions['pageSize']> = {
+        A4: 'A4',
+        Letter: 'Letter',
+        Legal: 'Legal'
+      }
+
+      const pdfData = await win.webContents.printToPDF({
+        printBackground: true,
+        pageSize: pageSizeMap[input.pageSize] || 'A4',
+        margins: {
+          top: 0.5,
+          bottom: 0.5,
+          left: 0.5,
+          right: 0.5
+        }
+      })
+
+      win.destroy()
+      await fs.writeFile(result.filePath, pdfData)
+
+      return { success: true, path: result.filePath }
+    }, 'Failed to export PDF'))
   )
 
   // =========================================================================
@@ -811,49 +732,40 @@ export function registerNotesHandlers(): void {
 
   ipcMain.handle(
     NotesChannels.invoke.EXPORT_HTML,
-    createValidatedHandler(ExportNoteSchema, async (input) => {
-      try {
-        // Get the note
-        const note = await getNoteById(input.noteId)
-        if (!note) {
-          return { success: false, error: 'Note not found' }
-        }
-
-        // Show save dialog
-        const defaultFilename = `${sanitizeFilename(note.title)}.html`
-        const result = await dialog.showSaveDialog({
-          title: 'Export as HTML',
-          defaultPath: defaultFilename,
-          filters: [{ name: 'HTML Document', extensions: ['html', 'htm'] }]
-        })
-
-        if (result.canceled || !result.filePath) {
-          return { success: false, error: 'Export cancelled' }
-        }
-
-        // Generate HTML for the note
-        const html = renderNoteAsHtml(
-          {
-            id: note.id,
-            title: note.title,
-            content: note.content,
-            emoji: note.emoji,
-            tags: note.tags,
-            created: note.created,
-            modified: note.modified
-          },
-          { includeMetadata: input.includeMetadata }
-        )
-
-        // Write the HTML file
-        await fs.writeFile(result.filePath, html, 'utf-8')
-
-        return { success: true, path: result.filePath }
-      } catch (error) {
-        const message = error instanceof Error ? error.message : 'Failed to export HTML'
-        return { success: false, error: message }
+    createValidatedHandler(ExportNoteSchema, withErrorHandler(async (input) => {
+      const note = await getNoteById(input.noteId)
+      if (!note) {
+        return { success: false, error: 'Note not found' }
       }
-    })
+
+      const defaultFilename = `${sanitizeFilename(note.title)}.html`
+      const result = await dialog.showSaveDialog({
+        title: 'Export as HTML',
+        defaultPath: defaultFilename,
+        filters: [{ name: 'HTML Document', extensions: ['html', 'htm'] }]
+      })
+
+      if (result.canceled || !result.filePath) {
+        return { success: false, error: 'Export cancelled' }
+      }
+
+      const html = renderNoteAsHtml(
+        {
+          id: note.id,
+          title: note.title,
+          content: note.content,
+          emoji: note.emoji,
+          tags: note.tags,
+          created: note.created,
+          modified: note.modified
+        },
+        { includeMetadata: input.includeMetadata }
+      )
+
+      await fs.writeFile(result.filePath, html, 'utf-8')
+
+      return { success: true, path: result.filePath }
+    }, 'Failed to export HTML'))
   )
 
   // =========================================================================
@@ -879,76 +791,51 @@ export function registerNotesHandlers(): void {
   // notes:restore-version - Restore note from a previous version
   ipcMain.handle(
     NotesChannels.invoke.RESTORE_VERSION,
-    createStringHandler(async (snapshotId) => {
-      try {
-        const note = await restoreVersion(snapshotId)
-        return { success: true, note }
-      } catch (error) {
-        const message = error instanceof Error ? error.message : 'Failed to restore version'
-        return { success: false, note: null, error: message }
-      }
-    })
+    createStringHandler(withErrorHandler(async (snapshotId) => {
+      const note = await restoreVersion(snapshotId)
+      return { success: true, note }
+    }, 'Failed to restore version'))
   )
 
   // notes:delete-version - Delete a specific version
   ipcMain.handle(
     NotesChannels.invoke.DELETE_VERSION,
-    createStringHandler((snapshotId) => {
-      try {
-        const db = getIndexDatabase()
-        deleteNoteSnapshot(db, snapshotId)
-        return { success: true }
-      } catch (error) {
-        const message = error instanceof Error ? error.message : 'Failed to delete version'
-        return { success: false, error: message }
-      }
-    })
+    createStringHandler(withErrorHandler((snapshotId) => {
+      const db = getIndexDatabase()
+      deleteNoteSnapshot(db, snapshotId)
+      return { success: true }
+    }, 'Failed to delete version'))
   )
 
   ipcMain.handle(
     NotesChannels.invoke.GET_POSITIONS,
-    createValidatedHandler(NoteGetPositionsSchema, (input) => {
-      try {
-        const db = getDatabase()
-        const positions = getNotesInFolder(db, input.folderPath)
-        return { success: true, positions }
-      } catch (error) {
-        const message = error instanceof Error ? error.message : 'Failed to get positions'
-        return { success: false, positions: [], error: message }
-      }
-    })
+    createValidatedHandler(NoteGetPositionsSchema, withErrorHandler((input) => {
+      const db = getDatabase()
+      const positions = getNotesInFolder(db, input.folderPath)
+      return { success: true, positions }
+    }, 'Failed to get positions'))
   )
 
   ipcMain.handle(
     NotesChannels.invoke.GET_ALL_POSITIONS,
-    createHandler(() => {
-      try {
-        const db = getDatabase()
-        const positions = getAllNotePositions(db)
-        const positionMap: Record<string, number> = {}
-        for (const p of positions) {
-          positionMap[p.path] = p.position
-        }
-        return { success: true, positions: positionMap }
-      } catch (error) {
-        const message = error instanceof Error ? error.message : 'Failed to get all positions'
-        return { success: false, positions: {}, error: message }
+    createHandler(withErrorHandler(() => {
+      const db = getDatabase()
+      const positions = getAllNotePositions(db)
+      const positionMap: Record<string, number> = {}
+      for (const p of positions) {
+        positionMap[p.path] = p.position
       }
-    })
+      return { success: true, positions: positionMap }
+    }, 'Failed to get all positions'))
   )
 
   ipcMain.handle(
     NotesChannels.invoke.REORDER,
-    createValidatedHandler(NoteReorderSchema, (input) => {
-      try {
-        const db = getDatabase()
-        reorderNotesInFolder(db, input.folderPath, input.notePaths)
-        return { success: true }
-      } catch (error) {
-        const message = error instanceof Error ? error.message : 'Failed to reorder notes'
-        return { success: false, error: message }
-      }
-    })
+    createValidatedHandler(NoteReorderSchema, withErrorHandler((input) => {
+      const db = getDatabase()
+      reorderNotesInFolder(db, input.folderPath, input.notePaths)
+      return { success: true }
+    }, 'Failed to reorder notes'))
   )
 
   // notes:import-files - Import files from external paths into the vault
@@ -959,20 +846,15 @@ export function registerNotesHandlers(): void {
         sourcePaths: z.array(z.string()),
         targetFolder: z.string().optional()
       }),
-      async (input) => {
-        try {
-          const result = await importFiles(input)
-          for (const file of result.importedFiles) {
-            if (file.fileType !== 'markdown') {
-              attachmentEvents.emitSaved({ noteId: 'vault-import', diskPath: file.destPath })
-            }
+      withErrorHandler(async (input) => {
+        const result = await importFiles(input)
+        for (const file of result.importedFiles) {
+          if (file.fileType !== 'markdown') {
+            attachmentEvents.emitSaved({ noteId: 'vault-import', diskPath: file.destPath })
           }
-          return result
-        } catch (error) {
-          const message = error instanceof Error ? error.message : 'Failed to import files'
-          return { success: false, imported: 0, failed: 0, errors: [message], importedFiles: [] }
         }
-      }
+        return result
+      }, 'Failed to import files')
     )
   )
 
@@ -1000,23 +882,18 @@ export function registerNotesHandlers(): void {
   // notes:set-local-only — Toggle local-only flag (excludes from sync)
   ipcMain.handle(
     NotesChannels.invoke.SET_LOCAL_ONLY,
-    createValidatedHandler(SetLocalOnlySchema, async (input) => {
-      try {
-        const note = await updateNote({ id: input.id, frontmatter: { localOnly: input.localOnly } })
-        const indexDb = getIndexDatabase()
-        updateNoteCache(indexDb, input.id, { localOnly: input.localOnly })
-        const syncService = getNoteSyncService()
-        if (input.localOnly) {
-          syncService?.removeQueueItems(input.id)
-        } else {
-          syncService?.enqueueUpdate(input.id)
-        }
-        return { success: true, note }
-      } catch (error) {
-        const message = error instanceof Error ? error.message : 'Failed to set local-only'
-        return { success: false, note: null, error: message }
+    createValidatedHandler(SetLocalOnlySchema, withErrorHandler(async (input) => {
+      const note = await updateNote({ id: input.id, frontmatter: { localOnly: input.localOnly } })
+      const indexDb = getIndexDatabase()
+      updateNoteCache(indexDb, input.id, { localOnly: input.localOnly })
+      const syncService = getNoteSyncService()
+      if (input.localOnly) {
+        syncService?.removeQueueItems(input.id)
+      } else {
+        syncService?.enqueueUpdate(input.id)
       }
-    })
+      return { success: true, note }
+    }, 'Failed to set local-only'))
   )
 
   // notes:get-local-only-count — Count of local-only notes
