@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
-import { createTestDataDb, type TestDatabaseResult } from '@tests/utils/test-db'
+import { createTestDataDb, asSyncDb, type TestDatabaseResult } from '@tests/utils/test-db'
 import { projects } from '@memry/db-schema/schema/projects'
 import { statuses } from '@memry/db-schema/schema/statuses'
 import { SyncQueueManager } from '../queue'
@@ -279,7 +279,7 @@ describe('projectHandler', () => {
       testDb.db.insert(projects).values(TEST_PROJECT).run()
       testDb.db.insert(statuses).values(TEST_STATUSES).run()
 
-      const queue = new SyncQueueManager(testDb.db as any)
+      const queue = new SyncQueueManager(asSyncDb(testDb.db))
       const count = projectHandler.seedUnclocked(
         testDb.db as unknown as DrizzleDb,
         'device-A',
@@ -303,7 +303,7 @@ describe('projectHandler', () => {
         .values({ ...TEST_PROJECT, clock: { 'device-A': 1 } })
         .run()
 
-      const queue = new SyncQueueManager(testDb.db as any)
+      const queue = new SyncQueueManager(asSyncDb(testDb.db))
       const count = projectHandler.seedUnclocked(
         testDb.db as unknown as DrizzleDb,
         'device-A',

@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { eq } from 'drizzle-orm'
-import { createTestDataDb, type TestDatabaseResult } from '@tests/utils/test-db'
+import { createTestDataDb, asSyncDb, type TestDatabaseResult } from '@tests/utils/test-db'
 import { projects } from '@memry/db-schema/schema/projects'
 import { statuses } from '@memry/db-schema/schema/statuses'
 import { tasks } from '@memry/db-schema/schema/tasks'
@@ -80,8 +80,8 @@ describe('task merge integration', () => {
     deviceA = createTestDataDb()
     deviceB = createTestDataDb()
 
-    queueA = new SyncQueueManager(deviceA.db as any)
-    queueB = new SyncQueueManager(deviceB.db as any)
+    queueA = new SyncQueueManager(asSyncDb(deviceA.db))
+    queueB = new SyncQueueManager(asSyncDb(deviceB.db))
 
     seedBaseTask(deviceA)
     seedBaseTask(deviceB)
@@ -107,7 +107,7 @@ describe('task merge integration', () => {
 
     const signedOutServiceA = new TaskSyncService({
       queue: queueA,
-      db: deviceA.db as any,
+      db: asSyncDb(deviceA.db),
       getDeviceId: () => null
     })
     signedOutServiceA.enqueueUpdate('task-1', ['statusId'])
@@ -125,7 +125,7 @@ describe('task merge integration', () => {
 
     const onlineServiceB = new TaskSyncService({
       queue: queueB,
-      db: deviceB.db as any,
+      db: asSyncDb(deviceB.db),
       getDeviceId: () => 'device-B'
     })
     onlineServiceB.enqueueUpdate('task-1', ['dueDate'])
@@ -137,7 +137,7 @@ describe('task merge integration', () => {
     // #when DeviceA signs in, dirty recovery re-enqueues local update (rebased)
     initTaskSyncService({
       queue: queueA,
-      db: deviceA.db as any,
+      db: asSyncDb(deviceA.db),
       getDeviceId: () => 'device-A'
     })
 
@@ -152,7 +152,7 @@ describe('task merge integration', () => {
     expect(frozenQueuedPayload.dueDate).toBeNull()
 
     // #and DeviceA pulls DeviceB change (concurrent merge on task fields)
-    const applierA = new ItemApplier(deviceA.db as any, vi.fn())
+    const applierA = new ItemApplier(asSyncDb(deviceA.db), vi.fn())
     const resultA = applierA.apply({
       itemId: 'task-1',
       type: 'task',
@@ -185,7 +185,7 @@ describe('task merge integration', () => {
     expect(pushedFromA.dueDate).toBe('2026-03-15')
 
     // #and DeviceB applies DeviceA push without losing its dueDate edit
-    const applierB = new ItemApplier(deviceB.db as any, vi.fn())
+    const applierB = new ItemApplier(asSyncDb(deviceB.db), vi.fn())
     const resultB = applierB.apply({
       itemId: 'task-1',
       type: 'task',

@@ -1,6 +1,10 @@
 import type { ContentfulStatusCode } from 'hono/utils/http-status'
 import type { Context } from 'hono'
 
+import { createLogger } from './logger'
+
+const logger = createLogger('ErrorHandler')
+
 export const ErrorCodes = {
   AUTH_INVALID_TOKEN: 'AUTH_INVALID_TOKEN',
   AUTH_TOKEN_EXPIRED: 'AUTH_TOKEN_EXPIRED',
@@ -86,14 +90,7 @@ export const errorHandler = (err: Error, c: Context): Response => {
     return c.json(formatErrorResponse(err), { status: err.statusCode as ContentfulStatusCode })
   }
 
-  console.error(
-    JSON.stringify({
-      level: 'error',
-      code: 'UNHANDLED_ERROR',
-      message: err.message,
-      stack: err.stack
-    })
-  )
+  logger.error(err.message, { code: 'UNHANDLED_ERROR', stack: err.stack })
   const fallback = new AppError(ErrorCodes.INTERNAL_ERROR, 'Internal server error', 500)
   return c.json(formatErrorResponse(fallback), 500)
 }

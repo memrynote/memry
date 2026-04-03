@@ -1,53 +1,212 @@
-import { describe, it, expect } from 'vitest'
-import { z } from 'zod'
-import {
-  createValidatedHandler,
-  createHandler,
-  createStringHandler,
-  withErrorHandling
-} from './validate'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 
-describe('ipc validate helpers', () => {
-  it('createValidatedHandler parses input and returns handler result', async () => {
-    const schema = z.object({ name: z.string().min(1) })
-    const handler = createValidatedHandler(schema, async (input) => `hi ${input.name}`)
+vi.mock('../lib/logger', () => ({
+  createLogger: () => ({
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+    debug: vi.fn()
+  })
+}))
 
-    const result = await handler({} as never, { name: 'Memry' })
-    expect(result).toBe('hi Memry')
+vi.mock('../database', () => ({
+  getDatabase: vi.fn()
+}))
+
+import { getDatabase } from '../database'
+import { withErrorHandler, withDb } from './validate'
+
+const mockGetDatabase = vi.mocked(getDatabase)
+
+describe('withErrorHandler', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
   })
 
-  it('createValidatedHandler throws on invalid input', async () => {
-    const schema = z.object({ count: z.number().int().min(1) })
-    const handler = createValidatedHandler(schema, async (input) => input.count)
+  it('passes through successful result', async () => {
+    // #given
+    const handler = withErrorHandler(
+      async () => ({ success: true as const, task: { id: '1' } }),
+      'Failed to create task'
+    )
 
-    await expect(handler({} as never, { count: 0 })).rejects.toThrow('Validation failed')
+    // #when
+    const result = await handler()
+
+    // #then
+    expect(result).toEqual({ success: true, task: { id: '1' } })
   })
 
-  it('createHandler wraps no-arg handler', async () => {
-    const handler = createHandler(async () => 'ok')
-    const result = await handler({} as never)
-    expect(result).toBe('ok')
+  it('passes arguments to handler', async () => {
+    // #given
+    const inner = vi.fn(async (input: { title: string }) => ({
+      success: true as const,
+      title: input.title
+    }))
+    const handler = withErrorHandler(inner, 'Failed')
+
+    // #when
+    await handler({ title: 'hello' })
+
+    // #then
+    expect(inner).toHaveBeenCalledWith({ title: 'hello' })
   })
 
-  it('createStringHandler validates string input', async () => {
-    const handler = createStringHandler(async (value) => value.toUpperCase())
+  it('catches Error and returns formatted response', async () => {
+    // #given
+    const handler = withErrorHandler(async () => {
+      throw new Error('db constraint violated')
+    }, 'Failed to create task')
 
-    const result = await handler({} as never, 'hello')
-    expect(result).toBe('HELLO')
+    // #when
+    const result = await handler()
 
-    await expect(handler({} as never, 123)).rejects.toThrow('Validation failed')
+    // #then
+    expect(result).toEqual({ success: false, error: 'db constraint violated' })
   })
 
-  it('withErrorHandling returns consistent error responses', async () => {
-    const ok = withErrorHandling(async (value: number) => value * 2)
-    const okResult = await ok(2)
-    expect(okResult).toBe(4)
+  it('uses fallback message for non-Error throws', async () => {
+    // #given
+    const handler = withErrorHandler(async () => {
+      throw 'string error'
+    }, 'Failed to create task')
 
-    const fail = withErrorHandling(async () => {
-      throw new Error('boom')
+    // #when
+    const result = await handler()
+
+    // #then
+    expect(result).toEqual({ success: false, error: 'Failed to create task' })
+  })
+
+  it('uses default fallback when none provided', async () => {
+    // #given
+    const handler = withErrorHandler(async () => {
+      throw 42
     })
 
-    const failResult = await fail()
-    expect(failResult).toEqual({ success: false, error: 'boom' })
+    // #when
+    const result = await handler()
+
+    // #then
+    expect(result).toEqual({ success: false, error: 'Operation failed' })
+  })
+
+  it('handles sync handlers', async () => {
+    // #given
+    const handler = withErrorHandler(() => ({ success: true as const, count: 5 }), 'Failed')
+
+    // #when
+    const result = await handler()
+
+    // #then
+    expect(result).toEqual({ success: true, count: 5 })
+  })
+})
+
+describe('withDb', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('calls getDatabase and passes db to handler', async () => {
+    // #given
+    const mockDb = { select: vi.fn() }
+    mockGetDatabase.mockReturnValue(mockDb as never)
+
+    const inner = vi.fn(async (db: unknown) => ({
+      success: true as const,
+      db: db
+    }))
+    const handler = withDb(inner, 'Failed')
+
+    // #when
+    const result = await handler()
+
+    // #then
+    expect(mockGetDatabase).toHaveBeenCalled()
+    expect(inner).toHaveBeenCalledWith(mockDb)
+    expect(result).toEqual({ success: true, db: mockDb })
+  })
+
+  it('passes additional arguments after db', async () => {
+    // #given
+    const mockDb = {}
+    mockGetDatabase.mockReturnValue(mockDb as never)
+
+    const inner = vi.fn(async (db: unknown, input: { id: string }) => ({
+      success: true as const,
+      id: input.id
+    }))
+    const handler = withDb(inner, 'Failed')
+
+    // #when
+    await handler({ id: 'abc' })
+
+    // #then
+    expect(inner).toHaveBeenCalledWith(mockDb, { id: 'abc' })
+  })
+
+  it('catches handler errors with fallback', async () => {
+    // #given
+    const mockDb = {}
+    mockGetDatabase.mockReturnValue(mockDb as never)
+
+    const handler = withDb(async () => {
+      throw new Error('not found')
+    }, 'Failed to fetch')
+
+    // #when
+    const result = await handler()
+
+    // #then
+    expect(result).toEqual({ success: false, error: 'not found' })
+  })
+
+  it('catches getDatabase errors with vault-friendly message', async () => {
+    // #given
+    mockGetDatabase.mockImplementation(() => {
+      throw new Error('Database not initialized')
+    })
+
+    const handler = withDb(async () => ({ success: true as const }), 'Failed')
+
+    // #when
+    const result = await handler()
+
+    // #then
+    expect(result).toEqual({
+      success: false,
+      error: 'No vault is open. Please open a vault first.'
+    })
+  })
+
+  it('uses fallback for non-Error throws from handler', async () => {
+    // #given
+    const mockDb = {}
+    mockGetDatabase.mockReturnValue(mockDb as never)
+
+    const handler = withDb(async () => {
+      throw null
+    }, 'Failed to update task')
+
+    // #when
+    const result = await handler()
+
+    // #then
+    expect(result).toEqual({ success: false, error: 'Failed to update task' })
+  })
+
+  it('handles sync (non-async) handlers', async () => {
+    // #given
+    const mockDb = {}
+    mockGetDatabase.mockReturnValue(mockDb as never)
+
+    const handler = withDb((db) => ({ success: true as const, hasDb: db !== null }), 'Failed')
+
+    // #when
+    const result = await handler()
+
+    // #then
+    expect(result).toEqual({ success: true, hasDb: true })
   })
 })

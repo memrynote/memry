@@ -14,6 +14,7 @@ import {
 import { buildOtpEmailHtml } from '../emails/otp-template'
 import { safeBase64Decode } from '../lib/encoding'
 import { AppError, ErrorCodes } from '../lib/errors'
+import { createLogger } from '../lib/logger'
 import { getPrivateKey, getPublicKey } from '../lib/jwt-keys'
 import { authMiddleware } from '../middleware/auth'
 import { createRateLimiter } from '../middleware/rate-limit'
@@ -35,6 +36,8 @@ import {
 } from '../services/otp'
 import { getOrCreateUserByEmail, getUserByEmail, getUserById, updateUser } from '../services/user'
 import type { AppContext } from '../types'
+
+const logger = createLogger('Auth')
 
 const OTP_EXPIRY_MINUTES = 10
 const DEVICE_TEXT_UNSAFE_CHARS = /[\u0000-\u001F\u007F<>"'`&]/g
@@ -578,7 +581,7 @@ auth.post('/logout', authMiddleware, async (c) => {
   try {
     await revokeDeviceTokens(c.env.DB, deviceId)
   } catch (err) {
-    console.error('Failed to revoke tokens during logout', { deviceId, err })
+    logger.error('Failed to revoke tokens during logout', { deviceId, error: err instanceof Error ? err.message : String(err) })
   }
 
   return c.json({ success: true })
