@@ -1,5 +1,10 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
-import { createTestDataDb, type TestDatabaseResult } from '@tests/utils/test-db'
+import {
+  createTestDataDb,
+  asClientDb,
+  asSyncDb,
+  type TestDatabaseResult
+} from '@tests/utils/test-db'
 import { inboxItems } from '@memry/db-schema/schema/inbox'
 import type { VectorClock } from '@memry/contracts/sync-api'
 import { SyncQueueManager } from './queue'
@@ -23,10 +28,12 @@ describe('InboxSyncService', () => {
 
   beforeEach(() => {
     testDb = createTestDataDb()
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    queue = new SyncQueueManager(testDb.db as any)
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    service = new InboxSyncService({ queue, db: testDb.db as any, getDeviceId: () => 'device-A' })
+    queue = new SyncQueueManager(asClientDb(testDb.db))
+    service = new InboxSyncService({
+      queue,
+      db: asSyncDb(testDb.db),
+      getDeviceId: () => 'device-A'
+    })
   })
 
   afterEach(() => {
@@ -95,10 +102,9 @@ describe('InboxSyncService', () => {
 
   describe('#given no device ID #when enqueue called', () => {
     it('#then skips silently', () => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const noDeviceService = new InboxSyncService({
         queue,
-        db: testDb.db as any,
+        db: asSyncDb(testDb.db),
         getDeviceId: () => null
       })
       testDb.db.insert(inboxItems).values(TEST_INBOX_ITEM).run()
@@ -136,14 +142,16 @@ describe('InboxSyncService', () => {
     })
 
     it('#then getInboxSyncService returns instance after init', () => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const svc = initInboxSyncService({ queue, db: testDb.db as any, getDeviceId: () => 'dev-1' })
+      const svc = initInboxSyncService({
+        queue,
+        db: asSyncDb(testDb.db),
+        getDeviceId: () => 'dev-1'
+      })
       expect(getInboxSyncService()).toBe(svc)
     })
 
     it('#then resetInboxSyncService clears instance', () => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      initInboxSyncService({ queue, db: testDb.db as any, getDeviceId: () => 'dev-1' })
+      initInboxSyncService({ queue, db: asSyncDb(testDb.db), getDeviceId: () => 'dev-1' })
       resetInboxSyncService()
       expect(getInboxSyncService()).toBeNull()
     })

@@ -1,6 +1,7 @@
 import { ipcMain } from 'electron'
 import { InboxChannels } from '@memry/contracts/ipc-channels'
 import { InboxUpdateSchema, type CaptureResponse, type InboxItem } from '@memry/contracts/inbox-api'
+import { withErrorHandler } from './validate'
 import { inboxItems, inboxItemTags } from '@memry/db-schema/schema/inbox'
 import { eq, and } from 'drizzle-orm'
 import { generateId } from '../lib/id'
@@ -84,8 +85,8 @@ export function createInboxCrudHandlers(deps: InboxCrudHandlerDeps): InboxCrudHa
     }
   }
 
-  async function handleArchive(id: string): Promise<{ success: boolean; error?: string }> {
-    try {
+  const handleArchive = withErrorHandler(
+    async (id: string): Promise<{ success: boolean; error?: string }> => {
       const db = deps.requireDatabase()
 
       const existing = db.select().from(inboxItems).where(eq(inboxItems.id, id)).get()
@@ -93,7 +94,6 @@ export function createInboxCrudHandlers(deps: InboxCrudHandlerDeps): InboxCrudHa
         return { success: false, error: 'Item not found' }
       }
 
-      // Set archivedAt timestamp (soft delete - keep attachments and tags)
       db.update(inboxItems)
         .set({ archivedAt: new Date().toISOString() })
         .where(eq(inboxItems.id, id))
@@ -105,17 +105,12 @@ export function createInboxCrudHandlers(deps: InboxCrudHandlerDeps): InboxCrudHa
       deps.syncInboxUpdate(db, id)
 
       return { success: true }
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown error'
-      return { success: false, error: message }
-    }
-  }
+    },
+    'Unknown error'
+  )
 
-  async function handleAddTag(
-    itemId: string,
-    tag: string
-  ): Promise<{ success: boolean; error?: string }> {
-    try {
+  const handleAddTag = withErrorHandler(
+    async (itemId: string, tag: string): Promise<{ success: boolean; error?: string }> => {
       const db = deps.requireDatabase()
 
       const existing = db.select().from(inboxItems).where(eq(inboxItems.id, itemId)).get()
@@ -143,17 +138,12 @@ export function createInboxCrudHandlers(deps: InboxCrudHandlerDeps): InboxCrudHa
         .run()
 
       return { success: true }
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown error'
-      return { success: false, error: message }
-    }
-  }
+    },
+    'Unknown error'
+  )
 
-  async function handleRemoveTag(
-    itemId: string,
-    tag: string
-  ): Promise<{ success: boolean; error?: string }> {
-    try {
+  const handleRemoveTag = withErrorHandler(
+    async (itemId: string, tag: string): Promise<{ success: boolean; error?: string }> => {
       const db = deps.requireDatabase()
 
       db.delete(inboxItemTags)
@@ -161,14 +151,12 @@ export function createInboxCrudHandlers(deps: InboxCrudHandlerDeps): InboxCrudHa
         .run()
 
       return { success: true }
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown error'
-      return { success: false, error: message }
-    }
-  }
+    },
+    'Unknown error'
+  )
 
-  async function handleMarkViewed(itemId: string): Promise<{ success: boolean; error?: string }> {
-    try {
+  const handleMarkViewed = withErrorHandler(
+    async (itemId: string): Promise<{ success: boolean; error?: string }> => {
       if (!itemId) {
         return { success: false, error: 'itemId is required' }
       }
@@ -192,15 +180,12 @@ export function createInboxCrudHandlers(deps: InboxCrudHandlerDeps): InboxCrudHa
 
       deps.logger.info(`Marked item ${itemId} as viewed`)
       return { success: true }
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown error'
-      deps.logger.error(`Failed to mark item ${itemId} as viewed: ${message}`)
-      return { success: false, error: message }
-    }
-  }
+    },
+    'Unknown error'
+  )
 
-  async function handleUnarchive(id: string): Promise<{ success: boolean; error?: string }> {
-    try {
+  const handleUnarchive = withErrorHandler(
+    async (id: string): Promise<{ success: boolean; error?: string }> => {
       const db = deps.requireDatabase()
 
       const existing = db.select().from(inboxItems).where(eq(inboxItems.id, id)).get()
@@ -224,14 +209,12 @@ export function createInboxCrudHandlers(deps: InboxCrudHandlerDeps): InboxCrudHa
       deps.syncInboxUpdate(db, id)
 
       return { success: true }
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown error'
-      return { success: false, error: message }
-    }
-  }
+    },
+    'Unknown error'
+  )
 
-  async function handleDeletePermanent(id: string): Promise<{ success: boolean; error?: string }> {
-    try {
+  const handleDeletePermanent = withErrorHandler(
+    async (id: string): Promise<{ success: boolean; error?: string }> => {
       const db = deps.requireDatabase()
 
       const existing = db.select().from(inboxItems).where(eq(inboxItems.id, id)).get()
@@ -248,14 +231,12 @@ export function createInboxCrudHandlers(deps: InboxCrudHandlerDeps): InboxCrudHa
       getInboxSyncService()?.enqueueDelete(id, snapshot)
 
       return { success: true }
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown error'
-      return { success: false, error: message }
-    }
-  }
+    },
+    'Unknown error'
+  )
 
-  async function handleUndoFile(id: string): Promise<{ success: boolean; error?: string }> {
-    try {
+  const handleUndoFile = withErrorHandler(
+    async (id: string): Promise<{ success: boolean; error?: string }> => {
       const db = deps.requireDatabase()
 
       const existing = db.select().from(inboxItems).where(eq(inboxItems.id, id)).get()
@@ -285,15 +266,12 @@ export function createInboxCrudHandlers(deps: InboxCrudHandlerDeps): InboxCrudHa
 
       deps.logger.info(`Undo file for item ${id}`)
       return { success: true }
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown error'
-      deps.logger.error(`Failed to undo file for item ${id}: ${message}`)
-      return { success: false, error: message }
-    }
-  }
+    },
+    'Unknown error'
+  )
 
-  async function handleUndoArchive(id: string): Promise<{ success: boolean; error?: string }> {
-    try {
+  const handleUndoArchive = withErrorHandler(
+    async (id: string): Promise<{ success: boolean; error?: string }> => {
       const db = deps.requireDatabase()
 
       const existing = db.select().from(inboxItems).where(eq(inboxItems.id, id)).get()
@@ -318,12 +296,9 @@ export function createInboxCrudHandlers(deps: InboxCrudHandlerDeps): InboxCrudHa
 
       deps.logger.info(`Undo archive for item ${id}`)
       return { success: true }
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown error'
-      deps.logger.error(`Failed to undo archive for item ${id}: ${message}`)
-      return { success: false, error: message }
-    }
-  }
+    },
+    'Unknown error'
+  )
 
   return {
     handleGet,

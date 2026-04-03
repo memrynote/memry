@@ -91,7 +91,7 @@ import {
   hasActiveFilters,
   countActiveFilters,
   dueDateGroupConfig
-} from './task-utils'
+} from '.'
 
 // ============================================================================
 // MOCK FACTORIES
