@@ -45,19 +45,22 @@ export function useEditorFileUpload({
   dropTarget,
   onDragReset
 }: EditorFileUploadParams): EditorFileUploadResult {
-  const uploadFile = useCallback(async (file: File): Promise<string> => {
-    const currentNoteId = noteIdRef.current
-    if (!currentNoteId) {
-      throw new Error('Cannot upload: no note selected')
-    }
+  const uploadFile = useCallback(
+    async (file: File): Promise<string> => {
+      const currentNoteId = noteIdRef.current
+      if (!currentNoteId) {
+        throw new Error('Cannot upload: no note selected')
+      }
 
-    const result = await notesService.uploadAttachment(currentNoteId, file)
-    if (!result.success || !result.path) {
-      throw new Error(result.error || 'Upload failed')
-    }
+      const result = await notesService.uploadAttachment(currentNoteId, file)
+      if (!result.success || !result.path) {
+        throw new Error(result.error || 'Upload failed')
+      }
 
-    return result.path
-  }, [noteIdRef])
+      return result.path
+    },
+    [noteIdRef]
+  )
 
   const handleNonImageDrop = useCallback(
     async (e: React.DragEvent) => {

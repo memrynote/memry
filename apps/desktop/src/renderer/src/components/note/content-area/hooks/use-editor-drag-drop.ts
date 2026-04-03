@@ -13,9 +13,7 @@ interface EditorDragDropResult {
   handleDrop: () => void
 }
 
-export function useEditorDragDrop({
-  containerRef
-}: EditorDragDropParams): EditorDragDropResult {
+export function useEditorDragDrop({ containerRef }: EditorDragDropParams): EditorDragDropResult {
   const [isDragging, setIsDragging] = useState(false)
   const [dropTarget, setDropTarget] = useState<DropTarget | null>(null)
 
@@ -47,9 +45,7 @@ export function useEditorDragDrop({
   useEffect(() => {
     if (!dropTarget || !containerRef.current) return
 
-    const blockElement = containerRef.current.querySelector(
-      `[data-id="${dropTarget.blockId}"]`
-    )
+    const blockElement = containerRef.current.querySelector(`[data-id="${dropTarget.blockId}"]`)
     if (!blockElement) return
 
     blockElement.classList.add('bg-primary/5', 'transition-colors', 'duration-150')

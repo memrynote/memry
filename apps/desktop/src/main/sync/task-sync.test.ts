@@ -36,7 +36,11 @@ describe('TaskSyncService', () => {
   beforeEach(() => {
     testDb = createTestDataDb()
     queue = new SyncQueueManager(asClientDb(testDb.db))
-    service = new TaskSyncService({ queue, db: asClientDb(testDb.db), getDeviceId: () => 'device-A' })
+    service = new TaskSyncService({
+      queue,
+      db: asClientDb(testDb.db),
+      getDeviceId: () => 'device-A'
+    })
 
     testDb.db.insert(projects).values(TEST_PROJECT).run()
   })
@@ -180,7 +184,11 @@ describe('TaskSyncService', () => {
     })
 
     it('#then getTaskSyncService returns instance after init', () => {
-      const svc = initTaskSyncService({ queue, db: asClientDb(testDb.db), getDeviceId: () => 'dev-1' })
+      const svc = initTaskSyncService({
+        queue,
+        db: asClientDb(testDb.db),
+        getDeviceId: () => 'dev-1'
+      })
       expect(getTaskSyncService()).toBe(svc)
     })
 

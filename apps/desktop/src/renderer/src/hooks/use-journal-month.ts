@@ -26,14 +26,11 @@ export function useMonthEntries(year: number, month: number): UseMonthEntriesRes
     gcTime: ENTRY_GC_TIME
   })
 
-  useJournalChangeInvalidation(
-    journalKeys.monthEntriesForMonth(year, month),
-    (eventDate) => {
-      const eventYear = parseInt(eventDate.slice(0, 4), 10)
-      const eventMonth = parseInt(eventDate.slice(5, 7), 10)
-      return eventYear === year && eventMonth === month
-    }
-  )
+  useJournalChangeInvalidation(journalKeys.monthEntriesForMonth(year, month), (eventDate) => {
+    const eventYear = parseInt(eventDate.slice(0, 4), 10)
+    const eventMonth = parseInt(eventDate.slice(5, 7), 10)
+    return eventYear === year && eventMonth === month
+  })
 
   const reload = useCallback(async () => {
     await refetch()

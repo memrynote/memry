@@ -1,5 +1,10 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
-import { createTestDataDb, asClientDb, asSyncDb, type TestDatabaseResult } from '@tests/utils/test-db'
+import {
+  createTestDataDb,
+  asClientDb,
+  asSyncDb,
+  type TestDatabaseResult
+} from '@tests/utils/test-db'
 import { savedFilters } from '@memry/db-schema/schema/settings'
 import type { VectorClock } from '@memry/contracts/sync-api'
 import { SyncQueueManager } from './queue'
@@ -25,7 +30,11 @@ describe('FilterSyncService', () => {
   beforeEach(() => {
     testDb = createTestDataDb()
     queue = new SyncQueueManager(asClientDb(testDb.db))
-    service = new FilterSyncService({ queue, db: asSyncDb(testDb.db), getDeviceId: () => 'device-A' })
+    service = new FilterSyncService({
+      queue,
+      db: asSyncDb(testDb.db),
+      getDeviceId: () => 'device-A'
+    })
   })
 
   afterEach(() => {
@@ -118,7 +127,11 @@ describe('FilterSyncService', () => {
     })
 
     it('#then getFilterSyncService returns instance after init', () => {
-      const svc = initFilterSyncService({ queue, db: asSyncDb(testDb.db), getDeviceId: () => 'dev-1' })
+      const svc = initFilterSyncService({
+        queue,
+        db: asSyncDb(testDb.db),
+        getDeviceId: () => 'dev-1'
+      })
       expect(getFilterSyncService()).toBe(svc)
     })
 

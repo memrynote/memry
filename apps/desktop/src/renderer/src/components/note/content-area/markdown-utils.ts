@@ -6,10 +6,7 @@ import {
   assembleMarkdownWithBlanks,
   type MarkdownSegment
 } from '@memry/shared/empty-lines'
-import {
-  splitMarkdownByCallouts,
-  serializeCalloutBlock
-} from './callout-block'
+import { splitMarkdownByCallouts, serializeCalloutBlock } from './callout-block'
 
 export function isEmptyParagraph(block: Block): boolean {
   if (block.type !== 'paragraph') return false

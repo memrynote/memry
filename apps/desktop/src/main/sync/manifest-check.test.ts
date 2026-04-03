@@ -1,5 +1,11 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
-import { createTestDataDb, createTestIndexDb, asClientDb, asSyncDb, type TestDatabaseResult } from '@tests/utils/test-db'
+import {
+  createTestDataDb,
+  createTestIndexDb,
+  asClientDb,
+  asSyncDb,
+  type TestDatabaseResult
+} from '@tests/utils/test-db'
 import { tasks } from '@memry/db-schema/schema/tasks'
 import { projects } from '@memry/db-schema/schema/projects'
 import { inboxItems } from '@memry/db-schema/schema/inbox'

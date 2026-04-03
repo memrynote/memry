@@ -10,10 +10,7 @@ import {
 } from '../wiki-link-utils'
 import { normalizeHashTags, extractInlineTags } from '../hash-tag'
 import { FILE_BLOCK_REGEX, createFileBlockContent, serializeFileBlock } from '../file-block'
-import {
-  parseMarkdownPreservingBlanks,
-  serializeBlocksPreservingBlanks
-} from '../markdown-utils'
+import { parseMarkdownPreservingBlanks, serializeBlocksPreservingBlanks } from '../markdown-utils'
 import type { HeadingInfo } from '../types'
 import { createLogger } from '@/lib/logger'
 
@@ -123,9 +120,7 @@ export function useEditorSync({
             }
 
             if (fileBlocksToInsert.length > 0) {
-              const fileBlocks = fileBlocksToInsert.map((props) =>
-                createFileBlockContent(props)
-              )
+              const fileBlocks = fileBlocksToInsert.map((props) => createFileBlockContent(props))
               blocks = [...blocks, ...fileBlocks]
             }
 
@@ -133,11 +128,7 @@ export function useEditorSync({
 
             if (noteTags?.length && tagColorMap) {
               const tagSet = new Set(noteTags.map((t) => t.toLowerCase()))
-              const hashNormalized = normalizeHashTags(
-                normalizedBlocks,
-                tagSet,
-                tagColorMap
-              )
+              const hashNormalized = normalizeHashTags(normalizedBlocks, tagSet, tagColorMap)
               normalizedBlocks = hashNormalized.blocks
               lastNormalizedTagsRef.current = noteTags.slice().sort().join(',')
             }
@@ -151,11 +142,7 @@ export function useEditorSync({
 
           if (noteTags?.length && tagColorMap) {
             const tagSet = new Set(noteTags.map((t) => t.toLowerCase()))
-            const hashNormalized = normalizeHashTags(
-              normalizedBlocks,
-              tagSet,
-              tagColorMap
-            )
+            const hashNormalized = normalizeHashTags(normalizedBlocks, tagSet, tagColorMap)
             normalizedBlocks = hashNormalized.blocks
             lastNormalizedTagsRef.current = noteTags.slice().sort().join(',')
           }
@@ -199,14 +186,9 @@ export function useEditorSync({
       }
       markdownDebounceRef.current = setTimeout(async () => {
         try {
-          let markdown = await serializeBlocksPreservingBlanks(
-            editor,
-            editor.document as Block[]
-          )
+          let markdown = await serializeBlocksPreservingBlanks(editor, editor.document as Block[])
 
-          const fileBlocks = (editor.document as Block[]).filter(
-            (b) => b.type === 'file'
-          )
+          const fileBlocks = (editor.document as Block[]).filter((b) => b.type === 'file')
           if (fileBlocks.length > 0) {
             const markers = fileBlocks.map((b) => {
               const props = b.props as unknown as {
@@ -250,7 +232,14 @@ export function useEditorSync({
         }
       }, 300)
     }
-  }, [editor, onContentChange, onMarkdownChange, onHeadingsChange, onInlineTagsChange, isRemoteUpdateRef])
+  }, [
+    editor,
+    onContentChange,
+    onMarkdownChange,
+    onHeadingsChange,
+    onInlineTagsChange,
+    isRemoteUpdateRef
+  ])
 
   return { handleChange, isContentReadyRef, prevInlineTagsRef, lastNormalizedTagsRef }
 }

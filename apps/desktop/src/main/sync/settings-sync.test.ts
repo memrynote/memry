@@ -1,6 +1,11 @@
 import { describe, it, expect, beforeAll, beforeEach, afterEach } from 'vitest'
 import sodium from 'libsodium-wrappers-sumo'
-import { createTestDataDb, asClientDb, asSyncDb, type TestDatabaseResult } from '@tests/utils/test-db'
+import {
+  createTestDataDb,
+  asClientDb,
+  asSyncDb,
+  type TestDatabaseResult
+} from '@tests/utils/test-db'
 import type { SettingsSyncPayload } from '@memry/contracts/settings-sync'
 import { initCrypto } from '../crypto/index'
 import { encryptItemForPush } from './encrypt'
