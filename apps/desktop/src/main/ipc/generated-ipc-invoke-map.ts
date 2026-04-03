@@ -177,6 +177,7 @@ export interface MainIpcInvokeHandlers {
   "search:query": (...args: [{ text: string; types?: ("note" | "task" | "journal" | "inbox")[] | undefined; tags?: string[] | undefined; dateRange?: { from: string; to: string; } | null | undefined; projectId?: string | null | undefined; folderPath?: string | null | undefined; limit?: number | undefined; offset?: number | undefined; }]) => Awaited<Promise<import("../../../../../packages/contracts/src/search-api").SearchResponse>>
   "search:quick": (...args: [string]) => Awaited<Promise<import("../../../../../packages/contracts/src/search-api").QuickSearchResponse>>
   "search:rebuild-index": (...args: []) => Awaited<Promise<{ notes: number; tasks: number; inbox: number; durationMs: number; started: true; error?: undefined; } | { started: false; error: string; }>>
+  "settings:downloadVoiceModel": (...args: []) => Awaited<Promise<{ success: boolean; error?: undefined; } | { success: boolean; error: string; }>>
   "settings:get": (...args: [string]) => Awaited<string | null>
   "settings:getAIModelStatus": (...args: []) => Awaited<Promise<import("./settings-handlers").AIModelStatus>>
   "settings:getAISettings": (...args: []) => Awaited<import("./settings-handlers").AISettings>
@@ -190,6 +191,10 @@ export interface MainIpcInvokeHandlers {
   "settings:getSyncSettings": (...args: []) => Awaited<{ enabled: boolean; autoSync: boolean; }>
   "settings:getTabSettings": (...args: []) => Awaited<import("./settings-handlers").TabSettings>
   "settings:getTaskSettings": (...args: []) => Awaited<{ defaultProjectId: string | null; defaultSortOrder: "createdAt" | "priority" | "dueDate" | "manual"; weekStartDay: "sunday" | "monday"; staleInboxDays: number; }>
+  "settings:getVoiceModelStatus": (...args: []) => Awaited<import("../inbox/voice-model").VoiceModelStatus>
+  "settings:getVoiceRecordingReadiness": (...args: []) => Awaited<Promise<import("../inbox/voice-transcription-settings").VoiceRecordingReadiness>>
+  "settings:getVoiceTranscriptionOpenAIKeyStatus": (...args: []) => Awaited<Promise<import("./settings-handlers").VoiceTranscriptionOpenAIKeyStatus>>
+  "settings:getVoiceTranscriptionSettings": (...args: []) => Awaited<{ provider: "local" | "openai"; }>
   "settings:loadAIModel": (...args: []) => Awaited<Promise<{ success: boolean; message: string; error?: undefined; } | { success: boolean; error: string; message?: undefined; } | { success: boolean; message?: undefined; error?: undefined; }>>
   "settings:registerGlobalCapture": (...args: []) => Awaited<Promise<import("./settings-handlers").GlobalCaptureResult>>
   "settings:reindexEmbeddings": (...args: []) => Awaited<Promise<{ success: boolean; computed: number; skipped: number; error?: string | undefined; }>>
@@ -206,6 +211,8 @@ export interface MainIpcInvokeHandlers {
   "settings:setSyncSettings": (...args: [Partial<{ enabled: boolean; autoSync: boolean; }>]) => Awaited<{ success: boolean; error?: string | undefined; }>
   "settings:setTabSettings": (...args: [Partial<import("./settings-handlers").TabSettings>]) => Awaited<{ success: boolean; error: string; } | { success: boolean; error?: undefined; }>
   "settings:setTaskSettings": (...args: [Partial<{ defaultProjectId: string | null; defaultSortOrder: "createdAt" | "priority" | "dueDate" | "manual"; weekStartDay: "sunday" | "monday"; staleInboxDays: number; }>]) => Awaited<{ success: boolean; error?: string | undefined; }>
+  "settings:setVoiceTranscriptionOpenAIKey": (...args: [{ apiKey: string; }]) => Awaited<Promise<{ success: boolean; error?: undefined; } | { success: boolean; error: string; }>>
+  "settings:setVoiceTranscriptionSettings": (...args: [Partial<{ provider: "local" | "openai"; }>]) => Awaited<{ success: boolean; error?: string | undefined; }>
   "sync:approve-linking": (...args: [{ sessionId: string; }]) => Awaited<Promise<import("../../../../../packages/contracts/src/ipc-devices").ApproveLinkingResult>>
   "sync:check-device-status": (...args: []) => Awaited<Promise<{ status: string; }>>
   "sync:complete-linking-qr": (...args: [{ sessionId: string; }]) => Awaited<Promise<import("../../../../../packages/contracts/src/ipc-devices").CompleteLinkingQrResult>>

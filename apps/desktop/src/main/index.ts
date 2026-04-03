@@ -24,6 +24,7 @@ import { applyGlobalCaptureShortcut } from './ipc/settings-handlers'
 import { autoOpenLastVault, closeVault } from './vault'
 import { getCurrentVaultPath } from './store'
 import { startSnoozeScheduler, stopSnoozeScheduler, checkDueItemsOnStartup } from './inbox/snooze'
+import { stopVoiceModel } from './inbox/voice-model'
 import { startReminderScheduler, stopReminderScheduler } from './lib/reminders'
 import { log, createLogger, disableConsoleTransport } from './lib/logger'
 import {
@@ -38,6 +39,7 @@ import { getIndexDatabase } from './database/client'
 import { toAbsolutePath, createSnapshot } from './vault/notes'
 import { safeRead } from './vault/file-ops'
 import { SnapshotReasons } from '@memry/db-schema/schema/notes-cache'
+import { SettingsChannels } from '@memry/contracts/ipc-channels'
 
 if (process.type === 'browser') {
   log.initialize()
@@ -98,7 +100,7 @@ protocol.registerSchemesAsPrivileged([
  * Environment configuration for external services
  */
 interface EnvironmentConfig {
-  /** OpenAI API key for transcription and AI suggestions */
+  /** Optional environment OpenAI API key for development-only integrations */
   openaiApiKey: string | undefined
   /** Whisper model to use for transcription */
   whisperModel: string
@@ -120,13 +122,11 @@ export const envConfig: EnvironmentConfig = {
  * Load and validate environment variables for external services
  */
 function loadEnvironmentConfig(): void {
-  // OpenAI API Key - required for voice transcription and AI suggestions
+  // Optional development OpenAI API key
   envConfig.openaiApiKey = process.env.OPENAI_API_KEY
 
   if (!envConfig.openaiApiKey) {
-    configLog.warn(
-      'OPENAI_API_KEY not set. Voice transcription and AI suggestions will be disabled.'
-    )
+    configLog.warn('OPENAI_API_KEY not set. Voice transcription will rely on BYOK settings.')
   } else {
     configLog.info('OpenAI API key loaded successfully')
   }
@@ -522,6 +522,25 @@ void app.whenReady().then(async () => {
     quickCaptureWindow.setSize(width, clamped)
   })
 
+  ipcMain.on('quick-capture:open-settings', (_event, section?: string) => {
+    const mainWindow = BrowserWindow.getAllWindows().find(
+      (win) => win !== quickCaptureWindow && !win.isDestroyed()
+    )
+
+    if (mainWindow) {
+      if (mainWindow.isMinimized()) {
+        mainWindow.restore()
+      }
+      if (!mainWindow.isVisible()) {
+        mainWindow.show()
+      }
+      mainWindow.focus()
+      mainWindow.webContents.send(SettingsChannels.events.OPEN_SECTION, section ?? 'general')
+    }
+
+    closeQuickCaptureWindow()
+  })
+
   // Deep link handler for memry:// protocol (T041e)
   // macOS: deep links arrive via open-url event
   app.on('open-url', (event, url) => {
@@ -851,10 +870,16 @@ app.on('before-quit', (event) => {
 
       shutdownLog.info('stopping reminder scheduler...')
       stopReminderScheduler()
-
+    })
+    .then(() => {
+      shutdownLog.info('stopping voice transcription utility...')
+      return stopVoiceModel()
+    })
+    .then(() => {
       shutdownLog.info('stopping sync runtime...')
       return stopSyncRuntime()
     })
+
     .then(() => {
       shutdownLog.info('closing vault and stopping watcher...')
       return closeVault()

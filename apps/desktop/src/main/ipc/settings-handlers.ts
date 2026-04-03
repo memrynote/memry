@@ -15,7 +15,8 @@ import {
   TASK_SETTINGS_DEFAULTS,
   KEYBOARD_SHORTCUTS_DEFAULTS,
   SYNC_SETTINGS_DEFAULTS,
-  BACKUP_SETTINGS_DEFAULTS
+  BACKUP_SETTINGS_DEFAULTS,
+  VOICE_TRANSCRIPTION_SETTINGS_DEFAULTS
 } from '@memry/contracts/settings-schemas'
 import type {
   GeneralSettings,
@@ -23,7 +24,8 @@ import type {
   TaskSettings,
   KeyboardShortcuts,
   SyncSettings,
-  BackupSettings
+  BackupSettings,
+  VoiceTranscriptionSettings
 } from '@memry/contracts/settings-schemas'
 import { GRAPH_SETTINGS_DEFAULTS } from '@memry/contracts/graph-api'
 import type { GraphSettings } from '@memry/contracts/graph-api'
@@ -34,6 +36,12 @@ import { getSetting, setSetting, deleteSetting } from '@main/database/queries/se
 import { initEmbeddingModel, getModelInfo, isModelLoaded, isModelLoading } from '../lib/embeddings'
 import { writePreferences, PORTABLE_GENERAL_FIELDS } from '../vault/vault-preferences'
 import { getCurrentVaultPath } from '../store'
+import { downloadVoiceModel, getVoiceModelStatus } from '../inbox/voice-model'
+import { getVoiceRecordingReadiness } from '../inbox/voice-transcription-settings'
+import {
+  hasVoiceTranscriptionOpenAIApiKey,
+  setVoiceTranscriptionOpenAIApiKey
+} from '../inbox/voice-transcription-keychain'
 
 // ============================================================================
 // Settings Keys
@@ -97,6 +105,10 @@ export interface AIModelStatus {
 /** Default AI settings values */
 const DEFAULT_AI_SETTINGS: AISettings = {
   enabled: true
+}
+
+export interface VoiceTranscriptionOpenAIKeyStatus {
+  hasApiKey: boolean
 }
 
 // ============================================================================
@@ -369,8 +381,68 @@ export function registerSettingsHandlers(): void {
     }
   )
 
+  ipcMain.handle(SettingsChannels.invoke.GET_VOICE_TRANSCRIPTION_SETTINGS, () => {
+    return readGroupSettings('voiceTranscription', VOICE_TRANSCRIPTION_SETTINGS_DEFAULTS)
+  })
+
+  ipcMain.handle(
+    SettingsChannels.invoke.SET_VOICE_TRANSCRIPTION_SETTINGS,
+    (_event, settings: Partial<VoiceTranscriptionSettings>) => {
+      return writeGroupSettings(
+        'voiceTranscription',
+        VOICE_TRANSCRIPTION_SETTINGS_DEFAULTS,
+        settings
+      )
+    }
+  )
+
+  ipcMain.handle(SettingsChannels.invoke.GET_VOICE_MODEL_STATUS, () => {
+    return getVoiceModelStatus()
+  })
+
+  ipcMain.handle(SettingsChannels.invoke.DOWNLOAD_VOICE_MODEL, async () => {
+    try {
+      const success = await downloadVoiceModel()
+      if (success) {
+        return { success: true }
+      }
+
+      const status = getVoiceModelStatus()
+      return { success: false, error: status.error ?? 'Failed to download voice model' }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error'
+      return { success: false, error: message }
+    }
+  })
+
+  ipcMain.handle(SettingsChannels.invoke.GET_VOICE_RECORDING_READINESS, async () => {
+    return getVoiceRecordingReadiness()
+  })
+
+  ipcMain.handle(
+    SettingsChannels.invoke.GET_VOICE_TRANSCRIPTION_OPENAI_KEY_STATUS,
+    async (): Promise<VoiceTranscriptionOpenAIKeyStatus> => {
+      return {
+        hasApiKey: await hasVoiceTranscriptionOpenAIApiKey()
+      }
+    }
+  )
+
+  ipcMain.handle(
+    SettingsChannels.invoke.SET_VOICE_TRANSCRIPTION_OPENAI_KEY,
+    async (_event, { apiKey }: { apiKey: string }) => {
+      try {
+        await setVoiceTranscriptionOpenAIApiKey(apiKey)
+        return { success: true }
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'Unknown error'
+        return { success: false, error: message }
+      }
+    }
+  )
+
   // Get AI model status
-  ipcMain.handle(SettingsChannels.invoke.GET_AI_MODEL_STATUS, async () => {
+  ipcMain.handle(SettingsChannels.invoke.GET_AI_MODEL_STATUS, async (): Promise<AIModelStatus> => {
     const modelInfo = getModelInfo()
 
     // Get embedding count if database is available
@@ -751,6 +823,13 @@ export function unregisterSettingsHandlers(): void {
   ipcMain.removeHandler(SettingsChannels.invoke.SET_JOURNAL_SETTINGS)
   ipcMain.removeHandler(SettingsChannels.invoke.GET_AI_SETTINGS)
   ipcMain.removeHandler(SettingsChannels.invoke.SET_AI_SETTINGS)
+  ipcMain.removeHandler(SettingsChannels.invoke.GET_VOICE_TRANSCRIPTION_SETTINGS)
+  ipcMain.removeHandler(SettingsChannels.invoke.SET_VOICE_TRANSCRIPTION_SETTINGS)
+  ipcMain.removeHandler(SettingsChannels.invoke.GET_VOICE_MODEL_STATUS)
+  ipcMain.removeHandler(SettingsChannels.invoke.DOWNLOAD_VOICE_MODEL)
+  ipcMain.removeHandler(SettingsChannels.invoke.GET_VOICE_RECORDING_READINESS)
+  ipcMain.removeHandler(SettingsChannels.invoke.GET_VOICE_TRANSCRIPTION_OPENAI_KEY_STATUS)
+  ipcMain.removeHandler(SettingsChannels.invoke.SET_VOICE_TRANSCRIPTION_OPENAI_KEY)
   ipcMain.removeHandler(SettingsChannels.invoke.GET_AI_MODEL_STATUS)
   ipcMain.removeHandler(SettingsChannels.invoke.LOAD_AI_MODEL)
   ipcMain.removeHandler(SettingsChannels.invoke.REINDEX_EMBEDDINGS)
