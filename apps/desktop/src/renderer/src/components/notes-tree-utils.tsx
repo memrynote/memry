@@ -1,3 +1,5 @@
+import { FileText, FileType2, Image, Music, Video } from '@/lib/icons'
+import { NoteIconDisplay } from '@/lib/render-note-icon'
 import type { FolderInfo } from '../../../preload/index.d'
 import type { NoteListItem } from '@/hooks/use-notes-query'
 import type { FolderNode, TreeStructure } from '@/lib/virtualized-tree-utils'
@@ -180,5 +182,44 @@ export function buildTreeFromNotes(
   return {
     folders: rootFolders,
     rootNotes
+  }
+}
+
+export function collectAllFolderIds(tree: TreeStructure): string[] {
+  const ids: string[] = []
+  const walk = (folders: FolderNode[]): void => {
+    for (const folder of folders) {
+      ids.push(`folder-${folder.path}`)
+      walk(folder.children)
+    }
+  }
+  walk(tree.folders)
+  return ids
+}
+
+// ============================================================================
+// Icon Utilities
+// ============================================================================
+
+export function getFileIcon(note: NoteListItem): React.ReactElement {
+  if (note.emoji) {
+    return <NoteIconDisplay value={note.emoji} className="text-sm leading-none shrink-0" />
+  }
+
+  const fileType = note.fileType ?? 'markdown'
+  const iconClass = 'h-4 w-4 text-muted-foreground shrink-0'
+
+  switch (fileType) {
+    case 'pdf':
+      return <FileType2 className={`${iconClass} text-red-500`} />
+    case 'image':
+      return <Image className={`${iconClass} text-blue-500`} />
+    case 'audio':
+      return <Music className={`${iconClass} text-green-500`} />
+    case 'video':
+      return <Video className={`${iconClass} text-purple-500`} />
+    case 'markdown':
+    default:
+      return <FileText className={iconClass} />
   }
 }

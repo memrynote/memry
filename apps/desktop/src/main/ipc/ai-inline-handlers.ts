@@ -6,6 +6,7 @@ import { startChatServer, stopChatServer, getServerPort } from '../ai-inline/ai-
 import { getDatabase } from '../database'
 import { getSetting, setSetting } from '@main/database/queries/settings'
 import { createLogger } from '../lib/logger'
+import { withErrorHandler } from './validate'
 
 const logger = createLogger('IPC:AIInline')
 
@@ -74,20 +75,17 @@ export function registerAIInlineHandlers(): void {
     return getServerPort()
   })
 
-  ipcMain.handle(AIInlineChannels.invoke.START_SERVER, async () => {
-    try {
+  ipcMain.handle(
+    AIInlineChannels.invoke.START_SERVER,
+    withErrorHandler(async () => {
       const settings = readSettings()
       if (!settings.enabled) {
         return { success: false, error: 'AI inline editing is disabled' }
       }
       const port = await startChatServer(settings)
       return { success: true, port }
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown error'
-      logger.error('Failed to start AI chat server:', message)
-      return { success: false, error: message }
-    }
-  })
+    }, 'Unknown error')
+  )
 
   ipcMain.handle(AIInlineChannels.invoke.STOP_SERVER, async () => {
     await stopChatServer()

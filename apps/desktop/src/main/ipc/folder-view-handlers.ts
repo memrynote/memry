@@ -33,7 +33,7 @@ import {
 } from '@memry/contracts/folder-view-api'
 import { createLogger } from '../lib/logger'
 import { getNoteFolderSuggestions } from '../inbox/suggestions'
-import { createValidatedHandler } from './validate'
+import { createValidatedHandler, withErrorHandler } from './validate'
 import { readFolderConfig, writeFolderConfig, folderExists } from '../vault/folders'
 import { getIndexDatabase as getDataDb } from '../database'
 import { noteCache, noteTags, noteProperties } from '@memry/db-schema/schema/notes-cache'
@@ -107,19 +107,17 @@ export function registerFolderViewHandlers(): void {
   // folder-view:set-config - Set folder view configuration
   ipcMain.handle(
     FolderViewChannels.invoke.SET_CONFIG,
-    createValidatedHandler(SetConfigRequestSchema, async (input): Promise<SetConfigResponse> => {
-      try {
+    createValidatedHandler(
+      SetConfigRequestSchema,
+      withErrorHandler(async (input): Promise<SetConfigResponse> => {
         const currentConfig = (await readFolderConfig(input.folderPath)) || {}
         await writeFolderConfig(input.folderPath, {
           ...currentConfig,
           ...input.config
         })
         return { success: true }
-      } catch (error) {
-        const message = error instanceof Error ? error.message : 'Failed to set config'
-        return { success: false, error: message }
-      }
-    })
+      }, 'Failed to set config')
+    )
   )
 
   // folder-view:get-views - Get all views for a folder
@@ -140,22 +138,20 @@ export function registerFolderViewHandlers(): void {
   // folder-view:set-view - Add or update a single view
   ipcMain.handle(
     FolderViewChannels.invoke.SET_VIEW,
-    createValidatedHandler(SetViewRequestSchema, async (input): Promise<SetViewResponse> => {
-      try {
+    createValidatedHandler(
+      SetViewRequestSchema,
+      withErrorHandler(async (input): Promise<SetViewResponse> => {
         const currentConfig = (await readFolderConfig(input.folderPath)) || {}
         const views = currentConfig.views || []
 
-        // Find existing view by name
         const existingIndex = views.findIndex((v) => v.name === input.view.name)
 
         if (existingIndex >= 0) {
-          // Update existing
           views[existingIndex] = input.view
         } else {
           views.push(input.view)
         }
 
-        // If this view is default, clear default from others
         if (input.view.default) {
           views.forEach((v, i) => {
             if (i !== (existingIndex >= 0 ? existingIndex : views.length - 1)) {
@@ -166,29 +162,24 @@ export function registerFolderViewHandlers(): void {
 
         await writeFolderConfig(input.folderPath, { ...currentConfig, views })
         return { success: true }
-      } catch (error) {
-        logger.error('set-view error:', error)
-        const message = error instanceof Error ? error.message : 'Failed to set view'
-        return { success: false, error: message }
-      }
-    })
+      }, 'Failed to set view')
+    )
   )
 
   // folder-view:delete-view - Delete a view by name
   ipcMain.handle(
     FolderViewChannels.invoke.DELETE_VIEW,
-    createValidatedHandler(DeleteViewRequestSchema, async (input): Promise<DeleteViewResponse> => {
-      try {
+    createValidatedHandler(
+      DeleteViewRequestSchema,
+      withErrorHandler(async (input): Promise<DeleteViewResponse> => {
         const currentConfig = (await readFolderConfig(input.folderPath)) || {}
         const views = currentConfig.views || []
 
         const filtered = views.filter((v) => v.name !== input.viewName)
 
-        // If we deleted the last view, don't save (revert to default)
         if (filtered.length === 0) {
           await writeFolderConfig(input.folderPath, { ...currentConfig, views: undefined })
         } else {
-          // If we deleted the default view, make first view default
           if (!filtered.some((v) => v.default)) {
             filtered[0].default = true
           }
@@ -196,11 +187,8 @@ export function registerFolderViewHandlers(): void {
         }
 
         return { success: true }
-      } catch (error) {
-        const message = error instanceof Error ? error.message : 'Failed to delete view'
-        return { success: false, error: message }
-      }
-    })
+      }, 'Failed to delete view')
+    )
   )
 
   // folder-view:list-with-properties - List notes in folder with property values

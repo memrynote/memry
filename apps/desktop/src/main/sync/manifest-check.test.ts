@@ -1,5 +1,11 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
-import { createTestDataDb, createTestIndexDb, type TestDatabaseResult } from '@tests/utils/test-db'
+import {
+  createTestDataDb,
+  createTestIndexDb,
+  asClientDb,
+  asSyncDb,
+  type TestDatabaseResult
+} from '@tests/utils/test-db'
 import { tasks } from '@memry/db-schema/schema/tasks'
 import { projects } from '@memry/db-schema/schema/projects'
 import { inboxItems } from '@memry/db-schema/schema/inbox'
@@ -30,8 +36,7 @@ describe('checkManifestIntegrity', () => {
     vi.resetModules()
     testDb = createTestDataDb()
     testIndexDb = createTestIndexDb()
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    queue = new SyncQueueManager(testDb.db as any)
+    queue = new SyncQueueManager(asClientDb(testDb.db))
     testDb.db.insert(projects).values(TEST_PROJECT).run()
 
     const { getIndexDatabase } = await import('../database/client')
@@ -69,8 +74,7 @@ describe('checkManifestIntegrity', () => {
 
       // #when
       await checkManifestIntegrity({
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        db: testDb.db as any,
+        db: asSyncDb(testDb.db),
         queue,
         getAccessToken: async () => 'test-token',
         isOnline: () => true
@@ -110,8 +114,7 @@ describe('checkManifestIntegrity', () => {
 
       // #when
       await checkManifestIntegrity({
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        db: testDb.db as any,
+        db: asSyncDb(testDb.db),
         queue,
         getAccessToken: async () => 'test-token',
         isOnline: () => true
@@ -129,8 +132,7 @@ describe('checkManifestIntegrity', () => {
       const { checkManifestIntegrity } = await import('./manifest-check')
 
       await checkManifestIntegrity({
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        db: testDb.db as any,
+        db: asSyncDb(testDb.db),
         queue,
         getAccessToken: async () => null,
         isOnline: () => true
@@ -159,8 +161,7 @@ describe('checkManifestIntegrity', () => {
       const { checkManifestIntegrity } = await import('./manifest-check')
 
       const deps = {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        db: testDb.db as any,
+        db: asSyncDb(testDb.db),
         queue,
         getAccessToken: async () => 'test-token',
         isOnline: () => true
@@ -197,8 +198,7 @@ describe('checkManifestIntegrity', () => {
 
       // #when
       await checkManifestIntegrity({
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        db: testDb.db as any,
+        db: asSyncDb(testDb.db),
         queue,
         getAccessToken: async () => 'test-token',
         isOnline: () => true
@@ -227,8 +227,7 @@ describe('checkManifestIntegrity', () => {
 
       // #when
       const result = await checkManifestIntegrity({
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        db: testDb.db as any,
+        db: asSyncDb(testDb.db),
         queue,
         getAccessToken: async () => 'test-token',
         isOnline: () => true
@@ -265,8 +264,7 @@ describe('checkManifestIntegrity', () => {
 
       // #when
       const result = await checkManifestIntegrity({
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        db: testDb.db as any,
+        db: asSyncDb(testDb.db),
         queue,
         getAccessToken: async () => 'test-token',
         isOnline: () => true
@@ -304,8 +302,7 @@ describe('checkManifestIntegrity', () => {
 
       // #when
       const result = await checkManifestIntegrity({
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        db: testDb.db as any,
+        db: asSyncDb(testDb.db),
         queue,
         getAccessToken: async () => 'test-token',
         isOnline: () => true
@@ -334,8 +331,7 @@ describe('checkManifestIntegrity', () => {
 
       // #when
       const result = await checkManifestIntegrity({
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        db: testDb.db as any,
+        db: asSyncDb(testDb.db),
         queue,
         getAccessToken: async () => 'test-token',
         isOnline: () => true
@@ -363,8 +359,7 @@ describe('checkManifestIntegrity', () => {
 
       // #when
       const result = await checkManifestIntegrity({
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        db: testDb.db as any,
+        db: asSyncDb(testDb.db),
         queue,
         getAccessToken: async () => 'test-token',
         isOnline: () => true

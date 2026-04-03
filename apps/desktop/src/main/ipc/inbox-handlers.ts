@@ -65,6 +65,7 @@ import { snoozeItem, unsnoozeItem, getSnoozedItems } from '../inbox/snooze'
 import type { SnoozeInput, SnoozedItem } from '../inbox/snooze'
 import { getInboxSyncService } from '../sync/inbox-sync'
 import { incrementInboxClockOffline } from '../sync/offline-clock'
+import { withErrorHandler, withDb } from './validate'
 import {
   createInboxCrudHandlers,
   registerInboxCrudHandlers,
@@ -380,69 +381,60 @@ function toListItem(row: typeof inboxItems.$inferSelect, tags: string[]): InboxI
 /**
  * Capture text content
  */
-async function handleCaptureText(input: unknown): Promise<CaptureResponse> {
-  try {
-    const parsed = CaptureTextSchema.parse(input)
-    const db = requireDatabase()
+const handleCaptureText = withErrorHandler(async (input: unknown): Promise<CaptureResponse> => {
+  const parsed = CaptureTextSchema.parse(input)
+  const db = requireDatabase()
 
-    if (!parsed.force) {
-      const duplicate = findDuplicateByContent(parsed.content)
-      if (duplicate) {
-        return { success: true, item: null, duplicate: true, existingItem: duplicate }
-      }
+  if (!parsed.force) {
+    const duplicate = findDuplicateByContent(parsed.content)
+    if (duplicate) {
+      return { success: true, item: null, duplicate: true, existingItem: duplicate }
     }
-
-    const id = generateId()
-    const now = new Date().toISOString()
-
-    // Insert inbox item
-    db.insert(inboxItems)
-      .values({
-        id,
-        type: 'note',
-        title:
-          parsed.title ||
-          parsed.content.substring(0, 50) + (parsed.content.length > 50 ? '...' : ''),
-        content: parsed.content,
-        createdAt: now,
-        modifiedAt: now,
-        processingStatus: 'complete',
-        captureSource: parsed.source ?? null
-      })
-      .run()
-
-    // Insert tags if provided
-    if (parsed.tags && parsed.tags.length > 0) {
-      for (const tag of parsed.tags) {
-        db.insert(inboxItemTags)
-          .values({
-            id: generateId(),
-            itemId: id,
-            tag,
-            createdAt: now
-          })
-          .run()
-      }
-    }
-
-    // Fetch the created item
-    const created = db.select().from(inboxItems).where(eq(inboxItems.id, id)).get()
-    if (!created) {
-      return { success: false, item: null, error: 'Failed to create item' }
-    }
-
-    const tags = getItemTags(db, id)
-    const item = toInboxItem(created, tags)
-
-    emitInboxEvent(InboxChannels.events.CAPTURED, { item: toListItem(created, tags) })
-    syncInboxCreate(db, id)
-
-    return { success: true, item }
-  } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error'
-    return { success: false, item: null, error: message }
   }
-}
+
+  const id = generateId()
+  const now = new Date().toISOString()
+
+  db.insert(inboxItems)
+    .values({
+      id,
+      type: 'note',
+      title:
+        parsed.title || parsed.content.substring(0, 50) + (parsed.content.length > 50 ? '...' : ''),
+      content: parsed.content,
+      createdAt: now,
+      modifiedAt: now,
+      processingStatus: 'complete',
+      captureSource: parsed.source ?? null
+    })
+    .run()
+
+  if (parsed.tags && parsed.tags.length > 0) {
+    for (const tag of parsed.tags) {
+      db.insert(inboxItemTags)
+        .values({
+          id: generateId(),
+          itemId: id,
+          tag,
+          createdAt: now
+        })
+        .run()
+    }
+  }
+
+  const created = db.select().from(inboxItems).where(eq(inboxItems.id, id)).get()
+  if (!created) {
+    return { success: false, item: null, error: 'Failed to create item' }
+  }
+
+  const tags = getItemTags(db, id)
+  const item = toInboxItem(created, tags)
+
+  emitInboxEvent(InboxChannels.events.CAPTURED, { item: toListItem(created, tags) })
+  syncInboxCreate(db, id)
+
+  return { success: true, item }
+}, 'Unknown error')
 
 /**
  * Capture a URL with background metadata extraction
@@ -450,103 +442,94 @@ async function handleCaptureText(input: unknown): Promise<CaptureResponse> {
  * Automatically detects Twitter/X posts and uses specialized extraction
  * for richer metadata display.
  */
-async function handleCaptureLink(input: unknown): Promise<CaptureResponse> {
-  try {
-    const parsed = CaptureLinkSchema.parse(input)
-    const db = requireDatabase()
+const handleCaptureLink = withErrorHandler(async (input: unknown): Promise<CaptureResponse> => {
+  const parsed = CaptureLinkSchema.parse(input)
+  const db = requireDatabase()
 
-    if (!parsed.force) {
-      const duplicate = findDuplicateByUrl(parsed.url)
-      if (duplicate) {
-        return { success: true, item: null, duplicate: true, existingItem: duplicate }
-      }
+  if (!parsed.force) {
+    const duplicate = findDuplicateByUrl(parsed.url)
+    if (duplicate) {
+      return { success: true, item: null, duplicate: true, existingItem: duplicate }
     }
-
-    const id = generateId()
-    const now = new Date().toISOString()
-
-    // Detect if this is a social media post
-    const platform = detectSocialPlatform(parsed.url)
-    const isSocial = platform !== null && isSocialPost(parsed.url)
-    const itemType = isSocial ? 'social' : 'link'
-
-    logger.info(`URL detected as ${itemType}${platform ? ` (${platform})` : ''}: ${parsed.url}`)
-
-    // Create item with pending status
-    // For social posts, we set type to 'social' for specialized UI handling
-    db.insert(inboxItems)
-      .values({
-        id,
-        type: itemType,
-        title: titleFromUrl(parsed.url),
-        content: null,
-        sourceUrl: parsed.url,
-        createdAt: now,
-        modifiedAt: now,
-        processingStatus: 'pending', // Metadata fetch is pending
-        captureSource: parsed.source ?? null,
-        metadata: isSocial
-          ? {
-              platform: platform || 'other',
-              postUrl: parsed.url,
-              authorName: '',
-              authorHandle: '',
-              postContent: '',
-              mediaUrls: [],
-              extractionStatus: 'pending' as const
-            }
-          : {
-              url: parsed.url,
-              fetchStatus: 'pending'
-            }
-      })
-      .run()
-
-    // Insert tags if provided
-    if (parsed.tags && parsed.tags.length > 0) {
-      for (const tag of parsed.tags) {
-        db.insert(inboxItemTags)
-          .values({
-            id: generateId(),
-            itemId: id,
-            tag,
-            createdAt: now
-          })
-          .run()
-      }
-    }
-
-    const created = db.select().from(inboxItems).where(eq(inboxItems.id, id)).get()
-    if (!created) {
-      return { success: false, item: null, error: 'Failed to create item' }
-    }
-
-    const tags = getItemTags(db, id)
-    const item = toInboxItem(created, tags)
-
-    emitInboxEvent(InboxChannels.events.CAPTURED, { item: toListItem(created, tags) })
-    syncInboxCreate(db, id)
-
-    if (isSocial) {
-      try {
-        storeSocialMetadata(id, parsed.url)
-      } catch (err) {
-        logger.error('Social metadata storage error:', err)
-      }
-    } else {
-      setImmediate(() => {
-        fetchAndUpdateMetadata(id, parsed.url).catch((err) => {
-          logger.error('Background metadata fetch error:', err)
-        })
-      })
-    }
-
-    return { success: true, item }
-  } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error'
-    return { success: false, item: null, error: message }
   }
-}
+
+  const id = generateId()
+  const now = new Date().toISOString()
+
+  const platform = detectSocialPlatform(parsed.url)
+  const isSocial = platform !== null && isSocialPost(parsed.url)
+  const itemType = isSocial ? 'social' : 'link'
+
+  logger.info(`URL detected as ${itemType}${platform ? ` (${platform})` : ''}: ${parsed.url}`)
+
+  db.insert(inboxItems)
+    .values({
+      id,
+      type: itemType,
+      title: titleFromUrl(parsed.url),
+      content: null,
+      sourceUrl: parsed.url,
+      createdAt: now,
+      modifiedAt: now,
+      processingStatus: 'pending',
+      captureSource: parsed.source ?? null,
+      metadata: isSocial
+        ? {
+            platform: platform || 'other',
+            postUrl: parsed.url,
+            authorName: '',
+            authorHandle: '',
+            postContent: '',
+            mediaUrls: [],
+            extractionStatus: 'pending' as const
+          }
+        : {
+            url: parsed.url,
+            fetchStatus: 'pending'
+          }
+    })
+    .run()
+
+  if (parsed.tags && parsed.tags.length > 0) {
+    for (const tag of parsed.tags) {
+      db.insert(inboxItemTags)
+        .values({
+          id: generateId(),
+          itemId: id,
+          tag,
+          createdAt: now
+        })
+        .run()
+    }
+  }
+
+  const created = db.select().from(inboxItems).where(eq(inboxItems.id, id)).get()
+  if (!created) {
+    return { success: false, item: null, error: 'Failed to create item' }
+  }
+
+  const tags = getItemTags(db, id)
+  const item = toInboxItem(created, tags)
+
+  emitInboxEvent(InboxChannels.events.CAPTURED, { item: toListItem(created, tags) })
+  syncInboxCreate(db, id)
+
+  if (isSocial) {
+    try {
+      storeSocialMetadata(id, parsed.url)
+    } catch (err) {
+      logger.error('Social metadata storage error:', err)
+    }
+  } else {
+    setImmediate(() => {
+      fetchAndUpdateMetadata(id, parsed.url).catch((err) => {
+        logger.error('Background metadata fetch error:', err)
+      })
+    })
+  }
+
+  return { success: true, item }
+}, 'Unknown error')
 
 // ============================================================================
 // Stub Handlers (To be implemented in later phases)
@@ -569,175 +552,152 @@ function getInboxTypeFromMime(mimeType: string): 'image' | 'voice' | 'video' | '
  * For images: validates format, extracts metadata, generates thumbnail
  * For audio/video/PDF: stores file directly without image processing
  */
-async function handleCaptureImage(input: unknown): Promise<CaptureResponse> {
-  try {
-    const parsed = CaptureImageSchema.parse(input)
-    const db = requireDatabase()
+const handleCaptureImage = withErrorHandler(async (input: unknown): Promise<CaptureResponse> => {
+  const parsed = CaptureImageSchema.parse(input)
+  const db = requireDatabase()
 
-    const id = generateId()
-    const now = new Date().toISOString()
+  const id = generateId()
+  const now = new Date().toISOString()
 
-    // Determine file type from MIME
-    const inboxType = getInboxTypeFromMime(parsed.mimeType)
-    const isImage = ALLOWED_IMAGE_TYPES.includes(parsed.mimeType)
+  const inboxType = getInboxTypeFromMime(parsed.mimeType)
+  const isImage = ALLOWED_IMAGE_TYPES.includes(parsed.mimeType)
 
-    // Convert data to Buffer
-    // IPC serialization may convert Buffer/ArrayBuffer to Uint8Array or plain object with numeric keys
-    let fileBuffer: Buffer
-    if (Buffer.isBuffer(parsed.data)) {
-      fileBuffer = parsed.data
-    } else if (parsed.data instanceof Uint8Array) {
-      fileBuffer = Buffer.from(parsed.data)
-    } else if (parsed.data instanceof ArrayBuffer) {
-      fileBuffer = Buffer.from(parsed.data)
-    } else if (typeof parsed.data === 'object' && parsed.data !== null) {
-      // Handle plain object from IPC serialization (has numeric keys like {0: 255, 1: 216, ...})
-      // Check if it looks like a serialized buffer (has 'type' and 'data' properties from Buffer.toJSON())
-      const data = parsed.data as Record<string, unknown>
-      if (data.type === 'Buffer' && Array.isArray(data.data)) {
-        // Electron serializes Buffer as {type: 'Buffer', data: [bytes...]}
-        fileBuffer = Buffer.from(data.data as number[])
-      } else {
-        // Plain object with numeric keys
-        const values = Object.values(data).filter((v): v is number => typeof v === 'number')
-        if (values.length === 0) {
-          return {
-            success: false,
-            item: null,
-            error: 'Invalid file data format: empty or non-numeric data'
-          }
-        }
-        fileBuffer = Buffer.from(values)
-      }
+  let fileBuffer: Buffer
+  if (Buffer.isBuffer(parsed.data)) {
+    fileBuffer = parsed.data
+  } else if (parsed.data instanceof Uint8Array) {
+    fileBuffer = Buffer.from(parsed.data)
+  } else if (parsed.data instanceof ArrayBuffer) {
+    fileBuffer = Buffer.from(parsed.data)
+  } else if (typeof parsed.data === 'object' && parsed.data !== null) {
+    const data = parsed.data as Record<string, unknown>
+    if (data.type === 'Buffer' && Array.isArray(data.data)) {
+      fileBuffer = Buffer.from(data.data as number[])
     } else {
-      return {
-        success: false,
-        item: null,
-        error: 'Invalid file data format'
-      }
-    }
-
-    // Validate we have actual data
-    if (fileBuffer.length === 0) {
-      return {
-        success: false,
-        item: null,
-        error: 'Empty file data'
-      }
-    }
-
-    // Store the file
-    const storeResult = await storeInboxAttachment(id, fileBuffer, parsed.filename, parsed.mimeType)
-
-    if (!storeResult.success) {
-      return {
-        success: false,
-        item: null,
-        error: storeResult.error || 'Failed to store file'
-      }
-    }
-
-    let thumbnailPath: string | null = null
-    let itemMetadata: Record<string, unknown> = {
-      originalFilename: parsed.filename,
-      fileSize: fileBuffer.length,
-      mimeType: parsed.mimeType
-    }
-
-    // For images: extract metadata and generate thumbnail
-    if (isImage) {
-      try {
-        const metadata = await sharp(fileBuffer).metadata()
-
-        if (metadata.width && metadata.height) {
-          // Build image metadata
-          const imageMetadata: ImageMetadata = {
-            originalFilename: parsed.filename,
-            format: metadata.format || 'unknown',
-            width: metadata.width,
-            height: metadata.height,
-            fileSize: fileBuffer.length,
-            hasExif: !!(metadata.exif || metadata.icc)
-          }
-          itemMetadata = imageMetadata as unknown as Record<string, unknown>
-
-          // Generate thumbnail (max 400x400, JPEG for smaller size)
-          try {
-            const thumbnailBuffer = await sharp(fileBuffer)
-              .resize(400, 400, {
-                fit: 'inside',
-                withoutEnlargement: true
-              })
-              .jpeg({ quality: 80 })
-              .toBuffer()
-
-            const thumbnailResult = await storeThumbnail(id, thumbnailBuffer, 'jpg')
-            if (thumbnailResult.success && thumbnailResult.thumbnailPath) {
-              thumbnailPath = thumbnailResult.thumbnailPath
-            }
-          } catch (err) {
-            // Thumbnail generation failed - not fatal, continue without thumbnail
-            logger.warn('Failed to generate thumbnail:', err)
-          }
+      const values = Object.values(data).filter((v): v is number => typeof v === 'number')
+      if (values.length === 0) {
+        return {
+          success: false,
+          item: null,
+          error: 'Invalid file data format: empty or non-numeric data'
         }
-      } catch (err) {
-        // Image metadata extraction failed - not fatal for storage
-        logger.warn('Failed to read image metadata:', err)
       }
+      fileBuffer = Buffer.from(values)
     }
-
-    // Insert inbox item
-    db.insert(inboxItems)
-      .values({
-        id,
-        type: inboxType,
-        title: parsed.filename.replace(/\.[^.]+$/, ''), // Remove extension for title
-        content: null,
-        createdAt: now,
-        modifiedAt: now,
-        processingStatus: 'complete',
-        attachmentPath: storeResult.path || null,
-        thumbnailPath,
-        metadata: itemMetadata,
-        captureSource: parsed.source ?? null
-      })
-      .run()
-
-    // Insert tags if provided
-    if (parsed.tags && parsed.tags.length > 0) {
-      for (const tag of parsed.tags) {
-        db.insert(inboxItemTags)
-          .values({
-            id: generateId(),
-            itemId: id,
-            tag,
-            createdAt: now
-          })
-          .run()
-      }
+  } else {
+    return {
+      success: false,
+      item: null,
+      error: 'Invalid file data format'
     }
-
-    // Fetch the created item
-    const created = db.select().from(inboxItems).where(eq(inboxItems.id, id)).get()
-    if (!created) {
-      return { success: false, item: null, error: 'Failed to create item' }
-    }
-
-    const tags = getItemTags(db, id)
-    const item = toInboxItem(created, tags)
-
-    emitInboxEvent(InboxChannels.events.CAPTURED, { item: toListItem(created, tags) })
-    syncInboxCreate(db, id)
-
-    logger.info(`Captured ${inboxType}: ${parsed.filename} (${fileBuffer.length} bytes)`)
-
-    return { success: true, item }
-  } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error'
-    logger.error('Attachment capture failed:', message)
-    return { success: false, item: null, error: message }
   }
-}
+
+  if (fileBuffer.length === 0) {
+    return {
+      success: false,
+      item: null,
+      error: 'Empty file data'
+    }
+  }
+
+  const storeResult = await storeInboxAttachment(id, fileBuffer, parsed.filename, parsed.mimeType)
+
+  if (!storeResult.success) {
+    return {
+      success: false,
+      item: null,
+      error: storeResult.error || 'Failed to store file'
+    }
+  }
+
+  let thumbnailPath: string | null = null
+  let itemMetadata: Record<string, unknown> = {
+    originalFilename: parsed.filename,
+    fileSize: fileBuffer.length,
+    mimeType: parsed.mimeType
+  }
+
+  if (isImage) {
+    try {
+      const metadata = await sharp(fileBuffer).metadata()
+
+      if (metadata.width && metadata.height) {
+        const imageMetadata: ImageMetadata = {
+          originalFilename: parsed.filename,
+          format: metadata.format || 'unknown',
+          width: metadata.width,
+          height: metadata.height,
+          fileSize: fileBuffer.length,
+          hasExif: !!(metadata.exif || metadata.icc)
+        }
+        itemMetadata = imageMetadata as unknown as Record<string, unknown>
+
+        try {
+          const thumbnailBuffer = await sharp(fileBuffer)
+            .resize(400, 400, {
+              fit: 'inside',
+              withoutEnlargement: true
+            })
+            .jpeg({ quality: 80 })
+            .toBuffer()
+
+          const thumbnailResult = await storeThumbnail(id, thumbnailBuffer, 'jpg')
+          if (thumbnailResult.success && thumbnailResult.thumbnailPath) {
+            thumbnailPath = thumbnailResult.thumbnailPath
+          }
+        } catch (err) {
+          logger.warn('Failed to generate thumbnail:', err)
+        }
+      }
+    } catch (err) {
+      logger.warn('Failed to read image metadata:', err)
+    }
+  }
+
+  db.insert(inboxItems)
+    .values({
+      id,
+      type: inboxType,
+      title: parsed.filename.replace(/\.[^.]+$/, ''),
+      content: null,
+      createdAt: now,
+      modifiedAt: now,
+      processingStatus: 'complete',
+      attachmentPath: storeResult.path || null,
+      thumbnailPath,
+      metadata: itemMetadata,
+      captureSource: parsed.source ?? null
+    })
+    .run()
+
+  if (parsed.tags && parsed.tags.length > 0) {
+    for (const tag of parsed.tags) {
+      db.insert(inboxItemTags)
+        .values({
+          id: generateId(),
+          itemId: id,
+          tag,
+          createdAt: now
+        })
+        .run()
+    }
+  }
+
+  const created = db.select().from(inboxItems).where(eq(inboxItems.id, id)).get()
+  if (!created) {
+    return { success: false, item: null, error: 'Failed to create item' }
+  }
+
+  const tags = getItemTags(db, id)
+  const item = toInboxItem(created, tags)
+
+  emitInboxEvent(InboxChannels.events.CAPTURED, { item: toListItem(created, tags) })
+  syncInboxCreate(db, id)
+
+  logger.info(`Captured ${inboxType}: ${parsed.filename} (${fileBuffer.length} bytes)`)
+
+  return { success: true, item }
+}, 'Unknown error')
 
 /**
  * Capture a voice memo
@@ -746,68 +706,54 @@ async function handleCaptureImage(input: unknown): Promise<CaptureResponse> {
  * Audio is stored in vault/attachments/inbox/{itemId}/ and
  * transcription is triggered asynchronously via OpenAI Whisper.
  */
-async function handleCaptureVoice(input: unknown): Promise<CaptureResponse> {
-  try {
-    // Input must be an object with data property
-    if (!input || typeof input !== 'object') {
-      return { success: false, item: null, error: 'Invalid voice capture input' }
-    }
-
-    const rawInput = input as Record<string, unknown>
-
-    // Convert data to Buffer - IPC serialization may convert Buffer/ArrayBuffer
-    // to Uint8Array or plain object with numeric keys
-    let audioBuffer: Buffer
-    const rawData = rawInput.data
-
-    if (Buffer.isBuffer(rawData)) {
-      audioBuffer = rawData
-    } else if (rawData instanceof Uint8Array) {
-      audioBuffer = Buffer.from(rawData)
-    } else if (rawData instanceof ArrayBuffer) {
-      audioBuffer = Buffer.from(rawData)
-    } else if (typeof rawData === 'object' && rawData !== null) {
-      // Handle plain object from IPC serialization
-      const data = rawData as Record<string, unknown>
-      if (data.type === 'Buffer' && Array.isArray(data.data)) {
-        // Electron serializes Buffer as {type: 'Buffer', data: [bytes...]}
-        audioBuffer = Buffer.from(data.data as number[])
-      } else {
-        // Plain object with numeric keys
-        const values = Object.values(data).filter((v): v is number => typeof v === 'number')
-        if (values.length === 0) {
-          return {
-            success: false,
-            item: null,
-            error: 'Invalid audio data format: empty or non-numeric data'
-          }
-        }
-        audioBuffer = Buffer.from(values)
-      }
-    } else {
-      return { success: false, item: null, error: 'Invalid audio data format' }
-    }
-
-    // Validate we have actual audio data
-    if (audioBuffer.length === 0) {
-      return { success: false, item: null, error: 'Empty audio data' }
-    }
-
-    // Call captureVoice with converted Buffer
-    return await captureVoice({
-      data: audioBuffer,
-      duration: rawInput.duration as number,
-      format: rawInput.format as 'webm' | 'mp3' | 'wav',
-      transcribe: rawInput.transcribe as boolean | undefined,
-      tags: rawInput.tags as string[] | undefined,
-      source: rawInput.source as CaptureVoiceInput['source']
-    })
-  } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error'
-    logger.error('Voice capture failed:', message)
-    return { success: false, item: null, error: message }
+const handleCaptureVoice = withErrorHandler(async (input: unknown): Promise<CaptureResponse> => {
+  if (!input || typeof input !== 'object') {
+    return { success: false, item: null, error: 'Invalid voice capture input' }
   }
-}
+
+  const rawInput = input as Record<string, unknown>
+
+  let audioBuffer: Buffer
+  const rawData = rawInput.data
+
+  if (Buffer.isBuffer(rawData)) {
+    audioBuffer = rawData
+  } else if (rawData instanceof Uint8Array) {
+    audioBuffer = Buffer.from(rawData)
+  } else if (rawData instanceof ArrayBuffer) {
+    audioBuffer = Buffer.from(rawData)
+  } else if (typeof rawData === 'object' && rawData !== null) {
+    const data = rawData as Record<string, unknown>
+    if (data.type === 'Buffer' && Array.isArray(data.data)) {
+      audioBuffer = Buffer.from(data.data as number[])
+    } else {
+      const values = Object.values(data).filter((v): v is number => typeof v === 'number')
+      if (values.length === 0) {
+        return {
+          success: false,
+          item: null,
+          error: 'Invalid audio data format: empty or non-numeric data'
+        }
+      }
+      audioBuffer = Buffer.from(values)
+    }
+  } else {
+    return { success: false, item: null, error: 'Invalid audio data format' }
+  }
+
+  if (audioBuffer.length === 0) {
+    return { success: false, item: null, error: 'Empty audio data' }
+  }
+
+  return await captureVoice({
+    data: audioBuffer,
+    duration: rawInput.duration as number,
+    format: rawInput.format as 'webm' | 'mp3' | 'wav',
+    transcribe: rawInput.transcribe as boolean | undefined,
+    tags: rawInput.tags as string[] | undefined,
+    source: rawInput.source as CaptureVoiceInput['source']
+  })
+}, 'Unknown error')
 
 async function stubCaptureClip(): Promise<CaptureResponse> {
   return { success: false, item: null, error: 'Not implemented yet' }
@@ -820,49 +766,42 @@ async function stubCapturePdf(): Promise<CaptureResponse> {
 /**
  * File an inbox item to a destination (folder, new note, or existing note(s))
  */
-async function handleFile(input: unknown): Promise<FileResponse> {
-  try {
-    const parsed = FileItemSchema.parse(input)
-    const { itemId, destination, tags } = parsed
+const handleFile = withErrorHandler(async (input: unknown): Promise<FileResponse> => {
+  const parsed = FileItemSchema.parse(input)
+  const { itemId, destination, tags } = parsed
 
-    switch (destination.type) {
-      case 'folder':
-        return fileToFolder(itemId, destination.path || '', tags)
-      case 'new-note':
-        return convertToNote(itemId)
-      case 'note': {
-        // Support both single noteId and multiple noteIds
-        const noteIds = destination.noteIds?.length
-          ? destination.noteIds
-          : destination.noteId
-            ? [destination.noteId]
-            : []
+  switch (destination.type) {
+    case 'folder':
+      return fileToFolder(itemId, destination.path || '', tags)
+    case 'new-note':
+      return convertToNote(itemId)
+    case 'note': {
+      const noteIds = destination.noteIds?.length
+        ? destination.noteIds
+        : destination.noteId
+          ? [destination.noteId]
+          : []
 
-        if (noteIds.length === 0) {
-          return {
-            success: false,
-            filedTo: null,
-            error: 'At least one note ID required for linking'
-          }
-        }
-
-        // Pass folder path so the inbox note is created in the selected folder
-        const result = await linkToNotes(itemId, noteIds, tags, destination.path)
+      if (noteIds.length === 0) {
         return {
-          success: result.success,
-          filedTo: noteIds[0],
-          noteId: noteIds[0],
-          error: result.error
+          success: false,
+          filedTo: null,
+          error: 'At least one note ID required for linking'
         }
       }
-      default:
-        return { success: false, filedTo: null, error: 'Invalid destination type' }
+
+      const result = await linkToNotes(itemId, noteIds, tags, destination.path)
+      return {
+        success: result.success,
+        filedTo: noteIds[0],
+        noteId: noteIds[0],
+        error: result.error
+      }
     }
-  } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error'
-    return { success: false, filedTo: null, error: message }
+    default:
+      return { success: false, filedTo: null, error: 'Invalid destination type' }
   }
-}
+}, 'Unknown error')
 
 /**
  * Get AI-powered filing suggestions for an inbox item
@@ -881,16 +820,16 @@ async function handleGetSuggestions(itemId: string): Promise<SuggestionsResponse
 /**
  * Track suggestion feedback (accepted/rejected)
  */
-async function handleTrackSuggestion(
-  itemId: string,
-  itemType: string,
-  suggestedTo: string,
-  actualTo: string,
-  confidence: number,
-  suggestedTags: string[] = [],
-  actualTags: string[] = []
-): Promise<{ success: boolean; error?: string }> {
-  try {
+const handleTrackSuggestion = withErrorHandler(
+  async (
+    itemId: string,
+    itemType: string,
+    suggestedTo: string,
+    actualTo: string,
+    confidence: number,
+    suggestedTags: string[] = [],
+    actualTags: string[] = []
+  ): Promise<{ success: boolean; error?: string }> => {
     trackSuggestionFeedback(
       itemId,
       itemType,
@@ -901,12 +840,9 @@ async function handleTrackSuggestion(
       actualTags
     )
     return { success: true }
-  } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error'
-    logger.error('Failed to track feedback:', message)
-    return { success: false, error: message }
-  }
-}
+  },
+  'Failed to track feedback'
+)
 
 /**
  * Convert an inbox item to a standalone note
@@ -935,8 +871,8 @@ async function handleLinkToNote(
 /**
  * Snooze an inbox item until a specified time
  */
-async function handleSnooze(input: unknown): Promise<{ success: boolean; error?: string }> {
-  try {
+const handleSnooze = withErrorHandler(
+  async (input: unknown): Promise<{ success: boolean; error?: string }> => {
     if (!input || typeof input !== 'object') {
       return { success: false, error: 'Invalid snooze input' }
     }
@@ -948,28 +884,24 @@ async function handleSnooze(input: unknown): Promise<{ success: boolean; error?:
 
     const result = snoozeItem(snoozeInput)
     return { success: result.success, error: result.error }
-  } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error'
-    return { success: false, error: message }
-  }
-}
+  },
+  'Snooze failed'
+)
 
 /**
  * Unsnooze an inbox item immediately
  */
-async function handleUnsnooze(itemId: string): Promise<{ success: boolean; error?: string }> {
-  try {
+const handleUnsnooze = withErrorHandler(
+  async (itemId: string): Promise<{ success: boolean; error?: string }> => {
     if (!itemId) {
       return { success: false, error: 'itemId is required' }
     }
 
     const result = unsnoozeItem(itemId)
     return { success: result.success, error: result.error }
-  } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error'
-    return { success: false, error: message }
-  }
-}
+  },
+  'Unsnooze failed'
+)
 
 /**
  * Get all snoozed items
@@ -988,29 +920,22 @@ async function handleGetSnoozed(): Promise<SnoozedItem[]> {
  *
  * Resets the transcription status and triggers a new transcription attempt.
  */
-async function handleRetryTranscription(
-  itemId: string
-): Promise<{ success: boolean; error?: string }> {
-  try {
+const handleRetryTranscription = withErrorHandler(
+  async (itemId: string): Promise<{ success: boolean; error?: string }> => {
     const result = await retryTranscription(itemId)
     return {
       success: result.success,
       error: result.error
     }
-  } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error'
-    logger.error('Transcription retry failed:', message)
-    return { success: false, error: message }
-  }
-}
+  },
+  'Transcription retry failed'
+)
 
 /**
  * Retry metadata fetch for a link item
  */
-async function handleRetryMetadata(itemId: string): Promise<{ success: boolean; error?: string }> {
-  try {
-    const db = requireDatabase()
-
+const handleRetryMetadata = withDb(
+  async (db, itemId: string): Promise<{ success: boolean; error?: string }> => {
     const item = db.select().from(inboxItems).where(eq(inboxItems.id, itemId)).get()
     if (!item) {
       return { success: false, error: 'Item not found' }
@@ -1024,7 +949,6 @@ async function handleRetryMetadata(itemId: string): Promise<{ success: boolean; 
       return { success: false, error: 'Item has no source URL' }
     }
 
-    // Reset status to pending
     db.update(inboxItems)
       .set({
         processingStatus: 'pending',
@@ -1034,7 +958,6 @@ async function handleRetryMetadata(itemId: string): Promise<{ success: boolean; 
       .where(eq(inboxItems.id, itemId))
       .run()
 
-    // Trigger background fetch (start fresh with retryCount = 0)
     setImmediate(() => {
       fetchAndUpdateMetadata(itemId, item.sourceUrl!, 0).catch((err) => {
         logger.error('Retry metadata fetch error:', err)
@@ -1042,11 +965,9 @@ async function handleRetryMetadata(itemId: string): Promise<{ success: boolean; 
     })
 
     return { success: true }
-  } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error'
-    return { success: false, error: message }
-  }
-}
+  },
+  'Retry metadata failed'
+)
 
 // ============================================================================
 // Registration

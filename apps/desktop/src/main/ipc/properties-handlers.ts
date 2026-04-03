@@ -19,7 +19,7 @@ import {
 } from '@memry/contracts/properties-api'
 import type { PropertyValue } from '@main/database/queries/notes'
 import { createLogger } from '../lib/logger'
-import { createValidatedHandler } from './validate'
+import { createValidatedHandler, withErrorHandler } from './validate'
 import { getNoteCacheById, getNoteProperties } from '@main/database/queries/notes'
 import { getIndexDatabase } from '../database'
 import { updateNote } from '../vault/notes'
@@ -60,20 +60,21 @@ export function registerPropertiesHandlers(): void {
   // -------------------------------------------------------------------------
   ipcMain.handle(
     PropertiesChannels.invoke.SET,
-    createValidatedHandler(SetPropertiesSchema, async (input): Promise<SetPropertiesResponse> => {
-      const db = getIndexDatabase()
-      const entity = getNoteCacheById(db, input.entityId)
+    createValidatedHandler(
+      SetPropertiesSchema,
+      withErrorHandler(async (input): Promise<SetPropertiesResponse> => {
+        const db = getIndexDatabase()
+        const entity = getNoteCacheById(db, input.entityId)
 
-      if (!entity) {
-        return { success: false, error: 'Entity not found' }
-      }
+        if (!entity) {
+          return { success: false, error: 'Entity not found' }
+        }
 
-      logger.debug('properties:set', {
-        entityId: input.entityId,
-        propertyKeys: Object.keys(input.properties)
-      })
+        logger.debug('properties:set', {
+          entityId: input.entityId,
+          propertyKeys: Object.keys(input.properties)
+        })
 
-      try {
         if (entity.date) {
           await updateJournalProperties(entity.date, input.properties)
           getJournalSyncService()?.enqueueUpdate(input.entityId)
@@ -82,12 +83,8 @@ export function registerPropertiesHandlers(): void {
           getNoteSyncService()?.enqueueUpdate(input.entityId)
         }
         return { success: true }
-      } catch (error) {
-        const message = error instanceof Error ? error.message : 'Failed to set properties'
-        logger.error('properties:set error:', error)
-        return { success: false, error: message }
-      }
-    })
+      }, 'Failed to set properties')
+    )
   )
 
   // -------------------------------------------------------------------------
@@ -95,16 +92,16 @@ export function registerPropertiesHandlers(): void {
   // -------------------------------------------------------------------------
   ipcMain.handle(
     PropertiesChannels.invoke.RENAME,
-    createValidatedHandler(RenamePropertySchema, async (input): Promise<RenamePropertyResponse> => {
-      const db = getIndexDatabase()
-      const entity = getNoteCacheById(db, input.entityId)
+    createValidatedHandler(
+      RenamePropertySchema,
+      withErrorHandler(async (input): Promise<RenamePropertyResponse> => {
+        const db = getIndexDatabase()
+        const entity = getNoteCacheById(db, input.entityId)
 
-      if (!entity) {
-        return { success: false, error: 'Entity not found' }
-      }
+        if (!entity) {
+          return { success: false, error: 'Entity not found' }
+        }
 
-      try {
-        // Get existing properties
         const existingProps = getNoteProperties(db, input.entityId)
         const propToRename = existingProps.find((p) => p.name === input.oldName)
 
@@ -112,12 +109,10 @@ export function registerPropertiesHandlers(): void {
           return { success: false, error: `Property "${input.oldName}" not found` }
         }
 
-        // Check if new name already exists
         if (existingProps.some((p) => p.name === input.newName)) {
           return { success: false, error: `Property "${input.newName}" already exists` }
         }
 
-        // Build new properties object with renamed property
         const newProperties: Record<string, unknown> = {}
         for (const prop of existingProps) {
           if (prop.name === input.oldName) {
@@ -127,7 +122,6 @@ export function registerPropertiesHandlers(): void {
           }
         }
 
-        // Update based on entity type
         if (entity.date) {
           await updateJournalProperties(entity.date, newProperties)
           getJournalSyncService()?.enqueueUpdate(input.entityId)
@@ -137,12 +131,8 @@ export function registerPropertiesHandlers(): void {
         }
 
         return { success: true }
-      } catch (error) {
-        const message = error instanceof Error ? error.message : 'Failed to rename property'
-        logger.error('properties:rename error:', error)
-        return { success: false, error: message }
-      }
-    })
+      }, 'Failed to rename property')
+    )
   )
 }
 

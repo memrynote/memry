@@ -1,6 +1,7 @@
 import { z, ZodError } from 'zod'
 import type { IpcMainInvokeEvent } from 'electron'
 import { createLogger } from '../lib/logger'
+import { getDatabase, type DrizzleDb } from '../database'
 
 const ipcLog = createLogger('IPC')
 
@@ -95,29 +96,35 @@ export function createStringHandler<TResult>(
   return createValidatedHandler(z.string(), handler)
 }
 
-/**
- * Wraps an async function to catch and format errors consistently.
- * Use this to ensure IPC handlers return properly formatted error responses.
- *
- * @param fn - Async function to wrap
- * @returns Wrapped function that catches errors and returns error response
- *
- * @example
- * ```typescript
- * const safeHandler = withErrorHandling(async () => {
- *   // This error will be caught and formatted
- *   throw new Error('Something went wrong')
- * })
- * ```
- */
-export function withErrorHandling<TArgs extends unknown[], TResult>(
-  fn: (...args: TArgs) => Promise<TResult>
+export function withErrorHandler<TArgs extends unknown[], TResult>(
+  handler: (...args: TArgs) => TResult | Promise<TResult>,
+  fallback = 'Operation failed'
 ): (...args: TArgs) => Promise<TResult | { success: false; error: string }> {
   return async (...args: TArgs) => {
     try {
-      return await fn(...args)
+      return await handler(...args)
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown error occurred'
+      const message = error instanceof Error ? error.message : fallback
+      return { success: false, error: message }
+    }
+  }
+}
+
+export function withDb<TArgs extends unknown[], TResult>(
+  handler: (db: DrizzleDb, ...args: TArgs) => TResult | Promise<TResult>,
+  fallback = 'Operation failed'
+): (...args: TArgs) => Promise<TResult | { success: false; error: string }> {
+  return async (...args: TArgs) => {
+    let db: DrizzleDb
+    try {
+      db = getDatabase()
+    } catch {
+      return { success: false, error: 'No vault is open. Please open a vault first.' }
+    }
+    try {
+      return await handler(db, ...args)
+    } catch (error) {
+      const message = error instanceof Error ? error.message : fallback
       return { success: false, error: message }
     }
   }

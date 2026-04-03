@@ -1,4 +1,7 @@
 import { AppError, ErrorCodes } from '../lib/errors'
+import { createLogger } from '../lib/logger'
+
+const logger = createLogger('Email')
 
 const RESEND_API_URL = 'https://api.resend.com/emails'
 const FROM_ADDRESS = 'Memry <noreply@memrynote.com>'
@@ -27,12 +30,12 @@ export const sendEmail = async (
 
     if (!response.ok) {
       const body = await response.text()
-      console.error(`Resend API error: ${response.status} ${body}`)
+      logger.error('Resend API error', { status: response.status, body })
       throw new AppError(ErrorCodes.INTERNAL_ERROR, 'Failed to send verification email', 500)
     }
   } catch (err) {
     if (err instanceof AppError) throw err
-    console.error('Failed to send email:', err instanceof Error ? err.message : err)
+    logger.error('Failed to send email', { error: err instanceof Error ? err.message : String(err) })
     throw new AppError(ErrorCodes.INTERNAL_ERROR, 'Failed to send verification email', 500)
   }
 }

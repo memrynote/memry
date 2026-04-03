@@ -19,7 +19,6 @@ import {
 } from 'react'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import {
-  FileText,
   Folder,
   FolderOpen,
   LayoutGrid,
@@ -30,10 +29,7 @@ import {
   LayoutTemplate,
   X,
   ExternalLink,
-  FileType2,
-  Image,
-  Music,
-  Video
+  Smile
 } from '@/lib/icons'
 import { cn } from '@/lib/utils'
 import { useTabActions } from '@/contexts/tabs'
@@ -54,9 +50,8 @@ import {
   ContextMenuTrigger
 } from '@/components/ui/context-menu'
 import { getTabIconForFileType, type FileType } from '@memry/shared/file-types'
-import { NoteIconDisplay } from '@/lib/render-note-icon'
 import { FolderIconButton } from '@/components/folder-icon-button'
-import { Smile } from '@/lib/icons'
+import { getDisplayName, getFileIcon } from '@/components/notes-tree-utils'
 
 // ============================================================================
 // Types
@@ -133,45 +128,6 @@ interface VirtualizedNotesTreeProps {
 // ============================================================================
 // Helper Functions
 // ============================================================================
-
-/**
- * Get display name from note path (filename without extension)
- */
-function getDisplayName(notePath: string): string {
-  const filename = notePath.split('/').pop() || notePath
-  // Remove any extension (not just .md)
-  const lastDot = filename.lastIndexOf('.')
-  return lastDot > 0 ? filename.slice(0, lastDot) : filename
-}
-
-/**
- * Get the appropriate icon component for a file based on its type.
- * Returns the icon element to render in the tree.
- */
-function getFileIcon(note: NoteListItem): React.ReactElement {
-  // Emoji/icon takes priority for markdown files
-  if (note.emoji) {
-    return <NoteIconDisplay value={note.emoji} className="text-sm leading-none shrink-0" />
-  }
-
-  // Get icon based on file type
-  const fileType = note.fileType ?? 'markdown'
-  const iconClass = 'h-4 w-4 text-muted-foreground shrink-0'
-
-  switch (fileType) {
-    case 'pdf':
-      return <FileType2 className={`${iconClass} text-red-500`} aria-hidden="true" />
-    case 'image':
-      return <Image className={`${iconClass} text-blue-500`} aria-hidden="true" />
-    case 'audio':
-      return <Music className={`${iconClass} text-green-500`} aria-hidden="true" />
-    case 'video':
-      return <Video className={`${iconClass} text-purple-500`} aria-hidden="true" />
-    case 'markdown':
-    default:
-      return <FileText className={iconClass} aria-hidden="true" />
-  }
-}
 
 /**
  * Storage key for expanded folders
