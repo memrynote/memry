@@ -519,21 +519,5 @@ export function useNoteMutations() {
 // Prefetch Utilities
 // =============================================================================
 
-/**
- * Prefetch a note into the cache.
- * Useful for hover prefetching in lists.
- */
-export function usePrefetchNote() {
-  const queryClient = useQueryClient()
-
-  return (id: string) => {
-    queryClient.prefetchQuery({
-      queryKey: notesKeys.note(id),
-      queryFn: () => notesService.get(id),
-      staleTime: NOTE_STALE_TIME
-    })
-  }
-}
-
 // Re-export types
 export type { Note, NoteListItem, NoteListResponse, NoteLinksResponse }

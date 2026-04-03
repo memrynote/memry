@@ -26,45 +26,8 @@ export { reminderTargetType, reminderStatus, type ReminderTargetType, type Remin
 // Zod Schemas
 // ============================================================================
 
-export const ReminderTargetTypeSchema = z.enum(['note', 'journal', 'highlight'])
-export const ReminderStatusSchema = z.enum(['pending', 'triggered', 'dismissed', 'snoozed'])
-
-/**
- * Schema for creating a reminder for a note
- */
-export const CreateNoteReminderSchema = z.object({
-  noteId: z.string().min(1),
-  remindAt: z.string().datetime(),
-  title: z.string().max(200).optional(),
-  note: z.string().max(1000).optional()
-})
-
-/**
- * Schema for creating a reminder for a journal entry
- */
-export const CreateJournalReminderSchema = z.object({
-  journalDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/), // YYYY-MM-DD
-  remindAt: z.string().datetime(),
-  title: z.string().max(200).optional(),
-  note: z.string().max(1000).optional()
-})
-
-/**
- * Schema for creating a reminder for highlighted text
- */
-export const CreateHighlightReminderSchema = z
-  .object({
-    noteId: z.string().min(1),
-    highlightText: z.string().min(1).max(5000),
-    highlightStart: z.number().int().min(0),
-    highlightEnd: z.number().int().min(0),
-    remindAt: z.string().datetime(),
-    title: z.string().max(200).optional(),
-    note: z.string().max(1000).optional()
-  })
-  .refine((data) => data.highlightEnd > data.highlightStart, {
-    message: 'highlightEnd must be greater than highlightStart'
-  })
+const ReminderTargetTypeSchema = z.enum(['note', 'journal', 'highlight'])
+const ReminderStatusSchema = z.enum(['pending', 'triggered', 'dismissed', 'snoozed'])
 
 /**
  * Generic create schema that accepts all reminder types
@@ -146,9 +109,6 @@ export const BulkDismissSchema = z.object({
 // TypeScript Types
 // ============================================================================
 
-export type CreateNoteReminderInput = z.infer<typeof CreateNoteReminderSchema>
-export type CreateJournalReminderInput = z.infer<typeof CreateJournalReminderSchema>
-export type CreateHighlightReminderInput = z.infer<typeof CreateHighlightReminderSchema>
 export type CreateReminderInput = z.infer<typeof CreateReminderSchema>
 export type UpdateReminderInput = z.infer<typeof UpdateReminderSchema>
 export type SnoozeReminderInput = z.infer<typeof SnoozeReminderSchema>

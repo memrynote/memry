@@ -82,29 +82,4 @@ export const useIsItemActive = () => {
   return isActiveItem
 }
 
-/**
- * Hook that returns the active tab identity for components that need
- * to react to active tab changes (e.g., highlighting)
- *
- * Use this when you need to RE-RENDER on active tab change.
- * Use useIsItemActive when you just need to CHECK if something is active.
- */
-export const useActiveTabIdentity = (): ActiveTabIdentity | null => {
-  const { state } = useTabs()
-
-  return useMemo((): ActiveTabIdentity | null => {
-    const group = state.tabGroups[state.activeGroupId]
-    if (!group || !group.activeTabId) return null
-
-    const activeTab = group.tabs.find((t) => t.id === group.activeTabId)
-    if (!activeTab) return null
-
-    return {
-      type: activeTab.type,
-      entityId: activeTab.entityId ?? '',
-      path: activeTab.path ?? ''
-    }
-  }, [state.tabGroups, state.activeGroupId])
-}
-
 export default useIsItemActive
