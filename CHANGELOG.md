@@ -5,6 +5,25 @@ Format: weekly entries grouped by feature area.
 
 ---
 
+## 2026-04-04 — Voice Transcription
+
+### Added
+- Add local Whisper Small transcription via whisper-node worker thread
+- Add OpenAI BYOK voice transcription with OS keychain storage
+- Add voice provider selector (local / OpenAI) in AI settings
+- Add voice model download UI with progress bar and status badges
+- Add WebM-to-WAV conversion for local transcription compatibility
+- Add voice recording readiness check before mic activation
+- Add quick-capture-to-settings deep link for unconfigured providers
+- Add `settings:openSection` event for cross-window settings navigation
+
+### Changed
+- Replace env-var OpenAI key with per-user keychain secret for voice
+- Refactor transcription module to route by provider setting
+- Extract failure-result helper to reduce duplication in transcription error paths
+
+---
+
 ## 2026-04-03 — Dead Code Cleanup
 
 ### Changed

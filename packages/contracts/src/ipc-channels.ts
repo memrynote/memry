@@ -427,6 +427,20 @@ export const SettingsChannels = {
     GET_AI_SETTINGS: 'settings:getAISettings',
     /** Set AI settings */
     SET_AI_SETTINGS: 'settings:setAISettings',
+    /** Get voice transcription provider settings */
+    GET_VOICE_TRANSCRIPTION_SETTINGS: 'settings:getVoiceTranscriptionSettings',
+    /** Set voice transcription provider settings */
+    SET_VOICE_TRANSCRIPTION_SETTINGS: 'settings:setVoiceTranscriptionSettings',
+    /** Get local voice model status */
+    GET_VOICE_MODEL_STATUS: 'settings:getVoiceModelStatus',
+    /** Download local voice model */
+    DOWNLOAD_VOICE_MODEL: 'settings:downloadVoiceModel',
+    /** Check whether the selected voice provider is ready */
+    GET_VOICE_RECORDING_READINESS: 'settings:getVoiceRecordingReadiness',
+    /** Check whether an OpenAI BYOK secret exists for voice transcription */
+    GET_VOICE_TRANSCRIPTION_OPENAI_KEY_STATUS: 'settings:getVoiceTranscriptionOpenAIKeyStatus',
+    /** Store or clear the OpenAI BYOK secret for voice transcription */
+    SET_VOICE_TRANSCRIPTION_OPENAI_KEY: 'settings:setVoiceTranscriptionOpenAIKey',
     /** Get AI model status (loaded, loading, error, etc.) */
     GET_AI_MODEL_STATUS: 'settings:getAIModelStatus',
     /** Load AI embedding model */
@@ -493,7 +507,11 @@ export const SettingsChannels = {
     /** Settings changed */
     CHANGED: 'settings:changed',
     /** Embedding indexing progress */
-    EMBEDDING_PROGRESS: 'settings:embeddingProgress'
+    EMBEDDING_PROGRESS: 'settings:embeddingProgress',
+    /** Local voice model download/load progress */
+    VOICE_MODEL_PROGRESS: 'settings:voiceModelProgress',
+    /** Open the settings modal to a specific section */
+    OPEN_SECTION: 'settings:openSection'
   }
 } as const
 

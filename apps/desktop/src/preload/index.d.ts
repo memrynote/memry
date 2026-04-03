@@ -1755,6 +1755,8 @@ export interface QuickCaptureClientAPI {
   getClipboard(): Promise<string>
   /** Resize the quick capture window height */
   resize(height: number): void
+  /** Open the main settings modal to a section */
+  openSettings(section?: string): void
 }
 
 // Native context menu types
@@ -1792,6 +1794,29 @@ export interface AIModelStatus {
   embeddingCount?: number
 }
 
+export interface VoiceTranscriptionSettings {
+  provider: 'local' | 'openai'
+}
+
+export interface VoiceModelStatus {
+  name: string
+  downloaded: boolean
+  loaded: boolean
+  loading: boolean
+  error: string | null
+}
+
+export interface VoiceRecordingReadiness {
+  ready: boolean
+  provider: 'local' | 'openai'
+  reason?: 'missing-model' | 'missing-api-key'
+  message?: string
+}
+
+export interface VoiceTranscriptionOpenAIKeyStatus {
+  hasApiKey: boolean
+}
+
 export interface SettingsChangedEvent {
   key: string
   value: unknown
@@ -1803,6 +1828,14 @@ export interface EmbeddingProgressEvent {
   phase: 'downloading' | 'loading' | 'ready' | 'error' | 'scanning' | 'embedding' | 'complete'
   status?: string
   progress?: number
+}
+
+export interface VoiceModelProgressEvent {
+  current?: number
+  total?: number
+  progress?: number
+  phase: 'downloading' | 'loading' | 'ready' | 'error'
+  status?: string
 }
 
 // Reminder types
@@ -2167,6 +2200,15 @@ export interface SettingsClientAPI {
   // AI Settings (local model - no API key needed)
   getAISettings(): Promise<AISettings>
   setAISettings(settings: Partial<AISettings>): Promise<{ success: boolean; error?: string }>
+  getVoiceTranscriptionSettings(): Promise<VoiceTranscriptionSettings>
+  setVoiceTranscriptionSettings(
+    settings: Partial<VoiceTranscriptionSettings>
+  ): Promise<{ success: boolean; error?: string }>
+  getVoiceModelStatus(): Promise<VoiceModelStatus>
+  downloadVoiceModel(): Promise<{ success: boolean; error?: string; message?: string }>
+  getVoiceRecordingReadiness(): Promise<VoiceRecordingReadiness>
+  getVoiceTranscriptionOpenAIKeyStatus(): Promise<VoiceTranscriptionOpenAIKeyStatus>
+  setVoiceTranscriptionOpenAIKey(apiKey: string): Promise<{ success: boolean; error?: string }>
   getAIModelStatus(): Promise<AIModelStatus>
   loadAIModel(): Promise<{ success: boolean; error?: string; message?: string }>
   reindexEmbeddings(): Promise<{
@@ -2578,6 +2620,8 @@ interface API extends WindowAPI {
   // Settings event subscriptions
   onSettingsChanged: (callback: (event: SettingsChangedEvent) => void) => () => void
   onEmbeddingProgress: (callback: (event: EmbeddingProgressEvent) => void) => () => void
+  onVoiceModelProgress: (callback: (event: VoiceModelProgressEvent) => void) => () => void
+  onSettingsOpenRequested: (callback: (section: string) => void) => () => void
   // Bookmarks event subscriptions
   onBookmarkCreated: (callback: (event: BookmarkCreatedEvent) => void) => () => void
   onBookmarkDeleted: (callback: (event: BookmarkDeletedEvent) => void) => () => void
