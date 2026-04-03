@@ -12,7 +12,12 @@ import {
   TemplateUpdateSchema,
   TemplateDuplicateSchema
 } from '@memry/contracts/templates-api'
-import { createValidatedHandler, createStringHandler, createHandler } from './validate'
+import {
+  createValidatedHandler,
+  createStringHandler,
+  createHandler,
+  withErrorHandler
+} from './validate'
 import {
   listTemplates,
   getTemplate,
@@ -47,57 +52,48 @@ export function registerTemplatesHandlers(): void {
   // templates:create - Create a new template
   ipcMain.handle(
     TemplatesChannels.invoke.CREATE,
-    createValidatedHandler(TemplateCreateSchema, async (input) => {
-      try {
+    createValidatedHandler(
+      TemplateCreateSchema,
+      withErrorHandler(async (input) => {
         const template = await createTemplate(input)
         return { success: true, template }
-      } catch (error) {
-        const message = error instanceof Error ? error.message : 'Failed to create template'
-        return { success: false, template: null, error: message }
-      }
-    })
+      }, 'Failed to create template')
+    )
   )
 
   // templates:update - Update an existing template
   ipcMain.handle(
     TemplatesChannels.invoke.UPDATE,
-    createValidatedHandler(TemplateUpdateSchema, async (input) => {
-      try {
+    createValidatedHandler(
+      TemplateUpdateSchema,
+      withErrorHandler(async (input) => {
         const template = await updateTemplate(input)
         return { success: true, template }
-      } catch (error) {
-        const message = error instanceof Error ? error.message : 'Failed to update template'
-        return { success: false, template: null, error: message }
-      }
-    })
+      }, 'Failed to update template')
+    )
   )
 
   // templates:delete - Delete a template
   ipcMain.handle(
     TemplatesChannels.invoke.DELETE,
-    createStringHandler(async (id) => {
-      try {
+    createStringHandler(
+      withErrorHandler(async (id) => {
         await deleteTemplate(id)
         return { success: true }
-      } catch (error) {
-        const message = error instanceof Error ? error.message : 'Failed to delete template'
-        return { success: false, error: message }
-      }
-    })
+      }, 'Failed to delete template')
+    )
   )
 
   // templates:duplicate - Duplicate a template
   ipcMain.handle(
     TemplatesChannels.invoke.DUPLICATE,
-    createValidatedHandler(TemplateDuplicateSchema, async (input) => {
-      try {
+    createValidatedHandler(
+      TemplateDuplicateSchema,
+      withErrorHandler(async (input) => {
         const template = await duplicateTemplate(input.id, input.newName)
         return { success: true, template }
-      } catch (error) {
-        const message = error instanceof Error ? error.message : 'Failed to duplicate template'
-        return { success: false, template: null, error: message }
-      }
-    })
+      }, 'Failed to duplicate template')
+    )
   )
 }
 

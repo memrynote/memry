@@ -46,7 +46,9 @@ describe('email service', () => {
       code: ErrorCodes.INTERNAL_ERROR,
       statusCode: 500
     })
-    expect(errorSpy).toHaveBeenCalledWith('Resend API error: 500 server error')
+    expect(errorSpy).toHaveBeenCalledWith(
+      JSON.stringify({ level: 'error', scope: 'Email', message: 'Resend API error', status: 500, body: 'server error' })
+    )
   })
 
   it('throws on network failures', async () => {
@@ -62,6 +64,8 @@ describe('email service', () => {
       code: ErrorCodes.INTERNAL_ERROR,
       statusCode: 500
     })
-    expect(errorSpy).toHaveBeenCalledWith('Failed to send email:', 'network down')
+    expect(errorSpy).toHaveBeenCalledWith(
+      JSON.stringify({ level: 'error', scope: 'Email', message: 'Failed to send email', error: 'network down' })
+    )
   })
 })

@@ -27,7 +27,12 @@ import {
 } from '@memry/contracts/tags-api'
 import { noteTags } from '@memry/db-schema/schema/notes-cache'
 import { tagDefinitions } from '@memry/db-schema/schema/tag-definitions'
-import { createValidatedHandler, createStringHandler, createHandler } from './validate'
+import {
+  createValidatedHandler,
+  createStringHandler,
+  createHandler,
+  withErrorHandler
+} from './validate'
 import { getDatabase, getIndexDatabase } from '../database'
 import {
   findNotesWithTagInfo,
@@ -204,13 +209,12 @@ export function registerTagsHandlers(): void {
   // tags:pin-note-to-tag - Pin a note to a tag
   ipcMain.handle(
     TagsChannels.invoke.PIN_NOTE_TO_TAG,
-    createValidatedHandler(PinNoteToTagSchema, (input) => {
-      const db = requireIndexDatabase()
-
-      try {
+    createValidatedHandler(
+      PinNoteToTagSchema,
+      withErrorHandler((input) => {
+        const db = requireIndexDatabase()
         pinNoteToTag(db, input.noteId, input.tag)
 
-        // Emit event
         emitTagEvent(TagsChannels.events.NOTES_CHANGED, {
           tag: input.tag,
           noteId: input.noteId,
@@ -218,23 +222,19 @@ export function registerTagsHandlers(): void {
         })
 
         return { success: true } as TagOperationResponse
-      } catch (error) {
-        const message = error instanceof Error ? error.message : 'Failed to pin note'
-        return { success: false, error: message } as TagOperationResponse
-      }
-    })
+      }, 'Failed to pin note')
+    )
   )
 
   // tags:unpin-note-from-tag - Unpin a note from a tag
   ipcMain.handle(
     TagsChannels.invoke.UNPIN_NOTE_FROM_TAG,
-    createValidatedHandler(UnpinNoteFromTagSchema, (input) => {
-      const db = requireIndexDatabase()
-
-      try {
+    createValidatedHandler(
+      UnpinNoteFromTagSchema,
+      withErrorHandler((input) => {
+        const db = requireIndexDatabase()
         unpinNoteFromTag(db, input.noteId, input.tag)
 
-        // Emit event
         emitTagEvent(TagsChannels.events.NOTES_CHANGED, {
           tag: input.tag,
           noteId: input.noteId,
@@ -242,21 +242,19 @@ export function registerTagsHandlers(): void {
         })
 
         return { success: true } as TagOperationResponse
-      } catch (error) {
-        const message = error instanceof Error ? error.message : 'Failed to unpin note'
-        return { success: false, error: message } as TagOperationResponse
-      }
-    })
+      }, 'Failed to unpin note')
+    )
   )
 
   // tags:rename - Rename a tag across all notes
   ipcMain.handle(
     TagsChannels.invoke.RENAME_TAG,
-    createValidatedHandler(RenameTagSchema, async (input) => {
-      const indexDb = requireIndexDatabase()
-      const dataDb = requireDatabase()
+    createValidatedHandler(
+      RenameTagSchema,
+      withErrorHandler(async (input) => {
+        const indexDb = requireIndexDatabase()
+        const dataDb = requireDatabase()
 
-      try {
         const noteIds = getAffectedNoteIds(indexDb, input.oldName)
 
         const affectedNotes = renameTag(indexDb, input.oldName, input.newName)
@@ -293,20 +291,17 @@ export function registerTagsHandlers(): void {
         emitTagEvent('notes:tags-changed', {})
 
         return { success: true, affectedNotes } as RenameTagResponse
-      } catch (error) {
-        const message = error instanceof Error ? error.message : 'Failed to rename tag'
-        return { success: false, error: message } as RenameTagResponse
-      }
-    })
+      }, 'Failed to rename tag')
+    )
   )
 
   // tags:update-color - Update tag color
   ipcMain.handle(
     TagsChannels.invoke.UPDATE_TAG_COLOR,
-    createValidatedHandler(UpdateTagColorSchema, (input) => {
-      const dataDb = requireDatabase()
-
-      try {
+    createValidatedHandler(
+      UpdateTagColorSchema,
+      withErrorHandler((input) => {
+        const dataDb = requireDatabase()
         getOrCreateTag(dataDb, input.tag)
         updateTagColor(dataDb, input.tag, input.color)
         getTagDefinitionSyncService()?.enqueueUpdate(input.tag)
@@ -316,25 +311,21 @@ export function registerTagsHandlers(): void {
           color: input.color
         })
 
-        // Also emit tags changed for sidebar update
         emitTagEvent('notes:tags-changed', {})
 
         return { success: true } as TagOperationResponse
-      } catch (error) {
-        const message = error instanceof Error ? error.message : 'Failed to update tag color'
-        return { success: false, error: message } as TagOperationResponse
-      }
-    })
+      }, 'Failed to update tag color')
+    )
   )
 
   // tags:delete - Delete a tag from all notes
   ipcMain.handle(
     TagsChannels.invoke.DELETE_TAG,
-    createStringHandler(async (tag: string) => {
-      const indexDb = requireIndexDatabase()
-      const dataDb = requireDatabase()
+    createStringHandler(
+      withErrorHandler(async (tag: string) => {
+        const indexDb = requireIndexDatabase()
+        const dataDb = requireDatabase()
 
-      try {
         const noteIds = getAffectedNoteIds(indexDb, tag)
 
         const normalizedTag = tag.toLowerCase().trim()
@@ -362,20 +353,17 @@ export function registerTagsHandlers(): void {
         emitTagEvent('notes:tags-changed', {})
 
         return { success: true, affectedNotes } as DeleteTagResponse
-      } catch (error) {
-        const message = error instanceof Error ? error.message : 'Failed to delete tag'
-        return { success: false, error: message } as DeleteTagResponse
-      }
-    })
+      }, 'Failed to delete tag')
+    )
   )
 
   // tags:remove-from-note - Remove tag from a specific note
   ipcMain.handle(
     TagsChannels.invoke.REMOVE_TAG_FROM_NOTE,
-    createValidatedHandler(RemoveTagFromNoteSchema, async (input) => {
-      const db = requireIndexDatabase()
-
-      try {
+    createValidatedHandler(
+      RemoveTagFromNoteSchema,
+      withErrorHandler(async (input) => {
+        const db = requireIndexDatabase()
         removeTagFromNote(db, input.noteId, input.tag)
 
         const normalizedTag = input.tag.toLowerCase().trim()
@@ -393,11 +381,8 @@ export function registerTagsHandlers(): void {
         emitTagEvent('notes:tags-changed', {})
 
         return { success: true } as TagOperationResponse
-      } catch (error) {
-        const message = error instanceof Error ? error.message : 'Failed to remove tag from note'
-        return { success: false, error: message } as TagOperationResponse
-      }
-    })
+      }, 'Failed to remove tag from note')
+    )
   )
 
   // tags:get-all-with-counts - Aggregate tags from notes + tasks
@@ -413,18 +398,19 @@ export function registerTagsHandlers(): void {
   // tags:merge - Merge source tag into target (deduplicate across notes + tasks)
   ipcMain.handle(
     TagsChannels.invoke.MERGE_TAG,
-    createValidatedHandler(MergeTagSchema, async (input): Promise<MergeTagResponse> => {
-      const indexDb = requireIndexDatabase()
-      const dataDb = requireDatabase()
+    createValidatedHandler(
+      MergeTagSchema,
+      withErrorHandler(async (input): Promise<MergeTagResponse> => {
+        const indexDb = requireIndexDatabase()
+        const dataDb = requireDatabase()
 
-      const normalizedSource = input.source.toLowerCase().trim()
-      const normalizedTarget = input.target.toLowerCase().trim()
+        const normalizedSource = input.source.toLowerCase().trim()
+        const normalizedTarget = input.target.toLowerCase().trim()
 
-      if (normalizedSource === normalizedTarget) {
-        return { success: false, error: 'Source and target tags are the same' }
-      }
+        if (normalizedSource === normalizedTarget) {
+          return { success: false, error: 'Source and target tags are the same' }
+        }
 
-      try {
         const noteResult = mergeTagInNotes(indexDb, normalizedSource, normalizedTarget)
         const taskResult = mergeTagInTasks(dataDb, normalizedSource, normalizedTarget)
 
@@ -472,12 +458,8 @@ export function registerTagsHandlers(): void {
           success: true,
           affectedItems: noteResult.affected + taskResult.affected
         }
-      } catch (error) {
-        const message = error instanceof Error ? error.message : 'Failed to merge tags'
-        log.error('Tag merge failed', { source: input.source, target: input.target, error })
-        return { success: false, error: message }
-      }
-    })
+      }, 'Failed to merge tags')
+    )
   )
 }
 

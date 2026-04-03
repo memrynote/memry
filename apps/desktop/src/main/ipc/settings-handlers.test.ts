@@ -409,9 +409,7 @@ describe('settings-handlers', () => {
     const result = await invokeHandler(SettingsChannels.invoke.REINDEX_EMBEDDINGS)
     expect(result).toEqual({
       success: false,
-      error: 'reindex failed',
-      computed: 0,
-      skipped: 0
+      error: 'reindex failed'
     })
   })
 

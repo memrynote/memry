@@ -130,46 +130,6 @@ export function isEditable(fileType: FileType): boolean {
 }
 
 /**
- * Check if a file type is a media type (audio or video)
- */
-export function isMedia(fileType: FileType): boolean {
-  return fileType === 'audio' || fileType === 'video'
-}
-
-/**
- * Get a human-readable label for a file type
- */
-export function getFileTypeLabel(fileType: FileType): string {
-  const labels: Record<FileType, string> = {
-    markdown: 'Markdown',
-    pdf: 'PDF',
-    image: 'Image',
-    audio: 'Audio',
-    video: 'Video'
-  }
-  return labels[fileType]
-}
-
-// ============================================================================
-// File Type Icons (for use with @/lib/icons)
-// ============================================================================
-
-/**
- * Get the icon name for a file type
- * Use with: import { FileText, FileType2, Image, Music, Video } from '@/lib/icons'
- */
-export function getFileTypeIconName(fileType: FileType): string {
-  const icons: Record<FileType, string> = {
-    markdown: 'FileText',
-    pdf: 'FileType2',
-    image: 'Image',
-    audio: 'Music',
-    video: 'Video'
-  }
-  return icons[fileType]
-}
-
-/**
  * Get the tab icon identifier for a file type
  * Used when opening file tabs to set the correct icon
  */
@@ -187,15 +147,6 @@ export function getTabIconForFileType(fileType: FileType): string {
 // ============================================================================
 // Glob Patterns (for file watching)
 // ============================================================================
-
-/**
- * Get glob patterns for all supported file types
- * Used by chokidar file watcher
- */
-export function getSupportedGlobPatterns(): string[] {
-  const extensions = getAllSupportedExtensions()
-  return extensions.map((ext) => `**/*.${ext}`)
-}
 
 /**
  * Check if a path matches any supported file type

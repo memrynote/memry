@@ -94,40 +94,34 @@ export function FolderIconButton({
   )
 
   return (
-    <div className="relative shrink-0 flex items-center justify-center h-5 w-5">
-      {/* Folder icon — visible by default, hidden on row hover when has children */}
-      <button
-        ref={buttonRef}
-        type="button"
-        onClick={handleIconClick}
-        className={cn(
-          'flex h-5 w-5 items-center justify-center rounded',
-          hasChildren && 'group-hover/folderrow:hidden'
-        )}
-        aria-label="Set folder icon"
-      >
-        {folderIcon}
-      </button>
-
-      {/* Arrow — hidden by default, shown on row hover, rotates when expanded */}
-      {hasChildren && (
+    <div className="shrink-0 flex items-center gap-0.5">
+      {hasChildren ? (
         <button
           type="button"
           onClick={handleExpandClick}
-          className={cn(
-            'hidden h-5 w-5 items-center justify-center cursor-pointer',
-            'group-hover/folderrow:flex'
-          )}
+          className="flex h-4 w-4 items-center justify-center cursor-pointer rounded"
           aria-label={isExpanded ? 'Collapse folder' : 'Expand folder'}
         >
           <ArrowRight
             className={cn(
-              'h-3.5 w-3.5 text-muted-foreground transition-transform duration-150',
+              'h-3 w-3 text-muted-foreground/60 transition-transform ',
               isExpanded && 'rotate-90'
             )}
           />
         </button>
+      ) : (
+        <div className="h-4 w-4" />
       )}
+
+      <button
+        ref={buttonRef}
+        type="button"
+        onClick={handleIconClick}
+        className="flex h-5 w-5 items-center justify-center rounded"
+        aria-label="Set folder icon"
+      >
+        {folderIcon}
+      </button>
 
       {isPickerOpen &&
         portalPosition &&
