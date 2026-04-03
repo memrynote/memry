@@ -35,7 +35,6 @@ import {
   onInboxSnoozeDue,
   onInboxTranscriptionComplete,
   onInboxMetadataComplete,
-  onInboxProcessingError,
   type CaptureTextInput,
   type CaptureLinkInput,
   type CaptureImageInput,
@@ -631,23 +630,6 @@ export function useConvertToTask() {
   })
 }
 
-/**
- * Hook for linking an inbox item to an existing note.
- */
-export function useLinkToNote() {
-  const queryClient = useQueryClient()
-
-  return useMutation({
-    mutationFn: ({ itemId, noteId }: { itemId: string; noteId: string }) =>
-      inboxService.linkToNote(itemId, noteId),
-    onSuccess: (_, { itemId }) => {
-      void queryClient.invalidateQueries({ queryKey: inboxKeys.item(itemId) })
-      void queryClient.invalidateQueries({ queryKey: inboxKeys.lists() })
-      void queryClient.invalidateQueries({ queryKey: inboxKeys.stats() })
-    }
-  })
-}
-
 // =============================================================================
 // Tag Mutations
 // =============================================================================
@@ -818,20 +800,6 @@ export function useRetryMetadata() {
 // =============================================================================
 // Processing Error Subscription Hook
 // =============================================================================
-
-/**
- * Hook for subscribing to processing error events.
- *
- * @param callback - Callback to invoke when a processing error occurs
- */
-export function useInboxProcessingErrors(
-  callback: (event: { id: string; operation: string; error: string }) => void
-): void {
-  useEffect(() => {
-    const unsub = onInboxProcessingError(callback)
-    return unsub
-  }, [callback])
-}
 
 export interface ArchivedListOptions {
   search?: string

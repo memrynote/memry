@@ -14,15 +14,13 @@ import {
   onReminderCreated,
   onReminderUpdated,
   onReminderDeleted,
-  onReminderDue,
   onReminderDismissed,
   onReminderSnoozed,
   type CreateReminderInput,
   type UpdateReminderInput,
   type SnoozeReminderInput,
   type ListRemindersInput,
-  type ReminderTargetType,
-  type ReminderDueEvent
+  type ReminderTargetType
 } from '@/services/reminder-service'
 
 // ============================================================================
@@ -155,16 +153,6 @@ export function useRemindersForTarget(
     error: query.error,
     refetch: () => query.refetch()
   }
-}
-
-/**
- * Hook for subscribing to due reminders (for notifications)
- */
-export function useDueReminderNotifications(onDue: (event: ReminderDueEvent) => void) {
-  useEffect(() => {
-    const unsub = onReminderDue(onDue)
-    return unsub
-  }, [onDue])
 }
 
 // ============================================================================

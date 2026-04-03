@@ -713,31 +713,6 @@ export function isSchedulerRunning(): boolean {
   return schedulerInterval !== null
 }
 
-// ============================================================================
-// Cleanup
-// ============================================================================
-
-/**
- * Delete all reminders for a target (used when target is deleted)
- * @param targetType - Type of target
- * @param targetId - ID of the target
- * @returns Number of reminders deleted
- */
-export function deleteRemindersForTarget(targetType: string, targetId: string): number {
-  const db = getDatabase()
-
-  const result = db
-    .delete(reminders)
-    .where(and(eq(reminders.targetType, targetType), eq(reminders.targetId, targetId)))
-    .run()
-
-  if (result.changes > 0) {
-    logger.info(`Deleted ${result.changes} reminders for ${targetType}:${targetId}`)
-  }
-
-  return result.changes
-}
-
 /**
  * Count pending reminders (for badge display)
  * @returns Number of pending reminders
