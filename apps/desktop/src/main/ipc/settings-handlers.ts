@@ -31,6 +31,7 @@ import { createLogger } from '../lib/logger'
 import { getSettingsSyncManager } from '../sync/settings-sync'
 import { getDatabase } from '../database'
 import { getSetting, setSetting, deleteSetting } from '@main/database/queries/settings'
+import { withErrorHandler } from './validate'
 import { initEmbeddingModel, getModelInfo, isModelLoaded, isModelLoading } from '../lib/embeddings'
 import { writePreferences, PORTABLE_GENERAL_FIELDS } from '../vault/vault-preferences'
 import { getCurrentVaultPath } from '../store'
@@ -389,7 +390,7 @@ export function registerSettingsHandlers(): void {
   })
 
   // Load AI model
-  ipcMain.handle(SettingsChannels.invoke.LOAD_AI_MODEL, async () => {
+  ipcMain.handle(SettingsChannels.invoke.LOAD_AI_MODEL, withErrorHandler(async () => {
     if (isModelLoaded()) {
       return { success: true, message: 'Model already loaded' }
     }
@@ -398,33 +399,21 @@ export function registerSettingsHandlers(): void {
       return { success: false, error: 'Model is already loading' }
     }
 
-    try {
-      const success = await initEmbeddingModel()
-      if (success) {
-        return { success: true }
-      } else {
-        const info = getModelInfo()
-        return { success: false, error: info.error || 'Failed to load model' }
-      }
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown error'
-      return { success: false, error: message }
+    const success = await initEmbeddingModel()
+    if (success) {
+      return { success: true }
+    } else {
+      const info = getModelInfo()
+      return { success: false, error: info.error || 'Failed to load model' }
     }
-  })
+  }, 'Unknown error'))
 
   // Reindex embeddings
-  ipcMain.handle(SettingsChannels.invoke.REINDEX_EMBEDDINGS, async () => {
-    try {
-      // Import dynamically to avoid circular dependencies
-      const { reindexAllEmbeddings } = await import('../inbox/suggestions')
-      const result = await reindexAllEmbeddings()
-      return result
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown error'
-      logger.error('Reindex failed:', message)
-      return { success: false, error: message, computed: 0, skipped: 0 }
-    }
-  })
+  ipcMain.handle(SettingsChannels.invoke.REINDEX_EMBEDDINGS, withErrorHandler(async () => {
+    const { reindexAllEmbeddings } = await import('../inbox/suggestions')
+    const result = await reindexAllEmbeddings()
+    return result
+  }, 'Unknown error'))
 
   // Get tab settings
   ipcMain.handle(SettingsChannels.invoke.GET_TAB_SETTINGS, () => {

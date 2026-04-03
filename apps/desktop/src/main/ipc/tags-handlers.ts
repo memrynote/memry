@@ -27,7 +27,7 @@ import {
 } from '@memry/contracts/tags-api'
 import { noteTags } from '@memry/db-schema/schema/notes-cache'
 import { tagDefinitions } from '@memry/db-schema/schema/tag-definitions'
-import { createValidatedHandler, createStringHandler, createHandler } from './validate'
+import { createValidatedHandler, createStringHandler, createHandler, withErrorHandler } from './validate'
 import { getDatabase, getIndexDatabase } from '../database'
 import {
   findNotesWithTagInfo,
@@ -204,200 +204,163 @@ export function registerTagsHandlers(): void {
   // tags:pin-note-to-tag - Pin a note to a tag
   ipcMain.handle(
     TagsChannels.invoke.PIN_NOTE_TO_TAG,
-    createValidatedHandler(PinNoteToTagSchema, (input) => {
+    createValidatedHandler(PinNoteToTagSchema, withErrorHandler((input) => {
       const db = requireIndexDatabase()
+      pinNoteToTag(db, input.noteId, input.tag)
 
-      try {
-        pinNoteToTag(db, input.noteId, input.tag)
+      emitTagEvent(TagsChannels.events.NOTES_CHANGED, {
+        tag: input.tag,
+        noteId: input.noteId,
+        action: 'pinned'
+      })
 
-        // Emit event
-        emitTagEvent(TagsChannels.events.NOTES_CHANGED, {
-          tag: input.tag,
-          noteId: input.noteId,
-          action: 'pinned'
-        })
-
-        return { success: true } as TagOperationResponse
-      } catch (error) {
-        const message = error instanceof Error ? error.message : 'Failed to pin note'
-        return { success: false, error: message } as TagOperationResponse
-      }
-    })
+      return { success: true } as TagOperationResponse
+    }, 'Failed to pin note'))
   )
 
   // tags:unpin-note-from-tag - Unpin a note from a tag
   ipcMain.handle(
     TagsChannels.invoke.UNPIN_NOTE_FROM_TAG,
-    createValidatedHandler(UnpinNoteFromTagSchema, (input) => {
+    createValidatedHandler(UnpinNoteFromTagSchema, withErrorHandler((input) => {
       const db = requireIndexDatabase()
+      unpinNoteFromTag(db, input.noteId, input.tag)
 
-      try {
-        unpinNoteFromTag(db, input.noteId, input.tag)
+      emitTagEvent(TagsChannels.events.NOTES_CHANGED, {
+        tag: input.tag,
+        noteId: input.noteId,
+        action: 'unpinned'
+      })
 
-        // Emit event
-        emitTagEvent(TagsChannels.events.NOTES_CHANGED, {
-          tag: input.tag,
-          noteId: input.noteId,
-          action: 'unpinned'
-        })
-
-        return { success: true } as TagOperationResponse
-      } catch (error) {
-        const message = error instanceof Error ? error.message : 'Failed to unpin note'
-        return { success: false, error: message } as TagOperationResponse
-      }
-    })
+      return { success: true } as TagOperationResponse
+    }, 'Failed to unpin note'))
   )
 
   // tags:rename - Rename a tag across all notes
   ipcMain.handle(
     TagsChannels.invoke.RENAME_TAG,
-    createValidatedHandler(RenameTagSchema, async (input) => {
+    createValidatedHandler(RenameTagSchema, withErrorHandler(async (input) => {
       const indexDb = requireIndexDatabase()
       const dataDb = requireDatabase()
 
-      try {
-        const noteIds = getAffectedNoteIds(indexDb, input.oldName)
+      const noteIds = getAffectedNoteIds(indexDb, input.oldName)
 
-        const affectedNotes = renameTag(indexDb, input.oldName, input.newName)
+      const affectedNotes = renameTag(indexDb, input.oldName, input.newName)
 
-        const oldTagSnapshot = dataDb
-          .select()
-          .from(tagDefinitions)
-          .where(eq(tagDefinitions.name, input.oldName.toLowerCase().trim()))
-          .get()
+      const oldTagSnapshot = dataDb
+        .select()
+        .from(tagDefinitions)
+        .where(eq(tagDefinitions.name, input.oldName.toLowerCase().trim()))
+        .get()
 
-        renameTagDefinition(dataDb, input.oldName, input.newName)
+      renameTagDefinition(dataDb, input.oldName, input.newName)
 
-        const syncService = getTagDefinitionSyncService()
-        if (syncService && oldTagSnapshot) {
-          syncService.enqueueDelete(input.oldName, JSON.stringify(oldTagSnapshot))
-          syncService.enqueueCreate(input.newName.toLowerCase().trim())
-        }
-
-        const normalizedOld = input.oldName.toLowerCase().trim()
-        const normalizedNew = input.newName.toLowerCase().trim()
-        await Promise.all(
-          noteIds.map((noteId) =>
-            updateNoteFrontmatterTag(indexDb, noteId, (tags) =>
-              tags.map((t) => (t.toLowerCase() === normalizedOld ? normalizedNew : t))
-            ).catch((err) => log.warn('Failed to update frontmatter for note', { noteId, err }))
-          )
-        )
-
-        emitTagEvent(TagsChannels.events.RENAMED, {
-          oldName: input.oldName,
-          newName: input.newName,
-          affectedNotes
-        })
-        emitTagEvent('notes:tags-changed', {})
-
-        return { success: true, affectedNotes } as RenameTagResponse
-      } catch (error) {
-        const message = error instanceof Error ? error.message : 'Failed to rename tag'
-        return { success: false, error: message } as RenameTagResponse
+      const syncService = getTagDefinitionSyncService()
+      if (syncService && oldTagSnapshot) {
+        syncService.enqueueDelete(input.oldName, JSON.stringify(oldTagSnapshot))
+        syncService.enqueueCreate(input.newName.toLowerCase().trim())
       }
-    })
+
+      const normalizedOld = input.oldName.toLowerCase().trim()
+      const normalizedNew = input.newName.toLowerCase().trim()
+      await Promise.all(
+        noteIds.map((noteId) =>
+          updateNoteFrontmatterTag(indexDb, noteId, (tags) =>
+            tags.map((t) => (t.toLowerCase() === normalizedOld ? normalizedNew : t))
+          ).catch((err) => log.warn('Failed to update frontmatter for note', { noteId, err }))
+        )
+      )
+
+      emitTagEvent(TagsChannels.events.RENAMED, {
+        oldName: input.oldName,
+        newName: input.newName,
+        affectedNotes
+      })
+      emitTagEvent('notes:tags-changed', {})
+
+      return { success: true, affectedNotes } as RenameTagResponse
+    }, 'Failed to rename tag'))
   )
 
   // tags:update-color - Update tag color
   ipcMain.handle(
     TagsChannels.invoke.UPDATE_TAG_COLOR,
-    createValidatedHandler(UpdateTagColorSchema, (input) => {
+    createValidatedHandler(UpdateTagColorSchema, withErrorHandler((input) => {
       const dataDb = requireDatabase()
+      getOrCreateTag(dataDb, input.tag)
+      updateTagColor(dataDb, input.tag, input.color)
+      getTagDefinitionSyncService()?.enqueueUpdate(input.tag)
 
-      try {
-        getOrCreateTag(dataDb, input.tag)
-        updateTagColor(dataDb, input.tag, input.color)
-        getTagDefinitionSyncService()?.enqueueUpdate(input.tag)
+      emitTagEvent(TagsChannels.events.COLOR_UPDATED, {
+        tag: input.tag,
+        color: input.color
+      })
 
-        emitTagEvent(TagsChannels.events.COLOR_UPDATED, {
-          tag: input.tag,
-          color: input.color
-        })
+      emitTagEvent('notes:tags-changed', {})
 
-        // Also emit tags changed for sidebar update
-        emitTagEvent('notes:tags-changed', {})
-
-        return { success: true } as TagOperationResponse
-      } catch (error) {
-        const message = error instanceof Error ? error.message : 'Failed to update tag color'
-        return { success: false, error: message } as TagOperationResponse
-      }
-    })
+      return { success: true } as TagOperationResponse
+    }, 'Failed to update tag color'))
   )
 
   // tags:delete - Delete a tag from all notes
   ipcMain.handle(
     TagsChannels.invoke.DELETE_TAG,
-    createStringHandler(async (tag: string) => {
+    createStringHandler(withErrorHandler(async (tag: string) => {
       const indexDb = requireIndexDatabase()
       const dataDb = requireDatabase()
 
-      try {
-        const noteIds = getAffectedNoteIds(indexDb, tag)
+      const noteIds = getAffectedNoteIds(indexDb, tag)
 
-        const normalizedTag = tag.toLowerCase().trim()
-        const tagSnapshot = dataDb
-          .select()
-          .from(tagDefinitions)
-          .where(eq(tagDefinitions.name, normalizedTag))
-          .get()
+      const normalizedTag = tag.toLowerCase().trim()
+      const tagSnapshot = dataDb
+        .select()
+        .from(tagDefinitions)
+        .where(eq(tagDefinitions.name, normalizedTag))
+        .get()
 
-        const affectedNotes = deleteTag(indexDb, tag)
-        deleteTagDefinition(dataDb, tag)
+      const affectedNotes = deleteTag(indexDb, tag)
+      deleteTagDefinition(dataDb, tag)
 
-        if (tagSnapshot) {
-          getTagDefinitionSyncService()?.enqueueDelete(normalizedTag, JSON.stringify(tagSnapshot))
-        }
-        await Promise.all(
-          noteIds.map((noteId) =>
-            updateNoteFrontmatterTag(indexDb, noteId, (tags) =>
-              tags.filter((t) => t.toLowerCase() !== normalizedTag)
-            ).catch((err) => log.warn('Failed to update frontmatter for note', { noteId, err }))
-          )
-        )
-
-        emitTagEvent(TagsChannels.events.DELETED, { tag, affectedNotes })
-        emitTagEvent('notes:tags-changed', {})
-
-        return { success: true, affectedNotes } as DeleteTagResponse
-      } catch (error) {
-        const message = error instanceof Error ? error.message : 'Failed to delete tag'
-        return { success: false, error: message } as DeleteTagResponse
+      if (tagSnapshot) {
+        getTagDefinitionSyncService()?.enqueueDelete(normalizedTag, JSON.stringify(tagSnapshot))
       }
-    })
+      await Promise.all(
+        noteIds.map((noteId) =>
+          updateNoteFrontmatterTag(indexDb, noteId, (tags) =>
+            tags.filter((t) => t.toLowerCase() !== normalizedTag)
+          ).catch((err) => log.warn('Failed to update frontmatter for note', { noteId, err }))
+        )
+      )
+
+      emitTagEvent(TagsChannels.events.DELETED, { tag, affectedNotes })
+      emitTagEvent('notes:tags-changed', {})
+
+      return { success: true, affectedNotes } as DeleteTagResponse
+    }, 'Failed to delete tag'))
   )
 
   // tags:remove-from-note - Remove tag from a specific note
   ipcMain.handle(
     TagsChannels.invoke.REMOVE_TAG_FROM_NOTE,
-    createValidatedHandler(RemoveTagFromNoteSchema, async (input) => {
+    createValidatedHandler(RemoveTagFromNoteSchema, withErrorHandler(async (input) => {
       const db = requireIndexDatabase()
+      removeTagFromNote(db, input.noteId, input.tag)
 
-      try {
-        removeTagFromNote(db, input.noteId, input.tag)
+      const normalizedTag = input.tag.toLowerCase().trim()
+      await updateNoteFrontmatterTag(db, input.noteId, (tags) =>
+        tags.filter((t) => t.toLowerCase() !== normalizedTag)
+      ).catch((err) =>
+        log.warn('Failed to update frontmatter for note', { noteId: input.noteId, err })
+      )
 
-        const normalizedTag = input.tag.toLowerCase().trim()
-        await updateNoteFrontmatterTag(db, input.noteId, (tags) =>
-          tags.filter((t) => t.toLowerCase() !== normalizedTag)
-        ).catch((err) =>
-          log.warn('Failed to update frontmatter for note', { noteId: input.noteId, err })
-        )
+      emitTagEvent(TagsChannels.events.NOTES_CHANGED, {
+        tag: input.tag,
+        noteId: input.noteId,
+        action: 'removed'
+      })
+      emitTagEvent('notes:tags-changed', {})
 
-        emitTagEvent(TagsChannels.events.NOTES_CHANGED, {
-          tag: input.tag,
-          noteId: input.noteId,
-          action: 'removed'
-        })
-        emitTagEvent('notes:tags-changed', {})
-
-        return { success: true } as TagOperationResponse
-      } catch (error) {
-        const message = error instanceof Error ? error.message : 'Failed to remove tag from note'
-        return { success: false, error: message } as TagOperationResponse
-      }
-    })
+      return { success: true } as TagOperationResponse
+    }, 'Failed to remove tag from note'))
   )
 
   // tags:get-all-with-counts - Aggregate tags from notes + tasks
@@ -413,7 +376,7 @@ export function registerTagsHandlers(): void {
   // tags:merge - Merge source tag into target (deduplicate across notes + tasks)
   ipcMain.handle(
     TagsChannels.invoke.MERGE_TAG,
-    createValidatedHandler(MergeTagSchema, async (input): Promise<MergeTagResponse> => {
+    createValidatedHandler(MergeTagSchema, withErrorHandler(async (input): Promise<MergeTagResponse> => {
       const indexDb = requireIndexDatabase()
       const dataDb = requireDatabase()
 
@@ -424,60 +387,54 @@ export function registerTagsHandlers(): void {
         return { success: false, error: 'Source and target tags are the same' }
       }
 
-      try {
-        const noteResult = mergeTagInNotes(indexDb, normalizedSource, normalizedTarget)
-        const taskResult = mergeTagInTasks(dataDb, normalizedSource, normalizedTarget)
+      const noteResult = mergeTagInNotes(indexDb, normalizedSource, normalizedTarget)
+      const taskResult = mergeTagInTasks(dataDb, normalizedSource, normalizedTarget)
 
-        const sourceSnapshot = dataDb
-          .select()
-          .from(tagDefinitions)
-          .where(eq(tagDefinitions.name, normalizedSource))
-          .get()
+      const sourceSnapshot = dataDb
+        .select()
+        .from(tagDefinitions)
+        .where(eq(tagDefinitions.name, normalizedSource))
+        .get()
 
-        deleteTagDefinition(dataDb, normalizedSource)
-        getOrCreateTag(dataDb, normalizedTarget)
+      deleteTagDefinition(dataDb, normalizedSource)
+      getOrCreateTag(dataDb, normalizedTarget)
 
-        const syncService = getTagDefinitionSyncService()
-        if (syncService && sourceSnapshot) {
-          syncService.enqueueDelete(normalizedSource, JSON.stringify(sourceSnapshot))
-          syncService.enqueueCreate(normalizedTarget)
-        }
+      const syncService = getTagDefinitionSyncService()
+      if (syncService && sourceSnapshot) {
+        syncService.enqueueDelete(normalizedSource, JSON.stringify(sourceSnapshot))
+        syncService.enqueueCreate(normalizedTarget)
+      }
 
-        await Promise.all(
-          noteResult.noteIds.map((noteId) =>
-            updateNoteFrontmatterTag(indexDb, noteId, (tags) => {
-              const withoutSource = tags.filter((t) => t.toLowerCase() !== normalizedSource)
-              const hasTarget = withoutSource.some((t) => t.toLowerCase() === normalizedTarget)
-              return hasTarget ? withoutSource : [...withoutSource, normalizedTarget]
-            }).catch((err) =>
-              log.warn('Failed to update frontmatter for note during merge', { noteId, err })
-            )
+      await Promise.all(
+        noteResult.noteIds.map((noteId) =>
+          updateNoteFrontmatterTag(indexDb, noteId, (tags) => {
+            const withoutSource = tags.filter((t) => t.toLowerCase() !== normalizedSource)
+            const hasTarget = withoutSource.some((t) => t.toLowerCase() === normalizedTarget)
+            return hasTarget ? withoutSource : [...withoutSource, normalizedTarget]
+          }).catch((err) =>
+            log.warn('Failed to update frontmatter for note during merge', { noteId, err })
           )
         )
+      )
 
-        const taskSyncService = getTaskSyncService()
-        if (taskSyncService) {
-          for (const taskId of taskResult.taskIds) {
-            taskSyncService.enqueueUpdate(taskId)
-          }
+      const taskSyncService = getTaskSyncService()
+      if (taskSyncService) {
+        for (const taskId of taskResult.taskIds) {
+          taskSyncService.enqueueUpdate(taskId)
         }
-
-        emitTagEvent(TagsChannels.events.DELETED, {
-          tag: normalizedSource,
-          affectedNotes: noteResult.affected
-        })
-        emitTagEvent('notes:tags-changed', {})
-
-        return {
-          success: true,
-          affectedItems: noteResult.affected + taskResult.affected
-        }
-      } catch (error) {
-        const message = error instanceof Error ? error.message : 'Failed to merge tags'
-        log.error('Tag merge failed', { source: input.source, target: input.target, error })
-        return { success: false, error: message }
       }
-    })
+
+      emitTagEvent(TagsChannels.events.DELETED, {
+        tag: normalizedSource,
+        affectedNotes: noteResult.affected
+      })
+      emitTagEvent('notes:tags-changed', {})
+
+      return {
+        success: true,
+        affectedItems: noteResult.affected + taskResult.affected
+      }
+    }, 'Failed to merge tags'))
   )
 }
 

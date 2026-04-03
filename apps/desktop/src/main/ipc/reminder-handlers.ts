@@ -17,7 +17,7 @@ import {
   type ReminderWithTarget
 } from '@memry/contracts/reminders-api'
 import { createLogger } from '../lib/logger'
-import { createValidatedHandler, createStringHandler, createHandler } from './validate'
+import { createValidatedHandler, createStringHandler, createHandler, withErrorHandler } from './validate'
 import { getDatabase, getIndexDatabase } from '../database'
 import * as remindersService from '../lib/reminders'
 import * as notesQueries from '@main/database/queries/notes'
@@ -113,42 +113,24 @@ export function registerReminderHandlers(): void {
   // reminder:create - Create a new reminder
   ipcMain.handle(
     ReminderChannels.invoke.CREATE,
-    createValidatedHandler(CreateReminderSchema, (input) => {
+    createValidatedHandler(CreateReminderSchema, withErrorHandler((input) => {
       ensureDb()
-
-      try {
-        const reminder = remindersService.createReminder(input)
-        return { success: true, reminder }
-      } catch (error) {
-        return {
-          success: false,
-          reminder: null,
-          error: error instanceof Error ? error.message : 'Failed to create reminder'
-        }
-      }
-    })
+      const reminder = remindersService.createReminder(input)
+      return { success: true, reminder }
+    }, 'Failed to create reminder'))
   )
 
   // reminder:update - Update an existing reminder
   ipcMain.handle(
     ReminderChannels.invoke.UPDATE,
-    createValidatedHandler(UpdateReminderSchema, (input) => {
+    createValidatedHandler(UpdateReminderSchema, withErrorHandler((input) => {
       ensureDb()
-
-      try {
-        const reminder = remindersService.updateReminder(input)
-        if (!reminder) {
-          return { success: false, reminder: null, error: 'Reminder not found' }
-        }
-        return { success: true, reminder }
-      } catch (error) {
-        return {
-          success: false,
-          reminder: null,
-          error: error instanceof Error ? error.message : 'Failed to update reminder'
-        }
+      const reminder = remindersService.updateReminder(input)
+      if (!reminder) {
+        return { success: false, reminder: null, error: 'Reminder not found' }
       }
-    })
+      return { success: true, reminder }
+    }, 'Failed to update reminder'))
   )
 
   // reminder:delete - Delete a reminder
@@ -259,64 +241,37 @@ export function registerReminderHandlers(): void {
   // reminder:dismiss - Dismiss a reminder
   ipcMain.handle(
     ReminderChannels.invoke.DISMISS,
-    createStringHandler((id) => {
+    createStringHandler(withErrorHandler((id) => {
       ensureDb()
-
-      try {
-        const reminder = remindersService.dismissReminder(id)
-        if (!reminder) {
-          return { success: false, reminder: null, error: 'Reminder not found' }
-        }
-        return { success: true, reminder }
-      } catch (error) {
-        return {
-          success: false,
-          reminder: null,
-          error: error instanceof Error ? error.message : 'Failed to dismiss reminder'
-        }
+      const reminder = remindersService.dismissReminder(id)
+      if (!reminder) {
+        return { success: false, reminder: null, error: 'Reminder not found' }
       }
-    })
+      return { success: true, reminder }
+    }, 'Failed to dismiss reminder'))
   )
 
   // reminder:snooze - Snooze a reminder
   ipcMain.handle(
     ReminderChannels.invoke.SNOOZE,
-    createValidatedHandler(SnoozeReminderSchema, (input) => {
+    createValidatedHandler(SnoozeReminderSchema, withErrorHandler((input) => {
       ensureDb()
-
-      try {
-        const reminder = remindersService.snoozeReminder(input)
-        if (!reminder) {
-          return { success: false, reminder: null, error: 'Reminder not found' }
-        }
-        return { success: true, reminder }
-      } catch (error) {
-        return {
-          success: false,
-          reminder: null,
-          error: error instanceof Error ? error.message : 'Failed to snooze reminder'
-        }
+      const reminder = remindersService.snoozeReminder(input)
+      if (!reminder) {
+        return { success: false, reminder: null, error: 'Reminder not found' }
       }
-    })
+      return { success: true, reminder }
+    }, 'Failed to snooze reminder'))
   )
 
   // reminder:bulk-dismiss - Bulk dismiss reminders
   ipcMain.handle(
     ReminderChannels.invoke.BULK_DISMISS,
-    createValidatedHandler(BulkDismissSchema, (input) => {
+    createValidatedHandler(BulkDismissSchema, withErrorHandler((input) => {
       ensureDb()
-
-      try {
-        const dismissedCount = remindersService.bulkDismissReminders(input.reminderIds)
-        return { success: true, dismissedCount }
-      } catch (error) {
-        return {
-          success: false,
-          dismissedCount: 0,
-          error: error instanceof Error ? error.message : 'Failed to dismiss reminders'
-        }
-      }
-    })
+      const dismissedCount = remindersService.bulkDismissReminders(input.reminderIds)
+      return { success: true, dismissedCount }
+    }, 'Failed to dismiss reminders'))
   )
 
   logger.info('Reminder handlers registered')
