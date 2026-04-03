@@ -11,6 +11,8 @@ import { LinkPreviewCard } from './quick-capture-link-preview'
 import { FilePreviewCard, formatFileSize } from './quick-capture-image-preview'
 import { detectPlatformFromUrl, extractHandleFromUrl } from './social-card'
 import { createLogger } from '@/lib/logger'
+import { ensureVoiceRecordingReady } from '@/lib/voice-recording-readiness'
+import { prepareVoiceMemoAudio } from '@/lib/voice-memo-audio'
 
 const log = createLogger('Component:QuickCapture')
 
@@ -221,12 +223,21 @@ export function QuickCapture(): React.JSX.Element {
         }
 
         if (droppedFile) {
-          const arrayBuffer = await droppedFile.arrayBuffer()
           if (droppedFile.type.startsWith('audio/')) {
+            const ready = await ensureVoiceRecordingReady(() => {
+              window.api.quickCapture.openSettings('ai')
+            })
+
+            if (!ready) {
+              setCaptureState('idle')
+              return
+            }
+
+            const preparedAudio = await prepareVoiceMemoAudio(droppedFile)
             const result = await captureVoice.mutateAsync({
-              data: arrayBuffer,
-              duration: 0,
-              format: droppedFile.name.split('.').pop() || 'unknown',
+              data: preparedAudio.data,
+              duration: preparedAudio.duration,
+              format: preparedAudio.format,
               transcribe: true,
               source: 'quick-capture'
             })
@@ -238,6 +249,7 @@ export function QuickCapture(): React.JSX.Element {
             setCaptureState('error')
             return
           }
+          const arrayBuffer = await droppedFile.arrayBuffer()
           const result = await captureImage.mutateAsync({
             data: arrayBuffer,
             filename: droppedFile.name,
@@ -373,11 +385,11 @@ export function QuickCapture(): React.JSX.Element {
       setIsRecording(false)
       setCaptureState('capturing')
       try {
-        const arrayBuffer = await audioBlob.arrayBuffer()
+        const preparedAudio = await prepareVoiceMemoAudio(audioBlob)
         const result = await captureVoice.mutateAsync({
-          data: arrayBuffer,
-          duration,
-          format: 'webm',
+          data: preparedAudio.data,
+          duration: duration || preparedAudio.duration,
+          format: preparedAudio.format,
           transcribe: true,
           source: 'quick-capture'
         })
@@ -503,7 +515,15 @@ export function QuickCapture(): React.JSX.Element {
               value={value}
               onChange={handleValueChange}
               onSubmit={() => handleSubmit()}
-              onStartRecording={() => setIsRecording(true)}
+              onStartRecording={() => {
+                void ensureVoiceRecordingReady(() => {
+                  window.api.quickCapture.openSettings('ai')
+                }).then((ready) => {
+                  if (ready) {
+                    setIsRecording(true)
+                  }
+                })
+              }}
               onPaste={handlePaste}
               detectedType={detectedType}
               isCapturing={isCapturing || isRecording}

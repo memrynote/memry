@@ -13,6 +13,9 @@ import { cn } from '@/lib/utils'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { useCaptureText, useCaptureLink, useCaptureVoice, useCaptureImage } from '@/hooks/use-inbox'
 import type { DisplayDensity } from '@/hooks/use-display-density'
+import { useSettingsModal } from '@/contexts/settings-modal-context'
+import { ensureVoiceRecordingReady } from '@/lib/voice-recording-readiness'
+import { prepareVoiceMemoAudio } from '@/lib/voice-memo-audio'
 import { VoiceRecorder } from './voice-recorder'
 
 /**
@@ -110,6 +113,7 @@ export function CaptureInput({
   const captureLink = useCaptureLink()
   const captureVoice = useCaptureVoice()
   const captureImage = useCaptureImage()
+  const { open: openSettings } = useSettingsModal()
 
   const isCapturing =
     captureText.isPending ||
@@ -196,14 +200,13 @@ export function CaptureInput({
       setIsRecording(false)
 
       try {
-        // Convert Blob to ArrayBuffer
-        const arrayBuffer = await audioBlob.arrayBuffer()
+        const preparedAudio = await prepareVoiceMemoAudio(audioBlob)
 
         // Capture voice memo
         const result = await captureVoice.mutateAsync({
-          data: arrayBuffer,
-          duration,
-          format: 'webm',
+          data: preparedAudio.data,
+          duration: duration || preparedAudio.duration,
+          format: preparedAudio.format,
           transcribe: true,
           source: 'inline'
         })
@@ -228,9 +231,15 @@ export function CaptureInput({
     setIsRecording(false)
   }, [])
 
-  const handleMicClick = useCallback(() => {
-    setIsRecording(true)
-  }, [])
+  const handleMicClick = useCallback(async () => {
+    const ready = await ensureVoiceRecordingReady(() => {
+      openSettings('ai')
+    })
+
+    if (ready) {
+      setIsRecording(true)
+    }
+  }, [openSettings])
 
   const handleAttachClick = useCallback(() => {
     fileInputRef.current?.click()
