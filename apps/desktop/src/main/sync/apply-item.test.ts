@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { eq } from 'drizzle-orm'
-import { createTestDataDb, type TestDatabaseResult } from '@tests/utils/test-db'
+import { createTestDataDb, asSyncDb, type TestDatabaseResult } from '@tests/utils/test-db'
 import { tasks } from '@memry/db-schema/schema/tasks'
 import { projects } from '@memry/db-schema/schema/projects'
 import { inboxItems } from '@memry/db-schema/schema/inbox'
@@ -49,8 +49,7 @@ describe('ItemApplier', () => {
   beforeEach(() => {
     testDb = createTestDataDb()
     emitToWindows = vi.fn()
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    applier = new ItemApplier(testDb.db as any, emitToWindows)
+    applier = new ItemApplier(asSyncDb(testDb.db), emitToWindows)
 
     testDb.db.insert(projects).values(TEST_PROJECT).run()
   })
@@ -549,8 +548,7 @@ describe('ItemApplier', () => {
     it('#then delegates to mergeRemote', async () => {
       const { initSettingsSyncManager, resetSettingsSyncManager } = await import('./settings-sync')
       initSettingsSyncManager({
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        db: testDb.db as any,
+        db: asSyncDb(testDb.db),
         getDeviceId: () => 'device-1',
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         queue: null as any

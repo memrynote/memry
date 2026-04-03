@@ -1,4 +1,5 @@
 import { describe, it, expect, vi } from 'vitest'
+import { createMockDb } from '@tests/utils/type-safe-mocks'
 
 vi.mock('@main/database/queries/notes', () => ({
   insertNoteCache: vi.fn(),
@@ -143,7 +144,7 @@ describe('extractNoteMetadata', () => {
 
 describe('syncNoteToCache — tagsOverride', () => {
   it('uses tagsOverride instead of re-extracting inline tags from stale content', () => {
-    const db = {} as any
+    const db = createMockDb()
 
     const input = buildInput({
       frontmatter: {
@@ -161,7 +162,7 @@ describe('syncNoteToCache — tagsOverride', () => {
   })
 
   it('falls back to extracted tags when tagsOverride is not provided', () => {
-    const db = {} as any
+    const db = createMockDb()
 
     const input = buildInput({
       parsedContent: 'Has #typescript inline'

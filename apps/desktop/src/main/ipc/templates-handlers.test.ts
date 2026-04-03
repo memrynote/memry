@@ -100,13 +100,13 @@ describe('templates-handlers', () => {
       properties: [],
       content: ''
     })
-    expect(createResult).toEqual({ success: false, template: null, error: 'create failed' })
+    expect(createResult).toEqual({ success: false, error: 'create failed' })
     ;(templates.updateTemplate as vi.Mock).mockRejectedValue(new Error('update failed'))
     const updateResult = await invokeHandler(TemplatesChannels.invoke.UPDATE, {
       id: 't1',
       name: 'Bad'
     })
-    expect(updateResult).toEqual({ success: false, template: null, error: 'update failed' })
+    expect(updateResult).toEqual({ success: false, error: 'update failed' })
     ;(templates.deleteTemplate as vi.Mock).mockRejectedValue(new Error('delete failed'))
     const deleteResult = await invokeHandler(TemplatesChannels.invoke.DELETE, 't1')
     expect(deleteResult).toEqual({ success: false, error: 'delete failed' })
@@ -115,6 +115,6 @@ describe('templates-handlers', () => {
       id: 't1',
       newName: 'Copy'
     })
-    expect(duplicateResult).toEqual({ success: false, template: null, error: 'duplicate failed' })
+    expect(duplicateResult).toEqual({ success: false, error: 'duplicate failed' })
   })
 })

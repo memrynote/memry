@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { eq } from 'drizzle-orm'
-import { createTestDataDb, type TestDatabaseResult } from '@tests/utils/test-db'
+import { createTestDataDb, asClientDb, type TestDatabaseResult } from '@tests/utils/test-db'
 import { projects } from '@memry/db-schema/schema/projects'
 import { statuses } from '@memry/db-schema/schema/statuses'
 import { SyncQueueManager } from './queue'
@@ -37,8 +37,12 @@ describe('ProjectSyncService', () => {
 
   beforeEach(() => {
     testDb = createTestDataDb()
-    queue = new SyncQueueManager(testDb.db as any)
-    service = new ProjectSyncService({ queue, db: testDb.db as any, getDeviceId: () => 'device-A' })
+    queue = new SyncQueueManager(asClientDb(testDb.db))
+    service = new ProjectSyncService({
+      queue,
+      db: asClientDb(testDb.db),
+      getDeviceId: () => 'device-A'
+    })
   })
 
   afterEach(() => {
@@ -102,7 +106,7 @@ describe('ProjectSyncService', () => {
     it('#then records offline clocks and avoids enqueueing', () => {
       const noDeviceService = new ProjectSyncService({
         queue,
-        db: testDb.db as any,
+        db: asClientDb(testDb.db),
         getDeviceId: () => null
       })
       testDb.db.insert(projects).values(TEST_PROJECT).run()
@@ -183,14 +187,14 @@ describe('ProjectSyncService', () => {
     it('#then getProjectSyncService returns instance after init', () => {
       const svc = initProjectSyncService({
         queue,
-        db: testDb.db as any,
+        db: asClientDb(testDb.db),
         getDeviceId: () => 'dev-1'
       })
       expect(getProjectSyncService()).toBe(svc)
     })
 
     it('#then resetProjectSyncService clears instance', () => {
-      initProjectSyncService({ queue, db: testDb.db as any, getDeviceId: () => 'dev-1' })
+      initProjectSyncService({ queue, db: asClientDb(testDb.db), getDeviceId: () => 'dev-1' })
       resetProjectSyncService()
       expect(getProjectSyncService()).toBeNull()
     })

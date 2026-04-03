@@ -85,7 +85,7 @@ import { store } from '../store'
 import { deleteFromServer, getFromServer, patchToServer, postToServer } from '../sync/http-client'
 
 import { createLogger } from '../lib/logger'
-import { createValidatedHandler } from './validate'
+import { createValidatedHandler, withErrorHandler } from './validate'
 import { getNetworkMonitor, getSyncEngine, startSyncRuntime } from '../sync/runtime'
 import { teardownSession } from '../sync/session-teardown'
 import {
@@ -992,12 +992,10 @@ export function registerSyncHandlers(syncEngine?: SyncEngine): void {
     if (!engine) {
       return { success: false, error: 'Sync engine not initialized. Open a vault to start sync.' }
     }
-    try {
+    return withErrorHandler(async () => {
       await engine.fullSync()
       return { success: true }
-    } catch (error) {
-      return { success: false, error: error instanceof Error ? error.message : String(error) }
-    }
+    }, 'Sync failed')()
   })
 
   ipcMain.handle(

@@ -1,6 +1,11 @@
 import { describe, it, expect, beforeAll, beforeEach, afterEach } from 'vitest'
 import sodium from 'libsodium-wrappers-sumo'
-import { createTestDataDb, type TestDatabaseResult } from '@tests/utils/test-db'
+import {
+  createTestDataDb,
+  asClientDb,
+  asSyncDb,
+  type TestDatabaseResult
+} from '@tests/utils/test-db'
 import type { SettingsSyncPayload } from '@memry/contracts/settings-sync'
 import { initCrypto } from '../crypto/index'
 import { encryptItemForPush } from './encrypt'
@@ -20,11 +25,9 @@ describe('SettingsSyncManager', () => {
 
   beforeEach(() => {
     testDb = createTestDataDb()
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    queue = new SyncQueueManager(testDb.db as any)
+    queue = new SyncQueueManager(asClientDb(testDb.db))
     manager = new SettingsSyncManager({
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      db: testDb.db as any,
+      db: asSyncDb(testDb.db),
       queue,
       getDeviceId: () => 'device-A'
     })

@@ -14,6 +14,41 @@ Format: weekly entries grouped by feature area.
 
 ---
 
+## 2026-04-03 — Clean Code Audit
+
+### Changed
+- Split task-utils.ts (1,349 LOC, 60 functions) into 5 focused modules: date-utils, formatting, status-helpers, view-helpers, filters
+- Split queries/notes.ts (1,595 LOC, 78 functions) into 7 sub-modules: CRUD, tags, journal, properties, snapshots, links, helpers
+- Decompose ContentArea.tsx (1,482 → 331 lines) into 6 single-responsibility hooks
+- Decompose use-journal.ts (1,081 lines) into 8 focused modules with shared IPC invalidation hook
+- Split use-inbox.ts (993 lines) into query, mutation, and operation modules
+- Decompose notes-tree.tsx (2,089 → 542 lines) into 7 modules with shared utilities across both tree variants
+- Add withDb/withErrorHandler HOFs to eliminate 112 repetitive try/catch blocks across 14 IPC handler files
+- Replace raw console.* calls in sync-server with structured createLogger utility
+- Add type-safe DB mock factories to reduce as-any casts in sync test files
+
+---
+
+## 2026-04-03 — Sidebar Chevron Always Visible
+
+### Added
+- Add always-visible expand/collapse chevron to folder rows in sidebar tree
+
+### Changed
+- Remove hover-dependent show/hide pattern for folder chevrons
+- Simplify tree node expand animation by removing slide transition
+
+---
+
+## 2026-04-03 — Tag Sort Picker
+
+### Changed
+- Replace DropdownMenu with Picker component for sidebar tag sort control
+- Shorten sort labels to compact single-line names (Most used, Least used, A → Z, Z → A)
+- Add leading icons to all sort options for visual clarity
+
+---
+
 ## 2026-04-02 — Journal Redesign and Task Improvements
 
 ### Added
