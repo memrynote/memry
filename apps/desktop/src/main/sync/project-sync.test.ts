@@ -38,7 +38,11 @@ describe('ProjectSyncService', () => {
   beforeEach(() => {
     testDb = createTestDataDb()
     queue = new SyncQueueManager(asClientDb(testDb.db))
-    service = new ProjectSyncService({ queue, db: asClientDb(testDb.db), getDeviceId: () => 'device-A' })
+    service = new ProjectSyncService({
+      queue,
+      db: asClientDb(testDb.db),
+      getDeviceId: () => 'device-A'
+    })
   })
 
   afterEach(() => {

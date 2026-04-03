@@ -83,9 +83,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
   const { openTag } = useSidebarDrillDown()
   const { port: aiPort, error: aiError, retry: retryAI } = useAIInlineContext()
 
-  const [highlightSelection, setHighlightSelection] = useState<HighlightSelection | null>(
-    null
-  )
+  const [highlightSelection, setHighlightSelection] = useState<HighlightSelection | null>(null)
   const editorContainerRef = useRef<HTMLDivElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const noteIdRef = useRef<string | undefined>(noteId)
@@ -167,13 +165,9 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
   })
 
   // Hook #5: Drag and drop state
-  const {
-    isDragging,
-    dropTarget,
-    handleDragOver,
-    handleDragLeave,
-    handleDrop
-  } = useEditorDragDrop({ containerRef })
+  const { isDragging, dropTarget, handleDragOver, handleDragLeave, handleDrop } = useEditorDragDrop(
+    { containerRef }
+  )
 
   // Hook #6: File upload capture-phase drop (non-image files)
   useEditorFileUpload({

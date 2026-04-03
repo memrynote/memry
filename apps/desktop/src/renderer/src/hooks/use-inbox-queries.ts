@@ -26,12 +26,7 @@ import {
   onInboxSnoozed,
   type InboxListInput
 } from '@/services/inbox-service'
-import {
-  inboxKeys,
-  DEFAULT_PAGE_SIZE,
-  ITEM_STALE_TIME,
-  STATS_STALE_TIME
-} from './inbox-query-keys'
+import { inboxKeys, DEFAULT_PAGE_SIZE, ITEM_STALE_TIME, STATS_STALE_TIME } from './inbox-query-keys'
 
 // =============================================================================
 // Types

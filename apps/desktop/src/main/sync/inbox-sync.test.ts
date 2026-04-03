@@ -1,5 +1,10 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
-import { createTestDataDb, asClientDb, asSyncDb, type TestDatabaseResult } from '@tests/utils/test-db'
+import {
+  createTestDataDb,
+  asClientDb,
+  asSyncDb,
+  type TestDatabaseResult
+} from '@tests/utils/test-db'
 import { inboxItems } from '@memry/db-schema/schema/inbox'
 import type { VectorClock } from '@memry/contracts/sync-api'
 import { SyncQueueManager } from './queue'
@@ -24,7 +29,11 @@ describe('InboxSyncService', () => {
   beforeEach(() => {
     testDb = createTestDataDb()
     queue = new SyncQueueManager(asClientDb(testDb.db))
-    service = new InboxSyncService({ queue, db: asSyncDb(testDb.db), getDeviceId: () => 'device-A' })
+    service = new InboxSyncService({
+      queue,
+      db: asSyncDb(testDb.db),
+      getDeviceId: () => 'device-A'
+    })
   })
 
   afterEach(() => {
@@ -133,7 +142,11 @@ describe('InboxSyncService', () => {
     })
 
     it('#then getInboxSyncService returns instance after init', () => {
-      const svc = initInboxSyncService({ queue, db: asSyncDb(testDb.db), getDeviceId: () => 'dev-1' })
+      const svc = initInboxSyncService({
+        queue,
+        db: asSyncDb(testDb.db),
+        getDeviceId: () => 'dev-1'
+      })
       expect(getInboxSyncService()).toBe(svc)
     })
 

@@ -20,9 +20,7 @@ const includeSubtasksForMatchingParents = (matchingTopLevel: Task[], allTasks: T
   const matchingIds = new Set(matchingTopLevel.map((t) => t.id))
 
   return allTasks.filter(
-    (t) =>
-      matchingIds.has(t.id) ||
-      (t.parentId !== null && matchingIds.has(t.parentId))
+    (t) => matchingIds.has(t.id) || (t.parentId !== null && matchingIds.has(t.parentId))
   )
 }
 

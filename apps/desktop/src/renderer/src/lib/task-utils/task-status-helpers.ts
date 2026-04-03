@@ -1,10 +1,7 @@
 import type { Task } from '@/data/sample-tasks'
 import type { Project, Status } from '@/data/tasks-data'
 import { priorityConfig } from '@/data/sample-tasks'
-import {
-  startOfDay,
-  differenceInDays
-} from './task-date-utils'
+import { startOfDay, differenceInDays } from './task-date-utils'
 
 // ============================================================================
 // TASK STATUS HELPERS
@@ -183,4 +180,3 @@ export const dueDateGroupConfig: Record<keyof TaskGroupByDate, GroupHeaderConfig
   later: { id: 'later', label: 'LATER', urgency: 'low', isMuted: true },
   noDueDate: { id: 'noDueDate', label: 'NO DUE DATE', urgency: 'low', isMuted: true }
 }
-
