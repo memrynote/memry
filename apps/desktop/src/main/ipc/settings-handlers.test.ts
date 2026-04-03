@@ -11,6 +11,11 @@ import { SettingsChannels } from '@memry/contracts/ipc-channels'
 const handleCalls: unknown[][] = []
 const removeHandlerCalls: string[] = []
 const mockSend = vi.fn()
+const mockGetVoiceModelStatus = vi.hoisted(() => vi.fn())
+const mockDownloadVoiceModel = vi.hoisted(() => vi.fn())
+const mockGetVoiceRecordingReadiness = vi.hoisted(() => vi.fn())
+const mockHasVoiceTranscriptionOpenAIApiKey = vi.hoisted(() => vi.fn())
+const mockSetVoiceTranscriptionOpenAIApiKey = vi.hoisted(() => vi.fn())
 const syncListeners = new Map<
   string,
   (event: { returnValue: unknown }, ...args: unknown[]) => void
@@ -55,6 +60,20 @@ vi.mock('../lib/embeddings', () => ({
   getModelInfo: vi.fn(),
   isModelLoaded: vi.fn(),
   isModelLoading: vi.fn()
+}))
+
+vi.mock('../inbox/voice-model', () => ({
+  getVoiceModelStatus: mockGetVoiceModelStatus,
+  downloadVoiceModel: mockDownloadVoiceModel
+}))
+
+vi.mock('../inbox/voice-transcription-settings', () => ({
+  getVoiceRecordingReadiness: mockGetVoiceRecordingReadiness
+}))
+
+vi.mock('../inbox/voice-transcription-keychain', () => ({
+  hasVoiceTranscriptionOpenAIApiKey: mockHasVoiceTranscriptionOpenAIApiKey,
+  setVoiceTranscriptionOpenAIApiKey: mockSetVoiceTranscriptionOpenAIApiKey
 }))
 
 const mockUpdateField = vi.fn()
@@ -114,6 +133,22 @@ describe('settings-handlers', () => {
     mockUpdateField.mockClear()
     mockWritePreferences.mockClear()
     mockGetCurrentVaultPath.mockReturnValue('/test/vault')
+    mockGetVoiceModelStatus.mockReset().mockReturnValue({
+      name: 'Whisper Small',
+      downloaded: false,
+      loaded: false,
+      loading: false,
+      error: null
+    })
+    mockDownloadVoiceModel.mockReset().mockResolvedValue(true)
+    mockGetVoiceRecordingReadiness.mockReset().mockResolvedValue({
+      ready: false,
+      provider: 'local',
+      reason: 'missing-model',
+      message: 'Download Whisper Small in Settings to record voice memos.'
+    })
+    mockHasVoiceTranscriptionOpenAIApiKey.mockReset().mockResolvedValue(false)
+    mockSetVoiceTranscriptionOpenAIApiKey.mockReset().mockResolvedValue(undefined)
     ;(getDatabase as Mock).mockReturnValue({})
   })
 
@@ -212,6 +247,75 @@ describe('settings-handlers', () => {
       key: 'ai',
       value: { enabled: false }
     })
+  })
+
+  it('gets and sets voice transcription settings', async () => {
+    registerSettingsHandlers()
+    ;(settingsQueries.getSetting as Mock).mockReturnValue(JSON.stringify({ provider: 'openai' }))
+
+    const voiceSettings = await invokeHandler(
+      SettingsChannels.invoke.GET_VOICE_TRANSCRIPTION_SETTINGS
+    )
+    expect(voiceSettings).toEqual({ provider: 'openai' })
+
+    const setVoiceSettings = await invokeHandler(
+      SettingsChannels.invoke.SET_VOICE_TRANSCRIPTION_SETTINGS,
+      { provider: 'openai' }
+    )
+    expect(setVoiceSettings).toEqual({ success: true })
+    expect(settingsQueries.setSetting).toHaveBeenCalledWith(
+      {},
+      'voiceTranscription',
+      JSON.stringify({ provider: 'openai' })
+    )
+    expect(mockSend).toHaveBeenCalledWith(SettingsChannels.events.CHANGED, {
+      key: 'voiceTranscription',
+      value: { provider: 'openai' }
+    })
+  })
+
+  it('exposes voice model, readiness, and BYOK handlers', async () => {
+    registerSettingsHandlers()
+    mockGetVoiceRecordingReadiness.mockResolvedValue({
+      ready: false,
+      provider: 'local',
+      reason: 'missing-model',
+      message: 'Download Whisper Small in Settings to record voice memos.'
+    })
+    mockHasVoiceTranscriptionOpenAIApiKey.mockResolvedValue(true)
+
+    const modelStatus = await invokeHandler(SettingsChannels.invoke.GET_VOICE_MODEL_STATUS)
+    expect(modelStatus).toEqual({
+      name: 'Whisper Small',
+      downloaded: false,
+      loaded: false,
+      loading: false,
+      error: null
+    })
+
+    const readiness = await invokeHandler(SettingsChannels.invoke.GET_VOICE_RECORDING_READINESS)
+    expect(readiness).toEqual({
+      ready: false,
+      provider: 'local',
+      reason: 'missing-model',
+      message: 'Download Whisper Small in Settings to record voice memos.'
+    })
+
+    const apiKeyStatus = await invokeHandler(
+      SettingsChannels.invoke.GET_VOICE_TRANSCRIPTION_OPENAI_KEY_STATUS
+    )
+    expect(apiKeyStatus).toEqual({ hasApiKey: true })
+
+    const setApiKey = await invokeHandler(
+      SettingsChannels.invoke.SET_VOICE_TRANSCRIPTION_OPENAI_KEY,
+      { apiKey: 'sk-test' }
+    )
+    expect(setApiKey).toEqual({ success: true })
+    expect(mockSetVoiceTranscriptionOpenAIApiKey).toHaveBeenCalledWith('sk-test')
+
+    const download = await invokeHandler(SettingsChannels.invoke.DOWNLOAD_VOICE_MODEL)
+    expect(download).toEqual({ success: true })
+    expect(mockDownloadVoiceModel).toHaveBeenCalledOnce()
   })
 
   it('handles AI model status and load flows', async () => {
