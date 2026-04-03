@@ -10,8 +10,7 @@ export {
   useInboxPatterns,
   useInboxStaleThreshold,
   useInboxArchived,
-  useInboxFilingHistory,
-  useInboxProcessingErrors
+  useInboxFilingHistory
 } from './use-inbox-queries'
 export type {
   UseInboxListOptions,
@@ -33,7 +32,6 @@ export {
   useFileInboxItem,
   useConvertToNote,
   useConvertToTask,
-  useLinkToNote,
   useAddInboxTag,
   useRemoveInboxTag,
   useSnoozeInboxItem,

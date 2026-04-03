@@ -5,6 +5,15 @@ Format: weekly entries grouped by feature area.
 
 ---
 
+## 2026-04-03 — Dead Code Cleanup
+
+### Changed
+- Remove 6 unused files and 11 unused exports across monorepo (~762 lines)
+- Remove superseded per-type reminder schemas in favor of unified `CreateReminderSchema`
+- Un-export internal-only `ReminderTargetTypeSchema` and `ReminderStatusSchema`
+
+---
+
 ## 2026-04-03 — Clean Code Audit
 
 ### Changed

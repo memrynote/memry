@@ -176,20 +176,6 @@ export function useConvertToTask() {
   })
 }
 
-export function useLinkToNote() {
-  const queryClient = useQueryClient()
-
-  return useMutation({
-    mutationFn: ({ itemId, noteId }: { itemId: string; noteId: string }) =>
-      inboxService.linkToNote(itemId, noteId),
-    onSuccess: (_, { itemId }) => {
-      void queryClient.invalidateQueries({ queryKey: inboxKeys.item(itemId) })
-      void queryClient.invalidateQueries({ queryKey: inboxKeys.lists() })
-      void queryClient.invalidateQueries({ queryKey: inboxKeys.stats() })
-    }
-  })
-}
-
 // =============================================================================
 // Tag Mutations
 // =============================================================================
