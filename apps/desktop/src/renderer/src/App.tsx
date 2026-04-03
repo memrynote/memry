@@ -147,6 +147,12 @@ const AppContent = (): React.JSX.Element => {
     return () => window.removeEventListener('memry:open-search', openSearch)
   }, [])
 
+  useEffect(() => {
+    return window.api.onSettingsOpenRequested((section) => {
+      openSettings(section)
+    })
+  }, [openSettings])
+
   return (
     <TabDragProvider>
       <div className="flex flex-1 overflow-hidden bg-background" id="main-content">
