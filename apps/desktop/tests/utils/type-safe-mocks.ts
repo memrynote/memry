@@ -16,7 +16,10 @@
 
 import { vi, type Mock } from 'vitest'
 import type { DrizzleDb } from '../../src/main/database/client'
-import type { DrizzleDb as SyncDrizzleDb, ApplyContext } from '../../src/main/sync/item-handlers/types'
+import type {
+  DrizzleDb as SyncDrizzleDb,
+  ApplyContext
+} from '../../src/main/sync/item-handlers/types'
 import type {
   NotesClientAPI,
   TasksClientAPI,
@@ -280,9 +283,7 @@ export function createMockSyncDb(): SyncDrizzleDb {
 /**
  * Creates a typed ApplyContext for sync handler tests.
  */
-export function createMockApplyContext(
-  overrides: Partial<ApplyContext> = {}
-): ApplyContext {
+export function createMockApplyContext(overrides: Partial<ApplyContext> = {}): ApplyContext {
   return {
     db: createMockSyncDb(),
     emit: vi.fn(),

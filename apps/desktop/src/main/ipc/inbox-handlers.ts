@@ -400,8 +400,7 @@ const handleCaptureText = withErrorHandler(async (input: unknown): Promise<Captu
       id,
       type: 'note',
       title:
-        parsed.title ||
-        parsed.content.substring(0, 50) + (parsed.content.length > 50 ? '...' : ''),
+        parsed.title || parsed.content.substring(0, 50) + (parsed.content.length > 50 ? '...' : ''),
       content: parsed.content,
       createdAt: now,
       modifiedAt: now,

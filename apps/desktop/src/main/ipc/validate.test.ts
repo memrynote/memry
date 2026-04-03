@@ -54,10 +54,9 @@ describe('withErrorHandler', () => {
 
   it('catches Error and returns formatted response', async () => {
     // #given
-    const handler = withErrorHandler(
-      async () => { throw new Error('db constraint violated') },
-      'Failed to create task'
-    )
+    const handler = withErrorHandler(async () => {
+      throw new Error('db constraint violated')
+    }, 'Failed to create task')
 
     // #when
     const result = await handler()
@@ -68,10 +67,9 @@ describe('withErrorHandler', () => {
 
   it('uses fallback message for non-Error throws', async () => {
     // #given
-    const handler = withErrorHandler(
-      async () => { throw 'string error' },
-      'Failed to create task'
-    )
+    const handler = withErrorHandler(async () => {
+      throw 'string error'
+    }, 'Failed to create task')
 
     // #when
     const result = await handler()
@@ -82,7 +80,9 @@ describe('withErrorHandler', () => {
 
   it('uses default fallback when none provided', async () => {
     // #given
-    const handler = withErrorHandler(async () => { throw 42 })
+    const handler = withErrorHandler(async () => {
+      throw 42
+    })
 
     // #when
     const result = await handler()
@@ -93,10 +93,7 @@ describe('withErrorHandler', () => {
 
   it('handles sync handlers', async () => {
     // #given
-    const handler = withErrorHandler(
-      () => ({ success: true as const, count: 5 }),
-      'Failed'
-    )
+    const handler = withErrorHandler(() => ({ success: true as const, count: 5 }), 'Failed')
 
     // #when
     const result = await handler()
@@ -154,10 +151,9 @@ describe('withDb', () => {
     const mockDb = {}
     mockGetDatabase.mockReturnValue(mockDb as never)
 
-    const handler = withDb(
-      async () => { throw new Error('not found') },
-      'Failed to fetch'
-    )
+    const handler = withDb(async () => {
+      throw new Error('not found')
+    }, 'Failed to fetch')
 
     // #when
     const result = await handler()
@@ -172,10 +168,7 @@ describe('withDb', () => {
       throw new Error('Database not initialized')
     })
 
-    const handler = withDb(
-      async () => ({ success: true as const }),
-      'Failed'
-    )
+    const handler = withDb(async () => ({ success: true as const }), 'Failed')
 
     // #when
     const result = await handler()
@@ -192,10 +185,9 @@ describe('withDb', () => {
     const mockDb = {}
     mockGetDatabase.mockReturnValue(mockDb as never)
 
-    const handler = withDb(
-      async () => { throw null },
-      'Failed to update task'
-    )
+    const handler = withDb(async () => {
+      throw null
+    }, 'Failed to update task')
 
     // #when
     const result = await handler()
@@ -209,10 +201,7 @@ describe('withDb', () => {
     const mockDb = {}
     mockGetDatabase.mockReturnValue(mockDb as never)
 
-    const handler = withDb(
-      (db) => ({ success: true as const, hasDb: db !== null }),
-      'Failed'
-    )
+    const handler = withDb((db) => ({ success: true as const, hasDb: db !== null }), 'Failed')
 
     // #when
     const result = await handler()

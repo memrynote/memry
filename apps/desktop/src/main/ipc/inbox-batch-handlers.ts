@@ -182,7 +182,9 @@ export function createInboxBatchHandlers(deps: InboxBatchHandlerDeps): InboxBatc
       return {
         success: false,
         processedCount: 0,
-        errors: [{ itemId: 'batch', error: error instanceof Error ? error.message : 'Unknown error' }]
+        errors: [
+          { itemId: 'batch', error: error instanceof Error ? error.message : 'Unknown error' }
+        ]
       }
     }
   }

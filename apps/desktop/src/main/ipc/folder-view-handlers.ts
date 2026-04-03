@@ -107,14 +107,17 @@ export function registerFolderViewHandlers(): void {
   // folder-view:set-config - Set folder view configuration
   ipcMain.handle(
     FolderViewChannels.invoke.SET_CONFIG,
-    createValidatedHandler(SetConfigRequestSchema, withErrorHandler(async (input): Promise<SetConfigResponse> => {
-      const currentConfig = (await readFolderConfig(input.folderPath)) || {}
-      await writeFolderConfig(input.folderPath, {
-        ...currentConfig,
-        ...input.config
-      })
-      return { success: true }
-    }, 'Failed to set config'))
+    createValidatedHandler(
+      SetConfigRequestSchema,
+      withErrorHandler(async (input): Promise<SetConfigResponse> => {
+        const currentConfig = (await readFolderConfig(input.folderPath)) || {}
+        await writeFolderConfig(input.folderPath, {
+          ...currentConfig,
+          ...input.config
+        })
+        return { success: true }
+      }, 'Failed to set config')
+    )
   )
 
   // folder-view:get-views - Get all views for a folder
@@ -135,51 +138,57 @@ export function registerFolderViewHandlers(): void {
   // folder-view:set-view - Add or update a single view
   ipcMain.handle(
     FolderViewChannels.invoke.SET_VIEW,
-    createValidatedHandler(SetViewRequestSchema, withErrorHandler(async (input): Promise<SetViewResponse> => {
-      const currentConfig = (await readFolderConfig(input.folderPath)) || {}
-      const views = currentConfig.views || []
+    createValidatedHandler(
+      SetViewRequestSchema,
+      withErrorHandler(async (input): Promise<SetViewResponse> => {
+        const currentConfig = (await readFolderConfig(input.folderPath)) || {}
+        const views = currentConfig.views || []
 
-      const existingIndex = views.findIndex((v) => v.name === input.view.name)
+        const existingIndex = views.findIndex((v) => v.name === input.view.name)
 
-      if (existingIndex >= 0) {
-        views[existingIndex] = input.view
-      } else {
-        views.push(input.view)
-      }
+        if (existingIndex >= 0) {
+          views[existingIndex] = input.view
+        } else {
+          views.push(input.view)
+        }
 
-      if (input.view.default) {
-        views.forEach((v, i) => {
-          if (i !== (existingIndex >= 0 ? existingIndex : views.length - 1)) {
-            v.default = false
-          }
-        })
-      }
+        if (input.view.default) {
+          views.forEach((v, i) => {
+            if (i !== (existingIndex >= 0 ? existingIndex : views.length - 1)) {
+              v.default = false
+            }
+          })
+        }
 
-      await writeFolderConfig(input.folderPath, { ...currentConfig, views })
-      return { success: true }
-    }, 'Failed to set view'))
+        await writeFolderConfig(input.folderPath, { ...currentConfig, views })
+        return { success: true }
+      }, 'Failed to set view')
+    )
   )
 
   // folder-view:delete-view - Delete a view by name
   ipcMain.handle(
     FolderViewChannels.invoke.DELETE_VIEW,
-    createValidatedHandler(DeleteViewRequestSchema, withErrorHandler(async (input): Promise<DeleteViewResponse> => {
-      const currentConfig = (await readFolderConfig(input.folderPath)) || {}
-      const views = currentConfig.views || []
+    createValidatedHandler(
+      DeleteViewRequestSchema,
+      withErrorHandler(async (input): Promise<DeleteViewResponse> => {
+        const currentConfig = (await readFolderConfig(input.folderPath)) || {}
+        const views = currentConfig.views || []
 
-      const filtered = views.filter((v) => v.name !== input.viewName)
+        const filtered = views.filter((v) => v.name !== input.viewName)
 
-      if (filtered.length === 0) {
-        await writeFolderConfig(input.folderPath, { ...currentConfig, views: undefined })
-      } else {
-        if (!filtered.some((v) => v.default)) {
-          filtered[0].default = true
+        if (filtered.length === 0) {
+          await writeFolderConfig(input.folderPath, { ...currentConfig, views: undefined })
+        } else {
+          if (!filtered.some((v) => v.default)) {
+            filtered[0].default = true
+          }
+          await writeFolderConfig(input.folderPath, { ...currentConfig, views: filtered })
         }
-        await writeFolderConfig(input.folderPath, { ...currentConfig, views: filtered })
-      }
 
-      return { success: true }
-    }, 'Failed to delete view'))
+        return { success: true }
+      }, 'Failed to delete view')
+    )
   )
 
   // folder-view:list-with-properties - List notes in folder with property values
