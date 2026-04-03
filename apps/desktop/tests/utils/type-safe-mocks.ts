@@ -15,6 +15,11 @@
  */
 
 import { vi, type Mock } from 'vitest'
+import type { DrizzleDb } from '../../src/main/database/client'
+import type {
+  DrizzleDb as SyncDrizzleDb,
+  ApplyContext
+} from '../../src/main/sync/item-handlers/types'
 import type {
   NotesClientAPI,
   TasksClientAPI,
@@ -222,6 +227,67 @@ export function createTypeSafeAPI(config: TypeSafeAPIConfig = {}): TypeSafeWindo
     tasks: createTasksMock(config.tasks),
     bookmarks: createBookmarksMock(config.bookmarks)
     // Add other APIs...
+  }
+}
+
+// ============================================================================
+// Database Mock Factories
+// ============================================================================
+
+/**
+ * Creates a typed mock for the main DrizzleDb (data + index).
+ * Returns a properly typed empty mock — use for unit tests where
+ * the DB is passed through but no methods are called.
+ *
+ * For integration tests with real SQL, use createTestDatabase() from test-db.ts.
+ */
+export function createMockDb(): DrizzleDb {
+  return {
+    select: vi.fn().mockReturnValue({
+      from: vi.fn().mockReturnValue({
+        where: vi.fn().mockReturnValue({ get: vi.fn(), all: vi.fn() }),
+        get: vi.fn(),
+        all: vi.fn()
+      })
+    }),
+    insert: vi.fn().mockReturnValue({
+      values: vi.fn().mockReturnValue({
+        run: vi.fn(),
+        returning: vi.fn().mockReturnValue({ get: vi.fn(), all: vi.fn() }),
+        onConflictDoUpdate: vi.fn().mockReturnValue({ run: vi.fn() }),
+        onConflictDoNothing: vi.fn().mockReturnValue({ run: vi.fn() })
+      })
+    }),
+    update: vi.fn().mockReturnValue({
+      set: vi.fn().mockReturnValue({
+        where: vi.fn().mockReturnValue({ run: vi.fn(), returning: vi.fn() }),
+        run: vi.fn()
+      })
+    }),
+    delete: vi.fn().mockReturnValue({
+      where: vi.fn().mockReturnValue({ run: vi.fn() }),
+      run: vi.fn()
+    }),
+    run: vi.fn(),
+    transaction: vi.fn((fn: (tx: unknown) => unknown) => fn({}))
+  } as unknown as DrizzleDb
+}
+
+/**
+ * Creates a typed mock for the sync layer's DrizzleDb (data-schema only).
+ */
+export function createMockSyncDb(): SyncDrizzleDb {
+  return createMockDb() as unknown as SyncDrizzleDb
+}
+
+/**
+ * Creates a typed ApplyContext for sync handler tests.
+ */
+export function createMockApplyContext(overrides: Partial<ApplyContext> = {}): ApplyContext {
+  return {
+    db: createMockSyncDb(),
+    emit: vi.fn(),
+    ...overrides
   }
 }
 

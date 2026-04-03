@@ -30,7 +30,7 @@ import {
   GetUpcomingSchema
 } from '@memry/contracts/tasks-api'
 import { createLogger } from '../lib/logger'
-import { createValidatedHandler, createHandler, createStringHandler } from './validate'
+import { createValidatedHandler, createHandler, createStringHandler, withDb } from './validate'
 import { getDatabase, type DrizzleDb } from '../database'
 import { generateId } from '../lib/id'
 import * as taskQueries from '@main/database/queries/tasks'
@@ -110,9 +110,9 @@ export function registerTasksHandlers(): void {
   // tasks:create - Create a new task
   ipcMain.handle(
     TasksChannels.invoke.CREATE,
-    createValidatedHandler(TaskCreateSchema, async (input) => {
-      try {
-        const db = requireDatabase()
+    createValidatedHandler(
+      TaskCreateSchema,
+      withDb(async (db, input) => {
         const id = generateId()
         const position = taskQueries.getNextTaskPosition(db, input.projectId, input.parentId)
 
@@ -133,17 +133,14 @@ export function registerTasksHandlers(): void {
           sourceNoteId: input.sourceNoteId ?? null
         })
 
-        // Set tags if provided
         if (input.tags && input.tags.length > 0) {
           taskQueries.setTaskTags(db, id, input.tags)
         }
 
-        // Set linked notes if provided
         if (input.linkedNoteIds && input.linkedNoteIds.length > 0) {
           taskQueries.setTaskNotes(db, id, input.linkedNoteIds)
         }
 
-        // Enrich task with linked note IDs for the response
         const enrichedTask = {
           ...task,
           linkedNoteIds: input.linkedNoteIds ?? []
@@ -153,11 +150,8 @@ export function registerTasksHandlers(): void {
         syncTaskCreate(db, id)
 
         return { success: true, task: enrichedTask }
-      } catch (error) {
-        const message = error instanceof Error ? error.message : 'Failed to create task'
-        return { success: false, task: null, error: message }
-      }
-    })
+      }, 'Failed to create task')
+    )
   )
 
   // tasks:get - Get a task by ID
@@ -186,9 +180,9 @@ export function registerTasksHandlers(): void {
   // tasks:update - Update a task
   ipcMain.handle(
     TasksChannels.invoke.UPDATE,
-    createValidatedHandler(TaskUpdateSchema, async (input) => {
-      try {
-        const db = requireDatabase()
+    createValidatedHandler(
+      TaskUpdateSchema,
+      withDb(async (db, input) => {
         const { id, tags, linkedNoteIds, ...updates } = input
 
         const existingTask = taskQueries.getTaskById(db, id)
@@ -196,11 +190,9 @@ export function registerTasksHandlers(): void {
         // If projectId is changing, we need to map the status to the new project
         if (updates.projectId) {
           if (existingTask && existingTask.projectId !== updates.projectId) {
-            // Get the current status
             const currentStatus = existingTask.statusId
               ? projectQueries.getStatusById(db, existingTask.statusId)
               : undefined
-            // Find equivalent status in the new project
             const newStatus = projectQueries.getEquivalentStatus(
               db,
               updates.projectId,
@@ -255,19 +247,15 @@ export function registerTasksHandlers(): void {
         syncTaskUpdate(db, id, actualChanged)
 
         return { success: true, task: enrichedTask }
-      } catch (error) {
-        const message = error instanceof Error ? error.message : 'Failed to update task'
-        return { success: false, task: null, error: message }
-      }
-    })
+      }, 'Failed to update task')
+    )
   )
 
   // tasks:delete - Delete a task
   ipcMain.handle(
     TasksChannels.invoke.DELETE,
-    createStringHandler(async (id) => {
-      try {
-        const db = requireDatabase()
+    createStringHandler(
+      withDb(async (db, id) => {
         const syncService = getTaskSyncService()
         if (syncService) {
           const task = taskQueries.getTaskById(db, id)
@@ -276,11 +264,8 @@ export function registerTasksHandlers(): void {
         taskQueries.deleteTask(db, id)
         emitTaskEvent(TasksChannels.events.DELETED, { id })
         return { success: true }
-      } catch (error) {
-        const message = error instanceof Error ? error.message : 'Failed to delete task'
-        return { success: false, error: message }
-      }
-    })
+      }, 'Failed to delete task')
+    )
   )
 
   // tasks:list - List tasks with filtering
@@ -325,9 +310,9 @@ export function registerTasksHandlers(): void {
   // tasks:complete - Complete a task
   ipcMain.handle(
     TasksChannels.invoke.COMPLETE,
-    createValidatedHandler(TaskCompleteSchema, async (input) => {
-      try {
-        const db = requireDatabase()
+    createValidatedHandler(
+      TaskCompleteSchema,
+      withDb(async (db, input) => {
         const task = taskQueries.completeTask(db, input.id, input.completedAt)
         if (!task) {
           return { success: false, task: null, error: 'Task not found' }
@@ -342,19 +327,15 @@ export function registerTasksHandlers(): void {
         syncTaskUpdate(db, input.id, ['completedAt'])
 
         return { success: true, task: enrichedTask }
-      } catch (error) {
-        const message = error instanceof Error ? error.message : 'Failed to complete task'
-        return { success: false, task: null, error: message }
-      }
-    })
+      }, 'Failed to complete task')
+    )
   )
 
   // tasks:uncomplete - Uncomplete a task
   ipcMain.handle(
     TasksChannels.invoke.UNCOMPLETE,
-    createStringHandler(async (id) => {
-      try {
-        const db = requireDatabase()
+    createStringHandler(
+      withDb(async (db, id) => {
         const task = taskQueries.uncompleteTask(db, id)
         if (!task) {
           return { success: false, task: null, error: 'Task not found' }
@@ -373,29 +354,23 @@ export function registerTasksHandlers(): void {
         syncTaskUpdate(db, id, ['completedAt'])
 
         return { success: true, task: enrichedTask }
-      } catch (error) {
-        const message = error instanceof Error ? error.message : 'Failed to uncomplete task'
-        return { success: false, task: null, error: message }
-      }
-    })
+      }, 'Failed to uncomplete task')
+    )
   )
 
   // tasks:archive - Archive a task
   ipcMain.handle(
     TasksChannels.invoke.ARCHIVE,
-    createStringHandler(async (id) => {
-      try {
-        const db = requireDatabase()
+    createStringHandler(
+      withDb(async (db, id) => {
         const task = taskQueries.archiveTask(db, id)
         if (!task) {
           return { success: false, error: 'Task not found' }
         }
-        // Enrich task with linked note IDs for the response
         const enrichedTask = {
           ...task,
           linkedNoteIds: taskQueries.getTaskNoteIds(db, id)
         }
-        // Emit event so frontend can update state
         emitTaskEvent(TasksChannels.events.UPDATED, {
           id,
           task: enrichedTask,
@@ -403,29 +378,23 @@ export function registerTasksHandlers(): void {
         })
         syncTaskUpdate(db, id, ['archivedAt'])
         return { success: true }
-      } catch (error) {
-        const message = error instanceof Error ? error.message : 'Failed to archive task'
-        return { success: false, error: message }
-      }
-    })
+      }, 'Failed to archive task')
+    )
   )
 
   // tasks:unarchive - Unarchive a task
   ipcMain.handle(
     TasksChannels.invoke.UNARCHIVE,
-    createStringHandler(async (id) => {
-      try {
-        const db = requireDatabase()
+    createStringHandler(
+      withDb(async (db, id) => {
         const task = taskQueries.unarchiveTask(db, id)
         if (!task) {
           return { success: false, error: 'Task not found' }
         }
-        // Enrich task with linked note IDs for the response
         const enrichedTask = {
           ...task,
           linkedNoteIds: taskQueries.getTaskNoteIds(db, id)
         }
-        // Emit event so frontend can update state
         emitTaskEvent(TasksChannels.events.UPDATED, {
           id,
           task: enrichedTask,
@@ -433,21 +402,16 @@ export function registerTasksHandlers(): void {
         })
         syncTaskUpdate(db, id, ['archivedAt'])
         return { success: true }
-      } catch (error) {
-        const message = error instanceof Error ? error.message : 'Failed to unarchive task'
-        return { success: false, error: message }
-      }
-    })
+      }, 'Failed to unarchive task')
+    )
   )
 
   // tasks:move - Move a task
   ipcMain.handle(
     TasksChannels.invoke.MOVE,
-    createValidatedHandler(TaskMoveSchema, async (input) => {
-      try {
-        const db = requireDatabase()
-
-        // If moving to a different project and no statusId provided, map the status
+    createValidatedHandler(
+      TaskMoveSchema,
+      withDb(async (db, input) => {
         let targetStatusId = input.targetStatusId
         if (input.targetProjectId && !targetStatusId) {
           const currentTask = taskQueries.getTaskById(db, input.taskId)
@@ -490,37 +454,30 @@ export function registerTasksHandlers(): void {
         syncTaskUpdate(db, input.taskId, movedFields)
 
         return { success: true, task: enrichedTask }
-      } catch (error) {
-        const message = error instanceof Error ? error.message : 'Failed to move task'
-        return { success: false, task: null, error: message }
-      }
-    })
+      }, 'Failed to move task')
+    )
   )
 
   // tasks:reorder - Reorder tasks
   ipcMain.handle(
     TasksChannels.invoke.REORDER,
-    createValidatedHandler(TaskReorderSchema, async (input) => {
-      try {
-        const db = requireDatabase()
+    createValidatedHandler(
+      TaskReorderSchema,
+      withDb(async (db, input) => {
         taskQueries.reorderTasks(db, input.taskIds, input.positions)
         for (const taskId of input.taskIds) {
           syncTaskUpdate(db, taskId, ['position'])
         }
         return { success: true }
-      } catch (error) {
-        const message = error instanceof Error ? error.message : 'Failed to reorder tasks'
-        return { success: false, error: message }
-      }
-    })
+      }, 'Failed to reorder tasks')
+    )
   )
 
   // tasks:duplicate - Duplicate a task (including subtasks)
   ipcMain.handle(
     TasksChannels.invoke.DUPLICATE,
-    createStringHandler(async (id) => {
-      try {
-        const db = requireDatabase()
+    createStringHandler(
+      withDb(async (db, id) => {
         const newId = generateId()
         const task = taskQueries.duplicateTask(db, id, newId)
 
@@ -528,13 +485,11 @@ export function registerTasksHandlers(): void {
           return { success: false, task: null, error: 'Task not found' }
         }
 
-        // Copy tags
         const tags = taskQueries.getTaskTags(db, id)
         if (tags.length > 0) {
           taskQueries.setTaskTags(db, newId, tags)
         }
 
-        // Copy linked notes
         const linkedNoteIds = taskQueries.getTaskNoteIds(db, id)
         if (linkedNoteIds.length > 0) {
           taskQueries.setTaskNotes(db, newId, linkedNoteIds)
@@ -545,16 +500,13 @@ export function registerTasksHandlers(): void {
           linkedNoteIds
         }
 
-        // IMPORTANT: Emit parent task FIRST so it exists in state when subtasks arrive
         emitTaskEvent(TasksChannels.events.CREATED, { task: enrichedTask })
         syncTaskCreate(db, newId)
 
-        // Duplicate subtasks (if any)
         const subtasks = taskQueries.getSubtasks(db, id)
 
         for (const subtask of subtasks) {
           const newSubtaskId = generateId()
-          // Use duplicateSubtask which sets parentId correctly and keeps original title
           const duplicatedSubtask = taskQueries.duplicateSubtask(
             db,
             subtask.id,
@@ -563,13 +515,11 @@ export function registerTasksHandlers(): void {
           )
 
           if (duplicatedSubtask) {
-            // Copy subtask tags
             const subtaskTags = taskQueries.getTaskTags(db, subtask.id)
             if (subtaskTags.length > 0) {
               taskQueries.setTaskTags(db, newSubtaskId, subtaskTags)
             }
 
-            // Copy subtask linked notes
             const subtaskNoteIds = taskQueries.getTaskNoteIds(db, subtask.id)
             if (subtaskNoteIds.length > 0) {
               taskQueries.setTaskNotes(db, newSubtaskId, subtaskNoteIds)
@@ -583,11 +533,8 @@ export function registerTasksHandlers(): void {
         }
 
         return { success: true, task: enrichedTask }
-      } catch (error) {
-        const message = error instanceof Error ? error.message : 'Failed to duplicate task'
-        return { success: false, task: null, error: message }
-      }
-    })
+      }, 'Failed to duplicate task')
+    )
   )
 
   // ============================================================================
@@ -606,9 +553,9 @@ export function registerTasksHandlers(): void {
   // tasks:convert-to-subtask - Convert a task to a subtask
   ipcMain.handle(
     TasksChannels.invoke.CONVERT_TO_SUBTASK,
-    createValidatedHandler(ConvertToSubtaskSchema, async (input) => {
-      try {
-        const db = requireDatabase()
+    createValidatedHandler(
+      ConvertToSubtaskSchema,
+      withDb(async (db, input) => {
         const task = taskQueries.moveTask(db, input.taskId, { parentId: input.parentId })
         if (!task) {
           return { success: false, task: null, error: 'Task not found' }
@@ -619,19 +566,15 @@ export function registerTasksHandlers(): void {
         }
         syncTaskUpdate(db, input.taskId, ['parentId'])
         return { success: true, task: enrichedTask }
-      } catch (error) {
-        const message = error instanceof Error ? error.message : 'Failed to convert to subtask'
-        return { success: false, task: null, error: message }
-      }
-    })
+      }, 'Failed to convert to subtask')
+    )
   )
 
   // tasks:convert-to-task - Convert a subtask to a top-level task
   ipcMain.handle(
     TasksChannels.invoke.CONVERT_TO_TASK,
-    createStringHandler(async (taskId) => {
-      try {
-        const db = requireDatabase()
+    createStringHandler(
+      withDb(async (db, taskId) => {
         const task = taskQueries.moveTask(db, taskId, { parentId: null })
         if (!task) {
           return { success: false, task: null, error: 'Task not found' }
@@ -642,11 +585,8 @@ export function registerTasksHandlers(): void {
         }
         syncTaskUpdate(db, taskId, ['parentId'])
         return { success: true, task: enrichedTask }
-      } catch (error) {
-        const message = error instanceof Error ? error.message : 'Failed to convert to task'
-        return { success: false, task: null, error: message }
-      }
-    })
+      }, 'Failed to convert to task')
+    )
   )
 
   // ============================================================================
@@ -656,9 +596,9 @@ export function registerTasksHandlers(): void {
   // tasks:project-create - Create a new project
   ipcMain.handle(
     TasksChannels.invoke.PROJECT_CREATE,
-    createValidatedHandler(ProjectCreateSchema, async (input) => {
-      try {
-        const db = requireDatabase()
+    createValidatedHandler(
+      ProjectCreateSchema,
+      withDb(async (db, input) => {
         const id = generateId()
         const position = projectQueries.getNextProjectPosition(db)
 
@@ -683,11 +623,8 @@ export function registerTasksHandlers(): void {
         syncProjectCreate(db, id)
 
         return { success: true, project: fullProject ?? project }
-      } catch (error) {
-        const message = error instanceof Error ? error.message : 'Failed to create project'
-        return { success: false, project: null, error: message }
-      }
-    })
+      }, 'Failed to create project')
+    )
   )
 
   // tasks:project-get - Get a project by ID
@@ -702,9 +639,9 @@ export function registerTasksHandlers(): void {
   // tasks:project-update - Update a project
   ipcMain.handle(
     TasksChannels.invoke.PROJECT_UPDATE,
-    createValidatedHandler(ProjectUpdateSchema, async (input) => {
-      try {
-        const db = requireDatabase()
+    createValidatedHandler(
+      ProjectUpdateSchema,
+      withDb(async (db, input) => {
         const { id, statuses: statusUpdates, ...metadataUpdates } = input
         const project = projectQueries.updateProject(db, id, metadataUpdates)
 
@@ -721,19 +658,15 @@ export function registerTasksHandlers(): void {
         syncProjectUpdate(db, id)
 
         return { success: true, project: fullProject ?? project }
-      } catch (error) {
-        const message = error instanceof Error ? error.message : 'Failed to update project'
-        return { success: false, project: null, error: message }
-      }
-    })
+      }, 'Failed to update project')
+    )
   )
 
   // tasks:project-delete - Delete a project
   ipcMain.handle(
     TasksChannels.invoke.PROJECT_DELETE,
-    createStringHandler(async (id) => {
-      try {
-        const db = requireDatabase()
+    createStringHandler(
+      withDb(async (db, id) => {
         const syncService = getProjectSyncService()
         let snapshot: string | undefined
         if (syncService) {
@@ -744,11 +677,8 @@ export function registerTasksHandlers(): void {
         emitTaskEvent(TasksChannels.events.PROJECT_DELETED, { id })
         if (syncService && snapshot) syncService.enqueueDelete(id, snapshot)
         return { success: true }
-      } catch (error) {
-        const message = error instanceof Error ? error.message : 'Failed to delete project'
-        return { success: false, error: message }
-      }
-    })
+      }, 'Failed to delete project')
+    )
   )
 
   // tasks:project-list - List all projects
@@ -764,35 +694,28 @@ export function registerTasksHandlers(): void {
   // tasks:project-archive - Archive a project
   ipcMain.handle(
     TasksChannels.invoke.PROJECT_ARCHIVE,
-    createStringHandler(async (id) => {
-      try {
-        const db = requireDatabase()
+    createStringHandler(
+      withDb(async (db, id) => {
         projectQueries.archiveProject(db, id)
         syncProjectUpdate(db, id)
         return { success: true }
-      } catch (error) {
-        const message = error instanceof Error ? error.message : 'Failed to archive project'
-        return { success: false, error: message }
-      }
-    })
+      }, 'Failed to archive project')
+    )
   )
 
   // tasks:project-reorder - Reorder projects
   ipcMain.handle(
     TasksChannels.invoke.PROJECT_REORDER,
-    createValidatedHandler(ProjectReorderSchema, async (input) => {
-      try {
-        const db = requireDatabase()
+    createValidatedHandler(
+      ProjectReorderSchema,
+      withDb(async (db, input) => {
         projectQueries.reorderProjects(db, input.projectIds, input.positions)
         for (const pid of input.projectIds) {
           syncProjectUpdate(db, pid, ['position'])
         }
         return { success: true }
-      } catch (error) {
-        const message = error instanceof Error ? error.message : 'Failed to reorder projects'
-        return { success: false, error: message }
-      }
-    })
+      }, 'Failed to reorder projects')
+    )
   )
 
   // ============================================================================
@@ -802,9 +725,9 @@ export function registerTasksHandlers(): void {
   // tasks:status-create - Create a new status
   ipcMain.handle(
     TasksChannels.invoke.STATUS_CREATE,
-    createValidatedHandler(StatusCreateSchema, async (input) => {
-      try {
-        const db = requireDatabase()
+    createValidatedHandler(
+      StatusCreateSchema,
+      withDb(async (db, input) => {
         const id = generateId()
         const position = projectQueries.getNextStatusPosition(db, input.projectId)
 
@@ -820,19 +743,16 @@ export function registerTasksHandlers(): void {
 
         syncProjectUpdate(db, input.projectId)
         return { success: true, status }
-      } catch (error) {
-        const message = error instanceof Error ? error.message : 'Failed to create status'
-        return { success: false, status: null, error: message }
-      }
-    })
+      }, 'Failed to create status')
+    )
   )
 
   // tasks:status-update - Update a status
   ipcMain.handle(
     TasksChannels.invoke.STATUS_UPDATE,
-    createValidatedHandler(StatusUpdateSchema, async (input) => {
-      try {
-        const db = requireDatabase()
+    createValidatedHandler(
+      StatusUpdateSchema,
+      withDb(async (db, input) => {
         const { id, ...updates } = input
         const status = projectQueries.updateStatus(db, id, updates)
         if (!status) {
@@ -841,47 +761,37 @@ export function registerTasksHandlers(): void {
         const resolved = projectQueries.getStatusById(db, id)
         if (resolved) syncProjectUpdate(db, resolved.projectId)
         return { success: true, status }
-      } catch (error) {
-        const message = error instanceof Error ? error.message : 'Failed to update status'
-        return { success: false, error: message }
-      }
-    })
+      }, 'Failed to update status')
+    )
   )
 
   // tasks:status-delete - Delete a status
   ipcMain.handle(
     TasksChannels.invoke.STATUS_DELETE,
-    createStringHandler(async (id) => {
-      try {
-        const db = requireDatabase()
+    createStringHandler(
+      withDb(async (db, id) => {
         const statusBefore = projectQueries.getStatusById(db, id)
         projectQueries.deleteStatus(db, id)
         if (statusBefore) syncProjectUpdate(db, statusBefore.projectId)
         return { success: true }
-      } catch (error) {
-        const message = error instanceof Error ? error.message : 'Failed to delete status'
-        return { success: false, error: message }
-      }
-    })
+      }, 'Failed to delete status')
+    )
   )
 
   // tasks:status-reorder - Reorder statuses
   ipcMain.handle(
     TasksChannels.invoke.STATUS_REORDER,
-    createValidatedHandler(StatusReorderSchema, async (input) => {
-      try {
-        const db = requireDatabase()
+    createValidatedHandler(
+      StatusReorderSchema,
+      withDb(async (db, input) => {
         projectQueries.reorderStatuses(db, input.statusIds, input.positions)
         if (input.statusIds.length > 0) {
           const firstStatus = projectQueries.getStatusById(db, input.statusIds[0])
           if (firstStatus) syncProjectUpdate(db, firstStatus.projectId)
         }
         return { success: true }
-      } catch (error) {
-        const message = error instanceof Error ? error.message : 'Failed to reorder statuses'
-        return { success: false, error: message }
-      }
-    })
+      }, 'Failed to reorder statuses')
+    )
   )
 
   // tasks:status-list - List statuses for a project
@@ -913,9 +823,9 @@ export function registerTasksHandlers(): void {
   // tasks:bulk-complete - Complete multiple tasks
   ipcMain.handle(
     TasksChannels.invoke.BULK_COMPLETE,
-    createValidatedHandler(BulkIdsSchema, async (input) => {
-      try {
-        const db = requireDatabase()
+    createValidatedHandler(
+      BulkIdsSchema,
+      withDb(async (db, input) => {
         const count = taskQueries.bulkCompleteTasks(db, input.ids)
 
         for (const id of input.ids) {
@@ -931,19 +841,16 @@ export function registerTasksHandlers(): void {
         }
 
         return { success: true, count }
-      } catch (error) {
-        const message = error instanceof Error ? error.message : 'Failed to complete tasks'
-        return { success: false, count: 0, error: message }
-      }
-    })
+      }, 'Failed to complete tasks')
+    )
   )
 
   // tasks:bulk-delete - Delete multiple tasks
   ipcMain.handle(
     TasksChannels.invoke.BULK_DELETE,
-    createValidatedHandler(BulkIdsSchema, async (input) => {
-      try {
-        const db = requireDatabase()
+    createValidatedHandler(
+      BulkIdsSchema,
+      withDb(async (db, input) => {
         const syncService = getTaskSyncService()
         if (syncService) {
           for (const id of input.ids) {
@@ -954,19 +861,16 @@ export function registerTasksHandlers(): void {
         const count = taskQueries.bulkDeleteTasks(db, input.ids)
         input.ids.forEach((id) => emitTaskEvent(TasksChannels.events.DELETED, { id }))
         return { success: true, count }
-      } catch (error) {
-        const message = error instanceof Error ? error.message : 'Failed to delete tasks'
-        return { success: false, count: 0, error: message }
-      }
-    })
+      }, 'Failed to delete tasks')
+    )
   )
 
   // tasks:bulk-move - Move multiple tasks to a project
   ipcMain.handle(
     TasksChannels.invoke.BULK_MOVE,
-    createValidatedHandler(BulkMoveSchema, async (input) => {
-      try {
-        const db = requireDatabase()
+    createValidatedHandler(
+      BulkMoveSchema,
+      withDb(async (db, input) => {
         const count = taskQueries.bulkMoveTasks(db, input.ids, input.projectId)
 
         for (const id of input.ids) {
@@ -986,19 +890,16 @@ export function registerTasksHandlers(): void {
         }
 
         return { success: true, count }
-      } catch (error) {
-        const message = error instanceof Error ? error.message : 'Failed to move tasks'
-        return { success: false, count: 0, error: message }
-      }
-    })
+      }, 'Failed to move tasks')
+    )
   )
 
   // tasks:bulk-archive - Archive multiple tasks
   ipcMain.handle(
     TasksChannels.invoke.BULK_ARCHIVE,
-    createValidatedHandler(BulkIdsSchema, async (input) => {
-      try {
-        const db = requireDatabase()
+    createValidatedHandler(
+      BulkIdsSchema,
+      withDb(async (db, input) => {
         const count = taskQueries.bulkArchiveTasks(db, input.ids)
 
         for (const id of input.ids) {
@@ -1018,11 +919,8 @@ export function registerTasksHandlers(): void {
         }
 
         return { success: true, count }
-      } catch (error) {
-        const message = error instanceof Error ? error.message : 'Failed to archive tasks'
-        return { success: false, count: 0, error: message }
-      }
-    })
+      }, 'Failed to archive tasks')
+    )
   )
 
   // ============================================================================

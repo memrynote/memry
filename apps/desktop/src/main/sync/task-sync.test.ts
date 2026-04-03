@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { eq } from 'drizzle-orm'
-import { createTestDataDb, type TestDatabaseResult } from '@tests/utils/test-db'
+import { createTestDataDb, asClientDb, type TestDatabaseResult } from '@tests/utils/test-db'
 import { tasks } from '@memry/db-schema/schema/tasks'
 import { projects } from '@memry/db-schema/schema/projects'
 import { SyncQueueManager } from './queue'
@@ -35,10 +35,12 @@ describe('TaskSyncService', () => {
 
   beforeEach(() => {
     testDb = createTestDataDb()
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    queue = new SyncQueueManager(testDb.db as any)
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    service = new TaskSyncService({ queue, db: testDb.db as any, getDeviceId: () => 'device-A' })
+    queue = new SyncQueueManager(asClientDb(testDb.db))
+    service = new TaskSyncService({
+      queue,
+      db: asClientDb(testDb.db),
+      getDeviceId: () => 'device-A'
+    })
 
     testDb.db.insert(projects).values(TEST_PROJECT).run()
   })
@@ -99,10 +101,9 @@ describe('TaskSyncService', () => {
 
   describe('#given no device ID #when enqueue called', () => {
     it('#then records offline clocks and avoids enqueueing', () => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const noDeviceService = new TaskSyncService({
         queue,
-        db: testDb.db as any,
+        db: asClientDb(testDb.db),
         getDeviceId: () => null
       })
       testDb.db.insert(tasks).values(TEST_TASK).run()
@@ -183,14 +184,16 @@ describe('TaskSyncService', () => {
     })
 
     it('#then getTaskSyncService returns instance after init', () => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const svc = initTaskSyncService({ queue, db: testDb.db as any, getDeviceId: () => 'dev-1' })
+      const svc = initTaskSyncService({
+        queue,
+        db: asClientDb(testDb.db),
+        getDeviceId: () => 'dev-1'
+      })
       expect(getTaskSyncService()).toBe(svc)
     })
 
     it('#then resetTaskSyncService clears instance', () => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      initTaskSyncService({ queue, db: testDb.db as any, getDeviceId: () => 'dev-1' })
+      initTaskSyncService({ queue, db: asClientDb(testDb.db), getDeviceId: () => 'dev-1' })
       resetTaskSyncService()
       expect(getTaskSyncService()).toBeNull()
     })

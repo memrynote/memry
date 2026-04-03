@@ -53,7 +53,7 @@ import {
   getJournalMonthEntries,
   getJournalYearStats,
   getJournalStreak
-} from './notes'
+} from '.'
 
 const BASE_TIME = new Date('2026-01-15T00:00:00.000Z')
 
