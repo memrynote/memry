@@ -241,12 +241,14 @@ describe('Inbox Filing Operations', () => {
       await fileToFolder(itemId, 'folder')
 
       const noteContent = mockCreateNote.mock.calls[0][0].content as string
-      expect(noteContent).toContain('[Open Original](https://example.com/post)')
+      expect(noteContent).toContain(
+        '[example.com \u00B7 Article](https://example.com/post "mention")'
+      )
       expect(noteContent).toContain('Description of the article')
       expect(noteContent).toContain('Filed from Inbox')
     })
 
-    it('should include hero image when available in metadata', async () => {
+    it('should generate mention format for non-YouTube links', async () => {
       const itemId = seedInboxItem(testDb.db, {
         id: 'link-3',
         type: 'link',
@@ -258,7 +260,8 @@ describe('Inbox Filing Operations', () => {
       await fileToFolder(itemId, 'folder')
 
       const noteContent = mockCreateNote.mock.calls[0][0].content as string
-      expect(noteContent).toContain('![](https://example.com/hero.jpg)')
+      expect(noteContent).toContain('"mention"')
+      expect(noteContent).toContain('example.com')
     })
 
     it('should include author and site metadata', async () => {
@@ -294,7 +297,8 @@ describe('Inbox Filing Operations', () => {
 
       expect(mockCreateNote).toHaveBeenCalled()
       const noteContent = mockCreateNote.mock.calls[0][0].content as string
-      expect(noteContent).toContain('[Open Original](https://example.com/bare)')
+      expect(noteContent).toContain('[example.com')
+      expect(noteContent).toContain('"mention"')
       expect(noteContent).not.toContain('**Author:**')
     })
 
@@ -326,7 +330,7 @@ describe('Inbox Filing Operations', () => {
       await fileToFolder(itemId, 'folder')
 
       const noteContent = mockCreateNote.mock.calls[0][0].content as string
-      expect(noteContent).toContain('[Open Original]')
+      expect(noteContent).toContain('"mention"')
       expect(noteContent).not.toContain('> ')
     })
 
@@ -436,7 +440,8 @@ describe('Inbox Filing Operations', () => {
 
       expect(mockCreateNote).toHaveBeenCalledWith(expect.objectContaining({ folder: 'references' }))
       const noteContent = mockCreateNote.mock.calls[0][0].content as string
-      expect(noteContent).toContain('[Open Original](https://blog.example.com/ts-generics)')
+      expect(noteContent).toContain('blog.example.com')
+      expect(noteContent).toContain('"mention"')
       expect(noteContent).toContain('**Author:** John Smith')
     })
   })
@@ -478,7 +483,7 @@ describe('Inbox Filing Operations', () => {
 
       expect(result.success).toBe(true)
       const noteContent = mockCreateNote.mock.calls[0][0].content as string
-      expect(noteContent).toContain('[Open Original]')
+      expect(noteContent).toContain('"mention"')
     })
   })
 

@@ -34,6 +34,7 @@ dev-data/
 # Agent/AI tooling
 .claude/
 CLAUDE.md
+.mcp.json
 opencode.jsonc
 .specify/
 
