@@ -151,11 +151,12 @@ function configureCsp(): void {
     "default-src 'self' memry-file:",
     "script-src 'self'",
     "style-src 'self' 'unsafe-inline'",
-    "img-src 'self' data: memry-file: https://pbs.twimg.com",
+    "img-src 'self' data: memry-file: https:",
     "font-src 'self' data:",
     "connect-src 'self' memry-file: https://*.memrynote.com wss://*.memrynote.com https://cdn.syndication.twimg.com https://react-tweet.vercel.app http://127.0.0.1:*",
     "media-src 'self' memry-file:",
     "worker-src 'self' blob:",
+    'frame-src https://www.youtube-nocookie.com',
     "object-src 'none'",
     "base-uri 'self'",
     "form-action 'self'",
@@ -171,12 +172,22 @@ function configureCsp(): void {
   const cspString = policy.join('; ')
 
   session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
-    callback({
-      responseHeaders: {
-        ...details.responseHeaders,
-        'Content-Security-Policy': [cspString]
-      }
-    })
+    const isOwnPage =
+      details.url.startsWith('memry-file:') ||
+      details.url.startsWith('file:') ||
+      details.url.startsWith('http://localhost') ||
+      details.url.startsWith('http://127.0.0.1')
+
+    callback(
+      isOwnPage
+        ? {
+            responseHeaders: {
+              ...details.responseHeaders,
+              'Content-Security-Policy': [cspString]
+            }
+          }
+        : {}
+    )
   })
 
   cspLog.info('CSP configured', is.dev ? '(dev mode)' : '(production)')
