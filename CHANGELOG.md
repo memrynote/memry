@@ -5,6 +5,21 @@ Format: weekly entries grouped by feature area.
 
 ---
 
+## 2026-04-04 — Link Embeds and Mentions
+
+### Added
+- Add YouTube embed block with inline player and markdown round-trip
+- Add link mention inline content for BlockNote editor
+- Add paste link menu with URL, mention, and embed options
+- Add YouTube player to inbox link preview
+- Add Reddit JSON API metadata extraction with bot detection bypass
+
+### Changed
+- Use mention and embed format for inbox link filing
+- Update Content Security Policy for YouTube iframe embeds
+
+---
+
 ## 2026-04-04 — Voice Transcription
 
 ### Added
