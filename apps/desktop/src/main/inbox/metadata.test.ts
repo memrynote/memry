@@ -120,6 +120,154 @@ describe('URL Metadata Extraction', () => {
       )
     })
 
+    it('should fetch Reddit metadata via JSON API with thumbnail', async () => {
+      // #given
+      const redditJson = [
+        {
+          data: {
+            children: [
+              {
+                data: {
+                  title: 'Cool Programming Post',
+                  selftext: 'This is the post body text',
+                  author: 'dev_user',
+                  subreddit_name_prefixed: 'r/programming',
+                  created_utc: 1712188800,
+                  thumbnail: 'https://b.thumbs.redditmedia.com/abc.jpg',
+                  preview: {
+                    images: [
+                      {
+                        source: {
+                          url: 'https://preview.redd.it/img123.jpg?width=1080&amp;format=pjpg',
+                          width: 1080,
+                          height: 720
+                        }
+                      }
+                    ]
+                  }
+                }
+              }
+            ]
+          }
+        }
+      ]
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve(redditJson)
+      })
+
+      // #when
+      const metadata = await fetchUrlMetadata(
+        'https://www.reddit.com/r/programming/comments/abc123/cool_post/'
+      )
+
+      // #then — JSON API called with .json suffix
+      expect(mockFetch).toHaveBeenCalledWith(expect.stringContaining('.json'), expect.any(Object))
+      expect(metadata.title).toBe('Cool Programming Post')
+      expect(metadata.image).toBe('https://preview.redd.it/img123.jpg?width=1080&format=pjpg')
+      expect(metadata.author).toBe('u/dev_user')
+      expect(metadata.publisher).toBe('r/programming')
+    })
+
+    it('should preserve original reddit URL in metadata', async () => {
+      // #given
+      const redditJson = [{ data: { children: [{ data: { title: 'Post' } }] } }]
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve(redditJson)
+      })
+      const originalUrl = 'https://www.reddit.com/r/test/comments/xyz/post/'
+
+      // #when
+      const metadata = await fetchUrlMetadata(originalUrl)
+
+      // #then
+      expect(metadata.url).toBe(originalUrl)
+    })
+
+    it('should fall back to old.reddit.com HTML when JSON API fails', async () => {
+      // #given — JSON API returns error
+      mockFetch.mockResolvedValueOnce({ ok: false, status: 429 })
+      // fallback HTML fetch
+      const html = '<html><head><title>Fallback Title</title></head></html>'
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        text: () => Promise.resolve(html)
+      })
+
+      // #when
+      await fetchUrlMetadata('https://www.reddit.com/r/test/comments/abc/post/')
+
+      // #then — second call is old.reddit.com
+      expect(mockFetch).toHaveBeenCalledTimes(2)
+      expect(mockFetch.mock.calls[1][0]).toBe('https://old.reddit.com/r/test/comments/abc/post/')
+    })
+
+    it('should use thumbnail fallback when Reddit preview is missing', async () => {
+      // #given
+      const redditJson = [
+        {
+          data: {
+            children: [
+              {
+                data: {
+                  title: 'Text Post',
+                  thumbnail: 'https://b.thumbs.redditmedia.com/thumb.jpg'
+                }
+              }
+            ]
+          }
+        }
+      ]
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve(redditJson)
+      })
+
+      // #when
+      const metadata = await fetchUrlMetadata('https://reddit.com/r/test/comments/x/y/')
+
+      // #then
+      expect(metadata.image).toBe('https://b.thumbs.redditmedia.com/thumb.jpg')
+    })
+
+    it('should skip "self" and "default" Reddit thumbnails', async () => {
+      // #given
+      const redditJson = [
+        {
+          data: {
+            children: [{ data: { title: 'Text Only', thumbnail: 'self' } }]
+          }
+        }
+      ]
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve(redditJson)
+      })
+
+      // #when
+      const metadata = await fetchUrlMetadata('https://www.reddit.com/r/a/comments/b/c/')
+
+      // #then
+      expect(metadata.image).toBeUndefined()
+    })
+
+    it('should return empty metadata when bot page is detected', async () => {
+      // #given
+      const html = '<html><head><title>Please wait for verification</title></head></html>'
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        text: () => Promise.resolve(html)
+      })
+
+      // #when
+      const metadata = await fetchUrlMetadata('https://example.com/blocked')
+
+      // #then
+      expect(metadata.title).toBeUndefined()
+      expect(metadata.url).toBe('https://example.com/blocked')
+    })
+
     it('should extract Open Graph metadata', async () => {
       const html = `
         <!DOCTYPE html>
@@ -314,9 +462,20 @@ describe('URL Metadata Extraction', () => {
       expect(isBotPageTitle('Access Denied')).toBe(true)
     })
 
+    it('should detect Reddit verification page', () => {
+      expect(isBotPageTitle('Reddit - Please wait for verification')).toBe(true)
+      expect(isBotPageTitle('Please wait...')).toBe(true)
+    })
+
+    it('should detect browser verification pages', () => {
+      expect(isBotPageTitle('Verify you are human')).toBe(true)
+      expect(isBotPageTitle('Checking your browser before accessing')).toBe(true)
+    })
+
     it('should be case-insensitive', () => {
       expect(isBotPageTitle('JUST A MOMENT...')).toBe(true)
       expect(isBotPageTitle('access denied')).toBe(true)
+      expect(isBotPageTitle('PLEASE WAIT FOR VERIFICATION')).toBe(true)
     })
 
     it('should not flag legitimate titles', () => {
