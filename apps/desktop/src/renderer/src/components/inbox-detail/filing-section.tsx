@@ -4,8 +4,18 @@
  */
 
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
-import { Folder, Sparkles, Loader2, ChevronDown, Check, FileText, Link2, Search } from '@/lib/icons'
-import { useQuery } from '@tanstack/react-query'
+import {
+  Folder,
+  Sparkles,
+  Loader2,
+  ChevronDown,
+  Check,
+  FileText,
+  Link2,
+  Search,
+  Plus
+} from '@/lib/icons'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { Button } from '@/components/ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
@@ -55,8 +65,10 @@ export const FilingSection = ({
   onLinkedNotesChange,
   className
 }: FilingSectionProps): React.JSX.Element => {
+  const queryClient = useQueryClient()
   const [showAllFolders, setShowAllFolders] = useState(false)
   const [folderSearch, setFolderSearch] = useState('')
+  const [isCreatingFolder, setIsCreatingFolder] = useState(false)
 
   // Fetch real folders from vault
   const { data: vaultFolders = [] } = useQuery({
@@ -185,6 +197,33 @@ export const FilingSection = ({
     )
   }, [vaultFolders, folderSearch])
 
+  const trimmedSearch = folderSearch.trim().replace(/\/+$/, '')
+  const canCreateFolder = trimmedSearch.length > 0 && filteredFolders.length === 0
+
+  const handleCreateFolder = useCallback(async () => {
+    if (!trimmedSearch || isCreatingFolder) return
+    setIsCreatingFolder(true)
+    try {
+      await window.api.notes.createFolder(trimmedSearch)
+      await queryClient.invalidateQueries({ queryKey: ['vault', 'folders'] })
+      const name = trimmedSearch.split('/').pop() || trimmedSearch
+      onFolderSelect({
+        id: trimmedSearch,
+        name,
+        path: trimmedSearch,
+        parent: trimmedSearch.includes('/')
+          ? trimmedSearch.split('/').slice(0, -1).join('/')
+          : undefined
+      })
+      setShowAllFolders(false)
+      setFolderSearch('')
+    } catch (error) {
+      log.error('Failed to create folder', error)
+    } finally {
+      setIsCreatingFolder(false)
+    }
+  }, [trimmedSearch, isCreatingFolder, queryClient, onFolderSelect])
+
   return (
     <div className={cn(className)}>
       {/* File To — Header + Dropdown */}
@@ -249,15 +288,28 @@ export const FilingSection = ({
             sideOffset={4}
           >
             {/* Search */}
-            <div className="flex items-center py-2.5 px-3 gap-2 border-b border-border/40">
-              <Search className="size-3.5 text-muted-foreground/40 shrink-0" />
-              <Input
-                placeholder="Search folders..."
-                value={folderSearch}
-                onChange={(e) => setFolderSearch(e.target.value)}
-                className="h-auto p-0 border-0 bg-transparent text-[13px] leading-4 text-foreground placeholder:text-muted-foreground/30 focus-visible:border-transparent shadow-none"
-                autoFocus
-              />
+            <div className="flex flex-col border-b border-border/40">
+              <div className="flex items-center py-2.5 px-3 gap-2">
+                <Search className="size-3.5 text-muted-foreground/40 shrink-0" />
+                <Input
+                  placeholder="Search or create folder..."
+                  value={folderSearch}
+                  onChange={(e) => setFolderSearch(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && canCreateFolder) {
+                      e.preventDefault()
+                      handleCreateFolder()
+                    }
+                  }}
+                  className="h-auto p-0 border-0 bg-transparent text-[13px] leading-4 text-foreground placeholder:text-muted-foreground/30 focus-visible:border-transparent shadow-none"
+                  autoFocus
+                />
+              </div>
+              <div className="px-3 pb-2">
+                <span className="text-[10px] leading-3 text-muted-foreground/30">
+                  Use / for subfolders (e.g. Research/AI)
+                </span>
+              </div>
             </div>
 
             <ScrollArea className="max-h-56">
@@ -322,9 +374,25 @@ export const FilingSection = ({
                     </span>
                   </div>
                 )}
-                {filteredFolders.length === 0 ? (
+                {canCreateFolder && (
+                  <button
+                    onClick={handleCreateFolder}
+                    disabled={isCreatingFolder}
+                    className="flex items-center gap-2 rounded-md py-2.5 px-3 mx-1 my-0.5 text-left transition-colors bg-[var(--tint)]/[0.06] border border-[var(--tint)]/15 hover:bg-[var(--tint)]/[0.1] disabled:opacity-50"
+                  >
+                    {isCreatingFolder ? (
+                      <Loader2 className="size-3.5 shrink-0 text-[var(--tint)] animate-spin" />
+                    ) : (
+                      <Plus className="size-3.5 shrink-0 text-[var(--tint)]" />
+                    )}
+                    <span className="text-[13px] leading-4 font-medium text-[var(--tint)]">
+                      Create &ldquo;{trimmedSearch}&rdquo;
+                    </span>
+                  </button>
+                )}
+                {filteredFolders.length === 0 && !canCreateFolder ? (
                   <p className="text-xs text-muted-foreground text-center py-3">No folders found</p>
-                ) : (
+                ) : filteredFolders.length === 0 ? null : (
                   filteredFolders.map((folder) => {
                     const isSelected = selectedFolder?.id === folder.id
                     const parentPath = folder.path?.includes('/')
