@@ -5,6 +5,14 @@ Format: weekly entries grouped by feature area.
 
 ---
 
+## 2026-04-04 — Inbox Create Folder
+
+### Added
+- Add inline folder creation to inbox filing dropdown with search-to-create flow
+- Add subfolder hint in folder search input for nested path creation
+
+---
+
 ## 2026-04-04 — Link Embeds and Mentions
 
 ### Added
