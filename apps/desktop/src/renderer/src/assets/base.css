@@ -1700,6 +1700,46 @@ del.bn-inline-content {
   opacity: 0.8;
 }
 
+/* Link mention — inline rich link with favicon + domain + title */
+.link-mention {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: hsl(var(--muted) / 0.5);
+  font-size: 0.9em;
+  font-weight: 500;
+  color: hsl(var(--foreground));
+  cursor: pointer;
+  white-space: nowrap;
+  text-decoration: none;
+  user-select: none;
+  transition: background 0.15s ease;
+}
+
+.link-mention:hover {
+  background: hsl(var(--muted));
+  text-decoration: none;
+}
+
+.link-mention-favicon {
+  width: 14px;
+  height: 14px;
+  border-radius: 2px;
+  flex-shrink: 0;
+  object-fit: contain;
+}
+
+.link-mention-sep {
+  color: hsl(var(--muted-foreground) / 0.4);
+}
+
+.link-mention-title {
+  color: hsl(var(--muted-foreground));
+  font-weight: 400;
+}
+
 /* Backlink mention highlight - warm amber for wiki-style links */
 .backlink-mention {
   color: rgb(217, 119, 6);
