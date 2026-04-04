@@ -44,8 +44,30 @@ import {
   useEditorFileUpload,
   useEditorSync,
   useTagSuggestions,
-  useWikiLinkSuggestions
+  useWikiLinkSuggestions,
+  usePasteLinkMenu
 } from './hooks'
+import { PasteLinkMenu } from './paste-link-menu'
+import { extractYouTubeVideoId } from '@/lib/youtube-utils'
+import { extractDomain, fetchLinkPreview } from '@/lib/url-metadata'
+import { createLinkMentionContent } from './link-mention'
+import type { PasteLinkOption } from './hooks/use-paste-link-menu'
+
+function findBlockWithLinkMention(
+  blocks: any[],
+  url: string
+): { block: any; index: number } | null {
+  for (const block of blocks) {
+    const content = (block.content ?? []) as any[]
+    const idx = content.findIndex((c: any) => c.type === 'linkMention' && c.props?.url === url)
+    if (idx !== -1) return { block, index: idx }
+    if (block.children?.length) {
+      const found = findBlockWithLinkMention(block.children, url)
+      if (found) return found
+    }
+  }
+  return null
+}
 
 // =============================================================================
 // CONTENT AREA EDITOR (inner component with all hooks)
@@ -180,6 +202,68 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
     onDragReset: handleDrop
   })
 
+  // Hook #7: Paste link menu (URL / Mention / Embed)
+  const handlePasteLinkSelect = useCallback(
+    (option: PasteLinkOption, url: string) => {
+      const block = editor.getTextCursorPosition()?.block
+      if (!block) return
+      const inlineContent = (block.content ?? []) as any[]
+
+      const urlNodeIndex = inlineContent.findIndex(
+        (c: any) =>
+          (c.type === 'link' && c.href === url) ||
+          (c.type === 'text' && typeof c.text === 'string' && c.text.includes(url))
+      )
+
+      if (option === 'url') return
+
+      if (option === 'mention') {
+        if (urlNodeIndex === -1) return
+        const domain = extractDomain(url)
+        const newContent = [...inlineContent]
+        newContent[urlNodeIndex] = createLinkMentionContent(url, domain)
+        editor.updateBlock(block, { content: newContent })
+
+        fetchLinkPreview(url)
+          .then((metadata) => {
+            const found = findBlockWithLinkMention(editor.document, url)
+            if (!found) return
+            const updatedContent = [...((found.block.content ?? []) as any[])]
+            updatedContent[found.index] = createLinkMentionContent(
+              url,
+              metadata.domain || domain,
+              metadata.title,
+              metadata.favicon
+            )
+            editor.updateBlock(found.block, { content: updatedContent })
+          })
+          .catch(() => {})
+        return
+      }
+
+      if (option === 'embed') {
+        const videoId = extractYouTubeVideoId(url)
+        if (!videoId) return
+
+        if (urlNodeIndex !== -1) {
+          const newContent = inlineContent.filter((_: any, i: number) => i !== urlNodeIndex)
+          editor.updateBlock(block, { content: newContent.length > 0 ? newContent : [] })
+        }
+        editor.insertBlocks(
+          [{ type: 'youtubeEmbed' as any, props: { videoId, videoUrl: url } }],
+          block,
+          'after'
+        )
+      }
+    },
+    [editor]
+  )
+
+  const { state: pasteLinkState, handleSelect: handlePasteLinkOptionSelect } = usePasteLinkMenu({
+    editorContainerRef,
+    onSelect: handlePasteLinkSelect
+  })
+
   // Text selection for highlight reminders
   useTextSelection({
     containerRef: editorContainerRef,
@@ -288,6 +372,14 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
             onNoteClick={onInternalLinkClick}
           />
         )}
+
+        <PasteLinkMenu
+          isOpen={pasteLinkState.isOpen}
+          position={pasteLinkState.position}
+          options={pasteLinkState.options}
+          selectedIndex={pasteLinkState.selectedIndex}
+          onSelect={handlePasteLinkOptionSelect}
+        />
       </div>
     </div>
   )
