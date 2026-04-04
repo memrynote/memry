@@ -8,7 +8,8 @@
     ".": "./src/index.ts",
     "./utc": "./src/utc.ts",
     "./file-types": "./src/file-types.ts",
-    "./empty-lines": "./src/empty-lines.ts"
+    "./empty-lines": "./src/empty-lines.ts",
+    "./youtube": "./src/youtube.ts"
   },
   "types": "./src/index.ts",
   "scripts": {

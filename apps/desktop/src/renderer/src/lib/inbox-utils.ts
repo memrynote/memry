@@ -101,12 +101,4 @@ export const formatCompactRelativeTime = (date: Date | string): string => {
   return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
 }
 
-// Helper to extract domain from URL
-export const extractDomain = (url: string): string => {
-  try {
-    const urlObj = new URL(url)
-    return urlObj.hostname.replace('www.', '')
-  } catch {
-    return url
-  }
-}
+export { extractDomain } from './url-metadata'

@@ -72,22 +72,88 @@ const scraper = metascraper([
 ])
 
 // ============================================================================
-// URL Metadata Extraction
+// Site-Specific Helpers
 // ============================================================================
 
-/**
- * Fetch metadata from a URL using metascraper
- *
- * @param url - The URL to extract metadata from
- * @returns Extracted metadata (title, description, image, etc.)
- * @throws Error if URL fetch fails or times out
- */
-export async function fetchUrlMetadata(url: string): Promise<UrlMetadata> {
+function isRedditUrl(url: string): boolean {
+  try {
+    const host = new URL(url).hostname
+    return host === 'www.reddit.com' || host === 'reddit.com' || host === 'old.reddit.com'
+  } catch {
+    return false
+  }
+}
+
+function rewriteUrlForFetch(url: string): string {
+  try {
+    const parsed = new URL(url)
+    if (parsed.hostname === 'www.reddit.com' || parsed.hostname === 'reddit.com') {
+      parsed.hostname = 'old.reddit.com'
+      return parsed.toString()
+    }
+  } catch {
+    // invalid URL, return as-is
+  }
+  return url
+}
+
+async function fetchRedditMetadata(url: string): Promise<UrlMetadata | null> {
   const controller = new AbortController()
   const timeoutId = setTimeout(() => controller.abort(), URL_FETCH_TIMEOUT)
 
   try {
-    const response = await fetch(url, {
+    const jsonUrl = url.replace(/\/?(\?.*)?$/, '.json$1')
+    const response = await fetch(jsonUrl, {
+      signal: controller.signal,
+      headers: { 'User-Agent': USER_AGENT }
+    })
+
+    if (!response.ok) return null
+
+    const data = await response.json()
+    const post = data?.[0]?.data?.children?.[0]?.data
+    if (!post) return null
+
+    const previewUrl = post.preview?.images?.[0]?.source?.url?.replace(/&amp;/g, '&')
+    const thumbnail =
+      post.thumbnail && post.thumbnail !== 'self' && post.thumbnail !== 'default'
+        ? post.thumbnail
+        : undefined
+
+    return {
+      title: post.title || undefined,
+      description: post.selftext ? post.selftext.slice(0, 300) : undefined,
+      image: previewUrl || thumbnail,
+      author: post.author ? `u/${post.author}` : undefined,
+      publisher: post.subreddit_name_prefixed || 'Reddit',
+      date: post.created_utc ? new Date(post.created_utc * 1000).toISOString() : undefined,
+      logo: 'https://www.redditstatic.com/desktop2x/img/favicon/favicon-32x32.png',
+      url
+    }
+  } catch (error) {
+    log.warn('Reddit JSON API failed, falling back to HTML:', error)
+    return null
+  } finally {
+    clearTimeout(timeoutId)
+  }
+}
+
+// ============================================================================
+// URL Metadata Extraction
+// ============================================================================
+
+export async function fetchUrlMetadata(url: string): Promise<UrlMetadata> {
+  if (isRedditUrl(url)) {
+    const reddit = await fetchRedditMetadata(url)
+    if (reddit) return reddit
+  }
+
+  const fetchUrl = rewriteUrlForFetch(url)
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => controller.abort(), URL_FETCH_TIMEOUT)
+
+  try {
+    const response = await fetch(fetchUrl, {
       signal: controller.signal,
       headers: {
         'User-Agent': USER_AGENT,
@@ -102,6 +168,11 @@ export async function fetchUrlMetadata(url: string): Promise<UrlMetadata> {
 
     const html = await response.text()
     const metadata = await scraper({ html, url })
+
+    if (metadata.title && isBotPageTitle(metadata.title)) {
+      log.warn(`Bot page detected for ${url}: "${metadata.title}"`)
+      return { url, title: undefined }
+    }
 
     return {
       title: metadata.title || undefined,
@@ -238,24 +309,25 @@ export function isValidUrl(str: string): boolean {
   }
 }
 
-/**
- * Extract domain from URL for display
- */
+import { extractDomain as extractDomainNullable } from '../lib/url-utils'
+
 export function extractDomain(url: string): string {
-  try {
-    const parsed = new URL(url)
-    return parsed.hostname.replace(/^www\./, '')
-  } catch {
-    return url
-  }
+  return extractDomainNullable(url) ?? url
 }
 
-const BOT_PAGE_TITLES = ['just a moment...', 'attention required!', 'access denied']
+const BOT_PAGE_TITLES = [
+  'just a moment...',
+  'attention required!',
+  'access denied',
+  'please wait',
+  'verify you are human',
+  'checking your browser'
+]
 
 export function isBotPageTitle(title: string): boolean {
   if (!title) return false
   const lower = title.toLowerCase()
-  return BOT_PAGE_TITLES.some((bot) => lower.startsWith(bot))
+  return BOT_PAGE_TITLES.some((bot) => lower.includes(bot))
 }
 
 export function titleFromUrl(url: string): string {

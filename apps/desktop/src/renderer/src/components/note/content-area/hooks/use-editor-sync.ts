@@ -11,10 +11,47 @@ import {
 import { normalizeHashTags, extractInlineTags } from '../hash-tag'
 import { FILE_BLOCK_REGEX, createFileBlockContent, serializeFileBlock } from '../file-block'
 import { parseMarkdownPreservingBlanks, serializeBlocksPreservingBlanks } from '../markdown-utils'
+import { createLinkMentionContent } from '../link-mention'
+import { fetchLinkPreview } from '@/lib/url-metadata'
 import type { HeadingInfo } from '../types'
 import { createLogger } from '@/lib/logger'
 
 const log = createLogger('Hook:EditorSync')
+
+function hydrateLinkMentionFavicons(editor: any): void {
+  const mentions: { block: any; index: number; url: string }[] = []
+
+  const walk = (blocks: any[]): void => {
+    for (const block of blocks) {
+      const content = (block.content ?? []) as any[]
+      content.forEach((c: any, i: number) => {
+        if (c.type === 'linkMention' && c.props?.url && !c.props.favicon) {
+          mentions.push({ block, index: i, url: c.props.url })
+        }
+      })
+      if (block.children?.length) walk(block.children)
+    }
+  }
+
+  walk(editor.document)
+
+  for (const { block, index, url } of mentions) {
+    fetchLinkPreview(url)
+      .then((metadata) => {
+        const current = (block.content ?? []) as any[]
+        if (current[index]?.type !== 'linkMention') return
+        const updated = [...current]
+        updated[index] = createLinkMentionContent(
+          url,
+          metadata.domain || current[index].props.domain,
+          metadata.title || current[index].props.title,
+          metadata.favicon
+        )
+        editor.updateBlock(block, { content: updated })
+      })
+      .catch(() => {})
+  }
+}
 
 interface EditorSyncParams {
   editor: any
@@ -134,6 +171,7 @@ export function useEditorSync({
             }
 
             editor.replaceBlocks(editor.document, normalizedBlocks)
+            hydrateLinkMentionFavicons(editor)
           } catch (error) {
             log.error(`Failed to parse ${contentType} content`, error)
           }

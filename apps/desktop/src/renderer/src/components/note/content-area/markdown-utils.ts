@@ -7,6 +7,8 @@ import {
   type MarkdownSegment
 } from '@memry/shared/empty-lines'
 import { splitMarkdownByCallouts, serializeCalloutBlock } from './callout-block'
+import { extractYouTubeVideoId } from '@/lib/youtube-utils'
+import { serializeYoutubeEmbed } from './youtube-embed-block'
 
 export function isEmptyParagraph(block: Block): boolean {
   if (block.type !== 'paragraph') return false
@@ -34,8 +36,18 @@ export async function parseMarkdownPreservingBlanks(
       const blankSegments = splitMarkdownPreservingBlanks(cseg.text)
       for (const seg of blankSegments) {
         if (seg.type === 'content') {
-          const parsed = await editor.tryParseMarkdownToBlocks(seg.text)
-          blocks.push(...parsed)
+          const embedParts = splitByEmbedMarkers(seg.text)
+          for (const part of embedParts) {
+            if (part.kind === 'embed') {
+              blocks.push({
+                type: 'youtubeEmbed' as const,
+                props: { videoId: part.videoId, videoUrl: part.url }
+              } as unknown as Block)
+            } else {
+              const parsed = await editor.tryParseMarkdownToBlocks(part.text)
+              blocks.push(...parsed)
+            }
+          }
         } else {
           for (let i = 0; i < seg.extraLines; i++) {
             blocks.push({
@@ -76,7 +88,12 @@ export async function serializeBlocksPreservingBlanks(
   }
 
   for (const block of blocks) {
-    if ((block.type as string) === 'callout') {
+    if ((block.type as string) === 'youtubeEmbed') {
+      await flushContent()
+      flushGap()
+      const videoUrl = (block.props as any).videoUrl as string
+      segments.push({ type: 'content', text: serializeYoutubeEmbed(videoUrl) })
+    } else if ((block.type as string) === 'callout') {
       await flushContent()
       flushGap()
       const calloutType = (block.props as any).type as string
@@ -103,4 +120,37 @@ export async function serializeBlocksPreservingBlanks(
   }
 
   return assembleMarkdownWithBlanks(segments)
+}
+
+type EmbedPart = { kind: 'text'; text: string } | { kind: 'embed'; url: string; videoId: string }
+
+const EMBED_LINE_REGEX = /^!\[embed\]\(([^)]+)\)$/
+
+function splitByEmbedMarkers(text: string): EmbedPart[] {
+  const lines = text.split('\n')
+  const parts: EmbedPart[] = []
+  let buffer: string[] = []
+
+  const flushBuffer = (): void => {
+    if (buffer.length === 0) return
+    parts.push({ kind: 'text', text: buffer.join('\n') })
+    buffer = []
+  }
+
+  for (const line of lines) {
+    const match = line.match(EMBED_LINE_REGEX)
+    if (match) {
+      const url = match[1]
+      const videoId = extractYouTubeVideoId(url)
+      if (videoId) {
+        flushBuffer()
+        parts.push({ kind: 'embed', url, videoId })
+        continue
+      }
+    }
+    buffer.push(line)
+  }
+
+  flushBuffer()
+  return parts
 }

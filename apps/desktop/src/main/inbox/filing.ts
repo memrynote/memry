@@ -20,6 +20,8 @@ import { generateId } from '../lib/id'
 import { eq } from 'drizzle-orm'
 import { InboxChannels, TasksChannels } from '@memry/contracts/ipc-channels'
 import { resolveAttachmentUrl, deleteInboxAttachments } from './attachments'
+import { extractYouTubeVideoId } from '@memry/shared/youtube'
+import { extractDomain } from './metadata'
 
 const log = createLogger('Inbox:Filing')
 
@@ -226,18 +228,18 @@ function generateNoteContent(item: InboxItemRow): string {
       const url = item.sourceUrl || ''
       const description = item.content || ''
       const metadata = item.metadata as Record<string, unknown> | null
+      const title = item.title || ''
+      const domain = url ? extractDomain(url) : ''
+      const isYouTube = !!extractYouTubeVideoId(url)
 
       let content = ''
 
-      if (
-        metadata?.heroImage &&
-        typeof metadata.heroImage === 'string' &&
-        metadata.heroImage.length > 0
-      ) {
-        content += `![](${metadata.heroImage})\n\n`
+      if (isYouTube) {
+        content += `![embed](${url})\n\n`
+      } else {
+        const mentionText = title && title !== url ? `${domain} \u00B7 ${title}` : domain
+        content += `[${mentionText}](${url} "mention")\n\n`
       }
-
-      content += `[Open Original](${url})\n\n`
 
       if (description) {
         content += `> ${description}\n\n`

@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=1920, initial-scale=1">
+<title>Memry Reddit Banner</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Inter:wght@300;400;500&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    width: 1920px;
+    height: 192px;
+    overflow: hidden;
+    background: #f6f5f0;
+  }
+
+  .banner {
+    width: 1920px;
+    height: 192px;
+    background:
+      radial-gradient(ellipse 900px 250px at 35% 80%, rgba(139, 92, 246, 0.06) 0%, transparent 100%),
+      radial-gradient(ellipse 700px 200px at 65% 20%, rgba(6, 182, 212, 0.06) 0%, transparent 100%),
+      radial-gradient(ellipse 600px 300px at 80% 90%, rgba(34, 197, 94, 0.04) 0%, transparent 100%),
+      #f6f5f0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 48px;
+    position: relative;
+  }
+
+  .banner::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, #8b5cf6, #06b6d4, #22c55e, #f97316, #8b5cf6);
+  }
+
+  .text-group {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .brand-name {
+    font-family: 'DM Serif Display', Georgia, serif;
+    font-size: 80px;
+    font-weight: 400;
+    color: #1a1a1a;
+    letter-spacing: 4px;
+    line-height: 1;
+  }
+
+  .brand-name .dot {
+    background: linear-gradient(135deg, #8b5cf6, #06b6d4);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .tagline {
+    font-family: 'DM Serif Display', Georgia, serif;
+    font-style: italic;
+    font-size: 22px;
+    font-weight: 400;
+    color: rgba(26, 26, 26, 0.4);
+    letter-spacing: 0.5px;
+  }
+
+  .divider {
+    width: 1px;
+    height: 64px;
+    background: linear-gradient(180deg, transparent, rgba(26, 26, 26, 0.12), transparent);
+    flex-shrink: 0;
+  }
+
+  .pills {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    flex-shrink: 0;
+  }
+
+  .pill {
+    font-family: 'Inter', -apple-system, sans-serif;
+    font-size: 13px;
+    font-weight: 500;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    padding: 5px 16px;
+    border: 1px solid rgba(26, 26, 26, 0.1);
+    border-radius: 100px;
+    white-space: nowrap;
+    text-align: center;
+  }
+
+  .pill:nth-child(1) { border-color: rgba(139, 92, 246, 0.2); color: rgba(139, 92, 246, 0.6); }
+  .pill:nth-child(2) { border-color: rgba(6, 182, 212, 0.2); color: rgba(6, 182, 212, 0.7); }
+  .pill:nth-child(3) { border-color: rgba(34, 197, 94, 0.2); color: rgba(34, 197, 94, 0.6); }
+
+  .bottom-line {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: rgba(26, 26, 26, 0.06);
+  }
+</style>
+</head>
+<body>
+<div class="banner">
+
+  <div class="text-group">
+    <div class="brand-name">Memry<span class="dot">.</span></div>
+    <div class="tagline">Your thoughts, beautifully organized</div>
+  </div>
+
+  <div class="divider"></div>
+
+  <div class="pills">
+    <span class="pill">E2E Encrypted</span>
+    <span class="pill">Offline-First</span>
+    <span class="pill">Open Source</span>
+  </div>
+
+  <div class="bottom-line"></div>
+</div>
+</body>
+</html>
