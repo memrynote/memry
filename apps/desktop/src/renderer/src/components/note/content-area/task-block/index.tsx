@@ -1,27 +1,26 @@
 import { createReactBlockSpec } from '@blocknote/react'
 import { TaskBlockRenderer } from './task-block-renderer'
 
-export const createTaskBlock = () =>
-  createReactBlockSpec(
-    {
-      type: 'taskBlock' as const,
-      propSchema: {
-        taskId: { default: '' },
-        title: { default: '' },
-        checked: { default: false }
-      },
-      content: 'none'
+export const createTaskBlock = createReactBlockSpec(
+  {
+    type: 'taskBlock' as const,
+    propSchema: {
+      taskId: { default: '' },
+      title: { default: '' },
+      checked: { default: false }
     },
-    {
-      render: (props) => (
-        <TaskBlockRenderer
-          block={props.block as any}
-          editor={props.editor}
-          contentRef={props.contentRef}
-        />
-      )
-    }
-  )
+    content: 'none'
+  },
+  {
+    render: (props) => (
+      <TaskBlockRenderer
+        block={props.block as any}
+        editor={props.editor}
+        contentRef={props.contentRef}
+      />
+    )
+  }
+)
 
 export function getTaskSlashMenuItem(editor: any) {
   return {
