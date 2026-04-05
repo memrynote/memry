@@ -33,6 +33,8 @@ import { getCalloutSlashMenuItem } from './callout-block'
 import { getTaskSlashMenuItem } from './task-block'
 import { TaskCreationPopover } from './task-block/task-creation-popover'
 import { isLikelyTask } from './task-block/task-block-utils'
+import { tasksService } from '@/services/tasks-service'
+import { useTasksOptional } from '@/contexts/tasks'
 import { editorSchema } from './editor-schema'
 import {
   HighlightReminderPopover,
@@ -108,6 +110,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
   const { openTag } = useSidebarDrillDown()
   const { port: aiPort, error: aiError, retry: retryAI } = useAIInlineContext()
 
+  const tasksCtx = useTasksOptional()
   const [highlightSelection, setHighlightSelection] = useState<HighlightSelection | null>(null)
   const [taskCreation, setTaskCreation] = useState<{
     isOpen: boolean
@@ -329,7 +332,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
     setTaskCreation(null)
   }, [editor, taskCreation])
 
-  const checkForTaskBlock = useCallback(() => {
+  const autoCreateTaskFromCheckbox = useCallback(async () => {
     if (taskCreation?.isOpen) return
 
     const cursor = editor.getTextCursorPosition()
@@ -345,12 +348,28 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
     const text = content.map((c: any) => (typeof c === 'string' ? c : (c.text ?? ''))).join('')
     if (!text.trim() || !isLikelyTask(text)) return
 
-    const blockEl = document.querySelector(`[data-id="${block.id}"]`)
-    if (!blockEl) return
+    dismissedBlocksRef.current.add(block.id)
 
-    taskCreationAnchorRef.current = blockEl as HTMLElement
-    setTaskCreation({ isOpen: true, blockId: block.id, title: text.trim() })
-  }, [editor, taskCreation?.isOpen])
+    const projects = tasksCtx?.projects ?? []
+    const defaultProject = projects.find((p: any) => p.isDefault) ?? projects[0]
+    if (!defaultProject) return
+
+    try {
+      const result = await tasksService.create({
+        projectId: defaultProject.id,
+        title: text.trim(),
+        linkedNoteIds: noteId ? [noteId] : []
+      })
+      if (result.success && result.task) {
+        editor.updateBlock(block, {
+          type: 'taskBlock' as any,
+          props: { taskId: result.task.id, title: text.trim(), checked: false }
+        })
+      }
+    } catch {
+      dismissedBlocksRef.current.delete(block.id)
+    }
+  }, [editor, taskCreation?.isOpen, noteId])
 
   const handleEditorContextMenu = useCallback(
     (e: React.MouseEvent) => {
@@ -424,7 +443,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
           onChange={(): void => {
             void handleChange()
             if (taskDetectTimeoutRef.current) clearTimeout(taskDetectTimeoutRef.current)
-            taskDetectTimeoutRef.current = setTimeout(checkForTaskBlock, 800)
+            taskDetectTimeoutRef.current = setTimeout(() => void autoCreateTaskFromCheckbox(), 800)
           }}
           theme={editorTheme}
           formattingToolbar={!stickyToolbar}
