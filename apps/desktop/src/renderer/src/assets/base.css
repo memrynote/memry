@@ -129,6 +129,11 @@
   margin-top: 0;
 }
 
+/* ===== CHECKBOX ALIGNMENT ===== */
+:root .bn-block-content[data-content-type='checkListItem'] {
+  align-items: center;
+}
+
 /* ===== LIST SPACING ===== */
 :root .bn-block-outer:has(> .bn-block > .bn-block-content[data-content-type='bulletListItem']),
 :root .bn-block-outer:has(> .bn-block > .bn-block-content[data-content-type='numberedListItem']),
