@@ -1,6 +1,10 @@
 import { createReactBlockSpec } from '@blocknote/react'
 import { TaskBlockRenderer } from './task-block-renderer'
 import { tasksService } from '@/services/tasks-service'
+import { parseQuickAdd } from '@/lib/quick-add-parser'
+import { formatDateKey } from '@/lib/task-utils'
+
+const PRIORITY_REVERSE: Record<string, number> = { none: 0, low: 1, medium: 2, high: 3, urgent: 4 }
 
 export const createTaskBlock = createReactBlockSpec(
   {
@@ -40,14 +44,18 @@ export function getTaskSlashMenuItem(editor: any) {
       const defaultProject = projects.find((p: any) => p.isDefault || p.isInbox) ?? projects[0]
       if (!defaultProject) return
 
+      const parsed = parseQuickAdd(text, projects as any[])
+
       const result = await tasksService.create({
-        projectId: defaultProject.id,
-        title: text
+        projectId: parsed.projectId ?? defaultProject.id,
+        title: parsed.title,
+        priority: PRIORITY_REVERSE[parsed.priority] ?? 0,
+        dueDate: parsed.dueDate ? formatDateKey(parsed.dueDate) : null
       })
       if (result.success && result.task) {
         editor.updateBlock(currentBlock, {
           type: 'taskBlock' as any,
-          props: { taskId: result.task.id, title: text, checked: false }
+          props: { taskId: result.task.id, title: parsed.title, checked: false }
         })
       }
     },
