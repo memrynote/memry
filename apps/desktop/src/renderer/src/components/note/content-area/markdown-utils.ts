@@ -9,6 +9,7 @@ import {
 import { splitMarkdownByCallouts, serializeCalloutBlock } from './callout-block'
 import { extractYouTubeVideoId } from '@/lib/youtube-utils'
 import { serializeYoutubeEmbed } from './youtube-embed-block'
+import { serializeTaskBlock } from './task-block/task-block-utils'
 
 export function isEmptyParagraph(block: Block): boolean {
   if (block.type !== 'paragraph') return false
@@ -88,7 +89,12 @@ export async function serializeBlocksPreservingBlanks(
   }
 
   for (const block of blocks) {
-    if ((block.type as string) === 'youtubeEmbed') {
+    if ((block.type as string) === 'taskBlock') {
+      await flushContent()
+      flushGap()
+      const props = block.props as { taskId: string; title: string; checked: boolean }
+      segments.push({ type: 'content', text: serializeTaskBlock(props) })
+    } else if ((block.type as string) === 'youtubeEmbed') {
       await flushContent()
       flushGap()
       const videoUrl = (block.props as any).videoUrl as string
