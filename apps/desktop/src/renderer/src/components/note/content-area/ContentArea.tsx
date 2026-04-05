@@ -313,6 +313,11 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
             type: 'taskBlock' as any,
             props: { taskId: result.task.id, title: titleText, checked: false }
           })
+          try {
+            editor.setTextCursorPosition(block.id, 'end')
+          } catch {
+            // taskBlock has content:'none', cursor placement may not apply
+          }
         }
       } catch {
         dismissedBlocksRef.current.delete(blockId)
