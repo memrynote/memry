@@ -45,7 +45,11 @@ export const TaskBlockRenderer: FC<TaskBlockRendererProps> = ({ block, editor, c
   const [showPriorityPicker, setShowPriorityPicker] = useState(false)
   const [showProjectPicker, setShowProjectPicker] = useState(false)
   const [showDatePicker, setShowDatePicker] = useState(false)
+  const [isEditingTitle, setIsEditingTitle] = useState(!title || title === '')
+  const [editTitle, setEditTitle] = useState(title)
+  const titleInputRef = useRef<HTMLInputElement>(null)
   const dateInputRef = useRef<HTMLInputElement>(null)
+  const titleSaveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const displayTitle = task?.title ?? title
   const displayChecked = task ? !!task.completedAt : checked
@@ -63,9 +67,12 @@ export const TaskBlockRenderer: FC<TaskBlockRendererProps> = ({ block, editor, c
           checked: !!task.completedAt
         }
       })
+      if (!isEditingTitle) {
+        setEditTitle(task.title)
+      }
       syncingRef.current = false
     }
-  }, [task, block, editor])
+  }, [task, block, editor, isEditingTitle])
 
   const handleToggle = useCallback(async () => {
     if (!taskId) return
@@ -83,10 +90,62 @@ export const TaskBlockRenderer: FC<TaskBlockRendererProps> = ({ block, editor, c
   }, [block, editor])
 
   const handleTitleClick = useCallback(() => {
-    if (taskId) {
-      window.dispatchEvent(new CustomEvent('task-block:open-detail', { detail: { taskId } }))
+    setIsEditingTitle(true)
+    setEditTitle(displayTitle)
+    setTimeout(() => titleInputRef.current?.focus(), 0)
+  }, [displayTitle])
+
+  const saveTitleToDb = useCallback(
+    async (newTitle: string) => {
+      if (!taskId || !newTitle.trim()) return
+      editor.updateBlock(block, { props: { ...block.props, title: newTitle.trim() } })
+      await tasksService.update({ id: taskId, title: newTitle.trim() })
+    },
+    [taskId, block, editor]
+  )
+
+  const handleTitleChange = useCallback(
+    (value: string) => {
+      setEditTitle(value)
+      if (titleSaveTimeoutRef.current) clearTimeout(titleSaveTimeoutRef.current)
+      titleSaveTimeoutRef.current = setTimeout(() => void saveTitleToDb(value), 600)
+    },
+    [saveTitleToDb]
+  )
+
+  const handleTitleBlur = useCallback(() => {
+    if (titleSaveTimeoutRef.current) clearTimeout(titleSaveTimeoutRef.current)
+    if (editTitle.trim()) {
+      void saveTitleToDb(editTitle)
     }
-  }, [taskId])
+    setIsEditingTitle(false)
+  }, [editTitle, saveTitleToDb])
+
+  const handleTitleKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      if (e.key === 'Enter') {
+        e.preventDefault()
+        handleTitleBlur()
+      }
+    },
+    [handleTitleBlur]
+  )
+
+  useEffect(() => {
+    if (isEditingTitle && titleInputRef.current) {
+      titleInputRef.current.focus()
+      titleInputRef.current.setSelectionRange(
+        titleInputRef.current.value.length,
+        titleInputRef.current.value.length
+      )
+    }
+  }, [isEditingTitle])
+
+  useEffect(() => {
+    return () => {
+      if (titleSaveTimeoutRef.current) clearTimeout(titleSaveTimeoutRef.current)
+    }
+  }, [])
 
   const handlePriorityChange = useCallback(
     async (value: number) => {
@@ -201,16 +260,32 @@ export const TaskBlockRenderer: FC<TaskBlockRendererProps> = ({ block, editor, c
       </button>
 
       {/* Title */}
-      <button
-        type="button"
-        onClick={handleTitleClick}
-        className={cn(
-          'min-w-0 flex-1 truncate text-left text-sm font-medium hover:underline',
-          displayChecked && 'text-muted-foreground line-through'
-        )}
-      >
-        {displayTitle}
-      </button>
+      {isEditingTitle ? (
+        <input
+          ref={titleInputRef}
+          type="text"
+          value={editTitle}
+          onChange={(e) => handleTitleChange(e.target.value)}
+          onBlur={handleTitleBlur}
+          onKeyDown={handleTitleKeyDown}
+          className={cn(
+            'min-w-0 flex-1 bg-transparent text-sm font-medium outline-none',
+            'placeholder:text-muted-foreground'
+          )}
+          placeholder="Task name..."
+        />
+      ) : (
+        <button
+          type="button"
+          onClick={handleTitleClick}
+          className={cn(
+            'min-w-0 flex-1 truncate text-left text-sm font-medium',
+            displayChecked && 'text-muted-foreground line-through'
+          )}
+        >
+          {displayTitle}
+        </button>
+      )}
 
       {/* Inline controls — always visible */}
       <div className="flex shrink-0 items-center gap-1">
