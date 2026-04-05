@@ -12,6 +12,9 @@ Format: weekly entries grouped by feature area.
 - Show note emoji/icon for AI-suggested notes in filing section
 - Surface `emoji` field from note cache through suggestions pipeline
 
+### Fixed
+- Fix checkbox and text vertical misalignment in note task lists
+
 ### Changed
 - Stack "File to" and "Tags" vertically instead of side by side
 - Narrow inbox detail panel from 460px to 380px to match task detail drawer
