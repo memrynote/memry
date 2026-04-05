@@ -116,6 +116,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
   const tasksCtx = useTasksOptional()
   const [highlightSelection, setHighlightSelection] = useState<HighlightSelection | null>(null)
   const taskDetectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const taskDeleteTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const dismissedBlocksRef = useRef(new Set<string>())
   const knownTaskBlockIdsRef = useRef<Set<string>>(new Set())
   const editorContainerRef = useRef<HTMLDivElement>(null)
@@ -385,6 +386,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
   useEffect(() => {
     return () => {
       if (taskDetectTimeoutRef.current) clearTimeout(taskDetectTimeoutRef.current)
+      if (taskDeleteTimeoutRef.current) clearTimeout(taskDeleteTimeoutRef.current)
     }
   }, [])
 
@@ -430,23 +432,26 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
             if (taskDetectTimeoutRef.current) clearTimeout(taskDetectTimeoutRef.current)
             taskDetectTimeoutRef.current = setTimeout(() => void autoCreateTaskFromCheckbox(), 800)
 
-            const currentTaskIds = new Set<string>()
-            const scanTaskIds = (blocks: any[]): void => {
-              for (const b of blocks) {
-                if (b.type === 'taskBlock' && b.props?.taskId) {
-                  currentTaskIds.add(b.props.taskId as string)
+            if (taskDeleteTimeoutRef.current) clearTimeout(taskDeleteTimeoutRef.current)
+            taskDeleteTimeoutRef.current = setTimeout(() => {
+              const currentTaskIds = new Set<string>()
+              const scanTaskIds = (blocks: any[]): void => {
+                for (const b of blocks) {
+                  if (b.type === 'taskBlock' && b.props?.taskId) {
+                    currentTaskIds.add(b.props.taskId as string)
+                  }
+                  if (b.children?.length) scanTaskIds(b.children)
                 }
-                if (b.children?.length) scanTaskIds(b.children)
               }
-            }
-            scanTaskIds(editor.document as any[])
+              scanTaskIds(editor.document as any[])
 
-            for (const prevId of knownTaskBlockIdsRef.current) {
-              if (!currentTaskIds.has(prevId)) {
-                void tasksService.delete(prevId)
+              for (const prevId of knownTaskBlockIdsRef.current) {
+                if (!currentTaskIds.has(prevId)) {
+                  void tasksService.delete(prevId)
+                }
               }
-            }
-            knownTaskBlockIdsRef.current = currentTaskIds
+              knownTaskBlockIdsRef.current = currentTaskIds
+            }, 2000)
           }}
           theme={editorTheme}
           formattingToolbar={!stickyToolbar}
