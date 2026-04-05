@@ -1,5 +1,6 @@
 import { createReactBlockSpec } from '@blocknote/react'
 import { TaskBlockRenderer } from './task-block-renderer'
+import { tasksService } from '@/services/tasks-service'
 
 export const createTaskBlock = createReactBlockSpec(
   {
@@ -25,17 +26,30 @@ export const createTaskBlock = createReactBlockSpec(
 export function getTaskSlashMenuItem(editor: any) {
   return {
     title: 'Task',
-    onItemClick: () => {
+    onItemClick: async () => {
       const currentBlock = editor.getTextCursorPosition().block
-      editor.updateBlock(currentBlock, {
-        type: 'taskBlock' as any,
-        props: { taskId: '', title: '', checked: false }
+      const content = currentBlock.content as any[]
+      const text =
+        content
+          ?.map((c: any) => (typeof c === 'string' ? c : (c.text ?? '')))
+          .join('')
+          .trim() || 'New task'
+
+      const res = await tasksService.listProjects()
+      const projects = res.projects ?? []
+      const defaultProject = projects.find((p: any) => p.isDefault || p.isInbox) ?? projects[0]
+      if (!defaultProject) return
+
+      const result = await tasksService.create({
+        projectId: defaultProject.id,
+        title: text
       })
-      window.dispatchEvent(
-        new CustomEvent('task-block:open-creation', {
-          detail: { blockId: currentBlock.id }
+      if (result.success && result.task) {
+        editor.updateBlock(currentBlock, {
+          type: 'taskBlock' as any,
+          props: { taskId: result.task.id, title: text, checked: false }
         })
-      )
+      }
     },
     aliases: ['task', 'todo', 'action'],
     group: 'Basic blocks',

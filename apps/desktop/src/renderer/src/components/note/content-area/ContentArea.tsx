@@ -31,7 +31,6 @@ import { WikiLinkPreviewCard } from './wiki-link-preview-card'
 import { BlockDropIndicator, EmptyDocumentDropIndicator } from './block-drop-indicator'
 import { getCalloutSlashMenuItem } from './callout-block'
 import { getTaskSlashMenuItem } from './task-block'
-import { TaskCreationPopover } from './task-block/task-creation-popover'
 import { isLikelyTask } from './task-block/task-block-utils'
 import { tasksService } from '@/services/tasks-service'
 import { useTasksOptional } from '@/contexts/tasks'
@@ -112,12 +111,6 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
 
   const tasksCtx = useTasksOptional()
   const [highlightSelection, setHighlightSelection] = useState<HighlightSelection | null>(null)
-  const [taskCreation, setTaskCreation] = useState<{
-    isOpen: boolean
-    blockId: string
-    title: string
-  } | null>(null)
-  const taskCreationAnchorRef = useRef<HTMLElement | null>(null)
   const taskDetectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const dismissedBlocksRef = useRef(new Set<string>())
   const editorContainerRef = useRef<HTMLDivElement>(null)
@@ -291,50 +284,44 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
     window.getSelection()?.removeAllRanges()
   }, [])
 
-  useEffect(() => {
-    const handleOpenCreation = (e: Event): void => {
-      const { blockId } = (e as CustomEvent).detail
-      const blockEl = document.querySelector(`[data-id="${blockId}"]`)
-      taskCreationAnchorRef.current = blockEl as HTMLElement
-      setTaskCreation({ isOpen: true, blockId, title: '' })
+  const resolveDefaultProject = useCallback(async (): Promise<{ id: string } | null> => {
+    const ctxProjects = tasksCtx?.projects ?? []
+    if (ctxProjects.length > 0) {
+      return ctxProjects.find((p: any) => p.isDefault || p.isInbox) ?? ctxProjects[0] ?? null
     }
-    window.addEventListener('task-block:open-creation', handleOpenCreation)
-    return () => window.removeEventListener('task-block:open-creation', handleOpenCreation)
-  }, [])
+    const res = await tasksService.listProjects()
+    const dbProjects = res.projects ?? []
+    return dbProjects.find((p: any) => p.isDefault || p.isInbox) ?? dbProjects[0] ?? null
+  }, [tasksCtx])
 
-  const handleTaskCreated = useCallback(
-    (taskId: string, title: string) => {
-      if (!taskCreation?.blockId) return
-      const block = editor.getBlock(taskCreation.blockId)
+  const convertCheckboxToTask = useCallback(
+    async (blockId: string, titleText: string) => {
+      const project = await resolveDefaultProject()
+      if (!project) return
+
+      const block = editor.getBlock(blockId)
       if (!block) return
 
-      if (block.type === 'checkListItem') {
-        editor.updateBlock(block, {
-          type: 'taskBlock' as any,
-          props: { taskId, title, checked: false }
+      try {
+        const result = await tasksService.create({
+          projectId: project.id,
+          title: titleText,
+          linkedNoteIds: noteId ? [noteId] : []
         })
-      } else {
-        editor.updateBlock(block, { props: { taskId, title, checked: false } })
+        if (result.success && result.task) {
+          editor.updateBlock(block, {
+            type: 'taskBlock' as any,
+            props: { taskId: result.task.id, title: titleText, checked: false }
+          })
+        }
+      } catch {
+        dismissedBlocksRef.current.delete(blockId)
       }
-      setTaskCreation(null)
     },
-    [editor, taskCreation]
+    [editor, noteId, resolveDefaultProject]
   )
 
-  const handleTaskCreationCancel = useCallback(() => {
-    if (taskCreation?.blockId) {
-      dismissedBlocksRef.current.add(taskCreation.blockId)
-      const block = editor.getBlock(taskCreation.blockId)
-      if (block && (block.props as any).taskId === '') {
-        editor.removeBlocks([block])
-      }
-    }
-    setTaskCreation(null)
-  }, [editor, taskCreation])
-
   const autoCreateTaskFromCheckbox = useCallback(async () => {
-    if (taskCreation?.isOpen) return
-
     const cursor = editor.getTextCursorPosition()
     if (!cursor?.block) return
 
@@ -349,32 +336,11 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
     if (!text.trim() || !isLikelyTask(text)) return
 
     dismissedBlocksRef.current.add(block.id)
-
-    const projects = tasksCtx?.projects ?? []
-    const defaultProject = projects.find((p: any) => p.isDefault) ?? projects[0]
-    if (!defaultProject) return
-
-    try {
-      const result = await tasksService.create({
-        projectId: defaultProject.id,
-        title: text.trim(),
-        linkedNoteIds: noteId ? [noteId] : []
-      })
-      if (result.success && result.task) {
-        editor.updateBlock(block, {
-          type: 'taskBlock' as any,
-          props: { taskId: result.task.id, title: text.trim(), checked: false }
-        })
-      }
-    } catch {
-      dismissedBlocksRef.current.delete(block.id)
-    }
-  }, [editor, taskCreation?.isOpen, noteId])
+    await convertCheckboxToTask(block.id, text.trim())
+  }, [editor, convertCheckboxToTask])
 
   const handleEditorContextMenu = useCallback(
-    (e: React.MouseEvent) => {
-      if (taskCreation?.isOpen) return
-
+    async (e: React.MouseEvent) => {
       const target = e.target as HTMLElement
       const checkListBlock = target.closest('[data-content-type="checkListItem"]')
       if (!checkListBlock) return
@@ -391,10 +357,10 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
       if (!text.trim()) return
 
       e.preventDefault()
-      taskCreationAnchorRef.current = checkListBlock as HTMLElement
-      setTaskCreation({ isOpen: true, blockId, title: text.trim() })
+      dismissedBlocksRef.current.add(blockId)
+      await convertCheckboxToTask(blockId, text.trim())
     },
-    [editor, taskCreation?.isOpen]
+    [editor, convertCheckboxToTask]
   )
 
   useEffect(() => {
@@ -510,17 +476,6 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
           selectedIndex={pasteLinkState.selectedIndex}
           onSelect={handlePasteLinkOptionSelect}
         />
-
-        {taskCreation?.isOpen && (
-          <TaskCreationPopover
-            isOpen
-            anchorRef={taskCreationAnchorRef}
-            title={taskCreation.title}
-            noteId={noteId}
-            onCreated={handleTaskCreated}
-            onCancel={handleTaskCreationCancel}
-          />
-        )}
       </div>
     </div>
   )
