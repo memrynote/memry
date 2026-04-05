@@ -30,6 +30,9 @@ import { TagSuggestionPopover } from './tag-suggestion-popover'
 import { WikiLinkPreviewCard } from './wiki-link-preview-card'
 import { BlockDropIndicator, EmptyDocumentDropIndicator } from './block-drop-indicator'
 import { getCalloutSlashMenuItem } from './callout-block'
+import { getTaskSlashMenuItem } from './task-block'
+import { TaskCreationPopover } from './task-block/task-creation-popover'
+import { isLikelyTask } from './task-block/task-block-utils'
 import { editorSchema } from './editor-schema'
 import {
   HighlightReminderPopover,
@@ -106,6 +109,14 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
   const { port: aiPort, error: aiError, retry: retryAI } = useAIInlineContext()
 
   const [highlightSelection, setHighlightSelection] = useState<HighlightSelection | null>(null)
+  const [taskCreation, setTaskCreation] = useState<{
+    isOpen: boolean
+    blockId: string
+    title: string
+  } | null>(null)
+  const taskCreationAnchorRef = useRef<HTMLElement | null>(null)
+  const taskDetectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const dismissedBlocksRef = useRef(new Set<string>())
   const editorContainerRef = useRef<HTMLDivElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const noteIdRef = useRef<string | undefined>(noteId)
@@ -277,6 +288,104 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
     window.getSelection()?.removeAllRanges()
   }, [])
 
+  useEffect(() => {
+    const handleOpenCreation = (e: Event): void => {
+      const { blockId } = (e as CustomEvent).detail
+      const blockEl = document.querySelector(`[data-id="${blockId}"]`)
+      taskCreationAnchorRef.current = blockEl as HTMLElement
+      setTaskCreation({ isOpen: true, blockId, title: '' })
+    }
+    window.addEventListener('task-block:open-creation', handleOpenCreation)
+    return () => window.removeEventListener('task-block:open-creation', handleOpenCreation)
+  }, [])
+
+  const handleTaskCreated = useCallback(
+    (taskId: string, title: string) => {
+      if (!taskCreation?.blockId) return
+      const block = editor.getBlock(taskCreation.blockId)
+      if (!block) return
+
+      if (block.type === 'checkListItem') {
+        editor.updateBlock(block, {
+          type: 'taskBlock' as any,
+          props: { taskId, title, checked: false }
+        })
+      } else {
+        editor.updateBlock(block, { props: { taskId, title, checked: false } })
+      }
+      setTaskCreation(null)
+    },
+    [editor, taskCreation]
+  )
+
+  const handleTaskCreationCancel = useCallback(() => {
+    if (taskCreation?.blockId) {
+      dismissedBlocksRef.current.add(taskCreation.blockId)
+      const block = editor.getBlock(taskCreation.blockId)
+      if (block && (block.props as any).taskId === '') {
+        editor.removeBlocks([block])
+      }
+    }
+    setTaskCreation(null)
+  }, [editor, taskCreation])
+
+  const checkForTaskBlock = useCallback(() => {
+    if (taskCreation?.isOpen) return
+
+    const cursor = editor.getTextCursorPosition()
+    if (!cursor?.block) return
+
+    const block = cursor.block
+    if (block.type !== 'checkListItem') return
+    if (dismissedBlocksRef.current.has(block.id)) return
+
+    const content = block.content as any[]
+    if (!content?.length) return
+
+    const text = content
+      .map((c: any) => (typeof c === 'string' ? c : c.text ?? ''))
+      .join('')
+    if (!text.trim() || !isLikelyTask(text)) return
+
+    const blockEl = document.querySelector(`[data-id="${block.id}"]`)
+    if (!blockEl) return
+
+    taskCreationAnchorRef.current = blockEl as HTMLElement
+    setTaskCreation({ isOpen: true, blockId: block.id, title: text.trim() })
+  }, [editor, taskCreation?.isOpen])
+
+  const handleEditorContextMenu = useCallback(
+    (e: React.MouseEvent) => {
+      if (taskCreation?.isOpen) return
+
+      const target = e.target as HTMLElement
+      const checkListBlock = target.closest('[data-content-type="checkListItem"]')
+      if (!checkListBlock) return
+
+      const blockId = checkListBlock.getAttribute('data-id')
+      if (!blockId) return
+
+      const block = editor.getBlock(blockId)
+      if (!block || block.type !== 'checkListItem') return
+
+      const content = block.content as any[]
+      const text =
+        content?.map((c: any) => (typeof c === 'string' ? c : c.text ?? '')).join('') ?? ''
+      if (!text.trim()) return
+
+      e.preventDefault()
+      taskCreationAnchorRef.current = checkListBlock as HTMLElement
+      setTaskCreation({ isOpen: true, blockId, title: text.trim() })
+    },
+    [editor, taskCreation?.isOpen]
+  )
+
+  useEffect(() => {
+    return () => {
+      if (taskDetectTimeoutRef.current) clearTimeout(taskDetectTimeoutRef.current)
+    }
+  }, [])
+
   return (
     <div
       ref={containerRef}
@@ -309,12 +418,15 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
         )}
         role="application"
         aria-label="Rich text editor"
+        onContextMenu={handleEditorContextMenu}
       >
         <BlockNoteView
           editor={editor}
           editable={editable}
           onChange={(): void => {
             void handleChange()
+            if (taskDetectTimeoutRef.current) clearTimeout(taskDetectTimeoutRef.current)
+            taskDetectTimeoutRef.current = setTimeout(checkForTaskBlock, 800)
           }}
           theme={editorTheme}
           formattingToolbar={!stickyToolbar}
@@ -328,7 +440,8 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
               const defaults = getDefaultReactSlashMenuItems(editor)
               const aiItems = aiReady ? getAISlashMenuItems(editor) : []
               const calloutItem = getCalloutSlashMenuItem(editor)
-              const all = [...defaults, calloutItem, ...aiItems]
+              const taskItem = getTaskSlashMenuItem(editor)
+              const all = [...defaults, calloutItem, taskItem, ...aiItems]
               if (!query) return all
               const lower = query.toLowerCase()
               return all.filter(
@@ -380,6 +493,17 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
           selectedIndex={pasteLinkState.selectedIndex}
           onSelect={handlePasteLinkOptionSelect}
         />
+
+        {taskCreation?.isOpen && (
+          <TaskCreationPopover
+            isOpen
+            anchorRef={taskCreationAnchorRef}
+            title={taskCreation.title}
+            noteId={noteId}
+            onCreated={handleTaskCreated}
+            onCancel={handleTaskCreationCancel}
+          />
+        )}
       </div>
     </div>
   )
