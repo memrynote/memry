@@ -82,7 +82,8 @@ export const FilingSection = ({
             id: fi.path,
             name: fi.path.split('/').pop() || fi.path,
             path: fi.path,
-            parent: fi.path.includes('/') ? fi.path.split('/').slice(0, -1).join('/') : undefined
+            parent: fi.path.includes('/') ? fi.path.split('/').slice(0, -1).join('/') : undefined,
+            icon: fi.icon ?? null
           })
         }
       }
@@ -113,19 +114,20 @@ export const FilingSection = ({
     if (aiSuggestions.length > 0) {
       return aiSuggestions
         .filter((s) => s.destination.type === 'folder' && s.destination.path)
-        .slice(0, 3) // Show max 3 suggestions
+        .slice(0, 3)
         .map((s) => {
           const path = s.destination.path || ''
+          const vaultMatch = vaultFolders.find((f) => f.path === path)
           return {
             id: path,
             name: path.split('/').pop() || path || 'Notes',
             path: path,
+            icon: vaultMatch?.icon ?? null,
             aiConfidence: s.confidence,
             aiReason: s.reason
           }
         })
     }
-    // Fallback to first 3 folders if no AI suggestions
     return vaultFolders.slice(0, 3).map((f) => ({ ...f }))
   }, [aiSuggestions, vaultFolders])
 
@@ -166,12 +168,11 @@ export const FilingSection = ({
   const displayFolder = selectedFolder
     ? (suggestedFolders.find((f) => f.id === selectedFolder.id) ?? {
         ...selectedFolder,
+        icon:
+          selectedFolder.icon ?? vaultFolders.find((f) => f.id === selectedFolder.id)?.icon ?? null,
         aiConfidence: undefined
       })
     : (suggestedFolders[0] ?? null)
-  const displayConfidence = (displayFolder as SuggestedFolder | null)?.aiConfidence
-    ? Math.round((displayFolder as SuggestedFolder).aiConfidence! * 100)
-    : null
   const displayPath = displayFolder?.path
     ? displayFolder.path.replace(/\//g, ' / ')
     : displayFolder?.name || 'Select folder'
@@ -226,73 +227,71 @@ export const FilingSection = ({
 
   return (
     <div className={cn(className)}>
-      {/* File To — Header + Dropdown */}
-      <div className="flex flex-col gap-2 py-4 px-5 border-b border-border">
-        <div className="flex items-center justify-between">
-          <span className="text-[11px] [letter-spacing:0.05em] uppercase text-text-tertiary font-medium leading-3.5">
-            File to
-          </span>
-          {isLoadingAISuggestions ? (
-            <div className="flex items-center gap-1 text-[11px] text-muted-foreground">
-              <Loader2 className="size-3 animate-spin" />
-            </div>
-          ) : hasAISuggestions ? (
-            <div className="flex items-center gap-1 text-[11px] text-[var(--tint)]">
-              <Sparkles className="size-3" />
-              <span>AI</span>
-            </div>
-          ) : null}
-        </div>
+      {/* File To + Tags — line by line */}
+      <div className="flex flex-col py-4 px-5 border-b border-border">
+        {/* File To */}
+        <div className="flex flex-col gap-2">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] [letter-spacing:0.05em] uppercase text-text-tertiary font-medium leading-3.5">
+              File to
+            </span>
+            {isLoadingAISuggestions ? (
+              <div className="flex items-center gap-1 text-[11px] text-muted-foreground">
+                <Loader2 className="size-3 animate-spin" />
+              </div>
+            ) : hasAISuggestions ? (
+              <div className="flex items-center gap-1 text-[11px] text-[var(--tint)]">
+                <Sparkles className="size-3" />
+                <span>AI</span>
+              </div>
+            ) : null}
+          </div>
 
-        {/* Folder Dropdown */}
-        <Popover
-          open={showAllFolders}
-          onOpenChange={(open) => {
-            setShowAllFolders(open)
-            if (!open) setFolderSearch('')
-          }}
-        >
-          <PopoverTrigger asChild>
-            <button
-              className={cn(
-                'flex items-center w-full rounded-md py-2.5 px-3.5 transition-colors',
-                hasAISuggestions
-                  ? 'bg-[var(--tint)]/[0.03] border border-[var(--tint)]/12'
-                  : 'bg-foreground/[0.02] border border-border'
-              )}
-            >
-              <div className="flex items-center grow gap-2 min-w-0">
-                <Folder
-                  className={cn(
-                    'size-4 shrink-0',
-                    hasAISuggestions ? 'text-[var(--tint)]' : 'text-muted-foreground'
-                  )}
-                />
-                <span className="text-[13px] leading-4 font-medium text-foreground truncate">
-                  {displayPath}
-                </span>
-              </div>
-              <div className="flex items-center gap-2 shrink-0">
-                {displayConfidence && (
-                  <span className="text-[11px] leading-3.5 text-[var(--tint)]/50">
-                    {displayConfidence}%
-                  </span>
-                )}
-                <ChevronDown className="size-3 text-muted-foreground/50" />
-              </div>
-            </button>
-          </PopoverTrigger>
-          <PopoverContent
-            className="w-[var(--radix-popover-trigger-width)] p-0 rounded-md bg-[var(--popover)] border-border shadow-[0_8px_24px_rgba(0,0,0,0.25)]"
-            align="start"
-            sideOffset={4}
+          {/* Folder Dropdown */}
+          <Popover
+            open={showAllFolders}
+            onOpenChange={(open) => {
+              setShowAllFolders(open)
+              if (!open) setFolderSearch('')
+            }}
           >
-            {/* Search */}
-            <div className="flex flex-col border-b border-border/40">
-              <div className="flex items-center py-2.5 px-3 gap-2">
+            <PopoverTrigger asChild>
+              <button
+                className={cn(
+                  'flex items-center w-full rounded-md py-2 px-3 transition-colors',
+                  hasAISuggestions
+                    ? 'bg-[var(--tint)]/[0.03] border border-[var(--tint)]/12'
+                    : 'bg-foreground/[0.02] border border-border'
+                )}
+              >
+                <div className="flex items-center grow gap-2 min-w-0">
+                  {displayFolder?.icon ? (
+                    <NoteIconDisplay value={displayFolder.icon} className="size-4 shrink-0" />
+                  ) : (
+                    <Folder
+                      className={cn(
+                        'size-4 shrink-0',
+                        hasAISuggestions ? 'text-[var(--tint)]' : 'text-muted-foreground'
+                      )}
+                    />
+                  )}
+                  <span className="text-[13px] leading-4 font-medium text-foreground truncate">
+                    {displayPath}
+                  </span>
+                </div>
+                <ChevronDown className="size-3 text-muted-foreground/50 shrink-0" />
+              </button>
+            </PopoverTrigger>
+            <PopoverContent
+              className="w-[var(--radix-popover-trigger-width)] p-0 rounded-md bg-[var(--popover)] border-border shadow-[0_8px_24px_rgba(0,0,0,0.25)]"
+              align="start"
+              sideOffset={4}
+            >
+              {/* Search */}
+              <div className="flex items-center py-2 px-3 gap-2 border-b border-border/40">
                 <Search className="size-3.5 text-muted-foreground/40 shrink-0" />
                 <Input
-                  placeholder="Search or create folder..."
+                  placeholder="Search or create with /..."
                   value={folderSearch}
                   onChange={(e) => setFolderSearch(e.target.value)}
                   onKeyDown={(e) => {
@@ -305,146 +304,119 @@ export const FilingSection = ({
                   autoFocus
                 />
               </div>
-              <div className="px-3 pb-2">
-                <span className="text-[10px] leading-3 text-muted-foreground/30">
-                  Use / for subfolders (e.g. Research/AI)
-                </span>
-              </div>
-            </div>
 
-            <ScrollArea className="max-h-56">
-              {/* Suggested section */}
-              {suggestedFolders.length > 0 && !folderSearch.trim() && (
-                <div className="flex flex-col py-1">
-                  <div className="flex items-center py-0.5 px-2">
-                    <span className="text-[11px] [letter-spacing:0.05em] uppercase text-text-tertiary font-medium leading-3.5">
+              <ScrollArea className="max-h-56">
+                {/* Suggested */}
+                {suggestedFolders.length > 0 && !folderSearch.trim() && (
+                  <div className="flex flex-col py-1">
+                    <span className="text-[10px] [letter-spacing:0.05em] uppercase text-muted-foreground/40 px-3 py-1">
                       Suggested
                     </span>
-                  </div>
-                  {suggestedFolders.map((folder) => {
-                    const confidence = folder.aiConfidence
-                      ? Math.round(folder.aiConfidence * 100)
-                      : null
-                    const isSelected = selectedFolder?.id === folder.id
-                    return (
-                      <button
-                        key={folder.id || 'root-suggested'}
-                        onClick={() => {
-                          onFolderSelect(folder)
-                          setShowAllFolders(false)
-                        }}
-                        className={cn(
-                          'flex items-center gap-2 rounded-sm py-2 px-3 mx-1 my-0.5 text-left transition-colors',
-                          isSelected ? 'bg-[var(--tint)]/[0.03]' : 'hover:bg-foreground/[0.03]'
-                        )}
-                      >
-                        <Folder className="size-3.5 shrink-0 text-[var(--tint)]" />
-                        <div className="flex flex-col grow gap-px min-w-0">
-                          <span className="text-[13px] leading-4 font-medium text-foreground truncate">
-                            {folder.name || 'Notes'}
-                          </span>
-                          {folder.path && (
-                            <span className="text-[11px] leading-3.5 text-muted-foreground/60 truncate">
-                              {folder.path.replace(/\//g, ' / ')}
-                            </span>
+                    {suggestedFolders.map((folder) => {
+                      const isSelected = selectedFolder?.id === folder.id
+                      return (
+                        <button
+                          key={folder.id || 'root-suggested'}
+                          onClick={() => {
+                            onFolderSelect(folder)
+                            setShowAllFolders(false)
+                          }}
+                          className={cn(
+                            'flex items-center gap-2 rounded-sm py-1.5 px-3 mx-1 text-left transition-colors',
+                            isSelected ? 'bg-[var(--tint)]/[0.05]' : 'hover:bg-foreground/[0.03]'
                           )}
-                        </div>
-                        {confidence && (
-                          <span className="text-[10px] leading-3 text-[var(--tint)]/50 shrink-0">
-                            {confidence}%
+                        >
+                          {folder.icon ? (
+                            <NoteIconDisplay value={folder.icon} className="size-3.5 shrink-0" />
+                          ) : (
+                            <Folder className="size-3.5 shrink-0 text-[var(--tint)]" />
+                          )}
+                          <span className="text-[13px] leading-4 text-foreground truncate grow">
+                            {folder.path ? folder.path.replace(/\//g, ' / ') : 'Notes'}
                           </span>
-                        )}
-                      </button>
-                    )
-                  })}
-                </div>
-              )}
-
-              {/* All folders section */}
-              <div
-                className={cn(
-                  'flex flex-col py-1',
-                  suggestedFolders.length > 0 && !folderSearch.trim() && 'border-t border-border/40'
-                )}
-              >
-                {!folderSearch.trim() && (
-                  <div className="flex items-center py-0.5 px-2">
-                    <span className="text-[11px] [letter-spacing:0.05em] uppercase text-text-tertiary font-medium leading-3.5">
-                      All folders
-                    </span>
+                          {isSelected && <Check className="size-3 shrink-0 text-[var(--tint)]" />}
+                        </button>
+                      )
+                    })}
                   </div>
                 )}
-                {canCreateFolder && (
-                  <button
-                    onClick={handleCreateFolder}
-                    disabled={isCreatingFolder}
-                    className="flex items-center gap-2 rounded-md py-2.5 px-3 mx-1 my-0.5 text-left transition-colors bg-[var(--tint)]/[0.06] border border-[var(--tint)]/15 hover:bg-[var(--tint)]/[0.1] disabled:opacity-50"
-                  >
-                    {isCreatingFolder ? (
-                      <Loader2 className="size-3.5 shrink-0 text-[var(--tint)] animate-spin" />
-                    ) : (
-                      <Plus className="size-3.5 shrink-0 text-[var(--tint)]" />
-                    )}
-                    <span className="text-[13px] leading-4 font-medium text-[var(--tint)]">
-                      Create &ldquo;{trimmedSearch}&rdquo;
-                    </span>
-                  </button>
-                )}
-                {filteredFolders.length === 0 && !canCreateFolder ? (
-                  <p className="text-xs text-muted-foreground text-center py-3">No folders found</p>
-                ) : filteredFolders.length === 0 ? null : (
-                  filteredFolders.map((folder) => {
-                    const isSelected = selectedFolder?.id === folder.id
-                    const parentPath = folder.path?.includes('/')
-                      ? folder.path.split('/').slice(0, -1).join(' / ')
-                      : null
-                    return (
-                      <button
-                        key={folder.id}
-                        onClick={() => {
-                          onFolderSelect(folder)
-                          setShowAllFolders(false)
-                        }}
-                        className={cn(
-                          'flex items-center gap-2 rounded-sm py-2 px-3 mx-1 my-0.5 text-left transition-colors',
-                          isSelected ? 'bg-foreground/[0.03]' : 'hover:bg-foreground/[0.03]'
-                        )}
-                      >
-                        <Folder className="size-3.5 shrink-0 text-muted-foreground" />
-                        <span className="grow text-[13px] leading-4 text-foreground truncate">
-                          {folder.name}
-                        </span>
-                        {parentPath && (
-                          <span className="text-[10px] leading-3 text-muted-foreground/30 shrink-0">
-                            {parentPath}
+
+                {/* All folders */}
+                <div
+                  className={cn(
+                    'flex flex-col py-1',
+                    suggestedFolders.length > 0 &&
+                      !folderSearch.trim() &&
+                      'border-t border-border/40'
+                  )}
+                >
+                  {canCreateFolder && (
+                    <button
+                      onClick={handleCreateFolder}
+                      disabled={isCreatingFolder}
+                      className="flex items-center gap-2 py-1.5 px-3 mx-1 text-left transition-colors hover:bg-[var(--tint)]/[0.06] rounded-sm disabled:opacity-50"
+                    >
+                      {isCreatingFolder ? (
+                        <Loader2 className="size-3.5 shrink-0 text-[var(--tint)] animate-spin" />
+                      ) : (
+                        <Plus className="size-3.5 shrink-0 text-[var(--tint)]" />
+                      )}
+                      <span className="text-[13px] leading-4 text-[var(--tint)]">
+                        Create &ldquo;{trimmedSearch}&rdquo;
+                      </span>
+                    </button>
+                  )}
+                  {filteredFolders.length === 0 && !canCreateFolder ? (
+                    <p className="text-xs text-muted-foreground text-center py-3">
+                      No folders found
+                    </p>
+                  ) : filteredFolders.length === 0 ? null : (
+                    filteredFolders.map((folder) => {
+                      const isSelected = selectedFolder?.id === folder.id
+                      return (
+                        <button
+                          key={folder.id}
+                          onClick={() => {
+                            onFolderSelect(folder)
+                            setShowAllFolders(false)
+                          }}
+                          className={cn(
+                            'flex items-center gap-2 rounded-sm py-1.5 px-3 mx-1 text-left transition-colors',
+                            isSelected ? 'bg-foreground/[0.03]' : 'hover:bg-foreground/[0.03]'
+                          )}
+                        >
+                          {folder.icon ? (
+                            <NoteIconDisplay value={folder.icon} className="size-3.5 shrink-0" />
+                          ) : (
+                            <Folder className="size-3.5 shrink-0 text-muted-foreground" />
+                          )}
+                          <span className="grow text-[13px] leading-4 text-foreground truncate">
+                            {folder.path ? folder.path.replace(/\//g, ' / ') : folder.name}
                           </span>
-                        )}
-                      </button>
-                    )
-                  })
-                )}
-              </div>
-            </ScrollArea>
+                          {isSelected && (
+                            <Check className="size-3 shrink-0 text-muted-foreground" />
+                          )}
+                        </button>
+                      )
+                    })
+                  )}
+                </div>
+              </ScrollArea>
+            </PopoverContent>
+          </Popover>
+        </div>
 
-            {/* Footer hints */}
-            <div className="flex items-center py-2 px-3 border-t border-border/40">
-              <span className="text-[10px] leading-3 text-muted-foreground/30">
-                ↑↓ navigate · ⏎ select · esc close
-              </span>
-            </div>
-          </PopoverContent>
-        </Popover>
+        {/* Tags */}
+        <TagAutocomplete
+          tags={tags}
+          onTagsChange={onTagsChange}
+          placeholder="Add tags..."
+          showSections={false}
+          maxSuggestions={5}
+          aiSuggestedTags={aiSuggestedTags}
+          className="mt-4 py-0 px-0 border-b-0"
+        />
       </div>
-
-      {/* Tags */}
-      <TagAutocomplete
-        tags={tags}
-        onTagsChange={onTagsChange}
-        placeholder="Add tags..."
-        showSections={false}
-        maxSuggestions={5}
-        aiSuggestedTags={aiSuggestedTags}
-      />
 
       {/* Link to note */}
       <div className="flex flex-col gap-2 py-4 px-5 border-b border-border">
@@ -479,11 +451,8 @@ export const FilingSection = ({
                       : `color-mix(in srgb, var(--tint) ${Math.round(borderOpacity * 100)}%, transparent)`
                   }}
                 >
-                  {linkedNotes.find((ln) => ln.id === suggestion.note.id)?.emoji ? (
-                    <NoteIconDisplay
-                      value={linkedNotes.find((ln) => ln.id === suggestion.note.id)!.emoji!}
-                      className="size-3.5 shrink-0"
-                    />
+                  {suggestion.note.emoji ? (
+                    <NoteIconDisplay value={suggestion.note.emoji} className="size-3.5 shrink-0" />
                   ) : (
                     <FileText className="size-3.5 shrink-0 text-muted-foreground" />
                   )}
