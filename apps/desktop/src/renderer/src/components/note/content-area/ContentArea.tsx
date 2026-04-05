@@ -34,6 +34,8 @@ import { getTaskSlashMenuItem } from './task-block'
 import { isLikelyTask } from './task-block/task-block-utils'
 import { tasksService } from '@/services/tasks-service'
 import { useTasksOptional } from '@/contexts/tasks'
+import { parseQuickAdd } from '@/lib/quick-add-parser'
+import { formatDateKey } from '@/lib/task-utils'
 import { editorSchema } from './editor-schema'
 import {
   HighlightReminderPopover,
@@ -56,6 +58,8 @@ import { extractYouTubeVideoId } from '@/lib/youtube-utils'
 import { extractDomain, fetchLinkPreview } from '@/lib/url-metadata'
 import { createLinkMentionContent } from './link-mention'
 import type { PasteLinkOption } from './hooks/use-paste-link-menu'
+
+const PRIORITY_REVERSE: Record<string, number> = { none: 0, low: 1, medium: 2, high: 3, urgent: 4 }
 
 function findBlockWithLinkMention(
   blocks: any[],
@@ -113,6 +117,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
   const [highlightSelection, setHighlightSelection] = useState<HighlightSelection | null>(null)
   const taskDetectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const dismissedBlocksRef = useRef(new Set<string>())
+  const knownTaskBlockIdsRef = useRef<Set<string>>(new Set())
   const editorContainerRef = useRef<HTMLDivElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const noteIdRef = useRef<string | undefined>(noteId)
@@ -284,34 +289,34 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
     window.getSelection()?.removeAllRanges()
   }, [])
 
-  const resolveDefaultProject = useCallback(async (): Promise<{ id: string } | null> => {
-    const ctxProjects = tasksCtx?.projects ?? []
-    if (ctxProjects.length > 0) {
-      return ctxProjects.find((p: any) => p.isDefault || p.isInbox) ?? ctxProjects[0] ?? null
-    }
-    const res = await tasksService.listProjects()
-    const dbProjects = res.projects ?? []
-    return dbProjects.find((p: any) => p.isDefault || p.isInbox) ?? dbProjects[0] ?? null
-  }, [tasksCtx])
-
   const convertCheckboxToTask = useCallback(
     async (blockId: string, titleText: string) => {
-      const project = await resolveDefaultProject()
-      if (!project) return
+      let projects = tasksCtx?.projects ?? []
+      if (projects.length === 0) {
+        const res = await tasksService.listProjects()
+        projects = res.projects ?? []
+      }
+
+      const defaultProject = projects.find((p: any) => p.isDefault || p.isInbox) ?? projects[0]
+      if (!defaultProject) return
+
+      const parsed = parseQuickAdd(titleText, projects as any[])
 
       const block = editor.getBlock(blockId)
       if (!block) return
 
       try {
         const result = await tasksService.create({
-          projectId: project.id,
-          title: titleText,
+          projectId: parsed.projectId ?? defaultProject.id,
+          title: parsed.title,
+          priority: PRIORITY_REVERSE[parsed.priority] ?? 0,
+          dueDate: parsed.dueDate ? formatDateKey(parsed.dueDate) : null,
           linkedNoteIds: noteId ? [noteId] : []
         })
         if (result.success && result.task) {
           editor.updateBlock(block, {
             type: 'taskBlock' as any,
-            props: { taskId: result.task.id, title: titleText, checked: false }
+            props: { taskId: result.task.id, title: parsed.title, checked: false }
           })
           try {
             editor.setTextCursorPosition(block.id, 'end')
@@ -323,7 +328,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
         dismissedBlocksRef.current.delete(blockId)
       }
     },
-    [editor, noteId, resolveDefaultProject]
+    [editor, noteId, tasksCtx]
   )
 
   const autoCreateTaskFromCheckbox = useCallback(async () => {
@@ -424,6 +429,24 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
             void handleChange()
             if (taskDetectTimeoutRef.current) clearTimeout(taskDetectTimeoutRef.current)
             taskDetectTimeoutRef.current = setTimeout(() => void autoCreateTaskFromCheckbox(), 800)
+
+            const currentTaskIds = new Set<string>()
+            const scanTaskIds = (blocks: any[]): void => {
+              for (const b of blocks) {
+                if (b.type === 'taskBlock' && b.props?.taskId) {
+                  currentTaskIds.add(b.props.taskId as string)
+                }
+                if (b.children?.length) scanTaskIds(b.children)
+              }
+            }
+            scanTaskIds(editor.document as any[])
+
+            for (const prevId of knownTaskBlockIdsRef.current) {
+              if (!currentTaskIds.has(prevId)) {
+                void tasksService.delete(prevId)
+              }
+            }
+            knownTaskBlockIdsRef.current = currentTaskIds
           }}
           theme={editorTheme}
           formattingToolbar={!stickyToolbar}
