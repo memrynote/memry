@@ -333,7 +333,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
     if (!content?.length) return
 
     const text = content.map((c: any) => (typeof c === 'string' ? c : (c.text ?? ''))).join('')
-    if (!text.trim() || !isLikelyTask(text)) return
+    if (!text.trim()) return
 
     dismissedBlocksRef.current.add(block.id)
     await convertCheckboxToTask(block.id, text.trim())
