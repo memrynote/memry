@@ -322,11 +322,6 @@ export const TagAutocomplete = ({
               >
                 {tag.name}
               </span>
-              {tag.count > 0 && (
-                <span className="text-[10px] leading-3 text-muted-foreground/30">
-                  used {tag.count} times
-                </span>
-              )}
             </button>
           )
         })}
