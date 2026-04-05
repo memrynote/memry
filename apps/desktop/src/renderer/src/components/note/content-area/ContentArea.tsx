@@ -322,21 +322,30 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
   )
 
   const autoCreateTaskFromCheckbox = useCallback(async () => {
-    const cursor = editor.getTextCursorPosition()
-    if (!cursor?.block) return
+    const extractText = (content: any): string => {
+      if (!content) return ''
+      if (typeof content === 'string') return content
+      if (!Array.isArray(content)) return ''
+      return content.map((c: any) => (typeof c === 'string' ? c : (c.text ?? ''))).join('')
+    }
 
-    const block = cursor.block
-    if (block.type !== 'checkListItem') return
-    if (dismissedBlocksRef.current.has(block.id)) return
+    const scanBlocks = (blocks: any[]): void => {
+      for (const block of blocks) {
+        if (block.type === 'checkListItem' && !dismissedBlocksRef.current.has(block.id)) {
+          const text = extractText(block.content)
+          if (text.trim()) {
+            dismissedBlocksRef.current.add(block.id)
+            void convertCheckboxToTask(block.id, text.trim())
+            return
+          }
+        }
+        if (block.children?.length) {
+          scanBlocks(block.children)
+        }
+      }
+    }
 
-    const content = block.content as any[]
-    if (!content?.length) return
-
-    const text = content.map((c: any) => (typeof c === 'string' ? c : (c.text ?? ''))).join('')
-    if (!text.trim()) return
-
-    dismissedBlocksRef.current.add(block.id)
-    await convertCheckboxToTask(block.id, text.trim())
+    scanBlocks(editor.document as any[])
   }, [editor, convertCheckboxToTask])
 
   const handleEditorContextMenu = useCallback(
