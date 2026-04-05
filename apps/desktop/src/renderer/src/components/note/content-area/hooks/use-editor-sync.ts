@@ -9,6 +9,7 @@ import {
   normalizeMarkdownHardBreaks
 } from '../wiki-link-utils'
 import { normalizeHashTags, extractInlineTags } from '../hash-tag'
+import { normalizeTaskBlocks } from '../task-block/task-block-utils'
 import { FILE_BLOCK_REGEX, createFileBlockContent, serializeFileBlock } from '../file-block'
 import { parseMarkdownPreservingBlanks, serializeBlocksPreservingBlanks } from '../markdown-utils'
 import { createLinkMentionContent } from '../link-mention'
@@ -162,6 +163,8 @@ export function useEditorSync({
             }
 
             let normalizedBlocks = normalizeWikiLinks(blocks).blocks
+            const taskNormalized = normalizeTaskBlocks(normalizedBlocks)
+            normalizedBlocks = taskNormalized.blocks
 
             if (noteTags?.length && tagColorMap) {
               const tagSet = new Set(noteTags.map((t) => t.toLowerCase()))
@@ -177,6 +180,8 @@ export function useEditorSync({
           }
         } else if (Array.isArray(initialContent) && initialContent.length > 0) {
           let normalizedBlocks = normalizeWikiLinks(initialContent).blocks
+          const taskNormalized = normalizeTaskBlocks(normalizedBlocks)
+          normalizedBlocks = taskNormalized.blocks
 
           if (noteTags?.length && tagColorMap) {
             const tagSet = new Set(noteTags.map((t) => t.toLowerCase()))
