@@ -98,7 +98,7 @@ export const TaskCreationPopover: FC<TaskCreationPopoverProps> = ({
 
   return (
     <Popover open={isOpen} onOpenChange={(open) => !open && onCancel()}>
-      <PopoverAnchor virtualRef={anchorRef} />
+      <PopoverAnchor virtualRef={anchorRef as RefObject<HTMLElement>} />
       <PopoverContent
         side="bottom"
         align="start"

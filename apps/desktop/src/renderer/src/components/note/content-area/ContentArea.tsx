@@ -342,9 +342,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
     const content = block.content as any[]
     if (!content?.length) return
 
-    const text = content
-      .map((c: any) => (typeof c === 'string' ? c : c.text ?? ''))
-      .join('')
+    const text = content.map((c: any) => (typeof c === 'string' ? c : (c.text ?? ''))).join('')
     if (!text.trim() || !isLikelyTask(text)) return
 
     const blockEl = document.querySelector(`[data-id="${block.id}"]`)
@@ -370,7 +368,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
 
       const content = block.content as any[]
       const text =
-        content?.map((c: any) => (typeof c === 'string' ? c : c.text ?? '')).join('') ?? ''
+        content?.map((c: any) => (typeof c === 'string' ? c : (c.text ?? ''))).join('') ?? ''
       if (!text.trim()) return
 
       e.preventDefault()
