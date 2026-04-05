@@ -1428,6 +1428,7 @@ export interface InboxFilingSuggestion {
     id: string
     title: string
     snippet: string
+    emoji?: string | null
   }
 }
 

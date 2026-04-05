@@ -240,7 +240,7 @@ export const TaskDetailDrawer = memo(function TaskDetailDrawer({
       aria-label="Task details"
       aria-hidden={!isOpen}
       className={cn(
-        'fixed top-10 bottom-0 z-10 border-l bg-surface overflow-hidden',
+        'fixed top-[37px] bottom-0 z-10 border-l bg-surface overflow-hidden',
         'transition-[width,opacity,right] duration-200 ease-out',
         isOpen ? 'w-[380px] opacity-100 border-border' : 'w-0 opacity-0 border-transparent'
       )}

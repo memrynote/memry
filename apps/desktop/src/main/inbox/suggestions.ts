@@ -39,6 +39,7 @@ interface SimilarNote {
   noteTitle: string
   score: number
   snippet: string
+  emoji: string | null
 }
 
 interface FilingPattern {
@@ -357,7 +358,12 @@ async function findSimilarNotes(content: string, limit: number = 5): Promise<Sim
 
       // Get note info from cache (including snippet for note-level suggestions)
       const noteInfo = indexDb
-        .select({ path: noteCache.path, title: noteCache.title, snippet: noteCache.snippet })
+        .select({
+          path: noteCache.path,
+          title: noteCache.title,
+          snippet: noteCache.snippet,
+          emoji: noteCache.emoji
+        })
         .from(noteCache)
         .where(eq(noteCache.id, row.note_id))
         .get()
@@ -372,7 +378,8 @@ async function findSimilarNotes(content: string, limit: number = 5): Promise<Sim
           notePath: noteInfo.path,
           noteTitle: noteInfo.title,
           score: similarityScore,
-          snippet: noteInfo.snippet || ''
+          snippet: noteInfo.snippet || '',
+          emoji: noteInfo.emoji ?? null
         })
       }
     }
@@ -558,7 +565,8 @@ export async function getSuggestions(itemId: string): Promise<FilingSuggestion[]
           const suggestedNote: SuggestedNote = {
             id: note.noteId,
             title: note.noteTitle,
-            snippet: note.snippet.slice(0, 150)
+            snippet: note.snippet.slice(0, 150),
+            emoji: note.emoji
           }
           noteSuggestions.push({
             destination: {

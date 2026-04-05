@@ -5,6 +5,23 @@ Format: weekly entries grouped by feature area.
 
 ---
 
+## 2026-04-05 — Inbox Detail Panel Polish
+
+### Added
+- Show folder emoji/icon in filing dropdown and selected folder display
+- Show note emoji/icon for AI-suggested notes in filing section
+- Surface `emoji` field from note cache through suggestions pipeline
+
+### Changed
+- Stack "File to" and "Tags" vertically instead of side by side
+- Narrow inbox detail panel from 460px to 380px to match task detail drawer
+- Align inbox and task detail panels to tab bar bottom edge (top-[37px])
+- Simplify folder dropdown: remove confidence percentages and navigation hints
+- Simplify link preview layout with extracted PreviewImage component
+- Remove tag usage count from tag autocomplete suggestions
+
+---
+
 ## 2026-04-04 — Inbox Create Folder
 
 ### Added
