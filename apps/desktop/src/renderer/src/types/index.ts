@@ -111,6 +111,7 @@ export interface Folder {
   name: string
   path: string // Full path like "Work / Project Alpha"
   parent?: string // Parent folder name for hierarchy
+  icon?: string | null
 }
 
 export interface LinkedNote {

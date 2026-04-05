@@ -247,6 +247,7 @@ export interface SuggestedNote {
   id: string
   title: string
   snippet: string
+  emoji?: string | null
 }
 
 export interface FilingSuggestion {
