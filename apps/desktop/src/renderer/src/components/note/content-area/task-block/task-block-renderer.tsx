@@ -1,10 +1,14 @@
 import { type FC, useCallback, useEffect, useRef, useState } from 'react'
-import { Check, AlertTriangle, Loader2, X, Calendar, Flag, Folder } from 'lucide-react'
+import { AlertTriangle, Loader2, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useTaskBlockData } from './use-task-block-data'
 import { useTasksOptional } from '@/contexts/tasks'
 import { tasksService } from '@/services/tasks-service'
-import { PRIORITY_CSS_VARS, type Priority } from '@/data/sample-tasks'
+import type { Priority } from '@/data/sample-tasks'
+import { defaultStatuses, type Status } from '@/data/tasks-data'
+import { InlineStatusPopover } from '@/components/tasks/inline-status-popover'
+import { InlinePriorityPopover } from '@/components/tasks/inline-priority-popover'
+import { formatDueDate } from '@/lib/task-utils/task-formatting'
 
 interface TaskBlockRendererProps {
   block: { id: string; props: { taskId: string; title: string; checked: boolean } }
@@ -20,7 +24,7 @@ const DB_PRIORITY_MAP: Record<number, Priority> = {
   4: 'urgent'
 }
 
-const PRIORITY_NUM_MAP: Record<string, number> = {
+const PRIORITY_REVERSE: Record<string, number> = {
   none: 0,
   low: 1,
   medium: 2,
@@ -28,32 +32,49 @@ const PRIORITY_NUM_MAP: Record<string, number> = {
   urgent: 4
 }
 
-const PRIORITY_OPTIONS: { value: number; label: string; color: string | null }[] = [
-  { value: 0, label: 'None', color: null },
-  { value: 1, label: 'Low', color: 'var(--task-priority-low)' },
-  { value: 2, label: 'Medium', color: 'var(--task-priority-medium)' },
-  { value: 3, label: 'High', color: 'var(--task-priority-high)' },
-  { value: 4, label: 'Urgent', color: 'var(--task-priority-urgent)' }
-]
-
 export const TaskBlockRenderer: FC<TaskBlockRendererProps> = ({ block, editor, contentRef }) => {
   const { taskId, title, checked } = block.props
   const { task, isLoading, isDeleted } = useTaskBlockData(taskId)
   const tasksCtx = useTasksOptional()
   const syncingRef = useRef(false)
 
-  const [showPriorityPicker, setShowPriorityPicker] = useState(false)
-  const [showProjectPicker, setShowProjectPicker] = useState(false)
-  const [showDatePicker, setShowDatePicker] = useState(false)
-  const [isEditingTitle, setIsEditingTitle] = useState(!title || title === '')
+  const [isEditingTitle, setIsEditingTitle] = useState(!title)
   const [editTitle, setEditTitle] = useState(title)
   const titleInputRef = useRef<HTMLInputElement>(null)
-  const dateInputRef = useRef<HTMLInputElement>(null)
   const titleSaveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const displayTitle = task?.title ?? title
-  const displayChecked = task ? !!task.completedAt : checked
+  const isCompleted = task ? !!task.completedAt : checked
 
+  const priorityNum =
+    typeof task?.priority === 'number'
+      ? task.priority
+      : typeof task?.priority === 'string'
+        ? (PRIORITY_REVERSE[task.priority] ?? 0)
+        : 0
+  const priority: Priority = DB_PRIORITY_MAP[priorityNum] ?? 'none'
+
+  const projects = tasksCtx?.projects ?? []
+  const project = projects.find((p) => p.id === task?.projectId)
+  const statuses: Status[] = (project?.statuses as Status[]) ?? defaultStatuses
+  const statusId = task?.statusId ?? statuses[0]?.id ?? ''
+
+  const dueDate = task?.dueDate ? new Date(task.dueDate) : null
+  const dueTime = (task as any)?.dueTime ?? null
+  const formattedDate = formatDueDate(dueDate, dueTime)
+  const isOverdue = formattedDate?.status === 'overdue' && !isCompleted
+
+  const currentStatus = statuses.find((s) => s.id === statusId)
+  const statusColor = currentStatus?.color || '#6B7280'
+
+  const dueDateDisplay = (() => {
+    if (isCompleted) return { text: 'Done', colorStyle: statusColor }
+    if (!formattedDate) return null
+    if (isOverdue) return { text: formattedDate.label, colorClass: 'text-destructive' }
+    return { text: formattedDate.label, colorClass: 'text-text-tertiary' }
+  })()
+
+  // Sync block props with DB
   useEffect(() => {
     if (!task || syncingRef.current) return
     const needsUpdate =
@@ -61,40 +82,14 @@ export const TaskBlockRenderer: FC<TaskBlockRendererProps> = ({ block, editor, c
     if (needsUpdate) {
       syncingRef.current = true
       editor.updateBlock(block, {
-        props: {
-          ...block.props,
-          title: task.title,
-          checked: !!task.completedAt
-        }
+        props: { ...block.props, title: task.title, checked: !!task.completedAt }
       })
-      if (!isEditingTitle) {
-        setEditTitle(task.title)
-      }
+      if (!isEditingTitle) setEditTitle(task.title)
       syncingRef.current = false
     }
   }, [task, block, editor, isEditingTitle])
 
-  const handleToggle = useCallback(async () => {
-    if (!taskId) return
-    const newChecked = !displayChecked
-    editor.updateBlock(block, { props: { ...block.props, checked: newChecked } })
-    if (newChecked) {
-      await tasksService.complete({ id: taskId })
-    } else {
-      await tasksService.uncomplete(taskId)
-    }
-  }, [taskId, displayChecked, block, editor])
-
-  const handleRemoveGhost = useCallback(() => {
-    editor.removeBlocks([block])
-  }, [block, editor])
-
-  const handleTitleClick = useCallback(() => {
-    setIsEditingTitle(true)
-    setEditTitle(displayTitle)
-    setTimeout(() => titleInputRef.current?.focus(), 0)
-  }, [displayTitle])
-
+  // Title editing
   const saveTitleToDb = useCallback(
     async (newTitle: string) => {
       if (!taskId || !newTitle.trim()) return
@@ -115,9 +110,7 @@ export const TaskBlockRenderer: FC<TaskBlockRendererProps> = ({ block, editor, c
 
   const handleTitleBlur = useCallback(() => {
     if (titleSaveTimeoutRef.current) clearTimeout(titleSaveTimeoutRef.current)
-    if (editTitle.trim()) {
-      void saveTitleToDb(editTitle)
-    }
+    if (editTitle.trim()) void saveTitleToDb(editTitle)
     setIsEditingTitle(false)
   }, [editTitle, saveTitleToDb])
 
@@ -130,6 +123,18 @@ export const TaskBlockRenderer: FC<TaskBlockRendererProps> = ({ block, editor, c
     },
     [handleTitleBlur]
   )
+
+  const handleTitleClick = useCallback(() => {
+    setIsEditingTitle(true)
+    setEditTitle(displayTitle)
+    setTimeout(() => {
+      titleInputRef.current?.focus()
+      titleInputRef.current?.setSelectionRange(
+        titleInputRef.current.value.length,
+        titleInputRef.current.value.length
+      )
+    }, 0)
+  }, [displayTitle])
 
   useEffect(() => {
     if (isEditingTitle && titleInputRef.current) {
@@ -147,39 +152,46 @@ export const TaskBlockRenderer: FC<TaskBlockRendererProps> = ({ block, editor, c
     }
   }, [])
 
+  // Status change
+  const handleStatusChange = useCallback(
+    async (newStatusId: string) => {
+      if (!taskId) return
+      await tasksService.update({ id: taskId, statusId: newStatusId })
+    },
+    [taskId]
+  )
+
+  const handleToggleComplete = useCallback(async () => {
+    if (!taskId) return
+    const newChecked = !isCompleted
+    editor.updateBlock(block, { props: { ...block.props, checked: newChecked } })
+    if (newChecked) {
+      await tasksService.complete({ id: taskId })
+    } else {
+      await tasksService.uncomplete(taskId)
+    }
+  }, [taskId, isCompleted, block, editor])
+
+  // Priority change
   const handlePriorityChange = useCallback(
-    async (value: number) => {
+    async (newPriority: Priority) => {
       if (!taskId) return
-      setShowPriorityPicker(false)
-      await tasksService.update({ id: taskId, priority: value })
+      await tasksService.update({ id: taskId, priority: PRIORITY_REVERSE[newPriority] ?? 0 })
     },
     [taskId]
   )
 
-  const handleProjectChange = useCallback(
-    async (projectId: string) => {
-      if (!taskId) return
-      setShowProjectPicker(false)
-      await tasksService.update({ id: taskId, projectId })
-    },
-    [taskId]
-  )
+  const handleRemoveGhost = useCallback(() => {
+    editor.removeBlocks([block])
+  }, [block, editor])
 
-  const handleDueDateChange = useCallback(
-    async (dateStr: string) => {
-      if (!taskId) return
-      setShowDatePicker(false)
-      await tasksService.update({ id: taskId, dueDate: dateStr || null })
-    },
-    [taskId]
-  )
-
+  // Loading state
   if (!taskId) {
     return (
       <div
         ref={contentRef}
         contentEditable={false}
-        className="flex items-center gap-2 rounded-md border border-dashed border-stone-300 px-3 py-2 text-sm text-muted-foreground dark:border-stone-600"
+        className="flex items-center gap-3 rounded-md border border-dashed border-stone-300 px-6 py-[7px] text-sm text-muted-foreground dark:border-stone-600"
       >
         <Loader2 className="size-4 animate-spin" />
         Creating task...
@@ -187,12 +199,13 @@ export const TaskBlockRenderer: FC<TaskBlockRendererProps> = ({ block, editor, c
     )
   }
 
+  // Ghost state
   if (isDeleted) {
     return (
       <div
         ref={contentRef}
         contentEditable={false}
-        className="flex items-center gap-2 rounded-md bg-stone-100 px-3 py-2 text-sm text-muted-foreground opacity-60 dark:bg-stone-800/50"
+        className="flex items-center gap-3 rounded-md bg-stone-100 px-6 py-[7px] text-sm text-muted-foreground opacity-60 dark:bg-stone-800/50"
       >
         <AlertTriangle className="size-4 text-amber-500" />
         <span className="line-through">{displayTitle}</span>
@@ -208,58 +221,32 @@ export const TaskBlockRenderer: FC<TaskBlockRendererProps> = ({ block, editor, c
     )
   }
 
-  const priorityNum =
-    typeof task?.priority === 'number'
-      ? task.priority
-      : typeof task?.priority === 'string'
-        ? (PRIORITY_NUM_MAP[task.priority] ?? 0)
-        : 0
-  const priorityKey = DB_PRIORITY_MAP[priorityNum] ?? 'none'
-  const priorityVars = PRIORITY_CSS_VARS[priorityKey]
-
-  const projects = tasksCtx?.projects ?? []
-  const projectName = projects.find((p) => p.id === task?.projectId)?.name ?? 'Inbox'
-
-  const dueDate = task?.dueDate ? new Date(task.dueDate) : null
-  const isOverdue = dueDate instanceof Date && dueDate < new Date() && !displayChecked
-
-  const formatDue = (d: Date | null): string => {
-    if (!d || !(d instanceof Date)) return 'No date'
-    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-  }
-
-  const dueDateIso = task?.dueDate
-    ? typeof task.dueDate === 'string'
-      ? task.dueDate.slice(0, 10)
-      : ''
-    : ''
-
   return (
     <div
       ref={contentRef}
       contentEditable={false}
       className={cn(
-        'my-0.5 flex items-center gap-2 rounded-md border border-stone-200 px-3 py-1.5 transition-colors dark:border-stone-700/50',
-        'hover:bg-stone-50 dark:hover:bg-stone-800/50',
-        displayChecked && 'opacity-50'
+        'group flex items-center gap-3 rounded-md py-[7px] px-6 transition-colors',
+        'hover:bg-accent/60'
       )}
     >
-      {/* Checkbox */}
-      <button
-        type="button"
-        onClick={handleToggle}
-        className={cn(
-          'flex size-[18px] shrink-0 items-center justify-center rounded border transition-colors',
-          displayChecked
-            ? 'border-tint bg-tint text-white'
-            : 'border-stone-300 hover:border-tint dark:border-stone-600'
-        )}
-        aria-label={displayChecked ? 'Mark incomplete' : 'Mark complete'}
-      >
-        {displayChecked && <Check className="size-3" strokeWidth={3} />}
-      </button>
+      {/* Status (cycles through project statuses) */}
+      <div className="shrink-0" onClick={(e) => e.stopPropagation()}>
+        <InlineStatusPopover
+          statusId={statusId}
+          statuses={statuses}
+          isCompleted={isCompleted}
+          onStatusChange={handleStatusChange}
+          onToggleComplete={handleToggleComplete}
+        />
+      </div>
 
-      {/* Title */}
+      {/* Priority */}
+      <div className="shrink-0" onClick={(e) => e.stopPropagation()}>
+        <InlinePriorityPopover priority={priority} onPriorityChange={handlePriorityChange} />
+      </div>
+
+      {/* Title — editable */}
       {isEditingTitle ? (
         <input
           ref={titleInputRef}
@@ -269,145 +256,39 @@ export const TaskBlockRenderer: FC<TaskBlockRendererProps> = ({ block, editor, c
           onBlur={handleTitleBlur}
           onKeyDown={handleTitleKeyDown}
           className={cn(
-            'min-w-0 flex-1 bg-transparent text-sm font-medium outline-none',
-            'placeholder:text-muted-foreground'
+            'grow shrink min-w-0 bg-transparent text-[13px] font-medium outline-none',
+            'text-foreground/90 placeholder:text-muted-foreground'
           )}
           placeholder="Task name..."
         />
       ) : (
-        <button
-          type="button"
+        <span
           onClick={handleTitleClick}
           className={cn(
-            'min-w-0 flex-1 truncate text-left text-sm font-medium',
-            displayChecked && 'text-muted-foreground line-through'
+            'grow shrink min-w-0 truncate text-[13px] font-medium cursor-text',
+            isCompleted
+              ? 'text-muted-foreground/60 line-through decoration-1 [text-underline-position:from-font]'
+              : 'text-foreground/90'
           )}
         >
-          {displayTitle}
-        </button>
+          {displayTitle || 'Untitled task'}
+        </span>
       )}
 
-      {/* Inline controls — always visible */}
-      <div className="flex shrink-0 items-center gap-1">
-        {/* Priority */}
-        <div className="relative">
-          <button
-            type="button"
-            onClick={() => setShowPriorityPicker(!showPriorityPicker)}
-            className={cn(
-              'flex items-center gap-1 rounded px-1.5 py-0.5 text-[11px] transition-colors',
-              'hover:bg-stone-100 dark:hover:bg-stone-700',
-              priorityKey !== 'none' ? 'font-medium' : 'text-muted-foreground'
-            )}
-            title="Priority"
-          >
-            {priorityVars ? (
-              <span
-                className="size-2 rounded-full"
-                style={{ backgroundColor: priorityVars.text }}
-              />
-            ) : (
-              <Flag className="size-3 text-stone-400" />
-            )}
-            <span className="hidden sm:inline">{priorityKey === 'none' ? '' : priorityKey}</span>
-          </button>
-          {showPriorityPicker && (
-            <div className="absolute right-0 top-full z-50 mt-1 rounded-md border border-stone-200 bg-white p-1 shadow-lg dark:border-stone-700 dark:bg-stone-800">
-              {PRIORITY_OPTIONS.map((opt) => (
-                <button
-                  key={opt.value}
-                  type="button"
-                  onClick={() => handlePriorityChange(opt.value)}
-                  className={cn(
-                    'flex w-full items-center gap-2 rounded px-2 py-1 text-xs transition-colors',
-                    'hover:bg-stone-100 dark:hover:bg-stone-700',
-                    priorityNum === opt.value && 'bg-stone-100 dark:bg-stone-700'
-                  )}
-                >
-                  {opt.color ? (
-                    <span className="size-2 rounded-full" style={{ backgroundColor: opt.color }} />
-                  ) : (
-                    <span className="size-2 rounded-full bg-stone-300 dark:bg-stone-600" />
-                  )}
-                  {opt.label}
-                </button>
-              ))}
-            </div>
+      {/* Due date — right side */}
+      {dueDateDisplay && (
+        <div
+          className={cn(
+            'text-[11px] shrink-0 text-right leading-3.5 whitespace-nowrap',
+            'colorClass' in dueDateDisplay && dueDateDisplay.colorClass
           )}
+          style={'colorStyle' in dueDateDisplay ? { color: dueDateDisplay.colorStyle } : undefined}
+        >
+          {dueDateDisplay.text}
         </div>
+      )}
 
-        {/* Due date */}
-        <div className="relative">
-          <button
-            type="button"
-            onClick={() => {
-              setShowDatePicker(!showDatePicker)
-              setTimeout(() => dateInputRef.current?.showPicker?.(), 50)
-            }}
-            className={cn(
-              'flex items-center gap-1 rounded px-1.5 py-0.5 text-[11px] transition-colors',
-              'hover:bg-stone-100 dark:hover:bg-stone-700',
-              isOverdue
-                ? 'font-medium text-red-500'
-                : dueDate
-                  ? 'text-foreground'
-                  : 'text-muted-foreground'
-            )}
-            title="Due date"
-          >
-            <Calendar className="size-3" />
-            <span className="tabular-nums">{formatDue(dueDate)}</span>
-          </button>
-          {showDatePicker && (
-            <div className="absolute right-0 top-full z-50 mt-1">
-              <input
-                ref={dateInputRef}
-                type="date"
-                value={dueDateIso}
-                onChange={(e) => handleDueDateChange(e.target.value)}
-                onBlur={() => setShowDatePicker(false)}
-                className="rounded-md border border-stone-200 bg-white px-2 py-1 text-xs shadow-lg dark:border-stone-700 dark:bg-stone-800"
-              />
-            </div>
-          )}
-        </div>
-
-        {/* Project */}
-        <div className="relative">
-          <button
-            type="button"
-            onClick={() => setShowProjectPicker(!showProjectPicker)}
-            className={cn(
-              'flex items-center gap-1 rounded px-1.5 py-0.5 text-[11px] text-muted-foreground transition-colors',
-              'hover:bg-stone-100 dark:hover:bg-stone-700'
-            )}
-            title="Project"
-          >
-            <Folder className="size-3" />
-            <span className="max-w-[60px] truncate">{projectName}</span>
-          </button>
-          {showProjectPicker && (
-            <div className="absolute right-0 top-full z-50 mt-1 max-h-48 overflow-y-auto rounded-md border border-stone-200 bg-white p-1 shadow-lg dark:border-stone-700 dark:bg-stone-800">
-              {projects.map((p) => (
-                <button
-                  key={p.id}
-                  type="button"
-                  onClick={() => handleProjectChange(p.id)}
-                  className={cn(
-                    'flex w-full items-center gap-2 rounded px-2 py-1 text-xs transition-colors',
-                    'hover:bg-stone-100 dark:hover:bg-stone-700',
-                    task?.projectId === p.id && 'bg-stone-100 dark:bg-stone-700'
-                  )}
-                >
-                  {p.name}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
-
-      {isLoading && <Loader2 className="size-3 animate-spin text-muted-foreground" />}
+      {isLoading && <Loader2 className="size-3 shrink-0 animate-spin text-muted-foreground" />}
     </div>
   )
 }
