@@ -38,10 +38,21 @@ export const TaskBlockRenderer: FC<TaskBlockRendererProps> = ({ block, editor, c
   const tasksCtx = useTasksOptional()
   const syncingRef = useRef(false)
 
-  const [isEditingTitle, setIsEditingTitle] = useState(true)
+  const isNewBlockRef = useRef(true)
+  const [isEditingTitle, setIsEditingTitle] = useState(false)
   const [editTitle, setEditTitle] = useState(title)
   const titleInputRef = useRef<HTMLInputElement>(null)
   const titleSaveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  useEffect(() => {
+    if (isNewBlockRef.current && taskId && !task) {
+      setIsEditingTitle(true)
+      setEditTitle(title)
+    }
+    if (task) {
+      isNewBlockRef.current = false
+    }
+  }, [taskId, task, title])
 
   const displayTitle = task?.title ?? title
   const isCompleted = task ? !!task.completedAt : checked
