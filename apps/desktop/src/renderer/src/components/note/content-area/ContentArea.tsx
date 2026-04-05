@@ -291,7 +291,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
 
   const convertCheckboxToTask = useCallback(
     async (blockId: string, titleText: string) => {
-      let projects = tasksCtx?.projects ?? []
+      let projects: any[] = tasksCtx?.projects ?? []
       if (projects.length === 0) {
         const res = await tasksService.listProjects()
         projects = res.projects ?? []
