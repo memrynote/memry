@@ -231,7 +231,7 @@ export const TaskBlockRenderer: FC<TaskBlockRendererProps> = ({ block, editor, c
       )}
     >
       <style>{`
-        [data-content-type="taskBlock"] .bn-inline-content { display: none; }
+        .bn-formatting-toolbar:empty { display: none !important; }
         .bn-block-content[data-content-type="taskBlock"] { cursor: default; }
       `}</style>
 
