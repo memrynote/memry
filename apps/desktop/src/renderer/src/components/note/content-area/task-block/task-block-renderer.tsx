@@ -1,5 +1,5 @@
 import { type FC, useCallback, useEffect, useRef, useState } from 'react'
-import { AlertTriangle, Loader2, X } from 'lucide-react'
+import { AlertTriangle, ArrowUpRight, Loader2, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useTaskBlockData } from './use-task-block-data'
 import { useTasksOptional } from '@/contexts/tasks'
@@ -226,10 +226,15 @@ export const TaskBlockRenderer: FC<TaskBlockRendererProps> = ({ block, editor, c
       ref={contentRef}
       contentEditable={false}
       className={cn(
-        'group flex items-center gap-3 rounded-md py-[7px] px-6 transition-colors',
+        'group flex items-center gap-3 rounded-md py-[7px] px-6 transition-colors outline-none [&_*]:outline-none',
         'hover:bg-accent/60'
       )}
     >
+      <style>{`
+        [data-content-type="taskBlock"] .bn-inline-content { display: none; }
+        .bn-block-content[data-content-type="taskBlock"] { cursor: default; }
+      `}</style>
+
       {/* Status (cycles through project statuses) */}
       <div className="shrink-0" onClick={(e) => e.stopPropagation()}>
         <InlineStatusPopover
@@ -275,6 +280,15 @@ export const TaskBlockRenderer: FC<TaskBlockRendererProps> = ({ block, editor, c
         </span>
       )}
 
+      {project && (
+        <div className="flex items-center shrink-0 gap-[5px]">
+          <div className="rounded-xs shrink-0 size-2" style={{ backgroundColor: project.color }} />
+          <div className="text-[11px] text-text-tertiary leading-3.5 truncate max-w-[100px]">
+            {project.name}
+          </div>
+        </div>
+      )}
+
       {/* Due date — right side */}
       {dueDateDisplay && (
         <div
@@ -287,6 +301,17 @@ export const TaskBlockRenderer: FC<TaskBlockRendererProps> = ({ block, editor, c
           {dueDateDisplay.text}
         </div>
       )}
+
+      <button
+        type="button"
+        onClick={() => {
+          window.dispatchEvent(new CustomEvent('task-block:open-detail', { detail: { taskId } }))
+        }}
+        className="shrink-0 rounded p-0.5 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-accent/80"
+        title="Open in task panel"
+      >
+        <ArrowUpRight className="size-3 text-muted-foreground" />
+      </button>
 
       {isLoading && <Loader2 className="size-3 shrink-0 animate-spin text-muted-foreground" />}
     </div>
