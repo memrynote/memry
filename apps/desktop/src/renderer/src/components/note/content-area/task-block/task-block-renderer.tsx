@@ -38,7 +38,7 @@ export const TaskBlockRenderer: FC<TaskBlockRendererProps> = ({ block, editor, c
   const tasksCtx = useTasksOptional()
   const syncingRef = useRef(false)
 
-  const [isEditingTitle, setIsEditingTitle] = useState(!title)
+  const [isEditingTitle, setIsEditingTitle] = useState(true)
   const [editTitle, setEditTitle] = useState(title)
   const titleInputRef = useRef<HTMLInputElement>(null)
   const titleSaveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -233,6 +233,10 @@ export const TaskBlockRenderer: FC<TaskBlockRendererProps> = ({ block, editor, c
       <style>{`
         .bn-formatting-toolbar:empty { display: none !important; }
         .bn-block-content[data-content-type="taskBlock"] { cursor: default; }
+        .bn-block[data-id]:has([data-content-type="taskBlock"]) { border: none !important; outline: none !important; box-shadow: none !important; }
+        .bn-block[data-id]:has([data-content-type="taskBlock"]):focus-within { border: none !important; outline: none !important; box-shadow: none !important; }
+        .bn-block-content[data-content-type="taskBlock"]:focus { outline: none !important; border: none !important; }
+        [data-content-type="taskBlock"] * { outline: none !important; }
       `}</style>
 
       {/* Status (cycles through project statuses) */}
