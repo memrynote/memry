@@ -22,6 +22,8 @@ import { cn } from '@/lib/utils'
 interface TabBarWithDragProps {
   /** ID of the tab group to display */
   groupId: string
+  /** Whether to show the sidebar collapse toggle (hidden in split panes) */
+  showSidebarToggle?: boolean
   /** Additional CSS classes */
   className?: string
 }
@@ -32,6 +34,7 @@ interface TabBarWithDragProps {
  */
 export const TabBarWithDrag = ({
   groupId,
+  showSidebarToggle = true,
   className
 }: TabBarWithDragProps): React.JSX.Element | null => {
   const group = useTabGroup(groupId)
@@ -119,10 +122,11 @@ export const TabBarWithDrag = ({
         aria-orientation="horizontal"
         data-group-id={groupId}
       >
-        {/* Sidebar toggle */}
-        <div className="no-drag flex items-center px-2 self-center">
-          <SidebarTrigger className="text-text-tertiary hover:text-foreground transition-colors duration-150" />
-        </div>
+        {showSidebarToggle && (
+          <div className="no-drag flex items-center px-2 self-center">
+            <SidebarTrigger className="text-text-tertiary hover:text-foreground transition-colors duration-150" />
+          </div>
+        )}
 
         {/* Pinned tabs section (not in sortable context) */}
         {pinnedTabs.length > 0 && (
