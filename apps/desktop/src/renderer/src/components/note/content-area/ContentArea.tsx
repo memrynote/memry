@@ -486,8 +486,9 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
               convertCheckboxToTask(firstUndismissedCheckbox)
             }
 
-            if (firstDraftTaskBlock) {
-              createTaskForDraftBlock(firstDraftTaskBlock.id, firstDraftTaskBlock.title)
+            const draft = firstDraftTaskBlock as { id: string; title: string } | null
+            if (draft) {
+              createTaskForDraftBlock(draft.id, draft.title)
             }
 
             for (const prevId of knownTaskBlockIdsRef.current) {
