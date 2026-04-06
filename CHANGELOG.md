@@ -5,6 +5,13 @@ Format: weekly entries grouped by feature area.
 
 ---
 
+## 2026-04-06 — Linked Task Navigation Fix
+
+### Fixed
+- Fix linked task click in note page to open task page with project filter, "all" section, detail panel, and row highlight
+
+---
+
 ## 2026-04-05 — Inbox Detail Panel Polish
 
 ### Added
