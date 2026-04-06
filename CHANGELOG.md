@@ -29,6 +29,29 @@ Format: weekly entries grouped by feature area.
 
 ---
 
+## 2026-04-06 — Vertical Sidebar Navigation
+
+### Changed
+- Replace horizontal nav with vertical sidebar nav using shadcn SidebarMenu primitives
+- Move navigation (Inbox, Home, Journal, Tasks) from sidebar header to sidebar content area
+- Simplify SidebarHeaderContent to only render traffic lights and vault switcher
+
+---
+
+## 2026-04-06 — Split View Polish
+
+### Fixed
+- Hide sidebar collapse icon in split view panes (only show in primary/leftmost pane)
+
+---
+
+## 2026-04-06 — Linked Task Navigation Fix
+
+### Fixed
+- Fix linked task click in note page to open task page with project filter, "all" section, detail panel, and row highlight
+
+---
+
 ## 2026-04-05 — Inbox Detail Panel Polish
 
 ### Added
