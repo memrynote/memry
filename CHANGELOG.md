@@ -5,6 +5,15 @@ Format: weekly entries grouped by feature area.
 
 ---
 
+## 2026-04-07 — Remove Home Tab
+
+### Removed
+- Remove unused Home tab from sidebar navigation, tab types, content routing, and icon mappings
+- Remove SidebarHome SVG icon component
+- Renumber sidebar keyboard shortcuts (Journal → ⌘⌥2, Tasks → ⌘⌥3)
+
+---
+
 ## 2026-04-07 — Inline Task Blocks
 
 ### Added
@@ -33,7 +42,7 @@ Format: weekly entries grouped by feature area.
 
 ### Changed
 - Replace horizontal nav with vertical sidebar nav using shadcn SidebarMenu primitives
-- Move navigation (Inbox, Home, Journal, Tasks) from sidebar header to sidebar content area
+- Move navigation (Inbox, Journal, Tasks) from sidebar header to sidebar content area
 - Simplify SidebarHeaderContent to only render traffic lights and vault switcher
 
 ---

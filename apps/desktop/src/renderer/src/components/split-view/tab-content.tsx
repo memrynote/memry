@@ -91,9 +91,6 @@ export const TabContent = ({ tab, groupId, className }: TabContentProps): React.
       case 'inbox':
         return <MemoizedInboxPage />
 
-      case 'home':
-        return <PlaceholderView title="Home" icon="home" />
-
       case 'tasks':
       case 'all-tasks':
       case 'today':

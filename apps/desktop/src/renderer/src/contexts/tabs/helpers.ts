@@ -85,7 +85,6 @@ export const findPreviewTab = (group: TabGroup): Tab | null => {
  */
 const TAB_ICONS: Record<TabType, string> = {
   inbox: 'inbox',
-  home: 'home',
   tasks: 'list-checks',
   'all-tasks': 'list-checks',
   today: 'star',
@@ -118,7 +117,6 @@ export const getTabIcon = (type: TabType): string => {
  */
 const TAB_PATHS: Partial<Record<TabType, string>> = {
   inbox: '/inbox',
-  home: '/home',
   'all-tasks': '/tasks/all',
   today: '/tasks/today',
   completed: '/tasks/completed'

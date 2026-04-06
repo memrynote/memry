@@ -73,7 +73,6 @@ const ICON_COMPONENTS: Record<string, React.ComponentType<{ className?: string }
  */
 const TYPE_TO_ICON: Record<TabType, string> = {
   inbox: 'inbox',
-  home: 'home',
   tasks: 'list-checks', // New unified tasks tab
   'all-tasks': 'list-checks',
   today: 'star',

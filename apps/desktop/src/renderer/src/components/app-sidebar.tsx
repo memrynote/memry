@@ -12,12 +12,7 @@ import {
   Search,
   Upload
 } from '@/lib/icons'
-import {
-  SidebarInbox,
-  SidebarHome,
-  SidebarJournal,
-  SidebarTasks
-} from '@/lib/icons/sidebar-nav-icons'
+import { SidebarInbox, SidebarJournal, SidebarTasks } from '@/lib/icons/sidebar-nav-icons'
 import { toast } from 'sonner'
 
 import { cn } from '@/lib/utils'
@@ -70,9 +65,8 @@ const mainNav: {
   shortcut?: string
 }[] = [
   { title: 'Inbox', page: 'inbox', icon: SidebarInbox, shortcut: '⌘⌥1' },
-  { title: 'Home', page: 'home', icon: SidebarHome, shortcut: '⌘⌥2' },
-  { title: 'Journal', page: 'journal', icon: SidebarJournal, shortcut: '⌘⌥3' },
-  { title: 'Tasks', page: 'tasks', icon: SidebarTasks, shortcut: '⌘⌥4' }
+  { title: 'Journal', page: 'journal', icon: SidebarJournal, shortcut: '⌘⌥2' },
+  { title: 'Tasks', page: 'tasks', icon: SidebarTasks, shortcut: '⌘⌥3' }
 ]
 
 function SidebarHeaderContent() {
@@ -210,14 +204,12 @@ function AppSidebarInner({ currentPage, viewCounts, ...props }: AppSidebarProps)
     // Map page to tab type and title
     const pageToTabType: Record<AppPage, TabType> = {
       inbox: 'inbox',
-      home: 'home',
       journal: 'journal',
       tasks: 'tasks',
       graph: 'graph'
     }
     const pageToTitle: Record<AppPage, string> = {
       inbox: 'Inbox',
-      home: 'Home',
       journal: 'Journal',
       tasks: 'Tasks',
       graph: 'Graph'
@@ -236,7 +228,6 @@ function AppSidebarInner({ currentPage, viewCounts, ...props }: AppSidebarProps)
     (page: AppPage) => {
       const titles: Record<AppPage, string> = {
         inbox: 'Inbox',
-        home: 'Home',
         journal: 'Journal',
         tasks: 'Tasks',
         graph: 'Graph'
