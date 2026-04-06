@@ -135,7 +135,7 @@ export const TasksPage = ({
   })
 
   const { settings: taskPrefs } = useTaskPreferences()
-  const { openTab } = useTabActions()
+  const { openTab, saveTabState } = useTabActions()
   const activeTab = useActiveTab()
 
   const handleNoteClick = useCallback(
@@ -169,14 +169,20 @@ export const TasksPage = ({
     [tasks, onTasksChange]
   )
 
-  // View mode state
-  const [activeView, setActiveViewRaw] = useState<ViewMode>('list')
+  // View mode state (restore from tab viewState if returning to this tab)
+  const [activeView, setActiveViewRaw] = useState<ViewMode>(
+    (activeTab?.viewState?.activeView as ViewMode) ?? 'list'
+  )
 
   // Internal tab state for the new tab bar navigation (default to Today)
-  const [activeInternalTab, setActiveInternalTab] = useState<TasksInternalTab>('today')
+  const [activeInternalTab, setActiveInternalTab] = useState<TasksInternalTab>(
+    (activeTab?.viewState?.activeInternalTab as TasksInternalTab) ?? 'today'
+  )
 
   // Track selected project for "All projects" filter dropdown
-  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null)
+  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(
+    (activeTab?.viewState?.selectedProjectId as string) ?? null
+  )
   const hasAppliedDefaultProject = useRef(false)
 
   useEffect(() => {
@@ -188,8 +194,29 @@ export const TasksPage = ({
     }
   }, [selectedType, taskPrefs.defaultProjectId, projects])
 
-  // Task detail drawer state
-  const [detailTaskId, setDetailTaskId] = useState<string | null>(null)
+  // Task detail drawer state (restore from tab viewState if returning)
+  const [detailTaskId, setDetailTaskId] = useState<string | null>(
+    (activeTab?.viewState?.openTaskId as string) ?? null
+  )
+
+  // Persist view state to tab on unmount (mirrors TabContent scroll-position pattern)
+  const viewStateRef = useRef({ activeView, activeInternalTab, selectedProjectId, detailTaskId })
+  viewStateRef.current = { activeView, activeInternalTab, selectedProjectId, detailTaskId }
+
+  useEffect(() => {
+    const tabId = activeTab?.id
+    if (!tabId) return
+    return () => {
+      saveTabState(tabId, {
+        viewState: {
+          activeView: viewStateRef.current.activeView,
+          activeInternalTab: viewStateRef.current.activeInternalTab,
+          selectedProjectId: viewStateRef.current.selectedProjectId,
+          openTaskId: viewStateRef.current.detailTaskId
+        }
+      })
+    }
+  }, [activeTab?.id, saveTabState])
 
   // Restore viewState from tab (e.g. navigating from journal sidebar)
   const lastAppliedTaskId = useRef<string | null>(null)

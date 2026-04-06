@@ -5,6 +5,13 @@ Format: weekly entries grouped by feature area.
 
 ---
 
+## 2026-04-07 — Tasks Tab State Persistence
+
+### Added
+- Persist tasks tab view state (active view, internal tab, selected project, detail drawer) across tab navigation using the existing tab viewState mechanism
+
+---
+
 ## 2026-04-07 — Remove Home Tab
 
 ### Removed
