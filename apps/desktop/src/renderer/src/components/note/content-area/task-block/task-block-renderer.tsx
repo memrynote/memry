@@ -318,6 +318,36 @@ export const TaskBlockRenderer: FC<TaskBlockRendererProps> = ({ block, editor, c
     [editTitle, handleTitleChange, handleTitleBlur, handleTitleKeyDown]
   )
 
+  const clickableTitle = useCallback(
+    () => (
+      <span
+        role="button"
+        tabIndex={0}
+        onClick={(e) => {
+          e.stopPropagation()
+          setIsEditingTitle(true)
+        }}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault()
+            e.stopPropagation()
+            setIsEditingTitle(true)
+          }
+        }}
+        className={cn(
+          'grow shrink min-w-0 truncate cursor-text',
+          'text-[13px] font-medium',
+          isCompleted
+            ? 'text-muted-foreground/60 line-through decoration-1 [text-underline-position:from-font]'
+            : 'text-foreground/90'
+        )}
+      >
+        {displayTask?.title ?? title}
+      </span>
+    ),
+    [displayTask?.title, title, isCompleted]
+  )
+
   // --- Render states ---
 
   if (isDeleted) {
@@ -375,7 +405,7 @@ export const TaskBlockRenderer: FC<TaskBlockRendererProps> = ({ block, editor, c
         onUpdateTask={handleUpdateTask}
         onProjectChange={handleProjectChange}
         actions={navigateArrow}
-        renderTitle={isEditingTitle ? titleInput : undefined}
+        renderTitle={isEditingTitle ? titleInput : clickableTitle}
         className="px-0"
       />
     </div>
