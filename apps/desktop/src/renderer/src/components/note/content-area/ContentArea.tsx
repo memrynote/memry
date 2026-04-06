@@ -348,6 +348,60 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
     [editor, noteId, tasksCtx]
   )
 
+  const convertCheckboxToSubtask = useCallback(
+    (blockId: string, parentTaskId: string) => {
+      dismissedBlocksRef.current.add(blockId)
+
+      const block = editor.getBlock(blockId)
+      if (!block) return
+
+      const content = block.content as any[] | undefined
+      const text =
+        content
+          ?.map((c: any) => (typeof c === 'string' ? c : (c.text ?? '')))
+          .join('')
+          .trim() ?? ''
+
+      editor.updateBlock(block, {
+        type: 'taskBlock' as any,
+        props: { taskId: '', title: text, checked: false, parentTaskId }
+      })
+
+      void (async () => {
+        try {
+          const parentTask = await tasksService.get(parentTaskId)
+          if (!parentTask) {
+            dismissedBlocksRef.current.delete(blockId)
+            return
+          }
+
+          const result = await tasksService.create({
+            projectId: parentTask.projectId,
+            parentId: parentTaskId,
+            title: text,
+            priority: 0,
+            linkedNoteIds: noteId ? [noteId] : []
+          })
+          if (result.success && result.task) {
+            const freshBlock = editor.getBlock(blockId)
+            if (freshBlock) {
+              const currentTitle = (freshBlock.props as any).title || text
+              editor.updateBlock(freshBlock, {
+                props: { taskId: result.task.id, title: currentTitle, checked: false, parentTaskId }
+              })
+              if (currentTitle && currentTitle !== result.task.title) {
+                void tasksService.update({ id: result.task.id, title: currentTitle })
+              }
+            }
+          }
+        } catch {
+          dismissedBlocksRef.current.delete(blockId)
+        }
+      })()
+    },
+    [editor, noteId]
+  )
+
   const createTaskForDraftBlock = useCallback(
     (blockId: string, title: string) => {
       dismissedBlocksRef.current.add(blockId)
@@ -455,12 +509,21 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
             const currentTaskIds = new Set<string>()
             let firstUndismissedCheckbox: string | null = null
             let firstDraftTaskBlock: { id: string; title: string } | null = null
+            let firstUndismissedSubtaskCheckbox: {
+              blockId: string
+              parentTaskId: string
+            } | null = null
 
-            const scanBlocks = (blocks: any[]): void => {
+            const scanBlocks = (blocks: any[], parentTaskBlock: any | null): void => {
               for (const b of blocks) {
                 if (b.type === 'taskBlock' && b.props?.taskId) {
                   currentTaskIds.add(b.props.taskId as string)
+                  // Only allow subtask creation under top-level tasks (enforces 1-level depth)
+                  const isTopLevel = !b.props.parentTaskId
+                  if (b.children?.length) scanBlocks(b.children, isTopLevel ? b : null)
+                  continue
                 }
+
                 if (
                   b.type === 'taskBlock' &&
                   !b.props?.taskId &&
@@ -470,19 +533,29 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
                 ) {
                   firstDraftTaskBlock = { id: b.id, title: b.props.title as string }
                 }
-                if (
-                  b.type === 'checkListItem' &&
-                  !firstUndismissedCheckbox &&
-                  !dismissedBlocksRef.current.has(b.id)
-                ) {
-                  firstUndismissedCheckbox = b.id
+
+                if (b.type === 'checkListItem' && !dismissedBlocksRef.current.has(b.id)) {
+                  if (parentTaskBlock && parentTaskBlock.props?.taskId) {
+                    if (!firstUndismissedSubtaskCheckbox) {
+                      firstUndismissedSubtaskCheckbox = {
+                        blockId: b.id,
+                        parentTaskId: parentTaskBlock.props.taskId as string
+                      }
+                    }
+                  } else if (!firstUndismissedCheckbox) {
+                    firstUndismissedCheckbox = b.id
+                  }
                 }
-                if (b.children?.length) scanBlocks(b.children)
+
+                if (b.children?.length) scanBlocks(b.children, null)
               }
             }
-            scanBlocks(editor.document as any[])
+            scanBlocks(editor.document as any[], null)
 
-            if (firstUndismissedCheckbox) {
+            if (firstUndismissedSubtaskCheckbox) {
+              const { blockId, parentTaskId } = firstUndismissedSubtaskCheckbox
+              convertCheckboxToSubtask(blockId, parentTaskId)
+            } else if (firstUndismissedCheckbox) {
               convertCheckboxToTask(firstUndismissedCheckbox)
             }
 
