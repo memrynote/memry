@@ -5,6 +5,13 @@ Format: weekly entries grouped by feature area.
 
 ---
 
+## 2026-04-06 — Split View Polish
+
+### Fixed
+- Hide sidebar collapse icon in split view panes (only show in primary/leftmost pane)
+
+---
+
 ## 2026-04-06 — Linked Task Navigation Fix
 
 ### Fixed
