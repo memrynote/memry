@@ -1,14 +1,14 @@
-import { type FC, useCallback, useEffect, useRef, useState } from 'react'
+import { type FC, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { AlertTriangle, ArrowUpRight, Loader2, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useTaskBlockData } from './use-task-block-data'
+import { serviceTaskToDisplayTask, PRIORITY_REVERSE } from './task-block-utils'
 import { useTasksOptional } from '@/contexts/tasks'
+import { useTabActions } from '@/contexts/tabs'
 import { tasksService } from '@/services/tasks-service'
-import type { Priority } from '@/data/sample-tasks'
+import type { Task as DisplayTask } from '@/data/sample-tasks'
 import { defaultStatuses, type Status } from '@/data/tasks-data'
-import { InlineStatusPopover } from '@/components/tasks/inline-status-popover'
-import { InlinePriorityPopover } from '@/components/tasks/inline-priority-popover'
-import { formatDueDate } from '@/lib/task-utils/task-formatting'
+import { TaskRow } from '@/components/tasks/task-row'
 
 interface TaskBlockRendererProps {
   block: { id: string; props: { taskId: string; title: string; checked: boolean } }
@@ -16,76 +16,106 @@ interface TaskBlockRendererProps {
   contentRef: React.Ref<HTMLDivElement>
 }
 
-const DB_PRIORITY_MAP: Record<number, Priority> = {
-  0: 'none',
-  1: 'low',
-  2: 'medium',
-  3: 'high',
-  4: 'urgent'
-}
-
-const PRIORITY_REVERSE: Record<string, number> = {
-  none: 0,
-  low: 1,
-  medium: 2,
-  high: 3,
-  urgent: 4
-}
+const BLOCKNOTE_OVERRIDES = `
+  .bn-formatting-toolbar:empty { display: none !important; }
+  .bn-block-content[data-content-type="taskBlock"] { cursor: default; }
+  .bn-block[data-id]:has([data-content-type="taskBlock"]) { border: none !important; outline: none !important; box-shadow: none !important; }
+  .bn-block[data-id]:has([data-content-type="taskBlock"]):focus-within { border: none !important; outline: none !important; box-shadow: none !important; }
+  .bn-block-content[data-content-type="taskBlock"]:focus { outline: none !important; border: none !important; }
+  [data-content-type="taskBlock"] * { outline: none !important; }
+`
 
 export const TaskBlockRenderer: FC<TaskBlockRendererProps> = ({ block, editor, contentRef }) => {
   const { taskId, title, checked } = block.props
   const { task, isLoading, isDeleted } = useTaskBlockData(taskId)
   const tasksCtx = useTasksOptional()
+  const { openTab } = useTabActions()
   const syncingRef = useRef(false)
 
   const isNewBlockRef = useRef(true)
-  const [isEditingTitle, setIsEditingTitle] = useState(false)
+  const wasDraftRef = useRef(!taskId)
+  const [isEditingTitle, setIsEditingTitle] = useState(!taskId)
   const [editTitle, setEditTitle] = useState(title)
   const titleInputRef = useRef<HTMLInputElement>(null)
   const titleSaveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const skipBlurRef = useRef(false)
 
+  const projects = tasksCtx?.projects ?? []
+  const defaultProject = projects.find((p: any) => p.isDefault || p.isInbox) ?? projects[0]
+  const project = projects.find((p) => p.id === task?.projectId) ?? defaultProject
+  const statuses: Status[] = (project?.statuses as Status[]) ?? defaultStatuses
+  const isCompleted = task ? !!task.completedAt : checked
+
+  const placeholderTask: import('@/data/sample-tasks').Task = useMemo(
+    () => ({
+      id: '',
+      title,
+      description: '',
+      projectId: project?.id ?? '',
+      statusId: statuses[0]?.id ?? '',
+      priority: 'none' as const,
+      dueDate: null,
+      dueTime: null,
+      isRepeating: false,
+      repeatConfig: null,
+      linkedNoteIds: [],
+      sourceNoteId: null,
+      parentId: null,
+      subtaskIds: [],
+      createdAt: new Date(),
+      completedAt: null,
+      archivedAt: null
+    }),
+    [project?.id, statuses, title]
+  )
+
+  const displayTask = useMemo(
+    () => (task ? serviceTaskToDisplayTask(task, statuses[0]?.id ?? '') : null),
+    [task, statuses]
+  )
+
+  // Auto-enter edit mode for newly created blocks
   useEffect(() => {
     if (isNewBlockRef.current && taskId && !task) {
       setIsEditingTitle(true)
-      setEditTitle(title)
+      if (!wasDraftRef.current) setEditTitle(title)
     }
     if (task) {
       isNewBlockRef.current = false
+      if (wasDraftRef.current) {
+        wasDraftRef.current = false
+        if (editTitle.trim() && task.title !== editTitle.trim()) {
+          void tasksService.update({ id: taskId, title: editTitle.trim() })
+          editor.updateBlock(block, {
+            props: { ...block.props, title: editTitle.trim() }
+          })
+        }
+      }
     }
-  }, [taskId, task, title])
+  }, [taskId, task, title, editTitle, block, editor])
 
-  const displayTitle = task?.title ?? title
-  const isCompleted = task ? !!task.completedAt : checked
+  // Focus title input when editing starts (double-rAF to beat ProseMirror focus restoration)
+  useEffect(() => {
+    if (!isEditingTitle) return
+    let cancelled = false
+    const rafId = requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        if (!cancelled && titleInputRef.current) {
+          titleInputRef.current.focus()
+          titleInputRef.current.setSelectionRange(
+            titleInputRef.current.value.length,
+            titleInputRef.current.value.length
+          )
+        }
+      })
+    })
+    return () => {
+      cancelled = true
+      cancelAnimationFrame(rafId)
+    }
+  }, [isEditingTitle])
 
-  const priorityNum =
-    typeof task?.priority === 'number'
-      ? task.priority
-      : typeof task?.priority === 'string'
-        ? (PRIORITY_REVERSE[task.priority] ?? 0)
-        : 0
-  const priority: Priority = DB_PRIORITY_MAP[priorityNum] ?? 'none'
-
-  const projects = tasksCtx?.projects ?? []
-  const project = projects.find((p) => p.id === task?.projectId)
-  const statuses: Status[] = (project?.statuses as Status[]) ?? defaultStatuses
-  const statusId = task?.statusId ?? statuses[0]?.id ?? ''
-
-  const dueDate = task?.dueDate ? new Date(task.dueDate) : null
-  const dueTime = (task as any)?.dueTime ?? null
-  const formattedDate = formatDueDate(dueDate, dueTime)
-  const isOverdue = formattedDate?.status === 'overdue' && !isCompleted
-
-  const currentStatus = statuses.find((s) => s.id === statusId)
-  const statusColor = currentStatus?.color || '#6B7280'
-
-  const dueDateDisplay = (() => {
-    if (isCompleted) return { text: 'Done', colorStyle: statusColor }
-    if (!formattedDate) return null
-    if (isOverdue) return { text: formattedDate.label, colorClass: 'text-destructive' }
-    return { text: formattedDate.label, colorClass: 'text-text-tertiary' }
-  })()
-
-  // Sync block props with DB
+  // Sync block props with DB state (for markdown serialization)
   useEffect(() => {
     if (!task || syncingRef.current) return
     const needsUpdate =
@@ -100,12 +130,29 @@ export const TaskBlockRenderer: FC<TaskBlockRendererProps> = ({ block, editor, c
     }
   }, [task, block, editor, isEditingTitle])
 
-  // Title editing
+  // Cleanup debounce timer
+  useEffect(() => {
+    return () => {
+      if (titleSaveTimeoutRef.current) clearTimeout(titleSaveTimeoutRef.current)
+    }
+  }, [])
+
+  // --- Title editing handlers ---
+
   const saveTitleToDb = useCallback(
     async (newTitle: string) => {
-      if (!taskId || !newTitle.trim()) return
+      if (!newTitle.trim()) return
+      syncingRef.current = true
       editor.updateBlock(block, { props: { ...block.props, title: newTitle.trim() } })
-      await tasksService.update({ id: taskId, title: newTitle.trim() })
+      if (taskId) {
+        try {
+          await tasksService.update({ id: taskId, title: newTitle.trim() })
+        } finally {
+          syncingRef.current = false
+        }
+      } else {
+        syncingRef.current = false
+      }
     },
     [taskId, block, editor]
   )
@@ -120,6 +167,10 @@ export const TaskBlockRenderer: FC<TaskBlockRendererProps> = ({ block, editor, c
   )
 
   const handleTitleBlur = useCallback(() => {
+    if (skipBlurRef.current) {
+      skipBlurRef.current = false
+      return
+    }
     if (titleSaveTimeoutRef.current) clearTimeout(titleSaveTimeoutRef.current)
     if (editTitle.trim()) void saveTitleToDb(editTitle)
     setIsEditingTitle(false)
@@ -127,67 +178,92 @@ export const TaskBlockRenderer: FC<TaskBlockRendererProps> = ({ block, editor, c
 
   const handleTitleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault()
+        skipBlurRef.current = true
+        if (titleSaveTimeoutRef.current) clearTimeout(titleSaveTimeoutRef.current)
+        if (editTitle.trim()) void saveTitleToDb(editTitle)
+        setIsEditingTitle(false)
+        return
+      }
+
       if (e.key === 'Enter') {
         e.preventDefault()
-        handleTitleBlur()
+        skipBlurRef.current = true
+        if (titleSaveTimeoutRef.current) clearTimeout(titleSaveTimeoutRef.current)
+
+        const trimmed = editTitle.trim()
+        if (trimmed) {
+          isNewBlockRef.current = false
+          void saveTitleToDb(trimmed)
+          setIsEditingTitle(false)
+          editor.insertBlocks(
+            [{ type: 'taskBlock' as any, props: { taskId: '', title: '', checked: false } }],
+            block,
+            'after'
+          )
+        } else {
+          isNewBlockRef.current = false
+          setIsEditingTitle(false)
+          if (taskId) void tasksService.delete(taskId)
+          const doc = editor.document as any[]
+          const blockIdx = doc.findIndex((b: any) => b.id === block.id)
+          const anchor = blockIdx > 0 ? doc[blockIdx - 1] : null
+          editor.removeBlocks([block])
+          const updatedDoc = editor.document as any[]
+          if (anchor) {
+            editor.insertBlocks([{ type: 'paragraph' as any }], anchor, 'after')
+          } else if (updatedDoc.length > 0) {
+            editor.insertBlocks([{ type: 'paragraph' as any }], updatedDoc[0], 'before')
+          }
+          requestAnimationFrame(() => {
+            const finalDoc = editor.document as any[]
+            const para = finalDoc[blockIdx] ?? finalDoc[finalDoc.length - 1]
+            if (para) {
+              editor.setTextCursorPosition(para.id, 'start')
+              editor.focus()
+            }
+          })
+        }
       }
     },
-    [handleTitleBlur]
+    [editor, block, taskId, editTitle, saveTitleToDb]
   )
 
-  const handleTitleClick = useCallback(() => {
-    setIsEditingTitle(true)
-    setEditTitle(displayTitle)
-    setTimeout(() => {
-      titleInputRef.current?.focus()
-      titleInputRef.current?.setSelectionRange(
-        titleInputRef.current.value.length,
-        titleInputRef.current.value.length
-      )
-    }, 0)
-  }, [displayTitle])
+  // --- Task action handlers ---
 
-  useEffect(() => {
-    if (isEditingTitle && titleInputRef.current) {
-      titleInputRef.current.focus()
-      titleInputRef.current.setSelectionRange(
-        titleInputRef.current.value.length,
-        titleInputRef.current.value.length
-      )
-    }
-  }, [isEditingTitle])
+  const handleToggleComplete = useCallback(
+    async (taskIdArg: string) => {
+      if (!taskIdArg) return
+      const newChecked = !isCompleted
+      editor.updateBlock(block, { props: { ...block.props, checked: newChecked } })
+      if (newChecked) {
+        await tasksService.complete({ id: taskIdArg })
+      } else {
+        await tasksService.uncomplete(taskIdArg)
+      }
+    },
+    [isCompleted, block, editor]
+  )
 
-  useEffect(() => {
-    return () => {
-      if (titleSaveTimeoutRef.current) clearTimeout(titleSaveTimeoutRef.current)
-    }
-  }, [])
-
-  // Status change
-  const handleStatusChange = useCallback(
-    async (newStatusId: string) => {
+  const handleUpdateTask = useCallback(
+    async (_taskId: string, updates: Partial<DisplayTask>) => {
       if (!taskId) return
-      await tasksService.update({ id: taskId, statusId: newStatusId })
+      await tasksService.update({
+        id: taskId,
+        ...(updates.statusId !== undefined && { statusId: updates.statusId }),
+        ...(updates.priority !== undefined && {
+          priority: PRIORITY_REVERSE[updates.priority] ?? 0
+        })
+      })
     },
     [taskId]
   )
 
-  const handleToggleComplete = useCallback(async () => {
-    if (!taskId) return
-    const newChecked = !isCompleted
-    editor.updateBlock(block, { props: { ...block.props, checked: newChecked } })
-    if (newChecked) {
-      await tasksService.complete({ id: taskId })
-    } else {
-      await tasksService.uncomplete(taskId)
-    }
-  }, [taskId, isCompleted, block, editor])
-
-  // Priority change
-  const handlePriorityChange = useCallback(
-    async (newPriority: Priority) => {
+  const handleProjectChange = useCallback(
+    async (projectId: string) => {
       if (!taskId) return
-      await tasksService.update({ id: taskId, priority: PRIORITY_REVERSE[newPriority] ?? 0 })
+      await tasksService.update({ id: taskId, projectId })
     },
     [taskId]
   )
@@ -196,30 +272,63 @@ export const TaskBlockRenderer: FC<TaskBlockRendererProps> = ({ block, editor, c
     editor.removeBlocks([block])
   }, [block, editor])
 
-  // Loading state
-  if (!taskId) {
-    return (
-      <div
-        ref={contentRef}
-        contentEditable={false}
-        className="flex items-center gap-3 rounded-md border border-dashed border-stone-300 px-6 py-[7px] text-sm text-muted-foreground dark:border-stone-600"
+  const navigateArrow = useMemo(
+    () => (
+      <button
+        type="button"
+        onClick={() => {
+          openTab({
+            type: 'tasks',
+            title: 'Tasks',
+            icon: 'list-checks',
+            path: '/tasks',
+            isPinned: false,
+            isModified: false,
+            isPreview: false,
+            isDeleted: false,
+            viewState: {
+              openTaskId: taskId,
+              selectedProjectId: task?.projectId ?? undefined,
+              activeTab: 'all'
+            }
+          })
+        }}
+        className="shrink-0 rounded p-0.5 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-accent/80"
+        title="Open in task panel"
       >
-        <Loader2 className="size-4 animate-spin" />
-        Creating task...
-      </div>
-    )
-  }
+        <ArrowUpRight className="size-3 text-muted-foreground" />
+      </button>
+    ),
+    [openTab, taskId, task?.projectId]
+  )
 
-  // Ghost state
+  const titleInput = useCallback(
+    () => (
+      <input
+        ref={titleInputRef}
+        type="text"
+        value={editTitle}
+        onChange={(e) => handleTitleChange(e.target.value)}
+        onBlur={handleTitleBlur}
+        onKeyDown={handleTitleKeyDown}
+        className="grow shrink min-w-0 bg-transparent text-[13px] font-medium outline-none text-foreground/90 placeholder:text-muted-foreground"
+        placeholder="Task name..."
+      />
+    ),
+    [editTitle, handleTitleChange, handleTitleBlur, handleTitleKeyDown]
+  )
+
+  // --- Render states ---
+
   if (isDeleted) {
     return (
       <div
         ref={contentRef}
         contentEditable={false}
-        className="flex items-center gap-3 rounded-md bg-stone-100 px-6 py-[7px] text-sm text-muted-foreground opacity-60 dark:bg-stone-800/50"
+        className="flex items-center gap-3 rounded-md bg-stone-100 py-[7px] text-sm text-muted-foreground opacity-60 dark:bg-stone-800/50"
       >
         <AlertTriangle className="size-4 text-amber-500" />
-        <span className="line-through">{displayTitle}</span>
+        <span className="line-through">{task?.title ?? title}</span>
         <span className="text-xs">Task deleted</span>
         <button
           type="button"
@@ -232,103 +341,43 @@ export const TaskBlockRenderer: FC<TaskBlockRendererProps> = ({ block, editor, c
     )
   }
 
+  // Render TaskRow — use real task if loaded, placeholder otherwise
+  const rowTask = displayTask ?? placeholderTask
+  const rowProject = project ?? defaultProject
+
+  if (!rowProject) {
+    return (
+      <div
+        ref={contentRef}
+        contentEditable={false}
+        className="flex items-center gap-3 rounded-md py-[7px] text-sm text-muted-foreground"
+      >
+        <Loader2 className="size-4 animate-spin" />
+        Loading...
+      </div>
+    )
+  }
+
   return (
     <div
       ref={contentRef}
       contentEditable={false}
-      className={cn(
-        'group flex items-center gap-3 rounded-md py-[7px] px-6 transition-colors outline-none [&_*]:outline-none',
-        'hover:bg-accent/60'
-      )}
+      className="w-full outline-none [&_*]:outline-none"
     >
-      <style>{`
-        .bn-formatting-toolbar:empty { display: none !important; }
-        .bn-block-content[data-content-type="taskBlock"] { cursor: default; }
-        .bn-block[data-id]:has([data-content-type="taskBlock"]) { border: none !important; outline: none !important; box-shadow: none !important; }
-        .bn-block[data-id]:has([data-content-type="taskBlock"]):focus-within { border: none !important; outline: none !important; box-shadow: none !important; }
-        .bn-block-content[data-content-type="taskBlock"]:focus { outline: none !important; border: none !important; }
-        [data-content-type="taskBlock"] * { outline: none !important; }
-      `}</style>
-
-      {/* Status (cycles through project statuses) */}
-      <div className="shrink-0" onClick={(e) => e.stopPropagation()}>
-        <InlineStatusPopover
-          statusId={statusId}
-          statuses={statuses}
-          isCompleted={isCompleted}
-          onStatusChange={handleStatusChange}
-          onToggleComplete={handleToggleComplete}
-        />
-      </div>
-
-      {/* Priority */}
-      <div className="shrink-0" onClick={(e) => e.stopPropagation()}>
-        <InlinePriorityPopover priority={priority} onPriorityChange={handlePriorityChange} />
-      </div>
-
-      {/* Title — editable */}
-      {isEditingTitle ? (
-        <input
-          ref={titleInputRef}
-          type="text"
-          value={editTitle}
-          onChange={(e) => handleTitleChange(e.target.value)}
-          onBlur={handleTitleBlur}
-          onKeyDown={handleTitleKeyDown}
-          className={cn(
-            'grow shrink min-w-0 bg-transparent text-[13px] font-medium outline-none',
-            'text-foreground/90 placeholder:text-muted-foreground'
-          )}
-          placeholder="Task name..."
-        />
-      ) : (
-        <span
-          onClick={handleTitleClick}
-          className={cn(
-            'grow shrink min-w-0 truncate text-[13px] font-medium cursor-text',
-            isCompleted
-              ? 'text-muted-foreground/60 line-through decoration-1 [text-underline-position:from-font]'
-              : 'text-foreground/90'
-          )}
-        >
-          {displayTitle || 'Untitled task'}
-        </span>
-      )}
-
-      {project && (
-        <div className="flex items-center shrink-0 gap-[5px]">
-          <div className="rounded-xs shrink-0 size-2" style={{ backgroundColor: project.color }} />
-          <div className="text-[11px] text-text-tertiary leading-3.5 truncate max-w-[100px]">
-            {project.name}
-          </div>
-        </div>
-      )}
-
-      {/* Due date — right side */}
-      {dueDateDisplay && (
-        <div
-          className={cn(
-            'text-[11px] shrink-0 text-right leading-3.5 whitespace-nowrap',
-            'colorClass' in dueDateDisplay && dueDateDisplay.colorClass
-          )}
-          style={'colorStyle' in dueDateDisplay ? { color: dueDateDisplay.colorStyle } : undefined}
-        >
-          {dueDateDisplay.text}
-        </div>
-      )}
-
-      <button
-        type="button"
-        onClick={() => {
-          window.dispatchEvent(new CustomEvent('task-block:open-detail', { detail: { taskId } }))
-        }}
-        className="shrink-0 rounded p-0.5 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-accent/80"
-        title="Open in task panel"
-      >
-        <ArrowUpRight className="size-3 text-muted-foreground" />
-      </button>
-
-      {isLoading && <Loader2 className="size-3 shrink-0 animate-spin text-muted-foreground" />}
+      <style>{BLOCKNOTE_OVERRIDES}</style>
+      <TaskRow
+        task={rowTask}
+        project={rowProject}
+        projects={projects}
+        isCompleted={isCompleted}
+        showProjectBadge
+        onToggleComplete={handleToggleComplete}
+        onUpdateTask={handleUpdateTask}
+        onProjectChange={handleProjectChange}
+        actions={navigateArrow}
+        renderTitle={isEditingTitle ? titleInput : undefined}
+        className="px-0"
+      />
     </div>
   )
 }

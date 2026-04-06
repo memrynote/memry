@@ -37,14 +37,16 @@ export function getTaskSlashMenuItem(editor: any) {
         content
           ?.map((c: any) => (typeof c === 'string' ? c : (c.text ?? '')))
           .join('')
-          .trim() || 'New task'
+          .trim() || ''
 
       const res = await tasksService.listProjects()
       const projects = res.projects ?? []
       const defaultProject = projects.find((p: any) => p.isDefault || p.isInbox) ?? projects[0]
       if (!defaultProject) return
 
-      const parsed = parseQuickAdd(text, projects as any[])
+      const parsed = text
+        ? parseQuickAdd(text, projects as any[])
+        : { title: '', priority: 'none' as const, projectId: null, dueDate: null }
 
       const result = await tasksService.create({
         projectId: parsed.projectId ?? defaultProject.id,
