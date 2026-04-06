@@ -175,11 +175,13 @@ export interface TaskBlockProps {
   taskId: string
   title: string
   checked: boolean
+  parentTaskId?: string
 }
 
 export function serializeTaskBlock(props: TaskBlockProps): string {
   const check = props.checked ? 'x' : ' '
-  return `- [${check}] ${props.title} {task:${props.taskId}}`
+  const indent = props.parentTaskId ? '  ' : ''
+  return `${indent}- [${check}] ${props.title} {task:${props.taskId}}`
 }
 
 export function parseTaskBlockSuffix(text: string): { taskId: string; title: string } | null {
@@ -218,26 +220,40 @@ export function normalizeTaskBlocks(blocks: Block[]): { blocks: Block[]; didChan
 
   let didChange = false
 
-  const nextBlocks = blocks.map((block) => {
-    if (block.type !== 'checkListItem') return block
+  function processBlocks(blockList: Block[], parentTaskId: string): Block[] {
+    return blockList.map((block) => {
+      if (block.type === 'taskBlock' && block.children?.length) {
+        const taskId = (block.props as Record<string, unknown>).taskId as string
+        const processedChildren = processBlocks(block.children as Block[], taskId)
+        if (processedChildren !== block.children) {
+          didChange = true
+          return { ...block, children: processedChildren }
+        }
+        return block
+      }
 
-    const text = extractInlineText(block.content)
-    const parsed = parseTaskBlockSuffix(text)
-    if (!parsed) return block
+      if (block.type !== 'checkListItem') return block
 
-    didChange = true
-    return {
-      type: 'taskBlock',
-      props: {
-        taskId: parsed.taskId,
-        title: parsed.title,
-        checked: (block.props as Record<string, unknown>).isChecked ?? false
-      },
-      content: undefined,
-      children: [],
-      id: block.id
-    } as unknown as Block
-  })
+      const text = extractInlineText(block.content)
+      const parsed = parseTaskBlockSuffix(text)
+      if (!parsed) return block
 
+      didChange = true
+      return {
+        type: 'taskBlock',
+        props: {
+          taskId: parsed.taskId,
+          title: parsed.title,
+          checked: (block.props as Record<string, unknown>).isChecked ?? false,
+          parentTaskId
+        },
+        content: undefined,
+        children: [],
+        id: block.id
+      } as unknown as Block
+    })
+  }
+
+  const nextBlocks = processBlocks(blocks, '')
   return { blocks: didChange ? nextBlocks : blocks, didChange }
 }

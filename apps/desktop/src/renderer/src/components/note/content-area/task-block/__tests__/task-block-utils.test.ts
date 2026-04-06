@@ -154,3 +154,89 @@ describe('normalizeTaskBlocks', () => {
     expect(result).toBe(blocks)
   })
 })
+
+describe('serializeTaskBlock with parentTaskId', () => {
+  it('serializes subtask with 2-space indent', () => {
+    expect(
+      serializeTaskBlock({
+        taskId: 'sub-1',
+        title: 'Buy milk',
+        checked: false,
+        parentTaskId: 'parent-1'
+      })
+    ).toBe('  - [ ] Buy milk {task:sub-1}')
+  })
+
+  it('serializes checked subtask with indent', () => {
+    expect(
+      serializeTaskBlock({
+        taskId: 'sub-2',
+        title: 'Get bread',
+        checked: true,
+        parentTaskId: 'parent-1'
+      })
+    ).toBe('  - [x] Get bread {task:sub-2}')
+  })
+
+  it('serializes top-level task without indent', () => {
+    expect(
+      serializeTaskBlock({ taskId: 'top-1', title: 'Groceries', checked: false, parentTaskId: '' })
+    ).toBe('- [ ] Groceries {task:top-1}')
+  })
+})
+
+describe('normalizeTaskBlocks with nested children', () => {
+  it('converts nested checkListItem with {task:id} to taskBlock with parentTaskId', () => {
+    const blocks = [
+      {
+        id: 'parent-block',
+        type: 'taskBlock',
+        props: { taskId: 'task-parent', title: 'Groceries', checked: false, parentTaskId: '' },
+        content: undefined,
+        children: [
+          {
+            id: 'child-block',
+            type: 'checkListItem',
+            props: { isChecked: false },
+            content: [{ type: 'text', text: 'Buy milk {task:sub-1}', styles: {} }],
+            children: []
+          }
+        ]
+      }
+    ] as any[]
+
+    const { blocks: result, didChange } = normalizeTaskBlocks(blocks)
+    expect(didChange).toBe(true)
+    const parent = result[0]
+    expect(parent.children).toHaveLength(1)
+    const child = parent.children![0]
+    expect(child.type).toBe('taskBlock')
+    expect((child.props as any).taskId).toBe('sub-1')
+    expect((child.props as any).title).toBe('Buy milk')
+    expect((child.props as any).parentTaskId).toBe('task-parent')
+  })
+
+  it('leaves non-task children untouched', () => {
+    const blocks = [
+      {
+        id: 'parent-block',
+        type: 'taskBlock',
+        props: { taskId: 'task-parent', title: 'Groceries', checked: false, parentTaskId: '' },
+        content: undefined,
+        children: [
+          {
+            id: 'child-block',
+            type: 'checkListItem',
+            props: { isChecked: false },
+            content: [{ type: 'text', text: 'Just a note', styles: {} }],
+            children: []
+          }
+        ]
+      }
+    ] as any[]
+
+    const { blocks: result, didChange } = normalizeTaskBlocks(blocks)
+    expect(didChange).toBe(false)
+    expect(result).toBe(blocks)
+  })
+})
