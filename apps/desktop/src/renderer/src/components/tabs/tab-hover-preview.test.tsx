@@ -106,7 +106,7 @@ describe('TabHoverPreview', () => {
 
   describe('previewable tab types', () => {
     const previewableTypes = ['note', 'journal', 'file'] as const
-    const nonPreviewableTypes = ['inbox', 'home', 'tasks', 'graph', 'search', 'templates'] as const
+    const nonPreviewableTypes = ['inbox', 'tasks', 'graph', 'search', 'templates'] as const
 
     it.each(previewableTypes)('should wrap %s tab with hover card trigger', (tabType) => {
       // #given

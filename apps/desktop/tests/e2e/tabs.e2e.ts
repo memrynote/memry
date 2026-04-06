@@ -445,9 +445,9 @@ test.describe('Session Persistence', () => {
     const tabCount = await getTabCount(page)
     expect(tabCount).toBeGreaterThanOrEqual(1)
 
-    // Default tab should be Inbox or Home
+    // Default tab should be Inbox
     const activeTitle = await getActiveTabTitle(page)
-    // On fresh launch, the default tab is either Inbox or Home
+    // On fresh launch, the default tab is Inbox
     expect(activeTitle).toBeTruthy()
   })
 })

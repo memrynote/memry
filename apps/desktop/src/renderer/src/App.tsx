@@ -56,7 +56,7 @@ const log = createLogger('App')
 const startupTheme = getStartupTheme()
 
 // Base pages (non-task)
-export type BasePage = 'inbox' | 'home' | 'journal' | 'graph'
+export type BasePage = 'inbox' | 'journal' | 'graph'
 
 // Task view type for navigation within tasks
 export type TaskViewId = 'all' | 'today' | 'completed'
