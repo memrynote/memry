@@ -5,6 +5,30 @@ Format: weekly entries grouped by feature area.
 
 ---
 
+## 2026-04-07 — Inline Task Blocks
+
+### Added
+- Add custom task block for BlockNote editor with live DB sync and inline editing
+- Add `[] ` bracket shortcut and `/task` slash command to create task blocks
+- Add right-click context menu to promote checkboxes to linked tasks
+- Add quick-add syntax parsing in task blocks (project, priority, due date)
+- Add Enter key continuation: create new task block after typing title
+- Add Enter on empty task block to exit to paragraph with cursor focus
+- Add Escape key to exit task editing without creating new block
+- Add draft task block detection in editor onChange for DB task creation
+- Add task block markdown serialization with `{task:id}` suffix round-trip
+
+### Fixed
+- Fix focus jumping to previous task block when pressing Enter before async task creation completes
+- Fix sync effect reverting title to stale DB value during save (hold syncingRef across async boundary)
+- Fix paragraph conversion from task block not receiving browser focus (add editor.focus() after cursor placement)
+- Fix task deletion scan race condition with debounced block scanning
+
+### Changed
+- Add `renderTitle` prop to TaskRow for inline title editing in task blocks
+
+---
+
 ## 2026-04-06 — Vertical Sidebar Navigation
 
 ### Changed

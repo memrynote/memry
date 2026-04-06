@@ -2,6 +2,7 @@ import { cn } from '@/lib/utils'
 import { formatDueDate, formatDateShort, formatTime } from '@/lib/task-utils'
 import { InlineStatusPopover } from '@/components/tasks/inline-status-popover'
 import { InlinePriorityPopover } from '@/components/tasks/inline-priority-popover'
+import { InteractiveProjectBadge } from '@/components/tasks/interactive-project-badge'
 import { SelectionCheckbox } from '@/components/tasks/bulk-actions'
 import { RepeatIndicator } from '@/components/tasks/repeat-indicator'
 import type { Task } from '@/data/sample-tasks'
@@ -26,6 +27,9 @@ interface TaskRowProps {
   isCheckedForSelection?: boolean
   onToggleSelect?: (taskId: string) => void
   onShiftSelect?: (taskId: string) => void
+  onProjectChange?: (projectId: string) => void
+  actions?: React.ReactNode
+  renderTitle?: () => React.ReactNode
 }
 
 // ============================================================================
@@ -50,7 +54,7 @@ const resolveStatus = (
 export const TaskRow = ({
   task,
   project,
-  projects: _projects,
+  projects,
   isCompleted,
   isSelected = false,
   showProjectBadge = false,
@@ -61,7 +65,10 @@ export const TaskRow = ({
   isSelectionMode = false,
   isCheckedForSelection = false,
   onToggleSelect,
-  onShiftSelect
+  onShiftSelect,
+  onProjectChange,
+  actions,
+  renderTitle
 }: TaskRowProps): React.JSX.Element => {
   const formattedDate = formatDueDate(task.dueDate, task.dueTime)
   const isOverdue = formattedDate?.status === 'overdue' && !isCompleted
@@ -147,29 +154,41 @@ export const TaskRow = ({
         onPriorityChange={(priority) => onUpdateTask?.(task.id, { priority })}
       />
 
-      <span
-        className={cn(
-          'text-[13px] font-medium grow shrink min-w-0 truncate',
-          isCompleted
-            ? 'text-muted-foreground/60 line-through decoration-1 [text-underline-position:from-font]'
-            : 'text-foreground/90'
-        )}
-      >
-        {task.title}
-      </span>
+      {renderTitle ? (
+        renderTitle()
+      ) : (
+        <span
+          className={cn(
+            'text-[13px] font-medium grow shrink min-w-0 truncate',
+            isCompleted
+              ? 'text-muted-foreground/60 line-through decoration-1 [text-underline-position:from-font]'
+              : 'text-foreground/90'
+          )}
+        >
+          {task.title}
+        </span>
+      )}
 
       {task.isRepeating && task.repeatConfig && (
         <RepeatIndicator config={task.repeatConfig} size="sm" />
       )}
 
-      {showProjectBadge && (
+      {showProjectBadge && onProjectChange ? (
+        <div className="shrink-0" onClick={(e) => e.stopPropagation()}>
+          <InteractiveProjectBadge
+            projectId={task.projectId}
+            projects={projects}
+            onProjectChange={onProjectChange}
+          />
+        </div>
+      ) : showProjectBadge ? (
         <div className="flex items-center shrink-0 gap-[5px]">
           <div className="rounded-xs shrink-0 size-2" style={{ backgroundColor: project.color }} />
           <div className="text-[11px] text-text-tertiary leading-3.5 truncate max-w-[100px]">
             {project.name}
           </div>
         </div>
-      )}
+      ) : null}
 
       {dueDateDisplay && (
         <div
@@ -182,6 +201,8 @@ export const TaskRow = ({
           {dueDateDisplay.text}
         </div>
       )}
+
+      {actions}
     </div>
   )
 }

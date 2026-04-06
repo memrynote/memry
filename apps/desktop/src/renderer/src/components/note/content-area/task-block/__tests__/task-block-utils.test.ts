@@ -1,0 +1,156 @@
+import { describe, it, expect } from 'vitest'
+import {
+  isLikelyTask,
+  serializeTaskBlock,
+  parseTaskBlockSuffix,
+  normalizeTaskBlocks
+} from '../task-block-utils'
+
+describe('isLikelyTask', () => {
+  it('returns true for text starting with action verbs', () => {
+    expect(isLikelyTask('Buy groceries')).toBe(true)
+    expect(isLikelyTask('fix the login bug')).toBe(true)
+    expect(isLikelyTask('Send email to team')).toBe(true)
+    expect(isLikelyTask('Review PR #123')).toBe(true)
+    expect(isLikelyTask('Schedule meeting with design')).toBe(true)
+    expect(isLikelyTask('Deploy to staging')).toBe(true)
+  })
+
+  it('returns false for non-action text', () => {
+    expect(isLikelyTask('Milk')).toBe(false)
+    expect(isLikelyTask('Item 1')).toBe(false)
+    expect(isLikelyTask('Notes from standup')).toBe(false)
+    expect(isLikelyTask('a')).toBe(false)
+    expect(isLikelyTask('')).toBe(false)
+  })
+
+  it('is case-insensitive', () => {
+    expect(isLikelyTask('BUY groceries')).toBe(true)
+    expect(isLikelyTask('Fix Bug')).toBe(true)
+  })
+
+  it('handles leading whitespace', () => {
+    expect(isLikelyTask('  Buy groceries')).toBe(true)
+  })
+
+  it('rejects very short or very long text', () => {
+    expect(isLikelyTask('Go')).toBe(false)
+    expect(isLikelyTask('x'.repeat(300))).toBe(false)
+  })
+})
+
+describe('serializeTaskBlock', () => {
+  it('serializes unchecked task', () => {
+    expect(serializeTaskBlock({ taskId: 'abc-123', title: 'Buy groceries', checked: false })).toBe(
+      '- [ ] Buy groceries {task:abc-123}'
+    )
+  })
+
+  it('serializes checked task', () => {
+    expect(serializeTaskBlock({ taskId: 'def-456', title: 'Send email', checked: true })).toBe(
+      '- [x] Send email {task:def-456}'
+    )
+  })
+})
+
+describe('parseTaskBlockSuffix', () => {
+  it('parses task reference from text', () => {
+    expect(parseTaskBlockSuffix('Buy groceries {task:abc-123}')).toEqual({
+      taskId: 'abc-123',
+      title: 'Buy groceries'
+    })
+  })
+
+  it('returns null for text without task ref', () => {
+    expect(parseTaskBlockSuffix('Just a regular item')).toBeNull()
+  })
+
+  it('handles task ref at end of longer text', () => {
+    expect(parseTaskBlockSuffix('Send email {task:def-456}')).toEqual({
+      taskId: 'def-456',
+      title: 'Send email'
+    })
+  })
+})
+
+describe('normalizeTaskBlocks', () => {
+  it('converts checkListItem with {task:id} to taskBlock', () => {
+    const blocks = [
+      {
+        id: 'b1',
+        type: 'checkListItem',
+        props: { isChecked: false },
+        content: [{ type: 'text', text: 'Buy groceries {task:abc-123}', styles: {} }],
+        children: []
+      }
+    ] as any[]
+
+    const { blocks: result, didChange } = normalizeTaskBlocks(blocks)
+    expect(didChange).toBe(true)
+    expect(result[0].type).toBe('taskBlock')
+    expect((result[0].props as any).taskId).toBe('abc-123')
+    expect((result[0].props as any).title).toBe('Buy groceries')
+    expect((result[0].props as any).checked).toBe(false)
+  })
+
+  it('preserves checked state from checkListItem', () => {
+    const blocks = [
+      {
+        id: 'b2',
+        type: 'checkListItem',
+        props: { isChecked: true },
+        content: [{ type: 'text', text: 'Done task {task:def-456}', styles: {} }],
+        children: []
+      }
+    ] as any[]
+
+    const { blocks: result } = normalizeTaskBlocks(blocks)
+    expect((result[0].props as any).checked).toBe(true)
+  })
+
+  it('leaves regular checkListItem untouched', () => {
+    const blocks = [
+      {
+        id: 'b3',
+        type: 'checkListItem',
+        props: { isChecked: false },
+        content: [{ type: 'text', text: 'Just a checkbox', styles: {} }],
+        children: []
+      }
+    ] as any[]
+
+    const { blocks: result, didChange } = normalizeTaskBlocks(blocks)
+    expect(didChange).toBe(false)
+    expect(result).toBe(blocks)
+  })
+
+  it('leaves non-checkListItem blocks unchanged', () => {
+    const blocks = [
+      {
+        id: 'b4',
+        type: 'paragraph',
+        props: {},
+        content: [{ type: 'text', text: 'Some text {task:xyz}', styles: {} }],
+        children: []
+      }
+    ] as any[]
+
+    const { didChange } = normalizeTaskBlocks(blocks)
+    expect(didChange).toBe(false)
+  })
+
+  it('returns same reference when no {task: found', () => {
+    const blocks = [
+      {
+        id: 'b5',
+        type: 'checkListItem',
+        props: { isChecked: false },
+        content: [{ type: 'text', text: 'No task here', styles: {} }],
+        children: []
+      }
+    ] as any[]
+
+    const { blocks: result } = normalizeTaskBlocks(blocks)
+    expect(result).toBe(blocks)
+  })
+})

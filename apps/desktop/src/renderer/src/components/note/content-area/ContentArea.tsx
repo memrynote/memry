@@ -30,6 +30,11 @@ import { TagSuggestionPopover } from './tag-suggestion-popover'
 import { WikiLinkPreviewCard } from './wiki-link-preview-card'
 import { BlockDropIndicator, EmptyDocumentDropIndicator } from './block-drop-indicator'
 import { getCalloutSlashMenuItem } from './callout-block'
+import { getTaskSlashMenuItem } from './task-block'
+import { tasksService } from '@/services/tasks-service'
+import { useTasksOptional } from '@/contexts/tasks'
+import { parseQuickAdd } from '@/lib/quick-add-parser'
+import { formatDateKey } from '@/lib/task-utils'
 import { editorSchema } from './editor-schema'
 import {
   HighlightReminderPopover,
@@ -52,6 +57,8 @@ import { extractYouTubeVideoId } from '@/lib/youtube-utils'
 import { extractDomain, fetchLinkPreview } from '@/lib/url-metadata'
 import { createLinkMentionContent } from './link-mention'
 import type { PasteLinkOption } from './hooks/use-paste-link-menu'
+
+const PRIORITY_REVERSE: Record<string, number> = { none: 0, low: 1, medium: 2, high: 3, urgent: 4 }
 
 function findBlockWithLinkMention(
   blocks: any[],
@@ -105,7 +112,10 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
   const { openTag } = useSidebarDrillDown()
   const { port: aiPort, error: aiError, retry: retryAI } = useAIInlineContext()
 
+  const tasksCtx = useTasksOptional()
   const [highlightSelection, setHighlightSelection] = useState<HighlightSelection | null>(null)
+  const dismissedBlocksRef = useRef(new Set<string>())
+  const knownTaskBlockIdsRef = useRef<Set<string>>(new Set())
   const editorContainerRef = useRef<HTMLDivElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const noteIdRef = useRef<string | undefined>(noteId)
@@ -277,6 +287,131 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
     window.getSelection()?.removeAllRanges()
   }, [])
 
+  const convertCheckboxToTask = useCallback(
+    (blockId: string) => {
+      dismissedBlocksRef.current.add(blockId)
+
+      const block = editor.getBlock(blockId)
+      if (!block) return
+
+      const content = block.content as any[] | undefined
+      const text =
+        content
+          ?.map((c: any) => (typeof c === 'string' ? c : (c.text ?? '')))
+          .join('')
+          .trim() ?? ''
+
+      editor.updateBlock(block, {
+        type: 'taskBlock' as any,
+        props: { taskId: '', title: text, checked: false }
+      })
+
+      void (async () => {
+        let projects: any[] = tasksCtx?.projects ?? []
+        if (projects.length === 0) {
+          const res = await tasksService.listProjects()
+          projects = res.projects ?? []
+        }
+
+        const defaultProject = projects.find((p: any) => p.isDefault || p.isInbox) ?? projects[0]
+        if (!defaultProject) return
+
+        const parsed = text
+          ? parseQuickAdd(text, projects as any[])
+          : { title: '', priority: 'none', projectId: null, dueDate: null }
+
+        try {
+          const result = await tasksService.create({
+            projectId: parsed.projectId ?? defaultProject.id,
+            title: parsed.title,
+            priority: PRIORITY_REVERSE[parsed.priority] ?? 0,
+            dueDate: parsed.dueDate ? formatDateKey(parsed.dueDate) : null,
+            linkedNoteIds: noteId ? [noteId] : []
+          })
+          if (result.success && result.task) {
+            const freshBlock = editor.getBlock(blockId)
+            if (freshBlock) {
+              const currentTitle = (freshBlock.props as any).title || parsed.title
+              editor.updateBlock(freshBlock, {
+                props: { taskId: result.task.id, title: currentTitle, checked: false }
+              })
+              if (currentTitle && currentTitle !== result.task.title) {
+                void tasksService.update({ id: result.task.id, title: currentTitle })
+              }
+            }
+          }
+        } catch {
+          dismissedBlocksRef.current.delete(blockId)
+        }
+      })()
+    },
+    [editor, noteId, tasksCtx]
+  )
+
+  const createTaskForDraftBlock = useCallback(
+    (blockId: string, title: string) => {
+      dismissedBlocksRef.current.add(blockId)
+
+      void (async () => {
+        let projects: any[] = tasksCtx?.projects ?? []
+        if (projects.length === 0) {
+          const res = await tasksService.listProjects()
+          projects = res.projects ?? []
+        }
+
+        const defaultProject = projects.find((p: any) => p.isDefault || p.isInbox) ?? projects[0]
+        if (!defaultProject) return
+
+        const parsed = title
+          ? parseQuickAdd(title, projects as any[])
+          : { title: '', priority: 'none', projectId: null, dueDate: null }
+
+        try {
+          const result = await tasksService.create({
+            projectId: parsed.projectId ?? defaultProject.id,
+            title: parsed.title,
+            priority: PRIORITY_REVERSE[parsed.priority] ?? 0,
+            dueDate: parsed.dueDate ? formatDateKey(parsed.dueDate) : null,
+            linkedNoteIds: noteId ? [noteId] : []
+          })
+          if (result.success && result.task) {
+            const freshBlock = editor.getBlock(blockId)
+            if (freshBlock) {
+              const currentTitle = (freshBlock.props as any).title || parsed.title
+              editor.updateBlock(freshBlock, {
+                props: { taskId: result.task.id, title: currentTitle, checked: false }
+              })
+              if (currentTitle && currentTitle !== result.task.title) {
+                void tasksService.update({ id: result.task.id, title: currentTitle })
+              }
+            }
+          }
+        } catch {
+          dismissedBlocksRef.current.delete(blockId)
+        }
+      })()
+    },
+    [editor, noteId, tasksCtx]
+  )
+
+  const handleEditorContextMenu = useCallback(
+    (e: React.MouseEvent) => {
+      const target = e.target as HTMLElement
+      const checkListBlock = target.closest('[data-content-type="checkListItem"]')
+      if (!checkListBlock) return
+
+      const blockId = checkListBlock.getAttribute('data-id')
+      if (!blockId) return
+
+      const block = editor.getBlock(blockId)
+      if (!block || block.type !== 'checkListItem') return
+
+      e.preventDefault()
+      convertCheckboxToTask(blockId)
+    },
+    [editor, convertCheckboxToTask]
+  )
+
   return (
     <div
       ref={containerRef}
@@ -309,12 +444,59 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
         )}
         role="application"
         aria-label="Rich text editor"
+        onContextMenu={handleEditorContextMenu}
       >
         <BlockNoteView
           editor={editor}
           editable={editable}
           onChange={(): void => {
             void handleChange()
+
+            const currentTaskIds = new Set<string>()
+            let firstUndismissedCheckbox: string | null = null
+            let firstDraftTaskBlock: { id: string; title: string } | null = null
+
+            const scanBlocks = (blocks: any[]): void => {
+              for (const b of blocks) {
+                if (b.type === 'taskBlock' && b.props?.taskId) {
+                  currentTaskIds.add(b.props.taskId as string)
+                }
+                if (
+                  b.type === 'taskBlock' &&
+                  !b.props?.taskId &&
+                  b.props?.title?.trim() &&
+                  !firstDraftTaskBlock &&
+                  !dismissedBlocksRef.current.has(b.id)
+                ) {
+                  firstDraftTaskBlock = { id: b.id, title: b.props.title as string }
+                }
+                if (
+                  b.type === 'checkListItem' &&
+                  !firstUndismissedCheckbox &&
+                  !dismissedBlocksRef.current.has(b.id)
+                ) {
+                  firstUndismissedCheckbox = b.id
+                }
+                if (b.children?.length) scanBlocks(b.children)
+              }
+            }
+            scanBlocks(editor.document as any[])
+
+            if (firstUndismissedCheckbox) {
+              convertCheckboxToTask(firstUndismissedCheckbox)
+            }
+
+            const draft = firstDraftTaskBlock as { id: string; title: string } | null
+            if (draft) {
+              createTaskForDraftBlock(draft.id, draft.title)
+            }
+
+            for (const prevId of knownTaskBlockIdsRef.current) {
+              if (!currentTaskIds.has(prevId)) {
+                void tasksService.delete(prevId)
+              }
+            }
+            knownTaskBlockIdsRef.current = currentTaskIds
           }}
           theme={editorTheme}
           formattingToolbar={!stickyToolbar}
@@ -328,7 +510,8 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
               const defaults = getDefaultReactSlashMenuItems(editor)
               const aiItems = aiReady ? getAISlashMenuItems(editor) : []
               const calloutItem = getCalloutSlashMenuItem(editor)
-              const all = [...defaults, calloutItem, ...aiItems]
+              const taskItem = getTaskSlashMenuItem(editor)
+              const all = [...defaults, calloutItem, taskItem, ...aiItems]
               if (!query) return all
               const lower = query.toLowerCase()
               return all.filter(
