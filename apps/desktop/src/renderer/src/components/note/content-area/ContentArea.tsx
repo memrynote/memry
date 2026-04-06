@@ -31,7 +31,6 @@ import { WikiLinkPreviewCard } from './wiki-link-preview-card'
 import { BlockDropIndicator, EmptyDocumentDropIndicator } from './block-drop-indicator'
 import { getCalloutSlashMenuItem } from './callout-block'
 import { getTaskSlashMenuItem } from './task-block'
-import { isLikelyTask } from './task-block/task-block-utils'
 import { tasksService } from '@/services/tasks-service'
 import { useTasksOptional } from '@/contexts/tasks'
 import { parseQuickAdd } from '@/lib/quick-add-parser'
@@ -115,7 +114,6 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
 
   const tasksCtx = useTasksOptional()
   const [highlightSelection, setHighlightSelection] = useState<HighlightSelection | null>(null)
-  const taskDetectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const dismissedBlocksRef = useRef(new Set<string>())
   const knownTaskBlockIdsRef = useRef<Set<string>>(new Set())
   const editorContainerRef = useRef<HTMLDivElement>(null)
@@ -290,76 +288,114 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
   }, [])
 
   const convertCheckboxToTask = useCallback(
-    async (blockId: string, titleText: string) => {
-      let projects: any[] = tasksCtx?.projects ?? []
-      if (projects.length === 0) {
-        const res = await tasksService.listProjects()
-        projects = res.projects ?? []
-      }
-
-      const defaultProject = projects.find((p: any) => p.isDefault || p.isInbox) ?? projects[0]
-      if (!defaultProject) return
-
-      const parsed = parseQuickAdd(titleText, projects as any[])
+    (blockId: string) => {
+      dismissedBlocksRef.current.add(blockId)
 
       const block = editor.getBlock(blockId)
       if (!block) return
 
-      try {
-        const result = await tasksService.create({
-          projectId: parsed.projectId ?? defaultProject.id,
-          title: parsed.title,
-          priority: PRIORITY_REVERSE[parsed.priority] ?? 0,
-          dueDate: parsed.dueDate ? formatDateKey(parsed.dueDate) : null,
-          linkedNoteIds: noteId ? [noteId] : []
-        })
-        if (result.success && result.task) {
-          editor.updateBlock(block, {
-            type: 'taskBlock' as any,
-            props: { taskId: result.task.id, title: parsed.title, checked: false }
-          })
-          try {
-            editor.setTextCursorPosition(block.id, 'end')
-          } catch {
-            // taskBlock has content:'none', cursor placement may not apply
-          }
+      const content = block.content as any[] | undefined
+      const text =
+        content
+          ?.map((c: any) => (typeof c === 'string' ? c : (c.text ?? '')))
+          .join('')
+          .trim() ?? ''
+
+      editor.updateBlock(block, {
+        type: 'taskBlock' as any,
+        props: { taskId: '', title: text, checked: false }
+      })
+
+      void (async () => {
+        let projects: any[] = tasksCtx?.projects ?? []
+        if (projects.length === 0) {
+          const res = await tasksService.listProjects()
+          projects = res.projects ?? []
         }
-      } catch {
-        dismissedBlocksRef.current.delete(blockId)
-      }
+
+        const defaultProject = projects.find((p: any) => p.isDefault || p.isInbox) ?? projects[0]
+        if (!defaultProject) return
+
+        const parsed = text
+          ? parseQuickAdd(text, projects as any[])
+          : { title: '', priority: 'none', projectId: null, dueDate: null }
+
+        try {
+          const result = await tasksService.create({
+            projectId: parsed.projectId ?? defaultProject.id,
+            title: parsed.title,
+            priority: PRIORITY_REVERSE[parsed.priority] ?? 0,
+            dueDate: parsed.dueDate ? formatDateKey(parsed.dueDate) : null,
+            linkedNoteIds: noteId ? [noteId] : []
+          })
+          if (result.success && result.task) {
+            const freshBlock = editor.getBlock(blockId)
+            if (freshBlock) {
+              const currentTitle = (freshBlock.props as any).title || parsed.title
+              editor.updateBlock(freshBlock, {
+                props: { taskId: result.task.id, title: currentTitle, checked: false }
+              })
+              if (currentTitle && currentTitle !== result.task.title) {
+                void tasksService.update({ id: result.task.id, title: currentTitle })
+              }
+            }
+          }
+        } catch {
+          dismissedBlocksRef.current.delete(blockId)
+        }
+      })()
     },
     [editor, noteId, tasksCtx]
   )
 
-  const autoCreateTaskFromCheckbox = useCallback(async () => {
-    const extractText = (content: any): string => {
-      if (!content) return ''
-      if (typeof content === 'string') return content
-      if (!Array.isArray(content)) return ''
-      return content.map((c: any) => (typeof c === 'string' ? c : (c.text ?? ''))).join('')
-    }
+  const createTaskForDraftBlock = useCallback(
+    (blockId: string, title: string) => {
+      dismissedBlocksRef.current.add(blockId)
 
-    const scanBlocks = (blocks: any[]): void => {
-      for (const block of blocks) {
-        if (block.type === 'checkListItem' && !dismissedBlocksRef.current.has(block.id)) {
-          const text = extractText(block.content)
-          if (text.trim()) {
-            dismissedBlocksRef.current.add(block.id)
-            void convertCheckboxToTask(block.id, text.trim())
-            return
+      void (async () => {
+        let projects: any[] = tasksCtx?.projects ?? []
+        if (projects.length === 0) {
+          const res = await tasksService.listProjects()
+          projects = res.projects ?? []
+        }
+
+        const defaultProject = projects.find((p: any) => p.isDefault || p.isInbox) ?? projects[0]
+        if (!defaultProject) return
+
+        const parsed = title
+          ? parseQuickAdd(title, projects as any[])
+          : { title: '', priority: 'none', projectId: null, dueDate: null }
+
+        try {
+          const result = await tasksService.create({
+            projectId: parsed.projectId ?? defaultProject.id,
+            title: parsed.title,
+            priority: PRIORITY_REVERSE[parsed.priority] ?? 0,
+            dueDate: parsed.dueDate ? formatDateKey(parsed.dueDate) : null,
+            linkedNoteIds: noteId ? [noteId] : []
+          })
+          if (result.success && result.task) {
+            const freshBlock = editor.getBlock(blockId)
+            if (freshBlock) {
+              const currentTitle = (freshBlock.props as any).title || parsed.title
+              editor.updateBlock(freshBlock, {
+                props: { taskId: result.task.id, title: currentTitle, checked: false }
+              })
+              if (currentTitle && currentTitle !== result.task.title) {
+                void tasksService.update({ id: result.task.id, title: currentTitle })
+              }
+            }
           }
+        } catch {
+          dismissedBlocksRef.current.delete(blockId)
         }
-        if (block.children?.length) {
-          scanBlocks(block.children)
-        }
-      }
-    }
-
-    scanBlocks(editor.document as any[])
-  }, [editor, convertCheckboxToTask])
+      })()
+    },
+    [editor, noteId, tasksCtx]
+  )
 
   const handleEditorContextMenu = useCallback(
-    async (e: React.MouseEvent) => {
+    (e: React.MouseEvent) => {
       const target = e.target as HTMLElement
       const checkListBlock = target.closest('[data-content-type="checkListItem"]')
       if (!checkListBlock) return
@@ -370,23 +406,11 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
       const block = editor.getBlock(blockId)
       if (!block || block.type !== 'checkListItem') return
 
-      const content = block.content as any[]
-      const text =
-        content?.map((c: any) => (typeof c === 'string' ? c : (c.text ?? ''))).join('') ?? ''
-      if (!text.trim()) return
-
       e.preventDefault()
-      dismissedBlocksRef.current.add(blockId)
-      await convertCheckboxToTask(blockId, text.trim())
+      convertCheckboxToTask(blockId)
     },
     [editor, convertCheckboxToTask]
   )
-
-  useEffect(() => {
-    return () => {
-      if (taskDetectTimeoutRef.current) clearTimeout(taskDetectTimeoutRef.current)
-    }
-  }, [])
 
   return (
     <div
@@ -427,19 +451,44 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
           editable={editable}
           onChange={(): void => {
             void handleChange()
-            if (taskDetectTimeoutRef.current) clearTimeout(taskDetectTimeoutRef.current)
-            taskDetectTimeoutRef.current = setTimeout(() => void autoCreateTaskFromCheckbox(), 800)
 
             const currentTaskIds = new Set<string>()
-            const scanTaskIds = (blocks: any[]): void => {
+            let firstUndismissedCheckbox: string | null = null
+            let firstDraftTaskBlock: { id: string; title: string } | null = null
+
+            const scanBlocks = (blocks: any[]): void => {
               for (const b of blocks) {
                 if (b.type === 'taskBlock' && b.props?.taskId) {
                   currentTaskIds.add(b.props.taskId as string)
                 }
-                if (b.children?.length) scanTaskIds(b.children)
+                if (
+                  b.type === 'taskBlock' &&
+                  !b.props?.taskId &&
+                  b.props?.title?.trim() &&
+                  !firstDraftTaskBlock &&
+                  !dismissedBlocksRef.current.has(b.id)
+                ) {
+                  firstDraftTaskBlock = { id: b.id, title: b.props.title as string }
+                }
+                if (
+                  b.type === 'checkListItem' &&
+                  !firstUndismissedCheckbox &&
+                  !dismissedBlocksRef.current.has(b.id)
+                ) {
+                  firstUndismissedCheckbox = b.id
+                }
+                if (b.children?.length) scanBlocks(b.children)
               }
             }
-            scanTaskIds(editor.document as any[])
+            scanBlocks(editor.document as any[])
+
+            if (firstUndismissedCheckbox) {
+              convertCheckboxToTask(firstUndismissedCheckbox)
+            }
+
+            if (firstDraftTaskBlock) {
+              createTaskForDraftBlock(firstDraftTaskBlock.id, firstDraftTaskBlock.title)
+            }
 
             for (const prevId of knownTaskBlockIdsRef.current) {
               if (!currentTaskIds.has(prevId)) {
