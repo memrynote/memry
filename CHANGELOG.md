@@ -5,6 +5,15 @@ Format: weekly entries grouped by feature area.
 
 ---
 
+## 2026-04-06 — Vertical Sidebar Navigation
+
+### Changed
+- Replace horizontal nav with vertical sidebar nav using shadcn SidebarMenu primitives
+- Move navigation (Inbox, Home, Journal, Tasks) from sidebar header to sidebar content area
+- Simplify SidebarHeaderContent to only render traffic lights and vault switcher
+
+---
+
 ## 2026-04-06 — Split View Polish
 
 ### Fixed
