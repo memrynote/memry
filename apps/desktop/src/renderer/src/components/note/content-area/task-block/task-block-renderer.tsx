@@ -11,7 +11,10 @@ import { defaultStatuses, type Status } from '@/data/tasks-data'
 import { TaskRow } from '@/components/tasks/task-row'
 
 interface TaskBlockRendererProps {
-  block: { id: string; props: { taskId: string; title: string; checked: boolean } }
+  block: {
+    id: string
+    props: { taskId: string; title: string; checked: boolean; parentTaskId: string }
+  }
   editor: any
   contentRef: React.Ref<HTMLDivElement>
 }
@@ -26,7 +29,7 @@ const BLOCKNOTE_OVERRIDES = `
 `
 
 export const TaskBlockRenderer: FC<TaskBlockRendererProps> = ({ block, editor, contentRef }) => {
-  const { taskId, title, checked } = block.props
+  const { taskId, title, checked, parentTaskId } = block.props
   const { task, isLoading, isDeleted } = useTaskBlockData(taskId)
   const tasksCtx = useTasksOptional()
   const { openTab } = useTabActions()
@@ -355,7 +358,10 @@ export const TaskBlockRenderer: FC<TaskBlockRendererProps> = ({ block, editor, c
       <div
         ref={contentRef}
         contentEditable={false}
-        className="flex items-center gap-3 rounded-md bg-stone-100 py-[7px] text-sm text-muted-foreground opacity-60 dark:bg-stone-800/50"
+        className={cn(
+          'flex items-center gap-3 rounded-md bg-stone-100 py-[7px] text-sm text-muted-foreground opacity-60 dark:bg-stone-800/50',
+          parentTaskId && 'ml-7'
+        )}
       >
         <AlertTriangle className="size-4 text-amber-500" />
         <span className="line-through">{task?.title ?? title}</span>
@@ -380,7 +386,10 @@ export const TaskBlockRenderer: FC<TaskBlockRendererProps> = ({ block, editor, c
       <div
         ref={contentRef}
         contentEditable={false}
-        className="flex items-center gap-3 rounded-md py-[7px] text-sm text-muted-foreground"
+        className={cn(
+          'flex items-center gap-3 rounded-md py-[7px] text-sm text-muted-foreground',
+          parentTaskId && 'ml-7'
+        )}
       >
         <Loader2 className="size-4 animate-spin" />
         Loading...
@@ -395,19 +404,21 @@ export const TaskBlockRenderer: FC<TaskBlockRendererProps> = ({ block, editor, c
       className="w-full outline-none [&_*]:outline-none"
     >
       <style>{BLOCKNOTE_OVERRIDES}</style>
-      <TaskRow
-        task={rowTask}
-        project={rowProject}
-        projects={projects}
-        isCompleted={isCompleted}
-        showProjectBadge
-        onToggleComplete={handleToggleComplete}
-        onUpdateTask={handleUpdateTask}
-        onProjectChange={handleProjectChange}
-        actions={navigateArrow}
-        renderTitle={isEditingTitle ? titleInput : clickableTitle}
-        className="px-0"
-      />
+      <div className={parentTaskId ? 'ml-7' : undefined}>
+        <TaskRow
+          task={rowTask}
+          project={rowProject}
+          projects={projects}
+          isCompleted={isCompleted}
+          showProjectBadge
+          onToggleComplete={handleToggleComplete}
+          onUpdateTask={handleUpdateTask}
+          onProjectChange={handleProjectChange}
+          actions={navigateArrow}
+          renderTitle={isEditingTitle ? titleInput : clickableTitle}
+          className="px-0"
+        />
+      </div>
     </div>
   )
 }
