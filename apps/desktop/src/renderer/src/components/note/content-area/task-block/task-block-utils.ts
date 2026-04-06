@@ -222,12 +222,12 @@ export function normalizeTaskBlocks(blocks: Block[]): { blocks: Block[]; didChan
 
   function processBlocks(blockList: Block[], parentTaskId: string): Block[] {
     return blockList.map((block) => {
-      if (block.type === 'taskBlock' && block.children?.length) {
+      if ((block.type as string) === 'taskBlock' && block.children?.length) {
         const taskId = (block.props as Record<string, unknown>).taskId as string
         const processedChildren = processBlocks(block.children as Block[], taskId)
         if (processedChildren !== block.children) {
           didChange = true
-          return { ...block, children: processedChildren }
+          return { ...block, children: processedChildren } as Block
         }
         return block
       }
