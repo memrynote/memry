@@ -9,7 +9,6 @@
 A private, offline-first workspace for notes, journals, and tasks — with real-time sync that never sees your data.
 
 ![Status](https://img.shields.io/badge/status-in%20development-orange?style=for-the-badge)
-[![Discord](https://img.shields.io/discord/1489932172952342538?style=for-the-badge&logo=discord&logoColor=white&label=Discord&color=5865F2)](https://discord.gg/h36c4zJGUC)
 [![Reddit](https://img.shields.io/badge/Reddit-r%2FMemryNote-FF4500?style=for-the-badge&logo=reddit&logoColor=white)](https://www.reddit.com/r/MemryNote/)
 
 > **Not yet released.** memry is under active development and hasn't shipped a public version yet. Star the repo or watch for updates — downloads will be available once we reach a stable release.
