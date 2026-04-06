@@ -1,45 +1,62 @@
+# Dependencies
 node_modules
+.pnpm-store
+
+# Build output
 dist
 build
-coverage
 out
-.DS_Store
-Thumbs.db
-.eslintcache
-*.log*
-.env*
-.dev.vars
-*.tmp
-*.swp
-.idea
-.social
-.vscode
-test-results
-.serena
-.wrangler
-private.pem
-public.pem
 *.tsbuildinfo
-identifier.sqlite
+.turbo
+
+# Test
+coverage
+test-results
 test-data.db
 test-index.db
+
+# Environment & secrets
+.env*
+.dev.vars
+private.pem
+public.pem
+
+# Databases
+identifier.sqlite
 dev-data/
-.codex
-.pnpm-store
-.turbo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor / IDE
+.idea
+.vscode
+*.swp
+
+# Logs & temp
+*.log*
+*.tmp
+.eslintcache
+
+# Cloudflare
+.wrangler
 
 # Worktrees
 .worktrees/
 
-# Agent/AI tooling
+# Agent / AI tooling
 .claude/
 CLAUDE.md
 .mcp.json
 opencode.jsonc
+.codex
+.serena
+.social
 .specify/
+.gstack/
 
 # Internal docs & specs
 prompts/
 specs/
 agents/
-.gstack/
