@@ -1,4 +1,58 @@
 import type { Block } from '@blocknote/core'
+import type {
+  Task as DisplayTask,
+  Priority,
+  RepeatConfig as DisplayRepeatConfig
+} from '@/data/sample-tasks'
+import type { Task as ServiceTask } from '@/services/tasks-service'
+
+const DB_PRIORITY_MAP: Record<number, Priority> = {
+  0: 'none',
+  1: 'low',
+  2: 'medium',
+  3: 'high',
+  4: 'urgent'
+}
+
+export const PRIORITY_REVERSE: Record<string, number> = {
+  none: 0,
+  low: 1,
+  medium: 2,
+  high: 3,
+  urgent: 4
+}
+
+export function serviceTaskToDisplayTask(task: ServiceTask, fallbackStatusId: string): DisplayTask {
+  let repeatConfig: DisplayRepeatConfig | null = null
+  if (task.repeatConfig) {
+    const rc = task.repeatConfig
+    repeatConfig = {
+      ...rc,
+      endDate: rc.endDate ? new Date(rc.endDate) : null,
+      createdAt: new Date(rc.createdAt)
+    }
+  }
+
+  return {
+    id: task.id,
+    title: task.title,
+    description: task.description ?? '',
+    projectId: task.projectId,
+    statusId: task.statusId ?? fallbackStatusId,
+    priority: DB_PRIORITY_MAP[task.priority] ?? 'none',
+    dueDate: task.dueDate ? new Date(task.dueDate) : null,
+    dueTime: task.dueTime ?? null,
+    isRepeating: task.repeatConfig !== null,
+    repeatConfig,
+    linkedNoteIds: task.linkedNoteIds ?? [],
+    sourceNoteId: task.sourceNoteId,
+    parentId: task.parentId,
+    subtaskIds: [],
+    createdAt: new Date(task.createdAt),
+    completedAt: task.completedAt ? new Date(task.completedAt) : null,
+    archivedAt: task.archivedAt ? new Date(task.archivedAt) : null
+  }
+}
 
 const ACTION_VERBS = new Set([
   'add',
