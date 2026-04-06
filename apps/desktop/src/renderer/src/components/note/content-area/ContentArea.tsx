@@ -564,6 +564,17 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
               createTaskForDraftBlock(draft.id, draft.title)
             }
 
+            // Detect un-indented subtask blocks (promoted to top-level)
+            for (const b of editor.document as any[]) {
+              if (b.type === 'taskBlock' && b.props?.taskId && b.props?.parentTaskId) {
+                // This block has parentTaskId but is at the top level → was un-indented
+                editor.updateBlock(b, {
+                  props: { ...b.props, parentTaskId: '' }
+                })
+                void tasksService.update({ id: b.props.taskId as string, parentId: null })
+              }
+            }
+
             for (const prevId of knownTaskBlockIdsRef.current) {
               if (!currentTaskIds.has(prevId)) {
                 void tasksService.delete(prevId)
