@@ -195,6 +195,7 @@ export const TasksPage = ({
   const lastAppliedTaskId = useRef<string | null>(null)
   const incomingTaskId = (activeTab?.viewState?.openTaskId as string) ?? null
   const incomingProjectId = (activeTab?.viewState?.selectedProjectId as string) ?? null
+  const incomingActiveTab = (activeTab?.viewState?.activeTab as TasksInternalTab) ?? null
 
   useEffect(() => {
     if (!incomingTaskId || incomingTaskId === lastAppliedTaskId.current) return
@@ -204,7 +205,10 @@ export const TasksPage = ({
       setSelectedProjectId(incomingProjectId)
       hasAppliedDefaultProject.current = true
     }
-  }, [incomingTaskId, incomingProjectId])
+    if (incomingActiveTab) {
+      setActiveInternalTab(incomingActiveTab)
+    }
+  }, [incomingTaskId, incomingProjectId, incomingActiveTab])
 
   // Modal states
   const [isAddTaskModalOpen, setIsAddTaskModalOpen] = useState(false)
