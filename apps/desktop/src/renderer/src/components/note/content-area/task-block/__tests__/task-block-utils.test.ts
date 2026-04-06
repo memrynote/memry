@@ -240,3 +240,66 @@ describe('normalizeTaskBlocks with nested children', () => {
     expect(result).toBe(blocks)
   })
 })
+
+describe('subtask round-trip: serialize → parse → normalize', () => {
+  it('serializes parent with subtask, then normalizes back', () => {
+    const parentProps = { taskId: 'p1', title: 'Groceries', checked: false, parentTaskId: '' }
+    const subtaskProps = { taskId: 's1', title: 'Buy milk', checked: true, parentTaskId: 'p1' }
+
+    const parentMd = serializeTaskBlock(parentProps)
+    const subtaskMd = serializeTaskBlock(subtaskProps)
+
+    expect(parentMd).toBe('- [ ] Groceries {task:p1}')
+    expect(subtaskMd).toBe('  - [x] Buy milk {task:s1}')
+
+    // Parse suffix extracts correctly
+    const parsedParent = parseTaskBlockSuffix('Groceries {task:p1}')
+    expect(parsedParent).toEqual({ taskId: 'p1', title: 'Groceries' })
+
+    const parsedSubtask = parseTaskBlockSuffix('Buy milk {task:s1}')
+    expect(parsedSubtask).toEqual({ taskId: 's1', title: 'Buy milk' })
+  })
+
+  it('normalizes a block tree with nested children correctly', () => {
+    const blocks = [
+      {
+        id: 'b-parent',
+        type: 'taskBlock',
+        props: { taskId: 'p1', title: 'Groceries', checked: false, parentTaskId: '' },
+        content: undefined,
+        children: [
+          {
+            id: 'b-sub1',
+            type: 'checkListItem',
+            props: { isChecked: true },
+            content: [{ type: 'text', text: 'Buy milk {task:s1}', styles: {} }],
+            children: []
+          },
+          {
+            id: 'b-sub2',
+            type: 'checkListItem',
+            props: { isChecked: false },
+            content: [{ type: 'text', text: 'Get bread {task:s2}', styles: {} }],
+            children: []
+          }
+        ]
+      }
+    ] as any[]
+
+    const { blocks: result, didChange } = normalizeTaskBlocks(blocks)
+    expect(didChange).toBe(true)
+    expect(result[0].children).toHaveLength(2)
+
+    const sub1 = result[0].children![0]
+    expect(sub1.type).toBe('taskBlock')
+    expect((sub1.props as any).taskId).toBe('s1')
+    expect((sub1.props as any).parentTaskId).toBe('p1')
+    expect((sub1.props as any).checked).toBe(true)
+
+    const sub2 = result[0].children![1]
+    expect(sub2.type).toBe('taskBlock')
+    expect((sub2.props as any).taskId).toBe('s2')
+    expect((sub2.props as any).parentTaskId).toBe('p1')
+    expect((sub2.props as any).checked).toBe(false)
+  })
+})
