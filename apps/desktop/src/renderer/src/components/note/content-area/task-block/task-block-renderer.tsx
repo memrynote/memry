@@ -404,7 +404,7 @@ export const TaskBlockRenderer: FC<TaskBlockRendererProps> = ({ block, editor, c
       className="w-full outline-none [&_*]:outline-none"
     >
       <style>{BLOCKNOTE_OVERRIDES}</style>
-      <div className={parentTaskId ? 'ml-7' : undefined}>
+      <div className={cn(parentTaskId && 'ml-7')}>
         <TaskRow
           task={rowTask}
           project={rowProject}
