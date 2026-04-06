@@ -6,6 +6,7 @@ import { TabPane } from './tab-pane'
 interface SplitLayoutRendererProps {
   layout: SplitLayout
   path: number[]
+  showSidebarToggle?: boolean
 }
 
 /**
@@ -21,7 +22,8 @@ const getLayoutDirection = (layout: SplitLayout): SplitDirection => {
 
 export const SplitLayoutRenderer = ({
   layout,
-  path
+  path,
+  showSidebarToggle = true
 }: SplitLayoutRendererProps): React.JSX.Element | null => {
   const { state, dispatch } = useTabs()
 
@@ -30,7 +32,11 @@ export const SplitLayoutRenderer = ({
     if (!group) return null
 
     return (
-      <TabPane groupId={layout.tabGroupId} isActive={state.activeGroupId === layout.tabGroupId} />
+      <TabPane
+        groupId={layout.tabGroupId}
+        isActive={state.activeGroupId === layout.tabGroupId}
+        showSidebarToggle={showSidebarToggle}
+      />
     )
   }
 
@@ -47,8 +53,12 @@ export const SplitLayoutRenderer = ({
       onResize={handleResize}
       minSize={100}
     >
-      <SplitLayoutRenderer layout={layout.first} path={[...path, 0]} />
-      <SplitLayoutRenderer layout={layout.second} path={[...path, 1]} />
+      <SplitLayoutRenderer
+        layout={layout.first}
+        path={[...path, 0]}
+        showSidebarToggle={showSidebarToggle}
+      />
+      <SplitLayoutRenderer layout={layout.second} path={[...path, 1]} showSidebarToggle={false} />
     </SplitPane>
   )
 }

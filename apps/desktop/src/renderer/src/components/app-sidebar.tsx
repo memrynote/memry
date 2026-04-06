@@ -34,7 +34,7 @@ import {
   SidebarRail,
   useSidebar
 } from '@/components/ui/sidebar'
-import { HorizontalNav } from '@/components/sidebar/horizontal-nav'
+import { SidebarNav } from '@/components/sidebar/sidebar-nav'
 import { SidebarSection } from '@/components/sidebar-section'
 import { NotesTree } from '@/components/notes-tree'
 import { SidebarTagList } from '@/components/sidebar/sidebar-tag-list'
@@ -75,19 +75,7 @@ const mainNav: {
   { title: 'Tasks', page: 'tasks', icon: SidebarTasks, shortcut: '⌘⌥4' }
 ]
 
-function SidebarHeaderContent({
-  items,
-  isActive,
-  onNavClick,
-  inboxCount,
-  todayTasksCount
-}: {
-  items: typeof mainNav
-  isActive: (item: import('@/contexts/tabs/types').SidebarItem) => boolean
-  onNavClick: (page: AppPage) => (e: React.MouseEvent) => void
-  inboxCount: number
-  todayTasksCount: number
-}) {
+function SidebarHeaderContent() {
   const { state } = useSidebar()
   const isCollapsed = state === 'collapsed'
 
@@ -104,16 +92,6 @@ function SidebarHeaderContent({
           <VaultSwitcher />
         </div>
       </div>
-
-      {/* Horizontal icon nav — between traffic lights and search */}
-      <HorizontalNav
-        items={items}
-        isActive={isActive}
-        onNavClick={onNavClick}
-        inboxCount={inboxCount}
-        todayTasksCount={todayTasksCount}
-        isCollapsed={isCollapsed}
-      />
     </SidebarHeader>
   )
 }
@@ -474,14 +452,15 @@ function AppSidebarInner({ currentPage, viewCounts, ...props }: AppSidebarProps)
 
   return (
     <Sidebar collapsible="icon" {...props}>
-      <SidebarHeaderContent
-        items={mainNav}
-        isActive={isActiveItem}
-        onNavClick={handleNavClick}
-        inboxCount={inboxCount}
-        todayTasksCount={todayTasksCount}
-      />
+      <SidebarHeaderContent />
       <SidebarContent className="flex flex-col overflow-hidden gap-0">
+        <SidebarNav
+          items={mainNav}
+          isActive={isActiveItem}
+          onNavClick={handleNavClick}
+          inboxCount={inboxCount}
+          todayTasksCount={todayTasksCount}
+        />
         <SidebarDrillDownContainer>{mainContent}</SidebarDrillDownContainer>
       </SidebarContent>
       <SidebarFooter className="gap-0">

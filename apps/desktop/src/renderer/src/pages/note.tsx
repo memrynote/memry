@@ -748,18 +748,24 @@ export function NotePage({ noteId }: NotePageProps) {
   // Handle clicking on a linked task
   const handleLinkedTaskClick = useCallback(
     (taskId: string) => {
+      const task = linkedTasks.find((t) => t.id === taskId)
       openTab({
         type: 'tasks',
         title: 'Tasks',
         icon: 'check-square',
-        path: `/tasks?taskId=${taskId}`,
+        path: '/tasks',
         isPinned: false,
         isModified: false,
         isPreview: false,
-        isDeleted: false
+        isDeleted: false,
+        viewState: {
+          openTaskId: taskId,
+          selectedProjectId: task?.projectId ?? undefined,
+          activeTab: 'all'
+        }
       })
     },
-    [openTab]
+    [openTab, linkedTasks]
   )
 
   // ============================================================================
