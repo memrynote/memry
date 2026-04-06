@@ -36,14 +36,6 @@ export const SidebarInbox = createSvgIcon(
   'SidebarInbox'
 )
 
-export const SidebarHome = createSvgIcon(
-  <>
-    <path d="M2 7.5l5.5-5 5.5 5" />
-    <path d="M3.5 6.5v5.5h3v-3h2v3h3v-5.5" />
-  </>,
-  'SidebarHome'
-)
-
 export const SidebarJournal = createSvgIcon(
   <>
     <rect x="3" y="1.5" width="9.5" height="12" rx="1" />
