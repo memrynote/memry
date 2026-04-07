@@ -204,6 +204,7 @@ export function NotePage({ noteId }: NotePageProps) {
 
   // Find in page (Cmd+F)
   const editorContainerRef = useRef<HTMLDivElement>(null)
+  const [marqueeZoneEl, setMarqueeZoneEl] = useState<HTMLDivElement | null>(null)
   const isActiveNote = activeTab?.entityId === noteId
   const findInPage = useFindInPage(
     editorContainerRef as RefObject<HTMLElement | null>,
@@ -973,9 +974,8 @@ export function NotePage({ noteId }: NotePageProps) {
 
         {/* Main content - BlockNote Editor */}
         <div
-          ref={editorContainerRef}
-          role="presentation"
-          className="editor-click-area flex-1 pb-[30vh] relative"
+          ref={setMarqueeZoneEl}
+          className="marquee-zone relative -mx-24 px-24 flex-1 flex flex-col"
           onMouseDown={(e) => {
             const target = e.target as HTMLElement
             if (
@@ -988,31 +988,38 @@ export function NotePage({ noteId }: NotePageProps) {
             focusAtEndRef.current?.()
           }}
         >
-          <EditorErrorBoundary
-            noteId={noteId}
-            onRecover={refetchNote}
-            onError={(error) => log.error('Editor error:', error)}
+          <div
+            ref={editorContainerRef}
+            role="presentation"
+            className="editor-click-area flex-1 pb-[30vh] relative"
           >
-            <ContentArea
-              key={`${noteId}-${externalUpdateCount}`}
+            <EditorErrorBoundary
               noteId={noteId}
-              initialContent={note.content}
-              contentType="markdown"
-              placeholder="Start writing, or press '/' for commands..."
-              stickyToolbar={editorSettings.toolbarMode === 'sticky'}
-              spellCheck={editorSettings.spellCheck}
-              onContentChange={handleContentChange}
-              onMarkdownChange={handleMarkdownChange}
-              onHeadingsChange={handleHeadingsChange}
-              onLinkClick={handleLinkClick}
-              onInternalLinkClick={handleInternalLinkClick}
-              initialHighlight={initialHighlight}
-              noteTags={note.tags}
-              tagColorMap={tagColorMap}
-              onInlineTagsChange={handleInlineTagsChange}
-              focusAtEndRef={focusAtEndRef}
-            />
-          </EditorErrorBoundary>
+              onRecover={refetchNote}
+              onError={(error) => log.error('Editor error:', error)}
+            >
+              <ContentArea
+                key={`${noteId}-${externalUpdateCount}`}
+                noteId={noteId}
+                initialContent={note.content}
+                contentType="markdown"
+                placeholder="Start writing, or press '/' for commands..."
+                stickyToolbar={editorSettings.toolbarMode === 'sticky'}
+                spellCheck={editorSettings.spellCheck}
+                onContentChange={handleContentChange}
+                onMarkdownChange={handleMarkdownChange}
+                onHeadingsChange={handleHeadingsChange}
+                onLinkClick={handleLinkClick}
+                onInternalLinkClick={handleInternalLinkClick}
+                initialHighlight={initialHighlight}
+                noteTags={note.tags}
+                tagColorMap={tagColorMap}
+                onInlineTagsChange={handleInlineTagsChange}
+                focusAtEndRef={focusAtEndRef}
+                marqueeZoneEl={marqueeZoneEl}
+              />
+            </EditorErrorBoundary>
+          </div>
         </div>
 
         {/* Local Graph Panel */}
