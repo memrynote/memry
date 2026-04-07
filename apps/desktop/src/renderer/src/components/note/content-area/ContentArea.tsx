@@ -46,6 +46,7 @@ import { useSidebarDrillDown } from '@/contexts/sidebar-drill-down'
 
 import {
   useBlockNoteSetup,
+  useBlockMarqueeSelection,
   useEditorDragDrop,
   useEditorFileUpload,
   useEditorSync,
@@ -53,6 +54,7 @@ import {
   useWikiLinkSuggestions,
   usePasteLinkMenu
 } from './hooks'
+import { BlockMarqueeOverlay } from './block-marquee-overlay'
 import { PasteLinkMenu } from './paste-link-menu'
 import { extractYouTubeVideoId } from '@/lib/youtube-utils'
 import { extractDomain, fetchLinkPreview } from '@/lib/url-metadata'
@@ -287,6 +289,13 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
     onSelectionChange: setHighlightSelection,
     minLength: 10,
     enabled: editable && !!noteId
+  })
+
+  // Finder-style multi-block marquee selection
+  const marquee = useBlockMarqueeSelection({
+    editor,
+    containerRef: editorContainerRef,
+    enabled: editable
   })
 
   const handleHighlightReminderCreated = useCallback(() => {
@@ -690,7 +699,10 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
         role="application"
         aria-label="Rich text editor"
         onContextMenu={handleEditorContextMenu}
+        onMouseDownCapture={marquee.onContainerMouseDownCapture}
+        data-marquee-active={marquee.isActive ? 'true' : undefined}
       >
+        <BlockMarqueeOverlay rect={marquee.marqueeRect} highlights={marquee.highlightRects} />
         <BlockNoteView
           editor={editor}
           editable={editable}
