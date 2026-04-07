@@ -750,4 +750,194 @@ test.describe('Inline Subtasks', () => {
     expect(childRow).toBeDefined()
     expect(childRow!.parentId).toBe(parentRow!.id)
   })
+
+  test('should focus the previous task title (not delete the block) when Backspace is pressed at the start of a paragraph below it', async ({
+    page
+  }) => {
+    // Reproduces the bug the user reported: "press backspace in paragraph
+    // it deletes all task blocks". taskBlock is content:'none' +
+    // contentEditable=false, so PM's default backspace handler at offset 0
+    // of the next paragraph couldn't merge text and instead nuked the
+    // previous taskBlock — cascading any subtasks too. The capture-phase
+    // listener in ContentArea now intercepts that path and redirects focus
+    // into the task title input.
+    const parentTitle = `Parent task ${Date.now()}`
+    const subTitle = `Subtask ${Date.now()}`
+
+    await createNote(page, `Backspace Focus Test ${Date.now()}`)
+    await focusEditor(page)
+
+    const parentTaskId = await createTaskInDb(page, parentTitle)
+    const subTaskId = await createTaskInDb(page, subTitle)
+    await page.evaluate(
+      async ({ subTaskId, parentTaskId }) => {
+        const api = (window as any).api
+        await api.tasks.update({ id: subTaskId, parentId: parentTaskId })
+      },
+      { subTaskId, parentTaskId }
+    )
+
+    // Seed: parent taskBlock with one subtask child, then a paragraph below.
+    await page.evaluate(
+      ({ parent, sub }) => {
+        const editor = (window as any).__memryEditor
+        editor.replaceBlocks(editor.document, [
+          {
+            type: 'taskBlock',
+            props: {
+              taskId: parent.taskId,
+              title: parent.title,
+              checked: false,
+              parentTaskId: ''
+            },
+            children: [
+              {
+                type: 'taskBlock',
+                props: {
+                  taskId: sub.taskId,
+                  title: sub.title,
+                  checked: false,
+                  parentTaskId: parent.taskId
+                }
+              }
+            ]
+          },
+          {
+            type: 'paragraph',
+            content: [{ type: 'text', text: 'hello world', styles: {} }]
+          }
+        ])
+      },
+      {
+        parent: { taskId: parentTaskId, title: parentTitle },
+        sub: { taskId: subTaskId, title: subTitle }
+      }
+    )
+    await waitForTaskBlockCount(page, 2)
+    await page.waitForTimeout(1500)
+
+    // Place cursor at the very start of the paragraph and dispatch Backspace
+    // through the contenteditable. We use the BlockNote editor API to set
+    // the cursor and then fire a real keyboard event so the capture-phase
+    // listener in ContentArea sees it before ProseMirror.
+    const result = await page.evaluate(async () => {
+      const editor = (window as any).__memryEditor
+      const doc = editor.document as any[]
+      const para = doc.find((b: any) => b.type === 'paragraph')
+      if (!para) return { reason: 'no paragraph' }
+      editor.setTextCursorPosition(para.id, 'start')
+      editor.focus()
+      await new Promise((r) => requestAnimationFrame(() => r(null)))
+      const editable = document.querySelector<HTMLElement>(
+        '[aria-label="Rich text editor"] [contenteditable="true"]'
+      )
+      if (!editable) return { reason: 'no editable' }
+      const ev = new KeyboardEvent('keydown', {
+        key: 'Backspace',
+        code: 'Backspace',
+        bubbles: true,
+        cancelable: true
+      })
+      editable.dispatchEvent(ev)
+      return { reason: 'ok', defaultPrevented: ev.defaultPrevented }
+    })
+    expect(result.reason).toBe('ok')
+    expect(result.defaultPrevented).toBe(true)
+
+    // #then — both task blocks still exist (no cascade nuke).
+    await page.waitForTimeout(500)
+    await waitForTaskBlockCount(page, 2)
+    const rows = await findTasksByTitles(page, [parentTitle, subTitle])
+    expect(rows).toHaveLength(2)
+
+    // #then — the visually-previous taskBlock (the subtask) is now in
+    // edit mode: its title input is rendered and focused.
+    const focusedTitle = await page.evaluate(() => {
+      const active = document.activeElement
+      if (!(active instanceof HTMLInputElement)) return null
+      return active.value
+    })
+    expect(focusedTitle).toBe(subTitle)
+  })
+
+  test('should delete the task block and DB row when Backspace is pressed in an empty title', async ({
+    page
+  }) => {
+    // #given — a single task block in the editor backed by a real DB row.
+    // The renderer's title input is the only place a backspace can land
+    // when the title is empty; without the new keydown branch the keypress
+    // bubbles to the browser and nothing happens.
+    const taskTitle = `Throwaway ${Date.now()}`
+
+    await createNote(page, `Backspace Delete Test ${Date.now()}`)
+    await focusEditor(page)
+
+    const taskId = await createTaskInDb(page, taskTitle)
+
+    await page.evaluate(
+      ({ taskId, title }) => {
+        const editor = (window as any).__memryEditor
+        if (!editor) throw new Error('window.__memryEditor not exposed')
+        editor.replaceBlocks(editor.document, [
+          {
+            type: 'taskBlock',
+            props: { taskId, title, checked: false, parentTaskId: '' }
+          }
+        ])
+      },
+      { taskId, title: taskTitle }
+    )
+    await waitForTaskBlockCount(page, 1)
+    // Allow useTaskBlockData to load + the renderer to settle into edit mode.
+    await page.waitForTimeout(1500)
+
+    // #when — empty the input and dispatch a Backspace keydown directly at
+    // the React title input. We can't rely on `page.keyboard.press` because
+    // BlockNote may not have routed focus to the input the way the user
+    // would; driving the input handler synthetically matches how the demote
+    // test at the top of this file works.
+    const dispatched = await page.evaluate(async () => {
+      const taskBlocks = document.querySelectorAll<HTMLElement>(
+        '[data-content-type="taskBlock"]'
+      )
+      if (taskBlocks.length !== 1) {
+        return { reason: 'taskBlock count', count: taskBlocks.length }
+      }
+      const block = taskBlocks[0]
+      let input = block.querySelector<HTMLInputElement>('input[type="text"]')
+      if (!input) {
+        const clickable = block.querySelector<HTMLElement>('[role="button"][tabindex="0"]')
+        if (clickable) {
+          clickable.click()
+          await new Promise((r) => requestAnimationFrame(() => r(null)))
+          await new Promise((r) => requestAnimationFrame(() => r(null)))
+          input = block.querySelector<HTMLInputElement>('input[type="text"]')
+        }
+      }
+      if (!input) return { reason: 'no input' }
+      input.focus()
+      // Drive React's onChange to clear editTitle BEFORE the Backspace
+      // keydown — the renderer's branch only fires on length === 0.
+      const proto = Object.getPrototypeOf(input) as object
+      const setter = Object.getOwnPropertyDescriptor(proto, 'value')?.set
+      setter?.call(input, '')
+      input.dispatchEvent(new Event('input', { bubbles: true }))
+      await new Promise((r) => setTimeout(r, 50))
+      const ev = new KeyboardEvent('keydown', {
+        key: 'Backspace',
+        code: 'Backspace',
+        bubbles: true,
+        cancelable: true
+      })
+      input.dispatchEvent(ev)
+      return { reason: 'ok' }
+    })
+    expect(dispatched).toEqual({ reason: 'ok' })
+
+    // #then — block disappears from the DOM and the DB row is gone.
+    await waitForTaskBlockCount(page, 0)
+    await page.waitForTimeout(1500)
+    const remaining = await findTasksByTitles(page, [taskTitle])
+    expect(remaining).toHaveLength(0)
+  })
 })
