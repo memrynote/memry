@@ -239,6 +239,11 @@ export function normalizeTaskBlocks(blocks: Block[]): { blocks: Block[]; didChan
       if (!parsed) return block
 
       didChange = true
+
+      const processedChildren = block.children?.length
+        ? processBlocks(block.children as Block[], parsed.taskId)
+        : []
+
       return {
         type: 'taskBlock',
         props: {
@@ -248,7 +253,7 @@ export function normalizeTaskBlocks(blocks: Block[]): { blocks: Block[]; didChan
           parentTaskId
         },
         content: undefined,
-        children: [],
+        children: processedChildren,
         id: block.id
       } as unknown as Block
     })
