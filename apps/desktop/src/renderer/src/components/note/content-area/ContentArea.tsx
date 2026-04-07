@@ -87,7 +87,6 @@ function findBlockWithLinkMention(
 interface ContentAreaEditorProps extends ContentAreaProps {
   yjsFragment?: Y.XmlFragment
   isRemoteUpdateRef?: React.RefObject<boolean>
-  marqueeZoneEl?: HTMLDivElement | null
 }
 
 const ContentAreaEditor = memo(function ContentAreaEditor({
@@ -300,6 +299,8 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
     setInnerContainerEl(el)
   }, [])
 
+  // State (not just editorContainerRef) so the marquee hook's useEffect
+  // re-runs when .bn-container first mounts — refs don't trigger effects.
   const triggerEl = marqueeZoneEl ?? innerContainerEl
 
   // Finder-style multi-block marquee selection
