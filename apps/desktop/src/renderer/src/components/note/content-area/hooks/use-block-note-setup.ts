@@ -80,6 +80,16 @@ export function useBlockNoteSetup({
     return () => document.removeEventListener('keydown', handleKeyDown)
   }, [aiReady, editor])
 
+  // E2E test instrumentation: expose the active editor on window so Playwright
+  // tests can drive the editor via its API (avoiding typing-race conditions
+  // with auto-promote handlers). Only the currently mounted editor is exposed.
+  useEffect(() => {
+    ;(window as unknown as { __memryEditor?: unknown }).__memryEditor = editor
+    return () => {
+      delete (window as unknown as { __memryEditor?: unknown }).__memryEditor
+    }
+  }, [editor])
+
   // SpellCheck DOM sync
   useEffect(() => {
     if (spellCheck === undefined) return
