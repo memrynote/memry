@@ -302,4 +302,54 @@ describe('subtask round-trip: serialize → parse → normalize', () => {
     expect((sub2.props as any).parentTaskId).toBe('p1')
     expect((sub2.props as any).checked).toBe(false)
   })
+
+  it('preserves nested children when converting parent checkListItem to taskBlock (markdown deserialization case)', () => {
+    // #given - both parent and child are checkListItems (typical fresh markdown parse)
+    const blocks = [
+      {
+        id: 'b-parent',
+        type: 'checkListItem',
+        props: { isChecked: false },
+        content: [{ type: 'text', text: 'Groceries {task:p1}', styles: {} }],
+        children: [
+          {
+            id: 'b-sub1',
+            type: 'checkListItem',
+            props: { isChecked: true },
+            content: [{ type: 'text', text: 'Buy milk {task:s1}', styles: {} }],
+            children: []
+          },
+          {
+            id: 'b-sub2',
+            type: 'checkListItem',
+            props: { isChecked: false },
+            content: [{ type: 'text', text: 'Get bread {task:s2}', styles: {} }],
+            children: []
+          }
+        ]
+      }
+    ] as any[]
+
+    // #when
+    const { blocks: result, didChange } = normalizeTaskBlocks(blocks)
+
+    // #then - parent converted AND children preserved + converted with correct parentTaskId
+    expect(didChange).toBe(true)
+    expect(result[0].type).toBe('taskBlock')
+    expect((result[0].props as any).taskId).toBe('p1')
+    expect((result[0].props as any).parentTaskId).toBe('')
+    expect(result[0].children).toHaveLength(2)
+
+    const sub1 = result[0].children![0]
+    expect(sub1.type).toBe('taskBlock')
+    expect((sub1.props as any).taskId).toBe('s1')
+    expect((sub1.props as any).parentTaskId).toBe('p1')
+    expect((sub1.props as any).checked).toBe(true)
+
+    const sub2 = result[0].children![1]
+    expect(sub2.type).toBe('taskBlock')
+    expect((sub2.props as any).taskId).toBe('s2')
+    expect((sub2.props as any).parentTaskId).toBe('p1')
+    expect((sub2.props as any).checked).toBe(false)
+  })
 })
