@@ -2243,3 +2243,39 @@ del.bn-inline-content {
     animation: none;
   }
 }
+
+/* ============================================================================
+   MARQUEE BLOCK SELECTION
+   ============================================================================ */
+
+/*
+ * Highlight rectangles are rendered as absolute-positioned overlay divs (not
+ * via attributes on .bn-block) because ProseMirror's MutationObserver reverts
+ * any DOM mutation it didn't make. The overlay sits inside .bn-container which
+ * is `position: relative`.
+ */
+.marquee-block-highlight {
+  position: absolute;
+  pointer-events: none;
+  background-color: rgba(59, 130, 246, 0.14);
+  border-radius: 4px;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.35);
+  z-index: 30;
+}
+
+.marquee-overlay {
+  position: absolute;
+  pointer-events: none;
+  border: 1px solid rgba(59, 130, 246, 0.6);
+  background-color: rgba(59, 130, 246, 0.08);
+  z-index: 40;
+  border-radius: 2px;
+}
+
+.bn-container[data-marquee-active='true'] {
+  cursor: default;
+  user-select: none;
+}
+.bn-container[data-marquee-active='true'] * {
+  user-select: none !important;
+}
