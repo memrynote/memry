@@ -74,7 +74,9 @@ export const issueTokens = async (
   return tokens
 }
 
-const ROTATION_GRACE_SECONDS = 60
+// Grace window for legitimate retry scenarios (e.g., client lost response mid-rotation).
+// Kept short to narrow the replay window for an intercepted refresh token.
+const ROTATION_GRACE_SECONDS = 10
 const MAX_ROTATION_ATTEMPTS = 3
 
 const tryRotateBatch = async (
