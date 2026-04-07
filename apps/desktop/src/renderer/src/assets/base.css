@@ -141,6 +141,24 @@
   padding: 1px 0;
 }
 
+/* ===== NESTED INDENT GUIDE ALIGNMENT =====
+   BlockNote's default vertical guide line for nested blocks sits at left:-20px
+   on the child .bn-block-outer, which lands ~6px left of where every block
+   type's marker (bullet "•", number "1.", task status icon) actually is.
+   Marker center is consistently at parent block-content left + 10px:
+   - bullet/numbered: ::before is min-width:24px; padding-right:4px → glyph
+     center at (24-4)/2 = 10px from block-content left
+   - taskBlock: button p-0.5 around 16px icon → button width 20px → center at
+     10px from block-content left (with px-0 override)
+   Nested .bn-block-group has margin-left:24px, so to land the line at
+   parent_block_content_left + 10, the :before's left must be 10 - 24 = -14px.
+   `!important` is needed because @blocknote/shadcn/style.css is imported in
+   ContentArea.tsx, which Vite injects into <head> AFTER this file — same
+   specificity loses on cascade order. */
+:root .bn-block-group .bn-block-group > .bn-block-outer::before {
+  left: -14px !important;
+}
+
 /* ===== TABLE CELLS ===== */
 :root .bn-editor [data-content-type='table'] th,
 :root .bn-editor [data-content-type='table'] td {

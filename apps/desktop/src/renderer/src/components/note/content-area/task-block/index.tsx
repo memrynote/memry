@@ -12,7 +12,8 @@ export const createTaskBlock = createReactBlockSpec(
     propSchema: {
       taskId: { default: '' },
       title: { default: '' },
-      checked: { default: false }
+      checked: { default: false },
+      parentTaskId: { default: '' }
     },
     content: 'none'
   },

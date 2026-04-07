@@ -72,11 +72,23 @@ function getStartupThemeSync(): StartupTheme {
     // localStorage may be unavailable; fall through to IPC
   }
   // First launch (or corrupted storage): fall back to synchronous IPC.
+  // The main-process handler returns `{ theme, accentColor? }`, so unwrap it
+  // and validate. Treating the object as a string here would propagate
+  // `[object Object]` into next-themes' localStorage and crash the renderer.
   try {
-    return ipcRenderer.sendSync(SettingsChannels.sync.GET_STARTUP_THEME) as StartupTheme
+    const raw = ipcRenderer.sendSync(SettingsChannels.sync.GET_STARTUP_THEME) as
+      | StartupTheme
+      | { theme?: StartupTheme }
+      | null
+      | undefined
+    const value = typeof raw === 'string' ? raw : raw?.theme
+    if (value === 'light' || value === 'dark' || value === 'white' || value === 'system') {
+      return value
+    }
   } catch {
-    return 'system'
+    // fall through
   }
+  return 'system'
 }
 
 function resolveStartupTheme(theme: StartupTheme): 'light' | 'dark' | 'white' {

@@ -92,8 +92,26 @@ export async function serializeBlocksPreservingBlanks(
     if ((block.type as string) === 'taskBlock') {
       await flushContent()
       flushGap()
-      const props = block.props as { taskId: string; title: string; checked: boolean }
+      const props = block.props as {
+        taskId: string
+        title: string
+        checked: boolean
+        parentTaskId?: string
+      }
       segments.push({ type: 'content', text: serializeTaskBlock(props) })
+      if (block.children?.length) {
+        for (const child of block.children as Block[]) {
+          if ((child.type as string) === 'taskBlock') {
+            const childProps = child.props as {
+              taskId: string
+              title: string
+              checked: boolean
+              parentTaskId?: string
+            }
+            segments.push({ type: 'content', text: serializeTaskBlock(childProps) })
+          }
+        }
+      }
     } else if ((block.type as string) === 'youtubeEmbed') {
       await flushContent()
       flushGap()
