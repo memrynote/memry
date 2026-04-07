@@ -467,15 +467,21 @@ auth.get('/recovery', recoveryIpRateLimit, async (c) => {
     throw new AppError(ErrorCodes.VALIDATION_ERROR, 'Valid email is required', 400)
   }
 
+  // Anti-enumeration: always run BOTH the DB lookup and the dummy computation
+  // regardless of whether the user exists, then select the response deterministically
+  // with a single response shape. This keeps wall-clock timing and JSON serialization
+  // side-channels identical between the "user exists" and "user does not exist" paths.
   const [user, dummy] = await Promise.all([
     getUserByEmail(c.env.DB, parsed.data.email),
     generateDummyRecoveryData(parsed.data.email, c.env.RECOVERY_DUMMY_SECRET)
   ])
 
-  if (user?.kdf_salt && user.key_verifier) {
-    return c.json({ kdfSalt: user.kdf_salt, keyVerifier: user.key_verifier })
+  const hasRealRecovery = Boolean(user?.kdf_salt && user?.key_verifier)
+  const response = {
+    kdfSalt: hasRealRecovery ? (user!.kdf_salt as string) : dummy.kdfSalt,
+    keyVerifier: hasRealRecovery ? (user!.key_verifier as string) : dummy.keyVerifier
   }
-  return c.json(dummy)
+  return c.json(response)
 })
 
 // POST /setup — requires authenticated device (access token). The kdf_salt null
