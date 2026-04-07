@@ -55,6 +55,7 @@ opencode.jsonc
 .social
 .specify/
 .gstack/
+.playwright-mcp
 
 # Internal docs & specs
 prompts/

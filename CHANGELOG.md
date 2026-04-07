@@ -14,6 +14,23 @@ Format: weekly entries grouped by feature area.
 
 ---
 
+## 2026-04-07 — Inline Subtasks in Notes
+
+### Added
+- Support inline subtasks within notes: add parentTaskId, indented rendering, serialization, and recursive normalization
+- Auto-detect indented checkboxes under task blocks as subtasks
+- Promote subtask to standalone task when un-indented (Shift+Tab)
+- Task intent analysis utility to detect checkbox and task-block operations
+- Debounced auto-promote and auto-demote handlers for keyboard navigation
+
+### Fixed
+- Delete taskBlock on Backspace in empty title; prevent cascade deletion
+- Preserve nested children when converting checkListItem to taskBlock
+- Sanitize theme values to prevent corruption
+- Fix type narrowing for taskBlock check in normalizeTaskBlocks
+
+---
+
 ## 2026-04-07 — Tasks Tab State Persistence
 
 ### Added
