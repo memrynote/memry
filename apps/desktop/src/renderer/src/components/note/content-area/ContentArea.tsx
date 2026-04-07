@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
+import { createPortal } from 'react-dom'
 import { memo, useCallback, useEffect, useRef, useState } from 'react'
 import {
   SuggestionMenuController,
@@ -86,6 +87,7 @@ function findBlockWithLinkMention(
 interface ContentAreaEditorProps extends ContentAreaProps {
   yjsFragment?: Y.XmlFragment
   isRemoteUpdateRef?: React.RefObject<boolean>
+  marqueeZoneEl?: HTMLDivElement | null
 }
 
 const ContentAreaEditor = memo(function ContentAreaEditor({
@@ -108,7 +110,8 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
   onInlineTagsChange,
   focusAtEndRef,
   yjsFragment,
-  isRemoteUpdateRef
+  isRemoteUpdateRef,
+  marqueeZoneEl
 }: ContentAreaEditorProps) {
   const { resolvedTheme } = useTheme()
   const editorTheme = resolvedTheme === 'dark' ? 'dark' : 'light'
@@ -291,10 +294,19 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
     enabled: editable && !!noteId
   })
 
+  const [innerContainerEl, setInnerContainerEl] = useState<HTMLDivElement | null>(null)
+  const setEditorContainerRef = useCallback((el: HTMLDivElement | null) => {
+    editorContainerRef.current = el
+    setInnerContainerEl(el)
+  }, [])
+
+  const triggerEl = marqueeZoneEl ?? innerContainerEl
+
   // Finder-style multi-block marquee selection
   const marquee = useBlockMarqueeSelection({
     editor,
-    containerRef: editorContainerRef,
+    blockContainerRef: editorContainerRef,
+    triggerContainerEl: triggerEl,
     enabled: editable
   })
 
@@ -691,7 +703,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
       )}
 
       <div
-        ref={editorContainerRef}
+        ref={setEditorContainerRef}
         className={cn(
           'bn-container flex-1 min-h-[300px] relative',
           stickyToolbar && 'sticky-toolbar-enabled'
@@ -699,10 +711,10 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
         role="application"
         aria-label="Rich text editor"
         onContextMenu={handleEditorContextMenu}
-        onMouseDownCapture={marquee.onContainerMouseDownCapture}
-        data-marquee-active={marquee.isActive ? 'true' : undefined}
       >
-        <BlockMarqueeOverlay rect={marquee.marqueeRect} highlights={marquee.highlightRects} />
+        {!marqueeZoneEl && (
+          <BlockMarqueeOverlay rect={marquee.marqueeRect} highlights={marquee.highlightRects} />
+        )}
         <BlockNoteView
           editor={editor}
           editable={editable}
@@ -834,6 +846,11 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
           onSelect={handlePasteLinkOptionSelect}
         />
       </div>
+      {marqueeZoneEl &&
+        createPortal(
+          <BlockMarqueeOverlay rect={marquee.marqueeRect} highlights={marquee.highlightRects} />,
+          marqueeZoneEl
+        )}
     </div>
   )
 })
