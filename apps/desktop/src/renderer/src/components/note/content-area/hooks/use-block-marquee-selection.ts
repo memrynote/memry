@@ -116,6 +116,13 @@ export function useBlockMarqueeSelection({
       if (event.button !== 0) return
       if (!shouldStartMarquee(event.target)) return
 
+      // Whether this gesture started inside editable text. Affects the promotion
+      // gate: text-selection-preservation only matters when there is text to
+      // select. Drags that start in the gutter promote on any vertical motion.
+      const startedInsideEditableText =
+        event.target instanceof Element &&
+        event.target.closest('[contenteditable="true"]') !== null
+
       const blockContainer = blockContainerRef.current
       if (!blockContainer) return
 
@@ -211,10 +218,11 @@ export function useBlockMarqueeSelection({
         if (!isMarquee) {
           const dx = Math.abs(moveEvent.clientX - origin.clientX)
           const dy = Math.abs(moveEvent.clientY - origin.clientY)
-          // Only promote on a clearly vertical drag — preserves horizontal
-          // text selection inside a paragraph (drag right to highlight a word).
+          // Drags that start inside editable text must be clearly vertical so we
+          // don't steal "drag right to highlight a word" gestures. Drags that start
+          // in the gutter (no text to select) promote on any vertical motion.
           if (dy < VERTICAL_PROMOTE_PX) return
-          if (dx > HORIZONTAL_LIMIT_PX && dx > dy) return
+          if (startedInsideEditableText && dx > HORIZONTAL_LIMIT_PX && dx > dy) return
           promote()
         }
 
