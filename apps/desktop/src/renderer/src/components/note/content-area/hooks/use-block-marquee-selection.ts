@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-import { useCallback, useEffect, useRef, useState, type MouseEvent as ReactMouseEvent } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { createLogger } from '@/lib/logger'
 
 const log = createLogger('Hook:Marquee')
@@ -26,7 +26,10 @@ export interface BlockHighlightRect {
 
 interface UseBlockMarqueeSelectionOptions {
   editor: any
-  containerRef: React.RefObject<HTMLDivElement | null>
+  /** The `.bn-container` ref — used to query `.bn-block[data-id]` for hit-testing + ordering. */
+  blockContainerRef: React.RefObject<HTMLDivElement | null>
+  /** The outer wrapper element that owns the listener and the overlay coordinate space. */
+  triggerContainerEl: HTMLDivElement | null
   enabled?: boolean
 }
 
@@ -36,7 +39,6 @@ interface UseBlockMarqueeSelectionReturn {
   isActive: boolean
   selectedBlockIds: ReadonlySet<string>
   clearSelection: () => void
-  onContainerMouseDownCapture: (event: ReactMouseEvent<HTMLDivElement>) => void
 }
 
 interface OriginPoint {
@@ -54,10 +56,6 @@ function shouldStartMarquee(target: EventTarget | null): boolean {
   ) {
     return false
   }
-  // Allow mousedown anywhere inside the editor — including inside block text.
-  // BlockNote shadcn has no margin/gutter, so promotion to marquee is gated by
-  // gesture direction (vertical drag) and not by click target. This preserves
-  // horizontal text selection inside a paragraph.
   return true
 }
 
@@ -83,7 +81,8 @@ function getOrderedBlockIds(container: HTMLElement, ids: ReadonlySet<string>): s
 
 export function useBlockMarqueeSelection({
   editor,
-  containerRef,
+  blockContainerRef,
+  triggerContainerEl,
   enabled = true
 }: UseBlockMarqueeSelectionOptions): UseBlockMarqueeSelectionReturn {
   const [marqueeRect, setMarqueeRect] = useState<MarqueeRect | null>(null)
@@ -105,24 +104,24 @@ export function useBlockMarqueeSelection({
     setMarqueeRect(null)
     setIsActive(false)
     hasSelectionRef.current = false
-    const container = containerRef.current
-    if (container) container.removeAttribute(ACTIVE_ATTR)
-  }, [containerRef])
+    if (triggerContainerEl) triggerContainerEl.removeAttribute(ACTIVE_ATTR)
+  }, [triggerContainerEl])
 
-  const onContainerMouseDownCapture = useCallback(
-    (event: ReactMouseEvent<HTMLDivElement>): void => {
-      if (!enabled) return
+  useEffect(() => {
+    if (!enabled) return
+    const trigger = triggerContainerEl
+    if (!trigger) return
+
+    const onMouseDown = (event: globalThis.MouseEvent): void => {
       if (event.button !== 0) return
       if (!shouldStartMarquee(event.target)) return
 
-      const container = containerRef.current
-      if (!container) return
+      const blockContainer = blockContainerRef.current
+      if (!blockContainer) return
 
-      // Mid-drag re-entry guard: if a previous gesture is still wired up, drop it.
       teardownDragRef.current?.()
       teardownDragRef.current = null
 
-      // Clear any prior visual selection on a fresh mousedown.
       if (hasSelectionRef.current) {
         selectedRef.current = new Set()
         setSelectedBlockIds(new Set())
@@ -145,7 +144,7 @@ export function useBlockMarqueeSelection({
       const promote = (): void => {
         isMarquee = true
         setIsActive(true)
-        container.setAttribute(ACTIVE_ATTR, 'true')
+        trigger.setAttribute(ACTIVE_ATTR, 'true')
         try {
           const view = editor?.prosemirrorView
           const dom = view?.dom as HTMLElement | undefined
@@ -162,14 +161,14 @@ export function useBlockMarqueeSelection({
 
       const tick = (): void => {
         rafId = null
-        const containerBounds = container.getBoundingClientRect()
+        const triggerBounds = trigger.getBoundingClientRect()
         const clampedX = Math.max(
-          containerBounds.left,
-          Math.min(lastMove.clientX, containerBounds.right)
+          triggerBounds.left,
+          Math.min(lastMove.clientX, triggerBounds.right)
         )
         const clampedY = Math.max(
-          containerBounds.top,
-          Math.min(lastMove.clientY, containerBounds.bottom)
+          triggerBounds.top,
+          Math.min(lastMove.clientY, triggerBounds.bottom)
         )
 
         const left = Math.min(origin.clientX, clampedX)
@@ -177,7 +176,7 @@ export function useBlockMarqueeSelection({
         const top = Math.min(origin.clientY, clampedY)
         const bottom = Math.max(origin.clientY, clampedY)
 
-        const blockEls = container.querySelectorAll<HTMLElement>('.bn-block[data-id]')
+        const blockEls = blockContainer.querySelectorAll<HTMLElement>('.bn-block[data-id]')
         const next = new Set<string>()
         const nextRects: BlockHighlightRect[] = []
         blockEls.forEach((el) => {
@@ -188,8 +187,8 @@ export function useBlockMarqueeSelection({
             next.add(id)
             nextRects.push({
               id,
-              left: blockRect.left - containerBounds.left,
-              top: blockRect.top - containerBounds.top,
+              left: blockRect.left - triggerBounds.left,
+              top: blockRect.top - triggerBounds.top,
               width: blockRect.width,
               height: blockRect.height
             })
@@ -199,8 +198,8 @@ export function useBlockMarqueeSelection({
         setHighlightRects(nextRects)
 
         setMarqueeRect({
-          left: left - containerBounds.left,
-          top: top - containerBounds.top,
+          left: left - triggerBounds.left,
+          top: top - triggerBounds.top,
           width: right - left,
           height: bottom - top
         })
@@ -212,8 +211,6 @@ export function useBlockMarqueeSelection({
         if (!isMarquee) {
           const dx = Math.abs(moveEvent.clientX - origin.clientX)
           const dy = Math.abs(moveEvent.clientY - origin.clientY)
-          // Only promote on a clearly vertical drag — preserves horizontal
-          // text selection inside a paragraph (drag right to highlight a word).
           if (dy < VERTICAL_PROMOTE_PX) return
           if (dx > HORIZONTAL_LIMIT_PX && dx > dy) return
           promote()
@@ -229,21 +226,19 @@ export function useBlockMarqueeSelection({
         const finalIds = new Set(selectedRef.current)
         setMarqueeRect(null)
         setIsActive(false)
-        container.removeAttribute(ACTIVE_ATTR)
+        trigger.removeAttribute(ACTIVE_ATTR)
         setSelectedBlockIds(finalIds)
         hasSelectionRef.current = finalIds.size > 0
         if (finalIds.size === 0) setHighlightRects([])
 
         if (finalIds.size >= 2) {
-          const ordered = getOrderedBlockIds(container, finalIds)
+          const ordered = getOrderedBlockIds(blockContainer, finalIds)
           if (ordered.length >= 2) {
             const firstId = ordered[0]
             const lastId = ordered[ordered.length - 1]
             try {
               isApplyingPmSelectionRef.current = true
               editor.setSelection(firstId, lastId)
-              // Re-focus the editor so keyboard actions (Backspace, Cmd+C,
-              // Cmd+A) reach ProseMirror — promote() blurred it.
               try {
                 editor.prosemirrorView?.focus?.()
               } catch (err) {
@@ -277,9 +272,16 @@ export function useBlockMarqueeSelection({
       teardownDragRef.current = teardown
       document.addEventListener('mousemove', onMove)
       document.addEventListener('mouseup', onUp)
-    },
-    [containerRef, editor, enabled]
-  )
+    }
+
+    trigger.addEventListener('mousedown', onMouseDown, true)
+    return () => {
+      trigger.removeEventListener('mousedown', onMouseDown, true)
+      teardownDragRef.current?.()
+      teardownDragRef.current = null
+      trigger.removeAttribute(ACTIVE_ATTR)
+    }
+  }, [enabled, triggerContainerEl, blockContainerRef, editor])
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent): void => {
@@ -294,14 +296,14 @@ export function useBlockMarqueeSelection({
   useEffect(() => {
     const onMouseDown = (event: globalThis.MouseEvent): void => {
       if (!hasSelectionRef.current) return
-      const container = containerRef.current
-      if (!container) return
-      if (event.target instanceof Node && container.contains(event.target)) return
+      const trigger = triggerContainerEl
+      if (!trigger) return
+      if (event.target instanceof Node && trigger.contains(event.target)) return
       clearSelection()
     }
     document.addEventListener('mousedown', onMouseDown, true)
     return () => document.removeEventListener('mousedown', onMouseDown, true)
-  }, [clearSelection, containerRef])
+  }, [clearSelection, triggerContainerEl])
 
   useEffect(() => {
     if (!editor?.onSelectionChange) return
@@ -320,20 +322,19 @@ export function useBlockMarqueeSelection({
   }, [editor, clearSelection])
 
   useEffect(() => {
-    const container = containerRef.current
+    const trigger = triggerContainerEl
     return () => {
       teardownDragRef.current?.()
       teardownDragRef.current = null
-      if (container) container.removeAttribute(ACTIVE_ATTR)
+      if (trigger) trigger.removeAttribute(ACTIVE_ATTR)
     }
-  }, [containerRef])
+  }, [triggerContainerEl])
 
   return {
     marqueeRect,
     highlightRects,
     isActive,
     selectedBlockIds,
-    clearSelection,
-    onContainerMouseDownCapture
+    clearSelection
   }
 }
