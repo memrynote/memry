@@ -31,9 +31,16 @@ export const test = base.extend<{
   // Launch Electron application
   electronApp: async ({ testVaultPath }, use) => {
     const isCI = !!process.env.CI
+    // Per-test user-data-dir keeps Chromium state (cookies, localStorage,
+    // GPU caches) isolated. Without this, Electron's shared
+    // `Application Support/Electron` dir can hold corrupted state from
+    // previous runs (e.g. an `[object Object]` theme value that crashes
+    // next-themes during renderer init), causing every test to fail.
+    const userDataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'memry-userdata-'))
     const app = await electron.launch({
       args: [
         ...(isCI ? ['--no-sandbox', '--disable-gpu'] : []),
+        `--user-data-dir=${userDataDir}`,
         path.join(__dirname, '../../out/main/index.js')
       ],
       env: {
@@ -47,6 +54,7 @@ export const test = base.extend<{
     await use(app)
 
     await app.close()
+    fs.rmSync(userDataDir, { recursive: true, force: true })
   },
 
   // Get the main window page

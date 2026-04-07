@@ -41,6 +41,19 @@ const queryClient = new QueryClient({
   }
 })
 
+// Sanitize a stale or corrupted theme value in localStorage before next-themes
+// reads it. A pre-existing bug elsewhere can write `[object Object]` here,
+// which next-themes then passes to documentElement.classList.add() — DOMTokenList
+// rejects the token (it contains a space) and the renderer crashes blank.
+try {
+  const cached = window.localStorage.getItem(THEME_STORAGE_KEY)
+  if (cached !== null && cached !== 'light' && cached !== 'dark' && cached !== 'white' && cached !== 'system') {
+    window.localStorage.removeItem(THEME_STORAGE_KEY)
+  }
+} catch {
+  // localStorage may be unavailable; ignore
+}
+
 // Check if this is the quick capture window (opened via global shortcut)
 // Handle both '#/quick-capture' and '#quick-capture' formats
 const isQuickCaptureWindow =
