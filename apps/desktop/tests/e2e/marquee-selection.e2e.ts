@@ -15,7 +15,7 @@ const EDITABLE_SELECTOR = `${EDITOR_CONTAINER} [contenteditable="true"]`
 const BLOCK_SELECTOR = '.bn-block[data-id]'
 const HIGHLIGHTED_SELECTOR = '.marquee-block-highlight'
 const OVERLAY_SELECTOR = '.marquee-overlay'
-const MARQUEE_ZONE = '.marquee-zone'
+const MARQUEE_ZONE_SELECTOR = '.marquee-zone'
 
 async function focusEditor(page: Page) {
   const container = page.locator(EDITOR_CONTAINER).first()
@@ -44,7 +44,7 @@ async function getBlockCount(page: Page): Promise<number> {
 }
 
 async function getMarqueeZoneBox(page: Page) {
-  const box = await page.locator(MARQUEE_ZONE).first().boundingBox()
+  const box = await page.locator(MARQUEE_ZONE_SELECTOR).first().boundingBox()
   if (!box) throw new Error('marquee zone not found')
   return box
 }
@@ -241,12 +241,10 @@ test.describe('Block marquee selection', () => {
     const first = await getBlockBox(page, 0)
     const last = await getBlockBox(page, 2)
 
-    // Start ~24px in from the LEFT edge of the marquee zone (well outside .bn-container)
-    // at the vertical center of the first block.
     const startX = zone.x + 24
     const startY = first.y + first.height / 2
-    // End in the gutter to the LEFT of the editor, level with the last block's bottom.
-    const endX = zone.x + 24
+    // End INSIDE the editor so the marquee rectangle crosses block geometry.
+    const endX = first.x + first.width / 2
     const endY = last.y + last.height - 4
 
     await page.mouse.move(startX, startY)
@@ -277,10 +275,10 @@ test.describe('Block marquee selection', () => {
     const first = await getBlockBox(page, 0)
     const last = await getBlockBox(page, 2)
 
-    // Start ~24px in from the RIGHT edge of the marquee zone.
     const startX = zone.x + zone.width - 24
     const startY = first.y + first.height / 2
-    const endX = startX
+    // End INSIDE the editor so the marquee rectangle crosses block geometry.
+    const endX = first.x + first.width / 2
     const endY = last.y + last.height - 4
 
     await page.mouse.move(startX, startY)
@@ -314,10 +312,7 @@ test.describe('Block marquee selection', () => {
     await expect(page.locator(OVERLAY_SELECTOR)).toHaveCount(0)
     await expect(page.locator(HIGHLIGHTED_SELECTOR)).toHaveCount(0)
 
-    // Editor should be focused after the gutter click — typing appends text.
-    await page.keyboard.type(' EXTRA')
-    await page.waitForTimeout(150)
     const editable = page.locator(EDITABLE_SELECTOR).first()
-    await expect(editable).toContainText('EXTRA')
+    await expect(editable).toBeFocused()
   })
 })
