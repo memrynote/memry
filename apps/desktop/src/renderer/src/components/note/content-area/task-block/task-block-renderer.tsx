@@ -26,7 +26,6 @@ const BLOCKNOTE_OVERRIDES = `
   .bn-block[data-id]:has([data-content-type="taskBlock"]):focus-within { border: none !important; outline: none !important; box-shadow: none !important; }
   .bn-block-content[data-content-type="taskBlock"]:focus { outline: none !important; border: none !important; }
   [data-content-type="taskBlock"] * { outline: none !important; }
-  .bn-block-group .bn-block-group > .bn-block-outer:has(> .bn-block > [data-content-type="taskBlock"])::before { left: -14px; }
   /* Selection highlight: when ProseMirror puts a NodeSelection on the
      taskBlock (drag-handle click, Esc-then-arrow, etc.), our blanket
      outline:none rules above used to hide it. Restore a visible state so
