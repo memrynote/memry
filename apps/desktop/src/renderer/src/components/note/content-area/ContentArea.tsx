@@ -577,6 +577,86 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
     [editor, convertCheckboxToTask]
   )
 
+  // Backspace-at-start guard for taskBlock neighbours.
+  //
+  // Without this, pressing Backspace at column 0 of a paragraph that sits
+  // directly below a taskBlock falls through to ProseMirror's default
+  // backspace handler. taskBlock declares `content: 'none'` and renders
+  // contentEditable={false}, so PM can't merge text into it — instead it
+  // *deletes* the entire previous node. If that node is a parent taskBlock,
+  // its subtask children get cascaded too: from the user's perspective the
+  // whole task list above the cursor disappears with one keypress.
+  //
+  // Fix: intercept Backspace BEFORE PM, locate the visually-previous
+  // taskBlock (diving into children[] when the previous top-level block
+  // hosts subtasks), and focus its title input via the renderer's
+  // clickable-title button. The user can then continue deleting characters
+  // from the task title; once that title is empty, the renderer's own
+  // Backspace branch (added in task-block-renderer.tsx) takes the block
+  // down cleanly.
+  useEffect(() => {
+    const container = editorContainerRef.current
+    if (!container) return
+
+    const findPreviousTaskBlock = (currentBlockId: string): any => {
+      const doc = editor.document as any[]
+      const idx = doc.findIndex((b: any) => b.id === currentBlockId)
+      if (idx <= 0) return null
+      let candidate: any = doc[idx - 1]
+      // Walk into children to find the visually-last task block. A parent
+      // taskBlock with subtasks renders its children below itself, so the
+      // visually-previous block is the deepest last child, not the parent.
+      while (candidate?.children?.length) {
+        const lastChild = candidate.children[candidate.children.length - 1]
+        if (!lastChild) break
+        candidate = lastChild
+      }
+      return candidate?.type === 'taskBlock' ? candidate : null
+    }
+
+    const handleKeyDown = (e: KeyboardEvent): void => {
+      if (e.key !== 'Backspace') return
+      if (e.metaKey || e.ctrlKey || e.altKey || e.shiftKey) return
+
+      // Skip when the keypress originated in a regular HTML control (the
+      // taskBlock title input or any other input/textarea) — those have
+      // their own Backspace semantics handled inside the renderer.
+      const target = e.target as HTMLElement | null
+      if (target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement) return
+
+      const tiptap = (editor as any)._tiptapEditor
+      if (!tiptap) return
+      const sel = tiptap.state.selection
+      if (!sel?.empty) return
+      // Cursor must be at the very start of its parent text block.
+      if (sel.$from.parentOffset !== 0) return
+
+      const cursor = editor.getTextCursorPosition()
+      const currentBlock = cursor?.block as any
+      if (!currentBlock) return
+      // The taskBlock's own renderer handles its own Backspace path.
+      if (currentBlock.type === 'taskBlock') return
+
+      const prevTaskBlock = findPreviousTaskBlock(currentBlock.id)
+      if (!prevTaskBlock) return
+
+      const blockEl = container.querySelector<HTMLElement>(`[data-id="${prevTaskBlock.id}"]`)
+      if (!blockEl) return
+      // The clickable title (role="button") inside the renderer flips
+      // isEditingTitle → true, which triggers a focus effect that places
+      // the cursor at the end of the title input.
+      const clickable = blockEl.querySelector<HTMLElement>('[role="button"][tabindex="0"]')
+      if (!clickable) return
+
+      e.preventDefault()
+      e.stopPropagation()
+      clickable.click()
+    }
+
+    container.addEventListener('keydown', handleKeyDown, true)
+    return () => container.removeEventListener('keydown', handleKeyDown, true)
+  }, [editor])
+
   return (
     <div
       ref={containerRef}
