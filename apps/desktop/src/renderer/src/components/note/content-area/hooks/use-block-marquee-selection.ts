@@ -211,6 +211,8 @@ export function useBlockMarqueeSelection({
         if (!isMarquee) {
           const dx = Math.abs(moveEvent.clientX - origin.clientX)
           const dy = Math.abs(moveEvent.clientY - origin.clientY)
+          // Only promote on a clearly vertical drag — preserves horizontal
+          // text selection inside a paragraph (drag right to highlight a word).
           if (dy < VERTICAL_PROMOTE_PX) return
           if (dx > HORIZONTAL_LIMIT_PX && dx > dy) return
           promote()
@@ -239,6 +241,8 @@ export function useBlockMarqueeSelection({
             try {
               isApplyingPmSelectionRef.current = true
               editor.setSelection(firstId, lastId)
+              // Re-focus the editor so keyboard actions (Backspace, Cmd+C,
+              // Cmd+A) reach ProseMirror — promote() blurred it.
               try {
                 editor.prosemirrorView?.focus?.()
               } catch (err) {
@@ -281,7 +285,7 @@ export function useBlockMarqueeSelection({
       teardownDragRef.current = null
       trigger.removeAttribute(ACTIVE_ATTR)
     }
-  }, [enabled, triggerContainerEl, blockContainerRef, editor])
+  }, [enabled, triggerContainerEl, editor])
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent): void => {
@@ -320,15 +324,6 @@ export function useBlockMarqueeSelection({
       }
     }
   }, [editor, clearSelection])
-
-  useEffect(() => {
-    const trigger = triggerContainerEl
-    return () => {
-      teardownDragRef.current?.()
-      teardownDragRef.current = null
-      if (trigger) trigger.removeAttribute(ACTIVE_ATTR)
-    }
-  }, [triggerContainerEl])
 
   return {
     marqueeRect,
