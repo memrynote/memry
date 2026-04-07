@@ -2249,10 +2249,12 @@ del.bn-inline-content {
    ============================================================================ */
 
 /*
- * Highlight rectangles are rendered as absolute-positioned overlay divs (not
- * via attributes on .bn-block) because ProseMirror's MutationObserver reverts
- * any DOM mutation it didn't make. The overlay sits inside .bn-container which
- * is `position: relative`.
+ * Highlight rectangles are absolute-positioned overlay divs (not attribute
+ * mutations on .bn-block) because ProseMirror's MutationObserver reverts any
+ * DOM mutation it didn't make. The overlay is rendered (via portal) into the
+ * `.marquee-zone` wrapper, which is `position: relative` and extends
+ * horizontally beyond .bn-container into the parent's px-24 padding so users
+ * can start a marquee from the gray gutter on either side of the editor.
  */
 .marquee-block-highlight {
   position: absolute;
@@ -2272,10 +2274,10 @@ del.bn-inline-content {
   border-radius: 2px;
 }
 
-.bn-container[data-marquee-active='true'] {
+.marquee-zone[data-marquee-active='true'] {
   cursor: default;
   user-select: none;
 }
-.bn-container[data-marquee-active='true'] * {
+.marquee-zone[data-marquee-active='true'] * {
   user-select: none !important;
 }
