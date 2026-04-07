@@ -36,6 +36,7 @@ import { useTasksOptional } from '@/contexts/tasks'
 import { parseQuickAdd } from '@/lib/quick-add-parser'
 import { formatDateKey } from '@/lib/task-utils'
 import { editorSchema } from './editor-schema'
+import { analyzeTaskIntents } from './scan-task-intents'
 import {
   HighlightReminderPopover,
   useTextSelection,
@@ -116,6 +117,12 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
   const [highlightSelection, setHighlightSelection] = useState<HighlightSelection | null>(null)
   const dismissedBlocksRef = useRef(new Set<string>())
   const knownTaskBlockIdsRef = useRef<Set<string>>(new Set())
+  // Debounced standalone-task auto-convert. Holds the timer + the blockId we
+  // intend to convert when it fires. The delay (CONVERT_DEBOUNCE_MS) is the
+  // window in which the user can press Tab to indent the new checkbox under a
+  // sibling taskBlock instead of having it auto-promoted to a top-level task.
+  const pendingConvertTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const pendingConvertBlockIdRef = useRef<string | null>(null)
   const editorContainerRef = useRef<HTMLDivElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const noteIdRef = useRef<string | undefined>(noteId)
@@ -307,6 +314,13 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
       })
 
       void (async () => {
+        // Defense in depth: if Tab moved this block under another taskBlock
+        // mid-flight (the analyzer's debounce should catch this and route to
+        // convertCheckboxToSubtask, but races are possible), respect the
+        // live parentTaskId and create as a subtask.
+        const liveBlock = editor.getBlock(blockId)
+        const liveParentTaskId = ((liveBlock?.props as any)?.parentTaskId as string) || ''
+
         let projects: any[] = tasksCtx?.projects ?? []
         if (projects.length === 0) {
           const res = await tasksService.listProjects()
@@ -316,13 +330,20 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
         const defaultProject = projects.find((p: any) => p.isDefault || p.isInbox) ?? projects[0]
         if (!defaultProject) return
 
+        let projectIdForCreate: string | null = null
+        if (liveParentTaskId) {
+          const parentTask = await tasksService.get(liveParentTaskId).catch(() => null)
+          if (parentTask) projectIdForCreate = parentTask.projectId
+        }
+
         const parsed = text
-          ? parseQuickAdd(text, projects as any[])
+          ? parseQuickAdd(text, projects)
           : { title: '', priority: 'none', projectId: null, dueDate: null }
 
         try {
           const result = await tasksService.create({
-            projectId: parsed.projectId ?? defaultProject.id,
+            projectId: projectIdForCreate ?? parsed.projectId ?? defaultProject.id,
+            ...(liveParentTaskId ? { parentId: liveParentTaskId } : {}),
             title: parsed.title,
             priority: PRIORITY_REVERSE[parsed.priority] ?? 0,
             dueDate: parsed.dueDate ? formatDateKey(parsed.dueDate) : null,
@@ -332,8 +353,15 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
             const freshBlock = editor.getBlock(blockId)
             if (freshBlock) {
               const currentTitle = (freshBlock.props as any).title || parsed.title
+              const currentParentTaskId =
+                ((freshBlock.props as any).parentTaskId as string) || ''
               editor.updateBlock(freshBlock, {
-                props: { taskId: result.task.id, title: currentTitle, checked: false }
+                props: {
+                  taskId: result.task.id,
+                  title: currentTitle,
+                  checked: false,
+                  parentTaskId: currentParentTaskId
+                }
               })
               if (currentTitle && currentTitle !== result.task.title) {
                 void tasksService.update({ id: result.task.id, title: currentTitle })
@@ -402,11 +430,76 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
     [editor, noteId]
   )
 
+  const cancelPendingConvert = useCallback(() => {
+    if (pendingConvertTimerRef.current) {
+      clearTimeout(pendingConvertTimerRef.current)
+      pendingConvertTimerRef.current = null
+    }
+    pendingConvertBlockIdRef.current = null
+  }, [])
+
+  // Debounce window for standalone task auto-conversion. Long enough that a
+  // user typing `- [ ] foo` then Tab can land in the indent path before the
+  // block is replaced with the read-only taskBlock renderer.
+  const CONVERT_DEBOUNCE_MS = 600
+
+  const schedulePendingConvert = useCallback(
+    (blockId: string) => {
+      if (pendingConvertBlockIdRef.current === blockId && pendingConvertTimerRef.current) {
+        // Already scheduled for the same block — refresh the timer.
+        clearTimeout(pendingConvertTimerRef.current)
+      } else if (pendingConvertTimerRef.current) {
+        clearTimeout(pendingConvertTimerRef.current)
+      }
+
+      pendingConvertBlockIdRef.current = blockId
+      pendingConvertTimerRef.current = setTimeout(() => {
+        pendingConvertTimerRef.current = null
+        pendingConvertBlockIdRef.current = null
+
+        // Re-scan: the structure may have changed during the debounce window
+        // (e.g. user pressed Tab and the block became a child of another
+        // taskBlock). Pick the latest intent for this block.
+        const latest = analyzeTaskIntents(editor.document as any[], dismissedBlocksRef.current)
+        if (latest.subtaskCandidate?.blockId === blockId) {
+          convertCheckboxToSubtask(
+            latest.subtaskCandidate.blockId,
+            latest.subtaskCandidate.parentTaskId
+          )
+        } else if (latest.standaloneCandidate?.blockId === blockId) {
+          convertCheckboxToTask(blockId)
+        }
+        // else: the block disappeared or was already converted, no-op.
+      }, CONVERT_DEBOUNCE_MS)
+    },
+    [editor, convertCheckboxToSubtask, convertCheckboxToTask]
+  )
+
+  // Cleanup the debounce timer on unmount so a teardown mid-typing doesn't
+  // mutate state on a torn-down editor.
+  useEffect(() => {
+    return () => {
+      if (pendingConvertTimerRef.current) {
+        clearTimeout(pendingConvertTimerRef.current)
+      }
+    }
+  }, [])
+
   const createTaskForDraftBlock = useCallback(
     (blockId: string, title: string) => {
       dismissedBlocksRef.current.add(blockId)
 
       void (async () => {
+        // Re-read the live block. Between the onChange that scheduled this
+        // call and now, the renderer's Tab handler may have moved the block
+        // into another taskBlock's children[] and pre-set `parentTaskId` on
+        // its props. If we ignore that prop here we'll create a top-level
+        // DB row for what the user already sees as a subtask, and the
+        // demote-repair won't catch it (block prop already matches the tree
+        // parent, so no mismatch fires).
+        const liveBlock = editor.getBlock(blockId)
+        const liveParentTaskId = ((liveBlock?.props as any)?.parentTaskId as string) || ''
+
         let projects: any[] = tasksCtx?.projects ?? []
         if (projects.length === 0) {
           const res = await tasksService.listProjects()
@@ -416,13 +509,24 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
         const defaultProject = projects.find((p: any) => p.isDefault || p.isInbox) ?? projects[0]
         if (!defaultProject) return
 
+        // If this draft is parented, inherit the parent task's projectId so
+        // the subtask lands in the right project (mirrors convertCheckboxToSubtask).
+        let projectIdForCreate: string | null = null
+        if (liveParentTaskId) {
+          const parentTask = await tasksService.get(liveParentTaskId).catch(() => null)
+          if (parentTask) projectIdForCreate = parentTask.projectId
+        }
+
         const parsed = title
-          ? parseQuickAdd(title, projects as any[])
+          ? parseQuickAdd(title, projects)
           : { title: '', priority: 'none', projectId: null, dueDate: null }
 
         try {
           const result = await tasksService.create({
-            projectId: parsed.projectId ?? defaultProject.id,
+            projectId: projectIdForCreate ?? parsed.projectId ?? defaultProject.id,
+            // When parented, force parentId — never let parseQuickAdd's
+            // priority/date metadata leak into a top-level row.
+            ...(liveParentTaskId ? { parentId: liveParentTaskId } : {}),
             title: parsed.title,
             priority: PRIORITY_REVERSE[parsed.priority] ?? 0,
             dueDate: parsed.dueDate ? formatDateKey(parsed.dueDate) : null,
@@ -432,8 +536,15 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
             const freshBlock = editor.getBlock(blockId)
             if (freshBlock) {
               const currentTitle = (freshBlock.props as any).title || parsed.title
+              const currentParentTaskId =
+                ((freshBlock.props as any).parentTaskId as string) || ''
               editor.updateBlock(freshBlock, {
-                props: { taskId: result.task.id, title: currentTitle, checked: false }
+                props: {
+                  taskId: result.task.id,
+                  title: currentTitle,
+                  checked: false,
+                  parentTaskId: currentParentTaskId
+                }
               })
               if (currentTitle && currentTitle !== result.task.title) {
                 void tasksService.update({ id: result.task.id, title: currentTitle })
@@ -506,81 +617,64 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
           onChange={(): void => {
             void handleChange()
 
-            const currentTaskIds = new Set<string>()
-            let firstUndismissedCheckbox: string | null = null
-            let firstDraftTaskBlock: { id: string; title: string } | null = null
-            let firstUndismissedSubtaskCheckbox: {
-              blockId: string
-              parentTaskId: string
-            } | null = null
+            const intents = analyzeTaskIntents(editor.document as any[], dismissedBlocksRef.current)
 
-            const scanBlocks = (blocks: any[], parentTaskBlock: any | null): void => {
-              for (const b of blocks) {
-                if (b.type === 'taskBlock' && b.props?.taskId) {
-                  currentTaskIds.add(b.props.taskId as string)
-                  // Only allow subtask creation under top-level tasks (enforces 1-level depth)
-                  const isTopLevel = !b.props.parentTaskId
-                  if (b.children?.length) scanBlocks(b.children, isTopLevel ? b : null)
-                  continue
-                }
-
-                if (
-                  b.type === 'taskBlock' &&
-                  !b.props?.taskId &&
-                  b.props?.title?.trim() &&
-                  !firstDraftTaskBlock &&
-                  !dismissedBlocksRef.current.has(b.id)
-                ) {
-                  firstDraftTaskBlock = { id: b.id, title: b.props.title as string }
-                }
-
-                if (b.type === 'checkListItem' && !dismissedBlocksRef.current.has(b.id)) {
-                  if (parentTaskBlock && parentTaskBlock.props?.taskId) {
-                    if (!firstUndismissedSubtaskCheckbox) {
-                      firstUndismissedSubtaskCheckbox = {
-                        blockId: b.id,
-                        parentTaskId: parentTaskBlock.props.taskId as string
-                      }
-                    }
-                  } else if (!firstUndismissedCheckbox) {
-                    firstUndismissedCheckbox = b.id
-                  }
-                }
-
-                if (b.children?.length) scanBlocks(b.children, null)
-              }
-            }
-            scanBlocks(editor.document as any[], null)
-
-            if (firstUndismissedSubtaskCheckbox) {
-              const { blockId, parentTaskId } = firstUndismissedSubtaskCheckbox
-              convertCheckboxToSubtask(blockId, parentTaskId)
-            } else if (firstUndismissedCheckbox) {
-              convertCheckboxToTask(firstUndismissedCheckbox)
+            // Subtasks are unambiguous (the user already structured them as
+            // children of a taskBlock) and convert immediately. Standalone
+            // checkboxes are debounced so the user has time to press Tab to
+            // promote them into a subtask before the read-only taskBlock
+            // renderer steals focus.
+            if (intents.subtaskCandidate) {
+              cancelPendingConvert()
+              convertCheckboxToSubtask(
+                intents.subtaskCandidate.blockId,
+                intents.subtaskCandidate.parentTaskId
+              )
+            } else if (intents.standaloneCandidate) {
+              schedulePendingConvert(intents.standaloneCandidate.blockId)
+            } else if (
+              pendingConvertBlockIdRef.current &&
+              !intents.currentTaskIds.has(pendingConvertBlockIdRef.current)
+            ) {
+              cancelPendingConvert()
             }
 
-            const draft = firstDraftTaskBlock as { id: string; title: string } | null
-            if (draft) {
-              createTaskForDraftBlock(draft.id, draft.title)
+            if (intents.draftTaskBlock) {
+              createTaskForDraftBlock(intents.draftTaskBlock.blockId, intents.draftTaskBlock.title)
             }
 
-            // Detect un-indented subtask blocks (promoted to top-level)
-            for (const b of editor.document as any[]) {
-              if (b.type === 'taskBlock' && b.props?.taskId && b.props?.parentTaskId) {
-                // This block has parentTaskId but is at the top level → was un-indented
-                editor.updateBlock(b, {
-                  props: { ...b.props, parentTaskId: '' }
-                })
-                void tasksService.update({ id: b.props.taskId as string, parentId: null })
-              }
+            // Tab-indented (demote): a top-level taskBlock that became a
+            // child of another taskBlock via Tab. Wire up parentTaskId in the
+            // block prop AND in the DB row.
+            for (const demoted of intents.demotedTaskBlocks) {
+              const block = editor.getBlock(demoted.blockId)
+              if (!block) continue
+              editor.updateBlock(block, {
+                props: { ...block.props, parentTaskId: demoted.newParentTaskId }
+              })
+              void tasksService.update({
+                id: demoted.taskId,
+                parentId: demoted.newParentTaskId
+              })
+            }
+
+            // Shift+Tab promoted: a top-level taskBlock that still carries a
+            // stale parentTaskId. Clear both block prop and DB linkage.
+            for (const orphan of intents.unindentedTaskBlocks) {
+              const block = editor.getBlock(orphan.blockId)
+              if (!block) continue
+              editor.updateBlock(block, {
+                props: { ...block.props, parentTaskId: '' }
+              })
+              void tasksService.update({ id: orphan.taskId, parentId: null })
             }
 
             for (const prevId of knownTaskBlockIdsRef.current) {
-              if (!currentTaskIds.has(prevId)) {
+              if (!intents.currentTaskIds.has(prevId)) {
                 void tasksService.delete(prevId)
               }
             }
-            knownTaskBlockIdsRef.current = currentTaskIds
+            knownTaskBlockIdsRef.current = intents.currentTaskIds
           }}
           theme={editorTheme}
           formattingToolbar={!stickyToolbar}

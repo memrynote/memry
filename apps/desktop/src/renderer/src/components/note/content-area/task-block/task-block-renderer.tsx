@@ -190,6 +190,88 @@ export const TaskBlockRenderer: FC<TaskBlockRendererProps> = ({ block, editor, c
         return
       }
 
+      // Tab inside the title input: indent (demote) this taskBlock under the
+      // previous top-level taskBlock sibling. The BlockNote-native Tab
+      // handler can't reach us here because focus lives in a regular HTML
+      // input owned by this React component. Without this branch the browser
+      // moves focus to the next focusable element, which is exactly the bug
+      // the user reported as "Tab switches to another section".
+      if (e.key === 'Tab' && !e.shiftKey) {
+        e.preventDefault()
+        if (parentTaskId) return // already nested; nothing to do
+        const doc = editor.document as any[]
+        const idx = doc.findIndex((b: any) => b.id === block.id)
+        if (idx <= 0) return
+        const prev = doc[idx - 1]
+        if (prev?.type !== 'taskBlock' || !prev?.props?.taskId) return
+
+        skipBlurRef.current = true
+        if (titleSaveTimeoutRef.current) clearTimeout(titleSaveTimeoutRef.current)
+        const trimmedTitle = editTitle.trim()
+        if (trimmedTitle && taskId && task && task.title !== trimmedTitle) {
+          void tasksService.update({ id: taskId, title: trimmedTitle })
+        }
+        setIsEditingTitle(false)
+
+        const movedChild = {
+          ...block,
+          props: {
+            ...block.props,
+            title: trimmedTitle || block.props.title,
+            parentTaskId: prev.props.taskId
+          }
+        }
+        const newParent = {
+          ...prev,
+          children: [...((prev.children as any[]) ?? []), movedChild]
+        }
+        editor.replaceBlocks([prev, block], [newParent])
+
+        if (taskId) {
+          void tasksService.update({ id: taskId, parentId: prev.props.taskId })
+        }
+        return
+      }
+
+      // Shift+Tab inside the title input: lift this subtask back to a
+      // top-level task. We need to physically move the block out of its
+      // parent's children[] — clearing parentTaskId in props alone wouldn't
+      // re-shape the document.
+      if (e.key === 'Tab' && e.shiftKey) {
+        e.preventDefault()
+        if (!parentTaskId) return
+        const doc = editor.document as any[]
+        const parentBlock = doc.find(
+          (b: any) =>
+            b.type === 'taskBlock' &&
+            (b.children as any[] | undefined)?.some((c: any) => c.id === block.id)
+        )
+        if (!parentBlock) return
+
+        skipBlurRef.current = true
+        if (titleSaveTimeoutRef.current) clearTimeout(titleSaveTimeoutRef.current)
+        const trimmedTitle = editTitle.trim()
+        if (trimmedTitle && taskId && task && task.title !== trimmedTitle) {
+          void tasksService.update({ id: taskId, title: trimmedTitle })
+        }
+        setIsEditingTitle(false)
+
+        const remainingChildren = ((parentBlock.children as any[]) ?? []).filter(
+          (c: any) => c.id !== block.id
+        )
+        const newParent = { ...parentBlock, children: remainingChildren }
+        const promotedSelf = {
+          ...block,
+          props: { ...block.props, title: trimmedTitle || block.props.title, parentTaskId: '' }
+        }
+        editor.replaceBlocks([parentBlock], [newParent, promotedSelf])
+
+        if (taskId) {
+          void tasksService.update({ id: taskId, parentId: null })
+        }
+        return
+      }
+
       if (e.key === 'Enter') {
         e.preventDefault()
         skipBlurRef.current = true
@@ -230,7 +312,7 @@ export const TaskBlockRenderer: FC<TaskBlockRendererProps> = ({ block, editor, c
         }
       }
     },
-    [editor, block, taskId, editTitle, saveTitleToDb]
+    [editor, block, taskId, task, parentTaskId, editTitle, saveTitleToDb]
   )
 
   // --- Task action handlers ---
