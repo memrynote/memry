@@ -15,6 +15,7 @@ const EDITABLE_SELECTOR = `${EDITOR_CONTAINER} [contenteditable="true"]`
 const BLOCK_SELECTOR = '.bn-block[data-id]'
 const HIGHLIGHTED_SELECTOR = '.marquee-block-highlight'
 const OVERLAY_SELECTOR = '.marquee-overlay'
+const MARQUEE_ZONE = '.marquee-zone'
 
 async function focusEditor(page: Page) {
   const container = page.locator(EDITOR_CONTAINER).first()
@@ -40,6 +41,12 @@ async function getBlockBox(page: Page, index: number) {
 
 async function getBlockCount(page: Page): Promise<number> {
   return page.locator(BLOCK_SELECTOR).count()
+}
+
+async function getMarqueeZoneBox(page: Page) {
+  const box = await page.locator(MARQUEE_ZONE).first().boundingBox()
+  if (!box) throw new Error('marquee zone not found')
+  return box
 }
 
 test.describe('Block marquee selection', () => {
@@ -218,5 +225,99 @@ test.describe('Block marquee selection', () => {
 
     await expect(page.locator(OVERLAY_SELECTOR)).toHaveCount(0)
     await expect(page.locator(HIGHLIGHTED_SELECTOR)).toHaveCount(0)
+  })
+
+  test('drags from LEFT gray strip into editor and selects blocks', async ({ page }) => {
+    await createNote(page, `Marquee Left Strip ${Date.now()}`)
+    await focusEditor(page)
+    await typeBlocks(page, [
+      'First block in left-strip drag',
+      'Second block in left-strip drag',
+      'Third block in left-strip drag'
+    ])
+    await page.waitForTimeout(400)
+
+    const zone = await getMarqueeZoneBox(page)
+    const first = await getBlockBox(page, 0)
+    const last = await getBlockBox(page, 2)
+
+    // Start ~24px in from the LEFT edge of the marquee zone (well outside .bn-container)
+    // at the vertical center of the first block.
+    const startX = zone.x + 24
+    const startY = first.y + first.height / 2
+    // End in the gutter to the LEFT of the editor, level with the last block's bottom.
+    const endX = zone.x + 24
+    const endY = last.y + last.height - 4
+
+    await page.mouse.move(startX, startY)
+    await page.mouse.down()
+    await page.mouse.move(endX, endY, { steps: 14 })
+
+    await expect(page.locator(OVERLAY_SELECTOR)).toBeVisible({ timeout: 2000 })
+    expect(await page.locator(HIGHLIGHTED_SELECTOR).count()).toBeGreaterThanOrEqual(2)
+
+    await page.mouse.up()
+    await page.waitForTimeout(150)
+
+    await expect(page.locator(OVERLAY_SELECTOR)).toHaveCount(0)
+    expect(await page.locator(HIGHLIGHTED_SELECTOR).count()).toBeGreaterThanOrEqual(2)
+  })
+
+  test('drags from RIGHT gray strip into editor and selects blocks', async ({ page }) => {
+    await createNote(page, `Marquee Right Strip ${Date.now()}`)
+    await focusEditor(page)
+    await typeBlocks(page, [
+      'First block in right-strip drag',
+      'Second block in right-strip drag',
+      'Third block in right-strip drag'
+    ])
+    await page.waitForTimeout(400)
+
+    const zone = await getMarqueeZoneBox(page)
+    const first = await getBlockBox(page, 0)
+    const last = await getBlockBox(page, 2)
+
+    // Start ~24px in from the RIGHT edge of the marquee zone.
+    const startX = zone.x + zone.width - 24
+    const startY = first.y + first.height / 2
+    const endX = startX
+    const endY = last.y + last.height - 4
+
+    await page.mouse.move(startX, startY)
+    await page.mouse.down()
+    await page.mouse.move(endX, endY, { steps: 14 })
+
+    await expect(page.locator(OVERLAY_SELECTOR)).toBeVisible({ timeout: 2000 })
+    expect(await page.locator(HIGHLIGHTED_SELECTOR).count()).toBeGreaterThanOrEqual(2)
+
+    await page.mouse.up()
+    await page.waitForTimeout(150)
+
+    await expect(page.locator(OVERLAY_SELECTOR)).toHaveCount(0)
+    expect(await page.locator(HIGHLIGHTED_SELECTOR).count()).toBeGreaterThanOrEqual(2)
+  })
+
+  test('regression: single click in gray strip focuses editor without marquee', async ({
+    page
+  }) => {
+    await createNote(page, `Marquee Strip Click ${Date.now()}`)
+    await focusEditor(page)
+    await typeBlocks(page, ['Only block for strip-click test'])
+    await page.waitForTimeout(400)
+
+    const zone = await getMarqueeZoneBox(page)
+    const block = await getBlockBox(page, 0)
+
+    await page.mouse.click(zone.x + 24, block.y + block.height / 2)
+    await page.waitForTimeout(150)
+
+    await expect(page.locator(OVERLAY_SELECTOR)).toHaveCount(0)
+    await expect(page.locator(HIGHLIGHTED_SELECTOR)).toHaveCount(0)
+
+    // Editor should be focused after the gutter click — typing appends text.
+    await page.keyboard.type(' EXTRA')
+    await page.waitForTimeout(150)
+    const editable = page.locator(EDITABLE_SELECTOR).first()
+    await expect(editable).toContainText('EXTRA')
   })
 })
