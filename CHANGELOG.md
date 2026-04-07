@@ -5,6 +5,15 @@ Format: weekly entries grouped by feature area.
 
 ---
 
+## 2026-04-07 — Security Fixes
+
+### Fixed
+- Patch 4 critical Electron RCE CVEs and HIGH transitive CVEs
+- Narrow refresh token rotation grace window to 10s
+- Harden /recovery against account enumeration timing leak
+
+---
+
 ## 2026-04-07 — Tasks Tab State Persistence
 
 ### Added
