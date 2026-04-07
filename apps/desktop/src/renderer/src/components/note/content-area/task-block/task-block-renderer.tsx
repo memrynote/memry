@@ -26,6 +26,18 @@ const BLOCKNOTE_OVERRIDES = `
   .bn-block[data-id]:has([data-content-type="taskBlock"]):focus-within { border: none !important; outline: none !important; box-shadow: none !important; }
   .bn-block-content[data-content-type="taskBlock"]:focus { outline: none !important; border: none !important; }
   [data-content-type="taskBlock"] * { outline: none !important; }
+  .bn-block-group .bn-block-group > .bn-block-outer:has(> .bn-block > [data-content-type="taskBlock"])::before { left: -14px; }
+  /* Selection highlight: when ProseMirror puts a NodeSelection on the
+     taskBlock (drag-handle click, Esc-then-arrow, etc.), our blanket
+     outline:none rules above used to hide it. Restore a visible state so
+     the user can confidently delete a selected block with Backspace. */
+  .bn-block-content[data-content-type="taskBlock"].ProseMirror-selectednode,
+  [data-content-type="taskBlock"]:has(.ProseMirror-selectednode),
+  .bn-block[data-id]:has(> .bn-block-content[data-content-type="taskBlock"].ProseMirror-selectednode) {
+    background-color: rgba(59, 130, 246, 0.12) !important;
+    border-radius: 4px !important;
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.5) !important;
+  }
 `
 
 export const TaskBlockRenderer: FC<TaskBlockRendererProps> = ({ block, editor, contentRef }) => {
@@ -269,6 +281,55 @@ export const TaskBlockRenderer: FC<TaskBlockRendererProps> = ({ block, editor, c
         if (taskId) {
           void tasksService.update({ id: taskId, parentId: null })
         }
+        return
+      }
+
+      // Backspace inside an already-empty title input: tear down the whole
+      // taskBlock. Without this branch the keypress just bubbles to the
+      // browser, which has nothing to delete (input is already empty), and
+      // the user has no way to remove an unwanted task block from the
+      // keyboard. Mirrors the Enter empty-title teardown below: cancel the
+      // pending debounced save, suppress the trailing blur side-effects,
+      // delete the DB row, and remove the block.
+      if (e.key === 'Backspace' && editTitle.length === 0) {
+        e.preventDefault()
+        skipBlurRef.current = true
+        if (titleSaveTimeoutRef.current) clearTimeout(titleSaveTimeoutRef.current)
+        isNewBlockRef.current = false
+        setIsEditingTitle(false)
+        if (taskId) void tasksService.delete(taskId)
+
+        const doc = editor.document as any[]
+        const blockIdx = doc.findIndex((b: any) => b.id === block.id)
+        const anchor = blockIdx > 0 ? doc[blockIdx - 1] : null
+
+        editor.removeBlocks([block])
+
+        requestAnimationFrame(() => {
+          // Natural backspace feel: when the previous sibling is a regular
+          // text block, drop the cursor at its end so the user can keep
+          // typing where they left off. Task blocks are contentEditable
+          // false and not a valid cursor target, so we fall back to
+          // inserting a fresh paragraph (matching the Enter empty path) so
+          // the cursor always has somewhere to land.
+          if (anchor && anchor.type !== 'taskBlock') {
+            editor.setTextCursorPosition(anchor.id, 'end')
+            editor.focus()
+            return
+          }
+          const updatedDoc = editor.document as any[]
+          if (anchor) {
+            editor.insertBlocks([{ type: 'paragraph' as any }], anchor, 'after')
+          } else if (updatedDoc.length > 0) {
+            editor.insertBlocks([{ type: 'paragraph' as any }], updatedDoc[0], 'before')
+          }
+          const finalDoc = editor.document as any[]
+          const fallback = finalDoc[blockIdx] ?? finalDoc[finalDoc.length - 1]
+          if (fallback) {
+            editor.setTextCursorPosition(fallback.id, 'start')
+            editor.focus()
+          }
+        })
         return
       }
 
