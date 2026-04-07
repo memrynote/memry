@@ -105,6 +105,13 @@ export interface ContentAreaProps {
   onInlineTagsChange?: (tags: string[]) => void
   /** Ref that receives a focusAtEnd function to focus the editor at the end of the document */
   focusAtEndRef?: React.RefObject<(() => void) | null>
+  /**
+   * The outer wrapper element that owns the marquee selection trigger area
+   * (and the overlay's coordinate space). When omitted, falls back to the
+   * inner `.bn-container` so callers that don't want the extended hit area
+   * still get the original behavior.
+   */
+  marqueeZoneEl?: HTMLDivElement | null
 }
 
 // =============================================================================
