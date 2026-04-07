@@ -24,7 +24,6 @@ jobs:
     name: Root dependency audit
     runs-on: ubuntu-latest
     timeout-minutes: 25
-    continue-on-error: true
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -47,7 +46,6 @@ jobs:
     name: Sync server dependency audit
     runs-on: ubuntu-latest
     timeout-minutes: 25
-    continue-on-error: true
     steps:
       - name: Checkout
         uses: actions/checkout@v4
