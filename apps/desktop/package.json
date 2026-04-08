@@ -13,7 +13,7 @@
   "scripts": {
     "format": "prettier --write .",
     "lint": "eslint --cache .",
-    "pretypecheck": "pnpm --dir ../.. check:contract-boundaries && pnpm ipc:check",
+    "pretypecheck": "pnpm --dir ../.. check:contracts && pnpm --dir ../.. check:architecture && pnpm ipc:check",
     "typecheck:node": "tsc --noEmit -p tsconfig.node.json --composite false",
     "typecheck:web": "tsc --noEmit -p tsconfig.web.json --composite false",
     "typecheck": "pnpm typecheck:node && pnpm typecheck:web",
