@@ -1,18 +1,20 @@
-import { drizzle, BetterSQLite3Database } from 'drizzle-orm/better-sqlite3'
 import Database from 'better-sqlite3'
+import { drizzle } from 'drizzle-orm/better-sqlite3'
 import { existsSync } from 'fs'
-import * as schema from '@memry/db-schema/schema'
+import * as dataSchema from '@memry/db-schema/data-schema'
+import * as indexSchema from '@memry/db-schema/index-schema'
 import * as sqliteVec from 'sqlite-vec'
 import { EMBEDDING_DIMENSION } from '../lib/embeddings-constants'
+import type { DataDb, IndexDb, RawIndexDb, DrizzleDb } from './types'
 
-export type DrizzleDb = BetterSQLite3Database<typeof schema>
+export type { DataDb, IndexDb, RawIndexDb, DrizzleDb } from './types'
 
-let dataDb: DrizzleDb | null = null
-let indexDb: DrizzleDb | null = null
+let dataDb: DataDb | null = null
+let indexDb: IndexDb | null = null
 let sqliteDataDb: Database.Database | null = null
 let sqliteIndexDb: Database.Database | null = null
 
-export function initDatabase(dbPath: string): DrizzleDb {
+export function initDatabase(dbPath: string): DataDb {
   sqliteDataDb = new Database(dbPath)
 
   // WAL mode for better concurrency and crash recovery
@@ -33,11 +35,11 @@ export function initDatabase(dbPath: string): DrizzleDb {
   // Store temp tables in memory
   sqliteDataDb.pragma('temp_store = MEMORY')
 
-  dataDb = drizzle(sqliteDataDb, { schema })
+  dataDb = drizzle(sqliteDataDb, { schema: dataSchema })
   return dataDb
 }
 
-export function initIndexDatabase(dbPath: string): DrizzleDb {
+export function initIndexDatabase(dbPath: string): IndexDb {
   sqliteIndexDb = new Database(dbPath)
 
   // WAL mode for better concurrency
@@ -69,13 +71,13 @@ export function initIndexDatabase(dbPath: string): DrizzleDb {
     )
   `)
 
-  indexDb = drizzle(sqliteIndexDb, { schema })
+  indexDb = drizzle(sqliteIndexDb, { schema: indexSchema })
   return indexDb
 }
 
 export function getDatabase(): DrizzleDb {
   if (!dataDb) throw new Error('Database not initialized')
-  return dataDb
+  return dataDb as DrizzleDb
 }
 
 export function isDatabaseInitialized(): boolean {
@@ -84,14 +86,14 @@ export function isDatabaseInitialized(): boolean {
 
 export function getIndexDatabase(): DrizzleDb {
   if (!indexDb) throw new Error('Index database not initialized')
-  return indexDb
+  return indexDb as DrizzleDb
 }
 
 /**
  * Get the raw better-sqlite3 connection for the index database.
  * Used for direct sqlite-vec queries on vec_notes virtual table.
  */
-export function getRawIndexDatabase(): Database.Database {
+export function getRawIndexDatabase(): RawIndexDb {
   if (!sqliteIndexDb) throw new Error('Index database not initialized')
   return sqliteIndexDb
 }

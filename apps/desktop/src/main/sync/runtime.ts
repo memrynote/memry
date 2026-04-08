@@ -2,6 +2,7 @@ import { app, BrowserWindow } from 'electron'
 import sodium from 'libsodium-wrappers-sumo'
 import { eq } from 'drizzle-orm'
 import { KEYCHAIN_ENTRIES } from '@memry/contracts/crypto'
+import { createCrdtSyncAdapter, createSyncAdapterRegistry } from '@memry/sync-core'
 import { syncDevices } from '@memry/db-schema/schema/sync-devices'
 import { getDatabase, type DrizzleDb } from '../database'
 import { createLogger } from '../lib/logger'
@@ -23,6 +24,7 @@ import { initSettingsSyncManager, resetSettingsSyncManager } from './settings-sy
 import { initNoteSyncService, resetNoteSyncService } from './note-sync'
 import { initJournalSyncService, resetJournalSyncService } from './journal-sync'
 import { initTagDefinitionSyncService, resetTagDefinitionSyncService } from './tag-definition-sync'
+import { getRemoteSyncAdapter } from './item-handlers'
 import { getIndexDatabase } from '../database/client'
 import { noteCache } from '@memry/db-schema/schema/notes-cache'
 import { getDeviceSigningKey } from './device-keys'
@@ -154,14 +156,60 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
 
       const getDeviceId = (): string | null => getCurrentDeviceId(db)
 
-      initTaskSyncService({ queue, db: runtimeSyncDb, getDeviceId })
-      initInboxSyncService({ queue, db: runtimeSyncDb, getDeviceId })
-      initFilterSyncService({ queue, db: runtimeSyncDb, getDeviceId })
-      initProjectSyncService({ queue, db: runtimeSyncDb, getDeviceId })
-      initSettingsSyncManager({ db: runtimeSyncDb, queue, getDeviceId })
-      initNoteSyncService({ queue, getDeviceId })
-      initJournalSyncService({ queue, getDeviceId })
-      initTagDefinitionSyncService({ queue, db: runtimeSyncDb, getDeviceId })
+      const taskSync = initTaskSyncService({ queue, db: runtimeSyncDb, getDeviceId })
+      const inboxSync = initInboxSyncService({ queue, db: runtimeSyncDb, getDeviceId })
+      const filterSync = initFilterSyncService({ queue, db: runtimeSyncDb, getDeviceId })
+      const projectSync = initProjectSyncService({ queue, db: runtimeSyncDb, getDeviceId })
+      const settingsSync = initSettingsSyncManager({ db: runtimeSyncDb, queue, getDeviceId })
+      const noteSync = initNoteSyncService({ queue, getDeviceId })
+      const journalSync = initJournalSyncService({ queue, getDeviceId })
+      const tagDefinitionSync = initTagDefinitionSyncService({
+        queue,
+        db: runtimeSyncDb,
+        getDeviceId
+      })
+
+      const adapters = createSyncAdapterRegistry([
+        { type: 'task', kind: 'record', local: taskSync, remote: getRemoteSyncAdapter('task') },
+        { type: 'inbox', kind: 'record', local: inboxSync, remote: getRemoteSyncAdapter('inbox') },
+        {
+          type: 'filter',
+          kind: 'record',
+          local: filterSync,
+          remote: getRemoteSyncAdapter('filter')
+        },
+        {
+          type: 'project',
+          kind: 'record',
+          local: projectSync,
+          remote: getRemoteSyncAdapter('project')
+        },
+        {
+          type: 'settings',
+          kind: 'record',
+          local: settingsSync,
+          remote: getRemoteSyncAdapter('settings')
+        },
+        {
+          type: 'note',
+          kind: 'crdt',
+          local: noteSync,
+          remote: getRemoteSyncAdapter('note'),
+          crdt: createCrdtSyncAdapter('note', { documentContentOnly: true })
+        },
+        {
+          type: 'journal',
+          kind: 'record',
+          local: journalSync,
+          remote: getRemoteSyncAdapter('journal')
+        },
+        {
+          type: 'tag_definition',
+          kind: 'record',
+          local: tagDefinitionSync,
+          remote: getRemoteSyncAdapter('tag_definition')
+        }
+      ])
 
       const crdtQueue = new CrdtUpdateQueue()
       setOnTokenRefreshed(() => crdtQueue.resume())
@@ -315,6 +363,7 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
           return getDeviceSigningKey(runtimeSyncDb, deviceId, token)
         },
         emitToRenderer: emitFn,
+        adapters,
         crdtProvider,
         workerBridge,
         refreshAccessToken: () => refreshAccessToken()
@@ -322,7 +371,7 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
 
       queue.setOnItemEnqueued(() => engine.requestPush())
 
-      recoverDirtyItems(runtimeSyncDb)
+      recoverDirtyItems(runtimeSyncDb, adapters)
 
       pendingRuntime = { queue, network, ws, engine, crdtQueue, workerBridge }
       runtime = pendingRuntime

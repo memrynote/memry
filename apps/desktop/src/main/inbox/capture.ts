@@ -24,8 +24,9 @@ import {
   type VoiceMetadata
 } from '@memry/contracts/inbox-api'
 import { storeInboxAttachment, resolveAttachmentUrl } from './attachments'
-import { transcribeAudio, getVoiceRecordingReadiness } from './transcription'
 import { publishProjectionEvent } from '../projections'
+import { getVoiceRecordingReadiness } from './transcription'
+import { markInboxJobFailed, queueInboxTranscriptionJob } from './jobs'
 
 const log = createLogger('Inbox:Capture')
 
@@ -299,16 +300,12 @@ export async function captureVoice(input: CaptureVoiceInput): Promise<CaptureRes
       itemId: id
     })
 
-    // Trigger async transcription if enabled and available
+    // Persist a durable transcription job instead of relying on in-memory timers.
     if (shouldTranscribe && storageResult.path) {
-      log.info(`Triggering transcription for voice memo ${id}`)
-
-      // Run transcription asynchronously (don't await)
-      setImmediate(() => {
-        transcribeAudio(id, storageResult.path!).catch((err) => {
-          log.error('Background transcription error:', err)
-        })
-      })
+      log.info(`Queueing transcription for voice memo ${id}`)
+      queueInboxTranscriptionJob(id, storageResult.path)
+    } else if (parsed.transcribe !== false && storageResult.path && processingError) {
+      markInboxJobFailed(id, 'transcription', { attachmentPath: storageResult.path }, processingError)
     }
 
     return { success: true, item }

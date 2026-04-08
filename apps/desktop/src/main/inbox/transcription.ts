@@ -71,6 +71,20 @@ function emitTranscriptionEvent(
   })
 }
 
+function emitInboxUpdated(itemId: string, changes: Record<string, unknown>): void {
+  BrowserWindow.getAllWindows().forEach((win) => {
+    win.webContents.send(InboxChannels.events.UPDATED, {
+      id: itemId,
+      changes
+    })
+  })
+
+  publishProjectionEvent({
+    type: 'inbox.upserted',
+    itemId
+  })
+}
+
 /**
  * Get data database, throwing if not available
  */
@@ -114,9 +128,9 @@ function createFailureResult(
     .where(eq(inboxItems.id, itemId))
     .run()
 
-  publishProjectionEvent({
-    type: 'inbox.upserted',
-    itemId
+  emitInboxUpdated(itemId, {
+    transcriptionStatus: 'failed',
+    processingError: error
   })
 
   emitTranscriptionEvent(InboxChannels.events.PROCESSING_ERROR, {
@@ -159,9 +173,8 @@ export async function transcribeAudio(
     .where(eq(inboxItems.id, itemId))
     .run()
 
-  publishProjectionEvent({
-    type: 'inbox.upserted',
-    itemId
+  emitInboxUpdated(itemId, {
+    transcriptionStatus: 'processing'
   })
 
   try {
@@ -256,9 +269,11 @@ export async function transcribeAudio(
       .where(eq(inboxItems.id, itemId))
       .run()
 
-    publishProjectionEvent({
-      type: 'inbox.upserted',
-      itemId
+    emitInboxUpdated(itemId, {
+      transcription,
+      transcriptionStatus: 'complete',
+      processingError: null,
+      ...(autoTitle ? { title: autoTitle } : {})
     })
 
     // Emit success event
@@ -321,9 +336,9 @@ export async function retryTranscription(itemId: string): Promise<TranscriptionR
     .where(eq(inboxItems.id, itemId))
     .run()
 
-  publishProjectionEvent({
-    type: 'inbox.upserted',
-    itemId
+  emitInboxUpdated(itemId, {
+    transcriptionStatus: 'pending',
+    processingError: null
   })
 
   // Start transcription (async, don't await here for non-blocking behavior)

@@ -1,7 +1,9 @@
+import type { Context } from 'hono'
 import { Hono } from 'hono'
 import { z } from 'zod'
 
 import { PullRequestSchema, PushRequestSchema } from '@memry/contracts/sync-api'
+import { safeBase64Decode } from '../lib/encoding'
 import { AppError, ErrorCodes } from '../lib/errors'
 import { authMiddleware } from '../middleware/auth'
 import { createRateLimiter } from '../middleware/rate-limit'
@@ -10,10 +12,16 @@ import {
   getItem,
   getManifest,
   getSyncStatus,
-  processPushItem,
+  processRecordPushBatch,
   pullItems,
   updateDeviceCursor
 } from '../services/sync'
+import {
+  logCrdtTraffic,
+  logRecordPushBatch,
+  logRecordQueryBatch,
+  logSyncValidationFailure
+} from '../services/sync-telemetry'
 import { updateDevice } from '../services/device'
 import { checkQuota } from '../services/quota'
 import { getStorageBreakdown } from '../services/storage'
@@ -30,6 +38,73 @@ import type { AppContext } from '../types'
 export const sync = new Hono<AppContext>()
 
 sync.use('*', authMiddleware)
+
+const MAX_UPDATE_BYTES = 5 * 1024 * 1024 // 5MB per individual update
+const BASE64_CHUNK_SIZE = 8192
+
+const getRequestPath = (c: Context<AppContext>): string => new URL(c.req.url).pathname
+
+function parseTransportRequest<T>(
+  schema: z.ZodType<T>,
+  body: unknown,
+  params: {
+    transport: 'record' | 'crdt'
+    endpoint: string
+    label: string
+  }
+): T {
+  const parsed = schema.safeParse(body)
+  if (!parsed.success) {
+    const issue = parsed.error.issues[0]?.message ?? 'validation failed'
+    logSyncValidationFailure({
+      transport: params.transport,
+      endpoint: params.endpoint,
+      issue
+    })
+    throw new AppError(ErrorCodes.VALIDATION_ERROR, `Invalid ${params.label}: ${issue}`, 400)
+  }
+
+  return parsed.data
+}
+
+function logQueryValidationFailure(
+  transport: 'record' | 'crdt',
+  endpoint: string,
+  issue: string,
+  code: keyof typeof ErrorCodes = 'VALIDATION_ERROR'
+): never {
+  logSyncValidationFailure({ transport, endpoint, issue })
+  throw new AppError(ErrorCodes[code], issue, 400)
+}
+
+function safeBase64Encode(buffer: ArrayBuffer): string {
+  const bytes = new Uint8Array(buffer)
+  let result = ''
+  for (let i = 0; i < bytes.length; i += BASE64_CHUNK_SIZE) {
+    const chunk = bytes.subarray(i, i + BASE64_CHUNK_SIZE)
+    result += String.fromCharCode(...chunk)
+  }
+  return btoa(result)
+}
+
+function decodeCrdtPayload(base64: string, endpoint: string, tooLargeMessage: string): ArrayBuffer {
+  try {
+    const bytes = safeBase64Decode(base64)
+    if (bytes.byteLength > MAX_UPDATE_BYTES) {
+      throw new AppError(ErrorCodes.VALIDATION_ERROR, tooLargeMessage, 413)
+    }
+    return bytes.slice().buffer as ArrayBuffer
+  } catch (error) {
+    if (error instanceof AppError) {
+      logSyncValidationFailure({
+        transport: 'crdt',
+        endpoint,
+        issue: error.message
+      })
+    }
+    throw error
+  }
+}
 
 const pushRateLimit = createRateLimiter({
   keyPrefix: 'sync_push',
@@ -93,34 +168,36 @@ sync.get('/storage', storageRateLimit, async (c) => {
   return c.json(breakdown)
 })
 
-sync.get('/status', statusRateLimit, async (c) => {
+const handleRecordStatus = async (c: Context<AppContext>): Promise<Response> => {
   const userId = c.get('userId')!
   const deviceId = c.get('deviceId')!
   const status = await getSyncStatus(c.env.DB, userId, deviceId)
   return c.json(status)
-})
+}
 
-sync.get('/manifest', manifestRateLimit, async (c) => {
+const handleRecordManifest = async (c: Context<AppContext>): Promise<Response> => {
   const userId = c.get('userId')!
   const manifest = await getManifest(c.env.DB, userId)
   return c.json(manifest)
-})
+}
 
-sync.get('/changes', changesRateLimit, async (c) => {
+const handleRecordChanges = async (c: Context<AppContext>): Promise<Response> => {
   const userId = c.get('userId')!
   const deviceId = c.get('deviceId')!
+  const endpoint = getRequestPath(c)
+  const startedAt = Date.now()
 
   const cursorParam = c.req.query('cursor')
   const limitParam = c.req.query('limit')
 
   const cursor = cursorParam ? parseInt(cursorParam, 10) : 0
   if (isNaN(cursor) || cursor < 0) {
-    throw new AppError(ErrorCodes.SYNC_INVALID_CURSOR, 'Invalid cursor value', 400)
+    logQueryValidationFailure('record', endpoint, 'Invalid cursor value', 'SYNC_INVALID_CURSOR')
   }
 
   const limit = limitParam ? parseInt(limitParam, 10) : undefined
   if (limit !== undefined && (isNaN(limit) || limit < 1)) {
-    throw new AppError(ErrorCodes.VALIDATION_ERROR, 'Invalid limit value', 400)
+    logQueryValidationFailure('record', endpoint, 'Invalid limit value')
   }
 
   const changes = await getChanges(c.env.DB, userId, cursor, limit)
@@ -132,47 +209,54 @@ sync.get('/changes', changesRateLimit, async (c) => {
     })
   }
 
-  return c.json(changes)
-})
+  logRecordQueryBatch({
+    endpoint,
+    operation: 'changes',
+    latencyMs: Date.now() - startedAt,
+    itemTypes: changes.items.map((item) => item.type),
+    deletedCount: changes.deleted.length
+  })
 
-sync.post('/push', pushRateLimit, async (c) => {
+  return c.json(changes)
+}
+
+const handleRecordPush = async (c: Context<AppContext>): Promise<Response> => {
   const userId = c.get('userId')!
   const deviceId = c.get('deviceId')!
+  const endpoint = getRequestPath(c)
+  const startedAt = Date.now()
 
   const body: unknown = await c.req.json()
-  const parsed = PushRequestSchema.safeParse(body)
-  if (!parsed.success) {
-    throw new AppError(
-      ErrorCodes.VALIDATION_ERROR,
-      `Invalid push request: ${parsed.error.issues[0]?.message ?? 'validation failed'}`,
-      400
-    )
-  }
+  const parsed = parseTransportRequest(PushRequestSchema, body, {
+    transport: 'record',
+    endpoint,
+    label: 'push request'
+  })
 
-  const estimatedBytes = JSON.stringify(parsed.data.items).length
-  await checkQuota(c.env.DB, userId, estimatedBytes)
-
-  const accepted: string[] = []
-  const rejected: Array<{ id: string; reason: string }> = []
-  let maxCursor = 0
-
-  for (const item of parsed.data.items) {
-    const result = await processPushItem(c.env.DB, c.env.STORAGE, userId, deviceId, item)
-    if (result.accepted) {
-      accepted.push(item.id)
-      if (result.serverCursor && result.serverCursor > maxCursor) {
-        maxCursor = result.serverCursor
-      }
-    } else {
-      rejected.push({ id: item.id, reason: result.reason ?? 'UNKNOWN' })
+  let result
+  try {
+    result = await processRecordPushBatch(c.env.DB, c.env.STORAGE, userId, deviceId, parsed.items)
+  } catch (error) {
+    if (error instanceof AppError && error.code === ErrorCodes.STORAGE_QUOTA_EXCEEDED) {
+      logRecordPushBatch({
+        endpoint,
+        latencyMs: Date.now() - startedAt,
+        outcomes: parsed.items.map((item) => ({
+          id: item.id,
+          type: item.type,
+          accepted: false,
+          reason: error.code
+        }))
+      })
     }
+    throw error
   }
 
-  if (maxCursor > 0) {
-    await updateDeviceCursor(c.env.DB, deviceId, userId, maxCursor)
+  if (result.maxCursor > 0) {
+    await updateDeviceCursor(c.env.DB, deviceId, userId, result.maxCursor)
   }
 
-  if (accepted.length > 0) {
+  if (result.accepted.length > 0) {
     await updateDevice(c.env.DB, deviceId, userId, {
       last_sync_at: Math.floor(Date.now() / 1000)
     })
@@ -183,38 +267,50 @@ sync.post('/push', pushRateLimit, async (c) => {
         new Request(new URL('/broadcast', c.req.url), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ excludeDeviceId: deviceId, cursor: maxCursor })
+          body: JSON.stringify({ excludeDeviceId: deviceId, cursor: result.maxCursor })
         })
       )
     )
   }
 
-  return c.json({
-    accepted,
-    rejected,
-    serverTime: Math.floor(Date.now() / 1000),
-    maxCursor
+  logRecordPushBatch({
+    endpoint,
+    latencyMs: Date.now() - startedAt,
+    outcomes: result.outcomes
   })
-})
 
-sync.post('/pull', pullRateLimit, async (c) => {
+  return c.json({
+    accepted: result.accepted,
+    rejected: result.rejected,
+    serverTime: result.serverTime,
+    maxCursor: result.maxCursor
+  })
+}
+
+const handleRecordPull = async (c: Context<AppContext>): Promise<Response> => {
   const userId = c.get('userId')!
+  const endpoint = getRequestPath(c)
+  const startedAt = Date.now()
 
   const body: unknown = await c.req.json()
-  const parsed = PullRequestSchema.safeParse(body)
-  if (!parsed.success) {
-    throw new AppError(
-      ErrorCodes.VALIDATION_ERROR,
-      `Invalid pull request: ${parsed.error.issues[0]?.message ?? 'validation failed'}`,
-      400
-    )
-  }
+  const parsed = parseTransportRequest(PullRequestSchema, body, {
+    transport: 'record',
+    endpoint,
+    label: 'pull request'
+  })
 
-  const items = await pullItems(c.env.DB, c.env.STORAGE, userId, parsed.data.itemIds)
+  const items = await pullItems(c.env.DB, c.env.STORAGE, userId, parsed.itemIds)
+  logRecordQueryBatch({
+    endpoint,
+    operation: 'pull',
+    latencyMs: Date.now() - startedAt,
+    itemTypes: items.map((item) => item.type)
+  })
+
   return c.json({ items })
-})
+}
 
-sync.get('/items/:id', async (c) => {
+const handleRecordItem = async (c: Context<AppContext>): Promise<Response> => {
   const userId = c.get('userId')!
   const itemId = c.req.param('id')
 
@@ -223,35 +319,31 @@ sync.get('/items/:id', async (c) => {
     throw new AppError(ErrorCodes.VALIDATION_ERROR, 'Invalid item ID format', 400)
   }
 
-  const item = await getItem(c.env.DB, c.env.STORAGE, userId, itemId)
+  const item = await getItem(c.env.DB, c.env.STORAGE, userId, parseResult.data)
   return c.json(item)
-})
+}
+
+const recordSync = new Hono<AppContext>()
+
+recordSync.get('/status', statusRateLimit, handleRecordStatus)
+recordSync.get('/manifest', manifestRateLimit, handleRecordManifest)
+recordSync.get('/changes', changesRateLimit, handleRecordChanges)
+recordSync.post('/push', pushRateLimit, handleRecordPush)
+recordSync.post('/pull', pullRateLimit, handleRecordPull)
+recordSync.get('/items/:id', handleRecordItem)
+
+sync.route('/records', recordSync)
+
+sync.get('/status', statusRateLimit, handleRecordStatus)
+sync.get('/manifest', manifestRateLimit, handleRecordManifest)
+sync.get('/changes', changesRateLimit, handleRecordChanges)
+sync.post('/push', pushRateLimit, handleRecordPush)
+sync.post('/pull', pullRateLimit, handleRecordPull)
+sync.get('/items/:id', handleRecordItem)
 
 // ============================================================================
 // CRDT Endpoints
 // ============================================================================
-
-const MAX_UPDATE_BYTES = 5 * 1024 * 1024 // 5MB per individual update
-const BASE64_CHUNK_SIZE = 8192
-
-function safeBase64Encode(buffer: ArrayBuffer): string {
-  const bytes = new Uint8Array(buffer)
-  let result = ''
-  for (let i = 0; i < bytes.length; i += BASE64_CHUNK_SIZE) {
-    const chunk = bytes.subarray(i, i + BASE64_CHUNK_SIZE)
-    result += String.fromCharCode(...chunk)
-  }
-  return btoa(result)
-}
-
-function safeBase64Decode(b64: string): Uint8Array {
-  const raw = atob(b64)
-  const bytes = new Uint8Array(raw.length)
-  for (let i = 0; i < raw.length; i++) {
-    bytes[i] = raw.charCodeAt(i)
-  }
-  return bytes
-}
 
 const NoteIdSchema = z
   .string()
@@ -298,22 +390,44 @@ const CrdtPushSchema = z.object({
   updates: z.array(z.string().max(MAX_UPDATE_BYTES * 2)).max(100)
 })
 
-sync.post('/crdt/updates', crdtPushRateLimit, async (c) => {
+const CrdtSnapshotPushSchema = z.object({
+  noteId: NoteIdSchema,
+  snapshot: z.string()
+})
+
+const handleCrdtUpdatePush = async (c: Context<AppContext>): Promise<Response> => {
   const userId = c.get('userId')!
   const deviceId = c.get('deviceId')!
+  const endpoint = getRequestPath(c)
+  const startedAt = Date.now()
   const body = await c.req.json()
-  const parsed = CrdtPushSchema.parse(body)
-
-  const buffers = parsed.updates.map((b64) => {
-    const bytes = safeBase64Decode(b64)
-    if (bytes.byteLength > MAX_UPDATE_BYTES) {
-      throw new AppError(ErrorCodes.VALIDATION_ERROR, 'Individual update exceeds 5MB limit', 413)
-    }
-    return bytes.buffer as ArrayBuffer
+  const parsed = parseTransportRequest(CrdtPushSchema, body, {
+    transport: 'crdt',
+    endpoint,
+    label: 'CRDT updates request'
   })
 
+  const buffers = parsed.updates.map((payload) =>
+    decodeCrdtPayload(payload, endpoint, 'Individual update exceeds 5MB limit')
+  )
+
   const totalBytes = buffers.reduce((sum, buf) => sum + buf.byteLength, 0)
-  await checkQuota(c.env.DB, userId, totalBytes)
+  try {
+    await checkQuota(c.env.DB, userId, totalBytes)
+  } catch (error) {
+    if (error instanceof AppError && error.code === ErrorCodes.STORAGE_QUOTA_EXCEEDED) {
+      logCrdtTraffic({
+        endpoint,
+        event: 'updates_rejected',
+        noteId: parsed.noteId,
+        updateCount: parsed.updates.length,
+        totalBytes,
+        latencyMs: Date.now() - startedAt,
+        reason: error.code
+      })
+    }
+    throw error
+  }
 
   const sequences = await storeUpdates(c.env.DB, userId, parsed.noteId, deviceId, buffers)
 
@@ -333,25 +447,42 @@ sync.post('/crdt/updates', crdtPushRateLimit, async (c) => {
     )
   )
 
-  return c.json({ sequences })
-})
+  logCrdtTraffic({
+    endpoint,
+    event: 'updates_stored',
+    noteId: parsed.noteId,
+    updateCount: sequences.length,
+    totalBytes,
+    latencyMs: Date.now() - startedAt
+  })
 
-sync.get('/crdt/updates', crdtPullRateLimit, async (c) => {
+  return c.json({ sequences })
+}
+
+const handleCrdtUpdatePull = async (c: Context<AppContext>): Promise<Response> => {
   const userId = c.get('userId')!
+  const endpoint = getRequestPath(c)
+  const startedAt = Date.now()
   const noteIdRaw = c.req.query('note_id')
   const since = parseInt(c.req.query('since') ?? '0', 10)
   const limit = parseInt(c.req.query('limit') ?? '100', 10)
 
   if (!noteIdRaw) {
-    throw new AppError(ErrorCodes.VALIDATION_ERROR, 'note_id is required', 400)
+    logQueryValidationFailure('crdt', endpoint, 'note_id is required')
   }
-  const noteIdResult = NoteIdSchema.safeParse(noteIdRaw)
+  const noteId = noteIdRaw
+  const noteIdResult = NoteIdSchema.safeParse(noteId)
   if (!noteIdResult.success) {
-    throw new AppError(ErrorCodes.VALIDATION_ERROR, 'Invalid note_id format', 400)
+    logQueryValidationFailure('crdt', endpoint, 'Invalid note_id format')
   }
-  const noteId = noteIdResult.data
+  if (isNaN(since) || since < 0) {
+    logQueryValidationFailure('crdt', endpoint, 'Invalid since value')
+  }
+  if (isNaN(limit) || limit < 1) {
+    logQueryValidationFailure('crdt', endpoint, 'Invalid limit value')
+  }
 
-  const result = await getUpdates(c.env.DB, userId, noteId, since, Math.min(limit, 500))
+  const result = await getUpdates(c.env.DB, userId, noteIdResult.data, since, Math.min(limit, 500))
 
   const encoded = result.updates.map((u) => ({
     sequenceNum: u.sequence_num,
@@ -360,56 +491,89 @@ sync.get('/crdt/updates', crdtPullRateLimit, async (c) => {
     createdAt: u.created_at
   }))
 
+  logCrdtTraffic({
+    endpoint,
+    event: 'updates_fetched',
+    noteId: noteIdResult.data,
+    updateCount: encoded.length,
+    totalBytes: result.updates.reduce((sum, update) => sum + update.update_data.byteLength, 0),
+    latencyMs: Date.now() - startedAt
+  })
+
   return c.json({ updates: encoded, hasMore: result.hasMore })
-})
+}
 
-sync.post('/crdt/updates/batch', crdtBatchPullRateLimit, async (c) => {
+const handleCrdtBatchPull = async (c: Context<AppContext>): Promise<Response> => {
   const userId = c.get('userId')!
+  const endpoint = getRequestPath(c)
+  const startedAt = Date.now()
   const body: unknown = await c.req.json()
-  const parsed = CrdtBatchPullSchema.safeParse(body)
-  if (!parsed.success) {
-    throw new AppError(
-      ErrorCodes.VALIDATION_ERROR,
-      `Invalid batch request: ${parsed.error.issues[0]?.message ?? 'validation failed'}`,
-      400
-    )
-  }
+  const parsed = parseTransportRequest(CrdtBatchPullSchema, body, {
+    transport: 'crdt',
+    endpoint,
+    label: 'CRDT batch request'
+  })
 
-  const { notes, limit } = parsed.data
-  const batchResult = await getBatchUpdates(c.env.DB, userId, notes, limit)
+  const batchResult = await getBatchUpdates(c.env.DB, userId, parsed.notes, parsed.limit)
 
   const response: Record<string, { updates: unknown[]; hasMore: boolean }> = {}
-  for (const [noteId, r] of Object.entries(batchResult)) {
+  for (const [noteId, result] of Object.entries(batchResult)) {
     response[noteId] = {
-      updates: r.updates.map((u) => ({
-        sequenceNum: u.sequence_num,
-        data: safeBase64Encode(u.update_data as ArrayBuffer),
-        signerDeviceId: u.signer_device_id,
-        createdAt: u.created_at
+      updates: result.updates.map((update) => ({
+        sequenceNum: update.sequence_num,
+        data: safeBase64Encode(update.update_data as ArrayBuffer),
+        signerDeviceId: update.signer_device_id,
+        createdAt: update.created_at
       })),
-      hasMore: r.hasMore
+      hasMore: result.hasMore
     }
   }
+
+  logCrdtTraffic({
+    endpoint,
+    event: 'batch_fetched',
+    noteCount: parsed.notes.length,
+    updateCount: Object.values(batchResult).reduce((sum, result) => sum + result.updates.length, 0),
+    totalBytes: Object.values(batchResult).reduce(
+      (sum, result) =>
+        sum + result.updates.reduce((noteSum, update) => noteSum + update.update_data.byteLength, 0),
+      0
+    ),
+    latencyMs: Date.now() - startedAt
+  })
+
   return c.json({ notes: response })
-})
+}
 
-const CrdtSnapshotPushSchema = z.object({
-  noteId: NoteIdSchema,
-  snapshot: z.string()
-})
-
-sync.post('/crdt/snapshot', crdtPushRateLimit, async (c) => {
+const handleCrdtSnapshotPush = async (c: Context<AppContext>): Promise<Response> => {
   const userId = c.get('userId')!
   const deviceId = c.get('deviceId')!
+  const endpoint = getRequestPath(c)
+  const startedAt = Date.now()
   const body = await c.req.json()
-  const parsed = CrdtSnapshotPushSchema.parse(body)
+  const parsed = parseTransportRequest(CrdtSnapshotPushSchema, body, {
+    transport: 'crdt',
+    endpoint,
+    label: 'CRDT snapshot request'
+  })
 
-  const bytes = safeBase64Decode(parsed.snapshot)
-  if (bytes.byteLength > MAX_UPDATE_BYTES) {
-    throw new AppError(ErrorCodes.VALIDATION_ERROR, 'Snapshot exceeds 5MB limit', 413)
+  const snapshotBytes = decodeCrdtPayload(parsed.snapshot, endpoint, 'Snapshot exceeds 5MB limit')
+
+  try {
+    await checkQuota(c.env.DB, userId, snapshotBytes.byteLength)
+  } catch (error) {
+    if (error instanceof AppError && error.code === ErrorCodes.STORAGE_QUOTA_EXCEEDED) {
+      logCrdtTraffic({
+        endpoint,
+        event: 'snapshot_rejected',
+        noteId: parsed.noteId,
+        totalBytes: snapshotBytes.byteLength,
+        latencyMs: Date.now() - startedAt,
+        reason: error.code
+      })
+    }
+    throw error
   }
-
-  await checkQuota(c.env.DB, userId, bytes.byteLength)
 
   const result = await storeSnapshot(
     c.env.DB,
@@ -417,32 +581,69 @@ sync.post('/crdt/snapshot', crdtPushRateLimit, async (c) => {
     userId,
     parsed.noteId,
     deviceId,
-    bytes.buffer as ArrayBuffer
+    snapshotBytes
   )
 
   await pruneUpdatesBeforeSnapshot(c.env.DB, userId, parsed.noteId)
 
-  return c.json({ sequenceNum: result.sequenceNum })
-})
+  logCrdtTraffic({
+    endpoint,
+    event: 'snapshot_stored',
+    noteId: parsed.noteId,
+    totalBytes: snapshotBytes.byteLength,
+    sequenceNum: result.sequenceNum,
+    latencyMs: Date.now() - startedAt
+  })
 
-sync.get('/crdt/snapshot/:noteId', crdtPullRateLimit, async (c) => {
+  return c.json({ sequenceNum: result.sequenceNum })
+}
+
+const handleCrdtSnapshotPull = async (c: Context<AppContext>): Promise<Response> => {
   const userId = c.get('userId')!
+  const endpoint = getRequestPath(c)
+  const startedAt = Date.now()
   const noteIdRaw = c.req.param('noteId')
 
   const noteIdResult = NoteIdSchema.safeParse(noteIdRaw)
   if (!noteIdResult.success) {
-    throw new AppError(ErrorCodes.VALIDATION_ERROR, 'Invalid noteId format', 400)
+    logQueryValidationFailure('crdt', endpoint, 'Invalid noteId format')
   }
 
   const result = await getSnapshot(c.env.DB, c.env.STORAGE, userId, noteIdResult.data)
   if (!result) {
+    logCrdtTraffic({
+      endpoint,
+      event: 'snapshot_fetched',
+      noteId: noteIdResult.data,
+      totalBytes: 0,
+      sequenceNum: 0,
+      latencyMs: Date.now() - startedAt
+    })
     return c.json({ snapshot: null, sequenceNum: 0, signerDeviceId: null })
   }
 
-  const encoded = safeBase64Encode(result.snapshotData)
+  logCrdtTraffic({
+    endpoint,
+    event: 'snapshot_fetched',
+    noteId: noteIdResult.data,
+    totalBytes: result.snapshotData.byteLength,
+    sequenceNum: result.sequenceNum,
+    latencyMs: Date.now() - startedAt
+  })
+
   return c.json({
-    snapshot: encoded,
+    snapshot: safeBase64Encode(result.snapshotData),
     sequenceNum: result.sequenceNum,
     signerDeviceId: result.signerDeviceId
   })
-})
+}
+
+const crdtSync = new Hono<AppContext>()
+
+crdtSync.post('/updates', crdtPushRateLimit, handleCrdtUpdatePush)
+crdtSync.get('/updates', crdtPullRateLimit, handleCrdtUpdatePull)
+crdtSync.post('/updates/batch', crdtBatchPullRateLimit, handleCrdtBatchPull)
+crdtSync.post('/snapshot', crdtPushRateLimit, handleCrdtSnapshotPush)
+crdtSync.get('/snapshot/:noteId', crdtPullRateLimit, handleCrdtSnapshotPull)
+
+sync.route('/crdt', crdtSync)
