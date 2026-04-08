@@ -6,7 +6,9 @@
     "src/renderer/src/**/*.tsx",
     "src/preload/*.d.ts",
     "../../packages/contracts/src/**/*",
+    "../../packages/domain-tasks/src/**/*",
     "../../packages/db-schema/src/**/*",
+    "../../packages/storage-data/src/**/*",
     "../../packages/shared/src/**/*"
   ],
   "exclude": ["**/*.test.ts", "**/*.test.tsx", "**/*.spec.ts"],
@@ -20,8 +22,12 @@
     "paths": {
       "@memry/contracts": ["../../packages/contracts/src/index.ts"],
       "@memry/contracts/*": ["../../packages/contracts/src/*"],
+      "@memry/domain-tasks": ["../../packages/domain-tasks/src/index.ts"],
+      "@memry/domain-tasks/*": ["../../packages/domain-tasks/src/*"],
       "@memry/db-schema": ["../../packages/db-schema/src/index.ts"],
       "@memry/db-schema/*": ["../../packages/db-schema/src/*"],
+      "@memry/storage-data": ["../../packages/storage-data/src/index.ts"],
+      "@memry/storage-data/*": ["../../packages/storage-data/src/*"],
       "@memry/shared": ["../../packages/shared/src/index.ts"],
       "@memry/shared/*": ["../../packages/shared/src/*"],
       "@renderer/*": ["./src/renderer/src/*"],

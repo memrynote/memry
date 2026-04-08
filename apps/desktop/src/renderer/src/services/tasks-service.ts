@@ -5,95 +5,26 @@
  * @module services/tasks-service
  */
 
-/**
- * Types for tasks service
- * Mirrored from preload types
- */
+import type {
+  RepeatConfig,
+  Task,
+  TaskListItem,
+  Project,
+  ProjectWithStats,
+  ProjectWithStatuses,
+  Status,
+  TaskStats
+} from '@memry/contracts/tasks-api'
 
-/**
- * RepeatConfig - matches frontend format for full feature support
- */
-export interface RepeatConfig {
-  frequency: 'daily' | 'weekly' | 'monthly' | 'yearly'
-  interval: number
-  daysOfWeek?: number[]
-  monthlyType?: 'dayOfMonth' | 'weekPattern'
-  dayOfMonth?: number
-  weekOfMonth?: number
-  dayOfWeekForMonth?: number
-  endType: 'never' | 'date' | 'count'
-  endDate?: string | null
-  endCount?: number
-  completedCount: number
-  createdAt: string
-}
-
-// Task types
-export interface Task {
-  id: string
-  projectId: string
-  statusId: string | null
-  parentId: string | null
-  title: string
-  description: string | null
-  priority: 0 | 1 | 2 | 3 | 4
-  position: number
-  dueDate: string | null
-  dueTime: string | null
-  startDate: string | null
-  repeatConfig: RepeatConfig | null
-  repeatFrom: 'due' | 'completion' | null
-  sourceNoteId: string | null
-  completedAt: string | null
-  archivedAt: string | null
-  createdAt: string
-  modifiedAt: string
-  tags?: string[]
-  linkedNoteIds?: string[]
-  hasSubtasks?: boolean
-  subtaskCount?: number
-  completedSubtaskCount?: number
-}
-
-export interface TaskListItem extends Task {
-  tags: string[]
-  hasSubtasks: boolean
-  subtaskCount: number
-  completedSubtaskCount: number
-}
-
-export interface Project {
-  id: string
-  name: string
-  description: string | null
-  color: string
-  icon: string | null
-  position: number
-  isInbox: boolean
-  createdAt: string
-  modifiedAt: string
-  archivedAt: string | null
-}
-
-export interface ProjectWithStats extends Project {
-  taskCount: number
-  completedCount: number
-  overdueCount: number
-}
-
-export interface ProjectWithStatuses extends Project {
-  statuses: Status[]
-}
-
-export interface Status {
-  id: string
-  projectId: string
-  name: string
-  color: string
-  position: number
-  isDefault: boolean
-  isDone: boolean
-  createdAt: string
+export type {
+  RepeatConfig,
+  Task,
+  TaskListItem,
+  Project,
+  ProjectWithStats,
+  ProjectWithStatuses,
+  Status,
+  TaskStats
 }
 
 export interface TaskCreateInput {
@@ -197,14 +128,6 @@ export interface StatusCreateInput {
   name: string
   color?: string
   isDone?: boolean
-}
-
-export interface TaskStats {
-  total: number
-  completed: number
-  overdue: number
-  dueToday: number
-  dueThisWeek: number
 }
 
 export interface TaskMoveInput {
