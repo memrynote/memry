@@ -55,8 +55,6 @@ export function useTabPreferences(): UseTabPreferencesReturn {
 
     const loadSettings = async (): Promise<void> => {
       try {
-        setIsLoading(true)
-        setError(null)
         const result = await window.api.settings.getTabSettings()
         if (mounted) {
           setSettings(result)
@@ -72,7 +70,7 @@ export function useTabPreferences(): UseTabPreferencesReturn {
       }
     }
 
-    loadSettings()
+    void loadSettings()
 
     return () => {
       mounted = false

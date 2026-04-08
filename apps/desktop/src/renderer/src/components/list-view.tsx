@@ -87,17 +87,20 @@ const ListView = ({
     }
   })
 
-  // State - use controlled focus if provided, otherwise internal state
-  const [internalFocusedItemId, setInternalFocusedItemId] = useState<string | null>(
-    flatItems[0]?.id || null
+  // State - track only the user-requested focus and derive the visible focus from current items
+  const [requestedFocusedItemIdState, setRequestedFocusedItemIdState] = useState<string | null>(
+    null
   )
-  const focusedItemId =
-    controlledFocusedItemId !== undefined ? controlledFocusedItemId : internalFocusedItemId
+  const requestedFocusedItemId =
+    controlledFocusedItemId !== undefined ? controlledFocusedItemId : requestedFocusedItemIdState
+  const focusedItemId = flatItems.some((item) => item.id === requestedFocusedItemId)
+    ? requestedFocusedItemId
+    : (flatItems[0]?.id ?? null)
 
   const setFocusedItemId = useCallback(
     (id: string | null): void => {
       if (controlledFocusedItemId === undefined) {
-        setInternalFocusedItemId(id)
+        setRequestedFocusedItemIdState(id)
       }
       onFocusedItemChange?.(id)
     },
@@ -110,21 +113,8 @@ const ListView = ({
 
   const isInBulkMode = selectedItemIds.size > 0
 
-  // Reset focus when items change
-  useEffect(() => {
-    if (flatItems.length > 0 && !flatItems.find((i) => i.id === focusedItemId)) {
-      const newFocusId = flatItems[0]?.id || null
-      setFocusedItemId(newFocusId)
-    }
-  }, [flatItems, focusedItemId, setFocusedItemId])
-
   // Get filtered folders for current query
   const filteredFolders = getFilteredFolders(vaultFolders, quickFileQuery, 5)
-
-  // Reset highlighted index when query changes
-  useEffect(() => {
-    setHighlightedIndex(0)
-  }, [quickFileQuery])
 
   // Handle selection toggle with shift-click support
   const handleSelectionToggle = useCallback(
@@ -373,6 +363,7 @@ const ListView = ({
   // Quick-File handlers
   const handleQuickFileQueryChange = useCallback((query: string): void => {
     setQuickFileQuery(query)
+    setHighlightedIndex(0)
   }, [])
 
   const handleQuickFileSubmit = useCallback((): void => {

@@ -49,8 +49,6 @@ export function useNoteEditorSettings(): UseNoteEditorSettingsReturn {
 
     const loadSettings = async (): Promise<void> => {
       try {
-        setIsLoading(true)
-        setError(null)
         const result = await window.api.settings.getNoteEditorSettings()
         if (mounted) {
           setSettings(result)
@@ -66,7 +64,7 @@ export function useNoteEditorSettings(): UseNoteEditorSettingsReturn {
       }
     }
 
-    loadSettings()
+    void loadSettings()
 
     return () => {
       mounted = false

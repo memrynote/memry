@@ -33,8 +33,6 @@ export function useStorageUsage() {
     let cancelled = false
 
     const load = async () => {
-      setLoading(true)
-      setError(null)
       try {
         const result = await window.api.syncOps.getStorageBreakdown()
         if (!cancelled) setData(result)
@@ -45,7 +43,7 @@ export function useStorageUsage() {
         if (!cancelled) setLoading(false)
       }
     }
-    load()
+    void load()
 
     return () => {
       cancelled = true

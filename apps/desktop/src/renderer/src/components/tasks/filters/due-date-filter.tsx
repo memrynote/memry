@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { Check, ChevronDown, Calendar as CalendarIcon } from '@/lib/icons'
 
 import { Button } from '@/components/ui/button'
@@ -49,12 +49,6 @@ export const DueDateFilter = ({
   const [localType, setLocalType] = useState<FilterType>(value.type)
   const [customStart, setCustomStart] = useState<Date | undefined>(value.customStart || undefined)
   const [customEnd, setCustomEnd] = useState<Date | undefined>(value.customEnd || undefined)
-
-  useEffect(() => {
-    setLocalType(value.type)
-    setCustomStart(value.customStart || undefined)
-    setCustomEnd(value.customEnd || undefined)
-  }, [value])
 
   const hasSelection = value.type !== 'any'
 

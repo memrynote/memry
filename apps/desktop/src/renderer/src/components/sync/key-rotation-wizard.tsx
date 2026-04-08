@@ -29,10 +29,22 @@ interface KeyRotationWizardProps {
   onOpenChange: (open: boolean) => void
 }
 
+interface KeyRotationWizardSessionProps {
+  onOpenChange: (open: boolean) => void
+}
+
 export function KeyRotationWizard({
   open,
   onOpenChange
-}: KeyRotationWizardProps): React.JSX.Element {
+}: KeyRotationWizardProps): React.JSX.Element | null {
+  if (!open) return null
+
+  return <KeyRotationWizardSession onOpenChange={onOpenChange} />
+}
+
+function KeyRotationWizardSession({
+  onOpenChange
+}: KeyRotationWizardSessionProps): React.JSX.Element {
   const [step, setStep] = useState<WizardStep>('confirm')
   const [progress, setProgress] = useState({ total: 0, processed: 0, phase: '' })
   const [newPhrase, setNewPhrase] = useState<string | null>(null)
@@ -41,20 +53,9 @@ export function KeyRotationWizard({
   const dismissedRef = useRef(false)
 
   useEffect(() => {
-    if (!open) {
-      setStep('confirm')
-      setProgress({ total: 0, processed: 0, phase: '' })
-      setNewPhrase(null)
-      setError(null)
-      dismissedRef.current = false
-    }
-  }, [open])
-
-  useEffect(() => {
-    if (!open) return
-
     const unsubscribe = window.api.onKeyRotationProgress((event: KeyRotationProgressEvent) => {
       if (dismissedRef.current) return
+
       setProgress({
         total: event.totalItems,
         processed: event.processedItems,
@@ -68,7 +69,7 @@ export function KeyRotationWizard({
     })
 
     return unsubscribe
-  }, [open])
+  }, [])
 
   const handleStartRotation = useCallback(async () => {
     setStep('rotating')
@@ -97,6 +98,8 @@ export function KeyRotationWizard({
         setShowConfirmClose(true)
         return
       }
+
+      setShowConfirmClose(false)
       onOpenChange(false)
     },
     [step, onOpenChange]
@@ -112,9 +115,11 @@ export function KeyRotationWizard({
   return (
     <>
       <Dialog
-        open={open}
-        onOpenChange={(o) => {
-          if (!o) handleClose()
+        open
+        onOpenChange={(nextOpen) => {
+          if (!nextOpen) {
+            handleClose()
+          }
         }}
       >
         <DialogContent
@@ -175,7 +180,7 @@ export function KeyRotationWizard({
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Stay</AlertDialogCancel>
-            <AlertDialogAction onClick={() => onOpenChange(false)}>Close anyway</AlertDialogAction>
+            <AlertDialogAction onClick={() => handleClose(true)}>Close anyway</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

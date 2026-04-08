@@ -34,12 +34,11 @@ export const TagAutocomplete = forwardRef<
   TagAutocompleteRef,
   TagAutocompleteProps & Partial<SuggestionProps>
 >(({ items, command, query }, ref) => {
-  const [selectedIndex, setSelectedIndex] = useState(0)
-
-  // Reset selection when items change
-  useEffect(() => {
-    setSelectedIndex(0)
-  }, [items])
+  const [requestedSelectedIndex, setRequestedSelectedIndex] = useState(0)
+  const selectedIndex =
+    items.length === 0
+      ? (query && query.trim() ? 0 : -1)
+      : Math.min(Math.max(requestedSelectedIndex, 0), items.length)
 
   // Scroll selected item into view
   useEffect(() => {
@@ -68,11 +67,11 @@ export const TagAutocomplete = forwardRef<
   )
 
   const upHandler = useCallback(() => {
-    setSelectedIndex((prev) => (prev === 0 ? items.length : prev - 1))
+    setRequestedSelectedIndex((prev) => (prev === 0 ? items.length : prev - 1))
   }, [items.length])
 
   const downHandler = useCallback(() => {
-    setSelectedIndex((prev) => (prev === items.length ? 0 : prev + 1))
+    setRequestedSelectedIndex((prev) => (prev === items.length ? 0 : prev + 1))
   }, [items.length])
 
   const enterHandler = useCallback(() => {

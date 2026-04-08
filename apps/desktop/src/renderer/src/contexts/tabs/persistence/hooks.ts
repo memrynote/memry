@@ -3,7 +3,8 @@
  * Auto-save and session restore functionality
  */
 
-import { useEffect, useRef, useState, useCallback } from 'react'
+import { useEffect, useRef, useCallback } from 'react'
+import { useMutation, useQuery } from '@tanstack/react-query'
 import { useTabs } from '@/contexts/tabs'
 import type { TabSystemState } from '@/contexts/tabs/types'
 import { getDefaultStorage, saveSync } from './storage'
@@ -131,15 +132,10 @@ export const useSessionRestore = (
 ): UseSessionRestoreResult => {
   const { storage = getDefaultStorage(), autoRestore = true } = options
   const { dispatch, state } = useTabs()
-  const [isRestoring, setIsRestoring] = useState(autoRestore)
-  const [restoreError, setRestoreError] = useState<Error | null>(null)
   const hasRestoredRef = useRef(false)
 
-  const restore = useCallback(async (): Promise<void> => {
+  const restoreSession = useCallback(async (): Promise<void> => {
     if (hasRestoredRef.current) return
-
-    setIsRestoring(true)
-    setRestoreError(null)
 
     try {
       const persisted = await storage.load()
@@ -199,22 +195,38 @@ export const useSessionRestore = (
       hasRestoredRef.current = true
     } catch (error) {
       log.error('Failed to restore session:', error)
-      setRestoreError(error as Error)
-    } finally {
-      setIsRestoring(false)
+      throw error instanceof Error ? error : new Error('Failed to restore session')
     }
   }, [storage, state.settings.restoreSessionOnStart, dispatch])
+
+  const autoRestoreQuery = useQuery({
+    queryKey: ['tabs', 'session-restore', state.settings.restoreSessionOnStart],
+    queryFn: restoreSession,
+    enabled: autoRestore,
+    retry: false,
+    staleTime: Infinity
+  })
+
+  const restoreMutation = useMutation({
+    mutationFn: restoreSession
+  })
+
+  const restore = useCallback(async (): Promise<void> => {
+    await restoreMutation.mutateAsync()
+  }, [restoreMutation])
 
   const clearStoredState = useCallback(async (): Promise<void> => {
     await storage.clear()
   }, [storage])
 
-  // Auto-restore on mount
-  useEffect(() => {
-    if (autoRestore && !hasRestoredRef.current) {
-      restore()
-    }
-  }, [autoRestore, restore])
+  const restoreError =
+    autoRestoreQuery.error instanceof Error
+      ? autoRestoreQuery.error
+      : restoreMutation.error instanceof Error
+        ? restoreMutation.error
+        : null
+
+  const isRestoring = autoRestoreQuery.isPending || restoreMutation.isPending
 
   return {
     isRestoring,

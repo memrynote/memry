@@ -34,12 +34,8 @@ export const WikiLinkAutocomplete = forwardRef<
   WikiLinkAutocompleteRef,
   WikiLinkAutocompleteProps & Partial<SuggestionProps>
 >(({ items, command }, ref) => {
-  const [selectedIndex, setSelectedIndex] = useState(0)
-
-  // Reset selection when items change
-  useEffect(() => {
-    setSelectedIndex(0)
-  }, [items])
+  const [requestedSelectedIndex, setRequestedSelectedIndex] = useState(0)
+  const selectedIndex = Math.min(Math.max(requestedSelectedIndex, 0), items.length)
 
   // Scroll selected item into view
   useEffect(() => {
@@ -71,11 +67,11 @@ export const WikiLinkAutocomplete = forwardRef<
   )
 
   const upHandler = useCallback(() => {
-    setSelectedIndex((prev) => (prev === 0 ? items.length : prev - 1))
+    setRequestedSelectedIndex((prev) => (prev === 0 ? items.length : prev - 1))
   }, [items.length])
 
   const downHandler = useCallback(() => {
-    setSelectedIndex((prev) => (prev === items.length ? 0 : prev + 1))
+    setRequestedSelectedIndex((prev) => (prev === items.length ? 0 : prev + 1))
   }, [items.length])
 
   const enterHandler = useCallback(() => {

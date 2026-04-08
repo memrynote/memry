@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { cn } from '@/lib/utils'
 import {
   tasksService,
@@ -15,7 +16,7 @@ import { InlinePriorityPopover } from '@/components/tasks/inline-priority-popove
 import { SubtaskProgressIndicator } from '@/components/tasks/subtask-progress-indicator'
 import type { Priority } from '@/data/sample-tasks'
 import type { Status, Project } from '@/data/tasks-data'
-import { ChevronUp, ChevronDown } from '@/lib/icons'
+import { ChevronDown } from '@/lib/icons'
 import { createLogger } from '@/lib/logger'
 
 const log = createLogger('JournalDayPanel')
@@ -157,11 +158,10 @@ interface JournalDayPanelProps {
 }
 
 export function JournalDayPanel({ date, className }: JournalDayPanelProps) {
-  const [tasks, setTasks] = useState<TaskListItem[]>([])
-  const [overdueCount, setOverdueCount] = useState(0)
   const [isCollapsed, setIsCollapsed] = useState(false)
   const { projects } = useTasksContext()
   const { openTab } = useTabActions()
+  const queryClient = useQueryClient()
 
   const projectMap = useMemo(() => {
     const map = new Map<string, Project>()
@@ -178,40 +178,45 @@ export function JournalDayPanel({ date, className }: JournalDayPanelProps) {
 
   const schedule = useMemo(() => getDummySchedule(date), [date])
 
-  const fetchTasks = useCallback(async () => {
-    try {
-      const result = await tasksService.list({
-        dueAfter: date,
-        dueBefore: date,
-        includeCompleted: true,
-        sortBy: 'priority',
-        sortOrder: 'desc'
-      })
-      setTasks(result.tasks)
-    } catch (err) {
-      log.error('Failed to fetch tasks for date', date, err)
+  const { data: tasks = [] } = useQuery({
+    queryKey: ['journal-day-panel', 'tasks', date],
+    queryFn: async (): Promise<TaskListItem[]> => {
+      try {
+        const result = await tasksService.list({
+          dueAfter: date,
+          dueBefore: date,
+          includeCompleted: true,
+          sortBy: 'priority',
+          sortOrder: 'desc'
+        })
+        return result.tasks
+      } catch (err) {
+        log.error('Failed to fetch tasks for date', date, err)
+        return []
+      }
     }
-  }, [date])
+  })
 
-  const fetchOverdueCount = useCallback(async () => {
-    if (!isToday) return
-    try {
-      const stats = await tasksService.getStats()
-      setOverdueCount(stats.overdue)
-    } catch (err) {
-      log.error('Failed to fetch overdue count', err)
-    }
-  }, [isToday])
-
-  useEffect(() => {
-    fetchTasks()
-    fetchOverdueCount()
-  }, [fetchTasks, fetchOverdueCount])
+  const { data: overdueCount = 0 } = useQuery({
+    queryKey: ['journal-day-panel', 'overdue-count'],
+    queryFn: async (): Promise<number> => {
+      try {
+        const stats = await tasksService.getStats()
+        return stats.overdue
+      } catch (err) {
+        log.error('Failed to fetch overdue count', err)
+        return 0
+      }
+    },
+    enabled: isToday
+  })
 
   useEffect(() => {
     const refresh = () => {
-      fetchTasks()
-      fetchOverdueCount()
+      void queryClient.invalidateQueries({ queryKey: ['journal-day-panel', 'tasks', date] })
+      if (isToday) {
+        void queryClient.invalidateQueries({ queryKey: ['journal-day-panel', 'overdue-count'] })
+      }
     }
     const unsubs = [
       onTaskCreated(refresh),
@@ -220,7 +225,7 @@ export function JournalDayPanel({ date, className }: JournalDayPanelProps) {
       onTaskCompleted(refresh)
     ]
     return () => unsubs.forEach((fn) => fn())
-  }, [fetchTasks, fetchOverdueCount])
+  }, [date, isToday, queryClient])
 
   const handleToggleComplete = useCallback(async (id: string, isCompleted: boolean) => {
     try {

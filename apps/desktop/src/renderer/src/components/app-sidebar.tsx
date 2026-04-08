@@ -31,7 +31,7 @@ import {
 } from '@/components/ui/sidebar'
 import { SidebarNav } from '@/components/sidebar/sidebar-nav'
 import { SidebarSection } from '@/components/sidebar-section'
-import { NotesTree } from '@/components/notes-tree'
+import { NotesTree, type NotesTreeActions } from '@/components/notes-tree'
 import { SidebarTagList } from '@/components/sidebar/sidebar-tag-list'
 import { SidebarBookmarkList } from '@/components/sidebar/sidebar-bookmark-list'
 import { SidebarDrillDownContainer } from '@/components/sidebar/sidebar-drill-down-container'
@@ -104,12 +104,7 @@ export function AppSidebar({ currentPage, viewCounts, ...props }: AppSidebarProp
  */
 function AppSidebarInner({ currentPage, viewCounts, ...props }: AppSidebarProps) {
   const [tagsActions, setTagsActions] = useState<React.ReactNode>(null)
-  const notesActionsRef = useRef<{
-    createNote: () => void
-    createFolder: () => void
-    collapseAll: () => void
-    expandAll: () => void
-  } | null>(null)
+  const notesActionsRef = useRef<NotesTreeActions | null>(null)
   const [foldersExpanded, setFoldersExpanded] = useState(false)
   const sidebarScrollRef = useRef<HTMLDivElement>(null)
   const targetFolderRef = useRef('')
@@ -393,9 +388,7 @@ function AppSidebarInner({ currentPage, viewCounts, ...props }: AppSidebarProps)
           }
         >
           <NotesTree
-            onActionsReady={(actions) => {
-              notesActionsRef.current = actions
-            }}
+            ref={notesActionsRef}
             onTargetFolderChange={handleTargetFolderChange}
             scrollContainerRef={sidebarScrollRef as React.RefObject<HTMLElement>}
           />

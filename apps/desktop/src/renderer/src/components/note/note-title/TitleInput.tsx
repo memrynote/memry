@@ -17,12 +17,8 @@ export function TitleInput({
   disabled = false
 }: TitleInputProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null)
-  const [localValue, setLocalValue] = useState(value)
-
-  // Sync local value when prop changes
-  useEffect(() => {
-    setLocalValue(value)
-  }, [value])
+  const [draftValue, setDraftValue] = useState<string | null>(null)
+  const displayValue = draftValue ?? value
 
   // Auto-resize textarea
   const adjustHeight = useCallback(() => {
@@ -35,7 +31,7 @@ export function TitleInput({
 
   useEffect(() => {
     adjustHeight()
-  }, [localValue, adjustHeight])
+  }, [displayValue, adjustHeight])
 
   // Auto-focus on mount
   useEffect(() => {
@@ -48,18 +44,18 @@ export function TitleInput({
   }, [autoFocus])
 
   const handleChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    const newValue = e.target.value
-    setLocalValue(newValue)
+    setDraftValue(e.target.value)
     // Don't call onChange on every keystroke - only update local state
     // The actual save happens on blur
   }, [])
 
   const handleBlur = useCallback(() => {
     // Only trigger onChange if value actually changed
-    if (localValue !== value) {
-      onChange(localValue)
+    if (draftValue !== null && draftValue !== value) {
+      onChange(draftValue)
     }
-  }, [localValue, value, onChange])
+    setDraftValue(null)
+  }, [draftValue, value, onChange])
 
   const handleKeyDown = useCallback(
     (e: KeyboardEvent<HTMLTextAreaElement>) => {
@@ -71,17 +67,17 @@ export function TitleInput({
       // Escape reverts and blurs
       if (e.key === 'Escape') {
         e.preventDefault()
-        setLocalValue(value)
+        setDraftValue(null)
         textareaRef.current?.blur()
       }
     },
-    [value]
+    []
   )
 
   return (
     <textarea
       ref={textareaRef}
-      value={localValue}
+      value={displayValue}
       onChange={handleChange}
       onKeyDown={handleKeyDown}
       onBlur={handleBlur}

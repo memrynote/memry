@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo, useRef, useEffect } from 'react'
+import { useState, useCallback, useMemo, useRef } from 'react'
 
 // ============================================================================
 // TYPES
@@ -76,6 +76,15 @@ const areSetsEqual = (left: Set<string>, right: Set<string>): boolean => {
   return true
 }
 
+const getSelectAllState = (
+  selectedCount: number,
+  visibleTaskCount: number
+): SelectionState['selectAllState'] => {
+  if (selectedCount === 0) return 'none'
+  if (selectedCount === visibleTaskCount) return 'all'
+  return 'some'
+}
+
 const getNextLastSelectedId = (
   selectedIds: Set<string>,
   previousLastSelectedId: string | null
@@ -101,27 +110,74 @@ export const useTaskSelection = (
   options: UseTaskSelectionOptions = {}
 ): UseTaskSelectionReturn => {
   const { controlledSelectedIds, onSelectionChange } = options
-  const [selection, setSelectionState] = useState<SelectionState>(initialSelectionState)
-  const selectionRef = useRef(selection)
+  const [internalSelection, setInternalSelectionState] = useState<SelectionState>(() => {
+    if (controlledSelectedIds === undefined) return initialSelectionState
+
+    return {
+      selectedIds: new Set(controlledSelectedIds),
+      isSelectionMode: controlledSelectedIds.size > 0,
+      lastSelectedId: getNextLastSelectedId(controlledSelectedIds, null),
+      selectAllState: getSelectAllState(controlledSelectedIds.size, visibleTaskIds.length)
+    }
+  })
+  const selectionRef = useRef(internalSelection)
+  const previousControlledSelectedIdsRef = useRef(controlledSelectedIds)
+
+  selectionRef.current = internalSelection
+
+  if (controlledSelectedIds !== previousControlledSelectedIdsRef.current) {
+    previousControlledSelectedIdsRef.current = controlledSelectedIds
+
+    if (controlledSelectedIds !== undefined) {
+      const nextSelection: SelectionState = {
+        selectedIds: new Set(controlledSelectedIds),
+        isSelectionMode: controlledSelectedIds.size > 0,
+        lastSelectedId: getNextLastSelectedId(
+          controlledSelectedIds,
+          selectionRef.current.lastSelectedId
+        ),
+        selectAllState: getSelectAllState(controlledSelectedIds.size, visibleTaskIds.length)
+      }
+
+      if (
+        !areSetsEqual(nextSelection.selectedIds, selectionRef.current.selectedIds) ||
+        nextSelection.isSelectionMode !== selectionRef.current.isSelectionMode ||
+        nextSelection.lastSelectedId !== selectionRef.current.lastSelectedId ||
+        nextSelection.selectAllState !== selectionRef.current.selectAllState
+      ) {
+        selectionRef.current = nextSelection
+        setInternalSelectionState(nextSelection)
+      }
+    }
+  }
+
+  const calculateSelectAllState = useCallback(
+    (newSelectedSize: number): SelectionState['selectAllState'] =>
+      getSelectAllState(newSelectedSize, visibleTaskIds.length),
+    [visibleTaskIds.length]
+  )
+
+  const selectedIds = selectionRef.current.selectedIds
+  const lastSelectedId = getNextLastSelectedId(selectedIds, selectionRef.current.lastSelectedId)
+  const isSelectionMode = selectionRef.current.isSelectionMode
+  const selectAllState = calculateSelectAllState(selectedIds.size)
+  const selection = useMemo<SelectionState>(
+    () => ({
+      selectedIds,
+      isSelectionMode,
+      lastSelectedId,
+      selectAllState
+    }),
+    [selectedIds, isSelectionMode, lastSelectedId, selectAllState]
+  )
 
   // ========== DERIVED STATE ==========
 
-  const selectedCount = selection.selectedIds.size
+  const selectedCount = selectedIds.size
   const hasSelection = selectedCount > 0
   const allSelected = selectedCount === visibleTaskIds.length && visibleTaskIds.length > 0
   const someSelected = selectedCount > 0 && selectedCount < visibleTaskIds.length
-  const selectedTaskIds = useMemo(() => Array.from(selection.selectedIds), [selection.selectedIds])
-
-  // ========== HELPER FUNCTIONS ==========
-
-  const calculateSelectAllState = useCallback(
-    (newSelectedSize: number): SelectionState['selectAllState'] => {
-      if (newSelectedSize === 0) return 'none'
-      if (newSelectedSize === visibleTaskIds.length) return 'all'
-      return 'some'
-    },
-    [visibleTaskIds.length]
-  )
+  const selectedTaskIds = useMemo(() => Array.from(selectedIds), [selectedIds])
 
   const setSelection = useCallback(
     (updater: SelectionState | ((prev: SelectionState) => SelectionState)): void => {
@@ -131,28 +187,11 @@ export const useTaskSelection = (
           : updater
 
       selectionRef.current = nextSelection
-      setSelectionState(nextSelection)
+      setInternalSelectionState(nextSelection)
       onSelectionChange?.(nextSelection.selectedIds)
     },
     [onSelectionChange]
   )
-
-  useEffect(() => {
-    selectionRef.current = selection
-  }, [selection])
-
-  useEffect(() => {
-    if (!controlledSelectedIds) return
-    if (areSetsEqual(controlledSelectedIds, selectionRef.current.selectedIds)) return
-
-    setSelection((prev) => ({
-      ...prev,
-      selectedIds: new Set(controlledSelectedIds),
-      isSelectionMode: controlledSelectedIds.size > 0,
-      lastSelectedId: getNextLastSelectedId(controlledSelectedIds, prev.lastSelectedId),
-      selectAllState: calculateSelectAllState(controlledSelectedIds.size)
-    }))
-  }, [calculateSelectAllState, controlledSelectedIds, setSelection])
 
   // ========== ACTIONS ==========
 
@@ -170,7 +209,7 @@ export const useTaskSelection = (
         }
       })
     },
-    [calculateSelectAllState]
+    [calculateSelectAllState, setSelection]
   )
 
   const deselectTask = useCallback(
@@ -187,7 +226,7 @@ export const useTaskSelection = (
         }
       })
     },
-    [calculateSelectAllState]
+    [calculateSelectAllState, setSelection]
   )
 
   const toggleTask = useCallback(
@@ -209,7 +248,7 @@ export const useTaskSelection = (
         }
       })
     },
-    [calculateSelectAllState]
+    [calculateSelectAllState, setSelection]
   )
 
   const selectRange = useCallback(
@@ -262,7 +301,7 @@ export const useTaskSelection = (
         }
       })
     },
-    [visibleTaskIds, calculateSelectAllState]
+    [visibleTaskIds, calculateSelectAllState, setSelection]
   )
 
   const selectAll = useCallback((): void => {
@@ -274,11 +313,11 @@ export const useTaskSelection = (
       lastSelectedId: visibleTaskIds[visibleTaskIds.length - 1] || null,
       selectAllState: 'all'
     })
-  }, [visibleTaskIds])
+  }, [visibleTaskIds, setSelection])
 
   const deselectAll = useCallback((): void => {
     setSelection(initialSelectionState)
-  }, [])
+  }, [setSelection])
 
   const toggleSelectAll = useCallback((): void => {
     if (allSelected) {
@@ -290,9 +329,9 @@ export const useTaskSelection = (
 
   const isSelected = useCallback(
     (taskId: string): boolean => {
-      return selection.selectedIds.has(taskId)
+      return selectedIds.has(taskId)
     },
-    [selection.selectedIds]
+    [selectedIds]
   )
 
   const enterSelectionMode = useCallback((): void => {
@@ -300,11 +339,11 @@ export const useTaskSelection = (
       ...prev,
       isSelectionMode: true
     }))
-  }, [])
+  }, [setSelection])
 
   const exitSelectionMode = useCallback((): void => {
     setSelection(initialSelectionState)
-  }, [])
+  }, [setSelection])
 
   return {
     selection,
