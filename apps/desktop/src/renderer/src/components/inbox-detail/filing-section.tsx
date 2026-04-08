@@ -4,20 +4,9 @@
  */
 
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
-import {
-  Folder,
-  Sparkles,
-  Loader2,
-  ChevronDown,
-  Check,
-  FileText,
-  Link2,
-  Search,
-  Plus
-} from '@/lib/icons'
+import { Folder, Sparkles, Loader2, ChevronDown, Check, FileText, Search, Plus } from '@/lib/icons'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 
-import { Button } from '@/components/ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Input } from '@/components/ui/input'
 import { ScrollArea } from '@/components/ui/scroll-area'
@@ -496,32 +485,90 @@ interface UseFilingStateReturn {
   canFile: boolean
 }
 
-export const useFilingState = ({ item, isOpen }: UseFilingStateOptions): UseFilingStateReturn => {
-  const [selectedFolder, setSelectedFolder] = useState<FolderType | null>(null)
-  const [tags, setTags] = useState<string[]>([])
-  const [linkedNotes, setLinkedNotes] = useState<LinkedNote[]>([])
+interface FilingStateSnapshot {
+  sessionKey: string
+  selectedFolder: FolderType | null
+  tags: string[]
+  linkedNotes: LinkedNote[]
+}
 
-  // Reset state when item changes or panel closes
-  useEffect(() => {
-    if (isOpen && item) {
-      setSelectedFolder(null)
-      setTags(item.tags || [])
-      setLinkedNotes([])
-    }
-  }, [isOpen, item?.id])
+function createFilingStateSnapshot(
+  sessionKey: string,
+  item: FilingItem | null,
+  isOpen: boolean
+): FilingStateSnapshot {
+  return {
+    sessionKey,
+    selectedFolder: null,
+    tags: isOpen && item ? item.tags || [] : [],
+    linkedNotes: []
+  }
+}
+
+export const useFilingState = ({ item, isOpen }: UseFilingStateOptions): UseFilingStateReturn => {
+  const sessionKey = isOpen && item ? item.id : '__closed__'
+  const [snapshot, setSnapshot] = useState<FilingStateSnapshot>(() =>
+    createFilingStateSnapshot(sessionKey, item, isOpen)
+  )
+  const activeSnapshot =
+    snapshot.sessionKey === sessionKey
+      ? snapshot
+      : createFilingStateSnapshot(sessionKey, item, isOpen)
+
+  const setSelectedFolder = useCallback(
+    (folder: FolderType | null) => {
+      setSnapshot((prev) => {
+        const base =
+          prev.sessionKey === sessionKey
+            ? prev
+            : createFilingStateSnapshot(sessionKey, item, isOpen)
+        return { ...base, selectedFolder: folder }
+      })
+    },
+    [sessionKey, item, isOpen]
+  )
+
+  const setTags = useCallback(
+    (nextTags: string[]) => {
+      setSnapshot((prev) => {
+        const base =
+          prev.sessionKey === sessionKey
+            ? prev
+            : createFilingStateSnapshot(sessionKey, item, isOpen)
+        return { ...base, tags: nextTags }
+      })
+    },
+    [sessionKey, item, isOpen]
+  )
+
+  const setLinkedNotes = useCallback(
+    (notes: LinkedNote[]) => {
+      setSnapshot((prev) => {
+        const base =
+          prev.sessionKey === sessionKey
+            ? prev
+            : createFilingStateSnapshot(sessionKey, item, isOpen)
+        return { ...base, linkedNotes: notes }
+      })
+    },
+    [sessionKey, item, isOpen]
+  )
 
   const resetFilingState = useCallback(() => {
-    setSelectedFolder(null)
-    setTags([])
-    setLinkedNotes([])
-  }, [])
+    setSnapshot({
+      sessionKey,
+      selectedFolder: null,
+      tags: [],
+      linkedNotes: []
+    })
+  }, [sessionKey])
 
-  const canFile = selectedFolder !== null
+  const canFile = activeSnapshot.selectedFolder !== null
 
   return {
-    selectedFolder,
-    tags,
-    linkedNotes,
+    selectedFolder: activeSnapshot.selectedFolder,
+    tags: activeSnapshot.tags,
+    linkedNotes: activeSnapshot.linkedNotes,
     setSelectedFolder,
     setTags,
     setLinkedNotes,

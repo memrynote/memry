@@ -141,18 +141,20 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
     setIsArchivedSearchOpen(false)
   }, [])
 
-  useEffect(() => {
-    if (isArchivedSearchOpen) {
-      requestAnimationFrame(() => archivedSearchRef.current?.focus())
-    }
-  }, [isArchivedSearchOpen])
+  const openArchivedSearch = useCallback(() => {
+    setIsArchivedSearchOpen(true)
+    requestAnimationFrame(() => archivedSearchRef.current?.focus())
+  }, [])
 
-  useEffect(() => {
-    if (currentView !== 'archived') {
-      setIsArchivedSearchOpen(false)
-      setArchivedSearchQuery('')
-    }
-  }, [currentView])
+  const handleViewChange = useCallback(
+    (nextView: InboxView) => {
+      setCurrentView(nextView)
+      if (nextView !== 'archived') {
+        closeArchivedSearch()
+      }
+    },
+    [closeArchivedSearch]
+  )
 
   useEffect(() => {
     const handler = (): void => enterTriage()
@@ -167,7 +169,7 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
       ) : (
         <div className="flex h-full flex-col">
           <PageToolbar className="px-2 py-1 min-h-[38px]">
-            <InboxSegmentControl value={currentView} onChange={setCurrentView} />
+            <InboxSegmentControl value={currentView} onChange={handleViewChange} />
 
             {currentView === 'inbox' && (
               <CaptureInput
@@ -203,7 +205,7 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
                     : 'w-[30px] border-border text-text-secondary hover:bg-surface-active/50 justify-center cursor-pointer'
                 )}
                 onClick={() => {
-                  if (!isArchivedSearchOpen) setIsArchivedSearchOpen(true)
+                  if (!isArchivedSearchOpen) openArchivedSearch()
                 }}
                 role={!isArchivedSearchOpen ? 'button' : undefined}
                 tabIndex={!isArchivedSearchOpen ? 0 : undefined}
@@ -211,7 +213,7 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
                 onKeyDown={(e) => {
                   if (!isArchivedSearchOpen && (e.key === 'Enter' || e.key === ' ')) {
                     e.preventDefault()
-                    setIsArchivedSearchOpen(true)
+                    openArchivedSearch()
                   }
                 }}
               >

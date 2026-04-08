@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo, useEffect } from 'react'
+import { useState, useCallback, useMemo, useEffect, useRef } from 'react'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { Check, Loader2, AlertCircle } from '@/lib/icons'
 import { useQueryClient } from '@tanstack/react-query'
@@ -65,8 +65,7 @@ export function InboxListView({
   const { archiveWithUndo } = useUndoableAction()
   const [pendingArchiveIds, setPendingArchiveIds] = useState<Set<string>>(new Set())
   const [exitingItemIds, setExitingItemIds] = useState<Set<string>>(new Set())
-  const [isEmptyStateExiting] = useState(false)
-  const [showEmptyState, setShowEmptyState] = useState(false)
+  const [isEmptyStateExiting, setIsEmptyStateExiting] = useState(false)
   const [isDraggingOver, setIsDraggingOver] = useState(false)
   const [isCapturingImage, setIsCapturingImage] = useState(false)
   const [selectedItemIds, setSelectedItemIds] = useState<Set<string>>(new Set())
@@ -76,7 +75,8 @@ export function InboxListView({
   const [isBulkTagPopoverOpen, setIsBulkTagPopoverOpen] = useState(false)
   const [isArchiveDialogOpen, setIsArchiveDialogOpen] = useState(false)
   const [isShortcutsModalOpen, setIsShortcutsModalOpen] = useState(false)
-  const [focusedItemId, setFocusedItemId] = useState<string | null>(null)
+  const [focusedItemIdState, setFocusedItemIdState] = useState<string | null>(null)
+  const emptyStateDelayRef = useRef<number | null>(null)
 
   const isDetailPanelOpen = activeDetailItemId !== null
   const isInBulkMode = selectedItemIds.size > 0
@@ -96,18 +96,29 @@ export function InboxListView({
   const itemsProcessedToday = inboxStats?.processedToday ?? 0
   const processedThisWeek = inboxStats?.processedThisWeek ?? 0
   const currentStreak = inboxStats?.currentStreak ?? 0
+  const showEmptyState = !isLoading && items.length === 0 && !isEmptyStateExiting
+  const focusedItemId = items.some((item) => item.id === focusedItemIdState)
+    ? focusedItemIdState
+    : (items[0]?.id ?? null)
 
-  // Sync empty state
-  useEffect(() => {
-    if (!isLoading) setShowEmptyState(items.length === 0)
-  }, [items.length, isLoading])
-
-  // Set initial focus
-  useEffect(() => {
-    if (items.length > 0 && !focusedItemId) {
-      setFocusedItemId(items[0].id)
+  const clearEmptyStateDelay = useCallback(() => {
+    if (emptyStateDelayRef.current !== null) {
+      window.clearTimeout(emptyStateDelayRef.current)
+      emptyStateDelayRef.current = null
     }
-  }, [items, focusedItemId])
+    setIsEmptyStateExiting(false)
+  }, [])
+
+  const scheduleEmptyStateReveal = useCallback(() => {
+    clearEmptyStateDelay()
+    setIsEmptyStateExiting(true)
+    emptyStateDelayRef.current = window.setTimeout(() => {
+      emptyStateDelayRef.current = null
+      setIsEmptyStateExiting(false)
+    }, 200)
+  }, [clearEmptyStateDelay])
+
+  useEffect(() => clearEmptyStateDelay, [clearEmptyStateDelay])
 
   // Computed values
   const selectedItems = useMemo(
@@ -157,13 +168,14 @@ export function InboxListView({
           return next
         })
 
-        if (nextFocusId !== undefined) setFocusedItemId(nextFocusId)
+        if (nextFocusId !== undefined) setFocusedItemIdState(nextFocusId)
 
-        if (willBeEmpty) setTimeout(() => setShowEmptyState(true), 200)
+        if (willBeEmpty) scheduleEmptyStateReveal()
 
         try {
           await archiveWithUndo(id, targetItem.title)
         } catch {
+          if (willBeEmpty) clearEmptyStateDelay()
           setPendingArchiveIds((prev) => {
             const next = new Set(prev)
             next.delete(id)
@@ -173,7 +185,7 @@ export function InboxListView({
         }
       }, 200)
     },
-    [items, activeDetailItemId, archiveWithUndo]
+    [items, activeDetailItemId, archiveWithUndo, scheduleEmptyStateReveal, clearEmptyStateDelay]
   )
 
   // === KEYBOARD SHORTCUTS ===
@@ -223,7 +235,7 @@ export function InboxListView({
           return next
         })
 
-        if (willBeEmpty) setTimeout(() => setShowEmptyState(true), 200)
+        if (willBeEmpty) scheduleEmptyStateReveal()
 
         try {
           const destination =
@@ -251,6 +263,7 @@ export function InboxListView({
             throw new Error(result.error || 'Failed to file')
           }
         } catch (error) {
+          if (willBeEmpty) clearEmptyStateDelay()
           setPendingArchiveIds((prev) => {
             const next = new Set(prev)
             next.delete(itemId)
@@ -260,7 +273,7 @@ export function InboxListView({
         }
       }, 200)
     },
-    [items, fileItemMutation, queryClient]
+    [items, fileItemMutation, queryClient, scheduleEmptyStateReveal, clearEmptyStateDelay]
   )
 
   const handleQuickFile = useCallback(
@@ -284,7 +297,7 @@ export function InboxListView({
           return next
         })
 
-        if (willBeEmpty) setTimeout(() => setShowEmptyState(true), 200)
+        if (willBeEmpty) scheduleEmptyStateReveal()
 
         try {
           const result = await fileItemMutation.mutateAsync({
@@ -300,6 +313,7 @@ export function InboxListView({
             throw new Error(result.error || 'Failed to file')
           }
         } catch (error) {
+          if (willBeEmpty) clearEmptyStateDelay()
           setPendingArchiveIds((prev) => {
             const next = new Set(prev)
             next.delete(itemId)
@@ -309,7 +323,7 @@ export function InboxListView({
         }
       }, 200)
     },
-    [items, fileItemMutation, queryClient]
+    [items, fileItemMutation, queryClient, scheduleEmptyStateReveal, clearEmptyStateDelay]
   )
 
   const openReminderTarget = useCallback(
@@ -369,7 +383,7 @@ export function InboxListView({
         setActiveDetailItemId(null)
       } else {
         setActiveDetailItemId(id)
-        setFocusedItemId(id)
+        setFocusedItemIdState(id)
       }
     },
     [isDetailPanelOpen, activeDetailItemId, items]
@@ -377,7 +391,7 @@ export function InboxListView({
 
   const handleFocusedItemChange = useCallback(
     (id: string | null): void => {
-      setFocusedItemId(id)
+      setFocusedItemIdState(id)
       if (isDetailPanelOpen && id) setActiveDetailItemId(id)
     },
     [isDetailPanelOpen]
@@ -413,7 +427,7 @@ export function InboxListView({
           return next
         })
 
-        if (willBeEmpty) setTimeout(() => setShowEmptyState(true), 200)
+        if (willBeEmpty) scheduleEmptyStateReveal()
 
         try {
           const result = await inboxService.snooze({ itemId: id, snoozeUntil })
@@ -437,6 +451,7 @@ export function InboxListView({
             throw new Error(result.error || 'Failed to snooze')
           }
         } catch (error) {
+          if (willBeEmpty) clearEmptyStateDelay()
           setPendingArchiveIds((prev) => {
             const next = new Set(prev)
             next.delete(id)
@@ -446,7 +461,7 @@ export function InboxListView({
         }
       }, 200)
     },
-    [items, activeDetailItemId, queryClient]
+    [items, activeDetailItemId, queryClient, scheduleEmptyStateReveal, clearEmptyStateDelay]
   )
 
   // === BULK HANDLERS ===
@@ -528,12 +543,13 @@ export function InboxListView({
       setExitingItemIds(new Set())
       setSelectedItemIds(new Set())
 
-      if (willBeEmpty) setTimeout(() => setShowEmptyState(true), 200)
+      if (willBeEmpty) scheduleEmptyStateReveal()
 
       try {
         await bulkArchiveMutation.mutateAsync({ itemIds: idsToArchive })
         toast.success(`Archived ${idsToArchive.length} item${idsToArchive.length !== 1 ? 's' : ''}`)
       } catch {
+        if (willBeEmpty) clearEmptyStateDelay()
         setPendingArchiveIds((prev) => {
           const next = new Set(prev)
           idsToArchive.forEach((id) => next.delete(id))
@@ -542,7 +558,14 @@ export function InboxListView({
         toast.error('Failed to archive items')
       }
     }, 200)
-  }, [selectedItemIds, items, activeDetailItemId, bulkArchiveMutation])
+  }, [
+    selectedItemIds,
+    items,
+    activeDetailItemId,
+    bulkArchiveMutation,
+    scheduleEmptyStateReveal,
+    clearEmptyStateDelay
+  ])
 
   const handleAddSuggestionToSelection = useCallback((): void => {
     if (!aiSuggestion) return
@@ -578,7 +601,7 @@ export function InboxListView({
         setExitingItemIds(new Set())
         setSelectedItemIds(new Set())
 
-        if (willBeEmpty) setTimeout(() => setShowEmptyState(true), 200)
+        if (willBeEmpty) scheduleEmptyStateReveal()
 
         try {
           const result = await window.api.inbox.bulkSnooze({ itemIds: idsToSnooze, snoozeUntil })
@@ -604,6 +627,7 @@ export function InboxListView({
             throw new Error('Failed to snooze items')
           }
         } catch (error) {
+          if (willBeEmpty) clearEmptyStateDelay()
           setPendingArchiveIds((prev) => {
             const next = new Set(prev)
             idsToSnooze.forEach((id) => next.delete(id))
@@ -613,7 +637,14 @@ export function InboxListView({
         }
       }, 200)
     },
-    [selectedItemIds, items, activeDetailItemId, queryClient]
+    [
+      selectedItemIds,
+      items,
+      activeDetailItemId,
+      queryClient,
+      scheduleEmptyStateReveal,
+      clearEmptyStateDelay
+    ]
   )
 
   // === IMAGE CAPTURE HANDLERS ===

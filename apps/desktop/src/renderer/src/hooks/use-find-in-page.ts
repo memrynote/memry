@@ -1,4 +1,12 @@
-import { useState, useEffect, useCallback, useRef, type RefObject } from 'react'
+import {
+  useState,
+  useEffect,
+  useCallback,
+  useEffectEvent,
+  useLayoutEffect,
+  useRef,
+  type RefObject
+} from 'react'
 
 interface FindInPageResult {
   isOpen: boolean
@@ -113,26 +121,27 @@ export function useFindInPage(
     [containerRef, clearHighlights, highlightAndScroll]
   )
 
-  useEffect(() => {
-    if (isOpen) performSearch(query)
-  }, [query, isOpen, performSearch])
-
   // Highlight current match + scroll into view on navigation (next/prev)
   useEffect(() => {
     highlightAndScroll(currentIndex)
   }, [currentIndex, highlightAndScroll])
 
+  const rerunSearch = useEffectEvent(() => {
+    performSearch(query)
+  })
+
   // Re-search when editor DOM mutates while find bar is open
-  useEffect(() => {
-    if (!isOpen || !query || !containerRef.current) return
+  useLayoutEffect(() => {
+    const container = containerRef.current
+    if (!isOpen || !query || !container) return
 
     let timeoutId: ReturnType<typeof setTimeout>
     const observer = new MutationObserver(() => {
       clearTimeout(timeoutId)
-      timeoutId = setTimeout(() => performSearch(query), 300)
+      timeoutId = setTimeout(() => rerunSearch(), 300)
     })
 
-    observer.observe(containerRef.current, {
+    observer.observe(container, {
       childList: true,
       subtree: true,
       characterData: true
@@ -142,15 +151,18 @@ export function useFindInPage(
       clearTimeout(timeoutId)
       observer.disconnect()
     }
-  }, [isOpen, query, containerRef, performSearch])
+  }, [isOpen, query, containerRef])
 
   const open = useCallback(() => {
     setIsOpen(true)
+    if (query) {
+      performSearch(query)
+    }
     requestAnimationFrame(() => {
       inputRef.current?.focus()
       inputRef.current?.select()
     })
-  }, [])
+  }, [performSearch, query])
 
   const close = useCallback(() => {
     setIsOpen(false)
@@ -162,9 +174,15 @@ export function useFindInPage(
     currentIndexRef.current = -1
   }, [clearHighlights])
 
-  const setQuery = useCallback((q: string) => {
-    setQueryState(q)
-  }, [])
+  const setQuery = useCallback(
+    (q: string) => {
+      setQueryState(q)
+      if (isOpen) {
+        performSearch(q)
+      }
+    },
+    [isOpen, performSearch]
+  )
 
   const next = useCallback(() => {
     const len = matchesRef.current.length
