@@ -189,13 +189,18 @@ export const useFilterState = ({
 
   const updateFilters = useCallback(
     (updates: Partial<TaskFilters>) => {
-      const nextFilters = { ...filters, ...updates }
-      setFilterState({ key: filterKey, filters: nextFilters })
-      if (shouldPersist) {
-        persistFilterState(filterKey, nextFilters)
-      }
+      setFilterState((prev) => {
+        const baseFilters = prev.key === filterKey ? prev.filters : getInitialFilters(filterKey)
+        const nextFilters = { ...baseFilters, ...updates }
+
+        if (shouldPersist) {
+          persistFilterState(filterKey, nextFilters)
+        }
+
+        return { key: filterKey, filters: nextFilters }
+      })
     },
-    [filterKey, filters, shouldPersist]
+    [filterKey, getInitialFilters, shouldPersist]
   )
 
   const updateSort = useCallback(
@@ -209,10 +214,13 @@ export const useFilterState = ({
   )
 
   const clearFilters = useCallback(() => {
-    setFilterState({ key: filterKey, filters: defaultFilters })
-    if (shouldPersist) {
-      persistFilterState(filterKey, defaultFilters)
-    }
+    setFilterState(() => {
+      if (shouldPersist) {
+        persistFilterState(filterKey, defaultFilters)
+      }
+
+      return { key: filterKey, filters: defaultFilters }
+    })
   }, [filterKey, shouldPersist])
 
   const isActive = useMemo(() => hasActiveFilters(filters), [filters])
