@@ -35,7 +35,6 @@ import {
 } from '../vault/journal'
 import { maybeCreateSignificantSnapshot } from '../vault/notes'
 import { deleteNoteFromCache, syncNoteToCache } from '../vault/note-sync'
-import { queueEmbeddingUpdate } from '../inbox/embedding-queue'
 import {
   // Unified CRUD operations (using note_cache)
   getNoteCacheByPath,
@@ -139,7 +138,6 @@ export function registerJournalHandlers(): void {
         },
         { isNew: !cached }
       )
-      queueEmbeddingUpdate(cacheId)
       getJournalSyncService()?.enqueueCreate(cacheId, entry.date)
       getCrdtProvider()
         .initForNote(cacheId, { date: entry.date }, entry.tags)
@@ -194,7 +192,6 @@ export function registerJournalHandlers(): void {
           },
           { isNew: !cached }
         )
-        queueEmbeddingUpdate(cacheId)
         getJournalSyncService()?.enqueueCreate(cacheId, entry.date)
         getCrdtProvider()
           .initForNote(cacheId, { date: entry.date }, entry.tags)
@@ -266,7 +263,6 @@ export function registerJournalHandlers(): void {
         },
         { isNew: !cached }
       )
-      queueEmbeddingUpdate(cacheId)
       getJournalSyncService()?.enqueueUpdate(cacheId, entry.date)
 
       // Emit event
