@@ -463,11 +463,14 @@ export const TaskBlockRenderer: FC<TaskBlockRendererProps> = ({ block, editor, c
     [editTitle, handleTitleChange, handleTitleBlur, handleTitleKeyDown]
   )
 
-  const clickableTitle = useCallback(
-    () => (
+  const clickableTitle = useCallback(() => {
+    const resolvedTitle = displayTask?.title ?? title
+    const isEmpty = !resolvedTitle.trim()
+    return (
       <span
         role="button"
         tabIndex={0}
+        aria-label={isEmpty ? 'Edit task name' : undefined}
         onClick={(e) => {
           e.stopPropagation()
           setIsEditingTitle(true)
@@ -482,16 +485,17 @@ export const TaskBlockRenderer: FC<TaskBlockRendererProps> = ({ block, editor, c
         className={cn(
           'grow shrink min-w-0 truncate cursor-text',
           'text-[13px] font-medium',
-          isCompleted
-            ? 'text-muted-foreground/60 line-through decoration-1 [text-underline-position:from-font]'
-            : 'text-foreground/90'
+          isEmpty
+            ? 'text-muted-foreground/70 italic'
+            : isCompleted
+              ? 'text-muted-foreground/60 line-through decoration-1 [text-underline-position:from-font]'
+              : 'text-foreground/90'
         )}
       >
-        {displayTask?.title ?? title}
+        {isEmpty ? 'Task name…' : resolvedTitle}
       </span>
-    ),
-    [displayTask?.title, title, isCompleted]
-  )
+    )
+  }, [displayTask?.title, title, isCompleted])
 
   // --- Render states ---
 
