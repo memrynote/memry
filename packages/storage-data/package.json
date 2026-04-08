@@ -1,0 +1,22 @@
+{
+  "name": "@memry/storage-data",
+  "version": "0.1.0",
+  "private": true,
+  "license": "GPL-3.0",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./note-metadata-repository": "./src/note-metadata-repository.ts"
+  },
+  "types": "./src/index.ts",
+  "scripts": {
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "devDependencies": {
+    "@memry/typescript-config": "workspace:*"
+  },
+  "dependencies": {
+    "@memry/db-schema": "workspace:*",
+    "drizzle-orm": "^0.45.1"
+  }
+}

@@ -4,7 +4,8 @@ import type { DrizzleDb } from './types'
 const VAULT_ROOT = '/tmp/test-vault-binary'
 
 vi.mock('../../database/client', () => ({
-  getIndexDatabase: vi.fn(() => ({}))
+  getIndexDatabase: vi.fn(() => ({})),
+  getDatabase: vi.fn(() => ({}))
 }))
 
 vi.mock('../../vault/notes', () => ({
@@ -22,10 +23,19 @@ vi.mock('../../vault/note-sync', () => ({
   deleteNoteFromCache: vi.fn()
 }))
 
-const mockGetNoteCacheById = vi.fn()
+const mockGetNoteMetadataById = vi.fn()
+
+vi.mock('@memry/storage-data', () => ({
+  getNoteMetadataById: (...args: unknown[]) => mockGetNoteMetadataById(...args),
+  updateNoteMetadata: vi.fn(),
+  getPropertyDefinition: vi.fn()
+}))
+
+vi.mock('@memry/domain-notes', () => ({
+  saveCanonicalPropertyDefinition: vi.fn()
+}))
 
 vi.mock('@main/database/queries/notes', () => ({
-  getNoteCacheById: (...args: unknown[]) => mockGetNoteCacheById(...args),
   getNoteCacheByPath: vi.fn(() => undefined),
   updateNoteCache: vi.fn(),
   getNoteProperties: vi.fn(() => []),
@@ -90,6 +100,9 @@ function makeCachedNote(overrides: Record<string, unknown> = {}) {
     path: 'notes/folder/test-file.md',
     emoji: null,
     fileType: 'markdown',
+    localOnly: false,
+    mimeType: null,
+    attachmentId: null,
     clock: { dev1: 1 },
     createdAt: '2024-01-01T00:00:00.000Z',
     modifiedAt: '2024-01-01T00:00:00.000Z',
@@ -104,7 +117,7 @@ describe('noteHandler.buildPushPayload — binary guard', () => {
 
   it('returns metadata-only payload for PDF files (no content, tags, properties)', () => {
     // #given
-    mockGetNoteCacheById.mockReturnValue(makeCachedNote({ fileType: 'pdf', title: 'report' }))
+    mockGetNoteMetadataById.mockReturnValue(makeCachedNote({ fileType: 'pdf', title: 'report' }))
 
     // #when
     const result = noteHandler.buildPushPayload!({} as DrizzleDb, 'note-1', 'dev1', 'create')
@@ -121,7 +134,7 @@ describe('noteHandler.buildPushPayload — binary guard', () => {
 
   it('returns metadata-only payload for image files', () => {
     // #given
-    mockGetNoteCacheById.mockReturnValue(makeCachedNote({ fileType: 'image', title: 'photo' }))
+    mockGetNoteMetadataById.mockReturnValue(makeCachedNote({ fileType: 'image', title: 'photo' }))
 
     // #when
     const result = noteHandler.buildPushPayload!({} as DrizzleDb, 'note-1', 'dev1', 'update')
@@ -135,7 +148,7 @@ describe('noteHandler.buildPushPayload — binary guard', () => {
 
   it('returns metadata-only payload for video files', () => {
     // #given
-    mockGetNoteCacheById.mockReturnValue(makeCachedNote({ fileType: 'video', title: 'clip' }))
+    mockGetNoteMetadataById.mockReturnValue(makeCachedNote({ fileType: 'video', title: 'clip' }))
 
     // #when
     const result = noteHandler.buildPushPayload!({} as DrizzleDb, 'note-1', 'dev1', 'create')
@@ -148,7 +161,9 @@ describe('noteHandler.buildPushPayload — binary guard', () => {
 
   it('returns metadata-only payload for audio files', () => {
     // #given
-    mockGetNoteCacheById.mockReturnValue(makeCachedNote({ fileType: 'audio', title: 'recording' }))
+    mockGetNoteMetadataById.mockReturnValue(
+      makeCachedNote({ fileType: 'audio', title: 'recording' })
+    )
 
     // #when
     const result = noteHandler.buildPushPayload!({} as DrizzleDb, 'note-1', 'dev1', 'create')
@@ -161,7 +176,7 @@ describe('noteHandler.buildPushPayload — binary guard', () => {
 
   it('includes content field for markdown files on create', () => {
     // #given
-    mockGetNoteCacheById.mockReturnValue(makeCachedNote({ fileType: 'markdown' }))
+    mockGetNoteMetadataById.mockReturnValue(makeCachedNote({ fileType: 'markdown' }))
 
     // #when
     const result = noteHandler.buildPushPayload!({} as DrizzleDb, 'note-1', 'dev1', 'create')
@@ -177,7 +192,7 @@ describe('noteHandler.buildPushPayload — binary guard', () => {
 
   it('preserves clock and timestamps in binary payload', () => {
     // #given
-    mockGetNoteCacheById.mockReturnValue(
+    mockGetNoteMetadataById.mockReturnValue(
       makeCachedNote({
         fileType: 'pdf',
         clock: { dev1: 3, dev2: 1 },
@@ -198,7 +213,7 @@ describe('noteHandler.buildPushPayload — binary guard', () => {
 
   it('returns null when cached note not found', () => {
     // #given
-    mockGetNoteCacheById.mockReturnValue(undefined)
+    mockGetNoteMetadataById.mockReturnValue(undefined)
 
     // #when
     const result = noteHandler.buildPushPayload!({} as DrizzleDb, 'note-1', 'dev1', 'create')

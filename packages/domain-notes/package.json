@@ -1,0 +1,25 @@
+{
+  "name": "@memry/domain-notes",
+  "version": "0.1.0",
+  "private": true,
+  "license": "GPL-3.0",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./commands": "./src/commands.ts",
+    "./queries": "./src/queries.ts"
+  },
+  "types": "./src/index.ts",
+  "scripts": {
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "devDependencies": {
+    "@memry/typescript-config": "workspace:*"
+  },
+  "dependencies": {
+    "@memry/contracts": "workspace:*",
+    "@memry/db-schema": "workspace:*",
+    "@memry/shared": "workspace:*",
+    "@memry/storage-data": "workspace:*"
+  }
+}

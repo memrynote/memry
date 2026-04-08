@@ -19,7 +19,10 @@ export default defineConfig({
           include: [
             '../../packages/contracts/src/**/*.{test,spec}.{ts,tsx}',
             '../../packages/db-schema/src/**/*.{test,spec}.{ts,tsx}',
-            '../../packages/shared/src/**/*.{test,spec}.{ts,tsx}'
+            '../../packages/domain-notes/src/**/*.{test,spec}.{ts,tsx}',
+            '../../packages/shared/src/**/*.{test,spec}.{ts,tsx}',
+            '../../packages/storage-data/src/**/*.{test,spec}.{ts,tsx}',
+            '../../packages/storage-vault/src/**/*.{test,spec}.{ts,tsx}'
           ],
           setupFiles: ['tests/setup.ts']
         }
@@ -74,7 +77,10 @@ export default defineConfig({
         'src/**/*.tsx',
         '../../packages/contracts/src/**/*.ts',
         '../../packages/db-schema/src/**/*.ts',
-        '../../packages/shared/src/**/*.ts'
+        '../../packages/domain-notes/src/**/*.ts',
+        '../../packages/shared/src/**/*.ts',
+        '../../packages/storage-data/src/**/*.ts',
+        '../../packages/storage-vault/src/**/*.ts'
       ],
       thresholds: {
         statements: 30,
@@ -93,7 +99,10 @@ export default defineConfig({
     alias: {
       '@memry/contracts': resolve(workspaceRoot, 'packages/contracts/src'),
       '@memry/db-schema': resolve(workspaceRoot, 'packages/db-schema/src'),
+      '@memry/domain-notes': resolve(workspaceRoot, 'packages/domain-notes/src'),
       '@memry/shared': resolve(workspaceRoot, 'packages/shared/src'),
+      '@memry/storage-data': resolve(workspaceRoot, 'packages/storage-data/src'),
+      '@memry/storage-vault': resolve(workspaceRoot, 'packages/storage-vault/src'),
       '@main': resolve(appRoot, 'src/main'),
       '@': resolve(appRoot, 'src/renderer/src'),
       '@renderer': resolve(appRoot, 'src/renderer/src'),

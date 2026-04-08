@@ -4,6 +4,7 @@ import path from 'path'
 import { eq } from 'drizzle-orm'
 import { NotesChannels } from '@memry/contracts/ipc-channels'
 import { noteCache, noteTags, noteLinks } from '@memry/db-schema/schema/notes-cache'
+import { noteMetadata } from '@memry/db-schema/data-schema'
 import { createTestVault, createTestNote } from '@tests/utils/test-vault'
 import { createTestDataDb, createTestIndexDb, type TestDatabaseResult } from '@tests/utils/test-db'
 import { MockBrowserWindow } from '@tests/utils/mock-electron'
@@ -164,6 +165,12 @@ describe('vault watcher', () => {
 
     const cached = indexDb.db.select().from(noteCache).where(eq(noteCache.id, 'note-add')).get()
     expect(cached?.path).toBe('notes/source-note.md')
+    const canonical = dataDb.db
+      .select()
+      .from(noteMetadata)
+      .where(eq(noteMetadata.id, 'note-add'))
+      .get()
+    expect(canonical?.path).toBe('notes/source-note.md')
 
     const tags = indexDb.db
       .select()
@@ -190,6 +197,12 @@ describe('vault watcher', () => {
 
     const deleted = indexDb.db.select().from(noteCache).where(eq(noteCache.id, 'note-add')).get()
     expect(deleted).toBeUndefined()
+    const deletedCanonical = dataDb.db
+      .select()
+      .from(noteMetadata)
+      .where(eq(noteMetadata.id, 'note-add'))
+      .get()
+    expect(deletedCanonical).toBeUndefined()
 
     const remainingTags = indexDb.db
       .select()

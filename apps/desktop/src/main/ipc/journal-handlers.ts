@@ -38,8 +38,6 @@ import { syncNoteToCache } from '../vault/note-sync'
 import { queueEmbeddingUpdate } from '../inbox/embedding-queue'
 import {
   // Unified CRUD operations (using note_cache)
-  deleteNoteCache,
-  getNoteCacheByPath,
   // Journal-specific queries
   getJournalEntryByDate,
   getHeatmapData,
@@ -49,8 +47,6 @@ import {
   // Tag operations (using note_tags)
   getNoteTags,
   getAllTags,
-  // Property operations (using note_properties)
-  getNotePropertiesAsRecord,
   // Utilities
   calculateActivityLevel as calculateActivityLevelFromCharCount
 } from '@main/database/queries/notes'
@@ -58,6 +54,8 @@ import { getTasksByDueDate, countOverdueTasksBeforeDate } from '@main/database/q
 import { getIndexDatabase, getDatabase } from '../database'
 import { getJournalSyncService } from '../sync/journal-sync'
 import { getCrdtProvider } from '../sync/crdt-provider'
+import { getCanonicalJournalByDate } from '@memry/domain-notes'
+import { deleteNoteFromCache } from '../vault/note-sync'
 
 const logger = createLogger('IPC:Journal')
 
@@ -91,21 +89,7 @@ export function registerJournalHandlers(): void {
   ipcMain.handle(
     JournalChannels.invoke.GET_ENTRY,
     createValidatedHandler(GetEntryInputSchema, async (input): Promise<JournalEntry | null> => {
-      // Read from file (source of truth)
-      const entry = await readJournalEntry(input.date)
-      if (!entry) return null
-
-      // Load properties from cache (using unified note_properties)
-      const db = getIndexDatabase()
-      const cached = getJournalEntryByDate(db, input.date)
-      if (cached) {
-        const properties = getNotePropertiesAsRecord(db, cached.id)
-        if (Object.keys(properties).length > 0) {
-          entry.properties = properties
-        }
-      }
-
-      return entry
+      return readJournalEntry(input.date)
     })
   )
 
@@ -114,6 +98,8 @@ export function registerJournalHandlers(): void {
     JournalChannels.invoke.CREATE_ENTRY,
     createValidatedHandler(CreateEntryInputSchema, async (input): Promise<JournalEntry> => {
       const db = getIndexDatabase()
+      const dataDb = getDatabase()
+      const cached = getJournalEntryByDate(db, input.date)
 
       // Write to file (properties are now serialized to frontmatter)
       const { entry, fileContent, frontmatter } = await writeJournalEntryWithContent(
@@ -125,8 +111,8 @@ export function registerJournalHandlers(): void {
       )
 
       const journalPath = getJournalRelativePath(entry.date)
-      const cached = getJournalEntryByDate(db, entry.date)
-      const cacheId = cached?.id ?? entry.id
+      const canonical = getCanonicalJournalByDate(dataDb, entry.date)
+      const cacheId = canonical?.id ?? entry.id
 
       // syncNoteToCache will extract properties from frontmatter and sync to DB
       syncNoteToCache(
@@ -161,14 +147,12 @@ export function registerJournalHandlers(): void {
     JournalChannels.invoke.UPDATE_ENTRY,
     createValidatedHandler(UpdateEntryInputSchema, async (input): Promise<JournalEntry> => {
       const db = getIndexDatabase()
+      const dataDb = getDatabase()
+      const cached = getJournalEntryByDate(db, input.date)
 
-      // Get existing entry from unified cache (try by date first, then by path as fallback)
+      // Resolve the canonical journal identity from data.db.
       const journalPath = getJournalRelativePath(input.date)
-      let cached = getJournalEntryByDate(db, input.date)
-      if (!cached) {
-        // Fallback: check by path (for entries indexed before migration)
-        cached = getNoteCacheByPath(db, journalPath)
-      }
+      const canonical = getCanonicalJournalByDate(dataDb, input.date)
 
       // Read current entry to get existing data
       const existing = await readJournalEntry(input.date)
@@ -181,7 +165,7 @@ export function registerJournalHandlers(): void {
           null, // existingEntry
           input.properties // properties serialized to frontmatter
         )
-        const cacheId = cached?.id ?? entry.id
+        const cacheId = canonical?.id ?? entry.id
 
         // syncNoteToCache will extract properties from frontmatter and sync to DB
         syncNoteToCache(
@@ -216,8 +200,8 @@ export function registerJournalHandlers(): void {
       const newProperties = input.properties !== undefined ? input.properties : existing.properties
 
       // Create snapshot before significant content changes (T111)
-      // Use the entry ID from cache or existing entry
-      const entryId = cached?.id ?? existing.id
+      // Use the canonical note ID when available so snapshots stay attached across rebuilds.
+      const entryId = canonical?.id ?? existing.id
       if (input.content !== undefined && input.content !== existing.content) {
         try {
           // Create the current file content (before save) for snapshot
@@ -253,7 +237,7 @@ export function registerJournalHandlers(): void {
         existing,
         newProperties // properties serialized to frontmatter
       )
-      const cacheId = cached?.id ?? entry.id
+      const cacheId = canonical?.id ?? entry.id
 
       // syncNoteToCache will extract properties from frontmatter and sync to DB
       syncNoteToCache(
@@ -285,17 +269,18 @@ export function registerJournalHandlers(): void {
     JournalChannels.invoke.DELETE_ENTRY,
     createValidatedHandler(DeleteEntryInputSchema, async (input): Promise<{ success: boolean }> => {
       const db = getIndexDatabase()
-
-      // Get cached entry to find the ID
+      const dataDb = getDatabase()
       const cached = getJournalEntryByDate(db, input.date)
+      const canonical = getCanonicalJournalByDate(dataDb, input.date)
+      const noteId = canonical?.id ?? cached?.id
 
       // Delete file
       const deleted = await deleteJournalEntryFile(input.date)
 
       // Delete from unified cache
-      if (cached) {
-        getJournalSyncService()?.enqueueDelete(cached.id, input.date)
-        deleteNoteCache(db, cached.id)
+      if (noteId) {
+        getJournalSyncService()?.enqueueDelete(noteId, input.date)
+        deleteNoteFromCache(db, noteId)
       }
 
       // Emit event
