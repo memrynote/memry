@@ -1,7 +1,7 @@
 import fs from 'fs'
 import type { VectorClock } from '@memry/contracts/sync-api'
 import type { JournalSyncPayload } from '@memry/contracts/sync-payloads'
-import type { NoteCache } from '@memry/db-schema/schema/notes-cache'
+import type { NoteMetadata } from '@memry/db-schema/data-schema'
 import { ContentSyncService, type ContentSyncDeps } from './content-sync-base'
 import { createLogger } from '../lib/logger'
 import { getJournalPath, parseJournalEntry } from '../vault/journal'
@@ -28,7 +28,7 @@ export class JournalSyncService extends ContentSyncService<JournalSyncPayload> {
   readonly itemType = 'journal' as const
 
   protected buildDeletePayload(
-    cached: NoteCache | undefined,
+    cached: NoteMetadata | undefined,
     clock: VectorClock,
     date: string
   ): JournalSyncPayload {
@@ -41,7 +41,7 @@ export class JournalSyncService extends ContentSyncService<JournalSyncPayload> {
   }
 
   protected buildSnapshotPayload(
-    cached: NoteCache,
+    cached: NoteMetadata,
     clock: VectorClock,
     operation: 'create' | 'update',
     date: string

@@ -70,6 +70,8 @@ import { readFolderConfig } from './folders'
 import { queueEmbeddingUpdate } from '../inbox/embedding-queue'
 import { createLogger } from '../lib/logger'
 import { getFileType, getExtension, isBinaryFileType } from '@memry/shared/file-types'
+import { deleteCanonicalNote, saveCanonicalNote } from '@memry/domain-notes'
+import { updateNoteMetadata } from '@memry/storage-data'
 
 const logger = createLogger('Notes')
 
@@ -394,6 +396,7 @@ export async function getNoteById(id: string): Promise<Note | null> {
   // Check for duplicate ID (T046)
   const duplicate = findDuplicateId(db, parsed.frontmatter.id, cached.path)
   if (duplicate) {
+    const dataDb = getDatabase()
     // Generate new ID and update file
     const newId = generateNoteId()
     parsed.frontmatter.id = newId
@@ -403,6 +406,7 @@ export async function getNoteById(id: string): Promise<Note | null> {
 
     // Update cache with new ID
     deleteNoteCache(db, id)
+    deleteCanonicalNote(dataDb, id)
     insertNoteCache(db, {
       id: newId,
       path: cached.path,
@@ -412,6 +416,15 @@ export async function getNoteById(id: string): Promise<Note | null> {
       snippet: createSnippet(parsed.content),
       createdAt: parsed.frontmatter.created,
       modifiedAt: parsed.frontmatter.modified
+    })
+    saveCanonicalNote(dataDb, {
+      id: newId,
+      path: cached.path,
+      title: parsed.frontmatter.title ?? path.basename(cached.path, '.md'),
+      emoji: (parsed.frontmatter as { emoji?: string | null }).emoji ?? null,
+      createdAt: parsed.frontmatter.created,
+      modifiedAt: parsed.frontmatter.modified,
+      properties: (parsed.frontmatter.properties as Record<string, unknown> | undefined) ?? {}
     })
 
     // Update ID for response
@@ -465,7 +478,7 @@ export async function getFileById(id: string): Promise<FileMetadata | null> {
     await fs.access(absolutePath)
   } catch {
     // File was deleted externally, remove from cache
-    deleteNoteCache(db, id)
+    deleteNoteFromCache(db, id)
     return null
   }
 
@@ -730,6 +743,11 @@ export async function renameNote(id: string, newTitle: string): Promise<Note> {
       title: newTitle,
       modifiedAt: now
     })
+    updateNoteMetadata(getDatabase(), id, {
+      path: newRelativePath,
+      title: newTitle,
+      modifiedAt: now
+    })
   } else {
     // Markdown: update frontmatter and rewrite
     const fileContent = serializeNote(newFrontmatter, existing.content)
@@ -739,6 +757,11 @@ export async function renameNote(id: string, newTitle: string): Promise<Note> {
       path: newRelativePath,
       title: newTitle,
       contentHash: generateContentHash(fileContent),
+      modifiedAt: now
+    })
+    updateNoteMetadata(getDatabase(), id, {
+      path: newRelativePath,
+      title: newTitle,
       modifiedAt: now
     })
   }
@@ -803,6 +826,10 @@ export async function moveNote(id: string, newFolder: string): Promise<Note> {
       path: newRelativePath,
       modifiedAt: now
     })
+    updateNoteMetadata(getDatabase(), id, {
+      path: newRelativePath,
+      modifiedAt: now
+    })
   } else {
     // Markdown: update frontmatter and rewrite
     const fileContent = serializeNote(newFrontmatter, existing.content)
@@ -811,6 +838,10 @@ export async function moveNote(id: string, newFolder: string): Promise<Note> {
     updateNoteCache(db, id, {
       path: newRelativePath,
       contentHash: generateContentHash(fileContent),
+      modifiedAt: now
+    })
+    updateNoteMetadata(getDatabase(), id, {
+      path: newRelativePath,
       modifiedAt: now
     })
   }

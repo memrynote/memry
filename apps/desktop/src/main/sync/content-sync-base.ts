@@ -1,9 +1,9 @@
 import type { SyncItemType, VectorClock } from '@memry/contracts/sync-api'
-import type { NoteCache } from '@memry/db-schema/schema/notes-cache'
+import type { NoteMetadata } from '@memry/db-schema/data-schema'
 import type { SyncQueueManager } from './queue'
 import { increment } from './vector-clock'
-import { getIndexDatabase } from '../database/client'
-import { getNoteCacheById, updateNoteCache } from '@main/database/queries/notes'
+import { getDatabase } from '../database/client'
+import { getNoteMetadataById, updateNoteMetadata } from '@memry/storage-data'
 import type Logger from 'electron-log'
 
 export interface ContentSyncDeps {
@@ -23,14 +23,14 @@ export abstract class ContentSyncService<TPayload> {
   }
 
   protected abstract buildSnapshotPayload(
-    cached: NoteCache,
+    cached: NoteMetadata,
     clock: VectorClock,
     operation: 'create' | 'update',
     ...extra: string[]
   ): TPayload
 
   protected abstract buildDeletePayload(
-    cached: NoteCache | undefined,
+    cached: NoteMetadata | undefined,
     clock: VectorClock,
     ...extra: string[]
   ): TPayload | null
@@ -51,8 +51,8 @@ export abstract class ContentSyncService<TPayload> {
     }
 
     try {
-      const indexDb = getIndexDatabase()
-      const cached = getNoteCacheById(indexDb, itemId)
+      const dataDb = getDatabase()
+      const cached = getNoteMetadataById(dataDb, itemId)
 
       if (cached?.localOnly) {
         this.log.debug(`Skipping ${this.itemType} delete enqueue: localOnly`, { itemId })
@@ -89,8 +89,8 @@ export abstract class ContentSyncService<TPayload> {
     }
 
     try {
-      const indexDb = getIndexDatabase()
-      const cached = getNoteCacheById(indexDb, itemId)
+      const dataDb = getDatabase()
+      const cached = getNoteMetadataById(dataDb, itemId)
       if (!cached) {
         this.log.warn(`${this.itemType} not found in cache for enqueue`, { itemId })
         return
@@ -104,7 +104,7 @@ export abstract class ContentSyncService<TPayload> {
       const existingClock = (cached.clock as VectorClock) ?? {}
       const newClock = increment(existingClock, deviceId)
 
-      updateNoteCache(indexDb, itemId, { clock: newClock })
+      updateNoteMetadata(dataDb, itemId, { clock: newClock })
 
       const payload = this.buildSnapshotPayload(cached, newClock, operation, ...extra)
 

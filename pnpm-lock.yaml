@@ -106,9 +106,18 @@ importers:
       '@memry/db-schema':
         specifier: workspace:*
         version: link:../../packages/db-schema
+      '@memry/domain-notes':
+        specifier: workspace:*
+        version: link:../../packages/domain-notes
       '@memry/shared':
         specifier: workspace:*
         version: link:../../packages/shared
+      '@memry/storage-data':
+        specifier: workspace:*
+        version: link:../../packages/storage-data
+      '@memry/storage-vault':
+        specifier: workspace:*
+        version: link:../../packages/storage-vault
       '@radix-ui/react-accordion':
         specifier: ^1.2.12
         version: 1.2.12(@types/react-dom@19.2.3(@types/react@19.2.13))(@types/react@19.2.13)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
@@ -657,7 +666,45 @@ importers:
         specifier: workspace:*
         version: link:../typescript-config
 
+  packages/domain-notes:
+    dependencies:
+      '@memry/contracts':
+        specifier: workspace:*
+        version: link:../contracts
+      '@memry/db-schema':
+        specifier: workspace:*
+        version: link:../db-schema
+      '@memry/shared':
+        specifier: workspace:*
+        version: link:../shared
+      '@memry/storage-data':
+        specifier: workspace:*
+        version: link:../storage-data
+    devDependencies:
+      '@memry/typescript-config':
+        specifier: workspace:*
+        version: link:../typescript-config
+
   packages/shared:
+    devDependencies:
+      '@memry/typescript-config':
+        specifier: workspace:*
+        version: link:../typescript-config
+
+  packages/storage-data:
+    dependencies:
+      '@memry/db-schema':
+        specifier: workspace:*
+        version: link:../db-schema
+      drizzle-orm:
+        specifier: ^0.45.1
+        version: 0.45.1(@cloudflare/workers-types@4.20260305.1)(@opentelemetry/api@1.9.0)(@types/better-sqlite3@7.6.13)(better-sqlite3@12.6.2)
+    devDependencies:
+      '@memry/typescript-config':
+        specifier: workspace:*
+        version: link:../typescript-config
+
+  packages/storage-vault:
     devDependencies:
       '@memry/typescript-config':
         specifier: workspace:*

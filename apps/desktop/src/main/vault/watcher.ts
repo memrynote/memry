@@ -16,9 +16,8 @@ import { getConfig } from './index'
 import { parseNote, serializeNote, generateContentHash, extractProperties } from './frontmatter'
 import { safeRead, atomicWrite } from './file-ops'
 import { generateNoteId } from '../lib/id'
-import { syncNoteToCache, syncFileToCache } from './note-sync'
+import { syncNoteToCache, syncFileToCache, deleteNoteFromCache } from './note-sync'
 import {
-  deleteNoteCache,
   getNoteCacheByPath,
   getNoteCacheById,
   ensureTagDefinitions
@@ -720,7 +719,7 @@ export class VaultWatcher {
           getNoteSyncService()?.enqueueDelete(cached.id)
         }
 
-        deleteNoteCache(db, cached.id)
+        deleteNoteFromCache(db, cached.id)
 
         // Emit delete event
         emitEvent(NotesChannels.events.DELETED, {

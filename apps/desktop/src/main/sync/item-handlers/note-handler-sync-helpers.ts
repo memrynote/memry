@@ -1,19 +1,18 @@
 import fs from 'fs'
 import { and, isNull, sql } from 'drizzle-orm'
-import { noteCache } from '@memry/db-schema/schema/notes-cache'
+import { noteMetadata } from '@memry/db-schema/data-schema'
 import type { SyncQueueManager } from '../queue'
 import { increment } from '../vector-clock'
 import { extractFolderFromPath } from '../note-sync'
 import { isBinaryFileType } from '@memry/shared/file-types'
 import { toAbsolutePath } from '../../vault/notes'
 import { parseNote } from '../../vault/frontmatter'
-import { getIndexDatabase } from '../../database/client'
+import { getDatabase, getIndexDatabase } from '../../database/client'
 import { createLogger } from '../../lib/logger'
 import { getPinnedTagsForNote } from './note-pin-helpers'
+import { getNoteMetadataById, updateNoteMetadata } from '@memry/storage-data'
 import {
-  getNoteCacheById,
   getNoteProperties,
-  updateNoteCache,
   type PropertyValue
 } from '@main/database/queries/notes'
 
@@ -24,15 +23,16 @@ function propsToRecord(props: PropertyValue[]): Record<string, unknown> {
 }
 
 export function fetchLocalNote(itemId: string): Record<string, unknown> | undefined {
-  const indexDb = getIndexDatabase()
-  const cached = getNoteCacheById(indexDb, itemId)
+  const dataDb = getDatabase()
+  const cached = getNoteMetadataById(dataDb, itemId)
   if (!cached) return undefined
   return cached as unknown as Record<string, unknown>
 }
 
 export function buildNotePushPayload(itemId: string, operation: string): string | null {
+  const dataDb = getDatabase()
   const indexDb = getIndexDatabase()
-  const cached = getNoteCacheById(indexDb, itemId)
+  const cached = getNoteMetadataById(dataDb, itemId)
   if (!cached || cached.localOnly) return null
 
   if (cached.fileType && isBinaryFileType(cached.fileType)) {
@@ -82,20 +82,25 @@ export function buildNotePushPayload(itemId: string, operation: string): string 
 }
 
 export function seedUnclockedNotes(deviceId: string, queue: SyncQueueManager): number {
-  let indexDb: ReturnType<typeof getIndexDatabase>
+  let dataDb: ReturnType<typeof getDatabase>
   try {
-    indexDb = getIndexDatabase()
+    dataDb = getDatabase()
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error)
-    log.warn('Skipping unclocked note seeding: index database unavailable', { message })
+    log.warn('Skipping unclocked note seeding: data database unavailable', { message })
     return 0
   }
 
-  const items = indexDb
+  const indexDb = getIndexDatabase()
+  const items = dataDb
     .select()
-    .from(noteCache)
+    .from(noteMetadata)
     .where(
-      and(isNull(noteCache.clock), isNull(noteCache.date), sql`${noteCache.localOnly} IS NOT 1`)
+      and(
+        isNull(noteMetadata.clock),
+        isNull(noteMetadata.journalDate),
+        sql`${noteMetadata.localOnly} IS NOT 1`
+      )
     )
     .all()
 
@@ -104,7 +109,7 @@ export function seedUnclockedNotes(deviceId: string, queue: SyncQueueManager): n
     const folderPath = extractFolderFromPath(item.path)
     const properties = propsToRecord(getNoteProperties(indexDb, item.id))
     const pinnedTags = getPinnedTagsForNote(indexDb, item.id)
-    updateNoteCache(indexDb, item.id, { clock })
+    updateNoteMetadata(dataDb, item.id, { clock })
     queue.enqueue({
       type: 'note',
       itemId: item.id,

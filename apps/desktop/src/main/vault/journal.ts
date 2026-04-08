@@ -10,8 +10,9 @@
 
 import path from 'path'
 import matter from 'gray-matter'
+import { createNoteContentStore } from '@memry/storage-vault'
 import { getStatus, getConfig } from './index'
-import { atomicWrite, safeRead, deleteFile, ensureDirectory, fileExists } from './file-ops'
+import { ensureDirectory } from './file-ops'
 import { VaultError, VaultErrorCode } from '../lib/errors'
 import {
   generateJournalId,
@@ -79,22 +80,24 @@ function getJournalDir(): string {
   return path.join(vaultPath, config.journalFolder)
 }
 
+function getContentStore() {
+  const vaultPath = getVaultPath()
+  const config = getConfig()
+  return createNoteContentStore({
+    rootPath: vaultPath,
+    notesFolder: config.defaultNoteFolder,
+    journalFolder: config.journalFolder
+  })
+}
+
 /**
  * Generate the file path for a journal entry.
  * @param date - Date in YYYY-MM-DD format
  * @returns Absolute path to the journal file
  */
 export function getJournalPath(date: string): string {
-  const journalDir = getJournalDir()
-  return path.join(journalDir, `${date}.md`)
-}
-
-/**
- * Convert absolute path to relative path (from vault root).
- */
-function toRelativePath(absolutePath: string): string {
-  const vaultPath = getVaultPath()
-  return path.relative(vaultPath, absolutePath)
+  const store = getContentStore()
+  return store.resolve(store.getJournalRelativePath(date))
 }
 
 // ============================================================================
@@ -230,8 +233,8 @@ export function extractJournalProperties(
  * @returns Journal entry or null if not found
  */
 export async function readJournalEntry(date: string): Promise<JournalEntry | null> {
-  const filePath = getJournalPath(date)
-  const rawContent = await safeRead(filePath)
+  const store = getContentStore()
+  const rawContent = await store.read(store.getJournalRelativePath(date))
 
   if (!rawContent) {
     return null
@@ -275,8 +278,9 @@ export async function writeJournalEntryWithContent(
   existingEntry?: JournalEntry | null,
   properties?: Record<string, unknown>
 ): Promise<JournalWriteResult> {
-  const filePath = getJournalPath(date)
   const journalDir = getJournalDir()
+  const store = getContentStore()
+  const relativePath = store.getJournalRelativePath(date)
 
   // Ensure journal directory exists
   await ensureDirectory(journalDir)
@@ -318,7 +322,7 @@ export async function writeJournalEntryWithContent(
 
   // Serialize and write
   const fileContent = serializeJournalEntry(frontmatter, content)
-  await atomicWrite(filePath, fileContent)
+  await store.write(relativePath, fileContent)
 
   const parsed = parseJournalEntry(fileContent, date)
   const wordCount = countWords(parsed.content)
@@ -372,14 +376,8 @@ export async function writeJournalEntry(
  * @returns True if file was deleted, false if it didn't exist
  */
 export async function deleteJournalEntryFile(date: string): Promise<boolean> {
-  const filePath = getJournalPath(date)
-
-  if (!(await fileExists(filePath))) {
-    return false
-  }
-
-  await deleteFile(filePath)
-  return true
+  const store = getContentStore()
+  return store.remove(store.getJournalRelativePath(date))
 }
 
 /**
@@ -388,8 +386,8 @@ export async function deleteJournalEntryFile(date: string): Promise<boolean> {
  * @returns True if entry exists
  */
 export async function journalEntryExists(date: string): Promise<boolean> {
-  const filePath = getJournalPath(date)
-  return fileExists(filePath)
+  const store = getContentStore()
+  return store.exists(store.getJournalRelativePath(date))
 }
 
 /**
@@ -398,8 +396,7 @@ export async function journalEntryExists(date: string): Promise<boolean> {
  * @returns Relative path from vault root
  */
 export function getJournalRelativePath(date: string): string {
-  const filePath = getJournalPath(date)
-  return toRelativePath(filePath)
+  return getContentStore().getJournalRelativePath(date)
 }
 
 // ============================================================================

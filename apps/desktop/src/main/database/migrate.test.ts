@@ -33,6 +33,8 @@ describe('database migrations', () => {
         'tasks',
         'inbox_items',
         'settings',
+        'note_metadata',
+        'property_definitions',
         'sync_devices',
         'sync_queue',
         'sync_state',

@@ -3,7 +3,7 @@ import path from 'path'
 import type { VectorClock } from '@memry/contracts/sync-api'
 import type { NoteSyncPayload } from '@memry/contracts/sync-payloads'
 import { isBinaryFileType } from '@memry/shared/file-types'
-import type { NoteCache } from '@memry/db-schema/schema/notes-cache'
+import type { NoteMetadata } from '@memry/db-schema/data-schema'
 import { getNoteProperties, type PropertyValue } from '@main/database/queries/notes'
 import { getPinnedTagsForNote } from './item-handlers/note-pin-helpers'
 import { ContentSyncService, type ContentSyncDeps } from './content-sync-base'
@@ -42,7 +42,7 @@ export class NoteSyncService extends ContentSyncService<NoteSyncPayload> {
   readonly itemType = 'note' as const
 
   protected buildDeletePayload(
-    cached: NoteCache | undefined,
+    cached: NoteMetadata | undefined,
     clock: VectorClock
   ): NoteSyncPayload | null {
     if (!cached) {
@@ -59,7 +59,7 @@ export class NoteSyncService extends ContentSyncService<NoteSyncPayload> {
   }
 
   protected buildSnapshotPayload(
-    cached: NoteCache,
+    cached: NoteMetadata,
     clock: VectorClock,
     operation: 'create' | 'update'
   ): NoteSyncPayload {
