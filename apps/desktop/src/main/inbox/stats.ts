@@ -177,6 +177,107 @@ function getOrCreateTodayStats(db: ReturnType<typeof getDatabase>): typeof inbox
   return stats
 }
 
+function createEmptyStatsRow(date: string): typeof inboxStats.$inferInsert {
+  return {
+    id: generateId(),
+    date,
+    captureCountLink: 0,
+    captureCountNote: 0,
+    captureCountImage: 0,
+    captureCountVoice: 0,
+    captureCountClip: 0,
+    captureCountPdf: 0,
+    captureCountSocial: 0,
+    captureCountReminder: 0,
+    processedCount: 0,
+    archivedCount: 0
+  }
+}
+
+function incrementCaptureColumn(
+  row: typeof inboxStats.$inferInsert,
+  itemType: string
+): typeof inboxStats.$inferInsert {
+  switch (itemType) {
+    case inboxItemType.LINK:
+      row.captureCountLink = (row.captureCountLink ?? 0) + 1
+      break
+    case inboxItemType.NOTE:
+      row.captureCountNote = (row.captureCountNote ?? 0) + 1
+      break
+    case inboxItemType.IMAGE:
+      row.captureCountImage = (row.captureCountImage ?? 0) + 1
+      break
+    case inboxItemType.VOICE:
+      row.captureCountVoice = (row.captureCountVoice ?? 0) + 1
+      break
+    case inboxItemType.CLIP:
+      row.captureCountClip = (row.captureCountClip ?? 0) + 1
+      break
+    case inboxItemType.PDF:
+      row.captureCountPdf = (row.captureCountPdf ?? 0) + 1
+      break
+    case inboxItemType.SOCIAL:
+      row.captureCountSocial = (row.captureCountSocial ?? 0) + 1
+      break
+    case inboxItemType.REMINDER:
+      row.captureCountReminder = (row.captureCountReminder ?? 0) + 1
+      break
+    default:
+      break
+  }
+
+  return row
+}
+
+export function rebuildInboxStatsTable(db = getDatabase()): { rows: number } {
+  const rows = db
+    .select({
+      type: inboxItems.type,
+      createdAt: inboxItems.createdAt,
+      filedAt: inboxItems.filedAt,
+      archivedAt: inboxItems.archivedAt
+    })
+    .from(inboxItems)
+    .all()
+
+  const statsByDate = new Map<string, typeof inboxStats.$inferInsert>()
+
+  const getRow = (date: string): typeof inboxStats.$inferInsert => {
+    const existing = statsByDate.get(date)
+    if (existing) {
+      return existing
+    }
+
+    const row = createEmptyStatsRow(date)
+    statsByDate.set(date, row)
+    return row
+  }
+
+  for (const row of rows) {
+    incrementCaptureColumn(getRow(row.createdAt.slice(0, 10)), row.type)
+
+    if (row.filedAt) {
+      const stats = getRow(row.filedAt.slice(0, 10))
+      stats.processedCount = (stats.processedCount ?? 0) + 1
+    }
+
+    if (row.archivedAt) {
+      const stats = getRow(row.archivedAt.slice(0, 10))
+      stats.archivedCount = (stats.archivedCount ?? 0) + 1
+    }
+  }
+
+  db.delete(inboxStats).run()
+
+  const statsRows = [...statsByDate.values()]
+  if (statsRows.length > 0) {
+    db.insert(inboxStats).values(statsRows).run()
+  }
+
+  return { rows: statsRows.length }
+}
+
 /**
  * Increment capture count for a specific item type
  * @param itemType - The type of item captured
@@ -193,7 +294,8 @@ export function incrementCaptureCount(itemType: string): void {
       [inboxItemType.VOICE]: 'captureCountVoice',
       [inboxItemType.CLIP]: 'captureCountClip',
       [inboxItemType.PDF]: 'captureCountPdf',
-      [inboxItemType.SOCIAL]: 'captureCountSocial'
+      [inboxItemType.SOCIAL]: 'captureCountSocial',
+      [inboxItemType.REMINDER]: 'captureCountReminder'
     }
 
     const column = columnMap[itemType]
@@ -291,7 +393,8 @@ export function getTodayActivity(): { capturedToday: number; processedToday: num
     (stats.captureCountVoice || 0) +
     (stats.captureCountClip || 0) +
     (stats.captureCountPdf || 0) +
-    (stats.captureCountSocial || 0)
+    (stats.captureCountSocial || 0) +
+    (stats.captureCountReminder || 0)
 
   return {
     capturedToday,
@@ -407,7 +510,8 @@ function sumCaptures(row: typeof inboxStats.$inferSelect): number {
     (row.captureCountVoice || 0) +
     (row.captureCountClip || 0) +
     (row.captureCountPdf || 0) +
-    (row.captureCountSocial || 0)
+    (row.captureCountSocial || 0) +
+    (row.captureCountReminder || 0)
   )
 }
 

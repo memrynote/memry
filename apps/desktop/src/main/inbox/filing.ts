@@ -22,6 +22,7 @@ import { InboxChannels, TasksChannels } from '@memry/contracts/ipc-channels'
 import { resolveAttachmentUrl, deleteInboxAttachments } from './attachments'
 import { extractYouTubeVideoId } from '@memry/shared/youtube'
 import { extractDomain } from './metadata'
+import { publishProjectionEvent } from '../projections'
 
 const log = createLogger('Inbox:Filing')
 
@@ -371,6 +372,11 @@ function markItemAsFiled(
     .where(eq(inboxItems.id, itemId))
     .run()
 
+  publishProjectionEvent({
+    type: 'inbox.upserted',
+    itemId
+  })
+
   // Emit filed event
   emitInboxEvent(InboxChannels.events.FILED, {
     id: itemId,
@@ -703,6 +709,11 @@ export async function convertToTask(
     } catch {
       log.warn('Task sync unavailable, skipping sync for converted task')
     }
+
+    publishProjectionEvent({
+      type: 'task.upserted',
+      taskId
+    })
 
     return { success: true, taskId }
   } catch (error) {

@@ -52,6 +52,15 @@ import { flushFtsUpdates, hasPendingFtsUpdates } from '../database'
 import { clearEmbeddingQueue, hasPendingEmbeddings } from '../inbox/embedding-queue'
 import { createLogger } from '../lib/logger'
 import { startSyncRuntime, stopSyncRuntime } from '../sync/runtime'
+import {
+  reconcileProjections,
+  startProjectionRuntime,
+  stopProjectionRuntime
+} from '../projections'
+import { createNoteDerivedStateProjector } from '../projections/projectors/note-derived-state-projector'
+import { createSearchProjector } from '../projections/projectors/search-projector'
+import { createEmbeddingProjector } from '../projections/projectors/embedding-projector'
+import { createInboxStatsProjector } from '../projections/projectors/inbox-stats-projector'
 import { PropertyDefinitionsService } from './property-definitions'
 import { migrateSettingsToConfig } from './settings-cache'
 
@@ -227,6 +236,13 @@ async function openVault(vaultPath: string): Promise<void> {
   // so getPropertyType() finds correct types during note sync
   const propDefService = PropertyDefinitionsService.init(vaultPath)
 
+  startProjectionRuntime([
+    createNoteDerivedStateProjector(() => vaultPath),
+    createSearchProjector(() => vaultPath),
+    createEmbeddingProjector(() => vaultPath),
+    createInboxStatsProjector()
+  ])
+
   updateStatus({ isIndexing: true, indexProgress: 0 })
 
   try {
@@ -273,6 +289,8 @@ async function openVault(vaultPath: string): Promise<void> {
   }
 
   updateStatus({ isIndexing: false, indexProgress: 100 })
+
+  await reconcileProjections()
 
   // Start file watcher for external changes
   await startWatcher(vaultPath)
@@ -417,6 +435,8 @@ export async function closeVault(): Promise<void> {
     clearEmbeddingQueue()
     logger.debug('Cleared pending embedding updates before close')
   }
+
+  await stopProjectionRuntime({ drain: true })
 
   await stopSyncRuntime()
 

@@ -34,11 +34,10 @@ import {
   serializeJournalEntry
 } from '../vault/journal'
 import { maybeCreateSignificantSnapshot } from '../vault/notes'
-import { syncNoteToCache } from '../vault/note-sync'
+import { deleteNoteFromCache, syncNoteToCache } from '../vault/note-sync'
 import { queueEmbeddingUpdate } from '../inbox/embedding-queue'
 import {
   // Unified CRUD operations (using note_cache)
-  deleteNoteCache,
   getNoteCacheByPath,
   // Journal-specific queries
   getJournalEntryByDate,
@@ -295,7 +294,7 @@ export function registerJournalHandlers(): void {
       // Delete from unified cache
       if (cached) {
         getJournalSyncService()?.enqueueDelete(cached.id, input.date)
-        deleteNoteCache(db, cached.id)
+        deleteNoteFromCache(db, cached.id)
       }
 
       // Emit event
