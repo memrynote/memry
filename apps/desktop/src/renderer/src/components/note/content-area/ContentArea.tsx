@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
+import { createPortal } from 'react-dom'
 import { memo, useCallback, useEffect, useRef, useState } from 'react'
 import {
   SuggestionMenuController,
@@ -46,6 +47,7 @@ import { useSidebarDrillDown } from '@/contexts/sidebar-drill-down'
 
 import {
   useBlockNoteSetup,
+  useBlockMarqueeSelection,
   useEditorDragDrop,
   useEditorFileUpload,
   useEditorSync,
@@ -53,6 +55,7 @@ import {
   useWikiLinkSuggestions,
   usePasteLinkMenu
 } from './hooks'
+import { BlockMarqueeOverlay } from './block-marquee-overlay'
 import { PasteLinkMenu } from './paste-link-menu'
 import { extractYouTubeVideoId } from '@/lib/youtube-utils'
 import { extractDomain, fetchLinkPreview } from '@/lib/url-metadata'
@@ -106,7 +109,8 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
   onInlineTagsChange,
   focusAtEndRef,
   yjsFragment,
-  isRemoteUpdateRef
+  isRemoteUpdateRef,
+  marqueeZoneEl
 }: ContentAreaEditorProps) {
   const { resolvedTheme } = useTheme()
   const editorTheme = resolvedTheme === 'dark' ? 'dark' : 'light'
@@ -287,6 +291,24 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
     onSelectionChange: setHighlightSelection,
     minLength: 10,
     enabled: editable && !!noteId
+  })
+
+  const [innerContainerEl, setInnerContainerEl] = useState<HTMLDivElement | null>(null)
+  const setEditorContainerRef = useCallback((el: HTMLDivElement | null) => {
+    editorContainerRef.current = el
+    setInnerContainerEl(el)
+  }, [])
+
+  // State (not just editorContainerRef) so the marquee hook's useEffect
+  // re-runs when .bn-container first mounts — refs don't trigger effects.
+  const triggerEl = marqueeZoneEl ?? innerContainerEl
+
+  // Finder-style multi-block marquee selection
+  const marquee = useBlockMarqueeSelection({
+    editor,
+    blockContainerRef: editorContainerRef,
+    triggerContainerEl: triggerEl,
+    enabled: editable
   })
 
   const handleHighlightReminderCreated = useCallback(() => {
@@ -682,7 +704,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
       )}
 
       <div
-        ref={editorContainerRef}
+        ref={setEditorContainerRef}
         className={cn(
           'bn-container flex-1 min-h-[300px] relative',
           stickyToolbar && 'sticky-toolbar-enabled'
@@ -691,6 +713,9 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
         aria-label="Rich text editor"
         onContextMenu={handleEditorContextMenu}
       >
+        {!marqueeZoneEl && (
+          <BlockMarqueeOverlay rect={marquee.marqueeRect} highlights={marquee.highlightRects} />
+        )}
         <BlockNoteView
           editor={editor}
           editable={editable}
@@ -822,6 +847,11 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
           onSelect={handlePasteLinkOptionSelect}
         />
       </div>
+      {marqueeZoneEl &&
+        createPortal(
+          <BlockMarqueeOverlay rect={marquee.marqueeRect} highlights={marquee.highlightRects} />,
+          marqueeZoneEl
+        )}
     </div>
   )
 })
