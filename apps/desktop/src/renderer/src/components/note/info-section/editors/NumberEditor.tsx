@@ -19,11 +19,8 @@ export function NumberEditor({
   className
 }: NumberEditorProps) {
   const inputRef = useRef<HTMLInputElement>(null)
-  const [localValue, setLocalValue] = useState(value?.toString() ?? '')
-
-  useEffect(() => {
-    setLocalValue(value?.toString() ?? '')
-  }, [value])
+  const [draftValue, setDraftValue] = useState<string | null>(null)
+  const inputValue = draftValue ?? (value?.toString() ?? '')
 
   useEffect(() => {
     if (autoFocus && inputRef.current) {
@@ -33,22 +30,24 @@ export function NumberEditor({
   }, [autoFocus])
 
   const handleChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    setLocalValue(e.target.value)
+    setDraftValue(e.target.value)
   }, [])
 
   const handleBlur = useCallback(() => {
-    const num = localValue ? parseFloat(localValue) : null
+    const num = inputValue ? parseFloat(inputValue) : null
     onChange(num !== null && !isNaN(num) ? num : null)
+    setDraftValue(null)
     onBlur?.()
-  }, [localValue, onChange, onBlur])
+  }, [inputValue, onChange, onBlur])
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLInputElement>) => {
       // Handle Enter - save value
       if (e.key === 'Enter') {
         e.preventDefault()
-        const num = localValue ? parseFloat(localValue) : null
+        const num = inputValue ? parseFloat(inputValue) : null
         onChange(num !== null && !isNaN(num) ? num : null)
+        setDraftValue(null)
         onBlur?.()
         return
       }
@@ -56,7 +55,7 @@ export function NumberEditor({
       // Handle Escape - revert value
       if (e.key === 'Escape') {
         e.preventDefault()
-        setLocalValue(value?.toString() ?? '')
+        setDraftValue(null)
         onBlur?.()
         return
       }
@@ -79,10 +78,11 @@ export function NumberEditor({
       if ((e.ctrlKey || e.metaKey) && ['a', 'c', 'v', 'x'].includes(e.key.toLowerCase())) return
 
       // Allow decimal point (only one)
-      if (e.key === '.' && !localValue.includes('.')) return
+      if (e.key === '.' && !inputValue.includes('.')) return
 
       // Allow minus sign (only at start when cursor is at position 0)
-      if (e.key === '-' && e.currentTarget.selectionStart === 0 && !localValue.includes('-')) return
+      if (e.key === '-' && e.currentTarget.selectionStart === 0 && !inputValue.includes('-'))
+        return
 
       // Allow digits
       if (/^\d$/.test(e.key)) return
@@ -90,14 +90,14 @@ export function NumberEditor({
       // Block everything else (letters, special characters, etc.)
       e.preventDefault()
     },
-    [localValue, value, onChange, onBlur]
+    [inputValue, onChange, onBlur]
   )
 
   return (
     <input
       ref={inputRef}
       type="number"
-      value={localValue}
+      value={inputValue}
       onChange={handleChange}
       onBlur={handleBlur}
       onKeyDown={handleKeyDown}
