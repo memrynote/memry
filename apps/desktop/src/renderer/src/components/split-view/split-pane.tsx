@@ -35,26 +35,23 @@ export const SplitPane = ({
 }: SplitPaneProps): React.JSX.Element => {
   const containerRef = useRef<HTMLDivElement>(null)
   const [isResizing, setIsResizing] = useState(false)
-  const [localRatio, setLocalRatio] = useState(ratio)
+  const [dragRatio, setDragRatio] = useState<number | null>(null)
 
   // Use ref to track latest ratio for mouseup handler (avoids stale closure)
   const latestRatioRef = useRef(ratio)
 
   const isHorizontal = direction === 'horizontal'
 
-  // Sync local ratio with prop when not resizing
-  useEffect(() => {
-    if (!isResizing) {
-      setLocalRatio(ratio)
-      latestRatioRef.current = ratio
-    }
-  }, [ratio, isResizing])
-
   // Handle resize start
-  const handleResizeStart = useCallback((e: React.MouseEvent) => {
-    e.preventDefault()
-    setIsResizing(true)
-  }, [])
+  const handleResizeStart = useCallback(
+    (e: React.MouseEvent) => {
+      e.preventDefault()
+      latestRatioRef.current = ratio
+      setDragRatio(ratio)
+      setIsResizing(true)
+    },
+    [ratio]
+  )
 
   // Handle resize move and end
   useEffect(() => {
@@ -72,7 +69,7 @@ export const SplitPane = ({
       const maxRatio = 1 - minRatio
       const newRatio = Math.max(minRatio, Math.min(maxRatio, position / containerSize))
 
-      setLocalRatio(newRatio)
+      setDragRatio(newRatio)
       latestRatioRef.current = newRatio
 
       // Dispatch ratio change during drag for real-time header sync
@@ -81,6 +78,7 @@ export const SplitPane = ({
 
     const handleMouseUp = () => {
       setIsResizing(false)
+      setDragRatio(null)
       // Final update with latest ratio (ensures consistency)
       onResize(latestRatioRef.current)
     }
@@ -101,7 +99,7 @@ export const SplitPane = ({
   }, [isResizing, isHorizontal, minSize, onResize])
 
   // Calculate sizes
-  const firstSize = `${localRatio * 100}%`
+  const firstSize = `${(dragRatio ?? ratio) * 100}%`
 
   return (
     <div

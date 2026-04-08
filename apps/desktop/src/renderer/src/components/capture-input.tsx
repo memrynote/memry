@@ -8,6 +8,7 @@
  */
 
 import { useState, useCallback, useRef, useEffect } from 'react'
+import { flushSync } from 'react-dom'
 import { Send, Loader2, Link, FileText, Mic, Paperclip, Copy } from '@/lib/icons'
 import { cn } from '@/lib/utils'
 import { extractErrorMessage } from '@/lib/ipc-error'
@@ -16,7 +17,7 @@ import type { DisplayDensity } from '@/hooks/use-display-density'
 import { useSettingsModal } from '@/contexts/settings-modal-context'
 import { ensureVoiceRecordingReady } from '@/lib/voice-recording-readiness'
 import { prepareVoiceMemoAudio } from '@/lib/voice-memo-audio'
-import { VoiceRecorder } from './voice-recorder'
+import { VoiceRecorder, type VoiceRecorderHandle } from './voice-recorder'
 
 /**
  * All allowed attachment MIME types for inbox capture.
@@ -108,6 +109,7 @@ export function CaptureInput({
   } | null>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const voiceRecorderRef = useRef<VoiceRecorderHandle | null>(null)
 
   const captureText = useCaptureText()
   const captureLink = useCaptureLink()
@@ -237,7 +239,10 @@ export function CaptureInput({
     })
 
     if (ready) {
-      setIsRecording(true)
+      flushSync(() => {
+        setIsRecording(true)
+      })
+      void voiceRecorderRef.current?.start()
     }
   }, [openSettings])
 
@@ -432,10 +437,10 @@ export function CaptureInput({
 
       {isRecording && (
         <VoiceRecorder
+          ref={voiceRecorderRef}
           onRecordingComplete={handleRecordingComplete}
           onCancel={handleRecordingCancel}
           maxDuration={300}
-          autoStart
           className="w-full"
         />
       )}
