@@ -1,8 +1,9 @@
 import { eq } from 'drizzle-orm'
 import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3'
 import type * as schema from '@memry/db-schema/data-schema'
+import type { RemoteSyncAdapter } from '@memry/sync-core'
 import { syncState } from '@memry/db-schema/schema/sync-state'
-import { getAllHandlers } from './item-handlers'
+import { getAllRemoteSyncAdapters } from './item-handlers'
 import type { SyncQueueManager } from './queue'
 import { createLogger } from '../lib/logger'
 
@@ -16,16 +17,18 @@ export interface InitialSeedDeps {
   db: DrizzleDb
   queue: SyncQueueManager
   deviceId: string
+  adapters?: Array<RemoteSyncAdapter<DrizzleDb, unknown>>
 }
 
 export function runInitialSeed(deps: InitialSeedDeps): void {
   const { db, queue, deviceId } = deps
+  const adapters = deps.adapters ?? getAllRemoteSyncAdapters()
 
   const existing = db.select().from(syncState).where(eq(syncState.key, SEED_DONE_KEY)).get()
 
   let seeded = 0
-  for (const handler of getAllHandlers()) {
-    seeded += handler.seedUnclocked(db, deviceId, queue)
+  for (const adapter of adapters) {
+    seeded += adapter.seedUnclocked?.(db, deviceId, queue) ?? 0
   }
 
   if (existing && seeded === 0) return

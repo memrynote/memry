@@ -135,6 +135,7 @@ export const journalHandler: SyncItemHandler<JournalSyncPayload> = {
   },
 
   applyDelete(ctx: ApplyContext, itemId: string, clock?: VectorClock): 'applied' | 'skipped' {
+    const indexDb = getIndexDatabase()
     const existing = getNoteMetadataById(ctx.db, itemId)
     if (!existing) return 'skipped'
 
@@ -152,7 +153,7 @@ export const journalHandler: SyncItemHandler<JournalSyncPayload> = {
       })
     }
 
-    deleteNoteFromCache(getIndexDatabase(), itemId)
+    deleteNoteFromCache(indexDb, itemId)
     ctx.emit(JournalChannels.events.ENTRY_DELETED, {
       date: existing.journalDate,
       source: 'sync'

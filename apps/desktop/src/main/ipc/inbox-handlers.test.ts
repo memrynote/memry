@@ -94,6 +94,13 @@ vi.mock('../inbox/transcription', () => ({
   retryTranscription: vi.fn()
 }))
 
+vi.mock('../inbox/jobs', () => ({
+  queueInboxMetadataJob: vi.fn(),
+  queueInboxTranscriptionJob: vi.fn(),
+  resumeInboxJobs: vi.fn(),
+  teardownInboxJobScheduler: vi.fn()
+}))
+
 vi.mock('../inbox/suggestions', () => ({
   getSuggestions: vi.fn(),
   trackSuggestionFeedback: vi.fn()
@@ -140,6 +147,10 @@ vi.mock('../sync/offline-clock', () => ({
   incrementInboxClockOffline: vi.fn()
 }))
 
+vi.mock('../projections', () => ({
+  publishProjectionEvent: vi.fn()
+}))
+
 vi.mock('../lib/logger', () => ({
   createLogger: () => ({
     info: vi.fn(),
@@ -156,9 +167,10 @@ import * as filingModule from '../inbox/filing'
 import * as snoozeModule from '../inbox/snooze'
 import * as suggestionsModule from '../inbox/suggestions'
 import * as captureModule from '../inbox/capture'
-import * as transcriptionModule from '../inbox/transcription'
+import * as inboxJobsModule from '../inbox/jobs'
 import * as statsModule from '../inbox/stats'
 import * as socialModule from '../inbox/social'
+import { publishProjectionEvent } from '../projections'
 
 describe('inbox-handlers', () => {
   let mockDb: {
@@ -515,7 +527,11 @@ describe('inbox-handlers', () => {
 
       expect(result.success).toBe(true)
       expect(mockDb.update).toHaveBeenCalled()
-      expect(statsModule.incrementArchivedCount).toHaveBeenCalled()
+      expect(publishProjectionEvent).toHaveBeenCalledWith({
+        type: 'inbox.upserted',
+        itemId: 'item1'
+      })
+      expect(statsModule.incrementArchivedCount).not.toHaveBeenCalled()
     })
 
     it('should return error for non-existent item', async () => {
@@ -770,12 +786,21 @@ describe('inbox-handlers', () => {
     })
 
     it('should retry transcription', async () => {
-      ;(transcriptionModule.retryTranscription as Mock).mockResolvedValue({ success: true })
+      const chainable = mockDb.select()
+      chainable.get.mockReturnValue({
+        id: 'voice1',
+        type: 'voice',
+        attachmentPath: '/attachments/inbox/test/audio.webm'
+      })
 
       const result = await invokeHandler(InboxChannels.invoke.RETRY_TRANSCRIPTION, 'voice1')
 
       expect(result.success).toBe(true)
-      expect(transcriptionModule.retryTranscription).toHaveBeenCalledWith('voice1')
+      expect(mockDb.update).toHaveBeenCalled()
+      expect(inboxJobsModule.queueInboxTranscriptionJob).toHaveBeenCalledWith(
+        'voice1',
+        '/attachments/inbox/test/audio.webm'
+      )
     })
   })
 

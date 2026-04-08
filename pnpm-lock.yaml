@@ -109,6 +109,12 @@ importers:
       '@memry/domain-notes':
         specifier: workspace:*
         version: link:../../packages/domain-notes
+      '@memry/domain-tasks':
+        specifier: workspace:*
+        version: link:../../packages/domain-tasks
+      '@memry/rpc':
+        specifier: workspace:*
+        version: link:../../packages/rpc
       '@memry/shared':
         specifier: workspace:*
         version: link:../../packages/shared
@@ -118,6 +124,9 @@ importers:
       '@memry/storage-vault':
         specifier: workspace:*
         version: link:../../packages/storage-vault
+      '@memry/sync-core':
+        specifier: workspace:*
+        version: link:../../packages/sync-core
       '@radix-ui/react-accordion':
         specifier: ^1.2.12
         version: 1.2.12(@types/react-dom@19.2.3(@types/react@19.2.13))(@types/react@19.2.13)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
@@ -275,8 +284,8 @@ importers:
         specifier: ^17.2.3
         version: 17.2.4
       drizzle-orm:
-        specifier: ^0.45.1
-        version: 0.45.1(@cloudflare/workers-types@4.20260305.1)(@opentelemetry/api@1.9.0)(@types/better-sqlite3@7.6.13)(better-sqlite3@12.6.2)
+        specifier: ^0.45.2
+        version: 0.45.2(@cloudflare/workers-types@4.20260305.1)(@opentelemetry/api@1.9.0)(@types/better-sqlite3@7.6.13)(better-sqlite3@12.6.2)
       electron-log:
         specifier: ^5.4.3
         version: 5.4.3
@@ -642,6 +651,9 @@ importers:
 
   packages/contracts:
     dependencies:
+      '@memry/domain-tasks':
+        specifier: workspace:*
+        version: link:../domain-tasks
       zod:
         specifier: ^4.3.4
         version: 4.3.6
@@ -659,8 +671,8 @@ importers:
         specifier: workspace:*
         version: link:../shared
       drizzle-orm:
-        specifier: ^0.45.1
-        version: 0.45.1(@cloudflare/workers-types@4.20260305.1)(@opentelemetry/api@1.9.0)(@types/better-sqlite3@7.6.13)(better-sqlite3@12.6.2)
+        specifier: ^0.45.2
+        version: 0.45.2(@cloudflare/workers-types@4.20260305.1)(@opentelemetry/api@1.9.0)(@types/better-sqlite3@7.6.13)(better-sqlite3@12.6.2)
     devDependencies:
       '@memry/typescript-config':
         specifier: workspace:*
@@ -685,6 +697,22 @@ importers:
         specifier: workspace:*
         version: link:../typescript-config
 
+  packages/domain-tasks:
+    devDependencies:
+      '@memry/typescript-config':
+        specifier: workspace:*
+        version: link:../typescript-config
+
+  packages/rpc:
+    dependencies:
+      '@memry/contracts':
+        specifier: workspace:*
+        version: link:../contracts
+    devDependencies:
+      '@memry/typescript-config':
+        specifier: workspace:*
+        version: link:../typescript-config
+
   packages/shared:
     devDependencies:
       '@memry/typescript-config':
@@ -696,15 +724,31 @@ importers:
       '@memry/db-schema':
         specifier: workspace:*
         version: link:../db-schema
+      '@memry/domain-tasks':
+        specifier: workspace:*
+        version: link:../domain-tasks
       drizzle-orm:
         specifier: ^0.45.1
-        version: 0.45.1(@cloudflare/workers-types@4.20260305.1)(@opentelemetry/api@1.9.0)(@types/better-sqlite3@7.6.13)(better-sqlite3@12.6.2)
+        version: 0.45.2(@cloudflare/workers-types@4.20260305.1)(@opentelemetry/api@1.9.0)(@types/better-sqlite3@7.6.13)(better-sqlite3@12.6.2)
     devDependencies:
       '@memry/typescript-config':
         specifier: workspace:*
         version: link:../typescript-config
 
   packages/storage-vault:
+    devDependencies:
+      '@memry/typescript-config':
+        specifier: workspace:*
+        version: link:../typescript-config
+
+  packages/sync-core:
+    dependencies:
+      '@memry/contracts':
+        specifier: workspace:*
+        version: link:../contracts
+      zod:
+        specifier: ^4.3.4
+        version: 4.3.6
     devDependencies:
       '@memry/typescript-config':
         specifier: workspace:*
@@ -4889,8 +4933,8 @@ packages:
     resolution: {integrity: sha512-GViD3IgsXn7trFyBUUHyTFBpH/FsHTxYJ66qdbVggxef4UBPHRYxQaRzYLTuekYnk9i5FIEL9pbBIwMqX/Uwrg==}
     hasBin: true
 
-  drizzle-orm@0.45.1:
-    resolution: {integrity: sha512-Te0FOdKIistGNPMq2jscdqngBRfBpC8uMFVwqjf6gtTVJHIQ/dosgV/CLBU2N4ZJBsXL5savCba9b0YJskKdcA==}
+  drizzle-orm@0.45.2:
+    resolution: {integrity: sha512-kY0BSaTNYWnoDMVoyY8uxmyHjpJW1geOmBMdSSicKo9CIIWkSxMIj2rkeSR51b8KAPB7m+qysjuHme5nKP+E5Q==}
     peerDependencies:
       '@aws-sdk/client-rds-data': '>=3'
       '@cloudflare/workers-types': '>=4'
@@ -13302,7 +13346,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  drizzle-orm@0.45.1(@cloudflare/workers-types@4.20260305.1)(@opentelemetry/api@1.9.0)(@types/better-sqlite3@7.6.13)(better-sqlite3@12.6.2):
+  drizzle-orm@0.45.2(@cloudflare/workers-types@4.20260305.1)(@opentelemetry/api@1.9.0)(@types/better-sqlite3@7.6.13)(better-sqlite3@12.6.2):
     optionalDependencies:
       '@cloudflare/workers-types': 4.20260305.1
       '@opentelemetry/api': 1.9.0

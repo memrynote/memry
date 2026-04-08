@@ -44,3 +44,4 @@ export {
 } from './use-inbox-mutations'
 
 export { useInboxOperations } from './use-inbox-operations'
+export { useInboxJobs } from '../features/inbox/use-inbox-jobs'

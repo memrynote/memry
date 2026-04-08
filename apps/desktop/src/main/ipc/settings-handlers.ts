@@ -35,6 +35,7 @@ import { getDatabase } from '../database'
 import { getSetting, setSetting, deleteSetting } from '@main/database/queries/settings'
 import { withErrorHandler } from './validate'
 import { initEmbeddingModel, getModelInfo, isModelLoaded, isModelLoading } from '../lib/embeddings'
+import { rebuildProjections } from '../projections'
 import { writePreferences, PORTABLE_GENERAL_FIELDS } from '../vault/vault-preferences'
 import { getCurrentVaultPath } from '../store'
 import { downloadVoiceModel, getVoiceModelStatus } from '../inbox/voice-model'
@@ -487,9 +488,13 @@ export function registerSettingsHandlers(): void {
   ipcMain.handle(
     SettingsChannels.invoke.REINDEX_EMBEDDINGS,
     withErrorHandler(async () => {
-      const { reindexAllEmbeddings } = await import('../inbox/suggestions')
-      const result = await reindexAllEmbeddings()
-      return result
+      const result = await rebuildProjections(['embedding'])
+      return result.embedding as {
+        success: boolean
+        computed: number
+        skipped: number
+        error?: string
+      }
     }, 'Unknown error')
   )
 

@@ -6,7 +6,7 @@ import {
   type TestDatabaseResult
 } from '@tests/utils/test-db'
 import { createInboxQueryHandlers, type InboxQueryHandlerDeps } from './inbox-query-handlers'
-import { inboxItemTags } from '@memry/db-schema/schema/inbox'
+import { inboxItemTags, inboxJobs } from '@memry/db-schema/schema/inbox'
 import { eq } from 'drizzle-orm'
 
 describe('inbox-query-handlers › handleGetPatterns', () => {
@@ -155,5 +155,38 @@ describe('inbox-query-handlers › handleGetPatterns', () => {
     const allZero = result.timeHeatmap.every((row) => row.every((v) => v === 0))
     expect(allZero).toBe(true)
     expect(result.typeDistribution).toHaveLength(0)
+  })
+
+  it('lists durable inbox jobs with item filters', async () => {
+    const [itemId] = seedInboxItems(testDb.db, [{ id: 'job-item', type: 'link', title: 'Link' }])
+    const now = new Date().toISOString()
+
+    testDb.db
+      .insert(inboxJobs)
+      .values({
+        id: 'job-1',
+        itemId,
+        type: 'metadata-scrape',
+        status: 'pending',
+        runAt: now,
+        attempts: 0,
+        maxAttempts: 2,
+        payload: { url: 'https://example.com' },
+        createdAt: now,
+        updatedAt: now
+      })
+      .run()
+
+    const handlers = createInboxQueryHandlers(deps)
+    const result = await handlers.handleGetJobs({ itemIds: [itemId] })
+
+    expect(result.jobs).toHaveLength(1)
+    expect(result.jobs[0]).toEqual(
+      expect.objectContaining({
+        itemId,
+        type: 'metadata-scrape',
+        status: 'pending'
+      })
+    )
   })
 })

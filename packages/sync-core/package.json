@@ -1,0 +1,21 @@
+{
+  "name": "@memry/sync-core",
+  "version": "0.1.0",
+  "private": true,
+  "license": "GPL-3.0",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "types": "./src/index.ts",
+  "scripts": {
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "devDependencies": {
+    "@memry/typescript-config": "workspace:*"
+  },
+  "dependencies": {
+    "@memry/contracts": "workspace:*",
+    "zod": "^4.3.4"
+  }
+}

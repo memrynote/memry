@@ -152,8 +152,15 @@
     {
       "idx": 21,
       "version": "6",
+      "when": 1773565200000,
+      "tag": "0021_inbox_jobs",
+      "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "6",
       "when": 1775606400000,
-      "tag": "0021_notes_journal_vault",
+      "tag": "0022_notes_journal_vault",
       "breakpoints": true
     }
   ]

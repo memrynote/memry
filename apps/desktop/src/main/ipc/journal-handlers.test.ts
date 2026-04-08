@@ -52,10 +52,6 @@ vi.mock('../vault/note-sync', () => ({
   deleteNoteFromCache: vi.fn()
 }))
 
-vi.mock('../inbox/embedding-queue', () => ({
-  queueEmbeddingUpdate: vi.fn()
-}))
-
 vi.mock('../sync/journal-sync', () => ({
   getJournalSyncService: vi.fn(() => ({
     enqueueCreate: vi.fn(),

@@ -31,7 +31,6 @@ import { inboxItems, inboxItemTags } from '@memry/db-schema/schema/inbox'
 import { eq } from 'drizzle-orm'
 import {
   resolveAttachmentUrl,
-  getItemAttachmentsDir,
   storeInboxAttachment,
   storeThumbnail,
   ALLOWED_IMAGE_TYPES,
@@ -41,7 +40,6 @@ import {
 } from '../inbox/attachments'
 import {
   fetchUrlMetadata,
-  downloadImage,
   titleFromUrl,
   isBotPageTitle,
   extractDomain
@@ -57,7 +55,6 @@ import { extractSocialPost, detectSocialPlatform, isSocialPost } from '../inbox/
 import { createLogger } from '../lib/logger'
 import { captureVoice, type CaptureVoiceInput } from '../inbox/capture'
 import { findDuplicateByUrl, findDuplicateByContent } from '../inbox/duplicates'
-import { retryTranscription } from '../inbox/transcription'
 import { getSuggestions, trackSuggestionFeedback } from '../inbox/suggestions'
 import { FileItemSchema } from '@memry/contracts/inbox-api'
 import { isStale as checkIsStale } from '../inbox/stats'
@@ -81,6 +78,13 @@ import {
   registerInboxQueryHandlers,
   unregisterInboxQueryHandlers
 } from './inbox-query-handlers'
+import { publishProjectionEvent } from '../projections'
+import {
+  queueInboxMetadataJob,
+  queueInboxTranscriptionJob,
+  resumeInboxJobs,
+  teardownInboxJobScheduler
+} from '../inbox/jobs'
 
 // ============================================================================
 // Constants
@@ -95,6 +99,11 @@ function syncInboxCreate(db: DrizzleDb, itemId: string): void {
   } else {
     incrementInboxClockOffline(db, itemId)
   }
+
+  publishProjectionEvent({
+    type: 'inbox.upserted',
+    itemId
+  })
 }
 
 function syncInboxUpdate(db: DrizzleDb, itemId: string): void {
@@ -104,135 +113,11 @@ function syncInboxUpdate(db: DrizzleDb, itemId: string): void {
   } else {
     incrementInboxClockOffline(db, itemId)
   }
-}
 
-/** Retry delay for metadata fetch (5 seconds) */
-const METADATA_RETRY_DELAY = 5000
-
-// ============================================================================
-// Background Metadata Fetch
-// ============================================================================
-
-/**
- * Fetch URL metadata in background and update the inbox item
- *
- * @param itemId - The inbox item ID to update
- * @param url - The URL to fetch metadata from
- * @param retryCount - Current retry count (auto-retry once on failure)
- */
-async function fetchAndUpdateMetadata(itemId: string, url: string, retryCount = 0): Promise<void> {
-  let db: ReturnType<typeof getDatabase>
-
-  try {
-    db = requireDatabase()
-  } catch {
-    logger.warn('No database available, skipping metadata fetch')
-    return
-  }
-
-  try {
-    // Update status to processing
-    db.update(inboxItems)
-      .set({
-        processingStatus: 'processing',
-        modifiedAt: new Date().toISOString()
-      })
-      .where(eq(inboxItems.id, itemId))
-      .run()
-
-    // Fetch metadata
-    logger.info(`Fetching metadata for ${url}`)
-    const metadata = await fetchUrlMetadata(url)
-    logger.debug(`Extracted: title="${metadata.title}", hasImage=${!!metadata.image}`)
-
-    // Download image if available
-    let thumbnailPath: string | null = null
-    if (metadata.image) {
-      const attachmentsDir = getItemAttachmentsDir(itemId)
-      const imageName = await downloadImage(metadata.image, attachmentsDir)
-      if (imageName) {
-        // Store relative path from vault root: attachments/inbox/{itemId}/thumbnail.ext
-        thumbnailPath = `attachments/inbox/${itemId}/${imageName}`
-        logger.debug(`Downloaded thumbnail: ${thumbnailPath}`)
-      }
-    }
-
-    // Update item with metadata
-    const now = new Date().toISOString()
-    db.update(inboxItems)
-      .set({
-        title:
-          metadata.title && !isBotPageTitle(metadata.title) ? metadata.title : titleFromUrl(url),
-        content: metadata.description || null,
-        thumbnailPath,
-        processingStatus: 'complete',
-        processingError: null,
-        modifiedAt: now,
-        metadata: {
-          url,
-          fetchStatus: 'complete',
-          siteName: metadata.publisher || undefined,
-          description: metadata.description || undefined,
-          heroImage: metadata.image || undefined,
-          favicon: metadata.logo || undefined,
-          author: metadata.author || undefined,
-          publishedDate: metadata.date || undefined
-        }
-      })
-      .where(eq(inboxItems.id, itemId))
-      .run()
-
-    // Emit success event
-    emitInboxEvent(InboxChannels.events.METADATA_COMPLETE, {
-      id: itemId,
-      metadata: {
-        title: metadata.title,
-        description: metadata.description,
-        image: metadata.image,
-        thumbnailPath
-      }
-    })
-
-    logger.info(`Successfully updated item ${itemId}`)
-  } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error'
-    logger.error(`Error fetching metadata for ${url}: ${errorMessage}`)
-
-    // Auto-retry once after delay
-    if (retryCount < 1) {
-      logger.info(`Scheduling retry for ${itemId} in ${METADATA_RETRY_DELAY}ms`)
-      setTimeout(() => {
-        fetchAndUpdateMetadata(itemId, url, retryCount + 1).catch((e) => logger.error(e))
-      }, METADATA_RETRY_DELAY)
-      return
-    }
-
-    // Update item with error status
-    try {
-      db.update(inboxItems)
-        .set({
-          title: titleFromUrl(url),
-          processingStatus: 'failed',
-          processingError: errorMessage,
-          modifiedAt: new Date().toISOString(),
-          metadata: {
-            url,
-            fetchStatus: 'failed',
-            error: errorMessage
-          }
-        })
-        .where(eq(inboxItems.id, itemId))
-        .run()
-
-      // Emit error event
-      emitInboxEvent(InboxChannels.events.PROCESSING_ERROR, {
-        id: itemId,
-        error: errorMessage
-      })
-    } catch (dbError) {
-      logger.error('Failed to update error status:', dbError)
-    }
-  }
+  publishProjectionEvent({
+    type: 'inbox.upserted',
+    itemId
+  })
 }
 
 // ============================================================================
@@ -258,6 +143,11 @@ function storeSocialMetadata(itemId: string, url: string): void {
     })
     .where(eq(inboxItems.id, itemId))
     .run()
+
+  publishProjectionEvent({
+    type: 'inbox.upserted',
+    itemId
+  })
 
   emitInboxEvent(InboxChannels.events.METADATA_COMPLETE, { id: itemId, metadata })
   logger.info(`Stored social metadata for ${itemId}: ${title}`)
@@ -521,11 +411,7 @@ const handleCaptureLink = withErrorHandler(async (input: unknown): Promise<Captu
       logger.error('Social metadata storage error:', err)
     }
   } else {
-    setImmediate(() => {
-      fetchAndUpdateMetadata(id, parsed.url).catch((err) => {
-        logger.error('Background metadata fetch error:', err)
-      })
-    })
+    queueInboxMetadataJob(id, parsed.url)
   }
 
   return { success: true, item }
@@ -922,11 +808,46 @@ async function handleGetSnoozed(): Promise<SnoozedItem[]> {
  */
 const handleRetryTranscription = withErrorHandler(
   async (itemId: string): Promise<{ success: boolean; error?: string }> => {
-    const result = await retryTranscription(itemId)
-    return {
-      success: result.success,
-      error: result.error
+    const db = requireDatabase()
+    const item = db.select().from(inboxItems).where(eq(inboxItems.id, itemId)).get()
+
+    if (!item) {
+      return { success: false, error: 'Item not found' }
     }
+
+    if (item.type !== 'voice') {
+      return { success: false, error: 'Item is not a voice memo' }
+    }
+
+    if (!item.attachmentPath) {
+      return { success: false, error: 'No audio file attached to this item' }
+    }
+
+    const now = new Date().toISOString()
+    db.update(inboxItems)
+      .set({
+        transcriptionStatus: 'pending',
+        processingError: null,
+        modifiedAt: now
+      })
+      .where(eq(inboxItems.id, itemId))
+      .run()
+
+    publishProjectionEvent({
+      type: 'inbox.upserted',
+      itemId
+    })
+
+    emitInboxEvent(InboxChannels.events.UPDATED, {
+      id: itemId,
+      changes: {
+        transcriptionStatus: 'pending',
+        processingError: null
+      }
+    })
+
+    queueInboxTranscriptionJob(itemId, item.attachmentPath)
+    return { success: true }
   },
   'Transcription retry failed'
 )
@@ -958,11 +879,20 @@ const handleRetryMetadata = withDb(
       .where(eq(inboxItems.id, itemId))
       .run()
 
-    setImmediate(() => {
-      fetchAndUpdateMetadata(itemId, item.sourceUrl!, 0).catch((err) => {
-        logger.error('Retry metadata fetch error:', err)
-      })
+    publishProjectionEvent({
+      type: 'inbox.upserted',
+      itemId
     })
+
+    emitInboxEvent(InboxChannels.events.UPDATED, {
+      id: itemId,
+      changes: {
+        processingStatus: 'pending',
+        processingError: null
+      }
+    })
+
+    queueInboxMetadataJob(itemId, item.sourceUrl)
 
     return { success: true }
   },
@@ -977,6 +907,8 @@ const handleRetryMetadata = withDb(
  * Register all inbox IPC handlers
  */
 export function registerInboxHandlers(): void {
+  resumeInboxJobs()
+
   // Capture handlers
   ipcMain.handle(InboxChannels.invoke.CAPTURE_TEXT, (_, input) => handleCaptureText(input))
   ipcMain.handle(InboxChannels.invoke.CAPTURE_LINK, (_, input) => handleCaptureLink(input))
@@ -1070,6 +1002,8 @@ export function registerInboxHandlers(): void {
  * Unregister all inbox IPC handlers
  */
 export function unregisterInboxHandlers(): void {
+  teardownInboxJobScheduler()
+
   // Capture
   ipcMain.removeHandler(InboxChannels.invoke.CAPTURE_TEXT)
   ipcMain.removeHandler(InboxChannels.invoke.CAPTURE_LINK)

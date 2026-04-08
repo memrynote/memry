@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event'
 import React from 'react'
 import { TasksSettings } from './tasks-section'
 import { TasksProvider } from '@/contexts/tasks'
+import { renderWithProviders as renderWithQueryProviders } from '@tests/utils/render'
 import type { Project, Status } from '@/data/tasks-data'
 import type { Task } from '@/data/sample-tasks'
 
@@ -59,7 +60,7 @@ const DEFAULTS = {
 }
 
 function renderWithProviders(ui: React.ReactElement) {
-  return render(
+  return renderWithQueryProviders(
     <TasksProvider initialTasks={[] as Task[]} initialProjects={MOCK_PROJECTS}>
       {ui}
     </TasksProvider>
