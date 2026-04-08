@@ -71,7 +71,7 @@ export function registerSearchHandlers(): void {
       try {
         const indexDb = getIndexDatabase()
         const dataDb = getDatabase()
-        const result = rebuildAllIndexes(indexDb, dataDb)
+        const result = await rebuildAllIndexes(indexDb, dataDb)
         return { started: true as const, ...result }
       } catch (error) {
         logger.error('search:rebuild-index failed:', error)

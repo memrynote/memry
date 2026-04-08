@@ -81,6 +81,7 @@ import {
   registerInboxQueryHandlers,
   unregisterInboxQueryHandlers
 } from './inbox-query-handlers'
+import { publishProjectionEvent } from '../projections'
 
 // ============================================================================
 // Constants
@@ -95,6 +96,11 @@ function syncInboxCreate(db: DrizzleDb, itemId: string): void {
   } else {
     incrementInboxClockOffline(db, itemId)
   }
+
+  publishProjectionEvent({
+    type: 'inbox.upserted',
+    itemId
+  })
 }
 
 function syncInboxUpdate(db: DrizzleDb, itemId: string): void {
@@ -104,6 +110,11 @@ function syncInboxUpdate(db: DrizzleDb, itemId: string): void {
   } else {
     incrementInboxClockOffline(db, itemId)
   }
+
+  publishProjectionEvent({
+    type: 'inbox.upserted',
+    itemId
+  })
 }
 
 /** Retry delay for metadata fetch (5 seconds) */
@@ -182,6 +193,11 @@ async function fetchAndUpdateMetadata(itemId: string, url: string, retryCount = 
       .where(eq(inboxItems.id, itemId))
       .run()
 
+    publishProjectionEvent({
+      type: 'inbox.upserted',
+      itemId
+    })
+
     // Emit success event
     emitInboxEvent(InboxChannels.events.METADATA_COMPLETE, {
       id: itemId,
@@ -224,6 +240,11 @@ async function fetchAndUpdateMetadata(itemId: string, url: string, retryCount = 
         .where(eq(inboxItems.id, itemId))
         .run()
 
+      publishProjectionEvent({
+        type: 'inbox.upserted',
+        itemId
+      })
+
       // Emit error event
       emitInboxEvent(InboxChannels.events.PROCESSING_ERROR, {
         id: itemId,
@@ -258,6 +279,11 @@ function storeSocialMetadata(itemId: string, url: string): void {
     })
     .where(eq(inboxItems.id, itemId))
     .run()
+
+  publishProjectionEvent({
+    type: 'inbox.upserted',
+    itemId
+  })
 
   emitInboxEvent(InboxChannels.events.METADATA_COMPLETE, { id: itemId, metadata })
   logger.info(`Stored social metadata for ${itemId}: ${title}`)
@@ -957,6 +983,11 @@ const handleRetryMetadata = withDb(
       })
       .where(eq(inboxItems.id, itemId))
       .run()
+
+    publishProjectionEvent({
+      type: 'inbox.upserted',
+      itemId
+    })
 
     setImmediate(() => {
       fetchAndUpdateMetadata(itemId, item.sourceUrl!, 0).catch((err) => {

@@ -25,6 +25,7 @@ import {
 } from '@memry/contracts/inbox-api'
 import { storeInboxAttachment, resolveAttachmentUrl } from './attachments'
 import { transcribeAudio, getVoiceRecordingReadiness } from './transcription'
+import { publishProjectionEvent } from '../projections'
 
 const log = createLogger('Inbox:Capture')
 
@@ -293,6 +294,10 @@ export async function captureVoice(input: CaptureVoiceInput): Promise<CaptureRes
 
     // Emit captured event
     emitInboxEvent(InboxChannels.events.CAPTURED, { item: toListItem(created, tags) })
+    publishProjectionEvent({
+      type: 'inbox.upserted',
+      itemId: id
+    })
 
     // Trigger async transcription if enabled and available
     if (shouldTranscribe && storageResult.path) {

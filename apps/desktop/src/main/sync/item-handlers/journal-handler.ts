@@ -7,7 +7,8 @@ import { utcNow } from '@memry/shared/utc'
 import type { SyncQueueManager } from '../queue'
 import { increment } from '../vector-clock'
 import { getIndexDatabase } from '../../database/client'
-import { getNoteCacheById, updateNoteCache, deleteNoteCache } from '@main/database/queries/notes'
+import { getNoteCacheById, updateNoteCache } from '@main/database/queries/notes'
+import { deleteNoteFromCache } from '../../vault/note-sync'
 import {
   writeJournalEntry,
   deleteJournalEntryFile,
@@ -111,7 +112,7 @@ export const journalHandler: SyncItemHandler<JournalSyncPayload> = {
       })
     }
 
-    deleteNoteCache(indexDb, itemId)
+    deleteNoteFromCache(indexDb, itemId)
     ctx.emit(JournalChannels.events.ENTRY_DELETED, {
       date: existing.date,
       source: 'sync'
