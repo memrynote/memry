@@ -71,23 +71,26 @@ async function getMarqueeZoneBox(page: Page) {
 // Pattern from inline-subtasks.e2e.ts:77 — provision a real DB task via IPC
 // so the taskBlock renderer can resolve a row, not a placeholder.
 async function createTaskInDb(page: Page, title: string): Promise<string> {
-  return (await page.evaluate(async ({ title }) => {
-    const api = (window as any).api
-    if (!api?.tasks) throw new Error('window.api.tasks not exposed')
-    const projectsRes = await api.tasks.listProjects()
-    const projects = projectsRes?.projects ?? []
-    const defaultProject = projects.find((p: any) => p.isDefault || p.isInbox) ?? projects[0]
-    if (!defaultProject) throw new Error('no default project found')
-    const created = await api.tasks.create({
-      projectId: defaultProject.id,
-      title,
-      priority: 0
-    })
-    if (!created?.success || !created.task) {
-      throw new Error('tasks.create failed: ' + JSON.stringify(created))
-    }
-    return created.task.id as string
-  }, { title })) as string
+  return (await page.evaluate(
+    async ({ title }) => {
+      const api = (window as any).api
+      if (!api?.tasks) throw new Error('window.api.tasks not exposed')
+      const projectsRes = await api.tasks.listProjects()
+      const projects = projectsRes?.projects ?? []
+      const defaultProject = projects.find((p: any) => p.isDefault || p.isInbox) ?? projects[0]
+      if (!defaultProject) throw new Error('no default project found')
+      const created = await api.tasks.create({
+        projectId: defaultProject.id,
+        title,
+        priority: 0
+      })
+      if (!created?.success || !created.task) {
+        throw new Error('tasks.create failed: ' + JSON.stringify(created))
+      }
+      return created.task.id as string
+    },
+    { title }
+  )) as string
 }
 
 // Pattern from inline-subtasks.e2e.ts:106 — replace the editor doc with a
@@ -166,9 +169,18 @@ test.describe('Marquee selection — block types', () => {
     const id2 = await createTaskInDb(page, 'Multi task 2')
     const id3 = await createTaskInDb(page, 'Multi task 3')
     await setEditorBlocks(page, [
-      { type: 'taskBlock', props: { taskId: id1, title: 'Multi task 1', checked: false, parentTaskId: '' } },
-      { type: 'taskBlock', props: { taskId: id2, title: 'Multi task 2', checked: false, parentTaskId: '' } },
-      { type: 'taskBlock', props: { taskId: id3, title: 'Multi task 3', checked: false, parentTaskId: '' } }
+      {
+        type: 'taskBlock',
+        props: { taskId: id1, title: 'Multi task 1', checked: false, parentTaskId: '' }
+      },
+      {
+        type: 'taskBlock',
+        props: { taskId: id2, title: 'Multi task 2', checked: false, parentTaskId: '' }
+      },
+      {
+        type: 'taskBlock',
+        props: { taskId: id3, title: 'Multi task 3', checked: false, parentTaskId: '' }
+      }
     ])
     await expect(page.locator(TASK_BLOCK_SELECTOR)).toHaveCount(3)
     // Wait for the task block renderers to load their async task data
@@ -331,5 +343,130 @@ test.describe('Marquee selection — block types', () => {
     // ~1 tick after release. 200ms is well past that race window.
     await page.waitForTimeout(200)
     expect(await page.locator(HIGHLIGHTED_SELECTOR).count()).toBeGreaterThanOrEqual(3)
+  })
+
+  test('8. Tab on taskBlocks is a safe no-op — does NOT crash the editor', async ({ page }) => {
+    // Regression gate: before the non-textblock filter in indent/outdent,
+    // pressing Tab on a marquee of task blocks threw "Block type does not
+    // match" inside ReactNodeViewRenderer and then crashed the next loop
+    // iteration in syncNodeSelection.descAt with a null docView. Task
+    // blocks declare `content: 'none'` so BlockNote's nestBlock cannot
+    // safely run against them — the implementation must skip non-
+    // textblock blocks silently.
+    await createNote(page, `Marquee Tab TaskBlock ${Date.now()}`)
+    await focusEditor(page)
+
+    const id1 = await createTaskInDb(page, 'Tab task 1')
+    const id2 = await createTaskInDb(page, 'Tab task 2')
+    const id3 = await createTaskInDb(page, 'Tab task 3')
+    await setEditorBlocks(page, [
+      {
+        type: 'taskBlock',
+        props: { taskId: id1, title: 'Tab task 1', checked: false, parentTaskId: '' }
+      },
+      {
+        type: 'taskBlock',
+        props: { taskId: id2, title: 'Tab task 2', checked: false, parentTaskId: '' }
+      },
+      {
+        type: 'taskBlock',
+        props: { taskId: id3, title: 'Tab task 3', checked: false, parentTaskId: '' }
+      }
+    ])
+    await expect(page.locator(TASK_BLOCK_SELECTOR)).toHaveCount(3)
+
+    // Listen for editor error boundary activation — a crash would surface
+    // as an "Editor crash" or "Editor error" console error.
+    const editorErrors: string[] = []
+    page.on('console', (msg) => {
+      if (msg.type() === 'error') {
+        const text = msg.text()
+        if (text.includes('Block type does not match') || text.includes('Editor crash')) {
+          editorErrors.push(text)
+        }
+      }
+    })
+
+    // Marquee-select the last two task blocks.
+    await marqueeAcross(page, 1, 2)
+    expect(await page.locator(HIGHLIGHTED_SELECTOR).count()).toBeGreaterThanOrEqual(2)
+
+    await page.keyboard.press('Tab')
+    await page.waitForTimeout(300)
+
+    // The editor must NOT have crashed.
+    expect(editorErrors).toEqual([])
+    // All three task blocks are still rendered.
+    await expect(page.locator(TASK_BLOCK_SELECTOR)).toHaveCount(3)
+
+    // Now Shift+Tab: same guarantee.
+    await page.keyboard.press('Shift+Tab')
+    await page.waitForTimeout(300)
+    expect(editorErrors).toEqual([])
+    await expect(page.locator(TASK_BLOCK_SELECTOR)).toHaveCount(3)
+  })
+
+  test('9. Tab on mixed paragraph + taskBlock selection — paragraph indents, taskBlock stays', async ({
+    page
+  }) => {
+    // Mixed selection: paragraphs nest as BlockNote blocks, task blocks
+    // are silently skipped. Neither block type should crash the editor.
+    await createNote(page, `Marquee Tab Mixed ${Date.now()}`)
+    await focusEditor(page)
+
+    const taskId = await createTaskInDb(page, 'Mixed task')
+    await setEditorBlocks(page, [
+      {
+        type: 'bulletListItem',
+        content: [{ type: 'text', text: 'anchor bullet', styles: {} }]
+      },
+      {
+        type: 'bulletListItem',
+        content: [{ type: 'text', text: 'will indent', styles: {} }]
+      },
+      {
+        type: 'taskBlock',
+        props: { taskId, title: 'Mixed task', checked: false, parentTaskId: '' }
+      }
+    ])
+    // BlockNote may auto-append a trailing paragraph when the last block
+    // is a non-textblock custom block, so 3 or 4 both qualify.
+    expect(await getBlockCount(page)).toBeGreaterThanOrEqual(3)
+
+    const editorErrors: string[] = []
+    page.on('console', (msg) => {
+      if (msg.type() === 'error') {
+        const text = msg.text()
+        if (text.includes('Block type does not match') || text.includes('Editor crash')) {
+          editorErrors.push(text)
+        }
+      }
+    })
+
+    // Select bullet #2 + taskBlock.
+    await marqueeAcross(page, 1, 2)
+    expect(await page.locator(HIGHLIGHTED_SELECTOR).count()).toBeGreaterThanOrEqual(2)
+
+    await page.keyboard.press('Tab')
+    await page.waitForTimeout(300)
+
+    // Editor must not have crashed.
+    expect(editorErrors).toEqual([])
+    // Task block still present.
+    await expect(page.locator(TASK_BLOCK_SELECTOR)).toHaveCount(1)
+    // Bullet #2 indented: its .bn-block data-id element has 2+ bn-block-group ancestors.
+    const bullet2Depth = await page.evaluate(() => {
+      const blocks = document.querySelectorAll('.bn-container .bn-block[data-id]')
+      const target = blocks[1]
+      if (!target) return -1
+      let depth = 0
+      let cursor: Element | null = target.parentElement
+      while (cursor && !cursor.classList.contains('bn-container')) {
+        if (cursor.classList.contains('bn-block-group')) depth += 1
+        cursor = cursor.parentElement
+      }
+      return depth
+    })
+    expect(bullet2Depth).toBe(2)
   })
 })
