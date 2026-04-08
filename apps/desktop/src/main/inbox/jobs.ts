@@ -1,5 +1,5 @@
 import { BrowserWindow } from 'electron'
-import { and, asc, eq, inArray, lte, or } from 'drizzle-orm'
+import { and, asc, eq, inArray, lte, or, type SQL } from 'drizzle-orm'
 import { inboxJobs, inboxItems } from '@memry/db-schema/schema/inbox'
 import type {
   InboxJob as InboxJobContract,
@@ -455,7 +455,7 @@ export function listInboxJobs(options: {
   statuses?: InboxJobStatus[]
 } = {}): InboxJobContract[] {
   const db = requireDatabase()
-  const conditions = []
+  const conditions: SQL<unknown>[] = []
 
   if (options.itemIds?.length) {
     conditions.push(inArray(inboxJobs.itemId, options.itemIds))
