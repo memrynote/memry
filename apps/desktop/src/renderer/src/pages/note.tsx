@@ -204,6 +204,31 @@ export function NotePage({ noteId }: NotePageProps) {
 
   // Find in page (Cmd+F)
   const editorContainerRef = useRef<HTMLDivElement>(null)
+  const [marqueeZoneEl, setMarqueeZoneEl] = useState<HTMLDivElement | null>(null)
+
+  // Click anywhere in the marquee zone (full scroll area, minus title/metadata
+  // and editable text) → focus editor at end. Attached imperatively so it
+  // coexists with the marquee hook's own mousedown listener.
+  useEffect(() => {
+    if (!marqueeZoneEl) return
+    const handler = (event: MouseEvent): void => {
+      if (event.button !== 0) return
+      const target = event.target as HTMLElement | null
+      if (!target) return
+      if (target.closest('[data-marquee-ignore]')) return
+      if (target.closest('button, a, input, textarea, select, [role="button"]')) return
+      if (
+        target.closest('[contenteditable="true"]')?.contains(target) &&
+        target.closest('.bn-block-content')
+      )
+        return
+      event.preventDefault()
+      focusAtEndRef.current?.()
+    }
+    marqueeZoneEl.addEventListener('mousedown', handler)
+    return () => marqueeZoneEl.removeEventListener('mousedown', handler)
+  }, [marqueeZoneEl])
+
   const isActiveNote = activeTab?.entityId === noteId
   const findInPage = useFindInPage(
     editorContainerRef as RefObject<HTMLElement | null>,
@@ -898,6 +923,7 @@ export function NotePage({ noteId }: NotePageProps) {
       onHeadingClick={handleHeadingClick}
       actions={actionIcons}
       fullWidth={isFullWidth}
+      marqueeZoneRef={setMarqueeZoneEl}
       topBar={
         <FindBar
           isOpen={findInPage.isOpen}
@@ -920,7 +946,7 @@ export function NotePage({ noteId }: NotePageProps) {
         style={{ maxWidth: noteContentWidth ?? '100%' }}
       >
         {/* Title + Metadata zone — ghost affordance appears on hover */}
-        <div className="group/metadata flex flex-col pb-[15px]">
+        <div className="group/metadata flex flex-col pb-[15px]" data-marquee-ignore>
           <NoteTitle
             emoji={null}
             title={note.title}
@@ -976,17 +1002,6 @@ export function NotePage({ noteId }: NotePageProps) {
           ref={editorContainerRef}
           role="presentation"
           className="editor-click-area flex-1 pb-[30vh] relative"
-          onMouseDown={(e) => {
-            const target = e.target as HTMLElement
-            if (
-              target.closest('[contenteditable="true"]')?.contains(target) &&
-              target.closest('.bn-block-content')
-            )
-              return
-            if (target.closest('button, a, input')) return
-            e.preventDefault()
-            focusAtEndRef.current?.()
-          }}
         >
           <EditorErrorBoundary
             noteId={noteId}
@@ -1011,32 +1026,37 @@ export function NotePage({ noteId }: NotePageProps) {
               tagColorMap={tagColorMap}
               onInlineTagsChange={handleInlineTagsChange}
               focusAtEndRef={focusAtEndRef}
+              marqueeZoneEl={marqueeZoneEl}
             />
           </EditorErrorBoundary>
         </div>
 
-        {/* Local Graph Panel */}
+        {/* Local Graph Panel — excluded from marquee/focus-at-end so graph
+            drags + clicks aren't hijacked by the editor's marquee zone. */}
         {isLocalGraphOpen && noteId && (
-          <LocalGraphPanel
-            noteId={noteId}
-            onClose={() => setIsLocalGraphOpen(false)}
-            onOpenFullGraph={() => {
-              openTab({
-                type: 'graph',
-                title: 'Graph',
-                icon: 'git-graph',
-                path: '/graph',
-                isPinned: false,
-                isModified: false,
-                isPreview: false,
-                isDeleted: false
-              })
-            }}
-          />
+          <div data-marquee-ignore>
+            <LocalGraphPanel
+              noteId={noteId}
+              onClose={() => setIsLocalGraphOpen(false)}
+              onOpenFullGraph={() => {
+                openTab({
+                  type: 'graph',
+                  title: 'Graph',
+                  icon: 'git-graph',
+                  path: '/graph',
+                  isPinned: false,
+                  isModified: false,
+                  isPreview: false,
+                  isDeleted: false
+                })
+              }}
+            />
+          </div>
         )}
 
-        {/* Backlinks & linked tasks — separated from content */}
-        <div className="mt-10 flex flex-col gap-6">
+        {/* Backlinks & linked tasks — separated from content and excluded
+            from the marquee/focus-at-end zone. */}
+        <div className="mt-10 flex flex-col gap-6" data-marquee-ignore>
           <BacklinksSection
             backlinks={backlinks}
             isLoading={backlinksLoading}
