@@ -171,7 +171,6 @@ export const DueDatePicker = ({
 }: DueDatePickerProps): React.JSX.Element => {
   const [isOpen, setIsOpen] = useState(false)
   const [showCalendar, setShowCalendar] = useState(false)
-  const [showTimePicker, setShowTimePicker] = useState(!!time)
   const [inputValue, setInputValue] = useState('') // Track input value for conditional shortcuts
   const triggerRef = useRef<HTMLButtonElement>(null)
   const naturalDateInputRef = useRef<NaturalDateInputRef>(null)
@@ -186,19 +185,7 @@ export const DueDatePicker = ({
 
   // Check if input is empty (for conditional shortcuts)
   const inputIsEmpty = inputValue.trim() === ''
-
-  // Reset state when popover closes
-  useEffect(() => {
-    if (!isOpen) {
-      setShowCalendar(false)
-      setInputValue('') // Reset input tracking
-    }
-  }, [isOpen])
-
-  // Reset time picker visibility when time changes
-  useEffect(() => {
-    setShowTimePicker(!!time)
-  }, [time])
+  const showTimePicker = !!time
 
   const handleQuickSelect = useCallback(
     (getDate: () => Date): void => {
@@ -244,20 +231,17 @@ export const DueDatePicker = ({
   const handleRemoveDate = useCallback((): void => {
     onDateChange(null)
     onTimeChange(null)
-    setShowTimePicker(false)
     setIsOpen(false)
   }, [onDateChange, onTimeChange])
 
   const handleToggleTimePicker = useCallback((): void => {
-    if (!showTimePicker) {
+    if (!time) {
       // Default to 9:00 AM when adding time
       onTimeChange('09:00')
-      setShowTimePicker(true)
     } else {
       onTimeChange(null)
-      setShowTimePicker(false)
     }
-  }, [showTimePicker, onTimeChange])
+  }, [time, onTimeChange])
 
   // Track input value changes from NaturalDateInput
   const handleInputChange = useCallback((value: string): void => {
@@ -322,8 +306,16 @@ export const DueDatePicker = ({
     }
   }, [isOpen, handleKeyDown])
 
+  const handleOpenChange = useCallback((open: boolean): void => {
+    if (!open) {
+      setShowCalendar(false)
+      setInputValue('')
+    }
+    setIsOpen(open)
+  }, [])
+
   return (
-    <Popover open={isOpen} onOpenChange={setIsOpen}>
+    <Popover open={isOpen} onOpenChange={handleOpenChange}>
       <PopoverTrigger asChild>
         <Button
           ref={triggerRef}

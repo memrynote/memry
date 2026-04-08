@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useEffect, useRef } from 'react'
+import { useState, useMemo, useCallback, useEffect } from 'react'
 
 import { toast } from 'sonner'
 import { TaskList } from '@/components/tasks/task-list'
@@ -169,73 +169,32 @@ export const TasksPage = ({
     [tasks, onTasksChange]
   )
 
-  // View mode state (restore from tab viewState if returning to this tab)
-  const [activeView, setActiveViewRaw] = useState<ViewMode>(
-    (activeTab?.viewState?.activeView as ViewMode) ?? 'list'
+  const taskTabViewState = activeTab?.viewState ?? {}
+  const activeInternalTab =
+    ((taskTabViewState.activeInternalTab as TasksInternalTab | undefined) ??
+      (taskTabViewState.activeTab as TasksInternalTab | undefined) ??
+      'today') as TasksInternalTab
+  const defaultProjectId = useMemo(
+    () => resolveInitialViewProject(selectedType, taskPrefs.defaultProjectId, projects),
+    [selectedType, taskPrefs.defaultProjectId, projects]
   )
+  const selectedProjectIdState = taskTabViewState.selectedProjectId as
+    | string
+    | null
+    | undefined
+  const selectedProjectId =
+    selectedProjectIdState === undefined ? defaultProjectId : (selectedProjectIdState ?? null)
 
-  // Internal tab state for the new tab bar navigation (default to Today)
-  const [activeInternalTab, setActiveInternalTab] = useState<TasksInternalTab>(
-    (activeTab?.viewState?.activeInternalTab as TasksInternalTab) ?? 'today'
-  )
-
-  // Track selected project for "All projects" filter dropdown
-  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(
-    (activeTab?.viewState?.selectedProjectId as string) ?? null
-  )
-  const hasAppliedDefaultProject = useRef(false)
-
-  useEffect(() => {
-    if (hasAppliedDefaultProject.current) return
-    const resolved = resolveInitialViewProject(selectedType, taskPrefs.defaultProjectId, projects)
-    if (resolved) {
-      setSelectedProjectId(resolved)
-      hasAppliedDefaultProject.current = true
+  const availableViews = useMemo((): ViewMode[] => {
+    if (activeInternalTab === 'today') {
+      return ['list']
     }
-  }, [selectedType, taskPrefs.defaultProjectId, projects])
+    return ['list', 'kanban']
+  }, [activeInternalTab])
 
-  // Task detail drawer state (restore from tab viewState if returning)
-  const [detailTaskId, setDetailTaskId] = useState<string | null>(
-    (activeTab?.viewState?.openTaskId as string) ?? null
-  )
-
-  // Persist view state to tab on unmount (mirrors TabContent scroll-position pattern)
-  const viewStateRef = useRef({ activeView, activeInternalTab, selectedProjectId, detailTaskId })
-  viewStateRef.current = { activeView, activeInternalTab, selectedProjectId, detailTaskId }
-
-  useEffect(() => {
-    const tabId = activeTab?.id
-    if (!tabId) return
-    return () => {
-      saveTabState(tabId, {
-        viewState: {
-          activeView: viewStateRef.current.activeView,
-          activeInternalTab: viewStateRef.current.activeInternalTab,
-          selectedProjectId: viewStateRef.current.selectedProjectId,
-          openTaskId: viewStateRef.current.detailTaskId
-        }
-      })
-    }
-  }, [activeTab?.id, saveTabState])
-
-  // Restore viewState from tab (e.g. navigating from journal sidebar)
-  const lastAppliedTaskId = useRef<string | null>(null)
-  const incomingTaskId = (activeTab?.viewState?.openTaskId as string) ?? null
-  const incomingProjectId = (activeTab?.viewState?.selectedProjectId as string) ?? null
-  const incomingActiveTab = (activeTab?.viewState?.activeTab as TasksInternalTab) ?? null
-
-  useEffect(() => {
-    if (!incomingTaskId || incomingTaskId === lastAppliedTaskId.current) return
-    lastAppliedTaskId.current = incomingTaskId
-    setDetailTaskId(incomingTaskId)
-    if (incomingProjectId) {
-      setSelectedProjectId(incomingProjectId)
-      hasAppliedDefaultProject.current = true
-    }
-    if (incomingActiveTab) {
-      setActiveInternalTab(incomingActiveTab)
-    }
-  }, [incomingTaskId, incomingProjectId, incomingActiveTab])
+  const requestedActiveView = (taskTabViewState.activeView as ViewMode | undefined) ?? 'list'
+  const activeView = availableViews.includes(requestedActiveView) ? requestedActiveView : 'list'
+  const detailTaskId = (taskTabViewState.openTaskId as string | null | undefined) ?? null
 
   // Modal states
   const [isAddTaskModalOpen, setIsAddTaskModalOpen] = useState(false)
@@ -260,9 +219,49 @@ export const TasksPage = ({
     persistFilters: true
   })
 
-  const setActiveView = useCallback((view: ViewMode) => {
-    setActiveViewRaw(view)
-  }, [])
+  const updateTaskViewState = useCallback(
+    (updates: Record<string, unknown>) => {
+      if (!activeTab?.id) return
+      saveTabState(activeTab.id, {
+        viewState: {
+          ...(activeTab.viewState ?? {}),
+          ...updates
+        }
+      })
+    },
+    [activeTab, saveTabState]
+  )
+
+  const setActiveView = useCallback(
+    (view: ViewMode) => {
+      updateTaskViewState({ activeView: view })
+    },
+    [updateTaskViewState]
+  )
+
+  const setActiveInternalTab = useCallback(
+    (tab: TasksInternalTab) => {
+      updateTaskViewState({
+        activeInternalTab: tab,
+        activeTab: tab
+      })
+    },
+    [updateTaskViewState]
+  )
+
+  const setSelectedProjectId = useCallback(
+    (projectId: string | null) => {
+      updateTaskViewState({ selectedProjectId: projectId })
+    },
+    [updateTaskViewState]
+  )
+
+  const setDetailTaskId = useCallback(
+    (taskId: string | null) => {
+      updateTaskViewState({ openTaskId: taskId })
+    },
+    [updateTaskViewState]
+  )
 
   // Saved filters
   const {
@@ -323,20 +322,6 @@ export const TasksPage = ({
     }
     return null
   }, [selectedId, selectedType, projects])
-
-  const availableViews = useMemo((): ViewMode[] => {
-    if (activeInternalTab === 'today') {
-      return ['list']
-    }
-    return ['list', 'kanban']
-  }, [activeInternalTab])
-
-  // Reset to list view if current view becomes unavailable
-  useEffect(() => {
-    if (!availableViews.includes(activeView)) {
-      setActiveView('list')
-    }
-  }, [availableViews, activeView])
 
   // Derived: filtered tasks for current selection, scoped by dropdown project
   const baseFilteredTasks = useMemo(() => {
@@ -474,8 +459,8 @@ export const TasksPage = ({
   )
 
   const handleTaskClick = useCallback((taskId: string) => {
-    setDetailTaskId((prev) => (prev === taskId ? null : taskId))
-  }, [])
+    setDetailTaskId(detailTaskId === taskId ? null : taskId)
+  }, [detailTaskId, setDetailTaskId])
 
   const handleCloseDetail = useCallback(() => {
     setDetailTaskId(null)

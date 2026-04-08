@@ -13,6 +13,7 @@ import {
   useCallback,
   useMemo,
   useEffect,
+  useRef,
   type ReactNode
 } from 'react'
 import type { Task, RepeatConfig } from '@/data/sample-tasks'
@@ -257,7 +258,9 @@ export const TasksProvider = ({
   // Core state
   const [tasks, setTasksState] = useState<Task[]>(initialTasks)
   const [projects, setProjectsState] = useState<Project[]>(initialProjects)
-  const [isLoaded, setIsLoaded] = useState(false)
+  const tasksRef = useRef(initialTasks)
+  const projectsRef = useRef(initialProjects)
+  const hasLoadedFromDatabaseRef = useRef(false)
 
   // Selection state
   const [taskSelectedId, setTaskSelectedId] = useState<string>('all')
@@ -277,11 +280,36 @@ export const TasksProvider = ({
     [onSelectedTaskIdsChange]
   )
 
+  // Wrapped setters - update local state and notify parent in the same event/subscription path
+  const setTasks = useCallback((updater: Task[] | ((prev: Task[]) => Task[])) => {
+    const nextTasks =
+      typeof updater === 'function' ? updater(tasksRef.current) : updater
+
+    tasksRef.current = nextTasks
+    setTasksState(nextTasks)
+    onTasksChange?.(nextTasks)
+  }, [onTasksChange])
+
+  const setProjects = useCallback((updater: Project[] | ((prev: Project[]) => Project[])) => {
+    const nextProjects =
+      typeof updater === 'function' ? updater(projectsRef.current) : updater
+
+    projectsRef.current = nextProjects
+    setProjectsState(nextProjects)
+    onProjectsChange?.(nextProjects)
+  }, [onProjectsChange])
+
   // Load data from database when vault opens
   useEffect(() => {
-    if (!isVaultOpen || isLoaded) return
+    if (!isVaultOpen) {
+      hasLoadedFromDatabaseRef.current = false
+      return
+    }
+    if (hasLoadedFromDatabaseRef.current) return
 
-    const loadFromDatabase = async () => {
+    let cancelled = false
+
+    const loadFromDatabase = async (): Promise<void> => {
       try {
         // Load projects first
         const projectsResponse = await tasksService.listProjects()
@@ -303,8 +331,8 @@ export const TasksProvider = ({
           })
         )
 
-        setProjectsState(projectsWithStatuses)
-        onProjectsChange?.(projectsWithStatuses)
+        if (cancelled) return
+        setProjects(projectsWithStatuses)
 
         // Load tasks (including completed and archived for full UI support)
         const tasksResponse = await tasksService.list({
@@ -335,44 +363,21 @@ export const TasksProvider = ({
           return { ...task, subtaskIds: sortedSubtaskIds }
         })
 
-        setTasksState(tasksWithSubtaskIds)
-        onTasksChange?.(tasksWithSubtaskIds)
-
-        setIsLoaded(true)
+        if (cancelled) return
+        setTasks(tasksWithSubtaskIds)
+        hasLoadedFromDatabaseRef.current = true
       } catch (error) {
         log.error('Failed to load from database:', error)
         // Keep using initial data on error
       }
     }
 
-    loadFromDatabase()
-  }, [isVaultOpen, isLoaded, onProjectsChange, onTasksChange])
+    void loadFromDatabase()
 
-  // Reset loaded state when vault closes
-  useEffect(() => {
-    if (!isVaultOpen) {
-      setIsLoaded(false)
+    return () => {
+      cancelled = true
     }
-  }, [isVaultOpen])
-
-  // Wrapped setters - just update local state
-  // Parent sync happens via useEffect below to avoid "setState during render" errors
-  const setTasks = useCallback((updater: Task[] | ((prev: Task[]) => Task[])) => {
-    setTasksState(updater)
-  }, [])
-
-  const setProjects = useCallback((updater: Project[] | ((prev: Project[]) => Project[])) => {
-    setProjectsState(updater)
-  }, [])
-
-  // Sync state changes to parent via useEffect (avoids setState during render)
-  useEffect(() => {
-    onTasksChange?.(tasks)
-  }, [tasks, onTasksChange])
-
-  useEffect(() => {
-    onProjectsChange?.(projects)
-  }, [projects, onProjectsChange])
+  }, [isVaultOpen, setProjects, setTasks])
 
   // Subscribe to database events for real-time updates
   // IMPORTANT: Use setTasks/setProjects (not setTasksState/setProjectsState)

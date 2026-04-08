@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useRef, useMemo } from 'react'
+import { useMemo, useRef, useState } from 'react'
 
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
@@ -14,10 +14,6 @@ import { cn } from '@/lib/utils'
 import { getDefaultTodoStatus } from '@/lib/task-utils'
 import { createDefaultTask, type Task, type Priority, type RepeatConfig } from '@/data/sample-tasks'
 import type { Project } from '@/data/tasks-data'
-
-// ============================================================================
-// TYPES
-// ============================================================================
 
 interface AddTaskModalProps {
   isOpen: boolean
@@ -44,72 +40,62 @@ interface FormErrors {
   title?: string
 }
 
-// ============================================================================
-// ADD TASK MODAL COMPONENT
-// ============================================================================
+function buildInitialFormData({
+  defaultProjectId,
+  defaultDueDate,
+  prefillTitle,
+  projects
+}: {
+  defaultProjectId: string
+  defaultDueDate: Date | null
+  prefillTitle: string
+  projects: Project[]
+}): TaskFormData {
+  const project = projects.find((candidate) => candidate.id === defaultProjectId)
+  const defaultStatus = project ? getDefaultTodoStatus(project) : null
+  const statusId = defaultStatus?.id || project?.statuses[0]?.id || ''
 
-export const AddTaskModal = ({
-  isOpen,
+  return {
+    title: prefillTitle,
+    description: '',
+    projectId: defaultProjectId,
+    statusId,
+    dueDate: defaultDueDate,
+    dueTime: null,
+    priority: 'none',
+    repeatConfig: null
+  }
+}
+
+interface AddTaskModalSessionProps {
+  initialFormData: TaskFormData
+  onClose: () => void
+  onAddTask: (task: Task) => void
+  projects: Project[]
+}
+
+function AddTaskModalSession({
+  initialFormData,
   onClose,
   onAddTask,
-  projects,
-  defaultProjectId = 'personal',
-  defaultDueDate = null,
-  prefillTitle = ''
-}: AddTaskModalProps): React.JSX.Element => {
+  projects
+}: AddTaskModalSessionProps): React.JSX.Element {
   const titleInputRef = useRef<HTMLInputElement>(null)
-
-  // Get initial form data
-  const getInitialFormData = useCallback((): TaskFormData => {
-    const projectId = defaultProjectId
-    const project = projects.find((p) => p.id === projectId)
-    const defaultStatus = project ? getDefaultTodoStatus(project) : null
-    const statusId = defaultStatus?.id || project?.statuses[0]?.id || ''
-
-    return {
-      title: prefillTitle,
-      description: '',
-      projectId,
-      statusId,
-      dueDate: defaultDueDate,
-      dueTime: null,
-      priority: 'none',
-      repeatConfig: null
-    }
-  }, [defaultProjectId, defaultDueDate, prefillTitle, projects])
-
-  // Form state
-  const [formData, setFormData] = useState<TaskFormData>(getInitialFormData)
+  const [formData, setFormData] = useState<TaskFormData>(initialFormData)
   const [errors, setErrors] = useState<FormErrors>({})
   const [createAnother, setCreateAnother] = useState(false)
   const [isCustomRepeatDialogOpen, setIsCustomRepeatDialogOpen] = useState(false)
 
-  // Reset form when modal opens
-  useEffect(() => {
-    if (isOpen) {
-      setFormData(getInitialFormData())
-      setErrors({})
-      // Focus title input after a short delay (for animation)
-      setTimeout(() => {
-        titleInputRef.current?.focus()
-      }, 100)
-    }
-  }, [isOpen, getInitialFormData])
-
-  // Get current project and its statuses
   const currentProject = useMemo(() => {
-    return projects.find((p) => p.id === formData.projectId)
+    return projects.find((project) => project.id === formData.projectId)
   }, [projects, formData.projectId])
 
   const currentStatuses = useMemo(() => {
     return currentProject?.statuses || []
   }, [currentProject])
 
-  // ========== HANDLERS ==========
-
   const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>): void => {
     setFormData((prev) => ({ ...prev, title: e.target.value }))
-    // Clear error when user starts typing
     if (errors.title) {
       setErrors((prev) => ({ ...prev, title: undefined }))
     }
@@ -120,7 +106,7 @@ export const AddTaskModal = ({
   }
 
   const handleProjectChange = (projectId: string): void => {
-    const project = projects.find((p) => p.id === projectId)
+    const project = projects.find((candidate) => candidate.id === projectId)
     const defaultStatus = project ? getDefaultTodoStatus(project) : null
     const statusId = defaultStatus?.id || project?.statuses[0]?.id || ''
 
@@ -151,10 +137,6 @@ export const AddTaskModal = ({
     setFormData((prev) => ({ ...prev, repeatConfig }))
   }
 
-  const handleCreateAnotherChange = (checked: boolean): void => {
-    setCreateAnother(checked)
-  }
-
   const validateForm = (): boolean => {
     const newErrors: FormErrors = {}
 
@@ -172,7 +154,6 @@ export const AddTaskModal = ({
       return
     }
 
-    // Create the task
     const newTask = createDefaultTask(
       formData.projectId,
       formData.statusId,
@@ -180,7 +161,6 @@ export const AddTaskModal = ({
       formData.dueDate
     )
 
-    // Apply additional properties
     const finalTask: Task = {
       ...newTask,
       description: formData.description.trim(),
@@ -193,7 +173,6 @@ export const AddTaskModal = ({
     onAddTask(finalTask)
 
     if (createAnother) {
-      // Reset form but keep project and date
       setFormData((prev) => ({
         title: '',
         description: '',
@@ -206,18 +185,13 @@ export const AddTaskModal = ({
       }))
       setErrors({})
       titleInputRef.current?.focus()
-    } else {
-      onClose()
+      return
     }
-  }
 
-  const handleClose = (): void => {
-    // Could add confirmation if hasContent
     onClose()
   }
 
   const handleKeyDown = (e: React.KeyboardEvent): void => {
-    // Cmd/Ctrl + Enter to submit
     if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
       e.preventDefault()
       handleSubmit()
@@ -225,14 +199,13 @@ export const AddTaskModal = ({
   }
 
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => !open && handleClose()}>
+    <>
       <DialogContent className="max-w-lg" onKeyDown={handleKeyDown}>
         <DialogHeader>
           <DialogTitle>Add Task</DialogTitle>
         </DialogHeader>
 
         <div className="flex flex-col gap-6 py-4">
-          {/* Title Input */}
           <div className="flex flex-col gap-2">
             <label
               htmlFor="task-title"
@@ -243,6 +216,7 @@ export const AddTaskModal = ({
             <Input
               ref={titleInputRef}
               id="task-title"
+              autoFocus
               value={formData.title}
               onChange={handleTitleChange}
               placeholder="What needs to be done?"
@@ -257,7 +231,6 @@ export const AddTaskModal = ({
             )}
           </div>
 
-          {/* Description Input */}
           <div className="flex flex-col gap-2">
             <label
               htmlFor="task-description"
@@ -279,7 +252,6 @@ export const AddTaskModal = ({
             />
           </div>
 
-          {/* Project and Status Row */}
           <div className="grid grid-cols-2 gap-4">
             <div className="flex flex-col gap-2">
               <label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
@@ -303,7 +275,6 @@ export const AddTaskModal = ({
             </div>
           </div>
 
-          {/* Due Date and Priority Row */}
           <div className="grid grid-cols-2 gap-4">
             <div className="flex flex-col gap-2">
               <label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
@@ -324,7 +295,6 @@ export const AddTaskModal = ({
             </div>
           </div>
 
-          {/* Repeat */}
           <div className="flex flex-col gap-2">
             <label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
               Repeat
@@ -338,13 +308,12 @@ export const AddTaskModal = ({
           </div>
         </div>
 
-        {/* Footer */}
         <div className="flex items-center justify-between border-t border-border pt-4">
           <div className="flex items-center gap-2">
             <Checkbox
               id="create-another"
               checked={createAnother}
-              onCheckedChange={handleCreateAnotherChange}
+              onCheckedChange={(checked) => setCreateAnother(checked === true)}
             />
             <label
               htmlFor="create-another"
@@ -355,7 +324,7 @@ export const AddTaskModal = ({
           </div>
 
           <div className="flex items-center gap-2">
-            <Button variant="outline" onClick={handleClose}>
+            <Button variant="outline" onClick={onClose}>
               Cancel
             </Button>
             <Button onClick={handleSubmit}>Add Task</Button>
@@ -363,7 +332,6 @@ export const AddTaskModal = ({
         </div>
       </DialogContent>
 
-      {/* Custom Repeat Dialog */}
       <CustomRepeatDialog
         isOpen={isCustomRepeatDialogOpen}
         onClose={() => setIsCustomRepeatDialogOpen(false)}
@@ -374,6 +342,42 @@ export const AddTaskModal = ({
         initialConfig={formData.repeatConfig}
         dueDate={formData.dueDate}
       />
+    </>
+  )
+}
+
+export const AddTaskModal = ({
+  isOpen,
+  onClose,
+  onAddTask,
+  projects,
+  defaultProjectId = 'personal',
+  defaultDueDate = null,
+  prefillTitle = ''
+}: AddTaskModalProps): React.JSX.Element => {
+  const initialFormData = useMemo(
+    () =>
+      buildInitialFormData({
+        defaultProjectId,
+        defaultDueDate,
+        prefillTitle,
+        projects
+      }),
+    [defaultProjectId, defaultDueDate, prefillTitle, projects]
+  )
+  const formKey = `${defaultProjectId}:${defaultDueDate?.toISOString() ?? 'none'}:${prefillTitle}`
+
+  return (
+    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+      {isOpen ? (
+        <AddTaskModalSession
+          key={formKey}
+          initialFormData={initialFormData}
+          onClose={onClose}
+          onAddTask={onAddTask}
+          projects={projects}
+        />
+      ) : null}
     </Dialog>
   )
 }
