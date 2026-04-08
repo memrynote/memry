@@ -1,4 +1,5 @@
 import { EventEmitter } from 'events'
+import { createSyncAdapterRegistry } from '@memry/sync-core'
 import { createLogger } from '../lib/logger'
 import { EVENT_CHANNELS } from '@memry/contracts/ipc-events'
 import type { CertificatePinFailedEvent, QuarantinedItemInfo } from '@memry/contracts/ipc-events'
@@ -56,15 +57,17 @@ export class SyncEngine extends EventEmitter {
       throw new Error('SyncEngine instance already active — call stop() before creating a new one')
     }
 
+    const adapters = deps.adapters ?? createSyncAdapterRegistry([])
+
     const resolvedOptions: SyncEngineOptions = {
       pushBatchSize: options?.pushBatchSize ?? PUSH_BATCH_SIZE,
       pullPageLimit: options?.pullPageLimit ?? PULL_PAGE_LIMIT
     }
 
     this.ctx = {
-      deps,
+      deps: { ...deps, adapters },
       options: resolvedOptions,
-      applier: new ItemApplier(deps.db, deps.emitToRenderer),
+      applier: new ItemApplier(deps.db, deps.emitToRenderer, adapters),
       state: 'idle',
       syncing: false,
       fullSyncActive: false,

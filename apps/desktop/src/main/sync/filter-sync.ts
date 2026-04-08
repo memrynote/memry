@@ -3,13 +3,10 @@ import { eq } from 'drizzle-orm'
 import type * as schema from '@memry/db-schema/data-schema'
 import { savedFilters } from '@memry/db-schema/schema/settings'
 import type { VectorClock } from '@memry/contracts/sync-api'
+import { RecordSyncController, incrementClock, withIncrementedClock } from '@memry/sync-core'
 import type { SyncQueueManager } from './queue'
-import { increment } from './vector-clock'
-import { createLogger } from '../lib/logger'
 
 type DrizzleDb = BetterSQLite3Database<typeof schema>
-
-const log = createLogger('FilterSync')
 
 interface FilterSyncDeps {
   queue: SyncQueueManager
@@ -33,93 +30,43 @@ export function resetFilterSyncService(): void {
 }
 
 export class FilterSyncService {
-  private queue: SyncQueueManager
-  private db: DrizzleDb
-  private getDeviceId: () => string | null
+  private controller: RecordSyncController<Record<string, unknown>, [], [string]>
 
   constructor(deps: FilterSyncDeps) {
-    this.queue = deps.queue
-    this.db = deps.db
-    this.getDeviceId = deps.getDeviceId
+    this.controller = new RecordSyncController({
+      type: 'filter',
+      queue: deps.queue,
+      getDeviceId: deps.getDeviceId,
+      load: (filterId) =>
+        deps.db.select().from(savedFilters).where(eq(savedFilters.id, filterId)).get() as
+          | Record<string, unknown>
+          | undefined,
+      applyLocalChange: ({ itemId, local, deviceId }) => {
+        const existingClock = (local.clock as VectorClock) ?? {}
+        const newClock = incrementClock(existingClock, deviceId)
+
+        deps.db
+          .update(savedFilters)
+          .set({ clock: newClock })
+          .where(eq(savedFilters.id, itemId))
+          .run()
+
+        return { ...local, clock: newClock }
+      },
+      serialize: (local) => local,
+      buildDeletePayload: ({ extra, deviceId }) => withIncrementedClock(extra[0], deviceId)
+    })
   }
 
   enqueueCreate(filterId: string): void {
-    this.enqueue(filterId, 'create')
+    this.controller.enqueueCreate(filterId)
   }
 
   enqueueUpdate(filterId: string): void {
-    this.enqueue(filterId, 'update')
+    this.controller.enqueueUpdate(filterId)
   }
 
   enqueueDelete(filterId: string, snapshotPayload: string): void {
-    const deviceId = this.getDeviceId()
-    if (!deviceId) {
-      log.warn('No device ID available, skipping filter sync enqueue for delete')
-      return
-    }
-
-    try {
-      const payload = this.withIncrementedClock(snapshotPayload, deviceId)
-      this.queue.enqueue({
-        type: 'filter',
-        itemId: filterId,
-        operation: 'delete',
-        payload,
-        priority: 0
-      })
-    } catch (err) {
-      log.error('Failed to enqueue filter delete', err)
-    }
-  }
-
-  private enqueue(filterId: string, operation: 'create' | 'update'): void {
-    const deviceId = this.getDeviceId()
-    if (!deviceId) {
-      log.warn('No device ID available, skipping filter sync enqueue')
-      return
-    }
-
-    try {
-      const filter = this.db.select().from(savedFilters).where(eq(savedFilters.id, filterId)).get()
-      if (!filter) {
-        log.warn('Filter not found for sync enqueue', { filterId })
-        return
-      }
-
-      const existingClock = (filter.clock as VectorClock) ?? {}
-      const newClock = increment(existingClock, deviceId)
-
-      this.db
-        .update(savedFilters)
-        .set({ clock: newClock })
-        .where(eq(savedFilters.id, filterId))
-        .run()
-
-      const payload = JSON.stringify({ ...filter, clock: newClock })
-
-      this.queue.enqueue({
-        type: 'filter',
-        itemId: filterId,
-        operation,
-        payload,
-        priority: 0
-      })
-    } catch (err) {
-      log.error(`Failed to enqueue filter ${operation}`, err)
-    }
-  }
-
-  private withIncrementedClock(payload: string, deviceId: string): string {
-    try {
-      const parsed = JSON.parse(payload) as Record<string, unknown>
-      const existingClock =
-        parsed.clock && typeof parsed.clock === 'object' && !Array.isArray(parsed.clock)
-          ? (parsed.clock as VectorClock)
-          : {}
-      const newClock = increment(existingClock, deviceId)
-      return JSON.stringify({ ...parsed, clock: newClock })
-    } catch {
-      return payload
-    }
+    this.controller.enqueueDelete(filterId, snapshotPayload)
   }
 }
