@@ -9,9 +9,10 @@ export {
   closeAllDatabases,
   checkIndexHealth,
   withTimeout,
-  type DrizzleDb,
   type IndexHealth
 } from './client'
+
+export type { DataDb, IndexDb, RawIndexDb, DrizzleDb } from './types'
 
 export { runMigrations, runIndexMigrations } from './migrate'
 
