@@ -71,7 +71,7 @@
 }
 
 :root .bn-block-outer {
-  padding: 1px 0;
+  padding: 2px 0;
 }
 
 :root .bn-inline-content {
@@ -138,7 +138,7 @@
 :root .bn-block-outer:has(> .bn-block > .bn-block-content[data-content-type='bulletListItem']),
 :root .bn-block-outer:has(> .bn-block > .bn-block-content[data-content-type='numberedListItem']),
 :root .bn-block-outer:has(> .bn-block > .bn-block-content[data-content-type='checkListItem']) {
-  padding: 1px 0;
+  padding: 2px 0;
 }
 
 /* ===== NESTED INDENT GUIDE ALIGNMENT =====
@@ -2261,7 +2261,6 @@ del.bn-inline-content {
   pointer-events: none;
   background-color: rgba(59, 130, 246, 0.14);
   border-radius: 4px;
-  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.35);
   z-index: 30;
 }
 

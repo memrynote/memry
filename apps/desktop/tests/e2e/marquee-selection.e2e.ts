@@ -227,7 +227,7 @@ test.describe('Block marquee selection', () => {
     await expect(page.locator(HIGHLIGHTED_SELECTOR)).toHaveCount(0)
   })
 
-  test('drags from LEFT gray strip into editor and selects blocks', async ({ page }) => {
+  test('drags from LEFT edge of scroll area into editor and selects blocks', async ({ page }) => {
     await createNote(page, `Marquee Left Strip ${Date.now()}`)
     await focusEditor(page)
     await typeBlocks(page, [
@@ -241,7 +241,8 @@ test.describe('Block marquee selection', () => {
     const first = await getBlockBox(page, 0)
     const last = await getBlockBox(page, 2)
 
-    const startX = zone.x + 24
+    // Start at the very left edge of the marquee zone (full scroll-area width).
+    const startX = zone.x + 8
     const startY = first.y + first.height / 2
     // End INSIDE the editor so the marquee rectangle crosses block geometry.
     const endX = first.x + first.width / 2
@@ -261,7 +262,7 @@ test.describe('Block marquee selection', () => {
     expect(await page.locator(HIGHLIGHTED_SELECTOR).count()).toBeGreaterThanOrEqual(2)
   })
 
-  test('drags from RIGHT gray strip into editor and selects blocks', async ({ page }) => {
+  test('drags from RIGHT edge of scroll area into editor and selects blocks', async ({ page }) => {
     await createNote(page, `Marquee Right Strip ${Date.now()}`)
     await focusEditor(page)
     await typeBlocks(page, [
@@ -275,11 +276,47 @@ test.describe('Block marquee selection', () => {
     const first = await getBlockBox(page, 0)
     const last = await getBlockBox(page, 2)
 
-    const startX = zone.x + zone.width - 24
+    // Start at the very right edge of the marquee zone (full scroll-area width).
+    const startX = zone.x + zone.width - 8
     const startY = first.y + first.height / 2
     // End INSIDE the editor so the marquee rectangle crosses block geometry.
     const endX = first.x + first.width / 2
     const endY = last.y + last.height - 4
+
+    await page.mouse.move(startX, startY)
+    await page.mouse.down()
+    await page.mouse.move(endX, endY, { steps: 14 })
+
+    await expect(page.locator(OVERLAY_SELECTOR)).toBeVisible({ timeout: 2000 })
+    expect(await page.locator(HIGHLIGHTED_SELECTOR).count()).toBeGreaterThanOrEqual(2)
+
+    await page.mouse.up()
+    await page.waitForTimeout(150)
+
+    await expect(page.locator(OVERLAY_SELECTOR)).toHaveCount(0)
+    expect(await page.locator(HIGHLIGHTED_SELECTOR).count()).toBeGreaterThanOrEqual(2)
+  })
+
+  test('drags from below last block into editor and selects blocks', async ({ page }) => {
+    await createNote(page, `Marquee Below Drag ${Date.now()}`)
+    await focusEditor(page)
+    await typeBlocks(page, [
+      'First block for below drag',
+      'Second block for below drag',
+      'Third block for below drag'
+    ])
+    await page.waitForTimeout(400)
+
+    const zone = await getMarqueeZoneBox(page)
+    const first = await getBlockBox(page, 0)
+    const last = await getBlockBox(page, 2)
+
+    // Start below the last block, in the marquee zone's vertical space.
+    const startX = last.x + last.width / 2
+    const startY = last.y + last.height + 120
+    // Drag up to cross the block geometry.
+    const endX = first.x + first.width / 2
+    const endY = first.y + first.height / 2
 
     await page.mouse.move(startX, startY)
     await page.mouse.down()
@@ -314,5 +351,58 @@ test.describe('Block marquee selection', () => {
 
     const editable = page.locator(EDITABLE_SELECTOR).first()
     await expect(editable).toBeFocused()
+  })
+
+  test('regression: click on title input does NOT start marquee or focus editor', async ({
+    page
+  }) => {
+    await createNote(page, `Marquee Title Click ${Date.now()}`)
+    await focusEditor(page)
+    await typeBlocks(page, ['Only block for title-click test'])
+    await page.waitForTimeout(400)
+
+    const titleBox = await page.locator('textarea').first().boundingBox()
+    if (!titleBox) throw new Error('title textarea not found')
+
+    await page.mouse.click(titleBox.x + titleBox.width / 2, titleBox.y + titleBox.height / 2)
+    await page.waitForTimeout(150)
+
+    await expect(page.locator(OVERLAY_SELECTOR)).toHaveCount(0)
+    await expect(page.locator(HIGHLIGHTED_SELECTOR)).toHaveCount(0)
+
+    // Title textarea should be focused (not the editor).
+    const titleFocused = await page.evaluate(() => {
+      const active = document.activeElement
+      return active instanceof HTMLTextAreaElement
+    })
+    expect(titleFocused).toBe(true)
+  })
+
+  test('regression: drag starting on title area does NOT promote marquee', async ({ page }) => {
+    await createNote(page, `Marquee Title Drag ${Date.now()}`)
+    await focusEditor(page)
+    await typeBlocks(page, [
+      'First block for title-drag test',
+      'Second block for title-drag test'
+    ])
+    await page.waitForTimeout(400)
+
+    const titleBox = await page.locator('textarea').first().boundingBox()
+    if (!titleBox) throw new Error('title textarea not found')
+    const last = await getBlockBox(page, 1)
+
+    const startX = titleBox.x + titleBox.width / 2
+    const startY = titleBox.y + titleBox.height / 2
+    const endX = startX
+    const endY = last.y + last.height - 4
+
+    await page.mouse.move(startX, startY)
+    await page.mouse.down()
+    await page.mouse.move(endX, endY, { steps: 14 })
+    await page.mouse.up()
+    await page.waitForTimeout(150)
+
+    await expect(page.locator(OVERLAY_SELECTOR)).toHaveCount(0)
+    await expect(page.locator(HIGHLIGHTED_SELECTOR)).toHaveCount(0)
   })
 })

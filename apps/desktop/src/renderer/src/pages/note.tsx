@@ -205,6 +205,30 @@ export function NotePage({ noteId }: NotePageProps) {
   // Find in page (Cmd+F)
   const editorContainerRef = useRef<HTMLDivElement>(null)
   const [marqueeZoneEl, setMarqueeZoneEl] = useState<HTMLDivElement | null>(null)
+
+  // Click anywhere in the marquee zone (full scroll area, minus title/metadata
+  // and editable text) → focus editor at end. Attached imperatively so it
+  // coexists with the marquee hook's own mousedown listener.
+  useEffect(() => {
+    if (!marqueeZoneEl) return
+    const handler = (event: MouseEvent): void => {
+      if (event.button !== 0) return
+      const target = event.target as HTMLElement | null
+      if (!target) return
+      if (target.closest('[data-marquee-ignore]')) return
+      if (target.closest('button, a, input, textarea, select, [role="button"]')) return
+      if (
+        target.closest('[contenteditable="true"]')?.contains(target) &&
+        target.closest('.bn-block-content')
+      )
+        return
+      event.preventDefault()
+      focusAtEndRef.current?.()
+    }
+    marqueeZoneEl.addEventListener('mousedown', handler)
+    return () => marqueeZoneEl.removeEventListener('mousedown', handler)
+  }, [marqueeZoneEl])
+
   const isActiveNote = activeTab?.entityId === noteId
   const findInPage = useFindInPage(
     editorContainerRef as RefObject<HTMLElement | null>,
@@ -899,6 +923,7 @@ export function NotePage({ noteId }: NotePageProps) {
       onHeadingClick={handleHeadingClick}
       actions={actionIcons}
       fullWidth={isFullWidth}
+      marqueeZoneRef={setMarqueeZoneEl}
       topBar={
         <FindBar
           isOpen={findInPage.isOpen}
@@ -921,7 +946,7 @@ export function NotePage({ noteId }: NotePageProps) {
         style={{ maxWidth: noteContentWidth ?? '100%' }}
       >
         {/* Title + Metadata zone — ghost affordance appears on hover */}
-        <div className="group/metadata flex flex-col pb-[15px]">
+        <div className="group/metadata flex flex-col pb-[15px]" data-marquee-ignore>
           <NoteTitle
             emoji={null}
             title={note.title}
@@ -974,52 +999,36 @@ export function NotePage({ noteId }: NotePageProps) {
 
         {/* Main content - BlockNote Editor */}
         <div
-          ref={setMarqueeZoneEl}
-          className="marquee-zone relative -mx-24 px-24 flex-1 flex flex-col"
-          onMouseDown={(e) => {
-            const target = e.target as HTMLElement
-            if (
-              target.closest('[contenteditable="true"]')?.contains(target) &&
-              target.closest('.bn-block-content')
-            )
-              return
-            if (target.closest('button, a, input')) return
-            e.preventDefault()
-            focusAtEndRef.current?.()
-          }}
+          ref={editorContainerRef}
+          role="presentation"
+          className="editor-click-area flex-1 pb-[30vh] relative"
         >
-          <div
-            ref={editorContainerRef}
-            role="presentation"
-            className="editor-click-area flex-1 pb-[30vh] relative"
+          <EditorErrorBoundary
+            noteId={noteId}
+            onRecover={refetchNote}
+            onError={(error) => log.error('Editor error:', error)}
           >
-            <EditorErrorBoundary
+            <ContentArea
+              key={`${noteId}-${externalUpdateCount}`}
               noteId={noteId}
-              onRecover={refetchNote}
-              onError={(error) => log.error('Editor error:', error)}
-            >
-              <ContentArea
-                key={`${noteId}-${externalUpdateCount}`}
-                noteId={noteId}
-                initialContent={note.content}
-                contentType="markdown"
-                placeholder="Start writing, or press '/' for commands..."
-                stickyToolbar={editorSettings.toolbarMode === 'sticky'}
-                spellCheck={editorSettings.spellCheck}
-                onContentChange={handleContentChange}
-                onMarkdownChange={handleMarkdownChange}
-                onHeadingsChange={handleHeadingsChange}
-                onLinkClick={handleLinkClick}
-                onInternalLinkClick={handleInternalLinkClick}
-                initialHighlight={initialHighlight}
-                noteTags={note.tags}
-                tagColorMap={tagColorMap}
-                onInlineTagsChange={handleInlineTagsChange}
-                focusAtEndRef={focusAtEndRef}
-                marqueeZoneEl={marqueeZoneEl}
-              />
-            </EditorErrorBoundary>
-          </div>
+              initialContent={note.content}
+              contentType="markdown"
+              placeholder="Start writing, or press '/' for commands..."
+              stickyToolbar={editorSettings.toolbarMode === 'sticky'}
+              spellCheck={editorSettings.spellCheck}
+              onContentChange={handleContentChange}
+              onMarkdownChange={handleMarkdownChange}
+              onHeadingsChange={handleHeadingsChange}
+              onLinkClick={handleLinkClick}
+              onInternalLinkClick={handleInternalLinkClick}
+              initialHighlight={initialHighlight}
+              noteTags={note.tags}
+              tagColorMap={tagColorMap}
+              onInlineTagsChange={handleInlineTagsChange}
+              focusAtEndRef={focusAtEndRef}
+              marqueeZoneEl={marqueeZoneEl}
+            />
+          </EditorErrorBoundary>
         </div>
 
         {/* Local Graph Panel */}

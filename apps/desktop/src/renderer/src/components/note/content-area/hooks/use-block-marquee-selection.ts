@@ -48,6 +48,7 @@ interface OriginPoint {
 
 function shouldStartMarquee(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) return false
+  if (target.closest('[data-marquee-ignore]')) return false
   if (target.closest('button, a, input, textarea, select, [role="button"]')) return false
   if (
     target.closest(
