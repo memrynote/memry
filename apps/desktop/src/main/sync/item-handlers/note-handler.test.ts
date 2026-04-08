@@ -27,10 +27,22 @@ vi.mock('../../vault/note-sync', () => ({
   deleteNoteFromCache: vi.fn()
 }))
 
+const mockGetNoteMetadataById = vi.fn(() => undefined)
+
 vi.mock('@main/database/queries/notes', () => ({
   getNoteCacheById: vi.fn(() => undefined),
   getNoteCacheByPath: vi.fn(() => undefined),
   updateNoteCache: vi.fn()
+}))
+
+vi.mock('@memry/storage-data', () => ({
+  getNoteMetadataById: (...args: unknown[]) => mockGetNoteMetadataById(...args),
+  updateNoteMetadata: vi.fn(),
+  getPropertyDefinition: vi.fn()
+}))
+
+vi.mock('@memry/domain-notes', () => ({
+  saveCanonicalPropertyDefinition: vi.fn()
 }))
 
 vi.mock('../../lib/logger', () => ({
