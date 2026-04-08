@@ -319,7 +319,8 @@ test.describe('Tasks Management', () => {
       await createTaskViaModal(page, `${secondHighTitle} !!high`, secondHighTitle)
 
       await page.getByRole('button', { name: 'Group by options' }).click()
-      await page.getByRole('button', { name: 'Priority', exact: true }).click()
+      await page.getByRole('option', { name: 'Priority', exact: true }).click()
+      await page.keyboard.press('Escape')
       await page.waitForTimeout(500)
 
       const sourceRow = getTaskRow(page, sourceTitle)
@@ -364,7 +365,8 @@ test.describe('Tasks Management', () => {
       await createTaskViaModal(page, `${secondHighTitle} !!high`, secondHighTitle)
 
       await page.getByRole('button', { name: 'Group by options' }).click()
-      await page.getByRole('button', { name: 'Priority', exact: true }).click()
+      await page.getByRole('option', { name: 'Priority', exact: true }).click()
+      await page.keyboard.press('Escape')
       await page.waitForTimeout(500)
 
       const sourceRow = getTaskRow(page, sourceTitle)
@@ -416,7 +418,8 @@ test.describe('Tasks Management', () => {
       await createTaskViaModal(page, `${sourceTitle} !!medium`, sourceTitle)
 
       await page.getByRole('button', { name: 'Group by options' }).click()
-      await page.getByRole('button', { name: 'Priority', exact: true }).click()
+      await page.getByRole('option', { name: 'Priority', exact: true }).click()
+      await page.keyboard.press('Escape')
       await page.waitForTimeout(500)
 
       const sourceRow = getTaskRow(page, sourceTitle)

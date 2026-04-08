@@ -381,10 +381,7 @@ test.describe('Block marquee selection', () => {
   test('regression: drag starting on title area does NOT promote marquee', async ({ page }) => {
     await createNote(page, `Marquee Title Drag ${Date.now()}`)
     await focusEditor(page)
-    await typeBlocks(page, [
-      'First block for title-drag test',
-      'Second block for title-drag test'
-    ])
+    await typeBlocks(page, ['First block for title-drag test', 'Second block for title-drag test'])
     await page.waitForTimeout(400)
 
     const titleBox = await page.locator('textarea').first().boundingBox()
@@ -453,12 +450,10 @@ test.describe('Block marquee selection', () => {
       const sel = window.getSelection()
       const active = document.activeElement
       const isEditorFocused =
-        active instanceof HTMLElement &&
-        active.closest('[contenteditable="true"]') !== null
+        active instanceof HTMLElement && active.closest('[contenteditable="true"]') !== null
       return {
         isEditorFocused,
-        hasNonCollapsedRange:
-          sel !== null && sel.rangeCount > 0 && !sel.isCollapsed,
+        hasNonCollapsedRange: sel !== null && sel.rangeCount > 0 && !sel.isCollapsed,
         selectedText: sel?.toString() ?? ''
       }
     })
@@ -513,5 +508,173 @@ test.describe('Block marquee selection', () => {
     for (const sibling of attrs.nonEditorSiblings ?? []) {
       expect(sibling.hasMarqueeIgnore).toBe(true)
     }
+  })
+
+  // --- Tab / Shift+Tab indent/outdent on marquee selections ---------------
+  // BlockNote nests blocks by wrapping them in a .bn-block-group inside
+  // their parent block, so depth = count of .bn-block-group ancestors
+  // between the block and the .bn-container. A root-level block has
+  // depth 1; each indent level adds one.
+  async function createBulletList(page: Page, items: string[]): Promise<void> {
+    // "- " auto-converts the current paragraph into a bullet list item,
+    // and subsequent Enter preserves the list. We only prefix the first.
+    await page.keyboard.type('- ')
+    for (let i = 0; i < items.length; i += 1) {
+      await page.keyboard.type(items[i])
+      if (i < items.length - 1) await page.keyboard.press('Enter')
+    }
+    await page.waitForTimeout(250)
+  }
+
+  async function blockDepth(page: Page, index: number): Promise<number> {
+    return page.evaluate((idx) => {
+      const blocks = document.querySelectorAll('.bn-container .bn-block[data-id]')
+      const block = blocks[idx]
+      if (!block) return -1
+      let depth = 0
+      let cursor: Element | null = block.parentElement
+      while (cursor && !cursor.classList.contains('bn-container')) {
+        if (cursor.classList.contains('bn-block-group')) depth += 1
+        cursor = cursor.parentElement
+      }
+      return depth
+    }, index)
+  }
+
+  async function marqueeSelectBlocks(page: Page, fromIndex: number, toIndex: number) {
+    const from = await getBlockBox(page, fromIndex)
+    const to = await getBlockBox(page, toIndex)
+    const startX = from.x + from.width / 2
+    const startY = from.y + 4
+    const endX = startX
+    const endY = to.y + to.height - 4
+    await page.mouse.move(startX, startY)
+    await page.mouse.down()
+    await page.mouse.move(endX, endY, { steps: 14 })
+    await page.mouse.up()
+    await page.waitForTimeout(200)
+  }
+
+  test('Tab indents all marquee-selected bullet items as flat siblings', async ({ page }) => {
+    await createNote(page, `Marquee Tab Indent ${Date.now()}`)
+    await focusEditor(page)
+    await createBulletList(page, ['alpha', 'bravo', 'charlie', 'delta'])
+
+    expect(await getBlockCount(page)).toBeGreaterThanOrEqual(4)
+
+    // Baseline: all four at depth 1 (top-level bullets).
+    expect(await blockDepth(page, 0)).toBe(1)
+    expect(await blockDepth(page, 1)).toBe(1)
+    expect(await blockDepth(page, 2)).toBe(1)
+    expect(await blockDepth(page, 3)).toBe(1)
+
+    // Marquee-select bravo + charlie (middle two).
+    await marqueeSelectBlocks(page, 1, 2)
+    expect(await page.locator(HIGHLIGHTED_SELECTOR).count()).toBeGreaterThanOrEqual(2)
+
+    // Tab → both indent. Forward-order loop means bravo sinks under alpha
+    // first, then charlie's previous sibling becomes alpha (now holding
+    // bravo), so charlie joins as a flat sibling of bravo under alpha.
+    // Result: alpha holds [bravo, charlie]; delta stays at root.
+    await page.keyboard.press('Tab')
+    await page.waitForTimeout(250)
+
+    // bravo and charlie are now at depth 2 (inside alpha's child group).
+    expect(await blockDepth(page, 1)).toBe(2)
+    expect(await blockDepth(page, 2)).toBe(2)
+    // alpha and delta stay at root.
+    expect(await blockDepth(page, 0)).toBe(1)
+    expect(await blockDepth(page, 3)).toBe(1)
+
+    // Marquee selection persists across indent so user can keep tabbing.
+    expect(await page.locator(HIGHLIGHTED_SELECTOR).count()).toBeGreaterThanOrEqual(2)
+  })
+
+  test('Shift+Tab outdents all marquee-selected blocks back to root', async ({ page }) => {
+    await createNote(page, `Marquee Shift Tab ${Date.now()}`)
+    await focusEditor(page)
+    await createBulletList(page, ['root', 'child-a', 'child-b'])
+
+    // Set up nested baseline via the marquee-Tab path we're testing
+    // against: marquee-select the two children and Tab them to nest
+    // both under root as flat siblings. Using single-cursor Tab here
+    // doesn't work — nesting child-a first changes the tree shape so
+    // the second Tab would over-nest. Test 15 already proves the
+    // marquee-Tab indent path itself.
+    await marqueeSelectBlocks(page, 1, 2)
+    await page.keyboard.press('Tab')
+    await page.waitForTimeout(250)
+
+    // Sanity: child-a and child-b nested under root as flat siblings.
+    expect(await blockDepth(page, 0)).toBe(1)
+    expect(await blockDepth(page, 1)).toBe(2)
+    expect(await blockDepth(page, 2)).toBe(2)
+
+    // Re-select both nested children (the marquee persisted through
+    // Tab, but re-selecting keeps this test independent of that claim).
+    await marqueeSelectBlocks(page, 1, 2)
+    expect(await page.locator(HIGHLIGHTED_SELECTOR).count()).toBeGreaterThanOrEqual(2)
+
+    // Shift+Tab → both outdent. Reverse-order loop unnests child-b
+    // first (drops after root holding child-a), then child-a (drops
+    // after root), yielding [root, child-a, child-b] all at depth 1.
+    await page.keyboard.press('Shift+Tab')
+    await page.waitForTimeout(250)
+
+    expect(await blockDepth(page, 0)).toBe(1)
+    expect(await blockDepth(page, 1)).toBe(1)
+    expect(await blockDepth(page, 2)).toBe(1)
+
+    // Marquee still alive.
+    expect(await page.locator(HIGHLIGHTED_SELECTOR).count()).toBeGreaterThanOrEqual(2)
+  })
+
+  test('repeated Tab walks marquee selection deeper each press', async ({ page }) => {
+    await createNote(page, `Marquee Repeat Tab ${Date.now()}`)
+    await focusEditor(page)
+    await createBulletList(page, ['parent', 'one', 'two'])
+
+    // Marquee-select the two children.
+    await marqueeSelectBlocks(page, 1, 2)
+
+    await page.keyboard.press('Tab')
+    await page.waitForTimeout(250)
+    expect(await blockDepth(page, 1)).toBe(2)
+    expect(await blockDepth(page, 2)).toBe(2)
+
+    // Second Tab press — marquee must still be alive for this to work.
+    // Note: once "one" is nested under "parent", "two" is a sibling of
+    // "one" inside parent's group, so another Tab nests "two" under "one"
+    // (canNestBlock=true for "two"). "one" has no previous sibling at
+    // its new level → canNestBlock=false → silently stays put.
+    // Repeated Tab is idempotent-safe for the no-op case.
+    await page.keyboard.press('Tab')
+    await page.waitForTimeout(250)
+
+    // "one" stayed at depth 2 (first child of its group — can't nest further).
+    expect(await blockDepth(page, 1)).toBe(2)
+    // "two" now at depth 3 (nested inside "one").
+    expect(await blockDepth(page, 2)).toBe(3)
+  })
+
+  test('Shift+Tab at root level is a safe no-op that preserves selection', async ({ page }) => {
+    await createNote(page, `Marquee Shift Tab Root ${Date.now()}`)
+    await focusEditor(page)
+    await createBulletList(page, ['one', 'two', 'three'])
+
+    await marqueeSelectBlocks(page, 0, 2)
+    const beforeHighlights = await page.locator(HIGHLIGHTED_SELECTOR).count()
+    expect(beforeHighlights).toBeGreaterThanOrEqual(3)
+
+    await page.keyboard.press('Shift+Tab')
+    await page.waitForTimeout(250)
+
+    // All still at depth 1 — canUnnestBlock=false at root → silent skip.
+    expect(await blockDepth(page, 0)).toBe(1)
+    expect(await blockDepth(page, 1)).toBe(1)
+    expect(await blockDepth(page, 2)).toBe(1)
+
+    // Marquee survives.
+    expect(await page.locator(HIGHLIGHTED_SELECTOR).count()).toBeGreaterThanOrEqual(3)
   })
 })
