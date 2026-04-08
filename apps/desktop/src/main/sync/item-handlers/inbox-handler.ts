@@ -9,6 +9,7 @@ import { increment } from '../vector-clock'
 import { createLogger } from '../../lib/logger'
 import { resolveClockConflict } from './types'
 import type { SyncItemHandler, ApplyContext, ApplyResult, DrizzleDb } from './types'
+import { publishProjectionEvent } from '../../projections'
 
 const log = createLogger('InboxHandler')
 
@@ -60,6 +61,7 @@ export const inboxHandler: SyncItemHandler<InboxSyncPayload> = {
           .run()
 
         ctx.emit(InboxChannels.events.UPDATED, { id: itemId })
+        publishProjectionEvent({ type: 'inbox.upserted', itemId })
         return resolution.action === 'merge' ? 'conflict' : 'applied'
       }
 
@@ -81,6 +83,7 @@ export const inboxHandler: SyncItemHandler<InboxSyncPayload> = {
         .run()
 
       ctx.emit(InboxChannels.events.CAPTURED, { id: itemId })
+      publishProjectionEvent({ type: 'inbox.upserted', itemId })
       return 'applied'
     })
   },
@@ -99,6 +102,7 @@ export const inboxHandler: SyncItemHandler<InboxSyncPayload> = {
 
     ctx.db.delete(inboxItems).where(eq(inboxItems.id, itemId)).run()
     ctx.emit(InboxChannels.events.ARCHIVED, { id: itemId })
+    publishProjectionEvent({ type: 'inbox.deleted', itemId })
     return 'applied'
   },
 

@@ -11,7 +11,7 @@ import { eq, and } from 'drizzle-orm'
 import { generateId } from '../lib/id'
 import { bulkFileToFolder } from '../inbox/filing'
 import { bulkSnoozeItems } from '../inbox/snooze'
-import { getStaleItemIds, incrementProcessedCount } from '../inbox/stats'
+import { getStaleItemIds } from '../inbox/stats'
 import type { DrizzleDb } from '../database'
 
 export interface InboxBatchHandlerDeps {
@@ -172,10 +172,6 @@ export function createInboxBatchHandlers(deps: InboxBatchHandlerDeps): InboxBatc
       }
 
       const result = await bulkFileToFolder(staleIds, 'Unsorted', [])
-
-      if (result.processedCount > 0) {
-        incrementProcessedCount(result.processedCount)
-      }
 
       return result
     } catch (error) {

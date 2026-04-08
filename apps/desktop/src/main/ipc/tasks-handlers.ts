@@ -31,6 +31,7 @@ import { getTaskSyncService } from '../sync/task-sync'
 import { getProjectSyncService } from '../sync/project-sync'
 import { incrementProjectClocksOffline, incrementTaskClocksOffline } from '../sync/offline-clock'
 import { createHandler, createStringHandler, createValidatedHandler, withDb } from './validate'
+import { publishProjectionEvent } from '../projections'
 
 const logger = createLogger('IPC:Tasks')
 
@@ -41,6 +42,11 @@ function syncTaskUpdate(db: DrizzleDb, taskId: string, changedFields: string[]):
   } else {
     incrementTaskClocksOffline(db, taskId, changedFields)
   }
+
+  publishProjectionEvent({
+    type: 'task.upserted',
+    taskId
+  })
 }
 
 function syncTaskCreate(db: DrizzleDb, taskId: string): void {
@@ -50,6 +56,11 @@ function syncTaskCreate(db: DrizzleDb, taskId: string): void {
   } else {
     incrementTaskClocksOffline(db, taskId, [])
   }
+
+  publishProjectionEvent({
+    type: 'task.upserted',
+    taskId
+  })
 }
 
 function syncProjectUpdate(db: DrizzleDb, projectId: string, changedFields?: string[]): void {
@@ -100,6 +111,7 @@ function createTasksPublisher(db: DrizzleDb): TasksDomainPublisher {
         syncService.enqueueDelete(id, JSON.stringify(snapshot))
       }
       emitTaskEvent(TasksChannels.events.DELETED, { id })
+      publishProjectionEvent({ type: 'task.deleted', taskId: id })
     },
     taskCompleted: ({ id, task }) => {
       emitTaskEvent(TasksChannels.events.COMPLETED, { id, task })

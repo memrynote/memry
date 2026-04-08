@@ -14,6 +14,7 @@ import { generateId } from '../lib/id'
 import { getItemAttachmentsDir } from './attachments'
 import { downloadImage, fetchUrlMetadata, isBotPageTitle, titleFromUrl } from './metadata'
 import { transcribeAudio } from './transcription'
+import { publishProjectionEvent } from '../projections'
 
 const log = createLogger('Inbox:Jobs')
 
@@ -152,6 +153,10 @@ function scheduleJob(jobId: string, runAt: string): void {
 
 function emitUpdated(itemId: string, changes: Record<string, unknown>): void {
   emitInboxEvent(InboxChannels.events.UPDATED, { id: itemId, changes })
+  publishProjectionEvent({
+    type: 'inbox.upserted',
+    itemId
+  })
 }
 
 function completeJob(

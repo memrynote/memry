@@ -9,18 +9,18 @@ vi.mock('@main/database/queries/notes', () => ({
   setNoteLinks: vi.fn(),
   setNoteProperties: vi.fn(),
   getPropertyType: vi.fn(),
-  deleteLinksToNote: vi.fn(),
   extractDateFromPath: vi.fn(() => null),
+  deleteLinksToNote: vi.fn(),
   resolveNotesByTitles: vi.fn(() => new Map()),
   getNoteCacheByPath: vi.fn(() => undefined)
 }))
 
-vi.mock('../database', () => ({
-  queueFtsUpdate: vi.fn()
+vi.mock('../projections', () => ({
+  publishProjectionEvent: vi.fn()
 }))
 
 import { extractNoteMetadata, syncNoteToCache, type NoteSyncInput } from './note-sync'
-import { setNoteTags } from '@main/database/queries/notes'
+import { publishProjectionEvent } from '../projections'
 import type { NoteFrontmatter } from './frontmatter'
 
 const FIXED_ISO = '2026-01-15T12:00:00.000Z'
@@ -158,7 +158,15 @@ describe('syncNoteToCache — tagsOverride', () => {
 
     syncNoteToCache(db, input, { isNew: true, tagsOverride: [] })
 
-    expect(setNoteTags).toHaveBeenCalledWith(db, 'abc123def456', [])
+    expect(publishProjectionEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'note.upserted',
+        note: expect.objectContaining({
+          noteId: 'abc123def456',
+          tags: []
+        })
+      })
+    )
   })
 
   it('falls back to extracted tags when tagsOverride is not provided', () => {
@@ -170,6 +178,14 @@ describe('syncNoteToCache — tagsOverride', () => {
 
     syncNoteToCache(db, input, { isNew: true })
 
-    expect(setNoteTags).toHaveBeenCalledWith(db, 'abc123def456', ['typescript'])
+    expect(publishProjectionEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'note.upserted',
+        note: expect.objectContaining({
+          noteId: 'abc123def456',
+          tags: ['typescript']
+        })
+      })
+    )
   })
 })

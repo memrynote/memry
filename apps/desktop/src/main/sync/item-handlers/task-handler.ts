@@ -11,6 +11,7 @@ import { mergeTaskFields, initAllFieldClocks, TASK_SYNCABLE_FIELDS } from '../fi
 import { createLogger } from '../../lib/logger'
 import { resolveClockConflict } from './types'
 import type { SyncItemHandler, ApplyContext, ApplyResult, DrizzleDb } from './types'
+import { publishProjectionEvent } from '../../projections'
 
 const log = createLogger('TaskHandler')
 
@@ -124,6 +125,7 @@ export const taskHandler: SyncItemHandler<TaskSyncPayload> = {
 
           const updated = tx.select().from(tasks).where(eq(tasks.id, itemId)).get()
           ctx.emit(TasksChannels.events.UPDATED, { id: itemId, task: updated, changes: {} })
+          publishProjectionEvent({ type: 'task.upserted', taskId: itemId })
           return result.hadConflicts ? 'conflict' : 'applied'
         }
 
@@ -159,6 +161,7 @@ export const taskHandler: SyncItemHandler<TaskSyncPayload> = {
 
         const updated = tx.select().from(tasks).where(eq(tasks.id, itemId)).get()
         ctx.emit(TasksChannels.events.UPDATED, { id: itemId, task: updated, changes: {} })
+        publishProjectionEvent({ type: 'task.upserted', taskId: itemId })
         return 'applied'
       }
 
@@ -195,6 +198,7 @@ export const taskHandler: SyncItemHandler<TaskSyncPayload> = {
 
       const inserted = tx.select().from(tasks).where(eq(tasks.id, itemId)).get()
       ctx.emit(TasksChannels.events.CREATED, { task: inserted })
+      publishProjectionEvent({ type: 'task.upserted', taskId: itemId })
       return 'applied'
     })
   },
@@ -213,6 +217,7 @@ export const taskHandler: SyncItemHandler<TaskSyncPayload> = {
 
     ctx.db.delete(tasks).where(eq(tasks.id, itemId)).run()
     ctx.emit(TasksChannels.events.DELETED, { id: itemId })
+    publishProjectionEvent({ type: 'task.deleted', taskId: itemId })
     return 'applied'
   },
 
