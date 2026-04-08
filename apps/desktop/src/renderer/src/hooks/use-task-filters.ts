@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
 import { createLogger } from '@/lib/logger'
 
 import type { Task, Priority } from '@/data/sample-tasks'
@@ -157,76 +157,63 @@ export const useFilterState = ({
   const filterKey = getFilterKey(selectedType, selectedId)
   const sortKey = getSortKey(selectedType, selectedId, activeView)
 
-  const isSwitchingFilterRef = useRef(false)
-  const isSwitchingSortRef = useRef(false)
-  const previousFilterKeyRef = useRef(filterKey)
-  const previousSortKeyRef = useRef(sortKey)
+  const getInitialFilters = useCallback(
+    (key: string): TaskFilters => {
+      if (!shouldPersist) return defaultFilters
+      return loadPersistedFilterState(key)?.filters || defaultFilters
+    },
+    [shouldPersist]
+  )
 
-  const [filters, setFilters] = useState<TaskFilters>(() => {
-    if (!shouldPersist) return defaultFilters
-    const persisted = loadPersistedFilterState(filterKey)
-    return persisted?.filters || defaultFilters
-  })
+  const getInitialSort = useCallback(
+    (key: string): TaskSort => {
+      const defaultSortForView = getDefaultSortForView(activeView)
+      if (!shouldPersist) return defaultSortForView
+      return loadPersistedSortState(key)?.sort || defaultSortForView
+    },
+    [activeView, shouldPersist]
+  )
 
-  const [sort, setSort] = useState<TaskSort>(() => {
-    if (!shouldPersist) return getDefaultSortForView(activeView)
-    const persisted = loadPersistedSortState(sortKey)
-    return persisted?.sort || getDefaultSortForView(activeView)
-  })
+  const [filterState, setFilterState] = useState(() => ({
+    key: filterKey,
+    filters: getInitialFilters(filterKey)
+  }))
 
-  // Reload filters when project changes (filterKey does NOT include activeView)
-  useEffect(() => {
-    if (!shouldPersist) return
-    if (previousFilterKeyRef.current === filterKey) return
+  const [sortState, setSortState] = useState(() => ({
+    key: sortKey,
+    sort: getInitialSort(sortKey)
+  }))
 
-    const persisted = loadPersistedFilterState(filterKey)
-    isSwitchingFilterRef.current = true
-    previousFilterKeyRef.current = filterKey
-    setFilters(persisted?.filters || defaultFilters)
-  }, [filterKey, shouldPersist])
+  const filters = filterState.key === filterKey ? filterState.filters : getInitialFilters(filterKey)
+  const sort = sortState.key === sortKey ? sortState.sort : getInitialSort(sortKey)
 
-  // Reload sort when project OR view changes (sortKey includes activeView)
-  useEffect(() => {
-    if (!shouldPersist) return
-    if (previousSortKeyRef.current === sortKey) return
+  const updateFilters = useCallback(
+    (updates: Partial<TaskFilters>) => {
+      const nextFilters = { ...filters, ...updates }
+      setFilterState({ key: filterKey, filters: nextFilters })
+      if (shouldPersist) {
+        persistFilterState(filterKey, nextFilters)
+      }
+    },
+    [filterKey, filters, shouldPersist]
+  )
 
-    const persisted = loadPersistedSortState(sortKey)
-    isSwitchingSortRef.current = true
-    previousSortKeyRef.current = sortKey
-    setSort(persisted?.sort || getDefaultSortForView(activeView))
-  }, [sortKey, shouldPersist, activeView])
-
-  // Persist filters when they change
-  useEffect(() => {
-    if (!shouldPersist) return
-    if (isSwitchingFilterRef.current) {
-      isSwitchingFilterRef.current = false
-      return
-    }
-    persistFilterState(filterKey, filters)
-  }, [filterKey, filters, shouldPersist])
-
-  // Persist sort when it changes
-  useEffect(() => {
-    if (!shouldPersist) return
-    if (isSwitchingSortRef.current) {
-      isSwitchingSortRef.current = false
-      return
-    }
-    persistSortState(sortKey, sort)
-  }, [sortKey, sort, shouldPersist])
-
-  const updateFilters = useCallback((updates: Partial<TaskFilters>) => {
-    setFilters((prev) => ({ ...prev, ...updates }))
-  }, [])
-
-  const updateSort = useCallback((newSort: TaskSort) => {
-    setSort(newSort)
-  }, [])
+  const updateSort = useCallback(
+    (newSort: TaskSort) => {
+      setSortState({ key: sortKey, sort: newSort })
+      if (shouldPersist) {
+        persistSortState(sortKey, newSort)
+      }
+    },
+    [shouldPersist, sortKey]
+  )
 
   const clearFilters = useCallback(() => {
-    setFilters(defaultFilters)
-  }, [])
+    setFilterState({ key: filterKey, filters: defaultFilters })
+    if (shouldPersist) {
+      persistFilterState(filterKey, defaultFilters)
+    }
+  }, [filterKey, shouldPersist])
 
   const isActive = useMemo(() => hasActiveFilters(filters), [filters])
 
@@ -380,40 +367,48 @@ function frontendToDbConfig(
  * Uses database storage via savedFiltersService
  */
 export const useSavedFilters = (): UseSavedFiltersReturn => {
-  const [savedFilters, setSavedFilters] = useState<SavedFilter[]>([])
-  const [isLoading, setIsLoading] = useState(true)
+  const [savedFilters, setSavedFilters] = useState<SavedFilter[] | undefined>(undefined)
 
   // Load saved filters from database on mount
   useEffect(() => {
+    let isCancelled = false
+
     const loadFilters = async (): Promise<void> => {
       try {
         const response = await savedFiltersService.list()
-        setSavedFilters(response.savedFilters.map(dbToFrontendFilter))
+        if (!isCancelled) {
+          setSavedFilters(response.savedFilters.map(dbToFrontendFilter))
+        }
       } catch (error) {
         log.error('Failed to load saved filters from DB:', error)
         // Fallback to localStorage for backwards compatibility
-        setSavedFilters(loadSavedFilters())
-      } finally {
-        setIsLoading(false)
+        if (!isCancelled) {
+          setSavedFilters(loadSavedFilters())
+        }
       }
     }
-    loadFilters()
+
+    void loadFilters()
+
+    return () => {
+      isCancelled = true
+    }
   }, [])
 
   // Subscribe to saved filter events
   useEffect(() => {
     const unsubCreated = onSavedFilterCreated((event) => {
       const frontendFilter = dbToFrontendFilter(event.savedFilter)
-      setSavedFilters((prev) => [...prev, frontendFilter])
+      setSavedFilters((prev) => (prev ? [...prev, frontendFilter] : [frontendFilter]))
     })
 
     const unsubUpdated = onSavedFilterUpdated((event) => {
       const frontendFilter = dbToFrontendFilter(event.savedFilter)
-      setSavedFilters((prev) => prev.map((f) => (f.id === event.id ? frontendFilter : f)))
+      setSavedFilters((prev) => (prev ?? []).map((f) => (f.id === event.id ? frontendFilter : f)))
     })
 
     const unsubDeleted = onSavedFilterDeleted((event) => {
-      setSavedFilters((prev) => prev.filter((f) => f.id !== event.id))
+      setSavedFilters((prev) => (prev ?? []).filter((f) => f.id !== event.id))
     })
 
     return () => {
@@ -423,74 +418,84 @@ export const useSavedFilters = (): UseSavedFiltersReturn => {
     }
   }, [])
 
-  const saveFilter = useCallback(async (name: string, filters: TaskFilters, sort?: TaskSort) => {
-    try {
-      const config = frontendToDbConfig(filters, sort)
-      await savedFiltersService.create({ name, config })
-      // Event subscription will update state
-    } catch (error) {
-      log.error('Failed to save filter:', error)
-    }
+  const saveFilter = useCallback((name: string, filters: TaskFilters, sort?: TaskSort): void => {
+    void (async () => {
+      try {
+        const config = frontendToDbConfig(filters, sort)
+        await savedFiltersService.create({ name, config })
+        // Event subscription will update state
+      } catch (error) {
+        log.error('Failed to save filter:', error)
+      }
+    })()
   }, [])
 
-  const deleteFilter = useCallback(async (id: string) => {
-    try {
-      await savedFiltersService.delete(id)
-      // Event subscription will update state
-    } catch (error) {
-      log.error('Failed to delete filter:', error)
-    }
+  const deleteFilter = useCallback((id: string): void => {
+    void (async () => {
+      try {
+        await savedFiltersService.delete(id)
+        // Event subscription will update state
+      } catch (error) {
+        log.error('Failed to delete filter:', error)
+      }
+    })()
   }, [])
 
   const updateFilter = useCallback(
-    async (id: string, updates: Partial<SavedFilter>) => {
-      try {
-        const updateInput: { id: string; name?: string; config?: SavedFilterConfig } = { id }
-        if (updates.name) updateInput.name = updates.name
-        if (updates.filters || updates.sort) {
-          // Get current filter to merge updates
-          const current = savedFilters.find((f) => f.id === id)
-          if (current) {
-            updateInput.config = frontendToDbConfig(
-              updates.filters ?? current.filters,
-              updates.sort ?? current.sort
-            )
+    (id: string, updates: Partial<SavedFilter>): void => {
+      void (async () => {
+        try {
+          const updateInput: { id: string; name?: string; config?: SavedFilterConfig } = { id }
+          if (updates.name) updateInput.name = updates.name
+          if (updates.filters || updates.sort) {
+            // Get current filter to merge updates
+            const current = savedFilters?.find((f) => f.id === id)
+            if (current) {
+              updateInput.config = frontendToDbConfig(
+                updates.filters ?? current.filters,
+                updates.sort ?? current.sort
+              )
+            }
           }
+          await savedFiltersService.update(updateInput)
+          // Event subscription will update state
+        } catch (error) {
+          log.error('Failed to update filter:', error)
         }
-        await savedFiltersService.update(updateInput)
-        // Event subscription will update state
-      } catch (error) {
-        log.error('Failed to update filter:', error)
-      }
+      })()
     },
     [savedFilters]
   )
 
   const toggleStar = useCallback(
-    async (id: string) => {
-      const current = savedFilters.find((f) => f.id === id)
+    (id: string): void => {
+      const current = savedFilters?.find((f) => f.id === id)
       if (!current) return
 
       const newStarred = !current.starred
 
-      setSavedFilters((prev) => prev.map((f) => (f.id === id ? { ...f, starred: newStarred } : f)))
+      setSavedFilters((prev) =>
+        (prev ?? []).map((f) => (f.id === id ? { ...f, starred: newStarred } : f))
+      )
 
-      try {
-        const config = frontendToDbConfig(current.filters, current.sort, newStarred)
-        await savedFiltersService.update({ id, config })
-      } catch (error) {
-        log.error('Failed to toggle star:', error)
-        setSavedFilters((prev) =>
-          prev.map((f) => (f.id === id ? { ...f, starred: current.starred } : f))
-        )
-      }
+      void (async () => {
+        try {
+          const config = frontendToDbConfig(current.filters, current.sort, newStarred)
+          await savedFiltersService.update({ id, config })
+        } catch (error) {
+          log.error('Failed to toggle star:', error)
+          setSavedFilters((prev) =>
+            (prev ?? []).map((f) => (f.id === id ? { ...f, starred: current.starred } : f))
+          )
+        }
+      })()
     },
     [savedFilters]
   )
 
   return {
-    savedFilters,
-    isLoading,
+    savedFilters: savedFilters ?? [],
+    isLoading: savedFilters === undefined,
     saveFilter,
     deleteFilter,
     updateFilter,
