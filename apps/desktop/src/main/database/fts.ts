@@ -6,9 +6,7 @@ import type { DrizzleDb } from './client'
  *
  * Architecture:
  * - fts_notes virtual table stores id, title, content, tags for full-text search
- * - SQLite triggers automatically sync id/title on INSERT/DELETE/UPDATE of note_cache
- * - Content and tags must be explicitly updated via updateFtsContent() since
- *   note_cache doesn't store content (files are source of truth)
+ * - Projectors own all row maintenance for this table
  *
  * @module database/fts
  */
@@ -36,31 +34,13 @@ export function createFtsTable(db: DrizzleDb): void {
 }
 
 /**
- * Creates triggers to keep FTS index in sync with note_cache table.
- * Must be called after createFtsTable.
+ * Removes the legacy triggers that used to keep FTS in sync with note_cache.
+ * Projector-owned writes replaced them in phase 06.
  */
 export function createFtsTriggers(db: DrizzleDb): void {
-  // Trigger: Insert into FTS when note is added to cache
-  db.run(sql`
-    CREATE TRIGGER IF NOT EXISTS note_cache_ai AFTER INSERT ON note_cache BEGIN
-      INSERT INTO fts_notes (id, title, content, tags)
-      VALUES (NEW.id, NEW.title, '', '');
-    END
-  `)
-
-  // Trigger: Delete from FTS when note is removed from cache
-  db.run(sql`
-    CREATE TRIGGER IF NOT EXISTS note_cache_ad AFTER DELETE ON note_cache BEGIN
-      DELETE FROM fts_notes WHERE id = OLD.id;
-    END
-  `)
-
-  // Trigger: Update FTS when note title changes
-  db.run(sql`
-    CREATE TRIGGER IF NOT EXISTS note_cache_au AFTER UPDATE ON note_cache BEGIN
-      UPDATE fts_notes SET title = NEW.title WHERE id = NEW.id;
-    END
-  `)
+  db.run(sql`DROP TRIGGER IF EXISTS note_cache_ai`)
+  db.run(sql`DROP TRIGGER IF EXISTS note_cache_ad`)
+  db.run(sql`DROP TRIGGER IF EXISTS note_cache_au`)
 }
 
 /**

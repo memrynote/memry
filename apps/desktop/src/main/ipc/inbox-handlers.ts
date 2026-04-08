@@ -78,6 +78,7 @@ import {
   registerInboxQueryHandlers,
   unregisterInboxQueryHandlers
 } from './inbox-query-handlers'
+import { publishProjectionEvent } from '../projections'
 import {
   queueInboxMetadataJob,
   queueInboxTranscriptionJob,
@@ -98,6 +99,11 @@ function syncInboxCreate(db: DrizzleDb, itemId: string): void {
   } else {
     incrementInboxClockOffline(db, itemId)
   }
+
+  publishProjectionEvent({
+    type: 'inbox.upserted',
+    itemId
+  })
 }
 
 function syncInboxUpdate(db: DrizzleDb, itemId: string): void {
@@ -107,6 +113,11 @@ function syncInboxUpdate(db: DrizzleDb, itemId: string): void {
   } else {
     incrementInboxClockOffline(db, itemId)
   }
+
+  publishProjectionEvent({
+    type: 'inbox.upserted',
+    itemId
+  })
 }
 
 // ============================================================================
@@ -132,6 +143,11 @@ function storeSocialMetadata(itemId: string, url: string): void {
     })
     .where(eq(inboxItems.id, itemId))
     .run()
+
+  publishProjectionEvent({
+    type: 'inbox.upserted',
+    itemId
+  })
 
   emitInboxEvent(InboxChannels.events.METADATA_COMPLETE, { id: itemId, metadata })
   logger.info(`Stored social metadata for ${itemId}: ${title}`)
@@ -817,6 +833,11 @@ const handleRetryTranscription = withErrorHandler(
       .where(eq(inboxItems.id, itemId))
       .run()
 
+    publishProjectionEvent({
+      type: 'inbox.upserted',
+      itemId
+    })
+
     emitInboxEvent(InboxChannels.events.UPDATED, {
       id: itemId,
       changes: {
@@ -857,6 +878,11 @@ const handleRetryMetadata = withDb(
       })
       .where(eq(inboxItems.id, itemId))
       .run()
+
+    publishProjectionEvent({
+      type: 'inbox.upserted',
+      itemId
+    })
 
     emitInboxEvent(InboxChannels.events.UPDATED, {
       id: itemId,

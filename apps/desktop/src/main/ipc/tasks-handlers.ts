@@ -38,6 +38,7 @@ import * as projectQueries from '@main/database/queries/projects'
 import { getTaskSyncService } from '../sync/task-sync'
 import { getProjectSyncService } from '../sync/project-sync'
 import { incrementTaskClocksOffline, incrementProjectClocksOffline } from '../sync/offline-clock'
+import { publishProjectionEvent } from '../projections'
 
 const logger = createLogger('IPC:Tasks')
 
@@ -48,6 +49,11 @@ function syncTaskUpdate(db: DrizzleDb, taskId: string, changedFields: string[]):
   } else {
     incrementTaskClocksOffline(db, taskId, changedFields)
   }
+
+  publishProjectionEvent({
+    type: 'task.upserted',
+    taskId
+  })
 }
 
 function syncTaskCreate(db: DrizzleDb, taskId: string): void {
@@ -57,6 +63,11 @@ function syncTaskCreate(db: DrizzleDb, taskId: string): void {
   } else {
     incrementTaskClocksOffline(db, taskId, [])
   }
+
+  publishProjectionEvent({
+    type: 'task.upserted',
+    taskId
+  })
 }
 
 function syncProjectUpdate(db: DrizzleDb, projectId: string, changedFields?: string[]): void {
@@ -263,6 +274,7 @@ export function registerTasksHandlers(): void {
         }
         taskQueries.deleteTask(db, id)
         emitTaskEvent(TasksChannels.events.DELETED, { id })
+        publishProjectionEvent({ type: 'task.deleted', taskId: id })
         return { success: true }
       }, 'Failed to delete task')
     )
@@ -859,7 +871,10 @@ export function registerTasksHandlers(): void {
           }
         }
         const count = taskQueries.bulkDeleteTasks(db, input.ids)
-        input.ids.forEach((id) => emitTaskEvent(TasksChannels.events.DELETED, { id }))
+        input.ids.forEach((id) => {
+          emitTaskEvent(TasksChannels.events.DELETED, { id })
+          publishProjectionEvent({ type: 'task.deleted', taskId: id })
+        })
         return { success: true, count }
       }, 'Failed to delete tasks')
     )

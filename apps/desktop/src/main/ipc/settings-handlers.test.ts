@@ -83,9 +83,16 @@ vi.mock('../sync/settings-sync', () => ({
   }))
 }))
 
+vi.mock('../projections', () => ({
+  rebuildProjections: vi.fn(() =>
+    Promise.resolve({
+      embedding: { success: true, computed: 1, skipped: 0 }
+    })
+  )
+}))
+
 vi.mock('../inbox/suggestions', () => ({
-  getEmbeddingCount: vi.fn(() => 4),
-  reindexAllEmbeddings: vi.fn(() => Promise.resolve({ success: true, computed: 1, skipped: 0 }))
+  getEmbeddingCount: vi.fn(() => 4)
 }))
 
 const mockWritePreferences = vi.fn()
@@ -109,6 +116,7 @@ import { registerSettingsHandlers, unregisterSettingsHandlers } from './settings
 import { getDatabase } from '../database'
 import * as settingsQueries from '@main/database/queries/settings'
 import * as embeddings from '../lib/embeddings'
+import * as projections from '../projections'
 import { getSettingsSyncManager } from '../sync/settings-sync'
 
 function invokeSyncHandler<T>(channel: string, ...args: unknown[]): T {
@@ -402,9 +410,7 @@ describe('settings-handlers', () => {
 
   it('returns error when reindex embeddings fails', async () => {
     registerSettingsHandlers()
-
-    const suggestions = await import('../inbox/suggestions')
-    ;(suggestions.reindexAllEmbeddings as Mock).mockRejectedValue(new Error('reindex failed'))
+    ;(projections.rebuildProjections as Mock).mockRejectedValue(new Error('reindex failed'))
 
     const result = await invokeHandler(SettingsChannels.invoke.REINDEX_EMBEDDINGS)
     expect(result).toEqual({
