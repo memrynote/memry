@@ -8,7 +8,8 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { NotesTree } from './notes-tree'
+import { createRef, type RefObject } from 'react'
+import { NotesTree, type NotesTreeActions } from './notes-tree'
 import type { NoteListItem } from '@/hooks/use-notes-query'
 import type { FolderInfo } from '../../../preload/index.d'
 import { TooltipProvider } from '@/components/ui/tooltip'
@@ -579,17 +580,12 @@ describe('T522: NotesTree - keyboard navigation', () => {
 describe('T523: NotesTree - context-aware note/folder creation', () => {
   let createNoteMock: ReturnType<typeof vi.fn>
   let createFolderMock: ReturnType<typeof vi.fn>
-  let capturedActions: {
-    createNote: () => void
-    createFolder: () => void
-    collapseAll: () => void
-    expandAll: () => void
-  } | null = null
+  let capturedActionsRef: RefObject<NotesTreeActions | null>
 
   beforeEach(() => {
     vi.clearAllMocks()
     patchTemplatesMock()
-    capturedActions = null
+    capturedActionsRef = createRef<NotesTreeActions | null>()
 
     createNoteMock = vi.fn().mockResolvedValue({
       success: true,
@@ -624,21 +620,15 @@ describe('T523: NotesTree - context-aware note/folder creation', () => {
 
   it('should create note inside selected folder when folder is clicked', async () => {
     const user = userEvent.setup()
-    renderWithProviders(
-      <NotesTree
-        onActionsReady={(actions) => {
-          capturedActions = actions
-        }}
-      />
-    )
+    renderWithProviders(<NotesTree ref={capturedActionsRef} />)
 
     // Click on "Projects" folder to select it
     const projectsFolder = screen.getByText('Projects')
     await user.click(projectsFolder)
 
     // Call createNote via the exposed action (simulates clicking header button)
-    await waitFor(() => expect(capturedActions).not.toBeNull())
-    capturedActions!.createNote()
+    await waitFor(() => expect(capturedActionsRef.current).not.toBeNull())
+    capturedActionsRef.current!.createNote()
 
     await waitFor(() => {
       expect(createNoteMock).toHaveBeenCalledWith(expect.objectContaining({ folder: 'Projects' }))
@@ -647,13 +637,7 @@ describe('T523: NotesTree - context-aware note/folder creation', () => {
 
   it('should create note in parent folder when a note inside folder is selected', async () => {
     const user = userEvent.setup()
-    renderWithProviders(
-      <NotesTree
-        onActionsReady={(actions) => {
-          capturedActions = actions
-        }}
-      />
-    )
+    renderWithProviders(<NotesTree ref={capturedActionsRef} />)
 
     // Expand Projects folder first
     const projectsFolder = screen.getByText('Projects')
@@ -663,8 +647,8 @@ describe('T523: NotesTree - context-aware note/folder creation', () => {
     const noteInFolder = screen.getByText('Project Alpha')
     await user.click(noteInFolder)
 
-    await waitFor(() => expect(capturedActions).not.toBeNull())
-    capturedActions!.createNote()
+    await waitFor(() => expect(capturedActionsRef.current).not.toBeNull())
+    capturedActionsRef.current!.createNote()
 
     await waitFor(() => {
       expect(createNoteMock).toHaveBeenCalledWith(expect.objectContaining({ folder: 'Projects' }))
@@ -673,20 +657,14 @@ describe('T523: NotesTree - context-aware note/folder creation', () => {
 
   it('should create folder inside selected folder', async () => {
     const user = userEvent.setup()
-    renderWithProviders(
-      <NotesTree
-        onActionsReady={(actions) => {
-          capturedActions = actions
-        }}
-      />
-    )
+    renderWithProviders(<NotesTree ref={capturedActionsRef} />)
 
     // Click on "Projects" folder to select it
     const projectsFolder = screen.getByText('Projects')
     await user.click(projectsFolder)
 
-    await waitFor(() => expect(capturedActions).not.toBeNull())
-    capturedActions!.createFolder()
+    await waitFor(() => expect(capturedActionsRef.current).not.toBeNull())
+    capturedActionsRef.current!.createFolder()
 
     await waitFor(() => {
       expect(createFolderMock).toHaveBeenCalledWith(expect.stringContaining('Projects/'))
@@ -695,13 +673,7 @@ describe('T523: NotesTree - context-aware note/folder creation', () => {
 
   it('should auto-expand collapsed folder when creating note inside it', async () => {
     const user = userEvent.setup()
-    renderWithProviders(
-      <NotesTree
-        onActionsReady={(actions) => {
-          capturedActions = actions
-        }}
-      />
-    )
+    renderWithProviders(<NotesTree ref={capturedActionsRef} />)
 
     // Click "Projects" folder to select it (this also expands it)
     const projectsFolder = screen.getByText('Projects')
@@ -717,8 +689,8 @@ describe('T523: NotesTree - context-aware note/folder creation', () => {
     })
 
     // Now create a note — folder should auto-expand
-    await waitFor(() => expect(capturedActions).not.toBeNull())
-    capturedActions!.createNote()
+    await waitFor(() => expect(capturedActionsRef.current).not.toBeNull())
+    capturedActionsRef.current!.createNote()
 
     await waitFor(() => {
       expect(createNoteMock).toHaveBeenCalledWith(expect.objectContaining({ folder: 'Projects' }))
@@ -734,20 +706,14 @@ describe('T523: NotesTree - context-aware note/folder creation', () => {
     mockGeneralSettings.createInSelectedFolder = false
 
     const user = userEvent.setup()
-    renderWithProviders(
-      <NotesTree
-        onActionsReady={(actions) => {
-          capturedActions = actions
-        }}
-      />
-    )
+    renderWithProviders(<NotesTree ref={capturedActionsRef} />)
 
     // Click on "Projects" folder to select it
     const projectsFolder = screen.getByText('Projects')
     await user.click(projectsFolder)
 
-    await waitFor(() => expect(capturedActions).not.toBeNull())
-    capturedActions!.createNote()
+    await waitFor(() => expect(capturedActionsRef.current).not.toBeNull())
+    capturedActionsRef.current!.createNote()
 
     await waitFor(() => {
       // folder should be undefined (root) because setting is OFF
@@ -761,17 +727,11 @@ describe('T523: NotesTree - context-aware note/folder creation', () => {
   })
 
   it('should create at root when no folder is selected', async () => {
-    renderWithProviders(
-      <NotesTree
-        onActionsReady={(actions) => {
-          capturedActions = actions
-        }}
-      />
-    )
+    renderWithProviders(<NotesTree ref={capturedActionsRef} />)
 
     // Don't click anything — no selection
-    await waitFor(() => expect(capturedActions).not.toBeNull())
-    capturedActions!.createNote()
+    await waitFor(() => expect(capturedActionsRef.current).not.toBeNull())
+    capturedActionsRef.current!.createNote()
 
     await waitFor(() => {
       expect(createNoteMock).toHaveBeenCalledWith(expect.objectContaining({ title: 'Untitled' }))

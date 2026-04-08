@@ -1,6 +1,14 @@
 'use client'
 
-import { useMemo, useCallback, useState, useRef, useEffect, type ReactNode } from 'react'
+import {
+  forwardRef,
+  useCallback,
+  useState,
+  useRef,
+  useEffect,
+  useImperativeHandle,
+  type ReactNode
+} from 'react'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import {
   TreeIcon,
@@ -53,7 +61,7 @@ import {
 // Main Component
 // ============================================================================
 
-interface NotesTreeActions {
+export interface NotesTreeActions {
   createNote: () => void
   createFolder: () => void
   collapseAll: () => void
@@ -62,15 +70,13 @@ interface NotesTreeActions {
 
 interface NotesTreeProps {
   onTargetFolderChange?: (folder: string) => void
-  onActionsReady?: (actions: NotesTreeActions) => void
   scrollContainerRef?: React.RefObject<HTMLElement>
 }
 
-export function NotesTree({
-  onTargetFolderChange,
-  onActionsReady,
-  scrollContainerRef
-}: NotesTreeProps = {}) {
+export const NotesTree = forwardRef<NotesTreeActions, NotesTreeProps>(function NotesTree(
+  { onTargetFolderChange, scrollContainerRef }: NotesTreeProps = {},
+  ref
+) {
   const data = useNoteTreeData()
   const [selectedIds, setSelectedIds] = useState<string[]>([])
 
@@ -127,14 +133,12 @@ export function NotesTree({
     expandFolderPath
   })
 
-  const targetFolder = useMemo(
-    () => data.computeTargetFolder(selectedIds),
-    [data.computeTargetFolder, selectedIds]
+  const notifyTargetFolderChange = useCallback(
+    (ids: string[]) => {
+      onTargetFolderChange?.(data.computeTargetFolder(ids))
+    },
+    [data.computeTargetFolder, onTargetFolderChange]
   )
-
-  useEffect(() => {
-    onTargetFolderChange?.(targetFolder)
-  }, [targetFolder, onTargetFolderChange])
 
   const handleCollapseAll = useCallback(() => {
     treeActionsRef.current?.collapseAll()
@@ -147,20 +151,24 @@ export function NotesTree({
     virtualTreeActionsRef.current?.expandAll()
   }, [data.tree])
 
-  useEffect(() => {
-    onActionsReady?.({
+  useImperativeHandle(
+    ref,
+    () => ({
       createNote: actions.handleCreateNote,
       createFolder: actions.handleCreateFolder,
       collapseAll: handleCollapseAll,
       expandAll: handleExpandAll
-    })
-  }, [
-    onActionsReady,
-    actions.handleCreateNote,
-    actions.handleCreateFolder,
-    handleCollapseAll,
-    handleExpandAll
-  ])
+    }),
+    [actions.handleCreateNote, actions.handleCreateFolder, handleCollapseAll, handleExpandAll]
+  )
+
+  const handleSelectionChange = useCallback(
+    (ids: string[]) => {
+      actions.handleSelectionChange(ids)
+      notifyTargetFolderChange(ids)
+    },
+    [actions.handleSelectionChange, notifyTargetFolderChange]
+  )
 
   useEffect(() => {
     const container = treeContainerRef.current
@@ -213,6 +221,7 @@ export function NotesTree({
   const handleRevealComplete = useCallback(
     (noteId: string) => {
       setSelectedIds([noteId])
+      notifyTargetFolderChange([noteId])
       setTimeout(() => {
         const element = document.querySelector(`[data-tree-node-id="${noteId}"]`)
         if (element) {
@@ -466,7 +475,7 @@ export function NotesTree({
           actionsRef={virtualTreeActionsRef}
           tree={data.tree}
           selectedIds={selectedIds}
-          onSelectionChange={actions.handleSelectionChange}
+          onSelectionChange={handleSelectionChange}
           onMove={actions.handleMove}
           onBulkDelete={actions.handleBulkDelete}
           onRenameNote={actions.handleRenameClick}
@@ -491,7 +500,7 @@ export function NotesTree({
         <TreeProvider
           persistKey="sidebar-tree-expanded"
           selectedIds={selectedIds}
-          onSelectionChange={actions.handleSelectionChange}
+          onSelectionChange={handleSelectionChange}
           draggable={!actions.renamingNoteId && !actions.renamingFolderPath && !actions.isMoving}
           onMove={actions.handleMove}
           animateExpand={false}
@@ -537,6 +546,8 @@ export function NotesTree({
       />
     </div>
   )
-}
+})
+
+NotesTree.displayName = 'NotesTree'
 
 export default NotesTree

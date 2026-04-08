@@ -1,9 +1,10 @@
-import { useState, useCallback, useRef, useEffect } from 'react'
+import { useState, useCallback, useRef, useEffect, useMemo } from 'react'
+import { flushSync } from 'react-dom'
 import { Image, Loader2 } from '@/lib/icons'
 import { cn } from '@/lib/utils'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { useCaptureText, useCaptureLink, useCaptureImage, useCaptureVoice } from '@/hooks/use-inbox'
-import { VoiceRecorder } from './voice-recorder'
+import { VoiceRecorder, type VoiceRecorderHandle } from './voice-recorder'
 import { QuickCaptureInput } from './quick-capture-input'
 import { QuickCaptureFooter } from './quick-capture-footer'
 import { CaptureSuccess, CaptureError, CaptureDuplicate } from './quick-capture-states'
@@ -53,7 +54,6 @@ export function QuickCapture(): React.JSX.Element {
   const [value, setValue] = useState('')
   const [captureState, setCaptureState] = useState<CaptureState>('idle')
   const [errorMessage, setErrorMessage] = useState('')
-  const [detectedType, setDetectedType] = useState<DetectedType>('note')
   const [clipboardImage, setClipboardImage] = useState<Blob | null>(null)
   const [clipboardImageUrl, setClipboardImageUrl] = useState<string | null>(null)
   const [droppedFile, setDroppedFile] = useState<File | null>(null)
@@ -65,6 +65,7 @@ export function QuickCapture(): React.JSX.Element {
     createdAt: string
   } | null>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const voiceRecorderRef = useRef<VoiceRecorderHandle | null>(null)
 
   const captureText = useCaptureText()
   const captureLink = useCaptureLink()
@@ -90,40 +91,29 @@ export function QuickCapture(): React.JSX.Element {
   const attachmentExtension = droppedFile
     ? (droppedFile.name.split('.').pop() ?? droppedFile.type.split('/')[1] ?? 'unknown')
     : (clipboardImage?.type.split('/')[1] ?? 'png')
-
-  useEffect(() => {
-    if (hasAttachment && (detectedType === 'image' || detectedType === 'pdf')) {
-      const name = droppedFile?.name ?? `clipboard-${new Date().toISOString().slice(0, 10)}.png`
-      setValue(name)
-    }
-  }, [hasAttachment, detectedType, droppedFile])
-
-  useEffect(() => {
-    if (isRecording) {
-      setValue('Voice memo')
-    }
-  }, [isRecording])
-
-  useEffect(() => {
+  const detectedType = useMemo<DetectedType>(() => {
     if (clipboardImage || droppedFile?.type.startsWith('image/')) {
-      setDetectedType('image')
-    } else if (droppedFile?.type === 'application/pdf') {
-      setDetectedType('pdf')
-    } else if (droppedFile?.type.startsWith('audio/')) {
-      setDetectedType('voice')
-    } else if (isRecording) {
-      setDetectedType('voice')
-    } else if (isLikelyUrl(value)) {
-      const url = normalizeUrl(value.trim())
-      const platform = detectPlatformFromUrl(url)
-      setDetectedType(platform === 'twitter' ? 'social' : 'link')
-    } else {
-      setDetectedType('note')
+      return 'image'
     }
-  }, [value, clipboardImage, droppedFile, isRecording])
+    if (droppedFile?.type === 'application/pdf') {
+      return 'pdf'
+    }
+    if (droppedFile?.type.startsWith('audio/')) {
+      return 'voice'
+    }
+    if (isRecording) {
+      return 'voice'
+    }
+    if (isLikelyUrl(value)) {
+      const url = normalizeUrl(value.trim())
+      return detectPlatformFromUrl(url) === 'twitter' ? 'social' : 'link'
+    }
+    return 'note'
+  }, [clipboardImage, droppedFile, isRecording, value])
+  const isLinkPreviewVisible = detectedType === 'link'
 
   useEffect(() => {
-    if (detectedType !== 'link') {
+    if (!isLinkPreviewVisible) {
       setLinkPreview(null)
       setPreviewLoading(false)
       previewUrlRef.current = null
@@ -133,19 +123,21 @@ export function QuickCapture(): React.JSX.Element {
     if (url === previewUrlRef.current) return
 
     setPreviewLoading(true)
-    const timer = setTimeout(async () => {
-      previewUrlRef.current = url
-      try {
-        const data = await window.api.inbox.previewLink(url)
-        setLinkPreview(data)
-      } catch {
-        setLinkPreview(null)
-      } finally {
-        setPreviewLoading(false)
-      }
+    const timer = setTimeout(() => {
+      void (async () => {
+        previewUrlRef.current = url
+        try {
+          const data = await window.api.inbox.previewLink(url)
+          setLinkPreview(data)
+        } catch {
+          setLinkPreview(null)
+        } finally {
+          setPreviewLoading(false)
+        }
+      })()
     }, 500)
     return () => clearTimeout(timer)
-  }, [detectedType, value])
+  }, [isLinkPreviewVisible, value])
 
   useEffect(() => {
     const checkClipboard = async (): Promise<void> => {
@@ -155,8 +147,10 @@ export function QuickCapture(): React.JSX.Element {
           const imageType = item.types.find((t) => t.startsWith('image/'))
           if (imageType) {
             const blob = await item.getType(imageType)
+            const imageUrl = URL.createObjectURL(blob)
             setClipboardImage(blob)
-            setClipboardImageUrl(URL.createObjectURL(blob))
+            setClipboardImageUrl(imageUrl)
+            setValue(`clipboard-${new Date().toISOString().slice(0, 10)}.png`)
             return
           }
         }
@@ -182,12 +176,20 @@ export function QuickCapture(): React.JSX.Element {
       textareaRef.current?.select()
     }
 
-    checkClipboard()
+    const timeoutId = window.setTimeout(() => {
+      void checkClipboard()
+    }, 0)
 
-    return () => {
-      if (clipboardImageUrl) URL.revokeObjectURL(clipboardImageUrl)
-    }
+    return () => clearTimeout(timeoutId)
   }, [])
+
+  useEffect(() => {
+    return () => {
+      if (clipboardImageUrl) {
+        URL.revokeObjectURL(clipboardImageUrl)
+      }
+    }
+  }, [clipboardImageUrl])
 
   const clearAttachment = useCallback(() => {
     if (clipboardImageUrl) URL.revokeObjectURL(clipboardImageUrl)
@@ -198,118 +200,120 @@ export function QuickCapture(): React.JSX.Element {
   }, [clipboardImageUrl])
 
   const handleSubmit = useCallback(
-    async (force = false) => {
-      if (isCapturing) return
+    (force = false): void => {
+      void (async () => {
+        if (isCapturing) return
 
-      setCaptureState('capturing')
-      setErrorMessage('')
+        setCaptureState('capturing')
+        setErrorMessage('')
 
-      try {
-        if (clipboardImage) {
-          const arrayBuffer = await clipboardImage.arrayBuffer()
-          const result = await captureImage.mutateAsync({
-            data: arrayBuffer,
-            filename: `clipboard-${Date.now()}.png`,
-            mimeType: clipboardImage.type || 'image/png',
-            source: 'quick-capture'
-          })
-          if (result.success) {
-            setCaptureState('success')
-            return
-          }
-          setErrorMessage(extractErrorMessage(result.error, 'Failed to capture image'))
-          setCaptureState('error')
-          return
-        }
-
-        if (droppedFile) {
-          if (droppedFile.type.startsWith('audio/')) {
-            const ready = await ensureVoiceRecordingReady(() => {
-              window.api.quickCapture.openSettings('ai')
-            })
-
-            if (!ready) {
-              setCaptureState('idle')
-              return
-            }
-
-            const preparedAudio = await prepareVoiceMemoAudio(droppedFile)
-            const result = await captureVoice.mutateAsync({
-              data: preparedAudio.data,
-              duration: preparedAudio.duration,
-              format: preparedAudio.format,
-              transcribe: true,
+        try {
+          if (clipboardImage) {
+            const arrayBuffer = await clipboardImage.arrayBuffer()
+            const result = await captureImage.mutateAsync({
+              data: arrayBuffer,
+              filename: `clipboard-${Date.now()}.png`,
+              mimeType: clipboardImage.type || 'image/png',
               source: 'quick-capture'
             })
             if (result.success) {
               setCaptureState('success')
               return
             }
-            setErrorMessage(extractErrorMessage(result.error, 'Failed to capture audio'))
+            setErrorMessage(extractErrorMessage(result.error, 'Failed to capture image'))
             setCaptureState('error')
             return
           }
-          const arrayBuffer = await droppedFile.arrayBuffer()
-          const result = await captureImage.mutateAsync({
-            data: arrayBuffer,
-            filename: droppedFile.name,
-            mimeType: droppedFile.type,
-            source: 'quick-capture'
-          })
-          if (result.success) {
-            setCaptureState('success')
+
+          if (droppedFile) {
+            if (droppedFile.type.startsWith('audio/')) {
+              const ready = await ensureVoiceRecordingReady(() => {
+                window.api.quickCapture.openSettings('ai')
+              })
+
+              if (!ready) {
+                setCaptureState('idle')
+                return
+              }
+
+              const preparedAudio = await prepareVoiceMemoAudio(droppedFile)
+              const result = await captureVoice.mutateAsync({
+                data: preparedAudio.data,
+                duration: preparedAudio.duration,
+                format: preparedAudio.format,
+                transcribe: true,
+                source: 'quick-capture'
+              })
+              if (result.success) {
+                setCaptureState('success')
+                return
+              }
+              setErrorMessage(extractErrorMessage(result.error, 'Failed to capture audio'))
+              setCaptureState('error')
+              return
+            }
+            const arrayBuffer = await droppedFile.arrayBuffer()
+            const result = await captureImage.mutateAsync({
+              data: arrayBuffer,
+              filename: droppedFile.name,
+              mimeType: droppedFile.type,
+              source: 'quick-capture'
+            })
+            if (result.success) {
+              setCaptureState('success')
+              return
+            }
+            setErrorMessage(extractErrorMessage(result.error, 'Failed to capture file'))
+            setCaptureState('error')
             return
           }
-          setErrorMessage(extractErrorMessage(result.error, 'Failed to capture file'))
+
+          const trimmed = value.trim()
+          if (!trimmed) {
+            setCaptureState('idle')
+            return
+          }
+
+          if (isLikelyUrl(trimmed)) {
+            const url = normalizeUrl(trimmed)
+            const result = await captureLink.mutateAsync({ url, force, source: 'quick-capture' })
+            if (result.duplicate && result.existingItem) {
+              setDuplicateMatch(result.existingItem)
+              setCaptureState('duplicate')
+              return
+            }
+            if (result.success) {
+              setCaptureState('success')
+            } else {
+              setErrorMessage(extractErrorMessage(result.error, 'Failed to capture link'))
+              setCaptureState('error')
+            }
+          } else {
+            const lines = trimmed.split('\n')
+            const title = lines.length > 1 ? lines[0].slice(0, 100) : trimmed.slice(0, 100)
+            const result = await captureText.mutateAsync({
+              content: trimmed,
+              title: title + (title.length < trimmed.length ? '...' : ''),
+              force,
+              source: 'quick-capture'
+            })
+            if (result.duplicate && result.existingItem) {
+              setDuplicateMatch(result.existingItem)
+              setCaptureState('duplicate')
+              return
+            }
+            if (result.success) {
+              setCaptureState('success')
+            } else {
+              setErrorMessage(extractErrorMessage(result.error, 'Failed to capture note'))
+              setCaptureState('error')
+            }
+          }
+        } catch (err) {
+          setErrorMessage(extractErrorMessage(err, 'Capture failed'))
           setCaptureState('error')
-          return
         }
-
-        const trimmed = value.trim()
-        if (!trimmed) {
-          setCaptureState('idle')
-          return
-        }
-
-        if (isLikelyUrl(trimmed)) {
-          const url = normalizeUrl(trimmed)
-          const result = await captureLink.mutateAsync({ url, force, source: 'quick-capture' })
-          if (result.duplicate && result.existingItem) {
-            setDuplicateMatch(result.existingItem)
-            setCaptureState('duplicate')
-            return
-          }
-          if (result.success) {
-            setCaptureState('success')
-          } else {
-            setErrorMessage(extractErrorMessage(result.error, 'Failed to capture link'))
-            setCaptureState('error')
-          }
-        } else {
-          const lines = trimmed.split('\n')
-          const title = lines.length > 1 ? lines[0].slice(0, 100) : trimmed.slice(0, 100)
-          const result = await captureText.mutateAsync({
-            content: trimmed,
-            title: title + (title.length < trimmed.length ? '...' : ''),
-            force,
-            source: 'quick-capture'
-          })
-          if (result.duplicate && result.existingItem) {
-            setDuplicateMatch(result.existingItem)
-            setCaptureState('duplicate')
-            return
-          }
-          if (result.success) {
-            setCaptureState('success')
-          } else {
-            setErrorMessage(extractErrorMessage(result.error, 'Failed to capture note'))
-            setCaptureState('error')
-          }
-        }
-      } catch (err) {
-        setErrorMessage(extractErrorMessage(err, 'Capture failed'))
-        setCaptureState('error')
-      }
+      })()
     },
     [
       value,
@@ -323,7 +327,7 @@ export function QuickCapture(): React.JSX.Element {
     ]
   )
 
-  const handlePaste = useCallback(async (e: React.ClipboardEvent) => {
+  const handlePaste = useCallback((e: React.ClipboardEvent) => {
     const items = e.clipboardData?.items
     if (!items) return
 
@@ -332,9 +336,11 @@ export function QuickCapture(): React.JSX.Element {
         e.preventDefault()
         const blob = item.getAsFile()
         if (blob) {
+          const imageUrl = URL.createObjectURL(blob)
           setClipboardImage(blob)
-          setClipboardImageUrl(URL.createObjectURL(blob))
+          setClipboardImageUrl(imageUrl)
           setDroppedFile(null)
+          setValue(`clipboard-${new Date().toISOString().slice(0, 10)}.png`)
         }
         return
       }
@@ -372,6 +378,7 @@ export function QuickCapture(): React.JSX.Element {
       setClipboardImage(null)
       if (clipboardImageUrl) URL.revokeObjectURL(clipboardImageUrl)
       setClipboardImageUrl(null)
+      setValue(file.name)
 
       if (file.type.startsWith('image/')) {
         setClipboardImageUrl(URL.createObjectURL(file))
@@ -381,28 +388,30 @@ export function QuickCapture(): React.JSX.Element {
   )
 
   const handleRecordingComplete = useCallback(
-    async (audioBlob: Blob, duration: number) => {
+    (audioBlob: Blob, duration: number): void => {
       setIsRecording(false)
       setCaptureState('capturing')
-      try {
-        const preparedAudio = await prepareVoiceMemoAudio(audioBlob)
-        const result = await captureVoice.mutateAsync({
-          data: preparedAudio.data,
-          duration: duration || preparedAudio.duration,
-          format: preparedAudio.format,
-          transcribe: true,
-          source: 'quick-capture'
-        })
-        if (result.success) {
-          setCaptureState('success')
-        } else {
-          setErrorMessage(extractErrorMessage(result.error, 'Failed to capture voice'))
+      void (async () => {
+        try {
+          const preparedAudio = await prepareVoiceMemoAudio(audioBlob)
+          const result = await captureVoice.mutateAsync({
+            data: preparedAudio.data,
+            duration: duration || preparedAudio.duration,
+            format: preparedAudio.format,
+            transcribe: true,
+            source: 'quick-capture'
+          })
+          if (result.success) {
+            setCaptureState('success')
+          } else {
+            setErrorMessage(extractErrorMessage(result.error, 'Failed to capture voice'))
+            setCaptureState('error')
+          }
+        } catch (err) {
+          setErrorMessage(extractErrorMessage(err, 'Voice capture failed'))
           setCaptureState('error')
         }
-      } catch (err) {
-        setErrorMessage(extractErrorMessage(err, 'Voice capture failed'))
-        setCaptureState('error')
-      }
+      })()
     },
     [captureVoice]
   )
@@ -422,6 +431,7 @@ export function QuickCapture(): React.JSX.Element {
       setClipboardImage(null)
       if (clipboardImageUrl) URL.revokeObjectURL(clipboardImageUrl)
       setClipboardImageUrl(null)
+      setValue(file.name)
 
       if (file.type.startsWith('image/')) {
         setClipboardImageUrl(URL.createObjectURL(file))
@@ -520,7 +530,11 @@ export function QuickCapture(): React.JSX.Element {
                   window.api.quickCapture.openSettings('ai')
                 }).then((ready) => {
                   if (ready) {
-                    setIsRecording(true)
+                    flushSync(() => {
+                      setIsRecording(true)
+                      setValue('Voice memo')
+                    })
+                    void voiceRecorderRef.current?.start()
                   }
                 })
               }}
@@ -572,10 +586,10 @@ export function QuickCapture(): React.JSX.Element {
           {isRecording && (
             <div className="px-3 py-2 border-t border-border/30 bg-foreground/[0.02]">
               <VoiceRecorder
+                ref={voiceRecorderRef}
                 onRecordingComplete={handleRecordingComplete}
                 onCancel={() => setIsRecording(false)}
                 maxDuration={300}
-                autoStart
                 className="w-full"
               />
             </div>

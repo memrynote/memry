@@ -113,7 +113,6 @@ type TreeNodeContextType = {
   customIcon?: string
   inheritedIcon?: string
   setCustomIcon: (iconName: string | undefined) => void
-  setInheritedIcon: (iconName: string | undefined) => void
 }
 
 const TreeNodeContext = createContext<TreeNodeContextType | undefined>(undefined)
@@ -527,16 +526,8 @@ export const TreeNode = ({
   const parentId = parentContext?.nodeId ?? null
   const [hasChildren, setHasChildren] = useState(false)
   const [customIcon, setCustomIcon] = useState<string | undefined>(initialCustomIcon)
-  const [inheritedIcon, setInheritedIcon] = useState<string | undefined>(initialInheritedIcon)
-
-  // Parent'tan inherited icon'u al
-  useEffect(() => {
-    if (parentContext?.customIcon) {
-      setInheritedIcon(parentContext.customIcon)
-    } else if (parentContext?.inheritedIcon) {
-      setInheritedIcon(parentContext.inheritedIcon)
-    }
-  }, [parentContext?.customIcon, parentContext?.inheritedIcon])
+  const inheritedIcon =
+    initialInheritedIcon ?? parentContext?.customIcon ?? parentContext?.inheritedIcon
 
   // Register this node with the tree
   useEffect(() => {
@@ -570,8 +561,7 @@ export const TreeNode = ({
         hideLines: hideLinesProp,
         customIcon,
         inheritedIcon,
-        setCustomIcon,
-        setInheritedIcon
+        setCustomIcon
       }}
     >
       <div className={cn('select-none pb-px', className)} {...props}>

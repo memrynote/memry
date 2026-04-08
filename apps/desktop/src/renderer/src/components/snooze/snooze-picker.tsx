@@ -60,8 +60,6 @@ export function SnoozePicker({
   className
 }: SnoozePickerProps) {
   const [isOpen, setIsOpen] = React.useState(false)
-  const [selectedDate, setSelectedDate] = React.useState<Date | undefined>(undefined)
-  const [selectedTime, setSelectedTime] = React.useState('09:00')
   const [showCustomDialog, setShowCustomDialog] = React.useState(false)
 
   // Handle preset selection
@@ -71,62 +69,9 @@ export function SnoozePicker({
     setIsOpen(false)
   }
 
-  // Track if selected time is valid (in the future)
-  const [timeError, setTimeError] = React.useState<string | null>(null)
-
-  // Handle custom date/time selection
-  const handleCustomSnooze = () => {
-    if (!selectedDate) return
-
-    const [hours, minutes] = selectedTime.split(':').map(Number)
-    const snoozeTime = new Date(selectedDate)
-    snoozeTime.setHours(hours, minutes, 0, 0)
-
-    // Validate that the time is in the future
-    if (snoozeTime <= new Date()) {
-      setTimeError('Please select a future time')
-      return
-    }
-
-    setTimeError(null)
-    onSnooze(snoozeTime.toISOString())
-    setShowCustomDialog(false)
-    setSelectedDate(undefined)
-  }
-
-  // Validate time when date or time changes
-  React.useEffect(() => {
-    if (!selectedDate) {
-      setTimeError(null)
-      return
-    }
-
-    const [hours, minutes] = selectedTime.split(':').map(Number)
-    const snoozeTime = new Date(selectedDate)
-    snoozeTime.setHours(hours, minutes, 0, 0)
-
-    if (snoozeTime <= new Date()) {
-      setTimeError('Please select a future time')
-    } else {
-      setTimeError(null)
-    }
-  }, [selectedDate, selectedTime])
-
   // Reset dropdown state when closing
   const handleOpenChange = (open: boolean) => {
     setIsOpen(open)
-  }
-
-  // Handle dialog open state changes
-  const handleDialogOpenChange = (open: boolean) => {
-    setShowCustomDialog(open)
-    if (!open) {
-      setSelectedDate(undefined)
-      setTimeError(null)
-    } else {
-      // Set default date to today when dialog opens
-      setSelectedDate(new Date())
-    }
   }
 
   // Get icon for preset
@@ -152,15 +97,6 @@ export function SnoozePicker({
       {size !== 'icon' && <span className="ml-2">Snooze</span>}
     </Button>
   )
-
-  // Compute preview date for display
-  const previewDate = React.useMemo(() => {
-    if (!selectedDate) return null
-    const [hours, minutes] = selectedTime.split(':').map(Number)
-    const date = new Date(selectedDate)
-    date.setHours(hours, minutes, 0, 0)
-    return date
-  }, [selectedDate, selectedTime])
 
   return (
     <>
@@ -191,7 +127,7 @@ export function SnoozePicker({
           <DropdownMenuItem
             onClick={() => {
               setIsOpen(false)
-              handleDialogOpenChange(true)
+              setShowCustomDialog(true)
             }}
             className="flex items-center gap-2"
           >
@@ -207,78 +143,135 @@ export function SnoozePicker({
         <div
           className="fixed inset-0 z-[9999] bg-black/50 pointer-events-auto"
           aria-hidden="true"
-          onClick={() => handleDialogOpenChange(false)}
+          onClick={() => setShowCustomDialog(false)}
           onPointerDown={(e) => e.stopPropagation()}
           onMouseDown={(e) => e.stopPropagation()}
         />
       )}
 
       {/* Custom Date/Time Dialog */}
-      <Dialog open={showCustomDialog} onOpenChange={handleDialogOpenChange} modal>
-        <DialogContent
-          className="sm:max-w-[400px] z-[10000]"
-          onClick={(e) => e.stopPropagation()}
-          onPointerDown={(e) => e.stopPropagation()}
-          onMouseDown={(e) => e.stopPropagation()}
-          onKeyDown={(e) => {
-            // Stop propagation for all keys except Escape to prevent background shortcuts
-            if (e.key !== 'Escape') {
-              e.stopPropagation()
-            }
-          }}
-        >
-          <DialogHeader>
-            <DialogTitle>Pick Date & Time</DialogTitle>
-            <DialogDescription>Select when to be reminded about this item</DialogDescription>
-          </DialogHeader>
-
-          <div className="space-y-4">
-            {/* Calendar - properly sized with larger cells */}
-            <DatePickerCalendar
-              selected={selectedDate}
-              onSelect={(d) => setSelectedDate(d)}
-              disabled={(date) => {
-                const today = new Date()
-                today.setHours(0, 0, 0, 0)
-                const compareDate = new Date(date)
-                compareDate.setHours(0, 0, 0, 0)
-                return compareDate < today
-              }}
-              className="rounded-md border mx-auto"
-            />
-
-            {/* Time Picker */}
-            <div className="flex items-center gap-2 px-2">
-              <Clock className="h-4 w-4 text-muted-foreground" />
-              <Input
-                type="time"
-                value={selectedTime}
-                onChange={(e) => setSelectedTime(e.target.value)}
-                className="flex-1"
-              />
-            </div>
-
-            {/* Preview & Error */}
-            {selectedDate && (
-              <div
-                className={`text-xs text-center ${timeError ? 'text-destructive' : 'text-muted-foreground'}`}
-              >
-                {timeError || (previewDate ? formatSnoozeTime(previewDate) : '')}
-              </div>
-            )}
-
-            {/* Snooze Button */}
-            <Button
-              onClick={handleCustomSnooze}
-              disabled={!selectedDate || !!timeError}
-              className="w-full"
-            >
-              Snooze
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
+      {showCustomDialog ? (
+        <SnoozeCustomDialog
+          key="custom-snooze-dialog"
+          onClose={() => setShowCustomDialog(false)}
+          onSnooze={onSnooze}
+        />
+      ) : null}
     </>
+  )
+}
+
+function getPreviewDate(selectedDate: Date | undefined, selectedTime: string): Date | null {
+  if (!selectedDate) return null
+
+  const [hours, minutes] = selectedTime.split(':').map(Number)
+  const date = new Date(selectedDate)
+  date.setHours(hours, minutes, 0, 0)
+  return date
+}
+
+function getTimeError(selectedDate: Date | undefined, selectedTime: string): string | null {
+  const previewDate = getPreviewDate(selectedDate, selectedTime)
+  if (!previewDate) return null
+  if (previewDate <= new Date()) return 'Please select a future time'
+  return null
+}
+
+interface SnoozeCustomDialogProps {
+  onClose: () => void
+  onSnooze: (snoozeUntil: string, reason?: string) => void
+}
+
+function SnoozeCustomDialog({ onClose, onSnooze }: SnoozeCustomDialogProps): React.JSX.Element {
+  const [selectedDate, setSelectedDate] = React.useState<Date | undefined>(() => new Date())
+  const [selectedTime, setSelectedTime] = React.useState('09:00')
+
+  const previewDate = React.useMemo(
+    () => getPreviewDate(selectedDate, selectedTime),
+    [selectedDate, selectedTime]
+  )
+  const timeError = React.useMemo(
+    () => getTimeError(selectedDate, selectedTime),
+    [selectedDate, selectedTime]
+  )
+
+  const handleCustomSnooze = () => {
+    if (!previewDate || timeError) return
+    onSnooze(previewDate.toISOString())
+    onClose()
+  }
+
+  return (
+    <Dialog
+      open
+      onOpenChange={(open) => {
+        if (!open) onClose()
+      }}
+      modal
+    >
+      <DialogContent
+        className="sm:max-w-[400px] z-[10000]"
+        onClick={(e) => e.stopPropagation()}
+        onPointerDown={(e) => e.stopPropagation()}
+        onMouseDown={(e) => e.stopPropagation()}
+        onKeyDown={(e) => {
+          // Stop propagation for all keys except Escape to prevent background shortcuts
+          if (e.key !== 'Escape') {
+            e.stopPropagation()
+          }
+        }}
+      >
+        <DialogHeader>
+          <DialogTitle>Pick Date & Time</DialogTitle>
+          <DialogDescription>Select when to be reminded about this item</DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-4">
+          {/* Calendar - properly sized with larger cells */}
+          <DatePickerCalendar
+            selected={selectedDate}
+            onSelect={(d) => setSelectedDate(d)}
+            disabled={(date) => {
+              const today = new Date()
+              today.setHours(0, 0, 0, 0)
+              const compareDate = new Date(date)
+              compareDate.setHours(0, 0, 0, 0)
+              return compareDate < today
+            }}
+            className="rounded-md border mx-auto"
+          />
+
+          {/* Time Picker */}
+          <div className="flex items-center gap-2 px-2">
+            <Clock className="h-4 w-4 text-muted-foreground" />
+            <Input
+              type="time"
+              value={selectedTime}
+              onChange={(e) => setSelectedTime(e.target.value)}
+              className="flex-1"
+            />
+          </div>
+
+          {/* Preview & Error */}
+          {selectedDate ? (
+            <div
+              className={`text-xs text-center ${timeError ? 'text-destructive' : 'text-muted-foreground'}`}
+            >
+              {timeError || (previewDate ? formatSnoozeTime(previewDate) : '')}
+            </div>
+          ) : null}
+
+          {/* Snooze Button */}
+          <Button
+            onClick={handleCustomSnooze}
+            disabled={!selectedDate || !!timeError}
+            className="w-full"
+          >
+            Snooze
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
   )
 }
 
