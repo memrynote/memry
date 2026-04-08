@@ -53,7 +53,8 @@ export class FullSyncRunner {
         runInitialSeed({
           db: this.ctx.deps.db,
           queue: this.ctx.deps.queue,
-          deviceId: signingKeys.deviceId
+          deviceId: signingKeys.deviceId,
+          adapters: this.ctx.deps.adapters?.getAllRemote()
         })
       }
       const seededCount = Math.max(0, this.ctx.deps.queue.getPendingCount() - queueBeforeSeed)

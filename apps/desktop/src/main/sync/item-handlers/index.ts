@@ -1,5 +1,7 @@
 import type { SyncItemType } from '@memry/contracts/sync-api'
-import type { SyncItemHandler } from './types'
+import type { RemoteSyncAdapter } from '@memry/sync-core'
+import type { SyncItemHandler, DrizzleDb, EmitToWindows } from './types'
+import type { SyncQueueManager } from '../queue'
 import { taskHandler } from './task-handler'
 import { inboxHandler } from './inbox-handler'
 import { filterHandler } from './filter-handler'
@@ -23,10 +25,48 @@ const handlers = new Map<SyncItemType, SyncItemHandler>([
   ['tag_definition', tagDefinitionHandler]
 ])
 
+type DesktopRemoteSyncAdapter = RemoteSyncAdapter<DrizzleDb, EmitToWindows>
+
+function toRemoteSyncAdapter(handler: SyncItemHandler): DesktopRemoteSyncAdapter {
+  return {
+    type: handler.type,
+    schema: handler.schema,
+    applyRemoteMutation: ({ db, emit, itemId, operation, data, clock }) => {
+      const ctx = { db, emit }
+      if (operation === 'delete') {
+        return handler.applyDelete(ctx, itemId, clock)
+      }
+      if (data === undefined) return 'parse_error'
+      return handler.applyUpsert(ctx, itemId, data, clock ?? {})
+    },
+    fetchLocal: handler.fetchLocal ? (db, itemId) => handler.fetchLocal?.(db, itemId) : undefined,
+    seedUnclocked: handler.seedUnclocked
+      ? (db, deviceId, queue) =>
+          handler.seedUnclocked?.(db, deviceId, queue as SyncQueueManager) ?? 0
+      : undefined,
+    buildPushPayload: handler.buildPushPayload
+      ? (db, itemId, deviceId, operation) =>
+          handler.buildPushPayload?.(db, itemId, deviceId, operation) ?? null
+      : undefined,
+    markPushSynced: handler.markPushSynced
+      ? (db, itemId) => handler.markPushSynced?.(db, itemId)
+      : undefined
+  }
+}
+
 export function getHandler(type: SyncItemType): SyncItemHandler | undefined {
   return handlers.get(type)
 }
 
 export function getAllHandlers(): SyncItemHandler[] {
   return Array.from(handlers.values())
+}
+
+export function getRemoteSyncAdapter(type: SyncItemType): DesktopRemoteSyncAdapter | undefined {
+  const handler = getHandler(type)
+  return handler ? toRemoteSyncAdapter(handler) : undefined
+}
+
+export function getAllRemoteSyncAdapters(): DesktopRemoteSyncAdapter[] {
+  return getAllHandlers().map((handler) => toRemoteSyncAdapter(handler))
 }

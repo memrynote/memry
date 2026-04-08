@@ -23,7 +23,7 @@ export function resetJournalSyncService(): void {
   instance = null
 }
 
-export class JournalSyncService extends ContentSyncService<JournalSyncPayload> {
+export class JournalSyncService extends ContentSyncService<JournalSyncPayload, [string]> {
   protected readonly log = log
   readonly itemType = 'journal' as const
 

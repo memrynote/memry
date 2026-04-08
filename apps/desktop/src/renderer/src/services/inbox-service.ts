@@ -16,6 +16,7 @@ import type {
   InboxBulkResponse as BulkResponse,
   InboxSuggestionsResponse as SuggestionsResponse,
   InboxStats,
+  InboxJobsResponse as JobsResponse,
   InboxCapturePattern as CapturePattern,
   InboxFilingHistoryResponse as FilingHistoryResponse
 } from '../../../preload/index.d'
@@ -451,6 +452,17 @@ export const inboxService = {
    */
   getStats: (): Promise<InboxStats> => {
     return window.api.inbox.getStats()
+  },
+
+  /**
+   * Get durable inbox job state for one or more items.
+   * @returns Inbox job list
+   */
+  getJobs: (options?: {
+    itemIds?: string[]
+    statuses?: Array<'pending' | 'running' | 'failed' | 'complete'>
+  }): Promise<JobsResponse> => {
+    return window.api.inbox.getJobs(options)
   },
 
   /**

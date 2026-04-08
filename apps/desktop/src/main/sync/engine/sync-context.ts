@@ -5,6 +5,7 @@ import type { SyncWorkerBridge } from '../worker-bridge'
 import type { ItemApplier } from '../apply-item'
 import type { CrdtProvider } from '../crdt-provider'
 import type { DrizzleDb } from '../item-handlers/types'
+import type { SyncAdapterRegistry } from '@memry/sync-core'
 import type { SyncStatusValue } from '@memry/contracts/ipc-sync-ops'
 import type { SyncErrorInfo } from '../sync-errors'
 
@@ -22,6 +23,7 @@ export interface SyncEngineDeps {
   getDevicePublicKey: (deviceId: string) => Promise<Uint8Array | null>
   db: DrizzleDb
   emitToRenderer: (channel: string, data: unknown) => void
+  adapters?: SyncAdapterRegistry<DrizzleDb, (channel: string, data: unknown) => void>
   crdtProvider?: CrdtProvider
   workerBridge?: SyncWorkerBridge
   refreshAccessToken?: () => Promise<boolean>
