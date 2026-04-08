@@ -29,14 +29,17 @@ export {
   renameTag,
   deleteTag,
   removeTagFromNote,
+  type NoteWithTagInfo
+} from './tag-queries'
+
+export {
   getOrCreateTag,
   getAllTagDefinitions,
   updateTagColor,
   renameTagDefinition,
   deleteTagDefinition,
-  ensureTagDefinitions,
-  type NoteWithTagInfo
-} from './tag-queries'
+  ensureTagDefinitions
+} from '../tag-definitions'
 
 export {
   setNoteLinks,

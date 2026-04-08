@@ -2,8 +2,8 @@ import { eq } from 'drizzle-orm'
 import { tasks } from '@memry/db-schema/schema/tasks'
 import { taskTags, taskNotes } from '@memry/db-schema/schema/task-relations'
 import type { VectorClock, FieldClocks } from '@memry/contracts/sync-api'
+import { RecordSyncController, incrementClock, withIncrementedClock } from '@memry/sync-core'
 import type { SyncQueueManager } from './queue'
-import { increment } from './vector-clock'
 import { initAllFieldClocks, TASK_SYNCABLE_FIELDS } from './field-merge'
 import {
   hasOfflineClockData,
@@ -57,191 +57,125 @@ export function resetTaskSyncService(): void {
 }
 
 export class TaskSyncService {
-  private queue: SyncQueueManager
-  private db: DrizzleDb
-  private getDeviceId: () => string | null
+  private controller: RecordSyncController<Record<string, unknown>, [string[]?], [string]>
 
   constructor(deps: TaskSyncDeps) {
-    this.queue = deps.queue
-    this.db = deps.db
-    this.getDeviceId = deps.getDeviceId
+    this.controller = new RecordSyncController({
+      type: 'task',
+      queue: deps.queue,
+      getDeviceId: deps.getDeviceId,
+      load: (taskId) =>
+        deps.db.select().from(tasks).where(eq(tasks.id, taskId)).get() as
+          | Record<string, unknown>
+          | undefined,
+      applyLocalChange: ({ itemId, local, deviceId, operation, extra }) => {
+        const changedFields = extra[0]
+        const existingClock = (local.clock as VectorClock) ?? {}
+        const newClock = incrementClock(existingClock, deviceId)
+
+        let fieldClocks = (local.fieldClocks as FieldClocks) ?? null
+        if (!fieldClocks) {
+          fieldClocks = initAllFieldClocks(existingClock, TASK_SYNCABLE_FIELDS)
+        }
+
+        const fieldsToIncrement =
+          operation === 'create' ? TASK_SYNCABLE_FIELDS : (changedFields ?? TASK_SYNCABLE_FIELDS)
+        const updatedFieldClocks = { ...fieldClocks }
+        for (const field of fieldsToIncrement) {
+          updatedFieldClocks[field] = incrementClock(updatedFieldClocks[field] ?? {}, deviceId)
+        }
+
+        deps.db
+          .update(tasks)
+          .set({ clock: newClock, fieldClocks: updatedFieldClocks })
+          .where(eq(tasks.id, itemId))
+          .run()
+
+        return enrichWithJunctionData(deps.db, itemId, {
+          ...local,
+          clock: newClock,
+          fieldClocks: updatedFieldClocks
+        })
+      },
+      serialize: (local) => local,
+      handleMissingDevice: (taskId, operation, extra) => {
+        const changedFields = extra[0]
+        log.warn('No device ID available, tracking task change with offline clock', {
+          taskId,
+          operation
+        })
+        if (operation === 'create') {
+          incrementTaskClocksOffline(deps.db, taskId, [])
+        } else {
+          incrementTaskClocksOffline(deps.db, taskId, changedFields ?? [...TASK_SYNCABLE_FIELDS])
+        }
+      },
+      buildDeletePayload: ({ extra, deviceId }) => withIncrementedClock(extra[0], deviceId),
+      buildFreshPayload: (taskId, _operation) => {
+        const task = deps.db.select().from(tasks).where(eq(tasks.id, taskId)).get()
+        if (!task) {
+          log.warn('Task not found for re-enqueue', { taskId })
+          return null
+        }
+
+        return JSON.stringify(
+          enrichWithJunctionData(deps.db, taskId, task as Record<string, unknown>)
+        )
+      },
+      recoverPendingChange: (taskId, deviceId) => {
+        const task = deps.db.select().from(tasks).where(eq(tasks.id, taskId)).get()
+        if (!task) {
+          log.warn('Task not found for recovered enqueue', { taskId })
+          return null
+        }
+
+        const existingClock = (task.clock as VectorClock) ?? {}
+        const existingFieldClocks = task.fieldClocks ?? null
+
+        if (!hasOfflineClockData(existingClock, existingFieldClocks)) {
+          return null
+        }
+
+        const rebased = rebindOfflineClockData(
+          existingClock,
+          existingFieldClocks,
+          deviceId,
+          TASK_SYNCABLE_FIELDS
+        )
+
+        deps.db
+          .update(tasks)
+          .set({ clock: rebased.clock, fieldClocks: rebased.fieldClocks })
+          .where(eq(tasks.id, taskId))
+          .run()
+
+        return enrichWithJunctionData(deps.db, taskId, {
+          ...(task as Record<string, unknown>),
+          clock: rebased.clock,
+          fieldClocks: rebased.fieldClocks
+        })
+      },
+      serializeRecovered: (local) => local
+    })
   }
 
   enqueueCreate(taskId: string): void {
-    this.enqueue(taskId, 'create')
+    this.controller.enqueueCreate(taskId)
   }
 
   enqueueUpdate(taskId: string, changedFields?: string[]): void {
-    this.enqueue(taskId, 'update', changedFields)
+    this.controller.enqueueUpdate(taskId, changedFields)
   }
 
   enqueueForPush(taskId: string, operation: 'create' | 'update'): void {
-    try {
-      const task = this.db.select().from(tasks).where(eq(tasks.id, taskId)).get()
-      if (!task) {
-        log.warn('Task not found for re-enqueue', { taskId })
-        return
-      }
-
-      const enriched = enrichWithJunctionData(this.db, taskId, task as Record<string, unknown>)
-      this.queue.enqueue({
-        type: 'task',
-        itemId: taskId,
-        operation,
-        payload: JSON.stringify(enriched),
-        priority: 0
-      })
-    } catch (err) {
-      log.error('Failed to re-enqueue task for push', err)
-    }
+    this.controller.enqueueForPush(taskId, operation)
   }
 
   enqueueRecoveredUpdate(taskId: string): void {
-    const deviceId = this.getDeviceId()
-    if (!deviceId) {
-      log.warn('No device ID available, skipping recovered task enqueue')
-      return
-    }
-
-    try {
-      const task = this.db.select().from(tasks).where(eq(tasks.id, taskId)).get()
-      if (!task) {
-        log.warn('Task not found for recovered enqueue', { taskId })
-        return
-      }
-
-      const existingClock = (task.clock as VectorClock) ?? {}
-      const existingFieldClocks = (task.fieldClocks as FieldClocks | null) ?? null
-
-      if (!hasOfflineClockData(existingClock, existingFieldClocks)) {
-        // No offline marker: local clocks were already advanced when the change was made.
-        this.enqueueForPush(taskId, 'update')
-        return
-      }
-
-      const rebased = rebindOfflineClockData(
-        existingClock,
-        existingFieldClocks,
-        deviceId,
-        TASK_SYNCABLE_FIELDS
-      )
-
-      this.db
-        .update(tasks)
-        .set({ clock: rebased.clock, fieldClocks: rebased.fieldClocks })
-        .where(eq(tasks.id, taskId))
-        .run()
-
-      const enriched = enrichWithJunctionData(this.db, taskId, {
-        ...(task as Record<string, unknown>),
-        clock: rebased.clock,
-        fieldClocks: rebased.fieldClocks
-      })
-      this.queue.enqueue({
-        type: 'task',
-        itemId: taskId,
-        operation: 'update',
-        payload: JSON.stringify(enriched),
-        priority: 0
-      })
-    } catch (err) {
-      log.error('Failed to enqueue recovered task update', err)
-    }
+    this.controller.enqueueRecoveredUpdate(taskId)
   }
 
   enqueueDelete(taskId: string, snapshotPayload: string): void {
-    const deviceId = this.getDeviceId()
-    if (!deviceId) {
-      log.warn('No device ID available, skipping sync enqueue for delete')
-      return
-    }
-
-    try {
-      const payload = this.withIncrementedClock(snapshotPayload, deviceId)
-      this.queue.enqueue({
-        type: 'task',
-        itemId: taskId,
-        operation: 'delete',
-        payload,
-        priority: 0
-      })
-    } catch (err) {
-      log.error('Failed to enqueue task delete', err)
-    }
-  }
-
-  private enqueue(taskId: string, operation: 'create' | 'update', changedFields?: string[]): void {
-    const deviceId = this.getDeviceId()
-    if (!deviceId) {
-      log.warn('No device ID available, tracking task change with offline clock', {
-        taskId,
-        operation
-      })
-      if (operation === 'create') {
-        incrementTaskClocksOffline(this.db, taskId, [])
-      } else {
-        incrementTaskClocksOffline(this.db, taskId, changedFields ?? [...TASK_SYNCABLE_FIELDS])
-      }
-      return
-    }
-
-    try {
-      const task = this.db.select().from(tasks).where(eq(tasks.id, taskId)).get()
-      if (!task) {
-        log.warn('Task not found for sync enqueue', { taskId })
-        return
-      }
-
-      const existingClock = (task.clock as VectorClock) ?? {}
-      const newClock = increment(existingClock, deviceId)
-
-      let fieldClocks = (task.fieldClocks as FieldClocks) ?? null
-      if (!fieldClocks) {
-        fieldClocks = initAllFieldClocks(existingClock, TASK_SYNCABLE_FIELDS)
-      }
-
-      const fieldsToIncrement =
-        operation === 'create' ? TASK_SYNCABLE_FIELDS : (changedFields ?? TASK_SYNCABLE_FIELDS)
-      const updatedFieldClocks = { ...fieldClocks }
-      for (const field of fieldsToIncrement) {
-        updatedFieldClocks[field] = increment(updatedFieldClocks[field] ?? {}, deviceId)
-      }
-
-      this.db
-        .update(tasks)
-        .set({ clock: newClock, fieldClocks: updatedFieldClocks })
-        .where(eq(tasks.id, taskId))
-        .run()
-
-      const enriched = enrichWithJunctionData(this.db, taskId, {
-        ...(task as Record<string, unknown>),
-        clock: newClock,
-        fieldClocks: updatedFieldClocks
-      })
-
-      this.queue.enqueue({
-        type: 'task',
-        itemId: taskId,
-        operation,
-        payload: JSON.stringify(enriched),
-        priority: 0
-      })
-    } catch (err) {
-      log.error(`Failed to enqueue task ${operation}`, err)
-    }
-  }
-
-  private withIncrementedClock(payload: string, deviceId: string): string {
-    try {
-      const parsed = JSON.parse(payload) as Record<string, unknown>
-      const existingClock =
-        parsed.clock && typeof parsed.clock === 'object' && !Array.isArray(parsed.clock)
-          ? (parsed.clock as VectorClock)
-          : {}
-      const newClock = increment(existingClock, deviceId)
-      return JSON.stringify({ ...parsed, clock: newClock })
-    } catch {
-      return payload
-    }
+    this.controller.enqueueDelete(taskId, snapshotPayload)
   }
 }
