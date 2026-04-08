@@ -6,8 +6,8 @@ import type {
   SyncSettings,
   TaskSettings,
   VoiceTranscriptionSettings
-} from '@memry/contracts/settings-schemas'
-import { SettingsChannels } from '@memry/contracts/ipc-channels'
+} from '../../contracts/src/settings-schemas.ts'
+import { SettingsChannels } from '../../contracts/src/ipc-channels.ts'
 import { defineDomain, defineEvent, defineMethod, type RpcClient, type RpcSubscriptions } from './schema.ts'
 
 export interface JournalSettings {

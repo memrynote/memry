@@ -1,4 +1,4 @@
-import { InboxChannels } from '@memry/contracts/ipc-channels'
+import { InboxChannels } from '../../contracts/src/ipc-channels.ts'
 import {
   defineDomain,
   defineEvent,

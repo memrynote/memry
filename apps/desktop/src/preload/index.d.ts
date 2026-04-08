@@ -1,5 +1,5 @@
 import { ElectronAPI } from '@electron-toolkit/preload'
-import type { GeneratedRpcApi } from './generated-rpc'
+import type { GeneratedRpcApi } from '@memry/rpc'
 import type {
   SyncStatusChangedEvent,
   ItemSyncedEvent,

@@ -6,106 +6,19 @@
  */
 
 import { z } from 'zod'
-
-// ============================================================================
-// Types
-// ============================================================================
-
-/**
- * RepeatConfig - Matches frontend format for full feature support
- */
-export interface RepeatConfig {
-  frequency: 'daily' | 'weekly' | 'monthly' | 'yearly'
-  interval: number
-  daysOfWeek?: number[] // For weekly: 0=Sun, 1=Mon, etc.
-  monthlyType?: 'dayOfMonth' | 'weekPattern'
-  dayOfMonth?: number
-  weekOfMonth?: number
-  dayOfWeekForMonth?: number
-  endType: 'never' | 'date' | 'count'
-  endDate?: string | null
-  endCount?: number
-  completedCount: number
-  createdAt: string
-}
-
-export interface Task {
-  id: string
-  projectId: string
-  statusId: string | null
-  parentId: string | null
-
-  title: string
-  description: string | null
-  priority: 0 | 1 | 2 | 3 | 4
-  position: number
-
-  dueDate: string | null
-  dueTime: string | null
-  startDate: string | null
-
-  isRepeating: boolean
-  repeatConfig: RepeatConfig | null
-  repeatFrom: 'due' | 'completion' | null
-
-  completedAt: string | null
-  archivedAt: string | null
-
-  createdAt: string
-  modifiedAt: string
-
-  // Optionally loaded relations
-  subtasks?: Task[]
-  linkedNoteIds?: string[]
-  tags?: string[]
-}
-
-export interface TaskListItem {
-  id: string
-  projectId: string
-  statusId: string | null
-  parentId: string | null
-  title: string
-  priority: 0 | 1 | 2 | 3 | 4
-  position: number
-  dueDate: string | null
-  dueTime: string | null
-  completedAt: string | null
-  hasSubtasks: boolean
-  subtaskCount: number
-  completedSubtaskCount: number
-  tags: string[]
-}
-
-export interface Project {
-  id: string
-  name: string
-  description: string | null
-  color: string
-  icon: string | null
-  position: number
-  isInbox: boolean
-  createdAt: string
-  modifiedAt: string
-  archivedAt: string | null
-}
-
-export interface ProjectWithStats extends Project {
-  taskCount: number
-  completedCount: number
-  overdueCount: number
-}
-
-export interface Status {
-  id: string
-  projectId: string
-  name: string
-  color: string
-  position: number
-  isDefault: boolean
-  isDone: boolean
-  createdAt: string
-}
+import type { ProjectWithStats, Task, TaskListItem } from '@memry/domain-tasks'
+export type {
+  RepeatConfig,
+  Task,
+  TaskListItem,
+  Project,
+  ProjectWithStats,
+  ProjectWithStatuses,
+  Status,
+  Reminder,
+  TaskStats,
+  TaskListOptions
+} from '@memry/domain-tasks'
 
 // ============================================================================
 // Request Schemas
@@ -343,14 +256,6 @@ export interface TaskListResponse {
 
 export interface ProjectListResponse {
   projects: ProjectWithStats[]
-}
-
-export interface TaskStats {
-  total: number
-  completed: number
-  overdue: number
-  dueToday: number
-  dueThisWeek: number
 }
 
 // ============================================================================

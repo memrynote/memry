@@ -1,7 +1,14 @@
 {
   "extends": "@memry/typescript-config/node.json",
   "compilerOptions": {
-    "allowImportingTsExtensions": true
+    "allowImportingTsExtensions": true,
+    "baseUrl": ".",
+    "paths": {
+      "@memry/contracts": ["../contracts/src/index.ts"],
+      "@memry/contracts/*": ["../contracts/src/*"],
+      "@memry/domain-tasks": ["../domain-tasks/src/index.ts"],
+      "@memry/domain-tasks/*": ["../domain-tasks/src/*"]
+    }
   },
   "include": ["src/**/*"],
   "exclude": ["**/*.test.ts", "**/*.test.tsx", "**/*.spec.ts", "**/*.spec.tsx"]
