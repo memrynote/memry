@@ -8,7 +8,7 @@ import type {
   VoiceTranscriptionSettings
 } from '@memry/contracts/settings-schemas'
 import { SettingsChannels } from '@memry/contracts/ipc-channels'
-import { defineDomain, defineEvent, defineMethod, type RpcClient, type RpcSubscriptions } from './schema'
+import { defineDomain, defineEvent, defineMethod, type RpcClient, type RpcSubscriptions } from './schema.ts'
 
 export interface JournalSettings {
   defaultTemplate: string | null

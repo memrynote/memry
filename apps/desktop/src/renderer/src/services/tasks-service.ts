@@ -1,34 +1,32 @@
 import type {
+  Project,
+  ProjectCreateInput,
   ProjectCreatedEvent,
   ProjectDeletedEvent,
   ProjectListResponse,
-  ProjectUpdatedEvent,
-  ProjectWithStatuses,
-  Task,
-  TaskCompletedEvent,
-  TaskCreatedEvent,
-  TaskDeletedEvent,
-  TaskListItem,
-  TaskMovedEvent,
-  TasksClientAPI,
-  TaskUpdatedEvent
-} from '@memry/rpc/tasks'
-import type {
-  Project,
-  ProjectCreateInput,
   ProjectUpdateInput,
+  ProjectUpdatedEvent,
   ProjectWithStats,
+  ProjectWithStatuses,
   RepeatConfig,
   Status,
   StatusCreateInput,
+  Task,
+  TaskCompletedEvent,
   TaskCreateInput,
   TaskCreateResponse,
-  TaskListInput as TaskListOptions,
+  TaskCreatedEvent,
+  TaskDeletedEvent,
+  TaskListItem,
+  TaskListOptions,
   TaskListResponse,
+  TaskMovedEvent,
   TaskMoveInput,
   TaskStats,
+  TasksClientAPI,
+  TaskUpdatedEvent,
   TaskUpdateInput
-} from '@memry/contracts/tasks-api'
+} from '@memry/rpc/tasks'
 
 export type {
   Project,

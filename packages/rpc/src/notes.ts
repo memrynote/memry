@@ -1,5 +1,6 @@
 import { NotesChannels } from '@memry/contracts/ipc-channels'
-import { defineDomain, defineEvent, defineMethod, type RpcClient, type RpcSubscriptions } from './schema'
+import type { PropertyType as CanonicalPropertyType, SelectOption, StatusCategoryKey } from '@memry/contracts/property-types'
+import { defineDomain, defineEvent, defineMethod, type RpcClient, type RpcSubscriptions } from './schema.ts'
 
 interface NoteFrontmatter {
   id: string
@@ -81,6 +82,9 @@ type PropertyType =
   | 'url'
   | 'rating'
 
+type EditablePropertyType = CanonicalPropertyType
+type EnsurablePropertyType = Extract<CanonicalPropertyType, 'select' | 'multiselect' | 'status'>
+
 export interface PropertyDefinition {
   name: string
   type: PropertyType
@@ -92,16 +96,16 @@ export interface PropertyDefinition {
 
 export interface CreatePropertyDefinitionInput {
   name: string
-  type: PropertyType
-  options?: string[]
+  type: EditablePropertyType
+  options?: SelectOption[]
   defaultValue?: unknown
   color?: string
 }
 
 export interface UpdatePropertyDefinitionInput {
   name: string
-  type?: PropertyType
-  options?: string[]
+  type?: EditablePropertyType
+  options?: SelectOption[]
   defaultValue?: unknown
   color?: string
 }
@@ -412,7 +416,9 @@ export const notesRpc = defineDomain({
       channel: NotesChannels.invoke.UPDATE_PROPERTY_DEFINITION,
       params: ['input']
     }),
-    ensurePropertyDefinition: defineMethod<(name: string, type: string) => Promise<{ success: boolean }>>(
+    ensurePropertyDefinition: defineMethod<
+      (name: string, type: EnsurablePropertyType) => Promise<{ success: boolean }>
+    >(
       {
         channel: NotesChannels.invoke.ENSURE_PROPERTY_DEFINITION,
         params: ['name', 'type'],
@@ -420,7 +426,7 @@ export const notesRpc = defineDomain({
       }
     ),
     addPropertyOption: defineMethod<
-      (propertyName: string, option: { value: string; color: string }) => Promise<{ success: boolean }>
+      (propertyName: string, option: SelectOption) => Promise<{ success: boolean }>
     >({
       channel: NotesChannels.invoke.ADD_PROPERTY_OPTION,
       params: ['propertyName', 'option'],
@@ -429,8 +435,8 @@ export const notesRpc = defineDomain({
     addStatusOption: defineMethod<
       (
         propertyName: string,
-        categoryKey: string,
-        option: { value: string; color: string }
+        categoryKey: StatusCategoryKey,
+        option: SelectOption
       ) => Promise<{ success: boolean }>
     >({
       channel: NotesChannels.invoke.ADD_STATUS_OPTION,
@@ -460,7 +466,8 @@ export const notesRpc = defineDomain({
     }),
     deletePropertyDefinition: defineMethod<(name: string) => Promise<{ success: boolean }>>({
       channel: NotesChannels.invoke.DELETE_PROPERTY_DEFINITION,
-      params: ['name']
+      params: ['name'],
+      invokeArgs: ['{ name }']
     }),
     uploadAttachment: defineMethod<
       (noteId: string, file: AttachmentUploadFile) => Promise<AttachmentResult>

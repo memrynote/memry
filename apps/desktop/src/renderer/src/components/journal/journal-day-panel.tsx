@@ -139,11 +139,11 @@ function TaskRow({
         </span>
       </div>
 
-      {task.subtaskCount > 0 && (
+      {(task.subtaskCount ?? 0) > 0 && (
         <div className="pl-[52px]">
           <SubtaskProgressIndicator
-            completed={task.completedSubtaskCount}
-            total={task.subtaskCount}
+            completed={task.completedSubtaskCount ?? 0}
+            total={task.subtaskCount ?? 0}
             accentColor={statusColor}
           />
         </div>

@@ -159,9 +159,9 @@ const createMockApi = () => ({
     bulkMove: vi.fn().mockResolvedValue({ success: true }),
     bulkArchive: vi.fn().mockResolvedValue({ success: true }),
     getStats: vi.fn().mockResolvedValue({}),
-    getToday: vi.fn().mockResolvedValue([]),
-    getUpcoming: vi.fn().mockResolvedValue([]),
-    getOverdue: vi.fn().mockResolvedValue([]),
+    getToday: vi.fn().mockResolvedValue({ tasks: [], total: 0, hasMore: false }),
+    getUpcoming: vi.fn().mockResolvedValue({ tasks: [], total: 0, hasMore: false }),
+    getOverdue: vi.fn().mockResolvedValue({ tasks: [], total: 0, hasMore: false }),
     getLinkedTasks: vi.fn().mockResolvedValue([]),
     seedPerformanceTest: vi.fn().mockResolvedValue({ success: true }),
     seedDemo: vi.fn().mockResolvedValue({ success: true })
