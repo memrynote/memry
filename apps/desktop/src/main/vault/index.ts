@@ -49,7 +49,6 @@ import { startWatcher, stopWatcher } from './watcher'
 import { indexVault, rebuildIndex } from './indexer'
 import { initEmbeddingModel, isModelLoaded, isModelLoading } from '../lib/embeddings'
 import { flushFtsUpdates, hasPendingFtsUpdates } from '../database'
-import { clearEmbeddingQueue, hasPendingEmbeddings } from '../inbox/embedding-queue'
 import { createLogger } from '../lib/logger'
 import { startSyncRuntime, stopSyncRuntime } from '../sync/runtime'
 import {
@@ -428,12 +427,6 @@ export async function closeVault(): Promise<void> {
     } catch (error) {
       logger.error('Failed to flush FTS updates:', error)
     }
-  }
-
-  // Clear any pending embedding updates (don't wait for them on shutdown)
-  if (hasPendingEmbeddings()) {
-    clearEmbeddingQueue()
-    logger.debug('Cleared pending embedding updates before close')
   }
 
   await stopProjectionRuntime({ drain: true })

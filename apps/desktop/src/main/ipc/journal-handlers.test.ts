@@ -48,11 +48,8 @@ vi.mock('../vault/notes', () => ({
 }))
 
 vi.mock('../vault/note-sync', () => ({
-  syncNoteToCache: vi.fn()
-}))
-
-vi.mock('../inbox/embedding-queue', () => ({
-  queueEmbeddingUpdate: vi.fn()
+  syncNoteToCache: vi.fn(),
+  deleteNoteFromCache: vi.fn()
 }))
 
 vi.mock('@main/database/queries/notes', () => ({
@@ -213,7 +210,7 @@ describe('journal-handlers', () => {
     const result = await invokeHandler(JournalChannels.invoke.DELETE_ENTRY, { date: '2025-01-01' })
 
     expect(result).toEqual({ success: true })
-    expect(notesQueries.deleteNoteCache).toHaveBeenCalledWith({}, 'cache-1')
+    expect(noteSync.deleteNoteFromCache).toHaveBeenCalledWith({}, 'cache-1')
   })
 
   it('lists month entries with previews', async () => {

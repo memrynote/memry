@@ -66,7 +66,6 @@ import { generateNoteId } from '../lib/id'
 import { NotesChannels } from '@memry/contracts/notes-api'
 import type { FolderInfo } from '@memry/contracts/templates-api'
 import { readFolderConfig } from './folders'
-import { queueEmbeddingUpdate } from '../inbox/embedding-queue'
 import { createLogger } from '../lib/logger'
 import { getFileType, getExtension, isBinaryFileType, type FileType } from '@memry/shared/file-types'
 
@@ -352,9 +351,6 @@ export async function createNote(input: NoteCreateInput): Promise<Note> {
     note: noteToListItem(note),
     source: 'internal'
   })
-
-  // Queue embedding update (batched for performance)
-  queueEmbeddingUpdate(note.id)
 
   return note
 }
@@ -680,11 +676,6 @@ export async function updateNote(input: NoteUpdateInput): Promise<Note> {
     BrowserWindow.getAllWindows().forEach((win) => {
       win.webContents.send('notes:tags-changed')
     })
-  }
-
-  // Queue embedding update if content changed (batched for performance)
-  if (input.content !== undefined) {
-    queueEmbeddingUpdate(input.id)
   }
 
   return note

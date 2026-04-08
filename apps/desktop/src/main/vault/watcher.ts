@@ -30,7 +30,6 @@ import {
   clearAllPendingDeletes,
   processRename
 } from './rename-tracker'
-import { queueEmbeddingUpdate } from '../inbox/embedding-queue'
 import { isSupportedPath, getFileType, getMimeType, getExtension } from '@memry/shared/file-types'
 import { createLogger } from '../lib/logger'
 import { isWritebackIgnored, wasRecentNetworkUpdate } from '../sync/crdt-writeback'
@@ -445,9 +444,6 @@ export class VaultWatcher {
       source: 'external'
     })
 
-    // Queue embedding update for AI suggestions (batched for performance)
-    queueEmbeddingUpdate(parsed.frontmatter.id)
-
     // Also emit journal event if this is a journal entry
     if (isJournalPath(relativePath, config.journalFolder)) {
       const journalDate = extractJournalDate(relativePath)
@@ -618,9 +614,6 @@ export class VaultWatcher {
       },
       source: 'external'
     })
-
-    queueEmbeddingUpdate(cached.id)
-
     feedExternalEditToCrdt(cached.id, parsed.content).catch((err) => {
       logger.warn('Failed to feed external edit to CRDT', { noteId: cached.id, error: err })
     })
