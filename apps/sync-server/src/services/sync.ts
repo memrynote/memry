@@ -2,7 +2,9 @@ import { CRYPTO_VERSION, ED25519_PARAMS, XCHACHA20_PARAMS } from '@memry/contrac
 import type {
   ChangesResponse,
   EncryptedItemPayload,
+  PullItemResponse,
   PushItemInput,
+  PushResponse,
   SyncItemRef,
   SyncManifest,
   SyncStatus,
@@ -14,6 +16,7 @@ import { AppError, ErrorCodes } from '../lib/errors'
 import { generateBlobKey, getBlob, putBlob } from './blob'
 import { getNextCursor } from './cursor'
 import { getDevice } from './device'
+import { checkQuota } from './quota'
 import { getUserById } from './user'
 
 const MAX_ENCRYPTED_DATA_BYTES = 5 * 1024 * 1024
@@ -26,6 +29,32 @@ interface ExistingSyncItemRow {
   size_bytes?: number | null
   created_at?: number | null
   createdAt?: number | null
+}
+
+interface StoredSyncItemPullRow {
+  item_id: string
+  item_type: string
+  blob_key: string
+  crypto_version: number
+  operation: string
+  signer_device_id: string | null
+  signature: string | null
+  state_vector: string | null
+  clock: string | null
+  deleted_at: number | null
+  server_cursor: number
+}
+
+export interface RecordPushBatchOutcome {
+  id: string
+  type: PushItemInput['type']
+  accepted: boolean
+  reason?: string
+  serverCursor?: number
+}
+
+export interface RecordPushBatchResult extends PushResponse {
+  outcomes: RecordPushBatchOutcome[]
 }
 
 export const validateEncryptedFields = (item: PushItemInput): void => {
@@ -154,6 +183,118 @@ export const serializePayload = (item: PushItemInput): string => {
     keyNonce: item.keyNonce
   }
   return JSON.stringify(payload, Object.keys(payload).sort())
+}
+
+const estimatePushBatchBytes = (items: PushItemInput[]): number => JSON.stringify(items).length
+
+const parseStoredClock = (itemId: string, clock: string | null): VectorClock | undefined => {
+  if (!clock) {
+    return undefined
+  }
+
+  try {
+    return JSON.parse(clock) as VectorClock
+  } catch {
+    throw new AppError(ErrorCodes.INTERNAL_ERROR, `Corrupt clock payload for item ${itemId}`, 500)
+  }
+}
+
+const readEncryptedPayload = async (
+  storage: R2Bucket,
+  blobKey: string,
+  userId: string,
+  itemId: string
+): Promise<EncryptedItemPayload> => {
+  const blob = await getBlob(storage, blobKey, userId)
+  if (!blob) {
+    throw new AppError(
+      ErrorCodes.STORAGE_BLOB_NOT_FOUND,
+      `Blob missing for item ${itemId}`,
+      404
+    )
+  }
+
+  try {
+    const text = await new Response(blob.body).text()
+    return JSON.parse(text) as EncryptedItemPayload
+  } catch {
+    throw new AppError(ErrorCodes.INTERNAL_ERROR, `Corrupt blob payload for item ${itemId}`, 500)
+  }
+}
+
+const toPullItemResponse = async (
+  storage: R2Bucket,
+  userId: string,
+  row: StoredSyncItemPullRow
+): Promise<PullItemResponse> => {
+  const payload = await readEncryptedPayload(storage, row.blob_key, userId, row.item_id)
+
+  if (!row.signer_device_id || !row.signature) {
+    throw new AppError(
+      ErrorCodes.INTERNAL_ERROR,
+      `Sync item ${row.item_id} missing signer metadata`,
+      500
+    )
+  }
+
+  const parsedClock = parseStoredClock(row.item_id, row.clock)
+
+  return {
+    id: row.item_id,
+    type: row.item_type as PullItemResponse['type'],
+    operation: row.operation as PullItemResponse['operation'],
+    cryptoVersion: row.crypto_version,
+    signature: row.signature,
+    signerDeviceId: row.signer_device_id,
+    ...(row.deleted_at ? { deletedAt: row.deleted_at } : {}),
+    ...(parsedClock ? { clock: parsedClock } : {}),
+    ...(row.state_vector ? { stateVector: row.state_vector } : {}),
+    blob: payload
+  }
+}
+
+export const processRecordPushBatch = async (
+  db: D1Database,
+  storage: R2Bucket,
+  userId: string,
+  deviceId: string,
+  items: PushItemInput[]
+): Promise<RecordPushBatchResult> => {
+  await checkQuota(db, userId, estimatePushBatchBytes(items))
+
+  const accepted: string[] = []
+  const rejected: Array<{ id: string; reason: string }> = []
+  const outcomes: RecordPushBatchOutcome[] = []
+  let maxCursor = 0
+
+  for (const item of items) {
+    const result = await processPushItem(db, storage, userId, deviceId, item)
+    outcomes.push({
+      id: item.id,
+      type: item.type,
+      accepted: result.accepted,
+      reason: result.reason,
+      serverCursor: result.serverCursor
+    })
+
+    if (result.accepted) {
+      accepted.push(item.id)
+      if (result.serverCursor && result.serverCursor > maxCursor) {
+        maxCursor = result.serverCursor
+      }
+      continue
+    }
+
+    rejected.push({ id: item.id, reason: result.reason ?? 'UNKNOWN' })
+  }
+
+  return {
+    accepted,
+    rejected,
+    serverTime: Math.floor(Date.now() / 1000),
+    maxCursor,
+    outcomes
+  }
 }
 
 export const processPushItem = async (
@@ -416,39 +557,14 @@ export const pullItems = async (
   storage: R2Bucket,
   userId: string,
   itemIds: string[]
-): Promise<
-  Array<{
-    id: string
-    type: string
-    operation: string
-    cryptoVersion: number
-    signature: string
-    signerDeviceId: string
-    deletedAt?: number
-    clock?: VectorClock
-    stateVector?: string
-    blob: EncryptedItemPayload
-  }>
-> => {
+): Promise<PullItemResponse[]> => {
   if (itemIds.length === 0) {
     return []
   }
 
   const BATCH_SIZE = D1_MAX_BIND_PARAMS - 1
 
-  const allDbRows: Array<{
-    item_id: string
-    item_type: string
-    blob_key: string
-    crypto_version: number
-    operation: string
-    signer_device_id: string | null
-    signature: string | null
-    state_vector: string | null
-    clock: string | null
-    deleted_at: number | null
-    server_cursor: number
-  }> = []
+  const allDbRows: StoredSyncItemPullRow[] = []
 
   for (let i = 0; i < itemIds.length; i += BATCH_SIZE) {
     const batch = itemIds.slice(i, i + BATCH_SIZE)
@@ -462,92 +578,16 @@ export const pullItems = async (
          ORDER BY server_cursor ASC`
       )
       .bind(userId, ...batch)
-      .all<{
-        item_id: string
-        item_type: string
-        blob_key: string
-        crypto_version: number
-        operation: string
-        signer_device_id: string | null
-        signature: string | null
-        state_vector: string | null
-        clock: string | null
-        deleted_at: number | null
-        server_cursor: number
-      }>()
+      .all<StoredSyncItemPullRow>()
     allDbRows.push(...(rows.results ?? []))
   }
 
   allDbRows.sort((a, b) => a.server_cursor - b.server_cursor)
 
-  const results: Array<{
-    id: string
-    type: string
-    operation: string
-    cryptoVersion: number
-    signature: string
-    signerDeviceId: string
-    deletedAt?: number
-    clock?: VectorClock
-    stateVector?: string
-    blob: EncryptedItemPayload
-  }> = []
+  const results: PullItemResponse[] = []
 
   for (const row of allDbRows) {
-    const blob = await getBlob(storage, row.blob_key, userId)
-    if (!blob) {
-      throw new AppError(
-        ErrorCodes.STORAGE_BLOB_NOT_FOUND,
-        `Blob missing for item ${row.item_id}`,
-        404
-      )
-    }
-
-    let payload: EncryptedItemPayload
-    try {
-      const text = await new Response(blob.body).text()
-      payload = JSON.parse(text) as EncryptedItemPayload
-    } catch {
-      throw new AppError(
-        ErrorCodes.INTERNAL_ERROR,
-        `Corrupt blob payload for item ${row.item_id}`,
-        500
-      )
-    }
-
-    if (!row.signer_device_id || !row.signature) {
-      throw new AppError(
-        ErrorCodes.INTERNAL_ERROR,
-        `Sync item ${row.item_id} missing signer metadata`,
-        500
-      )
-    }
-
-    let parsedClock: VectorClock | undefined
-    if (row.clock) {
-      try {
-        parsedClock = JSON.parse(row.clock) as VectorClock
-      } catch {
-        throw new AppError(
-          ErrorCodes.INTERNAL_ERROR,
-          `Corrupt clock payload for item ${row.item_id}`,
-          500
-        )
-      }
-    }
-
-    results.push({
-      id: row.item_id,
-      type: row.item_type,
-      operation: row.operation,
-      cryptoVersion: row.crypto_version,
-      signature: row.signature,
-      signerDeviceId: row.signer_device_id,
-      ...(row.deleted_at ? { deletedAt: row.deleted_at } : {}),
-      ...(parsedClock ? { clock: parsedClock } : {}),
-      ...(row.state_vector ? { stateVector: row.state_vector } : {}),
-      blob: payload
-    })
+    results.push(await toPullItemResponse(storage, userId, row))
   }
 
   return results
@@ -584,18 +624,7 @@ export const getItem = async (
     throw new AppError(ErrorCodes.SYNC_ITEM_NOT_FOUND, 'Sync item not found', 404)
   }
 
-  const blob = await getBlob(storage, row.blob_key, userId)
-  if (!blob) {
-    throw new AppError(ErrorCodes.STORAGE_BLOB_NOT_FOUND, 'Item blob not found in storage', 404)
-  }
-
-  let payload: EncryptedItemPayload
-  try {
-    const text = await new Response(blob.body).text()
-    payload = JSON.parse(text) as EncryptedItemPayload
-  } catch {
-    throw new AppError(ErrorCodes.INTERNAL_ERROR, `Corrupt blob payload for item ${itemId}`, 500)
-  }
+  const payload = await readEncryptedPayload(storage, row.blob_key, userId, itemId)
 
   return {
     itemId: row.item_id,
