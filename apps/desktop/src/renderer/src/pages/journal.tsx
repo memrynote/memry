@@ -283,6 +283,31 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
   }, [yearStatsData, viewState, dateParts.year, heatmapData])
 
   const journalScrollRef = useRef<HTMLDivElement>(null)
+  const [marqueeZoneEl, setMarqueeZoneEl] = useState<HTMLDivElement | null>(null)
+
+  // Click anywhere in the marquee zone (full scroll area, minus metadata
+  // and editable text) → focus editor at end. Attached imperatively so it
+  // coexists with the marquee hook's own mousedown listener.
+  useEffect(() => {
+    if (!marqueeZoneEl) return
+    const handler = (event: MouseEvent): void => {
+      if (event.button !== 0) return
+      const target = event.target as HTMLElement | null
+      if (!target) return
+      if (target.closest('[data-marquee-ignore]')) return
+      if (target.closest('button, a, input, textarea, select, [role="button"]')) return
+      if (
+        target.closest('[contenteditable="true"]')?.contains(target) &&
+        target.closest('.bn-block-content')
+      )
+        return
+      event.preventDefault()
+      focusAtEndRef.current?.()
+    }
+    marqueeZoneEl.addEventListener('mousedown', handler)
+    return () => marqueeZoneEl.removeEventListener('mousedown', handler)
+  }, [marqueeZoneEl])
+
   const { activeHeadingId } = useActiveHeading({
     headings,
     offset: 120,
@@ -681,144 +706,139 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
             />
           </div>
 
-          <div ref={journalScrollRef} className="flex-1 overflow-y-auto">
+          <div ref={journalScrollRef} className="flex-1 overflow-y-auto overflow-x-visible">
             <div
-              className="mx-auto w-full px-8 lg:px-12 min-h-full flex flex-col pt-6 pb-10 lg:pb-16 transition-[max-width] duration-300 ease-in-out"
-              style={{ maxWidth: isFullWidth ? '100%' : '64rem' }}
+              ref={setMarqueeZoneEl}
+              className="marquee-zone relative min-h-full w-full flex flex-col"
             >
               <div
-                className="flex flex-col flex-1 mx-auto w-full transition-[max-width] duration-300 ease-in-out"
-                style={{ maxWidth: journalContentWidth ?? '100%' }}
+                className="mx-auto w-full px-8 lg:px-12 min-h-full flex flex-col pt-6 pb-10 lg:pb-16 transition-[max-width] duration-300 ease-in-out"
+                style={{ maxWidth: isFullWidth ? '100%' : '64rem' }}
               >
-                {entryError && (
-                  <div className="mb-4 px-4 py-3 rounded-md bg-destructive/10 border border-destructive/20 text-destructive text-sm">
-                    <span className="font-medium">Error:</span> {entryError}
-                  </div>
-                )}
+                <div
+                  className="flex flex-col flex-1 mx-auto w-full transition-[max-width] duration-300 ease-in-out"
+                  style={{ maxWidth: journalContentWidth ?? '100%' }}
+                >
+                  {entryError && (
+                    <div className="mb-4 px-4 py-3 rounded-md bg-destructive/10 border border-destructive/20 text-destructive text-sm">
+                      <span className="font-medium">Error:</span> {entryError}
+                    </div>
+                  )}
 
-                {viewState.type === 'day' && (
-                  <>
-                    <div className="group/metadata flex flex-col pb-[15px]">
-                      <JournalDateDisplay viewState={viewState} dateParts={dateParts} />
-                      <TagsRow
-                        tags={journalTags}
-                        availableTags={availableTags}
-                        recentTags={recentTags}
-                        onAddTag={handleAddTag}
-                        onCreateTag={handleCreateTag}
-                        onRemoveTag={handleRemoveTag}
-                        className="mb-0"
-                        hideWhenEmpty
-                      />
-                      {properties.length > 0 && (
-                        <InfoSection
-                          properties={properties}
-                          newlyAddedPropertyId={newlyAddedPropertyId}
-                          isExpanded
-                          variant="inline"
-                          onToggleExpand={() => {}}
-                          onPropertyChange={handlePropertyChange}
-                          onPropertyNameChange={handlePropertyNameChange}
-                          onPropertyOrderChange={handlePropertyOrderChange}
+                  {viewState.type === 'day' && (
+                    <>
+                      <div className="group/metadata flex flex-col pb-[15px]" data-marquee-ignore>
+                        <JournalDateDisplay viewState={viewState} dateParts={dateParts} />
+                        <TagsRow
+                          tags={journalTags}
+                          availableTags={availableTags}
+                          recentTags={recentTags}
+                          onAddTag={handleAddTag}
+                          onCreateTag={handleCreateTag}
+                          onRemoveTag={handleRemoveTag}
+                          className="mb-0"
+                          hideWhenEmpty
+                        />
+                        {properties.length > 0 && (
+                          <InfoSection
+                            properties={properties}
+                            newlyAddedPropertyId={newlyAddedPropertyId}
+                            isExpanded
+                            variant="inline"
+                            onToggleExpand={() => {}}
+                            onPropertyChange={handlePropertyChange}
+                            onPropertyNameChange={handlePropertyNameChange}
+                            onPropertyOrderChange={handlePropertyOrderChange}
+                            onAddProperty={handleAddProperty}
+                            onDeleteProperty={handleDeleteProperty}
+                            hideAddButton
+                          />
+                        )}
+                        <GhostAffordanceRow
+                          availableTags={availableTags}
+                          recentTags={recentTags}
+                          currentTagIds={journalTags.map((t) => t.id)}
+                          onAddTag={handleAddTag}
+                          onCreateTag={handleCreateTag}
                           onAddProperty={handleAddProperty}
-                          onDeleteProperty={handleDeleteProperty}
-                          hideAddButton
-                        />
-                      )}
-                      <GhostAffordanceRow
-                        availableTags={availableTags}
-                        recentTags={recentTags}
-                        currentTagIds={journalTags.map((t) => t.id)}
-                        onAddTag={handleAddTag}
-                        onCreateTag={handleCreateTag}
-                        onAddProperty={handleAddProperty}
-                        hasTags={journalTags.length > 0}
-                      />
-                    </div>
-
-                    <div
-                      ref={editorContainerRef}
-                      role="presentation"
-                      className="editor-click-area flex-1 pb-[30vh] relative overflow-visible"
-                      style={{ wordBreak: 'break-word', overflowWrap: 'break-word' }}
-                      onMouseDown={(e) => {
-                        const target = e.target as HTMLElement
-                        if (
-                          target.closest('[contenteditable="true"]')?.contains(target) &&
-                          target.closest('.bn-block-content')
-                        )
-                          return
-                        if (target.closest('button, a, input')) return
-                        e.preventDefault()
-                        focusAtEndRef.current?.()
-                      }}
-                    >
-                      {showEditorLoading ? (
-                        <div className="flex items-center justify-center h-[300px]">
-                          <Loader2 className="size-6 animate-spin text-muted-foreground" />
-                        </div>
-                      ) : (
-                        <ContentArea
-                          key={editorState.key}
-                          noteId={entry?.id}
-                          initialContent={editorState.content}
-                          contentType="markdown"
-                          placeholder={
-                            selectedDate > today
-                              ? 'What are you planning...'
-                              : isToday
-                                ? "What's on your mind today..."
-                                : 'Reflect on this day...'
-                          }
-                          stickyToolbar={editorSettings.toolbarMode === 'sticky'}
-                          onContentChange={handleContentChange}
-                          onMarkdownChange={handleMarkdownChange}
-                          onHeadingsChange={handleHeadingsChange}
-                          onLinkClick={handleLinkClick}
-                          onInternalLinkClick={handleInternalLinkClick}
-                          focusAtEndRef={focusAtEndRef}
-                        />
-                      )}
-                    </div>
-
-                    {entry && backlinks.length > 0 && (
-                      <div className="mt-6">
-                        <BacklinksSection
-                          backlinks={backlinks}
-                          isLoading={backlinksLoading}
-                          initialCount={5}
-                          onBacklinkClick={handleBacklinkClick}
+                          hasTags={journalTags.length > 0}
                         />
                       </div>
-                    )}
-                  </>
-                )}
 
-                {viewState.type === 'month' && (
-                  <>
-                    <JournalDateDisplay viewState={viewState} dateParts={null} className="mb-6" />
-                    <JournalMonthView
-                      year={viewState.year}
-                      month={viewState.month}
-                      entries={monthEntries}
-                      heatmapData={heatmapData}
-                      onDayClick={navigateToDay}
-                      className="flex-1"
-                    />
-                  </>
-                )}
+                      <div
+                        ref={editorContainerRef}
+                        role="presentation"
+                        className="editor-click-area flex-1 pb-[30vh] relative overflow-visible"
+                        style={{ wordBreak: 'break-word', overflowWrap: 'break-word' }}
+                      >
+                        {showEditorLoading ? (
+                          <div className="flex items-center justify-center h-[300px]">
+                            <Loader2 className="size-6 animate-spin text-muted-foreground" />
+                          </div>
+                        ) : (
+                          <ContentArea
+                            key={editorState.key}
+                            noteId={entry?.id}
+                            initialContent={editorState.content}
+                            contentType="markdown"
+                            placeholder={
+                              selectedDate > today
+                                ? 'What are you planning...'
+                                : isToday
+                                  ? "What's on your mind today..."
+                                  : 'Reflect on this day...'
+                            }
+                            stickyToolbar={editorSettings.toolbarMode === 'sticky'}
+                            onContentChange={handleContentChange}
+                            onMarkdownChange={handleMarkdownChange}
+                            onHeadingsChange={handleHeadingsChange}
+                            onLinkClick={handleLinkClick}
+                            onInternalLinkClick={handleInternalLinkClick}
+                            focusAtEndRef={focusAtEndRef}
+                            marqueeZoneEl={marqueeZoneEl}
+                          />
+                        )}
+                      </div>
 
-                {viewState.type === 'year' && (
-                  <>
-                    <JournalDateDisplay viewState={viewState} dateParts={null} className="mb-6" />
-                    <JournalYearView
-                      year={viewState.year}
-                      monthStats={monthStats}
-                      onMonthClick={(month) => navigateToMonth(viewState.year, month)}
-                      className="flex-1"
-                    />
-                  </>
-                )}
+                      {entry && backlinks.length > 0 && (
+                        <div className="mt-6" data-marquee-ignore>
+                          <BacklinksSection
+                            backlinks={backlinks}
+                            isLoading={backlinksLoading}
+                            initialCount={5}
+                            onBacklinkClick={handleBacklinkClick}
+                          />
+                        </div>
+                      )}
+                    </>
+                  )}
+
+                  {viewState.type === 'month' && (
+                    <div className="flex flex-col flex-1" data-marquee-ignore>
+                      <JournalDateDisplay viewState={viewState} dateParts={null} className="mb-6" />
+                      <JournalMonthView
+                        year={viewState.year}
+                        month={viewState.month}
+                        entries={monthEntries}
+                        heatmapData={heatmapData}
+                        onDayClick={navigateToDay}
+                        className="flex-1"
+                      />
+                    </div>
+                  )}
+
+                  {viewState.type === 'year' && (
+                    <div className="flex flex-col flex-1" data-marquee-ignore>
+                      <JournalDateDisplay viewState={viewState} dateParts={null} className="mb-6" />
+                      <JournalYearView
+                        year={viewState.year}
+                        monthStats={monthStats}
+                        onMonthClick={(month) => navigateToMonth(viewState.year, month)}
+                        className="flex-1"
+                      />
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
 
