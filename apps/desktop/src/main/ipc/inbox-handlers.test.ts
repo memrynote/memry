@@ -147,6 +147,10 @@ vi.mock('../sync/offline-clock', () => ({
   incrementInboxClockOffline: vi.fn()
 }))
 
+vi.mock('../projections', () => ({
+  publishProjectionEvent: vi.fn()
+}))
+
 vi.mock('../lib/logger', () => ({
   createLogger: () => ({
     info: vi.fn(),
@@ -166,6 +170,7 @@ import * as captureModule from '../inbox/capture'
 import * as inboxJobsModule from '../inbox/jobs'
 import * as statsModule from '../inbox/stats'
 import * as socialModule from '../inbox/social'
+import { publishProjectionEvent } from '../projections'
 
 describe('inbox-handlers', () => {
   let mockDb: {
@@ -522,7 +527,11 @@ describe('inbox-handlers', () => {
 
       expect(result.success).toBe(true)
       expect(mockDb.update).toHaveBeenCalled()
-      expect(statsModule.incrementArchivedCount).toHaveBeenCalled()
+      expect(publishProjectionEvent).toHaveBeenCalledWith({
+        type: 'inbox.upserted',
+        itemId: 'item1'
+      })
+      expect(statsModule.incrementArchivedCount).not.toHaveBeenCalled()
     })
 
     it('should return error for non-existent item', async () => {
