@@ -1,38 +1,32 @@
+import { z } from 'zod'
 import { TasksChannels } from '@memry/contracts/ipc-channels'
+import {
+  ProjectCreateSchema,
+  ProjectUpdateSchema,
+  StatusCreateSchema,
+  TaskCreateSchema,
+  TaskListSchema,
+  TaskUpdateSchema
+} from '@memry/contracts/tasks-api'
 import type {
   Project,
-  ProjectCreateInput,
-  ProjectUpdateInput,
   ProjectWithStats,
   RepeatConfig,
   Status,
-  StatusCreateInput,
-  TaskCreateInput,
   TaskCreateResponse,
-  TaskListInput,
-  TaskListResponse,
   TaskMoveInput,
   TaskStats,
-  TaskUpdateInput
 } from '@memry/contracts/tasks-api'
-import { defineDomain, defineEvent, defineMethod, type RpcClient, type RpcSubscriptions } from './schema'
+import { defineDomain, defineEvent, defineMethod, type RpcClient, type RpcSubscriptions } from './schema.ts'
 
-export type {
-  Project,
-  ProjectCreateInput,
-  ProjectUpdateInput,
-  ProjectWithStats,
-  RepeatConfig,
-  Status,
-  StatusCreateInput,
-  TaskCreateInput,
-  TaskCreateResponse,
-  TaskListInput as TaskListOptions,
-  TaskListResponse,
-  TaskMoveInput,
-  TaskStats,
-  TaskUpdateInput
-} from '@memry/contracts/tasks-api'
+export type ProjectCreateInput = z.input<typeof ProjectCreateSchema>
+export type ProjectUpdateInput = z.input<typeof ProjectUpdateSchema>
+export type StatusCreateInput = z.input<typeof StatusCreateSchema>
+export type TaskCreateInput = z.input<typeof TaskCreateSchema>
+export type TaskUpdateInput = z.input<typeof TaskUpdateSchema>
+export type TaskListOptions = z.input<typeof TaskListSchema>
+
+export type { Project, ProjectWithStats, RepeatConfig, Status, TaskCreateResponse, TaskMoveInput, TaskStats }
 
 export interface Task {
   id: string
@@ -60,12 +54,15 @@ export interface Task {
   completedSubtaskCount?: number
 }
 
-export interface TaskListItem extends Task {
-  tags: string[]
-  hasSubtasks: boolean
-  subtaskCount: number
-  completedSubtaskCount: number
+export type TaskListItem = Task
+
+export interface TaskViewResponse {
+  tasks: Task[]
+  total: number
+  hasMore: boolean
 }
+
+export type TaskListResponse = TaskViewResponse
 
 export interface ProjectWithStatuses extends Project {
   statuses: Status[]
@@ -137,7 +134,7 @@ export const tasksRpc = defineDomain({
       channel: TasksChannels.invoke.DELETE,
       params: ['id']
     }),
-    list: defineMethod<(options?: TaskListInput) => Promise<TaskListResponse>>({
+    list: defineMethod<(options?: TaskListOptions) => Promise<TaskListResponse>>({
       channel: TasksChannels.invoke.LIST,
       params: ['options'],
       invokeArgs: ['options ?? {}']
@@ -260,15 +257,15 @@ export const tasksRpc = defineDomain({
     getStats: defineMethod<() => Promise<TaskStats>>({
       channel: TasksChannels.invoke.GET_STATS
     }),
-    getToday: defineMethod<() => Promise<TaskListResponse>>({
+    getToday: defineMethod<() => Promise<TaskViewResponse>>({
       channel: TasksChannels.invoke.GET_TODAY
     }),
-    getUpcoming: defineMethod<(days?: number) => Promise<TaskListResponse>>({
+    getUpcoming: defineMethod<(days?: number) => Promise<TaskViewResponse>>({
       channel: TasksChannels.invoke.GET_UPCOMING,
       params: ['days'],
       invokeArgs: ['{ days: days ?? 7 }']
     }),
-    getOverdue: defineMethod<() => Promise<TaskListResponse>>({
+    getOverdue: defineMethod<() => Promise<TaskViewResponse>>({
       channel: TasksChannels.invoke.GET_OVERDUE
     }),
     getLinkedTasks: defineMethod<(noteId: string) => Promise<Task[]>>({

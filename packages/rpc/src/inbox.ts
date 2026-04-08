@@ -5,7 +5,7 @@ import {
   defineMethod,
   type RpcClient,
   type RpcSubscriptions
-} from './schema'
+} from './schema.ts'
 
 type InboxItemType =
   | 'link'

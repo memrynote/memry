@@ -12,6 +12,7 @@
   ],
   "exclude": ["**/*.test.ts", "**/*.test.tsx", "**/*.spec.ts"],
   "compilerOptions": {
+    "allowImportingTsExtensions": true,
     "composite": true,
     "jsx": "react-jsx",
     "noUnusedLocals": false,
@@ -27,6 +28,10 @@
       "@memry/rpc/*": ["../../packages/rpc/src/*"],
       "@memry/shared": ["../../packages/shared/src/index.ts"],
       "@memry/shared/*": ["../../packages/shared/src/*"],
+      "@main/database/queries/notes": ["./src/main/database/queries/notes/index.ts"],
+      "@main/database/queries/settings": ["./src/main/database/queries/settings.ts"],
+      "@main/database/queries/tasks": ["./src/main/database/queries/tasks.ts"],
+      "@main/*": ["./src/main/*"],
       "@renderer/*": ["./src/renderer/src/*"],
       "@/*": ["./src/renderer/src/*"],
       "@tests/*": ["./tests/*"]
