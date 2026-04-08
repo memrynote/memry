@@ -94,6 +94,13 @@ vi.mock('../inbox/transcription', () => ({
   retryTranscription: vi.fn()
 }))
 
+vi.mock('../inbox/jobs', () => ({
+  queueInboxMetadataJob: vi.fn(),
+  queueInboxTranscriptionJob: vi.fn(),
+  resumeInboxJobs: vi.fn(),
+  teardownInboxJobScheduler: vi.fn()
+}))
+
 vi.mock('../inbox/suggestions', () => ({
   getSuggestions: vi.fn(),
   trackSuggestionFeedback: vi.fn()

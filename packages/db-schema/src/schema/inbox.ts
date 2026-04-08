@@ -45,6 +45,31 @@ export const processingStatus = {
 export type ProcessingStatus = (typeof processingStatus)[keyof typeof processingStatus]
 
 /**
+ * Durable inbox job types for asynchronous enrichment work.
+ */
+export const inboxJobType = {
+  TRANSCRIPTION: 'transcription',
+  METADATA_SCRAPE: 'metadata-scrape',
+  DUPLICATE_DETECTION: 'duplicate-detection',
+  SUGGESTION_GENERATION: 'suggestion-generation',
+  THUMBNAIL_GENERATION: 'thumbnail-generation'
+} as const
+
+export type InboxJobType = (typeof inboxJobType)[keyof typeof inboxJobType]
+
+/**
+ * Durable inbox job lifecycle states.
+ */
+export const inboxJobStatus = {
+  PENDING: 'pending',
+  RUNNING: 'running',
+  COMPLETE: 'complete',
+  FAILED: 'failed'
+} as const
+
+export type InboxJobStatus = (typeof inboxJobStatus)[keyof typeof inboxJobStatus]
+
+/**
  * Filing action types
  */
 export const filingAction = {
@@ -240,6 +265,79 @@ export const inboxItemTags = sqliteTable(
 
 export type InboxItemTag = typeof inboxItemTags.$inferSelect
 export type NewInboxItemTag = typeof inboxItemTags.$inferInsert
+
+// ============================================================================
+// inbox_jobs Table
+// ============================================================================
+
+/**
+ * Durable background jobs for inbox enrichment work.
+ * Each item/type pair keeps one current job record that can be resumed after
+ * restart and retried safely.
+ */
+export const inboxJobs = sqliteTable(
+  'inbox_jobs',
+  {
+    /** Unique identifier */
+    id: text('id').primaryKey(),
+
+    /** Reference to inbox item */
+    itemId: text('item_id')
+      .notNull()
+      .references(() => inboxItems.id, { onDelete: 'cascade' }),
+
+    /** Job type */
+    type: text('type').notNull(),
+
+    /** Current lifecycle state */
+    status: text('status').notNull().default('pending'),
+
+    /** When the job should next run */
+    runAt: text('run_at')
+      .notNull()
+      .default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`),
+
+    /** Number of attempts already made */
+    attempts: integer('attempts').notNull().default(0),
+
+    /** Maximum attempts before terminal failure */
+    maxAttempts: integer('max_attempts').notNull().default(1),
+
+    /** Processor-owned payload */
+    payload: text('payload', { mode: 'json' }).$type<Record<string, unknown> | null>(),
+
+    /** Processor result summary */
+    result: text('result', { mode: 'json' }).$type<Record<string, unknown> | null>(),
+
+    /** Last processor error */
+    lastError: text('last_error'),
+
+    /** When processing started */
+    startedAt: text('started_at'),
+
+    /** When processing completed */
+    completedAt: text('completed_at'),
+
+    /** Creation timestamp */
+    createdAt: text('created_at')
+      .notNull()
+      .default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`),
+
+    /** Last update timestamp */
+    updatedAt: text('updated_at')
+      .notNull()
+      .default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`)
+  },
+  (table) => [
+    index('idx_inbox_jobs_item').on(table.itemId),
+    index('idx_inbox_jobs_status').on(table.status),
+    index('idx_inbox_jobs_run_at').on(table.runAt),
+    index('idx_inbox_jobs_item_type').on(table.itemId, table.type)
+  ]
+)
+
+export type InboxJob = typeof inboxJobs.$inferSelect
+export type NewInboxJob = typeof inboxJobs.$inferInsert
 
 // ============================================================================
 // filing_history Table
