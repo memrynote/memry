@@ -44,9 +44,22 @@ export function resetSettingsSyncManager(): void {
 export class SettingsSyncManager {
   private db: DrizzleDb
   private queue: SyncQueueManager
+
   constructor(deps: SettingsSyncDeps) {
     this.db = deps.db
     this.queue = deps.queue
+  }
+
+  enqueueCreate(_itemId = 'synced_settings'): void {
+    this.enqueueCurrentState()
+  }
+
+  enqueueUpdate(_itemId = 'synced_settings'): void {
+    this.enqueueCurrentState()
+  }
+
+  enqueueDelete(_itemId = 'synced_settings'): void {
+    // Settings currently sync as a singleton update payload only.
   }
 
   updateField(fieldPath: string, value: unknown, deviceId: string): void {
@@ -60,19 +73,7 @@ export class SettingsSyncManager {
 
     this.saveSettings(current)
     this.saveClocks(clocks)
-
-    try {
-      const payload = JSON.stringify(this.getPayload())
-      this.queue.enqueue({
-        type: 'settings',
-        itemId: 'synced_settings',
-        operation: 'update',
-        payload,
-        priority: 0
-      })
-    } catch (err) {
-      log.error('Failed to enqueue settings sync', err)
-    }
+    this.enqueueCurrentState()
   }
 
   mergeRemote(remote: SettingsSyncPayload): void {
@@ -186,5 +187,20 @@ export class SettingsSyncManager {
   private getMaxTick(clock: VectorClock): number {
     const ticks = Object.values(clock)
     return ticks.length > 0 ? Math.max(...ticks) : 0
+  }
+
+  private enqueueCurrentState(): void {
+    try {
+      const payload = JSON.stringify(this.getPayload())
+      this.queue.enqueue({
+        type: 'settings',
+        itemId: 'synced_settings',
+        operation: 'update',
+        payload,
+        priority: 0
+      })
+    } catch (err) {
+      log.error('Failed to enqueue settings sync', err)
+    }
   }
 }

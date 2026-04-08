@@ -67,6 +67,7 @@ export interface MainIpcInvokeHandlers {
   "inbox:file-all-stale": (...args: []) => Awaited<Promise<import("../../../../../packages/contracts/src/inbox-api").BulkResponse>>
   "inbox:get": (...args: [any]) => Awaited<Promise<import("../../../../../packages/contracts/src/inbox-api").InboxItem | null>>
   "inbox:get-filing-history": (...args: [any]) => Awaited<Promise<import("../../../../../packages/contracts/src/inbox-api").FilingHistoryResponse>>
+  "inbox:get-jobs": (...args: [any]) => Awaited<Promise<import("../../../../../packages/contracts/src/inbox-api").InboxJobsResponse>>
   "inbox:get-patterns": (...args: []) => Awaited<Promise<import("../../../../../packages/contracts/src/inbox-api").CapturePattern>>
   "inbox:get-snoozed": (...args: []) => Awaited<Promise<import("../inbox/snooze").SnoozedItem[]>>
   "inbox:get-stale-threshold": (...args: []) => Awaited<Promise<number>>

@@ -70,6 +70,15 @@ function emitTranscriptionEvent(
   })
 }
 
+function emitInboxUpdated(itemId: string, changes: Record<string, unknown>): void {
+  BrowserWindow.getAllWindows().forEach((win) => {
+    win.webContents.send(InboxChannels.events.UPDATED, {
+      id: itemId,
+      changes
+    })
+  })
+}
+
 /**
  * Get data database, throwing if not available
  */
@@ -113,6 +122,11 @@ function createFailureResult(
     .where(eq(inboxItems.id, itemId))
     .run()
 
+  emitInboxUpdated(itemId, {
+    transcriptionStatus: 'failed',
+    processingError: error
+  })
+
   emitTranscriptionEvent(InboxChannels.events.PROCESSING_ERROR, {
     id: itemId,
     error
@@ -152,6 +166,10 @@ export async function transcribeAudio(
     })
     .where(eq(inboxItems.id, itemId))
     .run()
+
+  emitInboxUpdated(itemId, {
+    transcriptionStatus: 'processing'
+  })
 
   try {
     const settings = getVoiceTranscriptionSettings()
@@ -245,6 +263,13 @@ export async function transcribeAudio(
       .where(eq(inboxItems.id, itemId))
       .run()
 
+    emitInboxUpdated(itemId, {
+      transcription,
+      transcriptionStatus: 'complete',
+      processingError: null,
+      ...(autoTitle ? { title: autoTitle } : {})
+    })
+
     // Emit success event
     emitTranscriptionEvent(InboxChannels.events.TRANSCRIPTION_COMPLETE, {
       id: itemId,
@@ -304,6 +329,11 @@ export async function retryTranscription(itemId: string): Promise<TranscriptionR
     })
     .where(eq(inboxItems.id, itemId))
     .run()
+
+  emitInboxUpdated(itemId, {
+    transcriptionStatus: 'pending',
+    processingError: null
+  })
 
   // Start transcription (async, don't await here for non-blocking behavior)
   // The caller can await if they want to wait for completion

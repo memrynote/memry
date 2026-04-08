@@ -707,6 +707,8 @@ export const InboxChannels = {
     // Stats
     /** Get inbox statistics */
     GET_STATS: 'inbox:get-stats',
+    /** List durable inbox jobs */
+    GET_JOBS: 'inbox:get-jobs',
     /** Get capture patterns/insights */
     GET_PATTERNS: 'inbox:get-patterns',
 

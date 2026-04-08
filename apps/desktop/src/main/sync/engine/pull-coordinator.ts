@@ -10,7 +10,7 @@ import type { ChangesResponse, PullItemResponse, SyncItemType } from '@memry/con
 import { PullResponseSchema } from '@memry/contracts/sync-api'
 import { secureCleanup } from '../../crypto/index'
 import { decryptPullBatch } from '../sync-crypto-batch'
-import { getHandler } from '../item-handlers'
+import { getRemoteSyncAdapter } from '../item-handlers'
 import { withRetry } from '../retry'
 import { postToServer, getFromServer, RateLimitError } from '../http-client'
 import { classifyError } from '../sync-errors'
@@ -273,15 +273,16 @@ export class PullCoordinator {
     }
 
     if (runState.pulledCount > 0) {
-      try {
-        const { PropertyDefinitionsService } = require('../../vault/property-definitions')
-        const service = PropertyDefinitionsService.get()
-        service.reload().catch((err: unknown) => {
-          log.warn('Failed to reload property definitions after pull:', err)
+      void import('../../vault/property-definitions')
+        .then(({ PropertyDefinitionsService }) => {
+          const service = PropertyDefinitionsService.get()
+          service.reload().catch((err: unknown) => {
+            log.warn('Failed to reload property definitions after pull:', err)
+          })
         })
-      } catch {
-        // Service not initialized yet — skip
-      }
+        .catch(() => {
+          // Service not initialized yet — skip
+        })
     }
   }
 
@@ -584,9 +585,10 @@ export class PullCoordinator {
 
   private fetchLocalItem(itemId: string, type: string): Record<string, unknown> {
     try {
-      const handler = getHandler(type as SyncItemType)
-      if (!handler) return {}
-      return handler.fetchLocal(this.ctx.deps.db, itemId) ?? {}
+      const adapter =
+        this.ctx.deps.adapters?.getRemote(type as SyncItemType) ??
+        getRemoteSyncAdapter(type as SyncItemType)
+      return adapter?.fetchLocal?.(this.ctx.deps.db, itemId) ?? {}
     } catch {
       log.warn('Failed to fetch local item for conflict', { itemId, type })
       return {}

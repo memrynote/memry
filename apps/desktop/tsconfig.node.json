@@ -8,6 +8,7 @@
     "../../packages/domain-tasks/src/**/*",
     "../../packages/db-schema/src/**/*",
     "../../packages/storage-data/src/**/*",
+    "../../packages/sync-core/src/**/*",
     "../../packages/shared/src/**/*"
   ],
   "exclude": ["**/*.test.ts", "**/*.test.tsx", "**/*.spec.ts"],
@@ -24,6 +25,8 @@
       "@memry/db-schema/*": ["../../packages/db-schema/src/*"],
       "@memry/storage-data": ["../../packages/storage-data/src/index.ts"],
       "@memry/storage-data/*": ["../../packages/storage-data/src/*"],
+      "@memry/sync-core": ["../../packages/sync-core/src/index.ts"],
+      "@memry/sync-core/*": ["../../packages/sync-core/src/*"],
       "@memry/shared": ["../../packages/shared/src/index.ts"],
       "@memry/shared/*": ["../../packages/shared/src/*"],
       "@main/*": ["./src/main/*"],

@@ -109,6 +109,9 @@ importers:
       '@memry/shared':
         specifier: workspace:*
         version: link:../../packages/shared
+      '@memry/sync-core':
+        specifier: workspace:*
+        version: link:../../packages/sync-core
       '@radix-ui/react-accordion':
         specifier: ^1.2.12
         version: 1.2.12(@types/react-dom@19.2.3(@types/react@19.2.13))(@types/react@19.2.13)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
@@ -658,6 +661,19 @@ importers:
         version: link:../typescript-config
 
   packages/shared:
+    devDependencies:
+      '@memry/typescript-config':
+        specifier: workspace:*
+        version: link:../typescript-config
+
+  packages/sync-core:
+    dependencies:
+      '@memry/contracts':
+        specifier: workspace:*
+        version: link:../contracts
+      zod:
+        specifier: ^4.3.4
+        version: 4.3.6
     devDependencies:
       '@memry/typescript-config':
         specifier: workspace:*
