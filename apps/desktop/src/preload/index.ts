@@ -4,15 +4,12 @@ import { electronAPI } from '@electron-toolkit/preload'
 // Import channel constants from shared (single source of truth)
 import {
   VaultChannels,
-  NotesChannels,
-  TasksChannels,
   SavedFiltersChannels,
   TemplatesChannels,
   JournalChannels,
   SettingsChannels,
   BookmarksChannels,
   TagsChannels,
-  InboxChannels,
   ReminderChannels,
   FolderViewChannels,
   PropertiesChannels,
@@ -21,6 +18,7 @@ import {
   AccountChannels
 } from '@memry/contracts/ipc-channels'
 import { SYNC_CHANNELS, SYNC_EVENTS } from '@memry/contracts/ipc-sync'
+import { createGeneratedRpcApi } from './generated-rpc'
 import type {
   SyncStatusChangedEvent,
   ItemSyncedEvent,
@@ -55,6 +53,16 @@ function invoke<C extends MainIpcInvokeChannel>(
   ...args: MainIpcInvokeArgs<C>
 ): Promise<MainIpcInvokeResult<C>> {
   return ipcRenderer.invoke(channel, ...args) as Promise<MainIpcInvokeResult<C>>
+}
+
+function invokeSync(channel: string): unknown {
+  return ipcRenderer.sendSync(channel)
+}
+
+function subscribe<T>(channel: string, callback: (payload: T) => void): () => void {
+  const handler = (_event: Electron.IpcRendererEvent, payload: T): void => callback(payload)
+  ipcRenderer.on(channel, handler)
+  return () => ipcRenderer.removeListener(channel, handler)
 }
 
 type StartupTheme = 'light' | 'dark' | 'white' | 'system'
@@ -138,6 +146,12 @@ if (typeof globalThis.window !== 'undefined') {
   applyStartupTheme(startupTheme)
 }
 
+const generatedRpcApi = createGeneratedRpcApi({
+  invoke,
+  invokeSync,
+  subscribe
+})
+
 // Custom APIs for renderer
 export const api = {
   // Window controls for custom traffic lights
@@ -148,6 +162,13 @@ export const api = {
   // File drop utility — resolves real filesystem paths from dropped File objects
   // (File.path is empty with contextIsolation; webUtils.getPathForFile is the replacement)
   getFileDropPaths: (files: File[]): string[] => files.map((f) => webUtils.getPathForFile(f)),
+
+  // Generated domain RPC APIs
+  ...generatedRpcApi,
+  settings: {
+    ...generatedRpcApi.settings,
+    getStartupThemeSync
+  },
 
   // Vault API
   vault: {
@@ -163,178 +184,6 @@ export const api = {
     remove: (vaultPath: string) => invoke(VaultChannels.invoke.REMOVE, vaultPath),
     reindex: () => invoke(VaultChannels.invoke.REINDEX),
     reveal: () => invoke(VaultChannels.invoke.REVEAL)
-  },
-
-  // Notes API
-  notes: {
-    create: (input: { title: string; content?: string; folder?: string; tags?: string[] }) =>
-      invoke(NotesChannels.invoke.CREATE, input),
-    get: (id: string) => invoke(NotesChannels.invoke.GET, id),
-    getByPath: (path: string) => invoke(NotesChannels.invoke.GET_BY_PATH, path),
-    getFile: (id: string) => invoke(NotesChannels.invoke.GET_FILE, id),
-    resolveByTitle: (title: string) => invoke(NotesChannels.invoke.RESOLVE_BY_TITLE, title),
-    previewByTitle: (title: string) => invoke(NotesChannels.invoke.PREVIEW_BY_TITLE, title),
-    update: (input: {
-      id: string
-      title?: string
-      content?: string
-      tags?: string[]
-      frontmatter?: Record<string, unknown>
-      emoji?: string | null // T028: Emoji support
-    }) => invoke(NotesChannels.invoke.UPDATE, input),
-    rename: (id: string, newTitle: string) => invoke(NotesChannels.invoke.RENAME, { id, newTitle }),
-    move: (id: string, newFolder: string) => invoke(NotesChannels.invoke.MOVE, { id, newFolder }),
-    delete: (id: string) => invoke(NotesChannels.invoke.DELETE, id),
-    list: (options?: {
-      folder?: string
-      tags?: string[]
-      sortBy?: 'modified' | 'created' | 'title'
-      sortOrder?: 'asc' | 'desc'
-      limit?: number
-      offset?: number
-    }) => invoke(NotesChannels.invoke.LIST, options ?? {}),
-    getTags: () => invoke(NotesChannels.invoke.GET_TAGS),
-    getLinks: (id: string) => invoke(NotesChannels.invoke.GET_LINKS, id),
-    getFolders: () => invoke(NotesChannels.invoke.GET_FOLDERS),
-    createFolder: (path: string) => invoke(NotesChannels.invoke.CREATE_FOLDER, path),
-    renameFolder: (oldPath: string, newPath: string) =>
-      invoke(NotesChannels.invoke.RENAME_FOLDER, { oldPath, newPath }),
-    deleteFolder: (path: string) => invoke(NotesChannels.invoke.DELETE_FOLDER, path),
-    exists: (titleOrPath: string) => invoke(NotesChannels.invoke.EXISTS, titleOrPath),
-    openExternal: (id: string) => invoke(NotesChannels.invoke.OPEN_EXTERNAL, id),
-    revealInFinder: (id: string) => invoke(NotesChannels.invoke.REVEAL_IN_FINDER, id),
-
-    // Property Definitions API (T017-T018)
-    // Note: get/set properties moved to unified properties API
-    getPropertyDefinitions: () => invoke(NotesChannels.invoke.GET_PROPERTY_DEFINITIONS),
-    createPropertyDefinition: (input: {
-      name: string
-      type: string
-      options?: string[]
-      defaultValue?: unknown
-      color?: string
-    }) =>
-      invoke(
-        NotesChannels.invoke.CREATE_PROPERTY_DEFINITION,
-        input as MainIpcInvokeArgs<typeof NotesChannels.invoke.CREATE_PROPERTY_DEFINITION>[0]
-      ),
-    updatePropertyDefinition: (input: {
-      name: string
-      type?: string
-      options?: string[]
-      defaultValue?: unknown
-      color?: string
-    }) =>
-      invoke(
-        NotesChannels.invoke.UPDATE_PROPERTY_DEFINITION,
-        input as MainIpcInvokeArgs<typeof NotesChannels.invoke.UPDATE_PROPERTY_DEFINITION>[0]
-      ),
-
-    ensurePropertyDefinition: (name: string, type: string) =>
-      invoke(NotesChannels.invoke.ENSURE_PROPERTY_DEFINITION, { name, type } as MainIpcInvokeArgs<
-        typeof NotesChannels.invoke.ENSURE_PROPERTY_DEFINITION
-      >[0]),
-    addPropertyOption: (propertyName: string, option: { value: string; color: string }) =>
-      invoke(NotesChannels.invoke.ADD_PROPERTY_OPTION, {
-        propertyName,
-        option
-      } as MainIpcInvokeArgs<typeof NotesChannels.invoke.ADD_PROPERTY_OPTION>[0]),
-    addStatusOption: (
-      propertyName: string,
-      categoryKey: string,
-      option: { value: string; color: string }
-    ) =>
-      invoke(NotesChannels.invoke.ADD_STATUS_OPTION, {
-        propertyName,
-        categoryKey,
-        option
-      } as MainIpcInvokeArgs<typeof NotesChannels.invoke.ADD_STATUS_OPTION>[0]),
-    removePropertyOption: (propertyName: string, optionValue: string) =>
-      invoke(NotesChannels.invoke.REMOVE_PROPERTY_OPTION, {
-        propertyName,
-        optionValue
-      } as MainIpcInvokeArgs<typeof NotesChannels.invoke.REMOVE_PROPERTY_OPTION>[0]),
-    renamePropertyOption: (propertyName: string, oldValue: string, newValue: string) =>
-      invoke(NotesChannels.invoke.RENAME_PROPERTY_OPTION, {
-        propertyName,
-        oldValue,
-        newValue
-      } as MainIpcInvokeArgs<typeof NotesChannels.invoke.RENAME_PROPERTY_OPTION>[0]),
-    updateOptionColor: (propertyName: string, optionValue: string, newColor: string) =>
-      invoke(NotesChannels.invoke.UPDATE_OPTION_COLOR, {
-        propertyName,
-        optionValue,
-        newColor
-      } as MainIpcInvokeArgs<typeof NotesChannels.invoke.UPDATE_OPTION_COLOR>[0]),
-    deletePropertyDefinition: (name: string) =>
-      invoke(NotesChannels.invoke.DELETE_PROPERTY_DEFINITION, { name } as MainIpcInvokeArgs<
-        typeof NotesChannels.invoke.DELETE_PROPERTY_DEFINITION
-      >[0]),
-
-    // T070: Attachments API
-    uploadAttachment: (noteId: string, file: File) => {
-      return new Promise((resolve, reject) => {
-        const reader = new FileReader()
-        reader.onload = () => {
-          const arrayBuffer = reader.result as ArrayBuffer
-          invoke(NotesChannels.invoke.UPLOAD_ATTACHMENT, {
-            noteId,
-            filename: file.name,
-            data: Array.from(new Uint8Array(arrayBuffer))
-          })
-            .then(resolve)
-            .catch(reject)
-        }
-        reader.onerror = () => reject(new Error('Failed to read file'))
-        reader.readAsArrayBuffer(file)
-      })
-    },
-    listAttachments: (noteId: string) => invoke(NotesChannels.invoke.LIST_ATTACHMENTS, noteId),
-    deleteAttachment: (noteId: string, filename: string) =>
-      invoke(NotesChannels.invoke.DELETE_ATTACHMENT, { noteId, filename }),
-
-    // Folder config API (T096.5)
-    getFolderConfig: (folderPath: string) =>
-      invoke(NotesChannels.invoke.GET_FOLDER_CONFIG, folderPath),
-    setFolderConfig: (
-      folderPath: string,
-      config: { icon?: string | null; template?: string; inherit?: boolean }
-    ) => invoke(NotesChannels.invoke.SET_FOLDER_CONFIG, { folderPath, config }),
-    getFolderTemplate: (folderPath: string) =>
-      invoke(NotesChannels.invoke.GET_FOLDER_TEMPLATE, folderPath),
-
-    // Export API (T106, T108)
-    exportPdf: (input: { noteId: string; includeMetadata?: boolean; pageSize?: string }) =>
-      invoke(
-        NotesChannels.invoke.EXPORT_PDF,
-        input as MainIpcInvokeArgs<typeof NotesChannels.invoke.EXPORT_PDF>[0]
-      ),
-    exportHtml: (input: { noteId: string; includeMetadata?: boolean }) =>
-      invoke(NotesChannels.invoke.EXPORT_HTML, input),
-
-    // Version History API (T114)
-    getVersions: (noteId: string) => invoke(NotesChannels.invoke.GET_VERSIONS, noteId),
-    getVersion: (snapshotId: string) => invoke(NotesChannels.invoke.GET_VERSION, snapshotId),
-    restoreVersion: (snapshotId: string) =>
-      invoke(NotesChannels.invoke.RESTORE_VERSION, snapshotId),
-    deleteVersion: (snapshotId: string) => invoke(NotesChannels.invoke.DELETE_VERSION, snapshotId),
-
-    // Position/Reorder API (drag-drop sidebar reordering)
-    getPositions: (folderPath: string) =>
-      invoke(NotesChannels.invoke.GET_POSITIONS, { folderPath }),
-    getAllPositions: () => invoke(NotesChannels.invoke.GET_ALL_POSITIONS),
-    reorder: (folderPath: string, notePaths: string[]) =>
-      invoke(NotesChannels.invoke.REORDER, { folderPath, notePaths }),
-
-    // File import API
-    importFiles: (sourcePaths: string[], targetFolder?: string) =>
-      invoke(NotesChannels.invoke.IMPORT_FILES, { sourcePaths, targetFolder }),
-    showImportDialog: () => invoke(NotesChannels.invoke.SHOW_IMPORT_DIALOG),
-
-    // Local-only API
-    setLocalOnly: (id: string, localOnly: boolean) =>
-      invoke(NotesChannels.invoke.SET_LOCAL_ONLY, { id, localOnly }),
-    getLocalOnlyCount: () => invoke(NotesChannels.invoke.GET_LOCAL_ONLY_COUNT)
   },
 
   // Unified Properties API (works with notes and journal entries)
@@ -390,155 +239,6 @@ export const api = {
       invoke(TemplatesChannels.invoke.DUPLICATE, { id, newName })
   },
 
-  // Tasks API
-  tasks: {
-    // Task CRUD
-    create: (input: {
-      projectId: string
-      title: string
-      description?: string | null
-      priority?: number
-      statusId?: string | null
-      parentId?: string | null
-      dueDate?: string | null
-      dueTime?: string | null
-      startDate?: string | null
-      tags?: string[]
-      linkedNoteIds?: string[]
-      sourceNoteId?: string | null
-      position?: number
-    }) => invoke(TasksChannels.invoke.CREATE, input),
-    get: (id: string) => invoke(TasksChannels.invoke.GET, id),
-    update: (input: {
-      id: string
-      title?: string
-      description?: string | null
-      priority?: number
-      projectId?: string
-      statusId?: string | null
-      parentId?: string | null
-      dueDate?: string | null
-      dueTime?: string | null
-      startDate?: string | null
-      tags?: string[]
-      linkedNoteIds?: string[]
-    }) => invoke(TasksChannels.invoke.UPDATE, input),
-    delete: (id: string) => invoke(TasksChannels.invoke.DELETE, id),
-    list: (options?: {
-      projectId?: string
-      statusId?: string | null
-      parentId?: string | null
-      includeCompleted?: boolean
-      includeArchived?: boolean
-      dueBefore?: string
-      dueAfter?: string
-      tags?: string[]
-      search?: string
-      sortBy?: 'position' | 'dueDate' | 'priority' | 'created' | 'modified'
-      sortOrder?: 'asc' | 'desc'
-      limit?: number
-      offset?: number
-    }) => invoke(TasksChannels.invoke.LIST, options ?? {}),
-
-    // Task actions
-    complete: (input: { id: string; completedAt?: string }) =>
-      invoke(TasksChannels.invoke.COMPLETE, input),
-    uncomplete: (id: string) => invoke(TasksChannels.invoke.UNCOMPLETE, id),
-    archive: (id: string) => invoke(TasksChannels.invoke.ARCHIVE, id),
-    unarchive: (id: string) => invoke(TasksChannels.invoke.UNARCHIVE, id),
-    move: (input: {
-      taskId: string
-      targetProjectId?: string
-      targetStatusId?: string | null
-      targetParentId?: string | null
-      position: number
-    }) => invoke(TasksChannels.invoke.MOVE, input),
-    reorder: (taskIds: string[], positions: number[]) =>
-      invoke(TasksChannels.invoke.REORDER, { taskIds, positions }),
-    duplicate: (id: string) => invoke(TasksChannels.invoke.DUPLICATE, id),
-
-    // Subtask operations
-    getSubtasks: (parentId: string) => invoke(TasksChannels.invoke.GET_SUBTASKS, parentId),
-    convertToSubtask: (taskId: string, parentId: string) =>
-      invoke(TasksChannels.invoke.CONVERT_TO_SUBTASK, { taskId, parentId }),
-    convertToTask: (taskId: string) => invoke(TasksChannels.invoke.CONVERT_TO_TASK, taskId),
-
-    // Project operations
-    createProject: (input: {
-      name: string
-      description?: string | null
-      color?: string
-      icon?: string | null
-      statuses?: Array<{
-        name: string
-        color: string
-        type: string
-        order: number
-      }>
-    }) =>
-      invoke(
-        TasksChannels.invoke.PROJECT_CREATE,
-        input as MainIpcInvokeArgs<typeof TasksChannels.invoke.PROJECT_CREATE>[0]
-      ),
-    getProject: (id: string) => invoke(TasksChannels.invoke.PROJECT_GET, id),
-    updateProject: (input: {
-      id: string
-      name?: string
-      description?: string | null
-      color?: string
-      icon?: string | null
-      statuses?: Array<{
-        id?: string
-        name: string
-        color: string
-        type: string
-        order: number
-      }>
-    }) =>
-      invoke(
-        TasksChannels.invoke.PROJECT_UPDATE,
-        input as MainIpcInvokeArgs<typeof TasksChannels.invoke.PROJECT_UPDATE>[0]
-      ),
-    deleteProject: (id: string) => invoke(TasksChannels.invoke.PROJECT_DELETE, id),
-    listProjects: () => invoke(TasksChannels.invoke.PROJECT_LIST),
-    archiveProject: (id: string) => invoke(TasksChannels.invoke.PROJECT_ARCHIVE, id),
-    reorderProjects: (projectIds: string[], positions: number[]) =>
-      invoke(TasksChannels.invoke.PROJECT_REORDER, { projectIds, positions }),
-
-    // Status operations
-    createStatus: (input: { projectId: string; name: string; color?: string; isDone?: boolean }) =>
-      invoke(TasksChannels.invoke.STATUS_CREATE, input),
-    updateStatus: (id: string, updates: Record<string, unknown>) =>
-      invoke(TasksChannels.invoke.STATUS_UPDATE, { id, ...updates }),
-    deleteStatus: (id: string) => invoke(TasksChannels.invoke.STATUS_DELETE, id),
-    reorderStatuses: (statusIds: string[], positions: number[]) =>
-      invoke(TasksChannels.invoke.STATUS_REORDER, { statusIds, positions }),
-    listStatuses: (projectId: string) => invoke(TasksChannels.invoke.STATUS_LIST, projectId),
-
-    // Tag operations
-    getTags: () => invoke(TasksChannels.invoke.GET_TAGS),
-
-    // Bulk operations
-    bulkComplete: (ids: string[]) => invoke(TasksChannels.invoke.BULK_COMPLETE, { ids }),
-    bulkDelete: (ids: string[]) => invoke(TasksChannels.invoke.BULK_DELETE, { ids }),
-    bulkMove: (ids: string[], projectId: string) =>
-      invoke(TasksChannels.invoke.BULK_MOVE, { ids, projectId }),
-    bulkArchive: (ids: string[]) => invoke(TasksChannels.invoke.BULK_ARCHIVE, { ids }),
-
-    // Stats and views
-    getStats: () => invoke(TasksChannels.invoke.GET_STATS),
-    getToday: () => invoke(TasksChannels.invoke.GET_TODAY),
-    getUpcoming: (days?: number) => invoke(TasksChannels.invoke.GET_UPCOMING, { days: days ?? 7 }),
-    getOverdue: () => invoke(TasksChannels.invoke.GET_OVERDUE),
-
-    // Note linking
-    getLinkedTasks: (noteId: string) => invoke(TasksChannels.invoke.GET_LINKED_TASKS, noteId),
-
-    // Development/Testing
-    seedPerformanceTest: () => invoke('tasks:seed-performance-test'),
-    seedDemo: () => invoke('tasks:seed-demo')
-  },
-
   // Saved Filters API
   savedFilters: {
     list: () => invoke(SavedFiltersChannels.invoke.LIST),
@@ -583,80 +283,6 @@ export const api = {
     getStreak: () => invoke(JournalChannels.invoke.GET_STREAK)
   },
 
-  // Settings API
-  settings: {
-    get: (key: string) => invoke(SettingsChannels.invoke.GET, key),
-    set: (key: string, value: string) => invoke(SettingsChannels.invoke.SET, { key, value }),
-    getJournalSettings: () => invoke(SettingsChannels.invoke.GET_JOURNAL_SETTINGS),
-    setJournalSettings: (settings: {
-      defaultTemplate?: string | null
-      showSchedule?: boolean
-      showTasks?: boolean
-      showAIConnections?: boolean
-      showStatsFooter?: boolean
-    }) => invoke(SettingsChannels.invoke.SET_JOURNAL_SETTINGS, settings),
-    // AI Settings (simplified - no API key needed, uses local model)
-    getAISettings: () => invoke(SettingsChannels.invoke.GET_AI_SETTINGS),
-    setAISettings: (settings: { enabled?: boolean }) =>
-      invoke(SettingsChannels.invoke.SET_AI_SETTINGS, settings),
-    getVoiceTranscriptionSettings: () =>
-      invoke(SettingsChannels.invoke.GET_VOICE_TRANSCRIPTION_SETTINGS),
-    setVoiceTranscriptionSettings: (settings: { provider?: 'local' | 'openai' }) =>
-      invoke(SettingsChannels.invoke.SET_VOICE_TRANSCRIPTION_SETTINGS, settings),
-    getVoiceModelStatus: () => invoke(SettingsChannels.invoke.GET_VOICE_MODEL_STATUS),
-    downloadVoiceModel: () => invoke(SettingsChannels.invoke.DOWNLOAD_VOICE_MODEL),
-    getVoiceRecordingReadiness: () => invoke(SettingsChannels.invoke.GET_VOICE_RECORDING_READINESS),
-    getVoiceTranscriptionOpenAIKeyStatus: () =>
-      invoke(SettingsChannels.invoke.GET_VOICE_TRANSCRIPTION_OPENAI_KEY_STATUS),
-    setVoiceTranscriptionOpenAIKey: (apiKey: string) =>
-      invoke(SettingsChannels.invoke.SET_VOICE_TRANSCRIPTION_OPENAI_KEY, { apiKey }),
-    getAIModelStatus: () => invoke(SettingsChannels.invoke.GET_AI_MODEL_STATUS),
-    loadAIModel: () => invoke(SettingsChannels.invoke.LOAD_AI_MODEL),
-    reindexEmbeddings: () => invoke(SettingsChannels.invoke.REINDEX_EMBEDDINGS),
-    // Tab Settings
-    getTabSettings: () => invoke(SettingsChannels.invoke.GET_TAB_SETTINGS),
-    setTabSettings: (settings: {
-      previewMode?: boolean
-      restoreSessionOnStart?: boolean
-      tabCloseButton?: 'always' | 'hover' | 'active'
-    }) => invoke(SettingsChannels.invoke.SET_TAB_SETTINGS, settings),
-    // Note Editor Settings
-    getNoteEditorSettings: () => invoke(SettingsChannels.invoke.GET_NOTE_EDITOR_SETTINGS),
-    setNoteEditorSettings: (settings: { toolbarMode?: 'floating' | 'sticky' }) =>
-      invoke(SettingsChannels.invoke.SET_NOTE_EDITOR_SETTINGS, settings),
-    // General Settings (theme, font, accent, etc.)
-    getStartupThemeSync,
-    getGeneralSettings: () => invoke(SettingsChannels.invoke.GET_GENERAL_SETTINGS),
-    setGeneralSettings: (settings: Record<string, unknown>) =>
-      invoke(SettingsChannels.invoke.SET_GENERAL_SETTINGS, settings),
-    // Editor Settings (width, spellcheck, autosave, etc.)
-    getEditorSettings: () => invoke(SettingsChannels.invoke.GET_EDITOR_SETTINGS),
-    setEditorSettings: (settings: Record<string, unknown>) =>
-      invoke(SettingsChannels.invoke.SET_EDITOR_SETTINGS, settings),
-    // Task Settings (default project, sort order, etc.)
-    getTaskSettings: () => invoke(SettingsChannels.invoke.GET_TASK_SETTINGS),
-    setTaskSettings: (settings: Record<string, unknown>) =>
-      invoke(SettingsChannels.invoke.SET_TASK_SETTINGS, settings),
-    // Keyboard Settings (shortcut overrides, global capture)
-    getKeyboardSettings: () => invoke(SettingsChannels.invoke.GET_KEYBOARD_SETTINGS),
-    setKeyboardSettings: (settings: Record<string, unknown>) =>
-      invoke(SettingsChannels.invoke.SET_KEYBOARD_SETTINGS, settings),
-    resetKeyboardSettings: () => invoke(SettingsChannels.invoke.RESET_KEYBOARD_SETTINGS),
-    // Sync Settings (enabled, auto-sync)
-    getSyncSettings: () => invoke(SettingsChannels.invoke.GET_SYNC_SETTINGS),
-    setSyncSettings: (settings: Record<string, unknown>) =>
-      invoke(SettingsChannels.invoke.SET_SYNC_SETTINGS, settings),
-    // Backup Settings (auto-backup, frequency, etc.)
-    getBackupSettings: () => invoke(SettingsChannels.invoke.GET_BACKUP_SETTINGS),
-    setBackupSettings: (settings: Record<string, unknown>) =>
-      invoke(SettingsChannels.invoke.SET_BACKUP_SETTINGS, settings),
-
-    getGraphSettings: () => invoke(SettingsChannels.invoke.GET_GRAPH_SETTINGS),
-    setGraphSettings: (settings: Record<string, unknown>) =>
-      invoke(SettingsChannels.invoke.SET_GRAPH_SETTINGS, settings),
-    registerGlobalCapture: () => invoke(SettingsChannels.invoke.REGISTER_GLOBAL_CAPTURE)
-  },
-
   // Bookmarks API
   bookmarks: {
     /** Create a new bookmark */
@@ -693,148 +319,6 @@ export const api = {
     /** Create multiple bookmarks */
     bulkCreate: (items: Array<{ itemType: string; itemId: string }>) =>
       invoke(BookmarksChannels.invoke.BULK_CREATE, { items })
-  },
-
-  // Inbox API
-  inbox: {
-    // Capture
-    captureText: (input: { content: string; title?: string; tags?: string[] }) =>
-      invoke(InboxChannels.invoke.CAPTURE_TEXT, input),
-    captureLink: (input: { url: string; tags?: string[] }) =>
-      invoke(InboxChannels.invoke.CAPTURE_LINK, input),
-    previewLink: (url: string) => invoke(InboxChannels.invoke.PREVIEW_LINK, url),
-    captureImage: (input: {
-      data: ArrayBuffer
-      filename: string
-      mimeType: string
-      tags?: string[]
-    }) => invoke(InboxChannels.invoke.CAPTURE_IMAGE, input),
-    captureVoice: (input: {
-      data: ArrayBuffer
-      duration: number
-      format: string
-      transcribe?: boolean
-      tags?: string[]
-    }) => invoke(InboxChannels.invoke.CAPTURE_VOICE, input),
-    captureClip: (input: {
-      html: string
-      text: string
-      sourceUrl: string
-      sourceTitle: string
-      tags?: string[]
-    }) => invoke(InboxChannels.invoke.CAPTURE_CLIP, input),
-    capturePdf: (input: {
-      data: ArrayBuffer
-      filename: string
-      extractText?: boolean
-      tags?: string[]
-    }) => invoke(InboxChannels.invoke.CAPTURE_PDF, input),
-
-    // CRUD
-    get: (id: string) => invoke(InboxChannels.invoke.GET, id),
-    list: (options?: {
-      type?: string
-      includeSnoozed?: boolean
-      sortBy?: 'created' | 'modified' | 'title'
-      sortOrder?: 'asc' | 'desc'
-      limit?: number
-      offset?: number
-    }) => invoke(InboxChannels.invoke.LIST, options ?? {}),
-    update: (input: { id: string; title?: string; content?: string }) =>
-      invoke(InboxChannels.invoke.UPDATE, input),
-    archive: (id: string) => invoke(InboxChannels.invoke.ARCHIVE, id),
-
-    // Filing
-    file: (input: {
-      itemId: string
-      destination: { type: string; path?: string; noteId?: string; noteTitle?: string }
-      tags?: string[]
-    }) => invoke(InboxChannels.invoke.FILE, input),
-    getSuggestions: (itemId: string) => invoke(InboxChannels.invoke.GET_SUGGESTIONS, itemId),
-    trackSuggestion: (input: {
-      itemId: string
-      itemType: string
-      suggestedTo: string
-      actualTo: string
-      confidence: number
-      suggestedTags?: string[]
-      actualTags?: string[]
-    }) =>
-      invoke(
-        InboxChannels.invoke.TRACK_SUGGESTION,
-        input.itemId,
-        input.itemType,
-        input.suggestedTo,
-        input.actualTo,
-        input.confidence,
-        input.suggestedTags || [],
-        input.actualTags || []
-      ),
-    convertToNote: (itemId: string) => invoke(InboxChannels.invoke.CONVERT_TO_NOTE, itemId),
-    convertToTask: (itemId: string) => invoke(InboxChannels.invoke.CONVERT_TO_TASK, itemId),
-    linkToNote: (itemId: string, noteId: string, tags?: string[]) =>
-      invoke(InboxChannels.invoke.LINK_TO_NOTE, itemId, noteId, tags || []),
-
-    // Tags
-    addTag: (itemId: string, tag: string) => invoke(InboxChannels.invoke.ADD_TAG, itemId, tag),
-    removeTag: (itemId: string, tag: string) =>
-      invoke(InboxChannels.invoke.REMOVE_TAG, itemId, tag),
-    getTags: () => invoke(InboxChannels.invoke.GET_TAGS),
-
-    // Snooze
-    snooze: (input: { itemId: string; snoozeUntil: string; reason?: string }) =>
-      invoke(InboxChannels.invoke.SNOOZE, input),
-    unsnooze: (itemId: string) => invoke(InboxChannels.invoke.UNSNOOZE, itemId),
-    getSnoozed: () => invoke(InboxChannels.invoke.GET_SNOOZED),
-    bulkSnooze: (input: { itemIds: string[]; snoozeUntil: string; reason?: string }) =>
-      invoke(InboxChannels.invoke.BULK_SNOOZE, input),
-
-    // Viewed (for reminder items)
-    markViewed: (itemId: string) => invoke(InboxChannels.invoke.MARK_VIEWED, itemId),
-
-    // Bulk operations
-    bulkFile: (input: {
-      itemIds: string[]
-      destination: { type: string; path?: string; noteId?: string }
-      tags?: string[]
-    }) => invoke(InboxChannels.invoke.BULK_FILE, input),
-    bulkArchive: (input: { itemIds: string[] }) => invoke(InboxChannels.invoke.BULK_ARCHIVE, input),
-    bulkTag: (input: { itemIds: string[]; tags: string[] }) =>
-      invoke(InboxChannels.invoke.BULK_TAG, input),
-    fileAllStale: () => invoke(InboxChannels.invoke.FILE_ALL_STALE),
-
-    // Transcription
-    retryTranscription: (itemId: string) =>
-      invoke(InboxChannels.invoke.RETRY_TRANSCRIPTION, itemId),
-
-    // Metadata
-    retryMetadata: (itemId: string) => invoke(InboxChannels.invoke.RETRY_METADATA, itemId),
-
-    // Stats
-    getStats: () => invoke(InboxChannels.invoke.GET_STATS),
-    getJobs: (options?: {
-      itemIds?: string[]
-      statuses?: Array<'pending' | 'running' | 'failed' | 'complete'>
-    }) => invoke(InboxChannels.invoke.GET_JOBS, options ?? {}),
-    getPatterns: () => invoke(InboxChannels.invoke.GET_PATTERNS),
-
-    // Settings
-    getStaleThreshold: () => invoke(InboxChannels.invoke.GET_STALE_THRESHOLD),
-    setStaleThreshold: (days: number) => invoke(InboxChannels.invoke.SET_STALE_THRESHOLD, days),
-
-    // Archived items
-    listArchived: (options?: { search?: string; limit?: number; offset?: number }) =>
-      invoke(InboxChannels.invoke.LIST_ARCHIVED, options ?? {}),
-    unarchive: (id: string) => invoke(InboxChannels.invoke.UNARCHIVE, id),
-    deletePermanent: (id: string) => invoke(InboxChannels.invoke.DELETE_PERMANENT, id),
-
-    // Filing history
-    getFilingHistory: (options?: { limit?: number }) =>
-      invoke(InboxChannels.invoke.GET_FILING_HISTORY, options ?? {}),
-
-    // Undo operations
-    undoFile: (id: string) => invoke(InboxChannels.invoke.UNDO_FILE, id),
-    undoArchive: (id: string) => invoke(InboxChannels.invoke.UNDO_ARCHIVE, id)
   },
 
   // Graph API
@@ -1058,117 +542,6 @@ export const api = {
     return () => ipcRenderer.removeListener(VaultChannels.events.INDEX_RECOVERED, handler)
   },
 
-  // Notes event subscription helpers
-  onNoteCreated: (callback: (event: unknown) => void): (() => void) => {
-    const handler = (_event: Electron.IpcRendererEvent, data: unknown): void => callback(data)
-    ipcRenderer.on(NotesChannels.events.CREATED, handler)
-    return () => ipcRenderer.removeListener(NotesChannels.events.CREATED, handler)
-  },
-
-  onNoteUpdated: (callback: (event: unknown) => void): (() => void) => {
-    const handler = (_event: Electron.IpcRendererEvent, data: unknown): void => callback(data)
-    ipcRenderer.on(NotesChannels.events.UPDATED, handler)
-    return () => ipcRenderer.removeListener(NotesChannels.events.UPDATED, handler)
-  },
-
-  onNoteDeleted: (callback: (event: unknown) => void): (() => void) => {
-    const handler = (_event: Electron.IpcRendererEvent, data: unknown): void => callback(data)
-    ipcRenderer.on(NotesChannels.events.DELETED, handler)
-    return () => ipcRenderer.removeListener(NotesChannels.events.DELETED, handler)
-  },
-
-  onNoteRenamed: (callback: (event: unknown) => void): (() => void) => {
-    const handler = (_event: Electron.IpcRendererEvent, data: unknown): void => callback(data)
-    ipcRenderer.on(NotesChannels.events.RENAMED, handler)
-    return () => ipcRenderer.removeListener(NotesChannels.events.RENAMED, handler)
-  },
-
-  onNoteMoved: (callback: (event: unknown) => void): (() => void) => {
-    const handler = (_event: Electron.IpcRendererEvent, data: unknown): void => callback(data)
-    ipcRenderer.on(NotesChannels.events.MOVED, handler)
-    return () => ipcRenderer.removeListener(NotesChannels.events.MOVED, handler)
-  },
-
-  onNoteExternalChange: (callback: (event: unknown) => void): (() => void) => {
-    const handler = (_event: Electron.IpcRendererEvent, data: unknown): void => callback(data)
-    ipcRenderer.on(NotesChannels.events.EXTERNAL_CHANGE, handler)
-    return () => ipcRenderer.removeListener(NotesChannels.events.EXTERNAL_CHANGE, handler)
-  },
-
-  // Tags changed event (for cross-note tag autocomplete refresh)
-  onTagsChanged: (callback: () => void): (() => void) => {
-    const handler = (): void => callback()
-    ipcRenderer.on('notes:tags-changed', handler)
-    return () => ipcRenderer.removeListener('notes:tags-changed', handler)
-  },
-
-  // Tasks event subscription helpers
-  onTaskCreated: (callback: (event: { task: unknown }) => void): (() => void) => {
-    const handler = (_event: Electron.IpcRendererEvent, data: { task: unknown }): void =>
-      callback(data)
-    ipcRenderer.on(TasksChannels.events.CREATED, handler)
-    return () => ipcRenderer.removeListener(TasksChannels.events.CREATED, handler)
-  },
-
-  onTaskUpdated: (
-    callback: (event: { id: string; task: unknown; changes: unknown }) => void
-  ): (() => void) => {
-    const handler = (
-      _event: Electron.IpcRendererEvent,
-      data: { id: string; task: unknown; changes: unknown }
-    ): void => callback(data)
-    ipcRenderer.on(TasksChannels.events.UPDATED, handler)
-    return () => ipcRenderer.removeListener(TasksChannels.events.UPDATED, handler)
-  },
-
-  onTaskDeleted: (callback: (event: { id: string }) => void): (() => void) => {
-    const handler = (_event: Electron.IpcRendererEvent, data: { id: string }): void =>
-      callback(data)
-    ipcRenderer.on(TasksChannels.events.DELETED, handler)
-    return () => ipcRenderer.removeListener(TasksChannels.events.DELETED, handler)
-  },
-
-  onTaskCompleted: (callback: (event: { id: string; task: unknown }) => void): (() => void) => {
-    const handler = (
-      _event: Electron.IpcRendererEvent,
-      data: { id: string; task: unknown }
-    ): void => callback(data)
-    ipcRenderer.on(TasksChannels.events.COMPLETED, handler)
-    return () => ipcRenderer.removeListener(TasksChannels.events.COMPLETED, handler)
-  },
-
-  onTaskMoved: (callback: (event: { id: string; task: unknown }) => void): (() => void) => {
-    const handler = (
-      _event: Electron.IpcRendererEvent,
-      data: { id: string; task: unknown }
-    ): void => callback(data)
-    ipcRenderer.on(TasksChannels.events.MOVED, handler)
-    return () => ipcRenderer.removeListener(TasksChannels.events.MOVED, handler)
-  },
-
-  onProjectCreated: (callback: (event: { project: unknown }) => void): (() => void) => {
-    const handler = (_event: Electron.IpcRendererEvent, data: { project: unknown }): void =>
-      callback(data)
-    ipcRenderer.on(TasksChannels.events.PROJECT_CREATED, handler)
-    return () => ipcRenderer.removeListener(TasksChannels.events.PROJECT_CREATED, handler)
-  },
-
-  onProjectUpdated: (callback: (event: { id: string; project: unknown }) => void): (() => void) => {
-    const handler = (
-      _event: Electron.IpcRendererEvent,
-      data: { id: string; project: unknown }
-    ): void => callback(data)
-    ipcRenderer.on(TasksChannels.events.PROJECT_UPDATED, handler)
-    return () => ipcRenderer.removeListener(TasksChannels.events.PROJECT_UPDATED, handler)
-  },
-
-  onProjectDeleted: (callback: (event: { id: string }) => void): (() => void) => {
-    const handler = (_event: Electron.IpcRendererEvent, data: { id: string }): void =>
-      callback(data)
-    ipcRenderer.on(TasksChannels.events.PROJECT_DELETED, handler)
-    return () => ipcRenderer.removeListener(TasksChannels.events.PROJECT_DELETED, handler)
-  },
-
   // Saved Filters event subscription helpers
   onSavedFilterCreated: (callback: (event: { savedFilter: unknown }) => void): (() => void) => {
     const handler = (_event: Electron.IpcRendererEvent, data: { savedFilter: unknown }): void =>
@@ -1262,50 +635,6 @@ export const api = {
     return () => ipcRenderer.removeListener(JournalChannels.events.EXTERNAL_CHANGE, handler)
   },
 
-  // Settings event subscription helpers
-  onSettingsChanged: (callback: (event: { key: string; value: unknown }) => void): (() => void) => {
-    const handler = (
-      _event: Electron.IpcRendererEvent,
-      data: { key: string; value: unknown }
-    ): void => callback(data)
-    ipcRenderer.on(SettingsChannels.events.CHANGED, handler)
-    return () => ipcRenderer.removeListener(SettingsChannels.events.CHANGED, handler)
-  },
-
-  onEmbeddingProgress: (
-    callback: (event: { current: number; total: number; phase: string }) => void
-  ): (() => void) => {
-    const handler = (
-      _event: Electron.IpcRendererEvent,
-      data: { current: number; total: number; phase: string }
-    ): void => callback(data)
-    ipcRenderer.on(SettingsChannels.events.EMBEDDING_PROGRESS, handler)
-    return () => ipcRenderer.removeListener(SettingsChannels.events.EMBEDDING_PROGRESS, handler)
-  },
-
-  onVoiceModelProgress: (
-    callback: (event: {
-      current?: number
-      total?: number
-      progress?: number
-      phase: string
-      status?: string
-    }) => void
-  ): (() => void) => {
-    const handler = (
-      _event: Electron.IpcRendererEvent,
-      data: { current?: number; total?: number; progress?: number; phase: string; status?: string }
-    ): void => callback(data)
-    ipcRenderer.on(SettingsChannels.events.VOICE_MODEL_PROGRESS, handler)
-    return () => ipcRenderer.removeListener(SettingsChannels.events.VOICE_MODEL_PROGRESS, handler)
-  },
-
-  onSettingsOpenRequested: (callback: (section: string) => void): (() => void) => {
-    const handler = (_event: Electron.IpcRendererEvent, section: string): void => callback(section)
-    ipcRenderer.on(SettingsChannels.events.OPEN_SECTION, handler)
-    return () => ipcRenderer.removeListener(SettingsChannels.events.OPEN_SECTION, handler)
-  },
-
   // Bookmarks event subscription helpers
   onBookmarkCreated: (callback: (event: { bookmark: unknown }) => void): (() => void) => {
     const handler = (_event: Electron.IpcRendererEvent, data: { bookmark: unknown }): void =>
@@ -1377,92 +706,6 @@ export const api = {
     ): void => callback(data)
     ipcRenderer.on(TagsChannels.events.NOTES_CHANGED, handler)
     return () => ipcRenderer.removeListener(TagsChannels.events.NOTES_CHANGED, handler)
-  },
-
-  // Inbox event subscription helpers
-  onInboxCaptured: (callback: (event: { item: unknown }) => void): (() => void) => {
-    const handler = (_event: Electron.IpcRendererEvent, data: { item: unknown }): void =>
-      callback(data)
-    ipcRenderer.on(InboxChannels.events.CAPTURED, handler)
-    return () => ipcRenderer.removeListener(InboxChannels.events.CAPTURED, handler)
-  },
-
-  onInboxUpdated: (callback: (event: { id: string; changes: unknown }) => void): (() => void) => {
-    const handler = (
-      _event: Electron.IpcRendererEvent,
-      data: { id: string; changes: unknown }
-    ): void => callback(data)
-    ipcRenderer.on(InboxChannels.events.UPDATED, handler)
-    return () => ipcRenderer.removeListener(InboxChannels.events.UPDATED, handler)
-  },
-
-  onInboxArchived: (callback: (event: { id: string }) => void): (() => void) => {
-    const handler = (_event: Electron.IpcRendererEvent, data: { id: string }): void =>
-      callback(data)
-    ipcRenderer.on(InboxChannels.events.ARCHIVED, handler)
-    return () => ipcRenderer.removeListener(InboxChannels.events.ARCHIVED, handler)
-  },
-
-  onInboxFiled: (
-    callback: (event: { id: string; filedTo: string; filedAction: string }) => void
-  ): (() => void) => {
-    const handler = (
-      _event: Electron.IpcRendererEvent,
-      data: { id: string; filedTo: string; filedAction: string }
-    ): void => callback(data)
-    ipcRenderer.on(InboxChannels.events.FILED, handler)
-    return () => ipcRenderer.removeListener(InboxChannels.events.FILED, handler)
-  },
-
-  onInboxSnoozed: (
-    callback: (event: { id: string; snoozeUntil: string }) => void
-  ): (() => void) => {
-    const handler = (
-      _event: Electron.IpcRendererEvent,
-      data: { id: string; snoozeUntil: string }
-    ): void => callback(data)
-    ipcRenderer.on(InboxChannels.events.SNOOZED, handler)
-    return () => ipcRenderer.removeListener(InboxChannels.events.SNOOZED, handler)
-  },
-
-  onInboxSnoozeDue: (callback: (event: { items: unknown[] }) => void): (() => void) => {
-    const handler = (_event: Electron.IpcRendererEvent, data: { items: unknown[] }): void =>
-      callback(data)
-    ipcRenderer.on(InboxChannels.events.SNOOZE_DUE, handler)
-    return () => ipcRenderer.removeListener(InboxChannels.events.SNOOZE_DUE, handler)
-  },
-
-  onInboxTranscriptionComplete: (
-    callback: (event: { id: string; transcription: string }) => void
-  ): (() => void) => {
-    const handler = (
-      _event: Electron.IpcRendererEvent,
-      data: { id: string; transcription: string }
-    ): void => callback(data)
-    ipcRenderer.on(InboxChannels.events.TRANSCRIPTION_COMPLETE, handler)
-    return () => ipcRenderer.removeListener(InboxChannels.events.TRANSCRIPTION_COMPLETE, handler)
-  },
-
-  onInboxMetadataComplete: (
-    callback: (event: { id: string; metadata: unknown }) => void
-  ): (() => void) => {
-    const handler = (
-      _event: Electron.IpcRendererEvent,
-      data: { id: string; metadata: unknown }
-    ): void => callback(data)
-    ipcRenderer.on(InboxChannels.events.METADATA_COMPLETE, handler)
-    return () => ipcRenderer.removeListener(InboxChannels.events.METADATA_COMPLETE, handler)
-  },
-
-  onInboxProcessingError: (
-    callback: (event: { id: string; operation: string; error: string }) => void
-  ): (() => void) => {
-    const handler = (
-      _event: Electron.IpcRendererEvent,
-      data: { id: string; operation: string; error: string }
-    ): void => callback(data)
-    ipcRenderer.on(InboxChannels.events.PROCESSING_ERROR, handler)
-    return () => ipcRenderer.removeListener(InboxChannels.events.PROCESSING_ERROR, handler)
   },
 
   // Reminder event subscription helpers

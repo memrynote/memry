@@ -6,11 +6,13 @@
     "src/preload/**/*",
     "../../packages/contracts/src/**/*",
     "../../packages/db-schema/src/**/*",
+    "../../packages/rpc/src/**/*",
     "../../packages/sync-core/src/**/*",
     "../../packages/shared/src/**/*"
   ],
   "exclude": ["**/*.test.ts", "**/*.test.tsx", "**/*.spec.ts"],
   "compilerOptions": {
+    "allowImportingTsExtensions": true,
     "composite": true,
     "types": ["electron-vite/node", "vitest/globals"],
     "baseUrl": ".",
@@ -19,10 +21,15 @@
       "@memry/contracts/*": ["../../packages/contracts/src/*"],
       "@memry/db-schema": ["../../packages/db-schema/src/index.ts"],
       "@memry/db-schema/*": ["../../packages/db-schema/src/*"],
+      "@memry/rpc": ["../../packages/rpc/src/index.ts"],
+      "@memry/rpc/*": ["../../packages/rpc/src/*"],
       "@memry/sync-core": ["../../packages/sync-core/src/index.ts"],
       "@memry/sync-core/*": ["../../packages/sync-core/src/*"],
       "@memry/shared": ["../../packages/shared/src/index.ts"],
       "@memry/shared/*": ["../../packages/shared/src/*"],
+      "@main/database/queries/notes": ["./src/main/database/queries/notes/index.ts"],
+      "@main/database/queries/settings": ["./src/main/database/queries/settings.ts"],
+      "@main/database/queries/tasks": ["./src/main/database/queries/tasks.ts"],
       "@main/*": ["./src/main/*"],
       "@tests/*": ["./tests/*"]
     }
