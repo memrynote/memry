@@ -116,26 +116,34 @@ describe('notes-service', () => {
 
   describe('position operations', () => {
     it('getPositions forwards folder path to api', async () => {
-      const positionsMap = new Map([
-        ['projects/note1.md', 0],
-        ['projects/note2.md', 1]
-      ])
-      api.notes.getPositions = vi.fn().mockResolvedValue(positionsMap)
+      const positionsResponse = {
+        success: true,
+        positions: {
+          'projects/note1.md': 0,
+          'projects/note2.md': 1
+        }
+      }
+      api.notes.getPositions = vi.fn().mockResolvedValue(positionsResponse)
 
       const result = await notesService.getPositions('projects')
 
       expect(api.notes.getPositions).toHaveBeenCalledWith('projects')
-      expect(result).toEqual(positionsMap)
+      expect(result).toEqual(positionsResponse)
     })
 
     it('getPositions handles root folder', async () => {
-      const positionsMap = new Map([['root-note.md', 0]])
-      api.notes.getPositions = vi.fn().mockResolvedValue(positionsMap)
+      const positionsResponse = {
+        success: true,
+        positions: {
+          'root-note.md': 0
+        }
+      }
+      api.notes.getPositions = vi.fn().mockResolvedValue(positionsResponse)
 
       const result = await notesService.getPositions('')
 
       expect(api.notes.getPositions).toHaveBeenCalledWith('')
-      expect(result).toEqual(positionsMap)
+      expect(result).toEqual(positionsResponse)
     })
 
     it('getAllPositions returns position map', async () => {

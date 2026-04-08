@@ -6,6 +6,7 @@
     "src/preload/**/*",
     "../../packages/contracts/src/**/*",
     "../../packages/db-schema/src/**/*",
+    "../../packages/rpc/src/**/*",
     "../../packages/shared/src/**/*"
   ],
   "exclude": ["**/*.test.ts", "**/*.test.tsx", "**/*.spec.ts"],
@@ -18,6 +19,8 @@
       "@memry/contracts/*": ["../../packages/contracts/src/*"],
       "@memry/db-schema": ["../../packages/db-schema/src/index.ts"],
       "@memry/db-schema/*": ["../../packages/db-schema/src/*"],
+      "@memry/rpc": ["../../packages/rpc/src/index.ts"],
+      "@memry/rpc/*": ["../../packages/rpc/src/*"],
       "@memry/shared": ["../../packages/shared/src/index.ts"],
       "@memry/shared/*": ["../../packages/shared/src/*"],
       "@main/*": ["./src/main/*"],
