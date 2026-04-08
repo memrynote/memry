@@ -9,10 +9,12 @@
     "../../packages/domain-tasks/src/**/*",
     "../../packages/db-schema/src/**/*",
     "../../packages/storage-data/src/**/*",
+    "../../packages/rpc/src/**/*",
     "../../packages/shared/src/**/*"
   ],
   "exclude": ["**/*.test.ts", "**/*.test.tsx", "**/*.spec.ts"],
   "compilerOptions": {
+    "allowImportingTsExtensions": true,
     "composite": true,
     "jsx": "react-jsx",
     "noUnusedLocals": false,
@@ -28,8 +30,14 @@
       "@memry/db-schema/*": ["../../packages/db-schema/src/*"],
       "@memry/storage-data": ["../../packages/storage-data/src/index.ts"],
       "@memry/storage-data/*": ["../../packages/storage-data/src/*"],
+      "@memry/rpc": ["../../packages/rpc/src/index.ts"],
+      "@memry/rpc/*": ["../../packages/rpc/src/*"],
       "@memry/shared": ["../../packages/shared/src/index.ts"],
       "@memry/shared/*": ["../../packages/shared/src/*"],
+      "@main/database/queries/notes": ["./src/main/database/queries/notes/index.ts"],
+      "@main/database/queries/settings": ["./src/main/database/queries/settings.ts"],
+      "@main/database/queries/tasks": ["./src/main/database/queries/tasks.ts"],
+      "@main/*": ["./src/main/*"],
       "@renderer/*": ["./src/renderer/src/*"],
       "@/*": ["./src/renderer/src/*"],
       "@tests/*": ["./tests/*"]

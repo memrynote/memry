@@ -21,7 +21,6 @@ import {
   getIndexDatabase,
   closeIndexDatabase
 } from '../database'
-import { queueEmbeddingUpdate } from '../inbox/embedding-queue'
 import { parseNote, serializeNote } from './frontmatter'
 import { safeRead, atomicWrite } from './file-ops'
 import { generateNoteId } from '../lib/id'
@@ -200,9 +199,6 @@ async function indexMarkdownFile(
     logger.error(`Sync failed for ${relativePath}:`, syncError)
     return 'error'
   }
-
-  // Queue embedding update for AI suggestions (batched for performance)
-  queueEmbeddingUpdate(parsed.frontmatter.id)
 
   return 'indexed'
 }

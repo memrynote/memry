@@ -23,6 +23,7 @@ import { inboxItems } from '@memry/db-schema/schema/inbox'
 import { InboxChannels } from '@memry/contracts/ipc-channels'
 import { transcribeWithLocalModel } from './voice-model'
 import { getVoiceTranscriptionSettings } from './voice-transcription-settings'
+import { publishProjectionEvent } from '../projections'
 import { getVoiceTranscriptionOpenAIApiKey } from './voice-transcription-keychain'
 
 const log = createLogger('Inbox:Transcription')
@@ -76,6 +77,11 @@ function emitInboxUpdated(itemId: string, changes: Record<string, unknown>): voi
       id: itemId,
       changes
     })
+  })
+
+  publishProjectionEvent({
+    type: 'inbox.upserted',
+    itemId
   })
 }
 

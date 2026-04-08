@@ -5,10 +5,10 @@ import { withErrorHandler } from './validate'
 import { inboxItems, inboxItemTags } from '@memry/db-schema/schema/inbox'
 import { eq, and } from 'drizzle-orm'
 import { generateId } from '../lib/id'
-import { incrementArchivedCount } from '../inbox/stats'
 import { deleteInboxAttachments } from '../inbox/attachments'
 import { getInboxSyncService } from '../sync/inbox-sync'
 import type { DrizzleDb } from '../database'
+import { publishProjectionEvent } from '../projections'
 
 type InboxCrudLogger = {
   info: (message: string) => void
@@ -98,8 +98,6 @@ export function createInboxCrudHandlers(deps: InboxCrudHandlerDeps): InboxCrudHa
         .set({ archivedAt: new Date().toISOString() })
         .where(eq(inboxItems.id, id))
         .run()
-
-      incrementArchivedCount()
 
       deps.emitInboxEvent(InboxChannels.events.ARCHIVED, { id })
       deps.syncInboxUpdate(db, id)
@@ -229,6 +227,7 @@ export function createInboxCrudHandlers(deps: InboxCrudHandlerDeps): InboxCrudHa
       const snapshot = JSON.stringify(existing)
       db.delete(inboxItems).where(eq(inboxItems.id, id)).run()
       getInboxSyncService()?.enqueueDelete(id, snapshot)
+      publishProjectionEvent({ type: 'inbox.deleted', itemId: id })
 
       return { success: true }
     },

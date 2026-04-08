@@ -6,8 +6,7 @@ import type { DrizzleDb } from './client'
  *
  * Mirrors fts.ts pattern for notes.
  * - fts_inbox virtual table stores id, title, content, transcription, source_title
- * - SQLite triggers auto-sync id/title on INSERT/DELETE/UPDATE of inbox_items
- * - Content fields updated explicitly via updateFtsInboxContent()
+ * - Projectors own all row maintenance for this table
  *
  * @module database/fts-inbox
  */
@@ -26,36 +25,9 @@ export function createFtsInboxTable(db: DrizzleDb): void {
 }
 
 export function createFtsInboxTriggers(db: DrizzleDb): void {
-  db.run(sql`
-    CREATE TRIGGER IF NOT EXISTS inbox_ai AFTER INSERT ON inbox_items BEGIN
-      INSERT INTO fts_inbox (id, title, content, transcription, source_title)
-      VALUES (
-        NEW.id,
-        NEW.title,
-        COALESCE(NEW.content, ''),
-        COALESCE(NEW.transcription, ''),
-        COALESCE(NEW.source_title, '')
-      );
-    END
-  `)
-
-  db.run(sql`
-    CREATE TRIGGER IF NOT EXISTS inbox_ad AFTER DELETE ON inbox_items BEGIN
-      DELETE FROM fts_inbox WHERE id = OLD.id;
-    END
-  `)
-
-  db.run(sql`
-    CREATE TRIGGER IF NOT EXISTS inbox_au AFTER UPDATE OF title, content, transcription, source_title ON inbox_items BEGIN
-      UPDATE fts_inbox
-      SET
-        title = NEW.title,
-        content = COALESCE(NEW.content, ''),
-        transcription = COALESCE(NEW.transcription, ''),
-        source_title = COALESCE(NEW.source_title, '')
-      WHERE id = NEW.id;
-    END
-  `)
+  db.run(sql`DROP TRIGGER IF EXISTS inbox_ai`)
+  db.run(sql`DROP TRIGGER IF EXISTS inbox_ad`)
+  db.run(sql`DROP TRIGGER IF EXISTS inbox_au`)
 }
 
 export function updateFtsInboxContent(

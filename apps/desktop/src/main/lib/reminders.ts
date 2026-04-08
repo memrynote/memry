@@ -28,6 +28,7 @@ import {
 } from '@memry/contracts/reminders-api'
 import { InboxChannels, type ReminderMetadata } from '@memry/contracts/inbox-api'
 import { createLogger } from './logger'
+import { publishProjectionEvent } from '../projections'
 
 const logger = createLogger('Reminders')
 
@@ -172,6 +173,11 @@ function createReminderInboxItem(reminder: ReminderWithTarget): void {
         metadata
       })
       .run()
+
+    publishProjectionEvent({
+      type: 'inbox.upserted',
+      itemId: id
+    })
 
     // Emit captured event for inbox refresh
     emitEvent(InboxChannels.events.CAPTURED, {

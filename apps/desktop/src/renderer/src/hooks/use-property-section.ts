@@ -83,8 +83,11 @@ export function usePropertySection({
       if (!canPerformAction('add')) return
       const defaultValue = getDefaultValueForType(newProp.type)
       try {
-        const selectTypes = new Set(['status', 'select', 'multiselect'])
-        if (selectTypes.has(newProp.type)) {
+        if (
+          newProp.type === 'status' ||
+          newProp.type === 'select' ||
+          newProp.type === 'multiselect'
+        ) {
           const { notesService } = await import('@/services/notes-service')
           await notesService.ensurePropertyDefinition(newProp.name, newProp.type)
         }

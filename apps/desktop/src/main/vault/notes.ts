@@ -20,7 +20,7 @@ import {
   extractInlineTagsFromMarkdown,
   type NoteFrontmatter
 } from './frontmatter'
-import { syncNoteToCache, deleteNoteFromCache } from './note-sync'
+import { syncNoteToCache, syncFileToCache, deleteNoteFromCache } from './note-sync'
 import {
   atomicWrite,
   safeRead,
@@ -33,7 +33,6 @@ import {
 } from './file-ops'
 import {
   insertNoteCache,
-  updateNoteCache,
   deleteNoteCache,
   getNoteCacheById,
   getNoteCacheByPath,
@@ -67,9 +66,8 @@ import { generateNoteId } from '../lib/id'
 import { NotesChannels } from '@memry/contracts/notes-api'
 import type { FolderInfo } from '@memry/contracts/templates-api'
 import { readFolderConfig } from './folders'
-import { queueEmbeddingUpdate } from '../inbox/embedding-queue'
 import { createLogger } from '../lib/logger'
-import { getFileType, getExtension, isBinaryFileType } from '@memry/shared/file-types'
+import { getFileType, getExtension, isBinaryFileType, type FileType } from '@memry/shared/file-types'
 
 const logger = createLogger('Notes')
 
@@ -353,9 +351,6 @@ export async function createNote(input: NoteCreateInput): Promise<Note> {
     note: noteToListItem(note),
     source: 'internal'
   })
-
-  // Queue embedding update (batched for performance)
-  queueEmbeddingUpdate(note.id)
 
   return note
 }
@@ -683,11 +678,6 @@ export async function updateNote(input: NoteUpdateInput): Promise<Note> {
     })
   }
 
-  // Queue embedding update if content changed (batched for performance)
-  if (input.content !== undefined) {
-    queueEmbeddingUpdate(input.id)
-  }
-
   return note
 }
 
@@ -725,22 +715,32 @@ export async function renameNote(id: string, newTitle: string): Promise<Note> {
   if (isBinary) {
     // Binary files: filesystem rename only, no frontmatter manipulation
     await fs.rename(oldPath, newPath)
-    updateNoteCache(db, id, {
+    syncFileToCache(db, {
+      id,
       path: newRelativePath,
       title: newTitle,
-      modifiedAt: now
+      fileType: cached?.fileType as Exclude<FileType, 'markdown'>,
+      mimeType: cached?.mimeType ?? null,
+      fileSize: cached?.fileSize ?? 0,
+      createdAt: existing.created,
+      modifiedAt: new Date(now)
     })
   } else {
     // Markdown: update frontmatter and rewrite
     const fileContent = serializeNote(newFrontmatter, existing.content)
     await atomicWrite(newPath, fileContent)
     await deleteFile(oldPath)
-    updateNoteCache(db, id, {
-      path: newRelativePath,
-      title: newTitle,
-      contentHash: generateContentHash(fileContent),
-      modifiedAt: now
-    })
+    syncNoteToCache(
+      db,
+      {
+        id,
+        path: newRelativePath,
+        fileContent,
+        frontmatter: newFrontmatter,
+        parsedContent: existing.content
+      },
+      { isNew: false }
+    )
   }
 
   // Build response
@@ -799,20 +799,32 @@ export async function moveNote(id: string, newFolder: string): Promise<Note> {
   if (isBinary) {
     // Binary files: filesystem move only, no serialization
     await fs.rename(oldPath, newPath)
-    updateNoteCache(db, id, {
+    syncFileToCache(db, {
+      id,
       path: newRelativePath,
-      modifiedAt: now
+      title: existing.title,
+      fileType: cached?.fileType as Exclude<FileType, 'markdown'>,
+      mimeType: cached?.mimeType ?? null,
+      fileSize: cached?.fileSize ?? 0,
+      createdAt: existing.created,
+      modifiedAt: new Date(now)
     })
   } else {
     // Markdown: update frontmatter and rewrite
     const fileContent = serializeNote(newFrontmatter, existing.content)
     await atomicWrite(newPath, fileContent)
     await deleteFile(oldPath)
-    updateNoteCache(db, id, {
-      path: newRelativePath,
-      contentHash: generateContentHash(fileContent),
-      modifiedAt: now
-    })
+    syncNoteToCache(
+      db,
+      {
+        id,
+        path: newRelativePath,
+        fileContent,
+        frontmatter: newFrontmatter,
+        parsedContent: existing.content
+      },
+      { isNew: false }
+    )
   }
 
   // Build response
