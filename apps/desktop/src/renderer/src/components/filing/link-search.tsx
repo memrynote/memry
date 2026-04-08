@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react'
+import { useDeferredValue, useState, useRef, useEffect } from 'react'
 import { Search, FileText, Folder, Link2, X, Loader2 } from '@/lib/icons'
 
 import { Input } from '@/components/ui/input'
@@ -7,23 +7,6 @@ import type { LinkedNote } from '@/types'
 import { createLogger } from '@/lib/logger'
 
 const log = createLogger('Component:LinkSearch')
-
-// Debounce hook for search
-function useDebounce<T>(value: T, delay: number): T {
-  const [debouncedValue, setDebouncedValue] = useState<T>(value)
-
-  useEffect(() => {
-    const handler = setTimeout(() => {
-      setDebouncedValue(value)
-    }, delay)
-
-    return () => {
-      clearTimeout(handler)
-    }
-  }, [value, delay])
-
-  return debouncedValue
-}
 
 interface LinkedItemProps {
   note: LinkedNote
@@ -98,21 +81,21 @@ interface LinkSearchProps {
 const LinkSearch = ({ linkedNotes, onLinkedNotesChange }: LinkSearchProps): React.JSX.Element => {
   const [searchQuery, setSearchQuery] = useState('')
   const [isDropdownOpen, setIsDropdownOpen] = useState(false)
-  const [highlightedIndex, setHighlightedIndex] = useState(0)
+  const [requestedHighlightedIndex, setRequestedHighlightedIndex] = useState(0)
   const [searchResults, setSearchResults] = useState<LinkedNote[]>([])
   const [isSearching, setIsSearching] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
   const dropdownRef = useRef<HTMLDivElement>(null)
 
   // Debounced search query
-  const debouncedQuery = useDebounce(searchQuery, 200)
+  const deferredQuery = useDeferredValue(searchQuery)
 
   // Search notes when query changes
   useEffect(() => {
+    let cancelled = false
+
     const searchNotes = async (): Promise<void> => {
-      if (!debouncedQuery.trim()) {
-        setSearchResults([])
-        setHighlightedIndex(0)
+      if (!deferredQuery.trim()) {
         return
       }
 
@@ -123,7 +106,7 @@ const LinkSearch = ({ linkedNotes, onLinkedNotesChange }: LinkSearchProps): Reac
           sortBy: 'modified',
           sortOrder: 'desc'
         })
-        const query = debouncedQuery.trim().toLowerCase()
+        const query = deferredQuery.trim().toLowerCase()
         const linkedIds = new Set(linkedNotes.map((n) => n.id))
         const notes: LinkedNote[] = response.notes
           .filter((r) => r.title.toLowerCase().includes(query) && !linkedIds.has(r.id))
@@ -133,22 +116,33 @@ const LinkSearch = ({ linkedNotes, onLinkedNotesChange }: LinkSearchProps): Reac
             title: r.title,
             type: 'note' as const
           }))
-        setSearchResults(notes)
-        setHighlightedIndex(0)
+        if (!cancelled) {
+          setSearchResults(notes)
+        }
       } catch (error) {
         log.error('Error searching notes', error)
-        setSearchResults([])
-        setHighlightedIndex(0)
+        if (!cancelled) {
+          setSearchResults([])
+        }
       } finally {
-        setIsSearching(false)
+        if (!cancelled) {
+          setIsSearching(false)
+        }
       }
     }
 
-    searchNotes()
-  }, [debouncedQuery, linkedNotes])
+    void searchNotes()
+    return () => {
+      cancelled = true
+    }
+  }, [deferredQuery, linkedNotes])
 
   // Filtered notes are now just the search results
-  const filteredNotes = searchResults
+  const filteredNotes = deferredQuery.trim() ? searchResults : []
+  const highlightedIndex =
+    filteredNotes.length === 0
+      ? -1
+      : Math.min(Math.max(requestedHighlightedIndex, 0), filteredNotes.length - 1)
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -169,6 +163,7 @@ const LinkSearch = ({ linkedNotes, onLinkedNotesChange }: LinkSearchProps): Reac
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>): void => {
     setSearchQuery(e.target.value)
+    setRequestedHighlightedIndex(0)
     setIsDropdownOpen(true)
   }
 
@@ -184,11 +179,13 @@ const LinkSearch = ({ linkedNotes, onLinkedNotesChange }: LinkSearchProps): Reac
     switch (e.key) {
       case 'ArrowDown':
         e.preventDefault()
-        setHighlightedIndex((prev) => (prev < filteredNotes.length - 1 ? prev + 1 : prev))
+        setRequestedHighlightedIndex((prev) =>
+          prev < filteredNotes.length - 1 ? prev + 1 : prev
+        )
         break
       case 'ArrowUp':
         e.preventDefault()
-        setHighlightedIndex((prev) => (prev > 0 ? prev - 1 : prev))
+        setRequestedHighlightedIndex((prev) => (prev > 0 ? prev - 1 : prev))
         break
       case 'Enter':
         e.preventDefault()
@@ -205,6 +202,7 @@ const LinkSearch = ({ linkedNotes, onLinkedNotesChange }: LinkSearchProps): Reac
   const handleSelectNote = (note: LinkedNote): void => {
     onLinkedNotesChange([...linkedNotes, note])
     setSearchQuery('')
+    setRequestedHighlightedIndex(0)
     setIsDropdownOpen(false)
     inputRef.current?.focus()
   }

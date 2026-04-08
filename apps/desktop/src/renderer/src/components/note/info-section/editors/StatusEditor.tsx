@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { Plus, Trash2 } from '@/lib/icons'
 import { Picker } from '@/components/ui/picker'
 import { getTagColors, COLOR_NAMES } from '../../tags-row/tag-colors'
@@ -32,10 +32,6 @@ export function StatusEditor({
   const [isOpen, setIsOpen] = useState(defaultOpen ?? false)
   const [creatingInCategory, setCreatingInCategory] = useState<StatusCategoryKey | null>(null)
   const [newOptionName, setNewOptionName] = useState('')
-
-  useEffect(() => {
-    if (defaultOpen) setIsOpen(true)
-  }, [defaultOpen])
 
   const allOptions = CATEGORY_ORDER.flatMap((key) => categories[key].options)
   const selectedOption = allOptions.find((o) => o.value === value)

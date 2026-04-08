@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import { createElement, useState, useCallback, useMemo } from 'react'
 
 import { Button } from '@/components/ui/button'
 import {
@@ -104,11 +104,35 @@ const hasFormChanged = (original: FormData, current: FormData): boolean => {
   return false
 }
 
+const getProjectDialogKey = (isOpen: boolean, project?: Project | null): string => {
+  if (!isOpen) return 'closed'
+  if (!project) return 'new'
+
+  return JSON.stringify({
+    id: project.id,
+    name: project.name,
+    description: project.description,
+    icon: project.icon,
+    color: project.color,
+    statuses: project.statuses
+  })
+}
+
+const ProjectIconPreview = ({ iconName }: { iconName: string }): React.JSX.Element => {
+  const Icon = getIconByName(iconName)
+
+  if (!Icon) {
+    return <span className="text-2xl">📁</span>
+  }
+
+  return createElement(Icon, { className: 'size-6 text-text-secondary' })
+}
+
 // ============================================================================
 // PROJECT MODAL COMPONENT
 // ============================================================================
 
-export const ProjectModal = ({
+const ProjectModalDialog = ({
   isOpen,
   onClose,
   onSave,
@@ -117,13 +141,10 @@ export const ProjectModal = ({
 }: ProjectModalProps): React.JSX.Element => {
   const isEditMode = !!project
   const canDelete = isEditMode && !project.isDefault
+  const initialFormData = useMemo(() => getInitialFormData(project), [project])
 
   // Form state
-  const [formData, setFormData] = useState<FormData>(() => getInitialFormData(project))
-  const [initialFormData, setInitialFormData] = useState<FormData>(() =>
-    getInitialFormData(project)
-  )
-  const [errors, setErrors] = useState<ProjectValidationErrors>({})
+  const [formData, setFormData] = useState<FormData>(() => initialFormData)
 
   // Icon picker state
   const [isIconPickerOpen, setIsIconPickerOpen] = useState(false)
@@ -132,27 +153,16 @@ export const ProjectModal = ({
   // Unsaved changes dialog
   const [showUnsavedDialog, setShowUnsavedDialog] = useState(false)
 
-  // Reset form when modal opens/closes or project changes
-  useEffect(() => {
-    if (isOpen) {
-      const initial = getInitialFormData(project)
-      setFormData(initial)
-      setInitialFormData(initial)
-      setErrors({})
-    }
-  }, [isOpen, project])
-
   // Check for unsaved changes
   const hasUnsavedChanges = useMemo(
     () => hasFormChanged(initialFormData, formData),
     [initialFormData, formData]
   )
 
-  // Validate on form change
-  useEffect(() => {
-    const validationErrors = validateProject(formData.name, formData.statuses)
-    setErrors(validationErrors)
-  }, [formData.name, formData.statuses])
+  const errors = useMemo<ProjectValidationErrors>(
+    () => validateProject(formData.name, formData.statuses),
+    [formData.name, formData.statuses]
+  )
 
   const isValid = Object.keys(errors).length === 0
 
@@ -221,8 +231,8 @@ export const ProjectModal = ({
     setFormData((prev) => ({ ...prev, color }))
   }
 
-  const handleIconClick = (e: React.MouseEvent): void => {
-    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
+  const handleIconClick = (e: React.MouseEvent<HTMLButtonElement>): void => {
+    const rect = e.currentTarget.getBoundingClientRect()
     setIconPickerPosition({ x: rect.left, y: rect.bottom + 8 })
     setIsIconPickerOpen(true)
   }
@@ -234,9 +244,6 @@ export const ProjectModal = ({
   const handleStatusesChange = (statuses: Status[]): void => {
     setFormData((prev) => ({ ...prev, statuses }))
   }
-
-  // Get the icon component
-  const IconComponent = getIconByName(formData.icon)
 
   return (
     <>
@@ -269,11 +276,7 @@ export const ProjectModal = ({
                   )}
                   aria-label="Select icon"
                 >
-                  {IconComponent ? (
-                    <IconComponent className="size-6 text-text-secondary" />
-                  ) : (
-                    <span className="text-2xl">📁</span>
-                  )}
+                  <ProjectIconPreview iconName={formData.icon} />
                 </button>
 
                 {/* Name Input */}
@@ -396,6 +399,10 @@ export const ProjectModal = ({
       </AlertDialog>
     </>
   )
+}
+
+export const ProjectModal = (props: ProjectModalProps): React.JSX.Element => {
+  return <ProjectModalDialog key={getProjectDialogKey(props.isOpen, props.project)} {...props} />
 }
 
 export default ProjectModal

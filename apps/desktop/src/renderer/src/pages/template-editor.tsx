@@ -5,8 +5,8 @@
  * Reuses note editor components (NoteTitle, TagsRow, InfoSection, ContentArea).
  */
 
-import { useState, useCallback, useEffect, useRef, useMemo } from 'react'
-import { extractErrorMessage } from '@/lib/ipc-error'
+import { useState, useCallback, useRef, useMemo } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { NoteTitle } from '@/components/note/note-title'
 import { TagsRow, Tag } from '@/components/note/tags-row'
 import { InfoSection, Property, NewProperty, PropertyType } from '@/components/note/info-section'
@@ -21,7 +21,7 @@ import { useNoteTagsQuery } from '@/hooks/use-notes-query'
 import { useTabs, useActiveTab } from '@/contexts/tabs'
 import { useNoteEditorSettings } from '@/hooks/use-note-editor-settings'
 import { toast } from 'sonner'
-import type { TemplateProperty } from '@/services/templates-service'
+import type { Template, TemplateProperty } from '@/services/templates-service'
 import { createLogger } from '@/lib/logger'
 
 const log = createLogger('Page:TemplateEditor')
@@ -32,6 +32,16 @@ const log = createLogger('Page:TemplateEditor')
 
 interface TemplateEditorPageProps {
   templateId?: string // undefined for new template
+}
+
+interface TemplateEditorInitialState {
+  name: string
+  description: string
+  icon: string | null
+  tags: string[]
+  properties: TemplateProperty[]
+  content: string
+  isBuiltIn: boolean
 }
 
 // Default values for property types
@@ -92,79 +102,89 @@ function EditorLoadingState() {
   )
 }
 
+function getInitialTemplateState(template: Template | null | undefined): TemplateEditorInitialState {
+  return {
+    name: template?.name ?? '',
+    description: template?.description ?? '',
+    icon: template?.icon ?? null,
+    tags: template?.tags ?? [],
+    properties: template?.properties ?? [],
+    content: template?.content ?? '',
+    isBuiltIn: template?.isBuiltIn ?? false
+  }
+}
+
+interface TemplateEditorFormProps {
+  templateId?: string
+  initialTemplate: TemplateEditorInitialState
+  allAvailableTags: Array<{ tag: string; color: string }>
+  createTemplate: (input: {
+    name: string
+    description?: string
+    icon: string | null
+    tags: string[]
+    properties: TemplateProperty[]
+    content: string
+  }) => Promise<Template | null>
+  updateTemplate: (input: {
+    id: string
+    name: string
+    description?: string
+    icon: string | null
+    tags: string[]
+    properties: TemplateProperty[]
+    content: string
+  }) => Promise<Template | null>
+  onCloseActiveTab: () => void
+  onUpdateActiveTabTitle: (title: string) => void
+  isStickyToolbar: boolean
+}
+
 // ============================================================================
-// Main Component
+// Form Component
 // ============================================================================
 
-export function TemplateEditorPage({ templateId }: TemplateEditorPageProps) {
+function TemplateEditorForm({
+  templateId,
+  initialTemplate,
+  allAvailableTags,
+  createTemplate,
+  updateTemplate,
+  onCloseActiveTab,
+  onUpdateActiveTabTitle,
+  isStickyToolbar
+}: TemplateEditorFormProps) {
   const isNew = !templateId
-  const { getTemplate, createTemplate, updateTemplate } = useTemplates()
-  const { tags: allAvailableTags } = useNoteTagsQuery()
-  const { closeTab, updateTabTitle } = useTabs()
-  const activeTab = useActiveTab()
-  const { settings: editorSettings } = useNoteEditorSettings()
+  const initialSnapshot = useMemo(
+    () =>
+      JSON.stringify({
+        name: initialTemplate.name,
+        description: initialTemplate.description,
+        icon: initialTemplate.icon,
+        tags: initialTemplate.tags,
+        properties: initialTemplate.properties,
+        content: initialTemplate.content
+      }),
+    [initialTemplate]
+  )
 
-  // State
-  const [isLoading, setIsLoading] = useState(!isNew)
   const [isSaving, setIsSaving] = useState(false)
-  const [isBuiltIn, setIsBuiltIn] = useState(false)
+  const isBuiltIn = initialTemplate.isBuiltIn
 
   // Form state
-  const [name, setName] = useState('')
-  const [description, setDescription] = useState('')
-  const [icon, setIcon] = useState<string | null>(null)
-  const [tags, setTags] = useState<string[]>([])
-  const [properties, setProperties] = useState<TemplateProperty[]>([])
-  const [content, setContent] = useState('')
+  const [name, setName] = useState(initialTemplate.name)
+  const [description, setDescription] = useState(initialTemplate.description)
+  const icon = initialTemplate.icon
+  const [tags, setTags] = useState<string[]>(() => [...initialTemplate.tags])
+  const [properties, setProperties] = useState<TemplateProperty[]>(() => [...initialTemplate.properties])
+  const [content, setContent] = useState(initialTemplate.content)
 
   // Track if modified
-  const initialStateRef = useRef<string>(
-    isNew
-      ? JSON.stringify({
-          name: '',
-          description: '',
-          icon: null,
-          tags: [],
-          properties: [],
-          content: ''
-        })
-      : ''
-  )
+  const initialStateRef = useRef<string>(initialSnapshot)
   const isModified = useMemo(() => {
     const currentState = JSON.stringify({ name, description, icon, tags, properties, content })
     return currentState !== initialStateRef.current
   }, [name, description, icon, tags, properties, content])
-
-  // Load template if editing
-  useEffect(() => {
-    async function load() {
-      if (!templateId) return
-
-      setIsLoading(true)
-      const loaded = await getTemplate(templateId)
-      if (loaded) {
-        setIsBuiltIn(loaded.isBuiltIn)
-        setName(loaded.name)
-        setDescription(loaded.description || '')
-        setIcon(loaded.icon || null)
-        setTags(loaded.tags)
-        setProperties(loaded.properties)
-        setContent(loaded.content)
-
-        // Store initial state for change detection
-        initialStateRef.current = JSON.stringify({
-          name: loaded.name,
-          description: loaded.description || '',
-          icon: loaded.icon || null,
-          tags: loaded.tags,
-          properties: loaded.properties,
-          content: loaded.content
-        })
-      }
-      setIsLoading(false)
-    }
-    load()
-  }, [templateId, getTemplate])
 
   // Convert tags to UI format
   const pendingTagColorsRef = useRef(new Map<string, string>())
@@ -241,7 +261,7 @@ export function TemplateEditorPage({ templateId }: TemplateEditorPageProps) {
             content
           })
           // Close the tab or navigate to the new template
-          if (activeTab) closeTab(activeTab.id)
+          onCloseActiveTab()
         } else {
           toast.error('Failed to create template')
         }
@@ -257,7 +277,7 @@ export function TemplateEditorPage({ templateId }: TemplateEditorPageProps) {
         })
         if (result) {
           toast.success('Template saved')
-          if (activeTab) updateTabTitle(activeTab.id, name.trim())
+          onUpdateActiveTabTitle(name.trim())
           initialStateRef.current = JSON.stringify({
             name,
             description,
@@ -287,17 +307,9 @@ export function TemplateEditorPage({ templateId }: TemplateEditorPageProps) {
     createTemplate,
     updateTemplate,
     templateId,
-    closeTab,
-    updateTabTitle
+    onCloseActiveTab,
+    onUpdateActiveTabTitle
   ])
-
-  const handleEmojiChange = useCallback(
-    (newEmoji: string | null) => {
-      if (isBuiltIn) return
-      setIcon(newEmoji)
-    },
-    [isBuiltIn]
-  )
 
   const handleNameChange = useCallback(
     (newName: string) => {
@@ -387,16 +399,12 @@ export function TemplateEditorPage({ templateId }: TemplateEditorPageProps) {
   }, [])
 
   const handleBack = useCallback(() => {
-    if (activeTab) closeTab(activeTab.id)
-  }, [closeTab, activeTab])
+    onCloseActiveTab()
+  }, [onCloseActiveTab])
 
   // ============================================================================
   // Render
   // ============================================================================
-
-  if (isLoading) {
-    return <EditorLoadingState />
-  }
 
   return (
     <div className="h-full flex flex-col">
@@ -501,7 +509,7 @@ export function TemplateEditorPage({ templateId }: TemplateEditorPageProps) {
                 initialContent={content}
                 contentType="markdown"
                 placeholder="Default content for notes created from this template..."
-                stickyToolbar={editorSettings.toolbarMode === 'sticky'}
+                stickyToolbar={isStickyToolbar}
                 onMarkdownChange={handleContentChange}
                 editable={!isBuiltIn}
               />
@@ -510,6 +518,62 @@ export function TemplateEditorPage({ templateId }: TemplateEditorPageProps) {
         </div>
       </div>
     </div>
+  )
+}
+
+// ============================================================================
+// Main Component
+// ============================================================================
+
+export function TemplateEditorPage({ templateId }: TemplateEditorPageProps) {
+  const { getTemplate, createTemplate, updateTemplate } = useTemplates({ autoLoad: false })
+  const { tags: allAvailableTags } = useNoteTagsQuery()
+  const { closeTab, updateTabTitle } = useTabs()
+  const activeTab = useActiveTab()
+  const { settings: editorSettings } = useNoteEditorSettings()
+
+  const { data: template, isLoading } = useQuery({
+    queryKey: ['template-editor', templateId],
+    queryFn: async () => {
+      if (!templateId) return null
+      return getTemplate(templateId)
+    },
+    enabled: !!templateId
+  })
+
+  const initialTemplate = useMemo(() => getInitialTemplateState(template), [template])
+
+  const handleCloseActiveTab = useCallback(() => {
+    if (activeTab) {
+      closeTab(activeTab.id)
+    }
+  }, [activeTab, closeTab])
+
+  const handleUpdateActiveTabTitle = useCallback(
+    (title: string) => {
+      if (activeTab) {
+        updateTabTitle(activeTab.id, title)
+      }
+    },
+    [activeTab, updateTabTitle]
+  )
+
+  if (templateId && isLoading) {
+    return <EditorLoadingState />
+  }
+
+  return (
+    <TemplateEditorForm
+      key={templateId || 'new'}
+      templateId={templateId}
+      initialTemplate={initialTemplate}
+      allAvailableTags={allAvailableTags}
+      createTemplate={createTemplate}
+      updateTemplate={updateTemplate}
+      onCloseActiveTab={handleCloseActiveTab}
+      onUpdateActiveTabTitle={handleUpdateActiveTabTitle}
+      isStickyToolbar={editorSettings.toolbarMode === 'sticky'}
+    />
   )
 }
 

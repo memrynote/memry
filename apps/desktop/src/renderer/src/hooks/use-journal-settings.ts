@@ -58,8 +58,6 @@ export function useJournalSettings(): UseJournalSettingsReturn {
 
     const loadSettings = async (): Promise<void> => {
       try {
-        setIsLoading(true)
-        setError(null)
         const result = await window.api.settings.getJournalSettings()
         if (mounted) {
           setSettings(result)
@@ -75,7 +73,7 @@ export function useJournalSettings(): UseJournalSettingsReturn {
       }
     }
 
-    loadSettings()
+    void loadSettings()
 
     return () => {
       mounted = false

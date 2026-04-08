@@ -6,7 +6,7 @@
  * Matches the design pattern from template-selector.
  */
 
-import { useState, useEffect, createContext, useContext } from 'react'
+import { useState, createContext, useContext } from 'react'
 import {
   ChevronRight,
   Link2,
@@ -210,21 +210,15 @@ const TranscriptionStatus = ({
 // Item Thumbnail - for image items
 // ============================================================================
 
-const ItemThumbnail = ({ item }: { item: InboxItem }): React.JSX.Element | null => {
+const ThumbnailImage = ({ thumbnailUrl }: { thumbnailUrl: string }): React.JSX.Element | null => {
   const [imageError, setImageError] = useState(false)
 
-  useEffect(() => {
-    setImageError(false)
-  }, [item.thumbnailUrl])
-
-  if (item.type !== 'image' || !item.thumbnailUrl || imageError) {
-    return null
-  }
+  if (imageError) return null
 
   return (
     <div className="w-9 h-9 rounded-md overflow-hidden bg-muted shrink-0 ring-1 ring-border/50">
       <img
-        src={item.thumbnailUrl}
+        src={thumbnailUrl}
         alt=""
         className="w-full h-full object-cover"
         onError={() => setImageError(true)}
@@ -232,6 +226,14 @@ const ItemThumbnail = ({ item }: { item: InboxItem }): React.JSX.Element | null 
       />
     </div>
   )
+}
+
+const ItemThumbnail = ({ item }: { item: InboxItem }): React.JSX.Element | null => {
+  if (item.type !== 'image' || !item.thumbnailUrl) {
+    return null
+  }
+
+  return <ThumbnailImage key={item.thumbnailUrl} thumbnailUrl={item.thumbnailUrl} />
 }
 
 // ============================================================================

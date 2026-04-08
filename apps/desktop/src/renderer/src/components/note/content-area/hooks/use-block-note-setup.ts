@@ -1,6 +1,6 @@
-/* eslint-disable @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-explicit-any */
+/* eslint-disable @typescript-eslint/no-explicit-any */
 
-import { useEffect, useState } from 'react'
+import { useEffect } from 'react'
 import { AIExtension } from '@blocknote/xl-ai'
 import { DefaultChatTransport } from 'ai'
 import type { HighlightInfo } from '../types'
@@ -33,41 +33,25 @@ export function useBlockNoteSetup({
   onInternalLinkClick,
   initialHighlight
 }: BlockNoteSetupParams): BlockNoteSetupResult {
-  const [aiReady, setAiReady] = useState(false)
+  const aiReady = Boolean(aiPort)
 
   // AI extension registration
   useEffect(() => {
-    if (!aiPort) {
-      setAiReady(false)
-      return
-    }
-    if (editor.getExtension('ai')) {
-      setAiReady(true)
-      return
-    }
+    if (!aiPort) return
 
-    const transport = new DefaultChatTransport({
-      api: `http://127.0.0.1:${aiPort}/api/ai/chat`
-    })
-    const aiExtension = AIExtension({ transport: transport as any })
-    editor.registerExtension(aiExtension)
-    setAiReady(true)
-    log.info('AI extension registered, port:', aiPort)
-
-    return () => {
-      editor.unregisterExtension('ai')
-      setAiReady(false)
+    if (!editor.getExtension('ai')) {
+      const transport = new DefaultChatTransport({
+        api: `http://127.0.0.1:${aiPort}/api/ai/chat`
+      })
+      const aiExtension = AIExtension({ transport: transport as any })
+      editor.registerExtension(aiExtension)
+      log.info('AI extension registered, port:', aiPort)
     }
-  }, [aiPort, editor])
-
-  // AI keyboard shortcut (Cmd+J)
-  useEffect(() => {
-    if (!aiReady) return
 
     const handleKeyDown = (e: KeyboardEvent): void => {
       if ((e.metaKey || e.ctrlKey) && e.key === 'j') {
         e.preventDefault()
-        const ai = editor.getExtension('ai') as any
+        const ai = editor.getExtension('ai')
         if (!ai?.openAIMenuAtBlock) return
         const cursor = editor.getTextCursorPosition()
         if (cursor?.block?.id) {
@@ -77,8 +61,12 @@ export function useBlockNoteSetup({
     }
 
     document.addEventListener('keydown', handleKeyDown)
-    return () => document.removeEventListener('keydown', handleKeyDown)
-  }, [aiReady, editor])
+
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown)
+      editor.unregisterExtension('ai')
+    }
+  }, [aiPort, editor])
 
   // E2E test instrumentation: expose the active editor on window so Playwright
   // tests can drive the editor via its API (avoiding typing-race conditions

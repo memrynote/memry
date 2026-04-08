@@ -24,8 +24,6 @@ export function useKeyboardSettings(): UseKeyboardSettingsReturn {
     let mounted = true
     const load = async (): Promise<void> => {
       try {
-        setIsLoading(true)
-        setError(null)
         const result = await window.api.settings.getKeyboardSettings()
         if (mounted) setSettings(result)
       } catch (err) {
@@ -34,7 +32,7 @@ export function useKeyboardSettings(): UseKeyboardSettingsReturn {
         if (mounted) setIsLoading(false)
       }
     }
-    load()
+    void load()
     return () => {
       mounted = false
     }

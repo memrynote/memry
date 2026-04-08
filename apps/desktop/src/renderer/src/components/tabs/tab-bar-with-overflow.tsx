@@ -3,7 +3,7 @@
  * Handles scrollable tabs with overflow indicators
  */
 
-import { useRef, useState, useCallback, useEffect } from 'react'
+import { useRef, useState, useCallback, useEffect, useLayoutEffect } from 'react'
 import { ChevronLeft, ChevronRight } from '@/lib/icons'
 import { useTabGroup } from '@/contexts/tabs'
 import { cn } from '@/lib/utils'
@@ -17,6 +17,18 @@ interface TabBarWithOverflowProps {
   className?: string
 }
 
+interface OverflowState {
+  left: boolean
+  right: boolean
+}
+
+function getOverflowState(container: HTMLDivElement, tabs: HTMLDivElement): OverflowState {
+  return {
+    left: tabs.scrollLeft > 5,
+    right: tabs.scrollLeft + container.clientWidth < tabs.scrollWidth - 5
+  }
+}
+
 /**
  * Tab bar container with scroll overflow handling
  */
@@ -28,6 +40,7 @@ export const TabBarWithOverflow = ({
   const group = useTabGroup(groupId)
   const containerRef = useRef<HTMLDivElement>(null)
   const tabsRef = useRef<HTMLDivElement>(null)
+  const resizeObserverRef = useRef<ResizeObserver | null>(null)
 
   const [overflow, setOverflow] = useState({
     left: false,
@@ -38,33 +51,72 @@ export const TabBarWithOverflow = ({
    * Check for overflow state
    */
   const checkOverflow = useCallback(() => {
-    if (!containerRef.current || !tabsRef.current) return
-
     const container = containerRef.current
     const tabs = tabsRef.current
+    if (!container || !tabs) return
 
-    setOverflow({
-      left: tabs.scrollLeft > 5,
-      right: tabs.scrollLeft + container.clientWidth < tabs.scrollWidth - 5
-    })
+    const nextOverflow = getOverflowState(container, tabs)
+    setOverflow((current) =>
+      current.left === nextOverflow.left && current.right === nextOverflow.right
+        ? current
+        : nextOverflow
+    )
   }, [])
 
-  // Check overflow on mount and when tabs change
-  useEffect(() => {
-    checkOverflow()
+  const observeNode = useCallback(
+    (node: HTMLDivElement | null) => {
+      if (!node || typeof ResizeObserver === 'undefined') return
 
-    // Use ResizeObserver if available
-    if (typeof ResizeObserver !== 'undefined') {
-      const observer = new ResizeObserver(checkOverflow)
-      if (containerRef.current) observer.observe(containerRef.current)
-      if (tabsRef.current) observer.observe(tabsRef.current)
-      return () => observer.disconnect()
-    }
+      if (!resizeObserverRef.current) {
+        resizeObserverRef.current = new ResizeObserver(() => {
+          checkOverflow()
+        })
+      }
+
+      resizeObserverRef.current.observe(node)
+    },
+    [checkOverflow]
+  )
+
+  const setContainerNode = useCallback(
+    (node: HTMLDivElement | null) => {
+      if (resizeObserverRef.current && containerRef.current) {
+        resizeObserverRef.current.unobserve(containerRef.current)
+      }
+
+      containerRef.current = node
+      observeNode(node)
+      checkOverflow()
+    },
+    [checkOverflow, observeNode]
+  )
+
+  const setTabsNode = useCallback(
+    (node: HTMLDivElement | null) => {
+      if (resizeObserverRef.current && tabsRef.current) {
+        resizeObserverRef.current.unobserve(tabsRef.current)
+      }
+
+      tabsRef.current = node
+      observeNode(node)
+      checkOverflow()
+    },
+    [checkOverflow, observeNode]
+  )
+
+  useEffect(() => {
+    if (typeof ResizeObserver !== 'undefined') return
 
     // Fallback to window resize
     window.addEventListener('resize', checkOverflow)
     return () => window.removeEventListener('resize', checkOverflow)
-  }, [checkOverflow, group?.tabs.length])
+  }, [checkOverflow])
+
+  useEffect(() => {
+    return () => {
+      resizeObserverRef.current?.disconnect()
+    }
+  }, [])
 
   /**
    * Scroll tabs in direction
@@ -85,10 +137,12 @@ export const TabBarWithOverflow = ({
   /**
    * Scroll active tab into view
    */
-  useEffect(() => {
-    if (!tabsRef.current || !group?.activeTabId) return
+  useLayoutEffect(() => {
+    if (!group?.activeTabId) return
 
-    const activeTab = tabsRef.current.querySelector(`[data-tab-id="${group.activeTabId}"]`)
+    const activeTab = document.querySelector<HTMLElement>(
+      `[data-tab-group="${groupId}"] [data-tab-id="${group.activeTabId}"]`
+    )
 
     if (activeTab) {
       activeTab.scrollIntoView({
@@ -97,10 +151,13 @@ export const TabBarWithOverflow = ({
         inline: 'nearest'
       })
     }
-  }, [group?.activeTabId])
+  }, [group?.activeTabId, groupId])
 
   return (
-    <div ref={containerRef} className={cn('flex items-center flex-1 overflow-hidden', className)}>
+    <div
+      ref={setContainerNode}
+      className={cn('flex items-center flex-1 overflow-hidden', className)}
+    >
       {/* Left scroll button */}
       {overflow.left && (
         <button
@@ -120,7 +177,8 @@ export const TabBarWithOverflow = ({
 
       {/* Scrollable tabs container */}
       <div
-        ref={tabsRef}
+        ref={setTabsNode}
+        data-tab-group={groupId}
         className="flex-1 flex items-center overflow-x-auto scrollbar-none"
         onScroll={checkOverflow}
       >

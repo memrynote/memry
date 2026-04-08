@@ -15,13 +15,8 @@ const DATE_PATTERN = /^\d{2}\.\d{2}\.\d{4}$/
 
 export function DateEditor({ value, onChange, onBlur, autoFocus = true }: DateEditorProps) {
   const inputRef = useRef<HTMLInputElement>(null)
-  const [localValue, setLocalValue] = useState(value ? format(value, DATE_FORMAT) : '')
-  const [isValidFormat, setIsValidFormat] = useState(true)
-
-  useEffect(() => {
-    setLocalValue(value ? format(value, DATE_FORMAT) : '')
-    setIsValidFormat(true)
-  }, [value])
+  const [draftValue, setDraftValue] = useState<string | null>(null)
+  const storedValue = value ? format(value, DATE_FORMAT) : ''
 
   useEffect(() => {
     if (autoFocus && inputRef.current) {
@@ -39,72 +34,66 @@ export function DateEditor({ value, onChange, onBlur, autoFocus = true }: DateEd
     return parsed
   }, [])
 
-  const resetToStoredValue = useCallback(() => {
-    setLocalValue(value ? format(value, DATE_FORMAT) : '')
-    setIsValidFormat(true)
-  }, [value])
+  const inputValue = draftValue ?? storedValue
+  const isValidFormat = !inputValue || validateAndParse(inputValue) !== null
 
   const handleChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
-      const newValue = e.target.value
-      setLocalValue(newValue)
-      const valid = !newValue || validateAndParse(newValue) !== null
-      setIsValidFormat(valid)
+      setDraftValue(e.target.value)
     },
-    [validateAndParse]
+    []
   )
 
   const handleBlur = useCallback(() => {
-    const parsed = validateAndParse(localValue)
-    const valid = !localValue || parsed !== null
-    setIsValidFormat(valid)
+    const parsed = validateAndParse(inputValue)
+    const valid = !inputValue || parsed !== null
     if (!valid) {
-      resetToStoredValue()
+      setDraftValue(null)
       onBlur?.()
       return
     }
-    if (!localValue) {
+    if (!inputValue) {
       onChange(null)
     } else if (parsed) {
       onChange(parsed)
     }
+    setDraftValue(null)
     onBlur?.()
-  }, [localValue, validateAndParse, onChange, onBlur])
+  }, [inputValue, validateAndParse, onChange, onBlur])
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
       if (e.key === 'Enter') {
         e.preventDefault()
-        const parsed = validateAndParse(localValue)
-        const valid = !localValue || parsed !== null
-        setIsValidFormat(valid)
+        const parsed = validateAndParse(inputValue)
+        const valid = !inputValue || parsed !== null
         if (!valid) {
-          resetToStoredValue()
+          setDraftValue(null)
           onBlur?.()
           return
         }
-        if (!localValue) {
+        if (!inputValue) {
           onChange(null)
         } else if (parsed) {
           onChange(parsed)
         }
+        setDraftValue(null)
         onBlur?.()
       }
       if (e.key === 'Escape') {
         e.preventDefault()
-        setLocalValue(value ? format(value, DATE_FORMAT) : '')
-        setIsValidFormat(true)
+        setDraftValue(null)
         onBlur?.()
       }
     },
-    [localValue, value, validateAndParse, onChange, onBlur, resetToStoredValue]
+    [inputValue, validateAndParse, onChange, onBlur]
   )
 
   return (
     <input
       ref={inputRef}
       type="text"
-      value={localValue}
+      value={inputValue}
       onChange={handleChange}
       onBlur={handleBlur}
       onKeyDown={handleKeyDown}

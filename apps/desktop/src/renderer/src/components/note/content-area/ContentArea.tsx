@@ -818,7 +818,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
           onSelect={handleTagSuggestionSelect}
         />
 
-        {noteId && highlightSelection && (
+        {editable && noteId && highlightSelection && (
           <HighlightReminderPopover
             noteId={noteId}
             selection={highlightSelection}
