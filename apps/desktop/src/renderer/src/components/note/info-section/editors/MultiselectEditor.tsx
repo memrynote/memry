@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { Plus, Trash2 } from '@/lib/icons'
 import { Picker } from '@/components/ui/picker'
 import { getTagColors, COLOR_NAMES } from '../../tags-row/tag-colors'
@@ -25,10 +25,6 @@ export function MultiselectEditor({
   const [isOpen, setIsOpen] = useState(defaultOpen ?? false)
   const [newOptionName, setNewOptionName] = useState('')
   const [isCreating, setIsCreating] = useState(false)
-
-  useEffect(() => {
-    if (defaultOpen) setIsOpen(true)
-  }, [defaultOpen])
 
   const selectedOptions = value
     .map((v) => options.find((o) => o.value === v))

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { Plus, Trash2 } from '@/lib/icons'
 import { Picker } from '@/components/ui/picker'
 import { getTagColors } from '../../tags-row/tag-colors'
@@ -26,10 +26,6 @@ export function SelectEditor({
   const [isOpen, setIsOpen] = useState(defaultOpen ?? false)
   const [newOptionName, setNewOptionName] = useState('')
   const [isCreating, setIsCreating] = useState(false)
-
-  useEffect(() => {
-    if (defaultOpen) setIsOpen(true)
-  }, [defaultOpen])
 
   const selectedOption = options.find((o) => o.value === value)
   const isOrphan = value && !selectedOption

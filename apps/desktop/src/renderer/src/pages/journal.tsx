@@ -75,10 +75,20 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
   const activeTab = useActiveTab()
   const { openTab } = useTabs()
   const today = getTodayString()
+  const tabDate = activeTab?.viewState?.date as string | undefined
 
   // Get initial date from tab viewState or default to today
-  const initialDate = (activeTab?.viewState?.date as string) || today
-  const [selectedDate, setSelectedDate] = useState(initialDate)
+  const initialDate = tabDate || today
+  const [selectedDateState, setSelectedDateState] = useState(initialDate)
+  const [viewState, setViewState] = useState<JournalViewState>({ type: 'day', date: initialDate })
+  const selectedDate = tabDate || selectedDateState
+  const currentViewState = useMemo<JournalViewState>(() => {
+    if (tabDate && viewState.type === 'day' && viewState.date !== tabDate) {
+      return { type: 'day', date: tabDate }
+    }
+
+    return viewState
+  }, [tabDate, viewState])
 
   const [isFullWidth, setIsFullWidth] = useState(() => {
     const saved = localStorage.getItem('memry_journal_full_width')
@@ -108,20 +118,22 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
 
   // Show toast when save error occurs
   useEffect(() => {
-    if (saveError) {
-      toast.error(saveError, {
-        description: 'Your content is still in memory. Click to retry saving.',
-        action: {
-          label: 'Retry',
-          onClick: () => {
-            retrySave()
-          }
-        },
-        duration: Infinity,
-        onDismiss: () => {
-          dismissSaveError()
+    if (!saveError) return
+
+    const toastId = toast.error(saveError, {
+      description: 'Your content is still in memory. Click to retry saving.',
+      action: {
+        label: 'Retry',
+        onClick: () => {
+          void retrySave()
         }
-      })
+      },
+      duration: Infinity,
+      onDismiss: dismissSaveError
+    })
+
+    return () => {
+      toast.dismiss(toastId)
     }
   }, [saveError, retrySave, dismissSaveError])
 
@@ -154,31 +166,15 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
   const entryTagsRef = useRef<string[]>([])
   entryTagsRef.current = entry?.tags ?? []
 
-  // Track editor loading
-  const [editorLoadCount, setEditorLoadCount] = useState(0)
-  const lastLoadedDateRef = useRef<string | null>(null)
+  const [editorRevision, setEditorRevision] = useState(0)
 
-  useEffect(() => {
-    if (isEntryLoading) return
-    if (loadedForDate !== selectedDate) return
-    if (lastLoadedDateRef.current === selectedDate) return
-
-    lastLoadedDateRef.current = selectedDate
-    setEditorLoadCount((c) => c + 1)
-  }, [selectedDate, isEntryLoading, loadedForDate])
-
-  useEffect(() => {
-    if (lastLoadedDateRef.current !== null && lastLoadedDateRef.current !== selectedDate) {
-      lastLoadedDateRef.current = null
-    }
-  }, [selectedDate])
-
+  const editorLoadState = loadedForDate === selectedDate ? 'loaded' : 'pending'
   const editorState = useMemo(
     () => ({
-      key: `${selectedDate}-${editorLoadCount}-${externalUpdateCount}`,
-      content: entry?.content ?? ''
+      key: `${selectedDate}-${editorLoadState}-${externalUpdateCount}-${editorRevision}`,
+      content: editorLoadState === 'loaded' ? entry?.content ?? '' : ''
     }),
-    [selectedDate, editorLoadCount, externalUpdateCount, entry?.content]
+    [selectedDate, editorLoadState, externalUpdateCount, editorRevision, entry?.content]
   )
 
   const isDataPending = isEntryLoading || loadedForDate !== selectedDate
@@ -195,18 +191,6 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
 
   const showEditorLoading = isDataPending && showLoadingSpinner
 
-  // Sync date from tab viewState
-  useEffect(() => {
-    const tabDate = activeTab?.viewState?.date as string
-    if (tabDate && tabDate !== selectedDate) {
-      setSelectedDate(tabDate)
-      setViewState({ type: 'day', date: tabDate })
-    }
-  }, [activeTab?.viewState?.date])
-
-  // View state for navigation
-  const [viewState, setViewState] = useState<JournalViewState>({ type: 'day', date: initialDate })
-
   const focusAtEndRef = useRef<(() => void) | null>(null)
 
   // Find in page (Cmd+F)
@@ -214,7 +198,7 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
   const isActiveJournal = activeTab?.type === 'journal'
   const findInPage = useFindInPage(
     editorContainerRef as RefObject<HTMLElement | null>,
-    isActiveJournal && viewState.type === 'day'
+    isActiveJournal && currentViewState.type === 'day'
   )
 
   // Date parts and heatmap
@@ -225,9 +209,11 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
   const currentYear = dateParts.year
   const { data: heatmapData } = useJournalHeatmap(currentYear)
 
-  const viewMonth = viewState.type === 'month' ? viewState.month : dateParts.monthIndex
+  const viewMonth = currentViewState.type === 'month' ? currentViewState.month : dateParts.monthIndex
   const viewYear =
-    viewState.type === 'month' || viewState.type === 'year' ? viewState.year : dateParts.year
+    currentViewState.type === 'month' || currentViewState.type === 'year'
+      ? currentViewState.year
+      : dateParts.year
 
   const { data: monthEntriesData } = useMonthEntries(viewYear, viewMonth + 1)
   const { data: yearStatsData } = useYearStats(viewYear)
@@ -278,9 +264,9 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
       return result
     }
 
-    const year = viewState.type === 'year' ? viewState.year : dateParts.year
+    const year = currentViewState.type === 'year' ? currentViewState.year : dateParts.year
     return getMonthStats(year, heatmapData)
-  }, [yearStatsData, viewState, dateParts.year, heatmapData])
+  }, [yearStatsData, currentViewState, dateParts.year, heatmapData])
 
   const journalScrollRef = useRef<HTMLDivElement>(null)
   const { activeHeadingId } = useActiveHeading({
@@ -356,7 +342,7 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
 
   const navigateToDay = useCallback(
     (date: string) => {
-      setSelectedDate(date)
+      setSelectedDateState(date)
       setViewState({ type: 'day', date })
       openTab({
         type: 'journal',
@@ -374,12 +360,12 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
   )
 
   const navigateBack = useCallback(() => {
-    if (viewState.type === 'month') {
-      navigateToYear(viewState.year)
-    } else if (viewState.type === 'year') {
+    if (currentViewState.type === 'month') {
+      navigateToYear(currentViewState.year)
+    } else if (currentViewState.type === 'year') {
       navigateToDay(selectedDate)
     }
-  }, [viewState, selectedDate, navigateToYear, navigateToDay])
+  }, [currentViewState, selectedDate, navigateToYear, navigateToDay])
 
   const handleTodayClick = useCallback(() => navigateToDay(today), [today, navigateToDay])
 
@@ -394,35 +380,37 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
   }, [selectedDateObj, navigateToDay])
 
   const handlePreviousMonth = useCallback(() => {
-    if (viewState.type === 'month') {
-      const newMonth = viewState.month === 0 ? 11 : viewState.month - 1
-      const newYear = viewState.month === 0 ? viewState.year - 1 : viewState.year
+    if (currentViewState.type === 'month') {
+      const newMonth = currentViewState.month === 0 ? 11 : currentViewState.month - 1
+      const newYear =
+        currentViewState.month === 0 ? currentViewState.year - 1 : currentViewState.year
       setViewState({ type: 'month', year: newYear, month: newMonth })
     }
-  }, [viewState])
+  }, [currentViewState])
 
   const handleNextMonth = useCallback(() => {
-    if (viewState.type === 'month') {
-      const newMonth = viewState.month === 11 ? 0 : viewState.month + 1
-      const newYear = viewState.month === 11 ? viewState.year + 1 : viewState.year
+    if (currentViewState.type === 'month') {
+      const newMonth = currentViewState.month === 11 ? 0 : currentViewState.month + 1
+      const newYear =
+        currentViewState.month === 11 ? currentViewState.year + 1 : currentViewState.year
       setViewState({ type: 'month', year: newYear, month: newMonth })
     }
-  }, [viewState])
+  }, [currentViewState])
 
   const handlePreviousYear = useCallback(() => {
-    if (viewState.type === 'year') {
-      setViewState({ type: 'year', year: viewState.year - 1 })
+    if (currentViewState.type === 'year') {
+      setViewState({ type: 'year', year: currentViewState.year - 1 })
     }
-  }, [viewState])
+  }, [currentViewState])
 
   const handleNextYear = useCallback(() => {
-    if (viewState.type === 'year') {
-      setViewState({ type: 'year', year: viewState.year + 1 })
+    if (currentViewState.type === 'year') {
+      setViewState({ type: 'year', year: currentViewState.year + 1 })
     }
-  }, [viewState])
+  }, [currentViewState])
 
   const handleNavigationPrevious = useCallback(() => {
-    switch (viewState.type) {
+    switch (currentViewState.type) {
       case 'day':
         handlePreviousDay()
         break
@@ -433,10 +421,10 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
         handlePreviousYear()
         break
     }
-  }, [viewState.type, handlePreviousDay, handlePreviousMonth, handlePreviousYear])
+  }, [currentViewState.type, handlePreviousDay, handlePreviousMonth, handlePreviousYear])
 
   const handleNavigationNext = useCallback(() => {
-    switch (viewState.type) {
+    switch (currentViewState.type) {
       case 'day':
         handleNextDay()
         break
@@ -447,7 +435,7 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
         handleNextYear()
         break
     }
-  }, [viewState.type, handleNextDay, handleNextMonth, handleNextYear])
+  }, [currentViewState.type, handleNextDay, handleNextMonth, handleNextYear])
 
   // Editor Handlers
   const handleMarkdownChange = useCallback(
@@ -608,7 +596,7 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
-        if (viewState.type === 'month' || viewState.type === 'year') {
+        if (currentViewState.type === 'month' || currentViewState.type === 'year') {
           e.preventDefault()
           navigateBack()
           return
@@ -621,15 +609,14 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
     }
     document.addEventListener('keydown', handleKeyDown)
     return () => document.removeEventListener('keydown', handleKeyDown)
-  }, [viewState, navigateBack])
+  }, [currentViewState, navigateBack])
 
   useEffect(() => {
     localStorage.setItem('memry_journal_full_width', isFullWidth.toString())
   }, [isFullWidth])
 
   const handleErrorRecover = useCallback(() => {
-    lastLoadedDateRef.current = null
-    setEditorLoadCount((c) => c + 1)
+    setEditorRevision((count) => count + 1)
   }, [])
 
   return (
@@ -657,7 +644,7 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
 
           <div className="flex items-center justify-between h-9 py-2 pl-6 pr-3 shrink-0 text-xs/4 [font-synthesis:none]">
             <JournalBreadcrumb
-              viewState={viewState}
+              viewState={currentViewState}
               isToday={isToday}
               onPreviousDay={handlePreviousDay}
               onNextDay={handleNextDay}
@@ -666,7 +653,7 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
               onTodayClick={handleTodayClick}
             />
             <JournalHeaderActions
-              viewState={viewState}
+              viewState={currentViewState}
               isBookmarked={isBookmarked}
               isFullWidth={isFullWidth}
               hasEntry={!!entry}
@@ -696,10 +683,10 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
                   </div>
                 )}
 
-                {viewState.type === 'day' && (
+                {currentViewState.type === 'day' && (
                   <>
                     <div className="group/metadata flex flex-col pb-[15px]">
-                      <JournalDateDisplay viewState={viewState} dateParts={dateParts} />
+                      <JournalDateDisplay viewState={currentViewState} dateParts={dateParts} />
                       <TagsRow
                         tags={journalTags}
                         availableTags={availableTags}
@@ -794,12 +781,16 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
                   </>
                 )}
 
-                {viewState.type === 'month' && (
+                {currentViewState.type === 'month' && (
                   <>
-                    <JournalDateDisplay viewState={viewState} dateParts={null} className="mb-6" />
+                    <JournalDateDisplay
+                      viewState={currentViewState}
+                      dateParts={null}
+                      className="mb-6"
+                    />
                     <JournalMonthView
-                      year={viewState.year}
-                      month={viewState.month}
+                      year={currentViewState.year}
+                      month={currentViewState.month}
                       entries={monthEntries}
                       heatmapData={heatmapData}
                       onDayClick={navigateToDay}
@@ -808,13 +799,17 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
                   </>
                 )}
 
-                {viewState.type === 'year' && (
+                {currentViewState.type === 'year' && (
                   <>
-                    <JournalDateDisplay viewState={viewState} dateParts={null} className="mb-6" />
+                    <JournalDateDisplay
+                      viewState={currentViewState}
+                      dateParts={null}
+                      className="mb-6"
+                    />
                     <JournalYearView
-                      year={viewState.year}
+                      year={currentViewState.year}
                       monthStats={monthStats}
-                      onMonthClick={(month) => navigateToMonth(viewState.year, month)}
+                      onMonthClick={(month) => navigateToMonth(currentViewState.year, month)}
                       className="flex-1"
                     />
                   </>
@@ -825,7 +820,7 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
             {/* Stats Footer - sticky at bottom of scroll area */}
             {!isJournalSettingsLoading &&
               journalSettings.showStatsFooter &&
-              viewState.type === 'day' &&
+              currentViewState.type === 'day' &&
               documentStats && (
                 <JournalStatsFooter
                   wordCount={documentStats.wordCount}
@@ -836,7 +831,7 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
               )}
           </div>
 
-          {viewState.type === 'day' && (
+          {currentViewState.type === 'day' && (
             <OutlineInfoPanel
               headings={headings}
               onHeadingClick={handleHeadingClick}
@@ -861,10 +856,11 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
             onOpenChange={setIsVersionHistoryOpen}
             noteId={entry.id}
             noteTitle={`Journal - ${formatDateParts(selectedDate).month} ${formatDateParts(selectedDate).day}, ${formatDateParts(selectedDate).year}`}
-            onRestore={async () => {
-              await forceReload()
-              lastLoadedDateRef.current = null
-              setEditorLoadCount((c) => c + 1)
+            onRestore={() => {
+              void (async () => {
+                await forceReload()
+                setEditorRevision((count) => count + 1)
+              })()
             }}
           />
         )}
