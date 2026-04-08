@@ -31,7 +31,6 @@ import { inboxItems, inboxItemTags } from '@memry/db-schema/schema/inbox'
 import { eq } from 'drizzle-orm'
 import {
   resolveAttachmentUrl,
-  getItemAttachmentsDir,
   storeInboxAttachment,
   storeThumbnail,
   ALLOWED_IMAGE_TYPES,

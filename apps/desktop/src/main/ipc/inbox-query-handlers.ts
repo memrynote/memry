@@ -17,7 +17,7 @@ import {
   type InboxItemType
 } from '@memry/contracts/inbox-api'
 import { inboxItems, inboxItemTags, inboxJobs } from '@memry/db-schema/schema/inbox'
-import { eq, desc, asc, and, inArray, isNull, sql, gte } from 'drizzle-orm'
+import { eq, desc, asc, and, inArray, isNull, sql, gte, type SQL } from 'drizzle-orm'
 import { createLogger } from '../lib/logger'
 
 const logger = createLogger('IPC:InboxQuery')
@@ -128,7 +128,7 @@ export function createInboxQueryHandlers(deps: InboxQueryHandlerDeps): InboxQuer
     const options = InboxJobListSchema.parse(input || {})
     const db = deps.requireDatabase()
 
-    const conditions = []
+    const conditions: SQL<unknown>[] = []
     if (options.itemIds?.length) {
       conditions.push(inArray(inboxJobs.itemId, options.itemIds))
     }
