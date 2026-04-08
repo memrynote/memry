@@ -81,6 +81,7 @@ import {
 } from '../crypto'
 import { getDatabase, getIndexDatabase, isDatabaseInitialized } from '../database/client'
 import { updateNoteCache } from '@main/database/queries/notes'
+import { updateNoteMetadata } from '@memry/storage-data'
 import { store } from '../store'
 import { deleteFromServer, getFromServer, patchToServer, postToServer } from '../sync/http-client'
 
@@ -1192,6 +1193,10 @@ export function registerSyncHandlers(syncEngine?: SyncEngine): void {
       const result = await queue.enqueue(noteId, diskPath, broadcastUploadProgress)
       if (isDatabaseInitialized()) {
         updateNoteCache(getIndexDatabase(), noteId, { attachmentId: result.attachmentId })
+        updateNoteMetadata(getDatabase(), noteId, {
+          attachmentId: result.attachmentId,
+          attachmentReferences: [result.attachmentId]
+        })
       }
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Unknown error'
@@ -1218,6 +1223,7 @@ export function registerSyncHandlers(syncEngine?: SyncEngine): void {
       const stats = await fs.promises.stat(diskPath)
       if (isDatabaseInitialized()) {
         updateNoteCache(getIndexDatabase(), noteId, { fileSize: stats.size })
+        updateNoteMetadata(getDatabase(), noteId, { fileSize: stats.size })
       }
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Unknown error'

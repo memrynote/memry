@@ -3,7 +3,7 @@ import matter from 'gray-matter'
 import { createLogger } from '../lib/logger'
 import { atomicWrite, safeRead } from './file-ops'
 import { getMemryDir } from './init'
-import { getIndexDatabase, type DrizzleDb } from '../database'
+import { getDatabase, getIndexDatabase, type DrizzleDb } from '../database'
 import {
   PropertyDefinitionsFileSchema,
   type PropertyDefinition,
@@ -216,31 +216,34 @@ export class PropertyDefinitionsService {
 
   private rebuildDbCache(): void {
     try {
-      const db = getIndexDatabase() as DrizzleDb
-      db.delete(propertyDefinitionsTable).run()
-
-      for (const def of this.cache.values()) {
-        const options =
-          def.type === 'status' && def.categories
-            ? JSON.stringify({ categories: def.categories })
-            : def.options
-              ? JSON.stringify(def.options)
-              : null
-
-        db.insert(propertyDefinitionsTable)
-          .values({
-            name: def.name,
-            type: def.type,
-            options,
-            defaultValue: def.defaultValue ?? null,
-            color: null
-          })
-          .run()
-      }
-
+      this.rebuildSingleDbCache(getDatabase() as DrizzleDb)
+      this.rebuildSingleDbCache(getIndexDatabase() as DrizzleDb)
       logger.debug('Rebuilt DB cache with', this.cache.size, 'definitions')
     } catch (err) {
       logger.warn('Failed to rebuild property definitions DB cache:', err)
+    }
+  }
+
+  private rebuildSingleDbCache(db: DrizzleDb): void {
+    db.delete(propertyDefinitionsTable).run()
+
+    for (const def of this.cache.values()) {
+      const options =
+        def.type === 'status' && def.categories
+          ? JSON.stringify({ categories: def.categories })
+          : def.options
+            ? JSON.stringify(def.options)
+            : null
+
+      db.insert(propertyDefinitionsTable)
+        .values({
+          name: def.name,
+          type: def.type,
+          options,
+          defaultValue: def.defaultValue ?? null,
+          color: null
+        })
+        .run()
     }
   }
 

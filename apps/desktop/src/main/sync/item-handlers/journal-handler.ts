@@ -1,5 +1,6 @@
-import { isNull, and, isNotNull } from 'drizzle-orm'
-import { noteCache } from '@memry/db-schema/schema/notes-cache'
+import fs from 'fs'
+import { and, isNotNull, isNull } from 'drizzle-orm'
+import { noteMetadata } from '@memry/db-schema/data-schema'
 import { JournalSyncPayloadSchema, type JournalSyncPayload } from '@memry/contracts/sync-payloads'
 import { JournalChannels } from '@memry/contracts/ipc-channels'
 import type { VectorClock } from '@memry/contracts/sync-api'
@@ -7,16 +8,16 @@ import { utcNow } from '@memry/shared/utc'
 import type { SyncQueueManager } from '../queue'
 import { increment } from '../vector-clock'
 import { getIndexDatabase } from '../../database/client'
-import { getNoteCacheById, updateNoteCache } from '@main/database/queries/notes'
-import { deleteNoteFromCache } from '../../vault/note-sync'
+import { getNoteMetadataById, updateNoteMetadata } from '@memry/storage-data'
+import { saveCanonicalNote } from '@memry/domain-notes'
 import {
-  writeJournalEntry,
   deleteJournalEntryFile,
-  readJournalEntry,
   getJournalPath,
-  parseJournalEntry
+  getJournalRelativePath,
+  parseJournalEntry,
+  writeJournalEntryWithContent
 } from '../../vault/journal'
-import fs from 'fs'
+import { syncNoteToCache, deleteNoteFromCache } from '../../vault/note-sync'
 import { createLogger } from '../../lib/logger'
 import { resolveClockConflict } from './types'
 import type { SyncItemHandler, ApplyContext, ApplyResult, DrizzleDb } from './types'
@@ -33,11 +34,10 @@ export const journalHandler: SyncItemHandler<JournalSyncPayload> = {
     data: JournalSyncPayload,
     clock: VectorClock
   ): ApplyResult {
-    const indexDb = getIndexDatabase()
     const remoteClock = Object.keys(clock).length > 0 ? clock : (data.clock ?? {})
     const now = utcNow()
-
-    const existing = getNoteCacheById(indexDb, itemId)
+    const existing = getNoteMetadataById(ctx.db, itemId)
+    const indexDb = getIndexDatabase()
 
     if (existing) {
       const resolution = resolveClockConflict(existing.clock, remoteClock)
@@ -49,37 +49,78 @@ export const journalHandler: SyncItemHandler<JournalSyncPayload> = {
         log.warn('Concurrent journal edit, applying (CRDT handles merge)', { itemId })
       }
 
-      updateNoteCache(indexDb, itemId, {
-        clock: resolution.mergedClock,
-        syncedAt: now,
-        modifiedAt: data.modifiedAt ?? now
-      })
-
-      writeJournalEntry(
+      writeJournalEntryWithContent(
         data.date,
         data.content ?? '',
         data.tags,
+        null,
         data.properties ?? undefined
-      ).catch((err) => {
-        log.error('Failed to write synced journal entry', { itemId, date: data.date, error: err })
-      })
+      )
+        .then(({ entry, fileContent, frontmatter }) => {
+          saveCanonicalNote(ctx.db, {
+            id: itemId,
+            path: getJournalRelativePath(entry.date),
+            title: entry.date,
+            journalDate: entry.date,
+            clock: resolution.mergedClock,
+            syncedAt: now,
+            createdAt: entry.createdAt,
+            modifiedAt: data.modifiedAt ?? entry.modifiedAt,
+            properties: data.properties
+          })
+
+          syncNoteToCache(
+            indexDb,
+            {
+              id: itemId,
+              path: getJournalRelativePath(entry.date),
+              fileContent,
+              frontmatter,
+              parsedContent: entry.content
+            },
+            { isNew: false }
+          )
+        })
+        .catch((err) => {
+          log.error('Failed to write synced journal entry', { itemId, date: data.date, error: err })
+        })
 
       ctx.emit(JournalChannels.events.ENTRY_UPDATED, { date: data.date, source: 'sync' })
       return resolution.action === 'merge' ? 'conflict' : 'applied'
     }
 
-    writeJournalEntry(data.date, data.content ?? '', data.tags, data.properties ?? undefined)
-      .then(() => {
-        const entry = readJournalEntry(data.date)
-        return entry
-      })
-      .then((entry) => {
-        if (entry) {
-          updateNoteCache(indexDb, entry.id, {
-            clock: remoteClock,
-            syncedAt: now
-          })
-        }
+    writeJournalEntryWithContent(
+      data.date,
+      data.content ?? '',
+      data.tags,
+      null,
+      data.properties ?? undefined
+    )
+      .then(({ entry, fileContent, frontmatter }) => {
+        saveCanonicalNote(ctx.db, {
+          id: itemId,
+          path: getJournalRelativePath(entry.date),
+          title: entry.date,
+          journalDate: entry.date,
+          clock: remoteClock,
+          syncedAt: now,
+          createdAt: entry.createdAt,
+          modifiedAt: entry.modifiedAt,
+          properties: data.properties
+        })
+
+        syncNoteToCache(
+          indexDb,
+          {
+            id: itemId,
+            path: getJournalRelativePath(entry.date),
+            fileContent,
+            frontmatter,
+            parsedContent: entry.content
+          },
+          { isNew: true }
+        )
+
         ctx.emit(JournalChannels.events.ENTRY_CREATED, { date: data.date, source: 'sync' })
       })
       .catch((err) => {
@@ -95,7 +136,7 @@ export const journalHandler: SyncItemHandler<JournalSyncPayload> = {
 
   applyDelete(ctx: ApplyContext, itemId: string, clock?: VectorClock): 'applied' | 'skipped' {
     const indexDb = getIndexDatabase()
-    const existing = getNoteCacheById(indexDb, itemId)
+    const existing = getNoteMetadataById(ctx.db, itemId)
     if (!existing) return 'skipped'
 
     if (clock && existing.clock) {
@@ -106,44 +147,42 @@ export const journalHandler: SyncItemHandler<JournalSyncPayload> = {
       }
     }
 
-    if (existing.date) {
-      deleteJournalEntryFile(existing.date).catch((err) => {
+    if (existing.journalDate) {
+      deleteJournalEntryFile(existing.journalDate).catch((err) => {
         log.error('Failed to delete synced journal file', { itemId, error: err })
       })
     }
 
     deleteNoteFromCache(indexDb, itemId)
     ctx.emit(JournalChannels.events.ENTRY_DELETED, {
-      date: existing.date,
+      date: existing.journalDate,
       source: 'sync'
     })
     return 'applied'
   },
 
-  fetchLocal(_db: DrizzleDb, itemId: string): Record<string, unknown> | undefined {
-    const indexDb = getIndexDatabase()
-    const cached = getNoteCacheById(indexDb, itemId)
-    if (!cached || !cached.date) return undefined
+  fetchLocal(db: DrizzleDb, itemId: string): Record<string, unknown> | undefined {
+    const cached = getNoteMetadataById(db, itemId)
+    if (!cached || !cached.journalDate) return undefined
     return cached as unknown as Record<string, unknown>
   },
 
   buildPushPayload(
-    _db: DrizzleDb,
+    db: DrizzleDb,
     itemId: string,
     _deviceId: string,
     operation: string
   ): string | null {
-    const indexDb = getIndexDatabase()
-    const cached = getNoteCacheById(indexDb, itemId)
-    if (!cached || !cached.date) return null
+    const cached = getNoteMetadataById(db, itemId)
+    if (!cached || !cached.journalDate) return null
 
     let content: string | null = null
     let tags: string[] = []
     let properties: Record<string, unknown> | null = null
-    const filePath = getJournalPath(cached.date)
+    const filePath = getJournalPath(cached.journalDate)
     try {
       const raw = fs.readFileSync(filePath, 'utf-8')
-      const parsed = parseJournalEntry(raw, cached.date)
+      const parsed = parseJournalEntry(raw, cached.journalDate)
       content = operation === 'create' ? parsed.content : null
       tags = parsed.frontmatter.tags ?? []
       if (parsed.frontmatter.properties) {
@@ -152,12 +191,12 @@ export const journalHandler: SyncItemHandler<JournalSyncPayload> = {
     } catch {
       log.warn('Could not read journal file for push payload', {
         noteId: cached.id,
-        date: cached.date
+        date: cached.journalDate
       })
     }
 
     return JSON.stringify({
-      date: cached.date,
+      date: cached.journalDate,
       content,
       tags,
       properties,
@@ -167,31 +206,22 @@ export const journalHandler: SyncItemHandler<JournalSyncPayload> = {
     })
   },
 
-  seedUnclocked(_db: DrizzleDb, deviceId: string, queue: SyncQueueManager): number {
-    let indexDb: ReturnType<typeof getIndexDatabase>
-    try {
-      indexDb = getIndexDatabase()
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error)
-      log.warn('Skipping unclocked journal seeding: index database unavailable', { message })
-      return 0
-    }
-
-    const items = indexDb
+  seedUnclocked(db: DrizzleDb, deviceId: string, queue: SyncQueueManager): number {
+    const items = db
       .select()
-      .from(noteCache)
-      .where(and(isNull(noteCache.clock), isNotNull(noteCache.date)))
+      .from(noteMetadata)
+      .where(and(isNull(noteMetadata.clock), isNotNull(noteMetadata.journalDate)))
       .all()
 
     for (const item of items) {
       const clock = increment({}, deviceId)
-      updateNoteCache(indexDb, item.id, { clock })
+      updateNoteMetadata(db, item.id, { clock })
       queue.enqueue({
         type: 'journal',
         itemId: item.id,
         operation: 'create',
         payload: JSON.stringify({
-          date: item.date!,
+          date: item.journalDate!,
           clock,
           createdAt: item.createdAt,
           modifiedAt: item.modifiedAt
@@ -199,6 +229,7 @@ export const journalHandler: SyncItemHandler<JournalSyncPayload> = {
         priority: 0
       })
     }
+
     return items.length
   }
 }

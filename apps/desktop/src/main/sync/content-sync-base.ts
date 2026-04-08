@@ -1,10 +1,10 @@
 import type { SyncItemType, VectorClock } from '@memry/contracts/sync-api'
+import type { NoteMetadata } from '@memry/db-schema/data-schema'
 import { RecordSyncController, incrementClock } from '@memry/sync-core'
-import type { NoteCache } from '@memry/db-schema/schema/notes-cache'
-import type { SyncQueueManager } from './queue'
-import { getIndexDatabase } from '../database/client'
-import { getNoteCacheById, updateNoteCache } from '@main/database/queries/notes'
+import { getNoteMetadataById, updateNoteMetadata } from '@memry/storage-data'
 import type Logger from 'electron-log'
+import { getDatabase } from '../database/client'
+import type { SyncQueueManager } from './queue'
 
 export interface ContentSyncDeps {
   queue: SyncQueueManager
@@ -19,7 +19,7 @@ export abstract class ContentSyncService<
   protected abstract readonly log: Logger.LogFunctions
   abstract readonly itemType: SyncItemType
   private readonly getDeviceId: () => string | null
-  private controller: RecordSyncController<NoteCache, TArgs, TArgs> | null = null
+  private controller: RecordSyncController<NoteMetadata, TArgs, TArgs> | null = null
 
   constructor(deps: ContentSyncDeps) {
     this.queue = deps.queue
@@ -27,14 +27,14 @@ export abstract class ContentSyncService<
   }
 
   protected abstract buildSnapshotPayload(
-    cached: NoteCache,
+    cached: NoteMetadata,
     clock: VectorClock,
     operation: 'create' | 'update',
     ...extra: TArgs
   ): TPayload
 
   protected abstract buildDeletePayload(
-    cached: NoteCache | undefined,
+    cached: NoteMetadata | undefined,
     clock: VectorClock,
     ...extra: TArgs
   ): TPayload | null
@@ -51,18 +51,23 @@ export abstract class ContentSyncService<
     this.getController().enqueueDelete(itemId, ...extra)
   }
 
-  private getController(): RecordSyncController<NoteCache, TArgs, TArgs> {
+  private getController(): RecordSyncController<NoteMetadata, TArgs, TArgs> {
     if (this.controller) return this.controller
 
     this.controller = new RecordSyncController({
       type: this.itemType,
       queue: this.queue,
       getDeviceId: this.getDeviceId,
-      load: (itemId) => getNoteCacheById(getIndexDatabase(), itemId),
+      load: (itemId) => getNoteMetadataById(getDatabase(), itemId),
+      handleMissingDevice: (itemId, operation) => {
+        this.log.warn(`No device ID, skipping ${this.itemType} ${operation} enqueue`, { itemId })
+      },
       applyLocalChange: ({ itemId, local, deviceId }) => {
         const nextClock = incrementClock((local.clock as VectorClock) ?? {}, deviceId)
-        updateNoteCache(getIndexDatabase(), itemId, { clock: nextClock })
-        return { ...local, clock: nextClock }
+        return updateNoteMetadata(getDatabase(), itemId, { clock: nextClock }) ?? {
+          ...local,
+          clock: nextClock
+        }
       },
       serialize: (local, operation, extra) =>
         this.buildSnapshotPayload(local, (local.clock as VectorClock) ?? {}, operation, ...extra),

@@ -15,12 +15,25 @@ vi.mock('@main/database/queries/notes', () => ({
   getNoteCacheByPath: vi.fn(() => undefined)
 }))
 
+vi.mock('../database', () => ({
+  queueFtsUpdate: vi.fn(),
+  getDatabase: vi.fn(() => createMockDb())
+}))
+
+vi.mock('@memry/domain-notes', () => ({
+  saveCanonicalNote: vi.fn(),
+  saveCanonicalPropertyDefinition: vi.fn(),
+  deleteCanonicalNote: vi.fn()
+}))
+
 vi.mock('../projections', () => ({
   publishProjectionEvent: vi.fn()
 }))
 
 import { extractNoteMetadata, syncNoteToCache, type NoteSyncInput } from './note-sync'
 import { publishProjectionEvent } from '../projections'
+import { setNoteTags } from '@main/database/queries/notes'
+import { saveCanonicalNote } from '@memry/domain-notes'
 import type { NoteFrontmatter } from './frontmatter'
 
 const FIXED_ISO = '2026-01-15T12:00:00.000Z'
@@ -185,6 +198,32 @@ describe('syncNoteToCache — tagsOverride', () => {
           noteId: 'abc123def456',
           tags: ['typescript']
         })
+      })
+    )
+  })
+
+  it('mirrors canonical note metadata into data.db', () => {
+    const db = createMockDb()
+
+    const input = buildInput({
+      path: 'journal/2026-01-15.md',
+      parsedContent: 'Daily note'
+    })
+
+    syncNoteToCache(db, input, { isNew: true })
+
+    expect(saveCanonicalNote).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        id: 'abc123def456',
+        path: 'journal/2026-01-15.md',
+        title: '2026-01-15',
+        journalDate: null,
+        localOnly: false,
+        emoji: null,
+        properties: {},
+        createdAt: FIXED_ISO,
+        modifiedAt: FIXED_ISO
       })
     )
   })

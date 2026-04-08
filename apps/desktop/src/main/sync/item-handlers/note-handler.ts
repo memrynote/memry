@@ -31,13 +31,17 @@ import {
 } from '../../vault/frontmatter'
 import { syncNoteToCache, syncFileToCache, deleteNoteFromCache } from '../../vault/note-sync'
 import {
-  getNoteCacheById,
+  getNoteMetadataById,
+  updateNoteMetadata,
+  getPropertyDefinition as getCanonicalPropertyDefinition
+} from '@memry/storage-data'
+import { saveCanonicalPropertyDefinition } from '@memry/domain-notes'
+import {
   getNoteCacheByPath,
   getNoteTags,
   setNoteTags,
   updateNoteCache,
-  setNoteProperties,
-  getPropertyType
+  setNoteProperties
 } from '@main/database/queries/notes'
 import { createLogger } from '../../lib/logger'
 import { resolveClockConflict } from './types'
@@ -85,7 +89,7 @@ export const noteHandler: SyncItemHandler<NoteSyncPayload> = {
     const remoteClock = Object.keys(clock).length > 0 ? clock : (data.clock ?? {})
     const now = utcNow()
 
-    const existing = getNoteCacheById(indexDb, itemId)
+    const existing = getNoteMetadataById(ctx.db, itemId)
 
     if (existing) {
       const resolution = resolveClockConflict(existing.clock, remoteClock)
@@ -163,6 +167,18 @@ export const noteHandler: SyncItemHandler<NoteSyncPayload> = {
         }
 
         updateNoteCache(indexDb, itemId, updateFields)
+        updateNoteMetadata(ctx.db, itemId, {
+          path: updateFields.path ?? existing.path,
+          title: newTitle,
+          emoji: resolvedEmoji,
+          fileType: existing.fileType,
+          mimeType: existing.mimeType,
+          fileSize: existing.fileSize,
+          attachmentId: data.attachmentId ?? existing.attachmentId,
+          clock: resolution.mergedClock,
+          syncedAt: now,
+          modifiedAt: data.modifiedAt ?? now
+        })
         ctx.emit(NotesChannels.events.UPDATED, { id: itemId, source: 'sync' })
         return resolution.action === 'merge' ? 'conflict' : 'applied'
       }
@@ -296,8 +312,14 @@ export const noteHandler: SyncItemHandler<NoteSyncPayload> = {
       }
 
       if (propertiesPresent) {
-        const getType = (name: string, value: unknown) =>
-          getPropertyType(indexDb, name, value, inferPropertyType)
+        const getType = (name: string, value: unknown) => {
+          const type =
+            (getCanonicalPropertyDefinition(ctx.db, name)?.type as ReturnType<
+              typeof inferPropertyType
+            > | null | undefined) ?? inferPropertyType(name, value)
+          saveCanonicalPropertyDefinition(ctx.db, { name, type })
+          return type
+        }
         setNoteProperties(indexDb, itemId, remoteProperties, getType)
       }
 
@@ -306,6 +328,18 @@ export const noteHandler: SyncItemHandler<NoteSyncPayload> = {
       }
 
       updateNoteCache(indexDb, itemId, updateFields)
+      updateNoteMetadata(ctx.db, itemId, {
+        path: updateFields.path ?? existing.path,
+        title: newTitle,
+        emoji: resolvedEmoji,
+        clock: resolution.mergedClock,
+        syncedAt: now,
+        modifiedAt: data.modifiedAt ?? now,
+        propertyDefinitionNames:
+          remoteProperties && Object.keys(remoteProperties).length > 0
+            ? Object.keys(remoteProperties).sort((a, b) => a.localeCompare(b))
+            : undefined
+      })
 
       ctx.emit(NotesChannels.events.UPDATED, { id: itemId, source: 'sync' })
       if (tagsChanged) {
@@ -343,6 +377,19 @@ export const noteHandler: SyncItemHandler<NoteSyncPayload> = {
         syncedAt: now,
         emoji: data.emoji ?? null,
         attachmentId: data.attachmentId ?? null
+      })
+      updateNoteMetadata(ctx.db, itemId, {
+        path: relPath,
+        title,
+        emoji: data.emoji ?? null,
+        fileType: data.fileType as Exclude<FileType, 'markdown'>,
+        mimeType: data.mimeType ?? getMimeType(ext) ?? null,
+        fileSize: 0,
+        attachmentId: data.attachmentId ?? null,
+        clock: remoteClock,
+        syncedAt: now,
+        createdAt: data.createdAt ? new Date(data.createdAt).toISOString() : now,
+        modifiedAt: data.modifiedAt ? new Date(data.modifiedAt).toISOString() : now
       })
 
       if (data.attachmentId) {
@@ -389,6 +436,14 @@ export const noteHandler: SyncItemHandler<NoteSyncPayload> = {
       { isNew: true }
     )
     updateNoteCache(indexDb, itemId, { clock: remoteClock, syncedAt: now })
+    updateNoteMetadata(ctx.db, itemId, {
+      clock: remoteClock,
+      syncedAt: now,
+      propertyDefinitionNames:
+        data.properties && Object.keys(data.properties).length > 0
+          ? Object.keys(data.properties).sort((a, b) => a.localeCompare(b))
+          : undefined
+    })
 
     if (data.pinnedTags) {
       applyPinnedTags(indexDb, itemId, data.pinnedTags)
@@ -410,7 +465,7 @@ export const noteHandler: SyncItemHandler<NoteSyncPayload> = {
 
   applyDelete(ctx: ApplyContext, itemId: string, clock?: VectorClock): 'applied' | 'skipped' {
     const indexDb = getIndexDatabase()
-    const existing = getNoteCacheById(indexDb, itemId)
+    const existing = getNoteMetadataById(ctx.db, itemId)
     if (!existing) return 'skipped'
 
     if (clock && existing.clock) {

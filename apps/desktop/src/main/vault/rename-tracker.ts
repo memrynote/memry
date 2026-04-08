@@ -11,10 +11,11 @@
 import path from 'path'
 import { BrowserWindow } from 'electron'
 import { updateNoteCache } from '@main/database/queries/notes'
-import { getIndexDatabase } from '../database'
+import { getDatabase, getIndexDatabase } from '../database'
 import { NotesChannels } from '@memry/contracts/ipc-channels'
 import type { NoteRenamedEvent } from '@memry/contracts/notes-api'
 import { createLogger } from '../lib/logger'
+import { updateNoteMetadata } from '@memry/storage-data'
 
 const logger = createLogger('RenameTracker')
 
@@ -212,6 +213,11 @@ export function processRename(id: string, oldPath: string, newPath: string): voi
 
   // Update the cache with new path and title
   const updated = updateNoteCache(db, id, {
+    path: newPath,
+    title: newTitle,
+    modifiedAt: now
+  })
+  updateNoteMetadata(getDatabase(), id, {
     path: newPath,
     title: newTitle,
     modifiedAt: now

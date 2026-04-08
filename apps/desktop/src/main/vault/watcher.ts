@@ -16,7 +16,7 @@ import { getConfig } from './index'
 import { parseNote, serializeNote, generateContentHash, extractProperties } from './frontmatter'
 import { safeRead, atomicWrite } from './file-ops'
 import { generateNoteId } from '../lib/id'
-import { deleteNoteFromCache, syncNoteToCache, syncFileToCache } from './note-sync'
+import { syncNoteToCache, syncFileToCache, deleteNoteFromCache } from './note-sync'
 import {
   getNoteCacheByPath,
   getNoteCacheById,

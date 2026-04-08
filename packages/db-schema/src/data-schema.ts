@@ -16,9 +16,15 @@ export * from './schema/settings'
 export * from './schema/bookmarks'
 export * from './schema/reminders'
 export * from './schema/note-positions'
+export * from './schema/note-metadata'
 export * from './schema/tag-definitions'
 export * from './schema/sync-devices'
 export * from './schema/sync-queue'
 export * from './schema/sync-state'
 export * from './schema/sync-history'
 export * from './schema/search-reasons'
+export {
+  propertyDefinitions,
+  type PropertyDefinition,
+  type NewPropertyDefinition
+} from './schema/notes-cache'

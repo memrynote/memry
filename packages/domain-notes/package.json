@@ -1,24 +1,25 @@
 {
-  "name": "@memry/storage-data",
+  "name": "@memry/domain-notes",
   "version": "0.1.0",
   "private": true,
   "license": "GPL-3.0",
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
-    "./note-metadata-repository": "./src/note-metadata-repository.ts",
-    "./tasks-repository": "./src/tasks-repository.ts"
+    "./commands": "./src/commands.ts",
+    "./queries": "./src/queries.ts"
   },
   "types": "./src/index.ts",
   "scripts": {
     "typecheck": "tsc --noEmit -p tsconfig.json"
   },
-  "dependencies": {
-    "@memry/db-schema": "workspace:*",
-    "@memry/domain-tasks": "workspace:*",
-    "drizzle-orm": "^0.45.1"
-  },
   "devDependencies": {
     "@memry/typescript-config": "workspace:*"
+  },
+  "dependencies": {
+    "@memry/contracts": "workspace:*",
+    "@memry/db-schema": "workspace:*",
+    "@memry/shared": "workspace:*",
+    "@memry/storage-data": "workspace:*"
   }
 }
