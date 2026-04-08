@@ -25,8 +25,6 @@ export function useTaskPreferences(): UseTaskPreferencesReturn {
     let mounted = true
     const load = async (): Promise<void> => {
       try {
-        setIsLoading(true)
-        setError(null)
         const result = await window.api.settings.getTaskSettings()
         if (mounted) setSettings(result)
       } catch (err) {
@@ -35,7 +33,7 @@ export function useTaskPreferences(): UseTaskPreferencesReturn {
         if (mounted) setIsLoading(false)
       }
     }
-    load()
+    void load()
     return () => {
       mounted = false
     }
