@@ -92,7 +92,9 @@ export default defineConfig({
   resolve: {
     alias: {
       '@memry/contracts': resolve(workspaceRoot, 'packages/contracts/src'),
+      '@memry/domain-tasks': resolve(workspaceRoot, 'packages/domain-tasks/src'),
       '@memry/db-schema': resolve(workspaceRoot, 'packages/db-schema/src'),
+      '@memry/storage-data': resolve(workspaceRoot, 'packages/storage-data/src'),
       '@memry/shared': resolve(workspaceRoot, 'packages/shared/src'),
       '@main': resolve(appRoot, 'src/main'),
       '@': resolve(appRoot, 'src/renderer/src'),
