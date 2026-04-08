@@ -12,8 +12,9 @@ import { BrowserWindow } from 'electron'
 
 const mockStoreInboxAttachment = vi.hoisted(() => vi.fn())
 const mockResolveAttachmentUrl = vi.hoisted(() => vi.fn())
-const mockTranscribeAudio = vi.hoisted(() => vi.fn())
 const mockGetVoiceRecordingReadiness = vi.hoisted(() => vi.fn())
+const mockQueueInboxTranscriptionJob = vi.hoisted(() => vi.fn())
+const mockMarkInboxJobFailed = vi.hoisted(() => vi.fn())
 
 vi.mock('electron', () => ({
   BrowserWindow: {
@@ -31,8 +32,12 @@ vi.mock('./attachments', () => ({
 }))
 
 vi.mock('./transcription', () => ({
-  transcribeAudio: mockTranscribeAudio,
   getVoiceRecordingReadiness: mockGetVoiceRecordingReadiness
+}))
+
+vi.mock('./jobs', () => ({
+  queueInboxTranscriptionJob: mockQueueInboxTranscriptionJob,
+  markInboxJobFailed: mockMarkInboxJobFailed
 }))
 
 import { getDatabase } from '../database'
@@ -53,11 +58,12 @@ describe('inbox capture', () => {
     mockResolveAttachmentUrl.mockImplementation((value: string | null) =>
       value ? `memry-file://${value}` : null
     )
-    mockTranscribeAudio.mockReset()
     mockGetVoiceRecordingReadiness.mockReset().mockResolvedValue({
       ready: true,
       provider: 'local'
     })
+    mockQueueInboxTranscriptionJob.mockReset()
+    mockMarkInboxJobFailed.mockReset()
   })
 
   afterEach(() => {
@@ -68,19 +74,11 @@ describe('inbox capture', () => {
   // ==========================================================================
   // T605: capture voice flow
   // ==========================================================================
-  it('captures a voice memo, stores tags, and triggers transcription', async () => {
+  it('captures a voice memo, stores tags, and queues transcription', async () => {
     mockStoreInboxAttachment.mockImplementation(async (id: string) => ({
       success: true,
       path: `attachments/inbox/${id}/voice-memo.webm`
     }))
-    mockTranscribeAudio.mockResolvedValue({ success: true, transcription: 'hello' })
-
-    const setImmediateSpy = vi
-      .spyOn(global, 'setImmediate')
-      .mockImplementation((handler: () => void) => {
-        handler()
-        return 0 as unknown as NodeJS.Immediate
-      })
 
     const response = await captureVoice({
       data: Buffer.from('audio-data'),
@@ -120,12 +118,10 @@ describe('inbox capture', () => {
       })
     )
 
-    expect(mockTranscribeAudio).toHaveBeenCalledWith(
+    expect(mockQueueInboxTranscriptionJob).toHaveBeenCalledWith(
       response.item!.id,
       `attachments/inbox/${response.item!.id}/voice-memo.webm`
     )
-
-    setImmediateSpy.mockRestore()
   })
 
   it('marks transcription as failed when unavailable', async () => {
@@ -152,7 +148,13 @@ describe('inbox capture', () => {
     expect(response.item?.processingError).toContain(
       'Download Whisper Small in Settings to record voice memos.'
     )
-    expect(mockTranscribeAudio).not.toHaveBeenCalled()
+    expect(mockQueueInboxTranscriptionJob).not.toHaveBeenCalled()
+    expect(mockMarkInboxJobFailed).toHaveBeenCalledWith(
+      response.item!.id,
+      'transcription',
+      { attachmentPath: 'attachments/inbox/item-1/voice-memo.webm' },
+      'Download Whisper Small in Settings to record voice memos.'
+    )
   })
 
   it('returns an error when attachment storage fails', async () => {

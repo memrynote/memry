@@ -31,6 +31,13 @@ export type InboxItemType =
 export type ProcessingStatus = 'pending' | 'processing' | 'complete' | 'failed'
 export type FilingAction = 'folder' | 'note' | 'linked'
 export type CaptureSource = 'quick-capture' | 'inline' | 'browser-extension' | 'api' | 'reminder'
+export type InboxJobType =
+  | 'transcription'
+  | 'metadata-scrape'
+  | 'duplicate-detection'
+  | 'suggestion-generation'
+  | 'thumbnail-generation'
+export type InboxJobStatus = 'pending' | 'running' | 'failed' | 'complete'
 
 export type TriageAction = 'discard' | 'convert-to-task' | 'expand-to-note' | 'file' | 'defer'
 
@@ -258,6 +265,23 @@ export interface FilingSuggestion {
   suggestedNote?: SuggestedNote
 }
 
+export interface InboxJob {
+  id: string
+  itemId: string
+  type: InboxJobType
+  status: InboxJobStatus
+  runAt: Date
+  attempts: number
+  maxAttempts: number
+  payload: Record<string, unknown> | null
+  result: Record<string, unknown> | null
+  lastError: string | null
+  startedAt: Date | null
+  completedAt: Date | null
+  createdAt: Date
+  updatedAt: Date
+}
+
 export interface InboxAgeDistribution {
   fresh: number
   aging: number
@@ -459,6 +483,14 @@ export const GetFilingHistorySchema = z.object({
   limit: z.number().int().min(1).max(100).default(20)
 })
 
+export const InboxJobListSchema = z.object({
+  itemIds: z.array(z.string()).max(200).optional(),
+  statuses: z
+    .array(z.enum(['pending', 'running', 'failed', 'complete']))
+    .max(10)
+    .optional()
+})
+
 // ============================================================================
 // Filing History Types
 // ============================================================================
@@ -523,6 +555,10 @@ export interface FilingHistoryResponse {
 
 export interface SuggestionsResponse {
   suggestions: FilingSuggestion[]
+}
+
+export interface InboxJobsResponse {
+  jobs: InboxJob[]
 }
 
 // ============================================================================
@@ -610,6 +646,9 @@ export interface InboxHandlers {
 
   // Stats
   [InboxChannels.invoke.GET_STATS]: () => Promise<InboxStats>
+  [InboxChannels.invoke.GET_JOBS]: (
+    input: z.infer<typeof InboxJobListSchema>
+  ) => Promise<InboxJobsResponse>
   [InboxChannels.invoke.GET_PATTERNS]: () => Promise<CapturePattern>
 
   // Settings
@@ -749,6 +788,7 @@ export interface InboxClientAPI {
 
   // Stats
   getStats(): Promise<InboxStats>
+  getJobs(options?: z.infer<typeof InboxJobListSchema>): Promise<InboxJobsResponse>
   getPatterns(): Promise<CapturePattern>
 
   // Settings
