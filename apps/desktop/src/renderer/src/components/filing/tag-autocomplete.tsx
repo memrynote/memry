@@ -57,7 +57,7 @@ export const TagAutocomplete = ({
   tags,
   onTagsChange,
   placeholder = 'Add tags...',
-  showSections = true,
+  showSections: _showSections = true,
   maxSuggestions = 8,
   autoFocus = false,
   aiSuggestedTags = [],
@@ -65,7 +65,7 @@ export const TagAutocomplete = ({
 }: TagAutocompleteProps): React.JSX.Element => {
   const [inputValue, setInputValue] = useState('')
   const [isDropdownOpen, setIsDropdownOpen] = useState(false)
-  const [highlightedIndex, setHighlightedIndex] = useState(-1)
+  const [requestedHighlightedIndex, setRequestedHighlightedIndex] = useState(0)
   const [isFocused, setIsFocused] = useState(false)
 
   const inputRef = useRef<HTMLInputElement>(null)
@@ -143,9 +143,10 @@ export const TagAutocomplete = ({
     return items
   }, [trimmedInput, availableAiTags, matchingTags, popularTags, maxSuggestions, exactMatchExists])
 
-  useEffect(() => {
-    setHighlightedIndex(flatItems.length > 0 ? 0 : -1)
-  }, [flatItems.length, trimmedInput])
+  const highlightedIndex =
+    flatItems.length === 0
+      ? -1
+      : Math.min(Math.max(requestedHighlightedIndex, 0), flatItems.length - 1)
 
   // Close on click outside
   useEffect(() => {
@@ -169,7 +170,7 @@ export const TagAutocomplete = ({
         onTagsChange([...tags, normalized])
       }
       setInputValue('')
-      setHighlightedIndex(-1)
+      setRequestedHighlightedIndex(0)
       inputRef.current?.focus()
     },
     [tags, onTagsChange]
@@ -195,6 +196,7 @@ export const TagAutocomplete = ({
     }
 
     setInputValue(value)
+    setRequestedHighlightedIndex(0)
     if (!isDropdownOpen) setIsDropdownOpen(true)
   }
 
@@ -214,11 +216,11 @@ export const TagAutocomplete = ({
       switch (e.key) {
         case 'ArrowDown':
           e.preventDefault()
-          setHighlightedIndex((prev) => (prev < flatItems.length - 1 ? prev + 1 : 0))
+          setRequestedHighlightedIndex((prev) => (prev < flatItems.length - 1 ? prev + 1 : 0))
           return
         case 'ArrowUp':
           e.preventDefault()
-          setHighlightedIndex((prev) => (prev > 0 ? prev - 1 : flatItems.length - 1))
+          setRequestedHighlightedIndex((prev) => (prev > 0 ? prev - 1 : flatItems.length - 1))
           return
         case 'Enter':
           e.preventDefault()
@@ -265,7 +267,7 @@ export const TagAutocomplete = ({
               key={tag}
               type="button"
               onClick={() => addTag(tag)}
-              onMouseEnter={() => setHighlightedIndex(idx)}
+              onMouseEnter={() => setRequestedHighlightedIndex(idx)}
               className={cn(
                 'flex items-center gap-2 rounded-sm py-2 px-3 mx-1 my-0.5 text-left transition-colors',
                 highlightedIndex === idx ? 'bg-[var(--tint)]/[0.03]' : 'hover:bg-foreground/[0.03]'
@@ -310,7 +312,7 @@ export const TagAutocomplete = ({
               key={tag.name}
               type="button"
               onClick={() => addTag(tag.name)}
-              onMouseEnter={() => setHighlightedIndex(idx)}
+              onMouseEnter={() => setRequestedHighlightedIndex(idx)}
               className={cn(
                 'flex items-center gap-2 rounded-sm py-2 px-3 mx-1 my-0.5 text-left transition-colors',
                 highlightedIndex === idx ? 'bg-foreground/[0.03]' : 'hover:bg-foreground/[0.03]'
@@ -339,7 +341,7 @@ export const TagAutocomplete = ({
       <button
         type="button"
         onClick={() => addTag(normalized)}
-        onMouseEnter={() => setHighlightedIndex(idx)}
+        onMouseEnter={() => setRequestedHighlightedIndex(idx)}
         className={cn(
           'flex items-center w-full py-2 px-3 gap-1.5 border-t border-border/40 text-left transition-colors',
           highlightedIndex === idx ? 'bg-foreground/[0.03]' : 'hover:bg-foreground/[0.03]'

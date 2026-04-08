@@ -18,13 +18,15 @@ function formatCountdown(s: number): string {
   return `${mins}:${secs.toString().padStart(2, '0')}`
 }
 
-function useCountdown(onResend: () => void): {
+function useCountdown(
+  initialSeconds: number,
+  onResend: () => void
+): {
   seconds: number
   canResend: boolean
   reset: () => void
-  start: (s: number) => void
 } {
-  const [seconds, setSeconds] = useState(0)
+  const [seconds, setSeconds] = useState(initialSeconds)
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   const clearTimer = useCallback(() => {
@@ -34,39 +36,33 @@ function useCountdown(onResend: () => void): {
     }
   }, [])
 
-  const start = useCallback(
-    (s: number) => {
-      clearTimer()
-      setSeconds(s)
-      intervalRef.current = setInterval(() => {
-        setSeconds((prev) => {
-          if (prev <= 1) {
-            if (intervalRef.current) {
-              clearInterval(intervalRef.current)
-              intervalRef.current = null
-            }
-            return 0
-          }
-          return prev - 1
-        })
-      }, 1000)
-    },
-    [clearTimer]
-  )
-
   useEffect(() => {
+    if (seconds <= 0 || intervalRef.current) return clearTimer
+
+    intervalRef.current = setInterval(() => {
+      setSeconds((prev) => {
+        if (prev <= 1) {
+          clearTimer()
+          return 0
+        }
+
+        return prev - 1
+      })
+    }, 1000)
+
     return clearTimer
-  }, [clearTimer])
+  }, [seconds, clearTimer])
 
   const reset = useCallback(() => {
     onResend()
-    start(60)
-  }, [onResend, start])
+    clearTimer()
+    setSeconds(60)
+  }, [onResend, clearTimer])
 
-  return { seconds, canResend: seconds === 0, reset, start }
+  return { seconds, canResend: seconds === 0, reset }
 }
 
-export function OtpInput({
+function OtpInputSession({
   onComplete,
   onResend,
   onBack,
@@ -76,21 +72,7 @@ export function OtpInput({
   expiresIn
 }: OtpInputProps): React.JSX.Element {
   const [value, setValue] = useState('')
-  const { seconds, canResend, reset, start } = useCountdown(onResend)
-  const startedRef = useRef(false)
-  const prevErrorRef = useRef<string | null>(null)
-
-  if (error && error !== prevErrorRef.current) {
-    setValue('')
-  }
-  prevErrorRef.current = error
-
-  useEffect(() => {
-    if (!startedRef.current && expiresIn > 0) {
-      start(expiresIn)
-      startedRef.current = true
-    }
-  }, [expiresIn, start])
+  const { seconds, canResend, reset } = useCountdown(expiresIn, onResend)
 
   useEffect(() => {
     const unsubscribe = window.api.onOtpDetected((event) => {
@@ -202,4 +184,9 @@ export function OtpInput({
       </div>
     </div>
   )
+}
+
+export function OtpInput(props: OtpInputProps): React.JSX.Element {
+  const sessionKey = `${props.error ?? 'ok'}:${props.expiresIn}`
+  return <OtpInputSession key={sessionKey} {...props} />
 }

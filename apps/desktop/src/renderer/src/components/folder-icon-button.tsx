@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState, useEffect } from 'react'
+import { useCallback, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Folder, FolderOpen, ArrowRight } from '@/lib/icons'
 import { NoteIconDisplay } from '@/lib/render-note-icon'
@@ -20,48 +20,50 @@ export function FolderIconButton({
   isExpanded,
   hasChildren = false,
   onIconChange,
-  onToggleExpand,
   pickerOpen,
   onPickerOpenChange
 }: FolderIconButtonProps) {
-  const [internalOpen, setInternalOpen] = useState(false)
-  const buttonRef = useRef<HTMLButtonElement>(null)
+  const [uncontrolledOpen, setUncontrolledOpen] = useState(false)
   const [portalPosition, setPortalPosition] = useState<{ top: number; left: number } | null>(null)
 
   const isControlled = pickerOpen !== undefined
-  const isPickerOpen = isControlled ? pickerOpen : internalOpen
+  const isPickerOpen = isControlled ? pickerOpen : uncontrolledOpen
 
   const setPickerOpen = useCallback(
     (open: boolean) => {
       if (isControlled) {
         onPickerOpenChange?.(open)
       } else {
-        setInternalOpen(open)
+        setUncontrolledOpen(open)
       }
     },
     [isControlled, onPickerOpenChange]
   )
 
-  useEffect(() => {
-    if (isControlled) {
-      setInternalOpen(pickerOpen)
-    }
-  }, [isControlled, pickerOpen])
+  const updatePortalPosition = useCallback((button: HTMLButtonElement) => {
+    const rect = button.getBoundingClientRect()
+    setPortalPosition({ top: rect.bottom + 4, left: rect.left })
+  }, [])
 
-  useEffect(() => {
-    if (isPickerOpen && buttonRef.current) {
-      const rect = buttonRef.current.getBoundingClientRect()
-      setPortalPosition({ top: rect.bottom + 4, left: rect.left })
-    }
-  }, [isPickerOpen])
+  const handleButtonRef = useCallback(
+    (button: HTMLButtonElement | null) => {
+      if (button) {
+        updatePortalPosition(button)
+      } else {
+        setPortalPosition(null)
+      }
+    },
+    [updatePortalPosition]
+  )
 
   const handleIconClick = useCallback(
-    (e: React.MouseEvent) => {
+    (e: React.MouseEvent<HTMLButtonElement>) => {
       e.stopPropagation()
       e.preventDefault()
+      updatePortalPosition(e.currentTarget)
       setPickerOpen(!isPickerOpen)
     },
-    [setPickerOpen, isPickerOpen]
+    [updatePortalPosition, setPickerOpen, isPickerOpen]
   )
 
   const handleExpandClick = useCallback((_e: React.MouseEvent) => {
@@ -114,7 +116,7 @@ export function FolderIconButton({
       )}
 
       <button
-        ref={buttonRef}
+        ref={handleButtonRef}
         type="button"
         onClick={handleIconClick}
         className="flex h-5 w-5 items-center justify-center rounded"

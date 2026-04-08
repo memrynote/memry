@@ -12,7 +12,7 @@
  */
 
 import * as React from 'react'
-import { useState, useCallback, useEffect, useRef } from 'react'
+import { useState, useCallback, useEffect, useMemo, useRef } from 'react'
 import { Bell, X } from '@/lib/icons'
 import { Button } from '@/components/ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
@@ -61,30 +61,20 @@ export function HighlightReminderPopover({
   selection,
   onClose,
   onReminderCreated,
-  containerRef
+  containerRef: _containerRef
 }: HighlightReminderPopoverProps): React.ReactElement | null {
   const [open, setOpen] = useState(false)
-  const [customNote, setCustomNote] = useState('')
   const buttonRef = useRef<HTMLButtonElement>(null)
   const createReminder = useCreateReminder()
 
-  // Position the floating button near the selection
-  const [buttonPosition, setButtonPosition] = useState<{ top: number; left: number } | null>(null)
+  const buttonPosition = useMemo(() => {
+    if (!selection?.rect) return null
 
-  useEffect(() => {
-    if (selection?.rect) {
-      const container = containerRef?.current
-      const containerRect = container?.getBoundingClientRect()
+    const top = selection.rect.top - 40
+    const left = selection.rect.left + selection.rect.width / 2 - 16
 
-      // Position button above the selection, centered
-      const top = selection.rect.top - (containerRect?.top || 0) - 40
-      const left = selection.rect.left - (containerRect?.left || 0) + selection.rect.width / 2 - 16
-
-      setButtonPosition({ top: Math.max(0, top), left: Math.max(0, left) })
-    } else {
-      setButtonPosition(null)
-    }
-  }, [selection, containerRef])
+    return { top: Math.max(0, top), left: Math.max(0, left) }
+  }, [selection])
 
   const handleSetReminder = useCallback(
     async (remindAt: Date, title?: string, note?: string) => {
@@ -96,7 +86,7 @@ export function HighlightReminderPopover({
           targetId: noteId,
           remindAt: remindAt.toISOString(),
           title: title || `Highlight: ${selection.text.slice(0, 30)}...`,
-          note: note || customNote || undefined,
+          note: note || undefined,
           highlightText: selection.text,
           highlightStart: selection.startOffset,
           highlightEnd: selection.endOffset
@@ -104,7 +94,6 @@ export function HighlightReminderPopover({
 
         toast.success('Reminder set for highlight')
         setOpen(false)
-        setCustomNote('')
         onClose()
         onReminderCreated?.()
       } catch (error) {
@@ -112,12 +101,11 @@ export function HighlightReminderPopover({
         toast.error('Failed to set reminder')
       }
     },
-    [selection, noteId, customNote, createReminder, onClose, onReminderCreated]
+    [selection, noteId, createReminder, onClose, onReminderCreated]
   )
 
   const handleClose = useCallback(() => {
     setOpen(false)
-    setCustomNote('')
     onClose()
   }, [onClose])
 
@@ -128,13 +116,22 @@ export function HighlightReminderPopover({
 
   return (
     <div
-      className="absolute z-50 pointer-events-auto"
+      className="fixed z-50 pointer-events-auto"
       style={{
         top: buttonPosition.top,
         left: buttonPosition.left
       }}
     >
-      <Popover open={open} onOpenChange={setOpen}>
+      <Popover
+        open={open}
+        onOpenChange={(nextOpen) => {
+          if (!nextOpen) {
+            handleClose()
+            return
+          }
+          setOpen(true)
+        }}
+      >
         <PopoverTrigger asChild>
           <Button
             ref={buttonRef}
@@ -171,7 +168,9 @@ export function HighlightReminderPopover({
 
             {/* Reminder picker */}
             <ReminderPicker
-              onSelect={(date, title, note) => handleSetReminder(date, title, note)}
+              onSelect={(date, title, note) => {
+                void handleSetReminder(date, title, note)
+              }}
               variant="highlight"
               showNoteField={true}
               isLoading={createReminder.isPending}
@@ -210,10 +209,7 @@ export function useTextSelection({
   const [selection, setSelection] = useState<HighlightSelection | null>(null)
 
   useEffect(() => {
-    if (!enabled) {
-      setSelection(null)
-      return
-    }
+    if (!enabled) return
 
     const handleSelectionChange = () => {
       const windowSelection = window.getSelection()
@@ -300,7 +296,7 @@ export function useTextSelection({
     }
   }, [containerRef, onSelectionChange, minLength, enabled])
 
-  return selection
+  return enabled ? selection : null
 }
 
 export default HighlightReminderPopover

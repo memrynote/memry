@@ -92,6 +92,39 @@ export function MoveToFolderDialog({
   onMove,
   noteTitle
 }: MoveToFolderDialogProps): React.JSX.Element {
+  const sessionKey = `${noteIds.join(',')}:${currentFolder}:${noteTitle ?? ''}`
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      {open ? (
+        <MoveToFolderDialogSession
+          key={sessionKey}
+          noteIds={noteIds}
+          currentFolder={currentFolder}
+          onMove={onMove}
+          onOpenChange={onOpenChange}
+          noteTitle={noteTitle}
+        />
+      ) : null}
+    </Dialog>
+  )
+}
+
+interface MoveToFolderDialogSessionProps {
+  onOpenChange: (open: boolean) => void
+  noteIds: string[]
+  currentFolder: string
+  onMove: (targetFolder: string) => void
+  noteTitle?: string
+}
+
+function MoveToFolderDialogSession({
+  onOpenChange,
+  noteIds,
+  currentFolder,
+  onMove,
+  noteTitle
+}: MoveToFolderDialogSessionProps): React.JSX.Element {
   // State
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedIndex, setSelectedIndex] = useState(0)
@@ -105,7 +138,7 @@ export function MoveToFolderDialog({
   const { data: allFolders = [], isLoading: isLoadingFolders } = useQuery({
     queryKey: ['notes', 'folders'],
     queryFn: () => notesService.getFolders(),
-    enabled: open
+    enabled: true
   })
 
   // Fetch AI suggestions for the first selected note
@@ -115,10 +148,10 @@ export function MoveToFolderDialog({
       if (!noteIds[0]) return { suggestions: [] }
       return window.api.folderView.getFolderSuggestions(noteIds[0])
     },
-    enabled: open && noteIds.length > 0
+    enabled: noteIds.length > 0
   })
 
-  const suggestions = suggestionsData?.suggestions ?? []
+  const suggestions = useMemo(() => suggestionsData?.suggestions ?? [], [suggestionsData])
 
   // Build folder items list
   const folderItems = useMemo((): FolderItem[] => {
@@ -194,22 +227,6 @@ export function MoveToFolderDialog({
 
   // Get the selected folder item
   const selectedItem = folderItems[selectedIndex]
-
-  // Reset state when dialog opens
-  useEffect(() => {
-    if (open) {
-      setSearchQuery('')
-      setSelectedIndex(0)
-      setIsMoving(false)
-      // Focus search input
-      setTimeout(() => inputRef.current?.focus(), 100)
-    }
-  }, [open])
-
-  // Reset selection when search changes
-  useEffect(() => {
-    setSelectedIndex(0)
-  }, [searchQuery])
 
   // Scroll selected item into view
   useEffect(() => {
@@ -321,94 +338,52 @@ export function MoveToFolderDialog({
   const isLoading = isLoadingFolders || isLoadingSuggestions
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md" onKeyDown={handleKeyDown}>
-        <DialogHeader>
-          <DialogTitle>{title}</DialogTitle>
-        </DialogHeader>
+    <DialogContent className="sm:max-w-md" onKeyDown={handleKeyDown}>
+      <DialogHeader>
+        <DialogTitle>{title}</DialogTitle>
+      </DialogHeader>
 
-        {/* Search Input */}
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            ref={inputRef}
-            placeholder="Search folders..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-9"
-          />
-        </div>
+      {/* Search Input */}
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <Input
+          ref={inputRef}
+          autoFocus
+          placeholder="Search folders..."
+          value={searchQuery}
+          onChange={(e) => {
+            setSearchQuery(e.target.value)
+            setSelectedIndex(0)
+          }}
+          className="pl-9"
+        />
+      </div>
 
-        {/* Folder List */}
-        <ScrollArea className="h-[300px] -mx-2">
-          <div ref={listRef} className="px-2 space-y-1">
-            {isLoading ? (
-              <div className="flex items-center justify-center h-20 text-muted-foreground">
-                Loading folders...
-              </div>
-            ) : (
-              <>
-                {/* AI Suggestions Section */}
-                {!searchQuery && suggestions.length > 0 && (
-                  <div className="mb-2">
-                    <div className="flex items-center gap-1.5 px-2 py-1 text-xs font-medium text-muted-foreground">
-                      <Sparkles className="h-3 w-3" />
-                      SUGGESTED
-                    </div>
-                    {folderItems
-                      .filter((item) => item.isSuggestion)
-                      .map((item, index) => {
-                        const isSelected = selectedIndex === index
-                        const isCurrent = item.path === currentFolder
-
-                        return (
-                          <button
-                            key={`suggestion-${item.path}`}
-                            data-selected={isSelected}
-                            disabled={isCurrent}
-                            onClick={() => !isCurrent && handleMove(item.path)}
-                            className={cn(
-                              'w-full flex items-center gap-2 px-2 py-2 rounded-md text-left',
-                              'transition-colors',
-                              isSelected && !isCurrent && 'bg-accent',
-                              isCurrent && 'opacity-50 cursor-not-allowed',
-                              !isSelected && !isCurrent && 'hover:bg-muted/50'
-                            )}
-                          >
-                            <span className="text-xs text-muted-foreground w-4 text-center">
-                              {index + 1}
-                            </span>
-                            <Folder className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                            <span className="flex-1 truncate">{item.displayName}</span>
-                            {item.confidence && item.confidence > 0.7 && (
-                              <span className="text-xs text-amber-500">Best match</span>
-                            )}
-                            {isCurrent && (
-                              <span className="text-xs text-muted-foreground">(current)</span>
-                            )}
-                          </button>
-                        )
-                      })}
+      {/* Folder List */}
+      <ScrollArea className="h-[300px] -mx-2">
+        <div ref={listRef} className="px-2 space-y-1">
+          {isLoading ? (
+            <div className="flex items-center justify-center h-20 text-muted-foreground">
+              Loading folders...
+            </div>
+          ) : (
+            <>
+              {/* AI Suggestions Section */}
+              {!searchQuery && suggestions.length > 0 && (
+                <div className="mb-2">
+                  <div className="flex items-center gap-1.5 px-2 py-1 text-xs font-medium text-muted-foreground">
+                    <Sparkles className="h-3 w-3" />
+                    SUGGESTED
                   </div>
-                )}
-
-                {/* All Folders Section */}
-                <div>
-                  {!searchQuery && (
-                    <div className="px-2 py-1 text-xs font-medium text-muted-foreground">
-                      ALL FOLDERS
-                    </div>
-                  )}
                   {folderItems
-                    .filter((item) => !item.isSuggestion)
-                    .map((item) => {
-                      const actualIndex = folderItems.indexOf(item)
-                      const isSelected = selectedIndex === actualIndex
+                    .filter((item) => item.isSuggestion)
+                    .map((item, index) => {
+                      const isSelected = selectedIndex === index
                       const isCurrent = item.path === currentFolder
 
                       return (
                         <button
-                          key={`folder-${item.path}`}
+                          key={`suggestion-${item.path}`}
                           data-selected={isSelected}
                           disabled={isCurrent}
                           onClick={() => !isCurrent && handleMove(item.path)}
@@ -420,75 +395,116 @@ export function MoveToFolderDialog({
                             !isSelected && !isCurrent && 'hover:bg-muted/50'
                           )}
                         >
-                          <Folder className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                          <span className="flex-1 truncate">
-                            {searchQuery
-                              ? highlightMatch(item.displayName, searchQuery)
-                              : item.displayName}
+                          <span className="text-xs text-muted-foreground w-4 text-center">
+                            {index + 1}
                           </span>
+                          <Folder className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                          <span className="flex-1 truncate">{item.displayName}</span>
+                          {item.confidence && item.confidence > 0.7 && (
+                            <span className="text-xs text-amber-500">Best match</span>
+                          )}
                           {isCurrent && (
                             <span className="text-xs text-muted-foreground">(current)</span>
                           )}
                         </button>
                       )
                     })}
-
-                  {/* Empty state */}
-                  {folderItems.filter((item) => !item.isSuggestion).length === 0 &&
-                    !canCreateFolder && (
-                      <div className="flex items-center justify-center h-20 text-muted-foreground text-sm">
-                        No folders match &quot;{searchQuery}&quot;
-                      </div>
-                    )}
                 </div>
+              )}
 
-                {/* Create New Folder Option */}
-                {canCreateFolder && (
-                  <div className="border-t pt-2 mt-2">
-                    <button
-                      data-selected={selectedIndex === folderItems.length}
-                      onClick={handleCreateAndMove}
-                      className={cn(
-                        'w-full flex items-center gap-2 px-2 py-2 rounded-md text-left',
-                        'transition-colors text-primary',
-                        selectedIndex === folderItems.length && 'bg-accent',
-                        selectedIndex !== folderItems.length && 'hover:bg-muted/50'
-                      )}
-                    >
-                      <Plus className="h-4 w-4 flex-shrink-0" />
-                      <span className="flex-1 truncate">
-                        Create &quot;{searchQuery.trim()}&quot;
-                      </span>
-                    </button>
+              {/* All Folders Section */}
+              <div>
+                {!searchQuery && (
+                  <div className="px-2 py-1 text-xs font-medium text-muted-foreground">
+                    ALL FOLDERS
                   </div>
                 )}
-              </>
-            )}
-          </div>
-        </ScrollArea>
+                {folderItems
+                  .filter((item) => !item.isSuggestion)
+                  .map((item) => {
+                    const actualIndex = folderItems.indexOf(item)
+                    const isSelected = selectedIndex === actualIndex
+                    const isCurrent = item.path === currentFolder
 
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isMoving}>
-            Cancel
-          </Button>
-          <Button
-            onClick={() => {
-              if (canCreateFolder && selectedIndex === folderItems.length) {
-                handleCreateAndMove()
-              } else if (selectedItem && selectedItem.path !== currentFolder) {
-                handleMove(selectedItem.path)
-              }
-            }}
-            disabled={
-              isMoving ||
-              (!canCreateFolder && (!selectedItem || selectedItem.path === currentFolder))
+                    return (
+                      <button
+                        key={`folder-${item.path}`}
+                        data-selected={isSelected}
+                        disabled={isCurrent}
+                        onClick={() => !isCurrent && handleMove(item.path)}
+                        className={cn(
+                          'w-full flex items-center gap-2 px-2 py-2 rounded-md text-left',
+                          'transition-colors',
+                          isSelected && !isCurrent && 'bg-accent',
+                          isCurrent && 'opacity-50 cursor-not-allowed',
+                          !isSelected && !isCurrent && 'hover:bg-muted/50'
+                        )}
+                      >
+                        <Folder className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                        <span className="flex-1 truncate">
+                          {searchQuery
+                            ? highlightMatch(item.displayName, searchQuery)
+                            : item.displayName}
+                        </span>
+                        {isCurrent && (
+                          <span className="text-xs text-muted-foreground">(current)</span>
+                        )}
+                      </button>
+                    )
+                  })}
+
+                {/* Empty state */}
+                {folderItems.filter((item) => !item.isSuggestion).length === 0 &&
+                  !canCreateFolder && (
+                    <div className="flex items-center justify-center h-20 text-muted-foreground text-sm">
+                      No folders match &quot;{searchQuery}&quot;
+                    </div>
+                  )}
+              </div>
+
+              {/* Create New Folder Option */}
+              {canCreateFolder && (
+                <div className="border-t pt-2 mt-2">
+                  <button
+                    data-selected={selectedIndex === folderItems.length}
+                    onClick={handleCreateAndMove}
+                    className={cn(
+                      'w-full flex items-center gap-2 px-2 py-2 rounded-md text-left',
+                      'transition-colors text-primary',
+                      selectedIndex === folderItems.length && 'bg-accent',
+                      selectedIndex !== folderItems.length && 'hover:bg-muted/50'
+                    )}
+                  >
+                    <Plus className="h-4 w-4 flex-shrink-0" />
+                    <span className="flex-1 truncate">Create &quot;{searchQuery.trim()}&quot;</span>
+                  </button>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      </ScrollArea>
+
+      <DialogFooter>
+        <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isMoving}>
+          Cancel
+        </Button>
+        <Button
+          onClick={() => {
+            if (canCreateFolder && selectedIndex === folderItems.length) {
+              handleCreateAndMove()
+            } else if (selectedItem && selectedItem.path !== currentFolder) {
+              handleMove(selectedItem.path)
             }
-          >
-            {isMoving ? 'Moving...' : 'Move'}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+          }}
+          disabled={
+            isMoving || (!canCreateFolder && (!selectedItem || selectedItem.path === currentFolder))
+          }
+        >
+          {isMoving ? 'Moving...' : 'Move'}
+        </Button>
+      </DialogFooter>
+    </DialogContent>
   )
 }
 

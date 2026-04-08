@@ -136,8 +136,8 @@ export const LinkInput = ({
   className
 }: LinkInputProps): React.JSX.Element => {
   const [searchQuery, setSearchQuery] = useState('')
-  const [isDropdownOpen, setIsDropdownOpen] = useState(false)
-  const [highlightedIndex, setHighlightedIndex] = useState(-1)
+  const [isDropdownDismissed, setIsDropdownDismissed] = useState(false)
+  const [highlightedIndexState, setHighlightedIndex] = useState(0)
 
   const inputRef = useRef<HTMLInputElement>(null)
   const dropdownRef = useRef<HTMLDivElement>(null)
@@ -174,12 +174,17 @@ export const LinkInput = ({
   const availableResults = searchResults.filter(
     (note) => !linkedNotes.find((n) => n.id === note.id)
   )
+  const isDropdownOpen = searchQuery.trim().length >= 2 && !isDropdownDismissed
+  const highlightedIndex =
+    availableResults.length === 0
+      ? -1
+      : Math.min(highlightedIndexState, availableResults.length - 1)
 
   // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent): void => {
       if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
-        setIsDropdownOpen(false)
+        setIsDropdownDismissed(true)
       }
     }
 
@@ -187,27 +192,14 @@ export const LinkInput = ({
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
-  // Reset highlighted index when results change
-  useEffect(() => {
-    setHighlightedIndex(availableResults.length > 0 ? 0 : -1)
-  }, [availableResults.length])
-
-  // Show/hide dropdown based on search
-  useEffect(() => {
-    if (searchQuery.trim().length >= 2) {
-      setIsDropdownOpen(true)
-    } else {
-      setIsDropdownOpen(false)
-    }
-  }, [searchQuery])
-
   const handleSelectNote = useCallback(
     (note: LinkedNote): void => {
       if (!linkedNotes.find((n) => n.id === note.id)) {
         onLinkedNotesChange([...linkedNotes, note])
       }
       setSearchQuery('')
-      setIsDropdownOpen(false)
+      setIsDropdownDismissed(false)
+      setHighlightedIndex(0)
       inputRef.current?.focus()
     },
     [linkedNotes, onLinkedNotesChange]
@@ -222,11 +214,13 @@ export const LinkInput = ({
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>): void => {
     setSearchQuery(e.target.value)
+    setHighlightedIndex(0)
+    setIsDropdownDismissed(false)
   }
 
   const handleInputFocus = (): void => {
-    if (searchQuery.trim().length >= 2 && availableResults.length > 0) {
-      setIsDropdownOpen(true)
+    if (searchQuery.trim().length >= 2) {
+      setIsDropdownDismissed(false)
     }
   }
 
@@ -256,8 +250,9 @@ export const LinkInput = ({
         break
       case 'Escape':
         e.preventDefault()
-        setIsDropdownOpen(false)
+        setIsDropdownDismissed(true)
         setSearchQuery('')
+        setHighlightedIndex(0)
         break
       case 'Tab':
         if (highlightedIndex >= 0 && highlightedIndex < availableResults.length) {
