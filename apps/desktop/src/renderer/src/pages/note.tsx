@@ -1031,28 +1031,32 @@ export function NotePage({ noteId }: NotePageProps) {
           </EditorErrorBoundary>
         </div>
 
-        {/* Local Graph Panel */}
+        {/* Local Graph Panel — excluded from marquee/focus-at-end so graph
+            drags + clicks aren't hijacked by the editor's marquee zone. */}
         {isLocalGraphOpen && noteId && (
-          <LocalGraphPanel
-            noteId={noteId}
-            onClose={() => setIsLocalGraphOpen(false)}
-            onOpenFullGraph={() => {
-              openTab({
-                type: 'graph',
-                title: 'Graph',
-                icon: 'git-graph',
-                path: '/graph',
-                isPinned: false,
-                isModified: false,
-                isPreview: false,
-                isDeleted: false
-              })
-            }}
-          />
+          <div data-marquee-ignore>
+            <LocalGraphPanel
+              noteId={noteId}
+              onClose={() => setIsLocalGraphOpen(false)}
+              onOpenFullGraph={() => {
+                openTab({
+                  type: 'graph',
+                  title: 'Graph',
+                  icon: 'git-graph',
+                  path: '/graph',
+                  isPinned: false,
+                  isModified: false,
+                  isPreview: false,
+                  isDeleted: false
+                })
+              }}
+            />
+          </div>
         )}
 
-        {/* Backlinks & linked tasks — separated from content */}
-        <div className="mt-10 flex flex-col gap-6">
+        {/* Backlinks & linked tasks — separated from content and excluded
+            from the marquee/focus-at-end zone. */}
+        <div className="mt-10 flex flex-col gap-6" data-marquee-ignore>
           <BacklinksSection
             backlinks={backlinks}
             isLoading={backlinksLoading}

@@ -405,4 +405,113 @@ test.describe('Block marquee selection', () => {
     await expect(page.locator(OVERLAY_SELECTOR)).toHaveCount(0)
     await expect(page.locator(HIGHLIGHTED_SELECTOR)).toHaveCount(0)
   })
+
+  test('single-block marquee → produces real editor selection (no inert state)', async ({
+    page
+  }) => {
+    await createNote(page, `Marquee Single ${Date.now()}`)
+    await focusEditor(page)
+    // H1 heading is visually tall enough that a vertical drag fits
+    // entirely inside ITS bounds — we want exactly ONE block captured.
+    await page.keyboard.type('# ')
+    const headingText = 'Tall heading for single-drag test'
+    await page.keyboard.type(headingText)
+    await page.keyboard.press('Enter')
+    await page.keyboard.type('Second survivor block')
+    await page.waitForTimeout(400)
+
+    const startCount = await getBlockCount(page)
+    expect(startCount).toBeGreaterThanOrEqual(2)
+
+    // Start in the gutter (outside editable text so promote triggers on
+    // pure vertical motion) and end just inside the heading block. The
+    // rect's vertical extent stays within the heading's bounds so only
+    // one block is hit.
+    const zone = await getMarqueeZoneBox(page)
+    const headingBox = await getBlockBox(page, 0)
+
+    const startX = zone.x + 8
+    const startY = headingBox.y + 4
+    const endX = headingBox.x + Math.min(40, headingBox.width / 2)
+    const endY = headingBox.y + headingBox.height - 4
+
+    await page.mouse.move(startX, startY)
+    await page.mouse.down()
+    await page.mouse.move(endX, endY, { steps: 12 })
+
+    await expect(page.locator(OVERLAY_SELECTOR)).toBeVisible({ timeout: 2000 })
+    expect(await page.locator(HIGHLIGHTED_SELECTOR).count()).toBe(1)
+
+    await page.mouse.up()
+    await page.waitForTimeout(200)
+
+    // Critical regression gate: the fix must turn the visual marquee
+    // highlight into a REAL editor-owned selection. Previously, single-
+    // block drags left the editor blurred and the window selection
+    // empty → Backspace/Cmd+C/Cmd+A did nothing (inert state).
+    const selectionState = await page.evaluate(() => {
+      const sel = window.getSelection()
+      const active = document.activeElement
+      const isEditorFocused =
+        active instanceof HTMLElement &&
+        active.closest('[contenteditable="true"]') !== null
+      return {
+        isEditorFocused,
+        hasNonCollapsedRange:
+          sel !== null && sel.rangeCount > 0 && !sel.isCollapsed,
+        selectedText: sel?.toString() ?? ''
+      }
+    })
+
+    expect(selectionState.isEditorFocused).toBe(true)
+    expect(selectionState.hasNonCollapsedRange).toBe(true)
+    expect(selectionState.selectedText).toContain('Tall heading')
+  })
+
+  test('regression: non-editor panels carry data-marquee-ignore so gestures are skipped', async ({
+    page
+  }) => {
+    // Pure DOM assertion — both the marquee hook (shouldStartMarquee)
+    // and the focus-at-end handler bail out on target.closest(
+    // '[data-marquee-ignore]'). So verifying the attribute is on the
+    // backlinks/linked-tasks wrapper is sufficient to prove non-editor
+    // panels are excluded from both pathways. BacklinksSection and
+    // LinkedTasksSection both return null when empty, so a click test
+    // against the empty wrapper would be a false positive — the
+    // attribute check is the reliable regression gate.
+    await createNote(page, `Marquee Ignore Attr ${Date.now()}`)
+    await focusEditor(page)
+    await typeBlocks(page, ['Only block for ignore-attribute test'])
+    await page.waitForTimeout(400)
+
+    const attrs = await page.evaluate(() => {
+      const editorClickArea = document.querySelector('.editor-click-area')
+      if (!editorClickArea) return { hasEditorArea: false }
+
+      let cursor: Element | null = editorClickArea.nextElementSibling
+      const nonEditorSiblings: Array<{
+        tag: string
+        classes: string
+        hasMarqueeIgnore: boolean
+      }> = []
+      while (cursor) {
+        nonEditorSiblings.push({
+          tag: cursor.tagName.toLowerCase(),
+          classes: cursor.className,
+          hasMarqueeIgnore: cursor.hasAttribute('data-marquee-ignore')
+        })
+        cursor = cursor.nextElementSibling
+      }
+      return { hasEditorArea: true, nonEditorSiblings }
+    })
+
+    expect(attrs.hasEditorArea).toBe(true)
+    expect(attrs.nonEditorSiblings).toBeDefined()
+    // Every non-editor sibling rendered beneath the editor must carry
+    // data-marquee-ignore — gaps let graph/backlinks/tasks hijack the
+    // marquee + focus-at-end paths.
+    for (const sibling of attrs.nonEditorSiblings ?? []) {
+      expect(sibling.hasMarqueeIgnore).toBe(true)
+    }
+  })
 })

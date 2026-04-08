@@ -1,6 +1,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { TextSelection } from 'prosemirror-state'
+import type { Node as PMNode } from 'prosemirror-model'
 import { createLogger } from '@/lib/logger'
 
 const log = createLogger('Hook:Marquee')
@@ -80,6 +82,32 @@ function getOrderedBlockIds(container: HTMLElement, ids: ReadonlySet<string>): s
   return ordered
 }
 
+interface BlockContainerEntry {
+  pos: number
+  node: PMNode
+}
+
+// Walk the PM doc once to find positions of every blockContainer node whose
+// id is in `ids`. Returns a flat lookup keyed by BlockNote block id. Recurses
+// into nested children (taskBlock subtasks etc.) so the position map matches
+// the DOM-flat order returned by getOrderedBlockIds.
+function findBlockContainerPositions(
+  doc: PMNode,
+  ids: ReadonlySet<string>
+): Map<string, BlockContainerEntry> {
+  const out = new Map<string, BlockContainerEntry>()
+  if (ids.size === 0) return out
+  doc.descendants((node, pos) => {
+    if (node.type.name !== 'blockContainer') return true
+    const id = node.attrs?.id as string | undefined
+    if (id && ids.has(id) && !out.has(id)) {
+      out.set(id, { pos, node })
+    }
+    return true
+  })
+  return out
+}
+
 export function useBlockMarqueeSelection({
   editor,
   blockContainerRef,
@@ -94,6 +122,12 @@ export function useBlockMarqueeSelection({
   const selectedRef = useRef<Set<string>>(new Set())
   const hasSelectionRef = useRef(false)
   const isApplyingPmSelectionRef = useRef(false)
+  // True when applyPmSelection actually dispatched a real PM selection
+  // backing the marquee. False for the all-non-textblock branch where
+  // we keep the visual highlight + selectedRef as the source of truth
+  // and let our own Backspace handler do the work. Drives whether the
+  // editor.onSelectionChange listener is allowed to clear us.
+  const pmSelectionBackedRef = useRef(false)
   const teardownDragRef = useRef<(() => void) | null>(null)
 
   const clearSelection = useCallback((): void => {
@@ -105,6 +139,7 @@ export function useBlockMarqueeSelection({
     setMarqueeRect(null)
     setIsActive(false)
     hasSelectionRef.current = false
+    pmSelectionBackedRef.current = false
     if (triggerContainerEl) triggerContainerEl.removeAttribute(ACTIVE_ATTR)
   }, [triggerContainerEl])
 
@@ -233,38 +268,124 @@ export function useBlockMarqueeSelection({
         }
       }
 
+      const applyPmSelection = (finalIds: ReadonlySet<string>): boolean => {
+        const ordered = getOrderedBlockIds(blockContainer, finalIds)
+        if (ordered.length === 0) return false
+
+        const view = editor?.prosemirrorView
+        if (!view) return false
+        const { state } = view
+
+        // One PM-doc walk for every selected block id.
+        const positions = findBlockContainerPositions(state.doc, new Set(ordered))
+        if (positions.size === 0) return false
+
+        // If EVERY selected block is non-textblock (taskBlock, file,
+        // youtubeEmbed — all the content:'none' custom blocks), skip
+        // setting a PM selection altogether. PM has no valid TextSelection
+        // anchor in such a range and would either throw, snap to a
+        // textblock OUTSIDE the range, or silently degrade. The
+        // marquee-side Backspace handler operates on selectedRef.current
+        // via editor.removeBlocks, so the visual highlight stays the
+        // authoritative source of truth and Backspace works uniformly.
+        const allNonTextblock = ordered.every((id) => {
+          const entry = positions.get(id)
+          const innerBlock = entry?.node.firstChild
+          return innerBlock != null && !innerBlock.type.isTextblock
+        })
+        if (allNonTextblock) {
+          // No PM selection to set. Mark the marquee as NOT backed by
+          // a PM selection so the onSelectionChange listener (which
+          // exists to clear the marquee when the user moves the cursor)
+          // doesn't fire on spurious editor selection events from async
+          // re-renders. Backspace, Escape, and click-outside still clear
+          // via their own listeners.
+          pmSelectionBackedRef.current = false
+          return true
+        }
+
+        try {
+          isApplyingPmSelectionRef.current = true
+          pmSelectionBackedRef.current = true
+
+          if (ordered.length === 1) {
+            const entry = positions.get(ordered[0])
+            if (!entry) return false
+
+            // Single textblock — preserve the existing TextSelection
+            // path so the regression at marquee-selection.e2e.ts:409
+            // (selectedText.toContain('Tall heading')) keeps passing.
+            const innerBlock = entry.node.firstChild
+            if (!innerBlock) return false
+            const innerStart = entry.pos + 2
+            const innerEnd = innerStart + innerBlock.content.size
+            const tr = state.tr.setSelection(TextSelection.create(state.doc, innerStart, innerEnd))
+            view.dispatch(tr)
+          } else {
+            // Multi-block path: build a TextSelection whose endpoints
+            // bracket the first/last selected blockContainer nodes at
+            // depth 0. PM walks the range to find valid textblock
+            // anchors — works for mixed (textblock + non-textblock)
+            // ranges because at least one textblock is reachable.
+            const firstEntry = positions.get(ordered[0])
+            const lastEntry = positions.get(ordered[ordered.length - 1])
+            if (!firstEntry || !lastEntry) return false
+
+            const from = firstEntry.pos
+            const to = lastEntry.pos + lastEntry.node.nodeSize
+
+            const $from = state.doc.resolve(from)
+            const $to = state.doc.resolve(to)
+            const tr = state.tr.setSelection(TextSelection.between($from, $to))
+            view.dispatch(tr)
+          }
+
+          // Re-focus the editor so keyboard actions (Backspace, Cmd+C,
+          // Cmd+A) reach ProseMirror — promote() blurred it.
+          try {
+            editor.prosemirrorView?.focus?.()
+          } catch (err) {
+            log.debug('Failed to refocus PM after marquee', err)
+          }
+          // requestAnimationFrame (not queueMicrotask) so the guard
+          // outlives the secondary onSelectionChange tick that
+          // view.focus() triggers — otherwise the listener at the bottom
+          // of this hook clears our just-set selection.
+          requestAnimationFrame(() => {
+            isApplyingPmSelectionRef.current = false
+          })
+          return true
+        } catch (err) {
+          isApplyingPmSelectionRef.current = false
+          log.debug('PM selection apply failed (marquee fallback to clear)', err)
+          return false
+        }
+      }
+
       const finalize = (): void => {
         const finalIds = new Set(selectedRef.current)
         setMarqueeRect(null)
         setIsActive(false)
         trigger.removeAttribute(ACTIVE_ATTR)
-        setSelectedBlockIds(finalIds)
-        hasSelectionRef.current = finalIds.size > 0
-        if (finalIds.size === 0) setHighlightRects([])
 
-        if (finalIds.size >= 2) {
-          const ordered = getOrderedBlockIds(blockContainer, finalIds)
-          if (ordered.length >= 2) {
-            const firstId = ordered[0]
-            const lastId = ordered[ordered.length - 1]
-            try {
-              isApplyingPmSelectionRef.current = true
-              editor.setSelection(firstId, lastId)
-              // Re-focus the editor so keyboard actions (Backspace, Cmd+C,
-              // Cmd+A) reach ProseMirror — promote() blurred it.
-              try {
-                editor.prosemirrorView?.focus?.()
-              } catch (err) {
-                log.debug('Failed to refocus PM after marquee', err)
-              }
-              queueMicrotask(() => {
-                isApplyingPmSelectionRef.current = false
-              })
-            } catch (err) {
-              isApplyingPmSelectionRef.current = false
-              log.debug('PM setSelection rejected (likely nested blocks)', err)
-            }
-          }
+        if (finalIds.size === 0) {
+          setHighlightRects([])
+          setSelectedBlockIds(new Set())
+          hasSelectionRef.current = false
+          return
+        }
+
+        const ok = applyPmSelection(finalIds)
+        if (ok) {
+          setSelectedBlockIds(finalIds)
+          hasSelectionRef.current = true
+        } else {
+          // Couldn't produce a real editor-owned selection — clear the
+          // marquee highlight instead of leaving a visual-only (inert)
+          // selection on screen that Backspace/Cmd+C/Cmd+A can't act on.
+          setHighlightRects([])
+          setSelectedBlockIds(new Set())
+          hasSelectionRef.current = false
         }
       }
 
@@ -298,13 +419,36 @@ export function useBlockMarqueeSelection({
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent): void => {
-      if (event.key !== 'Escape') return
       if (!hasSelectionRef.current) return
-      clearSelection()
+
+      if (event.key === 'Escape') {
+        clearSelection()
+        return
+      }
+
+      // Backspace / Delete on a marquee selection: remove every
+      // visually-selected block. This intentionally bypasses PM's
+      // native cross-block deletion so it works uniformly for
+      // textblocks AND non-textblock custom blocks (taskBlock, file,
+      // youtubeEmbed) — applyPmSelection can only set a real PM
+      // selection on textblock content, so we keep selectedRef as the
+      // authoritative source of truth for what the marquee covers.
+      if (event.key === 'Backspace' || event.key === 'Delete') {
+        const ids = Array.from(selectedRef.current)
+        if (ids.length === 0) return
+        event.preventDefault()
+        event.stopPropagation()
+        try {
+          editor.removeBlocks(ids)
+        } catch (err) {
+          log.warn('Failed to remove marquee-selected blocks', err)
+        }
+        clearSelection()
+      }
     }
-    document.addEventListener('keydown', onKeyDown)
-    return () => document.removeEventListener('keydown', onKeyDown)
-  }, [clearSelection])
+    document.addEventListener('keydown', onKeyDown, true)
+    return () => document.removeEventListener('keydown', onKeyDown, true)
+  }, [clearSelection, editor])
 
   useEffect(() => {
     const onMouseDown = (event: globalThis.MouseEvent): void => {
@@ -323,6 +467,12 @@ export function useBlockMarqueeSelection({
     const unsubscribe = editor.onSelectionChange(() => {
       if (isApplyingPmSelectionRef.current) return
       if (!hasSelectionRef.current) return
+      // When the marquee isn't backed by a PM selection (all-non-
+      // textblock case), editor selection changes are unrelated to
+      // the marquee and must NOT clear it. Async task block re-renders,
+      // IPC callbacks, focus changes, etc. all emit selectionchange
+      // events that would otherwise destroy the marquee state.
+      if (!pmSelectionBackedRef.current) return
       clearSelection()
     })
     return () => {
