@@ -61,7 +61,7 @@ export function useVault() {
       }
     }
 
-    loadInitialState()
+    void loadInitialState()
   }, [])
 
   // Subscribe to vault events
@@ -254,7 +254,7 @@ export function useVaultList() {
       }
     }
 
-    loadVaults()
+    void loadVaults()
   }, [])
 
   const refresh = useCallback(async () => {

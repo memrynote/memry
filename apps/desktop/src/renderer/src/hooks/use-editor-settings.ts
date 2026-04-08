@@ -26,8 +26,6 @@ export function useEditorSettings(): UseEditorSettingsReturn {
     let mounted = true
     const load = async (): Promise<void> => {
       try {
-        setIsLoading(true)
-        setError(null)
         const result = await window.api.settings.getEditorSettings()
         if (mounted) setSettings(result)
       } catch (err) {
@@ -36,7 +34,7 @@ export function useEditorSettings(): UseEditorSettingsReturn {
         if (mounted) setIsLoading(false)
       }
     }
-    load()
+    void load()
     return () => {
       mounted = false
     }
