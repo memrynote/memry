@@ -1,5 +1,12 @@
 {
   "extends": "@memry/typescript-config/node.json",
   "include": ["src/**/*"],
-  "exclude": ["**/*.test.ts", "**/*.test.tsx", "**/*.spec.ts", "**/*.spec.tsx"]
+  "exclude": ["**/*.test.ts", "**/*.test.tsx", "**/*.spec.ts", "**/*.spec.tsx"],
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@memry/domain-tasks": ["../domain-tasks/src/index.ts"],
+      "@memry/domain-tasks/*": ["../domain-tasks/src/*"]
+    }
+  }
 }

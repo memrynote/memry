@@ -24,7 +24,20 @@ vi.mock('../services/sync', () => ({
     hasMore: false,
     nextCursor: 0
   }),
-  processPushItem: vi.fn().mockResolvedValue({ accepted: true, serverCursor: 1 }),
+  processRecordPushBatch: vi.fn().mockResolvedValue({
+    accepted: ['550e8400-e29b-41d4-a716-446655440000'],
+    rejected: [],
+    serverTime: 1000,
+    maxCursor: 1,
+    outcomes: [
+      {
+        id: '550e8400-e29b-41d4-a716-446655440000',
+        type: 'note',
+        accepted: true,
+        serverCursor: 1
+      }
+    ]
+  }),
   pullItems: vi.fn().mockResolvedValue([]),
   getItem: vi.fn().mockResolvedValue({
     itemId: '550e8400-e29b-41d4-a716-446655440000',
@@ -34,6 +47,15 @@ vi.mock('../services/sync', () => ({
     serverCursor: 1
   }),
   updateDeviceCursor: vi.fn().mockResolvedValue(undefined)
+}))
+
+vi.mock('../services/crdt', () => ({
+  storeUpdates: vi.fn().mockResolvedValue([1]),
+  getUpdates: vi.fn().mockResolvedValue({ updates: [], hasMore: false }),
+  getBatchUpdates: vi.fn().mockResolvedValue({}),
+  storeSnapshot: vi.fn().mockResolvedValue({ sequenceNum: 0 }),
+  getSnapshot: vi.fn().mockResolvedValue(null),
+  pruneUpdatesBeforeSnapshot: vi.fn().mockResolvedValue(0)
 }))
 
 vi.mock('../services/device', () => ({
@@ -65,11 +87,12 @@ import {
   getSyncStatus,
   getManifest,
   getChanges,
-  processPushItem,
+  processRecordPushBatch,
   pullItems,
   getItem,
   updateDeviceCursor
 } from '../services/sync'
+import { storeUpdates } from '../services/crdt'
 import { authMiddleware } from '../middleware/auth'
 import { updateDevice } from '../services/device'
 
@@ -130,6 +153,24 @@ const makePushItem = (overrides: Record<string, unknown> = {}) => ({
   dataNonce: 'dn',
   signature: 'sig',
   signerDeviceId: 'device-1',
+  ...overrides
+})
+
+const makePushBatchResult = (
+  overrides: Partial<Awaited<ReturnType<typeof processRecordPushBatch>>> = {}
+) => ({
+  accepted: [VALID_UUID],
+  rejected: [],
+  serverTime: 1000,
+  maxCursor: 1,
+  outcomes: [
+    {
+      id: VALID_UUID,
+      type: 'note' as const,
+      accepted: true,
+      serverCursor: 1
+    }
+  ],
   ...overrides
 })
 
@@ -354,10 +395,21 @@ describe('sync routes', () => {
 
     it('should collect rejected items with reasons', async () => {
       // #given
-      vi.mocked(processPushItem).mockResolvedValueOnce({
-        accepted: false,
-        reason: 'VERSION_CONFLICT'
-      })
+      vi.mocked(processRecordPushBatch).mockResolvedValueOnce(
+        makePushBatchResult({
+          accepted: [],
+          rejected: [{ id: VALID_UUID, reason: 'VERSION_CONFLICT' }],
+          maxCursor: 0,
+          outcomes: [
+            {
+              id: VALID_UUID,
+              type: 'note',
+              accepted: false,
+              reason: 'VERSION_CONFLICT'
+            }
+          ]
+        })
+      )
       const body = { items: [makePushItem()] }
 
       // #when
@@ -448,10 +500,21 @@ describe('sync routes', () => {
 
     it('should not update device last_sync_at when all items rejected', async () => {
       // #given
-      vi.mocked(processPushItem).mockResolvedValueOnce({
-        accepted: false,
-        reason: 'VERSION_CONFLICT'
-      })
+      vi.mocked(processRecordPushBatch).mockResolvedValueOnce(
+        makePushBatchResult({
+          accepted: [],
+          rejected: [{ id: VALID_UUID, reason: 'VERSION_CONFLICT' }],
+          maxCursor: 0,
+          outcomes: [
+            {
+              id: VALID_UUID,
+              type: 'note',
+              accepted: false,
+              reason: 'VERSION_CONFLICT'
+            }
+          ]
+        })
+      )
       const body = { items: [makePushItem()] }
 
       // #when
@@ -468,6 +531,19 @@ describe('sync routes', () => {
 
     it('should accept non-UUID item IDs when payload otherwise validates', async () => {
       // #given
+      vi.mocked(processRecordPushBatch).mockResolvedValueOnce(
+        makePushBatchResult({
+          accepted: ['not-a-uuid'],
+          outcomes: [
+            {
+              id: 'not-a-uuid',
+              type: 'note',
+              accepted: true,
+              serverCursor: 1
+            }
+          ]
+        })
+      )
       const body = { items: [makePushItem({ id: 'not-a-uuid' })] }
 
       // #when
@@ -486,6 +562,20 @@ describe('sync routes', () => {
           accepted: ['not-a-uuid'],
           rejected: []
         })
+      )
+    })
+
+    it('should pass the parsed record batch to processRecordPushBatch', async () => {
+      const body = { items: [makePushItem()] }
+
+      await app.request('http://localhost/sync/push', jsonPost('/sync/push', body), env, executionCtx)
+
+      expect(processRecordPushBatch).toHaveBeenCalledWith(
+        env.DB,
+        env.STORAGE,
+        'user-1',
+        'device-1',
+        [makePushItem()]
       )
     })
   })
@@ -603,6 +693,72 @@ describe('sync routes', () => {
       const res = await app.request('/sync/items/not-a-uuid', { method: 'GET' }, env, executionCtx)
 
       // #then
+      expect(res.status).toBe(400)
+      const json = (await res.json()) as { error: { code: string } }
+      expect(json.error.code).toBe(ErrorCodes.VALIDATION_ERROR)
+    })
+  })
+
+  describe('record transport aliases', () => {
+    it('supports /sync/records/push while keeping legacy /sync/push intact', async () => {
+      const body = { items: [makePushItem()] }
+
+      const res = await app.request(
+        'http://localhost/sync/records/push',
+        jsonPost('/sync/records/push', body),
+        env,
+        executionCtx
+      )
+
+      expect(res.status).toBe(200)
+      expect(processRecordPushBatch).toHaveBeenCalledWith(
+        env.DB,
+        env.STORAGE,
+        'user-1',
+        'device-1',
+        [makePushItem()]
+      )
+    })
+
+    it('supports /sync/records/pull', async () => {
+      const body = { itemIds: [VALID_UUID] }
+
+      const res = await app.request(
+        'http://localhost/sync/records/pull',
+        jsonPost('/sync/records/pull', body),
+        env,
+        executionCtx
+      )
+
+      expect(res.status).toBe(200)
+      expect(pullItems).toHaveBeenCalledWith(env.DB, env.STORAGE, 'user-1', [VALID_UUID])
+    })
+  })
+
+  describe('CRDT transport separation', () => {
+    it('routes /sync/crdt/updates through CRDT services instead of record push', async () => {
+      const payload = { noteId: 'note_1', updates: [btoa('hello')] }
+
+      const res = await app.request(
+        'http://localhost/sync/crdt/updates',
+        jsonPost('/sync/crdt/updates', payload),
+        env,
+        executionCtx
+      )
+
+      expect(res.status).toBe(200)
+      expect(storeUpdates).toHaveBeenCalledTimes(1)
+      expect(processRecordPushBatch).not.toHaveBeenCalled()
+    })
+
+    it('returns 400 for invalid CRDT update payloads', async () => {
+      const res = await app.request(
+        'http://localhost/sync/crdt/updates',
+        jsonPost('/sync/crdt/updates', { noteId: 'bad note id!', updates: [] }),
+        env,
+        executionCtx
+      )
+
       expect(res.status).toBe(400)
       const json = (await res.json()) as { error: { code: string } }
       expect(json.error.code).toBe(ErrorCodes.VALIDATION_ERROR)

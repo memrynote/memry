@@ -180,7 +180,15 @@ describe('tasks-handlers', () => {
         })
 
         expect(result.success).toBe(true)
-        expect(result.task).toEqual({ ...mockTask, linkedNoteIds: [] })
+        expect(result.task).toEqual({
+          ...mockTask,
+          linkedNoteIds: [],
+          tags: [],
+          isRepeating: false,
+          hasSubtasks: false,
+          subtaskCount: 0,
+          completedSubtaskCount: 0
+        })
         expect(taskQueries.insertTask).toHaveBeenCalled()
       })
 
@@ -243,6 +251,7 @@ describe('tasks-handlers', () => {
 
         expect(result).toEqual({
           ...mockTask,
+          isRepeating: false,
           tags: ['tag1'],
           linkedNoteIds: ['note1'],
           hasSubtasks: true,
@@ -734,7 +743,18 @@ describe('tasks-handlers', () => {
 
         const result = await invokeHandler(TasksChannels.invoke.GET_SUBTASKS, 'task1')
 
-        expect(result).toEqual(mockSubtasks)
+        expect(result).toEqual([
+          expect.objectContaining({
+            id: 'sub1',
+            parentId: 'task1',
+            isRepeating: false,
+            linkedNoteIds: [],
+            tags: [],
+            hasSubtasks: false,
+            subtaskCount: 0,
+            completedSubtaskCount: 0
+          })
+        ])
       })
     })
 

@@ -29,8 +29,8 @@ import {
   setNoteLinks,
   setNoteProperties,
   getPropertyType,
-  deleteLinksToNote,
   extractDateFromPath,
+  deleteLinksToNote,
   resolveNotesByTitles,
   getNoteCacheByPath
 } from '@main/database/queries/notes'
@@ -41,6 +41,11 @@ import {
   saveCanonicalNote,
   saveCanonicalPropertyDefinition
 } from '@memry/domain-notes'
+import { publishProjectionEvent } from '../projections'
+import type {
+  FileNoteProjection,
+  MarkdownNoteProjection
+} from '../projections/types'
 
 // ============================================================================
 // Types
@@ -204,7 +209,8 @@ export function extractNoteMetadata(input: NoteSyncInput): NoteMetadata {
 
 /**
  * Sync a note to the database cache.
- * Handles insert or update, tags, properties, FTS, and links.
+ * This is now a compatibility wrapper that extracts note metadata,
+ * publishes a projection event, and returns the extracted result.
  *
  * @param db - Database instance
  * @param input - Note sync input
@@ -241,7 +247,32 @@ export function syncNoteToCache(
     modifiedAt: frontmatter.modified
   })
 
-  // Insert or update cache entry
+  const note: MarkdownNoteProjection = {
+    kind: 'markdown',
+    noteId: id,
+    path,
+    title,
+    fileType: 'markdown',
+    localOnly: frontmatter.localOnly ?? false,
+    contentHash,
+    wordCount,
+    characterCount,
+    snippet,
+    date,
+    emoji,
+    createdAt: frontmatter.created,
+    modifiedAt: frontmatter.modified,
+    parsedContent,
+    tags,
+    properties,
+    wikiLinks
+  }
+
+  publishProjectionEvent({
+    type: 'note.upserted',
+    note
+  })
+
   if (isNew) {
     insertNoteCache(db, {
       id,
@@ -271,7 +302,6 @@ export function syncNoteToCache(
     })
   }
 
-  // Set tags (replaces existing)
   setNoteTags(db, id, tags)
 
   setNoteProperties(db, id, properties, (name, value) => {
@@ -284,12 +314,10 @@ export function syncNoteToCache(
     return type
   })
 
-  // Queue FTS index update (batched for performance)
   if (!skipFts) {
     queueFtsUpdate(id, parsedContent, tags)
   }
 
-  // Resolve and set links
   let links: { targetTitle: string; targetId: string | undefined }[] = []
   if (!skipLinks && wikiLinks.length > 0) {
     links = resolveAndSetLinks(db, id, wikiLinks)
@@ -336,10 +364,12 @@ function resolveAndSetLinks(
  * @param noteId - Note ID to delete
  */
 export function deleteNoteFromCache(db: DrizzleDb, noteId: string): void {
-  // Clean up links where this note is the target (orphaned outgoing links from other notes)
-  deleteLinksToNote(db, noteId)
+  publishProjectionEvent({
+    type: 'note.deleted',
+    noteId
+  })
 
-  // Delete the note cache entry (cascades to tags, properties, and outgoing links via foreign keys)
+  deleteLinksToNote(db, noteId)
   deleteNoteCache(db, noteId)
   removeCanonicalMetadata(noteId)
 }
@@ -436,9 +466,26 @@ export function syncFileToCache(db: DrizzleDb, input: FileSyncInput): FileSyncRe
 
   // Check if file already exists in cache
   const existing = getNoteCacheByPath(db, path)
+  const noteId = existing?.id ?? id
+
+  const note: FileNoteProjection = {
+    kind: 'file',
+    noteId,
+    path,
+    title,
+    fileType,
+    mimeType,
+    fileSize,
+    createdAt: createdAt.toISOString(),
+    modifiedAt: modifiedAt.toISOString()
+  }
+
+  publishProjectionEvent({
+    type: 'note.upserted',
+    note
+  })
 
   if (existing) {
-    // Update existing cache entry
     updateNoteCache(db, existing.id, {
       path,
       title,
@@ -448,7 +495,6 @@ export function syncFileToCache(db: DrizzleDb, input: FileSyncInput): FileSyncRe
       modifiedAt: modifiedAt.toISOString()
     })
   } else {
-    // Insert new cache entry
     insertNoteCache(db, {
       id,
       path,
@@ -456,7 +502,6 @@ export function syncFileToCache(db: DrizzleDb, input: FileSyncInput): FileSyncRe
       fileType,
       mimeType,
       fileSize,
-      // Non-markdown files don't have these
       contentHash: null,
       wordCount: null,
       characterCount: null,
@@ -469,7 +514,7 @@ export function syncFileToCache(db: DrizzleDb, input: FileSyncInput): FileSyncRe
   }
 
   return {
-    id: existing?.id ?? id,
+    id: noteId,
     path,
     title,
     fileType,

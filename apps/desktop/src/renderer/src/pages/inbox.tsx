@@ -22,7 +22,7 @@ import { InboxSegmentControl, type InboxView } from '@/components/inbox/inbox-se
 import { CaptureInput } from '@/components/capture-input'
 import { Picker } from '@/components/ui/picker'
 import { useInboxNotifications } from '@/hooks/use-inbox-notifications'
-import { useInboxList, useInboxSnoozed } from '@/hooks/use-inbox'
+import { useInboxJobs, useInboxList, useInboxSnoozed } from '@/hooks/use-inbox'
 import type { InboxItemType } from '@memry/contracts/inbox-api'
 import { InboxListView } from './inbox/inbox-list-view'
 import { InboxHealthView } from './inbox/inbox-health-view'
@@ -81,6 +81,9 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
   useInboxNotifications()
   const { items } = useInboxList()
   const { data: snoozedItems = [] } = useInboxSnoozed()
+  const { activeCount: activeJobCount, failedCount: failedJobCount } = useInboxJobs(
+    items.map((item) => item.id)
+  )
   const snoozedCount = snoozedItems.length
 
   const itemCountsByType = useMemo(() => {
@@ -358,6 +361,23 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
               </>
             )}
           </PageToolbar>
+
+          {currentView === 'inbox' && (activeJobCount > 0 || failedJobCount > 0) && (
+            <div className="flex items-center gap-2 px-3 py-1.5 border-b border-border/60 bg-surface/60 text-[12px] leading-4">
+              {activeJobCount > 0 && (
+                <span className="flex items-center gap-1.5 text-text-secondary">
+                  <span className="size-1.5 rounded-full bg-amber-500 animate-pulse" />
+                  {activeJobCount} background job{activeJobCount === 1 ? '' : 's'} running
+                </span>
+              )}
+              {failedJobCount > 0 && (
+                <span className="flex items-center gap-1.5 text-rose-500">
+                  <span className="size-1.5 rounded-full bg-current" />
+                  {failedJobCount} failed
+                </span>
+              )}
+            </div>
+          )}
 
           <div className="min-h-0 flex-1">
             {currentView === 'inbox' && (

@@ -4,7 +4,7 @@ import type { QueueClearedEvent } from '@memry/contracts/ipc-events'
 import type { PushResponse, SyncItemType } from '@memry/contracts/sync-api'
 import { secureCleanup } from '../../crypto/index'
 import { encryptPushBatch } from '../sync-crypto-batch'
-import { getHandler } from '../item-handlers'
+import { getHandler, getRemoteSyncAdapter } from '../item-handlers'
 import { withRetry } from '../retry'
 import { postToServer, RateLimitError } from '../http-client'
 import { classifyError } from '../sync-errors'
@@ -75,6 +75,7 @@ export class PushCoordinator {
     try {
       this.stateManager.setState('syncing')
       this.ctx.abortController = new AbortController()
+      const abortSignal = this.ctx.abortController.signal
 
       const token = await this.ctx.deps.getAccessToken()
       if (!token) {
@@ -97,7 +98,7 @@ export class PushCoordinator {
 
       try {
         for (let iteration = 0; iteration < MAX_PUSH_ITERATIONS; iteration++) {
-          if (this.ctx.abortController!.signal.aborted) break
+          if (abortSignal.aborted) break
 
           const preDequeueCount = this.ctx.deps.queue.getPendingCount()
           const rawCount = this.ctx.deps.queue.getRawPendingCount()
@@ -133,7 +134,7 @@ export class PushCoordinator {
               const snapshotResults = await parallelWithLimit(
                 snapshotTasks,
                 CRDT_SNAPSHOT_CONCURRENCY,
-                this.ctx.abortController!.signal
+                abortSignal
               )
               const failedSnapshots = snapshotResults.filter((r) => r.status === 'rejected')
               if (failedSnapshots.length > 0) {
@@ -166,7 +167,7 @@ export class PushCoordinator {
                 token
               ),
             {
-              signal: this.ctx.abortController!.signal,
+              signal: abortSignal,
               isOnline: () => this.ctx.deps.network.online
             }
           )
@@ -190,7 +191,7 @@ export class PushCoordinator {
             const { queueId, pushItem } = pushItems[pi]
             if (acceptedSet.has(pushItem.id)) {
               this.ctx.deps.queue.markSuccess(queueId)
-              this.markItemSynced(pushItem.id, pushItem.type as SyncItemType)
+              this.markItemSynced(pushItem.id, pushItem.type)
               pushedCount++
               this.stateManager.emitItemSynced(pushItem.id, pushItem.type, 'push')
             } else {
@@ -202,7 +203,7 @@ export class PushCoordinator {
                   itemId: pushItem.id.slice(0, 8)
                 })
                 this.ctx.deps.queue.markSuccess(queueId)
-                this.markItemSynced(pushItem.id, pushItem.type as SyncItemType)
+                this.markItemSynced(pushItem.id, pushItem.type)
               } else if (reason === 'STORAGE_QUOTA_EXCEEDED') {
                 log.warn('Push: storage quota exceeded', { itemId: pushItem.id.slice(0, 8) })
                 this.ctx.deps.queue.markFailed(queueId, reason)
@@ -326,8 +327,13 @@ export class PushCoordinator {
 
   private markItemSynced(itemId: string, type: SyncItemType): void {
     try {
-      const handler = getHandler(type)
-      handler?.markPushSynced?.(this.ctx.deps.db, itemId)
+      const adapter = this.ctx.deps.adapters?.getRemote(type) ?? getRemoteSyncAdapter(type)
+      if (adapter?.markPushSynced) {
+        adapter.markPushSynced(this.ctx.deps.db, itemId)
+        return
+      }
+
+      getHandler(type)?.markPushSynced?.(this.ctx.deps.db, itemId)
     } catch (err) {
       log.warn('Failed to mark item syncedAt after push', { itemId, type, error: err })
     }
@@ -386,15 +392,17 @@ export class PushCoordinator {
     if (item.operation === 'delete') return item.payload
 
     try {
-      const handler = getHandler(item.type as SyncItemType)
-      if (!handler?.buildPushPayload) return item.payload
-
-      const fresh = handler.buildPushPayload(
-        this.ctx.deps.db,
-        item.itemId,
-        deviceId,
-        item.operation
-      )
+      const adapter =
+        this.ctx.deps.adapters?.getRemote(item.type as SyncItemType) ??
+        getRemoteSyncAdapter(item.type as SyncItemType)
+      const fresh =
+        adapter?.buildPushPayload?.(this.ctx.deps.db, item.itemId, deviceId, item.operation) ??
+        getHandler(item.type as SyncItemType)?.buildPushPayload?.(
+          this.ctx.deps.db,
+          item.itemId,
+          deviceId,
+          item.operation
+        )
       if (!fresh) {
         log.debug('Push: item no longer exists locally, using frozen payload', {
           itemId: item.itemId.slice(0, 8),

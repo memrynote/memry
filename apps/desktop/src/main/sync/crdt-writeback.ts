@@ -25,7 +25,6 @@ import { deleteFile } from '../vault/file-ops'
 import { NotesChannels, JournalChannels } from '@memry/contracts/ipc-channels'
 import { BrowserWindow } from 'electron'
 import path from 'path'
-import { queueEmbeddingUpdate } from '../inbox/embedding-queue'
 
 const log = createLogger('CrdtWriteback')
 
@@ -174,7 +173,6 @@ async function writebackExisting(
   )
 
   emitToRenderer(NotesChannels.events.UPDATED, { id: noteId, source: 'sync' })
-  queueEmbeddingUpdate(noteId)
   log.debug('Write-back complete', { noteId })
 }
 
@@ -202,8 +200,6 @@ async function writebackNewNote(
     { id: noteId, path: relativePath, fileContent, frontmatter, parsedContent: markdown },
     { isNew: true }
   )
-
-  queueEmbeddingUpdate(noteId)
 
   emitToRenderer(NotesChannels.events.CREATED, {
     note: { id: noteId, path: relativePath, title },
@@ -271,7 +267,6 @@ async function writebackJournal(
       { isNew: false }
     )
 
-    queueEmbeddingUpdate(noteId)
     log.debug('Journal write-back complete', { noteId, date })
     return
   }
@@ -299,8 +294,6 @@ async function writebackJournal(
     { id: noteId, path: relativePath, fileContent, frontmatter, parsedContent: markdown },
     { isNew: true }
   )
-
-  queueEmbeddingUpdate(noteId)
 
   emitToRenderer(JournalChannels.events.ENTRY_CREATED, {
     date,
@@ -336,8 +329,6 @@ async function handleJournalCollision(
     { id: incomingId, path: relativePath, fileContent, frontmatter, parsedContent: markdown },
     { isNew: true }
   )
-
-  queueEmbeddingUpdate(incomingId)
 
   emitToRenderer('sync:journal-conflict', {
     date,

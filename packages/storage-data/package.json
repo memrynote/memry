@@ -6,17 +6,19 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
-    "./note-metadata-repository": "./src/note-metadata-repository.ts"
+    "./note-metadata-repository": "./src/note-metadata-repository.ts",
+    "./tasks-repository": "./src/tasks-repository.ts"
   },
   "types": "./src/index.ts",
   "scripts": {
     "typecheck": "tsc --noEmit -p tsconfig.json"
   },
-  "devDependencies": {
-    "@memry/typescript-config": "workspace:*"
-  },
   "dependencies": {
     "@memry/db-schema": "workspace:*",
+    "@memry/domain-tasks": "workspace:*",
     "drizzle-orm": "^0.45.1"
+  },
+  "devDependencies": {
+    "@memry/typescript-config": "workspace:*"
   }
 }

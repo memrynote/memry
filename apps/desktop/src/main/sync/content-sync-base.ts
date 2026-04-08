@@ -1,21 +1,25 @@
 import type { SyncItemType, VectorClock } from '@memry/contracts/sync-api'
 import type { NoteMetadata } from '@memry/db-schema/data-schema'
-import type { SyncQueueManager } from './queue'
-import { increment } from './vector-clock'
-import { getDatabase } from '../database/client'
+import { RecordSyncController, incrementClock } from '@memry/sync-core'
 import { getNoteMetadataById, updateNoteMetadata } from '@memry/storage-data'
 import type Logger from 'electron-log'
+import { getDatabase } from '../database/client'
+import type { SyncQueueManager } from './queue'
 
 export interface ContentSyncDeps {
   queue: SyncQueueManager
   getDeviceId: () => string | null
 }
 
-export abstract class ContentSyncService<TPayload> {
+export abstract class ContentSyncService<
+  TPayload extends Record<string, unknown>,
+  TArgs extends string[] = []
+> {
   protected queue: SyncQueueManager
-  protected getDeviceId: () => string | null
   protected abstract readonly log: Logger.LogFunctions
   abstract readonly itemType: SyncItemType
+  private readonly getDeviceId: () => string | null
+  private controller: RecordSyncController<NoteMetadata, TArgs, TArgs> | null = null
 
   constructor(deps: ContentSyncDeps) {
     this.queue = deps.queue
@@ -26,97 +30,55 @@ export abstract class ContentSyncService<TPayload> {
     cached: NoteMetadata,
     clock: VectorClock,
     operation: 'create' | 'update',
-    ...extra: string[]
+    ...extra: TArgs
   ): TPayload
 
   protected abstract buildDeletePayload(
     cached: NoteMetadata | undefined,
     clock: VectorClock,
-    ...extra: string[]
+    ...extra: TArgs
   ): TPayload | null
 
-  enqueueCreate(itemId: string, ...extra: string[]): void {
-    this.enqueueSnapshot(itemId, 'create', ...extra)
+  enqueueCreate(itemId: string, ...extra: TArgs): void {
+    this.getController().enqueueCreate(itemId, ...extra)
   }
 
-  enqueueUpdate(itemId: string, ...extra: string[]): void {
-    this.enqueueSnapshot(itemId, 'update', ...extra)
+  enqueueUpdate(itemId: string, ...extra: TArgs): void {
+    this.getController().enqueueUpdate(itemId, ...extra)
   }
 
-  enqueueDelete(itemId: string, ...extra: string[]): void {
-    const deviceId = this.getDeviceId()
-    if (!deviceId) {
-      this.log.warn(`No device ID, skipping ${this.itemType} delete enqueue`)
-      return
-    }
-
-    try {
-      const dataDb = getDatabase()
-      const cached = getNoteMetadataById(dataDb, itemId)
-
-      if (cached?.localOnly) {
-        this.log.debug(`Skipping ${this.itemType} delete enqueue: localOnly`, { itemId })
-        return
-      }
-
-      const existingClock = (cached?.clock as VectorClock) ?? {}
-      const newClock = increment(existingClock, deviceId)
-
-      const payload = this.buildDeletePayload(cached, newClock, ...extra)
-      if (payload === null) return
-
-      this.queue.enqueue({
-        type: this.itemType,
-        itemId,
-        operation: 'delete',
-        payload: JSON.stringify(payload),
-        priority: 0
-      })
-    } catch (err) {
-      this.log.error(`Failed to enqueue ${this.itemType} delete`, err)
-    }
+  enqueueDelete(itemId: string, ...extra: TArgs): void {
+    this.getController().enqueueDelete(itemId, ...extra)
   }
 
-  private enqueueSnapshot(
-    itemId: string,
-    operation: 'create' | 'update',
-    ...extra: string[]
-  ): void {
-    const deviceId = this.getDeviceId()
-    if (!deviceId) {
-      this.log.warn(`No device ID, skipping ${this.itemType} enqueue`)
-      return
-    }
+  private getController(): RecordSyncController<NoteMetadata, TArgs, TArgs> {
+    if (this.controller) return this.controller
 
-    try {
-      const dataDb = getDatabase()
-      const cached = getNoteMetadataById(dataDb, itemId)
-      if (!cached) {
-        this.log.warn(`${this.itemType} not found in cache for enqueue`, { itemId })
-        return
+    this.controller = new RecordSyncController({
+      type: this.itemType,
+      queue: this.queue,
+      getDeviceId: this.getDeviceId,
+      load: (itemId) => getNoteMetadataById(getDatabase(), itemId),
+      handleMissingDevice: (itemId, operation) => {
+        this.log.warn(`No device ID, skipping ${this.itemType} ${operation} enqueue`, { itemId })
+      },
+      applyLocalChange: ({ itemId, local, deviceId }) => {
+        const nextClock = incrementClock((local.clock as VectorClock) ?? {}, deviceId)
+        return updateNoteMetadata(getDatabase(), itemId, { clock: nextClock }) ?? {
+          ...local,
+          clock: nextClock
+        }
+      },
+      serialize: (local, operation, extra) =>
+        this.buildSnapshotPayload(local, (local.clock as VectorClock) ?? {}, operation, ...extra),
+      shouldSkip: (local) => Boolean(local.localOnly),
+      buildDeletePayload: ({ local, deviceId, extra }) => {
+        const nextClock = incrementClock((local?.clock as VectorClock) ?? {}, deviceId)
+        const payload = this.buildDeletePayload(local, nextClock, ...extra)
+        return payload === null ? null : JSON.stringify(payload)
       }
+    })
 
-      if (cached.localOnly) {
-        this.log.debug(`Skipping ${this.itemType} enqueue: localOnly`, { itemId })
-        return
-      }
-
-      const existingClock = (cached.clock as VectorClock) ?? {}
-      const newClock = increment(existingClock, deviceId)
-
-      updateNoteMetadata(dataDb, itemId, { clock: newClock })
-
-      const payload = this.buildSnapshotPayload(cached, newClock, operation, ...extra)
-
-      this.queue.enqueue({
-        type: this.itemType,
-        itemId,
-        operation,
-        payload: JSON.stringify(payload),
-        priority: 0
-      })
-    } catch (err) {
-      this.log.error(`Failed to enqueue ${this.itemType} ${operation}`, err)
-    }
+    return this.controller
   }
 }

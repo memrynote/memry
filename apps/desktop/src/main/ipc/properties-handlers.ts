@@ -78,7 +78,7 @@ export function registerPropertiesHandlers(): void {
 
         if (entity.date) {
           await updateJournalProperties(entity.date, input.properties)
-          getJournalSyncService()?.enqueueUpdate(input.entityId)
+          getJournalSyncService()?.enqueueUpdate(input.entityId, entity.date)
         } else {
           await updateNote({ id: input.entityId, properties: input.properties })
           getNoteSyncService()?.enqueueUpdate(input.entityId)
@@ -125,7 +125,7 @@ export function registerPropertiesHandlers(): void {
 
         if (entity.date) {
           await updateJournalProperties(entity.date, newProperties)
-          getJournalSyncService()?.enqueueUpdate(input.entityId)
+          getJournalSyncService()?.enqueueUpdate(input.entityId, entity.date)
         } else {
           await updateNote({ id: input.entityId, properties: newProperties })
           getNoteSyncService()?.enqueueUpdate(input.entityId)

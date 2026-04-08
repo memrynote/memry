@@ -3,13 +3,10 @@ import { eq } from 'drizzle-orm'
 import type * as schema from '@memry/db-schema/data-schema'
 import { inboxItems } from '@memry/db-schema/schema/inbox'
 import type { VectorClock } from '@memry/contracts/sync-api'
+import { RecordSyncController, incrementClock, withIncrementedClock } from '@memry/sync-core'
 import type { SyncQueueManager } from './queue'
-import { increment } from './vector-clock'
-import { createLogger } from '../lib/logger'
 
 type DrizzleDb = BetterSQLite3Database<typeof schema>
-
-const log = createLogger('InboxSync')
 
 interface InboxSyncDeps {
   queue: SyncQueueManager
@@ -33,91 +30,40 @@ export function resetInboxSyncService(): void {
 }
 
 export class InboxSyncService {
-  private queue: SyncQueueManager
-  private db: DrizzleDb
-  private getDeviceId: () => string | null
+  private controller: RecordSyncController<Record<string, unknown>, [], [string]>
 
   constructor(deps: InboxSyncDeps) {
-    this.queue = deps.queue
-    this.db = deps.db
-    this.getDeviceId = deps.getDeviceId
+    this.controller = new RecordSyncController({
+      type: 'inbox',
+      queue: deps.queue,
+      getDeviceId: deps.getDeviceId,
+      load: (itemId) =>
+        deps.db.select().from(inboxItems).where(eq(inboxItems.id, itemId)).get() as
+          | Record<string, unknown>
+          | undefined,
+      applyLocalChange: ({ itemId, local, deviceId }) => {
+        const existingClock = (local.clock as VectorClock) ?? {}
+        const newClock = incrementClock(existingClock, deviceId)
+
+        deps.db.update(inboxItems).set({ clock: newClock }).where(eq(inboxItems.id, itemId)).run()
+
+        return { ...local, clock: newClock }
+      },
+      serialize: (local) => local,
+      shouldSkip: (local) => Boolean(local.localOnly),
+      buildDeletePayload: ({ extra, deviceId }) => withIncrementedClock(extra[0], deviceId)
+    })
   }
 
   enqueueCreate(itemId: string): void {
-    this.enqueue(itemId, 'create')
+    this.controller.enqueueCreate(itemId)
   }
 
   enqueueUpdate(itemId: string): void {
-    this.enqueue(itemId, 'update')
+    this.controller.enqueueUpdate(itemId)
   }
 
   enqueueDelete(itemId: string, snapshotPayload: string): void {
-    const deviceId = this.getDeviceId()
-    if (!deviceId) {
-      log.warn('No device ID available, skipping inbox sync enqueue for delete')
-      return
-    }
-
-    try {
-      const payload = this.withIncrementedClock(snapshotPayload, deviceId)
-      this.queue.enqueue({
-        type: 'inbox',
-        itemId,
-        operation: 'delete',
-        payload,
-        priority: 0
-      })
-    } catch (err) {
-      log.error('Failed to enqueue inbox delete', err)
-    }
-  }
-
-  private enqueue(itemId: string, operation: 'create' | 'update'): void {
-    const deviceId = this.getDeviceId()
-    if (!deviceId) {
-      log.warn('No device ID available, skipping inbox sync enqueue')
-      return
-    }
-
-    try {
-      const item = this.db.select().from(inboxItems).where(eq(inboxItems.id, itemId)).get()
-      if (!item) {
-        log.warn('Inbox item not found for sync enqueue', { itemId })
-        return
-      }
-
-      if (item.localOnly) return
-
-      const existingClock = (item.clock as VectorClock) ?? {}
-      const newClock = increment(existingClock, deviceId)
-
-      this.db.update(inboxItems).set({ clock: newClock }).where(eq(inboxItems.id, itemId)).run()
-
-      const payload = JSON.stringify({ ...item, clock: newClock })
-
-      this.queue.enqueue({
-        type: 'inbox',
-        itemId,
-        operation,
-        payload,
-        priority: 0
-      })
-    } catch (err) {
-      log.error(`Failed to enqueue inbox ${operation}`, err)
-    }
-  }
-
-  private withIncrementedClock(payload: string, deviceId: string): string {
-    try {
-      const parsed = JSON.parse(payload) as Record<string, unknown>
-      const existingClock =
-        parsed.clock && typeof parsed.clock === 'object' && !Array.isArray(parsed.clock)
-          ? (parsed.clock as VectorClock)
-          : {}
-      const newClock = increment(existingClock, deviceId)
-      return JSON.stringify({ ...parsed, clock: newClock })
-    } catch {
-      return payload
-    }
+    this.controller.enqueueDelete(itemId, snapshotPayload)
   }
 }

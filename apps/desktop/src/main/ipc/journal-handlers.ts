@@ -34,10 +34,10 @@ import {
   serializeJournalEntry
 } from '../vault/journal'
 import { maybeCreateSignificantSnapshot } from '../vault/notes'
-import { syncNoteToCache } from '../vault/note-sync'
-import { queueEmbeddingUpdate } from '../inbox/embedding-queue'
+import { deleteNoteFromCache, syncNoteToCache } from '../vault/note-sync'
 import {
   // Unified CRUD operations (using note_cache)
+  getNoteCacheByPath,
   // Journal-specific queries
   getJournalEntryByDate,
   getHeatmapData,
@@ -55,7 +55,6 @@ import { getIndexDatabase, getDatabase } from '../database'
 import { getJournalSyncService } from '../sync/journal-sync'
 import { getCrdtProvider } from '../sync/crdt-provider'
 import { getCanonicalJournalByDate } from '@memry/domain-notes'
-import { deleteNoteFromCache } from '../vault/note-sync'
 
 const logger = createLogger('IPC:Journal')
 
@@ -99,7 +98,6 @@ export function registerJournalHandlers(): void {
     createValidatedHandler(CreateEntryInputSchema, async (input): Promise<JournalEntry> => {
       const db = getIndexDatabase()
       const dataDb = getDatabase()
-      const cached = getJournalEntryByDate(db, input.date)
 
       // Write to file (properties are now serialized to frontmatter)
       const { entry, fileContent, frontmatter } = await writeJournalEntryWithContent(
@@ -111,8 +109,9 @@ export function registerJournalHandlers(): void {
       )
 
       const journalPath = getJournalRelativePath(entry.date)
+      const cached = getJournalEntryByDate(db, entry.date) ?? getNoteCacheByPath(db, journalPath)
       const canonical = getCanonicalJournalByDate(dataDb, entry.date)
-      const cacheId = canonical?.id ?? entry.id
+      const cacheId = canonical?.id ?? cached?.id ?? entry.id
 
       // syncNoteToCache will extract properties from frontmatter and sync to DB
       syncNoteToCache(
@@ -126,7 +125,6 @@ export function registerJournalHandlers(): void {
         },
         { isNew: !cached }
       )
-      queueEmbeddingUpdate(cacheId)
       getJournalSyncService()?.enqueueCreate(cacheId, entry.date)
       getCrdtProvider()
         .initForNote(cacheId, { date: entry.date }, entry.tags)
@@ -148,10 +146,10 @@ export function registerJournalHandlers(): void {
     createValidatedHandler(UpdateEntryInputSchema, async (input): Promise<JournalEntry> => {
       const db = getIndexDatabase()
       const dataDb = getDatabase()
-      const cached = getJournalEntryByDate(db, input.date)
 
       // Resolve the canonical journal identity from data.db.
       const journalPath = getJournalRelativePath(input.date)
+      const cached = getJournalEntryByDate(db, input.date) ?? getNoteCacheByPath(db, journalPath)
       const canonical = getCanonicalJournalByDate(dataDb, input.date)
 
       // Read current entry to get existing data
@@ -165,7 +163,7 @@ export function registerJournalHandlers(): void {
           null, // existingEntry
           input.properties // properties serialized to frontmatter
         )
-        const cacheId = canonical?.id ?? entry.id
+        const cacheId = canonical?.id ?? cached?.id ?? entry.id
 
         // syncNoteToCache will extract properties from frontmatter and sync to DB
         syncNoteToCache(
@@ -179,7 +177,6 @@ export function registerJournalHandlers(): void {
           },
           { isNew: !cached }
         )
-        queueEmbeddingUpdate(cacheId)
         getJournalSyncService()?.enqueueCreate(cacheId, entry.date)
         getCrdtProvider()
           .initForNote(cacheId, { date: entry.date }, entry.tags)
@@ -201,7 +198,7 @@ export function registerJournalHandlers(): void {
 
       // Create snapshot before significant content changes (T111)
       // Use the canonical note ID when available so snapshots stay attached across rebuilds.
-      const entryId = canonical?.id ?? existing.id
+      const entryId = canonical?.id ?? cached?.id ?? existing.id
       if (input.content !== undefined && input.content !== existing.content) {
         try {
           // Create the current file content (before save) for snapshot
@@ -237,7 +234,7 @@ export function registerJournalHandlers(): void {
         existing,
         newProperties // properties serialized to frontmatter
       )
-      const cacheId = canonical?.id ?? entry.id
+      const cacheId = canonical?.id ?? cached?.id ?? entry.id
 
       // syncNoteToCache will extract properties from frontmatter and sync to DB
       syncNoteToCache(
@@ -251,7 +248,6 @@ export function registerJournalHandlers(): void {
         },
         { isNew: !cached }
       )
-      queueEmbeddingUpdate(cacheId)
       getJournalSyncService()?.enqueueUpdate(cacheId, entry.date)
 
       // Emit event
@@ -270,7 +266,8 @@ export function registerJournalHandlers(): void {
     createValidatedHandler(DeleteEntryInputSchema, async (input): Promise<{ success: boolean }> => {
       const db = getIndexDatabase()
       const dataDb = getDatabase()
-      const cached = getJournalEntryByDate(db, input.date)
+      const journalPath = getJournalRelativePath(input.date)
+      const cached = getJournalEntryByDate(db, input.date) ?? getNoteCacheByPath(db, journalPath)
       const canonical = getCanonicalJournalByDate(dataDb, input.date)
       const noteId = canonical?.id ?? cached?.id
 

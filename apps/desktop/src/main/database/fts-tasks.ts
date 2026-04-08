@@ -6,8 +6,7 @@ import type { DrizzleDb } from './client'
  *
  * Mirrors fts.ts pattern for notes.
  * - fts_tasks virtual table stores id, title, description, tags
- * - SQLite triggers auto-sync id/title on INSERT/DELETE/UPDATE of tasks
- * - Description and tags updated explicitly via updateFtsTaskContent()
+ * - Projectors own all row maintenance for this table
  *
  * @module database/fts-tasks
  */
@@ -25,26 +24,9 @@ export function createFtsTasksTable(db: DrizzleDb): void {
 }
 
 export function createFtsTasksTriggers(db: DrizzleDb): void {
-  db.run(sql`
-    CREATE TRIGGER IF NOT EXISTS tasks_ai AFTER INSERT ON tasks BEGIN
-      INSERT INTO fts_tasks (id, title, description, tags)
-      VALUES (NEW.id, NEW.title, COALESCE(NEW.description, ''), '');
-    END
-  `)
-
-  db.run(sql`
-    CREATE TRIGGER IF NOT EXISTS tasks_ad AFTER DELETE ON tasks BEGIN
-      DELETE FROM fts_tasks WHERE id = OLD.id;
-    END
-  `)
-
-  db.run(sql`
-    CREATE TRIGGER IF NOT EXISTS tasks_au AFTER UPDATE OF title, description ON tasks BEGIN
-      UPDATE fts_tasks
-      SET title = NEW.title, description = COALESCE(NEW.description, '')
-      WHERE id = NEW.id;
-    END
-  `)
+  db.run(sql`DROP TRIGGER IF EXISTS tasks_ai`)
+  db.run(sql`DROP TRIGGER IF EXISTS tasks_ad`)
+  db.run(sql`DROP TRIGGER IF EXISTS tasks_au`)
 }
 
 export function updateFtsTaskContent(
