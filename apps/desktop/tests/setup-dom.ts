@@ -232,6 +232,7 @@ const createMockApi = () => ({
     retryTranscription: vi.fn().mockResolvedValue({ success: true }),
     retryMetadata: vi.fn().mockResolvedValue({ success: true }),
     getStats: vi.fn().mockResolvedValue({ totalItems: 0 }),
+    getJobs: vi.fn().mockResolvedValue({ jobs: [] }),
     getPatterns: vi.fn().mockResolvedValue({}),
     getStaleThreshold: vi.fn().mockResolvedValue(7),
     setStaleThreshold: vi.fn().mockResolvedValue({ success: true }),

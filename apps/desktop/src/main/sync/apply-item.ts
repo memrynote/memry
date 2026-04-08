@@ -1,5 +1,6 @@
 import type { VectorClock, SyncItemType } from '@memry/contracts/sync-api'
-import { getHandler } from './item-handlers'
+import type { SyncAdapterRegistry } from '@memry/sync-core'
+import { getHandler, getRemoteSyncAdapter } from './item-handlers'
 import type { ApplyResult, DrizzleDb, EmitToWindows } from './item-handlers'
 import { createLogger } from '../lib/logger'
 
@@ -19,20 +20,30 @@ export interface ApplyItemInput {
 export class ItemApplier {
   constructor(
     private db: DrizzleDb,
-    private emitToWindows: EmitToWindows
+    private emitToWindows: EmitToWindows,
+    private adapters?: SyncAdapterRegistry<DrizzleDb, EmitToWindows>
   ) {}
 
   apply(input: ApplyItemInput): ApplyResult {
-    const handler = getHandler(input.type)
-    if (!handler) {
+    const ctx = { db: this.db, emit: this.emitToWindows }
+    const adapter = this.adapters?.getRemote(input.type) ?? getRemoteSyncAdapter(input.type)
+    const handler = adapter ? null : getHandler(input.type)
+
+    if (!adapter && !handler) {
       log.warn('Unsupported item type for apply', { type: input.type })
       return 'skipped'
     }
 
-    const ctx = { db: this.db, emit: this.emitToWindows }
-
     if (input.operation === 'delete') {
-      return handler.applyDelete(ctx, input.itemId, input.clock)
+      return adapter
+        ? adapter.applyRemoteMutation({
+            db: this.db,
+            emit: this.emitToWindows,
+            itemId: input.itemId,
+            operation: 'delete',
+            clock: input.clock
+          })
+        : handler!.applyDelete(ctx, input.itemId, input.clock)
     }
 
     const decoded = new TextDecoder().decode(input.content)
@@ -46,12 +57,21 @@ export class ItemApplier {
 
     let data: unknown
     try {
-      data = handler.schema.parse(parsed)
+      data = adapter ? adapter.schema.parse(parsed) : handler!.schema.parse(parsed)
     } catch (err) {
       log.error('Schema validation failed', { type: input.type, itemId: input.itemId, error: err })
       return 'skipped'
     }
 
-    return handler.applyUpsert(ctx, input.itemId, data, input.clock ?? {})
+    return adapter
+      ? adapter.applyRemoteMutation({
+          db: this.db,
+          emit: this.emitToWindows,
+          itemId: input.itemId,
+          operation: input.operation,
+          data,
+          clock: input.clock ?? {}
+        })
+      : handler!.applyUpsert(ctx, input.itemId, data, input.clock ?? {})
   }
 }

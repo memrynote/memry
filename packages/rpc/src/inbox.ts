@@ -21,6 +21,13 @@ type InboxItemType =
 type ProcessingStatus = 'pending' | 'processing' | 'complete' | 'failed'
 type FilingAction = 'folder' | 'note' | 'linked'
 type CaptureSource = 'quick-capture' | 'inline' | 'browser-extension' | 'api' | 'reminder'
+export type InboxJobType =
+  | 'transcription'
+  | 'metadata-scrape'
+  | 'duplicate-detection'
+  | 'suggestion-generation'
+  | 'thumbnail-generation'
+export type InboxJobStatus = 'pending' | 'running' | 'failed' | 'complete'
 
 interface ReminderMetadata {
   reminderId: string
@@ -175,6 +182,27 @@ export interface InboxCapturePattern {
   topTags: Array<{ tag: string; count: number }>
 }
 
+export interface InboxJob {
+  id: string
+  itemId: string
+  type: InboxJobType
+  status: InboxJobStatus
+  runAt: Date
+  attempts: number
+  maxAttempts: number
+  payload: Record<string, unknown> | null
+  result: Record<string, unknown> | null
+  lastError: string | null
+  startedAt: Date | null
+  completedAt: Date | null
+  createdAt: Date
+  updatedAt: Date
+}
+
+export interface InboxJobsResponse {
+  jobs: InboxJob[]
+}
+
 export interface InboxFilingHistoryEntry {
   id: string
   itemId: string
@@ -312,6 +340,11 @@ export interface ListArchivedInput {
 
 export interface GetFilingHistoryInput {
   limit?: number
+}
+
+export interface GetJobsInput {
+  itemIds?: string[]
+  statuses?: InboxJobStatus[]
 }
 
 export interface InboxCapturedEvent {
@@ -513,6 +546,11 @@ export const inboxRpc = defineDomain({
     }),
     getStats: defineMethod<() => Promise<InboxStats>>({
       channel: InboxChannels.invoke.GET_STATS
+    }),
+    getJobs: defineMethod<(options?: GetJobsInput) => Promise<InboxJobsResponse>>({
+      channel: InboxChannels.invoke.GET_JOBS,
+      params: ['options'],
+      invokeArgs: ['options ?? {}']
     }),
     getPatterns: defineMethod<() => Promise<InboxCapturePattern>>({
       channel: InboxChannels.invoke.GET_PATTERNS

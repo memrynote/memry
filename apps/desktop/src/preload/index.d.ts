@@ -1316,6 +1316,13 @@ export type InboxItemType =
   | 'reminder'
 export type InboxProcessingStatus = 'pending' | 'processing' | 'complete' | 'failed'
 export type InboxFilingAction = 'folder' | 'note' | 'linked'
+export type InboxJobType =
+  | 'transcription'
+  | 'metadata-scrape'
+  | 'duplicate-detection'
+  | 'suggestion-generation'
+  | 'thumbnail-generation'
+export type InboxJobStatus = 'pending' | 'running' | 'failed' | 'complete'
 
 export interface InboxItem {
   id: string
@@ -1473,6 +1480,27 @@ export interface InboxCapturePattern {
   }>
   topDomains: Array<{ domain: string; count: number }>
   topTags: Array<{ tag: string; count: number }>
+}
+
+export interface InboxJob {
+  id: string
+  itemId: string
+  type: InboxJobType
+  status: InboxJobStatus
+  runAt: Date
+  attempts: number
+  maxAttempts: number
+  payload: Record<string, unknown> | null
+  result: Record<string, unknown> | null
+  lastError: string | null
+  startedAt: Date | null
+  completedAt: Date | null
+  createdAt: Date
+  updatedAt: Date
+}
+
+export interface InboxJobsResponse {
+  jobs: InboxJob[]
 }
 
 export interface InboxCapturedEvent {
@@ -1650,6 +1678,10 @@ export interface InboxClientAPI {
 
   // Stats
   getStats(): Promise<InboxStats>
+  getJobs(options?: {
+    itemIds?: string[]
+    statuses?: Array<'pending' | 'running' | 'failed' | 'complete'>
+  }): Promise<InboxJobsResponse>
   getPatterns(): Promise<InboxCapturePattern>
 
   // Settings

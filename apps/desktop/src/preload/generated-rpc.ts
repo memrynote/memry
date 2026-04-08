@@ -254,6 +254,8 @@ export function createGeneratedRpcApi({
       retryMetadata: ((itemId) =>
         invoke('inbox:retry-metadata', itemId)) as GeneratedRpcApi['inbox']['retryMetadata'],
       getStats: (() => invoke('inbox:get-stats')) as GeneratedRpcApi['inbox']['getStats'],
+      getJobs: ((options) =>
+        invoke('inbox:get-jobs', options ?? {})) as GeneratedRpcApi['inbox']['getJobs'],
       getPatterns: (() => invoke('inbox:get-patterns')) as GeneratedRpcApi['inbox']['getPatterns'],
       getStaleThreshold: (() =>
         invoke('inbox:get-stale-threshold')) as GeneratedRpcApi['inbox']['getStaleThreshold'],
