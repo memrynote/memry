@@ -106,12 +106,18 @@ importers:
       '@memry/db-schema':
         specifier: workspace:*
         version: link:../../packages/db-schema
+      '@memry/domain-tasks':
+        specifier: workspace:*
+        version: link:../../packages/domain-tasks
       '@memry/rpc':
         specifier: workspace:*
         version: link:../../packages/rpc
       '@memry/shared':
         specifier: workspace:*
         version: link:../../packages/shared
+      '@memry/storage-data':
+        specifier: workspace:*
+        version: link:../../packages/storage-data
       '@memry/sync-core':
         specifier: workspace:*
         version: link:../../packages/sync-core
@@ -639,6 +645,9 @@ importers:
 
   packages/contracts:
     dependencies:
+      '@memry/domain-tasks':
+        specifier: workspace:*
+        version: link:../domain-tasks
       zod:
         specifier: ^4.3.4
         version: 4.3.6
@@ -663,6 +672,12 @@ importers:
         specifier: workspace:*
         version: link:../typescript-config
 
+  packages/domain-tasks:
+    devDependencies:
+      '@memry/typescript-config':
+        specifier: workspace:*
+        version: link:../typescript-config
+
   packages/rpc:
     dependencies:
       '@memry/contracts':
@@ -674,6 +689,16 @@ importers:
         version: link:../typescript-config
 
   packages/shared:
+    devDependencies:
+      '@memry/typescript-config':
+        specifier: workspace:*
+        version: link:../typescript-config
+
+  packages/storage-data:
+    dependencies:
+      '@memry/domain-tasks':
+        specifier: workspace:*
+        version: link:../domain-tasks
     devDependencies:
       '@memry/typescript-config':
         specifier: workspace:*
