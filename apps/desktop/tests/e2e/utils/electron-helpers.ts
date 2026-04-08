@@ -29,7 +29,7 @@ export const SELECTORS = {
   // Notes - actual selectors from the app
   notesList: '[data-testid="notes-list"], [class*="notes-list"]',
   noteItem: '[data-testid="note-item"], [class*="note-item"]',
-  noteEditor: '.bn-editor [contenteditable="true"]', // BlockNote editor
+  noteEditor: '.bn-container [contenteditable="true"]', // BlockNote editor container
   noteTitle: 'textarea[aria-label="Note title"]', // Title textarea
   noteTags: '[data-testid="note-tags"], [class*="tags-row"]',
 
@@ -72,11 +72,12 @@ export const SELECTORS = {
   searchInput:
     '[data-testid="search-input"], input[placeholder*="Search"], input[aria-label*="Search"]',
 
-  // Tab system
-  tabBar: '[role="tablist"], [data-group-id]',
-  tab: '[role="tab"]',
-  activeTab: '[role="tab"][aria-selected="true"]',
-  tabCloseButton: '[role="tab"] button[aria-label^="Close"]',
+  // Tab system — scope to main tab bar (has data-group-id) to avoid matching
+  // secondary tab bars like the Tasks view's sub-tab bar (role="tablist" only).
+  tabBar: '[role="tablist"][data-group-id]',
+  tab: '[role="tab"][data-group-id]',
+  activeTab: '[role="tab"][data-group-id][aria-selected="true"]',
+  tabCloseButton: '[role="tab"][data-group-id] button[aria-label^="Close"]',
 
   // Split view
   splitViewContainer: '[data-testid="split-view-container"]',
@@ -225,8 +226,9 @@ export async function createNote(page: Page, title: string, content?: string): P
   // The title input is a textarea with aria-label="Note title"
   const titleInput = page.locator(SELECTORS.noteTitle).first()
 
+  let titleTyped = false
   try {
-    await titleInput.waitFor({ state: 'visible', timeout: 5000 })
+    await titleInput.waitFor({ state: 'visible', timeout: 10000 })
 
     // Clear default "Untitled" and type new title
     await titleInput.click()
@@ -235,22 +237,27 @@ export async function createNote(page: Page, title: string, content?: string): P
     // Blur to save the title (title saves on blur)
     await page.keyboard.press('Tab')
     await page.waitForTimeout(300)
+    titleTyped = true
+  } catch {
+    console.log('Note creation: could not find title input, note may have been created')
+    await page.waitForTimeout(500)
+  }
 
-    if (content) {
-      // Find the BlockNote editor and type content
+  // Type content even if title-typing failed — the note tab is still open
+  // and the editor should be mounted.
+  if (content) {
+    try {
       const editor = page.locator(SELECTORS.noteEditor).first()
       await editor.waitFor({ state: 'visible', timeout: 3000 })
       await editor.click()
       await page.keyboard.type(content)
+    } catch {
+      console.log('Note creation: could not find editor to type content')
     }
-
-    // Wait for auto-save
-    await page.waitForTimeout(1000)
-  } catch {
-    // Note creation might work differently or title input might not be visible
-    console.log('Note creation: could not find title input, note may have been created')
-    await page.waitForTimeout(500)
   }
+
+  // Wait for auto-save
+  await page.waitForTimeout(titleTyped ? 1000 : 500)
 }
 
 /**
