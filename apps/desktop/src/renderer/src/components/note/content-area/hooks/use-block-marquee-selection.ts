@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { TextSelection } from 'prosemirror-state'
 import type { Node as PMNode } from 'prosemirror-model'
 import { createLogger } from '@/lib/logger'
+import { classifyBlocks, indentTaskBlock, outdentTaskBlock } from './task-block-marquee-indent'
 
 const log = createLogger('Hook:Marquee')
 
@@ -143,6 +144,158 @@ export function useBlockMarqueeSelection({
     if (triggerContainerEl) triggerContainerEl.removeAttribute(ACTIVE_ATTR)
   }, [triggerContainerEl])
 
+  // Re-measure every still-selected block's DOM rect and rebuild the
+  // overlay highlight list. Called after nest/unnest because the block's
+  // x-offset (and sometimes y) shifts with indentation depth. Also
+  // prunes any id whose DOM node disappeared as a defensive guard.
+  const recomputeHighlightRects = useCallback((): void => {
+    const container = blockContainerRef.current
+    const trigger = triggerContainerEl
+    if (!container || !trigger) return
+    const triggerBounds = trigger.getBoundingClientRect()
+    const nextRects: BlockHighlightRect[] = []
+    const stillSelected = new Set<string>()
+    container.querySelectorAll<HTMLElement>('.bn-block[data-id]').forEach((el) => {
+      const id = el.getAttribute('data-id')
+      if (!id || !selectedRef.current.has(id)) return
+      if (stillSelected.has(id)) return
+      stillSelected.add(id)
+      const rect = el.getBoundingClientRect()
+      nextRects.push({
+        id,
+        left: rect.left - triggerBounds.left,
+        top: rect.top - triggerBounds.top,
+        width: rect.width,
+        height: rect.height
+      })
+    })
+    selectedRef.current = stillSelected
+    setHighlightRects(nextRects)
+    setSelectedBlockIds(new Set(stillSelected))
+  }, [blockContainerRef, triggerContainerEl])
+
+  // Indent every marquee-selected block by one level. Routes each block
+  // to the correct nesting API based on its type:
+  //   - textblocks (paragraph, bulletListItem, heading, etc.) use
+  //     BlockNote's built-in `nestBlock`, gated on `canNestBlock`
+  //   - taskBlocks use the `parentTaskId` prop + tasksService.update
+  //     path via `indentTaskBlock` — mirroring the single-task Tab
+  //     handler in `task-block-renderer.tsx`. BlockNote's `nestBlock`
+  //     crashes on non-textblock custom blocks because it assumes a
+  //     TextSelection inside a textblock; the ReactNodeView corrupts
+  //     and the next iteration blows up in syncNodeSelection.descAt.
+  //   - other non-textblock blocks (file, youtubeEmbed) have no
+  //     analogous hierarchy mechanism and stay silently skipped.
+  //
+  // Both loops iterate in FORWARD order — matches the "flat siblings
+  // under common predecessor" semantics of the single-task Tab handler:
+  // after B nests under A, C's previous top-level sibling is still A
+  // (now carrying B as a child), so C also nests directly under A as
+  // B's sibling.
+  //
+  // isApplyingPmSelectionRef is held true across the whole loop so the
+  // editor.onSelectionChange listener (which exists to clear the marquee
+  // on cursor moves) doesn't fire on our own setTextCursorPosition /
+  // replaceBlocks dispatches.
+  const indentSelectedBlocks = useCallback((): void => {
+    const container = blockContainerRef.current
+    if (!container) return
+    const ordered = getOrderedBlockIds(container, selectedRef.current)
+    if (ordered.length === 0) return
+    const { textblocks, taskBlocks, other } = classifyBlocks(editor, ordered)
+    if (other.length > 0) {
+      log.debug('indent skipping non-nestable blocks', other)
+    }
+    if (textblocks.length === 0 && taskBlocks.length === 0) return
+    try {
+      editor.prosemirrorView?.focus?.()
+    } catch (err) {
+      log.debug('Failed to focus PM view before indent', err)
+    }
+    isApplyingPmSelectionRef.current = true
+    try {
+      for (const id of textblocks) {
+        try {
+          editor.setTextCursorPosition(id, 'start')
+          if (editor.canNestBlock?.()) editor.nestBlock()
+        } catch (err) {
+          log.debug('nestBlock failed for id', id, err)
+        }
+      }
+      for (const id of taskBlocks) {
+        try {
+          const outcome = indentTaskBlock(editor, id)
+          if (outcome.kind === 'skipped') {
+            log.debug('indentTaskBlock skipped', id, outcome.reason)
+          }
+        } catch (err) {
+          log.debug('indentTaskBlock failed for id', id, err)
+        }
+      }
+    } finally {
+      // rAF so the guard outlives the tail selectionchange tick that
+      // the final setTextCursorPosition / replaceBlocks triggered.
+      requestAnimationFrame(() => {
+        isApplyingPmSelectionRef.current = false
+        recomputeHighlightRects()
+      })
+    }
+  }, [editor, blockContainerRef, recomputeHighlightRects])
+
+  // Outdent every marquee-selected block by one level. Both the textblock
+  // and taskBlock loops run in REVERSE order:
+  //   - textblocks: BlockNote's `unnestBlock` lifts the block out and
+  //     places it immediately after the parent, so reverse iteration
+  //     preserves sibling order in the resulting flat list.
+  //   - taskBlocks: `outdentTaskBlock` replaces the parent with
+  //     `[newParent, promotedSelf]`. Processing bottom-up lifts the
+  //     last nested child first, keeping remaining siblings in their
+  //     original order under the (shrinking) parent.
+  const outdentSelectedBlocks = useCallback((): void => {
+    const container = blockContainerRef.current
+    if (!container) return
+    const ordered = getOrderedBlockIds(container, selectedRef.current)
+    if (ordered.length === 0) return
+    const { textblocks, taskBlocks, other } = classifyBlocks(editor, ordered)
+    if (other.length > 0) {
+      log.debug('outdent skipping non-nestable blocks', other)
+    }
+    if (textblocks.length === 0 && taskBlocks.length === 0) return
+    try {
+      editor.prosemirrorView?.focus?.()
+    } catch (err) {
+      log.debug('Failed to focus PM view before outdent', err)
+    }
+    isApplyingPmSelectionRef.current = true
+    try {
+      for (let i = textblocks.length - 1; i >= 0; i -= 1) {
+        const id = textblocks[i]
+        try {
+          editor.setTextCursorPosition(id, 'start')
+          if (editor.canUnnestBlock?.()) editor.unnestBlock()
+        } catch (err) {
+          log.debug('unnestBlock failed for id', id, err)
+        }
+      }
+      for (let i = taskBlocks.length - 1; i >= 0; i -= 1) {
+        const id = taskBlocks[i]
+        try {
+          const outcome = outdentTaskBlock(editor, id)
+          if (outcome.kind === 'skipped') {
+            log.debug('outdentTaskBlock skipped', id, outcome.reason)
+          }
+        } catch (err) {
+          log.debug('outdentTaskBlock failed for id', id, err)
+        }
+      }
+    } finally {
+      requestAnimationFrame(() => {
+        isApplyingPmSelectionRef.current = false
+        recomputeHighlightRects()
+      })
+    }
+  }, [editor, blockContainerRef, recomputeHighlightRects])
+
   useEffect(() => {
     if (!enabled) return
     const trigger = triggerContainerEl
@@ -156,8 +309,7 @@ export function useBlockMarqueeSelection({
       // gate: text-selection-preservation only matters when there is text to
       // select. Drags that start in the gutter promote on any vertical motion.
       const startedInsideEditableText =
-        event.target instanceof Element &&
-        event.target.closest('[contenteditable="true"]') !== null
+        event.target instanceof Element && event.target.closest('[contenteditable="true"]') !== null
 
       const blockContainer = blockContainerRef.current
       if (!blockContainer) return
@@ -415,7 +567,7 @@ export function useBlockMarqueeSelection({
       teardownDragRef.current = null
       trigger.removeAttribute(ACTIVE_ATTR)
     }
-  }, [enabled, triggerContainerEl, editor])
+  }, [enabled, triggerContainerEl, editor, blockContainerRef])
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent): void => {
@@ -423,6 +575,24 @@ export function useBlockMarqueeSelection({
 
       if (event.key === 'Escape') {
         clearSelection()
+        return
+      }
+
+      // Tab / Shift+Tab on a marquee selection: indent/outdent every
+      // selected block as a group. Matches BlockNote's single-cursor
+      // Tab behavior but extends it to multi-block selections. Marquee
+      // selection is preserved across the operation so repeated Tab
+      // "walks" the group deeper/shallower. Capture-phase + preventDefault
+      // beats both PM's own Tab handler and the browser's focus cycling.
+      if (event.key === 'Tab') {
+        if (selectedRef.current.size === 0) return
+        event.preventDefault()
+        event.stopPropagation()
+        if (event.shiftKey) {
+          outdentSelectedBlocks()
+        } else {
+          indentSelectedBlocks()
+        }
         return
       }
 
@@ -448,7 +618,7 @@ export function useBlockMarqueeSelection({
     }
     document.addEventListener('keydown', onKeyDown, true)
     return () => document.removeEventListener('keydown', onKeyDown, true)
-  }, [clearSelection, editor])
+  }, [clearSelection, editor, indentSelectedBlocks, outdentSelectedBlocks])
 
   useEffect(() => {
     const onMouseDown = (event: globalThis.MouseEvent): void => {
