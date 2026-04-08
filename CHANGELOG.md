@@ -5,6 +5,13 @@ Format: weekly entries grouped by feature area.
 
 ---
 
+## 2026-04-08 — Marquee Selection Indent/Outdent
+
+### Added
+- Add Tab/Shift+Tab indent/outdent support to marquee selections
+
+---
+
 ## 2026-04-07 — Security Fixes
 
 ### Fixed
