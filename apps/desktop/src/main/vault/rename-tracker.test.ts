@@ -13,10 +13,15 @@ vi.mock('electron', () => ({
 }))
 
 vi.mock('../database', () => ({
-  getIndexDatabase: vi.fn()
+  getIndexDatabase: vi.fn(),
+  getDatabase: vi.fn()
 }))
 
-import { getIndexDatabase } from '../database'
+vi.mock('@memry/storage-data', () => ({
+  updateNoteMetadata: vi.fn()
+}))
+
+import { getDatabase, getIndexDatabase } from '../database'
 import {
   trackPendingDelete,
   checkForRename,
@@ -33,6 +38,7 @@ describe('rename-tracker', () => {
   beforeEach(() => {
     indexDb = createTestIndexDb()
     vi.mocked(getIndexDatabase).mockReturnValue(indexDb.db)
+    vi.mocked(getDatabase).mockReturnValue({} as ReturnType<typeof getDatabase>)
 
     window = new MockBrowserWindow()
     vi.mocked(BrowserWindow.getAllWindows).mockReturnValue([window as never])

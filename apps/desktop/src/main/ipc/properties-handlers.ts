@@ -21,7 +21,7 @@ import type { PropertyValue } from '@main/database/queries/notes'
 import { createLogger } from '../lib/logger'
 import { createValidatedHandler, withErrorHandler } from './validate'
 import { getNoteCacheById, getNoteProperties } from '@main/database/queries/notes'
-import { getIndexDatabase } from '../database'
+import { getDatabase, getIndexDatabase } from '../database'
 import { updateNote } from '../vault/notes'
 import { getNoteSyncService } from '../sync/note-sync'
 import { getJournalSyncService } from '../sync/journal-sync'
@@ -32,6 +32,7 @@ import {
 } from '../vault/journal'
 import { syncNoteToCache } from '../vault/note-sync'
 import { getJournalEntryByDate } from '@main/database/queries/notes'
+import { getCanonicalJournalByDate } from '@memry/domain-notes'
 
 const logger = createLogger('IPC:Properties')
 
@@ -182,12 +183,14 @@ async function updateJournalProperties(
   // Sync to cache
   const db = getIndexDatabase()
   const journalPath = getJournalRelativePath(date)
+  const canonical = getCanonicalJournalByDate(getDatabase(), date)
   const cached = getJournalEntryByDate(db, date)
+  const noteId = canonical?.id ?? cached?.id ?? entry.id
 
   syncNoteToCache(
     db,
     {
-      id: cached?.id ?? entry.id,
+      id: noteId,
       path: journalPath,
       fileContent,
       frontmatter,

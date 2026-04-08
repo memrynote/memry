@@ -52,6 +52,24 @@ vi.mock('../vault/note-sync', () => ({
   deleteNoteFromCache: vi.fn()
 }))
 
+vi.mock('../sync/journal-sync', () => ({
+  getJournalSyncService: vi.fn(() => ({
+    enqueueCreate: vi.fn(),
+    enqueueUpdate: vi.fn(),
+    enqueueDelete: vi.fn()
+  }))
+}))
+
+vi.mock('../sync/crdt-provider', () => ({
+  getCrdtProvider: vi.fn(() => ({
+    initForNote: vi.fn().mockResolvedValue(undefined)
+  }))
+}))
+
+vi.mock('@memry/domain-notes', () => ({
+  getCanonicalJournalByDate: vi.fn()
+}))
+
 vi.mock('@main/database/queries/notes', () => ({
   insertNoteCache: vi.fn(),
   updateNoteCache: vi.fn(),
@@ -82,6 +100,7 @@ import * as journalVault from '../vault/journal'
 import * as noteSync from '../vault/note-sync'
 import * as notesQueries from '@main/database/queries/notes'
 import * as tasksQueries from '@main/database/queries/tasks'
+import * as domainNotes from '@memry/domain-notes'
 
 describe('journal-handlers', () => {
   const baseEntry: JournalEntry = {
@@ -113,17 +132,16 @@ describe('journal-handlers', () => {
     expect(handleCalls.length).toBe(Object.values(JournalChannels.invoke).length)
   })
 
-  it('gets an entry and merges cached properties', async () => {
+  it('gets an entry from disk', async () => {
     registerJournalHandlers()
-    ;(journalVault.readJournalEntry as Mock).mockResolvedValue({ ...baseEntry })
-    ;(notesQueries.getJournalEntryByDate as Mock).mockReturnValue({ id: 'cache-1' })
-    ;(notesQueries.getNotePropertiesAsRecord as Mock).mockReturnValue({ mood: 'good' })
+    ;(journalVault.readJournalEntry as Mock).mockResolvedValue({
+      ...baseEntry,
+      properties: { mood: 'good' }
+    })
 
     const result = await invokeHandler(JournalChannels.invoke.GET_ENTRY, { date: '2025-01-01' })
 
-    expect(result).toEqual(
-      expect.objectContaining({ date: '2025-01-01', properties: { mood: 'good' } })
-    )
+    expect(result).toEqual(expect.objectContaining({ properties: { mood: 'good' } }))
   })
 
   it('creates a journal entry and emits event', async () => {
@@ -142,6 +160,8 @@ describe('journal-handlers', () => {
       }
     })
     ;(journalVault.getJournalRelativePath as Mock).mockReturnValue('journal/2025-01-01.md')
+    ;(notesQueries.getJournalEntryByDate as Mock).mockReturnValue(undefined)
+    ;(domainNotes.getCanonicalJournalByDate as Mock).mockReturnValue(undefined)
 
     const result = await invokeHandler(JournalChannels.invoke.CREATE_ENTRY, {
       date: '2025-01-01',
@@ -191,6 +211,7 @@ describe('journal-handlers', () => {
     ;(journalVault.getJournalRelativePath as Mock).mockReturnValue('journal/2025-01-01.md')
     ;(journalVault.serializeJournalEntry as Mock).mockReturnValue('serialized')
     ;(notesQueries.getJournalEntryByDate as Mock).mockReturnValue({ id: 'cache-1' })
+    ;(domainNotes.getCanonicalJournalByDate as Mock).mockReturnValue({ id: 'cache-1' })
 
     const result = await invokeHandler(JournalChannels.invoke.UPDATE_ENTRY, {
       date: '2025-01-01',
@@ -206,6 +227,7 @@ describe('journal-handlers', () => {
     registerJournalHandlers()
     ;(journalVault.deleteJournalEntryFile as Mock).mockResolvedValue(true)
     ;(notesQueries.getJournalEntryByDate as Mock).mockReturnValue({ id: 'cache-1' })
+    ;(domainNotes.getCanonicalJournalByDate as Mock).mockReturnValue({ id: 'cache-1' })
 
     const result = await invokeHandler(JournalChannels.invoke.DELETE_ENTRY, { date: '2025-01-01' })
 

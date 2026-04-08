@@ -8,6 +8,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import * as fs from 'fs'
 import * as path from 'path'
+import { eq } from 'drizzle-orm'
 import {
   createTestVault,
   createTestNote,
@@ -16,6 +17,7 @@ import {
 } from '@tests/utils/test-vault'
 import { createTestDataDb, createTestIndexDb, type TestDatabaseResult } from '@tests/utils/test-db'
 import type { VaultConfig } from '@memry/contracts/vault-api'
+import { noteMetadata } from '@memry/db-schema/data-schema'
 
 // ============================================================================
 // Type-Safe Mocks
@@ -404,6 +406,33 @@ Copied note`
 
       expect(result.filesIndexed).toBe(0)
       expect(result.duration).toBeGreaterThanOrEqual(0)
+    })
+
+    it('T376: preserves canonical note metadata across index rebuilds', async () => {
+      const notePath = createTestNote(tempVault, {
+        id: 'persistent-note',
+        title: 'Persistent Note',
+        content: 'Canonical metadata should survive rebuilds'
+      })
+      const relativePath = path.relative(tempVault.path, notePath).replace(/\\/g, '/')
+
+      await indexer.indexVault(tempVault.path)
+
+      const before = dataDb.db
+        .select()
+        .from(noteMetadata)
+        .where(eq(noteMetadata.id, 'persistent-note'))
+        .get()
+      expect(before?.path).toBe(relativePath)
+
+      await indexer.rebuildIndex(tempVault.path)
+
+      const after = dataDb.db
+        .select()
+        .from(noteMetadata)
+        .where(eq(noteMetadata.id, 'persistent-note'))
+        .get()
+      expect(after).toEqual(expect.objectContaining({ id: 'persistent-note', path: before?.path }))
     })
   })
 })

@@ -67,13 +67,14 @@ import {
   getAllPropertyDefinitions,
   insertPropertyDefinition,
   updatePropertyDefinition,
+  deletePropertyDefinition,
   resolveNoteByTitle,
   updateNoteCache,
-  getLocalOnlyCount,
   getNoteTags,
   getAllTagDefinitions
 } from '@main/database/queries/notes'
 import { getIndexDatabase, getDatabase } from '../database'
+import { countLocalOnlyNoteMetadata, updateNoteMetadata } from '@memry/storage-data'
 import {
   getNotesInFolder,
   reorderNotesInFolder,
@@ -398,7 +399,7 @@ export function registerNotesHandlers(): void {
   ipcMain.handle(
     NotesChannels.invoke.GET_PROPERTY_DEFINITIONS,
     createHandler(() => {
-      const db = getIndexDatabase()
+      const db = getDatabase()
       return getAllPropertyDefinitions(db)
     })
   )
@@ -424,8 +425,15 @@ export function registerNotesHandlers(): void {
           return { success: true, definition: service.get(input.name) }
         }
 
-        const db = getIndexDatabase()
-        const definition = insertPropertyDefinition(db, {
+        const dataDb = getDatabase()
+        const definition = insertPropertyDefinition(dataDb, {
+          name: input.name,
+          type: input.type,
+          options: input.options ? JSON.stringify(input.options) : null,
+          defaultValue: input.defaultValue ? JSON.stringify(input.defaultValue) : null,
+          color: input.color ?? null
+        })
+        insertPropertyDefinition(getIndexDatabase(), {
           name: input.name,
           type: input.type,
           options: input.options ? JSON.stringify(input.options) : null,
@@ -463,9 +471,15 @@ export function registerNotesHandlers(): void {
           return { success: true, definition: service.get(input.name) }
         }
 
-        const db = getIndexDatabase()
+        const dataDb = getDatabase()
         const { name, ...updates } = input
-        const definition = updatePropertyDefinition(db, name, {
+        const definition = updatePropertyDefinition(dataDb, name, {
+          type: updates.type,
+          options: updates.options ? JSON.stringify(updates.options) : undefined,
+          defaultValue: updates.defaultValue ? JSON.stringify(updates.defaultValue) : undefined,
+          color: updates.color
+        })
+        updatePropertyDefinition(getIndexDatabase(), name, {
           type: updates.type,
           options: updates.options ? JSON.stringify(updates.options) : undefined,
           defaultValue: updates.defaultValue ? JSON.stringify(updates.defaultValue) : undefined,
@@ -612,6 +626,8 @@ export function registerNotesHandlers(): void {
       const { PropertyDefinitionsService } = await import('../vault/property-definitions')
       const service = PropertyDefinitionsService.get()
       await service.remove(input.name)
+      deletePropertyDefinition(getDatabase(), input.name)
+      deletePropertyDefinition(getIndexDatabase(), input.name)
       return { success: true }
     })
   )
@@ -944,6 +960,10 @@ export function registerNotesHandlers(): void {
         const note = await updateNote({ id: input.id, frontmatter: { localOnly: input.localOnly } })
         const indexDb = getIndexDatabase()
         updateNoteCache(indexDb, input.id, { localOnly: input.localOnly })
+        updateNoteMetadata(getDatabase(), input.id, {
+          localOnly: input.localOnly,
+          syncPolicy: input.localOnly ? 'local-only' : 'sync'
+        })
         const syncService = getNoteSyncService()
         if (input.localOnly) {
           syncService?.removeQueueItems(input.id)
@@ -959,8 +979,7 @@ export function registerNotesHandlers(): void {
   ipcMain.handle(
     NotesChannels.invoke.GET_LOCAL_ONLY_COUNT,
     createHandler(() => {
-      const indexDb = getIndexDatabase()
-      return { count: getLocalOnlyCount(indexDb) }
+      return { count: countLocalOnlyNoteMetadata(getDatabase()) }
     })
   )
 }

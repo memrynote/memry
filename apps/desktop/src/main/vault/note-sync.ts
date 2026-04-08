@@ -34,19 +34,44 @@ import {
   resolveNotesByTitles,
   getNoteCacheByPath
 } from '@main/database/queries/notes'
+import { getDatabase, queueFtsUpdate } from '../database'
 import type { FileType } from '@memry/shared/file-types'
+import {
+  deleteCanonicalNote,
+  saveCanonicalNote,
+  saveCanonicalPropertyDefinition
+} from '@memry/domain-notes'
 import { publishProjectionEvent } from '../projections'
 import type {
   FileNoteProjection,
   MarkdownNoteProjection
 } from '../projections/types'
-import { queueFtsUpdate } from '../database'
 
 // ============================================================================
 // Types
 // ============================================================================
 
 type DrizzleDb = BetterSQLite3Database<typeof schema>
+
+function getCanonicalDb() {
+  try {
+    return getDatabase()
+  } catch {
+    return null
+  }
+}
+
+function syncCanonicalMetadata(input: Parameters<typeof saveCanonicalNote>[1]): void {
+  const dataDb = getCanonicalDb()
+  if (!dataDb) return
+  saveCanonicalNote(dataDb, input)
+}
+
+function removeCanonicalMetadata(noteId: string): void {
+  const dataDb = getCanonicalDb()
+  if (!dataDb) return
+  deleteCanonicalNote(dataDb, noteId)
+}
 
 /**
  * Input for syncing a note to the cache.
@@ -208,6 +233,19 @@ export function syncNoteToCache(
 
   // Get title from frontmatter or path
   const title = frontmatter.title ?? path.split('/').pop()?.replace('.md', '') ?? 'Untitled'
+  const canonicalDb = getCanonicalDb()
+
+  syncCanonicalMetadata({
+    id,
+    path,
+    title,
+    emoji,
+    localOnly: frontmatter.localOnly ?? false,
+    journalDate: date,
+    properties,
+    createdAt: frontmatter.created,
+    modifiedAt: frontmatter.modified
+  })
 
   const note: MarkdownNoteProjection = {
     kind: 'markdown',
@@ -266,9 +304,15 @@ export function syncNoteToCache(
 
   setNoteTags(db, id, tags)
 
-  setNoteProperties(db, id, properties, (name, value) =>
-    getPropertyType(db, name, value, inferPropertyType)
-  )
+  setNoteProperties(db, id, properties, (name, value) => {
+    const type = canonicalDb
+      ? getPropertyType(canonicalDb, name, value, inferPropertyType)
+      : inferPropertyType(name, value)
+    if (canonicalDb) {
+      saveCanonicalPropertyDefinition(canonicalDb, { name, type })
+    }
+    return type
+  })
 
   if (!skipFts) {
     queueFtsUpdate(id, parsedContent, tags)
@@ -327,6 +371,7 @@ export function deleteNoteFromCache(db: DrizzleDb, noteId: string): void {
 
   deleteLinksToNote(db, noteId)
   deleteNoteCache(db, noteId)
+  removeCanonicalMetadata(noteId)
 }
 
 // ============================================================================
@@ -407,6 +452,17 @@ export interface FileSyncResult {
  */
 export function syncFileToCache(db: DrizzleDb, input: FileSyncInput): FileSyncResult {
   const { id, path, title, fileType, mimeType, fileSize, createdAt, modifiedAt } = input
+
+  syncCanonicalMetadata({
+    id,
+    path,
+    title,
+    fileType,
+    mimeType,
+    fileSize,
+    createdAt: createdAt.toISOString(),
+    modifiedAt: modifiedAt.toISOString()
+  })
 
   // Check if file already exists in cache
   const existing = getNoteCacheByPath(db, path)
