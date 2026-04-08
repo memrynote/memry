@@ -54,6 +54,11 @@ describe('createGeneratedRpcApi', () => {
       []
     )
 
+    await api.inbox.getJobs({ itemIds: ['item-1'] })
+    expect(invoke).toHaveBeenCalledWith(InboxChannels.invoke.GET_JOBS, {
+      itemIds: ['item-1']
+    })
+
     const file = new File(['hello'], 'note.txt', { type: 'text/plain' })
     await api.notes.uploadAttachment('note-1', file)
     expect(invoke).toHaveBeenCalledWith(NotesChannels.invoke.UPLOAD_ATTACHMENT, {

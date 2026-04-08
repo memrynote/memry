@@ -19,7 +19,8 @@ export default defineConfig({
           include: [
             '../../packages/contracts/src/**/*.{test,spec}.{ts,tsx}',
             '../../packages/db-schema/src/**/*.{test,spec}.{ts,tsx}',
-            '../../packages/shared/src/**/*.{test,spec}.{ts,tsx}'
+            '../../packages/shared/src/**/*.{test,spec}.{ts,tsx}',
+            '../../packages/sync-core/src/**/*.{test,spec}.{ts,tsx}'
           ],
           setupFiles: ['tests/setup.ts']
         }
@@ -93,6 +94,7 @@ export default defineConfig({
     alias: {
       '@memry/contracts': resolve(workspaceRoot, 'packages/contracts/src'),
       '@memry/db-schema': resolve(workspaceRoot, 'packages/db-schema/src'),
+      '@memry/sync-core': resolve(workspaceRoot, 'packages/sync-core/src'),
       '@memry/shared': resolve(workspaceRoot, 'packages/shared/src'),
       '@main': resolve(appRoot, 'src/main'),
       '@': resolve(appRoot, 'src/renderer/src'),

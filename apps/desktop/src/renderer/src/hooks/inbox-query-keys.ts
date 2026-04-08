@@ -11,6 +11,8 @@ export const inboxKeys = {
   items: () => [...inboxKeys.all, 'items'] as const,
   item: (id: string) => [...inboxKeys.items(), id] as const,
   stats: () => [...inboxKeys.all, 'stats'] as const,
+  jobs: (options?: { itemIds?: string[]; statuses?: string[] }) =>
+    [...inboxKeys.all, 'jobs', options] as const,
   patterns: () => [...inboxKeys.all, 'patterns'] as const,
   tags: () => [...inboxKeys.all, 'tags'] as const,
   snoozed: () => [...inboxKeys.all, 'snoozed'] as const,

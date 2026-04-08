@@ -7,6 +7,7 @@
     "../../packages/contracts/src/**/*",
     "../../packages/db-schema/src/**/*",
     "../../packages/rpc/src/**/*",
+    "../../packages/sync-core/src/**/*",
     "../../packages/shared/src/**/*"
   ],
   "exclude": ["**/*.test.ts", "**/*.test.tsx", "**/*.spec.ts"],
@@ -21,6 +22,8 @@
       "@memry/db-schema/*": ["../../packages/db-schema/src/*"],
       "@memry/rpc": ["../../packages/rpc/src/index.ts"],
       "@memry/rpc/*": ["../../packages/rpc/src/*"],
+      "@memry/sync-core": ["../../packages/sync-core/src/index.ts"],
+      "@memry/sync-core/*": ["../../packages/sync-core/src/*"],
       "@memry/shared": ["../../packages/shared/src/index.ts"],
       "@memry/shared/*": ["../../packages/shared/src/*"],
       "@main/*": ["./src/main/*"],

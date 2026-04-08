@@ -2,19 +2,22 @@ import { ipcMain } from 'electron'
 import { InboxChannels } from '@memry/contracts/ipc-channels'
 import {
   InboxListSchema,
+  InboxJobListSchema,
   ListArchivedSchema,
   GetFilingHistorySchema,
   type InboxListResponse,
   type InboxItemListItem,
   type InboxStats,
+  type InboxJob,
+  type InboxJobsResponse,
   type ArchivedListResponse,
   type FilingHistoryResponse,
   type FilingHistoryEntry,
   type CapturePattern,
   type InboxItemType
 } from '@memry/contracts/inbox-api'
-import { inboxItems, inboxItemTags } from '@memry/db-schema/schema/inbox'
-import { eq, desc, asc, and, isNull, sql, gte } from 'drizzle-orm'
+import { inboxItems, inboxItemTags, inboxJobs } from '@memry/db-schema/schema/inbox'
+import { eq, desc, asc, and, inArray, isNull, sql, gte, type SQL } from 'drizzle-orm'
 import { createLogger } from '../lib/logger'
 
 const logger = createLogger('IPC:InboxQuery')
@@ -36,6 +39,7 @@ export interface InboxQueryHandlerDeps {
 
 export interface InboxQueryHandlers {
   handleList: (input: unknown) => Promise<InboxListResponse>
+  handleGetJobs: (input: unknown) => Promise<InboxJobsResponse>
   handleGetTags: () => Promise<Array<{ tag: string; count: number }>>
   handleGetStats: () => Promise<InboxStats>
   handleGetStaleThreshold: () => Promise<number>
@@ -118,6 +122,46 @@ export function createInboxQueryHandlers(deps: InboxQueryHandlerDeps): InboxQuer
       .all()
 
     return result
+  }
+
+  async function handleGetJobs(input: unknown): Promise<InboxJobsResponse> {
+    const options = InboxJobListSchema.parse(input || {})
+    const db = deps.requireDatabase()
+
+    const conditions: SQL<unknown>[] = []
+    if (options.itemIds?.length) {
+      conditions.push(inArray(inboxJobs.itemId, options.itemIds))
+    }
+
+    if (options.statuses?.length) {
+      conditions.push(inArray(inboxJobs.status, options.statuses))
+    }
+
+    const rows = db
+      .select()
+      .from(inboxJobs)
+      .where(conditions.length ? and(...conditions) : undefined)
+      .orderBy(desc(inboxJobs.updatedAt))
+      .all()
+
+    const jobs: InboxJob[] = rows.map((row) => ({
+      id: row.id,
+      itemId: row.itemId,
+      type: row.type as InboxJob['type'],
+      status: row.status as InboxJob['status'],
+      runAt: new Date(row.runAt),
+      attempts: row.attempts,
+      maxAttempts: row.maxAttempts,
+      payload: (row.payload ?? null) as InboxJob['payload'],
+      result: (row.result ?? null) as InboxJob['result'],
+      lastError: row.lastError,
+      startedAt: row.startedAt ? new Date(row.startedAt) : null,
+      completedAt: row.completedAt ? new Date(row.completedAt) : null,
+      createdAt: new Date(row.createdAt),
+      updatedAt: new Date(row.updatedAt)
+    }))
+
+    return { jobs }
   }
 
   async function handleGetStats(): Promise<InboxStats> {
@@ -387,6 +431,7 @@ export function createInboxQueryHandlers(deps: InboxQueryHandlerDeps): InboxQuer
 
   return {
     handleList,
+    handleGetJobs,
     handleGetTags,
     handleGetStats,
     handleGetStaleThreshold,
@@ -399,6 +444,7 @@ export function createInboxQueryHandlers(deps: InboxQueryHandlerDeps): InboxQuer
 
 export function registerInboxQueryHandlers(handlers: InboxQueryHandlers): void {
   ipcMain.handle(InboxChannels.invoke.LIST, (_, input) => handlers.handleList(input))
+  ipcMain.handle(InboxChannels.invoke.GET_JOBS, (_, input) => handlers.handleGetJobs(input))
   ipcMain.handle(InboxChannels.invoke.GET_TAGS, () => handlers.handleGetTags())
   ipcMain.handle(InboxChannels.invoke.GET_STATS, () => handlers.handleGetStats())
   ipcMain.handle(InboxChannels.invoke.GET_PATTERNS, () => handlers.handleGetPatterns())
@@ -416,6 +462,7 @@ export function registerInboxQueryHandlers(handlers: InboxQueryHandlers): void {
 
 export function unregisterInboxQueryHandlers(): void {
   ipcMain.removeHandler(InboxChannels.invoke.LIST)
+  ipcMain.removeHandler(InboxChannels.invoke.GET_JOBS)
   ipcMain.removeHandler(InboxChannels.invoke.GET_TAGS)
   ipcMain.removeHandler(InboxChannels.invoke.GET_STATS)
   ipcMain.removeHandler(InboxChannels.invoke.GET_PATTERNS)
