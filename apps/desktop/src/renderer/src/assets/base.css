@@ -71,7 +71,7 @@
 }
 
 :root .bn-block-outer {
-  padding: 1px 0;
+  padding: 2px 0;
 }
 
 :root .bn-inline-content {
@@ -138,7 +138,7 @@
 :root .bn-block-outer:has(> .bn-block > .bn-block-content[data-content-type='bulletListItem']),
 :root .bn-block-outer:has(> .bn-block > .bn-block-content[data-content-type='numberedListItem']),
 :root .bn-block-outer:has(> .bn-block > .bn-block-content[data-content-type='checkListItem']) {
-  padding: 1px 0;
+  padding: 2px 0;
 }
 
 /* ===== NESTED INDENT GUIDE ALIGNMENT =====
@@ -2242,4 +2242,41 @@ del.bn-inline-content {
   .wizard-check-ring {
     animation: none;
   }
+}
+
+/* ============================================================================
+   MARQUEE BLOCK SELECTION
+   ============================================================================ */
+
+/*
+ * Highlight rectangles are absolute-positioned overlay divs (not attribute
+ * mutations on .bn-block) because ProseMirror's MutationObserver reverts any
+ * DOM mutation it didn't make. The overlay is rendered (via portal) into the
+ * `.marquee-zone` wrapper, which is `position: relative` and extends
+ * horizontally beyond .bn-container into the parent's px-24 padding so users
+ * can start a marquee from the gray gutter on either side of the editor.
+ */
+.marquee-block-highlight {
+  position: absolute;
+  pointer-events: none;
+  background-color: rgba(59, 130, 246, 0.14);
+  border-radius: 4px;
+  z-index: 30;
+}
+
+.marquee-overlay {
+  position: absolute;
+  pointer-events: none;
+  border: 1px solid rgba(59, 130, 246, 0.6);
+  background-color: rgba(59, 130, 246, 0.08);
+  z-index: 40;
+  border-radius: 2px;
+}
+
+.marquee-zone[data-marquee-active='true'] {
+  cursor: default;
+  user-select: none;
+}
+.marquee-zone[data-marquee-active='true'] * {
+  user-select: none !important;
 }
