@@ -14,9 +14,7 @@ import { SidebarDrillDownProvider } from '@/contexts/sidebar-drill-down'
 import { SelectedFolderProvider } from '@/contexts/selected-folder-context'
 import { GlobalDayPanel } from '@/components/day-panel'
 import { TaskDragOverlay } from '@/components/tasks/drag-drop'
-import { initialProjects, taskViews, type Project } from '@/data/tasks-data'
-import { sampleTasks, type Task } from '@/data/sample-tasks'
-import { getFilteredTasks, formatDateKey } from '@/lib/task-utils'
+import { taskViews } from '@/data/tasks-data'
 import { ThemeProvider } from 'next-themes'
 
 // Tab System imports
@@ -51,6 +49,12 @@ import { useThemeSync } from '@/hooks/use-theme-sync'
 import { useGeneralSettings } from '@/hooks/use-general-settings'
 import { createLogger } from '@/lib/logger'
 import { getStartupTheme, THEME_STORAGE_KEY } from '@/lib/startup-theme'
+import {
+  useTaskWorkspaceData,
+  useTaskWorkspaceMutations
+} from '@/features/tasks/use-task-queries'
+import { useTaskUiStore } from '@/features/tasks/use-task-ui-store'
+import { getFilteredTasks } from '@/lib/task-utils'
 
 const log = createLogger('App')
 const startupTheme = getStartupTheme()
@@ -220,18 +224,15 @@ function App(): React.JSX.Element {
   // currentPage is still used for sidebar highlight state
   const [currentPage] = useState<AppPage>('inbox')
 
-  // Task-related state (lifted from TasksPage)
-  const [projects, setProjects] = useState<Project[]>(initialProjects)
-  const [tasks, setTasks] = useState<Task[]>(sampleTasks)
-
-  // Task selection state for drag-drop (lifted from TasksPage)
-  const [selectedTaskIds, setSelectedTaskIds] = useState<Set<string>>(new Set())
+  const { tasks, projects } = useTaskWorkspaceData({ enabled: isVaultOpen })
+  const { setProjects, updateTask: handleUpdateTask, deleteTask: handleDeleteTask } =
+    useTaskWorkspaceMutations()
+  const { selectedTaskIds, setSelectedTaskIds: updateSelectedTaskIds } = useTaskUiStore()
   const selectedTaskIdsRef = useRef(selectedTaskIds)
 
-  const updateSelectedTaskIds = useCallback((ids: Set<string>) => {
-    selectedTaskIdsRef.current = ids
-    setSelectedTaskIds(ids)
-  }, [])
+  useEffect(() => {
+    selectedTaskIdsRef.current = selectedTaskIds
+  }, [selectedTaskIds])
 
   // Calculate view counts dynamically
   const viewCounts = useMemo(() => {
@@ -256,148 +257,8 @@ function App(): React.JSX.Element {
   }, [projects, tasks])
 
   // Task handlers (passed to TasksPage)
-  const handleTasksChange = useCallback((newTasks: Task[]): void => {
-    setTasks(newTasks)
-  }, [])
-
-  const handleProjectsChange = useCallback((newProjects: Project[]): void => {
-    setProjects(newProjects)
-  }, [])
-
   // Task order persistence hook
   const taskOrder = useTaskOrder({ persist: true })
-
-  // Priority conversion map (UI string → DB number)
-  const priorityReverseMap: Record<Task['priority'], number> = {
-    none: 0,
-    low: 1,
-    medium: 2,
-    high: 3,
-    urgent: 4
-  }
-
-  // Task update handler - persists to database when vault is open
-  const handleUpdateTask = useCallback(
-    async (taskId: string, updates: Partial<Task>) => {
-      // Always update local state immediately for responsive UI
-      setTasks((prev) => prev.map((t) => (t.id === taskId ? { ...t, ...updates } : t)))
-
-      // Persist to database if vault is open
-      if (isVaultOpen) {
-        try {
-          // Handle completedAt changes via dedicated endpoints
-          if ('completedAt' in updates) {
-            if (updates.completedAt !== null && updates.completedAt !== undefined) {
-              await tasksService.complete({
-                id: taskId,
-                completedAt: updates.completedAt.toISOString()
-              })
-            } else {
-              await tasksService.uncomplete(taskId)
-            }
-
-            // Handle other updates if present
-            const { completedAt: _, ...otherUpdates } = updates
-            void _
-            if (Object.keys(otherUpdates).length > 0) {
-              let dueDateValue: string | null | undefined = undefined
-              if ('dueDate' in otherUpdates) {
-                dueDateValue = otherUpdates.dueDate ? formatDateKey(otherUpdates.dueDate) : null
-              }
-              await tasksService.update({
-                id: taskId,
-                title: otherUpdates.title,
-                description: otherUpdates.description ?? undefined,
-                priority:
-                  otherUpdates.priority !== undefined
-                    ? priorityReverseMap[otherUpdates.priority]
-                    : undefined,
-                projectId: otherUpdates.projectId,
-                statusId: otherUpdates.statusId ?? undefined,
-                dueDate: dueDateValue,
-                dueTime: otherUpdates.dueTime ?? undefined
-              })
-            }
-            return
-          }
-
-          // Handle archivedAt changes via dedicated endpoints
-          if ('archivedAt' in updates) {
-            if (updates.archivedAt !== null && updates.archivedAt !== undefined) {
-              await tasksService.archive(taskId)
-            } else {
-              await tasksService.unarchive(taskId)
-            }
-
-            // Handle other updates if present
-            const { archivedAt: __, ...otherUpdates } = updates
-            void __
-            if (Object.keys(otherUpdates).length > 0) {
-              let dueDateValue: string | null | undefined = undefined
-              if ('dueDate' in otherUpdates) {
-                dueDateValue = otherUpdates.dueDate ? formatDateKey(otherUpdates.dueDate) : null
-              }
-              await tasksService.update({
-                id: taskId,
-                title: otherUpdates.title,
-                description: otherUpdates.description ?? undefined,
-                priority:
-                  otherUpdates.priority !== undefined
-                    ? priorityReverseMap[otherUpdates.priority]
-                    : undefined,
-                projectId: otherUpdates.projectId,
-                statusId: otherUpdates.statusId ?? undefined,
-                dueDate: dueDateValue,
-                dueTime: otherUpdates.dueTime ?? undefined
-              })
-            }
-            return
-          }
-
-          // Standard update (no completedAt or archivedAt change)
-          // Convert dueDate: undefined = not changing, null = clearing, Date = setting
-          let dueDateValue: string | null | undefined = undefined
-          if ('dueDate' in updates) {
-            dueDateValue = updates.dueDate ? formatDateKey(updates.dueDate) : null
-          }
-
-          await tasksService.update({
-            id: taskId,
-            title: updates.title,
-            description: updates.description ?? undefined,
-            priority:
-              updates.priority !== undefined ? priorityReverseMap[updates.priority] : undefined,
-            projectId: updates.projectId,
-            statusId: updates.statusId ?? undefined,
-            dueDate: dueDateValue,
-            dueTime: updates.dueTime ?? undefined
-          })
-        } catch (error) {
-          log.error('Failed to persist task update:', error)
-          // Local state already updated, error will be visible in logs
-        }
-      }
-    },
-    [isVaultOpen, priorityReverseMap]
-  )
-
-  // Task delete handler - persists to database when vault is open
-  const handleDeleteTask = useCallback(
-    async (taskId: string) => {
-      // Always update local state immediately for responsive UI
-      setTasks((prev) => prev.filter((t) => t.id !== taskId))
-
-      // Persist to database if vault is open
-      if (isVaultOpen) {
-        try {
-          await tasksService.delete(taskId)
-        } catch (error) {
-          log.error('Failed to persist task deletion:', error)
-        }
-      }
-    },
-    [isVaultOpen]
-  )
 
   const handleReorder = useCallback(
     (updates: Record<string, string[] | null>) => {
@@ -434,7 +295,14 @@ function App(): React.JSX.Element {
         const activeIndex = projects.findIndex((p) => p.id === active.id)
         const overIndex = projects.findIndex((p) => p.id === over.id)
         if (activeIndex !== -1 && overIndex !== -1) {
-          setProjects((prev) => arrayMove(prev, activeIndex, overIndex))
+          setProjects((prev) => {
+            const reorderedProjects = arrayMove(prev, activeIndex, overIndex)
+            void tasksService.reorderProjects(
+              reorderedProjects.map((project) => project.id),
+              reorderedProjects.map((_, index) => index)
+            )
+            return reorderedProjects
+          })
           return
         }
       }
@@ -457,12 +325,8 @@ function App(): React.JSX.Element {
       onError={(error, errorInfo) => log.error('Critical error:', error, errorInfo)}
     >
       <TasksProvider
-        initialTasks={tasks}
-        initialProjects={projectsWithCounts}
-        onTasksChange={handleTasksChange}
-        onProjectsChange={handleProjectsChange}
-        selectedTaskIds={selectedTaskIds}
-        onSelectedTaskIdsChange={updateSelectedTaskIds}
+        tasks={tasks}
+        projects={projectsWithCounts}
         getOrderedTasks={taskOrder.getOrderedTasks}
       >
         <DayPanelProvider>

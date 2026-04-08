@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { TasksChannels } from '@memry/contracts/ipc-channels'
+import { TasksChannels } from '../../contracts/src/ipc-channels.ts'
 import {
   ProjectCreateSchema,
   ProjectUpdateSchema,
@@ -7,7 +7,7 @@ import {
   TaskCreateSchema,
   TaskListSchema,
   TaskUpdateSchema
-} from '@memry/contracts/tasks-api'
+} from '../../contracts/src/tasks-api.ts'
 import type {
   Project,
   ProjectWithStats,
@@ -16,7 +16,7 @@ import type {
   TaskCreateResponse,
   TaskMoveInput,
   TaskStats,
-} from '@memry/contracts/tasks-api'
+} from '../../contracts/src/tasks-api.ts'
 import { defineDomain, defineEvent, defineMethod, type RpcClient, type RpcSubscriptions } from './schema.ts'
 
 export type ProjectCreateInput = z.input<typeof ProjectCreateSchema>

@@ -54,7 +54,6 @@ export type {
   TaskUpdatedEvent,
   TaskUpdateInput
 }
-
 export const tasksService: TasksClientAPI = {
   create: (input) => window.api.tasks.create(input),
   get: (id) => window.api.tasks.get(id),

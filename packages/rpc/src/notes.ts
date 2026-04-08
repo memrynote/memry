@@ -1,5 +1,9 @@
-import { NotesChannels } from '@memry/contracts/ipc-channels'
-import type { PropertyType as CanonicalPropertyType, SelectOption, StatusCategoryKey } from '@memry/contracts/property-types'
+import { NotesChannels } from '../../contracts/src/ipc-channels.ts'
+import type {
+  PropertyType as CanonicalPropertyType,
+  SelectOption,
+  StatusCategoryKey
+} from '../../contracts/src/property-types.ts'
 import { defineDomain, defineEvent, defineMethod, type RpcClient, type RpcSubscriptions } from './schema.ts'
 
 interface NoteFrontmatter {
