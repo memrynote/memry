@@ -66,8 +66,10 @@
     "test:integration": "vitest run --config config/vitest.config.ts tests/integration",
     "test:component": "vitest run --config config/vitest.config.ts tests/component",
     "test:e2e": "playwright test --config config/playwright.config.ts",
-    "ipc:generate": "node scripts/generate-ipc-invoke-map.js",
-    "ipc:check": "node scripts/generate-ipc-invoke-map.js --check",
+    "rpc:generate": "node --experimental-strip-types --experimental-transform-types scripts/generate-rpc-bindings.ts",
+    "rpc:check": "node --experimental-strip-types --experimental-transform-types scripts/generate-rpc-bindings.ts --check",
+    "ipc:generate": "pnpm rpc:generate && node scripts/generate-ipc-invoke-map.js",
+    "ipc:check": "pnpm rpc:check && node scripts/generate-ipc-invoke-map.js --check",
     "generate:icons": "node scripts/generate-icons.mjs"
   },
   "dependencies": {
@@ -94,6 +96,7 @@
     "@huggingface/transformers": "^3.8.1",
     "@memry/contracts": "workspace:*",
     "@memry/db-schema": "workspace:*",
+    "@memry/rpc": "workspace:*",
     "@memry/shared": "workspace:*",
     "@radix-ui/react-accordion": "^1.2.12",
     "@radix-ui/react-alert-dialog": "^1.1.15",

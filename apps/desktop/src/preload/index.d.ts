@@ -1,4 +1,5 @@
 import { ElectronAPI } from '@electron-toolkit/preload'
+import type { GeneratedRpcApi } from './generated-rpc'
 import type {
   SyncStatusChangedEvent,
   ItemSyncedEvent,
@@ -946,7 +947,11 @@ export interface NotesClientAPI {
   restoreVersion(snapshotId: string): Promise<RestoreVersionResponse>
   deleteVersion(snapshotId: string): Promise<{ success: boolean; error?: string }>
   // Position/Reorder API
-  getPositions(folderPath: string): Promise<Map<string, number>>
+  getPositions(folderPath: string): Promise<{
+    success: boolean
+    positions: Record<string, number>
+    error?: string
+  }>
   getAllPositions(): Promise<{
     success: boolean
     positions: Record<string, number>
@@ -2536,19 +2541,15 @@ interface WindowAPI {
 }
 
 // Full API interface
-interface API extends WindowAPI {
+interface API extends WindowAPI, GeneratedRpcApi {
   getFileDropPaths: (files: File[]) => string[]
   vault: VaultClientAPI
-  notes: NotesClientAPI
   properties: PropertiesClientAPI
-  tasks: TasksClientAPI
   savedFilters: SavedFiltersClientAPI
   templates: TemplatesClientAPI
   journal: JournalClientAPI
-  settings: SettingsClientAPI
   bookmarks: BookmarksClientAPI
   tags: TagsClientAPI
-  inbox: InboxClientAPI
   reminders: RemindersClientAPI
   search: SearchClientAPI
   graph: GraphClientAPI
@@ -2579,14 +2580,6 @@ interface API extends WindowAPI {
   onVaultIndexProgress: (callback: (progress: number) => void) => () => void
   onVaultError: (callback: (error: string) => void) => () => void
   onVaultIndexRecovered: (callback: (event: IndexRecoveredEvent) => void) => () => void
-  // Notes event subscriptions
-  onNoteCreated: (callback: (event: NoteCreatedEvent) => void) => () => void
-  onNoteUpdated: (callback: (event: NoteUpdatedEvent) => void) => () => void
-  onNoteDeleted: (callback: (event: NoteDeletedEvent) => void) => () => void
-  onNoteRenamed: (callback: (event: NoteRenamedEvent) => void) => () => void
-  onNoteMoved: (callback: (event: NoteMovedEvent) => void) => () => void
-  onNoteExternalChange: (callback: (event: NoteExternalChangeEvent) => void) => () => void
-  onTagsChanged: (callback: () => void) => () => void
   // Search event subscriptions
   onSearchIndexRebuildStarted: (callback: () => void) => () => void
   onSearchIndexRebuildProgress: (
@@ -2596,15 +2589,6 @@ interface API extends WindowAPI {
     callback: (result: IndexRebuildCompletedEvent) => void
   ) => () => void
   onSearchIndexCorrupt: (callback: () => void) => () => void
-  // Tasks event subscriptions
-  onTaskCreated: (callback: (event: TaskCreatedEvent) => void) => () => void
-  onTaskUpdated: (callback: (event: TaskUpdatedEvent) => void) => () => void
-  onTaskDeleted: (callback: (event: TaskDeletedEvent) => void) => () => void
-  onTaskCompleted: (callback: (event: TaskCompletedEvent) => void) => () => void
-  onTaskMoved: (callback: (event: TaskMovedEvent) => void) => () => void
-  onProjectCreated: (callback: (event: ProjectCreatedEvent) => void) => () => void
-  onProjectUpdated: (callback: (event: ProjectUpdatedEvent) => void) => () => void
-  onProjectDeleted: (callback: (event: ProjectDeletedEvent) => void) => () => void
   // Saved Filters event subscriptions
   onSavedFilterCreated: (callback: (event: SavedFilterCreatedEvent) => void) => () => void
   onSavedFilterUpdated: (callback: (event: SavedFilterUpdatedEvent) => void) => () => void
@@ -2618,11 +2602,6 @@ interface API extends WindowAPI {
   onJournalEntryUpdated: (callback: (event: JournalEntryUpdatedEvent) => void) => () => void
   onJournalEntryDeleted: (callback: (event: JournalEntryDeletedEvent) => void) => () => void
   onJournalExternalChange: (callback: (event: JournalExternalChangeEvent) => void) => () => void
-  // Settings event subscriptions
-  onSettingsChanged: (callback: (event: SettingsChangedEvent) => void) => () => void
-  onEmbeddingProgress: (callback: (event: EmbeddingProgressEvent) => void) => () => void
-  onVoiceModelProgress: (callback: (event: VoiceModelProgressEvent) => void) => () => void
-  onSettingsOpenRequested: (callback: (section: string) => void) => () => void
   // Bookmarks event subscriptions
   onBookmarkCreated: (callback: (event: BookmarkCreatedEvent) => void) => () => void
   onBookmarkDeleted: (callback: (event: BookmarkDeletedEvent) => void) => () => void
@@ -2632,24 +2611,6 @@ interface API extends WindowAPI {
   onTagColorUpdated: (callback: (event: TagColorUpdatedEvent) => void) => () => void
   onTagDeleted: (callback: (event: TagDeletedEvent) => void) => () => void
   onTagNotesChanged: (callback: (event: TagNotesChangedEvent) => void) => () => void
-  // Inbox event subscriptions
-  onInboxCaptured: (callback: (event: { item: unknown }) => void) => () => void
-  onInboxUpdated: (callback: (event: { id: string; changes: unknown }) => void) => () => void
-  onInboxArchived: (callback: (event: { id: string }) => void) => () => void
-  onInboxFiled: (
-    callback: (event: { id: string; filedTo: string; filedAction: string }) => void
-  ) => () => void
-  onInboxSnoozed: (callback: (event: { id: string; snoozeUntil: string }) => void) => () => void
-  onInboxSnoozeDue: (callback: (event: { items: unknown[] }) => void) => () => void
-  onInboxTranscriptionComplete: (
-    callback: (event: { id: string; transcription: string }) => void
-  ) => () => void
-  onInboxMetadataComplete: (
-    callback: (event: { id: string; metadata: unknown }) => void
-  ) => () => void
-  onInboxProcessingError: (
-    callback: (event: { id: string; operation: string; error: string }) => void
-  ) => () => void
   // Reminder event subscriptions
   onReminderCreated: (callback: (event: ReminderCreatedEvent) => void) => () => void
   onReminderUpdated: (callback: (event: ReminderUpdatedEvent) => void) => () => void

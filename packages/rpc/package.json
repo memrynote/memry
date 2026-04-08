@@ -1,0 +1,24 @@
+{
+  "name": "@memry/rpc",
+  "version": "0.1.0",
+  "private": true,
+  "license": "GPL-3.0",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./tasks": "./src/tasks.ts",
+    "./notes": "./src/notes.ts",
+    "./inbox": "./src/inbox.ts",
+    "./settings": "./src/settings.ts"
+  },
+  "types": "./src/index.ts",
+  "scripts": {
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "dependencies": {
+    "@memry/contracts": "workspace:*"
+  },
+  "devDependencies": {
+    "@memry/typescript-config": "workspace:*"
+  }
+}
