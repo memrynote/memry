@@ -812,6 +812,10 @@ export const api = {
 
     // Stats
     getStats: () => invoke(InboxChannels.invoke.GET_STATS),
+    getJobs: (options?: {
+      itemIds?: string[]
+      statuses?: Array<'pending' | 'running' | 'failed' | 'complete'>
+    }) => invoke(InboxChannels.invoke.GET_JOBS, options ?? {}),
     getPatterns: () => invoke(InboxChannels.invoke.GET_PATTERNS),
 
     // Settings
