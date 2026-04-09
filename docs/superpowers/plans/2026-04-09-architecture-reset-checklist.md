@@ -219,9 +219,9 @@ Progress note (2026-04-09):
 - [ ] Unify notes and journal under one aggregate model
 - [ ] Move note rename, move, local-only, sync policy, and property-definition rules behind note domain services
 - [ ] Move vault file operations behind the note domain and storage-vault abstractions
-- [ ] Remove direct index/cache mutation from note write paths
-- [ ] Replace compatibility code in `apps/desktop/src/main/vault/note-sync.ts` with domain events plus projectors
-- [ ] Remove direct sync and CRDT orchestration from `apps/desktop/src/main/ipc/notes-handlers.ts` where it belongs behind adapters
+- [x] Remove direct index/cache mutation from note write paths
+- [x] Replace compatibility code in `apps/desktop/src/main/vault/note-sync.ts` with domain events plus projectors
+- [x] Remove direct sync and CRDT orchestration from `apps/desktop/src/main/ipc/notes-handlers.ts` where it belongs behind adapters
 - [ ] Ensure note body content remains vault-authoritative and structured metadata remains data-db-authoritative
 
 **Key files:**
@@ -239,7 +239,7 @@ Progress note (2026-04-09):
 
 - [ ] Notes and journal share one domain model
 - [ ] `index.db` can be dropped and rebuilt without losing canonical note or journal state
-- [ ] Note write paths do not mutate projections inline
+- [x] Note write paths do not mutate projections inline
 
 ## Phase 5: Sync-Core Simplification
 
@@ -290,9 +290,19 @@ Progress note (2026-04-09):
 
 - [ ] Route all feature writes through domain events rather than inline projection updates
 - [ ] Move FTS updates, graph edge updates, embeddings, and stats into projector code only
-- [ ] Add rebuild coverage for each projector
-- [ ] Add reconcile coverage for each projector
+- [x] Add rebuild coverage for each projector
+- [x] Add reconcile coverage for each projector
 - [ ] Make crash recovery and full rebuild paths explicit and tested
+
+Progress note (2026-04-09):
+- Removed the last legacy note FTS queue write from `apps/desktop/src/main/vault/note-sync.ts`; note search updates now flow through projection events and the search projector instead of `queueFtsUpdate`, and vault shutdown no longer flushes a now-unused note FTS queue path.
+- Added explicit rebuild coverage for every current projector:
+  `apps/desktop/src/main/projections/projectors/search-projector.test.ts`,
+  `apps/desktop/src/main/projections/projectors/note-derived-state-projector.test.ts`,
+  `apps/desktop/src/main/projections/projectors/embedding-projector.test.ts`,
+  and `apps/desktop/src/main/projections/projectors/inbox-stats-projector.test.ts`.
+- Added explicit reconcile coverage for every current projector in those same projector test files, plus recovery-path coverage in `apps/desktop/src/main/database/fts-rebuild.test.ts`.
+- Phase 6 remains incomplete on this branch: note compatibility and sync paths still perform inline `index.db` mutations for derived note state (`note_cache`, links, tags, properties, attachment metadata, rename handling), so the feature-write and projector-only gate items stay unchecked.
 
 **Key files:**
 
@@ -319,9 +329,9 @@ Progress note (2026-04-09):
 
 **Checklist:**
 
-- [ ] Align payload validation with the final adapter contracts
-- [ ] Align conflict semantics with the final client-side domain model
-- [ ] Ensure record-sync and CRDT metrics remain separate by transport and domain type
+- [x] Align payload validation with the final adapter contracts
+- [x] Align conflict semantics with the final client-side domain model
+- [x] Ensure record-sync and CRDT metrics remain separate by transport and domain type
 - [ ] Remove legacy route shapes only after all clients use the final split
 
 **Key files:**
@@ -333,8 +343,8 @@ Progress note (2026-04-09):
 
 **Gate:**
 
-- [ ] Record-sync and CRDT are separate in validation, metrics, and conflict handling end to end
-- [ ] Client and server contracts agree domain by domain
+- [x] Record-sync and CRDT are separate in validation, metrics, and conflict handling end to end
+- [x] Client and server contracts agree domain by domain
 
 ## Cross-Cutting Cleanup
 
