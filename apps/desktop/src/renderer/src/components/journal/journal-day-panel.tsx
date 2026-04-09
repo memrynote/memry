@@ -9,7 +9,7 @@ import {
   onTaskCompleted,
   type TaskListItem
 } from '@/services/tasks-service'
-import { useTaskProjects } from '@/features/tasks/use-task-queries'
+import { useTasksContext } from '@/contexts/tasks'
 import { useTabActions } from '@/contexts/tabs'
 import { InlineStatusPopover } from '@/components/tasks/inline-status-popover'
 import { InlinePriorityPopover } from '@/components/tasks/inline-priority-popover'
@@ -159,7 +159,7 @@ interface JournalDayPanelProps {
 
 export function JournalDayPanel({ date, className }: JournalDayPanelProps) {
   const [isCollapsed, setIsCollapsed] = useState(false)
-  const { projects } = useTaskProjects()
+  const { projects } = useTasksContext()
   const { openTab } = useTabActions()
   const queryClient = useQueryClient()
 
