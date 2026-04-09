@@ -7,12 +7,12 @@ import {
   type UseQueryResult
 } from '@tanstack/react-query'
 import type {
+  InboxFilingHistoryResponse,
   InboxItem,
   InboxItemListItem,
   InboxStats,
-  InboxSuggestionsResponse,
-  InboxFilingHistoryResponse
-} from '../../../preload/index.d'
+  InboxSuggestionsResponse
+} from '@memry/rpc/inbox'
 import {
   inboxService,
   onInboxCaptured,

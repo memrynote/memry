@@ -7,7 +7,7 @@ import {
   TrendingDown,
   Minus
 } from '@/lib/icons'
-import type { InboxStats } from '../../../../preload/index.d'
+import type { InboxStats } from '@memry/rpc/inbox'
 import { cn } from '@/lib/utils'
 
 export interface InboxStatsCardsProps {
