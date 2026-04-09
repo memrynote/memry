@@ -31,7 +31,8 @@ vi.mock('electron', () => ({
 
 // Mock database module
 vi.mock('../database', () => ({
-  getDatabase: vi.fn()
+  getDatabase: vi.fn(),
+  requireDatabase: vi.fn()
 }))
 
 // Mock ID generation

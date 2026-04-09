@@ -30,6 +30,7 @@ vi.mock('electron', () => ({
 
 vi.mock('../database', () => ({
   getDatabase: vi.fn(),
+  requireDatabase: vi.fn(),
   getIndexDatabase: vi.fn()
 }))
 
