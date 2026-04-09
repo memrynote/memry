@@ -25,6 +25,7 @@ import { parseNote, serializeNote } from './frontmatter'
 import { safeRead, atomicWrite } from './file-ops'
 import { generateNoteId } from '../lib/id'
 import { syncNoteToCache, syncFileToCache } from './note-sync'
+import { flushProjectionEvents } from '../projections'
 import {
   getNoteCacheByPath,
   getNoteCacheById,
@@ -191,6 +192,7 @@ async function indexMarkdownFile(
       },
       { isNew: true }
     )
+    await flushProjectionEvents()
     logger.debug(`Indexed: ${relativePath}${result.date ? ` (journal: ${result.date})` : ''}`)
     if (result.tags.length > 0) {
       ensureTagDefinitions(getDatabase(), result.tags)
@@ -245,6 +247,7 @@ async function indexNonMarkdownFile(
       createdAt: stats.birthtime,
       modifiedAt: stats.mtime
     })
+    await flushProjectionEvents()
 
     logger.debug(`Successfully indexed: ${relativePath} (${fileType})`)
     return 'indexed'

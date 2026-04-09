@@ -18,6 +18,8 @@ import {
 import { createTestDataDb, createTestIndexDb, type TestDatabaseResult } from '@tests/utils/test-db'
 import type { VaultConfig } from '@memry/contracts/vault-api'
 import { noteMetadata } from '@memry/db-schema/data-schema'
+import { createNoteDerivedStateProjector } from '../projections/projectors/note-derived-state-projector'
+import { startProjectionRuntime, stopProjectionRuntime } from '../projections'
 
 // ============================================================================
 // Type-Safe Mocks
@@ -86,9 +88,12 @@ describe('indexer', () => {
     vi.spyOn(database, 'updateFtsContent').mockImplementation(() => {
       // No-op for tests
     })
+
+    startProjectionRuntime([createNoteDerivedStateProjector(() => tempVault.path)])
   })
 
-  afterEach(() => {
+  afterEach(async () => {
+    await stopProjectionRuntime({ drain: true })
     vi.useRealTimers()
     vi.restoreAllMocks()
     testDb.close()
