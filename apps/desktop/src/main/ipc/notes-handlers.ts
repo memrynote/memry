@@ -27,8 +27,6 @@ import {
   createStringHandler,
   withErrorHandler
 } from './validate'
-import { getNoteSyncService } from '../sync/note-sync'
-import { getCrdtProvider } from '../sync/crdt-provider'
 import {
   createNote,
   getNoteById,
@@ -56,30 +54,32 @@ import {
   importFiles
 } from '../vault/notes'
 import { getAllSupportedExtensions } from '@memry/shared/file-types'
-import { deleteNoteSnapshot } from '@main/database/queries/notes'
 import { saveAttachment, deleteAttachment, listNoteAttachments } from '../vault/attachments'
 import { fromMemryFileUrl } from '../lib/paths'
-import { attachmentEvents } from '../sync/attachment-events'
 import { readFolderConfig, writeFolderConfig, getFolderTemplate } from '../vault/folders'
 import { renderNoteAsHtml, sanitizeFilename } from '../lib/export-utils'
 import { SetFolderConfigSchema } from '@memry/contracts/templates-api'
 import {
-  getAllPropertyDefinitions,
-  insertPropertyDefinition,
-  updatePropertyDefinition,
-  deletePropertyDefinition,
+  deleteNoteSnapshot,
   resolveNoteByTitle,
-  updateNoteCache,
   getNoteTags,
   getAllTagDefinitions
-} from '@main/database/queries/notes'
+} from '../notes/store'
 import { getIndexDatabase, getDatabase } from '../database'
-import { countLocalOnlyNoteMetadata, updateNoteMetadata } from '@memry/storage-data'
+import { countLocalOnlyNoteMetadata, listPropertyDefinitions } from '@memry/storage-data'
+import { getNotesInFolder, reorderNotesInFolder, getAllNotePositions } from '../notes/store'
 import {
-  getNotesInFolder,
-  reorderNotesInFolder,
-  getAllNotePositions
-} from '@main/database/queries/note-positions'
+  emitNoteAttachmentSaved,
+  setNoteLocalOnlyState,
+  syncNoteCreate,
+  syncNoteDelete,
+  syncNoteUpdate
+} from '../notes/runtime-effects'
+import {
+  createPropertyDefinitionRecord,
+  deletePropertyDefinitionRecord,
+  updatePropertyDefinitionRecord
+} from '../vault/property-definition-store'
 
 // ============================================================================
 // Zod Schemas for Property Definitions (T017-T018)
@@ -163,10 +163,7 @@ export function registerNotesHandlers(): void {
       NoteCreateSchema,
       withErrorHandler(async (input) => {
         const note = await createNote(input)
-        getNoteSyncService()?.enqueueCreate(note.id)
-        getCrdtProvider()
-          .initForNote(note.id, { title: note.title }, note.tags)
-          .catch(() => {})
+        syncNoteCreate(note.id, note.title, note.tags)
         return { success: true, note }
       }, 'Failed to create note')
     )
@@ -253,9 +250,8 @@ export function registerNotesHandlers(): void {
           input.frontmatter !== undefined ||
           input.emoji !== undefined
         if (hasMetadataChanges) {
-          getNoteSyncService()?.enqueueUpdate(input.id)
+          syncNoteUpdate(input.id, input.title)
         }
-        if (input.title) getCrdtProvider()?.updateMeta(input.id, { title: input.title })
         return { success: true, note }
       }, 'Failed to update note')
     )
@@ -268,8 +264,7 @@ export function registerNotesHandlers(): void {
       NoteRenameSchema,
       withErrorHandler(async (input) => {
         const note = await renameNote(input.id, input.newTitle)
-        getNoteSyncService()?.enqueueUpdate(input.id)
-        getCrdtProvider()?.updateMeta(input.id, { title: input.newTitle })
+        syncNoteUpdate(input.id, input.newTitle)
         return { success: true, note }
       }, 'Failed to rename note')
     )
@@ -282,7 +277,7 @@ export function registerNotesHandlers(): void {
       NoteMoveSchema,
       withErrorHandler(async (input) => {
         const note = await moveNote(input.id, input.newFolder)
-        getNoteSyncService()?.enqueueUpdate(input.id)
+        syncNoteUpdate(input.id)
         return { success: true, note }
       }, 'Failed to move note')
     )
@@ -293,7 +288,7 @@ export function registerNotesHandlers(): void {
     NotesChannels.invoke.DELETE,
     createStringHandler(
       withErrorHandler(async (id) => {
-        getNoteSyncService()?.enqueueDelete(id)
+        syncNoteDelete(id)
         await deleteNote(id)
         return { success: true }
       }, 'Failed to delete note')
@@ -400,7 +395,7 @@ export function registerNotesHandlers(): void {
     NotesChannels.invoke.GET_PROPERTY_DEFINITIONS,
     createHandler(() => {
       const db = getDatabase()
-      return getAllPropertyDefinitions(db)
+      return listPropertyDefinitions(db)
     })
   )
 
@@ -425,15 +420,7 @@ export function registerNotesHandlers(): void {
           return { success: true, definition: service.get(input.name) }
         }
 
-        const dataDb = getDatabase()
-        const definition = insertPropertyDefinition(dataDb, {
-          name: input.name,
-          type: input.type,
-          options: input.options ? JSON.stringify(input.options) : null,
-          defaultValue: input.defaultValue ? JSON.stringify(input.defaultValue) : null,
-          color: input.color ?? null
-        })
-        insertPropertyDefinition(getIndexDatabase(), {
+        const definition = createPropertyDefinitionRecord({
           name: input.name,
           type: input.type,
           options: input.options ? JSON.stringify(input.options) : null,
@@ -471,15 +458,8 @@ export function registerNotesHandlers(): void {
           return { success: true, definition: service.get(input.name) }
         }
 
-        const dataDb = getDatabase()
         const { name, ...updates } = input
-        const definition = updatePropertyDefinition(dataDb, name, {
-          type: updates.type,
-          options: updates.options ? JSON.stringify(updates.options) : undefined,
-          defaultValue: updates.defaultValue ? JSON.stringify(updates.defaultValue) : undefined,
-          color: updates.color
-        })
-        updatePropertyDefinition(getIndexDatabase(), name, {
+        const definition = updatePropertyDefinitionRecord(name, {
           type: updates.type,
           options: updates.options ? JSON.stringify(updates.options) : undefined,
           defaultValue: updates.defaultValue ? JSON.stringify(updates.defaultValue) : undefined,
@@ -626,8 +606,7 @@ export function registerNotesHandlers(): void {
       const { PropertyDefinitionsService } = await import('../vault/property-definitions')
       const service = PropertyDefinitionsService.get()
       await service.remove(input.name)
-      deletePropertyDefinition(getDatabase(), input.name)
-      deletePropertyDefinition(getIndexDatabase(), input.name)
+      deletePropertyDefinitionRecord(input.name)
       return { success: true }
     })
   )
@@ -647,7 +626,7 @@ export function registerNotesHandlers(): void {
       if (result.success && result.path) {
         try {
           const diskPath = fromMemryFileUrl(result.path)
-          attachmentEvents.emitSaved({ noteId: input.noteId, diskPath })
+          emitNoteAttachmentSaved(input.noteId, diskPath)
         } catch {
           // Don't block local save if sync event fails
         }
@@ -922,7 +901,7 @@ export function registerNotesHandlers(): void {
         const result = await importFiles(input)
         for (const file of result.importedFiles) {
           if (file.fileType !== 'markdown') {
-            attachmentEvents.emitSaved({ noteId: 'vault-import', diskPath: file.destPath })
+            emitNoteAttachmentSaved('vault-import', file.destPath)
           }
         }
         return result
@@ -958,18 +937,7 @@ export function registerNotesHandlers(): void {
       SetLocalOnlySchema,
       withErrorHandler(async (input) => {
         const note = await updateNote({ id: input.id, frontmatter: { localOnly: input.localOnly } })
-        const indexDb = getIndexDatabase()
-        updateNoteCache(indexDb, input.id, { localOnly: input.localOnly })
-        updateNoteMetadata(getDatabase(), input.id, {
-          localOnly: input.localOnly,
-          syncPolicy: input.localOnly ? 'local-only' : 'sync'
-        })
-        const syncService = getNoteSyncService()
-        if (input.localOnly) {
-          syncService?.removeQueueItems(input.id)
-        } else {
-          syncService?.enqueueUpdate(input.id)
-        }
+        setNoteLocalOnlyState(input.id, input.localOnly)
         return { success: true, note }
       }, 'Failed to set local-only')
     )

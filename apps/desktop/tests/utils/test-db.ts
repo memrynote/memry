@@ -9,7 +9,7 @@ import { migrate } from 'drizzle-orm/better-sqlite3/migrator'
 import { sql } from 'drizzle-orm'
 import path from 'path'
 import * as schema from '@memry/db-schema/schema'
-import type { DrizzleDb } from '../../src/main/database/client'
+import type { DataDb } from '../../src/main/database/client'
 import type { DrizzleDb as SyncDrizzleDb } from '../../src/main/sync/item-handlers/types'
 
 // Migration paths
@@ -25,12 +25,12 @@ export interface TestDatabaseResult {
 }
 
 /**
- * Cast test db to the database client's DrizzleDb type.
+ * Cast test db to the database client's data-db type.
  * Both are BetterSQLite3Database parameterized over the same full schema,
  * but TypeScript can't unify them across module boundaries.
  */
-export function asClientDb(db: TestDb): DrizzleDb {
-  return db as unknown as DrizzleDb
+export function asClientDb(db: TestDb): DataDb {
+  return db as unknown as DataDb
 }
 
 /**

@@ -12,7 +12,7 @@ import { BrowserWindow } from 'electron'
 import { eq } from 'drizzle-orm'
 
 import { createLogger } from '../lib/logger'
-import { getDatabase, type DrizzleDb } from '../database'
+import { getDatabase, requireDatabase, type DataDb } from '../database'
 import { generateId } from '../lib/id'
 import { inboxItems, inboxItemTags } from '@memry/db-schema/schema/inbox'
 import { InboxChannels } from '@memry/contracts/ipc-channels'
@@ -46,17 +46,6 @@ export interface CaptureVoiceInput {
 // ============================================================================
 // Helpers
 // ============================================================================
-
-/**
- * Get data database, throwing if not available
- */
-function requireDatabase(): DrizzleDb {
-  try {
-    return getDatabase()
-  } catch {
-    throw new Error('No vault is open. Please open a vault first.')
-  }
-}
 
 /**
  * Emit inbox event to all windows
@@ -305,7 +294,12 @@ export async function captureVoice(input: CaptureVoiceInput): Promise<CaptureRes
       log.info(`Queueing transcription for voice memo ${id}`)
       queueInboxTranscriptionJob(id, storageResult.path)
     } else if (parsed.transcribe !== false && storageResult.path && processingError) {
-      markInboxJobFailed(id, 'transcription', { attachmentPath: storageResult.path }, processingError)
+      markInboxJobFailed(
+        id,
+        'transcription',
+        { attachmentPath: storageResult.path },
+        processingError
+      )
     }
 
     return { success: true, item }

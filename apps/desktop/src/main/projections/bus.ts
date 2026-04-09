@@ -19,4 +19,3 @@ export class ProjectionBus {
     return this.queue.length
   }
 }
-

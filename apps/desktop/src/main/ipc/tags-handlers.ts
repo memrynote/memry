@@ -33,7 +33,7 @@ import {
   createHandler,
   withErrorHandler
 } from './validate'
-import { getDatabase, getIndexDatabase } from '../database'
+import { requireDatabase, getIndexDatabase } from '../database'
 import {
   findNotesWithTagInfo,
   pinNoteToTag,
@@ -47,15 +47,20 @@ import {
   updateTagColor,
   getNoteTags,
   getNoteCacheById
-} from '@main/database/queries/notes'
-import { getAllTagsWithCounts, mergeTagInNotes, mergeTagInTasks } from '@main/database/queries/tags'
+} from '../tags/store'
+import { getAllTagsWithCounts, mergeTagInNotes, mergeTagInTasks } from '../tags/store'
 import { createLogger } from '../lib/logger'
 import { toAbsolutePath } from '../vault/notes'
 import { parseNote, serializeNote } from '../vault/frontmatter'
 import { atomicWrite } from '../vault/file-ops'
-import { getNoteSyncService } from '../sync/note-sync'
-import { getTagDefinitionSyncService } from '../sync/tag-definition-sync'
-import { getTaskSyncService } from '../sync/task-sync'
+import {
+  syncMergedTagDefinitions,
+  syncTaggedNote,
+  syncTaggedTasks,
+  syncTagDefinitionDelete,
+  syncTagDefinitionRename,
+  syncTagDefinitionUpdate
+} from '../tags/runtime-effects'
 
 const log = createLogger('TagsHandlers')
 
@@ -74,17 +79,6 @@ function emitTagEvent(channel: string, data: unknown): void {
 function requireIndexDatabase() {
   try {
     return getIndexDatabase()
-  } catch {
-    throw new Error('No vault is open. Please open a vault first.')
-  }
-}
-
-/**
- * Helper to get data database, throwing a user-friendly error if not available.
- */
-function requireDatabase() {
-  try {
-    return getDatabase()
   } catch {
     throw new Error('No vault is open. Please open a vault first.')
   }
@@ -156,7 +150,7 @@ async function updateNoteFrontmatterTag(
 
   const serialized = serializeNote(parsed.frontmatter, parsed.content)
   await atomicWrite(absolutePath, serialized)
-  getNoteSyncService()?.enqueueUpdate(noteId)
+  syncTaggedNote(noteId)
 }
 
 /**
@@ -267,11 +261,7 @@ export function registerTagsHandlers(): void {
 
         renameTagDefinition(dataDb, input.oldName, input.newName)
 
-        const syncService = getTagDefinitionSyncService()
-        if (syncService && oldTagSnapshot) {
-          syncService.enqueueDelete(input.oldName, JSON.stringify(oldTagSnapshot))
-          syncService.enqueueCreate(input.newName.toLowerCase().trim())
-        }
+        syncTagDefinitionRename(input.oldName, input.newName, oldTagSnapshot)
 
         const normalizedOld = input.oldName.toLowerCase().trim()
         const normalizedNew = input.newName.toLowerCase().trim()
@@ -304,7 +294,7 @@ export function registerTagsHandlers(): void {
         const dataDb = requireDatabase()
         getOrCreateTag(dataDb, input.tag)
         updateTagColor(dataDb, input.tag, input.color)
-        getTagDefinitionSyncService()?.enqueueUpdate(input.tag)
+        syncTagDefinitionUpdate(input.tag)
 
         emitTagEvent(TagsChannels.events.COLOR_UPDATED, {
           tag: input.tag,
@@ -338,9 +328,7 @@ export function registerTagsHandlers(): void {
         const affectedNotes = deleteTag(indexDb, tag)
         deleteTagDefinition(dataDb, tag)
 
-        if (tagSnapshot) {
-          getTagDefinitionSyncService()?.enqueueDelete(normalizedTag, JSON.stringify(tagSnapshot))
-        }
+        syncTagDefinitionDelete(normalizedTag, tagSnapshot)
         await Promise.all(
           noteIds.map((noteId) =>
             updateNoteFrontmatterTag(indexDb, noteId, (tags) =>
@@ -423,11 +411,7 @@ export function registerTagsHandlers(): void {
         deleteTagDefinition(dataDb, normalizedSource)
         getOrCreateTag(dataDb, normalizedTarget)
 
-        const syncService = getTagDefinitionSyncService()
-        if (syncService && sourceSnapshot) {
-          syncService.enqueueDelete(normalizedSource, JSON.stringify(sourceSnapshot))
-          syncService.enqueueCreate(normalizedTarget)
-        }
+        syncMergedTagDefinitions(normalizedSource, normalizedTarget, sourceSnapshot)
 
         await Promise.all(
           noteResult.noteIds.map((noteId) =>
@@ -441,12 +425,7 @@ export function registerTagsHandlers(): void {
           )
         )
 
-        const taskSyncService = getTaskSyncService()
-        if (taskSyncService) {
-          for (const taskId of taskResult.taskIds) {
-            taskSyncService.enqueueUpdate(taskId)
-          }
-        }
+        syncTaggedTasks(taskResult.taskIds)
 
         emitTagEvent(TagsChannels.events.DELETED, {
           tag: normalizedSource,

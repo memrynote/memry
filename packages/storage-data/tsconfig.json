@@ -3,6 +3,7 @@
   "include": ["src/**/*"],
   "exclude": ["**/*.test.ts", "**/*.test.tsx", "**/*.spec.ts", "**/*.spec.tsx"],
   "compilerOptions": {
+    "allowImportingTsExtensions": true,
     "baseUrl": ".",
     "paths": {
       "@memry/domain-tasks": ["../domain-tasks/src/index.ts"],

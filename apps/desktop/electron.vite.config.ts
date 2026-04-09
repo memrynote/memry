@@ -8,6 +8,18 @@ import type { Plugin } from 'vite'
 
 const appRoot = fileURLToPath(new URL('.', import.meta.url))
 const workspaceRoot = resolve(appRoot, '../..')
+const workspaceAliases = {
+  '@memry/contracts': resolve(workspaceRoot, 'packages/contracts/src'),
+  '@memry/db-schema': resolve(workspaceRoot, 'packages/db-schema/src'),
+  '@memry/domain-notes': resolve(workspaceRoot, 'packages/domain-notes/src'),
+  '@memry/domain-tasks': resolve(workspaceRoot, 'packages/domain-tasks/src'),
+  '@memry/rpc': resolve(workspaceRoot, 'packages/rpc/src'),
+  '@memry/shared': resolve(workspaceRoot, 'packages/shared/src'),
+  '@memry/storage-data': resolve(workspaceRoot, 'packages/storage-data/src'),
+  '@memry/storage-vault': resolve(workspaceRoot, 'packages/storage-vault/src'),
+  '@memry/sync-core': resolve(workspaceRoot, 'packages/sync-core/src')
+} as const
+const workspacePackages = Object.keys(workspaceAliases)
 
 function devCsp(): Plugin {
   return {
@@ -46,9 +58,7 @@ export default defineConfig({
     build: {
       externalizeDeps: {
         exclude: [
-          '@memry/contracts',
-          '@memry/db-schema',
-          '@memry/shared',
+          ...workspacePackages,
           'cborg',
           '@blocknote/server-util',
           '@blocknote/core',
@@ -72,9 +82,7 @@ export default defineConfig({
     },
     resolve: {
       alias: {
-        '@memry/contracts': resolve(workspaceRoot, 'packages/contracts/src'),
-        '@memry/db-schema': resolve(workspaceRoot, 'packages/db-schema/src'),
-        '@memry/shared': resolve(workspaceRoot, 'packages/shared/src'),
+        ...workspaceAliases,
         '@main': resolve(appRoot, 'src/main')
       },
       dedupe: [
@@ -88,14 +96,12 @@ export default defineConfig({
   preload: {
     build: {
       externalizeDeps: {
-        exclude: ['@memry/contracts', '@memry/db-schema', '@memry/shared']
+        exclude: [...workspacePackages]
       }
     },
     resolve: {
       alias: {
-        '@memry/contracts': resolve(workspaceRoot, 'packages/contracts/src'),
-        '@memry/db-schema': resolve(workspaceRoot, 'packages/db-schema/src'),
-        '@memry/shared': resolve(workspaceRoot, 'packages/shared/src'),
+        ...workspaceAliases,
         '@main': resolve(appRoot, 'src/main')
       }
     }
@@ -103,9 +109,7 @@ export default defineConfig({
   renderer: {
     resolve: {
       alias: {
-        '@memry/contracts': resolve(workspaceRoot, 'packages/contracts/src'),
-        '@memry/db-schema': resolve(workspaceRoot, 'packages/db-schema/src'),
-        '@memry/shared': resolve(workspaceRoot, 'packages/shared/src'),
+        ...workspaceAliases,
         '@main': resolve(appRoot, 'src/main'),
         '@renderer': resolve(appRoot, 'src/renderer/src'),
         '@': resolve(appRoot, 'src/renderer/src')

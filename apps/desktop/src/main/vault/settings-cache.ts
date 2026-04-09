@@ -1,5 +1,3 @@
-import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3'
-import type * as schema from '@memry/db-schema/schema'
 import { getSetting, setSetting } from '@main/database/queries/settings'
 import {
   GENERAL_SETTINGS_DEFAULTS,
@@ -13,17 +11,16 @@ import {
   type VaultPreferences
 } from './vault-preferences'
 import { createLogger } from '../lib/logger'
-
-type DrizzleDb = BetterSQLite3Database<typeof schema>
+import type { DataDb } from '../database'
 
 const log = createLogger('SettingsCache')
 
-export function populateSettingsCacheFromConfig(db: DrizzleDb, vaultPath: string): void {
+export function populateSettingsCacheFromConfig(db: DataDb, vaultPath: string): void {
   const prefs = readPreferences(vaultPath)
   writeCacheFromPreferences(db, prefs)
 }
 
-export function migrateSettingsToConfig(db: DrizzleDb, vaultPath: string): void {
+export function migrateSettingsToConfig(db: DataDb, vaultPath: string): void {
   const prefs = readPreferences(vaultPath)
 
   const isDefault =
@@ -90,7 +87,7 @@ export function migrateSettingsToConfig(db: DrizzleDb, vaultPath: string): void 
   writeCacheFromPreferences(db, finalPrefs)
 }
 
-export function writeCacheFromPreferences(db: DrizzleDb, prefs: VaultPreferences): void {
+export function writeCacheFromPreferences(db: DataDb, prefs: VaultPreferences): void {
   const portableFields: Partial<GeneralSettings> = {
     theme: prefs.theme,
     fontSize: prefs.fontSize,

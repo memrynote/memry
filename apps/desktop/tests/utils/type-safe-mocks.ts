@@ -15,7 +15,7 @@
  */
 
 import { vi, type Mock } from 'vitest'
-import type { DrizzleDb } from '../../src/main/database/client'
+import type { DataDb } from '../../src/main/database/client'
 import type {
   DrizzleDb as SyncDrizzleDb,
   ApplyContext
@@ -235,13 +235,13 @@ export function createTypeSafeAPI(config: TypeSafeAPIConfig = {}): TypeSafeWindo
 // ============================================================================
 
 /**
- * Creates a typed mock for the main DrizzleDb (data + index).
+ * Creates a typed mock for the main data database.
  * Returns a properly typed empty mock — use for unit tests where
  * the DB is passed through but no methods are called.
  *
  * For integration tests with real SQL, use createTestDatabase() from test-db.ts.
  */
-export function createMockDb(): DrizzleDb {
+export function createMockDb(): DataDb {
   return {
     select: vi.fn().mockReturnValue({
       from: vi.fn().mockReturnValue({
@@ -270,7 +270,7 @@ export function createMockDb(): DrizzleDb {
     }),
     run: vi.fn(),
     transaction: vi.fn((fn: (tx: unknown) => unknown) => fn({}))
-  } as unknown as DrizzleDb
+  } as unknown as DataDb
 }
 
 /**

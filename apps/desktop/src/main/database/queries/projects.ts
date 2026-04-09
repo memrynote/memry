@@ -7,13 +7,10 @@
 
 import { nanoid } from 'nanoid'
 import { eq, asc, and, isNull, sql, count } from 'drizzle-orm'
-import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3'
 import { projects, type Project, type NewProject } from '@memry/db-schema/schema/projects'
 import { statuses, type Status, type NewStatus } from '@memry/db-schema/schema/statuses'
 import { tasks } from '@memry/db-schema/schema/tasks'
-import * as schema from '@memry/db-schema/schema'
-
-type DrizzleDb = BetterSQLite3Database<typeof schema>
+import type { DataDb } from '../types'
 
 // ============================================================================
 // Project CRUD
@@ -22,7 +19,7 @@ type DrizzleDb = BetterSQLite3Database<typeof schema>
 /**
  * Insert a new project.
  */
-export function insertProject(db: DrizzleDb, project: NewProject): Project {
+export function insertProject(db: DataDb, project: NewProject): Project {
   return db.insert(projects).values(project).returning().get()
 }
 
@@ -30,7 +27,7 @@ export function insertProject(db: DrizzleDb, project: NewProject): Project {
  * Update an existing project.
  */
 export function updateProject(
-  db: DrizzleDb,
+  db: DataDb,
   id: string,
   updates: Partial<Omit<Project, 'id' | 'createdAt'>>
 ): Project | undefined {
@@ -49,7 +46,7 @@ export function updateProject(
  * Delete a project by ID.
  * Note: This will cascade delete all tasks and statuses in the project.
  */
-export function deleteProject(db: DrizzleDb, id: string): void {
+export function deleteProject(db: DataDb, id: string): void {
   // Don't allow deleting the inbox
   const project = getProjectById(db, id)
   if (project?.isInbox) {
@@ -62,14 +59,14 @@ export function deleteProject(db: DrizzleDb, id: string): void {
 /**
  * Get a project by ID.
  */
-export function getProjectById(db: DrizzleDb, id: string): Project | undefined {
+export function getProjectById(db: DataDb, id: string): Project | undefined {
   return db.select().from(projects).where(eq(projects.id, id)).get()
 }
 
 /**
  * Check if a project exists.
  */
-export function projectExists(db: DrizzleDb, id: string): boolean {
+export function projectExists(db: DataDb, id: string): boolean {
   const result = db.select({ id: projects.id }).from(projects).where(eq(projects.id, id)).get()
   return result !== undefined
 }
@@ -77,7 +74,7 @@ export function projectExists(db: DrizzleDb, id: string): boolean {
 /**
  * Get the inbox project.
  */
-export function getInboxProject(db: DrizzleDb): Project | undefined {
+export function getInboxProject(db: DataDb): Project | undefined {
   return db.select().from(projects).where(eq(projects.isInbox, true)).get()
 }
 
@@ -88,7 +85,7 @@ export function getInboxProject(db: DrizzleDb): Project | undefined {
 /**
  * List all projects (excluding archived by default).
  */
-export function listProjects(db: DrizzleDb, includeArchived: boolean = false): Project[] {
+export function listProjects(db: DataDb, includeArchived: boolean = false): Project[] {
   let query = db.select().from(projects)
 
   if (!includeArchived) {
@@ -111,27 +108,31 @@ export interface ProjectWithStats extends Project {
  * Get all projects with task statistics.
  */
 export function getProjectsWithStats(
-  db: DrizzleDb,
+  db: DataDb,
   includeArchived: boolean = false
 ): ProjectWithStats[] {
   const now = new Date()
   const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
 
-  // Get base projects
   const projectList = listProjects(db, includeArchived)
+  if (projectList.length === 0) return []
 
-  // Get stats for each project
+  const statsRows = db
+    .select({
+      projectId: tasks.projectId,
+      taskCount: count(),
+      completedCount: sql<number>`sum(case when ${tasks.completedAt} is not null then 1 else 0 end)`,
+      overdueCount: sql<number>`sum(case when ${tasks.dueDate} < ${today} and ${tasks.completedAt} is null then 1 else 0 end)`
+    })
+    .from(tasks)
+    .where(isNull(tasks.archivedAt))
+    .groupBy(tasks.projectId)
+    .all()
+
+  const statsMap = new Map(statsRows.map((r) => [r.projectId, r]))
+
   return projectList.map((project) => {
-    const stats = db
-      .select({
-        taskCount: count(),
-        completedCount: sql<number>`sum(case when ${tasks.completedAt} is not null then 1 else 0 end)`,
-        overdueCount: sql<number>`sum(case when ${tasks.dueDate} < ${today} and ${tasks.completedAt} is null then 1 else 0 end)`
-      })
-      .from(tasks)
-      .where(and(eq(tasks.projectId, project.id), isNull(tasks.archivedAt)))
-      .get()
-
+    const stats = statsMap.get(project.id)
     return {
       ...project,
       taskCount: stats?.taskCount ?? 0,
@@ -148,7 +149,7 @@ export function getProjectsWithStats(
 /**
  * Archive a project.
  */
-export function archiveProject(db: DrizzleDb, id: string): Project | undefined {
+export function archiveProject(db: DataDb, id: string): Project | undefined {
   const project = getProjectById(db, id)
   if (project?.isInbox) {
     throw new Error('Cannot archive the inbox project')
@@ -168,7 +169,7 @@ export function archiveProject(db: DrizzleDb, id: string): Project | undefined {
 /**
  * Unarchive a project.
  */
-export function unarchiveProject(db: DrizzleDb, id: string): Project | undefined {
+export function unarchiveProject(db: DataDb, id: string): Project | undefined {
   return db
     .update(projects)
     .set({
@@ -183,26 +184,26 @@ export function unarchiveProject(db: DrizzleDb, id: string): Project | undefined
 /**
  * Reorder projects by updating their positions.
  */
-export function reorderProjects(db: DrizzleDb, projectIds: string[], positions: number[]): void {
+export function reorderProjects(db: DataDb, projectIds: string[], positions: number[]): void {
   if (projectIds.length !== positions.length) {
     throw new Error('projectIds and positions arrays must have the same length')
   }
 
-  for (let i = 0; i < projectIds.length; i++) {
-    db.update(projects)
-      .set({
-        position: positions[i],
-        modifiedAt: new Date().toISOString()
-      })
-      .where(eq(projects.id, projectIds[i]))
-      .run()
-  }
+  db.transaction((tx) => {
+    const now = new Date().toISOString()
+    for (let i = 0; i < projectIds.length; i++) {
+      tx.update(projects)
+        .set({ position: positions[i], modifiedAt: now })
+        .where(eq(projects.id, projectIds[i]))
+        .run()
+    }
+  })
 }
 
 /**
  * Get the next available position for a new project.
  */
-export function getNextProjectPosition(db: DrizzleDb): number {
+export function getNextProjectPosition(db: DataDb): number {
   const result = db
     .select({ maxPosition: sql<number>`max(${projects.position})` })
     .from(projects)
@@ -218,7 +219,7 @@ export function getNextProjectPosition(db: DrizzleDb): number {
 /**
  * Insert a new status.
  */
-export function insertStatus(db: DrizzleDb, status: NewStatus): Status {
+export function insertStatus(db: DataDb, status: NewStatus): Status {
   return db.insert(statuses).values(status).returning().get()
 }
 
@@ -226,7 +227,7 @@ export function insertStatus(db: DrizzleDb, status: NewStatus): Status {
  * Update an existing status.
  */
 export function updateStatus(
-  db: DrizzleDb,
+  db: DataDb,
   id: string,
   updates: Partial<Omit<Status, 'id' | 'projectId' | 'createdAt'>>
 ): Status | undefined {
@@ -237,14 +238,14 @@ export function updateStatus(
  * Delete a status by ID.
  * Tasks with this status will have their statusId set to null (onDelete: 'set null').
  */
-export function deleteStatus(db: DrizzleDb, id: string): void {
+export function deleteStatus(db: DataDb, id: string): void {
   db.delete(statuses).where(eq(statuses.id, id)).run()
 }
 
 /**
  * Get a status by ID.
  */
-export function getStatusById(db: DrizzleDb, id: string): Status | undefined {
+export function getStatusById(db: DataDb, id: string): Status | undefined {
   return db.select().from(statuses).where(eq(statuses.id, id)).get()
 }
 
@@ -255,7 +256,7 @@ export function getStatusById(db: DrizzleDb, id: string): Status | undefined {
 /**
  * Get all statuses for a project.
  */
-export function getStatusesByProject(db: DrizzleDb, projectId: string): Status[] {
+export function getStatusesByProject(db: DataDb, projectId: string): Status[] {
   return db
     .select()
     .from(statuses)
@@ -267,7 +268,7 @@ export function getStatusesByProject(db: DrizzleDb, projectId: string): Status[]
 /**
  * Get the default status for a project.
  */
-export function getDefaultStatus(db: DrizzleDb, projectId: string): Status | undefined {
+export function getDefaultStatus(db: DataDb, projectId: string): Status | undefined {
   return db
     .select()
     .from(statuses)
@@ -278,7 +279,7 @@ export function getDefaultStatus(db: DrizzleDb, projectId: string): Status | und
 /**
  * Get the "done" status for a project.
  */
-export function getDoneStatus(db: DrizzleDb, projectId: string): Status | undefined {
+export function getDoneStatus(db: DataDb, projectId: string): Status | undefined {
   return db
     .select()
     .from(statuses)
@@ -291,7 +292,7 @@ export function getDoneStatus(db: DrizzleDb, projectId: string): Status | undefi
  * Returns the first matching status or the default status as fallback.
  */
 export function getEquivalentStatus(
-  db: DrizzleDb,
+  db: DataDb,
   targetProjectId: string,
   sourceStatus: Status | undefined
 ): Status | undefined {
@@ -329,20 +330,22 @@ export function getEquivalentStatus(
 /**
  * Reorder statuses by updating their positions.
  */
-export function reorderStatuses(db: DrizzleDb, statusIds: string[], positions: number[]): void {
+export function reorderStatuses(db: DataDb, statusIds: string[], positions: number[]): void {
   if (statusIds.length !== positions.length) {
     throw new Error('statusIds and positions arrays must have the same length')
   }
 
-  for (let i = 0; i < statusIds.length; i++) {
-    db.update(statuses).set({ position: positions[i] }).where(eq(statuses.id, statusIds[i])).run()
-  }
+  db.transaction((tx) => {
+    for (let i = 0; i < statusIds.length; i++) {
+      tx.update(statuses).set({ position: positions[i] }).where(eq(statuses.id, statusIds[i])).run()
+    }
+  })
 }
 
 /**
  * Get the next available position for a new status in a project.
  */
-export function getNextStatusPosition(db: DrizzleDb, projectId: string): number {
+export function getNextStatusPosition(db: DataDb, projectId: string): number {
   const result = db
     .select({ maxPosition: sql<number>`max(${statuses.position})` })
     .from(statuses)
@@ -355,7 +358,7 @@ export function getNextStatusPosition(db: DrizzleDb, projectId: string): number 
 /**
  * Set a status as the default for a project (unsets previous default).
  */
-export function setDefaultStatus(db: DrizzleDb, projectId: string, statusId: string): void {
+export function setDefaultStatus(db: DataDb, projectId: string, statusId: string): void {
   // Unset current default
   db.update(statuses)
     .set({ isDefault: false })
@@ -369,7 +372,7 @@ export function setDefaultStatus(db: DrizzleDb, projectId: string, statusId: str
 /**
  * Set a status as the "done" status for a project (unsets previous done).
  */
-export function setDoneStatus(db: DrizzleDb, projectId: string, statusId: string): void {
+export function setDoneStatus(db: DataDb, projectId: string, statusId: string): void {
   // Unset current done status
   db.update(statuses)
     .set({ isDone: false })
@@ -394,7 +397,7 @@ export interface ProjectWithStatuses extends Project {
 /**
  * Get a project with all its statuses.
  */
-export function getProjectWithStatuses(db: DrizzleDb, id: string): ProjectWithStatuses | undefined {
+export function getProjectWithStatuses(db: DataDb, id: string): ProjectWithStatuses | undefined {
   const project = getProjectById(db, id)
   if (!project) {
     return undefined
@@ -412,14 +415,24 @@ export function getProjectWithStatuses(db: DrizzleDb, id: string): ProjectWithSt
  * Get all projects with their statuses.
  */
 export function getProjectsWithStatuses(
-  db: DrizzleDb,
+  db: DataDb,
   includeArchived: boolean = false
 ): ProjectWithStatuses[] {
   const projectList = listProjects(db, includeArchived)
+  if (projectList.length === 0) return []
+
+  const allStatuses = db.select().from(statuses).orderBy(asc(statuses.position)).all()
+
+  const statusesByProject = new Map<string, Status[]>()
+  for (const status of allStatuses) {
+    const list = statusesByProject.get(status.projectId) ?? []
+    list.push(status)
+    statusesByProject.set(status.projectId, list)
+  }
 
   return projectList.map((project) => ({
     ...project,
-    statuses: getStatusesByProject(db, project.id)
+    statuses: statusesByProject.get(project.id) ?? []
   }))
 }
 
@@ -430,7 +443,7 @@ export function getProjectsWithStatuses(
 /**
  * Create default statuses for a new project.
  */
-export function createDefaultStatuses(db: DrizzleDb, projectId: string): Status[] {
+export function createDefaultStatuses(db: DataDb, projectId: string): Status[] {
   const todoStatus = insertStatus(db, {
     id: `${projectId}-todo`,
     projectId,
@@ -465,7 +478,7 @@ export function createDefaultStatuses(db: DrizzleDb, projectId: string): Status[
 }
 
 export function createCustomStatuses(
-  db: DrizzleDb,
+  db: DataDb,
   projectId: string,
   inputs: Array<{
     name: string
@@ -492,7 +505,7 @@ export function createCustomStatuses(
  * Creates, updates, or deletes statuses to match the incoming list.
  */
 export function reconcileProjectStatuses(
-  db: DrizzleDb,
+  db: DataDb,
   projectId: string,
   inputs: Array<{
     id?: string
@@ -541,7 +554,7 @@ export function reconcileProjectStatuses(
 /**
  * Count tasks in a status.
  */
-export function countTasksInStatus(db: DrizzleDb, statusId: string): number {
+export function countTasksInStatus(db: DataDb, statusId: string): number {
   const result = db.select({ count: count() }).from(tasks).where(eq(tasks.statusId, statusId)).get()
 
   return result?.count ?? 0

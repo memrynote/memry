@@ -25,7 +25,7 @@ import {
   type ImageMetadata
 } from '@memry/contracts/inbox-api'
 import sharp from 'sharp'
-import { getDatabase, type DrizzleDb } from '../database'
+import { getDatabase, requireDatabase, type DataDb } from '../database'
 import { generateId } from '../lib/id'
 import { inboxItems, inboxItemTags } from '@memry/db-schema/schema/inbox'
 import { eq } from 'drizzle-orm'
@@ -38,12 +38,7 @@ import {
   ALLOWED_VIDEO_TYPES,
   ALLOWED_DOCUMENT_TYPES
 } from '../inbox/attachments'
-import {
-  fetchUrlMetadata,
-  titleFromUrl,
-  isBotPageTitle,
-  extractDomain
-} from '../inbox/metadata'
+import { fetchUrlMetadata, titleFromUrl, isBotPageTitle, extractDomain } from '../inbox/metadata'
 import {
   fileToFolder,
   convertToNote,
@@ -60,8 +55,6 @@ import { FileItemSchema } from '@memry/contracts/inbox-api'
 import { isStale as checkIsStale } from '../inbox/stats'
 import { snoozeItem, unsnoozeItem, getSnoozedItems } from '../inbox/snooze'
 import type { SnoozeInput, SnoozedItem } from '../inbox/snooze'
-import { getInboxSyncService } from '../sync/inbox-sync'
-import { incrementInboxClockOffline } from '../sync/offline-clock'
 import { withErrorHandler, withDb } from './validate'
 import {
   createInboxCrudHandlers,
@@ -78,47 +71,19 @@ import {
   registerInboxQueryHandlers,
   unregisterInboxQueryHandlers
 } from './inbox-query-handlers'
-import { publishProjectionEvent } from '../projections'
 import {
   queueInboxMetadataJob,
   queueInboxTranscriptionJob,
   resumeInboxJobs,
   teardownInboxJobScheduler
 } from '../inbox/jobs'
+import { publishInboxUpserted, syncInboxCreate, syncInboxUpdate } from '../inbox/runtime-effects'
 
 // ============================================================================
 // Constants
 // ============================================================================
 
 const logger = createLogger('IPC:Inbox')
-
-function syncInboxCreate(db: DrizzleDb, itemId: string): void {
-  const svc = getInboxSyncService()
-  if (svc) {
-    svc.enqueueCreate(itemId)
-  } else {
-    incrementInboxClockOffline(db, itemId)
-  }
-
-  publishProjectionEvent({
-    type: 'inbox.upserted',
-    itemId
-  })
-}
-
-function syncInboxUpdate(db: DrizzleDb, itemId: string): void {
-  const svc = getInboxSyncService()
-  if (svc) {
-    svc.enqueueUpdate(itemId)
-  } else {
-    incrementInboxClockOffline(db, itemId)
-  }
-
-  publishProjectionEvent({
-    type: 'inbox.upserted',
-    itemId
-  })
-}
 
 // ============================================================================
 // Social Post Metadata (synchronous — react-tweet handles fetching in renderer)
@@ -144,10 +109,7 @@ function storeSocialMetadata(itemId: string, url: string): void {
     .where(eq(inboxItems.id, itemId))
     .run()
 
-  publishProjectionEvent({
-    type: 'inbox.upserted',
-    itemId
-  })
+  publishInboxUpserted(itemId)
 
   emitInboxEvent(InboxChannels.events.METADATA_COMPLETE, { id: itemId, metadata })
   logger.info(`Stored social metadata for ${itemId}: ${title}`)
@@ -164,17 +126,6 @@ function emitInboxEvent(channel: string, data: unknown): void {
   BrowserWindow.getAllWindows().forEach((win) => {
     win.webContents.send(channel, data)
   })
-}
-
-/**
- * Get data database, throwing if not available
- */
-function requireDatabase(): DrizzleDb {
-  try {
-    return getDatabase()
-  } catch {
-    throw new Error('No vault is open. Please open a vault first.')
-  }
 }
 
 /**
@@ -833,10 +784,7 @@ const handleRetryTranscription = withErrorHandler(
       .where(eq(inboxItems.id, itemId))
       .run()
 
-    publishProjectionEvent({
-      type: 'inbox.upserted',
-      itemId
-    })
+    publishInboxUpserted(itemId)
 
     emitInboxEvent(InboxChannels.events.UPDATED, {
       id: itemId,
@@ -879,10 +827,7 @@ const handleRetryMetadata = withDb(
       .where(eq(inboxItems.id, itemId))
       .run()
 
-    publishProjectionEvent({
-      type: 'inbox.upserted',
-      itemId
-    })
+    publishInboxUpserted(itemId)
 
     emitInboxEvent(InboxChannels.events.UPDATED, {
       id: itemId,

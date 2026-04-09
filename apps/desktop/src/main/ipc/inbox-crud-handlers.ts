@@ -6,9 +6,8 @@ import { inboxItems, inboxItemTags } from '@memry/db-schema/schema/inbox'
 import { eq, and } from 'drizzle-orm'
 import { generateId } from '../lib/id'
 import { deleteInboxAttachments } from '../inbox/attachments'
-import { getInboxSyncService } from '../sync/inbox-sync'
-import type { DrizzleDb } from '../database'
-import { publishProjectionEvent } from '../projections'
+import type { DataDb } from '../database'
+import { syncInboxDelete } from '../inbox/runtime-effects'
 
 type InboxCrudLogger = {
   info: (message: string) => void
@@ -16,11 +15,11 @@ type InboxCrudLogger = {
 }
 
 export interface InboxCrudHandlerDeps {
-  requireDatabase: () => DrizzleDb
-  getItemTags: (db: DrizzleDb, itemId: string) => string[]
+  requireDatabase: () => DataDb
+  getItemTags: (db: DataDb, itemId: string) => string[]
   toInboxItem: (row: typeof inboxItems.$inferSelect, tags: string[]) => InboxItem
   emitInboxEvent: (channel: string, data: unknown) => void
-  syncInboxUpdate: (db: DrizzleDb, itemId: string) => void
+  syncInboxUpdate: (db: DataDb, itemId: string) => void
   logger: InboxCrudLogger
 }
 
@@ -226,8 +225,7 @@ export function createInboxCrudHandlers(deps: InboxCrudHandlerDeps): InboxCrudHa
 
       const snapshot = JSON.stringify(existing)
       db.delete(inboxItems).where(eq(inboxItems.id, id)).run()
-      getInboxSyncService()?.enqueueDelete(id, snapshot)
-      publishProjectionEvent({ type: 'inbox.deleted', itemId: id })
+      syncInboxDelete(id, snapshot)
 
       return { success: true }
     },

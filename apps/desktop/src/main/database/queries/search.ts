@@ -9,7 +9,7 @@
  */
 
 import { sql } from 'drizzle-orm'
-import type { DrizzleDb } from '../client'
+import type { DataDb, IndexDb } from '../types'
 import type {
   ContentType,
   SearchResultItem,
@@ -82,7 +82,7 @@ interface FtsInboxRow {
 // Per-type FTS queries
 // ============================================================================
 
-function searchNotes(indexDb: DrizzleDb, ftsQuery: string, limit: number): SearchResultItem[] {
+function searchNotes(indexDb: IndexDb, ftsQuery: string, limit: number): SearchResultItem[] {
   if (!ftsQuery) return []
 
   const rows = indexDb.all<FtsNoteRow>(sql`
@@ -126,7 +126,7 @@ function searchNotes(indexDb: DrizzleDb, ftsQuery: string, limit: number): Searc
   })
 }
 
-function searchJournals(indexDb: DrizzleDb, ftsQuery: string, limit: number): SearchResultItem[] {
+function searchJournals(indexDb: IndexDb, ftsQuery: string, limit: number): SearchResultItem[] {
   if (!ftsQuery) return []
 
   const rows = indexDb.all<FtsNoteRow>(sql`
@@ -170,7 +170,7 @@ function searchJournals(indexDb: DrizzleDb, ftsQuery: string, limit: number): Se
   })
 }
 
-function searchTasks(dataDb: DrizzleDb, ftsQuery: string, limit: number): SearchResultItem[] {
+function searchTasks(dataDb: DataDb, ftsQuery: string, limit: number): SearchResultItem[] {
   if (!ftsQuery) return []
 
   const rows = dataDb.all<FtsTaskRow>(sql`
@@ -223,7 +223,7 @@ function searchTasks(dataDb: DrizzleDb, ftsQuery: string, limit: number): Search
   })
 }
 
-function searchInbox(dataDb: DrizzleDb, ftsQuery: string, limit: number): SearchResultItem[] {
+function searchInbox(dataDb: DataDb, ftsQuery: string, limit: number): SearchResultItem[] {
   if (!ftsQuery) return []
 
   const rows = dataDb.all<FtsInboxRow>(sql`
@@ -279,7 +279,7 @@ interface TitleRow {
 }
 
 function getNoteTitles(
-  indexDb: DrizzleDb
+  indexDb: IndexDb
 ): Array<TitleRow & { type: ContentType; metadata: NoteResultMetadata }> {
   const rows = indexDb.all<TitleRow & { path: string; emoji: string | null }>(
     sql`SELECT id, title, path, emoji, modified_at as modifiedAt FROM note_cache WHERE date IS NULL`
@@ -292,7 +292,7 @@ function getNoteTitles(
 }
 
 function getJournalTitles(
-  indexDb: DrizzleDb
+  indexDb: IndexDb
 ): Array<TitleRow & { type: ContentType; metadata: JournalResultMetadata }> {
   const rows = indexDb.all<TitleRow & { path: string; date: string }>(
     sql`SELECT id, title, path, date, modified_at as modifiedAt FROM note_cache WHERE date IS NOT NULL`
@@ -305,7 +305,7 @@ function getJournalTitles(
 }
 
 function getTaskTitles(
-  dataDb: DrizzleDb
+  dataDb: DataDb
 ): Array<TitleRow & { type: ContentType; metadata: TaskResultMetadata }> {
   const rows = dataDb.all<
     TitleRow & {
@@ -345,7 +345,7 @@ function getTaskTitles(
 }
 
 function getInboxTitles(
-  dataDb: DrizzleDb
+  dataDb: DataDb
 ): Array<TitleRow & { type: ContentType; metadata: InboxResultMetadata }> {
   const rows = dataDb.all<
     TitleRow & {
@@ -373,8 +373,8 @@ function getInboxTitles(
 }
 
 function getItemTagIds(
-  indexDb: DrizzleDb,
-  dataDb: DrizzleDb,
+  indexDb: IndexDb,
+  dataDb: DataDb,
   type: ContentType,
   tags: string[]
 ): Set<string> {
@@ -443,7 +443,7 @@ function applyPostFilters(
   return filtered
 }
 
-function loadFuzzyCandidates(indexDb: DrizzleDb, dataDb: DrizzleDb, type: ContentType) {
+function loadFuzzyCandidates(indexDb: IndexDb, dataDb: DataDb, type: ContentType) {
   switch (type) {
     case 'note':
       return getNoteTitles(indexDb)
@@ -460,11 +460,7 @@ function loadFuzzyCandidates(indexDb: DrizzleDb, dataDb: DrizzleDb, type: Conten
 // Orchestrator
 // ============================================================================
 
-export function searchAll(
-  indexDb: DrizzleDb,
-  dataDb: DrizzleDb,
-  query: SearchQuery
-): SearchResponse {
+export function searchAll(indexDb: IndexDb, dataDb: DataDb, query: SearchQuery): SearchResponse {
   const startTime = performance.now()
   const truncated = truncateQuery(query.text)
   const hasOperators = /\b(AND|OR|NOT)\b/.test(truncated) || /"[^"]+"/.test(truncated)
@@ -544,11 +540,7 @@ export function searchAll(
   return { groups, totalCount, queryTimeMs }
 }
 
-export function quickSearch(
-  indexDb: DrizzleDb,
-  dataDb: DrizzleDb,
-  text: string
-): QuickSearchResponse {
+export function quickSearch(indexDb: IndexDb, dataDb: DataDb, text: string): QuickSearchResponse {
   const startTime = performance.now()
   const query: SearchQuery = {
     text,
@@ -572,7 +564,7 @@ export function quickSearch(
   return { results: allResults, queryTimeMs }
 }
 
-export function getSearchStats(indexDb: DrizzleDb, dataDb: DrizzleDb): SearchStats {
+export function getSearchStats(indexDb: IndexDb, dataDb: DataDb): SearchStats {
   const notesResult = indexDb.get<{ count: number }>(
     sql`SELECT COUNT(*) as count FROM note_cache WHERE date IS NULL`
   )

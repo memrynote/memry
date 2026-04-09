@@ -37,7 +37,9 @@ export const TagAutocomplete = forwardRef<
   const [requestedSelectedIndex, setRequestedSelectedIndex] = useState(0)
   const selectedIndex =
     items.length === 0
-      ? (query && query.trim() ? 0 : -1)
+      ? query && query.trim()
+        ? 0
+        : -1
       : Math.min(Math.max(requestedSelectedIndex, 0), items.length)
 
   // Scroll selected item into view

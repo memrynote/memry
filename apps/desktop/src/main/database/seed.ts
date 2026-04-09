@@ -6,14 +6,11 @@
  */
 
 import { eq } from 'drizzle-orm'
-import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3'
 import { projects, statuses, tasks, taskTags, tagDefinitions } from '@memry/db-schema/schema'
-import * as schema from '@memry/db-schema/schema'
+import type { DataDb } from './types'
 import { createLogger } from '../lib/logger'
 
 const logger = createLogger('Seed')
-
-type DrizzleDb = BetterSQLite3Database<typeof schema>
 
 // ============================================================================
 // Date Utilities
@@ -37,11 +34,11 @@ function completedAt(daysAgo: number): string {
 // Defaults (Inbox)
 // ============================================================================
 
-export function seedDefaults(db: DrizzleDb): void {
+export function seedDefaults(db: DataDb): void {
   seedInboxProject(db)
 }
 
-function seedInboxProject(db: DrizzleDb): void {
+function seedInboxProject(db: DataDb): void {
   const existingInbox = db.select().from(projects).where(eq(projects.id, 'inbox')).get()
 
   if (existingInbox) {
@@ -886,13 +883,13 @@ const TASK_GROUPS: ReadonlyArray<{ projectId: string; tasks: SeedTask[] }> = [
 // Seed Functions
 // ============================================================================
 
-export function seedSampleTasks(db: DrizzleDb): void {
+export function seedSampleTasks(db: DataDb): void {
   seedTagDefs(db)
   seedProjects(db)
   seedTaskData(db)
 }
 
-function seedTagDefs(db: DrizzleDb): void {
+function seedTagDefs(db: DataDb): void {
   for (const [name, color] of Object.entries(TAG_COLORS)) {
     const existing = db.select().from(tagDefinitions).where(eq(tagDefinitions.name, name)).get()
     if (existing) continue
@@ -903,7 +900,7 @@ function seedTagDefs(db: DrizzleDb): void {
   logger.info(`Seeded ${Object.keys(TAG_COLORS).length} tag definitions`)
 }
 
-function seedProjects(db: DrizzleDb): void {
+function seedProjects(db: DataDb): void {
   for (const config of PROJECT_CONFIGS) {
     const existing = db.select().from(projects).where(eq(projects.id, config.id)).get()
     if (existing) continue
@@ -963,7 +960,7 @@ function seedProjects(db: DrizzleDb): void {
   }
 }
 
-function seedTaskData(db: DrizzleDb): void {
+function seedTaskData(db: DataDb): void {
   let totalSeeded = 0
 
   for (const { projectId, tasks: seedTasks } of TASK_GROUPS) {

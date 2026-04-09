@@ -11,10 +11,7 @@ import { getDatabase, getIndexDatabase } from '../../database/client'
 import { createLogger } from '../../lib/logger'
 import { getPinnedTagsForNote } from './note-pin-helpers'
 import { getNoteMetadataById, updateNoteMetadata } from '@memry/storage-data'
-import {
-  getNoteProperties,
-  type PropertyValue
-} from '@main/database/queries/notes'
+import { getNoteProperties, type PropertyValue } from '@main/database/queries/notes'
 
 const log = createLogger('NoteHandlerSyncHelpers')
 

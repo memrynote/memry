@@ -11,20 +11,20 @@ const databaseRoot = path.resolve(mainRoot, 'database')
 const queriesRoot = path.resolve(databaseRoot, 'queries')
 const notesQueriesRoot = path.resolve(queriesRoot, 'notes')
 const mainSyncRoot = path.resolve(mainRoot, 'sync')
-const ipcQueryAllowlist = new Set([
-  'apps/desktop/src/main/ipc/ai-inline-handlers.ts',
-  'apps/desktop/src/main/ipc/bookmarks-handlers.ts',
-  'apps/desktop/src/main/ipc/graph-handlers.ts',
-  'apps/desktop/src/main/ipc/journal-handlers.ts',
-  'apps/desktop/src/main/ipc/notes-handlers.ts',
-  'apps/desktop/src/main/ipc/properties-handlers.ts',
-  'apps/desktop/src/main/ipc/reminder-handlers.ts',
-  'apps/desktop/src/main/ipc/saved-filters-handlers.ts',
-  'apps/desktop/src/main/ipc/search-handlers.ts',
-  'apps/desktop/src/main/ipc/settings-handlers.ts',
-  'apps/desktop/src/main/ipc/sync-handlers.ts',
-  'apps/desktop/src/main/ipc/tags-handlers.ts',
-  'apps/desktop/src/main/ipc/tasks-handlers.ts'
+const projectionsRoot = path.resolve(mainRoot, 'projections')
+const notesFeatureRoot = path.resolve(mainRoot, 'notes')
+const journalFeatureRoot = path.resolve(mainRoot, 'journal')
+const noteSyncPath = path.resolve(mainRoot, 'vault/note-sync')
+const notesStorePath = path.resolve(mainRoot, 'notes/store')
+const noteCrudPath = path.resolve(queriesRoot, 'notes/note-crud')
+const notePropertyQueriesPath = path.resolve(queriesRoot, 'notes/property-queries')
+const noteTagQueriesPath = path.resolve(queriesRoot, 'notes/tag-queries')
+const noteLinkQueriesPath = path.resolve(queriesRoot, 'notes/link-queries')
+const canonicalWriteFeatureRoots = [ipcRoot, notesFeatureRoot, journalFeatureRoot]
+const syncBoundaryExemptIpcFiles = new Set([
+  'apps/desktop/src/main/ipc/account-handlers.ts',
+  'apps/desktop/src/main/ipc/crypto-handlers.ts',
+  'apps/desktop/src/main/ipc/sync-handlers.ts'
 ])
 const dataOnlySchemaSpecifiers = new Map([
   ['@memry/db-schema/schema/tag-definitions', 'data-db schema import'],
@@ -179,9 +179,68 @@ function isGetDatabaseImport(statement, specifier, resolvedPath) {
   return databaseModuleTargets.some((targetPath) => matchesTarget(resolvedPath, targetPath))
 }
 
+function matchesAnyImportedSymbol(statement, symbols) {
+  return symbols.some((symbol) => new RegExp(`\\b${symbol}\\b`).test(statement))
+}
+
+function getCanonicalIndexWriteImportReason(statement, resolvedPath) {
+  if (!resolvedPath) {
+    return null
+  }
+
+  if (matchesTarget(resolvedPath, noteSyncPath)) {
+    return 'canonical index write import'
+  }
+
+  if (
+    matchesTarget(resolvedPath, notesStorePath) &&
+    matchesAnyImportedSymbol(statement, [
+      'updateNoteCache',
+      'insertPropertyDefinition',
+      'updatePropertyDefinition',
+      'deletePropertyDefinition'
+    ])
+  ) {
+    return 'canonical index write import'
+  }
+
+  if (
+    matchesTarget(resolvedPath, noteCrudPath) &&
+    matchesAnyImportedSymbol(statement, ['insertNoteCache', 'updateNoteCache', 'deleteNoteCache'])
+  ) {
+    return 'canonical index write import'
+  }
+
+  if (
+    matchesTarget(resolvedPath, notePropertyQueriesPath) &&
+    matchesAnyImportedSymbol(statement, [
+      'setNoteProperties',
+      'deleteNoteProperties',
+      'insertPropertyDefinition',
+      'updatePropertyDefinition',
+      'deletePropertyDefinition',
+      'ensurePropertyDefinition'
+    ])
+  ) {
+    return 'canonical index write import'
+  }
+
+  if (matchesTarget(resolvedPath, noteTagQueriesPath) && matchesAnyImportedSymbol(statement, ['setNoteTags'])) {
+    return 'canonical index write import'
+  }
+
+  if (
+    matchesTarget(resolvedPath, noteLinkQueriesPath) &&
+    matchesAnyImportedSymbol(statement, ['setNoteLinks', 'deleteLinksToNote'])
+  ) {
+    return 'canonical index write import'
+  }
+
+  return null
+}
+
 async function main() {
   const blockingViolations = new Set()
-  const allowlistedIpcViolations = new Set()
 
   const rendererFiles = await getFilesForRoot(rendererRoot)
   for (const filePath of rendererFiles) {
@@ -220,25 +279,60 @@ async function main() {
   )
   for (const filePath of ipcFiles) {
     const source = await fs.readFile(filePath, 'utf8')
+    const relativeFilePath = path.relative(repoRoot, filePath)
+    const syncBoundaryExempt = syncBoundaryExemptIpcFiles.has(relativeFilePath)
 
-    for (const { specifier } of scanImports(source)) {
+    for (const { statement, specifier } of scanImports(source)) {
       const resolvedPath = resolveImport(filePath, specifier)
       const isDirectQueryImport =
         specifier === '@main/database/queries' ||
         specifier.startsWith('@main/database/queries/') ||
         (resolvedPath ? isInside(resolvedPath, queriesRoot) : false)
 
-      if (!isDirectQueryImport) {
+      if (isDirectQueryImport) {
+        blockingViolations.add(formatViolation(filePath, specifier, 'direct IPC query import'))
         continue
       }
 
-      const relativeFilePath = path.relative(repoRoot, filePath)
-      const violation = formatViolation(filePath, specifier, 'direct IPC query import')
+      if (!syncBoundaryExempt && resolvedPath && isInside(resolvedPath, mainSyncRoot)) {
+        blockingViolations.add(formatViolation(filePath, specifier, 'feature IPC import of sync module'))
+        continue
+      }
 
-      if (ipcQueryAllowlist.has(relativeFilePath)) {
-        allowlistedIpcViolations.add(violation)
-      } else {
-        blockingViolations.add(violation)
+      if (
+        !syncBoundaryExempt &&
+        /\bpublishProjectionEvent\b/.test(statement) &&
+        resolvedPath &&
+        isInside(resolvedPath, projectionsRoot)
+      ) {
+        blockingViolations.add(
+          formatViolation(filePath, specifier, 'feature IPC import of projection publisher')
+        )
+        continue
+      }
+
+      if (resolvedPath && matchesTarget(resolvedPath, noteSyncPath)) {
+        blockingViolations.add(formatViolation(filePath, specifier, 'canonical write path import'))
+      }
+    }
+  }
+
+  const canonicalWriteFeatureFiles = [
+    ...new Set(
+      (
+        await Promise.all(canonicalWriteFeatureRoots.map((rootPath) => getFilesForRoot(rootPath)))
+      ).flat()
+    )
+  ].filter((filePath) => !matchesTarget(filePath, generatedIpcInvokeMapPath))
+
+  for (const filePath of canonicalWriteFeatureFiles) {
+    const source = await fs.readFile(filePath, 'utf8')
+
+    for (const { statement, specifier } of scanImports(source)) {
+      const resolvedPath = resolveImport(filePath, specifier)
+      const canonicalWriteReason = getCanonicalIndexWriteImportReason(statement, resolvedPath)
+      if (canonicalWriteReason) {
+        blockingViolations.add(formatViolation(filePath, specifier, canonicalWriteReason))
       }
     }
   }
@@ -268,28 +362,13 @@ async function main() {
   }
 
   if (blockingViolations.size === 0) {
-    if (allowlistedIpcViolations.size === 0) {
-      console.log('architecture boundary check passed')
-      return
-    }
-
-    console.log('architecture boundary check passed with allowlisted IPC query imports:')
-    for (const violation of [...allowlistedIpcViolations].sort()) {
-      console.log(`- ${violation}`)
-    }
+    console.log('architecture boundary check passed')
     return
   }
 
   console.error('architecture boundary check failed:')
   for (const violation of [...blockingViolations].sort()) {
     console.error(`- ${violation}`)
-  }
-
-  if (allowlistedIpcViolations.size > 0) {
-    console.error('allowlisted IPC query imports:')
-    for (const violation of [...allowlistedIpcViolations].sort()) {
-      console.error(`- ${violation}`)
-    }
   }
 
   process.exit(1)

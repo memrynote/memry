@@ -170,18 +170,14 @@ export const TasksPage = ({
   )
 
   const taskTabViewState = activeTab?.viewState ?? {}
-  const activeInternalTab =
-    ((taskTabViewState.activeInternalTab as TasksInternalTab | undefined) ??
-      (taskTabViewState.activeTab as TasksInternalTab | undefined) ??
-      'today') as TasksInternalTab
+  const activeInternalTab = ((taskTabViewState.activeInternalTab as TasksInternalTab | undefined) ??
+    (taskTabViewState.activeTab as TasksInternalTab | undefined) ??
+    'today') as TasksInternalTab
   const defaultProjectId = useMemo(
     () => resolveInitialViewProject(selectedType, taskPrefs.defaultProjectId, projects),
     [selectedType, taskPrefs.defaultProjectId, projects]
   )
-  const selectedProjectIdState = taskTabViewState.selectedProjectId as
-    | string
-    | null
-    | undefined
+  const selectedProjectIdState = taskTabViewState.selectedProjectId as string | null | undefined
   const selectedProjectId =
     selectedProjectIdState === undefined ? defaultProjectId : (selectedProjectIdState ?? null)
 
@@ -458,9 +454,12 @@ export const TasksPage = ({
     [detailTaskId, tasks]
   )
 
-  const handleTaskClick = useCallback((taskId: string) => {
-    setDetailTaskId(detailTaskId === taskId ? null : taskId)
-  }, [detailTaskId, setDetailTaskId])
+  const handleTaskClick = useCallback(
+    (taskId: string) => {
+      setDetailTaskId(detailTaskId === taskId ? null : taskId)
+    },
+    [detailTaskId, setDetailTaskId]
+  )
 
   const handleCloseDetail = useCallback(() => {
     setDetailTaskId(null)

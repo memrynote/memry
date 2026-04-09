@@ -20,7 +20,7 @@ export function NumberEditor({
 }: NumberEditorProps) {
   const inputRef = useRef<HTMLInputElement>(null)
   const [draftValue, setDraftValue] = useState<string | null>(null)
-  const inputValue = draftValue ?? (value?.toString() ?? '')
+  const inputValue = draftValue ?? value?.toString() ?? ''
 
   useEffect(() => {
     if (autoFocus && inputRef.current) {
@@ -81,8 +81,7 @@ export function NumberEditor({
       if (e.key === '.' && !inputValue.includes('.')) return
 
       // Allow minus sign (only at start when cursor is at position 0)
-      if (e.key === '-' && e.currentTarget.selectionStart === 0 && !inputValue.includes('-'))
-        return
+      if (e.key === '-' && e.currentTarget.selectionStart === 0 && !inputValue.includes('-')) return
 
       // Allow digits
       if (/^\d$/.test(e.key)) return

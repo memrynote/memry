@@ -23,23 +23,12 @@ import {
   createHandler,
   withErrorHandler
 } from './validate'
-import { getDatabase, getIndexDatabase } from '../database'
+import { requireDatabase, getIndexDatabase } from '../database'
 import * as remindersService from '../lib/reminders'
-import * as notesQueries from '@main/database/queries/notes'
+import { getNoteCacheById } from '../notes/store'
 import { z } from 'zod'
 
 const logger = createLogger('IPC:Reminder')
-
-/**
- * Helper to get data database, throwing a user-friendly error if not available.
- */
-function requireDatabase() {
-  try {
-    return getDatabase()
-  } catch {
-    throw new Error('No vault is open. Please open a vault first.')
-  }
-}
 
 /**
  * Helper to get index database for resolving note titles
@@ -67,7 +56,7 @@ function resolveReminderTarget(reminder: ReminderWithTarget): ReminderWithTarget
     case 'note':
     case 'highlight': {
       if (indexDb) {
-        const note = notesQueries.getNoteCacheById(indexDb, reminder.targetId)
+        const note = getNoteCacheById(indexDb, reminder.targetId)
         if (note) {
           targetTitle = note.title
           targetExists = true

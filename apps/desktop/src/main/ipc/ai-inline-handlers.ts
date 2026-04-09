@@ -4,8 +4,8 @@ import type { AIInlineSettings } from '@memry/contracts/ai-inline-channels'
 
 import { startChatServer, stopChatServer, getServerPort } from '../ai-inline/ai-chat-server'
 import { getDatabase } from '../database'
-import { getSetting, setSetting } from '@main/database/queries/settings'
 import { createLogger } from '../lib/logger'
+import { getSetting, setSetting } from '../settings/settings-store'
 import { withErrorHandler } from './validate'
 
 const logger = createLogger('IPC:AIInline')

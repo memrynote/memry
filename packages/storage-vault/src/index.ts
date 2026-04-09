@@ -1,1 +1,1 @@
-export * from './note-content-store'
+export * from './note-content-store.ts'

@@ -12,7 +12,7 @@ import path from 'path'
 import { rename, copyFile, unlink } from 'fs/promises'
 import { existsSync } from 'fs'
 import { createLogger } from '../lib/logger'
-import { getDatabase, type DrizzleDb } from '../database'
+import { getDatabase, requireDatabase, type DataDb } from '../database'
 import { createNote, getNoteById, updateNote, createFolder, getFolders } from '../vault/notes'
 import { getStatus, getConfig } from '../vault/index'
 import { inboxItems, inboxItemTags, filingHistory } from '@memry/db-schema/schema/inbox'
@@ -93,17 +93,6 @@ function emitInboxEvent(channel: string, data: unknown): void {
   BrowserWindow.getAllWindows().forEach((win) => {
     win.webContents.send(channel, data)
   })
-}
-
-/**
- * Get data database, throwing if not available
- */
-function requireDatabase(): DrizzleDb {
-  try {
-    return getDatabase()
-  } catch {
-    throw new Error('No vault is open. Please open a vault first.')
-  }
 }
 
 /**

@@ -1,6 +1,6 @@
 import { BrowserWindow } from 'electron'
 import { sql } from 'drizzle-orm'
-import type { DrizzleDb } from './client'
+import type { DataDb, IndexDb } from './client'
 import { SearchChannels } from '@memry/contracts/ipc-channels'
 import { createLogger } from '../lib/logger'
 import { rebuildProjections } from '../projections'
@@ -13,7 +13,7 @@ function broadcast(channel: string, data: unknown): void {
   })
 }
 
-function isTableCorrupt(db: DrizzleDb, tableName: string): boolean {
+function isTableCorrupt(db: DataDb | IndexDb, tableName: string): boolean {
   try {
     db.all(sql.raw(`SELECT * FROM ${tableName} WHERE ${tableName} MATCH 'test' LIMIT 1`))
     return false
@@ -22,7 +22,7 @@ function isTableCorrupt(db: DrizzleDb, tableName: string): boolean {
   }
 }
 
-export function detectCorruption(indexDb: DrizzleDb, dataDb: DrizzleDb): string[] {
+export function detectCorruption(indexDb: IndexDb, dataDb: DataDb): string[] {
   const corrupt: string[] = []
 
   if (isTableCorrupt(indexDb, 'fts_notes')) corrupt.push('fts_notes')
@@ -38,8 +38,8 @@ export function detectCorruption(indexDb: DrizzleDb, dataDb: DrizzleDb): string[
 }
 
 export async function rebuildAllIndexes(
-  indexDb: DrizzleDb,
-  dataDb: DrizzleDb
+  indexDb: IndexDb,
+  dataDb: DataDb
 ): Promise<{
   notes: number
   tasks: number

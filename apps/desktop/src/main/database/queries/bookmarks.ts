@@ -6,11 +6,8 @@
  */
 
 import { eq, and, desc, asc, sql, count } from 'drizzle-orm'
-import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3'
 import { bookmarks, type Bookmark, type NewBookmark } from '@memry/db-schema/schema/bookmarks'
-import * as schema from '@memry/db-schema/schema'
-
-type DrizzleDb = BetterSQLite3Database<typeof schema>
+import type { DataDb } from '../types'
 
 // ============================================================================
 // Bookmark CRUD
@@ -19,14 +16,14 @@ type DrizzleDb = BetterSQLite3Database<typeof schema>
 /**
  * Insert a new bookmark.
  */
-export function insertBookmark(db: DrizzleDb, bookmark: NewBookmark): Bookmark {
+export function insertBookmark(db: DataDb, bookmark: NewBookmark): Bookmark {
   return db.insert(bookmarks).values(bookmark).returning().get()
 }
 
 /**
  * Delete a bookmark by ID.
  */
-export function deleteBookmark(db: DrizzleDb, id: string): boolean {
+export function deleteBookmark(db: DataDb, id: string): boolean {
   const result = db.delete(bookmarks).where(eq(bookmarks.id, id)).run()
   return result.changes > 0
 }
@@ -34,7 +31,7 @@ export function deleteBookmark(db: DrizzleDb, id: string): boolean {
 /**
  * Delete a bookmark by item type and ID.
  */
-export function deleteBookmarkByItem(db: DrizzleDb, itemType: string, itemId: string): boolean {
+export function deleteBookmarkByItem(db: DataDb, itemType: string, itemId: string): boolean {
   const result = db
     .delete(bookmarks)
     .where(and(eq(bookmarks.itemType, itemType), eq(bookmarks.itemId, itemId)))
@@ -45,7 +42,7 @@ export function deleteBookmarkByItem(db: DrizzleDb, itemType: string, itemId: st
 /**
  * Get a bookmark by ID.
  */
-export function getBookmarkById(db: DrizzleDb, id: string): Bookmark | undefined {
+export function getBookmarkById(db: DataDb, id: string): Bookmark | undefined {
   return db.select().from(bookmarks).where(eq(bookmarks.id, id)).get()
 }
 
@@ -53,7 +50,7 @@ export function getBookmarkById(db: DrizzleDb, id: string): Bookmark | undefined
  * Get a bookmark by item type and ID.
  */
 export function getBookmarkByItem(
-  db: DrizzleDb,
+  db: DataDb,
   itemType: string,
   itemId: string
 ): Bookmark | undefined {
@@ -67,7 +64,7 @@ export function getBookmarkByItem(
 /**
  * Check if an item is bookmarked.
  */
-export function isBookmarked(db: DrizzleDb, itemType: string, itemId: string): boolean {
+export function isBookmarked(db: DataDb, itemType: string, itemId: string): boolean {
   const result = db
     .select({ id: bookmarks.id })
     .from(bookmarks)
@@ -79,7 +76,7 @@ export function isBookmarked(db: DrizzleDb, itemType: string, itemId: string): b
 /**
  * Check if a bookmark exists by ID.
  */
-export function bookmarkExists(db: DrizzleDb, id: string): boolean {
+export function bookmarkExists(db: DataDb, id: string): boolean {
   const result = db.select({ id: bookmarks.id }).from(bookmarks).where(eq(bookmarks.id, id)).get()
   return result !== undefined
 }
@@ -104,7 +101,7 @@ export interface ListBookmarksOptions {
 /**
  * List bookmarks with optional filters.
  */
-export function listBookmarks(db: DrizzleDb, options: ListBookmarksOptions = {}): Bookmark[] {
+export function listBookmarks(db: DataDb, options: ListBookmarksOptions = {}): Bookmark[] {
   const { itemType, sortBy = 'position', sortOrder = 'asc', limit = 100, offset = 0 } = options
 
   const orderFn = sortOrder === 'asc' ? asc : desc
@@ -122,7 +119,7 @@ export function listBookmarks(db: DrizzleDb, options: ListBookmarksOptions = {})
 /**
  * Count bookmarks with optional filter.
  */
-export function countBookmarks(db: DrizzleDb, itemType?: string): number {
+export function countBookmarks(db: DataDb, itemType?: string): number {
   let query = db.select({ count: count() }).from(bookmarks)
 
   if (itemType) {
@@ -136,7 +133,7 @@ export function countBookmarks(db: DrizzleDb, itemType?: string): number {
 /**
  * List bookmarks by item type.
  */
-export function listBookmarksByType(db: DrizzleDb, itemType: string): Bookmark[] {
+export function listBookmarksByType(db: DataDb, itemType: string): Bookmark[] {
   return db
     .select()
     .from(bookmarks)
@@ -148,7 +145,7 @@ export function listBookmarksByType(db: DrizzleDb, itemType: string): Bookmark[]
 /**
  * Get all unique item types with counts.
  */
-export function getBookmarkTypeCounts(db: DrizzleDb): { itemType: string; count: number }[] {
+export function getBookmarkTypeCounts(db: DataDb): { itemType: string; count: number }[] {
   return db
     .select({
       itemType: bookmarks.itemType,
@@ -167,7 +164,7 @@ export function getBookmarkTypeCounts(db: DrizzleDb): { itemType: string; count:
 /**
  * Get the next available position for a new bookmark.
  */
-export function getNextBookmarkPosition(db: DrizzleDb): number {
+export function getNextBookmarkPosition(db: DataDb): number {
   const result = db
     .select({ maxPosition: sql<number>`max(${bookmarks.position})` })
     .from(bookmarks)
@@ -179,7 +176,7 @@ export function getNextBookmarkPosition(db: DrizzleDb): number {
 /**
  * Update bookmark position.
  */
-export function updateBookmarkPosition(db: DrizzleDb, id: string, position: number): boolean {
+export function updateBookmarkPosition(db: DataDb, id: string, position: number): boolean {
   const result = db.update(bookmarks).set({ position }).where(eq(bookmarks.id, id)).run()
   return result.changes > 0
 }
@@ -187,10 +184,12 @@ export function updateBookmarkPosition(db: DrizzleDb, id: string, position: numb
 /**
  * Reorder bookmarks by updating their positions.
  */
-export function reorderBookmarks(db: DrizzleDb, bookmarkIds: string[]): void {
-  for (let i = 0; i < bookmarkIds.length; i++) {
-    db.update(bookmarks).set({ position: i }).where(eq(bookmarks.id, bookmarkIds[i])).run()
-  }
+export function reorderBookmarks(db: DataDb, bookmarkIds: string[]): void {
+  db.transaction((tx) => {
+    for (let i = 0; i < bookmarkIds.length; i++) {
+      tx.update(bookmarks).set({ position: i }).where(eq(bookmarks.id, bookmarkIds[i])).run()
+    }
+  })
 }
 
 // ============================================================================
@@ -202,7 +201,7 @@ export function reorderBookmarks(db: DrizzleDb, bookmarkIds: string[]): void {
  * Returns the number of successfully created bookmarks (duplicates are skipped).
  */
 export function bulkCreateBookmarks(
-  db: DrizzleDb,
+  db: DataDb,
   items: Array<{ itemType: string; itemId: string }>,
   generateId: () => string
 ): number {
@@ -238,7 +237,7 @@ export function bulkCreateBookmarks(
 /**
  * Bulk delete bookmarks by IDs.
  */
-export function bulkDeleteBookmarks(db: DrizzleDb, ids: string[]): number {
+export function bulkDeleteBookmarks(db: DataDb, ids: string[]): number {
   if (ids.length === 0) return 0
 
   const result = db
@@ -252,7 +251,7 @@ export function bulkDeleteBookmarks(db: DrizzleDb, ids: string[]): number {
 /**
  * Delete all bookmarks for a specific item type.
  */
-export function deleteBookmarksByType(db: DrizzleDb, itemType: string): number {
+export function deleteBookmarksByType(db: DataDb, itemType: string): number {
   const result = db.delete(bookmarks).where(eq(bookmarks.itemType, itemType)).run()
   return result.changes
 }
@@ -267,7 +266,7 @@ export function deleteBookmarksByType(db: DrizzleDb, itemType: string): number {
  * @returns Number of orphaned bookmarks deleted
  */
 export function deleteOrphanedBookmarks(
-  db: DrizzleDb,
+  db: DataDb,
   itemType: string,
   existingIds: Set<string>
 ): number {
@@ -290,7 +289,7 @@ export function deleteOrphanedBookmarks(
  * @returns Object with isBookmarked status and the bookmark if created
  */
 export function toggleBookmark(
-  db: DrizzleDb,
+  db: DataDb,
   itemType: string,
   itemId: string,
   generateId: () => string

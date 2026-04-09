@@ -1,6 +1,6 @@
 import { sqliteTable, text, primaryKey, index } from 'drizzle-orm/sqlite-core'
 import { sql } from 'drizzle-orm'
-import { tasks } from './tasks'
+import { tasks } from './tasks.ts'
 
 export const taskNotes = sqliteTable(
   'task_notes',

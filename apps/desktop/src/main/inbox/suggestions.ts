@@ -10,7 +10,7 @@
 
 import { BrowserWindow } from 'electron'
 import { createLogger } from '../lib/logger'
-import { getDatabase, getIndexDatabase, getRawIndexDatabase } from '../database'
+import { getDatabase, requireDatabase, getIndexDatabase, getRawIndexDatabase } from '../database'
 import { inboxItems, filingHistory, suggestionFeedback } from '@memry/db-schema/schema/inbox'
 import { noteCache } from '@memry/db-schema/schema/notes-cache'
 import { eq, desc, sql } from 'drizzle-orm'
@@ -75,17 +75,6 @@ const MIN_CONTENT_LENGTH = 10
 // ============================================================================
 // Helper Functions
 // ============================================================================
-
-/**
- * Get data database, throwing if not available
- */
-function requireDatabase() {
-  try {
-    return getDatabase()
-  } catch {
-    throw new Error('No vault is open. Please open a vault first.')
-  }
-}
 
 /**
  * Get index database, throwing if not available

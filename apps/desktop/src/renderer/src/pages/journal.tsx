@@ -172,7 +172,7 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
   const editorState = useMemo(
     () => ({
       key: `${selectedDate}-${editorLoadState}-${externalUpdateCount}-${editorRevision}`,
-      content: editorLoadState === 'loaded' ? entry?.content ?? '' : ''
+      content: editorLoadState === 'loaded' ? (entry?.content ?? '') : ''
     }),
     [selectedDate, editorLoadState, externalUpdateCount, editorRevision, entry?.content]
   )
@@ -209,7 +209,8 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
   const currentYear = dateParts.year
   const { data: heatmapData } = useJournalHeatmap(currentYear)
 
-  const viewMonth = currentViewState.type === 'month' ? currentViewState.month : dateParts.monthIndex
+  const viewMonth =
+    currentViewState.type === 'month' ? currentViewState.month : dateParts.monthIndex
   const viewYear =
     currentViewState.type === 'month' || currentViewState.type === 'year'
       ? currentViewState.year
