@@ -6,8 +6,12 @@ import type {
   ItemRecoveredEvent,
   ItemCorruptEvent
 } from '@memry/contracts/ipc-events'
-import type { ChangesResponse, PullItemResponse, SyncItemType } from '@memry/contracts/sync-api'
-import { PullResponseSchema } from '@memry/contracts/sync-api'
+import type {
+  RecordChangesResponse,
+  RecordPullItemResponse,
+  SyncItemType
+} from '@memry/contracts/sync-api'
+import { RecordPullResponseSchema } from '@memry/contracts/sync-api'
 import { secureCleanup } from '../../crypto/index'
 import { decryptPullBatch } from '../sync-crypto-batch'
 import { getRemoteSyncAdapter } from '../item-handlers'
@@ -197,11 +201,11 @@ export class PullCoordinator {
   private async fetchChangesPage(
     token: string,
     pageCursor: string | null | undefined
-  ): ReturnType<typeof withRetry<ChangesResponse>> {
+  ): ReturnType<typeof withRetry<RecordChangesResponse>> {
     return withRetry(
       () => {
         const cp = pageCursor ? `&cursor=${pageCursor}` : ''
-        return getFromServer<ChangesResponse>(
+        return getFromServer<RecordChangesResponse>(
           `/sync/changes?limit=${this.ctx.options.pullPageLimit}${cp}`,
           token
         )
@@ -214,7 +218,7 @@ export class PullCoordinator {
   }
 
   private async pullChangesPage(
-    changes: ChangesResponse,
+    changes: RecordChangesResponse,
     runState: PullRunState
   ): Promise<boolean> {
     const itemIds = Array.from(
@@ -246,7 +250,7 @@ export class PullCoordinator {
     runState.crdtNoteIds.length = 0
   }
 
-  private emitInitialSyncProgress(changes: ChangesResponse, pulledCount: number): void {
+  private emitInitialSyncProgress(changes: RecordChangesResponse, pulledCount: number): void {
     if (!this.ctx.fullSyncActive) return
 
     const estimatedTotal = changes.hasMore
@@ -326,11 +330,11 @@ export class PullCoordinator {
     crdtNoteIds: string[]
   ): Promise<{ applied: number; conflicts: number; allCryptoFailed: boolean }> {
     const pullResult = await withRetry(
-      () => postToServer<{ items: PullItemResponse[] }>('/sync/pull', { itemIds }, token),
+      () => postToServer<{ items: RecordPullItemResponse[] }>('/sync/pull', { itemIds }, token),
       { signal: this.ctx.abortController!.signal, isOnline: () => this.ctx.deps.network.online }
     )
 
-    const parsed = PullResponseSchema.safeParse(pullResult.value)
+    const parsed = RecordPullResponseSchema.safeParse(pullResult.value)
     if (!parsed.success) {
       log.error('Invalid pull response from server', { error: parsed.error.message })
       return { applied: 0, conflicts: 0, allCryptoFailed: false }

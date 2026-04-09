@@ -65,6 +65,16 @@ const summarizeItemTypes = (itemTypes: SyncItemType[]): Partial<Record<SyncDomai
   return summary
 }
 
+const summarizeDomainTypes = (
+  itemTypes: SyncItemType[]
+): Partial<Record<SyncItemType, number>> => {
+  const summary: Partial<Record<SyncItemType, number>> = {}
+  for (const itemType of itemTypes) {
+    summary[itemType] = (summary[itemType] ?? 0) + 1
+  }
+  return summary
+}
+
 export const logSyncValidationFailure = (params: {
   transport: SyncTransport
   endpoint: string
@@ -91,6 +101,19 @@ export const logRecordPushBatch = (params: {
       }
     >
   > = {}
+  const domainTypes: Partial<
+    Record<
+      SyncItemType,
+      {
+        accepted: number
+        rejected: number
+        replayRejected: number
+        conflictRejected: number
+        quotaRejected: number
+        otherRejected: number
+      }
+    >
+  > = {}
 
   let accepted = 0
   let rejected = 0
@@ -105,29 +128,44 @@ export const logRecordPushBatch = (params: {
       quotaRejected: 0,
       otherRejected: 0
     }
+    const itemTypeEntry = domainTypes[outcome.type] ?? {
+      accepted: 0,
+      rejected: 0,
+      replayRejected: 0,
+      conflictRejected: 0,
+      quotaRejected: 0,
+      otherRejected: 0
+    }
 
     if (outcome.accepted) {
       entry.accepted += 1
+      itemTypeEntry.accepted += 1
       accepted += 1
     } else {
       entry.rejected += 1
+      itemTypeEntry.rejected += 1
       rejected += 1
       switch (outcome.reason) {
         case 'SYNC_REPLAY_DETECTED':
           entry.replayRejected += 1
+          itemTypeEntry.replayRejected += 1
           break
         case 'SYNC_VERSION_CONFLICT':
           entry.conflictRejected += 1
+          itemTypeEntry.conflictRejected += 1
           break
         case 'STORAGE_QUOTA_EXCEEDED':
           entry.quotaRejected += 1
+          itemTypeEntry.quotaRejected += 1
           break
         default:
           entry.otherRejected += 1
+          itemTypeEntry.otherRejected += 1
       }
     }
 
     domains[domain] = entry
+    domainTypes[outcome.type] = itemTypeEntry
   }
 
   logger.info('Record sync push processed', {
@@ -138,6 +176,7 @@ export const logRecordPushBatch = (params: {
     rejected,
     totalMutations: params.outcomes.length,
     domains,
+    domainTypes,
     latencyMs: params.latencyMs,
     latencyBucket: toLatencyBucket(params.latencyMs)
   })
@@ -157,6 +196,7 @@ export const logRecordQueryBatch = (params: {
     itemCount: params.itemTypes.length,
     deletedCount: params.deletedCount ?? 0,
     domains: summarizeItemTypes(params.itemTypes),
+    domainTypes: summarizeDomainTypes(params.itemTypes),
     latencyMs: params.latencyMs,
     latencyBucket: toLatencyBucket(params.latencyMs)
   })
@@ -183,6 +223,7 @@ export const logCrdtTraffic = (params: {
   logger.info('CRDT sync activity', {
     transport: 'crdt',
     domain: 'notes',
+    domainType: 'note',
     ...params,
     latencyBucket: toLatencyBucket(params.latencyMs)
   })

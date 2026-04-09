@@ -1,6 +1,6 @@
 import { createLogger } from '../../lib/logger'
-import type { PullItemResponse } from '@memry/contracts/sync-api'
-import { PullResponseSchema } from '@memry/contracts/sync-api'
+import type { RecordPullItemResponse } from '@memry/contracts/sync-api'
+import { RecordPullResponseSchema } from '@memry/contracts/sync-api'
 import { decryptPullBatch } from '../sync-crypto-batch'
 import { withRetry } from '../retry'
 import { postToServer } from '../http-client'
@@ -79,14 +79,18 @@ export class CorruptItemTracker {
     try {
       const pullResult = await withRetry(
         () =>
-          postToServer<{ items: PullItemResponse[] }>('/sync/pull', { itemIds: eligible }, token),
+          postToServer<{ items: RecordPullItemResponse[] }>(
+            '/sync/pull',
+            { itemIds: eligible },
+            token
+          ),
         {
           signal: this.ctx.abortController?.signal ?? undefined,
           isOnline: () => this.ctx.deps.network.online
         }
       )
 
-      const parsed = PullResponseSchema.safeParse(pullResult.value)
+      const parsed = RecordPullResponseSchema.safeParse(pullResult.value)
       if (!parsed.success) {
         log.error('Re-fetch: invalid response', { error: parsed.error.message })
         for (const id of eligible) this.markFailed(id)

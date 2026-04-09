@@ -319,9 +319,9 @@ Progress note (2026-04-09):
 
 **Checklist:**
 
-- [ ] Align payload validation with the final adapter contracts
-- [ ] Align conflict semantics with the final client-side domain model
-- [ ] Ensure record-sync and CRDT metrics remain separate by transport and domain type
+- [x] Align payload validation with the final adapter contracts
+- [x] Align conflict semantics with the final client-side domain model
+- [x] Ensure record-sync and CRDT metrics remain separate by transport and domain type
 - [ ] Remove legacy route shapes only after all clients use the final split
 
 **Key files:**
@@ -333,8 +333,8 @@ Progress note (2026-04-09):
 
 **Gate:**
 
-- [ ] Record-sync and CRDT are separate in validation, metrics, and conflict handling end to end
-- [ ] Client and server contracts agree domain by domain
+- [x] Record-sync and CRDT are separate in validation, metrics, and conflict handling end to end
+- [x] Client and server contracts agree domain by domain
 
 ## Cross-Cutting Cleanup
 
