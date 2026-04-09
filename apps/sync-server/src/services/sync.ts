@@ -1,14 +1,18 @@
 import { CRYPTO_VERSION, ED25519_PARAMS, XCHACHA20_PARAMS } from '@memry/contracts/crypto'
 import type {
-  ChangesResponse,
   EncryptedItemPayload,
-  PullItemResponse,
   PushItemInput,
   PushResponse,
-  SyncItemRef,
-  SyncManifest,
   SyncStatus,
-  VectorClock
+  VectorClock,
+  RecordChangesResponse,
+  RecordPullItemResponse,
+  RecordSyncItemType,
+  RecordSyncManifest
+} from '@memry/contracts/sync-api'
+import {
+  RECORD_CLOCK_REQUIRED_ITEM_TYPES,
+  RECORD_SYNC_ITEM_TYPES
 } from '@memry/contracts/sync-api'
 import { encodeSignaturePayload } from '../lib/cbor'
 import { safeBase64Decode, verifyEd25519 } from '../lib/encoding'
@@ -22,6 +26,9 @@ import { getUserById } from './user'
 const MAX_ENCRYPTED_DATA_BYTES = 5 * 1024 * 1024
 const DEFAULT_CHANGES_LIMIT = 100
 const MAX_CHANGES_LIMIT = 500
+const RECORD_SYNC_ITEM_TYPE_SET = new Set<RecordSyncItemType>(RECORD_SYNC_ITEM_TYPES)
+const RECORD_CLOCK_REQUIRED_TYPE_SET = new Set<RecordSyncItemType>(RECORD_CLOCK_REQUIRED_ITEM_TYPES)
+const RECORD_SYNC_ITEM_TYPE_PLACEHOLDERS = RECORD_SYNC_ITEM_TYPES.map(() => '?').join(', ')
 
 interface ExistingSyncItemRow {
   version: number
@@ -161,6 +168,26 @@ export const detectReplay = (incoming?: VectorClock, existing?: VectorClock): bo
   return true
 }
 
+const isSupportedRecordSyncItemType = (type: string): type is RecordSyncItemType =>
+  RECORD_SYNC_ITEM_TYPE_SET.has(type as RecordSyncItemType)
+
+const requiresRecordClock = (type: RecordSyncItemType): boolean =>
+  RECORD_CLOCK_REQUIRED_TYPE_SET.has(type)
+
+export const shouldRejectRecordReplay = (
+  itemType: PushItemInput['type'],
+  incoming?: VectorClock,
+  existing?: VectorClock
+): boolean => {
+  if (!isSupportedRecordSyncItemType(itemType)) {
+    return false
+  }
+  if (!requiresRecordClock(itemType)) {
+    return false
+  }
+  return detectReplay(incoming, existing)
+}
+
 export const computeContentHash = async (payload: {
   dataNonce: string
   encryptedData: string
@@ -226,7 +253,11 @@ const toPullItemResponse = async (
   storage: R2Bucket,
   userId: string,
   row: StoredSyncItemPullRow
-): Promise<PullItemResponse> => {
+): Promise<RecordPullItemResponse | null> => {
+  if (!isSupportedRecordSyncItemType(row.item_type)) {
+    return null
+  }
+
   const payload = await readEncryptedPayload(storage, row.blob_key, userId, row.item_id)
 
   if (!row.signer_device_id || !row.signature) {
@@ -241,14 +272,13 @@ const toPullItemResponse = async (
 
   return {
     id: row.item_id,
-    type: row.item_type as PullItemResponse['type'],
-    operation: row.operation as PullItemResponse['operation'],
+    type: row.item_type,
+    operation: row.operation as RecordPullItemResponse['operation'],
     cryptoVersion: row.crypto_version,
     signature: row.signature,
     signerDeviceId: row.signer_device_id,
     ...(row.deleted_at ? { deletedAt: row.deleted_at } : {}),
     ...(parsedClock ? { clock: parsedClock } : {}),
-    ...(row.state_vector ? { stateVector: row.state_vector } : {}),
     blob: payload
   }
 }
@@ -305,6 +335,16 @@ export const processPushItem = async (
   item: PushItemInput
 ): Promise<{ accepted: boolean; reason?: string; serverCursor?: number }> => {
   try {
+    if (!isSupportedRecordSyncItemType(item.type)) {
+      return { accepted: false, reason: ErrorCodes.VALIDATION_ERROR }
+    }
+    if (requiresRecordClock(item.type) && item.clock === undefined) {
+      return { accepted: false, reason: ErrorCodes.VALIDATION_ERROR }
+    }
+    if (item.stateVector !== undefined) {
+      return { accepted: false, reason: ErrorCodes.VALIDATION_ERROR }
+    }
+
     validateEncryptedFields(item)
     await verifyItemSignature(db, item, userId)
 
@@ -318,7 +358,7 @@ export const processPushItem = async (
         typeof existing.clock === 'string'
           ? (JSON.parse(existing.clock) as VectorClock)
           : (existing.clock ?? undefined)
-      if (detectReplay(item.clock, existingClock)) {
+      if (shouldRejectRecordReplay(item.type, item.clock, existingClock)) {
         return { accepted: false, reason: 'SYNC_REPLAY_DETECTED' }
       }
     }
@@ -464,15 +504,15 @@ export const getSyncStatus = async (
   }
 }
 
-export const getManifest = async (db: D1Database, userId: string): Promise<SyncManifest> => {
+export const getManifest = async (db: D1Database, userId: string): Promise<RecordSyncManifest> => {
   const rows = await db
     .prepare(
       `SELECT item_id, item_type, version, updated_at, size_bytes, state_vector
        FROM sync_items
-       WHERE user_id = ? AND deleted_at IS NULL
+       WHERE user_id = ? AND deleted_at IS NULL AND item_type IN (${RECORD_SYNC_ITEM_TYPE_PLACEHOLDERS})
        ORDER BY server_cursor ASC`
     )
-    .bind(userId)
+    .bind(userId, ...RECORD_SYNC_ITEM_TYPES)
     .all<{
       item_id: string
       item_type: string
@@ -482,14 +522,15 @@ export const getManifest = async (db: D1Database, userId: string): Promise<SyncM
       state_vector: string | null
     }>()
 
-  const items: SyncItemRef[] = (rows.results ?? []).map((row) => ({
-    id: row.item_id,
-    type: row.item_type as SyncItemRef['type'],
-    version: row.version,
-    modifiedAt: row.updated_at,
-    size: row.size_bytes,
-    ...(row.state_vector ? { stateVector: row.state_vector } : {})
-  }))
+  const items = (rows.results ?? [])
+    .filter((row) => isSupportedRecordSyncItemType(row.item_type))
+    .map((row) => ({
+      id: row.item_id,
+      type: row.item_type as RecordSyncItemType,
+      version: row.version,
+      modifiedAt: row.updated_at,
+      size: row.size_bytes
+    }))
 
   return { items, serverTime: Math.floor(Date.now() / 1000) }
 }
@@ -499,18 +540,18 @@ export const getChanges = async (
   userId: string,
   cursor: number,
   limit?: number
-): Promise<ChangesResponse> => {
+): Promise<RecordChangesResponse> => {
   const effectiveLimit = Math.min(limit ?? DEFAULT_CHANGES_LIMIT, MAX_CHANGES_LIMIT)
 
   const rows = await db
     .prepare(
       `SELECT item_id, item_type, version, updated_at, size_bytes, state_vector, server_cursor, deleted_at
        FROM sync_items
-       WHERE user_id = ? AND server_cursor > ?
+       WHERE user_id = ? AND server_cursor > ? AND item_type IN (${RECORD_SYNC_ITEM_TYPE_PLACEHOLDERS})
        ORDER BY server_cursor ASC
        LIMIT ?`
     )
-    .bind(userId, cursor, effectiveLimit + 1)
+    .bind(userId, cursor, ...RECORD_SYNC_ITEM_TYPES, effectiveLimit + 1)
     .all<{
       item_id: string
       item_type: string
@@ -526,20 +567,22 @@ export const getChanges = async (
   const hasMore = allRows.length > effectiveLimit
   const pageRows = hasMore ? allRows.slice(0, effectiveLimit) : allRows
 
-  const items: SyncItemRef[] = []
+  const items: RecordChangesResponse['items'] = []
   const deleted: string[] = []
 
   for (const row of pageRows) {
+    if (!isSupportedRecordSyncItemType(row.item_type)) {
+      continue
+    }
     if (row.deleted_at) {
       deleted.push(row.item_id)
     } else {
       items.push({
         id: row.item_id,
-        type: row.item_type as SyncItemRef['type'],
+        type: row.item_type,
         version: row.version,
         modifiedAt: row.updated_at,
-        size: row.size_bytes,
-        ...(row.state_vector ? { stateVector: row.state_vector } : {})
+        size: row.size_bytes
       })
     }
   }
@@ -557,12 +600,12 @@ export const pullItems = async (
   storage: R2Bucket,
   userId: string,
   itemIds: string[]
-): Promise<PullItemResponse[]> => {
+): Promise<RecordPullItemResponse[]> => {
   if (itemIds.length === 0) {
     return []
   }
 
-  const BATCH_SIZE = D1_MAX_BIND_PARAMS - 1
+  const BATCH_SIZE = D1_MAX_BIND_PARAMS - 1 - RECORD_SYNC_ITEM_TYPES.length
 
   const allDbRows: StoredSyncItemPullRow[] = []
 
@@ -574,20 +617,24 @@ export const pullItems = async (
         `SELECT item_id, item_type, blob_key, crypto_version, operation, signer_device_id, signature,
                 state_vector, clock, deleted_at, server_cursor
          FROM sync_items
-         WHERE user_id = ? AND item_id IN (${placeholders})
+         WHERE user_id = ? AND item_type IN (${RECORD_SYNC_ITEM_TYPE_PLACEHOLDERS})
+           AND item_id IN (${placeholders})
          ORDER BY server_cursor ASC`
       )
-      .bind(userId, ...batch)
+      .bind(userId, ...RECORD_SYNC_ITEM_TYPES, ...batch)
       .all<StoredSyncItemPullRow>()
     allDbRows.push(...(rows.results ?? []))
   }
 
   allDbRows.sort((a, b) => a.server_cursor - b.server_cursor)
 
-  const results: PullItemResponse[] = []
+  const results: RecordPullItemResponse[] = []
 
   for (const row of allDbRows) {
-    results.push(await toPullItemResponse(storage, userId, row))
+    const item = await toPullItemResponse(storage, userId, row)
+    if (item) {
+      results.push(item)
+    }
   }
 
   return results
@@ -600,7 +647,7 @@ export const getItem = async (
   itemId: string
 ): Promise<{
   itemId: string
-  type: string
+  type: RecordSyncItemType
   version: number
   payload: EncryptedItemPayload
   serverCursor: number
@@ -609,9 +656,10 @@ export const getItem = async (
     .prepare(
       `SELECT item_id, item_type, version, blob_key, server_cursor
        FROM sync_items
-       WHERE user_id = ? AND item_id = ? AND deleted_at IS NULL`
+       WHERE user_id = ? AND item_type IN (${RECORD_SYNC_ITEM_TYPE_PLACEHOLDERS})
+         AND item_id = ? AND deleted_at IS NULL`
     )
-    .bind(userId, itemId)
+    .bind(userId, ...RECORD_SYNC_ITEM_TYPES, itemId)
     .first<{
       item_id: string
       item_type: string
@@ -628,7 +676,7 @@ export const getItem = async (
 
   return {
     itemId: row.item_id,
-    type: row.item_type,
+    type: row.item_type as RecordSyncItemType,
     version: row.version,
     payload,
     serverCursor: row.server_cursor
