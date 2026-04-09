@@ -206,8 +206,18 @@ describe('inbox-handlers', () => {
       insert: vi.fn(() => chainable),
       select: vi.fn(() => chainable),
       update: vi.fn(() => chainable),
-      delete: vi.fn(() => chainable)
-    }
+      delete: vi.fn(() => chainable),
+      transaction: vi.fn((fn: (tx: typeof chainable & { insert: Mock; select: Mock; update: Mock; delete: Mock }) => unknown) => {
+        const tx = {
+          ...chainable,
+          insert: vi.fn(() => chainable),
+          select: vi.fn(() => chainable),
+          update: vi.fn(() => chainable),
+          delete: vi.fn(() => chainable)
+        }
+        return fn(tx)
+      })
+    } as typeof mockDb & { transaction: Mock }
     ;(getDatabase as Mock).mockReturnValue(mockDb)
     ;(requireDatabase as Mock).mockReturnValue(mockDb)
   })
@@ -254,7 +264,7 @@ describe('inbox-handlers', () => {
 
       expect(result.success).toBe(true)
       expect(result.item).toBeDefined()
-      expect(mockDb.insert).toHaveBeenCalled()
+      expect((mockDb as Record<string, Mock>).transaction).toHaveBeenCalled()
     })
 
     it('should capture text with tags', async () => {
@@ -274,8 +284,7 @@ describe('inbox-handlers', () => {
         tags: ['important', 'urgent']
       })
 
-      // Tags should be inserted
-      expect(mockDb.insert).toHaveBeenCalled()
+      expect((mockDb as Record<string, Mock>).transaction).toHaveBeenCalled()
     })
 
     it('should auto-generate title from content', async () => {
