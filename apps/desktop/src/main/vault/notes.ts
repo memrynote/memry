@@ -32,8 +32,6 @@ import {
   generateUniquePath
 } from './file-ops'
 import {
-  insertNoteCache,
-  deleteNoteCache,
   getNoteCacheById,
   getNoteCacheByPath,
   listNotesFromCache,
@@ -73,9 +71,7 @@ import {
   isBinaryFileType,
   type FileType
 } from '@memry/shared/file-types'
-import { deleteCanonicalNote, saveCanonicalNote } from '@memry/domain-notes'
 import { updateNoteMetadata } from '@memry/storage-data'
-import { flushProjectionEvents } from '../projections'
 
 const logger = createLogger('Notes')
 
@@ -335,7 +331,6 @@ export async function createNote(input: NoteCreateInput): Promise<Note> {
     },
     { isNew: true }
   )
-  await flushProjectionEvents()
 
   ensureTagDefinitions(dataDb, mergedTags)
 
@@ -394,50 +389,40 @@ export async function getNoteById(id: string): Promise<Note | null> {
 
   // Parse content
   const parsed = parseNote(fileContent, cached.path)
+  let responseTags = getNoteTags(db, id)
+  let responseProperties = getNotePropertiesAsRecord(db, id)
+  let responseWordCount = cached.wordCount ?? 0
+  let responseEmoji = cached.emoji ?? (parsed.frontmatter as { emoji?: string }).emoji ?? null
 
   // Check for duplicate ID (T046)
   const duplicate = findDuplicateId(db, parsed.frontmatter.id, cached.path)
   if (duplicate) {
-    const dataDb = getDatabase()
     // Generate new ID and update file
     const newId = generateNoteId()
     parsed.frontmatter.id = newId
     parsed.frontmatter.title = path.basename(cached.path, path.extname(cached.path))
     const newContent = serializeNote(parsed.frontmatter, parsed.content)
     await atomicWrite(absolutePath, newContent)
-
-    // Update cache with new ID
-    deleteNoteCache(db, id)
-    deleteCanonicalNote(dataDb, id)
-    insertNoteCache(db, {
-      id: newId,
-      path: cached.path,
-      title: parsed.frontmatter.title ?? path.basename(cached.path, '.md'),
-      contentHash: generateContentHash(newContent),
-      wordCount: calculateWordCount(parsed.content),
-      snippet: createSnippet(parsed.content),
-      createdAt: parsed.frontmatter.created,
-      modifiedAt: parsed.frontmatter.modified
-    })
-    saveCanonicalNote(dataDb, {
-      id: newId,
-      path: cached.path,
-      title: parsed.frontmatter.title ?? path.basename(cached.path, '.md'),
-      emoji: (parsed.frontmatter as { emoji?: string | null }).emoji ?? null,
-      createdAt: parsed.frontmatter.created,
-      modifiedAt: parsed.frontmatter.modified,
-      properties: (parsed.frontmatter.properties as Record<string, unknown> | undefined) ?? {}
-    })
+    deleteNoteFromCache(db, id)
+    const syncResult = syncNoteToCache(
+      db,
+      {
+        id: newId,
+        path: cached.path,
+        fileContent: newContent,
+        frontmatter: parsed.frontmatter,
+        parsedContent: parsed.content
+      },
+      { isNew: true }
+    )
 
     // Update ID for response
     id = newId
+    responseTags = syncResult.tags
+    responseProperties = syncResult.properties
+    responseWordCount = syncResult.wordCount
+    responseEmoji = syncResult.emoji
   }
-
-  // Get tags from cache
-  const tags = getNoteTags(db, id)
-
-  // T013: Get properties from cache
-  const properties = getNotePropertiesAsRecord(db, id)
 
   return {
     id,
@@ -447,11 +432,11 @@ export async function getNoteById(id: string): Promise<Note | null> {
     frontmatter: parsed.frontmatter,
     created: new Date(parsed.frontmatter.created),
     modified: new Date(parsed.frontmatter.modified),
-    tags,
+    tags: responseTags,
     aliases: parsed.frontmatter.aliases ?? [],
-    wordCount: cached.wordCount ?? 0,
-    properties, // T013: Include properties
-    emoji: cached.emoji ?? (parsed.frontmatter as { emoji?: string }).emoji ?? null // T028: Include emoji from cache or frontmatter
+    wordCount: responseWordCount,
+    properties: responseProperties, // T013: Include properties
+    emoji: responseEmoji // T028: Include emoji from cache or frontmatter
   }
 }
 
@@ -481,7 +466,6 @@ export async function getFileById(id: string): Promise<FileMetadata | null> {
   } catch {
     // File was deleted externally, remove from cache
     deleteNoteFromCache(db, id)
-    await flushProjectionEvents()
     return null
   }
 
@@ -532,7 +516,6 @@ export async function getNoteByPath(notePath: string): Promise<Note | null> {
     },
     { isNew: true }
   )
-  await flushProjectionEvents()
 
   return {
     id: parsed.frontmatter.id,
@@ -654,7 +637,6 @@ export async function updateNote(input: NoteUpdateInput): Promise<Note> {
     },
     { isNew: false, tagsOverride: newTags }
   )
-  await flushProjectionEvents()
 
   // Check if tags changed (for event emission)
   const tagsChanged =
@@ -748,7 +730,6 @@ export async function renameNote(id: string, newTitle: string): Promise<Note> {
       createdAt: existing.created,
       modifiedAt: new Date(now)
     })
-    await flushProjectionEvents()
     updateNoteMetadata(getDatabase(), id, {
       path: newRelativePath,
       title: newTitle,
@@ -770,7 +751,6 @@ export async function renameNote(id: string, newTitle: string): Promise<Note> {
       },
       { isNew: false }
     )
-    await flushProjectionEvents()
   }
 
   // Build response
@@ -839,7 +819,6 @@ export async function moveNote(id: string, newFolder: string): Promise<Note> {
       createdAt: existing.created,
       modifiedAt: new Date(now)
     })
-    await flushProjectionEvents()
     updateNoteMetadata(getDatabase(), id, {
       path: newRelativePath,
       modifiedAt: now
@@ -860,7 +839,6 @@ export async function moveNote(id: string, newFolder: string): Promise<Note> {
       },
       { isNew: false }
     )
-    await flushProjectionEvents()
   }
 
   // Build response
@@ -903,7 +881,6 @@ export async function deleteNote(id: string): Promise<void> {
 
   // Remove from cache using NoteSyncService (handles links cleanup + cache deletion)
   deleteNoteFromCache(db, id)
-  await flushProjectionEvents()
 
   // Emit event
   emitNoteEvent(NotesChannels.events.DELETED, {
@@ -1054,7 +1031,7 @@ function extractAllLinkContexts(content: string, targetTitle: string): LinkConte
   const radius = 75
 
   return matches.map((match) => {
-    const matchIndex = match.index!
+    const matchIndex = match.index ?? 0
     const matchText = match[0]
     const start = Math.max(0, matchIndex - radius)
     const end = Math.min(content.length, matchIndex + matchText.length + radius)
@@ -1426,7 +1403,6 @@ export async function restoreVersion(snapshotId: string): Promise<Note> {
     },
     { isNew: false }
   )
-  await flushProjectionEvents()
 
   // Ensure all tags have definitions (creates new tags with auto-assigned colors)
   ensureTagDefinitions(dataDb, syncResult.tags)

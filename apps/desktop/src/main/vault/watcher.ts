@@ -37,7 +37,11 @@ import { attachmentEvents } from '../sync/attachment-events'
 import { flushProjectionEvents } from '../projections'
 import { getCrdtProvider, ORIGIN_LOCAL } from '../sync/crdt-provider'
 import { markdownToBlocks, blocksToYFragment } from '../sync/blocknote-converter'
-import { enqueueJournalCreate, enqueueJournalDelete, initializeJournalCrdt } from '../journal/runtime-effects'
+import {
+  enqueueJournalCreate,
+  enqueueJournalDelete,
+  initializeJournalCrdt
+} from '../journal/runtime-effects'
 import { syncNoteCreate, syncNoteDelete, syncNoteUpdate } from '../notes/runtime-effects'
 
 const logger = createLogger('Watcher')
@@ -352,9 +356,9 @@ export class VaultWatcher {
     const parsed = parseNote(content, relativePath)
 
     // Check if this is a rename (UUID matches a pending delete)
-    const oldPath = await checkForRename(parsed.frontmatter.id, relativePath)
+    const oldPath = checkForRename(parsed.frontmatter.id, relativePath)
     if (oldPath !== null) {
-      // This was a rename - rename-tracker already handled cache update and event
+      await this.applyMarkdownRename(db, content, parsed, relativePath, oldPath)
       return
     }
 
@@ -371,7 +375,7 @@ export class VaultWatcher {
       }
 
       if (!oldFileExists) {
-        processRename(existingById.id, existingById.path, relativePath)
+        await this.applyMarkdownRename(db, content, parsed, relativePath, existingById.path)
         return
       }
 
@@ -399,7 +403,7 @@ export class VaultWatcher {
       },
       { isNew: true }
     )
-    await flushProjectionEvents()
+    void flushProjectionEvents()
 
     const tags = syncResult.tags
     const properties = extractProperties(parsed.frontmatter)
@@ -460,6 +464,32 @@ export class VaultWatcher {
     }
   }
 
+  private async applyMarkdownRename(
+    db: ReturnType<typeof getIndexDatabase>,
+    fileContent: string,
+    parsed: ReturnType<typeof parseNote>,
+    relativePath: string,
+    oldPath: string
+  ): Promise<void> {
+    const syncResult = syncNoteToCache(
+      db,
+      {
+        id: parsed.frontmatter.id,
+        path: relativePath,
+        fileContent,
+        frontmatter: parsed.frontmatter,
+        parsedContent: parsed.content
+      },
+      { isNew: false }
+    )
+
+    if (syncResult.tags.length > 0) {
+      ensureTagDefinitions(getDatabase(), syncResult.tags)
+    }
+
+    processRename(parsed.frontmatter.id, oldPath, relativePath)
+  }
+
   /**
    * Handle non-markdown file creation (PDF, images, audio, video).
    * These files don't have frontmatter, so we generate an ID and cache basic metadata.
@@ -494,7 +524,7 @@ export class VaultWatcher {
       createdAt: stats.birthtime,
       modifiedAt: stats.mtime
     })
-    await flushProjectionEvents()
+    void flushProjectionEvents()
 
     // Create list item for event
     const fileListItem: NoteListItem = {
@@ -590,7 +620,7 @@ export class VaultWatcher {
       },
       { isNew: false }
     )
-    await flushProjectionEvents()
+    void flushProjectionEvents()
 
     const tags = syncResult.tags
     const properties = extractProperties(parsed.frontmatter)
@@ -661,7 +691,7 @@ export class VaultWatcher {
       createdAt: new Date(cached.createdAt),
       modifiedAt: stats.mtime
     })
-    await flushProjectionEvents()
+    void flushProjectionEvents()
 
     syncNoteUpdate(cached.id)
 
@@ -713,7 +743,7 @@ export class VaultWatcher {
         }
 
         deleteNoteFromCache(db, cached.id)
-        await flushProjectionEvents()
+        void flushProjectionEvents()
 
         // Emit delete event
         emitEvent(NotesChannels.events.DELETED, {

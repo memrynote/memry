@@ -70,6 +70,10 @@ vi.mock('@memry/domain-notes', () => ({
   getCanonicalJournalByDate: vi.fn()
 }))
 
+vi.mock('../projections', () => ({
+  flushProjectionEvents: vi.fn()
+}))
+
 vi.mock('@main/database/queries/notes', () => ({
   insertNoteCache: vi.fn(),
   updateNoteCache: vi.fn(),
@@ -101,6 +105,7 @@ import * as noteSync from '../vault/note-sync'
 import * as notesQueries from '@main/database/queries/notes'
 import * as tasksQueries from '@main/database/queries/tasks'
 import * as domainNotes from '@memry/domain-notes'
+import * as projections from '../projections'
 
 describe('journal-handlers', () => {
   const baseEntry: JournalEntry = {
@@ -174,6 +179,7 @@ describe('journal-handlers', () => {
       expect.objectContaining({ id: 'j2025-01-01', properties: { mood: 'good' } })
     )
     expect(noteSync.syncNoteToCache).toHaveBeenCalled()
+    expect(projections.flushProjectionEvents).not.toHaveBeenCalled()
     // Properties are now serialized to frontmatter and synced via syncNoteToCache
     // instead of being set separately via setNoteProperties
     expect(journalVault.writeJournalEntryWithContent).toHaveBeenCalledWith(
@@ -221,6 +227,7 @@ describe('journal-handlers', () => {
 
     expect(result).toEqual(expect.objectContaining({ content: 'Updated content' }))
     expect(noteSync.syncNoteToCache).toHaveBeenCalled()
+    expect(projections.flushProjectionEvents).not.toHaveBeenCalled()
   })
 
   it('deletes a journal entry and emits delete event', async () => {
@@ -233,6 +240,7 @@ describe('journal-handlers', () => {
 
     expect(result).toEqual({ success: true })
     expect(noteSync.deleteNoteFromCache).toHaveBeenCalledWith({}, 'cache-1')
+    expect(projections.flushProjectionEvents).not.toHaveBeenCalled()
   })
 
   it('lists month entries with previews', async () => {
