@@ -2,21 +2,11 @@ import { describe, it, expect, vi } from 'vitest'
 import { createMockDb } from '@tests/utils/type-safe-mocks'
 
 vi.mock('@main/database/queries/notes', () => ({
-  insertNoteCache: vi.fn(),
-  updateNoteCache: vi.fn(),
-  deleteNoteCache: vi.fn(),
-  setNoteTags: vi.fn(),
-  setNoteLinks: vi.fn(),
-  setNoteProperties: vi.fn(),
-  getPropertyType: vi.fn(),
   extractDateFromPath: vi.fn(() => null),
-  deleteLinksToNote: vi.fn(),
-  resolveNotesByTitles: vi.fn(() => new Map()),
   getNoteCacheByPath: vi.fn(() => undefined)
 }))
 
 vi.mock('../database', () => ({
-  queueFtsUpdate: vi.fn(),
   getDatabase: vi.fn(() => createMockDb())
 }))
 
@@ -32,7 +22,6 @@ vi.mock('../projections', () => ({
 
 import { extractNoteMetadata, syncNoteToCache, type NoteSyncInput } from './note-sync'
 import { publishProjectionEvent } from '../projections'
-import { setNoteTags } from '@main/database/queries/notes'
 import { saveCanonicalNote } from '@memry/domain-notes'
 import type { NoteFrontmatter } from './frontmatter'
 
@@ -224,6 +213,21 @@ describe('syncNoteToCache — tagsOverride', () => {
         properties: {},
         createdAt: FIXED_ISO,
         modifiedAt: FIXED_ISO
+      })
+    )
+  })
+
+  it('publishes a projection event for the upserted note', () => {
+    const db = createMockDb()
+    const input = buildInput({
+      parsedContent: 'Has #typescript inline'
+    })
+
+    syncNoteToCache(db, input, { isNew: true })
+
+    expect(publishProjectionEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'note.upserted'
       })
     )
   })
