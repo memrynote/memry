@@ -6,7 +6,10 @@
 
 import { describe, it, expect, beforeEach, afterEach, vi, type Mock } from 'vitest'
 import { mockIpcMain, resetIpcMocks, invokeHandler } from '@tests/utils/mock-ipc'
+import { createTestDatabase, cleanupTestDatabase, type TestDatabaseResult } from '@tests/utils/test-db'
 import { InboxChannels } from '@memry/contracts/ipc-channels'
+import { inboxItems, inboxItemTags } from '@memry/db-schema/schema/inbox'
+import { eq } from 'drizzle-orm'
 
 // Track mock calls
 const handleCalls: unknown[][] = []
@@ -164,6 +167,7 @@ vi.mock('../lib/logger', () => ({
 // Import after mocking
 import { registerInboxHandlers, unregisterInboxHandlers } from './inbox-handlers'
 import { getDatabase, requireDatabase } from '../database'
+import { generateId } from '../lib/id'
 import * as filingModule from '../inbox/filing'
 import * as snoozeModule from '../inbox/snooze'
 import * as suggestionsModule from '../inbox/suggestions'
@@ -179,7 +183,9 @@ describe('inbox-handlers', () => {
     select: Mock
     update: Mock
     delete: Mock
+    transaction?: Mock
   }
+  let integrationDb: TestDatabaseResult | null = null
 
   beforeEach(() => {
     resetIpcMocks()
@@ -206,7 +212,8 @@ describe('inbox-handlers', () => {
       insert: vi.fn(() => chainable),
       select: vi.fn(() => chainable),
       update: vi.fn(() => chainable),
-      delete: vi.fn(() => chainable)
+      delete: vi.fn(() => chainable),
+      transaction: vi.fn((fn: (tx: typeof mockDb) => unknown) => fn(mockDb))
     }
     ;(getDatabase as Mock).mockReturnValue(mockDb)
     ;(requireDatabase as Mock).mockReturnValue(mockDb)
@@ -214,6 +221,10 @@ describe('inbox-handlers', () => {
 
   afterEach(() => {
     unregisterInboxHandlers()
+    if (integrationDb) {
+      cleanupTestDatabase(integrationDb)
+      integrationDb = null
+    }
   })
 
   describe('registerInboxHandlers', () => {
@@ -294,6 +305,30 @@ describe('inbox-handlers', () => {
       })
 
       expect(result.success).toBe(true)
+    })
+
+    it('rolls back the item insert when a tag insert fails', async () => {
+      integrationDb = createTestDatabase()
+      vi.mocked(getDatabase).mockReturnValue(integrationDb.db)
+      vi.mocked(requireDatabase).mockReturnValue(integrationDb.db)
+      ;(generateId as Mock)
+        .mockReturnValueOnce('item-1')
+        .mockReturnValueOnce('tag-1')
+        .mockReturnValueOnce('tag-1')
+
+      const result = await invokeHandler(InboxChannels.invoke.CAPTURE_TEXT, {
+        content: 'Content',
+        title: 'Tagged Note',
+        tags: ['important', 'urgent']
+      })
+
+      expect(result.success).toBe(false)
+      expect(
+        integrationDb.db.select().from(inboxItems).where(eq(inboxItems.id, 'item-1')).get()
+      ).toBeUndefined()
+      expect(
+        integrationDb.db.select().from(inboxItemTags).where(eq(inboxItemTags.itemId, 'item-1')).all()
+      ).toEqual([])
     })
   })
 

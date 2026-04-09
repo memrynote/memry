@@ -31,7 +31,7 @@ import {
   resolveNotesByTitles,
   getNoteCacheByPath
 } from '@main/database/queries/notes'
-import { getDatabase, queueFtsUpdate, type IndexDb } from '../database'
+import { getDatabase, type IndexDb } from '../database'
 import type { FileType } from '@memry/shared/file-types'
 import type { PropertyType } from '@memry/contracts/property-types'
 import {
@@ -124,12 +124,6 @@ export interface NoteSyncOptions {
   isNew: boolean
 
   /**
-   * Skip FTS update (useful for batch operations that do FTS separately).
-   * @default false
-   */
-  skipFts?: boolean
-
-  /**
    * Skip link resolution (useful when batch resolving links later).
    * @default false
    */
@@ -212,7 +206,7 @@ export function syncNoteToCache(
   input: NoteSyncInput,
   options: NoteSyncOptions
 ): NoteSyncResult {
-  const { isNew, skipFts = false, skipLinks = false, tagsOverride } = options
+  const { isNew, skipLinks = false, tagsOverride } = options
   const { id, path, frontmatter, parsedContent } = input
 
   // Extract all metadata
@@ -305,12 +299,8 @@ export function syncNoteToCache(
     return type
   })
 
-  if (!skipFts) {
-    queueFtsUpdate(id, parsedContent, tags)
-  }
-
   let links: { targetTitle: string; targetId: string | undefined }[] = []
-  if (!skipLinks && wikiLinks.length > 0) {
+  if (!skipLinks) {
     links = resolveAndSetLinks(db, id, wikiLinks)
   }
 
