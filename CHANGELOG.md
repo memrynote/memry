@@ -5,6 +5,17 @@ Format: weekly entries grouped by feature area.
 
 ---
 
+## 2026-04-09 — RPC Type Consolidation
+
+### Added
+- Add createWindowApiForwarder utility to centralize renderer→main API proxy delegation
+
+### Changed
+- Consolidate type exports and imports via @memry/rpc packages
+- Extract task context and queries into dedicated tasks-app-boundary module
+
+---
+
 ## 2026-04-08 — Marquee Selection Indent/Outdent
 
 ### Added
