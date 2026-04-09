@@ -13,9 +13,9 @@ import {
   CheckCircle
 } from '@/lib/icons'
 import type { AppIcon } from '@/lib/icons'
+import type { InboxCapturePattern, InboxFilingHistoryEntry } from '@memry/rpc/inbox'
 import { useInboxStats, useInboxFilingHistory, useInboxPatterns } from '@/hooks/use-inbox'
 import { cn } from '@/lib/utils'
-import type { InboxCapturePattern, InboxFilingHistoryEntry } from '../../../../preload/index.d'
 
 export interface InboxHealthViewProps {
   className?: string
