@@ -19,7 +19,7 @@ export interface InboxCrudHandlerDeps {
   getItemTags: (db: DataDb, itemId: string) => string[]
   toInboxItem: (row: typeof inboxItems.$inferSelect, tags: string[]) => InboxItem
   emitInboxEvent: (channel: string, data: unknown) => void
-  syncInboxUpdate: (db: DataDb, itemId: string) => void
+  syncInboxUpdate: (itemId: string) => void
   logger: InboxCrudLogger
 }
 
@@ -75,7 +75,7 @@ export function createInboxCrudHandlers(deps: InboxCrudHandlerDeps): InboxCrudHa
       const item = deps.toInboxItem(updated, tags)
 
       deps.emitInboxEvent(InboxChannels.events.UPDATED, { id: parsed.id, changes: updates })
-      deps.syncInboxUpdate(db, parsed.id)
+      deps.syncInboxUpdate(parsed.id)
 
       return { success: true, item }
     } catch (error) {
@@ -99,7 +99,7 @@ export function createInboxCrudHandlers(deps: InboxCrudHandlerDeps): InboxCrudHa
         .run()
 
       deps.emitInboxEvent(InboxChannels.events.ARCHIVED, { id })
-      deps.syncInboxUpdate(db, id)
+      deps.syncInboxUpdate(id)
 
       return { success: true }
     },
@@ -173,7 +173,7 @@ export function createInboxCrudHandlers(deps: InboxCrudHandlerDeps): InboxCrudHa
         id: itemId,
         changes: { viewedAt: now }
       })
-      deps.syncInboxUpdate(db, itemId)
+      deps.syncInboxUpdate(itemId)
 
       deps.logger.info(`Marked item ${itemId} as viewed`)
       return { success: true }
@@ -203,7 +203,7 @@ export function createInboxCrudHandlers(deps: InboxCrudHandlerDeps): InboxCrudHa
         .run()
 
       deps.emitInboxEvent(InboxChannels.events.UPDATED, { id, changes: { archivedAt: null } })
-      deps.syncInboxUpdate(db, id)
+      deps.syncInboxUpdate(id)
 
       return { success: true }
     },
@@ -259,7 +259,7 @@ export function createInboxCrudHandlers(deps: InboxCrudHandlerDeps): InboxCrudHa
         id,
         changes: { filedAt: null, filedTo: null, filedAction: null }
       })
-      deps.syncInboxUpdate(db, id)
+      deps.syncInboxUpdate(id)
 
       deps.logger.info(`Undo file for item ${id}`)
       return { success: true }
@@ -289,7 +289,7 @@ export function createInboxCrudHandlers(deps: InboxCrudHandlerDeps): InboxCrudHa
         .run()
 
       deps.emitInboxEvent(InboxChannels.events.UPDATED, { id, changes: { archivedAt: null } })
-      deps.syncInboxUpdate(db, id)
+      deps.syncInboxUpdate(id)
 
       deps.logger.info(`Undo archive for item ${id}`)
       return { success: true }

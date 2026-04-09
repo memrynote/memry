@@ -254,10 +254,10 @@ Progress note (2026-04-09):
 
 **Checklist:**
 
-- [ ] Keep the adapter registry as the only extension point for domain sync integration
+- [x] Keep the adapter registry as the only extension point for domain sync integration
 - [ ] Stop calling `enqueue*` and offline clock helpers from handlers, watchers, and feature modules
-- [ ] Move queue writes, clock increments, and recovery bookkeeping behind adapters only
-- [ ] Keep notes on CRDT content sync only
+- [x] Move queue writes, clock increments, and recovery bookkeeping behind adapters only
+- [x] Keep notes on CRDT content sync only
 - [ ] Keep tasks, inbox, settings, projects, reminders, saved filters, and tags on record sync only
 - [ ] Align all domains with a common adapter contract: serialize local change, enqueue outbound mutation, apply remote mutation, resolve conflict policy, emit domain event
 
@@ -274,8 +274,8 @@ Progress note (2026-04-09):
 
 **Gate:**
 
-- [ ] Domain code no longer calls sync queue services directly
-- [ ] Sync runtime depends on adapters, not feature modules
+- [x] Domain code no longer calls sync queue services directly
+- [x] Sync runtime depends on adapters, not feature modules
 
 ## Phase 6: Projection Pipeline
 

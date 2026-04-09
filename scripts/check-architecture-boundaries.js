@@ -11,6 +11,17 @@ const databaseRoot = path.resolve(mainRoot, 'database')
 const queriesRoot = path.resolve(databaseRoot, 'queries')
 const notesQueriesRoot = path.resolve(queriesRoot, 'notes')
 const mainSyncRoot = path.resolve(mainRoot, 'sync')
+const blockedFeatureSyncImports = [
+  path.resolve(mainSyncRoot, 'offline-clock'),
+  path.resolve(mainSyncRoot, 'task-sync'),
+  path.resolve(mainSyncRoot, 'project-sync'),
+  path.resolve(mainSyncRoot, 'inbox-sync'),
+  path.resolve(mainSyncRoot, 'filter-sync'),
+  path.resolve(mainSyncRoot, 'note-sync'),
+  path.resolve(mainSyncRoot, 'journal-sync'),
+  path.resolve(mainSyncRoot, 'settings-sync'),
+  path.resolve(mainSyncRoot, 'tag-definition-sync')
+]
 const projectionsRoot = path.resolve(mainRoot, 'projections')
 const notesFeatureRoot = path.resolve(mainRoot, 'notes')
 const journalFeatureRoot = path.resolve(mainRoot, 'journal')
@@ -239,6 +250,14 @@ function getCanonicalIndexWriteImportReason(statement, resolvedPath) {
   return null
 }
 
+function isBlockedFeatureSyncImport(resolvedPath) {
+  if (!resolvedPath) {
+    return false
+  }
+
+  return blockedFeatureSyncImports.some((targetPath) => matchesTarget(resolvedPath, targetPath))
+}
+
 async function main() {
   const blockingViolations = new Set()
 
@@ -324,6 +343,34 @@ async function main() {
       ).flat()
     )
   ].filter((filePath) => !matchesTarget(filePath, generatedIpcInvokeMapPath))
+
+  const featureFiles = (await getFilesForRoot(mainRoot)).filter(
+    (filePath) =>
+      !matchesTarget(filePath, generatedIpcInvokeMapPath) && !isInside(filePath, mainSyncRoot)
+  )
+
+  for (const filePath of featureFiles) {
+    const source = await fs.readFile(filePath, 'utf8')
+    const relativeFilePath = path.relative(repoRoot, filePath)
+    const syncBoundaryExempt = syncBoundaryExemptIpcFiles.has(relativeFilePath)
+
+    for (const { specifier } of scanImports(source)) {
+      const resolvedPath = resolveImport(filePath, specifier)
+      if (!resolvedPath) {
+        continue
+      }
+
+      if (syncBoundaryExempt && isInside(filePath, ipcRoot)) {
+        continue
+      }
+
+      if (isBlockedFeatureSyncImport(resolvedPath)) {
+        blockingViolations.add(
+          formatViolation(filePath, specifier, 'feature import of sync adapter internals')
+        )
+      }
+    }
+  }
 
   for (const filePath of canonicalWriteFeatureFiles) {
     const source = await fs.readFile(filePath, 'utf8')
