@@ -23,6 +23,7 @@ import { resolveAttachmentUrl, deleteInboxAttachments } from './attachments'
 import { extractYouTubeVideoId } from '@memry/shared/youtube'
 import { extractDomain } from './metadata'
 import { publishProjectionEvent } from '../projections'
+import { syncTaskCreate } from '../tasks/runtime-effects'
 
 const log = createLogger('Inbox:Filing')
 
@@ -686,23 +687,7 @@ export async function convertToTask(
       win.webContents.send(TasksChannels.events.CREATED, { task: enrichedTask })
     })
 
-    try {
-      const { getTaskSyncService } = await import('../sync/task-sync')
-      const { incrementTaskClocksOffline } = await import('../sync/offline-clock')
-      const svc = getTaskSyncService()
-      if (svc) {
-        svc.enqueueCreate(taskId)
-      } else {
-        incrementTaskClocksOffline(db, taskId, [])
-      }
-    } catch {
-      log.warn('Task sync unavailable, skipping sync for converted task')
-    }
-
-    publishProjectionEvent({
-      type: 'task.upserted',
-      taskId
-    })
+    syncTaskCreate(taskId)
 
     return { success: true, taskId }
   } catch (error) {
