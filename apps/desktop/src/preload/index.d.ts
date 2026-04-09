@@ -1,5 +1,8 @@
 import { ElectronAPI } from '@electron-toolkit/preload'
 import type { GeneratedRpcApi } from '@memry/rpc'
+import type * as InboxRpc from '@memry/rpc/inbox'
+import type * as NotesRpc from '@memry/rpc/notes'
+import type * as TasksRpc from '@memry/rpc/tasks'
 import type {
   SyncStatusChangedEvent,
   ItemSyncedEvent,
@@ -34,31 +37,9 @@ export interface VaultInfo {
   isDefault: boolean
 }
 
-// Note types (mirrored from contracts for preload compatibility)
-export interface NoteFrontmatter {
-  id: string
-  title?: string
-  created: string
-  modified: string
-  tags?: string[]
-  aliases?: string[]
-  [key: string]: unknown
-}
-
-export interface Note {
-  id: string
-  path: string
-  title: string
-  content: string
-  frontmatter: NoteFrontmatter
-  created: Date
-  modified: Date
-  tags: string[]
-  aliases: string[]
-  wordCount: number
-  properties: Record<string, unknown> // T020: Properties support
-  emoji?: string | null // T028: Emoji icon for visual identification
-}
+// Note types
+export type NoteFrontmatter = NotesRpc.Note['frontmatter']
+export type Note = NotesRpc.Note
 
 // T020: Property types — canonical set from @memry/contracts/property-types
 export type PropertyType =
@@ -78,71 +59,21 @@ export interface PropertyValue {
   type: PropertyType
 }
 
-export interface PropertyDefinition {
-  name: string
-  type: PropertyType
-  options: string | null // JSON array
-  defaultValue: string | null
-  color: string | null
-  createdAt: string
-}
-
-export interface CreatePropertyDefinitionInput {
-  name: string
-  type: PropertyType
-  options?: string[]
-  defaultValue?: unknown
-  color?: string
-}
-
-export interface UpdatePropertyDefinitionInput {
-  name: string
-  type?: PropertyType
-  options?: string[]
-  defaultValue?: unknown
-  color?: string
-}
+export type PropertyDefinition = NotesRpc.PropertyDefinition
+export type CreatePropertyDefinitionInput = NotesRpc.CreatePropertyDefinitionInput
+export type UpdatePropertyDefinitionInput = NotesRpc.UpdatePropertyDefinitionInput
 
 export interface SetPropertiesResponse {
   success: boolean
   error?: string
 }
 
-export interface CreatePropertyDefinitionResponse {
-  success: boolean
-  definition: PropertyDefinition | null
-  error?: string
-}
+export type CreatePropertyDefinitionResponse = NotesRpc.CreatePropertyDefinitionResponse
 
 // T070: Attachment types
-export interface AttachmentResult {
-  success: boolean
-  /** Relative path from note to attachment */
-  path?: string
-  /** Original filename */
-  name?: string
-  /** File size in bytes */
-  size?: number
-  /** MIME type */
-  mimeType?: string
-  /** Category: image or file */
-  type?: 'image' | 'file'
-  /** Error message if failed */
-  error?: string
-}
-
-export interface AttachmentInfo {
-  filename: string
-  path: string
-  size: number
-  mimeType: string
-  type: 'image' | 'file'
-}
-
-export interface DeleteAttachmentResponse {
-  success: boolean
-  error?: string
-}
+export type AttachmentResult = NotesRpc.AttachmentResult
+export type AttachmentInfo = NotesRpc.AttachmentInfo
+export type DeleteAttachmentResponse = NotesRpc.DeleteAttachmentResponse
 
 // Template types (Phase 15)
 export type TemplatePropertyType =
@@ -212,51 +143,18 @@ export interface TemplateListResponse {
   templates: TemplateListItem[]
 }
 
-export interface FolderConfig {
-  icon?: string | null
-  template?: string
-  inherit?: boolean
-}
-
-export interface FolderInfo {
-  path: string
-  icon?: string | null
-}
+export type FolderConfig = NotesRpc.FolderConfig
+export type FolderInfo = NotesRpc.FolderInfo
 
 // Export types (T106, T108)
-export interface ExportNoteInput {
-  noteId: string
-  includeMetadata?: boolean
-  pageSize?: 'A4' | 'Letter' | 'Legal'
-}
-
-export interface ExportNoteResponse {
-  success: boolean
-  path?: string
-  error?: string
-}
+export type ExportNoteInput = NotesRpc.ExportNoteInput
+export type ExportNoteResponse = NotesRpc.ExportNoteResponse
 
 // Version History types (T110-T114)
-export type SnapshotReason = 'manual' | 'auto' | 'timer' | 'significant'
-
-export interface SnapshotListItem {
-  id: string
-  noteId: string
-  title: string
-  wordCount: number
-  reason: SnapshotReason
-  createdAt: string
-}
-
-export interface SnapshotDetail extends SnapshotListItem {
-  fileContent: string // Full file content (frontmatter + markdown body)
-}
-
-export interface RestoreVersionResponse {
-  success: boolean
-  note: Note | null
-  error?: string
-}
+export type SnapshotReason = NotesRpc.SnapshotListItem['reason']
+export type SnapshotListItem = NotesRpc.SnapshotListItem
+export type SnapshotDetail = NotesRpc.SnapshotDetail
+export type RestoreVersionResponse = NotesRpc.RestoreVersionResponse
 
 export interface TemplateCreatedEvent {
   template: Template
@@ -271,161 +169,26 @@ export interface TemplateDeletedEvent {
   id: string
 }
 
-export interface NoteListItem {
-  id: string
-  path: string
-  title: string
-  created: Date
-  modified: Date
-  tags: string[]
-  wordCount: number
-  snippet?: string
-  emoji?: string | null // T028: Emoji icon for visual identification
-  localOnly?: boolean
-  fileType?: 'markdown' | 'pdf' | 'image' | 'audio' | 'video' // File type discriminator
-  mimeType?: string | null // MIME type (e.g., 'application/pdf')
-  fileSize?: number | null // File size in bytes
-}
-
-/**
- * File metadata for non-markdown files (PDF, image, audio, video)
- */
-export interface FileMetadata {
-  id: string
-  path: string // Relative path within vault
-  absolutePath: string // Full filesystem path for viewers
-  title: string
-  fileType: 'pdf' | 'image' | 'audio' | 'video'
-  mimeType: string | null
-  fileSize: number | null
-  created: Date
-  modified: Date
-}
-
-/**
- * WikiLink resolution result for format-aware link handling.
- * Used to determine whether to open a note or file viewer.
- */
-export interface WikiLinkResolution {
-  id: string
-  path: string
-  title: string
-  fileType: 'markdown' | 'pdf' | 'image' | 'audio' | 'video'
-}
-
-export interface WikiLinkPreview {
-  id: string
-  title: string
-  emoji: string | null
-  snippet: string | null
-  tags: Array<{ name: string; color: string }>
-  createdAt: string
-}
-
-export interface NoteCreateInput {
-  title: string
-  content?: string
-  folder?: string
-  tags?: string[]
-  template?: string
-}
-
-export interface NoteUpdateInput {
-  id: string
-  title?: string
-  content?: string
-  tags?: string[]
-  frontmatter?: Record<string, unknown>
-  emoji?: string | null // T028: Emoji icon for visual identification
-}
-
-export interface NoteListOptions {
-  folder?: string
-  tags?: string[]
-  sortBy?: 'modified' | 'created' | 'title'
-  sortOrder?: 'asc' | 'desc'
-  limit?: number
-  offset?: number
-}
-
-export interface NoteCreateResponse {
-  success: boolean
-  note: Note | null
-  error?: string
-}
-
-export interface NoteUpdateResponse {
-  success: boolean
-  note: Note | null
-  error?: string
-}
-
-export interface NoteListResponse {
-  notes: NoteListItem[]
-  total: number
-  hasMore: boolean
-}
-
-export interface NoteLink {
-  sourceId: string
-  targetId: string | null
-  targetTitle: string
-}
-
-export interface BacklinkContext {
-  snippet: string
-  linkStart: number
-  linkEnd: number
-}
-
-export interface Backlink {
-  sourceId: string
-  sourcePath: string
-  sourceTitle: string
-  contexts: BacklinkContext[]
-}
-
-export interface NoteLinksResponse {
-  outgoing: NoteLink[]
-  incoming: Backlink[]
-}
-
-export interface NoteCreatedEvent {
-  note: NoteListItem
-  source: 'internal' | 'external'
-}
-
-export interface NoteUpdatedEvent {
-  id: string
-  changes: Partial<Note>
-  source: 'internal' | 'external'
-}
-
-export interface NoteDeletedEvent {
-  id: string
-  path: string
-  source: 'internal' | 'external'
-}
-
-export interface NoteRenamedEvent {
-  id: string
-  oldPath: string
-  newPath: string
-  oldTitle: string
-  newTitle: string
-}
-
-export interface NoteMovedEvent {
-  id: string
-  oldPath: string
-  newPath: string
-}
-
-export interface NoteExternalChangeEvent {
-  id: string
-  path: string
-  type: 'modified' | 'deleted'
-}
+export type NoteListItem = NotesRpc.NoteListItem
+export type FileMetadata = NotesRpc.FileMetadata
+export type WikiLinkResolution = NotesRpc.WikiLinkResolution
+export type WikiLinkPreview = NotesRpc.WikiLinkPreview
+export type NoteCreateInput = NotesRpc.NoteCreateInput
+export type NoteUpdateInput = NotesRpc.NoteUpdateInput
+export type NoteListOptions = NotesRpc.NoteListOptions
+export type NoteCreateResponse = NotesRpc.NoteCreateResponse
+export type NoteUpdateResponse = NotesRpc.NoteUpdateResponse
+export type NoteListResponse = NotesRpc.NoteListResponse
+export type NoteLink = NotesRpc.NoteLink
+export type BacklinkContext = NotesRpc.BacklinkContext
+export type Backlink = NotesRpc.Backlink
+export type NoteLinksResponse = NotesRpc.NoteLinksResponse
+export type NoteCreatedEvent = NotesRpc.NoteCreatedEvent
+export type NoteUpdatedEvent = NotesRpc.NoteUpdatedEvent
+export type NoteDeletedEvent = NotesRpc.NoteDeletedEvent
+export type NoteRenamedEvent = NotesRpc.NoteRenamedEvent
+export type NoteMovedEvent = NotesRpc.NoteMovedEvent
+export type NoteExternalChangeEvent = NotesRpc.NoteExternalChangeEvent
 
 export interface IndexRecoveredEvent {
   reason: 'corrupt' | 'missing' | 'healthy'
@@ -433,233 +196,34 @@ export interface IndexRecoveredEvent {
   duration: number
 }
 
-// RepeatConfig type (matches frontend format for full feature support)
-export interface RepeatConfig {
-  frequency: 'daily' | 'weekly' | 'monthly' | 'yearly'
-  interval: number
-  daysOfWeek?: number[]
-  monthlyType?: 'dayOfMonth' | 'weekPattern'
-  dayOfMonth?: number
-  weekOfMonth?: number
-  dayOfWeekForMonth?: number
-  endType: 'never' | 'date' | 'count'
-  endDate?: string | null
-  endCount?: number
-  completedCount: number
-  createdAt: string
-}
+export type RepeatConfig = TasksRpc.RepeatConfig
 
-// Task types (mirrored from contracts for preload compatibility)
-export interface Task {
-  id: string
-  projectId: string
-  statusId: string | null
-  parentId: string | null
-  title: string
-  description: string | null
-  priority: 0 | 1 | 2 | 3 | 4
-  position: number
-  dueDate: string | null
-  dueTime: string | null
-  startDate: string | null
-  repeatConfig: RepeatConfig | null
-  repeatFrom: 'due' | 'completion' | null
-  sourceNoteId: string | null
-  completedAt: string | null
-  archivedAt: string | null
-  createdAt: string
-  modifiedAt: string
-  // Enriched properties
-  tags?: string[]
-  linkedNoteIds?: string[]
-  hasSubtasks?: boolean
-  subtaskCount?: number
-  completedSubtaskCount?: number
-}
-
-export interface TaskListItem extends Task {
-  tags: string[]
-  hasSubtasks: boolean
-  subtaskCount: number
-  completedSubtaskCount: number
-}
-
-export interface Project {
-  id: string
-  name: string
-  description: string | null
-  color: string
-  icon: string | null
-  position: number
-  isInbox: boolean
-  createdAt: string
-  modifiedAt: string
-  archivedAt: string | null
-}
-
-export interface ProjectWithStats extends Project {
-  taskCount: number
-  completedCount: number
-  overdueCount: number
-}
-
-export interface ProjectWithStatuses extends Project {
-  statuses: Status[]
-}
-
-export interface Status {
-  id: string
-  projectId: string
-  name: string
-  color: string
-  position: number
-  isDefault: boolean
-  isDone: boolean
-  createdAt: string
-}
-
-export interface TaskCreateInput {
-  projectId: string
-  title: string
-  description?: string | null
-  priority?: number
-  statusId?: string | null
-  parentId?: string | null
-  dueDate?: string | null
-  dueTime?: string | null
-  startDate?: string | null
-  isRepeating?: boolean
-  repeatConfig?: RepeatConfig | null
-  repeatFrom?: 'due' | 'completion' | null
-  tags?: string[]
-  linkedNoteIds?: string[]
-  position?: number
-}
-
-export interface TaskUpdateInput {
-  id: string
-  title?: string
-  description?: string | null
-  priority?: number
-  projectId?: string
-  statusId?: string | null
-  parentId?: string | null
-  dueDate?: string | null
-  dueTime?: string | null
-  startDate?: string | null
-  isRepeating?: boolean
-  repeatConfig?: RepeatConfig | null
-  repeatFrom?: 'due' | 'completion' | null
-  tags?: string[]
-  linkedNoteIds?: string[]
-}
-
-export interface TaskListOptions {
-  projectId?: string
-  statusId?: string | null
-  parentId?: string | null
-  includeCompleted?: boolean
-  includeArchived?: boolean
-  dueBefore?: string
-  dueAfter?: string
-  tags?: string[]
-  search?: string
-  sortBy?: 'position' | 'dueDate' | 'priority' | 'created' | 'modified'
-  sortOrder?: 'asc' | 'desc'
-  limit?: number
-  offset?: number
-}
-
-export interface TaskCreateResponse {
-  success: boolean
-  task: Task | null
-  error?: string
-}
-
-export interface TaskListResponse {
-  tasks: TaskListItem[]
-  total: number
-  hasMore: boolean
-}
-
-export interface ProjectCreateInput {
-  name: string
-  description?: string | null
-  color?: string
-  icon?: string | null
-}
-
-export interface ProjectUpdateInput {
-  id: string
-  name?: string
-  description?: string | null
-  color?: string
-  icon?: string | null
-}
-
-export interface ProjectListResponse {
-  projects: ProjectWithStats[]
-}
-
-export interface StatusCreateInput {
-  projectId: string
-  name: string
-  color?: string
-  isDone?: boolean
-}
-
-export interface TaskStats {
-  total: number
-  completed: number
-  overdue: number
-  dueToday: number
-  dueThisWeek: number
-}
-
-export interface TaskMoveInput {
-  taskId: string
-  targetProjectId?: string
-  targetStatusId?: string | null
-  targetParentId?: string | null
-  position: number
-}
-
-export interface TaskCreatedEvent {
-  task: Task
-}
-
-export interface TaskUpdatedEvent {
-  id: string
-  task: Task
-  changes: Partial<Task>
-}
-
-export interface TaskDeletedEvent {
-  id: string
-}
-
-export interface TaskCompletedEvent {
-  id: string
-  task: Task
-}
-
-export interface TaskMovedEvent {
-  id: string
-  task: Task
-}
-
-export interface ProjectCreatedEvent {
-  project: Project
-}
-
-export interface ProjectUpdatedEvent {
-  id: string
-  project: Project
-}
-
-export interface ProjectDeletedEvent {
-  id: string
-}
+// Task types
+export type Task = TasksRpc.Task
+export type TaskListItem = TasksRpc.TaskListItem
+export type Project = TasksRpc.Project
+export type ProjectWithStats = TasksRpc.ProjectWithStats
+export type ProjectWithStatuses = TasksRpc.ProjectWithStatuses
+export type Status = TasksRpc.Status
+export type TaskCreateInput = TasksRpc.TaskCreateInput
+export type TaskUpdateInput = TasksRpc.TaskUpdateInput
+export type TaskListOptions = TasksRpc.TaskListOptions
+export type TaskCreateResponse = TasksRpc.TaskCreateResponse
+export type TaskListResponse = TasksRpc.TaskListResponse
+export type ProjectCreateInput = TasksRpc.ProjectCreateInput
+export type ProjectUpdateInput = TasksRpc.ProjectUpdateInput
+export type ProjectListResponse = TasksRpc.ProjectListResponse
+export type StatusCreateInput = TasksRpc.StatusCreateInput
+export type TaskStats = TasksRpc.TaskStats
+export type TaskMoveInput = TasksRpc.TaskMoveInput
+export type TaskCreatedEvent = TasksRpc.TaskCreatedEvent
+export type TaskUpdatedEvent = TasksRpc.TaskUpdatedEvent
+export type TaskDeletedEvent = TasksRpc.TaskDeletedEvent
+export type TaskCompletedEvent = TasksRpc.TaskCompletedEvent
+export type TaskMovedEvent = TasksRpc.TaskMovedEvent
+export type ProjectCreatedEvent = TasksRpc.ProjectCreatedEvent
+export type ProjectUpdatedEvent = TasksRpc.ProjectUpdatedEvent
+export type ProjectDeletedEvent = TasksRpc.ProjectDeletedEvent
 
 // Saved Filter types
 export interface DueDateFilter {
@@ -875,108 +439,7 @@ export interface VaultClientAPI {
 }
 
 // Notes client API interface
-export interface NotesClientAPI {
-  create(input: NoteCreateInput): Promise<NoteCreateResponse>
-  get(id: string): Promise<Note | null>
-  getByPath(path: string): Promise<Note | null>
-  getFile(id: string): Promise<FileMetadata | null>
-  resolveByTitle(title: string): Promise<WikiLinkResolution | null>
-  previewByTitle(title: string): Promise<WikiLinkPreview | null>
-  update(input: NoteUpdateInput): Promise<NoteUpdateResponse>
-  rename(id: string, newTitle: string): Promise<NoteUpdateResponse>
-  move(id: string, newFolder: string): Promise<NoteUpdateResponse>
-  delete(id: string): Promise<{ success: boolean; error?: string }>
-  list(options?: NoteListOptions): Promise<NoteListResponse>
-  getTags(): Promise<{ tag: string; color: string; count: number }[]>
-  getLinks(id: string): Promise<NoteLinksResponse>
-  getFolders(): Promise<FolderInfo[]>
-  createFolder(path: string): Promise<{ success: boolean; error?: string }>
-  renameFolder(oldPath: string, newPath: string): Promise<{ success: boolean; error?: string }>
-  deleteFolder(path: string): Promise<{ success: boolean; error?: string }>
-  exists(titleOrPath: string): Promise<boolean>
-  openExternal(id: string): Promise<void>
-  revealInFinder(id: string): Promise<void>
-  // Property Definitions API (T017-T018)
-  // Note: get/set properties moved to unified PropertiesClientAPI
-  getPropertyDefinitions(): Promise<PropertyDefinition[]>
-  createPropertyDefinition(
-    input: CreatePropertyDefinitionInput
-  ): Promise<CreatePropertyDefinitionResponse>
-  updatePropertyDefinition(
-    input: UpdatePropertyDefinitionInput
-  ): Promise<CreatePropertyDefinitionResponse>
-  ensurePropertyDefinition(name: string, type: string): Promise<{ success: boolean }>
-  addPropertyOption(
-    propertyName: string,
-    option: { value: string; color: string }
-  ): Promise<{ success: boolean }>
-  addStatusOption(
-    propertyName: string,
-    categoryKey: string,
-    option: { value: string; color: string }
-  ): Promise<{ success: boolean }>
-  removePropertyOption(propertyName: string, optionValue: string): Promise<{ success: boolean }>
-  renamePropertyOption(
-    propertyName: string,
-    oldValue: string,
-    newValue: string
-  ): Promise<{ success: boolean }>
-  updateOptionColor(
-    propertyName: string,
-    optionValue: string,
-    newColor: string
-  ): Promise<{ success: boolean }>
-  deletePropertyDefinition(name: string): Promise<{ success: boolean }>
-  // T070: Attachments API
-  uploadAttachment(noteId: string, file: File): Promise<AttachmentResult>
-  listAttachments(noteId: string): Promise<AttachmentInfo[]>
-  deleteAttachment(noteId: string, filename: string): Promise<DeleteAttachmentResponse>
-  // Folder config API (T096.5)
-  getFolderConfig(folderPath: string): Promise<FolderConfig | null>
-  setFolderConfig(
-    folderPath: string,
-    config: FolderConfig
-  ): Promise<{ success: boolean; error?: string }>
-  getFolderTemplate(folderPath: string): Promise<string | null>
-  // Export API (T106, T108)
-  exportPdf(input: ExportNoteInput): Promise<ExportNoteResponse>
-  exportHtml(input: ExportNoteInput): Promise<ExportNoteResponse>
-  // Version History API (T114)
-  getVersions(noteId: string): Promise<SnapshotListItem[]>
-  getVersion(snapshotId: string): Promise<SnapshotDetail | null>
-  restoreVersion(snapshotId: string): Promise<RestoreVersionResponse>
-  deleteVersion(snapshotId: string): Promise<{ success: boolean; error?: string }>
-  // Position/Reorder API
-  getPositions(folderPath: string): Promise<{
-    success: boolean
-    positions: Record<string, number>
-    error?: string
-  }>
-  getAllPositions(): Promise<{
-    success: boolean
-    positions: Record<string, number>
-    error?: string
-  }>
-  reorder(folderPath: string, notePaths: string[]): Promise<{ success: boolean; error?: string }>
-
-  // File import API
-  importFiles(
-    sourcePaths: string[],
-    targetFolder?: string
-  ): Promise<{
-    success: boolean
-    imported: number
-    failed: number
-    errors: string[]
-    importedFiles: Array<{ destPath: string; filename: string; fileType: string }>
-  }>
-  showImportDialog(): Promise<{ canceled: boolean; filePaths: string[] }>
-  setLocalOnly(
-    id: string,
-    localOnly: boolean
-  ): Promise<{ success: boolean; note: Note | null; error?: string }>
-  getLocalOnlyCount(): Promise<{ count: number }>
-}
+export type NotesClientAPI = NotesRpc.NotesClientAPI
 
 // Unified Properties API (works with notes and journal entries)
 export interface PropertiesClientAPI {
@@ -1000,81 +463,7 @@ export interface PropertiesClientAPI {
 }
 
 // Tasks client API interface
-export interface TasksClientAPI {
-  // Task CRUD
-  create(input: TaskCreateInput): Promise<TaskCreateResponse>
-  get(id: string): Promise<Task | null>
-  update(input: TaskUpdateInput): Promise<TaskCreateResponse>
-  delete(id: string): Promise<{ success: boolean; error?: string }>
-  list(options?: TaskListOptions): Promise<TaskListResponse>
-
-  // Task actions
-  complete(input: { id: string; completedAt?: string }): Promise<TaskCreateResponse>
-  uncomplete(id: string): Promise<TaskCreateResponse>
-  archive(id: string): Promise<{ success: boolean; error?: string }>
-  unarchive(id: string): Promise<{ success: boolean; error?: string }>
-  move(input: TaskMoveInput): Promise<TaskCreateResponse>
-  reorder(taskIds: string[], positions: number[]): Promise<{ success: boolean; error?: string }>
-  duplicate(id: string): Promise<TaskCreateResponse>
-
-  // Subtask operations
-  getSubtasks(parentId: string): Promise<Task[]>
-  convertToSubtask(taskId: string, parentId: string): Promise<TaskCreateResponse>
-  convertToTask(taskId: string): Promise<TaskCreateResponse>
-
-  // Project operations
-  createProject(
-    input: ProjectCreateInput
-  ): Promise<{ success: boolean; project: Project | null; error?: string }>
-  getProject(id: string): Promise<ProjectWithStatuses | null>
-  updateProject(
-    input: ProjectUpdateInput
-  ): Promise<{ success: boolean; project: Project | null; error?: string }>
-  deleteProject(id: string): Promise<{ success: boolean; error?: string }>
-  listProjects(): Promise<ProjectListResponse>
-  archiveProject(id: string): Promise<{ success: boolean; error?: string }>
-  reorderProjects(
-    projectIds: string[],
-    positions: number[]
-  ): Promise<{ success: boolean; error?: string }>
-
-  // Status operations
-  createStatus(
-    input: StatusCreateInput
-  ): Promise<{ success: boolean; status: Status | null; error?: string }>
-  updateStatus(id: string, updates: Partial<Status>): Promise<{ success: boolean; error?: string }>
-  deleteStatus(id: string): Promise<{ success: boolean; error?: string }>
-  reorderStatuses(
-    statusIds: string[],
-    positions: number[]
-  ): Promise<{ success: boolean; error?: string }>
-  listStatuses(projectId: string): Promise<Status[]>
-
-  // Tag operations
-  getTags(): Promise<{ tag: string; count: number }[]>
-
-  // Bulk operations
-  bulkComplete(ids: string[]): Promise<{ success: boolean; count: number; error?: string }>
-  bulkDelete(ids: string[]): Promise<{ success: boolean; count: number; error?: string }>
-  bulkMove(
-    ids: string[],
-    projectId: string
-  ): Promise<{ success: boolean; count: number; error?: string }>
-  bulkArchive(ids: string[]): Promise<{ success: boolean; count: number; error?: string }>
-
-  // Stats and views
-  getStats(): Promise<TaskStats>
-  getToday(): Promise<TaskListResponse>
-  getUpcoming(days?: number): Promise<TaskListResponse>
-  getOverdue(): Promise<TaskListResponse>
-
-  // Note linking
-  getLinkedTasks(noteId: string): Promise<Task[]>
-
-  // Development/Testing
-  seedPerformanceTest(): Promise<{ success: boolean; message: string }>
-  seedDemo(): Promise<{ success: boolean; message: string }>
-}
+export type TasksClientAPI = TasksRpc.TasksClientAPI
 
 // Saved Filters client API interface
 export interface SavedFiltersClientAPI {
@@ -1304,406 +693,40 @@ export interface TagsClientAPI {
 }
 
 // Inbox types
-export type InboxItemType =
-  | 'link'
-  | 'note'
-  | 'image'
-  | 'voice'
-  | 'video'
-  | 'clip'
-  | 'pdf'
-  | 'social'
-  | 'reminder'
-export type InboxProcessingStatus = 'pending' | 'processing' | 'complete' | 'failed'
-export type InboxFilingAction = 'folder' | 'note' | 'linked'
-export type InboxJobType =
-  | 'transcription'
-  | 'metadata-scrape'
-  | 'duplicate-detection'
-  | 'suggestion-generation'
-  | 'thumbnail-generation'
-export type InboxJobStatus = 'pending' | 'running' | 'failed' | 'complete'
-
-export interface InboxItem {
-  id: string
-  type: InboxItemType
-  title: string
-  content: string | null
-  createdAt: Date
-  modifiedAt: Date
-  filedAt: Date | null
-  filedTo: string | null
-  filedAction: InboxFilingAction | null
-  snoozedUntil: Date | null
-  snoozeReason: string | null
-  viewedAt: Date | null
-  processingStatus: InboxProcessingStatus
-  processingError: string | null
-  metadata: unknown
-  attachmentPath: string | null
-  attachmentUrl: string | null
-  thumbnailPath: string | null
-  thumbnailUrl: string | null
-  transcription: string | null
-  transcriptionStatus: InboxProcessingStatus | null
-  sourceUrl: string | null
-  sourceTitle: string | null
-  tags: string[]
-  isStale: boolean
-}
-
-export interface InboxItemListItem {
-  id: string
-  type: InboxItemType
-  title: string
-  content: string | null
-  createdAt: Date
-  thumbnailUrl: string | null
-  sourceUrl: string | null
-  tags: string[]
-  isStale: boolean
-  processingStatus: InboxProcessingStatus
-  duration?: number
-  excerpt?: string
-  pageCount?: number
-  // Voice transcription fields
-  transcription?: string | null
-  transcriptionStatus?: InboxProcessingStatus | null
-  // Snooze fields (optional - only present for snoozed items)
-  snoozedUntil?: Date
-  snoozeReason?: string
-  // Viewed field (for reminder items)
-  viewedAt?: Date
-  // Metadata (for reminder items - includes target info)
-  metadata?: unknown
-}
-
-export interface InboxListResponse {
-  items: InboxItemListItem[]
-  total: number
-  hasMore: boolean
-}
-
-export interface InboxDuplicateMatch {
-  id: string
-  title: string
-  createdAt: string
-}
-
-export interface InboxCaptureResponse {
-  success: boolean
-  item: InboxItem | null
-  error?: string
-  duplicate?: boolean
-  existingItem?: InboxDuplicateMatch
-}
-
-export interface InboxFileResponse {
-  success: boolean
-  filedTo: string | null
-  noteId?: string
-  error?: string
-}
-
-export interface InboxBulkResponse {
-  success: boolean
-  processedCount: number
-  errors: Array<{ itemId: string; error: string }>
-}
-
-export interface InboxFilingHistoryEntry {
-  id: string
-  itemId: string
-  itemType: InboxItemType
-  itemTitle: string
-  filedTo: string
-  filedAction: InboxFilingAction
-  filedAt: Date
-  tags: string[]
-}
-
-export interface InboxFilingHistoryResponse {
-  entries: InboxFilingHistoryEntry[]
-}
-
-export interface InboxFilingSuggestion {
-  destination: {
-    type: 'folder' | 'note' | 'new-note'
-    path?: string
-    noteId?: string
-    noteTitle?: string
-  }
-  confidence: number
-  reason: string
-  suggestedTags: string[]
-  suggestedNote?: {
-    id: string
-    title: string
-    snippet: string
-    emoji?: string | null
-  }
-}
-
-export interface InboxSuggestionsResponse {
-  suggestions: InboxFilingSuggestion[]
-}
-
-export interface InboxAgeDistribution {
-  fresh: number
-  aging: number
-  stale: number
-}
-
-export interface InboxStats {
-  totalItems: number
-  itemsByType: Record<InboxItemType, number>
-  staleCount: number
-  snoozedCount: number
-  processedToday: number
-  capturedToday: number
-  avgTimeToProcess: number
-  capturedThisWeek: number
-  processedThisWeek: number
-  captureProcessRatio: number
-  ageDistribution: InboxAgeDistribution
-  oldestItemDays: number
-  currentStreak: number
-}
-
-export interface InboxCapturePattern {
-  timeHeatmap: number[][]
-  typeDistribution: Array<{
-    type: InboxItemType
-    count: number
-    percentage: number
-    trend: 'up' | 'down' | 'stable'
-  }>
-  topDomains: Array<{ domain: string; count: number }>
-  topTags: Array<{ tag: string; count: number }>
-}
-
-export interface InboxJob {
-  id: string
-  itemId: string
-  type: InboxJobType
-  status: InboxJobStatus
-  runAt: Date
-  attempts: number
-  maxAttempts: number
-  payload: Record<string, unknown> | null
-  result: Record<string, unknown> | null
-  lastError: string | null
-  startedAt: Date | null
-  completedAt: Date | null
-  createdAt: Date
-  updatedAt: Date
-}
-
-export interface InboxJobsResponse {
-  jobs: InboxJob[]
-}
-
-export interface InboxCapturedEvent {
-  item: InboxItemListItem
-}
-
-export interface InboxUpdatedEvent {
-  id: string
-  changes: Partial<InboxItem>
-}
-
-export interface InboxArchivedEvent {
-  id: string
-}
-
-export interface InboxFiledEvent {
-  id: string
-  filedTo: string
-  filedAction: string
-}
-
-export interface InboxSnoozedEvent {
-  id: string
-  snoozeUntil: string
-}
-
-export interface InboxSnoozeDueEvent {
-  items: InboxItemListItem[]
-}
-
-export interface InboxTranscriptionCompleteEvent {
-  id: string
-  transcription: string
-}
-
-export interface InboxMetadataCompleteEvent {
-  id: string
-  metadata: unknown
-}
-
-export interface InboxProcessingErrorEvent {
-  id: string
-  operation: string
-  error: string
-}
-
-export interface LinkPreviewData {
-  title: string
-  domain: string
-  favicon?: string
-  image?: string
-  description?: string
-}
+export type InboxItemType = InboxRpc.InboxItemType
+export type InboxProcessingStatus = InboxRpc.InboxProcessingStatus
+export type InboxFilingAction = InboxRpc.InboxFilingAction
+export type InboxJobType = InboxRpc.InboxJobType
+export type InboxJobStatus = InboxRpc.InboxJobStatus
+export type InboxItem = InboxRpc.InboxItem
+export type InboxItemListItem = InboxRpc.InboxItemListItem
+export type InboxListResponse = InboxRpc.InboxListResponse
+export type InboxDuplicateMatch = NonNullable<InboxRpc.InboxCaptureResponse['existingItem']>
+export type InboxCaptureResponse = InboxRpc.InboxCaptureResponse
+export type InboxFileResponse = InboxRpc.InboxFileResponse
+export type InboxBulkResponse = InboxRpc.InboxBulkResponse
+export type InboxFilingHistoryEntry = InboxRpc.InboxFilingHistoryEntry
+export type InboxFilingHistoryResponse = InboxRpc.InboxFilingHistoryResponse
+export type InboxFilingSuggestion = InboxRpc.InboxFilingSuggestion
+export type InboxSuggestionsResponse = InboxRpc.InboxSuggestionsResponse
+export type InboxAgeDistribution = InboxRpc.InboxStats['ageDistribution']
+export type InboxStats = InboxRpc.InboxStats
+export type InboxCapturePattern = InboxRpc.InboxCapturePattern
+export type InboxJob = InboxRpc.InboxJob
+export type InboxJobsResponse = InboxRpc.InboxJobsResponse
+export type InboxCapturedEvent = InboxRpc.InboxCapturedEvent
+export type InboxUpdatedEvent = InboxRpc.InboxUpdatedEvent
+export type InboxArchivedEvent = InboxRpc.InboxArchivedEvent
+export type InboxFiledEvent = InboxRpc.InboxFiledEvent
+export type InboxSnoozedEvent = InboxRpc.InboxSnoozedEvent
+export type InboxSnoozeDueEvent = InboxRpc.InboxSnoozeDueEvent
+export type InboxTranscriptionCompleteEvent = InboxRpc.InboxTranscriptionCompleteEvent
+export type InboxMetadataCompleteEvent = InboxRpc.InboxMetadataCompleteEvent
+export type InboxProcessingErrorEvent = InboxRpc.InboxProcessingErrorEvent
+export type LinkPreviewData = InboxRpc.LinkPreviewData
 
 // Inbox client API interface
-export interface InboxClientAPI {
-  // Capture
-  captureText(input: {
-    content: string
-    title?: string
-    tags?: string[]
-    force?: boolean
-  }): Promise<InboxCaptureResponse>
-  captureLink(input: {
-    url: string
-    tags?: string[]
-    force?: boolean
-  }): Promise<InboxCaptureResponse>
-  captureImage(input: {
-    data: ArrayBuffer
-    filename: string
-    mimeType: string
-    tags?: string[]
-  }): Promise<InboxCaptureResponse>
-  captureVoice(input: {
-    data: ArrayBuffer
-    duration: number
-    format: string
-    transcribe?: boolean
-    tags?: string[]
-  }): Promise<InboxCaptureResponse>
-  captureClip(input: {
-    html: string
-    text: string
-    sourceUrl: string
-    sourceTitle: string
-    tags?: string[]
-  }): Promise<InboxCaptureResponse>
-  capturePdf(input: {
-    data: ArrayBuffer
-    filename: string
-    extractText?: boolean
-    tags?: string[]
-  }): Promise<InboxCaptureResponse>
-
-  // CRUD
-  get(id: string): Promise<InboxItem | null>
-  list(options?: {
-    type?: string
-    includeSnoozed?: boolean
-    sortBy?: 'created' | 'modified' | 'title'
-    sortOrder?: 'asc' | 'desc'
-    limit?: number
-    offset?: number
-  }): Promise<InboxListResponse>
-  update(input: { id: string; title?: string; content?: string }): Promise<InboxCaptureResponse>
-  archive(id: string): Promise<{ success: boolean; error?: string }>
-
-  // Filing
-  file(input: {
-    itemId: string
-    destination: { type: string; path?: string; noteId?: string; noteTitle?: string }
-    tags?: string[]
-  }): Promise<InboxFileResponse>
-  getSuggestions(itemId: string): Promise<InboxSuggestionsResponse>
-  convertToNote(itemId: string): Promise<InboxFileResponse>
-  convertToTask(
-    itemId: string
-  ): Promise<{ success: boolean; taskId: string | null; error?: string }>
-  linkToNote(
-    itemId: string,
-    noteId: string,
-    tags?: string[]
-  ): Promise<{ success: boolean; error?: string }>
-  trackSuggestion(input: {
-    itemId: string
-    itemType: string
-    suggestedTo: string
-    actualTo: string
-    confidence: number
-    suggestedTags?: string[]
-    actualTags?: string[]
-  }): Promise<{ success: boolean; error?: string }>
-
-  // Tags
-  addTag(itemId: string, tag: string): Promise<{ success: boolean; error?: string }>
-  removeTag(itemId: string, tag: string): Promise<{ success: boolean; error?: string }>
-  getTags(): Promise<Array<{ tag: string; count: number }>>
-
-  // Snooze
-  snooze(input: {
-    itemId: string
-    snoozeUntil: string
-    reason?: string
-  }): Promise<{ success: boolean; error?: string }>
-  unsnooze(itemId: string): Promise<{ success: boolean; error?: string }>
-  getSnoozed(): Promise<InboxItem[]>
-
-  // Viewed (for reminder items)
-  markViewed(itemId: string): Promise<{ success: boolean; error?: string }>
-
-  // Bulk operations
-  bulkFile(input: {
-    itemIds: string[]
-    destination: { type: string; path?: string; noteId?: string }
-    tags?: string[]
-  }): Promise<InboxBulkResponse>
-  bulkArchive(input: { itemIds: string[] }): Promise<InboxBulkResponse>
-  bulkTag(input: { itemIds: string[]; tags: string[] }): Promise<InboxBulkResponse>
-  bulkSnooze(input: {
-    itemIds: string[]
-    snoozeUntil: string
-    reason?: string
-  }): Promise<InboxBulkResponse>
-  fileAllStale(): Promise<InboxBulkResponse>
-
-  // Transcription
-  retryTranscription(itemId: string): Promise<{ success: boolean; error?: string }>
-
-  // Preview
-  previewLink(url: string): Promise<LinkPreviewData>
-
-  // Metadata
-  retryMetadata(itemId: string): Promise<{ success: boolean; error?: string }>
-
-  // Stats
-  getStats(): Promise<InboxStats>
-  getJobs(options?: {
-    itemIds?: string[]
-    statuses?: Array<'pending' | 'running' | 'failed' | 'complete'>
-  }): Promise<InboxJobsResponse>
-  getPatterns(): Promise<InboxCapturePattern>
-
-  // Settings
-  getStaleThreshold(): Promise<number>
-  setStaleThreshold(days: number): Promise<{ success: boolean }>
-
-  // Archived items
-  listArchived(options?: {
-    search?: string
-    limit?: number
-    offset?: number
-  }): Promise<InboxListResponse>
-  unarchive(id: string): Promise<{ success: boolean; error?: string }>
-  deletePermanent(id: string): Promise<{ success: boolean; error?: string }>
-
-  // Filing history
-  getFilingHistory(options?: { limit?: number }): Promise<InboxFilingHistoryResponse>
-
-  // Undo operations
-  undoFile(id: string): Promise<{ success: boolean; error?: string }>
-  undoArchive(id: string): Promise<{ success: boolean; error?: string }>
-}
+export type InboxClientAPI = InboxRpc.InboxClientAPI
 
 // Search types
 import type {
