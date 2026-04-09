@@ -266,7 +266,7 @@ function App(): React.JSX.Element {
       for (const [, taskIds] of Object.entries(updates)) {
         if (!taskIds) continue
         const positions = taskIds.map((_, i) => i)
-        tasksService.reorder(taskIds, positions)
+        void tasksService.reorder(taskIds, positions)
       }
     },
     [taskOrder]
@@ -315,7 +315,7 @@ function App(): React.JSX.Element {
         updateSelectedTaskIds(new Set<string>())
       }
     },
-    [projects, taskDragEnd, updateSelectedTaskIds]
+    [projects, setProjects, taskDragEnd, updateSelectedTaskIds]
   )
 
   // Main content with TabProvider and TasksProvider wrapping everything
