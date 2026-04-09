@@ -28,14 +28,9 @@ import {
   withErrorHandler
 } from './validate'
 import {
-  createNote,
   getNoteById,
   getNoteByPath,
   getFileById,
-  updateNote,
-  renameNote,
-  moveNote,
-  deleteNote,
   listNotes,
   getTagsWithCounts,
   getNoteLinks,
@@ -53,6 +48,14 @@ import {
   // File import
   importFiles
 } from '../vault/notes'
+import {
+  createNoteCommand,
+  updateNoteCommand,
+  renameNoteCommand,
+  moveNoteCommand,
+  deleteNoteCommand,
+  setNoteLocalOnlyCommand
+} from '../notes/domain'
 import { getAllSupportedExtensions } from '@memry/shared/file-types'
 import { saveAttachment, deleteAttachment, listNoteAttachments } from '../vault/attachments'
 import { fromMemryFileUrl } from '../lib/paths'
@@ -68,13 +71,7 @@ import {
 import { getIndexDatabase, getDatabase } from '../database'
 import { countLocalOnlyNoteMetadata, listPropertyDefinitions } from '@memry/storage-data'
 import { getNotesInFolder, reorderNotesInFolder, getAllNotePositions } from '../notes/store'
-import {
-  emitNoteAttachmentSaved,
-  setNoteLocalOnlyState,
-  syncNoteCreate,
-  syncNoteDelete,
-  syncNoteUpdate
-} from '../notes/runtime-effects'
+import { emitNoteAttachmentSaved } from '../notes/runtime-effects'
 import {
   createPropertyDefinitionRecord,
   deletePropertyDefinitionRecord,
@@ -162,8 +159,7 @@ export function registerNotesHandlers(): void {
     createValidatedHandler(
       NoteCreateSchema,
       withErrorHandler(async (input) => {
-        const note = await createNote(input)
-        syncNoteCreate(note.id, note.title, note.tags)
+        const note = await createNoteCommand(input)
         return { success: true, note }
       }, 'Failed to create note')
     )
@@ -243,15 +239,7 @@ export function registerNotesHandlers(): void {
     createValidatedHandler(
       NoteUpdateSchema,
       withErrorHandler(async (input) => {
-        const note = await updateNote(input)
-        const hasMetadataChanges =
-          input.title !== undefined ||
-          input.tags !== undefined ||
-          input.frontmatter !== undefined ||
-          input.emoji !== undefined
-        if (hasMetadataChanges) {
-          syncNoteUpdate(input.id, input.title)
-        }
+        const note = await updateNoteCommand(input)
         return { success: true, note }
       }, 'Failed to update note')
     )
@@ -263,8 +251,7 @@ export function registerNotesHandlers(): void {
     createValidatedHandler(
       NoteRenameSchema,
       withErrorHandler(async (input) => {
-        const note = await renameNote(input.id, input.newTitle)
-        syncNoteUpdate(input.id, input.newTitle)
+        const note = await renameNoteCommand(input.id, input.newTitle)
         return { success: true, note }
       }, 'Failed to rename note')
     )
@@ -276,8 +263,7 @@ export function registerNotesHandlers(): void {
     createValidatedHandler(
       NoteMoveSchema,
       withErrorHandler(async (input) => {
-        const note = await moveNote(input.id, input.newFolder)
-        syncNoteUpdate(input.id)
+        const note = await moveNoteCommand(input.id, input.newFolder)
         return { success: true, note }
       }, 'Failed to move note')
     )
@@ -288,8 +274,7 @@ export function registerNotesHandlers(): void {
     NotesChannels.invoke.DELETE,
     createStringHandler(
       withErrorHandler(async (id) => {
-        syncNoteDelete(id)
-        await deleteNote(id)
+        await deleteNoteCommand(id)
         return { success: true }
       }, 'Failed to delete note')
     )
@@ -936,8 +921,7 @@ export function registerNotesHandlers(): void {
     createValidatedHandler(
       SetLocalOnlySchema,
       withErrorHandler(async (input) => {
-        const note = await updateNote({ id: input.id, frontmatter: { localOnly: input.localOnly } })
-        setNoteLocalOnlyState(input.id, input.localOnly)
+        const note = await setNoteLocalOnlyCommand(input)
         return { success: true, note }
       }, 'Failed to set local-only')
     )
