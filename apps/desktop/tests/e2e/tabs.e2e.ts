@@ -422,9 +422,7 @@ test.describe('Tab Content Integration', () => {
     const tasksActive = await getActiveTabTitle(page)
 
     // Click back to Inbox tab
-    const inboxTab = page
-      .locator('[role="tab"][data-group-id]:has-text("Inbox")')
-      .first()
+    const inboxTab = page.locator('[role="tab"][data-group-id]:has-text("Inbox")').first()
     const hasInbox = await inboxTab.isVisible().catch(() => false)
     if (hasInbox) {
       await inboxTab.click()

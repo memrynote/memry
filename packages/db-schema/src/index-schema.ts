@@ -12,4 +12,4 @@
  * @module db/schema/index-schema
  */
 
-export * from './schema/notes-cache'
+export * from './schema/notes-cache.ts'

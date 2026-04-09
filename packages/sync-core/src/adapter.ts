@@ -1,6 +1,6 @@
 import type { ZodType } from 'zod'
 import type { SyncItemType, SyncOperation, VectorClock } from '@memry/contracts/sync-api'
-import type { CrdtSyncAdapter } from './crdt-sync'
+import type { CrdtSyncAdapter } from './crdt-sync.ts'
 
 export type SyncAdapterKind = 'record' | 'crdt'
 export type RemoteApplyResult = 'applied' | 'skipped' | 'conflict' | 'parse_error'

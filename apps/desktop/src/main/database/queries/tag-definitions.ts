@@ -1,6 +1,6 @@
 import { count, eq, like } from 'drizzle-orm'
 import { tagDefinitions } from '@memry/db-schema/schema/tag-definitions'
-import type { DrizzleDb } from '../types'
+import type { DataDb } from '../types'
 
 const TAG_COLOR_PALETTE = [
   'rose',
@@ -29,7 +29,7 @@ const TAG_COLOR_PALETTE = [
   'coral'
 ]
 
-export function getOrCreateTag(db: DrizzleDb, name: string): { name: string; color: string } {
+export function getOrCreateTag(db: DataDb, name: string): { name: string; color: string } {
   const normalizedName = name.toLowerCase().trim()
 
   const existing = db
@@ -50,7 +50,7 @@ export function getOrCreateTag(db: DrizzleDb, name: string): { name: string; col
   return { name: normalizedName, color }
 }
 
-export function getAllTagDefinitions(db: DrizzleDb): { name: string; color: string }[] {
+export function getAllTagDefinitions(db: DataDb): { name: string; color: string }[] {
   return db
     .select({
       name: tagDefinitions.name,
@@ -60,12 +60,12 @@ export function getAllTagDefinitions(db: DrizzleDb): { name: string; color: stri
     .all()
 }
 
-export function updateTagColor(db: DrizzleDb, name: string, color: string): void {
+export function updateTagColor(db: DataDb, name: string, color: string): void {
   const normalizedName = name.toLowerCase().trim()
   db.update(tagDefinitions).set({ color }).where(eq(tagDefinitions.name, normalizedName)).run()
 }
 
-export function renameTagDefinition(db: DrizzleDb, oldName: string, newName: string): void {
+export function renameTagDefinition(db: DataDb, oldName: string, newName: string): void {
   const normalizedOld = oldName.toLowerCase().trim()
   const normalizedNew = newName.toLowerCase().trim()
 
@@ -80,7 +80,10 @@ export function renameTagDefinition(db: DrizzleDb, oldName: string, newName: str
   if (existingNew) {
     db.delete(tagDefinitions).where(eq(tagDefinitions.name, normalizedOld)).run()
   } else {
-    db.update(tagDefinitions).set({ name: normalizedNew }).where(eq(tagDefinitions.name, normalizedOld)).run()
+    db.update(tagDefinitions)
+      .set({ name: normalizedNew })
+      .where(eq(tagDefinitions.name, normalizedOld))
+      .run()
   }
 
   const children = db
@@ -100,13 +103,16 @@ export function renameTagDefinition(db: DrizzleDb, oldName: string, newName: str
     if (existingChild) {
       db.delete(tagDefinitions).where(eq(tagDefinitions.name, child.name)).run()
     } else {
-      db.update(tagDefinitions).set({ name: newChildName }).where(eq(tagDefinitions.name, child.name)).run()
+      db.update(tagDefinitions)
+        .set({ name: newChildName })
+        .where(eq(tagDefinitions.name, child.name))
+        .run()
     }
   }
 }
 
 export function deleteTagDefinition(
-  db: DrizzleDb,
+  db: DataDb,
   name: string,
   options: { cascade?: boolean } = {}
 ): void {
@@ -114,12 +120,14 @@ export function deleteTagDefinition(
   db.delete(tagDefinitions).where(eq(tagDefinitions.name, normalizedName)).run()
 
   if (options.cascade) {
-    db.delete(tagDefinitions).where(like(tagDefinitions.name, `${normalizedName}/%`)).run()
+    db.delete(tagDefinitions)
+      .where(like(tagDefinitions.name, `${normalizedName}/%`))
+      .run()
   }
 }
 
 export function ensureTagDefinitions(
-  db: DrizzleDb,
+  db: DataDb,
   tags: string[]
 ): { name: string; color: string }[] {
   const normalized = Array.from(

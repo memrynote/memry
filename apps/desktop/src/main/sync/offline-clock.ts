@@ -11,7 +11,7 @@ import {
 import { increment } from './vector-clock'
 import { initAllFieldClocks, TASK_SYNCABLE_FIELDS, PROJECT_SYNCABLE_FIELDS } from './field-merge'
 import { createLogger } from '../lib/logger'
-import type { DrizzleDb } from '../database/client'
+import type { DataDb } from '../database/client'
 
 export const OFFLINE_DEVICE_KEY = OFFLINE_CLOCK_DEVICE_ID
 const log = createLogger('OfflineClock')
@@ -85,7 +85,7 @@ function incrementFieldClocksForFields(
 }
 
 export function incrementTaskClocksOffline(
-  db: DrizzleDb,
+  db: DataDb,
   taskId: string,
   changedFields: string[]
 ): void {
@@ -119,7 +119,7 @@ export function incrementTaskClocksOffline(
 }
 
 export function incrementProjectClocksOffline(
-  db: DrizzleDb,
+  db: DataDb,
   projectId: string,
   changedFields?: string[]
 ): void {
@@ -148,7 +148,7 @@ export function incrementProjectClocksOffline(
   }
 }
 
-export function incrementInboxClockOffline(db: DrizzleDb, itemId: string): void {
+export function incrementInboxClockOffline(db: DataDb, itemId: string): void {
   try {
     const item = db.select().from(inboxItems).where(eq(inboxItems.id, itemId)).get()
     if (!item) return
@@ -164,7 +164,7 @@ export function incrementInboxClockOffline(db: DrizzleDb, itemId: string): void 
   }
 }
 
-export function incrementFilterClockOffline(db: DrizzleDb, filterId: string): void {
+export function incrementFilterClockOffline(db: DataDb, filterId: string): void {
   try {
     const filter = db.select().from(savedFilters).where(eq(savedFilters.id, filterId)).get()
     if (!filter) return

@@ -375,8 +375,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
             const freshBlock = editor.getBlock(blockId)
             if (freshBlock) {
               const currentTitle = (freshBlock.props as any).title || parsed.title
-              const currentParentTaskId =
-                ((freshBlock.props as any).parentTaskId as string) || ''
+              const currentParentTaskId = ((freshBlock.props as any).parentTaskId as string) || ''
               editor.updateBlock(freshBlock, {
                 props: {
                   taskId: result.task.id,
@@ -558,8 +557,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
             const freshBlock = editor.getBlock(blockId)
             if (freshBlock) {
               const currentTitle = (freshBlock.props as any).title || parsed.title
-              const currentParentTaskId =
-                ((freshBlock.props as any).parentTaskId as string) || ''
+              const currentParentTaskId = ((freshBlock.props as any).parentTaskId as string) || ''
               editor.updateBlock(freshBlock, {
                 props: {
                   taskId: result.task.id,

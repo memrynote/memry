@@ -102,7 +102,9 @@ function EditorLoadingState() {
   )
 }
 
-function getInitialTemplateState(template: Template | null | undefined): TemplateEditorInitialState {
+function getInitialTemplateState(
+  template: Template | null | undefined
+): TemplateEditorInitialState {
   return {
     name: template?.name ?? '',
     description: template?.description ?? '',
@@ -176,7 +178,9 @@ function TemplateEditorForm({
   const [description, setDescription] = useState(initialTemplate.description)
   const icon = initialTemplate.icon
   const [tags, setTags] = useState<string[]>(() => [...initialTemplate.tags])
-  const [properties, setProperties] = useState<TemplateProperty[]>(() => [...initialTemplate.properties])
+  const [properties, setProperties] = useState<TemplateProperty[]>(() => [
+    ...initialTemplate.properties
+  ])
   const [content, setContent] = useState(initialTemplate.content)
 
   // Track if modified

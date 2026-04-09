@@ -51,11 +51,7 @@ import { initEmbeddingModel, isModelLoaded, isModelLoading } from '../lib/embedd
 import { flushFtsUpdates, hasPendingFtsUpdates } from '../database'
 import { createLogger } from '../lib/logger'
 import { startSyncRuntime, stopSyncRuntime } from '../sync/runtime'
-import {
-  reconcileProjections,
-  startProjectionRuntime,
-  stopProjectionRuntime
-} from '../projections'
+import { reconcileProjections, startProjectionRuntime, stopProjectionRuntime } from '../projections'
 import { createNoteDerivedStateProjector } from '../projections/projectors/note-derived-state-projector'
 import { createSearchProjector } from '../projections/projectors/search-projector'
 import { createEmbeddingProjector } from '../projections/projectors/embedding-projector'

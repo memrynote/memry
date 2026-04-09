@@ -11,12 +11,12 @@ import {
   rebindOfflineClockData
 } from './offline-clock'
 import { createLogger } from '../lib/logger'
-import type { DrizzleDb } from '../database/client'
+import type { DataDb } from '../database/client'
 
 const log = createLogger('TaskSync')
 
 function enrichWithJunctionData(
-  db: DrizzleDb,
+  db: DataDb,
   taskId: string,
   base: Record<string, unknown>
 ): Record<string, unknown> {
@@ -37,7 +37,7 @@ function enrichWithJunctionData(
 
 interface TaskSyncDeps {
   queue: SyncQueueManager
-  db: DrizzleDb
+  db: DataDb
   getDeviceId: () => string | null
 }
 

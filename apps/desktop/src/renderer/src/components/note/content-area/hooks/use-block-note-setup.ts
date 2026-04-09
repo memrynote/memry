@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { AIExtension } from '@blocknote/xl-ai'
 import { DefaultChatTransport } from 'ai'
 import type { HighlightInfo } from '../types'
@@ -33,11 +33,14 @@ export function useBlockNoteSetup({
   onInternalLinkClick,
   initialHighlight
 }: BlockNoteSetupParams): BlockNoteSetupResult {
-  const aiReady = Boolean(aiPort)
+  const [aiReady, setAiReady] = useState(false)
 
   // AI extension registration
   useEffect(() => {
-    if (!aiPort) return
+    if (!aiPort) {
+      setAiReady(false)
+      return
+    }
 
     if (!editor.getExtension('ai')) {
       const transport = new DefaultChatTransport({
@@ -47,6 +50,8 @@ export function useBlockNoteSetup({
       editor.registerExtension(aiExtension)
       log.info('AI extension registered, port:', aiPort)
     }
+
+    setAiReady(Boolean(editor.getExtension('ai')))
 
     const handleKeyDown = (e: KeyboardEvent): void => {
       if ((e.metaKey || e.ctrlKey) && e.key === 'j') {

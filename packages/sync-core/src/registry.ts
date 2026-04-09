@@ -1,4 +1,4 @@
-import type { SyncAdapter, RemoteSyncAdapter, RecordLocalSyncAdapter } from './adapter'
+import type { SyncAdapter, RemoteSyncAdapter, RecordLocalSyncAdapter } from './adapter.ts'
 import type { SyncItemType } from '@memry/contracts/sync-api'
 
 export class SyncAdapterRegistry<TDb = unknown, TEmit = unknown> {

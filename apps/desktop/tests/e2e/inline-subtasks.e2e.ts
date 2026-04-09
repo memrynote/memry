@@ -31,7 +31,9 @@ interface TaskRow {
 // rebuilt for Electron's NODE_MODULE_VERSION and would crash if loaded here.
 async function findTasksByTitles(page: Page, titles: string[]): Promise<TaskRow[]> {
   const all = (await page.evaluate(async () => {
-    const api = (window as unknown as { api?: { tasks?: { list?: (o: object) => Promise<unknown> } } }).api
+    const api = (
+      window as unknown as { api?: { tasks?: { list?: (o: object) => Promise<unknown> } } }
+    ).api
     if (!api?.tasks?.list) return []
     const res = (await api.tasks.list({ includeCompleted: true, includeArchived: true })) as {
       tasks?: { id: string; parentId: string | null; title: string }[]
@@ -64,10 +66,10 @@ async function focusEditor(page) {
 
 async function waitForTaskBlockCount(page, expected: number, timeout = 8000) {
   await expect
-    .poll(
-      async () => page.locator('[data-content-type="taskBlock"]').count(),
-      { timeout, intervals: [200, 400, 800] }
-    )
+    .poll(async () => page.locator('[data-content-type="taskBlock"]').count(), {
+      timeout,
+      intervals: [200, 400, 800]
+    })
     .toBe(expected)
 }
 
@@ -75,24 +77,26 @@ async function waitForTaskBlockCount(page, expected: number, timeout = 8000) {
 // existing tasks-handlers IPC so the rows match what convertCheckboxToTask
 // would create on the live edit path.
 async function createTaskInDb(page, title: string): Promise<string> {
-  return (await page.evaluate(async ({ title }) => {
-    const api = (window as any).api
-    if (!api?.tasks) throw new Error('window.api.tasks not exposed')
-    const projectsRes = await api.tasks.listProjects()
-    const projects = projectsRes?.projects ?? []
-    const defaultProject =
-      projects.find((p: any) => p.isDefault || p.isInbox) ?? projects[0]
-    if (!defaultProject) throw new Error('no default project found')
-    const created = await api.tasks.create({
-      projectId: defaultProject.id,
-      title,
-      priority: 0
-    })
-    if (!created?.success || !created.task) {
-      throw new Error('tasks.create failed: ' + JSON.stringify(created))
-    }
-    return created.task.id as string
-  }, { title })) as string
+  return (await page.evaluate(
+    async ({ title }) => {
+      const api = (window as any).api
+      if (!api?.tasks) throw new Error('window.api.tasks not exposed')
+      const projectsRes = await api.tasks.listProjects()
+      const projects = projectsRes?.projects ?? []
+      const defaultProject = projects.find((p: any) => p.isDefault || p.isInbox) ?? projects[0]
+      if (!defaultProject) throw new Error('no default project found')
+      const created = await api.tasks.create({
+        projectId: defaultProject.id,
+        title,
+        priority: 0
+      })
+      if (!created?.success || !created.task) {
+        throw new Error('tasks.create failed: ' + JSON.stringify(created))
+      }
+      return created.task.id as string
+    },
+    { title }
+  )) as string
 }
 
 // Replace the editor document with a single parent task block that has the
@@ -341,9 +345,7 @@ test.describe('Inline Subtasks', () => {
     // Open the note via search (Cmd+K)
     await page.keyboard.press(`${process.platform === 'darwin' ? 'Meta' : 'Control'}+k`)
     await page.waitForTimeout(400)
-    const searchInput = page
-      .locator('input[placeholder*="Search"], input[role="combobox"]')
-      .first()
+    const searchInput = page.locator('input[placeholder*="Search"], input[role="combobox"]').first()
     if (await searchInput.isVisible({ timeout: 2000 }).catch(() => false)) {
       await searchInput.fill('Seeded Subtask')
       await page.waitForTimeout(500)
@@ -360,10 +362,7 @@ test.describe('Inline Subtasks', () => {
     expect(await taskBlocks.count()).toBe(2)
 
     // The seeded file's text content should appear in the editor
-    const editorText = await page
-      .locator('[aria-label="Rich text editor"]')
-      .first()
-      .textContent()
+    const editorText = await page.locator('[aria-label="Rich text editor"]').first().textContent()
     expect(editorText).toContain(parentTitle)
     expect(editorText).toContain(subTitle)
   })
@@ -531,9 +530,7 @@ test.describe('Inline Subtasks', () => {
     // through handleTitleKeyDown.
     const dispatched = await page.evaluate(
       async ({ childTaskId }) => {
-        const taskBlocks = document.querySelectorAll<HTMLElement>(
-          '[data-content-type="taskBlock"]'
-        )
+        const taskBlocks = document.querySelectorAll<HTMLElement>('[data-content-type="taskBlock"]')
         if (taskBlocks.length < 2) {
           return { reason: 'taskBlock count', taskBlocks: taskBlocks.length }
         }
@@ -542,9 +539,7 @@ test.describe('Inline Subtasks', () => {
         // enter edit mode and re-query.
         let input = secondBlock.querySelector<HTMLInputElement>('input[type="text"]')
         if (!input) {
-          const clickable = secondBlock.querySelector<HTMLElement>(
-            '[role="button"][tabindex="0"]'
-          )
+          const clickable = secondBlock.querySelector<HTMLElement>('[role="button"][tabindex="0"]')
           if (clickable) {
             clickable.click()
             await new Promise((r) => requestAnimationFrame(() => r(null)))
@@ -897,9 +892,7 @@ test.describe('Inline Subtasks', () => {
     // would; driving the input handler synthetically matches how the demote
     // test at the top of this file works.
     const dispatched = await page.evaluate(async () => {
-      const taskBlocks = document.querySelectorAll<HTMLElement>(
-        '[data-content-type="taskBlock"]'
-      )
+      const taskBlocks = document.querySelectorAll<HTMLElement>('[data-content-type="taskBlock"]')
       if (taskBlocks.length !== 1) {
         return { reason: 'taskBlock count', count: taskBlocks.length }
       }

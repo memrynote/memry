@@ -4,6 +4,7 @@ export {
   getDatabase,
   getIndexDatabase,
   getRawIndexDatabase,
+  requireDatabase,
   closeDatabase,
   closeIndexDatabase,
   closeAllDatabases,
@@ -12,7 +13,7 @@ export {
   type IndexHealth
 } from './client'
 
-export type { DataDb, IndexDb, RawIndexDb, DrizzleDb } from './types'
+export type { DataDb, IndexDb, RawIndexDb } from './types'
 
 export { runMigrations, runIndexMigrations } from './migrate'
 

@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/require-await */
 
 import { BrowserWindow, ipcMain } from 'electron'
-import { createTasksDomain, type TasksDomainPublisher } from '@memry/domain-tasks'
+import type { TasksDomainPublisher } from '@memry/domain-tasks'
 import { TasksChannels } from '@memry/contracts/ipc-channels'
 import {
   BulkIdsSchema,
@@ -21,65 +21,21 @@ import {
   TaskReorderSchema,
   TaskUpdateSchema
 } from '@memry/contracts/tasks-api'
-import { createTasksRepository } from '@memry/storage-data'
-import { getDatabase, type DrizzleDb } from '../database'
+import { requireDatabase, type DataDb } from '../database'
 import { createLogger } from '../lib/logger'
 import { generateId } from '../lib/id'
-import * as taskQueries from '@main/database/queries/tasks'
-import * as projectQueries from '@main/database/queries/projects'
-import { getTaskSyncService } from '../sync/task-sync'
-import { getProjectSyncService } from '../sync/project-sync'
-import { incrementProjectClocksOffline, incrementTaskClocksOffline } from '../sync/offline-clock'
 import { createHandler, createStringHandler, createValidatedHandler, withDb } from './validate'
-import { publishProjectionEvent } from '../projections'
+import { createDesktopTasksDomain } from '../tasks/domain'
+import {
+  syncProjectCreate,
+  syncProjectDelete,
+  syncProjectUpdate,
+  syncTaskCreate,
+  syncTaskDelete,
+  syncTaskUpdate
+} from '../tasks/runtime-effects'
 
 const logger = createLogger('IPC:Tasks')
-
-function syncTaskUpdate(db: DrizzleDb, taskId: string, changedFields: string[]): void {
-  const svc = getTaskSyncService()
-  if (svc) {
-    svc.enqueueUpdate(taskId, changedFields)
-  } else {
-    incrementTaskClocksOffline(db, taskId, changedFields)
-  }
-
-  publishProjectionEvent({
-    type: 'task.upserted',
-    taskId
-  })
-}
-
-function syncTaskCreate(db: DrizzleDb, taskId: string): void {
-  const svc = getTaskSyncService()
-  if (svc) {
-    svc.enqueueCreate(taskId)
-  } else {
-    incrementTaskClocksOffline(db, taskId, [])
-  }
-
-  publishProjectionEvent({
-    type: 'task.upserted',
-    taskId
-  })
-}
-
-function syncProjectUpdate(db: DrizzleDb, projectId: string, changedFields?: string[]): void {
-  const svc = getProjectSyncService()
-  if (svc) {
-    svc.enqueueUpdate(projectId, changedFields)
-  } else {
-    incrementProjectClocksOffline(db, projectId, changedFields)
-  }
-}
-
-function syncProjectCreate(db: DrizzleDb, projectId: string): void {
-  const svc = getProjectSyncService()
-  if (svc) {
-    svc.enqueueCreate(projectId)
-  } else {
-    incrementProjectClocksOffline(db, projectId)
-  }
-}
 
 function emitTaskEvent(channel: string, data: unknown): void {
   BrowserWindow.getAllWindows().forEach((win) => {
@@ -87,15 +43,7 @@ function emitTaskEvent(channel: string, data: unknown): void {
   })
 }
 
-function requireDatabase(): DrizzleDb {
-  try {
-    return getDatabase()
-  } catch {
-    throw new Error('No vault is open. Please open a vault first.')
-  }
-}
-
-function createTasksPublisher(db: DrizzleDb): TasksDomainPublisher {
+function createTasksPublisher(db: DataDb): TasksDomainPublisher {
   return {
     taskCreated: ({ task }) => {
       emitTaskEvent(TasksChannels.events.CREATED, { task })
@@ -106,12 +54,8 @@ function createTasksPublisher(db: DrizzleDb): TasksDomainPublisher {
       syncTaskUpdate(db, id, changedFields)
     },
     taskDeleted: ({ id, snapshot }) => {
-      const syncService = getTaskSyncService()
-      if (syncService && snapshot) {
-        syncService.enqueueDelete(id, JSON.stringify(snapshot))
-      }
+      syncTaskDelete(id, snapshot)
       emitTaskEvent(TasksChannels.events.DELETED, { id })
-      publishProjectionEvent({ type: 'task.deleted', taskId: id })
     },
     taskCompleted: ({ id, task }) => {
       emitTaskEvent(TasksChannels.events.COMPLETED, { id, task })
@@ -133,10 +77,7 @@ function createTasksPublisher(db: DrizzleDb): TasksDomainPublisher {
       syncProjectUpdate(db, id, changedFields)
     },
     projectDeleted: ({ id, snapshot }) => {
-      const syncService = getProjectSyncService()
-      if (syncService && snapshot) {
-        syncService.enqueueDelete(id, JSON.stringify(snapshot))
-      }
+      syncProjectDelete(id, snapshot)
       emitTaskEvent(TasksChannels.events.PROJECT_DELETED, { id })
     },
     statusCreated: ({ status }) => {
@@ -151,16 +92,8 @@ function createTasksPublisher(db: DrizzleDb): TasksDomainPublisher {
   }
 }
 
-function createTaskDomain(db: DrizzleDb) {
-  return createTasksDomain({
-    repository: createTasksRepository({
-      db,
-      taskQueries,
-      projectQueries
-    }),
-    publisher: createTasksPublisher(db),
-    generateId
-  })
+function createTaskDomain(db: DataDb) {
+  return createDesktopTasksDomain(db, createTasksPublisher(db), generateId)
 }
 
 export function registerTasksHandlers(): void {
@@ -187,12 +120,16 @@ export function registerTasksHandlers(): void {
 
   ipcMain.handle(
     TasksChannels.invoke.DELETE,
-    createStringHandler(withDb((db, id) => createTaskDomain(db).deleteTask(id), 'Failed to delete task'))
+    createStringHandler(
+      withDb((db, id) => createTaskDomain(db).deleteTask(id), 'Failed to delete task')
+    )
   )
 
   ipcMain.handle(
     TasksChannels.invoke.LIST,
-    createValidatedHandler(TaskListSchema, async (input) => createTaskDomain(requireDatabase()).listTasks(input))
+    createValidatedHandler(TaskListSchema, async (input) =>
+      createTaskDomain(requireDatabase()).listTasks(input)
+    )
   )
 
   ipcMain.handle(
@@ -205,17 +142,23 @@ export function registerTasksHandlers(): void {
 
   ipcMain.handle(
     TasksChannels.invoke.UNCOMPLETE,
-    createStringHandler(withDb((db, id) => createTaskDomain(db).uncompleteTask(id), 'Failed to uncomplete task'))
+    createStringHandler(
+      withDb((db, id) => createTaskDomain(db).uncompleteTask(id), 'Failed to uncomplete task')
+    )
   )
 
   ipcMain.handle(
     TasksChannels.invoke.ARCHIVE,
-    createStringHandler(withDb((db, id) => createTaskDomain(db).archiveTask(id), 'Failed to archive task'))
+    createStringHandler(
+      withDb((db, id) => createTaskDomain(db).archiveTask(id), 'Failed to archive task')
+    )
   )
 
   ipcMain.handle(
     TasksChannels.invoke.UNARCHIVE,
-    createStringHandler(withDb((db, id) => createTaskDomain(db).unarchiveTask(id), 'Failed to unarchive task'))
+    createStringHandler(
+      withDb((db, id) => createTaskDomain(db).unarchiveTask(id), 'Failed to unarchive task')
+    )
   )
 
   ipcMain.handle(
@@ -230,18 +173,25 @@ export function registerTasksHandlers(): void {
     TasksChannels.invoke.REORDER,
     createValidatedHandler(
       TaskReorderSchema,
-      withDb((db, input) => createTaskDomain(db).reorderTasks(input.taskIds, input.positions), 'Failed to reorder tasks')
+      withDb(
+        (db, input) => createTaskDomain(db).reorderTasks(input.taskIds, input.positions),
+        'Failed to reorder tasks'
+      )
     )
   )
 
   ipcMain.handle(
     TasksChannels.invoke.DUPLICATE,
-    createStringHandler(withDb((db, id) => createTaskDomain(db).duplicateTask(id), 'Failed to duplicate task'))
+    createStringHandler(
+      withDb((db, id) => createTaskDomain(db).duplicateTask(id), 'Failed to duplicate task')
+    )
   )
 
   ipcMain.handle(
     TasksChannels.invoke.GET_SUBTASKS,
-    createStringHandler(async (parentId) => createTaskDomain(requireDatabase()).getSubtasks(parentId))
+    createStringHandler(async (parentId) =>
+      createTaskDomain(requireDatabase()).getSubtasks(parentId)
+    )
   )
 
   ipcMain.handle(
@@ -257,7 +207,9 @@ export function registerTasksHandlers(): void {
 
   ipcMain.handle(
     TasksChannels.invoke.CONVERT_TO_TASK,
-    createStringHandler(withDb((db, id) => createTaskDomain(db).convertToTask(id), 'Failed to convert to task'))
+    createStringHandler(
+      withDb((db, id) => createTaskDomain(db).convertToTask(id), 'Failed to convert to task')
+    )
   )
 
   ipcMain.handle(
@@ -283,7 +235,9 @@ export function registerTasksHandlers(): void {
 
   ipcMain.handle(
     TasksChannels.invoke.PROJECT_DELETE,
-    createStringHandler(withDb((db, id) => createTaskDomain(db).deleteProject(id), 'Failed to delete project'))
+    createStringHandler(
+      withDb((db, id) => createTaskDomain(db).deleteProject(id), 'Failed to delete project')
+    )
   )
 
   ipcMain.handle(
@@ -293,7 +247,9 @@ export function registerTasksHandlers(): void {
 
   ipcMain.handle(
     TasksChannels.invoke.PROJECT_ARCHIVE,
-    createStringHandler(withDb((db, id) => createTaskDomain(db).archiveProject(id), 'Failed to archive project'))
+    createStringHandler(
+      withDb((db, id) => createTaskDomain(db).archiveProject(id), 'Failed to archive project')
+    )
   )
 
   ipcMain.handle(
@@ -325,7 +281,9 @@ export function registerTasksHandlers(): void {
 
   ipcMain.handle(
     TasksChannels.invoke.STATUS_DELETE,
-    createStringHandler(withDb((db, id) => createTaskDomain(db).deleteStatus(id), 'Failed to delete status'))
+    createStringHandler(
+      withDb((db, id) => createTaskDomain(db).deleteStatus(id), 'Failed to delete status')
+    )
   )
 
   ipcMain.handle(
@@ -341,7 +299,9 @@ export function registerTasksHandlers(): void {
 
   ipcMain.handle(
     TasksChannels.invoke.STATUS_LIST,
-    createStringHandler(async (projectId) => createTaskDomain(requireDatabase()).listStatuses(projectId))
+    createStringHandler(async (projectId) =>
+      createTaskDomain(requireDatabase()).listStatuses(projectId)
+    )
   )
 
   ipcMain.handle(
@@ -353,7 +313,10 @@ export function registerTasksHandlers(): void {
     TasksChannels.invoke.BULK_COMPLETE,
     createValidatedHandler(
       BulkIdsSchema,
-      withDb((db, input) => createTaskDomain(db).bulkComplete(input.ids), 'Failed to complete tasks')
+      withDb(
+        (db, input) => createTaskDomain(db).bulkComplete(input.ids),
+        'Failed to complete tasks'
+      )
     )
   )
 
@@ -369,7 +332,10 @@ export function registerTasksHandlers(): void {
     TasksChannels.invoke.BULK_MOVE,
     createValidatedHandler(
       BulkMoveSchema,
-      withDb((db, input) => createTaskDomain(db).bulkMove(input.ids, input.projectId), 'Failed to move tasks')
+      withDb(
+        (db, input) => createTaskDomain(db).bulkMove(input.ids, input.projectId),
+        'Failed to move tasks'
+      )
     )
   )
 
@@ -393,9 +359,8 @@ export function registerTasksHandlers(): void {
 
   ipcMain.handle(
     TasksChannels.invoke.GET_UPCOMING,
-    createValidatedHandler(
-      GetUpcomingSchema,
-      async (input) => createTaskDomain(requireDatabase()).getUpcoming(input.days)
+    createValidatedHandler(GetUpcomingSchema, async (input) =>
+      createTaskDomain(requireDatabase()).getUpcoming(input.days)
     )
   )
 
@@ -406,7 +371,9 @@ export function registerTasksHandlers(): void {
 
   ipcMain.handle(
     TasksChannels.invoke.GET_LINKED_TASKS,
-    createStringHandler(async (noteId) => createTaskDomain(requireDatabase()).getLinkedTasks(noteId))
+    createStringHandler(async (noteId) =>
+      createTaskDomain(requireDatabase()).getLinkedTasks(noteId)
+    )
   )
 
   ipcMain.handle(

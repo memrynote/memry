@@ -29,11 +29,11 @@ import {
   getAverageTimeToProcess,
   getInboxHealthMetrics
 } from '../inbox/stats'
-import type { DrizzleDb } from '../database'
+import type { DataDb } from '../database'
 
 export interface InboxQueryHandlerDeps {
-  requireDatabase: () => DrizzleDb
-  getItemTags: (db: DrizzleDb, itemId: string) => string[]
+  requireDatabase: () => DataDb
+  getItemTags: (db: DataDb, itemId: string) => string[]
   toListItem: (row: typeof inboxItems.$inferSelect, tags: string[]) => InboxItemListItem
 }
 

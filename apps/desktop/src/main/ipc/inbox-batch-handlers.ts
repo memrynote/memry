@@ -12,10 +12,10 @@ import { generateId } from '../lib/id'
 import { bulkFileToFolder } from '../inbox/filing'
 import { bulkSnoozeItems } from '../inbox/snooze'
 import { getStaleItemIds } from '../inbox/stats'
-import type { DrizzleDb } from '../database'
+import type { DataDb } from '../database'
 
 export interface InboxBatchHandlerDeps {
-  requireDatabase: () => DrizzleDb
+  requireDatabase: () => DataDb
   emitInboxEvent: (channel: string, data: unknown) => void
   archiveItem: (itemId: string) => Promise<{ success: boolean; error?: string }>
 }

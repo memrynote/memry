@@ -314,9 +314,10 @@ export const noteHandler: SyncItemHandler<NoteSyncPayload> = {
       if (propertiesPresent) {
         const getType = (name: string, value: unknown) => {
           const type =
-            (getCanonicalPropertyDefinition(ctx.db, name)?.type as ReturnType<
-              typeof inferPropertyType
-            > | null | undefined) ?? inferPropertyType(name, value)
+            (getCanonicalPropertyDefinition(ctx.db, name)?.type as
+              | ReturnType<typeof inferPropertyType>
+              | null
+              | undefined) ?? inferPropertyType(name, value)
           saveCanonicalPropertyDefinition(ctx.db, { name, type })
           return type
         }

@@ -1,2 +1,2 @@
-export * from './data-schema'
-export * from './index-schema'
+export * from './data-schema.ts'
+export * from './index-schema.ts'

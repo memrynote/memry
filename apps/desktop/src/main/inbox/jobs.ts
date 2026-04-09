@@ -8,7 +8,7 @@ import type {
 } from '@memry/contracts/inbox-api'
 import { InboxChannels } from '@memry/contracts/ipc-channels'
 
-import { getDatabase, type DrizzleDb } from '../database'
+import { requireDatabase, type DataDb } from '../database'
 import { createLogger } from '../lib/logger'
 import { generateId } from '../lib/id'
 import { getItemAttachmentsDir } from './attachments'
@@ -32,14 +32,6 @@ interface QueueInboxJobInput {
   payload: Record<string, unknown> | null
   maxAttempts?: number
   runAt?: string
-}
-
-function requireDatabase(): DrizzleDb {
-  try {
-    return getDatabase()
-  } catch {
-    throw new Error('No vault is open. Please open a vault first.')
-  }
 }
 
 function emitInboxEvent(channel: string, data: unknown): void {
@@ -67,7 +59,7 @@ function toInboxJob(row: JobRow): InboxJobContract {
   }
 }
 
-function getExistingJob(db: DrizzleDb, itemId: string, type: InboxJobType): JobRow | undefined {
+function getExistingJob(db: DataDb, itemId: string, type: InboxJobType): JobRow | undefined {
   return db
     .select()
     .from(inboxJobs)
@@ -76,7 +68,7 @@ function getExistingJob(db: DrizzleDb, itemId: string, type: InboxJobType): JobR
 }
 
 function upsertJob(
-  db: DrizzleDb,
+  db: DataDb,
   input: QueueInboxJobInput & {
     status: InboxJobStatus
     attempts?: number
@@ -160,7 +152,7 @@ function emitUpdated(itemId: string, changes: Record<string, unknown>): void {
 }
 
 function completeJob(
-  db: DrizzleDb,
+  db: DataDb,
   jobId: string,
   result: Record<string, unknown> | null = null
 ): void {
@@ -177,7 +169,7 @@ function completeJob(
     .run()
 }
 
-function failJob(db: DrizzleDb, jobId: string, error: string): void {
+function failJob(db: DataDb, jobId: string, error: string): void {
   const now = new Date().toISOString()
   db.update(inboxJobs)
     .set({
@@ -190,7 +182,7 @@ function failJob(db: DrizzleDb, jobId: string, error: string): void {
     .run()
 }
 
-function rescheduleJob(db: DrizzleDb, job: JobRow, error: string, delayMs: number): void {
+function rescheduleJob(db: DataDb, job: JobRow, error: string, delayMs: number): void {
   const runAt = new Date(Date.now() + delayMs).toISOString()
   db.update(inboxJobs)
     .set({
@@ -207,7 +199,7 @@ function rescheduleJob(db: DrizzleDb, job: JobRow, error: string, delayMs: numbe
   scheduleJob(job.id, runAt)
 }
 
-async function processMetadataJob(db: DrizzleDb, job: JobRow): Promise<void> {
+async function processMetadataJob(db: DataDb, job: JobRow): Promise<void> {
   const item = db.select().from(inboxItems).where(eq(inboxItems.id, job.itemId)).get()
   const sourceUrl = item?.sourceUrl || (job.payload?.url as string | undefined)
 
@@ -314,7 +306,7 @@ async function processMetadataJob(db: DrizzleDb, job: JobRow): Promise<void> {
   }
 }
 
-async function processTranscriptionJob(db: DrizzleDb, job: JobRow): Promise<void> {
+async function processTranscriptionJob(db: DataDb, job: JobRow): Promise<void> {
   const item = db.select().from(inboxItems).where(eq(inboxItems.id, job.itemId)).get()
   const attachmentPath = item?.attachmentPath || (job.payload?.attachmentPath as string | undefined)
 
@@ -455,10 +447,12 @@ export function markInboxJobFailed(
   })
 }
 
-export function listInboxJobs(options: {
-  itemIds?: string[]
-  statuses?: InboxJobStatus[]
-} = {}): InboxJobContract[] {
+export function listInboxJobs(
+  options: {
+    itemIds?: string[]
+    statuses?: InboxJobStatus[]
+  } = {}
+): InboxJobContract[] {
   const db = requireDatabase()
   const conditions: SQL<unknown>[] = []
 
@@ -484,7 +478,7 @@ export function resumeInboxJobs(): void {
   if (didResumeJobs) return
   didResumeJobs = true
 
-  let db: DrizzleDb
+  let db: DataDb
   try {
     db = requireDatabase()
   } catch {

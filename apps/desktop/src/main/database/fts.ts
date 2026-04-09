@@ -1,5 +1,5 @@
 import { sql } from 'drizzle-orm'
-import type { DrizzleDb } from './client'
+import type { IndexDb } from './client'
 
 /**
  * FTS5 Full-Text Search for Notes
@@ -15,7 +15,7 @@ import type { DrizzleDb } from './client'
  * Creates FTS5 virtual table for full-text search on notes.
  * Must be called after migrations on index.db.
  */
-export function createFtsTable(db: DrizzleDb): void {
+export function createFtsTable(db: IndexDb): void {
   // FTS5 virtual table for full-text search
   // - id: UNINDEXED because it's only used for joining, not searching
   // - title: searchable note title
@@ -37,7 +37,7 @@ export function createFtsTable(db: DrizzleDb): void {
  * Removes the legacy triggers that used to keep FTS in sync with note_cache.
  * Projector-owned writes replaced them in phase 06.
  */
-export function createFtsTriggers(db: DrizzleDb): void {
+export function createFtsTriggers(db: IndexDb): void {
   db.run(sql`DROP TRIGGER IF EXISTS note_cache_ai`)
   db.run(sql`DROP TRIGGER IF EXISTS note_cache_ad`)
   db.run(sql`DROP TRIGGER IF EXISTS note_cache_au`)
@@ -53,7 +53,7 @@ export function createFtsTriggers(db: DrizzleDb): void {
  * @param tags - Array of tags to index (will be space-separated)
  */
 export function updateFtsContent(
-  db: DrizzleDb,
+  db: IndexDb,
   noteId: string,
   content: string,
   tags: string[]
@@ -77,7 +77,7 @@ export function updateFtsContent(
  * @param tags - Array of tags to index
  */
 export function insertFtsNote(
-  db: DrizzleDb,
+  db: IndexDb,
   noteId: string,
   title: string,
   content: string,
@@ -98,7 +98,7 @@ export function insertFtsNote(
  * @param db - Drizzle database instance
  * @param noteId - The note's unique ID to delete
  */
-export function deleteFtsNote(db: DrizzleDb, noteId: string): void {
+export function deleteFtsNote(db: IndexDb, noteId: string): void {
   db.run(sql`
     DELETE FROM fts_notes WHERE id = ${noteId}
   `)
@@ -110,7 +110,7 @@ export function deleteFtsNote(db: DrizzleDb, noteId: string): void {
  *
  * @param db - Drizzle database instance
  */
-export function clearFtsTable(db: DrizzleDb): void {
+export function clearFtsTable(db: IndexDb): void {
   db.run(sql`DELETE FROM fts_notes`)
 }
 
@@ -120,7 +120,7 @@ export function clearFtsTable(db: DrizzleDb): void {
  * @param db - Drizzle database instance
  * @returns Number of indexed notes
  */
-export function getFtsCount(db: DrizzleDb): number {
+export function getFtsCount(db: IndexDb): number {
   const result = db.get<{ count: number }>(sql`SELECT COUNT(*) as count FROM fts_notes`)
   return result?.count ?? 0
 }
@@ -132,7 +132,7 @@ export function getFtsCount(db: DrizzleDb): number {
  * @param noteId - The note's unique ID
  * @returns True if the note is indexed
  */
-export function ftsNoteExists(db: DrizzleDb, noteId: string): boolean {
+export function ftsNoteExists(db: IndexDb, noteId: string): boolean {
   const result = db.get<{ id: string }>(sql`SELECT id FROM fts_notes WHERE id = ${noteId}`)
   return result !== undefined
 }
@@ -141,7 +141,7 @@ export function ftsNoteExists(db: DrizzleDb, noteId: string): boolean {
  * Initializes FTS5 for the index database.
  * Call this after running migrations on index.db.
  */
-export function initializeFts(db: DrizzleDb): void {
+export function initializeFts(db: IndexDb): void {
   createFtsTable(db)
   createFtsTriggers(db)
 }

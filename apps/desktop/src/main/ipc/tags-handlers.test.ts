@@ -30,7 +30,8 @@ vi.mock('electron', () => ({
 
 vi.mock('../database', () => ({
   getIndexDatabase: vi.fn(),
-  getDatabase: vi.fn()
+  getDatabase: vi.fn(),
+  requireDatabase: vi.fn()
 }))
 
 vi.mock('@main/database/queries/notes', () => ({
@@ -49,7 +50,7 @@ vi.mock('@main/database/queries/notes', () => ({
 }))
 
 import { registerTagsHandlers } from './tags-handlers'
-import { getIndexDatabase, getDatabase } from '../database'
+import { getIndexDatabase, getDatabase, requireDatabase } from '../database'
 import * as notesQueries from '@main/database/queries/notes'
 
 function createDbMock(options?: { allResult?: unknown[]; getResult?: unknown }) {
@@ -74,6 +75,7 @@ describe('tags-handlers', () => {
     mockSend.mockClear()
     ;(getIndexDatabase as Mock).mockReturnValue(createDbMock())
     ;(getDatabase as Mock).mockReturnValue(createDbMock())
+    ;(requireDatabase as Mock).mockReturnValue(createDbMock())
   })
 
   afterEach(() => {

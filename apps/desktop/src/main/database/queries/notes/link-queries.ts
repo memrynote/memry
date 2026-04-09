@@ -1,5 +1,4 @@
 import { eq, and, sql } from 'drizzle-orm'
-import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3'
 import {
   noteCache,
   noteLinks,
@@ -7,12 +6,10 @@ import {
   type NoteLink,
   type NewNoteLink
 } from '@memry/db-schema/schema/notes-cache'
-import * as schema from '@memry/db-schema/schema'
-
-type DrizzleDb = BetterSQLite3Database<typeof schema>
+import type { IndexDb } from '../../types'
 
 export function setNoteLinks(
-  db: DrizzleDb,
+  db: IndexDb,
   sourceId: string,
   links: { targetTitle: string; targetId?: string }[]
 ): void {
@@ -28,19 +25,19 @@ export function setNoteLinks(
   }
 }
 
-export function getOutgoingLinks(db: DrizzleDb, noteId: string): NoteLink[] {
+export function getOutgoingLinks(db: IndexDb, noteId: string): NoteLink[] {
   return db.select().from(noteLinks).where(eq(noteLinks.sourceId, noteId)).all()
 }
 
-export function getIncomingLinks(db: DrizzleDb, noteId: string): NoteLink[] {
+export function getIncomingLinks(db: IndexDb, noteId: string): NoteLink[] {
   return db.select().from(noteLinks).where(eq(noteLinks.targetId, noteId)).all()
 }
 
-export function deleteLinksToNote(db: DrizzleDb, targetId: string): void {
+export function deleteLinksToNote(db: IndexDb, targetId: string): void {
   db.delete(noteLinks).where(eq(noteLinks.targetId, targetId)).run()
 }
 
-export function resolveNoteByTitle(db: DrizzleDb, title: string): NoteCache | undefined {
+export function resolveNoteByTitle(db: IndexDb, title: string): NoteCache | undefined {
   let result = db.select().from(noteCache).where(eq(noteCache.title, title)).get()
 
   if (result) {
@@ -57,7 +54,7 @@ export function resolveNoteByTitle(db: DrizzleDb, title: string): NoteCache | un
 }
 
 export function resolveNotesByTitles(
-  db: DrizzleDb,
+  db: IndexDb,
   titles: string[]
 ): Map<string, { id: string; path: string } | null> {
   if (titles.length === 0) {
@@ -94,7 +91,7 @@ export function resolveNotesByTitles(
   return resultMap
 }
 
-export function updateLinkTargets(db: DrizzleDb, sourceId: string): void {
+export function updateLinkTargets(db: IndexDb, sourceId: string): void {
   const links = getOutgoingLinks(db, sourceId)
 
   for (const link of links) {

@@ -5,13 +5,13 @@ import {
   type NoteCache,
   type NewNoteTag
 } from '@memry/db-schema/schema/notes-cache'
-import type { DrizzleDb } from '../../types'
+import type { IndexDb } from '../../types'
 
 // ============================================================================
 // Tag Operations
 // ============================================================================
 
-export function setNoteTags(db: DrizzleDb, noteId: string, tags: string[]): void {
+export function setNoteTags(db: IndexDb, noteId: string, tags: string[]): void {
   db.delete(noteTags).where(eq(noteTags.noteId, noteId)).run()
 
   if (tags.length > 0) {
@@ -24,7 +24,7 @@ export function setNoteTags(db: DrizzleDb, noteId: string, tags: string[]): void
   }
 }
 
-export function getNoteTags(db: DrizzleDb, noteId: string): string[] {
+export function getNoteTags(db: IndexDb, noteId: string): string[] {
   const results = db
     .select({ tag: noteTags.tag })
     .from(noteTags)
@@ -35,7 +35,7 @@ export function getNoteTags(db: DrizzleDb, noteId: string): string[] {
   return results.map((r) => r.tag)
 }
 
-export function getTagsForNotes(db: DrizzleDb, noteIds: string[]): Map<string, string[]> {
+export function getTagsForNotes(db: IndexDb, noteIds: string[]): Map<string, string[]> {
   if (noteIds.length === 0) {
     return new Map()
   }
@@ -65,7 +65,7 @@ export function getTagsForNotes(db: DrizzleDb, noteIds: string[]): Map<string, s
   return tagMap
 }
 
-export function getAllTags(db: DrizzleDb): { tag: string; count: number }[] {
+export function getAllTags(db: IndexDb): { tag: string; count: number }[] {
   return db
     .select({
       tag: noteTags.tag,
@@ -78,7 +78,7 @@ export function getAllTags(db: DrizzleDb): { tag: string; count: number }[] {
     .map((row) => ({ tag: row.tag, count: Number(row.count) }))
 }
 
-export function findNotesByTag(db: DrizzleDb, tag: string): NoteCache[] {
+export function findNotesByTag(db: IndexDb, tag: string): NoteCache[] {
   const noteIds = db
     .select({ noteId: noteTags.noteId })
     .from(noteTags)
@@ -93,7 +93,7 @@ export function findNotesByTag(db: DrizzleDb, tag: string): NoteCache[] {
   return db.select().from(noteCache).where(inArray(noteCache.id, noteIds)).all()
 }
 
-export function findNotesByTagPrefix(db: DrizzleDb, tag: string): NoteCache[] {
+export function findNotesByTagPrefix(db: IndexDb, tag: string): NoteCache[] {
   const normalizedTag = tag.toLowerCase()
   const noteIds = db
     .select({ noteId: noteTags.noteId })
@@ -114,7 +114,7 @@ export interface NoteWithTagInfo extends NoteCache {
 }
 
 export function findNotesWithTagInfo(
-  db: DrizzleDb,
+  db: IndexDb,
   tag: string,
   options: {
     sortBy?: 'modified' | 'created' | 'title'
@@ -137,14 +137,20 @@ export function findNotesWithTagInfo(
     .from(noteTags)
     .where(whereClause)
     .all()
-    .filter((r, i, arr) => arr.findIndex((x) => x.noteId === r.noteId) === i)
 
-  if (tagRecords.length === 0) {
+  const seen = new Set<string>()
+  const tagRecordsDeduped = tagRecords.filter((r) => {
+    if (seen.has(r.noteId)) return false
+    seen.add(r.noteId)
+    return true
+  })
+
+  if (tagRecordsDeduped.length === 0) {
     return []
   }
 
-  const noteIds = tagRecords.map((r) => r.noteId)
-  const pinnedMap = new Map(tagRecords.map((r) => [r.noteId, r.pinnedAt]))
+  const noteIds = tagRecordsDeduped.map((r) => r.noteId)
+  const pinnedMap = new Map(tagRecordsDeduped.map((r) => [r.noteId, r.pinnedAt]))
 
   const notes = db.select().from(noteCache).where(inArray(noteCache.id, noteIds)).all()
 
@@ -192,7 +198,7 @@ export function findNotesWithTagInfo(
   return [...pinned, ...unpinned]
 }
 
-export function pinNoteToTag(db: DrizzleDb, noteId: string, tag: string): void {
+export function pinNoteToTag(db: IndexDb, noteId: string, tag: string): void {
   const normalizedTag = tag.toLowerCase()
   const now = new Date().toISOString()
 
@@ -202,7 +208,7 @@ export function pinNoteToTag(db: DrizzleDb, noteId: string, tag: string): void {
     .run()
 }
 
-export function unpinNoteFromTag(db: DrizzleDb, noteId: string, tag: string): void {
+export function unpinNoteFromTag(db: IndexDb, noteId: string, tag: string): void {
   const normalizedTag = tag.toLowerCase()
 
   db.update(noteTags)
@@ -211,7 +217,7 @@ export function unpinNoteFromTag(db: DrizzleDb, noteId: string, tag: string): vo
     .run()
 }
 
-export function renameTag(db: DrizzleDb, oldName: string, newName: string): number {
+export function renameTag(db: IndexDb, oldName: string, newName: string): number {
   const normalizedOld = oldName.toLowerCase().trim()
   const normalizedNew = newName.toLowerCase().trim()
 
@@ -234,7 +240,7 @@ export function renameTag(db: DrizzleDb, oldName: string, newName: string): numb
   return exactResult.changes + childResult.changes
 }
 
-export function deleteTag(db: DrizzleDb, tag: string, options: { cascade?: boolean } = {}): number {
+export function deleteTag(db: IndexDb, tag: string, options: { cascade?: boolean } = {}): number {
   const normalizedTag = tag.toLowerCase().trim()
   const { cascade = false } = options
 
@@ -250,7 +256,7 @@ export function deleteTag(db: DrizzleDb, tag: string, options: { cascade?: boole
   return exactResult.changes + childResult.changes
 }
 
-export function removeTagFromNote(db: DrizzleDb, noteId: string, tag: string): void {
+export function removeTagFromNote(db: IndexDb, noteId: string, tag: string): void {
   const normalizedTag = tag.toLowerCase().trim()
 
   db.delete(noteTags)

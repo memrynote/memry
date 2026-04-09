@@ -21,6 +21,7 @@ vi.mock('electron', () => ({
 
 vi.mock('../database', () => ({
   getDatabase: vi.fn(),
+  requireDatabase: vi.fn(),
   getIndexDatabase: vi.fn(),
   getRawIndexDatabase: vi.fn()
 }))
@@ -39,7 +40,7 @@ vi.mock('../vault', () => ({
   getConfig: mockGetConfig
 }))
 
-import { getDatabase } from '../database'
+import { getDatabase, requireDatabase } from '../database'
 import { getSuggestions } from './suggestions'
 
 describe('inbox suggestions', () => {
@@ -48,6 +49,7 @@ describe('inbox suggestions', () => {
   beforeEach(() => {
     testDb = createTestDatabase()
     vi.mocked(getDatabase).mockReturnValue(testDb.db)
+    vi.mocked(requireDatabase).mockReturnValue(testDb.db)
 
     mockIsModelLoaded.mockReset()
     mockGenerateEmbedding.mockReset()

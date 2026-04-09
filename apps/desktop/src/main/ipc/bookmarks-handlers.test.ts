@@ -30,6 +30,7 @@ vi.mock('electron', () => ({
 
 vi.mock('../database', () => ({
   getDatabase: vi.fn(),
+  requireDatabase: vi.fn(),
   getIndexDatabase: vi.fn()
 }))
 
@@ -64,7 +65,7 @@ vi.mock('@main/database/queries/tasks', () => ({
 }))
 
 import { registerBookmarksHandlers, unregisterBookmarksHandlers } from './bookmarks-handlers'
-import { getDatabase, getIndexDatabase } from '../database'
+import { getDatabase, requireDatabase, getIndexDatabase } from '../database'
 import * as bookmarkQueries from '@main/database/queries/bookmarks'
 import * as notesQueries from '@main/database/queries/notes'
 import * as tasksQueries from '@main/database/queries/tasks'
@@ -77,6 +78,7 @@ describe('bookmarks-handlers', () => {
     removeHandlerCalls.length = 0
     mockSend.mockClear()
     ;(getDatabase as Mock).mockReturnValue({})
+    ;(requireDatabase as Mock).mockReturnValue({})
     ;(getIndexDatabase as Mock).mockReturnValue({})
   })
 

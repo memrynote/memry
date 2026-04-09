@@ -16,7 +16,10 @@ export interface ProjectionRuntime {
   getPendingCount(): number
 }
 
-function selectProjectors(projectors: ProjectionProjector[], names?: string[]): ProjectionProjector[] {
+function selectProjectors(
+  projectors: ProjectionProjector[],
+  names?: string[]
+): ProjectionProjector[] {
   if (!names || names.length === 0) {
     return projectors
   }

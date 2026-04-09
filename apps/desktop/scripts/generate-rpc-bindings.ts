@@ -8,7 +8,11 @@ const REPO_ROOT = path.resolve(import.meta.dirname, '..')
 const OUTPUT_PATH = path.join(REPO_ROOT, 'src/preload/generated-rpc.ts')
 const CHECK_MODE = process.argv.includes('--check')
 
-function renderMethod(domainName: string, methodName: string, spec: (typeof rpcDomains)[number]['methods'][string]) {
+function renderMethod(
+  domainName: string,
+  methodName: string,
+  spec: (typeof rpcDomains)[number]['methods'][string]
+) {
   const params = spec.params.join(', ')
   const invokeArgs = spec.invokeArgs.join(', ')
   const argsSuffix = invokeArgs.length > 0 ? `, ${invokeArgs}` : ''

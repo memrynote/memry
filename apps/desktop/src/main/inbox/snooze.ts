@@ -13,7 +13,7 @@
 import { BrowserWindow } from 'electron'
 import { eq, and, isNotNull, lte, isNull } from 'drizzle-orm'
 import { createLogger } from '../lib/logger'
-import { getDatabase, type DrizzleDb } from '../database'
+import { getDatabase, requireDatabase } from '../database'
 import { getStatus } from '../vault'
 import { inboxItems, inboxItemTags } from '@memry/db-schema/schema/inbox'
 import { InboxChannels } from '@memry/contracts/ipc-channels'
@@ -71,17 +71,6 @@ let isSchedulerRunning = false
 // ============================================================================
 // Helper Functions
 // ============================================================================
-
-/**
- * Get database instance, throwing if not available
- */
-function requireDatabase(): DrizzleDb {
-  try {
-    return getDatabase()
-  } catch {
-    throw new Error('No vault is open. Please open a vault first.')
-  }
-}
 
 /**
  * Emit snooze event to all windows

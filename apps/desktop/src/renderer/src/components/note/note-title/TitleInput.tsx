@@ -57,22 +57,19 @@ export function TitleInput({
     setDraftValue(null)
   }, [draftValue, value, onChange])
 
-  const handleKeyDown = useCallback(
-    (e: KeyboardEvent<HTMLTextAreaElement>) => {
-      // Enter saves and blurs
-      if (e.key === 'Enter' && !e.shiftKey) {
-        e.preventDefault()
-        textareaRef.current?.blur()
-      }
-      // Escape reverts and blurs
-      if (e.key === 'Escape') {
-        e.preventDefault()
-        setDraftValue(null)
-        textareaRef.current?.blur()
-      }
-    },
-    []
-  )
+  const handleKeyDown = useCallback((e: KeyboardEvent<HTMLTextAreaElement>) => {
+    // Enter saves and blurs
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault()
+      textareaRef.current?.blur()
+    }
+    // Escape reverts and blurs
+    if (e.key === 'Escape') {
+      e.preventDefault()
+      setDraftValue(null)
+      textareaRef.current?.blur()
+    }
+  }, [])
 
   return (
     <textarea

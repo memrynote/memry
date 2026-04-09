@@ -101,7 +101,8 @@ export const notesService: NotesClientAPI = {
   createPropertyDefinition: (input) => window.api.notes.createPropertyDefinition(input),
   updatePropertyDefinition: (input) => window.api.notes.updatePropertyDefinition(input),
   ensurePropertyDefinition: (name, type) => window.api.notes.ensurePropertyDefinition(name, type),
-  addPropertyOption: (propertyName, option) => window.api.notes.addPropertyOption(propertyName, option),
+  addPropertyOption: (propertyName, option) =>
+    window.api.notes.addPropertyOption(propertyName, option),
   addStatusOption: (propertyName, categoryKey, option) =>
     window.api.notes.addStatusOption(propertyName, categoryKey, option),
   removePropertyOption: (propertyName, optionValue) =>
@@ -126,7 +127,8 @@ export const notesService: NotesClientAPI = {
   getPositions: (folderPath) => window.api.notes.getPositions(folderPath),
   getAllPositions: () => window.api.notes.getAllPositions(),
   reorder: (folderPath, notePaths) => window.api.notes.reorder(folderPath, notePaths),
-  importFiles: (sourcePaths, targetFolder) => window.api.notes.importFiles(sourcePaths, targetFolder),
+  importFiles: (sourcePaths, targetFolder) =>
+    window.api.notes.importFiles(sourcePaths, targetFolder),
   showImportDialog: () => window.api.notes.showImportDialog(),
   setLocalOnly: (id, localOnly) => window.api.notes.setLocalOnly(id, localOnly),
   getLocalOnlyCount: () => window.api.notes.getLocalOnlyCount()

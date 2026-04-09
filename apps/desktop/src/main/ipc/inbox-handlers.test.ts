@@ -31,7 +31,8 @@ vi.mock('electron', () => ({
 
 // Mock database module
 vi.mock('../database', () => ({
-  getDatabase: vi.fn()
+  getDatabase: vi.fn(),
+  requireDatabase: vi.fn()
 }))
 
 // Mock ID generation
@@ -162,7 +163,7 @@ vi.mock('../lib/logger', () => ({
 
 // Import after mocking
 import { registerInboxHandlers, unregisterInboxHandlers } from './inbox-handlers'
-import { getDatabase } from '../database'
+import { getDatabase, requireDatabase } from '../database'
 import * as filingModule from '../inbox/filing'
 import * as snoozeModule from '../inbox/snooze'
 import * as suggestionsModule from '../inbox/suggestions'
@@ -208,6 +209,7 @@ describe('inbox-handlers', () => {
       delete: vi.fn(() => chainable)
     }
     ;(getDatabase as Mock).mockReturnValue(mockDb)
+    ;(requireDatabase as Mock).mockReturnValue(mockDb)
   })
 
   afterEach(() => {
