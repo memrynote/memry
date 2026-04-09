@@ -534,6 +534,41 @@ describe('getManifest', () => {
     expect(db.prepare).toHaveBeenCalledWith(expect.stringContaining('deleted_at IS NULL'))
     expect(result.items).toEqual([])
   })
+
+  it('should keep manifest responses record-only and strip record stateVector metadata', async () => {
+    // #given
+    const stmt = createMockStatement()
+    stmt.all.mockResolvedValue({
+      results: [
+        {
+          item_id: 'item-note',
+          item_type: 'note',
+          version: 1,
+          updated_at: 1000,
+          size_bytes: 512,
+          state_vector: 'legacy-note-state'
+        },
+        {
+          item_id: 'item-attachment',
+          item_type: 'attachment',
+          version: 1,
+          updated_at: 1001,
+          size_bytes: 128,
+          state_vector: 'attachment-state'
+        }
+      ]
+    })
+    db.prepare.mockReturnValue(stmt)
+
+    // #when
+    const result = await getManifest(db as unknown as D1Database, 'user-1')
+
+    // #then
+    expect(db.prepare).toHaveBeenCalledWith(expect.stringContaining('item_type IN'))
+    expect(result.items).toEqual([
+      { id: 'item-note', type: 'note', version: 1, modifiedAt: 1000, size: 512 }
+    ])
+  })
 })
 
 // ============================================================================
@@ -625,6 +660,48 @@ describe('getChanges', () => {
     expect(result.hasMore).toBe(false)
     expect(result.nextCursor).toBe(9999)
   })
+
+  it('should keep change feeds record-only and omit record stateVector metadata', async () => {
+    // #given
+    const stmt = createMockStatement()
+    stmt.all.mockResolvedValue({
+      results: [
+        {
+          item_id: 'item-note',
+          item_type: 'note',
+          version: 1,
+          updated_at: 1000,
+          size_bytes: 256,
+          state_vector: 'legacy-note-state',
+          server_cursor: 5,
+          deleted_at: null
+        },
+        {
+          item_id: 'item-attachment',
+          item_type: 'attachment',
+          version: 2,
+          updated_at: 2000,
+          size_bytes: 128,
+          state_vector: 'attachment-state',
+          server_cursor: 6,
+          deleted_at: 3000
+        }
+      ]
+    })
+    db.prepare.mockReturnValue(stmt)
+
+    // #when
+    const result = await getChanges(db as unknown as D1Database, 'user-1', 0)
+
+    // #then
+    expect(db.prepare).toHaveBeenCalledWith(expect.stringContaining('item_type IN'))
+    expect(result).toEqual({
+      items: [{ id: 'item-note', type: 'note', version: 1, modifiedAt: 1000, size: 256 }],
+      deleted: [],
+      hasMore: false,
+      nextCursor: 6
+    })
+  })
 })
 
 // ============================================================================
@@ -682,7 +759,6 @@ describe('pullItems', () => {
         signerDeviceId: 'device-1',
         deletedAt: 1700000000,
         clock: { 'device-1': 2 },
-        stateVector: 'sv-1',
         blob: { encryptedKey: 'ek', keyNonce: 'kn', encryptedData: 'ed', dataNonce: 'dn' }
       }
     ])
@@ -726,6 +802,73 @@ describe('pullItems', () => {
     // #then — operation must be 'create', not hardcoded 'update'
     expect(result[0].operation).toBe('create')
     expect(result[0].id).toBe('item-2')
+  })
+
+  it('should keep pull responses record-only and omit stateVector metadata', async () => {
+    const stmt = createMockStatement()
+    stmt.all.mockResolvedValue({
+      results: [
+        {
+          item_id: 'item-note',
+          item_type: 'note',
+          blob_key: 'user-1/items/item-note',
+          crypto_version: 1,
+          operation: 'update',
+          signer_device_id: 'device-1',
+          signature: 'sig-note',
+          state_vector: 'legacy-note-state',
+          clock: '{"device-1":3}',
+          deleted_at: null,
+          server_cursor: 10
+        },
+        {
+          item_id: 'item-attachment',
+          item_type: 'attachment',
+          blob_key: 'user-1/items/item-attachment',
+          crypto_version: 1,
+          operation: 'update',
+          signer_device_id: 'device-1',
+          signature: 'sig-attachment',
+          state_vector: 'attachment-state',
+          clock: null,
+          deleted_at: null,
+          server_cursor: 11
+        }
+      ]
+    })
+    db.prepare.mockReturnValue(stmt)
+    vi.mocked(getBlob).mockResolvedValue({
+      body: JSON.stringify({
+        encryptedKey: 'ek-note',
+        keyNonce: 'kn-note',
+        encryptedData: 'ed-note',
+        dataNonce: 'dn-note'
+      })
+    } as unknown as R2ObjectBody)
+
+    const result = await pullItems(db as unknown as D1Database, {} as R2Bucket, 'user-1', [
+      'item-note',
+      'item-attachment'
+    ])
+
+    expect(db.prepare).toHaveBeenCalledWith(expect.stringContaining('item_type IN'))
+    expect(result).toEqual([
+      {
+        id: 'item-note',
+        type: 'note',
+        operation: 'update',
+        cryptoVersion: 1,
+        signature: 'sig-note',
+        signerDeviceId: 'device-1',
+        clock: { 'device-1': 3 },
+        blob: {
+          encryptedKey: 'ek-note',
+          keyNonce: 'kn-note',
+          encryptedData: 'ed-note',
+          dataNonce: 'dn-note'
+        }
+      }
+    ])
   })
 })
 
@@ -924,5 +1067,53 @@ describe('processPushItem', () => {
     expect(db.batch).toHaveBeenCalledWith([upsertStmt, updateStmt])
     expect(upsertStmt.run).not.toHaveBeenCalled()
     expect(updateStmt.run).not.toHaveBeenCalled()
+  })
+
+  it('should accept settings updates without top-level clock even if legacy rows have a stored clock', async () => {
+    mockedGetUserById.mockResolvedValue({
+      id: 'user-1',
+      email: 'test@test.com',
+      email_verified: 1,
+      auth_method: 'email',
+      auth_provider: null,
+      auth_provider_id: null,
+      kdf_salt: null,
+      key_verifier: null,
+      storage_used: 0,
+      storage_limit: 1000,
+      created_at: 1000,
+      updated_at: 1000
+    })
+
+    const selectStmt = createMockStatement()
+    selectStmt.first.mockResolvedValue({
+      version: 1,
+      clock: '{"device-old":2}',
+      created_at: 1000,
+      size_bytes: 10
+    })
+
+    const upsertStmt = createMockStatement()
+    const updateStmt = createMockStatement()
+    const db = createMockDb()
+    db.prepare
+      .mockReturnValueOnce(selectStmt)
+      .mockReturnValueOnce(upsertStmt)
+      .mockReturnValueOnce(updateStmt)
+
+    const storage = {
+      put: vi.fn().mockResolvedValue({ etag: 'etag-1' })
+    } as unknown as R2Bucket
+
+    const result = await processPushItem(
+      db as unknown as D1Database,
+      storage,
+      'user-1',
+      'device-1',
+      createValidPushItem({ type: 'settings', clock: undefined })
+    )
+
+    expect(result.accepted).toBe(true)
+    expect(result.reason).toBeUndefined()
   })
 })

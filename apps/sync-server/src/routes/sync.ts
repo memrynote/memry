@@ -2,7 +2,7 @@ import type { Context } from 'hono'
 import { Hono } from 'hono'
 import { z } from 'zod'
 
-import { PullRequestSchema, PushRequestSchema } from '@memry/contracts/sync-api'
+import { PullRequestSchema, RecordPushRequestSchema } from '@memry/contracts/sync-api'
 import { safeBase64Decode } from '../lib/encoding'
 import { AppError, ErrorCodes } from '../lib/errors'
 import { authMiddleware } from '../middleware/auth'
@@ -227,7 +227,7 @@ const handleRecordPush = async (c: Context<AppContext>): Promise<Response> => {
   const startedAt = Date.now()
 
   const body: unknown = await c.req.json()
-  const parsed = parseTransportRequest(PushRequestSchema, body, {
+  const parsed = parseTransportRequest(RecordPushRequestSchema, body, {
     transport: 'record',
     endpoint,
     label: 'push request'

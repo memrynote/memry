@@ -42,7 +42,15 @@ import {
   InitiateLinkingRequestSchema,
   LINKING_SESSION_STATUSES
 } from '@memry/contracts/linking-api'
-import { PushRequestSchema, SYNC_ITEM_TYPES, VectorClockSchema } from '@memry/contracts/sync-api'
+import {
+  PushRequestSchema,
+  RecordChangesResponseSchema,
+  RecordPullResponseSchema,
+  RecordPushRequestSchema,
+  RecordSyncManifestSchema,
+  SYNC_ITEM_TYPES,
+  VectorClockSchema
+} from '@memry/contracts/sync-api'
 
 describe('sync-server contracts', () => {
   it('validates API contract schemas', () => {
@@ -105,6 +113,113 @@ describe('sync-server contracts', () => {
             dataNonce: 'dn',
             signature: 'sig',
             signerDeviceId: 'device-1'
+          }
+        ]
+      }).success
+    ).toBe(true)
+
+    expect(
+      RecordPushRequestSchema.safeParse({
+        items: [
+          {
+            id: 'ab99c922-6f3b-4bbf-a589-2d4f96f8ec95',
+            type: 'task',
+            operation: 'create',
+            encryptedKey: 'ek',
+            keyNonce: 'kn',
+            encryptedData: 'ed',
+            dataNonce: 'dn',
+            signature: 'sig',
+            signerDeviceId: 'device-1',
+            clock: { deviceA: 1 }
+          }
+        ]
+      }).success
+    ).toBe(true)
+
+    expect(
+      RecordPushRequestSchema.safeParse({
+        items: [
+          {
+            id: 'ab99c922-6f3b-4bbf-a589-2d4f96f8ec95',
+            type: 'attachment',
+            operation: 'create',
+            encryptedKey: 'ek',
+            keyNonce: 'kn',
+            encryptedData: 'ed',
+            dataNonce: 'dn',
+            signature: 'sig',
+            signerDeviceId: 'device-1'
+          }
+        ]
+      }).success
+    ).toBe(false)
+
+    expect(
+      RecordPushRequestSchema.safeParse({
+        items: [
+          {
+            id: 'ab99c922-6f3b-4bbf-a589-2d4f96f8ec95',
+            type: 'task',
+            operation: 'create',
+            encryptedKey: 'ek',
+            keyNonce: 'kn',
+            encryptedData: 'ed',
+            dataNonce: 'dn',
+            signature: 'sig',
+            signerDeviceId: 'device-1'
+          }
+        ]
+      }).success
+    ).toBe(false)
+
+    expect(
+      RecordSyncManifestSchema.safeParse({
+        items: [
+          {
+            id: 'ab99c922-6f3b-4bbf-a589-2d4f96f8ec95',
+            type: 'task',
+            version: 1,
+            modifiedAt: 2,
+            size: 3
+          }
+        ],
+        serverTime: 4
+      }).success
+    ).toBe(true)
+
+    expect(
+      RecordChangesResponseSchema.safeParse({
+        items: [
+          {
+            id: 'ab99c922-6f3b-4bbf-a589-2d4f96f8ec95',
+            type: 'attachment',
+            version: 1,
+            modifiedAt: 2,
+            size: 3
+          }
+        ],
+        deleted: [],
+        hasMore: false,
+        nextCursor: 0
+      }).success
+    ).toBe(false)
+
+    expect(
+      RecordPullResponseSchema.safeParse({
+        items: [
+          {
+            id: 'ab99c922-6f3b-4bbf-a589-2d4f96f8ec95',
+            type: 'task',
+            operation: 'create',
+            signature: 'sig',
+            signerDeviceId: 'device-1',
+            blob: {
+              encryptedKey: 'ek',
+              keyNonce: 'kn',
+              encryptedData: 'ed',
+              dataNonce: 'dn'
+            }
           }
         ]
       }).success
