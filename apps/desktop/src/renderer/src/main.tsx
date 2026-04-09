@@ -47,7 +47,13 @@ const queryClient = new QueryClient({
 // rejects the token (it contains a space) and the renderer crashes blank.
 try {
   const cached = window.localStorage.getItem(THEME_STORAGE_KEY)
-  if (cached !== null && cached !== 'light' && cached !== 'dark' && cached !== 'white' && cached !== 'system') {
+  if (
+    cached !== null &&
+    cached !== 'light' &&
+    cached !== 'dark' &&
+    cached !== 'white' &&
+    cached !== 'system'
+  ) {
     window.localStorage.removeItem(THEME_STORAGE_KEY)
   }
 } catch {

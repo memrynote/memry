@@ -334,7 +334,10 @@ export function useTaskWorkspaceMutations() {
       try {
         if ('completedAt' in updates) {
           if (updates.completedAt) {
-            await tasksService.complete({ id: taskId, completedAt: updates.completedAt.toISOString() })
+            await tasksService.complete({
+              id: taskId,
+              completedAt: updates.completedAt.toISOString()
+            })
           } else {
             await tasksService.uncomplete(taskId)
           }
@@ -404,7 +407,8 @@ export function useTaskWorkspaceMutations() {
           id: taskId,
           title: updates.title,
           description: updates.description ?? undefined,
-          priority: updates.priority !== undefined ? priorityReverseMap[updates.priority] : undefined,
+          priority:
+            updates.priority !== undefined ? priorityReverseMap[updates.priority] : undefined,
           projectId: updates.projectId,
           statusId: updates.statusId ?? undefined,
           parentId: updates.parentId ?? undefined,

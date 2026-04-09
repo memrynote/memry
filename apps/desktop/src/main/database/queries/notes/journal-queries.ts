@@ -1,10 +1,7 @@
 import { eq, desc, and, like, sql, count } from 'drizzle-orm'
-import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3'
 import { noteCache, type NoteCache } from '@memry/db-schema/schema/notes-cache'
-import * as schema from '@memry/db-schema/schema'
+import type { IndexDb } from '../../types'
 import { type ActivityLevel, ACTIVITY_THRESHOLDS, calculateActivityLevel } from './query-helpers'
-
-type DrizzleDb = BetterSQLite3Database<typeof schema>
 
 // ============================================================================
 // Journal Entry Utilities
@@ -34,11 +31,11 @@ export function generateJournalId(date: string): string {
 // Journal Cache Queries
 // ============================================================================
 
-export function getJournalEntryByDate(db: DrizzleDb, date: string): NoteCache | undefined {
+export function getJournalEntryByDate(db: IndexDb, date: string): NoteCache | undefined {
   return db.select().from(noteCache).where(eq(noteCache.date, date)).get()
 }
 
-export function journalEntryExistsByDate(db: DrizzleDb, date: string): boolean {
+export function journalEntryExistsByDate(db: IndexDb, date: string): boolean {
   const result = db
     .select({ id: noteCache.id })
     .from(noteCache)
@@ -48,7 +45,7 @@ export function journalEntryExistsByDate(db: DrizzleDb, date: string): boolean {
 }
 
 export function getHeatmapData(
-  db: DrizzleDb,
+  db: IndexDb,
   year: number
 ): { date: string; characterCount: number; level: ActivityLevel }[] {
   const startDate = `${year}-01-01`
@@ -76,7 +73,7 @@ export function getHeatmapData(
     }))
 }
 
-export function getJournalMonthEntries(db: DrizzleDb, year: number, month: number): NoteCache[] {
+export function getJournalMonthEntries(db: IndexDb, year: number, month: number): NoteCache[] {
   const monthStr = String(month).padStart(2, '0')
   const monthPrefix = `${year}-${monthStr}-`
   return db
@@ -88,7 +85,7 @@ export function getJournalMonthEntries(db: DrizzleDb, year: number, month: numbe
 }
 
 export function getJournalYearStats(
-  db: DrizzleDb,
+  db: IndexDb,
   year: number
 ): {
   month: number
@@ -127,7 +124,7 @@ export function getJournalYearStats(
     }))
 }
 
-export function getJournalStreak(db: DrizzleDb): {
+export function getJournalStreak(db: IndexDb): {
   currentStreak: number
   longestStreak: number
   lastEntryDate: string | null
@@ -200,7 +197,7 @@ export function getJournalStreak(db: DrizzleDb): {
   return { currentStreak, longestStreak, lastEntryDate }
 }
 
-export function listJournalEntries(db: DrizzleDb): NoteCache[] {
+export function listJournalEntries(db: IndexDb): NoteCache[] {
   return db
     .select()
     .from(noteCache)
@@ -209,7 +206,7 @@ export function listJournalEntries(db: DrizzleDb): NoteCache[] {
     .all()
 }
 
-export function countJournalEntries(db: DrizzleDb): number {
+export function countJournalEntries(db: IndexDb): number {
   const result = db
     .select({ count: count() })
     .from(noteCache)
@@ -218,7 +215,7 @@ export function countJournalEntries(db: DrizzleDb): number {
   return result?.count ?? 0
 }
 
-export function clearJournalCache(db: DrizzleDb): void {
+export function clearJournalCache(db: IndexDb): void {
   db.delete(noteCache)
     .where(sql`${noteCache.date} IS NOT NULL`)
     .run()

@@ -6,7 +6,7 @@ import type {
   TaskListItem,
   TaskListOptions,
   TaskStats
-} from './types'
+} from './types.ts'
 
 export interface TasksQueryRepository {
   getTask(id: string): Task | undefined

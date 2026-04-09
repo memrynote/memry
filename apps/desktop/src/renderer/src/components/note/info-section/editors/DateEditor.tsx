@@ -37,12 +37,9 @@ export function DateEditor({ value, onChange, onBlur, autoFocus = true }: DateEd
   const inputValue = draftValue ?? storedValue
   const isValidFormat = !inputValue || validateAndParse(inputValue) !== null
 
-  const handleChange = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
-      setDraftValue(e.target.value)
-    },
-    []
-  )
+  const handleChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    setDraftValue(e.target.value)
+  }, [])
 
   const handleBlur = useCallback(() => {
     const parsed = validateAndParse(inputValue)

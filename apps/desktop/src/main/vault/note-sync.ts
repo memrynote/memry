@@ -8,8 +8,6 @@
  * @module vault/note-sync
  */
 
-import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3'
-import * as schema from '@memry/db-schema/schema'
 import type { NoteFrontmatter } from './frontmatter'
 import {
   extractTags,
@@ -28,30 +26,22 @@ import {
   setNoteTags,
   setNoteLinks,
   setNoteProperties,
-  getPropertyType,
   extractDateFromPath,
   deleteLinksToNote,
   resolveNotesByTitles,
   getNoteCacheByPath
 } from '@main/database/queries/notes'
-import { getDatabase, queueFtsUpdate } from '../database'
+import { getDatabase, queueFtsUpdate, type IndexDb } from '../database'
 import type { FileType } from '@memry/shared/file-types'
+import type { PropertyType } from '@memry/contracts/property-types'
 import {
   deleteCanonicalNote,
   saveCanonicalNote,
   saveCanonicalPropertyDefinition
 } from '@memry/domain-notes'
+import { getPropertyDefinition as getCanonicalPropertyDefinition } from '@memry/storage-data'
 import { publishProjectionEvent } from '../projections'
-import type {
-  FileNoteProjection,
-  MarkdownNoteProjection
-} from '../projections/types'
-
-// ============================================================================
-// Types
-// ============================================================================
-
-type DrizzleDb = BetterSQLite3Database<typeof schema>
+import type { FileNoteProjection, MarkdownNoteProjection } from '../projections/types'
 
 function getCanonicalDb() {
   try {
@@ -218,7 +208,7 @@ export function extractNoteMetadata(input: NoteSyncInput): NoteMetadata {
  * @returns Sync result with resolved links
  */
 export function syncNoteToCache(
-  db: DrizzleDb,
+  db: IndexDb,
   input: NoteSyncInput,
   options: NoteSyncOptions
 ): NoteSyncResult {
@@ -305,9 +295,10 @@ export function syncNoteToCache(
   setNoteTags(db, id, tags)
 
   setNoteProperties(db, id, properties, (name, value) => {
-    const type = canonicalDb
-      ? getPropertyType(canonicalDb, name, value, inferPropertyType)
-      : inferPropertyType(name, value)
+    const canonicalType = canonicalDb
+      ? (getCanonicalPropertyDefinition(canonicalDb, name)?.type as PropertyType | undefined)
+      : undefined
+    const type = canonicalType ?? inferPropertyType(name, value)
     if (canonicalDb) {
       saveCanonicalPropertyDefinition(canonicalDb, { name, type })
     }
@@ -339,7 +330,7 @@ export function syncNoteToCache(
  * @returns Resolved links with target IDs
  */
 function resolveAndSetLinks(
-  db: DrizzleDb,
+  db: IndexDb,
   sourceId: string,
   wikiLinks: string[]
 ): { targetTitle: string; targetId: string | undefined }[] {
@@ -363,7 +354,7 @@ function resolveAndSetLinks(
  * @param db - Database instance
  * @param noteId - Note ID to delete
  */
-export function deleteNoteFromCache(db: DrizzleDb, noteId: string): void {
+export function deleteNoteFromCache(db: IndexDb, noteId: string): void {
   publishProjectionEvent({
     type: 'note.deleted',
     noteId
@@ -391,7 +382,7 @@ export { resolveNotesByTitles } from '@main/database/queries/notes'
  * @param resolvedTitles - Pre-resolved title map from resolveNotesByTitles
  */
 export function syncLinksWithResolvedTitles(
-  db: DrizzleDb,
+  db: IndexDb,
   sourceId: string,
   wikiLinks: string[],
   resolvedTitles: Map<string, { id: string; path: string } | null>
@@ -450,7 +441,7 @@ export interface FileSyncResult {
  * @param input - File sync input
  * @returns Sync result
  */
-export function syncFileToCache(db: DrizzleDb, input: FileSyncInput): FileSyncResult {
+export function syncFileToCache(db: IndexDb, input: FileSyncInput): FileSyncResult {
   const { id, path, title, fileType, mimeType, fileSize, createdAt, modifiedAt } = input
 
   syncCanonicalMetadata({

@@ -1,8 +1,8 @@
 import { sqliteTable, text, integer, index } from 'drizzle-orm/sqlite-core'
 import { sql } from 'drizzle-orm'
 import type { VectorClock, FieldClocks } from '@memry/contracts/sync-api'
-import { projects } from './projects'
-import { statuses } from './statuses'
+import { projects } from './projects.ts'
+import { statuses } from './statuses.ts'
 
 export const tasks = sqliteTable(
   'tasks',

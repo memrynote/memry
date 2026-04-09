@@ -67,7 +67,12 @@ import { NotesChannels } from '@memry/contracts/notes-api'
 import type { FolderInfo } from '@memry/contracts/templates-api'
 import { readFolderConfig } from './folders'
 import { createLogger } from '../lib/logger'
-import { getFileType, getExtension, isBinaryFileType, type FileType } from '@memry/shared/file-types'
+import {
+  getFileType,
+  getExtension,
+  isBinaryFileType,
+  type FileType
+} from '@memry/shared/file-types'
 import { deleteCanonicalNote, saveCanonicalNote } from '@memry/domain-notes'
 import { updateNoteMetadata } from '@memry/storage-data'
 

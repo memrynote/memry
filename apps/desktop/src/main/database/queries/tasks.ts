@@ -6,7 +6,6 @@
  */
 
 import { eq, desc, asc, and, lte, gte, isNull, isNotNull, sql, count, type SQL } from 'drizzle-orm'
-import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3'
 import { tasks, type Task, type NewTask } from '@memry/db-schema/schema/tasks'
 import {
   taskTags,
@@ -14,9 +13,7 @@ import {
   type NewTaskTag,
   type NewTaskNote
 } from '@memry/db-schema/schema/task-relations'
-import * as schema from '@memry/db-schema/schema'
-
-type DrizzleDb = BetterSQLite3Database<typeof schema>
+import type { DataDb } from '../types'
 
 // ============================================================================
 // Task CRUD
@@ -25,7 +22,7 @@ type DrizzleDb = BetterSQLite3Database<typeof schema>
 /**
  * Insert a new task.
  */
-export function insertTask(db: DrizzleDb, task: NewTask): Task {
+export function insertTask(db: DataDb, task: NewTask): Task {
   return db.insert(tasks).values(task).returning().get()
 }
 
@@ -33,7 +30,7 @@ export function insertTask(db: DrizzleDb, task: NewTask): Task {
  * Update an existing task.
  */
 export function updateTask(
-  db: DrizzleDb,
+  db: DataDb,
   id: string,
   updates: Partial<Omit<Task, 'id' | 'createdAt'>>
 ): Task | undefined {
@@ -51,21 +48,21 @@ export function updateTask(
 /**
  * Delete a task by ID.
  */
-export function deleteTask(db: DrizzleDb, id: string): void {
+export function deleteTask(db: DataDb, id: string): void {
   db.delete(tasks).where(eq(tasks.id, id)).run()
 }
 
 /**
  * Get a task by ID.
  */
-export function getTaskById(db: DrizzleDb, id: string): Task | undefined {
+export function getTaskById(db: DataDb, id: string): Task | undefined {
   return db.select().from(tasks).where(eq(tasks.id, id)).get()
 }
 
 /**
  * Check if a task exists.
  */
-export function taskExists(db: DrizzleDb, id: string): boolean {
+export function taskExists(db: DataDb, id: string): boolean {
   const result = db.select({ id: tasks.id }).from(tasks).where(eq(tasks.id, id)).get()
   return result !== undefined
 }
@@ -93,7 +90,7 @@ export interface ListTasksOptions {
 /**
  * List tasks with filtering and sorting.
  */
-export function listTasks(db: DrizzleDb, options: ListTasksOptions = {}): Task[] {
+export function listTasks(db: DataDb, options: ListTasksOptions = {}): Task[] {
   const {
     projectId,
     statusId,
@@ -197,7 +194,7 @@ export function listTasks(db: DrizzleDb, options: ListTasksOptions = {}): Task[]
  * Count tasks with optional filters.
  */
 export function countTasks(
-  db: DrizzleDb,
+  db: DataDb,
   options: Pick<ListTasksOptions, 'projectId' | 'includeCompleted' | 'includeArchived'> = {}
 ): number {
   const { projectId, includeCompleted = false, includeArchived = false } = options
@@ -229,7 +226,7 @@ export function countTasks(
 /**
  * Get tasks by project ID.
  */
-export function getTasksByProject(db: DrizzleDb, projectId: string): Task[] {
+export function getTasksByProject(db: DataDb, projectId: string): Task[] {
   return db
     .select()
     .from(tasks)
@@ -241,7 +238,7 @@ export function getTasksByProject(db: DrizzleDb, projectId: string): Task[] {
 /**
  * Get subtasks of a parent task.
  */
-export function getSubtasks(db: DrizzleDb, parentId: string): Task[] {
+export function getSubtasks(db: DataDb, parentId: string): Task[] {
   return db
     .select()
     .from(tasks)
@@ -253,10 +250,7 @@ export function getSubtasks(db: DrizzleDb, parentId: string): Task[] {
 /**
  * Count subtasks of a parent task.
  */
-export function countSubtasks(
-  db: DrizzleDb,
-  parentId: string
-): { total: number; completed: number } {
+export function countSubtasks(db: DataDb, parentId: string): { total: number; completed: number } {
   const result = db
     .select({
       total: count(),
@@ -293,7 +287,7 @@ function getTodayDate(): string {
 /**
  * Get tasks due today.
  */
-export function getTodayTasks(db: DrizzleDb): Task[] {
+export function getTodayTasks(db: DataDb): Task[] {
   const today = getTodayDate()
 
   return db
@@ -314,7 +308,7 @@ export function getTodayTasks(db: DrizzleDb): Task[] {
  * @returns Tasks due on the specified date, ordered by time and position
  */
 export function getTasksByDueDate(
-  db: DrizzleDb,
+  db: DataDb,
   date: string,
   includeCompleted: boolean = true
 ): Task[] {
@@ -340,7 +334,7 @@ export function getTasksByDueDate(
  * @param beforeDate - Date in YYYY-MM-DD format (exclusive)
  * @returns Count of overdue tasks
  */
-export function countOverdueTasksBeforeDate(db: DrizzleDb, beforeDate: string): number {
+export function countOverdueTasksBeforeDate(db: DataDb, beforeDate: string): number {
   const result = db
     .select({ count: count() })
     .from(tasks)
@@ -360,7 +354,7 @@ export function countOverdueTasksBeforeDate(db: DrizzleDb, beforeDate: string): 
 /**
  * Get overdue tasks (due before today and not completed).
  */
-export function getOverdueTasks(db: DrizzleDb): Task[] {
+export function getOverdueTasks(db: DataDb): Task[] {
   const today = getTodayDate()
 
   return db
@@ -381,7 +375,7 @@ export function getOverdueTasks(db: DrizzleDb): Task[] {
 /**
  * Get upcoming tasks (due within the next N days).
  */
-export function getUpcomingTasks(db: DrizzleDb, days: number = 7): Task[] {
+export function getUpcomingTasks(db: DataDb, days: number = 7): Task[] {
   const today = getTodayDate()
   const futureDate = new Date()
   futureDate.setDate(futureDate.getDate() + days)
@@ -410,7 +404,7 @@ export function getUpcomingTasks(db: DrizzleDb, days: number = 7): Task[] {
 /**
  * Complete a task.
  */
-export function completeTask(db: DrizzleDb, id: string, completedAt?: string): Task | undefined {
+export function completeTask(db: DataDb, id: string, completedAt?: string): Task | undefined {
   return db
     .update(tasks)
     .set({
@@ -425,7 +419,7 @@ export function completeTask(db: DrizzleDb, id: string, completedAt?: string): T
 /**
  * Uncomplete a task.
  */
-export function uncompleteTask(db: DrizzleDb, id: string): Task | undefined {
+export function uncompleteTask(db: DataDb, id: string): Task | undefined {
   return db
     .update(tasks)
     .set({
@@ -440,7 +434,7 @@ export function uncompleteTask(db: DrizzleDb, id: string): Task | undefined {
 /**
  * Archive a task.
  */
-export function archiveTask(db: DrizzleDb, id: string): Task | undefined {
+export function archiveTask(db: DataDb, id: string): Task | undefined {
   return db
     .update(tasks)
     .set({
@@ -455,7 +449,7 @@ export function archiveTask(db: DrizzleDb, id: string): Task | undefined {
 /**
  * Unarchive a task.
  */
-export function unarchiveTask(db: DrizzleDb, id: string): Task | undefined {
+export function unarchiveTask(db: DataDb, id: string): Task | undefined {
   return db
     .update(tasks)
     .set({
@@ -471,7 +465,7 @@ export function unarchiveTask(db: DrizzleDb, id: string): Task | undefined {
  * Move a task to a different project/status/parent.
  */
 export function moveTask(
-  db: DrizzleDb,
+  db: DataDb,
   id: string,
   updates: {
     projectId?: string
@@ -494,26 +488,26 @@ export function moveTask(
 /**
  * Reorder tasks by updating their positions.
  */
-export function reorderTasks(db: DrizzleDb, taskIds: string[], positions: number[]): void {
+export function reorderTasks(db: DataDb, taskIds: string[], positions: number[]): void {
   if (taskIds.length !== positions.length) {
     throw new Error('taskIds and positions arrays must have the same length')
   }
 
-  for (let i = 0; i < taskIds.length; i++) {
-    db.update(tasks)
-      .set({
-        position: positions[i],
-        modifiedAt: new Date().toISOString()
-      })
-      .where(eq(tasks.id, taskIds[i]))
-      .run()
-  }
+  db.transaction((tx) => {
+    const now = new Date().toISOString()
+    for (let i = 0; i < taskIds.length; i++) {
+      tx.update(tasks)
+        .set({ position: positions[i], modifiedAt: now })
+        .where(eq(tasks.id, taskIds[i]))
+        .run()
+    }
+  })
 }
 
 /**
  * Duplicate a task.
  */
-export function duplicateTask(db: DrizzleDb, id: string, newId: string): Task | undefined {
+export function duplicateTask(db: DataDb, id: string, newId: string): Task | undefined {
   const original = getTaskById(db, id)
   if (!original) {
     return undefined
@@ -547,7 +541,7 @@ export function duplicateTask(db: DrizzleDb, id: string, newId: string): Task | 
  * and assigns the subtask to a new parent.
  */
 export function duplicateSubtask(
-  db: DrizzleDb,
+  db: DataDb,
   id: string,
   newId: string,
   newParentId: string
@@ -586,7 +580,7 @@ export function duplicateSubtask(
 /**
  * Set tags for a task (replaces existing tags).
  */
-export function setTaskTags(db: DrizzleDb, taskId: string, tags: string[]): void {
+export function setTaskTags(db: DataDb, taskId: string, tags: string[]): void {
   // Delete existing tags
   db.delete(taskTags).where(eq(taskTags.taskId, taskId)).run()
 
@@ -603,7 +597,7 @@ export function setTaskTags(db: DrizzleDb, taskId: string, tags: string[]): void
 /**
  * Get tags for a task.
  */
-export function getTaskTags(db: DrizzleDb, taskId: string): string[] {
+export function getTaskTags(db: DataDb, taskId: string): string[] {
   const results = db
     .select({ tag: taskTags.tag })
     .from(taskTags)
@@ -616,7 +610,7 @@ export function getTaskTags(db: DrizzleDb, taskId: string): string[] {
 /**
  * Get all unique task tags with counts.
  */
-export function getAllTaskTags(db: DrizzleDb): { tag: string; count: number }[] {
+export function getAllTaskTags(db: DataDb): { tag: string; count: number }[] {
   return db
     .select({
       tag: taskTags.tag,
@@ -636,7 +630,7 @@ export function getAllTaskTags(db: DrizzleDb): { tag: string; count: number }[] 
 /**
  * Set linked notes for a task (replaces existing links).
  */
-export function setTaskNotes(db: DrizzleDb, taskId: string, noteIds: string[]): void {
+export function setTaskNotes(db: DataDb, taskId: string, noteIds: string[]): void {
   // Delete existing links
   db.delete(taskNotes).where(eq(taskNotes.taskId, taskId)).run()
 
@@ -653,7 +647,7 @@ export function setTaskNotes(db: DrizzleDb, taskId: string, noteIds: string[]): 
 /**
  * Get linked note IDs for a task.
  */
-export function getTaskNoteIds(db: DrizzleDb, taskId: string): string[] {
+export function getTaskNoteIds(db: DataDb, taskId: string): string[] {
   const results = db
     .select({ noteId: taskNotes.noteId })
     .from(taskNotes)
@@ -666,7 +660,7 @@ export function getTaskNoteIds(db: DrizzleDb, taskId: string): string[] {
 /**
  * Get tasks linked to a specific note.
  */
-export function getTasksLinkedToNote(db: DrizzleDb, noteId: string): Task[] {
+export function getTasksLinkedToNote(db: DataDb, noteId: string): Task[] {
   const taskIds = db
     .select({ taskId: taskNotes.taskId })
     .from(taskNotes)
@@ -692,7 +686,7 @@ export function getTasksLinkedToNote(db: DrizzleDb, noteId: string): Task[] {
 /**
  * Bulk complete tasks.
  */
-export function bulkCompleteTasks(db: DrizzleDb, ids: string[]): number {
+export function bulkCompleteTasks(db: DataDb, ids: string[]): number {
   if (ids.length === 0) return 0
 
   const now = new Date().toISOString()
@@ -708,7 +702,7 @@ export function bulkCompleteTasks(db: DrizzleDb, ids: string[]): number {
 /**
  * Bulk delete tasks.
  */
-export function bulkDeleteTasks(db: DrizzleDb, ids: string[]): number {
+export function bulkDeleteTasks(db: DataDb, ids: string[]): number {
   if (ids.length === 0) return 0
 
   const result = db
@@ -722,7 +716,7 @@ export function bulkDeleteTasks(db: DrizzleDb, ids: string[]): number {
 /**
  * Bulk move tasks to a project.
  */
-export function bulkMoveTasks(db: DrizzleDb, ids: string[], projectId: string): number {
+export function bulkMoveTasks(db: DataDb, ids: string[], projectId: string): number {
   if (ids.length === 0) return 0
 
   const result = db
@@ -737,7 +731,7 @@ export function bulkMoveTasks(db: DrizzleDb, ids: string[], projectId: string): 
 /**
  * Bulk archive tasks.
  */
-export function bulkArchiveTasks(db: DrizzleDb, ids: string[]): number {
+export function bulkArchiveTasks(db: DataDb, ids: string[]): number {
   if (ids.length === 0) return 0
 
   const now = new Date().toISOString()
@@ -757,7 +751,7 @@ export function bulkArchiveTasks(db: DrizzleDb, ids: string[]): number {
 /**
  * Get task statistics.
  */
-export function getTaskStats(db: DrizzleDb): {
+export function getTaskStats(db: DataDb): {
   total: number
   completed: number
   overdue: number
@@ -794,7 +788,7 @@ export function getTaskStats(db: DrizzleDb): {
  * Get the next available position for a new task in a project.
  */
 export function getNextTaskPosition(
-  db: DrizzleDb,
+  db: DataDb,
   projectId: string,
   parentId?: string | null
 ): number {

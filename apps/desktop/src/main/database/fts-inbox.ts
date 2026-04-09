@@ -1,5 +1,5 @@
 import { sql } from 'drizzle-orm'
-import type { DrizzleDb } from './client'
+import type { DataDb } from './client'
 
 /**
  * FTS5 Full-Text Search for Inbox Items
@@ -11,7 +11,7 @@ import type { DrizzleDb } from './client'
  * @module database/fts-inbox
  */
 
-export function createFtsInboxTable(db: DrizzleDb): void {
+export function createFtsInboxTable(db: DataDb): void {
   db.run(sql`
     CREATE VIRTUAL TABLE IF NOT EXISTS fts_inbox USING fts5(
       id UNINDEXED,
@@ -24,14 +24,14 @@ export function createFtsInboxTable(db: DrizzleDb): void {
   `)
 }
 
-export function createFtsInboxTriggers(db: DrizzleDb): void {
+export function createFtsInboxTriggers(db: DataDb): void {
   db.run(sql`DROP TRIGGER IF EXISTS inbox_ai`)
   db.run(sql`DROP TRIGGER IF EXISTS inbox_ad`)
   db.run(sql`DROP TRIGGER IF EXISTS inbox_au`)
 }
 
 export function updateFtsInboxContent(
-  db: DrizzleDb,
+  db: DataDb,
   itemId: string,
   content: string,
   transcription: string,
@@ -45,7 +45,7 @@ export function updateFtsInboxContent(
 }
 
 export function insertFtsInboxItem(
-  db: DrizzleDb,
+  db: DataDb,
   itemId: string,
   title: string,
   content: string,
@@ -58,20 +58,20 @@ export function insertFtsInboxItem(
   `)
 }
 
-export function deleteFtsInboxItem(db: DrizzleDb, itemId: string): void {
+export function deleteFtsInboxItem(db: DataDb, itemId: string): void {
   db.run(sql`DELETE FROM fts_inbox WHERE id = ${itemId}`)
 }
 
-export function clearFtsInboxTable(db: DrizzleDb): void {
+export function clearFtsInboxTable(db: DataDb): void {
   db.run(sql`DELETE FROM fts_inbox`)
 }
 
-export function getFtsInboxCount(db: DrizzleDb): number {
+export function getFtsInboxCount(db: DataDb): number {
   const result = db.get<{ count: number }>(sql`SELECT COUNT(*) as count FROM fts_inbox`)
   return result?.count ?? 0
 }
 
-export function initializeFtsInbox(db: DrizzleDb): void {
+export function initializeFtsInbox(db: DataDb): void {
   createFtsInboxTable(db)
   createFtsInboxTriggers(db)
 }

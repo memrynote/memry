@@ -1,5 +1,5 @@
-import type { Project, ProjectWithStatuses, Status, Task } from './types'
-import type { TasksQueryRepository } from './queries'
+import type { Project, ProjectWithStatuses, Status, Task } from './types.ts'
+import type { TasksQueryRepository } from './queries.ts'
 
 export interface StatusDefinitionInput {
   id?: string

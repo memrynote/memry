@@ -22,11 +22,9 @@ import {
   type BookmarkItemMeta
 } from '@memry/contracts/bookmarks-api'
 import { createValidatedHandler, createStringHandler } from './validate'
-import { getDatabase, getIndexDatabase } from '../database'
+import { requireDatabase, getIndexDatabase } from '../database'
 import { generateId } from '../lib/id'
-import * as bookmarkQueries from '@main/database/queries/bookmarks'
-import * as notesQueries from '@main/database/queries/notes'
-import * as tasksQueries from '@main/database/queries/tasks'
+import { bookmarkQueries, notesQueries, tasksQueries } from '../bookmarks/store'
 
 /**
  * Emit bookmark event to all windows
@@ -35,17 +33,6 @@ function emitBookmarkEvent(channel: string, data: unknown): void {
   BrowserWindow.getAllWindows().forEach((win) => {
     win.webContents.send(channel, data)
   })
-}
-
-/**
- * Helper to get data database, throwing a user-friendly error if not available.
- */
-function requireDatabase() {
-  try {
-    return getDatabase()
-  } catch {
-    throw new Error('No vault is open. Please open a vault first.')
-  }
 }
 
 /**

@@ -99,6 +99,17 @@ vi.mock('@main/database/queries/note-positions', () => ({
   getAllNotePositions: vi.fn()
 }))
 
+vi.mock('@memry/storage-data', () => ({
+  countLocalOnlyNoteMetadata: vi.fn(),
+  listPropertyDefinitions: vi.fn()
+}))
+
+vi.mock('../vault/property-definition-store', () => ({
+  createPropertyDefinitionRecord: vi.fn(),
+  updatePropertyDefinitionRecord: vi.fn(),
+  deletePropertyDefinitionRecord: vi.fn()
+}))
+
 // Import the module after mocking
 import { registerNotesHandlers, unregisterNotesHandlers } from './notes-handlers'
 import { getIndexDatabase, getDatabase } from '../database'
@@ -107,6 +118,8 @@ import * as attachmentsVault from '../vault/attachments'
 import * as foldersVault from '../vault/folders'
 import * as noteQueries from '@main/database/queries/notes'
 import * as positionQueries from '@main/database/queries/note-positions'
+import * as storageData from '@memry/storage-data'
+import * as propertyDefinitionStore from '../vault/property-definition-store'
 
 describe('notes-handlers', () => {
   let mockDb: { run: Mock; get: Mock; all: Mock }
@@ -749,7 +762,7 @@ describe('notes-handlers', () => {
         { name: 'status', type: 'select', options: ['active', 'done'] },
         { name: 'priority', type: 'number' }
       ]
-      ;(noteQueries.getAllPropertyDefinitions as Mock).mockReturnValue(mockDefs)
+      ;(storageData.listPropertyDefinitions as Mock).mockReturnValue(mockDefs)
 
       const result = await invokeHandler(NotesChannels.invoke.GET_PROPERTY_DEFINITIONS)
 
@@ -758,7 +771,7 @@ describe('notes-handlers', () => {
 
     it('CREATE_PROPERTY_DEFINITION should create a definition', async () => {
       const mockDef = { name: 'due', type: 'date' }
-      ;(noteQueries.insertPropertyDefinition as Mock).mockReturnValue(mockDef)
+      ;(propertyDefinitionStore.createPropertyDefinitionRecord as Mock).mockReturnValue(mockDef)
 
       const result = await invokeHandler(NotesChannels.invoke.CREATE_PROPERTY_DEFINITION, {
         name: 'due',

@@ -5,18 +5,15 @@
  * @module db/queries/settings
  */
 
-import { eq, asc } from 'drizzle-orm'
-import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3'
+import { eq, asc, sql } from 'drizzle-orm'
 import {
   settings,
   savedFilters,
   type SavedFilter,
   type NewSavedFilter
 } from '@memry/db-schema/schema/settings'
-import * as schema from '@memry/db-schema/schema'
 import { utcNow } from '@memry/shared/utc'
-
-type DrizzleDb = BetterSQLite3Database<typeof schema>
+import type { DataDb } from '../types'
 
 // ============================================================================
 // Settings CRUD
@@ -25,7 +22,7 @@ type DrizzleDb = BetterSQLite3Database<typeof schema>
 /**
  * Get a setting value by key.
  */
-export function getSetting(db: DrizzleDb, key: string): string | null {
+export function getSetting(db: DataDb, key: string): string | null {
   const result = db
     .select({ value: settings.value })
     .from(settings)
@@ -37,7 +34,7 @@ export function getSetting(db: DrizzleDb, key: string): string | null {
 /**
  * Set a setting value.
  */
-export function setSetting(db: DrizzleDb, key: string, value: string): void {
+export function setSetting(db: DataDb, key: string, value: string): void {
   db.insert(settings)
     .values({ key, value, modifiedAt: utcNow() })
     .onConflictDoUpdate({
@@ -50,7 +47,7 @@ export function setSetting(db: DrizzleDb, key: string, value: string): void {
 /**
  * Delete a setting by key.
  */
-export function deleteSetting(db: DrizzleDb, key: string): void {
+export function deleteSetting(db: DataDb, key: string): void {
   db.delete(settings).where(eq(settings.key, key)).run()
 }
 
@@ -61,7 +58,7 @@ export function deleteSetting(db: DrizzleDb, key: string): void {
 /**
  * Insert a new saved filter.
  */
-export function insertSavedFilter(db: DrizzleDb, filter: NewSavedFilter): SavedFilter {
+export function insertSavedFilter(db: DataDb, filter: NewSavedFilter): SavedFilter {
   return db.insert(savedFilters).values(filter).returning().get()
 }
 
@@ -69,7 +66,7 @@ export function insertSavedFilter(db: DrizzleDb, filter: NewSavedFilter): SavedF
  * Update an existing saved filter.
  */
 export function updateSavedFilter(
-  db: DrizzleDb,
+  db: DataDb,
   id: string,
   updates: Partial<Omit<SavedFilter, 'id' | 'createdAt'>>
 ): SavedFilter | undefined {
@@ -79,52 +76,57 @@ export function updateSavedFilter(
 /**
  * Delete a saved filter by ID.
  */
-export function deleteSavedFilter(db: DrizzleDb, id: string): void {
+export function deleteSavedFilter(db: DataDb, id: string): void {
   db.delete(savedFilters).where(eq(savedFilters.id, id)).run()
 }
 
 /**
  * Get a saved filter by ID.
  */
-export function getSavedFilterById(db: DrizzleDb, id: string): SavedFilter | undefined {
+export function getSavedFilterById(db: DataDb, id: string): SavedFilter | undefined {
   return db.select().from(savedFilters).where(eq(savedFilters.id, id)).get()
 }
 
 /**
  * List all saved filters ordered by position.
  */
-export function listSavedFilters(db: DrizzleDb): SavedFilter[] {
+export function listSavedFilters(db: DataDb): SavedFilter[] {
   return db.select().from(savedFilters).orderBy(asc(savedFilters.position)).all()
 }
 
 /**
  * Get the next position for a new saved filter.
  */
-export function getNextSavedFilterPosition(db: DrizzleDb): number {
-  const filters = db.select().from(savedFilters).all()
-  if (filters.length === 0) return 0
-  const maxPosition = Math.max(...filters.map((f) => f.position))
-  return maxPosition + 1
+export function getNextSavedFilterPosition(db: DataDb): number {
+  const result = db
+    .select({ maxPosition: sql<number>`max(${savedFilters.position})` })
+    .from(savedFilters)
+    .get()
+  return (result?.maxPosition ?? -1) + 1
 }
 
 /**
  * Reorder saved filters by updating positions.
  */
-export function reorderSavedFilters(db: DrizzleDb, ids: string[], positions: number[]): void {
+export function reorderSavedFilters(db: DataDb, ids: string[], positions: number[]): void {
   if (ids.length !== positions.length) {
     throw new Error('ids and positions arrays must have the same length')
   }
 
-  // Update each filter's position
-  for (let i = 0; i < ids.length; i++) {
-    db.update(savedFilters).set({ position: positions[i] }).where(eq(savedFilters.id, ids[i])).run()
-  }
+  db.transaction((tx) => {
+    for (let i = 0; i < ids.length; i++) {
+      tx.update(savedFilters)
+        .set({ position: positions[i] })
+        .where(eq(savedFilters.id, ids[i]))
+        .run()
+    }
+  })
 }
 
 /**
  * Check if a saved filter exists.
  */
-export function savedFilterExists(db: DrizzleDb, id: string): boolean {
+export function savedFilterExists(db: DataDb, id: string): boolean {
   const result = db
     .select({ id: savedFilters.id })
     .from(savedFilters)

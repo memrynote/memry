@@ -5,9 +5,9 @@ import * as dataSchema from '@memry/db-schema/data-schema'
 import * as indexSchema from '@memry/db-schema/index-schema'
 import * as sqliteVec from 'sqlite-vec'
 import { EMBEDDING_DIMENSION } from '../lib/embeddings-constants'
-import type { DataDb, IndexDb, RawIndexDb, DrizzleDb } from './types'
+import type { DataDb, IndexDb, RawIndexDb } from './types'
 
-export type { DataDb, IndexDb, RawIndexDb, DrizzleDb } from './types'
+export type { DataDb, IndexDb, RawIndexDb } from './types'
 
 let dataDb: DataDb | null = null
 let indexDb: IndexDb | null = null
@@ -75,18 +75,26 @@ export function initIndexDatabase(dbPath: string): IndexDb {
   return indexDb
 }
 
-export function getDatabase(): DrizzleDb {
+export function getDatabase(): DataDb {
   if (!dataDb) throw new Error('Database not initialized')
-  return dataDb as DrizzleDb
+  return dataDb
+}
+
+export function requireDatabase(): DataDb {
+  try {
+    return getDatabase()
+  } catch {
+    throw new Error('No vault is open. Please open a vault first.')
+  }
 }
 
 export function isDatabaseInitialized(): boolean {
   return dataDb !== null
 }
 
-export function getIndexDatabase(): DrizzleDb {
+export function getIndexDatabase(): IndexDb {
   if (!indexDb) throw new Error('Index database not initialized')
-  return indexDb as DrizzleDb
+  return indexDb
 }
 
 /**

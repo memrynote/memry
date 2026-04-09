@@ -1,15 +1,12 @@
 import { eq, asc, sql } from 'drizzle-orm'
-import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3'
 import { notePositions, type NotePosition } from '@memry/db-schema/schema/note-positions'
-import * as schema from '@memry/db-schema/schema'
+import type { DataDb } from '../types'
 
-type DrizzleDb = BetterSQLite3Database<typeof schema>
-
-export function getNotePosition(db: DrizzleDb, path: string): NotePosition | undefined {
+export function getNotePosition(db: DataDb, path: string): NotePosition | undefined {
   return db.select().from(notePositions).where(eq(notePositions.path, path)).get()
 }
 
-export function getNotesInFolder(db: DrizzleDb, folderPath: string): NotePosition[] {
+export function getNotesInFolder(db: DataDb, folderPath: string): NotePosition[] {
   return db
     .select()
     .from(notePositions)
@@ -18,7 +15,7 @@ export function getNotesInFolder(db: DrizzleDb, folderPath: string): NotePositio
     .all()
 }
 
-export function getNextPositionInFolder(db: DrizzleDb, folderPath: string): number {
+export function getNextPositionInFolder(db: DataDb, folderPath: string): number {
   const result = db
     .select({ maxPosition: sql<number>`max(${notePositions.position})` })
     .from(notePositions)
@@ -29,7 +26,7 @@ export function getNextPositionInFolder(db: DrizzleDb, folderPath: string): numb
 }
 
 export function setNotePosition(
-  db: DrizzleDb,
+  db: DataDb,
   path: string,
   folderPath: string,
   position: number
@@ -42,20 +39,21 @@ export function setNotePosition(
   }
 }
 
-export function reorderNotesInFolder(db: DrizzleDb, folderPath: string, notePaths: string[]): void {
-  for (let i = 0; i < notePaths.length; i++) {
-    const path = notePaths[i]
-    setNotePosition(db, path, folderPath, i)
-  }
+export function reorderNotesInFolder(db: DataDb, folderPath: string, notePaths: string[]): void {
+  db.transaction(() => {
+    for (let i = 0; i < notePaths.length; i++) {
+      setNotePosition(db, notePaths[i], folderPath, i)
+    }
+  })
 }
 
-export function deleteNotePosition(db: DrizzleDb, path: string): boolean {
+export function deleteNotePosition(db: DataDb, path: string): boolean {
   const result = db.delete(notePositions).where(eq(notePositions.path, path)).run()
   return result.changes > 0
 }
 
 export function moveNoteToFolder(
-  db: DrizzleDb,
+  db: DataDb,
   path: string,
   newFolderPath: string,
   position?: number
@@ -65,25 +63,27 @@ export function moveNoteToFolder(
 }
 
 export function insertNoteAtPosition(
-  db: DrizzleDb,
+  db: DataDb,
   path: string,
   folderPath: string,
   position: number
 ): void {
-  const notesInFolder = getNotesInFolder(db, folderPath)
+  db.transaction(() => {
+    const notesInFolder = getNotesInFolder(db, folderPath)
 
-  for (const note of notesInFolder) {
-    if (note.position >= position && note.path !== path) {
-      db.update(notePositions)
-        .set({ position: note.position + 1 })
-        .where(eq(notePositions.path, note.path))
-        .run()
+    for (const note of notesInFolder) {
+      if (note.position >= position && note.path !== path) {
+        db.update(notePositions)
+          .set({ position: note.position + 1 })
+          .where(eq(notePositions.path, note.path))
+          .run()
+      }
     }
-  }
 
-  setNotePosition(db, path, folderPath, position)
+    setNotePosition(db, path, folderPath, position)
+  })
 }
 
-export function getAllNotePositions(db: DrizzleDb): NotePosition[] {
+export function getAllNotePositions(db: DataDb): NotePosition[] {
   return db.select().from(notePositions).all()
 }

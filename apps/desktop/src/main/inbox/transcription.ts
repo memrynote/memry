@@ -17,7 +17,7 @@ import { toFile } from 'openai/uploads'
 import { eq } from 'drizzle-orm'
 
 import { envConfig } from '../index'
-import { getDatabase } from '../database'
+import { requireDatabase } from '../database'
 import { getStatus } from '../vault'
 import { inboxItems } from '@memry/db-schema/schema/inbox'
 import { InboxChannels } from '@memry/contracts/ipc-channels'
@@ -83,17 +83,6 @@ function emitInboxUpdated(itemId: string, changes: Record<string, unknown>): voi
     type: 'inbox.upserted',
     itemId
   })
-}
-
-/**
- * Get data database, throwing if not available
- */
-function requireDatabase() {
-  try {
-    return getDatabase()
-  } catch {
-    throw new Error('No vault is open. Please open a vault first.')
-  }
 }
 
 /**

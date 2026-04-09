@@ -8,7 +8,7 @@
  * @module database/fts-queue
  */
 
-import { type DrizzleDb, getIndexDatabase } from './client'
+import { type IndexDb, getIndexDatabase } from './client'
 import { updateFtsContent } from './fts'
 import { createLogger } from '../lib/logger'
 
@@ -72,7 +72,7 @@ export function queueFtsUpdate(noteId: string, content: string, tags: string[]):
  * @param db - Drizzle database instance
  * @returns Number of notes updated
  */
-export function flushFtsUpdates(db: DrizzleDb): number {
+export function flushFtsUpdates(db: IndexDb): number {
   // Cancel pending timer
   if (flushTimer) {
     clearTimeout(flushTimer)
@@ -131,7 +131,7 @@ export function hasPendingFtsUpdates(): boolean {
  * @param db - Drizzle database instance
  * @param delayMs - Delay in milliseconds (default: FLUSH_DELAY_MS)
  */
-export function scheduleFlush(db: DrizzleDb, delayMs: number = FLUSH_DELAY_MS): void {
+export function scheduleFlush(db: IndexDb, delayMs: number = FLUSH_DELAY_MS): void {
   // Cancel existing timer
   if (flushTimer) {
     clearTimeout(flushTimer)

@@ -1,5 +1,4 @@
 import { eq, desc, asc, and, like, inArray, sql, count, type SQL } from 'drizzle-orm'
-import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3'
 import {
   noteCache,
   noteTags,
@@ -7,15 +6,13 @@ import {
   type NoteCache,
   type NewNoteCache
 } from '@memry/db-schema/schema/notes-cache'
-import * as schema from '@memry/db-schema/schema'
-
-type DrizzleDb = BetterSQLite3Database<typeof schema>
+import type { IndexDb } from '../../types'
 
 // ============================================================================
 // Note Cache CRUD
 // ============================================================================
 
-export function insertNoteCache(db: DrizzleDb, note: NewNoteCache): NoteCache {
+export function insertNoteCache(db: IndexDb, note: NewNoteCache): NoteCache {
   return db
     .insert(noteCache)
     .values(note)
@@ -40,7 +37,7 @@ export function insertNoteCache(db: DrizzleDb, note: NewNoteCache): NoteCache {
 }
 
 export function updateNoteCache(
-  db: DrizzleDb,
+  db: IndexDb,
   id: string,
   updates: Partial<Omit<NoteCache, 'id'>>
 ): NoteCache | undefined {
@@ -55,24 +52,24 @@ export function updateNoteCache(
     .get()
 }
 
-export function deleteNoteCache(db: DrizzleDb, id: string): void {
+export function deleteNoteCache(db: IndexDb, id: string): void {
   db.delete(noteCache).where(eq(noteCache.id, id)).run()
 }
 
-export function getNoteCacheById(db: DrizzleDb, id: string): NoteCache | undefined {
+export function getNoteCacheById(db: IndexDb, id: string): NoteCache | undefined {
   return db.select().from(noteCache).where(eq(noteCache.id, id)).get()
 }
 
-export function getNoteCacheByPath(db: DrizzleDb, path: string): NoteCache | undefined {
+export function getNoteCacheByPath(db: IndexDb, path: string): NoteCache | undefined {
   return db.select().from(noteCache).where(eq(noteCache.path, path)).get()
 }
 
-export function noteCacheExists(db: DrizzleDb, id: string): boolean {
+export function noteCacheExists(db: IndexDb, id: string): boolean {
   const result = db.select({ id: noteCache.id }).from(noteCache).where(eq(noteCache.id, id)).get()
   return result !== undefined
 }
 
-export function getLocalOnlyCount(db: DrizzleDb): number {
+export function getLocalOnlyCount(db: IndexDb): number {
   const result = db
     .select({ count: count() })
     .from(noteCache)
@@ -82,7 +79,7 @@ export function getLocalOnlyCount(db: DrizzleDb): number {
 }
 
 export function findDuplicateId(
-  db: DrizzleDb,
+  db: IndexDb,
   id: string,
   excludePath: string
 ): NoteCache | undefined {
@@ -106,7 +103,7 @@ export interface ListNotesOptions {
   offset?: number
 }
 
-export function listNotesFromCache(db: DrizzleDb, options: ListNotesOptions = {}): NoteCache[] {
+export function listNotesFromCache(db: IndexDb, options: ListNotesOptions = {}): NoteCache[] {
   const { folder, tags, sortBy = 'modified', sortOrder = 'desc', limit = 100, offset = 0 } = options
 
   const conditions: SQL<unknown>[] = []
@@ -157,7 +154,7 @@ export function listNotesFromCache(db: DrizzleDb, options: ListNotesOptions = {}
   return query.orderBy(orderFn(sortColumn)).limit(limit).offset(offset).all()
 }
 
-export function countNotes(db: DrizzleDb, folder?: string): number {
+export function countNotes(db: IndexDb, folder?: string): number {
   const conditions: SQL<unknown>[] = [sql`${noteCache.date} IS NULL`]
 
   if (folder) {
@@ -177,7 +174,7 @@ export function countNotes(db: DrizzleDb, folder?: string): number {
 // Bulk Operations
 // ============================================================================
 
-export function bulkInsertNotes(db: DrizzleDb, notes: NewNoteCache[]): void {
+export function bulkInsertNotes(db: IndexDb, notes: NewNoteCache[]): void {
   if (notes.length === 0) return
 
   const batchSize = 100
@@ -187,13 +184,13 @@ export function bulkInsertNotes(db: DrizzleDb, notes: NewNoteCache[]): void {
   }
 }
 
-export function clearNoteCache(db: DrizzleDb): void {
+export function clearNoteCache(db: IndexDb): void {
   db.delete(noteLinks).run()
   db.delete(noteTags).run()
   db.delete(noteCache).run()
 }
 
-export function getAllNoteIds(db: DrizzleDb): string[] {
+export function getAllNoteIds(db: IndexDb): string[] {
   return db
     .select({ id: noteCache.id })
     .from(noteCache)
@@ -201,7 +198,7 @@ export function getAllNoteIds(db: DrizzleDb): string[] {
     .map((r) => r.id)
 }
 
-export function getNotesModifiedAfter(db: DrizzleDb, date: string): NoteCache[] {
+export function getNotesModifiedAfter(db: IndexDb, date: string): NoteCache[] {
   return db
     .select()
     .from(noteCache)
