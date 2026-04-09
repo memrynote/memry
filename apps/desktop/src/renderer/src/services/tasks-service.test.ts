@@ -20,6 +20,14 @@ describe('tasks-service', () => {
     ;(window as Window & { api: unknown }).api = api
   })
 
+  it('exposes task RPC methods directly from window.api.tasks', () => {
+    expect(tasksService.create).toBe(api.tasks.create)
+    expect(tasksService.update).toBe(api.tasks.update)
+    expect(tasksService.list).toBe(api.tasks.list)
+    expect(tasksService.bulkComplete).toBe(api.tasks.bulkComplete)
+    expect(tasksService.getUpcoming).toBe(api.tasks.getUpcoming)
+  })
+
   it('forwards CRUD and list calls', async () => {
     api.tasks.create = vi.fn().mockResolvedValue({ success: true, task: { id: 'task-1' } })
     api.tasks.update = vi.fn().mockResolvedValue({ success: true, task: { id: 'task-1' } })
