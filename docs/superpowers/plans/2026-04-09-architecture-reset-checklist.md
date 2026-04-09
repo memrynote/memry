@@ -174,18 +174,19 @@ Progress note (2026-04-09):
 
 - [x] Create `packages/domain-inbox`
 - [x] Define canonical inbox entities, commands, queries, events, and job records
-- [ ] Move capture acceptance, dedupe, enrich, suggest, triage, file, archive, and snooze rules into the inbox domain
+- [x] Move capture acceptance, dedupe, enrich, suggest, triage, file, archive, and snooze rules into the inbox domain
 - [x] Move job-state semantics out of IPC handlers and into domain job records
 - [x] Remove direct DB writes from `apps/desktop/src/main/ipc/inbox-handlers.ts`
 - [x] Remove direct sync calls from `apps/desktop/src/main/ipc/inbox-handlers.ts`
 - [x] Remove direct projection calls from `apps/desktop/src/main/ipc/inbox-handlers.ts`
-- [ ] Keep handlers as adapters that validate input and dispatch domain commands
+- [x] Keep handlers as adapters that validate input and dispatch domain commands
 
-Progress note (2026-04-09):
+Progress note (2026-04-10):
 - Added `packages/domain-inbox` with canonical inbox entities, command/query contracts, event shapes, and durable job record types, plus focused domain-command tests for dedupe, social capture enrichment, link filing validation, and retry job orchestration.
 - Added `apps/desktop/src/main/inbox/domain.ts` as the desktop adapter layer for the new inbox domain commands. It now owns text/link/image capture persistence, social metadata storage, retry-state resets, and the shared inbox handler dependency wiring that used to live directly in `ipc/inbox-handlers.ts`.
-- `apps/desktop/src/main/ipc/inbox-handlers.ts` now registers transport handlers against the inbox domain surface instead of doing direct DB writes or calling sync/projection helpers inline.
-- Phase 3 remains intentionally incomplete on this branch: CRUD, batch, and query handler modules still contain inbox-specific persistence/orchestration, and archive/snooze/query boundaries are not yet fully moved behind `packages/domain-inbox`.
+- Added `apps/desktop/src/main/inbox/crud.ts`, `apps/desktop/src/main/inbox/batch.ts`, and `apps/desktop/src/main/inbox/queries.ts` so inbox persistence, batch orchestration, and repository-style query logic now live under the inbox runtime instead of `src/main/ipc/`.
+- `apps/desktop/src/main/ipc/inbox-handlers.ts`, `apps/desktop/src/main/ipc/inbox-crud-handlers.ts`, `apps/desktop/src/main/ipc/inbox-batch-handlers.ts`, and `apps/desktop/src/main/ipc/inbox-query-handlers.ts` now act as transport shells that only register channels and delegate to inbox-domain surfaces.
+- Vitest config now resolves `@memry/domain-inbox`, and the focused inbox/domain-inbox suites pass on this branch.
 
 **Key files:**
 
@@ -199,8 +200,8 @@ Progress note (2026-04-09):
 
 **Gate:**
 
-- [ ] `packages/domain-inbox` owns inbox command/query/job boundaries
-- [ ] Inbox handlers are adapters only
+- [x] `packages/domain-inbox` owns inbox command/query/job boundaries
+- [x] Inbox handlers are adapters only
 - [ ] Renderer consumes enrichment state through typed query results instead of handler-specific transitions
 
 ## Phase 4: Notes, Journal, And Vault
