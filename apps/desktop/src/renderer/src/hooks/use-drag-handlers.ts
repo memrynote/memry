@@ -770,13 +770,38 @@ export const useDragHandlers = ({
 
       if (!over) return
 
-      const overData = over.data.current
+      const eventOverData = over.data.current
+      const shouldPreferRowHoverTarget =
+        dragState.sourceType === 'list' &&
+        dragState.overType === 'task' &&
+        dragState.overId !== null &&
+        dragState.overSectionId !== null &&
+        eventOverData?.type === 'column' &&
+        ((eventOverData?.sectionId as string | undefined) ?? null) === dragState.overSectionId
+
+      const overId = shouldPreferRowHoverTarget ? dragState.overId : (over.id as string)
+      const overData = shouldPreferRowHoverTarget
+        ? {
+            ...eventOverData,
+            type: 'task',
+            sectionId: dragState.overSectionId,
+            columnId:
+              dragState.overColumnId ?? (eventOverData?.columnId as string | undefined) ?? null
+          }
+        : eventOverData
       const overType = overData?.type
       const taskIds = dragState.activeIds
-      const dropTaskEdge = overType === 'task' ? resolveTaskEdgeFromDndEvent(event) : null
+      const dropTaskEdge =
+        overType === 'task'
+          ? shouldPreferRowHoverTarget
+            ? dragState.overTaskEdge
+            : resolveTaskEdgeFromDndEvent(event)
+          : null
 
       switch (overType) {
         case 'task': {
+          if (!overId) break
+
           const overSectionId = overData?.sectionId
           const overSectionTaskIds = overData?.sectionTaskIds as string[] | undefined
           const overColumnId = overData?.columnId
@@ -794,7 +819,7 @@ export const useDragHandlers = ({
               [overSectionId]: buildReorderedTaskIds(
                 overSectionTaskIds,
                 taskIds[0],
-                over.id as string,
+                overId,
                 dropTaskEdge
               )
             })
@@ -808,7 +833,7 @@ export const useDragHandlers = ({
               [overColumnId]: buildReorderedTaskIds(
                 overSectionTaskIds,
                 taskIds[0],
-                over.id as string,
+                overId,
                 dropTaskEdge
               )
             })
@@ -823,7 +848,7 @@ export const useDragHandlers = ({
               sourceSectionTaskIds,
               targetSectionId: overSectionId,
               targetSectionTaskIds: overSectionTaskIds,
-              overId: over.id as string,
+              overId,
               overColumnId,
               overTask: overData?.task as Task | undefined,
               overTaskEdge: dropTaskEdge,
@@ -869,7 +894,7 @@ export const useDragHandlers = ({
         }
 
         case 'column': {
-          const targetColumnId = (overData?.columnId || over.id) as string
+          const targetColumnId = (overData?.columnId || overId) as string
           const sourceSectionId = dragState.sourceContainerId
           const targetSectionId = (overData?.sectionId as string | undefined) ?? null
           const sourceSectionTaskIds =
