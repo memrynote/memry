@@ -5,14 +5,24 @@ Format: weekly entries grouped by feature area.
 
 ---
 
-## 2026-04-09 — RPC Type Consolidation
+## 2026-04-09 — Inbox Domain Extraction (Phase 3)
 
 ### Added
-- Add createWindowApiForwarder utility to centralize renderer→main API proxy delegation
+- Add `@memry/domain-inbox` package with canonical inbox entities, commands, queries, events, and job record types
+- Add `domain.ts` desktop adapter layer for inbox domain commands with transactional item+tag insertion
 
 ### Changed
-- Consolidate type exports and imports via @memry/rpc packages
-- Extract task context and queries into dedicated tasks-app-boundary module
+- Move capture, filing, snooze, retry, and suggestion logic from IPC handlers into inbox domain surface
+- Reduce `inbox-handlers.ts` from 850+ LOC to transport-only adapter with Zod validation and error handling
+- Simplify `TasksProvider` to pure context shell receiving data via props
+- Inline `TasksAppBoundary` render-prop logic directly into `App.tsx`
+- Restore proxy forwarder traps (has, ownKeys, getOwnPropertyDescriptor) removed in prior refactor
+
+### Fixed
+- Re-add Zod schema validation at IPC trust boundary dropped during domain extraction
+- Re-add `withErrorHandler` wrapper on all inbox IPC handlers to prevent unhandled rejections
+- Add missing `setProjects` to `handleDragEnd` useCallback dependency array
+- Add missing `void` prefix on floating `tasksService.reorder()` promise
 
 ---
 

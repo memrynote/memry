@@ -2,6 +2,8 @@ import { createContext, useContext, useMemo, type ReactNode } from 'react'
 import type { Task } from '@/data/sample-tasks'
 import type { Project } from '@/data/tasks-data'
 import type { TaskSelectionType } from '@/App'
+import { useTaskWorkspaceMutations } from '@/features/tasks/use-task-queries'
+import { useTaskUiStore } from '@/features/tasks/use-task-ui-store'
 
 interface TasksContextValue {
   tasks: Task[]
@@ -26,19 +28,6 @@ interface TasksProviderProps {
   children: ReactNode
   tasks: Task[]
   projects: Project[]
-  taskSelectedId: string
-  taskSelectedType: TaskSelectionType
-  selectedTaskIds: Set<string>
-  setTasks: (tasks: Task[] | ((prev: Task[]) => Task[])) => void
-  setProjects: (projects: Project[] | ((prev: Project[]) => Project[])) => void
-  setSelection: (id: string, type: TaskSelectionType) => void
-  setSelectedTaskIds: (ids: Set<string>) => void
-  addTask: (task: Task) => Promise<void>
-  updateTask: (taskId: string, updates: Partial<Task>) => Promise<void>
-  deleteTask: (taskId: string) => Promise<void>
-  addProject: (project: Project) => Promise<void>
-  updateProject: (projectId: string, updates: Partial<Project>) => Promise<void>
-  deleteProject: (projectId: string) => Promise<void>
   getOrderedTasks?: (sectionId: string, tasks: Task[]) => Task[]
 }
 
@@ -60,32 +49,31 @@ export const TasksProvider = ({
   children,
   tasks,
   projects,
-  taskSelectedId,
-  taskSelectedType,
-  selectedTaskIds,
-  setTasks,
-  setProjects,
-  setSelection,
-  setSelectedTaskIds,
-  addTask,
-  updateTask,
-  deleteTask,
-  addProject,
-  updateProject,
-  deleteProject,
   getOrderedTasks
 }: TasksProviderProps): React.JSX.Element => {
+  const uiStore = useTaskUiStore()
+  const {
+    setTasks,
+    setProjects,
+    addTask,
+    updateTask,
+    deleteTask,
+    addProject,
+    updateProject,
+    deleteProject
+  } = useTaskWorkspaceMutations()
+
   const value = useMemo<TasksContextValue>(
     () => ({
       tasks,
       projects,
-      taskSelectedId,
-      taskSelectedType,
-      selectedTaskIds,
+      taskSelectedId: uiStore.taskSelectedId,
+      taskSelectedType: uiStore.taskSelectedType,
+      selectedTaskIds: uiStore.selectedTaskIds,
       setTasks,
       setProjects,
-      setSelection,
-      setSelectedTaskIds,
+      setSelection: uiStore.setSelection,
+      setSelectedTaskIds: uiStore.setSelectedTaskIds,
       addTask,
       updateTask,
       deleteTask,
@@ -97,11 +85,11 @@ export const TasksProvider = ({
     [
       tasks,
       projects,
-      taskSelectedId,
-      taskSelectedType,
-      selectedTaskIds,
-      setSelection,
-      setSelectedTaskIds,
+      uiStore.taskSelectedId,
+      uiStore.taskSelectedType,
+      uiStore.selectedTaskIds,
+      uiStore.setSelection,
+      uiStore.setSelectedTaskIds,
       setTasks,
       setProjects,
       addTask,
