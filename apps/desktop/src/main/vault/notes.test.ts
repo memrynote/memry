@@ -13,6 +13,7 @@ import { createTestDataDb, createTestIndexDb, type TestDatabaseResult } from '@t
 import type { VaultStatus, VaultConfig } from '@memry/contracts/vault-api'
 import { startProjectionRuntime, stopProjectionRuntime } from '../projections'
 import { createNoteDerivedStateProjector } from '../projections/projectors/note-derived-state-projector'
+import * as projections from '../projections'
 
 // ============================================================================
 // Type-Safe Mocks
@@ -52,6 +53,7 @@ describe('notes operations', () => {
   let vaultIndex: typeof import('./index')
   let database: typeof import('../database')
   let notes: typeof import('./notes')
+  let flushProjectionEventsSpy: ReturnType<typeof vi.spyOn>
 
   beforeEach(async () => {
     // Create fresh test fixtures
@@ -66,6 +68,7 @@ describe('notes operations', () => {
     // Import modules
     vaultIndex = await import('./index')
     database = await import('../database')
+    flushProjectionEventsSpy = vi.spyOn(projections, 'flushProjectionEvents')
     notes = await import('./notes')
 
     // Type-safe spy for getStatus - return type must match VaultStatus
@@ -111,6 +114,15 @@ describe('notes operations', () => {
   // ==========================================================================
 
   describe('createNote', () => {
+    it('does not flush projections inline', async () => {
+      await notes.createNote({
+        title: 'Async Projection Note',
+        content: 'Projection work should stay asynchronous.'
+      })
+
+      expect(flushProjectionEventsSpy).not.toHaveBeenCalled()
+    })
+
     it('T361: creates file in correct location with frontmatter', async () => {
       const result = await notes.createNote({
         title: 'My Test Note',
@@ -303,6 +315,22 @@ describe('notes operations', () => {
   // ==========================================================================
 
   describe('updateNote', () => {
+    it('does not flush projections inline', async () => {
+      const created = await notes.createNote({
+        title: 'Update Projection Note',
+        content: 'Before'
+      })
+
+      flushProjectionEventsSpy.mockClear()
+
+      await notes.updateNote({
+        id: created.id,
+        content: 'After'
+      })
+
+      expect(flushProjectionEventsSpy).not.toHaveBeenCalled()
+    })
+
     it('T363: updates file content', async () => {
       const created = await notes.createNote({
         title: 'Update Test',
@@ -507,6 +535,19 @@ describe('notes operations', () => {
   // ==========================================================================
 
   describe('renameNote', () => {
+    it('does not flush projections inline', async () => {
+      const created = await notes.createNote({
+        title: 'Rename Projection Note',
+        content: 'Rename me'
+      })
+
+      flushProjectionEventsSpy.mockClear()
+
+      await notes.renameNote(created.id, 'Renamed Projection Note')
+
+      expect(flushProjectionEventsSpy).not.toHaveBeenCalled()
+    })
+
     it('T364: renames file on disk', async () => {
       const created = await notes.createNote({
         title: 'Original Name',
@@ -645,6 +686,19 @@ describe('notes operations', () => {
   // ==========================================================================
 
   describe('moveNote', () => {
+    it('does not flush projections inline', async () => {
+      const created = await notes.createNote({
+        title: 'Move Projection Note',
+        content: 'Move me'
+      })
+
+      flushProjectionEventsSpy.mockClear()
+
+      await notes.moveNote(created.id, 'archive')
+
+      expect(flushProjectionEventsSpy).not.toHaveBeenCalled()
+    })
+
     it('T365: moves file to new folder', async () => {
       const created = await notes.createNote({
         title: 'Move Test',
@@ -759,6 +813,19 @@ describe('notes operations', () => {
   // ==========================================================================
 
   describe('deleteNote', () => {
+    it('does not flush projections inline', async () => {
+      const created = await notes.createNote({
+        title: 'Delete Projection Note',
+        content: 'Delete me'
+      })
+
+      flushProjectionEventsSpy.mockClear()
+
+      await notes.deleteNote(created.id)
+
+      expect(flushProjectionEventsSpy).not.toHaveBeenCalled()
+    })
+
     it('T366: deletes file from disk', async () => {
       const created = await notes.createNote({
         title: 'Delete Test',

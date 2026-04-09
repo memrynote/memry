@@ -10,12 +10,9 @@
 
 import path from 'path'
 import { BrowserWindow } from 'electron'
-import { updateNoteCache } from '@main/database/queries/notes'
-import { getDatabase, getIndexDatabase } from '../database'
 import { NotesChannels } from '@memry/contracts/ipc-channels'
 import type { NoteRenamedEvent } from '@memry/contracts/notes-api'
 import { createLogger } from '../lib/logger'
-import { updateNoteMetadata } from '@memry/storage-data'
 
 const logger = createLogger('RenameTracker')
 
@@ -126,7 +123,8 @@ export function trackPendingDelete(
 
 /**
  * Check if a newly added file matches a pending delete (indicating a rename).
- * If a match is found, the rename is processed and the pending delete is cleared.
+ * If a match is found, the pending delete is cleared and the caller is
+ * responsible for replaying the rename through projection-safe write paths.
  *
  * @param id - Note UUID from the newly added file's frontmatter
  * @param newPath - Relative path of the new file
@@ -146,9 +144,6 @@ export function checkForRename(id: string, newPath: string): string | null {
   // Clear the timeout and pending entry
   clearTimeout(pending.timeout)
   pendingDeletes.delete(id)
-
-  // Process the rename
-  processRename(id, pending.path, newPath)
 
   return pending.path
 }
@@ -197,38 +192,18 @@ export function getPendingDeleteCount(): number {
 // ============================================================================
 
 /**
- * Process a detected rename: update the cache and emit event.
+ * Process a detected rename after the caller has updated canonical state and
+ * published the corresponding projection event.
  *
  * @param id - Note UUID
  * @param oldPath - Old relative path
  * @param newPath - New relative path
  */
 export function processRename(id: string, oldPath: string, newPath: string): void {
-  const db = getIndexDatabase()
-
   // Extract old and new titles from filenames
   const oldTitle = path.basename(oldPath, '.md')
   const newTitle = path.basename(newPath, '.md')
-  const now = new Date().toISOString()
-
-  // Update the cache with new path and title
-  const updated = updateNoteCache(db, id, {
-    path: newPath,
-    title: newTitle,
-    modifiedAt: now
-  })
-  updateNoteMetadata(getDatabase(), id, {
-    path: newPath,
-    title: newTitle,
-    modifiedAt: now
-  })
-
-  if (!updated) {
-    logger.error(`Failed to update cache for ${id}`)
-    return
-  }
-
-  logger.debug(`Updated cache: ${oldPath} -> ${newPath}`)
+  logger.debug(`Processed rename: ${oldPath} -> ${newPath}`)
 
   // Emit rename event to renderer
   const event: NoteRenamedEvent = {
