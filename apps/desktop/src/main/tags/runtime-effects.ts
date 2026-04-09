@@ -1,9 +1,11 @@
-import { getNoteSyncService } from '../sync/note-sync'
-import { getTagDefinitionSyncService } from '../sync/tag-definition-sync'
-import { getTaskSyncService } from '../sync/task-sync'
+import {
+  enqueueLocalSyncCreate,
+  enqueueLocalSyncDelete,
+  enqueueLocalSyncUpdate
+} from '../sync/local-mutations'
 
 export function syncTaggedNote(noteId: string): void {
-  getNoteSyncService()?.enqueueUpdate(noteId)
+  enqueueLocalSyncUpdate('note', noteId)
 }
 
 export function syncTagDefinitionRename(
@@ -11,23 +13,19 @@ export function syncTagDefinitionRename(
   newName: string,
   oldTagSnapshot?: unknown
 ): void {
-  const syncService = getTagDefinitionSyncService()
-  if (syncService && oldTagSnapshot) {
-    syncService.enqueueDelete(oldName, JSON.stringify(oldTagSnapshot))
-    syncService.enqueueCreate(newName.toLowerCase().trim())
+  if (oldTagSnapshot) {
+    enqueueLocalSyncDelete('tag_definition', oldName, JSON.stringify(oldTagSnapshot))
+    enqueueLocalSyncCreate('tag_definition', newName.toLowerCase().trim())
   }
 }
 
 export function syncTagDefinitionUpdate(tag: string): void {
-  getTagDefinitionSyncService()?.enqueueUpdate(tag)
+  enqueueLocalSyncUpdate('tag_definition', tag)
 }
 
 export function syncTagDefinitionDelete(tag: string, tagSnapshot?: unknown): void {
   if (tagSnapshot) {
-    getTagDefinitionSyncService()?.enqueueDelete(
-      tag.toLowerCase().trim(),
-      JSON.stringify(tagSnapshot)
-    )
+    enqueueLocalSyncDelete('tag_definition', tag.toLowerCase().trim(), JSON.stringify(tagSnapshot))
   }
 }
 
@@ -36,18 +34,14 @@ export function syncMergedTagDefinitions(
   target: string,
   sourceSnapshot?: unknown
 ): void {
-  const syncService = getTagDefinitionSyncService()
-  if (syncService && sourceSnapshot) {
-    syncService.enqueueDelete(source, JSON.stringify(sourceSnapshot))
-    syncService.enqueueCreate(target)
+  if (sourceSnapshot) {
+    enqueueLocalSyncDelete('tag_definition', source, JSON.stringify(sourceSnapshot))
+    enqueueLocalSyncCreate('tag_definition', target)
   }
 }
 
 export function syncTaggedTasks(taskIds: string[]): void {
-  const taskSyncService = getTaskSyncService()
-  if (!taskSyncService) return
-
   for (const taskId of taskIds) {
-    taskSyncService.enqueueUpdate(taskId)
+    enqueueLocalSyncUpdate('task', taskId)
   }
 }

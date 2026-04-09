@@ -18,6 +18,9 @@ import { createLogger } from '@/lib/logger'
 
 const log = createLogger('Tasks:Queries')
 
+const EMPTY_TASKS: UiTask[] = []
+const EMPTY_PROJECTS: UiProject[] = []
+
 const priorityMap: Record<number, UiTask['priority']> = {
   0: 'none',
   1: 'low',
@@ -257,8 +260,8 @@ export function useTaskWorkspaceData({ enabled = true }: { enabled?: boolean }) 
   }, [enabled, queryClient])
 
   return {
-    tasks: tasksQuery.data ?? [],
-    projects: projectsQuery.data ?? [],
+    tasks: tasksQuery.data ?? EMPTY_TASKS,
+    projects: projectsQuery.data ?? EMPTY_PROJECTS,
     isLoading: tasksQuery.isLoading || projectsQuery.isLoading,
     error: tasksQuery.error ?? projectsQuery.error ?? null,
     refetch: (): void => {

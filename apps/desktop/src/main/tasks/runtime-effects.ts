@@ -1,16 +1,12 @@
-import type { DataDb } from '../database'
 import { publishProjectionEvent } from '../projections'
-import { incrementProjectClocksOffline, incrementTaskClocksOffline } from '../sync/offline-clock'
-import { getProjectSyncService } from '../sync/project-sync'
-import { getTaskSyncService } from '../sync/task-sync'
+import {
+  enqueueLocalSyncCreate,
+  enqueueLocalSyncDelete,
+  enqueueLocalSyncUpdate
+} from '../sync/local-mutations'
 
-export function syncTaskCreate(db: DataDb, taskId: string): void {
-  const svc = getTaskSyncService()
-  if (svc) {
-    svc.enqueueCreate(taskId)
-  } else {
-    incrementTaskClocksOffline(db, taskId, [])
-  }
+export function syncTaskCreate(taskId: string): void {
+  enqueueLocalSyncCreate('task', taskId)
 
   publishProjectionEvent({
     type: 'task.upserted',
@@ -18,13 +14,8 @@ export function syncTaskCreate(db: DataDb, taskId: string): void {
   })
 }
 
-export function syncTaskUpdate(db: DataDb, taskId: string, changedFields: string[]): void {
-  const svc = getTaskSyncService()
-  if (svc) {
-    svc.enqueueUpdate(taskId, changedFields)
-  } else {
-    incrementTaskClocksOffline(db, taskId, changedFields)
-  }
+export function syncTaskUpdate(taskId: string, changedFields: string[]): void {
+  enqueueLocalSyncUpdate('task', taskId, changedFields)
 
   publishProjectionEvent({
     type: 'task.upserted',
@@ -33,35 +24,23 @@ export function syncTaskUpdate(db: DataDb, taskId: string, changedFields: string
 }
 
 export function syncTaskDelete(taskId: string, snapshot?: unknown): void {
-  const syncService = getTaskSyncService()
-  if (syncService && snapshot) {
-    syncService.enqueueDelete(taskId, JSON.stringify(snapshot))
+  if (snapshot) {
+    enqueueLocalSyncDelete('task', taskId, JSON.stringify(snapshot))
   }
 
   publishProjectionEvent({ type: 'task.deleted', taskId })
 }
 
-export function syncProjectCreate(db: DataDb, projectId: string): void {
-  const svc = getProjectSyncService()
-  if (svc) {
-    svc.enqueueCreate(projectId)
-  } else {
-    incrementProjectClocksOffline(db, projectId)
-  }
+export function syncProjectCreate(projectId: string): void {
+  enqueueLocalSyncCreate('project', projectId)
 }
 
-export function syncProjectUpdate(db: DataDb, projectId: string, changedFields?: string[]): void {
-  const svc = getProjectSyncService()
-  if (svc) {
-    svc.enqueueUpdate(projectId, changedFields)
-  } else {
-    incrementProjectClocksOffline(db, projectId, changedFields)
-  }
+export function syncProjectUpdate(projectId: string, changedFields?: string[]): void {
+  enqueueLocalSyncUpdate('project', projectId, changedFields)
 }
 
 export function syncProjectDelete(projectId: string, snapshot?: unknown): void {
-  const syncService = getProjectSyncService()
-  if (syncService && snapshot) {
-    syncService.enqueueDelete(projectId, JSON.stringify(snapshot))
+  if (snapshot) {
+    enqueueLocalSyncDelete('project', projectId, JSON.stringify(snapshot))
   }
 }
