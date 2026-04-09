@@ -113,7 +113,7 @@ vi.mock('@main/database/queries/projects', () => ({
 
 // Import after mocking
 import { registerTasksHandlers, unregisterTasksHandlers } from './tasks-handlers'
-import { getDatabase } from '../database'
+import { getDatabase, requireDatabase } from '../database'
 import { generateId } from '../lib/id'
 import * as taskQueries from '@main/database/queries/tasks'
 import * as projectQueries from '@main/database/queries/projects'
@@ -136,6 +136,7 @@ describe('tasks-handlers', () => {
       all: vi.fn()
     }
     ;(getDatabase as Mock).mockReturnValue(mockDb)
+    ;(requireDatabase as Mock).mockReturnValue(mockDb)
     ;(taskQueries.getNextTaskPosition as Mock).mockReturnValue(0)
     ;(taskQueries.getTaskTags as Mock).mockReturnValue([])
     ;(taskQueries.getTaskNoteIds as Mock).mockReturnValue([])

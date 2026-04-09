@@ -41,7 +41,7 @@ vi.mock('./jobs', () => ({
   markInboxJobFailed: mockMarkInboxJobFailed
 }))
 
-import { getDatabase } from '../database'
+import { getDatabase, requireDatabase } from '../database'
 import { captureVoice } from './capture'
 
 describe('inbox capture', () => {
@@ -51,6 +51,7 @@ describe('inbox capture', () => {
   beforeEach(() => {
     testDb = createTestDatabase()
     vi.mocked(getDatabase).mockReturnValue(testDb.db)
+    vi.mocked(requireDatabase).mockReturnValue(testDb.db)
 
     window = new MockBrowserWindow()
     vi.mocked(BrowserWindow.getAllWindows).mockReturnValue([window])
@@ -177,6 +178,9 @@ describe('inbox capture', () => {
   it('returns an error when no vault is open', async () => {
     vi.mocked(getDatabase).mockImplementation(() => {
       throw new Error('Database not initialized')
+    })
+    vi.mocked(requireDatabase).mockImplementation(() => {
+      throw new Error('No vault is open')
     })
 
     const response = await captureVoice({

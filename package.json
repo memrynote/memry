@@ -29,7 +29,8 @@
     "ipc:check": "pnpm --filter @memry/desktop ipc:check",
     "sync:clean": "rm -rf apps/sync-server/.wrangler",
     "sync:seed": "pnpm --filter @memry/sync-server exec wrangler d1 execute memry-sync --local --file=schema/d1.sql",
-    "sync:reset": "pnpm sync:clean && pnpm sync:seed"
+    "sync:reset": "pnpm sync:clean && pnpm sync:seed",
+    "prepare": "git config core.hooksPath .githooks"
   },
   "devDependencies": {
     "turbo": "^2",
