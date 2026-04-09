@@ -7,7 +7,7 @@ import {
   type RpcSubscriptions
 } from './schema.ts'
 
-type InboxItemType =
+export type InboxItemType =
   | 'link'
   | 'note'
   | 'image'
@@ -18,9 +18,9 @@ type InboxItemType =
   | 'social'
   | 'reminder'
 
-type ProcessingStatus = 'pending' | 'processing' | 'complete' | 'failed'
-type FilingAction = 'folder' | 'note' | 'linked'
-type CaptureSource = 'quick-capture' | 'inline' | 'browser-extension' | 'api' | 'reminder'
+export type InboxProcessingStatus = 'pending' | 'processing' | 'complete' | 'failed'
+export type InboxFilingAction = 'folder' | 'note' | 'linked'
+export type CaptureSource = 'quick-capture' | 'inline' | 'browser-extension' | 'api' | 'reminder'
 export type InboxJobType =
   | 'transcription'
   | 'metadata-scrape'
@@ -52,11 +52,11 @@ export interface InboxItem {
   modifiedAt: Date
   filedAt: Date | null
   filedTo: string | null
-  filedAction: FilingAction | null
+  filedAction: InboxFilingAction | null
   snoozedUntil: Date | null
   snoozeReason: string | null
   viewedAt: Date | null
-  processingStatus: ProcessingStatus
+  processingStatus: InboxProcessingStatus
   processingError: string | null
   metadata: InboxMetadata | null
   attachmentPath: string | null
@@ -64,7 +64,7 @@ export interface InboxItem {
   thumbnailPath: string | null
   thumbnailUrl: string | null
   transcription: string | null
-  transcriptionStatus: ProcessingStatus | null
+  transcriptionStatus: InboxProcessingStatus | null
   sourceUrl: string | null
   sourceTitle: string | null
   captureSource?: CaptureSource | null
@@ -82,12 +82,12 @@ export interface InboxItemListItem {
   sourceUrl: string | null
   tags: string[]
   isStale: boolean
-  processingStatus: ProcessingStatus
+  processingStatus: InboxProcessingStatus
   duration?: number
   excerpt?: string
   pageCount?: number
   transcription?: string | null
-  transcriptionStatus?: ProcessingStatus | null
+  transcriptionStatus?: InboxProcessingStatus | null
   snoozedUntil?: Date
   snoozeReason?: string
   viewedAt?: Date
@@ -209,7 +209,7 @@ export interface InboxFilingHistoryEntry {
   itemType: InboxItemType
   itemTitle: string
   filedTo: string
-  filedAction: FilingAction
+  filedAction: InboxFilingAction
   filedAt: Date
   tags: string[]
 }
