@@ -106,6 +106,9 @@ importers:
       '@memry/db-schema':
         specifier: workspace:*
         version: link:../../packages/db-schema
+      '@memry/domain-inbox':
+        specifier: workspace:*
+        version: link:../../packages/domain-inbox
       '@memry/domain-notes':
         specifier: workspace:*
         version: link:../../packages/domain-notes
@@ -673,6 +676,12 @@ importers:
       drizzle-orm:
         specifier: ^0.45.2
         version: 0.45.2(@cloudflare/workers-types@4.20260305.1)(@opentelemetry/api@1.9.0)(@types/better-sqlite3@7.6.13)(better-sqlite3@12.6.2)
+    devDependencies:
+      '@memry/typescript-config':
+        specifier: workspace:*
+        version: link:../typescript-config
+
+  packages/domain-inbox:
     devDependencies:
       '@memry/typescript-config':
         specifier: workspace:*

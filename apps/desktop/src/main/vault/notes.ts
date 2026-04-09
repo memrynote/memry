@@ -75,6 +75,7 @@ import {
 } from '@memry/shared/file-types'
 import { deleteCanonicalNote, saveCanonicalNote } from '@memry/domain-notes'
 import { updateNoteMetadata } from '@memry/storage-data'
+import { flushProjectionEvents } from '../projections'
 
 const logger = createLogger('Notes')
 
@@ -334,6 +335,7 @@ export async function createNote(input: NoteCreateInput): Promise<Note> {
     },
     { isNew: true }
   )
+  await flushProjectionEvents()
 
   ensureTagDefinitions(dataDb, mergedTags)
 
@@ -479,6 +481,7 @@ export async function getFileById(id: string): Promise<FileMetadata | null> {
   } catch {
     // File was deleted externally, remove from cache
     deleteNoteFromCache(db, id)
+    await flushProjectionEvents()
     return null
   }
 
@@ -529,6 +532,7 @@ export async function getNoteByPath(notePath: string): Promise<Note | null> {
     },
     { isNew: true }
   )
+  await flushProjectionEvents()
 
   return {
     id: parsed.frontmatter.id,
@@ -650,6 +654,7 @@ export async function updateNote(input: NoteUpdateInput): Promise<Note> {
     },
     { isNew: false, tagsOverride: newTags }
   )
+  await flushProjectionEvents()
 
   // Check if tags changed (for event emission)
   const tagsChanged =
@@ -743,6 +748,7 @@ export async function renameNote(id: string, newTitle: string): Promise<Note> {
       createdAt: existing.created,
       modifiedAt: new Date(now)
     })
+    await flushProjectionEvents()
     updateNoteMetadata(getDatabase(), id, {
       path: newRelativePath,
       title: newTitle,
@@ -764,6 +770,7 @@ export async function renameNote(id: string, newTitle: string): Promise<Note> {
       },
       { isNew: false }
     )
+    await flushProjectionEvents()
   }
 
   // Build response
@@ -832,6 +839,7 @@ export async function moveNote(id: string, newFolder: string): Promise<Note> {
       createdAt: existing.created,
       modifiedAt: new Date(now)
     })
+    await flushProjectionEvents()
     updateNoteMetadata(getDatabase(), id, {
       path: newRelativePath,
       modifiedAt: now
@@ -852,6 +860,7 @@ export async function moveNote(id: string, newFolder: string): Promise<Note> {
       },
       { isNew: false }
     )
+    await flushProjectionEvents()
   }
 
   // Build response
@@ -894,6 +903,7 @@ export async function deleteNote(id: string): Promise<void> {
 
   // Remove from cache using NoteSyncService (handles links cleanup + cache deletion)
   deleteNoteFromCache(db, id)
+  await flushProjectionEvents()
 
   // Emit event
   emitNoteEvent(NotesChannels.events.DELETED, {
@@ -1416,6 +1426,7 @@ export async function restoreVersion(snapshotId: string): Promise<Note> {
     },
     { isNew: false }
   )
+  await flushProjectionEvents()
 
   // Ensure all tags have definitions (creates new tags with auto-assigned colors)
   ensureTagDefinitions(dataDb, syncResult.tags)
