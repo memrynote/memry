@@ -41,13 +41,8 @@ vi.mock('../database', () => ({
 
 // Mock vault/notes module - these are the actual operations we'll test
 vi.mock('../vault/notes', () => ({
-  createNote: vi.fn(),
   getNoteById: vi.fn(),
   getNoteByPath: vi.fn(),
-  updateNote: vi.fn(),
-  renameNote: vi.fn(),
-  moveNote: vi.fn(),
-  deleteNote: vi.fn(),
   listNotes: vi.fn(),
   getTagsWithCounts: vi.fn(),
   getNoteLinks: vi.fn(),
@@ -61,6 +56,15 @@ vi.mock('../vault/notes', () => ({
   getVersionHistory: vi.fn(),
   getVersion: vi.fn(),
   restoreVersion: vi.fn()
+}))
+
+vi.mock('../notes/domain', () => ({
+  createNoteCommand: vi.fn(),
+  updateNoteCommand: vi.fn(),
+  renameNoteCommand: vi.fn(),
+  moveNoteCommand: vi.fn(),
+  deleteNoteCommand: vi.fn(),
+  setNoteLocalOnlyCommand: vi.fn()
 }))
 
 // Mock vault/attachments module
@@ -114,6 +118,7 @@ vi.mock('../vault/property-definition-store', () => ({
 import { registerNotesHandlers, unregisterNotesHandlers } from './notes-handlers'
 import { getIndexDatabase, getDatabase } from '../database'
 import * as notesVault from '../vault/notes'
+import * as notesDomain from '../notes/domain'
 import * as attachmentsVault from '../vault/attachments'
 import * as foldersVault from '../vault/folders'
 import * as noteQueries from '@main/database/queries/notes'
@@ -183,7 +188,7 @@ describe('notes-handlers', () => {
         tags: ['test'],
         wordCount: 2
       }
-      ;(notesVault.createNote as Mock).mockResolvedValue(mockNote)
+      ;(notesDomain.createNoteCommand as Mock).mockResolvedValue(mockNote)
 
       const result = await invokeHandler(NotesChannels.invoke.CREATE, {
         title: 'Test Note',
@@ -192,7 +197,7 @@ describe('notes-handlers', () => {
       })
 
       expect(result).toEqual({ success: true, note: mockNote })
-      expect(notesVault.createNote).toHaveBeenCalledWith({
+      expect(notesDomain.createNoteCommand).toHaveBeenCalledWith({
         title: 'Test Note',
         content: 'Hello world',
         tags: ['test']
@@ -209,7 +214,7 @@ describe('notes-handlers', () => {
     })
 
     it('should handle createNote errors', async () => {
-      ;(notesVault.createNote as Mock).mockRejectedValue(new Error('File system error'))
+      ;(notesDomain.createNoteCommand as Mock).mockRejectedValue(new Error('File system error'))
 
       const result = await invokeHandler(NotesChannels.invoke.CREATE, {
         title: 'Test Note',
@@ -293,7 +298,7 @@ describe('notes-handlers', () => {
         title: 'Updated Title',
         content: 'Updated content'
       }
-      ;(notesVault.updateNote as Mock).mockResolvedValue(mockNote)
+      ;(notesDomain.updateNoteCommand as Mock).mockResolvedValue(mockNote)
 
       const result = await invokeHandler(NotesChannels.invoke.UPDATE, {
         id: 'note123',
@@ -306,7 +311,7 @@ describe('notes-handlers', () => {
 
     it('should handle partial updates', async () => {
       const mockNote = { id: 'note123', title: 'Original', content: 'Updated' }
-      ;(notesVault.updateNote as Mock).mockResolvedValue(mockNote)
+      ;(notesDomain.updateNoteCommand as Mock).mockResolvedValue(mockNote)
 
       const result = await invokeHandler(NotesChannels.invoke.UPDATE, {
         id: 'note123',
@@ -317,7 +322,7 @@ describe('notes-handlers', () => {
     })
 
     it('should return error on update failure', async () => {
-      ;(notesVault.updateNote as Mock).mockRejectedValue(new Error('Update failed'))
+      ;(notesDomain.updateNoteCommand as Mock).mockRejectedValue(new Error('Update failed'))
 
       const result = await invokeHandler(NotesChannels.invoke.UPDATE, {
         id: 'note123',
@@ -340,16 +345,16 @@ describe('notes-handlers', () => {
     })
 
     it('should delete a note', async () => {
-      ;(notesVault.deleteNote as Mock).mockResolvedValue(undefined)
+      ;(notesDomain.deleteNoteCommand as Mock).mockResolvedValue(undefined)
 
       const result = await invokeHandler(NotesChannels.invoke.DELETE, 'note123')
 
       expect(result).toEqual({ success: true })
-      expect(notesVault.deleteNote).toHaveBeenCalledWith('note123')
+      expect(notesDomain.deleteNoteCommand).toHaveBeenCalledWith('note123')
     })
 
     it('should handle delete errors', async () => {
-      ;(notesVault.deleteNote as Mock).mockRejectedValue(new Error('File locked'))
+      ;(notesDomain.deleteNoteCommand as Mock).mockRejectedValue(new Error('File locked'))
 
       const result = await invokeHandler(NotesChannels.invoke.DELETE, 'note123')
 
@@ -594,7 +599,7 @@ describe('notes-handlers', () => {
 
     it('should rename a note', async () => {
       const mockNote = { id: 'note123', title: 'New Title' }
-      ;(notesVault.renameNote as Mock).mockResolvedValue(mockNote)
+      ;(notesDomain.renameNoteCommand as Mock).mockResolvedValue(mockNote)
 
       const result = await invokeHandler(NotesChannels.invoke.RENAME, {
         id: 'note123',
@@ -612,7 +617,7 @@ describe('notes-handlers', () => {
 
     it('should move a note to a different folder', async () => {
       const mockNote = { id: 'note123', path: 'archive/Note.md' }
-      ;(notesVault.moveNote as Mock).mockResolvedValue(mockNote)
+      ;(notesDomain.moveNoteCommand as Mock).mockResolvedValue(mockNote)
 
       const result = await invokeHandler(NotesChannels.invoke.MOVE, {
         id: 'note123',
