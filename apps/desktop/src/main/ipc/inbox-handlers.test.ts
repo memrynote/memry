@@ -7,11 +7,15 @@
 import { describe, it, expect, beforeEach, afterEach, vi, type Mock } from 'vitest'
 import { mockIpcMain, resetIpcMocks, invokeHandler } from '@tests/utils/mock-ipc'
 import { InboxChannels } from '@memry/contracts/ipc-channels'
-import { inboxItems, inboxItemTags } from '@memry/db-schema/schema/inbox'
 
 // Track mock calls
 const handleCalls: unknown[][] = []
 const removeHandlerCalls: string[] = []
+const mockCaptureTextCommand = vi.hoisted(() => vi.fn())
+const mockCaptureLinkCommand = vi.hoisted(() => vi.fn())
+const mockCaptureImageCommand = vi.hoisted(() => vi.fn())
+const mockRetryTranscriptionCommand = vi.hoisted(() => vi.fn())
+const mockRetryMetadataCommand = vi.hoisted(() => vi.fn())
 
 // Mock electron modules
 vi.mock('electron', () => ({
@@ -56,7 +60,11 @@ vi.mock('../inbox/attachments', () => ({
   resolveAttachmentUrl: vi.fn((path) => (path ? `file://${path}` : null)),
   getItemAttachmentsDir: vi.fn(() => '/attachments/inbox/test'),
   storeInboxAttachment: vi.fn(),
-  storeThumbnail: vi.fn()
+  storeThumbnail: vi.fn(),
+  ALLOWED_IMAGE_TYPES: ['image/png', 'image/jpeg'],
+  ALLOWED_AUDIO_TYPES: ['audio/webm'],
+  ALLOWED_VIDEO_TYPES: ['video/mp4'],
+  ALLOWED_DOCUMENT_TYPES: ['application/pdf']
 }))
 
 vi.mock('../inbox/metadata', () => ({
@@ -91,6 +99,34 @@ vi.mock('../inbox/social', () => ({
 vi.mock('../inbox/capture', () => ({
   captureVoice: vi.fn()
 }))
+
+vi.mock('../inbox/runtime-effects', () => ({
+  publishInboxUpserted: vi.fn(),
+  syncInboxCreate: vi.fn(),
+  syncInboxUpdate: vi.fn()
+}))
+
+vi.mock('../inbox/domain', async () => {
+  const actual = await vi.importActual<typeof import('../inbox/domain')>('../inbox/domain')
+
+  return {
+    ...actual,
+    createDesktopInboxDomain: vi.fn(() => {
+      const inboxDomain = actual.createDesktopInboxDomain()
+
+      return {
+        ...inboxDomain,
+        captureText: mockCaptureTextCommand,
+        captureLink: mockCaptureLinkCommand,
+        captureImage: mockCaptureImageCommand,
+        retryTranscription: mockRetryTranscriptionCommand,
+        retryMetadata: mockRetryMetadataCommand
+      }
+    }),
+    resumeInboxJobs: vi.fn(),
+    teardownInboxJobScheduler: vi.fn()
+  }
+})
 
 vi.mock('../inbox/transcription', () => ({
   retryTranscription: vi.fn()
@@ -165,15 +201,11 @@ vi.mock('../lib/logger', () => ({
 // Import after mocking
 import { registerInboxHandlers, unregisterInboxHandlers } from './inbox-handlers'
 import { getDatabase, requireDatabase } from '../database'
-import { generateId } from '../lib/id'
 import * as filingModule from '../inbox/filing'
 import * as snoozeModule from '../inbox/snooze'
 import * as suggestionsModule from '../inbox/suggestions'
 import * as captureModule from '../inbox/capture'
-import * as inboxJobsModule from '../inbox/jobs'
 import * as statsModule from '../inbox/stats'
-import * as socialModule from '../inbox/social'
-import { publishProjectionEvent } from '../projections'
 
 describe('inbox-handlers', () => {
   let mockDb: {
@@ -212,7 +244,9 @@ describe('inbox-handlers', () => {
       delete: vi.fn(() => chainable),
       transaction: vi.fn(
         (
-          fn: (tx: typeof chainable & { insert: Mock; select: Mock; update: Mock; delete: Mock }) => unknown
+          fn: (
+            tx: typeof chainable & { insert: Mock; select: Mock; update: Mock; delete: Mock }
+          ) => unknown
         ) => {
           const tx = {
             ...chainable,
@@ -249,20 +283,20 @@ describe('inbox-handlers', () => {
   describe('CAPTURE_TEXT handler', () => {
     beforeEach(() => {
       registerInboxHandlers()
+      mockCaptureTextCommand.mockReset()
     })
 
-    it('should capture text content', async () => {
-      const mockCreated = {
-        id: 'generated-id-123',
-        type: 'note',
-        title: 'Test Note',
-        content: 'This is test content',
-        createdAt: new Date().toISOString()
+    it('delegates text capture to the inbox domain module', async () => {
+      const mockResult = {
+        success: true,
+        item: {
+          id: 'generated-id-123',
+          type: 'note',
+          title: 'Test Note',
+          content: 'This is test content'
+        }
       }
-
-      // Setup the get mock to return the created item
-      const chainable = mockDb.select()
-      chainable.get.mockReturnValue(mockCreated)
+      mockCaptureTextCommand.mockResolvedValue(mockResult)
 
       const result = await invokeHandler(InboxChannels.invoke.CAPTURE_TEXT, {
         content: 'This is test content',
@@ -270,156 +304,63 @@ describe('inbox-handlers', () => {
       })
 
       expect(result.success).toBe(true)
-      expect(result.item).toBeDefined()
-      expect((mockDb as Record<string, Mock>).transaction).toHaveBeenCalled()
-    })
-
-    it('should capture text with tags', async () => {
-      const mockCreated = {
-        id: 'generated-id-123',
-        type: 'note',
-        title: 'Tagged Note',
-        content: 'Content'
-      }
-
-      const chainable = mockDb.select()
-      chainable.get.mockReturnValue(mockCreated)
-
-      await invokeHandler(InboxChannels.invoke.CAPTURE_TEXT, {
-        content: 'Content',
-        title: 'Tagged Note',
-        tags: ['important', 'urgent']
+      expect(result.item).toEqual(mockResult.item)
+      expect(mockCaptureTextCommand).toHaveBeenCalledWith({
+        content: 'This is test content',
+        title: 'Test Note'
       })
-
-      expect((mockDb as Record<string, Mock>).transaction).toHaveBeenCalled()
-    })
-
-    it('should auto-generate title from content', async () => {
-      const mockCreated = {
-        id: 'generated-id-123',
-        type: 'note',
-        title: 'This is a long content that...',
-        content: 'This is a long content that should be truncated for the title'
-      }
-
-      const chainable = mockDb.select()
-      chainable.get.mockReturnValue(mockCreated)
-
-      const result = await invokeHandler(InboxChannels.invoke.CAPTURE_TEXT, {
-        content: 'This is a long content that should be truncated for the title'
-      })
-
-      expect(result.success).toBe(true)
-    })
-
-    it('rolls back the item insert when a tag insert fails', async () => {
-      const persisted = {
-        items: [] as Array<Record<string, unknown>>,
-        tags: [] as Array<Record<string, unknown>>
-      }
-
-      mockDb.transaction.mockImplementationOnce((fn) => {
-        const draft = {
-          items: [...persisted.items],
-          tags: [...persisted.tags]
-        }
-
-        const tx = {
-          insert: vi.fn((table) => ({
-            values: vi.fn((values) => ({
-              run: vi.fn(() => {
-                if (table === inboxItems) {
-                  draft.items.push(values as Record<string, unknown>)
-                  return
-                }
-
-                if (table === inboxItemTags) {
-                  throw new Error('tag insert failed')
-                }
-              })
-            }))
-          })),
-          select: vi.fn(() => ({
-            from: vi.fn(() => ({
-              where: vi.fn(() => ({
-                get: vi.fn(() => draft.items.at(0) ?? undefined)
-              }))
-            }))
-          })),
-          update: vi.fn(),
-          delete: vi.fn()
-        }
-
-        const result = fn(tx)
-        persisted.items = draft.items
-        persisted.tags = draft.tags
-        return result
-      })
-
-      ;(generateId as Mock)
-        .mockReturnValueOnce('item-1')
-        .mockReturnValueOnce('tag-1')
-        .mockReturnValueOnce('tag-2')
-
-      const result = await invokeHandler(InboxChannels.invoke.CAPTURE_TEXT, {
-        content: 'Content',
-        title: 'Tagged Note',
-        tags: ['important', 'urgent']
-      })
-
-      expect(result.success).toBe(false)
-      expect(mockDb.transaction).toHaveBeenCalled()
-      expect(persisted.items).toEqual([])
-      expect(persisted.tags).toEqual([])
     })
   })
 
   describe('CAPTURE_LINK handler', () => {
     beforeEach(() => {
       registerInboxHandlers()
-      ;(socialModule.detectSocialPlatform as Mock).mockReturnValue(null)
-      ;(socialModule.isSocialPost as Mock).mockReturnValue(false)
+      mockCaptureLinkCommand.mockReset()
     })
 
-    it('should capture a regular link', async () => {
-      const mockCreated = {
-        id: 'generated-id-123',
-        type: 'link',
-        title: 'https://example.com',
-        sourceUrl: 'https://example.com',
-        processingStatus: 'pending'
+    it('delegates link capture to the inbox domain module', async () => {
+      const mockResult = {
+        success: true,
+        item: {
+          id: 'generated-id-123',
+          type: 'link',
+          sourceUrl: 'https://example.com'
+        }
       }
-
-      const chainable = mockDb.select()
-      chainable.get.mockReturnValue(mockCreated)
+      mockCaptureLinkCommand.mockResolvedValue(mockResult)
 
       const result = await invokeHandler(InboxChannels.invoke.CAPTURE_LINK, {
         url: 'https://example.com'
       })
 
       expect(result.success).toBe(true)
-      expect(result.item.sourceUrl).toBe('https://example.com')
+      expect(result.item).toEqual(mockResult.item)
+      expect(mockCaptureLinkCommand).toHaveBeenCalledWith({ url: 'https://example.com' })
+    })
+  })
+
+  describe('CAPTURE_IMAGE handler', () => {
+    beforeEach(() => {
+      registerInboxHandlers()
+      mockCaptureImageCommand.mockReset()
     })
 
-    it('should detect and capture social post URLs', async () => {
-      ;(socialModule.detectSocialPlatform as Mock).mockReturnValue('twitter')
-      ;(socialModule.isSocialPost as Mock).mockReturnValue(true)
+    it('delegates image capture to the inbox domain module', async () => {
+      const mockResult = { success: true, item: { id: 'image-1', type: 'image' } }
+      mockCaptureImageCommand.mockResolvedValue(mockResult)
 
-      const mockCreated = {
-        id: 'generated-id-123',
-        type: 'social',
-        sourceUrl: 'https://twitter.com/user/status/123'
-      }
-
-      const chainable = mockDb.select()
-      chainable.get.mockReturnValue(mockCreated)
-
-      const result = await invokeHandler(InboxChannels.invoke.CAPTURE_LINK, {
-        url: 'https://twitter.com/user/status/123'
+      const result = await invokeHandler(InboxChannels.invoke.CAPTURE_IMAGE, {
+        data: { 0: 1, 1: 2, 2: 3 },
+        filename: 'test.png',
+        mimeType: 'image/png'
       })
 
       expect(result.success).toBe(true)
-      expect(result.item.type).toBe('social')
+      expect(mockCaptureImageCommand).toHaveBeenCalledWith({
+        data: { 0: 1, 1: 2, 2: 3 },
+        filename: 'test.png',
+        mimeType: 'image/png'
+      })
     })
   })
 
@@ -606,10 +547,6 @@ describe('inbox-handlers', () => {
 
       expect(result.success).toBe(true)
       expect(mockDb.update).toHaveBeenCalled()
-      expect(publishProjectionEvent).toHaveBeenCalledWith({
-        type: 'inbox.upserted',
-        itemId: 'item1'
-      })
       expect(statsModule.incrementArchivedCount).not.toHaveBeenCalled()
     })
 
@@ -862,24 +799,32 @@ describe('inbox-handlers', () => {
   describe('RETRY_TRANSCRIPTION handler', () => {
     beforeEach(() => {
       registerInboxHandlers()
+      mockRetryTranscriptionCommand.mockReset()
     })
 
-    it('should retry transcription', async () => {
-      const chainable = mockDb.select()
-      chainable.get.mockReturnValue({
-        id: 'voice1',
-        type: 'voice',
-        attachmentPath: '/attachments/inbox/test/audio.webm'
-      })
+    it('delegates transcription retry to the inbox domain module', async () => {
+      mockRetryTranscriptionCommand.mockResolvedValue({ success: true })
 
       const result = await invokeHandler(InboxChannels.invoke.RETRY_TRANSCRIPTION, 'voice1')
 
       expect(result.success).toBe(true)
-      expect(mockDb.update).toHaveBeenCalled()
-      expect(inboxJobsModule.queueInboxTranscriptionJob).toHaveBeenCalledWith(
-        'voice1',
-        '/attachments/inbox/test/audio.webm'
-      )
+      expect(mockRetryTranscriptionCommand).toHaveBeenCalledWith('voice1')
+    })
+  })
+
+  describe('RETRY_METADATA handler', () => {
+    beforeEach(() => {
+      registerInboxHandlers()
+      mockRetryMetadataCommand.mockReset()
+    })
+
+    it('delegates metadata retry to the inbox domain module', async () => {
+      mockRetryMetadataCommand.mockResolvedValue({ success: true })
+
+      const result = await invokeHandler(InboxChannels.invoke.RETRY_METADATA, 'link-1')
+
+      expect(result.success).toBe(true)
+      expect(mockRetryMetadataCommand).toHaveBeenCalledWith('link-1')
     })
   })
 
