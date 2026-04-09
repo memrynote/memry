@@ -29,14 +29,5 @@ export {
   initializeFts
 } from './fts'
 
-export {
-  queueFtsUpdate,
-  flushFtsUpdates,
-  cancelPendingFtsUpdates,
-  getPendingFtsCount,
-  hasPendingFtsUpdates,
-  scheduleFlush
-} from './fts-queue'
-
 export { initializeFtsTasks } from './fts-tasks'
 export { initializeFtsInbox } from './fts-inbox'

@@ -7,7 +7,6 @@
  * @module ipc/inbox-handlers
  */
 
-/* eslint-disable @typescript-eslint/require-await, @typescript-eslint/no-unsafe-argument */
 // IPC handlers must be async for Electron compatibility, but use synchronous better-sqlite3 operations
 // Electron IPC passes untyped arguments that are validated by Zod schemas in each handler
 
@@ -215,6 +214,36 @@ function toListItem(row: typeof inboxItems.$inferSelect, tags: string[]): InboxI
   }
 }
 
+function insertItemWithTags(
+  db: ReturnType<typeof requireDatabase>,
+  values: typeof inboxItems.$inferInsert,
+  tags: string[]
+): { row: typeof inboxItems.$inferSelect; tags: string[] } {
+  const now = values.createdAt ?? new Date().toISOString()
+
+  return db.transaction((tx) => {
+    tx.insert(inboxItems).values(values).run()
+
+    if (tags.length > 0) {
+      tx.insert(inboxItemTags)
+        .values(
+          tags.map((tag) => ({
+            id: generateId(),
+            itemId: values.id,
+            tag,
+            createdAt: now
+          }))
+        )
+        .run()
+    }
+
+    const created = tx.select().from(inboxItems).where(eq(inboxItems.id, values.id)).get()
+    if (!created) throw new Error('Failed to create item')
+
+    return { row: created, tags }
+  })
+}
+
 // ============================================================================
 // Handler Implementations
 // ============================================================================
@@ -235,9 +264,9 @@ const handleCaptureText = withErrorHandler(async (input: unknown): Promise<Captu
 
   const id = generateId()
   const now = new Date().toISOString()
-
-  db.insert(inboxItems)
-    .values({
+  const { row: created, tags } = insertItemWithTags(
+    db,
+    {
       id,
       type: 'note',
       title:
@@ -247,28 +276,10 @@ const handleCaptureText = withErrorHandler(async (input: unknown): Promise<Captu
       modifiedAt: now,
       processingStatus: 'complete',
       captureSource: parsed.source ?? null
-    })
-    .run()
+    },
+    parsed.tags ?? []
+  )
 
-  if (parsed.tags && parsed.tags.length > 0) {
-    for (const tag of parsed.tags) {
-      db.insert(inboxItemTags)
-        .values({
-          id: generateId(),
-          itemId: id,
-          tag,
-          createdAt: now
-        })
-        .run()
-    }
-  }
-
-  const created = db.select().from(inboxItems).where(eq(inboxItems.id, id)).get()
-  if (!created) {
-    return { success: false, item: null, error: 'Failed to create item' }
-  }
-
-  const tags = getItemTags(db, id)
   const item = toInboxItem(created, tags)
 
   emitInboxEvent(InboxChannels.events.CAPTURED, { item: toListItem(created, tags) })
@@ -302,9 +313,9 @@ const handleCaptureLink = withErrorHandler(async (input: unknown): Promise<Captu
   const itemType = isSocial ? 'social' : 'link'
 
   logger.info(`URL detected as ${itemType}${platform ? ` (${platform})` : ''}: ${parsed.url}`)
-
-  db.insert(inboxItems)
-    .values({
+  const { row: created, tags } = insertItemWithTags(
+    db,
+    {
       id,
       type: itemType,
       title: titleFromUrl(parsed.url),
@@ -328,28 +339,10 @@ const handleCaptureLink = withErrorHandler(async (input: unknown): Promise<Captu
             url: parsed.url,
             fetchStatus: 'pending'
           }
-    })
-    .run()
+    },
+    parsed.tags ?? []
+  )
 
-  if (parsed.tags && parsed.tags.length > 0) {
-    for (const tag of parsed.tags) {
-      db.insert(inboxItemTags)
-        .values({
-          id: generateId(),
-          itemId: id,
-          tag,
-          createdAt: now
-        })
-        .run()
-    }
-  }
-
-  const created = db.select().from(inboxItems).where(eq(inboxItems.id, id)).get()
-  if (!created) {
-    return { success: false, item: null, error: 'Failed to create item' }
-  }
-
-  const tags = getItemTags(db, id)
   const item = toInboxItem(created, tags)
 
   emitInboxEvent(InboxChannels.events.CAPTURED, { item: toListItem(created, tags) })
@@ -491,8 +484,9 @@ const handleCaptureImage = withErrorHandler(async (input: unknown): Promise<Capt
     }
   }
 
-  db.insert(inboxItems)
-    .values({
+  const { row: created, tags } = insertItemWithTags(
+    db,
+    {
       id,
       type: inboxType,
       title: parsed.filename.replace(/\.[^.]+$/, ''),
@@ -504,28 +498,10 @@ const handleCaptureImage = withErrorHandler(async (input: unknown): Promise<Capt
       thumbnailPath,
       metadata: itemMetadata,
       captureSource: parsed.source ?? null
-    })
-    .run()
+    },
+    parsed.tags ?? []
+  )
 
-  if (parsed.tags && parsed.tags.length > 0) {
-    for (const tag of parsed.tags) {
-      db.insert(inboxItemTags)
-        .values({
-          id: generateId(),
-          itemId: id,
-          tag,
-          createdAt: now
-        })
-        .run()
-    }
-  }
-
-  const created = db.select().from(inboxItems).where(eq(inboxItems.id, id)).get()
-  if (!created) {
-    return { success: false, item: null, error: 'Failed to create item' }
-  }
-
-  const tags = getItemTags(db, id)
   const item = toInboxItem(created, tags)
 
   emitInboxEvent(InboxChannels.events.CAPTURED, { item: toListItem(created, tags) })

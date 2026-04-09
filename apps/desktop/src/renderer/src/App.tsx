@@ -41,7 +41,7 @@ import { SettingsModalProvider, useSettingsModal } from '@/contexts/settings-mod
 import { SettingsModal } from '@/components/settings-modal'
 import { useFolderViewEvents } from '@/hooks/use-folder-view-events'
 import { useFlushOnQuit } from '@/hooks/use-flush-on-quit'
-import { tasksService } from '@/services/tasks-service'
+import { tasksService, queueTaskReorder } from '@/services/tasks-service'
 import { notesService } from '@/services/notes-service'
 import { VaultOnboarding } from '@/components/vault-onboarding'
 import { FirstRunOnboarding } from '@/components/first-run-onboarding'
@@ -266,7 +266,7 @@ function App(): React.JSX.Element {
       for (const [, taskIds] of Object.entries(updates)) {
         if (!taskIds) continue
         const positions = taskIds.map((_, i) => i)
-        tasksService.reorder(taskIds, positions)
+        queueTaskReorder(taskIds, positions)
       }
     },
     [taskOrder]
@@ -315,7 +315,7 @@ function App(): React.JSX.Element {
         updateSelectedTaskIds(new Set<string>())
       }
     },
-    [projects, taskDragEnd, updateSelectedTaskIds]
+    [projects, setProjects, taskDragEnd, updateSelectedTaskIds]
   )
 
   // Main content with TabProvider and TasksProvider wrapping everything
