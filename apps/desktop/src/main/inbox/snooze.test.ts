@@ -65,7 +65,7 @@ vi.mock('./attachments', () => ({
   resolveAttachmentUrl: vi.fn((path) => (path ? `memry-file://${path}` : null))
 }))
 
-import { getDatabase } from '../database'
+import { getDatabase, requireDatabase } from '../database'
 
 describe('Inbox Snooze Service', () => {
   let testDb: TestDatabaseResult
@@ -73,6 +73,7 @@ describe('Inbox Snooze Service', () => {
   beforeEach(() => {
     testDb = createTestDatabase()
     vi.mocked(getDatabase).mockReturnValue(testDb.db)
+    vi.mocked(requireDatabase).mockReturnValue(testDb.db)
     mockSend.mockClear()
     vi.useFakeTimers()
   })

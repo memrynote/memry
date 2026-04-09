@@ -54,7 +54,8 @@ vi.mock('../index', () => ({
 }))
 
 vi.mock('../database', () => ({
-  getDatabase: vi.fn()
+  getDatabase: vi.fn(),
+  requireDatabase: vi.fn()
 }))
 
 vi.mock('../vault', () => ({
@@ -73,7 +74,7 @@ vi.mock('./voice-transcription-keychain', () => ({
   getVoiceTranscriptionOpenAIApiKey: mockGetVoiceTranscriptionOpenAIApiKey
 }))
 
-import { getDatabase } from '../database'
+import { getDatabase, requireDatabase } from '../database'
 import { getStatus } from '../vault'
 import { transcribeAudio, retryTranscription } from './transcription'
 
@@ -85,6 +86,7 @@ describe('inbox transcription', () => {
   beforeEach(() => {
     testDb = createTestDatabase()
     vi.mocked(getDatabase).mockReturnValue(testDb.db)
+    vi.mocked(requireDatabase).mockReturnValue(testDb.db)
 
     vaultPath = fs.mkdtempSync(path.join(os.tmpdir(), 'memry-transcribe-'))
     vi.mocked(getStatus).mockReturnValue({

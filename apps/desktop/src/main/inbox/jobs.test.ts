@@ -38,7 +38,7 @@ vi.mock('./transcription', () => ({
   transcribeAudio: mockTranscribeAudio
 }))
 
-import { getDatabase } from '../database'
+import { getDatabase, requireDatabase } from '../database'
 import { resumeInboxJobs, teardownInboxJobScheduler } from './jobs'
 
 describe('inbox jobs', () => {
@@ -50,6 +50,7 @@ describe('inbox jobs', () => {
 
     testDb = createTestDataDb()
     vi.mocked(getDatabase).mockReturnValue(testDb.db)
+    vi.mocked(requireDatabase).mockReturnValue(testDb.db)
 
     window = { webContents: { send: vi.fn() } }
     vi.mocked(BrowserWindow.getAllWindows).mockReturnValue([window] as never)

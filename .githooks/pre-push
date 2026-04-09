@@ -1,0 +1,11 @@
+#!/bin/sh
+
+echo "Running tests before push..."
+pnpm test
+
+if [ $? -ne 0 ]; then
+  echo ""
+  echo "Tests failed. Push aborted."
+  echo "Fix the failing tests or use --no-verify to bypass."
+  exit 1
+fi

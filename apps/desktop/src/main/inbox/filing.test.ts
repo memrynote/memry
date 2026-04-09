@@ -55,7 +55,7 @@ vi.mock('../lib/logger', () => ({
   })
 }))
 
-import { getDatabase } from '../database'
+import { getDatabase, requireDatabase } from '../database'
 import { fileToFolder, convertToNote, linkToNote, linkToNotes, bulkFileToFolder } from './filing'
 
 describe('Inbox Filing Operations', () => {
@@ -64,6 +64,7 @@ describe('Inbox Filing Operations', () => {
   beforeEach(() => {
     testDb = createTestDatabase()
     vi.mocked(getDatabase).mockReturnValue(testDb.db)
+    vi.mocked(requireDatabase).mockReturnValue(testDb.db)
 
     mockCreateNote.mockReset()
     mockGetNoteById.mockReset()
