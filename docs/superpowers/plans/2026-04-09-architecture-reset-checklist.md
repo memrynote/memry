@@ -98,6 +98,12 @@ Progress note (2026-04-09):
 - [ ] Define the single source of truth for entity and command/result types per domain
 - [ ] Ensure new commands, queries, and events are added once in `packages/rpc` and generated outward
 
+Progress note (2026-04-09):
+- `apps/desktop/src/renderer/src/services/tasks-service.ts`, `apps/desktop/src/renderer/src/services/notes-service.ts`, and `apps/desktop/src/renderer/src/services/inbox-service.ts` now proxy the generated `window.api` RPC clients through one shared `window-api-forwarder.ts` helper instead of maintaining manual transport passthrough objects.
+- `packages/rpc/src/inbox.ts` now exports the canonical inbox item/action/status type aliases used by the domain RPC surface, and a focused renderer slice now imports task, note, and inbox entities from `@memry/rpc/*` instead of `apps/desktop/src/preload/index.d.ts`.
+- `pnpm ipc:generate`, `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm check:architecture`, `pnpm check:contracts`, and `pnpm ipc:check` are green on this branch after this slice.
+- Phase 1 remains incomplete: `apps/desktop/src/preload/index.ts` still exposes a large handwritten non-shell API surface, and renderer code still has remaining `preload/index.d.ts` imports plus direct `window.api.tasks` / `window.api.notes` / `window.api.inbox` usage outside the service layer.
+
 **Key files:**
 
 - `packages/rpc/src/index.ts`
