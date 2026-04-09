@@ -2,8 +2,6 @@ import { createContext, useContext, useMemo, type ReactNode } from 'react'
 import type { Task } from '@/data/sample-tasks'
 import type { Project } from '@/data/tasks-data'
 import type { TaskSelectionType } from '@/App'
-import { useTaskWorkspaceMutations, useTaskWorkspaceData } from '@/features/tasks/use-task-queries'
-import { useTaskUiStore } from '@/features/tasks/use-task-ui-store'
 
 interface TasksContextValue {
   tasks: Task[]
@@ -26,10 +24,21 @@ interface TasksContextValue {
 
 interface TasksProviderProps {
   children: ReactNode
-  tasks?: Task[]
-  projects?: Project[]
-  initialTasks?: Task[]
-  initialProjects?: Project[]
+  tasks: Task[]
+  projects: Project[]
+  taskSelectedId: string
+  taskSelectedType: TaskSelectionType
+  selectedTaskIds: Set<string>
+  setTasks: (tasks: Task[] | ((prev: Task[]) => Task[])) => void
+  setProjects: (projects: Project[] | ((prev: Project[]) => Project[])) => void
+  setSelection: (id: string, type: TaskSelectionType) => void
+  setSelectedTaskIds: (ids: Set<string>) => void
+  addTask: (task: Task) => Promise<void>
+  updateTask: (taskId: string, updates: Partial<Task>) => Promise<void>
+  deleteTask: (taskId: string) => Promise<void>
+  addProject: (project: Project) => Promise<void>
+  updateProject: (projectId: string, updates: Partial<Project>) => Promise<void>
+  deleteProject: (projectId: string) => Promise<void>
   getOrderedTasks?: (sectionId: string, tasks: Task[]) => Task[]
 }
 
@@ -51,43 +60,32 @@ export const TasksProvider = ({
   children,
   tasks,
   projects,
-  initialTasks,
-  initialProjects,
+  taskSelectedId,
+  taskSelectedType,
+  selectedTaskIds,
+  setTasks,
+  setProjects,
+  setSelection,
+  setSelectedTaskIds,
+  addTask,
+  updateTask,
+  deleteTask,
+  addProject,
+  updateProject,
+  deleteProject,
   getOrderedTasks
 }: TasksProviderProps): React.JSX.Element => {
-  const shouldLoadWorkspace =
-    tasks === undefined &&
-    projects === undefined &&
-    initialTasks === undefined &&
-    initialProjects === undefined
-
-  const workspace = useTaskWorkspaceData({ enabled: shouldLoadWorkspace })
-  const uiStore = useTaskUiStore()
-  const {
-    setTasks,
-    setProjects,
-    addTask,
-    updateTask,
-    deleteTask,
-    addProject,
-    updateProject,
-    deleteProject
-  } = useTaskWorkspaceMutations()
-
-  const resolvedTasks = tasks ?? initialTasks ?? workspace.tasks
-  const resolvedProjects = projects ?? initialProjects ?? workspace.projects
-
   const value = useMemo<TasksContextValue>(
     () => ({
-      tasks: resolvedTasks,
-      projects: resolvedProjects,
-      taskSelectedId: uiStore.taskSelectedId,
-      taskSelectedType: uiStore.taskSelectedType,
-      selectedTaskIds: uiStore.selectedTaskIds,
+      tasks,
+      projects,
+      taskSelectedId,
+      taskSelectedType,
+      selectedTaskIds,
       setTasks,
       setProjects,
-      setSelection: uiStore.setSelection,
-      setSelectedTaskIds: uiStore.setSelectedTaskIds,
+      setSelection,
+      setSelectedTaskIds,
       addTask,
       updateTask,
       deleteTask,
@@ -97,13 +95,13 @@ export const TasksProvider = ({
       getOrderedTasks
     }),
     [
-      resolvedTasks,
-      resolvedProjects,
-      uiStore.taskSelectedId,
-      uiStore.taskSelectedType,
-      uiStore.selectedTaskIds,
-      uiStore.setSelection,
-      uiStore.setSelectedTaskIds,
+      tasks,
+      projects,
+      taskSelectedId,
+      taskSelectedType,
+      selectedTaskIds,
+      setSelection,
+      setSelectedTaskIds,
       setTasks,
       setProjects,
       addTask,

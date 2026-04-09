@@ -9,7 +9,7 @@ import {
 import { Input } from '@/components/ui/input'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { useTaskPreferences } from '@/hooks/use-task-preferences'
-import { useTasksContext } from '@/contexts/tasks'
+import { useTaskProjects } from '@/features/tasks/use-task-queries'
 import { toast } from 'sonner'
 import {
   SettingsHeader,
@@ -27,7 +27,7 @@ const SORT_OPTIONS = [
 
 export function TasksSettings() {
   const { settings, isLoading, updateSettings } = useTaskPreferences()
-  const { projects } = useTasksContext()
+  const { projects } = useTaskProjects()
 
   const activeProjects = projects.filter((p) => !p.isArchived)
 
