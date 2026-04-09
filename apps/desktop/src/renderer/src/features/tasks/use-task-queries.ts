@@ -169,31 +169,33 @@ function toServiceRepeatConfig(config: UiRepeatConfig | null | undefined) {
   }
 }
 
+async function loadProjects(): Promise<UiProject[]> {
+  const projectsResponse = await tasksService.listProjects()
+  const baseProjects = projectsResponse.projects.map(dbProjectToUiProject)
+
+  return Promise.all(
+    baseProjects.map(async (project) => {
+      try {
+        const statuses = await tasksService.listStatuses(project.id)
+        return {
+          ...project,
+          statuses: statuses.map(dbStatusToUiStatus)
+        }
+      } catch (error) {
+        log.warn(`Failed to load statuses for project ${project.id}:`, error)
+        return project
+      }
+    })
+  )
+}
+
 export function useTaskWorkspaceData({ enabled = true }: { enabled?: boolean }) {
   const queryClient = useQueryClient()
 
   const projectsQuery = useQuery({
     queryKey: taskKeys.projects(),
     enabled,
-    queryFn: async (): Promise<UiProject[]> => {
-      const projectsResponse = await tasksService.listProjects()
-      const baseProjects = projectsResponse.projects.map(dbProjectToUiProject)
-
-      return Promise.all(
-        baseProjects.map(async (project) => {
-          try {
-            const statuses = await tasksService.listStatuses(project.id)
-            return {
-              ...project,
-              statuses: statuses.map(dbStatusToUiStatus)
-            }
-          } catch (error) {
-            log.warn(`Failed to load statuses for project ${project.id}:`, error)
-            return project
-          }
-        })
-      )
-    }
+    queryFn: loadProjects
   })
 
   const tasksQuery = useQuery({
@@ -263,6 +265,23 @@ export function useTaskWorkspaceData({ enabled = true }: { enabled?: boolean }) 
     error: tasksQuery.error ?? projectsQuery.error ?? null,
     refetch: (): void => {
       void tasksQuery.refetch()
+      void projectsQuery.refetch()
+    }
+  }
+}
+
+export function useTaskProjects({ enabled = true }: { enabled?: boolean } = {}) {
+  const projectsQuery = useQuery({
+    queryKey: taskKeys.projects(),
+    enabled,
+    queryFn: loadProjects
+  })
+
+  return {
+    projects: projectsQuery.data ?? [],
+    isLoading: projectsQuery.isLoading,
+    error: projectsQuery.error ?? null,
+    refetch: (): void => {
       void projectsQuery.refetch()
     }
   }
