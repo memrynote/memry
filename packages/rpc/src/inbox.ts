@@ -101,7 +101,7 @@ export interface InboxListResponse {
   hasMore: boolean
 }
 
-interface InboxDuplicateMatch {
+export interface InboxDuplicateMatch {
   id: string
   title: string
   createdAt: string
@@ -150,6 +150,12 @@ export interface InboxSuggestionsResponse {
   suggestions: InboxFilingSuggestion[]
 }
 
+export interface InboxAgeDistribution {
+  fresh: number
+  aging: number
+  stale: number
+}
+
 export interface InboxStats {
   totalItems: number
   itemsByType: Record<InboxItemType, number>
@@ -161,11 +167,7 @@ export interface InboxStats {
   capturedThisWeek: number
   processedThisWeek: number
   captureProcessRatio: number
-  ageDistribution: {
-    fresh: number
-    aging: number
-    stale: number
-  }
+  ageDistribution: InboxAgeDistribution
   oldestItemDays: number
   currentStreak: number
 }

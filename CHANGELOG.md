@@ -15,6 +15,8 @@ Format: weekly entries grouped by feature area.
 - Add `check-architecture-boundaries.js` rules blocking direct IPC sync-module and query imports
 
 ### Changed
+- Migrate note-sync from direct index-DB writes to projection events with flush
+- Extract note mutation commands into dedicated domain layer (notes/domain.ts)
 - Move all runtime-effects modules (tasks, inbox, notes, journal, tags, settings, filters) from direct sync service calls to adapter registry dispatch
 - Remove `@memry/domain-inbox` package, revert inbox domain extraction back to IPC handler layer
 - Remove `db` parameter from sync effect functions — adapter registry resolves database internally
@@ -22,6 +24,8 @@ Format: weekly entries grouped by feature area.
 - Simplify `TasksProvider` to self-load workspace data when no props provided
 
 ### Fixed
+- Restore canonical property-type guard to prevent LWW type overwrites on sync
+- Add projection flush to sync handlers, journal handlers, and CRDT writeback
 - Wrap `handleConvertToNote`, `handleConvertToTask`, `handleLinkToNote` with `withErrorHandler` preventing unhandled IPC rejections
 - Gate tag definition sync creates behind snapshot existence check preventing orphan sync entries on rename/merge
 - Restore `void` prefix on floating `tasksService.reorder()` promise in `App.tsx`
