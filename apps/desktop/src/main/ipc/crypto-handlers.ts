@@ -29,8 +29,12 @@ import type {
   RotateKeysResult,
   GetRotationProgressResult
 } from '@memry/contracts/ipc-sync'
-import type { PullItemResponse, SyncManifest, PushResponse } from '@memry/contracts/sync-api'
-import { PullResponseSchema } from '@memry/contracts/sync-api'
+import type {
+  RecordPullItemResponse,
+  RecordSyncManifest,
+  PushResponse
+} from '@memry/contracts/sync-api'
+import { RecordPullResponseSchema } from '@memry/contracts/sync-api'
 import {
   encrypt,
   decrypt,
@@ -331,14 +335,14 @@ async function handleRotateKeys(input: RotateKeysInput): Promise<RotateKeysResul
           const pk = sodium.crypto_sign_ed25519_sk_to_pk(sk)
           return { secretKey: sk, publicKey: pk, deviceId: device.id }
         },
-        fetchManifest: (token) => getFromServer<SyncManifest>('/sync/manifest', token),
+        fetchManifest: (token) => getFromServer<RecordSyncManifest>('/sync/manifest', token),
         pullItems: async (token, itemIds) => {
-          const raw = await postToServer<{ items: PullItemResponse[] }>(
+          const raw = await postToServer<{ items: RecordPullItemResponse[] }>(
             '/sync/pull',
             { itemIds },
             token
           )
-          const parsed = PullResponseSchema.safeParse(raw)
+          const parsed = RecordPullResponseSchema.safeParse(raw)
           if (!parsed.success) {
             throw new Error(`Invalid pull response: ${parsed.error.message}`)
           }

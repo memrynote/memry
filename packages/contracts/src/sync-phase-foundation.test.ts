@@ -20,6 +20,10 @@ import {
 } from './linking-api'
 import {
   PushRequestSchema,
+  RecordChangesResponseSchema,
+  RecordPullResponseSchema,
+  RecordPushRequestSchema,
+  RecordSyncManifestSchema,
   SignatureMetadataSchema,
   SyncItemSchema,
   VectorClockSchema,
@@ -208,6 +212,167 @@ describe('sync phase contract schemas', () => {
         ]
       }).success
     ).toBe(true)
+
+    expect(
+      RecordPushRequestSchema.safeParse({
+        items: [
+          {
+            id: validItem.id,
+            type: 'task',
+            operation: 'create',
+            encryptedKey: 'ek',
+            keyNonce: 'kn',
+            encryptedData: 'ed',
+            dataNonce: 'dn',
+            signature: 'sig',
+            signerDeviceId: 'device-1',
+            clock: { deviceA: 1 }
+          }
+        ]
+      }).success
+    ).toBe(true)
+
+    expect(
+      RecordPushRequestSchema.safeParse({
+        items: [
+          {
+            id: validItem.id,
+            type: 'attachment',
+            operation: 'create',
+            encryptedKey: 'ek',
+            keyNonce: 'kn',
+            encryptedData: 'ed',
+            dataNonce: 'dn',
+            signature: 'sig',
+            signerDeviceId: 'device-1'
+          }
+        ]
+      }).success
+    ).toBe(false)
+
+    expect(
+      RecordPushRequestSchema.safeParse({
+        items: [
+          {
+            id: validItem.id,
+            type: 'task',
+            operation: 'create',
+            encryptedKey: 'ek',
+            keyNonce: 'kn',
+            encryptedData: 'ed',
+            dataNonce: 'dn',
+            signature: 'sig',
+            signerDeviceId: 'device-1'
+          }
+        ]
+      }).success
+    ).toBe(false)
+
+    expect(
+      RecordPushRequestSchema.safeParse({
+        items: [
+          {
+            id: validItem.id,
+            type: 'settings',
+            operation: 'update',
+            encryptedKey: 'ek',
+            keyNonce: 'kn',
+            encryptedData: 'ed',
+            dataNonce: 'dn',
+            signature: 'sig',
+            signerDeviceId: 'device-1'
+          }
+        ]
+      }).success
+    ).toBe(true)
+
+    expect(
+      RecordSyncManifestSchema.safeParse({
+        items: [
+          {
+            id: validItem.id,
+            type: 'note',
+            version: 1,
+            modifiedAt: 2,
+            size: 123
+          }
+        ],
+        serverTime: 3
+      }).success
+    ).toBe(true)
+
+    expect(
+      RecordSyncManifestSchema.safeParse({
+        items: [
+          {
+            id: validItem.id,
+            type: 'attachment',
+            version: 1,
+            modifiedAt: 2,
+            size: 123
+          }
+        ],
+        serverTime: 3
+      }).success
+    ).toBe(false)
+
+    expect(
+      RecordChangesResponseSchema.safeParse({
+        items: [
+          {
+            id: validItem.id,
+            type: 'task',
+            version: 1,
+            modifiedAt: 2,
+            size: 123
+          }
+        ],
+        deleted: [],
+        hasMore: false,
+        nextCursor: 1
+      }).success
+    ).toBe(true)
+
+    expect(
+      RecordPullResponseSchema.safeParse({
+        items: [
+          {
+            id: validItem.id,
+            type: 'task',
+            operation: 'update',
+            cryptoVersion: 1,
+            signature: 'sig',
+            signerDeviceId: 'device-1',
+            blob: {
+              encryptedKey: 'ek',
+              keyNonce: 'kn',
+              encryptedData: 'ed',
+              dataNonce: 'dn'
+            }
+          }
+        ]
+      }).success
+    ).toBe(true)
+
+    expect(
+      RecordPullResponseSchema.safeParse({
+        items: [
+          {
+            id: validItem.id,
+            type: 'attachment',
+            operation: 'update',
+            signature: 'sig',
+            signerDeviceId: 'device-1',
+            blob: {
+              encryptedKey: 'ek',
+              keyNonce: 'kn',
+              encryptedData: 'ed',
+              dataNonce: 'dn'
+            }
+          }
+        ]
+      }).success
+    ).toBe(false)
 
     expect(
       PushRequestSchema.safeParse({

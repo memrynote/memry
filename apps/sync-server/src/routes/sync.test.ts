@@ -153,6 +153,7 @@ const makePushItem = (overrides: Record<string, unknown> = {}) => ({
   dataNonce: 'dn',
   signature: 'sig',
   signerDeviceId: 'device-1',
+  clock: { 'device-1': 1 },
   ...overrides
 })
 
@@ -577,6 +578,60 @@ describe('sync routes', () => {
         'device-1',
         [makePushItem()]
       )
+    })
+
+    it('should return 400 for unsupported record transport item types', async () => {
+      const body = {
+        items: [makePushItem({ type: 'attachment', clock: undefined })]
+      }
+
+      const res = await app.request(
+        'http://localhost/sync/push',
+        jsonPost('/sync/push', body),
+        env,
+        executionCtx
+      )
+
+      expect(res.status).toBe(400)
+      const json = (await res.json()) as { error: { code: string } }
+      expect(json.error.code).toBe(ErrorCodes.VALIDATION_ERROR)
+      expect(processRecordPushBatch).not.toHaveBeenCalled()
+    })
+
+    it('should return 400 when a clock-required record item omits clock metadata', async () => {
+      const body = {
+        items: [makePushItem({ type: 'task', clock: undefined })]
+      }
+
+      const res = await app.request(
+        'http://localhost/sync/push',
+        jsonPost('/sync/push', body),
+        env,
+        executionCtx
+      )
+
+      expect(res.status).toBe(400)
+      const json = (await res.json()) as { error: { code: string } }
+      expect(json.error.code).toBe(ErrorCodes.VALIDATION_ERROR)
+      expect(processRecordPushBatch).not.toHaveBeenCalled()
+    })
+
+    it('should allow settings pushes without top-level clock metadata', async () => {
+      const body = {
+        items: [makePushItem({ type: 'settings', clock: undefined })]
+      }
+
+      const res = await app.request(
+        'http://localhost/sync/push',
+        jsonPost('/sync/push', body),
+        env,
+        executionCtx
+      )
+
+      expect(res.status).toBe(200)
+      expect(processRecordPushBatch).toHaveBeenCalledWith(env.DB, env.STORAGE, 'user-1', 'device-1', [
+        makePushItem({ type: 'settings', clock: undefined })
+      ])
     })
   })
 

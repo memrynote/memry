@@ -7,7 +7,7 @@ import { inboxItems } from '@memry/db-schema/schema/inbox'
 import { savedFilters, settings } from '@memry/db-schema/schema/settings'
 import { tagDefinitions } from '@memry/db-schema/schema/tag-definitions'
 import { noteCache } from '@memry/db-schema/schema/notes-cache'
-import type { SyncItemType, SyncManifest } from '@memry/contracts/sync-api'
+import type { RecordSyncItemType, RecordSyncManifest } from '@memry/contracts/sync-api'
 import { withRetry } from './retry'
 import { getFromServer } from './http-client'
 import type { SyncQueueManager } from './queue'
@@ -50,9 +50,12 @@ export async function checkManifestIntegrity(
   if (!token) return { checkedAt: now, rePullNeeded: false, serverOnlyCount: 0 }
 
   try {
-    const result = await withRetry(() => getFromServer<SyncManifest>('/sync/manifest', token), {
-      isOnline: deps.isOnline
-    })
+    const result = await withRetry(
+      () => getFromServer<RecordSyncManifest>('/sync/manifest', token),
+      {
+        isOnline: deps.isOnline
+      }
+    )
 
     const serverItemMap = new Map(result.value.items.map((item) => [item.id, item]))
 
@@ -105,7 +108,7 @@ export async function checkManifestIntegrity(
 
 interface LocalSyncableItem {
   id: string
-  type: SyncItemType
+  type: RecordSyncItemType
   payload: string
 }
 

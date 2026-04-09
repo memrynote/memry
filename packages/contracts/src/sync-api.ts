@@ -16,6 +16,29 @@ export const SYNC_ITEM_TYPES = [
   'tag_definition'
 ] as const
 
+export const RECORD_SYNC_ITEM_TYPES = [
+  'note',
+  'task',
+  'project',
+  'settings',
+  'inbox',
+  'filter',
+  'journal',
+  'tag_definition'
+] as const
+
+export const RECORD_CLOCK_REQUIRED_ITEM_TYPES = [
+  'note',
+  'task',
+  'project',
+  'inbox',
+  'filter',
+  'journal',
+  'tag_definition'
+] as const
+
+export const CRDT_SYNC_ITEM_TYPES = ['note'] as const
+
 export const SYNC_OPERATIONS = ['create', 'update', 'delete'] as const
 
 export const ENCRYPTABLE_ITEM_TYPES = [
@@ -35,6 +58,9 @@ export type EncryptableItemType = (typeof ENCRYPTABLE_ITEM_TYPES)[number]
 // ============================================================================
 
 export type SyncItemType = (typeof SYNC_ITEM_TYPES)[number]
+export type RecordSyncItemType = (typeof RECORD_SYNC_ITEM_TYPES)[number]
+export type RecordClockRequiredItemType = (typeof RECORD_CLOCK_REQUIRED_ITEM_TYPES)[number]
+export type CrdtSyncItemType = (typeof CRDT_SYNC_ITEM_TYPES)[number]
 export type SyncOperation = (typeof SYNC_OPERATIONS)[number]
 
 /**
@@ -202,7 +228,7 @@ export const SyncQueueItemSchema = z.object({
   createdAt: z.number().int().min(0)
 })
 
-export const PushItemSchema = z.object({
+const PushItemBaseSchema = z.object({
   id: z.string().min(1),
   type: z.enum(SYNC_ITEM_TYPES),
   operation: z.enum(SYNC_OPERATIONS),
@@ -217,8 +243,30 @@ export const PushItemSchema = z.object({
   deletedAt: z.number().int().min(0).optional()
 })
 
+const recordClockRequiredItemTypeSet = new Set<RecordSyncItemType>(RECORD_CLOCK_REQUIRED_ITEM_TYPES)
+
+export const PushItemSchema = PushItemBaseSchema
+
 export const PushRequestSchema = z.object({
   items: z.array(PushItemSchema).min(1).max(100)
+})
+
+export const RecordPushItemSchema = PushItemBaseSchema.omit({ type: true, stateVector: true })
+  .extend({
+    type: z.enum(RECORD_SYNC_ITEM_TYPES)
+  })
+  .superRefine((item, ctx) => {
+    if (recordClockRequiredItemTypeSet.has(item.type) && item.clock === undefined) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['clock'],
+        message: `Record sync item type "${item.type}" requires clock metadata`
+      })
+    }
+  })
+
+export const RecordPushRequestSchema = z.object({
+  items: z.array(RecordPushItemSchema).min(1).max(100)
 })
 
 export const PushResponseSchema = z.object({
@@ -246,13 +294,30 @@ export const SyncItemRefSchema = z.object({
   stateVector: z.string().optional()
 })
 
+export const RecordSyncItemRefSchema = SyncItemRefSchema.omit({ type: true, stateVector: true })
+  .extend({
+    type: z.enum(RECORD_SYNC_ITEM_TYPES)
+  })
+
 export const SyncManifestSchema = z.object({
   items: z.array(SyncItemRefSchema),
   serverTime: z.number().int().min(0)
 })
 
+export const RecordSyncManifestSchema = z.object({
+  items: z.array(RecordSyncItemRefSchema),
+  serverTime: z.number().int().min(0)
+})
+
 export const ChangesResponseSchema = z.object({
   items: z.array(SyncItemRefSchema),
+  deleted: z.array(z.string().min(1)),
+  hasMore: z.boolean(),
+  nextCursor: z.number().int().min(0)
+})
+
+export const RecordChangesResponseSchema = z.object({
+  items: z.array(RecordSyncItemRefSchema),
   deleted: z.array(z.string().min(1)),
   hasMore: z.boolean(),
   nextCursor: z.number().int().min(0)
@@ -299,11 +364,25 @@ export const PullItemResponseSchema = z.object({
   blob: EncryptedItemPayloadSchema
 })
 
+export const RecordPullItemResponseSchema = PullItemResponseSchema.omit({
+  type: true,
+  stateVector: true
+}).extend({
+  type: z.enum(RECORD_SYNC_ITEM_TYPES)
+})
+
 export const PullResponseSchema = z.object({
   items: z.array(PullItemResponseSchema)
 })
 
 export type PullItemResponse = z.infer<typeof PullItemResponseSchema>
+
+export const RecordPullResponseSchema = z.object({
+  items: z.array(RecordPullItemResponseSchema)
+})
+
+export type RecordPullItemResponse = z.infer<typeof RecordPullItemResponseSchema>
+export type RecordPullResponse = z.infer<typeof RecordPullResponseSchema>
 
 // ============================================================================
 // Device Keys (key distribution for multi-device signature verification)
@@ -362,10 +441,15 @@ export type EncryptedItemPayloadInput = z.infer<typeof EncryptedItemPayloadSchem
 export type SyncQueueItemInput = z.infer<typeof SyncQueueItemSchema>
 export type PushItemInput = z.infer<typeof PushItemSchema>
 export type PushRequestInput = z.infer<typeof PushRequestSchema>
+export type RecordPushItemInput = z.infer<typeof RecordPushItemSchema>
+export type RecordPushRequestInput = z.infer<typeof RecordPushRequestSchema>
 export type PushResponseInput = z.infer<typeof PushResponseSchema>
 export type SyncItemRefInput = z.infer<typeof SyncItemRefSchema>
+export type RecordSyncItemRefInput = z.infer<typeof RecordSyncItemRefSchema>
 export type SyncManifestInput = z.infer<typeof SyncManifestSchema>
+export type RecordSyncManifest = z.infer<typeof RecordSyncManifestSchema>
 export type ChangesResponseInput = z.infer<typeof ChangesResponseSchema>
+export type RecordChangesResponse = z.infer<typeof RecordChangesResponseSchema>
 export type SyncStatusInput = z.infer<typeof SyncStatusSchema>
 export type ConflictResponseInput = z.infer<typeof ConflictResponseSchema>
 export type DeviceSyncStateInput = z.infer<typeof DeviceSyncStateSchema>
