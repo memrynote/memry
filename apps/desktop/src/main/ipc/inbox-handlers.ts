@@ -17,6 +17,7 @@ import {
   CaptureTextSchema,
   CaptureLinkSchema,
   CaptureImageSchema,
+  CaptureVoiceSchema,
   type CaptureResponse,
   type InboxItem,
   type InboxItemListItem,
@@ -48,7 +49,7 @@ import {
 } from '../inbox/filing'
 import { extractSocialPost, detectSocialPlatform, isSocialPost } from '../inbox/social'
 import { createLogger } from '../lib/logger'
-import { captureVoice, type CaptureVoiceInput } from '../inbox/capture'
+import { captureVoice } from '../inbox/capture'
 import { findDuplicateByUrl, findDuplicateByContent } from '../inbox/duplicates'
 import { getSuggestions, trackSuggestionFeedback } from '../inbox/suggestions'
 import { FileItemSchema } from '@memry/contracts/inbox-api'
@@ -129,14 +130,6 @@ function emitInboxEvent(channel: string, data: unknown): void {
 }
 
 /**
- * Check if an item is stale (older than threshold)
- * Wrapper around the stats module function
- */
-function isStale(createdAt: string): boolean {
-  return checkIsStale(createdAt)
-}
-
-/**
  * Get tags for an inbox item
  */
 function getItemTags(db: ReturnType<typeof getDatabase>, itemId: string): string[] {
@@ -175,7 +168,7 @@ function toInboxItem(row: typeof inboxItems.$inferSelect, tags: string[]): Inbox
     sourceTitle: row.sourceTitle,
     captureSource: row.captureSource as InboxItem['captureSource'],
     tags,
-    isStale: isStale(row.createdAt)
+    isStale: checkIsStale(row.createdAt)
   }
 }
 
@@ -195,7 +188,7 @@ function toListItem(row: typeof inboxItems.$inferSelect, tags: string[]): InboxI
     thumbnailUrl: resolveAttachmentUrl(row.thumbnailPath),
     sourceUrl: row.sourceUrl,
     tags,
-    isStale: isStale(row.createdAt),
+    isStale: checkIsStale(row.createdAt),
     processingStatus: (row.processingStatus || 'complete') as InboxItemListItem['processingStatus'],
     // Type-specific fields
     duration: metadata?.duration as number | undefined,
@@ -213,6 +206,55 @@ function toListItem(row: typeof inboxItems.$inferSelect, tags: string[]): InboxI
     // Metadata (for reminder items - includes target info)
     metadata: isReminder ? (metadata as unknown as InboxItemListItem['metadata']) : undefined
   }
+}
+
+function insertItemWithTags(
+  db: ReturnType<typeof requireDatabase>,
+  values: typeof inboxItems.$inferInsert,
+  tags: string[]
+): { row: typeof inboxItems.$inferSelect; tags: string[] } {
+  const now = values.createdAt ?? new Date().toISOString()
+
+  return db.transaction((tx) => {
+    tx.insert(inboxItems).values(values).run()
+
+    if (tags.length > 0) {
+      tx.insert(inboxItemTags)
+        .values(
+          tags.map((tag) => ({
+            id: generateId(),
+            itemId: values.id,
+            tag,
+            createdAt: now
+          }))
+        )
+        .run()
+    }
+
+    const created = tx.select().from(inboxItems).where(eq(inboxItems.id, values.id)).get()
+    if (!created) throw new Error('Failed to create item')
+
+    return { row: created, tags }
+  })
+}
+
+function normalizeBinaryInput(
+  data: Buffer | Uint8Array | ArrayBuffer | Record<string, unknown>
+): Buffer | null {
+  if (Buffer.isBuffer(data)) return data
+  if (data instanceof Uint8Array) return Buffer.from(data)
+  if (data instanceof ArrayBuffer) return Buffer.from(data)
+
+  if (typeof data === 'object' && data !== null) {
+    if (data.type === 'Buffer' && Array.isArray(data.data)) {
+      return Buffer.from(data.data as number[])
+    }
+
+    const values = Object.values(data).filter((v): v is number => typeof v === 'number')
+    if (values.length > 0) return Buffer.from(values)
+  }
+
+  return null
 }
 
 // ============================================================================
@@ -235,44 +277,24 @@ const handleCaptureText = withErrorHandler(async (input: unknown): Promise<Captu
 
   const id = generateId()
   const now = new Date().toISOString()
+  const resolvedTags = parsed.tags ?? []
 
-  db.insert(inboxItems)
-    .values({
-      id,
-      type: 'note',
-      title:
-        parsed.title || parsed.content.substring(0, 50) + (parsed.content.length > 50 ? '...' : ''),
-      content: parsed.content,
-      createdAt: now,
-      modifiedAt: now,
-      processingStatus: 'complete',
-      captureSource: parsed.source ?? null
-    })
-    .run()
+  const { row: created, tags } = insertItemWithTags(db, {
+    id,
+    type: 'note',
+    title:
+      parsed.title || parsed.content.substring(0, 50) + (parsed.content.length > 50 ? '...' : ''),
+    content: parsed.content,
+    createdAt: now,
+    modifiedAt: now,
+    processingStatus: 'complete',
+    captureSource: parsed.source ?? null
+  }, resolvedTags)
 
-  if (parsed.tags && parsed.tags.length > 0) {
-    for (const tag of parsed.tags) {
-      db.insert(inboxItemTags)
-        .values({
-          id: generateId(),
-          itemId: id,
-          tag,
-          createdAt: now
-        })
-        .run()
-    }
-  }
-
-  const created = db.select().from(inboxItems).where(eq(inboxItems.id, id)).get()
-  if (!created) {
-    return { success: false, item: null, error: 'Failed to create item' }
-  }
-
-  const tags = getItemTags(db, id)
   const item = toInboxItem(created, tags)
 
   emitInboxEvent(InboxChannels.events.CAPTURED, { item: toListItem(created, tags) })
-  syncInboxCreate(db, id)
+  syncInboxCreate(id)
 
   return { success: true, item }
 }, 'Unknown error')
@@ -303,57 +325,38 @@ const handleCaptureLink = withErrorHandler(async (input: unknown): Promise<Captu
 
   logger.info(`URL detected as ${itemType}${platform ? ` (${platform})` : ''}: ${parsed.url}`)
 
-  db.insert(inboxItems)
-    .values({
-      id,
-      type: itemType,
-      title: titleFromUrl(parsed.url),
-      content: null,
-      sourceUrl: parsed.url,
-      createdAt: now,
-      modifiedAt: now,
-      processingStatus: 'pending',
-      captureSource: parsed.source ?? null,
-      metadata: isSocial
-        ? {
-            platform: platform || 'other',
-            postUrl: parsed.url,
-            authorName: '',
-            authorHandle: '',
-            postContent: '',
-            mediaUrls: [],
-            extractionStatus: 'pending' as const
-          }
-        : {
-            url: parsed.url,
-            fetchStatus: 'pending'
-          }
-    })
-    .run()
+  const resolvedTags = parsed.tags ?? []
 
-  if (parsed.tags && parsed.tags.length > 0) {
-    for (const tag of parsed.tags) {
-      db.insert(inboxItemTags)
-        .values({
-          id: generateId(),
-          itemId: id,
-          tag,
-          createdAt: now
-        })
-        .run()
-    }
-  }
+  const { row: created, tags } = insertItemWithTags(db, {
+    id,
+    type: itemType,
+    title: titleFromUrl(parsed.url),
+    content: null,
+    sourceUrl: parsed.url,
+    createdAt: now,
+    modifiedAt: now,
+    processingStatus: 'pending',
+    captureSource: parsed.source ?? null,
+    metadata: isSocial
+      ? {
+          platform: platform || 'other',
+          postUrl: parsed.url,
+          authorName: '',
+          authorHandle: '',
+          postContent: '',
+          mediaUrls: [],
+          extractionStatus: 'pending' as const
+        }
+      : {
+          url: parsed.url,
+          fetchStatus: 'pending'
+        }
+  }, resolvedTags)
 
-  const created = db.select().from(inboxItems).where(eq(inboxItems.id, id)).get()
-  if (!created) {
-    return { success: false, item: null, error: 'Failed to create item' }
-  }
-
-  const tags = getItemTags(db, id)
   const item = toInboxItem(created, tags)
 
   emitInboxEvent(InboxChannels.events.CAPTURED, { item: toListItem(created, tags) })
-  syncInboxCreate(db, id)
+  syncInboxCreate(id)
 
   if (isSocial) {
     try {
@@ -399,42 +402,13 @@ const handleCaptureImage = withErrorHandler(async (input: unknown): Promise<Capt
   const inboxType = getInboxTypeFromMime(parsed.mimeType)
   const isImage = ALLOWED_IMAGE_TYPES.includes(parsed.mimeType)
 
-  let fileBuffer: Buffer
-  if (Buffer.isBuffer(parsed.data)) {
-    fileBuffer = parsed.data
-  } else if (parsed.data instanceof Uint8Array) {
-    fileBuffer = Buffer.from(parsed.data)
-  } else if (parsed.data instanceof ArrayBuffer) {
-    fileBuffer = Buffer.from(parsed.data)
-  } else if (typeof parsed.data === 'object' && parsed.data !== null) {
-    const data = parsed.data as Record<string, unknown>
-    if (data.type === 'Buffer' && Array.isArray(data.data)) {
-      fileBuffer = Buffer.from(data.data as number[])
-    } else {
-      const values = Object.values(data).filter((v): v is number => typeof v === 'number')
-      if (values.length === 0) {
-        return {
-          success: false,
-          item: null,
-          error: 'Invalid file data format: empty or non-numeric data'
-        }
-      }
-      fileBuffer = Buffer.from(values)
-    }
-  } else {
-    return {
-      success: false,
-      item: null,
-      error: 'Invalid file data format'
-    }
+  const fileBuffer = normalizeBinaryInput(parsed.data as Buffer | Uint8Array | ArrayBuffer | Record<string, unknown>)
+  if (!fileBuffer) {
+    return { success: false, item: null, error: 'Invalid file data format' }
   }
 
   if (fileBuffer.length === 0) {
-    return {
-      success: false,
-      item: null,
-      error: 'Empty file data'
-    }
+    return { success: false, item: null, error: 'Empty file data' }
   }
 
   const storeResult = await storeInboxAttachment(id, fileBuffer, parsed.filename, parsed.mimeType)
@@ -491,45 +465,26 @@ const handleCaptureImage = withErrorHandler(async (input: unknown): Promise<Capt
     }
   }
 
-  db.insert(inboxItems)
-    .values({
-      id,
-      type: inboxType,
-      title: parsed.filename.replace(/\.[^.]+$/, ''),
-      content: null,
-      createdAt: now,
-      modifiedAt: now,
-      processingStatus: 'complete',
-      attachmentPath: storeResult.path || null,
-      thumbnailPath,
-      metadata: itemMetadata,
-      captureSource: parsed.source ?? null
-    })
-    .run()
+  const resolvedTags = parsed.tags ?? []
 
-  if (parsed.tags && parsed.tags.length > 0) {
-    for (const tag of parsed.tags) {
-      db.insert(inboxItemTags)
-        .values({
-          id: generateId(),
-          itemId: id,
-          tag,
-          createdAt: now
-        })
-        .run()
-    }
-  }
+  const { row: created, tags } = insertItemWithTags(db, {
+    id,
+    type: inboxType,
+    title: parsed.filename.replace(/\.[^.]+$/, ''),
+    content: null,
+    createdAt: now,
+    modifiedAt: now,
+    processingStatus: 'complete',
+    attachmentPath: storeResult.path || null,
+    thumbnailPath,
+    metadata: itemMetadata,
+    captureSource: parsed.source ?? null
+  }, resolvedTags)
 
-  const created = db.select().from(inboxItems).where(eq(inboxItems.id, id)).get()
-  if (!created) {
-    return { success: false, item: null, error: 'Failed to create item' }
-  }
-
-  const tags = getItemTags(db, id)
   const item = toInboxItem(created, tags)
 
   emitInboxEvent(InboxChannels.events.CAPTURED, { item: toListItem(created, tags) })
-  syncInboxCreate(db, id)
+  syncInboxCreate(id)
 
   logger.info(`Captured ${inboxType}: ${parsed.filename} (${fileBuffer.length} bytes)`)
 
@@ -550,31 +505,8 @@ const handleCaptureVoice = withErrorHandler(async (input: unknown): Promise<Capt
 
   const rawInput = input as Record<string, unknown>
 
-  let audioBuffer: Buffer
-  const rawData = rawInput.data
-
-  if (Buffer.isBuffer(rawData)) {
-    audioBuffer = rawData
-  } else if (rawData instanceof Uint8Array) {
-    audioBuffer = Buffer.from(rawData)
-  } else if (rawData instanceof ArrayBuffer) {
-    audioBuffer = Buffer.from(rawData)
-  } else if (typeof rawData === 'object' && rawData !== null) {
-    const data = rawData as Record<string, unknown>
-    if (data.type === 'Buffer' && Array.isArray(data.data)) {
-      audioBuffer = Buffer.from(data.data as number[])
-    } else {
-      const values = Object.values(data).filter((v): v is number => typeof v === 'number')
-      if (values.length === 0) {
-        return {
-          success: false,
-          item: null,
-          error: 'Invalid audio data format: empty or non-numeric data'
-        }
-      }
-      audioBuffer = Buffer.from(values)
-    }
-  } else {
+  const audioBuffer = normalizeBinaryInput(rawInput.data as Buffer | Uint8Array | ArrayBuffer | Record<string, unknown>)
+  if (!audioBuffer) {
     return { success: false, item: null, error: 'Invalid audio data format' }
   }
 
@@ -582,13 +514,15 @@ const handleCaptureVoice = withErrorHandler(async (input: unknown): Promise<Capt
     return { success: false, item: null, error: 'Empty audio data' }
   }
 
+  const parsed = CaptureVoiceSchema.omit({ data: true }).parse(rawInput)
+
   return await captureVoice({
     data: audioBuffer,
-    duration: rawInput.duration as number,
-    format: rawInput.format as 'webm' | 'mp3' | 'wav',
-    transcribe: rawInput.transcribe as boolean | undefined,
-    tags: rawInput.tags as string[] | undefined,
-    source: rawInput.source as CaptureVoiceInput['source']
+    duration: parsed.duration,
+    format: parsed.format,
+    transcribe: parsed.transcribe,
+    tags: parsed.tags,
+    source: parsed.source
   })
 }, 'Unknown error')
 
@@ -681,29 +615,22 @@ const handleTrackSuggestion = withErrorHandler(
   'Failed to track feedback'
 )
 
-/**
- * Convert an inbox item to a standalone note
- */
-async function handleConvertToNote(itemId: string): Promise<FileResponse> {
-  return convertToNote(itemId)
-}
+const handleConvertToNote = withErrorHandler(
+  async (itemId: string): Promise<FileResponse> => convertToNote(itemId),
+  'Convert to note failed'
+)
 
-async function handleConvertToTask(
-  itemId: string
-): Promise<{ success: boolean; taskId: string | null; error?: string }> {
-  return convertToTask(itemId)
-}
+const handleConvertToTask = withErrorHandler(
+  async (itemId: string): Promise<{ success: boolean; taskId: string | null; error?: string }> =>
+    convertToTask(itemId),
+  'Convert to task failed'
+)
 
-/**
- * Link an inbox item to an existing note
- */
-async function handleLinkToNote(
-  itemId: string,
-  noteId: string,
-  tags: string[] = []
-): Promise<{ success: boolean; error?: string }> {
-  return linkToNote(itemId, noteId, tags)
-}
+const handleLinkToNote = withErrorHandler(
+  async (itemId: string, noteId: string, tags: string[] = []): Promise<{ success: boolean; error?: string }> =>
+    linkToNote(itemId, noteId, tags),
+  'Link to note failed'
+)
 
 /**
  * Snooze an inbox item until a specified time
