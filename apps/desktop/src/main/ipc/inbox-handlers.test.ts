@@ -7,6 +7,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi, type Mock } from 'vitest'
 import { mockIpcMain, resetIpcMocks, invokeHandler } from '@tests/utils/mock-ipc'
 import { InboxChannels } from '@memry/contracts/ipc-channels'
+import { inboxItems, inboxItemTags } from '@memry/db-schema/schema/inbox'
 
 // Track mock calls
 const handleCalls: unknown[][] = []
@@ -164,6 +165,7 @@ vi.mock('../lib/logger', () => ({
 // Import after mocking
 import { registerInboxHandlers, unregisterInboxHandlers } from './inbox-handlers'
 import { getDatabase, requireDatabase } from '../database'
+import { generateId } from '../lib/id'
 import * as filingModule from '../inbox/filing'
 import * as snoozeModule from '../inbox/snooze'
 import * as suggestionsModule from '../inbox/suggestions'
@@ -179,6 +181,7 @@ describe('inbox-handlers', () => {
     select: Mock
     update: Mock
     delete: Mock
+    transaction: Mock
   }
 
   beforeEach(() => {
@@ -207,17 +210,21 @@ describe('inbox-handlers', () => {
       select: vi.fn(() => chainable),
       update: vi.fn(() => chainable),
       delete: vi.fn(() => chainable),
-      transaction: vi.fn((fn: (tx: typeof chainable & { insert: Mock; select: Mock; update: Mock; delete: Mock }) => unknown) => {
-        const tx = {
-          ...chainable,
-          insert: vi.fn(() => chainable),
-          select: vi.fn(() => chainable),
-          update: vi.fn(() => chainable),
-          delete: vi.fn(() => chainable)
+      transaction: vi.fn(
+        (
+          fn: (tx: typeof chainable & { insert: Mock; select: Mock; update: Mock; delete: Mock }) => unknown
+        ) => {
+          const tx = {
+            ...chainable,
+            insert: vi.fn(() => chainable),
+            select: vi.fn(() => chainable),
+            update: vi.fn(() => chainable),
+            delete: vi.fn(() => chainable)
+          }
+          return fn(tx)
         }
-        return fn(tx)
-      })
-    } as typeof mockDb & { transaction: Mock }
+      )
+    }
     ;(getDatabase as Mock).mockReturnValue(mockDb)
     ;(requireDatabase as Mock).mockReturnValue(mockDb)
   })
@@ -303,6 +310,67 @@ describe('inbox-handlers', () => {
       })
 
       expect(result.success).toBe(true)
+    })
+
+    it('rolls back the item insert when a tag insert fails', async () => {
+      const persisted = {
+        items: [] as Array<Record<string, unknown>>,
+        tags: [] as Array<Record<string, unknown>>
+      }
+
+      mockDb.transaction.mockImplementationOnce((fn) => {
+        const draft = {
+          items: [...persisted.items],
+          tags: [...persisted.tags]
+        }
+
+        const tx = {
+          insert: vi.fn((table) => ({
+            values: vi.fn((values) => ({
+              run: vi.fn(() => {
+                if (table === inboxItems) {
+                  draft.items.push(values as Record<string, unknown>)
+                  return
+                }
+
+                if (table === inboxItemTags) {
+                  throw new Error('tag insert failed')
+                }
+              })
+            }))
+          })),
+          select: vi.fn(() => ({
+            from: vi.fn(() => ({
+              where: vi.fn(() => ({
+                get: vi.fn(() => draft.items.at(0) ?? undefined)
+              }))
+            }))
+          })),
+          update: vi.fn(),
+          delete: vi.fn()
+        }
+
+        const result = fn(tx)
+        persisted.items = draft.items
+        persisted.tags = draft.tags
+        return result
+      })
+
+      ;(generateId as Mock)
+        .mockReturnValueOnce('item-1')
+        .mockReturnValueOnce('tag-1')
+        .mockReturnValueOnce('tag-2')
+
+      const result = await invokeHandler(InboxChannels.invoke.CAPTURE_TEXT, {
+        content: 'Content',
+        title: 'Tagged Note',
+        tags: ['important', 'urgent']
+      })
+
+      expect(result.success).toBe(false)
+      expect(mockDb.transaction).toHaveBeenCalled()
+      expect(persisted.items).toEqual([])
+      expect(persisted.tags).toEqual([])
     })
   })
 

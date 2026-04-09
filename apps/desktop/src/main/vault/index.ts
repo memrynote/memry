@@ -48,7 +48,6 @@ import { VaultError, VaultErrorCode } from '../lib/errors'
 import { startWatcher, stopWatcher } from './watcher'
 import { indexVault, rebuildIndex } from './indexer'
 import { initEmbeddingModel, isModelLoaded, isModelLoading } from '../lib/embeddings'
-import { flushFtsUpdates, hasPendingFtsUpdates } from '../database'
 import { createLogger } from '../lib/logger'
 import { startSyncRuntime, stopSyncRuntime } from '../sync/runtime'
 import { reconcileProjections, startProjectionRuntime, stopProjectionRuntime } from '../projections'
@@ -411,19 +410,6 @@ export async function closeVault(): Promise<void> {
 
   // Stop file watcher
   await stopWatcher()
-
-  // Flush any pending FTS updates before closing database
-  if (hasPendingFtsUpdates()) {
-    try {
-      const indexDb = getIndexDatabase()
-      const flushed = flushFtsUpdates(indexDb)
-      if (flushed > 0) {
-        logger.debug(`Flushed ${flushed} pending FTS updates before close`)
-      }
-    } catch (error) {
-      logger.error('Failed to flush FTS updates:', error)
-    }
-  }
 
   await stopProjectionRuntime({ drain: true })
 

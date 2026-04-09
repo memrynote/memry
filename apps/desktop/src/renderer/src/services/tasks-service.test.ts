@@ -2,6 +2,8 @@ import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { createMockApi } from '@tests/setup-dom'
 import {
   tasksService,
+  tasksServiceLogger,
+  queueTaskReorder,
   onTaskCreated,
   onTaskUpdated,
   onTaskDeleted,
@@ -71,6 +73,18 @@ describe('tasks-service', () => {
 
     await tasksService.getUpcoming(7)
     expect(api.tasks.getUpcoming).toHaveBeenCalledWith(7)
+  })
+
+  it('logs reorder failures in fire-and-forget flows', async () => {
+    const error = new Error('reorder failed')
+    api.tasks.reorder = vi.fn().mockRejectedValue(error)
+
+    queueTaskReorder(['t1', 't2'], [0, 1])
+    await Promise.resolve()
+    await Promise.resolve()
+
+    expect(api.tasks.reorder).toHaveBeenCalledWith(['t1', 't2'], [0, 1])
+    expect(tasksServiceLogger.error).toHaveBeenCalledWith('Failed to reorder tasks:', error)
   })
 
   it('registers task and project event subscriptions', () => {
