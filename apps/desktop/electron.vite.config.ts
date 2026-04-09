@@ -11,6 +11,7 @@ const workspaceRoot = resolve(appRoot, '../..')
 const workspaceAliases = {
   '@memry/contracts': resolve(workspaceRoot, 'packages/contracts/src'),
   '@memry/db-schema': resolve(workspaceRoot, 'packages/db-schema/src'),
+  '@memry/domain-inbox': resolve(workspaceRoot, 'packages/domain-inbox/src'),
   '@memry/domain-notes': resolve(workspaceRoot, 'packages/domain-notes/src'),
   '@memry/domain-tasks': resolve(workspaceRoot, 'packages/domain-tasks/src'),
   '@memry/rpc': resolve(workspaceRoot, 'packages/rpc/src'),
