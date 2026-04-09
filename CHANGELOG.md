@@ -5,6 +5,23 @@ Format: weekly entries grouped by feature area.
 
 ---
 
+## 2026-04-09 — Architecture Reset Phase 4
+
+### Changed
+- Migrate note-sync from direct index-DB writes to projection events with flush
+- Extract note mutation commands into dedicated domain layer (notes/domain.ts)
+- Inline inbox domain logic back into IPC handlers, remove domain-inbox package
+- Simplify TasksProvider to self-contained context with internal data fetching
+- Remove TasksAppBoundary render-prop wrapper from App.tsx
+- Simplify window API forwarder to single get-trap proxy
+
+### Fixed
+- Restore canonical property-type guard to prevent LWW type overwrites on sync
+- Add projection flush to sync handlers, journal handlers, and CRDT writeback
+- Add missing setProjects dependency in App.tsx handleDragEnd callback
+
+---
+
 ## 2026-04-08 — Marquee Selection Indent/Outdent
 
 ### Added
