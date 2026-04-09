@@ -25,7 +25,7 @@ import {
   type ImageMetadata
 } from '@memry/contracts/inbox-api'
 import sharp from 'sharp'
-import { getDatabase, requireDatabase, type DataDb } from '../database'
+import { getDatabase, requireDatabase } from '../database'
 import { generateId } from '../lib/id'
 import { inboxItems, inboxItemTags } from '@memry/db-schema/schema/inbox'
 import { eq } from 'drizzle-orm'
