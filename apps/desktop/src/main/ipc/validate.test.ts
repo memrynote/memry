@@ -10,7 +10,8 @@ vi.mock('../lib/logger', () => ({
 }))
 
 vi.mock('../database', () => ({
-  getDatabase: vi.fn()
+  getDatabase: vi.fn(),
+  requireDatabase: vi.fn()
 }))
 
 import { getDatabase } from '../database'

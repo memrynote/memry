@@ -23,7 +23,8 @@ vi.mock('electron', () => ({
 }))
 
 vi.mock('../database', () => ({
-  getDatabase: vi.fn()
+  getDatabase: vi.fn(),
+  requireDatabase: vi.fn()
 }))
 
 vi.mock('./attachments', () => ({

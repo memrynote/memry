@@ -30,7 +30,8 @@ import {
 
 // Mock the database module
 vi.mock('../database', () => ({
-  getDatabase: vi.fn()
+  getDatabase: vi.fn(),
+  requireDatabase: vi.fn()
 }))
 
 vi.mock('../vault', () => ({
