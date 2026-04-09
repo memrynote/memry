@@ -3,8 +3,10 @@ import { render, screen, waitFor, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import React from 'react'
 import { TasksSettings } from './tasks-section'
+import { TasksProvider } from '@/contexts/tasks'
 import { renderWithProviders as renderWithQueryProviders } from '@tests/utils/render'
 import type { Project, Status } from '@/data/tasks-data'
+import type { Task } from '@/data/sample-tasks'
 
 beforeAll(() => {
   Element.prototype.hasPointerCapture = vi.fn().mockReturnValue(false)
@@ -58,7 +60,11 @@ const DEFAULTS = {
 }
 
 function renderWithProviders(ui: React.ReactElement) {
-  return renderWithQueryProviders(ui)
+  return renderWithQueryProviders(
+    <TasksProvider tasks={[] as Task[]} projects={MOCK_PROJECTS}>
+      {ui}
+    </TasksProvider>
+  )
 }
 
 describe('TasksSettings', () => {
@@ -67,40 +73,6 @@ describe('TasksSettings', () => {
     settingsMock.getTaskSettings = vi.fn().mockResolvedValue({ ...DEFAULTS })
     settingsMock.setTaskSettings = vi.fn().mockResolvedValue({ success: true })
     ;(window.api.onSettingsChanged as ReturnType<typeof vi.fn>).mockReturnValue(() => {})
-    ;(window.api.tasks.listProjects as ReturnType<typeof vi.fn>).mockResolvedValue({
-      projects: MOCK_PROJECTS.map((project, index) => ({
-        id: project.id,
-        name: project.name,
-        description: project.description || null,
-        icon: project.icon,
-        color: project.color,
-        position: index,
-        isInbox: project.isDefault,
-        createdAt: project.createdAt.toISOString(),
-        modifiedAt: project.createdAt.toISOString(),
-        archivedAt: project.isArchived ? project.createdAt.toISOString() : null,
-        taskCount: project.taskCount,
-        completedCount: 0,
-        overdueCount: 0
-      }))
-    })
-    ;(window.api.tasks.listStatuses as ReturnType<typeof vi.fn>).mockImplementation(
-      async (projectId: string) => {
-        const project = MOCK_PROJECTS.find((entry) => entry.id === projectId)
-        return (
-          project?.statuses.map((status, index) => ({
-            id: status.id,
-            projectId,
-            name: status.name,
-            color: status.color,
-            position: index,
-            isDefault: status.type === 'todo',
-            isDone: status.type === 'done',
-            createdAt: new Date('2026-01-01T00:00:00.000Z').toISOString()
-          })) ?? []
-        )
-      }
-    )
   })
 
   it('renders loading state initially', () => {
