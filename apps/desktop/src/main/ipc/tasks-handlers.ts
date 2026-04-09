@@ -43,15 +43,15 @@ function emitTaskEvent(channel: string, data: unknown): void {
   })
 }
 
-function createTasksPublisher(db: DataDb): TasksDomainPublisher {
+function createTasksPublisher(): TasksDomainPublisher {
   return {
     taskCreated: ({ task }) => {
       emitTaskEvent(TasksChannels.events.CREATED, { task })
-      syncTaskCreate(db, task.id)
+      syncTaskCreate(task.id)
     },
     taskUpdated: ({ id, task, changes, changedFields }) => {
       emitTaskEvent(TasksChannels.events.UPDATED, { id, task, changes })
-      syncTaskUpdate(db, id, changedFields)
+      syncTaskUpdate(id, changedFields)
     },
     taskDeleted: ({ id, snapshot }) => {
       syncTaskDelete(id, snapshot)
@@ -59,41 +59,41 @@ function createTasksPublisher(db: DataDb): TasksDomainPublisher {
     },
     taskCompleted: ({ id, task }) => {
       emitTaskEvent(TasksChannels.events.COMPLETED, { id, task })
-      syncTaskUpdate(db, id, ['completedAt'])
+      syncTaskUpdate(id, ['completedAt'])
     },
     taskMoved: ({ id, task, changedFields }) => {
       emitTaskEvent(TasksChannels.events.MOVED, { id, task })
-      syncTaskUpdate(db, id, changedFields)
+      syncTaskUpdate(id, changedFields)
     },
     taskReordered: ({ id, changedFields }) => {
-      syncTaskUpdate(db, id, changedFields)
+      syncTaskUpdate(id, changedFields)
     },
     projectCreated: ({ project }) => {
       emitTaskEvent(TasksChannels.events.PROJECT_CREATED, { project })
-      syncProjectCreate(db, project.id)
+      syncProjectCreate(project.id)
     },
     projectUpdated: ({ id, project, changedFields }) => {
       emitTaskEvent(TasksChannels.events.PROJECT_UPDATED, { id, project })
-      syncProjectUpdate(db, id, changedFields)
+      syncProjectUpdate(id, changedFields)
     },
     projectDeleted: ({ id, snapshot }) => {
       syncProjectDelete(id, snapshot)
       emitTaskEvent(TasksChannels.events.PROJECT_DELETED, { id })
     },
     statusCreated: ({ status }) => {
-      syncProjectUpdate(db, status.projectId)
+      syncProjectUpdate(status.projectId)
     },
     statusUpdated: ({ status }) => {
-      syncProjectUpdate(db, status.projectId)
+      syncProjectUpdate(status.projectId)
     },
     statusDeleted: ({ projectId }) => {
-      syncProjectUpdate(db, projectId)
+      syncProjectUpdate(projectId)
     }
   }
 }
 
 function createTaskDomain(db: DataDb) {
-  return createDesktopTasksDomain(db, createTasksPublisher(db), generateId)
+  return createDesktopTasksDomain(db, createTasksPublisher(), generateId)
 }
 
 export function registerTasksHandlers(): void {

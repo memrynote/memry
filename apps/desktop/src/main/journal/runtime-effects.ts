@@ -1,16 +1,20 @@
 import { getCrdtProvider } from '../sync/crdt-provider'
-import { getJournalSyncService } from '../sync/journal-sync'
+import {
+  enqueueLocalSyncCreate,
+  enqueueLocalSyncDelete,
+  enqueueLocalSyncUpdate
+} from '../sync/local-mutations'
 
 export function enqueueJournalCreate(noteId: string, date: string): void {
-  getJournalSyncService()?.enqueueCreate(noteId, date)
+  enqueueLocalSyncCreate('journal', noteId, date)
 }
 
 export function enqueueJournalUpdate(noteId: string, date: string): void {
-  getJournalSyncService()?.enqueueUpdate(noteId, date)
+  enqueueLocalSyncUpdate('journal', noteId, date)
 }
 
 export function enqueueJournalDelete(noteId: string, date: string): void {
-  getJournalSyncService()?.enqueueDelete(noteId, date)
+  enqueueLocalSyncDelete('journal', noteId, date)
 }
 
 export function initializeJournalCrdt(noteId: string, date: string, tags: string[]): void {
