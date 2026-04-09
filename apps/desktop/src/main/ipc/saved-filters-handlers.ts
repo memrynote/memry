@@ -87,7 +87,7 @@ export function registerSavedFiltersHandlers(): void {
 
       const apiFilter = toApiFilter(filter)!
       emitSavedFilterEvent(SavedFiltersChannels.events.CREATED, { savedFilter: apiFilter })
-      syncFilterCreate(db, id)
+      syncFilterCreate(id)
 
       return { success: true, savedFilter: apiFilter }
     })
@@ -116,7 +116,7 @@ export function registerSavedFiltersHandlers(): void {
         id: input.id,
         savedFilter: apiFilter
       })
-      syncFilterUpdate(db, input.id)
+      syncFilterUpdate(input.id)
 
       return { success: true, savedFilter: apiFilter }
     })

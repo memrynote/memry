@@ -2,24 +2,29 @@ import { updateNoteMetadata } from '@memry/storage-data'
 import { getDatabase } from '../database'
 import { attachmentEvents } from '../sync/attachment-events'
 import { getCrdtProvider } from '../sync/crdt-provider'
-import { getNoteSyncService } from '../sync/note-sync'
+import {
+  enqueueLocalSyncCreate,
+  enqueueLocalSyncDelete,
+  enqueueLocalSyncUpdate,
+  removePendingNoteSyncItems
+} from '../sync/local-mutations'
 
 export function syncNoteCreate(noteId: string, title: string, tags: string[]): void {
-  getNoteSyncService()?.enqueueCreate(noteId)
+  enqueueLocalSyncCreate('note', noteId)
   getCrdtProvider()
     ?.initForNote(noteId, { title }, tags)
     .catch(() => {})
 }
 
 export function syncNoteUpdate(noteId: string, title?: string): void {
-  getNoteSyncService()?.enqueueUpdate(noteId)
+  enqueueLocalSyncUpdate('note', noteId)
   if (title) {
     getCrdtProvider()?.updateMeta(noteId, { title })
   }
 }
 
 export function syncNoteDelete(noteId: string): void {
-  getNoteSyncService()?.enqueueDelete(noteId)
+  enqueueLocalSyncDelete('note', noteId)
 }
 
 export function emitNoteAttachmentSaved(noteId: string, diskPath: string): void {
@@ -32,10 +37,9 @@ export function setNoteLocalOnlyState(noteId: string, localOnly: boolean): void 
     syncPolicy: localOnly ? 'local-only' : 'sync'
   })
 
-  const syncService = getNoteSyncService()
   if (localOnly) {
-    syncService?.removeQueueItems(noteId)
+    removePendingNoteSyncItems(noteId)
   } else {
-    syncService?.enqueueUpdate(noteId)
+    enqueueLocalSyncUpdate('note', noteId)
   }
 }

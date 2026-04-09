@@ -18,6 +18,7 @@ import {
   writeJournalEntryWithContent
 } from '../../vault/journal'
 import { syncNoteToCache, deleteNoteFromCache } from '../../vault/note-sync'
+import { flushProjectionEvents } from '../../projections'
 import { createLogger } from '../../lib/logger'
 import { resolveClockConflict } from './types'
 import type { SyncItemHandler, ApplyContext, ApplyResult, DrizzleDb } from './types'
@@ -56,7 +57,7 @@ export const journalHandler: SyncItemHandler<JournalSyncPayload> = {
         null,
         data.properties ?? undefined
       )
-        .then(({ entry, fileContent, frontmatter }) => {
+        .then(async ({ entry, fileContent, frontmatter }) => {
           saveCanonicalNote(ctx.db, {
             id: itemId,
             path: getJournalRelativePath(entry.date),
@@ -80,6 +81,7 @@ export const journalHandler: SyncItemHandler<JournalSyncPayload> = {
             },
             { isNew: false }
           )
+          await flushProjectionEvents()
         })
         .catch((err) => {
           log.error('Failed to write synced journal entry', { itemId, date: data.date, error: err })
@@ -96,7 +98,7 @@ export const journalHandler: SyncItemHandler<JournalSyncPayload> = {
       null,
       data.properties ?? undefined
     )
-      .then(({ entry, fileContent, frontmatter }) => {
+      .then(async ({ entry, fileContent, frontmatter }) => {
         saveCanonicalNote(ctx.db, {
           id: itemId,
           path: getJournalRelativePath(entry.date),
@@ -120,6 +122,7 @@ export const journalHandler: SyncItemHandler<JournalSyncPayload> = {
           },
           { isNew: true }
         )
+        await flushProjectionEvents()
 
         ctx.emit(JournalChannels.events.ENTRY_CREATED, { date: data.date, source: 'sync' })
       })
@@ -154,6 +157,7 @@ export const journalHandler: SyncItemHandler<JournalSyncPayload> = {
     }
 
     deleteNoteFromCache(indexDb, itemId)
+    void flushProjectionEvents()
     ctx.emit(JournalChannels.events.ENTRY_DELETED, {
       date: existing.journalDate,
       source: 'sync'

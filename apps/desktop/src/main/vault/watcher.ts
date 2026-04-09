@@ -34,10 +34,11 @@ import { isSupportedPath, getFileType, getMimeType, getExtension } from '@memry/
 import { createLogger } from '../lib/logger'
 import { isWritebackIgnored, wasRecentNetworkUpdate } from '../sync/crdt-writeback'
 import { attachmentEvents } from '../sync/attachment-events'
-import { getNoteSyncService } from '../sync/note-sync'
-import { getJournalSyncService } from '../sync/journal-sync'
+import { flushProjectionEvents } from '../projections'
 import { getCrdtProvider, ORIGIN_LOCAL } from '../sync/crdt-provider'
 import { markdownToBlocks, blocksToYFragment } from '../sync/blocknote-converter'
+import { enqueueJournalCreate, enqueueJournalDelete, initializeJournalCrdt } from '../journal/runtime-effects'
+import { syncNoteCreate, syncNoteDelete, syncNoteUpdate } from '../notes/runtime-effects'
 
 const logger = createLogger('Watcher')
 
@@ -398,6 +399,7 @@ export class VaultWatcher {
       },
       { isNew: true }
     )
+    await flushProjectionEvents()
 
     const tags = syncResult.tags
     const properties = extractProperties(parsed.frontmatter)
@@ -422,19 +424,14 @@ export class VaultWatcher {
     const config = getConfig()
     if (isJournalPath(relativePath, config.journalFolder)) {
       const journalDate = extractJournalDate(relativePath)
-      getJournalSyncService()?.enqueueCreate(parsed.frontmatter.id, journalDate)
-      getCrdtProvider()
-        .initForNote(parsed.frontmatter.id, { date: journalDate }, tags)
-        .catch(() => {})
+      enqueueJournalCreate(parsed.frontmatter.id, journalDate)
+      initializeJournalCrdt(parsed.frontmatter.id, journalDate, tags)
     } else {
-      getNoteSyncService()?.enqueueCreate(parsed.frontmatter.id)
-      getCrdtProvider()
-        .initForNote(
-          parsed.frontmatter.id,
-          { title: parsed.frontmatter.title ?? path.basename(relativePath, '.md') },
-          tags
-        )
-        .catch(() => {})
+      syncNoteCreate(
+        parsed.frontmatter.id,
+        parsed.frontmatter.title ?? path.basename(relativePath, '.md'),
+        tags
+      )
     }
 
     // Emit event to renderer
@@ -497,6 +494,7 @@ export class VaultWatcher {
       createdAt: stats.birthtime,
       modifiedAt: stats.mtime
     })
+    await flushProjectionEvents()
 
     // Create list item for event
     const fileListItem: NoteListItem = {
@@ -509,7 +507,7 @@ export class VaultWatcher {
       wordCount: 0
     }
 
-    getNoteSyncService()?.enqueueCreate(id)
+    syncNoteCreate(id, title, [])
 
     // Emit event to renderer (using same channel for unified tree)
     emitEvent(NotesChannels.events.CREATED, {
@@ -592,6 +590,7 @@ export class VaultWatcher {
       },
       { isNew: false }
     )
+    await flushProjectionEvents()
 
     const tags = syncResult.tags
     const properties = extractProperties(parsed.frontmatter)
@@ -662,8 +661,9 @@ export class VaultWatcher {
       createdAt: new Date(cached.createdAt),
       modifiedAt: stats.mtime
     })
+    await flushProjectionEvents()
 
-    getNoteSyncService()?.enqueueUpdate(cached.id)
+    syncNoteUpdate(cached.id)
 
     // Emit update event
     emitEvent(NotesChannels.events.UPDATED, {
@@ -707,12 +707,13 @@ export class VaultWatcher {
       trackPendingDelete(cached.id, relativePath, async () => {
         // Enqueue sync delete BEFORE cache removal (enqueue reads cache for vector clock)
         if (isJournal && journalDate) {
-          getJournalSyncService()?.enqueueDelete(cached.id, journalDate)
+          enqueueJournalDelete(cached.id, journalDate)
         } else {
-          getNoteSyncService()?.enqueueDelete(cached.id)
+          syncNoteDelete(cached.id)
         }
 
         deleteNoteFromCache(db, cached.id)
+        await flushProjectionEvents()
 
         // Emit delete event
         emitEvent(NotesChannels.events.DELETED, {
@@ -729,7 +730,6 @@ export class VaultWatcher {
           })
         }
 
-        // Return void to match the expected signature
         await Promise.resolve()
       })
     } catch (error) {

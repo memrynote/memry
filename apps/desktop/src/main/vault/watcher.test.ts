@@ -11,6 +11,8 @@ import { MockBrowserWindow } from '@tests/utils/mock-electron'
 import { BrowserWindow } from 'electron'
 import { parseNote, serializeNote } from './frontmatter'
 import { trackPendingDelete, clearAllPendingDeletes, hasPendingDeletes } from './rename-tracker'
+import { createNoteDerivedStateProjector } from '../projections/projectors/note-derived-state-projector'
+import { startProjectionRuntime, stopProjectionRuntime } from '../projections'
 
 const mockWatch = vi.hoisted(() => vi.fn())
 const baseConfig = {
@@ -71,9 +73,12 @@ describe('vault watcher', () => {
     window = new MockBrowserWindow()
     vi.mocked(BrowserWindow.getAllWindows).mockReturnValue([window as never])
     mockWatch.mockReset()
+
+    startProjectionRuntime([createNoteDerivedStateProjector(() => vault.path)])
   })
 
-  afterEach(() => {
+  afterEach(async () => {
+    await stopProjectionRuntime({ drain: true })
     clearAllPendingDeletes()
     indexDb.close()
     dataDb.close()
