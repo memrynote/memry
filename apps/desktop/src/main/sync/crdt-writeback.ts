@@ -172,7 +172,7 @@ async function writebackExisting(
     },
     { isNew: false }
   )
-  await flushProjectionEvents()
+  void flushProjectionEvents()
 
   emitToRenderer(NotesChannels.events.UPDATED, { id: noteId, source: 'sync' })
   log.debug('Write-back complete', { noteId })
@@ -202,7 +202,7 @@ async function writebackNewNote(
     { id: noteId, path: relativePath, fileContent, frontmatter, parsedContent: markdown },
     { isNew: true }
   )
-  await flushProjectionEvents()
+  void flushProjectionEvents()
 
   emitToRenderer(NotesChannels.events.CREATED, {
     note: { id: noteId, path: relativePath, title },
@@ -269,7 +269,7 @@ async function writebackJournal(
       },
       { isNew: false }
     )
-    await flushProjectionEvents()
+    void flushProjectionEvents()
 
     log.debug('Journal write-back complete', { noteId, date })
     return
@@ -298,7 +298,7 @@ async function writebackJournal(
     { id: noteId, path: relativePath, fileContent, frontmatter, parsedContent: markdown },
     { isNew: true }
   )
-  await flushProjectionEvents()
+  void flushProjectionEvents()
 
   emitToRenderer(JournalChannels.events.ENTRY_CREATED, {
     date,
@@ -334,7 +334,7 @@ async function handleJournalCollision(
     { id: incomingId, path: relativePath, fileContent, frontmatter, parsedContent: markdown },
     { isNew: true }
   )
-  await flushProjectionEvents()
+  void flushProjectionEvents()
 
   emitToRenderer('sync:journal-conflict', {
     date,
@@ -353,7 +353,7 @@ export async function handleSyncDeletion(noteId: string): Promise<void> {
 
   const absolutePath = toAbsolutePath(cached.path)
   deleteNoteFromCache(indexDb, noteId)
-  await flushProjectionEvents()
+  void flushProjectionEvents()
 
   ignoredWrites.set(absolutePath, Date.now())
   await deleteFile(absolutePath).catch((err) => {

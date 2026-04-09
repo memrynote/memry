@@ -81,7 +81,7 @@ export const journalHandler: SyncItemHandler<JournalSyncPayload> = {
             },
             { isNew: false }
           )
-          await flushProjectionEvents()
+          void flushProjectionEvents()
         })
         .catch((err) => {
           log.error('Failed to write synced journal entry', { itemId, date: data.date, error: err })
@@ -122,7 +122,7 @@ export const journalHandler: SyncItemHandler<JournalSyncPayload> = {
           },
           { isNew: true }
         )
-        await flushProjectionEvents()
+        void flushProjectionEvents()
 
         ctx.emit(JournalChannels.events.ENTRY_CREATED, { date: data.date, source: 'sync' })
       })

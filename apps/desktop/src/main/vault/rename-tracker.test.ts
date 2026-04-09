@@ -25,6 +25,7 @@ import { getDatabase, getIndexDatabase } from '../database'
 import {
   trackPendingDelete,
   checkForRename,
+  processRename,
   clearPendingDelete,
   clearAllPendingDeletes,
   hasPendingDeletes,
@@ -70,9 +71,9 @@ describe('rename-tracker', () => {
   })
 
   // ==========================================================================
-  // T597: checkForRename updates cache and emits RENAMED event
+  // T597: checkForRename reports rename without mutating cache inline
   // ==========================================================================
-  it('updates cache and emits rename event on match', async () => {
+  it('returns the old path and leaves cache updates to the caller', async () => {
     const now = new Date().toISOString()
     indexDb.db
       .insert(noteCache)
@@ -94,10 +95,15 @@ describe('rename-tracker', () => {
 
     expect(oldPath).toBe('notes/old-name.md')
 
-    const updated = indexDb.db.select().from(noteCache).where(eq(noteCache.id, 'note-2')).get()
+    const unchanged = indexDb.db.select().from(noteCache).where(eq(noteCache.id, 'note-2')).get()
 
-    expect(updated?.path).toBe('notes/new-name.md')
-    expect(updated?.title).toBe('new-name')
+    expect(unchanged?.path).toBe('notes/old-name.md')
+    expect(unchanged?.title).toBe('old-name')
+    expect(window.webContents.send).not.toHaveBeenCalled()
+  })
+
+  it('emits rename event when the caller completes the rename', async () => {
+    processRename('note-2', 'notes/old-name.md', 'notes/new-name.md')
 
     expect(window.webContents.send).toHaveBeenCalledWith(
       NotesChannels.events.RENAMED,
