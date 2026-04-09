@@ -43,8 +43,6 @@ import type {
 } from '@memry/rpc/inbox'
 import { createWindowApiForwarder } from './window-api-forwarder'
 
-type FilingHistoryResponse = InboxFilingHistoryResponse
-
 export type {
   BulkArchiveInput,
   BulkFileInput,
@@ -61,7 +59,6 @@ export type {
   CaptureVoiceInput,
   FileItemInput,
   FileResponse,
-  FilingHistoryResponse,
   GetFilingHistoryInput,
   GetJobsInput,
   InboxArchivedEvent,
