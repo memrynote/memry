@@ -13,7 +13,7 @@
 import { BrowserWindow } from 'electron'
 import { eq, and, isNotNull, lte, isNull } from 'drizzle-orm'
 import { createLogger } from '../lib/logger'
-import { getDatabase, requireDatabase, type DataDb } from '../database'
+import { getDatabase, requireDatabase } from '../database'
 import { getStatus } from '../vault'
 import { inboxItems, inboxItemTags } from '@memry/db-schema/schema/inbox'
 import { InboxChannels } from '@memry/contracts/ipc-channels'
