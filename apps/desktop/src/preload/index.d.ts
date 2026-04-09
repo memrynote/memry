@@ -37,11 +37,9 @@ export interface VaultInfo {
   isDefault: boolean
 }
 
-// Note types
 export type NoteFrontmatter = NotesRpc.Note['frontmatter']
 export type Note = NotesRpc.Note
 
-// T020: Property types — canonical set from @memry/contracts/property-types
 export type PropertyType =
   | 'text'
   | 'number'
@@ -70,7 +68,6 @@ export interface SetPropertiesResponse {
 
 export type CreatePropertyDefinitionResponse = NotesRpc.CreatePropertyDefinitionResponse
 
-// T070: Attachment types
 export type AttachmentResult = NotesRpc.AttachmentResult
 export type AttachmentInfo = NotesRpc.AttachmentInfo
 export type DeleteAttachmentResponse = NotesRpc.DeleteAttachmentResponse
@@ -146,11 +143,9 @@ export interface TemplateListResponse {
 export type FolderConfig = NotesRpc.FolderConfig
 export type FolderInfo = NotesRpc.FolderInfo
 
-// Export types (T106, T108)
 export type ExportNoteInput = NotesRpc.ExportNoteInput
 export type ExportNoteResponse = NotesRpc.ExportNoteResponse
 
-// Version History types (T110-T114)
 export type SnapshotReason = NotesRpc.SnapshotListItem['reason']
 export type SnapshotListItem = NotesRpc.SnapshotListItem
 export type SnapshotDetail = NotesRpc.SnapshotDetail
@@ -198,7 +193,6 @@ export interface IndexRecoveredEvent {
 
 export type RepeatConfig = TasksRpc.RepeatConfig
 
-// Task types
 export type Task = TasksRpc.Task
 export type TaskListItem = TasksRpc.TaskListItem
 export type Project = TasksRpc.Project
@@ -692,7 +686,6 @@ export interface TagsClientAPI {
   mergeTag(input: { source: string; target: string }): Promise<MergeTagResponse>
 }
 
-// Inbox types
 export type InboxItemType = InboxRpc.InboxItemType
 export type InboxProcessingStatus = InboxRpc.InboxProcessingStatus
 export type InboxFilingAction = InboxRpc.InboxFilingAction
@@ -701,7 +694,7 @@ export type InboxJobStatus = InboxRpc.InboxJobStatus
 export type InboxItem = InboxRpc.InboxItem
 export type InboxItemListItem = InboxRpc.InboxItemListItem
 export type InboxListResponse = InboxRpc.InboxListResponse
-export type InboxDuplicateMatch = NonNullable<InboxRpc.InboxCaptureResponse['existingItem']>
+export type InboxDuplicateMatch = InboxRpc.InboxDuplicateMatch
 export type InboxCaptureResponse = InboxRpc.InboxCaptureResponse
 export type InboxFileResponse = InboxRpc.InboxFileResponse
 export type InboxBulkResponse = InboxRpc.InboxBulkResponse
@@ -709,7 +702,7 @@ export type InboxFilingHistoryEntry = InboxRpc.InboxFilingHistoryEntry
 export type InboxFilingHistoryResponse = InboxRpc.InboxFilingHistoryResponse
 export type InboxFilingSuggestion = InboxRpc.InboxFilingSuggestion
 export type InboxSuggestionsResponse = InboxRpc.InboxSuggestionsResponse
-export type InboxAgeDistribution = InboxRpc.InboxStats['ageDistribution']
+export type InboxAgeDistribution = InboxRpc.InboxAgeDistribution
 export type InboxStats = InboxRpc.InboxStats
 export type InboxCapturePattern = InboxRpc.InboxCapturePattern
 export type InboxJob = InboxRpc.InboxJob
@@ -725,7 +718,6 @@ export type InboxMetadataCompleteEvent = InboxRpc.InboxMetadataCompleteEvent
 export type InboxProcessingErrorEvent = InboxRpc.InboxProcessingErrorEvent
 export type LinkPreviewData = InboxRpc.LinkPreviewData
 
-// Inbox client API interface
 export type InboxClientAPI = InboxRpc.InboxClientAPI
 
 // Search types

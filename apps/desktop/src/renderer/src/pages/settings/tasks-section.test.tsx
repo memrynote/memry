@@ -61,7 +61,7 @@ const DEFAULTS = {
 
 function renderWithProviders(ui: React.ReactElement) {
   return renderWithQueryProviders(
-    <TasksProvider initialTasks={[] as Task[]} initialProjects={MOCK_PROJECTS}>
+    <TasksProvider tasks={[] as Task[]} projects={MOCK_PROJECTS}>
       {ui}
     </TasksProvider>
   )

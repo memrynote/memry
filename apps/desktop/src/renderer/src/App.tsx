@@ -264,7 +264,7 @@ function App(): React.JSX.Element {
       for (const [, taskIds] of Object.entries(updates)) {
         if (!taskIds) continue
         const positions = taskIds.map((_, i) => i)
-        tasksService.reorder(taskIds, positions)
+        void tasksService.reorder(taskIds, positions)
       }
     },
     [taskOrder]
