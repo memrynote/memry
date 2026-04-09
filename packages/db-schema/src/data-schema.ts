@@ -7,24 +7,24 @@
  * @module db/schema/data-schema
  */
 
-export * from './schema/projects'
-export * from './schema/statuses'
-export * from './schema/tasks'
-export * from './schema/task-relations'
-export * from './schema/inbox'
-export * from './schema/settings'
-export * from './schema/bookmarks'
-export * from './schema/reminders'
-export * from './schema/note-positions'
-export * from './schema/note-metadata'
-export * from './schema/tag-definitions'
-export * from './schema/sync-devices'
-export * from './schema/sync-queue'
-export * from './schema/sync-state'
-export * from './schema/sync-history'
-export * from './schema/search-reasons'
+export * from './schema/projects.ts'
+export * from './schema/statuses.ts'
+export * from './schema/tasks.ts'
+export * from './schema/task-relations.ts'
+export * from './schema/inbox.ts'
+export * from './schema/settings.ts'
+export * from './schema/bookmarks.ts'
+export * from './schema/reminders.ts'
+export * from './schema/note-positions.ts'
+export * from './schema/note-metadata.ts'
+export * from './schema/tag-definitions.ts'
+export * from './schema/sync-devices.ts'
+export * from './schema/sync-queue.ts'
+export * from './schema/sync-state.ts'
+export * from './schema/sync-history.ts'
+export * from './schema/search-reasons.ts'
 export {
   propertyDefinitions,
   type PropertyDefinition,
   type NewPropertyDefinition
-} from './schema/notes-cache'
+} from './schema/notes-cache.ts'

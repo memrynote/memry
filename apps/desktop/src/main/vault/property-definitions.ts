@@ -3,7 +3,7 @@ import matter from 'gray-matter'
 import { createLogger } from '../lib/logger'
 import { atomicWrite, safeRead } from './file-ops'
 import { getMemryDir } from './init'
-import { getDatabase, getIndexDatabase, type DrizzleDb } from '../database'
+import { getDatabase, getIndexDatabase, type DataDb, type IndexDb } from '../database'
 import {
   PropertyDefinitionsFileSchema,
   type PropertyDefinition,
@@ -216,15 +216,15 @@ export class PropertyDefinitionsService {
 
   private rebuildDbCache(): void {
     try {
-      this.rebuildSingleDbCache(getDatabase() as DrizzleDb)
-      this.rebuildSingleDbCache(getIndexDatabase() as DrizzleDb)
+      this.rebuildSingleDbCache(getDatabase())
+      this.rebuildSingleDbCache(getIndexDatabase())
       logger.debug('Rebuilt DB cache with', this.cache.size, 'definitions')
     } catch (err) {
       logger.warn('Failed to rebuild property definitions DB cache:', err)
     }
   }
 
-  private rebuildSingleDbCache(db: DrizzleDb): void {
+  private rebuildSingleDbCache(db: DataDb | IndexDb): void {
     db.delete(propertyDefinitionsTable).run()
 
     for (const def of this.cache.values()) {

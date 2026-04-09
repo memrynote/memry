@@ -1,5 +1,5 @@
 import { sql } from 'drizzle-orm'
-import type { DrizzleDb } from './client'
+import type { DataDb } from './client'
 
 /**
  * FTS5 Full-Text Search for Tasks
@@ -11,7 +11,7 @@ import type { DrizzleDb } from './client'
  * @module database/fts-tasks
  */
 
-export function createFtsTasksTable(db: DrizzleDb): void {
+export function createFtsTasksTable(db: DataDb): void {
   db.run(sql`
     CREATE VIRTUAL TABLE IF NOT EXISTS fts_tasks USING fts5(
       id UNINDEXED,
@@ -23,14 +23,14 @@ export function createFtsTasksTable(db: DrizzleDb): void {
   `)
 }
 
-export function createFtsTasksTriggers(db: DrizzleDb): void {
+export function createFtsTasksTriggers(db: DataDb): void {
   db.run(sql`DROP TRIGGER IF EXISTS tasks_ai`)
   db.run(sql`DROP TRIGGER IF EXISTS tasks_ad`)
   db.run(sql`DROP TRIGGER IF EXISTS tasks_au`)
 }
 
 export function updateFtsTaskContent(
-  db: DrizzleDb,
+  db: DataDb,
   taskId: string,
   description: string,
   tags: string[]
@@ -44,7 +44,7 @@ export function updateFtsTaskContent(
 }
 
 export function insertFtsTask(
-  db: DrizzleDb,
+  db: DataDb,
   taskId: string,
   title: string,
   description: string,
@@ -57,15 +57,15 @@ export function insertFtsTask(
   `)
 }
 
-export function deleteFtsTask(db: DrizzleDb, taskId: string): void {
+export function deleteFtsTask(db: DataDb, taskId: string): void {
   db.run(sql`DELETE FROM fts_tasks WHERE id = ${taskId}`)
 }
 
-export function clearFtsTasksTable(db: DrizzleDb): void {
+export function clearFtsTasksTable(db: DataDb): void {
   db.run(sql`DELETE FROM fts_tasks`)
 }
 
-export function initializeFtsTasks(db: DrizzleDb): void {
+export function initializeFtsTasks(db: DataDb): void {
   createFtsTasksTable(db)
   createFtsTasksTriggers(db)
 }

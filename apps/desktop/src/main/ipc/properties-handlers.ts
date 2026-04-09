@@ -17,22 +17,21 @@ import {
   type SetPropertiesResponse,
   type RenamePropertyResponse
 } from '@memry/contracts/properties-api'
-import type { PropertyValue } from '@main/database/queries/notes'
+import type { PropertyValue } from '../notes/store'
 import { createLogger } from '../lib/logger'
 import { createValidatedHandler, withErrorHandler } from './validate'
-import { getNoteCacheById, getNoteProperties } from '@main/database/queries/notes'
+import { getNoteCacheById, getNoteProperties, getJournalEntryByDate } from '../notes/store'
 import { getDatabase, getIndexDatabase } from '../database'
 import { updateNote } from '../vault/notes'
-import { getNoteSyncService } from '../sync/note-sync'
-import { getJournalSyncService } from '../sync/journal-sync'
 import {
   readJournalEntry,
   writeJournalEntryWithContent,
   getJournalRelativePath
 } from '../vault/journal'
-import { syncNoteToCache } from '../vault/note-sync'
-import { getJournalEntryByDate } from '@main/database/queries/notes'
 import { getCanonicalJournalByDate } from '@memry/domain-notes'
+import { enqueueJournalUpdate } from '../journal/runtime-effects'
+import { syncNoteUpdate } from '../notes/runtime-effects'
+import { syncJournalCache } from '../vault/journal-cache-sync'
 
 const logger = createLogger('IPC:Properties')
 
@@ -78,10 +77,10 @@ export function registerPropertiesHandlers(): void {
 
         if (entity.date) {
           await updateJournalProperties(entity.date, input.properties)
-          getJournalSyncService()?.enqueueUpdate(input.entityId, entity.date)
+          enqueueJournalUpdate(input.entityId, entity.date)
         } else {
           await updateNote({ id: input.entityId, properties: input.properties })
-          getNoteSyncService()?.enqueueUpdate(input.entityId)
+          syncNoteUpdate(input.entityId)
         }
         return { success: true }
       }, 'Failed to set properties')
@@ -125,10 +124,10 @@ export function registerPropertiesHandlers(): void {
 
         if (entity.date) {
           await updateJournalProperties(entity.date, newProperties)
-          getJournalSyncService()?.enqueueUpdate(input.entityId, entity.date)
+          enqueueJournalUpdate(input.entityId, entity.date)
         } else {
           await updateNote({ id: input.entityId, properties: newProperties })
-          getNoteSyncService()?.enqueueUpdate(input.entityId)
+          syncNoteUpdate(input.entityId)
         }
 
         return { success: true }
@@ -187,7 +186,7 @@ async function updateJournalProperties(
   const cached = getJournalEntryByDate(db, date)
   const noteId = canonical?.id ?? cached?.id ?? entry.id
 
-  syncNoteToCache(
+  syncJournalCache(
     db,
     {
       id: noteId,

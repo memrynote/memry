@@ -1,13 +1,10 @@
 import { eq, isNull } from 'drizzle-orm'
-import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3'
 import { noteCache, noteTags, noteLinks } from '@memry/db-schema/schema/notes-cache'
 import { tasks } from '@memry/db-schema/schema/tasks'
 import { taskNotes } from '@memry/db-schema/schema/task-relations'
 import { projects } from '@memry/db-schema/schema/projects'
-import * as schema from '@memry/db-schema/schema'
 import type { GraphNode, GraphEdge, GraphDataResponse } from '@memry/contracts/graph-api'
-
-type DrizzleDb = BetterSQLite3Database<typeof schema>
+import type { DataDb, IndexDb } from '../types'
 
 const NODE_COLORS: Record<GraphNode['type'], string> = {
   note: 'var(--graph-node-note)',
@@ -18,7 +15,7 @@ const NODE_COLORS: Record<GraphNode['type'], string> = {
 
 const GHOST_COLOR = 'var(--graph-ghost-node)'
 
-export function getGraphData(indexDb: DrizzleDb, dataDb: DrizzleDb): GraphDataResponse {
+export function getGraphData(indexDb: IndexDb, dataDb: DataDb): GraphDataResponse {
   const nodes: GraphNode[] = []
   const edges: GraphEdge[] = []
   const nodeIds = new Set<string>()
@@ -204,8 +201,8 @@ export function getGraphData(indexDb: DrizzleDb, dataDb: DrizzleDb): GraphDataRe
 }
 
 export function getLocalGraph(
-  indexDb: DrizzleDb,
-  dataDb: DrizzleDb,
+  indexDb: IndexDb,
+  dataDb: DataDb,
   noteId: string,
   depth: number
 ): GraphDataResponse {

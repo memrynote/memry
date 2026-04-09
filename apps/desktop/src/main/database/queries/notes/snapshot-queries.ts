@@ -1,19 +1,16 @@
 import { eq, asc, desc, inArray, count, and } from 'drizzle-orm'
-import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3'
 import {
   noteSnapshots,
   type NoteSnapshot,
   type NewNoteSnapshot
 } from '@memry/db-schema/schema/notes-cache'
-import * as schema from '@memry/db-schema/schema'
+import type { IndexDb } from '../../types'
 
-type DrizzleDb = BetterSQLite3Database<typeof schema>
-
-export function insertNoteSnapshot(db: DrizzleDb, snapshot: NewNoteSnapshot): NoteSnapshot {
+export function insertNoteSnapshot(db: IndexDb, snapshot: NewNoteSnapshot): NoteSnapshot {
   return db.insert(noteSnapshots).values(snapshot).returning().get()
 }
 
-export function getNoteSnapshots(db: DrizzleDb, noteId: string, limit = 50): NoteSnapshot[] {
+export function getNoteSnapshots(db: IndexDb, noteId: string, limit = 50): NoteSnapshot[] {
   return db
     .select()
     .from(noteSnapshots)
@@ -23,11 +20,11 @@ export function getNoteSnapshots(db: DrizzleDb, noteId: string, limit = 50): Not
     .all()
 }
 
-export function getNoteSnapshotById(db: DrizzleDb, snapshotId: string): NoteSnapshot | undefined {
+export function getNoteSnapshotById(db: IndexDb, snapshotId: string): NoteSnapshot | undefined {
   return db.select().from(noteSnapshots).where(eq(noteSnapshots.id, snapshotId)).get()
 }
 
-export function getLatestSnapshot(db: DrizzleDb, noteId: string): NoteSnapshot | undefined {
+export function getLatestSnapshot(db: IndexDb, noteId: string): NoteSnapshot | undefined {
   return db
     .select()
     .from(noteSnapshots)
@@ -37,11 +34,7 @@ export function getLatestSnapshot(db: DrizzleDb, noteId: string): NoteSnapshot |
     .get()
 }
 
-export function snapshotExistsWithHash(
-  db: DrizzleDb,
-  noteId: string,
-  contentHash: string
-): boolean {
+export function snapshotExistsWithHash(db: IndexDb, noteId: string, contentHash: string): boolean {
   const result = db
     .select({ id: noteSnapshots.id })
     .from(noteSnapshots)
@@ -51,15 +44,15 @@ export function snapshotExistsWithHash(
   return result !== undefined
 }
 
-export function deleteNoteSnapshot(db: DrizzleDb, snapshotId: string): void {
+export function deleteNoteSnapshot(db: IndexDb, snapshotId: string): void {
   db.delete(noteSnapshots).where(eq(noteSnapshots.id, snapshotId)).run()
 }
 
-export function deleteNoteSnapshots(db: DrizzleDb, noteId: string): void {
+export function deleteNoteSnapshots(db: IndexDb, noteId: string): void {
   db.delete(noteSnapshots).where(eq(noteSnapshots.noteId, noteId)).run()
 }
 
-export function countNoteSnapshots(db: DrizzleDb, noteId: string): number {
+export function countNoteSnapshots(db: IndexDb, noteId: string): number {
   const result = db
     .select({ count: count() })
     .from(noteSnapshots)
@@ -68,7 +61,7 @@ export function countNoteSnapshots(db: DrizzleDb, noteId: string): number {
   return result?.count ?? 0
 }
 
-export function pruneOldSnapshots(db: DrizzleDb, noteId: string, keepCount: number): number {
+export function pruneOldSnapshots(db: IndexDb, noteId: string, keepCount: number): number {
   const snapshotsToKeep = db
     .select({ id: noteSnapshots.id })
     .from(noteSnapshots)
@@ -105,7 +98,7 @@ export function pruneOldSnapshots(db: DrizzleDb, noteId: string, keepCount: numb
 }
 
 export function getNoteSnapshotStats(
-  db: DrizzleDb,
+  db: IndexDb,
   noteId: string
 ): { count: number; oldestDate: string | null; newestDate: string | null } {
   const snapshots = db

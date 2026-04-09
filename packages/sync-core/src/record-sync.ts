@@ -1,5 +1,5 @@
 import type { SyncItemType, VectorClock } from '@memry/contracts/sync-api'
-import type { QueueLike } from './adapter'
+import type { QueueLike } from './adapter.ts'
 
 export interface RecordSyncControllerDeps<
   TLocal,

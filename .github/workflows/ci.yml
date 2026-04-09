@@ -41,10 +41,11 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Check architecture boundaries
+      - name: Check contracts, architecture, and IPC boundaries
         run: |
           pnpm check:contracts
           pnpm check:architecture
+          pnpm ipc:check
 
       - name: Lint
         run: pnpm lint

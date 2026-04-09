@@ -1,7 +1,7 @@
 import { z, ZodError } from 'zod'
 import type { IpcMainInvokeEvent } from 'electron'
 import { createLogger } from '../lib/logger'
-import { getDatabase, type DrizzleDb } from '../database'
+import { getDatabase, type DataDb } from '../database'
 
 const ipcLog = createLogger('IPC')
 
@@ -111,11 +111,11 @@ export function withErrorHandler<TArgs extends unknown[], TResult>(
 }
 
 export function withDb<TArgs extends unknown[], TResult>(
-  handler: (db: DrizzleDb, ...args: TArgs) => TResult | Promise<TResult>,
+  handler: (db: DataDb, ...args: TArgs) => TResult | Promise<TResult>,
   fallback = 'Operation failed'
 ): (...args: TArgs) => Promise<TResult | { success: false; error: string }> {
   return async (...args: TArgs) => {
-    let db: DrizzleDb
+    let db: DataDb
     try {
       db = getDatabase()
     } catch {

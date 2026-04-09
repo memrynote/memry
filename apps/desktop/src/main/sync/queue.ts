@@ -1,13 +1,10 @@
 import { eq, and, sql, desc, asc, lt, lte, count } from 'drizzle-orm'
 import { syncQueue } from '@memry/db-schema/schema/sync-queue'
 import type { SyncItemType, SyncOperation } from '@memry/contracts/sync-api'
-import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3'
-import type * as dbSchema from '@memry/db-schema/schema'
+import type { DataDb } from '../database'
 import { createLogger } from '../lib/logger'
 
 const log = createLogger('SyncQueue')
-
-type DrizzleDb = BetterSQLite3Database<typeof dbSchema>
 
 export const DEFAULT_MAX_ATTEMPTS = 5
 
@@ -30,7 +27,7 @@ export interface QueueStats {
 }
 
 export class SyncQueueManager {
-  constructor(private readonly db: DrizzleDb) {}
+  constructor(private readonly db: DataDb) {}
 
   private onItemEnqueued: (() => void) | null = null
 

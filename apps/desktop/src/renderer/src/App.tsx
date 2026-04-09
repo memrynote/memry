@@ -49,10 +49,7 @@ import { useThemeSync } from '@/hooks/use-theme-sync'
 import { useGeneralSettings } from '@/hooks/use-general-settings'
 import { createLogger } from '@/lib/logger'
 import { getStartupTheme, THEME_STORAGE_KEY } from '@/lib/startup-theme'
-import {
-  useTaskWorkspaceData,
-  useTaskWorkspaceMutations
-} from '@/features/tasks/use-task-queries'
+import { useTaskWorkspaceData, useTaskWorkspaceMutations } from '@/features/tasks/use-task-queries'
 import { useTaskUiStore } from '@/features/tasks/use-task-ui-store'
 import { getFilteredTasks } from '@/lib/task-utils'
 
@@ -225,8 +222,11 @@ function App(): React.JSX.Element {
   const [currentPage] = useState<AppPage>('inbox')
 
   const { tasks, projects } = useTaskWorkspaceData({ enabled: isVaultOpen })
-  const { setProjects, updateTask: handleUpdateTask, deleteTask: handleDeleteTask } =
-    useTaskWorkspaceMutations()
+  const {
+    setProjects,
+    updateTask: handleUpdateTask,
+    deleteTask: handleDeleteTask
+  } = useTaskWorkspaceMutations()
   const { selectedTaskIds, setSelectedTaskIds: updateSelectedTaskIds } = useTaskUiStore()
   const selectedTaskIdsRef = useRef(selectedTaskIds)
 

@@ -30,9 +30,8 @@ import type {
 import { GRAPH_SETTINGS_DEFAULTS } from '@memry/contracts/graph-api'
 import type { GraphSettings } from '@memry/contracts/graph-api'
 import { createLogger } from '../lib/logger'
-import { getSettingsSyncManager } from '../sync/settings-sync'
 import { getDatabase } from '../database'
-import { getSetting, setSetting, deleteSetting } from '@main/database/queries/settings'
+import { getSetting, setSetting, deleteSetting } from '../settings/settings-store'
 import { withErrorHandler } from './validate'
 import { initEmbeddingModel, getModelInfo, isModelLoaded, isModelLoading } from '../lib/embeddings'
 import { rebuildProjections } from '../projections'
@@ -44,6 +43,7 @@ import {
   hasVoiceTranscriptionOpenAIApiKey,
   setVoiceTranscriptionOpenAIApiKey
 } from '../inbox/voice-transcription-keychain'
+import { syncSettingsUpdates } from '../settings/runtime-effects'
 
 // ============================================================================
 // Settings Keys
@@ -620,14 +620,7 @@ export function registerSettingsHandlers(): void {
           }
         }
 
-        const manager = getSettingsSyncManager()
-        if (manager) {
-          for (const field of GENERAL_SYNCABLE_FIELDS) {
-            if (updates[field] !== undefined) {
-              manager.updateField(`general.${field}`, updates[field], 'local')
-            }
-          }
-        }
+        syncSettingsUpdates('general', updates, GENERAL_SYNCABLE_FIELDS)
       }
       return result
     }

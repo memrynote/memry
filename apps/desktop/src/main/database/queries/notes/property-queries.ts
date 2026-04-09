@@ -1,5 +1,4 @@
 import { eq, and, inArray, sql } from 'drizzle-orm'
-import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3'
 import {
   noteCache,
   noteProperties,
@@ -10,10 +9,8 @@ import {
   type NewPropertyDefinition,
   type PropertyType
 } from '@memry/db-schema/schema/notes-cache'
-import * as schema from '@memry/db-schema/schema'
+import type { IndexDb } from '../../types'
 import { serializeValue, deserializeValue } from './query-helpers'
-
-type DrizzleDb = BetterSQLite3Database<typeof schema>
 
 // ============================================================================
 // Property Value Operations
@@ -26,7 +23,7 @@ export interface PropertyValue {
 }
 
 export function setNoteProperties(
-  db: DrizzleDb,
+  db: IndexDb,
   noteId: string,
   properties: Record<string, unknown>,
   getType: (name: string, value: unknown) => PropertyType
@@ -50,7 +47,7 @@ export function setNoteProperties(
   }
 }
 
-export function getNoteProperties(db: DrizzleDb, noteId: string): PropertyValue[] {
+export function getNoteProperties(db: IndexDb, noteId: string): PropertyValue[] {
   const results = db
     .select()
     .from(noteProperties)
@@ -65,7 +62,7 @@ export function getNoteProperties(db: DrizzleDb, noteId: string): PropertyValue[
   }))
 }
 
-export function getNotePropertiesAsRecord(db: DrizzleDb, noteId: string): Record<string, unknown> {
+export function getNotePropertiesAsRecord(db: IndexDb, noteId: string): Record<string, unknown> {
   const properties = getNoteProperties(db, noteId)
   const result: Record<string, unknown> = {}
   for (const prop of properties) {
@@ -75,7 +72,7 @@ export function getNotePropertiesAsRecord(db: DrizzleDb, noteId: string): Record
 }
 
 export function getPropertiesForNotes(
-  db: DrizzleDb,
+  db: IndexDb,
   noteIds: string[]
 ): Map<string, Record<string, unknown>> {
   if (noteIds.length === 0) {
@@ -109,12 +106,12 @@ export function getPropertiesForNotes(
   return propsMap
 }
 
-export function deleteNoteProperties(db: DrizzleDb, noteId: string): void {
+export function deleteNoteProperties(db: IndexDb, noteId: string): void {
   db.delete(noteProperties).where(eq(noteProperties.noteId, noteId)).run()
 }
 
 export function filterNotesByProperty(
-  db: DrizzleDb,
+  db: IndexDb,
   propertyName: string,
   propertyValue: string
 ): NoteCache[] {
@@ -136,19 +133,19 @@ export function filterNotesByProperty(
 // Property Definitions
 // ============================================================================
 
-export function getPropertyDefinition(db: DrizzleDb, name: string): PropertyDefinition | undefined {
+export function getPropertyDefinition(db: IndexDb, name: string): PropertyDefinition | undefined {
   return db.select().from(propertyDefinitions).where(eq(propertyDefinitions.name, name)).get()
 }
 
 export function insertPropertyDefinition(
-  db: DrizzleDb,
+  db: IndexDb,
   definition: NewPropertyDefinition
 ): PropertyDefinition {
   return db.insert(propertyDefinitions).values(definition).returning().get()
 }
 
 export function updatePropertyDefinition(
-  db: DrizzleDb,
+  db: IndexDb,
   name: string,
   updates: Partial<Omit<PropertyDefinition, 'name' | 'createdAt'>>
 ): PropertyDefinition | undefined {
@@ -160,16 +157,16 @@ export function updatePropertyDefinition(
     .get()
 }
 
-export function deletePropertyDefinition(db: DrizzleDb, name: string): void {
+export function deletePropertyDefinition(db: IndexDb, name: string): void {
   db.delete(propertyDefinitions).where(eq(propertyDefinitions.name, name)).run()
 }
 
-export function getAllPropertyDefinitions(db: DrizzleDb): PropertyDefinition[] {
+export function getAllPropertyDefinitions(db: IndexDb): PropertyDefinition[] {
   return db.select().from(propertyDefinitions).all()
 }
 
 export function ensurePropertyDefinition(
-  db: DrizzleDb,
+  db: IndexDb,
   name: string,
   inferredType: PropertyType
 ): PropertyDefinition {
@@ -188,7 +185,7 @@ export function ensurePropertyDefinition(
 }
 
 export function getPropertyType(
-  db: DrizzleDb,
+  db: IndexDb,
   name: string,
   value: unknown,
   inferFn: (name: string, value: unknown) => PropertyType

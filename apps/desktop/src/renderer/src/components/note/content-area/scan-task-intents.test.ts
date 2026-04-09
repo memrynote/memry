@@ -154,10 +154,7 @@ describe('analyzeTaskIntents', () => {
   describe('un-indented (Shift+Tab) detection', () => {
     it('should detect a top-level taskBlock with parentTaskId still set as un-indented', () => {
       // #given - subtask was promoted but parentTaskId prop is stale
-      const blocks = [
-        tb('tb1', 'task-a', 'Parent', ''),
-        tb('tb2', 'task-b', 'Was sub', 'task-a')
-      ]
+      const blocks = [tb('tb1', 'task-a', 'Parent', ''), tb('tb2', 'task-b', 'Was sub', 'task-a')]
 
       // #when
       const result = analyzeTaskIntents(blocks, new Set())

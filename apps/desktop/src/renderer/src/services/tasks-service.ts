@@ -76,7 +76,8 @@ export const tasksService: TasksClientAPI = {
   deleteProject: (id) => window.api.tasks.deleteProject(id),
   listProjects: () => window.api.tasks.listProjects(),
   archiveProject: (id) => window.api.tasks.archiveProject(id),
-  reorderProjects: (projectIds, positions) => window.api.tasks.reorderProjects(projectIds, positions),
+  reorderProjects: (projectIds, positions) =>
+    window.api.tasks.reorderProjects(projectIds, positions),
   createStatus: (input) => window.api.tasks.createStatus(input),
   updateStatus: (id, updates) => window.api.tasks.updateStatus(id, updates),
   deleteStatus: (id) => window.api.tasks.deleteStatus(id),

@@ -4,7 +4,7 @@ import { eq } from 'drizzle-orm'
 import { KEYCHAIN_ENTRIES } from '@memry/contracts/crypto'
 import { createCrdtSyncAdapter, createSyncAdapterRegistry } from '@memry/sync-core'
 import { syncDevices } from '@memry/db-schema/schema/sync-devices'
-import { getDatabase, type DrizzleDb } from '../database'
+import { getDatabase, type DataDb } from '../database'
 import { createLogger } from '../lib/logger'
 import {
   getDevicePublicKey as deriveDevicePublicKey,
@@ -85,7 +85,7 @@ function resetSyncServiceSingletons(): void {
   resetTagDefinitionSyncService()
 }
 
-function getCurrentDeviceId(db: DrizzleDb): string | null {
+function getCurrentDeviceId(db: DataDb): string | null {
   const device = db
     .select({ id: syncDevices.id })
     .from(syncDevices)

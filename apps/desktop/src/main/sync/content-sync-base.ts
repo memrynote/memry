@@ -64,10 +64,12 @@ export abstract class ContentSyncService<
       },
       applyLocalChange: ({ itemId, local, deviceId }) => {
         const nextClock = incrementClock((local.clock as VectorClock) ?? {}, deviceId)
-        return updateNoteMetadata(getDatabase(), itemId, { clock: nextClock }) ?? {
-          ...local,
-          clock: nextClock
-        }
+        return (
+          updateNoteMetadata(getDatabase(), itemId, { clock: nextClock }) ?? {
+            ...local,
+            clock: nextClock
+          }
+        )
       },
       serialize: (local, operation, extra) =>
         this.buildSnapshotPayload(local, (local.clock as VectorClock) ?? {}, operation, ...extra),

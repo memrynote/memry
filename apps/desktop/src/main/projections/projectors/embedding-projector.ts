@@ -104,7 +104,12 @@ export function createEmbeddingProjector(getVaultPath: () => string | null): Pro
       await updateEmbedding(note.noteId, note.parsedContent)
     },
 
-    async rebuild(): Promise<{ success: boolean; computed: number; skipped: number; error?: string }> {
+    async rebuild(): Promise<{
+      success: boolean
+      computed: number
+      skipped: number
+      error?: string
+    }> {
       if (!isAIEnabled()) {
         return { success: false, computed: 0, skipped: 0, error: 'AI is disabled' }
       }

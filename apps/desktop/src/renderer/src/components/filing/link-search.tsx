@@ -179,9 +179,7 @@ const LinkSearch = ({ linkedNotes, onLinkedNotesChange }: LinkSearchProps): Reac
     switch (e.key) {
       case 'ArrowDown':
         e.preventDefault()
-        setRequestedHighlightedIndex((prev) =>
-          prev < filteredNotes.length - 1 ? prev + 1 : prev
-        )
+        setRequestedHighlightedIndex((prev) => (prev < filteredNotes.length - 1 ? prev + 1 : prev))
         break
       case 'ArrowUp':
         e.preventDefault()

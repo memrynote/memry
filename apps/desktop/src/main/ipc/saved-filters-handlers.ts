@@ -15,30 +15,14 @@ import {
   type SavedFilter
 } from '@memry/contracts/saved-filters-api'
 import { createValidatedHandler, createHandler } from './validate'
-import { getDatabase } from '../database'
+import { requireDatabase } from '../database'
 import { generateId } from '../lib/id'
-import * as settingsQueries from '@main/database/queries/settings'
-import { getFilterSyncService } from '../sync/filter-sync'
-import { incrementFilterClockOffline } from '../sync/offline-clock'
-import type { DrizzleDb } from '../database/client'
-
-function syncFilterCreate(db: DrizzleDb, filterId: string): void {
-  const svc = getFilterSyncService()
-  if (svc) {
-    svc.enqueueCreate(filterId)
-  } else {
-    incrementFilterClockOffline(db, filterId)
-  }
-}
-
-function syncFilterUpdate(db: DrizzleDb, filterId: string): void {
-  const svc = getFilterSyncService()
-  if (svc) {
-    svc.enqueueUpdate(filterId)
-  } else {
-    incrementFilterClockOffline(db, filterId)
-  }
-}
+import * as savedFiltersStore from '../settings/saved-filters-store'
+import {
+  syncFilterCreate,
+  syncFilterDelete,
+  syncFilterUpdate
+} from '../settings/saved-filters-sync'
 
 /**
  * Emit saved filter event to all windows
@@ -50,21 +34,10 @@ function emitSavedFilterEvent(channel: string, data: unknown): void {
 }
 
 /**
- * Helper to get database, throwing a user-friendly error if not available.
- */
-function requireDatabase() {
-  try {
-    return getDatabase()
-  } catch {
-    throw new Error('No vault is open. Please open a vault first.')
-  }
-}
-
-/**
  * Convert DB saved filter to API format
  */
 function toApiFilter(
-  dbFilter: ReturnType<typeof settingsQueries.getSavedFilterById>
+  dbFilter: ReturnType<typeof savedFiltersStore.getSavedFilterById>
 ): SavedFilter | null {
   if (!dbFilter) return null
   return {
@@ -90,7 +63,7 @@ export function registerSavedFiltersHandlers(): void {
     SavedFiltersChannels.invoke.LIST,
     createHandler(() => {
       const db = requireDatabase()
-      const filters = settingsQueries.listSavedFilters(db)
+      const filters = savedFiltersStore.listSavedFilters(db)
       return {
         savedFilters: filters.map((f) => toApiFilter(f)!)
       }
@@ -103,9 +76,9 @@ export function registerSavedFiltersHandlers(): void {
     createValidatedHandler(SavedFilterCreateSchema, (input) => {
       const db = requireDatabase()
       const id = generateId()
-      const position = settingsQueries.getNextSavedFilterPosition(db)
+      const position = savedFiltersStore.getNextSavedFilterPosition(db)
 
-      const filter = settingsQueries.insertSavedFilter(db, {
+      const filter = savedFiltersStore.insertSavedFilter(db, {
         id,
         name: input.name,
         config: input.config,
@@ -127,7 +100,7 @@ export function registerSavedFiltersHandlers(): void {
       const db = requireDatabase()
 
       // Check if filter exists
-      if (!settingsQueries.savedFilterExists(db, input.id)) {
+      if (!savedFiltersStore.savedFilterExists(db, input.id)) {
         return { success: false, savedFilter: null, error: 'Saved filter not found' }
       }
 
@@ -136,7 +109,7 @@ export function registerSavedFiltersHandlers(): void {
       if (input.config !== undefined) updates.config = input.config
       if (input.position !== undefined) updates.position = input.position
 
-      const filter = settingsQueries.updateSavedFilter(db, input.id, updates)
+      const filter = savedFiltersStore.updateSavedFilter(db, input.id, updates)
       const apiFilter = toApiFilter(filter)
 
       emitSavedFilterEvent(SavedFiltersChannels.events.UPDATED, {
@@ -155,16 +128,15 @@ export function registerSavedFiltersHandlers(): void {
     createValidatedHandler(SavedFilterDeleteSchema, (input) => {
       const db = requireDatabase()
 
-      // Check if filter exists
-      if (!settingsQueries.savedFilterExists(db, input.id)) {
+      const existing = savedFiltersStore.getSavedFilterById(db, input.id)
+      if (!existing) {
         return { success: false, error: 'Saved filter not found' }
       }
 
-      const existing = settingsQueries.getSavedFilterById(db, input.id)
-      const snapshot = existing ? JSON.stringify(existing) : '{}'
-      settingsQueries.deleteSavedFilter(db, input.id)
+      const snapshot = JSON.stringify(existing)
+      savedFiltersStore.deleteSavedFilter(db, input.id)
       emitSavedFilterEvent(SavedFiltersChannels.events.DELETED, { id: input.id })
-      getFilterSyncService()?.enqueueDelete(input.id, snapshot)
+      syncFilterDelete(input.id, snapshot)
 
       return { success: true }
     })
@@ -175,7 +147,7 @@ export function registerSavedFiltersHandlers(): void {
     SavedFiltersChannels.invoke.REORDER,
     createValidatedHandler(SavedFilterReorderSchema, (input) => {
       const db = requireDatabase()
-      settingsQueries.reorderSavedFilters(db, input.ids, input.positions)
+      savedFiltersStore.reorderSavedFilters(db, input.ids, input.positions)
       return { success: true }
     })
   )

@@ -78,10 +78,7 @@ export function useYjsCollaboration(
   }, [noteId, enabled])
 
   const state =
-    !noteId ||
-    !enabled ||
-    activeState.noteId !== noteId ||
-    !activeState.provider?.isSynced
+    !noteId || !enabled || activeState.noteId !== noteId || !activeState.provider?.isSynced
       ? DISABLED_STATE
       : {
           fragment: activeState.fragment,

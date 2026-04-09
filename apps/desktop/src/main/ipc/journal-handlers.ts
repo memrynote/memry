@@ -34,27 +34,27 @@ import {
   serializeJournalEntry
 } from '../vault/journal'
 import { maybeCreateSignificantSnapshot } from '../vault/notes'
-import { deleteNoteFromCache, syncNoteToCache } from '../vault/note-sync'
 import {
-  // Unified CRUD operations (using note_cache)
   getNoteCacheByPath,
-  // Journal-specific queries
   getJournalEntryByDate,
   getHeatmapData,
   getJournalMonthEntries,
   getJournalYearStats,
   getJournalStreak,
-  // Tag operations (using note_tags)
   getNoteTags,
   getAllTags,
-  // Utilities
   calculateActivityLevel as calculateActivityLevelFromCharCount
-} from '@main/database/queries/notes'
-import { getTasksByDueDate, countOverdueTasksBeforeDate } from '@main/database/queries/tasks'
+} from '../journal/store'
+import { getTasksByDueDate, countOverdueTasksBeforeDate } from '../journal/store'
 import { getIndexDatabase, getDatabase } from '../database'
-import { getJournalSyncService } from '../sync/journal-sync'
-import { getCrdtProvider } from '../sync/crdt-provider'
 import { getCanonicalJournalByDate } from '@memry/domain-notes'
+import {
+  enqueueJournalCreate,
+  enqueueJournalDelete,
+  enqueueJournalUpdate,
+  initializeJournalCrdt
+} from '../journal/runtime-effects'
+import { deleteJournalCache, syncJournalCache } from '../vault/journal-cache-sync'
 
 const logger = createLogger('IPC:Journal')
 
@@ -113,8 +113,7 @@ export function registerJournalHandlers(): void {
       const canonical = getCanonicalJournalByDate(dataDb, entry.date)
       const cacheId = canonical?.id ?? cached?.id ?? entry.id
 
-      // syncNoteToCache will extract properties from frontmatter and sync to DB
-      syncNoteToCache(
+      syncJournalCache(
         db,
         {
           id: cacheId,
@@ -125,10 +124,8 @@ export function registerJournalHandlers(): void {
         },
         { isNew: !cached }
       )
-      getJournalSyncService()?.enqueueCreate(cacheId, entry.date)
-      getCrdtProvider()
-        .initForNote(cacheId, { date: entry.date }, entry.tags)
-        .catch(() => {})
+      enqueueJournalCreate(cacheId, entry.date)
+      initializeJournalCrdt(cacheId, entry.date, entry.tags)
 
       // Emit event
       emitJournalEvent(JournalChannels.events.ENTRY_CREATED, {
@@ -165,8 +162,7 @@ export function registerJournalHandlers(): void {
         )
         const cacheId = canonical?.id ?? cached?.id ?? entry.id
 
-        // syncNoteToCache will extract properties from frontmatter and sync to DB
-        syncNoteToCache(
+        syncJournalCache(
           db,
           {
             id: cacheId,
@@ -177,10 +173,8 @@ export function registerJournalHandlers(): void {
           },
           { isNew: !cached }
         )
-        getJournalSyncService()?.enqueueCreate(cacheId, entry.date)
-        getCrdtProvider()
-          .initForNote(cacheId, { date: entry.date }, entry.tags)
-          .catch(() => {})
+        enqueueJournalCreate(cacheId, entry.date)
+        initializeJournalCrdt(cacheId, entry.date, entry.tags)
 
         emitJournalEvent(JournalChannels.events.ENTRY_CREATED, {
           date: entry.date,
@@ -236,8 +230,7 @@ export function registerJournalHandlers(): void {
       )
       const cacheId = canonical?.id ?? cached?.id ?? entry.id
 
-      // syncNoteToCache will extract properties from frontmatter and sync to DB
-      syncNoteToCache(
+      syncJournalCache(
         db,
         {
           id: cacheId,
@@ -248,7 +241,7 @@ export function registerJournalHandlers(): void {
         },
         { isNew: !cached }
       )
-      getJournalSyncService()?.enqueueUpdate(cacheId, entry.date)
+      enqueueJournalUpdate(cacheId, entry.date)
 
       // Emit event
       emitJournalEvent(JournalChannels.events.ENTRY_UPDATED, {
@@ -276,8 +269,8 @@ export function registerJournalHandlers(): void {
 
       // Delete from unified cache
       if (noteId) {
-        getJournalSyncService()?.enqueueDelete(noteId, input.date)
-        deleteNoteFromCache(db, noteId)
+        enqueueJournalDelete(noteId, input.date)
+        deleteJournalCache(db, noteId)
       }
 
       // Emit event

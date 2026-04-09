@@ -2,10 +2,7 @@ import { createContext, useContext, useMemo, type ReactNode } from 'react'
 import type { Task } from '@/data/sample-tasks'
 import type { Project } from '@/data/tasks-data'
 import type { TaskSelectionType } from '@/App'
-import {
-  useTaskWorkspaceMutations,
-  useTaskWorkspaceData
-} from '@/features/tasks/use-task-queries'
+import { useTaskWorkspaceMutations, useTaskWorkspaceData } from '@/features/tasks/use-task-queries'
 import { useTaskUiStore } from '@/features/tasks/use-task-ui-store'
 
 interface TasksContextValue {

@@ -90,7 +90,12 @@ async function rebuildNotes(getVaultPath: () => string | null): Promise<number> 
     return 0
   }
 
-  const rows = indexDb.all<{ id: string; title: string; path: string; fileType: string | null }>(sql`
+  const rows = indexDb.all<{
+    id: string
+    title: string
+    path: string
+    fileType: string | null
+  }>(sql`
     SELECT id, title, path, file_type as fileType
     FROM note_cache
     WHERE COALESCE(file_type, 'markdown') = 'markdown'

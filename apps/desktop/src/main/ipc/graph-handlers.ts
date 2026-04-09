@@ -2,7 +2,7 @@ import { ipcMain } from 'electron'
 import { GraphChannels } from '@memry/contracts/ipc-channels'
 import { createLogger } from '../lib/logger'
 import { getDatabase, getIndexDatabase } from '../database/client'
-import { getGraphData, getLocalGraph } from '../database/queries/graph'
+import { getGraphData, getLocalGraph } from '../graph/store'
 
 const logger = createLogger('IPC:Graph')
 

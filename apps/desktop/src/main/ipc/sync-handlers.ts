@@ -79,13 +79,15 @@ import {
   validateKeyVerifier,
   validateRecoveryPhrase
 } from '../crypto'
-import { getDatabase, getIndexDatabase, isDatabaseInitialized } from '../database/client'
-import { updateNoteCache } from '@main/database/queries/notes'
-import { updateNoteMetadata } from '@memry/storage-data'
+import { getDatabase, isDatabaseInitialized } from '../database/client'
 import { store } from '../store'
 import { deleteFromServer, getFromServer, patchToServer, postToServer } from '../sync/http-client'
 
 import { createLogger } from '../lib/logger'
+import {
+  recordDownloadedFileSize,
+  recordUploadedAttachment
+} from '../sync/note-attachment-metadata'
 import { createValidatedHandler, withErrorHandler } from './validate'
 import { getNetworkMonitor, getSyncEngine, startSyncRuntime } from '../sync/runtime'
 import { teardownSession } from '../sync/session-teardown'
@@ -1192,11 +1194,7 @@ export function registerSyncHandlers(syncEngine?: SyncEngine): void {
     try {
       const result = await queue.enqueue(noteId, diskPath, broadcastUploadProgress)
       if (isDatabaseInitialized()) {
-        updateNoteCache(getIndexDatabase(), noteId, { attachmentId: result.attachmentId })
-        updateNoteMetadata(getDatabase(), noteId, {
-          attachmentId: result.attachmentId,
-          attachmentReferences: [result.attachmentId]
-        })
+        recordUploadedAttachment(noteId, result.attachmentId)
       }
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Unknown error'
@@ -1222,8 +1220,7 @@ export function registerSyncHandlers(syncEngine?: SyncEngine): void {
       await service.downloadAttachment(attachmentId, diskPath)
       const stats = await fs.promises.stat(diskPath)
       if (isDatabaseInitialized()) {
-        updateNoteCache(getIndexDatabase(), noteId, { fileSize: stats.size })
-        updateNoteMetadata(getDatabase(), noteId, { fileSize: stats.size })
+        recordDownloadedFileSize(noteId, stats.size)
       }
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Unknown error'
