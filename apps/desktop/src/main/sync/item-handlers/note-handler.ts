@@ -30,6 +30,7 @@ import {
   type NoteFrontmatter
 } from '../../vault/frontmatter'
 import { syncNoteToCache, syncFileToCache, deleteNoteFromCache } from '../../vault/note-sync'
+import { flushProjectionEvents } from '../../projections'
 import {
   getNoteMetadataById,
   updateNoteMetadata,
@@ -373,6 +374,7 @@ export const noteHandler: SyncItemHandler<NoteSyncPayload> = {
         createdAt: data.createdAt ? new Date(data.createdAt) : new Date(),
         modifiedAt: data.modifiedAt ? new Date(data.modifiedAt) : new Date()
       })
+      void flushProjectionEvents()
       updateNoteCache(indexDb, itemId, {
         clock: remoteClock,
         syncedAt: now,
@@ -436,6 +438,7 @@ export const noteHandler: SyncItemHandler<NoteSyncPayload> = {
       { id: itemId, path: relPath, fileContent, frontmatter, parsedContent: content },
       { isNew: true }
     )
+    void flushProjectionEvents()
     updateNoteCache(indexDb, itemId, { clock: remoteClock, syncedAt: now })
     updateNoteMetadata(ctx.db, itemId, {
       clock: remoteClock,
@@ -479,6 +482,7 @@ export const noteHandler: SyncItemHandler<NoteSyncPayload> = {
 
     const absolutePath = toAbsolutePath(existing.path)
     deleteNoteFromCache(indexDb, itemId)
+    void flushProjectionEvents()
     ctx.emit(NotesChannels.events.DELETED, { id: itemId, path: existing.path, source: 'sync' })
 
     markWritebackIgnored(absolutePath)

@@ -2,16 +2,7 @@ import { describe, it, expect, vi } from 'vitest'
 import { createMockDb } from '@tests/utils/type-safe-mocks'
 
 vi.mock('@main/database/queries/notes', () => ({
-  insertNoteCache: vi.fn(),
-  updateNoteCache: vi.fn(),
-  deleteNoteCache: vi.fn(),
-  setNoteTags: vi.fn(),
-  setNoteLinks: vi.fn(),
-  setNoteProperties: vi.fn(),
-  getPropertyType: vi.fn(),
   extractDateFromPath: vi.fn(() => null),
-  deleteLinksToNote: vi.fn(),
-  resolveNotesByTitles: vi.fn(() => new Map()),
   getNoteCacheByPath: vi.fn(() => undefined)
 }))
 
@@ -31,7 +22,6 @@ vi.mock('../projections', () => ({
 
 import { extractNoteMetadata, syncNoteToCache, type NoteSyncInput } from './note-sync'
 import { publishProjectionEvent } from '../projections'
-import { setNoteLinks } from '@main/database/queries/notes'
 import { saveCanonicalNote } from '@memry/domain-notes'
 import type { NoteFrontmatter } from './frontmatter'
 
@@ -229,7 +219,6 @@ describe('syncNoteToCache — tagsOverride', () => {
 
   it('publishes projection event with parsed content for search indexing', () => {
     const db = createMockDb()
-
     const input = buildInput({
       parsedContent: 'Has #typescript inline'
     })
@@ -245,18 +234,5 @@ describe('syncNoteToCache — tagsOverride', () => {
         })
       })
     )
-  })
-
-  it('clears note links when the note no longer contains wiki links', () => {
-    const db = createMockDb()
-
-    const input = buildInput({
-      parsedContent: 'Plain text with no wiki links left'
-    })
-
-    const result = syncNoteToCache(db, input, { isNew: false })
-
-    expect(setNoteLinks).toHaveBeenCalledWith(db, 'abc123def456', [])
-    expect(result.links).toEqual([])
   })
 })

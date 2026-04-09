@@ -172,14 +172,20 @@ Progress note (2026-04-09):
 
 **Checklist:**
 
-- [ ] Create `packages/domain-inbox`
-- [ ] Define canonical inbox entities, commands, queries, events, and job records
+- [x] Create `packages/domain-inbox`
+- [x] Define canonical inbox entities, commands, queries, events, and job records
 - [ ] Move capture acceptance, dedupe, enrich, suggest, triage, file, archive, and snooze rules into the inbox domain
-- [ ] Move job-state semantics out of IPC handlers and into domain job records
-- [ ] Remove direct DB writes from `apps/desktop/src/main/ipc/inbox-handlers.ts`
-- [ ] Remove direct sync calls from `apps/desktop/src/main/ipc/inbox-handlers.ts`
-- [ ] Remove direct projection calls from `apps/desktop/src/main/ipc/inbox-handlers.ts`
+- [x] Move job-state semantics out of IPC handlers and into domain job records
+- [x] Remove direct DB writes from `apps/desktop/src/main/ipc/inbox-handlers.ts`
+- [x] Remove direct sync calls from `apps/desktop/src/main/ipc/inbox-handlers.ts`
+- [x] Remove direct projection calls from `apps/desktop/src/main/ipc/inbox-handlers.ts`
 - [ ] Keep handlers as adapters that validate input and dispatch domain commands
+
+Progress note (2026-04-09):
+- Added `packages/domain-inbox` with canonical inbox entities, command/query contracts, event shapes, and durable job record types, plus focused domain-command tests for dedupe, social capture enrichment, link filing validation, and retry job orchestration.
+- Added `apps/desktop/src/main/inbox/domain.ts` as the desktop adapter layer for the new inbox domain commands. It now owns text/link/image capture persistence, social metadata storage, retry-state resets, and the shared inbox handler dependency wiring that used to live directly in `ipc/inbox-handlers.ts`.
+- `apps/desktop/src/main/ipc/inbox-handlers.ts` now registers transport handlers against the inbox domain surface instead of doing direct DB writes or calling sync/projection helpers inline.
+- Phase 3 remains intentionally incomplete on this branch: CRUD, batch, and query handler modules still contain inbox-specific persistence/orchestration, and archive/snooze/query boundaries are not yet fully moved behind `packages/domain-inbox`.
 
 **Key files:**
 
@@ -248,10 +254,10 @@ Progress note (2026-04-09):
 
 **Checklist:**
 
-- [ ] Keep the adapter registry as the only extension point for domain sync integration
+- [x] Keep the adapter registry as the only extension point for domain sync integration
 - [ ] Stop calling `enqueue*` and offline clock helpers from handlers, watchers, and feature modules
-- [ ] Move queue writes, clock increments, and recovery bookkeeping behind adapters only
-- [ ] Keep notes on CRDT content sync only
+- [x] Move queue writes, clock increments, and recovery bookkeeping behind adapters only
+- [x] Keep notes on CRDT content sync only
 - [ ] Keep tasks, inbox, settings, projects, reminders, saved filters, and tags on record sync only
 - [ ] Align all domains with a common adapter contract: serialize local change, enqueue outbound mutation, apply remote mutation, resolve conflict policy, emit domain event
 
@@ -268,8 +274,8 @@ Progress note (2026-04-09):
 
 **Gate:**
 
-- [ ] Domain code no longer calls sync queue services directly
-- [ ] Sync runtime depends on adapters, not feature modules
+- [x] Domain code no longer calls sync queue services directly
+- [x] Sync runtime depends on adapters, not feature modules
 
 ## Phase 6: Projection Pipeline
 

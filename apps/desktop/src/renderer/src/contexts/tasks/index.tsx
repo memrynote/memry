@@ -2,7 +2,7 @@ import { createContext, useContext, useMemo, type ReactNode } from 'react'
 import type { Task } from '@/data/sample-tasks'
 import type { Project } from '@/data/tasks-data'
 import type { TaskSelectionType } from '@/App'
-import { useTaskWorkspaceMutations, useTaskWorkspaceData } from '@/features/tasks/use-task-queries'
+import { useTaskWorkspaceMutations } from '@/features/tasks/use-task-queries'
 import { useTaskUiStore } from '@/features/tasks/use-task-ui-store'
 
 interface TasksContextValue {
@@ -26,10 +26,8 @@ interface TasksContextValue {
 
 interface TasksProviderProps {
   children: ReactNode
-  tasks?: Task[]
-  projects?: Project[]
-  initialTasks?: Task[]
-  initialProjects?: Project[]
+  tasks: Task[]
+  projects: Project[]
   getOrderedTasks?: (sectionId: string, tasks: Task[]) => Task[]
 }
 
@@ -51,17 +49,8 @@ export const TasksProvider = ({
   children,
   tasks,
   projects,
-  initialTasks,
-  initialProjects,
   getOrderedTasks
 }: TasksProviderProps): React.JSX.Element => {
-  const shouldLoadWorkspace =
-    tasks === undefined &&
-    projects === undefined &&
-    initialTasks === undefined &&
-    initialProjects === undefined
-
-  const workspace = useTaskWorkspaceData({ enabled: shouldLoadWorkspace })
   const uiStore = useTaskUiStore()
   const {
     setTasks,
@@ -74,13 +63,10 @@ export const TasksProvider = ({
     deleteProject
   } = useTaskWorkspaceMutations()
 
-  const resolvedTasks = tasks ?? initialTasks ?? workspace.tasks
-  const resolvedProjects = projects ?? initialProjects ?? workspace.projects
-
   const value = useMemo<TasksContextValue>(
     () => ({
-      tasks: resolvedTasks,
-      projects: resolvedProjects,
+      tasks,
+      projects,
       taskSelectedId: uiStore.taskSelectedId,
       taskSelectedType: uiStore.taskSelectedType,
       selectedTaskIds: uiStore.selectedTaskIds,
@@ -97,8 +83,8 @@ export const TasksProvider = ({
       getOrderedTasks
     }),
     [
-      resolvedTasks,
-      resolvedProjects,
+      tasks,
+      projects,
       uiStore.taskSelectedId,
       uiStore.taskSelectedType,
       uiStore.selectedTaskIds,

@@ -60,8 +60,8 @@ export interface MainIpcInvokeHandlers {
   "inbox:capture-pdf": (...args: [any]) => Awaited<Promise<import("../../../../../packages/contracts/src/inbox-api").CaptureResponse>>
   "inbox:capture-text": (...args: [any]) => Awaited<Promise<{ success: false; error: string; } | import("../../../../../packages/contracts/src/inbox-api").CaptureResponse>>
   "inbox:capture-voice": (...args: [any]) => Awaited<Promise<{ success: false; error: string; } | import("../../../../../packages/contracts/src/inbox-api").CaptureResponse>>
-  "inbox:convert-to-note": (...args: [any]) => Awaited<Promise<import("../../../../../packages/contracts/src/inbox-api").FileResponse>>
-  "inbox:convert-to-task": (...args: [any]) => Awaited<Promise<{ success: boolean; taskId: string | null; error?: string | undefined; }>>
+  "inbox:convert-to-note": (...args: [any]) => Awaited<Promise<{ success: false; error: string; } | import("../../../../../packages/contracts/src/inbox-api").FileResponse>>
+  "inbox:convert-to-task": (...args: [any]) => Awaited<Promise<{ success: false; error: string; } | { success: boolean; taskId: string | null; error?: string | undefined; }>>
   "inbox:delete-permanent": (...args: [any]) => Awaited<Promise<{ success: boolean; error?: string | undefined; }>>
   "inbox:file": (...args: [any]) => Awaited<Promise<{ success: false; error: string; } | import("../../../../../packages/contracts/src/inbox-api").FileResponse>>
   "inbox:file-all-stale": (...args: []) => Awaited<Promise<import("../../../../../packages/contracts/src/inbox-api").BulkResponse>>
@@ -74,7 +74,7 @@ export interface MainIpcInvokeHandlers {
   "inbox:get-stats": (...args: []) => Awaited<Promise<import("../../../../../packages/contracts/src/inbox-api").InboxStats>>
   "inbox:get-suggestions": (...args: [any]) => Awaited<Promise<import("../../../../../packages/contracts/src/inbox-api").SuggestionsResponse>>
   "inbox:get-tags": (...args: []) => Awaited<Promise<{ tag: string; count: number; }[]>>
-  "inbox:link-to-note": (...args: [any, any, any]) => Awaited<Promise<{ success: boolean; error?: string | undefined; }>>
+  "inbox:link-to-note": (...args: [any, any, any]) => Awaited<Promise<{ success: false; error: string; } | { success: boolean; error?: string | undefined; }>>
   "inbox:list": (...args: [any]) => Awaited<Promise<import("../../../../../packages/contracts/src/inbox-api").InboxListResponse>>
   "inbox:list-archived": (...args: [any]) => Awaited<Promise<import("../../../../../packages/contracts/src/inbox-api").ArchivedListResponse>>
   "inbox:mark-viewed": (...args: [any]) => Awaited<Promise<{ success: boolean; error?: string | undefined; }>>

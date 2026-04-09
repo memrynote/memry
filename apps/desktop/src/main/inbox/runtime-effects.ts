@@ -1,32 +1,24 @@
-import { type DataDb } from '../database'
 import { publishProjectionEvent } from '../projections'
-import { getInboxSyncService } from '../sync/inbox-sync'
-import { incrementInboxClockOffline } from '../sync/offline-clock'
+import {
+  enqueueLocalSyncCreate,
+  enqueueLocalSyncDelete,
+  enqueueLocalSyncUpdate
+} from '../sync/local-mutations'
 
-export function syncInboxCreate(db: DataDb, itemId: string): void {
-  const svc = getInboxSyncService()
-  if (svc) {
-    svc.enqueueCreate(itemId)
-  } else {
-    incrementInboxClockOffline(db, itemId)
-  }
+export function syncInboxCreate(itemId: string): void {
+  enqueueLocalSyncCreate('inbox', itemId)
 
   publishInboxUpserted(itemId)
 }
 
-export function syncInboxUpdate(db: DataDb, itemId: string): void {
-  const svc = getInboxSyncService()
-  if (svc) {
-    svc.enqueueUpdate(itemId)
-  } else {
-    incrementInboxClockOffline(db, itemId)
-  }
+export function syncInboxUpdate(itemId: string): void {
+  enqueueLocalSyncUpdate('inbox', itemId)
 
   publishInboxUpserted(itemId)
 }
 
 export function syncInboxDelete(itemId: string, snapshot: string): void {
-  getInboxSyncService()?.enqueueDelete(itemId, snapshot)
+  enqueueLocalSyncDelete('inbox', itemId, snapshot)
   publishProjectionEvent({ type: 'inbox.deleted', itemId })
 }
 
