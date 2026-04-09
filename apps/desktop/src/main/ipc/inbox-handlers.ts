@@ -256,7 +256,6 @@ function normalizeBinaryInput(
 
   return null
 }
-
 // ============================================================================
 // Handler Implementations
 // ============================================================================
@@ -279,17 +278,21 @@ const handleCaptureText = withErrorHandler(async (input: unknown): Promise<Captu
   const now = new Date().toISOString()
   const resolvedTags = parsed.tags ?? []
 
-  const { row: created, tags } = insertItemWithTags(db, {
-    id,
-    type: 'note',
-    title:
-      parsed.title || parsed.content.substring(0, 50) + (parsed.content.length > 50 ? '...' : ''),
-    content: parsed.content,
-    createdAt: now,
-    modifiedAt: now,
-    processingStatus: 'complete',
-    captureSource: parsed.source ?? null
-  }, resolvedTags)
+  const { row: created, tags } = insertItemWithTags(
+    db,
+    {
+      id,
+      type: 'note',
+      title:
+        parsed.title || parsed.content.substring(0, 50) + (parsed.content.length > 50 ? '...' : ''),
+      content: parsed.content,
+      createdAt: now,
+      modifiedAt: now,
+      processingStatus: 'complete',
+      captureSource: parsed.source ?? null
+    },
+    resolvedTags
+  )
 
   const item = toInboxItem(created, tags)
 
@@ -327,32 +330,35 @@ const handleCaptureLink = withErrorHandler(async (input: unknown): Promise<Captu
 
   const resolvedTags = parsed.tags ?? []
 
-  const { row: created, tags } = insertItemWithTags(db, {
-    id,
-    type: itemType,
-    title: titleFromUrl(parsed.url),
-    content: null,
-    sourceUrl: parsed.url,
-    createdAt: now,
-    modifiedAt: now,
-    processingStatus: 'pending',
-    captureSource: parsed.source ?? null,
-    metadata: isSocial
-      ? {
-          platform: platform || 'other',
-          postUrl: parsed.url,
-          authorName: '',
-          authorHandle: '',
-          postContent: '',
-          mediaUrls: [],
-          extractionStatus: 'pending' as const
-        }
-      : {
-          url: parsed.url,
-          fetchStatus: 'pending'
-        }
-  }, resolvedTags)
-
+  const { row: created, tags } = insertItemWithTags(
+    db,
+    {
+      id,
+      type: itemType,
+      title: titleFromUrl(parsed.url),
+      content: null,
+      sourceUrl: parsed.url,
+      createdAt: now,
+      modifiedAt: now,
+      processingStatus: 'pending',
+      captureSource: parsed.source ?? null,
+      metadata: isSocial
+        ? {
+            platform: platform || 'other',
+            postUrl: parsed.url,
+            authorName: '',
+            authorHandle: '',
+            postContent: '',
+            mediaUrls: [],
+            extractionStatus: 'pending' as const
+          }
+        : {
+            url: parsed.url,
+            fetchStatus: 'pending'
+          }
+    },
+    resolvedTags
+  )
   const item = toInboxItem(created, tags)
 
   emitInboxEvent(InboxChannels.events.CAPTURED, { item: toListItem(created, tags) })
@@ -467,20 +473,23 @@ const handleCaptureImage = withErrorHandler(async (input: unknown): Promise<Capt
 
   const resolvedTags = parsed.tags ?? []
 
-  const { row: created, tags } = insertItemWithTags(db, {
-    id,
-    type: inboxType,
-    title: parsed.filename.replace(/\.[^.]+$/, ''),
-    content: null,
-    createdAt: now,
-    modifiedAt: now,
-    processingStatus: 'complete',
-    attachmentPath: storeResult.path || null,
-    thumbnailPath,
-    metadata: itemMetadata,
-    captureSource: parsed.source ?? null
-  }, resolvedTags)
-
+  const { row: created, tags } = insertItemWithTags(
+    db,
+    {
+      id,
+      type: inboxType,
+      title: parsed.filename.replace(/\.[^.]+$/, ''),
+      content: null,
+      createdAt: now,
+      modifiedAt: now,
+      processingStatus: 'complete',
+      attachmentPath: storeResult.path || null,
+      thumbnailPath,
+      metadata: itemMetadata,
+      captureSource: parsed.source ?? null
+    },
+    resolvedTags
+  )
   const item = toInboxItem(created, tags)
 
   emitInboxEvent(InboxChannels.events.CAPTURED, { item: toListItem(created, tags) })

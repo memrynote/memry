@@ -217,7 +217,7 @@ describe('syncNoteToCache — tagsOverride', () => {
     )
   })
 
-  it('publishes a projection event for the upserted note', () => {
+  it('publishes projection event with parsed content for search indexing', () => {
     const db = createMockDb()
     const input = buildInput({
       parsedContent: 'Has #typescript inline'
@@ -227,7 +227,11 @@ describe('syncNoteToCache — tagsOverride', () => {
 
     expect(publishProjectionEvent).toHaveBeenCalledWith(
       expect.objectContaining({
-        type: 'note.upserted'
+        type: 'note.upserted',
+        note: expect.objectContaining({
+          noteId: 'abc123def456',
+          parsedContent: 'Has #typescript inline'
+        })
       })
     )
   })

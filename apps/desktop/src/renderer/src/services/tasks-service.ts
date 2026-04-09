@@ -28,6 +28,9 @@ import type {
   TaskUpdateInput
 } from '@memry/rpc/tasks'
 import { createWindowApiForwarder } from './window-api-forwarder'
+import { createLogger } from '@/lib/logger'
+
+export const tasksServiceLogger = createLogger('Tasks:Service')
 
 export type {
   Project,
@@ -56,6 +59,12 @@ export type {
   TaskUpdateInput
 }
 export const tasksService: TasksClientAPI = createWindowApiForwarder(() => window.api.tasks)
+
+export function queueTaskReorder(ids: string[], positions: number[]): void {
+  void tasksService.reorder(ids, positions).catch((error) => {
+    tasksServiceLogger.error('Failed to reorder tasks:', error)
+  })
+}
 
 export function onTaskCreated(callback: (event: TaskCreatedEvent) => void): () => void {
   return window.api.onTaskCreated(callback)
