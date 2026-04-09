@@ -5,24 +5,21 @@ Format: weekly entries grouped by feature area.
 
 ---
 
-## 2026-04-09 — Inbox Domain Extraction (Phase 3)
-
-### Added
-- Add `@memry/domain-inbox` package with canonical inbox entities, commands, queries, events, and job record types
-- Add `domain.ts` desktop adapter layer for inbox domain commands with transactional item+tag insertion
+## 2026-04-09 — Architecture Reset Phase 4
 
 ### Changed
-- Move capture, filing, snooze, retry, and suggestion logic from IPC handlers into inbox domain surface
-- Reduce `inbox-handlers.ts` from 850+ LOC to transport-only adapter with Zod validation and error handling
-- Simplify `TasksProvider` to pure context shell receiving data via props
-- Inline `TasksAppBoundary` render-prop logic directly into `App.tsx`
-- Restore proxy forwarder traps (has, ownKeys, getOwnPropertyDescriptor) removed in prior refactor
+- Migrate note-sync from direct index-DB writes to projection events with flush
+- Extract note mutation commands into dedicated domain layer (notes/domain.ts)
+- Inline inbox domain logic back into IPC handlers, remove domain-inbox package
+- Simplify TasksProvider to self-contained context with internal data fetching
+- Remove TasksAppBoundary render-prop wrapper from App.tsx
+- Simplify window API forwarder to single get-trap proxy
 
 ### Fixed
-- Re-add Zod schema validation at IPC trust boundary dropped during domain extraction
-- Re-add `withErrorHandler` wrapper on all inbox IPC handlers to prevent unhandled rejections
-- Add missing `setProjects` to `handleDragEnd` useCallback dependency array
-- Add missing `void` prefix on floating `tasksService.reorder()` promise
+- Restore canonical property-type guard to prevent LWW type overwrites on sync
+- Add projection flush to sync handlers, journal handlers, and CRDT writeback
+- Add missing setProjects dependency in App.tsx handleDragEnd callback
+- Add missing void prefix on floating tasksService.reorder() promise
 
 ---
 

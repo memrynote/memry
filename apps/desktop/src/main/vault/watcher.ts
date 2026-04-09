@@ -34,6 +34,7 @@ import { isSupportedPath, getFileType, getMimeType, getExtension } from '@memry/
 import { createLogger } from '../lib/logger'
 import { isWritebackIgnored, wasRecentNetworkUpdate } from '../sync/crdt-writeback'
 import { attachmentEvents } from '../sync/attachment-events'
+import { flushProjectionEvents } from '../projections'
 import { getNoteSyncService } from '../sync/note-sync'
 import { getJournalSyncService } from '../sync/journal-sync'
 import { getCrdtProvider, ORIGIN_LOCAL } from '../sync/crdt-provider'
@@ -398,6 +399,7 @@ export class VaultWatcher {
       },
       { isNew: true }
     )
+    await flushProjectionEvents()
 
     const tags = syncResult.tags
     const properties = extractProperties(parsed.frontmatter)
@@ -497,6 +499,7 @@ export class VaultWatcher {
       createdAt: stats.birthtime,
       modifiedAt: stats.mtime
     })
+    await flushProjectionEvents()
 
     // Create list item for event
     const fileListItem: NoteListItem = {
@@ -592,6 +595,7 @@ export class VaultWatcher {
       },
       { isNew: false }
     )
+    await flushProjectionEvents()
 
     const tags = syncResult.tags
     const properties = extractProperties(parsed.frontmatter)
@@ -662,6 +666,7 @@ export class VaultWatcher {
       createdAt: new Date(cached.createdAt),
       modifiedAt: stats.mtime
     })
+    await flushProjectionEvents()
 
     getNoteSyncService()?.enqueueUpdate(cached.id)
 
@@ -713,6 +718,7 @@ export class VaultWatcher {
         }
 
         deleteNoteFromCache(db, cached.id)
+        await flushProjectionEvents()
 
         // Emit delete event
         emitEvent(NotesChannels.events.DELETED, {
@@ -729,7 +735,6 @@ export class VaultWatcher {
           })
         }
 
-        // Return void to match the expected signature
         await Promise.resolve()
       })
     } catch (error) {

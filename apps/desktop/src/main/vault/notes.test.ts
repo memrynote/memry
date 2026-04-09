@@ -11,6 +11,8 @@ import * as path from 'path'
 import { createTestVault, readTestNote, type TestVaultResult } from '@tests/utils/test-vault'
 import { createTestDataDb, createTestIndexDb, type TestDatabaseResult } from '@tests/utils/test-db'
 import type { VaultStatus, VaultConfig } from '@memry/contracts/vault-api'
+import { startProjectionRuntime, stopProjectionRuntime } from '../projections'
+import { createNoteDerivedStateProjector } from '../projections/projectors/note-derived-state-projector'
 
 // ============================================================================
 // Type-Safe Mocks
@@ -91,10 +93,13 @@ describe('notes operations', () => {
     vi.spyOn(database, 'updateFtsContent').mockImplementation(() => {
       // Simplified: just do nothing, FTS tests are separate
     })
+
+    startProjectionRuntime([createNoteDerivedStateProjector(() => tempVault.path)])
   })
 
-  afterEach(() => {
+  afterEach(async () => {
     vi.useRealTimers()
+    await stopProjectionRuntime()
     vi.restoreAllMocks()
     testDb.close()
     dataDb.close()

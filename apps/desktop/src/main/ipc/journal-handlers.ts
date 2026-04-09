@@ -55,6 +55,7 @@ import {
   initializeJournalCrdt
 } from '../journal/runtime-effects'
 import { deleteJournalCache, syncJournalCache } from '../vault/journal-cache-sync'
+import { flushProjectionEvents } from '../projections'
 
 const logger = createLogger('IPC:Journal')
 
@@ -124,6 +125,7 @@ export function registerJournalHandlers(): void {
         },
         { isNew: !cached }
       )
+      await flushProjectionEvents()
       enqueueJournalCreate(cacheId, entry.date)
       initializeJournalCrdt(cacheId, entry.date, entry.tags)
 
@@ -173,6 +175,7 @@ export function registerJournalHandlers(): void {
           },
           { isNew: !cached }
         )
+        await flushProjectionEvents()
         enqueueJournalCreate(cacheId, entry.date)
         initializeJournalCrdt(cacheId, entry.date, entry.tags)
 
@@ -241,6 +244,7 @@ export function registerJournalHandlers(): void {
         },
         { isNew: !cached }
       )
+      await flushProjectionEvents()
       enqueueJournalUpdate(cacheId, entry.date)
 
       // Emit event
@@ -271,6 +275,7 @@ export function registerJournalHandlers(): void {
       if (noteId) {
         enqueueJournalDelete(noteId, input.date)
         deleteJournalCache(db, noteId)
+        await flushProjectionEvents()
       }
 
       // Emit event
