@@ -13,8 +13,8 @@ import {
   Bell,
   HelpCircle
 } from '@/lib/icons'
+import type { InboxFilingHistoryEntry } from '@memry/rpc/inbox'
 import { formatCompactDate } from '@/services/inbox-service'
-import type { InboxFilingHistoryEntry } from '../../../../preload/index.d'
 
 export interface InboxFilingHistoryListProps {
   items: InboxFilingHistoryEntry[]

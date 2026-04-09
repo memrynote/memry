@@ -12,19 +12,19 @@ export interface TreeDataItem {
   inheritedIcon?: string // Parent'tan gelen ikon adı
 }
 
-// Re-export inbox types from preload (backend types)
+// Re-export canonical inbox RPC types for renderer consumers.
 export type {
-  InboxItemType,
+  InboxBulkResponse,
+  InboxCaptureResponse,
+  InboxFilingAction,
+  InboxFileResponse,
   InboxItem,
   InboxItemListItem,
+  InboxItemType,
   InboxListResponse,
-  InboxCaptureResponse,
-  InboxFileResponse,
-  InboxBulkResponse,
-  InboxStats,
   InboxProcessingStatus,
-  InboxFilingAction
-} from '../../../preload/index.d'
+  InboxStats
+} from '@memry/rpc/inbox'
 
 // Metadata types for type-specific content
 export interface LinkMetadata {

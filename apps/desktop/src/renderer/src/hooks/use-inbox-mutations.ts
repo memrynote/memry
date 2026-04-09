@@ -1,9 +1,9 @@
 import { useMutation, useQueryClient, type UseMutationResult } from '@tanstack/react-query'
 import type {
+  InboxBulkResponse,
   InboxCaptureResponse,
-  InboxFileResponse,
-  InboxBulkResponse
-} from '../../../preload/index.d'
+  InboxFileResponse
+} from '@memry/rpc/inbox'
 import {
   inboxService,
   type CaptureTextInput,

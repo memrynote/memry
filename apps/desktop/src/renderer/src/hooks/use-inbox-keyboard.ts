@@ -1,7 +1,7 @@
 import { useEffect } from 'react'
+import type { InboxItemListItem } from '@memry/rpc/inbox'
 import { toast } from 'sonner'
 import { isInputFocused } from '@/hooks/use-keyboard-shortcuts'
-import type { InboxItemListItem } from '../../../preload/index.d'
 
 export interface UseInboxKeyboardOptions {
   enabled: boolean

@@ -8,12 +8,12 @@
 import { useEffect, useCallback, useMemo } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import type {
+  FolderInfo,
   Note,
-  NoteListItem,
-  NoteListResponse,
   NoteLinksResponse,
-  FolderInfo
-} from '../../../preload/index.d'
+  NoteListItem,
+  NoteListResponse
+} from '@memry/rpc/notes'
 
 // Types are re-exported at the end of this file
 import {

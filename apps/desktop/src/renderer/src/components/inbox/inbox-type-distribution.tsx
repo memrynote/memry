@@ -11,7 +11,7 @@ import {
   HelpCircle,
   File
 } from '@/lib/icons'
-import type { InboxStats } from '../../../../preload/index.d'
+import type { InboxStats } from '@memry/rpc/inbox'
 
 export interface InboxTypeDistributionProps {
   stats: InboxStats | null
