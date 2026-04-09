@@ -19,6 +19,7 @@ Format: weekly entries grouped by feature area.
 - Restore canonical property-type guard to prevent LWW type overwrites on sync
 - Add projection flush to sync handlers, journal handlers, and CRDT writeback
 - Add missing setProjects dependency in App.tsx handleDragEnd callback
+- Add missing void prefix on floating tasksService.reorder() promise
 
 ---
 

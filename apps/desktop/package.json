@@ -98,6 +98,7 @@
     "@huggingface/transformers": "^3.8.1",
     "@memry/contracts": "workspace:*",
     "@memry/db-schema": "workspace:*",
+    "@memry/domain-inbox": "workspace:*",
     "@memry/domain-notes": "workspace:*",
     "@memry/domain-tasks": "workspace:*",
     "@memry/rpc": "workspace:*",
