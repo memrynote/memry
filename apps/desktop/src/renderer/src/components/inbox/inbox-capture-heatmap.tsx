@@ -1,4 +1,4 @@
-import type { InboxCapturePattern } from '../../../../preload/index.d'
+import type { InboxCapturePattern } from '@memry/rpc/inbox'
 
 export interface InboxCaptureHeatmapProps {
   patterns: InboxCapturePattern | undefined

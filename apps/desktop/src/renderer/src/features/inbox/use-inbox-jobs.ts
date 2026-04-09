@@ -1,6 +1,6 @@
 import { useEffect, useMemo } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import type { InboxJob } from '../../../../preload/index.d'
+import type { InboxJob } from '@memry/rpc/inbox'
 
 import {
   inboxService,
