@@ -458,6 +458,74 @@ describe('useDragHandlers', () => {
     })
   })
 
+  it('keeps the hovered row insertion target when mouseup resolves to the section header', () => {
+    const project = createProject()
+    const tasks = [
+      createTask({ id: 'task-1', priority: 'medium' }),
+      createTask({ id: 'task-2', priority: 'high' }),
+      createTask({ id: 'task-3', priority: 'high' })
+    ]
+    const onUpdateTask = vi.fn()
+    const onReorder = vi.fn()
+
+    const { result } = renderHook(() =>
+      useDragHandlers({
+        tasks,
+        projects: [project],
+        onUpdateTask,
+        onDeleteTask: vi.fn(),
+        onReorder,
+        getOrder: vi.fn()
+      })
+    )
+
+    const event = createDragEvent({
+      active: {
+        id: 'task-1',
+        data: {
+          current: {
+            type: 'task',
+            sectionId: 'medium',
+            sectionTaskIds: ['task-1'],
+            task: tasks[0]
+          }
+        }
+      },
+      over: {
+        id: 'group-header-high',
+        data: {
+          current: {
+            type: 'column',
+            sectionId: 'high',
+            sectionTaskIds: ['task-2', 'task-3'],
+            columnId: 'priority-high',
+            sectionDropPosition: 'start'
+          }
+        }
+      }
+    })
+
+    act(() => {
+      result.current.handleDragEnd(
+        event,
+        createDragState({
+          sourceContainerId: 'medium',
+          overId: 'task-3',
+          overType: 'task',
+          overSectionId: 'high',
+          overColumnId: 'priority-high',
+          overTaskEdge: 'before'
+        })
+      )
+    })
+
+    expect(onUpdateTask).toHaveBeenCalledWith('task-1', { priority: 'high' })
+    expect(onReorder).toHaveBeenCalledWith({
+      medium: [],
+      high: ['task-2', 'task-1', 'task-3']
+    })
+  })
+
   it('restores task property and section orders when undoing a cross-section ordered move', () => {
     const project = createProject()
     const tasks = [
