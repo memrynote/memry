@@ -41,8 +41,7 @@ import type {
   ListArchivedInput,
   SnoozeInput
 } from '@memry/rpc/inbox'
-
-type FilingHistoryResponse = InboxFilingHistoryResponse
+import { createWindowApiForwarder } from './window-api-forwarder'
 
 export type {
   BulkArchiveInput,
@@ -60,7 +59,6 @@ export type {
   CaptureVoiceInput,
   FileItemInput,
   FileResponse,
-  FilingHistoryResponse,
   GetFilingHistoryInput,
   GetJobsInput,
   InboxArchivedEvent,
@@ -89,50 +87,7 @@ export type {
   SuggestionsResponse
 }
 
-export const inboxService: InboxClientAPI = {
-  captureText: (input) => window.api.inbox.captureText(input),
-  captureLink: (input) => window.api.inbox.captureLink(input),
-  previewLink: (url) => window.api.inbox.previewLink(url),
-  captureImage: (input) => window.api.inbox.captureImage(input),
-  captureVoice: (input) => window.api.inbox.captureVoice(input),
-  captureClip: (input) => window.api.inbox.captureClip(input),
-  capturePdf: (input) => window.api.inbox.capturePdf(input),
-  get: (id) => window.api.inbox.get(id),
-  list: (options) => window.api.inbox.list(options),
-  update: (input) => window.api.inbox.update(input),
-  archive: (id) => window.api.inbox.archive(id),
-  file: (input) => window.api.inbox.file(input),
-  getSuggestions: (itemId) => window.api.inbox.getSuggestions(itemId),
-  trackSuggestion: (input) => window.api.inbox.trackSuggestion(input),
-  convertToNote: (itemId) => window.api.inbox.convertToNote(itemId),
-  convertToTask: (itemId) => window.api.inbox.convertToTask(itemId),
-  linkToNote: (itemId, noteId, tags) => window.api.inbox.linkToNote(itemId, noteId, tags),
-  addTag: (itemId, tag) => window.api.inbox.addTag(itemId, tag),
-  removeTag: (itemId, tag) => window.api.inbox.removeTag(itemId, tag),
-  getTags: () => window.api.inbox.getTags(),
-  snooze: (input) => window.api.inbox.snooze(input),
-  unsnooze: (itemId) => window.api.inbox.unsnooze(itemId),
-  getSnoozed: () => window.api.inbox.getSnoozed(),
-  markViewed: (itemId) => window.api.inbox.markViewed(itemId),
-  bulkFile: (input) => window.api.inbox.bulkFile(input),
-  bulkArchive: (input) => window.api.inbox.bulkArchive(input),
-  bulkTag: (input) => window.api.inbox.bulkTag(input),
-  bulkSnooze: (input) => window.api.inbox.bulkSnooze(input),
-  fileAllStale: () => window.api.inbox.fileAllStale(),
-  retryTranscription: (itemId) => window.api.inbox.retryTranscription(itemId),
-  retryMetadata: (itemId) => window.api.inbox.retryMetadata(itemId),
-  getStats: () => window.api.inbox.getStats(),
-  getJobs: (options) => window.api.inbox.getJobs(options),
-  getPatterns: () => window.api.inbox.getPatterns(),
-  getStaleThreshold: () => window.api.inbox.getStaleThreshold(),
-  setStaleThreshold: (days) => window.api.inbox.setStaleThreshold(days),
-  listArchived: (options) => window.api.inbox.listArchived(options),
-  unarchive: (id) => window.api.inbox.unarchive(id),
-  deletePermanent: (id) => window.api.inbox.deletePermanent(id),
-  getFilingHistory: (options) => window.api.inbox.getFilingHistory(options),
-  undoFile: (id) => window.api.inbox.undoFile(id),
-  undoArchive: (id) => window.api.inbox.undoArchive(id)
-}
+export const inboxService: InboxClientAPI = createWindowApiForwarder(() => window.api.inbox)
 
 export function onInboxCaptured(callback: (event: InboxCapturedEvent) => void): () => void {
   return window.api.onInboxCaptured(callback)

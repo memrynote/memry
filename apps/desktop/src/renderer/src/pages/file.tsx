@@ -12,7 +12,7 @@ import { notesService } from '@/services/notes-service'
 import { PdfViewer, ImageViewer, AudioPlayer, VideoPlayer } from '@/components/viewers'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
-import type { FileMetadata } from '../../../preload/index.d'
+import type { FileMetadata } from '@memry/rpc/notes'
 
 // ============================================================================
 // Types

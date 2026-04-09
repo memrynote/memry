@@ -52,6 +52,14 @@ describe('inbox-service', () => {
     vi.useRealTimers()
   })
 
+  it('exposes inbox RPC methods directly from window.api.inbox', () => {
+    expect(inboxService.captureText).toBe(api.inbox.captureText)
+    expect(inboxService.file).toBe(api.inbox.file)
+    expect(inboxService.bulkArchive).toBe(api.inbox.bulkArchive)
+    expect(inboxService.getStats).toBe(api.inbox.getStats)
+    expect(inboxService.setStaleThreshold).toBe(api.inbox.setStaleThreshold)
+  })
+
   it('forwards capture, file, and snooze operations', async () => {
     await inboxService.captureText({ content: 'Hello' })
     expect(api.inbox.captureText).toHaveBeenCalledWith({ content: 'Hello' })

@@ -1,4 +1,4 @@
-import type { InboxListInput } from '@/services/inbox-service'
+import type { InboxListInput } from '@memry/rpc/inbox'
 
 export const DEFAULT_PAGE_SIZE = 50
 export const ITEM_STALE_TIME = 30 * 1000
