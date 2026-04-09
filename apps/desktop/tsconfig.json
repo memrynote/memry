@@ -13,8 +13,6 @@
     "paths": {
       "@memry/contracts": ["../../packages/contracts/src/index.ts"],
       "@memry/contracts/*": ["../../packages/contracts/src/*"],
-      "@memry/domain-inbox": ["../../packages/domain-inbox/src/index.ts"],
-      "@memry/domain-inbox/*": ["../../packages/domain-inbox/src/*"],
       "@memry/domain-tasks": ["../../packages/domain-tasks/src/index.ts"],
       "@memry/domain-tasks/*": ["../../packages/domain-tasks/src/*"],
       "@memry/db-schema": ["../../packages/db-schema/src/index.ts"],

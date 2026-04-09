@@ -19,7 +19,6 @@ export default defineConfig({
           include: [
             '../../packages/contracts/src/**/*.{test,spec}.{ts,tsx}',
             '../../packages/db-schema/src/**/*.{test,spec}.{ts,tsx}',
-            '../../packages/domain-inbox/src/**/*.{test,spec}.{ts,tsx}',
             '../../packages/domain-notes/src/**/*.{test,spec}.{ts,tsx}',
             '../../packages/shared/src/**/*.{test,spec}.{ts,tsx}',
             '../../packages/storage-data/src/**/*.{test,spec}.{ts,tsx}',
@@ -79,7 +78,6 @@ export default defineConfig({
         'src/**/*.tsx',
         '../../packages/contracts/src/**/*.ts',
         '../../packages/db-schema/src/**/*.ts',
-        '../../packages/domain-inbox/src/**/*.ts',
         '../../packages/domain-notes/src/**/*.ts',
         '../../packages/shared/src/**/*.ts',
         '../../packages/storage-data/src/**/*.ts',
@@ -102,7 +100,6 @@ export default defineConfig({
   resolve: {
     alias: {
       '@memry/contracts': resolve(workspaceRoot, 'packages/contracts/src'),
-      '@memry/domain-inbox': resolve(workspaceRoot, 'packages/domain-inbox/src'),
       '@memry/domain-tasks': resolve(workspaceRoot, 'packages/domain-tasks/src'),
       '@memry/db-schema': resolve(workspaceRoot, 'packages/db-schema/src'),
       '@memry/domain-notes': resolve(workspaceRoot, 'packages/domain-notes/src'),
