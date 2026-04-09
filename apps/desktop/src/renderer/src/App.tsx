@@ -256,8 +256,6 @@ function App(): React.JSX.Element {
     })
   }, [projects, tasks])
 
-  // Task handlers (passed to TasksPage)
-  // Task order persistence hook
   const taskOrder = useTaskOrder({ persist: true })
 
   const handleReorder = useCallback(
@@ -315,7 +313,7 @@ function App(): React.JSX.Element {
         updateSelectedTaskIds(new Set<string>())
       }
     },
-    [projects, taskDragEnd, updateSelectedTaskIds]
+    [projects, setProjects, taskDragEnd, updateSelectedTaskIds]
   )
 
   // Main content with TabProvider and TasksProvider wrapping everything
@@ -341,7 +339,6 @@ function App(): React.JSX.Element {
                         <AppContent />
                       </SidebarInset>
                     </SidebarDrillDownProvider>
-                    {/* Drag Overlay - only for task drag to sidebar */}
                     <TaskDragOverlay projects={projectsWithCounts} />
                   </SelectedFolderProvider>
                 </SettingsModalProvider>
