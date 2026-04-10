@@ -92,39 +92,42 @@
 
 **Likely files:**
 
+- Modify: `apps/desktop/src/renderer/src/App.tsx`
 - Modify: `apps/desktop/tests/e2e/utils/electron-helpers.ts`
-- Create if needed: `apps/desktop/tests/e2e/utils/note-sync-helpers.ts`
+- Create: `apps/desktop/tests/e2e/utils/note-sync-helpers.ts`
+- Create: `apps/desktop/tests/e2e/note-sync-helpers.e2e.ts`
 
-- [ ] H4.1: Add a helper to create a note with a known title and body.
-- [ ] H4.2: Add a helper to open a note by title on either device.
-- [ ] H4.3: Add a helper to replace the full body content deterministically.
-- [ ] H4.4: Add a helper to append text at a deterministic location.
-- [ ] H4.5: Add a helper to read the rendered editor body text from each device.
-- [ ] H4.6: Add a helper to assert exact body equality across both devices.
-- [ ] H4.7: Add a smoke test proving body text can be written and read reliably on both devices.
+- [x] H4.1: Add a helper to create a note with a known title and body.
+- [x] H4.2: Add a helper to open a note by title on either device.
+- [x] H4.3: Add a helper to replace the full body content deterministically.
+- [x] H4.4: Add a helper to append text at a deterministic location.
+- [x] H4.5: Add a helper to read the rendered editor body text from each device.
+- [x] H4.6: Add a helper to assert exact body equality across both devices.
+- [x] H4.7: Add a smoke test proving body text can be written and read reliably on both devices.
 
 #### H5: Force Sync And Idle Waits
 
 **Likely files:**
 
-- Modify: `apps/desktop/tests/e2e/utils/electron-helpers.ts`
+- Modify: `apps/desktop/tests/e2e/utils/network-control.ts`
 - Reuse: existing sync IPC surface
+- Create: `apps/desktop/tests/e2e/manual-sync-smoke.e2e.ts`
 
-- [ ] H5.1: Add a helper to call sync trigger on a specific device.
-- [ ] H5.2: Add a helper to poll sync status on a specific device.
-- [ ] H5.3: Add a helper to wait for `syncing -> idle`.
-- [ ] H5.4: Add a helper to wait until pending count reaches the expected value.
-- [ ] H5.5: Add a helper `syncBothAndWait()` for the common case.
-- [ ] H5.6: Add a smoke test where `A` creates online, `B` syncs, and both return to idle.
+- [x] H5.1: Add a helper to call sync trigger on a specific device.
+- [x] H5.2: Add a helper to poll sync status on a specific device.
+- [x] H5.3: Add a helper to wait for `syncing -> idle`.
+- [x] H5.4: Add a helper to wait until pending count reaches the expected value.
+- [x] H5.5: Add a helper `syncBothAndWait()` for the common case.
+- [x] H5.6: Add a smoke test where `A` creates online, `B` syncs, and both return to idle.
 
 ### Phase 0B: Exit Criteria Before Writing Real CRDT Cases
 
 - [x] X1: Two isolated Electron clients can run in the same Playwright test.
-- [ ] X2: Both clients can authenticate into the same sync account without UI auth flows.
-- [ ] X3: Offline/online transitions are deterministic in tests.
-- [ ] X4: Note body creation, open, edit, read, and equality assertions are stable.
-- [ ] X5: Manual sync and idle waits are stable enough to remove arbitrary sleep-based timing.
-- [ ] X6: At least one end-to-end smoke case passes before starting `C1`.
+- [x] X2: Both clients can authenticate into the same sync account without UI auth flows.
+- [x] X3: Offline/online transitions are deterministic in tests.
+- [x] X4: Note body creation, open, edit, read, and equality assertions are stable.
+- [x] X5: Manual sync and idle waits are stable enough to remove arbitrary sleep-based timing.
+- [x] X6: At least one end-to-end smoke case passes before starting `C1`.
 
 ## Phase 1: Create Propagation
 
