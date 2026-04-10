@@ -212,7 +212,6 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
       ])
 
       const crdtQueue = new CrdtUpdateQueue()
-      setOnTokenRefreshed(() => crdtQueue.resume())
       crdtQueue.start(async (noteId, updates) => {
         const token = await getValidAccessToken()
         const vaultKey = await getOrDeriveVaultKey().catch(() => null)
@@ -309,6 +308,21 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
 
       const network = new NetworkMonitor()
       network.start()
+      if (!network.online) {
+        crdtQueue.pause()
+      }
+      network.on('status-changed', ({ online }: { online: boolean }) => {
+        if (online) {
+          crdtQueue.resume()
+        } else {
+          crdtQueue.pause()
+        }
+      })
+      setOnTokenRefreshed(() => {
+        if (network.online) {
+          crdtQueue.resume()
+        }
+      })
 
       const ws = new WebSocketManager({
         getAccessToken: () => getValidAccessToken(),

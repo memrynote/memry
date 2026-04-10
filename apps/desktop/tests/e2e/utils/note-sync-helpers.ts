@@ -74,6 +74,14 @@ export async function openNoteByTitle(page: Page, title: string): Promise<void> 
     return
   }
 
+  const note = await getNoteHandleByTitle(page, title)
+  await openNoteInUi(page, note)
+}
+
+export async function getNoteHandleByTitle(
+  page: Page,
+  title: string
+): Promise<{ id: string; title: string; emoji?: string | null }> {
   let note: { id: string; title: string; emoji?: string | null } | null = null
   await expect
     .poll(async () => {
@@ -88,7 +96,16 @@ export async function openNoteByTitle(page: Page, title: string): Promise<void> 
     })
     .toBe(true)
 
-  await openNoteInUi(page, note!)
+  return note!
+}
+
+export async function getNoteFileBodyByTitle(page: Page, title: string): Promise<string | null> {
+  const note = await getNoteHandleByTitle(page, title)
+  const body = await page.evaluate(async (id) => {
+    const loaded = await window.api.notes.get(id)
+    return loaded?.content ?? null
+  }, note.id)
+  return body === null ? null : normalizeBodyText(body)
 }
 
 export async function replaceNoteBody(page: Page, body: string): Promise<void> {

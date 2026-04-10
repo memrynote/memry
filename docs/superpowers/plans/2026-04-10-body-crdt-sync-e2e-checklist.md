@@ -131,10 +131,10 @@
 
 ## Phase 1: Create Propagation
 
-- [ ] C1: `A offline` creates a note with body, then `A online`, then `B syncs`. Assert `B` gets the note and exact body.
-- [ ] C2: `B offline` creates a note with body, then `B online`, then `A syncs`. Assert `A` gets the note and exact body.
-- [ ] C3: `A online` creates a note while `B offline`, then `B online`. Assert `B` gets the note and exact body.
-- [ ] C4: `B online` creates a note while `A offline`, then `A online`. Assert `A` gets the note and exact body.
+- [x] C1: `A offline` creates a note with body, then `A online`, then `B syncs`. Assert `B` gets the note and exact body.
+- [x] C2: `B offline` creates a note with body, then `B online`, then `A syncs`. Assert `A` gets the note and exact body.
+- [x] C3: `A online` creates a note while `B offline`, then `B online`. Assert `B` gets the note and exact body.
+- [x] C4: `B online` creates a note while `A offline`, then `A online`. Assert `A` gets the note and exact body.
 
 ## Phase 2: Single-Writer Edit Propagation
 
