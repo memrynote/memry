@@ -147,10 +147,10 @@
 
 ## Phase 3: Independent Edits On Different Notes
 
-- [ ] D1: `A offline` edits `noteA` while `B offline` edits `noteB`, then both go online. Assert both notes converge on both devices.
-- [ ] D2: `A online` edits `noteA` while `B offline` edits `noteB`, then `B online`. Assert both notes converge.
-- [ ] D3: `A offline` edits `noteA` while `B online` edits `noteB`, then `A online`. Assert both notes converge.
-- [ ] D4: `A online` and `B online` edit different notes concurrently. Assert both notes converge.
+- [x] D1: `A offline` edits `noteA` while `B offline` edits `noteB`, then both go online. Assert both notes converge on both devices.
+- [x] D2: `A online` edits `noteA` while `B offline` edits `noteB`, then `B online`. Assert both notes converge.
+- [x] D3: `A offline` edits `noteA` while `B online` edits `noteB`, then `A online`. Assert both notes converge.
+- [x] D4: `A online` and `B online` edit different notes concurrently. Assert both notes converge.
 
 ## Phase 4: Concurrent Edits On The Same Note
 
