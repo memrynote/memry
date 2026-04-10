@@ -38,6 +38,36 @@ export class CrdtSyncCoordinator {
     return this.pendingPulls.size
   }
 
+  private async applySnapshotBaseline(
+    noteId: string,
+    token: string,
+    vaultKey: Uint8Array,
+    mode: 'single' | 'batch'
+  ): Promise<number> {
+    const snapshotResult = await fetchCrdtSnapshot(noteId, token)
+    if (!snapshotResult || !this.ctx.deps.crdtProvider) {
+      return 0
+    }
+
+    const signerPubKey = await this.resolveDeviceKey(snapshotResult.signerDeviceId)
+    if (!signerPubKey) {
+      log.warn(`Skipping CRDT snapshot from unresolvable signer in ${mode} mode`, {
+        noteId,
+        signerDeviceId: snapshotResult.signerDeviceId
+      })
+      return 0
+    }
+
+    const decrypted = decryptCrdtUpdate(snapshotResult.snapshot, vaultKey, noteId, signerPubKey)
+    this.ctx.deps.crdtProvider.applyRemoteUpdate(noteId, decrypted)
+    log.debug('Applied CRDT snapshot baseline', {
+      noteId,
+      mode,
+      sequenceNum: snapshotResult.sequenceNum
+    })
+    return snapshotResult.sequenceNum
+  }
+
   async applyCrdtIncrementals(
     noteId: string,
     token: string,
@@ -53,33 +83,7 @@ export class CrdtSyncCoordinator {
       const doc = await this.ctx.deps.crdtProvider.open(noteId, undefined, { skipSeed: true })
       if (!doc) return
 
-      let since = 0
-
-      const stateVector = this.ctx.deps.crdtProvider.getStateVector(noteId)
-      const needsBootstrap = !stateVector || stateVector.length <= 2
-
-      if (needsBootstrap) {
-        const snapshotResult = await fetchCrdtSnapshot(noteId, token)
-        if (snapshotResult) {
-          const signerPubKey = await this.resolveDeviceKey(snapshotResult.signerDeviceId)
-          if (signerPubKey) {
-            const decrypted = decryptCrdtUpdate(
-              snapshotResult.snapshot,
-              vaultKey,
-              noteId,
-              signerPubKey
-            )
-            this.ctx.deps.crdtProvider.applyRemoteUpdate(noteId, decrypted)
-            since = snapshotResult.sequenceNum
-            log.debug('Applied CRDT snapshot', { noteId, sequenceNum: since })
-          } else {
-            log.warn('Skipping CRDT snapshot from unresolvable signer', {
-              noteId,
-              signerDeviceId: snapshotResult.signerDeviceId
-            })
-          }
-        }
-      }
+      let since = await this.applySnapshotBaseline(noteId, token, vaultKey, 'single')
 
       let hasMore = true
 
@@ -176,26 +180,7 @@ export class CrdtSyncCoordinator {
           continue
         }
 
-        let since = 0
-        const stateVector = this.ctx.deps.crdtProvider.getStateVector(noteId)
-        const needsBootstrap = !stateVector || stateVector.length <= 2
-
-        if (needsBootstrap) {
-          const snap = await fetchCrdtSnapshot(noteId, token)
-          if (snap) {
-            const pubKey = await this.resolveDeviceKey(snap.signerDeviceId)
-            if (pubKey) {
-              const decrypted = decryptCrdtUpdate(snap.snapshot, vaultKey, noteId, pubKey)
-              this.ctx.deps.crdtProvider.applyRemoteUpdate(noteId, decrypted)
-              since = snap.sequenceNum
-            } else {
-              log.warn('Skipping CRDT snapshot from unresolvable signer in batch', {
-                noteId,
-                signerDeviceId: snap.signerDeviceId
-              })
-            }
-          }
-        }
+        const since = await this.applySnapshotBaseline(noteId, token, vaultKey, 'batch')
         sinceMap.set(noteId, since)
       }
 

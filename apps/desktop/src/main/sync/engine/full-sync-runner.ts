@@ -121,6 +121,11 @@ export class FullSyncRunner {
       } satisfies InitialSyncProgressEvent)
     } finally {
       this.ctx.fullSyncActive = false
+      if (this.ctx.deps.crdtProvider) {
+        for (const noteId of this.ctx.deps.crdtProvider.getOpenNoteIds()) {
+          this.crdtSync.addPendingPull(noteId)
+        }
+      }
       if (this.crdtSync.pendingPullCount > 0) {
         log.debug('fullSync: flushing pending CRDT pulls', {
           count: this.crdtSync.pendingPullCount

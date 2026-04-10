@@ -112,8 +112,6 @@ export const storeSnapshot = async (
   const now = Math.floor(Date.now() / 1000)
   const blobKey = `${userId}/crdt/${noteId}/snapshot`
 
-  await storage.put(blobKey, snapshotData)
-
   const currentSeq = await db
     .prepare(
       'SELECT COALESCE(MAX(sequence_num), 0) as max_seq FROM crdt_updates WHERE user_id = ? AND note_id = ?'
@@ -122,6 +120,16 @@ export const storeSnapshot = async (
     .first<{ max_seq: number }>()
 
   const sequenceNum = currentSeq?.max_seq ?? 0
+  const existingSnapshot = await db
+    .prepare('SELECT sequence_num FROM crdt_snapshots WHERE user_id = ? AND note_id = ?')
+    .bind(userId, noteId)
+    .first<{ sequence_num: number }>()
+
+  if ((existingSnapshot?.sequence_num ?? 0) > sequenceNum) {
+    return { sequenceNum: existingSnapshot!.sequence_num }
+  }
+
+  await storage.put(blobKey, snapshotData)
 
   await db
     .prepare(

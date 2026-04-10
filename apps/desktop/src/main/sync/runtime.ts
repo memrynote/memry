@@ -239,6 +239,15 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
             () => postToServer('/sync/crdt/updates', { noteId, updates: b64Updates }, token),
             { maxRetries: 3, baseDelayMs: 2000 }
           )
+
+          try {
+            await crdtProvider.pushSnapshotForNote(noteId)
+          } catch (snapshotErr) {
+            log.warn('Failed to push CRDT snapshot after update batch', {
+              noteId,
+              error: snapshotErr
+            })
+          }
         } catch (err) {
           if (err instanceof SyncServerError && err.statusCode === 401) {
             crdtQueue.pause()

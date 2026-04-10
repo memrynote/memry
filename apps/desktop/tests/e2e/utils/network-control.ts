@@ -13,6 +13,7 @@ interface TriggerSyncResult {
 
 interface MemryNetworkTestHooks {
   setNetworkOnlineForTests(online: boolean): Promise<void>
+  getCrdtPendingCount(): Promise<number>
 }
 
 async function setNetworkOnlineForTests(
@@ -40,6 +41,22 @@ export async function goOffline(...apps: ElectronApplication[]): Promise<void> {
 
 export async function goOnline(...apps: ElectronApplication[]): Promise<void> {
   await Promise.all(apps.map((app) => setNetworkOnlineForTests(app, true)))
+}
+
+export async function readCrdtPendingCount(electronApp: ElectronApplication): Promise<number> {
+  return electronApp.evaluate(async () => {
+    const hooks = (
+      globalThis as typeof globalThis & {
+        __memryTestHooks?: MemryNetworkTestHooks
+      }
+    ).__memryTestHooks
+
+    if (!hooks) {
+      throw new Error('Memry test hooks are not registered')
+    }
+
+    return hooks.getCrdtPendingCount()
+  })
 }
 
 export async function readSyncStatus(page: Page): Promise<SyncStatusSnapshot> {
@@ -96,6 +113,17 @@ export async function waitForSyncIdle(page: Page, timeout = 15000): Promise<Sync
     .toBe(true)
 
   return readSyncStatus(page)
+}
+
+export async function waitForCrdtQueueIdle(
+  electronApp: ElectronApplication,
+  timeout = 15000
+): Promise<number> {
+  await playwrightExpect
+    .poll(() => readCrdtPendingCount(electronApp), { timeout })
+    .toBe(0)
+
+  return readCrdtPendingCount(electronApp)
 }
 
 export async function syncBothAndWait(

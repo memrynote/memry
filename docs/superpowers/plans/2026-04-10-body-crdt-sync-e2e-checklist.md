@@ -138,12 +138,12 @@
 
 ## Phase 2: Single-Writer Edit Propagation
 
-- [ ] E1: `A offline` edits an `A-created` shared note, then reconnects. Assert `B` sees the body change.
-- [ ] E2: `B offline` edits a `B-created` shared note, then reconnects. Assert `A` sees the body change.
-- [ ] E3: `A offline` edits a `B-created` shared note, then reconnects. Assert `B` sees the body change.
-- [ ] E4: `B offline` edits an `A-created` shared note, then reconnects. Assert `A` sees the body change.
-- [ ] E5: `A online` edits a shared note while `B offline`, then `B online`. Assert `B` sees the body change.
-- [ ] E6: `B online` edits a shared note while `A offline`, then `A online`. Assert `A` sees the body change.
+- [x] E1: `A offline` edits an `A-created` shared note, then reconnects. Assert `B` sees the body change.
+- [x] E2: `B offline` edits a `B-created` shared note, then reconnects. Assert `A` sees the body change.
+- [x] E3: `A offline` edits a `B-created` shared note, then reconnects. Assert `B` sees the body change.
+- [x] E4: `B offline` edits an `A-created` shared note, then reconnects. Assert `A` sees the body change.
+- [x] E5: `A online` edits a shared note while `B offline`, then `B online`. Assert `B` sees the body change.
+- [x] E6: `B online` edits a shared note while `A offline`, then `A online`. Assert `A` sees the body change.
 
 ## Phase 3: Independent Edits On Different Notes
 
