@@ -26,6 +26,7 @@ const MAX_NETWORK_MONITOR_LISTENERS = 50
 
 export class NetworkMonitor extends EventEmitter {
   private _online: boolean
+  private onlineOverrideForTests: boolean | null = null
   private pollTimer: ReturnType<typeof setInterval> | null = null
   private debounceTimer: ReturnType<typeof setTimeout> | null = null
   private readonly deps: NetworkMonitorDeps
@@ -42,7 +43,16 @@ export class NetworkMonitor extends EventEmitter {
   }
 
   get online(): boolean {
-    return this._online
+    return this.onlineOverrideForTests ?? this._online
+  }
+
+  setOnlineForTests(online: boolean | null): void {
+    this.onlineOverrideForTests = online
+    if (this.debounceTimer) {
+      clearTimeout(this.debounceTimer)
+      this.debounceTimer = null
+    }
+    this.applyStatus(this.resolveOnlineStatus())
   }
 
   start(): void {
@@ -75,7 +85,7 @@ export class NetworkMonitor extends EventEmitter {
   }
 
   private poll(): void {
-    const current = this.deps.getIsOnline()
+    const current = this.resolveOnlineStatus()
     if (current === this._online) {
       if (this.debounceTimer) {
         clearTimeout(this.debounceTimer)
@@ -100,5 +110,9 @@ export class NetworkMonitor extends EventEmitter {
     if (status === this._online) return
     this._online = status
     this.emit('status-changed', { online: status })
+  }
+
+  private resolveOnlineStatus(): boolean {
+    return this.onlineOverrideForTests ?? this.deps.getIsOnline()
   }
 }

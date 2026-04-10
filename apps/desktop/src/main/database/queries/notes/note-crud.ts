@@ -198,6 +198,15 @@ export function getAllNoteIds(db: IndexDb): string[] {
     .map((r) => r.id)
 }
 
+export function getAllCrdtNoteIds(db: IndexDb): string[] {
+  return db
+    .select({ id: noteCache.id })
+    .from(noteCache)
+    .where(eq(noteCache.fileType, 'markdown'))
+    .all()
+    .map((r) => r.id)
+}
+
 export function getNotesModifiedAfter(db: IndexDb, date: string): NoteCache[] {
   return db
     .select()

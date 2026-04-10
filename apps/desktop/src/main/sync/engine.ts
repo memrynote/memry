@@ -548,7 +548,14 @@ export class SyncEngine extends EventEmitter {
 
   private handleWsConnected = (): void => {
     if (!this.stateManager.isPaused()) {
-      this.scheduleSync(() => this.pull())
+      this.scheduleSync(async () => {
+        await this.pull()
+
+        const openNoteIds = this.ctx.deps.crdtProvider?.getOpenNoteIds() ?? []
+        for (const noteId of openNoteIds) {
+          await this.crdtSync.pullCrdtForNote(noteId)
+        }
+      })
     }
   }
 }

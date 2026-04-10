@@ -1,6 +1,9 @@
+# Store PEM values on a single line with literal \n escapes.
 JWT_PUBLIC_KEY=replace-with-real-ed25519-public-key-pem
 JWT_PRIVATE_KEY=replace-with-real-ed25519-private-key-pem
 RESEND_API_KEY=re_replace_with_real_key
 GOOGLE_CLIENT_ID=replace-with-real-google-client-id.apps.googleusercontent.com
 GOOGLE_CLIENT_SECRET=replace-with-real-google-client-secret
+GOOGLE_REDIRECT_URI=replace-with-registered-google-redirect-uri
+OTP_HMAC_KEY=replace-with-random-secret-for-otp-hmac
 RECOVERY_DUMMY_SECRET=replace-with-random-secret-for-dummy-recovery
