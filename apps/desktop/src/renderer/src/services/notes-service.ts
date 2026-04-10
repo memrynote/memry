@@ -108,3 +108,7 @@ export function onNoteExternalChange(
 export function onTagsChanged(callback: () => void): () => void {
   return window.api.onTagsChanged(callback)
 }
+
+export function onFolderConfigUpdated(callback: (event: { path: string }) => void): () => void {
+  return window.api.onFolderConfigUpdated(callback)
+}

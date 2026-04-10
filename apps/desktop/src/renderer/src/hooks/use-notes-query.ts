@@ -24,7 +24,8 @@ import {
   onNoteRenamed,
   onNoteMoved,
   onNoteExternalChange,
-  onTagsChanged
+  onTagsChanged,
+  onFolderConfigUpdated
 } from '@/services/notes-service'
 import { tagsService } from '@/services/tags-service'
 
@@ -324,12 +325,14 @@ export function useNoteFoldersQuery(options: { enabled?: boolean } = {}) {
     const unsubDeleted = onNoteDeleted(invalidate)
     const unsubMoved = onNoteMoved(invalidate)
     const unsubRenamed = onNoteRenamed(invalidate)
+    const unsubFolderConfig = onFolderConfigUpdated(invalidate)
 
     return () => {
       unsubCreated()
       unsubDeleted()
       unsubMoved()
       unsubRenamed()
+      unsubFolderConfig()
     }
   }, [queryClient])
 

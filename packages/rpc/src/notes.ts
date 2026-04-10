@@ -4,7 +4,13 @@ import type {
   SelectOption,
   StatusCategoryKey
 } from '../../contracts/src/property-types.ts'
-import { defineDomain, defineEvent, defineMethod, type RpcClient, type RpcSubscriptions } from './schema.ts'
+import {
+  defineDomain,
+  defineEvent,
+  defineMethod,
+  type RpcClient,
+  type RpcSubscriptions
+} from './schema.ts'
 
 interface NoteFrontmatter {
   id: string
@@ -422,13 +428,11 @@ export const notesRpc = defineDomain({
     }),
     ensurePropertyDefinition: defineMethod<
       (name: string, type: EnsurablePropertyType) => Promise<{ success: boolean }>
-    >(
-      {
-        channel: NotesChannels.invoke.ENSURE_PROPERTY_DEFINITION,
-        params: ['name', 'type'],
-        invokeArgs: ['{ name, type }']
-      }
-    ),
+    >({
+      channel: NotesChannels.invoke.ENSURE_PROPERTY_DEFINITION,
+      params: ['name', 'type'],
+      invokeArgs: ['{ name, type }']
+    }),
     addPropertyOption: defineMethod<
       (propertyName: string, option: SelectOption) => Promise<{ success: boolean }>
     >({
@@ -563,7 +567,10 @@ export const notesRpc = defineDomain({
       channel: NotesChannels.invoke.SHOW_IMPORT_DIALOG
     }),
     setLocalOnly: defineMethod<
-      (id: string, localOnly: boolean) => Promise<{ success: boolean; note: Note | null; error?: string }>
+      (
+        id: string,
+        localOnly: boolean
+      ) => Promise<{ success: boolean; note: Note | null; error?: string }>
     >({
       channel: NotesChannels.invoke.SET_LOCAL_ONLY,
       params: ['id', 'localOnly'],
@@ -579,8 +586,11 @@ export const notesRpc = defineDomain({
     onNoteDeleted: defineEvent<NoteDeletedEvent>(NotesChannels.events.DELETED),
     onNoteRenamed: defineEvent<NoteRenamedEvent>(NotesChannels.events.RENAMED),
     onNoteMoved: defineEvent<NoteMovedEvent>(NotesChannels.events.MOVED),
-    onNoteExternalChange: defineEvent<NoteExternalChangeEvent>(NotesChannels.events.EXTERNAL_CHANGE),
-    onTagsChanged: defineEvent<void>('notes:tags-changed')
+    onNoteExternalChange: defineEvent<NoteExternalChangeEvent>(
+      NotesChannels.events.EXTERNAL_CHANGE
+    ),
+    onTagsChanged: defineEvent<void>('notes:tags-changed'),
+    onFolderConfigUpdated: defineEvent<{ path: string }>(NotesChannels.events.FOLDER_CONFIG_UPDATED)
   }
 })
 
