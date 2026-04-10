@@ -99,6 +99,9 @@ export class CrdtProvider {
     const existing = this.docs.get(noteId)
     if (existing && !existing.closing) {
       if (windowId) existing.windowIds.add(windowId)
+      if (!options?.skipSeed) {
+        await this.seedFromMarkdown(noteId, existing.doc)
+      }
       return existing.doc
     }
 
@@ -107,6 +110,9 @@ export class CrdtProvider {
       const doc = await pending
       const entry = this.docs.get(noteId)
       if (entry && windowId) entry.windowIds.add(windowId)
+      if (!options?.skipSeed) {
+        await this.seedFromMarkdown(noteId, doc)
+      }
       return doc
     }
 
