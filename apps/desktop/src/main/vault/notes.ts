@@ -58,6 +58,8 @@ import {
 } from '@main/database/queries/notes'
 import { getAllTaskTags } from '@main/database/queries/tasks'
 import { SnapshotReasons, type SnapshotReason } from '@memry/db-schema/schema/notes-cache'
+import { eq } from 'drizzle-orm'
+import { folderConfigs } from '@memry/db-schema/schema/folder-configs'
 import { getDatabase, getIndexDatabase } from '../database'
 import { NoteError, NoteErrorCode, VaultError, VaultErrorCode } from '../lib/errors'
 import { generateNoteId } from '../lib/id'
@@ -1102,9 +1104,21 @@ export async function getNoteLinks(id: string): Promise<NoteLinksResponse> {
 export async function getFolders(): Promise<FolderInfo[]> {
   const notesDir = getNotesDir()
   const paths = await listDirectories(notesDir, notesDir)
+  const db = getDatabase()
 
   return Promise.all(
     paths.map(async (folderPath) => {
+      if (db) {
+        const dbRow = db
+          .select({ icon: folderConfigs.icon })
+          .from(folderConfigs)
+          .where(eq(folderConfigs.path, folderPath))
+          .get()
+        if (dbRow) {
+          return { path: folderPath, icon: dbRow.icon ?? null }
+        }
+      }
+
       const config = await readFolderConfig(folderPath)
       return { path: folderPath, icon: config?.icon ?? null }
     })
