@@ -97,6 +97,10 @@ export function getIndexDatabase(): IndexDb {
   return indexDb
 }
 
+export function isIndexDatabaseInitialized(): boolean {
+  return indexDb !== null
+}
+
 /**
  * Get the raw better-sqlite3 connection for the index database.
  * Used for direct sqlite-vec queries on vec_notes virtual table.
