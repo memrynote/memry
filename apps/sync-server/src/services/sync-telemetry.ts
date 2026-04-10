@@ -43,6 +43,9 @@ const toSyncDomain = (itemType: SyncItemType): SyncDomain => {
       return 'attachments'
     case 'tag_definition':
       return 'tags'
+    default:
+      const _exhaustive: never = itemType
+      return _exhaustive
   }
 }
 
