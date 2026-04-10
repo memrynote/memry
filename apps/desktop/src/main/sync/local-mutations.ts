@@ -16,6 +16,7 @@ import { getProjectSyncService } from './project-sync'
 import { getSettingsSyncManager } from './settings-sync'
 import { getTagDefinitionSyncService } from './tag-definition-sync'
 import { getTaskSyncService } from './task-sync'
+import { getFolderConfigSyncService } from './folder-config-sync'
 
 const log = createLogger('LocalSync')
 
@@ -196,6 +197,21 @@ const localSyncRegistry = createSyncAdapterRegistry([
         getSettingsSyncManager()?.enqueueDelete()
       }
     }
+  },
+  {
+    type: 'folder_config',
+    kind: 'record',
+    local: {
+      enqueueCreate(itemId: string): void {
+        getFolderConfigSyncService()?.enqueueCreate(itemId)
+      },
+      enqueueUpdate(itemId: string): void {
+        getFolderConfigSyncService()?.enqueueUpdate(itemId)
+      },
+      enqueueDelete(itemId: string, snapshotPayload?: string): void {
+        getFolderConfigSyncService()?.enqueueDelete(itemId, snapshotPayload)
+      }
+    }
   }
 ])
 
@@ -214,15 +230,27 @@ function callLocalMutation(
   adapter[method](itemId, ...extra)
 }
 
-export function enqueueLocalSyncCreate(type: LocalSyncType, itemId: string, ...extra: unknown[]): void {
+export function enqueueLocalSyncCreate(
+  type: LocalSyncType,
+  itemId: string,
+  ...extra: unknown[]
+): void {
   callLocalMutation(type, 'enqueueCreate', itemId, extra)
 }
 
-export function enqueueLocalSyncUpdate(type: LocalSyncType, itemId: string, ...extra: unknown[]): void {
+export function enqueueLocalSyncUpdate(
+  type: LocalSyncType,
+  itemId: string,
+  ...extra: unknown[]
+): void {
   callLocalMutation(type, 'enqueueUpdate', itemId, extra)
 }
 
-export function enqueueLocalSyncDelete(type: LocalSyncType, itemId: string, ...extra: unknown[]): void {
+export function enqueueLocalSyncDelete(
+  type: LocalSyncType,
+  itemId: string,
+  ...extra: unknown[]
+): void {
   callLocalMutation(type, 'enqueueDelete', itemId, extra)
 }
 
@@ -235,4 +263,3 @@ export function syncSettingsFieldUpdate(fieldPath: string, value: unknown): void
   if (!manager) return
   manager.updateField(fieldPath, value, 'local')
 }
-
