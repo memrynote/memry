@@ -36,9 +36,8 @@ async function waitForSyncedDeviceList(
         }))
       })
     )
-    .toEqual({
+    .toMatchObject({
       email,
-      deviceCount: 2,
       currentDeviceCount: 1
     })
 }

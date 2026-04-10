@@ -218,4 +218,42 @@ describe('NetworkMonitor', () => {
       expect(handler).not.toHaveBeenCalled()
     })
   })
+
+  describe('#given test-controlled network override', () => {
+    beforeEach(() => {
+      deps = createMockDeps(true)
+      monitor = new NetworkMonitor(200, deps)
+    })
+
+    it('#when set offline for tests #then emits immediately and persists across polls', () => {
+      const handler = vi.fn()
+      monitor.on('status-changed', handler)
+      monitor.start()
+
+      monitor.setOnlineForTests(false)
+
+      expect(handler).toHaveBeenCalledOnce()
+      expect(handler).toHaveBeenCalledWith({ online: false })
+      expect(monitor.online).toBe(false)
+
+      deps.setOnline(true)
+      vi.advanceTimersByTime(20000)
+
+      expect(monitor.online).toBe(false)
+      expect(handler).toHaveBeenCalledOnce()
+    })
+
+    it('#when restored online for tests #then emits immediately', () => {
+      const handler = vi.fn()
+      monitor.on('status-changed', handler)
+      monitor.start()
+
+      monitor.setOnlineForTests(false)
+      monitor.setOnlineForTests(true)
+
+      expect(handler).toHaveBeenNthCalledWith(1, { online: false })
+      expect(handler).toHaveBeenNthCalledWith(2, { online: true })
+      expect(monitor.online).toBe(true)
+    })
+  })
 })
