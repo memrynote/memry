@@ -19,6 +19,26 @@ interface CrdtSnapshot {
   created_at: number
 }
 
+const getMaxSequenceNumber = async (
+  db: D1Database,
+  userId: string,
+  noteId: string
+): Promise<number> => {
+  const row = await db
+    .prepare(
+      `SELECT COALESCE(MAX(sequence_num), 0) as max_seq
+       FROM (
+         SELECT sequence_num FROM crdt_updates WHERE user_id = ? AND note_id = ?
+         UNION ALL
+         SELECT sequence_num FROM crdt_snapshots WHERE user_id = ? AND note_id = ?
+       )`
+    )
+    .bind(userId, noteId, userId, noteId)
+    .first<{ max_seq: number | null }>()
+
+  return row?.max_seq ?? 0
+}
+
 export const storeUpdates = async (
   db: D1Database,
   userId: string,
@@ -36,10 +56,14 @@ export const storeUpdates = async (
       .prepare(
         `INSERT INTO crdt_updates (id, user_id, note_id, update_data, sequence_num, signer_device_id, created_at)
          SELECT ?, ?, ?, ?, COALESCE(MAX(sequence_num), 0) + 1, ?, ?
-         FROM crdt_updates WHERE user_id = ? AND note_id = ?
+         FROM (
+           SELECT sequence_num FROM crdt_updates WHERE user_id = ? AND note_id = ?
+           UNION ALL
+           SELECT sequence_num FROM crdt_snapshots WHERE user_id = ? AND note_id = ?
+         )
          RETURNING sequence_num`
       )
-      .bind(id, userId, noteId, update, signerDeviceId, now, userId, noteId)
+      .bind(id, userId, noteId, update, signerDeviceId, now, userId, noteId, userId, noteId)
       .first<{ sequence_num: number }>()
 
     sequences.push(row!.sequence_num)
@@ -111,17 +135,17 @@ export const storeSnapshot = async (
   const id = crypto.randomUUID()
   const now = Math.floor(Date.now() / 1000)
   const blobKey = `${userId}/crdt/${noteId}/snapshot`
+  const currentSeq = await getMaxSequenceNumber(db, userId, noteId)
+  const existingSnapshot = await db
+    .prepare('SELECT sequence_num FROM crdt_snapshots WHERE user_id = ? AND note_id = ?')
+    .bind(userId, noteId)
+    .first<{ sequence_num: number }>()
+  // Client-uploaded snapshots do not include causal metadata proving they already
+  // contain every server update above the prior snapshot watermark. Keep the
+  // watermark stable once a snapshot exists so later incrementals remain pullable.
+  const sequenceNum = existingSnapshot?.sequence_num ?? currentSeq
 
   await storage.put(blobKey, snapshotData)
-
-  const currentSeq = await db
-    .prepare(
-      'SELECT COALESCE(MAX(sequence_num), 0) as max_seq FROM crdt_updates WHERE user_id = ? AND note_id = ?'
-    )
-    .bind(userId, noteId)
-    .first<{ max_seq: number }>()
-
-  const sequenceNum = currentSeq?.max_seq ?? 0
 
   await db
     .prepare(

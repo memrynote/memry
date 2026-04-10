@@ -223,7 +223,10 @@ export function useEditorSync({
 
     if (isRemoteUpdateRef?.current) return
 
-    if (onMarkdownChange && isContentReadyRef.current) {
+    // When Yjs collaboration is active, the main-process CRDT doc owns body
+    // persistence and writes merged markdown back to disk. Avoid racing that
+    // writeback with a separate renderer-triggered markdown save.
+    if (!yjsFragment && onMarkdownChange && isContentReadyRef.current) {
       if (markdownDebounceRef.current) {
         clearTimeout(markdownDebounceRef.current)
       }

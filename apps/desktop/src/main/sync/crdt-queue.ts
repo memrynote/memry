@@ -70,6 +70,10 @@ export class CrdtUpdateQueue {
     return count
   }
 
+  getOutstandingCount(): number {
+    return this.getPendingCount() + this.flushingNotes.size
+  }
+
   private flushAll(): void {
     for (const noteId of this.buffers.keys()) {
       this.flushNote(noteId)

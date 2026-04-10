@@ -3,6 +3,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 const appOnMock = vi.fn()
 const whenReadyMock = vi.fn(() => new Promise<void>(() => {}))
 const requestSingleInstanceLockMock = vi.fn(() => true)
+const getPathMock = vi.fn((name: string) => `/mock/${name}`)
+const setPathMock = vi.fn()
 const dotenvConfigMock = vi.fn(() => ({ error: undefined }))
 
 vi.mock('dotenv', () => ({
@@ -39,6 +41,8 @@ vi.mock('electron', () => ({
   app: {
     isPackaged: false,
     getAppPath: vi.fn(() => '/mock/app'),
+    getPath: getPathMock,
+    setPath: setPathMock,
     requestSingleInstanceLock: requestSingleInstanceLockMock,
     on: appOnMock,
     whenReady: whenReadyMock,
@@ -90,6 +94,7 @@ describe('main index phase2 exports', () => {
   beforeEach(() => {
     vi.resetModules()
     vi.clearAllMocks()
+    getPathMock.mockImplementation((name: string) => `/mock/${name}`)
     process.env = { ...ORIGINAL_ENV }
   })
 
@@ -123,6 +128,15 @@ describe('main index phase2 exports', () => {
     expect(module.envConfig.openaiApiKey).toBe('test-key')
     expect(module.envConfig.whisperModel).toBe('whisper-test')
     expect(module.envConfig.embeddingModel).toBe('embed-test')
+  })
+
+  it('skips the single-instance lock for multi-device test launches', async () => {
+    process.env.NODE_ENV = 'test'
+    process.env.MEMRY_DEVICE = 'A'
+
+    await importMainModule()
+
+    expect(requestSingleInstanceLockMock).not.toHaveBeenCalled()
   })
 
   it('registerOAuthState schedules expiry cleanup at 10 minutes', async () => {

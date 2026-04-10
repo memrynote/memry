@@ -46,6 +46,7 @@ interface ActiveDoc {
   doc: Y.Doc
   windowIds: Set<number>
   accumulatedBytes: number
+  pendingSnapshotBytes: number
   lastEncodedSize: number
   lastSizeCheckAt: number
   closing?: boolean
@@ -99,6 +100,9 @@ export class CrdtProvider {
     const existing = this.docs.get(noteId)
     if (existing && !existing.closing) {
       if (windowId) existing.windowIds.add(windowId)
+      if (!options?.skipSeed) {
+        await this.seedFromMarkdown(noteId, existing.doc)
+      }
       return existing.doc
     }
 
@@ -107,6 +111,9 @@ export class CrdtProvider {
       const doc = await pending
       const entry = this.docs.get(noteId)
       if (entry && windowId) entry.windowIds.add(windowId)
+      if (!options?.skipSeed) {
+        await this.seedFromMarkdown(noteId, doc)
+      }
       return doc
     }
 
@@ -146,6 +153,7 @@ export class CrdtProvider {
       doc,
       windowIds: new Set(windowId ? [windowId] : []),
       accumulatedBytes: 0,
+      pendingSnapshotBytes: 0,
       lastEncodedSize: 0,
       lastSizeCheckAt: 0
     }
@@ -171,11 +179,12 @@ export class CrdtProvider {
 
     this.flushNetworkBroadcast(noteId)
 
-    if (this.snapshotPushFn && entry.accumulatedBytes > 0) {
+    if (this.snapshotPushFn && entry.pendingSnapshotBytes > 0) {
       const state = Y.encodeStateAsUpdate(entry.doc)
       await this.snapshotPushFn(noteId, state).catch((err) => {
         log.warn('Failed to push snapshot on close', { noteId, error: err })
       })
+      entry.pendingSnapshotBytes = 0
     }
 
     await this.flushDoc(noteId).catch((err) => {
@@ -325,10 +334,12 @@ export class CrdtProvider {
 
     let pushed = 0
     for (const [noteId, entry] of this.docs) {
+      if (entry.pendingSnapshotBytes <= 0) continue
       try {
         const state = Y.encodeStateAsUpdate(entry.doc)
         await this.snapshotPushFn(noteId, state)
         entry.accumulatedBytes = 0
+        entry.pendingSnapshotBytes = 0
         pushed++
         log.info('Pushed server snapshot', { noteId, size: state.byteLength })
       } catch (err) {
@@ -362,7 +373,10 @@ export class CrdtProvider {
       }
 
       // Reset accumulatedBytes BEFORE push so close() won't fire a duplicate push
-      if (entry) entry.accumulatedBytes = 0
+      if (entry) {
+        entry.accumulatedBytes = 0
+        entry.pendingSnapshotBytes = 0
+      }
 
       await this.snapshotPushFn(noteId, state)
       log.info('Pushed snapshot for note', { noteId, size: state.byteLength })
@@ -488,6 +502,9 @@ export class CrdtProvider {
     if (!entry) return
 
     entry.accumulatedBytes += update.byteLength
+    if (origin !== ORIGIN_NETWORK) {
+      entry.pendingSnapshotBytes += update.byteLength
+    }
 
     if (isIpcOrigin(origin)) {
       this.broadcastToWindows(noteId, update, 'ipc', origin.windowId)
@@ -506,6 +523,9 @@ export class CrdtProvider {
 
     if (origin === ORIGIN_NETWORK) {
       recordNetworkUpdate(noteId)
+    }
+
+    if (origin === ORIGIN_NETWORK || isIpcOrigin(origin)) {
       scheduleWriteback(noteId, entry.doc)
     }
   }
@@ -619,8 +639,9 @@ export class CrdtProvider {
     this.compactionBuffers.set(noteId, [])
 
     try {
-      if (this.snapshotPushFn) {
+      if (this.snapshotPushFn && entry.pendingSnapshotBytes > 0) {
         await this.snapshotPushFn(noteId, result.compacted)
+        entry.pendingSnapshotBytes = 0
       }
 
       if (this.persistence) {
