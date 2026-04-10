@@ -111,6 +111,15 @@ export const TagDefinitionSyncPayloadSchema = z.object({
   createdAt: z.string().optional()
 })
 
+export const FolderConfigSyncPayloadSchema = z.object({
+  icon: z.string().nullable(),
+  clock: VectorClockSchema.optional(),
+  createdAt: z.string().optional(),
+  modifiedAt: z.string().optional()
+})
+
+export type FolderConfigSyncPayload = z.infer<typeof FolderConfigSyncPayloadSchema>
+
 export type TaskSyncPayload = z.infer<typeof TaskSyncPayloadSchema>
 export type InboxSyncPayload = z.infer<typeof InboxSyncPayloadSchema>
 export type FilterSyncPayload = z.infer<typeof FilterSyncPayloadSchema>

@@ -152,7 +152,9 @@ export const NotesChannels = {
     /** Note was moved */
     MOVED: 'notes:moved',
     /** External change detected */
-    EXTERNAL_CHANGE: 'notes:external-change'
+    EXTERNAL_CHANGE: 'notes:external-change',
+    /** Folder config (icon, etc.) was updated via sync */
+    FOLDER_CONFIG_UPDATED: 'notes:folder-config-updated'
   }
 } as const
 
