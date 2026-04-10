@@ -165,17 +165,17 @@
 
 ## Phase 5: Coverage Variants
 
-- [ ] V1: Run all offline/offline merge cases with `A reconnects first`.
-- [ ] V2: Run all offline/offline merge cases with `B reconnects first`.
-- [ ] V3: Run all offline/offline merge cases with `A and B reconnect together`.
-- [ ] V4: Run representative `E*` and `M*` cases with the receiver note already open in the editor.
-- [ ] V5: Run representative `E*` and `M*` cases with the receiver note closed, then reopened after sync.
-- [ ] V6: Run the cross-edit user scenario: `A` and `B` each create one note offline, both sync, then both cross-edit both notes. Assert `2 notes` and `4 edits` are preserved on both devices.
+- [x] V1: Run all offline/offline merge cases with `A reconnects first`.
+- [x] V2: Run all offline/offline merge cases with `B reconnects first`.
+- [x] V3: Run all offline/offline merge cases with `A and B reconnect together`.
+- [x] V4: Run representative `E*` and `M*` cases with the receiver note already open in the editor.
+- [x] V5: Run representative `E*` and `M*` cases with the receiver note closed, then reopened after sync.
+- [x] V6: Run the cross-edit user scenario: `A` and `B` each create one note offline, both sync, then both cross-edit both notes. Assert `2 notes` and `4 edits` are preserved on both devices.
 
 ## Done Criteria
 
-- [ ] No body edit is lost.
-- [ ] Both devices converge to identical final body content.
-- [ ] No duplicate note creation appears.
-- [ ] No corrupted editor state appears.
-- [ ] Sync recovers cleanly from offline states without manual repair.
+- [x] No body edit is lost.
+- [x] Both devices converge to identical final body content.
+- [x] No duplicate note creation appears.
+- [x] No corrupted editor state appears.
+- [x] Sync recovers cleanly from offline states without manual repair.
