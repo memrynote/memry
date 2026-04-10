@@ -32,9 +32,9 @@
 
 - [x] H1: Launch `A` and `B` as truly separate devices with isolated user data and keychain state.
 - [x] H2: Sign `A` and `B` into the same account and point both to the same sync backend.
-- [ ] H3: Add deterministic control for `offline -> online -> offline` transitions.
-- [ ] H4: Add helpers to create/open a note and assert exact body content on both devices.
-- [ ] H5: Add helpers to force sync and wait until both devices return to idle.
+- [x] H3: Add deterministic control for `offline -> online -> offline` transitions.
+- [x] H4: Add helpers to create/open a note and assert exact body content on both devices.
+- [x] H5: Add helpers to force sync and wait until both devices return to idle.
 
 ### Phase 0A: Minimal Harness Implementation Order
 
@@ -154,14 +154,14 @@
 
 ## Phase 4: Concurrent Edits On The Same Note
 
-- [ ] M1: `A offline` and `B offline` edit the same note in different blocks, then reconnect. Assert both edits are preserved.
-- [ ] M2: `A offline` and `B offline` edit the same note in the same block at different insertion points, then reconnect. Assert merge is preserved.
-- [ ] M3: `A offline` and `B offline` edit the same exact text range, then reconnect. Assert deterministic merged output and no corruption.
-- [ ] M4: `A online` and `B offline` edit the same note concurrently. Assert merge is preserved.
-- [ ] M5: `A offline` and `B online` edit the same note concurrently. Assert merge is preserved.
-- [ ] M6: `A online` and `B online` edit the same note concurrently. Assert merge is preserved.
-- [ ] M7: `A` edits `noteB` while `B` also edits `noteB`. Assert merge is preserved.
-- [ ] M8: `B` edits `noteA` while `A` also edits `noteA`. Assert merge is preserved.
+- [x] M1: `A offline` and `B offline` edit the same note in different blocks, then reconnect. Assert both edits are preserved.
+- [x] M2: `A offline` and `B offline` edit the same note in the same block at different insertion points, then reconnect. Assert merge is preserved.
+- [x] M3: `A offline` and `B offline` edit the same exact text range, then reconnect. Assert deterministic merged output and no corruption.
+- [x] M4: `A online` and `B offline` edit the same note concurrently. Assert merge is preserved.
+- [x] M5: `A offline` and `B online` edit the same note concurrently. Assert merge is preserved.
+- [x] M6: `A online` and `B online` edit the same note concurrently. Assert merge is preserved.
+- [x] M7: `A` edits `noteB` while `B` also edits `noteB`. Assert merge is preserved.
+- [x] M8: `B` edits `noteA` while `A` also edits `noteA`. Assert merge is preserved.
 
 ## Phase 5: Coverage Variants
 

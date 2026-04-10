@@ -36,6 +36,31 @@ const pendingTimers = new Map<string, ReturnType<typeof setTimeout>>()
 const ignoredWrites = new Map<string, number>()
 const lastNetworkUpdateMs = new Map<string, number>()
 
+interface WritebackDebugState {
+  pending: boolean
+  scheduledCount: number
+  performedCount: number
+  lastMarkdown: string | null
+  lastError: string | null
+}
+
+const debugState = new Map<string, WritebackDebugState>()
+
+function updateDebugState(noteId: string, patch: Partial<WritebackDebugState>): void {
+  const current = debugState.get(noteId) ?? {
+    pending: false,
+    scheduledCount: 0,
+    performedCount: 0,
+    lastMarkdown: null,
+    lastError: null
+  }
+  debugState.set(noteId, { ...current, ...patch })
+}
+
+export function getWritebackDebugState(noteId: string): WritebackDebugState | null {
+  return debugState.get(noteId) ?? null
+}
+
 function isJournalId(noteId: string): boolean {
   return noteId.startsWith('j') && /^j\d{4}-\d{2}-\d{2}$/.test(noteId)
 }
@@ -87,10 +112,19 @@ function emitToRenderer(channel: string, data: unknown): void {
 export function scheduleWriteback(noteId: string, doc: Y.Doc): void {
   const existing = pendingTimers.get(noteId)
   if (existing) clearTimeout(existing)
+  updateDebugState(noteId, {
+    pending: true,
+    scheduledCount: (debugState.get(noteId)?.scheduledCount ?? 0) + 1,
+    lastError: null
+  })
 
   const timer = setTimeout(() => {
     pendingTimers.delete(noteId)
     performWriteback(noteId, doc).catch((err) => {
+      updateDebugState(noteId, {
+        pending: false,
+        lastError: err instanceof Error ? err.message : String(err)
+      })
       log.error('Write-back failed', { noteId, error: err })
       emitToRenderer('sync:write-back-failed', { noteId })
     })
@@ -108,6 +142,12 @@ export function cancelPendingWritebacks(): void {
 
 async function performWriteback(noteId: string, doc: Y.Doc): Promise<void> {
   const markdown = await yDocToMarkdown(doc)
+  updateDebugState(noteId, {
+    pending: false,
+    performedCount: (debugState.get(noteId)?.performedCount ?? 0) + 1,
+    lastMarkdown: markdown,
+    lastError: null
+  })
   if (markdown === null) {
     log.warn('Conversion returned null, keeping stale file', { noteId })
     return

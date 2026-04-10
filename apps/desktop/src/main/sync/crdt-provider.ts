@@ -523,6 +523,9 @@ export class CrdtProvider {
 
     if (origin === ORIGIN_NETWORK) {
       recordNetworkUpdate(noteId)
+    }
+
+    if (origin === ORIGIN_NETWORK || isIpcOrigin(origin)) {
       scheduleWriteback(noteId, entry.doc)
     }
   }

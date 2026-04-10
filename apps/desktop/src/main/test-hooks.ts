@@ -2,6 +2,7 @@ import { store } from './store'
 import { persistKeysAndRegisterDevice } from './ipc/sync-handlers'
 import { yDocToMarkdown } from './sync/blocknote-converter'
 import { getCrdtProvider } from './sync/crdt-provider'
+import { getWritebackDebugState } from './sync/crdt-writeback'
 import { getCrdtQueue, getNetworkMonitor } from './sync/runtime'
 
 export interface SyncTestBootstrapInput {
@@ -19,6 +20,13 @@ interface MemryTestHooks {
   setNetworkOnlineForTests(online: boolean): Promise<void>
   getCrdtPendingCount(): Promise<number>
   getCrdtDocMarkdown(noteId: string): Promise<string | null>
+  getWritebackDebugState(noteId: string): Promise<{
+    pending: boolean
+    scheduledCount: number
+    performedCount: number
+    lastMarkdown: string | null
+    lastError: string | null
+  } | null>
 }
 
 declare global {
@@ -69,6 +77,10 @@ export function registerTestHooks(): void {
         return null
       }
       return yDocToMarkdown(doc)
+    },
+
+    async getWritebackDebugState(noteId: string) {
+      return getWritebackDebugState(noteId)
     }
   }
 }

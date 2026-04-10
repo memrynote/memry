@@ -3,6 +3,13 @@ import { SELECTORS } from './electron-helpers'
 
 interface MemryNoteTestHooks {
   getCrdtDocMarkdown(noteId: string): Promise<string | null>
+  getWritebackDebugState(noteId: string): Promise<{
+    pending: boolean
+    scheduledCount: number
+    performedCount: number
+    lastMarkdown: string | null
+    lastError: string | null
+  } | null>
 }
 
 function normalizeBodyText(text: string): string {
@@ -133,6 +140,40 @@ export async function getCrdtDocBodyByTitle(
   }, note.id)
 
   return body === null ? null : normalizeBodyText(body)
+}
+
+export async function getWritebackDebugByTitle(
+  page: Page,
+  electronApp: ElectronApplication,
+  title: string
+): Promise<{
+  pending: boolean
+  scheduledCount: number
+  performedCount: number
+  lastMarkdown: string | null
+  lastError: string | null
+} | null> {
+  const note = await getNoteHandleByTitle(page, title)
+  const state = await electronApp.evaluate(async (_context, noteId) => {
+    const hooks = (
+      globalThis as typeof globalThis & {
+        __memryTestHooks?: MemryNoteTestHooks
+      }
+    ).__memryTestHooks
+
+    if (!hooks) {
+      throw new Error('Memry test hooks are not registered')
+    }
+
+    return hooks.getWritebackDebugState(noteId)
+  }, note.id)
+
+  if (!state) return null
+
+  return {
+    ...state,
+    lastMarkdown: state.lastMarkdown === null ? null : normalizeBodyText(state.lastMarkdown)
+  }
 }
 
 export async function replaceNoteBody(page: Page, body: string): Promise<void> {
