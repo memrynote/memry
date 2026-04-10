@@ -5,6 +5,21 @@ Format: weekly entries grouped by feature area.
 
 ---
 
+## 2026-04-10 — Add Offline Sync E2E Test
+
+### Added
+- Add writeback debug state tracking and applied sequence management to CRDT synchronization
+- Add getAllCrdtNoteIds function for FullSyncRunner integration
+- Add CRDT test hooks for pending counts and document conversion
+- Add optional seeding to CRDT provider
+- Add test-only network control infrastructure for deterministic online/offline transitions with sync monitoring
+
+### Fixed
+- Fix Node Buffer usage in sync-server CRDT test
+- Fix full-sync CRDT catch-up when index DB is unavailable
+
+---
+
 ## 2026-04-09 — Sync Adapter Registry and Architecture Reset
 
 ### Added
