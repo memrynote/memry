@@ -1,5 +1,7 @@
 # Body CRDT Sync E2E Checklist
 
+Companion explainer: [2026-04-10-body-crdt-sync-fixes-and-flows.md](/Users/h4yfans/.codex/worktrees/4429/memry/docs/superpowers/plans/2026-04-10-body-crdt-sync-fixes-and-flows.md)
+
 > **For agentic workers:** REQUIRED: Use superpowers:subagent-driven-development (if subagents available) or superpowers:executing-plans to implement this plan. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Verify body-only CRDT sync convergence for two desktop devices.
