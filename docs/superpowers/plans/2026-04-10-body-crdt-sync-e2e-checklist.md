@@ -77,13 +77,16 @@
 
 - Create: `apps/desktop/tests/e2e/utils/network-control.ts`
 - Modify if needed: `apps/desktop/tests/e2e/utils/electron-helpers.ts`
+- Modify: `apps/desktop/src/main/sync/network.ts`
+- Modify: `apps/desktop/src/main/sync/network.test.ts`
+- Modify: `apps/desktop/src/main/test-hooks.ts`
 
-- [ ] H3.1: Choose one control mechanism and keep it simple.
-- [ ] H3.2: Preferred path: make the test sync backend start/stop or reject traffic on demand.
-- [ ] H3.3: Add `goOffline(A|B|both)` and `goOnline(A|B|both)` helpers.
-- [ ] H3.4: Add an assertion helper that waits until the app shows `offline` sync status.
-- [ ] H3.5: Add an assertion helper that waits until the app leaves `offline` after reconnect.
-- [ ] H3.6: Add a smoke test for `online -> offline -> online` on both devices.
+- [x] H3.1: Choose one control mechanism and keep it simple.
+- [x] H3.2: Implement a test-only `NetworkMonitor` override in Electron main process for deterministic offline/online transitions.
+- [x] H3.3: Add `goOffline(A|B|both)` and `goOnline(A|B|both)` helpers.
+- [x] H3.4: Add an assertion helper that waits until the app shows `offline` sync status.
+- [x] H3.5: Add an assertion helper that waits until the app leaves `offline` after reconnect.
+- [x] H3.6: Add a smoke test for `online -> offline -> online` on both devices.
 
 #### H4: Note Body Helpers
 

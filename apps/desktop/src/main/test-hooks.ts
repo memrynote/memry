@@ -1,5 +1,6 @@
 import { store } from './store'
 import { persistKeysAndRegisterDevice } from './ipc/sync-handlers'
+import { getNetworkMonitor } from './sync/runtime'
 
 export interface SyncTestBootstrapInput {
   email: string
@@ -13,6 +14,7 @@ export interface SyncTestBootstrapInput {
 
 interface MemryTestHooks {
   bootstrapSyncDevice(input: SyncTestBootstrapInput): Promise<{ deviceId: string }>
+  setNetworkOnlineForTests(online: boolean): Promise<void>
 }
 
 declare global {
@@ -42,6 +44,15 @@ export function registerTestHooks(): void {
       })
 
       return { deviceId }
+    },
+
+    async setNetworkOnlineForTests(online: boolean): Promise<void> {
+      const network = getNetworkMonitor()
+      if (!network) {
+        throw new Error('Sync runtime is not initialized')
+      }
+
+      network.setOnlineForTests(online)
     }
   }
 }
