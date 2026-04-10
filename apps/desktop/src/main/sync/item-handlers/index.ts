@@ -10,6 +10,7 @@ import { settingsHandler } from './settings-handler'
 import { noteHandler } from './note-handler'
 import { journalHandler } from './journal-handler'
 import { tagDefinitionHandler } from './tag-definition-handler'
+import { folderConfigHandler } from './folder-config-handler'
 
 export type { SyncItemHandler, ApplyContext, ApplyResult, DrizzleDb, EmitToWindows } from './types'
 export { resolveClockConflict } from './types'
@@ -22,7 +23,8 @@ const handlers = new Map<SyncItemType, SyncItemHandler>([
   ['settings', settingsHandler],
   ['note', noteHandler],
   ['journal', journalHandler],
-  ['tag_definition', tagDefinitionHandler]
+  ['tag_definition', tagDefinitionHandler],
+  ['folder_config', folderConfigHandler]
 ])
 
 type DesktopRemoteSyncAdapter = RemoteSyncAdapter<DrizzleDb, EmitToWindows>
