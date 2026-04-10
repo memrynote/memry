@@ -1,5 +1,9 @@
-import { expect, type Page } from '@playwright/test'
+import { expect, type ElectronApplication, type Page } from '@playwright/test'
 import { SELECTORS } from './electron-helpers'
+
+interface MemryNoteTestHooks {
+  getCrdtDocMarkdown(noteId: string): Promise<string | null>
+}
 
 function normalizeBodyText(text: string): string {
   return text.replace(/\r\n/g, '\n').replace(/\u00a0/g, ' ').replace(/\n{3,}/g, '\n\n').trimEnd()
@@ -108,6 +112,29 @@ export async function getNoteFileBodyByTitle(page: Page, title: string): Promise
   return body === null ? null : normalizeBodyText(body)
 }
 
+export async function getCrdtDocBodyByTitle(
+  page: Page,
+  electronApp: ElectronApplication,
+  title: string
+): Promise<string | null> {
+  const note = await getNoteHandleByTitle(page, title)
+  const body = await electronApp.evaluate(async (_context, noteId) => {
+    const hooks = (
+      globalThis as typeof globalThis & {
+        __memryTestHooks?: MemryNoteTestHooks
+      }
+    ).__memryTestHooks
+
+    if (!hooks) {
+      throw new Error('Memry test hooks are not registered')
+    }
+
+    return hooks.getCrdtDocMarkdown(noteId)
+  }, note.id)
+
+  return body === null ? null : normalizeBodyText(body)
+}
+
 export async function replaceNoteBody(page: Page, body: string): Promise<void> {
   await waitForNoteEditor(page)
   const nextBlocks = bodyToParagraphBlocks(body)
@@ -119,20 +146,29 @@ export async function replaceNoteBody(page: Page, body: string): Promise<void> {
 }
 
 export async function appendToNoteBody(page: Page, text: string): Promise<void> {
-  await waitForNoteEditor(page)
-  const nextBlocks = bodyToParagraphBlocks(text)
-  await page.evaluate((blocks) => {
+  const editorRoot = await waitForNoteEditor(page)
+  const hasContent = await page.evaluate(() => {
     const editor = (window as unknown as { __memryEditor?: any }).__memryEditor
     if (!editor) throw new Error('window.__memryEditor not exposed')
 
     const doc = editor.document as any[]
-    if (doc.length === 0) {
-      editor.replaceBlocks(doc, blocks)
-      return
+    editor.focus()
+    if (doc.length > 0) {
+      const lastBlock = doc[doc.length - 1]
+      if (lastBlock?.id) {
+        editor.setTextCursorPosition(lastBlock.id, 'end')
+      }
     }
+    return doc.length > 0
+  })
 
-    editor.insertBlocks(blocks, doc[doc.length - 1], 'after')
-  }, nextBlocks)
+  await editorRoot.click()
+  if (hasContent) {
+    await page.keyboard.press('End')
+    await page.keyboard.press('Enter')
+    await page.keyboard.press('Enter')
+  }
+  await page.keyboard.type(text)
 }
 
 export async function readNoteBodyText(page: Page): Promise<string> {

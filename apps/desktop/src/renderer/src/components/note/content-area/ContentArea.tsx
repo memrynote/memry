@@ -860,7 +860,8 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
 
 export const ContentArea = memo(function ContentArea(props: ContentAreaProps) {
   const { state } = useSync()
-  const syncActive = state.status === 'idle' || state.status === 'syncing'
+  const syncActive =
+    state.status === 'idle' || state.status === 'syncing' || state.status === 'offline'
   const { fragment, isReady, isRemoteUpdateRef } = useYjsCollaboration({
     noteId: props.noteId,
     enabled: syncActive

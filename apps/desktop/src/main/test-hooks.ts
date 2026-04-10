@@ -1,6 +1,8 @@
 import { store } from './store'
 import { persistKeysAndRegisterDevice } from './ipc/sync-handlers'
-import { getNetworkMonitor } from './sync/runtime'
+import { yDocToMarkdown } from './sync/blocknote-converter'
+import { getCrdtProvider } from './sync/crdt-provider'
+import { getCrdtQueue, getNetworkMonitor } from './sync/runtime'
 
 export interface SyncTestBootstrapInput {
   email: string
@@ -15,6 +17,8 @@ export interface SyncTestBootstrapInput {
 interface MemryTestHooks {
   bootstrapSyncDevice(input: SyncTestBootstrapInput): Promise<{ deviceId: string }>
   setNetworkOnlineForTests(online: boolean): Promise<void>
+  getCrdtPendingCount(): Promise<number>
+  getCrdtDocMarkdown(noteId: string): Promise<string | null>
 }
 
 declare global {
@@ -53,6 +57,18 @@ export function registerTestHooks(): void {
       }
 
       network.setOnlineForTests(online)
+    },
+
+    async getCrdtPendingCount(): Promise<number> {
+      return getCrdtQueue()?.getOutstandingCount() ?? 0
+    },
+
+    async getCrdtDocMarkdown(noteId: string): Promise<string | null> {
+      const doc = getCrdtProvider().getDoc(noteId)
+      if (!doc) {
+        return null
+      }
+      return yDocToMarkdown(doc)
     }
   }
 }
