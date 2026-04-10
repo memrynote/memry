@@ -24,6 +24,7 @@ import { initSettingsSyncManager, resetSettingsSyncManager } from './settings-sy
 import { initNoteSyncService, resetNoteSyncService } from './note-sync'
 import { initJournalSyncService, resetJournalSyncService } from './journal-sync'
 import { initTagDefinitionSyncService, resetTagDefinitionSyncService } from './tag-definition-sync'
+import { initFolderConfigSyncService, resetFolderConfigSyncService } from './folder-config-sync'
 import { getRemoteSyncAdapter } from './item-handlers'
 import { getIndexDatabase } from '../database/client'
 import { noteCache } from '@memry/db-schema/schema/notes-cache'
@@ -83,6 +84,7 @@ function resetSyncServiceSingletons(): void {
   resetNoteSyncService()
   resetJournalSyncService()
   resetTagDefinitionSyncService()
+  resetFolderConfigSyncService()
 }
 
 function getCurrentDeviceId(db: DataDb): string | null {
@@ -168,6 +170,11 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
         db: runtimeSyncDb,
         getDeviceId
       })
+      const folderConfigSync = initFolderConfigSyncService({
+        queue,
+        db: runtimeSyncDb,
+        getDeviceId
+      })
 
       const adapters = createSyncAdapterRegistry([
         { type: 'task', kind: 'record', local: taskSync, remote: getRemoteSyncAdapter('task') },
@@ -208,6 +215,12 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
           kind: 'record',
           local: tagDefinitionSync,
           remote: getRemoteSyncAdapter('tag_definition')
+        },
+        {
+          type: 'folder_config',
+          kind: 'record',
+          local: folderConfigSync,
+          remote: getRemoteSyncAdapter('folder_config')
         }
       ])
 
