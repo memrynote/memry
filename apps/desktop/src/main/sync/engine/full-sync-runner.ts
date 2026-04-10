@@ -9,6 +9,8 @@ import { SYNC_STATE_KEYS } from './sync-context'
 import type { SyncStateManager } from './sync-state-manager'
 import type { PushCoordinator } from './push-coordinator'
 import type { CrdtSyncCoordinator } from './crdt-sync-coordinator'
+import { getAllCrdtNoteIds } from '../../database/queries/notes'
+import { getIndexDatabase } from '../../database/client'
 
 const log = createLogger('SyncEngine')
 
@@ -122,7 +124,7 @@ export class FullSyncRunner {
     } finally {
       this.ctx.fullSyncActive = false
       if (this.ctx.deps.crdtProvider) {
-        for (const noteId of this.ctx.deps.crdtProvider.getOpenNoteIds()) {
+        for (const noteId of getAllCrdtNoteIds(getIndexDatabase())) {
           this.crdtSync.addPendingPull(noteId)
         }
       }
