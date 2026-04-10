@@ -54,7 +54,12 @@ describe('search projector', () => {
     vi.clearAllMocks()
   })
 
-  function seedMarkdownNote(noteId: string, relativePath: string, content: string, tags: string[]): void {
+  function seedMarkdownNote(
+    noteId: string,
+    relativePath: string,
+    content: string,
+    tags: string[]
+  ): void {
     const absolutePath = path.join(vaultDir, relativePath)
     fs.mkdirSync(path.dirname(absolutePath), { recursive: true })
     fs.writeFileSync(

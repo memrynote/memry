@@ -58,6 +58,12 @@ vi.mock('../vault/notes', () => ({
   restoreVersion: vi.fn()
 }))
 
+vi.mock('../notes/folder-config-effects', () => ({
+  syncFolderConfigSet: vi.fn(),
+  syncFolderConfigRename: vi.fn(),
+  syncFolderConfigDelete: vi.fn()
+}))
+
 vi.mock('../notes/domain', () => ({
   createNoteCommand: vi.fn(),
   updateNoteCommand: vi.fn(),

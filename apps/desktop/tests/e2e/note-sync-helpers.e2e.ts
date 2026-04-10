@@ -1,12 +1,6 @@
 import { test, expect } from './fixtures/sync-fixtures'
-import {
-  waitForVaultReady
-} from './utils/electron-helpers'
-import {
-  createNoteWithBody,
-  expectNoteBody,
-  openNoteByTitle
-} from './utils/note-sync-helpers'
+import { waitForVaultReady } from './utils/electron-helpers'
+import { createNoteWithBody, expectNoteBody, openNoteByTitle } from './utils/note-sync-helpers'
 
 test.describe('Note sync helpers smoke', () => {
   test('can create, reopen, and read exact note body on both devices', async ({ pageA, pageB }) => {

@@ -60,7 +60,11 @@ async function getReadyPage(app: ElectronApplication): Promise<Page> {
   return page
 }
 
-async function waitForVaultPath(page: Page, expectedVaultPath: string, timeout = 15000): Promise<void> {
+async function waitForVaultPath(
+  page: Page,
+  expectedVaultPath: string,
+  timeout = 15000
+): Promise<void> {
   await playwrightExpect
     .poll(() => page.evaluate(() => window.api.vault.getStatus()), { timeout })
     .toMatchObject({

@@ -77,13 +77,15 @@ export async function waitForSyncOffline(page: Page, timeout = 15000): Promise<S
 
 export async function waitForSyncOnline(page: Page, timeout = 15000): Promise<SyncStatusSnapshot> {
   await playwrightExpect
-    .poll(async () => {
-      const status = await readSyncStatus(page)
-      return (
-        (status.status === 'idle' || status.status === 'syncing') &&
-        status.offlineSince == null
-      )
-    }, { timeout })
+    .poll(
+      async () => {
+        const status = await readSyncStatus(page)
+        return (
+          (status.status === 'idle' || status.status === 'syncing') && status.offlineSince == null
+        )
+      },
+      { timeout }
+    )
     .toBe(true)
 
   return readSyncStatus(page)
@@ -95,10 +97,13 @@ export async function waitForPendingCount(
   timeout = 15000
 ): Promise<SyncStatusSnapshot> {
   await playwrightExpect
-    .poll(async () => {
-      const status = await readSyncStatus(page)
-      return status.pendingCount
-    }, { timeout })
+    .poll(
+      async () => {
+        const status = await readSyncStatus(page)
+        return status.pendingCount
+      },
+      { timeout }
+    )
     .toBe(expectedPendingCount)
 
   return readSyncStatus(page)
@@ -106,10 +111,13 @@ export async function waitForPendingCount(
 
 export async function waitForSyncIdle(page: Page, timeout = 15000): Promise<SyncStatusSnapshot> {
   await playwrightExpect
-    .poll(async () => {
-      const status = await readSyncStatus(page)
-      return status.status === 'idle' && status.pendingCount === 0 && status.offlineSince == null
-    }, { timeout })
+    .poll(
+      async () => {
+        const status = await readSyncStatus(page)
+        return status.status === 'idle' && status.pendingCount === 0 && status.offlineSince == null
+      },
+      { timeout }
+    )
     .toBe(true)
 
   return readSyncStatus(page)
@@ -119,9 +127,7 @@ export async function waitForCrdtQueueIdle(
   electronApp: ElectronApplication,
   timeout = 15000
 ): Promise<number> {
-  await playwrightExpect
-    .poll(() => readCrdtPendingCount(electronApp), { timeout })
-    .toBe(0)
+  await playwrightExpect.poll(() => readCrdtPendingCount(electronApp), { timeout }).toBe(0)
 
   return readCrdtPendingCount(electronApp)
 }

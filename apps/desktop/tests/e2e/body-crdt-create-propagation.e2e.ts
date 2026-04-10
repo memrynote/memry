@@ -14,7 +14,10 @@ import {
 } from './utils/network-control'
 import type { ElectronApplication, Page } from '@playwright/test'
 
-async function noteExists(page: Parameters<typeof openNoteByTitle>[0], title: string): Promise<boolean> {
+async function noteExists(
+  page: Parameters<typeof openNoteByTitle>[0],
+  title: string
+): Promise<boolean> {
   return page.evaluate(async (expectedTitle) => {
     const result = await window.api.notes.list({})
     return result.notes.some((note) => note.title === expectedTitle)

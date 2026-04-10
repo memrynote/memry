@@ -60,14 +60,11 @@ import { getAllSupportedExtensions } from '@memry/shared/file-types'
 import { saveAttachment, deleteAttachment, listNoteAttachments } from '../vault/attachments'
 import { fromMemryFileUrl } from '../lib/paths'
 import { readFolderConfig, writeFolderConfig, getFolderTemplate } from '../vault/folders'
-import { eq } from 'drizzle-orm'
-import { folderConfigs } from '@memry/db-schema/schema/folder-configs'
 import {
-  enqueueLocalSyncCreate,
-  enqueueLocalSyncUpdate,
-  enqueueLocalSyncDelete
-} from '../sync/local-mutations'
-import { utcNow } from '@memry/shared/utc'
+  syncFolderConfigSet,
+  syncFolderConfigRename,
+  syncFolderConfigDelete
+} from '../notes/folder-config-effects'
 import { renderNoteAsHtml, sanitizeFilename } from '../lib/export-utils'
 import { SetFolderConfigSchema } from '@memry/contracts/templates-api'
 import {
@@ -338,31 +335,7 @@ export function registerNotesHandlers(): void {
       RenameFolderSchema,
       withErrorHandler(async (input) => {
         await renameFolder(input.oldPath, input.newPath)
-
-        const db = getDatabase()
-        if (db) {
-          const existing = db
-            .select()
-            .from(folderConfigs)
-            .where(eq(folderConfigs.path, input.oldPath))
-            .get()
-          if (existing) {
-            const snapshot = JSON.stringify({
-              path: input.oldPath,
-              icon: existing.icon,
-              clock: existing.clock
-            })
-            db.delete(folderConfigs).where(eq(folderConfigs.path, input.oldPath)).run()
-            enqueueLocalSyncDelete('folder_config', input.oldPath, snapshot)
-
-            const now = utcNow()
-            db.insert(folderConfigs)
-              .values({ path: input.newPath, icon: existing.icon, createdAt: now, modifiedAt: now })
-              .run()
-            enqueueLocalSyncCreate('folder_config', input.newPath)
-          }
-        }
-
+        syncFolderConfigRename(input.oldPath, input.newPath)
         return { success: true }
       }, 'Failed to rename folder')
     )
@@ -374,25 +347,7 @@ export function registerNotesHandlers(): void {
     createStringHandler(
       withErrorHandler(async (folderPath) => {
         await deleteFolder(folderPath)
-
-        const db = getDatabase()
-        if (db) {
-          const existing = db
-            .select()
-            .from(folderConfigs)
-            .where(eq(folderConfigs.path, folderPath))
-            .get()
-          if (existing) {
-            const snapshot = JSON.stringify({
-              path: folderPath,
-              icon: existing.icon,
-              clock: existing.clock
-            })
-            db.delete(folderConfigs).where(eq(folderConfigs.path, folderPath)).run()
-            enqueueLocalSyncDelete('folder_config', folderPath, snapshot)
-          }
-        }
-
+        syncFolderConfigDelete(folderPath)
         return { success: true }
       }, 'Failed to delete folder')
     )
@@ -711,34 +666,7 @@ export function registerNotesHandlers(): void {
       SetFolderConfigSchema,
       withErrorHandler(async (input) => {
         await writeFolderConfig(input.folderPath, input.config)
-
-        const db = getDatabase()
-        if (db) {
-          const existing = db
-            .select()
-            .from(folderConfigs)
-            .where(eq(folderConfigs.path, input.folderPath))
-            .get()
-          const now = utcNow()
-          if (existing) {
-            db.update(folderConfigs)
-              .set({ icon: input.config.icon ?? null, modifiedAt: now })
-              .where(eq(folderConfigs.path, input.folderPath))
-              .run()
-            enqueueLocalSyncUpdate('folder_config', input.folderPath)
-          } else {
-            db.insert(folderConfigs)
-              .values({
-                path: input.folderPath,
-                icon: input.config.icon ?? null,
-                createdAt: now,
-                modifiedAt: now
-              })
-              .run()
-            enqueueLocalSyncCreate('folder_config', input.folderPath)
-          }
-        }
-
+        syncFolderConfigSet(input.folderPath, input.config.icon)
         return { success: true }
       }, 'Failed to set folder config')
     )
