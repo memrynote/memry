@@ -347,7 +347,11 @@ export function registerNotesHandlers(): void {
             .where(eq(folderConfigs.path, input.oldPath))
             .get()
           if (existing) {
-            const snapshot = JSON.stringify({ icon: existing.icon, clock: existing.clock })
+            const snapshot = JSON.stringify({
+              path: input.oldPath,
+              icon: existing.icon,
+              clock: existing.clock
+            })
             db.delete(folderConfigs).where(eq(folderConfigs.path, input.oldPath)).run()
             enqueueLocalSyncDelete('folder_config', input.oldPath, snapshot)
 
@@ -379,7 +383,11 @@ export function registerNotesHandlers(): void {
             .where(eq(folderConfigs.path, folderPath))
             .get()
           if (existing) {
-            const snapshot = JSON.stringify({ icon: existing.icon, clock: existing.clock })
+            const snapshot = JSON.stringify({
+              path: folderPath,
+              icon: existing.icon,
+              clock: existing.clock
+            })
             db.delete(folderConfigs).where(eq(folderConfigs.path, folderPath)).run()
             enqueueLocalSyncDelete('folder_config', folderPath, snapshot)
           }
