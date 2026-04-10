@@ -27,6 +27,7 @@ import { startSnoozeScheduler, stopSnoozeScheduler, checkDueItemsOnStartup } fro
 import { stopVoiceModel } from './inbox/voice-model'
 import { startReminderScheduler, stopReminderScheduler } from './lib/reminders'
 import { log, createLogger, disableConsoleTransport } from './lib/logger'
+import { registerTestHooks } from './test-hooks'
 import {
   computeSpkiHashFromPem,
   isPinningDisabled,
@@ -57,6 +58,8 @@ const configLog = createLogger('Config')
 const quickCaptureLog = createLogger('QuickCapture')
 const shutdownLog = createLogger('Shutdown')
 const deepLinkLog = createLogger('DeepLink')
+
+registerTestHooks()
 
 for (const signal of ['SIGINT', 'SIGTERM'] as const) {
   process.on(signal, () => {
@@ -314,17 +317,24 @@ function handleDeepLink(url: string): void {
   }
 }
 
-// Windows/Linux: deep links arrive via second-instance event
-const gotTheLock = app.requestSingleInstanceLock()
-if (!gotTheLock) {
-  app.quit()
-} else {
-  app.on('second-instance', (_event, commandLine) => {
-    const deepLinkUrl = commandLine.find((arg) => arg.startsWith('memry://'))
-    if (deepLinkUrl) {
-      handleDeepLink(deepLinkUrl)
-    }
-  })
+const allowMultiInstanceForDeviceTests =
+  process.env.NODE_ENV === 'test' && typeof process.env.MEMRY_DEVICE === 'string'
+
+// Windows/Linux: deep links arrive via second-instance event.
+// Device-scoped E2E runs need two Electron instances side by side, so skip the
+// process-wide lock only for that test harness path.
+if (!allowMultiInstanceForDeviceTests) {
+  const gotTheLock = app.requestSingleInstanceLock()
+  if (!gotTheLock) {
+    app.quit()
+  } else {
+    app.on('second-instance', (_event, commandLine) => {
+      const deepLinkUrl = commandLine.find((arg) => arg.startsWith('memry://'))
+      if (deepLinkUrl) {
+        handleDeepLink(deepLinkUrl)
+      }
+    })
+  }
 }
 
 // This method will be called when Electron has finished

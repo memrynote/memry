@@ -6,6 +6,7 @@ import { fileURLToPath } from 'url'
 import { buildWorker } from '../scripts/build-worker.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
+const ROOT = path.resolve(__dirname, '../../..')
 const SCHEMA_PATH = path.resolve(__dirname, '../../../apps/sync-server/schema/d1.sql')
 
 export interface ServerKeys {
@@ -24,6 +25,8 @@ export class SimulatedServer {
     this.keys = await this.generateJwtKeys()
 
     this.mf = new Miniflare({
+      rootPath: ROOT,
+      modulesRoot: ROOT,
       modules: true,
       scriptPath: workerPath,
       compatibilityDate: '2025-01-01',
@@ -76,6 +79,11 @@ export class SimulatedServer {
   async getD1(): Promise<D1Database> {
     if (!this.mf) throw new Error('Server not started')
     return this.mf.getD1Database('DB')
+  }
+
+  async getDirectUrl(): Promise<URL> {
+    if (!this.mf) throw new Error('Server not started')
+    return this.mf.ready
   }
 
   getKeys(): ServerKeys {
