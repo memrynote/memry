@@ -29,7 +29,7 @@ export const SELECTORS = {
   // Notes - actual selectors from the app
   notesList: '[data-testid="notes-list"], [class*="notes-list"]',
   noteItem: '[data-testid="note-item"], [class*="note-item"]',
-  noteEditor: '.bn-container [contenteditable="true"]', // BlockNote editor container
+  noteEditor: '[aria-label="Rich text editor"] [contenteditable="true"]', // BlockNote editor input
   noteTitle: 'textarea[aria-label="Note title"]', // Title textarea
   noteTags: '[data-testid="note-tags"], [class*="tags-row"]',
 

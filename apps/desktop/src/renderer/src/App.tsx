@@ -149,6 +149,31 @@ const AppContent = (): React.JSX.Element => {
   }, [])
 
   useEffect(() => {
+    const openTestNote = (
+      event: CustomEvent<{ id?: string; title?: string; emoji?: string | null }>
+    ) => {
+      const { id, title, emoji } = event.detail ?? {}
+      if (!id || !title) return
+
+      openTab({
+        type: 'note',
+        title,
+        icon: 'file-text',
+        emoji: emoji ?? undefined,
+        path: `/notes/${id}`,
+        entityId: id,
+        isPinned: false,
+        isModified: false,
+        isPreview: false,
+        isDeleted: false
+      })
+    }
+
+    window.addEventListener('memry:test-open-note', openTestNote as EventListener)
+    return () => window.removeEventListener('memry:test-open-note', openTestNote as EventListener)
+  }, [openTab])
+
+  useEffect(() => {
     return window.api.onSettingsOpenRequested((section) => {
       openSettings(section)
     })

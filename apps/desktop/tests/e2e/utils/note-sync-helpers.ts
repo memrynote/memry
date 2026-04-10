@@ -1,0 +1,168 @@
+import { expect, type Page } from '@playwright/test'
+import { SELECTORS } from './electron-helpers'
+
+function normalizeBodyText(text: string): string {
+  return text.replace(/\r\n/g, '\n').replace(/\u00a0/g, ' ').replace(/\n{3,}/g, '\n\n').trimEnd()
+}
+
+function bodyToParagraphBlocks(body: string) {
+  return body.split('\n').map((line) => ({
+    type: 'paragraph',
+    content: line.length
+      ? [
+          {
+            type: 'text',
+            text: line,
+            styles: {}
+          }
+        ]
+      : []
+  }))
+}
+
+async function openNoteInUi(
+  page: Page,
+  note: { id: string; title: string; emoji?: string | null }
+): Promise<void> {
+  await page.evaluate((detail) => {
+    window.dispatchEvent(new CustomEvent('memry:test-open-note', { detail }))
+  }, note)
+
+  await expect(page.locator(SELECTORS.noteTitle).first()).toHaveValue(note.title)
+}
+
+async function waitForPersistedNoteBody(page: Page, noteId: string, body: string): Promise<void> {
+  const requiredSnippets = body.split('\n').filter((line) => line.length > 0)
+  await expect
+    .poll(async () => {
+      const note = await page.evaluate(async (id) => window.api.notes.get(id), noteId)
+      const content = note?.content ?? ''
+      return requiredSnippets.every((snippet) => content.includes(snippet))
+    })
+    .toBe(true)
+}
+
+async function waitForNoteEditor(page: Page) {
+  const editor = page.locator(SELECTORS.noteEditor).first()
+  await editor.waitFor({ state: 'visible', timeout: 10000 })
+  return editor
+}
+
+export async function createNoteWithBody(page: Page, title: string, body: string): Promise<void> {
+  const note = await page.evaluate(async (inputTitle) => {
+    const result = await window.api.notes.create({ title: inputTitle, content: '' })
+    if (!result.success || !result.note) {
+      throw new Error(result.error || `Failed to create note "${inputTitle}"`)
+    }
+    return {
+      id: result.note.id,
+      title: result.note.title,
+      emoji: result.note.emoji ?? null
+    }
+  }, title)
+
+  await openNoteInUi(page, note)
+  await replaceNoteBody(page, body)
+  await waitForPersistedNoteBody(page, note.id, body)
+}
+
+export async function openNoteByTitle(page: Page, title: string): Promise<void> {
+  const tab = page.locator(SELECTORS.tab).filter({ hasText: title }).first()
+  if (await tab.isVisible({ timeout: 1000 }).catch(() => false)) {
+    await tab.click()
+    await expect(page.locator(SELECTORS.noteTitle).first()).toHaveValue(title)
+    return
+  }
+
+  let note: { id: string; title: string; emoji?: string | null } | null = null
+  await expect
+    .poll(async () => {
+      note = await page.evaluate(async (expectedTitle) => {
+        const result = await window.api.notes.list({})
+        const match = result.notes.find((item) => item.title === expectedTitle)
+        return match
+          ? { id: match.id, title: match.title, emoji: match.emoji ?? null }
+          : null
+      }, title)
+      return note !== null
+    })
+    .toBe(true)
+
+  await openNoteInUi(page, note!)
+}
+
+export async function replaceNoteBody(page: Page, body: string): Promise<void> {
+  await waitForNoteEditor(page)
+  const nextBlocks = bodyToParagraphBlocks(body)
+  await page.evaluate((blocks) => {
+    const editor = (window as unknown as { __memryEditor?: any }).__memryEditor
+    if (!editor) throw new Error('window.__memryEditor not exposed')
+    editor.replaceBlocks(editor.document, blocks)
+  }, nextBlocks)
+}
+
+export async function appendToNoteBody(page: Page, text: string): Promise<void> {
+  await waitForNoteEditor(page)
+  const nextBlocks = bodyToParagraphBlocks(text)
+  await page.evaluate((blocks) => {
+    const editor = (window as unknown as { __memryEditor?: any }).__memryEditor
+    if (!editor) throw new Error('window.__memryEditor not exposed')
+
+    const doc = editor.document as any[]
+    if (doc.length === 0) {
+      editor.replaceBlocks(doc, blocks)
+      return
+    }
+
+    editor.insertBlocks(blocks, doc[doc.length - 1], 'after')
+  }, nextBlocks)
+}
+
+export async function readNoteBodyText(page: Page): Promise<string> {
+  await waitForNoteEditor(page)
+  const text = await page.evaluate(() => {
+    const editor = (window as unknown as { __memryEditor?: any }).__memryEditor
+    if (!editor) throw new Error('window.__memryEditor not exposed')
+
+    const readInlineContent = (content: any[] | undefined): string => {
+      if (!Array.isArray(content)) return ''
+      return content
+        .map((item) => {
+          if (typeof item?.text === 'string') return item.text
+          if (Array.isArray(item?.content)) return readInlineContent(item.content)
+          return ''
+        })
+        .join('')
+    }
+
+    const readBlocks = (blocks: any[]): string[] => {
+      const parts: string[] = []
+      for (const block of blocks) {
+        const ownText = readInlineContent(block?.content)
+        const childText = Array.isArray(block?.children) ? readBlocks(block.children).join('\n\n') : ''
+        const blockText = ownText && childText ? `${ownText}\n\n${childText}` : ownText || childText
+        parts.push(blockText)
+      }
+      return parts
+    }
+
+    return readBlocks(editor.document as any[]).join('\n\n')
+  })
+  return normalizeBodyText(text)
+}
+
+export async function expectNoteBody(page: Page, expectedBody: string): Promise<void> {
+  await expect.poll(() => readNoteBodyText(page)).toBe(normalizeBodyText(expectedBody))
+}
+
+export async function expectNoteBodiesEqual(
+  pageA: Page,
+  pageB: Page,
+  expectedBody: string
+): Promise<void> {
+  const normalizedExpectedBody = normalizeBodyText(expectedBody)
+  await expect.poll(() => Promise.all([readNoteBodyText(pageA), readNoteBodyText(pageB)])).toEqual([
+    normalizedExpectedBody,
+    normalizedExpectedBody
+  ])
+}
