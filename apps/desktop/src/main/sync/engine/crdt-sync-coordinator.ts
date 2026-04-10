@@ -17,6 +17,7 @@ export type ResolveDeviceKey = (deviceId: string) => Promise<Uint8Array | null>
 export class CrdtSyncCoordinator {
   private ctx: SyncContext
   private pendingPulls = new Set<string>()
+  private lastAppliedSequence = new Map<string, number>()
   private resolveDeviceKey: ResolveDeviceKey
 
   constructor(ctx: SyncContext, resolveDeviceKey: ResolveDeviceKey) {
@@ -36,6 +37,13 @@ export class CrdtSyncCoordinator {
 
   get pendingPullCount(): number {
     return this.pendingPulls.size
+  }
+
+  private rememberAppliedSequence(noteId: string, sequenceNum: number): number {
+    const known = this.lastAppliedSequence.get(noteId) ?? 0
+    const next = Math.max(known, sequenceNum)
+    this.lastAppliedSequence.set(noteId, next)
+    return next
   }
 
   private async applySnapshotBaseline(
@@ -60,12 +68,13 @@ export class CrdtSyncCoordinator {
 
     const decrypted = decryptCrdtUpdate(snapshotResult.snapshot, vaultKey, noteId, signerPubKey)
     this.ctx.deps.crdtProvider.applyRemoteUpdate(noteId, decrypted)
+    const baselineSequence = this.rememberAppliedSequence(noteId, snapshotResult.sequenceNum)
     log.debug('Applied CRDT snapshot baseline', {
       noteId,
       mode,
       sequenceNum: snapshotResult.sequenceNum
     })
-    return snapshotResult.sequenceNum
+    return baselineSequence
   }
 
   async applyCrdtIncrementals(
@@ -138,7 +147,7 @@ export class CrdtSyncCoordinator {
 
           const decrypted = decryptCrdtUpdate(packed, vaultKey, noteId, signerPubKey)
           this.ctx.deps.crdtProvider!.applyRemoteUpdate(noteId, decrypted)
-          since = entry.sequenceNum
+          since = this.rememberAppliedSequence(noteId, entry.sequenceNum)
         }
 
         hasMore = result.hasMore
@@ -227,7 +236,7 @@ export class CrdtSyncCoordinator {
             }
             const decrypted = decryptCrdtUpdate(packed, vaultKey, noteId, pubKey)
             this.ctx.deps.crdtProvider!.applyRemoteUpdate(noteId, decrypted)
-            activeSince.set(noteId, entry.sequenceNum)
+            activeSince.set(noteId, this.rememberAppliedSequence(noteId, entry.sequenceNum))
           }
 
           if (!noteData.hasMore) activeSince.delete(noteId)

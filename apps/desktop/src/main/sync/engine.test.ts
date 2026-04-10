@@ -1651,7 +1651,7 @@ describe('SyncEngine', () => {
   })
 
   describe('#given WS reconnect #when handleWsConnected fires', () => {
-    it('#then schedules pull', async () => {
+    it('#then schedules pull and catches up open CRDT notes', async () => {
       const getServerMock = vi.fn().mockResolvedValue({
         items: [],
         deleted: [],
@@ -1660,24 +1660,36 @@ describe('SyncEngine', () => {
       })
       vi.spyOn(await import('./http-client'), 'getFromServer').mockImplementation(getServerMock)
 
-      const deps = createMockDeps(testDb)
+      const deps = createMockDeps(testDb, {
+        crdtProvider: {
+          getOpenNoteIds: vi.fn().mockReturnValue(['note-1', 'note-2'])
+        } as SyncEngineDeps['crdtProvider']
+      })
       const engine = new SyncEngine(deps)
       await engine.start()
 
       getServerMock.mockClear()
 
+      const pullCrdtForNote = vi.fn().mockResolvedValue(undefined)
+      ;(engine as unknown as { crdtSync: { pullCrdtForNote: typeof pullCrdtForNote } }).crdtSync = {
+        pullCrdtForNote
+      }
+
       const pullDone = new Promise<void>((resolve) => {
-        const origPull = engine.pull.bind(engine)
-        engine.pull = async () => {
-          await origPull()
-          resolve()
-        }
+        pullCrdtForNote.mockImplementation(async (noteId: string) => {
+          if (noteId === 'note-2') {
+            resolve()
+          }
+        })
       })
 
       deps.ws.emit('connected')
 
       await pullDone
       expect(getServerMock).toHaveBeenCalled()
+      expect(pullCrdtForNote).toHaveBeenCalledTimes(2)
+      expect(pullCrdtForNote).toHaveBeenCalledWith('note-1')
+      expect(pullCrdtForNote).toHaveBeenCalledWith('note-2')
 
       await engine.stop()
       vi.restoreAllMocks()
