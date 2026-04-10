@@ -183,7 +183,10 @@ function createMemoryBucket(): R2Bucket {
 }
 
 function bytes(value: string): ArrayBuffer {
-  return Uint8Array.from(Buffer.from(value, 'utf8')).buffer
+  const encoded = new TextEncoder().encode(value)
+  const copy = new Uint8Array(encoded.byteLength)
+  copy.set(encoded)
+  return copy.buffer
 }
 
 describe('CRDT service sequencing', () => {
