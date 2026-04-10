@@ -150,10 +150,14 @@ async function assertMergedNoteOnBothDevices(
   await expect.poll(() => getCrdtDocBodyByTitle(pageA, electronAppA, title)).toBe(finalBody)
   await expect.poll(() => getCrdtDocBodyByTitle(pageB, electronAppB, title)).toBe(finalBody)
   await expect
-    .poll(async () => (await getWritebackDebugByTitle(pageA, electronAppA, title))?.lastMarkdown ?? null)
+    .poll(
+      async () => (await getWritebackDebugByTitle(pageA, electronAppA, title))?.lastMarkdown ?? null
+    )
     .toBe(finalBody)
   await expect
-    .poll(async () => (await getWritebackDebugByTitle(pageB, electronAppB, title))?.lastMarkdown ?? null)
+    .poll(
+      async () => (await getWritebackDebugByTitle(pageB, electronAppB, title))?.lastMarkdown ?? null
+    )
     .toBe(finalBody)
   await expect.poll(() => getNoteFileBodyByTitle(pageA, title)).toBe(finalBody)
   await expect.poll(() => getNoteFileBodyByTitle(pageB, title)).toBe(finalBody)
@@ -209,7 +213,14 @@ async function runOfflineOfflineMergeCase({
     await openNoteByTitle(pageB, title)
   }
 
-  await assertMergedNoteOnBothDevices(electronAppA, electronAppB, pageA, pageB, title, expectedBodies)
+  await assertMergedNoteOnBothDevices(
+    electronAppA,
+    electronAppB,
+    pageA,
+    pageB,
+    title,
+    expectedBodies
+  )
 }
 
 async function appendBodyAndPersist({
@@ -276,7 +287,9 @@ async function runReceiverStateSingleWriterCase({
   await waitForSyncOnline(receiverPage)
   await syncBothAndWait(pageA, pageB)
 
-  await expect.poll(() => getCrdtDocBodyByTitle(receiverPage, receiverApp, title)).toBe(expectedBody)
+  await expect
+    .poll(() => getCrdtDocBodyByTitle(receiverPage, receiverApp, title))
+    .toBe(expectedBody)
   await expect.poll(() => getNoteFileBodyByTitle(receiverPage, title)).toBe(expectedBody)
 
   if (receiverState === 'closed') {
@@ -284,7 +297,9 @@ async function runReceiverStateSingleWriterCase({
   }
 
   await expectNoteBody(receiverPage, expectedBody)
-  await assertMergedNoteOnBothDevices(electronAppA, electronAppB, pageA, pageB, title, [expectedBody])
+  await assertMergedNoteOnBothDevices(electronAppA, electronAppB, pageA, pageB, title, [
+    expectedBody
+  ])
 }
 
 async function expectSharedNoteTitles(page: Page, titles: string[]): Promise<void> {

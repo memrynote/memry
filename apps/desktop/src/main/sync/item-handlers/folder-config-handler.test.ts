@@ -70,20 +70,23 @@ describe('folderConfigHandler', () => {
       expect(row!.clock).toEqual({ 'device-B': 1 })
 
       expect(mockWriteFolderConfig).toHaveBeenCalledWith('projects/active', { icon: '🎉' })
-      expect((ctx.emit as ReturnType<typeof vi.fn>)).toHaveBeenCalledWith(
+      expect(ctx.emit as ReturnType<typeof vi.fn>).toHaveBeenCalledWith(
         'notes:folder-config-updated',
         { path: 'projects/active' }
       )
     })
 
     it('#given existing row #when remote clock is newer #then updates DB row', () => {
-      testDb.db.insert(folderConfigs).values({
-        path: 'docs',
-        icon: '📄',
-        clock: { 'device-A': 1 },
-        createdAt: '2026-04-10T00:00:00.000Z',
-        modifiedAt: '2026-04-10T00:00:00.000Z'
-      }).run()
+      testDb.db
+        .insert(folderConfigs)
+        .values({
+          path: 'docs',
+          icon: '📄',
+          clock: { 'device-A': 1 },
+          createdAt: '2026-04-10T00:00:00.000Z',
+          modifiedAt: '2026-04-10T00:00:00.000Z'
+        })
+        .run()
 
       const data: FolderConfigSyncPayload = {
         icon: '📚',
@@ -101,13 +104,16 @@ describe('folderConfigHandler', () => {
     })
 
     it('#given existing row #when local clock is newer #then skips update', () => {
-      testDb.db.insert(folderConfigs).values({
-        path: 'docs',
-        icon: '📄',
-        clock: { 'device-A': 5 },
-        createdAt: '2026-04-10T00:00:00.000Z',
-        modifiedAt: '2026-04-10T00:00:00.000Z'
-      }).run()
+      testDb.db
+        .insert(folderConfigs)
+        .values({
+          path: 'docs',
+          icon: '📄',
+          clock: { 'device-A': 5 },
+          createdAt: '2026-04-10T00:00:00.000Z',
+          modifiedAt: '2026-04-10T00:00:00.000Z'
+        })
+        .run()
 
       const data: FolderConfigSyncPayload = { icon: '📚' }
       const clock: VectorClock = { 'device-A': 2 }
@@ -122,13 +128,16 @@ describe('folderConfigHandler', () => {
     })
 
     it('#given existing row #when concurrent clocks #then merges and applies remote (LWW)', () => {
-      testDb.db.insert(folderConfigs).values({
-        path: 'docs',
-        icon: '📄',
-        clock: { 'device-A': 2 },
-        createdAt: '2026-04-10T00:00:00.000Z',
-        modifiedAt: '2026-04-10T00:00:00.000Z'
-      }).run()
+      testDb.db
+        .insert(folderConfigs)
+        .values({
+          path: 'docs',
+          icon: '📄',
+          clock: { 'device-A': 2 },
+          createdAt: '2026-04-10T00:00:00.000Z',
+          modifiedAt: '2026-04-10T00:00:00.000Z'
+        })
+        .run()
 
       const data: FolderConfigSyncPayload = { icon: '🔥' }
       const clock: VectorClock = { 'device-B': 3 }
@@ -145,23 +154,33 @@ describe('folderConfigHandler', () => {
 
   describe('applyDelete', () => {
     it('#given existing row #when delete arrives #then removes DB row and writes empty config', () => {
-      testDb.db.insert(folderConfigs).values({
-        path: 'old-folder',
-        icon: '📁',
-        clock: { 'device-A': 1 },
-        createdAt: '2026-04-10T00:00:00.000Z',
-        modifiedAt: '2026-04-10T00:00:00.000Z'
-      }).run()
+      testDb.db
+        .insert(folderConfigs)
+        .values({
+          path: 'old-folder',
+          icon: '📁',
+          clock: { 'device-A': 1 },
+          createdAt: '2026-04-10T00:00:00.000Z',
+          modifiedAt: '2026-04-10T00:00:00.000Z'
+        })
+        .run()
 
-      const result = folderConfigHandler.applyDelete(ctx, 'old-folder', { 'device-A': 1, 'device-B': 2 })
+      const result = folderConfigHandler.applyDelete(ctx, 'old-folder', {
+        'device-A': 1,
+        'device-B': 2
+      })
 
       expect(result).toBe('applied')
 
-      const row = testDb.db.select().from(folderConfigs).where(eq(folderConfigs.path, 'old-folder')).get()
+      const row = testDb.db
+        .select()
+        .from(folderConfigs)
+        .where(eq(folderConfigs.path, 'old-folder'))
+        .get()
       expect(row).toBeUndefined()
 
       expect(mockWriteFolderConfig).toHaveBeenCalledWith('old-folder', { icon: null })
-      expect((ctx.emit as ReturnType<typeof vi.fn>)).toHaveBeenCalledWith(
+      expect(ctx.emit as ReturnType<typeof vi.fn>).toHaveBeenCalledWith(
         'notes:folder-config-updated',
         { path: 'old-folder' }
       )
@@ -173,13 +192,16 @@ describe('folderConfigHandler', () => {
     })
 
     it('#given existing row #when local clock is newer #then skips delete', () => {
-      testDb.db.insert(folderConfigs).values({
-        path: 'docs',
-        icon: '📄',
-        clock: { 'device-A': 5 },
-        createdAt: '2026-04-10T00:00:00.000Z',
-        modifiedAt: '2026-04-10T00:00:00.000Z'
-      }).run()
+      testDb.db
+        .insert(folderConfigs)
+        .values({
+          path: 'docs',
+          icon: '📄',
+          clock: { 'device-A': 5 },
+          createdAt: '2026-04-10T00:00:00.000Z',
+          modifiedAt: '2026-04-10T00:00:00.000Z'
+        })
+        .run()
 
       const result = folderConfigHandler.applyDelete(ctx, 'docs', { 'device-A': 2 })
 
@@ -192,13 +214,16 @@ describe('folderConfigHandler', () => {
 
   describe('fetchLocal', () => {
     it('#given existing row #when fetched #then returns row as record', () => {
-      testDb.db.insert(folderConfigs).values({
-        path: 'docs',
-        icon: '📄',
-        clock: { 'device-A': 1 },
-        createdAt: '2026-04-10T00:00:00.000Z',
-        modifiedAt: '2026-04-10T00:00:00.000Z'
-      }).run()
+      testDb.db
+        .insert(folderConfigs)
+        .values({
+          path: 'docs',
+          icon: '📄',
+          clock: { 'device-A': 1 },
+          createdAt: '2026-04-10T00:00:00.000Z',
+          modifiedAt: '2026-04-10T00:00:00.000Z'
+        })
+        .run()
 
       const result = folderConfigHandler.fetchLocal(testDb.db as unknown as DrizzleDb, 'docs')
 
@@ -207,20 +232,26 @@ describe('folderConfigHandler', () => {
     })
 
     it('#given no row #when fetched #then returns undefined', () => {
-      const result = folderConfigHandler.fetchLocal(testDb.db as unknown as DrizzleDb, 'nonexistent')
+      const result = folderConfigHandler.fetchLocal(
+        testDb.db as unknown as DrizzleDb,
+        'nonexistent'
+      )
       expect(result).toBeUndefined()
     })
   })
 
   describe('buildPushPayload', () => {
     it('#given existing row #when building payload #then returns serialized JSON', () => {
-      testDb.db.insert(folderConfigs).values({
-        path: 'docs',
-        icon: '📄',
-        clock: { 'device-A': 1 },
-        createdAt: '2026-04-10T00:00:00.000Z',
-        modifiedAt: '2026-04-10T00:00:00.000Z'
-      }).run()
+      testDb.db
+        .insert(folderConfigs)
+        .values({
+          path: 'docs',
+          icon: '📄',
+          clock: { 'device-A': 1 },
+          createdAt: '2026-04-10T00:00:00.000Z',
+          modifiedAt: '2026-04-10T00:00:00.000Z'
+        })
+        .run()
 
       const payload = folderConfigHandler.buildPushPayload!(
         testDb.db as unknown as DrizzleDb,
@@ -249,10 +280,23 @@ describe('folderConfigHandler', () => {
 
   describe('seedUnclocked', () => {
     it('#given folder configs with no clock #when seeding #then assigns clocks and enqueues', () => {
-      testDb.db.insert(folderConfigs).values([
-        { path: 'docs', icon: '📄', createdAt: '2026-04-10T00:00:00.000Z', modifiedAt: '2026-04-10T00:00:00.000Z' },
-        { path: 'projects', icon: '🚀', createdAt: '2026-04-10T00:00:00.000Z', modifiedAt: '2026-04-10T00:00:00.000Z' }
-      ]).run()
+      testDb.db
+        .insert(folderConfigs)
+        .values([
+          {
+            path: 'docs',
+            icon: '📄',
+            createdAt: '2026-04-10T00:00:00.000Z',
+            modifiedAt: '2026-04-10T00:00:00.000Z'
+          },
+          {
+            path: 'projects',
+            icon: '🚀',
+            createdAt: '2026-04-10T00:00:00.000Z',
+            modifiedAt: '2026-04-10T00:00:00.000Z'
+          }
+        ])
+        .run()
 
       const mockQueue = { enqueue: vi.fn() }
 
@@ -264,7 +308,11 @@ describe('folderConfigHandler', () => {
 
       expect(count).toBe(2)
 
-      const docs = testDb.db.select().from(folderConfigs).where(eq(folderConfigs.path, 'docs')).get()
+      const docs = testDb.db
+        .select()
+        .from(folderConfigs)
+        .where(eq(folderConfigs.path, 'docs'))
+        .get()
       expect(docs!.clock).toEqual({ 'device-A': 1 })
 
       expect(mockQueue.enqueue).toHaveBeenCalledTimes(2)
@@ -278,13 +326,16 @@ describe('folderConfigHandler', () => {
     })
 
     it('#given no unclocked rows #when seeding #then returns 0', () => {
-      testDb.db.insert(folderConfigs).values({
-        path: 'docs',
-        icon: '📄',
-        clock: { 'device-A': 1 },
-        createdAt: '2026-04-10T00:00:00.000Z',
-        modifiedAt: '2026-04-10T00:00:00.000Z'
-      }).run()
+      testDb.db
+        .insert(folderConfigs)
+        .values({
+          path: 'docs',
+          icon: '📄',
+          clock: { 'device-A': 1 },
+          createdAt: '2026-04-10T00:00:00.000Z',
+          modifiedAt: '2026-04-10T00:00:00.000Z'
+        })
+        .run()
 
       const mockQueue = { enqueue: vi.fn() }
 

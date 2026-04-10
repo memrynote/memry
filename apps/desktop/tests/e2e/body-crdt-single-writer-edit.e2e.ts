@@ -138,7 +138,9 @@ async function runOfflineReceiverEditCase({
 
   await syncBothAndWait(pageA, pageB)
 
-  await expect.poll(() => getCrdtDocBodyByTitle(receiverPage, receiverApp, title)).toBe(expectedBody)
+  await expect
+    .poll(() => getCrdtDocBodyByTitle(receiverPage, receiverApp, title))
+    .toBe(expectedBody)
   await expect.poll(() => getNoteFileBodyByTitle(receiverPage, title)).toBe(expectedBody)
   await openNoteByTitle(receiverPage, title)
   await expectNoteBody(receiverPage, expectedBody)

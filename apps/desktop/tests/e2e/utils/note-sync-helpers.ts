@@ -13,7 +13,11 @@ interface MemryNoteTestHooks {
 }
 
 function normalizeBodyText(text: string): string {
-  return text.replace(/\r\n/g, '\n').replace(/\u00a0/g, ' ').replace(/\n{3,}/g, '\n\n').trimEnd()
+  return text
+    .replace(/\r\n/g, '\n')
+    .replace(/\u00a0/g, ' ')
+    .replace(/\n{3,}/g, '\n\n')
+    .trimEnd()
 }
 
 function bodyToParagraphBlocks(body: string) {
@@ -99,9 +103,7 @@ export async function getNoteHandleByTitle(
       note = await page.evaluate(async (expectedTitle) => {
         const result = await window.api.notes.list({})
         const match = result.notes.find((item) => item.title === expectedTitle)
-        return match
-          ? { id: match.id, title: match.title, emoji: match.emoji ?? null }
-          : null
+        return match ? { id: match.id, title: match.title, emoji: match.emoji ?? null } : null
       }, title)
       return note !== null
     })
@@ -233,7 +235,9 @@ export async function readNoteBodyText(page: Page): Promise<string> {
       const parts: string[] = []
       for (const block of blocks) {
         const ownText = readInlineContent(block?.content)
-        const childText = Array.isArray(block?.children) ? readBlocks(block.children).join('\n\n') : ''
+        const childText = Array.isArray(block?.children)
+          ? readBlocks(block.children).join('\n\n')
+          : ''
         const blockText = ownText && childText ? `${ownText}\n\n${childText}` : ownText || childText
         parts.push(blockText)
       }
@@ -255,8 +259,7 @@ export async function expectNoteBodiesEqual(
   expectedBody: string
 ): Promise<void> {
   const normalizedExpectedBody = normalizeBodyText(expectedBody)
-  await expect.poll(() => Promise.all([readNoteBodyText(pageA), readNoteBodyText(pageB)])).toEqual([
-    normalizedExpectedBody,
-    normalizedExpectedBody
-  ])
+  await expect
+    .poll(() => Promise.all([readNoteBodyText(pageA), readNoteBodyText(pageB)]))
+    .toEqual([normalizedExpectedBody, normalizedExpectedBody])
 }

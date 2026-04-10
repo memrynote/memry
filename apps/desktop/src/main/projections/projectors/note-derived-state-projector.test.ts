@@ -64,11 +64,7 @@ describe('note derived state projector', () => {
 
     await projector.rebuild()
 
-    const cached = indexDb.db
-      .select()
-      .from(noteCache)
-      .where(eq(noteCache.id, 'missing-note'))
-      .get()
+    const cached = indexDb.db.select().from(noteCache).where(eq(noteCache.id, 'missing-note')).get()
 
     expect(cached).toBeUndefined()
   })
@@ -84,11 +80,7 @@ describe('note derived state projector', () => {
 
     await projector.reconcile()
 
-    const cached = indexDb.db
-      .select()
-      .from(noteCache)
-      .where(eq(noteCache.id, 'present-note'))
-      .get()
+    const cached = indexDb.db.select().from(noteCache).where(eq(noteCache.id, 'present-note')).get()
 
     expect(cached).toEqual(expect.objectContaining({ id: 'present-note', path: relativePath }))
   })

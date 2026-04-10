@@ -74,7 +74,8 @@ async function createSharedUser(server: TestSyncServer, email: string): Promise<
 export async function startSharedSyncBootstrap(): Promise<SharedSyncBootstrap> {
   await sodium.ready
 
-  const { SimulatedServer } = await import('../../../../../tests/sync-harness/src/simulated-server.ts')
+  const { SimulatedServer } =
+    await import('../../../../../tests/sync-harness/src/simulated-server.ts')
 
   const server = new SimulatedServer()
   await server.start()

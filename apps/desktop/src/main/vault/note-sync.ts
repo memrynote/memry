@@ -16,10 +16,7 @@ import {
   createSnippet,
   inferPropertyType
 } from './frontmatter'
-import {
-  extractDateFromPath,
-  getNoteCacheByPath
-} from '@main/database/queries/notes'
+import { extractDateFromPath, getNoteCacheByPath } from '@main/database/queries/notes'
 import { getDatabase, type IndexDb } from '../database'
 import type { FileType } from '@memry/shared/file-types'
 import type { PropertyType } from '@memry/contracts/property-types'

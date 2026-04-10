@@ -103,10 +103,14 @@ async function assertMergedNoteOnBothDevices(
   await expect.poll(() => getCrdtDocBodyByTitle(pageA, electronAppA, title)).toBe(finalBody)
   await expect.poll(() => getCrdtDocBodyByTitle(pageB, electronAppB, title)).toBe(finalBody)
   await expect
-    .poll(async () => (await getWritebackDebugByTitle(pageA, electronAppA, title))?.lastMarkdown ?? null)
+    .poll(
+      async () => (await getWritebackDebugByTitle(pageA, electronAppA, title))?.lastMarkdown ?? null
+    )
     .toBe(finalBody)
   await expect
-    .poll(async () => (await getWritebackDebugByTitle(pageB, electronAppB, title))?.lastMarkdown ?? null)
+    .poll(
+      async () => (await getWritebackDebugByTitle(pageB, electronAppB, title))?.lastMarkdown ?? null
+    )
     .toBe(finalBody)
   await expect.poll(() => getNoteFileBodyByTitle(pageA, title)).toBe(finalBody)
   await expect.poll(() => getNoteFileBodyByTitle(pageB, title)).toBe(finalBody)
@@ -191,7 +195,14 @@ async function runSameNoteMergeCase({
   }
 
   await syncBothAndWait(pageA, pageB)
-  await assertMergedNoteOnBothDevices(electronAppA, electronAppB, pageA, pageB, title, expectedBodies)
+  await assertMergedNoteOnBothDevices(
+    electronAppA,
+    electronAppB,
+    pageA,
+    pageB,
+    title,
+    expectedBodies
+  )
 }
 
 test.describe('Body CRDT same-note merge propagation', () => {

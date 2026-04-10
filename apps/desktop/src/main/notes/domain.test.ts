@@ -37,7 +37,9 @@ describe('notes domain adapter', () => {
       title: 'Test Note',
       tags: ['focus']
     }
-    vi.mocked(noteVault.createNote).mockResolvedValue(note as Awaited<ReturnType<typeof noteVault.createNote>>)
+    vi.mocked(noteVault.createNote).mockResolvedValue(
+      note as Awaited<ReturnType<typeof noteVault.createNote>>
+    )
 
     const result = await createNoteCommand({
       title: 'Test Note',
@@ -57,7 +59,9 @@ describe('notes domain adapter', () => {
       id: 'note-1',
       title: 'Test Note'
     }
-    vi.mocked(noteVault.updateNote).mockResolvedValue(note as Awaited<ReturnType<typeof noteVault.updateNote>>)
+    vi.mocked(noteVault.updateNote).mockResolvedValue(
+      note as Awaited<ReturnType<typeof noteVault.updateNote>>
+    )
 
     const result = await setNoteLocalOnlyCommand({
       id: 'note-1',
@@ -77,7 +81,9 @@ describe('notes domain adapter', () => {
       id: 'note-1',
       title: 'Renamed Note'
     }
-    vi.mocked(noteVault.renameNote).mockResolvedValue(note as Awaited<ReturnType<typeof noteVault.renameNote>>)
+    vi.mocked(noteVault.renameNote).mockResolvedValue(
+      note as Awaited<ReturnType<typeof noteVault.renameNote>>
+    )
 
     const result = await renameNoteCommand('note-1', 'Renamed Note')
 
@@ -91,7 +97,9 @@ describe('notes domain adapter', () => {
       id: 'note-1',
       title: 'Updated Note'
     }
-    vi.mocked(noteVault.updateNote).mockResolvedValue(note as Awaited<ReturnType<typeof noteVault.updateNote>>)
+    vi.mocked(noteVault.updateNote).mockResolvedValue(
+      note as Awaited<ReturnType<typeof noteVault.updateNote>>
+    )
 
     const result = await updateNoteCommand({
       id: 'note-1',
@@ -108,7 +116,9 @@ describe('notes domain adapter', () => {
       id: 'note-1',
       path: 'notes/archive/Test Note.md'
     }
-    vi.mocked(noteVault.moveNote).mockResolvedValue(movedNote as Awaited<ReturnType<typeof noteVault.moveNote>>)
+    vi.mocked(noteVault.moveNote).mockResolvedValue(
+      movedNote as Awaited<ReturnType<typeof noteVault.moveNote>>
+    )
 
     const moved = await moveNoteCommand('note-1', 'archive')
 
@@ -118,7 +128,9 @@ describe('notes domain adapter', () => {
   })
 
   it('enqueues sync delete before removing the note', async () => {
-    vi.mocked(noteVault.deleteNote).mockResolvedValue(undefined as Awaited<ReturnType<typeof noteVault.deleteNote>>)
+    vi.mocked(noteVault.deleteNote).mockResolvedValue(
+      undefined as Awaited<ReturnType<typeof noteVault.deleteNote>>
+    )
 
     await deleteNoteCommand('note-1')
 
@@ -128,7 +140,9 @@ describe('notes domain adapter', () => {
 
   it('does not call syncNoteUpdate when only content changes', async () => {
     const note = { id: 'note-1', title: 'Title' }
-    vi.mocked(noteVault.updateNote).mockResolvedValue(note as Awaited<ReturnType<typeof noteVault.updateNote>>)
+    vi.mocked(noteVault.updateNote).mockResolvedValue(
+      note as Awaited<ReturnType<typeof noteVault.updateNote>>
+    )
 
     await updateNoteCommand({ id: 'note-1', content: 'new content' })
 
