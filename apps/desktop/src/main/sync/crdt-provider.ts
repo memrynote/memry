@@ -93,7 +93,7 @@ export class CrdtProvider {
       this.registerIpcHandlers()
       this.ipcHandlersRegistered = true
     }
-    log.info('CrdtProvider persistence initialized', { storagePath })
+    log.debug('CrdtProvider persistence initialized', { storagePath })
   }
 
   async open(noteId: string, windowId?: number, options?: { skipSeed?: boolean }): Promise<Y.Doc> {
