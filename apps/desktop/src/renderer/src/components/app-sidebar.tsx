@@ -284,34 +284,6 @@ function AppSidebarInner({ currentPage, viewCounts, ...props }: AppSidebarProps)
   // Main sidebar content (shown when not drilling down)
   const mainContent = (
     <>
-      {/* FIXED SECTION - Quick Actions (doesn't scroll) */}
-      <div className="flex-shrink-0">
-        {/* Quick Actions: Search & New (side by side) */}
-        <div className="flex items-center gap-1.5 px-3 pt-1 pb-0 group-data-[collapsible=icon]:px-1.5 group-data-[collapsible=icon]:justify-center">
-          <button
-            type="button"
-            onClick={() => window.dispatchEvent(new CustomEvent('memry:open-search'))}
-            className="flex flex-1 items-center gap-2 rounded-[5px] bg-sidebar-surface py-[6px] px-2.5 cursor-pointer hover:bg-black/[0.06] dark:hover:bg-white/[0.06] transition-colors group-data-[collapsible=icon]:flex-none group-data-[collapsible=icon]:size-8 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:p-0"
-          >
-            <Search className="size-[14px] text-muted-foreground/70 shrink-0" />
-            <span className="text-[13px] text-muted-foreground/70 font-normal group-data-[collapsible=icon]:hidden">
-              Search
-            </span>
-            <span className="ml-auto font-mono text-[9px] text-sidebar-muted/50 bg-sidebar-border rounded-[3px] px-1 py-0.5 group-data-[collapsible=icon]:hidden">
-              ⌘K
-            </span>
-          </button>
-          <button
-            type="button"
-            onClick={handleNewNote}
-            className="flex items-center justify-center size-[30px] rounded-[5px] bg-sidebar-surface hover:bg-black/[0.06] dark:hover:bg-white/[0.06] transition-colors cursor-pointer shrink-0 group-data-[collapsible=icon]:hidden"
-            title="New note (⌘N)"
-          >
-            <Plus className="size-[15px] text-muted-foreground/70" />
-          </button>
-        </div>
-      </div>
-
       {/* Separator between nav and collections */}
       <div className="h-px bg-sidebar-border shrink-0 mx-3 my-2 group-data-[collapsible=icon]:mx-1.5" />
 
@@ -438,6 +410,30 @@ function AppSidebarInner({ currentPage, viewCounts, ...props }: AppSidebarProps)
     <Sidebar collapsible="icon" {...props}>
       <SidebarHeaderContent />
       <SidebarContent className="flex flex-col overflow-hidden gap-0">
+        {/* Quick Actions: Search & New — persistent, stays visible during drill-down */}
+        <div className="shrink-0 flex items-center gap-1.5 px-3 pt-2 pb-0 group-data-[collapsible=icon]:px-1.5 group-data-[collapsible=icon]:justify-center">
+          <button
+            type="button"
+            onClick={() => window.dispatchEvent(new CustomEvent('memry:open-search'))}
+            className="flex flex-1 items-center gap-2 rounded-[5px] bg-sidebar-surface py-[6px] px-2.5 cursor-pointer hover:bg-black/[0.06] dark:hover:bg-white/[0.06] transition-colors group-data-[collapsible=icon]:flex-none group-data-[collapsible=icon]:size-8 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:p-0"
+          >
+            <Search className="size-[14px] text-muted-foreground/70 shrink-0" />
+            <span className="text-[13px] text-muted-foreground/70 font-normal group-data-[collapsible=icon]:hidden">
+              Search
+            </span>
+            <span className="ml-auto font-mono text-[9px] text-sidebar-muted/50 bg-sidebar-border rounded-[3px] px-1 py-0.5 group-data-[collapsible=icon]:hidden">
+              ⌘K
+            </span>
+          </button>
+          <button
+            type="button"
+            onClick={handleNewNote}
+            className="flex items-center justify-center size-[30px] rounded-[5px] bg-sidebar-surface hover:bg-black/[0.06] dark:hover:bg-white/[0.06] transition-colors cursor-pointer shrink-0 group-data-[collapsible=icon]:hidden"
+            title="New note (⌘N)"
+          >
+            <Plus className="size-[15px] text-muted-foreground/70" />
+          </button>
+        </div>
         <SidebarNav
           items={mainNav}
           isActive={isActiveItem}
