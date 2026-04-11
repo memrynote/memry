@@ -17,6 +17,7 @@ import { createNote, getNoteById, updateNote, createFolder, getFolders } from '.
 import { getStatus, getConfig } from '../vault/index'
 import { inboxItems, inboxItemTags, filingHistory } from '@memry/db-schema/schema/inbox'
 import { generateId } from '../lib/id'
+import { normalizeRelativePath } from '../lib/paths'
 import { eq } from 'drizzle-orm'
 import { InboxChannels, TasksChannels } from '@memry/contracts/ipc-channels'
 import { resolveAttachmentUrl, deleteInboxAttachments } from './attachments'
@@ -464,7 +465,7 @@ async function fileBinaryToFolder(itemId: string, folderPath: string): Promise<F
     await deleteInboxAttachments(itemId)
 
     // Calculate relative path from vault root for storage
-    const relativePath = path.relative(vaultPath, finalPath)
+    const relativePath = normalizeRelativePath(path.relative(vaultPath, finalPath))
 
     // Mark inbox item as filed
     markItemAsFiled(itemId, relativePath, 'folder')
@@ -824,7 +825,7 @@ async function linkBinaryToNotes(
     }
 
     // Calculate relative path for storage
-    const relativePath = path.relative(vaultPath, finalPath)
+    const relativePath = normalizeRelativePath(path.relative(vaultPath, finalPath))
 
     // Mark inbox item as filed
     markItemAsFiled(itemId, relativePath, 'linked')

@@ -24,6 +24,7 @@ import {
 import { parseNote, serializeNote } from './frontmatter'
 import { safeRead, atomicWrite } from './file-ops'
 import { generateNoteId } from '../lib/id'
+import { normalizeRelativePath } from '../lib/paths'
 import { syncNoteToCache, syncFileToCache } from './note-sync'
 import { flushProjectionEvents } from '../projections'
 import {
@@ -86,7 +87,7 @@ async function findVaultFiles(
         const supported = isSupportedPath(fullPath)
         if (supported) {
           // Add supported file (relative path from vault root)
-          files.push(path.relative(basePath, fullPath))
+          files.push(normalizeRelativePath(path.relative(basePath, fullPath)))
         } else {
           logger.debug(`Skipping unsupported file: ${entry.name}`)
         }
