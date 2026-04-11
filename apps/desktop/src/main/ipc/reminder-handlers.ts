@@ -281,8 +281,6 @@ export function registerReminderHandlers(): void {
       }, 'Failed to dismiss reminders')
     )
   )
-
-  logger.info('Reminder handlers registered')
 }
 
 /**
