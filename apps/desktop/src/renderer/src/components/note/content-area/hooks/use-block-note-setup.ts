@@ -48,7 +48,6 @@ export function useBlockNoteSetup({
       })
       const aiExtension = AIExtension({ transport: transport as any })
       editor.registerExtension(aiExtension)
-      log.info('AI extension registered, port:', aiPort)
     }
 
     setAiReady(Boolean(editor.getExtension('ai')))

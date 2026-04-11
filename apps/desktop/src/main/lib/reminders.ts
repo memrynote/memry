@@ -691,8 +691,6 @@ export function startReminderScheduler(): void {
     return
   }
 
-  logger.info('Starting scheduler')
-
   // Process any reminders that became due while app was closed
   processDueReminders()
 
