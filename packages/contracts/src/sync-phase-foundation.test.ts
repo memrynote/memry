@@ -273,6 +273,25 @@ describe('sync phase contract schemas', () => {
         items: [
           {
             id: validItem.id,
+            type: 'calendar_event',
+            operation: 'create',
+            encryptedKey: 'ek',
+            keyNonce: 'kn',
+            encryptedData: 'ed',
+            dataNonce: 'dn',
+            signature: 'sig',
+            signerDeviceId: 'device-1',
+            clock: { deviceA: 1 }
+          }
+        ]
+      }).success
+    ).toBe(true)
+
+    expect(
+      RecordPushRequestSchema.safeParse({
+        items: [
+          {
+            id: validItem.id,
             type: 'settings',
             operation: 'update',
             encryptedKey: 'ek',
@@ -400,6 +419,10 @@ describe('sync phase contract schemas', () => {
     ).toBe(true)
 
     expect(SYNC_ITEM_TYPES).toContain('note')
+    expect(SYNC_ITEM_TYPES).toContain('calendar_event')
+    expect(SYNC_ITEM_TYPES).toContain('calendar_source')
+    expect(SYNC_ITEM_TYPES).toContain('calendar_binding')
+    expect(SYNC_ITEM_TYPES).toContain('calendar_external_event')
     expect(SYNC_OPERATIONS).toContain('delete')
   })
 

@@ -7,6 +7,7 @@ Add a first-class calendar experience to Memry with:
 - a new top-level `Calendar` workspace
 - day, week, month, and year views
 - first-class Memry events
+- calendar data synchronized across Memry devices
 - Google Calendar import and two-way sync
 - task, reminder, and inbox snooze items visible and editable from calendar
 
@@ -18,6 +19,7 @@ The following decisions were validated during brainstorming:
 
 - Use a new top-level `Calendar` workspace. Journal keeps compact schedule panels, but it is not the primary calendar surface.
 - Add a first-class Memry `event` entity instead of treating imported Google records as the only event model.
+- Sync Memry calendar data across Memry devices in phase 1.
 - Import one or more user-selected Google calendars for normal events.
 - Create and manage a dedicated Google `Memry` calendar for Memry-owned items.
 - Google edits should write back broadly where supported.
@@ -106,7 +108,7 @@ Expected fields:
 - `createdAt`
 - `modifiedAt`
 - `archivedAt`
-- sync clock metadata if the item participates in Memry’s encrypted record sync
+- sync clock metadata because Memry calendar data participates in encrypted record sync in phase 1
 
 This entity exists so Memry can create and manage real events offline-first, independent of Google.
 
@@ -120,6 +122,8 @@ Add provider metadata to represent:
 - per-calendar sync status and cursors
 
 This should not be embedded into tasks, reminders, or events directly.
+The shareable provider-link metadata should sync across Memry devices, but Google access/refresh
+tokens should remain device-local in the OS keychain.
 
 ### 3. External event cache
 
@@ -128,6 +132,8 @@ Add storage for imported provider events so Memry can:
 - render imported Google calendars offline
 - track remote ids, etags, and updated timestamps
 - normalize remote data for projection and conflict handling
+- sync imported calendar visibility across Memry devices even if only one device is currently
+  connected to Google
 
 Imported Google events stay imported event records. They do not become tasks automatically.
 
@@ -151,6 +157,34 @@ Required concepts:
 - last local snapshot metadata needed for conflict handling
 
 This binding layer is what enables Google to edit native Memry records without duplicating those records into a fake event table.
+
+## Cross-Device Sync Boundary
+
+Phase 1 calendar data should sync across Memry devices through the existing encrypted record-sync
+pipeline.
+
+Sync through Memry:
+
+- `calendar_events`
+- shareable provider-link and selected-calendar metadata
+- imported external event cache
+- calendar bindings that link native Memry records to provider events
+
+Remain device-local:
+
+- Google access tokens
+- Google refresh tokens
+- loopback OAuth session state
+- transient provider job state that is only meaningful to one running device
+
+Implications:
+
+- any device can render the latest synced calendar state, even if that device has not completed
+  Google Calendar auth yet
+- any device with Google auth can refresh imported calendars and push/write back changes using the
+  shared synced bindings and source metadata
+- Memry events created on one device appear on other devices through Memry sync, not only after a
+  Google roundtrip
 
 ## Projection Model
 
@@ -350,6 +384,8 @@ There are three flows:
 1. Import Google calendars into cached external event storage
 2. Publish Memry-owned items to the dedicated Google `Memry` calendar
 3. Write Google edits back to the authoritative Memry source record
+4. Sync Memry calendar events, shared provider metadata, imported event cache, and bindings across
+   Memry devices through encrypted record sync
 
 ### Conflict policy
 
@@ -358,6 +394,7 @@ Phase 1 should use a pragmatic conflict model:
 - track remote version metadata such as etag / updated timestamp
 - track enough local sync metadata to know what changed since last sync
 - use last-write-wins for schedule fields when concurrent edits occur
+- use existing Memry record clocks for device-to-device merges of syncable calendar records
 - log conflict details for diagnostics
 
 Do not build a human conflict resolution UX in phase 1.
@@ -378,6 +415,7 @@ Key expectations:
 
 - Calendar workspace still renders local Memry items offline
 - Imported Google events render from cached provider state when possible
+- devices without local Google auth still render the latest synced calendar cache
 - provider sync failures do not corrupt native tasks/reminders/snoozes/events
 - failed write-backs are retried through a durable job/sync mechanism
 - UI clearly distinguishes local edits pending remote sync from fully synced state
@@ -389,6 +427,8 @@ Phase 1 needs explicit coverage across main process, renderer, and provider roun
 ### Backend / main-process tests
 
 - event schema and repository behavior
+- record-sync handlers/services for `calendar_event`, `calendar_source`, `calendar_binding`, and
+  `calendar_external_event`
 - projection query logic across day/week/month/year ranges
 - Google import mapping
 - Google publish mapping
@@ -414,6 +454,7 @@ Phase 1 needs explicit coverage across main process, renderer, and provider roun
 - connect Google calendar account
 - import selected calendars
 - create Memry event and verify Google appearance
+- verify a second Memry device receives synced calendar events/source selections/import cache
 - move task in Memry and verify Google update
 - move Google reminder mirror and verify local `remindAt` update
 - delete Google mirror of snoozed item and verify local schedule clearing
@@ -430,7 +471,7 @@ Phase 1 needs explicit coverage across main process, renderer, and provider roun
 
 These do not block the design, but implementation planning must settle them:
 
-- whether new calendar records participate in the existing encrypted record sync immediately or ship locally first
+- how much provider progress metadata should be shared across devices versus kept per-device
 - whether provider sync runs through the existing sync queue or a dedicated calendar job pipeline
 - the exact recurrence representation shared between Memry events and Google mappings
 - how much of Google event metadata beyond title/description/location is surfaced in phase 1
@@ -442,6 +483,8 @@ Proceed with the unified calendar projection architecture:
 - add first-class Memry events
 - keep tasks/reminders/snoozes native
 - bind all calendar-capable native records to Google through a generic sync-binding layer
+- sync calendar events, imported cache, and shared provider metadata through the existing encrypted
+  Memry record pipeline
 - build one shared calendar projection that powers Calendar and journal compact schedule surfaces
 
 This is the cleanest path that matches the current Memry architecture while leaving room for more providers later.
