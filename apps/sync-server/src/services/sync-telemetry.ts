@@ -14,6 +14,7 @@ type SyncDomain =
   | 'filters'
   | 'attachments'
   | 'tags'
+  | 'folders'
 
 const logger = createLogger('SyncTelemetry')
 
@@ -43,6 +44,8 @@ const toSyncDomain = (itemType: SyncItemType): SyncDomain => {
       return 'attachments'
     case 'tag_definition':
       return 'tags'
+    case 'folder_config':
+      return 'folders'
   }
 }
 
@@ -65,9 +68,7 @@ const summarizeItemTypes = (itemTypes: SyncItemType[]): Partial<Record<SyncDomai
   return summary
 }
 
-const summarizeDomainTypes = (
-  itemTypes: SyncItemType[]
-): Partial<Record<SyncItemType, number>> => {
+const summarizeDomainTypes = (itemTypes: SyncItemType[]): Partial<Record<SyncItemType, number>> => {
   const summary: Partial<Record<SyncItemType, number>> = {}
   for (const itemType of itemTypes) {
     summary[itemType] = (summary[itemType] ?? 0) + 1
