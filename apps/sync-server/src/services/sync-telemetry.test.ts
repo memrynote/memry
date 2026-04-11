@@ -15,7 +15,8 @@ describe('sync telemetry', () => {
       latencyMs: 80,
       outcomes: [
         { id: 'note-1', type: 'note', accepted: true, serverCursor: 10 },
-        { id: 'task-1', type: 'task', accepted: false, reason: 'SYNC_REPLAY_DETECTED' }
+        { id: 'task-1', type: 'task', accepted: false, reason: 'SYNC_REPLAY_DETECTED' },
+        { id: 'calendar-event-1', type: 'calendar_event', accepted: true, serverCursor: 11 }
       ]
     })
 
@@ -38,6 +39,14 @@ describe('sync telemetry', () => {
         conflictRejected: 0,
         quotaRejected: 0,
         otherRejected: 0
+      },
+      calendar_event: {
+        accepted: 1,
+        rejected: 0,
+        replayRejected: 0,
+        conflictRejected: 0,
+        quotaRejected: 0,
+        otherRejected: 0
       }
     })
   })
@@ -49,7 +58,7 @@ describe('sync telemetry', () => {
       endpoint: '/sync/records/changes',
       operation: 'changes',
       latencyMs: 35,
-      itemTypes: ['task', 'task', 'journal'],
+      itemTypes: ['task', 'task', 'journal', 'calendar_external_event'],
       deletedCount: 1
     })
 
@@ -58,7 +67,13 @@ describe('sync telemetry', () => {
     expect(payload.transport).toBe('record')
     expect(payload.domainTypes).toEqual({
       task: 2,
-      journal: 1
+      journal: 1,
+      calendar_external_event: 1
+    })
+    expect(payload.domains).toEqual({
+      tasks: 2,
+      notes: 1,
+      calendar: 1
     })
   })
 

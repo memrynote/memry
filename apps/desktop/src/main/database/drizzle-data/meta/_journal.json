@@ -169,6 +169,13 @@
       "when": 1744329600000,
       "tag": "0023_folder_configs",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "6",
+      "when": 1775952000000,
+      "tag": "0024_google_calendar_foundation",
+      "breakpoints": true
     }
   ]
 }
