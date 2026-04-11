@@ -224,7 +224,9 @@ async function openVault(vaultPath: string): Promise<void> {
 
   // Check index database health before proceeding
   const indexHealth: IndexHealth = checkIndexHealth(indexDbPath)
-  logger.info(`Index health check: ${indexHealth}`)
+  if (indexHealth !== 'healthy') {
+    logger.warn(`Index health check: ${indexHealth}`)
+  }
 
   // Initialize property definitions service BEFORE indexing
   // so getPropertyType() finds correct types during note sync
@@ -300,7 +302,6 @@ async function openVault(vaultPath: string): Promise<void> {
   // Start loading embedding model in background (non-blocking)
   // This ensures the model is ready when user needs AI suggestions
   if (!isModelLoaded() && !isModelLoading()) {
-    logger.info('Starting background embedding model load...')
     initEmbeddingModel().catch((err) => {
       logger.error('Background embedding model load failed:', err)
     })

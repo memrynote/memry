@@ -1257,8 +1257,6 @@ export function registerSyncHandlers(syncEngine?: SyncEngine): void {
     logger.warn('SECURITY_AUDIT: Emergency wipe via IPC complete')
     return { success: result.success }
   })
-
-  logger.info('Sync handlers registered')
 }
 
 export function unregisterSyncHandlers(): void {

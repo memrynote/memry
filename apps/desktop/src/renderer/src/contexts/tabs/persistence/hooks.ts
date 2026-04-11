@@ -70,14 +70,9 @@ export const useTabPersistence = (options: UseTabPersistenceOptions = {}): void 
       clearTimeout(saveTimeoutRef.current)
     }
 
-    const tabTypes = Object.values(state.tabGroups)
-      .flatMap((g) => g.tabs)
-      .map((t) => `${t.type}${t.isPreview ? '(preview)' : ''}`)
-
     saveTimeoutRef.current = setTimeout(() => {
       void storage.save(serialized).then(() => {
         lastSavedRef.current = json
-        log.info('debounced save complete', { tabs: tabTypes })
       })
     }, debounceMs)
 
@@ -143,10 +138,13 @@ export const useSessionRestore = (
       if (persisted) {
         const persistedTabs = Object.values(persisted.tabGroups).flatMap((g) => g.tabs)
         log.info('loaded persisted state', {
+          tabCount: persistedTabs.length,
+          restoreEnabled: state.settings.restoreSessionOnStart
+        })
+        log.debug('loaded persisted state details', {
           version: persisted.version,
           groups: Object.keys(persisted.tabGroups).length,
-          tabs: persistedTabs.map((t) => t.type),
-          restoreEnabled: state.settings.restoreSessionOnStart
+          tabs: persistedTabs.map((t) => t.type)
         })
 
         if (state.settings.restoreSessionOnStart) {
@@ -158,7 +156,8 @@ export const useSessionRestore = (
             type: 'RESTORE_SESSION',
             payload: restored as TabSystemState
           })
-          log.info('session restored', {
+          log.info('session restored', { count: restoredTabs.length })
+          log.debug('session restored details', {
             tabs: restoredTabs.map((t) => `${t.type}:${t.entityId ?? 'none'}`)
           })
         } else {
