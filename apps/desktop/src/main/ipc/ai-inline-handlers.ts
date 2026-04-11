@@ -91,8 +91,6 @@ export function registerAIInlineHandlers(): void {
     await stopChatServer()
     return { success: true }
   })
-
-  logger.info('Registered')
 }
 
 export function unregisterAIInlineHandlers(): void {

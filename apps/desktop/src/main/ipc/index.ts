@@ -106,7 +106,6 @@ export function registerAllHandlers(): void {
   registerAccountHandlers()
 
   handlersRegistered = true
-  ipcLog.info('all handlers registered')
 }
 
 /**

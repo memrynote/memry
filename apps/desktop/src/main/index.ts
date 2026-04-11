@@ -74,10 +74,10 @@ const envPath = app.isPackaged
   ? join(process.resourcesPath, '.env')
   : join(app.getAppPath(), '.env')
 
-const envResult = config({ path: envPath })
+const envResult = config({ path: envPath, quiet: true })
 if (envResult.error) {
   // Try loading from current working directory as fallback
-  config()
+  config({ quiet: true })
 }
 
 // Register custom protocol as privileged before app is ready
@@ -129,7 +129,7 @@ function loadEnvironmentConfig(): void {
   envConfig.openaiApiKey = process.env.OPENAI_API_KEY
 
   if (!envConfig.openaiApiKey) {
-    configLog.warn('OPENAI_API_KEY not set. Voice transcription will rely on BYOK settings.')
+    configLog.debug('OPENAI_API_KEY not set. Voice transcription will rely on BYOK settings.')
   } else {
     configLog.info('OpenAI API key loaded successfully')
   }
@@ -146,8 +146,6 @@ function loadEnvironmentConfig(): void {
 
 // Load environment config early
 loadEnvironmentConfig()
-
-const cspLog = createLogger('CSP')
 
 function configureCsp(): void {
   const policy = [
@@ -192,8 +190,6 @@ function configureCsp(): void {
         : {}
     )
   })
-
-  cspLog.info('CSP configured', is.dev ? '(dev mode)' : '(production)')
 }
 
 const certPinLog = createLogger('CertPinSession')

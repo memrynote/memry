@@ -88,7 +88,6 @@ export function useAIInline(): AIInlineState {
 
         if (result.success && result.port) {
           setPort(result.port)
-          log.info('AI server started on port', result.port)
         } else {
           const msg = friendlyError(result.error ?? 'Failed to start AI server', settings.provider)
           setError(msg)

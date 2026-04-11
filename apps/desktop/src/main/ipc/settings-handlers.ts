@@ -709,8 +709,6 @@ export function registerSettingsHandlers(): void {
   ipcMain.handle(SettingsChannels.invoke.REGISTER_GLOBAL_CAPTURE, async () => {
     return applyGlobalCaptureShortcut()
   })
-
-  logger.info('Settings handlers registered')
 }
 
 // ============================================================================

@@ -121,7 +121,6 @@ export async function initEmbeddingModel(): Promise<boolean> {
   loadError = null
 
   try {
-    logger.info('Initializing embedding model...')
     emitProgress('loading', 0, 'Initializing embedding model...')
 
     // Dynamic import to avoid loading at startup

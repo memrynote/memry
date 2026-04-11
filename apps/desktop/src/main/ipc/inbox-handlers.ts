@@ -152,8 +152,6 @@ export function registerInboxHandlers(): void {
       return { title: titleFromUrl(url), domain }
     }
   })
-
-  logger.info('Inbox handlers registered')
 }
 
 export function unregisterInboxHandlers(): void {
