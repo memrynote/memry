@@ -50,6 +50,7 @@ export function SidebarNav({
                 tooltip={tooltipLabel}
                 isActive={active}
                 onClick={onNavClick(item.page)}
+                className="h-7 rounded-[5px] p-0 pl-1 pr-2.5 gap-1.5 text-[13px] leading-4 font-medium text-sidebar-foreground"
               >
                 <item.icon />
                 <span>{item.title}</span>
