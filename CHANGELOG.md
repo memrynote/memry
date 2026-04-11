@@ -5,6 +5,16 @@ Format: weekly entries grouped by feature area.
 
 ---
 
+## 2026-04-11 — Settings Modal Scroll Fix and Sidebar Action Reorder
+
+### Changed
+- Move search and new-note actions to the top of the sidebar for faster access
+
+### Fixed
+- Restore scrolling inside the Settings modal so long sections (Shortcuts, Account, etc.) are fully reachable when the window is short — the Radix `DialogContent` grid layout was preventing nested `ScrollArea` from computing a bounded height
+
+---
+
 ## 2026-04-09 — Sync Adapter Registry and Architecture Reset
 
 ### Added
