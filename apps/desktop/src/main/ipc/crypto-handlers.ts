@@ -453,8 +453,6 @@ export function registerCryptoHandlers(): void {
   )
 
   ipcMain.handle(SYNC_CHANNELS.GET_ROTATION_PROGRESS, handleGetRotationProgress)
-
-  logger.info('Crypto handlers registered')
 }
 
 export function unregisterCryptoHandlers(): void {

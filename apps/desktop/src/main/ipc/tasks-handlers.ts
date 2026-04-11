@@ -384,8 +384,6 @@ export function registerTasksHandlers(): void {
     'tasks:seed-demo',
     createHandler(() => ({ success: true, message: '' }))
   )
-
-  logger.info('Tasks handlers registered')
 }
 
 export function unregisterTasksHandlers(): void {

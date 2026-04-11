@@ -31,8 +31,6 @@ export function registerGraphHandlers(): void {
       }
     }
   )
-
-  logger.info('Graph handlers registered')
 }
 
 export function unregisterGraphHandlers(): void {
