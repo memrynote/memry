@@ -66,8 +66,8 @@ export function SettingsPage() {
   }, [])
 
   return (
-    <div className="h-full flex">
-      <div className="w-60 shrink-0 pt-5 pb-4 bg-sidebar border-r border-border text-xs/4 font-[family-name:var(--font-sans)]">
+    <div className="flex-1 min-h-0 flex">
+      <div className="w-60 shrink-0 pt-5 pb-4 overflow-y-auto min-h-0 bg-sidebar border-r border-border text-xs/4 font-[family-name:var(--font-sans)]">
         <div className="flex items-center pb-4 px-5">
           <span className="text-sm/4.5 font-semibold text-foreground tracking-[-0.01em]">
             Settings
@@ -165,7 +165,7 @@ export function SettingsPage() {
         </SettingsNavGroup>
       </div>
 
-      <div className="flex-1 overflow-hidden">
+      <div className="flex-1 min-h-0 overflow-hidden">
         <ScrollArea className="h-full">
           <div className="p-6 max-w-3xl mx-auto">
             {activeSection === 'general' && <GeneralSettings />}

@@ -7,7 +7,7 @@ export function SettingsModal() {
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && close()}>
-      <DialogContent className="max-w-[76rem] h-[80vh] p-0 gap-0 overflow-hidden">
+      <DialogContent className="max-w-[76rem] h-[80vh] p-0 gap-0 overflow-hidden flex flex-col">
         <DialogTitle className="sr-only">Settings</DialogTitle>
         <SettingsPage />
       </DialogContent>
