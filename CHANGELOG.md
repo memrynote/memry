@@ -5,6 +5,14 @@ Format: weekly entries grouped by feature area.
 
 ---
 
+## 2026-04-12 — Windows Inbox Folder Filing Fix
+
+### Fixed
+- Fix Windows inbox filing so creating a folder inline no longer leaves the item in Inbox after restart
+- Normalize vault-relative paths and folder picker matching so newly created folders resolve consistently across macOS and Windows
+
+---
+
 ## 2026-04-11 — Settings Modal Scroll Fix and Sidebar Action Reorder
 
 ### Changed

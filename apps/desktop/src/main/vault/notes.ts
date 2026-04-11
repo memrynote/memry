@@ -10,6 +10,7 @@ import fs from 'fs/promises'
 import { shell } from 'electron'
 import { BrowserWindow } from 'electron'
 import { getStatus, getConfig } from './index'
+import { normalizeRelativePath } from '../lib/paths'
 import {
   parseNote,
   serializeNote,
@@ -246,7 +247,7 @@ export function toAbsolutePath(relativePath: string): string {
  */
 export function toRelativePath(absolutePath: string): string {
   const vaultPath = getVaultPath()
-  return path.relative(vaultPath, absolutePath)
+  return normalizeRelativePath(path.relative(vaultPath, absolutePath))
 }
 
 /**
