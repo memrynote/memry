@@ -13,6 +13,13 @@ Format: weekly entries grouped by feature area.
 
 ---
 
+## 2026-04-12 — Sidebar Nav Alignment
+
+### Changed
+- Align sidebar nav rows (Inbox, Journal, Tasks) with folder/file row styling for visual consistency — match height, padding, border-radius, font size, and gap from the tree node primitive
+
+---
+
 ## 2026-04-11 — Settings Modal Scroll Fix and Sidebar Action Reorder
 
 ### Changed
