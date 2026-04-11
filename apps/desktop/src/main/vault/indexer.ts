@@ -296,7 +296,7 @@ const INDEX_CONCURRENCY = 8
  * @returns Index result with counts
  */
 export async function indexVault(vaultPath: string): Promise<IndexResult> {
-  logger.info('Starting vault indexing:', vaultPath)
+  logger.debug('Starting vault indexing:', vaultPath)
 
   const config = getConfig()
   const excludePatterns = config.excludePatterns ?? []
@@ -327,7 +327,7 @@ export async function indexVault(vaultPath: string): Promise<IndexResult> {
     }
   }
 
-  logger.info(`Found ${allFiles.length} files to index`)
+  logger.debug(`Found ${allFiles.length} files to index`)
 
   if (allFiles.length === 0) {
     emitIndexProgress(100)
@@ -366,9 +366,12 @@ export async function indexVault(vaultPath: string): Promise<IndexResult> {
     }
   }
 
-  logger.info(
-    `Indexing complete: ${result.indexed} indexed, ${result.skipped} skipped, ${result.errors} errors`
-  )
+  const indexingMessage = `Indexing complete: ${result.indexed} indexed, ${result.skipped} skipped, ${result.errors} errors`
+  if (result.indexed > 0 || result.errors > 0) {
+    logger.info(indexingMessage)
+  } else {
+    logger.debug(indexingMessage)
+  }
 
   // Verify counts (notes and journal entries are counted separately)
   const db = getIndexDatabase()
