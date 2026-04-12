@@ -233,6 +233,66 @@ describe('useDragHandlers', () => {
     expect(onUpdateTask).toHaveBeenCalledWith('task-1', { dueDate: null })
   })
 
+  it('updates the task due datetime when a calendar task is dropped onto a date cell', () => {
+    const project = createProject()
+    const tasks = [
+      createTask({
+        id: 'task-1',
+        dueDate: new Date('2026-04-14T15:30:00.000Z'),
+        dueTime: '15:30'
+      })
+    ]
+    const onUpdateTask = vi.fn()
+
+    const { result } = renderHook(() =>
+      useDragHandlers({
+        tasks,
+        projects: [project],
+        onUpdateTask,
+        onDeleteTask: vi.fn(),
+        onReorder: vi.fn()
+      })
+    )
+
+    const event = createDragEvent({
+      active: {
+        id: 'task-1',
+        data: {
+          current: {
+            type: 'calendar-task',
+            sourceType: 'calendar',
+            task: tasks[0]
+          }
+        }
+      },
+      over: {
+        id: 'date-2026-04-18',
+        data: {
+          current: {
+            type: 'date',
+            date: new Date('2026-04-18T00:00:00.000Z')
+          }
+        }
+      }
+    })
+
+    act(() => {
+      result.current.handleDragEnd(
+        event,
+        createDragState({
+          sourceType: 'calendar',
+          sourceContainerId: '2026-04-14',
+          overId: 'date-2026-04-18',
+          overType: 'date'
+        })
+      )
+    })
+
+    expect(onUpdateTask).toHaveBeenCalledWith('task-1', {
+      dueDate: new Date(2026, 3, 18, 15, 30)
+    })
+  })
+
   it('handles task-over-task project moves by the explicit list column id', () => {
     const projectOne = createProject()
     const projectTwo = createProject({

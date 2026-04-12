@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { cn } from '@/lib/utils'
+import { useCalendarRange } from '@/hooks/use-calendar-range'
+import type { CalendarProjectionItem } from '@/services/calendar-service'
 import {
   tasksService,
   onTaskCreated,
@@ -40,47 +42,105 @@ const PRIORITY_REVERSE_MAP: Record<Priority, number> = {
 }
 
 interface ScheduleEvent {
+  id: string
   time: string
   title: string
   duration: string
   color: string
 }
 
-const SCHEDULE_COLORS = ['#5E6AD2', '#8B5CF6', '#F97316', '#06B6D4', '#EC4899']
+const VISUAL_TYPE_COLORS = {
+  event: '#5E6AD2',
+  task: '#8B5CF6',
+  reminder: '#F97316',
+  snooze: '#06B6D4',
+  external_event: '#2563eb'
+} as const
 
-function getDummySchedule(date: string): ScheduleEvent[] {
-  const d = new Date(date + 'T00:00:00')
-  const dow = d.getDay()
+function getDayRange(date: string): { startAt: string; endAt: string } {
+  const start = new Date(`${date}T00:00:00.000Z`)
+  const end = new Date(start)
+  end.setUTCDate(end.getUTCDate() + 1)
 
-  if (dow === 0 || dow === 6) return []
+  return {
+    startAt: start.toISOString(),
+    endAt: end.toISOString()
+  }
+}
 
-  const seed = d.getDate() + d.getMonth() * 31
-  const events: ScheduleEvent[] = []
-
-  const pool: Array<[string, string, string]> = [
-    ['9:00', 'Team standup', '30 min'],
-    ['10:00', 'Sprint planning', '1 hr'],
-    ['11:00', 'Design review', '45 min'],
-    ['13:00', '1:1 with lead', '30 min'],
-    ['14:00', 'Architecture sync', '1 hr'],
-    ['15:00', 'Code review session', '45 min'],
-    ['16:00', 'Retro', '1 hr']
-  ]
-
-  const count = 1 + (seed % 3)
-  const start = seed % pool.length
-
-  for (let i = 0; i < count; i++) {
-    const [time, title, duration] = pool[(start + i * 2) % pool.length]
-    events.push({
-      time,
-      title,
-      duration,
-      color: SCHEDULE_COLORS[(start + i) % SCHEDULE_COLORS.length]
-    })
+function formatScheduleTime(startAt: string, isAllDay: boolean): string {
+  if (isAllDay) {
+    return 'All day'
   }
 
-  return events.sort((a, b) => a.time.localeCompare(b.time))
+  return new Intl.DateTimeFormat(undefined, {
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23'
+  }).format(new Date(startAt))
+}
+
+function formatScheduleDuration(
+  startAt: string,
+  endAt: string | null,
+  isAllDay: boolean,
+  visualType: keyof typeof VISUAL_TYPE_COLORS
+): string {
+  if (isAllDay) {
+    return 'All day'
+  }
+
+  if (!endAt) {
+    switch (visualType) {
+      case 'task':
+        return 'Due'
+      case 'reminder':
+        return 'Reminder'
+      case 'snooze':
+        return 'Snoozed'
+      default:
+        return 'Scheduled'
+    }
+  }
+
+  const minutes = Math.max(
+    1,
+    Math.round((new Date(endAt).getTime() - new Date(startAt).getTime()) / 60000)
+  )
+
+  if (minutes < 60) {
+    return `${minutes} min`
+  }
+
+  const hours = Math.floor(minutes / 60)
+  const remainingMinutes = minutes % 60
+  if (remainingMinutes === 0) {
+    return `${hours} hr`
+  }
+
+  return `${hours} hr ${remainingMinutes} min`
+}
+
+function toScheduleEvent(item: CalendarProjectionItem): ScheduleEvent {
+  return {
+    id: item.projectionId,
+    time: formatScheduleTime(item.startAt, item.isAllDay),
+    title: item.title,
+    duration: formatScheduleDuration(item.startAt, item.endAt, item.isAllDay, item.visualType),
+    color: item.source.color ?? VISUAL_TYPE_COLORS[item.visualType]
+  }
+}
+
+function compareScheduleEvents(a: ScheduleEvent, b: ScheduleEvent): number {
+  if (a.time === 'All day' && b.time !== 'All day') {
+    return -1
+  }
+
+  if (a.time !== 'All day' && b.time === 'All day') {
+    return 1
+  }
+
+  return a.time.localeCompare(b.time)
 }
 
 interface TaskRowProps {
@@ -162,6 +222,8 @@ export function JournalDayPanel({ date, className }: JournalDayPanelProps) {
   const { projects } = useTasksContext()
   const { openTab } = useTabActions()
   const queryClient = useQueryClient()
+  const scheduleRange = useMemo(() => getDayRange(date), [date])
+  const scheduleQuery = useCalendarRange(scheduleRange)
 
   const projectMap = useMemo(() => {
     const map = new Map<string, Project>()
@@ -176,7 +238,10 @@ export function JournalDayPanel({ date, className }: JournalDayPanelProps) {
 
   const isToday = date === today
 
-  const schedule = useMemo(() => getDummySchedule(date), [date])
+  const schedule = useMemo(
+    () => scheduleQuery.items.map(toScheduleEvent).sort(compareScheduleEvents),
+    [scheduleQuery.items]
+  )
 
   const { data: tasks = [] } = useQuery({
     queryKey: ['journal-day-panel', 'tasks', date],
