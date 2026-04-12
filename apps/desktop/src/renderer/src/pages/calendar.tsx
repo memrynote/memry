@@ -1,6 +1,16 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { CalendarShell, type CalendarEventDraft, type CalendarWorkspaceView } from '@/components/calendar'
+import {
+  addLocalDays,
+  addLocalMonths,
+  addLocalYears,
+  parseLocalDate,
+  toLocalDateInputValue,
+  toLocalDateString,
+  toLocalDateTimeInputValue,
+  toStartOfLocalDayIso
+} from '@/components/calendar/date-utils'
 import { useCalendarRange } from '@/hooks/use-calendar-range'
 import {
   calendarService,
@@ -13,37 +23,7 @@ interface CalendarPageProps {
 }
 
 function getTodayDate(): string {
-  return new Date().toISOString().slice(0, 10)
-}
-
-function parseUtcDate(value: string): Date {
-  return new Date(`${value}T00:00:00.000Z`)
-}
-
-function toIsoDate(value: Date): string {
-  return value.toISOString().slice(0, 10)
-}
-
-function addDays(value: string, amount: number): string {
-  const date = parseUtcDate(value)
-  date.setUTCDate(date.getUTCDate() + amount)
-  return toIsoDate(date)
-}
-
-function addMonths(value: string, amount: number): string {
-  const date = parseUtcDate(value)
-  date.setUTCMonth(date.getUTCMonth() + amount)
-  return toIsoDate(date)
-}
-
-function addYears(value: string, amount: number): string {
-  const date = parseUtcDate(value)
-  date.setUTCFullYear(date.getUTCFullYear() + amount)
-  return toIsoDate(date)
-}
-
-function toIsoStartOfDay(value: string): string {
-  return parseUtcDate(value).toISOString()
+  return toLocalDateString(new Date())
 }
 
 function getRangeForView(view: CalendarWorkspaceView, anchorDate: string): {
@@ -52,33 +32,33 @@ function getRangeForView(view: CalendarWorkspaceView, anchorDate: string): {
 } {
   if (view === 'day') {
     return {
-      startAt: toIsoStartOfDay(anchorDate),
-      endAt: toIsoStartOfDay(addDays(anchorDate, 1))
+      startAt: toStartOfLocalDayIso(anchorDate),
+      endAt: toStartOfLocalDayIso(addLocalDays(anchorDate, 1))
     }
   }
 
   if (view === 'week') {
     return {
-      startAt: toIsoStartOfDay(anchorDate),
-      endAt: toIsoStartOfDay(addDays(anchorDate, 7))
+      startAt: toStartOfLocalDayIso(anchorDate),
+      endAt: toStartOfLocalDayIso(addLocalDays(anchorDate, 7))
     }
   }
 
   if (view === 'month') {
-    const date = parseUtcDate(anchorDate)
-    const start = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), 1))
-    const end = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + 1, 1))
+    const date = parseLocalDate(anchorDate)
+    const start = new Date(date.getFullYear(), date.getMonth(), 1)
+    const end = new Date(date.getFullYear(), date.getMonth() + 1, 1)
     return { startAt: start.toISOString(), endAt: end.toISOString() }
   }
 
-  const date = parseUtcDate(anchorDate)
-  const start = new Date(Date.UTC(date.getUTCFullYear(), 0, 1))
-  const end = new Date(Date.UTC(date.getUTCFullYear() + 1, 0, 1))
+  const date = parseLocalDate(anchorDate)
+  const start = new Date(date.getFullYear(), 0, 1)
+  const end = new Date(date.getFullYear() + 1, 0, 1)
   return { startAt: start.toISOString(), endAt: end.toISOString() }
 }
 
 function getRangeLabel(view: CalendarWorkspaceView, anchorDate: string): string {
-  const date = parseUtcDate(anchorDate)
+  const date = parseLocalDate(anchorDate)
 
   if (view === 'day') {
     return new Intl.DateTimeFormat(undefined, {
@@ -90,7 +70,7 @@ function getRangeLabel(view: CalendarWorkspaceView, anchorDate: string): string 
   }
 
   if (view === 'week') {
-    const end = parseUtcDate(addDays(anchorDate, 6))
+    const end = parseLocalDate(addLocalDays(anchorDate, 6))
     const formatter = new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric' })
     return `${formatter.format(date)} - ${formatter.format(end)}`
   }
@@ -99,7 +79,7 @@ function getRangeLabel(view: CalendarWorkspaceView, anchorDate: string): string 
     return new Intl.DateTimeFormat(undefined, { month: 'long', year: 'numeric' }).format(date)
   }
 
-  return String(date.getUTCFullYear())
+  return String(date.getFullYear())
 }
 
 function createDraftFromAnchor(anchorDate: string): CalendarEventDraft {
@@ -120,12 +100,12 @@ function createDraftFromItem(item: CalendarProjectionItem): CalendarEventDraft {
     location: '',
     isAllDay: item.isAllDay,
     startAt: item.isAllDay
-      ? new Date(item.startAt).toISOString().slice(0, 10)
-      : new Date(item.startAt).toISOString().slice(0, 16),
+      ? toLocalDateInputValue(item.startAt)
+      : toLocalDateTimeInputValue(item.startAt),
     endAt: item.endAt
       ? item.isAllDay
-        ? new Date(item.endAt).toISOString().slice(0, 10)
-        : new Date(item.endAt).toISOString().slice(0, 16)
+        ? toLocalDateInputValue(item.endAt)
+        : toLocalDateTimeInputValue(item.endAt)
       : ''
   }
 }
@@ -238,19 +218,19 @@ export function CalendarPage({ className: _className }: CalendarPageProps): Reac
 
   const handlePrevious = () => {
     setAnchorDate((current) => {
-      if (view === 'day') return addDays(current, -1)
-      if (view === 'week') return addDays(current, -7)
-      if (view === 'month') return addMonths(current, -1)
-      return addYears(current, -1)
+      if (view === 'day') return addLocalDays(current, -1)
+      if (view === 'week') return addLocalDays(current, -7)
+      if (view === 'month') return addLocalMonths(current, -1)
+      return addLocalYears(current, -1)
     })
   }
 
   const handleNext = () => {
     setAnchorDate((current) => {
-      if (view === 'day') return addDays(current, 1)
-      if (view === 'week') return addDays(current, 7)
-      if (view === 'month') return addMonths(current, 1)
-      return addYears(current, 1)
+      if (view === 'day') return addLocalDays(current, 1)
+      if (view === 'week') return addLocalDays(current, 7)
+      if (view === 'month') return addLocalMonths(current, 1)
+      return addLocalYears(current, 1)
     })
   }
 

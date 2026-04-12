@@ -1,9 +1,6 @@
 import { CalendarItemChip } from './calendar-item-chip'
+import { toLocalDateKey } from './date-utils'
 import type { CalendarProjectionItem } from '@/services/calendar-service'
-
-function toDateKey(value: string): string {
-  return new Date(value).toISOString().slice(0, 10)
-}
 
 interface CalendarDayViewProps {
   anchorDate: string
@@ -16,7 +13,7 @@ export function CalendarDayView({
   items,
   onSelectItem
 }: CalendarDayViewProps): React.JSX.Element {
-  const dayItems = items.filter((item) => toDateKey(item.startAt) === anchorDate)
+  const dayItems = items.filter((item) => toLocalDateKey(item.startAt) === anchorDate)
   const allDayItems = dayItems.filter((item) => item.isAllDay)
   const timedItems = dayItems.filter((item) => !item.isAllDay)
 
