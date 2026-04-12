@@ -1,9 +1,6 @@
 import { CalendarItemChip } from './calendar-item-chip'
+import { parseLocalDate, toLocalDateKey } from './date-utils'
 import type { CalendarProjectionItem } from '@/services/calendar-service'
-
-function toDateKey(value: string): string {
-  return new Date(value).toISOString().slice(0, 10)
-}
 
 function pad(value: number): string {
   return String(value).padStart(2, '0')
@@ -20,10 +17,10 @@ export function CalendarMonthView({
   items,
   onSelectItem
 }: CalendarMonthViewProps): React.JSX.Element {
-  const anchor = new Date(`${anchorDate}T00:00:00.000Z`)
-  const year = anchor.getUTCFullYear()
-  const month = anchor.getUTCMonth()
-  const daysInMonth = new Date(Date.UTC(year, month + 1, 0)).getUTCDate()
+  const anchor = parseLocalDate(anchorDate)
+  const year = anchor.getFullYear()
+  const month = anchor.getMonth()
+  const daysInMonth = new Date(year, month + 1, 0).getDate()
   const days = Array.from({ length: daysInMonth }, (_, index) => {
     const day = index + 1
     return `${year}-${pad(month + 1)}-${pad(day)}`
@@ -37,7 +34,7 @@ export function CalendarMonthView({
       </div>
       <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-7">
         {days.map((day) => {
-          const dayItems = items.filter((item) => toDateKey(item.startAt) === day)
+          const dayItems = items.filter((item) => toLocalDateKey(item.startAt) === day)
           return (
             <div key={day} className="min-h-36 rounded-2xl border border-border/70 bg-card/50 p-3">
               <div className="mb-3 text-sm font-semibold text-foreground">{day.slice(-2)}</div>

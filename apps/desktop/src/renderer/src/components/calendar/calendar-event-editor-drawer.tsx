@@ -2,6 +2,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { Textarea } from '@/components/ui/textarea'
+import { toLocalDateString } from './date-utils'
 
 export interface CalendarEventDraft {
   title: string
@@ -95,7 +96,7 @@ export function CalendarEventEditorDrawer({
                   return
                 }
 
-                const startDate = draft.startAt || new Date().toISOString().slice(0, 10)
+                const startDate = draft.startAt || toLocalDateString(new Date())
                 const endDate = draft.endAt || startDate
                 onDraftChange({
                   ...draft,

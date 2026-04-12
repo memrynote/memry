@@ -1,8 +1,9 @@
 import { CalendarItemChip } from './calendar-item-chip'
+import { parseLocalDate, toLocalDateKey } from './date-utils'
 import type { CalendarProjectionItem } from '@/services/calendar-service'
 
 function monthKey(value: string): string {
-  return new Date(value).toISOString().slice(0, 7)
+  return toLocalDateKey(value).slice(0, 7)
 }
 
 interface CalendarYearViewProps {
@@ -16,10 +17,10 @@ export function CalendarYearView({
   items,
   onSelectItem
 }: CalendarYearViewProps): React.JSX.Element {
-  const year = new Date(`${anchorDate}T00:00:00.000Z`).getUTCFullYear()
+  const year = parseLocalDate(anchorDate).getFullYear()
   const months = Array.from({ length: 12 }, (_, index) => {
-    const monthDate = new Date(Date.UTC(year, index, 1))
-    const key = monthDate.toISOString().slice(0, 7)
+    const monthDate = new Date(year, index, 1)
+    const key = toLocalDateKey(monthDate.toISOString()).slice(0, 7)
     return {
       key,
       label: new Intl.DateTimeFormat(undefined, { month: 'long' }).format(monthDate),
