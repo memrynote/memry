@@ -1,5 +1,5 @@
 import { useCallback, useState, useEffect } from 'react'
-import { Plus, FileText, BookOpen, Inbox, ListTodo } from '@/lib/icons'
+import { Plus, FileText, BookOpen, Calendar, Inbox, ListTodo } from '@/lib/icons'
 import { useTabs } from '@/contexts/tabs'
 import { notesService } from '@/services/notes-service'
 import { extractErrorMessage } from '@/lib/ipc-error'
@@ -104,6 +104,22 @@ export function NewTabMenu({ groupId }: NewTabMenuProps): React.JSX.Element {
     )
   }, [openTab, groupId])
 
+  const handleOpenCalendar = useCallback(() => {
+    openTab(
+      {
+        type: 'calendar',
+        title: 'Calendar',
+        icon: 'calendar',
+        path: '/calendar',
+        isPinned: false,
+        isModified: false,
+        isPreview: false,
+        isDeleted: false
+      },
+      { groupId }
+    )
+  }, [openTab, groupId])
+
   const handleOpenInbox = useCallback(() => {
     openTab(
       {
@@ -155,6 +171,10 @@ export function NewTabMenu({ groupId }: NewTabMenuProps): React.JSX.Element {
         <DropdownMenuItem onClick={handleNewJournal}>
           <BookOpen className="size-4" />
           <span>Journal</span>
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={handleOpenCalendar}>
+          <Calendar className="size-4" />
+          <span>Calendar</span>
         </DropdownMenuItem>
         <DropdownMenuItem onClick={handleOpenInbox}>
           <Inbox className="size-4" />

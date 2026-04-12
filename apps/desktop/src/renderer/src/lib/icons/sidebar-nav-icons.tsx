@@ -46,6 +46,20 @@ export const SidebarJournal = createSvgIcon(
   'SidebarJournal'
 )
 
+export const SidebarCalendar = createSvgIcon(
+  <>
+    <rect x="2" y="3" width="11" height="10" rx="2" />
+    <path d="M5 1.5v3" />
+    <path d="M10 1.5v3" />
+    <path d="M2 6.5h11" />
+    <path d="M5 9h.01" />
+    <path d="M8 9h.01" />
+    <path d="M5 11.5h.01" />
+    <path d="M8 11.5h.01" />
+  </>,
+  'SidebarCalendar'
+)
+
 export const SidebarTasks = createSvgIcon(
   <>
     <rect x="2" y="2" width="11" height="11" rx="2" />
