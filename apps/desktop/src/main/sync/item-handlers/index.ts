@@ -11,6 +11,10 @@ import { noteHandler } from './note-handler'
 import { journalHandler } from './journal-handler'
 import { tagDefinitionHandler } from './tag-definition-handler'
 import { folderConfigHandler } from './folder-config-handler'
+import { calendarEventHandler } from './calendar-event-handler'
+import { calendarSourceHandler } from './calendar-source-handler'
+import { calendarBindingHandler } from './calendar-binding-handler'
+import { calendarExternalEventHandler } from './calendar-external-event-handler'
 
 export type { SyncItemHandler, ApplyContext, ApplyResult, DrizzleDb, EmitToWindows } from './types'
 export { resolveClockConflict } from './types'
@@ -24,7 +28,11 @@ const handlers = new Map<SyncItemType, SyncItemHandler>([
   ['note', noteHandler],
   ['journal', journalHandler],
   ['tag_definition', tagDefinitionHandler],
-  ['folder_config', folderConfigHandler]
+  ['folder_config', folderConfigHandler],
+  ['calendar_event', calendarEventHandler],
+  ['calendar_source', calendarSourceHandler],
+  ['calendar_binding', calendarBindingHandler],
+  ['calendar_external_event', calendarExternalEventHandler]
 ])
 
 type DesktopRemoteSyncAdapter = RemoteSyncAdapter<DrizzleDb, EmitToWindows>

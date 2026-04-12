@@ -10,6 +10,7 @@
     "./blob-api": "./src/blob-api.ts",
     "./bookmark-types": "./src/bookmark-types.ts",
     "./bookmarks-api": "./src/bookmarks-api.ts",
+    "./calendar-api": "./src/calendar-api.ts",
     "./cbor-ordering": "./src/cbor-ordering.ts",
     "./crypto": "./src/crypto.ts",
     "./folder-view-api": "./src/folder-view-api.ts",

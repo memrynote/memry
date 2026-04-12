@@ -17,6 +17,10 @@ import { getSettingsSyncManager } from './settings-sync'
 import { getTagDefinitionSyncService } from './tag-definition-sync'
 import { getTaskSyncService } from './task-sync'
 import { getFolderConfigSyncService } from './folder-config-sync'
+import { getCalendarEventSyncService } from './calendar-event-sync'
+import { getCalendarSourceSyncService } from './calendar-source-sync'
+import { getCalendarBindingSyncService } from './calendar-binding-sync'
+import { getCalendarExternalEventSyncService } from './calendar-external-event-sync'
 
 const log = createLogger('LocalSync')
 
@@ -210,6 +214,66 @@ const localSyncRegistry = createSyncAdapterRegistry([
       },
       enqueueDelete(itemId: string, snapshotPayload?: string): void {
         getFolderConfigSyncService()?.enqueueDelete(itemId, snapshotPayload)
+      }
+    }
+  },
+  {
+    type: 'calendar_event',
+    kind: 'record',
+    local: {
+      enqueueCreate(itemId: string): void {
+        getCalendarEventSyncService()?.enqueueCreate(itemId)
+      },
+      enqueueUpdate(itemId: string): void {
+        getCalendarEventSyncService()?.enqueueUpdate(itemId)
+      },
+      enqueueDelete(itemId: string, snapshotPayload?: string): void {
+        getCalendarEventSyncService()?.enqueueDelete(itemId, snapshotPayload)
+      }
+    }
+  },
+  {
+    type: 'calendar_source',
+    kind: 'record',
+    local: {
+      enqueueCreate(itemId: string): void {
+        getCalendarSourceSyncService()?.enqueueCreate(itemId)
+      },
+      enqueueUpdate(itemId: string): void {
+        getCalendarSourceSyncService()?.enqueueUpdate(itemId)
+      },
+      enqueueDelete(itemId: string, snapshotPayload?: string): void {
+        getCalendarSourceSyncService()?.enqueueDelete(itemId, snapshotPayload)
+      }
+    }
+  },
+  {
+    type: 'calendar_binding',
+    kind: 'record',
+    local: {
+      enqueueCreate(itemId: string): void {
+        getCalendarBindingSyncService()?.enqueueCreate(itemId)
+      },
+      enqueueUpdate(itemId: string): void {
+        getCalendarBindingSyncService()?.enqueueUpdate(itemId)
+      },
+      enqueueDelete(itemId: string, snapshotPayload?: string): void {
+        getCalendarBindingSyncService()?.enqueueDelete(itemId, snapshotPayload)
+      }
+    }
+  },
+  {
+    type: 'calendar_external_event',
+    kind: 'record',
+    local: {
+      enqueueCreate(itemId: string): void {
+        getCalendarExternalEventSyncService()?.enqueueCreate(itemId)
+      },
+      enqueueUpdate(itemId: string): void {
+        getCalendarExternalEventSyncService()?.enqueueUpdate(itemId)
+      },
+      enqueueDelete(itemId: string, snapshotPayload?: string): void {
+        getCalendarExternalEventSyncService()?.enqueueDelete(itemId, snapshotPayload)
       }
     }
   }

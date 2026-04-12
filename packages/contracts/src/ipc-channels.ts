@@ -764,6 +764,35 @@ export type InboxInvokeChannel = (typeof InboxChannels.invoke)[keyof typeof Inbo
 export type InboxEventChannel = (typeof InboxChannels.events)[keyof typeof InboxChannels.events]
 
 // ============================================================================
+// Calendar Channels
+// ============================================================================
+
+export const CalendarChannels = {
+  invoke: {
+    CREATE_EVENT: 'calendar:create-event',
+    GET_EVENT: 'calendar:get-event',
+    UPDATE_EVENT: 'calendar:update-event',
+    DELETE_EVENT: 'calendar:delete-event',
+    LIST_EVENTS: 'calendar:list-events',
+    GET_RANGE: 'calendar:get-range',
+    LIST_SOURCES: 'calendar:list-sources',
+    UPDATE_SOURCE_SELECTION: 'calendar:update-source-selection',
+    GET_PROVIDER_STATUS: 'calendar:get-provider-status',
+    CONNECT_PROVIDER: 'calendar:connect-provider',
+    DISCONNECT_PROVIDER: 'calendar:disconnect-provider',
+    REFRESH_PROVIDER: 'calendar:refresh-provider'
+  },
+  events: {
+    CHANGED: 'calendar:changed'
+  }
+} as const
+
+export type CalendarInvokeChannel =
+  (typeof CalendarChannels.invoke)[keyof typeof CalendarChannels.invoke]
+export type CalendarEventChannel =
+  (typeof CalendarChannels.events)[keyof typeof CalendarChannels.events]
+
+// ============================================================================
 // Reminder Channels
 // ============================================================================
 
