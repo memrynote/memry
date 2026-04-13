@@ -1,4 +1,6 @@
 import type { InboxItem, InboxItemListItem } from '@/types'
+import type { ClockFormat } from '@/lib/time-format'
+import { formatTimeOfDay } from '@/lib/time-format'
 
 // Time period groups
 export type TimePeriod = 'TODAY' | 'YESTERDAY' | 'OLDER'
@@ -62,14 +64,9 @@ export const groupItemsByTimePeriod = <T extends InboxItem | InboxItemListItem>(
 }
 
 // Helper to format timestamp based on time period
-export const formatTimestamp = (timestamp: Date, period: TimePeriod): string => {
+export const formatTimestamp = (timestamp: Date, period: TimePeriod, clockFormat: ClockFormat = '12h'): string => {
   if (period === 'TODAY' || period === 'YESTERDAY') {
-    // Show time like "2:34 PM"
-    return timestamp.toLocaleTimeString('en-US', {
-      hour: 'numeric',
-      minute: '2-digit',
-      hour12: true
-    })
+    return formatTimeOfDay(timestamp, clockFormat)
   }
   // For OLDER items, show date like "Dec 24"
   return timestamp.toLocaleDateString('en-US', {

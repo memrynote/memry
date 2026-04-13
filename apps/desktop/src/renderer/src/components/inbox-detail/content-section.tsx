@@ -44,6 +44,9 @@ import type {
   VoiceMetadata
 } from '@/types'
 import { createLogger } from '@/lib/logger'
+import { formatTimeOfDay } from '@/lib/time-format'
+import type { ClockFormat } from '@/lib/time-format'
+import { useGeneralSettings } from '@/hooks/use-general-settings'
 
 const log = createLogger('Component:ContentSection')
 
@@ -66,7 +69,7 @@ const formatDuration = (seconds: number): string => {
   return `${mins}:${secs.toString().padStart(2, '0')}`
 }
 
-const formatDate = (date: Date | string): string => {
+const formatDate = (date: Date | string, clockFormat: ClockFormat = '12h'): string => {
   const d = date instanceof Date ? date : new Date(date)
   const now = new Date()
   const isToday = d.toDateString() === now.toDateString()
@@ -75,11 +78,7 @@ const formatDate = (date: Date | string): string => {
   yesterday.setDate(yesterday.getDate() - 1)
   const isYesterday = d.toDateString() === yesterday.toDateString()
 
-  const timeStr = d.toLocaleTimeString('en-US', {
-    hour: 'numeric',
-    minute: '2-digit',
-    hour12: true
-  })
+  const timeStr = formatTimeOfDay(d, clockFormat)
 
   if (isToday) {
     return `today at ${timeStr}`
@@ -161,7 +160,8 @@ interface ContentMetadataProps {
 }
 
 export const ContentMetadata = ({ item }: ContentMetadataProps): React.JSX.Element => {
-  // Get duration - on list items it's a direct property, on full items it's in metadata
+  const { settings: { clockFormat } } = useGeneralSettings()
+
   let duration: number | null = null
   if ('duration' in item && typeof item.duration === 'number') {
     duration = item.duration
@@ -181,7 +181,7 @@ export const ContentMetadata = ({ item }: ContentMetadataProps): React.JSX.Eleme
       {/* Common: Capture date */}
       <div className="flex items-center gap-2 text-sm text-[var(--muted-foreground)]">
         <Calendar className="size-4" aria-hidden="true" />
-        <span>Captured {formatDate(item.createdAt)}</span>
+        <span>Captured {formatDate(item.createdAt, clockFormat)}</span>
       </div>
 
       {/* Link: Show URL and site info */}
