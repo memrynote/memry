@@ -46,7 +46,7 @@ export function CalendarWeekView({
 
   return (
     <div className="flex h-full flex-col" data-testid="calendar-view" data-view="week">
-      <div className="grid grid-cols-[72px_repeat(7,1fr)] border-b border-[#E5E5E5] dark:border-neutral-800">
+      <div className="grid grid-cols-[72px_repeat(7,1fr)] border-b border-border">
         <div />
         {days.map((day, i) => {
           const today = isToday(day)
@@ -54,17 +54,17 @@ export function CalendarWeekView({
           return (
             <div
               key={day}
-              className="flex items-center justify-center gap-1 bg-white px-2 py-2 dark:bg-neutral-950"
+              className="flex items-center justify-center gap-1 bg-background px-2 py-2"
             >
-              <span className="text-xs font-medium text-[#737373] dark:text-neutral-500">
+              <span className="text-xs font-medium text-muted-foreground">
                 {DAY_NAMES[i]}
               </span>
               {today ? (
-                <span className="inline-flex size-6 items-center justify-center rounded-full bg-[#7F56D9] text-xs font-semibold text-white">
+                <span className="inline-flex size-6 items-center justify-center rounded-full bg-tint text-xs font-semibold text-tint-foreground">
                   {dayNum}
                 </span>
               ) : (
-                <span className="text-xs font-semibold text-[#404040] dark:text-neutral-300">
+                <span className="text-xs font-semibold text-foreground">
                   {dayNum}
                 </span>
               )}
@@ -75,17 +75,17 @@ export function CalendarWeekView({
 
       <div className="min-h-0 flex-1 overflow-y-auto">
         <div
-          className="relative grid grid-cols-[72px_repeat(7,1fr)] [--grid-line-color:#E5E5E5] dark:[--grid-line-color:#262626]"
+          className="relative grid grid-cols-[72px_repeat(7,1fr)] [--grid-line-color:var(--border)]"
           style={{ height: HOUR_HEIGHT * 24 }}
         >
-          <div className="border-r border-[#E5E5E5] dark:border-neutral-800">
+          <div className="border-r border-border">
             {HOURS.map((hour) => (
               <div
                 key={hour}
                 className="flex justify-end pr-3 pt-1"
                 style={{ height: HOUR_HEIGHT }}
               >
-                <span className="text-xs font-medium text-[#737373] dark:text-neutral-500">
+                <span className="text-xs font-medium text-muted-foreground">
                   {formatHour(hour)}
                 </span>
               </div>
@@ -102,10 +102,8 @@ export function CalendarWeekView({
               <div
                 key={day}
                 className={cn(
-                  'relative border-r border-[#E5E5E5] dark:border-neutral-800',
-                  today
-                    ? 'bg-white dark:bg-neutral-950'
-                    : 'bg-white dark:bg-neutral-950'
+                  'relative border-r border-border',
+                  'bg-background'
                 )}
                 style={{ backgroundImage: GRID_LINE_BG }}
               >
@@ -127,8 +125,8 @@ export function CalendarWeekView({
                     className="absolute left-0 right-0 z-20 flex items-center"
                     style={{ top: currentTimeOffset }}
                   >
-                    <div className="size-2 rounded-full bg-[#7F56D9]" />
-                    <div className="h-0.5 flex-1 bg-[#7F56D9]" />
+                    <div className="size-2 rounded-full bg-tint" />
+                    <div className="h-0.5 flex-1 bg-tint" />
                   </div>
                 )}
               </div>

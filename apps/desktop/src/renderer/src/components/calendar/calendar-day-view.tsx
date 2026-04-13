@@ -50,15 +50,15 @@ export function CalendarDayView({
   return (
     <div className="flex h-full" data-testid="calendar-view" data-view="day">
       <div className="min-h-0 min-w-0 flex-1 overflow-y-auto">
-        <div className="relative flex [--grid-line-color:#E5E5E5] dark:[--grid-line-color:#262626]" style={{ height: HOUR_HEIGHT * 24 }}>
-          <div className="w-[72px] shrink-0 border-r border-[#E5E5E5] dark:border-neutral-800">
+        <div className="relative flex [--grid-line-color:var(--border)]" style={{ height: HOUR_HEIGHT * 24 }}>
+          <div className="w-[72px] shrink-0 border-r border-border">
             {HOURS.map((hour) => (
               <div
                 key={hour}
                 className="flex justify-end pr-3 pt-1"
                 style={{ height: HOUR_HEIGHT }}
               >
-                <span className="text-xs font-medium text-[#737373] dark:text-neutral-500">
+                <span className="text-xs font-medium text-muted-foreground">
                   {formatHour(hour)}
                 </span>
               </div>
@@ -87,15 +87,15 @@ export function CalendarDayView({
                 className="absolute left-0 right-0 z-20 flex items-center"
                 style={{ top: currentTimeOffset }}
               >
-                <div className="size-2 rounded-full bg-[#7F56D9]" />
-                <div className="h-0.5 flex-1 bg-[#7F56D9]" />
+                <div className="size-2 rounded-full bg-tint" />
+                <div className="h-0.5 flex-1 bg-tint" />
               </div>
             )}
           </div>
         </div>
       </div>
 
-      <div className="hidden w-[328px] shrink-0 flex-col border-l border-[#E5E5E5] lg:flex dark:border-neutral-800">
+      <div className="hidden w-[328px] shrink-0 flex-col border-l border-border lg:flex">
         <CalendarMiniMonth
           anchorDate={miniMonthAnchor}
           items={items}
@@ -103,12 +103,12 @@ export function CalendarDayView({
           onMonthChange={setMiniMonthAnchor}
         />
 
-        <div className="flex flex-col gap-3 border-t border-[#E5E5E5] px-6 py-5 dark:border-neutral-800">
-          <h3 className="text-sm font-semibold text-[#171717] dark:text-neutral-200">
+        <div className="flex flex-col gap-3 border-t border-border px-6 py-5">
+          <h3 className="text-sm font-semibold text-foreground">
             Today&apos;s events
           </h3>
           {dayItems.length === 0 ? (
-            <p className="text-sm text-[#737373] dark:text-neutral-500">No events scheduled.</p>
+            <p className="text-sm text-muted-foreground">No events scheduled.</p>
           ) : (
             <div className="flex flex-col gap-2">
               {dayItems.map((item) => (

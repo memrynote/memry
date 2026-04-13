@@ -39,18 +39,18 @@ export function CalendarMiniMonth({
       <div className="mb-3 flex items-center justify-between">
         <button
           type="button"
-          className="flex size-8 items-center justify-center rounded-lg text-[#737373] hover:bg-[#F5F5F5] dark:text-neutral-500 dark:hover:bg-neutral-800"
+          className="flex size-8 items-center justify-center rounded-lg text-muted-foreground hover:bg-surface-active"
           onClick={() => onMonthChange(addLocalMonths(anchorDate, -1))}
           aria-label="Previous month"
         >
           <ChevronLeft className="size-5" />
         </button>
-        <span className="text-sm font-semibold text-[#404040] dark:text-neutral-300">
+        <span className="text-sm font-semibold text-foreground">
           {monthLabel}
         </span>
         <button
           type="button"
-          className="flex size-8 items-center justify-center rounded-lg text-[#737373] hover:bg-[#F5F5F5] dark:text-neutral-500 dark:hover:bg-neutral-800"
+          className="flex size-8 items-center justify-center rounded-lg text-muted-foreground hover:bg-surface-active"
           onClick={() => onMonthChange(addLocalMonths(anchorDate, 1))}
           aria-label="Next month"
         >
@@ -62,7 +62,7 @@ export function CalendarMiniMonth({
         {DAY_HEADERS.map((header) => (
           <div
             key={header}
-            className="py-1 text-center text-sm font-medium text-[#404040] dark:text-neutral-400"
+            className="py-1 text-center text-sm font-medium text-muted-foreground"
           >
             {header}
           </div>
@@ -86,17 +86,15 @@ export function CalendarMiniMonth({
               <span
                 className={cn(
                   'flex size-10 items-center justify-center rounded-full text-sm',
-                  today && 'bg-[#7F56D9] font-medium text-white',
-                  !today &&
-                    inMonth &&
-                    'text-[#404040] hover:bg-[#F5F5F5] dark:text-neutral-300 dark:hover:bg-neutral-800',
-                  !today && !inMonth && 'text-[#404040]/50 dark:text-neutral-600'
+                  today && 'bg-tint font-medium text-tint-foreground',
+                  !today && inMonth && 'text-foreground hover:bg-surface-active',
+                  !today && !inMonth && 'text-muted-foreground'
                 )}
               >
                 {dayNum}
               </span>
               {hasEvent && (
-                <span className="absolute bottom-0.5 size-[5px] rounded-full bg-[#7F56D9]" />
+                <span className="absolute bottom-0.5 size-[5px] rounded-full bg-tint" />
               )}
             </button>
           )
