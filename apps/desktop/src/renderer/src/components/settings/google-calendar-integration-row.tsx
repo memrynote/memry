@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Calendar } from '@/lib/icons'
+import { extractErrorMessage } from '@/lib/ipc-error'
 import {
   calendarService,
   connectGoogleCalendarProvider,
@@ -38,21 +39,39 @@ export function GoogleCalendarIntegrationRow(): React.JSX.Element {
   })
 
   const connectMutation = useMutation({
-    mutationFn: () => connectGoogleCalendarProvider(),
+    mutationFn: async () => {
+      const result = await connectGoogleCalendarProvider()
+      if (!result.success) {
+        throw new Error(result.error ?? 'Failed to connect Google Calendar')
+      }
+      return result
+    },
     onSuccess: async () => {
       await invalidateGoogleCalendarQueries(queryClient)
     }
   })
 
   const refreshMutation = useMutation({
-    mutationFn: () => refreshGoogleCalendarProvider(),
+    mutationFn: async () => {
+      const result = await refreshGoogleCalendarProvider()
+      if (!result.success) {
+        throw new Error(result.error ?? 'Failed to refresh Google Calendar')
+      }
+      return result
+    },
     onSuccess: async () => {
       await invalidateGoogleCalendarQueries(queryClient)
     }
   })
 
   const disconnectMutation = useMutation({
-    mutationFn: () => disconnectGoogleCalendarProvider(),
+    mutationFn: async () => {
+      const result = await disconnectGoogleCalendarProvider()
+      if (!result.success) {
+        throw new Error(result.error ?? 'Failed to disconnect Google Calendar')
+      }
+      return result
+    },
     onSuccess: async () => {
       await invalidateGoogleCalendarQueries(queryClient)
     }
@@ -78,6 +97,9 @@ export function GoogleCalendarIntegrationRow(): React.JSX.Element {
     refreshMutation.isPending ||
     disconnectMutation.isPending ||
     sourceMutation.isPending
+
+  const mutationError =
+    connectMutation.error ?? refreshMutation.error ?? disconnectMutation.error ?? null
 
   return (
     <div className="px-4 py-3">
@@ -107,6 +129,12 @@ export function GoogleCalendarIntegrationRow(): React.JSX.Element {
 
             {status?.account && (
               <p className="text-xs text-muted-foreground">Connected as {status.account.title}</p>
+            )}
+
+            {mutationError && (
+              <p className="text-xs text-destructive">
+                {extractErrorMessage(mutationError, 'Something went wrong')}
+              </p>
             )}
           </div>
         </div>
