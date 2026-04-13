@@ -12,6 +12,8 @@ const log = createLogger('Calendar:GoogleClient')
 const GOOGLE_API_BASE = 'https://www.googleapis.com/calendar/v3'
 const GOOGLE_TOKEN_URL = 'https://oauth2.googleapis.com/token'
 
+let pendingRefresh: Promise<string> | null = null
+
 const GoogleCalendarListItemSchema = z.object({
   id: z.string().min(1),
   summary: z.string().optional(),
@@ -78,10 +80,10 @@ function mapRemoteEvent(
   const isAllDay = Boolean(raw.start.date && !raw.start.dateTime)
   const timezone = raw.start.timeZone ?? raw.end?.timeZone ?? 'UTC'
 
-  const startAt = raw.start.dateTime ?? new Date(`${raw.start.date}T00:00:00`).toISOString()
+  const startAt = raw.start.dateTime ?? `${raw.start.date}T00:00:00.000Z`
   let endAt = raw.end?.dateTime ?? null
   if (!endAt && raw.end?.date) {
-    endAt = new Date(`${raw.end.date}T00:00:00`).toISOString()
+    endAt = `${raw.end.date}T00:00:00.000Z`
   }
 
   return {
@@ -133,7 +135,7 @@ function toGoogleEventPayload(event: GoogleCalendarUpsertEventInput): Record<str
   }
 }
 
-async function refreshAccessToken(): Promise<string> {
+async function refreshAccessTokenInner(): Promise<string> {
   const clientId = resolveGoogleClientId()
   const { refreshToken } = await getGoogleCalendarTokens()
   if (!refreshToken) {
@@ -162,6 +164,14 @@ async function refreshAccessToken(): Promise<string> {
     refreshToken
   })
   return parsed.access_token
+}
+
+async function refreshAccessToken(): Promise<string> {
+  if (pendingRefresh) return pendingRefresh
+  pendingRefresh = refreshAccessTokenInner().finally(() => {
+    pendingRefresh = null
+  })
+  return pendingRefresh
 }
 
 async function withAuthorizedResponse(

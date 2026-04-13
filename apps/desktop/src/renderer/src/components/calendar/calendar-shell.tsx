@@ -1,7 +1,9 @@
+import { Button } from '@/components/ui/button'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { SlidersHorizontal } from '@/lib/icons'
 import { CalendarDayView } from './calendar-day-view'
 import { CalendarEventEditorDrawer, type CalendarEventDraft } from './calendar-event-editor-drawer'
 import { CalendarMonthView } from './calendar-month-view'
-import { CalendarSidebar } from './calendar-sidebar'
 import { CalendarToolbar, type CalendarWorkspaceView } from './calendar-toolbar'
 import { CalendarWeekView } from './calendar-week-view'
 import { CalendarYearView } from './calendar-year-view'
@@ -9,7 +11,6 @@ import type { CalendarProjectionItem, CalendarSourceRecord } from '@/services/ca
 
 interface CalendarShellProps {
   view: CalendarWorkspaceView
-  rangeLabel: string
   anchorDate: string
   items: CalendarProjectionItem[]
   importedSources: CalendarSourceRecord[]
@@ -31,11 +32,11 @@ interface CalendarShellProps {
   onEditorClose: () => void
   onEditorDraftChange: (draft: CalendarEventDraft) => void
   onEditorSave: () => void
+  onAnchorChange?: (date: string) => void
 }
 
 export function CalendarShell({
   view,
-  rangeLabel,
   anchorDate,
   items,
   importedSources,
@@ -56,56 +57,106 @@ export function CalendarShell({
   onSelectItem,
   onEditorClose,
   onEditorDraftChange,
-  onEditorSave
+  onEditorSave,
+  onAnchorChange
 }: CalendarShellProps): React.JSX.Element {
-  const viewProps = {
-    anchorDate,
-    items,
-    onSelectItem
-  }
+  const viewProps = { anchorDate, items, onSelectItem }
+
+  const filterPopover = (
+    <Popover>
+      <PopoverTrigger asChild>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="size-9 rounded-lg"
+          aria-label="Filter calendars"
+        >
+          <SlidersHorizontal className="size-5" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent align="end" className="w-80">
+        <div className="space-y-5">
+          <div className="space-y-3">
+            <h2 className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+              Sources
+            </h2>
+            <label className="flex items-center justify-between gap-3 text-sm text-foreground">
+              <span>Memry items</span>
+              <input
+                type="checkbox"
+                aria-label="Memry items"
+                checked={showMemryItems}
+                onChange={onToggleMemryItems}
+              />
+            </label>
+            <label className="flex items-center justify-between gap-3 text-sm text-foreground">
+              <span>Imported calendars</span>
+              <input
+                type="checkbox"
+                aria-label="Imported calendars"
+                checked={showImportedCalendars}
+                onChange={onToggleImportedCalendars}
+              />
+            </label>
+          </div>
+
+          {importedSources.length > 0 && (
+            <div className="space-y-3">
+              <h3 className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                Google calendars
+              </h3>
+              {importedSources.map((source) => (
+                <label
+                  key={source.id}
+                  className="flex items-center justify-between gap-3 text-sm text-foreground"
+                >
+                  <span>{source.title}</span>
+                  <input
+                    type="checkbox"
+                    aria-label={source.title}
+                    checked={selectedImportedSourceIds.includes(source.id)}
+                    disabled={!showImportedCalendars}
+                    onChange={() => onToggleImportedSource(source.id)}
+                  />
+                </label>
+              ))}
+            </div>
+          )}
+        </div>
+      </PopoverContent>
+    </Popover>
+  )
 
   return (
-    <div className="flex h-full min-h-0 flex-col bg-background" data-testid="calendar-page">
+    <div
+      className="flex h-full min-h-0 flex-col bg-white dark:bg-neutral-950"
+      data-testid="calendar-page"
+    >
       <CalendarToolbar
         view={view}
-        rangeLabel={rangeLabel}
+        anchorDate={anchorDate}
         onViewChange={onViewChange}
         onPrevious={onPrevious}
         onNext={onNext}
         onToday={onToday}
         onCreateEvent={onCreateEvent}
+        extraActions={filterPopover}
       />
 
-      <div className="flex min-h-0 flex-1 flex-col xl:flex-row">
-        <CalendarSidebar
-          showMemryItems={showMemryItems}
-          showImportedCalendars={showImportedCalendars}
-          importedSources={importedSources}
-          selectedImportedSourceIds={selectedImportedSourceIds}
-          onToggleMemryItems={onToggleMemryItems}
-          onToggleImportedCalendars={onToggleImportedCalendars}
-          onToggleImportedSource={onToggleImportedSource}
-        />
-
-        <div className="min-h-0 flex-1 overflow-y-auto px-6 py-5">
-          {isLoading ? (
-            <div className="rounded-2xl border border-dashed border-border px-4 py-12 text-sm text-muted-foreground">
-              Loading calendar projection...
-            </div>
-          ) : items.length === 0 ? (
-            <div className="rounded-2xl border border-dashed border-border px-4 py-12 text-sm text-muted-foreground">
-              No calendar items in this range.
-            </div>
-          ) : view === 'day' ? (
-            <CalendarDayView {...viewProps} />
-          ) : view === 'week' ? (
-            <CalendarWeekView {...viewProps} />
-          ) : view === 'month' ? (
-            <CalendarMonthView {...viewProps} />
-          ) : (
-            <CalendarYearView {...viewProps} />
-          )}
-        </div>
+      <div className="min-h-0 flex-1">
+        {isLoading ? (
+          <div className="flex h-full items-center justify-center text-sm text-[#737373]">
+            Loading calendar...
+          </div>
+        ) : view === 'day' ? (
+          <CalendarDayView {...viewProps} onAnchorChange={onAnchorChange} />
+        ) : view === 'week' ? (
+          <CalendarWeekView {...viewProps} />
+        ) : view === 'month' ? (
+          <CalendarMonthView {...viewProps} />
+        ) : (
+          <CalendarYearView {...viewProps} />
+        )}
       </div>
 
       {editorState && (

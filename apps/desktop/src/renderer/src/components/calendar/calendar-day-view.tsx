@@ -1,59 +1,124 @@
+import { useMemo, useState } from 'react'
 import { CalendarItemChip } from './calendar-item-chip'
-import { toLocalDateKey } from './date-utils'
+import { CalendarMiniMonth } from './calendar-mini-month'
+import { isToday, toLocalDateKey } from './date-utils'
 import type { CalendarProjectionItem } from '@/services/calendar-service'
+
+const HOUR_HEIGHT = 96
+const HOURS = Array.from({ length: 24 }, (_, i) => i)
+const GRID_LINE_BG =
+  'repeating-linear-gradient(to bottom, transparent, transparent 47px, #E5E5E5 47px, #E5E5E5 48px)'
+
+function formatHour(hour: number): string {
+  if (hour === 0) return '12 AM'
+  if (hour < 12) return `${hour} AM`
+  if (hour === 12) return '12 PM'
+  return `${hour - 12} PM`
+}
+
+function getEventPosition(item: CalendarProjectionItem): { top: number; height: number } {
+  const start = new Date(item.startAt)
+  const top = start.getHours() * HOUR_HEIGHT + start.getMinutes() * (HOUR_HEIGHT / 60)
+  const endMs = item.endAt ? new Date(item.endAt).getTime() : start.getTime() + 3600000
+  const durationMinutes = (endMs - start.getTime()) / 60000
+  return { top, height: Math.max(durationMinutes * (HOUR_HEIGHT / 60), 24) }
+}
 
 interface CalendarDayViewProps {
   anchorDate: string
   items: CalendarProjectionItem[]
   onSelectItem?: (item: CalendarProjectionItem) => void
+  onAnchorChange?: (date: string) => void
 }
 
 export function CalendarDayView({
   anchorDate,
   items,
-  onSelectItem
+  onSelectItem,
+  onAnchorChange
 }: CalendarDayViewProps): React.JSX.Element {
+  const [miniMonthAnchor, setMiniMonthAnchor] = useState(anchorDate)
+  const today = isToday(anchorDate)
   const dayItems = items.filter((item) => toLocalDateKey(item.startAt) === anchorDate)
-  const allDayItems = dayItems.filter((item) => item.isAllDay)
   const timedItems = dayItems.filter((item) => !item.isAllDay)
 
-  return (
-    <section className="space-y-6" data-testid="calendar-view" data-view="day">
-      <div>
-        <h2 className="text-lg font-semibold text-foreground">Day view</h2>
-        <p className="text-sm text-muted-foreground">One focused day for tasks, reminders, and events.</p>
-      </div>
+  const currentTimeOffset = useMemo(() => {
+    const now = new Date()
+    return now.getHours() * HOUR_HEIGHT + now.getMinutes() * (HOUR_HEIGHT / 60)
+  }, [])
 
-      {allDayItems.length > 0 && (
-        <div className="space-y-3">
-          <h3 className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-            All day
-          </h3>
-          <div className="space-y-2">
-            {allDayItems.map((item) => (
-              <CalendarItemChip key={item.projectionId} item={item} onClick={onSelectItem} />
+  return (
+    <div className="flex h-full" data-testid="calendar-view" data-view="day">
+      <div className="min-h-0 min-w-0 flex-1 overflow-y-auto">
+        <div className="relative flex" style={{ height: HOUR_HEIGHT * 24 }}>
+          <div className="w-[72px] shrink-0 border-r border-[#E5E5E5] dark:border-neutral-800">
+            {HOURS.map((hour) => (
+              <div
+                key={hour}
+                className="flex justify-end pr-3 pt-1"
+                style={{ height: HOUR_HEIGHT }}
+              >
+                <span className="text-xs font-medium text-[#737373] dark:text-neutral-500">
+                  {formatHour(hour)}
+                </span>
+              </div>
             ))}
+          </div>
+
+          <div
+            className="relative flex-1"
+            style={{ backgroundImage: GRID_LINE_BG }}
+          >
+            {timedItems.map((item) => {
+              const pos = getEventPosition(item)
+              return (
+                <div
+                  key={item.projectionId}
+                  className="absolute left-1 right-1 z-10"
+                  style={{ top: pos.top, height: pos.height }}
+                >
+                  <CalendarItemChip item={item} onClick={onSelectItem} />
+                </div>
+              )
+            })}
+
+            {today && (
+              <div
+                className="absolute left-0 right-0 z-20 flex items-center"
+                style={{ top: currentTimeOffset }}
+              >
+                <div className="size-2 rounded-full bg-[#7F56D9]" />
+                <div className="h-0.5 flex-1 bg-[#7F56D9]" />
+              </div>
+            )}
           </div>
         </div>
-      )}
-
-      <div className="space-y-3">
-        <h3 className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-          Timeline
-        </h3>
-        {timedItems.length === 0 ? (
-          <p className="rounded-xl border border-dashed border-border px-4 py-6 text-sm text-muted-foreground">
-            No timed items in this range.
-          </p>
-        ) : (
-          <div className="space-y-2">
-            {timedItems.map((item) => (
-              <CalendarItemChip key={item.projectionId} item={item} onClick={onSelectItem} />
-            ))}
-          </div>
-        )}
       </div>
-    </section>
+
+      <div className="hidden w-[328px] shrink-0 flex-col border-l border-[#E5E5E5] lg:flex dark:border-neutral-800">
+        <CalendarMiniMonth
+          anchorDate={miniMonthAnchor}
+          items={items}
+          onDateSelect={(date) => onAnchorChange?.(date)}
+          onMonthChange={setMiniMonthAnchor}
+        />
+
+        <div className="flex flex-col gap-3 border-t border-[#E5E5E5] px-6 py-5 dark:border-neutral-800">
+          <h3 className="text-sm font-semibold text-[#171717] dark:text-neutral-200">
+            Today&apos;s events
+          </h3>
+          {dayItems.length === 0 ? (
+            <p className="text-sm text-[#737373] dark:text-neutral-500">No events scheduled.</p>
+          ) : (
+            <div className="flex flex-col gap-2">
+              {dayItems.map((item) => (
+                <CalendarItemChip key={item.projectionId} item={item} onClick={onSelectItem} />
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
   )
 }
 

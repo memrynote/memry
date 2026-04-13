@@ -17,8 +17,8 @@ import { getDatabase, requireDatabase } from '../database'
 import { getStatus } from '../vault'
 import { inboxItems, inboxItemTags } from '@memry/db-schema/schema/inbox'
 import { InboxChannels } from '@memry/contracts/ipc-channels'
-import { publishProjectionEvent } from '../projections'
 import type { InboxItem, InboxItemListItem } from '@memry/contracts/inbox-api'
+import { syncInboxUpdate } from './runtime-effects'
 
 const log = createLogger('Inbox:Snooze')
 
@@ -213,10 +213,7 @@ export function snoozeItem(input: SnoozeInput): SnoozeResult {
       .where(eq(inboxItems.id, itemId))
       .run()
 
-    publishProjectionEvent({
-      type: 'inbox.upserted',
-      itemId
-    })
+    syncInboxUpdate(itemId)
 
     // Fetch updated item
     const updated = db.select().from(inboxItems).where(eq(inboxItems.id, itemId)).get()
@@ -274,10 +271,7 @@ export function unsnoozeItem(itemId: string): SnoozeResult {
       .where(eq(inboxItems.id, itemId))
       .run()
 
-    publishProjectionEvent({
-      type: 'inbox.upserted',
-      itemId
-    })
+    syncInboxUpdate(itemId)
 
     // Fetch updated item
     const updated = db.select().from(inboxItems).where(eq(inboxItems.id, itemId)).get()
@@ -410,10 +404,7 @@ function processDueItems(): void {
         .where(eq(inboxItems.id, item.id))
         .run()
 
-      publishProjectionEvent({
-        type: 'inbox.upserted',
-        itemId: item.id
-      })
+      syncInboxUpdate(item.id)
     }
 
     // Emit SNOOZE_DUE event with all surfaced items

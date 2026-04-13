@@ -1,20 +1,17 @@
 import { cn } from '@/lib/utils'
 import type { CalendarProjectionItem } from '@/services/calendar-service'
 
-const VISUAL_STYLES: Record<CalendarProjectionItem['visualType'], string> = {
-  event: 'border-amber-500/30 bg-amber-500/10 text-amber-950 dark:text-amber-100',
-  task: 'border-sky-500/30 bg-sky-500/10 text-sky-950 dark:text-sky-100',
-  reminder: 'border-emerald-500/30 bg-emerald-500/10 text-emerald-950 dark:text-emerald-100',
-  snooze: 'border-fuchsia-500/30 bg-fuchsia-500/10 text-fuchsia-950 dark:text-fuchsia-100',
-  external_event: 'border-slate-500/30 bg-slate-500/10 text-slate-950 dark:text-slate-100'
-}
-
-const VISUAL_LABELS: Record<CalendarProjectionItem['visualType'], string> = {
-  event: 'Event',
-  task: 'Task',
-  reminder: 'Reminder',
-  snooze: 'Snooze',
-  external_event: 'Imported'
+const CHIP_STYLES: Record<CalendarProjectionItem['visualType'], string> = {
+  event:
+    'border-[#D8B4FE] bg-[#FAF5FF] text-violet-800 dark:border-violet-500/30 dark:bg-violet-950/30 dark:text-violet-200',
+  task:
+    'border-[#BEDBFF] bg-[#EFF6FF] text-blue-800 dark:border-blue-500/30 dark:bg-blue-950/30 dark:text-blue-200',
+  reminder:
+    'border-[#B9F8CF] bg-[#F0FDF4] text-green-800 dark:border-green-500/30 dark:bg-green-950/30 dark:text-green-200',
+  snooze:
+    'border-[#FFD6A7] bg-[#FFF7ED] text-orange-800 dark:border-orange-500/30 dark:bg-orange-950/30 dark:text-orange-200',
+  external_event:
+    'border-[#E5E5E5] bg-[#FAFAFA] text-neutral-600 dark:border-neutral-700 dark:bg-neutral-800/50 dark:text-neutral-300'
 }
 
 function formatTime(item: CalendarProjectionItem): string {
@@ -30,28 +27,17 @@ interface CalendarItemChipProps {
   onClick?: (item: CalendarProjectionItem) => void
 }
 
-export function CalendarItemChip({
-  item,
-  onClick
-}: CalendarItemChipProps): React.JSX.Element {
-  const className = cn(
-    'w-full rounded-lg border px-3 py-2 text-left transition-colors',
-    VISUAL_STYLES[item.visualType],
-    onClick ? 'hover:bg-accent/60 cursor-pointer' : ''
+export function CalendarItemChip({ item, onClick }: CalendarItemChipProps): React.JSX.Element {
+  const cls = cn(
+    'flex w-full items-center justify-between gap-0.5 rounded-[6px] border px-2 py-1 text-left transition-colors',
+    CHIP_STYLES[item.visualType],
+    onClick && 'cursor-pointer hover:brightness-95'
   )
 
   const content = (
     <>
-      <div className="flex items-center justify-between gap-3">
-        <span className="truncate text-sm font-medium">{item.title}</span>
-        <span className="shrink-0 text-[11px] font-medium uppercase tracking-[0.16em] opacity-75">
-          {formatTime(item)}
-        </span>
-      </div>
-      <div className="mt-1 flex items-center gap-2 text-[11px] opacity-75">
-        <span>{VISUAL_LABELS[item.visualType]}</span>
-        <span>{item.source.title ?? 'Memry'}</span>
-      </div>
+      <span className="flex-1 truncate text-xs font-semibold leading-[18px]">{item.title}</span>
+      <span className="shrink-0 text-xs leading-[18px] opacity-75">{formatTime(item)}</span>
     </>
   )
 
@@ -59,9 +45,9 @@ export function CalendarItemChip({
     return (
       <button
         type="button"
-        className={className}
-        data-visual-type={item.visualType}
+        className={cls}
         onClick={() => onClick(item)}
+        data-visual-type={item.visualType}
       >
         {content}
       </button>
@@ -69,7 +55,7 @@ export function CalendarItemChip({
   }
 
   return (
-    <div className={className} data-visual-type={item.visualType}>
+    <div className={cls} data-visual-type={item.visualType}>
       {content}
     </div>
   )

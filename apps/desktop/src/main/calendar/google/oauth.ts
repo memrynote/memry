@@ -13,6 +13,7 @@ const log = createLogger('Calendar:GoogleOAuth')
 
 const GOOGLE_AUTH_URL = 'https://accounts.google.com/o/oauth2/v2/auth'
 const GOOGLE_TOKEN_URL = 'https://oauth2.googleapis.com/token'
+const GOOGLE_REVOKE_URL = 'https://oauth2.googleapis.com/revoke'
 const GOOGLE_PRIMARY_CALENDAR_URL = 'https://www.googleapis.com/calendar/v3/users/me/calendarList/primary'
 const OAUTH_TIMEOUT_MS = 10 * 60 * 1000
 
@@ -342,6 +343,20 @@ export async function connectGoogleCalendar(): Promise<GoogleCalendarConnection>
 }
 
 export async function disconnectGoogleCalendar(): Promise<void> {
+  const { refreshToken } = await getGoogleCalendarTokens()
+
+  if (refreshToken) {
+    try {
+      await fetch(GOOGLE_REVOKE_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({ token: refreshToken })
+      })
+    } catch (error) {
+      log.warn('Failed to revoke Google Calendar token (non-blocking)', error)
+    }
+  }
+
   await clearGoogleCalendarTokens()
 }
 

@@ -7,9 +7,12 @@ import { reminders } from '@memry/db-schema/schema/reminders'
 import { tasks } from '@memry/db-schema/schema/tasks'
 import { createLogger } from '../../lib/logger'
 import { requireDatabase, type DataDb } from '../../database'
-import { enqueueLocalSyncCreate, enqueueLocalSyncUpdate } from '../../sync/local-mutations'
-import { syncInboxUpdate } from '../../inbox/runtime-effects'
-import { syncTaskUpdate } from '../../tasks/runtime-effects'
+import {
+  enqueueLocalSyncCreate,
+  enqueueLocalSyncDelete,
+  enqueueLocalSyncUpdate
+} from '../../sync/local-mutations'
+import { publishProjectionEvent } from '../../projections'
 import { hasGoogleCalendarLocalAuth } from './oauth'
 import { createGoogleCalendarClient } from './client'
 import {
@@ -33,6 +36,7 @@ import {
   upsertCalendarBinding,
   upsertCalendarSource
 } from '../repositories/calendar-sources-repository'
+import { emitCalendarChanged, emitCalendarProjectionChanged } from '../change-events'
 import type {
   CalendarSyncTarget,
   GoogleCalendarClient,
@@ -45,6 +49,7 @@ const RUN_INTERVAL_MS = 5 * 60 * 1000
 const LOCAL_TIMEZONE = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'
 
 let syncInterval: NodeJS.Timeout | null = null
+let syncInFlight = false
 
 function getNow(): string {
   return new Date().toISOString()
@@ -62,9 +67,9 @@ function markSyncedTableMutation(
   }
 }
 
-function trySyncTaskUpdate(taskId: string, changedFields: string[]): void {
+function tryEnqueueProjectionSyncUpdate(entityType: 'task' | 'inbox', id: string): void {
   try {
-    syncTaskUpdate(taskId, changedFields)
+    enqueueLocalSyncUpdate(entityType, id)
   } catch (error) {
     if (error instanceof Error && error.message === 'Database not initialized') {
       return
@@ -73,15 +78,26 @@ function trySyncTaskUpdate(taskId: string, changedFields: string[]): void {
   }
 }
 
-function trySyncInboxUpdate(itemId: string): void {
-  try {
-    syncInboxUpdate(itemId)
-  } catch (error) {
-    if (error instanceof Error && error.message === 'Database not initialized') {
-      return
-    }
-    throw error
-  }
+function publishTaskCalendarMutation(taskId: string): void {
+  tryEnqueueProjectionSyncUpdate('task', taskId)
+  publishProjectionEvent({
+    type: 'task.upserted',
+    taskId
+  })
+  emitCalendarProjectionChanged(`task:${taskId}`)
+}
+
+function publishReminderCalendarMutation(reminderId: string): void {
+  emitCalendarProjectionChanged(`reminder:${reminderId}`)
+}
+
+function publishInboxCalendarMutation(itemId: string): void {
+  tryEnqueueProjectionSyncUpdate('inbox', itemId)
+  publishProjectionEvent({
+    type: 'inbox.upserted',
+    itemId
+  })
+  emitCalendarProjectionChanged(`inbox:${itemId}`)
 }
 
 function getExistingGoogleBinding(
@@ -111,7 +127,8 @@ async function ensureMemryCalendarSource(
   const localId = `google-calendar:${remote.id}`
   const now = getNow()
   const account = listCalendarSources(db, { provider: 'google', kind: 'account' })[0]
-  const existed = Boolean(getCalendarSourceById(db, localId))
+  const existingSource = getCalendarSourceById(db, localId)
+  const existed = Boolean(existingSource)
 
   const saved = upsertCalendarSource(db, {
     id: localId,
@@ -129,12 +146,13 @@ async function ensureMemryCalendarSource(
     syncStatus: 'ok',
     lastSyncedAt: now,
     metadata: null,
-    clock: existed ? getCalendarSourceById(db, localId)?.clock : undefined,
-    createdAt: getCalendarSourceById(db, localId)?.createdAt ?? now,
+    clock: existingSource?.clock,
+    createdAt: existingSource?.createdAt ?? now,
     modifiedAt: now
   })
 
   markSyncedTableMutation('calendar_source', saved.id, existed)
+  emitCalendarChanged({ entityType: 'calendar_source', id: saved.id })
   return saved
 }
 
@@ -147,6 +165,37 @@ function getMemryManagedGoogleSource(db: DataDb): typeof calendarSources.$inferS
 
 function getGoogleClient(deps?: { client?: GoogleCalendarClient }): GoogleCalendarClient {
   return deps?.client ?? createGoogleCalendarClient()
+}
+
+function shouldSourceSyncToGoogleCalendar(db: DataDb, target: CalendarSyncTarget): boolean {
+  switch (target.sourceType) {
+    case 'event': {
+      const row = db.select().from(calendarEvents).where(eq(calendarEvents.id, target.sourceId)).get()
+      return Boolean(row && !row.archivedAt)
+    }
+
+    case 'task': {
+      const row = db.select().from(tasks).where(eq(tasks.id, target.sourceId)).get()
+      return Boolean(row && !row.archivedAt && !row.completedAt && row.dueDate)
+    }
+
+    case 'reminder': {
+      const row = db.select().from(reminders).where(eq(reminders.id, target.sourceId)).get()
+      if (!row) return false
+      if (row.status === 'dismissed' || row.status === 'triggered') {
+        return false
+      }
+      if (row.status === 'snoozed') {
+        return Boolean(row.snoozedUntil)
+      }
+      return Boolean(row.remindAt)
+    }
+
+    case 'inbox_snooze': {
+      const row = db.select().from(inboxItems).where(eq(inboxItems.id, target.sourceId)).get()
+      return Boolean(row && !row.archivedAt && !row.filedAt && row.snoozedUntil)
+    }
+  }
 }
 
 function loadSourceAsGoogleEvent(
@@ -240,6 +289,56 @@ export async function pushSourceToGoogleCalendar(
   return binding
 }
 
+export async function deleteSourceFromGoogleCalendar(
+  db: DataDb,
+  target: CalendarSyncTarget,
+  deps: { client?: Pick<GoogleCalendarClient, 'deleteEvent'> } = {}
+): Promise<boolean> {
+  const existingBinding = getExistingGoogleBinding(db, target)
+  if (!existingBinding?.remoteCalendarId || !existingBinding.remoteEventId) {
+    return false
+  }
+
+  const client = getGoogleClient(deps as { client?: GoogleCalendarClient })
+  await client.deleteEvent({
+    calendarId: existingBinding.remoteCalendarId,
+    eventId: existingBinding.remoteEventId
+  })
+
+  const now = getNow()
+  db.update(calendarBindings)
+    .set({
+      archivedAt: now,
+      modifiedAt: now
+    })
+    .where(eq(calendarBindings.id, existingBinding.id))
+    .run()
+  enqueueLocalSyncUpdate('calendar_binding', existingBinding.id)
+  return true
+}
+
+export async function syncLocalSourceToGoogleCalendar(
+  db: DataDb,
+  target: CalendarSyncTarget,
+  deps: {
+    client?: Pick<
+      GoogleCalendarClient,
+      'upsertEvent' | 'deleteEvent' | 'listCalendars' | 'createCalendar'
+    >
+  } = {}
+): Promise<typeof calendarBindings.$inferSelect | null> {
+  if (!(await hasGoogleCalendarLocalAuth())) {
+    return null
+  }
+
+  if (shouldSourceSyncToGoogleCalendar(db, target)) {
+    return await pushSourceToGoogleCalendar(db, target, deps)
+  }
+
+  await deleteSourceFromGoogleCalendar(db, target, deps)
+  return null
+}
+
 export async function applyGoogleCalendarWriteback(
   db: DataDb,
   binding: Pick<typeof calendarBindings.$inferSelect, 'sourceType' | 'sourceId' | 'writebackMode'>,
@@ -258,6 +357,7 @@ export async function applyGoogleCalendarWriteback(
         .run()
 
       enqueueLocalSyncUpdate('calendar_event', binding.sourceId)
+      emitCalendarChanged({ entityType: 'calendar_event', id: binding.sourceId })
       break
     }
 
@@ -269,16 +369,13 @@ export async function applyGoogleCalendarWriteback(
         modifiedAt: now
       }
 
-      const changedFields = ['dueDate', 'dueTime']
-
       if (binding.writebackMode === 'broad' || binding.writebackMode === 'time_and_text') {
         updates.title = remote.title
         updates.description = remote.description
-        changedFields.push('title', 'description')
       }
 
       db.update(tasks).set(updates).where(eq(tasks.id, binding.sourceId)).run()
-      trySyncTaskUpdate(binding.sourceId, changedFields)
+      publishTaskCalendarMutation(binding.sourceId)
       break
     }
 
@@ -301,8 +398,8 @@ export async function applyGoogleCalendarWriteback(
         updates.note = remote.description
       }
 
-      // Reminder records are not yet in the record-sync pipeline; keep the local row correct.
       db.update(reminders).set(updates).where(eq(reminders.id, binding.sourceId)).run()
+      publishReminderCalendarMutation(binding.sourceId)
       break
     }
 
@@ -318,7 +415,7 @@ export async function applyGoogleCalendarWriteback(
       }
 
       db.update(inboxItems).set(updates).where(eq(inboxItems.id, binding.sourceId)).run()
-      trySyncInboxUpdate(binding.sourceId)
+      publishInboxCalendarMutation(binding.sourceId)
       break
     }
   }
@@ -334,8 +431,16 @@ export async function applyGoogleCalendarDelete(
 
   switch (binding.sourceType) {
     case 'event': {
-      db.delete(calendarEvents).where(eq(calendarEvents.id, binding.sourceId)).run()
-      enqueueLocalSyncUpdate('calendar_event', binding.sourceId)
+      const existing = db
+        .select()
+        .from(calendarEvents)
+        .where(eq(calendarEvents.id, binding.sourceId))
+        .get()
+      if (existing) {
+        db.delete(calendarEvents).where(eq(calendarEvents.id, binding.sourceId)).run()
+        enqueueLocalSyncDelete('calendar_event', binding.sourceId, JSON.stringify(existing))
+        emitCalendarChanged({ entityType: 'calendar_event', id: binding.sourceId })
+      }
       break
     }
 
@@ -348,7 +453,7 @@ export async function applyGoogleCalendarDelete(
         })
         .where(eq(tasks.id, binding.sourceId))
         .run()
-      trySyncTaskUpdate(binding.sourceId, ['dueDate', 'dueTime'])
+      publishTaskCalendarMutation(binding.sourceId)
       break
     }
 
@@ -356,11 +461,13 @@ export async function applyGoogleCalendarDelete(
       db.update(reminders)
         .set({
           status: 'dismissed',
+          remindAt: null,
           snoozedUntil: null,
           modifiedAt: now
         })
         .where(eq(reminders.id, binding.sourceId))
         .run()
+      publishReminderCalendarMutation(binding.sourceId)
       break
     }
 
@@ -372,7 +479,7 @@ export async function applyGoogleCalendarDelete(
         })
         .where(eq(inboxItems.id, binding.sourceId))
         .run()
-      trySyncInboxUpdate(binding.sourceId)
+      publishInboxCalendarMutation(binding.sourceId)
       break
     }
   }
@@ -409,12 +516,13 @@ export async function syncGoogleCalendarSource(
 
   for (const remoteEvent of result.events) {
     const record = mapGoogleEventToExternalEventRecord(source.id, remoteEvent, now)
-    const existed = Boolean(getCalendarExternalEventById(db, record.id))
+    const existing = getCalendarExternalEventById(db, record.id)
     upsertCalendarExternalEvent(db, {
       ...record,
-      clock: existed ? getCalendarExternalEventById(db, record.id)?.clock : undefined
+      clock: existing?.clock
     })
-    markSyncedTableMutation('calendar_external_event', record.id, existed)
+    markSyncedTableMutation('calendar_external_event', record.id, Boolean(existing))
+    emitCalendarChanged({ entityType: 'calendar_external_event', id: record.id })
   }
 
   const updatedSource = upsertCalendarSource(db, {
@@ -425,27 +533,34 @@ export async function syncGoogleCalendarSource(
     modifiedAt: now
   })
   markSyncedTableMutation('calendar_source', updatedSource.id, true)
+  emitCalendarChanged({ entityType: 'calendar_source', id: updatedSource.id })
 }
 
 export async function syncGoogleCalendarNow(
   db: DataDb = requireDatabase(),
   deps: { client?: GoogleCalendarClient } = {}
 ): Promise<void> {
+  if (syncInFlight) return
   if (!(await hasGoogleCalendarLocalAuth())) {
     return
   }
 
-  const client = getGoogleClient(deps)
-  await ensureMemryCalendarSource(db, client)
+  syncInFlight = true
+  try {
+    const client = getGoogleClient(deps)
+    await ensureMemryCalendarSource(db, client)
 
-  const sources = listCalendarSources(db, {
-    provider: 'google',
-    kind: 'calendar',
-    selectedOnly: true
-  }).filter((source) => !source.isMemryManaged)
+    const sources = listCalendarSources(db, {
+      provider: 'google',
+      kind: 'calendar',
+      selectedOnly: true
+    }).filter((source) => !source.isMemryManaged)
 
-  for (const source of sources) {
-    await syncGoogleCalendarSource(db, source.id, { client })
+    for (const source of sources) {
+      await syncGoogleCalendarSource(db, source.id, { client })
+    }
+  } finally {
+    syncInFlight = false
   }
 }
 
