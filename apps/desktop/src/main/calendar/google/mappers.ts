@@ -49,6 +49,14 @@ function toLocalAllDayEnd(dateStr: string): string {
   return new Date(year, month - 1, day + 1, 0, 0, 0, 0).toISOString()
 }
 
+function toGoogleRecurrenceArray(
+  rule: Record<string, unknown> | null | undefined
+): string[] | null {
+  if (!rule) return null
+  const rrule = typeof rule.rrule === 'string' ? rule.rrule : null
+  return rrule ? [`RRULE:${rrule}`] : null
+}
+
 export function mapCalendarEventToGoogleInput(
   row: typeof calendarEvents.$inferSelect
 ): GoogleCalendarUpsertEventInput {
@@ -61,7 +69,10 @@ export function mapCalendarEventToGoogleInput(
     startAt: row.startAt,
     endAt: row.endAt ?? null,
     isAllDay: row.isAllDay,
-    timezone: row.timezone
+    timezone: row.timezone,
+    recurrence: toGoogleRecurrenceArray(
+      row.recurrenceRule as Record<string, unknown> | null
+    )
   }
 }
 
@@ -81,7 +92,8 @@ export function mapTaskToGoogleInput(row: typeof tasks.$inferSelect): GoogleCale
     startAt: toLocalDateTime(row.dueDate, row.dueTime ?? null),
     endAt: isAllDay ? toLocalAllDayEnd(row.dueDate) : null,
     isAllDay,
-    timezone: LOCAL_TIMEZONE
+    timezone: LOCAL_TIMEZONE,
+    recurrence: null
   }
 }
 
@@ -99,7 +111,8 @@ export function mapReminderToGoogleInput(
     startAt,
     endAt: null,
     isAllDay: false,
-    timezone: LOCAL_TIMEZONE
+    timezone: LOCAL_TIMEZONE,
+    recurrence: null
   }
 }
 
@@ -119,7 +132,8 @@ export function mapInboxSnoozeToGoogleInput(
     startAt: row.snoozedUntil,
     endAt: null,
     isAllDay: false,
-    timezone: LOCAL_TIMEZONE
+    timezone: LOCAL_TIMEZONE,
+    recurrence: null
   }
 }
 

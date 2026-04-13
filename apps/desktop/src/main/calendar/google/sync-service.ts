@@ -461,7 +461,6 @@ export async function applyGoogleCalendarDelete(
       db.update(reminders)
         .set({
           status: 'dismissed',
-          remindAt: null,
           snoozedUntil: null,
           modifiedAt: now
         })
@@ -509,10 +508,26 @@ export async function syncGoogleCalendarSource(
 
   const client = getGoogleClient(deps as { client?: GoogleCalendarClient })
   const now = getNow()
+  const isInitialSync = !source.syncCursor
+
   const result = await client.listEvents({
     calendarId: source.remoteId,
-    syncCursor: source.syncCursor ?? null
+    syncCursor: source.syncCursor ?? null,
+    timeMin: isInitialSync ? new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString() : null,
+    timeMax: isInitialSync ? new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString() : null
   })
+
+  if (!result.nextSyncCursor && source.syncCursor) {
+    log.warn('sync cursor invalidated for source, re-syncing from scratch', { sourceId })
+    const freshSource = upsertCalendarSource(db, {
+      ...source,
+      syncCursor: null,
+      syncStatus: 'pending',
+      modifiedAt: now
+    })
+    markSyncedTableMutation('calendar_source', freshSource.id, true)
+    return await syncGoogleCalendarSource(db, sourceId, deps)
+  }
 
   for (const remoteEvent of result.events) {
     const record = mapGoogleEventToExternalEventRecord(source.id, remoteEvent, now)
