@@ -3,6 +3,7 @@ import { Calendar, Repeat } from '@/lib/icons'
 
 import { cn } from '@/lib/utils'
 import { formatDueDate, formatDateShort, formatTime } from '@/lib/task-utils'
+import { useGeneralSettings } from '@/hooks/use-general-settings'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { DatePickerContent } from './date-picker-content'
 
@@ -28,14 +29,15 @@ export const InteractiveDueDateBadge = ({
   className
 }: InteractiveDueDateBadgeProps): React.JSX.Element => {
   const [isOpen, setIsOpen] = React.useState(false)
+  const { settings: { clockFormat } } = useGeneralSettings()
 
   const status = formatDueDate(dueDate, dueTime)
 
   const dateLabel = React.useMemo(() => {
     if (!dueDate) return 'No date'
     const short = formatDateShort(dueDate)
-    return dueTime ? `${short} ${formatTime(dueTime)}` : short
-  }, [dueDate, dueTime])
+    return dueTime ? `${short} ${formatTime(dueTime, clockFormat)}` : short
+  }, [dueDate, dueTime, clockFormat])
 
   const handleTriggerClick = (e: React.MouseEvent): void => {
     e.stopPropagation()

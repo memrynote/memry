@@ -1,5 +1,6 @@
 import { cn } from '@/lib/utils'
 import { formatDueDate, formatDateShort, formatTime } from '@/lib/task-utils'
+import { useGeneralSettings } from '@/hooks/use-general-settings'
 import { InlineStatusPopover } from '@/components/tasks/inline-status-popover'
 import { InlinePriorityPopover } from '@/components/tasks/inline-priority-popover'
 import { InteractiveProjectBadge } from '@/components/tasks/interactive-project-badge'
@@ -70,6 +71,7 @@ export const TaskRow = ({
   actions,
   renderTitle
 }: TaskRowProps): React.JSX.Element => {
+  const { settings: { clockFormat } } = useGeneralSettings()
   const formattedDate = formatDueDate(task.dueDate, task.dueTime)
   const isOverdue = formattedDate?.status === 'overdue' && !isCompleted
   const { color: statusColor } = resolveStatus(task, project.statuses)
@@ -104,7 +106,7 @@ export const TaskRow = ({
   const compactDateLabel = (() => {
     if (!task.dueDate) return null
     const date = formatDateShort(task.dueDate)
-    return task.dueTime ? `${date}, ${formatTime(task.dueTime)}` : date
+    return task.dueTime ? `${date}, ${formatTime(task.dueTime, clockFormat)}` : date
   })()
 
   const dueDateDisplay = (() => {

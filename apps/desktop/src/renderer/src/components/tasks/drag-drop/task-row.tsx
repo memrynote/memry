@@ -2,6 +2,7 @@ import { useRef, useEffect, useState, memo } from 'react'
 
 import { cn } from '@/lib/utils'
 import { formatDueDate, formatDateShort, formatTime } from '@/lib/task-utils'
+import { useGeneralSettings } from '@/hooks/use-general-settings'
 import { PriorityBars } from '@/components/tasks/task-icons'
 import { StatusIcon } from '@/components/tasks/status-icon'
 import { InlineStatusPopover } from '@/components/tasks/inline-status-popover'
@@ -125,6 +126,7 @@ const TaskRowComponent = ({
   const isOverlay = renderMode === 'overlay'
   const rowRef = useRef<HTMLDivElement>(null)
   const [isExiting, setIsExiting] = useState(false)
+  const { settings: { clockFormat } } = useGeneralSettings()
 
   useEffect(() => {
     if (isSelected && rowRef.current) {
@@ -179,7 +181,7 @@ const TaskRowComponent = ({
   const compactDateLabel = (() => {
     if (!task.dueDate) return null
     const date = formatDateShort(task.dueDate)
-    return task.dueTime ? `${date}, ${formatTime(task.dueTime)}` : date
+    return task.dueTime ? `${date}, ${formatTime(task.dueTime, clockFormat)}` : date
   })()
 
   const dueDateDisplay = (() => {
