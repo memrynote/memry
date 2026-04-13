@@ -153,11 +153,11 @@ export function CalendarShell({
             Loading calendar...
           </div>
         ) : view === 'day' ? (
-          <CalendarDayView {...viewProps} onAnchorChange={onAnchorChange} onQuickSave={onQuickSave} onCreateEventWithRange={onCreateEventWithRange} />
+          <CalendarDayView {...viewProps} onQuickSave={onQuickSave} onCreateEventWithRange={onCreateEventWithRange} />
         ) : view === 'week' ? (
           <CalendarWeekView {...viewProps} onQuickSave={onQuickSave} onCreateEventWithRange={onCreateEventWithRange} />
         ) : view === 'month' ? (
-          <CalendarMonthView {...viewProps} />
+          <CalendarMonthView {...viewProps} onQuickSave={onQuickSave} onCreateEventWithRange={onCreateEventWithRange} />
         ) : (
           <CalendarYearView {...viewProps} onViewChange={onViewChange} onAnchorChange={onAnchorChange} />
         )}
