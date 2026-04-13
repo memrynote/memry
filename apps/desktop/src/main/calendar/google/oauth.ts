@@ -71,6 +71,10 @@ function resolveGoogleClientId(): string {
   return clientId
 }
 
+function resolveGoogleClientSecret(): string | undefined {
+  return process.env.GOOGLE_CALENDAR_CLIENT_SECRET?.trim() || undefined
+}
+
 function toBase64Url(buffer: Buffer): string {
   return buffer
     .toString('base64')
@@ -162,6 +166,7 @@ async function exchangeCodeForTokens(input: {
   redirectUri: string
   codeVerifier: string
   clientId: string
+  clientSecret?: string
 }): Promise<z.infer<typeof GoogleTokenResponseSchema>> {
   const body = new URLSearchParams({
     client_id: input.clientId,
@@ -170,6 +175,9 @@ async function exchangeCodeForTokens(input: {
     grant_type: 'authorization_code',
     redirect_uri: input.redirectUri
   })
+  if (input.clientSecret) {
+    body.set('client_secret', input.clientSecret)
+  }
 
   const response = await fetch(GOOGLE_TOKEN_URL, {
     method: 'POST',
@@ -207,7 +215,9 @@ export async function connectGoogleCalendar(): Promise<GoogleCalendarConnection>
   shutdownLoopbackServer()
 
   const clientId = resolveGoogleClientId()
+  const clientSecret = resolveGoogleClientSecret()
   const { server, port } = await startLoopbackServer()
+  log.info('OAuth loopback on port', port)
   activeLoopbackServer = server
 
   const redirectUri = `http://127.0.0.1:${port}/callback`
@@ -300,6 +310,7 @@ export async function connectGoogleCalendar(): Promise<GoogleCalendarConnection>
     codeChallenge
   })
 
+  log.info('Opening Google OAuth consent screen')
   await shell.openExternal(authUrl)
 
   const callbackResult = await callbackPromise
@@ -308,7 +319,8 @@ export async function connectGoogleCalendar(): Promise<GoogleCalendarConnection>
     code: callbackResult.code,
     redirectUri,
     codeVerifier,
-    clientId
+    clientId,
+    clientSecret
   })
 
   const existingTokens = await getGoogleCalendarTokens()

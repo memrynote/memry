@@ -7,7 +7,7 @@ import type { CalendarProjectionItem } from '@/services/calendar-service'
 const HOUR_HEIGHT = 96
 const HOURS = Array.from({ length: 24 }, (_, i) => i)
 const GRID_LINE_BG =
-  'repeating-linear-gradient(to bottom, transparent, transparent 47px, #E5E5E5 47px, #E5E5E5 48px)'
+  'repeating-linear-gradient(to bottom, transparent, transparent 47px, var(--grid-line-color) 47px, var(--grid-line-color) 48px)'
 
 function formatHour(hour: number): string {
   if (hour === 0) return '12 AM'
@@ -50,7 +50,7 @@ export function CalendarDayView({
   return (
     <div className="flex h-full" data-testid="calendar-view" data-view="day">
       <div className="min-h-0 min-w-0 flex-1 overflow-y-auto">
-        <div className="relative flex" style={{ height: HOUR_HEIGHT * 24 }}>
+        <div className="relative flex [--grid-line-color:#E5E5E5] dark:[--grid-line-color:#262626]" style={{ height: HOUR_HEIGHT * 24 }}>
           <div className="w-[72px] shrink-0 border-r border-[#E5E5E5] dark:border-neutral-800">
             {HOURS.map((hour) => (
               <div

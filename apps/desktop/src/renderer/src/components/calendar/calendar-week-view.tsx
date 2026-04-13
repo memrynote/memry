@@ -8,9 +8,7 @@ const HOUR_HEIGHT = 96
 const HOURS = Array.from({ length: 24 }, (_, i) => i)
 const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 const GRID_LINE_BG =
-  'repeating-linear-gradient(to bottom, transparent, transparent 47px, #E5E5E5 47px, #E5E5E5 48px)'
-const GRID_LINE_BG_DARK =
-  'repeating-linear-gradient(to bottom, transparent, transparent 47px, #262626 47px, #262626 48px)'
+  'repeating-linear-gradient(to bottom, transparent, transparent 47px, var(--grid-line-color) 47px, var(--grid-line-color) 48px)'
 
 function formatHour(hour: number): string {
   if (hour === 0) return '12 AM'
@@ -77,7 +75,7 @@ export function CalendarWeekView({
 
       <div className="min-h-0 flex-1 overflow-y-auto">
         <div
-          className="relative grid grid-cols-[72px_repeat(7,1fr)]"
+          className="relative grid grid-cols-[72px_repeat(7,1fr)] [--grid-line-color:#E5E5E5] dark:[--grid-line-color:#262626]"
           style={{ height: HOUR_HEIGHT * 24 }}
         >
           <div className="border-r border-[#E5E5E5] dark:border-neutral-800">
@@ -109,7 +107,7 @@ export function CalendarWeekView({
                     ? 'bg-white dark:bg-neutral-950'
                     : 'bg-white dark:bg-neutral-950'
                 )}
-                style={{ backgroundImage: `var(--cal-grid, ${GRID_LINE_BG})` }}
+                style={{ backgroundImage: GRID_LINE_BG }}
               >
                 {dayItems.map((item) => {
                   const pos = getEventPosition(item)

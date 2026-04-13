@@ -350,7 +350,6 @@ export function registerCalendarHandlers(): void {
             error: `Unsupported calendar provider: ${input.provider}`
           }
         }
-
         const connected = await connectGoogleCalendar()
         const now = new Date().toISOString()
         const accountSourceId = `google-account:${connected.account.remoteId}`

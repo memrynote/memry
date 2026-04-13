@@ -63,6 +63,10 @@ function resolveGoogleClientId(): string {
   return clientId
 }
 
+function resolveGoogleClientSecret(): string | undefined {
+  return process.env.GOOGLE_CALENDAR_CLIENT_SECRET?.trim() || undefined
+}
+
 function mapCalendar(item: z.infer<typeof GoogleCalendarListItemSchema>): GoogleCalendarDescriptor {
   return {
     id: item.id,
@@ -143,9 +147,19 @@ function toGoogleEventPayload(event: GoogleCalendarUpsertEventInput): Record<str
 
 async function refreshAccessTokenInner(): Promise<string> {
   const clientId = resolveGoogleClientId()
+  const clientSecret = resolveGoogleClientSecret()
   const { refreshToken } = await getGoogleCalendarTokens()
   if (!refreshToken) {
     throw new Error('Google Calendar is not connected on this device')
+  }
+
+  const params = new URLSearchParams({
+    client_id: clientId,
+    grant_type: 'refresh_token',
+    refresh_token: refreshToken
+  })
+  if (clientSecret) {
+    params.set('client_secret', clientSecret)
   }
 
   const response = await fetch(GOOGLE_TOKEN_URL, {
@@ -153,11 +167,7 @@ async function refreshAccessTokenInner(): Promise<string> {
     headers: {
       'Content-Type': 'application/x-www-form-urlencoded'
     },
-    body: new URLSearchParams({
-      client_id: clientId,
-      grant_type: 'refresh_token',
-      refresh_token: refreshToken
-    })
+    body: params
   })
 
   if (!response.ok) {
