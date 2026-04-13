@@ -21,7 +21,8 @@ export const GeneralSettingsSchema = z.object({
   startOnBoot: z.boolean(),
   language: z.string().min(2).max(5),
   onboardingCompleted: z.boolean(),
-  createInSelectedFolder: z.boolean()
+  createInSelectedFolder: z.boolean(),
+  clockFormat: z.enum(['12h', '24h'])
 })
 
 export type GeneralSettings = z.infer<typeof GeneralSettingsSchema>
@@ -34,7 +35,8 @@ export const GENERAL_SETTINGS_DEFAULTS: GeneralSettings = {
   startOnBoot: false,
   language: 'en',
   onboardingCompleted: false,
-  createInSelectedFolder: true
+  createInSelectedFolder: true,
+  clockFormat: '12h'
 }
 
 // ============================================================================
