@@ -39,6 +39,7 @@ export interface GoogleCalendarUpsertEventInput {
   endAt: string | null
   isAllDay: boolean
   timezone: string
+  recurrence: string[] | null
 }
 
 export interface GoogleCalendarClient {
@@ -47,6 +48,8 @@ export interface GoogleCalendarClient {
   listEvents(input: {
     calendarId: string
     syncCursor?: string | null
+    timeMin?: string | null
+    timeMax?: string | null
   }): Promise<{ events: GoogleCalendarRemoteEvent[]; nextSyncCursor: string | null }>
   upsertEvent(input: {
     calendarId: string

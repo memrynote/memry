@@ -104,7 +104,7 @@ function mapRemoteEvent(
 }
 
 function toGoogleEventPayload(event: GoogleCalendarUpsertEventInput): Record<string, unknown> {
-  return {
+  const payload: Record<string, unknown> = {
     summary: event.title,
     description: event.description ?? undefined,
     location: event.location ?? undefined,
@@ -133,6 +133,12 @@ function toGoogleEventPayload(event: GoogleCalendarUpsertEventInput): Record<str
       }
     }
   }
+
+  if (event.recurrence && event.recurrence.length > 0) {
+    payload.recurrence = event.recurrence
+  }
+
+  return payload
 }
 
 async function refreshAccessTokenInner(): Promise<string> {
@@ -248,14 +254,27 @@ export function createGoogleCalendarClient(): GoogleCalendarClient {
       events: GoogleCalendarRemoteEvent[]
       nextSyncCursor: string | null
     }> {
+      const useSyncToken = Boolean(input.syncCursor)
+
       const response = await withAuthorizedResponse({
         path: `/calendars/${encodeURIComponent(input.calendarId)}/events`,
-        query: {
-          showDeleted: 'true',
-          singleEvents: 'false',
-          syncToken: input.syncCursor ?? undefined
-        }
+        query: useSyncToken
+          ? {
+              showDeleted: 'true',
+              singleEvents: 'true',
+              syncToken: input.syncCursor!
+            }
+          : {
+              showDeleted: 'true',
+              singleEvents: 'true',
+              timeMin: input.timeMin ?? undefined,
+              timeMax: input.timeMax ?? undefined
+            }
       })
+
+      if (response.status === 410) {
+        return { events: [], nextSyncCursor: null }
+      }
 
       if (!response.ok) {
         throw new Error(`Failed to list Google calendar events (${response.status})`)
