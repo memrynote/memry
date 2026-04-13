@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Popover, PopoverAnchor, PopoverContent } from '@/components/ui/popover'
+import { useGeneralSettings } from '@/hooks/use-general-settings'
+import { formatTimeOfDay } from '@/lib/time-format'
 import { cn } from '@/lib/utils'
 import {
   getMonthGridDaysMondayStart,
@@ -23,11 +25,6 @@ const DOT_COLORS: Record<CalendarProjectionItem['visualType'], string> = {
   external_event: 'bg-neutral-400'
 }
 
-function formatPopoverTime(item: CalendarProjectionItem): string {
-  if (item.isAllDay) return 'all-day'
-  const date = new Date(item.startAt)
-  return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`
-}
 
 function formatPopoverDate(day: string): string {
   return new Intl.DateTimeFormat(undefined, {
@@ -52,8 +49,14 @@ export function CalendarYearView({
   onViewChange,
   onAnchorChange
 }: CalendarYearViewProps): React.JSX.Element {
+  const { settings: { clockFormat } } = useGeneralSettings()
   const [popoverDay, setPopoverDay] = useState<string | null>(null)
   const clickTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  function formatPopoverTime(item: CalendarProjectionItem): string {
+    if (item.isAllDay) return 'all-day'
+    return formatTimeOfDay(new Date(item.startAt), clockFormat)
+  }
 
   useEffect(() => {
     return () => {
@@ -122,11 +125,11 @@ export function CalendarYearView({
       }}
     >
       <section
-        className="h-full overflow-y-auto px-8 py-6"
+        className="h-full overflow-y-auto px-3 py-3 @lg:px-6 @lg:py-4 @3xl:px-8 @3xl:py-6"
         data-testid="calendar-view"
         data-view="year"
       >
-        <div className="grid grid-cols-4 gap-x-10 gap-y-8">
+        <div className="grid grid-cols-2 gap-4 @lg:grid-cols-3 @lg:gap-x-6 @lg:gap-y-6 @3xl:grid-cols-4 @3xl:gap-x-10 @3xl:gap-y-8">
           {months.map((month) => (
             <div key={month.monthAnchor}>
               <h3 className="mb-2 text-sm font-semibold text-red-400">{month.label}</h3>
@@ -161,7 +164,7 @@ export function CalendarYearView({
                     >
                       <span
                         className={cn(
-                          'flex size-7 items-center justify-center rounded-full text-xs',
+                          'flex size-5 items-center justify-center rounded-full text-[10px] @lg:size-7 @lg:text-xs',
                           today && 'bg-red-500/90 font-semibold text-white',
                           !today && inMonth && 'text-foreground hover:bg-surface-active',
                           !today && !inMonth && 'text-muted-foreground'
