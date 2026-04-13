@@ -61,14 +61,25 @@ export function CalendarQuickCreatePopover({
     titleRef.current?.focus()
   }, [])
 
+  const popoverRef = useRef<HTMLDivElement>(null)
+
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent): void {
       if (e.key === 'Escape') {
         onDismiss()
       }
     }
+    function handleClickOutside(e: MouseEvent): void {
+      if (popoverRef.current && !popoverRef.current.contains(e.target as Node)) {
+        onDismiss()
+      }
+    }
     document.addEventListener('keydown', handleKeyDown)
-    return () => document.removeEventListener('keydown', handleKeyDown)
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown)
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
   }, [onDismiss])
 
   function buildDraft(): CalendarEventDraft {
@@ -87,6 +98,7 @@ export function CalendarQuickCreatePopover({
 
   return (
     <div
+      ref={popoverRef}
       data-testid="quick-create-popover"
       className="fixed z-50 w-72 rounded-lg border border-border bg-popover p-4 shadow-lg"
       style={{ top, left }}
