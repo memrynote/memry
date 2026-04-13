@@ -71,7 +71,7 @@ export function CalendarToolbar({
   const yearStr = String(anchorParsed.getFullYear())
 
   return (
-    <div className="flex flex-col gap-4 border-b border-border bg-background px-6 py-4">
+    <div className="flex flex-col gap-2 border-b border-border bg-background px-3 py-2 @xl:gap-4 @xl:px-6 @xl:py-4">
       <div className="flex items-center justify-between">
         <button
           type="button"
@@ -112,7 +112,7 @@ export function CalendarToolbar({
       </div>
 
       <div className="flex items-center justify-between">
-        <h2 className="text-2xl tracking-tight">
+        <h2 className="text-lg tracking-tight @xl:text-2xl">
           {view === 'year' ? (
             <span className="font-bold text-foreground">{yearStr}</span>
           ) : (
