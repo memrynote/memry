@@ -1,10 +1,14 @@
-import { useMemo } from 'react'
+import { useCallback, useMemo, useRef } from 'react'
 import { CalendarItemChip } from './calendar-item-chip'
 import { addLocalDays, getStartOfWeek, isToday, toLocalDateKey } from './date-utils'
+import { MarqueeSelectionOverlay } from './marquee-selection-overlay'
+import { CalendarQuickCreatePopover } from './calendar-quick-create-popover'
+import { useTimeGridMarquee } from './use-time-grid-marquee'
 import { useGeneralSettings } from '@/hooks/use-general-settings'
 import { formatHour } from '@/lib/time-format'
 import { cn } from '@/lib/utils'
 import type { CalendarProjectionItem } from '@/services/calendar-service'
+import type { CalendarEventDraft } from './calendar-event-editor-drawer'
 
 const HOUR_HEIGHT = 96
 const HOURS = Array.from({ length: 24 }, (_, i) => i)
@@ -25,16 +29,27 @@ interface CalendarWeekViewProps {
   anchorDate: string
   items: CalendarProjectionItem[]
   onSelectItem?: (item: CalendarProjectionItem) => void
+  onQuickSave?: (draft: CalendarEventDraft) => void
+  onCreateEventWithRange?: (startAt: string, endAt: string, isAllDay: boolean) => void
 }
 
 export function CalendarWeekView({
   anchorDate,
   items,
-  onSelectItem
+  onSelectItem,
+  onQuickSave,
+  onCreateEventWithRange
 }: CalendarWeekViewProps): React.JSX.Element {
   const { settings: { clockFormat } } = useGeneralSettings()
   const weekStart = getStartOfWeek(anchorDate)
   const days = Array.from({ length: 7 }, (_, i) => addLocalDays(weekStart, i))
+
+  const gridRef = useRef<HTMLDivElement>(null)
+  const dateForColumn = useCallback((columnIndex: number) => days[columnIndex] ?? days[0], [days])
+  const { selection, isDragging, handlers, clearSelection } = useTimeGridMarquee({
+    gridRef,
+    dateForColumn
+  })
 
   const currentTimeOffset = useMemo(() => {
     const now = new Date()
@@ -73,6 +88,7 @@ export function CalendarWeekView({
 
       <div className="min-h-0 flex-1 overflow-y-auto">
         <div
+          ref={gridRef}
           className="relative grid grid-cols-[48px_repeat(7,1fr)] [--grid-line-color:var(--border)] @xl:grid-cols-[72px_repeat(7,1fr)]"
           style={{ height: HOUR_HEIGHT * 24 }}
         >
@@ -90,7 +106,7 @@ export function CalendarWeekView({
             ))}
           </div>
 
-          {days.map((day) => {
+          {days.map((day, i) => {
             const today = isToday(day)
             const dayItems = items.filter(
               (item) => !item.isAllDay && toLocalDateKey(item.startAt) === day
@@ -104,6 +120,8 @@ export function CalendarWeekView({
                   'bg-background'
                 )}
                 style={{ backgroundImage: GRID_LINE_BG }}
+                onMouseDown={(e) => handlers.onMouseDown(e, i)}
+                onDoubleClick={(e) => handlers.onDoubleClick(e, i)}
               >
                 {dayItems.map((item) => {
                   const pos = getEventPosition(item)
@@ -126,6 +144,31 @@ export function CalendarWeekView({
                     <div className="size-2 rounded-full bg-tint" />
                     <div className="h-0.5 flex-1 bg-tint" />
                   </div>
+                )}
+
+                {isDragging && selection && selection.columnIndex === i && (
+                  <MarqueeSelectionOverlay top={selection.top} height={selection.height} />
+                )}
+
+                {selection && !isDragging && selection.columnIndex === i && (
+                  <>
+                    <MarqueeSelectionOverlay top={selection.top} height={selection.height} />
+                    <CalendarQuickCreatePopover
+                      anchorRect={selection.anchorRect}
+                      startAt={selection.startAt}
+                      endAt={selection.endAt}
+                      isAllDay={false}
+                      onSave={(draft) => {
+                        onQuickSave?.(draft)
+                        clearSelection()
+                      }}
+                      onDismiss={clearSelection}
+                      onOpenFullEditor={(draft) => {
+                        onCreateEventWithRange?.(draft.startAt, draft.endAt, false)
+                        clearSelection()
+                      }}
+                    />
+                  </>
                 )}
               </div>
             )

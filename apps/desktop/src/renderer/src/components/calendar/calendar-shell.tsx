@@ -155,7 +155,7 @@ export function CalendarShell({
         ) : view === 'day' ? (
           <CalendarDayView {...viewProps} onAnchorChange={onAnchorChange} onQuickSave={onQuickSave} onCreateEventWithRange={onCreateEventWithRange} />
         ) : view === 'week' ? (
-          <CalendarWeekView {...viewProps} />
+          <CalendarWeekView {...viewProps} onQuickSave={onQuickSave} onCreateEventWithRange={onCreateEventWithRange} />
         ) : view === 'month' ? (
           <CalendarMonthView {...viewProps} />
         ) : (
