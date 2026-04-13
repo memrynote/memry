@@ -24,6 +24,21 @@ interface CalendarPageProps {
   className?: string
 }
 
+const CALENDAR_VIEW_KEY = 'calendar-view'
+const VALID_VIEWS: CalendarWorkspaceView[] = ['day', 'week', 'month', 'year']
+
+function getPersistedView(): CalendarWorkspaceView {
+  try {
+    const stored = localStorage.getItem(CALENDAR_VIEW_KEY)
+    if (stored && VALID_VIEWS.includes(stored as CalendarWorkspaceView)) {
+      return stored as CalendarWorkspaceView
+    }
+  } catch {
+    /* localStorage unavailable */
+  }
+  return 'month'
+}
+
 function getTodayDate(): string {
   return toLocalDateString(new Date())
 }
@@ -137,7 +152,15 @@ function filterItems(
 
 export function CalendarPage({ className: _className }: CalendarPageProps): React.JSX.Element {
   const queryClient = useQueryClient()
-  const [view, setView] = useState<CalendarWorkspaceView>('month')
+  const [view, setViewRaw] = useState<CalendarWorkspaceView>(getPersistedView)
+  const setView = (next: CalendarWorkspaceView) => {
+    setViewRaw(next)
+    try {
+      localStorage.setItem(CALENDAR_VIEW_KEY, next)
+    } catch {
+      /* localStorage unavailable */
+    }
+  }
   const [anchorDate, setAnchorDate] = useState(getTodayDate)
   const [showMemryItems, setShowMemryItems] = useState(true)
   const [showImportedCalendars, setShowImportedCalendars] = useState(true)
