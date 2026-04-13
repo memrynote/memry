@@ -9,6 +9,7 @@
 
 import * as React from 'react'
 import { Bell, BellRing } from '@/lib/icons'
+import { useGeneralSettings } from '@/hooks/use-general-settings'
 import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { ReminderPicker } from '@/components/reminder'
@@ -35,6 +36,7 @@ export function NoteReminderButton({
   disabled = false,
   className
 }: NoteReminderButtonProps): React.ReactElement {
+  const { settings: { clockFormat } } = useGeneralSettings()
   const { hasActiveReminder, nextReminder, activeReminderCount, actions } = useNoteReminders(noteId)
 
   const handleSetReminder = async (date: Date, note?: string): Promise<void> => {
@@ -44,7 +46,7 @@ export function NoteReminderButton({
   // Format tooltip content
   const tooltipContent = hasActiveReminder
     ? nextReminder
-      ? `Reminder: ${formatReminderDate(new Date(nextReminder.remindAt))}${
+      ? `Reminder: ${formatReminderDate(new Date(nextReminder.remindAt), clockFormat)}${
           activeReminderCount > 1 ? ` (+${activeReminderCount - 1} more)` : ''
         }`
       : 'Has reminders'

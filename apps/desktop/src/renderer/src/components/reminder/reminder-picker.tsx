@@ -1,5 +1,6 @@
 import * as React from 'react'
 import { useState } from 'react'
+import { useGeneralSettings } from '@/hooks/use-general-settings'
 import { Bell, Calendar, Clock, ChevronRight } from '@/lib/icons'
 import { Button } from '@/components/ui/button'
 import { Picker } from '@/components/ui/picker'
@@ -42,6 +43,7 @@ export function ReminderPicker({
   isLoading = false,
   className
 }: ReminderPickerProps): React.ReactElement {
+  const { settings: { clockFormat } } = useGeneralSettings()
   const [open, setOpen] = useState(false)
   const [mode, setMode] = useState<PickerMode>('presets')
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined)
@@ -217,7 +219,8 @@ export function ReminderPicker({
                       const date = new Date(selectedDate)
                       date.setHours(hours, minutes, 0, 0)
                       return date
-                    })()
+                    })(),
+                    clockFormat
                   )}
                 </div>
               )}
