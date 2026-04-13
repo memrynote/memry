@@ -8,6 +8,7 @@
 
 import * as React from 'react'
 import { Clock, CalendarDays, ChevronRight, Moon, Sun, CalendarClock } from '@/lib/icons'
+import { useGeneralSettings } from '@/hooks/use-general-settings'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -27,6 +28,7 @@ import {
   DialogDescription
 } from '@/components/ui/dialog'
 import { snoozePresets, formatSnoozeTime } from './snooze-presets'
+import type { ClockFormat } from '@/lib/time-format'
 
 // ============================================================================
 // Types
@@ -59,6 +61,7 @@ export function SnoozePicker({
   variant = 'ghost',
   className
 }: SnoozePickerProps) {
+  const { settings: { clockFormat } } = useGeneralSettings()
   const [isOpen, setIsOpen] = React.useState(false)
   const [showCustomDialog, setShowCustomDialog] = React.useState(false)
 
@@ -115,7 +118,7 @@ export function SnoozePicker({
                 {getPresetIcon(preset.id)}
                 <div className="flex flex-col flex-1">
                   <span>{preset.label}</span>
-                  <span className="text-xs text-muted-foreground">{formatSnoozeTime(time)}</span>
+                  <span className="text-xs text-muted-foreground">{formatSnoozeTime(time, clockFormat)}</span>
                 </div>
               </DropdownMenuItem>
             )
@@ -155,6 +158,7 @@ export function SnoozePicker({
           key="custom-snooze-dialog"
           onClose={() => setShowCustomDialog(false)}
           onSnooze={onSnooze}
+          clockFormat={clockFormat}
         />
       ) : null}
     </>
@@ -180,9 +184,10 @@ function getTimeError(selectedDate: Date | undefined, selectedTime: string): str
 interface SnoozeCustomDialogProps {
   onClose: () => void
   onSnooze: (snoozeUntil: string, reason?: string) => void
+  clockFormat: ClockFormat
 }
 
-function SnoozeCustomDialog({ onClose, onSnooze }: SnoozeCustomDialogProps): React.JSX.Element {
+function SnoozeCustomDialog({ onClose, onSnooze, clockFormat }: SnoozeCustomDialogProps): React.JSX.Element {
   const [selectedDate, setSelectedDate] = React.useState<Date | undefined>(() => new Date())
   const [selectedTime, setSelectedTime] = React.useState('09:00')
 
@@ -257,7 +262,7 @@ function SnoozeCustomDialog({ onClose, onSnooze }: SnoozeCustomDialogProps): Rea
             <div
               className={`text-xs text-center ${timeError ? 'text-destructive' : 'text-muted-foreground'}`}
             >
-              {timeError || (previewDate ? formatSnoozeTime(previewDate) : '')}
+              {timeError || (previewDate ? formatSnoozeTime(previewDate, clockFormat) : '')}
             </div>
           ) : null}
 
