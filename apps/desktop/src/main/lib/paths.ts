@@ -15,6 +15,13 @@ export function sanitizePath(inputPath: string): string {
 }
 
 /**
+ * Normalizes vault-relative paths to forward slashes for cross-platform storage.
+ */
+export function normalizeRelativePath(relativePath: string): string {
+  return relativePath.replace(/\\/g, '/')
+}
+
+/**
  * Calculates relative path from vault root.
  * Returns null if the path is outside the vault.
  */
@@ -27,7 +34,7 @@ export function getRelativePath(vaultPath: string, filePath: string): string | n
     return null
   }
 
-  return path.relative(resolvedVault, resolvedFile)
+  return normalizeRelativePath(path.relative(resolvedVault, resolvedFile))
 }
 
 /**
