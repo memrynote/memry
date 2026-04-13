@@ -1,4 +1,5 @@
 const MAX_MINUTES = 1425 // 23:45
+const END_OF_DAY = MAX_MINUTES + 15 // 24:00 — valid end time for selections starting at 23:45
 
 export function pixelToSnappedMinutes(
   pixelY: number,
@@ -35,10 +36,11 @@ export function selectionFromDrag(
   const hi = Math.max(startMin, endMin)
   const finalEnd = hi === lo ? lo + snapMinutes : hi
   const pxPerMinute = hourHeight / 60
+  const clampedEnd = Math.min(finalEnd, END_OF_DAY)
   return {
     startMinutes: lo,
-    endMinutes: Math.min(finalEnd, MAX_MINUTES + snapMinutes),
-    top: lo * pxPerMinute,
-    height: (Math.min(finalEnd, MAX_MINUTES + snapMinutes) - lo) * pxPerMinute,
+    endMinutes: clampedEnd,
+    top: Math.round(lo * pxPerMinute),
+    height: Math.round((clampedEnd - lo) * pxPerMinute),
   }
 }
