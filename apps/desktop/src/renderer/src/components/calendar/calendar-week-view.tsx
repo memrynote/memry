@@ -48,7 +48,8 @@ export function CalendarWeekView({
   const dateForColumn = useCallback((columnIndex: number) => days[columnIndex] ?? days[0], [days])
   const { selection, isDragging, handlers, clearSelection } = useTimeGridMarquee({
     gridRef,
-    dateForColumn
+    dateForColumn,
+    columnCount: 7
   })
 
   const currentTimeOffset = useMemo(() => {

@@ -66,6 +66,7 @@ export interface TimeGridSelection {
 interface UseTimeGridMarqueeOptions {
   gridRef: RefObject<HTMLDivElement | null>
   dateForColumn: (columnIndex: number) => string
+  columnCount?: number
   hourHeight?: number
   snapMinutes?: number
 }
@@ -98,7 +99,8 @@ function buildSelection(
   columnIndex: number,
   date: string,
   gridRef: RefObject<HTMLDivElement | null>,
-  hourHeight: number
+  hourHeight: number,
+  columnCount: number
 ): TimeGridSelection {
   const pxPerMinute = hourHeight / 60
   const top = Math.round(startMinutes * pxPerMinute)
@@ -106,10 +108,13 @@ function buildSelection(
   const el = gridRef.current
   const gridRect = el?.getBoundingClientRect()
   const scrollTop = el?.scrollTop ?? 0
+  const children = el?.children
+  const columnEl = children?.[columnIndex + 1] as HTMLElement | undefined
+  const colRect = columnEl?.getBoundingClientRect()
   const anchorRect = {
-    x: gridRect?.x ?? 0,
+    x: colRect?.x ?? gridRect?.x ?? 0,
     y: (gridRect?.top ?? 0) + top - scrollTop,
-    width: gridRect?.width ?? 0,
+    width: colRect?.width ?? (gridRect?.width ?? 0) / Math.max(columnCount, 1),
     height
   }
   return {
@@ -126,6 +131,7 @@ function buildSelection(
 export function useTimeGridMarquee({
   gridRef,
   dateForColumn,
+  columnCount = 1,
   hourHeight = HOUR_HEIGHT,
   snapMinutes = SNAP_MINUTES
 }: UseTimeGridMarqueeOptions): UseTimeGridMarqueeResult {
@@ -155,7 +161,7 @@ export function useTimeGridMarquee({
       const currentY = getMouseY(e.clientY, gridRef)
       const geo = selectionFromDrag(anchorY, currentY, hourHeight, snapMinutes)
       const date = dateForColumn(columnIndex)
-      setSelection(buildSelection(geo.startMinutes, geo.endMinutes, columnIndex, date, gridRef, hourHeight))
+      setSelection(buildSelection(geo.startMinutes, geo.endMinutes, columnIndex, date, gridRef, hourHeight, columnCount))
 
       const el = gridRef.current
       if (!el) return
@@ -212,7 +218,7 @@ export function useTimeGridMarquee({
       setIsDragging(true)
       const geo = selectionFromDrag(anchorY, anchorY, hourHeight, snapMinutes)
       const date = dateForColumn(columnIndex)
-      setSelection(buildSelection(geo.startMinutes, geo.endMinutes, columnIndex, date, gridRef, hourHeight))
+      setSelection(buildSelection(geo.startMinutes, geo.endMinutes, columnIndex, date, gridRef, hourHeight, columnCount))
     },
     [gridRef, dateForColumn, hourHeight, snapMinutes]
   )
@@ -224,7 +230,7 @@ export function useTimeGridMarquee({
       const startMinutes = pixelToSnappedMinutes(clickY, hourHeight, snapMinutes)
       const endMinutes = Math.min(startMinutes + DOUBLE_CLICK_DURATION_MINUTES, END_OF_DAY)
       const date = dateForColumn(columnIndex)
-      setSelection(buildSelection(startMinutes, endMinutes, columnIndex, date, gridRef, hourHeight))
+      setSelection(buildSelection(startMinutes, endMinutes, columnIndex, date, gridRef, hourHeight, columnCount))
     },
     [gridRef, dateForColumn, hourHeight, snapMinutes]
   )
