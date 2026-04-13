@@ -11,7 +11,7 @@ const CHIP_STYLES: Record<CalendarProjectionItem['visualType'], string> = {
   snooze:
     'border-[#FFD6A7] bg-[#FFF7ED] text-orange-800 dark:border-orange-500/30 dark:bg-orange-950/30 dark:text-orange-200',
   external_event:
-    'border-[#E5E5E5] bg-[#FAFAFA] text-neutral-600 dark:border-neutral-700 dark:bg-neutral-800/50 dark:text-neutral-300'
+    'border-border bg-surface text-muted-foreground'
 }
 
 function formatTime(item: CalendarProjectionItem): string {

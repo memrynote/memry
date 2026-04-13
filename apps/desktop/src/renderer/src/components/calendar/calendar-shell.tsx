@@ -129,7 +129,7 @@ export function CalendarShell({
 
   return (
     <div
-      className="flex h-full min-h-0 flex-col bg-white dark:bg-neutral-950"
+      className="flex h-full min-h-0 flex-col bg-background"
       data-testid="calendar-page"
     >
       <CalendarToolbar
@@ -145,7 +145,7 @@ export function CalendarShell({
 
       <div className="min-h-0 flex-1">
         {isLoading ? (
-          <div className="flex h-full items-center justify-center text-sm text-[#737373]">
+          <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
             Loading calendar...
           </div>
         ) : view === 'day' ? (
@@ -155,7 +155,7 @@ export function CalendarShell({
         ) : view === 'month' ? (
           <CalendarMonthView {...viewProps} />
         ) : (
-          <CalendarYearView {...viewProps} />
+          <CalendarYearView {...viewProps} onViewChange={onViewChange} onAnchorChange={onAnchorChange} />
         )}
       </div>
 

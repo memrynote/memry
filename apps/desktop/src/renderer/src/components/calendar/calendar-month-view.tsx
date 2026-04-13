@@ -21,11 +21,11 @@ export function CalendarMonthView({
 
   return (
     <div className="flex h-full flex-col" data-testid="calendar-view" data-view="month">
-      <div className="grid grid-cols-7 border-b border-[#E5E5E5] dark:border-neutral-800">
+      <div className="grid grid-cols-7 border-b border-border">
         {DAY_NAMES.map((name) => (
           <div
             key={name}
-            className="bg-white px-2 py-2 text-center text-xs font-medium text-[#737373] dark:bg-neutral-950 dark:text-neutral-500"
+            className="bg-background px-2 py-2 text-center text-xs font-medium text-muted-foreground"
           >
             {name}
           </div>
@@ -43,24 +43,20 @@ export function CalendarMonthView({
             <div
               key={day}
               className={cn(
-                'flex flex-col gap-1 border-b border-r border-[#E5E5E5] p-2 dark:border-neutral-800',
-                inMonth
-                  ? 'bg-white dark:bg-neutral-950'
-                  : 'bg-[#FAFAFA] dark:bg-neutral-900/50'
+                'flex flex-col gap-1 border-b border-r border-border p-2',
+                inMonth ? 'bg-background' : 'bg-muted/50'
               )}
             >
               <div className="mb-0.5">
                 {today ? (
-                  <span className="inline-flex size-6 items-center justify-center rounded-full bg-[#7F56D9] text-xs font-semibold text-white">
+                  <span className="inline-flex size-6 items-center justify-center rounded-full bg-tint text-xs font-semibold text-tint-foreground">
                     {dayNum}
                   </span>
                 ) : (
                   <span
                     className={cn(
                       'inline-block text-xs font-medium leading-6',
-                      inMonth
-                        ? 'text-[#171717] dark:text-neutral-200'
-                        : 'text-[#A3A3A3] dark:text-neutral-600'
+                      inMonth ? 'text-foreground' : 'text-muted-foreground'
                     )}
                   >
                     {dayNum}
@@ -73,7 +69,7 @@ export function CalendarMonthView({
                   <CalendarItemChip key={item.projectionId} item={item} onClick={onSelectItem} />
                 ))}
                 {dayItems.length > MAX_VISIBLE_EVENTS && (
-                  <span className="text-xs font-semibold text-[#737373] dark:text-neutral-500">
+                  <span className="text-xs font-semibold text-muted-foreground">
                     {dayItems.length - MAX_VISIBLE_EVENTS} more...
                   </span>
                 )}

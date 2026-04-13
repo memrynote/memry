@@ -83,3 +83,16 @@ export function isSameMonth(dateStr: string, anchorDate: string): boolean {
   return dateStr.slice(0, 7) === anchorDate.slice(0, 7)
 }
 
+export function getMonthGridDaysMondayStart(anchorDate: string): string[] {
+  const anchor = parseLocalDate(anchorDate)
+  const year = anchor.getFullYear()
+  const month = anchor.getMonth()
+  const firstDay = new Date(year, month, 1)
+  const leadingDays = (firstDay.getDay() + 6) % 7
+  const TOTAL_CELLS = 42
+  return Array.from({ length: TOTAL_CELLS }, (_, i) => {
+    const d = new Date(year, month, 1 - leadingDays + i)
+    return toLocalDateString(d)
+  })
+}
+

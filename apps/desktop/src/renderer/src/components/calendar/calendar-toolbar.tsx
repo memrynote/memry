@@ -1,26 +1,17 @@
 import { Button } from '@/components/ui/button'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger
-} from '@/components/ui/dropdown-menu'
-import { ChevronDown, ChevronLeft, ChevronRight, Plus, Search } from '@/lib/icons'
-import {
-  addLocalDays,
-  getStartOfWeek,
-  getWeekNumber,
-  parseLocalDate
-} from './date-utils'
+import { ChevronLeft, ChevronRight, Plus, Search } from '@/lib/icons'
+import { addLocalDays, getStartOfWeek, parseLocalDate } from './date-utils'
 
 export type CalendarWorkspaceView = 'day' | 'week' | 'month' | 'year'
 
 const VIEW_LABELS: Record<CalendarWorkspaceView, string> = {
-  day: 'Day view',
-  week: 'Week view',
-  month: 'Month view',
-  year: 'Year view'
+  day: 'Day',
+  week: 'Week',
+  month: 'Month',
+  year: 'Year'
 }
+
+const VIEW_OPTIONS = Object.keys(VIEW_LABELS) as CalendarWorkspaceView[]
 
 interface CalendarToolbarProps {
   view: CalendarWorkspaceView
@@ -33,7 +24,7 @@ interface CalendarToolbarProps {
   extraActions?: React.ReactNode
 }
 
-function getSubLabel(view: CalendarWorkspaceView, anchorDate: string): string {
+export function getSubLabel(view: CalendarWorkspaceView, anchorDate: string): string {
   const date = parseLocalDate(anchorDate)
 
   if (view === 'day') {
@@ -75,115 +66,92 @@ export function CalendarToolbar({
   onCreateEvent,
   extraActions
 }: CalendarToolbarProps): React.JSX.Element {
-  const today = new Date()
-  const todayMonth = new Intl.DateTimeFormat(undefined, { month: 'short' })
-    .format(today)
-    .toUpperCase()
-  const todayDay = today.getDate()
-
   const anchorParsed = parseLocalDate(anchorDate)
-  const monthYear = new Intl.DateTimeFormat(undefined, {
-    month: 'long',
-    year: 'numeric'
-  }).format(anchorParsed)
-  const weekNum = getWeekNumber(anchorDate)
-  const subLabel = getSubLabel(view, anchorDate)
+  const monthName = new Intl.DateTimeFormat(undefined, { month: 'long' }).format(anchorParsed)
+  const yearStr = String(anchorParsed.getFullYear())
 
   return (
-    <div className="flex items-start justify-between gap-4 border-b border-[#E5E5E5] bg-white px-6 py-5 dark:border-neutral-800 dark:bg-neutral-950">
-      <div className="flex items-center gap-3">
-        <div className="flex min-w-16 flex-col items-center overflow-hidden rounded-lg border border-[#E5E5E5] dark:border-neutral-700">
-          <div className="w-full px-2 py-0.5 text-center text-xs font-semibold text-[#737373] dark:text-neutral-400">
-            {todayMonth}
-          </div>
-          <div className="w-full px-2 py-0.5 text-center text-lg font-bold text-[#6941C6] dark:text-violet-400">
-            {todayDay}
-          </div>
+    <div className="flex flex-col gap-4 border-b border-border bg-background px-6 py-4">
+      <div className="flex items-center justify-between">
+        <button
+          type="button"
+          onClick={onCreateEvent}
+          className="flex size-9 items-center justify-center rounded-full border border-border text-muted-foreground transition-colors hover:border-muted-foreground hover:text-foreground"
+          aria-label="Create event"
+        >
+          <Plus className="size-4" />
+        </button>
+
+        <div className="flex items-center rounded-full bg-surface-active/80 p-0.5">
+          {VIEW_OPTIONS.map((option) => (
+            <button
+              key={option}
+              type="button"
+              onClick={() => onViewChange(option)}
+              className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+                view === option
+                  ? 'bg-tint text-tint-foreground'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              {VIEW_LABELS[option]}
+            </button>
+          ))}
         </div>
 
-        <div className="flex flex-col gap-0.5">
-          <div className="flex items-center gap-2">
-            <span className="text-lg font-semibold text-[#171717] dark:text-neutral-100">
-              {monthYear}
-            </span>
-            <span className="rounded border border-[#E5E5E5] px-1.5 py-0.5 text-xs font-medium text-[#404040] dark:border-neutral-700 dark:text-neutral-300">
-              Week {weekNum}
-            </span>
-          </div>
-          <span className="text-sm text-[#525252] dark:text-neutral-400">{subLabel}</span>
+        <div className="flex items-center gap-1.5">
+          {extraActions}
+          <button
+            type="button"
+            className="flex size-9 items-center justify-center rounded-full text-muted-foreground transition-colors hover:text-foreground"
+            aria-label="Search"
+          >
+            <Search className="size-4" />
+          </button>
         </div>
       </div>
 
-      <div className="flex items-center gap-2">
-        {extraActions}
+      <div className="flex items-center justify-between">
+        <h2 className="text-2xl tracking-tight">
+          {view === 'year' ? (
+            <span className="font-bold text-foreground">{yearStr}</span>
+          ) : (
+            <>
+              <span className="font-bold text-foreground">{monthName}</span>{' '}
+              <span className="font-normal text-muted-foreground">{yearStr}</span>
+            </>
+          )}
+        </h2>
 
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          className="size-9 rounded-lg"
-          aria-label="Search"
-        >
-          <Search className="size-5" />
-        </Button>
-
-        <div className="flex items-center">
+        <div className="flex items-center rounded-full bg-surface-active/80">
           <Button
             type="button"
-            variant="outline"
-            size="sm"
-            className="rounded-r-none border-r-0"
+            variant="ghost"
+            size="icon-sm"
+            className="rounded-full text-muted-foreground hover:bg-surface-active hover:text-foreground"
             onClick={onPrevious}
             aria-label="Previous period"
           >
             <ChevronLeft className="size-4" />
           </Button>
-          <Button
+          <button
             type="button"
-            variant="outline"
-            size="sm"
-            className="rounded-none"
             onClick={onToday}
+            className="px-3 py-1.5 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
           >
             Today
-          </Button>
+          </button>
           <Button
             type="button"
-            variant="outline"
-            size="sm"
-            className="rounded-l-none border-l-0"
+            variant="ghost"
+            size="icon-sm"
+            className="rounded-full text-muted-foreground hover:bg-surface-active hover:text-foreground"
             onClick={onNext}
             aria-label="Next period"
           >
             <ChevronRight className="size-4" />
           </Button>
         </div>
-
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="outline" size="sm" className="gap-1">
-              {VIEW_LABELS[view]}
-              <ChevronDown className="size-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            {(Object.keys(VIEW_LABELS) as CalendarWorkspaceView[]).map((option) => (
-              <DropdownMenuItem key={option} onClick={() => onViewChange(option)}>
-                {VIEW_LABELS[option]}
-              </DropdownMenuItem>
-            ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
-
-        <Button
-          type="button"
-          size="sm"
-          className="gap-1 bg-[#7F56D9] text-white hover:bg-[#6941C6]"
-          onClick={onCreateEvent}
-        >
-          <Plus className="size-4" />
-          Add event
-        </Button>
       </div>
     </div>
   )
