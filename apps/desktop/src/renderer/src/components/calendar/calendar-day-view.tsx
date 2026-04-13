@@ -1,10 +1,14 @@
-import { useMemo, useState } from 'react'
+import { useCallback, useMemo, useRef, useState } from 'react'
 import { CalendarItemChip } from './calendar-item-chip'
 import { CalendarMiniMonth } from './calendar-mini-month'
 import { isToday, toLocalDateKey } from './date-utils'
 import { useGeneralSettings } from '@/hooks/use-general-settings'
 import { formatHour } from '@/lib/time-format'
 import type { CalendarProjectionItem } from '@/services/calendar-service'
+import { useTimeGridMarquee } from './use-time-grid-marquee'
+import { MarqueeSelectionOverlay } from './marquee-selection-overlay'
+import { CalendarQuickCreatePopover } from './calendar-quick-create-popover'
+import type { CalendarEventDraft } from './calendar-event-editor-drawer'
 
 const HOUR_HEIGHT = 96
 const HOURS = Array.from({ length: 24 }, (_, i) => i)
@@ -24,16 +28,26 @@ interface CalendarDayViewProps {
   items: CalendarProjectionItem[]
   onSelectItem?: (item: CalendarProjectionItem) => void
   onAnchorChange?: (date: string) => void
+  onQuickSave?: (draft: CalendarEventDraft) => void
+  onCreateEventWithRange?: (startAt: string, endAt: string, isAllDay: boolean) => void
 }
 
 export function CalendarDayView({
   anchorDate,
   items,
   onSelectItem,
-  onAnchorChange
+  onAnchorChange,
+  onQuickSave,
+  onCreateEventWithRange
 }: CalendarDayViewProps): React.JSX.Element {
   const { settings: { clockFormat } } = useGeneralSettings()
   const [miniMonthAnchor, setMiniMonthAnchor] = useState(anchorDate)
+  const gridRef = useRef<HTMLDivElement>(null)
+  const dateForColumn = useCallback(() => anchorDate, [anchorDate])
+  const { selection, isDragging, handlers, clearSelection } = useTimeGridMarquee({
+    gridRef,
+    dateForColumn
+  })
   const today = isToday(anchorDate)
   const dayItems = items.filter((item) => toLocalDateKey(item.startAt) === anchorDate)
   const timedItems = dayItems.filter((item) => !item.isAllDay)
@@ -62,8 +76,11 @@ export function CalendarDayView({
           </div>
 
           <div
+            ref={gridRef}
             className="relative flex-1"
             style={{ backgroundImage: GRID_LINE_BG }}
+            onMouseDown={(e) => handlers.onMouseDown(e, 0)}
+            onDoubleClick={(e) => handlers.onDoubleClick(e, 0)}
           >
             {timedItems.map((item) => {
               const pos = getEventPosition(item)
@@ -86,6 +103,31 @@ export function CalendarDayView({
                 <div className="size-2 rounded-full bg-tint" />
                 <div className="h-0.5 flex-1 bg-tint" />
               </div>
+            )}
+
+            {isDragging && selection && (
+              <MarqueeSelectionOverlay top={selection.top} height={selection.height} />
+            )}
+
+            {selection && !isDragging && (
+              <>
+                <MarqueeSelectionOverlay top={selection.top} height={selection.height} />
+                <CalendarQuickCreatePopover
+                  anchorRect={selection.anchorRect}
+                  startAt={selection.startAt}
+                  endAt={selection.endAt}
+                  isAllDay={false}
+                  onSave={(draft) => {
+                    onQuickSave?.(draft)
+                    clearSelection()
+                  }}
+                  onDismiss={clearSelection}
+                  onOpenFullEditor={(draft) => {
+                    onCreateEventWithRange?.(draft.startAt, draft.endAt, false)
+                    clearSelection()
+                  }}
+                />
+              </>
             )}
           </div>
         </div>
