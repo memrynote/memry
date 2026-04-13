@@ -74,6 +74,14 @@ export function GeneralSettings() {
     [updateGeneralSettings]
   )
 
+  const handleClockFormatChange = useCallback(
+    async (value: '12h' | '24h') => {
+      const success = await updateGeneralSettings({ clockFormat: value })
+      if (!success) toast.error('Failed to update time format')
+    },
+    [updateGeneralSettings]
+  )
+
   const handleCloseButtonChange = useCallback(
     async (value: 'always' | 'hover' | 'active') => {
       const success = await updateTabSettings({ tabCloseButton: value })
@@ -105,6 +113,20 @@ export function GeneralSettings() {
             onCheckedChange={handleStartOnBootChange}
             className={ACCENT_SWITCH}
           />
+        </SettingRow>
+      </SettingsGroup>
+
+      <SettingsGroup label="Date &amp; Time">
+        <SettingRow label="Time Format" description="12-hour or 24-hour clock">
+          <Select value={generalSettings.clockFormat} onValueChange={handleClockFormatChange}>
+            <SelectTrigger className={COMPACT_SELECT}>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="12h">12-hour</SelectItem>
+              <SelectItem value="24h">24-hour</SelectItem>
+            </SelectContent>
+          </Select>
         </SettingRow>
       </SettingsGroup>
 
