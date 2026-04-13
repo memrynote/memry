@@ -515,7 +515,9 @@ export function unregisterCalendarHandlers(): void {
   ipcMain.removeHandler(CalendarChannels.invoke.LIST_EVENTS)
   ipcMain.removeHandler(CalendarChannels.invoke.GET_RANGE)
   ipcMain.removeHandler(CalendarChannels.invoke.LIST_SOURCES)
+  ipcMain.removeHandler(CalendarChannels.invoke.UPDATE_SOURCE_SELECTION)
   ipcMain.removeHandler(CalendarChannels.invoke.GET_PROVIDER_STATUS)
   ipcMain.removeHandler(CalendarChannels.invoke.CONNECT_PROVIDER)
   ipcMain.removeHandler(CalendarChannels.invoke.DISCONNECT_PROVIDER)
+  ipcMain.removeHandler(CalendarChannels.invoke.REFRESH_PROVIDER)
 }

@@ -8,9 +8,32 @@ import { calendarSources } from '@memry/db-schema/schema/calendar-sources'
 import { reminders } from '@memry/db-schema/schema/reminders'
 import { tasks } from '@memry/db-schema/schema/tasks'
 import { inboxItems } from '@memry/db-schema/schema/inbox'
+
+const { mockCalendarSend } = vi.hoisted(() => ({
+  mockCalendarSend: vi.fn()
+}))
+
+vi.mock('electron', () => ({
+  BrowserWindow: {
+    getAllWindows: vi.fn(() => [
+      {
+        webContents: {
+          send: mockCalendarSend
+        }
+      }
+    ])
+  }
+}))
+
+vi.mock('./oauth', () => ({
+  hasGoogleCalendarLocalAuth: vi.fn(async () => true)
+}))
+
+import { hasGoogleCalendarLocalAuth } from './oauth'
 import {
   applyGoogleCalendarDelete,
   applyGoogleCalendarWriteback,
+  syncLocalSourceToGoogleCalendar,
   pushSourceToGoogleCalendar,
   syncGoogleCalendarSource
 } from './sync-service'
@@ -24,6 +47,8 @@ describe('google calendar sync service', () => {
   beforeEach(() => {
     dbResult = createTestDataDb()
     db = dbResult.db
+    mockCalendarSend.mockClear()
+    vi.mocked(hasGoogleCalendarLocalAuth).mockResolvedValue(true)
 
     const seeded = seedTestData(db)
     projectId = seeded.projectId
@@ -435,6 +460,81 @@ describe('google calendar sync service', () => {
     })
   })
 
+  it('reconciles local source mutations by upserting scheduled items and deleting cleared bindings', async () => {
+    seedGoogleCalendarSource()
+
+    db.insert(tasks)
+      .values({
+        id: 'task-reconcile-1',
+        projectId,
+        statusId: todoStatusId,
+        title: 'Calendar task',
+        position: 1,
+        dueDate: '2026-04-14',
+        dueTime: null,
+        clock: { 'device-a': 1 },
+        fieldClocks: {},
+        createdAt: '2026-04-12T09:00:00.000Z',
+        modifiedAt: '2026-04-12T09:00:00.000Z'
+      })
+      .run()
+
+    const client = {
+      upsertEvent: vi.fn(async ({ calendarId, eventId, event }) => ({
+        id: eventId ?? 'remote-task-reconcile-1',
+        calendarId,
+        title: event.title,
+        description: event.description ?? null,
+        location: event.location ?? null,
+        startAt: event.startAt,
+        endAt: event.endAt ?? null,
+        isAllDay: event.isAllDay,
+        timezone: event.timezone,
+        status: 'confirmed' as const,
+        etag: '"etag-reconcile-1"',
+        updatedAt: '2026-04-12T10:00:00.000Z',
+        raw: {}
+      })),
+      deleteEvent: vi.fn(async () => {}),
+      listCalendars: vi.fn(async () => []),
+      createCalendar: vi.fn(async () => ({
+        id: 'remote-created',
+        title: 'Memry',
+        timezone: 'UTC',
+        color: null,
+        isPrimary: false
+      }))
+    }
+
+    await syncLocalSourceToGoogleCalendar(db, { sourceType: 'task', sourceId: 'task-reconcile-1' }, { client })
+
+    expect(client.upsertEvent).toHaveBeenCalledTimes(1)
+    expect(db.select().from(calendarBindings).where(eq(calendarBindings.sourceId, 'task-reconcile-1')).get())
+      .toMatchObject({
+        remoteEventId: 'remote-task-reconcile-1',
+        archivedAt: null
+      })
+
+    db.update(tasks)
+      .set({
+        dueDate: null,
+        modifiedAt: '2026-04-12T10:05:00.000Z'
+      })
+      .where(eq(tasks.id, 'task-reconcile-1'))
+      .run()
+
+    await syncLocalSourceToGoogleCalendar(db, { sourceType: 'task', sourceId: 'task-reconcile-1' }, { client })
+
+    expect(client.deleteEvent).toHaveBeenCalledWith({
+      calendarId: 'remote-memry-calendar',
+      eventId: 'remote-task-reconcile-1'
+    })
+    expect(db.select().from(calendarBindings).where(eq(calendarBindings.sourceId, 'task-reconcile-1')).get())
+      .toMatchObject({
+        archivedAt: expect.any(String)
+      })
+  })
+
   it('clears scheduling for task, reminder, and snooze bindings when Google deletes the event', async () => {
     db.insert(tasks)
       .values({
@@ -504,5 +604,44 @@ describe('google calendar sync service', () => {
       title: 'Snooze survives',
       snoozedUntil: null
     })
+  })
+
+  it('skips local Google reconciliation when the device is not connected', async () => {
+    seedGoogleCalendarSource()
+    vi.mocked(hasGoogleCalendarLocalAuth).mockResolvedValue(false)
+
+    db.insert(tasks)
+      .values({
+        id: 'task-offline-1',
+        projectId,
+        statusId: todoStatusId,
+        title: 'Offline task',
+        position: 1,
+        dueDate: '2026-04-14',
+        dueTime: null,
+        clock: { 'device-a': 1 },
+        fieldClocks: {},
+        createdAt: '2026-04-12T09:00:00.000Z',
+        modifiedAt: '2026-04-12T09:00:00.000Z'
+      })
+      .run()
+
+    const client = {
+      upsertEvent: vi.fn(),
+      deleteEvent: vi.fn(),
+      listCalendars: vi.fn(),
+      createCalendar: vi.fn()
+    }
+
+    await expect(
+      syncLocalSourceToGoogleCalendar(
+        db,
+        { sourceType: 'task', sourceId: 'task-offline-1' },
+        { client }
+      )
+    ).resolves.toBeNull()
+
+    expect(client.upsertEvent).not.toHaveBeenCalled()
+    expect(client.deleteEvent).not.toHaveBeenCalled()
   })
 })

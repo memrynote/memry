@@ -5,6 +5,8 @@ import {
   addLocalDays,
   addLocalMonths,
   addLocalYears,
+  getMonthGridDays,
+  getStartOfWeek,
   parseLocalDate,
   toLocalDateInputValue,
   toLocalDateString,
@@ -38,48 +40,25 @@ function getRangeForView(view: CalendarWorkspaceView, anchorDate: string): {
   }
 
   if (view === 'week') {
+    const weekStart = getStartOfWeek(anchorDate)
     return {
-      startAt: toStartOfLocalDayIso(anchorDate),
-      endAt: toStartOfLocalDayIso(addLocalDays(anchorDate, 7))
+      startAt: toStartOfLocalDayIso(weekStart),
+      endAt: toStartOfLocalDayIso(addLocalDays(weekStart, 7))
     }
   }
 
   if (view === 'month') {
-    const date = parseLocalDate(anchorDate)
-    const start = new Date(date.getFullYear(), date.getMonth(), 1)
-    const end = new Date(date.getFullYear(), date.getMonth() + 1, 1)
-    return { startAt: start.toISOString(), endAt: end.toISOString() }
+    const gridDays = getMonthGridDays(anchorDate)
+    return {
+      startAt: toStartOfLocalDayIso(gridDays[0]),
+      endAt: toStartOfLocalDayIso(addLocalDays(gridDays[gridDays.length - 1], 1))
+    }
   }
 
   const date = parseLocalDate(anchorDate)
   const start = new Date(date.getFullYear(), 0, 1)
   const end = new Date(date.getFullYear() + 1, 0, 1)
   return { startAt: start.toISOString(), endAt: end.toISOString() }
-}
-
-function getRangeLabel(view: CalendarWorkspaceView, anchorDate: string): string {
-  const date = parseLocalDate(anchorDate)
-
-  if (view === 'day') {
-    return new Intl.DateTimeFormat(undefined, {
-      weekday: 'long',
-      month: 'long',
-      day: 'numeric',
-      year: 'numeric'
-    }).format(date)
-  }
-
-  if (view === 'week') {
-    const end = parseLocalDate(addLocalDays(anchorDate, 6))
-    const formatter = new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric' })
-    return `${formatter.format(date)} - ${formatter.format(end)}`
-  }
-
-  if (view === 'month') {
-    return new Intl.DateTimeFormat(undefined, { month: 'long', year: 'numeric' }).format(date)
-  }
-
-  return String(date.getFullYear())
 }
 
 function createDraftFromAnchor(anchorDate: string): CalendarEventDraft {
@@ -268,7 +247,6 @@ export function CalendarPage({ className: _className }: CalendarPageProps): Reac
   return (
     <CalendarShell
       view={view}
-      rangeLabel={getRangeLabel(view, anchorDate)}
       anchorDate={anchorDate}
       items={filteredItems}
       importedSources={importedSources as CalendarSourceRecord[]}
@@ -310,6 +288,7 @@ export function CalendarPage({ className: _className }: CalendarPageProps): Reac
       onEditorDraftChange={(draft) =>
         setEditorState((current) => (current ? { ...current, draft } : current))
       }
+      onAnchorChange={(date) => setAnchorDate(date)}
       onEditorSave={() => void handleSaveEditor()}
     />
   )

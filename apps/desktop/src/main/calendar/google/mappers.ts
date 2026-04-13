@@ -193,9 +193,7 @@ export function mapGoogleEventToTaskSchedule(event: GoogleCalendarRemoteEvent): 
 
 export function mapGoogleEventToReminderAt(event: GoogleCalendarRemoteEvent): string {
   if (event.isAllDay) {
-    const allDayDate = new Date(event.startAt)
-    allDayDate.setHours(0, 0, 0, 0)
-    return allDayDate.toISOString()
+    return event.startAt.replace(/T.*$/, 'T00:00:00.000Z')
   }
 
   return event.startAt

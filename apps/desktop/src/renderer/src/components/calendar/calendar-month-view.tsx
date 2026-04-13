@@ -1,10 +1,10 @@
 import { CalendarItemChip } from './calendar-item-chip'
-import { parseLocalDate, toLocalDateKey } from './date-utils'
+import { getMonthGridDays, isToday, isSameMonth, toLocalDateKey } from './date-utils'
+import { cn } from '@/lib/utils'
 import type { CalendarProjectionItem } from '@/services/calendar-service'
 
-function pad(value: number): string {
-  return String(value).padStart(2, '0')
-}
+const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+const MAX_VISIBLE_EVENTS = 3
 
 interface CalendarMonthViewProps {
   anchorDate: string
@@ -17,40 +17,72 @@ export function CalendarMonthView({
   items,
   onSelectItem
 }: CalendarMonthViewProps): React.JSX.Element {
-  const anchor = parseLocalDate(anchorDate)
-  const year = anchor.getFullYear()
-  const month = anchor.getMonth()
-  const daysInMonth = new Date(year, month + 1, 0).getDate()
-  const days = Array.from({ length: daysInMonth }, (_, index) => {
-    const day = index + 1
-    return `${year}-${pad(month + 1)}-${pad(day)}`
-  })
+  const gridDays = getMonthGridDays(anchorDate)
 
   return (
-    <section className="space-y-4" data-testid="calendar-view" data-view="month">
-      <div>
-        <h2 className="text-lg font-semibold text-foreground">Month view</h2>
-        <p className="text-sm text-muted-foreground">A full-month snapshot with visible projected work.</p>
+    <div className="flex h-full flex-col" data-testid="calendar-view" data-view="month">
+      <div className="grid grid-cols-7 border-b border-[#E5E5E5] dark:border-neutral-800">
+        {DAY_NAMES.map((name) => (
+          <div
+            key={name}
+            className="bg-white px-2 py-2 text-center text-xs font-medium text-[#737373] dark:bg-neutral-950 dark:text-neutral-500"
+          >
+            {name}
+          </div>
+        ))}
       </div>
-      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-7">
-        {days.map((day) => {
+
+      <div className="grid flex-1 grid-cols-7">
+        {gridDays.map((day) => {
+          const inMonth = isSameMonth(day, anchorDate)
+          const today = isToday(day)
+          const dayNum = parseInt(day.slice(-2), 10)
           const dayItems = items.filter((item) => toLocalDateKey(item.startAt) === day)
+
           return (
-            <div key={day} className="min-h-36 rounded-2xl border border-border/70 bg-card/50 p-3">
-              <div className="mb-3 text-sm font-semibold text-foreground">{day.slice(-2)}</div>
-              <div className="space-y-2">
-                {dayItems.slice(0, 4).map((item) => (
+            <div
+              key={day}
+              className={cn(
+                'flex flex-col gap-1 border-b border-r border-[#E5E5E5] p-2 dark:border-neutral-800',
+                inMonth
+                  ? 'bg-white dark:bg-neutral-950'
+                  : 'bg-[#FAFAFA] dark:bg-neutral-900/50'
+              )}
+            >
+              <div className="mb-0.5">
+                {today ? (
+                  <span className="inline-flex size-6 items-center justify-center rounded-full bg-[#7F56D9] text-xs font-semibold text-white">
+                    {dayNum}
+                  </span>
+                ) : (
+                  <span
+                    className={cn(
+                      'inline-block text-xs font-medium leading-6',
+                      inMonth
+                        ? 'text-[#171717] dark:text-neutral-200'
+                        : 'text-[#A3A3A3] dark:text-neutral-600'
+                    )}
+                  >
+                    {dayNum}
+                  </span>
+                )}
+              </div>
+
+              <div className="flex flex-col gap-1">
+                {dayItems.slice(0, MAX_VISIBLE_EVENTS).map((item) => (
                   <CalendarItemChip key={item.projectionId} item={item} onClick={onSelectItem} />
                 ))}
-                {dayItems.length > 4 && (
-                  <p className="text-xs text-muted-foreground">+{dayItems.length - 4} more</p>
+                {dayItems.length > MAX_VISIBLE_EVENTS && (
+                  <span className="text-xs font-semibold text-[#737373] dark:text-neutral-500">
+                    {dayItems.length - MAX_VISIBLE_EVENTS} more...
+                  </span>
                 )}
               </div>
             </div>
           )
         })}
       </div>
-    </section>
+    </div>
   )
 }
 
