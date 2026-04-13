@@ -267,6 +267,23 @@ export function CalendarPage({ className: _className }: CalendarPageProps): Reac
     }
   }
 
+  const handleQuickSave = async (draft: CalendarEventDraft) => {
+    try {
+      await calendarService.createEvent(toCreatePayload(draft))
+      await queryClient.invalidateQueries({ queryKey: ['calendar', 'range'] })
+    } catch {
+      // popover stays open on error — user can retry
+    }
+  }
+
+  const handleCreateEventWithRange = (startAt: string, endAt: string, isAllDay: boolean) => {
+    setEditorState({
+      mode: 'create',
+      eventId: null,
+      draft: { title: '', description: '', location: '', isAllDay, startAt, endAt }
+    })
+  }
+
   return (
     <CalendarShell
       view={view}
@@ -313,6 +330,8 @@ export function CalendarPage({ className: _className }: CalendarPageProps): Reac
       }
       onAnchorChange={(date) => setAnchorDate(date)}
       onEditorSave={() => void handleSaveEditor()}
+      onQuickSave={(draft) => void handleQuickSave(draft)}
+      onCreateEventWithRange={handleCreateEventWithRange}
     />
   )
 }
