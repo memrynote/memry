@@ -3,6 +3,7 @@ import { useState, useMemo, useCallback } from 'react'
 import { Clock, X } from '@/lib/icons'
 import { cn } from '@/lib/utils'
 import { formatTime } from '@/lib/task-utils'
+import { useGeneralSettings } from '@/hooks/use-general-settings'
 import { DatePickerCalendar } from './date-picker-calendar'
 
 interface DatePickerContentProps {
@@ -50,6 +51,7 @@ export function DatePickerContent({
   className
 }: DatePickerContentProps): React.JSX.Element {
   const [editing, setEditing] = useState(false)
+  const { settings: { clockFormat } } = useGeneralSettings()
 
   const today = useMemo(() => {
     const d = new Date()
@@ -155,7 +157,7 @@ export function DatePickerContent({
                   onBlur={() => setEditing(false)}
                 />
                 <span className="text-[11px] text-text-tertiary leading-3.5">
-                  {time ? formatTime(time) : ''}
+                  {time ? formatTime(time, clockFormat) : ''}
                 </span>
               </div>
               <button
