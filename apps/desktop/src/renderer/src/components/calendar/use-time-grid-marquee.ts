@@ -142,6 +142,7 @@ export function useTimeGridMarquee({
     anchorY: number
     columnIndex: number
     rafId: number | null
+    hasMoved: boolean
   } | null>(null)
 
   const clearSelection = useCallback(() => setSelection(null), [])
@@ -157,6 +158,7 @@ export function useTimeGridMarquee({
   const handleMouseMove = useCallback(
     (e: MouseEvent) => {
       if (!dragState.current) return
+      dragState.current.hasMoved = true
       const { anchorY, columnIndex } = dragState.current
       const currentY = getMouseY(e.clientY, gridRef)
       const geo = selectionFromDrag(anchorY, currentY, hourHeight, snapMinutes)
@@ -194,7 +196,9 @@ export function useTimeGridMarquee({
   )
 
   const handleMouseUp = useCallback(() => {
+    const hadMovement = dragState.current?.hasMoved ?? false
     stopDrag()
+    if (!hadMovement) setSelection(null)
   }, [stopDrag])
 
   useEffect(() => {
@@ -214,13 +218,11 @@ export function useTimeGridMarquee({
       if (isEventChip(e.target)) return
       e.preventDefault()
       const anchorY = getMouseY(e.clientY, gridRef)
-      dragState.current = { anchorY, columnIndex, rafId: null }
+      dragState.current = { anchorY, columnIndex, rafId: null, hasMoved: false }
       setIsDragging(true)
-      const geo = selectionFromDrag(anchorY, anchorY, hourHeight, snapMinutes)
-      const date = dateForColumn(columnIndex)
-      setSelection(buildSelection(geo.startMinutes, geo.endMinutes, columnIndex, date, gridRef, hourHeight, columnCount))
+      setSelection(null)
     },
-    [gridRef, dateForColumn, hourHeight, snapMinutes]
+    [gridRef]
   )
 
   const onDoubleClick = useCallback(
