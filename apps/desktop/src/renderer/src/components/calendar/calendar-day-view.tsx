@@ -2,19 +2,14 @@ import { useMemo, useState } from 'react'
 import { CalendarItemChip } from './calendar-item-chip'
 import { CalendarMiniMonth } from './calendar-mini-month'
 import { isToday, toLocalDateKey } from './date-utils'
+import { useGeneralSettings } from '@/hooks/use-general-settings'
+import { formatHour } from '@/lib/time-format'
 import type { CalendarProjectionItem } from '@/services/calendar-service'
 
 const HOUR_HEIGHT = 96
 const HOURS = Array.from({ length: 24 }, (_, i) => i)
 const GRID_LINE_BG =
   'repeating-linear-gradient(to bottom, transparent, transparent 47px, var(--grid-line-color) 47px, var(--grid-line-color) 48px)'
-
-function formatHour(hour: number): string {
-  if (hour === 0) return '12 AM'
-  if (hour < 12) return `${hour} AM`
-  if (hour === 12) return '12 PM'
-  return `${hour - 12} PM`
-}
 
 function getEventPosition(item: CalendarProjectionItem): { top: number; height: number } {
   const start = new Date(item.startAt)
@@ -37,6 +32,7 @@ export function CalendarDayView({
   onSelectItem,
   onAnchorChange
 }: CalendarDayViewProps): React.JSX.Element {
+  const { settings: { clockFormat } } = useGeneralSettings()
   const [miniMonthAnchor, setMiniMonthAnchor] = useState(anchorDate)
   const today = isToday(anchorDate)
   const dayItems = items.filter((item) => toLocalDateKey(item.startAt) === anchorDate)
@@ -51,15 +47,15 @@ export function CalendarDayView({
     <div className="flex h-full" data-testid="calendar-view" data-view="day">
       <div className="min-h-0 min-w-0 flex-1 overflow-y-auto">
         <div className="relative flex [--grid-line-color:var(--border)]" style={{ height: HOUR_HEIGHT * 24 }}>
-          <div className="w-[72px] shrink-0 border-r border-border">
+          <div className="w-[48px] shrink-0 @xl:w-[72px]">
             {HOURS.map((hour) => (
               <div
                 key={hour}
-                className="flex justify-end pr-3 pt-1"
+                className="flex items-start justify-end pr-3"
                 style={{ height: HOUR_HEIGHT }}
               >
-                <span className="text-xs font-medium text-muted-foreground">
-                  {formatHour(hour)}
+                <span className="text-xs font-medium text-muted-foreground -translate-y-1/2">
+                  {formatHour(hour, clockFormat)}
                 </span>
               </div>
             ))}
@@ -74,10 +70,10 @@ export function CalendarDayView({
               return (
                 <div
                   key={item.projectionId}
-                  className="absolute left-1 right-1 z-10"
+                  className="absolute left-0.5 right-0.5 z-10 @xl:left-1 @xl:right-1"
                   style={{ top: pos.top, height: pos.height }}
                 >
-                  <CalendarItemChip item={item} onClick={onSelectItem} />
+                  <CalendarItemChip item={item} clockFormat={clockFormat} onClick={onSelectItem} />
                 </div>
               )
             })}
@@ -95,7 +91,7 @@ export function CalendarDayView({
         </div>
       </div>
 
-      <div className="hidden w-[328px] shrink-0 flex-col border-l border-border lg:flex">
+      <div className="hidden w-[328px] shrink-0 flex-col border-l border-border @3xl:flex">
         <CalendarMiniMonth
           anchorDate={miniMonthAnchor}
           items={items}
@@ -112,7 +108,7 @@ export function CalendarDayView({
           ) : (
             <div className="flex flex-col gap-2">
               {dayItems.map((item) => (
-                <CalendarItemChip key={item.projectionId} item={item} onClick={onSelectItem} />
+                <CalendarItemChip key={item.projectionId} item={item} clockFormat={clockFormat} onClick={onSelectItem} />
               ))}
             </div>
           )}

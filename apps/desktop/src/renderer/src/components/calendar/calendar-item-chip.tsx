@@ -1,3 +1,5 @@
+import { formatTimeOfDay } from '@/lib/time-format'
+import type { ClockFormat } from '@/lib/time-format'
 import { cn } from '@/lib/utils'
 import type { CalendarProjectionItem } from '@/services/calendar-service'
 
@@ -14,22 +16,16 @@ const CHIP_STYLES: Record<CalendarProjectionItem['visualType'], string> = {
     'border-border bg-surface text-muted-foreground'
 }
 
-function formatTime(item: CalendarProjectionItem): string {
-  if (item.isAllDay) return 'All day'
-  return new Intl.DateTimeFormat(undefined, {
-    hour: 'numeric',
-    minute: '2-digit'
-  }).format(new Date(item.startAt))
-}
-
 interface CalendarItemChipProps {
   item: CalendarProjectionItem
+  clockFormat?: ClockFormat
   onClick?: (item: CalendarProjectionItem) => void
 }
 
-export function CalendarItemChip({ item, onClick }: CalendarItemChipProps): React.JSX.Element {
+export function CalendarItemChip({ item, clockFormat = '12h', onClick }: CalendarItemChipProps): React.JSX.Element {
+  const timeLabel = item.isAllDay ? 'All day' : formatTimeOfDay(new Date(item.startAt), clockFormat)
   const cls = cn(
-    'flex w-full items-center justify-between gap-0.5 rounded-[6px] border px-2 py-1 text-left transition-colors',
+    'flex w-full items-center justify-between gap-0.5 rounded-[6px] border px-1 py-0.5 text-left transition-colors @xl:px-2 @xl:py-1',
     CHIP_STYLES[item.visualType],
     onClick && 'cursor-pointer hover:brightness-95'
   )
@@ -37,7 +33,7 @@ export function CalendarItemChip({ item, onClick }: CalendarItemChipProps): Reac
   const content = (
     <>
       <span className="flex-1 truncate text-xs font-semibold leading-[18px]">{item.title}</span>
-      <span className="shrink-0 text-xs leading-[18px] opacity-75">{formatTime(item)}</span>
+      <span className="hidden shrink-0 text-xs leading-[18px] opacity-75 @xl:inline">{timeLabel}</span>
     </>
   )
 
