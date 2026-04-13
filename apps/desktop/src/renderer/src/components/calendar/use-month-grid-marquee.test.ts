@@ -100,7 +100,7 @@ describe('useMonthGridMarquee', () => {
     expect(result.current.selection).toBeNull()
   })
 
-  it('starts dragging on mousedown on a date cell', () => {
+  it('starts dragging on mousedown but does not create selection until mousemove', () => {
     const ref = createMockGridRef()
     const { result } = renderHook(() => useMonthGridMarquee({ gridRef: ref }))
     const cell = createCell('2026-04-10')
@@ -114,9 +114,7 @@ describe('useMonthGridMarquee', () => {
       result.current.handlers.onMouseDown(event)
     })
     expect(result.current.isDragging).toBe(true)
-    expect(result.current.selection).not.toBeNull()
-    expect(result.current.selection!.startDate).toBe('2026-04-10')
-    expect(result.current.selection!.endDate).toBe('2026-04-10')
+    expect(result.current.selection).toBeNull()
   })
 
   it('ignores non-left-button mousedown', () => {

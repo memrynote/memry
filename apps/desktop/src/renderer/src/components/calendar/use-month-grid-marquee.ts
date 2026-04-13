@@ -56,6 +56,7 @@ export function useMonthGridMarquee({
   const [isDragging, setIsDragging] = useState(false)
 
   const anchorDateRef = useRef<string | null>(null)
+  const hasMovedRef = useRef(false)
 
   const clearSelection = useCallback(() => setSelection(null), [])
 
@@ -76,14 +77,18 @@ export function useMonthGridMarquee({
       if (!anchorDateRef.current) return
       const date = getDateFromTarget(e.target)
       if (!date) return
+      hasMovedRef.current = true
       setSelection(buildSelection(anchorDateRef.current, date))
     },
     [buildSelection]
   )
 
   const handleMouseUp = useCallback(() => {
+    const hadMovement = hasMovedRef.current
     anchorDateRef.current = null
+    hasMovedRef.current = false
     setIsDragging(false)
+    if (!hadMovement) setSelection(null)
   }, [])
 
   useEffect(() => {
@@ -105,10 +110,11 @@ export function useMonthGridMarquee({
       if (!date) return
       e.preventDefault()
       anchorDateRef.current = date
+      hasMovedRef.current = false
       setIsDragging(true)
-      setSelection(buildSelection(date, date))
+      setSelection(null)
     },
-    [buildSelection]
+    []
   )
 
   const onDoubleClick = useCallback(
