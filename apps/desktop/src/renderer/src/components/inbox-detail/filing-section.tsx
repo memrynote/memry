@@ -19,6 +19,10 @@ import { createLogger } from '@/lib/logger'
 
 const log = createLogger('Component:FilingSection')
 
+function normalizeFolderPath(folderPath: string): string {
+  return folderPath.replace(/\\/g, '/').replace(/[\\/]+$/, '')
+}
+
 // Filing section can work with either full or list item types
 type FilingItem = InboxItem | InboxItemListItem
 
@@ -66,12 +70,15 @@ export const FilingSection = ({
       const folderInfos = await window.api.notes.getFolders()
       const folders: FolderType[] = [{ id: '', name: 'Notes (root)', path: '' }]
       for (const fi of folderInfos) {
-        if (fi.path) {
+        const normalizedPath = normalizeFolderPath(fi.path)
+        if (normalizedPath) {
           folders.push({
-            id: fi.path,
-            name: fi.path.split('/').pop() || fi.path,
-            path: fi.path,
-            parent: fi.path.includes('/') ? fi.path.split('/').slice(0, -1).join('/') : undefined,
+            id: normalizedPath,
+            name: normalizedPath.split('/').pop() || normalizedPath,
+            path: normalizedPath,
+            parent: normalizedPath.includes('/')
+              ? normalizedPath.split('/').slice(0, -1).join('/')
+              : undefined,
             icon: fi.icon ?? null
           })
         }
@@ -105,7 +112,7 @@ export const FilingSection = ({
         .filter((s) => s.destination.type === 'folder' && s.destination.path)
         .slice(0, 3)
         .map((s) => {
-          const path = s.destination.path || ''
+          const path = normalizeFolderPath(s.destination.path || '')
           const vaultMatch = vaultFolders.find((f) => f.path === path)
           return {
             id: path,
@@ -187,24 +194,45 @@ export const FilingSection = ({
     )
   }, [vaultFolders, folderSearch])
 
-  const trimmedSearch = folderSearch.trim().replace(/\/+$/, '')
+  const trimmedSearch = normalizeFolderPath(folderSearch.trim())
   const canCreateFolder = trimmedSearch.length > 0 && filteredFolders.length === 0
 
   const handleCreateFolder = useCallback(async () => {
     if (!trimmedSearch || isCreatingFolder) return
     setIsCreatingFolder(true)
     try {
-      await window.api.notes.createFolder(trimmedSearch)
-      await queryClient.invalidateQueries({ queryKey: ['vault', 'folders'] })
-      const name = trimmedSearch.split('/').pop() || trimmedSearch
-      onFolderSelect({
+      const result = await window.api.notes.createFolder(trimmedSearch)
+      if (!result.success) {
+        log.error('Failed to create folder', { path: trimmedSearch })
+        return
+      }
+
+      const createdFolder: FolderType = {
         id: trimmedSearch,
-        name,
+        name: trimmedSearch.split('/').pop() || trimmedSearch,
         path: trimmedSearch,
         parent: trimmedSearch.includes('/')
           ? trimmedSearch.split('/').slice(0, -1).join('/')
           : undefined
+      }
+
+      queryClient.setQueryData<FolderType[]>(['vault', 'folders'], (current = []) => {
+        const baseFolders =
+          current.length > 0 ? current : [{ id: '', name: 'Notes (root)', path: '' }]
+        if (baseFolders.some((folder) => folder.path === createdFolder.path)) {
+          return baseFolders
+        }
+
+        const rootFolder = baseFolders.find((folder) => folder.path === '')
+        const nextFolders = baseFolders
+          .filter((folder) => folder.path !== '')
+          .concat(createdFolder)
+          .sort((left, right) => left.path.localeCompare(right.path))
+
+        return rootFolder ? [rootFolder, ...nextFolders] : nextFolders
       })
+
+      onFolderSelect(createdFolder)
       setShowAllFolders(false)
       setFolderSearch('')
     } catch (error) {

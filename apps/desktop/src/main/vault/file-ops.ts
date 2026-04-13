@@ -10,6 +10,7 @@ import { existsSync } from 'fs'
 import { randomBytes } from 'crypto'
 import path from 'path'
 import { NoteError, NoteErrorCode } from '../lib/errors'
+import { normalizeRelativePath } from '../lib/paths'
 
 // ============================================================================
 // Atomic Write
@@ -136,7 +137,9 @@ export async function listMarkdownFiles(dirPath: string, relativeTo?: string): P
         if (entry.isDirectory()) {
           await scanDir(fullPath)
         } else if (entry.isFile() && entry.name.endsWith('.md')) {
-          const filePath = relativeTo ? path.relative(relativeTo, fullPath) : fullPath
+          const filePath = relativeTo
+            ? normalizeRelativePath(path.relative(relativeTo, fullPath))
+            : fullPath
           files.push(filePath)
         }
       }
@@ -178,7 +181,9 @@ export async function listDirectories(dirPath: string, relativeTo?: string): Pro
 
         if (entry.isDirectory()) {
           const fullPath = path.join(currentPath, entry.name)
-          const dirPath = relativeTo ? path.relative(relativeTo, fullPath) : fullPath
+          const dirPath = relativeTo
+            ? normalizeRelativePath(path.relative(relativeTo, fullPath))
+            : fullPath
           dirs.push(dirPath)
           await scanDir(fullPath)
         }
