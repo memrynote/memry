@@ -37,7 +37,7 @@ const generateSequentialCode = (
   index: number,
   usedLabels: Set<string>,
   singleCharLabels: Set<string>
-): string => {
+): string | null => {
   const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
   let seqIndex = 0
   for (let i = 0; i < 26; i++) {
@@ -49,7 +49,7 @@ const generateSequentialCode = (
       seqIndex++
     }
   }
-  return 'ZZ'
+  return null
 }
 
 export const assignLabels = (elements: HTMLElement[]): HintTarget[] => {
@@ -107,15 +107,18 @@ export const assignLabels = (elements: HTMLElement[]): HintTarget[] => {
   let seqCounter = 0
   for (const idx of allNeedSequential) {
     const code = generateSequentialCode(seqCounter, usedLabels, singleCharLabels)
+    if (code === null) break
     labels[idx] = code
     usedLabels.add(code)
     seqCounter++
   }
 
-  return elements.map((element, i) => ({
-    element,
-    label: labels[i],
-    rect: element.getBoundingClientRect(),
-    text: texts[i]
-  }))
+  return elements
+    .map((element, i) => ({
+      element,
+      label: labels[i],
+      rect: element.getBoundingClientRect(),
+      text: texts[i]
+    }))
+    .filter((h) => h.label !== '')
 }

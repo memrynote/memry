@@ -1,10 +1,14 @@
 import { useEffect } from 'react'
 import { useHintModeContext } from '@/contexts/hint-mode'
 
-const isEditorFocused = (): boolean => {
-  const el = document.activeElement as HTMLElement | null
+const EDITOR_SELECTOR =
+  '[contenteditable=""],[contenteditable="true"],input,textarea,.bn-container,.ProseMirror'
+
+const isEditorFocused = (target: EventTarget | null): boolean => {
+  const el = target instanceof HTMLElement ? target : (document.activeElement as HTMLElement | null)
   if (!el) return false
-  return el.isContentEditable || el.tagName === 'TEXTAREA' || el.tagName === 'INPUT'
+  if (el.isContentEditable || el.tagName === 'TEXTAREA' || el.tagName === 'INPUT') return true
+  return el.closest(EDITOR_SELECTOR) !== null
 }
 
 export const useHintActivation = (): void => {
@@ -12,6 +16,8 @@ export const useHintActivation = (): void => {
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.isComposing || e.keyCode === 229) return
+
       if (state.isActive) {
         if (e.key === 'Escape') {
           e.preventDefault()
@@ -34,8 +40,6 @@ export const useHintActivation = (): void => {
           return
         }
 
-        e.preventDefault()
-        e.stopPropagation()
         return
       }
 
@@ -47,7 +51,7 @@ export const useHintActivation = (): void => {
       }
 
       if (e.code === 'KeyF' && !e.altKey && !e.metaKey && !e.ctrlKey && !e.shiftKey) {
-        if (!isEditorFocused()) {
+        if (!isEditorFocused(e.target)) {
           e.preventDefault()
           e.stopPropagation()
           activate()
@@ -55,7 +59,7 @@ export const useHintActivation = (): void => {
         }
       }
 
-      if (e.key === 'Escape' && isEditorFocused()) {
+      if (e.key === 'Escape' && isEditorFocused(e.target)) {
         ;(document.activeElement as HTMLElement)?.blur()
       }
     }
