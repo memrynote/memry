@@ -263,7 +263,7 @@ describe('listMarkdownFiles', () => {
 
     const files = await listMarkdownFiles(tempDir.path, tempDir.path)
 
-    expect(files).toContain(path.join('notes', 'test.md'))
+    expect(files).toContain('notes/test.md')
   })
 
   it('returns empty array for non-existent directory', async () => {

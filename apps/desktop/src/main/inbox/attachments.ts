@@ -12,7 +12,7 @@ import { existsSync } from 'fs'
 import path from 'path'
 import { customAlphabet } from 'nanoid'
 import { getStatus } from '../vault'
-import { toMemryFileUrl } from '../lib/paths'
+import { normalizeRelativePath, toMemryFileUrl } from '../lib/paths'
 
 // ============================================================================
 // Constants
@@ -279,7 +279,7 @@ export async function storeInboxAttachment(
 
     // Return relative path from vault root
     const vaultPath = requireVaultPath()
-    const relativePath = path.relative(vaultPath, filePath)
+    const relativePath = normalizeRelativePath(path.relative(vaultPath, filePath))
 
     return {
       success: true,
@@ -316,7 +316,7 @@ export async function storeThumbnail(
     await writeFile(filePath, data)
 
     const vaultPath = requireVaultPath()
-    const relativePath = path.relative(vaultPath, filePath)
+    const relativePath = normalizeRelativePath(path.relative(vaultPath, filePath))
 
     return {
       success: true,
@@ -369,7 +369,7 @@ export async function listInboxAttachments(itemId: string): Promise<InboxAttachm
     if (file.name.startsWith('thumbnail.')) continue
 
     const filePath = path.join(itemDir, file.name)
-    const relativePath = path.relative(vaultPath, filePath)
+    const relativePath = normalizeRelativePath(path.relative(vaultPath, filePath))
 
     // Determine type from extension
     const ext = path.extname(file.name).toLowerCase().slice(1)
@@ -452,7 +452,7 @@ export async function moveAttachmentsToNote(itemId: string, noteId: string): Pro
     // Copy instead of rename to avoid cross-device issues
     await copyFile(sourcePath, targetPath)
 
-    const relativePath = path.relative(vaultPath, targetPath)
+    const relativePath = normalizeRelativePath(path.relative(vaultPath, targetPath))
     movedPaths.push(relativePath)
   }
 

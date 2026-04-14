@@ -13,6 +13,20 @@ Format: weekly entries grouped by feature area.
 - Add a shared `PopoverArrow` export on the shadcn popover wrapper so any popover can opt into an anchor-pointing arrow
 - Remove hand-rolled Escape and outside-click listeners from the quick-create popover now that Radix owns dismissal
 
+
+## 2026-04-14 — Vim Hint Mode (#202)
+
+### Added
+- Add Vim-style hint mode: Alt+F overlays typed labels on clickable elements for mouseless navigation, with single-char mnemonics, two-char fallback on first-letter collisions, backspace undo, and Escape to dismiss
+
+---
+
+## 2026-04-12 — Windows Inbox Folder Filing Fix
+
+### Fixed
+- Fix Windows inbox filing so creating a folder inline no longer leaves the item in Inbox after restart
+- Normalize vault-relative paths and folder picker matching so newly created folders resolve consistently across macOS and Windows
+
 ---
 
 ## 2026-04-12 — Sidebar Nav Alignment

@@ -54,3 +54,6 @@ export * from './use-sync-status'
 // Search
 export * from './use-search-shortcut'
 export * from './use-search'
+
+// Hint mode
+export * from './use-hint-activation'
