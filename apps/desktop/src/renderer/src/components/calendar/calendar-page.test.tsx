@@ -175,6 +175,7 @@ function mockRangeResponse(items: CalendarProjectionItem[]): CalendarRangeRespon
 
 describe('CalendarPage', () => {
   beforeEach(() => {
+    localStorage.clear()
     mockCreateEvent.mockReset()
     mockUpdateEvent.mockReset()
     mockListSources.mockReset()
@@ -218,6 +219,8 @@ describe('CalendarPage', () => {
     expect(screen.getByText('Planning block')).toBeInTheDocument()
     expect(screen.getByText('Customer call')).toBeInTheDocument()
 
+    await user.click(screen.getByLabelText('Filter calendars'))
+
     await user.click(screen.getByLabelText('Imported calendars'))
     expect(screen.queryByText('Customer call')).not.toBeInTheDocument()
     expect(screen.getByText('Planning block')).toBeInTheDocument()
@@ -233,9 +236,11 @@ describe('CalendarPage', () => {
     const user = userEvent.setup()
     renderWithProviders(<CalendarPage />)
 
-    await waitFor(() => expect(screen.getByRole('button', { name: 'New Event' })).toBeInTheDocument())
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: 'Create event' })).toBeInTheDocument()
+    )
 
-    await user.click(screen.getByRole('button', { name: 'New Event' }))
+    await user.click(screen.getByRole('button', { name: 'Create event' }))
     expect(screen.getByRole('heading', { name: 'New Event' })).toBeInTheDocument()
 
     await user.click(screen.getAllByRole('button', { name: 'Close' })[0])
@@ -245,21 +250,22 @@ describe('CalendarPage', () => {
   })
 
   it('renders projected task, reminder, and snooze items with distinct styling markers', async () => {
+    const user = userEvent.setup()
     renderWithProviders(<CalendarPage />)
 
-    await waitFor(() => expect(screen.getByText('Due draft')).toBeInTheDocument())
+    await user.click(screen.getByRole('button', { name: 'Day' }))
 
-    expect(screen.getByText('Due draft').closest('[data-visual-type]')).toHaveAttribute(
+    await waitFor(() => expect(screen.getAllByText('Due draft').length).toBeGreaterThan(0))
+
+    expect(screen.getAllByText('Due draft')[0].closest('[data-visual-type]')).toHaveAttribute(
       'data-visual-type',
       'task'
     )
-    expect(screen.getByText('Medication reminder').closest('[data-visual-type]')).toHaveAttribute(
-      'data-visual-type',
-      'reminder'
-    )
-    expect(screen.getByText('Review investor email').closest('[data-visual-type]')).toHaveAttribute(
-      'data-visual-type',
-      'snooze'
-    )
+    expect(
+      screen.getAllByText('Medication reminder')[0].closest('[data-visual-type]')
+    ).toHaveAttribute('data-visual-type', 'reminder')
+    expect(
+      screen.getAllByText('Review investor email')[0].closest('[data-visual-type]')
+    ).toHaveAttribute('data-visual-type', 'snooze')
   })
 })
