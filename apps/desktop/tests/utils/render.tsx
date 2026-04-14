@@ -7,6 +7,7 @@ import { ReactElement, ReactNode } from 'react'
 import { render, RenderOptions, RenderResult } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { vi } from 'vitest'
+import { DayPanelProvider } from '@/contexts/day-panel-context'
 
 // Re-export everything from testing-library
 export * from '@testing-library/react'
@@ -55,7 +56,11 @@ interface AllProvidersProps {
 function AllProviders({ children, queryClient }: AllProvidersProps): ReactElement {
   const client = queryClient || createTestQueryClient()
 
-  return <QueryClientProvider client={client}>{children}</QueryClientProvider>
+  return (
+    <QueryClientProvider client={client}>
+      <DayPanelProvider>{children}</DayPanelProvider>
+    </QueryClientProvider>
+  )
 }
 
 // ============================================================================

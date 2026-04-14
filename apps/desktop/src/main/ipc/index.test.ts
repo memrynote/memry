@@ -23,6 +23,8 @@ const hoisted = vi.hoisted(() => ({
   unregisterInboxHandlers: vi.fn(),
   registerReminderHandlers: vi.fn(),
   unregisterReminderHandlers: vi.fn(),
+  registerCalendarHandlers: vi.fn(),
+  unregisterCalendarHandlers: vi.fn(),
   registerFolderViewHandlers: vi.fn(),
   unregisterFolderViewHandlers: vi.fn(),
   registerPropertiesHandlers: vi.fn(),
@@ -85,6 +87,10 @@ vi.mock('./inbox-handlers', () => ({
 vi.mock('./reminder-handlers', () => ({
   registerReminderHandlers: hoisted.registerReminderHandlers,
   unregisterReminderHandlers: hoisted.unregisterReminderHandlers
+}))
+vi.mock('./calendar-handlers', () => ({
+  registerCalendarHandlers: hoisted.registerCalendarHandlers,
+  unregisterCalendarHandlers: hoisted.unregisterCalendarHandlers
 }))
 vi.mock('./folder-view-handlers', () => ({
   registerFolderViewHandlers: hoisted.registerFolderViewHandlers,
