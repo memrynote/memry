@@ -1,4 +1,12 @@
-import { createContext, useContext, useState, useCallback, useRef, type ReactNode } from 'react'
+import {
+  createContext,
+  useContext,
+  useState,
+  useCallback,
+  useRef,
+  useEffect,
+  type ReactNode
+} from 'react'
 import type { HintModeState, HintModeContextType } from './types'
 import { scanClickableElements } from '@/lib/dom-scanner'
 import { assignLabels } from '@/lib/label-assigner'
@@ -46,8 +54,9 @@ export const HintModeProvider = ({ children }: { children: ReactNode }): React.J
       if (matching.length === 0) return
 
       if (matching.length === 1 && matching[0].label === next) {
-        matching[0].element.click()
-        matching[0].element.focus()
+        const target = matching[0].element
+        target.click()
+        if (document.contains(target)) target.focus()
         deactivate()
         return
       }
@@ -62,6 +71,12 @@ export const HintModeProvider = ({ children }: { children: ReactNode }): React.J
       ...prev,
       typedChars: prev.typedChars.slice(0, -1)
     }))
+  }, [])
+
+  useEffect(() => {
+    return () => {
+      hintModeActiveRef.current = false
+    }
   }, [])
 
   const value: HintModeContextType = { state, activate, deactivate, typeChar, backspace }

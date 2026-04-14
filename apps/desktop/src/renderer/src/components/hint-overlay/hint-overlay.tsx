@@ -11,6 +11,7 @@ export const HintOverlay = (): React.JSX.Element | null => {
   return createPortal(
     <div
       id={HINT_OVERLAY_ID}
+      aria-hidden="true"
       style={{
         position: 'fixed',
         inset: 0,
