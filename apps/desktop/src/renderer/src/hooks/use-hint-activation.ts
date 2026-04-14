@@ -1,15 +1,6 @@
 import { useEffect } from 'react'
 import { useHintModeContext } from '@/contexts/hint-mode'
-
-const EDITOR_SELECTOR =
-  '[contenteditable=""],[contenteditable="true"],input,textarea,.bn-container,.ProseMirror'
-
-const isEditorFocused = (target: EventTarget | null): boolean => {
-  const el = target instanceof HTMLElement ? target : (document.activeElement as HTMLElement | null)
-  if (!el) return false
-  if (el.isContentEditable || el.tagName === 'TEXTAREA' || el.tagName === 'INPUT') return true
-  return el.closest(EDITOR_SELECTOR) !== null
-}
+import { isInputFocused } from '@/hooks/use-keyboard-shortcuts'
 
 export const useHintActivation = (): void => {
   const { state, activate, deactivate, typeChar, backspace } = useHintModeContext()
@@ -51,7 +42,7 @@ export const useHintActivation = (): void => {
       }
 
       if (e.code === 'KeyF' && !e.altKey && !e.metaKey && !e.ctrlKey && !e.shiftKey) {
-        if (!isEditorFocused(e.target)) {
+        if (!isInputFocused()) {
           e.preventDefault()
           e.stopPropagation()
           activate()
@@ -59,7 +50,7 @@ export const useHintActivation = (): void => {
         }
       }
 
-      if (e.key === 'Escape' && isEditorFocused(e.target)) {
+      if (e.key === 'Escape' && isInputFocused()) {
         ;(document.activeElement as HTMLElement)?.blur()
       }
     }
