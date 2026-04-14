@@ -13,8 +13,8 @@ export const HintBadge = ({ hint, typedChars }: HintBadgeProps): React.JSX.Eleme
     <span
       style={{
         position: 'fixed',
-        top: hint.rect.top - 6,
-        left: hint.rect.left - 6,
+        top: Math.max(0, hint.rect.top - 6),
+        left: Math.max(0, hint.rect.left - 6),
         zIndex: 2147483647,
         background: '#f59e0b',
         color: '#000',
