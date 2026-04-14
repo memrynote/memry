@@ -39,14 +39,14 @@ export const useHintActivation = (): void => {
         return
       }
 
-      if (e.key === 'f' && e.altKey && !e.metaKey && !e.ctrlKey) {
+      if (e.code === 'KeyF' && e.altKey && !e.metaKey && !e.ctrlKey) {
         e.preventDefault()
         e.stopPropagation()
         activate()
         return
       }
 
-      if (e.key === 'f' && !e.altKey && !e.metaKey && !e.ctrlKey && !e.shiftKey) {
+      if (e.code === 'KeyF' && !e.altKey && !e.metaKey && !e.ctrlKey && !e.shiftKey) {
         if (!isEditorFocused()) {
           e.preventDefault()
           e.stopPropagation()
