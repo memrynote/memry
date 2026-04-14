@@ -5,7 +5,7 @@ Format: weekly entries grouped by feature area.
 
 ---
 
-## 2026-04-14 — Vim Hint Mode (#TBD)
+## 2026-04-14 — Vim Hint Mode (#202)
 
 ### Added
 - Add Vim-style hint mode: Alt+F overlays typed labels on clickable elements for mouseless navigation, with single-char mnemonics, two-char fallback on first-letter collisions, backspace undo, and Escape to dismiss
