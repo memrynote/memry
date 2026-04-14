@@ -1,5 +1,5 @@
 import { type FC, useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { AlertTriangle, ArrowUpRight, Loader2, X } from 'lucide-react'
+import { AlertTriangle, ArrowUpRight, Loader2, X } from '@/lib/icons'
 import { cn } from '@/lib/utils'
 import { useTaskBlockData } from './use-task-block-data'
 import { serviceTaskToDisplayTask, PRIORITY_REVERSE } from './task-block-utils'

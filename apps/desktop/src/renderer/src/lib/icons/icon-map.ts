@@ -10,6 +10,7 @@ import {
   ArrowRight01Icon,
   ArrowUp01Icon,
   ArrowUpDownIcon,
+  ArrowUpRight01Icon,
   Book01Icon,
   BookOpen01Icon,
   Bookmark01Icon,
@@ -366,6 +367,7 @@ export const ArrowUp = createIcon(ArrowUp01Icon)
 export const ArrowDown = createIcon(ArrowDown01Icon)
 export const ArrowLeft = createIcon(ArrowLeft01Icon)
 export const ArrowRight = createIcon(ArrowRight01Icon)
+export const ArrowUpRight = createIcon(ArrowUpRight01Icon)
 export const ArrowUpAZ = createIcon(ArrowUpDownIcon)
 export const ArrowDownAZ = createIcon(ArrowDownAZIcon)
 export const ArrowDownZA = createIcon(ArrowUpZAIcon)
