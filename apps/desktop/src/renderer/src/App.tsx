@@ -34,8 +34,11 @@ import {
   useNewNoteShortcut,
   useUndoKeyboardShortcut,
   useReminderNotifications,
-  useSearchShortcut
+  useSearchShortcut,
+  useHintActivation
 } from '@/hooks'
+import { HintModeProvider } from '@/contexts/hint-mode'
+import { HintOverlay, HintIndicator } from '@/components/hint-overlay'
 import { CommandPalette } from '@/components/search/command-palette'
 import { SettingsModalProvider, useSettingsModal } from '@/contexts/settings-modal-context'
 import { SettingsModal } from '@/components/settings-modal'
@@ -141,6 +144,7 @@ const AppContent = (): React.JSX.Element => {
   useFolderViewEvents() // Global cache invalidation for folder-view tabs
   const toggleSearch = useCallback(() => setSearchOpen((prev) => !prev), [])
   useSearchShortcut(toggleSearch)
+  useHintActivation()
 
   useEffect(() => {
     const openSearch = () => setSearchOpen(true)
@@ -188,6 +192,10 @@ const AppContent = (): React.JSX.Element => {
 
       {/* Chord Indicator */}
       <ChordIndicator isActive={isChordActive} />
+
+      {/* Hint Mode Overlay + Indicator */}
+      <HintOverlay />
+      <HintIndicator />
 
       {/* Keyboard Shortcuts Dialog */}
       <KeyboardShortcutsDialog
@@ -354,21 +362,23 @@ function App(): React.JSX.Element {
       >
         <DayPanelProvider>
           <AIInlineProvider>
-            <TabProvider>
-              <TabPersistenceManager>
-                <SettingsModalProvider>
-                  <SelectedFolderProvider>
-                    <SidebarDrillDownProvider>
-                      <AppSidebar currentPage={currentPage} viewCounts={viewCounts} />
-                      <SidebarInset className="flex flex-col overflow-hidden">
-                        <AppContent />
-                      </SidebarInset>
-                    </SidebarDrillDownProvider>
-                    <TaskDragOverlay projects={projectsWithCounts} />
-                  </SelectedFolderProvider>
-                </SettingsModalProvider>
-              </TabPersistenceManager>
-            </TabProvider>
+            <HintModeProvider>
+              <TabProvider>
+                <TabPersistenceManager>
+                  <SettingsModalProvider>
+                    <SelectedFolderProvider>
+                      <SidebarDrillDownProvider>
+                        <AppSidebar currentPage={currentPage} viewCounts={viewCounts} />
+                        <SidebarInset className="flex flex-col overflow-hidden">
+                          <AppContent />
+                        </SidebarInset>
+                      </SidebarDrillDownProvider>
+                      <TaskDragOverlay projects={projectsWithCounts} />
+                    </SelectedFolderProvider>
+                  </SettingsModalProvider>
+                </TabPersistenceManager>
+              </TabProvider>
+            </HintModeProvider>
           </AIInlineProvider>
         </DayPanelProvider>
       </TasksProvider>
