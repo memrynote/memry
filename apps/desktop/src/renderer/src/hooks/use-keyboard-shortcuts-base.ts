@@ -4,6 +4,7 @@
  */
 
 import { useEffect, useCallback, useMemo } from 'react'
+import { hintModeActiveRef } from '@/contexts/hint-mode'
 
 // =============================================================================
 // TYPES
@@ -71,6 +72,8 @@ export const useKeyboardShortcuts = (shortcuts: KeyboardShortcut[]): void => {
 
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
+      if (hintModeActiveRef.current) return
+
       const target = e.target as HTMLElement
 
       // Check if typing in input/textarea
