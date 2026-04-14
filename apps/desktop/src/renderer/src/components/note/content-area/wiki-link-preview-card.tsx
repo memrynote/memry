@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom'
 import type { WikiLinkPreview } from '@/services/notes-service'
 import { getTagColors, withAlpha } from '../tags-row/tag-colors'
 import { format } from 'date-fns'
-import { FileText } from 'lucide-react'
+import { FileText } from '@/lib/icons'
 
 interface WikiLinkPreviewCardProps {
   preview: WikiLinkPreview

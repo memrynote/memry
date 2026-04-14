@@ -43,6 +43,7 @@ import {
   initializeJournalCrdt
 } from '../journal/runtime-effects'
 import { syncNoteCreate, syncNoteDelete, syncNoteUpdate } from '../notes/runtime-effects'
+import { normalizeRelativePath } from '../lib/paths'
 
 const logger = createLogger('Watcher')
 
@@ -315,7 +316,7 @@ export class VaultWatcher {
     if (isWritebackIgnored(absolutePath)) return
 
     try {
-      const relativePath = path.relative(this.vaultPath, absolutePath)
+      const relativePath = normalizeRelativePath(path.relative(this.vaultPath, absolutePath))
       const fileType = getFileType(getExtension(absolutePath))
 
       if (!fileType) {
@@ -560,7 +561,7 @@ export class VaultWatcher {
     if (isWritebackIgnored(absolutePath)) return
 
     try {
-      const relativePath = path.relative(this.vaultPath, absolutePath)
+      const relativePath = normalizeRelativePath(path.relative(this.vaultPath, absolutePath))
       const fileType = getFileType(getExtension(absolutePath))
 
       if (!fileType) {
@@ -717,7 +718,7 @@ export class VaultWatcher {
     if (!this.vaultPath) return
 
     try {
-      const relativePath = path.relative(this.vaultPath, absolutePath)
+      const relativePath = normalizeRelativePath(path.relative(this.vaultPath, absolutePath))
 
       const db = getIndexDatabase()
 

@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest'
 import path from 'path'
 import {
   sanitizePath,
+  normalizeRelativePath,
   getRelativePath,
   isPathInVault,
   safeFileName,
@@ -21,10 +22,18 @@ describe('paths utils', () => {
     expect(sanitized).toBe(path.join('note.md'))
   })
 
+  it('normalizeRelativePath converts backslashes to forward slashes', () => {
+    expect(normalizeRelativePath('notes\\windows\\note.md')).toBe('notes/windows/note.md')
+  })
+
+  it('normalizeRelativePath leaves forward-slash paths unchanged', () => {
+    expect(normalizeRelativePath('notes/projects/note.md')).toBe('notes/projects/note.md')
+  })
+
   it('getRelativePath returns relative path for files inside the vault', () => {
     const vaultRoot = path.join(process.cwd(), 'vault-root')
     const inside = path.join(vaultRoot, 'notes', 'note.md')
-    expect(getRelativePath(vaultRoot, inside)).toBe(path.join('notes', 'note.md'))
+    expect(getRelativePath(vaultRoot, inside)).toBe('notes/note.md')
   })
 
   it('getRelativePath returns null for files outside the vault', () => {

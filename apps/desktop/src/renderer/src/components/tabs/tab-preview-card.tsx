@@ -2,7 +2,7 @@ import { memo } from 'react'
 import type { WikiLinkPreview } from '@/services/notes-service'
 import { getTagColors, withAlpha } from '../note/tags-row/tag-colors'
 import { format } from 'date-fns'
-import { FileText } from 'lucide-react'
+import { FileText } from '@/lib/icons'
 
 const MAX_VISIBLE_TAGS = 3
 
