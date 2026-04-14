@@ -5,6 +5,16 @@ Format: weekly entries grouped by feature area.
 
 ---
 
+## 2026-04-14 — Calendar Marquee Live Preview
+
+### Changed
+- Show a rich "New Event" preview with a live `HH:MM–HH:MM` range while dragging on the day and week grids instead of the previous empty tinted box
+- Migrate `CalendarQuickCreatePopover` to the shadcn/Radix `Popover` with a virtual anchor at the selection rect, automatic side/align collision handling, and a directional arrow pointing back at the selection
+- Add a shared `PopoverArrow` export on the shadcn popover wrapper so any popover can opt into an anchor-pointing arrow
+- Remove hand-rolled Escape and outside-click listeners from the quick-create popover now that Radix owns dismissal
+
+---
+
 ## 2026-04-12 — Sidebar Nav Alignment
 
 ### Changed

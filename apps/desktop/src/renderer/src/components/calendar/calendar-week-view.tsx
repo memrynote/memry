@@ -148,12 +148,24 @@ export function CalendarWeekView({
                 )}
 
                 {isDragging && selection && selection.columnIndex === i && (
-                  <MarqueeSelectionOverlay top={selection.top} height={selection.height} />
+                  <MarqueeSelectionOverlay
+                    top={selection.top}
+                    height={selection.height}
+                    startAt={selection.startAt}
+                    endAt={selection.endAt}
+                    clockFormat={clockFormat}
+                  />
                 )}
 
                 {selection && !isDragging && selection.columnIndex === i && (
                   <>
-                    <MarqueeSelectionOverlay top={selection.top} height={selection.height} />
+                    <MarqueeSelectionOverlay
+                      top={selection.top}
+                      height={selection.height}
+                      startAt={selection.startAt}
+                      endAt={selection.endAt}
+                      clockFormat={clockFormat}
+                    />
                     <CalendarQuickCreatePopover
                       anchorRect={selection.anchorRect}
                       startAt={selection.startAt}

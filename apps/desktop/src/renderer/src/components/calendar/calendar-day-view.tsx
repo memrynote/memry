@@ -106,12 +106,24 @@ export function CalendarDayView({
             )}
 
             {isDragging && selection && (
-              <MarqueeSelectionOverlay top={selection.top} height={selection.height} />
+              <MarqueeSelectionOverlay
+                top={selection.top}
+                height={selection.height}
+                startAt={selection.startAt}
+                endAt={selection.endAt}
+                clockFormat={clockFormat}
+              />
             )}
 
             {selection && !isDragging && (
               <>
-                <MarqueeSelectionOverlay top={selection.top} height={selection.height} />
+                <MarqueeSelectionOverlay
+                  top={selection.top}
+                  height={selection.height}
+                  startAt={selection.startAt}
+                  endAt={selection.endAt}
+                  clockFormat={clockFormat}
+                />
                 <CalendarQuickCreatePopover
                   anchorRect={selection.anchorRect}
                   startAt={selection.startAt}
