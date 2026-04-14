@@ -103,7 +103,7 @@ export const assignLabels = (elements: HTMLElement[]): HintTarget[] => {
     }
   }
 
-  const allNeedSequential = [...noLetterIndices, ...needsSequential].filter((i) => labels[i] === '')
+  const allNeedSequential = [...noLetterIndices, ...needsSequential]
   let seqCounter = 0
   for (const idx of allNeedSequential) {
     const code = generateSequentialCode(seqCounter, usedLabels, singleCharLabels)
@@ -113,12 +113,15 @@ export const assignLabels = (elements: HTMLElement[]): HintTarget[] => {
     seqCounter++
   }
 
-  return elements
-    .map((element, i) => ({
-      element,
+  const targets: HintTarget[] = []
+  for (let i = 0; i < elements.length; i++) {
+    if (labels[i] === '') continue
+    targets.push({
+      element: elements[i],
       label: labels[i],
-      rect: element.getBoundingClientRect(),
+      rect: elements[i].getBoundingClientRect(),
       text: texts[i]
-    }))
-    .filter((h) => h.label !== '')
+    })
+  }
+  return targets
 }
