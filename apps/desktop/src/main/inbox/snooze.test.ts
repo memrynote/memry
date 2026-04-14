@@ -28,6 +28,11 @@ import {
   type TestDatabaseResult
 } from '../../../tests/utils/test-db'
 
+const { mockSend, syncInboxUpdate } = vi.hoisted(() => ({
+  mockSend: vi.fn(),
+  syncInboxUpdate: vi.fn()
+}))
+
 // Mock the database module
 vi.mock('../database', () => ({
   getDatabase: vi.fn(),
@@ -43,9 +48,6 @@ vi.mock('../vault', () => ({
     error: null
   }))
 }))
-
-// Create a mock send function that persists across calls
-const mockSend = vi.fn()
 
 // Mock BrowserWindow to capture events
 vi.mock('electron', () => ({
@@ -65,6 +67,10 @@ vi.mock('./attachments', () => ({
   resolveAttachmentUrl: vi.fn((path) => (path ? `memry-file://${path}` : null))
 }))
 
+vi.mock('./runtime-effects', () => ({
+  syncInboxUpdate
+}))
+
 import { getDatabase, requireDatabase } from '../database'
 
 describe('Inbox Snooze Service', () => {
@@ -75,6 +81,7 @@ describe('Inbox Snooze Service', () => {
     vi.mocked(getDatabase).mockReturnValue(testDb.db)
     vi.mocked(requireDatabase).mockReturnValue(testDb.db)
     mockSend.mockClear()
+    syncInboxUpdate.mockClear()
     vi.useFakeTimers()
   })
 
@@ -106,6 +113,7 @@ describe('Inbox Snooze Service', () => {
       expect(result.success).toBe(true)
       expect(result.item).toBeDefined()
       expect(result.item?.snoozedUntil).toBeDefined()
+      expect(syncInboxUpdate).toHaveBeenCalledWith(itemId)
     })
 
     it('should store snooze reason when provided', () => {
@@ -232,6 +240,7 @@ describe('Inbox Snooze Service', () => {
       expect(result.success).toBe(true)
       expect(result.item?.snoozedUntil).toBeNull()
       expect(result.item?.snoozeReason).toBeNull()
+      expect(syncInboxUpdate).toHaveBeenCalledWith(itemId)
     })
 
     it('should fail when item does not exist', () => {
@@ -444,6 +453,8 @@ describe('Inbox Snooze Service', () => {
       // Items should be unsnoozed
       const snoozed = getSnoozedItems()
       expect(snoozed).toHaveLength(0)
+      expect(syncInboxUpdate).toHaveBeenCalledWith('due-1')
+      expect(syncInboxUpdate).toHaveBeenCalledWith('due-2')
     })
 
     it('should emit SNOOZE_DUE event', () => {

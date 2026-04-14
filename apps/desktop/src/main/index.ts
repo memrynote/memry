@@ -26,6 +26,10 @@ import { getCurrentVaultPath } from './store'
 import { startSnoozeScheduler, stopSnoozeScheduler, checkDueItemsOnStartup } from './inbox/snooze'
 import { stopVoiceModel } from './inbox/voice-model'
 import { startReminderScheduler, stopReminderScheduler } from './lib/reminders'
+import {
+  startGoogleCalendarSyncRunner,
+  stopGoogleCalendarSyncRunner
+} from './calendar/google/sync-service'
 import { log, createLogger, disableConsoleTransport } from './lib/logger'
 import { registerTestHooks } from './test-hooks'
 import {
@@ -658,6 +662,11 @@ void app.whenReady().then(async () => {
       } catch (error) {
         mainLog.warn('reminder scheduler failed to start:', error)
       }
+      try {
+        startGoogleCalendarSyncRunner()
+      } catch (error) {
+        mainLog.warn('Google Calendar sync runner failed to start:', error)
+      }
     })
     .catch((err) => mainLog.error('autoOpenLastVault failed:', err))
 
@@ -887,6 +896,9 @@ app.on('before-quit', (event) => {
 
       shutdownLog.info('stopping reminder scheduler...')
       stopReminderScheduler()
+
+      shutdownLog.info('stopping Google Calendar sync runner...')
+      stopGoogleCalendarSyncRunner()
     })
     .then(() => {
       shutdownLog.info('stopping voice transcription utility...')

@@ -203,6 +203,25 @@ describe('inbox-utils', () => {
       const result = formatTimestamp(timestamp, 'OLDER')
       expect(result).toBe('Jun 15')
     })
+
+    it('formats time in 24h for TODAY', () => {
+      const timestamp = new Date(2026, 0, 1, 14, 30)
+      const result = formatTimestamp(timestamp, 'TODAY', '24h')
+      expect(result).toMatch(/14:30/)
+    })
+
+    it('formats time in 24h for YESTERDAY', () => {
+      const timestamp = new Date(2026, 0, 1, 9, 5)
+      const result = formatTimestamp(timestamp, 'YESTERDAY', '24h')
+      expect(result).toMatch(/9:05|09:05/)
+    })
+
+    it('OLDER ignores clockFormat', () => {
+      const timestamp = new Date(2026, 0, 1, 14, 30)
+      const result12 = formatTimestamp(timestamp, 'OLDER', '12h')
+      const result24 = formatTimestamp(timestamp, 'OLDER', '24h')
+      expect(result12).toBe(result24)
+    })
   })
 
   describe('formatDuration', () => {

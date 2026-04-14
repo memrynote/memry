@@ -1,4 +1,6 @@
 import { startOfDay, addDays, isSameDay, isBefore, differenceInDays } from './task-date-utils'
+import { formatTimeString } from '@/lib/time-format'
+import type { ClockFormat } from '@/lib/time-format'
 
 // ============================================================================
 // DATE FORMATTING
@@ -42,11 +44,8 @@ export interface FormattedDueDate {
   status: DueDateStatus
 }
 
-export const formatTime = (time: string): string => {
-  const [hours, minutes] = time.split(':').map(Number)
-  const period = hours >= 12 ? 'PM' : 'AM'
-  const displayHours = hours % 12 || 12
-  return `${displayHours}:${minutes.toString().padStart(2, '0')} ${period}`
+export const formatTime = (time: string, clockFormat: ClockFormat = '12h'): string => {
+  return formatTimeString(time, clockFormat)
 }
 
 export const formatDateShort = (date: Date): string => {

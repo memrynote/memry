@@ -118,7 +118,85 @@ export const FolderConfigSyncPayloadSchema = z.object({
   modifiedAt: z.string().optional()
 })
 
+export const CalendarEventSyncPayloadSchema = z.object({
+  title: z.string().optional(),
+  description: z.string().nullable().optional(),
+  location: z.string().nullable().optional(),
+  startAt: z.string().optional(),
+  endAt: z.string().nullable().optional(),
+  timezone: z.string().optional(),
+  isAllDay: z.boolean().optional(),
+  recurrenceRule: z.record(z.string(), z.unknown()).nullable().optional(),
+  recurrenceExceptions: z.array(z.record(z.string(), z.unknown())).nullable().optional(),
+  archivedAt: z.string().nullable().optional(),
+  clock: VectorClockSchema.optional(),
+  createdAt: z.string().optional(),
+  modifiedAt: z.string().optional()
+})
+
+export const CalendarSourceSyncPayloadSchema = z.object({
+  provider: z.string().optional(),
+  kind: z.enum(['account', 'calendar']).optional(),
+  accountId: z.string().nullable().optional(),
+  remoteId: z.string().optional(),
+  title: z.string().optional(),
+  timezone: z.string().nullable().optional(),
+  color: z.string().nullable().optional(),
+  isPrimary: z.boolean().optional(),
+  isSelected: z.boolean().optional(),
+  isMemryManaged: z.boolean().optional(),
+  syncCursor: z.string().nullable().optional(),
+  syncStatus: z.enum(['idle', 'ok', 'error', 'pending']).optional(),
+  lastSyncedAt: z.string().nullable().optional(),
+  metadata: z.record(z.string(), z.unknown()).nullable().optional(),
+  archivedAt: z.string().nullable().optional(),
+  clock: VectorClockSchema.optional(),
+  createdAt: z.string().optional(),
+  modifiedAt: z.string().optional()
+})
+
+export const CalendarBindingSyncPayloadSchema = z.object({
+  sourceType: z.enum(['event', 'task', 'reminder', 'inbox_snooze']).optional(),
+  sourceId: z.string().optional(),
+  provider: z.string().optional(),
+  remoteCalendarId: z.string().optional(),
+  remoteEventId: z.string().optional(),
+  ownershipMode: z.enum(['memry_managed', 'provider_managed']).optional(),
+  writebackMode: z.enum(['schedule_only', 'time_and_text', 'broad']).optional(),
+  remoteVersion: z.string().nullable().optional(),
+  lastLocalSnapshot: z.record(z.string(), z.unknown()).nullable().optional(),
+  archivedAt: z.string().nullable().optional(),
+  clock: VectorClockSchema.optional(),
+  createdAt: z.string().optional(),
+  modifiedAt: z.string().optional()
+})
+
+export const CalendarExternalEventSyncPayloadSchema = z.object({
+  sourceId: z.string().optional(),
+  remoteEventId: z.string().optional(),
+  remoteEtag: z.string().nullable().optional(),
+  remoteUpdatedAt: z.string().nullable().optional(),
+  title: z.string().optional(),
+  description: z.string().nullable().optional(),
+  location: z.string().nullable().optional(),
+  startAt: z.string().optional(),
+  endAt: z.string().nullable().optional(),
+  timezone: z.string().nullable().optional(),
+  isAllDay: z.boolean().optional(),
+  status: z.enum(['confirmed', 'tentative', 'cancelled']).optional(),
+  recurrenceRule: z.record(z.string(), z.unknown()).nullable().optional(),
+  rawPayload: z.record(z.string(), z.unknown()).nullable().optional(),
+  archivedAt: z.string().nullable().optional(),
+  clock: VectorClockSchema.optional(),
+  createdAt: z.string().optional(),
+  modifiedAt: z.string().optional()
+})
+
 export type FolderConfigSyncPayload = z.infer<typeof FolderConfigSyncPayloadSchema>
+export type CalendarEventSyncPayload = z.infer<typeof CalendarEventSyncPayloadSchema>
+export type CalendarSourceSyncPayload = z.infer<typeof CalendarSourceSyncPayloadSchema>
+export type CalendarBindingSyncPayload = z.infer<typeof CalendarBindingSyncPayloadSchema>
+export type CalendarExternalEventSyncPayload = z.infer<typeof CalendarExternalEventSyncPayloadSchema>
 
 export type TaskSyncPayload = z.infer<typeof TaskSyncPayloadSchema>
 export type InboxSyncPayload = z.infer<typeof InboxSyncPayloadSchema>

@@ -1,3 +1,5 @@
+import type { CalendarClientAPI, CalendarSubscriptions } from './calendar.ts'
+import { calendarRpc } from './calendar.ts'
 import type { InboxClientAPI, InboxSubscriptions } from './inbox.ts'
 import { inboxRpc } from './inbox.ts'
 import type { NotesClientAPI, NotesSubscriptions } from './notes.ts'
@@ -14,21 +16,25 @@ export { notesRpc } from './notes.ts'
 export { tasksRpc } from './tasks.ts'
 export { inboxRpc } from './inbox.ts'
 export { settingsRpc } from './settings.ts'
+export { calendarRpc } from './calendar.ts'
 
 export type { NotesClientAPI, NotesSubscriptions } from './notes.ts'
 export type { TasksClientAPI, TasksSubscriptions } from './tasks.ts'
 export type { InboxClientAPI, InboxSubscriptions } from './inbox.ts'
 export type { SettingsClientAPI, SettingsSubscriptions } from './settings.ts'
+export type { CalendarClientAPI, CalendarSubscriptions } from './calendar.ts'
 
-export const rpcDomains = [notesRpc, tasksRpc, inboxRpc, settingsRpc] as const
+export const rpcDomains = [notesRpc, tasksRpc, inboxRpc, settingsRpc, calendarRpc] as const
 
 export interface GeneratedRpcApi
   extends NotesSubscriptions,
     TasksSubscriptions,
     InboxSubscriptions,
-    SettingsSubscriptions {
+    SettingsSubscriptions,
+    CalendarSubscriptions {
   notes: NotesClientAPI
   tasks: TasksClientAPI
   inbox: InboxClientAPI
   settings: SettingsClientAPI
+  calendar: CalendarClientAPI
 }

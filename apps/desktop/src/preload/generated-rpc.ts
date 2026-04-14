@@ -219,6 +219,20 @@ export function createGeneratedRpcApi({
       setGraphSettings: ((settings) => invoke("settings:setGraphSettings", settings)) as GeneratedRpcApi["settings"]["setGraphSettings"],
       registerGlobalCapture: (() => invoke("settings:registerGlobalCapture")) as GeneratedRpcApi["settings"]["registerGlobalCapture"],
     },
+    calendar: {
+      createEvent: ((input) => invoke("calendar:create-event", input)) as GeneratedRpcApi["calendar"]["createEvent"],
+      getEvent: ((id) => invoke("calendar:get-event", id)) as GeneratedRpcApi["calendar"]["getEvent"],
+      updateEvent: ((input) => invoke("calendar:update-event", input)) as GeneratedRpcApi["calendar"]["updateEvent"],
+      deleteEvent: ((id) => invoke("calendar:delete-event", id)) as GeneratedRpcApi["calendar"]["deleteEvent"],
+      listEvents: ((options) => invoke("calendar:list-events", options ?? {})) as GeneratedRpcApi["calendar"]["listEvents"],
+      getRange: ((input) => invoke("calendar:get-range", input)) as GeneratedRpcApi["calendar"]["getRange"],
+      listSources: ((options) => invoke("calendar:list-sources", options ?? {})) as GeneratedRpcApi["calendar"]["listSources"],
+      updateSourceSelection: ((input) => invoke("calendar:update-source-selection", input)) as GeneratedRpcApi["calendar"]["updateSourceSelection"],
+      getProviderStatus: ((input) => invoke("calendar:get-provider-status", input)) as GeneratedRpcApi["calendar"]["getProviderStatus"],
+      connectProvider: ((input) => invoke("calendar:connect-provider", input)) as GeneratedRpcApi["calendar"]["connectProvider"],
+      disconnectProvider: ((input) => invoke("calendar:disconnect-provider", input)) as GeneratedRpcApi["calendar"]["disconnectProvider"],
+      refreshProvider: ((input) => invoke("calendar:refresh-provider", input)) as GeneratedRpcApi["calendar"]["refreshProvider"],
+    },
     onNoteCreated: ((callback) => subscribe("notes:created", callback)) as GeneratedRpcApi["onNoteCreated"],
     onNoteUpdated: ((callback) => subscribe("notes:updated", callback)) as GeneratedRpcApi["onNoteUpdated"],
     onNoteDeleted: ((callback) => subscribe("notes:deleted", callback)) as GeneratedRpcApi["onNoteDeleted"],
@@ -248,5 +262,6 @@ export function createGeneratedRpcApi({
     onEmbeddingProgress: ((callback) => subscribe("settings:embeddingProgress", callback)) as GeneratedRpcApi["onEmbeddingProgress"],
     onVoiceModelProgress: ((callback) => subscribe("settings:voiceModelProgress", callback)) as GeneratedRpcApi["onVoiceModelProgress"],
     onSettingsOpenRequested: ((callback) => subscribe("settings:openSection", callback)) as GeneratedRpcApi["onSettingsOpenRequested"],
+    onCalendarChanged: ((callback) => subscribe("calendar:changed", callback)) as GeneratedRpcApi["onCalendarChanged"],
   }
 }

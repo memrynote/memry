@@ -1,4 +1,6 @@
 import { publishProjectionEvent } from '../projections'
+import { emitCalendarProjectionChanged } from '../calendar/change-events'
+import { scheduleGoogleCalendarSourceSync } from '../calendar/google/local-sync-effects'
 import {
   enqueueLocalSyncCreate,
   enqueueLocalSyncDelete,
@@ -12,6 +14,8 @@ export function syncTaskCreate(taskId: string): void {
     type: 'task.upserted',
     taskId
   })
+  emitCalendarProjectionChanged(`task:${taskId}`)
+  scheduleGoogleCalendarSourceSync({ sourceType: 'task', sourceId: taskId })
 }
 
 export function syncTaskUpdate(taskId: string, changedFields: string[]): void {
@@ -21,6 +25,8 @@ export function syncTaskUpdate(taskId: string, changedFields: string[]): void {
     type: 'task.upserted',
     taskId
   })
+  emitCalendarProjectionChanged(`task:${taskId}`)
+  scheduleGoogleCalendarSourceSync({ sourceType: 'task', sourceId: taskId })
 }
 
 export function syncTaskDelete(taskId: string, snapshot?: unknown): void {
@@ -29,6 +35,8 @@ export function syncTaskDelete(taskId: string, snapshot?: unknown): void {
   }
 
   publishProjectionEvent({ type: 'task.deleted', taskId })
+  emitCalendarProjectionChanged(`task:${taskId}`)
+  scheduleGoogleCalendarSourceSync({ sourceType: 'task', sourceId: taskId })
 }
 
 export function syncProjectCreate(projectId: string): void {

@@ -19,6 +19,19 @@ import {
 } from '@tests/utils/test-db'
 import { MockBrowserWindow } from '@tests/utils/mock-electron'
 
+const { emitCalendarProjectionChanged, scheduleGoogleCalendarSourceSync } = vi.hoisted(() => ({
+  emitCalendarProjectionChanged: vi.fn(),
+  scheduleGoogleCalendarSourceSync: vi.fn()
+}))
+
+vi.mock('../calendar/change-events', () => ({
+  emitCalendarProjectionChanged
+}))
+
+vi.mock('../calendar/google/local-sync-effects', () => ({
+  scheduleGoogleCalendarSourceSync
+}))
+
 const notificationInstances: MockNotification[] = []
 
 class MockNotification {
@@ -104,6 +117,8 @@ describe('reminders service', () => {
     MockNotification.isSupported.mockReset()
     MockNotification.isSupported.mockReturnValue(true)
     reminderCounter = 0
+    emitCalendarProjectionChanged.mockClear()
+    scheduleGoogleCalendarSourceSync.mockClear()
 
     vi.resetModules()
     vi.doMock('electron', () => ({
@@ -240,6 +255,11 @@ describe('reminders service', () => {
         reminder: expect.objectContaining({ id: 'rem-s1', snoozedUntil: snoozeUntil })
       })
     )
+    expect(emitCalendarProjectionChanged).toHaveBeenCalledWith('reminder:rem-s1')
+    expect(scheduleGoogleCalendarSourceSync).toHaveBeenCalledWith({
+      sourceType: 'reminder',
+      sourceId: 'rem-s1'
+    })
   })
 
   it('dismisses a reminder and emits a dismissed event', () => {
@@ -263,6 +283,53 @@ describe('reminders service', () => {
         reminder: expect.objectContaining({ id: 'rem-d1', status: reminderStatus.DISMISSED })
       })
     )
+    expect(emitCalendarProjectionChanged).toHaveBeenCalledWith('reminder:rem-d1')
+    expect(scheduleGoogleCalendarSourceSync).toHaveBeenCalledWith({
+      sourceType: 'reminder',
+      sourceId: 'rem-d1'
+    })
+  })
+
+  it('creates, updates, and deletes reminders while notifying calendar projection state', () => {
+    const futureDate = new Date(Date.now() + 60 * 60 * 1000).toISOString()
+    const created = remindersService.createReminder({
+      targetType: 'note',
+      targetId: 'note-1',
+      remindAt: futureDate,
+      title: 'Plan review',
+      note: 'Bring notes'
+    })
+
+    expect(emitCalendarProjectionChanged).toHaveBeenCalledWith(`reminder:${created.id}`)
+    expect(scheduleGoogleCalendarSourceSync).toHaveBeenCalledWith({
+      sourceType: 'reminder',
+      sourceId: created.id
+    })
+
+    emitCalendarProjectionChanged.mockClear()
+    scheduleGoogleCalendarSourceSync.mockClear()
+
+    const updated = remindersService.updateReminder({
+      id: created.id,
+      title: 'Updated plan review'
+    })
+
+    expect(updated?.title).toBe('Updated plan review')
+    expect(emitCalendarProjectionChanged).toHaveBeenCalledWith(`reminder:${created.id}`)
+    expect(scheduleGoogleCalendarSourceSync).toHaveBeenCalledWith({
+      sourceType: 'reminder',
+      sourceId: created.id
+    })
+
+    emitCalendarProjectionChanged.mockClear()
+    scheduleGoogleCalendarSourceSync.mockClear()
+
+    expect(remindersService.deleteReminder(created.id)).toBe(true)
+    expect(emitCalendarProjectionChanged).toHaveBeenCalledWith(`reminder:${created.id}`)
+    expect(scheduleGoogleCalendarSourceSync).toHaveBeenCalledWith({
+      sourceType: 'reminder',
+      sourceId: created.id
+    })
   })
 
   it('creates an inbox item and sends click navigation for due reminders', () => {
@@ -324,5 +391,37 @@ describe('reminders service', () => {
 
     const updated = dataDb.db.select().from(reminders).where(eq(reminders.id, 'rem-due')).get()
     expect(updated?.status).toBe(reminderStatus.TRIGGERED)
+    expect(emitCalendarProjectionChanged).toHaveBeenCalledWith('reminder:rem-due')
+    expect(scheduleGoogleCalendarSourceSync).toHaveBeenCalledWith({
+      sourceType: 'reminder',
+      sourceId: 'rem-due'
+    })
+  })
+
+  it('bulk dismisses reminders and notifies calendar projection state for each changed row', () => {
+    seedReminder({
+      id: 'rem-b1',
+      remindAt: '2025-01-22T09:00:00.000Z',
+      status: reminderStatus.PENDING
+    })
+    seedReminder({
+      id: 'rem-b2',
+      remindAt: '2025-01-23T09:00:00.000Z',
+      status: reminderStatus.PENDING
+    })
+
+    const dismissed = remindersService.bulkDismissReminders(['rem-b1', 'rem-b2', 'missing'])
+
+    expect(dismissed).toBe(2)
+    expect(emitCalendarProjectionChanged).toHaveBeenCalledWith('reminder:rem-b1')
+    expect(emitCalendarProjectionChanged).toHaveBeenCalledWith('reminder:rem-b2')
+    expect(scheduleGoogleCalendarSourceSync).toHaveBeenCalledWith({
+      sourceType: 'reminder',
+      sourceId: 'rem-b1'
+    })
+    expect(scheduleGoogleCalendarSourceSync).toHaveBeenCalledWith({
+      sourceType: 'reminder',
+      sourceId: 'rem-b2'
+    })
   })
 })

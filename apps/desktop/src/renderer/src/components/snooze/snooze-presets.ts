@@ -7,6 +7,9 @@
  * @module components/snooze/snooze-presets
  */
 
+import type { ClockFormat } from '@/lib/time-format'
+import { formatTimeOfDay } from '@/lib/time-format'
+
 // ============================================================================
 // Types
 // ============================================================================
@@ -255,17 +258,13 @@ export const quickSnoozePresets: SnoozePreset[] = [
  * Format a date as a relative time description
  * e.g., "Tomorrow at 9:00 AM", "Monday at 9:00 AM"
  */
-export function formatSnoozeTime(date: Date): string {
+export function formatSnoozeTime(date: Date, clockFormat: ClockFormat = '12h'): string {
   const now = new Date()
   const today = startOfDay(now)
   const targetDay = startOfDay(date)
   const diffDays = Math.round((targetDay.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
 
-  const timeStr = date.toLocaleTimeString(undefined, {
-    hour: 'numeric',
-    minute: '2-digit',
-    hour12: true
-  })
+  const timeStr = formatTimeOfDay(date, clockFormat)
 
   if (diffDays === 0) {
     return `Today at ${timeStr}`
@@ -275,13 +274,8 @@ export function formatSnoozeTime(date: Date): string {
     const dayName = date.toLocaleDateString(undefined, { weekday: 'long' })
     return `${dayName} at ${timeStr}`
   } else {
-    return date.toLocaleDateString(undefined, {
-      month: 'short',
-      day: 'numeric',
-      hour: 'numeric',
-      minute: '2-digit',
-      hour12: true
-    })
+    const dateStr = date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+    return `${dateStr}, ${formatTimeOfDay(date, clockFormat)}`
   }
 }
 

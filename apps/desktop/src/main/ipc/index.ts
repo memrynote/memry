@@ -12,6 +12,7 @@ import { registerBookmarksHandlers, unregisterBookmarksHandlers } from './bookma
 import { registerTagsHandlers, unregisterTagsHandlers } from './tags-handlers'
 import { registerInboxHandlers, unregisterInboxHandlers } from './inbox-handlers'
 import { registerReminderHandlers, unregisterReminderHandlers } from './reminder-handlers'
+import { registerCalendarHandlers, unregisterCalendarHandlers } from './calendar-handlers'
 import { registerFolderViewHandlers, unregisterFolderViewHandlers } from './folder-view-handlers'
 import { registerPropertiesHandlers, unregisterPropertiesHandlers } from './properties-handlers'
 import { registerSyncHandlers, unregisterSyncHandlers, checkSyncIntegrity } from './sync-handlers'
@@ -80,6 +81,9 @@ export function registerAllHandlers(): void {
   // Register reminder handlers
   registerReminderHandlers()
 
+  // Register calendar handlers
+  registerCalendarHandlers()
+
   // Register folder view handlers
   registerFolderViewHandlers()
 
@@ -128,6 +132,7 @@ export function unregisterAllHandlers(): void {
   unregisterTagsHandlers()
   unregisterInboxHandlers()
   unregisterReminderHandlers()
+  unregisterCalendarHandlers()
   unregisterFolderViewHandlers()
   unregisterPropertiesHandlers()
   unregisterSyncHandlers()
@@ -163,6 +168,7 @@ export { registerBookmarksHandlers, unregisterBookmarksHandlers } from './bookma
 export { registerTagsHandlers, unregisterTagsHandlers } from './tags-handlers'
 export { registerInboxHandlers, unregisterInboxHandlers } from './inbox-handlers'
 export { registerReminderHandlers, unregisterReminderHandlers } from './reminder-handlers'
+export { registerCalendarHandlers, unregisterCalendarHandlers } from './calendar-handlers'
 export { registerFolderViewHandlers, unregisterFolderViewHandlers } from './folder-view-handlers'
 export { registerPropertiesHandlers, unregisterPropertiesHandlers } from './properties-handlers'
 export { registerSyncHandlers, unregisterSyncHandlers } from './sync-handlers'

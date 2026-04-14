@@ -123,6 +123,25 @@ describe('sync-server contracts', () => {
         items: [
           {
             id: 'ab99c922-6f3b-4bbf-a589-2d4f96f8ec95',
+            type: 'calendar_event',
+            operation: 'create',
+            encryptedKey: 'ek',
+            keyNonce: 'kn',
+            encryptedData: 'ed',
+            dataNonce: 'dn',
+            signature: 'sig',
+            signerDeviceId: 'device-1',
+            clock: { deviceA: 1 }
+          }
+        ]
+      }).success
+    ).toBe(true)
+
+    expect(
+      RecordPushRequestSchema.safeParse({
+        items: [
+          {
+            id: 'ab99c922-6f3b-4bbf-a589-2d4f96f8ec95',
             type: 'task',
             operation: 'create',
             encryptedKey: 'ek',
@@ -226,6 +245,10 @@ describe('sync-server contracts', () => {
     ).toBe(true)
 
     expect(SYNC_ITEM_TYPES).toContain('note')
+    expect(SYNC_ITEM_TYPES).toContain('calendar_event')
+    expect(SYNC_ITEM_TYPES).toContain('calendar_source')
+    expect(SYNC_ITEM_TYPES).toContain('calendar_binding')
+    expect(SYNC_ITEM_TYPES).toContain('calendar_external_event')
     expect(CBOR_FIELD_ORDER.SYNC_ITEM).toContain('encryptedData')
   })
 

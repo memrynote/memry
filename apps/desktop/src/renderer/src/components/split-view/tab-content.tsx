@@ -15,6 +15,7 @@ import { useTabActions } from '@/contexts/tabs'
 import { useTasksOptional } from '@/contexts/tasks'
 import { cn } from '@/lib/utils'
 import { InboxPage } from '@/pages/inbox'
+import { CalendarPage } from '@/pages/calendar'
 import { JournalPage } from '@/pages/journal'
 import { TasksPage } from '@/pages/tasks'
 import { NotePage } from '@/pages/note'
@@ -30,6 +31,7 @@ import { GraphPage } from '@/components/graph/graph-page'
 // =============================================================================
 
 const MemoizedInboxPage = React.memo(InboxPage)
+const MemoizedCalendarPage = React.memo(CalendarPage)
 const MemoizedJournalPage = React.memo(JournalPage)
 const MemoizedTasksPage = React.memo(TasksPage)
 const MemoizedNotePage = React.memo(NotePage)
@@ -90,6 +92,9 @@ export const TabContent = ({ tab, groupId, className }: TabContentProps): React.
     switch (tab.type) {
       case 'inbox':
         return <MemoizedInboxPage />
+
+      case 'calendar':
+        return <MemoizedCalendarPage />
 
       case 'tasks':
       case 'all-tasks':

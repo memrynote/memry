@@ -16,10 +16,10 @@ const INTEGRATIONS = [
   {
     id: 'google-calendar',
     name: 'Google Calendar',
-    description: 'Surface events in your daily journal',
+    description: 'Two-way sync for Memry events, tasks, reminders, and imported calendars',
     icon: Calendar,
     authFlow: 'oauth2',
-    comingSoon: true
+    comingSoon: false
   },
   {
     id: 'apple-calendar',

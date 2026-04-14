@@ -8,6 +8,8 @@ import { FileText, ChevronRight, Plus } from '@/lib/icons'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import type { Note } from '@/hooks/use-notes-query'
+import { formatTimeOfDay } from '@/lib/time-format'
+import { useGeneralSettings } from '@/hooks/use-general-settings'
 
 // =============================================================================
 // TYPES
@@ -171,11 +173,8 @@ interface NoteItemProps {
 }
 
 function NoteItem({ note, isActive, onClick }: NoteItemProps): React.JSX.Element {
-  // Format time as "2:34 PM"
-  const time = new Date(note.created).toLocaleTimeString('en-US', {
-    hour: 'numeric',
-    minute: '2-digit'
-  })
+  const { settings: { clockFormat } } = useGeneralSettings()
+  const time = formatTimeOfDay(new Date(note.created), clockFormat)
 
   return (
     <button

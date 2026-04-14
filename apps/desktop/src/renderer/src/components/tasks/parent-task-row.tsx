@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react'
 
 import { ChevronDown } from '@/lib/icons'
+import { useGeneralSettings } from '@/hooks/use-general-settings'
 import { cn } from '@/lib/utils'
 import { hasSubtasks, type SubtaskProgress } from '@/lib/subtask-utils'
 import { formatDateShort, formatDueDate, formatTime } from '@/lib/task-utils'
@@ -110,6 +111,7 @@ export const ParentTaskRow = ({
 }: ParentTaskRowProps): React.JSX.Element => {
   const isOverlay = renderMode === 'overlay'
   const rowRef = useRef<HTMLDivElement>(null)
+  const { settings: { clockFormat } } = useGeneralSettings()
   const taskHasSubtasks = hasSubtasks(task)
   const formattedDate = formatDueDate(task.dueDate, task.dueTime)
   const isOverdue = formattedDate?.status === 'overdue' && !isCompleted
@@ -165,7 +167,7 @@ export const ParentTaskRow = ({
   const compactDateLabel = (() => {
     if (!task.dueDate) return null
     const date = formatDateShort(task.dueDate)
-    return task.dueTime ? `${date}, ${formatTime(task.dueTime)}` : date
+    return task.dueTime ? `${date}, ${formatTime(task.dueTime, clockFormat)}` : date
   })()
 
   const dueDateDisplay = (() => {

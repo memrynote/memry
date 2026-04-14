@@ -25,6 +25,13 @@ import { initNoteSyncService, resetNoteSyncService } from './note-sync'
 import { initJournalSyncService, resetJournalSyncService } from './journal-sync'
 import { initTagDefinitionSyncService, resetTagDefinitionSyncService } from './tag-definition-sync'
 import { initFolderConfigSyncService, resetFolderConfigSyncService } from './folder-config-sync'
+import { initCalendarEventSyncService, resetCalendarEventSyncService } from './calendar-event-sync'
+import { initCalendarSourceSyncService, resetCalendarSourceSyncService } from './calendar-source-sync'
+import { initCalendarBindingSyncService, resetCalendarBindingSyncService } from './calendar-binding-sync'
+import {
+  initCalendarExternalEventSyncService,
+  resetCalendarExternalEventSyncService
+} from './calendar-external-event-sync'
 import { getRemoteSyncAdapter } from './item-handlers'
 import { getIndexDatabase } from '../database/client'
 import { noteCache } from '@memry/db-schema/schema/notes-cache'
@@ -85,6 +92,10 @@ function resetSyncServiceSingletons(): void {
   resetJournalSyncService()
   resetTagDefinitionSyncService()
   resetFolderConfigSyncService()
+  resetCalendarEventSyncService()
+  resetCalendarSourceSyncService()
+  resetCalendarBindingSyncService()
+  resetCalendarExternalEventSyncService()
 }
 
 function getCurrentDeviceId(db: DataDb): string | null {
@@ -175,6 +186,26 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
         db: runtimeSyncDb,
         getDeviceId
       })
+      const calendarEventSync = initCalendarEventSyncService({
+        queue,
+        db: runtimeSyncDb,
+        getDeviceId
+      })
+      const calendarSourceSync = initCalendarSourceSyncService({
+        queue,
+        db: runtimeSyncDb,
+        getDeviceId
+      })
+      const calendarBindingSync = initCalendarBindingSyncService({
+        queue,
+        db: runtimeSyncDb,
+        getDeviceId
+      })
+      const calendarExternalEventSync = initCalendarExternalEventSyncService({
+        queue,
+        db: runtimeSyncDb,
+        getDeviceId
+      })
 
       const adapters = createSyncAdapterRegistry([
         { type: 'task', kind: 'record', local: taskSync, remote: getRemoteSyncAdapter('task') },
@@ -221,6 +252,30 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
           kind: 'record',
           local: folderConfigSync,
           remote: getRemoteSyncAdapter('folder_config')
+        },
+        {
+          type: 'calendar_event',
+          kind: 'record',
+          local: calendarEventSync,
+          remote: getRemoteSyncAdapter('calendar_event')
+        },
+        {
+          type: 'calendar_source',
+          kind: 'record',
+          local: calendarSourceSync,
+          remote: getRemoteSyncAdapter('calendar_source')
+        },
+        {
+          type: 'calendar_binding',
+          kind: 'record',
+          local: calendarBindingSync,
+          remote: getRemoteSyncAdapter('calendar_binding')
+        },
+        {
+          type: 'calendar_external_event',
+          kind: 'record',
+          local: calendarExternalEventSync,
+          remote: getRemoteSyncAdapter('calendar_external_event')
         }
       ])
 

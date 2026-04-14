@@ -10,7 +10,8 @@ const DEFAULTS: GeneralSettingsDTO = {
   startOnBoot: false,
   language: 'en',
   onboardingCompleted: false,
-  createInSelectedFolder: true
+  createInSelectedFolder: true,
+  clockFormat: '12h'
 }
 
 interface UseGeneralSettingsReturn {
