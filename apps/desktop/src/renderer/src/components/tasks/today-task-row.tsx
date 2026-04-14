@@ -1,5 +1,6 @@
 import { cn } from '@/lib/utils'
 import { formatTime, differenceInDays, startOfDay } from '@/lib/task-utils'
+import { useGeneralSettings } from '@/hooks/use-general-settings'
 import {
   TaskCheckbox,
   InteractiveProjectBadge,
@@ -41,9 +42,9 @@ export const TodayTaskRow = ({
   onClick,
   className
 }: TodayTaskRowProps): React.JSX.Element => {
+  const { settings: { clockFormat } } = useGeneralSettings()
   const isOverdue = section === 'overdue'
 
-  // Time or date display
   const getTimeDisplay = (): string | null => {
     if (isOverdue && task.dueDate) {
       // Show original due date for overdue tasks
@@ -51,7 +52,7 @@ export const TodayTaskRow = ({
     }
 
     if (task.dueTime) {
-      return formatTime(task.dueTime)
+      return formatTime(task.dueTime, clockFormat)
     }
 
     return null

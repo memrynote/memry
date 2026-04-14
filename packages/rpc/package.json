@@ -6,6 +6,7 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
+    "./calendar": "./src/calendar.ts",
     "./tasks": "./src/tasks.ts",
     "./notes": "./src/notes.ts",
     "./inbox": "./src/inbox.ts",

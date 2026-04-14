@@ -7,6 +7,9 @@
  * @module components/reminder/reminder-presets
  */
 
+import type { ClockFormat } from '@/lib/time-format'
+import { formatTimeOfDay } from '@/lib/time-format'
+
 // ============================================================================
 // Types
 // ============================================================================
@@ -233,7 +236,7 @@ export const snoozePresets: ReminderPreset[] = [
 /**
  * Format a date for display in reminder UI
  */
-export function formatReminderDate(date: Date): string {
+export function formatReminderDate(date: Date, clockFormat: ClockFormat = '12h'): string {
   const now = new Date()
   const tomorrow = new Date(now)
   tomorrow.setDate(tomorrow.getDate() + 1)
@@ -241,11 +244,7 @@ export function formatReminderDate(date: Date): string {
   const isToday = date.toDateString() === now.toDateString()
   const isTomorrow = date.toDateString() === tomorrow.toDateString()
 
-  const timeStr = date.toLocaleTimeString('en-US', {
-    hour: 'numeric',
-    minute: '2-digit',
-    hour12: true
-  })
+  const timeStr = formatTimeOfDay(date, clockFormat)
 
   if (isToday) {
     return `Today at ${timeStr}`

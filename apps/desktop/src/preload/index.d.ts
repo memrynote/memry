@@ -1187,6 +1187,7 @@ export interface GeneralSettingsDTO {
   language: string
   onboardingCompleted: boolean
   createInSelectedFolder: boolean
+  clockFormat: '12h' | '24h'
 }
 
 export interface EditorSettingsDTO {

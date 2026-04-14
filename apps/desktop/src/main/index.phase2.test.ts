@@ -31,6 +31,11 @@ vi.mock('./lib/reminders', () => ({
   stopReminderScheduler: vi.fn()
 }))
 
+vi.mock('./calendar/google/sync-service', () => ({
+  startGoogleCalendarSyncRunner: vi.fn(),
+  stopGoogleCalendarSyncRunner: vi.fn()
+}))
+
 vi.mock('@electron-toolkit/utils', () => ({
   electronApp: { setAppUserModelId: vi.fn() },
   optimizer: { watchWindowShortcuts: vi.fn() },

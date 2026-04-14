@@ -29,6 +29,8 @@ import {
 import { InboxChannels, type ReminderMetadata } from '@memry/contracts/inbox-api'
 import { createLogger } from './logger'
 import { publishProjectionEvent } from '../projections'
+import { emitCalendarProjectionChanged } from '../calendar/change-events'
+import { scheduleGoogleCalendarSourceSync } from '../calendar/google/local-sync-effects'
 
 const logger = createLogger('Reminders')
 
@@ -104,6 +106,11 @@ function emitEvent(channel: string, data: unknown): void {
  */
 function now(): string {
   return new Date().toISOString()
+}
+
+function syncReminderCalendarState(reminderId: string): void {
+  emitCalendarProjectionChanged(`reminder:${reminderId}`)
+  scheduleGoogleCalendarSourceSync({ sourceType: 'reminder', sourceId: reminderId })
 }
 
 /**
@@ -305,6 +312,7 @@ export function createReminder(input: CreateReminderInput): Reminder {
 
   const result = toReminder(reminder)
   emitEvent(ReminderChannels.events.CREATED, { reminder: result })
+  syncReminderCalendarState(id)
 
   logger.info(`Created reminder ${id} for ${input.targetType}:${input.targetId}`)
   return result
@@ -353,6 +361,7 @@ export function updateReminder(input: UpdateReminderInput): Reminder | null {
 
   const result = toReminder(reminder)
   emitEvent(ReminderChannels.events.UPDATED, { reminder: result })
+  syncReminderCalendarState(input.id)
 
   logger.info(`Updated reminder ${input.id}`)
   return result
@@ -378,6 +387,7 @@ export function deleteReminder(id: string): boolean {
     targetType: reminder.targetType,
     targetId: reminder.targetId
   })
+  syncReminderCalendarState(id)
 
   logger.info(`Deleted reminder ${id}`)
   return true
@@ -551,6 +561,7 @@ export function dismissReminder(id: string): Reminder | null {
 
   const result = toReminder(reminder)
   emitEvent(ReminderChannels.events.DISMISSED, { reminder: result })
+  syncReminderCalendarState(id)
 
   logger.info(`Dismissed reminder ${id}`)
   return result
@@ -586,6 +597,7 @@ export function snoozeReminder(input: SnoozeReminderInput): Reminder | null {
 
   const result = toReminder(reminder)
   emitEvent(ReminderChannels.events.SNOOZED, { reminder: result })
+  syncReminderCalendarState(input.id)
 
   logger.info(`Snoozed reminder ${input.id} until ${input.snoozeUntil}`)
   return result
@@ -615,6 +627,7 @@ export function bulkDismissReminders(reminderIds: string[]): number {
 
     if (result.changes > 0) {
       dismissedCount++
+      syncReminderCalendarState(id)
     }
   }
 
@@ -654,6 +667,7 @@ function processDueReminders(): void {
         })
         .where(eq(reminders.id, reminder.id))
         .run()
+      syncReminderCalendarState(reminder.id)
 
       // Resolve the target title from the notes cache
       const resolvedTitle = resolveTargetTitle(reminder.targetType, reminder.targetId)
