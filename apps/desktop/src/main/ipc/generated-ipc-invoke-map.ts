@@ -2,2497 +2,328 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 export interface MainIpcInvokeHandlers {
-  'account:getInfo': (...args: []) => Awaited<import('./account-handlers').AccountInfo>
-  'account:getRecoveryKey': (
-    ...args: []
-  ) => Awaited<
-    Promise<
-      | { success: boolean; error: string; key?: undefined }
-      | { success: boolean; key: string; error?: undefined }
-    >
-  >
-  'account:signOut': (
-    ...args: []
-  ) => Awaited<Promise<{ keychainWarning?: string | undefined; success: boolean }>>
-  'ai-inline:get-server-port': (...args: []) => Awaited<number | null>
-  'ai-inline:get-settings': (
-    ...args: []
-  ) => Awaited<import('../../../../../packages/contracts/src/ai-inline-channels').AIInlineSettings>
-  'ai-inline:set-settings': (
-    ...args: [
-      Partial<import('../../../../../packages/contracts/src/ai-inline-channels').AIInlineSettings>
-    ]
-  ) => Awaited<{ success: boolean; error: string } | { success: boolean; error?: undefined }>
-  'ai-inline:start-server': (
-    ...args: []
-  ) => Awaited<
-    Promise<
-      | { success: false; error: string }
-      | { success: boolean; error: string; port?: undefined }
-      | { success: boolean; port: number; error?: undefined }
-    >
-  >
-  'ai-inline:stop-server': (...args: []) => Awaited<Promise<{ success: boolean }>>
-  'auth:init-oauth': (...args: [{ provider: 'google' }]) => Awaited<Promise<{ state: string }>>
-  'auth:refresh-token': (
-    ...args: []
-  ) => Awaited<Promise<{ success: boolean; error: string | undefined }>>
-  'auth:request-otp': (...args: [{ email: string }]) => Awaited<Promise<unknown>>
-  'auth:resend-otp': (...args: [{ email: string }]) => Awaited<Promise<unknown>>
-  'auth:verify-otp': (...args: [{ email: string; code: string }]) => Awaited<
-    Promise<{
-      success: boolean
-      isNewUser: boolean
-      needsSetup: boolean
-      needsRecoveryInput: boolean
-    }>
-  >
-  'bookmarks:bulk-create': (
-    ...args: [{ items: { itemType: string; itemId: string }[] }]
-  ) => Awaited<Promise<{ success: boolean; createdCount: number }>>
-  'bookmarks:bulk-delete': (
-    ...args: [{ bookmarkIds: string[] }]
-  ) => Awaited<Promise<{ success: boolean; deletedCount: number }>>
-  'bookmarks:create': (...args: [{ itemType: string; itemId: string }]) => Awaited<
-    Promise<
-      | { success: boolean; bookmark: null; error: string }
-      | {
-          success: boolean
-          bookmark: {
-            id: string
-            createdAt: string
-            position: number
-            itemType: string
-            itemId: string
-          }
-          error?: undefined
-        }
-    >
-  >
-  'bookmarks:delete': (
-    ...args: [string]
-  ) => Awaited<
-    Promise<{ success: boolean; error: string } | { success: boolean; error?: undefined }>
-  >
-  'bookmarks:get': (...args: [string]) => Awaited<
-    Promise<{
-      id: string
-      createdAt: string
-      position: number
-      itemType: string
-      itemId: string
-    } | null>
-  >
-  'bookmarks:get-by-item': (...args: [{ itemType: string; itemId: string }]) => Awaited<
-    Promise<{
-      id: string
-      createdAt: string
-      position: number
-      itemType: string
-      itemId: string
-    } | null>
-  >
-  'bookmarks:is-bookmarked': (
-    ...args: [{ itemType: string; itemId: string }]
-  ) => Awaited<Promise<boolean>>
-  'bookmarks:list': (
-    ...args: [
-      {
-        itemType?: string | undefined
-        sortBy?: 'createdAt' | 'position' | undefined
-        sortOrder?: 'asc' | 'desc' | undefined
-        limit?: number | undefined
-        offset?: number | undefined
-      }
-    ]
-  ) => Awaited<
-    Promise<import('../../../../../packages/contracts/src/bookmarks-api').BookmarkListResponse>
-  >
-  'bookmarks:list-by-type': (
-    ...args: [string]
-  ) => Awaited<
-    Promise<import('../../../../../packages/contracts/src/bookmarks-api').BookmarkListResponse>
-  >
-  'bookmarks:reorder': (
-    ...args: [{ bookmarkIds: string[] }]
-  ) => Awaited<Promise<{ success: boolean }>>
-  'bookmarks:toggle': (...args: [{ itemType: string; itemId: string }]) => Awaited<
-    Promise<{
-      success: boolean
-      isBookmarked: boolean
-      bookmark: {
-        id: string
-        createdAt: string
-        position: number
-        itemType: string
-        itemId: string
-      } | null
-    }>
-  >
-  'calendar:connect-provider': (
-    ...args: [{ provider: string }]
-  ) => Awaited<
-    Promise<
-      | { success: false; error: string }
-      | import('../../../../../packages/contracts/src/calendar-api').CalendarProviderMutationResponse
-    >
-  >
-  'calendar:create-event': (
-    ...args: [
-      {
-        title: string
-        startAt: string
-        description?: string | null | undefined
-        location?: string | null | undefined
-        endAt?: string | null | undefined
-        timezone?: string | undefined
-        isAllDay?: boolean | undefined
-        recurrenceRule?: Record<string, unknown> | null | undefined
-        recurrenceExceptions?: Record<string, unknown>[] | null | undefined
-      }
-    ]
-  ) => Awaited<
-    Promise<
-      | { success: false; error: string }
-      | import('../../../../../packages/contracts/src/calendar-api').CalendarEventMutationResponse
-    >
-  >
-  'calendar:delete-event': (
-    ...args: [string]
-  ) => Awaited<
-    Promise<
-      | { success: false; error: string }
-      | import('../../../../../packages/contracts/src/calendar-api').CalendarDeleteResponse
-    >
-  >
-  'calendar:disconnect-provider': (
-    ...args: [{ provider: string }]
-  ) => Awaited<
-    Promise<
-      | { success: false; error: string }
-      | import('../../../../../packages/contracts/src/calendar-api').CalendarProviderMutationResponse
-    >
-  >
-  'calendar:get-event': (
-    ...args: [string]
-  ) => Awaited<
-    Promise<import('../../../../../packages/contracts/src/calendar-api').CalendarEventRecord | null>
-  >
-  'calendar:get-provider-status': (
-    ...args: [{ provider: string }]
-  ) => Awaited<
-    Promise<import('../../../../../packages/contracts/src/calendar-api').CalendarProviderStatus>
-  >
-  'calendar:get-range': (
-    ...args: [{ startAt: string; endAt: string; includeUnselectedSources?: boolean | undefined }]
-  ) => Awaited<
-    Promise<import('../../../../../packages/contracts/src/calendar-api').CalendarRangeResponse>
-  >
-  'calendar:list-events': (
-    ...args: [{ includeArchived?: boolean | undefined }]
-  ) => Awaited<
-    Promise<import('../../../../../packages/contracts/src/calendar-api').CalendarEventListResponse>
-  >
-  'calendar:list-sources': (
-    ...args: [
-      {
-        provider?: string | undefined
-        kind?: 'account' | 'calendar' | undefined
-        selectedOnly?: boolean | undefined
-      }
-    ]
-  ) => Awaited<
-    Promise<import('../../../../../packages/contracts/src/calendar-api').CalendarSourceListResponse>
-  >
-  'calendar:refresh-provider': (
-    ...args: [{ provider: string }]
-  ) => Awaited<
-    Promise<
-      | { success: false; error: string }
-      | import('../../../../../packages/contracts/src/calendar-api').CalendarProviderMutationResponse
-    >
-  >
-  'calendar:update-event': (
-    ...args: [
-      {
-        id: string
-        title?: string | undefined
-        description?: string | null | undefined
-        location?: string | null | undefined
-        startAt?: string | undefined
-        endAt?: string | null | undefined
-        timezone?: string | undefined
-        isAllDay?: boolean | undefined
-        recurrenceRule?: Record<string, unknown> | null | undefined
-        recurrenceExceptions?: Record<string, unknown>[] | null | undefined
-      }
-    ]
-  ) => Awaited<
-    Promise<
-      | { success: false; error: string }
-      | import('../../../../../packages/contracts/src/calendar-api').CalendarEventMutationResponse
-    >
-  >
-  'calendar:update-source-selection': (
-    ...args: [{ id: string; isSelected: boolean }]
-  ) => Awaited<
-    Promise<
-      | { success: false; error: string }
-      | import('../../../../../packages/contracts/src/calendar-api').CalendarSourceMutationResponse
-    >
-  >
-  'context-menu:show': (
-    ...args: [
-      {
-        id: string
-        label: string
-        accelerator?: string | undefined
-        disabled?: boolean | undefined
-        type?: 'normal' | 'separator' | undefined
-      }[]
-    ]
-  ) => Awaited<Promise<string | null>>
-  'crdt:apply-update': (...args: [unknown]) => Awaited<Promise<void>>
-  'crdt:close-doc': (...args: [unknown]) => Awaited<Promise<{ success: boolean }>>
-  'crdt:open-doc': (
-    ...args: [unknown]
-  ) => Awaited<
-    Promise<{ success: boolean; error: string } | { success: boolean; error?: undefined }>
-  >
-  'crdt:sync-step-1': (
-    ...args: [{ noteId: string; stateVector: number[] }]
-  ) => Awaited<
-    Promise<import('../../../../../packages/contracts/src/ipc-crdt').CrdtSyncStep1Result | null>
-  >
-  'crdt:sync-step-2': (...args: [{ noteId: string; diff: number[] }]) => Awaited<Promise<void>>
-  'crypto:decrypt-item': (
-    ...args: [
-      {
-        itemId: string
-        type:
-          | 'note'
-          | 'filter'
-          | 'project'
-          | 'journal'
-          | 'task'
-          | 'settings'
-          | 'inbox'
-          | 'tag_definition'
-          | 'folder_config'
-          | 'calendar_event'
-          | 'calendar_source'
-          | 'calendar_binding'
-          | 'calendar_external_event'
-        encryptedKey: string
-        keyNonce: string
-        encryptedData: string
-        dataNonce: string
-        signature: string
-        operation?: 'create' | 'update' | 'delete' | undefined
-        deletedAt?: number | undefined
-        metadata?: Record<string, unknown> | undefined
-      }
-    ]
-  ) => Awaited<
-    Promise<import('../../../../../packages/contracts/src/ipc-crypto').DecryptItemResult>
-  >
-  'crypto:encrypt-item': (
-    ...args: [
-      {
-        itemId: string
-        type:
-          | 'note'
-          | 'filter'
-          | 'project'
-          | 'journal'
-          | 'task'
-          | 'settings'
-          | 'inbox'
-          | 'tag_definition'
-          | 'folder_config'
-          | 'calendar_event'
-          | 'calendar_source'
-          | 'calendar_binding'
-          | 'calendar_external_event'
-        content: Record<string, unknown>
-        operation?: 'create' | 'update' | 'delete' | undefined
-        deletedAt?: number | undefined
-        metadata?: Record<string, unknown> | undefined
-      }
-    ]
-  ) => Awaited<
-    Promise<import('../../../../../packages/contracts/src/ipc-crypto').EncryptItemResult>
-  >
-  'crypto:get-rotation-progress': (
-    ...args: []
-  ) => Awaited<import('../../../../../packages/contracts/src/ipc-crypto').GetRotationProgressResult>
-  'crypto:rotate-keys': (
-    ...args: [{ confirm: boolean }]
-  ) => Awaited<Promise<import('../../../../../packages/contracts/src/ipc-crypto').RotateKeysResult>>
-  'crypto:verify-signature': (
-    ...args: [
-      {
-        itemId: string
-        type:
-          | 'note'
-          | 'filter'
-          | 'project'
-          | 'journal'
-          | 'task'
-          | 'settings'
-          | 'inbox'
-          | 'tag_definition'
-          | 'folder_config'
-          | 'calendar_event'
-          | 'calendar_source'
-          | 'calendar_binding'
-          | 'calendar_external_event'
-        encryptedKey: string
-        keyNonce: string
-        encryptedData: string
-        dataNonce: string
-        signature: string
-        operation?: 'create' | 'update' | 'delete' | undefined
-        deletedAt?: number | undefined
-        metadata?: Record<string, unknown> | undefined
-      }
-    ]
-  ) => Awaited<
-    Promise<import('../../../../../packages/contracts/src/ipc-crypto').VerifySignatureResult>
-  >
-  'folder-view:delete-view': (
-    ...args: [{ folderPath: string; viewName: string }]
-  ) => Awaited<
-    Promise<
-      | { success: false; error: string }
-      | import('../../../../../packages/contracts/src/folder-view-api').DeleteViewResponse
-    >
-  >
-  'folder-view:folder-exists': (...args: [string]) => Awaited<boolean>
-  'folder-view:get-available-properties': (
-    ...args: [{ folderPath: string }]
-  ) => Awaited<
-    Promise<
-      import('../../../../../packages/contracts/src/folder-view-api').GetAvailablePropertiesResponse
-    >
-  >
-  'folder-view:get-config': (
-    ...args: [{ folderPath: string }]
-  ) => Awaited<
-    Promise<import('../../../../../packages/contracts/src/folder-view-api').GetConfigResponse>
-  >
-  'folder-view:get-folder-suggestions': (
-    ...args: [{ noteId: string }]
-  ) => Awaited<
-    Promise<
-      import('../../../../../packages/contracts/src/folder-view-api').GetFolderSuggestionsResponse
-    >
-  >
-  'folder-view:get-views': (
-    ...args: [{ folderPath: string }]
-  ) => Awaited<
-    Promise<import('../../../../../packages/contracts/src/folder-view-api').GetViewsResponse>
-  >
-  'folder-view:list-with-properties': (
-    ...args: [
-      {
-        folderPath: string
-        properties?: string[] | undefined
-        limit?: number | undefined
-        offset?: number | undefined
-      }
-    ]
-  ) => Awaited<
-    Promise<
-      import('../../../../../packages/contracts/src/folder-view-api').ListWithPropertiesResponse
-    >
-  >
-  'folder-view:set-config': (
-    ...args: [
-      {
-        folderPath: string
-        config: {
-          path?: string | undefined
-          template?: string | undefined
-          inherit?: boolean | undefined
-          formulas?: Record<string, string> | undefined
-          properties?:
-            | Record<
-                string,
-                {
-                  displayName?: string | undefined
-                  color?: boolean | undefined
-                  dateFormat?: string | undefined
-                  numberFormat?: string | undefined
-                  hidden?: boolean | undefined
-                }
-              >
-            | undefined
-          summaries?:
-            | Record<
-                string,
-                {
-                  type:
-                    | 'custom'
-                    | 'count'
-                    | 'sum'
-                    | 'average'
-                    | 'min'
-                    | 'max'
-                    | 'countBy'
-                    | 'countUnique'
-                  label?: string | undefined
-                  expression?: string | undefined
-                }
-              >
-            | undefined
-          views?:
-            | {
-                name: string
-                type?: 'table' | 'grid' | 'list' | 'kanban' | undefined
-                default?: boolean | undefined
-                columns?:
-                  | {
-                      id: string
-                      width?: number | undefined
-                      displayName?: string | undefined
-                      showSummary?: boolean | undefined
-                    }[]
-                  | undefined
-                filters?: unknown
-                order?: { property: string; direction: 'asc' | 'desc' }[] | undefined
-                groupBy?:
-                  | {
-                      property: string
-                      direction?: 'asc' | 'desc' | undefined
-                      collapsed?: boolean | undefined
-                      showSummary?: boolean | undefined
-                    }
-                  | undefined
-                limit?: number | undefined
-                showSummaries?: boolean | undefined
-              }[]
-            | undefined
-        }
-      }
-    ]
-  ) => Awaited<
-    Promise<
-      | { success: false; error: string }
-      | import('../../../../../packages/contracts/src/folder-view-api').SetConfigResponse
-    >
-  >
-  'folder-view:set-view': (
-    ...args: [
-      {
-        folderPath: string
-        view: {
-          name: string
-          type?: 'table' | 'grid' | 'list' | 'kanban' | undefined
-          default?: boolean | undefined
-          columns?:
-            | {
-                id: string
-                width?: number | undefined
-                displayName?: string | undefined
-                showSummary?: boolean | undefined
-              }[]
-            | undefined
-          filters?: unknown
-          order?: { property: string; direction: 'asc' | 'desc' }[] | undefined
-          groupBy?:
-            | {
-                property: string
-                direction?: 'asc' | 'desc' | undefined
-                collapsed?: boolean | undefined
-                showSummary?: boolean | undefined
-              }
-            | undefined
-          limit?: number | undefined
-          showSummaries?: boolean | undefined
-        }
-      }
-    ]
-  ) => Awaited<
-    Promise<
-      | { success: false; error: string }
-      | import('../../../../../packages/contracts/src/folder-view-api').SetViewResponse
-    >
-  >
-  'graph:get-graph-data': (...args: []) => Awaited<{
-    nodes: {
-      id: string
-      type: 'note' | 'project' | 'journal' | 'task'
-      label: string
-      tags: string[]
-      wordCount: number
-      connectionCount: number
-      emoji: string | null
-      color: string
-      isOrphan: boolean
-      isUnresolved: boolean
-    }[]
-    edges: {
-      id: string
-      source: string
-      target: string
-      type: 'wikilink' | 'task-note' | 'project-task' | 'tag-cooccurrence'
-      weight: number
-    }[]
-  }>
-  'graph:get-local-graph': (...args: [{ noteId: string; depth?: number | undefined }]) => Awaited<{
-    nodes: {
-      id: string
-      type: 'note' | 'project' | 'journal' | 'task'
-      label: string
-      tags: string[]
-      wordCount: number
-      connectionCount: number
-      emoji: string | null
-      color: string
-      isOrphan: boolean
-      isUnresolved: boolean
-    }[]
-    edges: {
-      id: string
-      source: string
-      target: string
-      type: 'wikilink' | 'task-note' | 'project-task' | 'tag-cooccurrence'
-      weight: number
-    }[]
-  }>
-  'inbox:add-tag': (
-    ...args: [any, any]
-  ) => Awaited<Promise<{ success: boolean; error?: string | undefined }>>
-  'inbox:archive': (
-    ...args: [any]
-  ) => Awaited<Promise<{ success: boolean; error?: string | undefined }>>
-  'inbox:bulk-archive': (
-    ...args: [any]
-  ) => Awaited<Promise<import('../../../../../packages/contracts/src/inbox-api').BulkResponse>>
-  'inbox:bulk-file': (
-    ...args: [any]
-  ) => Awaited<Promise<import('../../../../../packages/contracts/src/inbox-api').BulkResponse>>
-  'inbox:bulk-snooze': (...args: [any]) => Awaited<
-    Promise<{
-      success: boolean
-      processedCount: number
-      errors: { itemId: string; error: string }[]
-    }>
-  >
-  'inbox:bulk-tag': (
-    ...args: [any]
-  ) => Awaited<Promise<import('../../../../../packages/contracts/src/inbox-api').BulkResponse>>
-  'inbox:capture-clip': (
-    ...args: [unknown]
-  ) => Awaited<Promise<{ success: boolean; item: null; error: string }>>
-  'inbox:capture-image': (
-    ...args: [any]
-  ) => Awaited<
-    Promise<import('../../../../../packages/domain-inbox/src/types').InboxCaptureResponse>
-  >
-  'inbox:capture-link': (
-    ...args: [any]
-  ) => Awaited<
-    Promise<import('../../../../../packages/domain-inbox/src/types').InboxCaptureResponse>
-  >
-  'inbox:capture-pdf': (
-    ...args: [unknown]
-  ) => Awaited<Promise<{ success: boolean; item: null; error: string }>>
-  'inbox:capture-text': (
-    ...args: [any]
-  ) => Awaited<
-    Promise<import('../../../../../packages/domain-inbox/src/types').InboxCaptureResponse>
-  >
-  'inbox:capture-voice': (
-    ...args: [any]
-  ) => Awaited<
-    Promise<import('../../../../../packages/domain-inbox/src/types').InboxCaptureResponse>
-  >
-  'inbox:convert-to-note': (
-    ...args: [any]
-  ) => Awaited<Promise<import('../../../../../packages/domain-inbox/src/types').InboxFileResponse>>
-  'inbox:convert-to-task': (
-    ...args: [any]
-  ) => Awaited<Promise<{ success: boolean; taskId: string | null; error?: string | undefined }>>
-  'inbox:delete-permanent': (
-    ...args: [any]
-  ) => Awaited<Promise<{ success: boolean; error?: string | undefined }>>
-  'inbox:file': (
-    ...args: [any]
-  ) => Awaited<Promise<import('../../../../../packages/domain-inbox/src/types').InboxFileResponse>>
-  'inbox:file-all-stale': (
-    ...args: []
-  ) => Awaited<Promise<import('../../../../../packages/contracts/src/inbox-api').BulkResponse>>
-  'inbox:get': (
-    ...args: [any]
-  ) => Awaited<Promise<import('../../../../../packages/contracts/src/inbox-api').InboxItem | null>>
-  'inbox:get-filing-history': (
-    ...args: [any]
-  ) => Awaited<
-    Promise<import('../../../../../packages/contracts/src/inbox-api').FilingHistoryResponse>
-  >
-  'inbox:get-jobs': (
-    ...args: [any]
-  ) => Awaited<Promise<import('../../../../../packages/contracts/src/inbox-api').InboxJobsResponse>>
-  'inbox:get-patterns': (
-    ...args: []
-  ) => Awaited<Promise<import('../../../../../packages/contracts/src/inbox-api').CapturePattern>>
-  'inbox:get-snoozed': (
-    ...args: []
-  ) => Awaited<Promise<import('../../../../../packages/domain-inbox/src/types').SnoozedItem[]>>
-  'inbox:get-stale-threshold': (...args: []) => Awaited<Promise<number>>
-  'inbox:get-stats': (
-    ...args: []
-  ) => Awaited<Promise<import('../../../../../packages/contracts/src/inbox-api').InboxStats>>
-  'inbox:get-suggestions': (...args: [any]) => Awaited<
-    Promise<{
-      suggestions: import('../../../../../packages/domain-inbox/src/types').InboxFilingSuggestion[]
-    }>
-  >
-  'inbox:get-tags': (...args: []) => Awaited<Promise<{ tag: string; count: number }[]>>
-  'inbox:link-to-note': (
-    ...args: [any, any, any]
-  ) => Awaited<Promise<{ success: boolean; error?: string | undefined }>>
-  'inbox:list': (
-    ...args: [any]
-  ) => Awaited<Promise<import('../../../../../packages/contracts/src/inbox-api').InboxListResponse>>
-  'inbox:list-archived': (
-    ...args: [any]
-  ) => Awaited<
-    Promise<import('../../../../../packages/contracts/src/inbox-api').ArchivedListResponse>
-  >
-  'inbox:mark-viewed': (
-    ...args: [any]
-  ) => Awaited<Promise<{ success: boolean; error?: string | undefined }>>
-  'inbox:preview-link': (...args: [string]) => Awaited<
-    Promise<
-      | {
-          title: string
-          domain: string
-          favicon: string | undefined
-          image: string | undefined
-          description: string | undefined
-        }
-      | {
-          title: string
-          domain: string
-          favicon?: undefined
-          image?: undefined
-          description?: undefined
-        }
-    >
-  >
-  'inbox:remove-tag': (
-    ...args: [any, any]
-  ) => Awaited<Promise<{ success: boolean; error?: string | undefined }>>
-  'inbox:retry-metadata': (
-    ...args: [any]
-  ) => Awaited<Promise<{ success: boolean; error?: string | undefined }>>
-  'inbox:retry-transcription': (
-    ...args: [any]
-  ) => Awaited<Promise<{ success: boolean; error?: string | undefined }>>
-  'inbox:set-stale-threshold': (...args: [any]) => Awaited<Promise<{ success: boolean }>>
-  'inbox:snooze': (
-    ...args: [any]
-  ) => Awaited<Promise<{ success: boolean; error?: string | undefined }>>
-  'inbox:track-suggestion': (
-    ...args: [string, string, string, string, number, string[], string[]]
-  ) => Awaited<
-    Promise<{ success: false; error: string } | { success: boolean; error?: string | undefined }>
-  >
-  'inbox:unarchive': (
-    ...args: [any]
-  ) => Awaited<Promise<{ success: boolean; error?: string | undefined }>>
-  'inbox:undo-archive': (
-    ...args: [any]
-  ) => Awaited<Promise<{ success: boolean; error?: string | undefined }>>
-  'inbox:undo-file': (
-    ...args: [any]
-  ) => Awaited<Promise<{ success: boolean; error?: string | undefined }>>
-  'inbox:unsnooze': (
-    ...args: [any]
-  ) => Awaited<Promise<{ success: boolean; error?: string | undefined }>>
-  'inbox:update': (
-    ...args: [any]
-  ) => Awaited<Promise<import('../../../../../packages/contracts/src/inbox-api').CaptureResponse>>
-  'journal:createEntry': (
-    ...args: [
-      {
-        date: string
-        content?: string | undefined
-        tags?: string[] | undefined
-        properties?: Record<string, unknown> | undefined
-      }
-    ]
-  ) => Awaited<
-    Promise<{
-      id: string
-      date: string
-      content: string
-      wordCount: number
-      characterCount: number
-      tags: string[]
-      createdAt: string
-      modifiedAt: string
-      properties?: Record<string, unknown> | undefined
-    }>
-  >
-  'journal:deleteEntry': (...args: [{ date: string }]) => Awaited<Promise<{ success: boolean }>>
-  'journal:getAllTags': (...args: []) => Awaited<Promise<{ tag: string; count: number }[]>>
-  'journal:getDayContext': (...args: [{ date: string }]) => Awaited<
-    Promise<{
-      date: string
-      tasks: {
-        id: string
-        title: string
-        completed: boolean
-        priority?: 'urgent' | 'high' | 'medium' | 'low' | undefined
-        isOverdue?: boolean | undefined
-      }[]
-      events: {
-        id: string
-        time: string
-        title: string
-        type: 'meeting' | 'focus' | 'event'
-        attendeeCount?: number | undefined
-      }[]
-      overdueCount: number
-    }>
-  >
-  'journal:getEntry': (...args: [{ date: string }]) => Awaited<
-    Promise<{
-      id: string
-      date: string
-      content: string
-      wordCount: number
-      characterCount: number
-      tags: string[]
-      createdAt: string
-      modifiedAt: string
-      properties?: Record<string, unknown> | undefined
-    } | null>
-  >
-  'journal:getHeatmap': (
-    ...args: [{ year: number }]
-  ) => Awaited<Promise<{ date: string; characterCount: number; level: 0 | 1 | 2 | 4 | 3 }[]>>
-  'journal:getMonthEntries': (...args: [{ year: number; month: number }]) => Awaited<
-    Promise<
-      {
-        date: string
-        preview: string
-        wordCount: number
-        characterCount: number
-        activityLevel: 0 | 1 | 2 | 4 | 3
-        tags: string[]
-      }[]
-    >
-  >
-  'journal:getStreak': (
-    ...args: []
-  ) => Awaited<
-    Promise<{ currentStreak: number; longestStreak: number; lastEntryDate: string | null }>
-  >
-  'journal:getYearStats': (...args: [{ year: number }]) => Awaited<
-    Promise<
-      {
-        year: number
-        month: number
-        entryCount: number
-        totalWordCount: number
-        totalCharacterCount: number
-        averageLevel: number
-      }[]
-    >
-  >
-  'journal:updateEntry': (
-    ...args: [
-      {
-        date: string
-        content?: string | undefined
-        tags?: string[] | undefined
-        properties?: Record<string, unknown> | undefined
-      }
-    ]
-  ) => Awaited<
-    Promise<{
-      id: string
-      date: string
-      content: string
-      wordCount: number
-      characterCount: number
-      tags: string[]
-      createdAt: string
-      modifiedAt: string
-      properties?: Record<string, unknown> | undefined
-    }>
-  >
-  'notes:add-property-option': (
-    ...args: [{ propertyName: string; option: { value: string; color: string } }]
-  ) => Awaited<Promise<{ success: boolean }>>
-  'notes:add-status-option': (
-    ...args: [
-      {
-        propertyName: string
-        categoryKey: 'todo' | 'in_progress' | 'done'
-        option: { value: string; color: string }
-      }
-    ]
-  ) => Awaited<Promise<{ success: boolean }>>
-  'notes:create': (
-    ...args: [
-      {
-        title: string
-        content?: string | undefined
-        folder?: string | undefined
-        tags?: string[] | undefined
-        template?: string | undefined
-      }
-    ]
-  ) => Awaited<
-    Promise<
-      { success: false; error: string } | { success: boolean; note: import('../vault/notes').Note }
-    >
-  >
-  'notes:create-folder': (
-    ...args: [string]
-  ) => Awaited<Promise<{ success: false; error: string } | { success: boolean }>>
-  'notes:create-property-definition': (
-    ...args: [
-      {
-        name: string
-        type: 'number' | 'date' | 'text' | 'select' | 'checkbox' | 'url' | 'status' | 'multiselect'
-        options?: { value: string; color: string; default?: boolean | undefined }[] | undefined
-        defaultValue?: unknown
-        color?: string | undefined
-      }
-    ]
-  ) => Awaited<
-    Promise<
-      | { success: false; error: string }
-      | {
-          success: boolean
-          definition:
-            | import('../../../../../packages/contracts/src/property-types').PropertyDefinition
-            | undefined
-        }
-      | {
-          success: boolean
-          definition: {
-            type: string
-            name: string
-            createdAt: string
-            options: string | null
-            defaultValue: string | null
-            color: string | null
-          }
-        }
-    >
-  >
-  'notes:delete': (
-    ...args: [string]
-  ) => Awaited<Promise<{ success: false; error: string } | { success: boolean }>>
-  'notes:delete-attachment': (
-    ...args: [{ noteId: string; filename: string }]
-  ) => Awaited<Promise<{ success: false; error: string } | { success: boolean }>>
-  'notes:delete-folder': (
-    ...args: [string]
-  ) => Awaited<Promise<{ success: false; error: string } | { success: boolean }>>
-  'notes:delete-property-definition': (
-    ...args: [{ name: string }]
-  ) => Awaited<Promise<{ success: boolean }>>
-  'notes:delete-version': (
-    ...args: [string]
-  ) => Awaited<Promise<{ success: false; error: string } | { success: boolean }>>
-  'notes:ensure-property-definition': (
-    ...args: [{ name: string; type: 'select' | 'status' | 'multiselect' }]
-  ) => Awaited<Promise<{ success: boolean }>>
-  'notes:exists': (...args: [string]) => Awaited<Promise<boolean>>
-  'notes:export-html': (
-    ...args: [
-      {
-        noteId: string
-        includeMetadata?: boolean | undefined
-        pageSize?: 'A4' | 'Letter' | 'Legal' | undefined
-      }
-    ]
-  ) => Awaited<
-    Promise<
-      | { success: false; error: string }
-      | { success: boolean; error: string; path?: undefined }
-      | { success: boolean; path: string; error?: undefined }
-    >
-  >
-  'notes:export-pdf': (
-    ...args: [
-      {
-        noteId: string
-        includeMetadata?: boolean | undefined
-        pageSize?: 'A4' | 'Letter' | 'Legal' | undefined
-      }
-    ]
-  ) => Awaited<
-    Promise<
-      | { success: false; error: string }
-      | { success: boolean; error: string; path?: undefined }
-      | { success: boolean; path: string; error?: undefined }
-    >
-  >
-  'notes:get': (...args: [string]) => Awaited<Promise<import('../vault/notes').Note | null>>
-  'notes:get-all-positions': (
-    ...args: []
-  ) => Awaited<
-    Promise<
-      { success: false; error: string } | { success: boolean; positions: Record<string, number> }
-    >
-  >
-  'notes:get-by-path': (...args: [string]) => Awaited<Promise<import('../vault/notes').Note | null>>
-  'notes:get-file': (
-    ...args: [string]
-  ) => Awaited<Promise<import('../vault/notes').FileMetadata | null>>
-  'notes:get-folder-config': (
-    ...args: [string]
-  ) => Awaited<
-    Promise<import('../../../../../packages/contracts/src/templates-api').FolderConfig | null>
-  >
-  'notes:get-folder-template': (...args: [string]) => Awaited<Promise<string | null>>
-  'notes:get-folders': (
-    ...args: []
-  ) => Awaited<Promise<import('../../../../../packages/contracts/src/templates-api').FolderInfo[]>>
-  'notes:get-links': (
-    ...args: [string]
-  ) => Awaited<Promise<import('../vault/notes').NoteLinksResponse>>
-  'notes:get-local-only-count': (...args: []) => Awaited<Promise<{ count: number }>>
-  'notes:get-positions': (
-    ...args: [{ folderPath: string }]
-  ) => Awaited<
-    Promise<
-      | { success: false; error: string }
-      | { success: boolean; positions: { path: string; position: number; folderPath: string }[] }
-    >
-  >
-  'notes:get-property-definitions': (...args: []) => Awaited<
-    Promise<
-      {
-        type: string
-        name: string
-        createdAt: string
-        options: string | null
-        defaultValue: string | null
-        color: string | null
-      }[]
-    >
-  >
-  'notes:get-tags': (
-    ...args: []
-  ) => Awaited<Promise<{ tag: string; color: string; count: number }[]>>
-  'notes:get-version': (
-    ...args: [string]
-  ) => Awaited<Promise<import('../vault/notes').SnapshotDetail | null>>
-  'notes:get-versions': (
-    ...args: [string]
-  ) => Awaited<Promise<import('../vault/notes').SnapshotListItem[]>>
-  'notes:import-files': (
-    ...args: [{ sourcePaths: string[]; targetFolder?: string | undefined }]
-  ) => Awaited<
-    Promise<{ success: false; error: string } | import('../vault/notes').ImportFilesResult>
-  >
-  'notes:list': (
-    ...args: [
-      {
-        folder?: string | undefined
-        tags?: string[] | undefined
-        sortBy?: 'title' | 'modified' | 'created' | 'position' | undefined
-        sortOrder?: 'asc' | 'desc' | undefined
-        limit?: number | undefined
-        offset?: number | undefined
-      }
-    ]
-  ) => Awaited<Promise<import('../vault/notes').NoteListResponse>>
-  'notes:list-attachments': (
-    ...args: [string]
-  ) => Awaited<Promise<import('../vault/attachments').AttachmentInfo[]>>
-  'notes:move': (
-    ...args: [{ id: string; newFolder: string }]
-  ) => Awaited<
-    Promise<
-      { success: false; error: string } | { success: boolean; note: import('../vault/notes').Note }
-    >
-  >
-  'notes:open-external': (...args: [string]) => Awaited<Promise<void>>
-  'notes:preview-by-title': (...args: [string]) => Awaited<
-    Promise<{
-      id: string
-      title: string
-      emoji: string | null
-      snippet: string | null
-      tags: { name: string; color: string }[]
-      createdAt: string
-    } | null>
-  >
-  'notes:remove-property-option': (
-    ...args: [{ propertyName: string; optionValue: string }]
-  ) => Awaited<Promise<{ success: boolean }>>
-  'notes:rename': (
-    ...args: [{ id: string; newTitle: string }]
-  ) => Awaited<
-    Promise<
-      { success: false; error: string } | { success: boolean; note: import('../vault/notes').Note }
-    >
-  >
-  'notes:rename-folder': (
-    ...args: [{ oldPath: string; newPath: string }]
-  ) => Awaited<Promise<{ success: false; error: string } | { success: boolean }>>
-  'notes:rename-property-option': (
-    ...args: [{ propertyName: string; oldValue: string; newValue: string }]
-  ) => Awaited<Promise<{ success: boolean }>>
-  'notes:reorder': (
-    ...args: [{ folderPath: string; notePaths: string[] }]
-  ) => Awaited<Promise<{ success: false; error: string } | { success: boolean }>>
-  'notes:resolve-by-title': (...args: [string]) => Awaited<
-    Promise<{
-      id: string
-      path: string
-      title: string
-      fileType: import('../../../../../packages/shared/src/file-types').FileType
-    } | null>
-  >
-  'notes:restore-version': (
-    ...args: [string]
-  ) => Awaited<
-    Promise<
-      { success: false; error: string } | { success: boolean; note: import('../vault/notes').Note }
-    >
-  >
-  'notes:reveal-in-finder': (...args: [string]) => Awaited<Promise<void>>
-  'notes:set-folder-config': (
-    ...args: [
-      {
-        folderPath: string
-        config: {
-          icon?: string | null | undefined
-          template?: string | undefined
-          inherit?: boolean | undefined
-        }
-      }
-    ]
-  ) => Awaited<Promise<{ success: false; error: string } | { success: boolean }>>
-  'notes:set-local-only': (
-    ...args: [{ id: string; localOnly: boolean }]
-  ) => Awaited<
-    Promise<
-      { success: false; error: string } | { success: boolean; note: import('../vault/notes').Note }
-    >
-  >
-  'notes:show-import-dialog': (
-    ...args: []
-  ) => Awaited<Promise<{ canceled: boolean; filePaths: string[] }>>
-  'notes:update': (
-    ...args: [
-      {
-        id: string
-        title?: string | undefined
-        content?: string | undefined
-        tags?: string[] | undefined
-        frontmatter?: Record<string, unknown> | undefined
-        emoji?: string | null | undefined
-      }
-    ]
-  ) => Awaited<
-    Promise<
-      { success: false; error: string } | { success: boolean; note: import('../vault/notes').Note }
-    >
-  >
-  'notes:update-option-color': (
-    ...args: [{ propertyName: string; optionValue: string; newColor: string }]
-  ) => Awaited<Promise<{ success: boolean }>>
-  'notes:update-property-definition': (
-    ...args: [
-      {
-        name: string
-        type?:
-          | 'number'
-          | 'date'
-          | 'text'
-          | 'select'
-          | 'checkbox'
-          | 'url'
-          | 'status'
-          | 'multiselect'
-          | undefined
-        options?: { value: string; color: string; default?: boolean | undefined }[] | undefined
-        defaultValue?: unknown
-        color?: string | undefined
-      }
-    ]
-  ) => Awaited<
-    Promise<
-      | { success: false; error: string }
-      | { success: boolean; definition: null; error: string }
-      | {
-          success: boolean
-          definition:
-            | import('../../../../../packages/contracts/src/property-types').PropertyDefinition
-            | undefined
-          error?: undefined
-        }
-      | {
-          success: boolean
-          definition:
-            | {
-                type: string
-                name: string
-                createdAt: string
-                options: string | null
-                defaultValue: string | null
-                color: string | null
-              }
-            | undefined
-          error?: undefined
-        }
-    >
-  >
-  'notes:upload-attachment': (
-    ...args: [{ noteId: string; filename: string; data: number[] | ArrayBuffer }]
-  ) => Awaited<Promise<import('../vault/attachments').AttachmentResult>>
-  'properties:get': (
-    ...args: [{ entityId: string }]
-  ) => Awaited<Promise<import('../database/queries/notes/property-queries').PropertyValue[]>>
-  'properties:rename': (
-    ...args: [{ entityId: string; oldName: string; newName: string }]
-  ) => Awaited<
-    Promise<
-      | { success: false; error: string }
-      | import('../../../../../packages/contracts/src/properties-api').RenamePropertyResponse
-    >
-  >
-  'properties:set': (
-    ...args: [{ entityId: string; properties: Record<string, unknown> }]
-  ) => Awaited<
-    Promise<
-      | { success: false; error: string }
-      | import('../../../../../packages/contracts/src/properties-api').SetPropertiesResponse
-    >
-  >
-  'quick-capture:get-clipboard': (...args: []) => Awaited<string>
-  'reminder:bulk-dismiss': (
-    ...args: [{ reminderIds: string[] }]
-  ) => Awaited<
-    Promise<{ success: false; error: string } | { success: boolean; dismissedCount: number }>
-  >
-  'reminder:count-pending': (...args: []) => Awaited<Promise<number>>
-  'reminder:create': (
-    ...args: [
-      | {
-          targetType: 'note'
-          targetId: string
-          remindAt: string
-          title?: string | undefined
-          note?: string | undefined
-        }
-      | {
-          targetType: 'journal'
-          targetId: string
-          remindAt: string
-          title?: string | undefined
-          note?: string | undefined
-        }
-      | {
-          targetType: 'highlight'
-          targetId: string
-          highlightText: string
-          highlightStart: number
-          highlightEnd: number
-          remindAt: string
-          title?: string | undefined
-          note?: string | undefined
-        }
-    ]
-  ) => Awaited<
-    Promise<
-      | { success: false; error: string }
-      | {
-          success: boolean
-          reminder: import('../../../../../packages/contracts/src/reminders-api').Reminder
-        }
-    >
-  >
-  'reminder:delete': (
-    ...args: [string]
-  ) => Awaited<
-    Promise<{ success: boolean; error: string } | { success: boolean; error?: undefined }>
-  >
-  'reminder:dismiss': (...args: [string]) => Awaited<
-    Promise<
-      | { success: false; error: string }
-      | { success: boolean; reminder: null; error: string }
-      | {
-          success: boolean
-          reminder: import('../../../../../packages/contracts/src/reminders-api').Reminder
-          error?: undefined
-        }
-    >
-  >
-  'reminder:get': (
-    ...args: [string]
-  ) => Awaited<
-    Promise<import('../../../../../packages/contracts/src/reminders-api').ReminderWithTarget | null>
-  >
-  'reminder:get-due': (
-    ...args: []
-  ) => Awaited<
-    Promise<import('../../../../../packages/contracts/src/reminders-api').ReminderWithTarget[]>
-  >
-  'reminder:get-for-target': (
-    ...args: [{ targetType: 'note' | 'journal' | 'highlight'; targetId: string }]
-  ) => Awaited<Promise<import('../../../../../packages/contracts/src/reminders-api').Reminder[]>>
-  'reminder:get-upcoming': (...args: [number | undefined]) => Awaited<
-    Promise<{
-      reminders: import('../../../../../packages/contracts/src/reminders-api').ReminderWithTarget[]
-      total: number
-      hasMore: boolean
-    }>
-  >
-  'reminder:list': (
-    ...args: [
-      {
-        targetType?: 'note' | 'journal' | 'highlight' | undefined
-        targetId?: string | undefined
-        status?:
-          | 'pending'
-          | 'triggered'
-          | 'dismissed'
-          | 'snoozed'
-          | ('pending' | 'triggered' | 'dismissed' | 'snoozed')[]
-          | undefined
-        fromDate?: string | undefined
-        toDate?: string | undefined
-        limit?: number | undefined
-        offset?: number | undefined
-      }
-    ]
-  ) => Awaited<
-    Promise<{
-      reminders: import('../../../../../packages/contracts/src/reminders-api').ReminderWithTarget[]
-      total: number
-      hasMore: boolean
-    }>
-  >
-  'reminder:snooze': (...args: [{ id: string; snoozeUntil: string }]) => Awaited<
-    Promise<
-      | { success: false; error: string }
-      | { success: boolean; reminder: null; error: string }
-      | {
-          success: boolean
-          reminder: import('../../../../../packages/contracts/src/reminders-api').Reminder
-          error?: undefined
-        }
-    >
-  >
-  'reminder:update': (
-    ...args: [
-      {
-        id: string
-        remindAt?: string | undefined
-        title?: string | null | undefined
-        note?: string | null | undefined
-      }
-    ]
-  ) => Awaited<
-    Promise<
-      | { success: false; error: string }
-      | { success: boolean; reminder: null; error: string }
-      | {
-          success: boolean
-          reminder: import('../../../../../packages/contracts/src/reminders-api').Reminder
-          error?: undefined
-        }
-    >
-  >
-  'saved-filters:create': (
-    ...args: [
-      {
-        name: string
-        config: {
-          filters: {
-            search?: string | undefined
-            projectIds?: string[] | undefined
-            priorities?: ('urgent' | 'high' | 'medium' | 'low' | 'none')[] | undefined
-            dueDate?:
-              | {
-                  type:
-                    | 'custom'
-                    | 'any'
-                    | 'none'
-                    | 'overdue'
-                    | 'today'
-                    | 'tomorrow'
-                    | 'this-week'
-                    | 'next-week'
-                    | 'this-month'
-                  customStart?: string | null | undefined
-                  customEnd?: string | null | undefined
-                }
-              | undefined
-            statusIds?: string[] | undefined
-            completion?: 'active' | 'completed' | 'all' | undefined
-            repeatType?: 'all' | 'repeating' | 'one-time' | undefined
-            hasTime?: 'all' | 'with-time' | 'without-time' | undefined
-          }
-          sort?:
-            | {
-                field: 'title' | 'createdAt' | 'priority' | 'dueDate' | 'completedAt' | 'project'
-                direction: 'asc' | 'desc'
-              }
-            | undefined
-          starred?: boolean | undefined
-        }
-      }
-    ]
-  ) => Awaited<
-    Promise<{
-      success: boolean
-      savedFilter: import('../../../../../packages/contracts/src/saved-filters-api').SavedFilter
-    }>
-  >
-  'saved-filters:delete': (
-    ...args: [{ id: string }]
-  ) => Awaited<
-    Promise<{ success: boolean; error: string } | { success: boolean; error?: undefined }>
-  >
-  'saved-filters:list': (...args: []) => Awaited<
-    Promise<{
-      savedFilters: import('../../../../../packages/contracts/src/saved-filters-api').SavedFilter[]
-    }>
-  >
-  'saved-filters:reorder': (
-    ...args: [{ ids: string[]; positions: number[] }]
-  ) => Awaited<Promise<{ success: boolean }>>
-  'saved-filters:update': (
-    ...args: [
-      {
-        id: string
-        name?: string | undefined
-        config?:
-          | {
-              filters: {
-                search?: string | undefined
-                projectIds?: string[] | undefined
-                priorities?: ('urgent' | 'high' | 'medium' | 'low' | 'none')[] | undefined
-                dueDate?:
-                  | {
-                      type:
-                        | 'custom'
-                        | 'any'
-                        | 'none'
-                        | 'overdue'
-                        | 'today'
-                        | 'tomorrow'
-                        | 'this-week'
-                        | 'next-week'
-                        | 'this-month'
-                      customStart?: string | null | undefined
-                      customEnd?: string | null | undefined
-                    }
-                  | undefined
-                statusIds?: string[] | undefined
-                completion?: 'active' | 'completed' | 'all' | undefined
-                repeatType?: 'all' | 'repeating' | 'one-time' | undefined
-                hasTime?: 'all' | 'with-time' | 'without-time' | undefined
-              }
-              sort?:
-                | {
-                    field:
-                      | 'title'
-                      | 'createdAt'
-                      | 'priority'
-                      | 'dueDate'
-                      | 'completedAt'
-                      | 'project'
-                    direction: 'asc' | 'desc'
-                  }
-                | undefined
-              starred?: boolean | undefined
-            }
-          | undefined
-        position?: number | undefined
-      }
-    ]
-  ) => Awaited<
-    Promise<
-      | { success: boolean; savedFilter: null; error: string }
-      | {
-          success: boolean
-          savedFilter:
-            | import('../../../../../packages/contracts/src/saved-filters-api').SavedFilter
-            | null
-          error?: undefined
-        }
-    >
-  >
-  'search:add-reason': (
-    ...args: [
-      {
-        itemId: string
-        itemType: 'note' | 'journal' | 'task' | 'inbox'
-        itemTitle: string
-        searchQuery: string
-        itemIcon?: string | null | undefined
-      }
-    ]
-  ) => Awaited<Promise<import('../../../../../packages/contracts/src/search-api').SearchReason>>
-  'search:clear-reasons': (...args: []) => Awaited<Promise<{ cleared: true }>>
-  'search:get-all-tags': (...args: []) => Awaited<Promise<string[]>>
-  'search:get-reasons': (
-    ...args: []
-  ) => Awaited<Promise<import('../../../../../packages/contracts/src/search-api').SearchReason[]>>
-  'search:get-stats': (
-    ...args: []
-  ) => Awaited<Promise<import('../../../../../packages/contracts/src/search-api').SearchStats>>
-  'search:query': (
-    ...args: [
-      {
-        text: string
-        types?: ('note' | 'journal' | 'task' | 'inbox')[] | undefined
-        tags?: string[] | undefined
-        dateRange?: { from: string; to: string } | null | undefined
-        projectId?: string | null | undefined
-        folderPath?: string | null | undefined
-        limit?: number | undefined
-        offset?: number | undefined
-      }
-    ]
-  ) => Awaited<Promise<import('../../../../../packages/contracts/src/search-api').SearchResponse>>
-  'search:quick': (
-    ...args: [string]
-  ) => Awaited<
-    Promise<import('../../../../../packages/contracts/src/search-api').QuickSearchResponse>
-  >
-  'search:rebuild-index': (...args: []) => Awaited<
-    Promise<
-      | {
-          notes: number
-          tasks: number
-          inbox: number
-          durationMs: number
-          started: true
-          error?: undefined
-        }
-      | { started: false; error: string }
-    >
-  >
-  'settings:downloadVoiceModel': (
-    ...args: []
-  ) => Awaited<
-    Promise<{ success: boolean; error?: undefined } | { success: boolean; error: string }>
-  >
-  'settings:get': (...args: [string]) => Awaited<string | null>
-  'settings:getAIModelStatus': (
-    ...args: []
-  ) => Awaited<Promise<import('./settings-handlers').AIModelStatus>>
-  'settings:getAISettings': (...args: []) => Awaited<import('./settings-handlers').AISettings>
-  'settings:getBackupSettings': (...args: []) => Awaited<{
-    autoBackup: boolean
-    frequencyHours: 1 | 6 | 12 | 24
-    maxBackups: number
-    lastBackupAt: string | null
-  }>
-  'settings:getEditorSettings': (...args: []) => Awaited<{
-    width: 'medium' | 'narrow' | 'wide'
-    spellCheck: boolean
-    autoSaveDelay: number
-    showWordCount: boolean
-    toolbarMode: 'floating' | 'sticky'
-  }>
-  'settings:getGeneralSettings': (...args: []) => Awaited<{
-    theme: 'light' | 'dark' | 'white' | 'system'
-    fontSize: 'small' | 'medium' | 'large'
-    fontFamily: 'system' | 'serif' | 'sans-serif' | 'monospace' | 'gelasio' | 'geist' | 'inter'
-    accentColor: string
-    startOnBoot: boolean
-    language: string
-    onboardingCompleted: boolean
-    createInSelectedFolder: boolean
-  }>
-  'settings:getGraphSettings': (...args: []) => Awaited<{
-    layout: 'forceatlas2' | 'circular' | 'random'
-    showLabels: boolean
-    showEdgeLabels: boolean
-    animateLayout: boolean
-    showTagEdges: boolean
-  }>
-  'settings:getJournalSettings': (...args: []) => Awaited<{
-    defaultTemplate: string | null
-    showSchedule: boolean
-    showTasks: boolean
-    showAIConnections: boolean
-    showStatsFooter: boolean
-  }>
-  'settings:getKeyboardSettings': (...args: []) => Awaited<{
-    overrides: Record<
-      string,
-      {
-        key: string
-        modifiers: {
-          meta?: boolean | undefined
-          ctrl?: boolean | undefined
-          shift?: boolean | undefined
-          alt?: boolean | undefined
-        }
-      }
-    >
-    globalCapture: {
-      key: string
-      modifiers: {
-        meta?: boolean | undefined
-        ctrl?: boolean | undefined
-        shift?: boolean | undefined
-        alt?: boolean | undefined
-      }
-    } | null
-  }>
-  'settings:getNoteEditorSettings': (
-    ...args: []
-  ) => Awaited<import('./settings-handlers').NoteEditorSettings>
-  'settings:getSyncSettings': (...args: []) => Awaited<{ enabled: boolean; autoSync: boolean }>
-  'settings:getTabSettings': (...args: []) => Awaited<import('./settings-handlers').TabSettings>
-  'settings:getTaskSettings': (...args: []) => Awaited<{
-    defaultProjectId: string | null
-    defaultSortOrder: 'createdAt' | 'priority' | 'dueDate' | 'manual'
-    weekStartDay: 'sunday' | 'monday'
-    staleInboxDays: number
-  }>
-  'settings:getVoiceModelStatus': (
-    ...args: []
-  ) => Awaited<import('../inbox/voice-model').VoiceModelStatus>
-  'settings:getVoiceRecordingReadiness': (
-    ...args: []
-  ) => Awaited<Promise<import('../inbox/voice-transcription-settings').VoiceRecordingReadiness>>
-  'settings:getVoiceTranscriptionOpenAIKeyStatus': (
-    ...args: []
-  ) => Awaited<Promise<import('./settings-handlers').VoiceTranscriptionOpenAIKeyStatus>>
-  'settings:getVoiceTranscriptionSettings': (
-    ...args: []
-  ) => Awaited<{ provider: 'local' | 'openai' }>
-  'settings:loadAIModel': (
-    ...args: []
-  ) => Awaited<
-    Promise<
-      | { success: false; error: string }
-      | { success: boolean; message: string; error?: undefined }
-      | { success: boolean; error: string; message?: undefined }
-      | { success: boolean; message?: undefined; error?: undefined }
-    >
-  >
-  'settings:registerGlobalCapture': (
-    ...args: []
-  ) => Awaited<Promise<import('./settings-handlers').GlobalCaptureResult>>
-  'settings:reindexEmbeddings': (
-    ...args: []
-  ) => Awaited<
-    Promise<
-      | { success: false; error: string }
-      | { success: boolean; computed: number; skipped: number; error?: string | undefined }
-    >
-  >
-  'settings:resetKeyboardSettings': (
-    ...args: []
-  ) => Awaited<{ success: boolean; error: string } | { success: boolean; error?: undefined }>
-  'settings:set': (
-    ...args: [{ key: string; value: string }]
-  ) => Awaited<{ success: boolean; error: string } | { success: boolean; error?: undefined }>
-  'settings:setAISettings': (
-    ...args: [Partial<import('./settings-handlers').AISettings>]
-  ) => Awaited<{ success: boolean; error: string } | { success: boolean; error?: undefined }>
-  'settings:setBackupSettings': (
-    ...args: [
-      Partial<{
-        autoBackup: boolean
-        frequencyHours: 1 | 6 | 12 | 24
-        maxBackups: number
-        lastBackupAt: string | null
-      }>
-    ]
-  ) => Awaited<{ success: boolean; error?: string | undefined }>
-  'settings:setEditorSettings': (
-    ...args: [
-      Partial<{
-        width: 'medium' | 'narrow' | 'wide'
-        spellCheck: boolean
-        autoSaveDelay: number
-        showWordCount: boolean
-        toolbarMode: 'floating' | 'sticky'
-      }>
-    ]
-  ) => Awaited<{ success: boolean; error?: string | undefined }>
-  'settings:setGeneralSettings': (
-    ...args: [
-      Partial<{
-        theme: 'light' | 'dark' | 'white' | 'system'
-        fontSize: 'small' | 'medium' | 'large'
-        fontFamily: 'system' | 'serif' | 'sans-serif' | 'monospace' | 'gelasio' | 'geist' | 'inter'
-        accentColor: string
-        startOnBoot: boolean
-        language: string
-        onboardingCompleted: boolean
-        createInSelectedFolder: boolean
-      }>
-    ]
-  ) => Awaited<{ success: boolean; error?: string | undefined }>
-  'settings:setGraphSettings': (
-    ...args: [
-      Partial<{
-        layout: 'forceatlas2' | 'circular' | 'random'
-        showLabels: boolean
-        showEdgeLabels: boolean
-        animateLayout: boolean
-        showTagEdges: boolean
-      }>
-    ]
-  ) => Awaited<{ success: boolean; error?: string | undefined }>
-  'settings:setJournalSettings': (
-    ...args: [Partial<import('./settings-handlers').JournalSettings>]
-  ) => Awaited<{ success: boolean; error: string } | { success: boolean; error?: undefined }>
-  'settings:setKeyboardSettings': (
-    ...args: [
-      Partial<{
-        overrides: Record<
-          string,
-          {
-            key: string
-            modifiers: {
-              meta?: boolean | undefined
-              ctrl?: boolean | undefined
-              shift?: boolean | undefined
-              alt?: boolean | undefined
-            }
-          }
-        >
-        globalCapture: {
-          key: string
-          modifiers: {
-            meta?: boolean | undefined
-            ctrl?: boolean | undefined
-            shift?: boolean | undefined
-            alt?: boolean | undefined
-          }
-        } | null
-      }>
-    ]
-  ) => Awaited<{ success: boolean; error?: string | undefined }>
-  'settings:setNoteEditorSettings': (
-    ...args: [Partial<import('./settings-handlers').NoteEditorSettings>]
-  ) => Awaited<{ success: boolean; error: string } | { success: boolean; error?: undefined }>
-  'settings:setSyncSettings': (
-    ...args: [Partial<{ enabled: boolean; autoSync: boolean }>]
-  ) => Awaited<{ success: boolean; error?: string | undefined }>
-  'settings:setTabSettings': (
-    ...args: [Partial<import('./settings-handlers').TabSettings>]
-  ) => Awaited<{ success: boolean; error: string } | { success: boolean; error?: undefined }>
-  'settings:setTaskSettings': (
-    ...args: [
-      Partial<{
-        defaultProjectId: string | null
-        defaultSortOrder: 'createdAt' | 'priority' | 'dueDate' | 'manual'
-        weekStartDay: 'sunday' | 'monday'
-        staleInboxDays: number
-      }>
-    ]
-  ) => Awaited<{ success: boolean; error?: string | undefined }>
-  'settings:setVoiceTranscriptionOpenAIKey': (
-    ...args: [{ apiKey: string }]
-  ) => Awaited<
-    Promise<{ success: boolean; error?: undefined } | { success: boolean; error: string }>
-  >
-  'settings:setVoiceTranscriptionSettings': (
-    ...args: [Partial<{ provider: 'local' | 'openai' }>]
-  ) => Awaited<{ success: boolean; error?: string | undefined }>
-  'sync:approve-linking': (
-    ...args: [{ sessionId: string }]
-  ) => Awaited<
-    Promise<import('../../../../../packages/contracts/src/ipc-devices').ApproveLinkingResult>
-  >
-  'sync:check-device-status': (...args: []) => Awaited<Promise<{ status: string }>>
-  'sync:complete-linking-qr': (
-    ...args: [{ sessionId: string }]
-  ) => Awaited<
-    Promise<import('../../../../../packages/contracts/src/ipc-devices').CompleteLinkingQrResult>
-  >
-  'sync:confirm-recovery-phrase': (
-    ...args: [{ confirmed: boolean }]
-  ) => Awaited<Promise<{ success: boolean }>>
-  'sync:download-attachment': (
-    ...args: [{ attachmentId: string; targetPath?: string | undefined }]
-  ) => Awaited<
-    Promise<
-      | { success: boolean; error: string; filePath?: undefined }
-      | { success: boolean; filePath: string; error?: undefined }
-    >
-  >
-  'sync:emergency-wipe': (...args: []) => Awaited<Promise<{ success: boolean }>>
-  'sync:generate-linking-qr': (
-    ...args: []
-  ) => Awaited<
-    Promise<import('../../../../../packages/contracts/src/ipc-devices').GenerateLinkingQrResult>
-  >
-  'sync:get-devices': (...args: []) => Awaited<
-    Promise<{
-      devices: {
-        id: string
-        name: string
-        platform: 'macos' | 'windows' | 'linux' | 'ios' | 'android'
-        linkedAt: number
-        lastSyncAt: number | undefined
-        isCurrentDevice: boolean
-      }[]
-      email: string | undefined
-    }>
-  >
-  'sync:get-download-progress': (...args: [{ attachmentId: string }]) => Awaited<
-    Promise<{
-      progress: number
-      downloadedChunks: number
-      totalChunks: number
-      status: 'downloading'
-    } | null>
-  >
-  'sync:get-history': (
-    ...args: [{ limit?: number | undefined; offset?: number | undefined }]
-  ) => Awaited<
-    Promise<{
-      entries: {
-        id: string
-        type: 'error' | 'push' | 'pull'
-        itemCount: number
-        direction: string | undefined
-        details: unknown
-        durationMs: number | undefined
-        createdAt: number
-      }[]
-      total: number
-    }>
-  >
-  'sync:get-linking-sas': (
-    ...args: [{ sessionId: string }]
-  ) => Awaited<Promise<{ verificationCode?: string | undefined; error?: string | undefined }>>
-  'sync:get-quarantined-items': (
-    ...args: []
-  ) => Awaited<import('../../../../../packages/contracts/src/ipc-events').QuarantinedItemInfo[]>
-  'sync:get-queue-size': (...args: []) => Awaited<{ pending: number; failed: number }>
-  'sync:get-recovery-phrase': (...args: []) => Awaited<string | null>
-  'sync:get-status': (
-    ...args: []
-  ) => Awaited<
-    | import('../../../../../packages/contracts/src/ipc-sync-ops').GetSyncStatusResult
-    | { status: string; pendingCount: number }
-  >
-  'sync:get-storage-breakdown': (
-    ...args: []
-  ) => Awaited<
-    Promise<
-      import('../../../../../packages/contracts/src/ipc-sync-ops').StorageBreakdownResult | null
-    >
-  >
-  'sync:get-synced-settings': (...args: []) => Awaited<{
-    general?:
-      | {
-          theme?: 'light' | 'dark' | 'white' | 'system' | undefined
-          fontSize?: 'small' | 'medium' | 'large' | undefined
-          fontFamily?:
-            | 'system'
-            | 'serif'
-            | 'sans-serif'
-            | 'monospace'
-            | 'gelasio'
-            | 'geist'
-            | 'inter'
-            | undefined
-          accentColor?: string | undefined
-          startOnBoot?: boolean | undefined
-          language?: string | undefined
-          createInSelectedFolder?: boolean | undefined
-        }
-      | undefined
-    editor?:
-      | {
-          width?: 'medium' | 'narrow' | 'wide' | undefined
-          spellCheck?: boolean | undefined
-          autoSaveDelay?: number | undefined
-          showWordCount?: boolean | undefined
-          toolbarMode?: 'floating' | 'sticky' | undefined
-        }
-      | undefined
-    tasks?:
-      | {
-          defaultProjectId?: string | null | undefined
-          defaultSortOrder?: 'createdAt' | 'priority' | 'dueDate' | 'manual' | undefined
-          weekStartDay?: 'sunday' | 'monday' | undefined
-          staleInboxDays?: number | undefined
-          showCompleted?: boolean | undefined
-          sortBy?: string | undefined
-        }
-      | undefined
-    keyboard?: { overrides?: Record<string, unknown> | undefined } | undefined
-    notes?:
-      | {
-          defaultFolder?: string | undefined
-          editorFontSize?: number | undefined
-          spellCheck?: boolean | undefined
-        }
-      | undefined
-    sync?: { autoSync?: boolean | undefined; syncIntervalMinutes?: number | undefined } | undefined
-  } | null>
-  'sync:get-upload-progress': (...args: [{ sessionId: string }]) => Awaited<
-    Promise<{
-      progress: number
-      uploadedChunks: number
-      totalChunks: number
-      status: 'uploading'
-    } | null>
-  >
-  'sync:link-via-qr': (
-    ...args: [{ qrData: string; oauthToken?: string | undefined; provider?: string | undefined }]
-  ) => Awaited<Promise<import('../../../../../packages/contracts/src/ipc-devices').LinkViaQrResult>>
-  'sync:link-via-recovery': (
-    ...args: [{ recoveryPhrase: string }]
-  ) => Awaited<
-    Promise<
-      | { success: boolean; error: string; deviceId?: undefined }
-      | { success: boolean; deviceId: string; error?: undefined }
-    >
-  >
-  'sync:logout': (
-    ...args: []
-  ) => Awaited<Promise<{ keychainWarning?: string | undefined; success: boolean }>>
-  'sync:pause': (...args: []) => Awaited<{ success: boolean; wasPaused: boolean }>
-  'sync:remove-device': (
-    ...args: [{ deviceId: string }]
-  ) => Awaited<
-    Promise<{ success: boolean; error: string } | { success: boolean; error?: undefined }>
-  >
-  'sync:rename-device': (
-    ...args: [{ deviceId: string; newName: string }]
-  ) => Awaited<
-    Promise<{ success: boolean; error: string } | { success: boolean; error?: undefined }>
-  >
-  'sync:resume': (...args: []) => Awaited<{ success: boolean; pendingCount: number }>
-  'sync:setup-first-device': (
-    ...args: [{ oauthToken: string; provider: 'google'; state: string }]
-  ) => Awaited<
-    Promise<
-      | {
-          success: boolean
-          needsRecoverySetup: boolean
-          deviceId: string
-          needsRecoveryInput?: undefined
-        }
-      | {
-          success: boolean
-          needsRecoverySetup: boolean
-          needsRecoveryInput: boolean
-          deviceId?: undefined
-        }
-    >
-  >
-  'sync:setup-new-account': (
-    ...args: []
-  ) => Awaited<
-    Promise<
-      | { success: boolean; error: string; deviceId?: undefined }
-      | { success: boolean; deviceId: string; error?: undefined }
-    >
-  >
-  'sync:trigger-sync': (
-    ...args: []
-  ) => Awaited<Promise<{ success: boolean } | { success: boolean; error: string }>>
-  'sync:update-synced-setting': (
-    ...args: [unknown]
-  ) => Awaited<{ success: boolean; error: string } | { success: boolean; error?: undefined }>
-  'sync:upload-attachment': (
-    ...args: [{ noteId: string; filePath: string }]
-  ) => Awaited<
-    Promise<
-      | { success: boolean; error: string; attachmentId?: undefined; sessionId?: undefined }
-      | { success: boolean; attachmentId: string; sessionId: string; error?: undefined }
-    >
-  >
-  'tags:delete': (
-    ...args: [string]
-  ) => Awaited<
-    Promise<
-      | { success: false; error: string }
-      | import('../../../../../packages/contracts/src/tags-api').DeleteTagResponse
-    >
-  >
-  'tags:get-all-with-counts': (
-    ...args: []
-  ) => Awaited<
-    Promise<import('../../../../../packages/contracts/src/tags-api').GetAllWithCountsResponse>
-  >
-  'tags:get-notes-by-tag': (
-    ...args: [
-      {
-        tag: string
-        sortBy?: 'title' | 'modified' | 'created' | undefined
-        sortOrder?: 'asc' | 'desc' | undefined
-        includeDescendants?: boolean | undefined
-      }
-    ]
-  ) => Awaited<
-    Promise<import('../../../../../packages/contracts/src/tags-api').GetNotesByTagResponse>
-  >
-  'tags:merge': (
-    ...args: [{ source: string; target: string }]
-  ) => Awaited<
-    Promise<
-      | { success: false; error: string }
-      | import('../../../../../packages/contracts/src/tags-api').MergeTagResponse
-    >
-  >
-  'tags:pin-note-to-tag': (
-    ...args: [{ noteId: string; tag: string }]
-  ) => Awaited<
-    Promise<
-      | { success: false; error: string }
-      | import('../../../../../packages/contracts/src/tags-api').TagOperationResponse
-    >
-  >
-  'tags:remove-from-note': (
-    ...args: [{ noteId: string; tag: string }]
-  ) => Awaited<
-    Promise<
-      | { success: false; error: string }
-      | import('../../../../../packages/contracts/src/tags-api').TagOperationResponse
-    >
-  >
-  'tags:rename': (
-    ...args: [{ oldName: string; newName: string }]
-  ) => Awaited<
-    Promise<
-      | { success: false; error: string }
-      | import('../../../../../packages/contracts/src/tags-api').RenameTagResponse
-    >
-  >
-  'tags:unpin-note-from-tag': (
-    ...args: [{ noteId: string; tag: string }]
-  ) => Awaited<
-    Promise<
-      | { success: false; error: string }
-      | import('../../../../../packages/contracts/src/tags-api').TagOperationResponse
-    >
-  >
-  'tags:update-color': (
-    ...args: [{ tag: string; color: string }]
-  ) => Awaited<
-    Promise<
-      | { success: false; error: string }
-      | import('../../../../../packages/contracts/src/tags-api').TagOperationResponse
-    >
-  >
-  'tasks:archive': (
-    ...args: [string]
-  ) => Awaited<
-    Promise<
-      | { success: false; error: string }
-      | { success: boolean; error: string }
-      | { success: boolean; error?: undefined }
-    >
-  >
-  'tasks:bulk-archive': (
-    ...args: [{ ids: string[] }]
-  ) => Awaited<Promise<{ success: false; error: string } | { success: boolean; count: number }>>
-  'tasks:bulk-complete': (
-    ...args: [{ ids: string[] }]
-  ) => Awaited<Promise<{ success: false; error: string } | { success: boolean; count: number }>>
-  'tasks:bulk-delete': (
-    ...args: [{ ids: string[] }]
-  ) => Awaited<Promise<{ success: false; error: string } | { success: boolean; count: number }>>
-  'tasks:bulk-move': (
-    ...args: [{ ids: string[]; projectId: string }]
-  ) => Awaited<Promise<{ success: false; error: string } | { success: boolean; count: number }>>
-  'tasks:complete': (...args: [{ id: string; completedAt?: string | undefined }]) => Awaited<
-    Promise<
-      | { success: false; error: string }
-      | { success: boolean; task: null; error: string }
-      | {
-          success: boolean
-          task: import('../../../../../packages/domain-tasks/src/types').Task
-          error?: undefined
-        }
-    >
-  >
-  'tasks:convert-to-subtask': (...args: [{ taskId: string; parentId: string }]) => Awaited<
-    Promise<
-      | { success: false; error: string }
-      | { success: boolean; task: null; error: string }
-      | {
-          success: boolean
-          task: import('../../../../../packages/domain-tasks/src/types').Task
-          error?: undefined
-        }
-    >
-  >
-  'tasks:convert-to-task': (...args: [string]) => Awaited<
-    Promise<
-      | { success: false; error: string }
-      | { success: boolean; task: null; error: string }
-      | {
-          success: boolean
-          task: import('../../../../../packages/domain-tasks/src/types').Task
-          error?: undefined
-        }
-    >
-  >
-  'tasks:create': (
-    ...args: [
-      {
-        projectId: string
-        title: string
-        description?: string | null | undefined
-        priority?: number | undefined
-        statusId?: string | null | undefined
-        parentId?: string | null | undefined
-        dueDate?: string | null | undefined
-        dueTime?: string | null | undefined
-        startDate?: string | null | undefined
-        isRepeating?: boolean | undefined
-        repeatConfig?:
-          | {
-              frequency: 'daily' | 'weekly' | 'monthly' | 'yearly'
-              endType: 'date' | 'never' | 'count'
-              createdAt: string
-              interval?: number | undefined
-              daysOfWeek?: number[] | undefined
-              monthlyType?: 'dayOfMonth' | 'weekPattern' | undefined
-              dayOfMonth?: number | undefined
-              weekOfMonth?: number | undefined
-              dayOfWeekForMonth?: number | undefined
-              endDate?: string | null | undefined
-              endCount?: number | undefined
-              completedCount?: number | undefined
-            }
-          | null
-          | undefined
-        repeatFrom?: 'due' | 'completion' | null | undefined
-        tags?: string[] | undefined
-        linkedNoteIds?: string[] | undefined
-        sourceNoteId?: string | null | undefined
-        position?: number | undefined
-      }
-    ]
-  ) => Awaited<
-    Promise<
-      | { success: false; error: string }
-      | { success: boolean; task: import('../../../../../packages/domain-tasks/src/types').Task }
-    >
-  >
-  'tasks:delete': (
-    ...args: [string]
-  ) => Awaited<Promise<{ success: false; error: string } | { success: boolean }>>
-  'tasks:duplicate': (...args: [string]) => Awaited<
-    Promise<
-      | { success: false; error: string }
-      | { success: boolean; task: null; error: string }
-      | {
-          success: boolean
-          task: import('../../../../../packages/domain-tasks/src/types').Task
-          error?: undefined
-        }
-    >
-  >
-  'tasks:get': (
-    ...args: [string]
-  ) => Awaited<Promise<import('../../../../../packages/domain-tasks/src/types').Task | null>>
-  'tasks:get-linked-tasks': (
-    ...args: [string]
-  ) => Awaited<Promise<import('../../../../../packages/domain-tasks/src/types').Task[]>>
-  'tasks:get-overdue': (
-    ...args: []
-  ) => Awaited<Promise<import('../../../../../packages/domain-tasks/src/queries').TaskListEnvelope>>
-  'tasks:get-stats': (
-    ...args: []
-  ) => Awaited<Promise<import('../../../../../packages/domain-tasks/src/types').TaskStats>>
-  'tasks:get-subtasks': (
-    ...args: [string]
-  ) => Awaited<Promise<import('../../../../../packages/domain-tasks/src/types').Task[]>>
-  'tasks:get-tags': (...args: []) => Awaited<Promise<{ tag: string; count: number }[]>>
-  'tasks:get-today': (
-    ...args: []
-  ) => Awaited<Promise<import('../../../../../packages/domain-tasks/src/queries').TaskListEnvelope>>
-  'tasks:get-upcoming': (
-    ...args: [{ days?: number | undefined }]
-  ) => Awaited<Promise<import('../../../../../packages/domain-tasks/src/queries').TaskListEnvelope>>
-  'tasks:list': (
-    ...args: [
-      {
-        projectId?: string | undefined
-        statusId?: string | null | undefined
-        parentId?: string | null | undefined
-        includeCompleted?: boolean | undefined
-        includeArchived?: boolean | undefined
-        dueBefore?: string | undefined
-        dueAfter?: string | undefined
-        tags?: string[] | undefined
-        search?: string | undefined
-        sortBy?: 'modified' | 'created' | 'position' | 'priority' | 'dueDate' | undefined
-        sortOrder?: 'asc' | 'desc' | undefined
-        limit?: number | undefined
-        offset?: number | undefined
-      }
-    ]
-  ) => Awaited<Promise<import('../../../../../packages/domain-tasks/src/queries').TaskListResult>>
-  'tasks:move': (
-    ...args: [
-      {
-        taskId: string
-        position: number
-        targetProjectId?: string | undefined
-        targetStatusId?: string | null | undefined
-        targetParentId?: string | null | undefined
-      }
-    ]
-  ) => Awaited<
-    Promise<
-      | { success: false; error: string }
-      | { success: boolean; task: null; error: string }
-      | {
-          success: boolean
-          task: import('../../../../../packages/domain-tasks/src/types').Task
-          error?: undefined
-        }
-    >
-  >
-  'tasks:project-archive': (
-    ...args: [string]
-  ) => Awaited<
-    Promise<
-      | { success: false; error: string }
-      | { success: boolean; error: string }
-      | { success: boolean; error?: undefined }
-    >
-  >
-  'tasks:project-create': (
-    ...args: [
-      {
-        name: string
-        description?: string | null | undefined
-        color?: string | undefined
-        icon?: string | null | undefined
-        statuses?:
-          | {
-              name: string
-              type: 'todo' | 'in_progress' | 'done'
-              order: number
-              color?: string | undefined
-            }[]
-          | undefined
-      }
-    ]
-  ) => Awaited<
-    Promise<
-      | { success: false; error: string }
-      | {
-          success: boolean
-          project: import('../../../../../packages/domain-tasks/src/types').ProjectWithStatuses
-        }
-    >
-  >
-  'tasks:project-delete': (
-    ...args: [string]
-  ) => Awaited<Promise<{ success: false; error: string } | { success: boolean }>>
-  'tasks:project-get': (
-    ...args: [string]
-  ) => Awaited<
-    Promise<
-      import('../../../../../packages/domain-tasks/src/types').ProjectWithStatuses | undefined
-    >
-  >
-  'tasks:project-list': (...args: []) => Awaited<
-    Promise<{
-      projects: import('../../../../../packages/domain-tasks/src/types').ProjectWithStats[]
-    }>
-  >
-  'tasks:project-reorder': (
-    ...args: [{ projectIds: string[]; positions: number[] }]
-  ) => Awaited<Promise<{ success: false; error: string } | { success: boolean }>>
-  'tasks:project-update': (
-    ...args: [
-      {
-        id: string
-        name?: string | undefined
-        description?: string | null | undefined
-        color?: string | undefined
-        icon?: string | null | undefined
-        statuses?:
-          | {
-              name: string
-              type: 'todo' | 'in_progress' | 'done'
-              order: number
-              id?: string | undefined
-              color?: string | undefined
-            }[]
-          | undefined
-      }
-    ]
-  ) => Awaited<
-    Promise<
-      | { success: false; error: string }
-      | { success: boolean; project: null; error: string }
-      | {
-          success: boolean
-          project: import('../../../../../packages/domain-tasks/src/types').ProjectWithStatuses
-          error?: undefined
-        }
-    >
-  >
-  'tasks:reorder': (
-    ...args: [{ taskIds: string[]; positions: number[] }]
-  ) => Awaited<Promise<{ success: false; error: string } | { success: boolean }>>
-  'tasks:seed-demo': (...args: []) => Awaited<Promise<{ success: boolean; message: string }>>
-  'tasks:seed-performance-test': (
-    ...args: []
-  ) => Awaited<Promise<{ success: boolean; message: string }>>
-  'tasks:status-create': (
-    ...args: [
-      { projectId: string; name: string; color?: string | undefined; isDone?: boolean | undefined }
-    ]
-  ) => Awaited<
-    Promise<
-      | { success: false; error: string }
-      | {
-          success: boolean
-          status: import('../../../../../packages/domain-tasks/src/types').Status
-        }
-    >
-  >
-  'tasks:status-delete': (
-    ...args: [string]
-  ) => Awaited<Promise<{ success: false; error: string } | { success: boolean }>>
-  'tasks:status-list': (
-    ...args: [string]
-  ) => Awaited<Promise<import('../../../../../packages/domain-tasks/src/types').Status[]>>
-  'tasks:status-reorder': (
-    ...args: [{ statusIds: string[]; positions: number[] }]
-  ) => Awaited<Promise<{ success: false; error: string } | { success: boolean }>>
-  'tasks:status-update': (
-    ...args: [
-      {
-        id: string
-        name?: string | undefined
-        color?: string | undefined
-        position?: number | undefined
-        isDefault?: boolean | undefined
-        isDone?: boolean | undefined
-      }
-    ]
-  ) => Awaited<
-    Promise<
-      | { success: false; error: string }
-      | { success: boolean; error: string; status?: undefined }
-      | {
-          success: boolean
-          status: import('../../../../../packages/domain-tasks/src/types').Status
-          error?: undefined
-        }
-    >
-  >
-  'tasks:unarchive': (
-    ...args: [string]
-  ) => Awaited<
-    Promise<
-      | { success: false; error: string }
-      | { success: boolean; error: string }
-      | { success: boolean; error?: undefined }
-    >
-  >
-  'tasks:uncomplete': (...args: [string]) => Awaited<
-    Promise<
-      | { success: false; error: string }
-      | { success: boolean; task: null; error: string }
-      | {
-          success: boolean
-          task: import('../../../../../packages/domain-tasks/src/types').Task
-          error?: undefined
-        }
-    >
-  >
-  'tasks:update': (
-    ...args: [
-      {
-        id: string
-        title?: string | undefined
-        description?: string | null | undefined
-        priority?: number | undefined
-        projectId?: string | undefined
-        statusId?: string | null | undefined
-        parentId?: string | null | undefined
-        dueDate?: string | null | undefined
-        dueTime?: string | null | undefined
-        startDate?: string | null | undefined
-        isRepeating?: boolean | undefined
-        repeatConfig?:
-          | {
-              frequency: 'daily' | 'weekly' | 'monthly' | 'yearly'
-              endType: 'date' | 'never' | 'count'
-              createdAt: string
-              interval?: number | undefined
-              daysOfWeek?: number[] | undefined
-              monthlyType?: 'dayOfMonth' | 'weekPattern' | undefined
-              dayOfMonth?: number | undefined
-              weekOfMonth?: number | undefined
-              dayOfWeekForMonth?: number | undefined
-              endDate?: string | null | undefined
-              endCount?: number | undefined
-              completedCount?: number | undefined
-            }
-          | null
-          | undefined
-        repeatFrom?: 'due' | 'completion' | null | undefined
-        tags?: string[] | undefined
-        linkedNoteIds?: string[] | undefined
-      }
-    ]
-  ) => Awaited<
-    Promise<
-      | { success: false; error: string }
-      | { success: boolean; task: null; error: string }
-      | {
-          success: boolean
-          task: import('../../../../../packages/domain-tasks/src/types').Task
-          error?: undefined
-        }
-    >
-  >
-  'templates:create': (
-    ...args: [
-      {
-        name: string
-        description?: string | undefined
-        icon?: string | null | undefined
-        tags?: string[] | undefined
-        properties?:
-          | {
-              name: string
-              type:
-                | 'number'
-                | 'date'
-                | 'text'
-                | 'select'
-                | 'checkbox'
-                | 'url'
-                | 'multiselect'
-                | 'rating'
-              value: unknown
-              options?: string[] | undefined
-            }[]
-          | undefined
-        content?: string | undefined
-      }
-    ]
-  ) => Awaited<
-    Promise<
-      | { success: false; error: string }
-      | {
-          success: boolean
-          template: import('../../../../../packages/contracts/src/templates-api').Template
-        }
-    >
-  >
-  'templates:delete': (
-    ...args: [string]
-  ) => Awaited<Promise<{ success: false; error: string } | { success: boolean }>>
-  'templates:duplicate': (...args: [{ id: string; newName: string }]) => Awaited<
-    Promise<
-      | { success: false; error: string }
-      | {
-          success: boolean
-          template: import('../../../../../packages/contracts/src/templates-api').Template
-        }
-    >
-  >
-  'templates:get': (
-    ...args: [string]
-  ) => Awaited<
-    Promise<import('../../../../../packages/contracts/src/templates-api').Template | null>
-  >
-  'templates:list': (...args: []) => Awaited<
-    Promise<{
-      templates: import('../../../../../packages/contracts/src/templates-api').TemplateListItem[]
-    }>
-  >
-  'templates:update': (
-    ...args: [
-      {
-        id: string
-        name?: string | undefined
-        description?: string | undefined
-        icon?: string | null | undefined
-        tags?: string[] | undefined
-        properties?:
-          | {
-              name: string
-              type:
-                | 'number'
-                | 'date'
-                | 'text'
-                | 'select'
-                | 'checkbox'
-                | 'url'
-                | 'multiselect'
-                | 'rating'
-              value: unknown
-              options?: string[] | undefined
-            }[]
-          | undefined
-        content?: string | undefined
-      }
-    ]
-  ) => Awaited<
-    Promise<
-      | { success: false; error: string }
-      | {
-          success: boolean
-          template: import('../../../../../packages/contracts/src/templates-api').Template
-        }
-    >
-  >
-  'vault:close': (...args: []) => Awaited<Promise<void>>
-  'vault:get-all': (
-    ...args: []
-  ) => Awaited<Promise<import('../../../../../packages/contracts/src/vault-api').GetVaultsResponse>>
-  'vault:get-config': (
-    ...args: []
-  ) => Awaited<Promise<import('../../../../../packages/contracts/src/vault-api').VaultConfig>>
-  'vault:get-status': (
-    ...args: []
-  ) => Awaited<Promise<import('../../../../../packages/contracts/src/vault-api').VaultStatus>>
-  'vault:reindex': (...args: []) => Awaited<Promise<void>>
-  'vault:remove': (...args: [string]) => Awaited<Promise<void>>
-  'vault:reveal': (...args: []) => Awaited<Promise<void>>
-  'vault:select': (
-    ...args: [{ path?: string | undefined }]
-  ) => Awaited<
-    Promise<import('../../../../../packages/contracts/src/vault-api').SelectVaultResponse>
-  >
-  'vault:switch': (
-    ...args: [string]
-  ) => Awaited<
-    Promise<import('../../../../../packages/contracts/src/vault-api').SelectVaultResponse>
-  >
-  'vault:update-config': (
-    ...args: [
-      {
-        excludePatterns?: string[] | undefined
-        defaultNoteFolder?: string | undefined
-        journalFolder?: string | undefined
-        attachmentsFolder?: string | undefined
-      }
-    ]
-  ) => Awaited<Promise<import('../../../../../packages/contracts/src/vault-api').VaultConfig>>
+  "account:getInfo": (...args: []) => Awaited<import("./account-handlers").AccountInfo>
+  "account:getRecoveryKey": (...args: []) => Awaited<Promise<{ success: boolean; error: string; key?: undefined; } | { success: boolean; key: string; error?: undefined; }>>
+  "account:signOut": (...args: []) => Awaited<Promise<{ keychainWarning?: string | undefined; success: boolean; }>>
+  "ai-inline:get-server-port": (...args: []) => Awaited<number | null>
+  "ai-inline:get-settings": (...args: []) => Awaited<import("../../../../../packages/contracts/src/ai-inline-channels").AIInlineSettings>
+  "ai-inline:set-settings": (...args: [Partial<import("../../../../../packages/contracts/src/ai-inline-channels").AIInlineSettings>]) => Awaited<{ success: boolean; error: string; } | { success: boolean; error?: undefined; }>
+  "ai-inline:start-server": (...args: []) => Awaited<Promise<{ success: false; error: string; } | { success: boolean; error: string; port?: undefined; } | { success: boolean; port: number; error?: undefined; }>>
+  "ai-inline:stop-server": (...args: []) => Awaited<Promise<{ success: boolean; }>>
+  "auth:init-oauth": (...args: [{ provider: "google"; }]) => Awaited<Promise<{ state: string; }>>
+  "auth:refresh-token": (...args: []) => Awaited<Promise<{ success: boolean; error: string | undefined; }>>
+  "auth:request-otp": (...args: [{ email: string; }]) => Awaited<Promise<unknown>>
+  "auth:resend-otp": (...args: [{ email: string; }]) => Awaited<Promise<unknown>>
+  "auth:verify-otp": (...args: [{ email: string; code: string; }]) => Awaited<Promise<{ success: boolean; isNewUser: boolean; needsSetup: boolean; needsRecoveryInput: boolean; }>>
+  "bookmarks:bulk-create": (...args: [{ items: { itemType: string; itemId: string; }[]; }]) => Awaited<Promise<{ success: boolean; createdCount: number; }>>
+  "bookmarks:bulk-delete": (...args: [{ bookmarkIds: string[]; }]) => Awaited<Promise<{ success: boolean; deletedCount: number; }>>
+  "bookmarks:create": (...args: [{ itemType: string; itemId: string; }]) => Awaited<Promise<{ success: boolean; bookmark: null; error: string; } | { success: boolean; bookmark: { id: string; createdAt: string; position: number; itemType: string; itemId: string; }; error?: undefined; }>>
+  "bookmarks:delete": (...args: [string]) => Awaited<Promise<{ success: boolean; error: string; } | { success: boolean; error?: undefined; }>>
+  "bookmarks:get": (...args: [string]) => Awaited<Promise<{ id: string; createdAt: string; position: number; itemType: string; itemId: string; } | null>>
+  "bookmarks:get-by-item": (...args: [{ itemType: string; itemId: string; }]) => Awaited<Promise<{ id: string; createdAt: string; position: number; itemType: string; itemId: string; } | null>>
+  "bookmarks:is-bookmarked": (...args: [{ itemType: string; itemId: string; }]) => Awaited<Promise<boolean>>
+  "bookmarks:list": (...args: [{ itemType?: string | undefined; sortBy?: "createdAt" | "position" | undefined; sortOrder?: "asc" | "desc" | undefined; limit?: number | undefined; offset?: number | undefined; }]) => Awaited<Promise<import("../../../../../packages/contracts/src/bookmarks-api").BookmarkListResponse>>
+  "bookmarks:list-by-type": (...args: [string]) => Awaited<Promise<import("../../../../../packages/contracts/src/bookmarks-api").BookmarkListResponse>>
+  "bookmarks:reorder": (...args: [{ bookmarkIds: string[]; }]) => Awaited<Promise<{ success: boolean; }>>
+  "bookmarks:toggle": (...args: [{ itemType: string; itemId: string; }]) => Awaited<Promise<{ success: boolean; isBookmarked: boolean; bookmark: { id: string; createdAt: string; position: number; itemType: string; itemId: string; } | null; }>>
+  "calendar:connect-provider": (...args: [{ provider: string; }]) => Awaited<Promise<{ success: false; error: string; } | import("../../../../../packages/contracts/src/calendar-api").CalendarProviderMutationResponse>>
+  "calendar:create-event": (...args: [{ title: string; startAt: string; description?: string | null | undefined; location?: string | null | undefined; endAt?: string | null | undefined; timezone?: string | undefined; isAllDay?: boolean | undefined; recurrenceRule?: Record<string, unknown> | null | undefined; recurrenceExceptions?: Record<string, unknown>[] | null | undefined; }]) => Awaited<Promise<{ success: false; error: string; } | import("../../../../../packages/contracts/src/calendar-api").CalendarEventMutationResponse>>
+  "calendar:delete-event": (...args: [string]) => Awaited<Promise<{ success: false; error: string; } | import("../../../../../packages/contracts/src/calendar-api").CalendarDeleteResponse>>
+  "calendar:disconnect-provider": (...args: [{ provider: string; }]) => Awaited<Promise<{ success: false; error: string; } | import("../../../../../packages/contracts/src/calendar-api").CalendarProviderMutationResponse>>
+  "calendar:get-event": (...args: [string]) => Awaited<Promise<import("../../../../../packages/contracts/src/calendar-api").CalendarEventRecord | null>>
+  "calendar:get-provider-status": (...args: [{ provider: string; }]) => Awaited<Promise<import("../../../../../packages/contracts/src/calendar-api").CalendarProviderStatus>>
+  "calendar:get-range": (...args: [{ startAt: string; endAt: string; includeUnselectedSources?: boolean | undefined; }]) => Awaited<Promise<import("../../../../../packages/contracts/src/calendar-api").CalendarRangeResponse>>
+  "calendar:list-events": (...args: [{ includeArchived?: boolean | undefined; }]) => Awaited<Promise<import("../../../../../packages/contracts/src/calendar-api").CalendarEventListResponse>>
+  "calendar:list-sources": (...args: [{ provider?: string | undefined; kind?: "account" | "calendar" | undefined; selectedOnly?: boolean | undefined; }]) => Awaited<Promise<import("../../../../../packages/contracts/src/calendar-api").CalendarSourceListResponse>>
+  "calendar:refresh-provider": (...args: [{ provider: string; }]) => Awaited<Promise<{ success: false; error: string; } | import("../../../../../packages/contracts/src/calendar-api").CalendarProviderMutationResponse>>
+  "calendar:update-event": (...args: [{ id: string; title?: string | undefined; description?: string | null | undefined; location?: string | null | undefined; startAt?: string | undefined; endAt?: string | null | undefined; timezone?: string | undefined; isAllDay?: boolean | undefined; recurrenceRule?: Record<string, unknown> | null | undefined; recurrenceExceptions?: Record<string, unknown>[] | null | undefined; }]) => Awaited<Promise<{ success: false; error: string; } | import("../../../../../packages/contracts/src/calendar-api").CalendarEventMutationResponse>>
+  "calendar:update-source-selection": (...args: [{ id: string; isSelected: boolean; }]) => Awaited<Promise<{ success: false; error: string; } | import("../../../../../packages/contracts/src/calendar-api").CalendarSourceMutationResponse>>
+  "context-menu:show": (...args: [{ id: string; label: string; accelerator?: string | undefined; disabled?: boolean | undefined; type?: "normal" | "separator" | undefined; }[]]) => Awaited<Promise<string | null>>
+  "crdt:apply-update": (...args: [unknown]) => Awaited<Promise<void>>
+  "crdt:close-doc": (...args: [unknown]) => Awaited<Promise<{ success: boolean; }>>
+  "crdt:open-doc": (...args: [unknown]) => Awaited<Promise<{ success: boolean; error: string; } | { success: boolean; error?: undefined; }>>
+  "crdt:sync-step-1": (...args: [{ noteId: string; stateVector: number[]; }]) => Awaited<Promise<import("../../../../../packages/contracts/src/ipc-crdt").CrdtSyncStep1Result | null>>
+  "crdt:sync-step-2": (...args: [{ noteId: string; diff: number[]; }]) => Awaited<Promise<void>>
+  "crypto:decrypt-item": (...args: [{ itemId: string; type: "note" | "filter" | "project" | "journal" | "task" | "settings" | "inbox" | "tag_definition" | "folder_config" | "calendar_event" | "calendar_source" | "calendar_binding" | "calendar_external_event"; encryptedKey: string; keyNonce: string; encryptedData: string; dataNonce: string; signature: string; operation?: "create" | "update" | "delete" | undefined; deletedAt?: number | undefined; metadata?: Record<string, unknown> | undefined; }]) => Awaited<Promise<import("../../../../../packages/contracts/src/ipc-crypto").DecryptItemResult>>
+  "crypto:encrypt-item": (...args: [{ itemId: string; type: "note" | "filter" | "project" | "journal" | "task" | "settings" | "inbox" | "tag_definition" | "folder_config" | "calendar_event" | "calendar_source" | "calendar_binding" | "calendar_external_event"; content: Record<string, unknown>; operation?: "create" | "update" | "delete" | undefined; deletedAt?: number | undefined; metadata?: Record<string, unknown> | undefined; }]) => Awaited<Promise<import("../../../../../packages/contracts/src/ipc-crypto").EncryptItemResult>>
+  "crypto:get-rotation-progress": (...args: []) => Awaited<import("../../../../../packages/contracts/src/ipc-crypto").GetRotationProgressResult>
+  "crypto:rotate-keys": (...args: [{ confirm: boolean; }]) => Awaited<Promise<import("../../../../../packages/contracts/src/ipc-crypto").RotateKeysResult>>
+  "crypto:verify-signature": (...args: [{ itemId: string; type: "note" | "filter" | "project" | "journal" | "task" | "settings" | "inbox" | "tag_definition" | "folder_config" | "calendar_event" | "calendar_source" | "calendar_binding" | "calendar_external_event"; encryptedKey: string; keyNonce: string; encryptedData: string; dataNonce: string; signature: string; operation?: "create" | "update" | "delete" | undefined; deletedAt?: number | undefined; metadata?: Record<string, unknown> | undefined; }]) => Awaited<Promise<import("../../../../../packages/contracts/src/ipc-crypto").VerifySignatureResult>>
+  "folder-view:delete-view": (...args: [{ folderPath: string; viewName: string; }]) => Awaited<Promise<{ success: false; error: string; } | import("../../../../../packages/contracts/src/folder-view-api").DeleteViewResponse>>
+  "folder-view:folder-exists": (...args: [string]) => Awaited<boolean>
+  "folder-view:get-available-properties": (...args: [{ folderPath: string; }]) => Awaited<Promise<import("../../../../../packages/contracts/src/folder-view-api").GetAvailablePropertiesResponse>>
+  "folder-view:get-config": (...args: [{ folderPath: string; }]) => Awaited<Promise<import("../../../../../packages/contracts/src/folder-view-api").GetConfigResponse>>
+  "folder-view:get-folder-suggestions": (...args: [{ noteId: string; }]) => Awaited<Promise<import("../../../../../packages/contracts/src/folder-view-api").GetFolderSuggestionsResponse>>
+  "folder-view:get-views": (...args: [{ folderPath: string; }]) => Awaited<Promise<import("../../../../../packages/contracts/src/folder-view-api").GetViewsResponse>>
+  "folder-view:list-with-properties": (...args: [{ folderPath: string; properties?: string[] | undefined; limit?: number | undefined; offset?: number | undefined; }]) => Awaited<Promise<import("../../../../../packages/contracts/src/folder-view-api").ListWithPropertiesResponse>>
+  "folder-view:set-config": (...args: [{ folderPath: string; config: { path?: string | undefined; template?: string | undefined; inherit?: boolean | undefined; formulas?: Record<string, string> | undefined; properties?: Record<string, { displayName?: string | undefined; color?: boolean | undefined; dateFormat?: string | undefined; numberFormat?: string | undefined; hidden?: boolean | undefined; }> | undefined; summaries?: Record<string, { type: "custom" | "count" | "sum" | "average" | "min" | "max" | "countBy" | "countUnique"; label?: string | undefined; expression?: string | undefined; }> | undefined; views?: { name: string; type?: "table" | "grid" | "list" | "kanban" | undefined; default?: boolean | undefined; columns?: { id: string; width?: number | undefined; displayName?: string | undefined; showSummary?: boolean | undefined; }[] | undefined; filters?: unknown; order?: { property: string; direction: "asc" | "desc"; }[] | undefined; groupBy?: { property: string; direction?: "asc" | "desc" | undefined; collapsed?: boolean | undefined; showSummary?: boolean | undefined; } | undefined; limit?: number | undefined; showSummaries?: boolean | undefined; }[] | undefined; }; }]) => Awaited<Promise<{ success: false; error: string; } | import("../../../../../packages/contracts/src/folder-view-api").SetConfigResponse>>
+  "folder-view:set-view": (...args: [{ folderPath: string; view: { name: string; type?: "table" | "grid" | "list" | "kanban" | undefined; default?: boolean | undefined; columns?: { id: string; width?: number | undefined; displayName?: string | undefined; showSummary?: boolean | undefined; }[] | undefined; filters?: unknown; order?: { property: string; direction: "asc" | "desc"; }[] | undefined; groupBy?: { property: string; direction?: "asc" | "desc" | undefined; collapsed?: boolean | undefined; showSummary?: boolean | undefined; } | undefined; limit?: number | undefined; showSummaries?: boolean | undefined; }; }]) => Awaited<Promise<{ success: false; error: string; } | import("../../../../../packages/contracts/src/folder-view-api").SetViewResponse>>
+  "graph:get-graph-data": (...args: []) => Awaited<{ nodes: { id: string; type: "note" | "project" | "journal" | "task"; label: string; tags: string[]; wordCount: number; connectionCount: number; emoji: string | null; color: string; isOrphan: boolean; isUnresolved: boolean; }[]; edges: { id: string; source: string; target: string; type: "wikilink" | "task-note" | "project-task" | "tag-cooccurrence"; weight: number; }[]; }>
+  "graph:get-local-graph": (...args: [{ noteId: string; depth?: number | undefined; }]) => Awaited<{ nodes: { id: string; type: "note" | "project" | "journal" | "task"; label: string; tags: string[]; wordCount: number; connectionCount: number; emoji: string | null; color: string; isOrphan: boolean; isUnresolved: boolean; }[]; edges: { id: string; source: string; target: string; type: "wikilink" | "task-note" | "project-task" | "tag-cooccurrence"; weight: number; }[]; }>
+  "inbox:add-tag": (...args: [any, any]) => Awaited<Promise<{ success: boolean; error?: string | undefined; }>>
+  "inbox:archive": (...args: [any]) => Awaited<Promise<{ success: boolean; error?: string | undefined; }>>
+  "inbox:bulk-archive": (...args: [any]) => Awaited<Promise<import("../../../../../packages/contracts/src/inbox-api").BulkResponse>>
+  "inbox:bulk-file": (...args: [any]) => Awaited<Promise<import("../../../../../packages/contracts/src/inbox-api").BulkResponse>>
+  "inbox:bulk-snooze": (...args: [any]) => Awaited<Promise<{ success: boolean; processedCount: number; errors: { itemId: string; error: string; }[]; }>>
+  "inbox:bulk-tag": (...args: [any]) => Awaited<Promise<import("../../../../../packages/contracts/src/inbox-api").BulkResponse>>
+  "inbox:capture-clip": (...args: [unknown]) => Awaited<Promise<{ success: boolean; item: null; error: string; }>>
+  "inbox:capture-image": (...args: [any]) => Awaited<Promise<import("../../../../../packages/domain-inbox/src/types").InboxCaptureResponse>>
+  "inbox:capture-link": (...args: [any]) => Awaited<Promise<import("../../../../../packages/domain-inbox/src/types").InboxCaptureResponse>>
+  "inbox:capture-pdf": (...args: [unknown]) => Awaited<Promise<{ success: boolean; item: null; error: string; }>>
+  "inbox:capture-text": (...args: [any]) => Awaited<Promise<import("../../../../../packages/domain-inbox/src/types").InboxCaptureResponse>>
+  "inbox:capture-voice": (...args: [any]) => Awaited<Promise<import("../../../../../packages/domain-inbox/src/types").InboxCaptureResponse>>
+  "inbox:convert-to-note": (...args: [any]) => Awaited<Promise<import("../../../../../packages/domain-inbox/src/types").InboxFileResponse>>
+  "inbox:convert-to-task": (...args: [any]) => Awaited<Promise<{ success: boolean; taskId: string | null; error?: string | undefined; }>>
+  "inbox:delete-permanent": (...args: [any]) => Awaited<Promise<{ success: boolean; error?: string | undefined; }>>
+  "inbox:file": (...args: [any]) => Awaited<Promise<import("../../../../../packages/domain-inbox/src/types").InboxFileResponse>>
+  "inbox:file-all-stale": (...args: []) => Awaited<Promise<import("../../../../../packages/contracts/src/inbox-api").BulkResponse>>
+  "inbox:get": (...args: [any]) => Awaited<Promise<import("../../../../../packages/contracts/src/inbox-api").InboxItem | null>>
+  "inbox:get-filing-history": (...args: [any]) => Awaited<Promise<import("../../../../../packages/contracts/src/inbox-api").FilingHistoryResponse>>
+  "inbox:get-jobs": (...args: [any]) => Awaited<Promise<import("../../../../../packages/contracts/src/inbox-api").InboxJobsResponse>>
+  "inbox:get-patterns": (...args: []) => Awaited<Promise<import("../../../../../packages/contracts/src/inbox-api").CapturePattern>>
+  "inbox:get-snoozed": (...args: []) => Awaited<Promise<import("../../../../../packages/domain-inbox/src/types").SnoozedItem[]>>
+  "inbox:get-stale-threshold": (...args: []) => Awaited<Promise<number>>
+  "inbox:get-stats": (...args: []) => Awaited<Promise<import("../../../../../packages/contracts/src/inbox-api").InboxStats>>
+  "inbox:get-suggestions": (...args: [any]) => Awaited<Promise<{ suggestions: import("../../../../../packages/domain-inbox/src/types").InboxFilingSuggestion[]; }>>
+  "inbox:get-tags": (...args: []) => Awaited<Promise<{ tag: string; count: number; }[]>>
+  "inbox:link-to-note": (...args: [any, any, any]) => Awaited<Promise<{ success: boolean; error?: string | undefined; }>>
+  "inbox:list": (...args: [any]) => Awaited<Promise<import("../../../../../packages/contracts/src/inbox-api").InboxListResponse>>
+  "inbox:list-archived": (...args: [any]) => Awaited<Promise<import("../../../../../packages/contracts/src/inbox-api").ArchivedListResponse>>
+  "inbox:mark-viewed": (...args: [any]) => Awaited<Promise<{ success: boolean; error?: string | undefined; }>>
+  "inbox:preview-link": (...args: [string]) => Awaited<Promise<{ title: string; domain: string; favicon: string | undefined; image: string | undefined; description: string | undefined; } | { title: string; domain: string; favicon?: undefined; image?: undefined; description?: undefined; }>>
+  "inbox:remove-tag": (...args: [any, any]) => Awaited<Promise<{ success: boolean; error?: string | undefined; }>>
+  "inbox:retry-metadata": (...args: [any]) => Awaited<Promise<{ success: boolean; error?: string | undefined; }>>
+  "inbox:retry-transcription": (...args: [any]) => Awaited<Promise<{ success: boolean; error?: string | undefined; }>>
+  "inbox:set-stale-threshold": (...args: [any]) => Awaited<Promise<{ success: boolean; }>>
+  "inbox:snooze": (...args: [any]) => Awaited<Promise<{ success: boolean; error?: string | undefined; }>>
+  "inbox:track-suggestion": (...args: [string, string, string, string, number, string[], string[]]) => Awaited<Promise<{ success: false; error: string; } | { success: boolean; error?: string | undefined; }>>
+  "inbox:unarchive": (...args: [any]) => Awaited<Promise<{ success: boolean; error?: string | undefined; }>>
+  "inbox:undo-archive": (...args: [any]) => Awaited<Promise<{ success: boolean; error?: string | undefined; }>>
+  "inbox:undo-file": (...args: [any]) => Awaited<Promise<{ success: boolean; error?: string | undefined; }>>
+  "inbox:unsnooze": (...args: [any]) => Awaited<Promise<{ success: boolean; error?: string | undefined; }>>
+  "inbox:update": (...args: [any]) => Awaited<Promise<import("../../../../../packages/contracts/src/inbox-api").CaptureResponse>>
+  "journal:createEntry": (...args: [{ date: string; content?: string | undefined; tags?: string[] | undefined; properties?: Record<string, unknown> | undefined; }]) => Awaited<Promise<{ id: string; date: string; content: string; wordCount: number; characterCount: number; tags: string[]; createdAt: string; modifiedAt: string; properties?: Record<string, unknown> | undefined; }>>
+  "journal:deleteEntry": (...args: [{ date: string; }]) => Awaited<Promise<{ success: boolean; }>>
+  "journal:getAllTags": (...args: []) => Awaited<Promise<{ tag: string; count: number; }[]>>
+  "journal:getDayContext": (...args: [{ date: string; }]) => Awaited<Promise<{ date: string; tasks: { id: string; title: string; completed: boolean; priority?: "urgent" | "high" | "medium" | "low" | undefined; isOverdue?: boolean | undefined; }[]; events: { id: string; time: string; title: string; type: "meeting" | "focus" | "event"; attendeeCount?: number | undefined; }[]; overdueCount: number; }>>
+  "journal:getEntry": (...args: [{ date: string; }]) => Awaited<Promise<{ id: string; date: string; content: string; wordCount: number; characterCount: number; tags: string[]; createdAt: string; modifiedAt: string; properties?: Record<string, unknown> | undefined; } | null>>
+  "journal:getHeatmap": (...args: [{ year: number; }]) => Awaited<Promise<{ date: string; characterCount: number; level: 0 | 1 | 2 | 4 | 3; }[]>>
+  "journal:getMonthEntries": (...args: [{ year: number; month: number; }]) => Awaited<Promise<{ date: string; preview: string; wordCount: number; characterCount: number; activityLevel: 0 | 1 | 2 | 4 | 3; tags: string[]; }[]>>
+  "journal:getStreak": (...args: []) => Awaited<Promise<{ currentStreak: number; longestStreak: number; lastEntryDate: string | null; }>>
+  "journal:getYearStats": (...args: [{ year: number; }]) => Awaited<Promise<{ year: number; month: number; entryCount: number; totalWordCount: number; totalCharacterCount: number; averageLevel: number; }[]>>
+  "journal:updateEntry": (...args: [{ date: string; content?: string | undefined; tags?: string[] | undefined; properties?: Record<string, unknown> | undefined; }]) => Awaited<Promise<{ id: string; date: string; content: string; wordCount: number; characterCount: number; tags: string[]; createdAt: string; modifiedAt: string; properties?: Record<string, unknown> | undefined; }>>
+  "notes:add-property-option": (...args: [{ propertyName: string; option: { value: string; color: string; }; }]) => Awaited<Promise<{ success: boolean; }>>
+  "notes:add-status-option": (...args: [{ propertyName: string; categoryKey: "todo" | "in_progress" | "done"; option: { value: string; color: string; }; }]) => Awaited<Promise<{ success: boolean; }>>
+  "notes:create": (...args: [{ title: string; content?: string | undefined; folder?: string | undefined; tags?: string[] | undefined; template?: string | undefined; }]) => Awaited<Promise<{ success: false; error: string; } | { success: boolean; note: import("../vault/notes").Note; }>>
+  "notes:create-folder": (...args: [string]) => Awaited<Promise<{ success: false; error: string; } | { success: boolean; }>>
+  "notes:create-property-definition": (...args: [{ name: string; type: "number" | "date" | "text" | "select" | "checkbox" | "url" | "status" | "multiselect"; options?: { value: string; color: string; default?: boolean | undefined; }[] | undefined; defaultValue?: unknown; color?: string | undefined; }]) => Awaited<Promise<{ success: false; error: string; } | { success: boolean; definition: import("../../../../../packages/contracts/src/property-types").PropertyDefinition | undefined; } | { success: boolean; definition: { type: string; name: string; createdAt: string; options: string | null; defaultValue: string | null; color: string | null; }; }>>
+  "notes:delete": (...args: [string]) => Awaited<Promise<{ success: false; error: string; } | { success: boolean; }>>
+  "notes:delete-attachment": (...args: [{ noteId: string; filename: string; }]) => Awaited<Promise<{ success: false; error: string; } | { success: boolean; }>>
+  "notes:delete-folder": (...args: [string]) => Awaited<Promise<{ success: false; error: string; } | { success: boolean; }>>
+  "notes:delete-property-definition": (...args: [{ name: string; }]) => Awaited<Promise<{ success: boolean; }>>
+  "notes:delete-version": (...args: [string]) => Awaited<Promise<{ success: false; error: string; } | { success: boolean; }>>
+  "notes:ensure-property-definition": (...args: [{ name: string; type: "select" | "status" | "multiselect"; }]) => Awaited<Promise<{ success: boolean; }>>
+  "notes:exists": (...args: [string]) => Awaited<Promise<boolean>>
+  "notes:export-html": (...args: [{ noteId: string; includeMetadata?: boolean | undefined; pageSize?: "A4" | "Letter" | "Legal" | undefined; }]) => Awaited<Promise<{ success: false; error: string; } | { success: boolean; error: string; path?: undefined; } | { success: boolean; path: string; error?: undefined; }>>
+  "notes:export-pdf": (...args: [{ noteId: string; includeMetadata?: boolean | undefined; pageSize?: "A4" | "Letter" | "Legal" | undefined; }]) => Awaited<Promise<{ success: false; error: string; } | { success: boolean; error: string; path?: undefined; } | { success: boolean; path: string; error?: undefined; }>>
+  "notes:get": (...args: [string]) => Awaited<Promise<import("../vault/notes").Note | null>>
+  "notes:get-all-positions": (...args: []) => Awaited<Promise<{ success: false; error: string; } | { success: boolean; positions: Record<string, number>; }>>
+  "notes:get-by-path": (...args: [string]) => Awaited<Promise<import("../vault/notes").Note | null>>
+  "notes:get-file": (...args: [string]) => Awaited<Promise<import("../vault/notes").FileMetadata | null>>
+  "notes:get-folder-config": (...args: [string]) => Awaited<Promise<import("../../../../../packages/contracts/src/templates-api").FolderConfig | null>>
+  "notes:get-folder-template": (...args: [string]) => Awaited<Promise<string | null>>
+  "notes:get-folders": (...args: []) => Awaited<Promise<import("../../../../../packages/contracts/src/templates-api").FolderInfo[]>>
+  "notes:get-links": (...args: [string]) => Awaited<Promise<import("../vault/notes").NoteLinksResponse>>
+  "notes:get-local-only-count": (...args: []) => Awaited<Promise<{ count: number; }>>
+  "notes:get-positions": (...args: [{ folderPath: string; }]) => Awaited<Promise<{ success: false; error: string; } | { success: boolean; positions: { path: string; position: number; folderPath: string; }[]; }>>
+  "notes:get-property-definitions": (...args: []) => Awaited<Promise<{ type: string; name: string; createdAt: string; options: string | null; defaultValue: string | null; color: string | null; }[]>>
+  "notes:get-tags": (...args: []) => Awaited<Promise<{ tag: string; color: string; count: number; }[]>>
+  "notes:get-version": (...args: [string]) => Awaited<Promise<import("../vault/notes").SnapshotDetail | null>>
+  "notes:get-versions": (...args: [string]) => Awaited<Promise<import("../vault/notes").SnapshotListItem[]>>
+  "notes:import-files": (...args: [{ sourcePaths: string[]; targetFolder?: string | undefined; }]) => Awaited<Promise<{ success: false; error: string; } | import("../vault/notes").ImportFilesResult>>
+  "notes:list": (...args: [{ folder?: string | undefined; tags?: string[] | undefined; sortBy?: "title" | "modified" | "created" | "position" | undefined; sortOrder?: "asc" | "desc" | undefined; limit?: number | undefined; offset?: number | undefined; }]) => Awaited<Promise<import("../vault/notes").NoteListResponse>>
+  "notes:list-attachments": (...args: [string]) => Awaited<Promise<import("../vault/attachments").AttachmentInfo[]>>
+  "notes:move": (...args: [{ id: string; newFolder: string; }]) => Awaited<Promise<{ success: false; error: string; } | { success: boolean; note: import("../vault/notes").Note; }>>
+  "notes:open-external": (...args: [string]) => Awaited<Promise<void>>
+  "notes:preview-by-title": (...args: [string]) => Awaited<Promise<{ id: string; title: string; emoji: string | null; snippet: string | null; tags: { name: string; color: string; }[]; createdAt: string; } | null>>
+  "notes:remove-property-option": (...args: [{ propertyName: string; optionValue: string; }]) => Awaited<Promise<{ success: boolean; }>>
+  "notes:rename": (...args: [{ id: string; newTitle: string; }]) => Awaited<Promise<{ success: false; error: string; } | { success: boolean; note: import("../vault/notes").Note; }>>
+  "notes:rename-folder": (...args: [{ oldPath: string; newPath: string; }]) => Awaited<Promise<{ success: false; error: string; } | { success: boolean; }>>
+  "notes:rename-property-option": (...args: [{ propertyName: string; oldValue: string; newValue: string; }]) => Awaited<Promise<{ success: boolean; }>>
+  "notes:reorder": (...args: [{ folderPath: string; notePaths: string[]; }]) => Awaited<Promise<{ success: false; error: string; } | { success: boolean; }>>
+  "notes:resolve-by-title": (...args: [string]) => Awaited<Promise<{ id: string; path: string; title: string; fileType: import("../../../../../packages/shared/src/file-types").FileType; } | null>>
+  "notes:restore-version": (...args: [string]) => Awaited<Promise<{ success: false; error: string; } | { success: boolean; note: import("../vault/notes").Note; }>>
+  "notes:reveal-in-finder": (...args: [string]) => Awaited<Promise<void>>
+  "notes:set-folder-config": (...args: [{ folderPath: string; config: { icon?: string | null | undefined; template?: string | undefined; inherit?: boolean | undefined; }; }]) => Awaited<Promise<{ success: false; error: string; } | { success: boolean; }>>
+  "notes:set-local-only": (...args: [{ id: string; localOnly: boolean; }]) => Awaited<Promise<{ success: false; error: string; } | { success: boolean; note: import("../vault/notes").Note; }>>
+  "notes:show-import-dialog": (...args: []) => Awaited<Promise<{ canceled: boolean; filePaths: string[]; }>>
+  "notes:update": (...args: [{ id: string; title?: string | undefined; content?: string | undefined; tags?: string[] | undefined; frontmatter?: Record<string, unknown> | undefined; emoji?: string | null | undefined; }]) => Awaited<Promise<{ success: false; error: string; } | { success: boolean; note: import("../vault/notes").Note; }>>
+  "notes:update-option-color": (...args: [{ propertyName: string; optionValue: string; newColor: string; }]) => Awaited<Promise<{ success: boolean; }>>
+  "notes:update-property-definition": (...args: [{ name: string; type?: "number" | "date" | "text" | "select" | "checkbox" | "url" | "status" | "multiselect" | undefined; options?: { value: string; color: string; default?: boolean | undefined; }[] | undefined; defaultValue?: unknown; color?: string | undefined; }]) => Awaited<Promise<{ success: false; error: string; } | { success: boolean; definition: null; error: string; } | { success: boolean; definition: import("../../../../../packages/contracts/src/property-types").PropertyDefinition | undefined; error?: undefined; } | { success: boolean; definition: { type: string; name: string; createdAt: string; options: string | null; defaultValue: string | null; color: string | null; } | undefined; error?: undefined; }>>
+  "notes:upload-attachment": (...args: [{ noteId: string; filename: string; data: number[] | ArrayBuffer; }]) => Awaited<Promise<import("../vault/attachments").AttachmentResult>>
+  "properties:get": (...args: [{ entityId: string; }]) => Awaited<Promise<import("../database/queries/notes/property-queries").PropertyValue[]>>
+  "properties:rename": (...args: [{ entityId: string; oldName: string; newName: string; }]) => Awaited<Promise<{ success: false; error: string; } | import("../../../../../packages/contracts/src/properties-api").RenamePropertyResponse>>
+  "properties:set": (...args: [{ entityId: string; properties: Record<string, unknown>; }]) => Awaited<Promise<{ success: false; error: string; } | import("../../../../../packages/contracts/src/properties-api").SetPropertiesResponse>>
+  "quick-capture:get-clipboard": (...args: []) => Awaited<string>
+  "reminder:bulk-dismiss": (...args: [{ reminderIds: string[]; }]) => Awaited<Promise<{ success: false; error: string; } | { success: boolean; dismissedCount: number; }>>
+  "reminder:count-pending": (...args: []) => Awaited<Promise<number>>
+  "reminder:create": (...args: [{ targetType: "note"; targetId: string; remindAt: string; title?: string | undefined; note?: string | undefined; } | { targetType: "journal"; targetId: string; remindAt: string; title?: string | undefined; note?: string | undefined; } | { targetType: "highlight"; targetId: string; highlightText: string; highlightStart: number; highlightEnd: number; remindAt: string; title?: string | undefined; note?: string | undefined; }]) => Awaited<Promise<{ success: false; error: string; } | { success: boolean; reminder: import("../../../../../packages/contracts/src/reminders-api").Reminder; }>>
+  "reminder:delete": (...args: [string]) => Awaited<Promise<{ success: boolean; error: string; } | { success: boolean; error?: undefined; }>>
+  "reminder:dismiss": (...args: [string]) => Awaited<Promise<{ success: false; error: string; } | { success: boolean; reminder: null; error: string; } | { success: boolean; reminder: import("../../../../../packages/contracts/src/reminders-api").Reminder; error?: undefined; }>>
+  "reminder:get": (...args: [string]) => Awaited<Promise<import("../../../../../packages/contracts/src/reminders-api").ReminderWithTarget | null>>
+  "reminder:get-due": (...args: []) => Awaited<Promise<import("../../../../../packages/contracts/src/reminders-api").ReminderWithTarget[]>>
+  "reminder:get-for-target": (...args: [{ targetType: "note" | "journal" | "highlight"; targetId: string; }]) => Awaited<Promise<import("../../../../../packages/contracts/src/reminders-api").Reminder[]>>
+  "reminder:get-upcoming": (...args: [number | undefined]) => Awaited<Promise<{ reminders: import("../../../../../packages/contracts/src/reminders-api").ReminderWithTarget[]; total: number; hasMore: boolean; }>>
+  "reminder:list": (...args: [{ targetType?: "note" | "journal" | "highlight" | undefined; targetId?: string | undefined; status?: "pending" | "triggered" | "dismissed" | "snoozed" | ("pending" | "triggered" | "dismissed" | "snoozed")[] | undefined; fromDate?: string | undefined; toDate?: string | undefined; limit?: number | undefined; offset?: number | undefined; }]) => Awaited<Promise<{ reminders: import("../../../../../packages/contracts/src/reminders-api").ReminderWithTarget[]; total: number; hasMore: boolean; }>>
+  "reminder:snooze": (...args: [{ id: string; snoozeUntil: string; }]) => Awaited<Promise<{ success: false; error: string; } | { success: boolean; reminder: null; error: string; } | { success: boolean; reminder: import("../../../../../packages/contracts/src/reminders-api").Reminder; error?: undefined; }>>
+  "reminder:update": (...args: [{ id: string; remindAt?: string | undefined; title?: string | null | undefined; note?: string | null | undefined; }]) => Awaited<Promise<{ success: false; error: string; } | { success: boolean; reminder: null; error: string; } | { success: boolean; reminder: import("../../../../../packages/contracts/src/reminders-api").Reminder; error?: undefined; }>>
+  "saved-filters:create": (...args: [{ name: string; config: { filters: { search?: string | undefined; projectIds?: string[] | undefined; priorities?: ("urgent" | "high" | "medium" | "low" | "none")[] | undefined; dueDate?: { type: "custom" | "any" | "none" | "overdue" | "today" | "tomorrow" | "this-week" | "next-week" | "this-month"; customStart?: string | null | undefined; customEnd?: string | null | undefined; } | undefined; statusIds?: string[] | undefined; completion?: "active" | "completed" | "all" | undefined; repeatType?: "all" | "repeating" | "one-time" | undefined; hasTime?: "all" | "with-time" | "without-time" | undefined; }; sort?: { field: "title" | "createdAt" | "priority" | "dueDate" | "completedAt" | "project"; direction: "asc" | "desc"; } | undefined; starred?: boolean | undefined; }; }]) => Awaited<Promise<{ success: boolean; savedFilter: import("../../../../../packages/contracts/src/saved-filters-api").SavedFilter; }>>
+  "saved-filters:delete": (...args: [{ id: string; }]) => Awaited<Promise<{ success: boolean; error: string; } | { success: boolean; error?: undefined; }>>
+  "saved-filters:list": (...args: []) => Awaited<Promise<{ savedFilters: import("../../../../../packages/contracts/src/saved-filters-api").SavedFilter[]; }>>
+  "saved-filters:reorder": (...args: [{ ids: string[]; positions: number[]; }]) => Awaited<Promise<{ success: boolean; }>>
+  "saved-filters:update": (...args: [{ id: string; name?: string | undefined; config?: { filters: { search?: string | undefined; projectIds?: string[] | undefined; priorities?: ("urgent" | "high" | "medium" | "low" | "none")[] | undefined; dueDate?: { type: "custom" | "any" | "none" | "overdue" | "today" | "tomorrow" | "this-week" | "next-week" | "this-month"; customStart?: string | null | undefined; customEnd?: string | null | undefined; } | undefined; statusIds?: string[] | undefined; completion?: "active" | "completed" | "all" | undefined; repeatType?: "all" | "repeating" | "one-time" | undefined; hasTime?: "all" | "with-time" | "without-time" | undefined; }; sort?: { field: "title" | "createdAt" | "priority" | "dueDate" | "completedAt" | "project"; direction: "asc" | "desc"; } | undefined; starred?: boolean | undefined; } | undefined; position?: number | undefined; }]) => Awaited<Promise<{ success: boolean; savedFilter: null; error: string; } | { success: boolean; savedFilter: import("../../../../../packages/contracts/src/saved-filters-api").SavedFilter | null; error?: undefined; }>>
+  "search:add-reason": (...args: [{ itemId: string; itemType: "note" | "journal" | "task" | "inbox"; itemTitle: string; searchQuery: string; itemIcon?: string | null | undefined; }]) => Awaited<Promise<import("../../../../../packages/contracts/src/search-api").SearchReason>>
+  "search:clear-reasons": (...args: []) => Awaited<Promise<{ cleared: true; }>>
+  "search:get-all-tags": (...args: []) => Awaited<Promise<string[]>>
+  "search:get-reasons": (...args: []) => Awaited<Promise<import("../../../../../packages/contracts/src/search-api").SearchReason[]>>
+  "search:get-stats": (...args: []) => Awaited<Promise<import("../../../../../packages/contracts/src/search-api").SearchStats>>
+  "search:query": (...args: [{ text: string; types?: ("note" | "journal" | "task" | "inbox")[] | undefined; tags?: string[] | undefined; dateRange?: { from: string; to: string; } | null | undefined; projectId?: string | null | undefined; folderPath?: string | null | undefined; limit?: number | undefined; offset?: number | undefined; }]) => Awaited<Promise<import("../../../../../packages/contracts/src/search-api").SearchResponse>>
+  "search:quick": (...args: [string]) => Awaited<Promise<import("../../../../../packages/contracts/src/search-api").QuickSearchResponse>>
+  "search:rebuild-index": (...args: []) => Awaited<Promise<{ notes: number; tasks: number; inbox: number; durationMs: number; started: true; error?: undefined; } | { started: false; error: string; }>>
+  "settings:downloadVoiceModel": (...args: []) => Awaited<Promise<{ success: boolean; error?: undefined; } | { success: boolean; error: string; }>>
+  "settings:get": (...args: [string]) => Awaited<string | null>
+  "settings:getAIModelStatus": (...args: []) => Awaited<Promise<import("./settings-handlers").AIModelStatus>>
+  "settings:getAISettings": (...args: []) => Awaited<import("./settings-handlers").AISettings>
+  "settings:getBackupSettings": (...args: []) => Awaited<{ autoBackup: boolean; frequencyHours: 1 | 6 | 12 | 24; maxBackups: number; lastBackupAt: string | null; }>
+  "settings:getEditorSettings": (...args: []) => Awaited<{ width: "medium" | "narrow" | "wide"; spellCheck: boolean; autoSaveDelay: number; showWordCount: boolean; toolbarMode: "floating" | "sticky"; }>
+  "settings:getGeneralSettings": (...args: []) => Awaited<{ theme: "light" | "dark" | "white" | "system"; fontSize: "small" | "medium" | "large"; fontFamily: "system" | "serif" | "sans-serif" | "monospace" | "gelasio" | "geist" | "inter"; accentColor: string; startOnBoot: boolean; language: string; onboardingCompleted: boolean; createInSelectedFolder: boolean; clockFormat: "12h" | "24h"; }>
+  "settings:getGraphSettings": (...args: []) => Awaited<{ layout: "forceatlas2" | "circular" | "random"; showLabels: boolean; showEdgeLabels: boolean; animateLayout: boolean; showTagEdges: boolean; }>
+  "settings:getJournalSettings": (...args: []) => Awaited<{ defaultTemplate: string | null; showSchedule: boolean; showTasks: boolean; showAIConnections: boolean; showStatsFooter: boolean; }>
+  "settings:getKeyboardSettings": (...args: []) => Awaited<{ overrides: Record<string, { key: string; modifiers: { meta?: boolean | undefined; ctrl?: boolean | undefined; shift?: boolean | undefined; alt?: boolean | undefined; }; }>; globalCapture: { key: string; modifiers: { meta?: boolean | undefined; ctrl?: boolean | undefined; shift?: boolean | undefined; alt?: boolean | undefined; }; } | null; }>
+  "settings:getNoteEditorSettings": (...args: []) => Awaited<import("./settings-handlers").NoteEditorSettings>
+  "settings:getSyncSettings": (...args: []) => Awaited<{ enabled: boolean; autoSync: boolean; }>
+  "settings:getTabSettings": (...args: []) => Awaited<import("./settings-handlers").TabSettings>
+  "settings:getTaskSettings": (...args: []) => Awaited<{ defaultProjectId: string | null; defaultSortOrder: "createdAt" | "priority" | "dueDate" | "manual"; weekStartDay: "sunday" | "monday"; staleInboxDays: number; }>
+  "settings:getVoiceModelStatus": (...args: []) => Awaited<import("../inbox/voice-model").VoiceModelStatus>
+  "settings:getVoiceRecordingReadiness": (...args: []) => Awaited<Promise<import("../inbox/voice-transcription-settings").VoiceRecordingReadiness>>
+  "settings:getVoiceTranscriptionOpenAIKeyStatus": (...args: []) => Awaited<Promise<import("./settings-handlers").VoiceTranscriptionOpenAIKeyStatus>>
+  "settings:getVoiceTranscriptionSettings": (...args: []) => Awaited<{ provider: "local" | "openai"; }>
+  "settings:loadAIModel": (...args: []) => Awaited<Promise<{ success: false; error: string; } | { success: boolean; message: string; error?: undefined; } | { success: boolean; error: string; message?: undefined; } | { success: boolean; message?: undefined; error?: undefined; }>>
+  "settings:registerGlobalCapture": (...args: []) => Awaited<Promise<import("./settings-handlers").GlobalCaptureResult>>
+  "settings:reindexEmbeddings": (...args: []) => Awaited<Promise<{ success: false; error: string; } | { success: boolean; computed: number; skipped: number; error?: string | undefined; }>>
+  "settings:resetKeyboardSettings": (...args: []) => Awaited<{ success: boolean; error: string; } | { success: boolean; error?: undefined; }>
+  "settings:set": (...args: [{ key: string; value: string; }]) => Awaited<{ success: boolean; error: string; } | { success: boolean; error?: undefined; }>
+  "settings:setAISettings": (...args: [Partial<import("./settings-handlers").AISettings>]) => Awaited<{ success: boolean; error: string; } | { success: boolean; error?: undefined; }>
+  "settings:setBackupSettings": (...args: [Partial<{ autoBackup: boolean; frequencyHours: 1 | 6 | 12 | 24; maxBackups: number; lastBackupAt: string | null; }>]) => Awaited<{ success: boolean; error?: string | undefined; }>
+  "settings:setEditorSettings": (...args: [Partial<{ width: "medium" | "narrow" | "wide"; spellCheck: boolean; autoSaveDelay: number; showWordCount: boolean; toolbarMode: "floating" | "sticky"; }>]) => Awaited<{ success: boolean; error?: string | undefined; }>
+  "settings:setGeneralSettings": (...args: [Partial<{ theme: "light" | "dark" | "white" | "system"; fontSize: "small" | "medium" | "large"; fontFamily: "system" | "serif" | "sans-serif" | "monospace" | "gelasio" | "geist" | "inter"; accentColor: string; startOnBoot: boolean; language: string; onboardingCompleted: boolean; createInSelectedFolder: boolean; clockFormat: "12h" | "24h"; }>]) => Awaited<{ success: boolean; error?: string | undefined; }>
+  "settings:setGraphSettings": (...args: [Partial<{ layout: "forceatlas2" | "circular" | "random"; showLabels: boolean; showEdgeLabels: boolean; animateLayout: boolean; showTagEdges: boolean; }>]) => Awaited<{ success: boolean; error?: string | undefined; }>
+  "settings:setJournalSettings": (...args: [Partial<import("./settings-handlers").JournalSettings>]) => Awaited<{ success: boolean; error: string; } | { success: boolean; error?: undefined; }>
+  "settings:setKeyboardSettings": (...args: [Partial<{ overrides: Record<string, { key: string; modifiers: { meta?: boolean | undefined; ctrl?: boolean | undefined; shift?: boolean | undefined; alt?: boolean | undefined; }; }>; globalCapture: { key: string; modifiers: { meta?: boolean | undefined; ctrl?: boolean | undefined; shift?: boolean | undefined; alt?: boolean | undefined; }; } | null; }>]) => Awaited<{ success: boolean; error?: string | undefined; }>
+  "settings:setNoteEditorSettings": (...args: [Partial<import("./settings-handlers").NoteEditorSettings>]) => Awaited<{ success: boolean; error: string; } | { success: boolean; error?: undefined; }>
+  "settings:setSyncSettings": (...args: [Partial<{ enabled: boolean; autoSync: boolean; }>]) => Awaited<{ success: boolean; error?: string | undefined; }>
+  "settings:setTabSettings": (...args: [Partial<import("./settings-handlers").TabSettings>]) => Awaited<{ success: boolean; error: string; } | { success: boolean; error?: undefined; }>
+  "settings:setTaskSettings": (...args: [Partial<{ defaultProjectId: string | null; defaultSortOrder: "createdAt" | "priority" | "dueDate" | "manual"; weekStartDay: "sunday" | "monday"; staleInboxDays: number; }>]) => Awaited<{ success: boolean; error?: string | undefined; }>
+  "settings:setVoiceTranscriptionOpenAIKey": (...args: [{ apiKey: string; }]) => Awaited<Promise<{ success: boolean; error?: undefined; } | { success: boolean; error: string; }>>
+  "settings:setVoiceTranscriptionSettings": (...args: [Partial<{ provider: "local" | "openai"; }>]) => Awaited<{ success: boolean; error?: string | undefined; }>
+  "sync:approve-linking": (...args: [{ sessionId: string; }]) => Awaited<Promise<import("../../../../../packages/contracts/src/ipc-devices").ApproveLinkingResult>>
+  "sync:check-device-status": (...args: []) => Awaited<Promise<{ status: string; }>>
+  "sync:complete-linking-qr": (...args: [{ sessionId: string; }]) => Awaited<Promise<import("../../../../../packages/contracts/src/ipc-devices").CompleteLinkingQrResult>>
+  "sync:confirm-recovery-phrase": (...args: [{ confirmed: boolean; }]) => Awaited<Promise<{ success: boolean; }>>
+  "sync:download-attachment": (...args: [{ attachmentId: string; targetPath?: string | undefined; }]) => Awaited<Promise<{ success: boolean; error: string; filePath?: undefined; } | { success: boolean; filePath: string; error?: undefined; }>>
+  "sync:emergency-wipe": (...args: []) => Awaited<Promise<{ success: boolean; }>>
+  "sync:generate-linking-qr": (...args: []) => Awaited<Promise<import("../../../../../packages/contracts/src/ipc-devices").GenerateLinkingQrResult>>
+  "sync:get-devices": (...args: []) => Awaited<Promise<{ devices: { id: string; name: string; platform: "macos" | "windows" | "linux" | "ios" | "android"; linkedAt: number; lastSyncAt: number | undefined; isCurrentDevice: boolean; }[]; email: string | undefined; }>>
+  "sync:get-download-progress": (...args: [{ attachmentId: string; }]) => Awaited<Promise<{ progress: number; downloadedChunks: number; totalChunks: number; status: "downloading"; } | null>>
+  "sync:get-history": (...args: [{ limit?: number | undefined; offset?: number | undefined; }]) => Awaited<Promise<{ entries: { id: string; type: "error" | "push" | "pull"; itemCount: number; direction: string | undefined; details: unknown; durationMs: number | undefined; createdAt: number; }[]; total: number; }>>
+  "sync:get-linking-sas": (...args: [{ sessionId: string; }]) => Awaited<Promise<{ verificationCode?: string | undefined; error?: string | undefined; }>>
+  "sync:get-quarantined-items": (...args: []) => Awaited<import("../../../../../packages/contracts/src/ipc-events").QuarantinedItemInfo[]>
+  "sync:get-queue-size": (...args: []) => Awaited<{ pending: number; failed: number; }>
+  "sync:get-recovery-phrase": (...args: []) => Awaited<string | null>
+  "sync:get-status": (...args: []) => Awaited<import("../../../../../packages/contracts/src/ipc-sync-ops").GetSyncStatusResult | { status: string; pendingCount: number; }>
+  "sync:get-storage-breakdown": (...args: []) => Awaited<Promise<import("../../../../../packages/contracts/src/ipc-sync-ops").StorageBreakdownResult | null>>
+  "sync:get-synced-settings": (...args: []) => Awaited<{ general?: { theme?: "light" | "dark" | "white" | "system" | undefined; fontSize?: "small" | "medium" | "large" | undefined; fontFamily?: "system" | "serif" | "sans-serif" | "monospace" | "gelasio" | "geist" | "inter" | undefined; accentColor?: string | undefined; startOnBoot?: boolean | undefined; language?: string | undefined; createInSelectedFolder?: boolean | undefined; } | undefined; editor?: { width?: "medium" | "narrow" | "wide" | undefined; spellCheck?: boolean | undefined; autoSaveDelay?: number | undefined; showWordCount?: boolean | undefined; toolbarMode?: "floating" | "sticky" | undefined; } | undefined; tasks?: { defaultProjectId?: string | null | undefined; defaultSortOrder?: "createdAt" | "priority" | "dueDate" | "manual" | undefined; weekStartDay?: "sunday" | "monday" | undefined; staleInboxDays?: number | undefined; showCompleted?: boolean | undefined; sortBy?: string | undefined; } | undefined; keyboard?: { overrides?: Record<string, unknown> | undefined; } | undefined; notes?: { defaultFolder?: string | undefined; editorFontSize?: number | undefined; spellCheck?: boolean | undefined; } | undefined; sync?: { autoSync?: boolean | undefined; syncIntervalMinutes?: number | undefined; } | undefined; } | null>
+  "sync:get-upload-progress": (...args: [{ sessionId: string; }]) => Awaited<Promise<{ progress: number; uploadedChunks: number; totalChunks: number; status: "uploading"; } | null>>
+  "sync:link-via-qr": (...args: [{ qrData: string; oauthToken?: string | undefined; provider?: string | undefined; }]) => Awaited<Promise<import("../../../../../packages/contracts/src/ipc-devices").LinkViaQrResult>>
+  "sync:link-via-recovery": (...args: [{ recoveryPhrase: string; }]) => Awaited<Promise<{ success: boolean; error: string; deviceId?: undefined; } | { success: boolean; deviceId: string; error?: undefined; }>>
+  "sync:logout": (...args: []) => Awaited<Promise<{ keychainWarning?: string | undefined; success: boolean; }>>
+  "sync:pause": (...args: []) => Awaited<{ success: boolean; wasPaused: boolean; }>
+  "sync:remove-device": (...args: [{ deviceId: string; }]) => Awaited<Promise<{ success: boolean; error: string; } | { success: boolean; error?: undefined; }>>
+  "sync:rename-device": (...args: [{ deviceId: string; newName: string; }]) => Awaited<Promise<{ success: boolean; error: string; } | { success: boolean; error?: undefined; }>>
+  "sync:resume": (...args: []) => Awaited<{ success: boolean; pendingCount: number; }>
+  "sync:setup-first-device": (...args: [{ oauthToken: string; provider: "google"; state: string; }]) => Awaited<Promise<{ success: boolean; needsRecoverySetup: boolean; deviceId: string; needsRecoveryInput?: undefined; } | { success: boolean; needsRecoverySetup: boolean; needsRecoveryInput: boolean; deviceId?: undefined; }>>
+  "sync:setup-new-account": (...args: []) => Awaited<Promise<{ success: boolean; error: string; deviceId?: undefined; } | { success: boolean; deviceId: string; error?: undefined; }>>
+  "sync:trigger-sync": (...args: []) => Awaited<Promise<{ success: boolean; } | { success: boolean; error: string; }>>
+  "sync:update-synced-setting": (...args: [unknown]) => Awaited<{ success: boolean; error: string; } | { success: boolean; error?: undefined; }>
+  "sync:upload-attachment": (...args: [{ noteId: string; filePath: string; }]) => Awaited<Promise<{ success: boolean; error: string; attachmentId?: undefined; sessionId?: undefined; } | { success: boolean; attachmentId: string; sessionId: string; error?: undefined; }>>
+  "tags:delete": (...args: [string]) => Awaited<Promise<{ success: false; error: string; } | import("../../../../../packages/contracts/src/tags-api").DeleteTagResponse>>
+  "tags:get-all-with-counts": (...args: []) => Awaited<Promise<import("../../../../../packages/contracts/src/tags-api").GetAllWithCountsResponse>>
+  "tags:get-notes-by-tag": (...args: [{ tag: string; sortBy?: "title" | "modified" | "created" | undefined; sortOrder?: "asc" | "desc" | undefined; includeDescendants?: boolean | undefined; }]) => Awaited<Promise<import("../../../../../packages/contracts/src/tags-api").GetNotesByTagResponse>>
+  "tags:merge": (...args: [{ source: string; target: string; }]) => Awaited<Promise<{ success: false; error: string; } | import("../../../../../packages/contracts/src/tags-api").MergeTagResponse>>
+  "tags:pin-note-to-tag": (...args: [{ noteId: string; tag: string; }]) => Awaited<Promise<{ success: false; error: string; } | import("../../../../../packages/contracts/src/tags-api").TagOperationResponse>>
+  "tags:remove-from-note": (...args: [{ noteId: string; tag: string; }]) => Awaited<Promise<{ success: false; error: string; } | import("../../../../../packages/contracts/src/tags-api").TagOperationResponse>>
+  "tags:rename": (...args: [{ oldName: string; newName: string; }]) => Awaited<Promise<{ success: false; error: string; } | import("../../../../../packages/contracts/src/tags-api").RenameTagResponse>>
+  "tags:unpin-note-from-tag": (...args: [{ noteId: string; tag: string; }]) => Awaited<Promise<{ success: false; error: string; } | import("../../../../../packages/contracts/src/tags-api").TagOperationResponse>>
+  "tags:update-color": (...args: [{ tag: string; color: string; }]) => Awaited<Promise<{ success: false; error: string; } | import("../../../../../packages/contracts/src/tags-api").TagOperationResponse>>
+  "tasks:archive": (...args: [string]) => Awaited<Promise<{ success: false; error: string; } | { success: boolean; error: string; } | { success: boolean; error?: undefined; }>>
+  "tasks:bulk-archive": (...args: [{ ids: string[]; }]) => Awaited<Promise<{ success: false; error: string; } | { success: boolean; count: number; }>>
+  "tasks:bulk-complete": (...args: [{ ids: string[]; }]) => Awaited<Promise<{ success: false; error: string; } | { success: boolean; count: number; }>>
+  "tasks:bulk-delete": (...args: [{ ids: string[]; }]) => Awaited<Promise<{ success: false; error: string; } | { success: boolean; count: number; }>>
+  "tasks:bulk-move": (...args: [{ ids: string[]; projectId: string; }]) => Awaited<Promise<{ success: false; error: string; } | { success: boolean; count: number; }>>
+  "tasks:complete": (...args: [{ id: string; completedAt?: string | undefined; }]) => Awaited<Promise<{ success: false; error: string; } | { success: boolean; task: null; error: string; } | { success: boolean; task: import("../../../../../packages/domain-tasks/src/types").Task; error?: undefined; }>>
+  "tasks:convert-to-subtask": (...args: [{ taskId: string; parentId: string; }]) => Awaited<Promise<{ success: false; error: string; } | { success: boolean; task: null; error: string; } | { success: boolean; task: import("../../../../../packages/domain-tasks/src/types").Task; error?: undefined; }>>
+  "tasks:convert-to-task": (...args: [string]) => Awaited<Promise<{ success: false; error: string; } | { success: boolean; task: null; error: string; } | { success: boolean; task: import("../../../../../packages/domain-tasks/src/types").Task; error?: undefined; }>>
+  "tasks:create": (...args: [{ projectId: string; title: string; description?: string | null | undefined; priority?: number | undefined; statusId?: string | null | undefined; parentId?: string | null | undefined; dueDate?: string | null | undefined; dueTime?: string | null | undefined; startDate?: string | null | undefined; isRepeating?: boolean | undefined; repeatConfig?: { frequency: "daily" | "weekly" | "monthly" | "yearly"; endType: "date" | "never" | "count"; createdAt: string; interval?: number | undefined; daysOfWeek?: number[] | undefined; monthlyType?: "dayOfMonth" | "weekPattern" | undefined; dayOfMonth?: number | undefined; weekOfMonth?: number | undefined; dayOfWeekForMonth?: number | undefined; endDate?: string | null | undefined; endCount?: number | undefined; completedCount?: number | undefined; } | null | undefined; repeatFrom?: "due" | "completion" | null | undefined; tags?: string[] | undefined; linkedNoteIds?: string[] | undefined; sourceNoteId?: string | null | undefined; position?: number | undefined; }]) => Awaited<Promise<{ success: false; error: string; } | { success: boolean; task: import("../../../../../packages/domain-tasks/src/types").Task; }>>
+  "tasks:delete": (...args: [string]) => Awaited<Promise<{ success: false; error: string; } | { success: boolean; }>>
+  "tasks:duplicate": (...args: [string]) => Awaited<Promise<{ success: false; error: string; } | { success: boolean; task: null; error: string; } | { success: boolean; task: import("../../../../../packages/domain-tasks/src/types").Task; error?: undefined; }>>
+  "tasks:get": (...args: [string]) => Awaited<Promise<import("../../../../../packages/domain-tasks/src/types").Task | null>>
+  "tasks:get-linked-tasks": (...args: [string]) => Awaited<Promise<import("../../../../../packages/domain-tasks/src/types").Task[]>>
+  "tasks:get-overdue": (...args: []) => Awaited<Promise<import("../../../../../packages/domain-tasks/src/queries").TaskListEnvelope>>
+  "tasks:get-stats": (...args: []) => Awaited<Promise<import("../../../../../packages/domain-tasks/src/types").TaskStats>>
+  "tasks:get-subtasks": (...args: [string]) => Awaited<Promise<import("../../../../../packages/domain-tasks/src/types").Task[]>>
+  "tasks:get-tags": (...args: []) => Awaited<Promise<{ tag: string; count: number; }[]>>
+  "tasks:get-today": (...args: []) => Awaited<Promise<import("../../../../../packages/domain-tasks/src/queries").TaskListEnvelope>>
+  "tasks:get-upcoming": (...args: [{ days?: number | undefined; }]) => Awaited<Promise<import("../../../../../packages/domain-tasks/src/queries").TaskListEnvelope>>
+  "tasks:list": (...args: [{ projectId?: string | undefined; statusId?: string | null | undefined; parentId?: string | null | undefined; includeCompleted?: boolean | undefined; includeArchived?: boolean | undefined; dueBefore?: string | undefined; dueAfter?: string | undefined; tags?: string[] | undefined; search?: string | undefined; sortBy?: "modified" | "created" | "position" | "priority" | "dueDate" | undefined; sortOrder?: "asc" | "desc" | undefined; limit?: number | undefined; offset?: number | undefined; }]) => Awaited<Promise<import("../../../../../packages/domain-tasks/src/queries").TaskListResult>>
+  "tasks:move": (...args: [{ taskId: string; position: number; targetProjectId?: string | undefined; targetStatusId?: string | null | undefined; targetParentId?: string | null | undefined; }]) => Awaited<Promise<{ success: false; error: string; } | { success: boolean; task: null; error: string; } | { success: boolean; task: import("../../../../../packages/domain-tasks/src/types").Task; error?: undefined; }>>
+  "tasks:project-archive": (...args: [string]) => Awaited<Promise<{ success: false; error: string; } | { success: boolean; error: string; } | { success: boolean; error?: undefined; }>>
+  "tasks:project-create": (...args: [{ name: string; description?: string | null | undefined; color?: string | undefined; icon?: string | null | undefined; statuses?: { name: string; type: "todo" | "in_progress" | "done"; order: number; color?: string | undefined; }[] | undefined; }]) => Awaited<Promise<{ success: false; error: string; } | { success: boolean; project: import("../../../../../packages/domain-tasks/src/types").ProjectWithStatuses; }>>
+  "tasks:project-delete": (...args: [string]) => Awaited<Promise<{ success: false; error: string; } | { success: boolean; }>>
+  "tasks:project-get": (...args: [string]) => Awaited<Promise<import("../../../../../packages/domain-tasks/src/types").ProjectWithStatuses | undefined>>
+  "tasks:project-list": (...args: []) => Awaited<Promise<{ projects: import("../../../../../packages/domain-tasks/src/types").ProjectWithStats[]; }>>
+  "tasks:project-reorder": (...args: [{ projectIds: string[]; positions: number[]; }]) => Awaited<Promise<{ success: false; error: string; } | { success: boolean; }>>
+  "tasks:project-update": (...args: [{ id: string; name?: string | undefined; description?: string | null | undefined; color?: string | undefined; icon?: string | null | undefined; statuses?: { name: string; type: "todo" | "in_progress" | "done"; order: number; id?: string | undefined; color?: string | undefined; }[] | undefined; }]) => Awaited<Promise<{ success: false; error: string; } | { success: boolean; project: null; error: string; } | { success: boolean; project: import("../../../../../packages/domain-tasks/src/types").ProjectWithStatuses; error?: undefined; }>>
+  "tasks:reorder": (...args: [{ taskIds: string[]; positions: number[]; }]) => Awaited<Promise<{ success: false; error: string; } | { success: boolean; }>>
+  "tasks:seed-demo": (...args: []) => Awaited<Promise<{ success: boolean; message: string; }>>
+  "tasks:seed-performance-test": (...args: []) => Awaited<Promise<{ success: boolean; message: string; }>>
+  "tasks:status-create": (...args: [{ projectId: string; name: string; color?: string | undefined; isDone?: boolean | undefined; }]) => Awaited<Promise<{ success: false; error: string; } | { success: boolean; status: import("../../../../../packages/domain-tasks/src/types").Status; }>>
+  "tasks:status-delete": (...args: [string]) => Awaited<Promise<{ success: false; error: string; } | { success: boolean; }>>
+  "tasks:status-list": (...args: [string]) => Awaited<Promise<import("../../../../../packages/domain-tasks/src/types").Status[]>>
+  "tasks:status-reorder": (...args: [{ statusIds: string[]; positions: number[]; }]) => Awaited<Promise<{ success: false; error: string; } | { success: boolean; }>>
+  "tasks:status-update": (...args: [{ id: string; name?: string | undefined; color?: string | undefined; position?: number | undefined; isDefault?: boolean | undefined; isDone?: boolean | undefined; }]) => Awaited<Promise<{ success: false; error: string; } | { success: boolean; error: string; status?: undefined; } | { success: boolean; status: import("../../../../../packages/domain-tasks/src/types").Status; error?: undefined; }>>
+  "tasks:unarchive": (...args: [string]) => Awaited<Promise<{ success: false; error: string; } | { success: boolean; error: string; } | { success: boolean; error?: undefined; }>>
+  "tasks:uncomplete": (...args: [string]) => Awaited<Promise<{ success: false; error: string; } | { success: boolean; task: null; error: string; } | { success: boolean; task: import("../../../../../packages/domain-tasks/src/types").Task; error?: undefined; }>>
+  "tasks:update": (...args: [{ id: string; title?: string | undefined; description?: string | null | undefined; priority?: number | undefined; projectId?: string | undefined; statusId?: string | null | undefined; parentId?: string | null | undefined; dueDate?: string | null | undefined; dueTime?: string | null | undefined; startDate?: string | null | undefined; isRepeating?: boolean | undefined; repeatConfig?: { frequency: "daily" | "weekly" | "monthly" | "yearly"; endType: "date" | "never" | "count"; createdAt: string; interval?: number | undefined; daysOfWeek?: number[] | undefined; monthlyType?: "dayOfMonth" | "weekPattern" | undefined; dayOfMonth?: number | undefined; weekOfMonth?: number | undefined; dayOfWeekForMonth?: number | undefined; endDate?: string | null | undefined; endCount?: number | undefined; completedCount?: number | undefined; } | null | undefined; repeatFrom?: "due" | "completion" | null | undefined; tags?: string[] | undefined; linkedNoteIds?: string[] | undefined; }]) => Awaited<Promise<{ success: false; error: string; } | { success: boolean; task: null; error: string; } | { success: boolean; task: import("../../../../../packages/domain-tasks/src/types").Task; error?: undefined; }>>
+  "templates:create": (...args: [{ name: string; description?: string | undefined; icon?: string | null | undefined; tags?: string[] | undefined; properties?: { name: string; type: "number" | "date" | "text" | "select" | "checkbox" | "url" | "multiselect" | "rating"; value: unknown; options?: string[] | undefined; }[] | undefined; content?: string | undefined; }]) => Awaited<Promise<{ success: false; error: string; } | { success: boolean; template: import("../../../../../packages/contracts/src/templates-api").Template; }>>
+  "templates:delete": (...args: [string]) => Awaited<Promise<{ success: false; error: string; } | { success: boolean; }>>
+  "templates:duplicate": (...args: [{ id: string; newName: string; }]) => Awaited<Promise<{ success: false; error: string; } | { success: boolean; template: import("../../../../../packages/contracts/src/templates-api").Template; }>>
+  "templates:get": (...args: [string]) => Awaited<Promise<import("../../../../../packages/contracts/src/templates-api").Template | null>>
+  "templates:list": (...args: []) => Awaited<Promise<{ templates: import("../../../../../packages/contracts/src/templates-api").TemplateListItem[]; }>>
+  "templates:update": (...args: [{ id: string; name?: string | undefined; description?: string | undefined; icon?: string | null | undefined; tags?: string[] | undefined; properties?: { name: string; type: "number" | "date" | "text" | "select" | "checkbox" | "url" | "multiselect" | "rating"; value: unknown; options?: string[] | undefined; }[] | undefined; content?: string | undefined; }]) => Awaited<Promise<{ success: false; error: string; } | { success: boolean; template: import("../../../../../packages/contracts/src/templates-api").Template; }>>
+  "vault:close": (...args: []) => Awaited<Promise<void>>
+  "vault:get-all": (...args: []) => Awaited<Promise<import("../../../../../packages/contracts/src/vault-api").GetVaultsResponse>>
+  "vault:get-config": (...args: []) => Awaited<Promise<import("../../../../../packages/contracts/src/vault-api").VaultConfig>>
+  "vault:get-status": (...args: []) => Awaited<Promise<import("../../../../../packages/contracts/src/vault-api").VaultStatus>>
+  "vault:reindex": (...args: []) => Awaited<Promise<void>>
+  "vault:remove": (...args: [string]) => Awaited<Promise<void>>
+  "vault:reveal": (...args: []) => Awaited<Promise<void>>
+  "vault:select": (...args: [{ path?: string | undefined; }]) => Awaited<Promise<import("../../../../../packages/contracts/src/vault-api").SelectVaultResponse>>
+  "vault:switch": (...args: [string]) => Awaited<Promise<import("../../../../../packages/contracts/src/vault-api").SelectVaultResponse>>
+  "vault:update-config": (...args: [{ excludePatterns?: string[] | undefined; defaultNoteFolder?: string | undefined; journalFolder?: string | undefined; attachmentsFolder?: string | undefined; }]) => Awaited<Promise<import("../../../../../packages/contracts/src/vault-api").VaultConfig>>
 }
 
 export type MainIpcInvokeChannel = keyof MainIpcInvokeHandlers
-export type MainIpcInvokeArgs<C extends MainIpcInvokeChannel> = Parameters<MainIpcInvokeHandlers[C]>
-export type MainIpcInvokeResult<C extends MainIpcInvokeChannel> = ReturnType<
-  MainIpcInvokeHandlers[C]
->
+export type MainIpcInvokeArgs<C extends MainIpcInvokeChannel> =
+  Parameters<MainIpcInvokeHandlers[C]>
+export type MainIpcInvokeResult<C extends MainIpcInvokeChannel> =
+  ReturnType<MainIpcInvokeHandlers[C]>
