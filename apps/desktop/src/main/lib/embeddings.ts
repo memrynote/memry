@@ -11,6 +11,7 @@
 
 import { app, BrowserWindow } from 'electron'
 import path from 'path'
+import type { FeatureExtractionPipeline } from '@huggingface/transformers'
 import { SettingsChannels } from '@memry/contracts/ipc-channels'
 import { EMBEDDING_DIMENSION } from './embeddings-constants'
 import { createLogger } from './logger'
@@ -57,9 +58,7 @@ const MAX_CONTENT_LENGTH = 2000
 // State
 // ============================================================================
 
-// Pipeline instance (lazy loaded)
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-let extractor: any = null
+let extractor: FeatureExtractionPipeline | null = null
 let isLoading = false
 let loadError: string | null = null
 
@@ -132,9 +131,10 @@ export async function initEmbeddingModel(): Promise<boolean> {
 
     emitProgress('downloading', 5, 'Loading model (downloading if first time)...')
 
-    // Create feature extraction pipeline with progress callback
-    // Explicitly set dtype to fp32 for CPU (silences "dtype not specified" warning)
-    extractor = await pipeline('feature-extraction', MODEL_NAME, {
+    // Explicitly set dtype to fp32 for CPU (silences "dtype not specified" warning).
+    // `pipeline('feature-extraction', ...)` returns a union over all task pipelines that TS
+    // reports as "too complex to represent"; route through `unknown` to narrow to the concrete type.
+    const loaded: unknown = await pipeline('feature-extraction', MODEL_NAME, {
       dtype: 'fp32',
       progress_callback: (progress: ModelProgress) => {
         if (progress.status === 'progress' && progress.progress !== undefined) {
@@ -145,6 +145,7 @@ export async function initEmbeddingModel(): Promise<boolean> {
         }
       }
     })
+    extractor = loaded as FeatureExtractionPipeline
 
     emitProgress('ready', 100, 'Model ready')
     logger.info('Model loaded successfully')
@@ -172,21 +173,20 @@ export async function generateEmbedding(text: string): Promise<Float32Array | nu
     return null
   }
 
-  // Ensure model is loaded
   if (!extractor) {
-    const loaded = await initEmbeddingModel()
-    if (!loaded) {
-      logger.warn('Model not available, skipping embedding')
-      return null
-    }
+    await initEmbeddingModel()
+  }
+
+  const extractorInstance = extractor
+  if (!extractorInstance) {
+    logger.warn('Model not available, skipping embedding')
+    return null
   }
 
   try {
-    // Truncate very long texts (model max ~512 tokens)
     const truncated = text.substring(0, MAX_CONTENT_LENGTH)
 
-    // Generate embedding with mean pooling and normalization
-    const output = (await extractor(truncated, {
+    const output = (await extractorInstance(truncated, {
       pooling: 'mean',
       normalize: true
     })) as { data: ArrayLike<number> }

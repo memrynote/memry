@@ -7,7 +7,7 @@ import {
 import { CertificatePinningError } from './certificate-pinning'
 
 const { MockWebSocket, getInstances, resetInstances } = vi.hoisted(() => {
-  const { EventEmitter: EE } = require('events')
+  const { EventEmitter: EE } = require('events') as typeof import('events')
   const instances: Array<InstanceType<typeof MockWS>> = []
 
   class MockWS extends EE {
