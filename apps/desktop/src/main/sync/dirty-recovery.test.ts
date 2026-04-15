@@ -1,8 +1,9 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { eq } from 'drizzle-orm'
-import { createTestDataDb, type TestDatabaseResult } from '@tests/utils/test-db'
+import { createTestDataDb, asClientDb, type TestDatabaseResult } from '@tests/utils/test-db'
 import { tasks } from '@memry/db-schema/schema/tasks'
 import { projects } from '@memry/db-schema/schema/projects'
+import type { DataDb } from '../database/client'
 import { SyncQueueManager } from './queue'
 import { initTaskSyncService, resetTaskSyncService } from './task-sync'
 import { initProjectSyncService, resetProjectSyncService } from './project-sync'
@@ -21,12 +22,11 @@ const TEST_PROJECT = {
 describe('dirty-recovery', () => {
   let testDb: TestDatabaseResult
   let queue: SyncQueueManager
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let db: any
+  let db: DataDb
 
   beforeEach(() => {
     testDb = createTestDataDb()
-    db = testDb.db
+    db = asClientDb(testDb.db)
     queue = new SyncQueueManager(db)
     initTaskSyncService({ queue, db, getDeviceId: () => 'device-A' })
     initProjectSyncService({ queue, db, getDeviceId: () => 'device-A' })

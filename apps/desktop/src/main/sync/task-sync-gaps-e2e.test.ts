@@ -1,6 +1,11 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { eq } from 'drizzle-orm'
-import { createTestDataDb, type TestDatabaseResult } from '@tests/utils/test-db'
+import {
+  createTestDataDb,
+  asClientDb,
+  asSyncDb,
+  type TestDatabaseResult
+} from '@tests/utils/test-db'
 import { projects } from '@memry/db-schema/schema/projects'
 import { statuses } from '@memry/db-schema/schema/statuses'
 import { tasks } from '@memry/db-schema/schema/tasks'
@@ -141,8 +146,8 @@ describe('task sync gap fixes — E2E', () => {
     deviceA = createTestDataDb()
     deviceB = createTestDataDb()
 
-    queueA = new SyncQueueManager(deviceA.db as any)
-    queueB = new SyncQueueManager(deviceB.db as any)
+    queueA = new SyncQueueManager(asClientDb(deviceA.db))
+    queueB = new SyncQueueManager(asClientDb(deviceB.db))
   })
 
   afterEach(() => {
@@ -168,7 +173,7 @@ describe('task sync gap fixes — E2E', () => {
 
       const serviceA = new TaskSyncService({
         queue: queueA,
-        db: deviceA.db as any,
+        db: asClientDb(deviceA.db),
         getDeviceId: () => 'device-A'
       })
       serviceA.enqueueUpdate('task-1', ['position'])
@@ -185,7 +190,7 @@ describe('task sync gap fixes — E2E', () => {
       expect(task3Item).toBeDefined()
       const task3Payload = JSON.parse(task3Item!.payload) as Record<string, unknown>
 
-      const applierB = new ItemApplier(deviceB.db as any, vi.fn())
+      const applierB = new ItemApplier(asSyncDb(deviceB.db), vi.fn())
       const result = applyRemotePayload(applierB, 'task-3', task3Payload)
       expect(result).toBe('applied')
 
@@ -229,7 +234,7 @@ describe('task sync gap fixes — E2E', () => {
       expect((parsed.tags as string[]).sort()).toEqual(['bug', 'urgent'])
 
       // #when Device B applies the payload
-      const applierB = new ItemApplier(deviceB.db as any, vi.fn())
+      const applierB = new ItemApplier(asSyncDb(deviceB.db), vi.fn())
       const result = applyRemotePayload(applierB, 'task-1', parsed)
       expect(result).toBe('applied')
 
@@ -261,7 +266,7 @@ describe('task sync gap fixes — E2E', () => {
       expect((parsed.linkedNoteIds as string[]).sort()).toEqual(['note-alpha', 'note-beta'])
 
       // #when Device B applies
-      const applierB = new ItemApplier(deviceB.db as any, vi.fn())
+      const applierB = new ItemApplier(asSyncDb(deviceB.db), vi.fn())
       applyRemotePayload(applierB, 'task-1', parsed)
 
       // #then Device B has linked notes
@@ -279,7 +284,7 @@ describe('task sync gap fixes — E2E', () => {
       deviceA.db.insert(taskTags).values({ taskId: 'task-1', tag: 'frontend' }).run()
       const serviceA = new TaskSyncService({
         queue: queueA,
-        db: deviceA.db as any,
+        db: asClientDb(deviceA.db),
         getDeviceId: () => 'device-A'
       })
       serviceA.enqueueUpdate('task-1', ['tags'])
@@ -288,20 +293,20 @@ describe('task sync gap fixes — E2E', () => {
       deviceB.db.insert(taskTags).values({ taskId: 'task-1', tag: 'backend' }).run()
       const serviceB = new TaskSyncService({
         queue: queueB,
-        db: deviceB.db as any,
+        db: asClientDb(deviceB.db),
         getDeviceId: () => 'device-B'
       })
       serviceB.enqueueUpdate('task-1', ['tags'])
 
       // Cross-apply: A pulls B's payload
       const payloadFromB = JSON.parse(queueB.peek(1)[0].payload) as Record<string, unknown>
-      const applierA = new ItemApplier(deviceA.db as any, vi.fn())
+      const applierA = new ItemApplier(asSyncDb(deviceA.db), vi.fn())
       const resultA = applyRemotePayload(applierA, 'task-1', payloadFromB)
       expect(['applied', 'conflict']).toContain(resultA)
 
       // Cross-apply: B pulls A's payload
       const payloadFromA = JSON.parse(queueA.peek(1)[0].payload) as Record<string, unknown>
-      const applierB = new ItemApplier(deviceB.db as any, vi.fn())
+      const applierB = new ItemApplier(asSyncDb(deviceB.db), vi.fn())
       const resultB = applyRemotePayload(applierB, 'task-1', payloadFromA)
       expect(['applied', 'conflict']).toContain(resultB)
 
@@ -323,7 +328,7 @@ describe('task sync gap fixes — E2E', () => {
       // #when Device B changes title (no tags in payload)
       const serviceB = new TaskSyncService({
         queue: queueB,
-        db: deviceB.db as any,
+        db: asClientDb(deviceB.db),
         getDeviceId: () => 'device-B'
       })
       deviceB.db.update(tasks).set({ title: 'Renamed Task' }).where(eq(tasks.id, 'task-1')).run()
@@ -331,7 +336,7 @@ describe('task sync gap fixes — E2E', () => {
 
       // Apply B's change to A
       const payloadFromB = JSON.parse(queueB.peek(1)[0].payload) as Record<string, unknown>
-      const applierA = new ItemApplier(deviceA.db as any, vi.fn())
+      const applierA = new ItemApplier(asSyncDb(deviceA.db), vi.fn())
       applyRemotePayload(applierA, 'task-1', payloadFromB)
 
       // #then Device A's tags are NOT wiped
@@ -362,7 +367,7 @@ describe('task sync gap fixes — E2E', () => {
       // #when enqueue via TaskSyncService (the real enqueue path)
       const serviceA = new TaskSyncService({
         queue: queueA,
-        db: deviceA.db as any,
+        db: asClientDb(deviceA.db),
         getDeviceId: () => 'device-A'
       })
       serviceA.enqueueUpdate('task-1', ['title'])
@@ -375,7 +380,7 @@ describe('task sync gap fixes — E2E', () => {
       expect(payload.linkedNoteIds).toEqual([])
 
       // And remote device can consume it
-      const applierB = new ItemApplier(deviceB.db as any, vi.fn())
+      const applierB = new ItemApplier(asSyncDb(deviceB.db), vi.fn())
       const result = applyRemotePayload(applierB, 'task-1', payload)
       expect(result).toBe('applied')
       expect(getTagsFor(deviceB, 'task-1')).toEqual(['p0', 'release'])

@@ -4,7 +4,15 @@ import { createTestDataDb, type TestDatabaseResult } from '@tests/utils/test-db'
 import { folderConfigs } from '@memry/db-schema/schema/folder-configs'
 import type { FolderConfigSyncPayload } from '@memry/contracts/sync-payloads'
 import type { VectorClock } from '@memry/contracts/sync-api'
+import type { SyncQueueManager } from '../queue'
 import type { ApplyContext, DrizzleDb } from './types'
+
+type MockQueue = Pick<SyncQueueManager, 'enqueue'> & { enqueue: ReturnType<typeof vi.fn> }
+
+function makeMockQueue(): { mock: MockQueue; queue: SyncQueueManager } {
+  const mock: MockQueue = { enqueue: vi.fn() }
+  return { mock, queue: mock as unknown as SyncQueueManager }
+}
 
 vi.mock('../../vault/folders', () => ({
   writeFolderConfig: vi.fn(),
@@ -298,12 +306,12 @@ describe('folderConfigHandler', () => {
         ])
         .run()
 
-      const mockQueue = { enqueue: vi.fn() }
+      const { mock: mockQueue, queue } = makeMockQueue()
 
       const count = folderConfigHandler.seedUnclocked(
         testDb.db as unknown as DrizzleDb,
         'device-A',
-        mockQueue as any
+        queue
       )
 
       expect(count).toBe(2)
@@ -337,12 +345,12 @@ describe('folderConfigHandler', () => {
         })
         .run()
 
-      const mockQueue = { enqueue: vi.fn() }
+      const { mock: mockQueue, queue } = makeMockQueue()
 
       const count = folderConfigHandler.seedUnclocked(
         testDb.db as unknown as DrizzleDb,
         'device-A',
-        mockQueue as any
+        queue
       )
 
       expect(count).toBe(0)
