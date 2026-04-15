@@ -47,7 +47,11 @@ export class CalendarBindingSyncService {
         const existingClock = (local.clock as VectorClock) ?? {}
         const nextClock = incrementClock(existingClock, deviceId)
 
-        deps.db.update(calendarBindings).set({ clock: nextClock }).where(eq(calendarBindings.id, itemId)).run()
+        deps.db
+          .update(calendarBindings)
+          .set({ clock: nextClock })
+          .where(eq(calendarBindings.id, itemId))
+          .run()
 
         return { ...local, clock: nextClock }
       },

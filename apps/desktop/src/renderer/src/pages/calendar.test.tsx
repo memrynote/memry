@@ -1,7 +1,14 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { screen } from '@testing-library/react'
 import { SidebarProvider } from '@/components/ui/sidebar'
-import { TabProvider, useTabActions, useTabs, type SidebarItem, type Tab, type TabType } from '@/contexts/tabs'
+import {
+  TabProvider,
+  useTabActions,
+  useTabs,
+  type SidebarItem,
+  type Tab,
+  type TabType
+} from '@/contexts/tabs'
 import { useSidebarNavigation } from '@/hooks/use-sidebar-navigation'
 import { SidebarNav } from '@/components/sidebar/sidebar-nav'
 import { NewTabMenu } from '@/components/tabs/new-tab-menu'
@@ -74,7 +81,9 @@ const CALENDAR_TAB: Tab = {
 
 function TabStateSummary() {
   const { state } = useTabs()
-  const tabTypes = Object.values(state.tabGroups).flatMap((group) => group.tabs.map((tab) => tab.type))
+  const tabTypes = Object.values(state.tabGroups).flatMap((group) =>
+    group.tabs.map((tab) => tab.type)
+  )
   const calendarCount = tabTypes.filter((type) => type === 'calendar').length
 
   return (
@@ -90,8 +99,11 @@ function SidebarCalendarHarness() {
   const { state } = useTabs()
   const { splitView, setActiveGroup } = useTabActions()
   const { openSidebarItem } = useSidebarNavigation()
-  const primaryGroupId = state.layout.type === 'leaf' ? state.layout.tabGroupId : state.activeGroupId
-  const secondaryGroupId = Object.keys(state.tabGroups).find((groupId) => groupId !== primaryGroupId)
+  const primaryGroupId =
+    state.layout.type === 'leaf' ? state.layout.tabGroupId : state.activeGroupId
+  const secondaryGroupId = Object.keys(state.tabGroups).find(
+    (groupId) => groupId !== primaryGroupId
+  )
 
   return (
     <>

@@ -42,7 +42,9 @@ export const TodayTaskRow = ({
   onClick,
   className
 }: TodayTaskRowProps): React.JSX.Element => {
-  const { settings: { clockFormat } } = useGeneralSettings()
+  const {
+    settings: { clockFormat }
+  } = useGeneralSettings()
   const isOverdue = section === 'overdue'
 
   const getTimeDisplay = (): string | null => {

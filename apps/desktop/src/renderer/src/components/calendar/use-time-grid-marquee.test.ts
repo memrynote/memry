@@ -1,7 +1,12 @@
 import { describe, expect, it, vi } from 'vitest'
 import { renderHook, act } from '@testing-library/react'
 import type { RefObject } from 'react'
-import { pixelToSnappedMinutes, minutesToTimeString, selectionFromDrag, useTimeGridMarquee } from './use-time-grid-marquee'
+import {
+  pixelToSnappedMinutes,
+  minutesToTimeString,
+  selectionFromDrag,
+  useTimeGridMarquee
+} from './use-time-grid-marquee'
 
 const HOUR_HEIGHT = 96
 const SNAP_MINUTES = 15
@@ -73,7 +78,7 @@ describe('selectionFromDrag', () => {
   it('returns pixel top and height', () => {
     // 96px=60min, 288px=180min → span=120min → height=120*(96/60)=192px
     const result = selectionFromDrag(96, 288, HOUR_HEIGHT, SNAP_MINUTES)
-    expect(result.top).toBe(96)   // 60min * (96/60) = 96px
+    expect(result.top).toBe(96) // 60min * (96/60) = 96px
     expect(result.height).toBe(192) // 120min * (96/60) = 192px
   })
 })
@@ -81,8 +86,15 @@ describe('selectionFromDrag', () => {
 function createMockGridRef(rect: Partial<DOMRect> = {}): RefObject<HTMLDivElement | null> {
   const element = {
     getBoundingClientRect: () => ({
-      top: 0, left: 0, right: 500, bottom: 2304, width: 500, height: 2304,
-      x: 0, y: 0, toJSON: () => ({}),
+      top: 0,
+      left: 0,
+      right: 500,
+      bottom: 2304,
+      width: 500,
+      height: 2304,
+      x: 0,
+      y: 0,
+      toJSON: () => ({}),
       ...rect
     }),
     scrollTop: 0,
@@ -94,17 +106,28 @@ function createMockGridRef(rect: Partial<DOMRect> = {}): RefObject<HTMLDivElemen
 describe('useTimeGridMarquee', () => {
   it('starts with no selection', () => {
     const ref = createMockGridRef()
-    const { result } = renderHook(() => useTimeGridMarquee({ gridRef: ref, dateForColumn: () => '2026-04-14' }))
+    const { result } = renderHook(() =>
+      useTimeGridMarquee({ gridRef: ref, dateForColumn: () => '2026-04-14' })
+    )
     expect(result.current.selection).toBeNull()
     expect(result.current.isDragging).toBe(false)
   })
 
   it('creates 1-hour selection on double-click', () => {
     const ref = createMockGridRef()
-    const { result } = renderHook(() => useTimeGridMarquee({ gridRef: ref, dateForColumn: () => '2026-04-14' }))
+    const { result } = renderHook(() =>
+      useTimeGridMarquee({ gridRef: ref, dateForColumn: () => '2026-04-14' })
+    )
     // 864px = 9 hours * 96px/hour = 9:00 AM
-    const event = { clientY: 864, clientX: 250, target: ref.current, preventDefault: vi.fn() } as unknown as React.MouseEvent
-    act(() => { result.current.handlers.onDoubleClick(event, 0) })
+    const event = {
+      clientY: 864,
+      clientX: 250,
+      target: ref.current,
+      preventDefault: vi.fn()
+    } as unknown as React.MouseEvent
+    act(() => {
+      result.current.handlers.onDoubleClick(event, 0)
+    })
     expect(result.current.selection).not.toBeNull()
     expect(result.current.selection!.startAt).toBe('2026-04-14T09:00')
     expect(result.current.selection!.endAt).toBe('2026-04-14T10:00')
@@ -112,11 +135,22 @@ describe('useTimeGridMarquee', () => {
 
   it('clears selection via clearSelection()', () => {
     const ref = createMockGridRef()
-    const { result } = renderHook(() => useTimeGridMarquee({ gridRef: ref, dateForColumn: () => '2026-04-14' }))
-    const event = { clientY: 864, clientX: 250, target: ref.current, preventDefault: vi.fn() } as unknown as React.MouseEvent
-    act(() => { result.current.handlers.onDoubleClick(event, 0) })
+    const { result } = renderHook(() =>
+      useTimeGridMarquee({ gridRef: ref, dateForColumn: () => '2026-04-14' })
+    )
+    const event = {
+      clientY: 864,
+      clientX: 250,
+      target: ref.current,
+      preventDefault: vi.fn()
+    } as unknown as React.MouseEvent
+    act(() => {
+      result.current.handlers.onDoubleClick(event, 0)
+    })
     expect(result.current.selection).not.toBeNull()
-    act(() => { result.current.clearSelection() })
+    act(() => {
+      result.current.clearSelection()
+    })
     expect(result.current.selection).toBeNull()
   })
 })

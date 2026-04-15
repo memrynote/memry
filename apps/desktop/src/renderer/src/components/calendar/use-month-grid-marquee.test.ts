@@ -35,7 +35,7 @@ describe('useMonthGridMarquee', () => {
     const event = {
       target: cell,
       button: 0,
-      preventDefault: vi.fn(),
+      preventDefault: vi.fn()
     } as unknown as React.MouseEvent
     act(() => {
       result.current.handlers.onDoubleClick(event)
@@ -53,7 +53,7 @@ describe('useMonthGridMarquee', () => {
     const event = {
       target: cell,
       button: 0,
-      preventDefault: vi.fn(),
+      preventDefault: vi.fn()
     } as unknown as React.MouseEvent
     act(() => {
       result.current.handlers.onDoubleClick(event)
@@ -76,7 +76,7 @@ describe('useMonthGridMarquee', () => {
     const event = {
       target: chip,
       button: 0,
-      preventDefault: vi.fn(),
+      preventDefault: vi.fn()
     } as unknown as React.MouseEvent
     act(() => {
       result.current.handlers.onDoubleClick(event)
@@ -92,7 +92,7 @@ describe('useMonthGridMarquee', () => {
     const event = {
       target: el,
       button: 0,
-      preventDefault: vi.fn(),
+      preventDefault: vi.fn()
     } as unknown as React.MouseEvent
     act(() => {
       result.current.handlers.onDoubleClick(event)
@@ -108,7 +108,7 @@ describe('useMonthGridMarquee', () => {
     const event = {
       target: cell,
       button: 0,
-      preventDefault: vi.fn(),
+      preventDefault: vi.fn()
     } as unknown as React.MouseEvent
     act(() => {
       result.current.handlers.onMouseDown(event)
@@ -125,7 +125,7 @@ describe('useMonthGridMarquee', () => {
     const event = {
       target: cell,
       button: 2,
-      preventDefault: vi.fn(),
+      preventDefault: vi.fn()
     } as unknown as React.MouseEvent
     act(() => {
       result.current.handlers.onMouseDown(event)
@@ -145,7 +145,7 @@ describe('useMonthGridMarquee', () => {
     const event = {
       target: chip,
       button: 0,
-      preventDefault: vi.fn(),
+      preventDefault: vi.fn()
     } as unknown as React.MouseEvent
     act(() => {
       result.current.handlers.onMouseDown(event)
@@ -167,7 +167,7 @@ describe('useMonthGridMarquee', () => {
       result.current.handlers.onMouseDown({
         target: startCell,
         button: 0,
-        preventDefault: vi.fn(),
+        preventDefault: vi.fn()
       } as unknown as React.MouseEvent)
     })
 

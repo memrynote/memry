@@ -6,7 +6,11 @@ import { calendarSources } from '@memry/db-schema/schema/calendar-sources'
 import { calendarBindings } from '@memry/db-schema/schema/calendar-bindings'
 import { calendarExternalEvents } from '@memry/db-schema/schema/calendar-external-events'
 import type { VectorClock } from '@memry/contracts/sync-api'
-import { enqueueLocalSyncCreate, enqueueLocalSyncDelete, enqueueLocalSyncUpdate } from '../local-mutations'
+import {
+  enqueueLocalSyncCreate,
+  enqueueLocalSyncDelete,
+  enqueueLocalSyncUpdate
+} from '../local-mutations'
 import { SyncQueueManager } from '../queue'
 import { getHandler, getRemoteSyncAdapter } from './index'
 import type { ApplyContext, DrizzleDb } from './types'

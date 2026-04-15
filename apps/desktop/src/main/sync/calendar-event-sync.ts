@@ -16,7 +16,9 @@ interface CalendarEventSyncDeps {
 
 let instance: CalendarEventSyncService | null = null
 
-export function initCalendarEventSyncService(deps: CalendarEventSyncDeps): CalendarEventSyncService {
+export function initCalendarEventSyncService(
+  deps: CalendarEventSyncDeps
+): CalendarEventSyncService {
   instance = new CalendarEventSyncService(deps)
   return instance
 }
@@ -45,7 +47,11 @@ export class CalendarEventSyncService {
         const existingClock = (local.clock as VectorClock) ?? {}
         const nextClock = incrementClock(existingClock, deviceId)
 
-        deps.db.update(calendarEvents).set({ clock: nextClock }).where(eq(calendarEvents.id, itemId)).run()
+        deps.db
+          .update(calendarEvents)
+          .set({ clock: nextClock })
+          .where(eq(calendarEvents.id, itemId))
+          .run()
 
         return { ...local, clock: nextClock }
       },
