@@ -1,4 +1,4 @@
-import { decode } from 'cborg'
+import { decode as cborDecode } from 'cborg'
 import { beforeAll, describe, expect, it } from 'vitest'
 import sodium from 'libsodium-wrappers-sumo'
 
@@ -9,6 +9,9 @@ import { CBOR_FIELD_ORDER, encodeCbor } from './cbor'
 beforeAll(async () => {
   await sodium.ready
 })
+
+const decode = (bytes: Uint8Array): Map<string, unknown> =>
+  cborDecode(bytes, { useMaps: true }) as Map<string, unknown>
 
 const bytesEqual = (a: Uint8Array, b: Uint8Array): boolean => {
   if (a.length !== b.length) return false
