@@ -49,7 +49,7 @@ export function selectionFromDrag(
     startMinutes: lo,
     endMinutes: clampedEnd,
     top: Math.round(lo * pxPerMinute),
-    height: Math.round((clampedEnd - lo) * pxPerMinute),
+    height: Math.round((clampedEnd - lo) * pxPerMinute)
   }
 }
 
@@ -163,7 +163,17 @@ export function useTimeGridMarquee({
       const currentY = getMouseY(e.clientY, gridRef)
       const geo = selectionFromDrag(anchorY, currentY, hourHeight, snapMinutes)
       const date = dateForColumn(columnIndex)
-      setSelection(buildSelection(geo.startMinutes, geo.endMinutes, columnIndex, date, gridRef, hourHeight, columnCount))
+      setSelection(
+        buildSelection(
+          geo.startMinutes,
+          geo.endMinutes,
+          columnIndex,
+          date,
+          gridRef,
+          hourHeight,
+          columnCount
+        )
+      )
 
       const el = gridRef.current
       if (!el) return
@@ -184,7 +194,9 @@ export function useTimeGridMarquee({
         }
         dragState.current.rafId = requestAnimationFrame(scroll)
       } else if (distFromBottom < AUTO_SCROLL_THRESHOLD) {
-        const speed = Math.round(AUTO_SCROLL_MAX_SPEED * (1 - distFromBottom / AUTO_SCROLL_THRESHOLD))
+        const speed = Math.round(
+          AUTO_SCROLL_MAX_SPEED * (1 - distFromBottom / AUTO_SCROLL_THRESHOLD)
+        )
         const scroll = () => {
           el.scrollTop += speed
           if (dragState.current) dragState.current.rafId = requestAnimationFrame(scroll)
@@ -232,7 +244,17 @@ export function useTimeGridMarquee({
       const startMinutes = pixelToSnappedMinutes(clickY, hourHeight, snapMinutes)
       const endMinutes = Math.min(startMinutes + DOUBLE_CLICK_DURATION_MINUTES, END_OF_DAY)
       const date = dateForColumn(columnIndex)
-      setSelection(buildSelection(startMinutes, endMinutes, columnIndex, date, gridRef, hourHeight, columnCount))
+      setSelection(
+        buildSelection(
+          startMinutes,
+          endMinutes,
+          columnIndex,
+          date,
+          gridRef,
+          hourHeight,
+          columnCount
+        )
+      )
     },
     [gridRef, dateForColumn, hourHeight, snapMinutes]
   )

@@ -40,7 +40,9 @@ export function CalendarWeekView({
   onQuickSave,
   onCreateEventWithRange
 }: CalendarWeekViewProps): React.JSX.Element {
-  const { settings: { clockFormat } } = useGeneralSettings()
+  const {
+    settings: { clockFormat }
+  } = useGeneralSettings()
   const weekStart = getStartOfWeek(anchorDate)
   const days = Array.from({ length: 7 }, (_, i) => addLocalDays(weekStart, i))
 
@@ -78,9 +80,7 @@ export function CalendarWeekView({
                   {dayNum}
                 </span>
               ) : (
-                <span className="text-xs font-semibold text-foreground">
-                  {dayNum}
-                </span>
+                <span className="text-xs font-semibold text-foreground">{dayNum}</span>
               )}
             </div>
           )
@@ -116,10 +116,7 @@ export function CalendarWeekView({
             return (
               <div
                 key={day}
-                className={cn(
-                  'relative border-r border-border',
-                  'bg-background'
-                )}
+                className={cn('relative border-r border-border', 'bg-background')}
                 style={{ backgroundImage: GRID_LINE_BG }}
                 onMouseDown={(e) => handlers.onMouseDown(e, i)}
                 onDoubleClick={(e) => handlers.onDoubleClick(e, i)}
@@ -132,7 +129,11 @@ export function CalendarWeekView({
                       className="absolute left-0.5 right-0.5 z-10"
                       style={{ top: pos.top, height: pos.height }}
                     >
-                      <CalendarItemChip item={item} clockFormat={clockFormat} onClick={onSelectItem} />
+                      <CalendarItemChip
+                        item={item}
+                        clockFormat={clockFormat}
+                        onClick={onSelectItem}
+                      />
                     </div>
                   )
                 })}

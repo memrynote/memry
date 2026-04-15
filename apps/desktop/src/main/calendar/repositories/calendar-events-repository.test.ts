@@ -279,7 +279,14 @@ describe('calendar storage foundation', () => {
       ]
     ] as const
 
-    for (const [id, sourceType, sourceId, provider, remoteCalendarId, remoteEventId] of bindingRows) {
+    for (const [
+      id,
+      sourceType,
+      sourceId,
+      provider,
+      remoteCalendarId,
+      remoteEventId
+    ] of bindingRows) {
       expect(() =>
         db.run(sql`
           INSERT INTO calendar_bindings (

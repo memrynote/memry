@@ -74,7 +74,9 @@ test.describe('Calendar milestone e2e', () => {
     await expect(
       calendarPage.getByRole('button', { name: /Imported customer call/i }).first()
     ).toBeVisible()
-    await expect(calendarPage.getByRole('button', { name: /Due launch brief/i }).first()).toBeVisible()
+    await expect(
+      calendarPage.getByRole('button', { name: /Due launch brief/i }).first()
+    ).toBeVisible()
     await expect(
       calendarPage.getByRole('button', { name: /Medication reminder/i }).first()
     ).toBeVisible()
@@ -97,9 +99,14 @@ test.describe('Calendar milestone e2e', () => {
 
     await page.getByLabel('Title').fill(eventTitle)
     await page.getByRole('button', { name: 'Create Event' }).click()
-    await expect(calendarPage.getByRole('button', { name: new RegExp(eventTitle) }).first()).toBeVisible()
+    await expect(
+      calendarPage.getByRole('button', { name: new RegExp(eventTitle) }).first()
+    ).toBeVisible()
 
-    await calendarPage.getByRole('button', { name: new RegExp(eventTitle) }).first().click()
+    await calendarPage
+      .getByRole('button', { name: new RegExp(eventTitle) })
+      .first()
+      .click()
     await expect(page.getByRole('heading', { name: 'Edit Event' })).toBeVisible()
     await page.getByLabel('Title').fill(renamedEventTitle)
     await page.getByRole('button', { name: 'Save Changes' }).click()

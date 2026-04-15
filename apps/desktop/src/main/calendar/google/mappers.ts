@@ -70,13 +70,13 @@ export function mapCalendarEventToGoogleInput(
     endAt: row.endAt ?? null,
     isAllDay: row.isAllDay,
     timezone: row.timezone,
-    recurrence: toGoogleRecurrenceArray(
-      row.recurrenceRule as Record<string, unknown> | null
-    )
+    recurrence: toGoogleRecurrenceArray(row.recurrenceRule as Record<string, unknown> | null)
   }
 }
 
-export function mapTaskToGoogleInput(row: typeof tasks.$inferSelect): GoogleCalendarUpsertEventInput {
+export function mapTaskToGoogleInput(
+  row: typeof tasks.$inferSelect
+): GoogleCalendarUpsertEventInput {
   if (!row.dueDate) {
     throw new Error(`Task ${row.id} is not scheduled on the calendar`)
   }

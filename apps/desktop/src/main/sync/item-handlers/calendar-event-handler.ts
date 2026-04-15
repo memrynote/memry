@@ -19,7 +19,12 @@ export const calendarEventHandler: SyncItemHandler<CalendarEventSyncPayload> = {
   type: 'calendar_event',
   schema: CalendarEventSyncPayloadSchema,
 
-  applyUpsert(ctx: ApplyContext, itemId: string, data: CalendarEventSyncPayload, clock: VectorClock): ApplyResult {
+  applyUpsert(
+    ctx: ApplyContext,
+    itemId: string,
+    data: CalendarEventSyncPayload,
+    clock: VectorClock
+  ): ApplyResult {
     return ctx.db.transaction((tx): ApplyResult => {
       const existing = tx.select().from(calendarEvents).where(eq(calendarEvents.id, itemId)).get()
       const remoteClock = Object.keys(clock).length > 0 ? clock : (data.clock ?? {})
@@ -42,7 +47,8 @@ export const calendarEventHandler: SyncItemHandler<CalendarEventSyncPayload> = {
             timezone: data.timezone ?? existing.timezone,
             isAllDay: data.isAllDay ?? existing.isAllDay,
             recurrenceRule: data.recurrenceRule ?? existing.recurrenceRule ?? null,
-            recurrenceExceptions: data.recurrenceExceptions ?? existing.recurrenceExceptions ?? null,
+            recurrenceExceptions:
+              data.recurrenceExceptions ?? existing.recurrenceExceptions ?? null,
             archivedAt: data.archivedAt ?? existing.archivedAt,
             clock: resolution.mergedClock,
             modifiedAt: data.modifiedAt ?? now
@@ -127,7 +133,10 @@ export const calendarEventHandler: SyncItemHandler<CalendarEventSyncPayload> = {
     const items = db.select().from(calendarEvents).where(isNull(calendarEvents.clock)).all()
     for (const item of items) {
       const nextClock = increment({}, deviceId)
-      db.update(calendarEvents).set({ clock: nextClock }).where(eq(calendarEvents.id, item.id)).run()
+      db.update(calendarEvents)
+        .set({ clock: nextClock })
+        .where(eq(calendarEvents.id, item.id))
+        .run()
       queue.enqueue({
         type: 'calendar_event',
         itemId: item.id,

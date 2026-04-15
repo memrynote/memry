@@ -1,6 +1,13 @@
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from '@/components/ui/sheet'
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle
+} from '@/components/ui/sheet'
 import { Textarea } from '@/components/ui/textarea'
 import { toLocalDateString } from './date-utils'
 
@@ -59,7 +66,10 @@ export function CalendarEventEditorDrawer({
           </div>
 
           <div className="space-y-2">
-            <label className="text-sm font-medium text-foreground" htmlFor="calendar-event-description">
+            <label
+              className="text-sm font-medium text-foreground"
+              htmlFor="calendar-event-description"
+            >
               Description
             </label>
             <Textarea
@@ -70,7 +80,10 @@ export function CalendarEventEditorDrawer({
           </div>
 
           <div className="space-y-2">
-            <label className="text-sm font-medium text-foreground" htmlFor="calendar-event-location">
+            <label
+              className="text-sm font-medium text-foreground"
+              htmlFor="calendar-event-location"
+            >
               Location
             </label>
             <Input
@@ -137,7 +150,11 @@ export function CalendarEventEditorDrawer({
           <Button type="button" variant="ghost" onClick={onClose}>
             Close
           </Button>
-          <Button type="button" onClick={onSave} disabled={isSaving || draft.title.trim().length === 0}>
+          <Button
+            type="button"
+            onClick={onSave}
+            disabled={isSaving || draft.title.trim().length === 0}
+          >
             {isSaving ? 'Saving...' : mode === 'create' ? 'Create Event' : 'Save Changes'}
           </Button>
         </SheetFooter>

@@ -61,7 +61,9 @@ export function SnoozePicker({
   variant = 'ghost',
   className
 }: SnoozePickerProps) {
-  const { settings: { clockFormat } } = useGeneralSettings()
+  const {
+    settings: { clockFormat }
+  } = useGeneralSettings()
   const [isOpen, setIsOpen] = React.useState(false)
   const [showCustomDialog, setShowCustomDialog] = React.useState(false)
 
@@ -118,7 +120,9 @@ export function SnoozePicker({
                 {getPresetIcon(preset.id)}
                 <div className="flex flex-col flex-1">
                   <span>{preset.label}</span>
-                  <span className="text-xs text-muted-foreground">{formatSnoozeTime(time, clockFormat)}</span>
+                  <span className="text-xs text-muted-foreground">
+                    {formatSnoozeTime(time, clockFormat)}
+                  </span>
                 </div>
               </DropdownMenuItem>
             )
@@ -187,7 +191,11 @@ interface SnoozeCustomDialogProps {
   clockFormat: ClockFormat
 }
 
-function SnoozeCustomDialog({ onClose, onSnooze, clockFormat }: SnoozeCustomDialogProps): React.JSX.Element {
+function SnoozeCustomDialog({
+  onClose,
+  onSnooze,
+  clockFormat
+}: SnoozeCustomDialogProps): React.JSX.Element {
   const [selectedDate, setSelectedDate] = React.useState<Date | undefined>(() => new Date())
   const [selectedTime, setSelectedTime] = React.useState('09:00')
 

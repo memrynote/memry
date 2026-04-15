@@ -41,7 +41,9 @@ function toLocalAllDayEnd(dateStr: string): string {
   return new Date(year, month - 1, day + 1, 0, 0, 0, 0).toISOString()
 }
 
-function getLocalDueDateRange(input: GetCalendarRangeInput): { startDate: string; endDate: string } | null {
+function getLocalDueDateRange(
+  input: GetCalendarRangeInput
+): { startDate: string; endDate: string } | null {
   const start = new Date(input.startAt)
   const end = new Date(input.endAt)
 
@@ -107,9 +109,7 @@ function nativeSource(title: string): CalendarProjectionSourceMeta {
   }
 }
 
-function externalSource(
-  row: typeof calendarSources.$inferSelect
-): CalendarProjectionSourceMeta {
+function externalSource(row: typeof calendarSources.$inferSelect): CalendarProjectionSourceMeta {
   return {
     provider: row.provider,
     calendarSourceId: row.id,

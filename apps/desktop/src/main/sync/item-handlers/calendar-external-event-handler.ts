@@ -121,13 +121,19 @@ export const calendarExternalEventHandler: SyncItemHandler<CalendarExternalEvent
   },
 
   fetchLocal(db: DrizzleDb, itemId: string): Record<string, unknown> | undefined {
-    return db.select().from(calendarExternalEvents).where(eq(calendarExternalEvents.id, itemId)).get() as
-      | Record<string, unknown>
-      | undefined
+    return db
+      .select()
+      .from(calendarExternalEvents)
+      .where(eq(calendarExternalEvents.id, itemId))
+      .get() as Record<string, unknown> | undefined
   },
 
   buildPushPayload(db: DrizzleDb, itemId: string): string | null {
-    const row = db.select().from(calendarExternalEvents).where(eq(calendarExternalEvents.id, itemId)).get()
+    const row = db
+      .select()
+      .from(calendarExternalEvents)
+      .where(eq(calendarExternalEvents.id, itemId))
+      .get()
     if (!row) return null
     const payload: CalendarExternalEventSyncPayload = {
       sourceId: row.sourceId,
@@ -153,7 +159,11 @@ export const calendarExternalEventHandler: SyncItemHandler<CalendarExternalEvent
   },
 
   seedUnclocked(db: DrizzleDb, deviceId: string, queue: SyncQueueManager): number {
-    const items = db.select().from(calendarExternalEvents).where(isNull(calendarExternalEvents.clock)).all()
+    const items = db
+      .select()
+      .from(calendarExternalEvents)
+      .where(isNull(calendarExternalEvents.clock))
+      .all()
     for (const item of items) {
       const nextClock = increment({}, deviceId)
       db.update(calendarExternalEvents)
