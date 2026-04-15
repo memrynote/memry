@@ -63,8 +63,9 @@ export default defineConfig({
     ],
     coverage: {
       provider: 'v8',
-      reporter: ['text', 'json', 'html', 'lcov'],
+      reporter: ['text', 'json', 'json-summary', 'html', 'lcov'],
       reportsDirectory: './coverage',
+      reportOnFailure: true,
       exclude: [
         'node_modules/**',
         'dist/**',
@@ -86,11 +87,16 @@ export default defineConfig({
         '../../packages/storage-vault/src/**/*.ts',
         '../../packages/sync-core/src/**/*.ts'
       ],
+      // Coverage ratchet baseline (2026-04-15, base 75c466db):
+      //   statements 37.49  branches 28.58  functions 34.60  lines 38.36
+      // Thresholds pinned at floor(actual) so suite passes today but any regression
+      // trips the ratchet. Bump these upward as coverage improves; never lower
+      // without recording a new baseline here. Targets: 80 / 70 / 75 / 80.
       thresholds: {
-        statements: 30,
-        branches: 20,
-        functions: 25,
-        lines: 30
+        statements: 37,
+        branches: 28,
+        functions: 34,
+        lines: 38
       }
     },
     reporters: ['verbose'],
