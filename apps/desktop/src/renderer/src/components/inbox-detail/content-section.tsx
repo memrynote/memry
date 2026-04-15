@@ -160,7 +160,9 @@ interface ContentMetadataProps {
 }
 
 export const ContentMetadata = ({ item }: ContentMetadataProps): React.JSX.Element => {
-  const { settings: { clockFormat } } = useGeneralSettings()
+  const {
+    settings: { clockFormat }
+  } = useGeneralSettings()
 
   let duration: number | null = null
   if ('duration' in item && typeof item.duration === 'number') {

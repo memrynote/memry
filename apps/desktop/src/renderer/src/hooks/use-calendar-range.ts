@@ -10,7 +10,13 @@ import {
 export const calendarRangeKeys = {
   all: () => ['calendar', 'range'] as const,
   range: (input: GetCalendarRangeInput) =>
-    ['calendar', 'range', input.startAt, input.endAt, Boolean(input.includeUnselectedSources)] as const
+    [
+      'calendar',
+      'range',
+      input.startAt,
+      input.endAt,
+      Boolean(input.includeUnselectedSources)
+    ] as const
 }
 
 export function useCalendarRange(input: GetCalendarRangeInput) {

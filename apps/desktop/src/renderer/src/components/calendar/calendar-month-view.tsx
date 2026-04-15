@@ -60,8 +60,10 @@ export function CalendarMonthView({
           const today = isToday(day)
           const dayNum = parseInt(day.slice(-2), 10)
           const dayItems = items.filter((item) => toLocalDateKey(item.startAt) === day)
-          const isSelected = selection && !isDragging && day >= selection.startDate && day <= selection.endDate
-          const isDragSelected = isDragging && selection && day >= selection.startDate && day <= selection.endDate
+          const isSelected =
+            selection && !isDragging && day >= selection.startDate && day <= selection.endDate
+          const isDragSelected =
+            isDragging && selection && day >= selection.startDate && day <= selection.endDate
 
           return (
             <div

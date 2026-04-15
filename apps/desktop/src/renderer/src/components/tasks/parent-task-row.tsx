@@ -111,7 +111,9 @@ export const ParentTaskRow = ({
 }: ParentTaskRowProps): React.JSX.Element => {
   const isOverlay = renderMode === 'overlay'
   const rowRef = useRef<HTMLDivElement>(null)
-  const { settings: { clockFormat } } = useGeneralSettings()
+  const {
+    settings: { clockFormat }
+  } = useGeneralSettings()
   const taskHasSubtasks = hasSubtasks(task)
   const formattedDate = formatDueDate(task.dueDate, task.dueTime)
   const isOverdue = formattedDate?.status === 'overdue' && !isCompleted

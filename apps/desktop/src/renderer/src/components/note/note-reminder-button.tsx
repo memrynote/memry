@@ -36,7 +36,9 @@ export function NoteReminderButton({
   disabled = false,
   className
 }: NoteReminderButtonProps): React.ReactElement {
-  const { settings: { clockFormat } } = useGeneralSettings()
+  const {
+    settings: { clockFormat }
+  } = useGeneralSettings()
   const { hasActiveReminder, nextReminder, activeReminderCount, actions } = useNoteReminders(noteId)
 
   const handleSetReminder = async (date: Date, note?: string): Promise<void> => {

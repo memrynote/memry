@@ -14,7 +14,8 @@ const log = createLogger('Calendar:GoogleOAuth')
 const GOOGLE_AUTH_URL = 'https://accounts.google.com/o/oauth2/v2/auth'
 const GOOGLE_TOKEN_URL = 'https://oauth2.googleapis.com/token'
 const GOOGLE_REVOKE_URL = 'https://oauth2.googleapis.com/revoke'
-const GOOGLE_PRIMARY_CALENDAR_URL = 'https://www.googleapis.com/calendar/v3/users/me/calendarList/primary'
+const GOOGLE_PRIMARY_CALENDAR_URL =
+  'https://www.googleapis.com/calendar/v3/users/me/calendarList/primary'
 const OAUTH_TIMEOUT_MS = 10 * 60 * 1000
 
 export const GOOGLE_CALENDAR_SCOPE = 'https://www.googleapis.com/auth/calendar'
@@ -76,11 +77,7 @@ function resolveGoogleClientSecret(): string | undefined {
 }
 
 function toBase64Url(buffer: Buffer): string {
-  return buffer
-    .toString('base64')
-    .replace(/\+/g, '-')
-    .replace(/\//g, '_')
-    .replace(/=+$/g, '')
+  return buffer.toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '')
 }
 
 function createCodeVerifier(): string {

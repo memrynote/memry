@@ -29,7 +29,9 @@ export const InteractiveDueDateBadge = ({
   className
 }: InteractiveDueDateBadgeProps): React.JSX.Element => {
   const [isOpen, setIsOpen] = React.useState(false)
-  const { settings: { clockFormat } } = useGeneralSettings()
+  const {
+    settings: { clockFormat }
+  } = useGeneralSettings()
 
   const status = formatDueDate(dueDate, dueTime)
 
