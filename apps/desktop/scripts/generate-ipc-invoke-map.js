@@ -117,6 +117,13 @@ function isIpcMainHandleCall(node, sourceFile) {
   return node.expression.expression.getText(sourceFile) === 'ipcMain'
 }
 
+function isRegisterCommandCall(node) {
+  if (!ts.isCallExpression(node) || !ts.isIdentifier(node.expression)) {
+    return false
+  }
+  return node.expression.text === 'registerCommand'
+}
+
 function collectEntries(program) {
   const checker = program.getTypeChecker()
   const entries = new Map()
@@ -128,12 +135,17 @@ function collectEntries(program) {
     }
 
     function visit(node) {
-      if (!isIpcMainHandleCall(node, sourceFile)) {
+      const isIpcHandle = isIpcMainHandleCall(node, sourceFile)
+      const isRegisterCmd = !isIpcHandle && isRegisterCommandCall(node)
+
+      if (!isIpcHandle && !isRegisterCmd) {
         ts.forEachChild(node, visit)
         return
       }
 
-      const [channelArg, handlerArg] = node.arguments
+      const channelArg = node.arguments[0]
+      const handlerArg = isIpcHandle ? node.arguments[1] : node.arguments[2]
+      const schemaArg = isRegisterCmd ? node.arguments[1] : null
       if (!channelArg || !handlerArg) {
         ts.forEachChild(node, visit)
         return
@@ -160,15 +172,43 @@ function collectEntries(program) {
         return
       }
 
-      const params = signature
-        .getParameters()
-        .slice(1)
-        .map((symbol) => {
-          const symbolType = checker.getTypeOfSymbolAtLocation(symbol, handlerArg)
-          return formatType(checker, symbolType)
-        })
+      const skipCount = isIpcHandle ? 1 : 0
+      let params
+      if (isRegisterCmd && schemaArg) {
+        const schemaType = checker.getTypeAtLocation(schemaArg)
+        const inputTypeSymbol = schemaType.getProperty('_input') || schemaType.getProperty('_zod')
+        let rawInputType
+        if (inputTypeSymbol) {
+          rawInputType = checker.getTypeOfSymbolAtLocation(inputTypeSymbol, schemaArg)
+          if (rawInputType && schemaType.getProperty('_zod')) {
+            const zodProp = rawInputType.getProperty('input')
+            if (zodProp) {
+              rawInputType = checker.getTypeOfSymbolAtLocation(zodProp, schemaArg)
+            }
+          }
+        }
+        params = rawInputType
+          ? [formatType(checker, rawInputType)]
+          : signature
+              .getParameters()
+              .slice(skipCount)
+              .map((symbol) => {
+                const symbolType = checker.getTypeOfSymbolAtLocation(symbol, handlerArg)
+                return formatType(checker, symbolType)
+              })
+      } else {
+        params = signature
+          .getParameters()
+          .slice(skipCount)
+          .map((symbol) => {
+            const symbolType = checker.getTypeOfSymbolAtLocation(symbol, handlerArg)
+            return formatType(checker, symbolType)
+          })
+      }
       const returnType = formatType(checker, checker.getReturnTypeOfSignature(signature))
-      const awaitedReturn = `Awaited<${returnType}>`
+      const awaitedReturn = isRegisterCmd
+        ? `Awaited<${returnType} | { success: false; error: string }>`
+        : `Awaited<${returnType}>`
       const argsTuple = params.length > 0 ? `[${params.join(', ')}]` : '[]'
 
       for (const channel of channels) {
