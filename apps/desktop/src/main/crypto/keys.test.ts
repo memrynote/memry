@@ -62,7 +62,9 @@ describe('deriveMasterKey — Argon2id parameter regression lock', () => {
     // Inputs: ARGON2_PARAMS (opslimit=3, memlimit=64 MiB), ALG_ARGON2ID13, output=32B,
     //         seed=64×0x42, salt=0x00..0xff (16 bytes).
     // If this snapshot drifts, an Argon2id parameter changed — investigate before updating.
-    expect(actualHex).toMatchInlineSnapshot()
+    expect(actualHex).toMatchInlineSnapshot(
+      `"05e691d50fc4043e5b38f12fbe2f4bbba7a1669a1421795b0d5f445e86e617a3"`
+    )
   })
 
   it('uses ARGON2_PARAMS (opslimit, memlimit) and produces a 32-byte master key', async () => {
