@@ -56,6 +56,15 @@ const SAMPLE_SOURCES: CalendarSourceRecord[] = [
   }
 ]
 
+const SAMPLE_DAY = new Date()
+
+function isoAtLocalTime(hour: number, minute = 0, dayOffset = 0): string {
+  const date = new Date(SAMPLE_DAY)
+  date.setDate(date.getDate() + dayOffset)
+  date.setHours(hour, minute, 0, 0)
+  return date.toISOString()
+}
+
 const SAMPLE_ITEMS: CalendarProjectionItem[] = [
   {
     projectionId: 'event:event-1',
@@ -63,8 +72,8 @@ const SAMPLE_ITEMS: CalendarProjectionItem[] = [
     sourceId: 'event-1',
     title: 'Planning block',
     descriptionPreview: 'Write the launch brief',
-    startAt: '2026-04-14T09:00:00.000Z',
-    endAt: '2026-04-14T10:00:00.000Z',
+    startAt: isoAtLocalTime(9),
+    endAt: isoAtLocalTime(10),
     isAllDay: false,
     timezone: 'UTC',
     visualType: 'event',
@@ -85,8 +94,8 @@ const SAMPLE_ITEMS: CalendarProjectionItem[] = [
     sourceId: 'task-1',
     title: 'Due draft',
     descriptionPreview: null,
-    startAt: '2026-04-14T13:00:00.000Z',
-    endAt: '2026-04-14T14:00:00.000Z',
+    startAt: isoAtLocalTime(13),
+    endAt: isoAtLocalTime(14),
     isAllDay: false,
     timezone: 'UTC',
     visualType: 'task',
@@ -107,7 +116,7 @@ const SAMPLE_ITEMS: CalendarProjectionItem[] = [
     sourceId: 'reminder-1',
     title: 'Medication reminder',
     descriptionPreview: null,
-    startAt: '2026-04-14T17:00:00.000Z',
+    startAt: isoAtLocalTime(17),
     endAt: null,
     isAllDay: false,
     timezone: 'UTC',
@@ -129,7 +138,7 @@ const SAMPLE_ITEMS: CalendarProjectionItem[] = [
     sourceId: 'snooze-1',
     title: 'Review investor email',
     descriptionPreview: null,
-    startAt: '2026-04-14T19:00:00.000Z',
+    startAt: isoAtLocalTime(19),
     endAt: null,
     isAllDay: false,
     timezone: 'UTC',
@@ -151,8 +160,8 @@ const SAMPLE_ITEMS: CalendarProjectionItem[] = [
     sourceId: 'external-1',
     title: 'Customer call',
     descriptionPreview: 'Imported from Google',
-    startAt: '2026-04-15T15:00:00.000Z',
-    endAt: '2026-04-15T16:00:00.000Z',
+    startAt: isoAtLocalTime(15, 0, 1),
+    endAt: isoAtLocalTime(16, 0, 1),
     isAllDay: false,
     timezone: 'UTC',
     visualType: 'external_event',
