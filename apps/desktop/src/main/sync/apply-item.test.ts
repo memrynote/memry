@@ -1,12 +1,18 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { eq } from 'drizzle-orm'
-import { createTestDataDb, asSyncDb, type TestDatabaseResult } from '@tests/utils/test-db'
+import {
+  createTestDataDb,
+  asClientDb,
+  asSyncDb,
+  type TestDatabaseResult
+} from '@tests/utils/test-db'
 import { tasks } from '@memry/db-schema/schema/tasks'
 import { projects } from '@memry/db-schema/schema/projects'
 import { inboxItems } from '@memry/db-schema/schema/inbox'
 import { savedFilters } from '@memry/db-schema/schema/settings'
 import type { VectorClock } from '@memry/contracts/sync-api'
 import { ItemApplier, type EmitToWindows } from './apply-item'
+import { SyncQueueManager } from './queue'
 
 const TEST_PROJECT = {
   id: 'proj-1',
@@ -550,8 +556,7 @@ describe('ItemApplier', () => {
       initSettingsSyncManager({
         db: asSyncDb(testDb.db),
         getDeviceId: () => 'device-1',
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        queue: null as any
+        queue: new SyncQueueManager(asClientDb(testDb.db))
       })
 
       const settingsPayload = {

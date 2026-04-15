@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import type { SettingsSyncPayload } from '@memry/contracts/settings-sync'
 import type { VectorClock } from '@memry/contracts/sync-api'
-import type { ApplyContext } from './types'
+import type { ApplyContext, DrizzleDb } from './types'
 
 const mockMergeRemote = vi.fn()
 const mockGetSettings = vi.fn(() => ({}))
@@ -61,9 +61,8 @@ import { settingsHandler } from './settings-handler'
 
 describe('settingsHandler.applyUpsert', () => {
   const ctx: ApplyContext = {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    db: {} as any,
-    deviceId: 'device-A'
+    db: {} as unknown as DrizzleDb,
+    emit: vi.fn()
   }
   const clock: VectorClock = { 'device-B': 3 }
 
