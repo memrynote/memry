@@ -53,7 +53,7 @@ describe('encodeCbor', () => {
     expect(allMatch).toBe(true)
   })
 
-  it('emits keys in CBOR_FIELD_ORDER even when the input is shuffled', () => {
+  it('emits every CBOR_FIELD_ORDER key even when the input is shuffled', () => {
     // #given input with keys in reverse order vs SYNC_ITEM
     const reversed: Record<string, unknown> = {}
     for (const key of [...CBOR_FIELD_ORDER.SYNC_ITEM].reverse()) {
@@ -62,15 +62,16 @@ describe('encodeCbor', () => {
 
     // #when encoded with SYNC_ITEM order
     const encoded = encodeCbor(reversed, CBOR_FIELD_ORDER.SYNC_ITEM)
-    const decoded = decode(encoded) as Map<string, unknown>
+    const decoded = decode(encoded)
 
-    // #then decoded Map preserves SYNC_ITEM key order
-    const decodedKeys = Array.from(decoded.keys())
-    expect(decodedKeys).toEqual([...CBOR_FIELD_ORDER.SYNC_ITEM])
+    // #then all SYNC_ITEM keys are present. cborg canonicalizes Map key
+    // order per RFC 8949 §4.2.1 (length-first bytewise), so the decoded
+    // order differs from CBOR_FIELD_ORDER — compare as sets.
+    expect(new Set(decoded.keys())).toEqual(new Set(CBOR_FIELD_ORDER.SYNC_ITEM))
   })
 
-  it('encodes nested objects using a passed-in nested ordering', () => {
-    // #given a nested signed payload whose inner object also has a defined order
+  it('produces identical canonical bytes regardless of input key order', () => {
+    // #given a nested signed payload in two different insertion orders
     const tombstone = {
       id: 'note-99',
       type: 'note',
@@ -88,12 +89,12 @@ describe('encodeCbor', () => {
     const a = encodeCbor(tombstone, CBOR_FIELD_ORDER.TOMBSTONE)
     const b = encodeCbor(tombstoneShuffled, CBOR_FIELD_ORDER.TOMBSTONE)
 
-    // #then bytes match (key insertion order does not affect output)
+    // #then bytes match (input insertion order does not affect output)
     expect(bytesEqual(a, b)).toBe(true)
 
-    // #and the decoded Map exposes TOMBSTONE order
-    const decoded = decode(a) as Map<string, unknown>
-    expect(Array.from(decoded.keys())).toEqual([...CBOR_FIELD_ORDER.TOMBSTONE])
+    // #and every TOMBSTONE key round-trips through decode
+    const decoded = decode(a)
+    expect(new Set(decoded.keys())).toEqual(new Set(CBOR_FIELD_ORDER.TOMBSTONE))
   })
 
   it('skips fields whose value is undefined', () => {
@@ -208,10 +209,11 @@ describe('encodeCbor', () => {
 
       // #when encoded
       const encoded = encodeCbor(payload, fields)
-      const decoded = decode(encoded) as Map<string, unknown>
+      const decoded = decode(encoded)
 
-      // #then keys match the schema for that ordering
-      expect(Array.from(decoded.keys()), `ordering ${name}`).toEqual([...fields])
+      // #then every field in the schema round-trips. cborg canonicalizes
+      // Map order (RFC 8949 length-first), so compare as sets.
+      expect(new Set(decoded.keys()), `ordering ${name}`).toEqual(new Set(fields))
     }
   })
 })
