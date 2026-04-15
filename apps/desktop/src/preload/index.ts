@@ -1,5 +1,6 @@
 import { contextBridge, ipcRenderer, webUtils } from 'electron'
 import { electronAPI } from '@electron-toolkit/preload'
+import { createLogger } from '../main/lib/logger'
 
 // Import channel constants from shared (single source of truth)
 import {
@@ -47,6 +48,8 @@ import type {
   MainIpcInvokeArgs,
   MainIpcInvokeResult
 } from '../main/ipc/generated-ipc-invoke-map'
+
+const logger = createLogger('Preload')
 
 function invoke<C extends MainIpcInvokeChannel>(
   channel: C,
@@ -1097,7 +1100,7 @@ if (process.contextIsolated) {
     contextBridge.exposeInMainWorld('electron', electronAPI)
     contextBridge.exposeInMainWorld('api', api)
   } catch (error) {
-    console.error(error)
+    logger.error('contextBridge exposure failed', error)
   }
 } else {
   ;(window as unknown as Record<string, unknown>).electron = electronAPI
