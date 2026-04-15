@@ -26,8 +26,14 @@ import { initJournalSyncService, resetJournalSyncService } from './journal-sync'
 import { initTagDefinitionSyncService, resetTagDefinitionSyncService } from './tag-definition-sync'
 import { initFolderConfigSyncService, resetFolderConfigSyncService } from './folder-config-sync'
 import { initCalendarEventSyncService, resetCalendarEventSyncService } from './calendar-event-sync'
-import { initCalendarSourceSyncService, resetCalendarSourceSyncService } from './calendar-source-sync'
-import { initCalendarBindingSyncService, resetCalendarBindingSyncService } from './calendar-binding-sync'
+import {
+  initCalendarSourceSyncService,
+  resetCalendarSourceSyncService
+} from './calendar-source-sync'
+import {
+  initCalendarBindingSyncService,
+  resetCalendarBindingSyncService
+} from './calendar-binding-sync'
 import {
   initCalendarExternalEventSyncService,
   resetCalendarExternalEventSyncService

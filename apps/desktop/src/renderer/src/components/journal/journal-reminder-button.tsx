@@ -38,7 +38,9 @@ export function JournalReminderButton({
   disabled = false,
   className
 }: JournalReminderButtonProps): React.ReactElement {
-  const { settings: { clockFormat } } = useGeneralSettings()
+  const {
+    settings: { clockFormat }
+  } = useGeneralSettings()
   const { hasActiveReminder, nextReminder, activeReminderCount, actions } =
     useJournalReminders(journalDate)
 

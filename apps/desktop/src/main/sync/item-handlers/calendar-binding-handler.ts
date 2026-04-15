@@ -19,9 +19,18 @@ export const calendarBindingHandler: SyncItemHandler<CalendarBindingSyncPayload>
   type: 'calendar_binding',
   schema: CalendarBindingSyncPayloadSchema,
 
-  applyUpsert(ctx: ApplyContext, itemId: string, data: CalendarBindingSyncPayload, clock: VectorClock): ApplyResult {
+  applyUpsert(
+    ctx: ApplyContext,
+    itemId: string,
+    data: CalendarBindingSyncPayload,
+    clock: VectorClock
+  ): ApplyResult {
     return ctx.db.transaction((tx): ApplyResult => {
-      const existing = tx.select().from(calendarBindings).where(eq(calendarBindings.id, itemId)).get()
+      const existing = tx
+        .select()
+        .from(calendarBindings)
+        .where(eq(calendarBindings.id, itemId))
+        .get()
       const remoteClock = Object.keys(clock).length > 0 ? clock : (data.clock ?? {})
       const now = utcNow()
 
@@ -79,7 +88,11 @@ export const calendarBindingHandler: SyncItemHandler<CalendarBindingSyncPayload>
   },
 
   applyDelete(ctx: ApplyContext, itemId: string, clock?: VectorClock): 'applied' | 'skipped' {
-    const existing = ctx.db.select().from(calendarBindings).where(eq(calendarBindings.id, itemId)).get()
+    const existing = ctx.db
+      .select()
+      .from(calendarBindings)
+      .where(eq(calendarBindings.id, itemId))
+      .get()
     if (!existing) return 'skipped'
 
     if (clock && existing.clock) {
@@ -126,7 +139,10 @@ export const calendarBindingHandler: SyncItemHandler<CalendarBindingSyncPayload>
     const items = db.select().from(calendarBindings).where(isNull(calendarBindings.clock)).all()
     for (const item of items) {
       const nextClock = increment({}, deviceId)
-      db.update(calendarBindings).set({ clock: nextClock }).where(eq(calendarBindings.id, item.id)).run()
+      db.update(calendarBindings)
+        .set({ clock: nextClock })
+        .where(eq(calendarBindings.id, item.id))
+        .run()
       queue.enqueue({
         type: 'calendar_binding',
         itemId: item.id,

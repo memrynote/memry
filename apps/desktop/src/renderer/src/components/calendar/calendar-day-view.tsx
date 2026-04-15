@@ -40,7 +40,9 @@ export function CalendarDayView({
   onQuickSave,
   onCreateEventWithRange
 }: CalendarDayViewProps): React.JSX.Element {
-  const { settings: { clockFormat } } = useGeneralSettings()
+  const {
+    settings: { clockFormat }
+  } = useGeneralSettings()
   const [miniMonthAnchor, setMiniMonthAnchor] = useState(anchorDate)
   const gridRef = useRef<HTMLDivElement>(null)
   const dateForColumn = useCallback(() => anchorDate, [anchorDate])
@@ -60,7 +62,10 @@ export function CalendarDayView({
   return (
     <div className="flex h-full" data-testid="calendar-view" data-view="day">
       <div className="min-h-0 min-w-0 flex-1 overflow-y-auto">
-        <div className="relative flex [--grid-line-color:var(--border)]" style={{ height: HOUR_HEIGHT * 24 }}>
+        <div
+          className="relative flex [--grid-line-color:var(--border)]"
+          style={{ height: HOUR_HEIGHT * 24 }}
+        >
           <div className="w-[48px] shrink-0 @xl:w-[72px]">
             {HOURS.map((hour) => (
               <div
@@ -154,15 +159,18 @@ export function CalendarDayView({
         />
 
         <div className="flex flex-col gap-3 border-t border-border px-6 py-5">
-          <h3 className="text-sm font-semibold text-foreground">
-            Today&apos;s events
-          </h3>
+          <h3 className="text-sm font-semibold text-foreground">Today&apos;s events</h3>
           {dayItems.length === 0 ? (
             <p className="text-sm text-muted-foreground">No events scheduled.</p>
           ) : (
             <div className="flex flex-col gap-2">
               {dayItems.map((item) => (
-                <CalendarItemChip key={item.projectionId} item={item} clockFormat={clockFormat} onClick={onSelectItem} />
+                <CalendarItemChip
+                  key={item.projectionId}
+                  item={item}
+                  clockFormat={clockFormat}
+                  onClick={onSelectItem}
+                />
               ))}
             </div>
           )}

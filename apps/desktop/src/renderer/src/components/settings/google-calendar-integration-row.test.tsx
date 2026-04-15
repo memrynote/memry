@@ -168,9 +168,7 @@ describe('Google Calendar integration row', () => {
 
     renderWithProviders(<IntegrationList />)
 
-    await waitFor(() =>
-      expect(screen.getByRole('button', { name: 'Connect' })).toBeInTheDocument()
-    )
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Connect' })).toBeInTheDocument())
 
     await user.click(screen.getByRole('button', { name: 'Connect' }))
 

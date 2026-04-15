@@ -45,7 +45,9 @@ export type {
   UpdateCalendarEventInput
 }
 
-export const calendarService: CalendarClientAPI = createWindowApiForwarder(() => window.api.calendar)
+export const calendarService: CalendarClientAPI = createWindowApiForwarder(
+  () => window.api.calendar
+)
 
 export function onCalendarChanged(callback: (event: CalendarChangedEvent) => void): () => void {
   return window.api.onCalendarChanged(callback)

@@ -46,7 +46,9 @@ export function listCalendarExternalEventsBySource(
   return db
     .select()
     .from(calendarExternalEvents)
-    .where(and(eq(calendarExternalEvents.sourceId, sourceId), isNull(calendarExternalEvents.archivedAt)))
+    .where(
+      and(eq(calendarExternalEvents.sourceId, sourceId), isNull(calendarExternalEvents.archivedAt))
+    )
     .orderBy(asc(calendarExternalEvents.startAt))
     .all()
 }

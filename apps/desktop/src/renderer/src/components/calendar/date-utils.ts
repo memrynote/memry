@@ -55,9 +55,7 @@ export function getStartOfWeek(value: string): string {
 export function getWeekNumber(value: string): number {
   const date = parseLocalDate(value)
   const startOfYear = new Date(date.getFullYear(), 0, 1)
-  const daysSinceStart = Math.floor(
-    (date.getTime() - startOfYear.getTime()) / 86400000
-  )
+  const daysSinceStart = Math.floor((date.getTime() - startOfYear.getTime()) / 86400000)
   return Math.ceil((daysSinceStart + startOfYear.getDay() + 1) / 7)
 }
 
@@ -95,4 +93,3 @@ export function getMonthGridDaysMondayStart(anchorDate: string): string[] {
     return toLocalDateString(d)
   })
 }
-

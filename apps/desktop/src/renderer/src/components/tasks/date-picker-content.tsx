@@ -51,7 +51,9 @@ export function DatePickerContent({
   className
 }: DatePickerContentProps): React.JSX.Element {
   const [editing, setEditing] = useState(false)
-  const { settings: { clockFormat } } = useGeneralSettings()
+  const {
+    settings: { clockFormat }
+  } = useGeneralSettings()
 
   const today = useMemo(() => {
     const d = new Date()
