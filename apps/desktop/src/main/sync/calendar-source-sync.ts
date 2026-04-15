@@ -47,7 +47,11 @@ export class CalendarSourceSyncService {
         const existingClock = (local.clock as VectorClock) ?? {}
         const nextClock = incrementClock(existingClock, deviceId)
 
-        deps.db.update(calendarSources).set({ clock: nextClock }).where(eq(calendarSources.id, itemId)).run()
+        deps.db
+          .update(calendarSources)
+          .set({ clock: nextClock })
+          .where(eq(calendarSources.id, itemId))
+          .run()
 
         return { ...local, clock: nextClock }
       },

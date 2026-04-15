@@ -121,8 +121,9 @@ async function ensureMemryCalendarSource(
   if (existing) return existing
 
   const discovered = await client.listCalendars()
-  const remote = discovered.find((calendar) => calendar.title === 'Memry')
-    ?? (await client.createCalendar({ title: 'Memry', timezone: LOCAL_TIMEZONE }))
+  const remote =
+    discovered.find((calendar) => calendar.title === 'Memry') ??
+    (await client.createCalendar({ title: 'Memry', timezone: LOCAL_TIMEZONE }))
 
   const localId = `google-calendar:${remote.id}`
   const now = getNow()
@@ -170,7 +171,11 @@ function getGoogleClient(deps?: { client?: GoogleCalendarClient }): GoogleCalend
 function shouldSourceSyncToGoogleCalendar(db: DataDb, target: CalendarSyncTarget): boolean {
   switch (target.sourceType) {
     case 'event': {
-      const row = db.select().from(calendarEvents).where(eq(calendarEvents.id, target.sourceId)).get()
+      const row = db
+        .select()
+        .from(calendarEvents)
+        .where(eq(calendarEvents.id, target.sourceId))
+        .get()
       return Boolean(row && !row.archivedAt)
     }
 
@@ -204,7 +209,11 @@ function loadSourceAsGoogleEvent(
 ): GoogleCalendarUpsertEventInput {
   switch (target.sourceType) {
     case 'event': {
-      const row = db.select().from(calendarEvents).where(eq(calendarEvents.id, target.sourceId)).get()
+      const row = db
+        .select()
+        .from(calendarEvents)
+        .where(eq(calendarEvents.id, target.sourceId))
+        .get()
       if (!row) throw new Error(`Calendar event not found: ${target.sourceId}`)
       return mapCalendarEventToGoogleInput(row)
     }
@@ -251,15 +260,18 @@ function updateBindingRemoteVersion(
 export async function pushSourceToGoogleCalendar(
   db: DataDb,
   target: CalendarSyncTarget,
-  deps: { client?: Pick<GoogleCalendarClient, 'upsertEvent' | 'listCalendars' | 'createCalendar'> } = {}
+  deps: {
+    client?: Pick<GoogleCalendarClient, 'upsertEvent' | 'listCalendars' | 'createCalendar'>
+  } = {}
 ): Promise<typeof calendarBindings.$inferSelect> {
   const client = getGoogleClient(deps as { client?: GoogleCalendarClient })
   const localEvent = loadSourceAsGoogleEvent(db, target)
   const existingBinding = getExistingGoogleBinding(db, target)
-  const memrySource = getMemryManagedGoogleSource(db)
-    ?? (await ensureMemryCalendarSource(db, client))
+  const memrySource =
+    getMemryManagedGoogleSource(db) ?? (await ensureMemryCalendarSource(db, client))
   const now = getNow()
-  const bindingId = existingBinding?.id ?? `calendar_binding:google:${target.sourceType}:${target.sourceId}`
+  const bindingId =
+    existingBinding?.id ?? `calendar_binding:google:${target.sourceType}:${target.sourceId}`
 
   const remote = await client.upsertEvent({
     calendarId: existingBinding?.remoteCalendarId ?? memrySource.remoteId,

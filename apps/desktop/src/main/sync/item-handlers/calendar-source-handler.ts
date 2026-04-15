@@ -19,7 +19,12 @@ export const calendarSourceHandler: SyncItemHandler<CalendarSourceSyncPayload> =
   type: 'calendar_source',
   schema: CalendarSourceSyncPayloadSchema,
 
-  applyUpsert(ctx: ApplyContext, itemId: string, data: CalendarSourceSyncPayload, clock: VectorClock): ApplyResult {
+  applyUpsert(
+    ctx: ApplyContext,
+    itemId: string,
+    data: CalendarSourceSyncPayload,
+    clock: VectorClock
+  ): ApplyResult {
     return ctx.db.transaction((tx): ApplyResult => {
       const existing = tx.select().from(calendarSources).where(eq(calendarSources.id, itemId)).get()
       const remoteClock = Object.keys(clock).length > 0 ? clock : (data.clock ?? {})
@@ -89,7 +94,11 @@ export const calendarSourceHandler: SyncItemHandler<CalendarSourceSyncPayload> =
   },
 
   applyDelete(ctx: ApplyContext, itemId: string, clock?: VectorClock): 'applied' | 'skipped' {
-    const existing = ctx.db.select().from(calendarSources).where(eq(calendarSources.id, itemId)).get()
+    const existing = ctx.db
+      .select()
+      .from(calendarSources)
+      .where(eq(calendarSources.id, itemId))
+      .get()
     if (!existing) return 'skipped'
 
     if (clock && existing.clock) {
@@ -141,7 +150,10 @@ export const calendarSourceHandler: SyncItemHandler<CalendarSourceSyncPayload> =
     const items = db.select().from(calendarSources).where(isNull(calendarSources.clock)).all()
     for (const item of items) {
       const nextClock = increment({}, deviceId)
-      db.update(calendarSources).set({ clock: nextClock }).where(eq(calendarSources.id, item.id)).run()
+      db.update(calendarSources)
+        .set({ clock: nextClock })
+        .where(eq(calendarSources.id, item.id))
+        .run()
       queue.enqueue({
         type: 'calendar_source',
         itemId: item.id,

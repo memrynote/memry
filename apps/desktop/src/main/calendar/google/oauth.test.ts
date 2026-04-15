@@ -27,11 +27,7 @@ vi.mock('../../lib/logger', () => ({
   })
 }))
 
-import {
-  GOOGLE_CALENDAR_SCOPE,
-  connectGoogleCalendar,
-  disconnectGoogleCalendar
-} from './oauth'
+import { GOOGLE_CALENDAR_SCOPE, connectGoogleCalendar, disconnectGoogleCalendar } from './oauth'
 import {
   clearGoogleCalendarTokens,
   getGoogleCalendarTokens,

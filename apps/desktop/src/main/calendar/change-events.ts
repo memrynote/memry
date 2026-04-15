@@ -14,4 +14,3 @@ export function emitCalendarProjectionChanged(id: string): void {
     id
   })
 }
-

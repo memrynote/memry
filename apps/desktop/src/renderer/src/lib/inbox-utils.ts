@@ -64,7 +64,11 @@ export const groupItemsByTimePeriod = <T extends InboxItem | InboxItemListItem>(
 }
 
 // Helper to format timestamp based on time period
-export const formatTimestamp = (timestamp: Date, period: TimePeriod, clockFormat: ClockFormat = '12h'): string => {
+export const formatTimestamp = (
+  timestamp: Date,
+  period: TimePeriod,
+  clockFormat: ClockFormat = '12h'
+): string => {
   if (period === 'TODAY' || period === 'YESTERDAY') {
     return formatTimeOfDay(timestamp, clockFormat)
   }

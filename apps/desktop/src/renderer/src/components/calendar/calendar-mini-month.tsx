@@ -45,9 +45,7 @@ export function CalendarMiniMonth({
         >
           <ChevronLeft className="size-5" />
         </button>
-        <span className="text-sm font-semibold text-foreground">
-          {monthLabel}
-        </span>
+        <span className="text-sm font-semibold text-foreground">{monthLabel}</span>
         <button
           type="button"
           className="flex size-8 items-center justify-center rounded-lg text-muted-foreground hover:bg-surface-active"
@@ -60,10 +58,7 @@ export function CalendarMiniMonth({
 
       <div className="mb-0.5 grid grid-cols-7">
         {DAY_HEADERS.map((header) => (
-          <div
-            key={header}
-            className="py-1 text-center text-sm font-medium text-muted-foreground"
-          >
+          <div key={header} className="py-1 text-center text-sm font-medium text-muted-foreground">
             {header}
           </div>
         ))}
@@ -93,9 +88,7 @@ export function CalendarMiniMonth({
               >
                 {dayNum}
               </span>
-              {hasEvent && (
-                <span className="absolute bottom-0.5 size-[5px] rounded-full bg-tint" />
-              )}
+              {hasEvent && <span className="absolute bottom-0.5 size-[5px] rounded-full bg-tint" />}
             </button>
           )
         })}

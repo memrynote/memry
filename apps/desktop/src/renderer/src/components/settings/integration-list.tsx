@@ -24,7 +24,9 @@ function GenericIntegrationRow({
         </div>
         <div className="flex flex-col gap-px min-w-0">
           <span className="font-medium text-[13px]/4 text-foreground">{integration.name}</span>
-          <span className="text-xs/4 text-muted-foreground truncate">{integration.description}</span>
+          <span className="text-xs/4 text-muted-foreground truncate">
+            {integration.description}
+          </span>
         </div>
       </div>
 

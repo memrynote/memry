@@ -1,6 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { CalendarShell, type CalendarEventDraft, type CalendarWorkspaceView } from '@/components/calendar'
+import {
+  CalendarShell,
+  type CalendarEventDraft,
+  type CalendarWorkspaceView
+} from '@/components/calendar'
 import {
   addLocalDays,
   addLocalMonths,
@@ -43,7 +47,10 @@ function getTodayDate(): string {
   return toLocalDateString(new Date())
 }
 
-function getRangeForView(view: CalendarWorkspaceView, anchorDate: string): {
+function getRangeForView(
+  view: CalendarWorkspaceView,
+  anchorDate: string
+): {
   startAt: string
   endAt: string
 } {

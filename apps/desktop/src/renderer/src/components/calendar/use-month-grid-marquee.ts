@@ -50,7 +50,7 @@ function getAnchorRect(
 }
 
 export function useMonthGridMarquee({
-  gridRef,
+  gridRef
 }: UseMonthGridMarqueeOptions): UseMonthGridMarqueeReturn {
   const [selection, setSelection] = useState<MonthGridSelection | null>(null)
   const [isDragging, setIsDragging] = useState(false)
@@ -66,7 +66,7 @@ export function useMonthGridMarquee({
       return {
         startDate,
         endDate,
-        anchorRect: getAnchorRect(gridRef, startDate),
+        anchorRect: getAnchorRect(gridRef, startDate)
       }
     },
     [gridRef]
@@ -102,20 +102,17 @@ export function useMonthGridMarquee({
     }
   }, [isDragging, handleMouseMove, handleMouseUp])
 
-  const onMouseDown = useCallback(
-    (e: React.MouseEvent) => {
-      if (e.button !== 0) return
-      if (isEventChip(e.target)) return
-      const date = getDateFromTarget(e.target)
-      if (!date) return
-      e.preventDefault()
-      anchorDateRef.current = date
-      hasMovedRef.current = false
-      setIsDragging(true)
-      setSelection(null)
-    },
-    []
-  )
+  const onMouseDown = useCallback((e: React.MouseEvent) => {
+    if (e.button !== 0) return
+    if (isEventChip(e.target)) return
+    const date = getDateFromTarget(e.target)
+    if (!date) return
+    e.preventDefault()
+    anchorDateRef.current = date
+    hasMovedRef.current = false
+    setIsDragging(true)
+    setSelection(null)
+  }, [])
 
   const onDoubleClick = useCallback(
     (e: React.MouseEvent) => {
@@ -132,6 +129,6 @@ export function useMonthGridMarquee({
     selection,
     isDragging,
     handlers: { onMouseDown, onDoubleClick },
-    clearSelection,
+    clearSelection
   }
 }

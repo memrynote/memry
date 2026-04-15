@@ -40,9 +40,11 @@ export class CalendarExternalEventSyncService {
       queue: deps.queue,
       getDeviceId: deps.getDeviceId,
       load: (id) =>
-        deps.db.select().from(calendarExternalEvents).where(eq(calendarExternalEvents.id, id)).get() as
-          | Record<string, unknown>
-          | undefined,
+        deps.db
+          .select()
+          .from(calendarExternalEvents)
+          .where(eq(calendarExternalEvents.id, id))
+          .get() as Record<string, unknown> | undefined,
       applyLocalChange: ({ itemId, local, deviceId }) => {
         const existingClock = (local.clock as VectorClock) ?? {}
         const nextClock = incrementClock(existingClock, deviceId)

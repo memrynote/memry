@@ -1,6 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { eq } from 'drizzle-orm'
-import { createTestDataDb, seedInboxItem, seedTestData, type TestDatabaseResult, type TestDb } from '@tests/utils/test-db'
+import {
+  createTestDataDb,
+  seedInboxItem,
+  seedTestData,
+  type TestDatabaseResult,
+  type TestDb
+} from '@tests/utils/test-db'
 import { calendarBindings } from '@memry/db-schema/schema/calendar-bindings'
 import { calendarEvents } from '@memry/db-schema/schema/calendar-events'
 import { calendarExternalEvents } from '@memry/db-schema/schema/calendar-external-events'
@@ -163,9 +169,17 @@ describe('google calendar sync service', () => {
     }
 
     await pushSourceToGoogleCalendar(db, { sourceType: 'event', sourceId: 'event-1' }, { client })
-    await pushSourceToGoogleCalendar(db, { sourceType: 'task', sourceId: 'task-google-1' }, { client })
+    await pushSourceToGoogleCalendar(
+      db,
+      { sourceType: 'task', sourceId: 'task-google-1' },
+      { client }
+    )
     await pushSourceToGoogleCalendar(db, { sourceType: 'reminder', sourceId: 'rem-1' }, { client })
-    await pushSourceToGoogleCalendar(db, { sourceType: 'inbox_snooze', sourceId: 'inbox-1' }, { client })
+    await pushSourceToGoogleCalendar(
+      db,
+      { sourceType: 'inbox_snooze', sourceId: 'inbox-1' },
+      { client }
+    )
 
     expect(client.upsertEvent).toHaveBeenCalledTimes(4)
     expect(client.upsertEvent).toHaveBeenNthCalledWith(
@@ -221,7 +235,9 @@ describe('google calendar sync service', () => {
       .all()
 
     expect(storedBindings).toHaveLength(4)
-    expect(storedBindings.map((binding) => [binding.sourceType, binding.sourceId, binding.remoteEventId])).toEqual([
+    expect(
+      storedBindings.map((binding) => [binding.sourceType, binding.sourceId, binding.remoteEventId])
+    ).toEqual([
       ['event', 'event-1', 'remote-event-event-1'],
       ['inbox_snooze', 'inbox-1', 'remote-inbox_snooze-inbox-1'],
       ['reminder', 'rem-1', 'remote-reminder-rem-1'],
@@ -382,7 +398,9 @@ describe('google calendar sync service', () => {
       }
     )
 
-    expect(db.select().from(calendarEvents).where(eq(calendarEvents.id, 'event-1')).get()).toMatchObject({
+    expect(
+      db.select().from(calendarEvents).where(eq(calendarEvents.id, 'event-1')).get()
+    ).toMatchObject({
       title: 'Updated Event',
       description: 'Updated event description',
       location: 'Updated location',
@@ -443,7 +461,11 @@ describe('google calendar sync service', () => {
 
     await syncGoogleCalendarSource(db, 'google-calendar:selected', { client })
 
-    const syncedSource = db.select().from(calendarSources).where(eq(calendarSources.id, 'google-calendar:selected')).get()
+    const syncedSource = db
+      .select()
+      .from(calendarSources)
+      .where(eq(calendarSources.id, 'google-calendar:selected'))
+      .get()
     expect(syncedSource).toMatchObject({
       syncCursor: 'cursor-2',
       syncStatus: 'ok'
@@ -506,14 +528,23 @@ describe('google calendar sync service', () => {
       }))
     }
 
-    await syncLocalSourceToGoogleCalendar(db, { sourceType: 'task', sourceId: 'task-reconcile-1' }, { client })
+    await syncLocalSourceToGoogleCalendar(
+      db,
+      { sourceType: 'task', sourceId: 'task-reconcile-1' },
+      { client }
+    )
 
     expect(client.upsertEvent).toHaveBeenCalledTimes(1)
-    expect(db.select().from(calendarBindings).where(eq(calendarBindings.sourceId, 'task-reconcile-1')).get())
-      .toMatchObject({
-        remoteEventId: 'remote-task-reconcile-1',
-        archivedAt: null
-      })
+    expect(
+      db
+        .select()
+        .from(calendarBindings)
+        .where(eq(calendarBindings.sourceId, 'task-reconcile-1'))
+        .get()
+    ).toMatchObject({
+      remoteEventId: 'remote-task-reconcile-1',
+      archivedAt: null
+    })
 
     db.update(tasks)
       .set({
@@ -523,16 +554,25 @@ describe('google calendar sync service', () => {
       .where(eq(tasks.id, 'task-reconcile-1'))
       .run()
 
-    await syncLocalSourceToGoogleCalendar(db, { sourceType: 'task', sourceId: 'task-reconcile-1' }, { client })
+    await syncLocalSourceToGoogleCalendar(
+      db,
+      { sourceType: 'task', sourceId: 'task-reconcile-1' },
+      { client }
+    )
 
     expect(client.deleteEvent).toHaveBeenCalledWith({
       calendarId: 'remote-memry-calendar',
       eventId: 'remote-task-reconcile-1'
     })
-    expect(db.select().from(calendarBindings).where(eq(calendarBindings.sourceId, 'task-reconcile-1')).get())
-      .toMatchObject({
-        archivedAt: expect.any(String)
-      })
+    expect(
+      db
+        .select()
+        .from(calendarBindings)
+        .where(eq(calendarBindings.sourceId, 'task-reconcile-1'))
+        .get()
+    ).toMatchObject({
+      archivedAt: expect.any(String)
+    })
   })
 
   it('clears scheduling for task, reminder, and snooze bindings when Google deletes the event', async () => {

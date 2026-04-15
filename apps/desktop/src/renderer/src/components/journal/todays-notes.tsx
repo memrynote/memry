@@ -173,7 +173,9 @@ interface NoteItemProps {
 }
 
 function NoteItem({ note, isActive, onClick }: NoteItemProps): React.JSX.Element {
-  const { settings: { clockFormat } } = useGeneralSettings()
+  const {
+    settings: { clockFormat }
+  } = useGeneralSettings()
   const time = formatTimeOfDay(new Date(note.created), clockFormat)
 
   return (

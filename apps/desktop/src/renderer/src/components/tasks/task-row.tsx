@@ -71,7 +71,9 @@ export const TaskRow = ({
   actions,
   renderTitle
 }: TaskRowProps): React.JSX.Element => {
-  const { settings: { clockFormat } } = useGeneralSettings()
+  const {
+    settings: { clockFormat }
+  } = useGeneralSettings()
   const formattedDate = formatDueDate(task.dueDate, task.dueTime)
   const isOverdue = formattedDate?.status === 'overdue' && !isCompleted
   const { color: statusColor } = resolveStatus(task, project.statuses)

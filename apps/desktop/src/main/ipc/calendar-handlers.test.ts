@@ -1,7 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi, type Mock } from 'vitest'
 import { sql } from 'drizzle-orm'
 import { mockIpcMain, resetIpcMocks, invokeHandler } from '@tests/utils/mock-ipc'
-import { createTestDataDb, type TestDatabaseResult, type TestDb, asClientDb } from '@tests/utils/test-db'
+import {
+  createTestDataDb,
+  type TestDatabaseResult,
+  type TestDb,
+  asClientDb
+} from '@tests/utils/test-db'
 import { CalendarChannels } from '@memry/contracts/ipc-channels'
 
 const handleCalls: unknown[][] = []

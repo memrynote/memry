@@ -126,7 +126,9 @@ const TaskRowComponent = ({
   const isOverlay = renderMode === 'overlay'
   const rowRef = useRef<HTMLDivElement>(null)
   const [isExiting, setIsExiting] = useState(false)
-  const { settings: { clockFormat } } = useGeneralSettings()
+  const {
+    settings: { clockFormat }
+  } = useGeneralSettings()
 
   useEffect(() => {
     if (isSelected && rowRef.current) {
