@@ -15,7 +15,11 @@ export function upsertCalendarEvent(db: DataDb, event: NewCalendarEvent): Calend
     db.insert(calendarEvents).values(event).run()
   }
 
-  return db.select().from(calendarEvents).where(eq(calendarEvents.id, event.id)).get() as CalendarEvent
+  return db
+    .select()
+    .from(calendarEvents)
+    .where(eq(calendarEvents.id, event.id))
+    .get() as CalendarEvent
 }
 
 export function getCalendarEventById(db: DataDb, id: string): CalendarEvent | undefined {

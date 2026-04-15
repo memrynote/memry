@@ -213,7 +213,11 @@ export function registerCalendarHandlers(): void {
     createValidatedHandler(
       UpdateCalendarEventSchema,
       withDb((db, input): CalendarEventMutationResponse => {
-        const existing = db.select().from(calendarEvents).where(eq(calendarEvents.id, input.id)).get()
+        const existing = db
+          .select()
+          .from(calendarEvents)
+          .where(eq(calendarEvents.id, input.id))
+          .get()
         if (!existing) {
           return { success: false, event: null, error: 'Calendar event not found' }
         }
@@ -230,9 +234,12 @@ export function registerCalendarHandlers(): void {
           changes.location = input.location ?? null
         }
         if (Object.prototype.hasOwnProperty.call(input, 'startAt')) changes.startAt = input.startAt
-        if (Object.prototype.hasOwnProperty.call(input, 'endAt')) changes.endAt = input.endAt ?? null
-        if (Object.prototype.hasOwnProperty.call(input, 'timezone')) changes.timezone = input.timezone
-        if (Object.prototype.hasOwnProperty.call(input, 'isAllDay')) changes.isAllDay = input.isAllDay
+        if (Object.prototype.hasOwnProperty.call(input, 'endAt'))
+          changes.endAt = input.endAt ?? null
+        if (Object.prototype.hasOwnProperty.call(input, 'timezone'))
+          changes.timezone = input.timezone
+        if (Object.prototype.hasOwnProperty.call(input, 'isAllDay'))
+          changes.isAllDay = input.isAllDay
         if (Object.prototype.hasOwnProperty.call(input, 'recurrenceRule')) {
           changes.recurrenceRule = input.recurrenceRule ?? null
         }
@@ -242,7 +249,11 @@ export function registerCalendarHandlers(): void {
 
         db.update(calendarEvents).set(changes).where(eq(calendarEvents.id, input.id)).run()
 
-        const updated = db.select().from(calendarEvents).where(eq(calendarEvents.id, input.id)).get()
+        const updated = db
+          .select()
+          .from(calendarEvents)
+          .where(eq(calendarEvents.id, input.id))
+          .get()
         if (!updated) {
           throw new Error('Failed to load updated calendar event')
         }
@@ -333,9 +344,12 @@ export function registerCalendarHandlers(): void {
 
   ipcMain.handle(
     CalendarChannels.invoke.GET_PROVIDER_STATUS,
-    createValidatedHandler(CalendarProviderRequestSchema, async (input): Promise<CalendarProviderStatus> => {
-      return await buildProviderStatus(requireDatabase(), input.provider)
-    })
+    createValidatedHandler(
+      CalendarProviderRequestSchema,
+      async (input): Promise<CalendarProviderStatus> => {
+        return await buildProviderStatus(requireDatabase(), input.provider)
+      }
+    )
   )
 
   ipcMain.handle(
@@ -435,13 +449,23 @@ export function registerCalendarHandlers(): void {
         db.transaction((tx) => {
           if (externalRows.length > 0) {
             tx.delete(calendarExternalEvents)
-              .where(inArray(calendarExternalEvents.id, externalRows.map((row) => row.id)))
+              .where(
+                inArray(
+                  calendarExternalEvents.id,
+                  externalRows.map((row) => row.id)
+                )
+              )
               .run()
           }
 
           if (bindingRows.length > 0) {
             tx.delete(calendarBindings)
-              .where(inArray(calendarBindings.id, bindingRows.map((row) => row.id)))
+              .where(
+                inArray(
+                  calendarBindings.id,
+                  bindingRows.map((row) => row.id)
+                )
+              )
               .run()
           }
 

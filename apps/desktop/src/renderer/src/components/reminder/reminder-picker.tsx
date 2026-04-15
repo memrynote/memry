@@ -43,7 +43,9 @@ export function ReminderPicker({
   isLoading = false,
   className
 }: ReminderPickerProps): React.ReactElement {
-  const { settings: { clockFormat } } = useGeneralSettings()
+  const {
+    settings: { clockFormat }
+  } = useGeneralSettings()
   const [open, setOpen] = useState(false)
   const [mode, setMode] = useState<PickerMode>('presets')
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined)

@@ -25,7 +25,6 @@ const DOT_COLORS: Record<CalendarProjectionItem['visualType'], string> = {
   external_event: 'bg-neutral-400'
 }
 
-
 function formatPopoverDate(day: string): string {
   return new Intl.DateTimeFormat(undefined, {
     weekday: 'long',
@@ -49,7 +48,9 @@ export function CalendarYearView({
   onViewChange,
   onAnchorChange
 }: CalendarYearViewProps): React.JSX.Element {
-  const { settings: { clockFormat } } = useGeneralSettings()
+  const {
+    settings: { clockFormat }
+  } = useGeneralSettings()
   const [popoverDay, setPopoverDay] = useState<string | null>(null)
   const clickTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -115,7 +116,7 @@ export function CalendarYearView({
     onViewChange?.('month')
   }
 
-  const popoverItems = popoverDay ? itemsByDay.get(popoverDay) ?? [] : []
+  const popoverItems = popoverDay ? (itemsByDay.get(popoverDay) ?? []) : []
 
   return (
     <Popover
@@ -218,11 +219,7 @@ export function CalendarYearView({
                   >
                     <span
                       className={cn('size-2 shrink-0 rounded-full', DOT_COLORS[item.visualType])}
-                      style={
-                        item.source.color
-                          ? { backgroundColor: item.source.color }
-                          : undefined
-                      }
+                      style={item.source.color ? { backgroundColor: item.source.color } : undefined}
                     />
                     <span className="flex-1 truncate text-xs text-foreground">{item.title}</span>
                     <span className="shrink-0 text-xs text-muted-foreground">

@@ -22,7 +22,11 @@ export function upsertCalendarSource(db: DataDb, source: NewCalendarSource): Cal
     db.insert(calendarSources).values(source).run()
   }
 
-  return db.select().from(calendarSources).where(eq(calendarSources.id, source.id)).get() as CalendarSource
+  return db
+    .select()
+    .from(calendarSources)
+    .where(eq(calendarSources.id, source.id))
+    .get() as CalendarSource
 }
 
 export function getCalendarSourceById(db: DataDb, id: string): CalendarSource | undefined {
@@ -66,7 +70,11 @@ export function upsertCalendarBinding(db: DataDb, binding: NewCalendarBinding): 
     db.insert(calendarBindings).values(binding).run()
   }
 
-  return db.select().from(calendarBindings).where(eq(calendarBindings.id, binding.id)).get() as CalendarBinding
+  return db
+    .select()
+    .from(calendarBindings)
+    .where(eq(calendarBindings.id, binding.id))
+    .get() as CalendarBinding
 }
 
 export function listCalendarBindingsForSource(
