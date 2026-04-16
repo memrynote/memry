@@ -6,19 +6,34 @@
       "persistent": true
     },
     "build": {
+      "cache": true,
       "dependsOn": ["^build"],
       "outputs": ["out/**", "dist/**", ".wrangler/**"]
     },
     "typecheck": {
+      "cache": true,
       "dependsOn": ["^typecheck"],
-      "outputs": []
+      "inputs": ["**/*.ts", "**/*.tsx", "tsconfig*.json", "package.json"],
+      "outputs": ["**/*.tsbuildinfo"]
     },
     "test": {
+      "cache": true,
       "dependsOn": ["^test"],
+      "inputs": ["**/*.ts", "**/*.tsx", "**/*.test.*", "package.json", "vitest.config.*"],
       "outputs": []
     },
     "lint": {
+      "cache": true,
       "dependsOn": ["^lint"],
+      "inputs": [
+        "**/*.ts",
+        "**/*.tsx",
+        "**/*.js",
+        "**/*.jsx",
+        "eslint.config.*",
+        ".eslintrc*",
+        "package.json"
+      ],
       "outputs": []
     }
   }
