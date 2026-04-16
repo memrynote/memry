@@ -8,6 +8,7 @@ import { useEditor, EditorContent, ReactRenderer } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
 import Underline from '@tiptap/extension-underline'
 import Link from '@tiptap/extension-link'
+import Image from '@tiptap/extension-image'
 import Placeholder from '@tiptap/extension-placeholder'
 import tippy from 'tippy.js'
 import type { Instance } from 'tippy.js'
@@ -36,6 +37,12 @@ export interface JournalEditorProps {
   className?: string
   /** Read-only mode */
   readOnly?: boolean
+  /** Journal entry id (date) used to scope image uploads */
+  journalId?: string
+  /** Whether focus mode is currently active */
+  isFocusMode?: boolean
+  /** Callback fired when the toolbar focus-mode button is pressed */
+  onFocusToggle?: () => void
 }
 
 // =============================================================================
@@ -51,7 +58,10 @@ export const JournalEditor = memo(function JournalEditor({
   isActive = false,
   onContentChange,
   className,
-  readOnly = false
+  readOnly = false,
+  journalId,
+  isFocusMode = false,
+  onFocusToggle
 }: JournalEditorProps): React.JSX.Element {
   // Hooks for pages and tags
   const { searchPages } = usePages()
@@ -79,6 +89,13 @@ export const JournalEditor = memo(function JournalEditor({
           openOnClick: false,
           HTMLAttributes: {
             class: 'text-primary underline underline-offset-2 hover:text-primary/80'
+          }
+        }),
+        Image.configure({
+          inline: false,
+          allowBase64: false,
+          HTMLAttributes: {
+            class: 'rounded-md max-w-full h-auto my-2'
           }
         }),
         Placeholder.configure({
@@ -260,7 +277,12 @@ export const JournalEditor = memo(function JournalEditor({
         />
 
         {/* Toolbar */}
-        <EditorToolbar editor={editor} />
+        <EditorToolbar
+          editor={editor}
+          journalId={journalId}
+          isFocusMode={isFocusMode}
+          onFocusToggle={onFocusToggle}
+        />
       </div>
     </>
   )

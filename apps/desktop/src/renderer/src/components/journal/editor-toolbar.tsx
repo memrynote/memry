@@ -3,8 +3,9 @@
  * Toolbar with formatting buttons for the journal editor
  */
 
-import { memo } from 'react'
+import { memo, useCallback, useRef } from 'react'
 import type { Editor } from '@tiptap/react'
+import { toast } from 'sonner'
 import {
   Bold,
   Italic,
@@ -22,10 +23,13 @@ import {
   Quote,
   Minus,
   Code,
-  Maximize2
+  Maximize2,
+  Minimize2
 } from '@/lib/icons'
 import { cn } from '@/lib/utils'
 import { createLogger } from '@/lib/logger'
+import { extractErrorMessage } from '@/lib/ipc-error'
+import { notesService } from '@/services/notes-service'
 import { Button } from '@/components/ui/button'
 
 const log = createLogger('Component:EditorToolbar')
@@ -43,6 +47,12 @@ import {
 
 export interface EditorToolbarProps {
   editor: Editor | null
+  /** Journal entry id used to scope uploaded attachments */
+  journalId?: string
+  /** Whether focus mode is currently active */
+  isFocusMode?: boolean
+  /** Callback fired when the focus-mode button is pressed */
+  onFocusToggle?: () => void
   className?: string
 }
 
@@ -55,8 +65,60 @@ export interface EditorToolbarProps {
  */
 export const EditorToolbar = memo(function EditorToolbar({
   editor,
+  journalId,
+  isFocusMode = false,
+  onFocusToggle,
   className
 }: EditorToolbarProps): React.JSX.Element | null {
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
+  const handleImageFile = useCallback(
+    async (file: File) => {
+      if (!editor) return
+
+      if (!journalId) {
+        toast.error('Cannot upload image: no journal entry selected')
+        log.warn('Image upload skipped - missing journalId')
+        return
+      }
+
+      try {
+        const result = await notesService.uploadAttachment(journalId, file)
+        if (!result.success || !result.path) {
+          const message = result.error || 'Upload failed'
+          toast.error(message)
+          log.error('Image upload failed', message)
+          return
+        }
+
+        editor
+          .chain()
+          .focus()
+          .setImage({ src: result.path, alt: result.name ?? file.name })
+          .run()
+      } catch (err) {
+        const message = extractErrorMessage(err, 'Failed to upload image')
+        toast.error(message)
+        log.error('Image upload threw', err)
+      }
+    },
+    [editor, journalId]
+  )
+
+  const handleImageClick = useCallback(() => {
+    fileInputRef.current?.click()
+  }, [])
+
+  const handleFileChange = useCallback(
+    (event: React.ChangeEvent<HTMLInputElement>) => {
+      const file = event.target.files?.[0]
+      event.target.value = ''
+      if (!file) return
+      void handleImageFile(file)
+    },
+    [handleImageFile]
+  )
+
   if (!editor) return null
 
   return (
@@ -69,6 +131,17 @@ export const EditorToolbar = memo(function EditorToolbar({
         className
       )}
     >
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        className="sr-only"
+        onChange={handleFileChange}
+        aria-hidden="true"
+        tabIndex={-1}
+        data-testid="journal-image-input"
+      />
+
       {/* Text Formatting Group */}
       <ToolbarGroup>
         <ToolbarButton
@@ -120,10 +193,8 @@ export const EditorToolbar = memo(function EditorToolbar({
         <ToolbarButton
           icon={Image}
           label="Image"
-          onClick={() => {
-            // TODO: Image upload - requires @tiptap/extension-image
-            log.info('Image insert - coming soon')
-          }}
+          onClick={handleImageClick}
+          disabled={!journalId}
         />
       </ToolbarGroup>
 
@@ -134,14 +205,14 @@ export const EditorToolbar = memo(function EditorToolbar({
 
       <div className="flex-1" />
 
-      {/* View Mode Toggle (placeholder) */}
+      {/* Focus Mode Toggle */}
       <ToolbarButton
-        icon={Maximize2}
-        label="Focus Mode"
-        onClick={() => {
-          // TODO: Toggle focus mode
-          log.info('Focus mode toggle')
-        }}
+        icon={isFocusMode ? Minimize2 : Maximize2}
+        label={isFocusMode ? 'Exit Focus Mode' : 'Focus Mode'}
+        shortcut="⌘\\"
+        isActive={isFocusMode}
+        disabled={!onFocusToggle}
+        onClick={() => onFocusToggle?.()}
       />
     </div>
   )

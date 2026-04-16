@@ -192,6 +192,9 @@ export const DayCard = memo(
             <JournalSection
               isActive={isActive}
               placeholder={isFuture ? 'Plan your day...' : 'Start writing...'}
+              journalId={date}
+              isFocusMode={isFocusMode}
+              onFocusToggle={onToggleFocusMode}
             />
           </div>
         </div>
