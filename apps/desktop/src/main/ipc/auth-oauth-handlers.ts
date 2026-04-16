@@ -11,84 +11,16 @@ import {
 import { OAuthCallbackResponseSchema } from '@memry/contracts/auth-api'
 import { SYNC_CHANNELS, SYNC_EVENTS } from '@memry/contracts/ipc-sync'
 
-import {
-  deriveMasterKey,
-  generateRecoveryPhrase,
-  generateSalt,
-  getOrCreateSigningKeyPair,
-  secureCleanup
-} from '../crypto'
 import { store } from '../store'
 import { postToServer } from '../sync/http-client'
-import { persistKeysAndRegisterDevice } from '../sync/device-registration'
 import { getSyncEngine, startSyncRuntime } from '../sync/runtime'
 import { teardownSession } from '../sync/session-teardown'
 import { refreshAccessToken, storeToken } from '../sync/token-manager'
 import { createLogger } from '../lib/logger'
 import { createValidatedHandler } from './validate'
+import { getAndClearPendingRecoveryPhrase, performFirstDeviceSetup } from './auth-device-handlers'
 
 const logger = createLogger('IPC:Sync:OAuth')
-
-// ============================================================================
-// Types
-// ============================================================================
-
-interface FirstDeviceSetupResult {
-  deviceId: string
-}
-
-// ============================================================================
-// Pending Recovery Phrase
-// ============================================================================
-//
-// NOTE: This module owns `pendingRecoveryPhrase` and `performFirstDeviceSetup`
-// in Phase 2.1 to avoid a circular import with auth-device-handlers (which
-// does not yet exist). They will move to auth-device-handlers in Phase 2.2,
-// and this module will import `getAndClearPendingRecoveryPhrase` /
-// `performFirstDeviceSetup` from there.
-
-let pendingRecoveryPhrase: string | null = null
-
-export function getAndClearPendingRecoveryPhrase(): string | null {
-  const phrase = pendingRecoveryPhrase
-  pendingRecoveryPhrase = null
-  return phrase
-}
-
-export async function performFirstDeviceSetup(
-  setupToken: string
-): Promise<FirstDeviceSetupResult> {
-  const { phrase, seed } = await generateRecoveryPhrase()
-  const salt = generateSalt()
-
-  let masterKey: Uint8Array | undefined
-  let signingSecretKey: Uint8Array | undefined
-
-  try {
-    const { masterKey: mk, kdfSalt, keyVerifier } = await deriveMasterKey(seed, salt)
-    masterKey = mk
-
-    const keyPair = await getOrCreateSigningKeyPair()
-    signingSecretKey = keyPair.secretKey
-
-    const deviceId = await persistKeysAndRegisterDevice(
-      masterKey,
-      signingSecretKey,
-      setupToken,
-      kdfSalt,
-      keyVerifier,
-      false,
-      true
-    )
-
-    pendingRecoveryPhrase = phrase
-    return { deviceId }
-  } finally {
-    secureCleanup(seed, salt)
-    if (masterKey) secureCleanup(masterKey)
-    if (signingSecretKey) secureCleanup(signingSecretKey)
-  }
-}
 
 // ============================================================================
 // OAuth State & Loopback Server (T072, T072a)
@@ -175,7 +107,6 @@ export function seedOAuthSession(state: string, redirectUri: string): void {
 // ============================================================================
 
 export function clearOAuthState(): void {
-  pendingRecoveryPhrase = null
   oauthSessions.clear()
   shutdownLoopbackServer()
 }
@@ -360,5 +291,4 @@ export function unregisterAuthOAuthHandlers(): void {
   ipcMain.removeHandler(SYNC_CHANNELS.AUTH_LOGOUT)
   oauthSessions.clear()
   shutdownLoopbackServer()
-  pendingRecoveryPhrase = null
 }
