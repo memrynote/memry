@@ -335,9 +335,6 @@ importers:
       level:
         specifier: ^10.0.0
         version: 10.0.0
-      libsodium-wrappers:
-        specifier: ^0.8.0
-        version: 0.8.2
       libsodium-wrappers-sumo:
         specifier: ^0.8.2
         version: 0.8.2
@@ -6210,12 +6207,6 @@ packages:
 
   libsodium-wrappers-sumo@0.8.2:
     resolution: {integrity: sha512-wd1xAY++Kr6VMikSaa4EPRAHJmFvNlGWiiwU3Jh3GR1zRYF3/I3vy/wYsr4k3LVsNzwb9sqfEQ4LdVQ6zEebyQ==}
-
-  libsodium-wrappers@0.8.2:
-    resolution: {integrity: sha512-VFLmfxkxo+U9q60tjcnSomQBRx2UzlRjKWJqvB4K1pUqsMQg4cu3QXA2nrcsj9A1qRsnJBbi2Ozx1hsiDoCkhw==}
-
-  libsodium@0.8.2:
-    resolution: {integrity: sha512-TsnGYMoZtpweT+kR+lOv5TVsnJ/9U0FZOsLFzFOMWmxqOAYXjX3fsrPAW+i1LthgDKXJnI9A8dWEanT1tnJKIw==}
 
   lie@3.1.1:
     resolution: {integrity: sha512-RiNhHysUjhrDQntfYSfY4MU24coXXdEOgw9WGcKHNeEwffDYbF//u87M1EWaMGzuFoSbqW0C9C6lEEhDOAswfw==}
@@ -14761,12 +14752,6 @@ snapshots:
   libsodium-wrappers-sumo@0.8.2:
     dependencies:
       libsodium-sumo: 0.8.2
-
-  libsodium-wrappers@0.8.2:
-    dependencies:
-      libsodium: 0.8.2
-
-  libsodium@0.8.2: {}
 
   lie@3.1.1:
     dependencies:
