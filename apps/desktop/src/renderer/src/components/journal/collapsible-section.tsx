@@ -127,13 +127,22 @@ export interface JournalSectionProps {
   content?: string
   /** Content change callback */
   onContentChange?: (content: string) => void
+  /** Journal entry id (date) used to scope image uploads */
+  journalId?: string
+  /** Whether focus mode is currently active */
+  isFocusMode?: boolean
+  /** Callback fired when the toolbar focus-mode button is pressed */
+  onFocusToggle?: () => void
 }
 
 export const JournalSection = memo(function JournalSection({
   isActive = false,
   placeholder = 'Start writing...',
   content = '',
-  onContentChange
+  onContentChange,
+  journalId,
+  isFocusMode = false,
+  onFocusToggle
 }: JournalSectionProps): React.JSX.Element {
   return (
     <div className="rounded-md border border-border/40 bg-muted/20">
@@ -152,6 +161,9 @@ export const JournalSection = memo(function JournalSection({
           placeholder={placeholder}
           isActive={isActive}
           onContentChange={onContentChange}
+          journalId={journalId}
+          isFocusMode={isFocusMode}
+          onFocusToggle={onFocusToggle}
         />
       </div>
     </div>
