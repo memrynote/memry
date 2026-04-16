@@ -13,8 +13,8 @@ import type { SyncQueueManager } from '../queue'
 import { increment } from '../vector-clock'
 import { mergeProjectFields, initAllFieldClocks, PROJECT_SYNCABLE_FIELDS } from '../field-merge'
 import { createLogger } from '../../lib/logger'
-import { resolveClockConflict } from './types'
-import type { SyncItemHandler, ApplyContext, ApplyResult, DrizzleDb } from './types'
+import { BaseItemHandler } from './base-handler'
+import type { ApplyContext, ApplyResult, DrizzleDb } from './types'
 
 const log = createLogger('ProjectHandler')
 
@@ -59,9 +59,9 @@ function reconcileStatuses(tx: DrizzleDb, projectId: string, incoming: StatusSyn
   }
 }
 
-export const projectHandler: SyncItemHandler<ProjectSyncPayload> = {
-  type: 'project',
-  schema: ProjectSyncPayloadSchema,
+class ProjectHandler extends BaseItemHandler<ProjectSyncPayload> {
+  readonly type = 'project' as const
+  readonly schema = ProjectSyncPayloadSchema
 
   applyUpsert(
     ctx: ApplyContext,
@@ -86,7 +86,7 @@ export const projectHandler: SyncItemHandler<ProjectSyncPayload> = {
       }
 
       if (existing) {
-        const resolution = resolveClockConflict(existing.clock, remoteClock)
+        const resolution = this.resolveClock(existing.clock, remoteClock)
         if (resolution.action === 'skip') {
           log.info('Skipping remote project update, local is newer', { itemId })
           return 'skipped'
@@ -191,7 +191,7 @@ export const projectHandler: SyncItemHandler<ProjectSyncPayload> = {
       })
       return 'applied'
     })
-  },
+  }
 
   applyDelete(ctx: ApplyContext, itemId: string, clock?: VectorClock): 'applied' | 'skipped' {
     const existing = ctx.db.select().from(projects).where(eq(projects.id, itemId)).get()
@@ -203,7 +203,7 @@ export const projectHandler: SyncItemHandler<ProjectSyncPayload> = {
     }
 
     if (clock && existing.clock) {
-      const resolution = resolveClockConflict(existing.clock, clock)
+      const resolution = this.resolveClock(existing.clock, clock)
       if (resolution.action === 'skip' || resolution.action === 'merge') {
         log.info('Skipping remote project delete, local has unseen changes', { itemId })
         return 'skipped'
@@ -213,7 +213,7 @@ export const projectHandler: SyncItemHandler<ProjectSyncPayload> = {
     ctx.db.delete(projects).where(eq(projects.id, itemId)).run()
     ctx.emit(TasksChannels.events.PROJECT_DELETED, { id: itemId })
     return 'applied'
-  },
+  }
 
   fetchLocal(db: DrizzleDb, itemId: string): Record<string, unknown> | undefined {
     const project = db.select().from(projects).where(eq(projects.id, itemId)).get()
@@ -222,7 +222,7 @@ export const projectHandler: SyncItemHandler<ProjectSyncPayload> = {
     const projectStatuses = db.select().from(statuses).where(eq(statuses.projectId, itemId)).all()
 
     return { ...project, statuses: projectStatuses } as Record<string, unknown>
-  },
+  }
 
   buildPushPayload(
     db: DrizzleDb,
@@ -236,11 +236,11 @@ export const projectHandler: SyncItemHandler<ProjectSyncPayload> = {
     const projectStatuses = db.select().from(statuses).where(eq(statuses.projectId, itemId)).all()
 
     return JSON.stringify({ ...project, statuses: projectStatuses })
-  },
+  }
 
   markPushSynced(db: DrizzleDb, itemId: string): void {
     db.update(projects).set({ syncedAt: utcNow() }).where(eq(projects.id, itemId)).run()
-  },
+  }
 
   seedUnclocked(db: DrizzleDb, deviceId: string, queue: SyncQueueManager): number {
     const items = db.select().from(projects).where(isNull(projects.clock)).all()
@@ -266,3 +266,5 @@ export const projectHandler: SyncItemHandler<ProjectSyncPayload> = {
     return items.length
   }
 }
+
+export const projectHandler = new ProjectHandler()

@@ -15,9 +15,13 @@ import type { SyncItemHandler, ApplyContext, ApplyResult, DrizzleDb } from './ty
 
 const log = createLogger('SettingsHandler')
 
-export const settingsHandler: SyncItemHandler<SettingsSyncPayload> = {
-  type: 'settings',
-  schema: SettingsSyncPayloadSchema,
+// Standalone (not extending BaseItemHandler): settings handler overrides every
+// concrete method — apply/delete/fetchLocal/seedUnclocked — because settings
+// live in config.json + prefs cache, not in a dedicated sync DB table like all
+// other items. Inheritance would give us nothing but indirection.
+class SettingsHandler implements SyncItemHandler<SettingsSyncPayload> {
+  readonly type = 'settings' as const
+  readonly schema = SettingsSyncPayloadSchema
 
   applyUpsert(
     _ctx: ApplyContext,
@@ -36,20 +40,22 @@ export const settingsHandler: SyncItemHandler<SettingsSyncPayload> = {
     propagateMergedSettings(manager.getSettings())
 
     return 'applied'
-  },
+  }
 
   applyDelete(_ctx: ApplyContext, _itemId: string, _clock?: VectorClock): 'applied' | 'skipped' {
     return 'skipped'
-  },
+  }
 
   fetchLocal(_db: DrizzleDb, _itemId: string): Record<string, unknown> | undefined {
     return undefined
-  },
+  }
 
   seedUnclocked(_db: DrizzleDb, _deviceId: string, _queue: SyncQueueManager): number {
     return 0
   }
 }
+
+export const settingsHandler = new SettingsHandler()
 
 function propagateMergedSettings(merged: SyncedSettings): void {
   let vaultPath: string | null = null
