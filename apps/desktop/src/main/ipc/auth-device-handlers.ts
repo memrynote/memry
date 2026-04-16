@@ -40,7 +40,7 @@ import {
 } from '../sync/linking-service'
 import { getValidAccessToken, retrieveToken, storeToken } from '../sync/token-manager'
 import { createLogger } from '../lib/logger'
-import { createValidatedHandler } from './validate'
+import { registerCommand } from './lib/register-command'
 
 const logger = createLogger('IPC:Sync:Device')
 
@@ -159,17 +159,20 @@ export function clearAuthDeviceState(): void {
 export function registerAuthDeviceHandlers(): void {
   // --- OTP Auth Handlers (T054, T055, T056) ---
 
-  ipcMain.handle(
+  registerCommand(
     SYNC_CHANNELS.AUTH_REQUEST_OTP,
-    createValidatedHandler(RequestOtpSchema, async (input) => {
+    RequestOtpSchema,
+    async (input) => {
       startOtpClipboardDetection()
       return postToServer('/auth/otp/request', { email: input.email })
-    })
+    },
+    'Failed to request OTP'
   )
 
-  ipcMain.handle(
+  registerCommand(
     SYNC_CHANNELS.AUTH_VERIFY_OTP,
-    createValidatedHandler(VerifyOtpSchema, async (input) => {
+    VerifyOtpSchema,
+    async (input) => {
       const raw = await postToServer<unknown>('/auth/otp/verify', {
         email: input.email,
         code: input.code
@@ -190,7 +193,8 @@ export function registerAuthDeviceHandlers(): void {
         needsSetup: serverResponse.needsSetup ?? false,
         needsRecoveryInput: !(serverResponse.needsSetup ?? false)
       }
-    })
+    },
+    'Failed to verify OTP'
   )
 
   ipcMain.handle(SYNC_CHANNELS.SETUP_NEW_ACCOUNT, async () => {
@@ -203,12 +207,14 @@ export function registerAuthDeviceHandlers(): void {
     return { success: true, deviceId }
   })
 
-  ipcMain.handle(
+  registerCommand(
     SYNC_CHANNELS.AUTH_RESEND_OTP,
-    createValidatedHandler(ResendOtpSchema, async (input) => {
+    ResendOtpSchema,
+    async (input) => {
       startOtpClipboardDetection()
       return postToServer('/auth/otp/resend', { email: input.email })
-    })
+    },
+    'Failed to resend OTP'
   )
 
   // --- Device Linking Handlers ---
@@ -219,25 +225,30 @@ export function registerAuthDeviceHandlers(): void {
     return initiateDeviceLinking(accessToken)
   })
 
-  ipcMain.handle(
+  registerCommand(
     SYNC_CHANNELS.LINK_VIA_QR,
-    createValidatedHandler(LinkViaQrSchema, async (input) => {
+    LinkViaQrSchema,
+    async (input) => {
       const token = input.oauthToken || (await retrieveToken(KEYCHAIN_ENTRIES.SETUP_TOKEN))
       if (!token) throw new Error('No auth token available for device linking')
       return linkViaQr(input.qrData, token)
-    })
+    },
+    'Failed to link device via QR'
   )
 
-  ipcMain.handle(
+  registerCommand(
     SYNC_CHANNELS.COMPLETE_LINKING_QR,
-    createValidatedHandler(CompleteLinkingQrSchema, async (input) => {
+    CompleteLinkingQrSchema,
+    async (input) => {
       return completeLinkingQr(input.sessionId)
-    })
+    },
+    'Failed to complete linking'
   )
 
-  ipcMain.handle(
+  registerCommand(
     SYNC_CHANNELS.LINK_VIA_RECOVERY,
-    createValidatedHandler(LinkViaRecoverySchema, async (input) => {
+    LinkViaRecoverySchema,
+    async (input) => {
       if (!validateRecoveryPhrase(input.recoveryPhrase)) {
         return { success: false, error: 'Invalid recovery phrase format' }
       }
@@ -276,25 +287,30 @@ export function registerAuthDeviceHandlers(): void {
         secureCleanup(derived.masterKey)
         if (signingSecretKey) secureCleanup(signingSecretKey)
       }
-    })
+    },
+    'Failed to link via recovery phrase'
   )
 
-  ipcMain.handle(
+  registerCommand(
     SYNC_CHANNELS.APPROVE_LINKING,
-    createValidatedHandler(ApproveLinkingSchema, async (input) => {
+    ApproveLinkingSchema,
+    async (input) => {
       const accessToken = await getValidAccessToken()
       if (!accessToken) throw new Error('Not authenticated')
       return approveDeviceLinking(input.sessionId, accessToken)
-    })
+    },
+    'Failed to approve linking'
   )
 
-  ipcMain.handle(
+  registerCommand(
     SYNC_CHANNELS.GET_LINKING_SAS,
-    createValidatedHandler(GetLinkingSasSchema, async (input) => {
+    GetLinkingSasSchema,
+    async (input) => {
       const accessToken = await getValidAccessToken()
       if (!accessToken) throw new Error('Not authenticated')
       return getLinkingVerificationCode(input.sessionId, accessToken)
-    })
+    },
+    'Failed to fetch SAS code'
   )
 
   // --- Device Management Handlers ---
@@ -315,9 +331,10 @@ export function registerAuthDeviceHandlers(): void {
     return { devices, email: syncData.email }
   })
 
-  ipcMain.handle(
+  registerCommand(
     SYNC_CHANNELS.REMOVE_DEVICE,
-    createValidatedHandler(RemoveDeviceSchema, async (input) => {
+    RemoveDeviceSchema,
+    async (input) => {
       if (isDatabaseInitialized()) {
         const db = getDatabase()
         const current = db
@@ -354,12 +371,14 @@ export function registerAuthDeviceHandlers(): void {
 
       logger.info(`Device removed: ${input.deviceId}`)
       return { success: true }
-    })
+    },
+    'Failed to remove device'
   )
 
-  ipcMain.handle(
+  registerCommand(
     SYNC_CHANNELS.RENAME_DEVICE,
-    createValidatedHandler(RenameDeviceSchema, async (input) => {
+    RenameDeviceSchema,
+    async (input) => {
       const accessToken = await getValidAccessToken()
       if (!accessToken) return { success: false, error: 'Not authenticated' }
 
@@ -387,7 +406,8 @@ export function registerAuthDeviceHandlers(): void {
 
       logger.info(`Device renamed: ${input.deviceId} → ${input.newName}`)
       return { success: true }
-    })
+    },
+    'Failed to rename device'
   )
 
   logger.debug('Auth/Device handlers registered')

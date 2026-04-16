@@ -21,7 +21,8 @@ import { getDatabase, isDatabaseInitialized } from '../database/client'
 import { getFromServer } from '../sync/http-client'
 
 import { createLogger } from '../lib/logger'
-import { createValidatedHandler, withErrorHandler } from './validate'
+import { withErrorHandler } from './validate'
+import { registerCommand } from './lib/register-command'
 import { getSyncEngine } from '../sync/runtime'
 import { teardownSession } from '../sync/session-teardown'
 import { getValidAccessToken, cancelTokenRefresh } from '../sync/token-manager'
@@ -157,9 +158,10 @@ export function registerSyncHandlers(syncEngine?: SyncEngine): void {
     }, 'Sync failed')()
   })
 
-  ipcMain.handle(
+  registerCommand(
     SYNC_CHANNELS.GET_HISTORY,
-    createValidatedHandler(GetHistorySchema, (input) => {
+    GetHistorySchema,
+    (input) => {
       if (!isDatabaseInitialized()) {
         return { entries: [], total: 0 }
       }
@@ -189,7 +191,8 @@ export function registerSyncHandlers(syncEngine?: SyncEngine): void {
         })),
         total: totalRow?.total ?? 0
       }
-    })
+    },
+    'Failed to fetch sync history'
   )
 
   ipcMain.handle(SYNC_CHANNELS.GET_QUEUE_SIZE, () => {
@@ -211,14 +214,18 @@ export function registerSyncHandlers(syncEngine?: SyncEngine): void {
     return engine.resume()
   })
 
-  ipcMain.handle(SYNC_CHANNELS.UPDATE_SYNCED_SETTING, (_event, input: unknown) => {
-    const parsed = UpdateSyncedSettingSchema.parse(input)
-    const manager = getSettingsSyncManager()
-    if (!manager) return { success: false, error: 'Settings sync not initialized' }
+  registerCommand(
+    SYNC_CHANNELS.UPDATE_SYNCED_SETTING,
+    UpdateSyncedSettingSchema,
+    (input) => {
+      const manager = getSettingsSyncManager()
+      if (!manager) return { success: false, error: 'Settings sync not initialized' }
 
-    manager.updateField(parsed.fieldPath, parsed.value, 'local')
-    return { success: true }
-  })
+      manager.updateField(input.fieldPath, input.value, 'local')
+      return { success: true }
+    },
+    'Failed to update synced setting'
+  )
 
   ipcMain.handle(SYNC_CHANNELS.GET_SYNCED_SETTINGS, () => {
     const manager = getSettingsSyncManager()
