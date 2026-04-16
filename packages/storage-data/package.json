@@ -16,7 +16,7 @@
   "dependencies": {
     "@memry/db-schema": "workspace:*",
     "@memry/domain-tasks": "workspace:*",
-    "drizzle-orm": "^0.45.1"
+    "drizzle-orm": "^0.45.2"
   },
   "devDependencies": {
     "@memry/typescript-config": "workspace:*"
