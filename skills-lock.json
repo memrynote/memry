@@ -1,10 +1,35 @@
 {
   "version": 1,
   "skills": {
+    "gsap": {
+      "source": "heygen-com/hyperframes",
+      "sourceType": "github",
+      "computedHash": "dfbf5933e83bdd30a07dcfac67e7c87f9040cf1e09af4bfd14f610c7caeb0893"
+    },
+    "hyperframes": {
+      "source": "heygen-com/hyperframes",
+      "sourceType": "github",
+      "computedHash": "a0359ab9703cff7b3df90f5281f40e1ff502df93b3dc305ec0aa29b688855a69"
+    },
+    "hyperframes-cli": {
+      "source": "heygen-com/hyperframes",
+      "sourceType": "github",
+      "computedHash": "04df167a30050a770aac29d0e9b3a953b31c9839f5b4c8c47839ded4f7d87e68"
+    },
+    "hyperframes-registry": {
+      "source": "heygen-com/hyperframes",
+      "sourceType": "github",
+      "computedHash": "141fcd863a1a02117706712508e8b0df407c3d0ff36e5863123fa4ce2defd14d"
+    },
     "shadcn": {
       "source": "shadcn/ui",
       "sourceType": "github",
       "computedHash": "873c67922d80775a9fdf596db7964b579f0408c30ec6e3d11989f6055bbec89f"
+    },
+    "website-to-hyperframes": {
+      "source": "heygen-com/hyperframes",
+      "sourceType": "github",
+      "computedHash": "0f956a723e132ec60ef172a399d313ccba7ab7189dba0fafdf268b8047a3d925"
     }
   }
 }

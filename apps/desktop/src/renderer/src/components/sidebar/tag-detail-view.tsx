@@ -46,12 +46,7 @@ import { useSidebarDrillDown } from '@/contexts/sidebar-drill-down'
 import { useTagDetail, type TagSortBy } from '@/hooks/use-tag-detail'
 import { useSidebarNavigation } from '@/hooks/use-sidebar-navigation'
 import { COLOR_NAMES, getTagColors } from '@/components/note/tags-row/tag-colors'
-import {
-  tagsService,
-  onTagRenamed,
-  onTagDeleted,
-  type TagNoteItem
-} from '@/services/tags-service'
+import { tagsService, onTagRenamed, onTagDeleted, type TagNoteItem } from '@/services/tags-service'
 import type { SidebarItem } from '@/contexts/tabs/types'
 import { createLogger } from '@/lib/logger'
 import { toast } from 'sonner'
@@ -430,12 +425,7 @@ function TagOverflowMenu({
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-7 w-7 shrink-0"
-          aria-label="Tag actions"
-        >
+        <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" aria-label="Tag actions">
           <MoreHorizontal className="h-4 w-4" />
         </Button>
       </DropdownMenuTrigger>

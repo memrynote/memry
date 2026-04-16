@@ -15,11 +15,9 @@ import { assertEd25519Vector, hexToBytes, type Ed25519Vector } from './load-vect
 // TEST 1 — empty message
 // ---------------------------------------------------------------------------
 
-const TEST1_SEED_HEX =
-  '9d61b19deffd5a60ba844af492ec2cc44449c5697b326919703bac031cae7f60'
+const TEST1_SEED_HEX = '9d61b19deffd5a60ba844af492ec2cc44449c5697b326919703bac031cae7f60'
 
-const TEST1_PUBLIC_KEY_HEX =
-  'd75a980182b10ab7d54bfed3c964073a0ee172f3daa62325af021a68f707511a'
+const TEST1_PUBLIC_KEY_HEX = 'd75a980182b10ab7d54bfed3c964073a0ee172f3daa62325af021a68f707511a'
 
 const TEST1_MESSAGE_HEX = ''
 
@@ -45,11 +43,9 @@ export const ED25519_RFC8032_TEST_1: Ed25519Vector = assertEd25519Vector({
 // TEST 2 — single-byte message 0x72
 // ---------------------------------------------------------------------------
 
-const TEST2_SEED_HEX =
-  '4ccd089b28ff96da9db6c346ec114e0f5b8a319f35aba624da8cf6ed4fb8a6fb'
+const TEST2_SEED_HEX = '4ccd089b28ff96da9db6c346ec114e0f5b8a319f35aba624da8cf6ed4fb8a6fb'
 
-const TEST2_PUBLIC_KEY_HEX =
-  '3d4017c3e843895a92b70aa74d1b7ebc9c982ccf2ec4968cc0cd55f12af4660c'
+const TEST2_PUBLIC_KEY_HEX = '3d4017c3e843895a92b70aa74d1b7ebc9c982ccf2ec4968cc0cd55f12af4660c'
 
 const TEST2_MESSAGE_HEX = '72'
 

@@ -189,9 +189,7 @@ describe('EditorToolbar', () => {
       const { editor } = makeEditor()
 
       // #when
-      render(
-        <EditorToolbar editor={editor} isFocusMode onFocusToggle={() => {}} />
-      )
+      render(<EditorToolbar editor={editor} isFocusMode onFocusToggle={() => {}} />)
 
       // #then
       const button = screen.getByRole('button', { name: 'Exit Focus Mode' })

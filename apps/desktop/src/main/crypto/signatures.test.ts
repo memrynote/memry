@@ -112,9 +112,9 @@ describe('signatures', () => {
 
       // #then — forgery rejected; A's own pubkey still verifies (sanity)
       expect(verifiedAsImpersonated).toBe(false)
-      expect(verifySignature(payload, CBOR_FIELD_ORDER.SYNC_ITEM, aSignature, signer.publicKey)).toBe(
-        true
-      )
+      expect(
+        verifySignature(payload, CBOR_FIELD_ORDER.SYNC_ITEM, aSignature, signer.publicKey)
+      ).toBe(true)
     })
 
     it('rejects verification when wrong public key is provided', () => {

@@ -2,11 +2,7 @@ import sodium from 'libsodium-wrappers-sumo'
 import { beforeAll, describe, expect, it, vi } from 'vitest'
 
 import { CBOR_FIELD_ORDER } from '@memry/contracts/cbor-ordering'
-import {
-  CRYPTO_VERSION,
-  ED25519_PARAMS,
-  XCHACHA20_PARAMS
-} from '@memry/contracts/crypto'
+import { CRYPTO_VERSION, ED25519_PARAMS, XCHACHA20_PARAMS } from '@memry/contracts/crypto'
 import type { PullItemResponse, PushItem } from '@memry/contracts/sync-api'
 
 import { encrypt, unwrapFileKey, wrapFileKey } from './encryption'
@@ -145,7 +141,13 @@ describe('rewrapItemKey', () => {
     })
 
     // #when rewrapping with the new vault key
-    const result = rewrapItemKey(item, oldVaultKey, newVaultKey, signing.secretKey, signing.deviceId)
+    const result = rewrapItemKey(
+      item,
+      oldVaultKey,
+      newVaultKey,
+      signing.secretKey,
+      signing.deviceId
+    )
 
     // #then the encrypted data and nonce are byte-identical (only the key wrapper changed)
     expect(result.pushItem.encryptedData).toBe(item.blob.encryptedData)
@@ -194,7 +196,13 @@ describe('rewrapItemKey', () => {
     })
 
     // #when rewrapping
-    const result = rewrapItemKey(item, oldVaultKey, newVaultKey, signing.secretKey, signing.deviceId)
+    const result = rewrapItemKey(
+      item,
+      oldVaultKey,
+      newVaultKey,
+      signing.secretKey,
+      signing.deviceId
+    )
 
     // #then deletedAt is preserved and the signature still verifies
     expect(result.pushItem.deletedAt).toBe(deletedAt)
@@ -217,7 +225,13 @@ describe('rewrapItemKey', () => {
     })
 
     // #when rewrapping
-    const result = rewrapItemKey(item, oldVaultKey, newVaultKey, signing.secretKey, signing.deviceId)
+    const result = rewrapItemKey(
+      item,
+      oldVaultKey,
+      newVaultKey,
+      signing.secretKey,
+      signing.deviceId
+    )
 
     // #then the stateVector survives and the signature verifies
     expect(result.pushItem.stateVector).toBe(stateVector)
@@ -317,7 +331,13 @@ describe('rewrapCrdtSnapshot', () => {
     const built = buildCrdtSnapshot(noteId, oldVaultKey, signing, body)
 
     // #when rewrapping under newVaultKey
-    const rewrapped = rewrapCrdtSnapshot(built.packed, noteId, oldVaultKey, newVaultKey, signing.secretKey)
+    const rewrapped = rewrapCrdtSnapshot(
+      built.packed,
+      noteId,
+      oldVaultKey,
+      newVaultKey,
+      signing.secretKey
+    )
 
     // #then the snapshot length is unchanged
     expect(rewrapped).toHaveLength(built.packed.length)
@@ -340,10 +360,7 @@ describe('rewrapCrdtSnapshot', () => {
     expect(newWrapped).not.toEqual(oldWrapped)
 
     // #and the file key recovered with newVaultKey matches the original file key
-    const newKeyNonce = rewrapped.subarray(
-      CRDT_NONCE_LEN,
-      CRDT_NONCE_LEN + CRDT_NONCE_LEN
-    )
+    const newKeyNonce = rewrapped.subarray(CRDT_NONCE_LEN, CRDT_NONCE_LEN + CRDT_NONCE_LEN)
     const recoveredFileKey = unwrapFileKey(newWrapped, newKeyNonce, newVaultKey)
     expect(recoveredFileKey).toEqual(built.fileKey)
 
@@ -578,7 +595,9 @@ describe('performKeyRotation', () => {
     expect(harness.pushedSnapshots).toHaveLength(1)
     const pushed = harness.pushedSnapshots[0]
     expect(pushed.noteId).toBe('note-0')
-    expect(verifyCrdtSnapshotSignature(pushed.snapshot, pushed.noteId, fixture.signing.publicKey)).toBe(true)
+    expect(
+      verifyCrdtSnapshotSignature(pushed.snapshot, pushed.noteId, fixture.signing.publicKey)
+    ).toBe(true)
 
     // #and the server keys were updated and the new master key was stored
     expect(harness.serverKeyUpdates).toEqual([
