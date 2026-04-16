@@ -42,6 +42,8 @@ export function tabReducer(state: TabSystemState, action: TabAction): TabSystemS
     case 'CLOSE_SPLIT':
     case 'MOVE_TAB_TO_NEW_SPLIT':
     case 'SET_LAYOUT':
+    case 'TOGGLE_MAXIMIZE_GROUP':
+    case 'RESET_SPLIT_RATIOS':
       return layoutReducer(state, action)
 
     case 'SAVE_TAB_STATE':

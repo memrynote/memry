@@ -522,6 +522,117 @@ test.describe('Edge Cases', () => {
 })
 
 // ===========================================================================
+// Chord Shortcuts (⌘K prefix)
+// ===========================================================================
+
+test.describe('Chord Shortcuts', () => {
+  test.beforeEach(async ({ page }) => {
+    await waitForAppReady(page)
+    await waitForVaultReady(page)
+    await page.waitForTimeout(500)
+  })
+
+  async function createHorizontalSplit(page) {
+    await page.evaluate(() => {
+      const container = document.querySelector('[data-testid="split-view-container"]')
+      if (!container) return
+      const event = new CustomEvent('test:split-view', { detail: { direction: 'horizontal' } })
+      container.dispatchEvent(event)
+    })
+  }
+
+  async function fireChord(page, secondKey: string, withShift = false) {
+    await page.keyboard.press(`${MOD}+KeyK`)
+    await page.waitForTimeout(80)
+    const combo = withShift ? `Shift+${secondKey}` : `${MOD}+${secondKey}`
+    await page.keyboard.press(combo)
+    await page.waitForTimeout(200)
+  }
+
+  test('toggle-maximize chord collapses then restores sibling panes', async ({ page }) => {
+    // Open at least 2 tabs, then use context menu or chord to split
+    await clickSidebarItem(page, 'Inbox')
+    await clickSidebarItem(page, 'Tasks')
+
+    // Split the view (right-click active tab → Split Right) fallback: look for UI button
+    const activeTab = page.locator(SELECTORS.activeTab).first()
+    await activeTab.click({ button: 'right' })
+    await page.waitForTimeout(250)
+
+    const splitRight = page
+      .locator('[role="menuitem"]:has-text("Split Right"), [role="menuitem"]:has-text("Split")')
+      .first()
+    const hasSplitOption = await splitRight.isVisible({ timeout: 1500 }).catch(() => false)
+    if (!hasSplitOption) {
+      test.skip(true, 'Split menu item not found; chord maximize requires a split layout')
+      await page.keyboard.press('Escape')
+      return
+    }
+    await splitRight.click()
+    await page.waitForTimeout(400)
+
+    const paneCountBefore = await page.locator(SELECTORS.tabPane).count()
+    if (paneCountBefore < 2) {
+      test.skip(true, 'Could not create a split pane to test maximize')
+      return
+    }
+
+    // Toggle maximize: ⌘K ⌘m → only 1 pane should be visible
+    await fireChord(page, 'KeyM')
+    const paneCountMax = await page.locator(SELECTORS.tabPane).count()
+    expect(paneCountMax).toBe(1)
+
+    // Toggle again → panes restored
+    await fireChord(page, 'KeyM')
+    const paneCountRestored = await page.locator(SELECTORS.tabPane).count()
+    expect(paneCountRestored).toBe(paneCountBefore)
+  })
+
+  test('reset-splits chord restores even ratios', async ({ page }) => {
+    await clickSidebarItem(page, 'Inbox')
+    await clickSidebarItem(page, 'Tasks')
+
+    const activeTab = page.locator(SELECTORS.activeTab).first()
+    await activeTab.click({ button: 'right' })
+    await page.waitForTimeout(250)
+
+    const splitRight = page
+      .locator('[role="menuitem"]:has-text("Split Right"), [role="menuitem"]:has-text("Split")')
+      .first()
+    const hasSplitOption = await splitRight.isVisible({ timeout: 1500 }).catch(() => false)
+    if (!hasSplitOption) {
+      test.skip(true, 'No split menu item available for reset-splits assertion')
+      await page.keyboard.press('Escape')
+      return
+    }
+    await splitRight.click()
+    await page.waitForTimeout(400)
+
+    const panes = page.locator(SELECTORS.tabPane)
+    const paneCount = await panes.count()
+    if (paneCount < 2) {
+      test.skip(true, 'Need 2 panes for reset-splits test')
+      return
+    }
+
+    // Fire reset chord — assertion is that it doesn't crash + panes still present
+    await fireChord(page, 'Equal')
+    const paneAfter = await panes.count()
+    expect(paneAfter).toBe(paneCount)
+
+    // Ratios should all be ~even: measure first pane width relative to container
+    const widths = await panes.evaluateAll((els) =>
+      els.map((el) => (el as HTMLElement).getBoundingClientRect().width)
+    )
+    if (widths.length >= 2) {
+      const diff = Math.abs(widths[0] - widths[1])
+      const max = Math.max(...widths)
+      expect(diff / max).toBeLessThan(0.15)
+    }
+  })
+})
+
+// ===========================================================================
 // Tab Hover Preview
 // ===========================================================================
 

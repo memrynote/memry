@@ -166,6 +166,10 @@ export interface TabSystemState {
   activeGroupId: string
   /** User preferences */
   settings: TabSettings
+  /** Whether the active group is currently maximized (siblings hidden) */
+  isMaximized?: boolean
+  /** Snapshot of layout before maximize, used to restore on toggle-off */
+  preMaximizeLayout?: SplitLayout
 }
 
 // =============================================================================
@@ -247,6 +251,8 @@ export type TabAction =
   | { type: 'SPLIT_VIEW'; payload: { direction: SplitDirection; groupId: string } }
   | { type: 'RESIZE_SPLIT'; payload: { path: number[]; ratio: number } }
   | { type: 'CLOSE_SPLIT'; payload: { groupId: string } }
+  | { type: 'TOGGLE_MAXIMIZE_GROUP'; payload: { groupId: string } }
+  | { type: 'RESET_SPLIT_RATIOS' }
   | {
       type: 'MOVE_TAB_TO_NEW_SPLIT'
       payload: {

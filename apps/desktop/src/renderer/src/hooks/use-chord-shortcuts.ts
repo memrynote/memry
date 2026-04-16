@@ -8,6 +8,9 @@ import { useTabs } from '@/contexts/tabs'
 import { isMac } from './use-keyboard-shortcuts-base'
 import { calculateGroupPositions, type GroupPosition } from './use-pane-navigation'
 import { hintModeActiveRef } from '@/contexts/hint-mode'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('Hook:ChordShortcuts')
 
 // =============================================================================
 // TYPES
@@ -67,84 +70,37 @@ export const useChordShortcuts = (): boolean => {
   )
 
   /**
-   * Handle the second key of a chord
+   * Move active tab from current group to the adjacent group (wraps).
+   * direction: +1 for next group, -1 for previous group.
    */
-  const handleChordSecondKey = useCallback(
-    (key: string, withShift: boolean): boolean => {
-      if (!chord.isActive || !chord.firstKey) return false
+  const moveActiveTabToAdjacentGroup = useCallback(
+    (direction: 1 | -1) => {
+      const groupIds = Object.keys(state.tabGroups)
+      if (groupIds.length < 2) return
 
-      // Clear timeout
-      if (chord.timeout) {
-        clearTimeout(chord.timeout)
-      }
+      const fromGroupId = state.activeGroupId
+      const fromGroup = state.tabGroups[fromGroupId]
+      if (!fromGroup?.activeTabId) return
 
-      // Handle ⌘K chords
-      if (chord.firstKey === 'k') {
-        const groupIds = Object.keys(state.tabGroups)
-        const currentIndex = groupIds.indexOf(state.activeGroupId)
+      const currentIndex = groupIds.indexOf(fromGroupId)
+      if (currentIndex === -1) return
 
-        switch (key) {
-          case 'ArrowRight':
-            if (withShift) {
-              // Move tab to next group (⌘K ⇧→)
-              // TODO: Implement move tab to next group
-            } else {
-              // Focus next pane (⌘K ⌘→)
-              const nextIndex = (currentIndex + 1) % groupIds.length
-              dispatch({
-                type: 'SET_ACTIVE_GROUP',
-                payload: { groupId: groupIds[nextIndex] }
-              })
-            }
-            break
+      const nextIndex = (currentIndex + direction + groupIds.length) % groupIds.length
+      const toGroupId = groupIds[nextIndex]
+      const toGroup = state.tabGroups[toGroupId]
+      if (!toGroup) return
 
-          case 'ArrowLeft':
-            if (withShift) {
-              // Move tab to previous group (⌘K ⇧←)
-              // TODO: Implement move tab to previous group
-            } else {
-              // Focus previous pane (⌘K ⌘←)
-              const prevIndex = (currentIndex - 1 + groupIds.length) % groupIds.length
-              dispatch({
-                type: 'SET_ACTIVE_GROUP',
-                payload: { groupId: groupIds[prevIndex] }
-              })
-            }
-            break
-
-          case 'ArrowUp':
-            // Focus pane above (⌘K ⌘↑)
-            focusPaneInDirection('up')
-            break
-
-          case 'ArrowDown':
-            // Focus pane below (⌘K ⌘↓)
-            focusPaneInDirection('down')
-            break
-
-          case 'm':
-          case 'M':
-            // Maximize/restore pane (⌘K ⌘M)
-            // TODO: Add TOGGLE_MAXIMIZE_GROUP action
-            break
-
-          case '=':
-            // Reset split ratios (⌘K ⌘=)
-            // TODO: Add RESET_SPLIT_RATIOS action
-            break
+      dispatch({
+        type: 'MOVE_TAB',
+        payload: {
+          tabId: fromGroup.activeTabId,
+          fromGroupId,
+          toGroupId,
+          toIndex: toGroup.tabs.length
         }
-      }
-
-      // Reset chord state
-      setChord({
-        isActive: false,
-        firstKey: null,
-        timeout: null
       })
-
-      return true
     },
-    [chord, state.tabGroups, state.activeGroupId, dispatch]
+    [state.tabGroups, state.activeGroupId, dispatch]
   )
 
   /**
@@ -200,6 +156,88 @@ export const useChordShortcuts = (): boolean => {
       }
     },
     [state.layout, state.activeGroupId, dispatch]
+  )
+
+  /**
+   * Handle the second key of a chord
+   */
+  const handleChordSecondKey = useCallback(
+    (key: string, withShift: boolean): boolean => {
+      if (!chord.isActive || !chord.firstKey) return false
+
+      if (chord.timeout) {
+        clearTimeout(chord.timeout)
+      }
+
+      if (chord.firstKey === 'k') {
+        const groupIds = Object.keys(state.tabGroups)
+        const currentIndex = groupIds.indexOf(state.activeGroupId)
+
+        switch (key) {
+          case 'ArrowRight':
+            if (withShift) {
+              moveActiveTabToAdjacentGroup(1)
+            } else {
+              const nextIndex = (currentIndex + 1) % groupIds.length
+              dispatch({
+                type: 'SET_ACTIVE_GROUP',
+                payload: { groupId: groupIds[nextIndex] }
+              })
+            }
+            break
+
+          case 'ArrowLeft':
+            if (withShift) {
+              moveActiveTabToAdjacentGroup(-1)
+            } else {
+              const prevIndex = (currentIndex - 1 + groupIds.length) % groupIds.length
+              dispatch({
+                type: 'SET_ACTIVE_GROUP',
+                payload: { groupId: groupIds[prevIndex] }
+              })
+            }
+            break
+
+          case 'ArrowUp':
+            focusPaneInDirection('up')
+            break
+
+          case 'ArrowDown':
+            focusPaneInDirection('down')
+            break
+
+          case 'm':
+          case 'M':
+            log.debug('toggle maximize', { groupId: state.activeGroupId })
+            dispatch({
+              type: 'TOGGLE_MAXIMIZE_GROUP',
+              payload: { groupId: state.activeGroupId }
+            })
+            break
+
+          case '=':
+            log.debug('reset split ratios')
+            dispatch({ type: 'RESET_SPLIT_RATIOS' })
+            break
+        }
+      }
+
+      setChord({
+        isActive: false,
+        firstKey: null,
+        timeout: null
+      })
+
+      return true
+    },
+    [
+      chord,
+      state.tabGroups,
+      state.activeGroupId,
+      dispatch,
+      moveActiveTabToAdjacentGroup,
+      focusPaneInDirection
+    ]
   )
 
   // Event listener for chord keys

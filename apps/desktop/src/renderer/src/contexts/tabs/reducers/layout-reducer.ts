@@ -1,12 +1,31 @@
-import type { SplitDirection, TabAction, TabGroup, TabSystemState } from '../types'
+import type { SplitDirection, SplitLayout, TabAction, TabGroup, TabSystemState } from '../types'
 import { generateId, createDefaultTab } from '../helpers'
 import { insertSplitAtGroup } from '@/components/split-view/layout-helpers'
 import { closeGroup } from './tab-crud-reducer'
 
 type LayoutAction = Extract<
   TabAction,
-  { type: 'SPLIT_VIEW' | 'RESIZE_SPLIT' | 'CLOSE_SPLIT' | 'MOVE_TAB_TO_NEW_SPLIT' | 'SET_LAYOUT' }
+  {
+    type:
+      | 'SPLIT_VIEW'
+      | 'RESIZE_SPLIT'
+      | 'CLOSE_SPLIT'
+      | 'MOVE_TAB_TO_NEW_SPLIT'
+      | 'SET_LAYOUT'
+      | 'TOGGLE_MAXIMIZE_GROUP'
+      | 'RESET_SPLIT_RATIOS'
+  }
 >
+
+const resetRatiosInTree = (layout: SplitLayout): SplitLayout => {
+  if (layout.type === 'leaf') return layout
+  return {
+    ...layout,
+    ratio: 0.5,
+    first: resetRatiosInTree(layout.first),
+    second: resetRatiosInTree(layout.second)
+  }
+}
 
 export function layoutReducer(state: TabSystemState, action: LayoutAction): TabSystemState {
   switch (action.type) {
@@ -153,6 +172,35 @@ export function layoutReducer(state: TabSystemState, action: LayoutAction): TabS
     case 'SET_LAYOUT': {
       const { tabGroups, layout, activeGroupId } = action.payload
       return { ...state, tabGroups, layout, activeGroupId }
+    }
+
+    case 'TOGGLE_MAXIMIZE_GROUP': {
+      const { groupId } = action.payload
+      if (!state.tabGroups[groupId]) return state
+
+      if (state.isMaximized && state.preMaximizeLayout) {
+        return {
+          ...state,
+          layout: state.preMaximizeLayout,
+          isMaximized: false,
+          preMaximizeLayout: undefined
+        }
+      }
+
+      if (state.layout.type === 'leaf') return state
+
+      return {
+        ...state,
+        preMaximizeLayout: state.layout,
+        layout: { type: 'leaf', tabGroupId: groupId },
+        activeGroupId: groupId,
+        isMaximized: true
+      }
+    }
+
+    case 'RESET_SPLIT_RATIOS': {
+      if (state.layout.type === 'leaf') return state
+      return { ...state, layout: resetRatiosInTree(state.layout) }
     }
 
     default:
