@@ -1,0 +1,57 @@
+name: Lockfile Drift
+
+on:
+  pull_request:
+    paths:
+      - '**/package.json'
+      - 'pnpm-lock.yaml'
+      - 'pnpm-workspace.yaml'
+  push:
+    branches:
+      - main
+    paths:
+      - '**/package.json'
+      - 'pnpm-lock.yaml'
+      - 'pnpm-workspace.yaml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: lockfile-drift-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CI: true
+
+jobs:
+  lockfile-drift:
+    name: Verify Lockfile Integrity
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Verify lockfile is in sync with package manifests
+        run: pnpm install --frozen-lockfile --ignore-scripts
+
+      - name: Report drift if regen would change lockfile
+        run: |
+          cp pnpm-lock.yaml /tmp/before.yaml
+          pnpm install --lockfile-only --ignore-scripts
+          if ! diff -q /tmp/before.yaml pnpm-lock.yaml > /dev/null; then
+            echo "::error::pnpm-lock.yaml would change after 'pnpm install'. Lockfile is drifted — commit the regenerated lockfile."
+            diff /tmp/before.yaml pnpm-lock.yaml | head -80 || true
+            exit 1
+          fi
+          echo "Lockfile is clean."
