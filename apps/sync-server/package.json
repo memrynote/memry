@@ -23,7 +23,7 @@
     "@cloudflare/workers-types": "^4.20250204.0",
     "@types/better-sqlite3": "^7.6.13",
     "better-sqlite3": "^12.5.0",
-    "typescript": "^5.7.0",
+    "typescript": "^5.9.3",
     "vitest": "^4.0.0",
     "wrangler": "^4.0.0"
   }
