@@ -382,4 +382,145 @@ describe('tabReducer', () => {
       }
     })
   })
+
+  describe('TOGGLE_MAXIMIZE_GROUP', () => {
+    it('collapses layout to the active group and stashes the prior layout', () => {
+      // #given a 2-pane split layout
+      const g1 = makeGroup([makeTab({ title: 'A' })])
+      const g2 = makeGroup([makeTab({ title: 'B' })], { isActive: false })
+      const layout: SplitLayout = {
+        type: 'split',
+        direction: 'horizontal',
+        ratio: 0.5,
+        first: { type: 'leaf', tabGroupId: g1.id },
+        second: { type: 'leaf', tabGroupId: g2.id }
+      }
+      const state = makeState([g1, g2], layout)
+
+      // #when maximize is toggled on g1
+      const result = tabReducer(state, {
+        type: 'TOGGLE_MAXIMIZE_GROUP',
+        payload: { groupId: g1.id }
+      })
+
+      // #then layout collapses to just g1, flag is set, original layout stashed
+      expect(result.isMaximized).toBe(true)
+      expect(result.layout).toEqual({ type: 'leaf', tabGroupId: g1.id })
+      expect(result.preMaximizeLayout).toEqual(layout)
+      expect(result.activeGroupId).toBe(g1.id)
+    })
+
+    it('restores the prior layout when toggled a second time', () => {
+      // #given a maximized state
+      const g1 = makeGroup([makeTab()])
+      const g2 = makeGroup([makeTab()], { isActive: false })
+      const originalLayout: SplitLayout = {
+        type: 'split',
+        direction: 'vertical',
+        ratio: 0.5,
+        first: { type: 'leaf', tabGroupId: g1.id },
+        second: { type: 'leaf', tabGroupId: g2.id }
+      }
+      const maximized: TabSystemState = {
+        ...makeState([g1, g2], { type: 'leaf', tabGroupId: g1.id }),
+        isMaximized: true,
+        preMaximizeLayout: originalLayout
+      }
+
+      // #when toggle fires again
+      const result = tabReducer(maximized, {
+        type: 'TOGGLE_MAXIMIZE_GROUP',
+        payload: { groupId: g1.id }
+      })
+
+      // #then the original split is restored and flags are cleared
+      expect(result.isMaximized).toBe(false)
+      expect(result.preMaximizeLayout).toBeUndefined()
+      expect(result.layout).toEqual(originalLayout)
+    })
+
+    it('is a no-op when the layout is already a single leaf and not maximized', () => {
+      // #given a single-pane layout
+      const g = makeGroup([makeTab()])
+      const state = makeState([g])
+
+      // #when toggle fires
+      const result = tabReducer(state, {
+        type: 'TOGGLE_MAXIMIZE_GROUP',
+        payload: { groupId: g.id }
+      })
+
+      // #then state is unchanged
+      expect(result).toBe(state)
+    })
+
+    it('ignores unknown group ids', () => {
+      // #given a split layout
+      const g1 = makeGroup([makeTab()])
+      const g2 = makeGroup([makeTab()], { isActive: false })
+      const state = makeState([g1, g2], {
+        type: 'split',
+        direction: 'horizontal',
+        ratio: 0.5,
+        first: { type: 'leaf', tabGroupId: g1.id },
+        second: { type: 'leaf', tabGroupId: g2.id }
+      })
+
+      // #when toggle fires for a non-existent group
+      const result = tabReducer(state, {
+        type: 'TOGGLE_MAXIMIZE_GROUP',
+        payload: { groupId: 'does-not-exist' }
+      })
+
+      // #then state is unchanged
+      expect(result).toBe(state)
+    })
+  })
+
+  describe('RESET_SPLIT_RATIOS', () => {
+    it('sets every ratio in the tree back to 0.5', () => {
+      // #given a nested split with non-even ratios
+      const g1 = makeGroup([makeTab()])
+      const g2 = makeGroup([makeTab()], { isActive: false })
+      const g3 = makeGroup([makeTab()], { isActive: false })
+      const layout: SplitLayout = {
+        type: 'split',
+        direction: 'horizontal',
+        ratio: 0.8,
+        first: { type: 'leaf', tabGroupId: g1.id },
+        second: {
+          type: 'split',
+          direction: 'vertical',
+          ratio: 0.2,
+          first: { type: 'leaf', tabGroupId: g2.id },
+          second: { type: 'leaf', tabGroupId: g3.id }
+        }
+      }
+      const state = makeState([g1, g2, g3], layout)
+
+      // #when reset fires
+      const result = tabReducer(state, { type: 'RESET_SPLIT_RATIOS' })
+
+      // #then every split ratio is 0.5
+      expect(result.layout.type).toBe('split')
+      if (result.layout.type === 'split') {
+        expect(result.layout.ratio).toBe(0.5)
+        if (result.layout.second.type === 'split') {
+          expect(result.layout.second.ratio).toBe(0.5)
+        }
+      }
+    })
+
+    it('is a no-op for single-leaf layouts', () => {
+      // #given a single-pane layout
+      const g = makeGroup([makeTab()])
+      const state = makeState([g])
+
+      // #when reset fires
+      const result = tabReducer(state, { type: 'RESET_SPLIT_RATIOS' })
+
+      // #then state is unchanged
+      expect(result).toBe(state)
+    })
+  })
 })
