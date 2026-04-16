@@ -1,5 +1,6 @@
 import * as React from 'react'
-import { useState } from 'react'
+import { useActionState } from 'react'
+import { createLogger } from '@/lib/logger'
 
 import {
   AlertDialog,
@@ -10,6 +11,8 @@ import {
   AlertDialogTitle
 } from '@/components/ui/alert-dialog'
 import { Button } from '@/components/ui/button'
+
+const log = createLogger('TagDeleteDialog')
 
 export interface TagDeleteDialogProps {
   tag: string
@@ -24,25 +27,27 @@ export function TagDeleteDialog({
   onOpenChange,
   onConfirm
 }: TagDeleteDialogProps): React.JSX.Element {
-  const [submitting, setSubmitting] = useState(false)
-
-  const close = (): void => {
-    if (submitting) return
-    onOpenChange(false)
-  }
-
-  const handleConfirm = async (): Promise<void> => {
-    setSubmitting(true)
+  const [, deleteAction, isPending] = useActionState<null, void>(async () => {
     try {
       await onConfirm()
       onOpenChange(false)
-    } finally {
-      setSubmitting(false)
+    } catch (err) {
+      log.error('Delete tag failed', err)
     }
+    return null
+  }, null)
+
+  const handleOpenChange = (next: boolean): void => {
+    if (!next && isPending) return
+    onOpenChange(next)
+  }
+
+  const handleConfirm = (): void => {
+    React.startTransition(() => deleteAction())
   }
 
   return (
-    <AlertDialog open={open} onOpenChange={(next) => (!next ? close() : onOpenChange(next))}>
+    <AlertDialog open={open} onOpenChange={handleOpenChange}>
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle>Delete tag #{tag}?</AlertDialogTitle>
@@ -51,15 +56,15 @@ export function TagDeleteDialog({
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <Button variant="outline" onClick={close} disabled={submitting}>
+          <Button
+            variant="outline"
+            onClick={() => handleOpenChange(false)}
+            disabled={isPending}
+          >
             Cancel
           </Button>
-          <Button
-            variant="destructive"
-            onClick={() => void handleConfirm()}
-            disabled={submitting}
-          >
-            {submitting ? 'Deleting...' : 'Delete tag'}
+          <Button variant="destructive" onClick={handleConfirm} disabled={isPending}>
+            {isPending ? 'Deleting...' : 'Delete tag'}
           </Button>
         </AlertDialogFooter>
       </AlertDialogContent>
