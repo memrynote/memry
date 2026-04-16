@@ -13,8 +13,7 @@ import {
   SnoozeReminderSchema,
   ListRemindersSchema,
   GetForTargetSchema,
-  BulkDismissSchema,
-  type ReminderWithTarget
+  BulkDismissSchema
 } from '@memry/contracts/reminders-api'
 import { createLogger } from '../lib/logger'
 import {
@@ -23,72 +22,11 @@ import {
   createHandler,
   withErrorHandler
 } from './validate'
-import { requireDatabase, getIndexDatabase } from '../database'
+import { requireDatabase } from '../database'
 import * as remindersService from '../lib/reminders'
-import { getNoteCacheById } from '../notes/store'
 import { z } from 'zod'
 
 const logger = createLogger('IPC:Reminder')
-
-/**
- * Helper to get index database for resolving note titles
- */
-function getIndexDb() {
-  try {
-    return getIndexDatabase()
-  } catch {
-    return null
-  }
-}
-
-/**
- * Resolve target details for a reminder
- */
-function resolveReminderTarget(reminder: ReminderWithTarget): ReminderWithTarget {
-  const indexDb = getIndexDb()
-
-  // Default values
-  let targetTitle: string | null = null
-  let targetExists = false
-  let highlightExists: boolean | undefined = undefined
-
-  switch (reminder.targetType) {
-    case 'note':
-    case 'highlight': {
-      if (indexDb) {
-        const note = getNoteCacheById(indexDb, reminder.targetId)
-        if (note) {
-          targetTitle = note.title
-          targetExists = true
-
-          // For highlights, check if the text still exists in the note
-          if (reminder.targetType === 'highlight' && reminder.highlightText) {
-            // We can't easily check if the exact text exists without reading the file
-            // For now, assume it exists if the note exists
-            highlightExists = true
-          }
-        }
-      }
-      break
-    }
-
-    case 'journal': {
-      // Journal entries use the date as both ID and title
-      // Format: YYYY-MM-DD
-      targetTitle = reminder.targetId
-      // We assume journal entries always "exist" since they're created on demand
-      targetExists = true
-      break
-    }
-  }
-
-  return {
-    ...reminder,
-    targetTitle,
-    targetExists,
-    highlightExists
-  }
-}
 
 /**
  * Register all reminder-related IPC handlers.
@@ -147,39 +85,21 @@ export function registerReminderHandlers(): void {
     })
   )
 
-  // reminder:get - Get a reminder by ID
+  // reminder:get - Get a reminder by ID (with resolved target title/existence)
   ipcMain.handle(
     ReminderChannels.invoke.GET,
     createStringHandler((id) => {
       ensureDb()
-
-      const reminder = remindersService.getReminder(id)
-      if (!reminder) {
-        return null
-      }
-
-      // Resolve target details
-      return resolveReminderTarget({
-        ...reminder,
-        targetTitle: null,
-        targetExists: true
-      })
+      return remindersService.getReminder(id)
     })
   )
 
-  // reminder:list - List reminders with filters
+  // reminder:list - List reminders with filters (target resolved by the service)
   ipcMain.handle(
     ReminderChannels.invoke.LIST,
     createValidatedHandler(ListRemindersSchema, (input) => {
       ensureDb()
-
-      const result = remindersService.listReminders(input)
-
-      // Resolve target details for each reminder
-      return {
-        ...result,
-        reminders: result.reminders.map(resolveReminderTarget)
-      }
+      return remindersService.listReminders(input)
     })
   )
 
@@ -192,14 +112,7 @@ export function registerReminderHandlers(): void {
     ReminderChannels.invoke.GET_UPCOMING,
     createValidatedHandler(z.number().int().min(1).max(365).optional(), (days) => {
       ensureDb()
-
-      const result = remindersService.getUpcomingReminders(days ?? 7)
-
-      // Resolve target details for each reminder
-      return {
-        ...result,
-        reminders: result.reminders.map(resolveReminderTarget)
-      }
+      return remindersService.getUpcomingReminders(days ?? 7)
     })
   )
 
@@ -208,9 +121,7 @@ export function registerReminderHandlers(): void {
     ReminderChannels.invoke.GET_DUE,
     createHandler(() => {
       ensureDb()
-
-      const reminders = remindersService.getDueReminders()
-      return reminders.map(resolveReminderTarget)
+      return remindersService.getDueReminders()
     })
   )
 

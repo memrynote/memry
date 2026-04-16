@@ -9,10 +9,11 @@
 
 import { BrowserWindow, Notification } from 'electron'
 import { getDatabase, getIndexDatabase } from '../database'
+import type { IndexDb } from '../database/types'
+import { getNoteCacheById } from '../database/queries/notes'
 import { getStatus } from '../vault'
 import { reminders } from '@memry/db-schema/schema/reminders'
 import { inboxItems, inboxItemType } from '@memry/db-schema/schema/inbox'
-import { noteCache } from '@memry/db-schema/schema/notes-cache'
 import { eq, and, lte, sql, or, gte, asc } from 'drizzle-orm'
 import { generateId } from './id'
 import {
@@ -75,17 +76,43 @@ function toReminder(row: ReminderRow): Reminder {
 }
 
 /**
- * Convert a database row to a ReminderWithTarget object
- * TODO: Resolve target title from notes/journal service
+ * Resolve target title + existence flags for a reminder.
+ *
+ * - `note` / `highlight`: look up the note in the index cache; `targetExists`
+ *   reflects whether the note is still present. For highlights we also set
+ *   `highlightExists` (same value today — the file itself isn't re-scanned).
+ * - `journal`: `targetId` is the YYYY-MM-DD date and doubles as the title.
+ *   Journal entries are created on demand so they always "exist".
  */
-function toReminderWithTarget(row: ReminderRow): ReminderWithTarget {
+function resolveReminderTarget(
+  reminder: Reminder,
+  indexDb: IndexDb
+): Pick<ReminderWithTarget, 'targetTitle' | 'targetExists' | 'highlightExists'> {
+  switch (reminder.targetType) {
+    case 'journal':
+      return { targetTitle: reminder.targetId, targetExists: true, highlightExists: undefined }
+
+    case 'note':
+    case 'highlight': {
+      const note = getNoteCacheById(indexDb, reminder.targetId)
+      const targetExists = !!note
+      return {
+        targetTitle: note?.title ?? null,
+        targetExists,
+        highlightExists: reminder.targetType === 'highlight' ? targetExists : undefined
+      }
+    }
+  }
+}
+
+/**
+ * Convert a database row to a ReminderWithTarget with resolved title/existence.
+ */
+function toReminderWithTarget(row: ReminderRow, indexDb: IndexDb): ReminderWithTarget {
   const reminder = toReminder(row)
   return {
     ...reminder,
-    // These will be resolved by the IPC handler which has access to notes/journal
-    targetTitle: null,
-    targetExists: true,
-    highlightExists: reminder.targetType === 'highlight' ? true : undefined
+    ...resolveReminderTarget(reminder, indexDb)
   }
 }
 
@@ -111,31 +138,6 @@ function now(): string {
 function syncReminderCalendarState(reminderId: string): void {
   emitCalendarProjectionChanged(`reminder:${reminderId}`)
   scheduleGoogleCalendarSourceSync({ sourceType: 'reminder', sourceId: reminderId })
-}
-
-/**
- * Resolve the target title for a reminder by looking up the note/journal in the cache
- * @param targetType - Type of target (note, journal, highlight)
- * @param targetId - ID of the target
- * @returns The target title or null if not found
- */
-function resolveTargetTitle(targetType: string, targetId: string): string | null {
-  try {
-    const indexDb = getIndexDatabase()
-
-    // For notes and highlights, look up the note by ID
-    // For journals, targetId is the journal entry ID (notes with date field set)
-    const note = indexDb
-      .select({ title: noteCache.title })
-      .from(noteCache)
-      .where(eq(noteCache.id, targetId))
-      .get()
-
-    return note?.title || null
-  } catch (error) {
-    logger.error(`Failed to resolve target title for ${targetType}:${targetId}:`, error)
-    return null
-  }
 }
 
 /**
@@ -398,10 +400,12 @@ export function deleteReminder(id: string): boolean {
  * @param id - Reminder ID
  * @returns The reminder or null if not found
  */
-export function getReminder(id: string): Reminder | null {
+export function getReminder(id: string): ReminderWithTarget | null {
   const db = getDatabase()
-  const reminder = db.select().from(reminders).where(eq(reminders.id, id)).get()
-  return reminder ? toReminder(reminder) : null
+  const row = db.select().from(reminders).where(eq(reminders.id, id)).get()
+  if (!row) return null
+  const indexDb = getIndexDatabase()
+  return toReminderWithTarget(row, indexDb)
 }
 
 /**
@@ -462,9 +466,10 @@ export function listReminders(options: Partial<ListRemindersInput> = {}): {
 
   // Apply pagination
   const paginatedRows = allRows.slice(offset, offset + limit)
+  const indexDb = getIndexDatabase()
 
   return {
-    reminders: paginatedRows.map(toReminderWithTarget),
+    reminders: paginatedRows.map((row) => toReminderWithTarget(row, indexDb)),
     total,
     hasMore: offset + paginatedRows.length < total
   }
@@ -514,7 +519,8 @@ export function getDueReminders(): ReminderWithTarget[] {
     .orderBy(asc(reminders.remindAt))
     .all()
 
-  return rows.map(toReminderWithTarget)
+  const indexDb = getIndexDatabase()
+  return rows.map((row) => toReminderWithTarget(row, indexDb))
 }
 
 /**
@@ -669,13 +675,8 @@ function processDueReminders(): void {
         .run()
       syncReminderCalendarState(reminder.id)
 
-      // Resolve the target title from the notes cache
-      const resolvedTitle = resolveTargetTitle(reminder.targetType, reminder.targetId)
-      if (resolvedTitle) {
-        reminder.targetTitle = resolvedTitle
-      }
-
       // T231: Show desktop notification for each due reminder
+      // (targetTitle is already resolved by toReminderWithTarget inside getDueReminders)
       showDesktopNotification(reminder)
 
       // Create inbox item for the triggered reminder
