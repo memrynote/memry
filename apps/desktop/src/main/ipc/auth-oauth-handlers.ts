@@ -17,7 +17,7 @@ import { getSyncEngine, startSyncRuntime } from '../sync/runtime'
 import { teardownSession } from '../sync/session-teardown'
 import { refreshAccessToken, storeToken } from '../sync/token-manager'
 import { createLogger } from '../lib/logger'
-import { createValidatedHandler } from './validate'
+import { registerCommand } from './lib/register-command'
 import { getAndClearPendingRecoveryPhrase, performFirstDeviceSetup } from './auth-device-handlers'
 
 const logger = createLogger('IPC:Sync:OAuth')
@@ -118,9 +118,10 @@ export function clearOAuthState(): void {
 export function registerAuthOAuthHandlers(): void {
   // --- OAuth Initiation with Loopback Redirect (T072, T072a) ---
 
-  ipcMain.handle(
+  registerCommand(
     SYNC_CHANNELS.AUTH_INIT_OAUTH,
-    createValidatedHandler(InitOAuthSchema, async () => {
+    InitOAuthSchema,
+    async () => {
       cleanExpiredOAuthSessions()
       shutdownLoopbackServer()
 
@@ -201,7 +202,8 @@ export function registerAuthOAuthHandlers(): void {
       await shell.openExternal(parsedUrl.toString())
 
       return { state }
-    })
+    },
+    'Failed to initiate OAuth'
   )
 
   // --- Token Refresh (T073, T073a, T073c) ---
@@ -213,9 +215,10 @@ export function registerAuthOAuthHandlers(): void {
 
   // --- First Device Setup via OAuth (T057) ---
 
-  ipcMain.handle(
+  registerCommand(
     SYNC_CHANNELS.SETUP_FIRST_DEVICE,
-    createValidatedHandler(SetupFirstDeviceSchema, async (input) => {
+    SetupFirstDeviceSchema,
+    async (input) => {
       const session = consumeOAuthSession(input.state)
 
       const raw = await postToServer<unknown>(`/auth/oauth/${input.provider}/callback`, {
@@ -242,14 +245,16 @@ export function registerAuthOAuthHandlers(): void {
       }
 
       return { success: true, needsRecoverySetup: true, needsRecoveryInput: true }
-    })
+    },
+    'Failed to setup first device via OAuth'
   )
 
   // --- Recovery Phrase Confirmation (T062) ---
 
-  ipcMain.handle(
+  registerCommand(
     SYNC_CHANNELS.CONFIRM_RECOVERY_PHRASE,
-    createValidatedHandler(ConfirmRecoveryPhraseSchema, async (input) => {
+    ConfirmRecoveryPhraseSchema,
+    async (input) => {
       if (input.confirmed) {
         store.set('sync', { ...store.get('sync'), recoveryPhraseConfirmed: true })
         const engine = getSyncEngine()
@@ -260,7 +265,8 @@ export function registerAuthOAuthHandlers(): void {
         }
       }
       return { success: true }
-    })
+    },
+    'Failed to confirm recovery phrase'
   )
 
   ipcMain.handle(SYNC_CHANNELS.GET_RECOVERY_PHRASE, () => {

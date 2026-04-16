@@ -27,7 +27,7 @@ import {
   recordDownloadedFileSize,
   recordUploadedAttachment
 } from '../sync/note-attachment-metadata'
-import { createValidatedHandler } from './validate'
+import { registerCommand } from './lib/register-command'
 import { getNetworkMonitor } from '../sync/runtime'
 import { getValidAccessToken } from '../sync/token-manager'
 
@@ -124,9 +124,10 @@ export function clearAttachmentState(): void {
 // ============================================================================
 
 export function registerAttachmentHandlers(): void {
-  ipcMain.handle(
+  registerCommand(
     SYNC_CHANNELS.UPLOAD_ATTACHMENT,
-    createValidatedHandler(UploadAttachmentSchema, async (input) => {
+    UploadAttachmentSchema,
+    async (input) => {
       const token = await getValidAccessToken()
       if (!token) return { success: false, error: 'Not authenticated' }
 
@@ -140,12 +141,14 @@ export function registerAttachmentHandlers(): void {
         logger.error('Attachment upload failed', err)
         return { success: false, error: err instanceof Error ? err.message : String(err) }
       }
-    })
+    },
+    'Attachment upload failed'
   )
 
-  ipcMain.handle(
+  registerCommand(
     SYNC_CHANNELS.GET_UPLOAD_PROGRESS,
-    createValidatedHandler(GetUploadProgressSchema, (input) => {
+    GetUploadProgressSchema,
+    (input) => {
       const service = getOrCreateAttachmentService()
       if (!service) return null
       const progress = service.getUploadProgress(input.sessionId)
@@ -159,12 +162,14 @@ export function registerAttachmentHandlers(): void {
         totalChunks: progress.totalChunks,
         status: 'uploading' as const
       }
-    })
+    },
+    'Failed to fetch upload progress'
   )
 
-  ipcMain.handle(
+  registerCommand(
     SYNC_CHANNELS.DOWNLOAD_ATTACHMENT,
-    createValidatedHandler(DownloadAttachmentSchema, async (input) => {
+    DownloadAttachmentSchema,
+    async (input) => {
       const token = await getValidAccessToken()
       if (!token) return { success: false, error: 'Not authenticated' }
 
@@ -209,12 +214,14 @@ export function registerAttachmentHandlers(): void {
       } finally {
         service.setProgressCallback(null)
       }
-    })
+    },
+    'Attachment download failed'
   )
 
-  ipcMain.handle(
+  registerCommand(
     SYNC_CHANNELS.GET_DOWNLOAD_PROGRESS,
-    createValidatedHandler(GetDownloadProgressSchema, (input) => {
+    GetDownloadProgressSchema,
+    (input) => {
       const service = getOrCreateAttachmentService()
       if (!service) return null
       const progress = service.getDownloadProgress(input.attachmentId)
@@ -228,7 +235,8 @@ export function registerAttachmentHandlers(): void {
         totalChunks: progress.totalChunks,
         status: 'downloading' as const
       }
-    })
+    },
+    'Failed to fetch download progress'
   )
 
   attachmentEvents.onSaved(async ({ noteId, diskPath }) => {
