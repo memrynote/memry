@@ -10,7 +10,7 @@
  */
 
 import * as React from 'react'
-import { useCallback } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import {
   ArrowLeft,
   MoreHorizontal,
@@ -46,12 +46,19 @@ import { useSidebarDrillDown } from '@/contexts/sidebar-drill-down'
 import { useTagDetail, type TagSortBy } from '@/hooks/use-tag-detail'
 import { useSidebarNavigation } from '@/hooks/use-sidebar-navigation'
 import { COLOR_NAMES, getTagColors } from '@/components/note/tags-row/tag-colors'
-import { tagsService, type TagNoteItem } from '@/services/tags-service'
+import {
+  tagsService,
+  onTagRenamed,
+  onTagDeleted,
+  type TagNoteItem
+} from '@/services/tags-service'
 import type { SidebarItem } from '@/contexts/tabs/types'
 import { createLogger } from '@/lib/logger'
 import { toast } from 'sonner'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { NoteIconDisplay } from '@/lib/render-note-icon'
+import { TagRenameDialog } from './tag-rename-dialog'
+import { TagDeleteDialog } from './tag-delete-dialog'
 
 const log = createLogger('Component:TagDetailView')
 
@@ -74,8 +81,12 @@ export function TagDetailView({ tag, color, className }: TagDetailViewProps): Re
     sortBy,
     setSortBy,
     pinNote,
-    unpinNote
+    unpinNote,
+    refresh
   } = useTagDetail({ tag, fallbackColor: color })
+
+  const [renameOpen, setRenameOpen] = useState(false)
+  const [deleteOpen, setDeleteOpen] = useState(false)
 
   const tagColors = getTagColors(resolvedColor)
 
@@ -93,6 +104,58 @@ export function TagDetailView({ tag, color, className }: TagDetailViewProps): Re
     },
     [openSidebarItem]
   )
+
+  const handleRenameSubmit = useCallback(
+    async (newName: string) => {
+      try {
+        const result = await tagsService.renameTag({ oldName: tag, newName })
+        if (!result.success) {
+          throw new Error(result.error ?? 'Failed to rename tag')
+        }
+        toast.success(`Renamed #${tag} to #${newName}`)
+        goBack()
+      } catch (err) {
+        log.error('Failed to rename tag', err)
+        const message = extractErrorMessage(err, 'Failed to rename tag')
+        toast.error(message)
+        throw err instanceof Error ? err : new Error(message)
+      }
+    },
+    [goBack, tag]
+  )
+
+  const handleDeleteConfirm = useCallback(async () => {
+    try {
+      const result = await tagsService.deleteTag(tag)
+      if (!result.success) {
+        throw new Error(result.error ?? 'Failed to delete tag')
+      }
+      toast.success(`Deleted #${tag}`)
+      goBack()
+    } catch (err) {
+      log.error('Failed to delete tag', err)
+      toast.error(extractErrorMessage(err, 'Failed to delete tag'))
+    }
+  }, [goBack, tag])
+
+  useEffect(() => {
+    const unsubscribeRenamed = onTagRenamed((event) => {
+      if (event.oldName.toLowerCase() === tag.toLowerCase()) {
+        goBack()
+        return
+      }
+      void refresh()
+    })
+    const unsubscribeDeleted = onTagDeleted((event) => {
+      if (event.tag.toLowerCase() === tag.toLowerCase()) {
+        goBack()
+      }
+    })
+    return () => {
+      unsubscribeRenamed()
+      unsubscribeDeleted()
+    }
+  }, [goBack, refresh, tag])
 
   return (
     <div className={cn('flex flex-col h-full', className)}>
@@ -138,8 +201,26 @@ export function TagDetailView({ tag, color, className }: TagDetailViewProps): Re
         </div>
 
         {/* Overflow menu */}
-        <TagOverflowMenu tag={tag} color={resolvedColor} />
+        <TagOverflowMenu
+          tag={tag}
+          color={resolvedColor}
+          onRequestRename={() => setRenameOpen(true)}
+          onRequestDelete={() => setDeleteOpen(true)}
+        />
       </div>
+
+      <TagRenameDialog
+        tag={tag}
+        open={renameOpen}
+        onOpenChange={setRenameOpen}
+        onSubmit={handleRenameSubmit}
+      />
+      <TagDeleteDialog
+        tag={tag}
+        open={deleteOpen}
+        onOpenChange={setDeleteOpen}
+        onConfirm={handleDeleteConfirm}
+      />
 
       {/* Content */}
       <ScrollArea className="flex-1">
@@ -313,16 +394,17 @@ function NoteItem({ note, isPinned, onClick, onPin, onUnpin }: NoteItemProps): R
 interface TagOverflowMenuProps {
   tag: string
   color: string
+  onRequestRename: () => void
+  onRequestDelete: () => void
 }
 
-function TagOverflowMenu({ tag, color }: TagOverflowMenuProps): React.JSX.Element {
-  // TODO: Implement rename and delete handlers
+function TagOverflowMenu({
+  tag,
+  color,
+  onRequestRename,
+  onRequestDelete
+}: TagOverflowMenuProps): React.JSX.Element {
   const [isUpdatingColor, setIsUpdatingColor] = React.useState(false)
-
-  const handleRename = () => {
-    log.info('Rename tag:', tag)
-    // TODO: Open rename dialog
-  }
 
   const handleColorChange = async (newColor: string) => {
     if (newColor === color || isUpdatingColor) {
@@ -343,22 +425,22 @@ function TagOverflowMenu({ tag, color }: TagOverflowMenuProps): React.JSX.Elemen
     }
   }
 
-  const handleDelete = () => {
-    log.info('Delete tag:', tag)
-    // TODO: Show confirmation and call tagsService.deleteTag
-  }
-
   const colorOptions = COLOR_NAMES
 
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0">
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-7 w-7 shrink-0"
+          aria-label="Tag actions"
+        >
           <MoreHorizontal className="h-4 w-4" />
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-48">
-        <DropdownMenuItem onClick={handleRename}>
+        <DropdownMenuItem onClick={onRequestRename}>
           <Pencil className="h-4 w-4 mr-2" />
           Edit tag name
         </DropdownMenuItem>
@@ -390,7 +472,7 @@ function TagOverflowMenu({ tag, color }: TagOverflowMenuProps): React.JSX.Elemen
         </DropdownMenuSub>
         <DropdownMenuSeparator />
         <DropdownMenuItem
-          onClick={handleDelete}
+          onClick={onRequestDelete}
           className="text-destructive focus:text-destructive"
         >
           <Trash2 className="h-4 w-4 mr-2" />
