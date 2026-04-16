@@ -194,7 +194,11 @@ describe('encryption', () => {
         throw new Error('forced decrypt failure')
       })
 
-    expectCryptoError(() => decrypt(ciphertext, nonce, key), 'DECRYPTION_FAILED', /forced decrypt failure/)
+    expectCryptoError(
+      () => decrypt(ciphertext, nonce, key),
+      'DECRYPTION_FAILED',
+      /forced decrypt failure/
+    )
 
     decryptSpy.mockRestore()
   })
@@ -209,15 +213,19 @@ describe('encryption', () => {
         throw 'forced string failure'
       })
 
-    expectCryptoError(() => decrypt(ciphertext, nonce, key), 'DECRYPTION_FAILED', /Decryption failed/)
+    expectCryptoError(
+      () => decrypt(ciphertext, nonce, key),
+      'DECRYPTION_FAILED',
+      /Decryption failed/
+    )
 
     decryptSpy.mockRestore()
   })
 
   it('throws when sodium returns a nonce with the wrong length', () => {
-    const randombytesSpy = vi.spyOn(sodium, 'randombytes_buf').mockReturnValueOnce(
-      new Uint8Array(XCHACHA20_PARAMS.NONCE_LENGTH - 1)
-    )
+    const randombytesSpy = vi
+      .spyOn(sodium, 'randombytes_buf')
+      .mockReturnValueOnce(new Uint8Array(XCHACHA20_PARAMS.NONCE_LENGTH - 1))
 
     expect(() => generateNonce()).toThrow(
       `Nonce length mismatch: expected ${XCHACHA20_PARAMS.NONCE_LENGTH}, got ${XCHACHA20_PARAMS.NONCE_LENGTH - 1}`
@@ -257,18 +265,9 @@ describe('encryption', () => {
     const { ciphertext, nonce } = encrypt(plaintext, validKey)
     const shortNonce = new Uint8Array(XCHACHA20_PARAMS.NONCE_LENGTH - 1)
 
-    expectCryptoError(
-      () => encrypt(plaintext, shortKey),
-      'INVALID_KEY_LENGTH'
-    )
-    expectCryptoError(
-      () => decrypt(ciphertext, nonce, shortKey),
-      'INVALID_KEY_LENGTH'
-    )
-    expectCryptoError(
-      () => decrypt(ciphertext, shortNonce, validKey),
-      'INVALID_NONCE_LENGTH'
-    )
+    expectCryptoError(() => encrypt(plaintext, shortKey), 'INVALID_KEY_LENGTH')
+    expectCryptoError(() => decrypt(ciphertext, nonce, shortKey), 'INVALID_KEY_LENGTH')
+    expectCryptoError(() => decrypt(ciphertext, shortNonce, validKey), 'INVALID_NONCE_LENGTH')
   })
 
   it('matches the IETF XChaCha20-Poly1305 golden vector for decrypt', () => {

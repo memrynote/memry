@@ -27,7 +27,9 @@ function tryRequire(mod) {
   })
   if (res.status === 0) return { ok: true }
   const err = (res.stderr || '').trim()
-  const match = err.match(/NODE_MODULE_VERSION\s+(\d+).+?this version of Node\.js requires\s+NODE_MODULE_VERSION\s+(\d+)/s)
+  const match = err.match(
+    /NODE_MODULE_VERSION\s+(\d+).+?this version of Node\.js requires\s+NODE_MODULE_VERSION\s+(\d+)/s
+  )
   return { ok: false, compiledAbi: match?.[1], expectedAbi: match?.[2], err }
 }
 
@@ -42,10 +44,14 @@ if (failures.length === 0) {
   process.exit(0)
 }
 
-console.error(`[check:native] NODE_MODULE_VERSION mismatch — ${failures.length} module(s) failed to load under ${currentRuntime}:`)
+console.error(
+  `[check:native] NODE_MODULE_VERSION mismatch — ${failures.length} module(s) failed to load under ${currentRuntime}:`
+)
 for (const f of failures) {
   if (f.compiledAbi && f.expectedAbi) {
-    console.error(`  - ${f.mod}: compiled for ABI ${f.compiledAbi}, runtime needs ABI ${f.expectedAbi}`)
+    console.error(
+      `  - ${f.mod}: compiled for ABI ${f.compiledAbi}, runtime needs ABI ${f.expectedAbi}`
+    )
   } else {
     console.error(`  - ${f.mod}: ${f.err.split('\n')[0]}`)
   }
@@ -54,7 +60,9 @@ for (const f of failures) {
 const fix = stamp === 'electron' ? 'pnpm rebuild:node' : 'pnpm rebuild:electron'
 const altFix = stamp === 'electron' ? 'pnpm rebuild:electron' : 'pnpm rebuild:node'
 console.error('')
-console.error(`[check:native] stamp says last build target was "${stamp}"; current runtime is "${currentRuntime}".`)
+console.error(
+  `[check:native] stamp says last build target was "${stamp}"; current runtime is "${currentRuntime}".`
+)
 console.error(`[check:native] fix:`)
 console.error(`    ${fix}           # to run tests/scripts under Node`)
 console.error(`    ${altFix}        # to run the Electron app (pnpm dev)`)
