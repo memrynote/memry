@@ -9,15 +9,15 @@ import type { VectorClock } from '@memry/contracts/sync-api'
 import type { SyncQueueManager } from '../queue'
 import { increment } from '../vector-clock'
 import { createLogger } from '../../lib/logger'
-import { resolveClockConflict } from './types'
-import type { ApplyContext, ApplyResult, DrizzleDb, SyncItemHandler } from './types'
+import { BaseItemHandler } from './base-handler'
+import type { ApplyContext, ApplyResult, DrizzleDb } from './types'
 
 const log = createLogger('CalendarEventHandler')
 const CALENDAR_CHANGED = 'calendar:changed'
 
-export const calendarEventHandler: SyncItemHandler<CalendarEventSyncPayload> = {
-  type: 'calendar_event',
-  schema: CalendarEventSyncPayloadSchema,
+class CalendarEventHandler extends BaseItemHandler<CalendarEventSyncPayload> {
+  readonly type = 'calendar_event' as const
+  readonly schema = CalendarEventSyncPayloadSchema
 
   applyUpsert(
     ctx: ApplyContext,
@@ -31,7 +31,7 @@ export const calendarEventHandler: SyncItemHandler<CalendarEventSyncPayload> = {
       const now = utcNow()
 
       if (existing) {
-        const resolution = resolveClockConflict(existing.clock as VectorClock | null, remoteClock)
+        const resolution = this.resolveClock(existing.clock as VectorClock | null, remoteClock)
         if (resolution.action === 'skip') {
           log.info('Skipping remote calendar event update, local is newer', { itemId })
           return 'skipped'
@@ -82,14 +82,14 @@ export const calendarEventHandler: SyncItemHandler<CalendarEventSyncPayload> = {
       ctx.emit(CALENDAR_CHANGED, { entityType: 'calendar_event', id: itemId })
       return 'applied'
     })
-  },
+  }
 
   applyDelete(ctx: ApplyContext, itemId: string, clock?: VectorClock): 'applied' | 'skipped' {
     const existing = ctx.db.select().from(calendarEvents).where(eq(calendarEvents.id, itemId)).get()
     if (!existing) return 'skipped'
 
     if (clock && existing.clock) {
-      const resolution = resolveClockConflict(existing.clock as VectorClock | null, clock)
+      const resolution = this.resolveClock(existing.clock as VectorClock | null, clock)
       if (resolution.action === 'skip' || resolution.action === 'merge') {
         log.info('Skipping remote calendar event delete, local has unseen changes', { itemId })
         return 'skipped'
@@ -99,13 +99,13 @@ export const calendarEventHandler: SyncItemHandler<CalendarEventSyncPayload> = {
     ctx.db.delete(calendarEvents).where(eq(calendarEvents.id, itemId)).run()
     ctx.emit(CALENDAR_CHANGED, { entityType: 'calendar_event', id: itemId })
     return 'applied'
-  },
+  }
 
   fetchLocal(db: DrizzleDb, itemId: string): Record<string, unknown> | undefined {
     return db.select().from(calendarEvents).where(eq(calendarEvents.id, itemId)).get() as
       | Record<string, unknown>
       | undefined
-  },
+  }
 
   buildPushPayload(db: DrizzleDb, itemId: string): string | null {
     const row = db.select().from(calendarEvents).where(eq(calendarEvents.id, itemId)).get()
@@ -127,7 +127,7 @@ export const calendarEventHandler: SyncItemHandler<CalendarEventSyncPayload> = {
       modifiedAt: row.modifiedAt
     }
     return JSON.stringify(payload)
-  },
+  }
 
   seedUnclocked(db: DrizzleDb, deviceId: string, queue: SyncQueueManager): number {
     const items = db.select().from(calendarEvents).where(isNull(calendarEvents.clock)).all()
@@ -148,3 +148,5 @@ export const calendarEventHandler: SyncItemHandler<CalendarEventSyncPayload> = {
     return items.length
   }
 }
+
+export const calendarEventHandler = new CalendarEventHandler()

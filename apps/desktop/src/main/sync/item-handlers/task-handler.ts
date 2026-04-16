@@ -9,8 +9,8 @@ import type { SyncQueueManager } from '../queue'
 import { increment } from '../vector-clock'
 import { mergeTaskFields, initAllFieldClocks, TASK_SYNCABLE_FIELDS } from '../field-merge'
 import { createLogger } from '../../lib/logger'
-import { resolveClockConflict } from './types'
-import type { SyncItemHandler, ApplyContext, ApplyResult, DrizzleDb } from './types'
+import { BaseItemHandler } from './base-handler'
+import type { ApplyContext, ApplyResult, DrizzleDb } from './types'
 import { publishProjectionEvent } from '../../projections'
 
 const log = createLogger('TaskHandler')
@@ -33,11 +33,11 @@ function queryNoteIds(db: DrizzleDb, taskId: string): string[] {
     .map((r) => r.noteId)
 }
 
-function writeTags(db: DrizzleDb, taskId: string, tags: string[]): void {
+function writeTags(db: DrizzleDb, taskId: string, tagList: string[]): void {
   db.delete(taskTags).where(eq(taskTags.taskId, taskId)).run()
-  if (tags.length > 0) {
+  if (tagList.length > 0) {
     db.insert(taskTags)
-      .values(tags.map((tag) => ({ taskId, tag: tag.toLowerCase().trim() })))
+      .values(tagList.map((tag) => ({ taskId, tag: tag.toLowerCase().trim() })))
       .run()
   }
 }
@@ -51,9 +51,9 @@ function writeNoteIds(db: DrizzleDb, taskId: string, noteIds: string[]): void {
   }
 }
 
-export const taskHandler: SyncItemHandler<TaskSyncPayload> = {
-  type: 'task',
-  schema: TaskSyncPayloadSchema,
+class TaskHandler extends BaseItemHandler<TaskSyncPayload> {
+  readonly type = 'task' as const
+  readonly schema = TaskSyncPayloadSchema
 
   applyUpsert(
     ctx: ApplyContext,
@@ -68,7 +68,7 @@ export const taskHandler: SyncItemHandler<TaskSyncPayload> = {
       const now = utcNow()
 
       if (existing) {
-        const resolution = resolveClockConflict(existing.clock, remoteClock)
+        const resolution = this.resolveClock(existing.clock, remoteClock)
 
         if (resolution.action === 'skip') {
           return 'skipped'
@@ -201,14 +201,14 @@ export const taskHandler: SyncItemHandler<TaskSyncPayload> = {
       publishProjectionEvent({ type: 'task.upserted', taskId: itemId })
       return 'applied'
     })
-  },
+  }
 
   applyDelete(ctx: ApplyContext, itemId: string, clock?: VectorClock): 'applied' | 'skipped' {
     const existing = ctx.db.select().from(tasks).where(eq(tasks.id, itemId)).get()
     if (!existing) return 'skipped'
 
     if (clock && existing.clock) {
-      const resolution = resolveClockConflict(existing.clock, clock)
+      const resolution = this.resolveClock(existing.clock, clock)
       if (resolution.action === 'skip' || resolution.action === 'merge') {
         log.info('Skipping remote task delete, local has unseen changes', { itemId })
         return 'skipped'
@@ -219,13 +219,13 @@ export const taskHandler: SyncItemHandler<TaskSyncPayload> = {
     ctx.emit(TasksChannels.events.DELETED, { id: itemId })
     publishProjectionEvent({ type: 'task.deleted', taskId: itemId })
     return 'applied'
-  },
+  }
 
   fetchLocal(db: DrizzleDb, itemId: string): Record<string, unknown> | undefined {
     return db.select().from(tasks).where(eq(tasks.id, itemId)).get() as
       | Record<string, unknown>
       | undefined
-  },
+  }
 
   buildPushPayload(
     db: DrizzleDb,
@@ -235,14 +235,14 @@ export const taskHandler: SyncItemHandler<TaskSyncPayload> = {
   ): string | null {
     const task = db.select().from(tasks).where(eq(tasks.id, itemId)).get()
     if (!task) return null
-    const tags = queryTags(db, itemId)
+    const tagList = queryTags(db, itemId)
     const linkedNoteIds = queryNoteIds(db, itemId)
-    return JSON.stringify({ ...task, tags, linkedNoteIds })
-  },
+    return JSON.stringify({ ...task, tags: tagList, linkedNoteIds })
+  }
 
   markPushSynced(db: DrizzleDb, itemId: string): void {
     db.update(tasks).set({ syncedAt: utcNow() }).where(eq(tasks.id, itemId)).run()
-  },
+  }
 
   seedUnclocked(db: DrizzleDb, deviceId: string, queue: SyncQueueManager): number {
     const items = db.select().from(tasks).where(isNull(tasks.clock)).all()
@@ -267,3 +267,5 @@ export const taskHandler: SyncItemHandler<TaskSyncPayload> = {
     return items.length
   }
 }
+
+export const taskHandler = new TaskHandler()

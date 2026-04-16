@@ -10,15 +10,15 @@ import type { VectorClock } from '@memry/contracts/sync-api'
 import type { SyncQueueManager } from '../queue'
 import { increment } from '../vector-clock'
 import { createLogger } from '../../lib/logger'
-import { resolveClockConflict } from './types'
-import type { SyncItemHandler, ApplyContext, ApplyResult, DrizzleDb } from './types'
+import { BaseItemHandler } from './base-handler'
+import type { ApplyContext, ApplyResult, DrizzleDb } from './types'
 import { writeFolderConfig } from '../../vault/folders'
 
 const log = createLogger('FolderConfigHandler')
 
-export const folderConfigHandler: SyncItemHandler<FolderConfigSyncPayload> = {
-  type: 'folder_config',
-  schema: FolderConfigSyncPayloadSchema,
+class FolderConfigHandler extends BaseItemHandler<FolderConfigSyncPayload> {
+  readonly type = 'folder_config' as const
+  readonly schema = FolderConfigSyncPayloadSchema
 
   applyUpsert(
     ctx: ApplyContext,
@@ -32,7 +32,7 @@ export const folderConfigHandler: SyncItemHandler<FolderConfigSyncPayload> = {
       const now = utcNow()
 
       if (existing) {
-        const resolution = resolveClockConflict(existing.clock as VectorClock | null, remoteClock)
+        const resolution = this.resolveClock(existing.clock as VectorClock | null, remoteClock)
         if (resolution.action === 'skip') {
           log.info('Skipping remote folder config update, local is newer', { itemId })
           return 'skipped'
@@ -69,14 +69,14 @@ export const folderConfigHandler: SyncItemHandler<FolderConfigSyncPayload> = {
       ctx.emit(NotesChannels.events.FOLDER_CONFIG_UPDATED, { path: itemId })
       return 'applied'
     })
-  },
+  }
 
   applyDelete(ctx: ApplyContext, itemId: string, clock?: VectorClock): 'applied' | 'skipped' {
     const existing = ctx.db.select().from(folderConfigs).where(eq(folderConfigs.path, itemId)).get()
     if (!existing) return 'skipped'
 
     if (clock && existing.clock) {
-      const resolution = resolveClockConflict(existing.clock as VectorClock | null, clock)
+      const resolution = this.resolveClock(existing.clock as VectorClock | null, clock)
       if (resolution.action === 'skip' || resolution.action === 'merge') {
         log.info('Skipping remote folder config delete, local has unseen changes', { itemId })
         return 'skipped'
@@ -87,13 +87,13 @@ export const folderConfigHandler: SyncItemHandler<FolderConfigSyncPayload> = {
     writeFolderConfig(itemId, { icon: null })
     ctx.emit(NotesChannels.events.FOLDER_CONFIG_UPDATED, { path: itemId })
     return 'applied'
-  },
+  }
 
   fetchLocal(db: DrizzleDb, itemId: string): Record<string, unknown> | undefined {
     return db.select().from(folderConfigs).where(eq(folderConfigs.path, itemId)).get() as
       | Record<string, unknown>
       | undefined
-  },
+  }
 
   buildPushPayload(
     db: DrizzleDb,
@@ -110,7 +110,7 @@ export const folderConfigHandler: SyncItemHandler<FolderConfigSyncPayload> = {
       modifiedAt: row.modifiedAt
     }
     return JSON.stringify(payload)
-  },
+  }
 
   seedUnclocked(db: DrizzleDb, deviceId: string, queue: SyncQueueManager): number {
     const items = db.select().from(folderConfigs).where(isNull(folderConfigs.clock)).all()
@@ -128,3 +128,5 @@ export const folderConfigHandler: SyncItemHandler<FolderConfigSyncPayload> = {
     return items.length
   }
 }
+
+export const folderConfigHandler = new FolderConfigHandler()

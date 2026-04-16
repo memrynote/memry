@@ -20,14 +20,14 @@ import {
 import { syncNoteToCache, deleteNoteFromCache } from '../../vault/note-sync'
 import { flushProjectionEvents } from '../../projections'
 import { createLogger } from '../../lib/logger'
-import { resolveClockConflict } from './types'
-import type { SyncItemHandler, ApplyContext, ApplyResult, DrizzleDb } from './types'
+import { BaseItemHandler } from './base-handler'
+import type { ApplyContext, ApplyResult, DrizzleDb } from './types'
 
 const log = createLogger('JournalHandler')
 
-export const journalHandler: SyncItemHandler<JournalSyncPayload> = {
-  type: 'journal',
-  schema: JournalSyncPayloadSchema,
+class JournalHandler extends BaseItemHandler<JournalSyncPayload> {
+  readonly type = 'journal' as const
+  readonly schema = JournalSyncPayloadSchema
 
   applyUpsert(
     ctx: ApplyContext,
@@ -41,7 +41,7 @@ export const journalHandler: SyncItemHandler<JournalSyncPayload> = {
     const indexDb = getIndexDatabase()
 
     if (existing) {
-      const resolution = resolveClockConflict(existing.clock, remoteClock)
+      const resolution = this.resolveClock(existing.clock, remoteClock)
       if (resolution.action === 'skip') {
         log.info('Skipping remote journal update, local is newer', { itemId })
         return 'skipped'
@@ -135,7 +135,7 @@ export const journalHandler: SyncItemHandler<JournalSyncPayload> = {
       })
 
     return 'applied'
-  },
+  }
 
   applyDelete(ctx: ApplyContext, itemId: string, clock?: VectorClock): 'applied' | 'skipped' {
     const indexDb = getIndexDatabase()
@@ -143,7 +143,7 @@ export const journalHandler: SyncItemHandler<JournalSyncPayload> = {
     if (!existing) return 'skipped'
 
     if (clock && existing.clock) {
-      const resolution = resolveClockConflict(existing.clock, clock)
+      const resolution = this.resolveClock(existing.clock, clock)
       if (resolution.action === 'skip' || resolution.action === 'merge') {
         log.info('Skipping remote journal delete, local has unseen changes', { itemId })
         return 'skipped'
@@ -163,13 +163,13 @@ export const journalHandler: SyncItemHandler<JournalSyncPayload> = {
       source: 'sync'
     })
     return 'applied'
-  },
+  }
 
   fetchLocal(db: DrizzleDb, itemId: string): Record<string, unknown> | undefined {
     const cached = getNoteMetadataById(db, itemId)
     if (!cached || !cached.journalDate) return undefined
     return cached as unknown as Record<string, unknown>
-  },
+  }
 
   buildPushPayload(
     db: DrizzleDb,
@@ -208,7 +208,7 @@ export const journalHandler: SyncItemHandler<JournalSyncPayload> = {
       createdAt: cached.createdAt,
       modifiedAt: cached.modifiedAt
     })
-  },
+  }
 
   seedUnclocked(db: DrizzleDb, deviceId: string, queue: SyncQueueManager): number {
     const items = db
@@ -237,3 +237,5 @@ export const journalHandler: SyncItemHandler<JournalSyncPayload> = {
     return items.length
   }
 }
+
+export const journalHandler = new JournalHandler()
