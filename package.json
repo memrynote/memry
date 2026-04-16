@@ -30,6 +30,8 @@
     "sync:clean": "rm -rf apps/sync-server/.wrangler",
     "sync:seed": "pnpm --filter @memry/sync-server exec wrangler d1 execute memry-sync --local --file=schema/d1.sql",
     "sync:reset": "pnpm sync:clean && pnpm sync:seed",
+    "outdated:check": "pnpm outdated -r --format list | head -100",
+    "check:lockfile": "node scripts/check-lockfile.js",
     "prepare": "git config core.hooksPath .githooks"
   },
   "devDependencies": {
