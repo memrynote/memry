@@ -5,3 +5,4 @@
 export * from './notes'
 export * from './tasks'
 export * from './projects'
+export * from './sync-item-handlers'

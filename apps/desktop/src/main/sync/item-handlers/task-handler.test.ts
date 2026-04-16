@@ -1,72 +1,19 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
+import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { eq } from 'drizzle-orm'
 import { createTestDataDb, type TestDatabaseResult } from '@tests/utils/test-db'
 import { projects } from '@memry/db-schema/schema/projects'
 import { statuses } from '@memry/db-schema/schema/statuses'
 import { tasks } from '@memry/db-schema/schema/tasks'
 import { taskTags, taskNotes } from '@memry/db-schema/schema/task-relations'
-import type { TaskSyncPayload } from '@memry/contracts/sync-payloads'
 import { TASK_SYNCABLE_FIELDS, initAllFieldClocks, type FieldClocks } from '../field-merge'
 import { taskHandler } from './task-handler'
 import type { ApplyContext, DrizzleDb } from './types'
-
-const TEST_PROJECT = {
-  id: 'proj-1',
-  name: 'Test Project',
-  color: '#000',
-  position: 0,
-  isInbox: false
-}
-
-const TEST_STATUSES = [
-  {
-    id: 'status-todo',
-    projectId: 'proj-1',
-    name: 'Todo',
-    color: '#6b7280',
-    position: 0,
-    isDefault: true,
-    isDone: false
-  },
-  {
-    id: 'status-done',
-    projectId: 'proj-1',
-    name: 'Done',
-    color: '#22c55e',
-    position: 1,
-    isDefault: false,
-    isDone: true
-  }
-]
-
-function makeCtx(db: TestDatabaseResult): ApplyContext {
-  return {
-    db: db.db as unknown as DrizzleDb,
-    emit: vi.fn()
-  }
-}
-
-function makeTaskPayload(overrides: Partial<TaskSyncPayload> = {}): TaskSyncPayload {
-  return {
-    title: 'Task',
-    description: null,
-    projectId: 'proj-1',
-    statusId: 'status-todo',
-    parentId: null,
-    priority: 0,
-    position: 0,
-    dueDate: null,
-    dueTime: null,
-    startDate: null,
-    repeatConfig: null,
-    repeatFrom: null,
-    sourceNoteId: null,
-    completedAt: null,
-    archivedAt: null,
-    modifiedAt: '2026-02-23T00:00:00.000Z',
-    ...overrides
-  }
-}
+import {
+  TEST_PROJECT,
+  TEST_STATUSES,
+  makeCtx,
+  makeTaskPayload
+} from '@tests/utils/fixtures/sync-item-handlers'
 
 describe('taskHandler field-level merge', () => {
   let testDb: TestDatabaseResult
