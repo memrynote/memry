@@ -331,7 +331,7 @@ async function finalizeLinking(masterKey: Uint8Array, setupToken: string): Promi
 
     const signingKeyPair = await getOrCreateSigningKeyPair()
 
-    const { persistKeysAndRegisterDevice } = await import('../ipc/sync-handlers')
+    const { persistKeysAndRegisterDevice } = await import('./device-registration')
     const deviceId = await persistKeysAndRegisterDevice(
       masterKey,
       signingKeyPair.secretKey,

@@ -1,12 +1,10 @@
-import { app, BrowserWindow, clipboard, ipcMain, shell } from 'electron'
+import { BrowserWindow, clipboard, ipcMain, shell } from 'electron'
 import fs from 'node:fs'
 import http from 'node:http'
 import https from 'node:https'
-import os from 'os'
 import sodium from 'libsodium-wrappers-sumo'
 
 import { syncDevices } from '@memry/db-schema/schema/sync-devices'
-import { syncState } from '@memry/db-schema/schema/sync-state'
 import { KEYCHAIN_ENTRIES } from '@memry/contracts/crypto'
 import {
   RequestOtpSchema,
@@ -17,12 +15,10 @@ import {
   ConfirmRecoveryPhraseSchema
 } from '@memry/contracts/ipc-auth'
 import {
-  DeviceRegisterResponseSchema,
   OAuthCallbackResponseSchema,
   RecoveryDataResponseSchema,
   VerifyOtpResponseSchema
 } from '@memry/contracts/auth-api'
-import type { DeviceRegisterResponse } from '@memry/contracts/auth-api'
 import {
   ApproveLinkingSchema,
   CompleteLinkingQrSchema,
@@ -60,12 +56,11 @@ import { getSettingsSyncManager } from '../sync/settings-sync'
 import { getStatus as getVaultStatus } from '../vault/index'
 import { syncHistory } from '@memry/db-schema/schema/sync-history'
 
-import { eq, desc, count, inArray } from 'drizzle-orm'
+import { eq, desc, count } from 'drizzle-orm'
 
 import type { SyncEngine } from '../sync/engine'
 
 import {
-  deleteKey,
   deriveMasterKey,
   generateRecoveryPhrase,
   generateSalt,
@@ -74,7 +69,6 @@ import {
   getOrDeriveVaultKey,
   recoverMasterKeyFromPhrase,
   secureCleanup,
-  storeKey,
   retrieveKey,
   validateKeyVerifier,
   validateRecoveryPhrase
@@ -91,15 +85,13 @@ import {
 import { createValidatedHandler, withErrorHandler } from './validate'
 import { getNetworkMonitor, getSyncEngine, startSyncRuntime } from '../sync/runtime'
 import { teardownSession } from '../sync/session-teardown'
+import { persistKeysAndRegisterDevice } from '../sync/device-registration'
 import {
   getValidAccessToken,
   retrieveToken,
   storeToken,
-  extractJtiFromToken,
-  scheduleTokenRefresh,
   cancelTokenRefresh,
-  refreshAccessToken,
-  ACCESS_TOKEN_EXPIRY_SECONDS
+  refreshAccessToken
 } from '../sync/token-manager'
 
 const logger = createLogger('IPC:Sync')
@@ -238,159 +230,6 @@ const startLoopbackServer = (): Promise<{ server: http.Server; port: number }> =
     })
     server.on('error', reject)
   })
-}
-
-// ============================================================================
-// Device Registration (T050c)
-// ============================================================================
-
-const PLATFORM_MAP: Record<string, string> = {
-  darwin: 'macos',
-  win32: 'windows',
-  linux: 'linux'
-}
-
-const registerDevice = async (
-  setupToken: string,
-  signingSecretKey: Uint8Array
-): Promise<DeviceRegisterResponse> => {
-  await sodium.ready
-
-  const publicKey = getDevicePublicKey(signingSecretKey)
-  const publicKeyBase64 = sodium.to_base64(publicKey, sodium.base64_variants.ORIGINAL)
-
-  const nonce = crypto.randomUUID()
-  const jti = extractJtiFromToken(setupToken)
-  const challengePayload = `${nonce}:${jti}`
-  const payloadBytes = new TextEncoder().encode(challengePayload)
-  const signature = sodium.crypto_sign_detached(payloadBytes, signingSecretKey)
-  const signatureBase64 = sodium.to_base64(signature, sodium.base64_variants.ORIGINAL)
-
-  const raw = await postToServer<unknown>(
-    '/auth/devices',
-    {
-      name: os.hostname(),
-      platform: PLATFORM_MAP[process.platform] || 'linux',
-      osVersion: os.release(),
-      appVersion: app.getVersion(),
-      authPublicKey: publicKeyBase64,
-      challengeSignature: signatureBase64,
-      challengeNonce: nonce
-    },
-    setupToken
-  )
-  const response = DeviceRegisterResponseSchema.parse(raw)
-
-  if (!response.accessToken || !response.refreshToken || !response.deviceId) {
-    throw new Error(response.error ?? 'Device registration failed: missing tokens')
-  }
-
-  await storeToken(KEYCHAIN_ENTRIES.ACCESS_TOKEN, response.accessToken)
-  await storeToken(KEYCHAIN_ENTRIES.REFRESH_TOKEN, response.refreshToken)
-  scheduleTokenRefresh(ACCESS_TOKEN_EXPIRY_SECONDS)
-
-  return response
-}
-
-// ============================================================================
-// First Device Setup Orchestration (T050f)
-// ============================================================================
-
-export const persistKeysAndRegisterDevice = async (
-  masterKey: Uint8Array,
-  signingSecretKey: Uint8Array,
-  setupToken: string,
-  kdfSalt: string,
-  keyVerifier: string,
-  skipSetup?: boolean,
-  skipActivation?: boolean
-): Promise<string> => {
-  await storeKey(KEYCHAIN_ENTRIES.DEVICE_SIGNING_KEY, signingSecretKey)
-
-  let deviceResponse: DeviceRegisterResponse & { deviceId: string }
-  try {
-    const raw = await registerDevice(setupToken, signingSecretKey)
-    deviceResponse = raw as DeviceRegisterResponse & { deviceId: string }
-  } catch (err) {
-    await deleteKey(KEYCHAIN_ENTRIES.DEVICE_SIGNING_KEY).catch(() => {})
-    throw err
-  }
-
-  if (!skipSetup) {
-    const accessToken = await retrieveToken(KEYCHAIN_ENTRIES.ACCESS_TOKEN)
-    if (!accessToken) {
-      throw new Error('Access token not found after device registration')
-    }
-
-    try {
-      await postToServer('/auth/setup', { kdfSalt, keyVerifier }, accessToken)
-    } catch (err) {
-      logger.error(
-        'Failed to POST /auth/setup after device registration — recoverable on retry',
-        err
-      )
-    }
-  }
-
-  try {
-    await storeKey(KEYCHAIN_ENTRIES.MASTER_KEY, masterKey)
-  } catch (keychainErr) {
-    logger.error('Failed to store master key in keychain after device registration', keychainErr)
-
-    const accessToken = await retrieveToken(KEYCHAIN_ENTRIES.ACCESS_TOKEN).catch(() => null)
-    if (accessToken) {
-      try {
-        await deleteFromServer(`/auth/devices/${deviceResponse.deviceId}`, accessToken)
-      } catch (deregErr) {
-        logger.error(
-          'Failed to deregister device after keychain write failure — orphaned device on server',
-          deregErr
-        )
-      }
-    }
-
-    await deleteKey(KEYCHAIN_ENTRIES.ACCESS_TOKEN).catch(() => {})
-    await deleteKey(KEYCHAIN_ENTRIES.REFRESH_TOKEN).catch(() => {})
-    await deleteKey(KEYCHAIN_ENTRIES.DEVICE_SIGNING_KEY).catch(() => {})
-
-    throw new Error(
-      'Failed to save encryption key securely. Device registration has been rolled back. Please try again.'
-    )
-  }
-
-  const db = getDatabase()
-  const pubKey = getDevicePublicKey(signingSecretKey)
-  const pubKeyBase64 = sodium.to_base64(pubKey, sodium.base64_variants.ORIGINAL)
-
-  db.transaction((tx) => {
-    tx.delete(syncDevices).where(eq(syncDevices.isCurrentDevice, true)).run()
-    tx.delete(syncState)
-      .where(inArray(syncState.key, ['lastCursor', 'lastSyncAt', 'initialSeedDone', 'syncPaused']))
-      .run()
-    tx.insert(syncDevices)
-      .values({
-        id: deviceResponse.deviceId,
-        name: os.hostname(),
-        platform: PLATFORM_MAP[process.platform] || 'linux',
-        osVersion: os.release(),
-        appVersion: app.getVersion(),
-        linkedAt: new Date(),
-        isCurrentDevice: true,
-        signingPublicKey: pubKeyBase64
-      })
-      .run()
-  })
-
-  if (!skipActivation) {
-    const engine = getSyncEngine()
-    if (engine) {
-      void engine.activate()
-    } else {
-      void startSyncRuntime()
-    }
-  }
-
-  return deviceResponse.deviceId
 }
 
 const performFirstDeviceSetup = async (setupToken: string): Promise<FirstDeviceSetupResult> => {
