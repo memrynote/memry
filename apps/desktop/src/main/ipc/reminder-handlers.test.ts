@@ -112,10 +112,11 @@ describe('reminder-handlers', () => {
     expect(result).toEqual({ success: true, reminder })
   })
 
-  it('resolves reminder targets on get and list', async () => {
+  it('returns service-resolved reminders on get and list', async () => {
+    // #given — service now resolves target title/existence itself; handler is a pass-through.
     registerReminderHandlers()
 
-    const baseReminder: Reminder = {
+    const resolvedReminder: ReminderWithTarget = {
       id: 'rem-2',
       targetType: 'note',
       targetId: 'note-2',
@@ -130,35 +131,26 @@ describe('reminder-handlers', () => {
       dismissedAt: null,
       snoozedUntil: null,
       createdAt: new Date().toISOString(),
-      modifiedAt: new Date().toISOString()
+      modifiedAt: new Date().toISOString(),
+      targetTitle: 'Note Two',
+      targetExists: true,
+      highlightExists: undefined
     }
 
-    ;(remindersService.getReminder as Mock).mockReturnValue(baseReminder)
+    ;(remindersService.getReminder as Mock).mockReturnValue(resolvedReminder)
     ;(remindersService.listReminders as Mock).mockReturnValue({
-      reminders: [
-        {
-          ...baseReminder,
-          targetTitle: null,
-          targetExists: true
-        } as ReminderWithTarget
-      ],
+      reminders: [resolvedReminder],
       total: 1,
       hasMore: false
     })
-    ;(notesQueries.getNoteCacheById as Mock).mockReturnValue({
-      id: 'note-2',
-      title: 'Note Two'
-    })
 
+    // #when
     const getResult = await invokeHandler(ReminderChannels.invoke.GET, 'rem-2')
-    expect(getResult).toEqual(
-      expect.objectContaining({ targetTitle: 'Note Two', targetExists: true })
-    )
-
     const listResult = await invokeHandler(ReminderChannels.invoke.LIST, {})
-    expect(listResult.reminders[0]).toEqual(
-      expect.objectContaining({ targetTitle: 'Note Two', targetExists: true })
-    )
+
+    // #then — handler forwards the resolved payload verbatim.
+    expect(getResult).toEqual(resolvedReminder)
+    expect(listResult.reminders[0]).toEqual(resolvedReminder)
   })
 
   it('handles update, snooze, and dismiss flows', async () => {
@@ -233,40 +225,29 @@ describe('reminder-handlers', () => {
       modifiedAt: new Date().toISOString()
     }
 
+    const resolved: ReminderWithTarget = {
+      ...baseReminder,
+      targetTitle: 'Note Five',
+      targetExists: true,
+      highlightExists: undefined
+    }
+
     ;(remindersService.getUpcomingReminders as Mock).mockReturnValue({
-      reminders: [
-        {
-          ...baseReminder,
-          targetTitle: null,
-          targetExists: true
-        } as ReminderWithTarget
-      ],
+      reminders: [resolved],
       total: 1,
       hasMore: false
     })
-    ;(remindersService.getDueReminders as Mock).mockReturnValue([
-      {
-        ...baseReminder,
-        targetTitle: null,
-        targetExists: true
-      } as ReminderWithTarget
-    ])
+    ;(remindersService.getDueReminders as Mock).mockReturnValue([resolved])
     ;(remindersService.getRemindersForTarget as Mock).mockReturnValue([baseReminder])
     ;(remindersService.countPendingReminders as Mock).mockReturnValue(4)
     ;(remindersService.bulkDismissReminders as Mock).mockReturnValue(2)
-    ;(notesQueries.getNoteCacheById as Mock).mockReturnValue({
-      id: 'note-5',
-      title: 'Note Five'
-    })
 
     const upcoming = await invokeHandler(ReminderChannels.invoke.GET_UPCOMING, 14)
     expect(remindersService.getUpcomingReminders).toHaveBeenCalledWith(14)
-    expect(upcoming.reminders[0]).toEqual(
-      expect.objectContaining({ targetTitle: 'Note Five', targetExists: true })
-    )
+    expect(upcoming.reminders[0]).toEqual(resolved)
 
     const due = await invokeHandler(ReminderChannels.invoke.GET_DUE)
-    expect(due[0]).toEqual(expect.objectContaining({ targetTitle: 'Note Five' }))
+    expect(due[0]).toEqual(resolved)
 
     const forTarget = await invokeHandler(ReminderChannels.invoke.GET_FOR_TARGET, {
       targetType: 'note',
