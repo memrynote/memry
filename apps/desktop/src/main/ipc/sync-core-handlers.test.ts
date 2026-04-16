@@ -164,14 +164,18 @@ vi.mock('../sync/token-manager', () => ({
   refreshAccessToken: (...args: unknown[]) => mockRefreshAccessToken(...args)
 }))
 
-import { registerSyncHandlers, unregisterSyncHandlers, checkSyncIntegrity } from './sync-handlers'
+import {
+  registerSyncHandlers,
+  unregisterSyncHandlers,
+  checkSyncIntegrity
+} from './sync-core-handlers'
 
 // ============================================================================
 // Constants — channels registered by registerSyncHandlers (includes composed sub-modules)
 // ============================================================================
 
 const SYNC_CORE_CHANNELS = [
-  // From sync-handlers.ts directly
+  // From sync-core-handlers.ts directly
   SYNC_CHANNELS.GET_STATUS,
   SYNC_CHANNELS.TRIGGER_SYNC,
   SYNC_CHANNELS.GET_HISTORY,

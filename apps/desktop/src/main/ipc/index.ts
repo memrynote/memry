@@ -15,7 +15,11 @@ import { registerReminderHandlers, unregisterReminderHandlers } from './reminder
 import { registerCalendarHandlers, unregisterCalendarHandlers } from './calendar-handlers'
 import { registerFolderViewHandlers, unregisterFolderViewHandlers } from './folder-view-handlers'
 import { registerPropertiesHandlers, unregisterPropertiesHandlers } from './properties-handlers'
-import { registerSyncHandlers, unregisterSyncHandlers, checkSyncIntegrity } from './sync-handlers'
+import {
+  registerSyncHandlers,
+  unregisterSyncHandlers,
+  checkSyncIntegrity
+} from './sync-core-handlers'
 import { registerCryptoHandlers, unregisterCryptoHandlers } from './crypto-handlers'
 import { registerSearchHandlers, unregisterSearchHandlers } from './search-handlers'
 import { registerGraphHandlers, unregisterGraphHandlers } from './graph-handlers'
@@ -171,7 +175,7 @@ export { registerReminderHandlers, unregisterReminderHandlers } from './reminder
 export { registerCalendarHandlers, unregisterCalendarHandlers } from './calendar-handlers'
 export { registerFolderViewHandlers, unregisterFolderViewHandlers } from './folder-view-handlers'
 export { registerPropertiesHandlers, unregisterPropertiesHandlers } from './properties-handlers'
-export { registerSyncHandlers, unregisterSyncHandlers } from './sync-handlers'
+export { registerSyncHandlers, unregisterSyncHandlers } from './sync-core-handlers'
 export { registerCryptoHandlers, unregisterCryptoHandlers } from './crypto-handlers'
 export { registerSearchHandlers, unregisterSearchHandlers } from './search-handlers'
 export { registerGraphHandlers, unregisterGraphHandlers } from './graph-handlers'

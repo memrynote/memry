@@ -100,7 +100,7 @@ vi.mock('./properties-handlers', () => ({
   registerPropertiesHandlers: hoisted.registerPropertiesHandlers,
   unregisterPropertiesHandlers: hoisted.unregisterPropertiesHandlers
 }))
-vi.mock('./sync-handlers', () => ({
+vi.mock('./sync-core-handlers', () => ({
   registerSyncHandlers: hoisted.registerSyncHandlers,
   unregisterSyncHandlers: hoisted.unregisterSyncHandlers,
   checkSyncIntegrity: hoisted.checkSyncIntegrity
