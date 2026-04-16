@@ -35,7 +35,14 @@ const canonicalWriteFeatureRoots = [ipcRoot, notesFeatureRoot, journalFeatureRoo
 const syncBoundaryExemptIpcFiles = new Set([
   'apps/desktop/src/main/ipc/account-handlers.ts',
   'apps/desktop/src/main/ipc/crypto-handlers.ts',
-  'apps/desktop/src/main/ipc/sync-handlers.ts'
+  // Phase 2 split: these four files compose what sync-handlers.ts used to
+  // register. They legitimately drive the sync runtime from the IPC boundary
+  // (OAuth loopback, OTP flows, attachment chunking, sync engine control),
+  // so they inherit the exemption the old god-module held.
+  'apps/desktop/src/main/ipc/sync-core-handlers.ts',
+  'apps/desktop/src/main/ipc/auth-oauth-handlers.ts',
+  'apps/desktop/src/main/ipc/auth-device-handlers.ts',
+  'apps/desktop/src/main/ipc/sync-attachment-handlers.ts'
 ])
 const dataOnlySchemaSpecifiers = new Map([
   ['@memry/db-schema/schema/tag-definitions', 'data-db schema import'],
