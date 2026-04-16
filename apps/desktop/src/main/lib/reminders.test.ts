@@ -424,4 +424,85 @@ describe('reminders service', () => {
       sourceId: 'rem-b2'
     })
   })
+
+  describe('target title resolution', () => {
+    it('resolves note title from noteCache for note reminders', () => {
+      // #given
+      seedNoteCache('note-42', 'Quarterly Review')
+      const id = seedReminder({ targetType: 'note', targetId: 'note-42' })
+
+      // #when
+      const reminder = remindersService.getReminder(id)
+
+      // #then
+      expect(reminder).not.toBeNull()
+      expect(reminder?.targetTitle).toBe('Quarterly Review')
+      expect(reminder?.targetExists).toBe(true)
+      expect(reminder?.highlightExists).toBeUndefined()
+    })
+
+    it('uses targetId as title for journal reminders without hitting the index db', () => {
+      // #given
+      const id = seedReminder({ targetType: 'journal', targetId: '2026-04-16' })
+
+      // #when
+      const reminder = remindersService.getReminder(id)
+
+      // #then
+      expect(reminder?.targetTitle).toBe('2026-04-16')
+      expect(reminder?.targetExists).toBe(true)
+      expect(reminder?.highlightExists).toBeUndefined()
+    })
+
+    it('marks note reminders missing from the cache as non-existent', () => {
+      // #given — no seedNoteCache call for this id
+      const id = seedReminder({ targetType: 'note', targetId: 'note-gone' })
+
+      // #when
+      const reminder = remindersService.getReminder(id)
+
+      // #then
+      expect(reminder?.targetTitle).toBeNull()
+      expect(reminder?.targetExists).toBe(false)
+    })
+
+    it('sets highlightExists for highlight reminders when the underlying note is present', () => {
+      // #given
+      seedNoteCache('note-h1', 'Annotated Essay')
+      const id = seedReminder({
+        targetType: 'highlight',
+        targetId: 'note-h1',
+        highlightText: 'key passage',
+        highlightStart: 0,
+        highlightEnd: 11
+      })
+
+      // #when
+      const reminder = remindersService.getReminder(id)
+
+      // #then
+      expect(reminder?.targetTitle).toBe('Annotated Essay')
+      expect(reminder?.targetExists).toBe(true)
+      expect(reminder?.highlightExists).toBe(true)
+    })
+
+    it('clears highlightExists when the underlying note is missing', () => {
+      // #given — highlight reminder whose note id is not in the cache
+      const id = seedReminder({
+        targetType: 'highlight',
+        targetId: 'note-ghost',
+        highlightText: 'orphaned',
+        highlightStart: 0,
+        highlightEnd: 8
+      })
+
+      // #when
+      const reminder = remindersService.getReminder(id)
+
+      // #then
+      expect(reminder?.targetTitle).toBeNull()
+      expect(reminder?.targetExists).toBe(false)
+      expect(reminder?.highlightExists).toBe(false)
+    })
+  })
 })
