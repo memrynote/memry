@@ -1,6 +1,6 @@
 import { BrowserWindow } from 'electron'
 import { store } from './store'
-import { persistKeysAndRegisterDevice } from './ipc/sync-handlers'
+import { persistKeysAndRegisterDevice } from './sync/device-registration'
 import { yDocToMarkdown } from './sync/blocknote-converter'
 import { getCrdtProvider } from './sync/crdt-provider'
 import { getWritebackDebugState } from './sync/crdt-writeback'
