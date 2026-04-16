@@ -1,7 +1,5 @@
-import { BrowserWindow, clipboard, ipcMain, shell } from 'electron'
+import { BrowserWindow, clipboard, ipcMain } from 'electron'
 import fs from 'node:fs'
-import http from 'node:http'
-import https from 'node:https'
 import sodium from 'libsodium-wrappers-sumo'
 
 import { syncDevices } from '@memry/db-schema/schema/sync-devices'
@@ -9,16 +7,9 @@ import { KEYCHAIN_ENTRIES } from '@memry/contracts/crypto'
 import {
   RequestOtpSchema,
   VerifyOtpSchema,
-  ResendOtpSchema,
-  InitOAuthSchema,
-  SetupFirstDeviceSchema,
-  ConfirmRecoveryPhraseSchema
+  ResendOtpSchema
 } from '@memry/contracts/ipc-auth'
-import {
-  OAuthCallbackResponseSchema,
-  RecoveryDataResponseSchema,
-  VerifyOtpResponseSchema
-} from '@memry/contracts/auth-api'
+import { VerifyOtpResponseSchema, RecoveryDataResponseSchema } from '@memry/contracts/auth-api'
 import {
   ApproveLinkingSchema,
   CompleteLinkingQrSchema,
@@ -61,9 +52,6 @@ import { eq, desc, count } from 'drizzle-orm'
 import type { SyncEngine } from '../sync/engine'
 
 import {
-  deriveMasterKey,
-  generateRecoveryPhrase,
-  generateSalt,
   getDevicePublicKey,
   getOrCreateSigningKeyPair,
   getOrDeriveVaultKey,
@@ -83,32 +71,31 @@ import {
   recordUploadedAttachment
 } from '../sync/note-attachment-metadata'
 import { createValidatedHandler, withErrorHandler } from './validate'
-import { getNetworkMonitor, getSyncEngine, startSyncRuntime } from '../sync/runtime'
+import { getNetworkMonitor, getSyncEngine } from '../sync/runtime'
 import { teardownSession } from '../sync/session-teardown'
 import { persistKeysAndRegisterDevice } from '../sync/device-registration'
 import {
   getValidAccessToken,
   retrieveToken,
   storeToken,
-  cancelTokenRefresh,
-  refreshAccessToken
+  cancelTokenRefresh
 } from '../sync/token-manager'
+import {
+  clearOAuthState,
+  performFirstDeviceSetup,
+  registerAuthOAuthHandlers,
+  unregisterAuthOAuthHandlers
+} from './auth-oauth-handlers'
+
+export { seedOAuthSession } from './auth-oauth-handlers'
 
 const logger = createLogger('IPC:Sync')
 
-// ============================================================================
-// Types
-// ============================================================================
-
-interface FirstDeviceSetupResult {
-  deviceId: string
-}
+const SYNC_SERVER_URL = process.env.SYNC_SERVER_URL || 'http://localhost:8787'
 
 // ============================================================================
 // OTP Clipboard Detection State
 // ============================================================================
-
-let pendingRecoveryPhrase: string | null = null
 
 let otpClipboardInterval: ReturnType<typeof setInterval> | null = null
 let otpClipboardTimeout: ReturnType<typeof setTimeout> | null = null
@@ -152,116 +139,11 @@ const stopOtpClipboardDetection = (): void => {
   }
 }
 
-// ============================================================================
-// PKCE State (T072, T072a)
-// ============================================================================
-
-interface OAuthSession {
-  state: string
-  redirectUri: string
-  createdAt: number
-}
-
-const oauthSessions = new Map<string, OAuthSession>()
-const OAUTH_SESSION_TIMEOUT_MS = 10 * 60 * 1000
-let activeLoopbackServer: http.Server | null = null
-
-const SYNC_SERVER_URL = process.env.SYNC_SERVER_URL || 'http://localhost:8787'
-
-const cleanExpiredOAuthSessions = (): void => {
-  const now = Date.now()
-  for (const [state, session] of oauthSessions) {
-    if (now - session.createdAt > OAUTH_SESSION_TIMEOUT_MS) {
-      oauthSessions.delete(state)
-    }
-  }
-}
-
 const parseSyncHistoryDetails = (details: string): unknown => {
   try {
     return JSON.parse(details) as unknown
   } catch {
     return details
-  }
-}
-
-const consumeOAuthSession = (state: string): OAuthSession => {
-  const session = oauthSessions.get(state)
-  if (!session) {
-    throw new Error('Invalid or expired OAuth state parameter')
-  }
-  if (Date.now() - session.createdAt > OAUTH_SESSION_TIMEOUT_MS) {
-    oauthSessions.delete(state)
-    throw new Error('OAuth session expired. Please try again.')
-  }
-  oauthSessions.delete(state)
-  return session
-}
-
-const shutdownLoopbackServer = (): void => {
-  if (activeLoopbackServer) {
-    activeLoopbackServer.close()
-    activeLoopbackServer = null
-  }
-}
-
-const SUCCESS_HTML = `<!DOCTYPE html>
-<html><head><meta charset="utf-8"><title>Memry</title>
-<style>body{font-family:system-ui;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;background:#111;color:#eee}
-.c{text-align:center}h1{font-size:1.5rem;margin-bottom:.5rem}p{color:#999}</style></head>
-<body><div class="c"><h1>Signed in</h1><p>You can close this tab and return to Memry.</p></div></body></html>`
-
-const ERROR_HTML = `<!DOCTYPE html>
-<html><head><meta charset="utf-8"><title>Memry</title>
-<style>body{font-family:system-ui;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;background:#111;color:#eee}
-.c{text-align:center}h1{font-size:1.5rem;margin-bottom:.5rem}p{color:#999}</style></head>
-<body><div class="c"><h1>Authentication failed</h1><p>Authentication was cancelled. You can close this window.</p></div></body></html>`
-
-const startLoopbackServer = (): Promise<{ server: http.Server; port: number }> => {
-  return new Promise((resolve, reject) => {
-    const server = http.createServer()
-    server.listen(0, '127.0.0.1', () => {
-      const addr = server.address()
-      if (!addr || typeof addr === 'string') {
-        server.close()
-        return reject(new Error('Failed to bind loopback server'))
-      }
-      resolve({ server, port: addr.port })
-    })
-    server.on('error', reject)
-  })
-}
-
-const performFirstDeviceSetup = async (setupToken: string): Promise<FirstDeviceSetupResult> => {
-  const { phrase, seed } = await generateRecoveryPhrase()
-  const salt = generateSalt()
-
-  let masterKey: Uint8Array | undefined
-  let signingSecretKey: Uint8Array | undefined
-
-  try {
-    const { masterKey: mk, kdfSalt, keyVerifier } = await deriveMasterKey(seed, salt)
-    masterKey = mk
-
-    const keyPair = await getOrCreateSigningKeyPair()
-    signingSecretKey = keyPair.secretKey
-
-    const deviceId = await persistKeysAndRegisterDevice(
-      masterKey,
-      signingSecretKey,
-      setupToken,
-      kdfSalt,
-      keyVerifier,
-      false,
-      true
-    )
-
-    pendingRecoveryPhrase = phrase
-    return { deviceId }
-  } finally {
-    secureCleanup(seed, salt)
-    if (masterKey) secureCleanup(masterKey)
-    if (signingSecretKey) secureCleanup(signingSecretKey)
   }
 }
 
@@ -412,10 +294,8 @@ const getOrCreateAttachmentService = (): AttachmentSyncService | null => {
 // ============================================================================
 
 export function clearInMemoryAuthState(): void {
-  pendingRecoveryPhrase = null
-  oauthSessions.clear()
   stopOtpClipboardDetection()
-  shutdownLoopbackServer()
+  clearOAuthState()
   if (uploadQueue) {
     uploadQueue.dispose()
     uploadQueue = null
@@ -429,6 +309,8 @@ export function clearInMemoryAuthState(): void {
 
 export function registerSyncHandlers(syncEngine?: SyncEngine): void {
   const resolveSyncEngine = (): SyncEngine | null => syncEngine ?? getSyncEngine()
+
+  registerAuthOAuthHandlers()
 
   // --- OTP Auth Handlers (T054, T055, T056) ---
 
@@ -483,171 +365,6 @@ export function registerSyncHandlers(syncEngine?: SyncEngine): void {
       return postToServer('/auth/otp/resend', { email: input.email })
     })
   )
-
-  // --- OAuth Initiation with Loopback Redirect (T072, T072a) ---
-
-  ipcMain.handle(
-    SYNC_CHANNELS.AUTH_INIT_OAUTH,
-    createValidatedHandler(InitOAuthSchema, async () => {
-      cleanExpiredOAuthSessions()
-      shutdownLoopbackServer()
-
-      const { server, port } = await startLoopbackServer()
-      activeLoopbackServer = server
-
-      const redirectUri = `http://127.0.0.1:${port}/callback`
-
-      const oauthUrl = `${SYNC_SERVER_URL}/auth/oauth/google?redirect_uri=${encodeURIComponent(redirectUri)}`
-      const googleUrl = await new Promise<string>((resolve, reject) => {
-        const mod = oauthUrl.startsWith('https') ? https : http
-        mod
-          .get(oauthUrl, (res) => {
-            res.resume()
-            const location = res.headers.location
-            if (!location) {
-              shutdownLoopbackServer()
-              return reject(new Error('Failed to get OAuth URL from server'))
-            }
-            resolve(location)
-          })
-          .on('error', (err) => {
-            shutdownLoopbackServer()
-            reject(err)
-          })
-      })
-
-      const parsedUrl = new URL(googleUrl)
-      const state = parsedUrl.searchParams.get('state')
-      if (!state) {
-        shutdownLoopbackServer()
-        throw new Error('Missing state in OAuth URL')
-      }
-
-      oauthSessions.set(state, { state, redirectUri, createdAt: Date.now() })
-
-      server.on('request', (req, res) => {
-        const reqUrl = new URL(req.url ?? '/', `http://127.0.0.1:${port}`)
-        if (reqUrl.pathname !== '/callback') {
-          res.writeHead(404)
-          res.end()
-          return
-        }
-
-        const oauthError = reqUrl.searchParams.get('error')
-        if (oauthError) {
-          res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' })
-          res.end(ERROR_HTML)
-
-          const cbState = reqUrl.searchParams.get('state')
-          if (cbState) oauthSessions.delete(cbState)
-
-          for (const win of BrowserWindow.getAllWindows()) {
-            win.webContents.send(SYNC_EVENTS.OAUTH_ERROR, { error: oauthError })
-          }
-
-          shutdownLoopbackServer()
-          return
-        }
-
-        const code = reqUrl.searchParams.get('code')
-        const cbState = reqUrl.searchParams.get('state')
-
-        res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' })
-        res.end(SUCCESS_HTML)
-
-        if (code && cbState) {
-          for (const win of BrowserWindow.getAllWindows()) {
-            win.webContents.send(SYNC_EVENTS.OAUTH_CALLBACK, { code, state: cbState })
-          }
-        }
-
-        shutdownLoopbackServer()
-      })
-
-      setTimeout(shutdownLoopbackServer, OAUTH_SESSION_TIMEOUT_MS)
-
-      await shell.openExternal(parsedUrl.toString())
-
-      return { state }
-    })
-  )
-
-  // --- Token Refresh (T073, T073a, T073c) ---
-
-  ipcMain.handle(SYNC_CHANNELS.AUTH_REFRESH_TOKEN, async () => {
-    const success = await refreshAccessToken()
-    return { success, error: success ? undefined : 'Token refresh failed' }
-  })
-
-  // --- First Device Setup via OAuth (T057) ---
-
-  ipcMain.handle(
-    SYNC_CHANNELS.SETUP_FIRST_DEVICE,
-    createValidatedHandler(SetupFirstDeviceSchema, async (input) => {
-      const session = consumeOAuthSession(input.state)
-
-      const raw = await postToServer<unknown>(`/auth/oauth/${input.provider}/callback`, {
-        code: input.oauthToken,
-        state: input.state,
-        redirectUri: session.redirectUri
-      })
-      const serverResponse = OAuthCallbackResponseSchema.parse(raw)
-
-      if (!serverResponse.setupToken) {
-        throw new Error('OAuth callback missing setupToken')
-      }
-
-      await storeToken(KEYCHAIN_ENTRIES.SETUP_TOKEN, serverResponse.setupToken)
-
-      if (serverResponse.needsSetup) {
-        const { deviceId } = await performFirstDeviceSetup(serverResponse.setupToken)
-
-        return {
-          success: true,
-          needsRecoverySetup: true,
-          deviceId
-        }
-      }
-
-      return { success: true, needsRecoverySetup: true, needsRecoveryInput: true }
-    })
-  )
-
-  // --- Recovery Phrase Confirmation (T062) ---
-
-  ipcMain.handle(
-    SYNC_CHANNELS.CONFIRM_RECOVERY_PHRASE,
-    createValidatedHandler(ConfirmRecoveryPhraseSchema, async (input) => {
-      if (input.confirmed) {
-        store.set('sync', { ...store.get('sync'), recoveryPhraseConfirmed: true })
-        const engine = getSyncEngine()
-        if (engine) {
-          void engine.activate()
-        } else {
-          void startSyncRuntime()
-        }
-      }
-      return { success: true }
-    })
-  )
-
-  ipcMain.handle(SYNC_CHANNELS.GET_RECOVERY_PHRASE, () => {
-    const phrase = pendingRecoveryPhrase
-    pendingRecoveryPhrase = null
-    return phrase
-  })
-
-  // --- Logout (clears all local auth state) ---
-
-  ipcMain.handle(SYNC_CHANNELS.AUTH_LOGOUT, async () => {
-    const result = await teardownSession('logout')
-    return {
-      success: true,
-      ...(result.keychainFailures.length > 0 && {
-        keychainWarning: `Failed to remove: ${result.keychainFailures.join(', ')}`
-      })
-    }
-  })
 
   // --- Not-yet-implemented handlers ---
 
@@ -1099,13 +816,12 @@ export function registerSyncHandlers(syncEngine?: SyncEngine): void {
 }
 
 export function unregisterSyncHandlers(): void {
+  unregisterAuthOAuthHandlers()
+
   attachmentEvents.removeAllListeners('saved')
   attachmentEvents.removeAllListeners('download-needed')
   stopOtpClipboardDetection()
   cancelTokenRefresh()
-  pendingRecoveryPhrase = null
-  oauthSessions.clear()
-  shutdownLoopbackServer()
   uploadQueue?.dispose()
   uploadQueue = null
   attachmentService = null
@@ -1113,14 +829,8 @@ export function unregisterSyncHandlers(): void {
   ipcMain.removeHandler(SYNC_CHANNELS.AUTH_REQUEST_OTP)
   ipcMain.removeHandler(SYNC_CHANNELS.AUTH_VERIFY_OTP)
   ipcMain.removeHandler(SYNC_CHANNELS.AUTH_RESEND_OTP)
-  ipcMain.removeHandler(SYNC_CHANNELS.AUTH_INIT_OAUTH)
-  ipcMain.removeHandler(SYNC_CHANNELS.AUTH_REFRESH_TOKEN)
 
-  ipcMain.removeHandler(SYNC_CHANNELS.SETUP_FIRST_DEVICE)
   ipcMain.removeHandler(SYNC_CHANNELS.SETUP_NEW_ACCOUNT)
-  ipcMain.removeHandler(SYNC_CHANNELS.CONFIRM_RECOVERY_PHRASE)
-  ipcMain.removeHandler(SYNC_CHANNELS.GET_RECOVERY_PHRASE)
-  ipcMain.removeHandler(SYNC_CHANNELS.AUTH_LOGOUT)
 
   ipcMain.removeHandler(SYNC_CHANNELS.GENERATE_LINKING_QR)
   ipcMain.removeHandler(SYNC_CHANNELS.LINK_VIA_QR)
@@ -1139,6 +849,9 @@ export function unregisterSyncHandlers(): void {
   ipcMain.removeHandler(SYNC_CHANNELS.GET_QUEUE_SIZE)
   ipcMain.removeHandler(SYNC_CHANNELS.PAUSE)
   ipcMain.removeHandler(SYNC_CHANNELS.RESUME)
+  ipcMain.removeHandler(SYNC_CHANNELS.CHECK_DEVICE_STATUS)
+  ipcMain.removeHandler(SYNC_CHANNELS.EMERGENCY_WIPE)
+  ipcMain.removeHandler(SYNC_CHANNELS.GET_QUARANTINED_ITEMS)
 
   ipcMain.removeHandler(SYNC_CHANNELS.UPDATE_SYNCED_SETTING)
   ipcMain.removeHandler(SYNC_CHANNELS.GET_SYNCED_SETTINGS)
@@ -1150,8 +863,4 @@ export function unregisterSyncHandlers(): void {
   ipcMain.removeHandler(SYNC_CHANNELS.GET_DOWNLOAD_PROGRESS)
 
   logger.info('Sync handlers unregistered')
-}
-
-export function seedOAuthSession(state: string, redirectUri: string): void {
-  oauthSessions.set(state, { state, redirectUri, createdAt: Date.now() })
 }

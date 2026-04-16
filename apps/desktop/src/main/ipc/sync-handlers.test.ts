@@ -154,7 +154,17 @@ vi.mock('../sync/settings-sync', () => ({
 }))
 
 vi.mock('../sync/runtime', () => ({
-  getSyncEngine: vi.fn().mockReturnValue(null)
+  getSyncEngine: vi.fn().mockReturnValue(null),
+  startSyncRuntime: vi.fn(),
+  getNetworkMonitor: vi.fn().mockReturnValue(null)
+}))
+
+vi.mock('../sync/session-teardown', () => ({
+  teardownSession: vi.fn().mockResolvedValue({ success: true, keychainFailures: [] })
+}))
+
+vi.mock('../sync/device-registration', () => ({
+  persistKeysAndRegisterDevice: vi.fn().mockResolvedValue('mock-device-id')
 }))
 
 const mockGetValidAccessToken = vi.fn()
@@ -398,211 +408,6 @@ describe('sync IPC handlers', () => {
           code: 'abc'
         })
       ).rejects.toThrow('Validation failed')
-    })
-  })
-
-  // --------------------------------------------------------------------------
-  // T057: Setup First Device (OAuth)
-  // --------------------------------------------------------------------------
-
-  describe('SETUP_FIRST_DEVICE', () => {
-    it('performs setup via OAuth when needsSetup is true', async () => {
-      // #given
-      registerSyncHandlers()
-      seedOAuthSession('test-state', 'http://127.0.0.1:9999/callback')
-      const fakeKey = new Uint8Array(32).fill(1)
-      const fakeSecretKey = new Uint8Array(64).fill(2)
-      const fakeSalt = new Uint8Array(16).fill(3)
-      const fakeSeed = new Uint8Array(64).fill(4)
-
-      mockPostToServer
-        .mockResolvedValueOnce({
-          success: true,
-          userId: 'user-1',
-          isNewUser: true,
-          needsSetup: true,
-          setupToken: 'oauth-setup-token'
-        })
-        .mockResolvedValueOnce({
-          success: true,
-          deviceId: 'dev-oauth',
-          accessToken: 'at',
-          refreshToken: 'rt'
-        })
-        .mockResolvedValueOnce({ success: true })
-
-      mockGenerateRecoveryPhrase.mockResolvedValue({
-        phrase: 'oauth recovery phrase',
-        seed: fakeSeed
-      })
-      mockGenerateSalt.mockReturnValue(fakeSalt)
-      mockDeriveMasterKey.mockResolvedValue({
-        masterKey: fakeKey,
-        kdfSalt: 'salt',
-        keyVerifier: 'verifier'
-      })
-      mockDeriveKey.mockResolvedValue(new Uint8Array(32))
-      mockGetOrCreateSigningKeyPair.mockResolvedValue({
-        deviceId: 'dev-oauth',
-        publicKey: new Uint8Array(32),
-        secretKey: fakeSecretKey
-      })
-      mockRetrieveKey.mockResolvedValue(fakeSecretKey)
-      mockGetDevicePublicKey.mockReturnValue(new Uint8Array(32))
-
-      // #when
-      const result = await invokeHandler(SYNC_CHANNELS.SETUP_FIRST_DEVICE, {
-        oauthToken: 'google-code',
-        provider: 'google',
-        state: 'test-state'
-      })
-
-      // #then
-      expect(result).toEqual({
-        success: true,
-        needsRecoverySetup: true,
-        deviceId: 'dev-oauth'
-      })
-    })
-
-    it('returns recovery input needed when setup not needed', async () => {
-      // #given
-      registerSyncHandlers()
-      seedOAuthSession('test-state-2', 'http://127.0.0.1:9999/callback')
-      mockPostToServer.mockResolvedValue({
-        success: true,
-        userId: 'user-1',
-        isNewUser: false,
-        needsSetup: false,
-        setupToken: 'token'
-      })
-
-      // #when
-      const result = await invokeHandler(SYNC_CHANNELS.SETUP_FIRST_DEVICE, {
-        oauthToken: 'google-code',
-        provider: 'google',
-        state: 'test-state-2'
-      })
-
-      // #then
-      expect(result).toEqual({ success: true, needsRecoverySetup: true, needsRecoveryInput: true })
-    })
-
-    it('does not activate sync engine during first device setup', async () => {
-      // #given
-      const mockActivate = vi.fn().mockResolvedValue(undefined)
-      mockGetSyncEngine.mockReturnValue({ activate: mockActivate } as never)
-      registerSyncHandlers()
-      seedOAuthSession('test-state-3', 'http://127.0.0.1:9999/callback')
-      const fakeKey = new Uint8Array(32).fill(1)
-      const fakeSecretKey = new Uint8Array(64).fill(2)
-      const fakeSalt = new Uint8Array(16).fill(3)
-      const fakeSeed = new Uint8Array(64).fill(4)
-
-      mockPostToServer
-        .mockResolvedValueOnce({
-          success: true,
-          userId: 'user-1',
-          isNewUser: true,
-          needsSetup: true,
-          setupToken: 'setup-token'
-        })
-        .mockResolvedValueOnce({
-          success: true,
-          deviceId: 'dev-1',
-          accessToken: 'at',
-          refreshToken: 'rt'
-        })
-        .mockResolvedValueOnce({ success: true })
-
-      mockGenerateRecoveryPhrase.mockResolvedValue({ phrase: 'test phrase', seed: fakeSeed })
-      mockGenerateSalt.mockReturnValue(fakeSalt)
-      mockDeriveMasterKey.mockResolvedValue({
-        masterKey: fakeKey,
-        kdfSalt: 'salt',
-        keyVerifier: 'verifier'
-      })
-      mockDeriveKey.mockResolvedValue(new Uint8Array(32))
-      mockGetOrCreateSigningKeyPair.mockResolvedValue({
-        deviceId: 'dev-1',
-        publicKey: new Uint8Array(32),
-        secretKey: fakeSecretKey
-      })
-      mockRetrieveKey.mockResolvedValue(fakeSecretKey)
-      mockGetDevicePublicKey.mockReturnValue(new Uint8Array(32))
-
-      // #when
-      await invokeHandler(SYNC_CHANNELS.SETUP_FIRST_DEVICE, {
-        oauthToken: 'google-code',
-        provider: 'google',
-        state: 'test-state-3'
-      })
-
-      // #then
-      expect(mockActivate).not.toHaveBeenCalled()
-    })
-  })
-
-  // --------------------------------------------------------------------------
-  // T062: Recovery Phrase Confirmation
-  // --------------------------------------------------------------------------
-
-  describe('CONFIRM_RECOVERY_PHRASE', () => {
-    it('persists confirmation when confirmed is true', async () => {
-      // #given
-      registerSyncHandlers()
-
-      // #when
-      const result = await invokeHandler(SYNC_CHANNELS.CONFIRM_RECOVERY_PHRASE, {
-        confirmed: true
-      })
-
-      // #then
-      expect(result).toEqual({ success: true })
-      expect(mockStoreSet).toHaveBeenCalledWith(
-        'sync',
-        expect.objectContaining({ recoveryPhraseConfirmed: true })
-      )
-    })
-
-    it('does not persist when confirmed is false', async () => {
-      // #given
-      registerSyncHandlers()
-
-      // #when
-      const result = await invokeHandler(SYNC_CHANNELS.CONFIRM_RECOVERY_PHRASE, {
-        confirmed: false
-      })
-
-      // #then
-      expect(result).toEqual({ success: true })
-      expect(mockStoreSet).not.toHaveBeenCalled()
-    })
-
-    it('activates sync engine when confirmed is true', async () => {
-      // #given
-      const mockActivate = vi.fn().mockResolvedValue(undefined)
-      mockGetSyncEngine.mockReturnValue({ activate: mockActivate } as never)
-      registerSyncHandlers()
-
-      // #when
-      await invokeHandler(SYNC_CHANNELS.CONFIRM_RECOVERY_PHRASE, { confirmed: true })
-
-      // #then
-      expect(mockActivate).toHaveBeenCalledOnce()
-    })
-
-    it('does not activate sync engine when confirmed is false', async () => {
-      // #given
-      const mockActivate = vi.fn().mockResolvedValue(undefined)
-      mockGetSyncEngine.mockReturnValue({ activate: mockActivate } as never)
-      registerSyncHandlers()
-
-      // #when
-      await invokeHandler(SYNC_CHANNELS.CONFIRM_RECOVERY_PHRASE, { confirmed: false })
-
-      // #then
-      expect(mockActivate).not.toHaveBeenCalled()
     })
   })
 
