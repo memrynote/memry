@@ -3,7 +3,7 @@ import fs from 'fs'
 import os from 'os'
 import * as path from 'path'
 import type { ApplyContext } from './types'
-import type { NoteSyncPayload } from '@memry/contracts/sync-payloads'
+import { makeCtx, makeNotePayload } from '@tests/utils/fixtures/sync-item-handlers'
 
 const VAULT_ROOT = fs.mkdtempSync(path.join(os.tmpdir(), 'memry-note-handler-'))
 const NOTES_DIR = path.join(VAULT_ROOT, 'notes')
@@ -72,25 +72,6 @@ import { noteHandler } from './note-handler'
 import { syncNoteToCache } from '../../vault/note-sync'
 import { getNoteCacheByPath } from '@main/database/queries/notes'
 
-function makeCtx(): ApplyContext {
-  return {
-    db: {} as ApplyContext['db'],
-    emit: vi.fn()
-  }
-}
-
-function makePayload(overrides: Partial<NoteSyncPayload> = {}): NoteSyncPayload {
-  return {
-    title: 'a1',
-    content: 'test content',
-    folderPath: 'a1',
-    createdAt: '2024-01-01T00:00:00.000Z',
-    modifiedAt: '2024-01-01T00:00:00.000Z',
-    tags: [],
-    ...overrides
-  }
-}
-
 describe('noteHandler.applyUpsert — path collision', () => {
   let ctx: ApplyContext
   const takenRelPaths = new Set<string>()
@@ -121,8 +102,8 @@ describe('noteHandler.applyUpsert — path collision', () => {
 
   it('assigns unique paths when two notes share the same title and folder', () => {
     // #given — two sync payloads with identical title + folder
-    const payloadA = makePayload()
-    const payloadB = makePayload()
+    const payloadA = makeNotePayload()
+    const payloadB = makeNotePayload()
 
     // #when — both are applied in sequence
     const resultA = noteHandler.applyUpsert(ctx, 'note-1', payloadA, {})
@@ -146,7 +127,7 @@ describe('noteHandler.applyUpsert — path collision', () => {
     takenRelPaths.add(path.join('notes', 'a1', 'a1.md'))
 
     // #when
-    const result = noteHandler.applyUpsert(ctx, 'note-new', makePayload(), {})
+    const result = noteHandler.applyUpsert(ctx, 'note-new', makeNotePayload(), {})
 
     // #then
     expect(result).toBe('applied')
@@ -161,7 +142,7 @@ describe('noteHandler.applyUpsert — path collision', () => {
     takenRelPaths.add(path.join('notes', 'a1', 'a1 1.md'))
 
     // #when
-    const result = noteHandler.applyUpsert(ctx, 'note-new', makePayload(), {})
+    const result = noteHandler.applyUpsert(ctx, 'note-new', makeNotePayload(), {})
 
     // #then
     expect(result).toBe('applied')
