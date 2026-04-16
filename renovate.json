@@ -1,0 +1,53 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:recommended", ":semanticCommits"],
+  "schedule": ["before 6am on monday"],
+  "timezone": "UTC",
+  "labels": ["dependencies"],
+  "rangeStrategy": "bump",
+  "postUpdateOptions": ["pnpmDedupe"],
+  "packageRules": [
+    {
+      "matchUpdateTypes": ["patch"],
+      "automerge": true,
+      "automergeType": "branch"
+    },
+    {
+      "matchPackageNames": ["/^@radix-ui//"],
+      "groupName": "radix-ui"
+    },
+    {
+      "matchPackageNames": ["/^@fontsource-variable//", "/^@fontsource//"],
+      "groupName": "fontsource"
+    },
+    {
+      "matchPackageNames": ["/^@dnd-kit//"],
+      "groupName": "dnd-kit"
+    },
+    {
+      "matchPackageNames": ["electron", "electron-builder", "electron-updater", "@electron/rebuild"],
+      "groupName": "electron-core",
+      "automerge": false
+    },
+    {
+      "matchPackageNames": ["better-sqlite3", "keytar", "sodium-native", "sqlite-vec", "classic-level"],
+      "groupName": "native-modules",
+      "automerge": false,
+      "minimumReleaseAge": "7 days"
+    },
+    {
+      "matchPackageNames": [
+        "libsodium-wrappers",
+        "libsodium-wrappers-sumo",
+        "drizzle-orm",
+        "drizzle-kit"
+      ],
+      "automerge": false,
+      "minimumReleaseAge": "7 days"
+    }
+  ],
+  "vulnerabilityAlerts": {
+    "enabled": true,
+    "labels": ["security"]
+  }
+}
