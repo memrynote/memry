@@ -10,14 +10,14 @@ import type { VectorClock } from '@memry/contracts/sync-api'
 import type { SyncQueueManager } from '../queue'
 import { increment } from '../vector-clock'
 import { createLogger } from '../../lib/logger'
-import { resolveClockConflict } from './types'
-import type { SyncItemHandler, ApplyContext, ApplyResult, DrizzleDb } from './types'
+import { BaseItemHandler } from './base-handler'
+import type { ApplyContext, ApplyResult, DrizzleDb } from './types'
 
 const log = createLogger('TagDefinitionHandler')
 
-export const tagDefinitionHandler: SyncItemHandler<TagDefinitionSyncPayload> = {
-  type: 'tag_definition',
-  schema: TagDefinitionSyncPayloadSchema,
+class TagDefinitionHandler extends BaseItemHandler<TagDefinitionSyncPayload> {
+  readonly type = 'tag_definition' as const
+  readonly schema = TagDefinitionSyncPayloadSchema
 
   applyUpsert(
     ctx: ApplyContext,
@@ -31,7 +31,7 @@ export const tagDefinitionHandler: SyncItemHandler<TagDefinitionSyncPayload> = {
       const now = utcNow()
 
       if (existing) {
-        const resolution = resolveClockConflict(existing.clock as VectorClock | null, remoteClock)
+        const resolution = this.resolveClock(existing.clock as VectorClock | null, remoteClock)
         if (resolution.action === 'skip') {
           log.info('Skipping remote tag definition update, local is newer', { itemId })
           return 'skipped'
@@ -66,7 +66,7 @@ export const tagDefinitionHandler: SyncItemHandler<TagDefinitionSyncPayload> = {
       ctx.emit('notes:tags-changed', {})
       return 'applied'
     })
-  },
+  }
 
   applyDelete(ctx: ApplyContext, itemId: string, clock?: VectorClock): 'applied' | 'skipped' {
     const existing = ctx.db
@@ -77,7 +77,7 @@ export const tagDefinitionHandler: SyncItemHandler<TagDefinitionSyncPayload> = {
     if (!existing) return 'skipped'
 
     if (clock && existing.clock) {
-      const resolution = resolveClockConflict(existing.clock as VectorClock | null, clock)
+      const resolution = this.resolveClock(existing.clock as VectorClock | null, clock)
       if (resolution.action === 'skip' || resolution.action === 'merge') {
         log.info('Skipping remote tag definition delete, local has unseen changes', { itemId })
         return 'skipped'
@@ -88,13 +88,13 @@ export const tagDefinitionHandler: SyncItemHandler<TagDefinitionSyncPayload> = {
     ctx.emit(TagsChannels.events.DELETED, { tag: itemId })
     ctx.emit('notes:tags-changed', {})
     return 'applied'
-  },
+  }
 
   fetchLocal(db: DrizzleDb, itemId: string): Record<string, unknown> | undefined {
     return db.select().from(tagDefinitions).where(eq(tagDefinitions.name, itemId)).get() as
       | Record<string, unknown>
       | undefined
-  },
+  }
 
   buildPushPayload(
     db: DrizzleDb,
@@ -111,7 +111,7 @@ export const tagDefinitionHandler: SyncItemHandler<TagDefinitionSyncPayload> = {
       createdAt: tag.createdAt
     }
     return JSON.stringify(payload)
-  },
+  }
 
   seedUnclocked(db: DrizzleDb, deviceId: string, queue: SyncQueueManager): number {
     const items = db.select().from(tagDefinitions).where(isNull(tagDefinitions.clock)).all()
@@ -129,3 +129,5 @@ export const tagDefinitionHandler: SyncItemHandler<TagDefinitionSyncPayload> = {
     return items.length
   }
 }
+
+export const tagDefinitionHandler = new TagDefinitionHandler()

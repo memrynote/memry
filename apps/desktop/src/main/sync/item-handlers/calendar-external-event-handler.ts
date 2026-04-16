@@ -9,15 +9,15 @@ import type { VectorClock } from '@memry/contracts/sync-api'
 import type { SyncQueueManager } from '../queue'
 import { increment } from '../vector-clock'
 import { createLogger } from '../../lib/logger'
-import { resolveClockConflict } from './types'
-import type { ApplyContext, ApplyResult, DrizzleDb, SyncItemHandler } from './types'
+import { BaseItemHandler } from './base-handler'
+import type { ApplyContext, ApplyResult, DrizzleDb } from './types'
 
 const log = createLogger('CalendarExternalEventHandler')
 const CALENDAR_CHANGED = 'calendar:changed'
 
-export const calendarExternalEventHandler: SyncItemHandler<CalendarExternalEventSyncPayload> = {
-  type: 'calendar_external_event',
-  schema: CalendarExternalEventSyncPayloadSchema,
+class CalendarExternalEventHandler extends BaseItemHandler<CalendarExternalEventSyncPayload> {
+  readonly type = 'calendar_external_event' as const
+  readonly schema = CalendarExternalEventSyncPayloadSchema
 
   applyUpsert(
     ctx: ApplyContext,
@@ -35,7 +35,7 @@ export const calendarExternalEventHandler: SyncItemHandler<CalendarExternalEvent
       const now = utcNow()
 
       if (existing) {
-        const resolution = resolveClockConflict(existing.clock as VectorClock | null, remoteClock)
+        const resolution = this.resolveClock(existing.clock as VectorClock | null, remoteClock)
         if (resolution.action === 'skip') {
           log.info('Skipping remote calendar external event update, local is newer', { itemId })
           return 'skipped'
@@ -95,7 +95,7 @@ export const calendarExternalEventHandler: SyncItemHandler<CalendarExternalEvent
       ctx.emit(CALENDAR_CHANGED, { entityType: 'calendar_external_event', id: itemId })
       return 'applied'
     })
-  },
+  }
 
   applyDelete(ctx: ApplyContext, itemId: string, clock?: VectorClock): 'applied' | 'skipped' {
     const existing = ctx.db
@@ -106,7 +106,7 @@ export const calendarExternalEventHandler: SyncItemHandler<CalendarExternalEvent
     if (!existing) return 'skipped'
 
     if (clock && existing.clock) {
-      const resolution = resolveClockConflict(existing.clock as VectorClock | null, clock)
+      const resolution = this.resolveClock(existing.clock as VectorClock | null, clock)
       if (resolution.action === 'skip' || resolution.action === 'merge') {
         log.info('Skipping remote calendar external event delete, local has unseen changes', {
           itemId
@@ -118,7 +118,7 @@ export const calendarExternalEventHandler: SyncItemHandler<CalendarExternalEvent
     ctx.db.delete(calendarExternalEvents).where(eq(calendarExternalEvents.id, itemId)).run()
     ctx.emit(CALENDAR_CHANGED, { entityType: 'calendar_external_event', id: itemId })
     return 'applied'
-  },
+  }
 
   fetchLocal(db: DrizzleDb, itemId: string): Record<string, unknown> | undefined {
     return db
@@ -126,7 +126,7 @@ export const calendarExternalEventHandler: SyncItemHandler<CalendarExternalEvent
       .from(calendarExternalEvents)
       .where(eq(calendarExternalEvents.id, itemId))
       .get() as Record<string, unknown> | undefined
-  },
+  }
 
   buildPushPayload(db: DrizzleDb, itemId: string): string | null {
     const row = db
@@ -156,7 +156,7 @@ export const calendarExternalEventHandler: SyncItemHandler<CalendarExternalEvent
       modifiedAt: row.modifiedAt
     }
     return JSON.stringify(payload)
-  },
+  }
 
   seedUnclocked(db: DrizzleDb, deviceId: string, queue: SyncQueueManager): number {
     const items = db
@@ -181,3 +181,5 @@ export const calendarExternalEventHandler: SyncItemHandler<CalendarExternalEvent
     return items.length
   }
 }
+
+export const calendarExternalEventHandler = new CalendarExternalEventHandler()

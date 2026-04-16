@@ -45,14 +45,14 @@ import {
   setNoteProperties
 } from '@main/database/queries/notes'
 import { createLogger } from '../../lib/logger'
-import { resolveClockConflict } from './types'
+import { BaseItemHandler } from './base-handler'
 import { applyPinnedTags } from './note-pin-helpers'
 import {
   buildNotePushPayload,
   fetchLocalNote,
   seedUnclockedNotes
 } from './note-handler-sync-helpers'
-import type { SyncItemHandler, ApplyContext, ApplyResult, DrizzleDb } from './types'
+import type { ApplyContext, ApplyResult, DrizzleDb } from './types'
 
 const log = createLogger('NoteHandler')
 
@@ -76,9 +76,9 @@ async function removeEmptyParents(dir: string, stopAt: string): Promise<void> {
   }
 }
 
-export const noteHandler: SyncItemHandler<NoteSyncPayload> = {
-  type: 'note',
-  schema: NoteSyncPayloadSchema,
+class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
+  readonly type = 'note' as const
+  readonly schema = NoteSyncPayloadSchema
 
   applyUpsert(
     ctx: ApplyContext,
@@ -93,7 +93,7 @@ export const noteHandler: SyncItemHandler<NoteSyncPayload> = {
     const existing = getNoteMetadataById(ctx.db, itemId)
 
     if (existing) {
-      const resolution = resolveClockConflict(existing.clock, remoteClock)
+      const resolution = this.resolveClock(existing.clock, remoteClock)
       if (resolution.action === 'skip') {
         log.info('Skipping remote note update, local is newer', { itemId })
         return 'skipped'
@@ -465,7 +465,7 @@ export const noteHandler: SyncItemHandler<NoteSyncPayload> = {
       source: 'sync'
     })
     return 'applied'
-  },
+  }
 
   applyDelete(ctx: ApplyContext, itemId: string, clock?: VectorClock): 'applied' | 'skipped' {
     const indexDb = getIndexDatabase()
@@ -473,7 +473,7 @@ export const noteHandler: SyncItemHandler<NoteSyncPayload> = {
     if (!existing) return 'skipped'
 
     if (clock && existing.clock) {
-      const resolution = resolveClockConflict(existing.clock, clock)
+      const resolution = this.resolveClock(existing.clock, clock)
       if (resolution.action === 'skip' || resolution.action === 'merge') {
         log.info('Skipping remote note delete, local has unseen changes', { itemId })
         return 'skipped'
@@ -490,11 +490,11 @@ export const noteHandler: SyncItemHandler<NoteSyncPayload> = {
       log.error('Failed to delete synced note file', { itemId, error: err })
     })
     return 'applied'
-  },
+  }
 
   fetchLocal(_db: DrizzleDb, itemId: string): Record<string, unknown> | undefined {
     return fetchLocalNote(itemId)
-  },
+  }
 
   buildPushPayload(
     _db: DrizzleDb,
@@ -503,9 +503,11 @@ export const noteHandler: SyncItemHandler<NoteSyncPayload> = {
     operation: string
   ): string | null {
     return buildNotePushPayload(itemId, operation)
-  },
+  }
 
   seedUnclocked(_db: DrizzleDb, deviceId: string, queue: SyncQueueManager): number {
     return seedUnclockedNotes(deviceId, queue)
   }
 }
+
+export const noteHandler = new NoteHandler()
