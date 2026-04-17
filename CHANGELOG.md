@@ -5,6 +5,16 @@ Format: weekly entries grouped by feature area.
 
 ---
 
+## 2026-04-18 — Calendar Day View All-Day Strip + E2E Stabilization
+
+### Fixed
+- Restore visibility of all-day items (tasks with `due_date` only, reminders on date targets, user-created all-day events) in Calendar Day view. Render a compact "All day" strip above the hour grid so projected and user-created all-day items no longer disappear after PR #266 moved the in-page right sidebar out. Fixes shard 1/3 e2e regressions in `calendar.e2e.ts` and `calendar-comprehensive.e2e.ts`
+
+### Changed
+- Replace the fixed 5×30s convergence loop in `body-crdt-coverage-variants` V6 with `expect.poll` (120s timeout, backoff intervals) so CI xvfb load no longer exhausts the loop before noteB replicates to device A
+
+---
+
 ## 2026-04-18 — Calendar Week View Infinite Horizontal Scroll
 
 ### Added
