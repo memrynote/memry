@@ -93,20 +93,29 @@ export async function openNoteByTitle(page: Page, title: string): Promise<void> 
   await openNoteInUi(page, note)
 }
 
+// Sync-dependent polls need more headroom than the default 10 s expect timeout
+// because they depend on cross-device replication landing in B's index.
+// Locally the post-sync poll resolves in ~100 ms, but CI runners have been
+// observed to take >10 s under load (manual-sync-smoke.e2e.ts shard 2/3).
+const NOTE_LIST_POLL_TIMEOUT_MS = 30_000
+
 export async function getNoteHandleByTitle(
   page: Page,
   title: string
 ): Promise<{ id: string; title: string; emoji?: string | null }> {
   let note: { id: string; title: string; emoji?: string | null } | null = null
   await expect
-    .poll(async () => {
-      note = await page.evaluate(async (expectedTitle) => {
-        const result = await window.api.notes.list({})
-        const match = result.notes.find((item) => item.title === expectedTitle)
-        return match ? { id: match.id, title: match.title, emoji: match.emoji ?? null } : null
-      }, title)
-      return note !== null
-    })
+    .poll(
+      async () => {
+        note = await page.evaluate(async (expectedTitle) => {
+          const result = await window.api.notes.list({})
+          const match = result.notes.find((item) => item.title === expectedTitle)
+          return match ? { id: match.id, title: match.title, emoji: match.emoji ?? null } : null
+        }, title)
+        return note !== null
+      },
+      { timeout: NOTE_LIST_POLL_TIMEOUT_MS }
+    )
     .toBe(true)
 
   return note!
