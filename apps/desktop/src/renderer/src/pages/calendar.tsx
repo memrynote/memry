@@ -11,6 +11,7 @@ import {
   addLocalYears,
   getMonthGridDays,
   getStartOfWeek,
+  localInputToIso,
   parseLocalDate,
   toLocalDateInputValue,
   toLocalDateString,
@@ -112,26 +113,14 @@ function createDraftFromItem(item: CalendarProjectionItem): CalendarEventDraft {
 }
 
 function toCreatePayload(draft: CalendarEventDraft) {
-  if (draft.isAllDay) {
-    return {
-      title: draft.title.trim(),
-      description: draft.description.trim() || null,
-      location: draft.location.trim() || null,
-      startAt: new Date(`${draft.startAt}T00:00:00`).toISOString(),
-      endAt: draft.endAt ? new Date(`${draft.endAt}T00:00:00`).toISOString() : null,
-      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC',
-      isAllDay: true
-    }
-  }
-
   return {
     title: draft.title.trim(),
     description: draft.description.trim() || null,
     location: draft.location.trim() || null,
-    startAt: new Date(draft.startAt).toISOString(),
-    endAt: draft.endAt ? new Date(draft.endAt).toISOString() : null,
+    startAt: localInputToIso(draft.startAt, draft.isAllDay),
+    endAt: draft.endAt ? localInputToIso(draft.endAt, draft.isAllDay) : null,
     timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC',
-    isAllDay: false
+    isAllDay: draft.isAllDay
   }
 }
 
@@ -275,12 +264,8 @@ export function CalendarPage({ className: _className }: CalendarPageProps): Reac
   }
 
   const handleQuickSave = async (draft: CalendarEventDraft) => {
-    try {
-      await calendarService.createEvent(toCreatePayload(draft))
-      await queryClient.invalidateQueries({ queryKey: ['calendar', 'range'] })
-    } catch {
-      // popover stays open on error — user can retry
-    }
+    await calendarService.createEvent(toCreatePayload(draft))
+    await queryClient.invalidateQueries({ queryKey: ['calendar', 'range'] })
   }
 
   const handleCreateEventWithRange = (startAt: string, endAt: string, isAllDay: boolean) => {
@@ -337,7 +322,7 @@ export function CalendarPage({ className: _className }: CalendarPageProps): Reac
       }
       onAnchorChange={(date) => setAnchorDate(date)}
       onEditorSave={() => void handleSaveEditor()}
-      onQuickSave={(draft) => void handleQuickSave(draft)}
+      onQuickSave={handleQuickSave}
       onCreateEventWithRange={handleCreateEventWithRange}
     />
   )

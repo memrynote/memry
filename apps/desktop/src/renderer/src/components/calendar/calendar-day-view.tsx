@@ -29,7 +29,7 @@ interface CalendarDayViewProps {
   items: CalendarProjectionItem[]
   onSelectItem?: (item: CalendarProjectionItem) => void
   onAnchorChange?: (date: string) => void
-  onQuickSave?: (draft: CalendarEventDraft) => void
+  onQuickSave?: (draft: CalendarEventDraft) => void | Promise<void>
   onCreateEventWithRange?: (startAt: string, endAt: string, isAllDay: boolean) => void
 }
 
@@ -85,6 +85,7 @@ export function CalendarDayView({
 
           <div
             ref={gridRef}
+            data-testid="day-time-grid"
             className="relative flex-1"
             style={{ backgroundImage: GRID_LINE_BG }}
             onMouseDown={(e) => handlers.onMouseDown(e, 0)}
@@ -137,8 +138,8 @@ export function CalendarDayView({
                   startAt={selection.startAt}
                   endAt={selection.endAt}
                   isAllDay={false}
-                  onSave={(draft) => {
-                    onQuickSave?.(draft)
+                  onSave={async (draft) => {
+                    await onQuickSave?.(draft)
                     clearSelection()
                   }}
                   onDismiss={clearSelection}
