@@ -151,4 +151,23 @@ describe('CalendarPage · marquee → quick-create → save', () => {
     expect(screen.getByTestId('quick-create-error')).toHaveTextContent(/database locked/i)
     expect(mockClearSelection).not.toHaveBeenCalled()
   })
+
+  it('surfaces the error and keeps the popover mounted when createEvent resolves with { success: false }', async () => {
+    mockCreateEvent.mockResolvedValue({
+      success: false,
+      event: null,
+      error: 'Validation failed: startAt: Invalid datetime'
+    })
+    const user = userEvent.setup()
+    renderWithProviders(<CalendarPage />)
+
+    await screen.findByTestId('quick-create-popover')
+    await user.type(screen.getByPlaceholderText('New Event'), 'Team sync{Enter}')
+
+    await waitFor(() => expect(mockCreateEvent).toHaveBeenCalledTimes(1))
+
+    expect(screen.getByTestId('quick-create-popover')).toBeInTheDocument()
+    expect(screen.getByTestId('quick-create-error')).toHaveTextContent(/validation failed/i)
+    expect(mockClearSelection).not.toHaveBeenCalled()
+  })
 })
