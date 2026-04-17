@@ -1,6 +1,6 @@
 import { test, expect } from './fixtures/sync-auth-fixtures'
 import { createNoteWithBody, expectNoteBody, openNoteByTitle } from './utils/note-sync-helpers'
-import { syncBothAndWait, waitForSyncOnline } from './utils/network-control'
+import { syncAndWait, waitForSyncOnline } from './utils/network-control'
 
 test.describe('Manual sync smoke', () => {
   test('A creates online, both trigger sync, B reaches idle and opens the note', async ({
@@ -17,7 +17,10 @@ test.describe('Manual sync smoke', () => {
 
     await createNoteWithBody(pageA, title, body)
 
-    const { statusA, statusB } = await syncBothAndWait(pageA, pageB)
+    // Run the sender sync before the receiver pull to avoid the manual-sync race
+    // where B can go idle before A's new note record has been pushed.
+    const statusA = await syncAndWait(pageA)
+    const statusB = await syncAndWait(pageB)
 
     expect(statusA.pendingCount).toBe(0)
     expect(statusB.pendingCount).toBe(0)
