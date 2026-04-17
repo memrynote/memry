@@ -377,7 +377,11 @@ test.describe('Tasks Management', () => {
       await expect(firstHighRow).toBeVisible()
       await expect(secondHighRow).toBeVisible()
 
-      await moveDraggedTaskToTarget(page, sourceRow, firstHighRow, { yRatio: 0.2 })
+      // Hover over the SECOND row's top edge so the row-position assertion is
+      // distinguishable from a section-start drop. Hovering over the first row's
+      // top edge would put insertIndex at 0 — visually identical to a header drop
+      // and would only verify section membership, not row-position semantics.
+      await moveDraggedTaskToTarget(page, sourceRow, secondHighRow, { yRatio: 0.2 })
 
       await expect(firstHighRow).toHaveAttribute('data-section-drag-state', 'target-highlighted')
       await expect(secondHighRow).toHaveAttribute('data-section-drag-state', 'target-highlighted')
@@ -398,8 +402,8 @@ test.describe('Tasks Management', () => {
       expect(firstHighIndex).toBeGreaterThanOrEqual(0)
       expect(sourceIndex).toBeGreaterThanOrEqual(0)
       expect(secondHighIndex).toBeGreaterThanOrEqual(0)
-      expect(secondHighIndex).toBeLessThan(sourceIndex)
-      expect(sourceIndex).toBeLessThan(firstHighIndex)
+      expect(firstHighIndex).toBeLessThan(sourceIndex)
+      expect(sourceIndex).toBeLessThan(secondHighIndex)
     })
 
     test('T541: should keep intermediate sections visually stable during cross-section drags', async ({
