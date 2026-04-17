@@ -109,9 +109,23 @@ export async function getNoteHandleByTitle(
       async () => {
         note = await page.evaluate(async (expectedTitle) => {
           const match = await window.api.notes.resolveByTitle(expectedTitle)
-          return match?.fileType === 'markdown'
-            ? { id: match.id, title: match.title, emoji: null }
-            : null
+          if (match?.fileType === 'markdown') {
+            return { id: match.id, title: match.title, emoji: null }
+          }
+
+          const notesTree = document.querySelector<HTMLElement>('[role="tree"][aria-label="Notes tree"]')
+          if (!notesTree) return null
+
+          for (const treeItem of notesTree.querySelectorAll<HTMLElement>(
+            '[role="treeitem"][data-tree-node-id]'
+          )) {
+            const noteId = treeItem.dataset.treeNodeId ?? treeItem.getAttribute('data-tree-node-id')
+            if (!noteId || noteId.startsWith('folder-')) continue
+            if (treeItem.textContent?.trim() !== expectedTitle) continue
+            return { id: noteId, title: expectedTitle, emoji: null }
+          }
+
+          return null
         }, title)
         return note !== null
       },
