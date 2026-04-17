@@ -50,9 +50,9 @@ export function CalendarDayView({
   })
   const today = isToday(anchorDate)
   useScrollToCurrentTime(scrollRef, today)
-  const timedItems = items.filter(
-    (item) => toLocalDateKey(item.startAt) === anchorDate && !item.isAllDay
-  )
+  const dayItems = items.filter((item) => toLocalDateKey(item.startAt) === anchorDate)
+  const timedItems = dayItems.filter((item) => !item.isAllDay)
+  const allDayItems = dayItems.filter((item) => item.isAllDay)
 
   const currentTimeOffset = useMemo(() => {
     const now = new Date()
@@ -60,7 +60,24 @@ export function CalendarDayView({
   }, [])
 
   return (
-    <div className="flex h-full" data-testid="calendar-view" data-view="day">
+    <div className="flex h-full flex-col" data-testid="calendar-view" data-view="day">
+      {allDayItems.length > 0 && (
+        <div
+          data-testid="day-all-day-strip"
+          className="flex shrink-0 items-center gap-2 border-b border-border px-3 py-2"
+        >
+          <span className="w-[48px] shrink-0 text-xs font-medium text-muted-foreground @xl:w-[72px] pr-3 text-right">
+            All day
+          </span>
+          <div className="flex flex-1 flex-wrap gap-1.5">
+            {allDayItems.map((item) => (
+              <div key={item.projectionId} className="min-w-[140px]">
+                <CalendarItemChip item={item} clockFormat={clockFormat} onClick={onSelectItem} />
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
       <div ref={scrollRef} className="min-h-0 min-w-0 flex-1 overflow-y-auto">
         <div
           className="relative flex [--grid-line-color:var(--border)]"
