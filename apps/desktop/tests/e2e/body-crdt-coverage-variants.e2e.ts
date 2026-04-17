@@ -456,6 +456,7 @@ test.describe('Body CRDT coverage variants', () => {
     pageB,
     bootstrappedSyncPair
   }) => {
+    test.slow()
     void bootstrappedSyncPair
 
     const prefix = `V6 Two Notes Four Edits ${Date.now()}`
@@ -475,6 +476,12 @@ test.describe('Body CRDT coverage variants', () => {
       pageB,
       order: 'together'
     })
+    await Promise.all([
+      getNoteHandleByTitle(pageA, titleA),
+      getNoteHandleByTitle(pageA, titleB),
+      getNoteHandleByTitle(pageB, titleA),
+      getNoteHandleByTitle(pageB, titleB)
+    ])
 
     await Promise.all([
       applyBlockEdit(pageA, titleB, { blockIndex: 0, cursorPosition: 'start', text: 'A ' }),
