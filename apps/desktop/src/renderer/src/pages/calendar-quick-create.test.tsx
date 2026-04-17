@@ -250,10 +250,13 @@ describe('CalendarPage · marquee → quick-create → save', () => {
       handlers: { onMouseDown: vi.fn(), onDoubleClick: vi.fn() },
       clearSelection: mockClearSelection
     })
-    localStorage.setItem('calendar-view', 'week')
 
     const user = userEvent.setup()
     renderWithProviders(<CalendarPage />)
+
+    // Switch to week view via the view-switcher button — more reliable than
+    // relying on localStorage initial state under CI.
+    await user.click(screen.getByRole('button', { name: 'Week', exact: true }))
 
     await screen.findByTestId('quick-create-popover')
     await user.type(screen.getByPlaceholderText('New Event'), 'Sprint planning{Enter}')
