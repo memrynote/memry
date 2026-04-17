@@ -123,6 +123,19 @@ export async function waitForSyncIdle(page: Page, timeout = 15000): Promise<Sync
   return readSyncStatus(page)
 }
 
+export async function syncAndWait(
+  page: Page,
+  timeout = 15000
+): Promise<SyncStatusSnapshot> {
+  const trigger = await triggerSync(page)
+
+  if (!trigger.success) {
+    throw new Error(trigger.error || 'Sync trigger failed')
+  }
+
+  return waitForSyncIdle(page, timeout)
+}
+
 export async function waitForCrdtQueueIdle(
   electronApp: ElectronApplication,
   timeout = 15000
@@ -137,20 +150,7 @@ export async function syncBothAndWait(
   pageB: Page,
   timeout = 15000
 ): Promise<{ statusA: SyncStatusSnapshot; statusB: SyncStatusSnapshot }> {
-  const [triggerA, triggerB] = await Promise.all([triggerSync(pageA), triggerSync(pageB)])
-
-  if (!triggerA.success) {
-    throw new Error(triggerA.error || 'Device A sync trigger failed')
-  }
-
-  if (!triggerB.success) {
-    throw new Error(triggerB.error || 'Device B sync trigger failed')
-  }
-
-  const [statusA, statusB] = await Promise.all([
-    waitForSyncIdle(pageA, timeout),
-    waitForSyncIdle(pageB, timeout)
-  ])
+  const [statusA, statusB] = await Promise.all([syncAndWait(pageA, timeout), syncAndWait(pageB, timeout)])
 
   return { statusA, statusB }
 }
