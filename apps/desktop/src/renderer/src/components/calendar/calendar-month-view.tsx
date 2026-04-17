@@ -14,7 +14,7 @@ interface CalendarMonthViewProps {
   anchorDate: string
   items: CalendarProjectionItem[]
   onSelectItem?: (item: CalendarProjectionItem) => void
-  onQuickSave?: (draft: CalendarEventDraft) => void
+  onQuickSave?: (draft: CalendarEventDraft) => void | Promise<void>
   onCreateEventWithRange?: (startAt: string, endAt: string, isAllDay: boolean) => void
 }
 
@@ -113,8 +113,8 @@ export function CalendarMonthView({
           startAt={selection.startDate}
           endAt={selection.endDate}
           isAllDay={true}
-          onSave={(draft) => {
-            onQuickSave?.(draft)
+          onSave={async (draft) => {
+            await onQuickSave?.(draft)
             clearSelection()
           }}
           onDismiss={clearSelection}

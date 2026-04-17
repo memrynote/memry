@@ -57,7 +57,7 @@ import {
   syncCalendarSourceUpdate
 } from '../calendar/runtime-effects'
 
-createLogger('IPC:Calendar')
+const log = createLogger('IPC:Calendar')
 
 function emitCalendarChanged(event: CalendarChangedEvent): void {
   for (const win of BrowserWindow.getAllWindows()) {
@@ -193,7 +193,11 @@ export function registerCalendarHandlers(): void {
           throw new Error('Failed to load created calendar event')
         }
 
-        syncCalendarEventCreate(id)
+        try {
+          syncCalendarEventCreate(id)
+        } catch (error) {
+          log.warn('syncCalendarEventCreate failed; event persisted locally', error)
+        }
         emitCalendarChanged({ entityType: 'calendar_event', id })
         return { success: true, event: mapCalendarEvent(created) }
       }, 'Failed to create calendar event')

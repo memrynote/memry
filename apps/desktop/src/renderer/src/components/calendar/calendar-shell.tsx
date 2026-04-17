@@ -33,7 +33,7 @@ interface CalendarShellProps {
   onEditorDraftChange: (draft: CalendarEventDraft) => void
   onEditorSave: () => void
   onAnchorChange?: (date: string) => void
-  onQuickSave?: (draft: CalendarEventDraft) => void
+  onQuickSave?: (draft: CalendarEventDraft) => void | Promise<void>
   onCreateEventWithRange?: (startAt: string, endAt: string, isAllDay: boolean) => void
 }
 
