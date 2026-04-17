@@ -30,12 +30,24 @@ async function seedNoteWithTag(page, tag: string): Promise<void> {
   expect(created).toBeTruthy()
 }
 
+async function expandTagsSection(page): Promise<void> {
+  const trigger = page.locator('button[aria-label^="Tags section, "]')
+  await trigger.waitFor({ state: 'visible', timeout: 10000 })
+  const label = (await trigger.getAttribute('aria-label')) ?? ''
+  if (label.includes('collapsed')) {
+    await trigger.click()
+    await page.locator('button[aria-label^="Tags section, expanded"]').waitFor({
+      state: 'visible',
+      timeout: 5000
+    })
+  }
+}
+
 async function openTagDrilldown(page, tag: string): Promise<void> {
-  // Tags appear as buttons rendered by TagTreeItem; they have the tag text.
-  const tagTrigger = page.locator(`aside button:has-text("${tag}")`).first()
+  await expandTagsSection(page)
+  const tagTrigger = page.getByRole('button', { name: tag, exact: true }).first()
   await tagTrigger.waitFor({ state: 'visible', timeout: 15000 })
   await tagTrigger.click()
-  // Wait for drill-down header to settle
   await page.locator('button[aria-label="Go back"]').waitFor({ state: 'visible', timeout: 10000 })
 }
 
@@ -60,10 +72,11 @@ test.describe('Tag rename + delete (§5.2)', () => {
     await page.locator('button', { hasText: 'Save' }).click()
 
     // After success we auto-navigate back; sidebar should show renamed tag
-    await expect(page.locator(`aside button:has-text("${RENAMED}")`).first()).toBeVisible({
+    await expandTagsSection(page)
+    await expect(page.getByRole('button', { name: RENAMED, exact: true }).first()).toBeVisible({
       timeout: 10000
     })
-    await expect(page.locator(`aside button:has-text("${TAG}")`)).toHaveCount(0)
+    await expect(page.getByRole('button', { name: TAG, exact: true })).toHaveCount(0)
   })
 
   test('deletes a tag via overflow menu', async ({ page }) => {
@@ -79,7 +92,8 @@ test.describe('Tag rename + delete (§5.2)', () => {
     // Click the destructive confirm — matches the "Delete tag" button in the dialog
     await page.locator('[role="alertdialog"] button', { hasText: 'Delete tag' }).click()
 
-    await expect(page.locator(`aside button:has-text("${deleteTag}")`)).toHaveCount(0, {
+    await expandTagsSection(page)
+    await expect(page.getByRole('button', { name: deleteTag, exact: true })).toHaveCount(0, {
       timeout: 10000
     })
   })

@@ -262,6 +262,10 @@ export async function createNote(input: NoteCreateInput): Promise<Note> {
     source: 'internal'
   })
 
+  if (mergedTags.length > 0) {
+    emitNoteEvent('notes:tags-changed', undefined)
+  }
+
   return note
 }
 
