@@ -1,70 +1,55 @@
 /**
- * Playwright fixtures for Electron testing.
+ * Playwright fixtures for single-device Electron E2E tests.
+ *
+ * Delegates launch + teardown to utils/electron-lifecycle.ts, which provides
+ * bounded shutdown, SIGKILL fallback, and first-window retry.
  */
 
-import { test as base, _electron as electron, ElectronApplication, Page } from '@playwright/test'
-import * as path from 'path'
+import { test as base, ElectronApplication, Page } from '@playwright/test'
 import * as fs from 'fs'
 import * as os from 'os'
+import * as path from 'path'
 
-// Extend base test with Electron fixtures
+import {
+  destroyElectronApp,
+  launchElectronWithWindow,
+  LaunchedElectron
+} from './utils/electron-lifecycle'
+
 export const test = base.extend<{
   electronApp: ElectronApplication
   page: Page
   testVaultPath: string
 }>({
-  // Create a test vault for each test
   testVaultPath: async ({}, use) => {
     const vaultPath = fs.mkdtempSync(path.join(os.tmpdir(), 'memry-e2e-'))
 
-    // Initialize vault structure
     fs.mkdirSync(path.join(vaultPath, '.memry'), { recursive: true })
     fs.mkdirSync(path.join(vaultPath, 'notes'), { recursive: true })
     fs.mkdirSync(path.join(vaultPath, 'journal'), { recursive: true })
 
     await use(vaultPath)
 
-    // Cleanup
     fs.rmSync(vaultPath, { recursive: true, force: true })
   },
 
-  // Launch Electron application
   electronApp: async ({ testVaultPath }, use) => {
-    const isCI = !!process.env.CI
-    // Per-test user-data-dir keeps Chromium state (cookies, localStorage,
-    // GPU caches) isolated. Without this, Electron's shared
-    // `Application Support/Electron` dir can hold corrupted state from
-    // previous runs (e.g. an `[object Object]` theme value that crashes
-    // next-themes during renderer init), causing every test to fail.
-    const userDataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'memry-userdata-'))
-    const app = await electron.launch({
-      args: [
-        ...(isCI ? ['--no-sandbox', '--disable-gpu'] : []),
-        `--user-data-dir=${userDataDir}`,
-        path.join(__dirname, '../../out/main/index.js')
-      ],
-      env: {
-        ...process.env,
-        NODE_ENV: 'test',
-        TEST_VAULT_PATH: testVaultPath,
-        ...(isCI && { ELECTRON_DISABLE_SANDBOX: '1' })
-      }
-    })
+    const launched = await launchElectronWithWindow({ testVaultPath })
 
-    await use(app)
+    ;(launched.app as unknown as { __launched?: LaunchedElectron }).__launched = launched
 
-    await app.close()
-    fs.rmSync(userDataDir, { recursive: true, force: true })
+    await use(launched.app)
+
+    const dirs = [launched.userDataDir]
+    if (launched.resolvedUserDataDir !== launched.userDataDir) {
+      dirs.push(launched.resolvedUserDataDir)
+    }
+    await destroyElectronApp(launched.app, dirs)
   },
 
-  // Get the main window page
   page: async ({ electronApp }, use) => {
-    // Wait for the first window
-    const page = await electronApp.firstWindow()
-
-    // Wait for the app to be ready
-    await page.waitForLoadState('domcontentloaded')
-
+    const launched = (electronApp as unknown as { __launched?: LaunchedElectron }).__launched
+    const page = launched?.page ?? (await electronApp.firstWindow({ timeout: 45_000 }))
     await use(page)
   }
 })
