@@ -4,6 +4,7 @@ import { addLocalDays, getStartOfWeek, isToday, toLocalDateKey } from './date-ut
 import { MarqueeSelectionOverlay } from './marquee-selection-overlay'
 import { CalendarQuickCreatePopover } from './calendar-quick-create-popover'
 import { useTimeGridMarquee } from './use-time-grid-marquee'
+import { useScrollToCurrentTime } from './use-scroll-to-current-time'
 import { useGeneralSettings } from '@/hooks/use-general-settings'
 import { formatHour } from '@/lib/time-format'
 import { cn } from '@/lib/utils'
@@ -47,12 +48,15 @@ export function CalendarWeekView({
   const days = Array.from({ length: 7 }, (_, i) => addLocalDays(weekStart, i))
 
   const gridRef = useRef<HTMLDivElement>(null)
+  const scrollRef = useRef<HTMLDivElement>(null)
   const dateForColumn = useCallback((columnIndex: number) => days[columnIndex] ?? days[0], [days])
   const { selection, isDragging, handlers, clearSelection } = useTimeGridMarquee({
     gridRef,
     dateForColumn,
     columnCount: 7
   })
+  const weekContainsToday = days.some((d) => isToday(d))
+  useScrollToCurrentTime(scrollRef, weekContainsToday)
 
   const currentTimeOffset = useMemo(() => {
     const now = new Date()
@@ -87,7 +91,7 @@ export function CalendarWeekView({
         })}
       </div>
 
-      <div className="min-h-0 flex-1 overflow-y-auto">
+      <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto">
         <div
           ref={gridRef}
           className="relative grid grid-cols-[48px_repeat(7,1fr)] [--grid-line-color:var(--border)] @xl:grid-cols-[72px_repeat(7,1fr)]"

@@ -8,6 +8,7 @@ import type { CalendarProjectionItem } from '@/services/calendar-service'
 import { useTimeGridMarquee } from './use-time-grid-marquee'
 import { MarqueeSelectionOverlay } from './marquee-selection-overlay'
 import { CalendarQuickCreatePopover } from './calendar-quick-create-popover'
+import { useScrollToCurrentTime } from './use-scroll-to-current-time'
 import type { CalendarEventDraft } from './calendar-event-editor-drawer'
 
 const HOUR_HEIGHT = 96
@@ -45,12 +46,14 @@ export function CalendarDayView({
   } = useGeneralSettings()
   const [miniMonthAnchor, setMiniMonthAnchor] = useState(anchorDate)
   const gridRef = useRef<HTMLDivElement>(null)
+  const scrollRef = useRef<HTMLDivElement>(null)
   const dateForColumn = useCallback(() => anchorDate, [anchorDate])
   const { selection, isDragging, handlers, clearSelection } = useTimeGridMarquee({
     gridRef,
     dateForColumn
   })
   const today = isToday(anchorDate)
+  useScrollToCurrentTime(scrollRef, today)
   const dayItems = items.filter((item) => toLocalDateKey(item.startAt) === anchorDate)
   const timedItems = dayItems.filter((item) => !item.isAllDay)
 
@@ -61,7 +64,7 @@ export function CalendarDayView({
 
   return (
     <div className="flex h-full" data-testid="calendar-view" data-view="day">
-      <div className="min-h-0 min-w-0 flex-1 overflow-y-auto">
+      <div ref={scrollRef} className="min-h-0 min-w-0 flex-1 overflow-y-auto">
         <div
           className="relative flex [--grid-line-color:var(--border)]"
           style={{ height: HOUR_HEIGHT * 24 }}
