@@ -18,13 +18,17 @@ vi.mock('electron', () => ({
   }
 }))
 
-vi.mock('../../lib/logger', () => ({
-  createLogger: () => ({
+const { loggerMock } = vi.hoisted(() => ({
+  loggerMock: {
     info: vi.fn(),
     warn: vi.fn(),
     error: vi.fn(),
     debug: vi.fn()
-  })
+  }
+}))
+
+vi.mock('../../lib/logger', () => ({
+  createLogger: () => loggerMock
 }))
 
 import { GOOGLE_CALENDAR_SCOPE, connectGoogleCalendar, disconnectGoogleCalendar } from './oauth'
@@ -157,6 +161,59 @@ describe('google calendar oauth', () => {
       expect.stringContaining('refresh-token'),
       'google-refresh-token'
     )
+  })
+
+  it('shows a user-friendly message and logs technical details when token exchange returns 400', async () => {
+    // #given
+    fetchMock.mockImplementation(async (input) => {
+      const url = String(input)
+      if (url === 'https://oauth2.googleapis.com/token') {
+        return new Response(
+          JSON.stringify({
+            error: 'invalid_grant',
+            error_description: 'Malformed auth code.'
+          }),
+          { status: 400, headers: { 'Content-Type': 'application/json' } }
+        )
+      }
+      throw new Error(`Unexpected fetch call: ${url}`)
+    })
+
+    mockOpenExternal.mockImplementation(async (authUrl: string) => {
+      const parsed = new URL(authUrl)
+      const redirectUri = parsed.searchParams.get('redirect_uri')
+      const state = parsed.searchParams.get('state')
+
+      setTimeout(() => {
+        http.get(`${redirectUri}?code=google-auth-code&state=${state}`)
+      }, 0)
+    })
+
+    // #when
+    let caught: Error | null = null
+    try {
+      await connectGoogleCalendar()
+    } catch (err) {
+      caught = err as Error
+    }
+
+    // #then — user-facing message is friendly and actionable, not technical
+    expect(caught).not.toBeNull()
+    expect(caught?.message).not.toMatch(/\b400\b/)
+    expect(caught?.message).not.toContain('invalid_grant')
+    expect(caught?.message.toLowerCase()).toMatch(/connect(ion)?.*(again|expired)/)
+
+    // #then — technical detail is preserved in the log for developers
+    expect(loggerMock.error).toHaveBeenCalledWith(
+      'Google Calendar token exchange failed',
+      expect.objectContaining({
+        status: 400,
+        error: 'invalid_grant',
+        errorDescription: 'Malformed auth code.'
+      })
+    )
+
+    expect(await hasGoogleCalendarTokens()).toBe(false)
   })
 
   it('rejects the callback when the OAuth state does not match', async () => {
