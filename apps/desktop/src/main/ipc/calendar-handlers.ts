@@ -45,7 +45,7 @@ import {
   stopGoogleCalendarSyncRunner,
   syncGoogleCalendarNow
 } from '../calendar/google/sync-service'
-import { isMemryUserSignedIn } from '../sync/auth-state'
+import { isMemryUserSignedIn } from '../auth-state'
 import {
   syncCalendarBindingDelete,
   syncCalendarEventCreate,

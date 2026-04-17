@@ -63,7 +63,7 @@ vi.mock('../calendar/google/sync-service', () => ({
   stopGoogleCalendarSyncRunner: (...args: unknown[]) => mockStopGoogleCalendarSyncRunner(...args)
 }))
 
-vi.mock('../sync/auth-state', () => ({
+vi.mock('../auth-state', () => ({
   isMemryUserSignedIn: (...args: unknown[]) => mockIsMemryUserSignedIn(...args)
 }))
 
