@@ -23,6 +23,17 @@ vi.mock('@electron-toolkit/preload', () => ({
   electronAPI: { version: 'test-electron' }
 }))
 
+vi.mock('electron-log/renderer', () => {
+  const scope = () => ({
+    error: vi.fn(),
+    warn: vi.fn(),
+    info: vi.fn(),
+    debug: vi.fn(),
+    log: vi.fn()
+  })
+  return { default: { scope } }
+})
+
 type ApiShape = {
   syncAuth: {
     requestOtp: (input: { email: string }) => Promise<unknown>
