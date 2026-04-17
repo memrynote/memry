@@ -5,6 +5,13 @@ Format: weekly entries grouped by feature area.
 
 ---
 
+## 2026-04-17 — Calendar Auto-scroll to Current Time
+
+### Added
+- Auto-scroll calendar day and week views on mount so the current-time indicator sits ~40% from the top of the viewport; fall back to 7 AM when the visible range does not contain today
+
+---
+
 ## 2026-04-14 — Calendar Marquee Live Preview
 
 ### Changed
