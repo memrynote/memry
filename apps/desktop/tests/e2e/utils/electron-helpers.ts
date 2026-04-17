@@ -190,6 +190,16 @@ export async function navigateTo(
 }
 
 export async function dismissFirstRunOnboarding(page: Page, timeout = 3000): Promise<void> {
+  // Persist onboardingCompleted=true via IPC so the overlay cannot re-appear
+  // after settings finish loading. This race-proofs against the case where
+  // settings load AFTER waitForAppReady returns and the skip button isn't
+  // visible yet during the initial check.
+  await page
+    .evaluate(() => window.api.settings.setGeneralSettings({ onboardingCompleted: true }))
+    .catch(() => {
+      // window.api may not be available yet; fall through to the click path
+    })
+
   const skipButton = page.locator(FIRST_RUN_ONBOARDING.skipButton).first()
   const overlayVisible = await page
     .locator(FIRST_RUN_ONBOARDING.root)
