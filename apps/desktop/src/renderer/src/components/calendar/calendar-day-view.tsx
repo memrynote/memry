@@ -1,6 +1,5 @@
-import { useCallback, useMemo, useRef, useState } from 'react'
+import { useCallback, useMemo, useRef } from 'react'
 import { CalendarItemChip } from './calendar-item-chip'
-import { CalendarMiniMonth } from './calendar-mini-month'
 import { isToday, toLocalDateKey } from './date-utils'
 import { useGeneralSettings } from '@/hooks/use-general-settings'
 import { formatHour } from '@/lib/time-format'
@@ -28,7 +27,6 @@ interface CalendarDayViewProps {
   anchorDate: string
   items: CalendarProjectionItem[]
   onSelectItem?: (item: CalendarProjectionItem) => void
-  onAnchorChange?: (date: string) => void
   onQuickSave?: (draft: CalendarEventDraft) => void | Promise<void>
   onCreateEventWithRange?: (startAt: string, endAt: string, isAllDay: boolean) => void
 }
@@ -37,14 +35,12 @@ export function CalendarDayView({
   anchorDate,
   items,
   onSelectItem,
-  onAnchorChange,
   onQuickSave,
   onCreateEventWithRange
 }: CalendarDayViewProps): React.JSX.Element {
   const {
     settings: { clockFormat }
   } = useGeneralSettings()
-  const [miniMonthAnchor, setMiniMonthAnchor] = useState(anchorDate)
   const gridRef = useRef<HTMLDivElement>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
   const dateForColumn = useCallback(() => anchorDate, [anchorDate])
@@ -54,8 +50,9 @@ export function CalendarDayView({
   })
   const today = isToday(anchorDate)
   useScrollToCurrentTime(scrollRef, today)
-  const dayItems = items.filter((item) => toLocalDateKey(item.startAt) === anchorDate)
-  const timedItems = dayItems.filter((item) => !item.isAllDay)
+  const timedItems = items.filter(
+    (item) => toLocalDateKey(item.startAt) === anchorDate && !item.isAllDay
+  )
 
   const currentTimeOffset = useMemo(() => {
     const now = new Date()
@@ -151,33 +148,6 @@ export function CalendarDayView({
               </>
             )}
           </div>
-        </div>
-      </div>
-
-      <div className="hidden w-[328px] shrink-0 flex-col border-l border-border @3xl:flex">
-        <CalendarMiniMonth
-          anchorDate={miniMonthAnchor}
-          items={items}
-          onDateSelect={(date) => onAnchorChange?.(date)}
-          onMonthChange={setMiniMonthAnchor}
-        />
-
-        <div className="flex flex-col gap-3 border-t border-border px-6 py-5">
-          <h3 className="text-sm font-semibold text-foreground">Today&apos;s events</h3>
-          {dayItems.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No events scheduled.</p>
-          ) : (
-            <div className="flex flex-col gap-2">
-              {dayItems.map((item) => (
-                <CalendarItemChip
-                  key={item.projectionId}
-                  item={item}
-                  clockFormat={clockFormat}
-                  onClick={onSelectItem}
-                />
-              ))}
-            </div>
-          )}
         </div>
       </div>
     </div>
