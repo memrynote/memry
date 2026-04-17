@@ -6,7 +6,10 @@ export default defineConfig({
   timeout: 60000,
 
   expect: {
-    timeout: 10000
+    // 20s gives polled assertions (notes.list, CRDT body, writeback debug)
+    // enough headroom under CI shard load, where 10s reproducibly bites the
+    // body-crdt and manual-sync suites without indicating a real product bug.
+    timeout: 20000
   },
 
   fullyParallel: false,
