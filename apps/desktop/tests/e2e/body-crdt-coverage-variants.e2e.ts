@@ -3,11 +3,15 @@ import type { ElectronApplication, Page } from '@playwright/test'
 import {
   appendToNoteBody,
   createNoteWithBody,
+  getCrdtDocBodyById,
   expectNoteBody,
   getCrdtDocBodyByTitle,
+  getNoteFileBodyById,
   getNoteFileBodyByTitle,
-  getNoteHandleByTitle,
+  getWritebackDebugById,
   getWritebackDebugByTitle,
+  type NoteHandle,
+  openNoteByHandle,
   openNoteByTitle,
   readNoteBodyText
 } from './utils/note-sync-helpers'
@@ -58,6 +62,15 @@ async function seedSharedNote({
 
 async function applyBlockEdit(page: Page, title: string, edit: BlockEdit): Promise<void> {
   await openNoteByTitle(page, title)
+  await applyBlockEditToOpenNote(page, edit)
+}
+
+async function applyBlockEditToNote(page: Page, note: NoteHandle, edit: BlockEdit): Promise<void> {
+  await openNoteByHandle(page, note)
+  await applyBlockEditToOpenNote(page, edit)
+}
+
+async function applyBlockEditToOpenNote(page: Page, edit: BlockEdit): Promise<void> {
   const editorRoot = page.locator(SELECTORS.noteEditor).first()
   await editorRoot.waitFor({ state: 'visible', timeout: 10000 })
   await editorRoot.click()
@@ -76,7 +89,13 @@ async function applyBlockEdit(page: Page, title: string, edit: BlockEdit): Promi
     editor.setTextCursorPosition(target.id, cursorPosition)
   }, edit)
 
-  await page.keyboard.type(edit.text)
+  await page.evaluate((text) => {
+    const editor = (window as unknown as { __memryEditor?: any }).__memryEditor
+    if (!editor) throw new Error('window.__memryEditor not exposed')
+
+    editor.focus()
+    editor.insertInlineContent([text], { updateSelection: true })
+  }, edit.text)
 }
 
 async function closeTabByTitle(page: Page, title: string): Promise<void> {
@@ -163,6 +182,119 @@ async function assertMergedNoteOnBothDevices(
   await expect.poll(() => getNoteFileBodyByTitle(pageB, title)).toBe(finalBody)
 }
 
+async function assertMergedOpenNoteOnBothDevicesById(
+  electronAppA: ElectronApplication,
+  electronAppB: ElectronApplication,
+  pageA: Page,
+  pageB: Page,
+  noteId: string,
+  expectedBodies: string[]
+): Promise<void> {
+  let finalBody = ''
+  await expect
+    .poll(async () => {
+      const body = await readNoteBodyText(pageA)
+      if (!expectedBodies.includes(body)) {
+        return false
+      }
+      finalBody = body
+      return true
+    })
+    .toBe(true)
+
+  await expect.poll(() => readNoteBodyText(pageA)).toBe(finalBody)
+  await expect.poll(() => readNoteBodyText(pageB)).toBe(finalBody)
+  await expect.poll(() => getCrdtDocBodyById(electronAppA, noteId)).toBe(finalBody)
+  await expect.poll(() => getCrdtDocBodyById(electronAppB, noteId)).toBe(finalBody)
+  await expect
+    .poll(async () => (await getWritebackDebugById(electronAppA, noteId))?.lastMarkdown ?? null)
+    .toBe(finalBody)
+  await expect
+    .poll(async () => (await getWritebackDebugById(electronAppB, noteId))?.lastMarkdown ?? null)
+    .toBe(finalBody)
+  await expect.poll(() => getNoteFileBodyById(pageA, noteId)).toBe(finalBody)
+  await expect.poll(() => getNoteFileBodyById(pageB, noteId)).toBe(finalBody)
+}
+
+async function assertMergedOpenNoteOnBothDevicesByDeviceIds(
+  electronAppA: ElectronApplication,
+  electronAppB: ElectronApplication,
+  pageA: Page,
+  pageB: Page,
+  noteIdA: string,
+  noteIdB: string,
+  expectedBodies: string[]
+): Promise<void> {
+  let finalBody = ''
+  await expect
+    .poll(async () => {
+      const body = await readNoteBodyText(pageA)
+      if (!expectedBodies.includes(body)) {
+        return false
+      }
+      finalBody = body
+      return true
+    })
+    .toBe(true)
+
+  await expect.poll(() => readNoteBodyText(pageA)).toBe(finalBody)
+  await expect.poll(() => readNoteBodyText(pageB)).toBe(finalBody)
+  await expect.poll(() => getCrdtDocBodyById(electronAppA, noteIdA)).toBe(finalBody)
+  await expect.poll(() => getCrdtDocBodyById(electronAppB, noteIdB)).toBe(finalBody)
+  await expect
+    .poll(async () => (await getWritebackDebugById(electronAppA, noteIdA))?.lastMarkdown ?? null)
+    .toBe(finalBody)
+  await expect
+    .poll(async () => (await getWritebackDebugById(electronAppB, noteIdB))?.lastMarkdown ?? null)
+    .toBe(finalBody)
+  await expect.poll(() => getNoteFileBodyById(pageA, noteIdA)).toBe(finalBody)
+  await expect.poll(() => getNoteFileBodyById(pageB, noteIdB)).toBe(finalBody)
+}
+
+async function waitForClosedDeviceNoteConvergence(
+  electronApp: ElectronApplication,
+  page: Page,
+  title: string,
+  expectedBodies: string[]
+): Promise<void> {
+  let finalBody = ''
+
+  await expect
+    .poll(async () => {
+      const body = await getNoteFileBodyByTitle(page, title)
+      if (!body || !expectedBodies.includes(body)) {
+        return false
+      }
+      finalBody = body
+      return true
+    })
+    .toBe(true)
+
+  await expect.poll(() => getCrdtDocBodyByTitle(page, electronApp, title)).toBe(finalBody)
+}
+
+async function readReplicatedNoteStatus(
+  electronApp: ElectronApplication,
+  page: Page,
+  note: NoteHandle,
+  expectedBody: string
+): Promise<{
+  crdtBody: string | null
+  fileBody: string | null
+  ready: boolean
+}> {
+  const [crdtBody, fileBody] = await Promise.all([
+    getCrdtDocBodyById(electronApp, note.id),
+    getNoteFileBodyById(page, note.id)
+  ])
+
+  return {
+    crdtBody,
+    fileBody,
+    ready: crdtBody === expectedBody && fileBody === expectedBody
+  }
+}
+
 async function runOfflineOfflineMergeCase({
   electronAppA,
   electronAppB,
@@ -207,9 +339,11 @@ async function runOfflineOfflineMergeCase({
   await reconnectDevices({ electronAppA, electronAppB, pageA, pageB, order: reconnectOrder })
 
   if (closedBeforeReconnect === 'a') {
+    await waitForClosedDeviceNoteConvergence(electronAppA, pageA, title, expectedBodies)
     await openNoteByTitle(pageA, title)
   }
   if (closedBeforeReconnect === 'b') {
+    await waitForClosedDeviceNoteConvergence(electronAppB, pageB, title, expectedBodies)
     await openNoteByTitle(pageB, title)
   }
   if (closedBeforeReconnect) {
@@ -466,8 +600,8 @@ test.describe('Body CRDT coverage variants', () => {
     await Promise.all([goOffline(electronAppA), goOffline(electronAppB)])
     await Promise.all([waitForSyncOffline(pageA), waitForSyncOffline(pageB)])
 
-    await createNoteWithBody(pageA, titleA, 'noteA shared merge block')
-    await createNoteWithBody(pageB, titleB, 'noteB shared merge block')
+    const noteA = await createNoteWithBody(pageA, titleA, 'noteA shared merge block')
+    const noteB = await createNoteWithBody(pageB, titleB, 'noteB shared merge block')
 
     await reconnectDevices({
       electronAppA,
@@ -476,31 +610,115 @@ test.describe('Body CRDT coverage variants', () => {
       pageB,
       order: 'together'
     })
-    await Promise.all([
-      getNoteHandleByTitle(pageA, titleA),
-      getNoteHandleByTitle(pageA, titleB),
-      getNoteHandleByTitle(pageB, titleA),
-      getNoteHandleByTitle(pageB, titleB)
+    const remoteChecks = [
+      {
+        label: 'noteB on A',
+        electronApp: electronAppA,
+        page: pageA,
+        note: noteB,
+        expectedBody: 'noteB shared merge block'
+      },
+      {
+        label: 'noteA on B',
+        electronApp: electronAppB,
+        page: pageB,
+        note: noteA,
+        expectedBody: 'noteA shared merge block'
+      }
+    ] as const
+
+    let remoteStatuses: Array<{
+      label: string
+      crdtBody: string | null
+      fileBody: string | null
+      ready: boolean
+    }> = []
+
+    for (let attempt = 0; attempt < 5; attempt += 1) {
+      await syncBothAndWait(pageA, pageB, 30000)
+      remoteStatuses = await Promise.all(
+        remoteChecks.map(async (check) => ({
+          label: check.label,
+          ...(await readReplicatedNoteStatus(
+            check.electronApp,
+            check.page,
+            check.note,
+            check.expectedBody
+          ))
+        }))
+      )
+
+      if (remoteStatuses.every((status) => status.ready)) {
+        break
+      }
+    }
+
+    expect(remoteStatuses).toEqual([
+      {
+        label: 'noteB on A',
+        crdtBody: 'noteB shared merge block',
+        fileBody: 'noteB shared merge block',
+        ready: true
+      },
+      {
+        label: 'noteA on B',
+        crdtBody: 'noteA shared merge block',
+        fileBody: 'noteA shared merge block',
+        ready: true
+      }
     ])
 
+    const noteAOnA = noteA
+    const noteBOnA = noteB
+    const noteAOnB = noteA
+    const noteBOnB = noteB
+
     await Promise.all([
-      applyBlockEdit(pageA, titleB, { blockIndex: 0, cursorPosition: 'start', text: 'A ' }),
-      applyBlockEdit(pageB, titleB, { blockIndex: 0, cursorPosition: 'end', text: ' B' })
+      applyBlockEditToNote(pageA, noteBOnA!, {
+        blockIndex: 0,
+        cursorPosition: 'start',
+        text: 'A '
+      }),
+      applyBlockEditToNote(pageB, noteBOnB!, {
+        blockIndex: 0,
+        cursorPosition: 'end',
+        text: ' B'
+      })
     ])
     await Promise.all([waitForCrdtQueueIdle(electronAppA), waitForCrdtQueueIdle(electronAppB)])
     await syncBothAndWait(pageA, pageB)
-    await assertMergedNoteOnBothDevices(electronAppA, electronAppB, pageA, pageB, titleB, [
-      'A noteB shared merge block B'
-    ])
+    await assertMergedOpenNoteOnBothDevicesByDeviceIds(
+      electronAppA,
+      electronAppB,
+      pageA,
+      pageB,
+      noteBOnA!.id,
+      noteBOnB!.id,
+      ['A noteB shared merge block B']
+    )
 
     await Promise.all([
-      applyBlockEdit(pageA, titleA, { blockIndex: 0, cursorPosition: 'end', text: ' A' }),
-      applyBlockEdit(pageB, titleA, { blockIndex: 0, cursorPosition: 'start', text: 'B ' })
+      applyBlockEditToNote(pageA, noteAOnA!, {
+        blockIndex: 0,
+        cursorPosition: 'end',
+        text: ' A'
+      }),
+      applyBlockEditToNote(pageB, noteAOnB!, {
+        blockIndex: 0,
+        cursorPosition: 'start',
+        text: 'B '
+      })
     ])
     await Promise.all([waitForCrdtQueueIdle(electronAppA), waitForCrdtQueueIdle(electronAppB)])
     await syncBothAndWait(pageA, pageB)
-    await assertMergedNoteOnBothDevices(electronAppA, electronAppB, pageA, pageB, titleA, [
-      'B noteA shared merge block A'
-    ])
+    await assertMergedOpenNoteOnBothDevicesByDeviceIds(
+      electronAppA,
+      electronAppB,
+      pageA,
+      pageB,
+      noteAOnA!.id,
+      noteAOnB!.id,
+      ['B noteA shared merge block A']
+    )
   })
 })

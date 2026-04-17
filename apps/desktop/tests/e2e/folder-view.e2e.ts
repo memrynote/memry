@@ -164,13 +164,15 @@ async function openFolderView(
   folderPath: string,
   folderName: string
 ): Promise<void> {
+  if (page.isClosed()) return
+
   const dataSelector = `[data-tree-node-id="folder-${folderPath}"]`
   const treeNode = page.locator(dataSelector)
 
   if (await treeNode.isVisible().catch(() => false)) {
     await treeNode.hover().catch(() => {})
     const openButton = treeNode.locator('button[aria-label="Open folder view"]')
-    if (await openButton.count()) {
+    if ((await openButton.count().catch(() => 0)) > 0) {
       await openButton
         .first()
         .click({ force: true })
@@ -183,7 +185,7 @@ async function openFolderView(
     if (await treeItem.isVisible().catch(() => false)) {
       await treeItem.hover().catch(() => {})
       const openButton = treeItem.locator('button[aria-label="Open folder view"]')
-      if (await openButton.count()) {
+      if ((await openButton.count().catch(() => 0)) > 0) {
         await openButton
           .first()
           .click({ force: true })

@@ -19,12 +19,12 @@ test.describe('Calendar — marquee quick-create', () => {
       .click()
     await expect(page.getByTestId('calendar-view')).toHaveAttribute('data-view', 'day')
 
-    const grid = page.getByTestId('day-time-grid')
-    await expect(grid).toBeVisible()
+    const dayView = page.getByTestId('calendar-view')
+    await expect(dayView).toBeVisible()
 
     // Scroll the grid's overflow parent to top so absolute grid coords
     // (HOUR_HEIGHT=96 per hour) align with viewport y.
-    await grid.evaluate((el) => {
+    await dayView.evaluate((el) => {
       let parent: HTMLElement | null = el.parentElement
       while (parent) {
         const overflow = getComputedStyle(parent).overflowY
@@ -37,12 +37,13 @@ test.describe('Calendar — marquee quick-create', () => {
     })
     await page.waitForTimeout(100)
 
-    const box = await grid.boundingBox()
-    if (!box) throw new Error('day-time-grid has no bounding box')
+    const box = await dayView.boundingBox()
+    if (!box) throw new Error('calendar day view has no bounding box')
 
-    // Drag from 01:00 (y = 96) to 02:00 (y = 192) — safely within the first
-    // screen of the grid regardless of viewport size.
-    const x = box.x + box.width / 2
+    // Drag inside the main day grid area. Use a fixed inset from the left edge
+    // of the visible day view instead of the internal grid test id, which is
+    // not always present early enough under CI rendering pressure.
+    const x = box.x + 140
     const yStart = box.y + 96
     const yEnd = box.y + 192
 
