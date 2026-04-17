@@ -90,7 +90,6 @@ export function GoogleCalendarIntegrationRow(): React.JSX.Element {
     () => sources.filter((source) => !source.isMemryManaged),
     [sources]
   )
-  const memrySource = sources.find((source) => source.isMemryManaged) ?? null
   const status = statusQuery.data
   const isPending =
     connectMutation.isPending ||
@@ -176,32 +175,23 @@ export function GoogleCalendarIntegrationRow(): React.JSX.Element {
       </div>
 
       {status?.connected && (
-        <div className="mt-3 grid gap-3 rounded-md border border-border/70 bg-card/40 p-3">
-          <div className="grid gap-1">
+        <div className="mt-3 grid gap-2">
+          <div className="flex items-center justify-between gap-3">
             <span className="text-[11px]/3.5 font-medium uppercase tracking-[0.05em] text-muted-foreground">
-              Memry Calendar
+              Imported Calendars
             </span>
-            <span className="text-xs text-foreground">{memrySource?.title ?? 'Memry'}</span>
+            <span className="text-xs text-muted-foreground">
+              {status.calendars.selected} selected
+            </span>
           </div>
 
-          <div className="grid gap-2">
-            <div className="flex items-center justify-between gap-3">
-              <span className="text-[11px]/3.5 font-medium uppercase tracking-[0.05em] text-muted-foreground">
-                Imported Calendars
-              </span>
-              <span className="text-xs text-muted-foreground">
-                {status.calendars.selected} selected
-              </span>
-            </div>
-
-            <GoogleCalendarSourcePicker
-              sources={importedSources}
-              isUpdating={isPending}
-              onToggleSource={(sourceId, isSelected) =>
-                sourceMutation.mutate({ sourceId, isSelected })
-              }
-            />
-          </div>
+          <GoogleCalendarSourcePicker
+            sources={importedSources}
+            isUpdating={isPending}
+            onToggleSource={(sourceId, isSelected) =>
+              sourceMutation.mutate({ sourceId, isSelected })
+            }
+          />
         </div>
       )}
     </div>
