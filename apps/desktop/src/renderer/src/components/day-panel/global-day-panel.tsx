@@ -6,7 +6,8 @@ import {
   DAY_PANEL_WIDTH_MIN_PX,
   DAY_PANEL_WIDTH_MAX_PX
 } from '@/contexts/day-panel-context'
-import { useTabs } from '@/contexts/tabs'
+import { useTabs, useActiveTab } from '@/contexts/tabs'
+import { useCalendarView } from '@/contexts/calendar-view-context'
 import { DatePickerCalendar } from '@/components/tasks/date-picker-calendar'
 import { JournalDayPanel } from '@/components/journal'
 import { useJournalHeatmap } from '@/hooks/use-journal'
@@ -76,6 +77,9 @@ function DayPanelResizeRail() {
 export function GlobalDayPanel({ className }: GlobalDayPanelProps) {
   const { isOpen, selectedDate, width, isResizing, setDate } = useDayPanel()
   const { openTab } = useTabs()
+  const activeTab = useActiveTab()
+  const { setAnchorDate } = useCalendarView()
+  const isCalendarTabActive = activeTab?.type === 'calendar'
 
   const selectedDateObj = parseISODate(selectedDate)
   const currentYear = selectedDateObj.getFullYear()
@@ -111,16 +115,24 @@ export function GlobalDayPanel({ className }: GlobalDayPanelProps) {
       if (!date) return
       const iso = formatDateToISO(date)
       setDate(iso)
+      if (isCalendarTabActive) {
+        setAnchorDate(iso)
+        return
+      }
       navigateToJournal(iso)
     },
-    [setDate, navigateToJournal]
+    [isCalendarTabActive, setDate, setAnchorDate, navigateToJournal]
   )
 
   const handleTodayClick = useCallback(() => {
     const today = getTodayString()
     setDate(today)
+    if (isCalendarTabActive) {
+      setAnchorDate(today)
+      return
+    }
     navigateToJournal(today)
-  }, [setDate, navigateToJournal])
+  }, [isCalendarTabActive, setDate, setAnchorDate, navigateToJournal])
 
   return (
     <div
