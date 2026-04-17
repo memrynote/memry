@@ -8,6 +8,7 @@ import { render, RenderOptions, RenderResult } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { vi } from 'vitest'
 import { DayPanelProvider } from '@/contexts/day-panel-context'
+import { CalendarViewProvider } from '@/contexts/calendar-view-context'
 
 // Re-export everything from testing-library
 export * from '@testing-library/react'
@@ -58,7 +59,9 @@ function AllProviders({ children, queryClient }: AllProvidersProps): ReactElemen
 
   return (
     <QueryClientProvider client={client}>
-      <DayPanelProvider>{children}</DayPanelProvider>
+      <DayPanelProvider>
+        <CalendarViewProvider>{children}</CalendarViewProvider>
+      </DayPanelProvider>
     </QueryClientProvider>
   )
 }
