@@ -1,4 +1,3 @@
-import { useState, useEffect } from 'react'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import {
   FileText,
@@ -29,41 +28,10 @@ import { PropertiesSettings } from './settings/properties-section'
 import { TasksSettings } from './settings/tasks-section'
 import { ShortcutsSettings } from './settings/shortcuts-section'
 import { AccountSettings } from './settings/account-section'
-
-type SettingsSection =
-  | 'general'
-  | 'editor'
-  | 'templates'
-  | 'journal'
-  | 'tasks'
-  | 'vault'
-  | 'appearance'
-  | 'ai'
-  | 'integrations'
-  | 'tags'
-  | 'properties'
-  | 'shortcuts'
-  | 'account'
+import { useSettingsModal } from '@/contexts/settings-modal-context'
 
 export function SettingsPage() {
-  const [activeSection, setActiveSection] = useState<SettingsSection>(() => {
-    const saved = localStorage.getItem('memry_settings_section')
-    return (saved as SettingsSection) || 'general'
-  })
-
-  useEffect(() => {
-    localStorage.setItem('memry_settings_section', activeSection)
-  }, [activeSection])
-
-  useEffect(() => {
-    const onStorage = (e: StorageEvent) => {
-      if (e.key === 'memry_settings_section' && e.newValue) {
-        setActiveSection(e.newValue as SettingsSection)
-      }
-    }
-    window.addEventListener('storage', onStorage)
-    return () => window.removeEventListener('storage', onStorage)
-  }, [])
+  const { activeSection, setActiveSection } = useSettingsModal()
 
   return (
     <div className="flex-1 min-h-0 flex">
