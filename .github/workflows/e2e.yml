@@ -52,12 +52,15 @@ jobs:
 
       - name: Run Electron E2E tests (shard ${{ matrix.shard }})
         run: |
-          # keytar -> libsecret needs an active dbus session and an unlocked
-          # gnome-keyring daemon. Without this, the Secret Service API reports
-          # 'Unknown or unsupported transport "disabled"' and every test that
-          # stores a device key fails.
+          # keytar -> libsecret needs an active dbus session + an unlocked
+          # gnome-keyring with the default "login" collection present.
+          # Two-stage init (unlock then start) is required: --unlock creates
+          # the login keyring with the supplied password, --start spawns the
+          # daemon and exports the socket env vars. Otherwise libsecret errors
+          # with 'transport "disabled"' or 'collection/login does not exist'.
           dbus-run-session -- bash -c '
-            echo -n "" | gnome-keyring-daemon --unlock --components=secrets
+            eval "$(printf "\n" | gnome-keyring-daemon --unlock)"
+            eval "$(printf "\n" | gnome-keyring-daemon --start --components=secrets)"
             xvfb-run -a pnpm test:e2e --shard=${{ matrix.shard }}
           '
 
