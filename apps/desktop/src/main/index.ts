@@ -662,11 +662,9 @@ void app.whenReady().then(async () => {
       } catch (error) {
         mainLog.warn('reminder scheduler failed to start:', error)
       }
-      try {
-        startGoogleCalendarSyncRunner()
-      } catch (error) {
+      void startGoogleCalendarSyncRunner().catch((error) => {
         mainLog.warn('Google Calendar sync runner failed to start:', error)
-      }
+      })
     })
     .catch((err) => mainLog.error('autoOpenLastVault failed:', err))
 

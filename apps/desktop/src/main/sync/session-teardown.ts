@@ -14,6 +14,8 @@ import { clearInMemoryAuthState } from '../ipc/sync-core-handlers'
 import { getDatabase, isDatabaseInitialized } from '../database/client'
 import { store } from '../store'
 import { createLogger } from '../lib/logger'
+import { disconnectGoogleCalendar } from '../calendar/google/oauth'
+import { stopGoogleCalendarSyncRunner } from '../calendar/google/sync-service'
 
 const log = createLogger('SessionTeardown')
 
@@ -47,9 +49,15 @@ async function performTeardown(reason: TeardownReason): Promise<TeardownResult> 
   const skipSync = reason === 'logout' || reason === 'integrity'
   await stopSyncRuntime({ skipFinalSync: skipSync })
   resetTokenManagerState()
+  stopGoogleCalendarSyncRunner()
 
   if (reason === 'logout') {
     await revokeServerSession()
+    try {
+      await disconnectGoogleCalendar()
+    } catch (err) {
+      log.warn('Google Calendar disconnect failed during logout', err)
+    }
   }
 
   clearInMemoryAuthState()

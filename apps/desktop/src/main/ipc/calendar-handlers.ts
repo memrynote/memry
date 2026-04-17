@@ -40,7 +40,12 @@ import {
   hasGoogleCalendarLocalAuth
 } from '../calendar/google/oauth'
 import { getCalendarRangeProjection } from '../calendar/projection'
-import { syncGoogleCalendarNow } from '../calendar/google/sync-service'
+import {
+  startGoogleCalendarSyncRunner,
+  stopGoogleCalendarSyncRunner,
+  syncGoogleCalendarNow
+} from '../calendar/google/sync-service'
+import { isMemryUserSignedIn } from '../sync/auth-state'
 import {
   syncCalendarBindingDelete,
   syncCalendarEventCreate,
@@ -405,6 +410,10 @@ export function registerCalendarHandlers(): void {
           modifiedAt: now
         })
 
+        void startGoogleCalendarSyncRunner().catch(() => {
+          // Runner self-logs on failure; swallow to keep connect success green.
+        })
+
         return {
           success: true,
           status: await buildProviderStatus(db, input.provider)
@@ -426,6 +435,7 @@ export function registerCalendarHandlers(): void {
           }
         }
 
+        stopGoogleCalendarSyncRunner()
         await disconnectGoogleCalendar()
 
         const providerSources = listCalendarSourceRows(db, { provider: input.provider })
@@ -507,6 +517,14 @@ export function registerCalendarHandlers(): void {
             success: false,
             status: await buildProviderStatus(db, input.provider),
             error: `Unsupported calendar provider: ${input.provider}`
+          }
+        }
+
+        if (!(await isMemryUserSignedIn())) {
+          return {
+            success: false,
+            status: await buildProviderStatus(db, input.provider),
+            error: 'Sign in to Memry before refreshing Google Calendar'
           }
         }
 
