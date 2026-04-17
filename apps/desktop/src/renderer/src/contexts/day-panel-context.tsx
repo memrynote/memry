@@ -5,6 +5,7 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   type ReactNode
 } from 'react'
 import { getTodayString } from '@/lib/journal-utils'
@@ -23,6 +24,8 @@ export interface DayPanelContextValue {
   toggle: () => void
   open: () => void
   close: () => void
+  openForDayView: (date: string) => void
+  closeForDayView: () => void
   setDate: (date: string) => void
   setWidth: React.Dispatch<React.SetStateAction<number>>
   setIsResizing: React.Dispatch<React.SetStateAction<boolean>>
@@ -68,6 +71,7 @@ export const DayPanelProvider = ({
 
   const [isResizing, setIsResizing] = useState(false)
   const [selectedDate, setSelectedDate] = useState(getTodayString)
+  const autoModeRef = useRef(false)
 
   useEffect(() => {
     try {
@@ -88,15 +92,36 @@ export const DayPanelProvider = ({
   }, [width, isResizing])
 
   const toggle = useCallback(() => {
+    autoModeRef.current = false
     setIsOpen((prev) => !prev)
   }, [])
 
   const open = useCallback(() => {
+    autoModeRef.current = false
     setIsOpen(true)
   }, [])
 
   const close = useCallback(() => {
+    autoModeRef.current = false
     setIsOpen(false)
+  }, [])
+
+  const openForDayView = useCallback((date: string) => {
+    setSelectedDate(date)
+    setIsOpen((prev) => {
+      if (prev) return prev
+      autoModeRef.current = true
+      return true
+    })
+  }, [])
+
+  const closeForDayView = useCallback(() => {
+    setIsOpen((prev) => {
+      if (!prev) return prev
+      if (!autoModeRef.current) return prev
+      autoModeRef.current = false
+      return false
+    })
   }, [])
 
   const setDate = useCallback((date: string) => {
@@ -112,11 +137,24 @@ export const DayPanelProvider = ({
       toggle,
       open,
       close,
+      openForDayView,
+      closeForDayView,
       setDate,
       setWidth,
       setIsResizing
     }),
-    [isOpen, selectedDate, width, isResizing, toggle, open, close, setDate]
+    [
+      isOpen,
+      selectedDate,
+      width,
+      isResizing,
+      toggle,
+      open,
+      close,
+      openForDayView,
+      closeForDayView,
+      setDate
+    ]
   )
 
   return <DayPanelContext.Provider value={value}>{children}</DayPanelContext.Provider>
