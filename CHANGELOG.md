@@ -12,6 +12,16 @@ Format: weekly entries grouped by feature area.
 
 ---
 
+## 2026-04-17 — Google Calendar OAuth Error Diagnostics
+
+### Fixed
+- Fix silent 400 on Google Calendar token exchange: log structured error details (`status`, `error`, `error_description`) and throw user-friendly messages instead of raw status codes
+- Replace raw API/token errors across OAuth flow and Calendar API client with contextual friendly messages mapped from RFC 6749 error codes and Google API status codes
+- Warn at startup when `GOOGLE_CALENDAR_CLIENT_SECRET` is set (Desktop OAuth clients do not require a secret)
+- Validate Calendar scope grant after token exchange and throw an actionable message if the user skipped the Calendar checkbox on Google's consent screen
+
+---
+
 ## 2026-04-17 — CRDT Handler Lifecycle on Signout
 
 ### Fixed
