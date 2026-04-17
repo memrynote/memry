@@ -503,6 +503,90 @@ describe('calendar-handlers', () => {
     })
   })
 
+  // H5 — past-date events must persist (user goal)
+  it('persists a calendar event whose startAt is in the past', async () => {
+    registerCalendarHandlers()
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 3600_000).toISOString()
+
+    const result = await invokeHandler(CalendarChannels.invoke.CREATE_EVENT, {
+      title: 'Retro notes',
+      description: null,
+      location: null,
+      startAt: thirtyDaysAgo,
+      endAt: null,
+      timezone: 'UTC',
+      isAllDay: false
+    })
+
+    expect(result).toEqual({
+      success: true,
+      event: expect.objectContaining({
+        title: 'Retro notes',
+        startAt: thirtyDaysAgo
+      })
+    })
+
+    const listed = await invokeHandler(CalendarChannels.invoke.LIST_EVENTS, {})
+    expect(listed.events.some((e: { startAt: string }) => e.startAt === thirtyDaysAgo)).toBe(true)
+  })
+
+  // H7 — Zod validation must reject the naïve popover format if toCreatePayload regresses
+  it('rejects a startAt that is not a full ISO datetime via validation', async () => {
+    registerCalendarHandlers()
+
+    await expect(
+      invokeHandler(CalendarChannels.invoke.CREATE_EVENT, {
+        title: 'Should be rejected',
+        startAt: '2026-04-18T14:30', // no seconds, no timezone — what a buggy toCreatePayload could produce
+        timezone: 'UTC',
+        isAllDay: false
+      })
+    ).rejects.toThrow(/Validation failed/)
+  })
+
+  // H4 — Silent failures in local-sync enqueue must NOT drop the event
+  it('still reports success when the local sync enqueue throws', async () => {
+    registerCalendarHandlers()
+    ;(enqueueLocalSyncCreate as Mock).mockImplementationOnce(() => {
+      throw new Error('sync queue offline')
+    })
+
+    const result = await invokeHandler(CalendarChannels.invoke.CREATE_EVENT, {
+      title: 'Sync-resilient event',
+      startAt: '2026-04-12T09:00:00.000Z',
+      endAt: '2026-04-12T10:00:00.000Z',
+      timezone: 'UTC',
+      isAllDay: false
+    })
+
+    expect(result).toEqual({
+      success: true,
+      event: expect.objectContaining({ title: 'Sync-resilient event' })
+    })
+    // And the row really exists in the DB
+    const listed = await invokeHandler(CalendarChannels.invoke.LIST_EVENTS, {})
+    expect(listed.events.length).toBe(1)
+  })
+
+  // withDb guard: underlying DB error must surface as {success:false,error}, not a crash
+  it('returns {success:false,error} when the underlying DB insert throws', async () => {
+    registerCalendarHandlers()
+    // Force insert to fail by dropping the table before the call
+    db.run(sql`DROP TABLE calendar_events`)
+
+    const result = await invokeHandler(CalendarChannels.invoke.CREATE_EVENT, {
+      title: 'DB-dead event',
+      startAt: '2026-04-12T09:00:00.000Z',
+      endAt: '2026-04-12T10:00:00.000Z',
+      timezone: 'UTC',
+      isAllDay: false
+    })
+
+    expect(result.success).toBe(false)
+    expect(result.error).toEqual(expect.any(String))
+    expect(result.error).not.toBe('')
+  })
+
   it('refreshes Google provider state only when local auth exists', async () => {
     registerCalendarHandlers()
     mockHasGoogleCalendarLocalAuth.mockResolvedValue(false)

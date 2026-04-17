@@ -5,6 +5,17 @@ Format: weekly entries grouped by feature area.
 
 ---
 
+## 2026-04-18 — Calendar Marquee Quick-Create Reliably Persists on Save Click
+
+### Fixed
+- Fix the calendar marquee quick-create popover silently dropping the event when the user clicked the "Save" button (pressing Enter already worked). The Save button's `onClick` raced with Radix Popover's focus-based dismiss, unmounting the popover before `submit()` could run, so no IPC was made. Move submit to `onPointerDown` with `preventDefault()` so the Create fires before any focus shift
+- Covered by new regression tests across all three layers: renderer integration (Save-button click, past-date, double-Enter guard), main-process IPC handler (past-date persistence, ISO validation rejection, sync-enqueue resilience, DB-error surfacing), and Electron E2E (Save-button click, week-view non-first column, past-date event, 3× sequential stress loop)
+
+### Changed
+- Extract `createEventOperation(db, input)` as an exported function in `apps/desktop/src/main/ipc/calendar-handlers.ts` so the main-process handler is directly unit-testable; `registerCalendarHandlers` now composes it through `withDb`
+
+---
+
 ## 2026-04-18 — Calendar Day View All-Day Strip + E2E Stabilization
 
 ### Fixed

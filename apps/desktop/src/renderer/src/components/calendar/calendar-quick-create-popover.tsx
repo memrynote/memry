@@ -169,7 +169,18 @@ export function CalendarQuickCreatePopover({
             Add details
           </button>
 
-          <Button size="sm" disabled={!title.trim() || isSubmitting} onClick={() => void submit()}>
+          <Button
+            size="sm"
+            type="button"
+            disabled={!title.trim() || isSubmitting}
+            onPointerDown={(e) => {
+              // preventDefault() keeps focus in the input, so Radix Popover doesn't
+              // interpret the pointer-down as an outside-interaction and dismiss.
+              e.preventDefault()
+              void submit()
+            }}
+            onClick={() => void submit()}
+          >
             {isSubmitting ? 'Saving…' : 'Save'}
           </Button>
         </div>
