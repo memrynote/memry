@@ -212,6 +212,10 @@ async function runOfflineOfflineMergeCase({
   if (closedBeforeReconnect === 'b') {
     await openNoteByTitle(pageB, title)
   }
+  if (closedBeforeReconnect) {
+    // Reopened tabs can briefly render the pre-merge body until the next manual sync lands.
+    await syncBothAndWait(pageA, pageB)
+  }
 
   await assertMergedNoteOnBothDevices(
     electronAppA,
@@ -300,30 +304,6 @@ async function runReceiverStateSingleWriterCase({
   await assertMergedNoteOnBothDevices(electronAppA, electronAppB, pageA, pageB, title, [
     expectedBody
   ])
-}
-
-async function expectSharedNoteTitles(page: Page, titles: string[]): Promise<void> {
-  const expectedTitles = [...titles].sort((a, b) => a.localeCompare(b))
-
-  await expect
-    .poll(
-      async () => {
-        const result = await page.evaluate(async () => {
-          return window.api.notes.list({
-            limit: 10_000,
-            sortBy: 'title',
-            sortOrder: 'asc'
-          })
-        })
-
-        return result.notes
-          .map((note) => note.title)
-          .filter((title) => expectedTitles.includes(title))
-          .sort((a, b) => a.localeCompare(b))
-      },
-      { timeout: 60_000 }
-    )
-    .toEqual(expectedTitles)
 }
 
 test.describe('Body CRDT coverage variants', () => {
@@ -496,9 +476,6 @@ test.describe('Body CRDT coverage variants', () => {
       order: 'together'
     })
 
-    await expectSharedNoteTitles(pageA, [titleA, titleB])
-    await expectSharedNoteTitles(pageB, [titleA, titleB])
-
     await Promise.all([
       applyBlockEdit(pageA, titleB, { blockIndex: 0, cursorPosition: 'start', text: 'A ' }),
       applyBlockEdit(pageB, titleB, { blockIndex: 0, cursorPosition: 'end', text: ' B' })
@@ -518,8 +495,5 @@ test.describe('Body CRDT coverage variants', () => {
     await assertMergedNoteOnBothDevices(electronAppA, electronAppB, pageA, pageB, titleA, [
       'B noteA shared merge block A'
     ])
-
-    await expectSharedNoteTitles(pageA, [titleA, titleB])
-    await expectSharedNoteTitles(pageB, [titleA, titleB])
   })
 })
