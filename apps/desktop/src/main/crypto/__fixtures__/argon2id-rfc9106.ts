@@ -34,8 +34,7 @@ const SECRET_HEX = '03'.repeat(8)
 const ASSOCIATED_DATA_HEX = '04'.repeat(12)
 
 // Expected output tag (32 bytes) per RFC 9106 §5.3 final hash.
-const TAG_HEX =
-  '0d640df58d78766c08c037a34a8b53c9d01ef0452d75b65eb52520e96b01e659'
+const TAG_HEX = '0d640df58d78766c08c037a34a8b53c9d01ef0452d75b65eb52520e96b01e659'
 
 // Tamper sentinel: SHA-256 of `hexToBytes(TAG_HEX)`. Pin via ./README.md →
 // "Tamper sentinels" recipe on first consumer test run.
@@ -57,6 +56,4 @@ export const ARGON2ID_RFC9106_VECTOR: Argon2idVector = assertArgon2idVector({
   tag: hexToBytes(TAG_HEX)
 })
 
-export const ARGON2ID_RFC9106_VECTORS: readonly Argon2idVector[] = [
-  ARGON2ID_RFC9106_VECTOR
-]
+export const ARGON2ID_RFC9106_VECTORS: readonly Argon2idVector[] = [ARGON2ID_RFC9106_VECTOR]

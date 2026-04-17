@@ -77,9 +77,7 @@ test.describe('Tag rename + delete (§5.2)', () => {
     // Confirmation dialog
     await expect(page.locator(`text=Delete tag #${deleteTag}?`)).toBeVisible()
     // Click the destructive confirm — matches the "Delete tag" button in the dialog
-    await page
-      .locator('[role="alertdialog"] button', { hasText: 'Delete tag' })
-      .click()
+    await page.locator('[role="alertdialog"] button', { hasText: 'Delete tag' }).click()
 
     await expect(page.locator(`aside button:has-text("${deleteTag}")`)).toHaveCount(0, {
       timeout: 10000

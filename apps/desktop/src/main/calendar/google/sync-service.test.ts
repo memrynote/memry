@@ -32,15 +32,22 @@ vi.mock('electron', () => ({
 }))
 
 vi.mock('./oauth', () => ({
-  hasGoogleCalendarLocalAuth: vi.fn(async () => true)
+  hasGoogleCalendarLocalAuth: vi.fn(async () => true),
+  hasGoogleCalendarConnection: vi.fn(async () => true)
 }))
 
-import { hasGoogleCalendarLocalAuth } from './oauth'
+vi.mock('../../sync/auth-state', () => ({
+  isMemryUserSignedIn: vi.fn(async () => true)
+}))
+
+import { hasGoogleCalendarConnection, hasGoogleCalendarLocalAuth } from './oauth'
+import { isMemryUserSignedIn } from '../../sync/auth-state'
 import {
   applyGoogleCalendarDelete,
   applyGoogleCalendarWriteback,
   syncLocalSourceToGoogleCalendar,
   pushSourceToGoogleCalendar,
+  syncGoogleCalendarNow,
   syncGoogleCalendarSource
 } from './sync-service'
 
@@ -55,6 +62,8 @@ describe('google calendar sync service', () => {
     db = dbResult.db
     mockCalendarSend.mockClear()
     vi.mocked(hasGoogleCalendarLocalAuth).mockResolvedValue(true)
+    vi.mocked(hasGoogleCalendarConnection).mockResolvedValue(true)
+    vi.mocked(isMemryUserSignedIn).mockResolvedValue(true)
 
     const seeded = seedTestData(db)
     projectId = seeded.projectId
@@ -648,7 +657,7 @@ describe('google calendar sync service', () => {
 
   it('skips local Google reconciliation when the device is not connected', async () => {
     seedGoogleCalendarSource()
-    vi.mocked(hasGoogleCalendarLocalAuth).mockResolvedValue(false)
+    vi.mocked(hasGoogleCalendarConnection).mockResolvedValue(false)
 
     db.insert(tasks)
       .values({
@@ -683,5 +692,37 @@ describe('google calendar sync service', () => {
 
     expect(client.upsertEvent).not.toHaveBeenCalled()
     expect(client.deleteEvent).not.toHaveBeenCalled()
+  })
+
+  describe('syncGoogleCalendarNow gating', () => {
+    function buildClient() {
+      return {
+        listCalendars: vi.fn(),
+        createCalendar: vi.fn(),
+        listEvents: vi.fn(),
+        upsertEvent: vi.fn(),
+        deleteEvent: vi.fn()
+      }
+    }
+
+    it('skips all Google API calls when Memry user is not signed in', async () => {
+      vi.mocked(isMemryUserSignedIn).mockResolvedValue(false)
+      const client = buildClient()
+
+      await syncGoogleCalendarNow(db, { client })
+
+      expect(client.listCalendars).not.toHaveBeenCalled()
+      expect(client.listEvents).not.toHaveBeenCalled()
+    })
+
+    it('skips all Google API calls when no Google Calendar connection exists', async () => {
+      vi.mocked(hasGoogleCalendarConnection).mockResolvedValue(false)
+      const client = buildClient()
+
+      await syncGoogleCalendarNow(db, { client })
+
+      expect(client.listCalendars).not.toHaveBeenCalled()
+      expect(client.listEvents).not.toHaveBeenCalled()
+    })
   })
 })

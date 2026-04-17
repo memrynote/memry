@@ -7,11 +7,7 @@
  */
 
 import fs from 'fs/promises'
-import {
-  parseNote,
-  calculateWordCount,
-  generateContentHash
-} from './frontmatter'
+import { parseNote, calculateWordCount, generateContentHash } from './frontmatter'
 import { syncNoteToCache } from './note-sync'
 import { atomicWrite } from './file-ops'
 import {

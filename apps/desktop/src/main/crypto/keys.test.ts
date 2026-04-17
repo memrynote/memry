@@ -190,9 +190,7 @@ describe('generateDeviceSigningKeyPair', () => {
     expect(keyPair.deviceId).toHaveLength(32)
 
     // #then deviceId is BLAKE2b-128 of the public key, hex-encoded
-    const expectedDeviceId = sodium.to_hex(
-      sodium.crypto_generichash(16, keyPair.publicKey, null)
-    )
+    const expectedDeviceId = sodium.to_hex(sodium.crypto_generichash(16, keyPair.publicKey, null))
     expect(keyPair.deviceId).toBe(expectedDeviceId)
   })
 

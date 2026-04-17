@@ -13,7 +13,8 @@ import {
   enqueueLocalSyncUpdate
 } from '../../sync/local-mutations'
 import { publishProjectionEvent } from '../../projections'
-import { hasGoogleCalendarLocalAuth } from './oauth'
+import { hasGoogleCalendarConnection } from './oauth'
+import { isMemryUserSignedIn } from '../../sync/auth-state'
 import { createGoogleCalendarClient } from './client'
 import {
   mapCalendarEventToGoogleInput,
@@ -339,9 +340,8 @@ export async function syncLocalSourceToGoogleCalendar(
     >
   } = {}
 ): Promise<typeof calendarBindings.$inferSelect | null> {
-  if (!(await hasGoogleCalendarLocalAuth())) {
-    return null
-  }
+  if (!(await isMemryUserSignedIn())) return null
+  if (!(await hasGoogleCalendarConnection(db))) return null
 
   if (shouldSourceSyncToGoogleCalendar(db, target)) {
     return await pushSourceToGoogleCalendar(db, target, deps)
@@ -568,9 +568,8 @@ export async function syncGoogleCalendarNow(
   deps: { client?: GoogleCalendarClient } = {}
 ): Promise<void> {
   if (syncInFlight) return
-  if (!(await hasGoogleCalendarLocalAuth())) {
-    return
-  }
+  if (!(await isMemryUserSignedIn())) return
+  if (!(await hasGoogleCalendarConnection(db))) return
 
   syncInFlight = true
   try {
@@ -591,8 +590,10 @@ export async function syncGoogleCalendarNow(
   }
 }
 
-export function startGoogleCalendarSyncRunner(): void {
+export async function startGoogleCalendarSyncRunner(): Promise<void> {
   if (syncInterval) return
+  if (!(await isMemryUserSignedIn())) return
+  if (!(await hasGoogleCalendarConnection(requireDatabase()))) return
 
   void syncGoogleCalendarNow().catch((error) => {
     log.warn('initial Google Calendar sync failed', error)

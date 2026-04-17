@@ -3,6 +3,8 @@ import { createHash, randomBytes } from 'node:crypto'
 import { shell } from 'electron'
 import { z } from 'zod'
 import { createLogger } from '../../lib/logger'
+import type { DataDb } from '../../database/types'
+import { listCalendarSources } from '../repositories/calendar-sources-repository'
 import {
   clearGoogleCalendarTokens,
   getGoogleCalendarTokens,
@@ -372,6 +374,12 @@ export async function disconnectGoogleCalendar(): Promise<void> {
 export async function hasGoogleCalendarLocalAuth(): Promise<boolean> {
   const { refreshToken } = await getGoogleCalendarTokens()
   return typeof refreshToken === 'string' && refreshToken.trim().length > 0
+}
+
+export async function hasGoogleCalendarConnection(db: DataDb): Promise<boolean> {
+  if (!(await hasGoogleCalendarLocalAuth())) return false
+  const accounts = listCalendarSources(db, { provider: 'google', kind: 'account' })
+  return accounts.length > 0
 }
 
 export function buildGoogleCalendarAuthUrl(input: {

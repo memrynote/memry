@@ -14,12 +14,7 @@ export abstract class BaseItemHandler<T> implements SyncItemHandler<T> {
   abstract readonly type: SyncItemType
   abstract readonly schema: ZodType<T>
 
-  abstract applyUpsert(
-    ctx: ApplyContext,
-    itemId: string,
-    data: T,
-    clock: VectorClock
-  ): ApplyResult
+  abstract applyUpsert(ctx: ApplyContext, itemId: string, data: T, clock: VectorClock): ApplyResult
 
   applyDelete(_ctx: ApplyContext, _itemId: string, _clock?: VectorClock): 'applied' | 'skipped' {
     return 'skipped'

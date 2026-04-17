@@ -16,6 +16,7 @@ import { getDatabase } from '../database/client'
 import { createLogger } from '../lib/logger'
 import { deleteFromServer, postToServer } from './http-client'
 import { getSyncEngine, startSyncRuntime } from './runtime'
+import { startGoogleCalendarSyncRunner } from '../calendar/google/sync-service'
 import {
   ACCESS_TOKEN_EXPIRY_SECONDS,
   extractJtiFromToken,
@@ -174,6 +175,9 @@ export const persistKeysAndRegisterDevice = async (
     } else {
       void startSyncRuntime()
     }
+    void startGoogleCalendarSyncRunner().catch(() => {
+      // Runner self-logs on failure; sign-in should succeed regardless.
+    })
   }
 
   return deviceResponse.deviceId

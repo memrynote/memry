@@ -10,12 +10,12 @@ drift the moment a vector file is edited.
 
 ## Files
 
-| File | Algorithm | Source |
-| --- | --- | --- |
-| `xchacha20-rfc8439.ts` | XChaCha20-Poly1305 (IETF) | [draft-irtf-cfrg-xchacha-03 §A.3.1](https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-xchacha-03#appendix-A.3.1) |
-| `ed25519-rfc8032.ts` | Ed25519 (pure) | [RFC 8032 §7.1](https://datatracker.ietf.org/doc/html/rfc8032#section-7.1) |
-| `argon2id-rfc9106.ts` | Argon2id | [RFC 9106 §5.3](https://datatracker.ietf.org/doc/html/rfc9106#section-5.3) |
-| `load-vectors.ts` | typed loader + shape assertions | — |
+| File                   | Algorithm                       | Source                                                                                                               |
+| ---------------------- | ------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| `xchacha20-rfc8439.ts` | XChaCha20-Poly1305 (IETF)       | [draft-irtf-cfrg-xchacha-03 §A.3.1](https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-xchacha-03#appendix-A.3.1) |
+| `ed25519-rfc8032.ts`   | Ed25519 (pure)                  | [RFC 8032 §7.1](https://datatracker.ietf.org/doc/html/rfc8032#section-7.1)                                           |
+| `argon2id-rfc9106.ts`  | Argon2id                        | [RFC 9106 §5.3](https://datatracker.ietf.org/doc/html/rfc9106#section-5.3)                                           |
+| `load-vectors.ts`      | typed loader + shape assertions | —                                                                                                                    |
 
 All vector files were captured on **2026-04-16**. The retrieval date is also
 recorded in each file header and on each exported vector constant.
@@ -53,11 +53,11 @@ pnpm exec tsx -e '
 
 Substitute the vector import + concatenated bytes as appropriate:
 
-| Vector file | Bytes to hash |
-| --- | --- |
+| Vector file            | Bytes to hash      |
+| ---------------------- | ------------------ |
 | `xchacha20-rfc8439.ts` | `ciphertext ‖ tag` |
-| `ed25519-rfc8032.ts` | `signature` |
-| `argon2id-rfc9106.ts` | `tag` |
+| `ed25519-rfc8032.ts`   | `signature`        |
+| `argon2id-rfc9106.ts`  | `tag`              |
 
 Once a sentinel is pinned, edits that change the literal will produce a hash
 mismatch the first time a consuming test re-runs the recipe, surfacing the
@@ -68,7 +68,7 @@ tamper.
 If the upstream vector ever needs to be re-verified:
 
 1. Open the source URL listed in the file header.
-2. Copy each hex blob *exactly* — keep groupings reproducible (we use
+2. Copy each hex blob _exactly_ — keep groupings reproducible (we use
    32-hex-char chunks so diffs stay local).
 3. Update the `retrievedAt` field on the vector constant **and** the
    per-file header comment to match the day of re-fetch (ISO `YYYY-MM-DD`).
