@@ -90,6 +90,24 @@ export function isSameMonth(dateStr: string, anchorDate: string): boolean {
   return dateStr.slice(0, 7) === anchorDate.slice(0, 7)
 }
 
+const DAY_INDEX_EPOCH = '2020-01-01'
+const MS_PER_DAY = 86_400_000
+
+export function dayIndexFromDate(value: string): number {
+  const date = parseLocalDate(value)
+  const epoch = parseLocalDate(DAY_INDEX_EPOCH)
+  const dateMs = Date.UTC(date.getFullYear(), date.getMonth(), date.getDate())
+  const epochMs = Date.UTC(epoch.getFullYear(), epoch.getMonth(), epoch.getDate())
+  return Math.round((dateMs - epochMs) / MS_PER_DAY)
+}
+
+export function dateFromDayIndex(index: number): string {
+  const epoch = parseLocalDate(DAY_INDEX_EPOCH)
+  const utc = new Date(Date.UTC(epoch.getFullYear(), epoch.getMonth(), epoch.getDate()))
+  utc.setUTCDate(utc.getUTCDate() + index)
+  return `${utc.getUTCFullYear()}-${pad(utc.getUTCMonth() + 1)}-${pad(utc.getUTCDate())}`
+}
+
 export function getMonthGridDaysMondayStart(anchorDate: string): string[] {
   const anchor = parseLocalDate(anchorDate)
   const year = anchor.getFullYear()

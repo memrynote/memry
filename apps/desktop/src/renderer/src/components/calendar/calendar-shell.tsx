@@ -33,6 +33,7 @@ interface CalendarShellProps {
   onEditorDraftChange: (draft: CalendarEventDraft) => void
   onEditorSave: () => void
   onAnchorChange?: (date: string) => void
+  onWeekVisibleRangeChange?: (startDate: string) => void
   onQuickSave?: (draft: CalendarEventDraft) => void | Promise<void>
   onCreateEventWithRange?: (startAt: string, endAt: string, isAllDay: boolean) => void
 }
@@ -61,6 +62,7 @@ export function CalendarShell({
   onEditorDraftChange,
   onEditorSave,
   onAnchorChange,
+  onWeekVisibleRangeChange,
   onQuickSave,
   onCreateEventWithRange
 }: CalendarShellProps): React.JSX.Element {
@@ -163,6 +165,7 @@ export function CalendarShell({
             {...viewProps}
             onQuickSave={onQuickSave}
             onCreateEventWithRange={onCreateEventWithRange}
+            onVisibleDayStartChange={(_, startDate) => onWeekVisibleRangeChange?.(startDate)}
           />
         ) : view === 'month' ? (
           <CalendarMonthView
