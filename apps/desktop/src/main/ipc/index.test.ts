@@ -126,7 +126,7 @@ vi.mock('./account-handlers', () => ({
   registerAccountHandlers: hoisted.registerAccountHandlers,
   unregisterAccountHandlers: hoisted.unregisterAccountHandlers
 }))
-vi.mock('../sync/crdt-provider', () => ({
+vi.mock('./crdt-handlers', () => ({
   registerCrdtIpcHandlers: hoisted.registerCrdtIpcHandlers
 }))
 

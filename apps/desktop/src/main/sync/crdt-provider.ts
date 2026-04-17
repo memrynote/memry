@@ -1,20 +1,9 @@
 import * as Y from 'yjs'
 import { LeveldbPersistence } from 'y-leveldb'
 import path from 'path'
-import { app, BrowserWindow, ipcMain } from 'electron'
-import {
-  CRDT_CHANNELS,
-  CRDT_EVENTS,
-  CRDT_FRAGMENT_NAME,
-  CrdtApplyUpdateSchema,
-  CrdtCloseDocSchema,
-  CrdtOpenDocSchema,
-  CrdtSyncStep1Schema,
-  CrdtSyncStep2Schema,
-  type CrdtSyncStep1Result
-} from '@memry/contracts/ipc-crdt'
+import { app, BrowserWindow } from 'electron'
+import { CRDT_EVENTS, CRDT_FRAGMENT_NAME } from '@memry/contracts/ipc-crdt'
 import { createLogger } from '../lib/logger'
-import { createValidatedHandler } from '../ipc/validate'
 import { getIndexDatabase } from '../database/client'
 import { getNoteCacheById } from '@main/database/queries/notes'
 import type { CrdtUpdateQueue } from './crdt-queue'
@@ -662,6 +651,21 @@ export class CrdtProvider {
     }
   }
 
+  /**
+   * Validate that a note exists and is eligible for CRDT (non-binary).
+   * Routed through the provider so IPC handlers stay decoupled from the
+   * database query layer (architecture boundary).
+   */
+  validateNoteForCrdt(noteId: string): { ok: true } | { ok: false; error: string } {
+    const indexDb = getIndexDatabase()
+    const cached = getNoteCacheById(indexDb, noteId)
+    if (!cached) return { ok: false, error: `Note not found: ${noteId}` }
+    if (cached.fileType && isBinaryFileType(cached.fileType)) {
+      return { ok: false, error: `Binary notes do not use CRDT: ${noteId}` }
+    }
+    return { ok: true }
+  }
+
   applyIpcUpdate(noteId: string, updateArr: number[], sourceWindowId: number): void {
     const entry = this.docs.get(noteId)
     if (!entry) return
@@ -699,74 +703,4 @@ export function getCrdtProvider(): CrdtProvider {
 
 export function resetCrdtProvider(): void {
   instance = null
-}
-
-let handlersRegistered = false
-
-/** Test-only: resets the idempotency guard so handlers can be re-registered. */
-export function _resetCrdtIpcHandlersForTests(): void {
-  handlersRegistered = false
-}
-
-export function registerCrdtIpcHandlers(): void {
-  if (handlersRegistered) return
-  handlersRegistered = true
-
-  ipcMain.handle(CRDT_CHANNELS.OPEN_DOC, async (event, rawInput: unknown) => {
-    const { noteId } = CrdtOpenDocSchema.parse(rawInput)
-    const windowId = BrowserWindow.fromWebContents(event.sender)?.id
-
-    const provider = getCrdtProvider()
-    if (!provider.isInitialized()) {
-      return { success: false, error: 'CRDT provider not initialized' }
-    }
-
-    const indexDb = getIndexDatabase()
-    const noteExists = getNoteCacheById(indexDb, noteId)
-    if (!noteExists) {
-      return { success: false, error: `Note not found: ${noteId}` }
-    }
-    if (noteExists.fileType && isBinaryFileType(noteExists.fileType)) {
-      return { success: false, error: `Binary notes do not use CRDT: ${noteId}` }
-    }
-
-    await provider.open(noteId, windowId)
-    return { success: true }
-  })
-
-  ipcMain.handle(CRDT_CHANNELS.CLOSE_DOC, async (event, rawInput: unknown) => {
-    const { noteId } = CrdtCloseDocSchema.parse(rawInput)
-    const windowId = BrowserWindow.fromWebContents(event.sender)?.id
-    await getCrdtProvider().close(noteId, windowId)
-    return { success: true }
-  })
-
-  ipcMain.handle(CRDT_CHANNELS.APPLY_UPDATE, async (event, rawInput: unknown) => {
-    const { noteId, update: updateArr } = CrdtApplyUpdateSchema.parse(rawInput)
-    const sourceWindowId = BrowserWindow.fromWebContents(event.sender)?.id ?? -1
-    getCrdtProvider().applyIpcUpdate(noteId, updateArr, sourceWindowId)
-  })
-
-  ipcMain.handle(
-    CRDT_CHANNELS.SYNC_STEP_1,
-    createValidatedHandler(
-      CrdtSyncStep1Schema,
-      async (input): Promise<CrdtSyncStep1Result | null> => {
-        const provider = getCrdtProvider()
-        if (!provider.isInitialized()) return null
-        const doc = await provider.open(input.noteId)
-        const remoteVector = new Uint8Array(input.stateVector)
-        const diff = Y.encodeStateAsUpdate(doc, remoteVector)
-        const stateVector = Y.encodeStateVector(doc)
-        return { diff, stateVector }
-      }
-    )
-  )
-
-  ipcMain.handle(
-    CRDT_CHANNELS.SYNC_STEP_2,
-    createValidatedHandler(CrdtSyncStep2Schema, async (input) => {
-      getCrdtProvider().applyIpcSyncStep2(input.noteId, input.diff)
-    })
-  )
 }

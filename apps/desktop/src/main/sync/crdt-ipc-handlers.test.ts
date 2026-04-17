@@ -60,12 +60,8 @@ vi.mock('y-leveldb', () => ({
 // SUT: import AFTER mocks are in place
 // ============================================================================
 
-import {
-  _resetCrdtIpcHandlersForTests,
-  getCrdtProvider,
-  registerCrdtIpcHandlers,
-  resetCrdtProvider
-} from './crdt-provider'
+import { getCrdtProvider, resetCrdtProvider } from './crdt-provider'
+import { _resetCrdtIpcHandlersForTests, registerCrdtIpcHandlers } from '../ipc/crdt-handlers'
 
 describe('CRDT IPC handlers — lifecycle resilience', () => {
   beforeEach(() => {
