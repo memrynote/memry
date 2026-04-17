@@ -627,46 +627,39 @@ test.describe('Body CRDT coverage variants', () => {
       }
     ] as const
 
-    let remoteStatuses: Array<{
-      label: string
-      crdtBody: string | null
-      fileBody: string | null
-      ready: boolean
-    }> = []
-
-    for (let attempt = 0; attempt < 5; attempt += 1) {
-      await syncBothAndWait(pageA, pageB, 30000)
-      remoteStatuses = await Promise.all(
-        remoteChecks.map(async (check) => ({
-          label: check.label,
-          ...(await readReplicatedNoteStatus(
-            check.electronApp,
-            check.page,
-            check.note,
-            check.expectedBody
-          ))
-        }))
+    await expect
+      .poll(
+        async () => {
+          await syncBothAndWait(pageA, pageB, 30000)
+          const statuses = await Promise.all(
+            remoteChecks.map(async (check) => ({
+              label: check.label,
+              ...(await readReplicatedNoteStatus(
+                check.electronApp,
+                check.page,
+                check.note,
+                check.expectedBody
+              ))
+            }))
+          )
+          return statuses
+        },
+        { timeout: 120_000, intervals: [500, 1_000, 2_000, 5_000] }
       )
-
-      if (remoteStatuses.every((status) => status.ready)) {
-        break
-      }
-    }
-
-    expect(remoteStatuses).toEqual([
-      {
-        label: 'noteB on A',
-        crdtBody: 'noteB shared merge block',
-        fileBody: 'noteB shared merge block',
-        ready: true
-      },
-      {
-        label: 'noteA on B',
-        crdtBody: 'noteA shared merge block',
-        fileBody: 'noteA shared merge block',
-        ready: true
-      }
-    ])
+      .toEqual([
+        {
+          label: 'noteB on A',
+          crdtBody: 'noteB shared merge block',
+          fileBody: 'noteB shared merge block',
+          ready: true
+        },
+        {
+          label: 'noteA on B',
+          crdtBody: 'noteA shared merge block',
+          fileBody: 'noteA shared merge block',
+          ready: true
+        }
+      ])
 
     const noteAOnA = noteA
     const noteBOnA = noteB
