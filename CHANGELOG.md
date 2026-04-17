@@ -5,6 +5,13 @@ Format: weekly entries grouped by feature area.
 
 ---
 
+## 2026-04-17 — Google Calendar Settings Row Compact Layout
+
+### Changed
+- Simplify Google Calendar integration settings: remove the "Memry Calendar" label/value block and the bordered card wrapper around the imported calendars list, leaving a flatter, more compact layout after connection
+
+---
+
 ## 2026-04-17 — Google Calendar OAuth Error Diagnostics
 
 ### Fixed
