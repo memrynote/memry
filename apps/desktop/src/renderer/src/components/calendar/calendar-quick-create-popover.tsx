@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Popover, PopoverAnchor, PopoverArrow, PopoverContent } from '@/components/ui/popover'
+import { extractErrorMessage } from '@/lib/ipc-error'
 import type { CalendarEventDraft } from './calendar-event-editor-drawer'
 
 interface CalendarQuickCreatePopoverProps {
@@ -9,7 +10,7 @@ interface CalendarQuickCreatePopoverProps {
   startAt: string
   endAt: string
   isAllDay: boolean
-  onSave: (draft: CalendarEventDraft) => void
+  onSave: (draft: CalendarEventDraft) => void | Promise<void>
   onDismiss: () => void
   onOpenFullEditor: (draft: CalendarEventDraft) => void
 }
@@ -69,6 +70,8 @@ export function CalendarQuickCreatePopover({
 }: CalendarQuickCreatePopoverProps): React.JSX.Element {
   const [title, setTitle] = useState('')
   const [location, setLocation] = useState('')
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const titleRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
@@ -79,9 +82,21 @@ export function CalendarQuickCreatePopover({
     return { title, description: '', location, isAllDay, startAt, endAt }
   }
 
+  async function submit(): Promise<void> {
+    if (!title.trim() || isSubmitting) return
+    setIsSubmitting(true)
+    setErrorMessage(null)
+    try {
+      await onSave(buildDraft())
+    } catch (error) {
+      setErrorMessage(extractErrorMessage(error, 'Could not create event. Try again.'))
+      setIsSubmitting(false)
+    }
+  }
+
   function handleTitleKeyDown(e: React.KeyboardEvent<HTMLInputElement>): void {
     if (e.key === 'Enter' && title.trim()) {
-      onSave(buildDraft())
+      void submit()
     }
   }
 
@@ -123,6 +138,7 @@ export function CalendarQuickCreatePopover({
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           onKeyDown={handleTitleKeyDown}
+          disabled={isSubmitting}
           className="mb-2"
         />
 
@@ -130,8 +146,19 @@ export function CalendarQuickCreatePopover({
           placeholder="Add location"
           value={location}
           onChange={(e) => setLocation(e.target.value)}
+          disabled={isSubmitting}
           className="mb-3"
         />
+
+        {errorMessage && (
+          <p
+            data-testid="quick-create-error"
+            role="alert"
+            className="mb-3 text-xs text-destructive"
+          >
+            {errorMessage}
+          </p>
+        )}
 
         <div className="flex items-center justify-between">
           <button
@@ -142,8 +169,8 @@ export function CalendarQuickCreatePopover({
             Add details
           </button>
 
-          <Button size="sm" disabled={!title.trim()} onClick={() => onSave(buildDraft())}>
-            Save
+          <Button size="sm" disabled={!title.trim() || isSubmitting} onClick={() => void submit()}>
+            {isSubmitting ? 'Saving…' : 'Save'}
           </Button>
         </div>
 
