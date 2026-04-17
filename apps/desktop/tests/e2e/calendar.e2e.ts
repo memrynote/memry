@@ -94,7 +94,7 @@ test.describe('Calendar milestone e2e', () => {
     await expect(page.getByTestId('calendar-view')).toHaveAttribute('data-view', 'year')
 
     await calendarPage.getByRole('button', { name: 'Day', exact: true }).click()
-    await calendarPage.getByRole('button', { name: 'New Event' }).click()
+    await calendarPage.getByRole('button', { name: /Create event|New Event/i }).click()
     await expect(page.getByRole('heading', { name: 'New Event' })).toBeVisible()
 
     await page.getByLabel('Title').fill(eventTitle)

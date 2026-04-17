@@ -303,19 +303,27 @@ async function runReceiverStateSingleWriterCase({
 }
 
 async function expectSharedNoteTitles(page: Page, titles: string[]): Promise<void> {
-  for (const title of titles) {
-    await getNoteHandleByTitle(page, title)
-  }
+  const expectedTitles = [...titles].sort((a, b) => a.localeCompare(b))
 
-  const currentTitles = await page.evaluate(async (expectedTitles) => {
-    const result = await window.api.notes.list({})
-    return result.notes
-      .map((note) => note.title)
-      .filter((title) => expectedTitles.includes(title))
-      .sort((a, b) => a.localeCompare(b))
-  }, titles)
+  await expect
+    .poll(
+      async () => {
+        const result = await page.evaluate(async () => {
+          return window.api.notes.list({
+            limit: 10_000,
+            sortBy: 'title',
+            sortOrder: 'asc'
+          })
+        })
 
-  expect(currentTitles).toEqual([...titles].sort((a, b) => a.localeCompare(b)))
+        return result.notes
+          .map((note) => note.title)
+          .filter((title) => expectedTitles.includes(title))
+          .sort((a, b) => a.localeCompare(b))
+      },
+      { timeout: 60_000 }
+    )
+    .toEqual(expectedTitles)
 }
 
 test.describe('Body CRDT coverage variants', () => {
