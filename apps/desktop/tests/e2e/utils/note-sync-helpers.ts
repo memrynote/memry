@@ -12,6 +12,48 @@ interface MemryNoteTestHooks {
   } | null>
 }
 
+export interface NoteHandle {
+  id: string
+  title: string
+  emoji?: string | null
+}
+
+export async function findNoteHandle(
+  page: Page,
+  id: string | null,
+  title: string
+): Promise<NoteHandle | null> {
+  return page.evaluate(async ({ noteId, expectedTitle }) => {
+    const fromId = noteId ? await window.api.notes.get(noteId) : null
+    if (fromId?.title === expectedTitle) {
+      return {
+        id: fromId.id,
+        title: fromId.title,
+        emoji: fromId.emoji ?? null
+      }
+    }
+
+    const match = await window.api.notes.resolveByTitle(expectedTitle)
+    if (match?.fileType === 'markdown') {
+      return { id: match.id, title: match.title, emoji: null }
+    }
+
+    const notesTree = document.querySelector<HTMLElement>('[role="tree"][aria-label="Notes tree"]')
+    if (!notesTree) return null
+
+    for (const treeItem of notesTree.querySelectorAll<HTMLElement>(
+      '[role="treeitem"][data-tree-node-id]'
+    )) {
+      const noteId = treeItem.dataset.treeNodeId ?? treeItem.getAttribute('data-tree-node-id')
+      if (!noteId || noteId.startsWith('folder-')) continue
+      if (treeItem.textContent?.trim() !== expectedTitle) continue
+      return { id: noteId, title: expectedTitle, emoji: null }
+    }
+
+    return null
+  }, { noteId: id, expectedTitle: title })
+}
+
 function normalizeBodyText(text: string): string {
   return text
     .replace(/\r\n/g, '\n')
@@ -37,7 +79,7 @@ function bodyToParagraphBlocks(body: string) {
 
 async function openNoteInUi(
   page: Page,
-  note: { id: string; title: string; emoji?: string | null }
+  note: NoteHandle
 ): Promise<void> {
   await page.evaluate((detail) => {
     window.dispatchEvent(new CustomEvent('memry:test-open-note', { detail }))
@@ -63,7 +105,11 @@ async function waitForNoteEditor(page: Page) {
   return editor
 }
 
-export async function createNoteWithBody(page: Page, title: string, body: string): Promise<void> {
+export async function createNoteWithBody(
+  page: Page,
+  title: string,
+  body: string
+): Promise<NoteHandle> {
   const note = await page.evaluate(async (inputTitle) => {
     const result = await window.api.notes.create({ title: inputTitle, content: '' })
     if (!result.success || !result.note) {
@@ -79,6 +125,28 @@ export async function createNoteWithBody(page: Page, title: string, body: string
   await openNoteInUi(page, note)
   await replaceNoteBody(page, body)
   await waitForPersistedNoteBody(page, note.id, body)
+
+  return note
+}
+
+export async function openNoteByHandle(page: Page, note: NoteHandle): Promise<void> {
+  await openNoteInUi(page, note)
+}
+
+export async function waitForNoteById(page: Page, id: string, title: string): Promise<NoteHandle> {
+  let note: NoteHandle | null = null
+
+  await expect
+    .poll(
+      async () => {
+        note = await findNoteHandle(page, id, title)
+        return note?.title === title
+      },
+      { timeout: NOTE_LIST_POLL_TIMEOUT_MS }
+    )
+    .toBe(true)
+
+  return note!
 }
 
 export async function openNoteByTitle(page: Page, title: string): Promise<void> {
@@ -107,26 +175,7 @@ export async function getNoteHandleByTitle(
   await expect
     .poll(
       async () => {
-        note = await page.evaluate(async (expectedTitle) => {
-          const match = await window.api.notes.resolveByTitle(expectedTitle)
-          if (match?.fileType === 'markdown') {
-            return { id: match.id, title: match.title, emoji: null }
-          }
-
-          const notesTree = document.querySelector<HTMLElement>('[role="tree"][aria-label="Notes tree"]')
-          if (!notesTree) return null
-
-          for (const treeItem of notesTree.querySelectorAll<HTMLElement>(
-            '[role="treeitem"][data-tree-node-id]'
-          )) {
-            const noteId = treeItem.dataset.treeNodeId ?? treeItem.getAttribute('data-tree-node-id')
-            if (!noteId || noteId.startsWith('folder-')) continue
-            if (treeItem.textContent?.trim() !== expectedTitle) continue
-            return { id: noteId, title: expectedTitle, emoji: null }
-          }
-
-          return null
-        }, title)
+        note = await findNoteHandle(page, null, title)
         return note !== null
       },
       { timeout: NOTE_LIST_POLL_TIMEOUT_MS }
@@ -138,10 +187,14 @@ export async function getNoteHandleByTitle(
 
 export async function getNoteFileBodyByTitle(page: Page, title: string): Promise<string | null> {
   const note = await getNoteHandleByTitle(page, title)
+  return getNoteFileBodyById(page, note.id)
+}
+
+export async function getNoteFileBodyById(page: Page, noteId: string): Promise<string | null> {
   const body = await page.evaluate(async (id) => {
     const loaded = await window.api.notes.get(id)
     return loaded?.content ?? null
-  }, note.id)
+  }, noteId)
   return body === null ? null : normalizeBodyText(body)
 }
 
@@ -151,6 +204,13 @@ export async function getCrdtDocBodyByTitle(
   title: string
 ): Promise<string | null> {
   const note = await getNoteHandleByTitle(page, title)
+  return getCrdtDocBodyById(electronApp, note.id)
+}
+
+export async function getCrdtDocBodyById(
+  electronApp: ElectronApplication,
+  noteId: string
+): Promise<string | null> {
   const body = await electronApp.evaluate(async (_context, noteId) => {
     const hooks = (
       globalThis as typeof globalThis & {
@@ -163,7 +223,7 @@ export async function getCrdtDocBodyByTitle(
     }
 
     return hooks.getCrdtDocMarkdown(noteId)
-  }, note.id)
+  }, noteId)
 
   return body === null ? null : normalizeBodyText(body)
 }
@@ -180,6 +240,19 @@ export async function getWritebackDebugByTitle(
   lastError: string | null
 } | null> {
   const note = await getNoteHandleByTitle(page, title)
+  return getWritebackDebugById(electronApp, note.id)
+}
+
+export async function getWritebackDebugById(
+  electronApp: ElectronApplication,
+  noteId: string
+): Promise<{
+  pending: boolean
+  scheduledCount: number
+  performedCount: number
+  lastMarkdown: string | null
+  lastError: string | null
+} | null> {
   const state = await electronApp.evaluate(async (_context, noteId) => {
     const hooks = (
       globalThis as typeof globalThis & {
@@ -192,7 +265,7 @@ export async function getWritebackDebugByTitle(
     }
 
     return hooks.getWritebackDebugState(noteId)
-  }, note.id)
+  }, noteId)
 
   if (!state) return null
 
@@ -235,7 +308,13 @@ export async function appendToNoteBody(page: Page, text: string): Promise<void> 
     await page.keyboard.press('Enter')
     await page.keyboard.press('Enter')
   }
-  await page.keyboard.type(text)
+  await page.evaluate((value) => {
+    const editor = (window as unknown as { __memryEditor?: any }).__memryEditor
+    if (!editor) throw new Error('window.__memryEditor not exposed')
+
+    editor.focus()
+    editor.insertInlineContent([value], { updateSelection: true })
+  }, text)
 }
 
 export async function readNoteBodyText(page: Page): Promise<string> {
