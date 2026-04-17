@@ -46,6 +46,15 @@ export function toLocalDateTimeInputValue(value: string): string {
   return `${toLocalDateString(date)}T${pad(date.getHours())}:${pad(date.getMinutes())}`
 }
 
+export function localInputToIso(value: string, isAllDay: boolean): string {
+  const normalized = isAllDay ? `${value}T00:00:00` : value
+  const date = new Date(normalized)
+  if (Number.isNaN(date.getTime())) {
+    throw new Error(`Invalid calendar input datetime: ${value}`)
+  }
+  return date.toISOString()
+}
+
 export function getStartOfWeek(value: string): string {
   const date = parseLocalDate(value)
   date.setDate(date.getDate() - date.getDay())
