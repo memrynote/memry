@@ -95,9 +95,9 @@ export async function openNoteByTitle(page: Page, title: string): Promise<void> 
 
 // Sync-dependent polls need more headroom than the default 10 s expect timeout
 // because they depend on cross-device replication landing in B's index.
-// Locally the post-sync poll resolves in ~100 ms, but CI runners have been
-// observed to take >10 s under load (manual-sync-smoke.e2e.ts shard 2/3).
-const NOTE_LIST_POLL_TIMEOUT_MS = 30_000
+// Querying by exact title also avoids the default notes:list pagination path,
+// which can miss the target note even after it exists.
+const NOTE_LIST_POLL_TIMEOUT_MS = 60_000
 
 export async function getNoteHandleByTitle(
   page: Page,
@@ -108,9 +108,10 @@ export async function getNoteHandleByTitle(
     .poll(
       async () => {
         note = await page.evaluate(async (expectedTitle) => {
-          const result = await window.api.notes.list({})
-          const match = result.notes.find((item) => item.title === expectedTitle)
-          return match ? { id: match.id, title: match.title, emoji: match.emoji ?? null } : null
+          const match = await window.api.notes.resolveByTitle(expectedTitle)
+          return match?.fileType === 'markdown'
+            ? { id: match.id, title: match.title, emoji: null }
+            : null
         }, title)
         return note !== null
       },
