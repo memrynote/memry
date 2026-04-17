@@ -10,6 +10,11 @@ import {
   getGoogleCalendarTokens,
   storeGoogleCalendarTokens
 } from './keychain'
+import {
+  CALENDAR_SCOPE_NOT_GRANTED_MESSAGE,
+  userMessageForCalendarApiError,
+  userMessageForTokenEndpointError
+} from './oauth-errors'
 
 const log = createLogger('Calendar:GoogleOAuth')
 
@@ -76,6 +81,32 @@ function resolveGoogleClientId(): string {
 
 function resolveGoogleClientSecret(): string | undefined {
   return process.env.GOOGLE_CALENDAR_CLIENT_SECRET?.trim() || undefined
+}
+
+function clientIdSuffix(clientId: string): string {
+  return clientId.length <= 12 ? clientId : `…${clientId.slice(-12)}`
+}
+
+interface GoogleOAuthErrorBody {
+  error?: string
+  error_description?: string
+  error_uri?: string
+}
+
+async function readOAuthErrorBody(response: Response): Promise<{
+  raw: string
+  parsed: GoogleOAuthErrorBody
+}> {
+  const raw = await response.text().catch(() => '')
+  if (!raw) {
+    return { raw: '', parsed: {} }
+  }
+  try {
+    const parsed = JSON.parse(raw) as GoogleOAuthErrorBody
+    return { raw, parsed }
+  } catch {
+    return { raw, parsed: {} }
+  }
 }
 
 function toBase64Url(buffer: Buffer): string {
@@ -187,7 +218,25 @@ async function exchangeCodeForTokens(input: {
   })
 
   if (!response.ok) {
-    throw new Error(`Google Calendar token exchange failed with status ${response.status}`)
+    const { raw, parsed } = await readOAuthErrorBody(response)
+    const errorCode = parsed.error ?? 'unknown_error'
+    const description = parsed.error_description ?? (raw || '<empty response body>')
+    log.error('Google Calendar token exchange failed', {
+      status: response.status,
+      error: errorCode,
+      errorDescription: description,
+      errorUri: parsed.error_uri,
+      redirectUri: input.redirectUri,
+      clientIdSuffix: clientIdSuffix(input.clientId),
+      hasClientSecret: Boolean(input.clientSecret)
+    })
+    throw new Error(
+      userMessageForTokenEndpointError({
+        status: response.status,
+        errorCode: parsed.error,
+        errorDescription: parsed.error_description
+      })
+    )
   }
 
   return GoogleTokenResponseSchema.parse(await response.json())
@@ -203,7 +252,20 @@ async function fetchPrimaryCalendar(
   })
 
   if (!response.ok) {
-    throw new Error(`Failed to fetch Google Calendar metadata (${response.status})`)
+    const body = await response.text().catch(() => '')
+    let apiStatus: string | undefined
+    try {
+      const parsedBody = JSON.parse(body) as { error?: { status?: string } }
+      apiStatus = parsedBody.error?.status
+    } catch {
+      // body may be plain text or empty
+    }
+    log.error('Failed to fetch Google Calendar metadata', {
+      status: response.status,
+      apiStatus,
+      body: body.slice(0, 500)
+    })
+    throw new Error(userMessageForCalendarApiError({ status: response.status, apiStatus }))
   }
 
   return GooglePrimaryCalendarSchema.parse(await response.json())
@@ -215,6 +277,15 @@ export async function connectGoogleCalendar(): Promise<GoogleCalendarConnection>
 
   const clientId = resolveGoogleClientId()
   const clientSecret = resolveGoogleClientSecret()
+  log.info('Starting Google Calendar OAuth', {
+    clientIdSuffix: clientIdSuffix(clientId),
+    hasClientSecret: Boolean(clientSecret)
+  })
+  if (clientSecret) {
+    log.warn(
+      'GOOGLE_CALENDAR_CLIENT_SECRET is set — Desktop OAuth clients do not require a secret. If you switched to a Desktop client, unset this env var to avoid mismatched credentials.'
+    )
+  }
   const { server, port } = await startLoopbackServer()
   log.info('OAuth loopback on port', port)
   activeLoopbackServer = server
@@ -321,6 +392,22 @@ export async function connectGoogleCalendar(): Promise<GoogleCalendarConnection>
     clientId,
     clientSecret
   })
+
+  const grantedScopes = tokenResponse.scope.split(' ').filter(Boolean)
+  const hasCalendarScope = grantedScopes.includes(GOOGLE_CALENDAR_SCOPE)
+  log.info('Google token granted', {
+    scopes: grantedScopes,
+    hasCalendarScope,
+    expiresIn: tokenResponse.expires_in,
+    hasRefreshToken: Boolean(tokenResponse.refresh_token)
+  })
+  if (!hasCalendarScope) {
+    log.error('Google did not grant Calendar scope', {
+      requestedScope: GOOGLE_CALENDAR_SCOPE,
+      grantedScopes
+    })
+    throw new Error(CALENDAR_SCOPE_NOT_GRANTED_MESSAGE)
+  }
 
   const existingTokens = await getGoogleCalendarTokens()
   const refreshToken = tokenResponse.refresh_token ?? existingTokens.refreshToken
