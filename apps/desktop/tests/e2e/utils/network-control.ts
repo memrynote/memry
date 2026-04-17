@@ -123,10 +123,7 @@ export async function waitForSyncIdle(page: Page, timeout = 15000): Promise<Sync
   return readSyncStatus(page)
 }
 
-export async function syncAndWait(
-  page: Page,
-  timeout = 15000
-): Promise<SyncStatusSnapshot> {
+export async function syncAndWait(page: Page, timeout = 15000): Promise<SyncStatusSnapshot> {
   const trigger = await triggerSync(page)
 
   if (!trigger.success) {

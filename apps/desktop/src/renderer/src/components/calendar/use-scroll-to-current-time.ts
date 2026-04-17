@@ -12,9 +12,7 @@ export function useScrollToCurrentTime(
     const el = scrollRef.current
     if (!el) return
 
-    const targetOffset = containsToday
-      ? offsetForNow()
-      : FALLBACK_HOUR * HOUR_HEIGHT
+    const targetOffset = containsToday ? offsetForNow() : FALLBACK_HOUR * HOUR_HEIGHT
 
     el.scrollTop = Math.max(0, targetOffset - el.clientHeight * VIEWPORT_RATIO)
   }, [scrollRef, containsToday])

@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import { createLogger } from '../../lib/logger'
 import { getGoogleCalendarTokens, storeGoogleCalendarTokens } from './keychain'
+import { userMessageForCalendarApiError, userMessageForTokenEndpointError } from './oauth-errors'
 import type {
   GoogleCalendarClient,
   GoogleCalendarDescriptor,
@@ -171,7 +172,29 @@ async function refreshAccessTokenInner(): Promise<string> {
   })
 
   if (!response.ok) {
-    throw new Error(`Failed to refresh Google Calendar access token (${response.status})`)
+    const raw = await response.text().catch(() => '')
+    let errorCode: string | undefined
+    let description: string | undefined
+    try {
+      const parsed = JSON.parse(raw) as { error?: string; error_description?: string }
+      errorCode = parsed.error
+      description = parsed.error_description
+    } catch {
+      // raw already holds the plain-text body
+    }
+    log.error('Failed to refresh Google Calendar access token', {
+      status: response.status,
+      error: errorCode ?? 'unknown_error',
+      errorDescription: description ?? raw,
+      hasClientSecret: Boolean(clientSecret)
+    })
+    throw new Error(
+      userMessageForTokenEndpointError({
+        status: response.status,
+        errorCode,
+        errorDescription: description
+      })
+    )
   }
 
   const parsed = GoogleTokenRefreshSchema.parse(await response.json())
@@ -188,6 +211,26 @@ async function refreshAccessToken(): Promise<string> {
     pendingRefresh = null
   })
   return pendingRefresh
+}
+
+async function throwCalendarApiFailure(response: Response, operation: string): Promise<never> {
+  const raw = await response.text().catch(() => '')
+  let apiStatus: string | undefined
+  let apiMessage: string | undefined
+  try {
+    const parsed = JSON.parse(raw) as { error?: { status?: string; message?: string } }
+    apiStatus = parsed.error?.status
+    apiMessage = parsed.error?.message
+  } catch {
+    // raw body may be empty or plain text
+  }
+  log.error(`Failed to ${operation}`, {
+    status: response.status,
+    apiStatus,
+    apiMessage,
+    body: raw.slice(0, 500)
+  })
+  throw new Error(userMessageForCalendarApiError({ status: response.status, apiStatus }))
 }
 
 async function withAuthorizedResponse(
@@ -234,7 +277,7 @@ export function createGoogleCalendarClient(): GoogleCalendarClient {
       })
 
       if (!response.ok) {
-        throw new Error(`Failed to list Google calendars (${response.status})`)
+        await throwCalendarApiFailure(response, 'list Google calendars')
       }
 
       const parsed = GoogleCalendarListSchema.parse(await response.json())
@@ -254,7 +297,7 @@ export function createGoogleCalendarClient(): GoogleCalendarClient {
       })
 
       if (!response.ok) {
-        throw new Error(`Failed to create Google calendar (${response.status})`)
+        await throwCalendarApiFailure(response, 'create Google calendar')
       }
 
       return mapCalendar(GoogleCalendarListItemSchema.parse(await response.json()))
@@ -287,7 +330,7 @@ export function createGoogleCalendarClient(): GoogleCalendarClient {
       }
 
       if (!response.ok) {
-        throw new Error(`Failed to list Google calendar events (${response.status})`)
+        await throwCalendarApiFailure(response, 'list Google calendar events')
       }
 
       const parsed = GoogleEventsListSchema.parse(await response.json())
@@ -310,7 +353,7 @@ export function createGoogleCalendarClient(): GoogleCalendarClient {
       })
 
       if (!response.ok) {
-        throw new Error(`Failed to upsert Google calendar event (${response.status})`)
+        await throwCalendarApiFailure(response, 'upsert Google calendar event')
       }
 
       return mapRemoteEvent(input.calendarId, GoogleEventSchema.parse(await response.json()))
@@ -325,7 +368,7 @@ export function createGoogleCalendarClient(): GoogleCalendarClient {
       })
 
       if (!response.ok && response.status !== 404) {
-        throw new Error(`Failed to delete Google calendar event (${response.status})`)
+        await throwCalendarApiFailure(response, 'delete Google calendar event')
       }
     }
   }
