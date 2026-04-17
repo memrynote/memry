@@ -10,6 +10,7 @@ import { DragProvider, type DragState } from '@/contexts/drag-context'
 import { DroppedPriorityProvider } from '@/contexts/dropped-priority-context'
 import { AIInlineProvider } from '@/contexts/ai-inline-context'
 import { DayPanelProvider } from '@/contexts/day-panel-context'
+import { CalendarViewProvider } from '@/contexts/calendar-view-context'
 import { SidebarDrillDownProvider } from '@/contexts/sidebar-drill-down'
 import { SelectedFolderProvider } from '@/contexts/selected-folder-context'
 import { GlobalDayPanel } from '@/components/day-panel'
@@ -361,25 +362,27 @@ function App(): React.JSX.Element {
         getOrderedTasks={taskOrder.getOrderedTasks}
       >
         <DayPanelProvider>
-          <AIInlineProvider>
-            <HintModeProvider>
-              <TabProvider>
-                <TabPersistenceManager>
-                  <SettingsModalProvider>
-                    <SelectedFolderProvider>
-                      <SidebarDrillDownProvider>
-                        <AppSidebar currentPage={currentPage} viewCounts={viewCounts} />
-                        <SidebarInset className="flex flex-col overflow-hidden">
-                          <AppContent />
-                        </SidebarInset>
-                      </SidebarDrillDownProvider>
-                      <TaskDragOverlay projects={projectsWithCounts} />
-                    </SelectedFolderProvider>
-                  </SettingsModalProvider>
-                </TabPersistenceManager>
-              </TabProvider>
-            </HintModeProvider>
-          </AIInlineProvider>
+          <CalendarViewProvider>
+            <AIInlineProvider>
+              <HintModeProvider>
+                <TabProvider>
+                  <TabPersistenceManager>
+                    <SettingsModalProvider>
+                      <SelectedFolderProvider>
+                        <SidebarDrillDownProvider>
+                          <AppSidebar currentPage={currentPage} viewCounts={viewCounts} />
+                          <SidebarInset className="flex flex-col overflow-hidden">
+                            <AppContent />
+                          </SidebarInset>
+                        </SidebarDrillDownProvider>
+                        <TaskDragOverlay projects={projectsWithCounts} />
+                      </SelectedFolderProvider>
+                    </SettingsModalProvider>
+                  </TabPersistenceManager>
+                </TabProvider>
+              </HintModeProvider>
+            </AIInlineProvider>
+          </CalendarViewProvider>
         </DayPanelProvider>
       </TasksProvider>
     </TabErrorBoundary>

@@ -25,6 +25,7 @@ import {
   type CalendarSourceRecord
 } from '@/services/calendar-service'
 import { useDayPanel } from '@/contexts/day-panel-context'
+import { useCalendarView } from '@/contexts/calendar-view-context'
 
 interface CalendarPageProps {
   className?: string
@@ -158,7 +159,7 @@ export function CalendarPage({ className: _className }: CalendarPageProps): Reac
       /* localStorage unavailable */
     }
   }
-  const [anchorDate, setAnchorDate] = useState(getTodayDate)
+  const { anchorDate, setAnchorDate } = useCalendarView()
   const [showMemryItems, setShowMemryItems] = useState(true)
   const [showImportedCalendars, setShowImportedCalendars] = useState(true)
   const [selectedImportedSourceIds, setSelectedImportedSourceIds] = useState<string[]>([])
