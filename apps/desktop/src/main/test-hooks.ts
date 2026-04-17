@@ -2,7 +2,7 @@ import { BrowserWindow } from 'electron'
 import { store } from './store'
 import { persistKeysAndRegisterDevice } from './sync/device-registration'
 import { yDocToMarkdown } from './sync/blocknote-converter'
-import { getCrdtProvider } from './sync/crdt-provider'
+import { getCrdtProvider, resetCrdtProvider } from './sync/crdt-provider'
 import { getWritebackDebugState } from './sync/crdt-writeback'
 import { getCrdtQueue, getNetworkMonitor } from './sync/runtime'
 import { getDatabase } from './database'
@@ -40,6 +40,7 @@ interface MemryTestHooks {
     lastMarkdown: string | null
     lastError: string | null
   } | null>
+  simulateCrdtTeardownForTests(): Promise<void>
 }
 
 declare global {
@@ -280,6 +281,11 @@ export function registerTestHooks(): void {
 
     async getWritebackDebugState(noteId: string) {
       return getWritebackDebugState(noteId)
+    },
+
+    async simulateCrdtTeardownForTests(): Promise<void> {
+      await getCrdtProvider().destroy()
+      resetCrdtProvider()
     }
   }
 }

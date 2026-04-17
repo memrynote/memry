@@ -41,7 +41,8 @@ const hoisted = vi.hoisted(() => ({
   registerAIInlineHandlers: vi.fn(),
   unregisterAIInlineHandlers: vi.fn(),
   registerAccountHandlers: vi.fn(),
-  unregisterAccountHandlers: vi.fn()
+  unregisterAccountHandlers: vi.fn(),
+  registerCrdtIpcHandlers: vi.fn()
 }))
 
 vi.mock('./vault-handlers', () => ({
@@ -125,6 +126,9 @@ vi.mock('./account-handlers', () => ({
   registerAccountHandlers: hoisted.registerAccountHandlers,
   unregisterAccountHandlers: hoisted.unregisterAccountHandlers
 }))
+vi.mock('../sync/crdt-provider', () => ({
+  registerCrdtIpcHandlers: hoisted.registerCrdtIpcHandlers
+}))
 
 import { areHandlersRegistered, registerAllHandlers, unregisterAllHandlers } from './index'
 
@@ -142,6 +146,7 @@ describe('ipc index registration lifecycle', () => {
     expect(hoisted.registerSyncHandlers).toHaveBeenCalledTimes(1)
     expect(hoisted.registerCryptoHandlers).toHaveBeenCalledTimes(1)
     expect(hoisted.registerTagsHandlers).toHaveBeenCalledTimes(1)
+    expect(hoisted.registerCrdtIpcHandlers).toHaveBeenCalledTimes(1)
   })
 
   it('prevents duplicate registration', () => {
