@@ -24,6 +24,7 @@ import {
   type CalendarProjectionItem,
   type CalendarSourceRecord
 } from '@/services/calendar-service'
+import { useDayPanel } from '@/contexts/day-panel-context'
 
 interface CalendarPageProps {
   className?: string
@@ -168,6 +169,25 @@ export function CalendarPage({ className: _className }: CalendarPageProps): Reac
     draft: CalendarEventDraft
   } | null>(null)
   const [isSaving, setIsSaving] = useState(false)
+
+  const { openForDayView, closeForDayView, setDate: setDayPanelDate } = useDayPanel()
+
+  useEffect(() => {
+    if (view === 'day') {
+      openForDayView(anchorDate)
+    } else {
+      closeForDayView()
+    }
+    // anchorDate intentionally excluded: entering Day view seeds the date once; the
+    // sync effect below keeps it in step while Day view is active.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [view, openForDayView, closeForDayView])
+
+  useEffect(() => {
+    if (view === 'day') {
+      setDayPanelDate(anchorDate)
+    }
+  }, [view, anchorDate, setDayPanelDate])
 
   const rangeInput = useMemo(
     () => ({

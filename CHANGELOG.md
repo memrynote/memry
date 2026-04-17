@@ -5,6 +5,14 @@ Format: weekly entries grouped by feature area.
 
 ---
 
+## 2026-04-17 — Calendar Day View Uses Global Right Sidebar (#TBD)
+
+### Changed
+- Remove the in-page right sidebar from Calendar Day view in favor of the global right sidebar
+- Auto-open the global right sidebar on Day view entry and close it on leaving Day view — unless the user had opened it manually, in which case it stays open
+
+---
+
 ## 2026-04-17 — Google Calendar Settings Row Compact Layout
 
 ### Changed
