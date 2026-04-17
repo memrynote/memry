@@ -5,6 +5,13 @@ Format: weekly entries grouped by feature area.
 
 ---
 
+## 2026-04-17 — Calendar Quick-Create Surfaces Silent IPC Failures
+
+### Fixed
+- Fix calendar quick-create and event editor silently closing without persisting when the create/update IPC resolves with `{ success: false }`. The handlers now throw the returned error message so the popover stays open and shows a destructive inline message instead of discarding the user's input with no feedback
+
+---
+
 ## 2026-04-17 — Calendar Day View Uses Global Right Sidebar (#266)
 
 ### Changed

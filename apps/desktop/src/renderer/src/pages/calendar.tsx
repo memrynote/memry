@@ -268,12 +268,18 @@ export function CalendarPage({ className: _className }: CalendarPageProps): Reac
     setIsSaving(true)
     try {
       if (editorState.mode === 'create') {
-        await calendarService.createEvent(toCreatePayload(editorState.draft))
+        const result = await calendarService.createEvent(toCreatePayload(editorState.draft))
+        if (!result.success) {
+          throw new Error(result.error ?? 'Could not create event.')
+        }
       } else if (editorState.eventId) {
-        await calendarService.updateEvent({
+        const result = await calendarService.updateEvent({
           id: editorState.eventId,
           ...toCreatePayload(editorState.draft)
         })
+        if (!result.success) {
+          throw new Error(result.error ?? 'Could not update event.')
+        }
       }
 
       await queryClient.invalidateQueries({ queryKey: ['calendar', 'range'] })
@@ -284,7 +290,10 @@ export function CalendarPage({ className: _className }: CalendarPageProps): Reac
   }
 
   const handleQuickSave = async (draft: CalendarEventDraft) => {
-    await calendarService.createEvent(toCreatePayload(draft))
+    const result = await calendarService.createEvent(toCreatePayload(draft))
+    if (!result.success) {
+      throw new Error(result.error ?? 'Could not create event.')
+    }
     await queryClient.invalidateQueries({ queryKey: ['calendar', 'range'] })
   }
 
