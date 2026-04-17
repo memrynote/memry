@@ -5,6 +5,18 @@ Format: weekly entries grouped by feature area.
 
 ---
 
+## 2026-04-17 — Calendar Marquee Quick-Create Fix
+
+### Fixed
+- Fix calendar marquee drag to persist the event when the user submits a title via Enter or Save
+- Keep the quick-create popover mounted and show an inline destructive message when event creation fails, instead of closing silently
+
+### Changed
+- Decouple calendar UI refresh from sync queue health so newly created events appear immediately even when background sync is unavailable
+- Extract `localInputToIso` helper for local-input-to-ISO conversion with explicit NaN guarding
+
+---
+
 ## 2026-04-17 — Calendar Auto-scroll to Current Time
 
 ### Added

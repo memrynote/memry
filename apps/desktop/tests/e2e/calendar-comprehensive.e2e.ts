@@ -235,10 +235,9 @@ test.describe('Calendar — comprehensive coverage', () => {
   })
 
   test.describe('Event creation — quick-create via marquee', () => {
-    // Skipped: day grid container has no stable selector; needs a
-    // `data-testid="day-time-grid"` on the gridRef div in calendar-day-view.tsx
-    // to anchor the marquee drag reliably.
-    test.skip('drag selection on day view opens quick-create popover', async () => {})
+    // Implemented in calendar-marquee.e2e.ts (separate file so it does not
+    // inherit the comprehensive suite's seed beforeEach, which the marquee
+    // flow does not need).
   })
 
   test.describe('Event editing', () => {
