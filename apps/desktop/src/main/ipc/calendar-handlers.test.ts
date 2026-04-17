@@ -16,6 +16,9 @@ const mockConnectGoogleCalendar = vi.fn()
 const mockDisconnectGoogleCalendar = vi.fn()
 const mockHasGoogleCalendarLocalAuth = vi.fn()
 const mockSyncGoogleCalendarNow = vi.fn()
+const mockStartGoogleCalendarSyncRunner = vi.fn(async () => {})
+const mockStopGoogleCalendarSyncRunner = vi.fn()
+const mockIsMemryUserSignedIn = vi.fn(async () => true)
 
 vi.mock('electron', () => ({
   ipcMain: {
@@ -55,7 +58,13 @@ vi.mock('../calendar/google/oauth', () => ({
 }))
 
 vi.mock('../calendar/google/sync-service', () => ({
-  syncGoogleCalendarNow: (...args: unknown[]) => mockSyncGoogleCalendarNow(...args)
+  syncGoogleCalendarNow: (...args: unknown[]) => mockSyncGoogleCalendarNow(...args),
+  startGoogleCalendarSyncRunner: (...args: unknown[]) => mockStartGoogleCalendarSyncRunner(...args),
+  stopGoogleCalendarSyncRunner: (...args: unknown[]) => mockStopGoogleCalendarSyncRunner(...args)
+}))
+
+vi.mock('../sync/auth-state', () => ({
+  isMemryUserSignedIn: (...args: unknown[]) => mockIsMemryUserSignedIn(...args)
 }))
 
 import { getDatabase, requireDatabase } from '../database'

@@ -14,6 +14,7 @@ import { SYNC_CHANNELS, SYNC_EVENTS } from '@memry/contracts/ipc-sync'
 import { store } from '../store'
 import { postToServer } from '../sync/http-client'
 import { getSyncEngine, startSyncRuntime } from '../sync/runtime'
+import { startGoogleCalendarSyncRunner } from '../calendar/google/sync-service'
 import { teardownSession } from '../sync/session-teardown'
 import { refreshAccessToken, storeToken } from '../sync/token-manager'
 import { createLogger } from '../lib/logger'
@@ -263,6 +264,9 @@ export function registerAuthOAuthHandlers(): void {
         } else {
           void startSyncRuntime()
         }
+        void startGoogleCalendarSyncRunner().catch(() => {
+          // Runner self-logs on failure.
+        })
       }
       return { success: true }
     },
