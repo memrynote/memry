@@ -25,7 +25,7 @@ import { registerSearchHandlers, unregisterSearchHandlers } from './search-handl
 import { registerGraphHandlers, unregisterGraphHandlers } from './graph-handlers'
 import { registerAIInlineHandlers, unregisterAIInlineHandlers } from './ai-inline-handlers'
 import { registerAccountHandlers, unregisterAccountHandlers } from './account-handlers'
-import { registerCrdtIpcHandlers } from '../sync/crdt-provider'
+import { registerCrdtIpcHandlers } from './crdt-handlers'
 import { createLogger } from '../lib/logger'
 
 const ipcLog = createLogger('IPC')
