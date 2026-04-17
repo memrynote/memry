@@ -41,7 +41,7 @@ jobs:
       - name: Install system dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y libsecret-1-dev
+          sudo apt-get install -y libsecret-1-dev gnome-keyring dbus-x11
           npx playwright install-deps chromium
 
       - name: Install dependencies
@@ -51,7 +51,15 @@ jobs:
         run: pnpm build
 
       - name: Run Electron E2E tests (shard ${{ matrix.shard }})
-        run: xvfb-run -a pnpm test:e2e --shard=${{ matrix.shard }}
+        run: |
+          # keytar -> libsecret needs an active dbus session and an unlocked
+          # gnome-keyring daemon. Without this, the Secret Service API reports
+          # 'Unknown or unsupported transport "disabled"' and every test that
+          # stores a device key fails.
+          dbus-run-session -- bash -c '
+            echo -n "" | gnome-keyring-daemon --unlock --components=secrets
+            xvfb-run -a pnpm test:e2e --shard=${{ matrix.shard }}
+          '
 
       - name: Upload E2E artifacts
         if: always()
