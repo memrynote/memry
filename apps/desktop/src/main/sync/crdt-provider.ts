@@ -1,20 +1,9 @@
 import * as Y from 'yjs'
 import { LeveldbPersistence } from 'y-leveldb'
 import path from 'path'
-import { app, BrowserWindow, ipcMain } from 'electron'
-import {
-  CRDT_CHANNELS,
-  CRDT_EVENTS,
-  CRDT_FRAGMENT_NAME,
-  CrdtApplyUpdateSchema,
-  CrdtCloseDocSchema,
-  CrdtOpenDocSchema,
-  CrdtSyncStep1Schema,
-  CrdtSyncStep2Schema,
-  type CrdtSyncStep1Result
-} from '@memry/contracts/ipc-crdt'
+import { app, BrowserWindow } from 'electron'
+import { CRDT_EVENTS, CRDT_FRAGMENT_NAME } from '@memry/contracts/ipc-crdt'
 import { createLogger } from '../lib/logger'
-import { createValidatedHandler } from '../ipc/validate'
 import { getIndexDatabase } from '../database/client'
 import { getNoteCacheById } from '@main/database/queries/notes'
 import type { CrdtUpdateQueue } from './crdt-queue'
@@ -58,7 +47,6 @@ export class CrdtProvider {
   private persistence: LeveldbPersistence | null = null
   private updateQueue: CrdtUpdateQueue | null = null
   private snapshotPushFn: SnapshotPushFn | null = null
-  private ipcHandlersRegistered = false
   private compactingDocs = new Set<string>()
   private compactionBuffers = new Map<string, Uint8Array[]>()
   private networkBatcher = new MicrotaskBatchBroadcaster((noteId, merged) => {
@@ -74,26 +62,17 @@ export class CrdtProvider {
   }
 
   async initPersistence(): Promise<void> {
-    if (this.persistence && this.ipcHandlersRegistered) {
-      return
-    }
-
     if (this.persistence) {
-      try {
-        await this.persistence.destroy()
-      } catch (err) {
-        log.warn('Failed to close stale CRDT persistence before init', { error: err })
-      }
-      this.persistence = null
+      return
     }
 
     const storagePath = path.join(app.getPath('userData'), 'crdt-store')
     this.persistence = new LeveldbPersistence(storagePath)
-    if (!this.ipcHandlersRegistered) {
-      this.registerIpcHandlers()
-      this.ipcHandlersRegistered = true
-    }
     log.debug('CrdtProvider persistence initialized', { storagePath })
+  }
+
+  isInitialized(): boolean {
+    return this.persistence !== null
   }
 
   async open(noteId: string, windowId?: number, options?: { skipSeed?: boolean }): Promise<Y.Doc> {
@@ -270,15 +249,6 @@ export class CrdtProvider {
       entry.doc.destroy()
     }
     this.docs.clear()
-
-    if (this.ipcHandlersRegistered) {
-      ipcMain.removeHandler(CRDT_CHANNELS.OPEN_DOC)
-      ipcMain.removeHandler(CRDT_CHANNELS.CLOSE_DOC)
-      ipcMain.removeHandler(CRDT_CHANNELS.APPLY_UPDATE)
-      ipcMain.removeHandler(CRDT_CHANNELS.SYNC_STEP_1)
-      ipcMain.removeHandler(CRDT_CHANNELS.SYNC_STEP_2)
-      this.ipcHandlersRegistered = false
-    }
 
     if (this.persistence) {
       try {
@@ -681,66 +651,35 @@ export class CrdtProvider {
     }
   }
 
-  private registerIpcHandlers(): void {
-    ipcMain.handle(CRDT_CHANNELS.OPEN_DOC, async (event, rawInput: unknown) => {
-      const { noteId } = CrdtOpenDocSchema.parse(rawInput)
-      const windowId = BrowserWindow.fromWebContents(event.sender)?.id
+  /**
+   * Validate that a note exists and is eligible for CRDT (non-binary).
+   * Routed through the provider so IPC handlers stay decoupled from the
+   * database query layer (architecture boundary).
+   */
+  validateNoteForCrdt(noteId: string): { ok: true } | { ok: false; error: string } {
+    const indexDb = getIndexDatabase()
+    const cached = getNoteCacheById(indexDb, noteId)
+    if (!cached) return { ok: false, error: `Note not found: ${noteId}` }
+    if (cached.fileType && isBinaryFileType(cached.fileType)) {
+      return { ok: false, error: `Binary notes do not use CRDT: ${noteId}` }
+    }
+    return { ok: true }
+  }
 
-      const indexDb = getIndexDatabase()
-      const noteExists = getNoteCacheById(indexDb, noteId)
-      if (!noteExists) {
-        return { success: false, error: `Note not found: ${noteId}` }
-      }
-      if (noteExists.fileType && isBinaryFileType(noteExists.fileType)) {
-        return { success: false, error: `Binary notes do not use CRDT: ${noteId}` }
-      }
+  applyIpcUpdate(noteId: string, updateArr: number[], sourceWindowId: number): void {
+    const entry = this.docs.get(noteId)
+    if (!entry) return
 
-      await this.open(noteId, windowId)
-      return { success: true }
-    })
+    const update = new Uint8Array(updateArr)
+    const origin: IpcOrigin = { source: 'ipc', windowId: sourceWindowId }
+    Y.applyUpdate(entry.doc, update, origin)
+  }
 
-    ipcMain.handle(CRDT_CHANNELS.CLOSE_DOC, async (event, rawInput: unknown) => {
-      const { noteId } = CrdtCloseDocSchema.parse(rawInput)
-      const windowId = BrowserWindow.fromWebContents(event.sender)?.id
-      await this.close(noteId, windowId)
-      return { success: true }
-    })
-
-    ipcMain.handle(CRDT_CHANNELS.APPLY_UPDATE, async (event, rawInput: unknown) => {
-      const { noteId, update: updateArr } = CrdtApplyUpdateSchema.parse(rawInput)
-      const sourceWindowId = BrowserWindow.fromWebContents(event.sender)?.id ?? -1
-
-      const entry = this.docs.get(noteId)
-      if (!entry) return
-
-      const update = new Uint8Array(updateArr)
-      const origin: IpcOrigin = { source: 'ipc', windowId: sourceWindowId }
-      Y.applyUpdate(entry.doc, update, origin)
-    })
-
-    ipcMain.handle(
-      CRDT_CHANNELS.SYNC_STEP_1,
-      createValidatedHandler(
-        CrdtSyncStep1Schema,
-        async (input): Promise<CrdtSyncStep1Result | null> => {
-          const doc = await this.open(input.noteId)
-          const remoteVector = new Uint8Array(input.stateVector)
-          const diff = Y.encodeStateAsUpdate(doc, remoteVector)
-          const stateVector = Y.encodeStateVector(doc)
-          return { diff, stateVector }
-        }
-      )
-    )
-
-    ipcMain.handle(
-      CRDT_CHANNELS.SYNC_STEP_2,
-      createValidatedHandler(CrdtSyncStep2Schema, async (input) => {
-        const entry = this.docs.get(input.noteId)
-        if (!entry) return
-        const diff = new Uint8Array(input.diff)
-        Y.applyUpdate(entry.doc, diff, { source: 'ipc', windowId: -1 } satisfies IpcOrigin)
-      })
-    )
+  applyIpcSyncStep2(noteId: string, diffArr: number[]): void {
+    const entry = this.docs.get(noteId)
+    if (!entry) return
+    const diff = new Uint8Array(diffArr)
+    Y.applyUpdate(entry.doc, diff, { source: 'ipc', windowId: -1 } satisfies IpcOrigin)
   }
 }
 

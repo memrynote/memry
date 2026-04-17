@@ -55,7 +55,12 @@ export class YjsIpcProvider extends Observable<string> {
       this.ipcCleanup = null
     }
 
-    window.api.syncCrdt.closeDoc({ noteId: this.noteId })
+    window.api.syncCrdt.closeDoc({ noteId: this.noteId }).catch((err: unknown) => {
+      log.debug('closeDoc IPC failed (expected during teardown)', {
+        noteId: this.noteId,
+        error: err
+      })
+    })
     this.synced = false
     this.emit('status', [{ status: 'disconnected' }])
   }

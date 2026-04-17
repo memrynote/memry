@@ -42,7 +42,11 @@ const syncBoundaryExemptIpcFiles = new Set([
   'apps/desktop/src/main/ipc/sync-core-handlers.ts',
   'apps/desktop/src/main/ipc/auth-oauth-handlers.ts',
   'apps/desktop/src/main/ipc/auth-device-handlers.ts',
-  'apps/desktop/src/main/ipc/sync-attachment-handlers.ts'
+  'apps/desktop/src/main/ipc/sync-attachment-handlers.ts',
+  // Thin IPC wrapper that registers crdt:* handlers at app bootstrap. Handlers
+  // delegate to getCrdtProvider() lazily so they survive sign-out teardown
+  // (provider destroy + reset) without unregistering.
+  'apps/desktop/src/main/ipc/crdt-handlers.ts'
 ])
 const dataOnlySchemaSpecifiers = new Map([
   ['@memry/db-schema/schema/tag-definitions', 'data-db schema import'],
