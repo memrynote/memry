@@ -19,7 +19,8 @@ import {
   type CalendarRangeResponse,
   type CalendarSourceListResponse,
   type CalendarSourceMutationResponse,
-  type CalendarSourceRecord
+  type CalendarSourceRecord,
+  type CreateCalendarEventInput
 } from '@memry/contracts/calendar-api'
 import { calendarEvents } from '@memry/db-schema/schema/calendar-events'
 import { calendarExternalEvents } from '@memry/db-schema/schema/calendar-external-events'
@@ -162,45 +163,50 @@ function syncCalendarSourceUpsert(
   return mapCalendarSource(saved)
 }
 
+export function createEventOperation(
+  db: DataDb,
+  input: CreateCalendarEventInput
+): CalendarEventMutationResponse {
+  const now = new Date().toISOString()
+  const id = generateId()
+
+  db.insert(calendarEvents)
+    .values({
+      id,
+      title: input.title,
+      description: input.description ?? null,
+      location: input.location ?? null,
+      startAt: input.startAt,
+      endAt: input.endAt ?? null,
+      timezone: input.timezone,
+      isAllDay: input.isAllDay,
+      recurrenceRule: input.recurrenceRule ?? null,
+      recurrenceExceptions: input.recurrenceExceptions ?? null,
+      createdAt: now,
+      modifiedAt: now
+    })
+    .run()
+
+  const created = db.select().from(calendarEvents).where(eq(calendarEvents.id, id)).get()
+  if (!created) {
+    throw new Error('Failed to load created calendar event')
+  }
+
+  try {
+    syncCalendarEventCreate(id)
+  } catch (error) {
+    log.warn('syncCalendarEventCreate failed; event persisted locally', error)
+  }
+  emitCalendarChanged({ entityType: 'calendar_event', id })
+  return { success: true, event: mapCalendarEvent(created) }
+}
+
 export function registerCalendarHandlers(): void {
   ipcMain.handle(
     CalendarChannels.invoke.CREATE_EVENT,
     createValidatedHandler(
       CreateCalendarEventSchema,
-      withDb((db, input): CalendarEventMutationResponse => {
-        const now = new Date().toISOString()
-        const id = generateId()
-
-        db.insert(calendarEvents)
-          .values({
-            id,
-            title: input.title,
-            description: input.description ?? null,
-            location: input.location ?? null,
-            startAt: input.startAt,
-            endAt: input.endAt ?? null,
-            timezone: input.timezone,
-            isAllDay: input.isAllDay,
-            recurrenceRule: input.recurrenceRule ?? null,
-            recurrenceExceptions: input.recurrenceExceptions ?? null,
-            createdAt: now,
-            modifiedAt: now
-          })
-          .run()
-
-        const created = db.select().from(calendarEvents).where(eq(calendarEvents.id, id)).get()
-        if (!created) {
-          throw new Error('Failed to load created calendar event')
-        }
-
-        try {
-          syncCalendarEventCreate(id)
-        } catch (error) {
-          log.warn('syncCalendarEventCreate failed; event persisted locally', error)
-        }
-        emitCalendarChanged({ entityType: 'calendar_event', id })
-        return { success: true, event: mapCalendarEvent(created) }
-      }, 'Failed to create calendar event')
+      withDb(createEventOperation, 'Failed to create calendar event')
     )
   )
 
