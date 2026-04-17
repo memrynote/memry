@@ -5,6 +5,13 @@ Format: weekly entries grouped by feature area.
 
 ---
 
+## 2026-04-17 — CRDT Handler Lifecycle on Signout
+
+### Fixed
+- Fix "No handler registered for 'crdt:close-doc'" error logged on signout by registering CRDT IPC handlers at app bootstrap instead of tearing them down with the provider; handlers now route through `getCrdtProvider()` on every call and no-op safely after teardown
+
+---
+
 ## 2026-04-17 — Calendar Marquee Quick-Create Fix
 
 ### Fixed
