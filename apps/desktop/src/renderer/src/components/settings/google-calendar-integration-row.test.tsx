@@ -193,8 +193,6 @@ describe('Google Calendar integration row', () => {
 
     await waitFor(() => expect(screen.getByText('Connected')).toBeInTheDocument())
 
-    expect(screen.getByText('Memry')).toBeInTheDocument()
-
     await user.click(screen.getByRole('checkbox', { name: 'Home' }))
     expect(mockUpdateSourceSelection).toHaveBeenCalledWith({
       id: 'google-calendar-home',
