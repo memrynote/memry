@@ -69,6 +69,7 @@ interface UseTimeGridMarqueeOptions {
   columnCount?: number
   hourHeight?: number
   snapMinutes?: number
+  getColumnElement?: (columnIndex: number) => HTMLElement | null
 }
 
 interface UseTimeGridMarqueeResult {
@@ -100,7 +101,8 @@ function buildSelection(
   date: string,
   gridRef: RefObject<HTMLDivElement | null>,
   hourHeight: number,
-  columnCount: number
+  columnCount: number,
+  getColumnElement?: (columnIndex: number) => HTMLElement | null
 ): TimeGridSelection {
   const pxPerMinute = hourHeight / 60
   const top = Math.round(startMinutes * pxPerMinute)
@@ -108,8 +110,9 @@ function buildSelection(
   const el = gridRef.current
   const gridRect = el?.getBoundingClientRect()
   const scrollTop = el?.scrollTop ?? 0
-  const children = el?.children
-  const columnEl = children?.[columnIndex + 1] as HTMLElement | undefined
+  const columnEl = getColumnElement
+    ? getColumnElement(columnIndex)
+    : ((el?.children?.[columnIndex + 1] as HTMLElement | undefined) ?? null)
   const colRect = columnEl?.getBoundingClientRect()
   const anchorRect = {
     x: colRect?.x ?? gridRect?.x ?? 0,
@@ -133,7 +136,8 @@ export function useTimeGridMarquee({
   dateForColumn,
   columnCount = 1,
   hourHeight = HOUR_HEIGHT,
-  snapMinutes = SNAP_MINUTES
+  snapMinutes = SNAP_MINUTES,
+  getColumnElement
 }: UseTimeGridMarqueeOptions): UseTimeGridMarqueeResult {
   const [selection, setSelection] = useState<TimeGridSelection | null>(null)
   const [isDragging, setIsDragging] = useState(false)
@@ -171,7 +175,8 @@ export function useTimeGridMarquee({
           date,
           gridRef,
           hourHeight,
-          columnCount
+          columnCount,
+          getColumnElement
         )
       )
 
@@ -204,7 +209,7 @@ export function useTimeGridMarquee({
         dragState.current.rafId = requestAnimationFrame(scroll)
       }
     },
-    [gridRef, dateForColumn, hourHeight, snapMinutes]
+    [gridRef, dateForColumn, hourHeight, snapMinutes, columnCount, getColumnElement]
   )
 
   const handleMouseUp = useCallback(() => {
@@ -252,11 +257,12 @@ export function useTimeGridMarquee({
           date,
           gridRef,
           hourHeight,
-          columnCount
+          columnCount,
+          getColumnElement
         )
       )
     },
-    [gridRef, dateForColumn, hourHeight, snapMinutes]
+    [gridRef, dateForColumn, hourHeight, snapMinutes, columnCount, getColumnElement]
   )
 
   return {

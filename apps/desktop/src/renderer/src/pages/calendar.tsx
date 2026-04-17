@@ -66,8 +66,8 @@ function getRangeForView(
   if (view === 'week') {
     const weekStart = getStartOfWeek(anchorDate)
     return {
-      startAt: toStartOfLocalDayIso(weekStart),
-      endAt: toStartOfLocalDayIso(addLocalDays(weekStart, 7))
+      startAt: toStartOfLocalDayIso(addLocalDays(weekStart, -7)),
+      endAt: toStartOfLocalDayIso(addLocalDays(weekStart, 14))
     }
   }
 
@@ -350,6 +350,7 @@ export function CalendarPage({ className: _className }: CalendarPageProps): Reac
         setEditorState((current) => (current ? { ...current, draft } : current))
       }
       onAnchorChange={(date) => setAnchorDate(date)}
+      onWeekVisibleRangeChange={(startDate) => setAnchorDate(startDate)}
       onEditorSave={() => void handleSaveEditor()}
       onQuickSave={handleQuickSave}
       onCreateEventWithRange={handleCreateEventWithRange}

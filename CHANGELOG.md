@@ -5,6 +5,22 @@ Format: weekly entries grouped by feature area.
 
 ---
 
+## 2026-04-18 — Calendar Week View Infinite Horizontal Scroll
+
+### Added
+- Infinite horizontal day scroll in Week view: trackpad swipes (and Shift + mouse wheel) pan the 7 visible day columns continuously across week boundaries, with the toolbar label updating live. Prev/Next/Today buttons now smooth-scroll to their target, and event data prefetches ±1 week around the visible range
+- `dayIndexFromDate` / `dateFromDayIndex` helpers in `date-utils.ts`, anchored at a `2020-01-01` epoch for virtualization math
+- `useWeekInfiniteScroll` hook owning a horizontal `@tanstack/react-virtual` virtualizer, `ResizeObserver`-driven column width, stable ref-backed visible-day callback, and a far-jump fallback inside `scrollToDay`
+- E2E tests in `calendar-week-scroll.e2e.ts` covering scroll right, scroll left, Today button, and Next/Prev buttons (no snap-back assertions)
+
+### Changed
+- Week view rewritten around horizontal virtualization with mirrored header + time-gutter scroll containers and a `data-testid="calendar-week-scroll"` hook point for e2e
+- Calendar page fetch range for Week view expanded to `[weekStart − 7, weekStart + 14)` for ±1 week prefetch via the existing `useCalendarRange` query key cache
+- `useTimeGridMarquee` now accepts an optional `getColumnElement` resolver so drag-select + quick-create popover anchoring work against absolute day indices in the virtualized grid
+- Hidden the Week view body scrollbar via the existing `.scrollbar-none` utility — horizontal scroll stays functional, chrome does not
+
+---
+
 ## 2026-04-17 — Calendar Quick-Create Surfaces Silent IPC Failures
 
 ### Fixed
