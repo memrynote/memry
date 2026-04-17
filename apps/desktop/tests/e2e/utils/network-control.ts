@@ -150,7 +150,12 @@ export async function syncBothAndWait(
   pageB: Page,
   timeout = 15000
 ): Promise<{ statusA: SyncStatusSnapshot; statusB: SyncStatusSnapshot }> {
-  const [statusA, statusB] = await Promise.all([syncAndWait(pageA, timeout), syncAndWait(pageB, timeout)])
+  // A single parallel trigger is racy for cross-device note propagation: one page can
+  // pull before the other page has pushed its latest note record. Run a round-trip sync
+  // so both devices observe the other's latest state deterministically.
+  await syncAndWait(pageA, timeout)
+  const statusB = await syncAndWait(pageB, timeout)
+  const statusA = await syncAndWait(pageA, timeout)
 
   return { statusA, statusB }
 }
