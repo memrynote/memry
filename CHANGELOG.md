@@ -5,7 +5,7 @@ Format: weekly entries grouped by feature area.
 
 ---
 
-## 2026-04-17 — Calendar Day View Uses Global Right Sidebar (#TBD)
+## 2026-04-17 — Calendar Day View Uses Global Right Sidebar (#266)
 
 ### Changed
 - Remove the in-page right sidebar from Calendar Day view in favor of the global right sidebar
