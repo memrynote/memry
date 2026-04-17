@@ -2,6 +2,11 @@ name: CI
 
 on:
   pull_request:
+    paths-ignore:
+      - '**/*.md'
+      - 'docs/**'
+      - '.github/ISSUE_TEMPLATE/**'
+      - 'LICENSE'
   push:
     branches:
       - main
@@ -17,42 +22,101 @@ concurrency:
 env:
   CI: true
   NODE_OPTIONS: '--max-old-space-size=4096'
+  TURBO_TELEMETRY_DISABLED: 1
+  TURBO_CACHE_DIR: .turbo
 
 jobs:
-  quality:
-    name: Lint, Typecheck, and Tests
+  boundaries:
+    name: Boundary checks
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 10
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
         with:
           node-version-file: .nvmrc
           cache: pnpm
-
-      - name: Install system dependencies
-        run: sudo apt-get update && sudo apt-get install -y libsecret-1-dev
-
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Check contracts, architecture, and IPC boundaries
+        run: pnpm install --frozen-lockfile --ignore-scripts
+      - name: Run boundary checks in parallel
         run: |
-          pnpm check:contracts
-          pnpm check:architecture
-          pnpm ipc:check
+          pnpm check:contracts &
+          pnpm check:architecture &
+          pnpm ipc:check &
+          wait
 
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile --ignore-scripts
+      - name: Cache turbo
+        uses: actions/cache@v4
+        with:
+          path: .turbo
+          key: turbo-lint-${{ github.sha }}
+          restore-keys: |
+            turbo-lint-
+            turbo-
       - name: Lint
         run: pnpm lint
 
+  typecheck:
+    name: Typecheck
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile --ignore-scripts
+      - name: Cache turbo
+        uses: actions/cache@v4
+        with:
+          path: .turbo
+          key: turbo-typecheck-${{ github.sha }}
+          restore-keys: |
+            turbo-typecheck-
+            turbo-
       - name: Typecheck
         run: pnpm typecheck
 
+  test:
+    name: Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - name: Install system dependencies (native modules)
+        run: sudo apt-get update && sudo apt-get install -y libsecret-1-dev
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Cache turbo
+        uses: actions/cache@v4
+        with:
+          path: .turbo
+          key: turbo-test-${{ github.sha }}
+          restore-keys: |
+            turbo-test-
+            turbo-
       - name: Unit and integration tests
         run: pnpm test
 
@@ -60,30 +124,22 @@ jobs:
     name: Coverage Report
     runs-on: ubuntu-latest
     needs:
-      - quality
+      - test
     if: github.event_name != 'pull_request'
-    timeout-minutes: 45
+    timeout-minutes: 30
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
         with:
           node-version-file: .nvmrc
           cache: pnpm
-
       - name: Install system dependencies
         run: sudo apt-get update && sudo apt-get install -y libsecret-1-dev
-
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
-
       - name: Run tests with coverage
         run: pnpm test:coverage
-
       - name: Upload coverage artifact
         if: always()
         uses: actions/upload-artifact@v4
