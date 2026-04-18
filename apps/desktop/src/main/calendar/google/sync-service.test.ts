@@ -898,6 +898,83 @@ describe('google calendar sync service', () => {
     expect(mirrorRows).toHaveLength(0)
   })
 
+  it('archives the mirror row when an unbound Google event is cancelled', async () => {
+    // #given a selected source with an existing mirror row and no binding
+    const now = '2026-04-18T09:00:00.000Z'
+    seedGoogleCalendarSource({
+      id: 'google-calendar:selected',
+      remoteId: 'remote-selected-calendar',
+      title: 'Personal',
+      color: null,
+      isMemryManaged: false,
+      syncCursor: 'cursor-1',
+      syncStatus: 'ok'
+    })
+
+    db.insert(calendarExternalEvents)
+      .values({
+        id: 'calendar_external_event:google-calendar:selected:remote-unbound-1',
+        sourceId: 'google-calendar:selected',
+        remoteEventId: 'remote-unbound-1',
+        remoteEtag: '"etag-old"',
+        remoteUpdatedAt: '2026-04-18T07:00:00.000Z',
+        title: 'External event',
+        description: null,
+        location: null,
+        startAt: '2026-04-20T09:00:00.000Z',
+        endAt: '2026-04-20T10:00:00.000Z',
+        timezone: 'UTC',
+        isAllDay: false,
+        status: 'confirmed',
+        recurrenceRule: null,
+        rawPayload: {},
+        archivedAt: null,
+        clock: { 'device-a': 1 },
+        createdAt: now,
+        modifiedAt: now
+      })
+      .run()
+
+    const client = {
+      listEvents: vi.fn(async () => ({
+        nextSyncCursor: 'cursor-2',
+        events: [
+          {
+            id: 'remote-unbound-1',
+            calendarId: 'remote-selected-calendar',
+            title: 'External event',
+            description: null,
+            location: null,
+            startAt: '2026-04-20T09:00:00.000Z',
+            endAt: '2026-04-20T10:00:00.000Z',
+            isAllDay: false,
+            timezone: 'UTC',
+            status: 'cancelled' as const,
+            etag: '"etag-cancelled"',
+            updatedAt: '2026-04-18T08:45:00.000Z',
+            raw: {}
+          }
+        ]
+      }))
+    }
+
+    // #when
+    await syncGoogleCalendarSource(db, 'google-calendar:selected', { client })
+
+    // #then: the mirror row is archived (archivedAt set), not deleted
+    const mirrorRow = db
+      .select()
+      .from(calendarExternalEvents)
+      .where(
+        eq(
+          calendarExternalEvents.id,
+          'calendar_external_event:google-calendar:selected:remote-unbound-1'
+        )
+      )
+      .get()
+    expect(mirrorRow?.archivedAt).toBeTruthy()
+  })
+
   describe('syncGoogleCalendarNow gating', () => {
     function buildClient() {
       return {
