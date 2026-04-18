@@ -195,7 +195,13 @@ const createMockApi = () => ({
     reindexEmbeddings: vi.fn().mockResolvedValue({ success: true }),
     getTabSettings: vi.fn().mockResolvedValue({}),
     setTabSettings: vi.fn().mockResolvedValue({ success: true }),
-    getStartupThemeSync: vi.fn().mockReturnValue('system')
+    getStartupThemeSync: vi.fn().mockReturnValue('system'),
+    getCalendarGoogleSettings: vi.fn().mockResolvedValue({
+      defaultTargetCalendarId: null,
+      onboardingCompleted: true,
+      promoteConfirmDismissed: false
+    }),
+    setCalendarGoogleSettings: vi.fn().mockResolvedValue({ success: true })
   },
 
   // Inbox API
