@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import * as DialogPrimitive from '@radix-ui/react-dialog'
 import { Button } from '@/components/ui/button'
 import { CalendarPicker } from './calendar-picker'
@@ -19,15 +19,14 @@ export function GoogleCalendarOnboardingDialog({
   onCompleted
 }: GoogleCalendarOnboardingDialogProps): React.JSX.Element | null {
   const { data, isLoading } = useGoogleCalendars(open)
-  const [selected, setSelected] = useState<string | null>(null)
+  // User's pick (null = stay with whatever primary resolves to). When the
+  // user hasn't touched the picker, we fall back to data.primary at render
+  // time so the button reflects the preselected primary without an effect.
+  const [override, setOverride] = useState<string | null | undefined>(undefined)
   const [isSaving, setIsSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  useEffect(() => {
-    if (open && data?.primary) {
-      setSelected((prev) => prev ?? data.primary!.id)
-    }
-  }, [open, data?.primary])
+  const selected = override !== undefined ? override : (data?.primary?.id ?? null)
 
   async function persist(calendarId: string | null): Promise<void> {
     setIsSaving(true)
@@ -68,7 +67,7 @@ export function GoogleCalendarOnboardingDialog({
           <CalendarPicker
             calendars={data?.calendars ?? []}
             value={selected}
-            onChange={setSelected}
+            onChange={setOverride}
             isLoading={isLoading}
             disabled={isSaving}
             defaultOptionLabel="Use the Memry-managed calendar"

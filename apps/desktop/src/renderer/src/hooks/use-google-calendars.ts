@@ -23,6 +23,6 @@ export function useGoogleCalendars(enabled: boolean = true): UseGoogleCalendarsR
   return {
     data,
     isLoading,
-    error: (error as Error | null) ?? null
+    error: error ?? null
   }
 }
