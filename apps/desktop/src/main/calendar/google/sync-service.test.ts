@@ -975,6 +975,49 @@ describe('google calendar sync service', () => {
     expect(mirrorRow?.archivedAt).toBeTruthy()
   })
 
+  it('does not materialize a mirror row when an unbound Google event arrives already cancelled', async () => {
+    // #given a selected source with NO existing mirror row and NO binding
+    seedGoogleCalendarSource({
+      id: 'google-calendar:selected',
+      remoteId: 'remote-selected-calendar',
+      title: 'Personal',
+      color: null,
+      isMemryManaged: false,
+      syncCursor: 'cursor-1',
+      syncStatus: 'ok'
+    })
+
+    const client = {
+      listEvents: vi.fn(async () => ({
+        nextSyncCursor: 'cursor-2',
+        events: [
+          {
+            id: 'remote-never-seen-1',
+            calendarId: 'remote-selected-calendar',
+            title: 'Cancelled before we saw it',
+            description: null,
+            location: null,
+            startAt: '2026-04-20T09:00:00.000Z',
+            endAt: '2026-04-20T10:00:00.000Z',
+            isAllDay: false,
+            timezone: 'UTC',
+            status: 'cancelled' as const,
+            etag: '"etag-cancelled"',
+            updatedAt: '2026-04-18T08:45:00.000Z',
+            raw: {}
+          }
+        ]
+      }))
+    }
+
+    // #when
+    await syncGoogleCalendarSource(db, 'google-calendar:selected', { client })
+
+    // #then: no mirror row was created (no tombstone for events we never saw)
+    const mirrorRows = db.select().from(calendarExternalEvents).all()
+    expect(mirrorRows).toHaveLength(0)
+  })
+
   describe('syncGoogleCalendarNow gating', () => {
     function buildClient() {
       return {
