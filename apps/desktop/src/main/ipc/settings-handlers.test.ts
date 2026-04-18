@@ -646,4 +646,75 @@ describe('settings-handlers', () => {
       expect(result).toEqual({ theme: 'system', accentColor: '#6366f1' })
     })
   })
+
+  describe('calendar.google settings group (M2)', () => {
+    it('#given no stored calendar.google row #when GET invoked #then returns shipped defaults', async () => {
+      registerSettingsHandlers()
+      ;(settingsQueries.getSetting as Mock).mockReturnValue(null)
+
+      const result = await invokeHandler<{
+        defaultTargetCalendarId: string | null
+        onboardingCompleted: boolean
+        promoteConfirmDismissed: boolean
+      }>(SettingsChannels.invoke.GET_CALENDAR_GOOGLE_SETTINGS)
+
+      expect(result).toEqual({
+        defaultTargetCalendarId: null,
+        onboardingCompleted: false,
+        promoteConfirmDismissed: false
+      })
+    })
+
+    it('#given a stored row #when GET invoked #then merges stored JSON over defaults', async () => {
+      registerSettingsHandlers()
+      ;(settingsQueries.getSetting as Mock).mockReturnValue(
+        JSON.stringify({
+          defaultTargetCalendarId: 'primary@group.calendar.google.com',
+          onboardingCompleted: true
+          // promoteConfirmDismissed missing — should fall back to default false
+        })
+      )
+
+      const result = await invokeHandler<{
+        defaultTargetCalendarId: string | null
+        onboardingCompleted: boolean
+        promoteConfirmDismissed: boolean
+      }>(SettingsChannels.invoke.GET_CALENDAR_GOOGLE_SETTINGS)
+
+      expect(result).toEqual({
+        defaultTargetCalendarId: 'primary@group.calendar.google.com',
+        onboardingCompleted: true,
+        promoteConfirmDismissed: false
+      })
+    })
+
+    it('#given an update #when SET invoked #then merges over current value and persists JSON', async () => {
+      registerSettingsHandlers()
+      ;(settingsQueries.getSetting as Mock).mockReturnValue(null)
+
+      const result = await invokeHandler<{ success: boolean }>(
+        SettingsChannels.invoke.SET_CALENDAR_GOOGLE_SETTINGS,
+        { defaultTargetCalendarId: 'work@group.calendar.google.com', onboardingCompleted: true }
+      )
+
+      expect(result).toEqual({ success: true })
+      expect(settingsQueries.setSetting).toHaveBeenCalledWith(
+        expect.anything(),
+        'calendar.google',
+        JSON.stringify({
+          defaultTargetCalendarId: 'work@group.calendar.google.com',
+          onboardingCompleted: true,
+          promoteConfirmDismissed: false
+        })
+      )
+    })
+
+    it('#given registered handlers #when unregister #then removes GET and SET channels', () => {
+      registerSettingsHandlers()
+      unregisterSettingsHandlers()
+
+      expect(removeHandlerCalls).toContain(SettingsChannels.invoke.GET_CALENDAR_GOOGLE_SETTINGS)
+      expect(removeHandlerCalls).toContain(SettingsChannels.invoke.SET_CALENDAR_GOOGLE_SETTINGS)
+    })
+  })
 })
