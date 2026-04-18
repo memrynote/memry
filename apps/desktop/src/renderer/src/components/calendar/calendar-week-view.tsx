@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef } from 'react'
 import { CalendarItemChip } from './calendar-item-chip'
 import { dateFromDayIndex, dayIndexFromDate, isToday, toLocalDateKey } from './date-utils'
 import { MarqueeSelectionOverlay } from './marquee-selection-overlay'
-import { CalendarQuickCreatePopover } from './calendar-quick-create-popover'
+import { CalendarQuickCreateDialog } from './calendar-quick-create-dialog'
 import { useTimeGridMarquee } from './use-time-grid-marquee'
 import { useScrollToCurrentTime } from './use-scroll-to-current-time'
 import { useWeekInfiniteScroll } from './use-week-infinite-scroll'
@@ -293,7 +293,7 @@ export function CalendarWeekView({
                         endAt={selection.endAt}
                         clockFormat={clockFormat}
                       />
-                      <CalendarQuickCreatePopover
+                      <CalendarQuickCreateDialog
                         anchorRect={selection.anchorRect}
                         startAt={selection.startAt}
                         endAt={selection.endAt}

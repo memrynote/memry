@@ -1,6 +1,6 @@
 import { useRef } from 'react'
 import { CalendarItemChip } from './calendar-item-chip'
-import { CalendarQuickCreatePopover } from './calendar-quick-create-popover'
+import { CalendarQuickCreateDialog } from './calendar-quick-create-dialog'
 import { getMonthGridDays, isToday, isSameMonth, toLocalDateKey } from './date-utils'
 import { useMonthGridMarquee } from './use-month-grid-marquee'
 import { cn } from '@/lib/utils'
@@ -108,7 +108,7 @@ export function CalendarMonthView({
       </div>
 
       {selection && !isDragging && (
-        <CalendarQuickCreatePopover
+        <CalendarQuickCreateDialog
           anchorRect={selection.anchorRect}
           startAt={selection.startDate}
           endAt={selection.endDate}
