@@ -149,6 +149,8 @@ export function CalendarWeekView({
       className="flex h-full min-h-0 flex-col [--grid-line-color:var(--border)]"
       data-testid="calendar-view"
       data-view="week"
+      data-anchor-date={anchorDate}
+      data-visible-day-start={visibleDayStart}
     >
       <div className="flex border-b border-border">
         <div
