@@ -5,7 +5,7 @@ import { getMonthGridDays, isToday, isSameMonth, toLocalDateKey } from './date-u
 import { useMonthGridMarquee } from './use-month-grid-marquee'
 import { cn } from '@/lib/utils'
 import { useContainerWidth } from '@/hooks/use-container-width'
-import type { CalendarEventDraft } from './calendar-event-editor-drawer'
+import type { AnchorRect, CalendarEventDraft } from './types'
 import type { CalendarProjectionItem } from '@/services/calendar-service'
 
 const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
@@ -13,9 +13,14 @@ const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 interface CalendarMonthViewProps {
   anchorDate: string
   items: CalendarProjectionItem[]
-  onSelectItem?: (item: CalendarProjectionItem) => void
+  onSelectItem?: (item: CalendarProjectionItem, rect: AnchorRect) => void
   onQuickSave?: (draft: CalendarEventDraft) => void | Promise<void>
-  onCreateEventWithRange?: (startAt: string, endAt: string, isAllDay: boolean) => void
+  onCreateEventWithRange?: (
+    startAt: string,
+    endAt: string,
+    isAllDay: boolean,
+    anchorRect: AnchorRect
+  ) => void
 }
 
 export function CalendarMonthView({
@@ -119,7 +124,7 @@ export function CalendarMonthView({
           }}
           onDismiss={clearSelection}
           onOpenFullEditor={(draft) => {
-            onCreateEventWithRange?.(draft.startAt, draft.endAt, true)
+            onCreateEventWithRange?.(draft.startAt, draft.endAt, true, selection.anchorRect)
             clearSelection()
           }}
         />

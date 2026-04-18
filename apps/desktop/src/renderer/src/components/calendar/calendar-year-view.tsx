@@ -13,6 +13,7 @@ import {
 } from './date-utils'
 import type { CalendarProjectionItem } from '@/services/calendar-service'
 import type { CalendarWorkspaceView } from './calendar-toolbar'
+import type { AnchorRect } from './types'
 
 const DAY_HEADERS = ['M', 'T', 'W', 'T', 'F', 'S', 'S']
 const CLICK_DELAY_MS = 250
@@ -36,7 +37,7 @@ function formatPopoverDate(day: string): string {
 interface CalendarYearViewProps {
   anchorDate: string
   items: CalendarProjectionItem[]
-  onSelectItem?: (item: CalendarProjectionItem) => void
+  onSelectItem?: (item: CalendarProjectionItem, rect: AnchorRect) => void
   onViewChange?: (view: CalendarWorkspaceView) => void
   onAnchorChange?: (date: string) => void
 }
@@ -215,7 +216,15 @@ export function CalendarYearView({
                     key={item.projectionId}
                     type="button"
                     className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-left hover:bg-surface-active"
-                    onClick={() => onSelectItem?.(item)}
+                    onClick={(event) => {
+                      const rect = event.currentTarget.getBoundingClientRect()
+                      onSelectItem?.(item, {
+                        x: rect.left,
+                        y: rect.top,
+                        width: rect.width,
+                        height: rect.height
+                      })
+                    }}
                   >
                     <span
                       className={cn('size-2 shrink-0 rounded-full', DOT_COLORS[item.visualType])}
