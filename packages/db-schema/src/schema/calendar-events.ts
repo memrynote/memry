@@ -13,10 +13,14 @@ export const calendarEvents = sqliteTable(
     endAt: text('end_at'),
     timezone: text('timezone').notNull().default('UTC'),
     isAllDay: integer('is_all_day', { mode: 'boolean' }).notNull().default(false),
-    recurrenceRule: text('recurrence_rule', { mode: 'json' }).$type<Record<string, unknown> | null>(),
-    recurrenceExceptions: text('recurrence_exceptions', { mode: 'json' }).$type<
-      Array<Record<string, unknown>> | null
-    >(),
+    recurrenceRule: text('recurrence_rule', { mode: 'json' }).$type<Record<
+      string,
+      unknown
+    > | null>(),
+    recurrenceExceptions: text('recurrence_exceptions', { mode: 'json' }).$type<Array<
+      Record<string, unknown>
+    > | null>(),
+    targetCalendarId: text('target_calendar_id'),
     archivedAt: text('archived_at'),
     clock: text('clock', { mode: 'json' }).$type<VectorClock>(),
     syncedAt: text('synced_at'),
