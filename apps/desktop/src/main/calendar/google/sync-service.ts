@@ -532,6 +532,8 @@ export async function syncGoogleCalendarSource(
   const now = getNow()
   const isInitialSync = !source.syncCursor
 
+  // Defensive: current client returns { events: [], nextSyncCursor: null } on 410 (handled
+  // below via the cursor-invalidation branch); future client variants may throw — keep as insurance.
   let result: Awaited<ReturnType<GoogleCalendarClient['listEvents']>>
   try {
     result = await client.listEvents({
