@@ -90,6 +90,22 @@ describe('CalendarPage · marquee → quick-create → save', () => {
     localStorage.setItem('calendar-view', 'day')
   })
 
+  it('calls createEvent when the user clicks the Save button (regression for disabled-mid-click)', async () => {
+    mockCreateEvent.mockResolvedValue({
+      success: true,
+      event: { id: 'event-new' }
+    })
+    const user = userEvent.setup()
+    renderWithProviders(<CalendarPage />)
+
+    await screen.findByTestId('quick-create-popover')
+    await user.type(screen.getByPlaceholderText('New Event'), 'Clicked save')
+    await user.click(screen.getByTestId('quick-create-save'))
+
+    await waitFor(() => expect(mockCreateEvent).toHaveBeenCalledTimes(1))
+    expect(mockCreateEvent.mock.calls[0][0].title).toBe('Clicked save')
+  })
+
   it('calls createEvent with a Zod-valid payload when the user submits via Enter', async () => {
     mockCreateEvent.mockResolvedValue({
       success: true,

@@ -6,7 +6,7 @@ import { formatHour } from '@/lib/time-format'
 import type { CalendarProjectionItem } from '@/services/calendar-service'
 import { useTimeGridMarquee } from './use-time-grid-marquee'
 import { MarqueeSelectionOverlay } from './marquee-selection-overlay'
-import { CalendarQuickCreatePopover } from './calendar-quick-create-popover'
+import { CalendarQuickCreateDialog } from './calendar-quick-create-dialog'
 import { useScrollToCurrentTime } from './use-scroll-to-current-time'
 import type { CalendarEventDraft } from './calendar-event-editor-drawer'
 
@@ -147,7 +147,7 @@ export function CalendarDayView({
                   endAt={selection.endAt}
                   clockFormat={clockFormat}
                 />
-                <CalendarQuickCreatePopover
+                <CalendarQuickCreateDialog
                   anchorRect={selection.anchorRect}
                   startAt={selection.startAt}
                   endAt={selection.endAt}
