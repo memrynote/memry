@@ -1,12 +1,42 @@
 import { expect, type ElectronApplication, type Page } from '@playwright/test'
 import { normalizeBodyText } from './note-sync-helpers'
 
+export interface NoteOnDeviceStatus {
+  recordPresent: boolean
+  crdtPresent: boolean
+  crdtBody: string | null
+}
+
 interface MemryWaitTestHooks {
-  hasNoteOnDevice(noteId: string): Promise<{
-    recordPresent: boolean
-    crdtPresent: boolean
-    crdtBody: string | null
-  }>
+  hasNoteOnDevice(noteId: string): Promise<NoteOnDeviceStatus>
+}
+
+/**
+ * Raw (non-polling) probe. Returns the current record + CRDT state for a
+ * noteId on the given device. Body is normalized so comparisons match the
+ * note-sync-helpers conventions.
+ */
+export async function readNoteOnDevice(
+  electronApp: ElectronApplication,
+  noteId: string
+): Promise<NoteOnDeviceStatus> {
+  const status = await electronApp.evaluate(async (_ctx, id) => {
+    const hooks = (
+      globalThis as typeof globalThis & {
+        __memryTestHooks?: MemryWaitTestHooks
+      }
+    ).__memryTestHooks
+    if (!hooks) {
+      throw new Error('Memry test hooks are not registered')
+    }
+    return hooks.hasNoteOnDevice(id)
+  }, noteId)
+
+  return {
+    recordPresent: status.recordPresent,
+    crdtPresent: status.crdtPresent,
+    crdtBody: status.crdtBody == null ? null : normalizeBodyText(status.crdtBody)
+  }
 }
 
 const DEFAULT_WAIT_TIMEOUT_MS = 30_000
@@ -52,27 +82,10 @@ export async function waitForNoteReplicated(
   const timeout = opts.timeout ?? 90_000
   const normalizedExpected = normalizeBodyText(expectedBody)
   await expect
-    .poll(
-      async () => {
-        const status = await electronApp.evaluate(async (_ctx, id) => {
-          const hooks = (
-            globalThis as typeof globalThis & {
-              __memryTestHooks?: MemryWaitTestHooks
-            }
-          ).__memryTestHooks
-          if (!hooks) {
-            throw new Error('Memry test hooks are not registered')
-          }
-          return hooks.hasNoteOnDevice(id)
-        }, noteId)
-        return {
-          recordPresent: status.recordPresent,
-          crdtPresent: status.crdtPresent,
-          crdtBody: status.crdtBody == null ? null : normalizeBodyText(status.crdtBody)
-        }
-      },
-      { timeout, intervals: [...DEFAULT_WAIT_INTERVALS] }
-    )
+    .poll(() => readNoteOnDevice(electronApp, noteId), {
+      timeout,
+      intervals: [...DEFAULT_WAIT_INTERVALS]
+    })
     .toEqual({
       recordPresent: true,
       crdtPresent: true,
