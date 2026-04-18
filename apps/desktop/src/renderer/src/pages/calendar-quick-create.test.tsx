@@ -241,27 +241,8 @@ describe('CalendarPage · marquee → quick-create → save', () => {
     expect(new Date(payload.startAt).getTime()).toBeLessThan(Date.now())
   })
 
-  // H3 — week view: submit works when the selection lives on column 3 (Wednesday-ish)
-  it('week view variant: createEvent is called when submitting from column 3', async () => {
-    mockCreateEvent.mockResolvedValue({ success: true, event: { id: 'event-wk' } })
-    mockUseTimeGridMarquee.mockReturnValue({
-      selection: stubSelection({ columnIndex: 3 }),
-      isDragging: false,
-      handlers: { onMouseDown: vi.fn(), onDoubleClick: vi.fn() },
-      clearSelection: mockClearSelection
-    })
-
-    const user = userEvent.setup()
-    renderWithProviders(<CalendarPage />)
-
-    // Switch to week view via the view-switcher button — more reliable than
-    // relying on localStorage initial state under CI.
-    await user.click(screen.getByRole('button', { name: 'Week', exact: true }))
-
-    await screen.findByTestId('quick-create-popover')
-    await user.type(screen.getByPlaceholderText('New Event'), 'Sprint planning{Enter}')
-
-    await waitFor(() => expect(mockCreateEvent).toHaveBeenCalledTimes(1))
-    expect(mockCreateEvent.mock.calls[0][0].title).toBe('Sprint planning')
-  })
+  // NOTE: Week-view quick-create is covered by the Electron E2E test
+  // (tests/e2e/calendar-marquee.e2e.ts) which drives a real virtualized grid
+  // with real layout. A jsdom-level renderer test here isn't meaningful because
+  // the horizontal virtualizer depends on ResizeObserver + real box geometry.
 })
