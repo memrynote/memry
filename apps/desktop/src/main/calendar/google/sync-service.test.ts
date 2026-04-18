@@ -1018,6 +1018,42 @@ describe('google calendar sync service', () => {
     expect(mirrorRows).toHaveLength(0)
   })
 
+  it('recovers from a 410 Gone by clearing syncCursor and re-syncing', async () => {
+    // #given a selected source with a stale syncCursor
+    seedGoogleCalendarSource({
+      id: 'google-calendar:selected',
+      remoteId: 'remote-selected-calendar',
+      title: 'Personal',
+      color: null,
+      isMemryManaged: false,
+      syncCursor: 'stale-cursor',
+      syncStatus: 'ok'
+    })
+
+    const goneError = Object.assign(new Error('Gone'), { status: 410 })
+    const listEvents = vi.fn().mockRejectedValueOnce(goneError).mockResolvedValueOnce({
+      nextSyncCursor: 'cursor-fresh',
+      events: []
+    })
+
+    const client = { listEvents }
+
+    // #when
+    await syncGoogleCalendarSource(db, 'google-calendar:selected', { client })
+
+    // #then: listEvents called twice — once with the stale cursor, once with null
+    expect(listEvents).toHaveBeenCalledTimes(2)
+    expect(listEvents.mock.calls[0]?.[0]).toMatchObject({ syncCursor: 'stale-cursor' })
+    expect(listEvents.mock.calls[1]?.[0]).toMatchObject({ syncCursor: null })
+
+    const refreshedSource = db
+      .select()
+      .from(calendarSources)
+      .where(eq(calendarSources.id, 'google-calendar:selected'))
+      .get()
+    expect(refreshedSource?.syncCursor).toBe('cursor-fresh')
+  })
+
   describe('syncGoogleCalendarNow gating', () => {
     function buildClient() {
       return {

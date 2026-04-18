@@ -57,6 +57,15 @@ function getNow(): string {
   return new Date().toISOString()
 }
 
+function isGoneError(error: unknown): boolean {
+  return (
+    typeof error === 'object' &&
+    error !== null &&
+    'status' in error &&
+    (error as { status: unknown }).status === 410
+  )
+}
+
 function markSyncedTableMutation(
   entityType: 'calendar_binding' | 'calendar_source' | 'calendar_external_event',
   id: string,
@@ -523,12 +532,28 @@ export async function syncGoogleCalendarSource(
   const now = getNow()
   const isInitialSync = !source.syncCursor
 
-  const result = await client.listEvents({
-    calendarId: source.remoteId,
-    syncCursor: source.syncCursor ?? null,
-    timeMin: isInitialSync ? new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString() : null,
-    timeMax: isInitialSync ? new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString() : null
-  })
+  let result: Awaited<ReturnType<GoogleCalendarClient['listEvents']>>
+  try {
+    result = await client.listEvents({
+      calendarId: source.remoteId,
+      syncCursor: source.syncCursor ?? null,
+      timeMin: isInitialSync ? new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString() : null,
+      timeMax: isInitialSync ? new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString() : null
+    })
+  } catch (error) {
+    if (isGoneError(error) && source.syncCursor) {
+      log.warn('Google returned 410 for source; clearing cursor and re-syncing', { sourceId })
+      const freshSource = upsertCalendarSource(db, {
+        ...source,
+        syncCursor: null,
+        syncStatus: 'pending',
+        modifiedAt: now
+      })
+      markSyncedTableMutation('calendar_source', freshSource.id, true)
+      return await syncGoogleCalendarSource(db, sourceId, deps)
+    }
+    throw error
+  }
 
   if (!result.nextSyncCursor && source.syncCursor) {
     log.warn('sync cursor invalidated for source, re-syncing from scratch', { sourceId })
