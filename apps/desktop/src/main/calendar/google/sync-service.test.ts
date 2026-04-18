@@ -1170,7 +1170,9 @@ describe('google calendar sync service', () => {
           eventId: null
         })
       )
-      expect(client.listCalendars).not.toHaveBeenCalled()
+      // listCalendars IS invoked to register Work as a selected source
+      // so subsequent inbound polls cover it (review fix). createCalendar
+      // must stay skipped because this is not the Memry auto-create path.
       expect(client.createCalendar).not.toHaveBeenCalled()
     })
 
@@ -1190,7 +1192,9 @@ describe('google calendar sync service', () => {
           calendarId: 'primary@group.calendar.google.com'
         })
       )
-      expect(client.listCalendars).not.toHaveBeenCalled()
+      // createCalendar still skipped — we're using the user's default,
+      // not the Memry auto-create fallback. listCalendars may be called
+      // once to register the default as a selected source.
       expect(client.createCalendar).not.toHaveBeenCalled()
     })
 
@@ -1282,6 +1286,96 @@ describe('google calendar sync service', () => {
           calendarId: 'tasks@group.calendar.google.com'
         })
       )
+    })
+
+    it('#given push resolves to a calendar not yet in calendar_sources #when pushed #then registers the calendar as a selected source so inbound sync can poll it (M2 review fix)', async () => {
+      // Simulate the "user picked Work in the picker" flow: the calendar
+      // exists on Google but hasn't been registered as a local source yet.
+      insertEvent({
+        id: 'event-work-pick',
+        targetCalendarId: 'work@group.calendar.google.com'
+      })
+      const client = {
+        ...buildPushClient(),
+        listCalendars: vi.fn(async () => [
+          {
+            id: 'primary@example.com',
+            title: 'Primary',
+            timezone: 'UTC',
+            color: null,
+            isPrimary: true
+          },
+          {
+            id: 'work@group.calendar.google.com',
+            title: 'Work',
+            timezone: 'UTC',
+            color: '#0b8043',
+            isPrimary: false
+          }
+        ])
+      }
+
+      await pushSourceToGoogleCalendar(
+        db,
+        { sourceType: 'event', sourceId: 'event-work-pick' },
+        { client }
+      )
+
+      const sources = db.select().from(calendarSources).all()
+      const work = sources.find((s) => s.remoteId === 'work@group.calendar.google.com')
+      expect(work).toBeDefined()
+      expect(work?.kind).toBe('calendar')
+      expect(work?.provider).toBe('google')
+      expect(work?.isSelected).toBe(true)
+      expect(work?.isMemryManaged).toBe(false)
+    })
+
+    it('#given the target calendar source already exists but is unselected #when pushed #then flips isSelected to true (M2 review fix)', async () => {
+      // Pre-seed Work as an existing but unselected source (e.g. user
+      // imported it long ago, then turned it off in Settings).
+      const now = '2026-05-01T07:00:00.000Z'
+      db.insert(calendarSources)
+        .values({
+          id: 'google-calendar:work-preseeded',
+          provider: 'google',
+          kind: 'calendar',
+          accountId: 'google-account:1',
+          remoteId: 'work@group.calendar.google.com',
+          title: 'Work',
+          timezone: 'UTC',
+          color: null,
+          isPrimary: false,
+          isSelected: false,
+          isMemryManaged: false,
+          syncCursor: null,
+          syncStatus: 'idle',
+          metadata: null,
+          clock: { 'device-a': 1 },
+          createdAt: now,
+          modifiedAt: now
+        })
+        .run()
+
+      insertEvent({
+        id: 'event-work-reselect',
+        targetCalendarId: 'work@group.calendar.google.com'
+      })
+
+      const client = buildPushClient()
+      await pushSourceToGoogleCalendar(
+        db,
+        { sourceType: 'event', sourceId: 'event-work-reselect' },
+        { client }
+      )
+
+      const work = db
+        .select()
+        .from(calendarSources)
+        .all()
+        .find((s) => s.remoteId === 'work@group.calendar.google.com')
+      expect(work?.isSelected).toBe(true)
+      // listCalendars must not have been needed since the source existed
+      expect(client.listCalendars).not.toHaveBeenCalled()
     })
   })
 })

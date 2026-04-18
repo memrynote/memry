@@ -197,6 +197,7 @@ export function registerCalendarHandlers(): void {
             isAllDay: input.isAllDay,
             recurrenceRule: input.recurrenceRule ?? null,
             recurrenceExceptions: input.recurrenceExceptions ?? null,
+            targetCalendarId: input.targetCalendarId ?? null,
             createdAt: now,
             modifiedAt: now
           })
@@ -268,6 +269,9 @@ export function registerCalendarHandlers(): void {
         }
         if (Object.prototype.hasOwnProperty.call(input, 'recurrenceExceptions')) {
           changes.recurrenceExceptions = input.recurrenceExceptions ?? null
+        }
+        if (Object.prototype.hasOwnProperty.call(input, 'targetCalendarId')) {
+          changes.targetCalendarId = input.targetCalendarId ?? null
         }
 
         db.update(calendarEvents).set(changes).where(eq(calendarEvents.id, input.id)).run()
