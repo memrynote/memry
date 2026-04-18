@@ -1,5 +1,6 @@
 import type {
   BackupSettings,
+  CalendarGoogleSettings,
   EditorSettings,
   GeneralSettings,
   KeyboardShortcuts,
@@ -8,7 +9,13 @@ import type {
   VoiceTranscriptionSettings
 } from '../../contracts/src/settings-schemas.ts'
 import { SettingsChannels } from '../../contracts/src/ipc-channels.ts'
-import { defineDomain, defineEvent, defineMethod, type RpcClient, type RpcSubscriptions } from './schema.ts'
+import {
+  defineDomain,
+  defineEvent,
+  defineMethod,
+  type RpcClient,
+  type RpcSubscriptions
+} from './schema.ts'
 
 export interface JournalSettings {
   defaultTemplate: string | null
@@ -153,11 +160,11 @@ export const settingsRpc = defineDomain({
     getAIModelStatus: defineMethod<() => Promise<AIModelStatus>>({
       channel: SettingsChannels.invoke.GET_AI_MODEL_STATUS
     }),
-    loadAIModel: defineMethod<() => Promise<{ success: boolean; error?: string; message?: string }>>(
-      {
-        channel: SettingsChannels.invoke.LOAD_AI_MODEL
-      }
-    ),
+    loadAIModel: defineMethod<
+      () => Promise<{ success: boolean; error?: string; message?: string }>
+    >({
+      channel: SettingsChannels.invoke.LOAD_AI_MODEL
+    }),
     reindexEmbeddings: defineMethod<
       () => Promise<{ success: boolean; computed?: number; skipped?: number; error?: string }>
     >({
@@ -246,15 +253,31 @@ export const settingsRpc = defineDomain({
       channel: SettingsChannels.invoke.SET_GRAPH_SETTINGS,
       params: ['settings']
     }),
+    getCalendarGoogleSettings: defineMethod<() => Promise<CalendarGoogleSettings>>({
+      channel: SettingsChannels.invoke.GET_CALENDAR_GOOGLE_SETTINGS
+    }),
+    setCalendarGoogleSettings: defineMethod<
+      (settings: Partial<CalendarGoogleSettings>) => SuccessResponse
+    >({
+      channel: SettingsChannels.invoke.SET_CALENDAR_GOOGLE_SETTINGS,
+      params: ['settings']
+    }),
     registerGlobalCapture: defineMethod<
-      () => Promise<{ success: boolean; registered: boolean; permissionRequired?: boolean; error?: string }>
+      () => Promise<{
+        success: boolean
+        registered: boolean
+        permissionRequired?: boolean
+        error?: string
+      }>
     >({
       channel: SettingsChannels.invoke.REGISTER_GLOBAL_CAPTURE
     })
   },
   events: {
     onSettingsChanged: defineEvent<SettingsChangedEvent>(SettingsChannels.events.CHANGED),
-    onEmbeddingProgress: defineEvent<EmbeddingProgressEvent>(SettingsChannels.events.EMBEDDING_PROGRESS),
+    onEmbeddingProgress: defineEvent<EmbeddingProgressEvent>(
+      SettingsChannels.events.EMBEDDING_PROGRESS
+    ),
     onVoiceModelProgress: defineEvent<VoiceModelProgressEvent>(
       SettingsChannels.events.VOICE_MODEL_PROGRESS
     ),

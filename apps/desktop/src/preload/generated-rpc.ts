@@ -473,6 +473,15 @@ export function createGeneratedRpcApi({
           'settings:setGraphSettings',
           settings
         )) as GeneratedRpcApi['settings']['setGraphSettings'],
+      getCalendarGoogleSettings: (() =>
+        invoke(
+          'settings:getCalendarGoogleSettings'
+        )) as GeneratedRpcApi['settings']['getCalendarGoogleSettings'],
+      setCalendarGoogleSettings: ((settings) =>
+        invoke(
+          'settings:setCalendarGoogleSettings',
+          settings
+        )) as GeneratedRpcApi['settings']['setCalendarGoogleSettings'],
       registerGlobalCapture: (() =>
         invoke(
           'settings:registerGlobalCapture'
