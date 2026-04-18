@@ -806,6 +806,98 @@ describe('google calendar sync service', () => {
     expect(refreshedBinding?.remoteVersion).toBe('"etag-new"')
   })
 
+  it('deletes the native record when a bound Google event is cancelled', async () => {
+    // #given a selected source, a native calendar_events row, and a binding
+    const now = '2026-04-18T09:00:00.000Z'
+    seedGoogleCalendarSource({
+      id: 'google-calendar:selected',
+      remoteId: 'remote-selected-calendar',
+      title: 'Personal',
+      color: null,
+      isMemryManaged: false,
+      syncCursor: 'cursor-1',
+      syncStatus: 'ok'
+    })
+
+    db.insert(calendarEvents)
+      .values({
+        id: 'event-bound-delete',
+        title: 'About to be deleted',
+        startAt: '2026-04-20T09:00:00.000Z',
+        endAt: '2026-04-20T10:00:00.000Z',
+        timezone: 'UTC',
+        isAllDay: false,
+        clock: { 'device-a': 1 },
+        createdAt: now,
+        modifiedAt: now
+      })
+      .run()
+
+    db.insert(calendarBindings)
+      .values({
+        id: 'binding-bound-delete',
+        sourceType: 'event',
+        sourceId: 'event-bound-delete',
+        provider: 'google',
+        remoteCalendarId: 'remote-selected-calendar',
+        remoteEventId: 'remote-event-bound-delete',
+        ownershipMode: 'memry_managed',
+        writebackMode: 'broad',
+        remoteVersion: '"etag-old"',
+        lastLocalSnapshot: null,
+        archivedAt: null,
+        clock: { 'device-a': 1 },
+        syncedAt: now,
+        createdAt: now,
+        modifiedAt: now
+      })
+      .run()
+
+    const client = {
+      listEvents: vi.fn(async () => ({
+        nextSyncCursor: 'cursor-2',
+        events: [
+          {
+            id: 'remote-event-bound-delete',
+            calendarId: 'remote-selected-calendar',
+            title: 'About to be deleted',
+            description: null,
+            location: null,
+            startAt: '2026-04-20T09:00:00.000Z',
+            endAt: '2026-04-20T10:00:00.000Z',
+            isAllDay: false,
+            timezone: 'UTC',
+            status: 'cancelled' as const,
+            etag: '"etag-cancelled"',
+            updatedAt: '2026-04-18T08:30:00.000Z',
+            raw: {}
+          }
+        ]
+      }))
+    }
+
+    // #when
+    await syncGoogleCalendarSource(db, 'google-calendar:selected', { client })
+
+    // #then: native row gone, binding archived, mirror untouched
+    const survivingEvent = db
+      .select()
+      .from(calendarEvents)
+      .where(eq(calendarEvents.id, 'event-bound-delete'))
+      .get()
+    expect(survivingEvent).toBeUndefined()
+
+    const archivedBinding = db
+      .select()
+      .from(calendarBindings)
+      .where(eq(calendarBindings.id, 'binding-bound-delete'))
+      .get()
+    expect(archivedBinding?.archivedAt).toBeTruthy()
+
+    const mirrorRows = db.select().from(calendarExternalEvents).all()
+    expect(mirrorRows).toHaveLength(0)
+  })
+
   describe('syncGoogleCalendarNow gating', () => {
     function buildClient() {
       return {

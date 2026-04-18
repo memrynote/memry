@@ -551,7 +551,11 @@ export async function syncGoogleCalendarSource(
     )
 
     if (binding) {
-      await applyGoogleCalendarWriteback(db, binding, remoteEvent)
+      if (remoteEvent.status === 'cancelled') {
+        await applyGoogleCalendarDelete(db, binding)
+      } else {
+        await applyGoogleCalendarWriteback(db, binding, remoteEvent)
+      }
       continue
     }
 
