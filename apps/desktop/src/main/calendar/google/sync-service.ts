@@ -561,6 +561,19 @@ export async function syncGoogleCalendarSource(
 
     const record = mapGoogleEventToExternalEventRecord(source.id, remoteEvent, now)
     const existing = getCalendarExternalEventById(db, record.id)
+
+    if (remoteEvent.status === 'cancelled') {
+      if (!existing) continue
+      upsertCalendarExternalEvent(db, {
+        ...record,
+        clock: existing.clock,
+        archivedAt: now
+      })
+      markSyncedTableMutation('calendar_external_event', record.id, true)
+      emitCalendarChanged({ entityType: 'calendar_external_event', id: record.id })
+      continue
+    }
+
     upsertCalendarExternalEvent(db, {
       ...record,
       clock: existing?.clock
