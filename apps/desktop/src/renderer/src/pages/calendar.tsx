@@ -94,7 +94,8 @@ function createDraftFromAnchor(anchorDate: string): CalendarEventDraft {
     location: '',
     isAllDay: false,
     startAt: `${anchorDate}T09:00`,
-    endAt: `${anchorDate}T10:00`
+    endAt: `${anchorDate}T10:00`,
+    targetCalendarId: null
   }
 }
 
@@ -111,7 +112,8 @@ function createDraftFromItem(item: CalendarProjectionItem): CalendarEventDraft {
       ? item.isAllDay
         ? toLocalDateInputValue(item.endAt)
         : toLocalDateTimeInputValue(item.endAt)
-      : ''
+      : '',
+    targetCalendarId: item.binding?.remoteCalendarId ?? null
   }
 }
 
@@ -123,7 +125,8 @@ function toCreatePayload(draft: CalendarEventDraft) {
     startAt: localInputToIso(draft.startAt, draft.isAllDay),
     endAt: draft.endAt ? localInputToIso(draft.endAt, draft.isAllDay) : null,
     timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC',
-    isAllDay: draft.isAllDay
+    isAllDay: draft.isAllDay,
+    targetCalendarId: draft.targetCalendarId
   }
 }
 
@@ -310,7 +313,15 @@ export function CalendarPage({ className: _className }: CalendarPageProps): Reac
     setPopoverState({
       mode: 'create',
       eventId: null,
-      draft: { title: '', description: '', location: '', isAllDay, startAt, endAt },
+      draft: {
+        title: '',
+        description: '',
+        location: '',
+        isAllDay,
+        startAt,
+        endAt,
+        targetCalendarId: null
+      },
       anchorRect
     })
   }

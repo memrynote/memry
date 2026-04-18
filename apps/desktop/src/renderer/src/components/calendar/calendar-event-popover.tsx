@@ -14,6 +14,8 @@ import { cn } from '@/lib/utils'
 
 import { toLocalDateString } from './date-utils'
 import { POPOVER_WIDTH, computePopoverPosition } from './popover-position'
+import { CalendarPicker } from './calendar-picker'
+import { useGoogleCalendars } from '@/hooks/use-google-calendars'
 import type { AnchorRect, CalendarEventDraft } from './types'
 
 interface CalendarEventPopoverProps {
@@ -281,6 +283,12 @@ export function CalendarEventPopover({
               className="resize-none text-sm"
             />
 
+            <TargetCalendarField
+              value={draft.targetCalendarId}
+              onChange={(next) => onDraftChange({ ...draft, targetCalendarId: next })}
+              disabled={isSaving}
+            />
+
             {errorMessage && (
               <p data-testid="event-edit-error" role="alert" className="text-xs text-destructive">
                 {errorMessage}
@@ -316,6 +324,38 @@ export function CalendarEventPopover({
         </DialogPrimitive.Content>
       </DialogPrimitive.Portal>
     </DialogPrimitive.Root>
+  )
+}
+
+interface TargetCalendarFieldProps {
+  value: string | null
+  onChange: (next: string | null) => void
+  disabled?: boolean
+}
+
+function TargetCalendarField({ value, onChange, disabled }: TargetCalendarFieldProps) {
+  const { data, isLoading } = useGoogleCalendars()
+  const calendars = data?.calendars ?? []
+  // Only surface the picker when the user actually has Google connected
+  // (empty list = not connected OR no calendars yet).
+  if (!isLoading && calendars.length === 0) return null
+
+  const defaultLabel = data?.currentDefaultId
+    ? `Use default (${data.calendars.find((c) => c.id === data.currentDefaultId)?.title ?? data.currentDefaultId})`
+    : 'Use Memry calendar (default)'
+
+  return (
+    <label className="flex flex-col gap-1 text-sm">
+      <span className="text-xs font-medium text-muted-foreground">Google calendar</span>
+      <CalendarPicker
+        calendars={calendars}
+        value={value}
+        onChange={onChange}
+        isLoading={isLoading}
+        disabled={disabled}
+        defaultOptionLabel={defaultLabel}
+      />
+    </label>
   )
 }
 

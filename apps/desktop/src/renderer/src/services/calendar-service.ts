@@ -17,6 +17,12 @@ import type {
   GetCalendarRangeInput,
   ListCalendarEventsInput,
   ListCalendarSourcesInput,
+  ListGoogleCalendarsInput,
+  ListGoogleCalendarsResponse,
+  PromoteExternalEventInput,
+  PromoteExternalEventResponse,
+  SetDefaultGoogleCalendarInput,
+  SetDefaultGoogleCalendarResponse,
   UpdateCalendarSourceSelectionInput,
   UpdateCalendarEventInput
 } from '@memry/rpc/calendar'
@@ -41,6 +47,12 @@ export type {
   GetCalendarRangeInput,
   ListCalendarEventsInput,
   ListCalendarSourcesInput,
+  ListGoogleCalendarsInput,
+  ListGoogleCalendarsResponse,
+  PromoteExternalEventInput,
+  PromoteExternalEventResponse,
+  SetDefaultGoogleCalendarInput,
+  SetDefaultGoogleCalendarResponse,
   UpdateCalendarSourceSelectionInput,
   UpdateCalendarEventInput
 }
@@ -73,4 +85,20 @@ export function updateGoogleCalendarSourceSelection(
   input: UpdateCalendarSourceSelectionInput
 ): Promise<CalendarSourceMutationResponse> {
   return calendarService.updateSourceSelection(input)
+}
+
+export function listGoogleCalendars(): Promise<ListGoogleCalendarsResponse> {
+  return calendarService.listGoogleCalendars({})
+}
+
+export function setDefaultGoogleCalendar(
+  input: SetDefaultGoogleCalendarInput
+): Promise<SetDefaultGoogleCalendarResponse> {
+  return calendarService.setDefaultGoogleCalendar(input)
+}
+
+export function promoteExternalCalendarEvent(
+  input: PromoteExternalEventInput
+): Promise<PromoteExternalEventResponse> {
+  return calendarService.promoteExternalEvent(input)
 }
