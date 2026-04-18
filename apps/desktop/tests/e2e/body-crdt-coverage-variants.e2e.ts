@@ -24,6 +24,7 @@ import {
   waitForSyncOffline,
   waitForSyncOnline
 } from './utils/network-control'
+import { waitForNoteReplicated } from './utils/wait-helpers'
 
 type CursorPosition = 'start' | 'end'
 type ReconnectOrder = 'a-first' | 'b-first' | 'together'
@@ -271,28 +272,6 @@ async function waitForClosedDeviceNoteConvergence(
     .toBe(true)
 
   await expect.poll(() => getCrdtDocBodyByTitle(page, electronApp, title)).toBe(finalBody)
-}
-
-async function readReplicatedNoteStatus(
-  electronApp: ElectronApplication,
-  page: Page,
-  note: NoteHandle,
-  expectedBody: string
-): Promise<{
-  crdtBody: string | null
-  fileBody: string | null
-  ready: boolean
-}> {
-  const [crdtBody, fileBody] = await Promise.all([
-    getCrdtDocBodyById(electronApp, note.id),
-    getNoteFileBodyById(page, note.id)
-  ])
-
-  return {
-    crdtBody,
-    fileBody,
-    ready: crdtBody === expectedBody && fileBody === expectedBody
-  }
 }
 
 async function runOfflineOfflineMergeCase({
@@ -610,56 +589,16 @@ test.describe('Body CRDT coverage variants', () => {
       pageB,
       order: 'together'
     })
-    const remoteChecks = [
-      {
-        label: 'noteB on A',
-        electronApp: electronAppA,
-        page: pageA,
-        note: noteB,
-        expectedBody: 'noteB shared merge block'
-      },
-      {
-        label: 'noteA on B',
-        electronApp: electronAppB,
-        page: pageB,
-        note: noteA,
-        expectedBody: 'noteA shared merge block'
-      }
-    ] as const
 
-    await expect
-      .poll(
-        async () => {
-          await syncBothAndWait(pageA, pageB, 30000)
-          const statuses = await Promise.all(
-            remoteChecks.map(async (check) => ({
-              label: check.label,
-              ...(await readReplicatedNoteStatus(
-                check.electronApp,
-                check.page,
-                check.note,
-                check.expectedBody
-              ))
-            }))
-          )
-          return statuses
-        },
-        { timeout: 120_000, intervals: [500, 1_000, 2_000, 5_000] }
-      )
-      .toEqual([
-        {
-          label: 'noteB on A',
-          crdtBody: 'noteB shared merge block',
-          fileBody: 'noteB shared merge block',
-          ready: true
-        },
-        {
-          label: 'noteA on B',
-          crdtBody: 'noteA shared merge block',
-          fileBody: 'noteA shared merge block',
-          ready: true
-        }
-      ])
+    await syncBothAndWait(pageA, pageB, 30000)
+    await Promise.all([
+      waitForNoteReplicated(electronAppA, noteB.id, 'noteB shared merge block', {
+        timeout: 90_000
+      }),
+      waitForNoteReplicated(electronAppB, noteA.id, 'noteA shared merge block', {
+        timeout: 90_000
+      })
+    ])
 
     const noteAOnA = noteA
     const noteBOnA = noteB
