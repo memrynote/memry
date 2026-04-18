@@ -6,6 +6,7 @@ import {
   type CalendarEventDraft,
   type CalendarWorkspaceView
 } from '@/components/calendar'
+import { PromoteExternalDialog } from '@/components/calendar/promote-external-dialog'
 import {
   addLocalDays,
   addLocalMonths,
@@ -22,9 +23,11 @@ import {
 import { useCalendarRange } from '@/hooks/use-calendar-range'
 import {
   calendarService,
+  promoteExternalCalendarEvent,
   type CalendarProjectionItem,
   type CalendarSourceRecord
 } from '@/services/calendar-service'
+import { extractErrorMessage } from '@/lib/ipc-error'
 import { useDayPanel } from '@/contexts/day-panel-context'
 import { useCalendarView } from '@/contexts/calendar-view-context'
 
@@ -175,6 +178,12 @@ export function CalendarPage({ className: _className }: CalendarPageProps): Reac
     anchorRect: AnchorRect
   } | null>(null)
   const [isSaving, setIsSaving] = useState(false)
+  const [pendingPromote, setPendingPromote] = useState<{
+    item: CalendarProjectionItem
+    anchorRect: AnchorRect
+  } | null>(null)
+  const [isPromoting, setIsPromoting] = useState(false)
+  const [promoteError, setPromoteError] = useState<string | null>(null)
 
   const { openForDayView, closeForDayView, setDate: setDayPanelDate } = useDayPanel()
 
@@ -258,15 +267,83 @@ export function CalendarPage({ className: _className }: CalendarPageProps): Reac
     })
   }
 
-  const handleSelectItem = (item: CalendarProjectionItem, rect: AnchorRect) => {
-    if (item.sourceType !== 'event') return
+  async function openEditPopoverAfterPromote(
+    eventId: string,
+    source: CalendarProjectionItem,
+    rect: AnchorRect
+  ): Promise<void> {
+    const record = await calendarService.getEvent(eventId)
+    const draft = record
+      ? ({
+          title: record.title,
+          description: record.description ?? '',
+          location: record.location ?? '',
+          isAllDay: record.isAllDay,
+          startAt: record.isAllDay
+            ? toLocalDateInputValue(record.startAt)
+            : toLocalDateTimeInputValue(record.startAt),
+          endAt: record.endAt
+            ? record.isAllDay
+              ? toLocalDateInputValue(record.endAt)
+              : toLocalDateTimeInputValue(record.endAt)
+            : '',
+          targetCalendarId: record.targetCalendarId
+        } satisfies CalendarEventDraft)
+      : createDraftFromItem(source)
 
     setPopoverState({
       mode: 'edit',
-      eventId: item.sourceId,
-      draft: createDraftFromItem(item),
+      eventId,
+      draft,
       anchorRect: rect
     })
+  }
+
+  async function runPromote(
+    item: CalendarProjectionItem,
+    rect: AnchorRect,
+    options: { dontAskAgain: boolean }
+  ): Promise<void> {
+    setIsPromoting(true)
+    setPromoteError(null)
+    try {
+      const result = await promoteExternalCalendarEvent({ externalEventId: item.sourceId })
+      if (!result.success || !result.eventId) {
+        throw new Error(result.error ?? 'Could not edit this event.')
+      }
+      if (options.dontAskAgain) {
+        await window.api.settings.setCalendarGoogleSettings({ promoteConfirmDismissed: true })
+      }
+      await queryClient.invalidateQueries({ queryKey: ['calendar', 'range'] })
+      await openEditPopoverAfterPromote(result.eventId, item, rect)
+      setPendingPromote(null)
+    } catch (err) {
+      setPromoteError(extractErrorMessage(err, 'Could not edit this event. Try again.'))
+    } finally {
+      setIsPromoting(false)
+    }
+  }
+
+  const handleSelectItem = async (item: CalendarProjectionItem, rect: AnchorRect) => {
+    if (item.sourceType === 'event') {
+      setPopoverState({
+        mode: 'edit',
+        eventId: item.sourceId,
+        draft: createDraftFromItem(item),
+        anchorRect: rect
+      })
+      return
+    }
+
+    if (item.sourceType !== 'external_event') return
+
+    const settings = await window.api.settings.getCalendarGoogleSettings()
+    if (settings.promoteConfirmDismissed) {
+      await runPromote(item, rect, { dontAskAgain: false })
+      return
+    }
+
+    setPendingPromote({ item, anchorRect: rect })
   }
 
   const handlePopoverSave = async () => {
@@ -327,57 +404,75 @@ export function CalendarPage({ className: _className }: CalendarPageProps): Reac
   }
 
   return (
-    <CalendarShell
-      view={view}
-      anchorDate={anchorDate}
-      items={filteredItems}
-      importedSources={importedSources as CalendarSourceRecord[]}
-      isLoading={rangeQuery.isLoading || sourcesQuery.isLoading}
-      showMemryItems={showMemryItems}
-      showImportedCalendars={showImportedCalendars}
-      selectedImportedSourceIds={selectedImportedSourceIds}
-      popoverState={
-        popoverState
-          ? {
-              mode: popoverState.mode,
-              draft: popoverState.draft,
-              anchorRect: popoverState.anchorRect
-            }
-          : null
-      }
-      isSaving={isSaving}
-      onViewChange={setView}
-      onPrevious={handlePrevious}
-      onNext={handleNext}
-      onToday={() => setAnchorDate(getTodayDate())}
-      onCreateEvent={(anchorRect) =>
-        setPopoverState({
-          mode: 'create',
-          eventId: null,
-          draft: createDraftFromAnchor(anchorDate),
-          anchorRect
-        })
-      }
-      onToggleMemryItems={() => setShowMemryItems((current) => !current)}
-      onToggleImportedCalendars={() => setShowImportedCalendars((current) => !current)}
-      onToggleImportedSource={(sourceId) =>
-        setSelectedImportedSourceIds((current) =>
-          current.includes(sourceId)
-            ? current.filter((id) => id !== sourceId)
-            : [...current, sourceId]
-        )
-      }
-      onSelectItem={handleSelectItem}
-      onPopoverDismiss={() => setPopoverState(null)}
-      onPopoverDraftChange={(draft) =>
-        setPopoverState((current) => (current ? { ...current, draft } : current))
-      }
-      onAnchorChange={(date) => setAnchorDate(date)}
-      onWeekVisibleRangeChange={(startDate) => setAnchorDate(startDate)}
-      onPopoverSave={() => void handlePopoverSave()}
-      onQuickSave={handleQuickSave}
-      onCreateEventWithRange={handleCreateEventWithRange}
-    />
+    <>
+      <PromoteExternalDialog
+        open={pendingPromote !== null}
+        isWorking={isPromoting}
+        errorMessage={promoteError}
+        onOpenChange={(open) => {
+          if (!open) {
+            setPendingPromote(null)
+            setPromoteError(null)
+          }
+        }}
+        onConfirm={(dontAskAgain) => {
+          if (pendingPromote) {
+            void runPromote(pendingPromote.item, pendingPromote.anchorRect, { dontAskAgain })
+          }
+        }}
+      />
+      <CalendarShell
+        view={view}
+        anchorDate={anchorDate}
+        items={filteredItems}
+        importedSources={importedSources as CalendarSourceRecord[]}
+        isLoading={rangeQuery.isLoading || sourcesQuery.isLoading}
+        showMemryItems={showMemryItems}
+        showImportedCalendars={showImportedCalendars}
+        selectedImportedSourceIds={selectedImportedSourceIds}
+        popoverState={
+          popoverState
+            ? {
+                mode: popoverState.mode,
+                draft: popoverState.draft,
+                anchorRect: popoverState.anchorRect
+              }
+            : null
+        }
+        isSaving={isSaving}
+        onViewChange={setView}
+        onPrevious={handlePrevious}
+        onNext={handleNext}
+        onToday={() => setAnchorDate(getTodayDate())}
+        onCreateEvent={(anchorRect) =>
+          setPopoverState({
+            mode: 'create',
+            eventId: null,
+            draft: createDraftFromAnchor(anchorDate),
+            anchorRect
+          })
+        }
+        onToggleMemryItems={() => setShowMemryItems((current) => !current)}
+        onToggleImportedCalendars={() => setShowImportedCalendars((current) => !current)}
+        onToggleImportedSource={(sourceId) =>
+          setSelectedImportedSourceIds((current) =>
+            current.includes(sourceId)
+              ? current.filter((id) => id !== sourceId)
+              : [...current, sourceId]
+          )
+        }
+        onSelectItem={handleSelectItem}
+        onPopoverDismiss={() => setPopoverState(null)}
+        onPopoverDraftChange={(draft) =>
+          setPopoverState((current) => (current ? { ...current, draft } : current))
+        }
+        onAnchorChange={(date) => setAnchorDate(date)}
+        onWeekVisibleRangeChange={(startDate) => setAnchorDate(startDate)}
+        onPopoverSave={() => void handlePopoverSave()}
+        onQuickSave={handleQuickSave}
+        onCreateEventWithRange={handleCreateEventWithRange}
+      />
+    </>
   )
 }
 
