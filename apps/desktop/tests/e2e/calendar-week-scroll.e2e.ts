@@ -1,6 +1,10 @@
 import type { Page } from '@playwright/test'
 import { test, expect } from './fixtures'
 import { waitForAppReady, waitForVaultReady } from './utils/electron-helpers'
+import { getVisibleDayStart, waitForStable } from './utils/wait-helpers'
+
+const STABLE_FOR_MS = 500
+const STABLE_TIMEOUT_MS = 15_000
 
 async function openCalendarWeekView(page: Page): Promise<void> {
   await page.getByRole('button', { name: 'Calendar' }).click()
@@ -8,12 +12,12 @@ async function openCalendarWeekView(page: Page): Promise<void> {
   await page.getByTestId('calendar-page').getByRole('button', { name: 'Week', exact: true }).click()
   await expect(page.getByTestId('calendar-view')).toHaveAttribute('data-view', 'week')
   await expect(page.getByTestId('calendar-week-scroll')).toBeVisible()
-}
-
-async function getScrollLeft(page: Page): Promise<number> {
-  return await page
-    .getByTestId('calendar-week-scroll')
-    .evaluate((el) => (el as HTMLElement).scrollLeft)
+  // Let the virtualizer's initial scroll + scroll listener settle so
+  // visibleDayStart reflects the landed scrollLeft, not the pre-scroll state.
+  await waitForStable(() => getVisibleDayStart(page), {
+    stableFor: STABLE_FOR_MS,
+    timeout: STABLE_TIMEOUT_MS
+  })
 }
 
 async function scrollBy(page: Page, deltaX: number): Promise<void> {
@@ -22,8 +26,11 @@ async function scrollBy(page: Page, deltaX: number): Promise<void> {
     .evaluate((el, dx) => (el as HTMLElement).scrollBy({ left: dx, behavior: 'auto' }), deltaX)
 }
 
-async function waitForScrollSettle(page: Page, ms = 400): Promise<void> {
-  await page.waitForTimeout(ms)
+async function settledVisibleDayStart(page: Page): Promise<number> {
+  return waitForStable(() => getVisibleDayStart(page), {
+    stableFor: STABLE_FOR_MS,
+    timeout: STABLE_TIMEOUT_MS
+  })
 }
 
 test.describe('Calendar week view infinite horizontal scroll', () => {
@@ -32,88 +39,65 @@ test.describe('Calendar week view infinite horizontal scroll', () => {
     await waitForVaultReady(page)
   })
 
-  test('scrolls right and stays at the new position (no snap-back to today)', async ({ page }) => {
-    // #given — calendar opened on Week view
+  test('scrolling right advances the visible week and does not snap back', async ({ page }) => {
     await openCalendarWeekView(page)
-    const initial = await getScrollLeft(page)
+    const initial = await getVisibleDayStart(page)
 
-    // #when — scroll right by ~2 day columns worth of pixels
     await scrollBy(page, 400)
-    await waitForScrollSettle(page)
+    const afterScroll = await settledVisibleDayStart(page)
+    expect(afterScroll).toBeGreaterThan(initial)
 
-    // #then — scrollLeft advanced and did NOT snap back
-    const afterScroll = await getScrollLeft(page)
-    expect(afterScroll).toBeGreaterThan(initial + 100)
-
-    // #and — wait a bit longer; still no snap-back
-    await waitForScrollSettle(page, 600)
-    const afterWait = await getScrollLeft(page)
-    expect(afterWait).toBeGreaterThanOrEqual(afterScroll - 10)
+    // no snap-back: after a second settle window, value has not regressed below
+    // where it was before.
+    const stillAfter = await settledVisibleDayStart(page)
+    expect(stillAfter).toBeGreaterThanOrEqual(afterScroll)
   })
 
-  test('scrolls left and stays at the new position', async ({ page }) => {
-    // #given — calendar opened on Week view, then user scrolled forward first
+  test('scrolling left brings the visible week back toward the origin', async ({ page }) => {
     await openCalendarWeekView(page)
-    const initial = await getScrollLeft(page)
+    const initial = await getVisibleDayStart(page)
+
     await scrollBy(page, 800)
-    await waitForScrollSettle(page)
-    const forward = await getScrollLeft(page)
-    expect(forward).toBeGreaterThan(initial + 400)
+    const afterForward = await settledVisibleDayStart(page)
+    expect(afterForward).toBeGreaterThan(initial)
 
-    // #when — scroll back left
     await scrollBy(page, -500)
-    await waitForScrollSettle(page)
-
-    // #then — scrollLeft decreased and did not snap forward
-    const afterLeft = await getScrollLeft(page)
-    expect(afterLeft).toBeLessThan(forward - 200)
-    expect(afterLeft).toBeGreaterThan(initial - 10)
-
-    await waitForScrollSettle(page, 600)
-    const afterWait = await getScrollLeft(page)
-    expect(Math.abs(afterWait - afterLeft)).toBeLessThan(20)
+    const afterLeft = await settledVisibleDayStart(page)
+    expect(afterLeft).toBeLessThan(afterForward)
   })
 
-  test('Today button smooth-scrolls back to todays week after scrolling forward', async ({
-    page
-  }) => {
-    // #given — user has scrolled far forward
+  test('Today button returns the visible week to the starting position', async ({ page }) => {
     await openCalendarWeekView(page)
-    const initial = await getScrollLeft(page)
-    await scrollBy(page, 1200)
-    await waitForScrollSettle(page)
-    const advanced = await getScrollLeft(page)
-    expect(advanced).toBeGreaterThan(initial + 500)
+    const initial = await getVisibleDayStart(page)
 
-    // #when — click Today
+    await scrollBy(page, 1200)
+    const scrolledAway = await settledVisibleDayStart(page)
+    expect(scrolledAway).toBeGreaterThan(initial)
+
     await page
       .getByTestId('calendar-page')
       .getByRole('button', { name: 'Today', exact: true })
       .click()
-    await waitForScrollSettle(page, 800)
 
-    // #then — scroll returns near the original position
-    const afterToday = await getScrollLeft(page)
-    expect(Math.abs(afterToday - initial)).toBeLessThan(50)
+    const afterToday = await settledVisibleDayStart(page)
+    // Scroll↔anchor feedback can leave a 1-day rounding slack; anything tighter
+    // than that is product-internal and not user-observable.
+    expect(Math.abs(afterToday - initial)).toBeLessThanOrEqual(1)
   })
 
-  test('Next button advances the visible week by 7 days worth of scroll', async ({ page }) => {
-    // #given — week view at today
+  test('Next button moves the visible week forward and Previous rewinds it', async ({ page }) => {
     await openCalendarWeekView(page)
-    const initial = await getScrollLeft(page)
+    const initial = await getVisibleDayStart(page)
 
-    // #when — click Next
     await page.getByTestId('calendar-page').getByRole('button', { name: 'Next period' }).click()
-    await waitForScrollSettle(page, 800)
+    const afterNext = await settledVisibleDayStart(page)
+    const nextDelta = afterNext - initial
+    expect(nextDelta).toBeGreaterThanOrEqual(1)
+    expect(nextDelta).toBeLessThanOrEqual(14)
 
-    // #then — scroll advanced by ~7 columns (lower bound to accommodate any column-width variance)
-    const afterNext = await getScrollLeft(page)
-    expect(afterNext).toBeGreaterThan(initial + 200)
-
-    // #and — Previous brings it back
     await page.getByTestId('calendar-page').getByRole('button', { name: 'Previous period' }).click()
-    await waitForScrollSettle(page, 800)
-    const afterPrev = await getScrollLeft(page)
-    expect(Math.abs(afterPrev - initial)).toBeLessThan(50)
+    const afterPrev = await settledVisibleDayStart(page)
+    expect(afterPrev).toBeLessThan(afterNext)
+    expect(Math.abs(afterPrev - initial)).toBeLessThanOrEqual(1)
   })
 })

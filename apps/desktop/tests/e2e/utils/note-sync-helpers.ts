@@ -23,38 +23,43 @@ export async function findNoteHandle(
   id: string | null,
   title: string
 ): Promise<NoteHandle | null> {
-  return page.evaluate(async ({ noteId, expectedTitle }) => {
-    const fromId = noteId ? await window.api.notes.get(noteId) : null
-    if (fromId?.title === expectedTitle) {
-      return {
-        id: fromId.id,
-        title: fromId.title,
-        emoji: fromId.emoji ?? null
+  return page.evaluate(
+    async ({ noteId, expectedTitle }) => {
+      const fromId = noteId ? await window.api.notes.get(noteId) : null
+      if (fromId?.title === expectedTitle) {
+        return {
+          id: fromId.id,
+          title: fromId.title,
+          emoji: fromId.emoji ?? null
+        }
       }
-    }
 
-    const match = await window.api.notes.resolveByTitle(expectedTitle)
-    if (match?.fileType === 'markdown') {
-      return { id: match.id, title: match.title, emoji: null }
-    }
+      const match = await window.api.notes.resolveByTitle(expectedTitle)
+      if (match?.fileType === 'markdown') {
+        return { id: match.id, title: match.title, emoji: null }
+      }
 
-    const notesTree = document.querySelector<HTMLElement>('[role="tree"][aria-label="Notes tree"]')
-    if (!notesTree) return null
+      const notesTree = document.querySelector<HTMLElement>(
+        '[role="tree"][aria-label="Notes tree"]'
+      )
+      if (!notesTree) return null
 
-    for (const treeItem of notesTree.querySelectorAll<HTMLElement>(
-      '[role="treeitem"][data-tree-node-id]'
-    )) {
-      const noteId = treeItem.dataset.treeNodeId ?? treeItem.getAttribute('data-tree-node-id')
-      if (!noteId || noteId.startsWith('folder-')) continue
-      if (treeItem.textContent?.trim() !== expectedTitle) continue
-      return { id: noteId, title: expectedTitle, emoji: null }
-    }
+      for (const treeItem of notesTree.querySelectorAll<HTMLElement>(
+        '[role="treeitem"][data-tree-node-id]'
+      )) {
+        const noteId = treeItem.dataset.treeNodeId ?? treeItem.getAttribute('data-tree-node-id')
+        if (!noteId || noteId.startsWith('folder-')) continue
+        if (treeItem.textContent?.trim() !== expectedTitle) continue
+        return { id: noteId, title: expectedTitle, emoji: null }
+      }
 
-    return null
-  }, { noteId: id, expectedTitle: title })
+      return null
+    },
+    { noteId: id, expectedTitle: title }
+  )
 }
 
-function normalizeBodyText(text: string): string {
+export function normalizeBodyText(text: string): string {
   return text
     .replace(/\r\n/g, '\n')
     .replace(/\u00a0/g, ' ')
@@ -77,10 +82,7 @@ function bodyToParagraphBlocks(body: string) {
   }))
 }
 
-async function openNoteInUi(
-  page: Page,
-  note: NoteHandle
-): Promise<void> {
+async function openNoteInUi(page: Page, note: NoteHandle): Promise<void> {
   await page.evaluate((detail) => {
     window.dispatchEvent(new CustomEvent('memry:test-open-note', { detail }))
   }, note)
