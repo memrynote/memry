@@ -7,6 +7,7 @@ import { getWritebackDebugState } from './sync/crdt-writeback'
 import { getCrdtQueue, getNetworkMonitor } from './sync/runtime'
 import { getDatabase } from './database'
 import { sql } from 'drizzle-orm'
+import { getNoteMetadataById } from '@memry/storage-data'
 import { CalendarChannels, TasksChannels } from '@memry/contracts/ipc-channels'
 
 export interface SyncTestBootstrapInput {
@@ -27,12 +28,19 @@ export interface CalendarProjectionSeedInput {
   snoozeTitle: string
 }
 
+export interface NoteOnDeviceStatus {
+  recordPresent: boolean
+  crdtPresent: boolean
+  crdtBody: string | null
+}
+
 interface MemryTestHooks {
   bootstrapSyncDevice(input: SyncTestBootstrapInput): Promise<{ deviceId: string }>
   setNetworkOnlineForTests(online: boolean): Promise<void>
   getCrdtPendingCount(): Promise<number>
   seedCalendarProjection(input: CalendarProjectionSeedInput): Promise<void>
   getCrdtDocMarkdown(noteId: string): Promise<string | null>
+  hasNoteOnDevice(noteId: string): Promise<NoteOnDeviceStatus>
   getWritebackDebugState(noteId: string): Promise<{
     pending: boolean
     scheduledCount: number
@@ -277,6 +285,17 @@ export function registerTestHooks(): void {
         return null
       }
       return yDocToMarkdown(doc)
+    },
+
+    async hasNoteOnDevice(noteId: string): Promise<NoteOnDeviceStatus> {
+      const record = getNoteMetadataById(getDatabase(), noteId)
+      const doc = getCrdtProvider().getDoc(noteId)
+      const crdtBody = doc ? await yDocToMarkdown(doc) : null
+      return {
+        recordPresent: record != null,
+        crdtPresent: doc != null,
+        crdtBody
+      }
     },
 
     async getWritebackDebugState(noteId: string) {
