@@ -16,7 +16,8 @@ import {
   KEYBOARD_SHORTCUTS_DEFAULTS,
   SYNC_SETTINGS_DEFAULTS,
   BACKUP_SETTINGS_DEFAULTS,
-  VOICE_TRANSCRIPTION_SETTINGS_DEFAULTS
+  VOICE_TRANSCRIPTION_SETTINGS_DEFAULTS,
+  CALENDAR_GOOGLE_SETTINGS_DEFAULTS
 } from '@memry/contracts/settings-schemas'
 import type {
   GeneralSettings,
@@ -25,7 +26,8 @@ import type {
   KeyboardShortcuts,
   SyncSettings,
   BackupSettings,
-  VoiceTranscriptionSettings
+  VoiceTranscriptionSettings,
+  CalendarGoogleSettings
 } from '@memry/contracts/settings-schemas'
 import { GRAPH_SETTINGS_DEFAULTS } from '@memry/contracts/graph-api'
 import type { GraphSettings } from '@memry/contracts/graph-api'
@@ -687,6 +689,15 @@ export function registerSettingsHandlers(): void {
       writeGroupSettings('graph', GRAPH_SETTINGS_DEFAULTS, updates)
   )
 
+  ipcMain.handle(SettingsChannels.invoke.GET_CALENDAR_GOOGLE_SETTINGS, () =>
+    readGroupSettings('calendar.google', CALENDAR_GOOGLE_SETTINGS_DEFAULTS)
+  )
+  ipcMain.handle(
+    SettingsChannels.invoke.SET_CALENDAR_GOOGLE_SETTINGS,
+    (_event, updates: Partial<CalendarGoogleSettings>) =>
+      writeGroupSettings('calendar.google', CALENDAR_GOOGLE_SETTINGS_DEFAULTS, updates)
+  )
+
   // Keyboard shortcuts: reset to defaults
   ipcMain.handle(SettingsChannels.invoke.RESET_KEYBOARD_SETTINGS, () => {
     const db = getDbOrNull()
@@ -844,6 +855,8 @@ export function unregisterSettingsHandlers(): void {
   ipcMain.removeHandler(SettingsChannels.invoke.SET_BACKUP_SETTINGS)
   ipcMain.removeHandler(SettingsChannels.invoke.GET_GRAPH_SETTINGS)
   ipcMain.removeHandler(SettingsChannels.invoke.SET_GRAPH_SETTINGS)
+  ipcMain.removeHandler(SettingsChannels.invoke.GET_CALENDAR_GOOGLE_SETTINGS)
+  ipcMain.removeHandler(SettingsChannels.invoke.SET_CALENDAR_GOOGLE_SETTINGS)
   ipcMain.removeHandler(SettingsChannels.invoke.REGISTER_GLOBAL_CAPTURE)
 
   logger.info('Settings handlers unregistered')

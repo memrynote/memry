@@ -12,6 +12,7 @@ import { calendarEvents } from '@memry/db-schema/schema/calendar-events'
 import { calendarExternalEvents } from '@memry/db-schema/schema/calendar-external-events'
 import { calendarSources } from '@memry/db-schema/schema/calendar-sources'
 import { reminders } from '@memry/db-schema/schema/reminders'
+import { settings } from '@memry/db-schema/schema/settings'
 import { tasks } from '@memry/db-schema/schema/tasks'
 import { inboxItems } from '@memry/db-schema/schema/inbox'
 
@@ -1083,6 +1084,298 @@ describe('google calendar sync service', () => {
 
       expect(client.listCalendars).not.toHaveBeenCalled()
       expect(client.listEvents).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('pushSourceToGoogleCalendar — M2 target calendar resolution', () => {
+    function buildPushClient() {
+      return {
+        upsertEvent: vi.fn(
+          async ({ calendarId, event }: { calendarId: string; event: { title: string } }) => ({
+            id: `remote-${event.title}`,
+            calendarId,
+            title: event.title,
+            description: null,
+            location: null,
+            startAt: '2026-05-01T09:00:00.000Z',
+            endAt: null,
+            isAllDay: false,
+            timezone: 'UTC',
+            status: 'confirmed' as const,
+            etag: '"etag-1"',
+            updatedAt: '2026-05-01T08:00:00.000Z',
+            raw: { summary: event.title }
+          })
+        ),
+        listCalendars: vi.fn(async () => []),
+        createCalendar: vi.fn(async () => ({
+          id: 'created-memry-cal',
+          title: 'Memry',
+          timezone: 'UTC',
+          color: null,
+          isPrimary: false
+        }))
+      }
+    }
+
+    function insertEvent(overrides: Partial<typeof calendarEvents.$inferInsert> = {}) {
+      db.insert(calendarEvents)
+        .values({
+          id: 'event-m2',
+          title: 'M2 event',
+          startAt: '2026-05-01T09:00:00.000Z',
+          endAt: '2026-05-01T10:00:00.000Z',
+          timezone: 'UTC',
+          isAllDay: false,
+          clock: { 'device-a': 1 },
+          createdAt: '2026-05-01T08:00:00.000Z',
+          modifiedAt: '2026-05-01T08:00:00.000Z',
+          ...overrides
+        })
+        .run()
+    }
+
+    function writeCalendarGoogleSetting(
+      value: Partial<{
+        defaultTargetCalendarId: string | null
+        onboardingCompleted: boolean
+        promoteConfirmDismissed: boolean
+      }>
+    ) {
+      const merged = {
+        defaultTargetCalendarId: null,
+        onboardingCompleted: false,
+        promoteConfirmDismissed: false,
+        ...value
+      }
+      const now = '2026-05-01T07:00:00.000Z'
+      db.insert(settings)
+        .values({ key: 'calendar.google', value: JSON.stringify(merged), modifiedAt: now })
+        .run()
+    }
+
+    it('#given an event with targetCalendarId #when pushed #then writes to that Google calendar (skipping Memry auto-create)', async () => {
+      insertEvent({ id: 'event-direct', targetCalendarId: 'work@group.calendar.google.com' })
+      const client = buildPushClient()
+
+      await pushSourceToGoogleCalendar(
+        db,
+        { sourceType: 'event', sourceId: 'event-direct' },
+        { client }
+      )
+
+      expect(client.upsertEvent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          calendarId: 'work@group.calendar.google.com',
+          eventId: null
+        })
+      )
+      // listCalendars IS invoked to register Work as a selected source
+      // so subsequent inbound polls cover it (review fix). createCalendar
+      // must stay skipped because this is not the Memry auto-create path.
+      expect(client.createCalendar).not.toHaveBeenCalled()
+    })
+
+    it('#given no event target but settings default #when pushed #then falls back to the settings default', async () => {
+      writeCalendarGoogleSetting({ defaultTargetCalendarId: 'primary@group.calendar.google.com' })
+      insertEvent({ id: 'event-settings-default', targetCalendarId: null })
+      const client = buildPushClient()
+
+      await pushSourceToGoogleCalendar(
+        db,
+        { sourceType: 'event', sourceId: 'event-settings-default' },
+        { client }
+      )
+
+      expect(client.upsertEvent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          calendarId: 'primary@group.calendar.google.com'
+        })
+      )
+      // createCalendar still skipped — we're using the user's default,
+      // not the Memry auto-create fallback. listCalendars may be called
+      // once to register the default as a selected source.
+      expect(client.createCalendar).not.toHaveBeenCalled()
+    })
+
+    it('#given neither event target nor settings default #when pushed #then falls back to Memry-managed calendar', async () => {
+      seedGoogleCalendarSource()
+      insertEvent({ id: 'event-memry-fallback', targetCalendarId: null })
+      const client = buildPushClient()
+
+      await pushSourceToGoogleCalendar(
+        db,
+        { sourceType: 'event', sourceId: 'event-memry-fallback' },
+        { client }
+      )
+
+      expect(client.upsertEvent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          calendarId: 'remote-memry-calendar'
+        })
+      )
+    })
+
+    it('#given an existing binding #when pushed #then keeps using the bound calendar even if targetCalendarId differs (retargeting is out of scope)', async () => {
+      seedGoogleCalendarSource()
+      insertEvent({
+        id: 'event-rebound',
+        targetCalendarId: 'work@group.calendar.google.com'
+      })
+      // Pre-existing binding points at the Memry calendar
+      db.insert(calendarBindings)
+        .values({
+          id: 'binding-rebound',
+          sourceType: 'event',
+          sourceId: 'event-rebound',
+          provider: 'google',
+          remoteCalendarId: 'remote-memry-calendar',
+          remoteEventId: 'remote-event-rebound',
+          ownershipMode: 'memry_managed',
+          writebackMode: 'broad',
+          remoteVersion: '"etag-prev"',
+          lastLocalSnapshot: {},
+          clock: { 'device-a': 1 },
+          createdAt: '2026-05-01T06:00:00.000Z',
+          modifiedAt: '2026-05-01T06:00:00.000Z'
+        })
+        .run()
+      const client = buildPushClient()
+
+      await pushSourceToGoogleCalendar(
+        db,
+        { sourceType: 'event', sourceId: 'event-rebound' },
+        { client }
+      )
+
+      expect(client.upsertEvent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          calendarId: 'remote-memry-calendar',
+          eventId: 'remote-event-rebound'
+        })
+      )
+    })
+
+    it('#given a task source (no per-row targetCalendarId concept) #when pushed #then uses settings default if set', async () => {
+      writeCalendarGoogleSetting({ defaultTargetCalendarId: 'tasks@group.calendar.google.com' })
+      db.insert(tasks)
+        .values({
+          id: 'task-default-target',
+          projectId,
+          statusId: todoStatusId,
+          title: 'Send invoice',
+          position: 1,
+          dueDate: '2026-05-02',
+          dueTime: null,
+          clock: { 'device-a': 1 },
+          fieldClocks: {},
+          createdAt: '2026-05-01T08:10:00.000Z',
+          modifiedAt: '2026-05-01T08:10:00.000Z'
+        })
+        .run()
+      const client = buildPushClient()
+
+      await pushSourceToGoogleCalendar(
+        db,
+        { sourceType: 'task', sourceId: 'task-default-target' },
+        { client }
+      )
+
+      expect(client.upsertEvent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          calendarId: 'tasks@group.calendar.google.com'
+        })
+      )
+    })
+
+    it('#given push resolves to a calendar not yet in calendar_sources #when pushed #then registers the calendar as a selected source so inbound sync can poll it (M2 review fix)', async () => {
+      // Simulate the "user picked Work in the picker" flow: the calendar
+      // exists on Google but hasn't been registered as a local source yet.
+      insertEvent({
+        id: 'event-work-pick',
+        targetCalendarId: 'work@group.calendar.google.com'
+      })
+      const client = {
+        ...buildPushClient(),
+        listCalendars: vi.fn(async () => [
+          {
+            id: 'primary@example.com',
+            title: 'Primary',
+            timezone: 'UTC',
+            color: null,
+            isPrimary: true
+          },
+          {
+            id: 'work@group.calendar.google.com',
+            title: 'Work',
+            timezone: 'UTC',
+            color: '#0b8043',
+            isPrimary: false
+          }
+        ])
+      }
+
+      await pushSourceToGoogleCalendar(
+        db,
+        { sourceType: 'event', sourceId: 'event-work-pick' },
+        { client }
+      )
+
+      const sources = db.select().from(calendarSources).all()
+      const work = sources.find((s) => s.remoteId === 'work@group.calendar.google.com')
+      expect(work).toBeDefined()
+      expect(work?.kind).toBe('calendar')
+      expect(work?.provider).toBe('google')
+      expect(work?.isSelected).toBe(true)
+      expect(work?.isMemryManaged).toBe(false)
+    })
+
+    it('#given the target calendar source already exists but is unselected #when pushed #then flips isSelected to true (M2 review fix)', async () => {
+      // Pre-seed Work as an existing but unselected source (e.g. user
+      // imported it long ago, then turned it off in Settings).
+      const now = '2026-05-01T07:00:00.000Z'
+      db.insert(calendarSources)
+        .values({
+          id: 'google-calendar:work-preseeded',
+          provider: 'google',
+          kind: 'calendar',
+          accountId: 'google-account:1',
+          remoteId: 'work@group.calendar.google.com',
+          title: 'Work',
+          timezone: 'UTC',
+          color: null,
+          isPrimary: false,
+          isSelected: false,
+          isMemryManaged: false,
+          syncCursor: null,
+          syncStatus: 'idle',
+          metadata: null,
+          clock: { 'device-a': 1 },
+          createdAt: now,
+          modifiedAt: now
+        })
+        .run()
+
+      insertEvent({
+        id: 'event-work-reselect',
+        targetCalendarId: 'work@group.calendar.google.com'
+      })
+
+      const client = buildPushClient()
+      await pushSourceToGoogleCalendar(
+        db,
+        { sourceType: 'event', sourceId: 'event-work-reselect' },
+        { client }
+      )
+
+      const work = db
+        .select()
+        .from(calendarSources)
+        .all()
+        .find((s) => s.remoteId === 'work@group.calendar.google.com')
+      expect(work?.isSelected).toBe(true)
+      // listCalendars must not have been needed since the source existed
+      expect(client.listCalendars).not.toHaveBeenCalled()
     })
   })
 })

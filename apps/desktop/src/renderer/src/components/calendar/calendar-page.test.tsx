@@ -26,9 +26,17 @@ vi.mock('@/services/calendar-service', () => {
     calendarService: {
       listSources: mockListSources,
       createEvent: mockCreateEvent,
-      updateEvent: mockUpdateEvent
+      updateEvent: mockUpdateEvent,
+      getEvent: vi.fn(async () => null)
     },
-    onCalendarChanged: vi.fn(() => () => {})
+    onCalendarChanged: vi.fn(() => () => {}),
+    listGoogleCalendars: vi.fn(async () => ({
+      calendars: [],
+      primary: null,
+      currentDefaultId: null
+    })),
+    promoteExternalCalendarEvent: vi.fn(async () => ({ success: true, eventId: null })),
+    setDefaultGoogleCalendar: vi.fn(async () => ({ success: true }))
   }
 })
 

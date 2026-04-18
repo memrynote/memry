@@ -30,7 +30,14 @@ vi.mock('@/services/calendar-service', () => ({
   calendarService: {
     listSources: mockListSources,
     updateSourceSelection: mockUpdateSourceSelection
-  }
+  },
+  listGoogleCalendars: vi.fn(async () => ({
+    calendars: [],
+    primary: null,
+    currentDefaultId: null
+  })),
+  setDefaultGoogleCalendar: vi.fn(async () => ({ success: true })),
+  promoteExternalCalendarEvent: vi.fn(async () => ({ success: true, eventId: null }))
 }))
 
 const DISCONNECTED_STATUS: CalendarProviderStatus = {
@@ -201,5 +208,41 @@ describe('Google Calendar integration row', () => {
 
     await user.click(screen.getByRole('button', { name: 'Disconnect' }))
     expect(mockDisconnectGoogleCalendarProvider).toHaveBeenCalledTimes(1)
+  })
+
+  it('#given an existing Google connection + onboardingCompleted=false #when the row mounts #then the onboarding dialog opens automatically (M2 review fix)', async () => {
+    mockGetGoogleCalendarStatus.mockResolvedValue(CONNECTED_STATUS)
+    mockListSources.mockResolvedValue({ sources: CONNECTED_SOURCES })
+    vi.mocked(window.api.settings.getCalendarGoogleSettings).mockResolvedValue({
+      defaultTargetCalendarId: null,
+      onboardingCompleted: false,
+      promoteConfirmDismissed: false
+    })
+
+    renderWithProviders(<IntegrationList />)
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole('heading', { name: /Which calendar should new Memry events go to/i })
+      ).toBeInTheDocument()
+    })
+  })
+
+  it('#given an existing Google connection + onboardingCompleted=true #when the row mounts #then the onboarding dialog stays closed', async () => {
+    mockGetGoogleCalendarStatus.mockResolvedValue(CONNECTED_STATUS)
+    mockListSources.mockResolvedValue({ sources: CONNECTED_SOURCES })
+    vi.mocked(window.api.settings.getCalendarGoogleSettings).mockResolvedValue({
+      defaultTargetCalendarId: 'primary@example.com',
+      onboardingCompleted: true,
+      promoteConfirmDismissed: false
+    })
+
+    renderWithProviders(<IntegrationList />)
+
+    // Wait for the connected row to render, then confirm no dialog appeared
+    await waitFor(() => expect(screen.getByText('Connected')).toBeInTheDocument())
+    expect(
+      screen.queryByRole('heading', { name: /Which calendar should new Memry events go to/i })
+    ).not.toBeInTheDocument()
   })
 })

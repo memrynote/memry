@@ -81,7 +81,15 @@ export function CalendarQuickCreateDialog({
   }, [])
 
   function buildDraft(): CalendarEventDraft {
-    return { title, description: '', location, isAllDay, startAt, endAt }
+    return {
+      title,
+      description: '',
+      location,
+      isAllDay,
+      startAt,
+      endAt,
+      targetCalendarId: null
+    }
   }
 
   async function submit(): Promise<void> {

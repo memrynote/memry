@@ -6,6 +6,9 @@ import {
   GetCalendarRangeSchema,
   ListCalendarEventsSchema,
   ListCalendarSourcesSchema,
+  ListGoogleCalendarsSchema,
+  PromoteExternalEventSchema,
+  SetDefaultGoogleCalendarSchema,
   UpdateCalendarSourceSelectionSchema,
   CalendarProviderRequestSchema,
   UpdateCalendarEventSchema,
@@ -19,7 +22,10 @@ import {
   type CalendarRangeResponse,
   type CalendarSourceListResponse,
   type CalendarSourceMutationResponse,
-  type CalendarSourceRecord
+  type CalendarSourceRecord,
+  type ListGoogleCalendarsResponse,
+  type PromoteExternalEventResponse,
+  type SetDefaultGoogleCalendarResponse
 } from '@memry/contracts/calendar-api'
 import { calendarEvents } from '@memry/db-schema/schema/calendar-events'
 import { calendarExternalEvents } from '@memry/db-schema/schema/calendar-external-events'
@@ -45,6 +51,13 @@ import {
   stopGoogleCalendarSyncRunner,
   syncGoogleCalendarNow
 } from '../calendar/google/sync-service'
+import { listGoogleCalendars, setDefaultGoogleCalendar } from '../calendar/google/onboarding'
+import { createGoogleCalendarClient } from '../calendar/google/client'
+import {
+  promoteExternalEvent,
+  ExternalEventNotFoundError,
+  ExternalEventSourceMissingError
+} from '../calendar/promote-external-event'
 import { isMemryUserSignedIn } from '../auth-state'
 import {
   syncCalendarBindingDelete,
@@ -78,6 +91,7 @@ function mapCalendarEvent(row: typeof calendarEvents.$inferSelect): CalendarEven
     recurrenceRule: (row.recurrenceRule as Record<string, unknown> | null) ?? null,
     recurrenceExceptions:
       (row.recurrenceExceptions as Array<Record<string, unknown>> | null) ?? null,
+    targetCalendarId: row.targetCalendarId ?? null,
     archivedAt: row.archivedAt ?? null,
     syncedAt: row.syncedAt ?? null,
     createdAt: row.createdAt,
@@ -183,6 +197,7 @@ export function registerCalendarHandlers(): void {
             isAllDay: input.isAllDay,
             recurrenceRule: input.recurrenceRule ?? null,
             recurrenceExceptions: input.recurrenceExceptions ?? null,
+            targetCalendarId: input.targetCalendarId ?? null,
             createdAt: now,
             modifiedAt: now
           })
@@ -254,6 +269,9 @@ export function registerCalendarHandlers(): void {
         }
         if (Object.prototype.hasOwnProperty.call(input, 'recurrenceExceptions')) {
           changes.recurrenceExceptions = input.recurrenceExceptions ?? null
+        }
+        if (Object.prototype.hasOwnProperty.call(input, 'targetCalendarId')) {
+          changes.targetCalendarId = input.targetCalendarId ?? null
         }
 
         db.update(calendarEvents).set(changes).where(eq(calendarEvents.id, input.id)).run()
@@ -550,6 +568,46 @@ export function registerCalendarHandlers(): void {
       }, 'Failed to refresh calendar provider')
     )
   )
+
+  ipcMain.handle(
+    CalendarChannels.invoke.LIST_GOOGLE_CALENDARS,
+    createValidatedHandler(
+      ListGoogleCalendarsSchema,
+      withDb(async (db): Promise<ListGoogleCalendarsResponse> => {
+        return await listGoogleCalendars(db, createGoogleCalendarClient())
+      }, 'Failed to list Google calendars')
+    )
+  )
+
+  ipcMain.handle(
+    CalendarChannels.invoke.SET_DEFAULT_GOOGLE_CALENDAR,
+    createValidatedHandler(
+      SetDefaultGoogleCalendarSchema,
+      withDb((db, input): SetDefaultGoogleCalendarResponse => {
+        return setDefaultGoogleCalendar(db, input)
+      }, 'Failed to set default Google calendar')
+    )
+  )
+
+  ipcMain.handle(
+    CalendarChannels.invoke.PROMOTE_EXTERNAL_EVENT,
+    createValidatedHandler(
+      PromoteExternalEventSchema,
+      withDb((db, input): PromoteExternalEventResponse => {
+        try {
+          return promoteExternalEvent(db, input)
+        } catch (err) {
+          if (
+            err instanceof ExternalEventNotFoundError ||
+            err instanceof ExternalEventSourceMissingError
+          ) {
+            return { success: false, eventId: null, error: err.message }
+          }
+          throw err
+        }
+      }, 'Failed to promote external calendar event')
+    )
+  )
 }
 
 export function unregisterCalendarHandlers(): void {
@@ -565,4 +623,7 @@ export function unregisterCalendarHandlers(): void {
   ipcMain.removeHandler(CalendarChannels.invoke.CONNECT_PROVIDER)
   ipcMain.removeHandler(CalendarChannels.invoke.DISCONNECT_PROVIDER)
   ipcMain.removeHandler(CalendarChannels.invoke.REFRESH_PROVIDER)
+  ipcMain.removeHandler(CalendarChannels.invoke.LIST_GOOGLE_CALENDARS)
+  ipcMain.removeHandler(CalendarChannels.invoke.SET_DEFAULT_GOOGLE_CALENDAR)
+  ipcMain.removeHandler(CalendarChannels.invoke.PROMOTE_EXTERNAL_EVENT)
 }

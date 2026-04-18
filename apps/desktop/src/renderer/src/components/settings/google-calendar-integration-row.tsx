@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -13,6 +13,8 @@ import {
   updateGoogleCalendarSourceSelection
 } from '@/services/calendar-service'
 import { GoogleCalendarSourcePicker } from './google-calendar-source-picker'
+import { GoogleCalendarOnboardingDialog } from '@/components/calendar/google-calendar-onboarding-dialog'
+import { googleCalendarsQueryKey } from '@/hooks/use-google-calendars'
 
 const GOOGLE_STATUS_QUERY_KEY = ['calendar', 'google', 'status'] as const
 const GOOGLE_SOURCES_QUERY_KEY = ['calendar', 'google', 'sources'] as const
@@ -27,6 +29,11 @@ async function invalidateGoogleCalendarQueries(queryClient: ReturnType<typeof us
 
 export function GoogleCalendarIntegrationRow(): React.JSX.Element {
   const queryClient = useQueryClient()
+  const [showOnboarding, setShowOnboarding] = useState(false)
+  // Guard against reopening across renders if the user dismissed the modal
+  // without committing (Codex M2 review finding 3 — without this, existing-
+  // connected users would see the modal re-pop every time status refetches).
+  const onboardingPromptShownRef = useRef(false)
 
   const statusQuery = useQuery({
     queryKey: GOOGLE_STATUS_QUERY_KEY,
@@ -48,6 +55,12 @@ export function GoogleCalendarIntegrationRow(): React.JSX.Element {
     },
     onSuccess: async () => {
       await invalidateGoogleCalendarQueries(queryClient)
+      // Surface onboarding the first time the user connects so they pick
+      // their default target before anything lands in "Memry" by accident.
+      const settings = await window.api.settings.getCalendarGoogleSettings()
+      if (!settings.onboardingCompleted) {
+        setShowOnboarding(true)
+      }
     }
   })
 
@@ -84,6 +97,26 @@ export function GoogleCalendarIntegrationRow(): React.JSX.Element {
       await invalidateGoogleCalendarQueries(queryClient)
     }
   })
+
+  // Re-open onboarding for users who connected before M2 shipped OR who
+  // closed the dialog last time without picking a default. Single auto-open
+  // per mount via the ref above; settings.onboardingCompleted flips to true
+  // on confirm/skip so later mounts stay quiet.
+  useEffect(() => {
+    if (!statusQuery.data?.connected) return
+    if (onboardingPromptShownRef.current) return
+    let cancelled = false
+    void window.api.settings.getCalendarGoogleSettings().then((settings) => {
+      if (cancelled) return
+      if (!settings.onboardingCompleted) {
+        onboardingPromptShownRef.current = true
+        setShowOnboarding(true)
+      }
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [statusQuery.data?.connected])
 
   const sources = sourcesQuery.data?.sources ?? []
   const importedSources = useMemo(
@@ -194,6 +227,14 @@ export function GoogleCalendarIntegrationRow(): React.JSX.Element {
           />
         </div>
       )}
+
+      <GoogleCalendarOnboardingDialog
+        open={showOnboarding}
+        onOpenChange={setShowOnboarding}
+        onCompleted={async () => {
+          await queryClient.invalidateQueries({ queryKey: googleCalendarsQueryKey })
+        }}
+      />
     </div>
   )
 }
