@@ -30,7 +30,14 @@ vi.mock('@/services/calendar-service', () => ({
   calendarService: {
     listSources: mockListSources,
     updateSourceSelection: mockUpdateSourceSelection
-  }
+  },
+  listGoogleCalendars: vi.fn(async () => ({
+    calendars: [],
+    primary: null,
+    currentDefaultId: null
+  })),
+  setDefaultGoogleCalendar: vi.fn(async () => ({ success: true })),
+  promoteExternalCalendarEvent: vi.fn(async () => ({ success: true, eventId: null }))
 }))
 
 const DISCONNECTED_STATUS: CalendarProviderStatus = {
