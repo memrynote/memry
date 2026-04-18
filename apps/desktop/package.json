@@ -67,6 +67,7 @@
     "test:unit": "pnpm exec vitest run --config config/vitest.config.ts tests/unit",
     "test:integration": "pnpm exec vitest run --config config/vitest.config.ts tests/integration",
     "test:component": "pnpm exec vitest run --config config/vitest.config.ts tests/component",
+    "pretest:e2e": "pnpm repair:links && bash scripts/ensure-native.sh electron",
     "test:e2e": "playwright test --config config/playwright.config.ts",
     "rpc:generate": "node --experimental-strip-types --experimental-transform-types scripts/generate-rpc-bindings.ts",
     "rpc:check": "node --experimental-strip-types --experimental-transform-types scripts/generate-rpc-bindings.ts --check",
