@@ -39,6 +39,7 @@ import {
   upsertCalendarSource
 } from '../repositories/calendar-sources-repository'
 import { emitCalendarChanged, emitCalendarProjectionChanged } from '../change-events'
+import { readCalendarGoogleSettings } from './calendar-google-settings'
 import type {
   CalendarSyncTarget,
   GoogleCalendarClient,
@@ -268,6 +269,40 @@ function updateBindingRemoteVersion(
   enqueueLocalSyncUpdate('calendar_binding', existing.id)
 }
 
+function getEventTargetCalendarId(db: DataDb, target: CalendarSyncTarget): string | null {
+  if (target.sourceType !== 'event') return null
+  const row = db
+    .select({ targetCalendarId: calendarEvents.targetCalendarId })
+    .from(calendarEvents)
+    .where(eq(calendarEvents.id, target.sourceId))
+    .get()
+  return row?.targetCalendarId ?? null
+}
+
+async function resolveTargetCalendarId(
+  db: DataDb,
+  target: CalendarSyncTarget,
+  existingBinding: typeof calendarBindings.$inferSelect | undefined,
+  client: Pick<GoogleCalendarClient, 'listCalendars' | 'createCalendar'>
+): Promise<string> {
+  // Existing binding wins — retargeting a bound event would require
+  // events.move on Google's side and coordinated etag handling (M3+ work).
+  if (existingBinding?.remoteCalendarId) return existingBinding.remoteCalendarId
+
+  // Per-event override from the renderer calendar picker.
+  const eventTarget = getEventTargetCalendarId(db, target)
+  if (eventTarget) return eventTarget
+
+  // User's onboarding-selected default (covers tasks / reminders / snoozes too).
+  const { defaultTargetCalendarId } = readCalendarGoogleSettings(db)
+  if (defaultTargetCalendarId) return defaultTargetCalendarId
+
+  // Final fallback: the auto-created Memry calendar.
+  const memrySource =
+    getMemryManagedGoogleSource(db) ?? (await ensureMemryCalendarSource(db, client))
+  return memrySource.remoteId
+}
+
 export async function pushSourceToGoogleCalendar(
   db: DataDb,
   target: CalendarSyncTarget,
@@ -278,14 +313,13 @@ export async function pushSourceToGoogleCalendar(
   const client = getGoogleClient(deps as { client?: GoogleCalendarClient })
   const localEvent = loadSourceAsGoogleEvent(db, target)
   const existingBinding = getExistingGoogleBinding(db, target)
-  const memrySource =
-    getMemryManagedGoogleSource(db) ?? (await ensureMemryCalendarSource(db, client))
+  const resolvedCalendarId = await resolveTargetCalendarId(db, target, existingBinding, client)
   const now = getNow()
   const bindingId =
     existingBinding?.id ?? `calendar_binding:google:${target.sourceType}:${target.sourceId}`
 
   const remote = await client.upsertEvent({
-    calendarId: existingBinding?.remoteCalendarId ?? memrySource.remoteId,
+    calendarId: resolvedCalendarId,
     eventId: existingBinding?.remoteEventId ?? null,
     event: localEvent
   })
