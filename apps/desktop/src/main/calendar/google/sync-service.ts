@@ -31,6 +31,7 @@ import {
   upsertCalendarExternalEvent
 } from '../repositories/calendar-external-events-repository'
 import {
+  findCalendarBindingByRemoteEvent,
   getCalendarSourceById,
   listCalendarBindingsForSource,
   listCalendarSources,
@@ -542,6 +543,18 @@ export async function syncGoogleCalendarSource(
   }
 
   for (const remoteEvent of result.events) {
+    const binding = findCalendarBindingByRemoteEvent(
+      db,
+      'google',
+      remoteEvent.calendarId,
+      remoteEvent.id
+    )
+
+    if (binding) {
+      await applyGoogleCalendarWriteback(db, binding, remoteEvent)
+      continue
+    }
+
     const record = mapGoogleEventToExternalEventRecord(source.id, remoteEvent, now)
     const existing = getCalendarExternalEventById(db, record.id)
     upsertCalendarExternalEvent(db, {

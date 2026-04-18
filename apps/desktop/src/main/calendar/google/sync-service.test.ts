@@ -694,6 +694,118 @@ describe('google calendar sync service', () => {
     expect(client.deleteEvent).not.toHaveBeenCalled()
   })
 
+  it('routes Google updates for bound events through applyGoogleCalendarWriteback instead of the mirror', async () => {
+    // #given a selected non-managed source with an active binding for one remote event
+    const now = '2026-04-18T09:00:00.000Z'
+    db.insert(calendarSources)
+      .values({
+        id: 'google-calendar:selected',
+        provider: 'google',
+        kind: 'calendar',
+        accountId: 'google-account:1',
+        remoteId: 'remote-selected-calendar',
+        title: 'Personal',
+        timezone: 'UTC',
+        color: null,
+        isPrimary: false,
+        isSelected: true,
+        isMemryManaged: false,
+        syncCursor: 'cursor-1',
+        syncStatus: 'ok',
+        metadata: null,
+        clock: { 'device-a': 1 },
+        createdAt: now,
+        modifiedAt: now
+      })
+      .run()
+
+    db.insert(calendarEvents)
+      .values({
+        id: 'event-bound-1',
+        title: 'Old title',
+        description: null,
+        location: null,
+        startAt: '2026-04-20T09:00:00.000Z',
+        endAt: '2026-04-20T10:00:00.000Z',
+        timezone: 'UTC',
+        isAllDay: false,
+        clock: { 'device-a': 1 },
+        createdAt: now,
+        modifiedAt: now
+      })
+      .run()
+
+    db.insert(calendarBindings)
+      .values({
+        id: 'binding-bound-1',
+        sourceType: 'event',
+        sourceId: 'event-bound-1',
+        provider: 'google',
+        remoteCalendarId: 'remote-selected-calendar',
+        remoteEventId: 'remote-event-bound-1',
+        ownershipMode: 'memry_managed',
+        writebackMode: 'broad',
+        remoteVersion: '"etag-old"',
+        lastLocalSnapshot: null,
+        archivedAt: null,
+        clock: { 'device-a': 1 },
+        syncedAt: now,
+        createdAt: now,
+        modifiedAt: now
+      })
+      .run()
+
+    const client = {
+      listEvents: vi.fn(async () => ({
+        nextSyncCursor: 'cursor-2',
+        events: [
+          {
+            id: 'remote-event-bound-1',
+            calendarId: 'remote-selected-calendar',
+            title: 'Updated from Google',
+            description: 'Updated description',
+            location: 'Updated location',
+            startAt: '2026-04-20T11:00:00.000Z',
+            endAt: '2026-04-20T12:00:00.000Z',
+            isAllDay: false,
+            timezone: 'UTC',
+            status: 'confirmed' as const,
+            etag: '"etag-new"',
+            updatedAt: '2026-04-18T08:00:00.000Z',
+            raw: {}
+          }
+        ]
+      }))
+    }
+
+    // #when
+    await syncGoogleCalendarSource(db, 'google-calendar:selected', { client })
+
+    // #then: the native row was updated, the mirror was NOT, the binding etag refreshed
+    const updatedEvent = db
+      .select()
+      .from(calendarEvents)
+      .where(eq(calendarEvents.id, 'event-bound-1'))
+      .get()
+    expect(updatedEvent).toMatchObject({
+      title: 'Updated from Google',
+      description: 'Updated description',
+      location: 'Updated location',
+      startAt: '2026-04-20T11:00:00.000Z',
+      endAt: '2026-04-20T12:00:00.000Z'
+    })
+
+    const mirrorRows = db.select().from(calendarExternalEvents).all()
+    expect(mirrorRows).toHaveLength(0)
+
+    const refreshedBinding = db
+      .select()
+      .from(calendarBindings)
+      .where(eq(calendarBindings.id, 'binding-bound-1'))
+      .get()
+    expect(refreshedBinding?.remoteVersion).toBe('"etag-new"')
+  })
+
   describe('syncGoogleCalendarNow gating', () => {
     function buildClient() {
       return {
