@@ -217,6 +217,8 @@ export function createGeneratedRpcApi({
       setBackupSettings: ((settings) => invoke("settings:setBackupSettings", settings)) as GeneratedRpcApi["settings"]["setBackupSettings"],
       getGraphSettings: (() => invoke("settings:getGraphSettings")) as GeneratedRpcApi["settings"]["getGraphSettings"],
       setGraphSettings: ((settings) => invoke("settings:setGraphSettings", settings)) as GeneratedRpcApi["settings"]["setGraphSettings"],
+      getCalendarGoogleSettings: (() => invoke("settings:getCalendarGoogleSettings")) as GeneratedRpcApi["settings"]["getCalendarGoogleSettings"],
+      setCalendarGoogleSettings: ((settings) => invoke("settings:setCalendarGoogleSettings", settings)) as GeneratedRpcApi["settings"]["setCalendarGoogleSettings"],
       registerGlobalCapture: (() => invoke("settings:registerGlobalCapture")) as GeneratedRpcApi["settings"]["registerGlobalCapture"],
     },
     calendar: {
@@ -232,6 +234,9 @@ export function createGeneratedRpcApi({
       connectProvider: ((input) => invoke("calendar:connect-provider", input)) as GeneratedRpcApi["calendar"]["connectProvider"],
       disconnectProvider: ((input) => invoke("calendar:disconnect-provider", input)) as GeneratedRpcApi["calendar"]["disconnectProvider"],
       refreshProvider: ((input) => invoke("calendar:refresh-provider", input)) as GeneratedRpcApi["calendar"]["refreshProvider"],
+      listGoogleCalendars: ((options) => invoke("calendar:list-google-calendars", options ?? {})) as GeneratedRpcApi["calendar"]["listGoogleCalendars"],
+      setDefaultGoogleCalendar: ((input) => invoke("calendar:set-default-google-calendar", input)) as GeneratedRpcApi["calendar"]["setDefaultGoogleCalendar"],
+      promoteExternalEvent: ((input) => invoke("calendar:promote-external-event", input)) as GeneratedRpcApi["calendar"]["promoteExternalEvent"],
     },
     onNoteCreated: ((callback) => subscribe("notes:created", callback)) as GeneratedRpcApi["onNoteCreated"],
     onNoteUpdated: ((callback) => subscribe("notes:updated", callback)) as GeneratedRpcApi["onNoteUpdated"],

@@ -5,6 +5,8 @@ export interface CalendarEventDraft {
   isAllDay: boolean
   startAt: string
   endAt: string
+  /** M2: Google calendar this event should be pushed to. Null = fall through to default. */
+  targetCalendarId: string | null
 }
 
 export interface AnchorRect {

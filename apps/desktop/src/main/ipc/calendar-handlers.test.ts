@@ -173,6 +173,66 @@ describe('calendar-handlers', () => {
     expect(afterDelete.events).toEqual([])
   })
 
+  it('persists targetCalendarId through CREATE_EVENT and respects it on UPDATE_EVENT (M2 review fix)', async () => {
+    registerCalendarHandlers()
+
+    const created = await invokeHandler(CalendarChannels.invoke.CREATE_EVENT, {
+      title: 'Work sync',
+      startAt: '2026-04-12T09:00:00.000Z',
+      endAt: '2026-04-12T10:00:00.000Z',
+      timezone: 'UTC',
+      isAllDay: false,
+      targetCalendarId: 'work@group.calendar.google.com'
+    })
+
+    expect(created).toEqual({
+      success: true,
+      event: expect.objectContaining({
+        id: 'calendar-event-generated-id',
+        targetCalendarId: 'work@group.calendar.google.com'
+      })
+    })
+
+    // Switch the event to a different Google calendar through UPDATE_EVENT
+    const retargeted = await invokeHandler(CalendarChannels.invoke.UPDATE_EVENT, {
+      id: 'calendar-event-generated-id',
+      targetCalendarId: 'personal@group.calendar.google.com'
+    })
+    expect(retargeted).toEqual({
+      success: true,
+      event: expect.objectContaining({
+        targetCalendarId: 'personal@group.calendar.google.com'
+      })
+    })
+
+    // Explicit null clears the target (falls back to default at push time)
+    const cleared = await invokeHandler(CalendarChannels.invoke.UPDATE_EVENT, {
+      id: 'calendar-event-generated-id',
+      targetCalendarId: null
+    })
+    expect(cleared).toEqual({
+      success: true,
+      event: expect.objectContaining({ targetCalendarId: null })
+    })
+
+    // Omitted targetCalendarId in a partial update preserves the current value
+    await invokeHandler(CalendarChannels.invoke.UPDATE_EVENT, {
+      id: 'calendar-event-generated-id',
+      targetCalendarId: 'home@group.calendar.google.com'
+    })
+    const preserved = await invokeHandler(CalendarChannels.invoke.UPDATE_EVENT, {
+      id: 'calendar-event-generated-id',
+      title: 'Title change only'
+    })
+    expect(preserved).toEqual({
+      success: true,
+      event: expect.objectContaining({
+        title: 'Title change only',
+        targetCalendarId: 'home@group.calendar.google.com'
+      })
+    })
+  })
+
   it('returns projected range items for Memry and imported provider events', async () => {
     registerCalendarHandlers()
 

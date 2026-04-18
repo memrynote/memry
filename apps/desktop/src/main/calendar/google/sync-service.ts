@@ -39,6 +39,7 @@ import {
   upsertCalendarSource
 } from '../repositories/calendar-sources-repository'
 import { emitCalendarChanged, emitCalendarProjectionChanged } from '../change-events'
+import { readCalendarGoogleSettings } from './calendar-google-settings'
 import type {
   CalendarSyncTarget,
   GoogleCalendarClient,
@@ -175,6 +176,75 @@ function getMemryManagedGoogleSource(db: DataDb): typeof calendarSources.$inferS
   }).find((source) => source.isMemryManaged && !source.archivedAt)
 }
 
+/**
+ * Ensure a Google calendar is registered in `calendar_sources` and flagged for
+ * inbound sync (isSelected=true). Called from the push resolver whenever we
+ * route an event to a calendar that the user picked directly or set as their
+ * default — without this, `syncGoogleCalendarNow` never polls that calendar
+ * and two-way sync silently breaks for everything outside the Memry-managed
+ * calendar (Codex M2 review finding 2).
+ */
+export async function ensureGoogleCalendarSourceSelected(
+  db: DataDb,
+  client: Pick<GoogleCalendarClient, 'listCalendars'>,
+  remoteCalendarId: string
+): Promise<typeof calendarSources.$inferSelect | null> {
+  const existing = listCalendarSources(db, { provider: 'google', kind: 'calendar' }).find(
+    (source) => source.remoteId === remoteCalendarId && !source.archivedAt
+  )
+
+  const now = getNow()
+
+  if (existing) {
+    if (existing.isSelected) return existing
+    const updated = upsertCalendarSource(db, {
+      ...existing,
+      isSelected: true,
+      modifiedAt: now
+    })
+    markSyncedTableMutation('calendar_source', updated.id, true)
+    emitCalendarChanged({ entityType: 'calendar_source', id: updated.id })
+    return updated
+  }
+
+  const discovered = await client.listCalendars()
+  const remote = discovered.find((cal) => cal.id === remoteCalendarId)
+  if (!remote) {
+    log.warn('Target Google calendar not found while registering source', { remoteCalendarId })
+    return null
+  }
+
+  const account = listCalendarSources(db, { provider: 'google', kind: 'account' })[0]
+  const localId = `google-calendar:${remote.id}`
+  const existingById = getCalendarSourceById(db, localId)
+  const existed = Boolean(existingById)
+
+  const saved = upsertCalendarSource(db, {
+    id: localId,
+    provider: 'google',
+    kind: 'calendar',
+    accountId: account?.id ?? null,
+    remoteId: remote.id,
+    title: remote.title,
+    timezone: remote.timezone ?? LOCAL_TIMEZONE,
+    color: remote.color,
+    isPrimary: remote.isPrimary,
+    isSelected: true,
+    isMemryManaged: false,
+    syncCursor: null,
+    syncStatus: 'pending',
+    lastSyncedAt: null,
+    metadata: null,
+    clock: existingById?.clock,
+    createdAt: existingById?.createdAt ?? now,
+    modifiedAt: now
+  })
+
+  markSyncedTableMutation('calendar_source', saved.id, existed)
+  emitCalendarChanged({ entityType: 'calendar_source', id: saved.id })
+  return saved
+}
+
 function getGoogleClient(deps?: { client?: GoogleCalendarClient }): GoogleCalendarClient {
   return deps?.client ?? createGoogleCalendarClient()
 }
@@ -268,6 +338,49 @@ function updateBindingRemoteVersion(
   enqueueLocalSyncUpdate('calendar_binding', existing.id)
 }
 
+function getEventTargetCalendarId(db: DataDb, target: CalendarSyncTarget): string | null {
+  if (target.sourceType !== 'event') return null
+  const row = db
+    .select({ targetCalendarId: calendarEvents.targetCalendarId })
+    .from(calendarEvents)
+    .where(eq(calendarEvents.id, target.sourceId))
+    .get()
+  return row?.targetCalendarId ?? null
+}
+
+async function resolveTargetCalendarId(
+  db: DataDb,
+  target: CalendarSyncTarget,
+  existingBinding: typeof calendarBindings.$inferSelect | undefined,
+  client: Pick<GoogleCalendarClient, 'listCalendars' | 'createCalendar'>
+): Promise<string> {
+  // Existing binding wins — retargeting a bound event would require
+  // events.move on Google's side and coordinated etag handling (M3+ work).
+  if (existingBinding?.remoteCalendarId) return existingBinding.remoteCalendarId
+
+  // Per-event override from the renderer calendar picker. Register the
+  // calendar as a selected source so the inbound poll covers it; without
+  // this, two-way sync silently breaks for anything outside the Memry
+  // calendar (Codex M2 review finding 2).
+  const eventTarget = getEventTargetCalendarId(db, target)
+  if (eventTarget) {
+    await ensureGoogleCalendarSourceSelected(db, client, eventTarget)
+    return eventTarget
+  }
+
+  // User's onboarding-selected default (covers tasks / reminders / snoozes too).
+  const { defaultTargetCalendarId } = readCalendarGoogleSettings(db)
+  if (defaultTargetCalendarId) {
+    await ensureGoogleCalendarSourceSelected(db, client, defaultTargetCalendarId)
+    return defaultTargetCalendarId
+  }
+
+  // Final fallback: the auto-created Memry calendar.
+  const memrySource =
+    getMemryManagedGoogleSource(db) ?? (await ensureMemryCalendarSource(db, client))
+  return memrySource.remoteId
+}
+
 export async function pushSourceToGoogleCalendar(
   db: DataDb,
   target: CalendarSyncTarget,
@@ -278,14 +391,13 @@ export async function pushSourceToGoogleCalendar(
   const client = getGoogleClient(deps as { client?: GoogleCalendarClient })
   const localEvent = loadSourceAsGoogleEvent(db, target)
   const existingBinding = getExistingGoogleBinding(db, target)
-  const memrySource =
-    getMemryManagedGoogleSource(db) ?? (await ensureMemryCalendarSource(db, client))
+  const resolvedCalendarId = await resolveTargetCalendarId(db, target, existingBinding, client)
   const now = getNow()
   const bindingId =
     existingBinding?.id ?? `calendar_binding:google:${target.sourceType}:${target.sourceId}`
 
   const remote = await client.upsertEvent({
-    calendarId: existingBinding?.remoteCalendarId ?? memrySource.remoteId,
+    calendarId: resolvedCalendarId,
     eventId: existingBinding?.remoteEventId ?? null,
     event: localEvent
   })
