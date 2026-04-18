@@ -370,6 +370,10 @@ export const SettingsChannels = {
     GET_BACKUP_SETTINGS: 'settings:getBackupSettings',
     /** Update backup configuration */
     SET_BACKUP_SETTINGS: 'settings:setBackupSettings',
+    /** M2: get Google Calendar defaults (target calendar, onboarding flag, promote-dialog flag) */
+    GET_CALENDAR_GOOGLE_SETTINGS: 'settings:getCalendarGoogleSettings',
+    /** M2: update Google Calendar defaults (partial merge) */
+    SET_CALENDAR_GOOGLE_SETTINGS: 'settings:setCalendarGoogleSettings',
     /** Store API key in OS keychain (never in DB) */
     SET_API_KEY: 'settings:setApiKey',
     /** Test API provider connection */
@@ -531,7 +535,13 @@ export const CalendarChannels = {
     GET_PROVIDER_STATUS: 'calendar:get-provider-status',
     CONNECT_PROVIDER: 'calendar:connect-provider',
     DISCONNECT_PROVIDER: 'calendar:disconnect-provider',
-    REFRESH_PROVIDER: 'calendar:refresh-provider'
+    REFRESH_PROVIDER: 'calendar:refresh-provider',
+    /** M2: copy an external Google event into an editable Memry event */
+    PROMOTE_EXTERNAL_EVENT: 'calendar:promote-external-event',
+    /** M2: list the user's Google calendars for target/default selection */
+    LIST_GOOGLE_CALENDARS: 'calendar:list-google-calendars',
+    /** M2: persist the onboarding choice for default target Google calendar */
+    SET_DEFAULT_GOOGLE_CALENDAR: 'calendar:set-default-google-calendar'
   },
   events: {
     CHANGED: 'calendar:changed'

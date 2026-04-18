@@ -15,7 +15,10 @@ import {
   GetCalendarRangeSchema,
   ListCalendarSourcesSchema,
   UpdateCalendarSourceSelectionSchema,
-  CalendarProviderRequestSchema
+  CalendarProviderRequestSchema,
+  PromoteExternalEventSchema,
+  ListGoogleCalendarsSchema,
+  SetDefaultGoogleCalendarSchema
 } from './calendar-api'
 
 describe('CalendarSourceKindSchema', () => {
@@ -354,6 +357,125 @@ describe('CalendarProviderRequestSchema', () => {
 
   it('rejects missing provider', () => {
     const result = CalendarProviderRequestSchema.safeParse({})
+    expect(result.success).toBe(false)
+  })
+})
+
+// ============================================================================
+// M2: Calendar targeting + editable externals
+// ============================================================================
+
+describe('CreateCalendarEventSchema — targetCalendarId (M2)', () => {
+  it('accepts targetCalendarId string', () => {
+    const result = CreateCalendarEventSchema.safeParse({
+      title: 'Team sync',
+      startAt: '2026-04-20T09:00:00Z',
+      targetCalendarId: 'work@group.calendar.google.com'
+    })
+    expect(result.success).toBe(true)
+    if (result.success) {
+      expect(result.data.targetCalendarId).toBe('work@group.calendar.google.com')
+    }
+  })
+
+  it('accepts null targetCalendarId (falls back to default at push time)', () => {
+    const result = CreateCalendarEventSchema.safeParse({
+      title: 'Team sync',
+      startAt: '2026-04-20T09:00:00Z',
+      targetCalendarId: null
+    })
+    expect(result.success).toBe(true)
+  })
+
+  it('treats missing targetCalendarId as undefined (back-compat with M1 payloads)', () => {
+    const result = CreateCalendarEventSchema.safeParse({
+      title: 'Team sync',
+      startAt: '2026-04-20T09:00:00Z'
+    })
+    expect(result.success).toBe(true)
+    if (result.success) {
+      expect(result.data.targetCalendarId).toBeUndefined()
+    }
+  })
+})
+
+describe('UpdateCalendarEventSchema — targetCalendarId (M2)', () => {
+  it('accepts targetCalendarId change', () => {
+    const result = UpdateCalendarEventSchema.safeParse({
+      id: 'evt-1',
+      targetCalendarId: 'personal@group.calendar.google.com'
+    })
+    expect(result.success).toBe(true)
+  })
+
+  it('accepts null to clear targetCalendarId', () => {
+    const result = UpdateCalendarEventSchema.safeParse({
+      id: 'evt-1',
+      targetCalendarId: null
+    })
+    expect(result.success).toBe(true)
+  })
+})
+
+describe('PromoteExternalEventSchema (M2)', () => {
+  it('accepts a valid external event id', () => {
+    const result = PromoteExternalEventSchema.safeParse({
+      externalEventId: 'external-event-42'
+    })
+    expect(result.success).toBe(true)
+  })
+
+  it('rejects empty externalEventId', () => {
+    const result = PromoteExternalEventSchema.safeParse({ externalEventId: '' })
+    expect(result.success).toBe(false)
+    if (!result.success) {
+      expect(result.error.issues[0].path).toContain('externalEventId')
+    }
+  })
+
+  it('rejects missing externalEventId', () => {
+    const result = PromoteExternalEventSchema.safeParse({})
+    expect(result.success).toBe(false)
+  })
+})
+
+describe('ListGoogleCalendarsSchema (M2)', () => {
+  it('accepts an empty input object', () => {
+    const result = ListGoogleCalendarsSchema.safeParse({})
+    expect(result.success).toBe(true)
+  })
+
+  it('accepts missing input (treated as empty by IPC layer)', () => {
+    const result = ListGoogleCalendarsSchema.safeParse(undefined)
+    expect(result.success).toBe(true)
+  })
+})
+
+describe('SetDefaultGoogleCalendarSchema (M2)', () => {
+  it('accepts a calendarId', () => {
+    const result = SetDefaultGoogleCalendarSchema.safeParse({
+      calendarId: 'primary@group.calendar.google.com'
+    })
+    expect(result.success).toBe(true)
+    if (result.success) {
+      // markOnboardingComplete defaults to true so onboarding stops showing
+      expect(result.data.markOnboardingComplete).toBe(true)
+    }
+  })
+
+  it('accepts null calendarId (user skipped onboarding, no default)', () => {
+    const result = SetDefaultGoogleCalendarSchema.safeParse({
+      calendarId: null,
+      markOnboardingComplete: true
+    })
+    expect(result.success).toBe(true)
+  })
+
+  it('rejects non-boolean markOnboardingComplete', () => {
+    const result = SetDefaultGoogleCalendarSchema.safeParse({
+      calendarId: 'x',
+      markOnboardingComplete: 'yes'
+    })
     expect(result.success).toBe(false)
   })
 })

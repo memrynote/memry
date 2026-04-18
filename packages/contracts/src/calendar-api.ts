@@ -38,7 +38,8 @@ export const CreateCalendarEventSchema = z.object({
   timezone: z.string().min(1).default('UTC'),
   isAllDay: z.boolean().default(false),
   recurrenceRule: JsonRecordSchema.optional().nullable(),
-  recurrenceExceptions: z.array(JsonRecordSchema).optional().nullable()
+  recurrenceExceptions: z.array(JsonRecordSchema).optional().nullable(),
+  targetCalendarId: z.string().nullable().optional()
 })
 
 export const UpdateCalendarEventSchema = z.object({
@@ -51,7 +52,19 @@ export const UpdateCalendarEventSchema = z.object({
   timezone: z.string().min(1).optional(),
   isAllDay: z.boolean().optional(),
   recurrenceRule: JsonRecordSchema.optional().nullable(),
-  recurrenceExceptions: z.array(JsonRecordSchema).optional().nullable()
+  recurrenceExceptions: z.array(JsonRecordSchema).optional().nullable(),
+  targetCalendarId: z.string().nullable().optional()
+})
+
+export const PromoteExternalEventSchema = z.object({
+  externalEventId: z.string().min(1)
+})
+
+export const ListGoogleCalendarsSchema = z.object({}).optional().default({})
+
+export const SetDefaultGoogleCalendarSchema = z.object({
+  calendarId: z.string().nullable(),
+  markOnboardingComplete: z.boolean().default(true)
 })
 
 export const ListCalendarEventsSchema = z.object({
@@ -92,6 +105,9 @@ export type GetCalendarRangeInput = z.infer<typeof GetCalendarRangeSchema>
 export type ListCalendarSourcesInput = z.infer<typeof ListCalendarSourcesSchema>
 export type UpdateCalendarSourceSelectionInput = z.infer<typeof UpdateCalendarSourceSelectionSchema>
 export type CalendarProviderRequest = z.infer<typeof CalendarProviderRequestSchema>
+export type PromoteExternalEventInput = z.infer<typeof PromoteExternalEventSchema>
+export type ListGoogleCalendarsInput = z.infer<typeof ListGoogleCalendarsSchema>
+export type SetDefaultGoogleCalendarInput = z.infer<typeof SetDefaultGoogleCalendarSchema>
 
 export interface CalendarEventRecord {
   id: string
@@ -104,6 +120,7 @@ export interface CalendarEventRecord {
   isAllDay: boolean
   recurrenceRule: Record<string, unknown> | null
   recurrenceExceptions: Array<Record<string, unknown>> | null
+  targetCalendarId: string | null
   archivedAt: string | null
   syncedAt: string | null
   createdAt: string
@@ -222,5 +239,34 @@ export interface CalendarSourceMutationResponse {
 export interface CalendarProviderMutationResponse {
   success: boolean
   status: CalendarProviderStatus
+  error?: string
+}
+
+// ============================================================================
+// M2: Calendar targeting + editable externals
+// ============================================================================
+
+export interface GoogleCalendarDescriptorRecord {
+  id: string
+  title: string
+  timezone: string | null
+  color: string | null
+  isPrimary: boolean
+}
+
+export interface ListGoogleCalendarsResponse {
+  calendars: GoogleCalendarDescriptorRecord[]
+  primary: GoogleCalendarDescriptorRecord | null
+  currentDefaultId: string | null
+}
+
+export interface PromoteExternalEventResponse {
+  success: boolean
+  eventId: string | null
+  error?: string
+}
+
+export interface SetDefaultGoogleCalendarResponse {
+  success: boolean
   error?: string
 }
