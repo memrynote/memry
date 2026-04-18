@@ -94,3 +94,23 @@ export function listCalendarBindingsForSource(
     )
     .all()
 }
+
+export function findCalendarBindingByRemoteEvent(
+  db: DataDb,
+  provider: string,
+  remoteCalendarId: string,
+  remoteEventId: string
+): CalendarBinding | undefined {
+  return db
+    .select()
+    .from(calendarBindings)
+    .where(
+      and(
+        eq(calendarBindings.provider, provider),
+        eq(calendarBindings.remoteCalendarId, remoteCalendarId),
+        eq(calendarBindings.remoteEventId, remoteEventId),
+        isNull(calendarBindings.archivedAt)
+      )
+    )
+    .get()
+}
