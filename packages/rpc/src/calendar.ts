@@ -4,8 +4,11 @@ import {
   CreateCalendarEventSchema,
   UpdateCalendarEventSchema,
   ListCalendarEventsSchema,
+  ListGoogleCalendarsSchema,
   GetCalendarRangeSchema,
   ListCalendarSourcesSchema,
+  PromoteExternalEventSchema,
+  SetDefaultGoogleCalendarSchema,
   UpdateCalendarSourceSelectionSchema,
   CalendarProviderRequestSchema,
   type CalendarChangedEvent,
@@ -19,9 +22,18 @@ import {
   type CalendarRangeResponse,
   type CalendarSourceListResponse,
   type CalendarSourceMutationResponse,
-  type CalendarSourceRecord
+  type CalendarSourceRecord,
+  type ListGoogleCalendarsResponse,
+  type PromoteExternalEventResponse,
+  type SetDefaultGoogleCalendarResponse
 } from '../../contracts/src/calendar-api.ts'
-import { defineDomain, defineEvent, defineMethod, type RpcClient, type RpcSubscriptions } from './schema.ts'
+import {
+  defineDomain,
+  defineEvent,
+  defineMethod,
+  type RpcClient,
+  type RpcSubscriptions
+} from './schema.ts'
 
 export type CreateCalendarEventInput = z.input<typeof CreateCalendarEventSchema>
 export type UpdateCalendarEventInput = z.input<typeof UpdateCalendarEventSchema>
@@ -30,6 +42,9 @@ export type GetCalendarRangeInput = z.input<typeof GetCalendarRangeSchema>
 export type ListCalendarSourcesInput = z.input<typeof ListCalendarSourcesSchema>
 export type UpdateCalendarSourceSelectionInput = z.input<typeof UpdateCalendarSourceSelectionSchema>
 export type CalendarProviderRequest = z.input<typeof CalendarProviderRequestSchema>
+export type ListGoogleCalendarsInput = z.input<typeof ListGoogleCalendarsSchema>
+export type PromoteExternalEventInput = z.input<typeof PromoteExternalEventSchema>
+export type SetDefaultGoogleCalendarInput = z.input<typeof SetDefaultGoogleCalendarSchema>
 
 export type {
   CalendarChangedEvent,
@@ -43,13 +58,18 @@ export type {
   CalendarRangeResponse,
   CalendarSourceListResponse,
   CalendarSourceMutationResponse,
-  CalendarSourceRecord
+  CalendarSourceRecord,
+  ListGoogleCalendarsResponse,
+  PromoteExternalEventResponse,
+  SetDefaultGoogleCalendarResponse
 }
 
 export const calendarRpc = defineDomain({
   name: 'calendar',
   methods: {
-    createEvent: defineMethod<(input: CreateCalendarEventInput) => Promise<CalendarEventMutationResponse>>({
+    createEvent: defineMethod<
+      (input: CreateCalendarEventInput) => Promise<CalendarEventMutationResponse>
+    >({
       channel: CalendarChannels.invoke.CREATE_EVENT,
       params: ['input']
     }),
@@ -57,7 +77,9 @@ export const calendarRpc = defineDomain({
       channel: CalendarChannels.invoke.GET_EVENT,
       params: ['id']
     }),
-    updateEvent: defineMethod<(input: UpdateCalendarEventInput) => Promise<CalendarEventMutationResponse>>({
+    updateEvent: defineMethod<
+      (input: UpdateCalendarEventInput) => Promise<CalendarEventMutationResponse>
+    >({
       channel: CalendarChannels.invoke.UPDATE_EVENT,
       params: ['input']
     }),
@@ -65,7 +87,9 @@ export const calendarRpc = defineDomain({
       channel: CalendarChannels.invoke.DELETE_EVENT,
       params: ['id']
     }),
-    listEvents: defineMethod<(options?: ListCalendarEventsInput) => Promise<CalendarEventListResponse>>({
+    listEvents: defineMethod<
+      (options?: ListCalendarEventsInput) => Promise<CalendarEventListResponse>
+    >({
       channel: CalendarChannels.invoke.LIST_EVENTS,
       params: ['options'],
       invokeArgs: ['options ?? {}']
@@ -74,7 +98,9 @@ export const calendarRpc = defineDomain({
       channel: CalendarChannels.invoke.GET_RANGE,
       params: ['input']
     }),
-    listSources: defineMethod<(options?: ListCalendarSourcesInput) => Promise<CalendarSourceListResponse>>({
+    listSources: defineMethod<
+      (options?: ListCalendarSourcesInput) => Promise<CalendarSourceListResponse>
+    >({
       channel: CalendarChannels.invoke.LIST_SOURCES,
       params: ['options'],
       invokeArgs: ['options ?? {}']
@@ -85,11 +111,15 @@ export const calendarRpc = defineDomain({
       channel: CalendarChannels.invoke.UPDATE_SOURCE_SELECTION,
       params: ['input']
     }),
-    getProviderStatus: defineMethod<(input: CalendarProviderRequest) => Promise<CalendarProviderStatus>>({
+    getProviderStatus: defineMethod<
+      (input: CalendarProviderRequest) => Promise<CalendarProviderStatus>
+    >({
       channel: CalendarChannels.invoke.GET_PROVIDER_STATUS,
       params: ['input']
     }),
-    connectProvider: defineMethod<(input: CalendarProviderRequest) => Promise<CalendarProviderMutationResponse>>({
+    connectProvider: defineMethod<
+      (input: CalendarProviderRequest) => Promise<CalendarProviderMutationResponse>
+    >({
       channel: CalendarChannels.invoke.CONNECT_PROVIDER,
       params: ['input']
     }),
@@ -103,6 +133,25 @@ export const calendarRpc = defineDomain({
       (input: CalendarProviderRequest) => Promise<CalendarProviderMutationResponse>
     >({
       channel: CalendarChannels.invoke.REFRESH_PROVIDER,
+      params: ['input']
+    }),
+    listGoogleCalendars: defineMethod<
+      (options?: ListGoogleCalendarsInput) => Promise<ListGoogleCalendarsResponse>
+    >({
+      channel: CalendarChannels.invoke.LIST_GOOGLE_CALENDARS,
+      params: ['options'],
+      invokeArgs: ['options ?? {}']
+    }),
+    setDefaultGoogleCalendar: defineMethod<
+      (input: SetDefaultGoogleCalendarInput) => Promise<SetDefaultGoogleCalendarResponse>
+    >({
+      channel: CalendarChannels.invoke.SET_DEFAULT_GOOGLE_CALENDAR,
+      params: ['input']
+    }),
+    promoteExternalEvent: defineMethod<
+      (input: PromoteExternalEventInput) => Promise<PromoteExternalEventResponse>
+    >({
+      channel: CalendarChannels.invoke.PROMOTE_EXTERNAL_EVENT,
       params: ['input']
     })
   },
