@@ -2,6 +2,7 @@ import { formatTimeOfDay } from '@/lib/time-format'
 import type { ClockFormat } from '@/lib/time-format'
 import { cn } from '@/lib/utils'
 import type { CalendarProjectionItem } from '@/services/calendar-service'
+import type { AnchorRect } from './types'
 
 const CHIP_STYLES: Record<CalendarProjectionItem['visualType'], string> = {
   event:
@@ -17,7 +18,7 @@ const CHIP_STYLES: Record<CalendarProjectionItem['visualType'], string> = {
 interface CalendarItemChipProps {
   item: CalendarProjectionItem
   clockFormat?: ClockFormat
-  onClick?: (item: CalendarProjectionItem) => void
+  onClick?: (item: CalendarProjectionItem, rect: AnchorRect) => void
 }
 
 export function CalendarItemChip({
@@ -46,7 +47,15 @@ export function CalendarItemChip({
       <button
         type="button"
         className={cls}
-        onClick={() => onClick(item)}
+        onClick={(event) => {
+          const rect = event.currentTarget.getBoundingClientRect()
+          onClick(item, {
+            x: rect.left,
+            y: rect.top,
+            width: rect.width,
+            height: rect.height
+          })
+        }}
         data-visual-type={item.visualType}
       >
         {content}

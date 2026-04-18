@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   CalendarShell,
+  type AnchorRect,
   type CalendarEventDraft,
   type CalendarWorkspaceView
 } from '@/components/calendar'
@@ -164,10 +165,11 @@ export function CalendarPage({ className: _className }: CalendarPageProps): Reac
   const [showImportedCalendars, setShowImportedCalendars] = useState(true)
   const [selectedImportedSourceIds, setSelectedImportedSourceIds] = useState<string[]>([])
   const importedSourcesInitializedRef = useRef(false)
-  const [editorState, setEditorState] = useState<{
+  const [popoverState, setPopoverState] = useState<{
     mode: 'create' | 'edit'
     eventId: string | null
     draft: CalendarEventDraft
+    anchorRect: AnchorRect
   } | null>(null)
   const [isSaving, setIsSaving] = useState(false)
 
@@ -253,30 +255,31 @@ export function CalendarPage({ className: _className }: CalendarPageProps): Reac
     })
   }
 
-  const handleSelectItem = (item: CalendarProjectionItem) => {
+  const handleSelectItem = (item: CalendarProjectionItem, rect: AnchorRect) => {
     if (item.sourceType !== 'event') return
 
-    setEditorState({
+    setPopoverState({
       mode: 'edit',
       eventId: item.sourceId,
-      draft: createDraftFromItem(item)
+      draft: createDraftFromItem(item),
+      anchorRect: rect
     })
   }
 
-  const handleSaveEditor = async () => {
-    if (!editorState) return
+  const handlePopoverSave = async () => {
+    if (!popoverState) return
 
     setIsSaving(true)
     try {
-      if (editorState.mode === 'create') {
-        const result = await calendarService.createEvent(toCreatePayload(editorState.draft))
+      if (popoverState.mode === 'create') {
+        const result = await calendarService.createEvent(toCreatePayload(popoverState.draft))
         if (!result.success) {
           throw new Error(result.error ?? 'Could not create event.')
         }
-      } else if (editorState.eventId) {
+      } else if (popoverState.eventId) {
         const result = await calendarService.updateEvent({
-          id: editorState.eventId,
-          ...toCreatePayload(editorState.draft)
+          id: popoverState.eventId,
+          ...toCreatePayload(popoverState.draft)
         })
         if (!result.success) {
           throw new Error(result.error ?? 'Could not update event.')
@@ -284,7 +287,7 @@ export function CalendarPage({ className: _className }: CalendarPageProps): Reac
       }
 
       await queryClient.invalidateQueries({ queryKey: ['calendar', 'range'] })
-      setEditorState(null)
+      setPopoverState(null)
     } finally {
       setIsSaving(false)
     }
@@ -298,11 +301,17 @@ export function CalendarPage({ className: _className }: CalendarPageProps): Reac
     await queryClient.invalidateQueries({ queryKey: ['calendar', 'range'] })
   }
 
-  const handleCreateEventWithRange = (startAt: string, endAt: string, isAllDay: boolean) => {
-    setEditorState({
+  const handleCreateEventWithRange = (
+    startAt: string,
+    endAt: string,
+    isAllDay: boolean,
+    anchorRect: AnchorRect
+  ) => {
+    setPopoverState({
       mode: 'create',
       eventId: null,
-      draft: { title: '', description: '', location: '', isAllDay, startAt, endAt }
+      draft: { title: '', description: '', location: '', isAllDay, startAt, endAt },
+      anchorRect
     })
   }
 
@@ -316,11 +325,12 @@ export function CalendarPage({ className: _className }: CalendarPageProps): Reac
       showMemryItems={showMemryItems}
       showImportedCalendars={showImportedCalendars}
       selectedImportedSourceIds={selectedImportedSourceIds}
-      editorState={
-        editorState
+      popoverState={
+        popoverState
           ? {
-              mode: editorState.mode,
-              draft: editorState.draft
+              mode: popoverState.mode,
+              draft: popoverState.draft,
+              anchorRect: popoverState.anchorRect
             }
           : null
       }
@@ -329,11 +339,12 @@ export function CalendarPage({ className: _className }: CalendarPageProps): Reac
       onPrevious={handlePrevious}
       onNext={handleNext}
       onToday={() => setAnchorDate(getTodayDate())}
-      onCreateEvent={() =>
-        setEditorState({
+      onCreateEvent={(anchorRect) =>
+        setPopoverState({
           mode: 'create',
           eventId: null,
-          draft: createDraftFromAnchor(anchorDate)
+          draft: createDraftFromAnchor(anchorDate),
+          anchorRect
         })
       }
       onToggleMemryItems={() => setShowMemryItems((current) => !current)}
@@ -346,13 +357,13 @@ export function CalendarPage({ className: _className }: CalendarPageProps): Reac
         )
       }
       onSelectItem={handleSelectItem}
-      onEditorClose={() => setEditorState(null)}
-      onEditorDraftChange={(draft) =>
-        setEditorState((current) => (current ? { ...current, draft } : current))
+      onPopoverDismiss={() => setPopoverState(null)}
+      onPopoverDraftChange={(draft) =>
+        setPopoverState((current) => (current ? { ...current, draft } : current))
       }
       onAnchorChange={(date) => setAnchorDate(date)}
       onWeekVisibleRangeChange={(startDate) => setAnchorDate(startDate)}
-      onEditorSave={() => void handleSaveEditor()}
+      onPopoverSave={() => void handlePopoverSave()}
       onQuickSave={handleQuickSave}
       onCreateEventWithRange={handleCreateEventWithRange}
     />

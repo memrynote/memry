@@ -2,11 +2,12 @@ import { Button } from '@/components/ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { SlidersHorizontal } from '@/lib/icons'
 import { CalendarDayView } from './calendar-day-view'
-import { CalendarEventEditorDrawer, type CalendarEventDraft } from './calendar-event-editor-drawer'
+import { CalendarEventPopover } from './calendar-event-popover'
 import { CalendarMonthView } from './calendar-month-view'
 import { CalendarToolbar, type CalendarWorkspaceView } from './calendar-toolbar'
 import { CalendarWeekView } from './calendar-week-view'
 import { CalendarYearView } from './calendar-year-view'
+import type { AnchorRect, CalendarEventDraft } from './types'
 import type { CalendarProjectionItem, CalendarSourceRecord } from '@/services/calendar-service'
 
 interface CalendarShellProps {
@@ -18,24 +19,33 @@ interface CalendarShellProps {
   showMemryItems: boolean
   showImportedCalendars: boolean
   selectedImportedSourceIds: string[]
-  editorState: { mode: 'create' | 'edit'; draft: CalendarEventDraft } | null
+  popoverState: {
+    mode: 'create' | 'edit'
+    draft: CalendarEventDraft
+    anchorRect: AnchorRect
+  } | null
   isSaving: boolean
   onViewChange: (view: CalendarWorkspaceView) => void
   onPrevious: () => void
   onNext: () => void
   onToday: () => void
-  onCreateEvent: () => void
+  onCreateEvent: (anchorRect: AnchorRect) => void
   onToggleMemryItems: () => void
   onToggleImportedCalendars: () => void
   onToggleImportedSource: (sourceId: string) => void
-  onSelectItem: (item: CalendarProjectionItem) => void
-  onEditorClose: () => void
-  onEditorDraftChange: (draft: CalendarEventDraft) => void
-  onEditorSave: () => void
+  onSelectItem: (item: CalendarProjectionItem, rect: AnchorRect) => void
+  onPopoverDismiss: () => void
+  onPopoverDraftChange: (draft: CalendarEventDraft) => void
+  onPopoverSave: () => void
   onAnchorChange?: (date: string) => void
   onWeekVisibleRangeChange?: (startDate: string) => void
   onQuickSave?: (draft: CalendarEventDraft) => void | Promise<void>
-  onCreateEventWithRange?: (startAt: string, endAt: string, isAllDay: boolean) => void
+  onCreateEventWithRange?: (
+    startAt: string,
+    endAt: string,
+    isAllDay: boolean,
+    anchorRect: AnchorRect
+  ) => void
 }
 
 export function CalendarShell({
@@ -47,7 +57,7 @@ export function CalendarShell({
   showMemryItems,
   showImportedCalendars,
   selectedImportedSourceIds,
-  editorState,
+  popoverState,
   isSaving,
   onViewChange,
   onPrevious,
@@ -58,9 +68,9 @@ export function CalendarShell({
   onToggleImportedCalendars,
   onToggleImportedSource,
   onSelectItem,
-  onEditorClose,
-  onEditorDraftChange,
-  onEditorSave,
+  onPopoverDismiss,
+  onPopoverDraftChange,
+  onPopoverSave,
   onAnchorChange,
   onWeekVisibleRangeChange,
   onQuickSave,
@@ -182,15 +192,15 @@ export function CalendarShell({
         )}
       </div>
 
-      {editorState && (
-        <CalendarEventEditorDrawer
-          open={true}
-          mode={editorState.mode}
-          draft={editorState.draft}
+      {popoverState && (
+        <CalendarEventPopover
+          anchorRect={popoverState.anchorRect}
+          mode={popoverState.mode}
+          draft={popoverState.draft}
           isSaving={isSaving}
-          onClose={onEditorClose}
-          onDraftChange={onEditorDraftChange}
-          onSave={onEditorSave}
+          onDraftChange={onPopoverDraftChange}
+          onSave={onPopoverSave}
+          onDismiss={onPopoverDismiss}
         />
       )}
     </div>

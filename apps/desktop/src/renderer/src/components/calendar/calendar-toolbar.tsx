@@ -1,6 +1,7 @@
 import { Button } from '@/components/ui/button'
 import { ChevronLeft, ChevronRight, Plus, Search } from '@/lib/icons'
 import { addLocalDays, getStartOfWeek, parseLocalDate } from './date-utils'
+import type { AnchorRect } from './types'
 
 export type CalendarWorkspaceView = 'day' | 'week' | 'month' | 'year'
 
@@ -20,7 +21,7 @@ interface CalendarToolbarProps {
   onPrevious: () => void
   onNext: () => void
   onToday: () => void
-  onCreateEvent: () => void
+  onCreateEvent: (anchorRect: AnchorRect) => void
   extraActions?: React.ReactNode
 }
 
@@ -75,7 +76,15 @@ export function CalendarToolbar({
       <div className="flex items-center justify-between">
         <button
           type="button"
-          onClick={onCreateEvent}
+          onClick={(event) => {
+            const rect = event.currentTarget.getBoundingClientRect()
+            onCreateEvent({
+              x: rect.left,
+              y: rect.top,
+              width: rect.width,
+              height: rect.height
+            })
+          }}
           className="flex size-9 items-center justify-center rounded-full border border-border text-muted-foreground transition-colors hover:border-muted-foreground hover:text-foreground"
           aria-label="Create event"
         >

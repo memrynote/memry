@@ -10,7 +10,7 @@ import { useGeneralSettings } from '@/hooks/use-general-settings'
 import { formatHour } from '@/lib/time-format'
 import { cn } from '@/lib/utils'
 import type { CalendarProjectionItem } from '@/services/calendar-service'
-import type { CalendarEventDraft } from './calendar-event-editor-drawer'
+import type { AnchorRect, CalendarEventDraft } from './types'
 
 const HOUR_HEIGHT = 96
 const HEADER_HEIGHT = 40
@@ -32,9 +32,14 @@ function getEventPosition(item: CalendarProjectionItem): { top: number; height: 
 interface CalendarWeekViewProps {
   anchorDate: string
   items: CalendarProjectionItem[]
-  onSelectItem?: (item: CalendarProjectionItem) => void
+  onSelectItem?: (item: CalendarProjectionItem, rect: AnchorRect) => void
   onQuickSave?: (draft: CalendarEventDraft) => void | Promise<void>
-  onCreateEventWithRange?: (startAt: string, endAt: string, isAllDay: boolean) => void
+  onCreateEventWithRange?: (
+    startAt: string,
+    endAt: string,
+    isAllDay: boolean,
+    anchorRect: AnchorRect
+  ) => void
   onVisibleDayStartChange?: (dayIndex: number, startDate: string) => void
 }
 
@@ -304,7 +309,12 @@ export function CalendarWeekView({
                         }}
                         onDismiss={clearSelection}
                         onOpenFullEditor={(draft) => {
-                          onCreateEventWithRange?.(draft.startAt, draft.endAt, false)
+                          onCreateEventWithRange?.(
+                            draft.startAt,
+                            draft.endAt,
+                            false,
+                            selection.anchorRect
+                          )
                           clearSelection()
                         }}
                       />
