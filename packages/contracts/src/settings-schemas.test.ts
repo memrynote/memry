@@ -32,7 +32,9 @@ import {
   GetRecoveryKeyRequestSchema,
   SetApiKeyRequestSchema,
   TestConnectionRequestSchema,
-  TestConnectionResultSchema
+  TestConnectionResultSchema,
+  CalendarGoogleSettingsSchema,
+  CALENDAR_GOOGLE_SETTINGS_DEFAULTS
 } from './settings-schemas'
 
 describe('GeneralSettingsSchema', () => {
@@ -609,5 +611,60 @@ describe('TestConnectionResultSchema', () => {
     if (!result.success) {
       expect(result.error.issues[0].path).toContain('valid')
     }
+  })
+})
+
+describe('CalendarGoogleSettingsSchema (M2)', () => {
+  it('accepts the shipped defaults', () => {
+    const result = CalendarGoogleSettingsSchema.safeParse(CALENDAR_GOOGLE_SETTINGS_DEFAULTS)
+    expect(result.success).toBe(true)
+  })
+
+  it('exposes sensible defaults for a fresh install', () => {
+    // #given — the default payload
+    const { defaultTargetCalendarId, onboardingCompleted, promoteConfirmDismissed } =
+      CALENDAR_GOOGLE_SETTINGS_DEFAULTS
+
+    // #then — no default calendar picked, onboarding pending, promote dialog armed
+    expect(defaultTargetCalendarId).toBeNull()
+    expect(onboardingCompleted).toBe(false)
+    expect(promoteConfirmDismissed).toBe(false)
+  })
+
+  it('accepts a user who picked a default calendar during onboarding', () => {
+    const result = CalendarGoogleSettingsSchema.safeParse({
+      defaultTargetCalendarId: 'primary@group.calendar.google.com',
+      onboardingCompleted: true,
+      promoteConfirmDismissed: false
+    })
+    expect(result.success).toBe(true)
+  })
+
+  it('accepts a null defaultTargetCalendarId after onboarding is done (user skipped)', () => {
+    const result = CalendarGoogleSettingsSchema.safeParse({
+      defaultTargetCalendarId: null,
+      onboardingCompleted: true,
+      promoteConfirmDismissed: false
+    })
+    expect(result.success).toBe(true)
+  })
+
+  it('rejects non-string defaultTargetCalendarId', () => {
+    const result = CalendarGoogleSettingsSchema.safeParse({
+      ...CALENDAR_GOOGLE_SETTINGS_DEFAULTS,
+      defaultTargetCalendarId: 42
+    })
+    expect(result.success).toBe(false)
+    if (!result.success) {
+      expect(result.error.issues[0].path).toContain('defaultTargetCalendarId')
+    }
+  })
+
+  it('rejects non-boolean onboardingCompleted', () => {
+    const result = CalendarGoogleSettingsSchema.safeParse({
+      ...CALENDAR_GOOGLE_SETTINGS_DEFAULTS,
+      onboardingCompleted: 'yes'
+    })
+    expect(result.success).toBe(false)
   })
 })

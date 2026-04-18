@@ -158,6 +158,24 @@ export const VOICE_TRANSCRIPTION_SETTINGS_DEFAULTS: VoiceTranscriptionSettings =
 }
 
 // ============================================================================
+// Calendar — Google Settings (M2)
+// ============================================================================
+
+export const CalendarGoogleSettingsSchema = z.object({
+  defaultTargetCalendarId: z.string().nullable(),
+  onboardingCompleted: z.boolean(),
+  promoteConfirmDismissed: z.boolean()
+})
+
+export type CalendarGoogleSettings = z.infer<typeof CalendarGoogleSettingsSchema>
+
+export const CALENDAR_GOOGLE_SETTINGS_DEFAULTS: CalendarGoogleSettings = {
+  defaultTargetCalendarId: null,
+  onboardingCompleted: false,
+  promoteConfirmDismissed: false
+}
+
+// ============================================================================
 // Backup Settings
 // ============================================================================
 

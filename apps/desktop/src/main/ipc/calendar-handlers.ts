@@ -78,6 +78,7 @@ function mapCalendarEvent(row: typeof calendarEvents.$inferSelect): CalendarEven
     recurrenceRule: (row.recurrenceRule as Record<string, unknown> | null) ?? null,
     recurrenceExceptions:
       (row.recurrenceExceptions as Array<Record<string, unknown>> | null) ?? null,
+    targetCalendarId: row.targetCalendarId ?? null,
     archivedAt: row.archivedAt ?? null,
     syncedAt: row.syncedAt ?? null,
     createdAt: row.createdAt,
