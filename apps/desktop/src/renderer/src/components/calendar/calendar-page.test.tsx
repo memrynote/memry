@@ -241,7 +241,7 @@ describe('CalendarPage', () => {
     expect(screen.getByText('Customer call')).toBeInTheDocument()
   })
 
-  it('opens the event editor drawer for create and edit flows', async () => {
+  it('opens the event editor popover for create and edit flows', async () => {
     const user = userEvent.setup()
     renderWithProviders(<CalendarPage />)
 
@@ -250,12 +250,12 @@ describe('CalendarPage', () => {
     )
 
     await user.click(screen.getByRole('button', { name: 'Create event' }))
-    expect(screen.getByRole('heading', { name: 'New Event' })).toBeInTheDocument()
+    expect(await screen.findByRole('dialog', { name: 'Create calendar event' })).toBeInTheDocument()
 
-    await user.click(screen.getAllByRole('button', { name: 'Close' })[0])
+    await user.click(screen.getByRole('button', { name: 'Cancel' }))
     await user.click(screen.getByText('Planning block'))
 
-    expect(screen.getByText('Edit Event')).toBeInTheDocument()
+    expect(await screen.findByRole('dialog', { name: 'Edit calendar event' })).toBeInTheDocument()
   })
 
   it('renders projected task, reminder, and snooze items with distinct styling markers', async () => {

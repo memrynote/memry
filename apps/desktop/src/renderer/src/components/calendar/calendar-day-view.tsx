@@ -8,7 +8,7 @@ import { useTimeGridMarquee } from './use-time-grid-marquee'
 import { MarqueeSelectionOverlay } from './marquee-selection-overlay'
 import { CalendarQuickCreateDialog } from './calendar-quick-create-dialog'
 import { useScrollToCurrentTime } from './use-scroll-to-current-time'
-import type { CalendarEventDraft } from './calendar-event-editor-drawer'
+import type { AnchorRect, CalendarEventDraft } from './types'
 
 const HOUR_HEIGHT = 96
 const HOURS = Array.from({ length: 24 }, (_, i) => i)
@@ -26,9 +26,14 @@ function getEventPosition(item: CalendarProjectionItem): { top: number; height: 
 interface CalendarDayViewProps {
   anchorDate: string
   items: CalendarProjectionItem[]
-  onSelectItem?: (item: CalendarProjectionItem) => void
+  onSelectItem?: (item: CalendarProjectionItem, rect: AnchorRect) => void
   onQuickSave?: (draft: CalendarEventDraft) => void | Promise<void>
-  onCreateEventWithRange?: (startAt: string, endAt: string, isAllDay: boolean) => void
+  onCreateEventWithRange?: (
+    startAt: string,
+    endAt: string,
+    isAllDay: boolean,
+    anchorRect: AnchorRect
+  ) => void
 }
 
 export function CalendarDayView({
@@ -158,7 +163,12 @@ export function CalendarDayView({
                   }}
                   onDismiss={clearSelection}
                   onOpenFullEditor={(draft) => {
-                    onCreateEventWithRange?.(draft.startAt, draft.endAt, false)
+                    onCreateEventWithRange?.(
+                      draft.startAt,
+                      draft.endAt,
+                      false,
+                      selection.anchorRect
+                    )
                     clearSelection()
                   }}
                 />
