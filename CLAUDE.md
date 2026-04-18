@@ -79,6 +79,7 @@ Prettier: single quotes, no semicolons, 100 char width, no trailing commas.
 - Pre-existing type errors in test files (websocket.test.ts, folders.test.ts) — ignore during typecheck
 - Lazy URL resolution in http-client (per-call, not module-level) to avoid import-time throws in tests
 - Drizzle: nullable JSON columns need `null` not `undefined` in `.values()` insert
+- **Submit buttons that disable themselves mid-click lose the click.** If `onClick` calls a handler that synchronously sets state which adds `disabled` to the button (e.g. `disabled={isSubmitting}`), the browser suppresses the `click` event at the DOM layer between `pointerdown` and `click`. Fire submit from `onPointerDown` (runs before the re-render applies `disabled`) and keep `onClick` as a keyboard-activation fallback. See `calendar-quick-create-dialog.tsx`.
 
 ## gstack
 

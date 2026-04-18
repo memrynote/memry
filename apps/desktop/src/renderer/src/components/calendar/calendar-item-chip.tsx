@@ -27,7 +27,7 @@ export function CalendarItemChip({
 }: CalendarItemChipProps): React.JSX.Element {
   const timeLabel = item.isAllDay ? 'All day' : formatTimeOfDay(new Date(item.startAt), clockFormat)
   const cls = cn(
-    'flex w-full items-center justify-between gap-0.5 rounded-[6px] border px-1 py-0.5 text-left transition-colors @xl:px-2 @xl:py-1',
+    'flex h-full w-full items-start justify-between gap-0.5 rounded-[6px] border px-1 py-0.5 text-left transition-colors @xl:px-2 @xl:py-1',
     CHIP_STYLES[item.visualType],
     onClick && 'cursor-pointer hover:brightness-95'
   )
