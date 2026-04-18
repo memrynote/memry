@@ -4,10 +4,11 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { cn } from '@/lib/utils'
-import type { CalendarEventDraft } from './calendar-event-editor-drawer'
+import { POPOVER_WIDTH, computePopoverPosition } from './popover-position'
+import type { AnchorRect, CalendarEventDraft } from './types'
 
 interface CalendarQuickCreateDialogProps {
-  anchorRect: { x: number; y: number; width: number; height: number }
+  anchorRect: AnchorRect
   startAt: string
   endAt: string
   isAllDay: boolean
@@ -30,9 +31,6 @@ const MONTH_NAMES = [
   'Nov',
   'Dec'
 ]
-
-const DIALOG_WIDTH = 288
-const DIALOG_GAP = 8
 
 function formatTime(value: string): string {
   const date = new Date(value)
@@ -61,19 +59,6 @@ function formatDatetimeDisplay(startAt: string, endAt: string, isAllDay: boolean
   const year = startAt.split('-')[0]
   const startMonthDay = formatDateShort(startAt)
   return `${startMonthDay}, ${year}  ${formatTime(startAt)} – ${formatTime(endAt)}`
-}
-
-function computeDialogPosition(anchor: { x: number; y: number; width: number; height: number }): {
-  top: number
-  left: number
-} {
-  const viewportWidth = typeof window !== 'undefined' ? window.innerWidth : 1024
-  const viewportHeight = typeof window !== 'undefined' ? window.innerHeight : 768
-  const rightCandidate = anchor.x + anchor.width + DIALOG_GAP
-  const fitsRight = rightCandidate + DIALOG_WIDTH + 8 <= viewportWidth
-  const left = fitsRight ? rightCandidate : Math.max(8, anchor.x - DIALOG_WIDTH - DIALOG_GAP)
-  const top = Math.min(Math.max(8, anchor.y), Math.max(8, viewportHeight - 240))
-  return { top, left }
 }
 
 export function CalendarQuickCreateDialog({
@@ -118,7 +103,7 @@ export function CalendarQuickCreateDialog({
   }
 
   const datetimeLabel = formatDatetimeDisplay(startAt, endAt, isAllDay)
-  const { top, left } = computeDialogPosition(anchorRect)
+  const { top, left } = computePopoverPosition(anchorRect)
 
   return (
     <DialogPrimitive.Root
@@ -139,7 +124,7 @@ export function CalendarQuickCreateDialog({
           className={cn(
             'fixed z-50 rounded-md border bg-popover p-4 text-popover-foreground shadow-md outline-none'
           )}
-          style={{ top, left, width: DIALOG_WIDTH }}
+          style={{ top, left, width: POPOVER_WIDTH }}
         >
           <DialogPrimitive.Title className="sr-only">Create calendar event</DialogPrimitive.Title>
           <DialogPrimitive.Description className="sr-only">
