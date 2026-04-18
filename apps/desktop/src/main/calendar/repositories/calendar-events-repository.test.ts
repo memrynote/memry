@@ -1,6 +1,97 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { sql } from 'drizzle-orm'
 import { createTestDataDb, type TestDatabaseResult, type TestDb } from '@tests/utils/test-db'
+import { upsertCalendarEvent, getCalendarEventById } from './calendar-events-repository'
+import type { DataDb } from '../../database/types'
+
+describe('calendarEvents.targetCalendarId (M2)', () => {
+  let dbResult: TestDatabaseResult
+  let dataDb: DataDb
+
+  beforeEach(() => {
+    dbResult = createTestDataDb()
+    dataDb = dbResult.db as unknown as DataDb
+  })
+
+  afterEach(() => {
+    dbResult.close()
+  })
+
+  it('round-trips targetCalendarId through upsertCalendarEvent + getCalendarEventById', () => {
+    // #given — a new event pointed at a specific Google calendar
+    const baseEvent = {
+      id: 'event-target-1',
+      title: 'Team sync',
+      startAt: '2026-04-20T09:00:00.000Z',
+      endAt: '2026-04-20T10:00:00.000Z',
+      timezone: 'UTC',
+      isAllDay: false,
+      targetCalendarId: 'work@group.calendar.google.com',
+      clock: { 'device-a': 1 },
+      createdAt: '2026-04-18T12:00:00.000Z',
+      modifiedAt: '2026-04-18T12:00:00.000Z'
+    }
+
+    // #when — we persist it and read it back through the repository layer
+    upsertCalendarEvent(dataDb, baseEvent)
+    const stored = getCalendarEventById(dataDb, 'event-target-1')
+
+    // #then — the targetCalendarId survives the round-trip
+    expect(stored?.targetCalendarId).toBe('work@group.calendar.google.com')
+  })
+
+  it('defaults targetCalendarId to null when not provided', () => {
+    // #given — an event inserted without targetCalendarId (M1-era payload)
+    upsertCalendarEvent(dataDb, {
+      id: 'event-target-null',
+      title: 'Legacy event',
+      startAt: '2026-04-20T09:00:00.000Z',
+      timezone: 'UTC',
+      isAllDay: false,
+      clock: { 'device-a': 1 },
+      createdAt: '2026-04-18T12:00:00.000Z',
+      modifiedAt: '2026-04-18T12:00:00.000Z'
+    })
+
+    // #when — we read it back
+    const stored = getCalendarEventById(dataDb, 'event-target-null')
+
+    // #then — targetCalendarId is nullable and defaults to null
+    expect(stored?.targetCalendarId).toBeNull()
+  })
+
+  it('updates targetCalendarId when upsertCalendarEvent re-targets an existing row', () => {
+    // #given — event initially targets the Memry-managed calendar
+    upsertCalendarEvent(dataDb, {
+      id: 'event-retarget',
+      title: 'Retargetable event',
+      startAt: '2026-04-20T09:00:00.000Z',
+      timezone: 'UTC',
+      isAllDay: false,
+      targetCalendarId: 'memry-managed@group.calendar.google.com',
+      clock: { 'device-a': 1 },
+      createdAt: '2026-04-18T12:00:00.000Z',
+      modifiedAt: '2026-04-18T12:00:00.000Z'
+    })
+
+    // #when — user picks a different calendar via the picker
+    upsertCalendarEvent(dataDb, {
+      id: 'event-retarget',
+      title: 'Retargetable event',
+      startAt: '2026-04-20T09:00:00.000Z',
+      timezone: 'UTC',
+      isAllDay: false,
+      targetCalendarId: 'personal@group.calendar.google.com',
+      clock: { 'device-a': 2 },
+      createdAt: '2026-04-18T12:00:00.000Z',
+      modifiedAt: '2026-04-18T12:05:00.000Z'
+    })
+
+    // #then — the stored row reflects the new target
+    const stored = getCalendarEventById(dataDb, 'event-retarget')
+    expect(stored?.targetCalendarId).toBe('personal@group.calendar.google.com')
+  })
+})
 
 describe('calendar storage foundation', () => {
   let dbResult: TestDatabaseResult
