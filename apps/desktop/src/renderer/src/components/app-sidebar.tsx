@@ -27,9 +27,6 @@ import {
   SidebarContent,
   SidebarFooter,
   SidebarHeader,
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
   SidebarRail
 } from '@/components/ui/sidebar'
 import { SidebarNav } from '@/components/sidebar/sidebar-nav'
@@ -435,19 +432,27 @@ function AppSidebarInner({ currentPage, viewCounts, ...props }: AppSidebarProps)
         />
         <SidebarDrillDownContainer>{mainContent}</SidebarDrillDownContainer>
       </SidebarContent>
-      <SidebarFooter className="gap-1 p-2">
-        <VaultSwitcher />
-        <SidebarMenu>
-          <SidebarMenuItem>
-            {authState.status === 'authenticated' ? (
+      <SidebarFooter className="gap-0 p-2">
+        <div className="flex items-center gap-1">
+          {authState.status === 'authenticated' ? (
+            <div className="shrink-0 w-7 [&>button]:w-7 [&>button]:justify-center">
               <SyncStatus onOpenSettings={handleSyncClick} iconOnly />
-            ) : authState.status === 'checking' ? null : (
-              <SidebarMenuButton tooltip="Sync disabled" onClick={handleSyncClick}>
-                <CloudOff className="size-4 text-muted-foreground" />
-              </SidebarMenuButton>
-            )}
-          </SidebarMenuItem>
-        </SidebarMenu>
+            </div>
+          ) : authState.status === 'checking' ? null : (
+            <button
+              type="button"
+              onClick={handleSyncClick}
+              aria-label="Sync disabled"
+              title="Sync disabled"
+              className="shrink-0 size-7 rounded flex items-center justify-center hover:bg-sidebar-accent text-muted-foreground transition-colors"
+            >
+              <CloudOff className="size-4" />
+            </button>
+          )}
+          <div className="flex-1 min-w-0">
+            <VaultSwitcher />
+          </div>
+        </div>
       </SidebarFooter>
       <SidebarRail />
     </Sidebar>
