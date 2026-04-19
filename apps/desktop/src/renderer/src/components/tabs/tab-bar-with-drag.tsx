@@ -42,6 +42,9 @@ export const TabBarWithDrag = ({
   const { toggle: toggleDayPanel, isOpen: isDayPanelOpen } = useDayPanel()
   const { openTab, getActiveTab } = useTabs()
   const { state: sidebarState } = useSidebar()
+  // Mirror of the sidebar-header WindowControls: mount here only when the sidebar
+  // is offcanvas-collapsed (its header returns null) AND this is the leftmost pane.
+  // See app-sidebar.tsx SidebarHeaderContent for the inverted gate.
   const showWindowControls = sidebarState === 'collapsed' && showSidebarToggle
 
   const isGraphActive = getActiveTab()?.type === 'graph'
