@@ -2,10 +2,7 @@ import { Button } from '@/components/ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { SlidersHorizontal } from '@/lib/icons'
 import { CalendarDayView } from './calendar-day-view'
-import {
-  CalendarEventPopover,
-  type CalendarEventReadOnlyMetadata
-} from './calendar-event-popover'
+import { CalendarEventPopover, type CalendarEventReadOnlyMetadata } from './calendar-event-popover'
 import { CalendarMonthView } from './calendar-month-view'
 import { CalendarToolbar, type CalendarWorkspaceView } from './calendar-toolbar'
 import { CalendarWeekView } from './calendar-week-view'

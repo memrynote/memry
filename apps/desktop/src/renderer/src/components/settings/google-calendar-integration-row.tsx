@@ -10,6 +10,7 @@ import {
   disconnectGoogleCalendarProvider,
   getGoogleCalendarStatus,
   refreshGoogleCalendarProvider,
+  retryGoogleCalendarSourceSync,
   updateGoogleCalendarSourceSelection
 } from '@/services/calendar-service'
 import { GoogleCalendarSourcePicker } from './google-calendar-source-picker'
@@ -98,6 +99,19 @@ export function GoogleCalendarIntegrationRow(): React.JSX.Element {
     }
   })
 
+  const retryMutation = useMutation({
+    mutationFn: async (sourceId: string) => {
+      const result = await retryGoogleCalendarSourceSync({ sourceId })
+      if (!result.success) {
+        throw new Error(result.error ?? 'Retry failed')
+      }
+      return result
+    },
+    onSuccess: async () => {
+      await invalidateGoogleCalendarQueries(queryClient)
+    }
+  })
+
   // Re-open onboarding for users who connected before M2 shipped OR who
   // closed the dialog last time without picking a default. Single auto-open
   // per mount via the ref above; settings.onboardingCompleted flips to true
@@ -159,8 +173,33 @@ export function GoogleCalendarIntegrationRow(): React.JSX.Element {
               Two-way sync for Memry events and imported Google calendars.
             </p>
 
-            {status?.account && (
-              <p className="text-xs text-muted-foreground">Connected as {status.account.title}</p>
+            {status?.accounts && status.accounts.length > 0 && (
+              <div className="flex flex-wrap gap-1.5">
+                {status.accounts.map((account) => {
+                  const tone =
+                    account.status === 'connected'
+                      ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300'
+                      : account.status === 'error'
+                        ? 'border-destructive/50 bg-destructive/10 text-destructive'
+                        : 'border-muted-foreground/30 bg-muted text-muted-foreground'
+                  return (
+                    <span
+                      key={account.accountId}
+                      data-testid={`calendar-account-chip-${account.accountId}`}
+                      data-account-status={account.status}
+                      className={`inline-flex max-w-full items-center gap-1.5 rounded-full border px-2 py-0.5 text-[11px]/4 ${tone}`}
+                      title={account.lastError ?? undefined}
+                    >
+                      <span className="truncate">{account.email}</span>
+                      {account.status === 'error' && account.lastError && (
+                        <span className="max-w-[12rem] truncate text-[10px]/3 opacity-75">
+                          · {account.lastError.slice(0, 60)}
+                        </span>
+                      )}
+                    </span>
+                  )
+                })}
+              </div>
             )}
 
             {mutationError && (
@@ -224,6 +263,8 @@ export function GoogleCalendarIntegrationRow(): React.JSX.Element {
             onToggleSource={(sourceId, isSelected) =>
               sourceMutation.mutate({ sourceId, isSelected })
             }
+            onRetrySource={(sourceId) => retryMutation.mutate(sourceId)}
+            retryingSourceId={retryMutation.isPending ? (retryMutation.variables ?? null) : null}
           />
         </div>
       )}

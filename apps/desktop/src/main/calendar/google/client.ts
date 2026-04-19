@@ -13,7 +13,7 @@ const log = createLogger('Calendar:GoogleClient')
 const GOOGLE_API_BASE = 'https://www.googleapis.com/calendar/v3'
 const GOOGLE_TOKEN_URL = 'https://oauth2.googleapis.com/token'
 
-let pendingRefresh: Promise<string> | null = null
+const pendingRefreshes = new Map<string, Promise<string>>()
 
 const GoogleCalendarListItemSchema = z.object({
   id: z.string().min(1),
@@ -133,9 +133,7 @@ function mapCalendar(item: z.infer<typeof GoogleCalendarListItemSchema>): Google
   }
 }
 
-function resolveOriginalStartTime(
-  raw: z.infer<typeof GoogleEventSchema>
-): string | null {
+function resolveOriginalStartTime(raw: z.infer<typeof GoogleEventSchema>): string | null {
   const ost = raw.originalStartTime
   if (!ost) return null
   if (ost.dateTime) return ost.dateTime
@@ -304,12 +302,12 @@ function toGoogleEventPayload(event: GoogleCalendarUpsertEventInput): Record<str
   return payload
 }
 
-async function refreshAccessTokenInner(): Promise<string> {
+async function refreshAccessTokenInner(accountId: string): Promise<string> {
   const clientId = resolveGoogleClientId()
   const clientSecret = resolveGoogleClientSecret()
-  const { refreshToken } = await getGoogleCalendarTokens()
+  const { refreshToken } = await getGoogleCalendarTokens(accountId)
   if (!refreshToken) {
-    throw new Error('Google Calendar is not connected on this device')
+    throw new Error(`Google Calendar is not connected for account ${accountId}`)
   }
 
   const params = new URLSearchParams({
@@ -357,18 +355,21 @@ async function refreshAccessTokenInner(): Promise<string> {
 
   const parsed = GoogleTokenRefreshSchema.parse(await response.json())
   await storeGoogleCalendarTokens({
+    accountId,
     accessToken: parsed.access_token,
     refreshToken
   })
   return parsed.access_token
 }
 
-async function refreshAccessToken(): Promise<string> {
-  if (pendingRefresh) return pendingRefresh
-  pendingRefresh = refreshAccessTokenInner().finally(() => {
-    pendingRefresh = null
+async function refreshAccessToken(accountId: string): Promise<string> {
+  const existing = pendingRefreshes.get(accountId)
+  if (existing) return existing
+  const promise = refreshAccessTokenInner(accountId).finally(() => {
+    pendingRefreshes.delete(accountId)
   })
-  return pendingRefresh
+  pendingRefreshes.set(accountId, promise)
+  return promise
 }
 
 async function throwCalendarApiFailure(response: Response, operation: string): Promise<never> {
@@ -400,6 +401,7 @@ async function throwCalendarApiFailure(response: Response, operation: string): P
 }
 
 async function withAuthorizedResponse(
+  accountId: string,
   input: {
     path: string
     init?: RequestInit
@@ -407,8 +409,8 @@ async function withAuthorizedResponse(
   },
   retry = true
 ): Promise<Response> {
-  const tokens = await getGoogleCalendarTokens()
-  const accessToken = tokens.accessToken ?? (await refreshAccessToken())
+  const tokens = await getGoogleCalendarTokens(accountId)
+  const accessToken = tokens.accessToken ?? (await refreshAccessToken(accountId))
 
   const url = new URL(`${GOOGLE_API_BASE}${input.path}`)
   for (const [key, value] of Object.entries(input.query ?? {})) {
@@ -427,18 +429,28 @@ async function withAuthorizedResponse(
   })
 
   if (response.status === 401 && retry) {
-    log.warn('Google Calendar access token expired, refreshing')
-    await refreshAccessToken()
-    return await withAuthorizedResponse(input, false)
+    log.warn('Google Calendar access token expired, refreshing', { accountId })
+    await refreshAccessToken(accountId)
+    return await withAuthorizedResponse(accountId, input, false)
   }
 
   return response
 }
 
-export function createGoogleCalendarClient(): GoogleCalendarClient {
+export interface CreateGoogleCalendarClientInput {
+  accountId: string
+}
+
+export function createGoogleCalendarClient(
+  input: CreateGoogleCalendarClientInput
+): GoogleCalendarClient {
+  const { accountId } = input
+  if (!accountId || !accountId.trim()) {
+    throw new Error('createGoogleCalendarClient requires a non-empty accountId')
+  }
   return {
     async listCalendars(): Promise<GoogleCalendarDescriptor[]> {
-      const response = await withAuthorizedResponse({
+      const response = await withAuthorizedResponse(accountId, {
         path: '/users/me/calendarList'
       })
 
@@ -451,7 +463,7 @@ export function createGoogleCalendarClient(): GoogleCalendarClient {
     },
 
     async createCalendar(input): Promise<GoogleCalendarDescriptor> {
-      const response = await withAuthorizedResponse({
+      const response = await withAuthorizedResponse(accountId, {
         path: '/calendars',
         init: {
           method: 'POST',
@@ -475,7 +487,7 @@ export function createGoogleCalendarClient(): GoogleCalendarClient {
     }> {
       const useSyncToken = Boolean(input.syncCursor)
 
-      const response = await withAuthorizedResponse({
+      const response = await withAuthorizedResponse(accountId, {
         path: `/calendars/${encodeURIComponent(input.calendarId)}/events`,
         query: useSyncToken
           ? {
@@ -507,7 +519,7 @@ export function createGoogleCalendarClient(): GoogleCalendarClient {
     },
 
     async getEvent(input): Promise<GoogleCalendarRemoteEvent> {
-      const response = await withAuthorizedResponse({
+      const response = await withAuthorizedResponse(accountId, {
         path: `/calendars/${encodeURIComponent(input.calendarId)}/events/${encodeURIComponent(input.eventId)}`
       })
 
@@ -524,7 +536,7 @@ export function createGoogleCalendarClient(): GoogleCalendarClient {
       if (isUpdate && input.ifMatch) {
         headers['If-Match'] = input.ifMatch
       }
-      const response = await withAuthorizedResponse({
+      const response = await withAuthorizedResponse(accountId, {
         path: isUpdate
           ? `/calendars/${encodeURIComponent(input.calendarId)}/events/${encodeURIComponent(input.eventId!)}`
           : `/calendars/${encodeURIComponent(input.calendarId)}/events`,
@@ -543,7 +555,7 @@ export function createGoogleCalendarClient(): GoogleCalendarClient {
     },
 
     async deleteEvent(input): Promise<void> {
-      const response = await withAuthorizedResponse({
+      const response = await withAuthorizedResponse(accountId, {
         path: `/calendars/${encodeURIComponent(input.calendarId)}/events/${encodeURIComponent(input.eventId)}`,
         init: {
           method: 'DELETE'
@@ -557,7 +569,7 @@ export function createGoogleCalendarClient(): GoogleCalendarClient {
 
     async watchCalendar(input): Promise<{ resourceId: string; expiration: number }> {
       const expirationMs = Date.now() + input.ttlSeconds * 1000
-      const response = await withAuthorizedResponse({
+      const response = await withAuthorizedResponse(accountId, {
         path: `/calendars/${encodeURIComponent(input.calendarId)}/events/watch`,
         init: {
           method: 'POST',
@@ -587,7 +599,7 @@ export function createGoogleCalendarClient(): GoogleCalendarClient {
     },
 
     async stopChannel(input): Promise<void> {
-      const response = await withAuthorizedResponse({
+      const response = await withAuthorizedResponse(accountId, {
         path: '/channels/stop',
         init: {
           method: 'POST',

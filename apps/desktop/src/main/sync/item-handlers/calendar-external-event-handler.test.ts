@@ -133,12 +133,7 @@ describe('calendar external event handler — rich fields (M5 Codex P2c)', () =>
       .run()
     const freshCtx = makeCtx(freshDb)
 
-    const applyResult = handler?.applyUpsert(
-      freshCtx,
-      'external-rich',
-      parsed,
-      { 'device-a': 3 }
-    )
+    const applyResult = handler?.applyUpsert(freshCtx, 'external-rich', parsed, { 'device-a': 3 })
     expect(applyResult).toBe('applied')
 
     const row = freshDb.db

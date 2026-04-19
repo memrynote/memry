@@ -22,6 +22,7 @@ export const calendarSources = sqliteTable(
     syncCursor: text('sync_cursor'),
     syncStatus: text('sync_status').$type<CalendarSourceSyncStatus>().notNull().default('idle'),
     lastSyncedAt: text('last_synced_at'),
+    lastError: text('last_error'),
     metadata: text('metadata', { mode: 'json' }).$type<Record<string, unknown> | null>(),
     archivedAt: text('archived_at'),
     clock: text('clock', { mode: 'json' }).$type<VectorClock>(),
@@ -34,7 +35,11 @@ export const calendarSources = sqliteTable(
       .default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`)
   },
   (table) => [
-    uniqueIndex('idx_calendar_sources_provider_remote').on(table.provider, table.kind, table.remoteId),
+    uniqueIndex('idx_calendar_sources_provider_remote').on(
+      table.provider,
+      table.kind,
+      table.remoteId
+    ),
     index('idx_calendar_sources_account').on(table.accountId),
     index('idx_calendar_sources_selected').on(table.isSelected)
   ]
