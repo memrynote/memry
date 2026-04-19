@@ -1,5 +1,11 @@
 import type { NewCalendarExternalEvent } from '@memry/db-schema/schema/calendar-external-events'
-import type { calendarEvents } from '@memry/db-schema/schema/calendar-events'
+import type {
+  calendarEvents,
+  CalendarAttendee,
+  CalendarConferenceData,
+  CalendarReminders,
+  CalendarVisibility
+} from '@memry/db-schema/schema/calendar-events'
 import type { inboxItems } from '@memry/db-schema/schema/inbox'
 import type { reminders } from '@memry/db-schema/schema/reminders'
 import type { tasks } from '@memry/db-schema/schema/tasks'
@@ -8,6 +14,23 @@ import type {
   GoogleCalendarRemoteEvent,
   GoogleCalendarUpsertEventInput
 } from '../types'
+
+export interface CalendarEventChanges {
+  title: string
+  description: string | null
+  location: string | null
+  startAt: string
+  endAt: string | null
+  isAllDay: boolean
+  timezone: string
+  attendees: CalendarAttendee[] | null
+  reminders: CalendarReminders | null
+  visibility: CalendarVisibility | null
+  colorId: string | null
+  conferenceData: CalendarConferenceData | null
+  parentEventId: string | null
+  originalStartTime: string | null
+}
 
 const LOCAL_TIMEZONE = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'
 
@@ -157,6 +180,11 @@ export function mapGoogleEventToExternalEventRecord(
     isAllDay: event.isAllDay,
     status: event.status,
     recurrenceRule: null,
+    attendees: event.attendees ?? null,
+    reminders: event.reminders ?? null,
+    visibility: event.visibility ?? null,
+    colorId: event.colorId ?? null,
+    conferenceData: event.conferenceData ?? null,
     rawPayload: event.raw,
     archivedAt: event.status === 'cancelled' ? now : null,
     createdAt: now,
@@ -164,15 +192,9 @@ export function mapGoogleEventToExternalEventRecord(
   }
 }
 
-export function mapGoogleEventToCalendarEventChanges(event: GoogleCalendarRemoteEvent): {
-  title: string
-  description: string | null
-  location: string | null
-  startAt: string
-  endAt: string | null
-  isAllDay: boolean
-  timezone: string
-} {
+export function mapGoogleEventToCalendarEventChanges(
+  event: GoogleCalendarRemoteEvent
+): CalendarEventChanges {
   return {
     title: event.title,
     description: event.description,
@@ -180,7 +202,14 @@ export function mapGoogleEventToCalendarEventChanges(event: GoogleCalendarRemote
     startAt: event.startAt,
     endAt: event.endAt,
     isAllDay: event.isAllDay,
-    timezone: event.timezone
+    timezone: event.timezone,
+    attendees: event.attendees ?? null,
+    reminders: event.reminders ?? null,
+    visibility: event.visibility ?? null,
+    colorId: event.colorId ?? null,
+    conferenceData: event.conferenceData ?? null,
+    parentEventId: event.recurringEventId ?? null,
+    originalStartTime: event.originalStartTime ?? null
   }
 }
 
