@@ -12,23 +12,18 @@ import {
   enqueueLocalSyncDelete,
   enqueueLocalSyncUpdate
 } from '../../sync/local-mutations'
-import { initAllFieldClocks } from '../../sync/field-merge'
-import { CALENDAR_EVENT_SYNCABLE_FIELDS, mergeCalendarEventFields } from '../field-merge-calendar'
-import type { FieldClocks, VectorClock } from '@memry/contracts/sync-api'
 import { publishProjectionEvent } from '../../projections'
 import { hasGoogleCalendarConnection, resolveDefaultGoogleAccountId } from './oauth'
 import { resolveTargetGoogleAccountId } from './account-routing'
+import { loadSourceAsGoogleEvent, pushEventWithConflictRetry } from './push-conflict-retry'
 import { isMemryUserSignedIn } from '../../sync/auth-state'
 import { createGoogleCalendarClient } from './client'
+import { CALENDAR_EVENT_SYNCABLE_FIELDS } from '../field-merge-calendar'
 import {
-  mapCalendarEventToGoogleInput,
   mapGoogleEventToCalendarEventChanges,
   mapGoogleEventToExternalEventRecord,
   mapGoogleEventToReminderAt,
-  mapGoogleEventToTaskSchedule,
-  mapInboxSnoozeToGoogleInput,
-  mapReminderToGoogleInput,
-  mapTaskToGoogleInput
+  mapGoogleEventToTaskSchedule
 } from './mappers'
 import {
   getCalendarExternalEventById,
@@ -44,12 +39,7 @@ import {
 } from '../repositories/calendar-sources-repository'
 import { emitCalendarChanged, emitCalendarProjectionChanged } from '../change-events'
 import { readCalendarGoogleSettings } from './calendar-google-settings'
-import type {
-  CalendarSyncTarget,
-  GoogleCalendarClient,
-  GoogleCalendarRemoteEvent,
-  GoogleCalendarUpsertEventInput
-} from '../types'
+import type { CalendarSyncTarget, GoogleCalendarClient, GoogleCalendarRemoteEvent } from '../types'
 
 const log = createLogger('Calendar:GoogleSync')
 const LOCAL_TIMEZONE = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'
@@ -69,129 +59,8 @@ function isGoneError(error: unknown): boolean {
   )
 }
 
-function isPreconditionFailedError(error: unknown): boolean {
-  return (
-    typeof error === 'object' &&
-    error !== null &&
-    'status' in error &&
-    (error as { status: unknown }).status === 412
-  )
-}
-
-const MAX_PUSH_CONFLICT_RETRIES = 3
-
-async function pushEventWithConflictRetry(
-  db: DataDb,
-  target: CalendarSyncTarget,
-  client: Pick<GoogleCalendarClient, 'upsertEvent' | 'getEvent'>,
-  resolvedCalendarId: string,
-  existingBinding: typeof calendarBindings.$inferSelect | undefined
-): Promise<GoogleCalendarRemoteEvent> {
-  let ifMatch: string | null = existingBinding?.remoteVersion ?? null
-
-  for (let attempt = 0; attempt < MAX_PUSH_CONFLICT_RETRIES; attempt++) {
-    const localEvent = loadSourceAsGoogleEvent(db, target)
-    try {
-      return await client.upsertEvent({
-        calendarId: resolvedCalendarId,
-        eventId: existingBinding?.remoteEventId ?? null,
-        event: localEvent,
-        ifMatch
-      })
-    } catch (error) {
-      if (!isPreconditionFailedError(error) || !existingBinding?.remoteEventId) {
-        throw error
-      }
-
-      const remote = await client.getEvent({
-        calendarId: resolvedCalendarId,
-        eventId: existingBinding.remoteEventId
-      })
-
-      if (target.sourceType === 'event') {
-        mergeRemoteEventIntoLocal(db, target.sourceId, remote)
-      }
-
-      ifMatch = remote.etag ?? null
-      log.warn('Google upsert returned 412; merged remote and retrying', {
-        sourceType: target.sourceType,
-        sourceId: target.sourceId,
-        attempt: attempt + 1,
-        nextIfMatch: ifMatch
-      })
-    }
-  }
-
-  if (existingBinding) {
-    db.update(calendarBindings)
-      .set({ remoteVersion: 'conflict', modifiedAt: getNow() })
-      .where(eq(calendarBindings.id, existingBinding.id))
-      .run()
-    enqueueLocalSyncUpdate('calendar_binding', existingBinding.id)
-  }
-
-  log.error('Google upsert exhausted conflict retries', {
-    sourceType: target.sourceType,
-    sourceId: target.sourceId,
-    attempts: MAX_PUSH_CONFLICT_RETRIES
-  })
-  throw new Error(
-    `Google calendar push gave up after ${MAX_PUSH_CONFLICT_RETRIES} 412 conflicts for ${target.sourceType}:${target.sourceId}`
-  )
-}
-
-function mergeRemoteEventIntoLocal(
-  db: DataDb,
-  eventId: string,
-  remote: GoogleCalendarRemoteEvent
-): void {
-  const existing = db.select().from(calendarEvents).where(eq(calendarEvents.id, eventId)).get()
-  if (!existing) return
-
-  const remoteData = mapGoogleEventToCalendarEventChanges(remote)
-  const localFC: FieldClocks =
-    (existing.fieldClocks as FieldClocks | null) ??
-    initAllFieldClocks((existing.clock as VectorClock | null) ?? {}, CALENDAR_EVENT_SYNCABLE_FIELDS)
-  // We can't tell from Google's REST surface which fields the remote changed.
-  // Clone the local per-field clocks so every field merges as a "concurrent"
-  // edit at equal tick-sum — the merge function's tiebreak keeps the remote
-  // value when it actually differs and leaves matching fields untouched.
-  // Cloning (vs. fabricating a synthetic device) avoids polluting the doc-level
-  // clock with a fake `google-remote` actor and keeps subsequent retries
-  // monotonic: the next 412 reads the *updated* local FC as its base.
-  const remoteFC: FieldClocks = {}
-  for (const field of CALENDAR_EVENT_SYNCABLE_FIELDS) {
-    remoteFC[field] = { ...(localFC[field] ?? {}) }
-  }
-
-  const remoteForMerge: Record<string, unknown> = {}
-  for (const field of CALENDAR_EVENT_SYNCABLE_FIELDS) {
-    const remoteVal = (remoteData as unknown as Record<string, unknown>)[field]
-    remoteForMerge[field] =
-      remoteVal === undefined ? (existing as Record<string, unknown>)[field] : remoteVal
-  }
-
-  const result = mergeCalendarEventFields(
-    existing as Record<string, unknown>,
-    remoteForMerge,
-    localFC,
-    remoteFC
-  )
-
-  db.update(calendarEvents)
-    .set({
-      ...result.merged,
-      fieldClocks: result.mergedFieldClocks,
-      modifiedAt: getNow()
-    })
-    .where(eq(calendarEvents.id, eventId))
-    .run()
-
-  // Field clocks were already merged in this transaction; tell the producer
-  // not to re-increment them by passing an empty changed-fields list.
-  enqueueLocalSyncUpdate('calendar_event', eventId, [])
-  emitCalendarChanged({ entityType: 'calendar_event', id: eventId })
-}
+// pushEventWithConflictRetry, mergeRemoteEventIntoLocal, and
+// loadSourceAsGoogleEvent extracted to push-conflict-retry.ts for max-lines.
 
 function markSyncedTableMutation(
   entityType: 'calendar_binding' | 'calendar_source' | 'calendar_external_event',
@@ -419,40 +288,7 @@ function shouldSourceSyncToGoogleCalendar(db: DataDb, target: CalendarSyncTarget
   }
 }
 
-function loadSourceAsGoogleEvent(
-  db: DataDb,
-  target: CalendarSyncTarget
-): GoogleCalendarUpsertEventInput {
-  switch (target.sourceType) {
-    case 'event': {
-      const row = db
-        .select()
-        .from(calendarEvents)
-        .where(eq(calendarEvents.id, target.sourceId))
-        .get()
-      if (!row) throw new Error(`Calendar event not found: ${target.sourceId}`)
-      return mapCalendarEventToGoogleInput(row)
-    }
-
-    case 'task': {
-      const row = db.select().from(tasks).where(eq(tasks.id, target.sourceId)).get()
-      if (!row) throw new Error(`Task not found: ${target.sourceId}`)
-      return mapTaskToGoogleInput(row)
-    }
-
-    case 'reminder': {
-      const row = db.select().from(reminders).where(eq(reminders.id, target.sourceId)).get()
-      if (!row) throw new Error(`Reminder not found: ${target.sourceId}`)
-      return mapReminderToGoogleInput(row)
-    }
-
-    case 'inbox_snooze': {
-      const row = db.select().from(inboxItems).where(eq(inboxItems.id, target.sourceId)).get()
-      if (!row) throw new Error(`Inbox item not found: ${target.sourceId}`)
-      return mapInboxSnoozeToGoogleInput(row)
-    }
-  }
-}
+// loadSourceAsGoogleEvent moved to push-conflict-retry.ts
 
 function updateBindingRemoteVersion(
   db: DataDb,
