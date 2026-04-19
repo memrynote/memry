@@ -11,7 +11,6 @@ import { SidebarGraph } from '@/lib/icons/sidebar-nav-icons'
 import { useDayPanel } from '@/contexts/day-panel-context'
 import { useTabGroup, useTabs } from '@/contexts/tabs'
 import { useSidebar } from '@/components/ui/sidebar'
-import { WindowControls } from '@/components/window-controls'
 import { SortableTab } from './sortable-tab'
 import { PinnedTab } from './pinned-tab'
 import { TabBarAction } from './tab-bar-action'
@@ -42,10 +41,7 @@ export const TabBarWithDrag = ({
   const { toggle: toggleDayPanel, isOpen: isDayPanelOpen } = useDayPanel()
   const { openTab, getActiveTab } = useTabs()
   const { state: sidebarState } = useSidebar()
-  // Mirror of the sidebar-header WindowControls: mount here only when the sidebar
-  // is offcanvas-collapsed (its header returns null) AND this is the leftmost pane.
-  // See app-sidebar.tsx SidebarHeaderContent for the inverted gate.
-  const showWindowControls = sidebarState === 'collapsed' && showSidebarToggle
+  const needsChromeSpacer = sidebarState === 'collapsed' && showSidebarToggle
 
   const isGraphActive = getActiveTab()?.type === 'graph'
 
@@ -115,12 +111,11 @@ export const TabBarWithDrag = ({
     <TabBarContextMenu groupId={groupId}>
       <div
         className={cn(
-          // Container - align items to bottom for tab merge effect
           'drag-region flex items-end shrink-0',
           'bg-transparent',
           'relative',
-          // Bottom border that active tabs will overlap
           'border-b border-border',
+          needsChromeSpacer && 'pl-[var(--chrome-width)]',
           className
         )}
         role="tablist"
@@ -128,12 +123,6 @@ export const TabBarWithDrag = ({
         aria-orientation="horizontal"
         data-group-id={groupId}
       >
-        {showWindowControls && (
-          <div className="flex items-center self-center">
-            <WindowControls />
-          </div>
-        )}
-
         {/* Pinned tabs section (not in sortable context) */}
         {pinnedTabs.length > 0 && (
           <>

@@ -1,5 +1,9 @@
 @import './base.css';
 
+:root {
+  --chrome-width: 180px;
+}
+
 body {
 }
 
