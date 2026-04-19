@@ -34,7 +34,10 @@ vi.mock('electron', () => ({
 
 vi.mock('./oauth', () => ({
   hasGoogleCalendarLocalAuth: vi.fn(async () => true),
-  hasGoogleCalendarConnection: vi.fn(async () => true)
+  hasGoogleCalendarConnection: vi.fn(async () => true),
+  hasAnyGoogleCalendarLocalAuth: vi.fn(async () => true),
+  resolveDefaultGoogleAccountId: vi.fn(() => 'test-account@example.com'),
+  listGoogleAccountIds: vi.fn(() => ['test-account@example.com'])
 }))
 
 vi.mock('../../sync/auth-state', () => ({
