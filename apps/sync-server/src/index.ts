@@ -10,6 +10,7 @@ import { blob } from './routes/blob'
 import { devices } from './routes/devices'
 import { linking } from './routes/linking'
 import { sync } from './routes/sync'
+import { webhooks } from './routes/webhooks'
 import { securityHeaders } from './middleware/security'
 import {
   cleanupConsumedSetupTokens,
@@ -118,7 +119,8 @@ app.use('*', async (c, next) => {
     'JWT_PRIVATE_KEY',
     'RESEND_API_KEY',
     'OTP_HMAC_KEY',
-    'RECOVERY_DUMMY_SECRET'
+    'RECOVERY_DUMMY_SECRET',
+    'WEBHOOK_HMAC_KEY'
   ] as const
 
   for (const key of requiredSecrets) {
@@ -146,6 +148,7 @@ app.route('/auth/linking', linking)
 app.route('/devices', devices)
 app.route('/sync', sync)
 app.route('/sync', blob)
+app.route('/webhooks', webhooks)
 
 const scheduled: ExportedHandlerScheduledHandler<Bindings> = async (_event, env, _ctx) => {
   const results = await Promise.allSettled([
