@@ -7,6 +7,7 @@ import { cors } from 'hono/cors'
 import { AppError, ErrorCodes, errorHandler } from './lib/errors'
 import { auth } from './routes/auth'
 import { blob } from './routes/blob'
+import { calendarChannels } from './routes/calendar-channels'
 import { devices } from './routes/devices'
 import { linking } from './routes/linking'
 import { sync } from './routes/sync'
@@ -149,6 +150,7 @@ app.route('/devices', devices)
 app.route('/sync', sync)
 app.route('/sync', blob)
 app.route('/webhooks', webhooks)
+app.route('/calendar/channels', calendarChannels)
 
 const scheduled: ExportedHandlerScheduledHandler<Bindings> = async (_event, env, _ctx) => {
   const results = await Promise.allSettled([
