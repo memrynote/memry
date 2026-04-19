@@ -7,12 +7,15 @@ import { cors } from 'hono/cors'
 import { AppError, ErrorCodes, errorHandler } from './lib/errors'
 import { auth } from './routes/auth'
 import { blob } from './routes/blob'
+import { calendarChannels } from './routes/calendar-channels'
 import { devices } from './routes/devices'
 import { linking } from './routes/linking'
 import { sync } from './routes/sync'
+import { webhooks } from './routes/webhooks'
 import { securityHeaders } from './middleware/security'
 import {
   cleanupConsumedSetupTokens,
+  cleanupExpiredGoogleCalendarChannels,
   cleanupExpiredLinkingSessions,
   cleanupExpiredOtpCodes,
   cleanupExpiredTombstones,
@@ -118,7 +121,8 @@ app.use('*', async (c, next) => {
     'JWT_PRIVATE_KEY',
     'RESEND_API_KEY',
     'OTP_HMAC_KEY',
-    'RECOVERY_DUMMY_SECRET'
+    'RECOVERY_DUMMY_SECRET',
+    'WEBHOOK_HMAC_KEY'
   ] as const
 
   for (const key of requiredSecrets) {
@@ -146,6 +150,8 @@ app.route('/auth/linking', linking)
 app.route('/devices', devices)
 app.route('/sync', sync)
 app.route('/sync', blob)
+app.route('/webhooks', webhooks)
+app.route('/calendar/channels', calendarChannels)
 
 const scheduled: ExportedHandlerScheduledHandler<Bindings> = async (_event, env, _ctx) => {
   const results = await Promise.allSettled([
@@ -155,7 +161,8 @@ const scheduled: ExportedHandlerScheduledHandler<Bindings> = async (_event, env,
     cleanupStaleRateLimits(env.DB),
     cleanupConsumedSetupTokens(env.DB),
     cleanupExpiredTombstones(env.DB, env.STORAGE),
-    cleanupOrphanedBlobChunks(env.DB, env.STORAGE)
+    cleanupOrphanedBlobChunks(env.DB, env.STORAGE),
+    cleanupExpiredGoogleCalendarChannels(env.DB)
   ])
 
   for (const [i, result] of results.entries()) {

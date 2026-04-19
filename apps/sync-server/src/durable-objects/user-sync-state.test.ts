@@ -210,6 +210,43 @@ describe('UserSyncState', () => {
       // #then
       expect(body.sent).toBe(0)
     })
+
+    it('carries sourceId through to payload for calendar push fan-out', async () => {
+      // #given a single connected socket for the user
+      const doObj = createDO()
+      hoisted.verifyAccessTokenMock.mockResolvedValueOnce({
+        userId: 'user-1',
+        deviceId: 'device-1',
+        exp: Math.floor(Date.now() / 1000) + 900
+      })
+      await doObj.fetch(connectRequest('token-1'))
+
+      // #when a broadcast carries type + sourceId but no cursor/noteId
+      const res = await doObj.fetch(
+        new Request('https://do.internal/broadcast', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            excludeDeviceId: 'device-none',
+            type: 'calendar_changes_available',
+            sourceId: 'google-calendar:abc'
+          })
+        })
+      )
+      const body = (await res.json()) as { sent: number }
+
+      // #then the connected socket receives a calendar_changes_available with sourceId
+      expect(body.sent).toBe(1)
+      const ctx = getCtx(doObj)
+      const sockets = ctx.getWebSockets('device:device-1')
+      const ws = sockets[0] as unknown as MockWebSocket
+      expect(ws.sentMessages).toContainEqual(
+        JSON.stringify({
+          type: 'calendar_changes_available',
+          payload: { sourceId: 'google-calendar:abc' }
+        })
+      )
+    })
   })
 
   describe('webSocketMessage (rate limiting)', () => {

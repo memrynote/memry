@@ -278,3 +278,24 @@ CREATE TABLE consumed_setup_tokens (
 );
 
 CREATE INDEX idx_consumed_tokens_expires ON consumed_setup_tokens(expires_at);
+
+-- ============================================================================
+-- M4: Google Calendar push channels
+-- One row per active events.watch subscription registered by a device.
+-- token_hash = HMAC-SHA256(WEBHOOK_HMAC_KEY, plaintext_token); the plaintext
+-- token is known only to the registering device and Google.
+-- ============================================================================
+
+CREATE TABLE google_calendar_channels (
+  channel_id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  device_id TEXT NOT NULL REFERENCES devices(id) ON DELETE CASCADE,
+  source_id TEXT NOT NULL,
+  resource_id TEXT,
+  token_hash TEXT NOT NULL,
+  expires_at INTEGER NOT NULL,
+  created_at INTEGER NOT NULL
+);
+
+CREATE INDEX idx_google_channels_user ON google_calendar_channels(user_id);
+CREATE INDEX idx_google_channels_expires ON google_calendar_channels(expires_at);

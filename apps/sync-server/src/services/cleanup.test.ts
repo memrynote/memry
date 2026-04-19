@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import {
+  cleanupExpiredGoogleCalendarChannels,
   cleanupExpiredLinkingSessions,
   cleanupExpiredOtpCodes,
   cleanupExpiredTombstones,
@@ -80,6 +81,21 @@ describe('cleanup services', () => {
     expect(db.prepare).toHaveBeenCalledWith('DELETE FROM upload_sessions WHERE expires_at < ?')
     expect(storage.resumeMultipartUpload).toHaveBeenCalledWith('k1', 'up1')
     expect(abortFn).toHaveBeenCalledOnce()
+  })
+
+  it('cleans up expired Google Calendar push channels', async () => {
+    // #given
+    const { db, prepare, bind } = createDbWithChanges(4)
+
+    // #when
+    const result = await cleanupExpiredGoogleCalendarChannels(db)
+
+    // #then
+    expect(result).toBe(4)
+    expect(prepare).toHaveBeenCalledWith(
+      'DELETE FROM google_calendar_channels WHERE expires_at < ?'
+    )
+    expect(bind).toHaveBeenCalledWith(1_700_000_000)
   })
 
   it('cleans up stale rate limits older than 1 hour', async () => {

@@ -143,6 +143,7 @@ export class UserSyncState extends DurableObject<Bindings> {
       cursor?: number
       type?: string
       noteId?: string
+      sourceId?: string
     } = await request.json()
 
     const allSockets = this.ctx.getWebSockets()
@@ -152,6 +153,7 @@ export class UserSyncState extends DurableObject<Bindings> {
     const payload: Record<string, unknown> = {}
     if (body.cursor !== undefined) payload.cursor = body.cursor
     if (body.noteId) payload.noteId = body.noteId
+    if (body.sourceId) payload.sourceId = body.sourceId
 
     const message = JSON.stringify({ type: msgType, payload })
 
