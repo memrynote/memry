@@ -19,6 +19,7 @@ const WebSocketMessageSchema = z.object({
   type: z.enum([
     'changes_available',
     'crdt_updated',
+    'calendar_changes_available',
     'heartbeat',
     'error',
     'linking_request',
