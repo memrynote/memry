@@ -15,6 +15,7 @@ import { webhooks } from './routes/webhooks'
 import { securityHeaders } from './middleware/security'
 import {
   cleanupConsumedSetupTokens,
+  cleanupExpiredGoogleCalendarChannels,
   cleanupExpiredLinkingSessions,
   cleanupExpiredOtpCodes,
   cleanupExpiredTombstones,
@@ -160,7 +161,8 @@ const scheduled: ExportedHandlerScheduledHandler<Bindings> = async (_event, env,
     cleanupStaleRateLimits(env.DB),
     cleanupConsumedSetupTokens(env.DB),
     cleanupExpiredTombstones(env.DB, env.STORAGE),
-    cleanupOrphanedBlobChunks(env.DB, env.STORAGE)
+    cleanupOrphanedBlobChunks(env.DB, env.STORAGE),
+    cleanupExpiredGoogleCalendarChannels(env.DB)
   ])
 
   for (const [i, result] of results.entries()) {
