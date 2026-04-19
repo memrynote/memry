@@ -43,6 +43,7 @@ import {
 } from '../repositories/calendar-sources-repository'
 import { emitCalendarChanged, emitCalendarProjectionChanged } from '../change-events'
 import { readCalendarGoogleSettings } from './calendar-google-settings'
+import { getGooglePushRuntime, getOrInitGooglePushRuntime } from './push-runtime'
 import type {
   CalendarSyncTarget,
   GoogleCalendarClient,
@@ -929,10 +930,36 @@ export async function startGoogleCalendarSyncRunner(): Promise<void> {
   })
 
   syncInterval = setInterval(runPeriodicSync, currentPollIntervalMs)
+
+  const pushRuntime = getOrInitGooglePushRuntime({
+    onActiveCountChange: (count) => reEvaluatePollCadence(count)
+  })
+  if (pushRuntime) {
+    const db = requireDatabase()
+    const sources = listCalendarSources(db, {
+      provider: 'google',
+      kind: 'calendar',
+      selectedOnly: true
+    }).map((s) => ({
+      id: s.id,
+      remoteId: s.remoteId,
+      isMemryManaged: s.isMemryManaged
+    }))
+    void pushRuntime.ensureForSelectedSources(sources).catch((err) => {
+      log.warn('ensureForSelectedSources failed', err)
+    })
+  }
 }
 
 export function stopGoogleCalendarSyncRunner(): void {
   if (!syncInterval) return
   clearInterval(syncInterval)
   syncInterval = null
+
+  const pushRuntime = getGooglePushRuntime()
+  if (pushRuntime) {
+    void pushRuntime.stopAll().catch((err) => {
+      log.warn('stopAll failed', err)
+    })
+  }
 }
