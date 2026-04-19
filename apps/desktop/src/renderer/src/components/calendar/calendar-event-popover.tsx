@@ -15,8 +15,22 @@ import { cn } from '@/lib/utils'
 import { toLocalDateString } from './date-utils'
 import { POPOVER_WIDTH, computePopoverPosition } from './popover-position'
 import { CalendarPicker } from './calendar-picker'
+import { CalendarEventMetadata } from './calendar-event-metadata'
 import { useGoogleCalendars } from '@/hooks/use-google-calendars'
 import type { AnchorRect, CalendarEventDraft } from './types'
+import type {
+  CalendarAttendee,
+  CalendarConferenceData,
+  CalendarReminders,
+  CalendarVisibility
+} from '@memry/db-schema/schema/calendar-events'
+
+export interface CalendarEventReadOnlyMetadata {
+  attendees: CalendarAttendee[] | null
+  reminders: CalendarReminders | null
+  visibility: CalendarVisibility | null
+  conferenceData: CalendarConferenceData | null
+}
 
 interface CalendarEventPopoverProps {
   anchorRect: AnchorRect
@@ -26,6 +40,8 @@ interface CalendarEventPopoverProps {
   onDraftChange: (next: CalendarEventDraft) => void
   onSave: () => void | Promise<void>
   onDismiss: () => void
+  /** M5: read-only rich metadata (attendees/reminders/visibility/Meet link) shown below the form. */
+  readOnlyMetadata?: CalendarEventReadOnlyMetadata
 }
 
 const MONTH_SHORT = [
@@ -143,7 +159,8 @@ export function CalendarEventPopover({
   isSaving,
   onDraftChange,
   onSave,
-  onDismiss
+  onDismiss,
+  readOnlyMetadata
 }: CalendarEventPopoverProps): React.JSX.Element {
   const titleRef = useRef<HTMLInputElement>(null)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
@@ -288,6 +305,12 @@ export function CalendarEventPopover({
               onChange={(next) => onDraftChange({ ...draft, targetCalendarId: next })}
               disabled={isSaving}
             />
+
+            {readOnlyMetadata && mode === 'edit' && (
+              <div className="border-t border-border pt-3">
+                <CalendarEventMetadata {...readOnlyMetadata} />
+              </div>
+            )}
 
             {errorMessage && (
               <p data-testid="event-edit-error" role="alert" className="text-xs text-destructive">
