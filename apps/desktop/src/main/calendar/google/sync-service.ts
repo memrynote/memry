@@ -43,7 +43,6 @@ import {
 } from '../repositories/calendar-sources-repository'
 import { emitCalendarChanged, emitCalendarProjectionChanged } from '../change-events'
 import { readCalendarGoogleSettings } from './calendar-google-settings'
-import { getGooglePushRuntime, getOrInitGooglePushRuntime } from './push-runtime'
 import type {
   CalendarSyncTarget,
   GoogleCalendarClient,
@@ -52,32 +51,9 @@ import type {
 } from '../types'
 
 const log = createLogger('Calendar:GoogleSync')
-const RUN_INTERVAL_MS = 5 * 60 * 1000
-export const PUSH_BACKOFF_INTERVAL_MS = 30 * 60 * 1000
 const LOCAL_TIMEZONE = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'
 
-let syncInterval: NodeJS.Timeout | null = null
 let syncInFlight = false
-let currentPollIntervalMs = RUN_INTERVAL_MS
-
-export function getCurrentPollIntervalMs(): number {
-  return currentPollIntervalMs
-}
-
-function runPeriodicSync(): void {
-  void syncGoogleCalendarNow().catch((error) => {
-    log.warn('periodic Google Calendar sync failed', error)
-  })
-}
-
-export function reEvaluatePollCadence(activeChannelCount: number): void {
-  const target = activeChannelCount > 0 ? PUSH_BACKOFF_INTERVAL_MS : RUN_INTERVAL_MS
-  if (target === currentPollIntervalMs) return
-  currentPollIntervalMs = target
-  if (!syncInterval) return
-  clearInterval(syncInterval)
-  syncInterval = setInterval(runPeriodicSync, target)
-}
 
 function getNow(): string {
   return new Date().toISOString()
@@ -920,46 +896,13 @@ export async function syncGoogleCalendarNow(
   }
 }
 
-export async function startGoogleCalendarSyncRunner(): Promise<void> {
-  if (syncInterval) return
-  if (!(await isMemryUserSignedIn())) return
-  if (!(await hasGoogleCalendarConnection(requireDatabase()))) return
-
-  void syncGoogleCalendarNow().catch((error) => {
-    log.warn('initial Google Calendar sync failed', error)
-  })
-
-  syncInterval = setInterval(runPeriodicSync, currentPollIntervalMs)
-
-  const pushRuntime = getOrInitGooglePushRuntime({
-    onActiveCountChange: (count) => reEvaluatePollCadence(count)
-  })
-  if (pushRuntime) {
-    const db = requireDatabase()
-    const sources = listCalendarSources(db, {
-      provider: 'google',
-      kind: 'calendar',
-      selectedOnly: true
-    }).map((s) => ({
-      id: s.id,
-      remoteId: s.remoteId,
-      isMemryManaged: s.isMemryManaged
-    }))
-    void pushRuntime.ensureForSelectedSources(sources).catch((err) => {
-      log.warn('ensureForSelectedSources failed', err)
-    })
-  }
-}
-
-export function stopGoogleCalendarSyncRunner(): void {
-  if (!syncInterval) return
-  clearInterval(syncInterval)
-  syncInterval = null
-
-  const pushRuntime = getGooglePushRuntime()
-  if (pushRuntime) {
-    void pushRuntime.stopAll().catch((err) => {
-      log.warn('stopAll failed', err)
-    })
-  }
-}
+// Runner lifecycle + push-channel poll cadence live in google-sync-runner.ts.
+// Re-exported here so existing callers (index.ts, calendar-handlers,
+// session-teardown, device-registration, tests) keep their import paths.
+export {
+  PUSH_BACKOFF_INTERVAL_MS,
+  getCurrentPollIntervalMs,
+  reEvaluatePollCadence,
+  startGoogleCalendarSyncRunner,
+  stopGoogleCalendarSyncRunner
+} from './google-sync-runner'
