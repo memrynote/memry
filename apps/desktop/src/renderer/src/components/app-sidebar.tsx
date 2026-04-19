@@ -22,7 +22,7 @@ import { toast } from 'sonner'
 
 import { cn } from '@/lib/utils'
 import { VaultSwitcher } from '@/components/vault-switcher'
-import { TrafficLights } from '@/components/traffic-lights'
+import { WindowControls } from '@/components/window-controls'
 import {
   Sidebar,
   SidebarContent,
@@ -77,21 +77,14 @@ const mainNav: {
 
 function SidebarHeaderContent() {
   const { state } = useSidebar()
-  const isCollapsed = state === 'collapsed'
+
+  // When collapsed (offcanvas), the sidebar is fully hidden — don't render the
+  // header copy. The TabBarWithDrag copy takes over in that state.
+  if (state === 'collapsed') return null
 
   return (
-    <SidebarHeader className="pt-3 pb-0 px-2 gap-0">
-      <div
-        className={cn(
-          'drag-region flex items-center shrink-0',
-          isCollapsed ? 'justify-center' : 'px-1'
-        )}
-      >
-        <TrafficLights compact={isCollapsed} />
-        <div className="group-data-[collapsible=icon]:hidden">
-          <VaultSwitcher />
-        </div>
-      </div>
+    <SidebarHeader className="p-0 gap-0">
+      <WindowControls />
     </SidebarHeader>
   )
 }
