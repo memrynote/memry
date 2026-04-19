@@ -445,7 +445,8 @@ function AppSidebarInner({ currentPage, viewCounts, ...props }: AppSidebarProps)
         />
         <SidebarDrillDownContainer>{mainContent}</SidebarDrillDownContainer>
       </SidebarContent>
-      <SidebarFooter className="gap-0">
+      <SidebarFooter className="gap-1 p-2">
+        <VaultSwitcher />
         <SidebarMenu>
           <SidebarMenuItem>
             {authState.status === 'authenticated' ? (
