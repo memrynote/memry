@@ -33,6 +33,7 @@ vi.mock('../../lib/logger', () => ({
 
 import { GOOGLE_CALENDAR_SCOPE, connectGoogleCalendar, disconnectGoogleCalendar } from './oauth'
 import {
+  LEGACY_DEFAULT_ACCOUNT_ID,
   clearGoogleCalendarTokens,
   getGoogleCalendarTokens,
   hasGoogleCalendarTokens,
@@ -64,7 +65,7 @@ describe('google calendar oauth', () => {
   afterEach(async () => {
     delete process.env.GOOGLE_CALENDAR_CLIENT_ID
     vi.unstubAllGlobals()
-    await clearGoogleCalendarTokens()
+    await clearGoogleCalendarTokens(LEGACY_DEFAULT_ACCOUNT_ID)
   })
 
   it('uses a provider-specific loopback OAuth flow with Calendar scopes and stores tokens in a separate device-local keychain', async () => {
@@ -130,7 +131,7 @@ describe('google calendar oauth', () => {
     })
 
     const result = await connectGoogleCalendar()
-    const tokens = await getGoogleCalendarTokens()
+    const tokens = await getGoogleCalendarTokens(LEGACY_DEFAULT_ACCOUNT_ID)
 
     expect(result).toEqual({
       account: {
@@ -150,7 +151,7 @@ describe('google calendar oauth', () => {
       accessToken: 'google-access-token',
       refreshToken: 'google-refresh-token'
     })
-    expect(await hasGoogleCalendarTokens()).toBe(true)
+    expect(await hasGoogleCalendarTokens(LEGACY_DEFAULT_ACCOUNT_ID)).toBe(true)
     expect(keytar.setPassword).toHaveBeenCalledWith(
       'com.memry.calendar.google',
       expect.stringContaining('access-token'),
@@ -213,7 +214,7 @@ describe('google calendar oauth', () => {
       })
     )
 
-    expect(await hasGoogleCalendarTokens()).toBe(false)
+    expect(await hasGoogleCalendarTokens(LEGACY_DEFAULT_ACCOUNT_ID)).toBe(false)
   })
 
   it('rejects the callback when the OAuth state does not match', async () => {
@@ -234,24 +235,25 @@ describe('google calendar oauth', () => {
       'Invalid or expired Google Calendar OAuth state'
     )
     expect(fetchMock).not.toHaveBeenCalled()
-    expect(await hasGoogleCalendarTokens()).toBe(false)
+    expect(await hasGoogleCalendarTokens(LEGACY_DEFAULT_ACCOUNT_ID)).toBe(false)
   })
 
   it('stores and clears Google Calendar tokens independently from sync auth keychain entries', async () => {
     await storeGoogleCalendarTokens({
+      accountId: LEGACY_DEFAULT_ACCOUNT_ID,
       accessToken: 'manual-access-token',
       refreshToken: 'manual-refresh-token'
     })
 
-    expect(await hasGoogleCalendarTokens()).toBe(true)
-    expect(await getGoogleCalendarTokens()).toEqual({
+    expect(await hasGoogleCalendarTokens(LEGACY_DEFAULT_ACCOUNT_ID)).toBe(true)
+    expect(await getGoogleCalendarTokens(LEGACY_DEFAULT_ACCOUNT_ID)).toEqual({
       accessToken: 'manual-access-token',
       refreshToken: 'manual-refresh-token'
     })
 
     await disconnectGoogleCalendar()
 
-    expect(await getGoogleCalendarTokens()).toEqual({
+    expect(await getGoogleCalendarTokens(LEGACY_DEFAULT_ACCOUNT_ID)).toEqual({
       accessToken: null,
       refreshToken: null
     })

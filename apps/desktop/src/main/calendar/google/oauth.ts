@@ -6,6 +6,7 @@ import { createLogger } from '../../lib/logger'
 import type { DataDb } from '../../database/types'
 import { listCalendarSources } from '../repositories/calendar-sources-repository'
 import {
+  LEGACY_DEFAULT_ACCOUNT_ID,
   clearGoogleCalendarTokens,
   getGoogleCalendarTokens,
   storeGoogleCalendarTokens
@@ -409,13 +410,14 @@ export async function connectGoogleCalendar(): Promise<GoogleCalendarConnection>
     throw new Error(CALENDAR_SCOPE_NOT_GRANTED_MESSAGE)
   }
 
-  const existingTokens = await getGoogleCalendarTokens()
+  const existingTokens = await getGoogleCalendarTokens(LEGACY_DEFAULT_ACCOUNT_ID)
   const refreshToken = tokenResponse.refresh_token ?? existingTokens.refreshToken
   if (!refreshToken) {
     throw new Error('Google Calendar OAuth did not return a refresh token')
   }
 
   await storeGoogleCalendarTokens({
+    accountId: LEGACY_DEFAULT_ACCOUNT_ID,
     accessToken: tokenResponse.access_token,
     refreshToken
   })
@@ -441,7 +443,7 @@ export async function connectGoogleCalendar(): Promise<GoogleCalendarConnection>
 }
 
 export async function disconnectGoogleCalendar(): Promise<void> {
-  const { refreshToken } = await getGoogleCalendarTokens()
+  const { refreshToken } = await getGoogleCalendarTokens(LEGACY_DEFAULT_ACCOUNT_ID)
 
   if (refreshToken) {
     try {
@@ -455,11 +457,11 @@ export async function disconnectGoogleCalendar(): Promise<void> {
     }
   }
 
-  await clearGoogleCalendarTokens()
+  await clearGoogleCalendarTokens(LEGACY_DEFAULT_ACCOUNT_ID)
 }
 
 export async function hasGoogleCalendarLocalAuth(): Promise<boolean> {
-  const { refreshToken } = await getGoogleCalendarTokens()
+  const { refreshToken } = await getGoogleCalendarTokens(LEGACY_DEFAULT_ACCOUNT_ID)
   return typeof refreshToken === 'string' && refreshToken.trim().length > 0
 }
 
