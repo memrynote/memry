@@ -1,6 +1,6 @@
 import { sql } from 'drizzle-orm'
 import { integer, sqliteTable, text, index } from 'drizzle-orm/sqlite-core'
-import type { VectorClock } from '@memry/contracts/sync-api'
+import type { VectorClock, FieldClocks } from '@memry/contracts/sync-api'
 
 export const calendarEvents = sqliteTable(
   'calendar_events',
@@ -23,6 +23,7 @@ export const calendarEvents = sqliteTable(
     targetCalendarId: text('target_calendar_id'),
     archivedAt: text('archived_at'),
     clock: text('clock', { mode: 'json' }).$type<VectorClock>(),
+    fieldClocks: text('field_clocks', { mode: 'json' }).$type<FieldClocks>(),
     syncedAt: text('synced_at'),
     createdAt: text('created_at')
       .notNull()

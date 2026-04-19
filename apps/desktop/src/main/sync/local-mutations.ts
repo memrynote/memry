@@ -224,8 +224,8 @@ const localSyncRegistry = createSyncAdapterRegistry([
       enqueueCreate(itemId: string): void {
         getCalendarEventSyncService()?.enqueueCreate(itemId)
       },
-      enqueueUpdate(itemId: string): void {
-        getCalendarEventSyncService()?.enqueueUpdate(itemId)
+      enqueueUpdate(itemId: string, changedFields?: string[]): void {
+        getCalendarEventSyncService()?.enqueueUpdate(itemId, changedFields)
       },
       enqueueDelete(itemId: string, snapshotPayload?: string): void {
         getCalendarEventSyncService()?.enqueueDelete(itemId, snapshotPayload)
