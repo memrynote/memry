@@ -261,11 +261,10 @@ test.describe('Calendar — comprehensive coverage', () => {
       await expect(cal.eventChip(original)).toHaveCount(0)
     })
 
-    // Imported-source click behavior is governed by handleSelectItem's
-    // `sourceType !== 'event'` gate; since seeded imported items may not be
-    // sourceType:'event', the editor may not open. Skipping until the
-    // imported-event interaction contract is finalized.
-    test.skip('clicking an imported event opens the editor in edit mode', async () => {})
+    // Imported-event click behavior is finalized by M2: clicking shows the
+    // promote-external confirmation dialog, then (on confirm) opens the edit
+    // popover on the newly-promoted native row.
+    // Covered end-to-end in calendar-promote-external.e2e.ts.
   })
 
   test.describe('Loading state', () => {
