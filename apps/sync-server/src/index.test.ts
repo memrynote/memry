@@ -71,6 +71,7 @@ describe('sync-server app entry point', () => {
         RESEND_API_KEY: 'resend-key',
         OTP_HMAC_KEY: 'test-hmac-key',
         RECOVERY_DUMMY_SECRET: 'test-dummy-secret',
+        WEBHOOK_HMAC_KEY: 'test-webhook-hmac-key',
         ALLOWED_ORIGIN: 'https://app.memry.test'
       })
     )
