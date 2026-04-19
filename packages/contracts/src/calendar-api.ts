@@ -231,11 +231,22 @@ export interface CalendarProjectionItem {
   binding: CalendarProjectionBinding | null
 }
 
+export type CalendarProviderAccountConnectionStatus = 'connected' | 'disconnected' | 'error'
+
+export interface CalendarProviderAccountStatus {
+  accountId: string
+  email: string
+  status: CalendarProviderAccountConnectionStatus
+  lastSyncedAt: string | null
+  lastError: string | null
+}
+
 export interface CalendarProviderStatus {
   provider: string
   connected: boolean
   hasLocalAuth: boolean
   account: Pick<CalendarSourceRecord, 'id' | 'title'> | null
+  accounts: CalendarProviderAccountStatus[]
   calendars: {
     total: number
     selected: number

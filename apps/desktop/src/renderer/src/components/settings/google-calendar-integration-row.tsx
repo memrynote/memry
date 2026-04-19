@@ -159,8 +159,33 @@ export function GoogleCalendarIntegrationRow(): React.JSX.Element {
               Two-way sync for Memry events and imported Google calendars.
             </p>
 
-            {status?.account && (
-              <p className="text-xs text-muted-foreground">Connected as {status.account.title}</p>
+            {status?.accounts && status.accounts.length > 0 && (
+              <div className="flex flex-wrap gap-1.5">
+                {status.accounts.map((account) => {
+                  const tone =
+                    account.status === 'connected'
+                      ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300'
+                      : account.status === 'error'
+                        ? 'border-destructive/50 bg-destructive/10 text-destructive'
+                        : 'border-muted-foreground/30 bg-muted text-muted-foreground'
+                  return (
+                    <span
+                      key={account.accountId}
+                      data-testid={`calendar-account-chip-${account.accountId}`}
+                      data-account-status={account.status}
+                      className={`inline-flex max-w-full items-center gap-1.5 rounded-full border px-2 py-0.5 text-[11px]/4 ${tone}`}
+                      title={account.lastError ?? undefined}
+                    >
+                      <span className="truncate">{account.email}</span>
+                      {account.status === 'error' && account.lastError && (
+                        <span className="max-w-[12rem] truncate text-[10px]/3 opacity-75">
+                          · {account.lastError.slice(0, 60)}
+                        </span>
+                      )}
+                    </span>
+                  )
+                })}
+              </div>
             )}
 
             {mutationError && (

@@ -17,6 +17,8 @@ import {
   type CalendarEventListResponse,
   type CalendarEventMutationResponse,
   type CalendarEventRecord,
+  type CalendarProviderAccountConnectionStatus,
+  type CalendarProviderAccountStatus,
   type CalendarProviderMutationResponse,
   type CalendarProviderStatus,
   type CalendarRangeResponse,
@@ -44,6 +46,7 @@ import {
   connectGoogleCalendar,
   disconnectGoogleCalendar,
   hasAnyGoogleCalendarLocalAuth,
+  hasGoogleCalendarLocalAuth,
   listGoogleAccountIds,
   resolveDefaultGoogleAccountId
 } from '../calendar/google/oauth'
@@ -132,21 +135,57 @@ function mapCalendarSource(row: typeof calendarSources.$inferSelect): CalendarSo
   }
 }
 
+async function buildProviderAccountStatus(
+  source: typeof calendarSources.$inferSelect
+): Promise<CalendarProviderAccountStatus | null> {
+  const accountId = source.accountId
+  if (!accountId) return null
+
+  const metadata = (source.metadata as { email?: string; lastError?: string } | null) ?? null
+  const hasLocalAuth =
+    source.provider === 'google' ? await hasGoogleCalendarLocalAuth(accountId) : false
+
+  let status: CalendarProviderAccountConnectionStatus
+  if (!hasLocalAuth) {
+    status = 'disconnected'
+  } else if (source.syncStatus === 'error') {
+    status = 'error'
+  } else {
+    status = 'connected'
+  }
+
+  return {
+    accountId,
+    email: metadata?.email ?? source.title,
+    status,
+    lastSyncedAt: source.lastSyncedAt ?? null,
+    lastError: metadata?.lastError ?? null
+  }
+}
+
 async function buildProviderStatus(db: DataDb, provider: string): Promise<CalendarProviderStatus> {
   const allSources = listCalendarSourceRows(db, { provider })
-  const account = allSources.find((source) => source.kind === 'account') ?? null
+  const accountSources = allSources.filter((source) => source.kind === 'account')
+  const account = accountSources[0] ?? null
   const calendars = allSources.filter((source) => source.kind === 'calendar')
   const syncedCandidates = [
-    account?.lastSyncedAt ?? null,
+    ...accountSources.map((source) => source.lastSyncedAt ?? null),
     ...calendars.map((source) => source.lastSyncedAt ?? null)
   ].filter((value): value is string => Boolean(value))
   const hasLocalAuth = provider === 'google' ? await hasAnyGoogleCalendarLocalAuth(db) : false
+
+  const accounts: CalendarProviderAccountStatus[] = []
+  for (const source of accountSources) {
+    const accountStatus = await buildProviderAccountStatus(source)
+    if (accountStatus) accounts.push(accountStatus)
+  }
 
   return {
     provider,
     connected: Boolean(account),
     hasLocalAuth,
     account: account ? { id: account.id, title: account.title } : null,
+    accounts,
     calendars: {
       total: calendars.length,
       selected: calendars.filter((source) => source.isSelected).length,
