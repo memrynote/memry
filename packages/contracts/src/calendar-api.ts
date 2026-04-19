@@ -89,7 +89,8 @@ export const UpdateCalendarSourceSelectionSchema = z.object({
 })
 
 export const CalendarProviderRequestSchema = z.object({
-  provider: z.string().min(1)
+  provider: z.string().min(1),
+  accountId: z.string().min(1).optional()
 })
 
 export type CalendarSourceKind = z.infer<typeof CalendarSourceKindSchema>
