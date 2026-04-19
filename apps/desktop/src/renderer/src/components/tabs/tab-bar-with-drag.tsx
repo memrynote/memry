@@ -10,7 +10,8 @@ import { ChevronLeft, ChevronRight, Calendar } from '@/lib/icons'
 import { SidebarGraph } from '@/lib/icons/sidebar-nav-icons'
 import { useDayPanel } from '@/contexts/day-panel-context'
 import { useTabGroup, useTabs } from '@/contexts/tabs'
-import { SidebarTrigger } from '@/components/ui/sidebar'
+import { useSidebar } from '@/components/ui/sidebar'
+import { WindowControls } from '@/components/window-controls'
 import { SortableTab } from './sortable-tab'
 import { PinnedTab } from './pinned-tab'
 import { TabBarAction } from './tab-bar-action'
@@ -40,6 +41,8 @@ export const TabBarWithDrag = ({
   const group = useTabGroup(groupId)
   const { toggle: toggleDayPanel, isOpen: isDayPanelOpen } = useDayPanel()
   const { openTab, getActiveTab } = useTabs()
+  const { state: sidebarState } = useSidebar()
+  const showWindowControls = sidebarState === 'collapsed' && showSidebarToggle
 
   const isGraphActive = getActiveTab()?.type === 'graph'
 
@@ -122,9 +125,9 @@ export const TabBarWithDrag = ({
         aria-orientation="horizontal"
         data-group-id={groupId}
       >
-        {showSidebarToggle && (
-          <div className="no-drag flex items-center px-2 self-center">
-            <SidebarTrigger className="text-text-tertiary hover:text-foreground transition-colors duration-150" />
+        {showWindowControls && (
+          <div className="flex items-center self-center">
+            <WindowControls />
           </div>
         )}
 
