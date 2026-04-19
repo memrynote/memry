@@ -90,8 +90,7 @@ function mapCalendarEvent(row: typeof calendarEvents.$inferSelect): CalendarEven
     timezone: row.timezone,
     isAllDay: row.isAllDay,
     recurrenceRule: (row.recurrenceRule as Record<string, unknown> | null) ?? null,
-    recurrenceExceptions:
-      (row.recurrenceExceptions as Array<Record<string, unknown>> | null) ?? null,
+    recurrenceExceptions: (row.recurrenceExceptions as string[] | null) ?? null,
     targetCalendarId: row.targetCalendarId ?? null,
     archivedAt: row.archivedAt ?? null,
     syncedAt: row.syncedAt ?? null,

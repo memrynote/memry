@@ -80,6 +80,35 @@ function toGoogleRecurrenceArray(
   return rrule ? [`RRULE:${rrule}`] : null
 }
 
+function isoToIcalStamp(iso: string, keepZ: boolean): string {
+  // Strip separators: 2026-05-10T09:00:00.000Z → 20260510T090000Z
+  const trimmed = iso.replace(/\.\d+/, '')
+  const compact = trimmed.replace(/[-:]/g, '')
+  return keepZ ? compact : compact.replace(/Z$/, '')
+}
+
+function buildExdateLine(iso: string, timezone: string): string {
+  if (timezone === 'UTC') {
+    return `EXDATE:${isoToIcalStamp(iso, true)}`
+  }
+  return `EXDATE;TZID=${timezone}:${isoToIcalStamp(iso, false)}`
+}
+
+function toGoogleRecurrenceWithExceptions(
+  rule: Record<string, unknown> | null | undefined,
+  exceptions: string[] | null | undefined,
+  timezone: string
+): string[] | null {
+  const rruleLines = toGoogleRecurrenceArray(rule) ?? []
+  const exdateLines =
+    exceptions && exceptions.length > 0
+      ? exceptions.map((iso) => buildExdateLine(iso, timezone))
+      : []
+
+  const all = [...rruleLines, ...exdateLines]
+  return all.length > 0 ? all : null
+}
+
 export function mapCalendarEventToGoogleInput(
   row: typeof calendarEvents.$inferSelect
 ): GoogleCalendarUpsertEventInput {
@@ -93,7 +122,18 @@ export function mapCalendarEventToGoogleInput(
     endAt: row.endAt ?? null,
     isAllDay: row.isAllDay,
     timezone: row.timezone,
-    recurrence: toGoogleRecurrenceArray(row.recurrenceRule as Record<string, unknown> | null)
+    recurrence: toGoogleRecurrenceWithExceptions(
+      row.recurrenceRule as Record<string, unknown> | null,
+      row.recurrenceExceptions ?? null,
+      row.timezone
+    ),
+    attendees: row.attendees ?? null,
+    reminders: row.reminders ?? null,
+    visibility: row.visibility ?? null,
+    colorId: row.colorId ?? null,
+    conferenceData: row.conferenceData ?? null,
+    recurringEventId: row.parentEventId ?? null,
+    originalStartTime: row.originalStartTime ?? null
   }
 }
 

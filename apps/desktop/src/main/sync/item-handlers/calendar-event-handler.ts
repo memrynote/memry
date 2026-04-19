@@ -172,8 +172,7 @@ class CalendarEventHandler extends BaseItemHandler<CalendarEventSyncPayload> {
       timezone: row.timezone,
       isAllDay: row.isAllDay,
       recurrenceRule: (row.recurrenceRule as Record<string, unknown> | null) ?? null,
-      recurrenceExceptions:
-        (row.recurrenceExceptions as Array<Record<string, unknown>> | null) ?? null,
+      recurrenceExceptions: (row.recurrenceExceptions as string[] | null) ?? null,
       archivedAt: row.archivedAt ?? null,
       clock: (row.clock as VectorClock) ?? undefined,
       fieldClocks: (row.fieldClocks as FieldClocks | null) ?? undefined,

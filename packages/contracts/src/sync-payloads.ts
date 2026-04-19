@@ -127,7 +127,7 @@ export const CalendarEventSyncPayloadSchema = z.object({
   timezone: z.string().optional(),
   isAllDay: z.boolean().optional(),
   recurrenceRule: z.record(z.string(), z.unknown()).nullable().optional(),
-  recurrenceExceptions: z.array(z.record(z.string(), z.unknown())).nullable().optional(),
+  recurrenceExceptions: z.array(z.string()).nullable().optional(),
   archivedAt: z.string().nullable().optional(),
   clock: VectorClockSchema.optional(),
   fieldClocks: FieldClocksSchema.nullable().optional(),
