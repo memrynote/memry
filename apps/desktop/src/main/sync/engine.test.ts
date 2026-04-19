@@ -179,6 +179,58 @@ describe('SyncEngine', () => {
     })
   })
 
+  describe('#given connected engine #when WS receives calendar_changes_available', () => {
+    it('#then routes the payload sourceId to deps.calendarSyncOneSource', async () => {
+      // #given
+      vi.spyOn(await import('./http-client'), 'getFromServer').mockResolvedValue({
+        items: [],
+        deleted: [],
+        hasMore: false,
+        nextCursor: 0
+      })
+      const calendarSyncOneSource = vi.fn()
+      const deps = createMockDeps(getDb(), { calendarSyncOneSource })
+      const engine = new SyncEngine(deps)
+      await engine.start()
+
+      // #when
+      deps.ws.emit('message', {
+        type: 'calendar_changes_available',
+        payload: { sourceId: 'google:primary@group.calendar.google.com' }
+      } as WebSocketMessage)
+
+      // #then
+      expect(calendarSyncOneSource).toHaveBeenCalledWith('google:primary@group.calendar.google.com')
+      await engine.stop()
+      vi.restoreAllMocks()
+    })
+
+    it('#then ignores the message when payload.sourceId is missing', async () => {
+      // #given
+      vi.spyOn(await import('./http-client'), 'getFromServer').mockResolvedValue({
+        items: [],
+        deleted: [],
+        hasMore: false,
+        nextCursor: 0
+      })
+      const calendarSyncOneSource = vi.fn()
+      const deps = createMockDeps(getDb(), { calendarSyncOneSource })
+      const engine = new SyncEngine(deps)
+      await engine.start()
+
+      // #when
+      deps.ws.emit('message', {
+        type: 'calendar_changes_available',
+        payload: {}
+      } as WebSocketMessage)
+
+      // #then
+      expect(calendarSyncOneSource).not.toHaveBeenCalled()
+      await engine.stop()
+      vi.restoreAllMocks()
+    })
+  })
+
   describe('#given engine #when concurrent sync requested', () => {
     it('#then second call returns early (sync lock)', async () => {
       let resolveFirst!: () => void

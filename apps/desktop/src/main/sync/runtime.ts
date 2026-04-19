@@ -13,6 +13,7 @@ import {
   secureCleanup
 } from '../crypto'
 import { SyncEngine, type SyncEngineDeps } from './engine'
+import { syncGoogleCalendarSource } from '../calendar/google/sync-service'
 import { SyncQueueManager } from './queue'
 import { NetworkMonitor } from './network'
 import { WebSocketManager } from './websocket'
@@ -463,7 +464,12 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
         adapters,
         crdtProvider,
         workerBridge,
-        refreshAccessToken: () => refreshAccessToken()
+        refreshAccessToken: () => refreshAccessToken(),
+        calendarSyncOneSource: (sourceId) => {
+          void syncGoogleCalendarSource(runtimeSyncDb, sourceId).catch((err) => {
+            log.warn('calendarSyncOneSource failed', { sourceId, err })
+          })
+        }
       })
 
       queue.setOnItemEnqueued(() => engine.requestPush())
