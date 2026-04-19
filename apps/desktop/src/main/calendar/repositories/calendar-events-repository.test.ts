@@ -93,6 +93,113 @@ describe('calendarEvents.targetCalendarId (M2)', () => {
   })
 })
 
+describe('calendarEvents rich fields (M5)', () => {
+  let dbResult: TestDatabaseResult
+  let dataDb: DataDb
+
+  beforeEach(() => {
+    dbResult = createTestDataDb()
+    dataDb = dbResult.db as unknown as DataDb
+  })
+
+  afterEach(() => {
+    dbResult.close()
+  })
+
+  it('round-trips attendees, reminders, visibility, colorId, conferenceData through the repository', () => {
+    // #given — an event carrying the full Google-style rich payload
+    const attendees = [
+      { email: 'alice@example.com', responseStatus: 'accepted', displayName: 'Alice' },
+      { email: 'bob@example.com', responseStatus: 'needsAction', optional: true }
+    ]
+    const reminders = {
+      useDefault: false,
+      overrides: [
+        { method: 'popup' as const, minutes: 10 },
+        { method: 'email' as const, minutes: 60 }
+      ]
+    }
+    const conferenceData = {
+      conferenceId: 'abc-defg-hij',
+      entryPoints: [
+        { entryPointType: 'video', uri: 'https://meet.google.com/abc-defg-hij' }
+      ]
+    }
+
+    upsertCalendarEvent(dataDb, {
+      id: 'event-rich-1',
+      title: 'Rich event',
+      startAt: '2026-04-20T09:00:00.000Z',
+      endAt: '2026-04-20T10:00:00.000Z',
+      timezone: 'UTC',
+      isAllDay: false,
+      attendees,
+      reminders,
+      visibility: 'private',
+      colorId: '9',
+      conferenceData,
+      clock: { 'device-a': 1 },
+      createdAt: '2026-04-18T12:00:00.000Z',
+      modifiedAt: '2026-04-18T12:00:00.000Z'
+    })
+
+    // #when — read back through the repo
+    const stored = getCalendarEventById(dataDb, 'event-rich-1')
+
+    // #then — every rich field survives the round-trip
+    expect(stored?.attendees).toEqual(attendees)
+    expect(stored?.reminders).toEqual(reminders)
+    expect(stored?.visibility).toBe('private')
+    expect(stored?.colorId).toBe('9')
+    expect(stored?.conferenceData).toEqual(conferenceData)
+  })
+
+  it('defaults all rich fields to null when omitted (pre-M5 row shape)', () => {
+    upsertCalendarEvent(dataDb, {
+      id: 'event-rich-null',
+      title: 'Plain event',
+      startAt: '2026-04-20T09:00:00.000Z',
+      timezone: 'UTC',
+      isAllDay: false,
+      clock: { 'device-a': 1 },
+      createdAt: '2026-04-18T12:00:00.000Z',
+      modifiedAt: '2026-04-18T12:00:00.000Z'
+    })
+
+    const stored = getCalendarEventById(dataDb, 'event-rich-null')
+
+    expect(stored?.attendees).toBeNull()
+    expect(stored?.reminders).toBeNull()
+    expect(stored?.visibility).toBeNull()
+    expect(stored?.colorId).toBeNull()
+    expect(stored?.conferenceData).toBeNull()
+    expect(stored?.parentEventId).toBeNull()
+    expect(stored?.originalStartTime).toBeNull()
+  })
+
+  it('round-trips parentEventId + originalStartTime for single-instance edits of a recurring series', () => {
+    // #given — an exception row that represents "edit this occurrence only"
+    upsertCalendarEvent(dataDb, {
+      id: 'event-series-1:20260510',
+      title: 'Weekly sync (moved once)',
+      startAt: '2026-05-10T10:00:00.000Z',
+      endAt: '2026-05-10T11:00:00.000Z',
+      timezone: 'UTC',
+      isAllDay: false,
+      parentEventId: 'event-series-1',
+      originalStartTime: '2026-05-10T09:00:00.000Z',
+      clock: { 'device-a': 1 },
+      createdAt: '2026-04-18T12:00:00.000Z',
+      modifiedAt: '2026-04-18T12:00:00.000Z'
+    })
+
+    const stored = getCalendarEventById(dataDb, 'event-series-1:20260510')
+
+    expect(stored?.parentEventId).toBe('event-series-1')
+    expect(stored?.originalStartTime).toBe('2026-05-10T09:00:00.000Z')
+  })
+})
+
 describe('calendar storage foundation', () => {
   let dbResult: TestDatabaseResult
   let db: TestDb
