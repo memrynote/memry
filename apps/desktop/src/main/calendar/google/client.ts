@@ -293,10 +293,12 @@ function toGoogleEventPayload(event: GoogleCalendarUpsertEventInput): Record<str
     payload.recurringEventId = event.recurringEventId
   }
   if (event.originalStartTime) {
-    payload.originalStartTime = {
-      dateTime: event.originalStartTime,
-      timeZone: event.timezone
-    }
+    payload.originalStartTime = event.isAllDay
+      ? { date: event.originalStartTime.slice(0, 10) }
+      : {
+          dateTime: event.originalStartTime,
+          timeZone: event.timezone
+        }
   }
 
   return payload

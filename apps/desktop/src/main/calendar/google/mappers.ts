@@ -80,18 +80,37 @@ function toGoogleRecurrenceArray(
   return rrule ? [`RRULE:${rrule}`] : null
 }
 
-function isoToIcalStamp(iso: string, keepZ: boolean): string {
-  // Strip separators: 2026-05-10T09:00:00.000Z → 20260510T090000Z
+function isoToUtcIcalStamp(iso: string): string {
+  // 2026-05-10T09:00:00.000Z → 20260510T090000Z
   const trimmed = iso.replace(/\.\d+/, '')
-  const compact = trimmed.replace(/[-:]/g, '')
-  return keepZ ? compact : compact.replace(/Z$/, '')
+  return trimmed.replace(/[-:]/g, '')
+}
+
+function isoToZonedIcalStamp(iso: string, timezone: string): string {
+  // Convert the UTC instant to wall-clock components in `timezone`,
+  // then emit YYYYMMDDTHHMMSS (no trailing Z — TZID carries the zone).
+  const parts = toTimeZoneDateParts(iso, timezone)
+  const seconds = getZonedSeconds(iso, timezone)
+  return `${parts.year}${parts.month}${parts.day}T${parts.hour}${parts.minute}${seconds}`
+}
+
+function getZonedSeconds(iso: string, timezone: string): string {
+  const formatter = new Intl.DateTimeFormat('en-CA', {
+    timeZone: timezone,
+    second: '2-digit',
+    hourCycle: 'h23'
+  })
+  const second =
+    formatter.formatToParts(new Date(iso)).find((part) => part.type === 'second')?.value ?? '00'
+  // Some runtimes emit '0' instead of '00' for second: '2-digit'. Pad defensively.
+  return second.padStart(2, '0')
 }
 
 function buildExdateLine(iso: string, timezone: string): string {
   if (timezone === 'UTC') {
-    return `EXDATE:${isoToIcalStamp(iso, true)}`
+    return `EXDATE:${isoToUtcIcalStamp(iso)}`
   }
-  return `EXDATE;TZID=${timezone}:${isoToIcalStamp(iso, false)}`
+  return `EXDATE;TZID=${timezone}:${isoToZonedIcalStamp(iso, timezone)}`
 }
 
 function toGoogleRecurrenceWithExceptions(

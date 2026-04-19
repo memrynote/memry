@@ -175,4 +175,88 @@ describe('google calendar client — push channels (Task 7)', () => {
       await expect(client.stopChannel({ channelId: 'c', resourceId: 'r' })).rejects.toThrow()
     })
   })
+
+  describe('upsertEvent — recurring single-instance exceptions (M5)', () => {
+    function buildOkResponse(): Response {
+      return new Response(
+        JSON.stringify({
+          id: 'google-child-1',
+          status: 'confirmed',
+          summary: 'Exception',
+          start: { dateTime: '2026-05-10T10:00:00.000Z', timeZone: 'UTC' },
+          end: { dateTime: '2026-05-10T11:00:00.000Z', timeZone: 'UTC' }
+        }),
+        { status: 200, headers: { 'Content-Type': 'application/json' } }
+      )
+    }
+
+    function captureBody(): { body: Record<string, unknown> | null } {
+      const captured: { body: Record<string, unknown> | null } = { body: null }
+      fetchMock.mockImplementation(async (_input, init) => {
+        if (typeof init?.body === 'string') {
+          captured.body = JSON.parse(init.body)
+        }
+        return buildOkResponse()
+      })
+      return captured
+    }
+
+    it('#given an all-day recurring exception #when upserted #then emits originalStartTime as { date } (no dateTime)', async () => {
+      const captured = captureBody()
+
+      const client = createGoogleCalendarClient()
+      await client.upsertEvent({
+        calendarId: 'primary',
+        eventId: null,
+        event: {
+          sourceType: 'event',
+          sourceId: 'local-all-day-exception',
+          title: 'Annual review (moved once)',
+          description: null,
+          location: null,
+          startAt: '2026-05-10',
+          endAt: '2026-05-11',
+          isAllDay: true,
+          timezone: 'UTC',
+          recurrence: null,
+          recurringEventId: 'google-series-annual',
+          // Memry normalises all-day originalStartTime to a midnight UTC ISO
+          // on the read side — the write path must re-extract the date.
+          originalStartTime: '2026-05-10T00:00:00.000Z'
+        }
+      })
+
+      expect(captured.body?.recurringEventId).toBe('google-series-annual')
+      expect(captured.body?.originalStartTime).toEqual({ date: '2026-05-10' })
+    })
+
+    it('#given a timed recurring exception #when upserted #then emits originalStartTime as { dateTime, timeZone }', async () => {
+      const captured = captureBody()
+
+      const client = createGoogleCalendarClient()
+      await client.upsertEvent({
+        calendarId: 'primary',
+        eventId: null,
+        event: {
+          sourceType: 'event',
+          sourceId: 'local-timed-exception',
+          title: 'Weekly sync (moved once)',
+          description: null,
+          location: null,
+          startAt: '2026-05-10T10:00:00.000Z',
+          endAt: '2026-05-10T11:00:00.000Z',
+          isAllDay: false,
+          timezone: 'UTC',
+          recurrence: null,
+          recurringEventId: 'google-series-weekly',
+          originalStartTime: '2026-05-10T09:00:00.000Z'
+        }
+      })
+
+      expect(captured.body?.originalStartTime).toEqual({
+        dateTime: '2026-05-10T09:00:00.000Z',
+        timeZone: 'UTC'
+      })
+    })
+  })
 })

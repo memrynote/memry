@@ -85,6 +85,10 @@ class CalendarEventHandler extends BaseItemHandler<CalendarEventSyncPayload> {
         const appliedFC =
           remoteFieldClocks ?? initAllFieldClocks(remoteClock, CALENDAR_EVENT_SYNCABLE_FIELDS)
 
+        // M5 nullable fields: distinguish "remote omitted" (fall back to local)
+        // from "remote explicitly set null" (clear local). Nullish coalescing
+        // can't tell these apart, so use Object.prototype.hasOwnProperty on data.
+        const hasKey = (k: string): boolean => Object.prototype.hasOwnProperty.call(data, k)
         tx.update(calendarEvents)
           .set({
             title: data.title ?? existing.title,
@@ -97,20 +101,19 @@ class CalendarEventHandler extends BaseItemHandler<CalendarEventSyncPayload> {
             recurrenceRule: data.recurrenceRule ?? existing.recurrenceRule ?? null,
             recurrenceExceptions:
               data.recurrenceExceptions ?? existing.recurrenceExceptions ?? null,
-            attendees:
-              (data.attendees as CalendarEvent['attendees'] | undefined) ??
-              existing.attendees ??
-              null,
-            reminders:
-              (data.reminders as CalendarEvent['reminders'] | undefined) ??
-              existing.reminders ??
-              null,
-            visibility: data.visibility ?? existing.visibility ?? null,
-            colorId: data.colorId ?? existing.colorId ?? null,
-            conferenceData:
-              (data.conferenceData as CalendarEvent['conferenceData'] | undefined) ??
-              existing.conferenceData ??
-              null,
+            attendees: hasKey('attendees')
+              ? ((data.attendees as CalendarEvent['attendees']) ?? null)
+              : (existing.attendees ?? null),
+            reminders: hasKey('reminders')
+              ? ((data.reminders as CalendarEvent['reminders']) ?? null)
+              : (existing.reminders ?? null),
+            visibility: hasKey('visibility')
+              ? (data.visibility ?? null)
+              : (existing.visibility ?? null),
+            colorId: hasKey('colorId') ? (data.colorId ?? null) : (existing.colorId ?? null),
+            conferenceData: hasKey('conferenceData')
+              ? ((data.conferenceData as CalendarEvent['conferenceData']) ?? null)
+              : (existing.conferenceData ?? null),
             archivedAt: data.archivedAt ?? existing.archivedAt,
             clock: resolution.mergedClock,
             fieldClocks: appliedFC,
