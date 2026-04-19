@@ -22,17 +22,12 @@ import { toast } from 'sonner'
 
 import { cn } from '@/lib/utils'
 import { VaultSwitcher } from '@/components/vault-switcher'
-import { TrafficLights } from '@/components/traffic-lights'
 import {
   Sidebar,
   SidebarContent,
   SidebarFooter,
   SidebarHeader,
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
-  SidebarRail,
-  useSidebar
+  SidebarRail
 } from '@/components/ui/sidebar'
 import { SidebarNav } from '@/components/sidebar/sidebar-nav'
 import { SidebarSection } from '@/components/sidebar-section'
@@ -76,24 +71,9 @@ const mainNav: {
 ]
 
 function SidebarHeaderContent() {
-  const { state } = useSidebar()
-  const isCollapsed = state === 'collapsed'
-
-  return (
-    <SidebarHeader className="pt-3 pb-0 px-2 gap-0">
-      <div
-        className={cn(
-          'drag-region flex items-center shrink-0',
-          isCollapsed ? 'justify-center' : 'px-1'
-        )}
-      >
-        <TrafficLights compact={isCollapsed} />
-        <div className="group-data-[collapsible=icon]:hidden">
-          <VaultSwitcher />
-        </div>
-      </div>
-    </SidebarHeader>
-  )
+  // Empty h-9 spacer to reserve room for the viewport-fixed WindowControls
+  // overlay (see App.tsx). Sidebar content starts below the chrome row.
+  return <SidebarHeader className="h-9 shrink-0" />
 }
 
 interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {
@@ -416,7 +396,7 @@ function AppSidebarInner({ currentPage, viewCounts, ...props }: AppSidebarProps)
   }, [openSettings])
 
   return (
-    <Sidebar collapsible="icon" {...props}>
+    <Sidebar collapsible="offcanvas" {...props}>
       <SidebarHeaderContent />
       <SidebarContent className="flex flex-col overflow-hidden gap-0">
         {/* Quick Actions: Search & New — persistent, stays visible during drill-down */}
@@ -452,18 +432,27 @@ function AppSidebarInner({ currentPage, viewCounts, ...props }: AppSidebarProps)
         />
         <SidebarDrillDownContainer>{mainContent}</SidebarDrillDownContainer>
       </SidebarContent>
-      <SidebarFooter className="gap-0">
-        <SidebarMenu>
-          <SidebarMenuItem>
-            {authState.status === 'authenticated' ? (
+      <SidebarFooter className="gap-0 p-2">
+        <div className="flex items-center gap-1">
+          {authState.status === 'authenticated' ? (
+            <div className="shrink-0 w-7 [&>button]:w-7 [&>button]:justify-center">
               <SyncStatus onOpenSettings={handleSyncClick} iconOnly />
-            ) : authState.status === 'checking' ? null : (
-              <SidebarMenuButton tooltip="Sync disabled" onClick={handleSyncClick}>
-                <CloudOff className="size-4 text-muted-foreground" />
-              </SidebarMenuButton>
-            )}
-          </SidebarMenuItem>
-        </SidebarMenu>
+            </div>
+          ) : authState.status === 'checking' ? null : (
+            <button
+              type="button"
+              onClick={handleSyncClick}
+              aria-label="Sync disabled"
+              title="Sync disabled"
+              className="shrink-0 size-7 rounded flex items-center justify-center hover:bg-sidebar-accent text-muted-foreground transition-colors"
+            >
+              <CloudOff className="size-4" />
+            </button>
+          )}
+          <div className="flex-1 min-w-0">
+            <VaultSwitcher />
+          </div>
+        </div>
       </SidebarFooter>
       <SidebarRail />
     </Sidebar>
