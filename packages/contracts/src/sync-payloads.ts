@@ -130,6 +130,7 @@ export const CalendarEventSyncPayloadSchema = z.object({
   recurrenceExceptions: z.array(z.record(z.string(), z.unknown())).nullable().optional(),
   archivedAt: z.string().nullable().optional(),
   clock: VectorClockSchema.optional(),
+  fieldClocks: FieldClocksSchema.nullable().optional(),
   createdAt: z.string().optional(),
   modifiedAt: z.string().optional()
 })
@@ -196,7 +197,9 @@ export type FolderConfigSyncPayload = z.infer<typeof FolderConfigSyncPayloadSche
 export type CalendarEventSyncPayload = z.infer<typeof CalendarEventSyncPayloadSchema>
 export type CalendarSourceSyncPayload = z.infer<typeof CalendarSourceSyncPayloadSchema>
 export type CalendarBindingSyncPayload = z.infer<typeof CalendarBindingSyncPayloadSchema>
-export type CalendarExternalEventSyncPayload = z.infer<typeof CalendarExternalEventSyncPayloadSchema>
+export type CalendarExternalEventSyncPayload = z.infer<
+  typeof CalendarExternalEventSyncPayloadSchema
+>
 
 export type TaskSyncPayload = z.infer<typeof TaskSyncPayloadSchema>
 export type InboxSyncPayload = z.infer<typeof InboxSyncPayloadSchema>

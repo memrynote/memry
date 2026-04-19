@@ -155,7 +155,8 @@ describe('calendar-handlers', () => {
     })
     expect(enqueueLocalSyncUpdate).toHaveBeenCalledWith(
       'calendar_event',
-      'calendar-event-generated-id'
+      'calendar-event-generated-id',
+      ['title', 'endAt']
     )
 
     const deleted = await invokeHandler(

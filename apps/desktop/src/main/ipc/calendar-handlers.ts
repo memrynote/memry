@@ -285,7 +285,10 @@ export function registerCalendarHandlers(): void {
           throw new Error('Failed to load updated calendar event')
         }
 
-        syncCalendarEventUpdate(input.id)
+        const changedFields = Object.keys(changes).filter(
+          (field) => field !== 'modifiedAt' && field !== 'targetCalendarId'
+        )
+        syncCalendarEventUpdate(input.id, changedFields)
         emitCalendarChanged({ entityType: 'calendar_event', id: input.id })
         return { success: true, event: mapCalendarEvent(updated) }
       }, 'Failed to update calendar event')
