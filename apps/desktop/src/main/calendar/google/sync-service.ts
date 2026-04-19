@@ -17,6 +17,7 @@ import { CALENDAR_EVENT_SYNCABLE_FIELDS, mergeCalendarEventFields } from '../fie
 import type { FieldClocks, VectorClock } from '@memry/contracts/sync-api'
 import { publishProjectionEvent } from '../../projections'
 import { hasGoogleCalendarConnection, resolveDefaultGoogleAccountId } from './oauth'
+import { resolveTargetGoogleAccountId } from './account-routing'
 import { isMemryUserSignedIn } from '../../sync/auth-state'
 import { createGoogleCalendarClient } from './client'
 import {
@@ -372,10 +373,11 @@ export async function ensureGoogleCalendarSourceSelected(
 
 function getGoogleClient(
   db: DataDb,
-  deps?: { client?: GoogleCalendarClient }
+  deps?: { client?: GoogleCalendarClient },
+  accountIdOverride?: string | null
 ): GoogleCalendarClient {
   if (deps?.client) return deps.client
-  const accountId = resolveDefaultGoogleAccountId(db)
+  const accountId = accountIdOverride ?? resolveDefaultGoogleAccountId(db)
   if (!accountId) {
     throw new Error('Cannot create Google Calendar client without a connected account')
   }
@@ -524,8 +526,9 @@ export async function pushSourceToGoogleCalendar(
     >
   } = {}
 ): Promise<typeof calendarBindings.$inferSelect> {
-  const client = getGoogleClient(db, deps as { client?: GoogleCalendarClient })
   const existingBinding = getExistingGoogleBinding(db, target)
+  const routedAccountId = resolveTargetGoogleAccountId(db, target, existingBinding)
+  const client = getGoogleClient(db, deps as { client?: GoogleCalendarClient }, routedAccountId)
   const resolvedCalendarId = await resolveTargetCalendarId(db, target, existingBinding, client)
   const now = getNow()
   const bindingId =
@@ -574,7 +577,8 @@ export async function deleteSourceFromGoogleCalendar(
     return false
   }
 
-  const client = getGoogleClient(db, deps as { client?: GoogleCalendarClient })
+  const routedAccountId = resolveTargetGoogleAccountId(db, target, existingBinding)
+  const client = getGoogleClient(db, deps as { client?: GoogleCalendarClient }, routedAccountId)
   await client.deleteEvent({
     calendarId: existingBinding.remoteCalendarId,
     eventId: existingBinding.remoteEventId
