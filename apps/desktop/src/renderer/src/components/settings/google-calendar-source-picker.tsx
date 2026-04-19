@@ -88,7 +88,16 @@ export function GoogleCalendarSourcePicker({
                     size="sm"
                     className="h-6 px-2 text-[10px]/3"
                     disabled={isRetrying}
-                    onClick={() => onRetrySource(source.id)}
+                    onPointerDown={(e) => {
+                      if (e.button !== 0) return
+                      if (isRetrying) return
+                      e.preventDefault()
+                      onRetrySource(source.id)
+                    }}
+                    onClick={() => {
+                      if (isRetrying) return
+                      onRetrySource(source.id)
+                    }}
                     data-testid={`calendar-source-retry-${source.id}`}
                   >
                     {isRetrying ? 'Retrying…' : 'Retry now'}

@@ -145,6 +145,42 @@ describe('google-channel-manager', () => {
 
       expect(onActiveCountChange).toHaveBeenCalledWith(1)
     })
+
+    it('resolves a client per source and reuses that client for stop operations', async () => {
+      const clientA = {
+        watchCalendar: vi.fn(async (input: { channelId: string }) => ({
+          resourceId: `resource-${input.channelId}`,
+          expiration: FIXED_NOW_MS + TTL_SECONDS * 1000
+        })),
+        stopChannel: vi.fn(async () => {})
+      }
+      const clientB = {
+        watchCalendar: vi.fn(async (input: { channelId: string }) => ({
+          resourceId: `resource-${input.channelId}`,
+          expiration: FIXED_NOW_MS + TTL_SECONDS * 1000
+        })),
+        stopChannel: vi.fn(async () => {})
+      }
+      const resolveClient = vi.fn(
+        ({ sourceId }: { sourceId: string }) => (sourceId === 'src-1' ? clientA : clientB)
+      )
+      const deps = buildDeps({ resolveClient })
+      const mgr = createGoogleChannelManager(deps)
+
+      await mgr.ensureChannelForSource({ sourceId: 'src-1', calendarId: 'cal-a' })
+      await mgr.ensureChannelForSource({ sourceId: 'src-2', calendarId: 'cal-b' })
+      await mgr.stopForSource('src-2')
+
+      expect(resolveClient).toHaveBeenCalledWith({ sourceId: 'src-1', calendarId: 'cal-a' })
+      expect(resolveClient).toHaveBeenCalledWith({ sourceId: 'src-2', calendarId: 'cal-b' })
+      expect(clientA.watchCalendar).toHaveBeenCalledTimes(1)
+      expect(clientB.watchCalendar).toHaveBeenCalledTimes(1)
+      expect(clientB.stopChannel).toHaveBeenCalledWith({
+        channelId: 'channel-2',
+        resourceId: 'resource-channel-2'
+      })
+      expect(deps.client.watchCalendar).not.toHaveBeenCalled()
+    })
   })
 
   describe('stopForSource', () => {
