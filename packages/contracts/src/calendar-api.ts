@@ -245,7 +245,11 @@ export interface CalendarProjectionItem {
   binding: CalendarProjectionBinding | null
 }
 
-export type CalendarProviderAccountConnectionStatus = 'connected' | 'disconnected' | 'error'
+export type CalendarProviderAccountConnectionStatus =
+  | 'connected'
+  | 'disconnected'
+  | 'reconnect_required'
+  | 'error'
 
 export interface CalendarProviderAccountStatus {
   accountId: string

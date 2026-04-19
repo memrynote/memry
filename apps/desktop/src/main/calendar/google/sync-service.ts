@@ -781,14 +781,14 @@ export async function syncGoogleCalendarNow(
 
   syncInFlight = true
   try {
-    const accountIds = deps.client
-      ? [resolveDefaultGoogleAccountId(db)].filter((accountId): accountId is string =>
-          Boolean(accountId)
-        )
-      : listGoogleAccountIds(db)
+    const accountIds = listGoogleAccountIds(db)
+    const defaultAccountId = resolveDefaultGoogleAccountId(db)
 
     for (const accountId of accountIds) {
-      const client = getGoogleClient(db, deps, accountId)
+      const client =
+        deps.client && accountId === defaultAccountId
+          ? deps.client
+          : createGoogleCalendarClient({ accountId })
       await ensureMemryCalendarSource(db, client, accountId)
     }
 
@@ -799,7 +799,8 @@ export async function syncGoogleCalendarNow(
     }).filter((source) => !source.isMemryManaged)
 
     for (const source of sources) {
-      await syncGoogleCalendarSource(db, source.id, deps)
+      const sourceDeps = deps.client && source.accountId === defaultAccountId ? deps : {}
+      await syncGoogleCalendarSource(db, source.id, sourceDeps)
     }
   } finally {
     syncInFlight = false

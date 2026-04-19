@@ -83,10 +83,7 @@ function isPushFeatureEnabled(): boolean {
   return process.env.CALENDAR_PUSH_ENABLED === '1' && resolveHmacKey().length > 0
 }
 
-export function resolvePushAccountIdForSource(
-  sourceId: string,
-  db = requireDatabase()
-): string {
+export function resolvePushAccountIdForSource(sourceId: string, db = requireDatabase()): string {
   const source = getCalendarSourceById(db, sourceId)
   const accountId = source?.accountId ?? resolveDefaultGoogleAccountId(db)
   if (!accountId) {
@@ -99,13 +96,15 @@ function buildProductionChannelManager(
   onActiveCountChange: (count: number) => void
 ): GoogleChannelManager {
   const hmacKey = resolveHmacKey()
-
-  const defaultAccountId = resolveDefaultGoogleAccountId(requireDatabase())
-  if (!defaultAccountId) {
-    throw new Error('Cannot start Google push channel manager without a connected account')
-  }
   return createGoogleChannelManager({
-    client: createGoogleCalendarClient({ accountId: defaultAccountId }),
+    client: {
+      watchCalendar: async () => {
+        throw new Error('Google push runtime requires a source-scoped client')
+      },
+      stopChannel: async () => {
+        throw new Error('Google push runtime requires a source-scoped client')
+      }
+    },
     resolveClient: ({ sourceId }) =>
       createGoogleCalendarClient({
         accountId: resolvePushAccountIdForSource(sourceId, requireDatabase())

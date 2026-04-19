@@ -1,4 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { createTestDataDb, type TestDatabaseResult } from '@tests/utils/test-db'
+
+const { mockDbHolder } = vi.hoisted(() => ({
+  mockDbHolder: { db: null as object | null }
+}))
 
 vi.mock('electron', () => ({
   BrowserWindow: { getAllWindows: vi.fn(() => []) }
@@ -6,7 +11,9 @@ vi.mock('electron', () => ({
 
 vi.mock('./oauth', () => ({
   hasGoogleCalendarConnection: vi.fn(async () => true),
-  hasGoogleCalendarLocalAuth: vi.fn(async () => true)
+  hasGoogleCalendarLocalAuth: vi.fn(async () => true),
+  listGoogleAccountIds: vi.fn(() => []),
+  resolveDefaultGoogleAccountId: vi.fn(() => null)
 }))
 
 vi.mock('../../sync/auth-state', () => ({
@@ -14,8 +21,8 @@ vi.mock('../../sync/auth-state', () => ({
 }))
 
 vi.mock('../../database', () => ({
-  requireDatabase: vi.fn(() => ({}) as unknown as object),
-  getDatabase: vi.fn(() => ({}) as unknown as object),
+  requireDatabase: vi.fn(() => mockDbHolder.db),
+  getDatabase: vi.fn(() => mockDbHolder.db),
   isDatabaseInitialized: vi.fn(() => true)
 }))
 
@@ -30,7 +37,11 @@ import {
 const RUN_INTERVAL_MS = 5 * 60 * 1000
 
 describe('reEvaluatePollCadence (Task 10 — push-channel poll backoff)', () => {
+  let dbResult: TestDatabaseResult
+
   beforeEach(() => {
+    dbResult = createTestDataDb()
+    mockDbHolder.db = dbResult.db
     vi.useFakeTimers()
   })
 
@@ -40,6 +51,8 @@ describe('reEvaluatePollCadence (Task 10 — push-channel poll backoff)', () => 
     reEvaluatePollCadence(0)
     vi.useRealTimers()
     vi.restoreAllMocks()
+    dbResult.close()
+    mockDbHolder.db = null
   })
 
   it('defaults to RUN_INTERVAL_MS (5 minutes) before any push channels are active', () => {

@@ -22,6 +22,7 @@ describe('CBOR_FIELD_ORDER', () => {
         'LINKING_PROOF',
         'SCAN_CONFIRM',
         'KEY_CONFIRM',
+        'PROVIDER_AUTH_CONFIRM',
         'ATTACHMENT_MANIFEST'
       ].sort()
     )
@@ -60,6 +61,13 @@ describe('CBOR_FIELD_ORDER', () => {
 
   it('pins the KEY_CONFIRM field order', () => {
     expect(CBOR_FIELD_ORDER.KEY_CONFIRM).toEqual(['sessionId', 'encryptedMasterKey'])
+  })
+
+  it('pins the PROVIDER_AUTH_CONFIRM field order', () => {
+    expect(CBOR_FIELD_ORDER.PROVIDER_AUTH_CONFIRM).toEqual([
+      'sessionId',
+      'encryptedProviderAuth'
+    ])
   })
 
   it('pins the ATTACHMENT_MANIFEST field order', () => {
