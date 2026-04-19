@@ -115,6 +115,7 @@ export const TabBarWithDrag = ({
           'bg-transparent',
           'relative',
           'border-b border-border',
+          'transition-[padding-left] duration-200 ease-linear',
           needsChromeSpacer && 'pl-[var(--chrome-width)]',
           className
         )}
