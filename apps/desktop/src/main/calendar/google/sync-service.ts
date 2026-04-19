@@ -165,7 +165,7 @@ function mergeRemoteEventIntoLocal(
 
   const remoteForMerge: Record<string, unknown> = {}
   for (const field of CALENDAR_EVENT_SYNCABLE_FIELDS) {
-    const remoteVal = (remoteData as Record<string, unknown>)[field]
+    const remoteVal = (remoteData as unknown as Record<string, unknown>)[field]
     remoteForMerge[field] =
       remoteVal === undefined ? (existing as Record<string, unknown>)[field] : remoteVal
   }
