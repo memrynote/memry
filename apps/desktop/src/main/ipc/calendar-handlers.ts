@@ -8,6 +8,7 @@ import {
   ListCalendarSourcesSchema,
   ListGoogleCalendarsSchema,
   PromoteExternalEventSchema,
+  RetryCalendarSourceSyncSchema,
   SetDefaultGoogleCalendarSchema,
   UpdateCalendarSourceSelectionSchema,
   CalendarProviderRequestSchema,
@@ -17,6 +18,8 @@ import {
   type CalendarEventListResponse,
   type CalendarEventMutationResponse,
   type CalendarEventRecord,
+  type CalendarProviderAccountConnectionStatus,
+  type CalendarProviderAccountStatus,
   type CalendarProviderMutationResponse,
   type CalendarProviderStatus,
   type CalendarRangeResponse,
@@ -25,6 +28,7 @@ import {
   type CalendarSourceRecord,
   type ListGoogleCalendarsResponse,
   type PromoteExternalEventResponse,
+  type RetryCalendarSourceSyncResponse,
   type SetDefaultGoogleCalendarResponse
 } from '@memry/contracts/calendar-api'
 import { calendarEvents } from '@memry/db-schema/schema/calendar-events'
@@ -43,13 +47,17 @@ import {
 import {
   connectGoogleCalendar,
   disconnectGoogleCalendar,
-  hasGoogleCalendarLocalAuth
+  hasAnyGoogleCalendarLocalAuth,
+  hasGoogleCalendarLocalAuth,
+  listGoogleAccountIds,
+  resolveDefaultGoogleAccountId
 } from '../calendar/google/oauth'
 import { getCalendarRangeProjection } from '../calendar/projection'
 import {
   startGoogleCalendarSyncRunner,
   stopGoogleCalendarSyncRunner,
-  syncGoogleCalendarNow
+  syncGoogleCalendarNow,
+  syncGoogleCalendarSource
 } from '../calendar/google/sync-service'
 import { listGoogleCalendars, setDefaultGoogleCalendar } from '../calendar/google/onboarding'
 import { createGoogleCalendarClient } from '../calendar/google/client'
@@ -91,13 +99,11 @@ function mapCalendarEvent(row: typeof calendarEvents.$inferSelect): CalendarEven
     isAllDay: row.isAllDay,
     recurrenceRule: (row.recurrenceRule as Record<string, unknown> | null) ?? null,
     recurrenceExceptions: (row.recurrenceExceptions as string[] | null) ?? null,
-    attendees:
-      (row.attendees as CalendarEventRecord['attendees']) ?? null,
+    attendees: (row.attendees as CalendarEventRecord['attendees']) ?? null,
     reminders: (row.reminders as CalendarEventRecord['reminders']) ?? null,
     visibility: (row.visibility as CalendarEventRecord['visibility']) ?? null,
     colorId: row.colorId ?? null,
-    conferenceData:
-      (row.conferenceData as CalendarEventRecord['conferenceData']) ?? null,
+    conferenceData: (row.conferenceData as CalendarEventRecord['conferenceData']) ?? null,
     parentEventId: row.parentEventId ?? null,
     originalStartTime: row.originalStartTime ?? null,
     targetCalendarId: row.targetCalendarId ?? null,
@@ -124,6 +130,7 @@ function mapCalendarSource(row: typeof calendarSources.$inferSelect): CalendarSo
     syncCursor: row.syncCursor ?? null,
     syncStatus: row.syncStatus,
     lastSyncedAt: row.lastSyncedAt ?? null,
+    lastError: row.lastError ?? null,
     metadata: (row.metadata as Record<string, unknown> | null) ?? null,
     archivedAt: row.archivedAt ?? null,
     syncedAt: row.syncedAt ?? null,
@@ -132,21 +139,57 @@ function mapCalendarSource(row: typeof calendarSources.$inferSelect): CalendarSo
   }
 }
 
+async function buildProviderAccountStatus(
+  source: typeof calendarSources.$inferSelect
+): Promise<CalendarProviderAccountStatus | null> {
+  const accountId = source.accountId
+  if (!accountId) return null
+
+  const metadata = (source.metadata as { email?: string; lastError?: string } | null) ?? null
+  const hasLocalAuth =
+    source.provider === 'google' ? await hasGoogleCalendarLocalAuth(accountId) : false
+
+  let status: CalendarProviderAccountConnectionStatus
+  if (!hasLocalAuth) {
+    status = 'disconnected'
+  } else if (source.syncStatus === 'error') {
+    status = 'error'
+  } else {
+    status = 'connected'
+  }
+
+  return {
+    accountId,
+    email: metadata?.email ?? source.title,
+    status,
+    lastSyncedAt: source.lastSyncedAt ?? null,
+    lastError: source.lastError ?? metadata?.lastError ?? null
+  }
+}
+
 async function buildProviderStatus(db: DataDb, provider: string): Promise<CalendarProviderStatus> {
   const allSources = listCalendarSourceRows(db, { provider })
-  const account = allSources.find((source) => source.kind === 'account') ?? null
+  const accountSources = allSources.filter((source) => source.kind === 'account')
+  const account = accountSources[0] ?? null
   const calendars = allSources.filter((source) => source.kind === 'calendar')
   const syncedCandidates = [
-    account?.lastSyncedAt ?? null,
+    ...accountSources.map((source) => source.lastSyncedAt ?? null),
     ...calendars.map((source) => source.lastSyncedAt ?? null)
   ].filter((value): value is string => Boolean(value))
-  const hasLocalAuth = provider === 'google' ? await hasGoogleCalendarLocalAuth() : false
+  const hasLocalAuth = provider === 'google' ? await hasAnyGoogleCalendarLocalAuth(db) : false
+
+  const accounts: CalendarProviderAccountStatus[] = []
+  for (const source of accountSources) {
+    const accountStatus = await buildProviderAccountStatus(source)
+    if (accountStatus) accounts.push(accountStatus)
+  }
 
   return {
     provider,
     connected: Boolean(account),
     hasLocalAuth,
     account: account ? { id: account.id, title: account.title } : null,
+    accounts,
     calendars: {
       total: calendars.length,
       selected: calendars.filter((source) => source.isSelected).length,
@@ -183,6 +226,124 @@ function syncCalendarSourceUpsert(
 
   emitCalendarChanged({ entityType: 'calendar_source', id: source.id })
   return mapCalendarSource(saved)
+}
+
+async function disconnectGoogleAccount(
+  db: DataDb,
+  provider: string,
+  accountId: string
+): Promise<CalendarProviderMutationResponse> {
+  try {
+    await disconnectGoogleCalendar(accountId)
+  } catch (err) {
+    log.warn('Google Calendar disconnect failed', { accountId, err })
+  }
+
+  const allProviderSources = listCalendarSourceRows(db, { provider })
+  const targetSources = allProviderSources.filter((source) =>
+    source.kind === 'account' ? source.accountId === accountId : source.accountId === accountId
+  )
+
+  if (targetSources.length === 0) {
+    return {
+      success: true,
+      status: await buildProviderStatus(db, provider)
+    }
+  }
+
+  const pushRuntime = getGooglePushRuntime()
+  if (pushRuntime) {
+    for (const source of targetSources) {
+      if (source.kind !== 'calendar' || source.isMemryManaged) continue
+      void pushRuntime.handleSelectionToggle({
+        sourceId: source.id,
+        isSelected: false,
+        calendarId: source.remoteId
+      })
+    }
+  }
+
+  const targetSourceIds = targetSources.map((source) => source.id)
+  const externalRows =
+    targetSourceIds.length > 0
+      ? db
+          .select()
+          .from(calendarExternalEvents)
+          .where(inArray(calendarExternalEvents.sourceId, targetSourceIds))
+          .all()
+      : []
+
+  const bindingRows =
+    targetSourceIds.length > 0
+      ? db
+          .select()
+          .from(calendarBindings)
+          .where(
+            and(
+              eq(calendarBindings.provider, provider),
+              inArray(
+                calendarBindings.remoteCalendarId,
+                targetSources.map((s) => s.remoteId)
+              )
+            )
+          )
+          .all()
+      : []
+
+  const now = new Date().toISOString()
+
+  db.transaction((tx) => {
+    if (externalRows.length > 0) {
+      tx.delete(calendarExternalEvents)
+        .where(
+          inArray(
+            calendarExternalEvents.id,
+            externalRows.map((row) => row.id)
+          )
+        )
+        .run()
+    }
+
+    if (bindingRows.length > 0) {
+      tx.delete(calendarBindings)
+        .where(
+          inArray(
+            calendarBindings.id,
+            bindingRows.map((row) => row.id)
+          )
+        )
+        .run()
+    }
+
+    for (const source of targetSources) {
+      if (source.archivedAt) continue
+      tx.update(calendarSources)
+        .set({ archivedAt: now, modifiedAt: now })
+        .where(eq(calendarSources.id, source.id))
+        .run()
+    }
+  })
+
+  for (const row of externalRows) {
+    syncCalendarExternalEventDelete(row.id, JSON.stringify(row))
+    emitCalendarChanged({ entityType: 'calendar_external_event', id: row.id })
+  }
+
+  for (const row of bindingRows) {
+    syncCalendarBindingDelete(row.id, JSON.stringify(row))
+    emitCalendarChanged({ entityType: 'calendar_binding', id: row.id })
+  }
+
+  for (const source of targetSources) {
+    if (source.archivedAt) continue
+    syncCalendarSourceUpdate(source.id)
+    emitCalendarChanged({ entityType: 'calendar_source', id: source.id })
+  }
+
+  return {
+    success: true,
+    status: await buildProviderStatus(db, provider)
+  }
 }
 
 export function registerCalendarHandlers(): void {
@@ -420,14 +581,14 @@ export function registerCalendarHandlers(): void {
         }
         const connected = await connectGoogleCalendar()
         const now = new Date().toISOString()
-        const accountSourceId = `google-account:${connected.account.remoteId}`
+        const accountSourceId = `google-account:${connected.accountId}`
         const primaryCalendarSourceId = `google-calendar:${connected.primaryCalendar.remoteId}`
 
         syncCalendarSourceUpsert(db, {
           id: accountSourceId,
           provider: 'google',
           kind: 'account',
-          accountId: null,
+          accountId: connected.accountId,
           remoteId: connected.account.remoteId,
           title: connected.account.title,
           timezone: connected.account.timezone,
@@ -436,7 +597,7 @@ export function registerCalendarHandlers(): void {
           isSelected: false,
           isMemryManaged: false,
           syncStatus: 'pending',
-          metadata: { connectedVia: 'oauth' },
+          metadata: { connectedVia: 'oauth', email: connected.account.email },
           createdAt: now,
           modifiedAt: now
         })
@@ -445,7 +606,7 @@ export function registerCalendarHandlers(): void {
           id: primaryCalendarSourceId,
           provider: 'google',
           kind: 'calendar',
-          accountId: accountSourceId,
+          accountId: connected.accountId,
           remoteId: connected.primaryCalendar.remoteId,
           title: connected.primaryCalendar.title,
           timezone: connected.primaryCalendar.timezone,
@@ -484,8 +645,19 @@ export function registerCalendarHandlers(): void {
           }
         }
 
+        if (input.accountId) {
+          return await disconnectGoogleAccount(db, input.provider, input.accountId)
+        }
+
         stopGoogleCalendarSyncRunner()
-        await disconnectGoogleCalendar()
+        const accountIdsToDisconnect = listGoogleAccountIds(db)
+        for (const accountId of accountIdsToDisconnect) {
+          try {
+            await disconnectGoogleCalendar(accountId)
+          } catch (err) {
+            log.warn('Google Calendar disconnect failed', { accountId, err })
+          }
+        }
 
         const providerSources = listCalendarSourceRows(db, { provider: input.provider })
         const sourceIds = providerSources.map((source) => source.id)
@@ -577,7 +749,7 @@ export function registerCalendarHandlers(): void {
           }
         }
 
-        if (!(await hasGoogleCalendarLocalAuth())) {
+        if (!(await hasAnyGoogleCalendarLocalAuth(db))) {
           return {
             success: false,
             status: await buildProviderStatus(db, input.provider),
@@ -601,7 +773,11 @@ export function registerCalendarHandlers(): void {
     createValidatedHandler(
       ListGoogleCalendarsSchema,
       withDb(async (db): Promise<ListGoogleCalendarsResponse> => {
-        return await listGoogleCalendars(db, createGoogleCalendarClient())
+        const accountId = resolveDefaultGoogleAccountId(db)
+        if (!accountId) {
+          return { calendars: [], primary: null, currentDefaultId: null }
+        }
+        return await listGoogleCalendars(db, createGoogleCalendarClient({ accountId }))
       }, 'Failed to list Google calendars')
     )
   )
@@ -613,6 +789,41 @@ export function registerCalendarHandlers(): void {
       withDb((db, input): SetDefaultGoogleCalendarResponse => {
         return setDefaultGoogleCalendar(db, input)
       }, 'Failed to set default Google calendar')
+    )
+  )
+
+  ipcMain.handle(
+    CalendarChannels.invoke.RETRY_GOOGLE_CALENDAR_SOURCE_SYNC,
+    createValidatedHandler(
+      RetryCalendarSourceSyncSchema,
+      withDb(async (db, input): Promise<RetryCalendarSourceSyncResponse> => {
+        const source = getCalendarSourceById(db, input.sourceId)
+        if (!source) {
+          return { success: false, source: null, error: 'Calendar source not found' }
+        }
+        if (source.provider !== 'google' || source.kind !== 'calendar') {
+          return {
+            success: false,
+            source: null,
+            error: 'Only Google calendar sources can be retried'
+          }
+        }
+        try {
+          await syncGoogleCalendarSource(db, source.id)
+        } catch (err) {
+          const updated = getCalendarSourceById(db, source.id)
+          return {
+            success: false,
+            source: updated ? mapCalendarSource(updated) : null,
+            error: err instanceof Error ? err.message : 'Sync failed'
+          }
+        }
+        const refreshed = getCalendarSourceById(db, source.id)
+        return {
+          success: true,
+          source: refreshed ? mapCalendarSource(refreshed) : null
+        }
+      }, 'Failed to retry Google Calendar source sync')
     )
   )
 
@@ -653,4 +864,5 @@ export function unregisterCalendarHandlers(): void {
   ipcMain.removeHandler(CalendarChannels.invoke.LIST_GOOGLE_CALENDARS)
   ipcMain.removeHandler(CalendarChannels.invoke.SET_DEFAULT_GOOGLE_CALENDAR)
   ipcMain.removeHandler(CalendarChannels.invoke.PROMOTE_EXTERNAL_EVENT)
+  ipcMain.removeHandler(CalendarChannels.invoke.RETRY_GOOGLE_CALENDAR_SOURCE_SYNC)
 }

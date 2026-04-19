@@ -92,10 +92,7 @@ export function CalendarEventMetadata(props: CalendarEventMetadataProps): React.
                     </span>
                   )}
                   <span
-                    className={cn(
-                      'rounded-full px-2 py-0.5 text-[10px] font-medium',
-                      badgeStyle
-                    )}
+                    className={cn('rounded-full px-2 py-0.5 text-[10px] font-medium', badgeStyle)}
                   >
                     {label}
                   </span>

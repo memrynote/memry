@@ -33,6 +33,7 @@ vi.mock('../../lib/logger', () => ({
 
 import { GOOGLE_CALENDAR_SCOPE, connectGoogleCalendar, disconnectGoogleCalendar } from './oauth'
 import {
+  LEGACY_DEFAULT_ACCOUNT_ID,
   clearGoogleCalendarTokens,
   getGoogleCalendarTokens,
   hasGoogleCalendarTokens,
@@ -64,7 +65,7 @@ describe('google calendar oauth', () => {
   afterEach(async () => {
     delete process.env.GOOGLE_CALENDAR_CLIENT_ID
     vi.unstubAllGlobals()
-    await clearGoogleCalendarTokens()
+    await clearGoogleCalendarTokens(LEGACY_DEFAULT_ACCOUNT_ID)
   })
 
   it('uses a provider-specific loopback OAuth flow with Calendar scopes and stores tokens in a separate device-local keychain', async () => {
@@ -84,6 +85,23 @@ describe('google calendar oauth', () => {
             expires_in: 3600,
             scope: `openid email profile ${GOOGLE_CALENDAR_SCOPE}`,
             token_type: 'Bearer'
+          }),
+          { status: 200, headers: { 'Content-Type': 'application/json' } }
+        )
+      }
+
+      if (url === 'https://www.googleapis.com/oauth2/v2/userinfo') {
+        expect(init?.headers).toEqual(
+          expect.objectContaining({
+            Authorization: 'Bearer google-access-token'
+          })
+        )
+        return new Response(
+          JSON.stringify({
+            email: 'user@example.com',
+            verified_email: true,
+            name: 'User Example',
+            picture: 'https://example.com/avatar.png'
           }),
           { status: 200, headers: { 'Content-Type': 'application/json' } }
         )
@@ -130,11 +148,13 @@ describe('google calendar oauth', () => {
     })
 
     const result = await connectGoogleCalendar()
-    const tokens = await getGoogleCalendarTokens()
+    const tokens = await getGoogleCalendarTokens('user@example.com')
 
     expect(result).toEqual({
+      accountId: 'user@example.com',
       account: {
         remoteId: 'user@example.com',
+        email: 'user@example.com',
         title: 'User Example',
         timezone: 'Europe/Istanbul'
       },
@@ -150,15 +170,15 @@ describe('google calendar oauth', () => {
       accessToken: 'google-access-token',
       refreshToken: 'google-refresh-token'
     })
-    expect(await hasGoogleCalendarTokens()).toBe(true)
+    expect(await hasGoogleCalendarTokens('user@example.com')).toBe(true)
     expect(keytar.setPassword).toHaveBeenCalledWith(
       'com.memry.calendar.google',
-      expect.stringContaining('access-token'),
+      expect.stringContaining('user@example.com'),
       'google-access-token'
     )
     expect(keytar.setPassword).toHaveBeenCalledWith(
       'com.memry.calendar.google',
-      expect.stringContaining('refresh-token'),
+      expect.stringContaining('user@example.com'),
       'google-refresh-token'
     )
   })
@@ -213,7 +233,7 @@ describe('google calendar oauth', () => {
       })
     )
 
-    expect(await hasGoogleCalendarTokens()).toBe(false)
+    expect(await hasGoogleCalendarTokens(LEGACY_DEFAULT_ACCOUNT_ID)).toBe(false)
   })
 
   it('rejects the callback when the OAuth state does not match', async () => {
@@ -234,34 +254,106 @@ describe('google calendar oauth', () => {
       'Invalid or expired Google Calendar OAuth state'
     )
     expect(fetchMock).not.toHaveBeenCalled()
-    expect(await hasGoogleCalendarTokens()).toBe(false)
+    expect(await hasGoogleCalendarTokens(LEGACY_DEFAULT_ACCOUNT_ID)).toBe(false)
   })
 
   it('stores and clears Google Calendar tokens independently from sync auth keychain entries', async () => {
+    fetchMock.mockImplementation(async () => new Response('', { status: 200 }))
+
     await storeGoogleCalendarTokens({
+      accountId: 'manual@example.com',
       accessToken: 'manual-access-token',
       refreshToken: 'manual-refresh-token'
     })
 
-    expect(await hasGoogleCalendarTokens()).toBe(true)
-    expect(await getGoogleCalendarTokens()).toEqual({
+    expect(await hasGoogleCalendarTokens('manual@example.com')).toBe(true)
+    expect(await getGoogleCalendarTokens('manual@example.com')).toEqual({
       accessToken: 'manual-access-token',
       refreshToken: 'manual-refresh-token'
     })
 
-    await disconnectGoogleCalendar()
+    await disconnectGoogleCalendar('manual@example.com')
 
-    expect(await getGoogleCalendarTokens()).toEqual({
+    expect(await getGoogleCalendarTokens('manual@example.com')).toEqual({
       accessToken: null,
       refreshToken: null
     })
     expect(keytar.deletePassword).toHaveBeenCalledWith(
       'com.memry.calendar.google',
-      expect.stringContaining('access-token')
+      expect.stringContaining('manual@example.com')
     )
-    expect(keytar.deletePassword).toHaveBeenCalledWith(
-      'com.memry.calendar.google',
-      expect.stringContaining('refresh-token')
-    )
+  })
+
+  it('connecting a second Google account stores tokens under a distinct accountId without overwriting the first', async () => {
+    let userInfoCalls = 0
+    fetchMock.mockImplementation(async (input) => {
+      const url = String(input)
+
+      if (url === 'https://oauth2.googleapis.com/token') {
+        return new Response(
+          JSON.stringify({
+            access_token: userInfoCalls === 0 ? 'first-access' : 'second-access',
+            refresh_token: userInfoCalls === 0 ? 'first-refresh' : 'second-refresh',
+            expires_in: 3600,
+            scope: `openid email profile ${GOOGLE_CALENDAR_SCOPE}`,
+            token_type: 'Bearer'
+          }),
+          { status: 200, headers: { 'Content-Type': 'application/json' } }
+        )
+      }
+
+      if (url === 'https://www.googleapis.com/oauth2/v2/userinfo') {
+        const email = userInfoCalls === 0 ? 'alice@example.com' : 'bob@example.com'
+        userInfoCalls++
+        return new Response(
+          JSON.stringify({ email, verified_email: true, name: email.split('@')[0] }),
+          { status: 200, headers: { 'Content-Type': 'application/json' } }
+        )
+      }
+
+      if (url === 'https://www.googleapis.com/calendar/v3/users/me/calendarList/primary') {
+        const email = userInfoCalls === 1 ? 'alice@example.com' : 'bob@example.com'
+        return new Response(
+          JSON.stringify({
+            id: email,
+            summary: email,
+            timeZone: 'UTC',
+            primary: true
+          }),
+          { status: 200, headers: { 'Content-Type': 'application/json' } }
+        )
+      }
+
+      throw new Error(`Unexpected fetch call: ${url}`)
+    })
+
+    mockOpenExternal.mockImplementation(async (authUrl: string) => {
+      const parsed = new URL(authUrl)
+      const redirectUri = parsed.searchParams.get('redirect_uri')
+      const state = parsed.searchParams.get('state')
+      setTimeout(() => {
+        http.get(`${redirectUri}?code=google-auth-code&state=${state}`)
+      }, 0)
+    })
+
+    const first = await connectGoogleCalendar()
+    const second = await connectGoogleCalendar()
+
+    expect(first.accountId).toBe('alice@example.com')
+    expect(second.accountId).toBe('bob@example.com')
+
+    expect(await getGoogleCalendarTokens('alice@example.com')).toEqual({
+      accessToken: 'first-access',
+      refreshToken: 'first-refresh'
+    })
+    expect(await getGoogleCalendarTokens('bob@example.com')).toEqual({
+      accessToken: 'second-access',
+      refreshToken: 'second-refresh'
+    })
+
+    await disconnectGoogleCalendar('alice@example.com')
+
+    expect(await hasGoogleCalendarTokens('alice@example.com')).toBe(false)
+    expect(await hasGoogleCalendarTokens('bob@example.com')).toBe(true)
   })
 })

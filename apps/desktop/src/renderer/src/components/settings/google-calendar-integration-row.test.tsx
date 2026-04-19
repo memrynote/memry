@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { screen, waitFor } from '@testing-library/react'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { renderWithProviders, userEvent } from '@tests/utils/render'
 import { IntegrationList } from './integration-list'
 import type { CalendarProviderStatus, CalendarSourceRecord } from '@/services/calendar-service'
@@ -10,14 +10,16 @@ const {
   mockDisconnectGoogleCalendarProvider,
   mockRefreshGoogleCalendarProvider,
   mockListSources,
-  mockUpdateSourceSelection
+  mockUpdateSourceSelection,
+  mockRetryGoogleCalendarSourceSync
 } = vi.hoisted(() => ({
   mockGetGoogleCalendarStatus: vi.fn(),
   mockConnectGoogleCalendarProvider: vi.fn(),
   mockDisconnectGoogleCalendarProvider: vi.fn(),
   mockRefreshGoogleCalendarProvider: vi.fn(),
   mockListSources: vi.fn(),
-  mockUpdateSourceSelection: vi.fn()
+  mockUpdateSourceSelection: vi.fn(),
+  mockRetryGoogleCalendarSourceSync: vi.fn()
 }))
 
 vi.mock('@/services/calendar-service', () => ({
@@ -25,6 +27,7 @@ vi.mock('@/services/calendar-service', () => ({
   connectGoogleCalendarProvider: mockConnectGoogleCalendarProvider,
   disconnectGoogleCalendarProvider: mockDisconnectGoogleCalendarProvider,
   refreshGoogleCalendarProvider: mockRefreshGoogleCalendarProvider,
+  retryGoogleCalendarSourceSync: mockRetryGoogleCalendarSourceSync,
   updateGoogleCalendarSourceSelection: mockUpdateSourceSelection,
   onCalendarChanged: vi.fn(() => () => {}),
   calendarService: {
@@ -45,6 +48,7 @@ const DISCONNECTED_STATUS: CalendarProviderStatus = {
   connected: false,
   hasLocalAuth: false,
   account: null,
+  accounts: [],
   calendars: {
     total: 0,
     selected: 0,
@@ -58,12 +62,41 @@ const CONNECTED_STATUS: CalendarProviderStatus = {
   connected: true,
   hasLocalAuth: true,
   account: { id: 'google-account-1', title: 'h4yfans@gmail.com' },
+  accounts: [
+    {
+      accountId: 'h4yfans@gmail.com',
+      email: 'h4yfans@gmail.com',
+      status: 'connected',
+      lastSyncedAt: '2026-04-12T08:00:00.000Z',
+      lastError: null
+    }
+  ],
   calendars: {
     total: 3,
     selected: 2,
     memryManaged: 1
   },
   lastSyncedAt: '2026-04-12T08:00:00.000Z'
+}
+
+const TWO_ACCOUNT_STATUS: CalendarProviderStatus = {
+  ...CONNECTED_STATUS,
+  accounts: [
+    {
+      accountId: 'alice@example.com',
+      email: 'alice@example.com',
+      status: 'connected',
+      lastSyncedAt: '2026-04-12T08:00:00.000Z',
+      lastError: null
+    },
+    {
+      accountId: 'bob@example.com',
+      email: 'bob@example.com',
+      status: 'error',
+      lastSyncedAt: '2026-04-11T22:30:00.000Z',
+      lastError: 'token revoked by Google'
+    }
+  ]
 }
 
 const CONNECTED_SOURCES: CalendarSourceRecord[] = [
@@ -161,6 +194,7 @@ describe('Google Calendar integration row', () => {
     mockRefreshGoogleCalendarProvider.mockReset()
     mockListSources.mockReset()
     mockUpdateSourceSelection.mockReset()
+    mockRetryGoogleCalendarSourceSync.mockReset()
   })
 
   it('starts the Google Calendar connect flow from Settings', async () => {
@@ -226,6 +260,62 @@ describe('Google Calendar integration row', () => {
         screen.getByRole('heading', { name: /Which calendar should new Memry events go to/i })
       ).toBeInTheDocument()
     })
+  })
+
+  it('shows a Retry button + lastError on calendar sources in error state and fires retry IPC (M6 T6)', async () => {
+    const erroredSources: CalendarSourceRecord[] = CONNECTED_SOURCES.map((source) =>
+      source.id === 'google-calendar-work'
+        ? { ...source, syncStatus: 'error', lastError: 'Quota exceeded for project 123' }
+        : source
+    )
+
+    mockGetGoogleCalendarStatus.mockResolvedValue(CONNECTED_STATUS)
+    mockListSources.mockResolvedValue({ sources: erroredSources })
+    mockRetryGoogleCalendarSourceSync.mockResolvedValue({
+      success: true,
+      source: { ...erroredSources[2], syncStatus: 'ok', lastError: null }
+    })
+
+    renderWithProviders(<IntegrationList />)
+
+    await waitFor(() => expect(screen.getByText('Work')).toBeInTheDocument())
+
+    const errorRow = screen.getByTestId('calendar-source-row-google-calendar-work')
+    expect(errorRow).toHaveAttribute('data-sync-status', 'error')
+    expect(screen.getByTestId('calendar-source-error-google-calendar-work')).toHaveTextContent(
+      'Quota exceeded for project 123'
+    )
+
+    fireEvent.pointerDown(screen.getByTestId('calendar-source-retry-google-calendar-work'), {
+      button: 0
+    })
+
+    await waitFor(() => {
+      expect(mockRetryGoogleCalendarSourceSync).toHaveBeenCalledWith({
+        sourceId: 'google-calendar-work'
+      })
+    })
+  })
+
+  it('renders one chip per connected Google account with status + email (M6 T3)', async () => {
+    mockGetGoogleCalendarStatus.mockResolvedValue(TWO_ACCOUNT_STATUS)
+    mockListSources.mockResolvedValue({ sources: CONNECTED_SOURCES })
+    vi.mocked(window.api.settings.getCalendarGoogleSettings).mockResolvedValue({
+      defaultTargetCalendarId: 'primary@example.com',
+      onboardingCompleted: true,
+      promoteConfirmDismissed: false
+    })
+
+    renderWithProviders(<IntegrationList />)
+
+    await waitFor(() => expect(screen.getByText('alice@example.com')).toBeInTheDocument())
+    expect(screen.getByText('bob@example.com')).toBeInTheDocument()
+
+    const aliceChip = screen.getByTestId('calendar-account-chip-alice@example.com')
+    const bobChip = screen.getByTestId('calendar-account-chip-bob@example.com')
+    expect(aliceChip).toHaveAttribute('data-account-status', 'connected')
+    expect(bobChip).toHaveAttribute('data-account-status', 'error')
+    expect(bobChip).toHaveTextContent('token revoked by Google')
   })
 
   it('#given an existing Google connection + onboardingCompleted=true #when the row mounts #then the onboarding dialog stays closed', async () => {

@@ -29,7 +29,11 @@ vi.mock('../../lib/logger', () => ({
 }))
 
 import { createGoogleCalendarClient } from './client'
-import { clearGoogleCalendarTokens, storeGoogleCalendarTokens } from './keychain'
+import {
+  LEGACY_DEFAULT_ACCOUNT_ID,
+  clearGoogleCalendarTokens,
+  storeGoogleCalendarTokens
+} from './keychain'
 
 describe('google calendar client — push channels (Task 7)', () => {
   const keytarStore = new Map<string, string>()
@@ -53,6 +57,7 @@ describe('google calendar client — push channels (Task 7)', () => {
     })
 
     await storeGoogleCalendarTokens({
+      accountId: LEGACY_DEFAULT_ACCOUNT_ID,
       accessToken: 'seeded-access-token',
       refreshToken: 'seeded-refresh-token'
     })
@@ -61,7 +66,7 @@ describe('google calendar client — push channels (Task 7)', () => {
   afterEach(async () => {
     delete process.env.GOOGLE_CALENDAR_CLIENT_ID
     vi.unstubAllGlobals()
-    await clearGoogleCalendarTokens()
+    await clearGoogleCalendarTokens(LEGACY_DEFAULT_ACCOUNT_ID)
   })
 
   describe('watchCalendar', () => {
@@ -98,7 +103,7 @@ describe('google calendar client — push channels (Task 7)', () => {
         )
       })
 
-      const client = createGoogleCalendarClient()
+      const client = createGoogleCalendarClient({ accountId: LEGACY_DEFAULT_ACCOUNT_ID })
       const result = await client.watchCalendar({
         calendarId: 'primary@group.calendar.google.com',
         channelId: 'channel-abc',
@@ -124,7 +129,7 @@ describe('google calendar client — push channels (Task 7)', () => {
         )
       )
 
-      const client = createGoogleCalendarClient()
+      const client = createGoogleCalendarClient({ accountId: LEGACY_DEFAULT_ACCOUNT_ID })
       await expect(
         client.watchCalendar({
           calendarId: 'primary',
@@ -148,7 +153,7 @@ describe('google calendar client — push channels (Task 7)', () => {
         return new Response(null, { status: 204 })
       })
 
-      const client = createGoogleCalendarClient()
+      const client = createGoogleCalendarClient({ accountId: LEGACY_DEFAULT_ACCOUNT_ID })
       await expect(
         client.stopChannel({ channelId: 'channel-abc', resourceId: 'resource-123' })
       ).resolves.toBeUndefined()
@@ -162,7 +167,7 @@ describe('google calendar client — push channels (Task 7)', () => {
         )
       )
 
-      const client = createGoogleCalendarClient()
+      const client = createGoogleCalendarClient({ accountId: LEGACY_DEFAULT_ACCOUNT_ID })
       await expect(
         client.stopChannel({ channelId: 'stale', resourceId: 'stale-resource' })
       ).resolves.toBeUndefined()
@@ -171,7 +176,7 @@ describe('google calendar client — push channels (Task 7)', () => {
     it('throws for non-404 errors (e.g. 500)', async () => {
       fetchMock.mockResolvedValue(new Response('oops', { status: 500 }))
 
-      const client = createGoogleCalendarClient()
+      const client = createGoogleCalendarClient({ accountId: LEGACY_DEFAULT_ACCOUNT_ID })
       await expect(client.stopChannel({ channelId: 'c', resourceId: 'r' })).rejects.toThrow()
     })
   })
@@ -204,7 +209,7 @@ describe('google calendar client — push channels (Task 7)', () => {
     it('#given an all-day recurring exception #when upserted #then emits originalStartTime as { date } (no dateTime)', async () => {
       const captured = captureBody()
 
-      const client = createGoogleCalendarClient()
+      const client = createGoogleCalendarClient({ accountId: LEGACY_DEFAULT_ACCOUNT_ID })
       await client.upsertEvent({
         calendarId: 'primary',
         eventId: null,
@@ -233,7 +238,7 @@ describe('google calendar client — push channels (Task 7)', () => {
     it('#given a timed recurring exception #when upserted #then emits originalStartTime as { dateTime, timeZone }', async () => {
       const captured = captureBody()
 
-      const client = createGoogleCalendarClient()
+      const client = createGoogleCalendarClient({ accountId: LEGACY_DEFAULT_ACCOUNT_ID })
       await client.upsertEvent({
         calendarId: 'primary',
         eventId: null,
