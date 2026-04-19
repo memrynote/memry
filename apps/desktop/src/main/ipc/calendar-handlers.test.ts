@@ -19,6 +19,7 @@ const mockHasAnyGoogleCalendarLocalAuth = vi.fn()
 const mockListGoogleAccountIds = vi.fn(() => [] as string[])
 const mockResolveDefaultGoogleAccountId = vi.fn(() => null as string | null)
 const mockSyncGoogleCalendarNow = vi.fn()
+const mockSyncGoogleCalendarSource = vi.fn()
 const mockStartGoogleCalendarSyncRunner = vi.fn(async () => {})
 const mockStopGoogleCalendarSyncRunner = vi.fn()
 const mockIsMemryUserSignedIn = vi.fn(async () => true)
@@ -65,6 +66,7 @@ vi.mock('../calendar/google/oauth', () => ({
 
 vi.mock('../calendar/google/sync-service', () => ({
   syncGoogleCalendarNow: (...args: unknown[]) => mockSyncGoogleCalendarNow(...args),
+  syncGoogleCalendarSource: (...args: unknown[]) => mockSyncGoogleCalendarSource(...args),
   startGoogleCalendarSyncRunner: (...args: unknown[]) => mockStartGoogleCalendarSyncRunner(...args),
   stopGoogleCalendarSyncRunner: (...args: unknown[]) => mockStopGoogleCalendarSyncRunner(...args)
 }))
@@ -641,6 +643,49 @@ describe('calendar-handlers', () => {
           lastError: 'token revoked by Google'
         }
       ])
+    )
+  })
+
+  it('RETRY_GOOGLE_CALENDAR_SOURCE_SYNC fires syncGoogleCalendarSource and returns the refreshed source (M6 T6)', async () => {
+    registerCalendarHandlers()
+
+    db.run(sql`
+      INSERT INTO calendar_sources (
+        id, provider, kind, account_id, remote_id, title, timezone,
+        is_selected, sync_status, last_error, created_at, modified_at
+      ) VALUES (
+        ${'google-calendar:work'}, ${'google'}, ${'calendar'},
+        ${'alice@example.com'}, ${'work@cal'}, ${'Work'}, ${'UTC'},
+        ${1}, ${'error'}, ${'token expired'},
+        ${'2026-04-15T10:00:00.000Z'}, ${'2026-04-15T10:00:00.000Z'}
+      )
+    `)
+
+    mockSyncGoogleCalendarSource.mockImplementation(async (db, sourceId) => {
+      // Simulate a successful sync clearing the error.
+      db.run(sql`
+        UPDATE calendar_sources
+        SET sync_status = ${'ok'}, last_error = NULL, last_synced_at = ${'2026-04-19T10:00:00.000Z'}
+        WHERE id = ${sourceId}
+      `)
+    })
+
+    const result = await invokeHandler(CalendarChannels.invoke.RETRY_GOOGLE_CALENDAR_SOURCE_SYNC, {
+      sourceId: 'google-calendar:work'
+    })
+
+    expect(mockSyncGoogleCalendarSource).toHaveBeenCalledWith(
+      expect.anything(),
+      'google-calendar:work'
+    )
+    expect(result.success).toBe(true)
+    expect(result.source).toEqual(
+      expect.objectContaining({
+        id: 'google-calendar:work',
+        syncStatus: 'ok',
+        lastError: null,
+        lastSyncedAt: '2026-04-19T10:00:00.000Z'
+      })
     )
   })
 

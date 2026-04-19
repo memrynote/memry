@@ -495,6 +495,71 @@ describe('google calendar sync service', () => {
     })
   })
 
+  it('writes truncated lastError + syncStatus="error" when listEvents throws (M6 T6)', async () => {
+    seedGoogleCalendarSource({
+      id: 'google-calendar:selected',
+      remoteId: 'remote-selected-calendar',
+      title: 'Work',
+      isMemryManaged: false
+    })
+
+    const longMessage = 'x'.repeat(500)
+    const client = {
+      listEvents: vi.fn(async () => {
+        throw new Error(longMessage)
+      })
+    }
+
+    await expect(
+      syncGoogleCalendarSource(db, 'google-calendar:selected', { client })
+    ).rejects.toThrow()
+
+    const failedSource = db
+      .select()
+      .from(calendarSources)
+      .where(eq(calendarSources.id, 'google-calendar:selected'))
+      .get()
+
+    expect(failedSource).toMatchObject({
+      syncStatus: 'error'
+    })
+    expect(failedSource?.lastError).toBeTruthy()
+    // Truncated to 200 chars per the M6 T6 default.
+    expect(failedSource?.lastError?.length).toBeLessThanOrEqual(200)
+    expect(failedSource?.lastError?.startsWith('xxxxx')).toBe(true)
+  })
+
+  it('clears lastError on a successful sync after a previous error (M6 T6)', async () => {
+    seedGoogleCalendarSource({
+      id: 'google-calendar:selected',
+      remoteId: 'remote-selected-calendar',
+      title: 'Work',
+      isMemryManaged: false,
+      syncStatus: 'error',
+      lastError: 'previous failure message'
+    })
+
+    const client = {
+      listEvents: vi.fn(async () => ({
+        nextSyncCursor: 'cursor-3',
+        events: []
+      }))
+    }
+
+    await syncGoogleCalendarSource(db, 'google-calendar:selected', { client })
+
+    const refreshed = db
+      .select()
+      .from(calendarSources)
+      .where(eq(calendarSources.id, 'google-calendar:selected'))
+      .get()
+
+    expect(refreshed).toMatchObject({
+      syncStatus: 'ok',
+      lastError: null
+    })
+  })
+
   it('reconciles local source mutations by upserting scheduled items and deleting cleared bindings', async () => {
     seedGoogleCalendarSource()
 

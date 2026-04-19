@@ -93,6 +93,18 @@ export const CalendarProviderRequestSchema = z.object({
   accountId: z.string().min(1).optional()
 })
 
+export const RetryCalendarSourceSyncSchema = z.object({
+  sourceId: z.string().min(1)
+})
+
+export type RetryCalendarSourceSyncInput = z.infer<typeof RetryCalendarSourceSyncSchema>
+
+export interface RetryCalendarSourceSyncResponse {
+  success: boolean
+  source: CalendarSourceRecord | null
+  error?: string
+}
+
 export type CalendarSourceKind = z.infer<typeof CalendarSourceKindSchema>
 export type CalendarSourceSyncStatus = z.infer<typeof CalendarSourceSyncStatusSchema>
 export type CalendarProjectionSourceType = z.infer<typeof CalendarProjectionSourceTypeSchema>
@@ -185,6 +197,7 @@ export interface CalendarSourceRecord {
   syncCursor: string | null
   syncStatus: CalendarSourceSyncStatus
   lastSyncedAt: string | null
+  lastError: string | null
   metadata: Record<string, unknown> | null
   archivedAt: string | null
   syncedAt: string | null

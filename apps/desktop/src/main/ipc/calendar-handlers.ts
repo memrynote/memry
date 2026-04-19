@@ -8,6 +8,7 @@ import {
   ListCalendarSourcesSchema,
   ListGoogleCalendarsSchema,
   PromoteExternalEventSchema,
+  RetryCalendarSourceSyncSchema,
   SetDefaultGoogleCalendarSchema,
   UpdateCalendarSourceSelectionSchema,
   CalendarProviderRequestSchema,
@@ -27,6 +28,7 @@ import {
   type CalendarSourceRecord,
   type ListGoogleCalendarsResponse,
   type PromoteExternalEventResponse,
+  type RetryCalendarSourceSyncResponse,
   type SetDefaultGoogleCalendarResponse
 } from '@memry/contracts/calendar-api'
 import { calendarEvents } from '@memry/db-schema/schema/calendar-events'
@@ -54,7 +56,8 @@ import { getCalendarRangeProjection } from '../calendar/projection'
 import {
   startGoogleCalendarSyncRunner,
   stopGoogleCalendarSyncRunner,
-  syncGoogleCalendarNow
+  syncGoogleCalendarNow,
+  syncGoogleCalendarSource
 } from '../calendar/google/sync-service'
 import { listGoogleCalendars, setDefaultGoogleCalendar } from '../calendar/google/onboarding'
 import { createGoogleCalendarClient } from '../calendar/google/client'
@@ -127,6 +130,7 @@ function mapCalendarSource(row: typeof calendarSources.$inferSelect): CalendarSo
     syncCursor: row.syncCursor ?? null,
     syncStatus: row.syncStatus,
     lastSyncedAt: row.lastSyncedAt ?? null,
+    lastError: row.lastError ?? null,
     metadata: (row.metadata as Record<string, unknown> | null) ?? null,
     archivedAt: row.archivedAt ?? null,
     syncedAt: row.syncedAt ?? null,
@@ -159,7 +163,7 @@ async function buildProviderAccountStatus(
     email: metadata?.email ?? source.title,
     status,
     lastSyncedAt: source.lastSyncedAt ?? null,
-    lastError: metadata?.lastError ?? null
+    lastError: source.lastError ?? metadata?.lastError ?? null
   }
 }
 
@@ -789,6 +793,41 @@ export function registerCalendarHandlers(): void {
   )
 
   ipcMain.handle(
+    CalendarChannels.invoke.RETRY_GOOGLE_CALENDAR_SOURCE_SYNC,
+    createValidatedHandler(
+      RetryCalendarSourceSyncSchema,
+      withDb(async (db, input): Promise<RetryCalendarSourceSyncResponse> => {
+        const source = getCalendarSourceById(db, input.sourceId)
+        if (!source) {
+          return { success: false, source: null, error: 'Calendar source not found' }
+        }
+        if (source.provider !== 'google' || source.kind !== 'calendar') {
+          return {
+            success: false,
+            source: null,
+            error: 'Only Google calendar sources can be retried'
+          }
+        }
+        try {
+          await syncGoogleCalendarSource(db, source.id)
+        } catch (err) {
+          const updated = getCalendarSourceById(db, source.id)
+          return {
+            success: false,
+            source: updated ? mapCalendarSource(updated) : null,
+            error: err instanceof Error ? err.message : 'Sync failed'
+          }
+        }
+        const refreshed = getCalendarSourceById(db, source.id)
+        return {
+          success: true,
+          source: refreshed ? mapCalendarSource(refreshed) : null
+        }
+      }, 'Failed to retry Google Calendar source sync')
+    )
+  )
+
+  ipcMain.handle(
     CalendarChannels.invoke.PROMOTE_EXTERNAL_EVENT,
     createValidatedHandler(
       PromoteExternalEventSchema,
@@ -825,4 +864,5 @@ export function unregisterCalendarHandlers(): void {
   ipcMain.removeHandler(CalendarChannels.invoke.LIST_GOOGLE_CALENDARS)
   ipcMain.removeHandler(CalendarChannels.invoke.SET_DEFAULT_GOOGLE_CALENDAR)
   ipcMain.removeHandler(CalendarChannels.invoke.PROMOTE_EXTERNAL_EVENT)
+  ipcMain.removeHandler(CalendarChannels.invoke.RETRY_GOOGLE_CALENDAR_SOURCE_SYNC)
 }

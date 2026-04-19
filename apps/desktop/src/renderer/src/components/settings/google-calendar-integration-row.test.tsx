@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { screen, waitFor } from '@testing-library/react'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { renderWithProviders, userEvent } from '@tests/utils/render'
 import { IntegrationList } from './integration-list'
 import type { CalendarProviderStatus, CalendarSourceRecord } from '@/services/calendar-service'
@@ -10,14 +10,16 @@ const {
   mockDisconnectGoogleCalendarProvider,
   mockRefreshGoogleCalendarProvider,
   mockListSources,
-  mockUpdateSourceSelection
+  mockUpdateSourceSelection,
+  mockRetryGoogleCalendarSourceSync
 } = vi.hoisted(() => ({
   mockGetGoogleCalendarStatus: vi.fn(),
   mockConnectGoogleCalendarProvider: vi.fn(),
   mockDisconnectGoogleCalendarProvider: vi.fn(),
   mockRefreshGoogleCalendarProvider: vi.fn(),
   mockListSources: vi.fn(),
-  mockUpdateSourceSelection: vi.fn()
+  mockUpdateSourceSelection: vi.fn(),
+  mockRetryGoogleCalendarSourceSync: vi.fn()
 }))
 
 vi.mock('@/services/calendar-service', () => ({
@@ -25,6 +27,7 @@ vi.mock('@/services/calendar-service', () => ({
   connectGoogleCalendarProvider: mockConnectGoogleCalendarProvider,
   disconnectGoogleCalendarProvider: mockDisconnectGoogleCalendarProvider,
   refreshGoogleCalendarProvider: mockRefreshGoogleCalendarProvider,
+  retryGoogleCalendarSourceSync: mockRetryGoogleCalendarSourceSync,
   updateGoogleCalendarSourceSelection: mockUpdateSourceSelection,
   onCalendarChanged: vi.fn(() => () => {}),
   calendarService: {
@@ -191,6 +194,7 @@ describe('Google Calendar integration row', () => {
     mockRefreshGoogleCalendarProvider.mockReset()
     mockListSources.mockReset()
     mockUpdateSourceSelection.mockReset()
+    mockRetryGoogleCalendarSourceSync.mockReset()
   })
 
   it('starts the Google Calendar connect flow from Settings', async () => {
@@ -255,6 +259,39 @@ describe('Google Calendar integration row', () => {
       expect(
         screen.getByRole('heading', { name: /Which calendar should new Memry events go to/i })
       ).toBeInTheDocument()
+    })
+  })
+
+  it('shows a Retry button + lastError on calendar sources in error state and fires retry IPC (M6 T6)', async () => {
+    const erroredSources: CalendarSourceRecord[] = CONNECTED_SOURCES.map((source) =>
+      source.id === 'google-calendar-work'
+        ? { ...source, syncStatus: 'error', lastError: 'Quota exceeded for project 123' }
+        : source
+    )
+
+    mockGetGoogleCalendarStatus.mockResolvedValue(CONNECTED_STATUS)
+    mockListSources.mockResolvedValue({ sources: erroredSources })
+    mockRetryGoogleCalendarSourceSync.mockResolvedValue({
+      success: true,
+      source: { ...erroredSources[2], syncStatus: 'ok', lastError: null }
+    })
+
+    renderWithProviders(<IntegrationList />)
+
+    await waitFor(() => expect(screen.getByText('Work')).toBeInTheDocument())
+
+    const errorRow = screen.getByTestId('calendar-source-row-google-calendar-work')
+    expect(errorRow).toHaveAttribute('data-sync-status', 'error')
+    expect(screen.getByTestId('calendar-source-error-google-calendar-work')).toHaveTextContent(
+      'Quota exceeded for project 123'
+    )
+
+    fireEvent.click(screen.getByTestId('calendar-source-retry-google-calendar-work'))
+
+    await waitFor(() => {
+      expect(mockRetryGoogleCalendarSourceSync).toHaveBeenCalledWith({
+        sourceId: 'google-calendar-work'
+      })
     })
   })
 

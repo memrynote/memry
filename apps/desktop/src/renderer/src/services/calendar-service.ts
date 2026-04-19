@@ -21,6 +21,8 @@ import type {
   ListGoogleCalendarsResponse,
   PromoteExternalEventInput,
   PromoteExternalEventResponse,
+  RetryCalendarSourceSyncInput,
+  RetryCalendarSourceSyncResponse,
   SetDefaultGoogleCalendarInput,
   SetDefaultGoogleCalendarResponse,
   UpdateCalendarSourceSelectionInput,
@@ -51,6 +53,8 @@ export type {
   ListGoogleCalendarsResponse,
   PromoteExternalEventInput,
   PromoteExternalEventResponse,
+  RetryCalendarSourceSyncInput,
+  RetryCalendarSourceSyncResponse,
   SetDefaultGoogleCalendarInput,
   SetDefaultGoogleCalendarResponse,
   UpdateCalendarSourceSelectionInput,
@@ -101,4 +105,10 @@ export function promoteExternalCalendarEvent(
   input: PromoteExternalEventInput
 ): Promise<PromoteExternalEventResponse> {
   return calendarService.promoteExternalEvent(input)
+}
+
+export function retryGoogleCalendarSourceSync(
+  input: RetryCalendarSourceSyncInput
+): Promise<RetryCalendarSourceSyncResponse> {
+  return calendarService.retryGoogleCalendarSourceSync(input)
 }
