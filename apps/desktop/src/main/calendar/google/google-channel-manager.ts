@@ -3,8 +3,11 @@ import type { GoogleCalendarClient } from '../types'
 
 const log = createLogger('Calendar:GoogleChannelManager')
 
+type GoogleChannelClient = Pick<GoogleCalendarClient, 'watchCalendar' | 'stopChannel'>
+
 export interface GoogleChannelManagerDeps {
-  client: Pick<GoogleCalendarClient, 'watchCalendar' | 'stopChannel'>
+  client: GoogleChannelClient
+  resolveClient?(input: { sourceId: string; calendarId: string }): GoogleChannelClient
   registerOnServer(input: {
     channelId: string
     sourceId: string
@@ -38,6 +41,7 @@ interface ChannelState {
   resourceId: string
   expirationMs: number
   rotationTimer: ReturnType<typeof setTimeout>
+  client: GoogleChannelClient
 }
 
 export function createGoogleChannelManager(deps: GoogleChannelManagerDeps): GoogleChannelManager {
@@ -54,10 +58,11 @@ export function createGoogleChannelManager(deps: GoogleChannelManagerDeps): Goog
     const nowMs = (deps.now ?? Date.now)()
     const expirationMs = nowMs + deps.ttlSeconds * 1000
     const expiresAt = Math.floor(nowMs / 1000) + deps.ttlSeconds
+    const client = deps.resolveClient?.({ sourceId, calendarId }) ?? deps.client
 
     await deps.registerOnServer({ channelId, sourceId, tokenHash, expiresAt })
 
-    const watchResult = await deps.client.watchCalendar({
+    const watchResult = await client.watchCalendar({
       calendarId,
       channelId,
       token: plaintextToken,
@@ -81,7 +86,8 @@ export function createGoogleChannelManager(deps: GoogleChannelManagerDeps): Goog
       channelId,
       resourceId: watchResult.resourceId,
       expirationMs: watchResult.expiration ?? expirationMs,
-      rotationTimer
+      rotationTimer,
+      client
     }
   }
 
@@ -118,7 +124,7 @@ export function createGoogleChannelManager(deps: GoogleChannelManagerDeps): Goog
     states.delete(sourceId)
 
     try {
-      await deps.client.stopChannel({
+      await state.client.stopChannel({
         channelId: state.channelId,
         resourceId: state.resourceId
       })

@@ -44,11 +44,13 @@ vi.mock('../../sync/auth-state', () => ({
   isMemryUserSignedIn: vi.fn(async () => true)
 }))
 
-import { hasGoogleCalendarConnection, hasGoogleCalendarLocalAuth } from './oauth'
+import { hasGoogleCalendarConnection, hasGoogleCalendarLocalAuth, listGoogleAccountIds } from './oauth'
+import * as googleClientModule from './client'
 import { isMemryUserSignedIn } from '../../sync/auth-state'
 import {
   applyGoogleCalendarDelete,
   applyGoogleCalendarWriteback,
+  ensureGoogleCalendarSourceSelected,
   syncLocalSourceToGoogleCalendar,
   pushSourceToGoogleCalendar,
   syncGoogleCalendarNow,
@@ -85,7 +87,7 @@ describe('google calendar sync service', () => {
         id: 'google-calendar:memry',
         provider: 'google',
         kind: 'calendar',
-        accountId: 'google-account:1',
+        accountId: 'test-account@example.com',
         remoteId: 'remote-memry-calendar',
         title: 'Memry',
         timezone: 'UTC',
@@ -771,7 +773,7 @@ describe('google calendar sync service', () => {
         id: 'google-calendar:selected',
         provider: 'google',
         kind: 'calendar',
-        accountId: 'google-account:1',
+        accountId: 'test-account@example.com',
         remoteId: 'remote-selected-calendar',
         title: 'Personal',
         timezone: 'UTC',
@@ -1489,6 +1491,88 @@ describe('google calendar sync service', () => {
       }
     }
 
+    it('polls each selected calendar with the owning account client when multiple accounts exist', async () => {
+      const aliceAccountId = 'alice@example.com'
+      const bobAccountId = 'bob@example.com'
+
+      seedGoogleCalendarSource({
+        id: 'google-calendar:alice-work',
+        accountId: aliceAccountId,
+        remoteId: 'alice-work',
+        title: 'Alice Work',
+        isMemryManaged: false
+      })
+      seedGoogleCalendarSource({
+        id: 'google-calendar:bob-work',
+        accountId: bobAccountId,
+        remoteId: 'bob-work',
+        title: 'Bob Work',
+        isMemryManaged: false
+      })
+
+      vi.mocked(listGoogleAccountIds).mockReturnValueOnce([aliceAccountId, bobAccountId])
+
+      const aliceClient = {
+        listCalendars: vi.fn(async () => [
+          {
+            id: 'alice-memry',
+            title: 'Memry',
+            timezone: 'UTC',
+            color: null,
+            isPrimary: false
+          }
+        ]),
+        createCalendar: vi.fn(),
+        listEvents: vi.fn(async () => ({ nextSyncCursor: 'alice-cursor', events: [] }))
+      }
+      const bobClient = {
+        listCalendars: vi.fn(async () => [
+          {
+            id: 'bob-memry',
+            title: 'Memry',
+            timezone: 'UTC',
+            color: null,
+            isPrimary: false
+          }
+        ]),
+        createCalendar: vi.fn(),
+        listEvents: vi.fn(async () => ({ nextSyncCursor: 'bob-cursor', events: [] }))
+      }
+      const clientByAccountId = {
+        [aliceAccountId]: aliceClient,
+        [bobAccountId]: bobClient
+      }
+
+      const clientSpy = vi
+        .spyOn(googleClientModule, 'createGoogleCalendarClient')
+        .mockImplementation(({ accountId }) => clientByAccountId[accountId] as never)
+
+      try {
+        await syncGoogleCalendarNow(db)
+      } finally {
+        clientSpy.mockRestore()
+      }
+
+      expect(aliceClient.listEvents).toHaveBeenCalledWith(
+        expect.objectContaining({ calendarId: 'alice-work' })
+      )
+      expect(bobClient.listEvents).toHaveBeenCalledWith(
+        expect.objectContaining({ calendarId: 'bob-work' })
+      )
+
+      const memrySources = db
+        .select()
+        .from(calendarSources)
+        .all()
+        .filter((source) => source.isMemryManaged)
+      expect(memrySources).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ accountId: aliceAccountId, remoteId: 'alice-memry' }),
+          expect.objectContaining({ accountId: bobAccountId, remoteId: 'bob-memry' })
+        ])
+      )
+    })
+
     it('skips all Google API calls when Memry user is not signed in', async () => {
       vi.mocked(isMemryUserSignedIn).mockResolvedValue(false)
       const client = buildClient()
@@ -1507,6 +1591,35 @@ describe('google calendar sync service', () => {
 
       expect(client.listCalendars).not.toHaveBeenCalled()
       expect(client.listEvents).not.toHaveBeenCalled()
+    })
+  })
+
+  it('stores the routed accountId when selecting an existing Google calendar source', async () => {
+    seedGoogleCalendarSource({
+      id: 'google-calendar:team',
+      accountId: 'alice@example.com',
+      remoteId: 'team@group.calendar.google.com',
+      title: 'Team',
+      isMemryManaged: false,
+      isSelected: false
+    })
+
+    const client = {
+      listCalendars: vi.fn(async () => [])
+    }
+
+    const saved = await ensureGoogleCalendarSourceSelected(
+      db,
+      client,
+      'team@group.calendar.google.com',
+      'bob@example.com'
+    )
+
+    expect(client.listCalendars).not.toHaveBeenCalled()
+    expect(saved).toMatchObject({
+      id: 'google-calendar:team',
+      accountId: 'bob@example.com',
+      isSelected: true
     })
   })
 
@@ -1762,7 +1875,7 @@ describe('google calendar sync service', () => {
           id: 'google-calendar:work-preseeded',
           provider: 'google',
           kind: 'calendar',
-          accountId: 'google-account:1',
+          accountId: 'test-account@example.com',
           remoteId: 'work@group.calendar.google.com',
           title: 'Work',
           timezone: 'UTC',

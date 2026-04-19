@@ -6,6 +6,7 @@ import { createGoogleCalendarClient } from './client'
 import { resolveDefaultGoogleAccountId } from './oauth'
 import { requireDatabase } from '../../database'
 import { createGoogleChannelManager, type GoogleChannelManager } from './google-channel-manager'
+import { getCalendarSourceById } from '../repositories/calendar-sources-repository'
 
 const log = createLogger('Calendar:GooglePushRuntime')
 
@@ -82,17 +83,33 @@ function isPushFeatureEnabled(): boolean {
   return process.env.CALENDAR_PUSH_ENABLED === '1' && resolveHmacKey().length > 0
 }
 
+export function resolvePushAccountIdForSource(
+  sourceId: string,
+  db = requireDatabase()
+): string {
+  const source = getCalendarSourceById(db, sourceId)
+  const accountId = source?.accountId ?? resolveDefaultGoogleAccountId(db)
+  if (!accountId) {
+    throw new Error(`Cannot resolve Google push account for source ${sourceId}`)
+  }
+  return accountId
+}
+
 function buildProductionChannelManager(
   onActiveCountChange: (count: number) => void
 ): GoogleChannelManager {
   const hmacKey = resolveHmacKey()
 
-  const accountId = resolveDefaultGoogleAccountId(requireDatabase())
-  if (!accountId) {
+  const defaultAccountId = resolveDefaultGoogleAccountId(requireDatabase())
+  if (!defaultAccountId) {
     throw new Error('Cannot start Google push channel manager without a connected account')
   }
   return createGoogleChannelManager({
-    client: createGoogleCalendarClient({ accountId }),
+    client: createGoogleCalendarClient({ accountId: defaultAccountId }),
+    resolveClient: ({ sourceId }) =>
+      createGoogleCalendarClient({
+        accountId: resolvePushAccountIdForSource(sourceId, requireDatabase())
+      }),
     registerOnServer: async (body) => {
       const token = await getValidAccessToken()
       if (!token) throw new Error('Not signed in — cannot register push channel')

@@ -286,7 +286,9 @@ describe('Google Calendar integration row', () => {
       'Quota exceeded for project 123'
     )
 
-    fireEvent.click(screen.getByTestId('calendar-source-retry-google-calendar-work'))
+    fireEvent.pointerDown(screen.getByTestId('calendar-source-retry-google-calendar-work'), {
+      button: 0
+    })
 
     await waitFor(() => {
       expect(mockRetryGoogleCalendarSourceSync).toHaveBeenCalledWith({
