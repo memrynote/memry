@@ -3,6 +3,8 @@ import { createLogger } from '../../lib/logger'
 import { deleteFromServer, patchToServer, postToServer } from '../../sync/http-client'
 import { getValidAccessToken } from '../../sync/token-manager'
 import { createGoogleCalendarClient } from './client'
+import { resolveDefaultGoogleAccountId } from './oauth'
+import { requireDatabase } from '../../database'
 import { createGoogleChannelManager, type GoogleChannelManager } from './google-channel-manager'
 
 const log = createLogger('Calendar:GooglePushRuntime')
@@ -85,8 +87,12 @@ function buildProductionChannelManager(
 ): GoogleChannelManager {
   const hmacKey = resolveHmacKey()
 
+  const accountId = resolveDefaultGoogleAccountId(requireDatabase())
+  if (!accountId) {
+    throw new Error('Cannot start Google push channel manager without a connected account')
+  }
   return createGoogleChannelManager({
-    client: createGoogleCalendarClient(),
+    client: createGoogleCalendarClient({ accountId }),
     registerOnServer: async (body) => {
       const token = await getValidAccessToken()
       if (!token) throw new Error('Not signed in — cannot register push channel')
