@@ -239,6 +239,7 @@ import {
   LaptopIcon,
   LanguageCircleIcon,
   PanelLeftCloseIcon,
+  PanelLeftOpenIcon,
   PinIcon,
   Plug01Icon,
   Shield02Icon,
@@ -546,6 +547,7 @@ export const Shrink = createIcon(ArrowShrinkIcon)
 
 // ── Additional UI ───────────────────────────────────
 export const PanelLeftClose = createIcon(PanelLeftCloseIcon)
+export const PanelLeftOpen = createIcon(PanelLeftOpenIcon)
 export const FileQuestion = createIcon(FileQuestionMarkIcon)
 export const Import = createIcon(FileImportIcon)
 export const Pin = createIcon(PinIcon)
@@ -567,6 +569,8 @@ export const BellOff = createIcon(NotificationOff01Icon)
 
 // ── Alias exports for "Icon"-suffixed names ─────────
 export { PanelLeft as PanelLeftIcon }
+export { PanelLeftClose as PanelLeftCloseIcon }
+export { PanelLeftOpen as PanelLeftOpenIcon }
 export { Calendar as CalendarIcon }
 export { Check as CheckIcon }
 export { ChevronRight as ChevronRightIcon }
