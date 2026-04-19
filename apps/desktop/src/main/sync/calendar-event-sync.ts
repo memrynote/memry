@@ -2,8 +2,10 @@ import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3'
 import { eq } from 'drizzle-orm'
 import type * as schema from '@memry/db-schema/data-schema'
 import { calendarEvents } from '@memry/db-schema/schema/calendar-events'
-import type { VectorClock } from '@memry/contracts/sync-api'
+import type { FieldClocks, VectorClock } from '@memry/contracts/sync-api'
 import { RecordSyncController, incrementClock, withIncrementedClock } from '@memry/sync-core'
+import { initAllFieldClocks } from './field-merge'
+import { CALENDAR_EVENT_SYNCABLE_FIELDS } from '../calendar/field-merge-calendar'
 import type { SyncQueueManager } from './queue'
 
 type DrizzleDb = BetterSQLite3Database<typeof schema>
@@ -32,7 +34,7 @@ export function resetCalendarEventSyncService(): void {
 }
 
 export class CalendarEventSyncService {
-  private controller: RecordSyncController<Record<string, unknown>, [], [string?]>
+  private controller: RecordSyncController<Record<string, unknown>, [string[]?], [string?]>
 
   constructor(deps: CalendarEventSyncDeps) {
     this.controller = new RecordSyncController({
@@ -43,17 +45,33 @@ export class CalendarEventSyncService {
         deps.db.select().from(calendarEvents).where(eq(calendarEvents.id, id)).get() as
           | Record<string, unknown>
           | undefined,
-      applyLocalChange: ({ itemId, local, deviceId }) => {
+      applyLocalChange: ({ itemId, local, deviceId, operation, extra }) => {
+        const changedFields = extra[0]
         const existingClock = (local.clock as VectorClock) ?? {}
         const nextClock = incrementClock(existingClock, deviceId)
 
+        let fieldClocks = (local.fieldClocks as FieldClocks | null) ?? null
+        if (!fieldClocks) {
+          fieldClocks = initAllFieldClocks(existingClock, CALENDAR_EVENT_SYNCABLE_FIELDS)
+        }
+
+        const fieldsToIncrement =
+          operation === 'create'
+            ? CALENDAR_EVENT_SYNCABLE_FIELDS
+            : (changedFields ?? CALENDAR_EVENT_SYNCABLE_FIELDS)
+
+        const updatedFieldClocks: FieldClocks = { ...fieldClocks }
+        for (const field of fieldsToIncrement) {
+          updatedFieldClocks[field] = incrementClock(updatedFieldClocks[field] ?? {}, deviceId)
+        }
+
         deps.db
           .update(calendarEvents)
-          .set({ clock: nextClock })
+          .set({ clock: nextClock, fieldClocks: updatedFieldClocks })
           .where(eq(calendarEvents.id, itemId))
           .run()
 
-        return { ...local, clock: nextClock }
+        return { ...local, clock: nextClock, fieldClocks: updatedFieldClocks }
       },
       serialize: (local) => local,
       buildDeletePayload: ({ itemId, local, extra, deviceId }) => {
@@ -69,8 +87,8 @@ export class CalendarEventSyncService {
     this.controller.enqueueCreate(id)
   }
 
-  enqueueUpdate(id: string): void {
-    this.controller.enqueueUpdate(id)
+  enqueueUpdate(id: string, changedFields?: string[]): void {
+    this.controller.enqueueUpdate(id, changedFields)
   }
 
   enqueueDelete(id: string, snapshotPayload?: string): void {

@@ -10,8 +10,8 @@ export function syncCalendarEventCreate(eventId: string): void {
   scheduleGoogleCalendarSourceSync({ sourceType: 'event', sourceId: eventId })
 }
 
-export function syncCalendarEventUpdate(eventId: string): void {
-  enqueueLocalSyncUpdate('calendar_event', eventId)
+export function syncCalendarEventUpdate(eventId: string, changedFields?: string[]): void {
+  enqueueLocalSyncUpdate('calendar_event', eventId, changedFields)
   scheduleGoogleCalendarSourceSync({ sourceType: 'event', sourceId: eventId })
 }
 

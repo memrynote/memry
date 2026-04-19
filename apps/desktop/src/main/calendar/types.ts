@@ -51,10 +51,12 @@ export interface GoogleCalendarClient {
     timeMin?: string | null
     timeMax?: string | null
   }): Promise<{ events: GoogleCalendarRemoteEvent[]; nextSyncCursor: string | null }>
+  getEvent(input: { calendarId: string; eventId: string }): Promise<GoogleCalendarRemoteEvent>
   upsertEvent(input: {
     calendarId: string
     eventId: string | null
     event: GoogleCalendarUpsertEventInput
+    ifMatch?: string | null
   }): Promise<GoogleCalendarRemoteEvent>
   deleteEvent(input: { calendarId: string; eventId: string }): Promise<void>
 }

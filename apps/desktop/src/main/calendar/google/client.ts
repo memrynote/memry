@@ -230,7 +230,15 @@ async function throwCalendarApiFailure(response: Response, operation: string): P
     apiMessage,
     body: raw.slice(0, 500)
   })
-  throw new Error(userMessageForCalendarApiError({ status: response.status, apiStatus }))
+  const error = new Error(
+    userMessageForCalendarApiError({ status: response.status, apiStatus })
+  ) as Error & {
+    status?: number
+    apiStatus?: string
+  }
+  error.status = response.status
+  error.apiStatus = apiStatus
+  throw error
 }
 
 async function withAuthorizedResponse(
@@ -340,14 +348,31 @@ export function createGoogleCalendarClient(): GoogleCalendarClient {
       }
     },
 
+    async getEvent(input): Promise<GoogleCalendarRemoteEvent> {
+      const response = await withAuthorizedResponse({
+        path: `/calendars/${encodeURIComponent(input.calendarId)}/events/${encodeURIComponent(input.eventId)}`
+      })
+
+      if (!response.ok) {
+        await throwCalendarApiFailure(response, 'fetch Google calendar event')
+      }
+
+      return mapRemoteEvent(input.calendarId, GoogleEventSchema.parse(await response.json()))
+    },
+
     async upsertEvent(input): Promise<GoogleCalendarRemoteEvent> {
       const isUpdate = typeof input.eventId === 'string' && input.eventId.length > 0
+      const headers: Record<string, string> = {}
+      if (isUpdate && input.ifMatch) {
+        headers['If-Match'] = input.ifMatch
+      }
       const response = await withAuthorizedResponse({
         path: isUpdate
           ? `/calendars/${encodeURIComponent(input.calendarId)}/events/${encodeURIComponent(input.eventId!)}`
           : `/calendars/${encodeURIComponent(input.calendarId)}/events`,
         init: {
           method: isUpdate ? 'PATCH' : 'POST',
+          headers,
           body: JSON.stringify(toGoogleEventPayload(input.event))
         }
       })

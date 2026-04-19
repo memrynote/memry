@@ -1055,6 +1055,361 @@ describe('google calendar sync service', () => {
     expect(refreshedSource?.syncCursor).toBe('cursor-fresh')
   })
 
+  describe('pushSourceToGoogleCalendar — M3 etag + field-clock conflict resolution', () => {
+    it('on 412 Precondition Failed, pulls latest, merges fields, retries with fresh etag', async () => {
+      // #given a bound Memry event with stale binding etag and field clocks favoring local
+      seedGoogleCalendarSource({
+        id: 'google-calendar:user-cal',
+        remoteId: 'remote-user-cal',
+        isMemryManaged: false
+      })
+
+      const localFC = {
+        title: { 'device-a': 2 },
+        description: { 'device-a': 1 },
+        location: { 'device-a': 1 },
+        startAt: { 'device-a': 1 },
+        endAt: { 'device-a': 1 },
+        timezone: { 'device-a': 1 },
+        isAllDay: { 'device-a': 1 },
+        recurrenceRule: { 'device-a': 1 },
+        recurrenceExceptions: { 'device-a': 1 }
+      }
+
+      db.insert(calendarEvents)
+        .values({
+          id: 'event-conflict',
+          title: 'Local title (renamed by A)',
+          description: 'Original description',
+          location: null,
+          startAt: '2026-04-20T09:00:00.000Z',
+          endAt: '2026-04-20T10:00:00.000Z',
+          timezone: 'UTC',
+          isAllDay: false,
+          targetCalendarId: 'remote-user-cal',
+          clock: { 'device-a': 2 },
+          fieldClocks: localFC,
+          createdAt: '2026-04-20T08:00:00.000Z',
+          modifiedAt: '2026-04-20T08:30:00.000Z'
+        })
+        .run()
+
+      db.insert(calendarBindings)
+        .values({
+          id: 'binding-conflict',
+          sourceType: 'event',
+          sourceId: 'event-conflict',
+          provider: 'google',
+          remoteCalendarId: 'remote-user-cal',
+          remoteEventId: 'remote-event-conflict',
+          ownershipMode: 'memry_managed',
+          writebackMode: 'broad',
+          remoteVersion: '"etag-stale"',
+          lastLocalSnapshot: null,
+          archivedAt: null,
+          clock: { 'device-a': 1 },
+          syncedAt: '2026-04-20T08:00:00.000Z',
+          createdAt: '2026-04-20T08:00:00.000Z',
+          modifiedAt: '2026-04-20T08:00:00.000Z'
+        })
+        .run()
+
+      const conflict = Object.assign(new Error('Precondition Failed'), { status: 412 })
+      const upsertCalls: Array<{ ifMatch?: string | null; eventTitle: string }> = []
+
+      const upsertEvent = vi.fn(
+        async (input: {
+          calendarId: string
+          eventId: string | null
+          ifMatch?: string | null
+          event: { title: string; description: string | null }
+        }) => {
+          upsertCalls.push({ ifMatch: input.ifMatch, eventTitle: input.event.title })
+          if (upsertCalls.length === 1) throw conflict
+          return {
+            id: 'remote-event-conflict',
+            calendarId: input.calendarId,
+            title: input.event.title,
+            description: input.event.description,
+            location: null,
+            startAt: '2026-04-20T09:00:00.000Z',
+            endAt: '2026-04-20T10:00:00.000Z',
+            isAllDay: false,
+            timezone: 'UTC',
+            status: 'confirmed' as const,
+            etag: '"etag-merged"',
+            updatedAt: '2026-04-20T08:35:00.000Z',
+            raw: {}
+          }
+        }
+      )
+
+      // Remote-side state: device-b changed description but did NOT touch title
+      const getEvent = vi.fn(async () => ({
+        id: 'remote-event-conflict',
+        calendarId: 'remote-user-cal',
+        title: 'Local title (renamed by A)',
+        description: 'Edited remotely by B',
+        location: null,
+        startAt: '2026-04-20T09:00:00.000Z',
+        endAt: '2026-04-20T10:00:00.000Z',
+        isAllDay: false,
+        timezone: 'UTC',
+        status: 'confirmed' as const,
+        etag: '"etag-fresh"',
+        updatedAt: '2026-04-20T08:33:00.000Z',
+        raw: {}
+      }))
+
+      const client = {
+        upsertEvent,
+        getEvent,
+        listCalendars: vi.fn(async () => []),
+        createCalendar: vi.fn()
+      }
+
+      // #when
+      await pushSourceToGoogleCalendar(
+        db,
+        { sourceType: 'event', sourceId: 'event-conflict' },
+        { client }
+      )
+
+      // #then: 1st upsert with stale etag → 412, getEvent fetched fresh, 2nd upsert with fresh etag
+      expect(upsertCalls).toHaveLength(2)
+      expect(upsertCalls[0].ifMatch).toBe('"etag-stale"')
+      expect(upsertCalls[1].ifMatch).toBe('"etag-fresh"')
+      expect(getEvent).toHaveBeenCalledTimes(1)
+
+      const refreshed = db
+        .select()
+        .from(calendarBindings)
+        .where(eq(calendarBindings.id, 'binding-conflict'))
+        .get()
+      expect(refreshed?.remoteVersion).toBe('"etag-merged"')
+
+      // Local row received the merged remote description (no local edit there)
+      const refreshedEvent = db
+        .select()
+        .from(calendarEvents)
+        .where(eq(calendarEvents.id, 'event-conflict'))
+        .get()
+      expect(refreshedEvent?.description).toBe('Edited remotely by B')
+      expect(refreshedEvent?.title).toBe('Local title (renamed by A)')
+    })
+
+    it('after 3 consecutive 412s, marks the binding as conflict and stops retrying', async () => {
+      // #given a bound Memry event whose remote keeps changing between attempts
+      seedGoogleCalendarSource({
+        id: 'google-calendar:user-cal-2',
+        remoteId: 'remote-user-cal-2',
+        isMemryManaged: false
+      })
+
+      db.insert(calendarEvents)
+        .values({
+          id: 'event-strikeout',
+          title: 'Local',
+          startAt: '2026-04-20T09:00:00.000Z',
+          endAt: '2026-04-20T10:00:00.000Z',
+          timezone: 'UTC',
+          isAllDay: false,
+          targetCalendarId: 'remote-user-cal-2',
+          clock: { 'device-a': 1 },
+          fieldClocks: null,
+          createdAt: '2026-04-20T08:00:00.000Z',
+          modifiedAt: '2026-04-20T08:30:00.000Z'
+        })
+        .run()
+
+      db.insert(calendarBindings)
+        .values({
+          id: 'binding-strikeout',
+          sourceType: 'event',
+          sourceId: 'event-strikeout',
+          provider: 'google',
+          remoteCalendarId: 'remote-user-cal-2',
+          remoteEventId: 'remote-event-strikeout',
+          ownershipMode: 'memry_managed',
+          writebackMode: 'broad',
+          remoteVersion: '"etag-attempt-0"',
+          lastLocalSnapshot: null,
+          archivedAt: null,
+          clock: { 'device-a': 1 },
+          syncedAt: '2026-04-20T08:00:00.000Z',
+          createdAt: '2026-04-20T08:00:00.000Z',
+          modifiedAt: '2026-04-20T08:00:00.000Z'
+        })
+        .run()
+
+      const conflict = Object.assign(new Error('Precondition'), { status: 412 })
+      const upsertEvent = vi.fn(async () => {
+        throw conflict
+      })
+      let etagCounter = 1
+      const getEvent = vi.fn(async () => ({
+        id: 'remote-event-strikeout',
+        calendarId: 'remote-user-cal-2',
+        title: `Remote ${etagCounter}`,
+        description: null,
+        location: null,
+        startAt: '2026-04-20T09:00:00.000Z',
+        endAt: '2026-04-20T10:00:00.000Z',
+        isAllDay: false,
+        timezone: 'UTC',
+        status: 'confirmed' as const,
+        etag: `"etag-attempt-${etagCounter++}"`,
+        updatedAt: '2026-04-20T08:33:00.000Z',
+        raw: {}
+      }))
+
+      const client = {
+        upsertEvent,
+        getEvent,
+        listCalendars: vi.fn(async () => []),
+        createCalendar: vi.fn()
+      }
+
+      // #when (expect throw OR conflict-marked binding — design says "stop retrying")
+      await expect(
+        pushSourceToGoogleCalendar(
+          db,
+          { sourceType: 'event', sourceId: 'event-strikeout' },
+          { client }
+        )
+      ).rejects.toThrow()
+
+      // #then: exactly 3 upsert attempts (no 4th) + binding marked conflict
+      expect(upsertEvent).toHaveBeenCalledTimes(3)
+
+      const refreshed = db
+        .select()
+        .from(calendarBindings)
+        .where(eq(calendarBindings.id, 'binding-strikeout'))
+        .get()
+      expect(refreshed?.remoteVersion).toBe('conflict')
+    })
+
+    it('on a second 412 with a newer remote field value, the newer remote value wins (Codex P2)', async () => {
+      // #given a bound event whose local title was already merged once with Google;
+      //        a second remote edit changes the title again and the push 412s.
+      seedGoogleCalendarSource({
+        id: 'google-calendar:user-cal-3',
+        remoteId: 'remote-user-cal-3',
+        isMemryManaged: false
+      })
+
+      // After a first merge, local field clocks have grown
+      // (mimicking state right after one 412 round-trip already completed).
+      const localFC = {
+        title: { 'device-a': 5 },
+        description: { 'device-a': 5 },
+        location: { 'device-a': 5 },
+        startAt: { 'device-a': 5 },
+        endAt: { 'device-a': 5 },
+        timezone: { 'device-a': 5 },
+        isAllDay: { 'device-a': 5 },
+        recurrenceRule: { 'device-a': 5 },
+        recurrenceExceptions: { 'device-a': 5 }
+      }
+
+      db.insert(calendarEvents)
+        .values({
+          id: 'event-second-conflict',
+          title: 'Local title (merged earlier)',
+          description: null,
+          location: null,
+          startAt: '2026-04-20T09:00:00.000Z',
+          endAt: '2026-04-20T10:00:00.000Z',
+          timezone: 'UTC',
+          isAllDay: false,
+          targetCalendarId: 'remote-user-cal-3',
+          clock: { 'device-a': 5 },
+          fieldClocks: localFC,
+          createdAt: '2026-04-20T08:00:00.000Z',
+          modifiedAt: '2026-04-20T08:30:00.000Z'
+        })
+        .run()
+
+      db.insert(calendarBindings)
+        .values({
+          id: 'binding-second-conflict',
+          sourceType: 'event',
+          sourceId: 'event-second-conflict',
+          provider: 'google',
+          remoteCalendarId: 'remote-user-cal-3',
+          remoteEventId: 'remote-event-second-conflict',
+          ownershipMode: 'memry_managed',
+          writebackMode: 'broad',
+          remoteVersion: '"etag-prev-merged"',
+          lastLocalSnapshot: null,
+          archivedAt: null,
+          clock: { 'device-a': 1 },
+          syncedAt: '2026-04-20T08:00:00.000Z',
+          createdAt: '2026-04-20T08:00:00.000Z',
+          modifiedAt: '2026-04-20T08:00:00.000Z'
+        })
+        .run()
+
+      const conflict = Object.assign(new Error('Precondition Failed'), { status: 412 })
+      const upsertEvent = vi.fn(async (input: { ifMatch?: string | null }) => {
+        if (input.ifMatch === '"etag-prev-merged"') throw conflict
+        return {
+          id: 'remote-event-second-conflict',
+          calendarId: 'remote-user-cal-3',
+          title: 'Local title (merged earlier)',
+          description: null,
+          location: null,
+          startAt: '2026-04-20T09:00:00.000Z',
+          endAt: '2026-04-20T10:00:00.000Z',
+          isAllDay: false,
+          timezone: 'UTC',
+          status: 'confirmed' as const,
+          etag: '"etag-final"',
+          updatedAt: '2026-04-20T08:35:00.000Z',
+          raw: {}
+        }
+      })
+      const getEvent = vi.fn(async () => ({
+        id: 'remote-event-second-conflict',
+        calendarId: 'remote-user-cal-3',
+        title: 'Brand new remote title',
+        description: null,
+        location: null,
+        startAt: '2026-04-20T09:00:00.000Z',
+        endAt: '2026-04-20T10:00:00.000Z',
+        isAllDay: false,
+        timezone: 'UTC',
+        status: 'confirmed' as const,
+        etag: '"etag-fresh-2"',
+        updatedAt: '2026-04-20T08:33:00.000Z',
+        raw: {}
+      }))
+
+      const client = {
+        upsertEvent,
+        getEvent,
+        listCalendars: vi.fn(async () => []),
+        createCalendar: vi.fn()
+      }
+
+      // #when
+      await pushSourceToGoogleCalendar(
+        db,
+        { sourceType: 'event', sourceId: 'event-second-conflict' },
+        { client }
+      )
+
+      // #then: the newer remote title wins despite local FC tick-sum being 5
+      const refreshedEvent = db
+        .select()
+        .from(calendarEvents)
+        .where(eq(calendarEvents.id, 'event-second-conflict'))
+        .get()
+      expect(refreshedEvent?.title).toBe('Brand new remote title')
+    })
+  })
+
   describe('syncGoogleCalendarNow gating', () => {
     function buildClient() {
       return {

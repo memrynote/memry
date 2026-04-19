@@ -5,9 +5,14 @@ import {
   CalendarEventSyncPayloadSchema,
   type CalendarEventSyncPayload
 } from '@memry/contracts/sync-payloads'
-import type { VectorClock } from '@memry/contracts/sync-api'
+import type { FieldClocks, VectorClock } from '@memry/contracts/sync-api'
 import type { SyncQueueManager } from '../queue'
 import { increment } from '../vector-clock'
+import { initAllFieldClocks } from '../field-merge'
+import {
+  CALENDAR_EVENT_SYNCABLE_FIELDS,
+  mergeCalendarEventFields
+} from '../../calendar/field-merge-calendar'
 import { createLogger } from '../../lib/logger'
 import { BaseItemHandler } from './base-handler'
 import type { ApplyContext, ApplyResult, DrizzleDb } from './types'
@@ -28,6 +33,7 @@ class CalendarEventHandler extends BaseItemHandler<CalendarEventSyncPayload> {
     return ctx.db.transaction((tx): ApplyResult => {
       const existing = tx.select().from(calendarEvents).where(eq(calendarEvents.id, itemId)).get()
       const remoteClock = Object.keys(clock).length > 0 ? clock : (data.clock ?? {})
+      const remoteFieldClocks = data.fieldClocks ?? null
       const now = utcNow()
 
       if (existing) {
@@ -36,6 +42,48 @@ class CalendarEventHandler extends BaseItemHandler<CalendarEventSyncPayload> {
           log.info('Skipping remote calendar event update, local is newer', { itemId })
           return 'skipped'
         }
+
+        if (resolution.action === 'merge') {
+          const localFC =
+            (existing.fieldClocks as FieldClocks | null) ??
+            initAllFieldClocks(
+              (existing.clock as VectorClock | null) ?? {},
+              CALENDAR_EVENT_SYNCABLE_FIELDS
+            )
+          const remoteFC =
+            remoteFieldClocks ?? initAllFieldClocks(remoteClock, CALENDAR_EVENT_SYNCABLE_FIELDS)
+
+          const remoteForMerge: Record<string, unknown> = {}
+          for (const field of CALENDAR_EVENT_SYNCABLE_FIELDS) {
+            const remoteVal = (data as Record<string, unknown>)[field]
+            remoteForMerge[field] =
+              remoteVal === undefined ? (existing as Record<string, unknown>)[field] : remoteVal
+          }
+
+          const result = mergeCalendarEventFields(
+            existing as Record<string, unknown>,
+            remoteForMerge,
+            localFC,
+            remoteFC
+          )
+
+          tx.update(calendarEvents)
+            .set({
+              ...result.merged,
+              archivedAt: data.archivedAt ?? existing.archivedAt,
+              clock: resolution.mergedClock,
+              fieldClocks: result.mergedFieldClocks,
+              modifiedAt: data.modifiedAt ?? now
+            })
+            .where(eq(calendarEvents.id, itemId))
+            .run()
+
+          ctx.emit(CALENDAR_CHANGED, { entityType: 'calendar_event', id: itemId })
+          return result.hadConflicts ? 'conflict' : 'applied'
+        }
+
+        const appliedFC =
+          remoteFieldClocks ?? initAllFieldClocks(remoteClock, CALENDAR_EVENT_SYNCABLE_FIELDS)
 
         tx.update(calendarEvents)
           .set({
@@ -51,14 +99,18 @@ class CalendarEventHandler extends BaseItemHandler<CalendarEventSyncPayload> {
               data.recurrenceExceptions ?? existing.recurrenceExceptions ?? null,
             archivedAt: data.archivedAt ?? existing.archivedAt,
             clock: resolution.mergedClock,
+            fieldClocks: appliedFC,
             modifiedAt: data.modifiedAt ?? now
           })
           .where(eq(calendarEvents.id, itemId))
           .run()
 
         ctx.emit(CALENDAR_CHANGED, { entityType: 'calendar_event', id: itemId })
-        return resolution.action === 'merge' ? 'conflict' : 'applied'
+        return 'applied'
       }
+
+      const insertedFC =
+        remoteFieldClocks ?? initAllFieldClocks(remoteClock, CALENDAR_EVENT_SYNCABLE_FIELDS)
 
       tx.insert(calendarEvents)
         .values({
@@ -74,6 +126,7 @@ class CalendarEventHandler extends BaseItemHandler<CalendarEventSyncPayload> {
           recurrenceExceptions: data.recurrenceExceptions ?? null,
           archivedAt: data.archivedAt ?? null,
           clock: remoteClock,
+          fieldClocks: insertedFC,
           createdAt: data.createdAt ?? now,
           modifiedAt: data.modifiedAt ?? now
         })
@@ -123,6 +176,7 @@ class CalendarEventHandler extends BaseItemHandler<CalendarEventSyncPayload> {
         (row.recurrenceExceptions as Array<Record<string, unknown>> | null) ?? null,
       archivedAt: row.archivedAt ?? null,
       clock: (row.clock as VectorClock) ?? undefined,
+      fieldClocks: (row.fieldClocks as FieldClocks | null) ?? undefined,
       createdAt: row.createdAt,
       modifiedAt: row.modifiedAt
     }
@@ -133,15 +187,16 @@ class CalendarEventHandler extends BaseItemHandler<CalendarEventSyncPayload> {
     const items = db.select().from(calendarEvents).where(isNull(calendarEvents.clock)).all()
     for (const item of items) {
       const nextClock = increment({}, deviceId)
+      const fieldClocks = initAllFieldClocks(nextClock, CALENDAR_EVENT_SYNCABLE_FIELDS)
       db.update(calendarEvents)
-        .set({ clock: nextClock })
+        .set({ clock: nextClock, fieldClocks })
         .where(eq(calendarEvents.id, item.id))
         .run()
       queue.enqueue({
         type: 'calendar_event',
         itemId: item.id,
         operation: 'create',
-        payload: JSON.stringify({ ...item, clock: nextClock }),
+        payload: JSON.stringify({ ...item, clock: nextClock, fieldClocks }),
         priority: 0
       })
     }

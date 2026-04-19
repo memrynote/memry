@@ -183,6 +183,13 @@
       "when": 1776470400000,
       "tag": "0025_event_target_calendar",
       "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "6",
+      "when": 1776816000000,
+      "tag": "0026_calendar_field_clocks",
+      "breakpoints": true
     }
   ]
 }
