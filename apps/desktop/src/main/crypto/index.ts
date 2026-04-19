@@ -3,6 +3,7 @@ import sodium from 'libsodium-wrappers-sumo'
 export {
   computeKeyConfirm,
   computeLinkingProof,
+  computeProviderAuthConfirm,
   computeSharedSecret,
   computeVerificationCode,
   deriveKey,

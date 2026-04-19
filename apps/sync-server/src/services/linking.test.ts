@@ -121,6 +121,10 @@ const makeSession = (overrides: Partial<LinkingSessionRow> = {}): LinkingSession
   encrypted_master_key: null,
   encrypted_key_nonce: null,
   key_confirm: null,
+  encrypted_provider_auth: null,
+  encrypted_provider_auth_nonce: null,
+  provider_auth_confirm: null,
+  provider_auth_version: null,
   status: 'pending',
   expires_at: futureExpiry,
   created_at: futureExpiry - 300,
@@ -380,9 +384,26 @@ describe('transitionToApproved', () => {
         'user-1',
         'enc-key',
         'enc-nonce',
-        'kc'
+        'kc',
+        {
+          encryptedProviderAuth: 'epa',
+          encryptedProviderAuthNonce: 'epan',
+          providerAuthConfirm: 'pac',
+          providerAuthVersion: 1
+        }
       )
     ).resolves.toBeUndefined()
+
+    expect(updateStmt.bind).toHaveBeenCalledWith(
+      'enc-key',
+      'enc-nonce',
+      'kc',
+      'epa',
+      'epan',
+      'pac',
+      1,
+      'session-1'
+    )
   })
 
   it('should throw LINKING_CONCURRENT_ATTEMPT when session already approved', async () => {
@@ -526,7 +547,11 @@ describe('transitionToCompleted', () => {
       status: 'approved',
       encrypted_master_key: 'enc-mk',
       encrypted_key_nonce: 'enc-n',
-      key_confirm: 'kc'
+      key_confirm: 'kc',
+      encrypted_provider_auth: 'epa',
+      encrypted_provider_auth_nonce: 'epan',
+      provider_auth_confirm: 'pac',
+      provider_auth_version: 1
     })
     const selectStmt = createMockStatement()
     selectStmt.first.mockResolvedValue(session)
@@ -543,7 +568,11 @@ describe('transitionToCompleted', () => {
     expect(result).toEqual({
       encryptedMasterKey: 'enc-mk',
       encryptedKeyNonce: 'enc-n',
-      keyConfirm: 'kc'
+      keyConfirm: 'kc',
+      encryptedProviderAuth: 'epa',
+      encryptedProviderAuthNonce: 'epan',
+      providerAuthConfirm: 'pac',
+      providerAuthVersion: 1
     })
   })
 
@@ -817,7 +846,11 @@ describe('transitionToCompleted — IP binding', () => {
       scanner_ip: '1.2.3.4',
       encrypted_master_key: 'enc-mk',
       encrypted_key_nonce: 'enc-n',
-      key_confirm: 'kc'
+      key_confirm: 'kc',
+      encrypted_provider_auth: 'epa',
+      encrypted_provider_auth_nonce: 'epan',
+      provider_auth_confirm: 'pac',
+      provider_auth_version: 1
     })
     const selectStmt = createMockStatement()
     selectStmt.first.mockResolvedValue(session)
@@ -833,7 +866,11 @@ describe('transitionToCompleted — IP binding', () => {
     expect(result).toEqual({
       encryptedMasterKey: 'enc-mk',
       encryptedKeyNonce: 'enc-n',
-      keyConfirm: 'kc'
+      keyConfirm: 'kc',
+      encryptedProviderAuth: 'epa',
+      encryptedProviderAuthNonce: 'epan',
+      providerAuthConfirm: 'pac',
+      providerAuthVersion: 1
     })
   })
 

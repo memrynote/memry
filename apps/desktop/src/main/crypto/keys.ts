@@ -203,3 +203,15 @@ export const computeKeyConfirm = (
   const payload = encodeCbor({ sessionId, encryptedMasterKey }, CBOR_FIELD_ORDER.KEY_CONFIRM)
   return sodium.crypto_auth(payload, macKey)
 }
+
+export const computeProviderAuthConfirm = (
+  macKey: Uint8Array,
+  sessionId: string,
+  encryptedProviderAuth: string
+): Uint8Array => {
+  const payload = encodeCbor(
+    { sessionId, encryptedProviderAuth },
+    CBOR_FIELD_ORDER.PROVIDER_AUTH_CONFIRM
+  )
+  return sodium.crypto_auth(payload, macKey)
+}

@@ -1,5 +1,6 @@
 import os from 'os'
 import sodium from 'libsodium-wrappers-sumo'
+import { BrowserWindow } from 'electron'
 
 import { KEYCHAIN_ENTRIES } from '@memry/contracts/crypto'
 import type {
@@ -25,6 +26,14 @@ import {
   retrieveKey,
   secureCleanup
 } from '../crypto'
+import { getDatabase } from '../database/client'
+import type { GoogleProviderAuthTransfer } from '../calendar/google/provider-auth-transfer'
+import {
+  collectGoogleProviderAuthTransfer,
+  decryptGoogleProviderAuthTransfer,
+  encryptGoogleProviderAuthTransfer,
+  persistImportedGoogleProviderAuth
+} from '../calendar/google/provider-auth-transfer'
 import { createLogger } from '../lib/logger'
 
 import { getFromServer, postToServer, SyncServerError } from './http-client'
@@ -120,6 +129,17 @@ const computeScanConfirm = async (
   )
   const signature = await crypto.subtle.sign('HMAC', hmacKey, toArrayBuffer(payload))
   return encodeBase64(new Uint8Array(signature))
+}
+
+const buildProviderAuthImportWarning = (
+  failedImports: Array<{ accountId: string; error: string }>
+): string | undefined => {
+  if (failedImports.length === 0) {
+    return undefined
+  }
+
+  const accountIds = failedImports.map(({ accountId }) => accountId).join(', ')
+  return `Google Calendar needs reconnect on this device for: ${accountIds}`
 }
 
 // ============================================================================
@@ -270,6 +290,10 @@ export const completeLinkingQr = async (sessionId: string): Promise<CompleteLink
           encryptedMasterKey?: string
           encryptedKeyNonce?: string
           keyConfirm?: string
+          encryptedProviderAuth?: string
+          encryptedProviderAuthNonce?: string
+          providerAuthConfirm?: string
+          providerAuthVersion?: number
         }>('/auth/linking/complete', { sessionId }),
       { maxRetries: 3, baseDelayMs: 2000 }
     )
@@ -306,8 +330,36 @@ export const completeLinkingQr = async (sessionId: string): Promise<CompleteLink
       sodium.base64_variants.ORIGINAL
     )
     const masterKey = decryptMasterKeyFromLinking(ciphertext, nonce, encKey)
+    let importedProviderAuth: GoogleProviderAuthTransfer | undefined
+    let importWarning: string | undefined
 
-    void finalizeLinking(masterKey, setupToken)
+    if (
+      completeResponse.encryptedProviderAuth &&
+      completeResponse.encryptedProviderAuthNonce &&
+      completeResponse.providerAuthConfirm &&
+      completeResponse.providerAuthVersion
+    ) {
+      try {
+        importedProviderAuth = decryptGoogleProviderAuthTransfer({
+          encryptedProviderAuth: completeResponse.encryptedProviderAuth,
+          encryptedProviderAuthNonce: completeResponse.encryptedProviderAuthNonce,
+          providerAuthConfirm: completeResponse.providerAuthConfirm,
+          providerAuthVersion: completeResponse.providerAuthVersion,
+          sessionId,
+          encKey,
+          macKey
+        })
+      } catch (error) {
+        log.warn('Google Calendar auth transfer could not be restored during linking', {
+          sessionId,
+          error: error instanceof Error ? error.message : 'unknown error'
+        })
+        importWarning =
+          'Google Calendar auth could not be restored on this device. Reconnect Google if needed.'
+      }
+    }
+
+    void finalizeLinking(masterKey, setupToken, importedProviderAuth, importWarning)
 
     log.info('Linking approved — finalizing device registration in background')
     return { success: true }
@@ -321,7 +373,12 @@ export const completeLinkingQr = async (sessionId: string): Promise<CompleteLink
   }
 }
 
-async function finalizeLinking(masterKey: Uint8Array, setupToken: string): Promise<void> {
+async function finalizeLinking(
+  masterKey: Uint8Array,
+  setupToken: string,
+  importedProviderAuth?: GoogleProviderAuthTransfer,
+  initialWarning?: string
+): Promise<void> {
   try {
     const { value: recoveryInfo } = await withRetry(
       () =>
@@ -341,11 +398,23 @@ async function finalizeLinking(masterKey: Uint8Array, setupToken: string): Promi
       true
     )
 
+    let warning = initialWarning
+    if (importedProviderAuth) {
+      const result = await persistImportedGoogleProviderAuth(importedProviderAuth)
+      const importWarning = buildProviderAuthImportWarning(result.failedImports)
+      if (importWarning) {
+        log.warn('Google Calendar auth restore completed with reconnect required', {
+          accountIds: result.failedImports.map(({ accountId }) => accountId)
+        })
+      }
+      warning = importWarning ?? warning
+    }
+
     secureCleanup(masterKey, signingKeyPair.secretKey)
     clearPendingLinkCompletion()
 
-    log.info('Device linking finalized', { deviceId })
-    emitLinkingFinalized({ deviceId })
+    log.info('Device linking finalized', { deviceId, hadWarning: Boolean(warning) })
+    emitLinkingFinalized({ deviceId, warning })
   } catch (err) {
     log.error('Background linking finalization failed', err)
     secureCleanup(masterKey)
@@ -355,8 +424,7 @@ async function finalizeLinking(masterKey: Uint8Array, setupToken: string): Promi
   }
 }
 
-function emitLinkingFinalized(payload: { deviceId?: string; error?: string }): void {
-  const { BrowserWindow } = require('electron') as typeof import('electron')
+function emitLinkingFinalized(payload: { deviceId?: string; error?: string; warning?: string }): void {
   for (const win of BrowserWindow.getAllWindows()) {
     win.webContents.send('sync:linking-finalized', payload)
   }
@@ -428,6 +496,15 @@ export const approveDeviceLinking = async (
 
     const keyConfirm = computeKeyConfirm(macKey, sessionId, encryptedMasterKeyB64)
     const keyConfirmB64 = sodium.to_base64(keyConfirm, sodium.base64_variants.ORIGINAL)
+    const providerAuthTransfer = await collectGoogleProviderAuthTransfer(getDatabase())
+    const encryptedProviderAuth = providerAuthTransfer
+      ? encryptGoogleProviderAuthTransfer({
+          transfer: providerAuthTransfer,
+          sessionId,
+          encKey,
+          macKey
+        })
+      : null
 
     await postToServer(
       '/auth/linking/approve',
@@ -435,7 +512,8 @@ export const approveDeviceLinking = async (
         sessionId,
         encryptedMasterKey: encryptedMasterKeyB64,
         encryptedKeyNonce: encryptedKeyNonceB64,
-        keyConfirm: keyConfirmB64
+        keyConfirm: keyConfirmB64,
+        ...(encryptedProviderAuth ?? {})
       },
       accessToken
     )

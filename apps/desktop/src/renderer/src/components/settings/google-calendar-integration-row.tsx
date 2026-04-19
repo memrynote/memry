@@ -138,6 +138,9 @@ export function GoogleCalendarIntegrationRow(): React.JSX.Element {
     [sources]
   )
   const status = statusQuery.data
+  const reconnectRequired = Boolean(
+    status?.accounts?.some((account) => account.status === 'reconnect_required')
+  )
   const isPending =
     connectMutation.isPending ||
     refreshMutation.isPending ||
@@ -165,7 +168,11 @@ export function GoogleCalendarIntegrationRow(): React.JSX.Element {
                 variant="secondary"
                 className="h-4 border-0 px-1.5 py-0 text-[10px]/3 text-foreground"
               >
-                {status?.connected ? 'Connected' : 'Not Connected'}
+                {status?.connected
+                  ? reconnectRequired && !status.hasLocalAuth
+                    ? 'Reconnect Required'
+                    : 'Connected'
+                  : 'Not Connected'}
               </Badge>
             </div>
 
@@ -179,9 +186,17 @@ export function GoogleCalendarIntegrationRow(): React.JSX.Element {
                   const tone =
                     account.status === 'connected'
                       ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300'
+                      : account.status === 'reconnect_required'
+                        ? 'border-amber-500/40 bg-amber-500/10 text-amber-800 dark:text-amber-300'
                       : account.status === 'error'
                         ? 'border-destructive/50 bg-destructive/10 text-destructive'
                         : 'border-muted-foreground/30 bg-muted text-muted-foreground'
+                  const detail =
+                    account.status === 'reconnect_required'
+                      ? 'Reconnect Google'
+                      : account.status === 'error'
+                        ? account.lastError?.slice(0, 60)
+                        : null
                   return (
                     <span
                       key={account.accountId}
@@ -191,9 +206,9 @@ export function GoogleCalendarIntegrationRow(): React.JSX.Element {
                       title={account.lastError ?? undefined}
                     >
                       <span className="truncate">{account.email}</span>
-                      {account.status === 'error' && account.lastError && (
+                      {detail && (
                         <span className="max-w-[12rem] truncate text-[10px]/3 opacity-75">
-                          · {account.lastError.slice(0, 60)}
+                          · {detail}
                         </span>
                       )}
                     </span>
@@ -213,15 +228,27 @@ export function GoogleCalendarIntegrationRow(): React.JSX.Element {
         <div className="flex shrink-0 items-center gap-2">
           {status?.connected ? (
             <>
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-7 px-3 text-xs/4"
-                disabled={isPending}
-                onClick={() => refreshMutation.mutate()}
-              >
-                Sync Now
-              </Button>
+              {reconnectRequired ? (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-7 px-3 text-xs/4"
+                  disabled={isPending}
+                  onClick={() => connectMutation.mutate()}
+                >
+                  Reconnect Google
+                </Button>
+              ) : (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-7 px-3 text-xs/4"
+                  disabled={isPending}
+                  onClick={() => refreshMutation.mutate()}
+                >
+                  Sync Now
+                </Button>
+              )}
               <Button
                 variant="outline"
                 size="sm"
