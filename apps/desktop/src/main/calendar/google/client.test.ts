@@ -32,6 +32,7 @@ import { createGoogleCalendarClient } from './client'
 import {
   LEGACY_DEFAULT_ACCOUNT_ID,
   clearGoogleCalendarTokens,
+  getGoogleCalendarTokens,
   storeGoogleCalendarTokens
 } from './keychain'
 
@@ -261,6 +262,60 @@ describe('google calendar client — push channels (Task 7)', () => {
       expect(captured.body?.originalStartTime).toEqual({
         dateTime: '2026-05-10T09:00:00.000Z',
         timeZone: 'UTC'
+      })
+    })
+  })
+
+  describe('refresh token handling', () => {
+    it('stores a rotated refresh token locally when Google returns one during access-token refresh', async () => {
+      fetchMock
+        .mockResolvedValueOnce(new Response('expired', { status: 401 }))
+        .mockResolvedValueOnce(
+          new Response(
+            JSON.stringify({
+              access_token: 'fresh-access-token',
+              refresh_token: 'rotated-refresh-token',
+              expires_in: 3600,
+              token_type: 'Bearer'
+            }),
+            { status: 200, headers: { 'Content-Type': 'application/json' } }
+          )
+        )
+        .mockResolvedValueOnce(
+          new Response(JSON.stringify({ items: [] }), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' }
+          })
+        )
+
+      const client = createGoogleCalendarClient({ accountId: LEGACY_DEFAULT_ACCOUNT_ID })
+      await expect(client.listCalendars()).resolves.toEqual([])
+
+      expect(await getGoogleCalendarTokens(LEGACY_DEFAULT_ACCOUNT_ID)).toEqual({
+        accessToken: 'fresh-access-token',
+        refreshToken: 'rotated-refresh-token'
+      })
+    })
+
+    it('clears local auth when Google rejects refresh with invalid_grant', async () => {
+      fetchMock
+        .mockResolvedValueOnce(new Response('expired', { status: 401 }))
+        .mockResolvedValueOnce(
+          new Response(
+            JSON.stringify({
+              error: 'invalid_grant',
+              error_description: 'Token has been expired or revoked.'
+            }),
+            { status: 400, headers: { 'Content-Type': 'application/json' } }
+          )
+        )
+
+      const client = createGoogleCalendarClient({ accountId: LEGACY_DEFAULT_ACCOUNT_ID })
+      await expect(client.listCalendars()).rejects.toThrow()
+
+      expect(await getGoogleCalendarTokens(LEGACY_DEFAULT_ACCOUNT_ID)).toEqual({
+        accessToken: null,
+        refreshToken: null
       })
     })
   })

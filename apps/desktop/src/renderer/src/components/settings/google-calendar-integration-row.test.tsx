@@ -99,6 +99,20 @@ const TWO_ACCOUNT_STATUS: CalendarProviderStatus = {
   ]
 }
 
+const RECONNECT_REQUIRED_STATUS: CalendarProviderStatus = {
+  ...CONNECTED_STATUS,
+  hasLocalAuth: false,
+  accounts: [
+    {
+      accountId: 'h4yfans@gmail.com',
+      email: 'h4yfans@gmail.com',
+      status: 'reconnect_required',
+      lastSyncedAt: '2026-04-12T08:00:00.000Z',
+      lastError: 'Refresh token no longer exists on this device'
+    }
+  ]
+}
+
 const CONNECTED_SOURCES: CalendarSourceRecord[] = [
   {
     id: 'google-account-1',
@@ -316,6 +330,33 @@ describe('Google Calendar integration row', () => {
     expect(aliceChip).toHaveAttribute('data-account-status', 'connected')
     expect(bobChip).toHaveAttribute('data-account-status', 'error')
     expect(bobChip).toHaveTextContent('token revoked by Google')
+  })
+
+  it('shows reconnect-required state for accounts missing local auth on this device', async () => {
+    const user = userEvent.setup()
+
+    mockGetGoogleCalendarStatus.mockResolvedValue(RECONNECT_REQUIRED_STATUS)
+    mockListSources.mockResolvedValue({ sources: CONNECTED_SOURCES })
+    mockConnectGoogleCalendarProvider.mockResolvedValue({
+      success: true,
+      status: CONNECTED_STATUS
+    })
+    vi.mocked(window.api.settings.getCalendarGoogleSettings).mockResolvedValue({
+      defaultTargetCalendarId: 'primary@example.com',
+      onboardingCompleted: true,
+      promoteConfirmDismissed: false
+    })
+
+    renderWithProviders(<IntegrationList />)
+
+    await waitFor(() => expect(screen.getByText('Reconnect Required')).toBeInTheDocument())
+
+    const accountChip = screen.getByTestId('calendar-account-chip-h4yfans@gmail.com')
+    expect(accountChip).toHaveAttribute('data-account-status', 'reconnect_required')
+    expect(accountChip).toHaveTextContent('Reconnect Google')
+
+    await user.click(screen.getByRole('button', { name: 'Reconnect Google' }))
+    expect(mockConnectGoogleCalendarProvider).toHaveBeenCalledTimes(1)
   })
 
   it('#given an existing Google connection + onboardingCompleted=true #when the row mounts #then the onboarding dialog stays closed', async () => {

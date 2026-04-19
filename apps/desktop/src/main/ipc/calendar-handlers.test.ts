@@ -638,7 +638,7 @@ describe('calendar-handlers', () => {
         {
           accountId: 'bob@example.com',
           email: 'bob@example.com',
-          status: 'disconnected',
+          status: 'reconnect_required',
           lastSyncedAt: '2026-04-15T09:00:00.000Z',
           lastError: 'token revoked by Google'
         }

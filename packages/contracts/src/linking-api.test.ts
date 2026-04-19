@@ -96,7 +96,11 @@ describe('ApproveLinkingRequestSchema', () => {
       sessionId: 's1',
       encryptedMasterKey: 'emk',
       encryptedKeyNonce: 'ekn',
-      keyConfirm: 'kc'
+      keyConfirm: 'kc',
+      encryptedProviderAuth: 'epa',
+      encryptedProviderAuthNonce: 'epan',
+      providerAuthConfirm: 'pac',
+      providerAuthVersion: 1
     })
     expect(result.success).toBe(true)
   })
@@ -119,6 +123,20 @@ describe('ApproveLinkingRequestSchema', () => {
       sessionId: 's1',
       encryptedMasterKey: 'emk',
       encryptedKeyNonce: 'ekn'
+    })
+    expect(result.success).toBe(false)
+  })
+
+  it('rejects unsupported providerAuthVersion', () => {
+    const result = ApproveLinkingRequestSchema.safeParse({
+      sessionId: 's1',
+      encryptedMasterKey: 'emk',
+      encryptedKeyNonce: 'ekn',
+      keyConfirm: 'kc',
+      encryptedProviderAuth: 'epa',
+      encryptedProviderAuthNonce: 'epan',
+      providerAuthConfirm: 'pac',
+      providerAuthVersion: 2
     })
     expect(result.success).toBe(false)
   })
@@ -201,7 +219,11 @@ describe('CompleteLinkingResponseSchema', () => {
       success: true,
       encryptedMasterKey: 'emk',
       encryptedKeyNonce: 'ekn',
-      keyConfirm: 'kc'
+      keyConfirm: 'kc',
+      encryptedProviderAuth: 'epa',
+      encryptedProviderAuthNonce: 'epan',
+      providerAuthConfirm: 'pac',
+      providerAuthVersion: 1
     })
     expect(result.success).toBe(true)
   })

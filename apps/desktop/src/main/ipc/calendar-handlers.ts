@@ -151,7 +151,7 @@ async function buildProviderAccountStatus(
 
   let status: CalendarProviderAccountConnectionStatus
   if (!hasLocalAuth) {
-    status = 'disconnected'
+    status = 'reconnect_required'
   } else if (source.syncStatus === 'error') {
     status = 'error'
   } else {

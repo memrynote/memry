@@ -69,6 +69,14 @@ export async function storeGoogleCalendarTokens(input: {
   await setPassword(input.accountId, 'refresh-token', input.refreshToken)
 }
 
+export async function storeGoogleCalendarRefreshToken(input: {
+  accountId: string
+  refreshToken: string
+}): Promise<void> {
+  await setPassword(input.accountId, 'access-token', null)
+  await setPassword(input.accountId, 'refresh-token', input.refreshToken)
+}
+
 export async function getGoogleCalendarTokens(accountId: string): Promise<{
   accessToken: string | null
   refreshToken: string | null

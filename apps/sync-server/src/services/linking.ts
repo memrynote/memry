@@ -18,10 +18,21 @@ interface LinkingSessionRow {
   encrypted_master_key: string | null
   encrypted_key_nonce: string | null
   key_confirm: string | null
+  encrypted_provider_auth: string | null
+  encrypted_provider_auth_nonce: string | null
+  provider_auth_confirm: string | null
+  provider_auth_version: number | null
   status: string
   expires_at: number
   created_at: number
   completed_at: number | null
+}
+
+interface ProviderAuthPayloadRow {
+  encryptedProviderAuth: string
+  encryptedProviderAuthNonce: string
+  providerAuthConfirm: string
+  providerAuthVersion: number
 }
 
 const hashLinkingSecret = async (secret: string): Promise<string> => {
@@ -222,7 +233,8 @@ const transitionToApproved = async (
   userId: string,
   encryptedMasterKey: string,
   encryptedKeyNonce: string,
-  keyConfirm: string
+  keyConfirm: string,
+  providerAuth?: ProviderAuthPayloadRow
 ): Promise<void> => {
   const session = await requireSession(db, sessionId)
   assertNotExpired(session)
@@ -238,10 +250,26 @@ const transitionToApproved = async (
   const result = await db
     .prepare(
       `UPDATE linking_sessions
-       SET status = 'approved', encrypted_master_key = ?, encrypted_key_nonce = ?, key_confirm = ?
+       SET status = 'approved',
+           encrypted_master_key = ?,
+           encrypted_key_nonce = ?,
+           key_confirm = ?,
+           encrypted_provider_auth = ?,
+           encrypted_provider_auth_nonce = ?,
+           provider_auth_confirm = ?,
+           provider_auth_version = ?
        WHERE id = ? AND status = 'scanned'`
     )
-    .bind(encryptedMasterKey, encryptedKeyNonce, keyConfirm, sessionId)
+    .bind(
+      encryptedMasterKey,
+      encryptedKeyNonce,
+      keyConfirm,
+      providerAuth?.encryptedProviderAuth ?? null,
+      providerAuth?.encryptedProviderAuthNonce ?? null,
+      providerAuth?.providerAuthConfirm ?? null,
+      providerAuth?.providerAuthVersion ?? null,
+      sessionId
+    )
     .run()
 
   if (!result.meta.changes) {
@@ -272,7 +300,15 @@ const transitionToCompleted = async (
   db: D1Database,
   sessionId: string,
   callerIp: string | null
-): Promise<{ encryptedMasterKey: string; encryptedKeyNonce: string; keyConfirm: string }> => {
+): Promise<{
+  encryptedMasterKey: string
+  encryptedKeyNonce: string
+  keyConfirm: string
+  encryptedProviderAuth?: string
+  encryptedProviderAuthNonce?: string
+  providerAuthConfirm?: string
+  providerAuthVersion?: number
+}> => {
   const session = await requireSession(db, sessionId)
   assertNotExpired(session)
 
@@ -320,7 +356,11 @@ const transitionToCompleted = async (
   return {
     encryptedMasterKey: session.encrypted_master_key!,
     encryptedKeyNonce: session.encrypted_key_nonce!,
-    keyConfirm: session.key_confirm!
+    keyConfirm: session.key_confirm!,
+    encryptedProviderAuth: session.encrypted_provider_auth ?? undefined,
+    encryptedProviderAuthNonce: session.encrypted_provider_auth_nonce ?? undefined,
+    providerAuthConfirm: session.provider_auth_confirm ?? undefined,
+    providerAuthVersion: session.provider_auth_version ?? undefined
   }
 }
 
