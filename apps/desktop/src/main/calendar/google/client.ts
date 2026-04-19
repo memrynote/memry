@@ -56,6 +56,12 @@ const GoogleTokenRefreshSchema = z.object({
   token_type: z.string().min(1)
 })
 
+const GoogleWatchChannelResponseSchema = z.object({
+  id: z.string().min(1),
+  resourceId: z.string().min(1),
+  expiration: z.union([z.string(), z.number()]).optional()
+})
+
 function resolveGoogleClientId(): string {
   const clientId = process.env.GOOGLE_CALENDAR_CLIENT_ID?.trim()
   if (!clientId) {
@@ -394,6 +400,54 @@ export function createGoogleCalendarClient(): GoogleCalendarClient {
 
       if (!response.ok && response.status !== 404) {
         await throwCalendarApiFailure(response, 'delete Google calendar event')
+      }
+    },
+
+    async watchCalendar(input): Promise<{ resourceId: string; expiration: number }> {
+      const expirationMs = Date.now() + input.ttlSeconds * 1000
+      const response = await withAuthorizedResponse({
+        path: `/calendars/${encodeURIComponent(input.calendarId)}/events/watch`,
+        init: {
+          method: 'POST',
+          body: JSON.stringify({
+            id: input.channelId,
+            token: input.token,
+            type: 'web_hook',
+            address: input.webhookUrl,
+            expiration: String(expirationMs)
+          })
+        }
+      })
+
+      if (!response.ok) {
+        await throwCalendarApiFailure(response, 'watch Google calendar')
+      }
+
+      const parsed = GoogleWatchChannelResponseSchema.parse(await response.json())
+      const expiration =
+        typeof parsed.expiration === 'string'
+          ? Number(parsed.expiration)
+          : (parsed.expiration ?? expirationMs)
+      return {
+        resourceId: parsed.resourceId,
+        expiration: Number.isFinite(expiration) ? expiration : expirationMs
+      }
+    },
+
+    async stopChannel(input): Promise<void> {
+      const response = await withAuthorizedResponse({
+        path: '/channels/stop',
+        init: {
+          method: 'POST',
+          body: JSON.stringify({
+            id: input.channelId,
+            resourceId: input.resourceId
+          })
+        }
+      })
+
+      if (!response.ok && response.status !== 404) {
+        await throwCalendarApiFailure(response, 'stop Google calendar channel')
       }
     }
   }
