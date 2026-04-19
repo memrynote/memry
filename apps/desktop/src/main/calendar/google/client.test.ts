@@ -29,7 +29,11 @@ vi.mock('../../lib/logger', () => ({
 }))
 
 import { createGoogleCalendarClient } from './client'
-import { clearGoogleCalendarTokens, storeGoogleCalendarTokens } from './keychain'
+import {
+  LEGACY_DEFAULT_ACCOUNT_ID,
+  clearGoogleCalendarTokens,
+  storeGoogleCalendarTokens
+} from './keychain'
 
 describe('google calendar client — push channels (Task 7)', () => {
   const keytarStore = new Map<string, string>()
@@ -53,6 +57,7 @@ describe('google calendar client — push channels (Task 7)', () => {
     })
 
     await storeGoogleCalendarTokens({
+      accountId: LEGACY_DEFAULT_ACCOUNT_ID,
       accessToken: 'seeded-access-token',
       refreshToken: 'seeded-refresh-token'
     })
@@ -61,7 +66,7 @@ describe('google calendar client — push channels (Task 7)', () => {
   afterEach(async () => {
     delete process.env.GOOGLE_CALENDAR_CLIENT_ID
     vi.unstubAllGlobals()
-    await clearGoogleCalendarTokens()
+    await clearGoogleCalendarTokens(LEGACY_DEFAULT_ACCOUNT_ID)
   })
 
   describe('watchCalendar', () => {

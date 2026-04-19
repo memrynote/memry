@@ -1,6 +1,10 @@
 import { z } from 'zod'
 import { createLogger } from '../../lib/logger'
-import { getGoogleCalendarTokens, storeGoogleCalendarTokens } from './keychain'
+import {
+  LEGACY_DEFAULT_ACCOUNT_ID,
+  getGoogleCalendarTokens,
+  storeGoogleCalendarTokens
+} from './keychain'
 import { userMessageForCalendarApiError, userMessageForTokenEndpointError } from './oauth-errors'
 import type {
   GoogleCalendarClient,
@@ -133,9 +137,7 @@ function mapCalendar(item: z.infer<typeof GoogleCalendarListItemSchema>): Google
   }
 }
 
-function resolveOriginalStartTime(
-  raw: z.infer<typeof GoogleEventSchema>
-): string | null {
+function resolveOriginalStartTime(raw: z.infer<typeof GoogleEventSchema>): string | null {
   const ost = raw.originalStartTime
   if (!ost) return null
   if (ost.dateTime) return ost.dateTime
@@ -307,7 +309,7 @@ function toGoogleEventPayload(event: GoogleCalendarUpsertEventInput): Record<str
 async function refreshAccessTokenInner(): Promise<string> {
   const clientId = resolveGoogleClientId()
   const clientSecret = resolveGoogleClientSecret()
-  const { refreshToken } = await getGoogleCalendarTokens()
+  const { refreshToken } = await getGoogleCalendarTokens(LEGACY_DEFAULT_ACCOUNT_ID)
   if (!refreshToken) {
     throw new Error('Google Calendar is not connected on this device')
   }
@@ -357,6 +359,7 @@ async function refreshAccessTokenInner(): Promise<string> {
 
   const parsed = GoogleTokenRefreshSchema.parse(await response.json())
   await storeGoogleCalendarTokens({
+    accountId: LEGACY_DEFAULT_ACCOUNT_ID,
     accessToken: parsed.access_token,
     refreshToken
   })
@@ -407,7 +410,7 @@ async function withAuthorizedResponse(
   },
   retry = true
 ): Promise<Response> {
-  const tokens = await getGoogleCalendarTokens()
+  const tokens = await getGoogleCalendarTokens(LEGACY_DEFAULT_ACCOUNT_ID)
   const accessToken = tokens.accessToken ?? (await refreshAccessToken())
 
   const url = new URL(`${GOOGLE_API_BASE}${input.path}`)
