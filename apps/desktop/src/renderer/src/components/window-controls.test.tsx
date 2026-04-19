@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { WindowControls } from './window-controls'
@@ -11,10 +11,23 @@ const windowApiMock = {
   windowMaximize: vi.fn()
 }
 
+type WindowWithApi = Window & { api?: unknown }
+let originalApi: unknown
+
 beforeEach(() => {
   vi.clearAllMocks()
-  // @ts-expect-error window.api is declared in preload types, mocked here
-  window.api = windowApiMock
+  const w = window as WindowWithApi
+  originalApi = w.api
+  w.api = windowApiMock
+})
+
+afterEach(() => {
+  const w = window as WindowWithApi
+  if (originalApi === undefined) {
+    delete w.api
+  } else {
+    w.api = originalApi
+  }
 })
 
 function renderWithSidebar(ui: React.ReactElement) {
