@@ -38,7 +38,7 @@ export const CreateCalendarEventSchema = z.object({
   timezone: z.string().min(1).default('UTC'),
   isAllDay: z.boolean().default(false),
   recurrenceRule: JsonRecordSchema.optional().nullable(),
-  recurrenceExceptions: z.array(JsonRecordSchema).optional().nullable(),
+  recurrenceExceptions: z.array(z.string()).optional().nullable(),
   targetCalendarId: z.string().nullable().optional()
 })
 
@@ -52,7 +52,7 @@ export const UpdateCalendarEventSchema = z.object({
   timezone: z.string().min(1).optional(),
   isAllDay: z.boolean().optional(),
   recurrenceRule: JsonRecordSchema.optional().nullable(),
-  recurrenceExceptions: z.array(JsonRecordSchema).optional().nullable(),
+  recurrenceExceptions: z.array(z.string()).optional().nullable(),
   targetCalendarId: z.string().nullable().optional()
 })
 
@@ -119,7 +119,7 @@ export interface CalendarEventRecord {
   timezone: string
   isAllDay: boolean
   recurrenceRule: Record<string, unknown> | null
-  recurrenceExceptions: Array<Record<string, unknown>> | null
+  recurrenceExceptions: string[] | null
   targetCalendarId: string | null
   archivedAt: string | null
   syncedAt: string | null

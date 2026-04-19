@@ -65,9 +65,9 @@ export const calendarEvents = sqliteTable(
       string,
       unknown
     > | null>(),
-    recurrenceExceptions: text('recurrence_exceptions', { mode: 'json' }).$type<Array<
-      Record<string, unknown>
-    > | null>(),
+    recurrenceExceptions: text('recurrence_exceptions', { mode: 'json' }).$type<
+      string[] | null
+    >(),
     attendees: text('attendees', { mode: 'json' }).$type<CalendarAttendee[] | null>(),
     reminders: text('reminders', { mode: 'json' }).$type<CalendarReminders | null>(),
     visibility: text('visibility').$type<CalendarVisibility | null>(),

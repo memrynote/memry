@@ -110,7 +110,7 @@ describe('CreateCalendarEventSchema', () => {
       timezone: 'America/New_York',
       isAllDay: false,
       recurrenceRule: { freq: 'WEEKLY' },
-      recurrenceExceptions: [{ date: '2026-04-23' }]
+      recurrenceExceptions: ['2026-04-23T10:00:00.000Z']
     })
     expect(result.success).toBe(true)
   })

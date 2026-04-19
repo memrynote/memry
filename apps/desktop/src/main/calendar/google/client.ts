@@ -259,6 +259,46 @@ function toGoogleEventPayload(event: GoogleCalendarUpsertEventInput): Record<str
     payload.recurrence = event.recurrence
   }
 
+  if (event.attendees && event.attendees.length > 0) {
+    payload.attendees = event.attendees.map((a) => {
+      const entry: Record<string, unknown> = { email: a.email }
+      if (a.displayName) entry.displayName = a.displayName
+      if (a.responseStatus) entry.responseStatus = a.responseStatus
+      if (a.optional != null) entry.optional = a.optional
+      if (a.organizer != null) entry.organizer = a.organizer
+      if (a.self != null) entry.self = a.self
+      return entry
+    })
+  }
+
+  if (event.reminders) {
+    payload.reminders = {
+      useDefault: event.reminders.useDefault,
+      overrides: event.reminders.overrides
+    }
+  }
+
+  if (event.visibility) {
+    payload.visibility = event.visibility
+  }
+
+  if (event.colorId) {
+    payload.colorId = event.colorId
+  }
+
+  // conferenceData is read-only for M5 (Memry does not create Meet links);
+  // surfacing via the read path is enough. Skip on writes.
+
+  if (event.recurringEventId) {
+    payload.recurringEventId = event.recurringEventId
+  }
+  if (event.originalStartTime) {
+    payload.originalStartTime = {
+      dateTime: event.originalStartTime,
+      timeZone: event.timezone
+    }
+  }
+
   return payload
 }
 

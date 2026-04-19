@@ -1,9 +1,38 @@
 import { describe, expect, it } from 'vitest'
 import {
+  mapCalendarEventToGoogleInput,
   mapGoogleEventToCalendarEventChanges,
   mapGoogleEventToExternalEventRecord
 } from './mappers'
 import type { GoogleCalendarRemoteEvent } from '../types'
+import type { CalendarEvent } from '@memry/db-schema/schema/calendar-events'
+
+const LOCAL_EVENT_BASE: CalendarEvent = {
+  id: 'local-evt-1',
+  title: 'Local meeting',
+  description: null,
+  location: null,
+  startAt: '2026-05-03T15:00:00.000Z',
+  endAt: '2026-05-03T15:30:00.000Z',
+  timezone: 'UTC',
+  isAllDay: false,
+  recurrenceRule: null,
+  recurrenceExceptions: null,
+  attendees: null,
+  reminders: null,
+  visibility: null,
+  colorId: null,
+  conferenceData: null,
+  parentEventId: null,
+  originalStartTime: null,
+  targetCalendarId: null,
+  archivedAt: null,
+  clock: { 'device-a': 1 },
+  fieldClocks: null,
+  syncedAt: null,
+  createdAt: '2026-05-03T14:00:00.000Z',
+  modifiedAt: '2026-05-03T14:00:00.000Z'
+}
 
 const BASE_EVENT: GoogleCalendarRemoteEvent = {
   id: 'google-evt-1',
@@ -108,7 +137,7 @@ describe('mapGoogleEventToCalendarEventChanges', () => {
     expect(changes.originalStartTime).toBeNull()
   })
 
-  it('promotes recurringEventId + originalStartTime to parentEventId + originalStartTime', () => {
+  it('promotes recurringEventId + originalStartTime to parentEventId + originalStartTime for recurring single-instance edits', () => {
     // #given a single-instance exception returned by Google
     const exception: GoogleCalendarRemoteEvent = {
       ...BASE_EVENT,
@@ -123,5 +152,103 @@ describe('mapGoogleEventToCalendarEventChanges', () => {
     // #then the Memry row can be resolved as "exception of <series>"
     expect(changes.parentEventId).toBe('google-evt-1')
     expect(changes.originalStartTime).toBe('2026-05-10T09:00:00.000Z')
+  })
+})
+
+describe('mapCalendarEventToGoogleInput', () => {
+  it('forwards attendees, reminders, visibility, colorId, conferenceData to the Google payload', () => {
+    // #given a rich local event
+    const rich: CalendarEvent = {
+      ...LOCAL_EVENT_BASE,
+      attendees: [{ email: 'alice@example.com', responseStatus: 'accepted' }],
+      reminders: { useDefault: false, overrides: [{ method: 'popup', minutes: 15 }] },
+      visibility: 'private',
+      colorId: '9',
+      conferenceData: {
+        conferenceId: 'abc',
+        entryPoints: [{ entryPointType: 'video', uri: 'https://meet.google.com/abc' }]
+      }
+    }
+
+    // #when
+    const input = mapCalendarEventToGoogleInput(rich)
+
+    // #then every rich field flows to Google
+    expect(input.attendees).toEqual(rich.attendees)
+    expect(input.reminders).toEqual(rich.reminders)
+    expect(input.visibility).toBe('private')
+    expect(input.colorId).toBe('9')
+    expect(input.conferenceData).toEqual(rich.conferenceData)
+  })
+
+  it('null-coalesces rich fields when the local event has none', () => {
+    // #when a plain event is mapped
+    const input = mapCalendarEventToGoogleInput(LOCAL_EVENT_BASE)
+
+    // #then explicit nulls (not undefined) so Google's PATCH clears fields it used to have
+    expect(input.attendees).toBeNull()
+    expect(input.reminders).toBeNull()
+    expect(input.visibility).toBeNull()
+    expect(input.colorId).toBeNull()
+    expect(input.conferenceData).toBeNull()
+  })
+
+  it('appends EXDATE:…Z lines to the recurrence array when timezone is UTC', () => {
+    // #given a recurring event with two UTC exceptions
+    const recurring: CalendarEvent = {
+      ...LOCAL_EVENT_BASE,
+      timezone: 'UTC',
+      recurrenceRule: { rrule: 'FREQ=WEEKLY;INTERVAL=1' },
+      recurrenceExceptions: ['2026-05-10T09:00:00.000Z', '2026-05-17T09:00:00.000Z']
+    }
+
+    // #when
+    const input = mapCalendarEventToGoogleInput(recurring)
+
+    // #then RRULE preserved + one EXDATE line per exception in canonical UTC form
+    expect(input.recurrence).toEqual([
+      'RRULE:FREQ=WEEKLY;INTERVAL=1',
+      'EXDATE:20260510T090000Z',
+      'EXDATE:20260517T090000Z'
+    ])
+  })
+
+  it('appends EXDATE;TZID=… when the event has a non-UTC timezone', () => {
+    // #given a recurring event in a named IANA zone
+    const recurring: CalendarEvent = {
+      ...LOCAL_EVENT_BASE,
+      timezone: 'America/New_York',
+      recurrenceRule: { rrule: 'FREQ=WEEKLY;INTERVAL=1' },
+      recurrenceExceptions: ['2026-05-10T13:00:00.000Z']
+    }
+
+    // #when
+    const input = mapCalendarEventToGoogleInput(recurring)
+
+    // #then TZID form emitted, no trailing Z on the timestamp
+    expect(input.recurrence).toEqual([
+      'RRULE:FREQ=WEEKLY;INTERVAL=1',
+      'EXDATE;TZID=America/New_York:20260510T130000'
+    ])
+  })
+
+  it('emits only EXDATE lines when exceptions exist without an rrule', () => {
+    // #given a one-off edit that collected exceptions via another path (edge case)
+    const noRrule: CalendarEvent = {
+      ...LOCAL_EVENT_BASE,
+      timezone: 'UTC',
+      recurrenceRule: null,
+      recurrenceExceptions: ['2026-05-10T09:00:00.000Z']
+    }
+
+    const input = mapCalendarEventToGoogleInput(noRrule)
+
+    expect(input.recurrence).toEqual(['EXDATE:20260510T090000Z'])
+  })
+
+  it('returns null recurrence when neither rrule nor exceptions are present', () => {
+    const input = mapCalendarEventToGoogleInput(LOCAL_EVENT_BASE)
+
+    expect(input.recurrence).toBeNull()
   })
 })
