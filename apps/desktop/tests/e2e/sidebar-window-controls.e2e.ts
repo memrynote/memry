@@ -2,17 +2,17 @@
 /**
  * Sidebar & Window Controls E2E
  *
- * Verifies the two-anchor WindowControls layout:
- *  - Traffic lights are visible in both sidebar-open and sidebar-closed states.
- *  - The first traffic light's left edge does not drift between states.
- *  - Clicking the close traffic light closes the window.
- *  - Disabled history arrows do not respond to clicks.
+ * Verifies the viewport-fixed WindowControls overlay:
+ *  - Chrome is always visible at viewport top-left regardless of sidebar state.
+ *  - Toggling the sidebar does not move the chrome (boundingBox unchanged).
+ *  - Disabled history arrows are visible and non-responsive in both states.
+ *  - Main content reclaims full width when the sidebar is offcanvas-collapsed.
  */
 
 import { test, expect } from './fixtures'
 import { waitForAppReady, waitForVaultReady } from './utils/electron-helpers'
 
-const PIXEL_DRIFT_TOLERANCE = 2 // px — allow sub-pixel rounding
+const PIXEL_DRIFT_TOLERANCE = 1 // px — single overlay DOM node; allow sub-pixel rounding
 
 test.describe('Sidebar & WindowControls', () => {
   test('traffic lights stay anchored at the same x across sidebar toggle', async ({

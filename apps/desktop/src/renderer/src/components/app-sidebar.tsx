@@ -22,7 +22,6 @@ import { toast } from 'sonner'
 
 import { cn } from '@/lib/utils'
 import { VaultSwitcher } from '@/components/vault-switcher'
-import { WindowControls } from '@/components/window-controls'
 import {
   Sidebar,
   SidebarContent,
@@ -31,8 +30,7 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-  SidebarRail,
-  useSidebar
+  SidebarRail
 } from '@/components/ui/sidebar'
 import { SidebarNav } from '@/components/sidebar/sidebar-nav'
 import { SidebarSection } from '@/components/sidebar-section'
@@ -76,17 +74,9 @@ const mainNav: {
 ]
 
 function SidebarHeaderContent() {
-  const { state } = useSidebar()
-
-  // When collapsed (offcanvas), the sidebar is fully hidden — don't render the
-  // header copy. The TabBarWithDrag copy takes over in that state.
-  if (state === 'collapsed') return null
-
-  return (
-    <SidebarHeader className="p-0 gap-0">
-      <WindowControls />
-    </SidebarHeader>
-  )
+  // Empty h-9 spacer to reserve room for the viewport-fixed WindowControls
+  // overlay (see App.tsx). Sidebar content starts below the chrome row.
+  return <SidebarHeader className="h-9 shrink-0" />
 }
 
 interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {
