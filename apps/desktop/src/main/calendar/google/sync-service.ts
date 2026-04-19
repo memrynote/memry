@@ -16,7 +16,7 @@ import { initAllFieldClocks } from '../../sync/field-merge'
 import { CALENDAR_EVENT_SYNCABLE_FIELDS, mergeCalendarEventFields } from '../field-merge-calendar'
 import type { FieldClocks, VectorClock } from '@memry/contracts/sync-api'
 import { publishProjectionEvent } from '../../projections'
-import { hasGoogleCalendarConnection } from './oauth'
+import { hasGoogleCalendarConnection, resolveDefaultGoogleAccountId } from './oauth'
 import { isMemryUserSignedIn } from '../../sync/auth-state'
 import { createGoogleCalendarClient } from './client'
 import {
@@ -370,8 +370,16 @@ export async function ensureGoogleCalendarSourceSelected(
   return saved
 }
 
-function getGoogleClient(deps?: { client?: GoogleCalendarClient }): GoogleCalendarClient {
-  return deps?.client ?? createGoogleCalendarClient()
+function getGoogleClient(
+  db: DataDb,
+  deps?: { client?: GoogleCalendarClient }
+): GoogleCalendarClient {
+  if (deps?.client) return deps.client
+  const accountId = resolveDefaultGoogleAccountId(db)
+  if (!accountId) {
+    throw new Error('Cannot create Google Calendar client without a connected account')
+  }
+  return createGoogleCalendarClient({ accountId })
 }
 
 function shouldSourceSyncToGoogleCalendar(db: DataDb, target: CalendarSyncTarget): boolean {
@@ -516,7 +524,7 @@ export async function pushSourceToGoogleCalendar(
     >
   } = {}
 ): Promise<typeof calendarBindings.$inferSelect> {
-  const client = getGoogleClient(deps as { client?: GoogleCalendarClient })
+  const client = getGoogleClient(db, deps as { client?: GoogleCalendarClient })
   const existingBinding = getExistingGoogleBinding(db, target)
   const resolvedCalendarId = await resolveTargetCalendarId(db, target, existingBinding, client)
   const now = getNow()
@@ -566,7 +574,7 @@ export async function deleteSourceFromGoogleCalendar(
     return false
   }
 
-  const client = getGoogleClient(deps as { client?: GoogleCalendarClient })
+  const client = getGoogleClient(db, deps as { client?: GoogleCalendarClient })
   await client.deleteEvent({
     calendarId: existingBinding.remoteCalendarId,
     eventId: existingBinding.remoteEventId
@@ -777,7 +785,7 @@ export async function syncGoogleCalendarSource(
     throw new Error(`Calendar source not found: ${sourceId}`)
   }
 
-  const client = getGoogleClient(deps as { client?: GoogleCalendarClient })
+  const client = getGoogleClient(db, deps as { client?: GoogleCalendarClient })
   const now = getNow()
   const isInitialSync = !source.syncCursor
 
@@ -879,7 +887,7 @@ export async function syncGoogleCalendarNow(
 
   syncInFlight = true
   try {
-    const client = getGoogleClient(deps)
+    const client = getGoogleClient(db, deps)
     await ensureMemryCalendarSource(db, client)
 
     const sources = listCalendarSources(db, {

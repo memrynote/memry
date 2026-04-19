@@ -43,7 +43,9 @@ import {
 import {
   connectGoogleCalendar,
   disconnectGoogleCalendar,
-  hasGoogleCalendarLocalAuth
+  hasAnyGoogleCalendarLocalAuth,
+  listGoogleAccountIds,
+  resolveDefaultGoogleAccountId
 } from '../calendar/google/oauth'
 import { getCalendarRangeProjection } from '../calendar/projection'
 import {
@@ -91,13 +93,11 @@ function mapCalendarEvent(row: typeof calendarEvents.$inferSelect): CalendarEven
     isAllDay: row.isAllDay,
     recurrenceRule: (row.recurrenceRule as Record<string, unknown> | null) ?? null,
     recurrenceExceptions: (row.recurrenceExceptions as string[] | null) ?? null,
-    attendees:
-      (row.attendees as CalendarEventRecord['attendees']) ?? null,
+    attendees: (row.attendees as CalendarEventRecord['attendees']) ?? null,
     reminders: (row.reminders as CalendarEventRecord['reminders']) ?? null,
     visibility: (row.visibility as CalendarEventRecord['visibility']) ?? null,
     colorId: row.colorId ?? null,
-    conferenceData:
-      (row.conferenceData as CalendarEventRecord['conferenceData']) ?? null,
+    conferenceData: (row.conferenceData as CalendarEventRecord['conferenceData']) ?? null,
     parentEventId: row.parentEventId ?? null,
     originalStartTime: row.originalStartTime ?? null,
     targetCalendarId: row.targetCalendarId ?? null,
@@ -140,7 +140,7 @@ async function buildProviderStatus(db: DataDb, provider: string): Promise<Calend
     account?.lastSyncedAt ?? null,
     ...calendars.map((source) => source.lastSyncedAt ?? null)
   ].filter((value): value is string => Boolean(value))
-  const hasLocalAuth = provider === 'google' ? await hasGoogleCalendarLocalAuth() : false
+  const hasLocalAuth = provider === 'google' ? await hasAnyGoogleCalendarLocalAuth(db) : false
 
   return {
     provider,
@@ -420,14 +420,14 @@ export function registerCalendarHandlers(): void {
         }
         const connected = await connectGoogleCalendar()
         const now = new Date().toISOString()
-        const accountSourceId = `google-account:${connected.account.remoteId}`
+        const accountSourceId = `google-account:${connected.accountId}`
         const primaryCalendarSourceId = `google-calendar:${connected.primaryCalendar.remoteId}`
 
         syncCalendarSourceUpsert(db, {
           id: accountSourceId,
           provider: 'google',
           kind: 'account',
-          accountId: null,
+          accountId: connected.accountId,
           remoteId: connected.account.remoteId,
           title: connected.account.title,
           timezone: connected.account.timezone,
@@ -436,7 +436,7 @@ export function registerCalendarHandlers(): void {
           isSelected: false,
           isMemryManaged: false,
           syncStatus: 'pending',
-          metadata: { connectedVia: 'oauth' },
+          metadata: { connectedVia: 'oauth', email: connected.account.email },
           createdAt: now,
           modifiedAt: now
         })
@@ -445,7 +445,7 @@ export function registerCalendarHandlers(): void {
           id: primaryCalendarSourceId,
           provider: 'google',
           kind: 'calendar',
-          accountId: accountSourceId,
+          accountId: connected.accountId,
           remoteId: connected.primaryCalendar.remoteId,
           title: connected.primaryCalendar.title,
           timezone: connected.primaryCalendar.timezone,
@@ -485,7 +485,14 @@ export function registerCalendarHandlers(): void {
         }
 
         stopGoogleCalendarSyncRunner()
-        await disconnectGoogleCalendar()
+        const accountIdsToDisconnect = listGoogleAccountIds(db)
+        for (const accountId of accountIdsToDisconnect) {
+          try {
+            await disconnectGoogleCalendar(accountId)
+          } catch (err) {
+            log.warn('Google Calendar disconnect failed', { accountId, err })
+          }
+        }
 
         const providerSources = listCalendarSourceRows(db, { provider: input.provider })
         const sourceIds = providerSources.map((source) => source.id)
@@ -577,7 +584,7 @@ export function registerCalendarHandlers(): void {
           }
         }
 
-        if (!(await hasGoogleCalendarLocalAuth())) {
+        if (!(await hasAnyGoogleCalendarLocalAuth(db))) {
           return {
             success: false,
             status: await buildProviderStatus(db, input.provider),
@@ -601,7 +608,11 @@ export function registerCalendarHandlers(): void {
     createValidatedHandler(
       ListGoogleCalendarsSchema,
       withDb(async (db): Promise<ListGoogleCalendarsResponse> => {
-        return await listGoogleCalendars(db, createGoogleCalendarClient())
+        const accountId = resolveDefaultGoogleAccountId(db)
+        if (!accountId) {
+          return { calendars: [], primary: null, currentDefaultId: null }
+        }
+        return await listGoogleCalendars(db, createGoogleCalendarClient({ accountId }))
       }, 'Failed to list Google calendars')
     )
   )

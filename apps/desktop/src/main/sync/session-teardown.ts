@@ -14,7 +14,7 @@ import { clearInMemoryAuthState } from '../ipc/sync-core-handlers'
 import { getDatabase, isDatabaseInitialized } from '../database/client'
 import { store } from '../store'
 import { createLogger } from '../lib/logger'
-import { disconnectGoogleCalendar } from '../calendar/google/oauth'
+import { disconnectGoogleCalendar, listGoogleAccountIds } from '../calendar/google/oauth'
 import { stopGoogleCalendarSyncRunner } from '../calendar/google/sync-service'
 
 const log = createLogger('SessionTeardown')
@@ -53,10 +53,16 @@ async function performTeardown(reason: TeardownReason): Promise<TeardownResult> 
 
   if (reason === 'logout') {
     await revokeServerSession()
-    try {
-      await disconnectGoogleCalendar()
-    } catch (err) {
-      log.warn('Google Calendar disconnect failed during logout', err)
+    if (isDatabaseInitialized()) {
+      const db = getDatabase()
+      const accountIds = listGoogleAccountIds(db)
+      for (const accountId of accountIds) {
+        try {
+          await disconnectGoogleCalendar(accountId)
+        } catch (err) {
+          log.warn('Google Calendar disconnect failed during logout', { accountId, err })
+        }
+      }
     }
   }
 

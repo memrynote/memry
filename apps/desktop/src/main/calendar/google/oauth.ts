@@ -6,7 +6,6 @@ import { createLogger } from '../../lib/logger'
 import type { DataDb } from '../../database/types'
 import { listCalendarSources } from '../repositories/calendar-sources-repository'
 import {
-  LEGACY_DEFAULT_ACCOUNT_ID,
   clearGoogleCalendarTokens,
   getGoogleCalendarTokens,
   storeGoogleCalendarTokens
@@ -24,6 +23,7 @@ const GOOGLE_TOKEN_URL = 'https://oauth2.googleapis.com/token'
 const GOOGLE_REVOKE_URL = 'https://oauth2.googleapis.com/revoke'
 const GOOGLE_PRIMARY_CALENDAR_URL =
   'https://www.googleapis.com/calendar/v3/users/me/calendarList/primary'
+const GOOGLE_USERINFO_URL = 'https://www.googleapis.com/oauth2/v2/userinfo'
 const OAUTH_TIMEOUT_MS = 10 * 60 * 1000
 
 export const GOOGLE_CALENDAR_SCOPE = 'https://www.googleapis.com/auth/calendar'
@@ -46,6 +46,12 @@ const GooglePrimaryCalendarSchema = z.object({
   primary: z.boolean().optional()
 })
 
+const GoogleUserInfoSchema = z.object({
+  email: z.string().min(1),
+  verified_email: z.boolean().optional(),
+  name: z.string().optional()
+})
+
 interface GoogleOAuthSession {
   state: string
   redirectUri: string
@@ -54,8 +60,10 @@ interface GoogleOAuthSession {
 }
 
 export interface GoogleCalendarConnection {
+  accountId: string
   account: {
     remoteId: string
+    email: string
     title: string
     timezone: string | null
   }
@@ -243,6 +251,31 @@ async function exchangeCodeForTokens(input: {
   return GoogleTokenResponseSchema.parse(await response.json())
 }
 
+async function fetchUserInfo(accessToken: string): Promise<z.infer<typeof GoogleUserInfoSchema>> {
+  const response = await fetch(GOOGLE_USERINFO_URL, {
+    headers: { Authorization: `Bearer ${accessToken}` }
+  })
+
+  if (!response.ok) {
+    const body = await response.text().catch(() => '')
+    let apiStatus: string | undefined
+    try {
+      const parsedBody = JSON.parse(body) as { error?: { status?: string } }
+      apiStatus = parsedBody.error?.status
+    } catch {
+      // body may be plain text or empty
+    }
+    log.error('Failed to fetch Google userinfo', {
+      status: response.status,
+      apiStatus,
+      body: body.slice(0, 500)
+    })
+    throw new Error(userMessageForCalendarApiError({ status: response.status, apiStatus }))
+  }
+
+  return GoogleUserInfoSchema.parse(await response.json())
+}
+
 async function fetchPrimaryCalendar(
   accessToken: string
 ): Promise<z.infer<typeof GooglePrimaryCalendarSchema>> {
@@ -410,14 +443,18 @@ export async function connectGoogleCalendar(): Promise<GoogleCalendarConnection>
     throw new Error(CALENDAR_SCOPE_NOT_GRANTED_MESSAGE)
   }
 
-  const existingTokens = await getGoogleCalendarTokens(LEGACY_DEFAULT_ACCOUNT_ID)
+  const userInfo = await fetchUserInfo(tokenResponse.access_token)
+  const accountId = userInfo.email
+  log.info('Resolved Google account identity', { accountId })
+
+  const existingTokens = await getGoogleCalendarTokens(accountId)
   const refreshToken = tokenResponse.refresh_token ?? existingTokens.refreshToken
   if (!refreshToken) {
     throw new Error('Google Calendar OAuth did not return a refresh token')
   }
 
   await storeGoogleCalendarTokens({
-    accountId: LEGACY_DEFAULT_ACCOUNT_ID,
+    accountId,
     accessToken: tokenResponse.access_token,
     refreshToken
   })
@@ -427,9 +464,11 @@ export async function connectGoogleCalendar(): Promise<GoogleCalendarConnection>
   const timezone = primaryCalendar.timeZone ?? null
 
   return {
+    accountId,
     account: {
       remoteId: primaryCalendar.id,
-      title,
+      email: userInfo.email,
+      title: userInfo.name ?? title,
       timezone
     },
     primaryCalendar: {
@@ -442,8 +481,8 @@ export async function connectGoogleCalendar(): Promise<GoogleCalendarConnection>
   }
 }
 
-export async function disconnectGoogleCalendar(): Promise<void> {
-  const { refreshToken } = await getGoogleCalendarTokens(LEGACY_DEFAULT_ACCOUNT_ID)
+export async function disconnectGoogleCalendar(accountId: string): Promise<void> {
+  const { refreshToken } = await getGoogleCalendarTokens(accountId)
 
   if (refreshToken) {
     try {
@@ -453,22 +492,46 @@ export async function disconnectGoogleCalendar(): Promise<void> {
         body: new URLSearchParams({ token: refreshToken })
       })
     } catch (error) {
-      log.warn('Failed to revoke Google Calendar token (non-blocking)', error)
+      log.warn('Failed to revoke Google Calendar token (non-blocking)', { accountId, error })
     }
   }
 
-  await clearGoogleCalendarTokens(LEGACY_DEFAULT_ACCOUNT_ID)
+  await clearGoogleCalendarTokens(accountId)
 }
 
-export async function hasGoogleCalendarLocalAuth(): Promise<boolean> {
-  const { refreshToken } = await getGoogleCalendarTokens(LEGACY_DEFAULT_ACCOUNT_ID)
+export async function hasGoogleCalendarLocalAuth(accountId: string): Promise<boolean> {
+  const { refreshToken } = await getGoogleCalendarTokens(accountId)
   return typeof refreshToken === 'string' && refreshToken.trim().length > 0
 }
 
-export async function hasGoogleCalendarConnection(db: DataDb): Promise<boolean> {
-  if (!(await hasGoogleCalendarLocalAuth())) return false
+export function resolveDefaultGoogleAccountId(db: DataDb): string | null {
   const accounts = listCalendarSources(db, { provider: 'google', kind: 'account' })
-  return accounts.length > 0
+  for (const account of accounts) {
+    if (account.accountId) return account.accountId
+  }
+  return null
+}
+
+export function listGoogleAccountIds(db: DataDb): string[] {
+  const accounts = listCalendarSources(db, { provider: 'google', kind: 'account' })
+  const ids: string[] = []
+  for (const account of accounts) {
+    if (account.accountId) ids.push(account.accountId)
+  }
+  return ids
+}
+
+export async function hasAnyGoogleCalendarLocalAuth(db: DataDb): Promise<boolean> {
+  const accounts = listCalendarSources(db, { provider: 'google', kind: 'account' })
+  for (const account of accounts) {
+    if (!account.accountId) continue
+    if (await hasGoogleCalendarLocalAuth(account.accountId)) return true
+  }
+  return false
+}
+
+export async function hasGoogleCalendarConnection(db: DataDb): Promise<boolean> {
+  return await hasAnyGoogleCalendarLocalAuth(db)
 }
 
 export function buildGoogleCalendarAuthUrl(input: {

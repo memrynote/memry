@@ -15,6 +15,9 @@ const webContentsSend = vi.fn()
 const mockConnectGoogleCalendar = vi.fn()
 const mockDisconnectGoogleCalendar = vi.fn()
 const mockHasGoogleCalendarLocalAuth = vi.fn()
+const mockHasAnyGoogleCalendarLocalAuth = vi.fn()
+const mockListGoogleAccountIds = vi.fn(() => [] as string[])
+const mockResolveDefaultGoogleAccountId = vi.fn(() => null as string | null)
 const mockSyncGoogleCalendarNow = vi.fn()
 const mockStartGoogleCalendarSyncRunner = vi.fn(async () => {})
 const mockStopGoogleCalendarSyncRunner = vi.fn()
@@ -54,7 +57,10 @@ vi.mock('../sync/local-mutations', () => ({
 vi.mock('../calendar/google/oauth', () => ({
   connectGoogleCalendar: (...args: unknown[]) => mockConnectGoogleCalendar(...args),
   disconnectGoogleCalendar: (...args: unknown[]) => mockDisconnectGoogleCalendar(...args),
-  hasGoogleCalendarLocalAuth: (...args: unknown[]) => mockHasGoogleCalendarLocalAuth(...args)
+  hasGoogleCalendarLocalAuth: (...args: unknown[]) => mockHasGoogleCalendarLocalAuth(...args),
+  hasAnyGoogleCalendarLocalAuth: (...args: unknown[]) => mockHasAnyGoogleCalendarLocalAuth(...args),
+  listGoogleAccountIds: (...args: unknown[]) => mockListGoogleAccountIds(...args),
+  resolveDefaultGoogleAccountId: (...args: unknown[]) => mockResolveDefaultGoogleAccountId(...args)
 }))
 
 vi.mock('../calendar/google/sync-service', () => ({
@@ -89,6 +95,10 @@ describe('calendar-handlers', () => {
     ;(getDatabase as Mock).mockReturnValue(asClientDb(db))
     ;(requireDatabase as Mock).mockReturnValue(asClientDb(db))
     mockHasGoogleCalendarLocalAuth.mockResolvedValue(false)
+    mockHasAnyGoogleCalendarLocalAuth.mockResolvedValue(false)
+    mockListGoogleAccountIds.mockReturnValue([])
+    mockResolveDefaultGoogleAccountId.mockReturnValue(null)
+    mockDisconnectGoogleCalendar.mockResolvedValue(undefined)
   })
 
   afterEach(() => {
@@ -440,8 +450,10 @@ describe('calendar-handlers', () => {
   it('connects and disconnects the Google provider through the provider-specific auth module', async () => {
     registerCalendarHandlers()
     mockConnectGoogleCalendar.mockResolvedValue({
+      accountId: 'user@example.com',
       account: {
         remoteId: 'user@example.com',
+        email: 'user@example.com',
         title: 'User Example',
         timezone: 'Europe/Istanbul'
       },
@@ -453,7 +465,8 @@ describe('calendar-handlers', () => {
         isPrimary: true
       }
     })
-    mockHasGoogleCalendarLocalAuth.mockResolvedValue(true)
+    mockHasAnyGoogleCalendarLocalAuth.mockResolvedValue(true)
+    mockListGoogleAccountIds.mockReturnValue(['user@example.com'])
 
     const connect = await invokeHandler(CalendarChannels.invoke.CONNECT_PROVIDER, {
       provider: 'google'
@@ -490,7 +503,7 @@ describe('calendar-handlers', () => {
       })
     ])
 
-    mockHasGoogleCalendarLocalAuth.mockResolvedValue(false)
+    mockHasAnyGoogleCalendarLocalAuth.mockResolvedValue(false)
 
     const disconnect = await invokeHandler(CalendarChannels.invoke.DISCONNECT_PROVIDER, {
       provider: 'google'
@@ -566,7 +579,7 @@ describe('calendar-handlers', () => {
 
   it('refreshes Google provider state only when local auth exists', async () => {
     registerCalendarHandlers()
-    mockHasGoogleCalendarLocalAuth.mockResolvedValue(false)
+    mockHasAnyGoogleCalendarLocalAuth.mockResolvedValue(false)
 
     const withoutAuth = await invokeHandler(CalendarChannels.invoke.REFRESH_PROVIDER, {
       provider: 'google'
@@ -619,7 +632,7 @@ describe('calendar-handlers', () => {
       )
     `)
 
-    mockHasGoogleCalendarLocalAuth.mockResolvedValue(true)
+    mockHasAnyGoogleCalendarLocalAuth.mockResolvedValue(true)
     mockSyncGoogleCalendarNow.mockResolvedValue(undefined)
 
     const refreshed = await invokeHandler(CalendarChannels.invoke.REFRESH_PROVIDER, {
