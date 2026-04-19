@@ -45,6 +45,7 @@ vi.mock('../../sync/auth-state', () => ({
 }))
 
 import { hasGoogleCalendarConnection, hasGoogleCalendarLocalAuth, listGoogleAccountIds } from './oauth'
+import { resolveDefaultGoogleAccountId } from './oauth'
 import * as googleClientModule from './client'
 import { isMemryUserSignedIn } from '../../sync/auth-state'
 import {
@@ -70,6 +71,7 @@ describe('google calendar sync service', () => {
     vi.mocked(hasGoogleCalendarLocalAuth).mockResolvedValue(true)
     vi.mocked(hasGoogleCalendarConnection).mockResolvedValue(true)
     vi.mocked(isMemryUserSignedIn).mockResolvedValue(true)
+    vi.mocked(resolveDefaultGoogleAccountId).mockReturnValue('test-account@example.com')
 
     const seeded = seedTestData(db)
     projectId = seeded.projectId
@@ -1570,6 +1572,78 @@ describe('google calendar sync service', () => {
           expect.objectContaining({ accountId: aliceAccountId, remoteId: 'alice-memry' }),
           expect.objectContaining({ accountId: bobAccountId, remoteId: 'bob-memry' })
         ])
+      )
+    })
+
+    it('uses the injected client only for the default account and routes other accounts separately', async () => {
+      const aliceAccountId = 'alice@example.com'
+      const bobAccountId = 'bob@example.com'
+
+      seedGoogleCalendarSource({
+        id: 'google-calendar:alice-work',
+        accountId: aliceAccountId,
+        remoteId: 'alice-work',
+        title: 'Alice Work',
+        isMemryManaged: false
+      })
+      seedGoogleCalendarSource({
+        id: 'google-calendar:bob-work',
+        accountId: bobAccountId,
+        remoteId: 'bob-work',
+        title: 'Bob Work',
+        isMemryManaged: false
+      })
+
+      vi.mocked(listGoogleAccountIds).mockReturnValueOnce([aliceAccountId, bobAccountId])
+      vi.mocked(resolveDefaultGoogleAccountId).mockReturnValue(aliceAccountId)
+
+      const injectedAliceClient = {
+        listCalendars: vi.fn(async () => [
+          {
+            id: 'alice-memry',
+            title: 'Memry',
+            timezone: 'UTC',
+            color: null,
+            isPrimary: false
+          }
+        ]),
+        createCalendar: vi.fn(),
+        listEvents: vi.fn(async () => ({ nextSyncCursor: 'alice-cursor', events: [] }))
+      }
+      const bobClient = {
+        listCalendars: vi.fn(async () => [
+          {
+            id: 'bob-memry',
+            title: 'Memry',
+            timezone: 'UTC',
+            color: null,
+            isPrimary: false
+          }
+        ]),
+        createCalendar: vi.fn(),
+        listEvents: vi.fn(async () => ({ nextSyncCursor: 'bob-cursor', events: [] }))
+      }
+
+      const clientSpy = vi
+        .spyOn(googleClientModule, 'createGoogleCalendarClient')
+        .mockImplementation(({ accountId }) => {
+          if (accountId === bobAccountId) {
+            return bobClient as never
+          }
+          throw new Error(`unexpected accountId: ${accountId}`)
+        })
+
+      try {
+        await syncGoogleCalendarNow(db, { client: injectedAliceClient as never })
+      } finally {
+        clientSpy.mockRestore()
+      }
+
+      expect(injectedAliceClient.listEvents).toHaveBeenCalledWith(
+        expect.objectContaining({ calendarId: 'alice-work' })
+      )
+      expect(bobClient.listEvents).toHaveBeenCalledWith(
+        expect.objectContaining({ calendarId: 'bob-work' })
       )
     })
 

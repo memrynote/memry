@@ -1,6 +1,10 @@
 import { z } from 'zod'
 import { createLogger } from '../../lib/logger'
-import { getGoogleCalendarTokens, storeGoogleCalendarTokens } from './keychain'
+import {
+  clearGoogleCalendarTokens,
+  getGoogleCalendarTokens,
+  storeGoogleCalendarTokens
+} from './keychain'
 import { userMessageForCalendarApiError, userMessageForTokenEndpointError } from './oauth-errors'
 import type {
   GoogleCalendarClient,
@@ -101,6 +105,7 @@ const GoogleEventsListSchema = z.object({
 
 const GoogleTokenRefreshSchema = z.object({
   access_token: z.string().min(1),
+  refresh_token: z.string().min(1).optional(),
   expires_in: z.number().int().positive(),
   token_type: z.string().min(1)
 })
@@ -342,8 +347,12 @@ async function refreshAccessTokenInner(accountId: string): Promise<string> {
       status: response.status,
       error: errorCode ?? 'unknown_error',
       errorDescription: description ?? raw,
+      accountId,
       hasClientSecret: Boolean(clientSecret)
     })
+    if (errorCode === 'invalid_grant') {
+      await clearGoogleCalendarTokens(accountId)
+    }
     throw new Error(
       userMessageForTokenEndpointError({
         status: response.status,
@@ -357,7 +366,7 @@ async function refreshAccessTokenInner(accountId: string): Promise<string> {
   await storeGoogleCalendarTokens({
     accountId,
     accessToken: parsed.access_token,
-    refreshToken
+    refreshToken: parsed.refresh_token ?? refreshToken
   })
   return parsed.access_token
 }

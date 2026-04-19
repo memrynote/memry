@@ -44,7 +44,11 @@ const ApproveLinkingSchema = z.object({
   sessionId: z.string().uuid(),
   encryptedMasterKey: z.string().min(1),
   encryptedKeyNonce: z.string().min(1),
-  keyConfirm: z.string().min(1)
+  keyConfirm: z.string().min(1),
+  encryptedProviderAuth: z.string().min(1).optional(),
+  encryptedProviderAuthNonce: z.string().min(1).optional(),
+  providerAuthConfirm: z.string().min(1).optional(),
+  providerAuthVersion: z.literal(1).optional()
 })
 
 const CompleteLinkingSchema = z.object({
@@ -167,7 +171,16 @@ linking.post('/approve', authMiddleware, linkingRateLimit, async (c) => {
   }
 
   const userId = c.get('userId')!
-  const { sessionId, encryptedMasterKey, encryptedKeyNonce, keyConfirm } = parsed.data
+  const {
+    sessionId,
+    encryptedMasterKey,
+    encryptedKeyNonce,
+    keyConfirm,
+    encryptedProviderAuth,
+    encryptedProviderAuthNonce,
+    providerAuthConfirm,
+    providerAuthVersion
+  } = parsed.data
 
   await transitionToApproved(
     c.env.DB,
@@ -175,7 +188,18 @@ linking.post('/approve', authMiddleware, linkingRateLimit, async (c) => {
     userId,
     encryptedMasterKey,
     encryptedKeyNonce,
-    keyConfirm
+    keyConfirm,
+    encryptedProviderAuth &&
+      encryptedProviderAuthNonce &&
+      providerAuthConfirm &&
+      providerAuthVersion
+      ? {
+          encryptedProviderAuth,
+          encryptedProviderAuthNonce,
+          providerAuthConfirm,
+          providerAuthVersion
+        }
+      : undefined
   )
 
   const doId = c.env.LINKING_SESSION.idFromName(sessionId)
@@ -232,7 +256,11 @@ linking.post('/complete', linkingCompleteRateLimit, async (c) => {
     success: true,
     encryptedMasterKey: keyData.encryptedMasterKey,
     encryptedKeyNonce: keyData.encryptedKeyNonce,
-    keyConfirm: keyData.keyConfirm
+    keyConfirm: keyData.keyConfirm,
+    encryptedProviderAuth: keyData.encryptedProviderAuth,
+    encryptedProviderAuthNonce: keyData.encryptedProviderAuthNonce,
+    providerAuthConfirm: keyData.providerAuthConfirm,
+    providerAuthVersion: keyData.providerAuthVersion
   })
 })
 

@@ -14,6 +14,7 @@ import {
   getAccountKey,
   getGoogleCalendarTokens,
   hasGoogleCalendarTokens,
+  storeGoogleCalendarRefreshToken,
   storeGoogleCalendarTokens
 } from './keychain'
 
@@ -127,5 +128,23 @@ describe('google calendar keychain — multi-account partitioning', () => {
       expect(account).toContain('alice@example.com')
       expect(account).toContain('devA')
     }
+  })
+
+  it('storing an imported refresh token clears any stale access token on this device', async () => {
+    await storeGoogleCalendarTokens({
+      accountId: 'alice@example.com',
+      accessToken: 'stale-access',
+      refreshToken: 'old-refresh'
+    })
+
+    await storeGoogleCalendarRefreshToken({
+      accountId: 'alice@example.com',
+      refreshToken: 'imported-refresh'
+    })
+
+    expect(await getGoogleCalendarTokens('alice@example.com')).toEqual({
+      accessToken: null,
+      refreshToken: 'imported-refresh'
+    })
   })
 })

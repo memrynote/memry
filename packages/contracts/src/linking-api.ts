@@ -1,5 +1,7 @@
 import { z } from 'zod'
 
+const ProviderAuthVersionSchema = z.literal(1)
+
 export const LINKING_SESSION_STATUSES = [
   'pending',
   'scanned',
@@ -27,7 +29,11 @@ export const ApproveLinkingRequestSchema = z.object({
   sessionId: z.string().min(1),
   encryptedMasterKey: z.string().min(1),
   encryptedKeyNonce: z.string().min(1),
-  keyConfirm: z.string().min(1)
+  keyConfirm: z.string().min(1),
+  encryptedProviderAuth: z.string().min(1).optional(),
+  encryptedProviderAuthNonce: z.string().min(1).optional(),
+  providerAuthConfirm: z.string().min(1).optional(),
+  providerAuthVersion: ProviderAuthVersionSchema.optional()
 })
 
 export const CompleteLinkingRequestSchema = z.object({
@@ -54,7 +60,11 @@ export const CompleteLinkingResponseSchema = z.object({
   success: z.boolean(),
   encryptedMasterKey: z.string().optional(),
   encryptedKeyNonce: z.string().optional(),
-  keyConfirm: z.string().optional()
+  keyConfirm: z.string().optional(),
+  encryptedProviderAuth: z.string().optional(),
+  encryptedProviderAuthNonce: z.string().optional(),
+  providerAuthConfirm: z.string().optional(),
+  providerAuthVersion: ProviderAuthVersionSchema.optional()
 })
 
 export type InitiateLinkingRequest = z.infer<typeof InitiateLinkingRequestSchema>
