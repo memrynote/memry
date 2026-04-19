@@ -526,6 +526,17 @@ export class SyncEngine extends EventEmitter {
         }
         break
       }
+      case 'calendar_changes_available': {
+        const sourceId = message.payload?.sourceId
+        if (typeof sourceId === 'string' && sourceId.length > 0) {
+          this.ctx.deps.calendarSyncOneSource?.(sourceId)
+        } else {
+          log.debug('calendar_changes_available message missing sourceId', {
+            payload: message.payload
+          })
+        }
+        break
+      }
       case 'heartbeat':
         break
       case 'error':

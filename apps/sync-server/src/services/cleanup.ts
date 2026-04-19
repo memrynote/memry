@@ -50,6 +50,15 @@ export const cleanupConsumedSetupTokens = async (db: D1Database): Promise<number
   return result.meta.changes ?? 0
 }
 
+export const cleanupExpiredGoogleCalendarChannels = async (db: D1Database): Promise<number> => {
+  const now = Math.floor(Date.now() / 1000)
+  const result = await db
+    .prepare('DELETE FROM google_calendar_channels WHERE expires_at < ?')
+    .bind(now)
+    .run()
+  return result.meta.changes ?? 0
+}
+
 export const cleanupStaleRateLimits = async (db: D1Database): Promise<number> => {
   const oneHourAgo = Math.floor(Date.now() / 1000) - 3600
   const result = await db

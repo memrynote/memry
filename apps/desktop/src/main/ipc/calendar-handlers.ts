@@ -53,6 +53,7 @@ import {
 } from '../calendar/google/sync-service'
 import { listGoogleCalendars, setDefaultGoogleCalendar } from '../calendar/google/onboarding'
 import { createGoogleCalendarClient } from '../calendar/google/client'
+import { getGooglePushRuntime } from '../calendar/google/push-runtime'
 import {
   promoteExternalEvent,
   ExternalEventNotFoundError,
@@ -366,6 +367,21 @@ export function registerCalendarHandlers(): void {
           isSelected: input.isSelected,
           modifiedAt: new Date().toISOString()
         })
+
+        if (
+          updated.provider === 'google' &&
+          updated.kind === 'calendar' &&
+          !updated.isMemryManaged
+        ) {
+          const pushRuntime = getGooglePushRuntime()
+          if (pushRuntime) {
+            void pushRuntime.handleSelectionToggle({
+              sourceId: updated.id,
+              isSelected: updated.isSelected,
+              calendarId: updated.remoteId
+            })
+          }
+        }
 
         return { success: true, source: updated }
       }, 'Failed to update calendar source selection')

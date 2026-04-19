@@ -32,7 +32,8 @@ describe('D1 schema', () => {
         'crdt_updates',
         'crdt_snapshots',
         'upload_sessions',
-        'blob_chunks'
+        'blob_chunks',
+        'google_calendar_channels'
       ])
     )
 
@@ -60,7 +61,43 @@ describe('D1 schema', () => {
         'idx_sync_deleted',
         'idx_upload_user',
         'idx_upload_expires',
-        'idx_blob_chunks_hash'
+        'idx_blob_chunks_hash',
+        'idx_google_channels_user',
+        'idx_google_channels_expires'
+      ])
+    )
+  })
+
+  it('cascades google_calendar_channels rows on user and device deletion', () => {
+    // #given
+    const db = new Database(':memory:')
+    db.pragma('foreign_keys = ON')
+    db.exec(loadSchemaSql())
+
+    const channelFks = db
+      .prepare('PRAGMA foreign_key_list(google_calendar_channels)')
+      .all() as Array<{
+      table: string
+      from: string
+      to: string
+      on_delete: string
+    }>
+
+    // #then
+    expect(channelFks).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          table: 'users',
+          from: 'user_id',
+          to: 'id',
+          on_delete: 'CASCADE'
+        }),
+        expect.objectContaining({
+          table: 'devices',
+          from: 'device_id',
+          to: 'id',
+          on_delete: 'CASCADE'
+        })
       ])
     )
   })

@@ -27,6 +27,7 @@ export interface SyncEngineDeps {
   crdtProvider?: CrdtProvider
   workerBridge?: SyncWorkerBridge
   refreshAccessToken?: () => Promise<boolean>
+  calendarSyncOneSource?: (sourceId: string) => void
 }
 
 export interface SyncEngineOptions {

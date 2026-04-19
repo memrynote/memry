@@ -51,10 +51,8 @@ import type {
 } from '../types'
 
 const log = createLogger('Calendar:GoogleSync')
-const RUN_INTERVAL_MS = 5 * 60 * 1000
 const LOCAL_TIMEZONE = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'
 
-let syncInterval: NodeJS.Timeout | null = null
 let syncInFlight = false
 
 function getNow(): string {
@@ -898,24 +896,13 @@ export async function syncGoogleCalendarNow(
   }
 }
 
-export async function startGoogleCalendarSyncRunner(): Promise<void> {
-  if (syncInterval) return
-  if (!(await isMemryUserSignedIn())) return
-  if (!(await hasGoogleCalendarConnection(requireDatabase()))) return
-
-  void syncGoogleCalendarNow().catch((error) => {
-    log.warn('initial Google Calendar sync failed', error)
-  })
-
-  syncInterval = setInterval(() => {
-    void syncGoogleCalendarNow().catch((error) => {
-      log.warn('periodic Google Calendar sync failed', error)
-    })
-  }, RUN_INTERVAL_MS)
-}
-
-export function stopGoogleCalendarSyncRunner(): void {
-  if (!syncInterval) return
-  clearInterval(syncInterval)
-  syncInterval = null
-}
+// Runner lifecycle + push-channel poll cadence live in google-sync-runner.ts.
+// Re-exported here so existing callers (index.ts, calendar-handlers,
+// session-teardown, device-registration, tests) keep their import paths.
+export {
+  PUSH_BACKOFF_INTERVAL_MS,
+  getCurrentPollIntervalMs,
+  reEvaluatePollCadence,
+  startGoogleCalendarSyncRunner,
+  stopGoogleCalendarSyncRunner
+} from './google-sync-runner'
