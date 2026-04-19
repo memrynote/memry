@@ -213,8 +213,9 @@ describe('mapCalendarEventToGoogleInput', () => {
     ])
   })
 
-  it('appends EXDATE;TZID=… when the event has a non-UTC timezone', () => {
-    // #given a recurring event in a named IANA zone
+  it('appends EXDATE;TZID=… with the wall-time of the skipped occurrence in that zone', () => {
+    // #given a recurring event pinned to America/New_York (EDT = UTC-4 in May)
+    // and a UTC exception marking the 09:00 ET instance on 2026-05-10
     const recurring: CalendarEvent = {
       ...LOCAL_EVENT_BASE,
       timezone: 'America/New_York',
@@ -225,10 +226,33 @@ describe('mapCalendarEventToGoogleInput', () => {
     // #when
     const input = mapCalendarEventToGoogleInput(recurring)
 
-    // #then TZID form emitted, no trailing Z on the timestamp
+    // #then the EXDATE timestamp reflects the zone's wall time (09:00), not UTC's 13:00.
+    // Emitting 13:00 with TZID=America/New_York would tell Google to skip the wrong
+    // occurrence (a 13:00 local instance that isn't on the series).
     expect(input.recurrence).toEqual([
       'RRULE:FREQ=WEEKLY;INTERVAL=1',
-      'EXDATE;TZID=America/New_York:20260510T130000'
+      'EXDATE;TZID=America/New_York:20260510T090000'
+    ])
+  })
+
+  it('handles EXDATE across a standard → daylight-saving boundary in the target zone', () => {
+    // #given a recurring event in America/New_York with exceptions
+    // straddling the 2026-03-08 DST spring-forward.
+    // 2026-03-06T14:00:00Z → 09:00 EST (UTC-5, before DST)
+    // 2026-03-13T13:00:00Z → 09:00 EDT (UTC-4, after DST)
+    const recurring: CalendarEvent = {
+      ...LOCAL_EVENT_BASE,
+      timezone: 'America/New_York',
+      recurrenceRule: { rrule: 'FREQ=WEEKLY' },
+      recurrenceExceptions: ['2026-03-06T14:00:00.000Z', '2026-03-13T13:00:00.000Z']
+    }
+
+    const input = mapCalendarEventToGoogleInput(recurring)
+
+    expect(input.recurrence).toEqual([
+      'RRULE:FREQ=WEEKLY',
+      'EXDATE;TZID=America/New_York:20260306T090000',
+      'EXDATE;TZID=America/New_York:20260313T090000'
     ])
   })
 
