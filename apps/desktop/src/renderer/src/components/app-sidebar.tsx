@@ -416,7 +416,7 @@ function AppSidebarInner({ currentPage, viewCounts, ...props }: AppSidebarProps)
   }, [openSettings])
 
   return (
-    <Sidebar collapsible="icon" {...props}>
+    <Sidebar collapsible="offcanvas" {...props}>
       <SidebarHeaderContent />
       <SidebarContent className="flex flex-col overflow-hidden gap-0">
         {/* Quick Actions: Search & New — persistent, stays visible during drill-down */}
