@@ -33,6 +33,48 @@ const GoogleEventDateSchema = z.object({
   timeZone: z.string().optional()
 })
 
+const GoogleAttendeeSchema = z.object({
+  email: z.string(),
+  displayName: z.string().optional(),
+  responseStatus: z.enum(['needsAction', 'declined', 'tentative', 'accepted']).optional(),
+  optional: z.boolean().optional(),
+  organizer: z.boolean().optional(),
+  self: z.boolean().optional()
+})
+
+const GoogleReminderOverrideSchema = z.object({
+  method: z.enum(['email', 'popup']),
+  minutes: z.number().int()
+})
+
+const GoogleRemindersSchema = z.object({
+  useDefault: z.boolean().optional(),
+  overrides: z.array(GoogleReminderOverrideSchema).optional()
+})
+
+const GoogleConferenceEntryPointSchema = z.object({
+  entryPointType: z.string(),
+  uri: z.string().optional(),
+  label: z.string().optional(),
+  pin: z.string().optional(),
+  meetingCode: z.string().optional(),
+  passcode: z.string().optional(),
+  regionCode: z.string().optional()
+})
+
+const GoogleConferenceDataSchema = z.object({
+  conferenceId: z.string().optional(),
+  conferenceSolution: z
+    .object({
+      key: z.object({ type: z.string().optional() }).partial().optional(),
+      name: z.string().optional(),
+      iconUri: z.string().optional()
+    })
+    .optional(),
+  entryPoints: z.array(GoogleConferenceEntryPointSchema).optional(),
+  notes: z.string().optional()
+})
+
 const GoogleEventSchema = z.object({
   id: z.string().min(1),
   status: z.enum(['confirmed', 'tentative', 'cancelled']).default('confirmed'),
@@ -42,7 +84,14 @@ const GoogleEventSchema = z.object({
   start: GoogleEventDateSchema,
   end: GoogleEventDateSchema.optional(),
   etag: z.string().optional(),
-  updated: z.string().optional()
+  updated: z.string().optional(),
+  attendees: z.array(GoogleAttendeeSchema).optional(),
+  reminders: GoogleRemindersSchema.optional(),
+  visibility: z.enum(['default', 'public', 'private', 'confidential']).optional(),
+  colorId: z.string().optional(),
+  conferenceData: GoogleConferenceDataSchema.optional(),
+  recurringEventId: z.string().optional(),
+  originalStartTime: GoogleEventDateSchema.optional()
 })
 
 const GoogleEventsListSchema = z.object({
@@ -84,6 +133,16 @@ function mapCalendar(item: z.infer<typeof GoogleCalendarListItemSchema>): Google
   }
 }
 
+function resolveOriginalStartTime(
+  raw: z.infer<typeof GoogleEventSchema>
+): string | null {
+  const ost = raw.originalStartTime
+  if (!ost) return null
+  if (ost.dateTime) return ost.dateTime
+  if (ost.date) return `${ost.date}T00:00:00.000Z`
+  return null
+}
+
 function mapRemoteEvent(
   calendarId: string,
   raw: z.infer<typeof GoogleEventSchema>
@@ -96,6 +155,50 @@ function mapRemoteEvent(
   if (!endAt && raw.end?.date) {
     endAt = `${raw.end.date}T00:00:00.000Z`
   }
+
+  const attendees = raw.attendees
+    ? raw.attendees.map((a) => ({
+        email: a.email,
+        displayName: a.displayName ?? null,
+        responseStatus: a.responseStatus ?? null,
+        optional: a.optional ?? null,
+        organizer: a.organizer ?? null,
+        self: a.self ?? null
+      }))
+    : null
+
+  const reminders = raw.reminders
+    ? {
+        useDefault: raw.reminders.useDefault ?? true,
+        overrides: raw.reminders.overrides ?? []
+      }
+    : null
+
+  const conferenceData = raw.conferenceData
+    ? {
+        conferenceId: raw.conferenceData.conferenceId ?? null,
+        conferenceSolution: raw.conferenceData.conferenceSolution
+          ? {
+              key: raw.conferenceData.conferenceSolution.key
+                ? { type: raw.conferenceData.conferenceSolution.key.type ?? null }
+                : null,
+              name: raw.conferenceData.conferenceSolution.name ?? null,
+              iconUri: raw.conferenceData.conferenceSolution.iconUri ?? null
+            }
+          : null,
+        entryPoints:
+          raw.conferenceData.entryPoints?.map((ep) => ({
+            entryPointType: ep.entryPointType,
+            uri: ep.uri ?? null,
+            label: ep.label ?? null,
+            pin: ep.pin ?? null,
+            meetingCode: ep.meetingCode ?? null,
+            passcode: ep.passcode ?? null,
+            regionCode: ep.regionCode ?? null
+          })) ?? [],
+        notes: raw.conferenceData.notes ?? null
+      }
+    : null
 
   return {
     id: raw.id,
@@ -110,6 +213,13 @@ function mapRemoteEvent(
     status: raw.status,
     etag: raw.etag ?? null,
     updatedAt: raw.updated ?? null,
+    attendees,
+    reminders,
+    visibility: raw.visibility ?? null,
+    colorId: raw.colorId ?? null,
+    conferenceData,
+    recurringEventId: raw.recurringEventId ?? null,
+    originalStartTime: resolveOriginalStartTime(raw),
     raw: raw as unknown as Record<string, unknown>
   }
 }
@@ -147,6 +257,48 @@ function toGoogleEventPayload(event: GoogleCalendarUpsertEventInput): Record<str
 
   if (event.recurrence && event.recurrence.length > 0) {
     payload.recurrence = event.recurrence
+  }
+
+  if (event.attendees && event.attendees.length > 0) {
+    payload.attendees = event.attendees.map((a) => {
+      const entry: Record<string, unknown> = { email: a.email }
+      if (a.displayName) entry.displayName = a.displayName
+      if (a.responseStatus) entry.responseStatus = a.responseStatus
+      if (a.optional != null) entry.optional = a.optional
+      if (a.organizer != null) entry.organizer = a.organizer
+      if (a.self != null) entry.self = a.self
+      return entry
+    })
+  }
+
+  if (event.reminders) {
+    payload.reminders = {
+      useDefault: event.reminders.useDefault,
+      overrides: event.reminders.overrides
+    }
+  }
+
+  if (event.visibility) {
+    payload.visibility = event.visibility
+  }
+
+  if (event.colorId) {
+    payload.colorId = event.colorId
+  }
+
+  // conferenceData is read-only for M5 (Memry does not create Meet links);
+  // surfacing via the read path is enough. Skip on writes.
+
+  if (event.recurringEventId) {
+    payload.recurringEventId = event.recurringEventId
+  }
+  if (event.originalStartTime) {
+    payload.originalStartTime = event.isAllDay
+      ? { date: event.originalStartTime.slice(0, 10) }
+      : {
+          dateTime: event.originalStartTime,
+          timeZone: event.timezone
+        }
   }
 
   return payload

@@ -4,9 +4,7 @@ import { CALENDAR_EVENT_SYNCABLE_FIELDS, mergeCalendarEventFields } from './fiel
 
 describe('field-merge-calendar', () => {
   describe('CALENDAR_EVENT_SYNCABLE_FIELDS', () => {
-    it('covers the design-spec field list (M3)', () => {
-      // #given the M3 design pins this exact list
-      // #then the constant matches
+    it('covers the M3 + M5 field list (rich Google-side fields mergeable LWW-by-tick-sum)', () => {
       expect([...CALENDAR_EVENT_SYNCABLE_FIELDS]).toEqual([
         'title',
         'description',
@@ -16,7 +14,12 @@ describe('field-merge-calendar', () => {
         'timezone',
         'isAllDay',
         'recurrenceRule',
-        'recurrenceExceptions'
+        'recurrenceExceptions',
+        'attendees',
+        'reminders',
+        'visibility',
+        'colorId',
+        'conferenceData'
       ])
     })
   })
@@ -76,6 +79,45 @@ describe('field-merge-calendar', () => {
       expect(result.merged.title).toBe('Renamed by A')
       expect(result.merged.startAt).toBe('2026-04-20T11:00:00.000Z')
       expect(result.merged.endAt).toBe('2026-04-20T12:00:00.000Z')
+      expect(result.hadConflicts).toBe(false)
+    })
+
+    it('merges a concurrent attendees write via tick-sum LWW (M5)', () => {
+      // #given both devices edited attendees offline; device B added one more tick
+      const baseRest = {
+        title: 'Standup',
+        description: null,
+        location: null,
+        startAt: '2026-04-20T09:00:00.000Z',
+        endAt: null,
+        timezone: 'UTC',
+        isAllDay: false,
+        recurrenceRule: null,
+        recurrenceExceptions: null,
+        reminders: null,
+        visibility: null,
+        colorId: null,
+        conferenceData: null
+      }
+      const local = {
+        ...baseRest,
+        attendees: [{ email: 'alice@example.com', responseStatus: 'accepted' }]
+      }
+      const remote = {
+        ...baseRest,
+        attendees: [
+          { email: 'alice@example.com', responseStatus: 'accepted' },
+          { email: 'bob@example.com', responseStatus: 'needsAction' }
+        ]
+      }
+      const localFC: FieldClocks = { attendees: { deviceA: 1 } }
+      const remoteFC: FieldClocks = { attendees: { deviceB: 2 } }
+
+      // #when
+      const result = mergeCalendarEventFields(local, remote, localFC, remoteFC)
+
+      // #then remote wins because sum(2) > sum(1)
+      expect(result.merged.attendees).toEqual(remote.attendees)
       expect(result.hadConflicts).toBe(false)
     })
 

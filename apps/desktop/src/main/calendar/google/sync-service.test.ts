@@ -1733,4 +1733,126 @@ describe('google calendar sync service', () => {
       expect(client.listCalendars).not.toHaveBeenCalled()
     })
   })
+
+  describe('single-instance edits for recurring series (M5)', () => {
+    it('push: when local event has parentEventId set, emits recurringEventId + originalStartTime to Google', async () => {
+      // #given a local exception row — pointing at a Google series we already know
+      const seriesGoogleId = 'google-series-1'
+      const seriesStart = '2026-05-10T09:00:00.000Z'
+      seedGoogleCalendarSource()
+
+      db.insert(calendarEvents)
+        .values({
+          id: 'event-exception-1',
+          title: 'Weekly sync (moved once)',
+          startAt: '2026-05-10T10:00:00.000Z',
+          endAt: '2026-05-10T11:00:00.000Z',
+          timezone: 'UTC',
+          isAllDay: false,
+          parentEventId: seriesGoogleId,
+          originalStartTime: seriesStart,
+          clock: { 'device-a': 1 },
+          createdAt: '2026-05-09T12:00:00.000Z',
+          modifiedAt: '2026-05-10T08:00:00.000Z'
+        })
+        .run()
+
+      const client = {
+        upsertEvent: vi.fn(async ({ calendarId, eventId, event }) => ({
+          id: eventId ?? 'google-series-1_20260510T090000Z',
+          calendarId,
+          title: event.title,
+          description: event.description ?? null,
+          location: event.location ?? null,
+          startAt: event.startAt,
+          endAt: event.endAt ?? null,
+          isAllDay: event.isAllDay,
+          timezone: event.timezone,
+          status: 'confirmed' as const,
+          etag: '"etag-exception"',
+          updatedAt: '2026-05-10T08:01:00.000Z',
+          attendees: null,
+          reminders: null,
+          visibility: null,
+          colorId: null,
+          conferenceData: null,
+          recurringEventId: event.recurringEventId ?? null,
+          originalStartTime: event.originalStartTime ?? null,
+          raw: { summary: event.title }
+        }))
+      }
+
+      // #when we push the local exception
+      await pushSourceToGoogleCalendar(
+        db,
+        { sourceType: 'event', sourceId: 'event-exception-1' },
+        { client }
+      )
+
+      // #then the Google client received recurringEventId + originalStartTime so a child is created
+      expect(client.upsertEvent).toHaveBeenCalledTimes(1)
+      const call = client.upsertEvent.mock.calls[0][0]
+      expect(call.eventId).toBeNull()
+      expect(call.event.recurringEventId).toBe(seriesGoogleId)
+      expect(call.event.originalStartTime).toBe(seriesStart)
+    })
+
+    it('pull: applyGoogleCalendarWriteback populates parentEventId + originalStartTime on the local row', async () => {
+      // #given a local event already bound to a Google event
+      db.insert(calendarEvents)
+        .values({
+          id: 'event-exception-pulled',
+          title: 'Weekly sync',
+          startAt: '2026-05-17T09:00:00.000Z',
+          endAt: '2026-05-17T10:00:00.000Z',
+          timezone: 'UTC',
+          isAllDay: false,
+          clock: { 'device-a': 1 },
+          createdAt: '2026-05-10T09:00:00.000Z',
+          modifiedAt: '2026-05-10T09:00:00.000Z'
+        })
+        .run()
+
+      // #when Google reports this event as an exception of a recurring series
+      await applyGoogleCalendarWriteback(
+        db,
+        {
+          sourceType: 'event',
+          sourceId: 'event-exception-pulled',
+          writebackMode: 'broad'
+        },
+        {
+          id: 'google-series-2_20260517T090000Z',
+          calendarId: 'remote-memry-calendar',
+          title: 'Weekly sync (moved)',
+          description: null,
+          location: null,
+          startAt: '2026-05-17T11:00:00.000Z',
+          endAt: '2026-05-17T12:00:00.000Z',
+          isAllDay: false,
+          timezone: 'UTC',
+          status: 'confirmed',
+          etag: '"etag-pull-exception"',
+          updatedAt: '2026-05-17T08:00:00.000Z',
+          attendees: null,
+          reminders: null,
+          visibility: null,
+          colorId: null,
+          conferenceData: null,
+          recurringEventId: 'google-series-2',
+          originalStartTime: '2026-05-17T09:00:00.000Z',
+          raw: {}
+        }
+      )
+
+      // #then the local row now carries the exception pointers
+      const row = db
+        .select()
+        .from(calendarEvents)
+        .where(eq(calendarEvents.id, 'event-exception-pulled'))
+        .get()
+      expect(row?.parentEventId).toBe('google-series-2')
+      expect(row?.originalStartTime).toBe('2026-05-17T09:00:00.000Z')
+    })
+  })
 })

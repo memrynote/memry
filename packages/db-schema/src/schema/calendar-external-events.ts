@@ -2,6 +2,12 @@ import { sql } from 'drizzle-orm'
 import { integer, sqliteTable, text, index, uniqueIndex } from 'drizzle-orm/sqlite-core'
 import type { VectorClock } from '@memry/contracts/sync-api'
 import { calendarSources } from './calendar-sources.ts'
+import type {
+  CalendarAttendee,
+  CalendarReminders,
+  CalendarConferenceData,
+  CalendarVisibility
+} from './calendar-events.ts'
 
 export type CalendarExternalEventStatus = 'confirmed' | 'tentative' | 'cancelled'
 
@@ -24,6 +30,11 @@ export const calendarExternalEvents = sqliteTable(
     isAllDay: integer('is_all_day', { mode: 'boolean' }).notNull().default(false),
     status: text('status').$type<CalendarExternalEventStatus>().notNull().default('confirmed'),
     recurrenceRule: text('recurrence_rule', { mode: 'json' }).$type<Record<string, unknown> | null>(),
+    attendees: text('attendees', { mode: 'json' }).$type<CalendarAttendee[] | null>(),
+    reminders: text('reminders', { mode: 'json' }).$type<CalendarReminders | null>(),
+    visibility: text('visibility').$type<CalendarVisibility | null>(),
+    colorId: text('color_id'),
+    conferenceData: text('conference_data', { mode: 'json' }).$type<CalendarConferenceData | null>(),
     rawPayload: text('raw_payload', { mode: 'json' }).$type<Record<string, unknown> | null>(),
     archivedAt: text('archived_at'),
     clock: text('clock', { mode: 'json' }).$type<VectorClock>(),

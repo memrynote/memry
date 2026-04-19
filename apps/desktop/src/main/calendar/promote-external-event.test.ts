@@ -168,6 +168,42 @@ describe('promoteExternalEvent (M2)', () => {
     )
   })
 
+  it('#given an external event carrying rich Google fields #when promoted #then carries attendees, reminders, visibility, colorId, conferenceData across to the local row (M5)', () => {
+    const attendees = [
+      { email: 'ceo@example.com', responseStatus: 'accepted', displayName: 'CEO' }
+    ]
+    const reminders = {
+      useDefault: false,
+      overrides: [{ method: 'popup' as const, minutes: 5 }]
+    }
+    const conferenceData = {
+      conferenceId: 'meet-abc',
+      entryPoints: [{ entryPointType: 'video', uri: 'https://meet.google.com/meet-abc' }]
+    }
+
+    seedExternalEvent(dbResult.db, {
+      attendees,
+      reminders,
+      visibility: 'private',
+      colorId: '9',
+      conferenceData
+    })
+
+    const result = promoteExternalEvent(db, { externalEventId: EXTERNAL_ID })
+
+    const row = dbResult.db
+      .select()
+      .from(calendarEvents)
+      .where(eq(calendarEvents.id, result.eventId!))
+      .get()
+
+    expect(row?.attendees).toEqual(attendees)
+    expect(row?.reminders).toEqual(reminders)
+    expect(row?.visibility).toBe('private')
+    expect(row?.colorId).toBe('9')
+    expect(row?.conferenceData).toEqual(conferenceData)
+  })
+
   it('#given the mirror source row vanishes before promote runs #when promoted #then throws ExternalEventNotFoundError because the FK CASCADE already removed the mirror', () => {
     seedExternalEvent(dbResult.db)
     dbResult.db.delete(calendarSources).where(eq(calendarSources.id, CAL_SOURCE_ID)).run()

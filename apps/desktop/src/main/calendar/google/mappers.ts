@@ -1,5 +1,11 @@
 import type { NewCalendarExternalEvent } from '@memry/db-schema/schema/calendar-external-events'
-import type { calendarEvents } from '@memry/db-schema/schema/calendar-events'
+import type {
+  calendarEvents,
+  CalendarAttendee,
+  CalendarConferenceData,
+  CalendarReminders,
+  CalendarVisibility
+} from '@memry/db-schema/schema/calendar-events'
 import type { inboxItems } from '@memry/db-schema/schema/inbox'
 import type { reminders } from '@memry/db-schema/schema/reminders'
 import type { tasks } from '@memry/db-schema/schema/tasks'
@@ -8,6 +14,23 @@ import type {
   GoogleCalendarRemoteEvent,
   GoogleCalendarUpsertEventInput
 } from '../types'
+
+export interface CalendarEventChanges {
+  title: string
+  description: string | null
+  location: string | null
+  startAt: string
+  endAt: string | null
+  isAllDay: boolean
+  timezone: string
+  attendees: CalendarAttendee[] | null
+  reminders: CalendarReminders | null
+  visibility: CalendarVisibility | null
+  colorId: string | null
+  conferenceData: CalendarConferenceData | null
+  parentEventId: string | null
+  originalStartTime: string | null
+}
 
 const LOCAL_TIMEZONE = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'
 
@@ -57,6 +80,54 @@ function toGoogleRecurrenceArray(
   return rrule ? [`RRULE:${rrule}`] : null
 }
 
+function isoToUtcIcalStamp(iso: string): string {
+  // 2026-05-10T09:00:00.000Z → 20260510T090000Z
+  const trimmed = iso.replace(/\.\d+/, '')
+  return trimmed.replace(/[-:]/g, '')
+}
+
+function isoToZonedIcalStamp(iso: string, timezone: string): string {
+  // Convert the UTC instant to wall-clock components in `timezone`,
+  // then emit YYYYMMDDTHHMMSS (no trailing Z — TZID carries the zone).
+  const parts = toTimeZoneDateParts(iso, timezone)
+  const seconds = getZonedSeconds(iso, timezone)
+  return `${parts.year}${parts.month}${parts.day}T${parts.hour}${parts.minute}${seconds}`
+}
+
+function getZonedSeconds(iso: string, timezone: string): string {
+  const formatter = new Intl.DateTimeFormat('en-CA', {
+    timeZone: timezone,
+    second: '2-digit',
+    hourCycle: 'h23'
+  })
+  const second =
+    formatter.formatToParts(new Date(iso)).find((part) => part.type === 'second')?.value ?? '00'
+  // Some runtimes emit '0' instead of '00' for second: '2-digit'. Pad defensively.
+  return second.padStart(2, '0')
+}
+
+function buildExdateLine(iso: string, timezone: string): string {
+  if (timezone === 'UTC') {
+    return `EXDATE:${isoToUtcIcalStamp(iso)}`
+  }
+  return `EXDATE;TZID=${timezone}:${isoToZonedIcalStamp(iso, timezone)}`
+}
+
+function toGoogleRecurrenceWithExceptions(
+  rule: Record<string, unknown> | null | undefined,
+  exceptions: string[] | null | undefined,
+  timezone: string
+): string[] | null {
+  const rruleLines = toGoogleRecurrenceArray(rule) ?? []
+  const exdateLines =
+    exceptions && exceptions.length > 0
+      ? exceptions.map((iso) => buildExdateLine(iso, timezone))
+      : []
+
+  const all = [...rruleLines, ...exdateLines]
+  return all.length > 0 ? all : null
+}
+
 export function mapCalendarEventToGoogleInput(
   row: typeof calendarEvents.$inferSelect
 ): GoogleCalendarUpsertEventInput {
@@ -70,7 +141,18 @@ export function mapCalendarEventToGoogleInput(
     endAt: row.endAt ?? null,
     isAllDay: row.isAllDay,
     timezone: row.timezone,
-    recurrence: toGoogleRecurrenceArray(row.recurrenceRule as Record<string, unknown> | null)
+    recurrence: toGoogleRecurrenceWithExceptions(
+      row.recurrenceRule as Record<string, unknown> | null,
+      row.recurrenceExceptions ?? null,
+      row.timezone
+    ),
+    attendees: row.attendees ?? null,
+    reminders: row.reminders ?? null,
+    visibility: row.visibility ?? null,
+    colorId: row.colorId ?? null,
+    conferenceData: row.conferenceData ?? null,
+    recurringEventId: row.parentEventId ?? null,
+    originalStartTime: row.originalStartTime ?? null
   }
 }
 
@@ -157,6 +239,11 @@ export function mapGoogleEventToExternalEventRecord(
     isAllDay: event.isAllDay,
     status: event.status,
     recurrenceRule: null,
+    attendees: event.attendees ?? null,
+    reminders: event.reminders ?? null,
+    visibility: event.visibility ?? null,
+    colorId: event.colorId ?? null,
+    conferenceData: event.conferenceData ?? null,
     rawPayload: event.raw,
     archivedAt: event.status === 'cancelled' ? now : null,
     createdAt: now,
@@ -164,15 +251,9 @@ export function mapGoogleEventToExternalEventRecord(
   }
 }
 
-export function mapGoogleEventToCalendarEventChanges(event: GoogleCalendarRemoteEvent): {
-  title: string
-  description: string | null
-  location: string | null
-  startAt: string
-  endAt: string | null
-  isAllDay: boolean
-  timezone: string
-} {
+export function mapGoogleEventToCalendarEventChanges(
+  event: GoogleCalendarRemoteEvent
+): CalendarEventChanges {
   return {
     title: event.title,
     description: event.description,
@@ -180,7 +261,14 @@ export function mapGoogleEventToCalendarEventChanges(event: GoogleCalendarRemote
     startAt: event.startAt,
     endAt: event.endAt,
     isAllDay: event.isAllDay,
-    timezone: event.timezone
+    timezone: event.timezone,
+    attendees: event.attendees ?? null,
+    reminders: event.reminders ?? null,
+    visibility: event.visibility ?? null,
+    colorId: event.colorId ?? null,
+    conferenceData: event.conferenceData ?? null,
+    parentEventId: event.recurringEventId ?? null,
+    originalStartTime: event.originalStartTime ?? null
   }
 }
 

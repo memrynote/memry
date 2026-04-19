@@ -176,6 +176,7 @@ export function CalendarPage({ className: _className }: CalendarPageProps): Reac
     eventId: string | null
     draft: CalendarEventDraft
     anchorRect: AnchorRect
+    readOnlyMetadata?: import('@/components/calendar/calendar-event-popover').CalendarEventReadOnlyMetadata
   } | null>(null)
   const [isSaving, setIsSaving] = useState(false)
   const [pendingPromote, setPendingPromote] = useState<{
@@ -295,7 +296,15 @@ export function CalendarPage({ className: _className }: CalendarPageProps): Reac
       mode: 'edit',
       eventId,
       draft,
-      anchorRect: rect
+      anchorRect: rect,
+      readOnlyMetadata: record
+        ? {
+            attendees: record.attendees,
+            reminders: record.reminders,
+            visibility: record.visibility,
+            conferenceData: record.conferenceData
+          }
+        : undefined
     })
   }
 
@@ -326,11 +335,20 @@ export function CalendarPage({ className: _className }: CalendarPageProps): Reac
 
   const handleSelectItem = async (item: CalendarProjectionItem, rect: AnchorRect) => {
     if (item.sourceType === 'event') {
+      const record = await calendarService.getEvent(item.sourceId).catch(() => null)
       setPopoverState({
         mode: 'edit',
         eventId: item.sourceId,
         draft: createDraftFromItem(item),
-        anchorRect: rect
+        anchorRect: rect,
+        readOnlyMetadata: record
+          ? {
+              attendees: record.attendees,
+              reminders: record.reminders,
+              visibility: record.visibility,
+              conferenceData: record.conferenceData
+            }
+          : undefined
       })
       return
     }
@@ -435,7 +453,8 @@ export function CalendarPage({ className: _className }: CalendarPageProps): Reac
             ? {
                 mode: popoverState.mode,
                 draft: popoverState.draft,
-                anchorRect: popoverState.anchorRect
+                anchorRect: popoverState.anchorRect,
+                readOnlyMetadata: popoverState.readOnlyMetadata
               }
             : null
         }

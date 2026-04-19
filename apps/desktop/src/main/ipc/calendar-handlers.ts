@@ -90,8 +90,16 @@ function mapCalendarEvent(row: typeof calendarEvents.$inferSelect): CalendarEven
     timezone: row.timezone,
     isAllDay: row.isAllDay,
     recurrenceRule: (row.recurrenceRule as Record<string, unknown> | null) ?? null,
-    recurrenceExceptions:
-      (row.recurrenceExceptions as Array<Record<string, unknown>> | null) ?? null,
+    recurrenceExceptions: (row.recurrenceExceptions as string[] | null) ?? null,
+    attendees:
+      (row.attendees as CalendarEventRecord['attendees']) ?? null,
+    reminders: (row.reminders as CalendarEventRecord['reminders']) ?? null,
+    visibility: (row.visibility as CalendarEventRecord['visibility']) ?? null,
+    colorId: row.colorId ?? null,
+    conferenceData:
+      (row.conferenceData as CalendarEventRecord['conferenceData']) ?? null,
+    parentEventId: row.parentEventId ?? null,
+    originalStartTime: row.originalStartTime ?? null,
     targetCalendarId: row.targetCalendarId ?? null,
     archivedAt: row.archivedAt ?? null,
     syncedAt: row.syncedAt ?? null,
