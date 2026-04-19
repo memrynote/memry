@@ -59,4 +59,12 @@ export interface GoogleCalendarClient {
     ifMatch?: string | null
   }): Promise<GoogleCalendarRemoteEvent>
   deleteEvent(input: { calendarId: string; eventId: string }): Promise<void>
+  watchCalendar(input: {
+    calendarId: string
+    channelId: string
+    token: string
+    webhookUrl: string
+    ttlSeconds: number
+  }): Promise<{ resourceId: string; expiration: number }>
+  stopChannel(input: { channelId: string; resourceId: string }): Promise<void>
 }
