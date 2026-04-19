@@ -224,6 +224,124 @@ function syncCalendarSourceUpsert(
   return mapCalendarSource(saved)
 }
 
+async function disconnectGoogleAccount(
+  db: DataDb,
+  provider: string,
+  accountId: string
+): Promise<CalendarProviderMutationResponse> {
+  try {
+    await disconnectGoogleCalendar(accountId)
+  } catch (err) {
+    log.warn('Google Calendar disconnect failed', { accountId, err })
+  }
+
+  const allProviderSources = listCalendarSourceRows(db, { provider })
+  const targetSources = allProviderSources.filter((source) =>
+    source.kind === 'account' ? source.accountId === accountId : source.accountId === accountId
+  )
+
+  if (targetSources.length === 0) {
+    return {
+      success: true,
+      status: await buildProviderStatus(db, provider)
+    }
+  }
+
+  const pushRuntime = getGooglePushRuntime()
+  if (pushRuntime) {
+    for (const source of targetSources) {
+      if (source.kind !== 'calendar' || source.isMemryManaged) continue
+      void pushRuntime.handleSelectionToggle({
+        sourceId: source.id,
+        isSelected: false,
+        calendarId: source.remoteId
+      })
+    }
+  }
+
+  const targetSourceIds = targetSources.map((source) => source.id)
+  const externalRows =
+    targetSourceIds.length > 0
+      ? db
+          .select()
+          .from(calendarExternalEvents)
+          .where(inArray(calendarExternalEvents.sourceId, targetSourceIds))
+          .all()
+      : []
+
+  const bindingRows =
+    targetSourceIds.length > 0
+      ? db
+          .select()
+          .from(calendarBindings)
+          .where(
+            and(
+              eq(calendarBindings.provider, provider),
+              inArray(
+                calendarBindings.remoteCalendarId,
+                targetSources.map((s) => s.remoteId)
+              )
+            )
+          )
+          .all()
+      : []
+
+  const now = new Date().toISOString()
+
+  db.transaction((tx) => {
+    if (externalRows.length > 0) {
+      tx.delete(calendarExternalEvents)
+        .where(
+          inArray(
+            calendarExternalEvents.id,
+            externalRows.map((row) => row.id)
+          )
+        )
+        .run()
+    }
+
+    if (bindingRows.length > 0) {
+      tx.delete(calendarBindings)
+        .where(
+          inArray(
+            calendarBindings.id,
+            bindingRows.map((row) => row.id)
+          )
+        )
+        .run()
+    }
+
+    for (const source of targetSources) {
+      if (source.archivedAt) continue
+      tx.update(calendarSources)
+        .set({ archivedAt: now, modifiedAt: now })
+        .where(eq(calendarSources.id, source.id))
+        .run()
+    }
+  })
+
+  for (const row of externalRows) {
+    syncCalendarExternalEventDelete(row.id, JSON.stringify(row))
+    emitCalendarChanged({ entityType: 'calendar_external_event', id: row.id })
+  }
+
+  for (const row of bindingRows) {
+    syncCalendarBindingDelete(row.id, JSON.stringify(row))
+    emitCalendarChanged({ entityType: 'calendar_binding', id: row.id })
+  }
+
+  for (const source of targetSources) {
+    if (source.archivedAt) continue
+    syncCalendarSourceUpdate(source.id)
+    emitCalendarChanged({ entityType: 'calendar_source', id: source.id })
+  }
+
+  return {
+    success: true,
+    status: await buildProviderStatus(db, provider)
+  }
+}
+
 export function registerCalendarHandlers(): void {
   ipcMain.handle(
     CalendarChannels.invoke.CREATE_EVENT,
@@ -521,6 +639,10 @@ export function registerCalendarHandlers(): void {
             status: await buildProviderStatus(db, input.provider),
             error: `Unsupported calendar provider: ${input.provider}`
           }
+        }
+
+        if (input.accountId) {
+          return await disconnectGoogleAccount(db, input.provider, input.accountId)
         }
 
         stopGoogleCalendarSyncRunner()

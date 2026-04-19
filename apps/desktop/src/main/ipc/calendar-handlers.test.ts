@@ -644,6 +644,57 @@ describe('calendar-handlers', () => {
     )
   })
 
+  it('disconnects only the requested accountId, leaving other accounts intact (M6 T5)', async () => {
+    registerCalendarHandlers()
+
+    db.run(sql`
+      INSERT INTO calendar_sources (
+        id, provider, kind, account_id, remote_id, title, timezone,
+        is_selected, sync_status, metadata, created_at, modified_at
+      ) VALUES
+        (${'google-account:alice@example.com'}, ${'google'}, ${'account'},
+         ${'alice@example.com'}, ${'alice@example.com'}, ${'Alice'}, ${'UTC'},
+         ${0}, ${'ok'}, ${JSON.stringify({ email: 'alice@example.com' })},
+         ${'2026-04-15T10:00:00.000Z'}, ${'2026-04-15T10:00:00.000Z'}),
+        (${'google-calendar:alice-primary'}, ${'google'}, ${'calendar'},
+         ${'alice@example.com'}, ${'alice@cal'}, ${'Alice Cal'}, ${'UTC'},
+         ${1}, ${'ok'}, ${null},
+         ${'2026-04-15T10:00:00.000Z'}, ${'2026-04-15T10:00:00.000Z'}),
+        (${'google-account:bob@example.com'}, ${'google'}, ${'account'},
+         ${'bob@example.com'}, ${'bob@example.com'}, ${'Bob'}, ${'UTC'},
+         ${0}, ${'ok'}, ${JSON.stringify({ email: 'bob@example.com' })},
+         ${'2026-04-15T10:00:00.000Z'}, ${'2026-04-15T10:00:00.000Z'}),
+        (${'google-calendar:bob-primary'}, ${'google'}, ${'calendar'},
+         ${'bob@example.com'}, ${'bob@cal'}, ${'Bob Cal'}, ${'UTC'},
+         ${1}, ${'ok'}, ${null},
+         ${'2026-04-15T10:00:00.000Z'}, ${'2026-04-15T10:00:00.000Z'})
+    `)
+
+    mockHasAnyGoogleCalendarLocalAuth.mockResolvedValue(true)
+    mockHasGoogleCalendarLocalAuth.mockResolvedValue(true)
+    mockListGoogleAccountIds.mockReturnValue(['alice@example.com', 'bob@example.com'])
+
+    const result = await invokeHandler(CalendarChannels.invoke.DISCONNECT_PROVIDER, {
+      provider: 'google',
+      accountId: 'alice@example.com'
+    })
+
+    expect(result.success).toBe(true)
+    expect(mockDisconnectGoogleCalendar).toHaveBeenCalledTimes(1)
+    expect(mockDisconnectGoogleCalendar).toHaveBeenCalledWith('alice@example.com')
+
+    const sources = await invokeHandler(CalendarChannels.invoke.LIST_SOURCES, {
+      provider: 'google'
+    })
+    const sourceIds = sources.sources.map((s: { id: string }) => s.id)
+    // Alice's rows tombstoned (filtered out by listCalendarSources via archivedAt);
+    // Bob's rows still active.
+    expect(sourceIds).not.toContain('google-account:alice@example.com')
+    expect(sourceIds).not.toContain('google-calendar:alice-primary')
+    expect(sourceIds).toContain('google-account:bob@example.com')
+    expect(sourceIds).toContain('google-calendar:bob-primary')
+  })
+
   it('refreshes Google provider state only when local auth exists', async () => {
     registerCalendarHandlers()
     mockHasAnyGoogleCalendarLocalAuth.mockResolvedValue(false)
