@@ -169,9 +169,7 @@ describe('promoteExternalEvent (M2)', () => {
   })
 
   it('#given an external event carrying rich Google fields #when promoted #then carries attendees, reminders, visibility, colorId, conferenceData across to the local row (M5)', () => {
-    const attendees = [
-      { email: 'ceo@example.com', responseStatus: 'accepted', displayName: 'CEO' }
-    ]
+    const attendees = [{ email: 'ceo@example.com', responseStatus: 'accepted', displayName: 'CEO' }]
     const reminders = {
       useDefault: false,
       overrides: [{ method: 'popup' as const, minutes: 5 }]

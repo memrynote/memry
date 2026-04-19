@@ -121,9 +121,7 @@ describe('calendarEvents rich fields (M5)', () => {
     }
     const conferenceData = {
       conferenceId: 'abc-defg-hij',
-      entryPoints: [
-        { entryPointType: 'video', uri: 'https://meet.google.com/abc-defg-hij' }
-      ]
+      entryPoints: [{ entryPointType: 'video', uri: 'https://meet.google.com/abc-defg-hij' }]
     }
 
     upsertCalendarEvent(dataDb, {

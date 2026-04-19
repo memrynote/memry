@@ -18,9 +18,7 @@ const FULL: CalendarEventMetadataProps = {
   },
   visibility: 'private',
   conferenceData: {
-    entryPoints: [
-      { entryPointType: 'video', uri: 'https://meet.google.com/abc-defg-hij' }
-    ]
+    entryPoints: [{ entryPointType: 'video', uri: 'https://meet.google.com/abc-defg-hij' }]
   }
 }
 
