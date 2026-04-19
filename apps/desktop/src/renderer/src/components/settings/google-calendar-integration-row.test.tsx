@@ -45,6 +45,7 @@ const DISCONNECTED_STATUS: CalendarProviderStatus = {
   connected: false,
   hasLocalAuth: false,
   account: null,
+  accounts: [],
   calendars: {
     total: 0,
     selected: 0,
@@ -58,12 +59,41 @@ const CONNECTED_STATUS: CalendarProviderStatus = {
   connected: true,
   hasLocalAuth: true,
   account: { id: 'google-account-1', title: 'h4yfans@gmail.com' },
+  accounts: [
+    {
+      accountId: 'h4yfans@gmail.com',
+      email: 'h4yfans@gmail.com',
+      status: 'connected',
+      lastSyncedAt: '2026-04-12T08:00:00.000Z',
+      lastError: null
+    }
+  ],
   calendars: {
     total: 3,
     selected: 2,
     memryManaged: 1
   },
   lastSyncedAt: '2026-04-12T08:00:00.000Z'
+}
+
+const TWO_ACCOUNT_STATUS: CalendarProviderStatus = {
+  ...CONNECTED_STATUS,
+  accounts: [
+    {
+      accountId: 'alice@example.com',
+      email: 'alice@example.com',
+      status: 'connected',
+      lastSyncedAt: '2026-04-12T08:00:00.000Z',
+      lastError: null
+    },
+    {
+      accountId: 'bob@example.com',
+      email: 'bob@example.com',
+      status: 'error',
+      lastSyncedAt: '2026-04-11T22:30:00.000Z',
+      lastError: 'token revoked by Google'
+    }
+  ]
 }
 
 const CONNECTED_SOURCES: CalendarSourceRecord[] = [
@@ -226,6 +256,27 @@ describe('Google Calendar integration row', () => {
         screen.getByRole('heading', { name: /Which calendar should new Memry events go to/i })
       ).toBeInTheDocument()
     })
+  })
+
+  it('renders one chip per connected Google account with status + email (M6 T3)', async () => {
+    mockGetGoogleCalendarStatus.mockResolvedValue(TWO_ACCOUNT_STATUS)
+    mockListSources.mockResolvedValue({ sources: CONNECTED_SOURCES })
+    vi.mocked(window.api.settings.getCalendarGoogleSettings).mockResolvedValue({
+      defaultTargetCalendarId: 'primary@example.com',
+      onboardingCompleted: true,
+      promoteConfirmDismissed: false
+    })
+
+    renderWithProviders(<IntegrationList />)
+
+    await waitFor(() => expect(screen.getByText('alice@example.com')).toBeInTheDocument())
+    expect(screen.getByText('bob@example.com')).toBeInTheDocument()
+
+    const aliceChip = screen.getByTestId('calendar-account-chip-alice@example.com')
+    const bobChip = screen.getByTestId('calendar-account-chip-bob@example.com')
+    expect(aliceChip).toHaveAttribute('data-account-status', 'connected')
+    expect(bobChip).toHaveAttribute('data-account-status', 'error')
+    expect(bobChip).toHaveTextContent('token revoked by Google')
   })
 
   it('#given an existing Google connection + onboardingCompleted=true #when the row mounts #then the onboarding dialog stays closed', async () => {

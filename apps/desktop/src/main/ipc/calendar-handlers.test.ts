@@ -438,6 +438,7 @@ describe('calendar-handlers', () => {
         id: 'google-account-1',
         title: 'h4yfans@gmail.com'
       }),
+      accounts: [],
       calendars: {
         total: 1,
         selected: 1,
@@ -481,6 +482,12 @@ describe('calendar-handlers', () => {
           id: 'google-account:user@example.com',
           title: 'User Example'
         },
+        accounts: expect.arrayContaining([
+          expect.objectContaining({
+            accountId: 'user@example.com',
+            email: 'user@example.com'
+          })
+        ]),
         calendars: {
           total: 1,
           selected: 1,
@@ -515,6 +522,7 @@ describe('calendar-handlers', () => {
         connected: false,
         hasLocalAuth: false,
         account: null,
+        accounts: [],
         calendars: {
           total: 0,
           selected: 0,
@@ -577,6 +585,65 @@ describe('calendar-handlers', () => {
     })
   })
 
+  it('returns one account in status.accounts per connected Google account (M6 T3)', async () => {
+    registerCalendarHandlers()
+
+    db.run(sql`
+      INSERT INTO calendar_sources (
+        id, provider, kind, account_id, remote_id, title, timezone,
+        is_selected, sync_status, last_synced_at, metadata, created_at, modified_at
+      ) VALUES (
+        ${'google-account:alice@example.com'}, ${'google'}, ${'account'},
+        ${'alice@example.com'}, ${'alice@example.com'}, ${'Alice'}, ${'UTC'},
+        ${0}, ${'ok'}, ${'2026-04-15T10:00:00.000Z'},
+        ${JSON.stringify({ email: 'alice@example.com' })},
+        ${'2026-04-15T10:00:00.000Z'}, ${'2026-04-15T10:00:00.000Z'}
+      )
+    `)
+    db.run(sql`
+      INSERT INTO calendar_sources (
+        id, provider, kind, account_id, remote_id, title, timezone,
+        is_selected, sync_status, last_synced_at, metadata, created_at, modified_at
+      ) VALUES (
+        ${'google-account:bob@example.com'}, ${'google'}, ${'account'},
+        ${'bob@example.com'}, ${'bob@example.com'}, ${'Bob'}, ${'UTC'},
+        ${0}, ${'error'}, ${'2026-04-15T09:00:00.000Z'},
+        ${JSON.stringify({ email: 'bob@example.com', lastError: 'token revoked by Google' })},
+        ${'2026-04-15T09:00:00.000Z'}, ${'2026-04-15T09:00:00.000Z'}
+      )
+    `)
+
+    mockHasAnyGoogleCalendarLocalAuth.mockResolvedValue(true)
+    mockHasGoogleCalendarLocalAuth.mockImplementation(async (accountId: string) => {
+      // Bob's keychain entry was wiped (e.g. token revoked); Alice still has tokens.
+      return accountId === 'alice@example.com'
+    })
+
+    const status = await invokeHandler(CalendarChannels.invoke.GET_PROVIDER_STATUS, {
+      provider: 'google'
+    })
+
+    expect(status.accounts).toHaveLength(2)
+    expect(status.accounts).toEqual(
+      expect.arrayContaining([
+        {
+          accountId: 'alice@example.com',
+          email: 'alice@example.com',
+          status: 'connected',
+          lastSyncedAt: '2026-04-15T10:00:00.000Z',
+          lastError: null
+        },
+        {
+          accountId: 'bob@example.com',
+          email: 'bob@example.com',
+          status: 'disconnected',
+          lastSyncedAt: '2026-04-15T09:00:00.000Z',
+          lastError: 'token revoked by Google'
+        }
+      ])
+    )
+  })
+
   it('refreshes Google provider state only when local auth exists', async () => {
     registerCalendarHandlers()
     mockHasAnyGoogleCalendarLocalAuth.mockResolvedValue(false)
@@ -592,6 +659,7 @@ describe('calendar-handlers', () => {
         connected: false,
         hasLocalAuth: false,
         account: null,
+        accounts: [],
         calendars: {
           total: 0,
           selected: 0,
@@ -649,6 +717,7 @@ describe('calendar-handlers', () => {
           id: 'google-account-1',
           title: 'User Example'
         },
+        accounts: [],
         calendars: {
           total: 0,
           selected: 0,
