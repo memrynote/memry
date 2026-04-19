@@ -26,7 +26,7 @@ export function WindowControls({ className }: WindowControlsProps): React.JSX.El
           aria-disabled="true"
           aria-label="Go back"
           className="flex items-center justify-center size-7 rounded text-text-tertiary/40 cursor-default"
-          title="Back (coming soon)"
+          title="Back"
         >
           <ChevronLeft className="size-4" />
         </button>
@@ -37,7 +37,7 @@ export function WindowControls({ className }: WindowControlsProps): React.JSX.El
           aria-disabled="true"
           aria-label="Go forward"
           className="flex items-center justify-center size-7 rounded text-text-tertiary/40 cursor-default"
-          title="Forward (coming soon)"
+          title="Forward"
         >
           <ChevronRight className="size-4" />
         </button>
