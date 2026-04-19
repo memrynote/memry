@@ -10,7 +10,12 @@ export const CALENDAR_EVENT_SYNCABLE_FIELDS = [
   'timezone',
   'isAllDay',
   'recurrenceRule',
-  'recurrenceExceptions'
+  'recurrenceExceptions',
+  'attendees',
+  'reminders',
+  'visibility',
+  'colorId',
+  'conferenceData'
 ] as const
 
 export function mergeCalendarEventFields(

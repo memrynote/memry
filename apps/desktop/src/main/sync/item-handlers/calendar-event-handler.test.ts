@@ -526,4 +526,61 @@ describe('calendar sync handlers', () => {
       'calendar_source:create'
     ])
   })
+
+  it('applies explicit null for M5 rich fields (clears stale attendees/reminders/etc.)', () => {
+    // #given a local row with populated rich fields and a stale clock
+    testDb.db
+      .insert(calendarEvents)
+      .values({
+        id: 'event-rich-clear',
+        title: 'Standup',
+        startAt: '2026-04-20T09:00:00.000Z',
+        endAt: '2026-04-20T09:15:00.000Z',
+        timezone: 'UTC',
+        isAllDay: false,
+        attendees: [{ email: 'alice@example.com', responseStatus: 'accepted' }],
+        reminders: { useDefault: false, overrides: [{ method: 'popup', minutes: 10 }] },
+        visibility: 'private',
+        colorId: '9',
+        conferenceData: {
+          conferenceId: 'abc',
+          entryPoints: [{ entryPointType: 'video', uri: 'https://meet.google.com/abc' }]
+        },
+        clock: { 'device-a': 1 },
+        fieldClocks: null,
+        createdAt: '2026-04-18T12:00:00.000Z',
+        modifiedAt: '2026-04-18T12:00:00.000Z'
+      })
+      .run()
+
+    const eventHandler = getHandler('calendar_event')
+
+    // #when a remote payload arrives with a strictly newer clock and explicit nulls
+    // for every rich field (the case where Google cleared attendees on another device).
+    const result = eventHandler?.applyUpsert(
+      ctx,
+      'event-rich-clear',
+      {
+        attendees: null,
+        reminders: null,
+        visibility: null,
+        colorId: null,
+        conferenceData: null
+      } as never,
+      { 'device-a': 2 }
+    )
+
+    // #then the apply-path does NOT treat null as "absent" — the local row is cleared
+    expect(result).toBe('applied')
+    const row = testDb.db
+      .select()
+      .from(calendarEvents)
+      .where(eq(calendarEvents.id, 'event-rich-clear'))
+      .get()
+    expect(row?.attendees).toBeNull()
+    expect(row?.reminders).toBeNull()
+    expect(row?.visibility).toBeNull()
+    expect(row?.colorId).toBeNull()
+    expect(row?.conferenceData).toBeNull()
+  })
 })

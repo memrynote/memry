@@ -296,7 +296,7 @@ describe('CalendarEventSyncPayloadSchema', () => {
     expect(CalendarEventSyncPayloadSchema.safeParse({}).success).toBe(true)
   })
 
-  it('accepts recurrenceRule + exceptions as records', () => {
+  it('accepts recurrenceRule as record and exceptions as ISO datetime strings (M5)', () => {
     const result = CalendarEventSyncPayloadSchema.safeParse({
       title: 'Standup',
       startAt: '2026-04-16T09:00:00Z',
@@ -304,7 +304,7 @@ describe('CalendarEventSyncPayloadSchema', () => {
       timezone: 'UTC',
       isAllDay: false,
       recurrenceRule: { freq: 'DAILY' },
-      recurrenceExceptions: [{ date: '2026-04-18' }]
+      recurrenceExceptions: ['2026-04-18T09:00:00.000Z']
     })
     expect(result.success).toBe(true)
   })

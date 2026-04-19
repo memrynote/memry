@@ -2,7 +2,10 @@ import { Button } from '@/components/ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { SlidersHorizontal } from '@/lib/icons'
 import { CalendarDayView } from './calendar-day-view'
-import { CalendarEventPopover } from './calendar-event-popover'
+import {
+  CalendarEventPopover,
+  type CalendarEventReadOnlyMetadata
+} from './calendar-event-popover'
 import { CalendarMonthView } from './calendar-month-view'
 import { CalendarToolbar, type CalendarWorkspaceView } from './calendar-toolbar'
 import { CalendarWeekView } from './calendar-week-view'
@@ -23,6 +26,8 @@ interface CalendarShellProps {
     mode: 'create' | 'edit'
     draft: CalendarEventDraft
     anchorRect: AnchorRect
+    /** M5: rich read-only metadata surfaced below the editor in edit mode. */
+    readOnlyMetadata?: CalendarEventReadOnlyMetadata
   } | null
   isSaving: boolean
   onViewChange: (view: CalendarWorkspaceView) => void
@@ -201,6 +206,7 @@ export function CalendarShell({
           onDraftChange={onPopoverDraftChange}
           onSave={onPopoverSave}
           onDismiss={onPopoverDismiss}
+          readOnlyMetadata={popoverState.readOnlyMetadata}
         />
       )}
     </div>

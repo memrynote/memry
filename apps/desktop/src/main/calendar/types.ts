@@ -1,3 +1,10 @@
+import type {
+  CalendarAttendee,
+  CalendarConferenceData,
+  CalendarReminders,
+  CalendarVisibility
+} from '@memry/db-schema/schema/calendar-events'
+
 export type CalendarSyncSourceType = 'event' | 'task' | 'reminder' | 'inbox_snooze'
 
 export interface CalendarSyncTarget {
@@ -26,6 +33,13 @@ export interface GoogleCalendarRemoteEvent {
   status: 'confirmed' | 'tentative' | 'cancelled'
   etag: string | null
   updatedAt: string | null
+  attendees: CalendarAttendee[] | null
+  reminders: CalendarReminders | null
+  visibility: CalendarVisibility | null
+  colorId: string | null
+  conferenceData: CalendarConferenceData | null
+  recurringEventId: string | null
+  originalStartTime: string | null
   raw: Record<string, unknown>
 }
 
@@ -40,6 +54,13 @@ export interface GoogleCalendarUpsertEventInput {
   isAllDay: boolean
   timezone: string
   recurrence: string[] | null
+  attendees?: CalendarAttendee[] | null
+  reminders?: CalendarReminders | null
+  visibility?: CalendarVisibility | null
+  colorId?: string | null
+  conferenceData?: CalendarConferenceData | null
+  recurringEventId?: string | null
+  originalStartTime?: string | null
 }
 
 export interface GoogleCalendarClient {

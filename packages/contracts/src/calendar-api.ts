@@ -38,7 +38,7 @@ export const CreateCalendarEventSchema = z.object({
   timezone: z.string().min(1).default('UTC'),
   isAllDay: z.boolean().default(false),
   recurrenceRule: JsonRecordSchema.optional().nullable(),
-  recurrenceExceptions: z.array(JsonRecordSchema).optional().nullable(),
+  recurrenceExceptions: z.array(z.string()).optional().nullable(),
   targetCalendarId: z.string().nullable().optional()
 })
 
@@ -52,7 +52,7 @@ export const UpdateCalendarEventSchema = z.object({
   timezone: z.string().min(1).optional(),
   isAllDay: z.boolean().optional(),
   recurrenceRule: JsonRecordSchema.optional().nullable(),
-  recurrenceExceptions: z.array(JsonRecordSchema).optional().nullable(),
+  recurrenceExceptions: z.array(z.string()).optional().nullable(),
   targetCalendarId: z.string().nullable().optional()
 })
 
@@ -109,6 +109,41 @@ export type PromoteExternalEventInput = z.infer<typeof PromoteExternalEventSchem
 export type ListGoogleCalendarsInput = z.infer<typeof ListGoogleCalendarsSchema>
 export type SetDefaultGoogleCalendarInput = z.infer<typeof SetDefaultGoogleCalendarSchema>
 
+export interface CalendarEventAttendeeRecord {
+  email: string
+  displayName?: string | null
+  responseStatus?: 'needsAction' | 'declined' | 'tentative' | 'accepted' | null
+  optional?: boolean | null
+  organizer?: boolean | null
+  self?: boolean | null
+}
+
+export interface CalendarEventRemindersRecord {
+  useDefault: boolean
+  overrides: Array<{ method: 'email' | 'popup'; minutes: number }>
+}
+
+export interface CalendarEventConferenceDataRecord {
+  conferenceId?: string | null
+  entryPoints?: Array<{
+    entryPointType: string
+    uri?: string | null
+    label?: string | null
+    pin?: string | null
+    meetingCode?: string | null
+    passcode?: string | null
+    regionCode?: string | null
+  }>
+  notes?: string | null
+  conferenceSolution?: {
+    key?: { type?: string | null } | null
+    name?: string | null
+    iconUri?: string | null
+  } | null
+}
+
+export type CalendarEventVisibility = 'default' | 'public' | 'private' | 'confidential'
+
 export interface CalendarEventRecord {
   id: string
   title: string
@@ -119,7 +154,14 @@ export interface CalendarEventRecord {
   timezone: string
   isAllDay: boolean
   recurrenceRule: Record<string, unknown> | null
-  recurrenceExceptions: Array<Record<string, unknown>> | null
+  recurrenceExceptions: string[] | null
+  attendees: CalendarEventAttendeeRecord[] | null
+  reminders: CalendarEventRemindersRecord | null
+  visibility: CalendarEventVisibility | null
+  colorId: string | null
+  conferenceData: CalendarEventConferenceDataRecord | null
+  parentEventId: string | null
+  originalStartTime: string | null
   targetCalendarId: string | null
   archivedAt: string | null
   syncedAt: string | null

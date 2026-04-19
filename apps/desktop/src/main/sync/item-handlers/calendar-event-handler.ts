@@ -1,5 +1,5 @@
 import { eq, isNull } from 'drizzle-orm'
-import { calendarEvents } from '@memry/db-schema/schema/calendar-events'
+import { calendarEvents, type CalendarEvent } from '@memry/db-schema/schema/calendar-events'
 import { utcNow } from '@memry/shared/utc'
 import {
   CalendarEventSyncPayloadSchema,
@@ -85,6 +85,10 @@ class CalendarEventHandler extends BaseItemHandler<CalendarEventSyncPayload> {
         const appliedFC =
           remoteFieldClocks ?? initAllFieldClocks(remoteClock, CALENDAR_EVENT_SYNCABLE_FIELDS)
 
+        // M5 nullable fields: distinguish "remote omitted" (fall back to local)
+        // from "remote explicitly set null" (clear local). Nullish coalescing
+        // can't tell these apart, so use Object.prototype.hasOwnProperty on data.
+        const hasKey = (k: string): boolean => Object.prototype.hasOwnProperty.call(data, k)
         tx.update(calendarEvents)
           .set({
             title: data.title ?? existing.title,
@@ -97,6 +101,19 @@ class CalendarEventHandler extends BaseItemHandler<CalendarEventSyncPayload> {
             recurrenceRule: data.recurrenceRule ?? existing.recurrenceRule ?? null,
             recurrenceExceptions:
               data.recurrenceExceptions ?? existing.recurrenceExceptions ?? null,
+            attendees: hasKey('attendees')
+              ? ((data.attendees as CalendarEvent['attendees']) ?? null)
+              : (existing.attendees ?? null),
+            reminders: hasKey('reminders')
+              ? ((data.reminders as CalendarEvent['reminders']) ?? null)
+              : (existing.reminders ?? null),
+            visibility: hasKey('visibility')
+              ? (data.visibility ?? null)
+              : (existing.visibility ?? null),
+            colorId: hasKey('colorId') ? (data.colorId ?? null) : (existing.colorId ?? null),
+            conferenceData: hasKey('conferenceData')
+              ? ((data.conferenceData as CalendarEvent['conferenceData']) ?? null)
+              : (existing.conferenceData ?? null),
             archivedAt: data.archivedAt ?? existing.archivedAt,
             clock: resolution.mergedClock,
             fieldClocks: appliedFC,
@@ -124,6 +141,12 @@ class CalendarEventHandler extends BaseItemHandler<CalendarEventSyncPayload> {
           isAllDay: data.isAllDay ?? false,
           recurrenceRule: data.recurrenceRule ?? null,
           recurrenceExceptions: data.recurrenceExceptions ?? null,
+          attendees: (data.attendees as CalendarEvent['attendees'] | undefined) ?? null,
+          reminders: (data.reminders as CalendarEvent['reminders'] | undefined) ?? null,
+          visibility: data.visibility ?? null,
+          colorId: data.colorId ?? null,
+          conferenceData:
+            (data.conferenceData as CalendarEvent['conferenceData'] | undefined) ?? null,
           archivedAt: data.archivedAt ?? null,
           clock: remoteClock,
           fieldClocks: insertedFC,
@@ -172,8 +195,12 @@ class CalendarEventHandler extends BaseItemHandler<CalendarEventSyncPayload> {
       timezone: row.timezone,
       isAllDay: row.isAllDay,
       recurrenceRule: (row.recurrenceRule as Record<string, unknown> | null) ?? null,
-      recurrenceExceptions:
-        (row.recurrenceExceptions as Array<Record<string, unknown>> | null) ?? null,
+      recurrenceExceptions: (row.recurrenceExceptions as string[] | null) ?? null,
+      attendees: (row.attendees as Array<Record<string, unknown>> | null) ?? null,
+      reminders: (row.reminders as Record<string, unknown> | null) ?? null,
+      visibility: row.visibility ?? null,
+      colorId: row.colorId ?? null,
+      conferenceData: (row.conferenceData as Record<string, unknown> | null) ?? null,
       archivedAt: row.archivedAt ?? null,
       clock: (row.clock as VectorClock) ?? undefined,
       fieldClocks: (row.fieldClocks as FieldClocks | null) ?? undefined,
