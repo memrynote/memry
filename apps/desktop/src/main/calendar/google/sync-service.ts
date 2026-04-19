@@ -52,10 +52,31 @@ import type {
 
 const log = createLogger('Calendar:GoogleSync')
 const RUN_INTERVAL_MS = 5 * 60 * 1000
+export const PUSH_BACKOFF_INTERVAL_MS = 30 * 60 * 1000
 const LOCAL_TIMEZONE = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'
 
 let syncInterval: NodeJS.Timeout | null = null
 let syncInFlight = false
+let currentPollIntervalMs = RUN_INTERVAL_MS
+
+export function getCurrentPollIntervalMs(): number {
+  return currentPollIntervalMs
+}
+
+function runPeriodicSync(): void {
+  void syncGoogleCalendarNow().catch((error) => {
+    log.warn('periodic Google Calendar sync failed', error)
+  })
+}
+
+export function reEvaluatePollCadence(activeChannelCount: number): void {
+  const target = activeChannelCount > 0 ? PUSH_BACKOFF_INTERVAL_MS : RUN_INTERVAL_MS
+  if (target === currentPollIntervalMs) return
+  currentPollIntervalMs = target
+  if (!syncInterval) return
+  clearInterval(syncInterval)
+  syncInterval = setInterval(runPeriodicSync, target)
+}
 
 function getNow(): string {
   return new Date().toISOString()
@@ -907,11 +928,7 @@ export async function startGoogleCalendarSyncRunner(): Promise<void> {
     log.warn('initial Google Calendar sync failed', error)
   })
 
-  syncInterval = setInterval(() => {
-    void syncGoogleCalendarNow().catch((error) => {
-      log.warn('periodic Google Calendar sync failed', error)
-    })
-  }, RUN_INTERVAL_MS)
+  syncInterval = setInterval(runPeriodicSync, currentPollIntervalMs)
 }
 
 export function stopGoogleCalendarSyncRunner(): void {
