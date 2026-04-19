@@ -94,4 +94,29 @@ test.describe('Sidebar & WindowControls', () => {
     // With offcanvas, content should grow by roughly the sidebar width (>= 200px)
     expect(collapsedWidth - expandedWidth).toBeGreaterThanOrEqual(200)
   })
+
+  test('chrome buttons remain clickable after sidebar is collapsed', async ({
+    electronApp,
+    page
+  }) => {
+    await waitForAppReady(page)
+    await waitForVaultReady(page)
+
+    // Collapse the sidebar
+    const toggle = page.getByRole('button', { name: /toggle sidebar/i }).first()
+    await toggle.click()
+    await page.waitForTimeout(400)
+
+    // Main content reclaimed width — sanity check
+    const mainContent = page.locator('#main-content')
+    const collapsedWidth = (await mainContent.boundingBox())!.width
+
+    // The toggle button in the fixed chrome MUST be clickable to re-open
+    await toggle.click()
+    await page.waitForTimeout(400)
+
+    // Sidebar re-opened — main content shrinks again
+    const reopenedWidth = (await mainContent.boundingBox())!.width
+    expect(reopenedWidth).toBeLessThan(collapsedWidth)
+  })
 })
