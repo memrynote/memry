@@ -8,6 +8,7 @@ import {
   GetCalendarRangeSchema,
   ListCalendarSourcesSchema,
   PromoteExternalEventSchema,
+  RetryCalendarSourceSyncSchema,
   SetDefaultGoogleCalendarSchema,
   UpdateCalendarSourceSelectionSchema,
   CalendarProviderRequestSchema,
@@ -25,6 +26,7 @@ import {
   type CalendarSourceRecord,
   type ListGoogleCalendarsResponse,
   type PromoteExternalEventResponse,
+  type RetryCalendarSourceSyncResponse,
   type SetDefaultGoogleCalendarResponse
 } from '../../contracts/src/calendar-api.ts'
 import {
@@ -45,6 +47,7 @@ export type CalendarProviderRequest = z.input<typeof CalendarProviderRequestSche
 export type ListGoogleCalendarsInput = z.input<typeof ListGoogleCalendarsSchema>
 export type PromoteExternalEventInput = z.input<typeof PromoteExternalEventSchema>
 export type SetDefaultGoogleCalendarInput = z.input<typeof SetDefaultGoogleCalendarSchema>
+export type RetryCalendarSourceSyncInput = z.input<typeof RetryCalendarSourceSyncSchema>
 
 export type {
   CalendarChangedEvent,
@@ -61,6 +64,7 @@ export type {
   CalendarSourceRecord,
   ListGoogleCalendarsResponse,
   PromoteExternalEventResponse,
+  RetryCalendarSourceSyncResponse,
   SetDefaultGoogleCalendarResponse
 }
 
@@ -152,6 +156,12 @@ export const calendarRpc = defineDomain({
       (input: PromoteExternalEventInput) => Promise<PromoteExternalEventResponse>
     >({
       channel: CalendarChannels.invoke.PROMOTE_EXTERNAL_EVENT,
+      params: ['input']
+    }),
+    retryGoogleCalendarSourceSync: defineMethod<
+      (input: RetryCalendarSourceSyncInput) => Promise<RetryCalendarSourceSyncResponse>
+    >({
+      channel: CalendarChannels.invoke.RETRY_GOOGLE_CALENDAR_SOURCE_SYNC,
       params: ['input']
     })
   },

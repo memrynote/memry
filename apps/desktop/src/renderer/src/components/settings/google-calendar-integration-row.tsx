@@ -10,6 +10,7 @@ import {
   disconnectGoogleCalendarProvider,
   getGoogleCalendarStatus,
   refreshGoogleCalendarProvider,
+  retryGoogleCalendarSourceSync,
   updateGoogleCalendarSourceSelection
 } from '@/services/calendar-service'
 import { GoogleCalendarSourcePicker } from './google-calendar-source-picker'
@@ -93,6 +94,19 @@ export function GoogleCalendarIntegrationRow(): React.JSX.Element {
   const sourceMutation = useMutation({
     mutationFn: ({ sourceId, isSelected }: { sourceId: string; isSelected: boolean }) =>
       updateGoogleCalendarSourceSelection({ id: sourceId, isSelected }),
+    onSuccess: async () => {
+      await invalidateGoogleCalendarQueries(queryClient)
+    }
+  })
+
+  const retryMutation = useMutation({
+    mutationFn: async (sourceId: string) => {
+      const result = await retryGoogleCalendarSourceSync({ sourceId })
+      if (!result.success) {
+        throw new Error(result.error ?? 'Retry failed')
+      }
+      return result
+    },
     onSuccess: async () => {
       await invalidateGoogleCalendarQueries(queryClient)
     }
@@ -249,6 +263,8 @@ export function GoogleCalendarIntegrationRow(): React.JSX.Element {
             onToggleSource={(sourceId, isSelected) =>
               sourceMutation.mutate({ sourceId, isSelected })
             }
+            onRetrySource={(sourceId) => retryMutation.mutate(sourceId)}
+            retryingSourceId={retryMutation.isPending ? (retryMutation.variables ?? null) : null}
           />
         </div>
       )}

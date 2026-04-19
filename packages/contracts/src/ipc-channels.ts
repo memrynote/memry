@@ -541,7 +541,9 @@ export const CalendarChannels = {
     /** M2: list the user's Google calendars for target/default selection */
     LIST_GOOGLE_CALENDARS: 'calendar:list-google-calendars',
     /** M2: persist the onboarding choice for default target Google calendar */
-    SET_DEFAULT_GOOGLE_CALENDAR: 'calendar:set-default-google-calendar'
+    SET_DEFAULT_GOOGLE_CALENDAR: 'calendar:set-default-google-calendar',
+    /** M6: re-run sync for a single calendar source (Retry button on sync-health UI) */
+    RETRY_GOOGLE_CALENDAR_SOURCE_SYNC: 'calendar:retry-google-source-sync'
   },
   events: {
     CHANGED: 'calendar:changed'

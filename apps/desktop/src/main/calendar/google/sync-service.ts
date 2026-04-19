@@ -784,6 +784,34 @@ export async function syncGoogleCalendarSource(
   sourceId: string,
   deps: { client?: Pick<GoogleCalendarClient, 'listEvents'> } = {}
 ): Promise<void> {
+  try {
+    await syncGoogleCalendarSourceInner(db, sourceId, deps)
+  } catch (error) {
+    recordSyncError(db, sourceId, error)
+    throw error
+  }
+}
+
+function recordSyncError(db: DataDb, sourceId: string, error: unknown): void {
+  const source = getCalendarSourceById(db, sourceId)
+  if (!source) return
+  const message = error instanceof Error ? error.message : String(error)
+  const truncated = message.slice(0, 200)
+  const updated = upsertCalendarSource(db, {
+    ...source,
+    syncStatus: 'error',
+    lastError: truncated,
+    modifiedAt: getNow()
+  })
+  markSyncedTableMutation('calendar_source', updated.id, true)
+  emitCalendarChanged({ entityType: 'calendar_source', id: updated.id })
+}
+
+async function syncGoogleCalendarSourceInner(
+  db: DataDb,
+  sourceId: string,
+  deps: { client?: Pick<GoogleCalendarClient, 'listEvents'> } = {}
+): Promise<void> {
   const source = getCalendarSourceById(db, sourceId)
   if (!source) {
     throw new Error(`Calendar source not found: ${sourceId}`)
@@ -875,6 +903,7 @@ export async function syncGoogleCalendarSource(
     syncCursor: result.nextSyncCursor,
     syncStatus: 'ok',
     lastSyncedAt: now,
+    lastError: null,
     modifiedAt: now
   })
   markSyncedTableMutation('calendar_source', updatedSource.id, true)

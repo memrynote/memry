@@ -237,6 +237,7 @@ export function createGeneratedRpcApi({
       listGoogleCalendars: ((options) => invoke("calendar:list-google-calendars", options ?? {})) as GeneratedRpcApi["calendar"]["listGoogleCalendars"],
       setDefaultGoogleCalendar: ((input) => invoke("calendar:set-default-google-calendar", input)) as GeneratedRpcApi["calendar"]["setDefaultGoogleCalendar"],
       promoteExternalEvent: ((input) => invoke("calendar:promote-external-event", input)) as GeneratedRpcApi["calendar"]["promoteExternalEvent"],
+      retryGoogleCalendarSourceSync: ((input) => invoke("calendar:retry-google-source-sync", input)) as GeneratedRpcApi["calendar"]["retryGoogleCalendarSourceSync"],
     },
     onNoteCreated: ((callback) => subscribe("notes:created", callback)) as GeneratedRpcApi["onNoteCreated"],
     onNoteUpdated: ((callback) => subscribe("notes:updated", callback)) as GeneratedRpcApi["onNoteUpdated"],
