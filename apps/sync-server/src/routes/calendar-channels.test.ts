@@ -37,7 +37,9 @@ function createStatement(overrides?: {
   return statement
 }
 
-function createEnv(prepareImpl: ReturnType<typeof vi.fn>) {
+type PrepareFn = (sql: string) => ReturnType<typeof createStatement>
+
+function createEnv(prepareImpl: ReturnType<typeof vi.fn<PrepareFn>>) {
   return {
     DB: {
       prepare: prepareImpl
@@ -79,7 +81,7 @@ describe('calendar-channels routes', () => {
     it('inserts a row with userId and deviceId from auth, returns 201 with channelId + expiresAt', async () => {
       // #given a valid registration body
       const statement = createStatement()
-      const prepare = vi.fn(() => statement)
+      const prepare = vi.fn<PrepareFn>(() => statement)
       const env = createEnv(prepare)
       const body = {
         channelId: 'ch-1',
@@ -145,7 +147,7 @@ describe('calendar-channels routes', () => {
     it('updates resource_id scoped by userId, returns 204', async () => {
       // #given 1 row changed
       const statement = createStatement({ run: vi.fn(async () => ({ meta: { changes: 1 } })) })
-      const prepare = vi.fn(() => statement)
+      const prepare = vi.fn<PrepareFn>(() => statement)
       const env = createEnv(prepare)
 
       // #when
@@ -167,7 +169,7 @@ describe('calendar-channels routes', () => {
     it('returns 404 when no row matches (wrong owner or unknown id)', async () => {
       // #given zero changes
       const statement = createStatement({ run: vi.fn(async () => ({ meta: { changes: 0 } })) })
-      const prepare = vi.fn(() => statement)
+      const prepare = vi.fn<PrepareFn>(() => statement)
       const env = createEnv(prepare)
 
       // #when
@@ -186,7 +188,7 @@ describe('calendar-channels routes', () => {
     it('deletes the row scoped by userId, returns 204', async () => {
       // #given
       const statement = createStatement({ run: vi.fn(async () => ({ meta: { changes: 1 } })) })
-      const prepare = vi.fn(() => statement)
+      const prepare = vi.fn<PrepareFn>(() => statement)
       const env = createEnv(prepare)
 
       // #when
@@ -203,7 +205,7 @@ describe('calendar-channels routes', () => {
     it('returns 404 when no row was deleted', async () => {
       // #given
       const statement = createStatement({ run: vi.fn(async () => ({ meta: { changes: 0 } })) })
-      const prepare = vi.fn(() => statement)
+      const prepare = vi.fn<PrepareFn>(() => statement)
       const env = createEnv(prepare)
 
       // #when

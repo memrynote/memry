@@ -16,12 +16,13 @@ function createApp() {
   return app
 }
 
-function createExecutionCtx() {
+function createExecutionCtx(): ExecutionContext {
   return {
     waitUntil: (p: Promise<unknown>) => {
       void p.catch(() => {})
     },
-    passThroughOnException: () => {}
+    passThroughOnException: () => {},
+    props: {}
   }
 }
 
