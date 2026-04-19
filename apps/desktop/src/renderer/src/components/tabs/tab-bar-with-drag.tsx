@@ -10,7 +10,7 @@ import { ChevronLeft, ChevronRight, Calendar } from '@/lib/icons'
 import { SidebarGraph } from '@/lib/icons/sidebar-nav-icons'
 import { useDayPanel } from '@/contexts/day-panel-context'
 import { useTabGroup, useTabs } from '@/contexts/tabs'
-import { SidebarTrigger } from '@/components/ui/sidebar'
+import { useSidebar } from '@/components/ui/sidebar'
 import { SortableTab } from './sortable-tab'
 import { PinnedTab } from './pinned-tab'
 import { TabBarAction } from './tab-bar-action'
@@ -40,6 +40,8 @@ export const TabBarWithDrag = ({
   const group = useTabGroup(groupId)
   const { toggle: toggleDayPanel, isOpen: isDayPanelOpen } = useDayPanel()
   const { openTab, getActiveTab } = useTabs()
+  const { state: sidebarState } = useSidebar()
+  const needsChromeSpacer = sidebarState === 'collapsed' && showSidebarToggle
 
   const isGraphActive = getActiveTab()?.type === 'graph'
 
@@ -109,12 +111,11 @@ export const TabBarWithDrag = ({
     <TabBarContextMenu groupId={groupId}>
       <div
         className={cn(
-          // Container - align items to bottom for tab merge effect
           'drag-region flex items-end shrink-0',
           'bg-transparent',
           'relative',
-          // Bottom border that active tabs will overlap
           'border-b border-border',
+          needsChromeSpacer && 'pl-[var(--chrome-width)]',
           className
         )}
         role="tablist"
@@ -122,12 +123,6 @@ export const TabBarWithDrag = ({
         aria-orientation="horizontal"
         data-group-id={groupId}
       >
-        {showSidebarToggle && (
-          <div className="no-drag flex items-center px-2 self-center">
-            <SidebarTrigger className="text-text-tertiary hover:text-foreground transition-colors duration-150" />
-          </div>
-        )}
-
         {/* Pinned tabs section (not in sortable context) */}
         {pinnedTabs.length > 0 && (
           <>

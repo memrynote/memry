@@ -5,6 +5,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { Loader2 } from '@/lib/icons'
 import { AppSidebar } from '@/components/app-sidebar'
 import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar'
+import { WindowControls } from '@/components/window-controls'
 import { Toaster } from '@/components/ui/sonner'
 import { DragProvider, type DragState } from '@/contexts/drag-context'
 import { DroppedPriorityProvider } from '@/contexts/dropped-priority-context'
@@ -431,6 +432,10 @@ function App(): React.JSX.Element {
               {mainContent}
             </DroppedPriorityProvider>
           </DragProvider>
+          {/* Last child so paint order puts the chrome overlay above the tab-bar's
+              drag-region (OS-level -webkit-app-region hit test picks the topmost
+              layer; a drag-region painted over no-drag children eats clicks). */}
+          <WindowControls className="pointer-events-auto fixed top-0 left-0 z-[60] w-[var(--chrome-width)]" />
         </SidebarProvider>
         {/* First-run onboarding overlay — shown until user completes or dismisses */}
         {!generalSettingsLoading && !generalSettings.onboardingCompleted && (
