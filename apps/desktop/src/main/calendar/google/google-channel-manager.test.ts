@@ -161,8 +161,8 @@ describe('google-channel-manager', () => {
         })),
         stopChannel: vi.fn(async () => {})
       }
-      const resolveClient = vi.fn(
-        ({ sourceId }: { sourceId: string }) => (sourceId === 'src-1' ? clientA : clientB)
+      const resolveClient = vi.fn(({ sourceId }: { sourceId: string }) =>
+        sourceId === 'src-1' ? clientA : clientB
       )
       const deps = buildDeps({ resolveClient })
       const mgr = createGoogleChannelManager(deps)
