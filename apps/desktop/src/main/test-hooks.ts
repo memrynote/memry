@@ -12,6 +12,9 @@ import { CalendarChannels, TasksChannels } from '@memry/contracts/ipc-channels'
 import { storeGoogleCalendarRefreshToken } from './calendar/google/keychain'
 import { upsertCalendarSource } from './calendar/repositories/calendar-sources-repository'
 import { getGooglePushRuntime } from './calendar/google/push-runtime'
+import { startGoogleCalendarSyncRunner } from './calendar/google/google-sync-runner'
+import { syncGoogleCalendarSource } from './calendar/google/sync-service'
+import { listCalendarExternalEventsBySource } from './calendar/repositories/calendar-external-events-repository'
 
 export interface SyncTestBootstrapInput {
   email: string
@@ -59,6 +62,21 @@ export interface DeleteGoogleCalendarEventInput {
   eventId: string
 }
 
+export interface ConnectGoogleCalendarForE2EResult {
+  accountId: string
+  accountSourceId: string
+  calendarSourceId: string
+  primaryCalendarId: string
+}
+
+export interface CalendarExternalEventProbe {
+  id: string
+  remoteEventId: string
+  title: string
+  startAt: string
+  endAt: string | null
+}
+
 interface MemryTestHooks {
   bootstrapSyncDevice(input: SyncTestBootstrapInput): Promise<{ deviceId: string }>
   setNetworkOnlineForTests(online: boolean): Promise<void>
@@ -78,6 +96,11 @@ interface MemryTestHooks {
   getGooglePushChannelProbe(): Promise<GooglePushChannelProbe>
   createGoogleCalendarEventForE2E(input: CreateGoogleCalendarEventInput): Promise<string>
   deleteGoogleCalendarEventForE2E(input: DeleteGoogleCalendarEventInput): Promise<void>
+  connectGoogleCalendarForE2E(): Promise<ConnectGoogleCalendarForE2EResult>
+  syncGoogleCalendarSourceForE2E(input: { sourceId: string }): Promise<void>
+  listCalendarExternalEventsForE2E(input: {
+    sourceId: string
+  }): Promise<CalendarExternalEventProbe[]>
 }
 
 interface GoogleTestCredentials {
@@ -106,9 +129,7 @@ async function exchangeRefreshTokenForAccess(creds: GoogleTestCredentials): Prom
 
   if (!res.ok) {
     const detail = await res.text().catch(() => '')
-    throw new Error(
-      `Google token exchange failed (${res.status}): ${detail || 'no body'}`
-    )
+    throw new Error(`Google token exchange failed (${res.status}): ${detail || 'no body'}`)
   }
 
   const json = (await res.json()) as { access_token?: string }
@@ -118,21 +139,38 @@ async function exchangeRefreshTokenForAccess(creds: GoogleTestCredentials): Prom
   return json.access_token
 }
 
-async function fetchGoogleUserEmail(accessToken: string): Promise<string> {
-  const res = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
+interface PrimaryCalendarShape {
+  id: string
+  summary?: string
+  timeZone?: string
+  backgroundColor?: string
+}
+
+async function fetchGooglePrimaryCalendar(accessToken: string): Promise<PrimaryCalendarShape> {
+  // The E2E refresh token is typically granted only calendar scopes, not userinfo/openid.
+  // For personal Google accounts, calendars/primary.id equals the account email, so this
+  // gives us a stable account id without requiring a broader scope grant. It also returns
+  // the fields we need to mirror what the real OAuth connect flow inserts into
+  // calendar_sources (summary → title, timeZone → timezone, backgroundColor → color).
+  const res = await fetch('https://www.googleapis.com/calendar/v3/calendars/primary', {
     headers: { Authorization: `Bearer ${accessToken}` }
   })
 
   if (!res.ok) {
     const detail = await res.text().catch(() => '')
-    throw new Error(`Google userinfo failed (${res.status}): ${detail || 'no body'}`)
+    throw new Error(`Google calendars/primary failed (${res.status}): ${detail || 'no body'}`)
   }
 
-  const json = (await res.json()) as { email?: string }
-  if (!json.email) {
-    throw new Error('Google userinfo response missing email')
+  const json = (await res.json()) as PrimaryCalendarShape
+  if (!json.id) {
+    throw new Error('Google calendars/primary response missing id')
   }
-  return json.email
+  return json
+}
+
+async function fetchGoogleCalendarOwnerEmail(accessToken: string): Promise<string> {
+  const calendar = await fetchGooglePrimaryCalendar(accessToken)
+  return calendar.id
 }
 
 function requireGoogleCredentials(): GoogleTestCredentials {
@@ -401,6 +439,17 @@ export function registerTestHooks(): void {
     },
 
     async seedGoogleCalendarTokens(input: SeedGoogleCalendarTokensInput): Promise<void> {
+      // Seed secrets only (keytar + in-memory cred cache). DB rows for sources are
+      // inserted by connectGoogleCalendarForE2E so a single hook call produces the same
+      // end-state that the real CONNECT_PROVIDER IPC produces after OAuth.
+      // Also expose the creds under the non-E2E-prefixed env var names that the
+      // production token manager reads (resolveGoogleClientId / resolveGoogleClientSecret),
+      // so sync-service can refresh access tokens without the caller having to set both.
+      process.env.GOOGLE_CALENDAR_CLIENT_ID = input.clientId
+      if (input.clientSecret) {
+        process.env.GOOGLE_CALENDAR_CLIENT_SECRET = input.clientSecret
+      }
+
       const creds: GoogleTestCredentials = {
         refreshToken: input.refreshToken,
         clientId: input.clientId,
@@ -408,33 +457,13 @@ export function registerTestHooks(): void {
       }
 
       const accessToken = await exchangeRefreshTokenForAccess(creds)
-      const email = await fetchGoogleUserEmail(accessToken)
+      const email = await fetchGoogleCalendarOwnerEmail(accessToken)
 
       googleE2ECredentials = creds
 
       await storeGoogleCalendarRefreshToken({
         accountId: email,
         refreshToken: input.refreshToken
-      })
-
-      const db = getDatabase()
-      const now = new Date().toISOString()
-
-      upsertCalendarSource(db, {
-        id: `e2e-account-${email}`,
-        provider: 'google',
-        kind: 'account',
-        accountId: email,
-        remoteId: email,
-        title: email,
-        timezone: null,
-        color: null,
-        isPrimary: false,
-        isSelected: false,
-        isMemryManaged: false,
-        syncStatus: 'idle',
-        createdAt: now,
-        modifiedAt: now
       })
     },
 
@@ -443,9 +472,88 @@ export function registerTestHooks(): void {
       return { activeCount: runtime?.getActiveChannelCount() ?? 0 }
     },
 
-    async createGoogleCalendarEventForE2E(
-      input: CreateGoogleCalendarEventInput
-    ): Promise<string> {
+    async connectGoogleCalendarForE2E(): Promise<ConnectGoogleCalendarForE2EResult> {
+      // Replicates the post-OAuth steps of CONNECT_PROVIDER without driving the
+      // loopback OAuth flow. Requires seedGoogleCalendarTokens to have been called first.
+      const creds = requireGoogleCredentials()
+      const accessToken = await exchangeRefreshTokenForAccess(creds)
+      const primary = await fetchGooglePrimaryCalendar(accessToken)
+      const accountId = primary.id
+      const title = primary.summary ?? primary.id
+      const timezone = primary.timeZone ?? null
+      const color = primary.backgroundColor ?? null
+
+      const db = getDatabase()
+      const now = new Date().toISOString()
+      const accountSourceId = `google-account:${accountId}`
+      const calendarSourceId = `google-calendar:${primary.id}`
+
+      upsertCalendarSource(db, {
+        id: accountSourceId,
+        provider: 'google',
+        kind: 'account',
+        accountId,
+        remoteId: primary.id,
+        title,
+        timezone,
+        color: null,
+        isPrimary: false,
+        isSelected: false,
+        isMemryManaged: false,
+        syncStatus: 'pending',
+        createdAt: now,
+        modifiedAt: now
+      })
+
+      upsertCalendarSource(db, {
+        id: calendarSourceId,
+        provider: 'google',
+        kind: 'calendar',
+        accountId,
+        remoteId: primary.id,
+        title,
+        timezone,
+        color,
+        isPrimary: true,
+        isSelected: true,
+        isMemryManaged: false,
+        syncStatus: 'pending',
+        createdAt: now,
+        modifiedAt: now
+      })
+
+      // Best-effort start — the runner short-circuits without Memry sync auth, but that
+      // doesn't block sync-service direct calls which don't need Memry auth.
+      await startGoogleCalendarSyncRunner()
+
+      return {
+        accountId,
+        accountSourceId,
+        calendarSourceId,
+        primaryCalendarId: primary.id
+      }
+    },
+
+    async syncGoogleCalendarSourceForE2E(input: { sourceId: string }): Promise<void> {
+      // Directly invoke the per-source sync path. syncGoogleCalendarNow early-returns
+      // without Memry auth, but this function only needs Google credentials.
+      await syncGoogleCalendarSource(getDatabase(), input.sourceId)
+    },
+
+    async listCalendarExternalEventsForE2E(input: {
+      sourceId: string
+    }): Promise<CalendarExternalEventProbe[]> {
+      const rows = listCalendarExternalEventsBySource(getDatabase(), input.sourceId)
+      return rows.map((row) => ({
+        id: row.id,
+        remoteEventId: row.remoteEventId,
+        title: row.title ?? '',
+        startAt: row.startAt,
+        endAt: row.endAt
+      }))
+    },
+
+    async createGoogleCalendarEventForE2E(input: CreateGoogleCalendarEventInput): Promise<string> {
       const creds = requireGoogleCredentials()
       const accessToken = await exchangeRefreshTokenForAccess(creds)
 
@@ -465,9 +573,7 @@ export function registerTestHooks(): void {
 
       if (!res.ok) {
         const detail = await res.text().catch(() => '')
-        throw new Error(
-          `Google events.insert failed (${res.status}): ${detail || 'no body'}`
-        )
+        throw new Error(`Google events.insert failed (${res.status}): ${detail || 'no body'}`)
       }
 
       const json = (await res.json()) as { id?: string }
@@ -477,9 +583,7 @@ export function registerTestHooks(): void {
       return json.id
     },
 
-    async deleteGoogleCalendarEventForE2E(
-      input: DeleteGoogleCalendarEventInput
-    ): Promise<void> {
+    async deleteGoogleCalendarEventForE2E(input: DeleteGoogleCalendarEventInput): Promise<void> {
       const creds = requireGoogleCredentials()
       const accessToken = await exchangeRefreshTokenForAccess(creds)
 
@@ -491,9 +595,7 @@ export function registerTestHooks(): void {
 
       if (!res.ok && res.status !== 410) {
         const detail = await res.text().catch(() => '')
-        throw new Error(
-          `Google events.delete failed (${res.status}): ${detail || 'no body'}`
-        )
+        throw new Error(`Google events.delete failed (${res.status}): ${detail || 'no body'}`)
       }
     }
   }

@@ -38,11 +38,23 @@ interface ChannelProbe {
 }
 
 test.describe('Google calendar push channels (M4b round-trip)', () => {
+  // Additional gate: push channels require the desktop to be signed in to Memry's sync server
+  // (so it can POST /calendar/channels with a valid bearer token). The existing E2E vault
+  // bootstraps against a local test sync server, but the push webhook has to land on a
+  // publicly-reachable sync-server (staging). Until a pre-provisioned staging user + setup
+  // token is wired into the E2E env, these tests cannot execute end-to-end. The data-plane
+  // pull path is covered without Memry auth by calendar-google-two-way-sync.e2e.ts.
+  const PUSH_CHANNELS_ENABLED =
+    CREDS_PRESENT && process.env.MEMRY_E2E_STAGING_USER_SETUP_TOKEN !== undefined
+
   test.skip(
-    !CREDS_PRESENT,
-    'Flag-gated: set GOOGLE_CALENDAR_E2E=1, CALENDAR_PUSH_ENABLED=1, MEMRY_WEBHOOK_HMAC_KEY, plus the ' +
-      'GOOGLE_CALENDAR_E2E_{REFRESH_TOKEN,CLIENT_ID,CALENDAR_ID} secrets. Requires sync.memry.io ' +
-      'domain-verified in Google Cloud Console.'
+    !PUSH_CHANNELS_ENABLED,
+    CREDS_PRESENT
+      ? 'Push-channel round-trip needs Memry sync auth on staging. Set ' +
+          'MEMRY_E2E_STAGING_USER_SETUP_TOKEN (+ pre-provisioned staging user) to enable.'
+      : 'Flag-gated: set GOOGLE_CALENDAR_E2E=1, CALENDAR_PUSH_ENABLED=1, ' +
+          'MEMRY_WEBHOOK_HMAC_KEY, plus the GOOGLE_CALENDAR_E2E_{REFRESH_TOKEN,CLIENT_ID,' +
+          'CALENDAR_ID} secrets.'
   )
 
   test.beforeEach(async ({ page, electronApp }) => {
@@ -96,12 +108,25 @@ test.describe('Google calendar push channels (M4b round-trip)', () => {
     })
     expect(probeBefore.activeCount).toBeLessThanOrEqual(0)
 
-    // #when the user connects the provider through Settings → Calendar
-    await page.getByRole('button', { name: 'Settings' }).click()
-    await page.getByRole('tab', { name: 'Calendar' }).click()
-    await page.getByRole('button', { name: /Connect Google Calendar/i }).click()
+    // #when the provider is connected via hook. We bypass the "Connect" UI button because
+    // clicking it invokes the real OAuth loopback server and opens the system browser, which
+    // is not reachable from Playwright. connectGoogleCalendarForE2E replicates the exact
+    // post-OAuth steps CONNECT_PROVIDER performs (upsert account+calendar sources, start the
+    // sync runner) against the already-seeded refresh token — same end-state, no popup.
+    await electronApp.evaluate(async () => {
+      const hooks = (
+        globalThis as typeof globalThis & {
+          __memryTestHooks?: { connectGoogleCalendarForE2E(): Promise<unknown> }
+        }
+      ).__memryTestHooks
+      if (!hooks?.connectGoogleCalendarForE2E) {
+        throw new Error(
+          'Missing __memryTestHooks.connectGoogleCalendarForE2E — rebuild after updating test-hooks.ts'
+        )
+      }
+      await hooks.connectGoogleCalendarForE2E()
+    })
 
-    // The OAuth popup is skipped because the refresh token is already seeded in keytar.
     // The runner starts, fans out ensureChannelForSource across the selected calendars,
     // and POSTs /calendar/channels + PATCHes resourceId on sync-server.
     await expect
@@ -121,9 +146,13 @@ test.describe('Google calendar push channels (M4b round-trip)', () => {
       )
       .toBeGreaterThan(0)
 
-    // #when the user disconnects
-    await page.getByRole('button', { name: /Disconnect/i }).click()
-    await page.getByRole('button', { name: /Confirm/i }).click()
+    // #when the user disconnects through the real UI (⌘+, → Integrations → Disconnect).
+    // Disconnect doesn't need OAuth — it just revokes tokens and drains channels — so this
+    // half of the connect/disconnect UX is exercisable end-to-end.
+    await page.keyboard.press('Meta+,')
+    await expect(page.getByRole('dialog', { name: 'Settings' })).toBeVisible()
+    await page.getByRole('button', { name: 'Integrations', exact: true }).click()
+    await page.getByRole('button', { name: 'Disconnect', exact: true }).click()
 
     // #then every channel has been stopped on Google and deleted on sync-server
     await expect
@@ -152,9 +181,14 @@ test.describe('Google calendar push channels (M4b round-trip)', () => {
     const eventSummary = `Push-Channel E2E ${Date.now()}`
 
     // #given the provider is connected and at least one channel is registered
-    await page.getByRole('button', { name: 'Settings' }).click()
-    await page.getByRole('tab', { name: 'Calendar' }).click()
-    await page.getByRole('button', { name: /Connect Google Calendar/i }).click()
+    await electronApp.evaluate(async () => {
+      const hooks = (
+        globalThis as typeof globalThis & {
+          __memryTestHooks?: { connectGoogleCalendarForE2E(): Promise<unknown> }
+        }
+      ).__memryTestHooks
+      await hooks?.connectGoogleCalendarForE2E()
+    })
     await expect
       .poll(
         async () => {
@@ -200,7 +234,7 @@ test.describe('Google calendar push channels (M4b round-trip)', () => {
 
     // #then Memry picks up the event via the webhook within ~10 seconds
     // (this is well under the 30-minute push-backoff poll cadence, proving push actually fired)
-    await page.getByRole('button', { name: 'Calendar' }).click()
+    await page.getByRole('button', { name: 'Calendar', exact: true }).click()
     await expect(page.getByText(eventSummary)).toBeVisible({ timeout: 15_000 })
 
     // #cleanup — delete the test event so the calendar doesn't accumulate state across runs
