@@ -118,9 +118,9 @@ describe('useTimeGridMarquee', () => {
     const { result } = renderHook(() =>
       useTimeGridMarquee({ gridRef: ref, dateForColumn: () => '2026-04-14' })
     )
-    // 864px = 9 hours * 96px/hour = 9:00 AM
+    // 432px = 9 hours * 48px/hour = 9:00 AM
     const event = {
-      clientY: 864,
+      clientY: 432,
       clientX: 250,
       target: ref.current,
       preventDefault: vi.fn()
