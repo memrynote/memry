@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { screen, waitFor } from '@testing-library/react'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { renderWithProviders, userEvent } from '@tests/utils/render'
 import { CalendarPage } from '@/pages/calendar'
 import type {
@@ -8,14 +8,14 @@ import type {
   CalendarSourceRecord
 } from '@/services/calendar-service'
 
-const { mockUseCalendarRange, mockListSources, mockCreateEvent, mockUpdateEvent } = vi.hoisted(
-  () => ({
+const { mockUseCalendarRange, mockListSources, mockCreateEvent, mockUpdateEvent, mockDeleteEvent } =
+  vi.hoisted(() => ({
     mockUseCalendarRange: vi.fn(),
     mockListSources: vi.fn(),
     mockCreateEvent: vi.fn(),
-    mockUpdateEvent: vi.fn()
-  })
-)
+    mockUpdateEvent: vi.fn(),
+    mockDeleteEvent: vi.fn()
+  }))
 
 vi.mock('@/hooks/use-calendar-range', () => ({
   useCalendarRange: mockUseCalendarRange
@@ -27,6 +27,7 @@ vi.mock('@/services/calendar-service', () => {
       listSources: mockListSources,
       createEvent: mockCreateEvent,
       updateEvent: mockUpdateEvent,
+      deleteEvent: mockDeleteEvent,
       getEvent: vi.fn(async () => null)
     },
     onCalendarChanged: vi.fn(() => () => {}),
@@ -183,6 +184,34 @@ const SAMPLE_ITEMS: CalendarProjectionItem[] = [
       isMemryManaged: false
     },
     binding: null
+  },
+  {
+    projectionId: 'event:event-google',
+    sourceType: 'event',
+    sourceId: 'event-google',
+    title: 'Synced standup',
+    descriptionPreview: null,
+    startAt: isoAtLocalTime(11),
+    endAt: isoAtLocalTime(12),
+    isAllDay: false,
+    timezone: 'UTC',
+    visualType: 'event',
+    editability: { canMove: true, canResize: true, canEditText: true, canDelete: true },
+    source: {
+      provider: 'google',
+      calendarSourceId: 'google-work',
+      title: 'Work',
+      color: '#2563eb',
+      kind: 'calendar',
+      isMemryManaged: true
+    },
+    binding: {
+      provider: 'google',
+      remoteCalendarId: 'remote-work',
+      remoteEventId: 'google-evt-1',
+      ownershipMode: 'memry',
+      writebackMode: 'two_way'
+    }
   }
 ]
 
@@ -195,9 +224,11 @@ describe('CalendarPage', () => {
     localStorage.clear()
     mockCreateEvent.mockReset()
     mockUpdateEvent.mockReset()
+    mockDeleteEvent.mockReset()
     mockListSources.mockReset()
     mockUseCalendarRange.mockReset()
 
+    mockDeleteEvent.mockResolvedValue({ success: true })
     mockListSources.mockResolvedValue({ sources: SAMPLE_SOURCES })
     mockUseCalendarRange.mockReturnValue({
       data: mockRangeResponse(SAMPLE_ITEMS),
@@ -249,6 +280,30 @@ describe('CalendarPage', () => {
     expect(screen.getByText('Customer call')).toBeInTheDocument()
   })
 
+  it('filters projection items by event type with color swatches in the filter popover', async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<CalendarPage />)
+
+    await user.click(screen.getByRole('button', { name: 'Day' }))
+
+    await waitFor(() => expect(screen.getAllByText('Planning block').length).toBeGreaterThan(0))
+
+    expect(screen.getAllByText('Due draft').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('Medication reminder').length).toBeGreaterThan(0)
+
+    await user.click(screen.getByLabelText('Filter calendars'))
+
+    await user.click(screen.getByLabelText('Task'))
+    expect(screen.queryByText('Due draft')).not.toBeInTheDocument()
+    expect(screen.getAllByText('Planning block').length).toBeGreaterThan(0)
+
+    await user.click(screen.getByLabelText('Reminder'))
+    expect(screen.queryByText('Medication reminder')).not.toBeInTheDocument()
+
+    await user.click(screen.getByLabelText('Task'))
+    expect(screen.getAllByText('Due draft').length).toBeGreaterThan(0)
+  })
+
   it('opens the event editor popover for create and edit flows', async () => {
     const user = userEvent.setup()
     renderWithProviders(<CalendarPage />)
@@ -284,5 +339,72 @@ describe('CalendarPage', () => {
     expect(
       screen.getAllByText('Review investor email')[0].closest('[data-visual-type]')
     ).toHaveAttribute('data-visual-type', 'snooze')
+  })
+
+  it('deletes a Memry-native event via the right-click menu without Google wording', async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<CalendarPage />)
+
+    await user.click(screen.getByRole('button', { name: 'Day' }))
+    const chip = await screen.findByText('Planning block')
+    const trigger = chip.closest('[data-visual-type]') as HTMLElement
+    expect(trigger).not.toBeNull()
+
+    fireEvent.contextMenu(trigger)
+
+    const menuItem = await screen.findByRole('menuitem', { name: /delete event/i })
+    await user.click(menuItem)
+
+    const dialog = await screen.findByRole('alertdialog', { name: /delete event/i })
+    expect(dialog).toHaveTextContent(/planning block/i)
+    expect(dialog).not.toHaveTextContent(/google/i)
+
+    await user.click(screen.getByRole('button', { name: 'Delete' }))
+
+    await waitFor(() => expect(mockDeleteEvent).toHaveBeenCalledWith('event-1'))
+  })
+
+  it('warns about Google Calendar when deleting a Google-bound event', async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<CalendarPage />)
+
+    await user.click(screen.getByRole('button', { name: 'Day' }))
+    const chip = await screen.findByText('Synced standup')
+    const trigger = chip.closest('[data-visual-type]') as HTMLElement
+    expect(trigger).not.toBeNull()
+
+    fireEvent.contextMenu(trigger)
+    await user.click(await screen.findByRole('menuitem', { name: /delete event/i }))
+
+    const dialog = await screen.findByRole('alertdialog', { name: /delete event/i })
+    expect(dialog).toHaveTextContent(/google calendar/i)
+
+    await user.click(screen.getByRole('button', { name: 'Delete' }))
+    await waitFor(() => expect(mockDeleteEvent).toHaveBeenCalledWith('event-google'))
+  })
+
+  it('cancels delete without calling the mutation', async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<CalendarPage />)
+
+    await user.click(screen.getByRole('button', { name: 'Day' }))
+    const chip = await screen.findByText('Planning block')
+    fireEvent.contextMenu(chip.closest('[data-visual-type]') as HTMLElement)
+
+    await user.click(await screen.findByRole('menuitem', { name: /delete event/i }))
+    await user.click(screen.getByRole('button', { name: 'Cancel' }))
+
+    expect(mockDeleteEvent).not.toHaveBeenCalled()
+  })
+
+  it('does not show a delete menu for non-event projection items', async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<CalendarPage />)
+
+    await user.click(screen.getByRole('button', { name: 'Day' }))
+    const taskChip = (await screen.findAllByText('Due draft'))[0]
+    fireEvent.contextMenu(taskChip.closest('[data-visual-type]') as HTMLElement)
+
+    expect(screen.queryByRole('menuitem', { name: /delete event/i })).not.toBeInTheDocument()
   })
 })
