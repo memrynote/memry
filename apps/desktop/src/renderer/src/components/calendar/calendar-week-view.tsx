@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef } from 'react'
 import { CalendarItemChip } from './calendar-item-chip'
-import { dateFromDayIndex, dayIndexFromDate, isToday, toLocalDateKey } from './date-utils'
+import { dateFromDayIndex, dayIndexFromDate, isToday, isWeekend, toLocalDateKey } from './date-utils'
 import { MarqueeSelectionOverlay } from './marquee-selection-overlay'
 import { CalendarQuickCreateDialog } from './calendar-quick-create-dialog'
 import { assignLanes } from './overlap-layout'
