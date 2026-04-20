@@ -20,6 +20,7 @@ excluded() {
     *.d.ts)                           return 0 ;;
     *generated-ipc-invoke-map.ts)     return 0 ;;
     CHANGELOG.md|*/CHANGELOG.md)      return 0 ;;
+    *.css)                            return 0 ;;
   esac
   case "$1" in
     apps/*|packages/*) return 1 ;;
