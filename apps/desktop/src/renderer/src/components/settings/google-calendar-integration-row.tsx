@@ -188,9 +188,9 @@ export function GoogleCalendarIntegrationRow(): React.JSX.Element {
                       ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300'
                       : account.status === 'reconnect_required'
                         ? 'border-amber-500/40 bg-amber-500/10 text-amber-800 dark:text-amber-300'
-                      : account.status === 'error'
-                        ? 'border-destructive/50 bg-destructive/10 text-destructive'
-                        : 'border-muted-foreground/30 bg-muted text-muted-foreground'
+                        : account.status === 'error'
+                          ? 'border-destructive/50 bg-destructive/10 text-destructive'
+                          : 'border-muted-foreground/30 bg-muted text-muted-foreground'
                   const detail =
                     account.status === 'reconnect_required'
                       ? 'Reconnect Google'

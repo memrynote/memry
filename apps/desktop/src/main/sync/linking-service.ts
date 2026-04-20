@@ -424,7 +424,11 @@ async function finalizeLinking(
   }
 }
 
-function emitLinkingFinalized(payload: { deviceId?: string; error?: string; warning?: string }): void {
+function emitLinkingFinalized(payload: {
+  deviceId?: string
+  error?: string
+  warning?: string
+}): void {
   for (const win of BrowserWindow.getAllWindows()) {
     win.webContents.send('sync:linking-finalized', payload)
   }
