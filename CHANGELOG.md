@@ -5,6 +5,13 @@ Format: weekly entries grouped by feature area.
 
 ---
 
+## 2026-04-20 — Calendar Sync Triggers
+
+### Fixed
+- Sync Google Calendar events on focus, resume, and manual refresh. Calendar now automatically updates when the app window regains focus, when the app resumes from background, and when the user clicks the manual refresh button, ensuring calendar data stays current without relying only on periodic sync intervals.
+
+---
+
 ## 2026-04-18 — Calendar Day View All-Day Strip + E2E Stabilization
 
 ### Fixed
