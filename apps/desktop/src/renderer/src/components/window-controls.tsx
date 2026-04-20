@@ -51,7 +51,7 @@ export function WindowControls({ className }: WindowControlsProps): React.JSX.El
           type="button"
           disabled
           aria-disabled="true"
-          aria-label="Go back"
+          aria-label="Browser back"
           className="flex items-center justify-center size-7 rounded text-text-tertiary/40 cursor-default"
           title="Back"
         >
@@ -62,7 +62,7 @@ export function WindowControls({ className }: WindowControlsProps): React.JSX.El
           type="button"
           disabled
           aria-disabled="true"
-          aria-label="Go forward"
+          aria-label="Browser forward"
           className="flex items-center justify-center size-7 rounded text-text-tertiary/40 cursor-default"
           title="Forward"
         >
