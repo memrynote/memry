@@ -12,8 +12,10 @@ import type { AnchorRect, CalendarEventDraft } from './types'
 import {
   refreshGoogleCalendarProvider,
   type CalendarProjectionItem,
+  type CalendarProjectionVisualType,
   type CalendarSourceRecord
 } from '@/services/calendar-service'
+import { VISUAL_TYPE_META, VISUAL_TYPE_ORDER } from './visual-type-meta'
 import { createLogger } from '@/lib/logger'
 
 const log = createLogger('CalendarShell')
@@ -27,6 +29,7 @@ interface CalendarShellProps {
   showMemryItems: boolean
   showImportedCalendars: boolean
   selectedImportedSourceIds: string[]
+  selectedVisualTypes: CalendarProjectionVisualType[]
   popoverState: {
     mode: 'create' | 'edit'
     draft: CalendarEventDraft
@@ -43,7 +46,9 @@ interface CalendarShellProps {
   onToggleMemryItems: () => void
   onToggleImportedCalendars: () => void
   onToggleImportedSource: (sourceId: string) => void
+  onToggleVisualType: (visualType: CalendarProjectionVisualType) => void
   onSelectItem: (item: CalendarProjectionItem, rect: AnchorRect) => void
+  onDeleteItem?: (item: CalendarProjectionItem) => void
   onPopoverDismiss: () => void
   onPopoverDraftChange: (draft: CalendarEventDraft) => void
   onPopoverSave: () => void
@@ -67,6 +72,7 @@ export function CalendarShell({
   showMemryItems,
   showImportedCalendars,
   selectedImportedSourceIds,
+  selectedVisualTypes,
   popoverState,
   isSaving,
   onViewChange,
@@ -77,7 +83,9 @@ export function CalendarShell({
   onToggleMemryItems,
   onToggleImportedCalendars,
   onToggleImportedSource,
+  onToggleVisualType,
   onSelectItem,
+  onDeleteItem,
   onPopoverDismiss,
   onPopoverDraftChange,
   onPopoverSave,
@@ -87,6 +95,7 @@ export function CalendarShell({
   onCreateEventWithRange
 }: CalendarShellProps): React.JSX.Element {
   const viewProps = { anchorDate, items, onSelectItem }
+  const chipViewProps = { ...viewProps, onDeleteItem }
   const [isRefreshing, setIsRefreshing] = useState(false)
   const hasGoogleCalendars = importedSources.length > 0
 
@@ -158,6 +167,36 @@ export function CalendarShell({
             </label>
           </div>
 
+          <div className="space-y-3">
+            <h3 className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+              Event types
+            </h3>
+            {VISUAL_TYPE_ORDER.map((visualType) => {
+              const meta = VISUAL_TYPE_META[visualType]
+              return (
+                <label
+                  key={visualType}
+                  className="flex items-center justify-between gap-3 text-sm text-foreground"
+                >
+                  <span className="flex items-center gap-2">
+                    <span
+                      aria-hidden="true"
+                      className="size-3 rounded-full ring-1 ring-border"
+                      style={{ backgroundColor: meta.swatchColor }}
+                    />
+                    {meta.label}
+                  </span>
+                  <input
+                    type="checkbox"
+                    aria-label={meta.label}
+                    checked={selectedVisualTypes.includes(visualType)}
+                    onChange={() => onToggleVisualType(visualType)}
+                  />
+                </label>
+              )
+            })}
+          </div>
+
           {importedSources.length > 0 && (
             <div className="space-y-3">
               <h3 className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
@@ -213,20 +252,20 @@ export function CalendarShell({
           </div>
         ) : view === 'day' ? (
           <CalendarDayView
-            {...viewProps}
+            {...chipViewProps}
             onQuickSave={onQuickSave}
             onCreateEventWithRange={onCreateEventWithRange}
           />
         ) : view === 'week' ? (
           <CalendarWeekView
-            {...viewProps}
+            {...chipViewProps}
             onQuickSave={onQuickSave}
             onCreateEventWithRange={onCreateEventWithRange}
             onVisibleDayStartChange={(_, startDate) => onWeekVisibleRangeChange?.(startDate)}
           />
         ) : view === 'month' ? (
           <CalendarMonthView
-            {...viewProps}
+            {...chipViewProps}
             onQuickSave={onQuickSave}
             onCreateEventWithRange={onCreateEventWithRange}
           />
