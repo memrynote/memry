@@ -467,6 +467,8 @@ export function CalendarPage({ className: _className }: CalendarPageProps): Reac
     })
   }
 
+  const selectedItemId = popoverState?.eventId ?? null
+
   return (
     <>
       <PromoteExternalDialog
@@ -495,6 +497,7 @@ export function CalendarPage({ className: _className }: CalendarPageProps): Reac
         showImportedCalendars={showImportedCalendars}
         selectedImportedSourceIds={selectedImportedSourceIds}
         selectedVisualTypes={selectedVisualTypes}
+        selectedItemId={selectedItemId}
         popoverState={
           popoverState
             ? {

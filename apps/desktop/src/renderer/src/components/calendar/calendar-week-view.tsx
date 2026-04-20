@@ -22,6 +22,10 @@ import type { AnchorRect, CalendarEventDraft } from './types'
 const HOUR_HEIGHT = 48
 const HEADER_HEIGHT = 40
 const GUTTER_WIDTH = 48
+const ALL_DAY_ROW_MIN_HEIGHT = 28
+const ALL_DAY_CHIP_HEIGHT = 22
+const ALL_DAY_CHIP_GAP = 2
+const ALL_DAY_ROW_PADDING = 8
 const HOURS = Array.from({ length: 24 }, (_, i) => i)
 const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 const DAY_NAMES_SHORT = ['S', 'M', 'T', 'W', 'T', 'F', 'S']
@@ -39,6 +43,7 @@ function getEventPosition(item: CalendarProjectionItem): { top: number; height: 
 interface CalendarWeekViewProps {
   anchorDate: string
   items: CalendarProjectionItem[]
+  selectedItemId: string | null
   onSelectItem?: (item: CalendarProjectionItem, rect: AnchorRect) => void
   onDeleteItem?: (item: CalendarProjectionItem) => void
   onQuickSave?: (draft: CalendarEventDraft) => void | Promise<void>
@@ -54,6 +59,7 @@ interface CalendarWeekViewProps {
 export function CalendarWeekView({
   anchorDate,
   items,
+  selectedItemId,
   onSelectItem,
   onDeleteItem,
   onQuickSave,
@@ -67,6 +73,7 @@ export function CalendarWeekView({
   const gridRef = useRef<HTMLDivElement>(null)
   const timeColumnRef = useRef<HTMLDivElement>(null)
   const headerScrollRef = useRef<HTMLDivElement>(null)
+  const allDayScrollRef = useRef<HTMLDivElement>(null)
   const lastEmittedAnchorRef = useRef(anchorDate)
 
   const notifyVisibleStart = useCallback(
@@ -98,6 +105,9 @@ export function CalendarWeekView({
     const sync = (): void => {
       if (headerScrollRef.current) {
         headerScrollRef.current.scrollLeft = body.scrollLeft
+      }
+      if (allDayScrollRef.current) {
+        allDayScrollRef.current.scrollLeft = body.scrollLeft
       }
       if (timeColumnRef.current) {
         timeColumnRef.current.scrollTop = body.scrollTop
@@ -138,20 +148,35 @@ export function CalendarWeekView({
 
   useScrollToCurrentTime(scrollContainerRef, weekContainsToday)
 
-  const itemsByDate = useMemo(() => {
-    const map = new Map<string, CalendarProjectionItem[]>()
+  const { timedByDate, allDayByDate, maxAllDayPerDay } = useMemo(() => {
+    const timed = new Map<string, CalendarProjectionItem[]>()
+    const allDay = new Map<string, CalendarProjectionItem[]>()
     for (const item of items) {
-      if (item.isAllDay) continue
       const dateKey = toLocalDateKey(item.startAt)
-      const bucket = map.get(dateKey)
+      const target = item.isAllDay ? allDay : timed
+      const bucket = target.get(dateKey)
       if (bucket) {
         bucket.push(item)
       } else {
-        map.set(dateKey, [item])
+        target.set(dateKey, [item])
       }
     }
-    return map
+    let maxCount = 0
+    for (const bucket of allDay.values()) {
+      if (bucket.length > maxCount) maxCount = bucket.length
+    }
+    return { timedByDate: timed, allDayByDate: allDay, maxAllDayPerDay: maxCount }
   }, [items])
+
+  const allDayRowHeight =
+    maxAllDayPerDay === 0
+      ? 0
+      : Math.max(
+          ALL_DAY_ROW_MIN_HEIGHT,
+          maxAllDayPerDay * ALL_DAY_CHIP_HEIGHT +
+            Math.max(0, maxAllDayPerDay - 1) * ALL_DAY_CHIP_GAP +
+            ALL_DAY_ROW_PADDING
+        )
 
   const currentTimeOffset = useMemo(() => {
     const now = new Date()
@@ -213,6 +238,56 @@ export function CalendarWeekView({
         </div>
       </div>
 
+      {maxAllDayPerDay > 0 && (
+        <div
+          className="flex shrink-0 bg-background"
+          data-testid="week-all-day-strip"
+          style={{ height: allDayRowHeight }}
+        >
+          <div
+            className="flex shrink-0 items-center justify-end border-b border-border pr-1 text-xs font-medium text-muted-foreground"
+            style={{ width: GUTTER_WIDTH, height: allDayRowHeight }}
+          >
+            all-day
+          </div>
+          <div
+            ref={allDayScrollRef}
+            className="min-w-0 flex-1 overflow-hidden"
+            style={{ height: allDayRowHeight }}
+          >
+            <div className="relative" style={{ width: totalSize, height: allDayRowHeight }}>
+              {virtualItems.map((vi) => {
+                const date = dateForDayIndex(vi.index)
+                const dayAllDay = allDayByDate.get(date) ?? []
+                return (
+                  <div
+                    key={vi.key}
+                    data-day-index={vi.index}
+                    data-date={date}
+                    className={cn(
+                      'absolute top-0 flex flex-col gap-[2px] border-b border-r border-border bg-background px-0.5 py-1',
+                      isWeekend(date) && 'bg-muted/30'
+                    )}
+                    style={{ left: vi.start, width: vi.size, height: allDayRowHeight }}
+                  >
+                    {dayAllDay.map((item) => (
+                      <div key={item.projectionId} style={{ height: ALL_DAY_CHIP_HEIGHT }}>
+                        <CalendarItemChip
+                          item={item}
+                          clockFormat={clockFormat}
+                          onClick={onSelectItem}
+                          onDeleteItem={onDeleteItem}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="flex min-h-0 flex-1">
         <div
           ref={timeColumnRef}
@@ -246,7 +321,7 @@ export function CalendarWeekView({
           >
             {virtualItems.map((vi) => {
               const date = dateForDayIndex(vi.index)
-              const dayItems = itemsByDate.get(date) ?? []
+              const dayItems = timedByDate.get(date) ?? []
               const today = isToday(date)
 
               return (
@@ -285,6 +360,9 @@ export function CalendarWeekView({
                         <CalendarItemChip
                           item={item}
                           clockFormat={clockFormat}
+                          isSelected={
+                            item.sourceType === 'event' && item.sourceId === selectedItemId
+                          }
                           onClick={onSelectItem}
                           onDeleteItem={onDeleteItem}
                         />

@@ -13,6 +13,7 @@ const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 interface CalendarMonthViewProps {
   anchorDate: string
   items: CalendarProjectionItem[]
+  selectedItemId: string | null
   onSelectItem?: (item: CalendarProjectionItem, rect: AnchorRect) => void
   onDeleteItem?: (item: CalendarProjectionItem) => void
   onQuickSave?: (draft: CalendarEventDraft) => void | Promise<void>
@@ -27,6 +28,7 @@ interface CalendarMonthViewProps {
 export function CalendarMonthView({
   anchorDate,
   items,
+  selectedItemId,
   onSelectItem,
   onDeleteItem,
   onQuickSave,
@@ -105,6 +107,7 @@ export function CalendarMonthView({
                   <CalendarItemChip
                     key={item.projectionId}
                     item={item}
+                    isSelected={item.sourceType === 'event' && item.sourceId === selectedItemId}
                     onClick={onSelectItem}
                     onDeleteItem={onDeleteItem}
                   />

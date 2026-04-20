@@ -27,6 +27,7 @@ function getEventPosition(item: CalendarProjectionItem): { top: number; height: 
 interface CalendarDayViewProps {
   anchorDate: string
   items: CalendarProjectionItem[]
+  selectedItemId: string | null
   onSelectItem?: (item: CalendarProjectionItem, rect: AnchorRect) => void
   onDeleteItem?: (item: CalendarProjectionItem) => void
   onQuickSave?: (draft: CalendarEventDraft) => void | Promise<void>
@@ -41,6 +42,7 @@ interface CalendarDayViewProps {
 export function CalendarDayView({
   anchorDate,
   items,
+  selectedItemId,
   onSelectItem,
   onDeleteItem,
   onQuickSave,
@@ -83,6 +85,7 @@ export function CalendarDayView({
                 <CalendarItemChip
                   item={item}
                   clockFormat={clockFormat}
+                  isSelected={item.sourceType === 'event' && item.sourceId === selectedItemId}
                   onClick={onSelectItem}
                   onDeleteItem={onDeleteItem}
                 />
@@ -136,6 +139,7 @@ export function CalendarDayView({
                   <CalendarItemChip
                     item={item}
                     clockFormat={clockFormat}
+                    isSelected={item.sourceType === 'event' && item.sourceId === selectedItemId}
                     onClick={onSelectItem}
                     onDeleteItem={onDeleteItem}
                   />
