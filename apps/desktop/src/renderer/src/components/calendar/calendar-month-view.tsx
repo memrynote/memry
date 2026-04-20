@@ -14,6 +14,7 @@ interface CalendarMonthViewProps {
   anchorDate: string
   items: CalendarProjectionItem[]
   onSelectItem?: (item: CalendarProjectionItem, rect: AnchorRect) => void
+  onDeleteItem?: (item: CalendarProjectionItem) => void
   onQuickSave?: (draft: CalendarEventDraft) => void | Promise<void>
   onCreateEventWithRange?: (
     startAt: string,
@@ -27,6 +28,7 @@ export function CalendarMonthView({
   anchorDate,
   items,
   onSelectItem,
+  onDeleteItem,
   onQuickSave,
   onCreateEventWithRange
 }: CalendarMonthViewProps): React.JSX.Element {
@@ -99,7 +101,12 @@ export function CalendarMonthView({
 
               <div className="flex flex-col gap-1">
                 {dayItems.slice(0, maxVisibleEvents).map((item) => (
-                  <CalendarItemChip key={item.projectionId} item={item} onClick={onSelectItem} />
+                  <CalendarItemChip
+                    key={item.projectionId}
+                    item={item}
+                    onClick={onSelectItem}
+                    onDeleteItem={onDeleteItem}
+                  />
                 ))}
                 {dayItems.length > maxVisibleEvents && (
                   <span className="text-xs font-semibold text-muted-foreground">
