@@ -44,7 +44,11 @@ vi.mock('../../sync/auth-state', () => ({
   isMemryUserSignedIn: vi.fn(async () => true)
 }))
 
-import { hasGoogleCalendarConnection, hasGoogleCalendarLocalAuth, listGoogleAccountIds } from './oauth'
+import {
+  hasGoogleCalendarConnection,
+  hasGoogleCalendarLocalAuth,
+  listGoogleAccountIds
+} from './oauth'
 import { resolveDefaultGoogleAccountId } from './oauth'
 import * as googleClientModule from './client'
 import { isMemryUserSignedIn } from '../../sync/auth-state'

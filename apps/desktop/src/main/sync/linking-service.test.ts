@@ -71,7 +71,7 @@ vi.mock('../calendar/google/provider-auth-transfer', () => ({
   collectGoogleProviderAuthTransfer: mockCollectGoogleProviderAuthTransfer,
   encryptGoogleProviderAuthTransfer: mockEncryptGoogleProviderAuthTransfer,
   decryptGoogleProviderAuthTransfer: mockDecryptGoogleProviderAuthTransfer,
-  persistImportedGoogleProviderAuth: mockPersistImportedGoogleProviderAuth,
+  persistImportedGoogleProviderAuth: mockPersistImportedGoogleProviderAuth
 }))
 
 vi.mock('../crypto', () => ({
@@ -270,7 +270,10 @@ describe('linking-service provider auth transfer', () => {
             new Uint8Array(24).fill(8),
             sodium.base64_variants.ORIGINAL
           ),
-          keyConfirm: sodium.to_base64(new Uint8Array(32).fill(11), sodium.base64_variants.ORIGINAL),
+          keyConfirm: sodium.to_base64(
+            new Uint8Array(32).fill(11),
+            sodium.base64_variants.ORIGINAL
+          ),
           encryptedProviderAuth: 'encrypted-provider-auth',
           encryptedProviderAuthNonce: 'provider-auth-nonce',
           providerAuthConfirm: 'provider-auth-confirm',
@@ -281,10 +284,7 @@ describe('linking-service provider auth transfer', () => {
       return {
         sessionId: 'session-1',
         expiresAt: Math.floor(Date.now() / 1000) + 300,
-        linkingSecret: sodium.to_base64(
-          new Uint8Array(32).fill(4),
-          sodium.base64_variants.ORIGINAL
-        )
+        linkingSecret: sodium.to_base64(new Uint8Array(32).fill(4), sodium.base64_variants.ORIGINAL)
       }
     })
 
@@ -332,7 +332,10 @@ describe('linking-service provider auth transfer', () => {
             new Uint8Array(24).fill(8),
             sodium.base64_variants.ORIGINAL
           ),
-          keyConfirm: sodium.to_base64(new Uint8Array(32).fill(11), sodium.base64_variants.ORIGINAL),
+          keyConfirm: sodium.to_base64(
+            new Uint8Array(32).fill(11),
+            sodium.base64_variants.ORIGINAL
+          ),
           encryptedProviderAuth: 'encrypted-provider-auth',
           encryptedProviderAuthNonce: 'provider-auth-nonce',
           providerAuthConfirm: 'provider-auth-confirm',
@@ -343,10 +346,7 @@ describe('linking-service provider auth transfer', () => {
       return {
         sessionId: 'session-1',
         expiresAt: Math.floor(Date.now() / 1000) + 300,
-        linkingSecret: sodium.to_base64(
-          new Uint8Array(32).fill(4),
-          sodium.base64_variants.ORIGINAL
-        )
+        linkingSecret: sodium.to_base64(new Uint8Array(32).fill(4), sodium.base64_variants.ORIGINAL)
       }
     })
     mockPersistImportedGoogleProviderAuth.mockResolvedValue({

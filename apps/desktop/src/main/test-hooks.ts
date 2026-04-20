@@ -9,6 +9,16 @@ import { getDatabase } from './database'
 import { sql } from 'drizzle-orm'
 import { getNoteMetadataById } from '@memry/storage-data'
 import { CalendarChannels, TasksChannels } from '@memry/contracts/ipc-channels'
+import { storeGoogleCalendarRefreshToken } from './calendar/google/keychain'
+import { upsertCalendarSource } from './calendar/repositories/calendar-sources-repository'
+import { getGooglePushRuntime } from './calendar/google/push-runtime'
+import { startGoogleCalendarSyncRunner } from './calendar/google/google-sync-runner'
+import {
+  pushSourceToGoogleCalendar,
+  syncGoogleCalendarSource
+} from './calendar/google/sync-service'
+import { listCalendarExternalEventsBySource } from './calendar/repositories/calendar-external-events-repository'
+import { calendarEvents } from '@memry/db-schema/schema/calendar-events'
 
 export interface SyncTestBootstrapInput {
   email: string
@@ -34,6 +44,72 @@ export interface NoteOnDeviceStatus {
   crdtBody: string | null
 }
 
+export interface SeedGoogleCalendarTokensInput {
+  refreshToken: string
+  clientId: string
+  clientSecret: string | null
+}
+
+export interface GooglePushChannelProbe {
+  activeCount: number
+}
+
+export interface CreateGoogleCalendarEventInput {
+  calendarId: string
+  summary: string
+  startMs: number
+  endMs: number
+}
+
+export interface DeleteGoogleCalendarEventInput {
+  calendarId: string
+  eventId: string
+}
+
+export interface ConnectGoogleCalendarForE2EResult {
+  accountId: string
+  accountSourceId: string
+  calendarSourceId: string
+  primaryCalendarId: string
+}
+
+export interface CalendarExternalEventProbe {
+  id: string
+  remoteEventId: string
+  title: string
+  startAt: string
+  endAt: string | null
+}
+
+export interface CreateMemryEventForWriteBackInput {
+  title: string
+  startMs: number
+  endMs: number
+  targetCalendarId: string
+}
+
+export interface CreateMemryEventForWriteBackResult {
+  sourceId: string
+}
+
+export interface PushMemryEventToGoogleResult {
+  remoteCalendarId: string
+  remoteEventId: string
+  remoteVersion: string | null
+}
+
+export interface FetchGoogleEventInput {
+  calendarId: string
+  eventId: string
+}
+
+export interface GoogleEventProbe {
+  id: string
+  summary: string | null
+  start: { dateTime?: string | null; date?: string | null } | null
+  end: { dateTime?: string | null; date?: string | null } | null
+}
+
 interface MemryTestHooks {
   bootstrapSyncDevice(input: SyncTestBootstrapInput): Promise<{ deviceId: string }>
   setNetworkOnlineForTests(online: boolean): Promise<void>
@@ -49,6 +125,99 @@ interface MemryTestHooks {
     lastError: string | null
   } | null>
   simulateCrdtTeardownForTests(): Promise<void>
+  seedGoogleCalendarTokens(input: SeedGoogleCalendarTokensInput): Promise<void>
+  getGooglePushChannelProbe(): Promise<GooglePushChannelProbe>
+  createGoogleCalendarEventForE2E(input: CreateGoogleCalendarEventInput): Promise<string>
+  deleteGoogleCalendarEventForE2E(input: DeleteGoogleCalendarEventInput): Promise<void>
+  connectGoogleCalendarForE2E(): Promise<ConnectGoogleCalendarForE2EResult>
+  syncGoogleCalendarSourceForE2E(input: { sourceId: string }): Promise<void>
+  listCalendarExternalEventsForE2E(input: {
+    sourceId: string
+  }): Promise<CalendarExternalEventProbe[]>
+  createMemryEventForWriteBackE2E(
+    input: CreateMemryEventForWriteBackInput
+  ): Promise<CreateMemryEventForWriteBackResult>
+  pushMemryEventToGoogleForE2E(input: { sourceId: string }): Promise<PushMemryEventToGoogleResult>
+  fetchGoogleEventForE2E(input: FetchGoogleEventInput): Promise<GoogleEventProbe>
+}
+
+interface GoogleTestCredentials {
+  refreshToken: string
+  clientId: string
+  clientSecret: string | null
+}
+
+let googleE2ECredentials: GoogleTestCredentials | null = null
+
+async function exchangeRefreshTokenForAccess(creds: GoogleTestCredentials): Promise<string> {
+  const body = new URLSearchParams({
+    grant_type: 'refresh_token',
+    client_id: creds.clientId,
+    refresh_token: creds.refreshToken
+  })
+  if (creds.clientSecret) {
+    body.set('client_secret', creds.clientSecret)
+  }
+
+  const res = await fetch('https://oauth2.googleapis.com/token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: body.toString()
+  })
+
+  if (!res.ok) {
+    const detail = await res.text().catch(() => '')
+    throw new Error(`Google token exchange failed (${res.status}): ${detail || 'no body'}`)
+  }
+
+  const json = (await res.json()) as { access_token?: string }
+  if (!json.access_token) {
+    throw new Error('Google token response missing access_token')
+  }
+  return json.access_token
+}
+
+interface PrimaryCalendarShape {
+  id: string
+  summary?: string
+  timeZone?: string
+  backgroundColor?: string
+}
+
+async function fetchGooglePrimaryCalendar(accessToken: string): Promise<PrimaryCalendarShape> {
+  // The E2E refresh token is typically granted only calendar scopes, not userinfo/openid.
+  // For personal Google accounts, calendars/primary.id equals the account email, so this
+  // gives us a stable account id without requiring a broader scope grant. It also returns
+  // the fields we need to mirror what the real OAuth connect flow inserts into
+  // calendar_sources (summary → title, timeZone → timezone, backgroundColor → color).
+  const res = await fetch('https://www.googleapis.com/calendar/v3/calendars/primary', {
+    headers: { Authorization: `Bearer ${accessToken}` }
+  })
+
+  if (!res.ok) {
+    const detail = await res.text().catch(() => '')
+    throw new Error(`Google calendars/primary failed (${res.status}): ${detail || 'no body'}`)
+  }
+
+  const json = (await res.json()) as PrimaryCalendarShape
+  if (!json.id) {
+    throw new Error('Google calendars/primary response missing id')
+  }
+  return json
+}
+
+async function fetchGoogleCalendarOwnerEmail(accessToken: string): Promise<string> {
+  const calendar = await fetchGooglePrimaryCalendar(accessToken)
+  return calendar.id
+}
+
+function requireGoogleCredentials(): GoogleTestCredentials {
+  if (!googleE2ECredentials) {
+    throw new Error(
+      'Google E2E credentials not seeded — call seedGoogleCalendarTokens before event create/delete hooks'
+    )
+  }
+  return googleE2ECredentials
 }
 
 declare global {
@@ -305,6 +474,273 @@ export function registerTestHooks(): void {
     async simulateCrdtTeardownForTests(): Promise<void> {
       await getCrdtProvider().destroy()
       resetCrdtProvider()
+    },
+
+    async seedGoogleCalendarTokens(input: SeedGoogleCalendarTokensInput): Promise<void> {
+      // Seed secrets only (keytar + in-memory cred cache). DB rows for sources are
+      // inserted by connectGoogleCalendarForE2E so a single hook call produces the same
+      // end-state that the real CONNECT_PROVIDER IPC produces after OAuth.
+      // Also expose the creds under the non-E2E-prefixed env var names that the
+      // production token manager reads (resolveGoogleClientId / resolveGoogleClientSecret),
+      // so sync-service can refresh access tokens without the caller having to set both.
+      process.env.GOOGLE_CALENDAR_CLIENT_ID = input.clientId
+      if (input.clientSecret) {
+        process.env.GOOGLE_CALENDAR_CLIENT_SECRET = input.clientSecret
+      }
+
+      const creds: GoogleTestCredentials = {
+        refreshToken: input.refreshToken,
+        clientId: input.clientId,
+        clientSecret: input.clientSecret
+      }
+
+      const accessToken = await exchangeRefreshTokenForAccess(creds)
+      const email = await fetchGoogleCalendarOwnerEmail(accessToken)
+
+      googleE2ECredentials = creds
+
+      await storeGoogleCalendarRefreshToken({
+        accountId: email,
+        refreshToken: input.refreshToken
+      })
+    },
+
+    async getGooglePushChannelProbe(): Promise<GooglePushChannelProbe> {
+      const runtime = getGooglePushRuntime()
+      return { activeCount: runtime?.getActiveChannelCount() ?? 0 }
+    },
+
+    async connectGoogleCalendarForE2E(): Promise<ConnectGoogleCalendarForE2EResult> {
+      // Replicates the post-OAuth steps of CONNECT_PROVIDER without driving the
+      // loopback OAuth flow. Requires seedGoogleCalendarTokens to have been called first.
+      const creds = requireGoogleCredentials()
+      const accessToken = await exchangeRefreshTokenForAccess(creds)
+      const primary = await fetchGooglePrimaryCalendar(accessToken)
+      const accountId = primary.id
+      const title = primary.summary ?? primary.id
+      const timezone = primary.timeZone ?? null
+      const color = primary.backgroundColor ?? null
+
+      const db = getDatabase()
+      const now = new Date().toISOString()
+      const accountSourceId = `google-account:${accountId}`
+      const calendarSourceId = `google-calendar:${primary.id}`
+
+      upsertCalendarSource(db, {
+        id: accountSourceId,
+        provider: 'google',
+        kind: 'account',
+        accountId,
+        remoteId: primary.id,
+        title,
+        timezone,
+        color: null,
+        isPrimary: false,
+        isSelected: false,
+        isMemryManaged: false,
+        syncStatus: 'pending',
+        createdAt: now,
+        modifiedAt: now
+      })
+
+      upsertCalendarSource(db, {
+        id: calendarSourceId,
+        provider: 'google',
+        kind: 'calendar',
+        accountId,
+        remoteId: primary.id,
+        title,
+        timezone,
+        color,
+        isPrimary: true,
+        isSelected: true,
+        isMemryManaged: false,
+        syncStatus: 'pending',
+        createdAt: now,
+        modifiedAt: now
+      })
+
+      // Best-effort start — the runner short-circuits without Memry sync auth, but that
+      // doesn't block sync-service direct calls which don't need Memry auth.
+      await startGoogleCalendarSyncRunner()
+
+      return {
+        accountId,
+        accountSourceId,
+        calendarSourceId,
+        primaryCalendarId: primary.id
+      }
+    },
+
+    async syncGoogleCalendarSourceForE2E(input: { sourceId: string }): Promise<void> {
+      // Directly invoke the per-source sync path. syncGoogleCalendarNow early-returns
+      // without Memry auth, but this function only needs Google credentials.
+      await syncGoogleCalendarSource(getDatabase(), input.sourceId)
+    },
+
+    async listCalendarExternalEventsForE2E(input: {
+      sourceId: string
+    }): Promise<CalendarExternalEventProbe[]> {
+      const rows = listCalendarExternalEventsBySource(getDatabase(), input.sourceId)
+      return rows.map((row) => ({
+        id: row.id,
+        remoteEventId: row.remoteEventId,
+        title: row.title ?? '',
+        startAt: row.startAt,
+        endAt: row.endAt
+      }))
+    },
+
+    async createGoogleCalendarEventForE2E(input: CreateGoogleCalendarEventInput): Promise<string> {
+      const creds = requireGoogleCredentials()
+      const accessToken = await exchangeRefreshTokenForAccess(creds)
+
+      const url = `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(input.calendarId)}/events`
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          summary: input.summary,
+          start: { dateTime: new Date(input.startMs).toISOString() },
+          end: { dateTime: new Date(input.endMs).toISOString() }
+        })
+      })
+
+      if (!res.ok) {
+        const detail = await res.text().catch(() => '')
+        throw new Error(`Google events.insert failed (${res.status}): ${detail || 'no body'}`)
+      }
+
+      const json = (await res.json()) as { id?: string }
+      if (!json.id) {
+        throw new Error('Google events.insert response missing event id')
+      }
+      return json.id
+    },
+
+    async deleteGoogleCalendarEventForE2E(input: DeleteGoogleCalendarEventInput): Promise<void> {
+      const creds = requireGoogleCredentials()
+      const accessToken = await exchangeRefreshTokenForAccess(creds)
+
+      const url = `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(input.calendarId)}/events/${encodeURIComponent(input.eventId)}`
+      const res = await fetch(url, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${accessToken}` }
+      })
+
+      if (!res.ok && res.status !== 410) {
+        const detail = await res.text().catch(() => '')
+        throw new Error(`Google events.delete failed (${res.status}): ${detail || 'no body'}`)
+      }
+    },
+
+    async createMemryEventForWriteBackE2E(
+      input: CreateMemryEventForWriteBackInput
+    ): Promise<CreateMemryEventForWriteBackResult> {
+      // Inserts a minimal calendar_events row that pushSourceToGoogleCalendar will
+      // pick up via its 'event' source-type branch. targetCalendarId is set so the
+      // push resolver routes to the user's primary calendar instead of falling
+      // through to ensureMemryCalendarSource (which would auto-create a "Memry"
+      // calendar on the test Google account — extra state to clean up).
+      const db = getDatabase()
+      const sourceId = `calendar-writeback-e2e:${Date.now()}:${Math.random().toString(36).slice(2, 10)}`
+      const startAt = new Date(input.startMs).toISOString()
+      const endAt = new Date(input.endMs).toISOString()
+      const now = new Date().toISOString()
+      const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'
+
+      db.insert(calendarEvents)
+        .values({
+          id: sourceId,
+          title: input.title,
+          description: null,
+          location: null,
+          startAt,
+          endAt,
+          timezone,
+          isAllDay: false,
+          recurrenceRule: null,
+          recurrenceExceptions: null,
+          attendees: null,
+          reminders: null,
+          visibility: null,
+          colorId: null,
+          conferenceData: null,
+          parentEventId: null,
+          originalStartTime: null,
+          targetCalendarId: input.targetCalendarId,
+          archivedAt: null,
+          clock: null,
+          fieldClocks: null,
+          syncedAt: null,
+          createdAt: now,
+          modifiedAt: now
+        })
+        .run()
+
+      return { sourceId }
+    },
+
+    async pushMemryEventToGoogleForE2E(input: {
+      sourceId: string
+    }): Promise<PushMemryEventToGoogleResult> {
+      // Calls the real sync-service push path. pushSourceToGoogleCalendar has no
+      // isMemryUserSignedIn guard (unlike syncLocalSourceToGoogleCalendar), so
+      // the write-back data plane is verifiable without Memry sync auth — same
+      // pattern as the direct-pull hook for Google → Memry.
+      const binding = await pushSourceToGoogleCalendar(getDatabase(), {
+        sourceType: 'event',
+        sourceId: input.sourceId
+      })
+
+      if (!binding.remoteCalendarId || !binding.remoteEventId) {
+        throw new Error(
+          `pushSourceToGoogleCalendar returned binding without remote identifiers ` +
+            `(calendarId=${binding.remoteCalendarId}, eventId=${binding.remoteEventId})`
+        )
+      }
+
+      return {
+        remoteCalendarId: binding.remoteCalendarId,
+        remoteEventId: binding.remoteEventId,
+        remoteVersion: binding.remoteVersion ?? null
+      }
+    },
+
+    async fetchGoogleEventForE2E(input: FetchGoogleEventInput): Promise<GoogleEventProbe> {
+      const creds = requireGoogleCredentials()
+      const accessToken = await exchangeRefreshTokenForAccess(creds)
+
+      const url = `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(input.calendarId)}/events/${encodeURIComponent(input.eventId)}`
+      const res = await fetch(url, {
+        headers: { Authorization: `Bearer ${accessToken}` }
+      })
+
+      if (!res.ok) {
+        const detail = await res.text().catch(() => '')
+        throw new Error(`Google events.get failed (${res.status}): ${detail || 'no body'}`)
+      }
+
+      const json = (await res.json()) as {
+        id?: string
+        summary?: string | null
+        start?: { dateTime?: string | null; date?: string | null } | null
+        end?: { dateTime?: string | null; date?: string | null } | null
+      }
+
+      if (!json.id) {
+        throw new Error('Google events.get response missing event id')
+      }
+
+      return {
+        id: json.id,
+        summary: json.summary ?? null,
+        start: json.start ?? null,
+        end: json.end ?? null
+      }
     }
   }
 }

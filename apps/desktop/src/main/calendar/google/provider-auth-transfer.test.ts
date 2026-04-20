@@ -48,7 +48,10 @@ describe('google provider auth transfer', () => {
 
   it('returns null when no account has a refresh token to export', async () => {
     vi.mocked(listGoogleAccountIds).mockReturnValue(['account-a'])
-    vi.mocked(getGoogleCalendarTokens).mockResolvedValue({ accessToken: 'stale', refreshToken: null })
+    vi.mocked(getGoogleCalendarTokens).mockResolvedValue({
+      accessToken: 'stale',
+      refreshToken: null
+    })
 
     await expect(collectGoogleProviderAuthTransfer({} as never)).resolves.toBeNull()
   })
@@ -58,7 +61,9 @@ describe('google provider auth transfer', () => {
     const macKey = sodium.randombytes_buf(32)
     const transfer = {
       version: 1 as const,
-      providers: [{ provider: 'google' as const, accountId: 'account-a', refreshToken: 'refresh-a' }]
+      providers: [
+        { provider: 'google' as const, accountId: 'account-a', refreshToken: 'refresh-a' }
+      ]
     }
 
     const encrypted = encryptGoogleProviderAuthTransfer({
