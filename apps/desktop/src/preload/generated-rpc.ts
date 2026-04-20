@@ -2,11 +2,7 @@
 
 export type { GeneratedRpcApi } from '@memry/rpc'
 import type { GeneratedRpcApi } from '@memry/rpc'
-import type {
-  MainIpcInvokeArgs,
-  MainIpcInvokeChannel,
-  MainIpcInvokeResult
-} from '../main/ipc/generated-ipc-invoke-map'
+import type { MainIpcInvokeArgs, MainIpcInvokeChannel, MainIpcInvokeResult } from '../main/ipc/generated-ipc-invoke-map'
 
 export interface GeneratedRpcDeps {
   invoke<C extends MainIpcInvokeChannel>(
@@ -24,257 +20,119 @@ export function createGeneratedRpcApi({
 }: GeneratedRpcDeps): GeneratedRpcApi {
   return {
     notes: {
-      create: ((input) => invoke('notes:create', input)) as GeneratedRpcApi['notes']['create'],
-      get: ((id) => invoke('notes:get', id)) as GeneratedRpcApi['notes']['get'],
-      getByPath: ((path) =>
-        invoke('notes:get-by-path', path)) as GeneratedRpcApi['notes']['getByPath'],
-      getFile: ((id) => invoke('notes:get-file', id)) as GeneratedRpcApi['notes']['getFile'],
-      resolveByTitle: ((title) =>
-        invoke('notes:resolve-by-title', title)) as GeneratedRpcApi['notes']['resolveByTitle'],
-      previewByTitle: ((title) =>
-        invoke('notes:preview-by-title', title)) as GeneratedRpcApi['notes']['previewByTitle'],
-      update: ((input) => invoke('notes:update', input)) as GeneratedRpcApi['notes']['update'],
-      rename: ((id, newTitle) =>
-        invoke('notes:rename', { id, newTitle })) as GeneratedRpcApi['notes']['rename'],
-      move: ((id, newFolder) =>
-        invoke('notes:move', { id, newFolder })) as GeneratedRpcApi['notes']['move'],
-      delete: ((id) => invoke('notes:delete', id)) as GeneratedRpcApi['notes']['delete'],
-      list: ((options) => invoke('notes:list', options ?? {})) as GeneratedRpcApi['notes']['list'],
-      getTags: (() => invoke('notes:get-tags')) as GeneratedRpcApi['notes']['getTags'],
-      getLinks: ((id) => invoke('notes:get-links', id)) as GeneratedRpcApi['notes']['getLinks'],
-      getFolders: (() => invoke('notes:get-folders')) as GeneratedRpcApi['notes']['getFolders'],
-      createFolder: ((path) =>
-        invoke('notes:create-folder', path)) as GeneratedRpcApi['notes']['createFolder'],
-      renameFolder: ((oldPath, newPath) =>
-        invoke('notes:rename-folder', {
-          oldPath,
-          newPath
-        })) as GeneratedRpcApi['notes']['renameFolder'],
-      deleteFolder: ((path) =>
-        invoke('notes:delete-folder', path)) as GeneratedRpcApi['notes']['deleteFolder'],
-      exists: ((titleOrPath) =>
-        invoke('notes:exists', titleOrPath)) as GeneratedRpcApi['notes']['exists'],
-      openExternal: ((id) =>
-        invoke('notes:open-external', id)) as GeneratedRpcApi['notes']['openExternal'],
-      revealInFinder: ((id) =>
-        invoke('notes:reveal-in-finder', id)) as GeneratedRpcApi['notes']['revealInFinder'],
-      getPropertyDefinitions: (() =>
-        invoke(
-          'notes:get-property-definitions'
-        )) as GeneratedRpcApi['notes']['getPropertyDefinitions'],
-      createPropertyDefinition: ((input) =>
-        invoke(
-          'notes:create-property-definition',
-          input
-        )) as GeneratedRpcApi['notes']['createPropertyDefinition'],
-      updatePropertyDefinition: ((input) =>
-        invoke(
-          'notes:update-property-definition',
-          input
-        )) as GeneratedRpcApi['notes']['updatePropertyDefinition'],
-      ensurePropertyDefinition: ((name, type) =>
-        invoke('notes:ensure-property-definition', {
-          name,
-          type
-        })) as GeneratedRpcApi['notes']['ensurePropertyDefinition'],
-      addPropertyOption: ((propertyName, option) =>
-        invoke('notes:add-property-option', {
-          propertyName,
-          option
-        })) as GeneratedRpcApi['notes']['addPropertyOption'],
-      addStatusOption: ((propertyName, categoryKey, option) =>
-        invoke('notes:add-status-option', {
-          propertyName,
-          categoryKey,
-          option
-        })) as GeneratedRpcApi['notes']['addStatusOption'],
-      removePropertyOption: ((propertyName, optionValue) =>
-        invoke('notes:remove-property-option', {
-          propertyName,
-          optionValue
-        })) as GeneratedRpcApi['notes']['removePropertyOption'],
-      renamePropertyOption: ((propertyName, oldValue, newValue) =>
-        invoke('notes:rename-property-option', {
-          propertyName,
-          oldValue,
-          newValue
-        })) as GeneratedRpcApi['notes']['renamePropertyOption'],
-      updateOptionColor: ((propertyName, optionValue, newColor) =>
-        invoke('notes:update-option-color', {
-          propertyName,
-          optionValue,
-          newColor
-        })) as GeneratedRpcApi['notes']['updateOptionColor'],
-      deletePropertyDefinition: ((name) =>
-        invoke('notes:delete-property-definition', {
-          name
-        })) as GeneratedRpcApi['notes']['deletePropertyDefinition'],
+      create: ((input) => invoke("notes:create", input)) as GeneratedRpcApi["notes"]["create"],
+      get: ((id) => invoke("notes:get", id)) as GeneratedRpcApi["notes"]["get"],
+      getByPath: ((path) => invoke("notes:get-by-path", path)) as GeneratedRpcApi["notes"]["getByPath"],
+      getFile: ((id) => invoke("notes:get-file", id)) as GeneratedRpcApi["notes"]["getFile"],
+      resolveByTitle: ((title) => invoke("notes:resolve-by-title", title)) as GeneratedRpcApi["notes"]["resolveByTitle"],
+      previewByTitle: ((title) => invoke("notes:preview-by-title", title)) as GeneratedRpcApi["notes"]["previewByTitle"],
+      update: ((input) => invoke("notes:update", input)) as GeneratedRpcApi["notes"]["update"],
+      rename: ((id, newTitle) => invoke("notes:rename", { id, newTitle })) as GeneratedRpcApi["notes"]["rename"],
+      move: ((id, newFolder) => invoke("notes:move", { id, newFolder })) as GeneratedRpcApi["notes"]["move"],
+      delete: ((id) => invoke("notes:delete", id)) as GeneratedRpcApi["notes"]["delete"],
+      list: ((options) => invoke("notes:list", options ?? {})) as GeneratedRpcApi["notes"]["list"],
+      getTags: (() => invoke("notes:get-tags")) as GeneratedRpcApi["notes"]["getTags"],
+      getLinks: ((id) => invoke("notes:get-links", id)) as GeneratedRpcApi["notes"]["getLinks"],
+      getFolders: (() => invoke("notes:get-folders")) as GeneratedRpcApi["notes"]["getFolders"],
+      createFolder: ((path) => invoke("notes:create-folder", path)) as GeneratedRpcApi["notes"]["createFolder"],
+      renameFolder: ((oldPath, newPath) => invoke("notes:rename-folder", { oldPath, newPath })) as GeneratedRpcApi["notes"]["renameFolder"],
+      deleteFolder: ((path) => invoke("notes:delete-folder", path)) as GeneratedRpcApi["notes"]["deleteFolder"],
+      exists: ((titleOrPath) => invoke("notes:exists", titleOrPath)) as GeneratedRpcApi["notes"]["exists"],
+      openExternal: ((id) => invoke("notes:open-external", id)) as GeneratedRpcApi["notes"]["openExternal"],
+      revealInFinder: ((id) => invoke("notes:reveal-in-finder", id)) as GeneratedRpcApi["notes"]["revealInFinder"],
+      getPropertyDefinitions: (() => invoke("notes:get-property-definitions")) as GeneratedRpcApi["notes"]["getPropertyDefinitions"],
+      createPropertyDefinition: ((input) => invoke("notes:create-property-definition", input)) as GeneratedRpcApi["notes"]["createPropertyDefinition"],
+      updatePropertyDefinition: ((input) => invoke("notes:update-property-definition", input)) as GeneratedRpcApi["notes"]["updatePropertyDefinition"],
+      ensurePropertyDefinition: ((name, type) => invoke("notes:ensure-property-definition", { name, type })) as GeneratedRpcApi["notes"]["ensurePropertyDefinition"],
+      addPropertyOption: ((propertyName, option) => invoke("notes:add-property-option", { propertyName, option })) as GeneratedRpcApi["notes"]["addPropertyOption"],
+      addStatusOption: ((propertyName, categoryKey, option) => invoke("notes:add-status-option", { propertyName, categoryKey, option })) as GeneratedRpcApi["notes"]["addStatusOption"],
+      removePropertyOption: ((propertyName, optionValue) => invoke("notes:remove-property-option", { propertyName, optionValue })) as GeneratedRpcApi["notes"]["removePropertyOption"],
+      renamePropertyOption: ((propertyName, oldValue, newValue) => invoke("notes:rename-property-option", { propertyName, oldValue, newValue })) as GeneratedRpcApi["notes"]["renamePropertyOption"],
+      updateOptionColor: ((propertyName, optionValue, newColor) => invoke("notes:update-option-color", { propertyName, optionValue, newColor })) as GeneratedRpcApi["notes"]["updateOptionColor"],
+      deletePropertyDefinition: ((name) => invoke("notes:delete-property-definition", { name })) as GeneratedRpcApi["notes"]["deletePropertyDefinition"],
       uploadAttachment: (async (noteId, file) =>
-        invoke('notes:upload-attachment', {
+        invoke("notes:upload-attachment", {
           noteId,
           filename: file.name,
           data: Array.from(new Uint8Array(await file.arrayBuffer()))
-        })) as GeneratedRpcApi['notes']['uploadAttachment'],
-      listAttachments: ((noteId) =>
-        invoke('notes:list-attachments', noteId)) as GeneratedRpcApi['notes']['listAttachments'],
-      deleteAttachment: ((noteId, filename) =>
-        invoke('notes:delete-attachment', {
-          noteId,
-          filename
-        })) as GeneratedRpcApi['notes']['deleteAttachment'],
-      getFolderConfig: ((folderPath) =>
-        invoke(
-          'notes:get-folder-config',
-          folderPath
-        )) as GeneratedRpcApi['notes']['getFolderConfig'],
-      setFolderConfig: ((folderPath, config) =>
-        invoke('notes:set-folder-config', {
-          folderPath,
-          config
-        })) as GeneratedRpcApi['notes']['setFolderConfig'],
-      getFolderTemplate: ((folderPath) =>
-        invoke(
-          'notes:get-folder-template',
-          folderPath
-        )) as GeneratedRpcApi['notes']['getFolderTemplate'],
-      exportPdf: ((input) =>
-        invoke('notes:export-pdf', input)) as GeneratedRpcApi['notes']['exportPdf'],
-      exportHtml: ((input) =>
-        invoke('notes:export-html', input)) as GeneratedRpcApi['notes']['exportHtml'],
-      getVersions: ((noteId) =>
-        invoke('notes:get-versions', noteId)) as GeneratedRpcApi['notes']['getVersions'],
-      getVersion: ((snapshotId) =>
-        invoke('notes:get-version', snapshotId)) as GeneratedRpcApi['notes']['getVersion'],
-      restoreVersion: ((snapshotId) =>
-        invoke('notes:restore-version', snapshotId)) as GeneratedRpcApi['notes']['restoreVersion'],
-      deleteVersion: ((snapshotId) =>
-        invoke('notes:delete-version', snapshotId)) as GeneratedRpcApi['notes']['deleteVersion'],
-      getPositions: ((folderPath) =>
-        invoke('notes:get-positions', { folderPath })) as GeneratedRpcApi['notes']['getPositions'],
-      getAllPositions: (() =>
-        invoke('notes:get-all-positions')) as GeneratedRpcApi['notes']['getAllPositions'],
-      reorder: ((folderPath, notePaths) =>
-        invoke('notes:reorder', { folderPath, notePaths })) as GeneratedRpcApi['notes']['reorder'],
-      importFiles: ((sourcePaths, targetFolder) =>
-        invoke('notes:import-files', {
-          sourcePaths,
-          targetFolder
-        })) as GeneratedRpcApi['notes']['importFiles'],
-      showImportDialog: (() =>
-        invoke('notes:show-import-dialog')) as GeneratedRpcApi['notes']['showImportDialog'],
-      setLocalOnly: ((id, localOnly) =>
-        invoke('notes:set-local-only', {
-          id,
-          localOnly
-        })) as GeneratedRpcApi['notes']['setLocalOnly'],
-      getLocalOnlyCount: (() =>
-        invoke('notes:get-local-only-count')) as GeneratedRpcApi['notes']['getLocalOnlyCount']
+        })) as GeneratedRpcApi["notes"]["uploadAttachment"],
+      listAttachments: ((noteId) => invoke("notes:list-attachments", noteId)) as GeneratedRpcApi["notes"]["listAttachments"],
+      deleteAttachment: ((noteId, filename) => invoke("notes:delete-attachment", { noteId, filename })) as GeneratedRpcApi["notes"]["deleteAttachment"],
+      getFolderConfig: ((folderPath) => invoke("notes:get-folder-config", folderPath)) as GeneratedRpcApi["notes"]["getFolderConfig"],
+      setFolderConfig: ((folderPath, config) => invoke("notes:set-folder-config", { folderPath, config })) as GeneratedRpcApi["notes"]["setFolderConfig"],
+      getFolderTemplate: ((folderPath) => invoke("notes:get-folder-template", folderPath)) as GeneratedRpcApi["notes"]["getFolderTemplate"],
+      exportPdf: ((input) => invoke("notes:export-pdf", input)) as GeneratedRpcApi["notes"]["exportPdf"],
+      exportHtml: ((input) => invoke("notes:export-html", input)) as GeneratedRpcApi["notes"]["exportHtml"],
+      getVersions: ((noteId) => invoke("notes:get-versions", noteId)) as GeneratedRpcApi["notes"]["getVersions"],
+      getVersion: ((snapshotId) => invoke("notes:get-version", snapshotId)) as GeneratedRpcApi["notes"]["getVersion"],
+      restoreVersion: ((snapshotId) => invoke("notes:restore-version", snapshotId)) as GeneratedRpcApi["notes"]["restoreVersion"],
+      deleteVersion: ((snapshotId) => invoke("notes:delete-version", snapshotId)) as GeneratedRpcApi["notes"]["deleteVersion"],
+      getPositions: ((folderPath) => invoke("notes:get-positions", { folderPath })) as GeneratedRpcApi["notes"]["getPositions"],
+      getAllPositions: (() => invoke("notes:get-all-positions")) as GeneratedRpcApi["notes"]["getAllPositions"],
+      reorder: ((folderPath, notePaths) => invoke("notes:reorder", { folderPath, notePaths })) as GeneratedRpcApi["notes"]["reorder"],
+      importFiles: ((sourcePaths, targetFolder) => invoke("notes:import-files", { sourcePaths, targetFolder })) as GeneratedRpcApi["notes"]["importFiles"],
+      showImportDialog: (() => invoke("notes:show-import-dialog")) as GeneratedRpcApi["notes"]["showImportDialog"],
+      setLocalOnly: ((id, localOnly) => invoke("notes:set-local-only", { id, localOnly })) as GeneratedRpcApi["notes"]["setLocalOnly"],
+      getLocalOnlyCount: (() => invoke("notes:get-local-only-count")) as GeneratedRpcApi["notes"]["getLocalOnlyCount"],
     },
     tasks: {
-      create: ((input) => invoke('tasks:create', input)) as GeneratedRpcApi['tasks']['create'],
-      get: ((id) => invoke('tasks:get', id)) as GeneratedRpcApi['tasks']['get'],
-      update: ((input) => invoke('tasks:update', input)) as GeneratedRpcApi['tasks']['update'],
-      delete: ((id) => invoke('tasks:delete', id)) as GeneratedRpcApi['tasks']['delete'],
-      list: ((options) => invoke('tasks:list', options ?? {})) as GeneratedRpcApi['tasks']['list'],
-      complete: ((input) =>
-        invoke('tasks:complete', input)) as GeneratedRpcApi['tasks']['complete'],
-      uncomplete: ((id) =>
-        invoke('tasks:uncomplete', id)) as GeneratedRpcApi['tasks']['uncomplete'],
-      archive: ((id) => invoke('tasks:archive', id)) as GeneratedRpcApi['tasks']['archive'],
-      unarchive: ((id) => invoke('tasks:unarchive', id)) as GeneratedRpcApi['tasks']['unarchive'],
-      move: ((input) => invoke('tasks:move', input)) as GeneratedRpcApi['tasks']['move'],
-      reorder: ((taskIds, positions) =>
-        invoke('tasks:reorder', { taskIds, positions })) as GeneratedRpcApi['tasks']['reorder'],
-      duplicate: ((id) => invoke('tasks:duplicate', id)) as GeneratedRpcApi['tasks']['duplicate'],
-      getSubtasks: ((parentId) =>
-        invoke('tasks:get-subtasks', parentId)) as GeneratedRpcApi['tasks']['getSubtasks'],
-      convertToSubtask: ((taskId, parentId) =>
-        invoke('tasks:convert-to-subtask', {
-          taskId,
-          parentId
-        })) as GeneratedRpcApi['tasks']['convertToSubtask'],
-      convertToTask: ((taskId) =>
-        invoke('tasks:convert-to-task', taskId)) as GeneratedRpcApi['tasks']['convertToTask'],
-      createProject: ((input) =>
-        invoke('tasks:project-create', input)) as GeneratedRpcApi['tasks']['createProject'],
-      getProject: ((id) =>
-        invoke('tasks:project-get', id)) as GeneratedRpcApi['tasks']['getProject'],
-      updateProject: ((input) =>
-        invoke('tasks:project-update', input)) as GeneratedRpcApi['tasks']['updateProject'],
-      deleteProject: ((id) =>
-        invoke('tasks:project-delete', id)) as GeneratedRpcApi['tasks']['deleteProject'],
-      listProjects: (() =>
-        invoke('tasks:project-list')) as GeneratedRpcApi['tasks']['listProjects'],
-      archiveProject: ((id) =>
-        invoke('tasks:project-archive', id)) as GeneratedRpcApi['tasks']['archiveProject'],
-      reorderProjects: ((projectIds, positions) =>
-        invoke('tasks:project-reorder', {
-          projectIds,
-          positions
-        })) as GeneratedRpcApi['tasks']['reorderProjects'],
-      createStatus: ((input) =>
-        invoke('tasks:status-create', input)) as GeneratedRpcApi['tasks']['createStatus'],
-      updateStatus: ((id, updates) =>
-        invoke('tasks:status-update', {
-          id,
-          ...updates
-        })) as GeneratedRpcApi['tasks']['updateStatus'],
-      deleteStatus: ((id) =>
-        invoke('tasks:status-delete', id)) as GeneratedRpcApi['tasks']['deleteStatus'],
-      reorderStatuses: ((statusIds, positions) =>
-        invoke('tasks:status-reorder', {
-          statusIds,
-          positions
-        })) as GeneratedRpcApi['tasks']['reorderStatuses'],
-      listStatuses: ((projectId) =>
-        invoke('tasks:status-list', projectId)) as GeneratedRpcApi['tasks']['listStatuses'],
-      getTags: (() => invoke('tasks:get-tags')) as GeneratedRpcApi['tasks']['getTags'],
-      bulkComplete: ((ids) =>
-        invoke('tasks:bulk-complete', { ids })) as GeneratedRpcApi['tasks']['bulkComplete'],
-      bulkDelete: ((ids) =>
-        invoke('tasks:bulk-delete', { ids })) as GeneratedRpcApi['tasks']['bulkDelete'],
-      bulkMove: ((ids, projectId) =>
-        invoke('tasks:bulk-move', { ids, projectId })) as GeneratedRpcApi['tasks']['bulkMove'],
-      bulkArchive: ((ids) =>
-        invoke('tasks:bulk-archive', { ids })) as GeneratedRpcApi['tasks']['bulkArchive'],
-      getStats: (() => invoke('tasks:get-stats')) as GeneratedRpcApi['tasks']['getStats'],
-      getToday: (() => invoke('tasks:get-today')) as GeneratedRpcApi['tasks']['getToday'],
-      getUpcoming: ((days) =>
-        invoke('tasks:get-upcoming', {
-          days: days ?? 7
-        })) as GeneratedRpcApi['tasks']['getUpcoming'],
-      getOverdue: (() => invoke('tasks:get-overdue')) as GeneratedRpcApi['tasks']['getOverdue'],
-      getLinkedTasks: ((noteId) =>
-        invoke('tasks:get-linked-tasks', noteId)) as GeneratedRpcApi['tasks']['getLinkedTasks'],
-      seedPerformanceTest: (() =>
-        invoke('tasks:seed-performance-test')) as GeneratedRpcApi['tasks']['seedPerformanceTest'],
-      seedDemo: (() => invoke('tasks:seed-demo')) as GeneratedRpcApi['tasks']['seedDemo']
+      create: ((input) => invoke("tasks:create", input)) as GeneratedRpcApi["tasks"]["create"],
+      get: ((id) => invoke("tasks:get", id)) as GeneratedRpcApi["tasks"]["get"],
+      update: ((input) => invoke("tasks:update", input)) as GeneratedRpcApi["tasks"]["update"],
+      delete: ((id) => invoke("tasks:delete", id)) as GeneratedRpcApi["tasks"]["delete"],
+      list: ((options) => invoke("tasks:list", options ?? {})) as GeneratedRpcApi["tasks"]["list"],
+      complete: ((input) => invoke("tasks:complete", input)) as GeneratedRpcApi["tasks"]["complete"],
+      uncomplete: ((id) => invoke("tasks:uncomplete", id)) as GeneratedRpcApi["tasks"]["uncomplete"],
+      archive: ((id) => invoke("tasks:archive", id)) as GeneratedRpcApi["tasks"]["archive"],
+      unarchive: ((id) => invoke("tasks:unarchive", id)) as GeneratedRpcApi["tasks"]["unarchive"],
+      move: ((input) => invoke("tasks:move", input)) as GeneratedRpcApi["tasks"]["move"],
+      reorder: ((taskIds, positions) => invoke("tasks:reorder", { taskIds, positions })) as GeneratedRpcApi["tasks"]["reorder"],
+      duplicate: ((id) => invoke("tasks:duplicate", id)) as GeneratedRpcApi["tasks"]["duplicate"],
+      getSubtasks: ((parentId) => invoke("tasks:get-subtasks", parentId)) as GeneratedRpcApi["tasks"]["getSubtasks"],
+      convertToSubtask: ((taskId, parentId) => invoke("tasks:convert-to-subtask", { taskId, parentId })) as GeneratedRpcApi["tasks"]["convertToSubtask"],
+      convertToTask: ((taskId) => invoke("tasks:convert-to-task", taskId)) as GeneratedRpcApi["tasks"]["convertToTask"],
+      createProject: ((input) => invoke("tasks:project-create", input)) as GeneratedRpcApi["tasks"]["createProject"],
+      getProject: ((id) => invoke("tasks:project-get", id)) as GeneratedRpcApi["tasks"]["getProject"],
+      updateProject: ((input) => invoke("tasks:project-update", input)) as GeneratedRpcApi["tasks"]["updateProject"],
+      deleteProject: ((id) => invoke("tasks:project-delete", id)) as GeneratedRpcApi["tasks"]["deleteProject"],
+      listProjects: (() => invoke("tasks:project-list")) as GeneratedRpcApi["tasks"]["listProjects"],
+      archiveProject: ((id) => invoke("tasks:project-archive", id)) as GeneratedRpcApi["tasks"]["archiveProject"],
+      reorderProjects: ((projectIds, positions) => invoke("tasks:project-reorder", { projectIds, positions })) as GeneratedRpcApi["tasks"]["reorderProjects"],
+      createStatus: ((input) => invoke("tasks:status-create", input)) as GeneratedRpcApi["tasks"]["createStatus"],
+      updateStatus: ((id, updates) => invoke("tasks:status-update", { id, ...updates })) as GeneratedRpcApi["tasks"]["updateStatus"],
+      deleteStatus: ((id) => invoke("tasks:status-delete", id)) as GeneratedRpcApi["tasks"]["deleteStatus"],
+      reorderStatuses: ((statusIds, positions) => invoke("tasks:status-reorder", { statusIds, positions })) as GeneratedRpcApi["tasks"]["reorderStatuses"],
+      listStatuses: ((projectId) => invoke("tasks:status-list", projectId)) as GeneratedRpcApi["tasks"]["listStatuses"],
+      getTags: (() => invoke("tasks:get-tags")) as GeneratedRpcApi["tasks"]["getTags"],
+      bulkComplete: ((ids) => invoke("tasks:bulk-complete", { ids })) as GeneratedRpcApi["tasks"]["bulkComplete"],
+      bulkDelete: ((ids) => invoke("tasks:bulk-delete", { ids })) as GeneratedRpcApi["tasks"]["bulkDelete"],
+      bulkMove: ((ids, projectId) => invoke("tasks:bulk-move", { ids, projectId })) as GeneratedRpcApi["tasks"]["bulkMove"],
+      bulkArchive: ((ids) => invoke("tasks:bulk-archive", { ids })) as GeneratedRpcApi["tasks"]["bulkArchive"],
+      getStats: (() => invoke("tasks:get-stats")) as GeneratedRpcApi["tasks"]["getStats"],
+      getToday: (() => invoke("tasks:get-today")) as GeneratedRpcApi["tasks"]["getToday"],
+      getUpcoming: ((days) => invoke("tasks:get-upcoming", { days: days ?? 7 })) as GeneratedRpcApi["tasks"]["getUpcoming"],
+      getOverdue: (() => invoke("tasks:get-overdue")) as GeneratedRpcApi["tasks"]["getOverdue"],
+      getLinkedTasks: ((noteId) => invoke("tasks:get-linked-tasks", noteId)) as GeneratedRpcApi["tasks"]["getLinkedTasks"],
+      seedPerformanceTest: (() => invoke("tasks:seed-performance-test")) as GeneratedRpcApi["tasks"]["seedPerformanceTest"],
+      seedDemo: (() => invoke("tasks:seed-demo")) as GeneratedRpcApi["tasks"]["seedDemo"],
     },
     inbox: {
-      captureText: ((input) =>
-        invoke('inbox:capture-text', input)) as GeneratedRpcApi['inbox']['captureText'],
-      captureLink: ((input) =>
-        invoke('inbox:capture-link', input)) as GeneratedRpcApi['inbox']['captureLink'],
-      previewLink: ((url) =>
-        invoke('inbox:preview-link', url)) as GeneratedRpcApi['inbox']['previewLink'],
-      captureImage: ((input) =>
-        invoke('inbox:capture-image', input)) as GeneratedRpcApi['inbox']['captureImage'],
-      captureVoice: ((input) =>
-        invoke('inbox:capture-voice', input)) as GeneratedRpcApi['inbox']['captureVoice'],
-      captureClip: ((input) =>
-        invoke('inbox:capture-clip', input)) as GeneratedRpcApi['inbox']['captureClip'],
-      capturePdf: ((input) =>
-        invoke('inbox:capture-pdf', input)) as GeneratedRpcApi['inbox']['capturePdf'],
-      get: ((id) => invoke('inbox:get', id)) as GeneratedRpcApi['inbox']['get'],
-      list: ((options) => invoke('inbox:list', options ?? {})) as GeneratedRpcApi['inbox']['list'],
-      update: ((input) => invoke('inbox:update', input)) as GeneratedRpcApi['inbox']['update'],
-      archive: ((id) => invoke('inbox:archive', id)) as GeneratedRpcApi['inbox']['archive'],
-      file: ((input) => invoke('inbox:file', input)) as GeneratedRpcApi['inbox']['file'],
-      getSuggestions: ((itemId) =>
-        invoke('inbox:get-suggestions', itemId)) as GeneratedRpcApi['inbox']['getSuggestions'],
+      captureText: ((input) => invoke("inbox:capture-text", input)) as GeneratedRpcApi["inbox"]["captureText"],
+      captureLink: ((input) => invoke("inbox:capture-link", input)) as GeneratedRpcApi["inbox"]["captureLink"],
+      previewLink: ((url) => invoke("inbox:preview-link", url)) as GeneratedRpcApi["inbox"]["previewLink"],
+      captureImage: ((input) => invoke("inbox:capture-image", input)) as GeneratedRpcApi["inbox"]["captureImage"],
+      captureVoice: ((input) => invoke("inbox:capture-voice", input)) as GeneratedRpcApi["inbox"]["captureVoice"],
+      captureClip: ((input) => invoke("inbox:capture-clip", input)) as GeneratedRpcApi["inbox"]["captureClip"],
+      capturePdf: ((input) => invoke("inbox:capture-pdf", input)) as GeneratedRpcApi["inbox"]["capturePdf"],
+      get: ((id) => invoke("inbox:get", id)) as GeneratedRpcApi["inbox"]["get"],
+      list: ((options) => invoke("inbox:list", options ?? {})) as GeneratedRpcApi["inbox"]["list"],
+      update: ((input) => invoke("inbox:update", input)) as GeneratedRpcApi["inbox"]["update"],
+      archive: ((id) => invoke("inbox:archive", id)) as GeneratedRpcApi["inbox"]["archive"],
+      file: ((input) => invoke("inbox:file", input)) as GeneratedRpcApi["inbox"]["file"],
+      getSuggestions: ((itemId) => invoke("inbox:get-suggestions", itemId)) as GeneratedRpcApi["inbox"]["getSuggestions"],
       trackSuggestion: ((input) =>
         invoke(
-          'inbox:track-suggestion',
+          "inbox:track-suggestion",
           input.itemId,
           input.itemType,
           input.suggestedTo,
@@ -282,133 +140,59 @@ export function createGeneratedRpcApi({
           input.confidence,
           input.suggestedTags ?? [],
           input.actualTags ?? []
-        )) as GeneratedRpcApi['inbox']['trackSuggestion'],
-      convertToNote: ((itemId) =>
-        invoke('inbox:convert-to-note', itemId)) as GeneratedRpcApi['inbox']['convertToNote'],
-      convertToTask: ((itemId) =>
-        invoke('inbox:convert-to-task', itemId)) as GeneratedRpcApi['inbox']['convertToTask'],
-      linkToNote: ((itemId, noteId, tags) =>
-        invoke(
-          'inbox:link-to-note',
-          itemId,
-          noteId,
-          tags ?? []
-        )) as GeneratedRpcApi['inbox']['linkToNote'],
-      addTag: ((itemId, tag) =>
-        invoke('inbox:add-tag', itemId, tag)) as GeneratedRpcApi['inbox']['addTag'],
-      removeTag: ((itemId, tag) =>
-        invoke('inbox:remove-tag', itemId, tag)) as GeneratedRpcApi['inbox']['removeTag'],
-      getTags: (() => invoke('inbox:get-tags')) as GeneratedRpcApi['inbox']['getTags'],
-      snooze: ((input) => invoke('inbox:snooze', input)) as GeneratedRpcApi['inbox']['snooze'],
-      unsnooze: ((itemId) =>
-        invoke('inbox:unsnooze', itemId)) as GeneratedRpcApi['inbox']['unsnooze'],
-      getSnoozed: (() => invoke('inbox:get-snoozed')) as GeneratedRpcApi['inbox']['getSnoozed'],
-      markViewed: ((itemId) =>
-        invoke('inbox:mark-viewed', itemId)) as GeneratedRpcApi['inbox']['markViewed'],
-      bulkFile: ((input) =>
-        invoke('inbox:bulk-file', input)) as GeneratedRpcApi['inbox']['bulkFile'],
-      bulkArchive: ((input) =>
-        invoke('inbox:bulk-archive', input)) as GeneratedRpcApi['inbox']['bulkArchive'],
-      bulkTag: ((input) => invoke('inbox:bulk-tag', input)) as GeneratedRpcApi['inbox']['bulkTag'],
-      bulkSnooze: ((input) =>
-        invoke('inbox:bulk-snooze', input)) as GeneratedRpcApi['inbox']['bulkSnooze'],
-      fileAllStale: (() =>
-        invoke('inbox:file-all-stale')) as GeneratedRpcApi['inbox']['fileAllStale'],
-      retryTranscription: ((itemId) =>
-        invoke(
-          'inbox:retry-transcription',
-          itemId
-        )) as GeneratedRpcApi['inbox']['retryTranscription'],
-      retryMetadata: ((itemId) =>
-        invoke('inbox:retry-metadata', itemId)) as GeneratedRpcApi['inbox']['retryMetadata'],
-      getStats: (() => invoke('inbox:get-stats')) as GeneratedRpcApi['inbox']['getStats'],
-      getJobs: ((options) =>
-        invoke('inbox:get-jobs', options ?? {})) as GeneratedRpcApi['inbox']['getJobs'],
-      getPatterns: (() => invoke('inbox:get-patterns')) as GeneratedRpcApi['inbox']['getPatterns'],
-      getStaleThreshold: (() =>
-        invoke('inbox:get-stale-threshold')) as GeneratedRpcApi['inbox']['getStaleThreshold'],
-      setStaleThreshold: ((days) =>
-        invoke('inbox:set-stale-threshold', days)) as GeneratedRpcApi['inbox']['setStaleThreshold'],
-      listArchived: ((options) =>
-        invoke('inbox:list-archived', options ?? {})) as GeneratedRpcApi['inbox']['listArchived'],
-      unarchive: ((id) => invoke('inbox:unarchive', id)) as GeneratedRpcApi['inbox']['unarchive'],
-      deletePermanent: ((id) =>
-        invoke('inbox:delete-permanent', id)) as GeneratedRpcApi['inbox']['deletePermanent'],
-      getFilingHistory: ((options) =>
-        invoke(
-          'inbox:get-filing-history',
-          options ?? {}
-        )) as GeneratedRpcApi['inbox']['getFilingHistory'],
-      undoFile: ((id) => invoke('inbox:undo-file', id)) as GeneratedRpcApi['inbox']['undoFile'],
-      undoArchive: ((id) =>
-        invoke('inbox:undo-archive', id)) as GeneratedRpcApi['inbox']['undoArchive']
+        )) as GeneratedRpcApi["inbox"]["trackSuggestion"],
+      convertToNote: ((itemId) => invoke("inbox:convert-to-note", itemId)) as GeneratedRpcApi["inbox"]["convertToNote"],
+      convertToTask: ((itemId) => invoke("inbox:convert-to-task", itemId)) as GeneratedRpcApi["inbox"]["convertToTask"],
+      linkToNote: ((itemId, noteId, tags) => invoke("inbox:link-to-note", itemId, noteId, tags ?? [])) as GeneratedRpcApi["inbox"]["linkToNote"],
+      addTag: ((itemId, tag) => invoke("inbox:add-tag", itemId, tag)) as GeneratedRpcApi["inbox"]["addTag"],
+      removeTag: ((itemId, tag) => invoke("inbox:remove-tag", itemId, tag)) as GeneratedRpcApi["inbox"]["removeTag"],
+      getTags: (() => invoke("inbox:get-tags")) as GeneratedRpcApi["inbox"]["getTags"],
+      snooze: ((input) => invoke("inbox:snooze", input)) as GeneratedRpcApi["inbox"]["snooze"],
+      unsnooze: ((itemId) => invoke("inbox:unsnooze", itemId)) as GeneratedRpcApi["inbox"]["unsnooze"],
+      getSnoozed: (() => invoke("inbox:get-snoozed")) as GeneratedRpcApi["inbox"]["getSnoozed"],
+      markViewed: ((itemId) => invoke("inbox:mark-viewed", itemId)) as GeneratedRpcApi["inbox"]["markViewed"],
+      bulkFile: ((input) => invoke("inbox:bulk-file", input)) as GeneratedRpcApi["inbox"]["bulkFile"],
+      bulkArchive: ((input) => invoke("inbox:bulk-archive", input)) as GeneratedRpcApi["inbox"]["bulkArchive"],
+      bulkTag: ((input) => invoke("inbox:bulk-tag", input)) as GeneratedRpcApi["inbox"]["bulkTag"],
+      bulkSnooze: ((input) => invoke("inbox:bulk-snooze", input)) as GeneratedRpcApi["inbox"]["bulkSnooze"],
+      fileAllStale: (() => invoke("inbox:file-all-stale")) as GeneratedRpcApi["inbox"]["fileAllStale"],
+      retryTranscription: ((itemId) => invoke("inbox:retry-transcription", itemId)) as GeneratedRpcApi["inbox"]["retryTranscription"],
+      retryMetadata: ((itemId) => invoke("inbox:retry-metadata", itemId)) as GeneratedRpcApi["inbox"]["retryMetadata"],
+      getStats: (() => invoke("inbox:get-stats")) as GeneratedRpcApi["inbox"]["getStats"],
+      getJobs: ((options) => invoke("inbox:get-jobs", options ?? {})) as GeneratedRpcApi["inbox"]["getJobs"],
+      getPatterns: (() => invoke("inbox:get-patterns")) as GeneratedRpcApi["inbox"]["getPatterns"],
+      getStaleThreshold: (() => invoke("inbox:get-stale-threshold")) as GeneratedRpcApi["inbox"]["getStaleThreshold"],
+      setStaleThreshold: ((days) => invoke("inbox:set-stale-threshold", days)) as GeneratedRpcApi["inbox"]["setStaleThreshold"],
+      listArchived: ((options) => invoke("inbox:list-archived", options ?? {})) as GeneratedRpcApi["inbox"]["listArchived"],
+      unarchive: ((id) => invoke("inbox:unarchive", id)) as GeneratedRpcApi["inbox"]["unarchive"],
+      deletePermanent: ((id) => invoke("inbox:delete-permanent", id)) as GeneratedRpcApi["inbox"]["deletePermanent"],
+      getFilingHistory: ((options) => invoke("inbox:get-filing-history", options ?? {})) as GeneratedRpcApi["inbox"]["getFilingHistory"],
+      undoFile: ((id) => invoke("inbox:undo-file", id)) as GeneratedRpcApi["inbox"]["undoFile"],
+      undoArchive: ((id) => invoke("inbox:undo-archive", id)) as GeneratedRpcApi["inbox"]["undoArchive"],
     },
     settings: {
-      get: ((key) => invoke('settings:get', key)) as GeneratedRpcApi['settings']['get'],
-      set: ((key, value) =>
-        invoke('settings:set', { key, value })) as GeneratedRpcApi['settings']['set'],
-      getJournalSettings: (() =>
-        invoke('settings:getJournalSettings')) as GeneratedRpcApi['settings']['getJournalSettings'],
-      setJournalSettings: ((settings) =>
-        invoke(
-          'settings:setJournalSettings',
-          settings
-        )) as GeneratedRpcApi['settings']['setJournalSettings'],
-      getAISettings: (() =>
-        invoke('settings:getAISettings')) as GeneratedRpcApi['settings']['getAISettings'],
-      setAISettings: ((settings) =>
-        invoke('settings:setAISettings', settings)) as GeneratedRpcApi['settings']['setAISettings'],
-      getVoiceTranscriptionSettings: (() =>
-        invoke(
-          'settings:getVoiceTranscriptionSettings'
-        )) as GeneratedRpcApi['settings']['getVoiceTranscriptionSettings'],
-      setVoiceTranscriptionSettings: ((settings) =>
-        invoke(
-          'settings:setVoiceTranscriptionSettings',
-          settings
-        )) as GeneratedRpcApi['settings']['setVoiceTranscriptionSettings'],
-      getVoiceModelStatus: (() =>
-        invoke(
-          'settings:getVoiceModelStatus'
-        )) as GeneratedRpcApi['settings']['getVoiceModelStatus'],
-      downloadVoiceModel: (() =>
-        invoke('settings:downloadVoiceModel')) as GeneratedRpcApi['settings']['downloadVoiceModel'],
-      getVoiceRecordingReadiness: (() =>
-        invoke(
-          'settings:getVoiceRecordingReadiness'
-        )) as GeneratedRpcApi['settings']['getVoiceRecordingReadiness'],
-      getVoiceTranscriptionOpenAIKeyStatus: (() =>
-        invoke(
-          'settings:getVoiceTranscriptionOpenAIKeyStatus'
-        )) as GeneratedRpcApi['settings']['getVoiceTranscriptionOpenAIKeyStatus'],
-      setVoiceTranscriptionOpenAIKey: ((apiKey) =>
-        invoke('settings:setVoiceTranscriptionOpenAIKey', {
-          apiKey
-        })) as GeneratedRpcApi['settings']['setVoiceTranscriptionOpenAIKey'],
-      getAIModelStatus: (() =>
-        invoke('settings:getAIModelStatus')) as GeneratedRpcApi['settings']['getAIModelStatus'],
-      loadAIModel: (() =>
-        invoke('settings:loadAIModel')) as GeneratedRpcApi['settings']['loadAIModel'],
-      reindexEmbeddings: (() =>
-        invoke('settings:reindexEmbeddings')) as GeneratedRpcApi['settings']['reindexEmbeddings'],
-      getTabSettings: (() =>
-        invoke('settings:getTabSettings')) as GeneratedRpcApi['settings']['getTabSettings'],
-      setTabSettings: ((settings) =>
-        invoke(
-          'settings:setTabSettings',
-          settings
-        )) as GeneratedRpcApi['settings']['setTabSettings'],
-      getNoteEditorSettings: (() =>
-        invoke(
-          'settings:getNoteEditorSettings'
-        )) as GeneratedRpcApi['settings']['getNoteEditorSettings'],
-      setNoteEditorSettings: ((settings) =>
-        invoke(
-          'settings:setNoteEditorSettings',
-          settings
-        )) as GeneratedRpcApi['settings']['setNoteEditorSettings'],
+      get: ((key) => invoke("settings:get", key)) as GeneratedRpcApi["settings"]["get"],
+      set: ((key, value) => invoke("settings:set", { key, value })) as GeneratedRpcApi["settings"]["set"],
+      getJournalSettings: (() => invoke("settings:getJournalSettings")) as GeneratedRpcApi["settings"]["getJournalSettings"],
+      setJournalSettings: ((settings) => invoke("settings:setJournalSettings", settings)) as GeneratedRpcApi["settings"]["setJournalSettings"],
+      getAISettings: (() => invoke("settings:getAISettings")) as GeneratedRpcApi["settings"]["getAISettings"],
+      setAISettings: ((settings) => invoke("settings:setAISettings", settings)) as GeneratedRpcApi["settings"]["setAISettings"],
+      getVoiceTranscriptionSettings: (() => invoke("settings:getVoiceTranscriptionSettings")) as GeneratedRpcApi["settings"]["getVoiceTranscriptionSettings"],
+      setVoiceTranscriptionSettings: ((settings) => invoke("settings:setVoiceTranscriptionSettings", settings)) as GeneratedRpcApi["settings"]["setVoiceTranscriptionSettings"],
+      getVoiceModelStatus: (() => invoke("settings:getVoiceModelStatus")) as GeneratedRpcApi["settings"]["getVoiceModelStatus"],
+      downloadVoiceModel: (() => invoke("settings:downloadVoiceModel")) as GeneratedRpcApi["settings"]["downloadVoiceModel"],
+      getVoiceRecordingReadiness: (() => invoke("settings:getVoiceRecordingReadiness")) as GeneratedRpcApi["settings"]["getVoiceRecordingReadiness"],
+      getVoiceTranscriptionOpenAIKeyStatus: (() => invoke("settings:getVoiceTranscriptionOpenAIKeyStatus")) as GeneratedRpcApi["settings"]["getVoiceTranscriptionOpenAIKeyStatus"],
+      setVoiceTranscriptionOpenAIKey: ((apiKey) => invoke("settings:setVoiceTranscriptionOpenAIKey", { apiKey })) as GeneratedRpcApi["settings"]["setVoiceTranscriptionOpenAIKey"],
+      getAIModelStatus: (() => invoke("settings:getAIModelStatus")) as GeneratedRpcApi["settings"]["getAIModelStatus"],
+      loadAIModel: (() => invoke("settings:loadAIModel")) as GeneratedRpcApi["settings"]["loadAIModel"],
+      reindexEmbeddings: (() => invoke("settings:reindexEmbeddings")) as GeneratedRpcApi["settings"]["reindexEmbeddings"],
+      getTabSettings: (() => invoke("settings:getTabSettings")) as GeneratedRpcApi["settings"]["getTabSettings"],
+      setTabSettings: ((settings) => invoke("settings:setTabSettings", settings)) as GeneratedRpcApi["settings"]["setTabSettings"],
+      getNoteEditorSettings: (() => invoke("settings:getNoteEditorSettings")) as GeneratedRpcApi["settings"]["getNoteEditorSettings"],
+      setNoteEditorSettings: ((settings) => invoke("settings:setNoteEditorSettings", settings)) as GeneratedRpcApi["settings"]["setNoteEditorSettings"],
       getStartupThemeSync: (() => {
-        const raw = invokeSync('settings:getStartupThemeSync') as
+        const raw = invokeSync("settings:getStartupThemeSync") as
           | 'light'
           | 'dark'
           | 'white'
@@ -416,209 +200,76 @@ export function createGeneratedRpcApi({
           | { theme?: 'light' | 'dark' | 'white' | 'system' }
           | null
           | undefined
-        return typeof raw === 'string' ? raw : (raw?.theme ?? 'system')
-      }) as GeneratedRpcApi['settings']['getStartupThemeSync'],
-      getGeneralSettings: (() =>
-        invoke('settings:getGeneralSettings')) as GeneratedRpcApi['settings']['getGeneralSettings'],
-      setGeneralSettings: ((settings) =>
-        invoke(
-          'settings:setGeneralSettings',
-          settings
-        )) as GeneratedRpcApi['settings']['setGeneralSettings'],
-      getEditorSettings: (() =>
-        invoke('settings:getEditorSettings')) as GeneratedRpcApi['settings']['getEditorSettings'],
-      setEditorSettings: ((settings) =>
-        invoke(
-          'settings:setEditorSettings',
-          settings
-        )) as GeneratedRpcApi['settings']['setEditorSettings'],
-      getTaskSettings: (() =>
-        invoke('settings:getTaskSettings')) as GeneratedRpcApi['settings']['getTaskSettings'],
-      setTaskSettings: ((settings) =>
-        invoke(
-          'settings:setTaskSettings',
-          settings
-        )) as GeneratedRpcApi['settings']['setTaskSettings'],
-      getKeyboardSettings: (() =>
-        invoke(
-          'settings:getKeyboardSettings'
-        )) as GeneratedRpcApi['settings']['getKeyboardSettings'],
-      setKeyboardSettings: ((settings) =>
-        invoke(
-          'settings:setKeyboardSettings',
-          settings
-        )) as GeneratedRpcApi['settings']['setKeyboardSettings'],
-      resetKeyboardSettings: (() =>
-        invoke(
-          'settings:resetKeyboardSettings'
-        )) as GeneratedRpcApi['settings']['resetKeyboardSettings'],
-      getSyncSettings: (() =>
-        invoke('settings:getSyncSettings')) as GeneratedRpcApi['settings']['getSyncSettings'],
-      setSyncSettings: ((settings) =>
-        invoke(
-          'settings:setSyncSettings',
-          settings
-        )) as GeneratedRpcApi['settings']['setSyncSettings'],
-      getBackupSettings: (() =>
-        invoke('settings:getBackupSettings')) as GeneratedRpcApi['settings']['getBackupSettings'],
-      setBackupSettings: ((settings) =>
-        invoke(
-          'settings:setBackupSettings',
-          settings
-        )) as GeneratedRpcApi['settings']['setBackupSettings'],
-      getGraphSettings: (() =>
-        invoke('settings:getGraphSettings')) as GeneratedRpcApi['settings']['getGraphSettings'],
-      setGraphSettings: ((settings) =>
-        invoke(
-          'settings:setGraphSettings',
-          settings
-        )) as GeneratedRpcApi['settings']['setGraphSettings'],
-      getCalendarGoogleSettings: (() =>
-        invoke(
-          'settings:getCalendarGoogleSettings'
-        )) as GeneratedRpcApi['settings']['getCalendarGoogleSettings'],
-      setCalendarGoogleSettings: ((settings) =>
-        invoke(
-          'settings:setCalendarGoogleSettings',
-          settings
-        )) as GeneratedRpcApi['settings']['setCalendarGoogleSettings'],
-      registerGlobalCapture: (() =>
-        invoke(
-          'settings:registerGlobalCapture'
-        )) as GeneratedRpcApi['settings']['registerGlobalCapture']
+        return typeof raw === 'string' ? raw : raw?.theme ?? 'system'
+      }) as GeneratedRpcApi["settings"]["getStartupThemeSync"],
+      getGeneralSettings: (() => invoke("settings:getGeneralSettings")) as GeneratedRpcApi["settings"]["getGeneralSettings"],
+      setGeneralSettings: ((settings) => invoke("settings:setGeneralSettings", settings)) as GeneratedRpcApi["settings"]["setGeneralSettings"],
+      getEditorSettings: (() => invoke("settings:getEditorSettings")) as GeneratedRpcApi["settings"]["getEditorSettings"],
+      setEditorSettings: ((settings) => invoke("settings:setEditorSettings", settings)) as GeneratedRpcApi["settings"]["setEditorSettings"],
+      getTaskSettings: (() => invoke("settings:getTaskSettings")) as GeneratedRpcApi["settings"]["getTaskSettings"],
+      setTaskSettings: ((settings) => invoke("settings:setTaskSettings", settings)) as GeneratedRpcApi["settings"]["setTaskSettings"],
+      getKeyboardSettings: (() => invoke("settings:getKeyboardSettings")) as GeneratedRpcApi["settings"]["getKeyboardSettings"],
+      setKeyboardSettings: ((settings) => invoke("settings:setKeyboardSettings", settings)) as GeneratedRpcApi["settings"]["setKeyboardSettings"],
+      resetKeyboardSettings: (() => invoke("settings:resetKeyboardSettings")) as GeneratedRpcApi["settings"]["resetKeyboardSettings"],
+      getSyncSettings: (() => invoke("settings:getSyncSettings")) as GeneratedRpcApi["settings"]["getSyncSettings"],
+      setSyncSettings: ((settings) => invoke("settings:setSyncSettings", settings)) as GeneratedRpcApi["settings"]["setSyncSettings"],
+      getBackupSettings: (() => invoke("settings:getBackupSettings")) as GeneratedRpcApi["settings"]["getBackupSettings"],
+      setBackupSettings: ((settings) => invoke("settings:setBackupSettings", settings)) as GeneratedRpcApi["settings"]["setBackupSettings"],
+      getGraphSettings: (() => invoke("settings:getGraphSettings")) as GeneratedRpcApi["settings"]["getGraphSettings"],
+      setGraphSettings: ((settings) => invoke("settings:setGraphSettings", settings)) as GeneratedRpcApi["settings"]["setGraphSettings"],
+      getCalendarGoogleSettings: (() => invoke("settings:getCalendarGoogleSettings")) as GeneratedRpcApi["settings"]["getCalendarGoogleSettings"],
+      setCalendarGoogleSettings: ((settings) => invoke("settings:setCalendarGoogleSettings", settings)) as GeneratedRpcApi["settings"]["setCalendarGoogleSettings"],
+      getCalendarSettings: (() => invoke("settings:getCalendarSettings")) as GeneratedRpcApi["settings"]["getCalendarSettings"],
+      setCalendarSettings: ((settings) => invoke("settings:setCalendarSettings", settings)) as GeneratedRpcApi["settings"]["setCalendarSettings"],
+      registerGlobalCapture: (() => invoke("settings:registerGlobalCapture")) as GeneratedRpcApi["settings"]["registerGlobalCapture"],
     },
     calendar: {
-      createEvent: ((input) =>
-        invoke('calendar:create-event', input)) as GeneratedRpcApi['calendar']['createEvent'],
-      getEvent: ((id) =>
-        invoke('calendar:get-event', id)) as GeneratedRpcApi['calendar']['getEvent'],
-      updateEvent: ((input) =>
-        invoke('calendar:update-event', input)) as GeneratedRpcApi['calendar']['updateEvent'],
-      deleteEvent: ((id) =>
-        invoke('calendar:delete-event', id)) as GeneratedRpcApi['calendar']['deleteEvent'],
-      listEvents: ((options) =>
-        invoke('calendar:list-events', options ?? {})) as GeneratedRpcApi['calendar']['listEvents'],
-      getRange: ((input) =>
-        invoke('calendar:get-range', input)) as GeneratedRpcApi['calendar']['getRange'],
-      listSources: ((options) =>
-        invoke(
-          'calendar:list-sources',
-          options ?? {}
-        )) as GeneratedRpcApi['calendar']['listSources'],
-      updateSourceSelection: ((input) =>
-        invoke(
-          'calendar:update-source-selection',
-          input
-        )) as GeneratedRpcApi['calendar']['updateSourceSelection'],
-      getProviderStatus: ((input) =>
-        invoke(
-          'calendar:get-provider-status',
-          input
-        )) as GeneratedRpcApi['calendar']['getProviderStatus'],
-      connectProvider: ((input) =>
-        invoke(
-          'calendar:connect-provider',
-          input
-        )) as GeneratedRpcApi['calendar']['connectProvider'],
-      disconnectProvider: ((input) =>
-        invoke(
-          'calendar:disconnect-provider',
-          input
-        )) as GeneratedRpcApi['calendar']['disconnectProvider'],
-      refreshProvider: ((input) =>
-        invoke(
-          'calendar:refresh-provider',
-          input
-        )) as GeneratedRpcApi['calendar']['refreshProvider'],
-      listGoogleCalendars: ((options) =>
-        invoke(
-          'calendar:list-google-calendars',
-          options ?? {}
-        )) as GeneratedRpcApi['calendar']['listGoogleCalendars'],
-      setDefaultGoogleCalendar: ((input) =>
-        invoke(
-          'calendar:set-default-google-calendar',
-          input
-        )) as GeneratedRpcApi['calendar']['setDefaultGoogleCalendar'],
-      promoteExternalEvent: ((input) =>
-        invoke(
-          'calendar:promote-external-event',
-          input
-        )) as GeneratedRpcApi['calendar']['promoteExternalEvent'],
-      retryGoogleCalendarSourceSync: ((input) =>
-        invoke(
-          'calendar:retry-google-source-sync',
-          input
-        )) as GeneratedRpcApi['calendar']['retryGoogleCalendarSourceSync']
+      createEvent: ((input) => invoke("calendar:create-event", input)) as GeneratedRpcApi["calendar"]["createEvent"],
+      getEvent: ((id) => invoke("calendar:get-event", id)) as GeneratedRpcApi["calendar"]["getEvent"],
+      updateEvent: ((input) => invoke("calendar:update-event", input)) as GeneratedRpcApi["calendar"]["updateEvent"],
+      deleteEvent: ((id) => invoke("calendar:delete-event", id)) as GeneratedRpcApi["calendar"]["deleteEvent"],
+      listEvents: ((options) => invoke("calendar:list-events", options ?? {})) as GeneratedRpcApi["calendar"]["listEvents"],
+      getRange: ((input) => invoke("calendar:get-range", input)) as GeneratedRpcApi["calendar"]["getRange"],
+      listSources: ((options) => invoke("calendar:list-sources", options ?? {})) as GeneratedRpcApi["calendar"]["listSources"],
+      updateSourceSelection: ((input) => invoke("calendar:update-source-selection", input)) as GeneratedRpcApi["calendar"]["updateSourceSelection"],
+      getProviderStatus: ((input) => invoke("calendar:get-provider-status", input)) as GeneratedRpcApi["calendar"]["getProviderStatus"],
+      connectProvider: ((input) => invoke("calendar:connect-provider", input)) as GeneratedRpcApi["calendar"]["connectProvider"],
+      disconnectProvider: ((input) => invoke("calendar:disconnect-provider", input)) as GeneratedRpcApi["calendar"]["disconnectProvider"],
+      refreshProvider: ((input) => invoke("calendar:refresh-provider", input)) as GeneratedRpcApi["calendar"]["refreshProvider"],
+      listGoogleCalendars: ((options) => invoke("calendar:list-google-calendars", options ?? {})) as GeneratedRpcApi["calendar"]["listGoogleCalendars"],
+      setDefaultGoogleCalendar: ((input) => invoke("calendar:set-default-google-calendar", input)) as GeneratedRpcApi["calendar"]["setDefaultGoogleCalendar"],
+      promoteExternalEvent: ((input) => invoke("calendar:promote-external-event", input)) as GeneratedRpcApi["calendar"]["promoteExternalEvent"],
+      retryGoogleCalendarSourceSync: ((input) => invoke("calendar:retry-google-source-sync", input)) as GeneratedRpcApi["calendar"]["retryGoogleCalendarSourceSync"],
     },
-    onNoteCreated: ((callback) =>
-      subscribe('notes:created', callback)) as GeneratedRpcApi['onNoteCreated'],
-    onNoteUpdated: ((callback) =>
-      subscribe('notes:updated', callback)) as GeneratedRpcApi['onNoteUpdated'],
-    onNoteDeleted: ((callback) =>
-      subscribe('notes:deleted', callback)) as GeneratedRpcApi['onNoteDeleted'],
-    onNoteRenamed: ((callback) =>
-      subscribe('notes:renamed', callback)) as GeneratedRpcApi['onNoteRenamed'],
-    onNoteMoved: ((callback) =>
-      subscribe('notes:moved', callback)) as GeneratedRpcApi['onNoteMoved'],
-    onNoteExternalChange: ((callback) =>
-      subscribe('notes:external-change', callback)) as GeneratedRpcApi['onNoteExternalChange'],
-    onTagsChanged: ((callback) =>
-      subscribe('notes:tags-changed', callback)) as GeneratedRpcApi['onTagsChanged'],
-    onFolderConfigUpdated: ((callback) =>
-      subscribe(
-        'notes:folder-config-updated',
-        callback
-      )) as GeneratedRpcApi['onFolderConfigUpdated'],
-    onTaskCreated: ((callback) =>
-      subscribe('tasks:created', callback)) as GeneratedRpcApi['onTaskCreated'],
-    onTaskUpdated: ((callback) =>
-      subscribe('tasks:updated', callback)) as GeneratedRpcApi['onTaskUpdated'],
-    onTaskDeleted: ((callback) =>
-      subscribe('tasks:deleted', callback)) as GeneratedRpcApi['onTaskDeleted'],
-    onTaskCompleted: ((callback) =>
-      subscribe('tasks:completed', callback)) as GeneratedRpcApi['onTaskCompleted'],
-    onTaskMoved: ((callback) =>
-      subscribe('tasks:moved', callback)) as GeneratedRpcApi['onTaskMoved'],
-    onProjectCreated: ((callback) =>
-      subscribe('tasks:project-created', callback)) as GeneratedRpcApi['onProjectCreated'],
-    onProjectUpdated: ((callback) =>
-      subscribe('tasks:project-updated', callback)) as GeneratedRpcApi['onProjectUpdated'],
-    onProjectDeleted: ((callback) =>
-      subscribe('tasks:project-deleted', callback)) as GeneratedRpcApi['onProjectDeleted'],
-    onInboxCaptured: ((callback) =>
-      subscribe('inbox:captured', callback)) as GeneratedRpcApi['onInboxCaptured'],
-    onInboxUpdated: ((callback) =>
-      subscribe('inbox:updated', callback)) as GeneratedRpcApi['onInboxUpdated'],
-    onInboxArchived: ((callback) =>
-      subscribe('inbox:archived', callback)) as GeneratedRpcApi['onInboxArchived'],
-    onInboxFiled: ((callback) =>
-      subscribe('inbox:filed', callback)) as GeneratedRpcApi['onInboxFiled'],
-    onInboxSnoozed: ((callback) =>
-      subscribe('inbox:snoozed', callback)) as GeneratedRpcApi['onInboxSnoozed'],
-    onInboxSnoozeDue: ((callback) =>
-      subscribe('inbox:snooze-due', callback)) as GeneratedRpcApi['onInboxSnoozeDue'],
-    onInboxTranscriptionComplete: ((callback) =>
-      subscribe(
-        'inbox:transcription-complete',
-        callback
-      )) as GeneratedRpcApi['onInboxTranscriptionComplete'],
-    onInboxMetadataComplete: ((callback) =>
-      subscribe('inbox:metadata-complete', callback)) as GeneratedRpcApi['onInboxMetadataComplete'],
-    onInboxProcessingError: ((callback) =>
-      subscribe('inbox:processing-error', callback)) as GeneratedRpcApi['onInboxProcessingError'],
-    onSettingsChanged: ((callback) =>
-      subscribe('settings:changed', callback)) as GeneratedRpcApi['onSettingsChanged'],
-    onEmbeddingProgress: ((callback) =>
-      subscribe('settings:embeddingProgress', callback)) as GeneratedRpcApi['onEmbeddingProgress'],
-    onVoiceModelProgress: ((callback) =>
-      subscribe(
-        'settings:voiceModelProgress',
-        callback
-      )) as GeneratedRpcApi['onVoiceModelProgress'],
-    onSettingsOpenRequested: ((callback) =>
-      subscribe('settings:openSection', callback)) as GeneratedRpcApi['onSettingsOpenRequested'],
-    onCalendarChanged: ((callback) =>
-      subscribe('calendar:changed', callback)) as GeneratedRpcApi['onCalendarChanged']
+    onNoteCreated: ((callback) => subscribe("notes:created", callback)) as GeneratedRpcApi["onNoteCreated"],
+    onNoteUpdated: ((callback) => subscribe("notes:updated", callback)) as GeneratedRpcApi["onNoteUpdated"],
+    onNoteDeleted: ((callback) => subscribe("notes:deleted", callback)) as GeneratedRpcApi["onNoteDeleted"],
+    onNoteRenamed: ((callback) => subscribe("notes:renamed", callback)) as GeneratedRpcApi["onNoteRenamed"],
+    onNoteMoved: ((callback) => subscribe("notes:moved", callback)) as GeneratedRpcApi["onNoteMoved"],
+    onNoteExternalChange: ((callback) => subscribe("notes:external-change", callback)) as GeneratedRpcApi["onNoteExternalChange"],
+    onTagsChanged: ((callback) => subscribe("notes:tags-changed", callback)) as GeneratedRpcApi["onTagsChanged"],
+    onFolderConfigUpdated: ((callback) => subscribe("notes:folder-config-updated", callback)) as GeneratedRpcApi["onFolderConfigUpdated"],
+    onTaskCreated: ((callback) => subscribe("tasks:created", callback)) as GeneratedRpcApi["onTaskCreated"],
+    onTaskUpdated: ((callback) => subscribe("tasks:updated", callback)) as GeneratedRpcApi["onTaskUpdated"],
+    onTaskDeleted: ((callback) => subscribe("tasks:deleted", callback)) as GeneratedRpcApi["onTaskDeleted"],
+    onTaskCompleted: ((callback) => subscribe("tasks:completed", callback)) as GeneratedRpcApi["onTaskCompleted"],
+    onTaskMoved: ((callback) => subscribe("tasks:moved", callback)) as GeneratedRpcApi["onTaskMoved"],
+    onProjectCreated: ((callback) => subscribe("tasks:project-created", callback)) as GeneratedRpcApi["onProjectCreated"],
+    onProjectUpdated: ((callback) => subscribe("tasks:project-updated", callback)) as GeneratedRpcApi["onProjectUpdated"],
+    onProjectDeleted: ((callback) => subscribe("tasks:project-deleted", callback)) as GeneratedRpcApi["onProjectDeleted"],
+    onInboxCaptured: ((callback) => subscribe("inbox:captured", callback)) as GeneratedRpcApi["onInboxCaptured"],
+    onInboxUpdated: ((callback) => subscribe("inbox:updated", callback)) as GeneratedRpcApi["onInboxUpdated"],
+    onInboxArchived: ((callback) => subscribe("inbox:archived", callback)) as GeneratedRpcApi["onInboxArchived"],
+    onInboxFiled: ((callback) => subscribe("inbox:filed", callback)) as GeneratedRpcApi["onInboxFiled"],
+    onInboxSnoozed: ((callback) => subscribe("inbox:snoozed", callback)) as GeneratedRpcApi["onInboxSnoozed"],
+    onInboxSnoozeDue: ((callback) => subscribe("inbox:snooze-due", callback)) as GeneratedRpcApi["onInboxSnoozeDue"],
+    onInboxTranscriptionComplete: ((callback) => subscribe("inbox:transcription-complete", callback)) as GeneratedRpcApi["onInboxTranscriptionComplete"],
+    onInboxMetadataComplete: ((callback) => subscribe("inbox:metadata-complete", callback)) as GeneratedRpcApi["onInboxMetadataComplete"],
+    onInboxProcessingError: ((callback) => subscribe("inbox:processing-error", callback)) as GeneratedRpcApi["onInboxProcessingError"],
+    onSettingsChanged: ((callback) => subscribe("settings:changed", callback)) as GeneratedRpcApi["onSettingsChanged"],
+    onEmbeddingProgress: ((callback) => subscribe("settings:embeddingProgress", callback)) as GeneratedRpcApi["onEmbeddingProgress"],
+    onVoiceModelProgress: ((callback) => subscribe("settings:voiceModelProgress", callback)) as GeneratedRpcApi["onVoiceModelProgress"],
+    onSettingsOpenRequested: ((callback) => subscribe("settings:openSection", callback)) as GeneratedRpcApi["onSettingsOpenRequested"],
+    onCalendarChanged: ((callback) => subscribe("calendar:changed", callback)) as GeneratedRpcApi["onCalendarChanged"],
   }
 }

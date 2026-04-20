@@ -201,7 +201,12 @@ const createMockApi = () => ({
       onboardingCompleted: true,
       promoteConfirmDismissed: false
     }),
-    setCalendarGoogleSettings: vi.fn().mockResolvedValue({ success: true })
+    setCalendarGoogleSettings: vi.fn().mockResolvedValue({ success: true }),
+    getCalendarSettings: vi.fn().mockResolvedValue({
+      dayCellClickBehavior: 'journal',
+      calendarPageClickOverride: 'calendar'
+    }),
+    setCalendarSettings: vi.fn().mockResolvedValue({ success: true })
   },
 
   // Inbox API
