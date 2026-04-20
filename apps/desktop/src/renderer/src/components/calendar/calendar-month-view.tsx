@@ -1,7 +1,7 @@
 import { useRef } from 'react'
 import { CalendarItemChip } from './calendar-item-chip'
 import { CalendarQuickCreateDialog } from './calendar-quick-create-dialog'
-import { getMonthGridDays, isToday, isSameMonth, toLocalDateKey } from './date-utils'
+import { getMonthGridDays, isToday, isSameMonth, isWeekend, toLocalDateKey } from './date-utils'
 import { useMonthGridMarquee } from './use-month-grid-marquee'
 import { cn } from '@/lib/utils'
 import { useContainerWidth } from '@/hooks/use-container-width'
@@ -65,6 +65,7 @@ export function CalendarMonthView({
         {gridDays.map((day) => {
           const inMonth = isSameMonth(day, anchorDate)
           const today = isToday(day)
+          const weekend = isWeekend(day)
           const dayNum = parseInt(day.slice(-2), 10)
           const dayItems = items.filter((item) => toLocalDateKey(item.startAt) === day)
           const isSelected =
@@ -78,7 +79,7 @@ export function CalendarMonthView({
               data-date={day}
               className={cn(
                 'flex flex-col gap-1 border-b border-r border-border p-1 @xl:p-2',
-                inMonth ? 'bg-background' : 'bg-muted/50',
+                inMonth ? (weekend ? 'bg-muted/30' : 'bg-background') : 'bg-muted/50',
                 (isSelected || isDragSelected) && 'ring-2 ring-inset ring-tint/40 bg-tint/10'
               )}
             >
