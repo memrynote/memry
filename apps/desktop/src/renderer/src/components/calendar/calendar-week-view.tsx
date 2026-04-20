@@ -3,6 +3,7 @@ import { CalendarItemChip } from './calendar-item-chip'
 import { dateFromDayIndex, dayIndexFromDate, isToday, toLocalDateKey } from './date-utils'
 import { MarqueeSelectionOverlay } from './marquee-selection-overlay'
 import { CalendarQuickCreateDialog } from './calendar-quick-create-dialog'
+import { assignLanes } from './overlap-layout'
 import { useTimeGridMarquee } from './use-time-grid-marquee'
 import { useScrollToCurrentTime } from './use-scroll-to-current-time'
 import { useWeekInfiniteScroll } from './use-week-infinite-scroll'
@@ -252,13 +253,20 @@ export function CalendarWeekView({
                   onMouseDown={(e) => handlers.onMouseDown(e, vi.index)}
                   onDoubleClick={(e) => handlers.onDoubleClick(e, vi.index)}
                 >
-                  {dayItems.map((item) => {
+                  {assignLanes(dayItems).map(({ item, lane, laneCount }) => {
                     const pos = getEventPosition(item)
+                    const widthPct = 100 / laneCount
+                    const leftPct = lane * widthPct
                     return (
                       <div
                         key={item.projectionId}
-                        className="absolute left-0.5 right-0.5 z-10"
-                        style={{ top: pos.top, height: pos.height }}
+                        className="absolute z-10 px-0.5"
+                        style={{
+                          top: pos.top,
+                          height: pos.height,
+                          left: `${leftPct}%`,
+                          width: `${widthPct}%`
+                        }}
                       >
                         <CalendarItemChip
                           item={item}
