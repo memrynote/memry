@@ -10,7 +10,7 @@ import { getCalendarSourceById } from '../repositories/calendar-sources-reposito
 
 const log = createLogger('Calendar:GooglePushRuntime')
 
-const DEFAULT_WEBHOOK_URL = 'https://sync.memry.io/webhooks/google-calendar'
+const DEFAULT_WEBHOOK_URL = 'https://sync.memrynote.com/webhooks/google-calendar'
 const TTL_SECONDS = 7 * 24 * 60 * 60
 const ROTATION_MARGIN_SECONDS = 60 * 60
 
