@@ -127,6 +127,15 @@ jobs:
         run: pnpm build
 
       - name: Run Electron E2E tests (shard ${{ matrix.shard }})
+        env:
+          # Google Calendar E2E credentials — gated on the secrets being
+          # configured at the repo level. Empty strings when unset cause the
+          # Calendar suites' `CREDS_PRESENT` check to fail and the tests skip
+          # cleanly, so forks without access still pass CI.
+          GOOGLE_CALENDAR_E2E: '1'
+          GOOGLE_CALENDAR_E2E_REFRESH_TOKEN: ${{ secrets.GOOGLE_CALENDAR_E2E_REFRESH_TOKEN }}
+          GOOGLE_CALENDAR_E2E_CLIENT_ID: ${{ secrets.GOOGLE_CALENDAR_E2E_CLIENT_ID }}
+          GOOGLE_CALENDAR_E2E_CLIENT_SECRET: ${{ secrets.GOOGLE_CALENDAR_E2E_CLIENT_SECRET }}
         run: |
           # keytar -> libsecret needs an active dbus session + an unlocked
           # gnome-keyring with the default "login" collection present.
