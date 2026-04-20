@@ -30,6 +30,7 @@ interface CalendarShellProps {
   showImportedCalendars: boolean
   selectedImportedSourceIds: string[]
   selectedVisualTypes: CalendarProjectionVisualType[]
+  selectedItemId: string | null
   popoverState: {
     mode: 'create' | 'edit'
     draft: CalendarEventDraft
@@ -73,6 +74,7 @@ export function CalendarShell({
   showImportedCalendars,
   selectedImportedSourceIds,
   selectedVisualTypes,
+  selectedItemId,
   popoverState,
   isSaving,
   onViewChange,
@@ -94,7 +96,7 @@ export function CalendarShell({
   onQuickSave,
   onCreateEventWithRange
 }: CalendarShellProps): React.JSX.Element {
-  const viewProps = { anchorDate, items, onSelectItem }
+  const viewProps = { anchorDate, items, selectedItemId, onSelectItem }
   const chipViewProps = { ...viewProps, onDeleteItem }
   const [isRefreshing, setIsRefreshing] = useState(false)
   const hasGoogleCalendars = importedSources.length > 0

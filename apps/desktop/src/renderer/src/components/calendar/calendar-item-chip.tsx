@@ -16,9 +16,18 @@ const CHIP_STYLES: Record<CalendarProjectionItem['visualType'], string> = {
   external_event: 'border-border bg-surface text-muted-foreground'
 }
 
+const INVERTED_CHIP_STYLES: Record<CalendarProjectionItem['visualType'], string> = {
+  event: 'bg-[#9810FA] text-white dark:bg-[#C4B5FD] dark:text-[#1a1625]',
+  task: 'bg-[#155DFC] text-white dark:bg-[#93C5FD] dark:text-[#051833]',
+  reminder: 'bg-[#FCCEE8] text-white dark:bg-[#FCA5A5] dark:text-[#5c1a2f]',
+  snooze: 'bg-[#F54900] text-white dark:bg-[#FDBA74] dark:text-[#6b2e0f]',
+  external_event: 'bg-[#00A63E] text-white dark:bg-[#86EFAC] dark:text-[#051a0a]'
+}
+
 interface CalendarItemChipProps {
   item: CalendarProjectionItem
   clockFormat?: ClockFormat
+  isSelected?: boolean
   onClick?: (item: CalendarProjectionItem, rect: AnchorRect) => void
   onDeleteItem?: (item: CalendarProjectionItem) => void
 }
@@ -26,13 +35,14 @@ interface CalendarItemChipProps {
 export function CalendarItemChip({
   item,
   clockFormat = '12h',
+  isSelected = false,
   onClick,
   onDeleteItem
 }: CalendarItemChipProps): React.JSX.Element {
   const timeLabel = item.isAllDay ? 'All day' : formatTimeOfDay(new Date(item.startAt), clockFormat)
   const cls = cn(
     'flex h-full w-full items-start justify-between gap-0.5 rounded-[6px] border px-1 py-0.5 text-left transition-colors @xl:px-2 @xl:py-1',
-    CHIP_STYLES[item.visualType],
+    isSelected ? INVERTED_CHIP_STYLES[item.visualType] : CHIP_STYLES[item.visualType],
     (onClick || onDeleteItem) && 'cursor-pointer hover:brightness-95'
   )
 
