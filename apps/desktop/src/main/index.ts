@@ -28,7 +28,8 @@ import { stopVoiceModel } from './inbox/voice-model'
 import { startReminderScheduler, stopReminderScheduler } from './lib/reminders'
 import {
   startGoogleCalendarSyncRunner,
-  stopGoogleCalendarSyncRunner
+  stopGoogleCalendarSyncRunner,
+  triggerGoogleCalendarSyncNow
 } from './calendar/google/sync-service'
 import { log, createLogger, disableConsoleTransport } from './lib/logger'
 import { registerTestHooks } from './test-hooks'
@@ -270,6 +271,10 @@ function createWindow(): void {
     // mainWindow.webContents.setZoomLevel(-0.8)
     mainWindow.show()
     // mainWindow.webContents.openDevTools()
+  })
+
+  mainWindow.on('focus', () => {
+    triggerGoogleCalendarSyncNow('window-focus')
   })
 
   mainWindow.webContents.setWindowOpenHandler((details) => {
