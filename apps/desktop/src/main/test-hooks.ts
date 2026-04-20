@@ -9,6 +9,9 @@ import { getDatabase } from './database'
 import { sql } from 'drizzle-orm'
 import { getNoteMetadataById } from '@memry/storage-data'
 import { CalendarChannels, TasksChannels } from '@memry/contracts/ipc-channels'
+import { storeGoogleCalendarRefreshToken } from './calendar/google/keychain'
+import { upsertCalendarSource } from './calendar/repositories/calendar-sources-repository'
+import { getGooglePushRuntime } from './calendar/google/push-runtime'
 
 export interface SyncTestBootstrapInput {
   email: string
@@ -34,6 +37,28 @@ export interface NoteOnDeviceStatus {
   crdtBody: string | null
 }
 
+export interface SeedGoogleCalendarTokensInput {
+  refreshToken: string
+  clientId: string
+  clientSecret: string | null
+}
+
+export interface GooglePushChannelProbe {
+  activeCount: number
+}
+
+export interface CreateGoogleCalendarEventInput {
+  calendarId: string
+  summary: string
+  startMs: number
+  endMs: number
+}
+
+export interface DeleteGoogleCalendarEventInput {
+  calendarId: string
+  eventId: string
+}
+
 interface MemryTestHooks {
   bootstrapSyncDevice(input: SyncTestBootstrapInput): Promise<{ deviceId: string }>
   setNetworkOnlineForTests(online: boolean): Promise<void>
@@ -49,6 +74,74 @@ interface MemryTestHooks {
     lastError: string | null
   } | null>
   simulateCrdtTeardownForTests(): Promise<void>
+  seedGoogleCalendarTokens(input: SeedGoogleCalendarTokensInput): Promise<void>
+  getGooglePushChannelProbe(): Promise<GooglePushChannelProbe>
+  createGoogleCalendarEventForE2E(input: CreateGoogleCalendarEventInput): Promise<string>
+  deleteGoogleCalendarEventForE2E(input: DeleteGoogleCalendarEventInput): Promise<void>
+}
+
+interface GoogleTestCredentials {
+  refreshToken: string
+  clientId: string
+  clientSecret: string | null
+}
+
+let googleE2ECredentials: GoogleTestCredentials | null = null
+
+async function exchangeRefreshTokenForAccess(creds: GoogleTestCredentials): Promise<string> {
+  const body = new URLSearchParams({
+    grant_type: 'refresh_token',
+    client_id: creds.clientId,
+    refresh_token: creds.refreshToken
+  })
+  if (creds.clientSecret) {
+    body.set('client_secret', creds.clientSecret)
+  }
+
+  const res = await fetch('https://oauth2.googleapis.com/token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: body.toString()
+  })
+
+  if (!res.ok) {
+    const detail = await res.text().catch(() => '')
+    throw new Error(
+      `Google token exchange failed (${res.status}): ${detail || 'no body'}`
+    )
+  }
+
+  const json = (await res.json()) as { access_token?: string }
+  if (!json.access_token) {
+    throw new Error('Google token response missing access_token')
+  }
+  return json.access_token
+}
+
+async function fetchGoogleUserEmail(accessToken: string): Promise<string> {
+  const res = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
+    headers: { Authorization: `Bearer ${accessToken}` }
+  })
+
+  if (!res.ok) {
+    const detail = await res.text().catch(() => '')
+    throw new Error(`Google userinfo failed (${res.status}): ${detail || 'no body'}`)
+  }
+
+  const json = (await res.json()) as { email?: string }
+  if (!json.email) {
+    throw new Error('Google userinfo response missing email')
+  }
+  return json.email
+}
+
+function requireGoogleCredentials(): GoogleTestCredentials {
+  if (!googleE2ECredentials) {
+    throw new Error(
+      'Google E2E credentials not seeded — call seedGoogleCalendarTokens before event create/delete hooks'
+    )
+  }
+  return googleE2ECredentials
 }
 
 declare global {
@@ -305,6 +398,103 @@ export function registerTestHooks(): void {
     async simulateCrdtTeardownForTests(): Promise<void> {
       await getCrdtProvider().destroy()
       resetCrdtProvider()
+    },
+
+    async seedGoogleCalendarTokens(input: SeedGoogleCalendarTokensInput): Promise<void> {
+      const creds: GoogleTestCredentials = {
+        refreshToken: input.refreshToken,
+        clientId: input.clientId,
+        clientSecret: input.clientSecret
+      }
+
+      const accessToken = await exchangeRefreshTokenForAccess(creds)
+      const email = await fetchGoogleUserEmail(accessToken)
+
+      googleE2ECredentials = creds
+
+      await storeGoogleCalendarRefreshToken({
+        accountId: email,
+        refreshToken: input.refreshToken
+      })
+
+      const db = getDatabase()
+      const now = new Date().toISOString()
+
+      upsertCalendarSource(db, {
+        id: `e2e-account-${email}`,
+        provider: 'google',
+        kind: 'account',
+        accountId: email,
+        remoteId: email,
+        title: email,
+        timezone: null,
+        color: null,
+        isPrimary: false,
+        isSelected: false,
+        isMemryManaged: false,
+        syncStatus: 'idle',
+        createdAt: now,
+        modifiedAt: now
+      })
+    },
+
+    async getGooglePushChannelProbe(): Promise<GooglePushChannelProbe> {
+      const runtime = getGooglePushRuntime()
+      return { activeCount: runtime?.getActiveChannelCount() ?? 0 }
+    },
+
+    async createGoogleCalendarEventForE2E(
+      input: CreateGoogleCalendarEventInput
+    ): Promise<string> {
+      const creds = requireGoogleCredentials()
+      const accessToken = await exchangeRefreshTokenForAccess(creds)
+
+      const url = `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(input.calendarId)}/events`
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          summary: input.summary,
+          start: { dateTime: new Date(input.startMs).toISOString() },
+          end: { dateTime: new Date(input.endMs).toISOString() }
+        })
+      })
+
+      if (!res.ok) {
+        const detail = await res.text().catch(() => '')
+        throw new Error(
+          `Google events.insert failed (${res.status}): ${detail || 'no body'}`
+        )
+      }
+
+      const json = (await res.json()) as { id?: string }
+      if (!json.id) {
+        throw new Error('Google events.insert response missing event id')
+      }
+      return json.id
+    },
+
+    async deleteGoogleCalendarEventForE2E(
+      input: DeleteGoogleCalendarEventInput
+    ): Promise<void> {
+      const creds = requireGoogleCredentials()
+      const accessToken = await exchangeRefreshTokenForAccess(creds)
+
+      const url = `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(input.calendarId)}/events/${encodeURIComponent(input.eventId)}`
+      const res = await fetch(url, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${accessToken}` }
+      })
+
+      if (!res.ok && res.status !== 410) {
+        const detail = await res.text().catch(() => '')
+        throw new Error(
+          `Google events.delete failed (${res.status}): ${detail || 'no body'}`
+        )
+      }
     }
   }
 }
