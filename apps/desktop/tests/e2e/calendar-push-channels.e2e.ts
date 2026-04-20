@@ -25,37 +25,20 @@
 import { test, expect } from './fixtures'
 import { waitForAppReady, waitForVaultReady } from './utils/electron-helpers'
 
-const CREDS_PRESENT =
-  process.env.GOOGLE_CALENDAR_E2E === '1' &&
-  process.env.CALENDAR_PUSH_ENABLED === '1' &&
-  !!process.env.MEMRY_WEBHOOK_HMAC_KEY &&
-  !!process.env.GOOGLE_CALENDAR_E2E_REFRESH_TOKEN &&
-  !!process.env.GOOGLE_CALENDAR_E2E_CLIENT_ID &&
-  !!process.env.GOOGLE_CALENDAR_E2E_CALENDAR_ID
-
 interface ChannelProbe {
   activeCount: number
 }
 
 test.describe('Google calendar push channels (M4b round-trip)', () => {
-  // Additional gate: push channels require the desktop to be signed in to Memry's sync server
-  // (so it can POST /calendar/channels with a valid bearer token). The existing E2E vault
-  // bootstraps against a local test sync server, but the push webhook has to land on a
-  // publicly-reachable sync-server (staging). Until a pre-provisioned staging user + setup
-  // token is wired into the E2E env, these tests cannot execute end-to-end. The data-plane
-  // pull path is covered without Memry auth by calendar-google-two-way-sync.e2e.ts.
-  const PUSH_CHANNELS_ENABLED =
-    CREDS_PRESENT && process.env.MEMRY_E2E_STAGING_USER_SETUP_TOKEN !== undefined
-
-  test.skip(
-    !PUSH_CHANNELS_ENABLED,
-    CREDS_PRESENT
-      ? 'Push-channel round-trip needs Memry sync auth on staging. Set ' +
-          'MEMRY_E2E_STAGING_USER_SETUP_TOKEN (+ pre-provisioned staging user) to enable.'
-      : 'Flag-gated: set GOOGLE_CALENDAR_E2E=1, CALENDAR_PUSH_ENABLED=1, ' +
-          'MEMRY_WEBHOOK_HMAC_KEY, plus the GOOGLE_CALENDAR_E2E_{REFRESH_TOKEN,CLIENT_ID,' +
-          'CALENDAR_ID} secrets.'
-  )
+  // Push channels require the desktop to be signed in to Memry's sync server
+  // (so it can POST /calendar/channels with a valid bearer token). The E2E
+  // vault bootstraps against a local test sync server, but the push webhook
+  // has to land on a publicly-reachable sync-server (staging). Until a
+  // pre-provisioned staging user with its signing key is wired into the E2E
+  // env, these tests cannot execute end-to-end. The data-plane pull path is
+  // covered without Memry auth by calendar-google-two-way-sync.e2e.ts; the
+  // data-plane push path is covered by calendar-google-writeback.e2e.ts.
+  test.skip(true, 'Requires staging Memry sync-auth bootstrap — tracked separately')
 
   test.beforeEach(async ({ page, electronApp }) => {
     await waitForAppReady(page)
