@@ -61,9 +61,17 @@ class CalendarPO {
     await this.root().getByRole('button', { name: 'Today', exact: true }).click()
   }
 
+  popover() {
+    return this.page.getByTestId('event-edit-popover')
+  }
+
+  titleInput() {
+    return this.popover().getByPlaceholder('New Event')
+  }
+
   async openCreateDrawer() {
     await this.root().getByRole('button', { name: 'Create event' }).click()
-    await expect(this.page.getByRole('heading', { name: 'New Event' })).toBeVisible()
+    await expect(this.popover()).toBeVisible()
   }
 
   async openFilters() {
@@ -77,11 +85,13 @@ class CalendarPO {
     allDay?: boolean
   }) {
     await this.openCreateDrawer()
-    await this.page.getByLabel('Title').fill(opts.title)
-    if (opts.description) await this.page.getByLabel('Description').fill(opts.description)
-    if (opts.location) await this.page.getByLabel('Location').fill(opts.location)
-    if (opts.allDay) await this.page.getByLabel('All day').check()
-    await this.page.getByRole('button', { name: 'Create Event' }).click()
+    await this.titleInput().fill(opts.title)
+    if (opts.description)
+      await this.popover().getByPlaceholder('Add notes or URL').fill(opts.description)
+    if (opts.location) await this.popover().getByPlaceholder('Add location').fill(opts.location)
+    if (opts.allDay) await this.popover().getByLabel('All day').check()
+    await this.popover().getByTestId('event-edit-save').click()
+    await expect(this.popover()).toBeHidden()
   }
 
   eventChip(title: string | RegExp) {
@@ -215,10 +225,10 @@ test.describe('Calendar — comprehensive coverage', () => {
       await cal.open()
       await cal.openCreateDrawer()
 
-      await page.getByLabel('Title').fill(title)
+      await cal.titleInput().fill(title)
       await page.keyboard.press('Escape')
 
-      await expect(page.getByRole('heading', { name: 'New Event' })).toHaveCount(0)
+      await expect(cal.popover()).toHaveCount(0)
       await expect(cal.eventChip(title)).toHaveCount(0)
     })
 
@@ -227,10 +237,10 @@ test.describe('Calendar — comprehensive coverage', () => {
       await cal.open()
       await cal.openCreateDrawer()
 
-      await expect(page.getByRole('button', { name: 'Create Event' })).toBeDisabled()
+      await expect(cal.popover().getByTestId('event-edit-save')).toBeDisabled()
 
-      await page.getByLabel('Title').fill('Now valid')
-      await expect(page.getByRole('button', { name: 'Create Event' })).toBeEnabled()
+      await cal.titleInput().fill('Now valid')
+      await expect(cal.popover().getByTestId('event-edit-save')).toBeEnabled()
     })
   })
 
@@ -251,11 +261,15 @@ test.describe('Calendar — comprehensive coverage', () => {
       await cal.switchView('Day')
       await cal.createEvent({ title: original })
 
-      await cal.eventChip(original).first().click()
-      await expect(page.getByRole('heading', { name: 'Edit Event' })).toBeVisible()
+      // Day view stacks seeded + new chips at overlapping times; an external_event
+      // chip sits on top of ours at the same pixel. Even { force: true } would
+      // route the OS-level click to the overlay, so dispatch the event directly
+      // on our chip's DOM node.
+      await cal.eventChip(original).first().dispatchEvent('click')
+      await expect(cal.popover()).toHaveAttribute('aria-label', 'Edit calendar event')
 
-      await page.getByLabel('Title').fill(renamed)
-      await page.getByRole('button', { name: 'Save Changes' }).click()
+      await cal.titleInput().fill(renamed)
+      await cal.popover().getByTestId('event-edit-save').click()
 
       await expect(cal.eventChip(renamed).first()).toBeVisible()
       await expect(cal.eventChip(original)).toHaveCount(0)

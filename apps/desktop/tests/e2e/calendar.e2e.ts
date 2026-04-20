@@ -95,10 +95,11 @@ test.describe('Calendar milestone e2e', () => {
 
     await calendarPage.getByRole('button', { name: 'Day', exact: true }).click()
     await calendarPage.getByRole('button', { name: /Create event|New Event/i }).click()
-    await expect(page.getByRole('heading', { name: 'New Event' })).toBeVisible()
+    const popover = page.getByTestId('event-edit-popover')
+    await expect(popover).toBeVisible()
 
-    await page.getByLabel('Title').fill(eventTitle)
-    await page.getByRole('button', { name: 'Create Event' }).click()
+    await popover.getByPlaceholder('New Event').fill(eventTitle)
+    await popover.getByTestId('event-edit-save').click()
     await expect(
       calendarPage.getByRole('button', { name: new RegExp(eventTitle) }).first()
     ).toBeVisible()
@@ -107,9 +108,9 @@ test.describe('Calendar milestone e2e', () => {
       .getByRole('button', { name: new RegExp(eventTitle) })
       .first()
       .click()
-    await expect(page.getByRole('heading', { name: 'Edit Event' })).toBeVisible()
-    await page.getByLabel('Title').fill(renamedEventTitle)
-    await page.getByRole('button', { name: 'Save Changes' }).click()
+    await expect(popover).toHaveAttribute('aria-label', 'Edit calendar event')
+    await popover.getByPlaceholder('New Event').fill(renamedEventTitle)
+    await popover.getByTestId('event-edit-save').click()
     await expect(
       calendarPage.getByRole('button', { name: new RegExp(renamedEventTitle) }).first()
     ).toBeVisible()
