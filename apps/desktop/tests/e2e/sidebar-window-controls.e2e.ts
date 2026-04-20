@@ -57,8 +57,8 @@ test.describe('Sidebar & WindowControls', () => {
     await waitForVaultReady(page)
 
     // Expanded state
-    const backExpanded = page.getByLabel('Go back').first()
-    const forwardExpanded = page.getByLabel('Go forward').first()
+    const backExpanded = page.getByLabel('Browser back').first()
+    const forwardExpanded = page.getByLabel('Browser forward').first()
     await expect(backExpanded).toBeVisible()
     await expect(forwardExpanded).toBeVisible()
     await expect(backExpanded).toBeDisabled()
@@ -72,8 +72,8 @@ test.describe('Sidebar & WindowControls', () => {
     await page.waitForTimeout(400)
 
     // Still visible, still disabled
-    await expect(page.getByLabel('Go back').first()).toBeVisible()
-    await expect(page.getByLabel('Go forward').first()).toBeDisabled()
+    await expect(page.getByLabel('Browser back').first()).toBeVisible()
+    await expect(page.getByLabel('Browser forward').first()).toBeDisabled()
   })
 
   test('sidebar content reclaims full width when collapsed', async ({ electronApp, page }) => {
