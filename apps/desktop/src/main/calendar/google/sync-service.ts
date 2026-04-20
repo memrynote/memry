@@ -815,5 +815,6 @@ export {
   getCurrentPollIntervalMs,
   reEvaluatePollCadence,
   startGoogleCalendarSyncRunner,
-  stopGoogleCalendarSyncRunner
+  stopGoogleCalendarSyncRunner,
+  triggerGoogleCalendarSyncNow
 } from './google-sync-runner'

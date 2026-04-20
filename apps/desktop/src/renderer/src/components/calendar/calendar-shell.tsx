@@ -1,6 +1,7 @@
+import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
-import { SlidersHorizontal } from '@/lib/icons'
+import { RefreshCw, SlidersHorizontal } from '@/lib/icons'
 import { CalendarDayView } from './calendar-day-view'
 import { CalendarEventPopover, type CalendarEventReadOnlyMetadata } from './calendar-event-popover'
 import { CalendarMonthView } from './calendar-month-view'
@@ -8,7 +9,14 @@ import { CalendarToolbar, type CalendarWorkspaceView } from './calendar-toolbar'
 import { CalendarWeekView } from './calendar-week-view'
 import { CalendarYearView } from './calendar-year-view'
 import type { AnchorRect, CalendarEventDraft } from './types'
-import type { CalendarProjectionItem, CalendarSourceRecord } from '@/services/calendar-service'
+import {
+  refreshGoogleCalendarProvider,
+  type CalendarProjectionItem,
+  type CalendarSourceRecord
+} from '@/services/calendar-service'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('CalendarShell')
 
 interface CalendarShellProps {
   view: CalendarWorkspaceView
@@ -79,6 +87,38 @@ export function CalendarShell({
   onCreateEventWithRange
 }: CalendarShellProps): React.JSX.Element {
   const viewProps = { anchorDate, items, onSelectItem }
+  const [isRefreshing, setIsRefreshing] = useState(false)
+  const hasGoogleCalendars = importedSources.length > 0
+
+  const handleRefreshGoogle = async (): Promise<void> => {
+    if (isRefreshing) return
+    setIsRefreshing(true)
+    try {
+      const result = await refreshGoogleCalendarProvider()
+      if (!result.success && result.error) {
+        log.warn('Google Calendar refresh failed', { error: result.error })
+      }
+    } catch (error) {
+      log.warn('Google Calendar refresh threw', { error })
+    } finally {
+      setIsRefreshing(false)
+    }
+  }
+
+  const refreshButton = hasGoogleCalendars ? (
+    <Button
+      variant="ghost"
+      size="icon"
+      className="size-9 rounded-lg"
+      aria-label="Refresh Google calendars"
+      disabled={isRefreshing}
+      onClick={() => {
+        void handleRefreshGoogle()
+      }}
+    >
+      <RefreshCw className={`size-5${isRefreshing ? ' animate-spin' : ''}`} />
+    </Button>
+  ) : null
 
   const filterPopover = (
     <Popover>
@@ -158,7 +198,12 @@ export function CalendarShell({
         onNext={onNext}
         onToday={onToday}
         onCreateEvent={onCreateEvent}
-        extraActions={filterPopover}
+        extraActions={
+          <>
+            {refreshButton}
+            {filterPopover}
+          </>
+        }
       />
 
       <div className="min-h-0 flex-1">
