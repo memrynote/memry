@@ -108,6 +108,11 @@ export function dateFromDayIndex(index: number): string {
   return `${utc.getUTCFullYear()}-${pad(utc.getUTCMonth() + 1)}-${pad(utc.getUTCDate())}`
 }
 
+export function isWeekend(date: string): boolean {
+  const d = parseLocalDate(date).getDay()
+  return d === 0 || d === 6
+}
+
 export function getMonthGridDaysMondayStart(anchorDate: string): string[] {
   const anchor = parseLocalDate(anchorDate)
   const year = anchor.getFullYear()
