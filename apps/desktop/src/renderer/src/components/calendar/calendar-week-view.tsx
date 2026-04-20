@@ -1,6 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef } from 'react'
 import { CalendarItemChip } from './calendar-item-chip'
-import { dateFromDayIndex, dayIndexFromDate, isToday, isWeekend, toLocalDateKey } from './date-utils'
+import {
+  dateFromDayIndex,
+  dayIndexFromDate,
+  isToday,
+  isWeekend,
+  toLocalDateKey
+} from './date-utils'
 import { MarqueeSelectionOverlay } from './marquee-selection-overlay'
 import { CalendarQuickCreateDialog } from './calendar-quick-create-dialog'
 import { assignLanes } from './overlap-layout'
@@ -179,7 +185,10 @@ export function CalendarWeekView({
               return (
                 <div
                   key={vi.key}
-                  className="absolute top-0 flex items-center justify-center gap-1 bg-background"
+                  className={cn(
+                    'absolute top-0 flex items-center justify-center gap-1 bg-background',
+                    isWeekend(date) && 'bg-muted/30'
+                  )}
                   style={{
                     left: vi.start,
                     width: vi.size,
@@ -245,7 +254,10 @@ export function CalendarWeekView({
                   key={vi.key}
                   data-day-index={vi.index}
                   data-date={date}
-                  className={cn('absolute top-0 border-r border-border bg-background')}
+                  className={cn(
+                    'absolute top-0 border-r border-border bg-background',
+                    isWeekend(date) && 'bg-muted/30'
+                  )}
                   style={{
                     left: vi.start,
                     width: vi.size,

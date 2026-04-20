@@ -1,44 +1,19 @@
-import { useEffect, useState } from 'react'
+import { useCallback } from 'react'
 import { formatTimeOfDay } from '@/lib/time-format'
 import type { ClockFormat } from '@/lib/time-format'
 import { cn } from '@/lib/utils'
 import type { CalendarProjectionItem } from '@/services/calendar-service'
-import {
-  ContextMenu,
-  ContextMenuContent,
-  ContextMenuItem,
-  ContextMenuTrigger
-} from '@/components/ui/context-menu'
 import type { AnchorRect } from './types'
-import { VISUAL_TYPE_META } from './visual-type-meta'
 
-function isItemInPast(item: CalendarProjectionItem, now: Date): boolean {
-  if (item.isAllDay) {
-    const start = new Date(item.startAt)
-    const startDay = new Date(start.getFullYear(), start.getMonth(), start.getDate()).getTime()
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime()
-    return startDay < today
-  }
-  const startMs = new Date(item.startAt).getTime()
-  const endMs = item.endAt ? new Date(item.endAt).getTime() : startMs
-  return endMs <= now.getTime()
-}
-
-function useMinuteTick(): Date {
-  const [now, setNow] = useState(() => new Date())
-  useEffect(() => {
-    const msToNextMinute = 60_000 - (Date.now() % 60_000)
-    let interval: ReturnType<typeof setInterval> | undefined
-    const timeout = setTimeout(() => {
-      setNow(new Date())
-      interval = setInterval(() => setNow(new Date()), 60_000)
-    }, msToNextMinute)
-    return () => {
-      clearTimeout(timeout)
-      if (interval) clearInterval(interval)
-    }
-  }, [])
-  return now
+const CHIP_STYLES: Record<CalendarProjectionItem['visualType'], string> = {
+  event:
+    'border-[#D8B4FE] bg-[#FAF5FF] text-violet-800 dark:border-violet-500/30 dark:bg-violet-950/30 dark:text-violet-200',
+  task: 'border-[#BEDBFF] bg-[#EFF6FF] text-blue-800 dark:border-blue-500/30 dark:bg-blue-950/30 dark:text-blue-200',
+  reminder:
+    'border-[#B9F8CF] bg-[#F0FDF4] text-green-800 dark:border-green-500/30 dark:bg-green-950/30 dark:text-green-200',
+  snooze:
+    'border-[#FFD6A7] bg-[#FFF7ED] text-orange-800 dark:border-orange-500/30 dark:bg-orange-950/30 dark:text-orange-200',
+  external_event: 'border-border bg-surface text-muted-foreground'
 }
 
 interface CalendarItemChipProps {
@@ -48,10 +23,6 @@ interface CalendarItemChipProps {
   onDeleteItem?: (item: CalendarProjectionItem) => void
 }
 
-function canDeleteEvent(item: CalendarProjectionItem): boolean {
-  return item.sourceType === 'event' && item.editability.canDelete
-}
-
 export function CalendarItemChip({
   item,
   clockFormat = '12h',
@@ -59,13 +30,25 @@ export function CalendarItemChip({
   onDeleteItem
 }: CalendarItemChipProps): React.JSX.Element {
   const timeLabel = item.isAllDay ? 'All day' : formatTimeOfDay(new Date(item.startAt), clockFormat)
-  const now = useMinuteTick()
-  const isPast = isItemInPast(item, now)
   const cls = cn(
-    'flex h-full w-full items-start justify-between gap-0.5 rounded-[6px] py-0.5 text-left transition-opacity @xl:px-2 @xl:py-1 opacity-90',
-    VISUAL_TYPE_META[item.visualType].chipClassName,
-    isPast && 'opacity-50',
-    onClick && 'cursor-pointer hover:brightness-95'
+    'flex h-full w-full items-start justify-between gap-0.5 rounded-[6px] border px-1 py-0.5 text-left transition-colors @xl:px-2 @xl:py-1',
+    CHIP_STYLES[item.visualType],
+    (onClick || onDeleteItem) && 'cursor-pointer hover:brightness-95'
+  )
+
+  const handleContextMenu = useCallback(
+    (e: React.MouseEvent) => {
+      e.preventDefault()
+
+      const menuItems = [{ id: 'delete', label: 'Delete', accelerator: 'Backspace' }]
+
+      void window.api.showContextMenu(menuItems).then((selectedId) => {
+        if (selectedId === 'delete') {
+          onDeleteItem?.(item)
+        }
+      })
+    },
+    [item, onDeleteItem]
   )
 
   const content = (
@@ -77,47 +60,33 @@ export function CalendarItemChip({
     </>
   )
 
-  const chip = onClick ? (
-    <button
-      type="button"
-      className={cls}
-      onClick={(event) => {
-        const rect = event.currentTarget.getBoundingClientRect()
-        onClick(item, {
-          x: rect.left,
-          y: rect.top,
-          width: rect.width,
-          height: rect.height
-        })
-      }}
-      data-visual-type={item.visualType}
-      data-is-past={isPast || undefined}
-    >
-      {content}
-    </button>
-  ) : (
-    <div className={cls} data-visual-type={item.visualType} data-is-past={isPast || undefined}>
-      {content}
-    </div>
-  )
-
-  if (onDeleteItem && canDeleteEvent(item)) {
+  if (onClick || onDeleteItem) {
     return (
-      <ContextMenu>
-        <ContextMenuTrigger asChild>{chip}</ContextMenuTrigger>
-        <ContextMenuContent>
-          <ContextMenuItem
-            onSelect={() => onDeleteItem(item)}
-            className="text-destructive focus:text-destructive"
-          >
-            Delete event
-          </ContextMenuItem>
-        </ContextMenuContent>
-      </ContextMenu>
+      <button
+        type="button"
+        className={cls}
+        onClick={(event) => {
+          const rect = event.currentTarget.getBoundingClientRect()
+          onClick?.(item, {
+            x: rect.left,
+            y: rect.top,
+            width: rect.width,
+            height: rect.height
+          })
+        }}
+        onContextMenu={handleContextMenu}
+        data-visual-type={item.visualType}
+      >
+        {content}
+      </button>
     )
   }
 
-  return chip
+  return (
+    <div className={cls} data-visual-type={item.visualType}>
+      {content}
+    </div>
+  )
 }
 
 export default CalendarItemChip
