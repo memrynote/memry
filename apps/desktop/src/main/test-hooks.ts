@@ -36,6 +36,7 @@ export interface CalendarProjectionSeedInput {
   taskTitle: string
   reminderTitle: string
   snoozeTitle: string
+  overlapMemryTitle?: string
 }
 
 export interface NoteOnDeviceStatus {
@@ -437,11 +438,46 @@ export function registerTestHooks(): void {
         )
       `)
 
+      if (input.overlapMemryTitle) {
+        db.run(sql`
+          INSERT INTO calendar_events (
+            id,
+            title,
+            description,
+            start_at,
+            end_at,
+            timezone,
+            is_all_day,
+            clock,
+            created_at,
+            modified_at
+          )
+          VALUES (
+            ${'calendar-e2e-memry-overlap'},
+            ${input.overlapMemryTitle},
+            ${'Seeded overlap Memry event'},
+            ${toLocalIso(input.day, 9, 0)},
+            ${toLocalIso(input.day, 10, 0)},
+            ${timezone},
+            ${0},
+            ${JSON.stringify({ 'device-e2e': 1 })},
+            ${createdAt},
+            ${createdAt}
+          )
+        `)
+      }
+
       BrowserWindow.getAllWindows().forEach((win) => {
         win.webContents.send(CalendarChannels.events.CHANGED, {
           entityType: 'calendar_external_event',
           id: 'calendar-e2e-external'
         })
+        if (input.overlapMemryTitle) {
+          win.webContents.send(CalendarChannels.events.CHANGED, {
+            entityType: 'calendar_event',
+            id: 'calendar-e2e-memry-overlap'
+          })
+        }
         win.webContents.send(TasksChannels.events.CREATED, {
           task: { id: 'calendar-e2e-task' }
         })

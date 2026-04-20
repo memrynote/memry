@@ -1,6 +1,7 @@
 import { useCallback, useMemo, useRef } from 'react'
 import { CalendarItemChip } from './calendar-item-chip'
 import { isToday, toLocalDateKey } from './date-utils'
+import { assignLanes } from './overlap-layout'
 import { useGeneralSettings } from '@/hooks/use-general-settings'
 import { formatHour } from '@/lib/time-format'
 import type { CalendarProjectionItem } from '@/services/calendar-service'
@@ -110,13 +111,20 @@ export function CalendarDayView({
             onMouseDown={(e) => handlers.onMouseDown(e, 0)}
             onDoubleClick={(e) => handlers.onDoubleClick(e, 0)}
           >
-            {timedItems.map((item) => {
+            {assignLanes(timedItems).map(({ item, lane, laneCount }) => {
               const pos = getEventPosition(item)
+              const widthPct = 100 / laneCount
+              const leftPct = lane * widthPct
               return (
                 <div
                   key={item.projectionId}
-                  className="absolute left-0.5 right-0.5 z-10 @xl:left-1 @xl:right-1"
-                  style={{ top: pos.top, height: pos.height }}
+                  className="absolute z-10 px-0.5 @xl:px-1"
+                  style={{
+                    top: pos.top,
+                    height: pos.height,
+                    left: `${leftPct}%`,
+                    width: `${widthPct}%`
+                  }}
                 >
                   <CalendarItemChip item={item} clockFormat={clockFormat} onClick={onSelectItem} />
                 </div>
