@@ -48,7 +48,12 @@ async function openTagDrilldown(page, tag: string): Promise<void> {
   const tagTrigger = page.getByRole('button', { name: tag, exact: true }).first()
   await tagTrigger.waitFor({ state: 'visible', timeout: 15000 })
   await tagTrigger.click()
-  await page.locator('button[aria-label="Go back"]').waitFor({ state: 'visible', timeout: 10000 })
+  // The window-controls titlebar also has aria-label="Go back" but is permanently
+  // disabled. Filter to the enabled drilldown back button to avoid strict-mode
+  // violations.
+  await page
+    .locator('button[aria-label="Go back"]:not([disabled])')
+    .waitFor({ state: 'visible', timeout: 10000 })
 }
 
 test.describe('Tag rename + delete (§5.2)', () => {
