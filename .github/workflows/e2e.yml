@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+  pull_request:
   workflow_dispatch:
 
 permissions:
@@ -18,8 +19,83 @@ env:
   ELECTRON_DISABLE_SANDBOX: 1
 
 jobs:
+  # PR mode: run only e2e tests added/modified vs the PR base.
+  # Skips the whole job (including build) when no e2e files changed.
+  e2e-changed:
+    name: Playwright E2E (changed only)
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Resolve changed e2e files
+        id: changed
+        run: |
+          BASE_SHA="${{ github.event.pull_request.base.sha }}"
+          FILES=$(git diff --name-only --diff-filter=AMR "$BASE_SHA"...HEAD -- 'apps/desktop/tests/e2e/**/*.e2e.ts' \
+            | sed 's|^apps/desktop/||' \
+            | tr '\n' ' ')
+          echo "files=$FILES" >> "$GITHUB_OUTPUT"
+          if [ -z "$FILES" ]; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "No changed e2e tests; skipping run."
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+            echo "Changed e2e tests: $FILES"
+          fi
+
+      - name: Setup pnpm
+        if: steps.changed.outputs.skip == 'false'
+        uses: pnpm/action-setup@v4
+      - name: Setup Node.js
+        if: steps.changed.outputs.skip == 'false'
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Install system dependencies
+        if: steps.changed.outputs.skip == 'false'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libsecret-1-dev gnome-keyring dbus-x11
+          npx playwright install-deps chromium
+
+      - name: Install dependencies
+        if: steps.changed.outputs.skip == 'false'
+        run: pnpm install --frozen-lockfile
+
+      - name: Build app for E2E
+        if: steps.changed.outputs.skip == 'false'
+        run: pnpm build
+
+      - name: Run changed Electron E2E tests
+        if: steps.changed.outputs.skip == 'false'
+        env:
+          E2E_FILES: ${{ steps.changed.outputs.files }}
+        run: |
+          dbus-run-session -- bash -c '
+            eval "$(printf "\n" | gnome-keyring-daemon --unlock)"
+            eval "$(printf "\n" | gnome-keyring-daemon --start --components=secrets)"
+            xvfb-run -a pnpm test:e2e -- $E2E_FILES
+          '
+
+      - name: Upload E2E artifacts
+        if: always() && steps.changed.outputs.skip == 'false'
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-results-changed
+          path: apps/desktop/test-results/
+          if-no-files-found: ignore
+
+  # Full sharded suite: push to main + manual dispatch only.
   e2e:
     name: Playwright Electron E2E (${{ matrix.shard }})
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     timeout-minutes: 40
     strategy:
