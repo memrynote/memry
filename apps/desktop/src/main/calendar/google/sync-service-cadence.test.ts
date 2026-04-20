@@ -6,7 +6,11 @@ const { mockDbHolder } = vi.hoisted(() => ({
 }))
 
 vi.mock('electron', () => ({
-  BrowserWindow: { getAllWindows: vi.fn(() => []) }
+  BrowserWindow: { getAllWindows: vi.fn(() => []) },
+  powerMonitor: {
+    on: vi.fn(),
+    removeListener: vi.fn()
+  }
 }))
 
 vi.mock('./oauth', () => ({

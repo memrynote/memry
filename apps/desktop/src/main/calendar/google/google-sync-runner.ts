@@ -1,3 +1,4 @@
+import { powerMonitor } from 'electron'
 import { createLogger } from '../../lib/logger'
 import { requireDatabase } from '../../database'
 import { isMemryUserSignedIn } from '../../sync/auth-state'
@@ -10,9 +11,12 @@ const log = createLogger('Calendar:GoogleSyncRunner')
 
 const RUN_INTERVAL_MS = 5 * 60 * 1000
 export const PUSH_BACKOFF_INTERVAL_MS = 30 * 60 * 1000
+const TRIGGER_COOLDOWN_MS = 10 * 1000
 
 let syncInterval: NodeJS.Timeout | null = null
 let currentPollIntervalMs = RUN_INTERVAL_MS
+let resumeHandler: (() => void) | null = null
+let lastTriggerAt = 0
 
 export function getCurrentPollIntervalMs(): number {
   return currentPollIntervalMs
@@ -22,6 +26,22 @@ function runPeriodicSync(): void {
   void syncGoogleCalendarNow().catch((error) => {
     log.warn('periodic Google Calendar sync failed', error)
   })
+}
+
+export function triggerGoogleCalendarSyncNow(reason: string): void {
+  const now = Date.now()
+  if (now - lastTriggerAt < TRIGGER_COOLDOWN_MS) {
+    log.debug('skipping Google Calendar sync trigger (cooldown)', { reason })
+    return
+  }
+  lastTriggerAt = now
+  void syncGoogleCalendarNow().catch((error) => {
+    log.warn('on-demand Google Calendar sync failed', { reason, error })
+  })
+}
+
+export function __resetTriggerForTests(): void {
+  lastTriggerAt = 0
 }
 
 export function reEvaluatePollCadence(activeChannelCount: number): void {
@@ -44,6 +64,9 @@ export async function startGoogleCalendarSyncRunner(): Promise<void> {
 
   syncInterval = setInterval(runPeriodicSync, currentPollIntervalMs)
 
+  resumeHandler = () => triggerGoogleCalendarSyncNow('system-resume')
+  powerMonitor.on('resume', resumeHandler)
+
   const pushRuntime = getOrInitGooglePushRuntime({
     onActiveCountChange: (count) => reEvaluatePollCadence(count)
   })
@@ -65,6 +88,11 @@ export async function startGoogleCalendarSyncRunner(): Promise<void> {
 }
 
 export function stopGoogleCalendarSyncRunner(): void {
+  if (resumeHandler) {
+    powerMonitor.removeListener('resume', resumeHandler)
+    resumeHandler = null
+  }
+
   if (!syncInterval) return
   clearInterval(syncInterval)
   syncInterval = null
