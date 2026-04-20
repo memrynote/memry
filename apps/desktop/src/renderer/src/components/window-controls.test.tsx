@@ -49,8 +49,8 @@ describe('WindowControls', () => {
 
   it('renders both history arrows as disabled', () => {
     renderWithSidebar(<WindowControls />)
-    const back = screen.getByLabelText('Go back')
-    const forward = screen.getByLabelText('Go forward')
+    const back = screen.getByLabelText('Browser back')
+    const forward = screen.getByLabelText('Browser forward')
     expect(back).toBeDisabled()
     expect(forward).toBeDisabled()
     expect(back).toHaveAttribute('aria-disabled', 'true')
@@ -68,8 +68,8 @@ describe('WindowControls', () => {
     const user = userEvent.setup()
     renderWithSidebar(<WindowControls />)
     // userEvent respects `disabled`; click is a no-op. Assert no explosion + no side effects.
-    await user.click(screen.getByLabelText('Go back'))
-    await user.click(screen.getByLabelText('Go forward'))
+    await user.click(screen.getByLabelText('Browser back'))
+    await user.click(screen.getByLabelText('Browser forward'))
     expect(windowApiMock.windowClose).not.toHaveBeenCalled()
     expect(windowApiMock.windowMinimize).not.toHaveBeenCalled()
   })

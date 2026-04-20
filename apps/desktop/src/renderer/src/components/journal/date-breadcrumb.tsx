@@ -133,7 +133,7 @@ function BackButton({ onClick, className }: BackButtonProps) {
     <button
       type="button"
       onClick={onClick}
-      aria-label="Go back"
+      aria-label="Journal back"
       className={cn(
         'inline-flex items-center gap-1 mr-2 p-1 rounded-md',
         'text-muted-foreground/60 hover:text-foreground',
