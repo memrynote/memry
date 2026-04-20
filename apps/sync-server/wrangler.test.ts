@@ -14,7 +14,7 @@ describe('wrangler config', () => {
 
     expect(toml).toContain('{ name = "USER_SYNC_STATE", class_name = "UserSyncState" }')
     expect(toml).toContain('{ name = "LINKING_SESSION", class_name = "LinkingSession" }')
-    expect(toml).toContain('new_classes = ["UserSyncState", "LinkingSession"]')
+    expect(toml).toContain('new_sqlite_classes = ["UserSyncState", "LinkingSession"]')
   })
 
   it('defines environment-specific deployment sections', () => {
