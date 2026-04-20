@@ -3,7 +3,7 @@ import { useState, useCallback, useRef, useEffect, type RefObject } from 'react'
 const MAX_MINUTES = 1425 // 23:45
 const END_OF_DAY = MAX_MINUTES + 15 // 24:00 — valid end time for selections starting at 23:45
 
-const HOUR_HEIGHT = 96
+const HOUR_HEIGHT = 48
 const SNAP_MINUTES = 15
 const DOUBLE_CLICK_DURATION_MINUTES = 60
 const AUTO_SCROLL_THRESHOLD = 48

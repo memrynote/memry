@@ -11,7 +11,7 @@ import { CalendarQuickCreateDialog } from './calendar-quick-create-dialog'
 import { useScrollToCurrentTime } from './use-scroll-to-current-time'
 import type { AnchorRect, CalendarEventDraft } from './types'
 
-const HOUR_HEIGHT = 96
+const HOUR_HEIGHT = 48
 const HOURS = Array.from({ length: 24 }, (_, i) => i)
 const GRID_LINE_BG =
   'repeating-linear-gradient(to bottom, transparent, transparent 47px, var(--grid-line-color) 47px, var(--grid-line-color) 48px)'
@@ -28,6 +28,7 @@ interface CalendarDayViewProps {
   anchorDate: string
   items: CalendarProjectionItem[]
   onSelectItem?: (item: CalendarProjectionItem, rect: AnchorRect) => void
+  onDeleteItem?: (item: CalendarProjectionItem) => void
   onQuickSave?: (draft: CalendarEventDraft) => void | Promise<void>
   onCreateEventWithRange?: (
     startAt: string,
@@ -41,6 +42,7 @@ export function CalendarDayView({
   anchorDate,
   items,
   onSelectItem,
+  onDeleteItem,
   onQuickSave,
   onCreateEventWithRange
 }: CalendarDayViewProps): React.JSX.Element {
@@ -78,7 +80,12 @@ export function CalendarDayView({
           <div className="flex flex-1 flex-wrap gap-1.5">
             {allDayItems.map((item) => (
               <div key={item.projectionId} className="min-w-[140px]">
-                <CalendarItemChip item={item} clockFormat={clockFormat} onClick={onSelectItem} />
+                <CalendarItemChip
+                  item={item}
+                  clockFormat={clockFormat}
+                  onClick={onSelectItem}
+                  onDeleteItem={onDeleteItem}
+                />
               </div>
             ))}
           </div>
@@ -126,7 +133,12 @@ export function CalendarDayView({
                     width: `${widthPct}%`
                   }}
                 >
-                  <CalendarItemChip item={item} clockFormat={clockFormat} onClick={onSelectItem} />
+                  <CalendarItemChip
+                    item={item}
+                    clockFormat={clockFormat}
+                    onClick={onSelectItem}
+                    onDeleteItem={onDeleteItem}
+                  />
                 </div>
               )
             })}

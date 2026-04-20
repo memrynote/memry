@@ -13,7 +13,7 @@ import { cn } from '@/lib/utils'
 import type { CalendarProjectionItem } from '@/services/calendar-service'
 import type { AnchorRect, CalendarEventDraft } from './types'
 
-const HOUR_HEIGHT = 96
+const HOUR_HEIGHT = 48
 const HEADER_HEIGHT = 40
 const GUTTER_WIDTH = 48
 const HOURS = Array.from({ length: 24 }, (_, i) => i)
@@ -34,6 +34,7 @@ interface CalendarWeekViewProps {
   anchorDate: string
   items: CalendarProjectionItem[]
   onSelectItem?: (item: CalendarProjectionItem, rect: AnchorRect) => void
+  onDeleteItem?: (item: CalendarProjectionItem) => void
   onQuickSave?: (draft: CalendarEventDraft) => void | Promise<void>
   onCreateEventWithRange?: (
     startAt: string,
@@ -48,6 +49,7 @@ export function CalendarWeekView({
   anchorDate,
   items,
   onSelectItem,
+  onDeleteItem,
   onQuickSave,
   onCreateEventWithRange,
   onVisibleDayStartChange
@@ -272,6 +274,7 @@ export function CalendarWeekView({
                           item={item}
                           clockFormat={clockFormat}
                           onClick={onSelectItem}
+                          onDeleteItem={onDeleteItem}
                         />
                       </div>
                     )

@@ -6,6 +6,7 @@ import {
   type CalendarEventDraft,
   type CalendarWorkspaceView
 } from '@/components/calendar'
+import { VISUAL_TYPE_ORDER } from '@/components/calendar/visual-type-meta'
 import { PromoteExternalDialog } from '@/components/calendar/promote-external-dialog'
 import {
   addLocalDays,
@@ -21,15 +22,21 @@ import {
   toStartOfLocalDayIso
 } from '@/components/calendar/date-utils'
 import { useCalendarRange } from '@/hooks/use-calendar-range'
+import { useDeleteCalendarEvent } from '@/hooks/use-calendar-mutations'
 import {
   calendarService,
   promoteExternalCalendarEvent,
   type CalendarProjectionItem,
+  type CalendarProjectionVisualType,
   type CalendarSourceRecord
 } from '@/services/calendar-service'
 import { extractErrorMessage } from '@/lib/ipc-error'
+import { createLogger } from '@/lib/logger'
 import { useDayPanel } from '@/contexts/day-panel-context'
 import { useCalendarView } from '@/contexts/calendar-view-context'
+import { DeleteCalendarEventDialog } from '@/components/calendar/delete-calendar-event-dialog'
+
+const log = createLogger('CalendarPage')
 
 interface CalendarPageProps {
   className?: string
@@ -139,9 +146,12 @@ function filterItems(
     showMemryItems: boolean
     showImportedCalendars: boolean
     selectedImportedSourceIds: string[]
+    selectedVisualTypes: CalendarProjectionVisualType[]
   }
 ): CalendarProjectionItem[] {
   return items.filter((item) => {
+    if (!options.selectedVisualTypes.includes(item.visualType)) return false
+
     const isImported = item.source.provider !== null && !item.source.isMemryManaged
 
     if (isImported) {
@@ -170,6 +180,8 @@ export function CalendarPage({ className: _className }: CalendarPageProps): Reac
   const [showMemryItems, setShowMemryItems] = useState(true)
   const [showImportedCalendars, setShowImportedCalendars] = useState(true)
   const [selectedImportedSourceIds, setSelectedImportedSourceIds] = useState<string[]>([])
+  const [selectedVisualTypes, setSelectedVisualTypes] =
+    useState<CalendarProjectionVisualType[]>(VISUAL_TYPE_ORDER)
   const importedSourcesInitializedRef = useRef(false)
   const [popoverState, setPopoverState] = useState<{
     mode: 'create' | 'edit'
@@ -185,6 +197,8 @@ export function CalendarPage({ className: _className }: CalendarPageProps): Reac
   } | null>(null)
   const [isPromoting, setIsPromoting] = useState(false)
   const [promoteError, setPromoteError] = useState<string | null>(null)
+  const [pendingDelete, setPendingDelete] = useState<CalendarProjectionItem | null>(null)
+  const deleteMutation = useDeleteCalendarEvent()
 
   const { openForDayView, closeForDayView, setDate: setDayPanelDate } = useDayPanel()
 
@@ -245,9 +259,16 @@ export function CalendarPage({ className: _className }: CalendarPageProps): Reac
       filterItems(rangeQuery.items, {
         showMemryItems,
         showImportedCalendars,
-        selectedImportedSourceIds
+        selectedImportedSourceIds,
+        selectedVisualTypes
       }),
-    [rangeQuery.items, selectedImportedSourceIds, showImportedCalendars, showMemryItems]
+    [
+      rangeQuery.items,
+      selectedImportedSourceIds,
+      selectedVisualTypes,
+      showImportedCalendars,
+      showMemryItems
+    ]
   )
 
   const handlePrevious = () => {
@@ -391,6 +412,31 @@ export function CalendarPage({ className: _className }: CalendarPageProps): Reac
     }
   }
 
+  const handleDeleteItem = (item: CalendarProjectionItem) => {
+    setPendingDelete(item)
+  }
+
+  const handleConfirmDelete = async () => {
+    if (!pendingDelete) return
+    const target = pendingDelete
+    try {
+      const result = await deleteMutation.mutateAsync(target.sourceId)
+      if (!result.success) {
+        throw new Error(result.error ?? 'Could not delete event.')
+      }
+      if (popoverState?.eventId === target.sourceId) {
+        setPopoverState(null)
+      }
+      setPendingDelete(null)
+    } catch (err) {
+      log.error('Failed to delete calendar event', {
+        eventId: target.sourceId,
+        error: extractErrorMessage(err, 'Failed to delete event')
+      })
+      setPendingDelete(null)
+    }
+  }
+
   const handleQuickSave = async (draft: CalendarEventDraft) => {
     const result = await calendarService.createEvent(toCreatePayload(draft))
     if (!result.success) {
@@ -448,6 +494,7 @@ export function CalendarPage({ className: _className }: CalendarPageProps): Reac
         showMemryItems={showMemryItems}
         showImportedCalendars={showImportedCalendars}
         selectedImportedSourceIds={selectedImportedSourceIds}
+        selectedVisualTypes={selectedVisualTypes}
         popoverState={
           popoverState
             ? {
@@ -480,7 +527,15 @@ export function CalendarPage({ className: _className }: CalendarPageProps): Reac
               : [...current, sourceId]
           )
         }
+        onToggleVisualType={(visualType) =>
+          setSelectedVisualTypes((current) =>
+            current.includes(visualType)
+              ? current.filter((type) => type !== visualType)
+              : [...current, visualType]
+          )
+        }
         onSelectItem={handleSelectItem}
+        onDeleteItem={handleDeleteItem}
         onPopoverDismiss={() => setPopoverState(null)}
         onPopoverDraftChange={(draft) =>
           setPopoverState((current) => (current ? { ...current, draft } : current))
@@ -490,6 +545,13 @@ export function CalendarPage({ className: _className }: CalendarPageProps): Reac
         onPopoverSave={() => void handlePopoverSave()}
         onQuickSave={handleQuickSave}
         onCreateEventWithRange={handleCreateEventWithRange}
+      />
+      <DeleteCalendarEventDialog
+        open={pendingDelete !== null}
+        title={pendingDelete?.title ?? ''}
+        hasGoogleBinding={pendingDelete?.binding !== null && pendingDelete?.binding !== undefined}
+        onCancel={() => setPendingDelete(null)}
+        onConfirm={() => void handleConfirmDelete()}
       />
     </>
   )
