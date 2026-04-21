@@ -9,12 +9,5 @@ if [ "${CI:-}" = "true" ]; then
   exit 0
 fi
 
-FILE="$APP_ROOT/src/main/sync/certificate-pinning.ts"
-
-if grep -q 'PLACEHOLDER' "$FILE"; then
-  echo "ERROR: Placeholder certificate hashes found in $FILE"
-  echo "Run 'pnpm cert:extract' to get real SPKI hashes, then update PINNED_CERTIFICATE_HASHES."
-  exit 1
-else
-  echo "Certificate hashes OK — no placeholders found"
-fi
+node --experimental-strip-types --experimental-transform-types \
+  "$APP_ROOT/scripts/check-cert-hashes.ts"
