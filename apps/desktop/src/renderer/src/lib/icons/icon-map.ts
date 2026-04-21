@@ -12,6 +12,7 @@ import {
   ArrowUpDownIcon,
   ArrowUpRight01Icon,
   Book01Icon,
+  Book02Icon,
   BookOpen01Icon,
   Bookmark01Icon,
   Bookmark02Icon,
@@ -312,6 +313,7 @@ export const FolderKanban = createIcon(FolderKanbanIcon)
 
 // ── Objects & Items ─────────────────────────────────
 export const Book = createIcon(Book01Icon)
+export const Book2 = createIcon(Book02Icon)
 export const BookOpen = createIcon(BookOpen01Icon)
 export const Bookmark = createIcon(Bookmark01Icon)
 export const Bookmark2 = createIcon(Bookmark02Icon)
