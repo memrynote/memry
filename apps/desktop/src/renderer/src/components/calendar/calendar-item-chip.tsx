@@ -32,6 +32,10 @@ interface CalendarItemChipProps {
   onDeleteItem?: (item: CalendarProjectionItem) => void
 }
 
+function canDeleteEvent(item: CalendarProjectionItem): boolean {
+  return item.sourceType === 'event' && item.editability.canDelete
+}
+
 export function CalendarItemChip({
   item,
   clockFormat = '12h',
@@ -40,25 +44,27 @@ export function CalendarItemChip({
   onDeleteItem
 }: CalendarItemChipProps): React.JSX.Element {
   const timeLabel = item.isAllDay ? 'All day' : formatTimeOfDay(new Date(item.startAt), clockFormat)
+  const deletable = Boolean(onDeleteItem) && canDeleteEvent(item)
   const cls = cn(
     'flex h-full w-full items-start justify-between gap-0.5 rounded-[6px] border px-1 py-0.5 text-left transition-colors @xl:px-2 @xl:py-1',
     isSelected ? INVERTED_CHIP_STYLES[item.visualType] : CHIP_STYLES[item.visualType],
-    (onClick || onDeleteItem) && 'cursor-pointer hover:brightness-95'
+    (onClick || deletable) && 'cursor-pointer hover:brightness-95'
   )
 
   const handleContextMenu = useCallback(
     (e: React.MouseEvent) => {
+      if (!deletable || !onDeleteItem) return
       e.preventDefault()
 
-      const menuItems = [{ id: 'delete', label: 'Delete', accelerator: 'Backspace' }]
+      const menuItems = [{ id: 'delete', label: 'Delete event', accelerator: 'Backspace' }]
 
       void window.api.showContextMenu(menuItems).then((selectedId) => {
         if (selectedId === 'delete') {
-          onDeleteItem?.(item)
+          onDeleteItem(item)
         }
       })
     },
-    [item, onDeleteItem]
+    [item, onDeleteItem, deletable]
   )
 
   const content = (
@@ -70,7 +76,7 @@ export function CalendarItemChip({
     </>
   )
 
-  if (onClick || onDeleteItem) {
+  if (onClick || deletable) {
     return (
       <button
         type="button"
@@ -84,7 +90,7 @@ export function CalendarItemChip({
             height: rect.height
           })
         }}
-        onContextMenu={handleContextMenu}
+        onContextMenu={deletable ? handleContextMenu : undefined}
         data-visual-type={item.visualType}
       >
         {content}
