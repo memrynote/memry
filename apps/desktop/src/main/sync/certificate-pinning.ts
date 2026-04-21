@@ -3,17 +3,15 @@ import tls from 'node:tls'
 import crypto from 'node:crypto'
 import { app } from 'electron'
 import { createLogger } from '../lib/logger'
+import {
+  getConfiguredPinnedCertificateHashes,
+  getPinnedCertificateHashesForHostname,
+  hasPlaceholderHashes
+} from './certificate-pins'
+
+export { hasPlaceholderHashes } from './certificate-pins'
 
 const log = createLogger('CertPin')
-
-const PINNED_CERTIFICATE_HASHES: string[] = [
-  'sha256/PLACEHOLDER_PRIMARY_CERT_HASH_BASE64',
-  'sha256/PLACEHOLDER_BACKUP_CERT_HASH_BASE64'
-]
-
-export function hasPlaceholderHashes(pins: readonly string[] = PINNED_CERTIFICATE_HASHES): boolean {
-  return pins.some((pin) => /PLACEHOLDER/i.test(pin))
-}
 
 export class CertificatePinningError extends Error {
   constructor(
@@ -40,7 +38,7 @@ export function computeSpkiHash(cert: tls.PeerCertificate): string {
     throw new CertificatePinningError(
       'Certificate missing raw DER data',
       '',
-      PINNED_CERTIFICATE_HASHES
+      [...getConfiguredPinnedCertificateHashes()]
     )
   }
   const x509 = new crypto.X509Certificate(cert.raw)
@@ -58,19 +56,21 @@ export function computeSpkiHashFromPem(pemData: string): string {
 
 export function verifyCertificatePin(
   cert: tls.PeerCertificate,
-  pins: string[] = PINNED_CERTIFICATE_HASHES
+  pins: string[] = [...getConfiguredPinnedCertificateHashes()]
 ): boolean {
   const spkiHash = computeSpkiHash(cert)
   return pins.some((pin) => pin === spkiHash)
 }
 
-export function createPinnedAgent(pins: string[] = [...PINNED_CERTIFICATE_HASHES]): https.Agent {
+export function createPinnedAgent(pins?: string[]): https.Agent {
   if (isPinningDisabled()) {
     log.debug('Certificate pinning disabled (dev/test mode)')
     return new https.Agent({ rejectUnauthorized: true })
   }
 
-  if (hasPlaceholderHashes(pins)) {
+  const configuredPins = pins ? [...pins] : [...getConfiguredPinnedCertificateHashes()]
+
+  if (hasPlaceholderHashes(configuredPins)) {
     log.error(
       'CRITICAL: Certificate pinning active but hashes are placeholders — using TLS-only agent'
     )
@@ -83,17 +83,18 @@ export function createPinnedAgent(pins: string[] = [...PINNED_CERTIFICATE_HASHES
       const tlsCheckResult = tls.checkServerIdentity(hostname, cert)
       if (tlsCheckResult) return tlsCheckResult
 
+      const effectivePins = pins ? [...pins] : [...getPinnedCertificateHashesForHostname(hostname)]
       const spkiHash = computeSpkiHash(cert)
-      if (!pins.some((pin) => pin === spkiHash)) {
+      if (!effectivePins.some((pin) => pin === spkiHash)) {
         const err = new CertificatePinningError(
           `Certificate pin mismatch for ${hostname}`,
           spkiHash,
-          pins
+          effectivePins
         )
         log.error('Certificate pin verification failed', {
           hostname,
           actualHash: spkiHash,
-          pinnedCount: pins.length
+          pinnedCount: effectivePins.length
         })
         return err
       }
@@ -105,11 +106,12 @@ export function createPinnedAgent(pins: string[] = [...PINNED_CERTIFICATE_HASHES
 }
 
 export function getPinnedCertificateHashes(): readonly string[] {
-  if (!isPinningDisabled() && hasPlaceholderHashes()) {
+  const pins = [...getConfiguredPinnedCertificateHashes()]
+  if (!isPinningDisabled() && hasPlaceholderHashes(pins)) {
     log.error(
       'CRITICAL: Certificate pinning active but hashes are placeholders — falling back to TLS-only'
     )
     return []
   }
-  return PINNED_CERTIFICATE_HASHES
+  return pins
 }

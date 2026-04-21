@@ -1,8 +1,8 @@
 import tls from 'node:tls'
 import crypto from 'node:crypto'
+import { parseExtractCertHashArgs } from '../src/main/sync/cert-hash-cli'
 
-const hostname = process.argv[2] || 'sync.memrynote.com'
-const port = parseInt(process.argv[3] || '443', 10)
+const { hostname, port } = parseExtractCertHashArgs(process.argv.slice(2))
 
 function computeSpkiHash(cert: tls.PeerCertificate): string {
   const x509 = new crypto.X509Certificate(cert.raw)
