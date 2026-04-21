@@ -14,6 +14,7 @@ interface DatePickerCalendarProps {
   disabled?: (date: Date) => boolean
   weekStartsOn?: 0 | 1
   activityData?: ActivityData
+  dayDots?: Record<string, string[]>
   className?: string
   showWeekNumbers?: boolean
   onTodayClick?: () => void
@@ -106,6 +107,7 @@ export function DatePickerCalendar({
   disabled,
   weekStartsOn = 1,
   activityData,
+  dayDots,
   className,
   showWeekNumbers = false,
   onTodayClick
@@ -249,7 +251,9 @@ export function DatePickerCalendar({
             const isToday = isSameDay(date, today)
             const isSelected = selected ? isSameDay(date, selected) : false
             const isDisabled = disabled?.(date) ?? false
-            const activity = activityData ? (activityData[toISO(date)] ?? 0) : 0
+            const isoKey = toISO(date)
+            const activity = activityData ? (activityData[isoKey] ?? 0) : 0
+            const dots = dayDots?.[isoKey]
 
             return (
               <button
@@ -292,11 +296,23 @@ export function DatePickerCalendar({
                 aria-disabled={isDisabled}
               >
                 {date.getDate()}
-                {activity > 0 && (
-                  <span
-                    className={cn('size-1 rounded-full', ACTIVITY_DOT_COLORS[activity])}
-                    aria-hidden="true"
-                  />
+                {dots && dots.length > 0 ? (
+                  <span className="inline-flex gap-[2px]" aria-hidden="true">
+                    {dots.slice(0, 3).map((dotColor, i) => (
+                      <span
+                        key={`${dotColor}-${i}`}
+                        className="size-1 rounded-full"
+                        style={{ backgroundColor: dotColor }}
+                      />
+                    ))}
+                  </span>
+                ) : (
+                  activity > 0 && (
+                    <span
+                      className={cn('size-1 rounded-full', ACTIVITY_DOT_COLORS[activity])}
+                      aria-hidden="true"
+                    />
+                  )
                 )}
               </button>
             )

@@ -5,6 +5,13 @@ Format: weekly entries grouped by feature area.
 
 ---
 
+## 2026-04-21 — Calendar Sidebar Typed Indicator Dots
+
+### Added
+- Show typed indicator dots on the right-sidebar mini-calendar when viewing the Calendar tab. Each day cell renders up to 3 side-by-side colored dots, one per item, with colors matching the item's visual type: purple for events, green for imported events, blue for tasks, pink for reminders, orange for snoozes. Days with more items than available slots prioritize diversity — one dot per unique type first, then filling remaining slots with duplicates. For example, a day with 3 events, 2 tasks, and 1 snooze shows one purple, one blue, and one orange dot rather than three purple dots. The Journal tab keeps its single emerald/amber activity-intensity dot unchanged, so switching tabs visibly changes what the sidebar tells you.
+
+---
+
 ## 2026-04-20 — Calendar Sync Triggers
 
 ### Fixed
