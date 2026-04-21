@@ -1,5 +1,5 @@
 import { useCallback, useMemo } from 'react'
-import { AlarmClock, Calendar, CalendarDays, CheckSquare3, NotificationSnooze } from '@/lib/icons'
+import { AlarmClock, Calendar2, CheckSquare3, NotificationSnooze } from '@/lib/icons'
 import { getEventBaseColor, getEventBgColor, getEventTextColor } from '@/lib/event-type-colors'
 import { formatTimeOfDay } from '@/lib/time-format'
 import type { ClockFormat } from '@/lib/time-format'
@@ -11,11 +11,11 @@ const VISUAL_TYPE_ICONS: Record<
   CalendarProjectionItem['visualType'],
   React.ComponentType<{ className?: string }>
 > = {
-  event: CalendarDays,
+  event: Calendar2,
   task: CheckSquare3,
   reminder: AlarmClock,
   snooze: NotificationSnooze,
-  external_event: Calendar
+  external_event: Calendar2
 }
 
 interface CalendarItemChipProps {
@@ -48,13 +48,13 @@ export function CalendarItemChip({
     () =>
       isSelected
         ? {
-          backgroundColor: getEventBaseColor(item.visualType),
-          color: '#FFFFFF'
-        }
+            backgroundColor: getEventBaseColor(item.visualType),
+            color: '#FFFFFF'
+          }
         : {
-          backgroundColor: getEventBgColor(item.visualType),
-          color: getEventTextColor(item.visualType)
-        },
+            backgroundColor: getEventBgColor(item.visualType),
+            color: getEventTextColor(item.visualType)
+          },
     [item.visualType, isSelected]
   )
 

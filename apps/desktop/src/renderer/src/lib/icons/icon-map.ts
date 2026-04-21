@@ -20,6 +20,7 @@ import {
   BrainIcon,
   BrushIcon,
   Calendar01Icon,
+  Calendar02Icon,
   Camera01Icon,
   CircleIcon,
   ClipboardIcon,
@@ -326,6 +327,7 @@ export const Inbox = createIcon(InboxIcon)
 export const Mail = createIcon(Mail01Icon)
 export const MailOpen = createIcon(MailOpenIcon)
 export const Calendar = createIcon(Calendar01Icon)
+export const Calendar2 = createIcon(Calendar02Icon)
 export const CalendarDays = createIcon(Calendar03Icon)
 export const CalendarClock = createIcon(Calendar03Icon)
 export const Clock = createIcon(Clock01Icon)

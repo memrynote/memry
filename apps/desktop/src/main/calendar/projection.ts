@@ -167,7 +167,8 @@ function loadMemryEvents(db: DataDb, input: GetCalendarRangeInput): CalendarProj
     visualType: 'event',
     editability,
     source: nativeSource('Memry'),
-    binding: bindings.get(row.id) ?? null
+    binding: bindings.get(row.id) ?? null,
+    snoozeOffsetMinutes: null
   }))
 }
 
@@ -219,7 +220,8 @@ function loadTaskItems(db: DataDb, input: GetCalendarRangeInput): CalendarProjec
       visualType: 'task',
       editability,
       source: nativeSource('Memry Tasks'),
-      binding: bindings.get(row.id) ?? null
+      binding: bindings.get(row.id) ?? null,
+      snoozeOffsetMinutes: null
     }
   })
 }
@@ -260,8 +262,13 @@ function loadReminderItems(db: DataDb, input: GetCalendarRangeInput): CalendarPr
   }
 
   return rows.map((row) => {
-    const effectiveStartAt =
-      row.status === 'snoozed' && row.snoozedUntil ? row.snoozedUntil : row.remindAt
+    const isSnoozed = row.status === 'snoozed' && !!row.snoozedUntil
+    const effectiveStartAt = isSnoozed ? row.snoozedUntil! : row.remindAt
+    const snoozeOffsetMinutes = isSnoozed
+      ? Math.round(
+          (new Date(row.snoozedUntil!).getTime() - new Date(row.remindAt).getTime()) / 60000
+        )
+      : null
 
     return {
       projectionId: `reminder:${row.id}`,
@@ -276,7 +283,8 @@ function loadReminderItems(db: DataDb, input: GetCalendarRangeInput): CalendarPr
       visualType: 'reminder',
       editability,
       source: nativeSource('Memry Reminders'),
-      binding: bindings.get(row.id) ?? null
+      binding: bindings.get(row.id) ?? null,
+      snoozeOffsetMinutes
     }
   })
 }
@@ -323,7 +331,8 @@ function loadInboxSnoozeItems(db: DataDb, input: GetCalendarRangeInput): Calenda
     visualType: 'snooze',
     editability,
     source: nativeSource('Memry Inbox'),
-    binding: bindings.get(row.id) ?? null
+    binding: bindings.get(row.id) ?? null,
+    snoozeOffsetMinutes: null
   }))
 }
 
@@ -367,7 +376,8 @@ function loadExternalEvents(db: DataDb, input: GetCalendarRangeInput): CalendarP
     visualType: 'external_event',
     editability,
     source: externalSource(source),
-    binding: null
+    binding: null,
+    snoozeOffsetMinutes: null
   }))
 }
 
