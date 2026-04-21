@@ -152,6 +152,7 @@ import {
   CheckmarkCircle01Icon,
   CheckmarkCircle02Icon,
   CheckmarkSquare01Icon,
+  CheckmarkSquare03Icon,
   ClipboardPasteIcon,
   CloudAngledRainIcon,
   ColorsIcon,
@@ -197,6 +198,7 @@ import {
   NeuralNetworkIcon,
   NextIcon,
   Notification01Icon,
+  NotificationSnooze01Icon,
   NodeMoveDownIcon,
   NodeMoveUpIcon,
   PanelLeftIcon,
@@ -329,6 +331,7 @@ export const Timer = createIcon(Timer01Icon)
 export const AlarmClock = createIcon(AlarmClockIcon)
 export const Bell = createIcon(Notification01Icon)
 export const BellRing = createIcon(BellDotIcon)
+export const NotificationSnooze = createIcon(NotificationSnooze01Icon)
 export const Tag = createIcon(Tag01Icon)
 export const Tags = createIcon(TagsIcon)
 export const Flag = createIcon(Flag01Icon)
@@ -447,6 +450,7 @@ export const Check = createIcon(Tick01Icon)
 export const CheckCircle = createIcon(CheckmarkCircle01Icon)
 export const CheckCircle2 = createIcon(CheckmarkCircle02Icon)
 export const CheckSquare = createIcon(CheckmarkSquare01Icon)
+export const CheckSquare3 = createIcon(CheckmarkSquare03Icon)
 export const X = createIcon(Cancel01Icon)
 export const XCircle = createIcon(CancelCircleIcon)
 export const AlertCircle = createIcon(AlertCircleIcon)

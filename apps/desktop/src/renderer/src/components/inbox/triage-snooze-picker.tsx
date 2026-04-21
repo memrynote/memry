@@ -1,4 +1,4 @@
-import { Clock, Calendar } from '@/lib/icons'
+import { NotificationSnooze, Calendar } from '@/lib/icons'
 import { quickSnoozePresets, type SnoozePreset } from '@/components/snooze/snooze-presets'
 
 interface TriageSnoozPickerProps {
@@ -19,7 +19,7 @@ export function TriageSnoozePicker({
   return (
     <div className="flex flex-col gap-2 rounded-xl border border-foreground/[0.08] bg-card p-4">
       <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
-        <Clock className="size-3.5" />
+        <NotificationSnooze className="size-3.5" />
         <span>Snooze until…</span>
       </div>
 

@@ -1,41 +1,37 @@
+import { EVENT_TYPE_COLORS } from '@/lib/event-type-colors'
 import type { CalendarProjectionVisualType } from '@/services/calendar-service'
 
 interface VisualTypeMeta {
   label: string
   swatchColor: string
-  chipClassName: string
+  dotColor: string
 }
 
 export const VISUAL_TYPE_META: Record<CalendarProjectionVisualType, VisualTypeMeta> = {
   event: {
     label: 'Event',
-    swatchColor: '#FAF5FF',
-    chipClassName:
-      'bg-[#FAF5FF] text-[#9810FA] border border-[#E9D4FF] dark:bg-[#6A34C821] dark:text-[#C4B5FD] dark:border-[#A78BFA47]'
+    swatchColor: EVENT_TYPE_COLORS.event,
+    dotColor: EVENT_TYPE_COLORS.event
   },
   external_event: {
     label: 'Imported event',
-    swatchColor: '#F0FDF4',
-    chipClassName:
-      'bg-[#F0FDF4] text-[#00A63E] border border-[#B9F8CF] dark:bg-[#4ADE801A] dark:text-[#86EFAC] dark:border-[#4ADE803D]'
+    swatchColor: EVENT_TYPE_COLORS.external_event,
+    dotColor: EVENT_TYPE_COLORS.external_event
   },
   task: {
     label: 'Task',
-    swatchColor: '#EFF6FF',
-    chipClassName:
-      'bg-[#EFF6FF] text-[#155DFC] border border-[#BEDBFF] dark:bg-[#60A5FA1A] dark:text-[#93C5FD] dark:border-[#60A5FA38]'
+    swatchColor: EVENT_TYPE_COLORS.task,
+    dotColor: EVENT_TYPE_COLORS.task
   },
   reminder: {
     label: 'Reminder',
-    swatchColor: '#FDF2F8',
-    chipClassName:
-      'bg-[#FDF2F8] text-[#FCCEE8] border border-[#FCCEE8] dark:bg-[#EF44441A] dark:text-[#FCA5A5] dark:border-[#EF44443D]'
+    swatchColor: EVENT_TYPE_COLORS.reminder,
+    dotColor: EVENT_TYPE_COLORS.reminder
   },
   snooze: {
     label: 'Snooze',
-    swatchColor: '#FFF7ED',
-    chipClassName:
-      'bg-[#FFF7ED] text-[#F54900] border border-[#FFD6A7] dark:bg-[#FB923C1A] dark:text-[#FDBA74] dark:border-[#FB923C3D]'
+    swatchColor: EVENT_TYPE_COLORS.snooze,
+    dotColor: EVENT_TYPE_COLORS.snooze
   }
 }
 
