@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { cn } from '@/lib/utils'
 import { useCalendarRange } from '@/hooks/use-calendar-range'
+import { EVENT_TYPE_COLORS } from '@/lib/event-type-colors'
 import type { CalendarProjectionItem } from '@/services/calendar-service'
 import {
   tasksService,
@@ -49,14 +50,6 @@ interface ScheduleEvent {
   color: string
 }
 
-const VISUAL_TYPE_COLORS = {
-  event: '#5E6AD2',
-  task: '#8B5CF6',
-  reminder: '#F97316',
-  snooze: '#06B6D4',
-  external_event: '#2563eb'
-} as const
-
 function getDayRange(date: string): { startAt: string; endAt: string } {
   const start = new Date(`${date}T00:00:00.000Z`)
   const end = new Date(start)
@@ -84,7 +77,7 @@ function formatScheduleDuration(
   startAt: string,
   endAt: string | null,
   isAllDay: boolean,
-  visualType: keyof typeof VISUAL_TYPE_COLORS
+  visualType: CalendarProjectionItem['visualType']
 ): string {
   if (isAllDay) {
     return 'All day'
@@ -127,7 +120,7 @@ function toScheduleEvent(item: CalendarProjectionItem): ScheduleEvent {
     time: formatScheduleTime(item.startAt, item.isAllDay),
     title: item.title,
     duration: formatScheduleDuration(item.startAt, item.endAt, item.isAllDay, item.visualType),
-    color: item.source.color ?? VISUAL_TYPE_COLORS[item.visualType]
+    color: item.source.color ?? EVENT_TYPE_COLORS[item.visualType]
   }
 }
 
