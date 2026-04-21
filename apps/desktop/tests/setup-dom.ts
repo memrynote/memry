@@ -45,6 +45,9 @@ const createMockApi = () => ({
   windowMaximize: vi.fn(),
   windowClose: vi.fn(),
 
+  // Native context menu bridge (main-process IPC in production)
+  showContextMenu: vi.fn().mockResolvedValue(null),
+
   // Vault API
   vault: {
     select: vi.fn().mockResolvedValue({ success: true, path: '/mock/vault' }),
@@ -201,7 +204,12 @@ const createMockApi = () => ({
       onboardingCompleted: true,
       promoteConfirmDismissed: false
     }),
-    setCalendarGoogleSettings: vi.fn().mockResolvedValue({ success: true })
+    setCalendarGoogleSettings: vi.fn().mockResolvedValue({ success: true }),
+    getCalendarSettings: vi.fn().mockResolvedValue({
+      dayCellClickBehavior: 'journal',
+      calendarPageClickOverride: 'calendar'
+    }),
+    setCalendarSettings: vi.fn().mockResolvedValue({ success: true })
   },
 
   // Inbox API

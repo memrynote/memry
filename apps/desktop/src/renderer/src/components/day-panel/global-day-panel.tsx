@@ -11,6 +11,17 @@ import { useCalendarView } from '@/contexts/calendar-view-context'
 import { DatePickerCalendar } from '@/components/tasks/date-picker-calendar'
 import { JournalDayPanel } from '@/components/journal'
 import { useJournalHeatmap } from '@/hooks/use-journal'
+import { useCalendarRange } from '@/hooks/use-calendar-range'
+import {
+  useCalendarPreferences,
+  resolveDayCellClickBehavior
+} from '@/hooks/use-calendar-preferences'
+import {
+  addLocalDays,
+  getMonthGridDays,
+  toLocalDateKey,
+  toStartOfLocalDayIso
+} from '@/components/calendar/date-utils'
 import { formatDateToISO, parseISODate, getTodayString } from '@/lib/journal-utils'
 
 interface GlobalDayPanelProps {
@@ -79,19 +90,44 @@ export function GlobalDayPanel({ className }: GlobalDayPanelProps) {
   const { openTab } = useTabs()
   const activeTab = useActiveTab()
   const { setAnchorDate } = useCalendarView()
+  const { settings: calendarPrefs } = useCalendarPreferences()
   const isCalendarTabActive = activeTab?.type === 'calendar'
 
   const selectedDateObj = parseISODate(selectedDate)
   const currentYear = selectedDateObj.getFullYear()
   const { data: heatmapData } = useJournalHeatmap(currentYear)
 
-  const calendarActivityData = useMemo(() => {
+  const monthRangeInput = useMemo(() => {
+    const gridDays = getMonthGridDays(selectedDate)
+    const first = gridDays[0]
+    const last = gridDays[gridDays.length - 1]
+    return {
+      startAt: toStartOfLocalDayIso(first),
+      endAt: toStartOfLocalDayIso(addLocalDays(last, 1)),
+      includeUnselectedSources: true
+    }
+  }, [selectedDate])
+
+  const { items: eventItems } = useCalendarRange(monthRangeInput)
+
+  const journalActivityData = useMemo(() => {
     const map: Record<string, number> = {}
     for (const entry of heatmapData) {
       map[entry.date] = entry.level
     }
     return map
   }, [heatmapData])
+
+  const eventActivityData = useMemo(() => {
+    const map: Record<string, number> = {}
+    for (const item of eventItems) {
+      const key = toLocalDateKey(item.startAt)
+      map[key] = Math.min(4, (map[key] ?? 0) + 1)
+    }
+    return map
+  }, [eventItems])
+
+  const calendarActivityData = isCalendarTabActive ? eventActivityData : journalActivityData
 
   const navigateToJournal = useCallback(
     (date: string) => {
@@ -110,29 +146,49 @@ export function GlobalDayPanel({ className }: GlobalDayPanelProps) {
     [openTab]
   )
 
+  const navigateToCalendar = useCallback(
+    (date: string) => {
+      setAnchorDate(date)
+      if (isCalendarTabActive) return
+      openTab({
+        type: 'calendar',
+        title: 'Calendar',
+        icon: 'calendar',
+        path: '/calendar',
+        isPinned: false,
+        isModified: false,
+        isPreview: false,
+        isDeleted: false
+      })
+    },
+    [isCalendarTabActive, openTab, setAnchorDate]
+  )
+
   const handleDateSelect = useCallback(
     (date: Date | undefined) => {
       if (!date) return
       const iso = formatDateToISO(date)
       setDate(iso)
-      if (isCalendarTabActive) {
-        setAnchorDate(iso)
+      const target = resolveDayCellClickBehavior(calendarPrefs, isCalendarTabActive)
+      if (target === 'calendar') {
+        navigateToCalendar(iso)
         return
       }
       navigateToJournal(iso)
     },
-    [isCalendarTabActive, setDate, setAnchorDate, navigateToJournal]
+    [calendarPrefs, isCalendarTabActive, setDate, navigateToCalendar, navigateToJournal]
   )
 
   const handleTodayClick = useCallback(() => {
     const today = getTodayString()
     setDate(today)
-    if (isCalendarTabActive) {
-      setAnchorDate(today)
+    const target = resolveDayCellClickBehavior(calendarPrefs, isCalendarTabActive)
+    if (target === 'calendar') {
+      navigateToCalendar(today)
       return
     }
     navigateToJournal(today)
-  }, [isCalendarTabActive, setDate, setAnchorDate, navigateToJournal])
+  }, [calendarPrefs, isCalendarTabActive, setDate, navigateToCalendar, navigateToJournal])
 
   return (
     <div

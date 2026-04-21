@@ -342,6 +342,9 @@ describe('CalendarPage', () => {
   })
 
   it('deletes a Memry-native event via the right-click menu without Google wording', async () => {
+    const showContextMenu = vi.mocked(window.api.showContextMenu)
+    showContextMenu.mockResolvedValueOnce('delete')
+
     const user = userEvent.setup()
     renderWithProviders(<CalendarPage />)
 
@@ -352,8 +355,10 @@ describe('CalendarPage', () => {
 
     fireEvent.contextMenu(trigger)
 
-    const menuItem = await screen.findByRole('menuitem', { name: /delete event/i })
-    await user.click(menuItem)
+    await waitFor(() => expect(showContextMenu).toHaveBeenCalled())
+    expect(showContextMenu.mock.lastCall?.[0]).toEqual([
+      expect.objectContaining({ id: 'delete', label: 'Delete event' })
+    ])
 
     const dialog = await screen.findByRole('alertdialog', { name: /delete event/i })
     expect(dialog).toHaveTextContent(/planning block/i)
@@ -365,6 +370,8 @@ describe('CalendarPage', () => {
   })
 
   it('warns about Google Calendar when deleting a Google-bound event', async () => {
+    vi.mocked(window.api.showContextMenu).mockResolvedValueOnce('delete')
+
     const user = userEvent.setup()
     renderWithProviders(<CalendarPage />)
 
@@ -374,7 +381,6 @@ describe('CalendarPage', () => {
     expect(trigger).not.toBeNull()
 
     fireEvent.contextMenu(trigger)
-    await user.click(await screen.findByRole('menuitem', { name: /delete event/i }))
 
     const dialog = await screen.findByRole('alertdialog', { name: /delete event/i })
     expect(dialog).toHaveTextContent(/google calendar/i)
@@ -384,6 +390,8 @@ describe('CalendarPage', () => {
   })
 
   it('cancels delete without calling the mutation', async () => {
+    vi.mocked(window.api.showContextMenu).mockResolvedValueOnce('delete')
+
     const user = userEvent.setup()
     renderWithProviders(<CalendarPage />)
 
@@ -391,13 +399,15 @@ describe('CalendarPage', () => {
     const chip = await screen.findByText('Planning block')
     fireEvent.contextMenu(chip.closest('[data-visual-type]') as HTMLElement)
 
-    await user.click(await screen.findByRole('menuitem', { name: /delete event/i }))
+    await screen.findByRole('alertdialog', { name: /delete event/i })
     await user.click(screen.getByRole('button', { name: 'Cancel' }))
 
     expect(mockDeleteEvent).not.toHaveBeenCalled()
   })
 
   it('does not show a delete menu for non-event projection items', async () => {
+    const showContextMenu = vi.mocked(window.api.showContextMenu)
+
     const user = userEvent.setup()
     renderWithProviders(<CalendarPage />)
 
@@ -405,6 +415,6 @@ describe('CalendarPage', () => {
     const taskChip = (await screen.findAllByText('Due draft'))[0]
     fireEvent.contextMenu(taskChip.closest('[data-visual-type]') as HTMLElement)
 
-    expect(screen.queryByRole('menuitem', { name: /delete event/i })).not.toBeInTheDocument()
+    expect(showContextMenu).not.toHaveBeenCalled()
   })
 })
