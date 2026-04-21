@@ -374,6 +374,10 @@ export const SettingsChannels = {
     GET_CALENDAR_GOOGLE_SETTINGS: 'settings:getCalendarGoogleSettings',
     /** M2: update Google Calendar defaults (partial merge) */
     SET_CALENDAR_GOOGLE_SETTINGS: 'settings:setCalendarGoogleSettings',
+    /** Get calendar preferences (day panel dot source + click behavior) */
+    GET_CALENDAR_SETTINGS: 'settings:getCalendarSettings',
+    /** Update calendar preferences (partial merge) */
+    SET_CALENDAR_SETTINGS: 'settings:setCalendarSettings',
     /** Store API key in OS keychain (never in DB) */
     SET_API_KEY: 'settings:setApiKey',
     /** Test API provider connection */

@@ -158,6 +158,22 @@ export const VOICE_TRANSCRIPTION_SETTINGS_DEFAULTS: VoiceTranscriptionSettings =
 }
 
 // ============================================================================
+// Calendar Settings (Day Panel dot source + click behavior)
+// ============================================================================
+
+export const CalendarSettingsSchema = z.object({
+  dayCellClickBehavior: z.enum(['journal', 'calendar']),
+  calendarPageClickOverride: z.enum(['inherit', 'journal', 'calendar'])
+})
+
+export type CalendarSettings = z.infer<typeof CalendarSettingsSchema>
+
+export const CALENDAR_SETTINGS_DEFAULTS: CalendarSettings = {
+  dayCellClickBehavior: 'journal',
+  calendarPageClickOverride: 'calendar'
+}
+
+// ============================================================================
 // Calendar — Google Settings (M2)
 // ============================================================================
 

@@ -12,7 +12,8 @@ import {
   ListChecks,
   List,
   Key,
-  User
+  User,
+  CalendarDays
 } from '@/lib/icons'
 import { cn } from '@/lib/utils'
 import { GeneralSettings } from './settings/general-section'
@@ -26,6 +27,7 @@ import { IntegrationsSettings } from './settings/integrations-section'
 import { TagsSettings } from './settings/tags-section'
 import { PropertiesSettings } from './settings/properties-section'
 import { TasksSettings } from './settings/tasks-section'
+import { CalendarSettingsSection } from './settings/calendar-section'
 import { ShortcutsSettings } from './settings/shortcuts-section'
 import { AccountSettings } from './settings/account-section'
 import { useSettingsModal } from '@/contexts/settings-modal-context'
@@ -78,6 +80,12 @@ export function SettingsPage() {
             label="Tasks"
             isActive={activeSection === 'tasks'}
             onClick={() => setActiveSection('tasks')}
+          />
+          <SettingsNavItem
+            icon={<CalendarDays className="w-3.5 h-3.5" />}
+            label="Calendar"
+            isActive={activeSection === 'calendar'}
+            onClick={() => setActiveSection('calendar')}
           />
         </SettingsNavGroup>
 
@@ -141,6 +149,7 @@ export function SettingsPage() {
             {activeSection === 'templates' && <TemplatesSettings />}
             {activeSection === 'journal' && <JournalSettings />}
             {activeSection === 'tasks' && <TasksSettings />}
+            {activeSection === 'calendar' && <CalendarSettingsSection />}
             {activeSection === 'vault' && <VaultSettings />}
             {activeSection === 'appearance' && <AppearanceSettings />}
             {activeSection === 'ai' && <AISettings />}
