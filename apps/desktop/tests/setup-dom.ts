@@ -45,6 +45,9 @@ const createMockApi = () => ({
   windowMaximize: vi.fn(),
   windowClose: vi.fn(),
 
+  // Native context menu bridge (main-process IPC in production)
+  showContextMenu: vi.fn().mockResolvedValue(null),
+
   // Vault API
   vault: {
     select: vi.fn().mockResolvedValue({ success: true, path: '/mock/vault' }),
