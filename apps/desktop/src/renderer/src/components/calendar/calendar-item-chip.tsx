@@ -1,6 +1,6 @@
 import { useCallback, useMemo } from 'react'
 import { AlarmClock, Calendar, CalendarDays, CheckSquare3, NotificationSnooze } from '@/lib/icons'
-import { getEventBgColor, getEventTextColor } from '@/lib/event-type-colors'
+import { getEventBaseColor, getEventBgColor, getEventTextColor } from '@/lib/event-type-colors'
 import { formatTimeOfDay } from '@/lib/time-format'
 import type { ClockFormat } from '@/lib/time-format'
 import { cn } from '@/lib/utils'
@@ -42,15 +42,20 @@ export function CalendarItemChip({
   const deletable = Boolean(onDeleteItem) && canDeleteEvent(item)
   const cls = cn(
     'flex h-full w-full items-start justify-between gap-0.5 rounded-[6px] px-1 py-0.5 text-left transition-[filter] @xl:px-2 @xl:py-1',
-    (onClick || deletable) && 'cursor-pointer hover:brightness-110',
-    isSelected && 'brightness-[1.15]'
+    (onClick || deletable) && 'cursor-pointer hover:brightness-100'
   )
   const chipStyle = useMemo<React.CSSProperties>(
-    () => ({
-      backgroundColor: getEventBgColor(item.visualType),
-      color: getEventTextColor(item.visualType)
-    }),
-    [item.visualType]
+    () =>
+      isSelected
+        ? {
+          backgroundColor: getEventBaseColor(item.visualType),
+          color: '#FFFFFF'
+        }
+        : {
+          backgroundColor: getEventBgColor(item.visualType),
+          color: getEventTextColor(item.visualType)
+        },
+    [item.visualType, isSelected]
   )
 
   const handleContextMenu = useCallback(
