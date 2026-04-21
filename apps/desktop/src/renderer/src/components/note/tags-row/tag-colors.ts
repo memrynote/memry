@@ -43,12 +43,7 @@ export function getTagColors(colorName: string): TagColorConfig {
   return TAG_COLORS[colorName] || TAG_COLORS.stone
 }
 
-export function withAlpha(hex: string, opacity: number): string {
-  const alpha = Math.round(opacity * 255)
-    .toString(16)
-    .padStart(2, '0')
-  return `${hex}${alpha}`
-}
+export { withAlpha } from '@/lib/color'
 
 export function getRandomColor(): string {
   const index = Math.floor(Math.random() * COLOR_NAMES.length)

@@ -1,28 +1,10 @@
-import { useCallback } from 'react'
+import { useCallback, useMemo } from 'react'
+import { getEventBgColor, getEventTextColor } from '@/lib/event-type-colors'
 import { formatTimeOfDay } from '@/lib/time-format'
 import type { ClockFormat } from '@/lib/time-format'
 import { cn } from '@/lib/utils'
 import type { CalendarProjectionItem } from '@/services/calendar-service'
 import type { AnchorRect } from './types'
-
-const CHIP_STYLES: Record<CalendarProjectionItem['visualType'], string> = {
-  event:
-    'border-[#D8B4FE] bg-[#FAF5FF] text-violet-800 dark:border-violet-500/30 dark:bg-violet-950/30 dark:text-violet-200',
-  task: 'border-[#BEDBFF] bg-[#EFF6FF] text-blue-800 dark:border-blue-500/30 dark:bg-blue-950/30 dark:text-blue-200',
-  reminder:
-    'border-[#B9F8CF] bg-[#F0FDF4] text-green-800 dark:border-green-500/30 dark:bg-green-950/30 dark:text-green-200',
-  snooze:
-    'border-[#FFD6A7] bg-[#FFF7ED] text-orange-800 dark:border-orange-500/30 dark:bg-orange-950/30 dark:text-orange-200',
-  external_event: 'border-border bg-surface text-muted-foreground'
-}
-
-const INVERTED_CHIP_STYLES: Record<CalendarProjectionItem['visualType'], string> = {
-  event: 'bg-[#9810FA] text-white dark:bg-[#C4B5FD] dark:text-[#1a1625]',
-  task: 'bg-[#155DFC] text-white dark:bg-[#93C5FD] dark:text-[#051833]',
-  reminder: 'bg-[#FCCEE8] text-white dark:bg-[#FCA5A5] dark:text-[#5c1a2f]',
-  snooze: 'bg-[#F54900] text-white dark:bg-[#FDBA74] dark:text-[#6b2e0f]',
-  external_event: 'bg-[#00A63E] text-white dark:bg-[#86EFAC] dark:text-[#051a0a]'
-}
 
 interface CalendarItemChipProps {
   item: CalendarProjectionItem
@@ -46,9 +28,16 @@ export function CalendarItemChip({
   const timeLabel = item.isAllDay ? 'All day' : formatTimeOfDay(new Date(item.startAt), clockFormat)
   const deletable = Boolean(onDeleteItem) && canDeleteEvent(item)
   const cls = cn(
-    'flex h-full w-full items-start justify-between gap-0.5 rounded-[6px] border px-1 py-0.5 text-left transition-colors @xl:px-2 @xl:py-1',
-    isSelected ? INVERTED_CHIP_STYLES[item.visualType] : CHIP_STYLES[item.visualType],
-    (onClick || deletable) && 'cursor-pointer hover:brightness-95'
+    'flex h-full w-full items-start justify-between gap-0.5 rounded-[6px] px-1 py-0.5 text-left transition-[filter] @xl:px-2 @xl:py-1',
+    (onClick || deletable) && 'cursor-pointer hover:brightness-110',
+    isSelected && 'brightness-[1.15]'
+  )
+  const chipStyle = useMemo<React.CSSProperties>(
+    () => ({
+      backgroundColor: getEventBgColor(item.visualType),
+      color: getEventTextColor(item.visualType)
+    }),
+    [item.visualType]
   )
 
   const handleContextMenu = useCallback(
@@ -81,6 +70,7 @@ export function CalendarItemChip({
       <button
         type="button"
         className={cls}
+        style={chipStyle}
         onClick={(event) => {
           const rect = event.currentTarget.getBoundingClientRect()
           onClick?.(item, {
@@ -99,7 +89,7 @@ export function CalendarItemChip({
   }
 
   return (
-    <div className={cls} data-visual-type={item.visualType}>
+    <div className={cls} style={chipStyle} data-visual-type={item.visualType}>
       {content}
     </div>
   )
