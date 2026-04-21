@@ -3,7 +3,7 @@ import { withAlpha } from './color'
 
 type VisualType = CalendarProjectionItem['visualType']
 
-export const EVENT_BG_OPACITY = 0.2
+export const EVENT_BG_OPACITY = 0.5
 
 export const EVENT_TYPE_COLORS: Record<VisualType, string> = {
   event: '#92CED4',

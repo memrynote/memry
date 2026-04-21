@@ -48,7 +48,6 @@ import { BookmarkItemTypes } from '@memry/contracts/bookmarks-api'
 import { getAllSupportedExtensions } from '@memry/shared/file-types'
 import { createLogger } from '@/lib/logger'
 import { useFileDrop } from '@/hooks/use-file-drop'
-import { useKeyboardShortcuts } from '@/hooks/use-keyboard-shortcuts-base'
 import { extractErrorMessage } from '@/lib/ipc-error'
 
 const log = createLogger('Component:AppSidebar')
@@ -57,12 +56,11 @@ const mainNav: {
   title: string
   page: AppPage
   icon: typeof SidebarInbox
-  shortcut?: string
 }[] = [
-  { title: 'Inbox', page: 'inbox', icon: SidebarInbox, shortcut: '⌘⌥1' },
-  { title: 'Journal', page: 'journal', icon: SidebarJournal, shortcut: '⌘⌥2' },
-  { title: 'Calendar', page: 'calendar', icon: Calendar2, shortcut: '⌘⌥3' },
-  { title: 'Tasks', page: 'tasks', icon: SidebarTasks, shortcut: '⌘⌥4' }
+  { title: 'Inbox', page: 'inbox', icon: SidebarInbox },
+  { title: 'Journal', page: 'journal', icon: SidebarJournal },
+  { title: 'Calendar', page: 'calendar', icon: Calendar2 },
+  { title: 'Tasks', page: 'tasks', icon: SidebarTasks }
 ]
 
 function SidebarHeaderContent() {
@@ -201,37 +199,6 @@ function AppSidebarInner({ currentPage, viewCounts, ...props }: AppSidebarProps)
     }
     openSidebarItem(item)
   }
-
-  const navigateTo = useCallback(
-    (page: AppPage) => {
-      const titles: Record<AppPage, string> = {
-        inbox: 'Inbox',
-        calendar: 'Calendar',
-        journal: 'Journal',
-        tasks: 'Tasks',
-        graph: 'Graph'
-      }
-      openSidebarItem({
-        type: page as TabType,
-        title: titles[page],
-        path: `/${page}`
-      })
-    },
-    [openSidebarItem]
-  )
-
-  useKeyboardShortcuts(
-    useMemo(
-      () =>
-        mainNav.map((item, i) => ({
-          key: String(i + 1),
-          modifiers: { meta: true, alt: true } as const,
-          action: () => navigateTo(item.page),
-          description: `Go to ${item.title}`
-        })),
-      [navigateTo]
-    )
-  )
 
   // Handle tag click - open tag drill-down view
   const handleTagClick = useCallback(
