@@ -11,20 +11,13 @@ import {
   toLocalDateKey,
   toLocalDateString
 } from './date-utils'
+import { EVENT_TYPE_COLORS } from '@/lib/event-type-colors'
 import type { CalendarProjectionItem } from '@/services/calendar-service'
 import type { CalendarWorkspaceView } from './calendar-toolbar'
 import type { AnchorRect } from './types'
 
 const DAY_HEADERS = ['M', 'T', 'W', 'T', 'F', 'S', 'S']
 const CLICK_DELAY_MS = 250
-
-const DOT_COLORS: Record<CalendarProjectionItem['visualType'], string> = {
-  event: 'bg-violet-400',
-  task: 'bg-blue-400',
-  reminder: 'bg-green-400',
-  snooze: 'bg-orange-400',
-  external_event: 'bg-neutral-400'
-}
 
 function formatPopoverDate(day: string): string {
   return new Intl.DateTimeFormat(undefined, {
@@ -227,8 +220,10 @@ export function CalendarYearView({
                     }}
                   >
                     <span
-                      className={cn('size-2 shrink-0 rounded-full', DOT_COLORS[item.visualType])}
-                      style={item.source.color ? { backgroundColor: item.source.color } : undefined}
+                      className="size-2 shrink-0 rounded-full"
+                      style={{
+                        backgroundColor: item.source.color ?? EVENT_TYPE_COLORS[item.visualType]
+                      }}
                     />
                     <span className="flex-1 truncate text-xs text-foreground">{item.title}</span>
                     <span className="shrink-0 text-xs text-muted-foreground">

@@ -19,9 +19,9 @@ import {
 import {
   addLocalDays,
   getMonthGridDays,
-  toLocalDateKey,
   toStartOfLocalDayIso
 } from '@/components/calendar/date-utils'
+import { buildDayDots } from '@/components/calendar/day-dots'
 import { formatDateToISO, parseISODate, getTodayString } from '@/lib/journal-utils'
 
 interface GlobalDayPanelProps {
@@ -118,16 +118,7 @@ export function GlobalDayPanel({ className }: GlobalDayPanelProps) {
     return map
   }, [heatmapData])
 
-  const eventActivityData = useMemo(() => {
-    const map: Record<string, number> = {}
-    for (const item of eventItems) {
-      const key = toLocalDateKey(item.startAt)
-      map[key] = Math.min(4, (map[key] ?? 0) + 1)
-    }
-    return map
-  }, [eventItems])
-
-  const calendarActivityData = isCalendarTabActive ? eventActivityData : journalActivityData
+  const dayDotsData = useMemo(() => buildDayDots(eventItems), [eventItems])
 
   const navigateToJournal = useCallback(
     (date: string) => {
@@ -217,7 +208,8 @@ export function GlobalDayPanel({ className }: GlobalDayPanelProps) {
             <DatePickerCalendar
               selected={selectedDateObj}
               onSelect={handleDateSelect}
-              activityData={calendarActivityData}
+              activityData={isCalendarTabActive ? undefined : journalActivityData}
+              dayDots={isCalendarTabActive ? dayDotsData : undefined}
               className="w-full"
               showWeekNumbers
               onTodayClick={handleTodayClick}
