@@ -21,9 +21,11 @@ import { InlinePriorityPopover } from '@/components/tasks/inline-priority-popove
 import { SubtaskProgressIndicator } from '@/components/tasks/subtask-progress-indicator'
 import type { Priority } from '@/data/sample-tasks'
 import type { Status, Project } from '@/data/tasks-data'
-import { AlarmClock, Bell, Calendar2, ChevronDown } from '@/lib/icons'
-import type { AppIcon } from '@/lib/icons'
+import { ChevronDown } from '@/lib/icons'
 import { createLogger } from '@/lib/logger'
+import { getEventBaseColor } from '@/lib/event-type-colors'
+import { formatTimeOfDay, type ClockFormat } from '@/lib/time-format'
+import { useGeneralSettings } from '@/hooks/use-general-settings'
 
 const log = createLogger('JournalDayPanel')
 
@@ -49,40 +51,11 @@ type ScheduleRowKind = Exclude<CalendarProjectionVisualType, 'task'>
 
 interface ScheduleEvent {
   id: string
-  time: string
+  startAt: string
+  timeLabel: string | null
   title: string
   kind: ScheduleRowKind
   label: string | null
-}
-
-const SCHEDULE_ROW_STYLES: Record<
-  ScheduleRowKind,
-  { icon: AppIcon; tile: string; iconColor: string; labelTone: string }
-> = {
-  event: {
-    icon: Calendar2,
-    tile: 'bg-blue-100 dark:bg-blue-500/15',
-    iconColor: 'text-blue-600 dark:text-blue-400',
-    labelTone: 'bg-muted text-muted-foreground'
-  },
-  external_event: {
-    icon: Calendar2,
-    tile: 'bg-muted',
-    iconColor: 'text-muted-foreground',
-    labelTone: 'bg-muted text-muted-foreground'
-  },
-  reminder: {
-    icon: AlarmClock,
-    tile: 'bg-amber-100 dark:bg-amber-500/15',
-    iconColor: 'text-amber-600 dark:text-amber-400',
-    labelTone: 'bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-400'
-  },
-  snooze: {
-    icon: Bell,
-    tile: 'bg-purple-100 dark:bg-purple-500/15',
-    iconColor: 'text-purple-600 dark:text-purple-400',
-    labelTone: 'bg-purple-100 text-purple-700 dark:bg-purple-500/15 dark:text-purple-400'
-  }
 }
 
 function getDayRange(date: string): { startAt: string; endAt: string } {
@@ -96,16 +69,24 @@ function getDayRange(date: string): { startAt: string; endAt: string } {
   }
 }
 
-function formatScheduleTime(startAt: string, isAllDay: boolean): string {
-  if (isAllDay) {
-    return 'All day'
-  }
-
-  return new Intl.DateTimeFormat(undefined, {
-    hour: '2-digit',
-    minute: '2-digit',
-    hourCycle: 'h23'
-  }).format(new Date(startAt))
+function formatScheduleTimeLabel(
+  startAt: string,
+  endAt: string | null,
+  isAllDay: boolean,
+  clockFormat: ClockFormat
+): string | null {
+  if (isAllDay) return null
+  const start = new Date(startAt)
+  const startLabel = formatTimeOfDay(start, clockFormat)
+  if (!endAt) return startLabel
+  const end = new Date(endAt)
+  if (end.getTime() <= start.getTime()) return startLabel
+  const endLabel = formatTimeOfDay(end, clockFormat)
+  const sameLocalDay =
+    start.getFullYear() === end.getFullYear() &&
+    start.getMonth() === end.getMonth() &&
+    start.getDate() === end.getDate()
+  return sameLocalDay ? `${startLabel} - ${endLabel}` : `${startLabel} - ${endLabel} (+1)`
 }
 
 function formatSnoozeOffset(minutes: number): string {
@@ -139,28 +120,20 @@ function getScheduleLabel(item: CalendarProjectionItem): string | null {
   }
 }
 
-function toScheduleEvent(item: CalendarProjectionItem): ScheduleEvent | null {
+function toScheduleEvent(
+  item: CalendarProjectionItem,
+  clockFormat: ClockFormat
+): ScheduleEvent | null {
   if (item.visualType === 'task') return null
 
   return {
     id: item.projectionId,
-    time: formatScheduleTime(item.startAt, item.isAllDay),
+    startAt: item.startAt,
+    timeLabel: formatScheduleTimeLabel(item.startAt, item.endAt, item.isAllDay, clockFormat),
     title: item.title,
     kind: item.visualType,
     label: getScheduleLabel(item)
   }
-}
-
-function compareScheduleEvents(a: ScheduleEvent, b: ScheduleEvent): number {
-  if (a.time === 'All day' && b.time !== 'All day') {
-    return -1
-  }
-
-  if (a.time !== 'All day' && b.time === 'All day') {
-    return 1
-  }
-
-  return a.time.localeCompare(b.time)
 }
 
 interface TaskRowProps {
@@ -234,30 +207,32 @@ function TaskRow({
 
 interface ScheduleRowProps {
   event: ScheduleEvent
+  onHoverColor?: (color: string | null) => void
 }
 
-function ScheduleRow({ event }: ScheduleRowProps) {
-  const styles = SCHEDULE_ROW_STYLES[event.kind]
-  const Icon = styles.icon
+function ScheduleRow({ event, onHoverColor }: ScheduleRowProps) {
+  const borderColor = getEventBaseColor(event.kind)
 
   return (
-    <div className="flex items-center gap-2.5 py-1">
-      <span
-        className={cn('flex size-7 shrink-0 items-center justify-center rounded-md', styles.tile)}
-      >
-        <Icon className={cn('size-3.5', styles.iconColor)} aria-hidden="true" />
-      </span>
-      <span className="w-10 shrink-0 font-mono text-xs tabular-nums text-muted-foreground">
-        {event.time}
-      </span>
-      <span className="min-w-0 flex-1 truncate text-[13px] font-medium text-foreground/90">
-        {event.title}
-      </span>
-      {event.label && (
-        <span
-          className={cn('shrink-0 rounded px-1.5 py-0.5 text-[11px] font-medium', styles.labelTone)}
-        >
-          {event.label}
+    <div
+      className="flex flex-col gap-0.5 rounded-r border-l-2 py-1 pl-2.5 transition-colors hover:bg-accent/40"
+      style={{ borderColor }}
+      onMouseEnter={() => onHoverColor?.(borderColor)}
+      onMouseLeave={() => onHoverColor?.(null)}
+    >
+      <div className="flex items-center gap-2">
+        <span className="min-w-0 flex-1 truncate text-[13px] font-medium text-foreground/90">
+          {event.title}
+        </span>
+        {event.label && (
+          <span className="shrink-0 rounded bg-muted px-1.5 py-0.5 text-[11px] font-medium text-muted-foreground">
+            {event.label}
+          </span>
+        )}
+      </div>
+      {event.timeLabel && (
+        <span className="font-mono text-[11px] tabular-nums text-muted-foreground/60">
+          {event.timeLabel}
         </span>
       )}
     </div>
@@ -267,13 +242,16 @@ function ScheduleRow({ event }: ScheduleRowProps) {
 interface JournalDayPanelProps {
   date: string
   className?: string
+  onHoverColor?: (color: string | null) => void
 }
 
-export function JournalDayPanel({ date, className }: JournalDayPanelProps) {
+export function JournalDayPanel({ date, className, onHoverColor }: JournalDayPanelProps) {
   const [isCollapsed, setIsCollapsed] = useState(false)
   const { projects } = useTasksContext()
   const { openTab } = useTabActions()
   const queryClient = useQueryClient()
+  const { settings } = useGeneralSettings()
+  const clockFormat = settings.clockFormat
   const scheduleRange = useMemo(() => getDayRange(date), [date])
   const scheduleQuery = useCalendarRange(scheduleRange)
 
@@ -293,11 +271,15 @@ export function JournalDayPanel({ date, className }: JournalDayPanelProps) {
   const schedule = useMemo(
     () =>
       scheduleQuery.items
-        .map(toScheduleEvent)
+        .map((item) => toScheduleEvent(item, clockFormat))
         .filter((event): event is ScheduleEvent => event !== null)
-        .sort(compareScheduleEvents),
-    [scheduleQuery.items]
+        .sort((a, b) => a.startAt.localeCompare(b.startAt)),
+    [scheduleQuery.items, clockFormat]
   )
+
+  useEffect(() => {
+    onHoverColor?.(null)
+  }, [schedule, onHoverColor])
 
   const { data: tasks = [] } = useQuery({
     queryKey: ['journal-day-panel', 'tasks', date],
@@ -446,7 +428,7 @@ export function JournalDayPanel({ date, className }: JournalDayPanelProps) {
                 </span>
               </div>
               {schedule.map((event) => (
-                <ScheduleRow key={event.id} event={event} />
+                <ScheduleRow key={event.id} event={event} onHoverColor={onHoverColor} />
               ))}
             </div>
           )}

@@ -6,7 +6,7 @@ type VisualType = CalendarProjectionItem['visualType']
 export const EVENT_BG_OPACITY = 0.2
 
 export const EVENT_TYPE_COLORS: Record<VisualType, string> = {
-  event: '#9FE1E7',
+  event: '#92CED4',
   task: '#1EB06D',
   reminder: '#1BADF8',
   snooze: '#7BD148',

@@ -3,6 +3,7 @@ import { getISOWeek } from 'date-fns'
 
 import { ChevronLeft, ChevronRight } from '@/lib/icons'
 import { cn } from '@/lib/utils'
+import { withAlpha } from '@/lib/color'
 
 interface ActivityData {
   [dateISO: string]: number
@@ -15,6 +16,7 @@ interface DatePickerCalendarProps {
   weekStartsOn?: 0 | 1
   activityData?: ActivityData
   dayDots?: Record<string, string[]>
+  hoveredEventColor?: string | null
   className?: string
   showWeekNumbers?: boolean
   onTodayClick?: () => void
@@ -108,6 +110,7 @@ export function DatePickerCalendar({
   weekStartsOn = 1,
   activityData,
   dayDots,
+  hoveredEventColor,
   className,
   showWeekNumbers = false,
   onTodayClick
@@ -262,7 +265,7 @@ export function DatePickerCalendar({
                 onClick={() => !isDisabled && handleDayClick(date, isOutsideMonth)}
                 disabled={isDisabled}
                 className={cn(
-                  'flex-1 min-w-0 aspect-square max-h-10 flex flex-col items-center justify-center gap-0.5 text-[11px] leading-3.5 transition-colors rounded-[5px]',
+                  'relative flex-1 min-w-0 aspect-square max-h-10 flex flex-col items-center justify-center gap-0.5 text-[11px] leading-3.5 transition-colors rounded-[5px]',
                   'focus-visible:outline-none',
                   isOutsideMonth &&
                     !isSelected &&
@@ -295,9 +298,16 @@ export function DatePickerCalendar({
                 aria-pressed={isSelected}
                 aria-disabled={isDisabled}
               >
-                {date.getDate()}
+                {isSelected && hoveredEventColor && (
+                  <span
+                    aria-hidden="true"
+                    className="pointer-events-none absolute inset-0 rounded-[5px]"
+                    style={{ backgroundColor: withAlpha(hoveredEventColor, 0.2) }}
+                  />
+                )}
+                <span className="relative">{date.getDate()}</span>
                 {dots && dots.length > 0 ? (
-                  <span className="inline-flex gap-[2px]" aria-hidden="true">
+                  <span className="relative inline-flex gap-[2px]" aria-hidden="true">
                     {dots.slice(0, 3).map((dotColor, i) => (
                       <span
                         key={`${dotColor}-${i}`}
@@ -309,7 +319,7 @@ export function DatePickerCalendar({
                 ) : (
                   activity > 0 && (
                     <span
-                      className={cn('size-1 rounded-full', ACTIVITY_DOT_COLORS[activity])}
+                      className={cn('relative size-1 rounded-full', ACTIVITY_DOT_COLORS[activity])}
                       aria-hidden="true"
                     />
                   )
