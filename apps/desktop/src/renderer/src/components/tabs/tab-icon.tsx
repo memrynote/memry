@@ -8,7 +8,7 @@ import { memo } from 'react'
 import {
   Inbox,
   Home,
-  ListChecks,
+  CheckSquare3,
   Star,
   Calendar,
   CheckCircle,
@@ -48,7 +48,7 @@ const ICON_COMPONENTS: Record<string, React.ComponentType<{ className?: string }
   // Core icons
   inbox: Inbox,
   home: Home,
-  'list-checks': ListChecks,
+  'list-checks': CheckSquare3,
   star: Star,
   calendar: Calendar,
   'check-circle': CheckCircle,
