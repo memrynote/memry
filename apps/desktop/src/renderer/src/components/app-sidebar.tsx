@@ -2,13 +2,17 @@
 
 import * as React from 'react'
 import { useMemo, useState, useCallback, useRef } from 'react'
-import { CloudOff, ChevronsDown, ChevronsUp, FilePlus, FolderPlus, Plus, Upload } from '@/lib/icons'
 import {
-  SidebarCalendar,
-  SidebarInbox,
-  SidebarJournal,
-  SidebarTasks
-} from '@/lib/icons/sidebar-nav-icons'
+  Calendar2,
+  CloudOff,
+  ChevronsDown,
+  ChevronsUp,
+  FilePlus,
+  FolderPlus,
+  Plus,
+  Upload
+} from '@/lib/icons'
+import { SidebarInbox, SidebarJournal, SidebarTasks } from '@/lib/icons/sidebar-nav-icons'
 import { toast } from 'sonner'
 
 import { cn } from '@/lib/utils'
@@ -57,7 +61,7 @@ const mainNav: {
 }[] = [
   { title: 'Inbox', page: 'inbox', icon: SidebarInbox, shortcut: '⌘⌥1' },
   { title: 'Journal', page: 'journal', icon: SidebarJournal, shortcut: '⌘⌥2' },
-  { title: 'Calendar', page: 'calendar', icon: SidebarCalendar, shortcut: '⌘⌥3' },
+  { title: 'Calendar', page: 'calendar', icon: Calendar2, shortcut: '⌘⌥3' },
   { title: 'Tasks', page: 'tasks', icon: SidebarTasks, shortcut: '⌘⌥4' }
 ]
 

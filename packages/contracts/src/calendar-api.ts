@@ -243,6 +243,12 @@ export interface CalendarProjectionItem {
   editability: CalendarProjectionEditability
   source: CalendarProjectionSourceMeta
   binding: CalendarProjectionBinding | null
+  /**
+   * Minutes the reminder has been snoozed from its original `remindAt`.
+   * Positive = snoozed into the future, negative = pulled earlier.
+   * Null for non-reminders or reminders with no active snooze.
+   */
+  snoozeOffsetMinutes: number | null
 }
 
 export type CalendarProviderAccountConnectionStatus =

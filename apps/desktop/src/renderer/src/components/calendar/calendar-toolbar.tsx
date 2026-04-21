@@ -72,7 +72,7 @@ export function CalendarToolbar({
   const yearStr = String(anchorParsed.getFullYear())
 
   return (
-    <div className="flex flex-col gap-2 border-b border-border bg-background px-3 py-2 @xl:gap-4 @xl:px-6 @xl:py-4">
+    <div className="flex flex-col gap-2 bg-background px-3 py-2 @xl:gap-4 @xl:px-6 @xl:py-4">
       <div className="flex items-center justify-between">
         <button
           type="button"
