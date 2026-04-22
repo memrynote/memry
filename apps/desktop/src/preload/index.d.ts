@@ -3,6 +3,7 @@ import type { GeneratedRpcApi } from '@memry/rpc'
 import type * as InboxRpc from '@memry/rpc/inbox'
 import type * as NotesRpc from '@memry/rpc/notes'
 import type * as TasksRpc from '@memry/rpc/tasks'
+import type { AppUpdateState } from '@memry/contracts/ipc-updater'
 import type {
   SyncStatusChangedEvent,
   ItemSyncedEvent,
@@ -1611,6 +1612,12 @@ interface API extends WindowAPI, GeneratedRpcApi {
   syncOps: SyncOpsClientAPI
   crypto: CryptoClientAPI
   syncAttachments: SyncAttachmentsClientAPI
+  updater: {
+    getState: () => Promise<AppUpdateState>
+    checkForUpdates: () => Promise<AppUpdateState>
+    downloadUpdate: () => Promise<AppUpdateState>
+    quitAndInstall: () => Promise<void>
+  }
   syncCrdt: {
     openDoc: (input: { noteId: string }) => Promise<void>
     closeDoc: (input: { noteId: string }) => Promise<void>
@@ -1698,6 +1705,7 @@ interface API extends WindowAPI, GeneratedRpcApi {
   onClockSkewWarning: (callback: (event: ClockSkewWarningEvent) => void) => () => void
   onSecurityWarning: (callback: (event: SecurityWarningEvent) => void) => () => void
   onCertificatePinFailed: (callback: (event: CertificatePinFailedEvent) => void) => () => void
+  onUpdaterStateChanged: (callback: (state: AppUpdateState) => void) => () => void
   onCrdtStateChanged: (
     callback: (data: { noteId: string; update: number[]; origin: string }) => void
   ) => () => void

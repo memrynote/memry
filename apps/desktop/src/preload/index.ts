@@ -16,6 +16,7 @@ import { searchApi, graphApi, searchEvents } from './api/search'
 import { syncAuth, syncSetup, syncLinking, accountApi, syncDevices } from './api/sync-identity'
 import { syncOps, cryptoApi, syncAttachments, syncCrdt, onCrdtStateChanged } from './api/sync-ops'
 import { syncEvents } from './api/sync-events'
+import { updaterApi, updaterEvents } from './api/updater'
 
 const logger = createLogger('Preload')
 
@@ -77,9 +78,11 @@ export const api = {
   crypto: cryptoApi,
   syncAttachments,
   syncCrdt,
+  updater: updaterApi,
 
   onCrdtStateChanged,
   ...syncEvents,
+  ...updaterEvents,
   ...flushApi
 }
 
