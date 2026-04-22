@@ -50,11 +50,11 @@
 /* Override BlockNote's Inter font with system font stack */
 :root .bn-default-styles,
 :root .bn-container {
-  font-family: var(--font-sans) !important;
+  font-family: var(--editor-body-font, var(--font-sans)) !important;
 }
 
 :root .bn-container {
-  --bn-font-family: var(--font-sans);
+  --bn-font-family: var(--editor-body-font, var(--font-sans));
 }
 
 /* ===== PROSEMIRROR OVERRIDES ===== */
@@ -634,6 +634,62 @@
     --shadow-dropdown: 0 4px 24px rgba(0, 0, 0, 0.1), 0 1px 3px rgba(0, 0, 0, 0.06);
   }
 
+  .kami {
+    /* ===== TYPOGRAPHY - Kami Editorial Stack ===== */
+    --font-sans: 'Inter Variable', ui-sans-serif, -apple-system, system-ui, sans-serif;
+    --font-serif: 'Newsreader', Charter, Georgia, 'Times New Roman', serif;
+    --font-display: 'Newsreader', Charter, Georgia, 'Times New Roman', serif;
+    --font-heading: 'Inter Variable', ui-sans-serif, -apple-system, system-ui, sans-serif;
+    --app-body-font: var(--font-serif);
+    --editor-body-font: var(--font-serif);
+    --body-line-height: 1.45;
+
+    /* ===== BASE COLORS - Kami Editorial Palette ===== */
+    --background: #f5f4ed;
+    --foreground: #141413;
+    --surface: #faf9f5;
+    --surface-active: #e8e6dc;
+    --text-primary: #141413;
+    --text-secondary: #3d3d3a;
+    --text-tertiary: #87867f;
+    --text-bright: #141413;
+    --muted: #faf9f5;
+    --muted-foreground: #5e5d59;
+    --popover: #faf9f5;
+    --popover-foreground: #141413;
+    --border: #e0ddd2;
+    --input: #e8e5da;
+    --card: #faf9f5;
+    --card-foreground: #141413;
+    --primary: #1b365d;
+    --primary-foreground: #faf9f5;
+    --secondary: #e8e6dc;
+    --secondary-foreground: #141413;
+    --accent: #e8e6dc;
+    --accent-foreground: #141413;
+    --destructive: #b53333;
+    --destructive-foreground: #faf9f5;
+    --ring: #2d5a8a;
+
+    /* ===== SEMANTIC ACCENTS - kept restrained around ink blue ===== */
+    --accent-cyan: #1b365d;
+    --accent-purple: #2d5a8a;
+    --accent-green: #1b365d;
+    --accent-orange: #2d5a8a;
+
+    /* ===== SHADOWS - whisper depth only ===== */
+    --shadow-card: 0 1px 2px 0 rgb(20 20 19 / 0.04), 0 0 0 1px rgb(224 221 210 / 0.55);
+    --shadow-card-hover:
+      0 6px 18px -8px rgb(20 20 19 / 0.12), 0 0 0 1px rgb(224 221 210 / 0.75);
+    --shadow-dropdown: 0 8px 24px rgb(20 20 19 / 0.08), 0 1px 2px rgb(20 20 19 / 0.04);
+
+    /* ===== GRAPH / QUEUE ===== */
+    --graph-bg: #f5f4ed;
+    --graph-label-color: #141413;
+    --queue-bg: #f0ede4;
+    --queue-number-bg: #e2ded1;
+  }
+
   .dark {
     /* ===== TYPOGRAPHY - Font Families (same in dark mode) ===== */
     --font-sans:
@@ -796,9 +852,9 @@ div.react-sigma {
 
   body {
     @apply bg-background text-foreground;
-    font-family: var(--font-sans);
+    font-family: var(--app-body-font, var(--font-sans));
     color: var(--text-primary);
-    line-height: 1.5;
+    line-height: var(--body-line-height, 1.5);
     user-select: none;
     -webkit-font-smoothing: auto;
   }
@@ -846,6 +902,31 @@ div.react-sigma {
     font-weight: 500;
     text-transform: uppercase;
     letter-spacing: 0.05em;
+  }
+
+  .kami button,
+  .kami input,
+  .kami select,
+  .kami textarea,
+  .kami [role='button'] {
+    font-family: var(--font-sans);
+  }
+
+  .kami em,
+  .kami i,
+  .kami .italic {
+    font-style: normal !important;
+  }
+
+  .kami h1,
+  .kami h2,
+  .kami h3,
+  .kami h4,
+  .kami h5,
+  .kami h6 {
+    font-weight: 500;
+    line-height: 1.2;
+    letter-spacing: -0.02em;
   }
 
   /* ===== ANIMATION UTILITIES ===== */
@@ -1339,6 +1420,17 @@ del.bn-inline-content {
   --tint-border: color-mix(in srgb, var(--tint) 50%, transparent);
 }
 
+.kami {
+  --tint: #1b365d;
+  --tint-foreground: #faf9f5;
+  --tint-hover: #142846;
+  --tint-light: #eef2f7;
+  --tint-lighter: #f4f6f9;
+  --tint-muted: #d6e1ee;
+  --tint-ring: color-mix(in srgb, var(--tint) 24%, transparent);
+  --tint-border: #d0dce9;
+}
+
 :root {
   /* ===== SIDEBAR THEME - Warm Editorial Palette ===== */
   --sidebar: #efefe9;
@@ -1373,6 +1465,24 @@ del.bn-inline-content {
   --sidebar-text-child: #6b6966;
   --sidebar-dot-inactive: #e3e2e0;
   --sidebar-surface: rgba(0, 0, 0, 0.03);
+}
+
+.kami {
+  /* ===== SIDEBAR THEME - Kami Editorial Palette ===== */
+  --sidebar: #f7f4eb;
+  --sidebar-foreground: #5e5d59;
+  --sidebar-primary: #1b365d;
+  --sidebar-primary-foreground: #faf9f5;
+  --sidebar-accent: rgba(27, 54, 93, 0.08);
+  --sidebar-accent-foreground: #141413;
+  --sidebar-border: #e0ddd2;
+  --sidebar-ring: var(--tint);
+  --sidebar-muted: #87867f;
+  --sidebar-terracotta: var(--tint);
+  --sidebar-text-folder: #141413;
+  --sidebar-text-child: #5e5d59;
+  --sidebar-dot-inactive: #d8d3c7;
+  --sidebar-surface: rgba(27, 54, 93, 0.05);
 }
 
 .dark {

@@ -22,6 +22,10 @@ const FONT_FAMILY_MAP: Record<string, string> = {
   inter: "'Inter Variable', ui-sans-serif, -apple-system, system-ui, sans-serif"
 }
 
+const KAMI_THEME_ACCENT = '#1B365D'
+const KAMI_FONT_SANS = "'Inter Variable', ui-sans-serif, -apple-system, system-ui, sans-serif"
+const KAMI_FONT_SERIF = "'Newsreader', Charter, Georgia, 'Times New Roman', serif"
+
 export function useThemeSync(): void {
   const { settings, isLoading } = useGeneralSettings()
   const { setTheme } = useTheme()
@@ -34,8 +38,11 @@ export function useThemeSync(): void {
 
   useEffect(() => {
     if (isLoading) return
-    document.documentElement.style.setProperty('--user-accent-color', settings.accentColor)
-  }, [isLoading, settings.accentColor])
+    document.documentElement.style.setProperty(
+      '--user-accent-color',
+      settings.theme === 'kami' ? KAMI_THEME_ACCENT : settings.accentColor
+    )
+  }, [isLoading, settings.accentColor, settings.theme])
 
   useEffect(() => {
     if (isLoading) return
@@ -44,11 +51,29 @@ export function useThemeSync(): void {
 
   useEffect(() => {
     if (isLoading) return
+    const rootStyle = document.documentElement.style
+
+    if (settings.theme === 'kami') {
+      rootStyle.setProperty('--font-sans', KAMI_FONT_SANS)
+      rootStyle.setProperty('--font-serif', KAMI_FONT_SERIF)
+      rootStyle.setProperty('--font-display', KAMI_FONT_SERIF)
+      rootStyle.setProperty('--font-heading', KAMI_FONT_SANS)
+      rootStyle.setProperty('--app-body-font', KAMI_FONT_SERIF)
+      rootStyle.setProperty('--editor-body-font', KAMI_FONT_SERIF)
+      return
+    }
+
     const family = FONT_FAMILY_MAP[settings.fontFamily]
     if (family) {
-      document.documentElement.style.setProperty('--font-sans', family)
+      rootStyle.setProperty('--font-sans', family)
     } else {
-      document.documentElement.style.removeProperty('--font-sans')
+      rootStyle.removeProperty('--font-sans')
     }
-  }, [isLoading, settings.fontFamily])
+
+    rootStyle.removeProperty('--font-serif')
+    rootStyle.removeProperty('--font-display')
+    rootStyle.removeProperty('--font-heading')
+    rootStyle.removeProperty('--app-body-font')
+    rootStyle.removeProperty('--editor-body-font')
+  }, [isLoading, settings.fontFamily, settings.theme])
 }

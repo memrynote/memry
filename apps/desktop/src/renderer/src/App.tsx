@@ -403,7 +403,7 @@ function App(): React.JSX.Element {
         attribute="class"
         defaultTheme={startupTheme}
         enableSystem
-        themes={['light', 'dark', 'white', 'system']}
+        themes={['light', 'dark', 'white', 'kami', 'system']}
         storageKey={THEME_STORAGE_KEY}
       >
         <VaultOnboarding />
@@ -417,7 +417,7 @@ function App(): React.JSX.Element {
       attribute="class"
       defaultTheme={startupTheme}
       enableSystem
-      themes={['light', 'dark', 'white', 'system']}
+      themes={['light', 'dark', 'white', 'kami', 'system']}
       storageKey={THEME_STORAGE_KEY}
     >
       <ThemeSyncManager>

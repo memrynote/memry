@@ -18,6 +18,13 @@ describe('SyncedSettingsSchema', () => {
     expect(result.success).toBe(true)
   })
 
+  it('accepts kami in general.theme', () => {
+    const result = SyncedSettingsSchema.safeParse({
+      general: { theme: 'kami', fontSize: 'large' }
+    })
+    expect(result.success).toBe(true)
+  })
+
   it('accepts a general group with partial fields', () => {
     const result = SyncedSettingsSchema.safeParse({
       general: { theme: 'dark', fontSize: 'large' }

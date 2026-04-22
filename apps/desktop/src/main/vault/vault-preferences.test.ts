@@ -40,6 +40,16 @@ describe('VaultPreferencesSchema', () => {
     expect(result).toEqual(input)
   })
 
+  it('#given kami theme #then parses successfully', () => {
+    const input = {
+      ...VAULT_PREFERENCES_DEFAULTS,
+      theme: 'kami' as const
+    }
+
+    const result = VaultPreferencesSchema.parse(input)
+    expect(result.theme).toBe('kami')
+  })
+
   it('#given invalid theme #then throws', () => {
     const input = { ...VAULT_PREFERENCES_DEFAULTS, theme: 'neon' }
     expect(() => VaultPreferencesSchema.parse(input)).toThrow()

@@ -30,6 +30,7 @@ const ACCENT_PRESETS = [
 ] as const
 
 const HEX_COLOR_REGEX = /^#[0-9a-fA-F]{6}$/
+const KAMI_THEME_ACCENT = '#1B365D'
 
 interface SegmentOption {
   value: string
@@ -85,6 +86,7 @@ function SegmentedControl({
 
 const THEME_OPTIONS: SegmentOption[] = [
   { value: 'light', label: 'Warm', icon: Sun },
+  { value: 'kami', label: 'Kami' },
   { value: 'white', label: 'White', icon: FileText },
   { value: 'dark', label: 'Dark', icon: Moon },
   { value: 'system', label: 'System', icon: Monitor }
@@ -99,11 +101,13 @@ const FONT_SIZE_OPTIONS: SegmentOption[] = [
 export function AppearanceSettings() {
   const { settings, isLoading, updateSettings } = useGeneralSettings()
   const [customHex, setCustomHex] = useState('')
+  const isKamiTheme = settings.theme === 'kami'
+  const displayedAccentColor = isKamiTheme ? KAMI_THEME_ACCENT : settings.accentColor
 
   const handleThemeChange = useCallback(
     async (value: string) => {
       if (!value) return
-      const theme = value as 'light' | 'dark' | 'white' | 'system'
+      const theme = value as 'light' | 'dark' | 'white' | 'kami' | 'system'
       const success = await updateSettings({ theme })
       if (!success) toast.error('Failed to update theme')
     },
@@ -176,18 +180,21 @@ export function AppearanceSettings() {
 
       <SettingsGroup label="Accent Color">
         <div className="flex items-center justify-between py-3.5 px-4">
-          <span className="font-medium text-[13px]/4 text-foreground">Pick an accent color</span>
+          <span className="font-medium text-[13px]/4 text-foreground">
+            {isKamiTheme ? 'Kami locks the accent to ink blue' : 'Pick an accent color'}
+          </span>
           <div className="flex items-center shrink-0 gap-2">
             {ACCENT_PRESETS.map((preset) => (
               <button
                 key={preset.value}
                 type="button"
+                disabled={isKamiTheme}
                 onClick={() => void handleAccentChange(preset.value)}
                 className="size-6 rounded-xl shrink-0 transition-all duration-150 cursor-pointer hover:scale-110 focus-visible:outline-none"
                 style={{
                   backgroundColor: preset.value,
                   boxShadow:
-                    settings.accentColor === preset.value
+                    displayedAccentColor === preset.value
                       ? `var(--background) 0px 0px 0px 2px, ${preset.value}80 0px 0px 0px 3.5px`
                       : 'none'
                 }}
@@ -197,18 +204,24 @@ export function AppearanceSettings() {
           </div>
         </div>
 
-        <SettingRow label="Custom Color" description="Enter a hex value">
+        <SettingRow
+          label="Custom Color"
+          description={
+            isKamiTheme ? 'Locked to #1B365D while Kami is active' : 'Enter a hex value'
+          }
+        >
           <div className="flex items-center shrink-0 gap-2">
             <Input
+              disabled={isKamiTheme}
               placeholder="#000000"
-              value={customHex || settings.accentColor}
+              value={customHex || displayedAccentColor}
               onChange={(e) => setCustomHex(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleCustomHexSubmit()}
               onFocus={() => {
-                if (!customHex) setCustomHex(settings.accentColor)
+                if (!customHex) setCustomHex(displayedAccentColor)
               }}
               onBlur={() => {
-                if (customHex === settings.accentColor) setCustomHex('')
+                if (customHex === displayedAccentColor) setCustomHex('')
               }}
               className="w-24 h-7 font-mono text-xs bg-muted/50 border-border"
               maxLength={7}
@@ -216,7 +229,7 @@ export function AppearanceSettings() {
             <div
               className="size-5 rounded-[10px] shrink-0"
               style={{
-                backgroundColor: HEX_COLOR_REGEX.test(customHex) ? customHex : settings.accentColor
+                backgroundColor: HEX_COLOR_REGEX.test(customHex) ? customHex : displayedAccentColor
               }}
             />
           </div>
@@ -233,21 +246,39 @@ export function AppearanceSettings() {
           />
         </SettingRow>
 
-        <SettingRow label="Font Family" description="Primary typeface for the interface">
-          <Select value={settings.fontFamily} onValueChange={handleFontFamilyChange}>
-            <SelectTrigger className={COMPACT_SELECT}>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="system">System Default</SelectItem>
-              <SelectItem value="sans-serif">Sans-serif</SelectItem>
-              <SelectItem value="serif">Serif (Crimson Pro)</SelectItem>
-              <SelectItem value="gelasio">Gelasio</SelectItem>
-              <SelectItem value="geist">Geist</SelectItem>
-              <SelectItem value="inter">Inter</SelectItem>
-              <SelectItem value="monospace">Monospace</SelectItem>
-            </SelectContent>
-          </Select>
+        <SettingRow
+          label="Font Family"
+          description={
+            isKamiTheme
+              ? 'Kami uses Newsreader for reading surfaces and Inter for UI'
+              : 'Primary typeface for the interface'
+          }
+        >
+          {isKamiTheme ? (
+            <div
+              className={cn(
+                COMPACT_SELECT,
+                'flex items-center shrink-0 text-muted-foreground cursor-default'
+              )}
+            >
+              Newsreader + Inter
+            </div>
+          ) : (
+            <Select value={settings.fontFamily} onValueChange={handleFontFamilyChange}>
+              <SelectTrigger className={COMPACT_SELECT}>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="system">System Default</SelectItem>
+                <SelectItem value="sans-serif">Sans-serif</SelectItem>
+                <SelectItem value="serif">Serif (Crimson Pro)</SelectItem>
+                <SelectItem value="gelasio">Gelasio</SelectItem>
+                <SelectItem value="geist">Geist</SelectItem>
+                <SelectItem value="inter">Inter</SelectItem>
+                <SelectItem value="monospace">Monospace</SelectItem>
+              </SelectContent>
+            </Select>
+          )}
         </SettingRow>
       </SettingsGroup>
     </div>

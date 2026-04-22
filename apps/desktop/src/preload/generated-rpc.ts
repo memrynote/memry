@@ -196,8 +196,9 @@ export function createGeneratedRpcApi({
           | 'light'
           | 'dark'
           | 'white'
+          | 'kami'
           | 'system'
-          | { theme?: 'light' | 'dark' | 'white' | 'system' }
+          | { theme?: 'light' | 'dark' | 'white' | 'kami' | 'system' }
           | null
           | undefined
         return typeof raw === 'string' ? raw : raw?.theme ?? 'system'

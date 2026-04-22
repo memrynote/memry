@@ -86,6 +86,9 @@ importers:
       '@emoji-mart/react':
         specifier: ^1.1.1
         version: 1.1.1(emoji-mart@5.6.0)(react@19.2.4)
+      '@fontsource/newsreader':
+        specifier: ^5.2.10
+        version: 5.2.10
       '@handlewithcare/prosemirror-inputrules':
         specifier: ^0.1.4
         version: 0.1.4(prosemirror-model@1.25.4)(prosemirror-state@1.4.4)(prosemirror-view@1.41.6)
@@ -1827,6 +1830,9 @@ packages:
 
   '@fontsource/gelasio@5.2.8':
     resolution: {integrity: sha512-2IzFnu2+bGPDXtO8KOy9b7BGIBIO/2BD8j8LoopeXhO6jDYXTE8FVG8pGlW5k+gHrmczBV4wukH4R2HB+VLhog==}
+
+  '@fontsource/newsreader@5.2.10':
+    resolution: {integrity: sha512-TFaYzoFhDqarUyV2yYjgZZEwT4bpaj6sGBnXSnFknQ/QB8/9LzfY6IO9+inHOX4zzPp87Z7/KuG1OI5gr91Q3A==}
 
   '@handlewithcare/prosemirror-inputrules@0.1.4':
     resolution: {integrity: sha512-GMqlBeG2MKM+tXEFd2N+wIv5z4VvJTg8JtfJUrdjvFq2W6v+AW8oTgiWyFw8L3iEQwvtQcVJxU873iB0LXUNNw==}
@@ -10049,6 +10055,8 @@ snapshots:
   '@fontsource-variable/space-grotesk@5.2.10': {}
 
   '@fontsource/gelasio@5.2.8': {}
+
+  '@fontsource/newsreader@5.2.10': {}
 
   '@handlewithcare/prosemirror-inputrules@0.1.4(prosemirror-model@1.25.4)(prosemirror-state@1.4.4)(prosemirror-view@1.41.6)':
     dependencies:

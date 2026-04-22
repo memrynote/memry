@@ -69,4 +69,30 @@ describe('useThemeSync', () => {
       'Crimson Pro Variable'
     )
   })
+
+  it('locks accent and typography to kami theme tokens', () => {
+    vi.mocked(useGeneralSettings).mockReturnValue({
+      settings: {
+        ...defaultSettings,
+        theme: 'kami',
+        fontFamily: 'geist',
+        accentColor: '#123456'
+      },
+      isLoading: false,
+      error: null,
+      updateSettings: vi.fn()
+    })
+
+    renderHook(() => useThemeSync())
+
+    expect(setTheme).toHaveBeenCalledWith('kami')
+    expect(document.documentElement.style.getPropertyValue('--user-accent-color')).toBe('#1B365D')
+    expect(document.documentElement.style.getPropertyValue('--font-sans')).toContain(
+      'Inter Variable'
+    )
+    expect(document.documentElement.style.getPropertyValue('--font-serif')).toContain('Newsreader')
+    expect(document.documentElement.style.getPropertyValue('--app-body-font')).toContain(
+      'Newsreader'
+    )
+  })
 })

@@ -1,12 +1,18 @@
 import { ipcRenderer } from 'electron'
 import { SettingsChannels } from '@memry/contracts/ipc-channels'
 
-export type StartupTheme = 'light' | 'dark' | 'white' | 'system'
+export type StartupTheme = 'light' | 'dark' | 'white' | 'kami' | 'system'
 
 export const THEME_STORAGE_KEY = 'memry-theme'
 
 function isStartupTheme(value: unknown): value is StartupTheme {
-  return value === 'light' || value === 'dark' || value === 'white' || value === 'system'
+  return (
+    value === 'light' ||
+    value === 'dark' ||
+    value === 'white' ||
+    value === 'kami' ||
+    value === 'system'
+  )
 }
 
 export function getStartupThemeSync(): StartupTheme {
@@ -36,7 +42,7 @@ export function getStartupThemeSync(): StartupTheme {
   return 'system'
 }
 
-function resolveStartupTheme(theme: StartupTheme): 'light' | 'dark' | 'white' {
+function resolveStartupTheme(theme: StartupTheme): 'light' | 'dark' | 'white' | 'kami' {
   if (theme === 'system') {
     return typeof globalThis.window !== 'undefined' &&
       typeof window.matchMedia === 'function' &&
@@ -54,9 +60,10 @@ export function applyStartupTheme(savedTheme: StartupTheme): void {
     const root = document.documentElement
     if (!root) return false
 
-    root.classList.remove('dark', 'white')
+    root.classList.remove('dark', 'white', 'kami')
     if (resolvedTheme === 'dark') root.classList.add('dark')
     if (resolvedTheme === 'white') root.classList.add('white')
+    if (resolvedTheme === 'kami') root.classList.add('kami')
     root.style.colorScheme = resolvedTheme === 'dark' ? 'dark' : 'light'
     return true
   }

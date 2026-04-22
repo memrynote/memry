@@ -43,6 +43,14 @@ describe('GeneralSettingsSchema', () => {
     expect(result.success).toBe(true)
   })
 
+  it('accepts the kami theme', () => {
+    const result = GeneralSettingsSchema.safeParse({
+      ...GENERAL_SETTINGS_DEFAULTS,
+      theme: 'kami'
+    })
+    expect(result.success).toBe(true)
+  })
+
   it('accepts a custom accent color with 6-digit hex', () => {
     const result = GeneralSettingsSchema.safeParse({
       ...GENERAL_SETTINGS_DEFAULTS,

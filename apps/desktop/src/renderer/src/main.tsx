@@ -8,6 +8,8 @@ import '@fontsource/gelasio'
 import '@fontsource/gelasio/400-italic.css'
 import '@fontsource/gelasio/700.css'
 import '@fontsource/gelasio/700-italic.css'
+import '@fontsource/newsreader/400.css'
+import '@fontsource/newsreader/500.css'
 import '@fontsource-variable/jetbrains-mono'
 import '@fontsource-variable/playfair-display'
 import '@fontsource-variable/playfair-display/wght-italic.css'
@@ -52,6 +54,7 @@ try {
     cached !== 'light' &&
     cached !== 'dark' &&
     cached !== 'white' &&
+    cached !== 'kami' &&
     cached !== 'system'
   ) {
     window.localStorage.removeItem(THEME_STORAGE_KEY)
@@ -74,7 +77,7 @@ const RootComponent = isQuickCaptureWindow ? (
         attribute="class"
         defaultTheme={startupTheme}
         enableSystem
-        themes={['light', 'dark', 'white', 'system']}
+        themes={['light', 'dark', 'white', 'kami', 'system']}
         storageKey={THEME_STORAGE_KEY}
       >
         <QuickCapture />
