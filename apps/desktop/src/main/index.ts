@@ -266,10 +266,23 @@ function createWindow(): void {
     }
   })
 
+  const showMainWindow = (reason: string): void => {
+    if (mainWindow.isDestroyed() || mainWindow.isVisible()) return
+    mainLog.info('showing main window', { reason, url: mainWindow.webContents.getURL() })
+    mainWindow.show()
+  }
+
+  mainLog.info('created main window', {
+    packaged: app.isPackaged,
+    dev: is.dev,
+    preload: join(__dirname, '../preload/index.js')
+  })
+
   mainWindow.on('ready-to-show', () => {
     // Zoom out once (equivalent to Cmd+-)
     // mainWindow.webContents.setZoomLevel(-0.8)
-    mainWindow.show()
+    mainLog.info('main window ready-to-show')
+    showMainWindow('ready-to-show')
     // mainWindow.webContents.openDevTools()
   })
 
@@ -277,17 +290,65 @@ function createWindow(): void {
     triggerGoogleCalendarSyncNow('window-focus')
   })
 
+  mainWindow.on('show', () => {
+    mainLog.info('main window shown')
+  })
+
+  mainWindow.on('closed', () => {
+    mainLog.info('main window closed')
+  })
+
   mainWindow.webContents.setWindowOpenHandler((details) => {
     void shell.openExternal(details.url)
     return { action: 'deny' }
   })
 
+  mainWindow.webContents.on('did-finish-load', () => {
+    mainLog.info('main window did-finish-load', { url: mainWindow.webContents.getURL() })
+    showMainWindow('did-finish-load')
+  })
+
+  mainWindow.webContents.on(
+    'did-fail-load',
+    (_event, errorCode, errorDescription, validatedURL, isMainFrame) => {
+      mainLog.error('main window did-fail-load', {
+        errorCode,
+        errorDescription,
+        validatedURL,
+        isMainFrame
+      })
+    }
+  )
+
+  mainWindow.webContents.on('render-process-gone', (_event, details) => {
+    mainLog.error('main window render-process-gone', details)
+  })
+
+  const showFallbackTimer = setTimeout(() => {
+    if (mainWindow.isDestroyed() || mainWindow.isVisible()) return
+    mainLog.warn('main window still hidden after startup timeout', {
+      url: mainWindow.webContents.getURL()
+    })
+    showMainWindow('startup-timeout')
+  }, 5000)
+
+  mainWindow.once('show', () => {
+    clearTimeout(showFallbackTimer)
+  })
+
+  mainWindow.once('closed', () => {
+    clearTimeout(showFallbackTimer)
+  })
+
   // HMR for renderer base on electron-vite cli.
   // Load the remote URL for development or the local html file for production.
   if (is.dev && process.env['ELECTRON_RENDERER_URL']) {
+    mainLog.info('loading main window URL', { url: process.env['ELECTRON_RENDERER_URL'] })
     void mainWindow.loadURL(process.env['ELECTRON_RENDERER_URL'])
   } else {
-    void mainWindow.loadFile(join(__dirname, '../renderer/index.html'))
+    const rendererPath = join(__dirname, '../renderer/index.html')
+    mainLog.info('loading main window file', { path: rendererPath })
+    void mainWindow.loadFile(rendererPath)
   }
 }
 
