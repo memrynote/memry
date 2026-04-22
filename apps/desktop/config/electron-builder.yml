@@ -1,5 +1,6 @@
-appId: com.electron.app
+appId: com.memrynote.memry
 productName: memry
+electronUpdaterCompatibility: '>=2.16'
 directories:
   buildResources: build
 files:
@@ -15,32 +16,33 @@ asarUnpack:
 win:
   executableName: memry
 nsis:
-  artifactName: ${name}-${version}-setup.${ext}
+  artifactName: memry-${version}-setup.${ext}
   shortcutName: ${productName}
   uninstallDisplayName: ${productName}
   createDesktopShortcut: always
 mac:
+  artifactName: memry-${version}-${arch}.${ext}
   entitlementsInherit: build/entitlements.mac.plist
   extendInfo:
     - NSCameraUsageDescription: Application requests access to the device's camera.
     - NSMicrophoneUsageDescription: Application requests access to the device's microphone.
     - NSDocumentsFolderUsageDescription: Application requests access to the user's Documents folder.
     - NSDownloadsFolderUsageDescription: Application requests access to the user's Downloads folder.
-  notarize: false
-dmg:
-  artifactName: ${name}-${version}.${ext}
+  notarize: true
 linux:
   target:
     - AppImage
-    - snap
     - deb
   maintainer: electronjs.org
   category: Utility
 appImage:
-  artifactName: ${name}-${version}.${ext}
+  artifactName: memry-${version}.${ext}
 npmRebuild: false
 publish:
-  provider: generic
-  url: https://example.com/auto-updates
+  provider: github
+  owner: memrynote
+  repo: memry
+  releaseType: release
+  tagNamePrefix: ''
 electronDownload:
   mirror: https://npmmirror.com/mirrors/electron/

@@ -1,3 +1,6 @@
-provider: generic
-url: https://example.com/auto-updates
+provider: github
+owner: memrynote
+repo: memry
+releaseType: release
+tagNamePrefix: ''
 updaterCacheDirName: memry-updater

@@ -319,6 +319,10 @@ export interface MainIpcInvokeHandlers {
   "templates:get": (...args: [string]) => Awaited<Promise<import("../../../../../packages/contracts/src/templates-api").Template | null>>
   "templates:list": (...args: []) => Awaited<Promise<{ templates: import("../../../../../packages/contracts/src/templates-api").TemplateListItem[]; }>>
   "templates:update": (...args: [{ id: string; name?: string | undefined; description?: string | undefined; icon?: string | null | undefined; tags?: string[] | undefined; properties?: { name: string; type: "number" | "date" | "text" | "select" | "checkbox" | "url" | "multiselect" | "rating"; value: unknown; options?: string[] | undefined; }[] | undefined; content?: string | undefined; }]) => Awaited<Promise<{ success: false; error: string; } | { success: boolean; template: import("../../../../../packages/contracts/src/templates-api").Template; }>>
+  "updater:check-for-updates": (...args: []) => Awaited<Promise<import("../../../../../packages/contracts/src/ipc-updater").AppUpdateState>>
+  "updater:download-update": (...args: []) => Awaited<Promise<import("../../../../../packages/contracts/src/ipc-updater").AppUpdateState>>
+  "updater:get-state": (...args: []) => Awaited<import("../../../../../packages/contracts/src/ipc-updater").AppUpdateState>
+  "updater:quit-and-install": (...args: []) => Awaited<void>
   "vault:close": (...args: []) => Awaited<Promise<void>>
   "vault:get-all": (...args: []) => Awaited<Promise<import("../../../../../packages/contracts/src/vault-api").GetVaultsResponse>>
   "vault:get-config": (...args: []) => Awaited<Promise<import("../../../../../packages/contracts/src/vault-api").VaultConfig>>
