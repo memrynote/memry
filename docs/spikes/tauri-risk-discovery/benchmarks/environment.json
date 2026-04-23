@@ -1,0 +1,21 @@
+{
+  "timestamp": "2026-04-23T21:26:11.499Z",
+  "os": {
+    "platform": "darwin",
+    "arch": "arm64",
+    "release": "25.4.0",
+    "cpuModel": "Apple M1 Pro"
+  },
+  "runtimes": {
+    "node": "v24.12.0",
+    "rust": "rustc 1.84.1 (e71f9a9a9 2025-01-27)",
+    "cargo": "cargo 1.84.1 (66221abde 2024-11-19)",
+    "tauri_cli": null
+  },
+  "libraries": {
+    "yjs": "",
+    "yrs": null,
+    "tauri_core": null,
+    "blocknote_core": ""
+  }
+}
