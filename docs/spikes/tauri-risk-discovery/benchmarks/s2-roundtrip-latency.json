@@ -1,0 +1,109 @@
+{
+  "schema_version": 1,
+  "spike": "s2-yjs-placement",
+  "benchmark": "roundtrip-latency",
+  "timestamp": "2026-04-24T02:30:00Z",
+  "environment": {
+    "os": "macOS 25.4.0 (darwin arm64, Apple M1 Pro)",
+    "node": "24.12.0",
+    "rust": "1.95.0",
+    "tauri": "2.10.3",
+    "yrs": "0.21.3",
+    "yjs": "13.6.29",
+    "blocknote": "0.47.1",
+    "playwright": "1.58.2"
+  },
+  "runs": [
+    {
+      "prototype": "A",
+      "test": "typing-latency",
+      "harness": "playwright-webkit-vite-only",
+      "note": "Runs against Vite HMR only (no Tauri runtime). Measures renderer-side cost: y-prosemirror → shadow Y.Doc → invoke call path; invoke() silent-fails under Playwright so Rust IPC cost NOT captured.",
+      "samples_count": 504,
+      "p50": 2.59,
+      "p95": 4.15,
+      "min": 1.73,
+      "max": 35.06,
+      "unit": "ms"
+    },
+    {
+      "prototype": "B",
+      "test": "typing-latency",
+      "harness": "playwright-webkit-vite-only",
+      "note": "Same harness as A. B adds shadow Y.Doc + event listener wiring but invoke() still silent-fails. Delta A→B ≈ listener setup + origin-tag handler cost only.",
+      "samples_count": 504,
+      "p50": 2.80,
+      "p95": 4.93,
+      "min": 1.83,
+      "max": 24.38,
+      "unit": "ms"
+    }
+  ],
+  "test_matrix_results": [
+    {
+      "test": "1-proto-b-smoke",
+      "method": "playwright",
+      "prototype": "B",
+      "status": "pass",
+      "duration_ms": 1700,
+      "notes": "Renderer + shadow Y.Doc + listener mounts and accepts text. Rust IPC not exercised."
+    },
+    {
+      "test": "2-yjs-hello-world-to-yrs",
+      "method": "cargo test",
+      "prototype": "B",
+      "status": "pass",
+      "notes": "Yjs-emitted v1 update decodes + applies in yrs; text matches."
+    },
+    {
+      "test": "2b-yjs-edit-sequence-to-yrs",
+      "method": "cargo test",
+      "prototype": "B",
+      "status": "pass",
+      "notes": "Yjs insert/delete/insert sequence decodes correctly in yrs."
+    },
+    {
+      "test": "3-yrs-greeting-to-yjs",
+      "method": "vitest",
+      "prototype": "B",
+      "status": "pass",
+      "notes": "yrs-emitted v1 update decodes in Y.Doc; text matches."
+    },
+    {
+      "test": "4-yjs-yjs-merge-control",
+      "method": "vitest",
+      "prototype": "both",
+      "status": "pass",
+      "notes": "Two Y.Docs with concurrent edits converge deterministically. Baseline for 5."
+    },
+    {
+      "test": "5-rust-sequential",
+      "method": "cargo test",
+      "prototype": "B",
+      "status": "pass",
+      "notes": "yrs applies yjs_a (alpha_) then inserts own beta_; both contributions present."
+    },
+    {
+      "test": "5b-rust-concurrent",
+      "method": "cargo test",
+      "prototype": "B",
+      "status": "pass",
+      "notes": "yrs concurrently merges yjs_a (client 1111) + yrs_b (client 2222); both contributions present."
+    },
+    {
+      "test": "5c-node-converged-decodes",
+      "method": "vitest",
+      "prototype": "B",
+      "status": "pass",
+      "notes": "yrs-side concurrent-merged state decodes in Y.Doc; text == yrs side recorded."
+    },
+    {
+      "test": "5d-cross-library-convergence",
+      "method": "vitest",
+      "prototype": "B",
+      "status": "pass",
+      "notes": "KEY PROOF: Yjs-side concurrent merge of (yjs_a + yrs_b) yields IDENTICAL text to yrs-side merge. yrs is byte-compatible with Yjs wire format for concurrent merge semantics."
+    }
+  ],
+  "notes": "Scope (a) compressed test suite — 6 critical tests + 3 derived assertions. See s2-yjs-placement.md for qualitative observations. Under-test IPC latency for Proto B requires manual Tauri runtime measurement (CHECKPOINT 2 Kaan)."
+}
