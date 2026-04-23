@@ -1,0 +1,230 @@
+<h2>Subtask in Notes — Full Interaction Flow</h2>
+<p class="subtitle">Complete walkthrough of creation, rendering, and edge cases</p>
+
+<style>
+  .flow-section {
+    margin: 24px 0;
+    padding: 20px 24px;
+    background: rgba(255,255,255,0.03);
+    border-radius: 10px;
+    border: 1px solid rgba(255,255,255,0.06);
+  }
+  .flow-section h3 {
+    margin: 0 0 6px; font-size: 15px; color: #e4e4e7;
+  }
+  .flow-section .desc {
+    font-size: 13px; color: #a1a1aa; margin: 0 0 16px; line-height: 1.5;
+  }
+  .note-mock {
+    background: #1a1a1e; border-radius: 10px; padding: 20px 28px;
+    font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+    color: #e4e4e7; font-size: 13px;
+    border: 1px solid #27272a; margin: 8px 0;
+  }
+  .note-line { padding: 3px 0; color: #a1a1aa; font-size: 13px; line-height: 1.6; }
+  .task-row {
+    display: flex; align-items: center; gap: 10px;
+    padding: 7px 12px; border-radius: 6px;
+    background: #27272a; margin: 5px 0;
+  }
+  .subtask-row {
+    display: flex; align-items: center; gap: 10px;
+    padding: 7px 12px; border-radius: 6px;
+    background: #27272a; margin: 3px 0 3px 28px;
+  }
+  .status-icon {
+    width: 16px; height: 16px; border-radius: 50%;
+    border: 2px dashed #71717a; flex-shrink: 0; box-sizing: border-box;
+  }
+  .status-icon.done {
+    border: none; background: #22c55e; position: relative;
+  }
+  .status-icon.done::after {
+    content: '✓'; color: #fff; font-size: 10px;
+    position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+  }
+  .priority-bars { display: flex; gap: 1.5px; align-items: flex-end; flex-shrink: 0; }
+  .priority-bar { width: 3px; border-radius: 1px; }
+  .priority-bar.filled { background: #f97316; }
+  .priority-bar.empty { background: #3f3f46; }
+  .task-title { flex: 1; font-weight: 500; color: rgba(228,228,231,0.9); }
+  .task-title.completed { text-decoration: line-through; color: rgba(161,161,170,0.6); }
+  .project-badge {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 500;
+  }
+  .due-date { font-size: 11px; color: #71717a; white-space: nowrap; }
+  .arrow-icon { color: #52525b; font-size: 12px; }
+  .project-dot { width: 6px; height: 6px; border-radius: 2px; }
+
+  /* Step indicators */
+  .step-badge {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 22px; height: 22px; border-radius: 50%;
+    background: #3b82f6; color: #fff; font-size: 11px; font-weight: 700;
+    margin-right: 8px; flex-shrink: 0;
+  }
+  .step-row { display: flex; align-items: flex-start; margin: 10px 0; }
+  .step-text { font-size: 13px; color: #d4d4d8; line-height: 1.5; }
+  .step-text code {
+    background: rgba(59,130,246,0.15); color: #93c5fd;
+    padding: 1px 6px; border-radius: 3px; font-size: 12px;
+  }
+
+  /* Cursor blink */
+  .cursor {
+    display: inline-block; width: 2px; height: 14px;
+    background: #3b82f6; margin-left: 2px;
+    animation: blink 1s step-end infinite; vertical-align: text-bottom;
+  }
+  @keyframes blink { 50% { opacity: 0; } }
+
+  /* Typing indicator */
+  .typing-text { color: rgba(228,228,231,0.5); font-style: italic; }
+
+  .divider {
+    height: 1px; background: rgba(255,255,255,0.06);
+    margin: 24px 0;
+  }
+
+  .behavior-grid {
+    display: grid; grid-template-columns: 1fr 1fr;
+    gap: 12px; margin-top: 12px;
+  }
+  .behavior-card {
+    background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 8px; padding: 14px 16px;
+  }
+  .behavior-card h4 { margin: 0 0 6px; font-size: 13px; color: #e4e4e7; }
+  .behavior-card p { margin: 0; font-size: 12px; color: #a1a1aa; line-height: 1.5; }
+  .behavior-card .kbd {
+    display: inline-block; padding: 1px 6px; border-radius: 3px;
+    background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.12);
+    font-size: 11px; font-family: monospace; color: #d4d4d8;
+  }
+</style>
+
+<!-- STEP 1: Creation -->
+<div class="flow-section">
+  <h3>1. Creation — Indent + Checkbox</h3>
+  <p class="desc">User places cursor after a task block, presses <strong>Enter</strong> then <strong>Tab</strong>, types a checklist item.</p>
+
+  <div class="note-mock">
+    <div class="note-line">Planning tomorrow's errands...</div>
+    <div class="task-row">
+      <div class="status-icon"></div>
+      <div class="priority-bars">
+        <div class="priority-bar filled" style="height:6px"></div>
+        <div class="priority-bar filled" style="height:9px"></div>
+        <div class="priority-bar empty" style="height:12px"></div>
+      </div>
+      <div class="task-title">Grocery shopping</div>
+      <div class="project-badge" style="background:rgba(59,130,246,0.08); color:#60a5fa;">
+        <div class="project-dot" style="background:#3b82f6;"></div>Errands
+      </div>
+      <div class="arrow-icon">↗</div>
+    </div>
+    <!-- User is typing a subtask -->
+    <div class="subtask-row" style="opacity: 0.7; border: 1px dashed #3b82f6; background: rgba(59,130,246,0.05);">
+      <div class="status-icon"></div>
+      <div class="task-title"><span class="typing-text">Buy milk</span><span class="cursor"></span></div>
+    </div>
+    <div class="note-line" style="margin-top: 6px; font-size: 11px; color: #3b82f6;">↳ Will be added as subtask of "Grocery shopping"</div>
+  </div>
+
+  <div style="margin-top: 12px;">
+    <div class="step-row"><div class="step-badge">1</div><div class="step-text">Cursor is after the task block → press <code>Enter</code></div></div>
+    <div class="step-row"><div class="step-badge">2</div><div class="step-text">Press <code>Tab</code> to indent (signals: "this is a child")</div></div>
+    <div class="step-row"><div class="step-badge">3</div><div class="step-text">Type <code>[] Buy milk</code> — editor detects indented checklist under a task block</div></div>
+    <div class="step-row"><div class="step-badge">4</div><div class="step-text">On <code>Enter</code> or blur: creates Task in DB with <code>parentId</code> set, renders as full task row</div></div>
+  </div>
+</div>
+
+<!-- STEP 2: Result -->
+<div class="flow-section">
+  <h3>2. Result — Rendered State</h3>
+  <p class="desc">After creation, subtasks render as full task rows indented under the parent. Each subtask is a real Task entity in the database.</p>
+
+  <div class="note-mock">
+    <div class="note-line">Planning tomorrow's errands...</div>
+    <div class="task-row">
+      <div class="status-icon"></div>
+      <div class="priority-bars">
+        <div class="priority-bar filled" style="height:6px"></div>
+        <div class="priority-bar filled" style="height:9px"></div>
+        <div class="priority-bar empty" style="height:12px"></div>
+      </div>
+      <div class="task-title">Grocery shopping</div>
+      <div class="project-badge" style="background:rgba(59,130,246,0.08); color:#60a5fa;">
+        <div class="project-dot" style="background:#3b82f6;"></div>Errands
+      </div>
+      <div class="arrow-icon">↗</div>
+    </div>
+    <div class="subtask-row">
+      <div class="status-icon done"></div>
+      <div class="task-title completed">Buy milk</div>
+      <div class="arrow-icon">↗</div>
+    </div>
+    <div class="subtask-row">
+      <div class="status-icon"></div>
+      <div class="task-title">Get vegetables</div>
+      <div class="arrow-icon">↗</div>
+    </div>
+    <div class="subtask-row">
+      <div class="status-icon"></div>
+      <div class="task-title">Pick up bread</div>
+      <div class="arrow-icon">↗</div>
+    </div>
+    <div class="note-line" style="margin-top:8px;">Also check the pharmacy schedule for pickup times.</div>
+  </div>
+</div>
+
+<!-- STEP 3: Behaviors -->
+<div class="flow-section">
+  <h3>3. Key Behaviors</h3>
+  <p class="desc">Edge cases and interactions.</p>
+
+  <div class="behavior-grid">
+    <div class="behavior-card">
+      <h4>⌨️ Un-indent (<span class="kbd">Shift+Tab</span>)</h4>
+      <p>Subtask promotes to standalone task block. <code>parentId → null</code>. Renders at same level as parent.</p>
+    </div>
+    <div class="behavior-card">
+      <h4>🔗 Inheritance</h4>
+      <p>Subtask auto-inherits <strong>projectId</strong> from parent. Priority defaults to <code>none</code> (user sets if needed).</p>
+    </div>
+    <div class="behavior-card">
+      <h4>🚫 Depth Limit</h4>
+      <p>Only 1 level. <code>Tab</code> under a subtask row is a no-op — prevents infinite nesting.</p>
+    </div>
+    <div class="behavior-card">
+      <h4>📝 Markdown Format</h4>
+      <p>Serialized as indented checkbox:<br><code>&nbsp;&nbsp;- [ ] text {task:id}</code><br>Same <code>{task:id}</code> suffix pattern.</p>
+    </div>
+    <div class="behavior-card">
+      <h4>↗️ Navigate Arrow</h4>
+      <p>Each subtask row has the same <code>↗</code> button. Opens subtask in Tasks panel with full detail view.</p>
+    </div>
+    <div class="behavior-card">
+      <h4>🔄 Sync</h4>
+      <p>Subtask is a regular Task entity. Syncs via existing SyncItemHandler. Field clocks work as-is.</p>
+    </div>
+  </div>
+</div>
+
+<div class="options">
+  <div class="option" data-choice="approve" onclick="toggleSelect(this)">
+    <div class="letter">✓</div>
+    <div class="content">
+      <h3>Looks Good — Proceed to Full Design</h3>
+      <p>This flow captures what I want. Let's detail it out.</p>
+    </div>
+  </div>
+  <div class="option" data-choice="revise" onclick="toggleSelect(this)">
+    <div class="letter">✎</div>
+    <div class="content">
+      <h3>Needs Changes</h3>
+      <p>I want to adjust some behaviors or the visual treatment.</p>
+    </div>
+  </div>
+</div>

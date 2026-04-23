@@ -1,0 +1,125 @@
+<h2>Journal Focused View — Component Architecture</h2>
+<p class="subtitle">New page: journal-focused.tsx — reuses existing hooks, owns its own layout</p>
+
+<div class="mockup" style="margin-top:16px">
+  <div class="mockup-header">Component Tree</div>
+  <div class="mockup-body" style="padding:24px;font-size:13px;line-height:1.6;font-family:monospace;background:#141414;color:#ccc">
+    <div>
+      <span style="color:#7c6aef">JournalFocusedPage</span>
+      <span style="color:#555"> ─── new page component</span>
+    </div>
+    <div style="padding-left:20px;margin-top:4px">
+      <span style="color:#666">├─</span> <span style="color:#e8a84e">FocusedDateNav</span>
+      <span style="color:#555"> ─── compact inline: ‹ Tue, Mar 25 › (no big display)</span>
+    </div>
+    <div style="padding-left:20px;margin-top:2px">
+      <span style="color:#666">├─</span> <span style="color:#e8a84e">FocusedEditor</span>
+      <span style="color:#555"> ─── centered column, reuses JournalEditor internals</span>
+    </div>
+    <div style="padding-left:20px;margin-top:2px">
+      <span style="color:#666">├─</span> <span style="color:#e8a84e">PanelIconStrip</span>
+      <span style="color:#555"> ─── right edge: calendar │ tasks │ AI icons</span>
+    </div>
+    <div style="padding-left:20px;margin-top:2px">
+      <span style="color:#666">└─</span> <span style="color:#e8a84e">FocusedSidePanel</span>
+      <span style="color:#555"> ─── push panel, renders active panel content</span>
+    </div>
+    <div style="padding-left:44px;margin-top:2px">
+      <span style="color:#666">├─</span> <span style="color:#57a86a">SchedulePanel</span>
+      <span style="color:#555"> ─── reuses DayContextSidebar schedule section</span>
+    </div>
+    <div style="padding-left:44px;margin-top:2px">
+      <span style="color:#666">├─</span> <span style="color:#57a86a">TasksPanel</span>
+      <span style="color:#555"> ─── reuses DayContextSidebar tasks section</span>
+    </div>
+    <div style="padding-left:44px;margin-top:2px">
+      <span style="color:#666">└─</span> <span style="color:#57a86a">ConnectionsPanel</span>
+      <span style="color:#555"> ─── reuses AIConnectionsPanel</span>
+    </div>
+
+    <div style="margin-top:20px;padding-top:16px;border-top:1px solid #252525">
+      <div style="color:#888;font-size:11px;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px">Shared Hooks (no duplication)</div>
+      <div><span style="color:#666">•</span> <span style="color:#4ea8e8">useJournalEntry(date)</span> <span style="color:#555">— load/save entry</span></div>
+      <div><span style="color:#666">•</span> <span style="color:#4ea8e8">useDayContext(date)</span> <span style="color:#555">— tasks + overdue for day</span></div>
+      <div><span style="color:#666">•</span> <span style="color:#4ea8e8">useAIConnections(entry)</span> <span style="color:#555">— semantic matches</span></div>
+      <div><span style="color:#666">•</span> <span style="color:#4ea8e8">useJournalNavigation()</span> <span style="color:#555">— date prev/next/today</span></div>
+    </div>
+  </div>
+</div>
+
+<div style="margin-top:24px">
+  <h3>Layout Behavior</h3>
+  <div class="mockup" style="margin-top:8px">
+    <div class="mockup-header">Default State — No panel open</div>
+    <div class="mockup-body" style="display:flex;min-height:260px;font-size:12px;background:#1a1a1a">
+      <div style="flex:1;display:flex;flex-direction:column;align-items:center;padding:32px">
+        <div style="width:100%;max-width:680px">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:24px">
+            <span style="color:#555;cursor:pointer;font-size:11px">‹</span>
+            <span style="color:#e8e8e8;font-weight:600;font-size:15px">Tuesday, March 25</span>
+            <span style="color:#555;cursor:pointer;font-size:11px">›</span>
+            <span style="color:#444;font-size:11px;margin-left:4px">2026</span>
+          </div>
+          <div style="color:#888;line-height:1.8">
+            <div style="color:#ccc">Had a productive morning working on the sync engine...</div>
+            <div style="margin-top:6px;color:#666">The field-level merge is finally clicking.</div>
+          </div>
+        </div>
+      </div>
+      <div style="width:36px;background:#141414;border-left:1px solid #252525;display:flex;flex-direction:column;align-items:center;padding-top:32px;gap:14px">
+        <div style="width:20px;height:20px;border-radius:4px;background:#252525;display:flex;align-items:center;justify-content:center;font-size:10px;cursor:pointer" title="Schedule">📅</div>
+        <div style="width:20px;height:20px;border-radius:4px;background:#252525;display:flex;align-items:center;justify-content:center;font-size:10px;cursor:pointer" title="Tasks">☑️</div>
+        <div style="width:20px;height:20px;border-radius:4px;background:#252525;display:flex;align-items:center;justify-content:center;font-size:10px;cursor:pointer" title="AI">✨</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="mockup" style="margin-top:12px">
+    <div class="mockup-header">Panel Open — Tasks pushed in</div>
+    <div class="mockup-body" style="display:flex;min-height:260px;font-size:12px;background:#1a1a1a">
+      <div style="flex:1;display:flex;flex-direction:column;align-items:center;padding:32px">
+        <div style="width:100%;max-width:560px">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:24px">
+            <span style="color:#555;cursor:pointer;font-size:11px">‹</span>
+            <span style="color:#e8e8e8;font-weight:600;font-size:15px">Tuesday, March 25</span>
+            <span style="color:#555;cursor:pointer;font-size:11px">›</span>
+          </div>
+          <div style="color:#888;line-height:1.8">
+            <div style="color:#ccc">Had a productive morning...</div>
+            <div style="margin-top:6px;color:#666">The field-level merge is...</div>
+          </div>
+        </div>
+      </div>
+      <div style="width:280px;background:#151515;border-left:1px solid #252525;display:flex;flex-direction:column">
+        <div style="padding:14px 16px;border-bottom:1px solid #222;display:flex;justify-content:space-between;align-items:center">
+          <span style="font-size:12px;font-weight:600;color:#e8e8e8">Today's Tasks</span>
+          <span style="color:#555;cursor:pointer;font-size:11px">✕</span>
+        </div>
+        <div style="padding:8px 12px">
+          <div style="padding:8px;border-radius:6px;background:#1c1c1c;margin-bottom:6px;display:flex;align-items:center;gap:8px">
+            <div style="width:14px;height:14px;border-radius:3px;border:1.5px solid #e8a84e"></div>
+            <span style="color:#ccc;font-size:12px">Fix CRDT snapshot push</span>
+            <span style="margin-left:auto;font-size:9px;background:#3d2e0a;color:#e8a84e;padding:1px 6px;border-radius:3px">high</span>
+          </div>
+          <div style="padding:8px;border-radius:6px;background:#1c1c1c;margin-bottom:6px;display:flex;align-items:center;gap:8px">
+            <div style="width:14px;height:14px;border-radius:3px;border:1.5px solid #57a86a"></div>
+            <span style="color:#ccc;font-size:12px">Review PR #112</span>
+            <span style="margin-left:auto;font-size:9px;background:#1a2e1a;color:#57a86a;padding:1px 6px;border-radius:3px">medium</span>
+          </div>
+          <div style="padding:8px;border-radius:6px;background:#1c1c1c;display:flex;align-items:center;gap:8px">
+            <div style="width:14px;height:14px;border-radius:3px;border:1.5px solid #555"></div>
+            <span style="color:#888;font-size:12px">Update CHANGELOG</span>
+          </div>
+        </div>
+        <div style="margin-top:auto;padding:10px 16px;border-top:1px solid #222">
+          <span style="font-size:10px;color:#555">1 overdue · 3 total</span>
+        </div>
+      </div>
+      <div style="width:36px;background:#141414;border-left:1px solid #252525;display:flex;flex-direction:column;align-items:center;padding-top:32px;gap:14px">
+        <div style="width:20px;height:20px;border-radius:4px;background:#252525;display:flex;align-items:center;justify-content:center;font-size:10px">📅</div>
+        <div style="width:20px;height:20px;border-radius:4px;background:#7c6aef;display:flex;align-items:center;justify-content:center;font-size:10px">☑️</div>
+        <div style="width:20px;height:20px;border-radius:4px;background:#252525;display:flex;align-items:center;justify-content:center;font-size:10px">✨</div>
+      </div>
+    </div>
+  </div>
+</div>

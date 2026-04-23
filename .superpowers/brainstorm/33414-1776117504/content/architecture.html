@@ -1,0 +1,81 @@
+<h2>Architecture — Component Breakdown</h2>
+<p class="subtitle">How the pieces fit together</p>
+
+<div class="mockup">
+  <div class="mockup-header">System Architecture</div>
+  <div class="mockup-body" style="padding: 24px; font-family: monospace; font-size: 13px; line-height: 1.8; background: #1a1a2e;">
+    <pre style="color: #e0e0e0; margin: 0; white-space: pre-wrap;">
+┌─────────────────────────────────────────────────────────┐
+│  <span style="color:#7fdbca">HintModeProvider</span> (React Context)                       │
+│  ┌───────────────────────────────────────────────────┐  │
+│  │ State: isActive, hints[], typedChars, matchedHint │  │
+│  │ Actions: activate(), deactivate(), typeChar()     │  │
+│  └───────────────────────────────────────────────────┘  │
+│                          │                              │
+│            ┌─────────────┼─────────────┐                │
+│            ▼             ▼             ▼                │
+│  ┌──────────────┐ ┌───────────┐ ┌──────────────────┐   │
+│  │ <span style="color:#c792ea">useHintMode</span>  │ │ <span style="color:#c792ea">HintOverlay</span>│ │ <span style="color:#c792ea">useHintActivation</span>│   │
+│  │ (hook)       │ │ (portal)  │ │ (hook)           │   │
+│  │              │ │           │ │                  │   │
+│  │ • scanDOM()  │ │ • render  │ │ • F key listener │   │
+│  │ • assignHints│ │   badges  │ │ • Alt+F listener │   │
+│  │ • matchInput │ │ • position│ │ • Esc to cancel  │   │
+│  │ • clickTarget│ │   calc    │ │ • Esc in editor  │   │
+│  └──────────────┘ └───────────┘ │   = blur editor  │   │
+│                                  └──────────────────┘   │
+│                          │                              │
+│                          ▼                              │
+│  ┌───────────────────────────────────────────────────┐  │
+│  │ <span style="color:#ffcb6b">labelAssigner.ts</span> (pure function)                   │  │
+│  │                                                   │  │
+│  │ Input: HTMLElement[]                              │  │
+│  │ Output: { element, label, rect }[]                │  │
+│  │                                                   │  │
+│  │ Algorithm:                                        │  │
+│  │ 1. Extract text from each element                 │  │
+│  │ 2. Try mnemonic (first letter of text)            │  │
+│  │ 3. Conflicts → try second letter                  │  │
+│  │ 4. Still conflicts → two-char code (AJ, AK...)   │  │
+│  │ 5. Return sorted by DOM position                  │  │
+│  └───────────────────────────────────────────────────┘  │
+│                                                         │
+│  ┌───────────────────────────────────────────────────┐  │
+│  │ <span style="color:#ffcb6b">domScanner.ts</span> (pure function)                      │  │
+│  │                                                   │  │
+│  │ Selector: button, a, [role=button], [role=tab],   │  │
+│  │   [role=treeitem], [role=menuitem], [tabindex],   │  │
+│  │   [data-hint]                                     │  │
+│  │                                                   │  │
+│  │ Filters:                                          │  │
+│  │ • Must be visible (offsetParent !== null)          │  │
+│  │ • Must be in viewport                             │  │
+│  │ • Not disabled                                    │  │
+│  │ • Not inside hint overlay itself                  │  │
+│  │ • Min size: 8x8px                                │  │
+│  └───────────────────────────────────────────────────┘  │
+└─────────────────────────────────────────────────────────┘</pre>
+  </div>
+</div>
+
+<div class="section" style="margin-top: 24px;">
+  <h3>File Structure</h3>
+  <div style="font-family: monospace; font-size: 13px; line-height: 1.8; padding: 16px; background: rgba(255,255,255,0.05); border-radius: 8px;">
+    <pre style="color: #e0e0e0; margin: 0;">
+src/renderer/src/
+├── contexts/
+│   └── hint-mode/
+│       ├── context.tsx          ← HintModeProvider + React context
+│       └── types.ts             ← Hint, HintModeState interfaces
+├── hooks/
+│   ├── use-hint-mode.ts         ← DOM scan + label assign + match logic
+│   └── use-hint-activation.ts   ← F / Alt+F / Esc key listeners
+├── components/
+│   └── hint-overlay/
+│       ├── hint-overlay.tsx      ← Portal with positioned badges
+│       └── hint-badge.tsx        ← Individual badge component
+└── lib/
+    ├── dom-scanner.ts            ← querySelectorAll + visibility filters
+    └── label-assigner.ts         ← mnemonic-first label algorithm</pre>
+  </div>
+</div>

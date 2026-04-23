@@ -1,0 +1,126 @@
+<h2>Journal Alt View — Layout Direction</h2>
+<p class="subtitle">Editor is hero. Nice-to-haves (schedule, tasks, AI) available on demand. Linear/Raycast density + snappiness.</p>
+
+<div class="options">
+  <div class="option" data-choice="a" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>Clean Column + Slide-out Panel</h3>
+      <p>Single centered column (like current Paper note view). Nice-to-haves live in a slide-out right panel triggered by an icon strip or ⌘K. Maximum focus by default.</p>
+      <div class="mockup" style="margin-top:12px">
+        <div class="mockup-body" style="display:flex;gap:0;min-height:320px;font-size:13px">
+          <!-- Main editor column -->
+          <div style="flex:1;display:flex;flex-direction:column;padding:24px 48px;background:#1a1a1a">
+            <div style="display:flex;align-items:baseline;gap:12px;margin-bottom:20px">
+              <span style="font-size:11px;color:#666;cursor:pointer">‹</span>
+              <div>
+                <div style="font-size:22px;font-weight:600;color:#e8e8e8">Tuesday, Mar 25</div>
+                <div style="font-size:11px;color:#555;margin-top:2px">2026</div>
+              </div>
+              <span style="font-size:11px;color:#666;cursor:pointer">›</span>
+            </div>
+            <div style="flex:1;color:#888;font-size:13px;line-height:1.8">
+              <div style="color:#ccc">Had a productive morning working on the sync engine...</div>
+              <div style="margin-top:8px;color:#666">The field-level merge is finally clicking. Key insight was...</div>
+              <div style="margin-top:8px;color:#555;opacity:0.5">⌄ Keep writing...</div>
+            </div>
+          </div>
+          <!-- Icon strip (right edge) -->
+          <div style="width:40px;background:#141414;display:flex;flex-direction:column;align-items:center;padding-top:24px;gap:16px;border-left:1px solid #252525">
+            <div style="width:18px;height:18px;border-radius:4px;background:#333;display:flex;align-items:center;justify-content:center;font-size:9px;color:#888" title="Calendar">📅</div>
+            <div style="width:18px;height:18px;border-radius:4px;background:#333;display:flex;align-items:center;justify-content:center;font-size:9px;color:#888" title="Tasks">☑️</div>
+            <div style="width:18px;height:18px;border-radius:4px;background:#333;display:flex;align-items:center;justify-content:center;font-size:9px;color:#888" title="AI">✨</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="b" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>Entry List + Editor (Linear Style)</h3>
+      <p>Left: compact list of recent journal entries (date rows). Right: selected entry's editor. Nice-to-haves appear as inline sections below editor or as a bottom drawer.</p>
+      <div class="mockup" style="margin-top:12px">
+        <div class="mockup-body" style="display:flex;gap:0;min-height:320px;font-size:13px">
+          <!-- Entry list -->
+          <div style="width:220px;background:#141414;border-right:1px solid #252525;display:flex;flex-direction:column">
+            <div style="padding:12px 14px;font-size:11px;color:#555;text-transform:uppercase;letter-spacing:0.5px;border-bottom:1px solid #1e1e1e">March 2026</div>
+            <div style="padding:10px 14px;background:#1e1e1e;border-left:2px solid #7c6aef">
+              <div style="font-size:12px;color:#e8e8e8;font-weight:500">Tue 25</div>
+              <div style="font-size:11px;color:#666;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Had a productive morning...</div>
+            </div>
+            <div style="padding:10px 14px;border-bottom:1px solid #1a1a1a">
+              <div style="font-size:12px;color:#999;font-weight:500">Mon 24</div>
+              <div style="font-size:11px;color:#555;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Debugging the CRDT sync...</div>
+            </div>
+            <div style="padding:10px 14px;border-bottom:1px solid #1a1a1a">
+              <div style="font-size:12px;color:#999;font-weight:500">Sun 23</div>
+              <div style="font-size:11px;color:#555;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Took the day off, walked...</div>
+            </div>
+            <div style="padding:10px 14px;border-bottom:1px solid #1a1a1a">
+              <div style="font-size:12px;color:#999;font-weight:500">Sat 22</div>
+              <div style="font-size:11px;color:#555;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Field-level merge impl...</div>
+            </div>
+            <div style="flex:1"></div>
+          </div>
+          <!-- Editor -->
+          <div style="flex:1;display:flex;flex-direction:column;padding:24px 40px;background:#1a1a1a">
+            <div style="font-size:20px;font-weight:600;color:#e8e8e8;margin-bottom:4px">Tuesday, March 25</div>
+            <div style="font-size:11px;color:#555;margin-bottom:20px">3 tasks · 2 events</div>
+            <div style="flex:1;color:#888;line-height:1.8">
+              <div style="color:#ccc">Had a productive morning working on the sync engine...</div>
+              <div style="margin-top:8px;color:#666">The field-level merge is finally clicking.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="c" onclick="toggleSelect(this)">
+    <div class="letter">C</div>
+    <div class="content">
+      <h3>Compact Header Bar + Full Editor</h3>
+      <p>Thin command-bar header (date picker + quick stats + toggle buttons for panels). Full-bleed editor below. Panels toggle as overlays or inline sections. Raycast density at the top, breathing room below.</p>
+      <div class="mockup" style="margin-top:12px">
+        <div class="mockup-body" style="display:flex;flex-direction:column;min-height:320px;font-size:13px;background:#1a1a1a">
+          <!-- Command bar header -->
+          <div style="display:flex;align-items:center;padding:8px 20px;background:#141414;border-bottom:1px solid #252525;gap:12px">
+            <span style="font-size:11px;color:#666;cursor:pointer">‹</span>
+            <div style="font-size:13px;font-weight:600;color:#e8e8e8">Tue, Mar 25</div>
+            <span style="font-size:11px;color:#666;cursor:pointer">›</span>
+            <div style="flex:1"></div>
+            <div style="display:flex;gap:6px;align-items:center">
+              <span style="font-size:10px;color:#555;background:#1e1e1e;padding:2px 8px;border-radius:4px">3 tasks</span>
+              <span style="font-size:10px;color:#555;background:#1e1e1e;padding:2px 8px;border-radius:4px">2 events</span>
+            </div>
+            <div style="width:1px;height:16px;background:#252525"></div>
+            <div style="display:flex;gap:8px">
+              <span style="font-size:11px;color:#666;cursor:pointer;padding:2px 6px;border-radius:3px;background:#1e1e1e">📅</span>
+              <span style="font-size:11px;color:#666;cursor:pointer;padding:2px 6px;border-radius:3px;background:#1e1e1e">☑️</span>
+              <span style="font-size:11px;color:#666;cursor:pointer;padding:2px 6px;border-radius:3px;background:#1e1e1e">✨</span>
+            </div>
+          </div>
+          <!-- Full editor -->
+          <div style="flex:1;padding:32px 64px;color:#888;line-height:1.8">
+            <div style="color:#ccc">Had a productive morning working on the sync engine...</div>
+            <div style="margin-top:8px;color:#666">The field-level merge is finally clicking. Key insight was keeping field clocks as a separate JSON column...</div>
+            <div style="margin-top:8px;color:#555;opacity:0.5">⌄ Keep writing...</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="pros-cons" style="margin-top:24px">
+  <div class="pros">
+    <h4>Key Trade-offs</h4>
+    <ul>
+      <li><strong>A</strong> — Most focused writing; panels hidden until needed; matches Paper note aesthetic</li>
+      <li><strong>B</strong> — Best for reviewing past entries; Linear's core pattern; navigating history is first-class</li>
+      <li><strong>C</strong> — Best of both; header gives glanceable context without eating space; Raycast density</li>
+    </ul>
+  </div>
+</div>

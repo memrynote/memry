@@ -1,0 +1,116 @@
+<h2>Settings Modal — Size & Layout</h2>
+<p class="subtitle">How much screen space should the settings modal occupy?</p>
+
+<div class="cards">
+  <div class="card" data-choice="a" onclick="toggleSelect(this)">
+    <div class="card-image" style="padding: 24px; background: #1a1a1a;">
+      <div style="position: relative; width: 100%; aspect-ratio: 16/10; background: #2a2a2a; border-radius: 8px; overflow: hidden;">
+        <!-- Dark overlay -->
+        <div style="position: absolute; inset: 0; background: rgba(0,0,0,0.6); display: flex; align-items: center; justify-content: center;">
+          <!-- Modal -->
+          <div style="width: 75%; height: 80%; background: #1e1e1e; border-radius: 8px; border: 1px solid #333; display: flex; overflow: hidden;">
+            <!-- Sidebar -->
+            <div style="width: 30%; background: #171717; border-right: 1px solid #333; padding: 12px 8px;">
+              <div style="font-size: 9px; color: #888; margin-bottom: 6px; padding-left: 4px;">WORKSPACE</div>
+              <div style="padding: 4px 8px; background: #2a2a2a; border-radius: 4px; font-size: 10px; color: #fff; margin-bottom: 2px;">General</div>
+              <div style="padding: 4px 8px; font-size: 10px; color: #888; margin-bottom: 2px;">Editor</div>
+              <div style="padding: 4px 8px; font-size: 10px; color: #888; margin-bottom: 2px;">Templates</div>
+              <div style="font-size: 9px; color: #888; margin-top: 8px; margin-bottom: 6px; padding-left: 4px;">PREFERENCES</div>
+              <div style="padding: 4px 8px; font-size: 10px; color: #888; margin-bottom: 2px;">Appearance</div>
+              <div style="padding: 4px 8px; font-size: 10px; color: #888;">Shortcuts</div>
+            </div>
+            <!-- Content -->
+            <div style="flex: 1; padding: 16px;">
+              <div style="font-size: 12px; font-weight: 600; color: #fff; margin-bottom: 8px;">General</div>
+              <div style="height: 8px; background: #333; border-radius: 4px; width: 60%; margin-bottom: 12px;"></div>
+              <div style="height: 8px; background: #333; border-radius: 4px; width: 80%; margin-bottom: 12px;"></div>
+              <div style="height: 8px; background: #333; border-radius: 4px; width: 45%; margin-bottom: 12px;"></div>
+            </div>
+          </div>
+        </div>
+        <!-- Background hint -->
+        <div style="padding: 8px;">
+          <div style="height: 6px; background: #444; border-radius: 3px; width: 40%; margin-bottom: 6px;"></div>
+          <div style="height: 6px; background: #444; border-radius: 3px; width: 70%;"></div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>A. Generous (max-w-4xl, 85vh)</h3>
+      <p>~896px wide, 85% viewport height. Spacious — room for all settings content without scrolling. Similar to Linear/Arc settings.</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="b" onclick="toggleSelect(this)">
+    <div class="card-image" style="padding: 24px; background: #1a1a1a;">
+      <div style="position: relative; width: 100%; aspect-ratio: 16/10; background: #2a2a2a; border-radius: 8px; overflow: hidden;">
+        <!-- Dark overlay -->
+        <div style="position: absolute; inset: 0; background: rgba(0,0,0,0.6); display: flex; align-items: center; justify-content: center;">
+          <!-- Modal -->
+          <div style="width: 62%; height: 72%; background: #1e1e1e; border-radius: 8px; border: 1px solid #333; display: flex; overflow: hidden;">
+            <!-- Sidebar -->
+            <div style="width: 32%; background: #171717; border-right: 1px solid #333; padding: 10px 6px;">
+              <div style="font-size: 8px; color: #888; margin-bottom: 4px; padding-left: 4px;">WORKSPACE</div>
+              <div style="padding: 3px 6px; background: #2a2a2a; border-radius: 3px; font-size: 9px; color: #fff; margin-bottom: 2px;">General</div>
+              <div style="padding: 3px 6px; font-size: 9px; color: #888; margin-bottom: 2px;">Editor</div>
+              <div style="padding: 3px 6px; font-size: 9px; color: #888;">Templates</div>
+            </div>
+            <!-- Content -->
+            <div style="flex: 1; padding: 12px;">
+              <div style="font-size: 11px; font-weight: 600; color: #fff; margin-bottom: 6px;">General</div>
+              <div style="height: 6px; background: #333; border-radius: 3px; width: 60%; margin-bottom: 10px;"></div>
+              <div style="height: 6px; background: #333; border-radius: 3px; width: 80%; margin-bottom: 10px;"></div>
+            </div>
+          </div>
+        </div>
+        <!-- Background hint -->
+        <div style="padding: 8px;">
+          <div style="height: 6px; background: #444; border-radius: 3px; width: 40%; margin-bottom: 6px;"></div>
+          <div style="height: 6px; background: #444; border-radius: 3px; width: 70%;"></div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>B. Compact (max-w-3xl, 75vh)</h3>
+      <p>~768px wide, 75% viewport height. Tighter — more workspace visible behind. Content scrolls more. Feels lighter.</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="c" onclick="toggleSelect(this)">
+    <div class="card-image" style="padding: 24px; background: #1a1a1a;">
+      <div style="position: relative; width: 100%; aspect-ratio: 16/10; background: #2a2a2a; border-radius: 8px; overflow: hidden;">
+        <!-- Dark overlay -->
+        <div style="position: absolute; inset: 0; background: rgba(0,0,0,0.6); display: flex; align-items: center; justify-content: center;">
+          <!-- Modal -->
+          <div style="width: 70%; height: 78%; background: #1e1e1e; border-radius: 8px; border: 1px solid #333; display: flex; overflow: hidden;">
+            <!-- Sidebar -->
+            <div style="width: 30%; background: #171717; border-right: 1px solid #333; padding: 11px 7px;">
+              <div style="font-size: 8px; color: #888; margin-bottom: 5px; padding-left: 4px;">WORKSPACE</div>
+              <div style="padding: 3px 7px; background: #2a2a2a; border-radius: 4px; font-size: 9px; color: #fff; margin-bottom: 2px;">General</div>
+              <div style="padding: 3px 7px; font-size: 9px; color: #888; margin-bottom: 2px;">Editor</div>
+              <div style="padding: 3px 7px; font-size: 9px; color: #888; margin-bottom: 2px;">Templates</div>
+              <div style="font-size: 8px; color: #888; margin-top: 6px; margin-bottom: 5px; padding-left: 4px;">PREFERENCES</div>
+              <div style="padding: 3px 7px; font-size: 9px; color: #888; margin-bottom: 2px;">Appearance</div>
+            </div>
+            <!-- Content -->
+            <div style="flex: 1; padding: 14px;">
+              <div style="font-size: 11px; font-weight: 600; color: #fff; margin-bottom: 7px;">General</div>
+              <div style="height: 7px; background: #333; border-radius: 3px; width: 60%; margin-bottom: 11px;"></div>
+              <div style="height: 7px; background: #333; border-radius: 3px; width: 80%; margin-bottom: 11px;"></div>
+              <div style="height: 7px; background: #333; border-radius: 3px; width: 45%;"></div>
+            </div>
+          </div>
+        </div>
+        <!-- Background hint -->
+        <div style="padding: 8px;">
+          <div style="height: 6px; background: #444; border-radius: 3px; width: 40%; margin-bottom: 6px;"></div>
+          <div style="height: 6px; background: #444; border-radius: 3px; width: 70%;"></div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>C. Balanced (max-w-[56rem], 80vh)</h3>
+      <p>~896px wide but capped to 80% height. A middle ground — generous width for the sidebar+content split, moderate height. My recommendation.</p>
+    </div>
+  </div>
+</div>

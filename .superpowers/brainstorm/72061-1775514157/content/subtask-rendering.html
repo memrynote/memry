@@ -1,0 +1,247 @@
+<h2>Subtask Rendering in Notes</h2>
+<p class="subtitle">User indents under a task block and types <code>[] subtask text</code>. How should it look?</p>
+
+<style>
+  .note-mock {
+    background: #1a1a1e;
+    border-radius: 10px;
+    padding: 24px 32px;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    color: #e4e4e7;
+    font-size: 13px;
+    margin: 16px 0 8px;
+    border: 1px solid #27272a;
+  }
+  .note-line {
+    padding: 4px 0;
+    color: #a1a1aa;
+    font-size: 13px;
+    line-height: 1.6;
+  }
+  .task-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 7px 12px;
+    border-radius: 6px;
+    background: #27272a;
+    margin: 6px 0;
+  }
+  .task-row:hover { background: #303036; }
+  .status-icon {
+    width: 16px; height: 16px; border-radius: 50%;
+    border: 2px dashed #71717a; flex-shrink: 0;
+  }
+  .status-icon.done {
+    border: none;
+    background: #22c55e;
+    position: relative;
+  }
+  .status-icon.done::after {
+    content: '✓'; color: #fff; font-size: 10px;
+    position: absolute; top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+  }
+  .priority-bars {
+    display: flex; gap: 1.5px; align-items: flex-end; flex-shrink: 0;
+  }
+  .priority-bar {
+    width: 3px; border-radius: 1px;
+  }
+  .priority-bar.filled { background: #f97316; }
+  .priority-bar.empty { background: #3f3f46; }
+  .task-title { flex: 1; font-weight: 500; color: rgba(228,228,231,0.9); }
+  .task-title.completed {
+    text-decoration: line-through;
+    color: rgba(161,161,170,0.6);
+  }
+  .project-badge {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 500;
+  }
+  .project-dot { width: 6px; height: 6px; border-radius: 2px; }
+  .due-date { font-size: 11px; color: #71717a; white-space: nowrap; }
+  .arrow-icon { color: #71717a; font-size: 12px; opacity: 0; }
+  .task-row:hover .arrow-icon { opacity: 1; }
+
+  /* Subtask variants */
+  .subtask-full {
+    display: flex; align-items: center; gap: 10px;
+    padding: 7px 12px; border-radius: 6px;
+    background: #27272a; margin: 3px 0 3px 28px;
+  }
+  .subtask-full:hover { background: #303036; }
+
+  .subtask-minimal {
+    display: flex; align-items: center; gap: 8px;
+    padding: 5px 12px; margin: 2px 0 2px 28px;
+    border-left: 2px solid #3f3f46;
+    border-radius: 0 4px 4px 0;
+  }
+  .subtask-minimal:hover { background: #27272a; border-radius: 0 4px 4px 0; }
+  .subtask-minimal .task-title { font-size: 13px; font-weight: 400; color: rgba(228,228,231,0.8); }
+
+  .subtask-native {
+    display: flex; align-items: center; gap: 8px;
+    padding: 3px 0 3px 32px; margin: 1px 0;
+  }
+  .subtask-checkbox {
+    width: 14px; height: 14px; border-radius: 3px;
+    border: 1.5px solid #52525b; flex-shrink: 0;
+  }
+  .subtask-checkbox.checked {
+    background: #3b82f6; border-color: #3b82f6;
+    position: relative;
+  }
+  .subtask-checkbox.checked::after {
+    content: '✓'; color: #fff; font-size: 9px;
+    position: absolute; top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+  }
+  .subtask-native .task-title { font-size: 13px; font-weight: 400; color: rgba(228,228,231,0.75); }
+
+  .add-subtask {
+    display: flex; align-items: center; gap: 8px;
+    padding: 3px 12px; color: #52525b; font-size: 12px;
+    cursor: pointer;
+  }
+  .add-subtask:hover { color: #71717a; }
+  .plus-icon { font-size: 14px; }
+
+  .label-tag {
+    display: inline-block; padding: 2px 8px; border-radius: 4px;
+    font-size: 10px; font-weight: 600; text-transform: uppercase;
+    letter-spacing: 0.5px; margin-bottom: 8px;
+  }
+  .rec { background: rgba(34,197,94,0.15); color: #22c55e; }
+</style>
+
+<div class="options">
+  <div class="option" data-choice="a" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>Full Task Rows</h3>
+      <p>Subtasks look identical to parent — same background, status icon, priority. Maximum feature parity.</p>
+      <div class="note-mock">
+        <div class="note-line">Today I need to handle the grocery run and some errands...</div>
+        <!-- Parent task -->
+        <div class="task-row">
+          <div class="status-icon"></div>
+          <div class="priority-bars">
+            <div class="priority-bar filled" style="height:6px"></div>
+            <div class="priority-bar filled" style="height:9px"></div>
+            <div class="priority-bar empty" style="height:12px"></div>
+          </div>
+          <div class="task-title">Grocery shopping</div>
+          <div class="project-badge" style="background:rgba(59,130,246,0.08); color:#60a5fa;">
+            <div class="project-dot" style="background:#3b82f6;"></div>Errands
+          </div>
+          <div class="arrow-icon">↗</div>
+        </div>
+        <!-- Subtasks as full rows -->
+        <div class="subtask-full">
+          <div class="status-icon done"></div>
+          <div class="task-title completed">Buy milk</div>
+        </div>
+        <div class="subtask-full">
+          <div class="status-icon"></div>
+          <div class="task-title">Get vegetables</div>
+        </div>
+        <div class="subtask-full">
+          <div class="status-icon"></div>
+          <div class="task-title">Pick up bread</div>
+        </div>
+        <div class="note-line" style="margin-top:8px">Also remember to check the pharmacy schedule.</div>
+      </div>
+      <div class="pros-cons">
+        <div class="pros"><h4>Pros</h4><ul><li>Consistent with parent task look</li><li>Full status/priority controls on each subtask</li></ul></div>
+        <div class="cons"><h4>Cons</h4><ul><li>Heavy — dominates the note visually</li><li>Hard to distinguish parent from children</li></ul></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="b" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>Left-border Minimal Rows</h3>
+      <p>Subtasks have a left accent border, lighter styling, status icon only. Matches the task page's subtask-row pattern.</p>
+      <span class="label-tag rec">Recommended</span>
+      <div class="note-mock">
+        <div class="note-line">Today I need to handle the grocery run and some errands...</div>
+        <div class="task-row">
+          <div class="status-icon"></div>
+          <div class="priority-bars">
+            <div class="priority-bar filled" style="height:6px"></div>
+            <div class="priority-bar filled" style="height:9px"></div>
+            <div class="priority-bar empty" style="height:12px"></div>
+          </div>
+          <div class="task-title">Grocery shopping</div>
+          <div class="project-badge" style="background:rgba(59,130,246,0.08); color:#60a5fa;">
+            <div class="project-dot" style="background:#3b82f6;"></div>Errands
+          </div>
+          <div class="arrow-icon">↗</div>
+        </div>
+        <!-- Subtasks with left border -->
+        <div class="subtask-minimal">
+          <div class="status-icon done"></div>
+          <div class="task-title" style="text-decoration:line-through; color:rgba(161,161,170,0.6);">Buy milk</div>
+        </div>
+        <div class="subtask-minimal">
+          <div class="status-icon"></div>
+          <div class="task-title">Get vegetables</div>
+        </div>
+        <div class="subtask-minimal">
+          <div class="status-icon"></div>
+          <div class="task-title">Pick up bread</div>
+        </div>
+        <div class="note-line" style="margin-top:8px">Also remember to check the pharmacy schedule.</div>
+      </div>
+      <div class="pros-cons">
+        <div class="pros"><h4>Pros</h4><ul><li>Clear visual hierarchy — parent vs child</li><li>Matches existing subtask-row styling from task page</li><li>Lighter weight, doesn't overwhelm note content</li></ul></div>
+        <div class="cons"><h4>Cons</h4><ul><li>No inline priority on subtasks (can set in task detail)</li></ul></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="c" onclick="toggleSelect(this)">
+    <div class="letter">C</div>
+    <div class="content">
+      <h3>Native Checkbox Style</h3>
+      <p>Subtasks look like regular editor checkboxes — indented, lightweight, blends with note text. Task wiring is invisible.</p>
+      <div class="note-mock">
+        <div class="note-line">Today I need to handle the grocery run and some errands...</div>
+        <div class="task-row">
+          <div class="status-icon"></div>
+          <div class="priority-bars">
+            <div class="priority-bar filled" style="height:6px"></div>
+            <div class="priority-bar filled" style="height:9px"></div>
+            <div class="priority-bar empty" style="height:12px"></div>
+          </div>
+          <div class="task-title">Grocery shopping</div>
+          <div class="project-badge" style="background:rgba(59,130,246,0.08); color:#60a5fa;">
+            <div class="project-dot" style="background:#3b82f6;"></div>Errands
+          </div>
+          <div class="arrow-icon">↗</div>
+        </div>
+        <!-- Subtasks as native checkboxes -->
+        <div class="subtask-native">
+          <div class="subtask-checkbox checked"></div>
+          <div class="task-title" style="text-decoration:line-through; color:rgba(161,161,170,0.5);">Buy milk</div>
+        </div>
+        <div class="subtask-native">
+          <div class="subtask-checkbox"></div>
+          <div class="task-title">Get vegetables</div>
+        </div>
+        <div class="subtask-native">
+          <div class="subtask-checkbox"></div>
+          <div class="task-title">Pick up bread</div>
+        </div>
+        <div class="note-line" style="margin-top:8px">Also remember to check the pharmacy schedule.</div>
+      </div>
+      <div class="pros-cons">
+        <div class="pros"><h4>Pros</h4><ul><li>Lightest weight — feels like native note content</li><li>Most natural for "indent + checkbox" creation flow</li></ul></div>
+        <div class="cons"><h4>Cons</h4><ul><li>No visual distinction from regular checklists</li><li>User may not realize these are wired to tasks</li><li>No status icon (only checkbox)</li></ul></div>
+      </div>
+    </div>
+  </div>
+</div>

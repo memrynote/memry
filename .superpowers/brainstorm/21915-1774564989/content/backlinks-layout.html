@@ -1,0 +1,115 @@
+<h2>Backlinks Section — Grouped by Note</h2>
+<p class="subtitle">Each note group is collapsible, with clickable mention snippets that navigate to exact position</p>
+
+<div class="split">
+  <!-- CURRENT -->
+  <div class="mockup">
+    <div class="mockup-header">Current: Flat List</div>
+    <div class="mockup-body" style="font-family: system-ui; font-size: 13px; background: #1a1a2e; color: #c8c8d4; padding: 16px; border-radius: 8px;">
+      <div style="display:flex; align-items:center; gap:8px; margin-bottom:12px;">
+        <span style="color:#8b8ba0; font-size:12px;">BACKLINKS</span>
+        <span style="background:#2a2a3e; color:#6b6b80; font-size:11px; padding:2px 6px; border-radius:4px;">3</span>
+      </div>
+
+      <!-- Flat card 1 -->
+      <div style="border:1px solid #2a2a3e; border-radius:6px; padding:10px; margin-bottom:8px; cursor:pointer;">
+        <div style="font-weight:600; color:#e0e0ec; margin-bottom:4px;">Meeting Notes - Q1</div>
+        <div style="color:#8b8ba0; font-size:12px; line-clamp:2; overflow:hidden;">...discussed the [[Project Alpha]] timeline with...</div>
+      </div>
+
+      <!-- Flat card 2 -->
+      <div style="border:1px solid #2a2a3e; border-radius:6px; padding:10px; margin-bottom:8px; cursor:pointer;">
+        <div style="font-weight:600; color:#e0e0ec; margin-bottom:4px;">Architecture Doc</div>
+        <div style="color:#8b8ba0; font-size:12px;">...the core module [[Project Alpha]] handles all...</div>
+      </div>
+
+      <!-- Flat card 3 -->
+      <div style="border:1px solid #2a2a3e; border-radius:6px; padding:10px; cursor:pointer;">
+        <div style="font-weight:600; color:#e0e0ec; margin-bottom:4px;">Sprint Retro</div>
+        <div style="color:#8b8ba0; font-size:12px;">...blockers on [[Project Alpha]] were resolved by...</div>
+      </div>
+
+      <div style="color:#ff6b6b; font-size:11px; margin-top:12px; padding:8px; background:#2a1a1e; border-radius:4px;">
+        ⚠ Only shows FIRST mention per note<br>
+        ⚠ No way to see all 5 mentions in "Meeting Notes"<br>
+        ⚠ Click opens note at top, not at mention
+      </div>
+    </div>
+  </div>
+
+  <!-- NEW -->
+  <div class="mockup">
+    <div class="mockup-header">New: Grouped by Note + All Mentions</div>
+    <div class="mockup-body" style="font-family: system-ui; font-size: 13px; background: #1a1a2e; color: #c8c8d4; padding: 16px; border-radius: 8px;">
+      <div style="display:flex; align-items:center; gap:8px; margin-bottom:12px;">
+        <span style="color:#8b8ba0; font-size:12px;">BACKLINKS</span>
+        <span style="background:#2a2a3e; color:#6b6b80; font-size:11px; padding:2px 6px; border-radius:4px;">3 notes · 7 mentions</span>
+        <span style="margin-left:auto; color:#6b6b80; font-size:11px; cursor:pointer;">▼</span>
+      </div>
+
+      <!-- Group 1 - EXPANDED -->
+      <div style="border:1px solid #2a2a3e; border-radius:6px; margin-bottom:8px; overflow:hidden;">
+        <div style="padding:8px 10px; background:#22223a; display:flex; align-items:center; gap:6px; cursor:pointer;">
+          <span style="color:#6b6b80; font-size:10px;">▼</span>
+          <span style="font-weight:600; color:#e0e0ec; font-size:13px;">Meeting Notes - Q1</span>
+          <span style="background:#3a2a5e; color:#a78bfa; font-size:10px; padding:1px 5px; border-radius:3px; margin-left:auto;">3 mentions</span>
+        </div>
+
+        <div style="padding:4px 8px;">
+          <!-- Mention 1 -->
+          <div style="padding:6px 8px; border-radius:4px; cursor:pointer; border-left:2px solid #3a2a5e; margin:4px 0; font-size:12px;">
+            <span style="color:#8b8ba0;">...discussed the </span><span style="color:#a78bfa;">[[Project Alpha]]</span><span style="color:#8b8ba0;"> timeline with the team and agreed on milestones for next quarter...</span>
+          </div>
+          <!-- Mention 2 -->
+          <div style="padding:6px 8px; border-radius:4px; cursor:pointer; border-left:2px solid #3a2a5e; margin:4px 0; font-size:12px;">
+            <span style="color:#8b8ba0;">...action item: review </span><span style="color:#a78bfa;">[[Project Alpha]]</span><span style="color:#8b8ba0;"> budget allocation before Friday standup meeting...</span>
+          </div>
+          <!-- Mention 3 -->
+          <div style="padding:6px 8px; border-radius:4px; cursor:pointer; border-left:2px solid #3a2a5e; margin:4px 0; font-size:12px;">
+            <span style="color:#8b8ba0;">...dependencies between </span><span style="color:#a78bfa;">[[Project Alpha]]</span><span style="color:#8b8ba0;"> and the infrastructure migration need to be mapped...</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Group 2 - EXPANDED -->
+      <div style="border:1px solid #2a2a3e; border-radius:6px; margin-bottom:8px; overflow:hidden;">
+        <div style="padding:8px 10px; background:#22223a; display:flex; align-items:center; gap:6px; cursor:pointer;">
+          <span style="color:#6b6b80; font-size:10px;">▼</span>
+          <span style="font-weight:600; color:#e0e0ec; font-size:13px;">Architecture Doc</span>
+          <span style="background:#3a2a5e; color:#a78bfa; font-size:10px; padding:1px 5px; border-radius:3px; margin-left:auto;">1 mention</span>
+        </div>
+        <div style="padding:4px 8px;">
+          <div style="padding:6px 8px; border-radius:4px; cursor:pointer; border-left:2px solid #3a2a5e; margin:4px 0; font-size:12px;">
+            <span style="color:#8b8ba0;">...the core module </span><span style="color:#a78bfa;">[[Project Alpha]]</span><span style="color:#8b8ba0;"> handles all authentication, session management, and user permissions across services...</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Group 3 - COLLAPSED -->
+      <div style="border:1px solid #2a2a3e; border-radius:6px; overflow:hidden;">
+        <div style="padding:8px 10px; background:#22223a; display:flex; align-items:center; gap:6px; cursor:pointer; opacity:0.7;">
+          <span style="color:#6b6b80; font-size:10px;">▶</span>
+          <span style="font-weight:600; color:#e0e0ec; font-size:13px;">Sprint Retro</span>
+          <span style="background:#3a2a5e; color:#a78bfa; font-size:10px; padding:1px 5px; border-radius:3px; margin-left:auto;">3 mentions</span>
+        </div>
+      </div>
+
+      <div style="color:#4ade80; font-size:11px; margin-top:12px; padding:8px; background:#1a2a1e; border-radius:4px;">
+        ✓ All mentions visible per note<br>
+        ✓ Click any snippet → opens note, scrolls + highlights exact position<br>
+        ✓ First 3 groups expanded, rest collapsed
+      </div>
+    </div>
+  </div>
+</div>
+
+<div style="margin-top: 24px; padding: 16px; background: rgba(167,139,250,0.08); border: 1px solid rgba(167,139,250,0.2); border-radius: 8px;">
+  <h3 style="margin-top:0; color: #a78bfa;">Click → Navigate Flow</h3>
+  <div style="font-family: monospace; font-size: 12px; color: #c8c8d4; line-height: 1.8;">
+    User clicks mention snippet<br>
+    → openTab({ noteId, <strong style="color:#fbbf24;">scrollToText: "[[Project Alpha]]"</strong>, <strong style="color:#fbbf24;">highlightText: true</strong> })<br>
+    → Note page loads → finds text in BlockNote blocks<br>
+    → <strong style="color:#4ade80;">scrollIntoView({ behavior: 'smooth', block: 'center' })</strong><br>
+    → <strong style="color:#fbbf24;">Amber flash highlight for ~3s</strong> (reuses existing initialHighlight pattern)
+  </div>
+</div>
