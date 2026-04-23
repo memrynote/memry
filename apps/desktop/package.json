@@ -3,13 +3,17 @@
   "version": "1.0.0",
   "private": true,
   "license": "GPL-3.0",
-  "description": "An Electron application with React and TypeScript",
+  "description": "Memry desktop app",
   "main": "./out/main/index.js",
   "engines": {
     "node": "24.x"
   },
-  "author": "example.com",
-  "homepage": "https://electron-vite.org",
+  "author": "Memry",
+  "homepage": "https://github.com/memrynote/memry",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/memrynote/memry.git"
+  },
   "scripts": {
     "format": "prettier --write .",
     "repair:links": "node ../../scripts/repair-package-links.js apps/desktop",

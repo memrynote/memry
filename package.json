@@ -5,6 +5,7 @@
   "packageManager": "pnpm@10.30.3",
   "scripts": {
     "repair:links": "node scripts/repair-package-links.js .",
+    "release:version": "node scripts/set-desktop-version.mjs",
     "dev": "pnpm dev:desktop",
     "dev:desktop": "node scripts/run-turbo.js run dev --filter=@memry/desktop",
     "dev:sync-server": "node scripts/run-turbo.js run dev --filter=@memry/sync-server",

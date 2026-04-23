@@ -46,6 +46,7 @@ import { toAbsolutePath, createSnapshot } from './vault/notes'
 import { safeRead } from './vault/file-ops'
 import { SnapshotReasons } from '@memry/db-schema/schema/notes-cache'
 import { SettingsChannels } from '@memry/contracts/ipc-channels'
+import { initializeUpdater } from './updater'
 
 if (process.type === 'browser') {
   log.initialize()
@@ -651,6 +652,7 @@ void app.whenReady().then(async () => {
   }
 
   createWindow()
+  initializeUpdater()
 
   // Open the last vault and start schedulers concurrently with renderer load.
   // The renderer subscribes to vault status events and updates automatically.
