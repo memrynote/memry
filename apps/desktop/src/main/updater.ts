@@ -13,9 +13,9 @@ let downloadPromptVisible = false
 let restartPromptVisible = false
 
 let state: AppUpdateState = {
-  currentVersion: app.getVersion(),
-  status: app.isPackaged ? 'idle' : 'unavailable',
-  updateSupported: app.isPackaged,
+  currentVersion: getCurrentVersion(),
+  status: isUpdateSupported() ? 'idle' : 'unavailable',
+  updateSupported: isUpdateSupported(),
   availableVersion: null,
   releaseName: null,
   releaseDate: null,
@@ -172,10 +172,18 @@ function setState(patch: Partial<AppUpdateState>): void {
   state = {
     ...state,
     ...patch,
-    currentVersion: app.getVersion(),
-    updateSupported: app.isPackaged
+    currentVersion: getCurrentVersion(),
+    updateSupported: isUpdateSupported()
   }
   broadcastState()
+}
+
+function getCurrentVersion(): string {
+  return typeof app.getVersion === 'function' ? app.getVersion() : '0.0.0'
+}
+
+function isUpdateSupported(): boolean {
+  return app.isPackaged === true
 }
 
 function broadcastState(): void {

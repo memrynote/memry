@@ -25,6 +25,7 @@
     "./ipc-events": "./src/ipc-events.ts",
     "./ipc-sync": "./src/ipc-sync.ts",
     "./ipc-sync-ops": "./src/ipc-sync-ops.ts",
+    "./ipc-updater": "./src/ipc-updater.ts",
     "./journal-api": "./src/journal-api.ts",
     "./linking-api": "./src/linking-api.ts",
     "./notes-api": "./src/notes-api.ts",
