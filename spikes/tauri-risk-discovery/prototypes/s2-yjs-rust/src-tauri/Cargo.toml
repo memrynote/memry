@@ -4,6 +4,7 @@ version = "0.1.0"
 description = "S2 Prototype B - yrs authoritative in Rust, renderer shadow Y.Doc"
 authors = ["spike"]
 edition = "2021"
+default-run = "s2-yjs-rust"
 
 [lib]
 name = "app_lib"
