@@ -24,15 +24,18 @@ break y-prosemirror binding.
 
 ## TL;DR — Decision
 
-**🟢 PRELIMINARY GREEN — byte-compat proven, renderer-side overhead negligible.**
+**🟢 GREEN — byte-compat proven, renderer overhead negligible, real-runtime confirmed.**
 
 yrs 0.21.3 decodes Yjs 13.6.29-emitted v1 updates losslessly, and concurrent
 merges across libraries converge to **byte-identical final state**. Renderer
 typing latency overhead for Proto B (shadow Y.Doc + listener) vs Proto A is
 +8% p50 / +19% p95 under Playwright-only harness — well within the 1.5× spec
-threshold. **Caveat:** real Tauri IPC latency NOT measured (Playwright runs
-against Vite only, `invoke()` silent-fails). Requires manual Kaan verification
-via `pnpm tauri dev` at CHECKPOINT 2 before locking decision.
+threshold. **Kaan CHECKPOINT 2 manual test with real Tauri runtime**
+(`pnpm tauri dev`): typing feels normal, Rust update counter + state-vector
+size grow with keystrokes, no IPC loop observed. Echo-skip counter stays 0,
+revealing that Yjs's natural idempotence filters no-op echoes at the Y.Doc
+level — the origin-tag guard is belt-and-suspenders defense rather than the
+critical loop-breaker.
 
 ## Setup
 
@@ -169,9 +172,35 @@ setup cost; it does NOT include Tauri IPC cost for Proto B.
 8. **Build-time:** first-time cargo build of yrs + Tauri stack takes ~34s
    (cargo check) / ~1min (cargo build). Not a developer-experience blocker.
 
+9. **Real-runtime CHECKPOINT 2 confirmation (Kaan, 2026-04-24):** Manual
+   `pnpm tauri dev` test produced: (a) "Updates sent to Rust" counter
+   increments per keystroke → invoke path functional; (b) "Last SV bytes"
+   grows monotonically → yrs authoritative state evolves in Rust; (c) typing
+   feels normal to user — no perceptible IPC latency; (d) "Echo updates
+   skipped" counter stays at 0. Finding (d) is noteworthy: the Yjs runtime
+   does not fire the `'update'` event for applyUpdate of already-applied
+   bytes, so the handler's `origin === 'rust'` branch is never taken in
+   practice. No loop occurs because Yjs's own idempotence filters the echo
+   before the event handler runs. The origin-tag guard in App.tsx is
+   therefore defense-in-depth rather than the primary loop-breaker — still
+   worth keeping, but not load-bearing. This is cleaner than the plan's
+   design expected and gives Subproject 5 one less moving part to reason
+   about.
+
+10. **In-memory yrs state resets across `tauri dev` sessions** (as designed:
+    `Mutex<HashMap<String, Doc>>` is not persisted). Typed content is not
+    recovered across restarts. This is the expected shape for S2 — persistence
+    is Subproject 5's scope. No code change needed for the spike.
+
+11. **Cargo default-run gotcha:** adding `src/bin/yrs_fixture_gen.rs`
+    introduced a second binary target, which made `cargo run` (invoked by
+    `pnpm tauri dev`) error with "could not determine which binary to run."
+    Fix: `default-run = "s2-yjs-rust"` in `[package]`. Noting for Subproject 1
+    scaffold (any added Rust bins will need this).
+
 ## Decision + rationale
 
-**Preliminary verdict: 🟢 GREEN.**
+**Verdict: 🟢 GREEN** (confirmed at CHECKPOINT 2).
 
 Justification:
 1. **Interop is byte-proven.** Test 5d establishes that Yjs and yrs converge
@@ -188,14 +217,12 @@ Justification:
    stateful `Mutex<HashMap<note_id, Doc>>` pattern is straightforward.
 5. **No data loss observed in any test.**
 
-Caveat warranting CHECKPOINT 2 attention:
-- **Real IPC typing latency is NOT measured.** Proto B's genuine keystroke →
-  Rust → echo → shadow Y.Doc round-trip cost needs manual verification with
-  `pnpm tauri dev`. If real latency > 2× A, downgrade to 🟡 hybrid (yrs
-  persistence-only, Y.Doc authoritative in renderer).
+Residual risk (deferred to Subproject 5):
 - **Block-level structure, marks, compaction** are untested under scope (a).
-  Subproject 5 design should test these before locking full Rust-authoritative
-  CRDT.
+  Subproject 5 design must test these before locking full Rust-authoritative
+  CRDT on production data volumes.
+- **y-leveldb → yrs migration** path is theoretically safe (byte-compat
+  proven) but untested with real memry vault data.
 
 ## Subsequent subproject impact
 
@@ -215,7 +242,6 @@ Caveat warranting CHECKPOINT 2 attention:
 
 ## Open questions carried forward
 
-- **Real Tauri IPC latency for Proto B** — CHECKPOINT 2 Kaan manual test.
 - **yrs compaction performance on 100k+ operation documents** — deferred to
   Subproject 5.
 - **yrs + BlockNote nested block structure end-to-end under Tauri runtime** —
