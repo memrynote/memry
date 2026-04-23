@@ -26,6 +26,7 @@ import { registerGraphHandlers, unregisterGraphHandlers } from './graph-handlers
 import { registerAIInlineHandlers, unregisterAIInlineHandlers } from './ai-inline-handlers'
 import { registerAccountHandlers, unregisterAccountHandlers } from './account-handlers'
 import { registerCrdtIpcHandlers } from './crdt-handlers'
+import { registerUpdaterHandlers, unregisterUpdaterHandlers } from './updater-handlers'
 import { createLogger } from '../lib/logger'
 
 const ipcLog = createLogger('IPC')
@@ -114,6 +115,9 @@ export function registerAllHandlers(): void {
   // Register account handlers
   registerAccountHandlers()
 
+  // Register updater handlers
+  registerUpdaterHandlers()
+
   // Register CRDT IPC handlers (app-scoped, survive sign-out/sign-in)
   registerCrdtIpcHandlers()
 
@@ -149,6 +153,7 @@ export function unregisterAllHandlers(): void {
   unregisterGraphHandlers()
   unregisterAIInlineHandlers()
   unregisterAccountHandlers()
+  unregisterUpdaterHandlers()
 
   handlersRegistered = false
   ipcLog.info('all handlers unregistered')
@@ -184,3 +189,4 @@ export { registerCryptoHandlers, unregisterCryptoHandlers } from './crypto-handl
 export { registerSearchHandlers, unregisterSearchHandlers } from './search-handlers'
 export { registerGraphHandlers, unregisterGraphHandlers } from './graph-handlers'
 export { registerAIInlineHandlers, unregisterAIInlineHandlers } from './ai-inline-handlers'
+export { registerUpdaterHandlers, unregisterUpdaterHandlers } from './updater-handlers'

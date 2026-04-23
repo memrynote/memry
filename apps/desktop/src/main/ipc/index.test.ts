@@ -42,6 +42,8 @@ const hoisted = vi.hoisted(() => ({
   unregisterAIInlineHandlers: vi.fn(),
   registerAccountHandlers: vi.fn(),
   unregisterAccountHandlers: vi.fn(),
+  registerUpdaterHandlers: vi.fn(),
+  unregisterUpdaterHandlers: vi.fn(),
   registerCrdtIpcHandlers: vi.fn()
 }))
 
@@ -126,6 +128,10 @@ vi.mock('./account-handlers', () => ({
   registerAccountHandlers: hoisted.registerAccountHandlers,
   unregisterAccountHandlers: hoisted.unregisterAccountHandlers
 }))
+vi.mock('./updater-handlers', () => ({
+  registerUpdaterHandlers: hoisted.registerUpdaterHandlers,
+  unregisterUpdaterHandlers: hoisted.unregisterUpdaterHandlers
+}))
 vi.mock('./crdt-handlers', () => ({
   registerCrdtIpcHandlers: hoisted.registerCrdtIpcHandlers
 }))
@@ -146,6 +152,7 @@ describe('ipc index registration lifecycle', () => {
     expect(hoisted.registerSyncHandlers).toHaveBeenCalledTimes(1)
     expect(hoisted.registerCryptoHandlers).toHaveBeenCalledTimes(1)
     expect(hoisted.registerTagsHandlers).toHaveBeenCalledTimes(1)
+    expect(hoisted.registerUpdaterHandlers).toHaveBeenCalledTimes(1)
     expect(hoisted.registerCrdtIpcHandlers).toHaveBeenCalledTimes(1)
   })
 
@@ -156,6 +163,7 @@ describe('ipc index registration lifecycle', () => {
     expect(hoisted.registerVaultHandlers).toHaveBeenCalledTimes(1)
     expect(hoisted.registerSyncHandlers).toHaveBeenCalledTimes(1)
     expect(hoisted.registerCryptoHandlers).toHaveBeenCalledTimes(1)
+    expect(hoisted.registerUpdaterHandlers).toHaveBeenCalledTimes(1)
   })
 
   it('unregisters all handlers and resets state', () => {
@@ -167,6 +175,7 @@ describe('ipc index registration lifecycle', () => {
     expect(hoisted.unregisterVaultHandlers).toHaveBeenCalledTimes(1)
     expect(hoisted.unregisterSyncHandlers).toHaveBeenCalledTimes(1)
     expect(hoisted.unregisterCryptoHandlers).toHaveBeenCalledTimes(1)
+    expect(hoisted.unregisterUpdaterHandlers).toHaveBeenCalledTimes(1)
   })
 
   it('is a no-op to unregister when handlers are not registered', () => {
@@ -175,6 +184,7 @@ describe('ipc index registration lifecycle', () => {
     expect(hoisted.unregisterVaultHandlers).not.toHaveBeenCalled()
     expect(hoisted.unregisterSyncHandlers).not.toHaveBeenCalled()
     expect(hoisted.unregisterCryptoHandlers).not.toHaveBeenCalled()
+    expect(hoisted.unregisterUpdaterHandlers).not.toHaveBeenCalled()
     expect(areHandlersRegistered()).toBe(false)
   })
 })

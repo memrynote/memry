@@ -1,4 +1,6 @@
 import { useCallback } from 'react'
+import type { AppUpdateState } from '@memry/contracts/ipc-updater'
+import { Button } from '@/components/ui/button'
 import {
   Select,
   SelectContent,
@@ -8,6 +10,7 @@ import {
 } from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
 import { useTabPreferences } from '@/hooks/use-tab-preferences'
+import { useAppUpdater } from '@/hooks/use-app-updater'
 import { useGeneralSettings } from '@/hooks/use-general-settings'
 import { useTabs } from '@/contexts/tabs'
 import { toast } from 'sonner'
@@ -15,6 +18,7 @@ import {
   SettingsHeader,
   SettingsGroup,
   SettingRow,
+  SettingRowTall,
   ACCENT_SWITCH,
   COMPACT_SELECT
 } from '@/components/settings/settings-primitives'
@@ -30,6 +34,14 @@ export function GeneralSettings() {
     isLoading: generalLoading,
     updateSettings: updateGeneralSettings
   } = useGeneralSettings()
+  const {
+    state: updateState,
+    isLoading: updaterLoading,
+    error: updaterError,
+    checkForUpdates,
+    downloadUpdate,
+    quitAndInstall
+  } = useAppUpdater()
   const { updateSettings: updateContextSettings } = useTabs()
 
   const isLoading = tabLoading || generalLoading
@@ -94,6 +106,43 @@ export function GeneralSettings() {
     [updateTabSettings, updateContextSettings]
   )
 
+  const handleUpdateAction = useCallback(async () => {
+    try {
+      if (!updateState.updateSupported) {
+        toast.info('Auto-updates are available in packaged releases only')
+        return
+      }
+
+      if (updateState.status === 'available') {
+        await downloadUpdate()
+        return
+      }
+
+      if (updateState.status === 'downloaded') {
+        await quitAndInstall()
+        return
+      }
+
+      const nextState = await checkForUpdates()
+      if (nextState.status === 'up-to-date') {
+        toast.success(`Memry ${nextState.currentVersion} is up to date`)
+      }
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Update action failed')
+    }
+  }, [
+    checkForUpdates,
+    downloadUpdate,
+    quitAndInstall,
+    updateState.status,
+    updateState.updateSupported
+  ])
+
+  const updateDescription = getUpdateDescription(updateState, updaterError)
+  const updateActionLabel = getUpdateActionLabel(updateState)
+  const isUpdateActionDisabled =
+    updaterLoading || updateState.status === 'checking' || updateState.status === 'downloading'
+
   if (isLoading) {
     return (
       <div className="flex flex-col">
@@ -114,6 +163,28 @@ export function GeneralSettings() {
             className={ACCENT_SWITCH}
           />
         </SettingRow>
+      </SettingsGroup>
+
+      <SettingsGroup label="Updates">
+        <SettingRowTall label="App Updates" description={updateDescription}>
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex flex-col gap-1 text-xs/4 text-muted-foreground">
+              <span>Installed version {updateState.currentVersion}</span>
+              {updateState.availableVersion && (
+                <span>Available version {updateState.availableVersion}</span>
+              )}
+            </div>
+            <Button
+              type="button"
+              size="sm"
+              variant={updateState.status === 'downloaded' ? 'default' : 'outline'}
+              disabled={isUpdateActionDisabled}
+              onClick={() => void handleUpdateAction()}
+            >
+              {updateActionLabel}
+            </Button>
+          </div>
+        </SettingRowTall>
       </SettingsGroup>
 
       <SettingsGroup label="Date &amp; Time">
@@ -181,4 +252,52 @@ export function GeneralSettings() {
       </SettingsGroup>
     </div>
   )
+}
+
+function getUpdateActionLabel(state: AppUpdateState): string {
+  switch (state.status) {
+    case 'checking':
+      return 'Checking...'
+    case 'available':
+      return 'Download Update'
+    case 'downloading':
+      return state.downloadProgressPercent == null
+        ? 'Downloading...'
+        : `Downloading ${state.downloadProgressPercent}%`
+    case 'downloaded':
+      return 'Restart to Install'
+    default:
+      return 'Check for Updates'
+  }
+}
+
+function getUpdateDescription(state: AppUpdateState, updaterError: string | null): string {
+  if (!state.updateSupported) {
+    return 'Packaged builds can check, download, and install updates from GitHub Releases'
+  }
+
+  if (updaterError) {
+    return updaterError
+  }
+
+  if (state.error) {
+    return state.error
+  }
+
+  switch (state.status) {
+    case 'available':
+      return `Memry ${state.availableVersion ?? ''} is available to download`
+    case 'downloading':
+      return state.downloadProgressPercent == null
+        ? 'Downloading the latest release'
+        : `Downloading the latest release (${state.downloadProgressPercent}%)`
+    case 'downloaded':
+      return `Memry ${state.availableVersion ?? ''} is ready to install`
+    case 'up-to-date':
+      return 'This installation is on the latest published release'
+    case 'checking':
+      return 'Checking GitHub Releases for a newer version'
+    default:
+      return 'Check for new releases and install them without leaving the app'
+  }
 }

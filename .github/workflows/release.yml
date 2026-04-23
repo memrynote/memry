@@ -1,20 +1,16 @@
-name: Desktop Release Build
+name: Desktop Release
 
 on:
-  push:
-    tags:
-      - v*
   workflow_dispatch:
     inputs:
-      platform:
-        description: Platform to build
-        type: choice
-        options:
-          - all
-          - mac
-          - win
-          - linux
-        default: all
+      version:
+        description: Calendar version in YYYY.M.D format. Leave blank to use the UTC date.
+        required: false
+        type: string
+      release_notes:
+        description: Markdown release notes prepended to GitHub-generated release notes.
+        required: true
+        type: string
 
 permissions:
   contents: write
@@ -27,24 +23,72 @@ env:
   CI: true
 
 jobs:
+  prepare:
+    name: Prepare release metadata
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      release_name: ${{ steps.version.outputs.release_name }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Require main branch
+        if: github.ref_name != 'main'
+        run: |
+          echo "Desktop releases must be created from main. Current ref: ${{ github.ref_name }}"
+          exit 1
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+
+      - name: Resolve version
+        id: version
+        shell: bash
+        run: |
+          VERSION="${{ inputs.version }}"
+          if [ -z "$VERSION" ]; then
+            VERSION="$(date -u '+%Y.%-m.%-d')"
+          fi
+          node scripts/set-desktop-version.mjs --validate-only "$VERSION"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "release_name=Memry $VERSION" >> "$GITHUB_OUTPUT"
+
   build:
-    name: Build ${{ matrix.platform }}
+    name: Build ${{ matrix.label }}
     runs-on: ${{ matrix.os }}
+    needs: prepare
     timeout-minutes: 75
-    if: github.event_name != 'workflow_dispatch' || inputs.platform == 'all' || inputs.platform == matrix.platform
     strategy:
       fail-fast: false
       matrix:
         include:
-          - platform: mac
-            os: macos-latest
-            script: build:mac
-          - platform: win
+          - label: mac x64
+            platform: mac
+            arch: x64
+            os: macos-15-intel
+            artifact_name: release-mac-x64
+            build_command: pnpm --filter @memry/desktop exec electron-builder --config config/electron-builder.yml --mac --x64 --publish never
+          - label: mac arm64
+            platform: mac
+            arch: arm64
+            os: macos-15
+            artifact_name: release-mac-arm64
+            build_command: pnpm --filter @memry/desktop exec electron-builder --config config/electron-builder.yml --mac --arm64 --publish never
+          - label: win x64
+            platform: win
+            arch: x64
             os: windows-latest
-            script: build:win
-          - platform: linux
+            artifact_name: release-win
+            build_command: pnpm --filter @memry/desktop exec electron-builder --config config/electron-builder.yml --win --x64 --publish never
+          - label: linux x64
+            platform: linux
+            arch: x64
             os: ubuntu-latest
-            script: build:linux
+            artifact_name: release-linux
+            build_command: pnpm --filter @memry/desktop exec electron-builder --config config/electron-builder.yml --linux AppImage deb --x64 --publish never
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -57,34 +101,95 @@ jobs:
           node-version-file: .nvmrc
           cache: pnpm
 
+      - name: Set release version
+        run: node scripts/set-desktop-version.mjs "${{ needs.prepare.outputs.version }}"
+
+      - name: Install Linux system dependencies
+        if: matrix.platform == 'linux'
+        run: sudo apt-get update && sudo apt-get install -y libsecret-1-dev
+
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Build desktop package
-        run: pnpm ${{ matrix.script }}
+      - name: Build desktop bundle
+        run: pnpm --filter @memry/desktop build
+
+      - name: Package desktop artifacts
+        run: ${{ matrix.build_command }}
+        env:
+          CSC_LINK: ${{ matrix.platform == 'mac' && secrets.MACOS_CERTIFICATE_P12 || '' }}
+          CSC_KEY_PASSWORD: ${{ matrix.platform == 'mac' && secrets.MACOS_CERTIFICATE_PASSWORD || '' }}
+          CSC_IDENTITY_AUTO_DISCOVERY: ${{ matrix.platform == 'mac' && 'false' || '' }}
+          APPLE_ID: ${{ matrix.platform == 'mac' && secrets.APPLE_ID || '' }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ matrix.platform == 'mac' && secrets.APPLE_APP_SPECIFIC_PASSWORD || '' }}
+          APPLE_TEAM_ID: ${{ matrix.platform == 'mac' && secrets.APPLE_TEAM_ID || '' }}
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: release-${{ matrix.platform }}
-          path: dist/**
+          name: ${{ matrix.artifact_name }}
+          path: apps/desktop/dist/**
           if-no-files-found: error
 
   publish:
     name: Publish GitHub Release
     runs-on: ubuntu-latest
     needs:
+      - prepare
       - build
-    if: startsWith(github.ref, 'refs/tags/')
     steps:
       - name: Download build artifacts
         uses: actions/download-artifact@v4
         with:
           path: artifacts
 
+      - name: Merge mac updater metadata
+        shell: bash
+        run: |
+          ruby <<'RUBY'
+          require 'yaml'
+          require 'pathname'
+
+          root = Pathname.new('artifacts')
+          metadata_files = Dir[root.join('**', 'latest-mac.yml').to_s]
+
+          exit 0 if metadata_files.length <= 1
+
+          payloads = metadata_files.map { |file| [file, YAML.load_file(file) || {}] }
+          merged_files = payloads.flat_map do |_, data|
+            files = data['files']
+            next files if files.is_a?(Array) && !files.empty?
+
+            if data['path'] && data['sha512']
+              [{ 'url' => data['path'], 'sha512' => data['sha512'] }]
+            else
+              []
+            end
+          end
+
+          merged_files.uniq! { |entry| [entry['url'], entry['sha512']] }
+          raise 'No mac update files found to merge' if merged_files.empty?
+
+          base = payloads.first.last
+          preferred = merged_files.find { |entry| entry['url'].include?('x64') && entry['url'].end_with?('.zip') } ||
+            merged_files.find { |entry| entry['url'].end_with?('.zip') } ||
+            merged_files.first
+
+          base['files'] = merged_files
+          base['path'] = preferred['url']
+          base['sha512'] = preferred['sha512']
+
+          metadata_files.each { |file| File.delete(file) }
+          File.write(root.join('latest-mac.yml'), YAML.dump(base))
+          RUBY
+
       - name: Create GitHub release
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ needs.prepare.outputs.version }}
+          name: ${{ needs.prepare.outputs.release_name }}
+          target_commitish: ${{ github.sha }}
           files: artifacts/**/*
+          body: ${{ inputs.release_notes }}
           generate_release_notes: true
           fail_on_unmatched_files: false
