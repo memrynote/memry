@@ -1,51 +1,75 @@
-import { useState } from "react";
-import reactLogo from "./assets/react.svg";
-import { invoke } from "@tauri-apps/api/core";
-import "./App.css";
+import { useCreateBlockNote } from '@blocknote/react'
+import { BlockNoteView } from '@blocknote/shadcn'
+import { useCallback, useState } from 'react'
+import '@blocknote/core/fonts/inter.css'
+import '@blocknote/shadcn/style.css'
+import './App.css'
+
+const STORAGE_KEY = 'spike-s1-blocknote-doc'
 
 function App() {
-  const [greetMsg, setGreetMsg] = useState("");
-  const [name, setName] = useState("");
+  const editor = useCreateBlockNote({
+    initialContent: (() => {
+      const saved = localStorage.getItem(STORAGE_KEY)
+      if (!saved) return undefined
+      try {
+        return JSON.parse(saved)
+      } catch {
+        return undefined
+      }
+    })()
+  })
 
-  async function greet() {
-    // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
-    setGreetMsg(await invoke("greet", { name }));
-  }
+  const [lastDump, setLastDump] = useState<string>('')
+
+  const save = useCallback(() => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(editor.document))
+  }, [editor])
+
+  const load = useCallback(() => {
+    const saved = localStorage.getItem(STORAGE_KEY)
+    if (saved) {
+      try {
+        const blocks = JSON.parse(saved)
+        editor.replaceBlocks(editor.document, blocks)
+      } catch (e) {
+        console.error('Load failed:', e)
+      }
+    }
+  }, [editor])
+
+  const dumpJson = useCallback(() => {
+    const json = JSON.stringify(editor.document, null, 2)
+    setLastDump(json)
+    console.log('BlockNote dump:', json)
+  }, [editor])
 
   return (
-    <main className="container">
-      <h1>Welcome to Tauri + React</h1>
-
-      <div className="row">
-        <a href="https://vite.dev" target="_blank">
-          <img src="/vite.svg" className="logo vite" alt="Vite logo" />
-        </a>
-        <a href="https://tauri.app" target="_blank">
-          <img src="/tauri.svg" className="logo tauri" alt="Tauri logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100vh' }}>
+      <div style={{ padding: 8, display: 'flex', gap: 8, borderBottom: '1px solid #ccc' }}>
+        <button onClick={save}>Save</button>
+        <button onClick={load}>Load</button>
+        <button onClick={dumpJson}>Dump JSON</button>
       </div>
-      <p>Click on the Tauri, Vite, and React logos to learn more.</p>
-
-      <form
-        className="row"
-        onSubmit={(e) => {
-          e.preventDefault();
-          greet();
-        }}
-      >
-        <input
-          id="greet-input"
-          onChange={(e) => setName(e.currentTarget.value)}
-          placeholder="Enter a name..."
-        />
-        <button type="submit">Greet</button>
-      </form>
-      <p>{greetMsg}</p>
-    </main>
-  );
+      <div style={{ flex: 1, overflow: 'auto' }}>
+        <BlockNoteView editor={editor} />
+      </div>
+      {lastDump && (
+        <pre
+          style={{
+            maxHeight: 200,
+            overflow: 'auto',
+            fontSize: 10,
+            padding: 8,
+            margin: 0,
+            borderTop: '1px solid #ccc'
+          }}
+        >
+          {lastDump}
+        </pre>
+      )}
+    </div>
+  )
 }
 
-export default App;
+export default App

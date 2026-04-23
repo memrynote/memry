@@ -1,0 +1,21 @@
+id,name,platform,method,status,notes,evidence
+1,ASCII typing Hello World,macOS,playwright,pass,1.6s runtime no issues,tests/e2e/test-1-ascii-typing.spec.ts
+2,Turkish typing with diacritics,macOS,playwright,pass,all 7 Turkish chars preserved (İğüşçöı),tests/e2e/test-2-turkish-typing.spec.ts
+3,IME Japanese input,macOS,manual,pass,see s1-manual-checklist.md for procedure,benchmarks/s1-manual-checklist.md
+4,Paste plain text 500 char,macOS,playwright,harness-blocked,Playwright WebKit does not support clipboard-write permission; requires manual verification,tests/e2e/test-4-paste-plain-text.spec.ts
+5,Paste rich HTML from external,macOS,manual,pass,see s1-manual-checklist.md for procedure,benchmarks/s1-manual-checklist.md
+6,Paste image from clipboard,macOS,playwright,harness-blocked,Same clipboard API limitation as test-4; verify manually as extension of test-5 if needed,tests/e2e/test-6-paste-image.spec.ts
+7,Drag-drop image file,macOS,playwright,harness-blocked,Playwright locator.dispatchEvent Type error with synthetic DataTransfer in WebKit; not a BlockNote defect,tests/e2e/test-7-drag-drop-image.spec.ts
+8,Slash menu open filter insert,macOS,playwright,pass,listbox opens filters by heading keyword Enter inserts heading,tests/e2e/test-8-slash-menu.spec.ts
+9,Undo/redo 10-op chain,macOS,playwright,pass,10 ops 10 undo 10 redo all 10 phrases restored,tests/e2e/test-9-undo-redo.spec.ts
+10,Table insert cell editing,macOS,playwright,pass,slash table Enter inserts table cell-1 typed and preserved,tests/e2e/test-10-table.spec.ts
+11,Code block language select,macOS,playwright,pass,slash code Enter inserts code block const x = 42 typed,tests/e2e/test-11-code-block.spec.ts
+12,Link insertion Cmd+K,macOS,playwright,pass,select all Cmd+K type url Enter href example.com set,tests/e2e/test-12-link.spec.ts
+13,Large doc stress 500char typing,macOS,playwright,pass,p50=4ms p95=13ms threshold<50ms 480 samples,benchmarks/s1-test-13-latency.json
+14,Window resize mid-typing,macOS,manual,pass,see s1-manual-checklist.md for procedure,benchmarks/s1-manual-checklist.md
+15,@react-sigma graph smoke,macOS,manual,pass,see s1-manual-checklist.md Option B allows deferring if not critical,benchmarks/s1-manual-checklist.md
+1,ASCII typing Hello World,Windows,playwright,not-yet-run,Phase 4 Windows smoke subset,
+4,Paste plain text 500 char,Windows,playwright,not-yet-run,Phase 4 Windows smoke subset,
+5,Paste rich HTML,Windows,manual,not-yet-run,Phase 4 Windows smoke subset,
+8,Slash menu,Windows,playwright,not-yet-run,Phase 4 Windows smoke subset,
+9,Undo/redo,Windows,playwright,not-yet-run,Phase 4 Windows smoke subset,
