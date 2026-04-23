@@ -1,0 +1,310 @@
+<h2>Calendar UI — Three Views</h2>
+<p class="subtitle">memry's new top-level Calendar page. Which layout direction feels right for each view?</p>
+
+<div class="section">
+  <h3>Page Header (shared across all views)</h3>
+  <div class="mockup">
+    <div class="mockup-header">Calendar — Top Bar</div>
+    <div class="mockup-body" style="padding: 16px; background: #111; font-family: system-ui;">
+      <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
+        <div style="display: flex; align-items: center; gap: 12px;">
+          <span style="font-size: 20px; font-weight: 600; color: #f0f0f0;">April 2026</span>
+          <div style="display: flex; gap: 4px;">
+            <button style="background: #222; border: 1px solid #333; color: #aaa; padding: 4px 8px; border-radius: 6px; cursor: pointer;">←</button>
+            <button style="background: #222; border: 1px solid #333; color: #aaa; padding: 4px 8px; border-radius: 6px; cursor: pointer;">→</button>
+          </div>
+          <button style="background: #222; border: 1px solid #333; color: #ccc; padding: 4px 12px; border-radius: 6px; cursor: pointer; font-size: 13px;">Today</button>
+        </div>
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <div style="display: flex; background: #222; border-radius: 8px; overflow: hidden; border: 1px solid #333;">
+            <button style="background: #333; color: #fff; border: none; padding: 6px 14px; font-size: 13px; cursor: pointer;">Week</button>
+            <button style="background: transparent; color: #888; border: none; padding: 6px 14px; font-size: 13px; cursor: pointer;">Month</button>
+            <button style="background: transparent; color: #888; border: none; padding: 6px 14px; font-size: 13px; cursor: pointer;">Agenda</button>
+          </div>
+          <button style="background: #6366f1; color: #fff; border: none; padding: 6px 14px; border-radius: 8px; font-size: 13px; cursor: pointer; font-weight: 500;">+ New Event</button>
+        </div>
+      </div>
+      <div style="display: flex; gap: 6px; font-size: 11px; color: #666;">
+        <span style="background: #1a1a2e; border: 1px solid #2a2a4e; padding: 2px 8px; border-radius: 4px; color: #818cf8;">● Work</span>
+        <span style="background: #1a2e1a; border: 1px solid #2a4e2a; padding: 2px 8px; border-radius: 4px; color: #6ee7b7;">● Personal</span>
+        <span style="background: #2e1a1a; border: 1px solid #4e2a2a; padding: 2px 8px; border-radius: 4px; color: #fca5a5;">● Google (synced)</span>
+        <span style="background: #222; border: 1px solid #333; padding: 2px 8px; border-radius: 4px; color: #aaa;">☑ Tasks</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>Week View (default)</h3>
+  <div class="mockup">
+    <div class="mockup-header">7-day time grid</div>
+    <div class="mockup-body" style="padding: 0; background: #111; font-family: system-ui; font-size: 12px;">
+      <!-- Day headers -->
+      <div style="display: grid; grid-template-columns: 50px repeat(7, 1fr); border-bottom: 1px solid #222;">
+        <div style="padding: 8px 4px; color: #444;"></div>
+        <div style="padding: 8px 4px; color: #666; text-align: center; border-left: 1px solid #1a1a1a;">Mon<br><span style="font-size: 18px; color: #aaa;">6</span></div>
+        <div style="padding: 8px 4px; color: #666; text-align: center; border-left: 1px solid #1a1a1a;">Tue<br><span style="font-size: 18px; color: #aaa;">7</span></div>
+        <div style="padding: 8px 4px; color: #666; text-align: center; border-left: 1px solid #1a1a1a;">Wed<br><span style="font-size: 18px; color: #aaa;">8</span></div>
+        <div style="padding: 8px 4px; text-align: center; border-left: 1px solid #1a1a1a;"><span style="color: #818cf8;">Thu</span><br><span style="font-size: 18px; background: #6366f1; color: #fff; border-radius: 50%; width: 28px; height: 28px; display: inline-flex; align-items: center; justify-content: center;">9</span></div>
+        <div style="padding: 8px 4px; color: #666; text-align: center; border-left: 1px solid #1a1a1a;">Fri<br><span style="font-size: 18px; color: #aaa;">10</span></div>
+        <div style="padding: 8px 4px; color: #555; text-align: center; border-left: 1px solid #1a1a1a;">Sat<br><span style="font-size: 18px; color: #666;">11</span></div>
+        <div style="padding: 8px 4px; color: #555; text-align: center; border-left: 1px solid #1a1a1a;">Sun<br><span style="font-size: 18px; color: #666;">12</span></div>
+      </div>
+      <!-- All-day row -->
+      <div style="display: grid; grid-template-columns: 50px repeat(7, 1fr); border-bottom: 1px solid #222; min-height: 28px;">
+        <div style="padding: 4px; color: #444; font-size: 10px;">all-day</div>
+        <div style="padding: 2px; border-left: 1px solid #1a1a1a;"></div>
+        <div style="padding: 2px; border-left: 1px solid #1a1a1a; grid-column: span 3;">
+          <div style="background: #2a1a1a; border-left: 3px solid #f87171; padding: 2px 6px; border-radius: 3px; color: #fca5a5; font-size: 11px; white-space: nowrap; overflow: hidden;">🔴 Team Offsite</div>
+        </div>
+        <div style="padding: 2px; border-left: 1px solid #1a1a1a;"></div>
+        <div style="padding: 2px; border-left: 1px solid #1a1a1a;"></div>
+      </div>
+      <!-- Time slots -->
+      <div style="display: grid; grid-template-columns: 50px repeat(7, 1fr); position: relative;">
+        <div style="display: flex; flex-direction: column;">
+          <div style="padding: 4px; color: #444; height: 48px; display: flex; align-items: flex-start; justify-content: flex-end; padding-right: 8px;">9 AM</div>
+          <div style="padding: 4px; color: #444; height: 48px; display: flex; align-items: flex-start; justify-content: flex-end; padding-right: 8px;">10 AM</div>
+          <div style="padding: 4px; color: #444; height: 48px; display: flex; align-items: flex-start; justify-content: flex-end; padding-right: 8px;">11 AM</div>
+          <div style="padding: 4px; color: #444; height: 48px; display: flex; align-items: flex-start; justify-content: flex-end; padding-right: 8px;">12 PM</div>
+          <div style="padding: 4px; color: #444; height: 48px; display: flex; align-items: flex-start; justify-content: flex-end; padding-right: 8px;">1 PM</div>
+          <div style="padding: 4px; color: #444; height: 48px; display: flex; align-items: flex-start; justify-content: flex-end; padding-right: 8px;">2 PM</div>
+        </div>
+        <!-- Monday -->
+        <div style="border-left: 1px solid #1a1a1a; position: relative;">
+          <div style="height: 48px; border-bottom: 1px solid #1a1a1a;"></div>
+          <div style="height: 48px; border-bottom: 1px solid #1a1a1a; position: relative;">
+            <div style="position: absolute; top: 0; left: 2px; right: 2px; height: 44px; background: #1a1a2e; border-left: 3px solid #818cf8; border-radius: 4px; padding: 4px 6px;">
+              <div style="color: #c7d2fe; font-weight: 500; font-size: 11px;">Sprint Planning</div>
+              <div style="color: #6366f1; font-size: 10px;">10:00 – 11:00</div>
+            </div>
+          </div>
+          <div style="height: 48px; border-bottom: 1px solid #1a1a1a;"></div>
+          <div style="height: 48px; border-bottom: 1px solid #1a1a1a;"></div>
+          <div style="height: 48px; border-bottom: 1px solid #1a1a1a;"></div>
+          <div style="height: 48px; border-bottom: 1px solid #1a1a1a;"></div>
+        </div>
+        <!-- Tuesday -->
+        <div style="border-left: 1px solid #1a1a1a;">
+          <div style="height: 48px; border-bottom: 1px solid #1a1a1a;"></div>
+          <div style="height: 48px; border-bottom: 1px solid #1a1a1a;"></div>
+          <div style="height: 48px; border-bottom: 1px solid #1a1a1a;"></div>
+          <div style="height: 48px; border-bottom: 1px solid #1a1a1a; position: relative;">
+            <div style="position: absolute; top: 0; left: 2px; right: 2px; height: 90px; background: #1a2e1a; border-left: 3px solid #6ee7b7; border-radius: 4px; padding: 4px 6px; z-index: 1;">
+              <div style="color: #a7f3d0; font-weight: 500; font-size: 11px;">Lunch w/ Sarah</div>
+              <div style="color: #34d399; font-size: 10px;">12:00 – 1:30</div>
+              <div style="color: #6ee7b7; font-size: 10px; margin-top: 2px;">📍 Lokanta</div>
+            </div>
+          </div>
+          <div style="height: 48px; border-bottom: 1px solid #1a1a1a;"></div>
+          <div style="height: 48px; border-bottom: 1px solid #1a1a1a;"></div>
+        </div>
+        <!-- Wednesday -->
+        <div style="border-left: 1px solid #1a1a1a;">
+          <div style="height: 48px; border-bottom: 1px solid #1a1a1a; position: relative;">
+            <div style="position: absolute; top: 0; left: 2px; right: 2px; height: 92px; background: #1a1a2e; border-left: 3px solid #818cf8; border-radius: 4px; padding: 4px 6px;">
+              <div style="color: #c7d2fe; font-weight: 500; font-size: 11px;">Design Review</div>
+              <div style="color: #6366f1; font-size: 10px;">9:00 – 10:30</div>
+              <div style="color: #818cf8; font-size: 10px; margin-top: 2px;">🔗 Zoom</div>
+            </div>
+          </div>
+          <div style="height: 48px; border-bottom: 1px solid #1a1a1a;"></div>
+          <div style="height: 48px; border-bottom: 1px solid #1a1a1a;"></div>
+          <div style="height: 48px; border-bottom: 1px solid #1a1a1a;"></div>
+          <div style="height: 48px; border-bottom: 1px solid #1a1a1a;"></div>
+          <div style="height: 48px; border-bottom: 1px solid #1a1a1a;"></div>
+        </div>
+        <!-- Thursday (today) -->
+        <div style="border-left: 2px solid #6366f1; background: rgba(99, 102, 241, 0.03);">
+          <div style="height: 48px; border-bottom: 1px solid #1a1a1a;"></div>
+          <div style="height: 48px; border-bottom: 1px solid #1a1a1a;"></div>
+          <div style="height: 48px; border-bottom: 1px solid #1a1a1a;"></div>
+          <div style="height: 48px; border-bottom: 1px solid #1a1a1a;"></div>
+          <div style="height: 48px; border-bottom: 1px solid #1a1a1a; position: relative;">
+            <div style="position: absolute; top: 0; left: 2px; right: 2px; height: 44px; background: #2a1a1a; border-left: 3px solid #f87171; border-radius: 4px; padding: 4px 6px;">
+              <div style="color: #fecaca; font-weight: 500; font-size: 11px;">1:1 with Manager</div>
+              <div style="color: #f87171; font-size: 10px;">1:00 – 1:30</div>
+            </div>
+          </div>
+          <div style="height: 48px; border-bottom: 1px solid #1a1a1a;"></div>
+        </div>
+        <!-- Friday -->
+        <div style="border-left: 1px solid #1a1a1a;">
+          <div style="height: 48px; border-bottom: 1px solid #1a1a1a;"></div>
+          <div style="height: 48px; border-bottom: 1px solid #1a1a1a;"></div>
+          <div style="height: 48px; border-bottom: 1px solid #1a1a1a;"></div>
+          <div style="height: 48px; border-bottom: 1px solid #1a1a1a;"></div>
+          <div style="height: 48px; border-bottom: 1px solid #1a1a1a;"></div>
+          <div style="height: 48px; border-bottom: 1px solid #1a1a1a; position: relative;">
+            <div style="position: absolute; top: 0; left: 2px; right: 2px; padding: 3px 6px; border-radius: 3px; background: rgba(99, 102, 241, 0.1); border: 1px dashed #4f46e5;">
+              <div style="color: #a5b4fc; font-size: 10px;">☐ Review PR #142</div>
+            </div>
+          </div>
+        </div>
+        <!-- Sat -->
+        <div style="border-left: 1px solid #1a1a1a; background: rgba(255,255,255,0.01);">
+          <div style="height: 48px; border-bottom: 1px solid #1a1a1a;"></div>
+          <div style="height: 48px; border-bottom: 1px solid #1a1a1a;"></div>
+          <div style="height: 48px; border-bottom: 1px solid #1a1a1a;"></div>
+          <div style="height: 48px; border-bottom: 1px solid #1a1a1a;"></div>
+          <div style="height: 48px; border-bottom: 1px solid #1a1a1a;"></div>
+          <div style="height: 48px; border-bottom: 1px solid #1a1a1a;"></div>
+        </div>
+        <!-- Sun -->
+        <div style="border-left: 1px solid #1a1a1a; background: rgba(255,255,255,0.01);">
+          <div style="height: 48px; border-bottom: 1px solid #1a1a1a;"></div>
+          <div style="height: 48px; border-bottom: 1px solid #1a1a1a;"></div>
+          <div style="height: 48px; border-bottom: 1px solid #1a1a1a;"></div>
+          <div style="height: 48px; border-bottom: 1px solid #1a1a1a;"></div>
+          <div style="height: 48px; border-bottom: 1px solid #1a1a1a;"></div>
+          <div style="height: 48px; border-bottom: 1px solid #1a1a1a;"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <p style="margin-top: 8px; font-size: 13px; color: #888;">
+    <strong>Key details:</strong> Today column highlighted with indigo border. Events use left-border color from their calendar.
+    Tasks shown as dashed-outline items (☐) distinct from solid events. Multi-hour events span rows. All-day events in top bar.
+  </p>
+</div>
+
+<div class="section">
+  <h3>Month View</h3>
+  <div class="mockup">
+    <div class="mockup-header">Month grid with event pills</div>
+    <div class="mockup-body" style="padding: 12px; background: #111; font-family: system-ui; font-size: 12px;">
+      <!-- Day labels -->
+      <div style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 1px; margin-bottom: 4px;">
+        <div style="color: #555; text-align: center; padding: 4px; font-size: 11px;">Mon</div>
+        <div style="color: #555; text-align: center; padding: 4px; font-size: 11px;">Tue</div>
+        <div style="color: #555; text-align: center; padding: 4px; font-size: 11px;">Wed</div>
+        <div style="color: #555; text-align: center; padding: 4px; font-size: 11px;">Thu</div>
+        <div style="color: #555; text-align: center; padding: 4px; font-size: 11px;">Fri</div>
+        <div style="color: #444; text-align: center; padding: 4px; font-size: 11px;">Sat</div>
+        <div style="color: #444; text-align: center; padding: 4px; font-size: 11px;">Sun</div>
+      </div>
+      <!-- Week 1 -->
+      <div style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 1px;">
+        <!-- prev month -->
+        <div style="background: #0a0a0a; padding: 4px; min-height: 80px; border-radius: 4px;"><span style="color: #333;">30</span></div>
+        <div style="background: #0a0a0a; padding: 4px; min-height: 80px; border-radius: 4px;"><span style="color: #333;">31</span></div>
+        <!-- April -->
+        <div style="background: #141414; padding: 4px; min-height: 80px; border-radius: 4px;"><span style="color: #888;">1</span></div>
+        <div style="background: #141414; padding: 4px; min-height: 80px; border-radius: 4px;"><span style="color: #888;">2</span></div>
+        <div style="background: #141414; padding: 4px; min-height: 80px; border-radius: 4px;"><span style="color: #888;">3</span></div>
+        <div style="background: #141414; padding: 4px; min-height: 80px; border-radius: 4px;"><span style="color: #888;">4</span>
+          <div style="background: #1a2e1a; padding: 2px 4px; border-radius: 3px; margin-top: 3px; font-size: 10px; color: #6ee7b7; white-space: nowrap; overflow: hidden;">🏃 Morning Run</div>
+        </div>
+        <div style="background: #111; padding: 4px; min-height: 80px; border-radius: 4px;"><span style="color: #666;">5</span></div>
+      </div>
+      <!-- Week 2 (with today) -->
+      <div style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 1px; margin-top: 1px;">
+        <div style="background: #141414; padding: 4px; min-height: 80px; border-radius: 4px;"><span style="color: #888;">6</span>
+          <div style="background: #1a1a2e; padding: 2px 4px; border-radius: 3px; margin-top: 3px; font-size: 10px; color: #818cf8; white-space: nowrap; overflow: hidden;">Sprint Planning</div>
+        </div>
+        <div style="background: #141414; padding: 4px; min-height: 80px; border-radius: 4px;"><span style="color: #888;">7</span>
+          <div style="background: #1a2e1a; padding: 2px 4px; border-radius: 3px; margin-top: 3px; font-size: 10px; color: #6ee7b7; white-space: nowrap; overflow: hidden;">Lunch w/ Sarah</div>
+        </div>
+        <div style="background: #141414; padding: 4px; min-height: 80px; border-radius: 4px;"><span style="color: #888;">8</span>
+          <div style="background: #1a1a2e; padding: 2px 4px; border-radius: 3px; margin-top: 3px; font-size: 10px; color: #818cf8; white-space: nowrap; overflow: hidden;">Design Review</div>
+        </div>
+        <div style="background: #141414; padding: 4px; min-height: 80px; border-radius: 4px; outline: 2px solid #6366f1; outline-offset: -2px;">
+          <span style="background: #6366f1; color: #fff; border-radius: 50%; width: 22px; height: 22px; display: inline-flex; align-items: center; justify-content: center; font-size: 12px;">9</span>
+          <div style="background: #2a1a1a; padding: 2px 4px; border-radius: 3px; margin-top: 3px; font-size: 10px; color: #fca5a5; white-space: nowrap; overflow: hidden;">1:1 w/ Manager</div>
+          <div style="color: #555; font-size: 10px; margin-top: 2px;">+1 more</div>
+        </div>
+        <div style="background: #141414; padding: 4px; min-height: 80px; border-radius: 4px;"><span style="color: #888;">10</span>
+          <div style="border: 1px dashed #4f46e5; padding: 2px 4px; border-radius: 3px; margin-top: 3px; font-size: 10px; color: #a5b4fc; white-space: nowrap; overflow: hidden;">☐ Review PR</div>
+        </div>
+        <div style="background: #111; padding: 4px; min-height: 80px; border-radius: 4px;"><span style="color: #666;">11</span></div>
+        <div style="background: #111; padding: 4px; min-height: 80px; border-radius: 4px;"><span style="color: #666;">12</span></div>
+      </div>
+    </div>
+  </div>
+  <p style="margin-top: 8px; font-size: 13px; color: #888;">
+    <strong>Key details:</strong> Event pills use calendar colors. Tasks use dashed borders. Today has indigo outline + filled date.
+    "+N more" overflow link opens day detail. Click any day to jump to week view centered on that day.
+  </p>
+</div>
+
+<div class="section">
+  <h3>Agenda View</h3>
+  <div class="mockup">
+    <div class="mockup-header">Scrolling timeline grouped by day</div>
+    <div class="mockup-body" style="padding: 16px; background: #111; font-family: system-ui; font-size: 13px;">
+      <!-- Today -->
+      <div style="margin-bottom: 16px;">
+        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+          <div style="background: #6366f1; color: #fff; padding: 2px 10px; border-radius: 6px; font-size: 12px; font-weight: 600;">TODAY</div>
+          <span style="color: #888; font-size: 12px;">Thursday, April 9</span>
+        </div>
+        <div style="margin-left: 16px; display: flex; flex-direction: column; gap: 6px;">
+          <div style="display: flex; align-items: center; gap: 10px; padding: 8px 12px; background: #141414; border-radius: 8px; border-left: 3px solid #f87171;">
+            <div style="color: #fca5a5; font-size: 12px; min-width: 80px;">1:00 – 1:30</div>
+            <div style="color: #f0f0f0;">1:1 with Manager</div>
+            <div style="color: #f87171; font-size: 11px; margin-left: auto;">Google</div>
+          </div>
+          <div style="display: flex; align-items: center; gap: 10px; padding: 8px 12px; background: #141414; border-radius: 8px; border-left: 3px solid #818cf8;">
+            <div style="color: #a5b4fc; font-size: 12px; min-width: 80px;">3:00 – 4:00</div>
+            <div style="color: #f0f0f0;">Product Sync</div>
+            <div style="color: #818cf8; font-size: 11px; margin-left: auto;">Work</div>
+          </div>
+          <div style="display: flex; align-items: center; gap: 10px; padding: 8px 12px; background: rgba(99, 102, 241, 0.05); border-radius: 8px; border: 1px dashed #4f46e5;">
+            <div style="color: #6366f1; font-size: 14px; min-width: 80px;">☐</div>
+            <div style="color: #c7d2fe;">Ship calendar spec</div>
+            <div style="color: #555; font-size: 11px; margin-left: auto;">due today</div>
+          </div>
+        </div>
+      </div>
+      <!-- Tomorrow -->
+      <div style="margin-bottom: 16px;">
+        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+          <span style="color: #aaa; font-weight: 600; font-size: 13px;">Friday, April 10</span>
+        </div>
+        <div style="margin-left: 16px; display: flex; flex-direction: column; gap: 6px;">
+          <div style="display: flex; align-items: center; gap: 10px; padding: 8px 12px; background: #141414; border-radius: 8px; border-left: 3px solid #6ee7b7;">
+            <div style="color: #6ee7b7; font-size: 12px; min-width: 80px;">All day</div>
+            <div style="color: #f0f0f0;">Team Offsite</div>
+            <div style="color: #6ee7b7; font-size: 11px; margin-left: auto;">Personal</div>
+          </div>
+          <div style="display: flex; align-items: center; gap: 10px; padding: 8px 12px; background: rgba(99, 102, 241, 0.05); border-radius: 8px; border: 1px dashed #4f46e5;">
+            <div style="color: #6366f1; font-size: 14px; min-width: 80px;">☐</div>
+            <div style="color: #c7d2fe;">Review PR #142</div>
+            <div style="color: #555; font-size: 11px; margin-left: auto;">due Fri</div>
+          </div>
+        </div>
+      </div>
+      <!-- Day after -->
+      <div>
+        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+          <span style="color: #666; font-size: 13px;">Saturday, April 11</span>
+          <span style="color: #444; font-size: 12px;">— no events</span>
+        </div>
+      </div>
+    </div>
+  </div>
+  <p style="margin-top: 8px; font-size: 13px; color: #888;">
+    <strong>Key details:</strong> Groups by day, scrolls infinitely forward. Events show time + calendar source tag.
+    Tasks interleaved with dashed borders. Empty days shown collapsed. Past days hidden by default.
+  </p>
+</div>
+
+<div class="section">
+  <h3>Visual Language Summary</h3>
+  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; font-size: 13px;">
+    <div style="background: #141414; padding: 12px; border-radius: 8px;">
+      <div style="color: #aaa; font-weight: 500; margin-bottom: 8px;">Calendar Events</div>
+      <div style="color: #666;">• Solid left-border (calendar color)</div>
+      <div style="color: #666;">• Filled background tint</div>
+      <div style="color: #666;">• Time range shown</div>
+      <div style="color: #666;">• Source label (Work, Google, etc.)</div>
+    </div>
+    <div style="background: #141414; padding: 12px; border-radius: 8px;">
+      <div style="color: #aaa; font-weight: 500; margin-bottom: 8px;">Tasks (due date)</div>
+      <div style="color: #666;">• Dashed border (indigo)</div>
+      <div style="color: #666;">• Transparent/subtle background</div>
+      <div style="color: #666;">• Checkbox (☐) prefix</div>
+      <div style="color: #666;">• "due today" / "due Fri" label</div>
+    </div>
+  </div>
+</div>

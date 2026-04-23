@@ -56,10 +56,9 @@ opencode.jsonc
 .specify/
 .gstack/
 .playwright-mcp
-.superpowers/
 .agents/
 
 # Internal docs & specs
 prompts/
-specs/
+
 agents/

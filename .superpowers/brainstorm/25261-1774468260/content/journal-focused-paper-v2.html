@@ -1,0 +1,169 @@
+<h2>Journal Focused View — Paper-Consistent Design</h2>
+<p class="subtitle">Same design language as NoteLayout: h-11 header bar, centered max-w-4xl column, ghost buttons, theme tokens</p>
+
+<div class="mockup" style="margin-top:16px">
+  <div class="mockup-header">Default — No panel open (matches Note page exactly)</div>
+  <div class="mockup-body" style="display:flex;flex-direction:column;min-height:420px;font-size:13px;background:#1a1a1a;position:relative">
+    <!-- h-11 header bar (same as NoteLayout) -->
+    <div style="display:flex;align-items:center;justify-content:space-between;height:44px;padding:0 24px;font-size:12px;-webkit-font-smoothing:antialiased;flex-shrink:0">
+      <!-- Left: Date nav (replaces breadcrumb) -->
+      <div style="display:flex;align-items:center;gap:8px">
+        <span style="color:#666;cursor:pointer;font-size:13px;padding:2px 4px">‹</span>
+        <span style="color:#b0b0b0;font-weight:500;font-size:12px;letter-spacing:-0.01em">Tue, Mar 25, 2026</span>
+        <span style="color:#666;cursor:pointer;font-size:13px;padding:2px 4px">›</span>
+        <span style="font-size:10px;color:#1a1a1a;background:#7c6aef;padding:1px 6px;border-radius:3px;font-weight:500;margin-left:4px">Today</span>
+      </div>
+      <!-- Right: Panel toggles + view switcher (replaces note actions) -->
+      <div style="display:flex;align-items:center;gap:2px">
+        <!-- Panel toggle icons (size-7 / h-3.5 w-3.5 — same as note actions) -->
+        <div style="width:28px;height:28px;display:flex;align-items:center;justify-content:center;cursor:pointer;border-radius:4px" title="Schedule">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#777" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+        </div>
+        <div style="width:28px;height:28px;display:flex;align-items:center;justify-content:center;cursor:pointer;border-radius:4px" title="Tasks">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#777" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
+        </div>
+        <div style="width:28px;height:28px;display:flex;align-items:center;justify-content:center;cursor:pointer;border-radius:4px" title="AI Connections">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#777" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+        </div>
+        <!-- Divider (same w-px h-4 as note header) -->
+        <div style="width:1px;height:16px;background:#333;margin:0 6px"></div>
+        <!-- More menu (size-7) -->
+        <div style="width:28px;height:28px;display:flex;align-items:center;justify-content:center;cursor:pointer;border-radius:4px" title="More">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#777" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>
+        </div>
+      </div>
+    </div>
+
+    <!-- Content area (same max-w-4xl px-20 pt-6 pb-[30vh] as NoteLayout) -->
+    <div style="flex:1;overflow-y:auto">
+      <div style="max-width:896px;margin:0 auto;padding:24px 80px 30vh">
+        <!-- Date heading (replaces NoteTitle position) -->
+        <div style="margin-bottom:24px">
+          <h1 style="font-size:28px;font-weight:600;color:#e8e8e8;letter-spacing:-0.02em;margin:0">Tuesday</h1>
+          <div style="font-size:14px;color:#666;margin-top:4px;font-weight:400">March 25, 2026</div>
+        </div>
+
+        <!-- Editor content -->
+        <div style="color:#999;line-height:1.85;font-size:15px">
+          <div style="color:#d4d4d4">Had a productive morning working on the sync engine. The field-level merge is finally clicking — keeping field clocks as a separate JSON column was the key insight.</div>
+          <div style="margin-top:16px;color:#888">Met with the team about the CRDT architecture. We agreed on the hybrid approach: SyncItemHandler for full snapshots, separate endpoint for incremental updates.</div>
+          <div style="margin-top:16px;color:#666;opacity:0.6">Start writing, or press '/' for commands...</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- OutlineInfoPanel position (right side, same as NoteLayout) -->
+    <div style="position:absolute;right:16px;top:56px;width:140px;font-size:11px;color:#555">
+      <div style="color:#444;text-transform:uppercase;letter-spacing:0.5px;font-size:9px;margin-bottom:8px;font-weight:500">Outline</div>
+      <div style="padding:2px 0;color:#888;cursor:pointer">Meeting notes</div>
+      <div style="padding:2px 0;padding-left:12px;color:#666;cursor:pointer">Action items</div>
+      <div style="padding:2px 0;color:#666;cursor:pointer">Reflection</div>
+      <div style="margin-top:12px;padding-top:8px;border-top:1px solid #252525">
+        <div style="color:#555">124 words</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="mockup" style="margin-top:16px">
+  <div class="mockup-header">Tasks Panel Open — Push layout (editor narrows, panel slides in)</div>
+  <div class="mockup-body" style="display:flex;flex-direction:column;min-height:420px;font-size:13px;background:#1a1a1a">
+    <!-- Same h-11 header -->
+    <div style="display:flex;align-items:center;justify-content:space-between;height:44px;padding:0 24px;font-size:12px;flex-shrink:0">
+      <div style="display:flex;align-items:center;gap:8px">
+        <span style="color:#666;cursor:pointer;font-size:13px;padding:2px 4px">‹</span>
+        <span style="color:#b0b0b0;font-weight:500;font-size:12px">Tue, Mar 25, 2026</span>
+        <span style="color:#666;cursor:pointer;font-size:13px;padding:2px 4px">›</span>
+        <span style="font-size:10px;color:#1a1a1a;background:#7c6aef;padding:1px 6px;border-radius:3px;font-weight:500;margin-left:4px">Today</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:2px">
+        <div style="width:28px;height:28px;display:flex;align-items:center;justify-content:center;cursor:pointer;border-radius:4px">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#777" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+        </div>
+        <!-- Active toggle — accent highlight -->
+        <div style="width:28px;height:28px;display:flex;align-items:center;justify-content:center;cursor:pointer;border-radius:4px;background:rgba(124,106,239,0.12)">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#7c6aef" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
+        </div>
+        <div style="width:28px;height:28px;display:flex;align-items:center;justify-content:center;cursor:pointer;border-radius:4px">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#777" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+        </div>
+        <div style="width:1px;height:16px;background:#333;margin:0 6px"></div>
+        <div style="width:28px;height:28px;display:flex;align-items:center;justify-content:center;cursor:pointer;border-radius:4px">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#777" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>
+        </div>
+      </div>
+    </div>
+
+    <!-- Content + Panel -->
+    <div style="display:flex;flex:1;overflow:hidden">
+      <!-- Editor (narrower when panel open) -->
+      <div style="flex:1;overflow-y:auto">
+        <div style="max-width:680px;margin:0 auto;padding:24px 48px 30vh">
+          <div style="margin-bottom:24px">
+            <h1 style="font-size:28px;font-weight:600;color:#e8e8e8;letter-spacing:-0.02em;margin:0">Tuesday</h1>
+            <div style="font-size:14px;color:#666;margin-top:4px">March 25, 2026</div>
+          </div>
+          <div style="color:#999;line-height:1.85;font-size:15px">
+            <div style="color:#d4d4d4">Had a productive morning working on the sync engine...</div>
+            <div style="margin-top:16px;color:#888">Met with the team about the CRDT architecture...</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Push panel (280px, border-left, same visual weight as OutlineInfoPanel but wider) -->
+      <div style="width:280px;border-left:1px solid #252525;display:flex;flex-direction:column;overflow-y:auto;flex-shrink:0">
+        <!-- Panel header -->
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid #252525;flex-shrink:0">
+          <span style="font-size:12px;font-weight:500;color:#b0b0b0;letter-spacing:-0.01em">Tasks</span>
+          <div style="display:flex;align-items:center;gap:6px">
+            <span style="font-size:10px;color:#e8a84e;background:rgba(232,168,78,0.12);padding:1px 6px;border-radius:3px">1 overdue</span>
+            <span style="color:#555;cursor:pointer;font-size:12px;line-height:1">✕</span>
+          </div>
+        </div>
+
+        <!-- Task items (matching DayContextSidebar style) -->
+        <div style="padding:8px 12px;flex:1">
+          <div style="padding:8px 10px;border-radius:6px;background:rgba(255,255,255,0.02);margin-bottom:4px;display:flex;align-items:center;gap:8px;cursor:pointer">
+            <div style="width:14px;height:14px;border-radius:50%;border:1.5px solid #e8a84e;flex-shrink:0"></div>
+            <div style="flex:1;min-width:0">
+              <div style="font-size:12px;color:#d4d4d4;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Fix CRDT snapshot push ordering</div>
+            </div>
+            <span style="font-size:9px;color:#e8a84e;flex-shrink:0">high</span>
+          </div>
+          <div style="padding:8px 10px;border-radius:6px;background:rgba(255,255,255,0.02);margin-bottom:4px;display:flex;align-items:center;gap:8px;cursor:pointer">
+            <div style="width:14px;height:14px;border-radius:50%;border:1.5px solid #57a86a;flex-shrink:0"></div>
+            <div style="flex:1;min-width:0">
+              <div style="font-size:12px;color:#d4d4d4;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Review PR #112 sidebar polish</div>
+            </div>
+            <span style="font-size:9px;color:#57a86a;flex-shrink:0">med</span>
+          </div>
+          <div style="padding:8px 10px;border-radius:6px;background:rgba(255,255,255,0.02);display:flex;align-items:center;gap:8px;cursor:pointer">
+            <div style="width:14px;height:14px;border-radius:50%;border:1.5px solid #555;flex-shrink:0"></div>
+            <div style="flex:1;min-width:0">
+              <div style="font-size:12px;color:#999;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Update CHANGELOG for Phase 8</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Panel footer -->
+        <div style="padding:10px 16px;border-top:1px solid #252525;flex-shrink:0;display:flex;align-items:center;justify-content:space-between">
+          <span style="font-size:10px;color:#555">3 tasks today</span>
+          <span style="font-size:10px;color:#7c6aef;cursor:pointer">View all →</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div style="margin-top:20px;padding:16px;background:rgba(124,106,239,0.06);border:1px solid rgba(124,106,239,0.15);border-radius:8px;font-size:12px;color:#b0b0b0;line-height:1.6">
+  <strong style="color:#d4d4d4">Paper Consistency Checklist</strong>
+  <ul style="margin:8px 0 0;padding-left:18px;color:#888">
+    <li>Header bar: <code style="color:#7c6aef;background:#252525;padding:1px 4px;border-radius:2px">h-11</code> — matches NoteLayout</li>
+    <li>Content: <code style="color:#7c6aef;background:#252525;padding:1px 4px;border-radius:2px">max-w-4xl px-20 pt-6 pb-[30vh]</code> — same centering</li>
+    <li>Buttons: <code style="color:#7c6aef;background:#252525;padding:1px 4px;border-radius:2px">size-7</code> ghost, icons <code style="color:#7c6aef;background:#252525;padding:1px 4px;border-radius:2px">h-3.5 w-3.5</code></li>
+    <li>Divider: <code style="color:#7c6aef;background:#252525;padding:1px 4px;border-radius:2px">w-px h-4 bg-[var(--border)]</code></li>
+    <li>Colors: <code style="color:#7c6aef;background:#252525;padding:1px 4px;border-radius:2px">text-muted-foreground</code>, accent vars, no hardcoded</li>
+    <li>OutlineInfoPanel: same position, same component reuse</li>
+    <li>Active toggle: <code style="color:#7c6aef;background:#252525;padding:1px 4px;border-radius:2px">bg-primary/12 text-primary</code> pattern</li>
+  </ul>
+</div>

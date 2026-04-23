@@ -1,0 +1,146 @@
+<h2>Hint Badge — Visual Design & Interaction</h2>
+<p class="subtitle">What the user sees when hint mode activates</p>
+
+<div class="split">
+  <div class="mockup">
+    <div class="mockup-header">Badge Appearance</div>
+    <div class="mockup-body" style="padding: 32px; background: #1a1a2e; display: flex; flex-direction: column; gap: 24px; align-items: flex-start;">
+
+      <div style="display: flex; gap: 24px; align-items: center;">
+        <div style="position: relative; display: inline-block;">
+          <button style="padding: 8px 16px; background: #2a2a3e; border: 1px solid #3a3a4e; border-radius: 6px; color: #e0e0e0; font-size: 14px; cursor: pointer;">
+            Inbox
+          </button>
+          <span style="position: absolute; top: -6px; left: -6px; background: #f59e0b; color: #000; font-size: 11px; font-weight: 700; font-family: 'SF Mono', 'Fira Code', monospace; padding: 1px 5px; border-radius: 3px; line-height: 1.3; letter-spacing: 0.5px; box-shadow: 0 1px 3px rgba(0,0,0,0.4); z-index: 1;">I</span>
+        </div>
+        <span style="color: #888; font-size: 13px;">← Single mnemonic: "I" for Inbox</span>
+      </div>
+
+      <div style="display: flex; gap: 24px; align-items: center;">
+        <div style="position: relative; display: inline-block;">
+          <button style="padding: 8px 16px; background: #2a2a3e; border: 1px solid #3a3a4e; border-radius: 6px; color: #e0e0e0; font-size: 14px; cursor: pointer;">
+            Journal
+          </button>
+          <span style="position: absolute; top: -6px; left: -6px; background: #f59e0b; color: #000; font-size: 11px; font-weight: 700; font-family: 'SF Mono', 'Fira Code', monospace; padding: 1px 5px; border-radius: 3px; line-height: 1.3; letter-spacing: 0.5px; box-shadow: 0 1px 3px rgba(0,0,0,0.4); z-index: 1;">J</span>
+        </div>
+        <span style="color: #888; font-size: 13px;">← Single mnemonic: "J" for Journal</span>
+      </div>
+
+      <div style="display: flex; gap: 24px; align-items: center;">
+        <div style="position: relative; display: inline-block;">
+          <button style="padding: 8px 16px; background: #2a2a3e; border: 1px solid #3a3a4e; border-radius: 6px; color: #e0e0e0; font-size: 14px; cursor: pointer;">
+            Tasks
+          </button>
+          <span style="position: absolute; top: -6px; left: -6px; background: #f59e0b; color: #000; font-size: 11px; font-weight: 700; font-family: 'SF Mono', 'Fira Code', monospace; padding: 1px 5px; border-radius: 3px; line-height: 1.3; letter-spacing: 0.5px; box-shadow: 0 1px 3px rgba(0,0,0,0.4); z-index: 1;">T</span>
+        </div>
+        <span style="color: #888; font-size: 13px;">← Single mnemonic: "T" for Tasks</span>
+      </div>
+
+      <div style="display: flex; gap: 24px; align-items: center;">
+        <div style="position: relative; display: inline-block;">
+          <button style="padding: 8px 16px; background: #2a2a3e; border: 1px solid #3a3a4e; border-radius: 6px; color: #e0e0e0; font-size: 14px; cursor: pointer;">
+            Projects
+          </button>
+          <span style="position: absolute; top: -6px; left: -6px; background: #f59e0b; color: #000; font-size: 11px; font-weight: 700; font-family: 'SF Mono', 'Fira Code', monospace; padding: 1px 5px; border-radius: 3px; line-height: 1.3; letter-spacing: 0.5px; box-shadow: 0 1px 3px rgba(0,0,0,0.4); z-index: 1;">P</span>
+        </div>
+        <span style="color: #888; font-size: 13px;">← Single mnemonic: "P" for Projects</span>
+      </div>
+
+      <div style="border-top: 1px solid #333; padding-top: 20px; width: 100%;">
+        <div style="color: #888; font-size: 12px; margin-bottom: 12px;">When mnemonics conflict (two "T" items):</div>
+        <div style="display: flex; gap: 24px; align-items: center;">
+          <div style="position: relative; display: inline-block;">
+            <button style="padding: 8px 16px; background: #2a2a3e; border: 1px solid #3a3a4e; border-radius: 6px; color: #e0e0e0; font-size: 14px; cursor: pointer;">
+              Tags
+            </button>
+            <span style="position: absolute; top: -6px; left: -6px; background: #f59e0b; color: #000; font-size: 11px; font-weight: 700; font-family: 'SF Mono', 'Fira Code', monospace; padding: 1px 5px; border-radius: 3px; line-height: 1.3; letter-spacing: 0.5px; box-shadow: 0 1px 3px rgba(0,0,0,0.4); z-index: 1;">TA</span>
+          </div>
+          <div style="position: relative; display: inline-block;">
+            <button style="padding: 8px 16px; background: #2a2a3e; border: 1px solid #3a3a4e; border-radius: 6px; color: #e0e0e0; font-size: 14px; cursor: pointer;">
+              Tasks
+            </button>
+            <span style="position: absolute; top: -6px; left: -6px; background: #f59e0b; color: #000; font-size: 11px; font-weight: 700; font-family: 'SF Mono', 'Fira Code', monospace; padding: 1px 5px; border-radius: 3px; line-height: 1.3; letter-spacing: 0.5px; box-shadow: 0 1px 3px rgba(0,0,0,0.4); z-index: 1;">TS</span>
+          </div>
+          <span style="color: #888; font-size: 13px;">← Two-char: "TA" vs "TS" (uses 2nd letter)</span>
+        </div>
+      </div>
+
+      <div style="border-top: 1px solid #333; padding-top: 20px; width: 100%;">
+        <div style="color: #888; font-size: 12px; margin-bottom: 12px;">Typing narrows — matched chars dim:</div>
+        <div style="display: flex; gap: 24px; align-items: center;">
+          <div style="position: relative; display: inline-block;">
+            <button style="padding: 8px 16px; background: #2a2a3e; border: 1px solid #3a3a4e; border-radius: 6px; color: #e0e0e0; font-size: 14px; cursor: pointer;">
+              Tags
+            </button>
+            <span style="position: absolute; top: -6px; left: -6px; background: #f59e0b; color: #000; font-size: 11px; font-weight: 700; font-family: 'SF Mono', 'Fira Code', monospace; padding: 1px 5px; border-radius: 3px; line-height: 1.3; letter-spacing: 0.5px; box-shadow: 0 1px 3px rgba(0,0,0,0.4); z-index: 1;"><span style="opacity: 0.4;">T</span>A</span>
+          </div>
+          <div style="position: relative; display: inline-block;">
+            <button style="padding: 8px 16px; background: #2a2a3e; border: 1px solid #3a3a4e; border-radius: 6px; color: #e0e0e0; font-size: 14px; cursor: pointer; opacity: 0.3;">
+              Tasks
+            </button>
+            <span style="position: absolute; top: -6px; left: -6px; background: #f59e0b; color: #000; font-size: 11px; font-weight: 700; font-family: 'SF Mono', 'Fira Code', monospace; padding: 1px 5px; border-radius: 3px; line-height: 1.3; letter-spacing: 0.5px; box-shadow: 0 1px 3px rgba(0,0,0,0.4); z-index: 1; opacity: 0.3;"><span style="opacity: 0.4;">T</span>S</span>
+          </div>
+          <span style="color: #888; font-size: 13px;">← User typed "T" then "A" → Tags wins, Tasks fades</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="mockup">
+    <div class="mockup-header">Interaction Flow</div>
+    <div class="mockup-body" style="padding: 24px; background: #1a1a2e; font-size: 13px; line-height: 2;">
+      <div style="color: #e0e0e0;">
+
+        <div style="margin-bottom: 20px;">
+          <div style="color: #7fdbca; font-weight: 600;">1. Activation</div>
+          <div style="padding-left: 16px; color: #bbb;">
+            Press <kbd style="background:#333;padding:2px 6px;border-radius:3px;border:1px solid #555;font-size:12px;">F</kbd> (or <kbd style="background:#333;padding:2px 6px;border-radius:3px;border:1px solid #555;font-size:12px;">Alt+F</kbd> from editor)<br>
+            → Badges appear on all clickable elements<br>
+            → Status bar shows "HINT MODE" indicator<br>
+            → All other shortcuts suspended
+          </div>
+        </div>
+
+        <div style="margin-bottom: 20px;">
+          <div style="color: #c792ea; font-weight: 600;">2. Narrowing</div>
+          <div style="padding-left: 16px; color: #bbb;">
+            Type first character<br>
+            → Non-matching hints fade out (opacity 0.3)<br>
+            → Matched char dims in remaining badges<br>
+            → If unique match → go to step 3
+          </div>
+        </div>
+
+        <div style="margin-bottom: 20px;">
+          <div style="color: #ffcb6b; font-weight: 600;">3. Execution</div>
+          <div style="padding-left: 16px; color: #bbb;">
+            Unique match found<br>
+            → Element receives programmatic <code style="background:#333;padding:1px 4px;border-radius:2px;">.click()</code><br>
+            → Hint mode deactivates<br>
+            → Focus moves to clicked element
+          </div>
+        </div>
+
+        <div style="margin-bottom: 20px;">
+          <div style="color: #f07178; font-weight: 600;">4. Cancellation</div>
+          <div style="padding-left: 16px; color: #bbb;">
+            Press <kbd style="background:#333;padding:2px 6px;border-radius:3px;border:1px solid #555;font-size:12px;">Esc</kbd> at any time<br>
+            → All badges removed<br>
+            → Normal mode restored<br>
+            → No element clicked
+          </div>
+        </div>
+
+        <div style="border-top: 1px solid #333; padding-top: 16px;">
+          <div style="color: #82aaff; font-weight: 600;">Backspace</div>
+          <div style="padding-left: 16px; color: #bbb;">
+            Undo last typed character<br>
+            → Re-expand visible hints<br>
+            → Empty typed chars? Back to full hint display
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>

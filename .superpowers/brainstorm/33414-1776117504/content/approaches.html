@@ -1,0 +1,83 @@
+<h2>Hint Mode — Implementation Approaches</h2>
+<p class="subtitle">Three architectural strategies for the overlay system</p>
+
+<div class="options">
+  <div class="option" data-choice="a" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>Portal Overlay (React-native)</h3>
+      <p>A single React portal renders all hint badges as absolutely-positioned <code>&lt;span&gt;</code>s in a top-level overlay <code>&lt;div&gt;</code>. A <code>useHintMode()</code> hook manages state, scans the DOM for clickable elements via <code>querySelectorAll</code>, computes positions with <code>getBoundingClientRect</code>, and assigns labels.</p>
+      <div class="pros-cons">
+        <div class="pros">
+          <h4>Pros</h4>
+          <ul>
+            <li>Pure React — fits existing architecture</li>
+            <li>Badges are React components (easy to style/animate)</li>
+            <li>Single render layer, no z-index wars</li>
+          </ul>
+        </div>
+        <div class="cons">
+          <h4>Cons</h4>
+          <ul>
+            <li>DOM scan + position calc on every activation</li>
+            <li>Scroll/resize can desync badge positions</li>
+            <li>Must handle portal click-through correctly</li>
+          </ul>
+        </div>
+      </div>
+      <p><strong>Recommended</strong> — cleanest integration with existing codebase</p>
+    </div>
+  </div>
+
+  <div class="option" data-choice="b" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>Inline Injection</h3>
+      <p>Instead of an overlay, inject a small <code>&lt;span class="hint-badge"&gt;</code> directly next to each clickable element in the DOM. Each interactive component gets a wrapper or ref that conditionally renders its badge when hint mode is active.</p>
+      <div class="pros-cons">
+        <div class="pros">
+          <h4>Pros</h4>
+          <ul>
+            <li>Badges naturally follow layout changes</li>
+            <li>No position calculation needed</li>
+            <li>Scroll-proof — badges move with their elements</li>
+          </ul>
+        </div>
+        <div class="cons">
+          <h4>Cons</h4>
+          <ul>
+            <li>Invasive — touches many components across the app</li>
+            <li>Layout shifts when badges appear</li>
+            <li>Hard to add to third-party components (BlockNote toolbar)</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="c" onclick="toggleSelect(this)">
+    <div class="letter">C</div>
+    <div class="content">
+      <h3>Hybrid: Portal + MutationObserver</h3>
+      <p>Portal overlay like A, but with a <code>MutationObserver</code> watching for DOM changes and a <code>ResizeObserver</code> for layout shifts. Badges auto-reposition when the DOM mutates. More robust but more complex.</p>
+      <div class="pros-cons">
+        <div class="pros">
+          <h4>Pros</h4>
+          <ul>
+            <li>Handles dynamic content (dropdowns, expanding trees)</li>
+            <li>Self-healing positions</li>
+            <li>Works with any component, no modifications needed</li>
+          </ul>
+        </div>
+        <div class="cons">
+          <h4>Cons</h4>
+          <ul>
+            <li>Observer overhead on complex DOM</li>
+            <li>Over-engineered for a modal that lasts &lt;2 seconds</li>
+            <li>Edge cases with observer lifecycle</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

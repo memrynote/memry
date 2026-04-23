@@ -1,0 +1,137 @@
+<h2>Create Folder in Filing Dropdown</h2>
+<p class="subtitle">Option C: Always-visible button + inline "Create '{query}'" on no match</p>
+
+<div class="split">
+  <!-- State 1: Default view -->
+  <div class="mockup">
+    <div class="mockup-header">Default — no search query</div>
+    <div class="mockup-body" style="padding:0; background:#1a1a1a; font-family: -apple-system, system-ui, sans-serif;">
+      <!-- Search bar -->
+      <div style="display:flex; align-items:center; padding:10px 12px; gap:8px; border-bottom:1px solid rgba(255,255,255,0.06);">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.25)" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+        <span style="color:rgba(255,255,255,0.2); font-size:13px;">Search folders...</span>
+      </div>
+
+      <!-- Suggested section -->
+      <div style="padding:4px 0;">
+        <div style="padding:2px 8px;">
+          <span style="font-size:11px; letter-spacing:0.05em; text-transform:uppercase; color:rgba(255,255,255,0.3); font-weight:500;">Suggested</span>
+        </div>
+        <div style="padding:4px 4px;">
+          <div style="display:flex; align-items:center; gap:8px; padding:8px 12px; border-radius:6px; background:rgba(99,102,241,0.03);">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgb(99,102,241)" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+            <span style="font-size:13px; color:#fff; font-weight:500;">Research</span>
+            <span style="margin-left:auto; font-size:10px; color:rgba(99,102,241,0.5);">87%</span>
+          </div>
+          <div style="display:flex; align-items:center; gap:8px; padding:8px 12px; border-radius:6px;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgb(99,102,241)" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+            <span style="font-size:13px; color:#fff; font-weight:500;">Bookmarks</span>
+            <span style="margin-left:auto; font-size:10px; color:rgba(99,102,241,0.5);">62%</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Divider -->
+      <div style="border-top:1px solid rgba(255,255,255,0.06);"></div>
+
+      <!-- All folders -->
+      <div style="padding:4px 0;">
+        <div style="padding:2px 8px;">
+          <span style="font-size:11px; letter-spacing:0.05em; text-transform:uppercase; color:rgba(255,255,255,0.3); font-weight:500;">All folders</span>
+        </div>
+        <div style="padding:4px 4px;">
+          <div style="display:flex; align-items:center; gap:8px; padding:8px 12px; border-radius:6px;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.4)" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+            <span style="font-size:13px; color:#fff;">Notes (root)</span>
+          </div>
+          <div style="display:flex; align-items:center; gap:8px; padding:8px 12px; border-radius:6px;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.4)" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+            <span style="font-size:13px; color:#fff;">Research</span>
+          </div>
+          <div style="display:flex; align-items:center; gap:8px; padding:8px 12px; border-radius:6px;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.4)" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+            <span style="font-size:13px; color:#fff;">Bookmarks</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Divider -->
+      <div style="border-top:1px solid rgba(255,255,255,0.06);"></div>
+
+      <!-- NEW: Create folder button (always visible) -->
+      <div style="padding:6px 4px;">
+        <div style="display:flex; align-items:center; gap:8px; padding:8px 12px; border-radius:6px; cursor:pointer; transition:background 0.15s;" onmouseover="this.style.background='rgba(255,255,255,0.03)'" onmouseout="this.style.background='transparent'">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.4)" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+          <span style="font-size:13px; color:rgba(255,255,255,0.5); font-weight:500;">New folder</span>
+        </div>
+      </div>
+
+      <!-- Footer -->
+      <div style="padding:8px 12px; border-top:1px solid rgba(255,255,255,0.06);">
+        <span style="font-size:10px; color:rgba(255,255,255,0.2);">&#8593;&#8595; navigate &middot; &#9166; select &middot; esc close</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- State 2: Search with no match -->
+  <div class="mockup">
+    <div class="mockup-header">Search "recipes" — no match found</div>
+    <div class="mockup-body" style="padding:0; background:#1a1a1a; font-family: -apple-system, system-ui, sans-serif;">
+      <!-- Search bar with query -->
+      <div style="display:flex; align-items:center; padding:10px 12px; gap:8px; border-bottom:1px solid rgba(255,255,255,0.06);">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.25)" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+        <span style="color:#fff; font-size:13px;">recipes</span>
+        <span style="color:rgba(255,255,255,0.15); font-size:13px; animation: blink 1s step-end infinite;">|</span>
+      </div>
+
+      <!-- Create option (appears when no match) -->
+      <div style="padding:4px 4px;">
+        <div style="display:flex; align-items:center; gap:8px; padding:10px 12px; border-radius:6px; background:rgba(99,102,241,0.06); border:1px solid rgba(99,102,241,0.15); cursor:pointer;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgb(99,102,241)" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+          <span style="font-size:13px; color:rgb(99,102,241); font-weight:500;">Create "recipes"</span>
+        </div>
+      </div>
+
+      <!-- Empty state -->
+      <div style="padding:20px 0; text-align:center;">
+        <span style="font-size:12px; color:rgba(255,255,255,0.25);">No matching folders</span>
+      </div>
+
+      <!-- Divider -->
+      <div style="border-top:1px solid rgba(255,255,255,0.06);"></div>
+
+      <!-- New folder button still visible -->
+      <div style="padding:6px 4px;">
+        <div style="display:flex; align-items:center; gap:8px; padding:8px 12px; border-radius:6px; opacity:0.4;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.4)" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+          <span style="font-size:13px; color:rgba(255,255,255,0.5); font-weight:500;">New folder</span>
+        </div>
+      </div>
+
+      <!-- Footer -->
+      <div style="padding:8px 12px; border-top:1px solid rgba(255,255,255,0.06);">
+        <span style="font-size:10px; color:rgba(255,255,255,0.2);">&#8593;&#8595; navigate &middot; &#9166; select &middot; esc close</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<h3 style="margin-top:32px;">What happens when you click "New folder"?</h3>
+<p class="subtitle">The always-visible button — should it open an inline input or a separate dialog?</p>
+
+<div class="options">
+  <div class="option" data-choice="inline" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>Inline Input</h3>
+      <p>Replaces the "New folder" button with a text input + confirm. Stays inside the popover. Lightweight, no context switch.</p>
+    </div>
+  </div>
+  <div class="option" data-choice="search-transform" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>Transform Search Into Create</h3>
+      <p>Clicking "New folder" focuses the search input and changes placeholder to "Enter folder name...". The search doubles as create input. Minimal UI, reuses existing element.</p>
+    </div>
+  </div>
+</div>
