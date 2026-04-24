@@ -1,0 +1,1 @@
+CREATE UNIQUE INDEX `idx_unique_current_device` ON `sync_devices` (`is_current_device`) WHERE is_current_device = 1;
