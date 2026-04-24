@@ -5,6 +5,32 @@ Format: weekly entries grouped by feature area.
 
 ---
 
+## 2026-04-25 — Tauri Migration M1 — Skeleton + Full Renderer Port
+
+### Added
+- New `apps/desktop-tauri/` workspace app: Tauri 2.x shell + Vite 7 + React 19 + Tailwind v4, Rust 1.95 backend scaffold, configured for macOS `.app` bundling at M1 acceptance
+- Complete 1:1 renderer port from `apps/desktop/src/renderer/src/` to `apps/desktop-tauri/src/` — every component, hook, service, context, page, feature, sync module and supporting test ported verbatim with import paths updated
+- Typed `invoke()` wrapper at `apps/desktop-tauri/src/lib/ipc/invoke.ts` with mock/real-command routing — every call flows through a mock router at M1 while `realCommands` is empty, and flips to Tauri-backed invoke per-command as M2+ implementations land
+- Mock IPC route layer (`apps/desktop-tauri/src/lib/ipc/mocks/`): 16 domain routers covering notes, tasks, calendar, inbox, journal, folders, tags, bookmarks, templates, settings, vault, auth, sync, graph, search, properties, reminders, saved-filters, updater — each seeded with representative fixtures so every renderer page boots with plausible data
+- Typed `listen()` + `subscribeEvent()` wrappers for Tauri events with a runtime guard that returns a no-op subscriber outside the Tauri webview (browser / Playwright WebKit)
+- `createInvokeForwarder<T>()` Proxy factory that mechanically replaces Electron-era `windowApi.domain.method(...)` call sites with `invoke('domain_method_name', ...)`
+- Playwright WebKit e2e suite under `apps/desktop-tauri/e2e/`: 34 specs covering every route plus visual baselines captured per page for M2 regression reference
+- Vitest unit suite for the desktop-tauri app: 179 test files, 3569 tests passing
+- Build tooling: `port-audit.ts` (flags residual `window.api` / `ipcRenderer` references), `capability-sanity-check.ts` (fails CI if a declared Tauri plugin has no capability grant), `generate-bindings.ts` + `check-bindings.ts` (tauri-specta bindings pipeline stubs, activated in M2+)
+- `.github/workflows/electron-freeze.yml`: CI path-guard freezing `apps/desktop/**` and every shared workspace package it consumes until the M10 cutover; bypass via three explicit labels (`migration/m10-cutover`, `migration/emergency-fix`, `migration/tauri-shared-change`)
+- Migration design spec (`docs/superpowers/specs/2026-04-24-electron-to-tauri-full-migration-design.md`) and M1/M2 implementation plans under `docs/superpowers/plans/`
+- Spike artifacts under `docs/spikes/tauri-risk-discovery/`: risk-discovery findings (S1 BlockNote + WKWebView compat 🟢, S2 Yjs placement 🟢, S3 DB placement 🟡→🟢), M1 visual parity baselines
+
+### Changed
+- `apps/desktop/README.md` now displays a FROZEN banner explaining the freeze window and bypass labels
+- `.githooks/pre-commit` line-count limit raised to accommodate the ported files verbatim
+- `eslint.config.mjs`, tsconfig targets, `pnpm-workspace.yaml` extended to cover the new workspace app
+
+### Deferred to M2+
+- 48 review findings (3 pre-landing, 35 specialist, 10 adversarial) captured in the new root `TODOS.md` as prioritized M2/M3 work. Highlights: tighten `subscribeEvent` event-loss race before real CRDT events land, harden `packArgs` for multi-arg Rust commands, pin CI actions by SHA, split CSP dev/prod, extend freeze-guard path filter to `pnpm-lock.yaml` + workspace configs, activate tauri-specta-backed bindings generation
+
+---
+
 ## 2026-04-21 — Calendar Sidebar Typed Indicator Dots
 
 ### Added
