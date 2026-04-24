@@ -2,32 +2,36 @@ import { describe, expect, it } from 'vitest'
 
 import { extractErrorMessage } from './ipc-error'
 
-describe('extractErrorMessage', () => {
-  it('strips ipcMain handler prefixes from Error objects', () => {
-    const error = new Error(
-      "Error occurred in handler for 'sync:link-via-recovery': Error: Incorrect recovery phrase"
-    )
-
-    expect(extractErrorMessage(error, 'Recovery failed')).toBe('Incorrect recovery phrase')
+describe('extractErrorMessage (Tauri)', () => {
+  it('returns the Error message when one is present', () => {
+    expect(extractErrorMessage(new Error('boom'), 'fallback')).toBe('boom')
   })
 
-  it('strips invoke prefixes from string errors', () => {
-    const error = "Error invoking remote method 'sync:auth-verify-otp': Error: Invalid OTP code"
-
-    expect(extractErrorMessage(error, 'Verification failed')).toBe('Invalid OTP code')
+  it('falls back to fallback when the Error message is empty', () => {
+    expect(extractErrorMessage(new Error(''), 'fallback')).toBe('fallback')
   })
 
-  it('strips nested Error prefixes repeatedly', () => {
-    const error =
-      "Error: Error occurred in handler for 'sync:link-via-recovery': Error: Incorrect recovery phrase"
-
-    expect(extractErrorMessage(error, 'Recovery failed')).toBe('Incorrect recovery phrase')
+  it('returns raw string errors unchanged', () => {
+    expect(extractErrorMessage('raw failure', 'fallback')).toBe('raw failure')
   })
 
-  it('falls back when message is empty', () => {
-    expect(extractErrorMessage('', 'Custom fallback')).toBe('Custom fallback')
-    expect(extractErrorMessage({ message: 'not-an-error' }, 'Custom fallback')).toBe(
-      'Custom fallback'
-    )
+  it('reads the message property of plain objects', () => {
+    expect(extractErrorMessage({ message: 'object failure' }, 'fallback')).toBe('object failure')
+  })
+
+  it('falls back when an object message is empty', () => {
+    expect(extractErrorMessage({ message: '' }, 'fallback')).toBe('fallback')
+  })
+
+  it('falls back for null', () => {
+    expect(extractErrorMessage(null, 'fallback')).toBe('fallback')
+  })
+
+  it('falls back for undefined', () => {
+    expect(extractErrorMessage(undefined, 'fallback')).toBe('fallback')
+  })
+
+  it('falls back for objects without a message field', () => {
+    expect(extractErrorMessage({ code: 500 }, 'fallback')).toBe('fallback')
   })
 })
