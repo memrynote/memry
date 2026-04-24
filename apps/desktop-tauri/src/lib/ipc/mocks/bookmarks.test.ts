@@ -3,14 +3,16 @@ import { describe, it, expect } from 'vitest'
 import { bookmarksRoutes } from './bookmarks'
 
 describe('bookmarksRoutes', () => {
-  it('bookmarks_list returns at least 10 fixtures across multiple domains', async () => {
-    const list = (await bookmarksRoutes.bookmarks_list!(undefined)) as Array<{
-      id: string
-      url: string
-    }>
-    expect(list.length).toBeGreaterThanOrEqual(10)
-    const domains = new Set(list.map((b) => new URL(b.url).hostname))
-    expect(domains.size).toBeGreaterThanOrEqual(5)
+  it('bookmarks_list returns BookmarkListResponse shape (bookmarks array + empty is valid at M1)', async () => {
+    // #given the M1 fixture returns an empty list wrapped in the contract shape —
+    // sidebar renders "no bookmarks yet" without crashing. Post-M1 populates
+    // real bookmark data.
+    // #when listing
+    const res = (await bookmarksRoutes.bookmarks_list!(undefined)) as {
+      bookmarks: unknown[]
+    }
+    // #then
+    expect(Array.isArray(res.bookmarks)).toBe(true)
   })
 
   it('bookmarks_get returns bookmark by id', async () => {

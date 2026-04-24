@@ -64,5 +64,68 @@ export const syncRoutes: MockRouteMap = {
       queueDepth: 0
     }
     return { ok: true }
-  }
+  },
+
+  // Device management (sync_devices_*) — consumed by settings sync tab
+  sync_devices_get_devices: async () => ({
+    devices: [
+      {
+        id: 'device-this',
+        name: 'This Mac',
+        platform: 'macos',
+        isCurrentDevice: true,
+        linkedAt: mockTimestamp(30),
+        lastActiveAt: new Date().toISOString(),
+        lastSyncAt: Date.now(),
+        createdAt: new Date(mockTimestamp(30)).toISOString()
+      },
+      {
+        id: 'device-phone',
+        name: 'iPhone',
+        platform: 'ios',
+        isCurrentDevice: false,
+        linkedAt: mockTimestamp(14),
+        lastActiveAt: new Date(mockTimestamp(1)).toISOString(),
+        lastSyncAt: mockTimestamp(1),
+        createdAt: new Date(mockTimestamp(14)).toISOString()
+      }
+    ],
+    email: 'mock@memry.local'
+  }),
+  sync_devices_remove_device: async () => ({ success: true }),
+  sync_devices_rename_device: async () => ({ success: true }),
+
+  // Sync setup (sync_setup_*) — consumed by onboarding flow
+  sync_setup_setup_first_device: async () => ({
+    success: true,
+    deviceId: 'device-this',
+    email: 'mock@memry.local',
+    recoveryPhrase: Array(12).fill('mock'),
+    needsRecoverySetup: false
+  }),
+  sync_setup_setup_new_account: async () => ({
+    success: true,
+    recoveryPhrase: Array(12).fill('mock')
+  }),
+  sync_setup_confirm_recovery_phrase: async () => ({ success: true }),
+
+  // Sync auth (sync_auth_*) — OTP login + OAuth + token refresh
+  sync_auth_request_otp: async () => ({ success: true, expiresIn: 300 }),
+  sync_auth_verify_otp: async () => ({
+    success: true,
+    deviceId: 'device-this',
+    email: 'mock@memry.local'
+  }),
+  sync_auth_resend_otp: async () => ({ success: true, expiresIn: 300 }),
+  sync_auth_init_o_auth: async () => ({ state: 'mock-oauth-state' }),
+  sync_auth_refresh_token: async () => ({ success: true }),
+
+  // Sync ops status — consumed by SyncContext on mount
+  sync_ops_get_status: async () => ({
+    status: 'idle' as const,
+    lastSyncAt: undefined,
+    pendingCount: 0,
+    error: undefined,
+    offlineSince: undefined
+  })
 }

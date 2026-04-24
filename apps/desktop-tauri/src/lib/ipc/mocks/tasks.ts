@@ -97,5 +97,41 @@ export const tasksRoutes: MockRouteMap = {
       positions: []
     }
     return { ok: true, reordered: ids.length }
-  }
+  },
+
+  // Projects — required by task sidebar + project pickers
+  tasks_list_projects: async () => ({
+    projects: [
+      { id: 'project-1', name: 'Primary (Mock)', icon: null, archivedAt: null, position: 0 },
+      { id: 'project-2', name: 'Side Quest (Mock)', icon: null, archivedAt: null, position: 1 }
+    ]
+  }),
+  tasks_list_project_tasks: async (args) => {
+    const { projectId } = args as { projectId: string }
+    return tasks.filter((t) => t.projectId === projectId)
+  },
+
+  // Stats — used by sidebar counters and day panel overdue count
+  tasks_get_stats: async () => ({
+    total: tasks.length,
+    todo: tasks.filter((t) => t.status === 'todo').length,
+    inProgress: tasks.filter((t) => t.status === 'in-progress').length,
+    done: tasks.filter((t) => t.status === 'done').length,
+    canceled: tasks.filter((t) => t.status === 'canceled').length,
+    overdue: 0,
+    dueToday: 0,
+    dueSoon: 0
+  }),
+
+  // Status columns — per-project; required by kanban board
+  tasks_list_statuses: async () => [
+    { id: 'status-todo', name: 'Todo', color: '#94a3b8', position: 0 },
+    { id: 'status-in-progress', name: 'In Progress', color: '#60a5fa', position: 1 },
+    { id: 'status-done', name: 'Done', color: '#4ade80', position: 2 }
+  ],
+  tasks_get_tags: async () => [],
+  tasks_get_today: async () => ({ tasks: [], total: 0, hasMore: false }),
+  tasks_get_upcoming: async () => ({ tasks: [], total: 0, hasMore: false }),
+  tasks_get_overdue: async () => ({ tasks: [], total: 0, hasMore: false }),
+  tasks_get_linked_tasks: async () => []
 }

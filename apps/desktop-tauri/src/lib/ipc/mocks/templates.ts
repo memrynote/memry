@@ -72,7 +72,8 @@ function applyVariables(body: string, variables: Record<string, unknown>): strin
 }
 
 export const templatesRoutes: MockRouteMap = {
-  templates_list: async () => templates,
+  // Contract: TemplateListResponse = { templates: Template[] }
+  templates_list: async () => ({ templates }),
   templates_get: async (args) => {
     const { id } = args as { id: string }
     const tpl = templates.find((t) => t.id === id)

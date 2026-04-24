@@ -3,9 +3,11 @@ import { describe, it, expect } from 'vitest'
 import { templatesRoutes } from './templates'
 
 describe('templatesRoutes', () => {
-  it('templates_list returns at least 5 fixture templates', async () => {
-    const list = (await templatesRoutes.templates_list!(undefined)) as Array<{ id: string }>
-    expect(list.length).toBeGreaterThanOrEqual(5)
+  it('templates_list returns TemplateListResponse with at least 5 fixtures', async () => {
+    const res = (await templatesRoutes.templates_list!(undefined)) as {
+      templates: Array<{ id: string }>
+    }
+    expect(res.templates.length).toBeGreaterThanOrEqual(5)
   })
 
   it('templates_get returns template by id', async () => {

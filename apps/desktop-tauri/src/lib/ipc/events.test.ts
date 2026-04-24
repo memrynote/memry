@@ -33,6 +33,11 @@ beforeEach(() => {
   registered = new Map()
   unlistenCalls = []
   vi.clearAllMocks()
+  // events.ts short-circuits outside the Tauri runtime (no
+  // window.__TAURI_INTERNALS__) so Playwright/browser Vite dev doesn't crash
+  // on transformCallback. These tests exercise the real delegation path, so
+  // we forge the sentinel the guard checks for.
+  ;(window as unknown as { __TAURI_INTERNALS__: Record<string, unknown> }).__TAURI_INTERNALS__ = {}
 })
 
 describe('listen', () => {
@@ -67,6 +72,26 @@ describe('listen', () => {
     handler({ payload: 'x' })
     await new Promise((resolve) => setTimeout(resolve, 0))
     expect(seen).toEqual(['handled:x'])
+  })
+})
+
+describe('listen — outside Tauri runtime', () => {
+  it('short-circuits and returns a noop when __TAURI_INTERNALS__ is absent', async () => {
+    // #given a plain browser context without the Tauri sentinel (Vite dev in Safari,
+    // Playwright WebKit, Storybook, etc.) — calling tauriListen would throw
+    // "undefined is not an object (evaluating window.__TAURI_INTERNALS__.transformCallback)".
+    delete (window as unknown as { __TAURI_INTERNALS__?: unknown }).__TAURI_INTERNALS__
+
+    // #when subscribing
+    const callback = vi.fn()
+    const unlisten = await listen('noop-event', callback)
+
+    // #then the wrapper returns a noop without touching @tauri-apps/api/event
+    expect(tauriListen).not.toHaveBeenCalled()
+    expect(typeof unlisten).toBe('function')
+    // And calling it is safe
+    expect(() => unlisten()).not.toThrow()
+    expect(callback).not.toHaveBeenCalled()
   })
 })
 

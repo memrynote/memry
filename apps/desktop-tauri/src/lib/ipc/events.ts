@@ -3,15 +3,34 @@ import { listen as tauriListen, type UnlistenFn } from '@tauri-apps/api/event'
 type EventCallback<T> = (payload: T) => void | Promise<void>
 
 /**
- * Typed wrapper around Tauri's listen. At M1, no backend events are emitted
- * (Rust stubs are empty). The wrapper registers the listener so UI code that
- * subscribes to events (e.g. `sync-progress`) doesn't crash — callbacks
- * simply never fire until M2+ emit real events.
+ * True inside the Tauri webview. False in plain browser contexts (Vite dev
+ * opened in a regular browser, Playwright WebKit). Without this guard,
+ * calling `tauriListen` outside Tauri throws
+ * "undefined is not an object (evaluating 'window.__TAURI_INTERNALS__.transformCallback')"
+ * and kills the renderer before first paint.
+ */
+function isTauriRuntime(): boolean {
+  return (
+    typeof window !== 'undefined' &&
+    '__TAURI_INTERNALS__' in window &&
+    window.__TAURI_INTERNALS__ !== undefined
+  )
+}
+
+/**
+ * Typed wrapper around Tauri's listen. Inside Tauri, registers the real
+ * listener. Outside Tauri (e.g. M1 Vite dev in a browser, Playwright e2e),
+ * returns a noop unsubscriber — the renderer code is mock-only at M1 and
+ * doesn't rely on backend events firing. M2+ event emission lands only
+ * inside Tauri.
  */
 export async function listen<T = unknown>(
   event: string,
   callback: EventCallback<T>
 ): Promise<UnlistenFn> {
+  if (!isTauriRuntime()) {
+    return () => {}
+  }
   return tauriListen<T>(event, (tauriEvent) => {
     void callback(tauriEvent.payload as T)
   })

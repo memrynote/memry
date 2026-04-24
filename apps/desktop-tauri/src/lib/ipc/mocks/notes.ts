@@ -9,6 +9,7 @@ import { mockId, mockTimestamp } from './types'
 interface MockNote {
   id: string
   title: string
+  path: string
   content: string
   folderId: string | null
   createdAt: number
@@ -138,14 +139,60 @@ const notes: MockNote[] = [
     deletedAt: null,
     properties: {}
   }
-]
+].map((n) => ({
+  ...n,
+  // Derive a path the renderer's NotesTree can split on — real backend will
+  // return the actual vault-relative path per note.
+  path: `${n.folderId ?? 'inbox'}/${n.title.replace(/\s+/g, '-').toLowerCase()}.md`
+})) as MockNote[]
+
+/**
+ * Transform an internal MockNote into the NoteListItem contract shape the
+ * renderer expects: Date objects for created/modified, tags array, wordCount.
+ * Keeps notes[] above as the internal mutable state; this is the serialized
+ * form sent over the mock IPC boundary.
+ */
+function toListItem(n: MockNote): Record<string, unknown> {
+  return {
+    id: n.id,
+    path: n.path,
+    title: n.title,
+    created: new Date(n.createdAt),
+    modified: new Date(n.updatedAt),
+    tags: [],
+    wordCount: n.content.split(/\s+/).filter(Boolean).length,
+    snippet: n.content.slice(0, 200),
+    emoji: null,
+    localOnly: false
+  }
+}
 
 export const notesRoutes: MockRouteMap = {
-  notes_list: async () => notes.filter((n) => n.deletedAt === null),
+  // Contract: NoteListResponse = { notes, total, hasMore }
+  notes_list: async () => {
+    const active = notes.filter((n) => n.deletedAt === null).map(toListItem)
+    return { notes: active, total: active.length, hasMore: false }
+  },
   notes_list_by_folder: async (args) => {
     const { folderId } = (args as { folderId: string }) ?? { folderId: '' }
-    return notes.filter((n) => n.folderId === folderId && n.deletedAt === null)
+    const active = notes
+      .filter((n) => n.folderId === folderId && n.deletedAt === null)
+      .map(toListItem)
+    return { notes: active, total: active.length, hasMore: false }
   },
+  notes_get_all_positions: async () => ({ success: true, positions: {} as Record<string, number> }),
+  notes_get_positions: async () => ({ success: true, positions: {} as Record<string, number> }),
+  // Contract: FolderInfo[] = { path, icon? }[]
+  notes_get_folders: async () => [
+    { path: 'Inbox', icon: 'inbox' },
+    { path: 'Projects', icon: 'folder' },
+    { path: 'Archive', icon: 'archive' }
+  ],
+  notes_get_folder_config: async () => null,
+  notes_set_folder_config: async () => ({ success: true }),
+  notes_get_local_only_count: async () => ({ count: 0 }),
+  notes_get_tags: async () => [],
+  notes_get_property_definitions: async () => [],
   notes_get: async (args) => {
     const { id } = args as { id: string }
     const note = notes.find((n) => n.id === id)
@@ -155,9 +202,13 @@ export const notesRoutes: MockRouteMap = {
   notes_create: async (args) => {
     const input = (args as Partial<MockNote>) ?? {}
     const now = Date.now()
+    const title = input.title ?? 'Untitled'
+    const folderId = input.folderId ?? null
     const note: MockNote = {
       id: mockId('note'),
-      title: input.title ?? 'Untitled',
+      title,
+      path:
+        input.path ?? `${folderId ?? 'inbox'}/${title.replace(/\s+/g, '-').toLowerCase()}.md`,
       content: input.content ?? '',
       folderId: input.folderId ?? null,
       createdAt: now,

@@ -41,7 +41,9 @@ const bookmarks: MockBookmark[] = fixtures.map((f, i) => ({
 }))
 
 export const bookmarksRoutes: MockRouteMap = {
-  bookmarks_list: async () => bookmarks,
+  // Contract: BookmarkListResponse = { bookmarks: BookmarkWithItem[] }
+  bookmarks_list: async () => ({ bookmarks: [] as unknown[] }),
+  bookmarks_list_by_type: async () => ({ bookmarks: [] as unknown[] }),
   bookmarks_get: async (args) => {
     const { id } = args as { id: string }
     const b = bookmarks.find((x) => x.id === id)

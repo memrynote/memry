@@ -94,6 +94,9 @@ export const calendarRoutes: MockRouteMap = {
     const { from, to } = args as { from: number; to: number }
     return events.filter((e) => e.startAt >= from && e.startAt <= to)
   },
+  // Contract: CalendarRangeResponse = { items: CalendarProjectionItem[] }
+  // Forwarder routes calendarService.getRange(arg) → calendar_get_range
+  calendar_get_range: async () => ({ items: [] }),
   calendar_get: async (args) => {
     const { id } = args as { id: string }
     const event = events.find((e) => e.id === id)
