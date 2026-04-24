@@ -628,6 +628,9 @@ importers:
       '@tauri-apps/cli':
         specifier: ^2.10
         version: 2.10.1
+      '@types/node':
+        specifier: ^25.2.2
+        version: 25.2.2
       '@types/react':
         specifier: ^19.2.13
         version: 19.2.13
