@@ -1,0 +1,2282 @@
+@import 'tailwindcss';
+
+/* BlockNote shadcn styles source */
+@source "../../../node_modules/@blocknote/shadcn";
+
+@custom-variant dark (&:is(.dark *));
+
+/* ===== BLOCKNOTE EDITOR CUSTOMIZATION ===== */
+/* Override BlockNote's CSS variables + defaults to match app theme.
+   Uses CSS inheritance (not a wildcard * rule) so Shiki inline token styles still work. */
+:root .bn-container {
+  --bn-colors-editor-text: var(--foreground);
+  --bn-colors-editor-background: var(--background);
+}
+
+:root .bn-editor,
+:root .bn-container {
+  background-color: var(--background) !important;
+  color: #37352f !important;
+  caret-color: #37352f;
+  padding-inline: 0px;
+  -webkit-font-smoothing: auto !important;
+}
+
+.dark .bn-editor,
+.dark .bn-container {
+  background-color: var(--background) !important;
+  color: var(--text-bright) !important;
+  caret-color: #f0efed;
+}
+
+/* Inbox detail drawer: editor inherits drawer surface bg, not page bg */
+.inbox-content-editor .bn-editor,
+.inbox-content-editor .bn-container {
+  background-color: transparent !important;
+}
+
+/* Code block: always dark background regardless of theme (matches github-dark Shiki theme) */
+.bn-block-content[data-content-type='codeBlock'] {
+  background-color: #24292e !important;
+  color: #e1e4e8 !important;
+}
+
+/* Language selector: theme-aware text color */
+.dark .bn-block-content[data-content-type='codeBlock'] > div > select {
+  color: #e1e4e8 !important;
+}
+
+/* ===== TYPOGRAPHY OVERRIDES ===== */
+/* Override BlockNote's Inter font with system font stack */
+:root .bn-default-styles,
+:root .bn-container {
+  font-family: var(--font-sans) !important;
+}
+
+:root .bn-container {
+  --bn-font-family: var(--font-sans);
+}
+
+/* ===== PROSEMIRROR OVERRIDES ===== */
+/* ProseMirror disables ligatures by default — re-enable for Notion-like text density */
+:root .bn-editor .ProseMirror {
+  font-variant-ligatures: normal;
+  font-feature-settings: normal;
+  font-synthesis: none;
+}
+
+/* ===== BLOCK SPACING ===== */
+:root .bn-block-content {
+  padding: 1px 0 !important;
+}
+
+:root .bn-block-outer {
+  padding: 2px 0;
+}
+
+:root .bn-inline-content {
+  white-space: break-spaces;
+  word-break: break-word;
+  padding: 2px 0;
+}
+
+/* ===== HEADING SIZES ===== */
+[data-content-type='heading'] {
+  --level: 1.875em !important;
+}
+
+[data-content-type='heading'][data-level='2'] {
+  --level: 1.5em !important;
+}
+
+[data-content-type='heading'][data-level='3'] {
+  --level: 1.25em !important;
+}
+
+[data-prev-level='1'] {
+  --prev-level: 1.875em !important;
+}
+
+[data-prev-level='2'] {
+  --prev-level: 1.5em !important;
+}
+
+[data-prev-level='3'] {
+  --prev-level: 1.25em !important;
+}
+
+/* ===== HEADING TYPOGRAPHY ===== */
+:root .bn-block-content[data-content-type='heading'] {
+  font-weight: 600 !important;
+  line-height: 1.3 !important;
+  margin-top: 24px;
+  padding: 1px 0 !important;
+}
+
+:root .bn-block-content[data-content-type='heading'][data-level='2'] {
+  margin-top: 18px;
+}
+
+:root .bn-block-content[data-content-type='heading'][data-level='3'] {
+  margin-top: 14px;
+}
+
+:root
+  .bn-block-group
+  > .bn-block-outer:first-child
+  > .bn-block
+  > .bn-block-content[data-content-type='heading'] {
+  margin-top: 0;
+}
+
+/* ===== CHECKBOX ALIGNMENT ===== */
+:root .bn-block-content[data-content-type='checkListItem'] {
+  align-items: center;
+}
+
+/* ===== LIST SPACING ===== */
+:root .bn-block-outer:has(> .bn-block > .bn-block-content[data-content-type='bulletListItem']),
+:root .bn-block-outer:has(> .bn-block > .bn-block-content[data-content-type='numberedListItem']),
+:root .bn-block-outer:has(> .bn-block > .bn-block-content[data-content-type='checkListItem']) {
+  padding: 2px 0;
+}
+
+/* ===== NESTED INDENT GUIDE ALIGNMENT =====
+   BlockNote's default vertical guide line for nested blocks sits at left:-20px
+   on the child .bn-block-outer, which lands ~6px left of where every block
+   type's marker (bullet "•", number "1.", task status icon) actually is.
+   Marker center is consistently at parent block-content left + 10px:
+   - bullet/numbered: ::before is min-width:24px; padding-right:4px → glyph
+     center at (24-4)/2 = 10px from block-content left
+   - taskBlock: button p-0.5 around 16px icon → button width 20px → center at
+     10px from block-content left (with px-0 override)
+   Nested .bn-block-group has margin-left:24px, so to land the line at
+   parent_block_content_left + 10, the :before's left must be 10 - 24 = -14px.
+   `!important` is needed because @blocknote/shadcn/style.css is imported in
+   ContentArea.tsx, which Vite injects into <head> AFTER this file — same
+   specificity loses on cascade order. */
+:root .bn-block-group .bn-block-group > .bn-block-outer::before {
+  left: -14px !important;
+}
+
+/* ===== TABLE CELLS ===== */
+:root .bn-editor [data-content-type='table'] th,
+:root .bn-editor [data-content-type='table'] td {
+  padding: 7px 9px !important;
+  font-size: 14px !important;
+  line-height: 20px !important;
+  border-color: var(--border) !important;
+}
+
+:root .bn-editor [data-content-type='table'] th {
+  font-weight: 500 !important;
+}
+
+.dark .bn-editor [data-content-type='table'] th,
+.dark .bn-editor [data-content-type='table'] td {
+  border-color: #383836 !important;
+}
+
+.dark .bn-editor [data-content-type='table'] th {
+  background-color: rgba(255, 255, 255, 0.03) !important;
+}
+
+/* ===== QUOTE BLOCK ===== */
+:root [data-content-type='quote'] blockquote {
+  border-left-width: 3px !important;
+  border-left-color: currentcolor !important;
+  color: inherit !important;
+  padding-left: 14px !important;
+  padding-right: 14px !important;
+}
+
+/* Make BlockNote editor fill available height */
+.content-area {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  user-select: text;
+}
+
+.content-area .bn-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+/* Sticky toolbar mode - toolbar fixed at top of editor */
+.sticky-toolbar-enabled .bn-container {
+  display: flex;
+  flex-direction: column;
+}
+
+.sticky-toolbar-enabled .bn-formatting-toolbar {
+  order: -1;
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 20;
+  width: 100%;
+  margin: 0 0 8px 0 !important;
+  padding: 4px 0 8px 0 !important;
+  background: var(--background) !important;
+  border: none !important;
+  border-bottom: 1px solid var(--border) !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  transform: none !important;
+  opacity: 1 !important;
+  pointer-events: auto !important;
+}
+
+.sticky-toolbar-enabled .bn-formatting-toolbar > div {
+  gap: 2px;
+}
+
+.sticky-toolbar-enabled .bn-formatting-toolbar button {
+  padding: 4px 6px !important;
+  min-width: 28px !important;
+  height: 28px !important;
+}
+
+/* ===== COMPACT SLASH MENU (Suggestion Menu) ===== */
+/* BlockNote uses .bn-suggestion-menu class and [role="option"] for items */
+.bn-suggestion-menu {
+  max-height: 300px !important;
+  min-width: 180px !important;
+  padding: 4px !important;
+}
+
+/* Group labels (e.g., "Subheadings", "Others") */
+.bn-suggestion-menu > div:not([role='option']) {
+  font-size: 9px !important;
+  padding: 4px 8px 2px !important;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  opacity: 0.5;
+}
+
+/* Menu items - compact layout */
+.bn-suggestion-menu [role='option'] {
+  padding: 4px 8px !important;
+  gap: 6px !important;
+  min-height: 28px !important;
+  border-radius: 4px !important;
+  transition: background-color 0.1s ease;
+}
+
+/* Highlighted/selected item when navigating with arrow keys */
+.bn-suggestion-menu [role='option'][aria-selected='true'] {
+  background-color: var(--surface-active) !important;
+}
+
+.dark .bn-suggestion-menu [role='option'][aria-selected='true'] {
+  background-color: #2a2a2e !important;
+}
+
+/* HIDE SUBTEXT - removes descriptions like "Resizable image with caption" */
+.bn-suggestion-menu [role='option'] .flex-1 > .text-xs {
+  display: none !important;
+}
+
+/* Title text - compact */
+.bn-suggestion-menu [role='option'] .flex-1 > .text-base {
+  font-size: 13px !important;
+  font-weight: 500 !important;
+  line-height: 1.2 !important;
+}
+
+/* Icon container - remove extra padding */
+.bn-suggestion-menu [role='option'] [data-position='left'] {
+  padding: 0 !important;
+}
+
+/* Badge/shortcut - subtle styling */
+.bn-suggestion-menu [role='option'] [data-position='right'] {
+  font-size: 10px !important;
+  opacity: 0.6;
+}
+
+/* Icon size - compact */
+.bn-suggestion-menu [role='option'] svg {
+  width: 16px !important;
+  height: 16px !important;
+}
+
+.content-area .bn-editor {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+}
+
+/* Make the editable content area fill the space */
+.content-area .bn-block-group {
+  flex: 1;
+  min-height: 100%;
+}
+
+/* ===== CALLOUT BLOCK ===== */
+:root .bn-block-content[data-content-type='callout'] {
+  padding: 0 !important;
+}
+
+[data-content-type='callout'] .bn-inline-content {
+  flex-grow: 1;
+  min-height: 24px;
+}
+
+/* Ensure clicking anywhere in the editor area focuses it */
+.content-area .bn-editor [data-content-editable-root='true'] {
+  min-height: 100%;
+  cursor: text;
+}
+
+/* Editor click-to-focus wrapper */
+.editor-click-area {
+  flex: 1;
+  min-height: 0;
+  cursor: text;
+  display: flex;
+  flex-direction: column;
+}
+
+.editor-click-area .content-area,
+.editor-click-area .bn-container,
+.editor-click-area .bn-editor {
+  flex: 1;
+  min-height: 100%;
+}
+
+@layer base {
+  :root {
+    /* ===== TYPOGRAPHY - Font Families ===== */
+    --font-sans:
+      ui-sans-serif, -apple-system, 'system-ui', 'Segoe UI Variable Display', 'Segoe UI', Helvetica,
+      'Apple Color Emoji', 'Noto Sans Arabic', 'Noto Sans Hebrew', Arial, sans-serif,
+      'Segoe UI Emoji', 'Segoe UI Symbol';
+    --font-serif: 'Crimson Pro Variable', Georgia, 'Times New Roman', serif;
+    --font-display: 'Playfair Display Variable', 'Crimson Pro Variable', Georgia, serif;
+    --font-heading: 'Space Grotesk Variable', system-ui, sans-serif;
+    --font-mono: 'JetBrains Mono Variable', 'SF Mono', 'Fira Code', monospace;
+
+    /* ===== BASE COLORS (Canvas) - "Warm Utility" Aesthetic ===== */
+    --background: #f6f5f0;
+
+    /* Warm Beige / "Paper" */
+    --foreground: #1a1a1a;
+    /* Primary Text - Near Black */
+    --surface: #efefe9;
+    /* Sidebar/Panels - Slightly darker warm grey */
+    --surface-active: #e4e4de;
+    /* Hover states */
+
+    /* ===== SEMANTIC PASTELS (Card Backgrounds) ===== */
+    --card-sage: #e6efe6;
+    /* Biology/Nature */
+    --card-rose: #efe6e6;
+    /* Economics/History */
+    --card-sand: #efebdd;
+    /* Cyber Security/General */
+    --card-lavender: #e6e0ef;
+    /* Machine Learning */
+    --card-grey: #e0e0e0;
+    /* Unknown/Sort */
+
+    /* ===== TYPOGRAPHY COLORS ===== */
+    --text-primary: #1a1a1a;
+    /* Near Black - Title Headers */
+    --text-secondary: #4a4a4a;
+    /* Body text, sidebar items */
+    --text-tertiary: #8c8c8c;
+    /* Meta data, dates, unused icons */
+    --text-bright: #1a1a1a;
+
+    /* ===== ACCENT COLORS (Category Dots) ===== */
+    --accent-cyan: #06b6d4;
+    --accent-purple: #8b5cf6;
+    --accent-green: #22c55e;
+    --accent-orange: #f97316;
+
+    /* ===== UI SEMANTIC COLORS ===== */
+    --muted: #efefe9;
+    --muted-foreground: #4a4a4a;
+    --popover: #f6f5f0;
+    --popover-foreground: #1a1a1a;
+    --border: #e4e4de;
+    --input: #e4e4de;
+    --card: #ffffff;
+    --card-foreground: #1a1a1a;
+    --primary: #1a1a1a;
+    --primary-foreground: #f6f5f0;
+    --secondary: #efefe9;
+    --secondary-foreground: #1a1a1a;
+    --accent: #efefe9;
+    --accent-foreground: #1a1a1a;
+    --destructive: #dc2626;
+    --destructive-foreground: #fafafa;
+    --ring: #8c8c8c;
+
+    /* ===== BORDER RADIUS (Squircle/Soft Rounding) ===== */
+    --radius: 0.5rem;
+    /* 8px - Default */
+    --radius-sm: 0.375rem;
+    /* 6px */
+    --radius-md: 0.5rem;
+    /* 8px - List Rows */
+    --radius-lg: 0.75rem;
+    /* 12px */
+    --radius-xl: 1rem;
+    /* 16px - Cards */
+    --radius-2xl: 1.25rem;
+    /* 20px */
+    --radius-full: 9999px;
+    /* Fully rounded - Tags/Badges */
+
+    /* ===== SHADOWS (Flat-first design) ===== */
+    --shadow-card: 0 1px 2px 0 rgb(0 0 0 / 0.03), 0 1px 3px 0 rgb(0 0 0 / 0.05);
+    --shadow-card-hover: 0 4px 6px -1px rgb(0 0 0 / 0.07), 0 2px 4px -2px rgb(0 0 0 / 0.05);
+
+    /* ===== SPACING (8pt Grid System) ===== */
+    --sidebar-width: 240px;
+    --card-width: 280px;
+    --card-height: 200px;
+
+    /* ===== GRAPH VIEW COLORS ===== */
+    --graph-node-note: #4a9e8e;
+    --graph-node-journal: #8b5cf6;
+    --graph-node-task: #d4944a;
+    --graph-node-project: #5a8a5a;
+    --graph-node-tag: #c2855a;
+    --graph-edge-default: #8c8c8c;
+    --graph-edge-wikilink: #8c8c8c;
+    --graph-edge-task-note: #c4a46a;
+    --graph-edge-project-task: #9a8abd;
+    --graph-edge-tag-cooccurrence: #a8a6a1;
+    --graph-ghost-node: #c4c2bc;
+    --graph-dimmed-node: #e4e4de;
+    --graph-edge-soft: #a8a6a0;
+    --graph-bg: #f6f5f0;
+    --graph-label-color: #1a1a1a;
+
+    /* ===== QUEUE LIST ===== */
+    --queue-bg: #eae8e1;
+    --queue-number-bg: #d4d1c5;
+
+    /* ===== TASK COLORS ===== */
+
+    /* Priority */
+    --task-priority-urgent: #ef4444;
+    --task-priority-urgent-bg: rgba(239, 68, 68, 0.12);
+    --task-priority-high: #f97316;
+    --task-priority-high-bg: rgba(249, 115, 22, 0.12);
+    --task-priority-medium: #a0a0a8;
+    --task-priority-medium-bg: rgba(160, 160, 168, 0.12);
+    --task-priority-low: #50505a;
+    --task-priority-low-bg: rgba(80, 80, 90, 0.12);
+    --task-priority-none: #50505a;
+    --task-priority-none-bg: rgba(80, 80, 90, 0.12);
+
+    /* Due date status */
+    --task-due-overdue: #dc2626;
+    --task-due-overdue-bg: #fef2f2;
+    --task-due-today: #d97706;
+    --task-due-today-bg: #fffbeb;
+    --task-due-tomorrow: #2563eb;
+    --task-due-tomorrow-bg: #eff6ff;
+    --task-due-upcoming: #4f46e5;
+
+    /* Completion / progress */
+    --task-complete: #22c55e;
+    --task-complete-bg: rgba(77, 166, 99, 0.1);
+    --task-progress: #3b82f6;
+
+    /* UI accents */
+    --task-star: #f59e0b;
+    --task-repeat: #3b82f6;
+    --task-token-date: #f59e0b;
+    --task-token-project: #60a5fa;
+
+    /* Checkbox */
+    --task-checkbox-done: #7b9e87;
+
+    /* Shadow */
+    --shadow-dropdown: 0 4px 24px rgba(0, 0, 0, 0.08), 0 1px 3px rgba(0, 0, 0, 0.04);
+
+    /* ===== ANIMATION TOKENS ===== */
+    --duration-instant: 100ms;
+    /* Hover states, micro-feedback */
+    --duration-fast: 150ms;
+    /* Small transitions, appears/disappears */
+    --duration-normal: 200ms;
+    /* Most interactions */
+    --duration-slow: 300ms;
+    /* Panel slides, larger movements */
+    --duration-deliberate: 400ms;
+    /* Empty state entrance, significant changes */
+
+    --ease-out: cubic-bezier(0, 0, 0.2, 1);
+    /* Elements entering */
+    --ease-in: cubic-bezier(0.4, 0, 1, 1);
+    /* Elements leaving */
+    --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+    /* Elements moving/transforming */
+  }
+
+  .white {
+    /* ===== BASE COLORS - White Mode ===== */
+    --background: #ffffff;
+    --foreground: #37352f;
+    --surface: #f7f6f3;
+    --surface-active: #efedea;
+
+    /* ===== SEMANTIC PASTELS - White Mode ===== */
+    --card-sage: #dbeddb;
+    --card-rose: #ffe2dd;
+    --card-sand: #fdecc8;
+    --card-lavender: #e8deee;
+    --card-grey: #e3e2e0;
+
+    /* ===== TYPOGRAPHY COLORS - White Mode ===== */
+    --text-primary: #37352f;
+    --text-secondary: #6b6966;
+    --text-tertiary: #9b9a97;
+    --text-bright: #37352f;
+
+    /* ===== ACCENT COLORS ===== */
+    --accent-cyan: #0891b2;
+    --accent-purple: #7c3aed;
+    --accent-green: #16a34a;
+    --accent-orange: #ea580c;
+
+    /* ===== UI SEMANTIC COLORS - White Mode ===== */
+    --muted: #f7f6f3;
+    --muted-foreground: #6b6966;
+    --popover: #ffffff;
+    --popover-foreground: #37352f;
+    --border: #e3e2e0;
+    --input: #e3e2e0;
+    --card: #ffffff;
+    --card-foreground: #37352f;
+    --primary: #37352f;
+    --primary-foreground: #ffffff;
+    --secondary: #f7f6f3;
+    --secondary-foreground: #37352f;
+    --accent: #f7f6f3;
+    --accent-foreground: #37352f;
+    --destructive: #e03e3e;
+    --destructive-foreground: #ffffff;
+    --ring: #9b9a97;
+
+    /* ===== SHADOWS - White Mode (crisper than warm) ===== */
+    --shadow-card: 0 1px 2px 0 rgb(0 0 0 / 0.04), 0 1px 3px 0 rgb(0 0 0 / 0.06);
+    --shadow-card-hover: 0 4px 6px -1px rgb(0 0 0 / 0.08), 0 2px 4px -2px rgb(0 0 0 / 0.04);
+
+    /* ===== GRAPH VIEW COLORS - White Mode ===== */
+    --graph-node-note: #448c7c;
+    --graph-node-journal: #7c3aed;
+    --graph-node-task: #c87533;
+    --graph-node-project: #4a7a4a;
+    --graph-node-tag: #b07040;
+    --graph-edge-default: #9b9a97;
+    --graph-edge-wikilink: #9b9a97;
+    --graph-edge-task-note: #c4a46a;
+    --graph-edge-project-task: #9a8abd;
+    --graph-edge-tag-cooccurrence: #c4c2bc;
+    --graph-ghost-node: #d4d2cc;
+    --graph-dimmed-node: #e3e2e0;
+    --graph-edge-soft: #bfbdb6;
+    --graph-bg: #ffffff;
+    --graph-label-color: #37352f;
+
+    /* ===== QUEUE LIST - White Mode ===== */
+    --queue-bg: #f7f6f3;
+    --queue-number-bg: #e3e2e0;
+
+    /* ===== TASK COLORS - White Mode ===== */
+
+    /* Priority */
+    --task-priority-urgent: #ef4444;
+    --task-priority-urgent-bg: rgba(239, 68, 68, 0.12);
+    --task-priority-high: #f97316;
+    --task-priority-high-bg: rgba(249, 115, 22, 0.12);
+    --task-priority-medium: #a0a0a8;
+    --task-priority-medium-bg: rgba(160, 160, 168, 0.12);
+    --task-priority-low: #50505a;
+    --task-priority-low-bg: rgba(80, 80, 90, 0.12);
+    --task-priority-none: #50505a;
+    --task-priority-none-bg: rgba(80, 80, 90, 0.12);
+
+    /* Due date status */
+    --task-due-overdue: #dc2626;
+    --task-due-overdue-bg: #fef2f2;
+    --task-due-today: #d97706;
+    --task-due-today-bg: #fffbeb;
+    --task-due-tomorrow: #2563eb;
+    --task-due-tomorrow-bg: #eff6ff;
+    --task-due-upcoming: #4f46e5;
+
+    /* Completion / progress */
+    --task-complete: #22c55e;
+    --task-complete-bg: rgba(77, 166, 99, 0.1);
+    --task-progress: #3b82f6;
+
+    /* UI accents */
+    --task-star: #f59e0b;
+    --task-repeat: #3b82f6;
+    --task-token-date: #f59e0b;
+    --task-token-project: #60a5fa;
+
+    /* Checkbox */
+    --task-checkbox-done: #7b9e87;
+
+    /* Shadow */
+    --shadow-dropdown: 0 4px 24px rgba(0, 0, 0, 0.1), 0 1px 3px rgba(0, 0, 0, 0.06);
+  }
+
+  .dark {
+    /* ===== TYPOGRAPHY - Font Families (same in dark mode) ===== */
+    --font-sans:
+      ui-sans-serif, -apple-system, 'system-ui', 'Segoe UI Variable Display', 'Segoe UI', Helvetica,
+      'Apple Color Emoji', 'Noto Sans Arabic', 'Noto Sans Hebrew', Arial, sans-serif,
+      'Segoe UI Emoji', 'Segoe UI Symbol';
+    --font-serif: 'Crimson Pro Variable', Georgia, 'Times New Roman', serif;
+    --font-display: 'Playfair Display Variable', 'Crimson Pro Variable', Georgia, serif;
+    --font-heading: 'Space Grotesk Variable', system-ui, sans-serif;
+    --font-mono: 'JetBrains Mono Variable', 'SF Mono', 'Fira Code', monospace;
+
+    /* ===== BASE COLORS - Dark Mode (Neutral Charcoal) ===== */
+    --background: #191919;
+    --foreground: #bcbab6;
+    --surface: #222222;
+    --surface-active: #2a2a2a;
+
+    /* ===== SEMANTIC PASTELS - Dark Mode (Muted versions) ===== */
+    --card-sage: #1e261e;
+    --card-rose: #261e1e;
+    --card-sand: #26241e;
+    --card-lavender: #211e26;
+    --card-grey: #222222;
+
+    /* ===== TYPOGRAPHY COLORS - Dark Mode ===== */
+    --text-primary: #bcbab6;
+    --text-secondary: #bcbab6;
+    --text-tertiary: #ada9a3;
+    --text-bright: #dadada;
+
+    /* ===== ACCENT COLORS (Same in dark mode) ===== */
+    --accent-cyan: #22d3ee;
+    --accent-purple: #a78bfa;
+    --accent-green: #4ade80;
+    --accent-orange: #fb923c;
+
+    /* ===== UI SEMANTIC COLORS - Dark Mode ===== */
+    --muted: #222222;
+    --muted-foreground: #ada9a3;
+    --popover: #1e1e1e;
+    --popover-foreground: #bcbab6;
+    --border: #2a2a2a;
+    --input: #333333;
+    --card: #222222;
+    --card-foreground: #bcbab6;
+    --primary: #e8e6e1;
+    --primary-foreground: #191919;
+    --secondary: #222222;
+    --secondary-foreground: #bcbab6;
+    --accent: #2a2a2a;
+    --accent-foreground: #bcbab6;
+    --destructive: #dc2626;
+    --destructive-foreground: #fafafa;
+    --ring: #6b6b6b;
+
+    /* ===== BORDER RADIUS (Same in dark mode) ===== */
+    --radius: 0.5rem;
+    --radius-sm: 0.375rem;
+    --radius-md: 0.5rem;
+    --radius-lg: 0.75rem;
+    --radius-xl: 1rem;
+    --radius-2xl: 1.25rem;
+    --radius-full: 9999px;
+
+    /* ===== SHADOWS - Dark Mode ===== */
+    --shadow-card: 0 1px 2px 0 rgb(0 0 0 / 0.3), 0 1px 3px 0 rgb(0 0 0 / 0.4);
+    --shadow-card-hover: 0 4px 6px -1px rgb(0 0 0 / 0.4), 0 2px 4px -2px rgb(0 0 0 / 0.3);
+
+    /* ===== SPACING (Same in dark mode) ===== */
+    --sidebar-width: 240px;
+    --card-width: 280px;
+    --card-height: 200px;
+
+    /* ===== GRAPH VIEW COLORS - Dark Mode ===== */
+    --graph-node-note: #5abfad;
+    --graph-node-journal: #a78bfa;
+    --graph-node-task: #e8a960;
+    --graph-node-project: #6aaa6a;
+    --graph-node-tag: #d4a070;
+    --graph-edge-default: #6b6966;
+    --graph-edge-wikilink: #6b6966;
+    --graph-edge-task-note: #b89a5a;
+    --graph-edge-project-task: #8a7aad;
+    --graph-edge-tag-cooccurrence: #5a5855;
+    --graph-ghost-node: #3a3840;
+    --graph-dimmed-node: #2a2830;
+    --graph-edge-soft: #6b6966;
+    --graph-bg: #0e0e10;
+    --graph-label-color: #bcbab6;
+
+    /* ===== QUEUE LIST - Dark Mode ===== */
+    --queue-bg: #161618;
+    --queue-number-bg: #2a2a2e;
+
+    /* ===== TASK COLORS - Dark Mode ===== */
+
+    /* Priority */
+    --task-priority-urgent: #ef4444;
+    --task-priority-urgent-bg: rgba(239, 68, 68, 0.1);
+    --task-priority-high: #fb923c;
+    --task-priority-high-bg: rgba(249, 115, 22, 0.1);
+    --task-priority-medium: #a0a0a8;
+    --task-priority-medium-bg: rgba(160, 160, 168, 0.1);
+    --task-priority-low: #50505a;
+    --task-priority-low-bg: rgba(80, 80, 90, 0.1);
+    --task-priority-none: #50505a;
+    --task-priority-none-bg: rgba(80, 80, 90, 0.1);
+
+    /* Due date status */
+    --task-due-overdue: #f87171;
+    --task-due-overdue-bg: rgba(239, 68, 68, 0.1);
+    --task-due-today: #fbbf24;
+    --task-due-today-bg: rgba(217, 119, 6, 0.1);
+    --task-due-tomorrow: #60a5fa;
+    --task-due-tomorrow-bg: rgba(37, 99, 235, 0.1);
+    --task-due-upcoming: #818cf8;
+
+    /* Completion / progress */
+    --task-complete: #4ade80;
+    --task-complete-bg: rgba(77, 166, 99, 0.15);
+    --task-progress: #60a5fa;
+
+    /* UI accents */
+    --task-star: #fbbf24;
+    --task-repeat: #60a5fa;
+    --task-token-date: #fbbf24;
+    --task-token-project: #93c5fd;
+
+    /* Checkbox */
+    --task-checkbox-done: #7b9e87;
+
+    /* Shadow */
+    --shadow-dropdown: 0 4px 24px rgba(0, 0, 0, 0.3), 0 1px 3px rgba(0, 0, 0, 0.2);
+
+    /* ===== ANIMATION TOKENS (Same in dark mode) ===== */
+    --duration-instant: 100ms;
+    --duration-fast: 150ms;
+    --duration-normal: 200ms;
+    --duration-slow: 300ms;
+    --duration-deliberate: 400ms;
+
+    --ease-out: cubic-bezier(0, 0, 0.2, 1);
+    --ease-in: cubic-bezier(0.4, 0, 1, 1);
+    --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+  }
+}
+
+div.react-sigma {
+  --sigma-background-color: var(--graph-bg);
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  html {
+    font-family: var(--font-sans);
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-family: var(--font-sans);
+    color: var(--text-primary);
+    line-height: 1.5;
+    user-select: none;
+    -webkit-font-smoothing: auto;
+  }
+
+  /* Serif font utility for content titles */
+  .font-serif {
+    font-family: var(--font-serif);
+  }
+
+  /* Display font utility for dramatic headers */
+  .font-display {
+    font-family: var(--font-display);
+  }
+
+  /* Typography Scale */
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    font-weight: 600;
+    line-height: 1.3;
+    letter-spacing: -0.01em;
+  }
+
+  /* Card Title Style - Serif */
+  .card-title {
+    font-family: var(--font-serif);
+    font-size: 1.125rem;
+    line-height: 1.2;
+    color: var(--text-primary);
+  }
+
+  /* Meta/Caption Style */
+  .text-meta {
+    font-size: 0.75rem;
+    color: var(--text-tertiary);
+    line-height: 1.5;
+  }
+
+  /* Tag/Badge Style */
+  .text-tag {
+    font-size: 0.625rem;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  /* ===== ANIMATION UTILITIES ===== */
+
+  /* Card transition */
+  .transition-card {
+    transition:
+      transform var(--duration-fast) var(--ease-out),
+      box-shadow var(--duration-fast) var(--ease-out);
+  }
+
+  /* Hover lift effect */
+  .hover-lift:hover {
+    transform: translateY(-2px);
+  }
+
+  /* Press/active effect */
+  .press-effect:active {
+    transform: scale(0.98);
+  }
+
+  /* Quick action reveal (slide from right) */
+  .quick-actions-reveal {
+    opacity: 0;
+    transform: translateX(8px);
+    transition:
+      opacity var(--duration-instant) var(--ease-out),
+      transform var(--duration-instant) var(--ease-out);
+  }
+
+  .group:hover .quick-actions-reveal,
+  .group:focus-within .quick-actions-reveal {
+    opacity: 1;
+    transform: translateX(0);
+  }
+
+  /* Item removal animation - List View */
+  .item-removing {
+    animation: item-remove var(--duration-normal) var(--ease-in) forwards;
+  }
+
+  /* Item removal animation - Card View */
+  .card-removing {
+    animation: card-remove var(--duration-normal) var(--ease-in) forwards;
+  }
+
+  /* Tag pill enter animation */
+  .tag-enter {
+    animation: tag-pop-in var(--duration-normal) var(--ease-out);
+  }
+
+  /* Tag pill exit animation */
+  .tag-exit {
+    animation: tag-pop-out var(--duration-fast) var(--ease-in) forwards;
+  }
+
+  /* Bulk action bar slide up */
+  .slide-up-enter {
+    animation: slide-up var(--duration-normal) var(--ease-out);
+  }
+
+  /* Empty state stagger entrance */
+  .stagger-1 {
+    animation-delay: 0ms;
+  }
+
+  .stagger-2 {
+    animation-delay: 100ms;
+  }
+
+  .stagger-3 {
+    animation-delay: 200ms;
+  }
+
+  .stagger-4 {
+    animation-delay: 300ms;
+  }
+
+  /* Fade in with translate (for staggered entrance) */
+  .fade-in-up {
+    opacity: 0;
+    transform: translateY(10px);
+    animation: fade-in-up var(--duration-normal) var(--ease-out) forwards;
+  }
+
+  /* Count pulse animation */
+  .count-pulse {
+    animation: count-pulse var(--duration-fast) var(--ease-out);
+  }
+
+  /* Dropdown highlight transition */
+  .dropdown-highlight {
+    transition: background-color var(--duration-instant) var(--ease-out);
+  }
+}
+
+/* ===== CUSTOM SCROLLBAR UTILITIES ===== */
+/* These need to be outside @layer to ensure higher specificity */
+
+/* Thin scrollbar for sidebars and panels */
+.scrollbar-thin {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(0, 0, 0, 0.25) transparent;
+}
+
+.scrollbar-thin::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+  -webkit-appearance: none;
+}
+
+.scrollbar-thin::-webkit-scrollbar-track {
+  background: transparent;
+  border-radius: 4px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background-color: rgba(0, 0, 0, 0.25);
+  border-radius: 4px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+  min-height: 40px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(0, 0, 0, 0.4);
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb:active {
+  background-color: rgba(0, 0, 0, 0.5);
+}
+
+/* Dark mode scrollbar */
+.dark .scrollbar-thin {
+  scrollbar-color: rgba(255, 255, 255, 0.25) transparent;
+}
+
+.dark .scrollbar-thin::-webkit-scrollbar-thumb {
+  background-color: rgba(255, 255, 255, 0.25);
+}
+
+.dark .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(255, 255, 255, 0.4);
+}
+
+.dark .scrollbar-thin::-webkit-scrollbar-thumb:active {
+  background-color: rgba(255, 255, 255, 0.5);
+}
+
+/* Force scrollbar corner to be transparent */
+.scrollbar-thin::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+/* Hide scrollbar but keep functionality */
+.scrollbar-none {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
+
+/* ===== KEYFRAME ANIMATIONS ===== */
+
+/* Overdue severe tier — single pulse on mount */
+.overdue-pulse {
+  animation: overdue-pulse 0.6s var(--ease-out) 1;
+}
+
+@keyframes overdue-pulse {
+  0% {
+    background-color: oklch(0.93 0.04 15);
+  }
+  100% {
+    background-color: transparent;
+  }
+}
+
+:is(.dark) .overdue-pulse {
+  animation: overdue-pulse-dark 0.6s var(--ease-out) 1;
+}
+
+@keyframes overdue-pulse-dark {
+  0% {
+    background-color: oklch(0.25 0.04 15);
+  }
+  100% {
+    background-color: transparent;
+  }
+}
+
+/* Item removal - compresses height for smooth list reflow */
+@keyframes item-remove {
+  0% {
+    opacity: 1;
+    max-height: 60px;
+    margin-bottom: 2px;
+    transform: scale(1);
+  }
+
+  50% {
+    opacity: 0.5;
+    transform: scale(0.98);
+  }
+
+  100% {
+    opacity: 0;
+    max-height: 0;
+    margin-bottom: 0;
+    padding-top: 0;
+    padding-bottom: 0;
+    transform: scale(0.95);
+  }
+}
+
+/* Card removal - shrink and fade */
+@keyframes card-remove {
+  0% {
+    opacity: 1;
+    transform: scale(1);
+  }
+
+  100% {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+}
+
+/* Tag pill pop in */
+@keyframes tag-pop-in {
+  0% {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Tag pill pop out */
+@keyframes tag-pop-out {
+  0% {
+    opacity: 1;
+    transform: scale(1);
+  }
+
+  100% {
+    opacity: 0;
+    transform: scale(0.8);
+    width: 0;
+    padding: 0;
+    margin: 0;
+  }
+}
+
+/* Slide up from bottom */
+@keyframes slide-up {
+  0% {
+    opacity: 0;
+    transform: translateY(100%);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Fade in with upward movement */
+@keyframes fade-in-up {
+  0% {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Count number pulse */
+@keyframes count-pulse {
+  0% {
+    transform: scale(1);
+  }
+
+  50% {
+    transform: scale(1.1);
+  }
+
+  100% {
+    transform: scale(1);
+  }
+}
+
+/* Drop flash — blue highlight fade on kanban card drop */
+@keyframes drop-flash {
+  0% {
+    background-color: rgb(59 130 246 / 0.12);
+    border-color: rgb(59 130 246 / 0.4);
+  }
+
+  100% {
+    background-color: transparent;
+    border-color: transparent;
+  }
+}
+
+.animate-drop-flash {
+  animation: drop-flash 1s var(--ease-out) forwards;
+}
+
+/* Row drop flash — blue left-border + bg highlight for list view */
+@keyframes row-drop-flash {
+  0% {
+    background-color: rgb(59 130 246 / 0.08);
+    border-left: 3px solid rgb(59 130 246 / 0.6);
+  }
+  100% {
+    background-color: transparent;
+    border-left: 3px solid transparent;
+  }
+}
+
+.animate-row-drop-flash {
+  animation: row-drop-flash 300ms var(--ease-out) forwards;
+}
+
+/* Priority badge fade out after cross-section drop */
+.animate-fade-out {
+  animation: fade-out-badge 2s ease-in forwards;
+}
+
+@keyframes fade-out-badge {
+  0%,
+  70% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+/* Checkmark draw animation (SVG) */
+@keyframes draw-check {
+  0% {
+    stroke-dashoffset: 100;
+  }
+
+  100% {
+    stroke-dashoffset: 0;
+  }
+}
+
+/* ===== REDUCED MOTION SUPPORT ===== */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+
+  /* Keep opacity transitions for essential feedback */
+  .item-removing,
+  .card-removing {
+    animation: none;
+    opacity: 0;
+  }
+
+  .tag-enter,
+  .tag-exit {
+    animation: none;
+  }
+
+  .fade-in-up {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
+
+  .quick-actions-reveal {
+    transition: none;
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* ===== BLOCKNOTE XL-AI THEMING ===== */
+
+/* AI Menu (combobox) — match memry's warm palette */
+.bn-combobox {
+  background: var(--popover) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: var(--radius-lg) !important;
+  box-shadow: var(--shadow-card-hover) !important;
+}
+
+.bn-combobox-input {
+  background: transparent !important;
+  color: var(--foreground) !important;
+}
+
+.bn-combobox-input::placeholder {
+  color: var(--text-tertiary) !important;
+}
+
+/* AI suggestion items — consistent hover states */
+.bn-combobox-items [role='option'][aria-selected='true'] {
+  background-color: var(--surface-active) !important;
+}
+
+.dark .bn-combobox-items [role='option'][aria-selected='true'] {
+  background-color: #2a2a2e !important;
+}
+
+/* AI diff highlighting — warm-tinted insertion/deletion for light mode */
+ins[data-type='modification'],
+ins.bn-inline-content {
+  background: rgba(74, 158, 142, 0.12) !important;
+  border-bottom-color: rgba(74, 158, 142, 0.25) !important;
+  color: #2d7a6a !important;
+}
+
+del,
+del.bn-inline-content {
+  color: rgba(100, 90, 75, 0.4) !important;
+}
+
+/* Dark mode diff highlighting */
+.dark ins[data-type='modification'],
+.dark ins.bn-inline-content {
+  background: rgba(90, 191, 173, 0.15) !important;
+  border-bottom-color: rgba(90, 191, 173, 0.3) !important;
+  color: #7dd3c4 !important;
+}
+
+.dark del,
+.dark del.bn-inline-content {
+  color: rgba(168, 166, 161, 0.35) !important;
+}
+
+/* AI agent cursor — warm accent */
+.bn-collaboration-cursor__caret {
+  background-color: var(--sidebar-terracotta) !important;
+}
+
+.bn-collaboration-cursor__label {
+  background-color: var(--sidebar-terracotta) !important;
+  color: white !important;
+  font-size: 11px !important;
+  border-radius: 3px 3px 3px 0 !important;
+}
+
+/* AI menu error state */
+.bn-combobox-error {
+  color: var(--destructive) !important;
+}
+
+/* macOS window drag region */
+.drag-region {
+  -webkit-app-region: drag;
+}
+
+.drag-region button,
+.drag-region a,
+.drag-region input,
+.drag-region textarea,
+.drag-region [role='button'],
+.no-drag {
+  -webkit-app-region: no-drag;
+}
+
+/* ===== USER ACCENT COLOR (tint) ===== */
+:root,
+.white,
+.dark {
+  --tint: var(--user-accent-color, #6366f1);
+  --tint-foreground: #ffffff;
+  --tint-hover: color-mix(in srgb, var(--tint) 85%, black);
+  --tint-light: color-mix(in srgb, var(--tint) 15%, transparent);
+  --tint-lighter: color-mix(in srgb, var(--tint) 10%, transparent);
+  --tint-muted: color-mix(in srgb, var(--tint) 50%, transparent);
+  --tint-ring: color-mix(in srgb, var(--tint) 30%, transparent);
+  --tint-border: color-mix(in srgb, var(--tint) 50%, transparent);
+}
+
+:root {
+  /* ===== SIDEBAR THEME - Warm Editorial Palette ===== */
+  --sidebar: #efefe9;
+  --sidebar-foreground: #8a857a;
+  --sidebar-primary: #1a1917;
+  --sidebar-primary-foreground: #edeae4;
+  --sidebar-accent: rgba(0, 0, 0, 0.05);
+  --sidebar-accent-foreground: var(--sidebar-foreground);
+  --sidebar-border: #d9d5ce;
+  --sidebar-ring: var(--tint);
+  --sidebar-muted: #b5b0a6;
+  --sidebar-terracotta: var(--tint);
+  --sidebar-text-folder: #3d3a35;
+  --sidebar-text-child: #5c5850;
+  --sidebar-dot-inactive: #d9d5ce;
+  --sidebar-surface: rgba(0, 0, 0, 0.04);
+}
+
+.white {
+  /* ===== SIDEBAR THEME - Clean White Palette ===== */
+  --sidebar: #f9f8f7;
+  --sidebar-foreground: #5f5e59;
+  --sidebar-primary: #37352f;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: rgba(0, 0, 0, 0.04);
+  --sidebar-accent-foreground: var(--sidebar-foreground);
+  --sidebar-border: #e9e9e7;
+  --sidebar-ring: var(--tint);
+  --sidebar-muted: #b0afab;
+  --sidebar-terracotta: var(--tint);
+  --sidebar-text-folder: #37352f;
+  --sidebar-text-child: #6b6966;
+  --sidebar-dot-inactive: #e3e2e0;
+  --sidebar-surface: rgba(0, 0, 0, 0.03);
+}
+
+.dark {
+  /* ===== SIDEBAR THEME - Neutral Charcoal ===== */
+  --sidebar: #202020;
+  --sidebar-foreground: #b5b3ae;
+  --sidebar-primary: #e8e5df;
+  --sidebar-primary-foreground: #202020;
+  --sidebar-accent: #2a2a2a;
+  --sidebar-accent-foreground: var(--sidebar-primary);
+  --sidebar-border: #333333;
+  --sidebar-ring: var(--tint);
+  --sidebar-muted: #6b6b6b;
+  --sidebar-terracotta: var(--tint);
+  --sidebar-text-folder: #c5c0b8;
+  --sidebar-text-child: #9a958d;
+  --sidebar-dot-inactive: #444444;
+  --sidebar-surface: #2a2a2a;
+}
+
+@theme inline {
+  /* ===== FONT FAMILIES ===== */
+  --font-sans: var(--font-sans);
+  --font-serif: var(--font-serif);
+  --font-heading: var(--font-heading);
+
+  /* ===== BASE COLORS ===== */
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-surface: var(--surface);
+  --color-surface-active: var(--surface-active);
+
+  /* ===== SEMANTIC CARD COLORS ===== */
+  --color-card-sage: var(--card-sage);
+  --color-card-rose: var(--card-rose);
+  --color-card-sand: var(--card-sand);
+  --color-card-lavender: var(--card-lavender);
+  --color-card-grey: var(--card-grey);
+
+  /* ===== TYPOGRAPHY COLORS ===== */
+  --color-text-primary: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-text-tertiary: var(--text-tertiary);
+  --color-text-bright: var(--text-bright);
+
+  /* ===== ACCENT COLORS (Category Dots) ===== */
+  --color-accent-cyan: var(--accent-cyan);
+  --color-accent-purple: var(--accent-purple);
+  --color-accent-green: var(--accent-green);
+  --color-accent-orange: var(--accent-orange);
+
+  /* ===== UI SEMANTIC COLORS ===== */
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+
+  /* ===== USER ACCENT (tint) ===== */
+  --color-tint: var(--tint);
+  --color-tint-foreground: var(--tint-foreground);
+  --color-tint-hover: var(--tint-hover);
+  --color-tint-light: var(--tint-light);
+  --color-tint-lighter: var(--tint-lighter);
+  --color-tint-muted: var(--tint-muted);
+  --color-tint-ring: var(--tint-ring);
+  --color-tint-border: var(--tint-border);
+
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-ring: var(--ring);
+
+  /* ===== QUEUE LIST ===== */
+  --color-queue-bg: var(--queue-bg);
+  --color-queue-number-bg: var(--queue-number-bg);
+
+  /* ===== TASK COLORS ===== */
+  --color-task-priority-urgent: var(--task-priority-urgent);
+  --color-task-priority-urgent-bg: var(--task-priority-urgent-bg);
+  --color-task-priority-high: var(--task-priority-high);
+  --color-task-priority-high-bg: var(--task-priority-high-bg);
+  --color-task-priority-medium: var(--task-priority-medium);
+  --color-task-priority-medium-bg: var(--task-priority-medium-bg);
+  --color-task-priority-low: var(--task-priority-low);
+  --color-task-priority-low-bg: var(--task-priority-low-bg);
+  --color-task-due-overdue: var(--task-due-overdue);
+  --color-task-due-overdue-bg: var(--task-due-overdue-bg);
+  --color-task-due-today: var(--task-due-today);
+  --color-task-due-today-bg: var(--task-due-today-bg);
+  --color-task-due-tomorrow: var(--task-due-tomorrow);
+  --color-task-due-tomorrow-bg: var(--task-due-tomorrow-bg);
+  --color-task-due-upcoming: var(--task-due-upcoming);
+  --color-task-complete: var(--task-complete);
+  --color-task-complete-bg: var(--task-complete-bg);
+  --color-task-progress: var(--task-progress);
+  --color-task-star: var(--task-star);
+  --color-task-repeat: var(--task-repeat);
+  --color-task-token-date: var(--task-token-date);
+  --color-task-token-project: var(--task-token-project);
+  --color-task-checkbox-done: var(--task-checkbox-done);
+
+  /* ===== SIDEBAR ===== */
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-muted: var(--sidebar-muted);
+  --color-sidebar-terracotta: var(--sidebar-terracotta);
+  --color-sidebar-text-folder: var(--sidebar-text-folder);
+  --color-sidebar-text-child: var(--sidebar-text-child);
+  --color-sidebar-dot-inactive: var(--sidebar-dot-inactive);
+  --color-sidebar-surface: var(--sidebar-surface);
+
+  /* ===== BORDER RADIUS ===== */
+  --radius-sm: var(--radius-sm);
+  --radius-md: var(--radius-md);
+  --radius-lg: var(--radius-lg);
+  --radius-xl: var(--radius-xl);
+  --radius-2xl: var(--radius-2xl);
+  --radius-full: var(--radius-full);
+
+  /* ===== SHADOWS ===== */
+  --shadow-card: var(--shadow-card);
+  --shadow-card-hover: var(--shadow-card-hover);
+  --shadow-dropdown: var(--shadow-dropdown);
+
+  /* ===== SPACING ===== */
+  --spacing-sidebar: var(--sidebar-width);
+
+  /* ===== FONTS ===== */
+  --font-display: var(--font-display);
+  --font-heading: var(--font-heading);
+  --font-mono: var(--font-mono);
+}
+
+/* ===== JOURNAL PAGE SPECIFIC STYLES ===== */
+
+/* Journal page entrance animations */
+@keyframes journal-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes journal-scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes journal-slide-right {
+  from {
+    opacity: 0;
+    transform: translateX(-16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes journal-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-4px);
+  }
+}
+
+@keyframes journal-glow-pulse {
+  0%,
+  100% {
+    opacity: 0.4;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+
+/* Journal animation utilities */
+.journal-animate-in {
+  animation: journal-fade-in 0.6s var(--ease-out) forwards;
+}
+
+.journal-animate-in-delayed {
+  opacity: 0;
+  animation: journal-fade-in 0.6s var(--ease-out) 0.1s forwards;
+}
+
+.journal-animate-scale {
+  animation: journal-scale-in 0.5s var(--ease-out) forwards;
+}
+
+.journal-animate-slide {
+  animation: journal-slide-right 0.5s var(--ease-out) forwards;
+}
+
+/* Stagger delays for journal sections */
+.journal-stagger-1 {
+  animation-delay: 0ms;
+}
+.journal-stagger-2 {
+  animation-delay: 80ms;
+}
+.journal-stagger-3 {
+  animation-delay: 160ms;
+}
+.journal-stagger-4 {
+  animation-delay: 240ms;
+}
+.journal-stagger-5 {
+  animation-delay: 320ms;
+}
+
+/* Journal decorative day number */
+.journal-day-watermark {
+  font-family: var(--font-display);
+  font-weight: 400;
+  line-height: 0.8;
+  color: var(--foreground);
+  opacity: 0.03;
+  pointer-events: none;
+  user-select: none;
+}
+
+.dark .journal-day-watermark {
+  opacity: 0.04;
+}
+
+/* Journal focus mode paper effect */
+.journal-focus-paper {
+  background: linear-gradient(
+    to bottom,
+    var(--background) 0%,
+    color-mix(in srgb, var(--background) 97%, #f5e6d3) 50%,
+    var(--background) 100%
+  );
+  box-shadow: inset 0 0 120px rgba(0, 0, 0, 0.015);
+}
+
+.dark .journal-focus-paper {
+  background: linear-gradient(
+    to bottom,
+    var(--background) 0%,
+    color-mix(in srgb, var(--background) 97%, #2a2520) 50%,
+    var(--background) 100%
+  );
+  box-shadow: inset 0 0 120px rgba(0, 0, 0, 0.1);
+}
+
+/* Journal sidebar gradient */
+.journal-sidebar-gradient {
+  background: linear-gradient(
+    to bottom,
+    color-mix(in srgb, var(--muted) 30%, transparent) 0%,
+    color-mix(in srgb, var(--muted) 50%, transparent) 50%,
+    color-mix(in srgb, var(--muted) 60%, transparent) 100%
+  );
+}
+
+/* Journal greeting glow */
+.journal-greeting-glow {
+  box-shadow:
+    0 2px 16px -4px rgba(217, 119, 6, 0.12),
+    0 0 0 1px rgba(217, 119, 6, 0.06);
+}
+
+.dark .journal-greeting-glow {
+  box-shadow:
+    0 2px 16px -4px rgba(251, 191, 36, 0.15),
+    0 0 0 1px rgba(251, 191, 36, 0.1);
+}
+
+/* Journal section label styling */
+.journal-section-label {
+  font-size: 0.65rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  color: var(--text-tertiary);
+}
+
+/* ===== NOTE PAGE SPECIFIC STYLES ===== */
+
+/* Note title input placeholder styling */
+.note-title-input::placeholder {
+  font-family: var(--font-sans);
+  font-style: normal;
+  opacity: 0.4;
+}
+
+/* Note property divider - subtle gradient line */
+.note-property-divider {
+  height: 1px;
+  background: linear-gradient(to right, transparent, hsl(var(--border) / 0.3), transparent);
+}
+
+/* Wiki link styling inside notes */
+.wiki-link {
+  color: rgb(217, 119, 6) !important;
+  font-weight: 500;
+  cursor: pointer;
+  padding: 0 2px;
+  transition: color 0.2s ease;
+}
+
+.wiki-link:hover {
+  text-decoration: underline;
+}
+
+.dark .wiki-link {
+  color: rgb(251, 191, 36) !important;
+}
+
+/* Inline hash tag styles — needs .dark .bn-editor prefix to beat the wildcard rule */
+.dark .bn-editor .inline-hash-tag,
+.dark .bn-container .inline-hash-tag,
+.inline-hash-tag {
+  color: var(--hash-tag-color) !important;
+}
+
+.inline-hash-tag:hover {
+  opacity: 0.8;
+}
+
+/* Link mention — inline rich link with favicon + domain + title */
+.link-mention {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: hsl(var(--muted) / 0.5);
+  font-size: 0.9em;
+  font-weight: 500;
+  color: hsl(var(--foreground));
+  cursor: pointer;
+  white-space: nowrap;
+  text-decoration: none;
+  user-select: none;
+  transition: background 0.15s ease;
+}
+
+.link-mention:hover {
+  background: hsl(var(--muted));
+  text-decoration: none;
+}
+
+.link-mention-favicon {
+  width: 14px;
+  height: 14px;
+  border-radius: 2px;
+  flex-shrink: 0;
+  object-fit: contain;
+}
+
+.link-mention-sep {
+  color: hsl(var(--muted-foreground) / 0.4);
+}
+
+.link-mention-title {
+  color: hsl(var(--muted-foreground));
+  font-weight: 400;
+}
+
+/* Backlink mention highlight - warm amber for wiki-style links */
+.backlink-mention {
+  color: rgb(217, 119, 6);
+  font-weight: 500;
+}
+
+.dark .backlink-mention {
+  color: rgb(251, 191, 36);
+}
+
+/* Note outline heading active state indicator */
+.outline-heading-active {
+  position: relative;
+}
+
+.outline-heading-active::before {
+  content: '';
+  position: absolute;
+  left: -8px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 3px;
+  height: 60%;
+  background: linear-gradient(to bottom, rgba(245, 158, 11, 0.6), rgba(251, 191, 36, 0.3));
+  border-radius: 1px;
+}
+
+.dark .outline-heading-active::before {
+  background: linear-gradient(to bottom, rgba(251, 191, 36, 0.5), rgba(245, 158, 11, 0.2));
+}
+
+/* Note backlink card hover effect */
+.backlink-card {
+  transition: all 0.2s var(--ease-out);
+}
+
+.backlink-card:hover {
+  background-color: color-mix(in srgb, var(--muted) 50%, transparent);
+  transform: translateX(2px);
+}
+
+/* Note info section collapse transition */
+.note-info-collapse {
+  transition: all 0.3s var(--ease-in-out);
+  overflow: hidden;
+}
+
+/* Note tags row - refined hover states */
+.note-tag-chip {
+  transition: all 0.2s var(--ease-out);
+}
+
+.note-tag-chip:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.dark .note-tag-chip:hover {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+/* Note content area margin line - subtle left border */
+.note-margin-line {
+  position: relative;
+}
+
+.note-margin-line::before {
+  content: '';
+  position: absolute;
+  left: 48px;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: linear-gradient(
+    to bottom,
+    transparent,
+    rgba(180, 120, 100, 0.1) 10%,
+    rgba(180, 120, 100, 0.15) 50%,
+    rgba(180, 120, 100, 0.1) 90%,
+    transparent
+  );
+  pointer-events: none;
+}
+
+.dark .note-margin-line::before {
+  background: linear-gradient(
+    to bottom,
+    transparent,
+    rgba(200, 160, 140, 0.06) 10%,
+    rgba(200, 160, 140, 0.1) 50%,
+    rgba(200, 160, 140, 0.06) 90%,
+    transparent
+  );
+}
+
+/* ===== RIGHT SIDEBAR SPECIFIC STYLES ===== */
+
+/* Sidebar tab active indicator glow */
+.sidebar-tab-active {
+  position: relative;
+}
+
+.sidebar-tab-active::after {
+  content: '';
+  position: absolute;
+  bottom: -1px;
+  left: 20%;
+  right: 20%;
+  height: 2px;
+  background: linear-gradient(to right, transparent, rgba(245, 158, 11, 0.6), transparent);
+}
+
+/* Related note card hover glow */
+.related-card-glow:hover {
+  box-shadow:
+    0 2px 8px -2px rgba(0, 0, 0, 0.06),
+    0 0 0 1px rgba(245, 158, 11, 0.08);
+}
+
+.dark .related-card-glow:hover {
+  box-shadow:
+    0 2px 8px -2px rgba(0, 0, 0, 0.3),
+    0 0 0 1px rgba(251, 191, 36, 0.12);
+}
+
+/* Similarity badge pulse for high matches */
+@keyframes similarity-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+
+.similarity-high {
+  animation: similarity-pulse 2s ease-in-out infinite;
+}
+
+/* Sidebar section divider */
+.sidebar-divider {
+  height: 1px;
+  background: linear-gradient(
+    to right,
+    rgba(245, 158, 11, 0.3),
+    var(--sidebar-border) 30%,
+    transparent
+  );
+}
+
+/* Scholarly reference styling */
+.reference-snippet {
+  font-family: var(--font-serif);
+  font-style: italic;
+  quotes: '"' '"';
+}
+
+.reference-snippet::before {
+  content: open-quote;
+  color: var(--sidebar-foreground);
+  opacity: 0.3;
+}
+
+.reference-snippet::after {
+  content: close-quote;
+  color: var(--sidebar-foreground);
+  opacity: 0.3;
+}
+
+/* Sidebar scroll fade */
+.sidebar-scroll-fade {
+  mask-image: linear-gradient(
+    to bottom,
+    transparent 0%,
+    black 8px,
+    black calc(100% - 8px),
+    transparent 100%
+  );
+}
+
+/* ============================================
+   Outline Indicator (T078)
+   Heading outline navigation component
+   ============================================ */
+
+/* Entrance animation */
+.outline-indicator {
+  animation: outline-fade-in 0.4s var(--ease-out);
+}
+
+@keyframes outline-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(-50%) translateX(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(-50%) translateX(0);
+  }
+}
+
+/* Line hover effect */
+.outline-line:hover {
+  box-shadow: 0 0 8px rgba(28, 25, 23, 0.15);
+}
+
+/* Dark mode adjustments */
+.dark .outline-line {
+  background-color: rgb(168, 162, 158) !important;
+}
+
+.dark .outline-line[style*='rgb(28, 25, 23)'] {
+  background-color: rgb(245, 245, 244) !important;
+}
+
+.dark .vertical-connector {
+  background: linear-gradient(
+    to bottom,
+    transparent 0%,
+    rgb(87, 83, 78) 8%,
+    rgb(87, 83, 78) 92%,
+    transparent 100%
+  ) !important;
+}
+
+.dark .outline-line:hover {
+  box-shadow: 0 0 8px rgba(245, 245, 244, 0.15);
+}
+
+/* ============================================
+   Templates Page - Editorial Collection Design
+   ============================================ */
+
+/* Templates page entrance animation */
+@keyframes templates-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Templates animation utilities */
+.templates-animate-in {
+  animation: templates-fade-in 0.5s var(--ease-out) forwards;
+}
+
+/* Stagger delays for templates sections */
+.templates-stagger-1 {
+  animation-delay: 0ms;
+}
+.templates-stagger-2 {
+  animation-delay: 60ms;
+}
+.templates-stagger-3 {
+  animation-delay: 120ms;
+}
+.templates-stagger-4 {
+  animation-delay: 180ms;
+}
+.templates-stagger-5 {
+  animation-delay: 280ms;
+}
+.templates-stagger-6 {
+  animation-delay: 380ms;
+}
+
+/* Template card entrance animation */
+@keyframes template-card-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Template specimen card hover glow */
+.template-card-glow {
+  transition: box-shadow 0.3s var(--ease-out);
+}
+
+.template-card-glow:hover {
+  box-shadow:
+    0 8px 30px -8px rgba(0, 0, 0, 0.08),
+    0 0 0 1px rgba(0, 0, 0, 0.03);
+}
+
+.dark .template-card-glow:hover {
+  box-shadow:
+    0 8px 30px -8px rgba(0, 0, 0, 0.4),
+    0 0 0 1px rgba(255, 255, 255, 0.05);
+}
+
+/* Template icon float animation */
+@keyframes template-icon-float {
+  0%,
+  100% {
+    transform: translateY(0) scale(1);
+  }
+  50% {
+    transform: translateY(-4px) scale(1.02);
+  }
+}
+
+.template-icon-float:hover {
+  animation: template-icon-float 2s ease-in-out infinite;
+}
+
+/* Template empty state decorative pulse */
+@keyframes template-plus-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+    box-shadow: 0 4px 12px -2px rgba(245, 158, 11, 0.25);
+  }
+  50% {
+    transform: scale(1.05);
+    box-shadow: 0 6px 20px -2px rgba(245, 158, 11, 0.35);
+  }
+}
+
+.template-plus-pulse {
+  animation: template-plus-pulse 3s ease-in-out infinite;
+}
+
+/* Template section divider gradient */
+.template-section-divider {
+  height: 1px;
+  background: linear-gradient(to right, rgba(245, 158, 11, 0.2), var(--border) 20%, transparent);
+}
+
+.dark .template-section-divider {
+  background: linear-gradient(to right, rgba(251, 191, 36, 0.15), var(--border) 20%, transparent);
+}
+
+/* ===== SETUP WIZARD - Warm Library Vault ===== */
+
+@keyframes wizard-step-enter {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes wizard-slot-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.75);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes wizard-card-lift {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes wizard-check-ring {
+  0% {
+    box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.35);
+  }
+  70% {
+    box-shadow: 0 0 0 14px rgba(34, 197, 94, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(34, 197, 94, 0);
+  }
+}
+
+.wizard-step-enter {
+  opacity: 1;
+}
+
+.wiz-delay-1 {
+  animation-delay: 0ms;
+}
+.wiz-delay-2 {
+  animation-delay: 80ms;
+}
+.wiz-delay-3 {
+  animation-delay: 160ms;
+}
+.wiz-delay-4 {
+  animation-delay: 240ms;
+}
+
+.wizard-slot-pop {
+  opacity: 0;
+  animation: wizard-slot-pop 0.35s var(--ease-out) forwards;
+}
+
+.wizard-card-lift {
+  opacity: 0;
+  animation: wizard-card-lift 0.5s var(--ease-out) forwards;
+}
+
+.wizard-check-ring {
+  animation: wizard-check-ring 1s ease-out;
+}
+
+/* Recovery phrase card - warm paper gradient */
+.recovery-phrase-card {
+  background: linear-gradient(
+    145deg,
+    var(--card) 0%,
+    color-mix(in srgb, var(--card) 96%, #f5e6d3) 100%
+  );
+  box-shadow:
+    0 1px 3px rgba(0, 0, 0, 0.04),
+    0 4px 16px -4px rgba(0, 0, 0, 0.07),
+    inset 0 1px 0 rgba(255, 255, 255, 0.5);
+}
+
+.dark .recovery-phrase-card {
+  background: linear-gradient(
+    145deg,
+    var(--card) 0%,
+    color-mix(in srgb, var(--card) 96%, #2a2520) 100%
+  );
+  box-shadow:
+    0 1px 3px rgba(0, 0, 0, 0.2),
+    0 4px 16px -4px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.03);
+}
+
+/* Auth method selection card */
+.auth-method-card {
+  transition: all 0.2s var(--ease-out);
+}
+
+.auth-method-card:hover {
+  transform: translateY(-1px);
+  box-shadow:
+    0 4px 12px -4px rgba(0, 0, 0, 0.08),
+    0 0 0 1px rgba(217, 119, 6, 0.12);
+}
+
+.dark .auth-method-card:hover {
+  box-shadow:
+    0 4px 12px -4px rgba(0, 0, 0, 0.3),
+    0 0 0 1px rgba(251, 191, 36, 0.15);
+}
+
+.auth-method-card:active {
+  transform: scale(0.99);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wizard-step-enter,
+  .wizard-slot-pop,
+  .wizard-card-lift {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
+
+  .wizard-check-ring {
+    animation: none;
+  }
+}
+
+/* ============================================================================
+   MARQUEE BLOCK SELECTION
+   ============================================================================ */
+
+/*
+ * Highlight rectangles are absolute-positioned overlay divs (not attribute
+ * mutations on .bn-block) because ProseMirror's MutationObserver reverts any
+ * DOM mutation it didn't make. The overlay is rendered (via portal) into the
+ * `.marquee-zone` wrapper, which is `position: relative` and extends
+ * horizontally beyond .bn-container into the parent's px-24 padding so users
+ * can start a marquee from the gray gutter on either side of the editor.
+ */
+.marquee-block-highlight {
+  position: absolute;
+  pointer-events: none;
+  background-color: rgba(59, 130, 246, 0.14);
+  border-radius: 4px;
+  z-index: 30;
+}
+
+.marquee-overlay {
+  position: absolute;
+  pointer-events: none;
+  border: 1px solid rgba(59, 130, 246, 0.6);
+  background-color: rgba(59, 130, 246, 0.08);
+  z-index: 40;
+  border-radius: 2px;
+}
+
+.marquee-zone[data-marquee-active='true'] {
+  cursor: default;
+  user-select: none;
+}
+.marquee-zone[data-marquee-active='true'] * {
+  user-select: none !important;
+}
