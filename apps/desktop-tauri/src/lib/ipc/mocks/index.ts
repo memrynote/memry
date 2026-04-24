@@ -1,8 +1,33 @@
+import type { MockRouteMap } from './types'
+
 /**
- * Mock IPC router stub. Task 9 requires `mockRouter` to exist so the invoke
- * wrapper can compile. Task 10 replaces this stub with the full router that
- * delegates to domain route maps.
+ * Aggregated route map for the mock IPC router.
+ *
+ * Each domain module (notes, tasks, calendar, ...) exports a `<domain>Routes`
+ * object mapping command names to async handlers. This file composes all
+ * domain route maps into the single registry consulted by `mockRouter`.
+ *
+ * Domains are added incrementally; any command not registered here raises
+ * a descriptive error when invoked so missing mocks surface loudly during
+ * renderer port-over.
  */
-export async function mockRouter<T>(cmd: string, _args?: unknown): Promise<T> {
-  throw new Error(`Mock IPC: command "${cmd}" not implemented`)
+const routes: MockRouteMap = {}
+
+/**
+ * Dispatch a command through the mock IPC router. Called by `invoke` when
+ * `shouldUseMock(cmd)` is true (default at M1).
+ */
+export async function mockRouter<T>(cmd: string, args?: unknown): Promise<T> {
+  const handler = routes[cmd]
+  if (!handler) {
+    console.warn(`[mock-ipc] unimplemented command: ${cmd}`, args)
+    throw new Error(`Mock IPC: command "${cmd}" not implemented`)
+  }
+  try {
+    const result = await handler(args)
+    return result as T
+  } catch (err) {
+    console.error(`[mock-ipc] handler error for "${cmd}":`, err)
+    throw err
+  }
 }
