@@ -17,6 +17,7 @@ import { graphRoutes } from './graph'
 import { propertiesRoutes } from './properties'
 import { remindersRoutes } from './reminders'
 import { savedFiltersRoutes } from './saved-filters'
+import { updaterRoutes } from './updater'
 
 /**
  * Aggregated route map for the mock IPC router.
@@ -47,7 +48,8 @@ const routes: MockRouteMap = {
   ...graphRoutes,
   ...propertiesRoutes,
   ...remindersRoutes,
-  ...savedFiltersRoutes
+  ...savedFiltersRoutes,
+  ...updaterRoutes
 }
 
 /**
