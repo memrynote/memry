@@ -49,7 +49,8 @@ Dual-database pattern: data DB (notes, tasks, projects) + index DB (search, grap
 
 ## Monorepo Structure
 
-- `apps/desktop` — Electron 39 + React 19 + Vite (main/renderer/preload)
+- `apps/desktop` — Electron 39 + React 19 + Vite (main/renderer/preload). **FROZEN** during Tauri migration (see `apps/desktop/README.md` + `.github/workflows/electron-freeze.yml`). All new work goes to `apps/desktop-tauri/`.
+- `apps/desktop-tauri` — Tauri 2.x + Vite 7 + React 19 + Tailwind v4 + Rust 1.95. Target of the Electron → Tauri migration. M1 ships a full renderer port backed by mock IPC; M2+ activates real Rust commands. See `docs/superpowers/specs/2026-04-24-electron-to-tauri-full-migration-design.md`.
 - `apps/sync-server` — Cloudflare Workers + Hono (D1 + R2)
 - `packages/contracts` — IPC and API type definitions (Zod validation)
 - `packages/db-schema` — Drizzle ORM schemas (data + index)
