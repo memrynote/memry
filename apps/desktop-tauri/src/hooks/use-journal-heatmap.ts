@@ -1,7 +1,7 @@
 import { useCallback } from 'react'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { useQuery } from '@tanstack/react-query'
-import type { HeatmapEntry } from '../../../preload/index.d'
+import type { HeatmapEntry } from '@/types/preload-types'
 import { journalService } from '@/services/journal-service'
 import { journalKeys, ENTRY_STALE_TIME, ENTRY_GC_TIME } from './journal-query-keys'
 import { useJournalChangeInvalidation } from './use-journal-invalidation'

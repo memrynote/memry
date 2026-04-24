@@ -11,7 +11,7 @@ import type {
   JournalEntryUpdatedEvent,
   JournalEntryDeletedEvent,
   JournalExternalChangeEvent
-} from '../../../preload/index.d'
+} from '@/types/preload-types'
 
 /**
  * Journal service - thin wrapper around window.api.journal

@@ -5,7 +5,7 @@ import type {
   SelectVaultResponse,
   GetVaultsResponse,
   IndexRecoveredEvent
-} from '../../../preload/index.d'
+} from '@/types/preload-types'
 
 /**
  * Vault service - thin wrapper around window.api.vault

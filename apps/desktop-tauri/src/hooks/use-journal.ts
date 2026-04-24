@@ -19,5 +19,5 @@ export type {
   MonthStats,
   DayContext,
   DayTask
-} from '../../../preload/index.d'
+} from '@/types/preload-types'
 export type { AIConnection } from '@/components/journal/ai-connections-panel'

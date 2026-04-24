@@ -1,6 +1,6 @@
 import { FileText, FileType2, Image, Music, Video } from '@/lib/icons'
 import { NoteIconDisplay } from '@/lib/render-note-icon'
-import type { FolderInfo } from '../../../preload/index.d'
+import type { FolderInfo } from '@/types/preload-types'
 import type { NoteListItem } from '@/hooks/use-notes-query'
 import type { FolderNode, TreeStructure } from '@/lib/virtualized-tree-utils'
 

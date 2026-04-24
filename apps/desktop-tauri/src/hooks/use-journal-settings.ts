@@ -9,7 +9,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { extractErrorMessage } from '@/lib/ipc-error'
-import type { JournalSettings } from '../../../preload/index.d'
+import type { JournalSettings } from '@/types/preload-types'
 
 interface UseJournalSettingsReturn {
   /** Current journal settings */

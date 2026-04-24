@@ -3,7 +3,7 @@ import { createLogger } from '@/lib/logger'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { registerPendingSave, unregisterPendingSave } from '@/lib/save-registry'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import type { JournalEntry } from '../../../preload/index.d'
+import type { JournalEntry } from '@/types/preload-types'
 import {
   journalService,
   onJournalEntryUpdated,

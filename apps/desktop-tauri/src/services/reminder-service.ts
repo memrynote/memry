@@ -28,7 +28,7 @@ import type {
   ReminderDueEvent,
   ReminderDismissedEvent,
   ReminderSnoozedEvent
-} from '../../../preload/index.d'
+} from '@/types/preload-types'
 
 // Re-export types for convenience
 export type {

@@ -23,7 +23,7 @@ import { cn } from '@/lib/utils'
 import { useVault, useVaultList } from '@/hooks/use-vault'
 import { useSettingsModal } from '@/contexts/settings-modal-context'
 import { useAuth } from '@/contexts/auth-context'
-import type { VaultInfo } from '../../../preload/index.d'
+import type { VaultInfo } from '@/types/preload-types'
 
 export function VaultSwitcher() {
   const { isMobile } = useSidebar()

@@ -9,7 +9,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { extractErrorMessage } from '@/lib/ipc-error'
-import type { NoteEditorSettings } from '../../../preload/index.d'
+import type { NoteEditorSettings } from '@/types/preload-types'
 
 interface UseNoteEditorSettingsReturn {
   /** Current note editor settings */

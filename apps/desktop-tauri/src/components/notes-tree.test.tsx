@@ -11,7 +11,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { createRef, type RefObject } from 'react'
 import { NotesTree, type NotesTreeActions } from './notes-tree'
 import type { NoteListItem } from '@/hooks/use-notes-query'
-import type { FolderInfo } from '../../../preload/index.d'
+import type { FolderInfo } from '@/types/preload-types'
 import { TooltipProvider } from '@/components/ui/tooltip'
 
 // Wrapper for tests that provides TooltipProvider
