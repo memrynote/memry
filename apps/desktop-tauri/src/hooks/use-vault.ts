@@ -6,7 +6,7 @@ import type {
   VaultInfo,
   SelectVaultResponse,
   IndexRecoveredEvent
-} from '../../../preload/index.d'
+} from '@/types/preload-types'
 import {
   vaultService,
   onVaultStatusChanged,

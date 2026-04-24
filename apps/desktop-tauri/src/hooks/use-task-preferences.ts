@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { extractErrorMessage } from '@/lib/ipc-error'
-import type { TaskSettingsDTO } from '../../../preload/index.d'
+import type { TaskSettingsDTO } from '@/types/preload-types'
 
 const DEFAULTS: TaskSettingsDTO = {
   defaultProjectId: null,

@@ -7,7 +7,7 @@ import { Search, RotateCcw, X, AlertTriangle, Info } from '@/lib/icons'
 import { useKeyboardSettings } from '@/hooks/use-keyboard-settings'
 import { toast } from 'sonner'
 import type { ShortcutBinding } from '@memry/contracts/settings-schemas'
-import type { ShortcutBindingDTO } from '../../../../preload/index.d'
+import type { ShortcutBindingDTO } from '@/types/preload-types'
 import {
   SHORTCUT_REGISTRY,
   CATEGORY_ORDER,

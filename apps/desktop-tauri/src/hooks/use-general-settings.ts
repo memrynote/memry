@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { extractErrorMessage } from '@/lib/ipc-error'
-import type { GeneralSettingsDTO } from '../../../preload/index.d'
+import type { GeneralSettingsDTO } from '@/types/preload-types'
 
 const DEFAULTS: GeneralSettingsDTO = {
   theme: 'system',

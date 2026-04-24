@@ -10,7 +10,7 @@ import type {
   TagColorUpdatedEvent,
   TagDeletedEvent,
   TagNotesChangedEvent
-} from '../../../preload/index.d'
+} from '@/types/preload-types'
 
 /**
  * Tags service - thin wrapper around window.api.tags
@@ -133,4 +133,4 @@ export type {
   TagColorUpdatedEvent,
   TagDeletedEvent,
   TagNotesChangedEvent
-} from '../../../preload/index.d'
+} from '@/types/preload-types'

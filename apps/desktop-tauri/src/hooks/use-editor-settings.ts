@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { extractErrorMessage } from '@/lib/ipc-error'
-import type { EditorSettingsDTO } from '../../../preload/index.d'
+import type { EditorSettingsDTO } from '@/types/preload-types'
 
 const DEFAULTS: EditorSettingsDTO = {
   width: 'medium',

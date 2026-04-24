@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { extractErrorMessage } from '@/lib/ipc-error'
-import type { KeyboardShortcutsDTO } from '../../../preload/index.d'
+import type { KeyboardShortcutsDTO } from '@/types/preload-types'
 
 const DEFAULTS: KeyboardShortcutsDTO = {
   overrides: {},
