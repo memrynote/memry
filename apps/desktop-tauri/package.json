@@ -1,0 +1,33 @@
+{
+  "name": "@memry/desktop-tauri",
+  "version": "2.0.0-alpha.1",
+  "private": true,
+  "license": "GPL-3.0",
+  "description": "Memry desktop app (Tauri)",
+  "type": "module",
+  "scripts": {
+    "dev": "tauri dev",
+    "build": "tauri build",
+    "preview": "vite preview",
+    "lint": "pnpm exec eslint --cache .",
+    "typecheck": "pnpm exec tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest watch",
+    "test:e2e": "playwright test",
+    "cargo:check": "cd src-tauri && cargo check",
+    "cargo:clippy": "cd src-tauri && cargo clippy -- -D warnings",
+    "cargo:test": "cd src-tauri && cargo test",
+    "cargo:fmt": "cd src-tauri && cargo fmt",
+    "bindings:generate": "tsx scripts/generate-bindings.ts",
+    "bindings:check": "tsx scripts/check-bindings.ts",
+    "capability:check": "tsx scripts/capability-sanity-check.ts",
+    "port:audit": "tsx scripts/port-audit.ts"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "@tauri-apps/cli": "^2.10",
+    "@tauri-apps/api": "^2.10",
+    "typescript": "^5.9.3",
+    "tsx": "^4.19.2"
+  }
+}
