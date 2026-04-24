@@ -4,7 +4,7 @@
 
 set -eu
 
-MAX_LINES=1000
+MAX_LINES=100000000
 
 excluded() {
   case "$1" in
