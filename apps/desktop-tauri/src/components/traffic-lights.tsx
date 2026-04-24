@@ -2,7 +2,7 @@
 
 import * as React from 'react'
 import { cn } from '@/lib/utils'
-import { invoke } from '@/lib/ipc/invoke'
+import { getCurrentWindow } from '@tauri-apps/api/window'
 
 interface TrafficLightsProps {
   className?: string
@@ -12,16 +12,19 @@ interface TrafficLightsProps {
 export function TrafficLights({ className, compact = false }: TrafficLightsProps) {
   const [isHovered, setIsHovered] = React.useState(false)
 
+  // Window chrome uses the Tauri window API directly — these aren't domain
+  // IPC commands, they're UI primitives on the current webview. Going
+  // through `invoke()` + a mock/Rust command would be dead ceremony.
   const handleClose = () => {
-    void invoke('window_close')
+    void getCurrentWindow().close()
   }
 
   const handleMinimize = () => {
-    void invoke('window_minimize')
+    void getCurrentWindow().minimize()
   }
 
   const handleMaximize = () => {
-    void invoke('window_maximize')
+    void getCurrentWindow().toggleMaximize()
   }
 
   const buttonSize = compact ? 'size-2.5' : 'size-3.5'

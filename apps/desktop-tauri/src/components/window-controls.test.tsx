@@ -1,33 +1,23 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { WindowControls } from './window-controls'
 import { SidebarProvider } from '@/components/ui/sidebar'
 
-// Mock the electron preload bridge — TrafficLights calls window.api.*
-const windowApiMock = {
-  windowClose: vi.fn(),
-  windowMinimize: vi.fn(),
-  windowMaximize: vi.fn()
+// TrafficLights drives the window via Tauri's window API directly (not IPC).
+// Mock the module so the close/minimize/maximize calls are observable.
+const tauriWindowMock = {
+  close: vi.fn(),
+  minimize: vi.fn(),
+  toggleMaximize: vi.fn()
 }
 
-type WindowWithApi = Window & { api?: unknown }
-let originalApi: unknown
+vi.mock('@tauri-apps/api/window', () => ({
+  getCurrentWindow: () => tauriWindowMock
+}))
 
 beforeEach(() => {
   vi.clearAllMocks()
-  const w = window as WindowWithApi
-  originalApi = w.api
-  w.api = windowApiMock
-})
-
-afterEach(() => {
-  const w = window as WindowWithApi
-  if (originalApi === undefined) {
-    delete w.api
-  } else {
-    w.api = originalApi
-  }
 })
 
 function renderWithSidebar(ui: React.ReactElement) {
@@ -57,11 +47,11 @@ describe('WindowControls', () => {
     expect(forward).toHaveAttribute('aria-disabled', 'true')
   })
 
-  it('calls windowClose when the close button is clicked', async () => {
+  it('calls getCurrentWindow().close() when the close button is clicked', async () => {
     const user = userEvent.setup()
     renderWithSidebar(<WindowControls />)
     await user.click(screen.getByLabelText('Close window'))
-    expect(windowApiMock.windowClose).toHaveBeenCalledTimes(1)
+    expect(tauriWindowMock.close).toHaveBeenCalledTimes(1)
   })
 
   it('does nothing when a disabled history arrow is clicked', async () => {
@@ -70,7 +60,7 @@ describe('WindowControls', () => {
     // userEvent respects `disabled`; click is a no-op. Assert no explosion + no side effects.
     await user.click(screen.getByLabelText('Browser back'))
     await user.click(screen.getByLabelText('Browser forward'))
-    expect(windowApiMock.windowClose).not.toHaveBeenCalled()
-    expect(windowApiMock.windowMinimize).not.toHaveBeenCalled()
+    expect(tauriWindowMock.close).not.toHaveBeenCalled()
+    expect(tauriWindowMock.minimize).not.toHaveBeenCalled()
   })
 })
