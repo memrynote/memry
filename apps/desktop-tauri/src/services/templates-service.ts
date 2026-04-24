@@ -1,10 +1,12 @@
 /**
  * Templates Service
  *
- * Provides a typed wrapper around the templates API exposed via preload.
+ * Provides a typed wrapper around the templates API via Tauri invoke.
  */
 
-// Types are defined in src/preload/index.d.ts and exposed via window.api
+import { invoke } from '@/lib/ipc/invoke'
+import { subscribeEvent } from '@/lib/ipc/forwarder'
+
 type TemplatePropertyType =
   | 'text'
   | 'number'
@@ -86,35 +88,41 @@ export type {
  * List all templates.
  */
 export async function listTemplates(): Promise<TemplateListResponse> {
-  return window.api.templates.list()
+  return invoke<TemplateListResponse>('templates_list')
 }
 
 /**
  * Get a template by ID.
  */
 export async function getTemplate(id: string): Promise<Template | null> {
-  return window.api.templates.get(id)
+  return invoke<Template | null>('templates_get', { args: [id] })
 }
 
 /**
  * Create a new template.
  */
 export async function createTemplate(input: TemplateCreateInput): Promise<TemplateCreateResponse> {
-  return window.api.templates.create(input)
+  return invoke<TemplateCreateResponse>(
+    'templates_create',
+    input as unknown as Record<string, unknown>
+  )
 }
 
 /**
  * Update an existing template.
  */
 export async function updateTemplate(input: TemplateUpdateInput): Promise<TemplateCreateResponse> {
-  return window.api.templates.update(input)
+  return invoke<TemplateCreateResponse>(
+    'templates_update',
+    input as unknown as Record<string, unknown>
+  )
 }
 
 /**
  * Delete a template.
  */
 export async function deleteTemplate(id: string): Promise<{ success: boolean; error?: string }> {
-  return window.api.templates.delete(id)
+  return invoke<{ success: boolean; error?: string }>('templates_delete', { args: [id] })
 }
 
 /**
@@ -124,22 +132,22 @@ export async function duplicateTemplate(
   id: string,
   newName: string
 ): Promise<TemplateCreateResponse> {
-  return window.api.templates.duplicate(id, newName)
+  return invoke<TemplateCreateResponse>('templates_duplicate', { args: [id, newName] })
 }
 
 // Event listeners
 export function onTemplateCreated(callback: (event: { template: Template }) => void): () => void {
-  return window.api.onTemplateCreated(callback)
+  return subscribeEvent<{ template: Template }>('template-created', callback)
 }
 
 export function onTemplateUpdated(
   callback: (event: { id: string; template: Template }) => void
 ): () => void {
-  return window.api.onTemplateUpdated(callback)
+  return subscribeEvent<{ id: string; template: Template }>('template-updated', callback)
 }
 
 export function onTemplateDeleted(callback: (event: { id: string }) => void): () => void {
-  return window.api.onTemplateDeleted(callback)
+  return subscribeEvent<{ id: string }>('template-deleted', callback)
 }
 
 // Default export

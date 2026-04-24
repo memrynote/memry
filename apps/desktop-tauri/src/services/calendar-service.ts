@@ -29,7 +29,7 @@ import type {
   UpdateCalendarSourceSelectionInput,
   UpdateCalendarEventInput
 } from '@memry/rpc/calendar'
-import { createWindowApiForwarder } from './window-api-forwarder'
+import { createInvokeForwarder, subscribeEvent } from '@/lib/ipc/forwarder'
 
 export type {
   CalendarChangedEvent,
@@ -63,12 +63,12 @@ export type {
   UpdateCalendarEventInput
 }
 
-export const calendarService: CalendarClientAPI = createWindowApiForwarder(
-  () => window.api.calendar
+export const calendarService: CalendarClientAPI = createInvokeForwarder<CalendarClientAPI>(
+  'calendar'
 )
 
 export function onCalendarChanged(callback: (event: CalendarChangedEvent) => void): () => void {
-  return window.api.onCalendarChanged(callback)
+  return subscribeEvent<CalendarChangedEvent>('calendar-changed', callback)
 }
 
 export function getGoogleCalendarStatus(): Promise<CalendarProviderStatus> {
