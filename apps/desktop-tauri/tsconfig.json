@@ -17,6 +17,7 @@
     "noFallthroughCasesInSwitch": true,
     "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true,
+    "types": ["@testing-library/jest-dom"],
     "baseUrl": ".",
     "paths": {
       "@/*": ["src/*"],
@@ -36,6 +37,6 @@
       "@memry/sync-core": ["../../packages/sync-core/src"]
     }
   },
-  "include": ["src", "tests", "scripts", "vite.config.ts"],
+  "include": ["src", "tests", "scripts", "vite.config.ts", "vitest.config.ts", "vitest.setup.ts"],
   "exclude": ["node_modules", "dist", "src-tauri/target"]
 }
