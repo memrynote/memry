@@ -1,0 +1,36 @@
+[package]
+name = "memry-desktop-tauri"
+version = "2.0.0-alpha.1"
+description = "Memry desktop app (Tauri)"
+authors = ["Memry"]
+edition = "2021"
+default-run = "memry-desktop-tauri"
+
+[lib]
+name = "memry_desktop_tauri_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2.0", features = [] }
+
+[dependencies]
+# Core Tauri
+tauri = { version = "2.10", features = [] }
+tauri-plugin-shell = "2"
+
+# Declared for later milestones — unused at M1 but compile-verified
+rusqlite = { version = "0.32", features = ["bundled", "load_extension"], default-features = false }
+yrs = "0.21"
+dryoc = "0.7"
+tokio = { version = "1.41", features = ["full"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
+tracing-appender = "0.2"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+thiserror = "2.0"
+specta = { version = "2.0.0-rc.20", features = ["derive"] }
+tauri-specta = { version = "2.0.0-rc.21", features = ["typescript"] }
+
+[features]
+custom-protocol = ["tauri/custom-protocol"]
