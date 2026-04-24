@@ -20,6 +20,8 @@ export default defineConfig(
       '**/*.spec.ts',
       'tests/**',
       'apps/desktop/tests/**',
+      'apps/desktop-tauri/e2e/**',
+      'apps/desktop-tauri/playwright.config.ts',
       '*.config.ts',
       '*.config.mjs',
       '*.config.js',
@@ -190,6 +192,35 @@ export default defineConfig(
     ],
     rules: {
       // TODO(phase-5): drop these overrides once renderer files are split during UI polish
+      'max-lines': 'off'
+    }
+  },
+  {
+    files: [
+      'apps/desktop-tauri/src/pages/tasks.tsx',
+      'apps/desktop-tauri/src/pages/note.tsx',
+      'apps/desktop-tauri/src/pages/journal.tsx',
+      'apps/desktop-tauri/src/pages/folder-view.tsx',
+      'apps/desktop-tauri/src/pages/inbox/inbox-list-view.tsx',
+      'apps/desktop-tauri/src/components/folder-view/grouped-table.tsx',
+      'apps/desktop-tauri/src/components/folder-view/folder-table-view.tsx',
+      'apps/desktop-tauri/src/components/folder-view/property-cell.tsx',
+      'apps/desktop-tauri/src/components/kibo-ui/tree/index.tsx',
+      'apps/desktop-tauri/src/components/virtualized-notes-tree.tsx',
+      'apps/desktop-tauri/src/components/note/content-area/ContentArea.tsx',
+      'apps/desktop-tauri/src/contexts/tabs/context.tsx',
+      'apps/desktop-tauri/src/hooks/use-drag-handlers.ts',
+      'apps/desktop-tauri/src/hooks/use-folder-view.ts',
+      'apps/desktop-tauri/src/hooks/use-note-tree-actions.ts',
+      'apps/desktop-tauri/src/hooks/use-subtask-management.ts',
+      'apps/desktop-tauri/src/lib/expression-evaluator.ts',
+      // Tauri-specific consolidated preload types (no Electron equivalent)
+      'apps/desktop-tauri/src/types/preload-types.ts'
+    ],
+    rules: {
+      // Mirrors the Electron overrides above — same files, same reason
+      // (port-audit confirms line-for-line copies). TODO(phase-5): drop
+      // once renderer files are split during UI polish.
       'max-lines': 'off'
     }
   }

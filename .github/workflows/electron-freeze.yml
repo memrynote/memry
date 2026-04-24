@@ -1,0 +1,62 @@
+name: Electron Freeze Guard
+
+# The path filter scopes this workflow to PRs that touch apps/desktop/ OR any
+# shared workspace package that apps/desktop/ consumes. Without guarding the
+# shared packages, a PR could alter Electron runtime behavior (e.g. tweaking
+# @memry/contracts or @memry/rpc) while never touching apps/desktop/**, and
+# slip past the freeze entirely.
+#
+# The `labeled`/`unlabeled` event types are required so adding a bypass label
+# after a failed check reruns the workflow — with the default pull_request
+# triggers (opened/synchronize/reopened), a label applied post-fail would
+# leave the check red until a new commit or manual rerun.
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, labeled, unlabeled]
+    branches: [main]
+    paths:
+      - 'apps/desktop/**'
+      - 'packages/contracts/**'
+      - 'packages/db-schema/**'
+      - 'packages/domain-inbox/**'
+      - 'packages/domain-notes/**'
+      - 'packages/domain-tasks/**'
+      - 'packages/rpc/**'
+      - 'packages/shared/**'
+      - 'packages/storage-data/**'
+      - 'packages/storage-vault/**'
+      - 'packages/sync-core/**'
+
+jobs:
+  check-frozen:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Allow if cutover or emergency-fix label present
+        id: check-labels
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const labels = context.payload.pull_request.labels.map(l => l.name);
+            const allowed = [
+              'migration/m10-cutover',
+              'migration/emergency-fix',
+              'migration/tauri-shared-change'
+            ];
+            const match = labels.find(l => allowed.includes(l));
+            if (match) {
+              core.info(`Allowed by label: ${match}`);
+              core.setOutput('allowed', 'true');
+            } else {
+              core.setOutput('allowed', 'false');
+            }
+
+      - name: Fail if freeze-guarded paths modified without bypass label
+        if: steps.check-labels.outputs.allowed != 'true'
+        run: |
+          echo "::error::apps/desktop/ and shared packages it consumes are FROZEN during the Tauri migration."
+          echo "::error::Use 'migration/m10-cutover' for the M10 cutover PR,"
+          echo "::error::'migration/emergency-fix' for a rare Electron-only exception,"
+          echo "::error::or 'migration/tauri-shared-change' when the change is for Tauri work in shared packages."
+          echo "::error::Otherwise, direct to apps/desktop-tauri/."
+          echo "::error::See apps/desktop/README.md for details."
+          exit 1
