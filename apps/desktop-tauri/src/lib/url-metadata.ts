@@ -1,3 +1,5 @@
+import { invoke } from '@/lib/ipc/invoke'
+
 export interface UrlPreviewData {
   title: string
   domain: string
@@ -26,7 +28,7 @@ export function fetchLinkPreview(url: string): Promise<UrlPreviewData> {
   if (cached) return cached
 
   const domain = extractDomain(url)
-  const promise = (window.api.inbox.previewLink(url) as Promise<UrlPreviewData>).then((data) => ({
+  const promise = invoke<UrlPreviewData>('inbox_preview_link', { args: [url] }).then((data) => ({
     ...data,
     favicon: data.favicon || getFaviconUrl(data.domain || domain)
   }))

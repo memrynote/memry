@@ -6,6 +6,7 @@
 import type { Tab } from '@/contexts/tabs/types'
 import { useTabs } from '@/contexts/tabs'
 import { useCallback } from 'react'
+import { invoke } from '@/lib/ipc/invoke'
 
 interface TabContextMenuProps {
   /** Tab data */
@@ -51,7 +52,7 @@ export const TabContextMenu = ({
         { id: 'reveal', label: 'Reveal in Sidebar' }
       ]
 
-      const selectedId = await window.api.showContextMenu(menuItems)
+      const selectedId = await invoke<string | null>('show_context_menu', { args: [menuItems] })
 
       switch (selectedId) {
         case 'close':

@@ -27,6 +27,7 @@ import type {
 import { evaluateFilter } from '@/lib/filter-evaluator'
 import { propertiesService } from '@/services/properties-service'
 import { notesService } from '@/services/notes-service'
+import { invoke } from '@/lib/ipc/invoke'
 
 // ============================================================================
 // Types (mirrored from preload for renderer use)
@@ -239,7 +240,7 @@ export function useFolderView({
   const folderExistsQuery = useQuery({
     queryKey: folderViewKeys.folderExists(folderPath),
     queryFn: async (): Promise<boolean> => {
-      return window.api.folderView.folderExists(folderPath)
+      return invoke<boolean>('folder_view_folder_exists', { args: [folderPath] })
     },
     staleTime: 60_000, // 60 seconds
     gcTime: 5 * 60 * 1000,
@@ -253,8 +254,13 @@ export function useFolderView({
     queryKey: folderViewKeys.views(folderPath),
     queryFn: async (): Promise<ViewsQueryData> => {
       const [viewsResult, configResult] = await Promise.all([
-        window.api.folderView.getViews(folderPath),
-        window.api.folderView.getConfig(folderPath)
+        invoke<{ views: ViewConfig[]; defaultIndex: number }>('folder_view_get_views', {
+          args: [folderPath]
+        }),
+        invoke<{ config: { summaries?: Record<string, SummaryConfig> } }>(
+          'folder_view_get_config',
+          { args: [folderPath] }
+        )
       ])
       return {
         views: viewsResult.views,
@@ -274,7 +280,11 @@ export function useFolderView({
   const propertiesQuery = useQuery({
     queryKey: folderViewKeys.availableProperties(folderPath),
     queryFn: async (): Promise<PropertiesQueryData> => {
-      const result = await window.api.folderView.getAvailableProperties(folderPath)
+      const result = await invoke<{
+        properties: AvailableProperty[]
+        builtIn: Array<{ id: string; displayName: string; type: string }>
+        formulas?: FormulaInfo[]
+      }>('folder_view_get_available_properties', { args: [folderPath] })
       return {
         properties: result.properties,
         builtIn: result.builtIn,
@@ -320,13 +330,15 @@ export function useFolderView({
     queryFn: async ({ pageParam = 0 }): Promise<ListWithPropertiesResponse> => {
       // Fetch all available properties to avoid refetch when columns change
       // This is a trade-off: slightly larger payload vs better UX
-      const result = await window.api.folderView.listWithProperties({
-        folderPath,
-        // Don't filter properties - fetch all so column changes don't need refetch
-        properties: undefined,
-        limit: pageSize,
-        offset: pageParam
-      })
+      const result = await invoke<ListWithPropertiesResponse>(
+        'folder_view_list_with_properties',
+        {
+          folderPath,
+          properties: undefined,
+          limit: pageSize,
+          offset: pageParam
+        }
+      )
       return {
         notes: result.notes,
         hasMore: result.hasMore,
@@ -421,9 +433,9 @@ export function useFolderView({
 
       updateTimeoutRef.current = setTimeout(async () => {
         try {
-          const result = await window.api.folderView.setView(
-            folderPath,
-            updatedView as unknown as Record<string, unknown>
+          const result = await invoke<{ success: boolean; error?: string }>(
+            'folder_view_set_view',
+            { args: [folderPath, updatedView as unknown as Record<string, unknown>] }
           )
 
           if (!result.success) {
@@ -445,9 +457,9 @@ export function useFolderView({
   const addView = useCallback(
     async (view: ViewConfig) => {
       try {
-        const result = await window.api.folderView.setView(
-          folderPath,
-          view as unknown as Record<string, unknown>
+        const result = await invoke<{ success: boolean; error?: string }>(
+          'folder_view_set_view',
+          { args: [folderPath, view as unknown as Record<string, unknown>] }
         )
 
         if (!result.success) {
@@ -479,7 +491,10 @@ export function useFolderView({
   const deleteView = useCallback(
     async (viewName: string) => {
       try {
-        const result = await window.api.folderView.deleteView(folderPath, viewName)
+        const result = await invoke<{ success: boolean; error?: string }>(
+          'folder_view_delete_view',
+          { args: [folderPath, viewName] }
+        )
 
         if (!result.success) {
           throw new Error(result.error || 'Failed to delete view')
@@ -523,10 +538,15 @@ export function useFolderView({
       })
 
       try {
-        const result = await window.api.folderView.setView(folderPath, {
-          ...targetView,
-          default: true
-        } as unknown as Record<string, unknown>)
+        const result = await invoke<{ success: boolean; error?: string }>(
+          'folder_view_set_view',
+          {
+            args: [
+              folderPath,
+              { ...targetView, default: true } as unknown as Record<string, unknown>
+            ]
+          }
+        )
 
         if (!result.success) {
           throw new Error(result.error || 'Failed to set default view')
@@ -579,7 +599,12 @@ export function useFolderView({
   const updateSummaryConfig = useCallback(
     async (columnId: string, config: SummaryConfig | undefined) => {
       try {
-        const configResult = await window.api.folderView.getConfig(folderPath)
+        const configResult = await invoke<{
+          config: {
+            summaries?: Record<string, SummaryConfig>
+            [key: string]: unknown
+          }
+        }>('folder_view_get_config', { args: [folderPath] })
         const existingConfig = configResult.config
 
         const updatedSummaries = {
@@ -591,9 +616,14 @@ export function useFolderView({
           delete updatedSummaries[columnId]
         }
 
-        await window.api.folderView.setConfig(folderPath, {
-          ...existingConfig,
-          summaries: Object.keys(updatedSummaries).length > 0 ? updatedSummaries : undefined
+        await invoke('folder_view_set_config', {
+          args: [
+            folderPath,
+            {
+              ...existingConfig,
+              summaries: Object.keys(updatedSummaries).length > 0 ? updatedSummaries : undefined
+            }
+          ]
         })
 
         // Update cache
@@ -653,12 +683,16 @@ export function useFolderView({
 
       updateTimeoutRef.current = setTimeout(async () => {
         try {
-          await window.api.folderView.setView(
-            folderPath,
-            updatedView as unknown as Record<string, unknown>
-          )
+          await invoke('folder_view_set_view', {
+            args: [folderPath, updatedView as unknown as Record<string, unknown>]
+          })
 
-          const configResult = await window.api.folderView.getConfig(folderPath)
+          const configResult = await invoke<{
+            config: {
+              properties?: Record<string, Record<string, unknown>>
+              [key: string]: unknown
+            }
+          }>('folder_view_get_config', { args: [folderPath] })
           const existingConfig = configResult.config
 
           const updatedConfig = {
@@ -672,7 +706,7 @@ export function useFolderView({
             }
           }
 
-          await window.api.folderView.setConfig(folderPath, updatedConfig)
+          await invoke('folder_view_set_config', { args: [folderPath, updatedConfig] })
         } catch (err) {
           log.error('Failed to save display name:', err)
           queryClient.invalidateQueries({ queryKey: folderViewKeys.views(folderPath) })
@@ -832,7 +866,12 @@ export function useFolderView({
   const addFormula = useCallback(
     async (name: string, expression: string) => {
       try {
-        const configResult = await window.api.folderView.getConfig(folderPath)
+        const configResult = await invoke<{
+          config: {
+            formulas?: Record<string, string>
+            [key: string]: unknown
+          }
+        }>('folder_view_get_config', { args: [folderPath] })
         const existingConfig = configResult.config
 
         const updatedFormulas = {
@@ -840,9 +879,8 @@ export function useFolderView({
           [name]: expression
         }
 
-        await window.api.folderView.setConfig(folderPath, {
-          ...existingConfig,
-          formulas: updatedFormulas
+        await invoke('folder_view_set_config', {
+          args: [folderPath, { ...existingConfig, formulas: updatedFormulas }]
         })
 
         // Invalidate to refetch
@@ -861,7 +899,12 @@ export function useFolderView({
   const updateFormula = useCallback(
     async (name: string, expression: string) => {
       try {
-        const configResult = await window.api.folderView.getConfig(folderPath)
+        const configResult = await invoke<{
+          config: {
+            formulas?: Record<string, string>
+            [key: string]: unknown
+          }
+        }>('folder_view_get_config', { args: [folderPath] })
         const existingConfig = configResult.config
 
         const updatedFormulas = {
@@ -869,9 +912,8 @@ export function useFolderView({
           [name]: expression
         }
 
-        await window.api.folderView.setConfig(folderPath, {
-          ...existingConfig,
-          formulas: updatedFormulas
+        await invoke('folder_view_set_config', {
+          args: [folderPath, { ...existingConfig, formulas: updatedFormulas }]
         })
 
         // Invalidate to refetch
@@ -890,15 +932,25 @@ export function useFolderView({
   const deleteFormula = useCallback(
     async (name: string) => {
       try {
-        const configResult = await window.api.folderView.getConfig(folderPath)
+        const configResult = await invoke<{
+          config: {
+            formulas?: Record<string, string>
+            [key: string]: unknown
+          }
+        }>('folder_view_get_config', { args: [folderPath] })
         const existingConfig = configResult.config
 
         const updatedFormulas = { ...existingConfig.formulas }
         delete updatedFormulas[name]
 
-        await window.api.folderView.setConfig(folderPath, {
-          ...existingConfig,
-          formulas: Object.keys(updatedFormulas).length > 0 ? updatedFormulas : undefined
+        await invoke('folder_view_set_config', {
+          args: [
+            folderPath,
+            {
+              ...existingConfig,
+              formulas: Object.keys(updatedFormulas).length > 0 ? updatedFormulas : undefined
+            }
+          ]
         })
 
         // Invalidate to refetch

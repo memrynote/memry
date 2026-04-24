@@ -9,6 +9,7 @@ import {
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { extractErrorMessage } from '@/lib/ipc-error'
+import { invoke } from '@/lib/ipc/invoke'
 import type { LinkingRequestEvent } from '@memry/contracts/ipc-events'
 import { Monitor, Smartphone, Loader2 } from '@/lib/icons'
 
@@ -45,8 +46,9 @@ export function LinkingApprovalDialog({
       return
     }
     setSasLoading(true)
-    window.api.syncLinking
-      .getLinkingSas({ sessionId: event.sessionId })
+    invoke<{ verificationCode?: string }>('sync_linking_get_linking_sas', {
+      sessionId: event.sessionId
+    })
       .then((result) => {
         if (result.verificationCode) {
           setVerificationCode(result.verificationCode)
@@ -66,8 +68,9 @@ export function LinkingApprovalDialog({
     setIsApproving(true)
     setError(null)
 
-    window.api.syncLinking
-      .approveLinking({ sessionId: event.sessionId })
+    invoke<{ success: boolean; error?: string }>('sync_linking_approve_linking', {
+      sessionId: event.sessionId
+    })
       .then((result) => {
         if (!result.success) {
           setError(result.error ?? 'Approval failed')

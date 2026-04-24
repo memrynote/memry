@@ -4,6 +4,7 @@ import { Label } from '@/components/ui/label'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { ArrowLeft, Loader2, CheckCircle, AlertCircle } from '@/lib/icons'
 import { cn } from '@/lib/utils'
+import { invoke } from '@/lib/ipc/invoke'
 
 interface LinkingCodeEntryProps {
   onLinked: (sessionId: string, verificationCode?: string) => void
@@ -51,8 +52,10 @@ export function LinkingCodeEntry({
       setIsLoading(true)
       setError(null)
 
-      window.api.syncLinking
-        .linkViaQr({ qrData: code.trim() })
+      invoke<{ success: boolean; verificationCode?: string; error?: string }>(
+        'sync_linking_link_via_qr',
+        { qrData: code.trim() }
+      )
         .then((result) => {
           if (!result.success) {
             const msg = result.error ?? 'Linking failed'

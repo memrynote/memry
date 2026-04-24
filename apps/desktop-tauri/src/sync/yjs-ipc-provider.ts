@@ -1,6 +1,8 @@
 import * as Y from 'yjs'
 import { Observable } from 'lib0/observable'
 import { createLogger } from '@/lib/logger'
+import { invoke } from '@/lib/ipc/invoke'
+import { subscribeEvent } from '@/lib/ipc/forwarder'
 
 const log = createLogger('YjsIpcProvider')
 
@@ -30,8 +32,9 @@ export class YjsIpcProvider extends Observable<string> {
     }
     this.doc.on('update', this.updateHandler)
 
-    this.ipcCleanup = window.api.onCrdtStateChanged(
-      (data: { noteId: string; update: number[]; origin: string }) => {
+    this.ipcCleanup = subscribeEvent<{ noteId: string; update: number[]; origin: string }>(
+      'crdt-state-changed',
+      (data) => {
         if (data.noteId !== this.noteId) return
         const update = new Uint8Array(data.update)
         Y.applyUpdate(this.doc, update, 'remote')
@@ -55,7 +58,7 @@ export class YjsIpcProvider extends Observable<string> {
       this.ipcCleanup = null
     }
 
-    window.api.syncCrdt.closeDoc({ noteId: this.noteId }).catch((err: unknown) => {
+    invoke('sync_crdt_close_doc', { noteId: this.noteId }).catch((err: unknown) => {
       log.debug('closeDoc IPC failed (expected during teardown)', {
         noteId: this.noteId,
         error: err
@@ -77,7 +80,7 @@ export class YjsIpcProvider extends Observable<string> {
 
   private async openDoc(): Promise<void> {
     try {
-      await window.api.syncCrdt.openDoc({ noteId: this.noteId })
+      await invoke('sync_crdt_open_doc', { noteId: this.noteId })
     } catch {
       log.error('Failed to open doc', { noteId: this.noteId })
     }
@@ -88,10 +91,13 @@ export class YjsIpcProvider extends Observable<string> {
 
     const stateVector = Y.encodeStateVector(this.doc)
 
-    const result = await window.api.syncCrdt.syncStep1({
-      noteId: this.noteId,
-      stateVector: Array.from(stateVector)
-    })
+    const result = await invoke<{ diff: number[]; stateVector: number[] } | null>(
+      'sync_crdt_sync_step1',
+      {
+        noteId: this.noteId,
+        stateVector: Array.from(stateVector)
+      }
+    )
 
     if (this.destroyed) return
 
@@ -101,7 +107,7 @@ export class YjsIpcProvider extends Observable<string> {
 
       const localDiff = Y.encodeStateAsUpdate(this.doc, new Uint8Array(result.stateVector))
       if (localDiff.byteLength > 0) {
-        await window.api.syncCrdt.syncStep2({
+        await invoke('sync_crdt_sync_step2', {
           noteId: this.noteId,
           diff: Array.from(localDiff)
         })
@@ -117,7 +123,7 @@ export class YjsIpcProvider extends Observable<string> {
   }
 
   private sendUpdate(update: Uint8Array): void {
-    window.api.syncCrdt.applyUpdate({
+    void invoke('sync_crdt_apply_update', {
       noteId: this.noteId,
       update: Array.from(update)
     })

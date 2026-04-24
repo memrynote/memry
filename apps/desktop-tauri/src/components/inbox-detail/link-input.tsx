@@ -11,6 +11,8 @@ import { useQuery } from '@tanstack/react-query'
 import { cn } from '@/lib/utils'
 import { NoteIconDisplay } from '@/lib/render-note-icon'
 import type { LinkedNote } from '@/types'
+import { invoke } from '@/lib/ipc/invoke'
+import type { NoteListResponse } from '@memry/rpc/notes'
 
 // =============================================================================
 // Debounce Hook
@@ -151,7 +153,7 @@ export const LinkInput = ({
     queryKey: ['notes', 'search', 'title', debouncedQuery],
     queryFn: async () => {
       if (!debouncedQuery || debouncedQuery.length < 2) return []
-      const response = await window.api.notes.list({
+      const response = await invoke<NoteListResponse>('notes_list', {
         limit: 50,
         sortBy: 'modified',
         sortOrder: 'desc'

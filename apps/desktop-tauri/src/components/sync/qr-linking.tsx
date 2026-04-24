@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 import { useCountdown } from '@/hooks/use-countdown'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { RefreshCw, Loader2, Clock, AlertCircle, Copy, Lock } from '@/lib/icons'
+import { invoke } from '@/lib/ipc/invoke'
 
 type QrState = 'loading' | 'ready' | 'expired' | 'error'
 
@@ -32,8 +33,9 @@ export function QrLinking({ onCancel }: QrLinkingProps): React.JSX.Element {
   const generateQr = useCallback(() => {
     setQrState('loading')
     setError(null)
-    window.api.syncLinking
-      .generateLinkingQr()
+    invoke<{ qrData?: string; sessionId?: string; expiresAt?: number }>(
+      'sync_linking_generate_linking_qr'
+    )
       .then((result) => {
         if (!result.qrData || !result.sessionId || !result.expiresAt) {
           setQrState('error')

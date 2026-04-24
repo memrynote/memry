@@ -11,6 +11,7 @@ import { RecoveryPhraseConfirm } from '@/components/sync/recovery-phrase-confirm
 import { RecoveryPhraseInput } from '@/components/sync/recovery-phrase-input'
 import { LinkingCodeEntry } from '@/components/sync/linking-code-entry'
 import { LinkingPending } from '@/components/sync/linking-pending'
+import { invoke } from '@/lib/ipc/invoke'
 
 const STEPS = ['Sign In', 'Verify', 'Link'] as const
 const STEP_MAP: Record<WizardStep, number> = {
@@ -69,8 +70,7 @@ export function SetupWizard(): React.JSX.Element {
     if (wizardStep !== 'recovery-display' && wizardStep !== 'recovery-confirm') return
     if (recoveryPhrase) return
     let cancelled = false
-    void window.api.syncSetup
-      .getRecoveryPhrase()
+    void invoke<string | null>('sync_setup_get_recovery_phrase')
       .then((phrase) => {
         if (cancelled) return
         setRecoveryPhrase(phrase)

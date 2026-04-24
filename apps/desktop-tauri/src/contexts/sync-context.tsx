@@ -13,6 +13,8 @@ import { toast } from 'sonner'
 import { useAuth } from './auth-context'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { DeviceRevokedDialog } from '@/components/sync/device-revoked-dialog'
+import { invoke } from '@/lib/ipc/invoke'
+import { subscribeEvent } from '@/lib/ipc/forwarder'
 import type { InitialSyncPhase, LinkingRequestEvent } from '@memry/contracts/ipc-events'
 
 type SyncStatus = 'idle' | 'syncing' | 'paused' | 'error' | 'offline' | 'unknown'
@@ -220,7 +222,13 @@ export function SyncProvider({ children }: SyncProviderProps): React.JSX.Element
 
     const init = async (): Promise<void> => {
       try {
-        const status = await window.api.syncOps.getStatus()
+        const status = await invoke<{
+          status: string
+          lastSyncAt: number | undefined
+          pendingCount: number
+          error: string | undefined
+          offlineSince: number | undefined
+        }>('sync_ops_get_status')
         if (cancelled) return
         dispatch({
           type: 'STATUS_CHANGED',
@@ -241,7 +249,14 @@ export function SyncProvider({ children }: SyncProviderProps): React.JSX.Element
     const cleanups: Array<() => void> = []
 
     cleanups.push(
-      window.api.onSyncStatusChanged((event) => {
+      subscribeEvent<{
+        status: string
+        lastSyncAt?: number
+        pendingCount: number
+        error?: string
+        offlineSince?: number
+        errorCategory?: string
+      }>('sync-status-changed', (event) => {
         if (cancelled) return
         dispatch({
           type: 'STATUS_CHANGED',
@@ -258,45 +273,51 @@ export function SyncProvider({ children }: SyncProviderProps): React.JSX.Element
     )
 
     cleanups.push(
-      window.api.onSyncPaused((event) => {
+      subscribeEvent<{ pendingCount: number }>('sync-paused', (event) => {
         if (cancelled) return
         dispatch({ type: 'PAUSED', pendingCount: event.pendingCount })
       })
     )
 
     cleanups.push(
-      window.api.onSyncResumed((event) => {
+      subscribeEvent<{ pendingCount: number }>('sync-resumed', (event) => {
         if (cancelled) return
         dispatch({ type: 'RESUMED', pendingCount: event.pendingCount })
       })
     )
 
     cleanups.push(
-      window.api.onUploadProgress((event) => {
-        if (cancelled) return
-        dispatch({
-          type: 'UPLOAD_PROGRESS',
-          attachmentId: event.attachmentId,
-          progress: event.progress,
-          status: event.status
-        })
-      })
+      subscribeEvent<{ attachmentId: string; progress: number; status: string }>(
+        'upload-progress',
+        (event) => {
+          if (cancelled) return
+          dispatch({
+            type: 'UPLOAD_PROGRESS',
+            attachmentId: event.attachmentId,
+            progress: event.progress,
+            status: event.status
+          })
+        }
+      )
     )
 
     cleanups.push(
-      window.api.onDownloadProgress((event) => {
-        if (cancelled) return
-        dispatch({
-          type: 'DOWNLOAD_PROGRESS',
-          attachmentId: event.attachmentId,
-          progress: event.progress,
-          status: event.status
-        })
-      })
+      subscribeEvent<{ attachmentId: string; progress: number; status: string }>(
+        'download-progress',
+        (event) => {
+          if (cancelled) return
+          dispatch({
+            type: 'DOWNLOAD_PROGRESS',
+            attachmentId: event.attachmentId,
+            progress: event.progress,
+            status: event.status
+          })
+        }
+      )
     )
 
     cleanups.push(
-      window.api.onSessionExpired(() => {
+      subscribeEvent<void>('session-expired', () => {
         if (cancelled) return
         if (!sessionExpiredRef.current) {
           toast.error('Session expired — sign in again', { duration: 8000 })
@@ -306,68 +327,71 @@ export function SyncProvider({ children }: SyncProviderProps): React.JSX.Element
     )
 
     cleanups.push(
-      window.api.onDeviceRevoked((event) => {
+      subscribeEvent<{ unsyncedCount: number }>('device-revoked', (event) => {
         if (cancelled) return
         dispatch({ type: 'DEVICE_REVOKED', unsyncedCount: event.unsyncedCount })
       })
     )
 
     cleanups.push(
-      window.api.onConflictDetected((event) => {
+      subscribeEvent<{ itemId: string; type: string }>('conflict-detected', (event) => {
         if (cancelled) return
         dispatch({ type: 'CONFLICT_DETECTED', itemId: event.itemId, itemType: event.type })
       })
     )
 
     cleanups.push(
-      window.api.onQueueCleared(() => {
+      subscribeEvent<void>('queue-cleared', () => {
         if (cancelled) return
         dispatch({ type: 'QUEUE_CLEARED' })
       })
     )
 
     cleanups.push(
-      window.api.onClockSkewWarning(() => {
+      subscribeEvent<void>('clock-skew-warning', () => {
         if (cancelled) return
         dispatch({ type: 'CLOCK_SKEW_WARNING' })
       })
     )
 
     cleanups.push(
-      window.api.onItemSynced((event) => {
+      subscribeEvent<{ operation: 'push' | 'pull' }>('item-synced', (event) => {
         if (cancelled) return
         dispatch({ type: 'ITEM_SYNCED', lastSyncAt: Date.now(), operation: event.operation })
       })
     )
 
     cleanups.push(
-      window.api.onInitialSyncProgress((event) => {
-        if (cancelled) return
-        dispatch({
-          type: 'INITIAL_SYNC_PROGRESS',
-          phase: event.phase,
-          current: event.processedItems,
-          total: event.totalItems
-        })
-      })
+      subscribeEvent<{ phase: InitialSyncPhase; processedItems: number; totalItems: number }>(
+        'initial-sync-progress',
+        (event) => {
+          if (cancelled) return
+          dispatch({
+            type: 'INITIAL_SYNC_PROGRESS',
+            phase: event.phase,
+            current: event.processedItems,
+            total: event.totalItems
+          })
+        }
+      )
     )
 
     cleanups.push(
-      window.api.onLinkingRequest((event) => {
+      subscribeEvent<LinkingRequestEvent>('linking-request', (event) => {
         if (cancelled) return
         setLinkingRequest(event)
       })
     )
 
     cleanups.push(
-      window.api.onLinkingApproved(() => {
+      subscribeEvent<void>('linking-approved', () => {
         if (cancelled) return
         setLinkingRequest(null)
       })
     )
 
     cleanups.push(
-      window.api.onKeyRotationProgress((event) => {
+      subscribeEvent<{ phase: string; error?: string }>('key-rotation-progress', (event) => {
         if (cancelled) return
         if (event.phase === 'complete') {
           dispatch({ type: 'CLEAR_ERROR' })
@@ -378,7 +402,7 @@ export function SyncProvider({ children }: SyncProviderProps): React.JSX.Element
     )
 
     cleanups.push(
-      window.api.onSecurityWarning((event) => {
+      subscribeEvent<{ permanent: boolean }>('security-warning', (event) => {
         if (cancelled) return
         const message = event.permanent
           ? 'A sync item could not be verified and has been quarantined for security.'
@@ -388,7 +412,7 @@ export function SyncProvider({ children }: SyncProviderProps): React.JSX.Element
     )
 
     cleanups.push(
-      window.api.onCertificatePinFailed(() => {
+      subscribeEvent<void>('certificate-pin-failed', () => {
         if (cancelled) return
         toast.error(
           'Secure connection to sync server could not be verified. Syncing has been paused for your protection.',
@@ -406,14 +430,14 @@ export function SyncProvider({ children }: SyncProviderProps): React.JSX.Element
   useEffect(() => {
     if (authState.status === 'authenticated' && state.sessionExpired) {
       dispatch({ type: 'CLEAR_ERROR' })
-      void window.api.syncOps.triggerSync().catch(() => {})
+      void invoke('sync_ops_trigger_sync').catch(() => {})
     }
   }, [authState.status, state.sessionExpired])
 
   const triggerSync = useCallback(async (): Promise<void> => {
     if (authState.status !== 'authenticated') return
     try {
-      await window.api.syncOps.triggerSync()
+      await invoke('sync_ops_trigger_sync')
     } catch (err) {
       dispatch({ type: 'SET_ERROR', error: extractErrorMessage(err, 'Sync failed') })
     }
@@ -422,7 +446,7 @@ export function SyncProvider({ children }: SyncProviderProps): React.JSX.Element
   const pause = useCallback(async (): Promise<void> => {
     if (authState.status !== 'authenticated') return
     try {
-      await window.api.syncOps.pause()
+      await invoke('sync_ops_pause')
     } catch (err) {
       dispatch({ type: 'SET_ERROR', error: extractErrorMessage(err, 'Failed to pause sync') })
     }
@@ -431,7 +455,7 @@ export function SyncProvider({ children }: SyncProviderProps): React.JSX.Element
   const resume = useCallback(async (): Promise<void> => {
     if (authState.status !== 'authenticated') return
     try {
-      await window.api.syncOps.resume()
+      await invoke('sync_ops_resume')
     } catch (err) {
       dispatch({ type: 'SET_ERROR', error: extractErrorMessage(err, 'Failed to resume sync') })
     }

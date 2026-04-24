@@ -16,6 +16,7 @@ import {
 import { GoogleCalendarSourcePicker } from './google-calendar-source-picker'
 import { GoogleCalendarOnboardingDialog } from '@/components/calendar/google-calendar-onboarding-dialog'
 import { googleCalendarsQueryKey } from '@/hooks/use-google-calendars'
+import { invoke } from '@/lib/ipc/invoke'
 
 const GOOGLE_STATUS_QUERY_KEY = ['calendar', 'google', 'status'] as const
 const GOOGLE_SOURCES_QUERY_KEY = ['calendar', 'google', 'sources'] as const
@@ -58,7 +59,9 @@ export function GoogleCalendarIntegrationRow(): React.JSX.Element {
       await invalidateGoogleCalendarQueries(queryClient)
       // Surface onboarding the first time the user connects so they pick
       // their default target before anything lands in "Memry" by accident.
-      const settings = await window.api.settings.getCalendarGoogleSettings()
+      const settings = await invoke<{ onboardingCompleted?: boolean }>(
+        'settings_get_calendar_google_settings'
+      )
       if (!settings.onboardingCompleted) {
         setShowOnboarding(true)
       }
@@ -120,13 +123,15 @@ export function GoogleCalendarIntegrationRow(): React.JSX.Element {
     if (!statusQuery.data?.connected) return
     if (onboardingPromptShownRef.current) return
     let cancelled = false
-    void window.api.settings.getCalendarGoogleSettings().then((settings) => {
-      if (cancelled) return
-      if (!settings.onboardingCompleted) {
-        onboardingPromptShownRef.current = true
-        setShowOnboarding(true)
+    void invoke<{ onboardingCompleted?: boolean }>('settings_get_calendar_google_settings').then(
+      (settings) => {
+        if (cancelled) return
+        if (!settings.onboardingCompleted) {
+          onboardingPromptShownRef.current = true
+          setShowOnboarding(true)
+        }
       }
-    })
+    )
     return () => {
       cancelled = true
     }

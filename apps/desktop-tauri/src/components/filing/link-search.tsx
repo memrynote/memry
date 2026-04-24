@@ -5,6 +5,8 @@ import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
 import type { LinkedNote } from '@/types'
 import { createLogger } from '@/lib/logger'
+import { invoke } from '@/lib/ipc/invoke'
+import type { NoteListResponse } from '@memry/rpc/notes'
 
 const log = createLogger('Component:LinkSearch')
 
@@ -101,7 +103,7 @@ const LinkSearch = ({ linkedNotes, onLinkedNotesChange }: LinkSearchProps): Reac
 
       setIsSearching(true)
       try {
-        const response = await window.api.notes.list({
+        const response = await invoke<NoteListResponse>('notes_list', {
           limit: 50,
           sortBy: 'modified',
           sortOrder: 'desc'

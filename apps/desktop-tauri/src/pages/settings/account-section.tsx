@@ -31,6 +31,7 @@ import {
   SettingRow,
   ACCENT_SWITCH
 } from '@/components/settings/settings-primitives'
+import { invoke } from '@/lib/ipc/invoke'
 
 function formatBytes(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`
@@ -61,7 +62,9 @@ export function AccountSettings() {
     if (state.status !== 'authenticated') return
     setIsRefreshing(true)
     try {
-      const result = await window.api.syncOps.getStorageBreakdown()
+      const result = await invoke<StorageBreakdownResult | null>(
+        'sync_ops_get_storage_breakdown'
+      )
       setStorage(result)
     } catch {
       /* storage is non-critical */

@@ -14,6 +14,7 @@ import { detectPlatformFromUrl, extractHandleFromUrl } from './social-card'
 import { createLogger } from '@/lib/logger'
 import { ensureVoiceRecordingReady } from '@/lib/voice-recording-readiness'
 import { prepareVoiceMemoAudio } from '@/lib/voice-memo-audio'
+import { invoke } from '@/lib/ipc/invoke'
 
 const log = createLogger('Component:QuickCapture')
 
@@ -127,7 +128,12 @@ export function QuickCapture(): React.JSX.Element {
       void (async () => {
         previewUrlRef.current = url
         try {
-          const data = await window.api.inbox.previewLink(url)
+          const data = await invoke<{
+            title: string
+            domain: string
+            favicon?: string
+            description?: string
+          }>('inbox_preview_link', { args: [url] })
           setLinkPreview(data)
         } catch {
           setLinkPreview(null)
@@ -159,7 +165,7 @@ export function QuickCapture(): React.JSX.Element {
       }
 
       try {
-        const clipboardText = await window.api.quickCapture.getClipboard()
+        const clipboardText = await invoke<string>('quick_capture_get_clipboard')
         if (
           clipboardText?.trim() &&
           !clipboardText.includes('Error:') &&
@@ -228,7 +234,7 @@ export function QuickCapture(): React.JSX.Element {
           if (droppedFile) {
             if (droppedFile.type.startsWith('audio/')) {
               const ready = await ensureVoiceRecordingReady(() => {
-                window.api.quickCapture.openSettings('ai')
+                void invoke('quick_capture_open_settings', { args: ['ai'] })
               })
 
               if (!ready) {
@@ -442,7 +448,7 @@ export function QuickCapture(): React.JSX.Element {
 
   useEffect(() => {
     const handler = (e: KeyboardEvent): void => {
-      if (e.key === 'Escape') window.api.quickCapture.close()
+      if (e.key === 'Escape') void invoke('quick_capture_close')
     }
     window.addEventListener('keydown', handler)
     window.addEventListener('quick-capture:file-selected', handleFileSelected)
@@ -460,7 +466,7 @@ export function QuickCapture(): React.JSX.Element {
     const observer = new ResizeObserver((entries) => {
       const height = entries[0]?.contentRect.height
       if (height && height > 0) {
-        window.api.quickCapture.resize(Math.ceil(height) + 2)
+        void invoke('quick_capture_resize', { args: [Math.ceil(height) + 2] })
       }
     })
     observer.observe(el)
@@ -501,7 +507,7 @@ export function QuickCapture(): React.JSX.Element {
       )}
 
       {captureState === 'success' ? (
-        <CaptureSuccess onAutoClose={() => window.api.quickCapture.close()} />
+        <CaptureSuccess onAutoClose={() => void invoke('quick_capture_close')} />
       ) : captureState === 'capturing' && !value.trim() && hasAttachment ? (
         <div className="flex items-center gap-2.5 px-4 py-3.5">
           <Loader2 className="size-4 animate-spin text-accent-orange" />
@@ -518,7 +524,7 @@ export function QuickCapture(): React.JSX.Element {
                 setDuplicateMatch(null)
                 handleSubmit(true)
               }}
-              onClose={() => window.api.quickCapture.close()}
+              onClose={() => void invoke('quick_capture_close')}
             />
           ) : (
             <QuickCaptureInput
@@ -527,7 +533,7 @@ export function QuickCapture(): React.JSX.Element {
               onSubmit={() => handleSubmit()}
               onStartRecording={() => {
                 void ensureVoiceRecordingReady(() => {
-                  window.api.quickCapture.openSettings('ai')
+                  void invoke('quick_capture_open_settings', { args: ['ai'] })
                 }).then((ready) => {
                   if (ready) {
                     flushSync(() => {

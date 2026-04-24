@@ -6,6 +6,7 @@ import type { ClockFormat } from '@/lib/time-format'
 import { cn } from '@/lib/utils'
 import type { CalendarProjectionItem } from '@/services/calendar-service'
 import type { AnchorRect } from './types'
+import { invoke } from '@/lib/ipc/invoke'
 
 const VISUAL_TYPE_ICONS: Record<
   CalendarProjectionItem['visualType'],
@@ -65,7 +66,7 @@ export function CalendarItemChip({
 
       const menuItems = [{ id: 'delete', label: 'Delete event', accelerator: 'Backspace' }]
 
-      void window.api.showContextMenu(menuItems).then((selectedId) => {
+      void invoke<string | null>('show_context_menu', { args: [menuItems] }).then((selectedId) => {
         if (selectedId === 'delete') {
           onDeleteItem(item)
         }

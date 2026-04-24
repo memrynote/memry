@@ -19,6 +19,7 @@ import {
   type ShortcutEntry
 } from '@/lib/shortcut-registry'
 import { SettingsHeader, SettingsGroup } from '@/components/settings/settings-primitives'
+import { invoke } from '@/lib/ipc/invoke'
 
 interface ShortcutRowProps {
   entry: ShortcutEntry
@@ -194,7 +195,11 @@ function GlobalCaptureRow({
   const captureRef = useRef<HTMLDivElement>(null)
 
   const checkAndRegister = useCallback(async () => {
-    const result = await window.api.settings.registerGlobalCapture()
+    const result = await invoke<{
+      success: boolean
+      registered: boolean
+      permissionRequired?: boolean
+    }>('settings_register_global_capture')
     if (result.permissionRequired) {
       setPermissionStatus('required')
     } else if (result.registered) {

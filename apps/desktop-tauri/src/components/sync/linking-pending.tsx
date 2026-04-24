@@ -2,6 +2,7 @@ import { useEffect, useRef, useCallback, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { Loader2, X, CheckCircle, AlertCircle } from '@/lib/icons'
+import { invoke } from '@/lib/ipc/invoke'
 
 const POLL_INTERVAL_MS = 3000
 
@@ -33,7 +34,10 @@ export function LinkingPending({
     if (cancelledRef.current) return
 
     try {
-      const result = await window.api.syncLinking.completeLinkingQr({ sessionId })
+      const result = await invoke<{ success: boolean; deviceId?: string; error?: string }>(
+        'sync_linking_complete_linking_qr',
+        { sessionId }
+      )
 
       if (cancelledRef.current) return
 

@@ -20,6 +20,8 @@ import {
 } from '@/components/ui/alert-dialog'
 import { RecoveryPhraseDisplay } from '@/components/sync/recovery-phrase-display'
 import { extractErrorMessage } from '@/lib/ipc-error'
+import { invoke } from '@/lib/ipc/invoke'
+import { subscribeEvent } from '@/lib/ipc/forwarder'
 import type { KeyRotationProgressEvent } from '@memry/contracts/ipc-events'
 
 type WizardStep = 'confirm' | 'rotating' | 'phrase' | 'complete' | 'error'
@@ -53,20 +55,23 @@ function KeyRotationWizardSession({
   const dismissedRef = useRef(false)
 
   useEffect(() => {
-    const unsubscribe = window.api.onKeyRotationProgress((event: KeyRotationProgressEvent) => {
-      if (dismissedRef.current) return
+    const unsubscribe = subscribeEvent<KeyRotationProgressEvent>(
+      'key-rotation-progress',
+      (event) => {
+        if (dismissedRef.current) return
 
-      setProgress({
-        total: event.totalItems,
-        processed: event.processedItems,
-        phase: event.phase
-      })
+        setProgress({
+          total: event.totalItems,
+          processed: event.processedItems,
+          phase: event.phase
+        })
 
-      if (event.error) {
-        setError(event.error)
-        setStep('error')
+        if (event.error) {
+          setError(event.error)
+          setStep('error')
+        }
       }
-    })
+    )
 
     return unsubscribe
   }, [])
@@ -77,7 +82,11 @@ function KeyRotationWizardSession({
     setProgress({ total: 0, processed: 0, phase: '' })
 
     try {
-      const result = await window.api.crypto.rotateKeys({ confirm: true })
+      const result = await invoke<{
+        success: boolean
+        newRecoveryPhrase?: string
+        error?: string
+      }>('crypto_rotate_keys', { confirm: true })
 
       if (result.success && result.newRecoveryPhrase) {
         setNewPhrase(result.newRecoveryPhrase)
