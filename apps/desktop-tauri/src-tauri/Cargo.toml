@@ -19,7 +19,7 @@ tauri = { version = "2.10", features = [] }
 tauri-plugin-shell = "2"
 
 # Declared for later milestones — unused at M1 but compile-verified
-rusqlite = { version = "0.32", features = ["bundled", "load_extension"], default-features = false }
+rusqlite = { version = "0.32", features = ["bundled", "load_extension", "chrono", "serde_json", "hooks"] }
 yrs = "0.21"
 dryoc = "0.7"
 tokio = { version = "1.41", features = ["full"] }
@@ -29,11 +29,15 @@ tracing-appender = "0.2"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 thiserror = "2.0"
+directories = "5"
 specta = { version = "2.0.0-rc.20", features = ["derive"] }
 tauri-specta = { version = "2.0.0-rc.21", features = ["typescript"] }
 
 [features]
 custom-protocol = ["tauri/custom-protocol"]
+
+[dev-dependencies]
+tempfile = "3"
 
 [[bin]]
 name = "generate_bindings"
