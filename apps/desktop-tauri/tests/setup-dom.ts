@@ -400,6 +400,103 @@ Object.defineProperty(windowTarget, 'electron', {
   writable: true
 })
 
+// ============================================================================
+// IPC adapter: route invoke() / listen() / subscribeEvent() to window.api
+//
+// Service, hook, context, and component code under test calls the Tauri
+// wrapper `invoke('<domain>_<method>', args)` instead of `window.api.X.Y(args)`.
+// To let existing tests keep mocking through `window.api.X.Y = vi.fn()`, we
+// install a dispatcher that decodes the command name back into a method call
+// on the mock API.
+//
+// `createMockApi()` is still the single source of mocked behavior for tests.
+// ============================================================================
+
+function snakeToCamel(input: string): string {
+  return input.replace(/_([a-z])/g, (_, c: string) => c.toUpperCase())
+}
+
+function kebabToEventKey(event: string): string {
+  // 'note-created' → 'onNoteCreated'
+  const parts = event.split('-')
+  return 'on' + parts.map((p) => p.charAt(0).toUpperCase() + p.slice(1)).join('')
+}
+
+type AnyFn = (...args: unknown[]) => unknown
+
+function resolveApiMethod(cmd: string): AnyFn {
+  const underscore = cmd.indexOf('_')
+  if (underscore === -1) {
+    const api = (windowTarget.api ?? {}) as Record<string, AnyFn>
+    const method = api[cmd]
+    if (typeof method !== 'function') {
+      throw new Error(`Mock IPC: command "${cmd}" not implemented on window.api`)
+    }
+    return method
+  }
+  const domain = cmd.slice(0, underscore)
+  const method = snakeToCamel(cmd.slice(underscore + 1))
+  const api = (windowTarget.api ?? {}) as Record<string, Record<string, AnyFn> | AnyFn | undefined>
+  const domainApi = api[domain]
+  if (domainApi && typeof domainApi === 'object') {
+    const fn = (domainApi as Record<string, AnyFn>)[method]
+    if (typeof fn === 'function') {
+      return fn
+    }
+  }
+  // Fall back to a top-level method on the api (e.g. `windowMinimize`)
+  const topLevel = api[snakeToCamel(cmd)]
+  if (typeof topLevel === 'function') {
+    return topLevel as AnyFn
+  }
+  throw new Error(
+    `Mock IPC: command "${cmd}" not implemented on window.api.${domain}.${method}`
+  )
+}
+
+function unpackArgs(payload: unknown): unknown[] {
+  if (payload === undefined) return []
+  if (
+    payload &&
+    typeof payload === 'object' &&
+    Array.isArray((payload as { args?: unknown[] }).args)
+  ) {
+    return (payload as { args: unknown[] }).args
+  }
+  return [payload]
+}
+
+vi.mock('@/lib/ipc/invoke', () => ({
+  invoke: vi.fn(async (cmd: string, args?: unknown) => {
+    const fn = resolveApiMethod(cmd)
+    return Promise.resolve(fn(...unpackArgs(args)))
+  })
+}))
+
+vi.mock('@/lib/ipc/events', () => ({
+  listen: vi.fn(async () => () => {}),
+  listenOnce: vi.fn(async () => {})
+}))
+
+vi.mock('@/lib/ipc/forwarder', async () => {
+  const actual = await vi.importActual<typeof import('../src/lib/ipc/forwarder')>(
+    '../src/lib/ipc/forwarder'
+  )
+  return {
+    ...actual,
+    subscribeEvent: vi.fn((event: string, callback: (payload: unknown) => void) => {
+      const eventKey = kebabToEventKey(event)
+      const api = windowTarget.api as Record<string, AnyFn> | undefined
+      const sub = api?.[eventKey]
+      if (typeof sub === 'function') {
+        const result = sub(callback)
+        if (typeof result === 'function') return result
+      }
+      return () => {}
+    })
+  }
+})
+
 // Export for test customization
 export { createMockApi }
 

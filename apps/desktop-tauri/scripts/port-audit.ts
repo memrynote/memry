@@ -38,13 +38,21 @@ export function scanContent(content: string, file: string): Hit[] {
   return hits
 }
 
+export function isTestFile(relPath: string): boolean {
+  return /\.test\.(ts|tsx)$/.test(relPath)
+}
+
 function runCli(): void {
   const here = dirname(fileURLToPath(import.meta.url))
   const root = resolve(here, '../src')
 
-  const files = globSync('**/*.{ts,tsx}', { cwd: root }).map((relPath) =>
-    resolve(root, relPath)
-  )
+  // Test files are excluded — they mock platform APIs by design
+  // (`window.api.foo = vi.fn()` is scaffolding, not a real call site).
+  // Production code references live in non-test files; those are what
+  // Phase H must drive to zero.
+  const files = globSync('**/*.{ts,tsx}', { cwd: root })
+    .filter((relPath) => !isTestFile(relPath))
+    .map((relPath) => resolve(root, relPath))
 
   const hits: Hit[] = []
   for (const file of files) {
