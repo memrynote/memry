@@ -1,4 +1,5 @@
 import type { MockRouteMap } from './types'
+import { notesRoutes } from './notes'
 
 /**
  * Aggregated route map for the mock IPC router.
@@ -11,7 +12,9 @@ import type { MockRouteMap } from './types'
  * a descriptive error when invoked so missing mocks surface loudly during
  * renderer port-over.
  */
-const routes: MockRouteMap = {}
+const routes: MockRouteMap = {
+  ...notesRoutes
+}
 
 /**
  * Dispatch a command through the mock IPC router. Called by `invoke` when
