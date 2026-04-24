@@ -480,13 +480,24 @@ function unpackArgs(payload: unknown): unknown[] {
 }
 
 vi.mock('@/lib/ipc/invoke', () => ({
-  // Synchronous pass-through: the mock api method (usually a vi.fn returning
-  // a promise) is invoked and its result is returned directly. Avoiding an
-  // extra async wrapper keeps microtask timing close to the pre-Phase-H
-  // path where callers invoked window.api.X.Y directly — tests that rely
-  // on a small number of `await Promise.resolve()` ticks continue to work.
+  // Near-synchronous pass-through: the mock api method (usually a vi.fn
+  // returning a promise) is invoked and its result is returned directly.
+  // Avoiding an extra async wrapper keeps microtask timing close to the
+  // pre-Phase-H path where callers invoked window.api.X.Y directly — tests
+  // that rely on a small number of `await Promise.resolve()` ticks continue
+  // to work.
+  //
+  // Resolution failures are routed through a rejected promise so callers
+  // that attach `.catch` (e.g. `invoke(...).then(...).catch(...)`) see the
+  // error as a rejection rather than a synchronous throw. The real `invoke`
+  // from src/lib/ipc/invoke.ts is `async` and therefore always rejects.
   invoke: vi.fn((cmd: string, args?: unknown) => {
-    const fn = resolveApiMethod(cmd)
+    let fn: AnyFn
+    try {
+      fn = resolveApiMethod(cmd)
+    } catch (err) {
+      return Promise.reject(err)
+    }
     return fn(...unpackArgs(args))
   })
 }))

@@ -113,7 +113,7 @@ export function TagManager() {
       const result = await mergeTag(mergeSource, mergeTarget)
       if (result.success) {
         toast.success(
-          `Merged "${mergeSource}" into "${mergeTarget}" (${result.affectedItems ?? 0} items)`
+          `Merged "${mergeSource}" into "${mergeTarget}" (${result.affectedNotes ?? 0} items)`
         )
       } else {
         toast.error(result.error ?? 'Merge failed')

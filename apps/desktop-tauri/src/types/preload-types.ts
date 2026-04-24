@@ -29,7 +29,7 @@ import type {
   DeviceRevokedEvent,
   SecurityWarningEvent,
   CertificatePinFailedEvent
-} from '../shared/contracts/ipc-sync'
+} from '@memry/contracts/ipc-sync'
 
 // Vault types (mirrored from contracts for preload compatibility)
 export interface VaultInfo {
@@ -1485,7 +1485,7 @@ interface SyncOpsClientAPI {
     value: unknown
   ) => Promise<{ success: boolean; error?: string }>
   getSyncedSettings: () => Promise<
-    import('../shared/contracts/settings-sync').SyncedSettings | null
+    import('@memry/contracts/settings-sync').SyncedSettings | null
   >
   getStorageBreakdown: () => Promise<{
     used: number
@@ -1593,7 +1593,7 @@ interface WindowAPI {
 }
 
 // Full API interface
-interface API extends WindowAPI, GeneratedRpcApi {
+export interface API extends WindowAPI, GeneratedRpcApi {
   getFileDropPaths: (files: File[]) => string[]
   vault: VaultClientAPI
   properties: PropertiesClientAPI
@@ -1640,12 +1640,8 @@ interface API extends WindowAPI, GeneratedRpcApi {
   onVaultIndexRecovered: (callback: (event: IndexRecoveredEvent) => void) => () => void
   // Search event subscriptions
   onSearchIndexRebuildStarted: (callback: () => void) => () => void
-  onSearchIndexRebuildProgress: (
-    callback: (progress: IndexRebuildProgressEvent) => void
-  ) => () => void
-  onSearchIndexRebuildCompleted: (
-    callback: (result: IndexRebuildCompletedEvent) => void
-  ) => () => void
+  onSearchIndexRebuildProgress: (callback: (progress: IndexRebuildProgress) => void) => () => void
+  onSearchIndexRebuildCompleted: (callback: () => void) => () => void
   onSearchIndexCorrupt: (callback: () => void) => () => void
   // Saved Filters event subscriptions
   onSavedFilterCreated: (callback: (event: SavedFilterCreatedEvent) => void) => () => void
@@ -1679,13 +1675,6 @@ interface API extends WindowAPI, GeneratedRpcApi {
   onReminderClicked: (callback: (event: ReminderClickedEvent) => void) => () => void
   // Folder View event subscriptions
   onFolderViewConfigUpdated: (callback: (event: FolderViewConfigUpdatedEvent) => void) => () => void
-  // Search event subscriptions
-  onSearchIndexRebuildStarted: (callback: () => void) => () => void
-  onSearchIndexRebuildProgress: (
-    callback: (progress: { phase: string; current: number; total: number; percent: number }) => void
-  ) => () => void
-  onSearchIndexRebuildCompleted: (callback: () => void) => () => void
-  onSearchIndexCorrupt: (callback: () => void) => () => void
   // Sync event subscriptions
   onSyncStatusChanged: (callback: (event: SyncStatusChangedEvent) => void) => () => void
   onItemSynced: (callback: (event: ItemSyncedEvent) => void) => () => void

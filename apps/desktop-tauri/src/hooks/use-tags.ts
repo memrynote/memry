@@ -99,15 +99,24 @@ export function useTags() {
   )
 
   const renameTag = useCallback(async (oldName: string, newName: string) => {
-    return invoke('tags_rename_tag', { oldName, newName })
+    return invoke<{ success: boolean; affectedNotes?: number; error?: string }>(
+      'tags_rename_tag',
+      { oldName, newName }
+    )
   }, [])
 
   const mergeTag = useCallback(async (source: string, target: string) => {
-    return invoke('tags_merge_tag', { source, target })
+    return invoke<{ success: boolean; affectedNotes?: number; error?: string }>('tags_merge_tag', {
+      source,
+      target
+    })
   }, [])
 
   const deleteTag = useCallback(async (tag: string) => {
-    return invoke('tags_delete_tag', { args: [tag] })
+    return invoke<{ success: boolean; affectedNotes?: number; error?: string }>(
+      'tags_delete_tag',
+      { args: [tag] }
+    )
   }, [])
 
   const refetch = fetchTags

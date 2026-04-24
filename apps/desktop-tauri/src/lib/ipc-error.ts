@@ -9,7 +9,7 @@
  * similar `ipcMain.invoke` framing; Tauri has no analogous prefix, so the
  * implementation is intentionally small.
  */
-export function extractErrorMessage(err: unknown, fallback: string): string {
+export function extractErrorMessage(err: unknown, fallback = 'Something went wrong'): string {
   if (err instanceof Error) return err.message || fallback
   if (typeof err === 'string') return err || fallback
   if (typeof err === 'object' && err !== null && 'message' in err) {
