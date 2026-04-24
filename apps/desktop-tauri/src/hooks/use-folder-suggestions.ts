@@ -9,6 +9,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { createLogger } from '@/lib/logger'
+import { invoke } from '@/lib/ipc/invoke'
 import type { FolderSuggestion } from '@memry/contracts/folder-view-api'
 
 const log = createLogger('Hook:FolderSuggestions')
@@ -76,7 +77,10 @@ export function useFolderSuggestions(noteId: string | null): UseFolderSuggestion
     setError(null)
 
     try {
-      const response = await window.api.folderView.getFolderSuggestions(noteId)
+      const response = await invoke<{ suggestions: FolderSuggestion[] }>(
+        'folder_view_get_folder_suggestions',
+        { args: [noteId] }
+      )
 
       if (!mountedRef.current) return
 

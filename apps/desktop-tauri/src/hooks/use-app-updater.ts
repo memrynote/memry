@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { extractErrorMessage } from '@/lib/ipc-error'
+import { invoke } from '@/lib/ipc/invoke'
+import { subscribeEvent } from '@/lib/ipc/forwarder'
 import type { AppUpdateState } from '@memry/contracts/ipc-updater'
 
 const DEFAULT_STATE: AppUpdateState = {
@@ -32,8 +34,7 @@ export function useAppUpdater(): UseAppUpdaterResult {
   useEffect(() => {
     let mounted = true
 
-    void window.api.updater
-      .getState()
+    void invoke<AppUpdateState>('updater_get_state')
       .then((nextState) => {
         if (mounted) {
           setState(nextState)
@@ -50,7 +51,7 @@ export function useAppUpdater(): UseAppUpdaterResult {
         }
       })
 
-    const unsubscribe = window.api.onUpdaterStateChanged((nextState) => {
+    const unsubscribe = subscribeEvent<AppUpdateState>('updater-state-changed', (nextState) => {
       setState(nextState)
       setError(null)
     })
@@ -63,7 +64,7 @@ export function useAppUpdater(): UseAppUpdaterResult {
 
   const checkForUpdates = useCallback(async (): Promise<AppUpdateState> => {
     try {
-      const nextState = await window.api.updater.checkForUpdates()
+      const nextState = await invoke<AppUpdateState>('updater_check_for_updates')
       setState(nextState)
       setError(null)
       return nextState
@@ -76,7 +77,7 @@ export function useAppUpdater(): UseAppUpdaterResult {
 
   const downloadUpdate = useCallback(async (): Promise<AppUpdateState> => {
     try {
-      const nextState = await window.api.updater.downloadUpdate()
+      const nextState = await invoke<AppUpdateState>('updater_download_update')
       setState(nextState)
       setError(null)
       return nextState
@@ -89,7 +90,7 @@ export function useAppUpdater(): UseAppUpdaterResult {
 
   const quitAndInstall = useCallback(async (): Promise<void> => {
     try {
-      await window.api.updater.quitAndInstall()
+      await invoke('updater_quit_and_install')
       setError(null)
     } catch (err) {
       const message = extractErrorMessage(err, 'Failed to install update')

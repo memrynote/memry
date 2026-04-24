@@ -425,7 +425,14 @@ function kebabToEventKey(event: string): string {
 type AnyFn = (...args: unknown[]) => unknown
 
 function resolveApiMethod(cmd: string): AnyFn {
-  const api = (windowTarget.api ?? {}) as Record<
+  // Some tests (`renderHookWithProviders`) swap the entire `globalThis.window`
+  // object mid-run, so the `windowTarget` captured at module load becomes
+  // stale. Read `globalThis.window.api` fresh on every lookup and fall back
+  // to the module-load reference when nothing newer is available.
+  const liveWindow = (globalThis as unknown as { window?: { api?: unknown } }).window
+  const apiSource =
+    (liveWindow && typeof liveWindow === 'object' && liveWindow.api) ?? windowTarget.api
+  const api = (apiSource ?? {}) as Record<
     string,
     Record<string, AnyFn> | AnyFn | undefined
   >

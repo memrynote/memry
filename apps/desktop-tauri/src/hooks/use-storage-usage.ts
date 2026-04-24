@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
+import { invoke } from '@/lib/ipc/invoke'
 
 interface StorageBreakdownData {
   used: number
@@ -20,7 +21,7 @@ export function useStorageUsage() {
     setLoading(true)
     setError(null)
     try {
-      const result = await window.api.syncOps.getStorageBreakdown()
+      const result = await invoke<StorageBreakdownData>('sync_ops_get_storage_breakdown')
       setData(result)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch storage usage')
@@ -34,7 +35,7 @@ export function useStorageUsage() {
 
     const load = async () => {
       try {
-        const result = await window.api.syncOps.getStorageBreakdown()
+        const result = await invoke<StorageBreakdownData>('sync_ops_get_storage_breakdown')
         if (!cancelled) setData(result)
       } catch (err) {
         if (!cancelled)

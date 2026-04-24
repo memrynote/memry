@@ -5,6 +5,7 @@
 
 import { useMemo } from 'react'
 import { useTabs } from '@/contexts/tabs'
+import { invoke } from '@/lib/ipc/invoke'
 import { useKeyboardShortcuts, type KeyboardShortcut } from './use-keyboard-shortcuts-base'
 
 /**
@@ -44,7 +45,7 @@ export const useTabKeyboardShortcuts = (): void => {
           const isInboxTab = activeTab.type === 'inbox'
 
           if (isOnlyTab && isSingleGroup && isInboxTab) {
-            window.api.windowClose()
+            void invoke('window_close')
           } else {
             closeTab(activeTab.id, state.activeGroupId)
           }

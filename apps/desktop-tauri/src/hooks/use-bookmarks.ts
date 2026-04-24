@@ -22,11 +22,23 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { extractErrorMessage } from '@/lib/ipc-error'
+import { invoke } from '@/lib/ipc/invoke'
+import { subscribeEvent } from '@/lib/ipc/forwarder'
 import type {
   BookmarkWithItem,
   BookmarkListResponse,
   BookmarkToggleResponse
 } from '@memry/contracts/bookmarks-api'
+
+interface BookmarkCreatedEvent {
+  bookmark?: { itemType: string; itemId: string }
+}
+
+interface BookmarkDeletedEvent {
+  id: string
+  itemType?: string
+  itemId?: string
+}
 
 // ============================================================================
 // Bookmarks Service
@@ -40,27 +52,29 @@ const bookmarksService = {
     limit?: number
     offset?: number
   }): Promise<BookmarkListResponse> => {
-    return window.api.bookmarks.list(options)
+    return invoke<BookmarkListResponse>('bookmarks_list', options)
   },
 
   listByType: async (itemType: string): Promise<BookmarkListResponse> => {
-    return window.api.bookmarks.listByType(itemType)
+    return invoke<BookmarkListResponse>('bookmarks_list_by_type', { args: [itemType] })
   },
 
   toggle: async (input: { itemType: string; itemId: string }): Promise<BookmarkToggleResponse> => {
-    return window.api.bookmarks.toggle(input)
+    return invoke<BookmarkToggleResponse>('bookmarks_toggle', input)
   },
 
   isBookmarked: async (input: { itemType: string; itemId: string }): Promise<boolean> => {
-    return window.api.bookmarks.isBookmarked(input)
+    return invoke<boolean>('bookmarks_is_bookmarked', input)
   },
 
   delete: async (id: string): Promise<{ success: boolean; error?: string }> => {
-    return window.api.bookmarks.delete(id)
+    return invoke<{ success: boolean; error?: string }>('bookmarks_delete', { args: [id] })
   },
 
   reorder: async (bookmarkIds: string[]): Promise<{ success: boolean; error?: string }> => {
-    return window.api.bookmarks.reorder(bookmarkIds)
+    return invoke<{ success: boolean; error?: string }>('bookmarks_reorder', {
+      args: [bookmarkIds]
+    })
   }
 }
 
@@ -329,25 +343,25 @@ export function useBookmarks(options: UseBookmarksOptions = {}): UseBookmarksRet
 
   // Subscribe to bookmark events
   useEffect(() => {
-    const unsubCreated = window.api.onBookmarkCreated?.(() => {
+    const unsubCreated = subscribeEvent<BookmarkCreatedEvent>('bookmark-created', () => {
       // Refresh to get the full bookmark with resolved item
       refresh()
     })
 
-    const unsubDeleted = window.api.onBookmarkDeleted?.((event) => {
+    const unsubDeleted = subscribeEvent<BookmarkDeletedEvent>('bookmark-deleted', (event) => {
       setBookmarks((prev) => prev.filter((b) => b.id !== event.id))
       setTotal((prev) => Math.max(0, prev - 1))
     })
 
-    const unsubReordered = window.api.onBookmarksReordered?.(() => {
+    const unsubReordered = subscribeEvent<void>('bookmarks-reordered', () => {
       // Refresh to get new order
       refresh()
     })
 
     return () => {
-      unsubCreated?.()
-      unsubDeleted?.()
-      unsubReordered?.()
+      unsubCreated()
+      unsubDeleted()
+      unsubReordered()
     }
   }, [refresh])
 
@@ -388,7 +402,7 @@ export function useIsBookmarked(itemType: string, itemId: string) {
 
     setIsLoading(true)
     try {
-      const result = await window.api.bookmarks.isBookmarked({ itemType, itemId })
+      const result = await invoke<boolean>('bookmarks_is_bookmarked', { itemType, itemId })
       setIsBookmarked(result)
     } catch {
       setIsBookmarked(false)
@@ -399,7 +413,10 @@ export function useIsBookmarked(itemType: string, itemId: string) {
 
   const toggle = useCallback(async (): Promise<boolean> => {
     try {
-      const result = await window.api.bookmarks.toggle({ itemType, itemId })
+      const result = await invoke<BookmarkToggleResponse>('bookmarks_toggle', {
+        itemType,
+        itemId
+      })
       setIsBookmarked(result.isBookmarked)
       return result.isBookmarked
     } catch {
@@ -411,21 +428,21 @@ export function useIsBookmarked(itemType: string, itemId: string) {
     checkBookmark()
 
     // Subscribe to bookmark events
-    const unsubCreated = window.api.onBookmarkCreated?.((event) => {
+    const unsubCreated = subscribeEvent<BookmarkCreatedEvent>('bookmark-created', (event) => {
       if (event.bookmark?.itemType === itemType && event.bookmark?.itemId === itemId) {
         setIsBookmarked(true)
       }
     })
 
-    const unsubDeleted = window.api.onBookmarkDeleted?.((event) => {
+    const unsubDeleted = subscribeEvent<BookmarkDeletedEvent>('bookmark-deleted', (event) => {
       if (event.itemType === itemType && event.itemId === itemId) {
         setIsBookmarked(false)
       }
     })
 
     return () => {
-      unsubCreated?.()
-      unsubDeleted?.()
+      unsubCreated()
+      unsubDeleted()
     }
   }, [checkBookmark, itemType, itemId])
 

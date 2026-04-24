@@ -46,7 +46,7 @@ export function packArgs(args: unknown[]): Record<string, unknown> | undefined {
 /**
  * Builds a typed forwarder for a domain that dispatches every method call
  * through `invoke('<domain>_<method>', packedArgs)`. Replaces the old
- * Electron-era `createWindowApiForwarder(() => window.api.X)` pattern.
+ * Electron-era createWindowApiForwarder(() => windowApi[X]) pattern.
  */
 export function createInvokeForwarder<T extends object>(domain: string): T {
   return new Proxy({} as T, {
@@ -60,7 +60,7 @@ export function createInvokeForwarder<T extends object>(domain: string): T {
 /**
  * Subscribe to a Tauri event and return a synchronous `() => void` unsubscribe
  * function. Wraps `listen`'s Promise so call sites that expect the old
- * Electron-era `window.api.onFoo(cb): () => void` signature keep working.
+ * Electron-era windowApi.onFoo(cb): () => void signature keep working.
  *
  * If the caller unsubscribes before `listen` resolves, the returned function
  * flips a cancel flag so we detach as soon as the listener is actually

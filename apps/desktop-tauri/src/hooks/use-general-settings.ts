@@ -1,6 +1,13 @@
 import { useState, useEffect, useCallback } from 'react'
 import { extractErrorMessage } from '@/lib/ipc-error'
+import { invoke } from '@/lib/ipc/invoke'
+import { subscribeEvent } from '@/lib/ipc/forwarder'
 import type { GeneralSettingsDTO } from '@/types/preload-types'
+
+interface SettingsChangedEvent {
+  key: string
+  value: unknown
+}
 
 const DEFAULTS: GeneralSettingsDTO = {
   theme: 'system',
@@ -30,7 +37,7 @@ export function useGeneralSettings(): UseGeneralSettingsReturn {
     let mounted = true
     const load = async (): Promise<void> => {
       try {
-        const result = await window.api.settings.getGeneralSettings()
+        const result = await invoke<GeneralSettingsDTO>('settings_get_general_settings')
         if (mounted) setSettings(result)
       } catch (err) {
         if (mounted) setError(extractErrorMessage(err, 'Failed to load general settings'))
@@ -45,18 +52,20 @@ export function useGeneralSettings(): UseGeneralSettingsReturn {
   }, [])
 
   useEffect(() => {
-    const unsubscribe = window.api.onSettingsChanged((event) => {
+    return subscribeEvent<SettingsChangedEvent>('settings-changed', (event) => {
       if (event.key === 'general') {
         setSettings((prev) => ({ ...prev, ...(event.value as Partial<GeneralSettingsDTO>) }))
       }
     })
-    return unsubscribe
   }, [])
 
   const updateSettings = useCallback(
     async (updates: Partial<GeneralSettingsDTO>): Promise<boolean> => {
       try {
-        const result = await window.api.settings.setGeneralSettings(updates)
+        const result = await invoke<{ success: boolean; error?: string }>(
+          'settings_set_general_settings',
+          updates as unknown as Record<string, unknown>
+        )
         if (result.success) {
           setSettings((prev) => ({ ...prev, ...updates }))
           return true

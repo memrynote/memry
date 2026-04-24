@@ -1,6 +1,13 @@
 import { useState, useEffect, useCallback } from 'react'
 import { extractErrorMessage } from '@/lib/ipc-error'
+import { invoke } from '@/lib/ipc/invoke'
+import { subscribeEvent } from '@/lib/ipc/forwarder'
 import type { EditorSettingsDTO } from '@/types/preload-types'
+
+interface SettingsChangedEvent {
+  key: string
+  value: unknown
+}
 
 const DEFAULTS: EditorSettingsDTO = {
   width: 'medium',
@@ -26,7 +33,7 @@ export function useEditorSettings(): UseEditorSettingsReturn {
     let mounted = true
     const load = async (): Promise<void> => {
       try {
-        const result = await window.api.settings.getEditorSettings()
+        const result = await invoke<EditorSettingsDTO>('settings_get_editor_settings')
         if (mounted) setSettings(result)
       } catch (err) {
         if (mounted) setError(extractErrorMessage(err, 'Failed to load editor settings'))
@@ -41,18 +48,20 @@ export function useEditorSettings(): UseEditorSettingsReturn {
   }, [])
 
   useEffect(() => {
-    const unsubscribe = window.api.onSettingsChanged((event) => {
+    return subscribeEvent<SettingsChangedEvent>('settings-changed', (event) => {
       if (event.key === 'editor') {
         setSettings((prev) => ({ ...prev, ...(event.value as Partial<EditorSettingsDTO>) }))
       }
     })
-    return unsubscribe
   }, [])
 
   const updateSettings = useCallback(
     async (updates: Partial<EditorSettingsDTO>): Promise<boolean> => {
       try {
-        const result = await window.api.settings.setEditorSettings(updates)
+        const result = await invoke<{ success: boolean; error?: string }>(
+          'settings_set_editor_settings',
+          updates as unknown as Record<string, unknown>
+        )
         if (result.success) {
           setSettings((prev) => ({ ...prev, ...updates }))
           return true

@@ -1,9 +1,16 @@
 import { useState, useEffect, useCallback } from 'react'
 import { extractErrorMessage } from '@/lib/ipc-error'
+import { invoke } from '@/lib/ipc/invoke'
+import { subscribeEvent } from '@/lib/ipc/forwarder'
 import {
   CALENDAR_SETTINGS_DEFAULTS,
   type CalendarSettings
 } from '@memry/contracts/settings-schemas'
+
+interface SettingsChangedEvent {
+  key: string
+  value: unknown
+}
 
 export type DayCellClickBehavior = 'journal' | 'calendar'
 
@@ -23,7 +30,7 @@ export function useCalendarPreferences(): UseCalendarPreferencesReturn {
     let mounted = true
     const load = async (): Promise<void> => {
       try {
-        const result = await window.api.settings.getCalendarSettings()
+        const result = await invoke<CalendarSettings>('settings_get_calendar_settings')
         if (mounted) setSettings(result)
       } catch (err) {
         if (mounted) setError(extractErrorMessage(err, 'Failed to load calendar preferences'))
@@ -38,18 +45,20 @@ export function useCalendarPreferences(): UseCalendarPreferencesReturn {
   }, [])
 
   useEffect(() => {
-    const unsubscribe = window.api.onSettingsChanged((event) => {
+    return subscribeEvent<SettingsChangedEvent>('settings-changed', (event) => {
       if (event.key === 'calendar') {
         setSettings((prev) => ({ ...prev, ...(event.value as Partial<CalendarSettings>) }))
       }
     })
-    return unsubscribe
   }, [])
 
   const updateSettings = useCallback(
     async (updates: Partial<CalendarSettings>): Promise<boolean> => {
       try {
-        const result = await window.api.settings.setCalendarSettings(updates)
+        const result = await invoke<{ success: boolean; error?: string }>(
+          'settings_set_calendar_settings',
+          updates as unknown as Record<string, unknown>
+        )
         if (result.success) {
           setSettings((prev) => ({ ...prev, ...updates }))
           return true

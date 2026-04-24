@@ -3,7 +3,13 @@ import { extractErrorMessage } from '@/lib/ipc-error'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import type { DayContext, DayTask } from '@/types/preload-types'
 import { journalService } from '@/services/journal-service'
+import { subscribeEvent } from '@/lib/ipc/forwarder'
 import { journalKeys, ENTRY_STALE_TIME, ENTRY_GC_TIME } from './journal-query-keys'
+
+interface TaskEvent {
+  task: { dueDate?: string | null }
+  changes?: { dueDate?: string | null }
+}
 
 export interface UseDayContextResult {
   data: DayContext | null
@@ -31,23 +37,23 @@ export function useDayContext(date: string): UseDayContextResult {
   })
 
   useEffect(() => {
-    const unsubscribeTaskUpdated = window.api.onTaskUpdated((event) => {
+    const unsubscribeTaskUpdated = subscribeEvent<TaskEvent>('task-updated', (event) => {
       if (event.task.dueDate === date || event.changes?.dueDate === date) {
         queryClient.invalidateQueries({ queryKey: journalKeys.dayContextForDate(date) })
       }
     })
 
-    const unsubscribeTaskCreated = window.api.onTaskCreated((event) => {
+    const unsubscribeTaskCreated = subscribeEvent<TaskEvent>('task-created', (event) => {
       if (event.task.dueDate === date) {
         queryClient.invalidateQueries({ queryKey: journalKeys.dayContextForDate(date) })
       }
     })
 
-    const unsubscribeTaskDeleted = window.api.onTaskDeleted(() => {
+    const unsubscribeTaskDeleted = subscribeEvent<void>('task-deleted', () => {
       queryClient.invalidateQueries({ queryKey: journalKeys.dayContextForDate(date) })
     })
 
-    const unsubscribeTaskCompleted = window.api.onTaskCompleted((event) => {
+    const unsubscribeTaskCompleted = subscribeEvent<TaskEvent>('task-completed', (event) => {
       if (event.task.dueDate === date) {
         queryClient.invalidateQueries({ queryKey: journalKeys.dayContextForDate(date) })
       }

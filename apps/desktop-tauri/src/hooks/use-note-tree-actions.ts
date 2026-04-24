@@ -7,6 +7,7 @@ import type { Note } from '@memry/contracts/notes-api'
 import type { NoteListItem } from '@/hooks/use-notes-query'
 import type { FolderInfo } from '@/types/preload-types'
 import { notesService } from '@/services/notes-service'
+import { invoke } from '@/lib/ipc/invoke'
 import { toast } from 'sonner'
 import { createLogger } from '@/lib/logger'
 import { useGeneralSettings } from '@/hooks/use-general-settings'
@@ -524,7 +525,9 @@ export function useNoteTreeActions(deps: NoteTreeActionsDeps) {
             template: templateId,
             inherit: true
           })
-          const templatesResponse = await window.api.templates.list()
+          const templatesResponse = await invoke<{
+            templates: Array<{ id: string; name: string }>
+          }>('templates_list')
           const template = templatesResponse.templates.find((t) => t.id === templateId)
           if (template) {
             deps.setFolderTemplateNames((prev) => {
