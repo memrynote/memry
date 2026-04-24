@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { scanContent } from './port-audit'
+import { scanContent, isTestFile } from './port-audit'
 
 describe('scanContent', () => {
   it('reports 1 window.api hit with correct line number', () => {
@@ -119,5 +119,23 @@ describe('scanContent', () => {
 
     // #then
     expect(hits.filter((h) => h.kind === 'ipcRenderer')).toEqual([])
+  })
+})
+
+describe('isTestFile', () => {
+  it('matches .test.ts files', () => {
+    expect(isTestFile('hooks/use-journal.test.ts')).toBe(true)
+  })
+
+  it('matches .test.tsx files', () => {
+    expect(isTestFile('components/window-controls.test.tsx')).toBe(true)
+  })
+
+  it('does not match production .ts files', () => {
+    expect(isTestFile('services/notes-service.ts')).toBe(false)
+  })
+
+  it('does not match production .tsx files', () => {
+    expect(isTestFile('pages/settings/ai-section.tsx')).toBe(false)
   })
 })

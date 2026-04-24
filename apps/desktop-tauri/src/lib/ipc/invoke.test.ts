@@ -1,5 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
+// Global setup in tests/setup-dom.ts auto-mocks '@/lib/ipc/invoke' for
+// downstream consumers (services, hooks, components). This file tests the
+// actual invoke module, so we unmock both module ids it may be registered
+// under before wiring up its own collaborators.
+vi.unmock('@/lib/ipc/invoke')
+vi.unmock('./invoke')
+
 vi.mock('@tauri-apps/api/core', () => ({
   invoke: vi.fn(async (cmd: string, args: unknown) => ({ tauri: true, cmd, args }))
 }))

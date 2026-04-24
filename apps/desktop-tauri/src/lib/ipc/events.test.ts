@@ -1,5 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
+// See src/lib/ipc/invoke.test.ts for rationale — global setup-dom mock must
+// step aside so this file can exercise the real events module.
+vi.unmock('@/lib/ipc/events')
+vi.unmock('./events')
+
 type TauriEventHandler = (event: { payload: unknown }) => void
 type UnlistenFn = () => void
 
