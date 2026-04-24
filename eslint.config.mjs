@@ -20,6 +20,8 @@ export default defineConfig(
       '**/*.spec.ts',
       'tests/**',
       'apps/desktop/tests/**',
+      'apps/desktop-tauri/e2e/**',
+      'apps/desktop-tauri/playwright.config.ts',
       '*.config.ts',
       '*.config.mjs',
       '*.config.js',
