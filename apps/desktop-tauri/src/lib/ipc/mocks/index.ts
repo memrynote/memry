@@ -7,6 +7,7 @@ import { inboxRoutes } from './inbox'
 import { journalRoutes } from './journal'
 import { tagsRoutes } from './tags'
 import { bookmarksRoutes } from './bookmarks'
+import { templatesRoutes } from './templates'
 
 /**
  * Aggregated route map for the mock IPC router.
@@ -27,7 +28,8 @@ const routes: MockRouteMap = {
   ...inboxRoutes,
   ...journalRoutes,
   ...tagsRoutes,
-  ...bookmarksRoutes
+  ...bookmarksRoutes,
+  ...templatesRoutes
 }
 
 /**
