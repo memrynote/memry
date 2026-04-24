@@ -8,6 +8,7 @@ import {
   SettingsGroup,
   SettingRow
 } from '@/components/settings/settings-primitives'
+import { invoke } from '@/lib/ipc/invoke'
 
 const STORAGE_COLORS: Record<string, string> = {
   notes: '#6366f1',
@@ -29,8 +30,7 @@ export function VaultSettings() {
   const [isRefreshing, setIsRefreshing] = useState(false)
 
   useEffect(() => {
-    window.api.vault
-      .getStatus()
+    invoke<{ path?: string } | null>('vault_get_status')
       .then((status) => {
         if (status?.path) setVaultPath(status.path)
       })
@@ -45,7 +45,7 @@ export function VaultSettings() {
 
   const handleReveal = useCallback(async () => {
     if (!vaultPath) return
-    await window.api.vault.reveal()
+    await invoke('vault_reveal')
   }, [vaultPath])
 
   return (

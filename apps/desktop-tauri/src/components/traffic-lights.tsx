@@ -2,6 +2,7 @@
 
 import * as React from 'react'
 import { cn } from '@/lib/utils'
+import { invoke } from '@/lib/ipc/invoke'
 
 interface TrafficLightsProps {
   className?: string
@@ -12,15 +13,15 @@ export function TrafficLights({ className, compact = false }: TrafficLightsProps
   const [isHovered, setIsHovered] = React.useState(false)
 
   const handleClose = () => {
-    window.api.windowClose()
+    void invoke('window_close')
   }
 
   const handleMinimize = () => {
-    window.api.windowMinimize()
+    void invoke('window_minimize')
   }
 
   const handleMaximize = () => {
-    window.api.windowMaximize()
+    void invoke('window_maximize')
   }
 
   const buttonSize = compact ? 'size-2.5' : 'size-3.5'

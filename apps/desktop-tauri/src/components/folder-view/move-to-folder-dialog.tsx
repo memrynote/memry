@@ -24,6 +24,7 @@ import { Input } from '@/components/ui/input'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { cn } from '@/lib/utils'
 import { notesService } from '@/services/notes-service'
+import { invoke } from '@/lib/ipc/invoke'
 
 // ============================================================================
 // Types
@@ -146,7 +147,10 @@ function MoveToFolderDialogSession({
     queryKey: ['folderView', 'folder-suggestions', noteIds[0]],
     queryFn: async () => {
       if (!noteIds[0]) return { suggestions: [] }
-      return window.api.folderView.getFolderSuggestions(noteIds[0])
+      return invoke<{ suggestions: Array<{ path: string; confidence: number; reason: string }> }>(
+        'folder_view_get_folder_suggestions',
+        { args: [noteIds[0]] }
+      )
     },
     enabled: noteIds.length > 0
   })

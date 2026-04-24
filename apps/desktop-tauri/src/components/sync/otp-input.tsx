@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp'
 import { Loader2, Clock } from '@/lib/icons'
+import { subscribeEvent } from '@/lib/ipc/forwarder'
 
 interface OtpInputProps {
   onComplete: (code: string) => void
@@ -75,7 +76,7 @@ function OtpInputSession({
   const { seconds, canResend, reset } = useCountdown(expiresIn, onResend)
 
   useEffect(() => {
-    const unsubscribe = window.api.onOtpDetected((event) => {
+    const unsubscribe = subscribeEvent<{ code: string }>('otp-detected', (event) => {
       if (event.code && /^\d{6}$/.test(event.code)) {
         setValue(event.code)
         onComplete(event.code)

@@ -57,6 +57,7 @@ import { getStartupTheme, THEME_STORAGE_KEY } from '@/lib/startup-theme'
 import { useTaskWorkspaceData, useTaskWorkspaceMutations } from '@/features/tasks/use-task-queries'
 import { useTaskUiStore } from '@/features/tasks/use-task-ui-store'
 import { getFilteredTasks } from '@/lib/task-utils'
+import { subscribeEvent } from '@/lib/ipc/forwarder'
 
 const log = createLogger('App')
 const startupTheme = getStartupTheme()
@@ -180,7 +181,7 @@ const AppContent = (): React.JSX.Element => {
   }, [openTab])
 
   useEffect(() => {
-    return window.api.onSettingsOpenRequested((section) => {
+    return subscribeEvent<string>('settings-open-requested', (section) => {
       openSettings(section)
     })
   }, [openSettings])

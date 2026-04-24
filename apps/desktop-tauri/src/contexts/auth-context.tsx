@@ -11,6 +11,8 @@ import {
 import { authService } from '@/services/auth-service'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { deviceService, setupService } from '@/services/device-service'
+import { invoke } from '@/lib/ipc/invoke'
+import { subscribeEvent } from '@/lib/ipc/forwarder'
 
 type AuthStatus =
   | 'idle'
@@ -267,14 +269,14 @@ export const AuthProvider = ({ children }: AuthProviderProps): React.JSX.Element
   }, [])
 
   useEffect(() => {
-    const unsubscribe = window.api.onSessionExpired(() => {
+    const unsubscribe = subscribeEvent<void>('session-expired', () => {
       dispatch({ type: 'RESET_AUTH' })
     })
     return unsubscribe
   }, [])
 
   useEffect(() => {
-    const unsubscribe = window.api.onOAuthError(({ error }) => {
+    const unsubscribe = subscribeEvent<{ error: string }>('o-auth-error', ({ error }) => {
       dispatch({ type: 'SET_ERROR', error: error || 'OAuth sign-in failed' })
       dispatch({ type: 'WIZARD_SET_ERROR', error: error || 'OAuth sign-in failed' })
     })
@@ -282,13 +284,16 @@ export const AuthProvider = ({ children }: AuthProviderProps): React.JSX.Element
   }, [])
 
   useEffect(() => {
-    const unsubscribe = window.api.onLinkingFinalized(({ deviceId, error }) => {
-      if (deviceId) {
-        dispatch({ type: 'LINKING_COMPLETED', deviceId })
-      } else if (error) {
-        dispatch({ type: 'SET_ERROR', error })
+    const unsubscribe = subscribeEvent<{ deviceId?: string; error?: string }>(
+      'linking-finalized',
+      ({ deviceId, error }) => {
+        if (deviceId) {
+          dispatch({ type: 'LINKING_COMPLETED', deviceId })
+        } else if (error) {
+          dispatch({ type: 'SET_ERROR', error })
+        }
       }
-    })
+    )
     return unsubscribe
   }, [])
 
@@ -297,40 +302,43 @@ export const AuthProvider = ({ children }: AuthProviderProps): React.JSX.Element
   }, [state.wizardOAuthState])
 
   useEffect(() => {
-    const unsubscribe = window.api.onOAuthCallback(({ code, state: cbState }) => {
-      if (cbState !== oauthStateRef.current) return
-      oauthStateRef.current = null
+    const unsubscribe = subscribeEvent<{ code: string; state: string }>(
+      'o-auth-callback',
+      ({ code, state: cbState }) => {
+        if (cbState !== oauthStateRef.current) return
+        oauthStateRef.current = null
 
-      void (async () => {
-        try {
-          const result = await authService.setupFirstDevice({
-            provider: 'google',
-            oauthToken: code,
-            state: cbState
-          })
-          if (result.error) {
-            const message = extractErrorMessage(result.error, 'Google sign-in failed')
+        void (async () => {
+          try {
+            const result = await authService.setupFirstDevice({
+              provider: 'google',
+              oauthToken: code,
+              state: cbState
+            })
+            if (result.error) {
+              const message = extractErrorMessage(result.error, 'Google sign-in failed')
+              dispatch({ type: 'SET_ERROR', error: message })
+              dispatch({ type: 'WIZARD_SET_ERROR', error: message })
+              return
+            }
+            dispatch({
+              type: 'OTP_VERIFIED',
+              deviceId: result.deviceId ?? '',
+              needsRecoverySetup: !!result.needsRecoverySetup
+            })
+            if (result.needsRecoveryInput) {
+              dispatch({ type: 'WIZARD_SET_STEP', step: 'linking-choice' })
+            } else if (result.needsRecoverySetup) {
+              dispatch({ type: 'WIZARD_SET_STEP', step: 'recovery-display' })
+            }
+          } catch (err: unknown) {
+            const message = extractErrorMessage(err, 'Google sign-in failed')
             dispatch({ type: 'SET_ERROR', error: message })
             dispatch({ type: 'WIZARD_SET_ERROR', error: message })
-            return
           }
-          dispatch({
-            type: 'OTP_VERIFIED',
-            deviceId: result.deviceId ?? '',
-            needsRecoverySetup: !!result.needsRecoverySetup
-          })
-          if (result.needsRecoveryInput) {
-            dispatch({ type: 'WIZARD_SET_STEP', step: 'linking-choice' })
-          } else if (result.needsRecoverySetup) {
-            dispatch({ type: 'WIZARD_SET_STEP', step: 'recovery-display' })
-          }
-        } catch (err: unknown) {
-          const message = extractErrorMessage(err, 'Google sign-in failed')
-          dispatch({ type: 'SET_ERROR', error: message })
-          dispatch({ type: 'WIZARD_SET_ERROR', error: message })
-        }
-      })()
-    })
+        })()
+      }
+    )
     return unsubscribe
   }, [])
 
@@ -471,7 +479,10 @@ export const AuthProvider = ({ children }: AuthProviderProps): React.JSX.Element
 
   const linkViaRecovery = useCallback(async (phrase: string): Promise<{ deviceId?: string }> => {
     try {
-      const result = await window.api.syncLinking.linkViaRecovery({ recoveryPhrase: phrase })
+      const result = await invoke<{ success: boolean; deviceId?: string; error?: string }>(
+        'sync_linking_link_via_recovery',
+        { recoveryPhrase: phrase }
+      )
       if (!result.success) {
         throw new Error(extractErrorMessage(result.error, 'Recovery failed'))
       }

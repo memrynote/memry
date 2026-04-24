@@ -12,6 +12,7 @@ import { notesService } from '@/services/notes-service'
 import { PdfViewer, ImageViewer, AudioPlayer, VideoPlayer } from '@/components/viewers'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
+import { invoke } from '@/lib/ipc/invoke'
 import type { FileMetadata } from '@memry/rpc/notes'
 
 // ============================================================================
@@ -105,7 +106,7 @@ function FileInfoBar({ file }: { file: FileMetadata }) {
         <Button
           variant="ghost"
           size="sm"
-          onClick={() => window.api.notes.openExternal(file.id)}
+          onClick={() => void invoke('notes_open_external', { args: [file.id] })}
           className="h-8 w-8 p-0 sm:w-auto sm:px-3"
           title="Open in default app"
         >
@@ -115,7 +116,7 @@ function FileInfoBar({ file }: { file: FileMetadata }) {
         <Button
           variant="ghost"
           size="sm"
-          onClick={() => window.api.notes.revealInFinder(file.id)}
+          onClick={() => void invoke('notes_reveal_in_finder', { args: [file.id] })}
           className="h-8 w-8 p-0 sm:w-auto sm:px-3"
           title="Reveal in Finder"
         >

@@ -26,6 +26,7 @@ import type {
 } from './types'
 import { tabReducer } from './reducer'
 import { createInitialState, createTabFromSidebarItem } from './helpers'
+import { subscribeEvent } from '@/lib/ipc/forwarder'
 
 // =============================================================================
 // CONTEXT TYPE
@@ -278,15 +279,18 @@ export const TabProvider = ({
 
   // Listen for settings changes from the database (other windows, settings page)
   useEffect(() => {
-    const unsubscribe = window.api.onSettingsChanged((event) => {
-      if (event.key === 'tabs') {
-        // Update settings from database change
-        dispatch({
-          type: 'UPDATE_SETTINGS',
-          payload: event.value as Partial<TabSettings>
-        })
+    const unsubscribe = subscribeEvent<{ key: string; value: unknown }>(
+      'settings-changed',
+      (event) => {
+        if (event.key === 'tabs') {
+          // Update settings from database change
+          dispatch({
+            type: 'UPDATE_SETTINGS',
+            payload: event.value as Partial<TabSettings>
+          })
+        }
       }
-    })
+    )
 
     return unsubscribe
   }, [])

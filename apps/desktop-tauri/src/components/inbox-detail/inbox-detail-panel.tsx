@@ -27,6 +27,7 @@ import { useRetryTranscription, useUpdateInboxItem } from '@/hooks/use-inbox'
 import { isMac, isInputFocused } from '@/hooks/use-keyboard-shortcuts'
 import type { InboxItem, InboxItemListItem, Folder } from '@/types'
 import { createLogger } from '@/lib/logger'
+import { invoke } from '@/lib/ipc/invoke'
 
 const log = createLogger('Component:InboxDetailPanel')
 
@@ -83,7 +84,13 @@ export const InboxDetailPanel = ({
     queryFn: async () => {
       if (!item?.id) return []
       try {
-        const response = await window.api.inbox.getSuggestions(item.id)
+        const response = await invoke<{
+          suggestions: Array<{
+            destination: { type: string; path?: string }
+            confidence: number
+            suggestedTags?: string[]
+          }>
+        }>('inbox_get_suggestions', { args: [item.id] })
         return response.suggestions || []
       } catch {
         return []
@@ -212,19 +219,17 @@ export const InboxDetailPanel = ({
       const topSuggestion = aiSuggestions[0]
       const suggestedPath = topSuggestion?.destination?.path || ''
 
-      window.api.inbox
-        .trackSuggestion({
-          itemId: item.id,
-          itemType: item.type,
-          suggestedTo: suggestedPath,
-          actualTo: selectedFolder.id,
-          confidence: topSuggestion?.confidence || 0,
-          suggestedTags: topSuggestion?.suggestedTags || [],
-          actualTags: tags
-        })
-        .catch((error) => {
-          log.error('Failed to track suggestion', error)
-        })
+      invoke('inbox_track_suggestion', {
+        itemId: item.id,
+        itemType: item.type,
+        suggestedTo: suggestedPath,
+        actualTo: selectedFolder.id,
+        confidence: topSuggestion?.confidence || 0,
+        suggestedTags: topSuggestion?.suggestedTags || [],
+        actualTags: tags
+      }).catch((error) => {
+        log.error('Failed to track suggestion', error)
+      })
     }
 
     // Use path for folder location - prefer path, fallback to id

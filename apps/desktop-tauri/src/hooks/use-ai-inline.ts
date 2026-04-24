@@ -1,12 +1,13 @@
 import { useState, useEffect, useCallback } from 'react'
 import { createLogger } from '@/lib/logger'
+import { invoke } from '@/lib/ipc/invoke'
 import type { AIInlineSettings } from '@memry/contracts/ai-inline-channels'
 
 const log = createLogger('Hook:AIInline')
 
-const AI_GET_SETTINGS_CHANNEL = 'ai-inline:get-settings'
-const AI_GET_PORT_CHANNEL = 'ai-inline:get-server-port'
-const AI_START_CHANNEL = 'ai-inline:start-server'
+const AI_GET_SETTINGS_CMD = 'ai_inline_get_settings'
+const AI_GET_PORT_CMD = 'ai_inline_get_server_port'
+const AI_START_CMD = 'ai_inline_start_server'
 
 export interface AIInlineState {
   port: number | null
@@ -47,9 +48,7 @@ export function useAIInline(): AIInlineState {
 
     async function init(): Promise<void> {
       try {
-        const settings = (await window.electron.ipcRenderer.invoke(
-          AI_GET_SETTINGS_CHANNEL
-        )) as AIInlineSettings
+        const settings = await invoke<AIInlineSettings>(AI_GET_SETTINGS_CMD)
 
         if (!settings.enabled) {
           if (!cancelled) {
@@ -59,9 +58,7 @@ export function useAIInline(): AIInlineState {
           return
         }
 
-        const existingPort = (await window.electron.ipcRenderer.invoke(AI_GET_PORT_CHANNEL)) as
-          | number
-          | null
+        const existingPort = await invoke<number | null>(AI_GET_PORT_CMD)
         if (existingPort) {
           try {
             const health = await fetch(`http://127.0.0.1:${existingPort}/api/ai/chat`, {
@@ -78,11 +75,11 @@ export function useAIInline(): AIInlineState {
           }
         }
 
-        const result = (await window.electron.ipcRenderer.invoke(AI_START_CHANNEL)) as {
+        const result = await invoke<{
           success: boolean
           port?: number
           error?: string
-        }
+        }>(AI_START_CMD)
 
         if (cancelled) return
 

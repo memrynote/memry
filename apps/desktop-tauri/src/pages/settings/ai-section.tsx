@@ -6,6 +6,8 @@ import { Brain, Loader2, CheckCircle, XCircle, RefreshCw, Mic, Eye, EyeOff } fro
 import { toast } from 'sonner'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { createLogger } from '@/lib/logger'
+import { invoke } from '@/lib/ipc/invoke'
+import { subscribeEvent } from '@/lib/ipc/forwarder'
 import { AIInlineSettings as AIInlineSettingsPanel } from './ai-inline-section'
 import {
   Select,
@@ -75,11 +77,11 @@ export function AISettings() {
     const loadData = async (): Promise<void> => {
       try {
         const [aiSettings, status, voiceConfig, voiceStatus, voiceKeyStatus] = await Promise.all([
-          window.api.settings.getAISettings(),
-          window.api.settings.getAIModelStatus(),
-          window.api.settings.getVoiceTranscriptionSettings(),
-          window.api.settings.getVoiceModelStatus(),
-          window.api.settings.getVoiceTranscriptionOpenAIKeyStatus()
+          invoke<{ enabled: boolean }>('settings_get_ai_settings'),
+          invoke<AIModelStatus>('settings_get_ai_model_status'),
+          invoke<VoiceTranscriptionSettings>('settings_get_voice_transcription_settings'),
+          invoke<VoiceModelStatus>('settings_get_voice_model_status'),
+          invoke<{ hasApiKey: boolean }>('settings_get_voice_transcription_open_ai_key_status')
         ])
         setSettings(aiSettings)
         setModelStatus(status)
@@ -96,7 +98,13 @@ export function AISettings() {
   }, [])
 
   useEffect(() => {
-    const unsubscribe = window.api.onEmbeddingProgress((event) => {
+    const unsubscribe = subscribeEvent<{
+      phase: string
+      progress?: number
+      current?: number
+      total?: number
+      status?: string
+    }>('embedding-progress', (event) => {
       if (event.phase === 'downloading' || event.phase === 'loading') {
         setIsLoadingModel(true)
         setReindexProgress({
@@ -107,7 +115,7 @@ export function AISettings() {
       } else if (event.phase === 'ready') {
         setIsLoadingModel(false)
         setReindexProgress(null)
-        window.api.settings.getAIModelStatus().then(setModelStatus)
+        invoke<AIModelStatus>('settings_get_ai_model_status').then(setModelStatus)
       } else if (event.phase === 'error') {
         setIsLoadingModel(false)
         setReindexProgress(null)
@@ -115,12 +123,16 @@ export function AISettings() {
           prev ? { ...prev, error: event.status ?? 'Unknown error' } : null
         )
       } else {
-        setReindexProgress(event)
+        setReindexProgress({
+          current: event.current ?? 0,
+          total: event.total ?? 0,
+          phase: event.phase
+        })
         if (event.phase === 'complete') {
           setTimeout(() => {
             setIsReindexing(false)
             setReindexProgress(null)
-            window.api.settings.getAIModelStatus().then(setModelStatus)
+            invoke<AIModelStatus>('settings_get_ai_model_status').then(setModelStatus)
           }, 1000)
         }
       }
@@ -129,7 +141,12 @@ export function AISettings() {
   }, [])
 
   useEffect(() => {
-    const unsubscribe = window.api.onVoiceModelProgress((event) => {
+    const unsubscribe = subscribeEvent<{
+      phase: string
+      progress?: number
+      current?: number
+      status?: string
+    }>('voice-model-progress', (event) => {
       if (event.phase === 'downloading' || event.phase === 'loading') {
         setIsDownloadingVoiceModel(true)
         setVoiceModelProgress({
@@ -143,7 +160,7 @@ export function AISettings() {
       if (event.phase === 'ready') {
         setIsDownloadingVoiceModel(false)
         setVoiceModelProgress(null)
-        window.api.settings.getVoiceModelStatus().then(setVoiceModelStatus)
+        invoke<VoiceModelStatus>('settings_get_voice_model_status').then(setVoiceModelStatus)
         return
       }
 
@@ -161,7 +178,10 @@ export function AISettings() {
 
   const handleToggleEnabled = useCallback(async (enabled: boolean) => {
     try {
-      const result = await window.api.settings.setAISettings({ enabled })
+      const result = await invoke<{ success: boolean; error?: string }>(
+        'settings_set_ai_settings',
+        { enabled }
+      )
       if (result.success) {
         setSettings((prev) => ({ ...prev, enabled }))
         toast.success(enabled ? 'AI features enabled' : 'AI features disabled')
@@ -176,10 +196,12 @@ export function AISettings() {
   const handleLoadModel = useCallback(async () => {
     setIsLoadingModel(true)
     try {
-      const result = await window.api.settings.loadAIModel()
+      const result = await invoke<{ success: boolean; message?: string; error?: string }>(
+        'settings_load_ai_model'
+      )
       if (result.success) {
         toast.success(result.message || 'Model loaded successfully')
-        const status = await window.api.settings.getAIModelStatus()
+        const status = await invoke<AIModelStatus>('settings_get_ai_model_status')
         setModelStatus(status)
       } else {
         toast.error(extractErrorMessage(result.error, 'Failed to load model'))
@@ -195,7 +217,12 @@ export function AISettings() {
     setIsReindexing(true)
     setReindexProgress({ current: 0, total: 0, phase: 'scanning' })
     try {
-      const result = await window.api.settings.reindexEmbeddings()
+      const result = await invoke<{
+        success: boolean
+        computed?: number
+        skipped?: number
+        error?: string
+      }>('settings_reindex_embeddings')
       if (result.success) {
         toast.success(
           `Embeddings reindexed: ${result.computed ?? 0} computed, ${result.skipped ?? 0} skipped`
@@ -215,7 +242,10 @@ export function AISettings() {
 
   const handleVoiceProviderChange = useCallback(async (provider: 'local' | 'openai') => {
     try {
-      const result = await window.api.settings.setVoiceTranscriptionSettings({ provider })
+      const result = await invoke<{ success: boolean; error?: string }>(
+        'settings_set_voice_transcription_settings',
+        { provider }
+      )
       if (result.success) {
         setVoiceSettings({ provider })
       } else {
@@ -229,10 +259,12 @@ export function AISettings() {
   const handleDownloadVoiceModel = useCallback(async () => {
     setIsDownloadingVoiceModel(true)
     try {
-      const result = await window.api.settings.downloadVoiceModel()
+      const result = await invoke<{ success: boolean; error?: string }>(
+        'settings_download_voice_model'
+      )
       if (result.success) {
         toast.success('Whisper Small downloaded')
-        const status = await window.api.settings.getVoiceModelStatus()
+        const status = await invoke<VoiceModelStatus>('settings_get_voice_model_status')
         setVoiceModelStatus(status)
       } else {
         toast.error(extractErrorMessage(result.error, 'Failed to download Whisper Small'))
@@ -250,7 +282,10 @@ export function AISettings() {
     }
 
     try {
-      const result = await window.api.settings.setVoiceTranscriptionOpenAIKey(voiceApiKey)
+      const result = await invoke<{ success: boolean; error?: string }>(
+        'settings_set_voice_transcription_open_ai_key',
+        { args: [voiceApiKey] }
+      )
       if (result.success) {
         setVoiceApiKey('')
         setHasVoiceApiKey(true)

@@ -16,6 +16,8 @@ import { LinkInput } from './link-input'
 import { cn } from '@/lib/utils'
 import type { InboxItem, InboxItemListItem, Folder as FolderType, LinkedNote } from '@/types'
 import { createLogger } from '@/lib/logger'
+import { invoke } from '@/lib/ipc/invoke'
+import type { FolderInfo, NoteListItem } from '@memry/rpc/notes'
 
 const log = createLogger('Component:FilingSection')
 
@@ -67,7 +69,7 @@ export const FilingSection = ({
   const { data: vaultFolders = [] } = useQuery({
     queryKey: ['vault', 'folders'],
     queryFn: async () => {
-      const folderInfos = await window.api.notes.getFolders()
+      const folderInfos = await invoke<FolderInfo[]>('notes_get_folders')
       const folders: FolderType[] = [{ id: '', name: 'Notes (root)', path: '' }]
       for (const fi of folderInfos) {
         const normalizedPath = normalizeFolderPath(fi.path)
@@ -94,7 +96,15 @@ export const FilingSection = ({
     queryFn: async () => {
       if (!item?.id) return []
       try {
-        const response = await window.api.inbox.getSuggestions(item.id)
+        const response = await invoke<{
+          suggestions: Array<{
+            destination: { type: 'folder' | 'note'; path?: string }
+            confidence: number
+            reason: string
+            suggestedNote?: NoteListItem
+            suggestedTags?: string[]
+          }>
+        }>('inbox_get_suggestions', { args: [item.id] })
         return response.suggestions || []
       } catch (error) {
         log.error('Failed to fetch AI suggestions', error)
@@ -201,7 +211,10 @@ export const FilingSection = ({
     if (!trimmedSearch || isCreatingFolder) return
     setIsCreatingFolder(true)
     try {
-      const result = await window.api.notes.createFolder(trimmedSearch)
+      const result = await invoke<{ success: boolean; error?: string }>(
+        'notes_create_folder',
+        { args: [trimmedSearch] }
+      )
       if (!result.success) {
         log.error('Failed to create folder', { path: trimmedSearch })
         return

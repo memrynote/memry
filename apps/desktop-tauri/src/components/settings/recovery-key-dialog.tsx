@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button'
 import { Copy, Eye, EyeOff, Key } from '@/lib/icons'
 import { toast } from 'sonner'
 import { extractErrorMessage } from '@/lib/ipc-error'
+import { invoke } from '@/lib/ipc/invoke'
 
 interface RecoveryKeyDialogProps {
   open: boolean
@@ -32,7 +33,9 @@ export function RecoveryKeyDialog({ open, onOpenChange }: RecoveryKeyDialogProps
       setIsLoading(true)
       onOpenChange(true)
       try {
-        const result = await window.api.account.getRecoveryKey()
+        const result = await invoke<{ success: boolean; key?: string; error?: string }>(
+          'account_get_recovery_key'
+        )
         if (!result.success || !result.key) {
           toast.error(result.error ?? 'Failed to retrieve recovery key')
           onOpenChange(false)

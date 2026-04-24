@@ -1,6 +1,7 @@
 import { useEffect, useCallback, useRef } from 'react'
 import { Plus, Link, Mic, Image, FileIcon, Paperclip, Globe } from '@/lib/icons'
 import { cn } from '@/lib/utils'
+import { invoke } from '@/lib/ipc/invoke'
 
 type DetectedType = 'note' | 'link' | 'image' | 'voice' | 'pdf' | 'social'
 
@@ -55,7 +56,7 @@ export function QuickCaptureInput({
     (e: React.KeyboardEvent) => {
       if (e.key === 'Escape') {
         e.preventDefault()
-        window.api.quickCapture.close()
+        void invoke('quick_capture_close')
         return
       }
       if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {

@@ -14,6 +14,7 @@ import {
   onProjectUpdated,
   onProjectDeleted
 } from '@/services/tasks-service'
+import { subscribeEvent } from '@/lib/ipc/forwarder'
 import { createLogger } from '@/lib/logger'
 
 const log = createLogger('Tasks:Queries')
@@ -229,19 +230,16 @@ export function useTaskWorkspaceData({ enabled = true }: { enabled?: boolean }) 
       invalidateProjects()
     }
 
-    const unsubscribeItemSynced =
-      typeof window.api.onItemSynced === 'function'
-        ? window.api.onItemSynced((event) => {
-            if (event.type === 'task') {
-              invalidateTasks()
-              return
-            }
+    const unsubscribeItemSynced = subscribeEvent<{ type: string }>('item-synced', (event) => {
+      if (event.type === 'task') {
+        invalidateTasks()
+        return
+      }
 
-            if (event.type === 'project') {
-              invalidateProjects()
-            }
-          })
-        : () => {}
+      if (event.type === 'project') {
+        invalidateProjects()
+      }
+    })
 
     const unsubscribers = [
       onTaskCreated(invalidateAll),

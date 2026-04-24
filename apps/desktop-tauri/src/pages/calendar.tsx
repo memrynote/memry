@@ -35,6 +35,7 @@ import { createLogger } from '@/lib/logger'
 import { useDayPanel } from '@/contexts/day-panel-context'
 import { useCalendarView } from '@/contexts/calendar-view-context'
 import { DeleteCalendarEventDialog } from '@/components/calendar/delete-calendar-event-dialog'
+import { invoke } from '@/lib/ipc/invoke'
 
 const log = createLogger('CalendarPage')
 
@@ -342,7 +343,9 @@ export function CalendarPage({ className: _className }: CalendarPageProps): Reac
         throw new Error(result.error ?? 'Could not edit this event.')
       }
       if (options.dontAskAgain) {
-        await window.api.settings.setCalendarGoogleSettings({ promoteConfirmDismissed: true })
+        await invoke('settings_set_calendar_google_settings', {
+          promoteConfirmDismissed: true
+        })
       }
       await queryClient.invalidateQueries({ queryKey: ['calendar', 'range'] })
       await openEditPopoverAfterPromote(result.eventId, item, rect)
@@ -376,7 +379,9 @@ export function CalendarPage({ className: _className }: CalendarPageProps): Reac
 
     if (item.sourceType !== 'external_event') return
 
-    const settings = await window.api.settings.getCalendarGoogleSettings()
+    const settings = await invoke<{ promoteConfirmDismissed?: boolean }>(
+      'settings_get_calendar_google_settings'
+    )
     if (settings.promoteConfirmDismissed) {
       await runPromote(item, rect, { dontAskAgain: false })
       return

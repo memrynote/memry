@@ -14,6 +14,7 @@ import { ArchiveConfirmationDialog } from '@/components/bulk/archive-confirmatio
 import { EmptyState } from '@/components/empty-state/empty-state'
 import { KeyboardShortcutsModal } from '@/components/keyboard-shortcuts-modal'
 import { inboxService } from '@/services/inbox-service'
+import { invoke } from '@/lib/ipc/invoke'
 import type { ReminderMetadata, InboxItemType } from '@memry/contracts/inbox-api'
 import { detectClusters, getClusterKey } from '@/lib/ai-clustering'
 import { cn } from '@/lib/utils'
@@ -476,7 +477,11 @@ export function InboxListView({
       setSelectedItemIds(new Set())
 
       try {
-        const result = await window.api.inbox.bulkFile({
+        const result = await invoke<{
+          success: boolean
+          processedCount: number
+          errors: Array<{ itemId: string; error: string }>
+        }>('inbox_bulk_file', {
           itemIds,
           destination: { type: 'folder', path: folderId },
           tags
@@ -507,7 +512,10 @@ export function InboxListView({
     async (tags: string[]): Promise<void> => {
       const itemIds = Array.from(selectedItemIds)
       try {
-        const result = await window.api.inbox.bulkTag({ itemIds, tags })
+        const result = await invoke<{ success: boolean; processedCount: number }>(
+          'inbox_bulk_tag',
+          { itemIds, tags }
+        )
         if (result.success || result.processedCount > 0) {
           queryClient.invalidateQueries({ queryKey: inboxKeys.lists() })
           toast.success(
@@ -604,7 +612,10 @@ export function InboxListView({
         if (willBeEmpty) scheduleEmptyStateReveal()
 
         try {
-          const result = await window.api.inbox.bulkSnooze({ itemIds: idsToSnooze, snoozeUntil })
+          const result = await invoke<{ success: boolean; processedCount: number }>(
+            'inbox_bulk_snooze',
+            { itemIds: idsToSnooze, snoozeUntil }
+          )
           if (result.success || result.processedCount > 0) {
             setPendingArchiveIds((prev) => {
               const next = new Set(prev)

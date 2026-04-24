@@ -39,6 +39,7 @@ import { useTags } from '@/hooks/use-tags'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { getTagColors, COLOR_ROWS, TAG_COLORS } from '@/components/note/tags-row/tag-colors'
 import { cn } from '@/lib/utils'
+import { invoke } from '@/lib/ipc/invoke'
 
 export function TagManager() {
   const { tags, isLoading, error, renameTag, mergeTag, deleteTag } = useTags()
@@ -128,7 +129,7 @@ export function TagManager() {
     async (colorName: string) => {
       if (!colorTarget) return
       try {
-        await window.api.tags.updateTagColor({ tag: colorTarget, color: colorName })
+        await invoke('tags_update_tag_color', { tag: colorTarget, color: colorName })
         toast.success(`Updated color for "${colorTarget}"`)
       } catch (err) {
         toast.error(extractErrorMessage(err, 'Failed to update color'))

@@ -13,6 +13,7 @@ import { Loader2, CheckCircle, XCircle, Eye, EyeOff } from '@/lib/icons'
 import { toast } from 'sonner'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { createLogger } from '@/lib/logger'
+import { invoke } from '@/lib/ipc/invoke'
 import type { AIInlineSettings } from '@memry/contracts/ai-inline-channels'
 import { AI_INLINE_SETTINGS_DEFAULTS } from '@memry/contracts/ai-inline-channels'
 import {
@@ -54,8 +55,8 @@ export function AIInlineSettings(): React.JSX.Element {
     async function load(): Promise<void> {
       try {
         const [result, port] = await Promise.all([
-          window.electron.ipcRenderer.invoke('ai-inline:get-settings') as Promise<AIInlineSettings>,
-          window.electron.ipcRenderer.invoke('ai-inline:get-server-port') as Promise<number | null>
+          invoke<AIInlineSettings>('ai_inline_get_settings'),
+          invoke<number | null>('ai_inline_get_server_port')
         ])
         setSettings(result)
         setServerPort(port)
@@ -70,13 +71,10 @@ export function AIInlineSettings(): React.JSX.Element {
 
   const updateSetting = useCallback(async (updates: Partial<AIInlineSettings>) => {
     try {
-      const result = (await window.electron.ipcRenderer.invoke(
-        'ai-inline:set-settings',
-        updates
-      )) as {
-        success: boolean
-        error?: string
-      }
+      const result = await invoke<{ success: boolean; error?: string }>(
+        'ai_inline_set_settings',
+        updates as unknown as Record<string, unknown>
+      )
       if (result.success) {
         setSettings((prev) => ({ ...prev, ...updates }))
       } else {
@@ -107,19 +105,15 @@ export function AIInlineSettings(): React.JSX.Element {
   const handleTestConnection = useCallback(async () => {
     setIsTesting(true)
     try {
-      const stopResult = (await window.electron.ipcRenderer.invoke('ai-inline:stop-server')) as {
-        success: boolean
-      }
+      const stopResult = await invoke<{ success: boolean }>('ai_inline_stop_server')
       if (!stopResult.success) {
         toast.error('Failed to stop existing server')
         return
       }
 
-      const startResult = (await window.electron.ipcRenderer.invoke('ai-inline:start-server')) as {
-        success: boolean
-        port?: number
-        error?: string
-      }
+      const startResult = await invoke<{ success: boolean; port?: number; error?: string }>(
+        'ai_inline_start_server'
+      )
 
       if (startResult.success && startResult.port) {
         setServerPort(startResult.port)

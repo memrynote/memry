@@ -1,5 +1,5 @@
 // Ported from apps/desktop/src/preload/index.d.ts at the start of Phase H.
-// Electron-only bits (ElectronAPI import, window.electron/window.api globals)
+// Electron-only bits (ElectronAPI import, legacy preload globals)
 // stripped; the Tauri renderer reaches the backend through @/lib/ipc/invoke
 // and @/lib/ipc/events, not a preload bridge.
 import type { GeneratedRpcApi } from '@memry/rpc'
