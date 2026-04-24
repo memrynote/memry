@@ -5,34 +5,77 @@
 | Field | Value |
 |-------|-------|
 | Date | 2026-04-24 |
-| Status | Design approved, awaiting implementation plan |
+| Status | M1 implemented on 2026-04-25; plan revised for M2+ |
 | Author | Kaan (via brainstorming with Claude Code) |
 | Parent initiative | Memry: Electron → Tauri migration (pre-production, no users) |
 | Prerequisite | Spike 0 — Tauri Risk Discovery (2026-04-23 to 2026-04-24) complete with three 🟢 verdicts |
-| Estimated duration | 20-23 sprints (~5-6 months solo) across 10 milestones |
+| Estimated duration | Original total: 20-23 sprints; remaining after M1: ~18-21 sprints (~4.5-5.5 months solo) across M2-M10 |
 | Target platform | macOS only for v1 (Windows/Linux post-v1) |
 
 ## TL;DR
 
-Memry's Electron desktop app is migrated to Tauri 2.x as a complete greenfield
-rewrite. A new `apps/desktop-tauri/` directory is scaffolded from scratch; the
-existing `apps/desktop/` (Electron) is frozen from day 1 and deleted at the end
-of the migration. All node infrastructure in the existing main process is
-rewritten in Rust — no sidecar, no partial preservation. All `packages/*`
-shared libraries are deleted alongside Electron; TypeScript-only parts are
-inlined into `apps/desktop-tauri/src/`.
+Memry's Electron desktop app is being migrated to Tauri 2.x as a complete
+greenfield rewrite. `apps/desktop-tauri/` now exists in-repo with M1 shipped:
+full renderer port, mock IPC seam, Electron freeze guard, mock-lane WebKit e2e
+coverage, and a passing unsigned macOS app bundle. The existing
+`apps/desktop/` (Electron) is frozen and will be deleted at cutover. All node
+infrastructure in the existing main process is rewritten in Rust — no sidecar,
+no partial preservation. `packages/*` still exist today, but the extraction
+work can no longer wait until the very end; it must happen incrementally per
+milestone with final deletion at M10.
 
 The migration is executed as 10 sequential horizontal milestones (M1–M10),
 building the backend layer by layer (skeleton → DB → vault → crypto → notes →
-sync → search → other features → packaging → cutover). Each milestone has
-explicit acceptance gates enforced before the next begins.
+sync → search → other features → packaging → cutover). M1 is done. Each
+remaining milestone has explicit acceptance gates enforced before the next
+begins.
 
-The **renderer UI is ported 1:1 at M1** — all ~942 `.tsx`/`.ts` files,
-Tailwind config, fonts, and assets move from `apps/desktop/src/renderer/` to
-`apps/desktop-tauri/src/` with a mock IPC layer backing every page. Visual
-parity with Electron is achieved on day one of the migration. Subsequent
+The **renderer UI was ported 1:1 in M1** — `apps/desktop/src/renderer/src/`
+(941 files at time of port) is now mirrored in `apps/desktop-tauri/src/` with
+Tauri-specific wrappers, tests, and mock fixtures on top. Visual parity is now
+tracked through checked-in M1 baseline frames under
+`docs/spikes/tauri-risk-discovery/benchmarks/m1-parity/`. Subsequent
 milestones (M2–M8) progressively replace mock `invoke` returns with real Rust
-command implementations; the UI surface itself does not change after M1.
+command implementations; the UI surface should stay largely stable after M1.
+
+## Implementation Status (2026-04-25)
+
+**Verified in-repo**
+
+- `apps/desktop-tauri/` scaffold exists with working `src/` + `src-tauri/`.
+- Electron freeze is active: `apps/desktop/README.md` carries the FROZEN banner
+  and `.github/workflows/electron-freeze.yml` guards `apps/desktop/**`.
+- Renderer port is complete enough to navigate every primary route on mock
+  data. `apps/desktop/src/renderer/src/` has 941 files; `apps/desktop-tauri/src/`
+  now has 991 files including Tauri IPC wrappers and tests.
+- `pnpm --filter @memry/desktop-tauri port:audit` returns zero non-test
+  Electron references.
+- Verification passed on 2026-04-25:
+  `typecheck`, `test`, `test:e2e`, `cargo:check`, `cargo:clippy -- -D warnings`,
+  `bindings:check`, `capability:check`, and `build`.
+- Current verification snapshot:
+  164 Vitest files / 3569 tests passing, 34 Playwright WebKit smoke + visual
+  baseline tests passing, and release bundle emitted at
+  `apps/desktop-tauri/src-tauri/target/release/bundle/macos/Memry.app`.
+
+**M1 carry-forward gaps / corrections**
+
+- The original M1 text said the Spike 0 artifacts would be deleted. That is no
+  longer correct. `docs/spikes/tauri-risk-discovery/` is now baseline evidence
+  and should be retained until final cutover, likely permanently.
+- Visual parity evidence is currently: checked-in Tauri baseline PNGs plus
+  manual side-by-side Electron review. There is no automated paired
+  Electron-vs-Tauri screenshot diff in-repo.
+- The current e2e lane runs WebKit against the Vite dev server with mock IPC.
+  That is correct for M1, but it is not sufficient once real Rust commands land.
+  A real Tauri-runtime e2e lane must start by M5, not M10.
+- `apps/desktop-tauri` still has 121 `@memry/*` imports. Package extraction
+  needs to become rolling work in M2-M8; leaving it all for M10 is too risky.
+- Non-blocking M1 cleanup still exists in warnings:
+  React setState-during-render warning in notes-tree tests,
+  Radix dialog accessibility warnings, CSS `::highlight(...)` parser warnings,
+  and a large production JS chunk warning. These are not migration blockers,
+  but they should not be deferred all the way to cutover.
 
 Key architectural decisions derived from Spike 0:
 
@@ -228,8 +271,8 @@ memry/
 │   ├── desktop-tauri/        ← NEW — this project
 │   └── sync-server/          ← UNCHANGED (Cloudflare Workers, TS)
 ├── packages/                 ← FROZEN, deleted at M10
-├── spikes/                   ← tauri-risk-discovery/ deleted at M1
 ├── docs/                     ← this spec + future plans live here
+│   └── spikes/               ← tauri-risk-discovery retained as benchmark evidence + M1 parity baselines
 ├── pnpm-workspace.yaml       ← updated: desktop-tauri added to apps/*
 └── package.json
 ```
@@ -499,10 +542,12 @@ indistinguishable from the Electron app.
 
 **What changes at the IPC boundary only:**
 
-- `window.api.*` call sites rewritten to `invoke('command_name', args)` via
-  the typed wrapper in `src/lib/ipc/invoke.ts`.
-- `ipcRenderer.on(...)` listeners rewritten to Tauri
-  `listen(eventName, callback)` via `src/lib/ipc/events.ts`.
+- `window.api.*` call sites rewritten behind
+  `src/lib/ipc/forwarder.ts` (`createInvokeForwarder` /
+  `subscribeEvent`), which in turn targets `src/lib/ipc/invoke.ts` and
+  `src/lib/ipc/events.ts`.
+- `ipcRenderer.on(...)` listeners rewritten to Tauri `listen(eventName,
+  callback)` via the same forwarder seam.
 - Command names mapped from Electron channel convention
   (`notes:create` / `notes:list-by-folder`) to Tauri snake_case
   (`notes_create` / `notes_list_by_folder`).
@@ -522,8 +567,11 @@ At M1, every `invoke('command_name', args)` call in the ported renderer
 returns hand-crafted mock data via a stub implementation in
 `src/lib/ipc/invoke.ts`. The app is fully navigable with fake notes, tasks,
 calendar events, inbox items. Each subsequent milestone replaces mock returns
-with real backend calls as Rust commands come online — no UI changes
-required in M2–M8 beyond swapping the invoke implementation.
+with real backend calls as Rust commands come online. In implementation, the
+swap seam is per-domain: services call `createInvokeForwarder('<domain>')`,
+and `src/lib/ipc/invoke.ts` decides whether a command stays on mock or routes
+to Rust via the `realCommands` allowlist. M2–M8 should preserve that pattern
+to avoid churn in the UI layer.
 
 ## 4. Milestones
 
@@ -540,7 +588,16 @@ other commands keep returning mocks. This discipline keeps visual regressions
 bounded and makes each milestone's acceptance gate verifiable by side-by-side
 comparison with the Electron baseline.
 
+**Rolling package extraction model for M2–M8:** M1 still depends on shared
+`@memry/*` modules in 121 places. Waiting until M10 to inline all of that
+creates a large hidden cutover risk. Each milestone must rehome the contracts,
+types, and runtime helpers touched by that domain into `apps/desktop-tauri/src/`
+or `apps/sync-server/src/` as part of the feature work. M10 becomes the final
+zero-import sweep and deletion proof, not the first extraction pass.
+
 ### M1 — Tauri Skeleton + Full Renderer Port
+
+**Status:** Implemented 2026-04-25.
 
 **Scope:** Boot Tauri 2, port the entire renderer UI (~942 `.tsx`/`.ts` files
 plus Tailwind config, fonts, and assets) from
@@ -565,13 +622,22 @@ identical to the Electron dev build.
     installed at identical pinned versions.
   - Assets (icons, images) copied verbatim.
   - `src/preload/` and Electron-only wrapper modules deleted.
-  - All `window.api.*` call sites mechanically rewritten to
-    `invoke('command_name', args)`.
-  - All `ipcRenderer.on` listeners rewritten to Tauri `listen`.
+  - All `window.api.*` call sites mechanically rewritten onto the
+    Tauri command/event seam (`createInvokeForwarder`, `subscribeEvent`,
+    `invoke`, `listen`).
+  - All `ipcRenderer.on` listeners rewritten to Tauri events.
 - **Mock IPC layer** in `src/lib/ipc/invoke.ts`: returns hand-crafted fixture
   data keyed by command name. Fixtures are static TypeScript modules under
   `src/lib/ipc/mocks/` (notes, tasks, calendar, inbox, folders, tags, etc.)
   large enough to exercise each page's rendering (10+ items per collection).
+- `src/lib/ipc/forwarder.ts` compatibility seam that keeps renderer service
+  APIs stable while converting method calls into Tauri command/event names.
+- `scripts/port-audit.ts` to enforce zero non-test Electron references in the
+  ported renderer.
+- Vitest suite and Playwright WebKit mock-lane smoke/parity suite committed
+  directly in `apps/desktop-tauri/` rather than deferred to a later milestone.
+- Checked-in M1 parity baselines under
+  `docs/spikes/tauri-risk-discovery/benchmarks/m1-parity/`.
 - BlockNote editor boots against mock local Y.Doc in renderer (real CRDT in
   M5); typing updates in-memory state only.
 - `tauri.conf.json` with valid capability layout (initially empty beyond
@@ -579,7 +645,8 @@ identical to the Electron dev build.
 - `scripts/generate-bindings.ts` skeleton, `pnpm bindings:check` wired to CI
   (output empty at M1 since no `#[tauri::command]` functions exist yet).
 - `apps/desktop/README.md` gets FROZEN banner; CI path-guard added.
-- Old `spikes/tauri-risk-discovery/` deleted.
+- Spike 0 artifacts retained under `docs/spikes/tauri-risk-discovery/` as
+  living benchmark evidence.
 
 **Acceptance gate:**
 
@@ -594,15 +661,27 @@ identical to the Electron dev build.
   correctly (they don't need to perform real actions in M1).
 - BlockNote editor boots, accepts typing, slash menu opens; typing p95
   < 50ms (S1 threshold).
-- Side-by-side screenshot against the Electron build on macOS shows no
-  visible diff.
+- Checked-in Tauri baseline PNGs exist for the primary routes/states; manual
+  side-by-side Electron review remains the parity check.
 - `pnpm build` produces unsigned release `.app`; the built app opens to the
   same UI as dev mode (validates asset bundling — Risk #22).
-- `pnpm typecheck` clean.
-- `pnpm cargo:check && pnpm cargo:clippy -- -D warnings` clean.
-- No changes in `apps/desktop/`.
+- `pnpm typecheck`, `pnpm test`, `pnpm test:e2e`, `pnpm cargo:check`,
+  `pnpm cargo:clippy -- -D warnings`, `pnpm bindings:check`,
+  `pnpm capability:check`, and `pnpm build` clean.
+- `pnpm test:e2e` currently means the mock-lane Vite/WebKit suite; 34 specs
+  pass as of 2026-04-25.
+- No product-code changes in `apps/desktop/`; only the freeze README banner
+  and freeze CI workflow are allowed M1 edits.
 - Capability sanity check passes: every plugin listed in `tauri.conf.json`
   has matching grants in `capabilities/default.json`.
+
+**Remaining cleanup explicitly not counted as M1 blockers:**
+
+- Remove the remaining test/build warnings before the touched domains harden:
+  notes-tree React render warning, missing dialog descriptions, CSS highlight
+  parser warnings, and large JS chunk warnings.
+- Start replacing `@memry/*` imports in the domains touched by M2 onward;
+  do not let package extraction wait until the end.
 
 **Risks:**
 
@@ -612,6 +691,8 @@ identical to the Electron dev build.
   a cleanup day to catch edge cases.
 - Mock fixture volume — needs enough data for each page to feel real;
   undersized fixtures cause later visual regressions vs Electron.
+- M1 shipped a strong mock-lane test harness, but real Tauri runtime
+  regressions are still invisible until M5 introduces a runtime e2e lane.
 
 **Effort:** L (~2 sprint)
 
@@ -764,8 +845,9 @@ Prototype B), renderer shadow Y.Doc, BlockNote binding.
 - Snapshot compaction: 100 updates → snapshot written, old updates removed,
   replay correct.
 - ≥15 Rust tests across crdt + db::crdt_updates.
-- Playwright WebKit e2e: 5 core scenarios (typing, manual clipboard paste,
-  slash menu, undo/redo, concurrent edit).
+- Tauri-runtime e2e: 5 core scenarios (typing, manual clipboard paste,
+  slash menu, undo/redo, concurrent edit). The existing M1 Vite/WebKit
+  smoke lane remains for fast mock-lane regression checks.
 
 **Risks:**
 
@@ -943,9 +1025,9 @@ links plumbing, global shortcut.
 
 ### M10 — Package Extraction + E2E Port + Electron Cleanup
 
-**Scope:** Rehome every surviving `@memry/*` import, prove both `apps/`
-packages build without `packages/`, port Playwright suite, delete Electron +
-packages.
+**Scope:** Finish the remaining `@memry/*` extraction work, prove both `apps/`
+packages build without `packages/`, complete the behavioral Tauri-runtime e2e
+port, delete Electron + packages.
 
 Ordering inside M10 is strict: **extraction → dry-run build → E2E port →
 dogfood → deletion**. No step runs ahead of the one before it.
@@ -971,9 +1053,11 @@ dogfood → deletion**. No step runs ahead of the one before it.
   `pnpm --filter @memry/sync-server build`. If either fails, restore and
   return to M10.1 to catch the missed import. Do NOT commit the dry-run
   branch.
-- **M10.5 E2E port** — Port `apps/desktop/e2e/**/*.spec.ts` to
-  `apps/desktop-tauri/e2e/specs/**` using the S1 harness workarounds (manual
-  clipboard, `setInputFiles` for drag-drop). Coverage: onboarding, note CRUD,
+- **M10.5 E2E completion** — The M1 mock-lane Playwright suite already exists.
+  Complete the remaining behavioral suite against the real Tauri runtime:
+  port any still-missing `apps/desktop/e2e/**/*.spec.ts` coverage,
+  switch the critical-path journeys to the runtime harness, and preserve the
+  fast M1 mock-lane for parity/smoke checks. Coverage: onboarding, note CRUD,
   2-device sync, calendar event, inbox snooze, search, settings.
 - **M10.6 Dogfood** — 1-week Kaan dogfood period on a real vault. Bug
   backlog collected; blockers fixed before proceeding.
@@ -989,7 +1073,8 @@ dogfood → deletion**. No step runs ahead of the one before it.
 - `pnpm --filter @memry/desktop-tauri build` and
   `pnpm --filter @memry/sync-server build` both succeed on a branch with
   `packages/` deleted.
-- `pnpm --filter @memry/desktop-tauri test:e2e` passes (20+ specs).
+- Runtime-lane Tauri e2e critical paths pass, and the fast mock-lane suite
+  stays green.
 - 1-week dogfood without regression.
 - Bundle size <80MB (Electron ~150MB baseline; Tauri target <60MB).
 - Cold start <2s (Electron ~4s baseline; Tauri target <1.5s).
@@ -1170,7 +1255,8 @@ Zod schemas hand-written.
 | Rust integration | `cargo test --test *` | End-to-end SQLite + migrations |
 | TS unit | Vitest | Utilities, hooks, schema validation |
 | TS component | Vitest + Testing Library | React render + event |
-| E2E | Playwright WebKit | Full Tauri app journeys |
+| E2E (fast lane) | Playwright WebKit | Vite + mock IPC smoke/parity checks |
+| E2E (runtime lane) | Playwright + Tauri runtime harness | Real invoke/event/capability journeys starting in M5 |
 
 Rust test pattern uses in-memory SQLite with migrations applied.
 
@@ -1180,13 +1266,14 @@ Coverage targets:
 - TS: pure utilities ≥80%, components ≥60% behavior-focused.
 - E2E: 20+ critical user journeys.
 
-Playwright notes from Spike 0:
+Playwright notes from Spike 0 and M1:
 
 - BlockNote selector: `.bn-editor`.
 - Clipboard API limitation: manual test checklist; not automated.
 - DataTransfer synthesis broken; use `page.setInputFiles` workaround.
-- Every e2e before-hook calls `devtools_reset_db` + creates test vault +
-  unlocks.
+- In M1, e2e runs against Vite because every command is still mocked.
+- By M5, add a real Tauri-runtime lane with `devtools_reset_db` + creates test
+  vault + unlocks before-hook parity.
 
 ### 5.6 Dev workflow
 
@@ -1373,7 +1460,10 @@ All decisions below were confirmed in the brainstorming session 2026-04-24.
 
 ## 9. Next step
 
-Invoke `superpowers:writing-plans` skill to produce the M1 implementation plan
-(Tauri skeleton + renderer port). Subsequent milestones get their own
+M1 is done. Next executable plan is M2
+(`docs/superpowers/plans/2026-04-25-m2-db-schemas-migrations.md`) with the
+carry-forward constraints above: start incremental package extraction
+immediately and define the first real Tauri-runtime e2e lane no later than M5.
+Subsequent milestones get their own
 plan/execute cycles — a single monolithic plan for all 10 milestones is too
 large to remain coherent.
