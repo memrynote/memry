@@ -1,10 +1,15 @@
 import type { MockRouteMap } from './types'
 import { mockId, mockTimestamp } from './types'
 
+// Mock note shape matches the fields the renderer actually reads (`content`,
+// `title`, `properties`, timestamps). M5 replaces this file with real Rust
+// commands returning the full `NotesRpc.Note` contract; until then, this is
+// the smallest surface that keeps the ported UI happy (editor, list view,
+// journal drawer, graph, search previews).
 interface MockNote {
   id: string
   title: string
-  body: string
+  content: string
   folderId: string | null
   createdAt: number
   updatedAt: number
@@ -16,7 +21,7 @@ const notes: MockNote[] = [
   {
     id: 'note-1',
     title: 'Welcome to Memry (Tauri)',
-    body: 'This is a mock note for M1 visual parity.',
+    content: 'This is a mock note for M1 visual parity.',
     folderId: 'folder-1',
     createdAt: mockTimestamp(7),
     updatedAt: mockTimestamp(1),
@@ -26,7 +31,7 @@ const notes: MockNote[] = [
   {
     id: 'note-2',
     title: 'Second note',
-    body: 'Mock note body with **bold** and *italic*.',
+    content: 'Mock note body with **bold** and *italic*.',
     folderId: 'folder-1',
     createdAt: mockTimestamp(6),
     updatedAt: mockTimestamp(2),
@@ -36,7 +41,7 @@ const notes: MockNote[] = [
   {
     id: 'note-3',
     title: 'Daily journal entry',
-    body: '## Today\n- Task one\n- Task two',
+    content: '## Today\n- Task one\n- Task two',
     folderId: 'folder-1',
     createdAt: mockTimestamp(5),
     updatedAt: mockTimestamp(0),
@@ -46,7 +51,7 @@ const notes: MockNote[] = [
   {
     id: 'note-4',
     title: 'Ideas list',
-    body: 'Random brainstorm of mock content.',
+    content: 'Random brainstorm of mock content.',
     folderId: 'folder-2',
     createdAt: mockTimestamp(4),
     updatedAt: mockTimestamp(0),
@@ -56,7 +61,7 @@ const notes: MockNote[] = [
   {
     id: 'note-5',
     title: 'Travel plans',
-    body: 'Check destinations and dates.',
+    content: 'Check destinations and dates.',
     folderId: 'folder-2',
     createdAt: mockTimestamp(3),
     updatedAt: mockTimestamp(0),
@@ -66,7 +71,7 @@ const notes: MockNote[] = [
   {
     id: 'note-6',
     title: 'Reading notes',
-    body: 'Book highlights.',
+    content: 'Book highlights.',
     folderId: 'folder-2',
     createdAt: mockTimestamp(2),
     updatedAt: mockTimestamp(0),
@@ -76,7 +81,7 @@ const notes: MockNote[] = [
   {
     id: 'note-7',
     title: 'Archive draft',
-    body: 'Older content.',
+    content: 'Older content.',
     folderId: 'folder-3',
     createdAt: mockTimestamp(30),
     updatedAt: mockTimestamp(29),
@@ -86,7 +91,7 @@ const notes: MockNote[] = [
   {
     id: 'note-8',
     title: 'Meeting notes 2026-03-18',
-    body: 'Mock meeting summary.',
+    content: 'Mock meeting summary.',
     folderId: 'folder-3',
     createdAt: mockTimestamp(25),
     updatedAt: mockTimestamp(25),
@@ -96,7 +101,7 @@ const notes: MockNote[] = [
   {
     id: 'note-9',
     title: 'Project Alpha overview',
-    body: 'Mock project details.',
+    content: 'Mock project details.',
     folderId: 'folder-3',
     createdAt: mockTimestamp(20),
     updatedAt: mockTimestamp(10),
@@ -106,7 +111,7 @@ const notes: MockNote[] = [
   {
     id: 'note-10',
     title: 'Untitled note',
-    body: '',
+    content: '',
     folderId: null,
     createdAt: mockTimestamp(1),
     updatedAt: mockTimestamp(1),
@@ -116,7 +121,7 @@ const notes: MockNote[] = [
   {
     id: 'note-11',
     title: 'Untitled note 2',
-    body: '',
+    content: '',
     folderId: null,
     createdAt: mockTimestamp(0),
     updatedAt: mockTimestamp(0),
@@ -126,7 +131,7 @@ const notes: MockNote[] = [
   {
     id: 'note-12',
     title: 'Türkçe başlık testi',
-    body: 'Türkçe karakter testi için örnek not — şıkğüöç.',
+    content: 'Türkçe karakter testi için örnek not — şıkğüöç.',
     folderId: 'folder-1',
     createdAt: mockTimestamp(0),
     updatedAt: mockTimestamp(0),
@@ -153,7 +158,7 @@ export const notesRoutes: MockRouteMap = {
     const note: MockNote = {
       id: mockId('note'),
       title: input.title ?? 'Untitled',
-      body: input.body ?? '',
+      content: input.content ?? '',
       folderId: input.folderId ?? null,
       createdAt: now,
       updatedAt: now,
@@ -161,20 +166,22 @@ export const notesRoutes: MockRouteMap = {
       properties: input.properties ?? {}
     }
     notes.unshift(note)
-    return note
+    // Wrapped in NoteCreateResponse so App.handleNewNote()'s
+    // `result.success && result.note` guard lets the new note open.
+    return { success: true, note }
   },
   notes_update: async (args) => {
     const { id, ...changes } = args as { id: string } & Partial<MockNote>
     const note = notes.find((n) => n.id === id)
     if (!note) throw new Error(`Note ${id} not found`)
     Object.assign(note, changes, { updatedAt: Date.now() })
-    return note
+    return { success: true, note }
   },
   notes_delete: async (args) => {
     const { id } = args as { id: string }
     const note = notes.find((n) => n.id === id)
-    if (!note) return { ok: false }
+    if (!note) return { success: false }
     note.deletedAt = Date.now()
-    return { ok: true }
+    return { success: true }
   }
 }

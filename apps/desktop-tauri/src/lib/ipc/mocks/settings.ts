@@ -1,5 +1,17 @@
 import type { MockRouteMap } from './types'
 
+interface MockGeneralSettings {
+  theme: 'system' | 'light' | 'dark' | 'white'
+  fontSize: 'small' | 'medium' | 'large'
+  fontFamily: string
+  accentColor: string
+  startOnBoot: boolean
+  language: string
+  onboardingCompleted: boolean
+  createInSelectedFolder: boolean
+  clockFormat: '12h' | '24h'
+}
+
 interface MockSettings {
   appearance: {
     theme: 'light' | 'dark' | 'system'
@@ -28,6 +40,7 @@ interface MockSettings {
     shareDiagnostics: boolean
   }
   shortcuts: Record<string, string>
+  general: MockGeneralSettings
 }
 
 function defaults(): MockSettings {
@@ -62,6 +75,17 @@ function defaults(): MockSettings {
       quickCapture: 'Cmd+Shift+N',
       search: 'Cmd+K',
       toggleSidebar: 'Cmd+\\'
+    },
+    general: {
+      theme: 'system',
+      fontSize: 'medium',
+      fontFamily: 'system',
+      accentColor: '#6366f1',
+      startOnBoot: false,
+      language: 'en',
+      onboardingCompleted: false,
+      createInSelectedFolder: true,
+      clockFormat: '12h'
     }
   }
 }
@@ -108,5 +132,16 @@ export const settingsRoutes: MockRouteMap = {
   settings_reset: async () => {
     state = defaults()
     return state
+  },
+
+  // Domain-specific setter/getter the renderer's useGeneralSettings hook
+  // calls. M1 smoke requires this to land the onboarding-completed flag
+  // so FirstRunOnboarding can close. M2 replaces both routes with the
+  // real settings KV commands.
+  settings_get_general_settings: async () => state.general,
+  settings_set_general_settings: async (args) => {
+    const patch = (args ?? {}) as Partial<MockGeneralSettings>
+    state = { ...state, general: { ...state.general, ...patch } }
+    return { success: true }
   }
 }

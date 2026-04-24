@@ -45,4 +45,29 @@ describe('settingsRoutes', () => {
       settingsRoutes.settings_get_section!({ section: 'bogus' })
     ).rejects.toThrow(/unknown settings section/i)
   })
+
+  it('settings_get_general_settings returns the general defaults (onboardingCompleted=false)', async () => {
+    await settingsRoutes.settings_reset!(undefined)
+    const general = (await settingsRoutes.settings_get_general_settings!(undefined)) as {
+      onboardingCompleted: boolean
+      theme: string
+      clockFormat: string
+    }
+    expect(general.onboardingCompleted).toBe(false)
+    expect(general.theme).toBe('system')
+    expect(general.clockFormat).toBe('12h')
+  })
+
+  it('settings_set_general_settings persists the onboarding flag', async () => {
+    await settingsRoutes.settings_reset!(undefined)
+    const result = (await settingsRoutes.settings_set_general_settings!({
+      onboardingCompleted: true
+    })) as { success: boolean }
+    expect(result.success).toBe(true)
+
+    const general = (await settingsRoutes.settings_get_general_settings!(undefined)) as {
+      onboardingCompleted: boolean
+    }
+    expect(general.onboardingCompleted).toBe(true)
+  })
 })

@@ -4,8 +4,8 @@
  */
 
 import { useMemo } from 'react'
+import { getCurrentWindow } from '@tauri-apps/api/window'
 import { useTabs } from '@/contexts/tabs'
-import { invoke } from '@/lib/ipc/invoke'
 import { useKeyboardShortcuts, type KeyboardShortcut } from './use-keyboard-shortcuts-base'
 
 /**
@@ -45,7 +45,8 @@ export const useTabKeyboardShortcuts = (): void => {
           const isInboxTab = activeTab.type === 'inbox'
 
           if (isOnlyTab && isSingleGroup && isInboxTab) {
-            void invoke('window_close')
+            // Window chrome uses the Tauri window API directly — not IPC.
+            void getCurrentWindow().close()
           } else {
             closeTab(activeTab.id, state.activeGroupId)
           }
