@@ -57,7 +57,7 @@ import { graphKeys } from '@/hooks/use-graph-data'
 import { NoteBreadcrumb } from '@/components/note/note-breadcrumb'
 import { FindBar } from '@/components/find-bar/find-bar'
 import { useFindInPage } from '@/hooks/use-find-in-page'
-import { ContentDivider } from '@renderer/components/note/content-area'
+import { ContentDivider } from '@/components/note/content-area'
 
 const log = createLogger('Page:Note')
 
