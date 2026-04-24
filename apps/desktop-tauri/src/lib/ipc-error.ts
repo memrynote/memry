@@ -1,31 +1,20 @@
-const IPC_PREFIX_PATTERNS = [
-  /^Error occurred in handler for ['"][^'"]+['"]:\s*(?:Error:\s*)?/i,
-  /^Error invoking remote method ['"][^'"]+['"]:\s*(?:Error:\s*)?/i,
-  /^Error:\s*/i
-]
-
-function stripKnownPrefixes(message: string): string {
-  let current = message.trim()
-  let changed = true
-
-  while (changed && current.length > 0) {
-    changed = false
-    for (const pattern of IPC_PREFIX_PATTERNS) {
-      const next = current.replace(pattern, '').trim()
-      if (next !== current) {
-        current = next
-        changed = true
-      }
-    }
+/**
+ * Extract a human-readable message from an unknown error value.
+ *
+ * Tauri surfaces backend failures as plain strings (serialized `AppError`s) or
+ * `Error` objects. This helper normalises both into a short, user-facing
+ * string while falling back to `fallback` when no useful content is present.
+ *
+ * The Electron-era version stripped `Error occurred in handler for '...'` and
+ * similar `ipcMain.invoke` framing; Tauri has no analogous prefix, so the
+ * implementation is intentionally small.
+ */
+export function extractErrorMessage(err: unknown, fallback: string): string {
+  if (err instanceof Error) return err.message || fallback
+  if (typeof err === 'string') return err || fallback
+  if (typeof err === 'object' && err !== null && 'message' in err) {
+    const message = (err as { message: unknown }).message
+    if (typeof message === 'string') return message || fallback
   }
-
-  return current
-}
-
-export function extractErrorMessage(error: unknown, fallback = 'Something went wrong'): string {
-  const raw = error instanceof Error ? error.message : typeof error === 'string' ? error : ''
-  if (!raw) return fallback
-
-  const message = stripKnownPrefixes(raw)
-  return message || fallback
+  return fallback
 }
