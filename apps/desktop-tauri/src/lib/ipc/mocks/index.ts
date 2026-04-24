@@ -10,6 +10,7 @@ import { bookmarksRoutes } from './bookmarks'
 import { templatesRoutes } from './templates'
 import { settingsRoutes } from './settings'
 import { vaultRoutes } from './vault'
+import { authRoutes } from './auth'
 
 /**
  * Aggregated route map for the mock IPC router.
@@ -33,7 +34,8 @@ const routes: MockRouteMap = {
   ...bookmarksRoutes,
   ...templatesRoutes,
   ...settingsRoutes,
-  ...vaultRoutes
+  ...vaultRoutes,
+  ...authRoutes
 }
 
 /**
