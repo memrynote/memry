@@ -3,21 +3,32 @@ import { describe, it, expect } from 'vitest'
 import { notesRoutes } from './notes'
 
 describe('notesRoutes', () => {
-  it('notes_list returns only non-deleted notes (12 fixtures)', async () => {
-    const list = (await notesRoutes.notes_list!(undefined)) as Array<{ deletedAt: number | null }>
-    expect(list).toHaveLength(12)
-    expect(list.every((n) => n.deletedAt === null)).toBe(true)
+  it('notes_list returns NoteListResponse with 12 non-deleted notes', async () => {
+    // #given list of 12 fixtures, none deleted
+    // #when listing
+    const res = (await notesRoutes.notes_list!(undefined)) as {
+      notes: Array<{ path: string; modified: Date }>
+      total: number
+      hasMore: boolean
+    }
+    // #then
+    expect(res.notes).toHaveLength(12)
+    expect(res.total).toBe(12)
+    expect(res.hasMore).toBe(false)
+    // Every item must have NoteListItem-shaped fields the renderer tree sorts by
+    expect(res.notes.every((n) => typeof n.path === 'string' && n.modified instanceof Date)).toBe(
+      true
+    )
   })
 
-  it('notes_list_by_folder filters notes to that folder', async () => {
-    const list = (await notesRoutes.notes_list_by_folder!({ folderId: 'folder-1' })) as Array<{
-      folderId: string | null
-    }>
-    expect(list.length).toBeGreaterThanOrEqual(4)
-    expect(list.every((n) => n.folderId === 'folder-1')).toBe(true)
+  it('notes_list_by_folder filters to the requested folder', async () => {
+    const res = (await notesRoutes.notes_list_by_folder!({ folderId: 'folder-1' })) as {
+      notes: Array<{ path: string }>
+    }
+    expect(res.notes.length).toBeGreaterThanOrEqual(4)
   })
 
-  it('notes_get returns the note when it exists', async () => {
+  it('notes_get returns the internal note record for a known id', async () => {
     const note = (await notesRoutes.notes_get!({ id: 'note-1' })) as {
       id: string
       title: string
@@ -40,6 +51,7 @@ describe('notesRoutes', () => {
       note: {
         id: string
         title: string
+        path: string
         content: string
         folderId: string | null
         createdAt: number
@@ -52,12 +64,15 @@ describe('notesRoutes', () => {
     expect(result.note.title).toBe('New mock note')
     expect(result.note.content).toBe('Body')
     expect(result.note.folderId).toBe('folder-1')
+    expect(result.note.path).toContain('folder-1')
     expect(result.note.createdAt).toBeGreaterThan(0)
     expect(result.note.updatedAt).toBe(result.note.createdAt)
     expect(result.note.deletedAt).toBeNull()
 
-    const list = (await notesRoutes.notes_list!(undefined)) as Array<{ id: string }>
-    expect(list.some((n) => n.id === result.note.id)).toBe(true)
+    const list = (await notesRoutes.notes_list!(undefined)) as {
+      notes: Array<{ id: string }>
+    }
+    expect(list.notes.some((n) => n.id === result.note.id)).toBe(true)
   })
 
   it('notes_update wraps the mutated note in NoteUpdateResponse and bumps updatedAt', async () => {
@@ -78,9 +93,9 @@ describe('notesRoutes', () => {
   })
 
   it('notes_update rejects when id is unknown', async () => {
-    await expect(
-      notesRoutes.notes_update!({ id: 'note-missing', title: 'x' })
-    ).rejects.toThrow(/not found/i)
+    await expect(notesRoutes.notes_update!({ id: 'note-missing', title: 'x' })).rejects.toThrow(
+      /not found/i
+    )
   })
 
   it('notes_delete soft-deletes the note (sets deletedAt) and returns success', async () => {
@@ -91,8 +106,10 @@ describe('notesRoutes', () => {
       success: boolean
     }
     expect(result.success).toBe(true)
-    const list = (await notesRoutes.notes_list!(undefined)) as Array<{ id: string }>
-    expect(list.some((n) => n.id === created.note.id)).toBe(false)
+    const list = (await notesRoutes.notes_list!(undefined)) as {
+      notes: Array<{ id: string }>
+    }
+    expect(list.notes.some((n) => n.id === created.note.id)).toBe(false)
   })
 
   it('notes_delete returns success:false for an unknown id', async () => {
@@ -103,7 +120,9 @@ describe('notesRoutes', () => {
   })
 
   it('includes a note with Turkish characters to cover UTF-8 handling', async () => {
-    const list = (await notesRoutes.notes_list!(undefined)) as Array<{ title: string }>
-    expect(list.some((n) => /[ğüşıöçĞÜŞİÖÇ]/.test(n.title))).toBe(true)
+    const list = (await notesRoutes.notes_list!(undefined)) as {
+      notes: Array<{ title: string }>
+    }
+    expect(list.notes.some((n) => /[ğüşıöçĞÜŞİÖÇ]/.test(n.title))).toBe(true)
   })
 })

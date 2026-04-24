@@ -18,6 +18,7 @@ import { propertiesRoutes } from './properties'
 import { remindersRoutes } from './reminders'
 import { savedFiltersRoutes } from './saved-filters'
 import { updaterRoutes } from './updater'
+import { aiInlineRoutes } from './ai-inline'
 
 /**
  * Aggregated route map for the mock IPC router.
@@ -49,7 +50,8 @@ const routes: MockRouteMap = {
   ...propertiesRoutes,
   ...remindersRoutes,
   ...savedFiltersRoutes,
-  ...updaterRoutes
+  ...updaterRoutes,
+  ...aiInlineRoutes
 }
 
 /**

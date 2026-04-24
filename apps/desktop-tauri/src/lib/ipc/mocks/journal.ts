@@ -85,5 +85,30 @@ export const journalRoutes: MockRouteMap = {
     const idx = entries.findIndex((e) => e.id === id)
     if (idx >= 0) entries.splice(idx, 1)
     return { ok: true }
-  }
+  },
+
+  // Contract: HeatmapEntry[] — { date, characterCount, level }
+  journal_get_heatmap: async () =>
+    entries.map((e) => {
+      const characterCount = e.body.length
+      const level: 0 | 1 | 2 | 3 | 4 =
+        characterCount === 0
+          ? 0
+          : characterCount < 40
+            ? 1
+            : characterCount < 80
+              ? 2
+              : characterCount < 120
+                ? 3
+                : 4
+      return { date: e.date, characterCount, level }
+    }),
+  journal_get_month: async () => entries,
+  journal_get_year_stats: async () => ({
+    year: new Date().getFullYear(),
+    totalEntries: entries.length,
+    totalCharacters: entries.reduce((sum, e) => sum + e.body.length, 0),
+    streak: { current: 0, longest: 0 }
+  }),
+  journal_get_day_context: async () => ({ tasks: [], events: [], overdueCount: 0 })
 }

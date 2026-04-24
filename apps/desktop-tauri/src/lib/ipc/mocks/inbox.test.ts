@@ -3,18 +3,24 @@ import { describe, it, expect } from 'vitest'
 import { inboxRoutes } from './inbox'
 
 describe('inboxRoutes', () => {
-  it('inbox_list returns at least 10 items with a mix of statuses', async () => {
-    const list = (await inboxRoutes.inbox_list!(undefined)) as Array<{ status: string }>
-    expect(list.length).toBeGreaterThanOrEqual(10)
-    const statuses = new Set(list.map((i) => i.status))
+  it('inbox_list returns InboxListResponse with at least 10 items across statuses', async () => {
+    const res = (await inboxRoutes.inbox_list!(undefined)) as {
+      items: Array<{ status: string }>
+      total: number
+      hasMore: boolean
+    }
+    expect(res.items.length).toBeGreaterThanOrEqual(10)
+    const statuses = new Set(res.items.map((i) => i.status))
     expect(statuses.size).toBeGreaterThanOrEqual(2)
+    expect(res.total).toBe(res.items.length)
+    expect(res.hasMore).toBe(false)
   })
 
-  it('inbox_list_archived returns only archived items', async () => {
-    const list = (await inboxRoutes.inbox_list_archived!(undefined)) as Array<{
-      status: string
-    }>
-    expect(list.every((i) => i.status === 'archived')).toBe(true)
+  it('inbox_list_archived returns InboxListResponse with only archived items', async () => {
+    const res = (await inboxRoutes.inbox_list_archived!(undefined)) as {
+      items: Array<{ status: string }>
+    }
+    expect(res.items.every((i) => i.status === 'archived')).toBe(true)
   })
 
   it('inbox_get returns item by id', async () => {

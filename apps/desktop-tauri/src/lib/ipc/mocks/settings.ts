@@ -143,5 +143,27 @@ export const settingsRoutes: MockRouteMap = {
     const patch = (args ?? {}) as Partial<MockGeneralSettings>
     state = { ...state, general: { ...state.general, ...patch } }
     return { success: true }
-  }
+  },
+
+  // Calendar preferences — consumed by use-calendar-preferences
+  settings_get_calendar_settings: async () => ({
+    dayCellClickBehavior: 'journal' as const,
+    calendarPageClickOverride: 'calendar' as const,
+    defaultTargetCalendarId: null,
+    onboardingCompleted: true,
+    promoteConfirmDismissed: false
+  }),
+  settings_set_calendar_settings: async () => ({ success: true }),
+
+  // Tab + startup settings
+  settings_get_tab_settings: async () => ({}),
+  settings_set_tab_settings: async () => ({ success: true }),
+
+  // Journal settings
+  settings_get_journal_settings: async () => ({}),
+  settings_set_journal_settings: async () => ({ success: true }),
+
+  // AI settings (separate from AI Inline below)
+  settings_get_ai_settings: async () => ({ enabled: false }),
+  settings_set_ai_settings: async () => ({ success: true })
 }

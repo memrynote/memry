@@ -155,8 +155,15 @@ const fixtures: Array<Omit<MockInboxItem, 'id'>> = [
 const items: MockInboxItem[] = fixtures.map((f, i) => ({ id: `inbox-${i + 1}`, ...f }))
 
 export const inboxRoutes: MockRouteMap = {
-  inbox_list: async () => items.filter((i) => i.status !== 'archived'),
-  inbox_list_archived: async () => items.filter((i) => i.status === 'archived'),
+  // Contract: InboxListResponse = { items, total, hasMore }
+  inbox_list: async () => {
+    const active = items.filter((i) => i.status !== 'archived')
+    return { items: active, total: active.length, hasMore: false }
+  },
+  inbox_list_archived: async () => {
+    const archived = items.filter((i) => i.status === 'archived')
+    return { items: archived, total: archived.length, hasMore: false }
+  },
   inbox_get: async (args) => {
     const { id } = args as { id: string }
     const item = items.find((i) => i.id === id)
@@ -240,5 +247,23 @@ export const inboxRoutes: MockRouteMap = {
     archived: items.filter((i) => i.status === 'archived').length
   }),
   inbox_filing_history: async () => items.filter((i) => i.status === 'filed'),
-  inbox_jobs: async () => ({ jobs: [] })
+  inbox_jobs: async () => ({ jobs: [] }),
+
+  // Aliases (forwarder converts camelCase service methods to snake_case
+  // commands — getStats → get_stats, getSnoozed → get_snoozed, getJobs →
+  // get_jobs). Must match the real Rust command names once M2+ lands.
+  inbox_get_stats: async () => ({
+    total: items.length,
+    unread: items.filter((i) => i.status === 'unread').length,
+    snoozed: items.filter((i) => i.status === 'snoozed').length,
+    archived: items.filter((i) => i.status === 'archived').length
+  }),
+  inbox_get_snoozed: async () => items.filter((i) => i.status === 'snoozed'),
+  inbox_get_jobs: async () => ({ jobs: [] }),
+  inbox_get_filing_history: async () => ({ entries: [] }),
+  inbox_get_tags: async () => [],
+  inbox_get_suggestions: async () => ({ suggestions: [] }),
+  inbox_get_patterns: async () => ({}),
+  inbox_get_stale_threshold: async () => 7,
+  inbox_set_stale_threshold: async () => ({ success: true })
 }

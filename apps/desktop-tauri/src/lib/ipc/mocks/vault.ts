@@ -1,54 +1,81 @@
 import type { MockRouteMap } from './types'
 import { mockTimestamp } from './types'
 
+/**
+ * Vault mock handlers.
+ *
+ * Shapes mirror preload-types.ts: VaultInfo (path/name/noteCount/taskCount/
+ * lastOpened/isDefault) and GetVaultsResponse ({ vaults, currentVault }).
+ * The older mock returned a bare array which made the renderer crash with
+ * "undefined is not an object (evaluating 'vaults.length')" in
+ * vault-onboarding.tsx.
+ */
 interface MockVault {
-  id: string
-  name: string
   path: string
-  lastOpenedAt: number
-  isActive: boolean
+  name: string
+  noteCount: number
+  taskCount: number
+  lastOpened: string
+  isDefault: boolean
 }
 
 interface MockVaultStatus {
-  state: 'open' | 'closed' | 'locked'
+  isOpen: boolean
   path: string | null
-  noteCount: number
+  isIndexing: boolean
   indexProgress: number
+  error: string | null
+}
+
+interface MockVaultConfig {
+  excludePatterns: string[]
+  defaultNoteFolder: string
+  journalFolder: string
+  attachmentsFolder: string
 }
 
 const vaults: MockVault[] = [
   {
-    id: 'vault-primary',
-    name: 'Primary (Mock)',
     path: '/mock/path/primary',
-    lastOpenedAt: mockTimestamp(0),
-    isActive: true
+    name: 'Primary (Mock)',
+    noteCount: 12,
+    taskCount: 5,
+    lastOpened: new Date(mockTimestamp(0)).toISOString(),
+    isDefault: true
   },
   {
-    id: 'vault-secondary',
-    name: 'Secondary (Mock)',
     path: '/mock/path/secondary',
-    lastOpenedAt: mockTimestamp(5),
-    isActive: false
+    name: 'Secondary (Mock)',
+    noteCount: 3,
+    taskCount: 0,
+    lastOpened: new Date(mockTimestamp(5)).toISOString(),
+    isDefault: false
   }
 ]
 
+let currentVault: string | null = vaults[0]!.path
+
 let status: MockVaultStatus = {
-  state: 'open',
+  isOpen: true,
   path: vaults[0]!.path,
-  noteCount: 12,
-  indexProgress: 1
+  isIndexing: false,
+  indexProgress: 1,
+  error: null
 }
 
-let config = {
-  name: vaults[0]!.name,
-  path: vaults[0]!.path,
-  crdtEnabled: true,
-  autoOpenLast: true
+let config: MockVaultConfig = {
+  excludePatterns: ['.git', 'node_modules', '.DS_Store'],
+  defaultNoteFolder: 'Notes',
+  journalFolder: 'Journal',
+  attachmentsFolder: 'attachments'
+}
+
+function vaultByPath(path: string): MockVault | undefined {
+  return vaults.find((v) => v.path === path)
 }
 
 export const vaultRoutes: MockRouteMap = {
-  vault_get_all: async () => vaults,
+  vault_get_all: async () => ({ vaults, currentVault }),
   vault_get_status: async () => status,
   vault_get_config: async () => config,
   vault_update_config: async (args) => {
@@ -57,33 +84,52 @@ export const vaultRoutes: MockRouteMap = {
     return config
   },
   vault_select: async (args) => {
-    const { path } = args as { path: string }
-    return {
-      id: 'vault-selected',
+    const { path } = (args ?? {}) as { path?: string }
+    const resolved = path ?? '/mock/path/primary'
+    const existing = vaultByPath(resolved)
+    const vault: MockVault = existing ?? {
+      path: resolved,
       name: 'Selected (Mock)',
-      path,
-      lastOpenedAt: Date.now(),
-      isActive: true
+      noteCount: 0,
+      taskCount: 0,
+      lastOpened: new Date().toISOString(),
+      isDefault: false
     }
+    if (!existing) vaults.push(vault)
+    currentVault = resolved
+    return { success: true, vault }
+  },
+  vault_create: async (args) => {
+    const { path, name } = args as { path: string; name: string }
+    const vault: MockVault = {
+      path,
+      name,
+      noteCount: 0,
+      taskCount: 0,
+      lastOpened: new Date().toISOString(),
+      isDefault: false
+    }
+    vaults.push(vault)
+    currentVault = path
+    return { success: true, vault }
   },
   vault_switch: async (args) => {
     const { path } = args as { path: string }
-    vaults.forEach((v) => {
-      v.isActive = v.path === path
-    })
-    status = { ...status, path }
-    return { ok: true, active: path }
+    currentVault = path
+    status = { ...status, path, isOpen: true }
+    return { success: true }
   },
   vault_remove: async (args) => {
     const { path } = args as { path: string }
     const idx = vaults.findIndex((v) => v.path === path)
     if (idx >= 0) vaults.splice(idx, 1)
-    return { ok: true }
+    if (currentVault === path) currentVault = vaults[0]?.path ?? null
+    return { success: true }
   },
   vault_close: async () => {
-    status = { ...status, state: 'closed' }
-    return status
+    status = { ...status, isOpen: false, path: null }
+    return { success: true }
   },
-  vault_reveal: async () => ({ ok: true }),
-  vault_reindex: async () => ({ ok: true, filesIndexed: 12, duration: 123 })
+  vault_reveal: async () => ({ success: true }),
+  vault_reindex: async () => ({ success: true, filesIndexed: 12, duration: 123 })
 }

@@ -40,6 +40,9 @@ const noteTagMap: Record<string, string[]> = {
 
 export const tagsRoutes: MockRouteMap = {
   tags_list: async () => tags,
+  // Sidebar reads { tag, color, count }[]
+  tags_get_all_with_counts: async () =>
+    tags.map((t) => ({ tag: t.name, color: t.color ?? '#a3a3a3', count: t.count })),
   tags_get: async (args) => {
     const { id } = args as { id: string }
     const tag = tags.find((t) => t.id === id)
