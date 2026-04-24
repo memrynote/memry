@@ -49,7 +49,11 @@ const TESTS: Omit<TestResult, 'status' | 'notes' | 'evidence'>[] = [
 
 function runPlaywright(): void {
   try {
-    execSync('pnpm exec playwright test --reporter=json', {
+    // Run with the reporters declared in playwright.config.ts so the JSON
+    // reporter writes results.json to disk. Passing --reporter=json on the CLI
+    // would override the config and emit JSON to stdout instead, leaving
+    // PLAYWRIGHT_JSON stale or missing.
+    execSync('pnpm exec playwright test', {
       cwd: APP_DIR,
       stdio: ['ignore', 'pipe', 'pipe'],
       encoding: 'utf8'
@@ -73,9 +77,14 @@ function parsePlaywrightResults(): Record<number, { status: 'pass' | 'fail'; not
         const idMatch = spec.title.match(/test-(\d+)-/)
         if (idMatch) {
           const id = parseInt(idMatch[1], 10)
-          const testRun = spec.tests?.[0]?.results?.[0]
-          const status = testRun?.status === 'passed' ? 'pass' : 'fail'
-          const errorMessage = testRun?.error?.message ?? ''
+          // playwright.config has retries: 1, so a flaky test has multiple
+          // entries in results[]. Use the final attempt — that's Playwright's
+          // terminal verdict. Reading results[0] would mark retry-passes as
+          // failures and permanently skew s1-feature-matrix.csv.
+          const attempts = spec.tests?.[0]?.results ?? []
+          const finalAttempt = attempts[attempts.length - 1]
+          const status = finalAttempt?.status === 'passed' ? 'pass' : 'fail'
+          const errorMessage = finalAttempt?.error?.message ?? ''
           results[id] = { status, notes: errorMessage.replace(/\n/g, ' ').slice(0, 200) }
         }
       }
