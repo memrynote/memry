@@ -2,7 +2,7 @@ pub mod commands;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    tauri::Builder::default()
+    let builder = tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
         .setup(|_app| {
             tracing_subscriber::fmt()
@@ -14,7 +14,9 @@ pub fn run() {
                 .init();
             tracing::info!("memry desktop-tauri booting (m1 scaffold)");
             Ok(())
-        })
+        });
+
+    commands::register(builder)
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
