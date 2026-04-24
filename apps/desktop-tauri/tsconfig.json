@@ -21,6 +21,7 @@
     "baseUrl": ".",
     "paths": {
       "@/*": ["src/*"],
+      "@tests/*": ["tests/*"],
       "@memry/contracts/*": ["../../packages/contracts/src/*"],
       "@memry/contracts": ["../../packages/contracts/src"],
       "@memry/domain-inbox/*": ["../../packages/domain-inbox/src/*"],

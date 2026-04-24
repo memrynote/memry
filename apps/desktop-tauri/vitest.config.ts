@@ -13,7 +13,8 @@ export default defineConfig({
   },
   resolve: {
     alias: {
-      '@': resolve(root, 'src')
+      '@': resolve(root, 'src'),
+      '@tests': resolve(root, 'tests')
     }
   }
 })
