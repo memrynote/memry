@@ -1,1 +1,0 @@
-ALTER TABLE `tag_definitions` ADD `clock` text;

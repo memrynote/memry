@@ -1,1 +1,0 @@
-ALTER TABLE `sync_devices` ADD `signing_public_key` text;

@@ -1,1 +1,0 @@
-ALTER TABLE `inbox_items` ADD `capture_source` text;
