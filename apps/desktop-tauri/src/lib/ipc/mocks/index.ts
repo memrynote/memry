@@ -14,6 +14,7 @@ import { authRoutes } from './auth'
 import { syncRoutes } from './sync'
 import { searchRoutes } from './search'
 import { graphRoutes } from './graph'
+import { propertiesRoutes } from './properties'
 
 /**
  * Aggregated route map for the mock IPC router.
@@ -41,7 +42,8 @@ const routes: MockRouteMap = {
   ...authRoutes,
   ...syncRoutes,
   ...searchRoutes,
-  ...graphRoutes
+  ...graphRoutes,
+  ...propertiesRoutes
 }
 
 /**
