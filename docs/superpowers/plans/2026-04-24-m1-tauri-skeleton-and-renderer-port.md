@@ -378,6 +378,17 @@ fn main() {
 }
 ```
 
+**CSP is intentionally narrow and stays that way.** Per spec Section 5.7,
+the renderer makes zero outbound HTTPS calls for the entire migration. All
+third-party traffic (LLM providers, sync server, attachment uploads) is
+initiated by Rust via `reqwest` / `tokio-tungstenite` and returns to the
+renderer via Tauri IPC (invoke result for small payloads, `Channel<u8>` for
+streams). Do NOT widen `connect-src` when later milestones introduce AI
+(M8.12) or networked sync (M6) — add a Rust command instead. If a reviewer
+ever proposes whitelisting `https://api.openai.com` etc. in this CSP, push
+back: the design explicitly routes that traffic through the Rust boundary
+so an XSS cannot exfiltrate credentials.
+
 - [ ] **Step 2.5: Write `apps/desktop-tauri/src-tauri/capabilities/default.json`**
 
 ```json
@@ -730,15 +741,45 @@ jobs:
   check-frozen:
     runs-on: ubuntu-latest
     steps:
-      - name: Fail if apps/desktop/ modified
+      - name: Allow if cutover or emergency-fix label present
+        id: check-labels
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const labels = context.payload.pull_request.labels.map(l => l.name);
+            const allowed = ['migration/m10-cutover', 'migration/emergency-fix'];
+            const match = labels.find(l => allowed.includes(l));
+            if (match) {
+              core.info(`Allowed by label: ${match}`);
+              core.setOutput('allowed', 'true');
+            } else {
+              core.setOutput('allowed', 'false');
+            }
+
+      - name: Fail if apps/desktop/ modified without bypass label
+        if: steps.check-labels.outputs.allowed != 'true'
         run: |
           echo "::error::apps/desktop/ is FROZEN during Tauri migration."
-          echo "::error::No new commits allowed. See apps/desktop/README.md for details."
-          echo "::error::Direct to apps/desktop-tauri/ or coordinate with Kaan for emergency exceptions."
+          echo "::error::Apply label 'migration/m10-cutover' for the M10 cutover PR,"
+          echo "::error::or 'migration/emergency-fix' for a rare exception."
+          echo "::error::Otherwise, direct to apps/desktop-tauri/."
+          echo "::error::See apps/desktop/README.md for details."
           exit 1
 ```
 
-This workflow fires only when `apps/desktop/**` paths change in a PR, preventing accidental drift.
+This workflow fires on any PR touching `apps/desktop/**`. The label-based
+bypass encodes the spec's freeze exception policy (Section "Electron freeze
+discipline"). The two recognized bypass labels are:
+
+- `migration/m10-cutover` — applied by Kaan on the single M10 cutover PR
+  that does `git rm -rf apps/desktop/`.
+- `migration/emergency-fix` — applied only when a pre-production blocker
+  forces a tiny Electron patch before Tauri reaches parity. Expected use
+  count across the migration: 0-1.
+
+Both labels should be configured as **protected labels** in repo settings
+so only Kaan can apply them. The guard itself is deleted in the M10 cutover
+PR — alongside `apps/desktop/`, the workflow file is removed.
 
 - [ ] **Step 5.5: Verify workflow YAML is valid**
 
