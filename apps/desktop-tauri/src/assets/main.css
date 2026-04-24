@@ -1,0 +1,33 @@
+@import './base.css';
+
+:root {
+  --chrome-width: 180px;
+}
+
+body {
+}
+
+*:focus-visible {
+  outline: none;
+}
+
+/* Find in page — CSS Custom Highlight API */
+::highlight(find-matches) {
+  background-color: #fde68a;
+  color: inherit;
+}
+
+::highlight(find-current) {
+  background-color: #f59e0b;
+  color: white;
+}
+
+.dark ::highlight(find-matches) {
+  background-color: rgba(251, 191, 36, 0.35);
+  color: inherit;
+}
+
+.dark ::highlight(find-current) {
+  background-color: rgba(245, 158, 11, 0.75);
+  color: white;
+}
