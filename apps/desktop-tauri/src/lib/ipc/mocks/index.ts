@@ -2,6 +2,7 @@ import type { MockRouteMap } from './types'
 import { notesRoutes } from './notes'
 import { tasksRoutes } from './tasks'
 import { foldersRoutes } from './folders'
+import { calendarRoutes } from './calendar'
 
 /**
  * Aggregated route map for the mock IPC router.
@@ -17,7 +18,8 @@ import { foldersRoutes } from './folders'
 const routes: MockRouteMap = {
   ...notesRoutes,
   ...tasksRoutes,
-  ...foldersRoutes
+  ...foldersRoutes,
+  ...calendarRoutes
 }
 
 /**
