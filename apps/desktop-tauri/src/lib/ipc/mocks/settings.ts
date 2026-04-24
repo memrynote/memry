@@ -70,20 +70,20 @@ let state: MockSettings = defaults()
 
 type DeepPartial<T> = T extends object ? { [K in keyof T]?: DeepPartial<T[K]> } : T
 
-function deepMerge<T extends Record<string, unknown>>(base: T, patch: DeepPartial<T>): T {
-  const out: Record<string, unknown> = { ...base }
-  for (const [key, value] of Object.entries(patch)) {
+function deepMerge<T>(base: T, patch: DeepPartial<T>): T {
+  const baseRecord = base as Record<string, unknown>
+  const out: Record<string, unknown> = { ...baseRecord }
+  for (const [key, value] of Object.entries(patch as Record<string, unknown>)) {
+    const current = baseRecord[key]
     if (
       value &&
       typeof value === 'object' &&
       !Array.isArray(value) &&
-      typeof base[key] === 'object' &&
-      base[key] !== null
+      current &&
+      typeof current === 'object' &&
+      !Array.isArray(current)
     ) {
-      out[key] = deepMerge(
-        base[key] as Record<string, unknown>,
-        value as DeepPartial<Record<string, unknown>>
-      )
+      out[key] = deepMerge(current, value as DeepPartial<typeof current>)
     } else {
       out[key] = value
     }
