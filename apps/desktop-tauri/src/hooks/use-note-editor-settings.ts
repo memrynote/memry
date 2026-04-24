@@ -9,7 +9,14 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { extractErrorMessage } from '@/lib/ipc-error'
+import { invoke } from '@/lib/ipc/invoke'
+import { subscribeEvent } from '@/lib/ipc/forwarder'
 import type { NoteEditorSettings } from '@/types/preload-types'
+
+interface SettingsChangedEvent {
+  key: string
+  value: unknown
+}
 
 interface UseNoteEditorSettingsReturn {
   /** Current note editor settings */
@@ -49,7 +56,7 @@ export function useNoteEditorSettings(): UseNoteEditorSettingsReturn {
 
     const loadSettings = async (): Promise<void> => {
       try {
-        const result = await window.api.settings.getNoteEditorSettings()
+        const result = await invoke<NoteEditorSettings>('settings_get_note_editor_settings')
         if (mounted) {
           setSettings(result)
         }
@@ -73,7 +80,7 @@ export function useNoteEditorSettings(): UseNoteEditorSettingsReturn {
 
   // Listen for settings changes
   useEffect(() => {
-    const unsubscribe = window.api.onSettingsChanged((event) => {
+    return subscribeEvent<SettingsChangedEvent>('settings-changed', (event) => {
       if (event.key === 'noteEditor') {
         setSettings((prev) => ({
           ...prev,
@@ -81,15 +88,16 @@ export function useNoteEditorSettings(): UseNoteEditorSettingsReturn {
         }))
       }
     })
-
-    return unsubscribe
   }, [])
 
   // Update settings
   const updateSettings = useCallback(
     async (updates: Partial<NoteEditorSettings>): Promise<boolean> => {
       try {
-        const result = await window.api.settings.setNoteEditorSettings(updates)
+        const result = await invoke<{ success: boolean; error?: string }>(
+          'settings_set_note_editor_settings',
+          updates as unknown as Record<string, unknown>
+        )
         if (result.success) {
           // Optimistically update local state
           setSettings((prev) => ({ ...prev, ...updates }))

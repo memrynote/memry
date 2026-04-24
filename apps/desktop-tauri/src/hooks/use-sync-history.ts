@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { useSync } from '@/contexts/sync-context'
+import { invoke } from '@/lib/ipc/invoke'
 import type { SyncHistoryEntry } from '@memry/contracts/ipc-sync-ops'
 
 export type HistoryTypeFilter = 'all' | 'push' | 'pull' | 'error'
@@ -61,7 +62,10 @@ export function useSyncHistory(): UseSyncHistoryReturn {
   const fetchEntries = useCallback(async (offset: number, append: boolean) => {
     setIsLoading(true)
     try {
-      const result = await window.api.syncOps.getHistory({ limit: FETCH_SIZE, offset })
+      const result = await invoke<{ entries: unknown[]; total: number }>('sync_ops_get_history', {
+        limit: FETCH_SIZE,
+        offset
+      })
       const entries = result.entries as unknown as SyncHistoryEntry[]
       if (append) {
         setAllEntries((prev) => [...prev, ...entries])

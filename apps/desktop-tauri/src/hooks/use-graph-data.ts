@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import type { GraphDataResponse } from '@memry/contracts/graph-api'
 import { onNoteCreated, onNoteUpdated, onNoteDeleted } from '@/services/notes-service'
 import { onTaskCreated, onTaskUpdated, onTaskDeleted } from '@/services/tasks-service'
+import { invoke } from '@/lib/ipc/invoke'
 
 export const graphKeys = {
   all: ['graph'] as const,
@@ -13,7 +14,7 @@ export const graphKeys = {
 export function useGraphData() {
   return useQuery<GraphDataResponse>({
     queryKey: graphKeys.data(),
-    queryFn: () => window.api.graph.getData(),
+    queryFn: () => invoke<GraphDataResponse>('graph_get_data'),
     staleTime: 30_000
   })
 }
@@ -21,7 +22,7 @@ export function useGraphData() {
 export function useLocalGraphData(noteId: string | undefined) {
   return useQuery<GraphDataResponse>({
     queryKey: graphKeys.local(noteId ?? ''),
-    queryFn: () => window.api.graph.getLocal({ noteId: noteId! }),
+    queryFn: () => invoke<GraphDataResponse>('graph_get_local', { noteId: noteId! }),
     enabled: !!noteId,
     staleTime: 15_000
   })

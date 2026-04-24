@@ -1,6 +1,13 @@
 import { useState, useEffect, useCallback } from 'react'
 import { extractErrorMessage } from '@/lib/ipc-error'
+import { invoke } from '@/lib/ipc/invoke'
+import { subscribeEvent } from '@/lib/ipc/forwarder'
 import type { TaskSettingsDTO } from '@/types/preload-types'
+
+interface SettingsChangedEvent {
+  key: string
+  value: unknown
+}
 
 const DEFAULTS: TaskSettingsDTO = {
   defaultProjectId: null,
@@ -25,7 +32,7 @@ export function useTaskPreferences(): UseTaskPreferencesReturn {
     let mounted = true
     const load = async (): Promise<void> => {
       try {
-        const result = await window.api.settings.getTaskSettings()
+        const result = await invoke<TaskSettingsDTO>('settings_get_task_settings')
         if (mounted) setSettings(result)
       } catch (err) {
         if (mounted) setError(extractErrorMessage(err, 'Failed to load task preferences'))
@@ -40,18 +47,20 @@ export function useTaskPreferences(): UseTaskPreferencesReturn {
   }, [])
 
   useEffect(() => {
-    const unsubscribe = window.api.onSettingsChanged((event) => {
+    return subscribeEvent<SettingsChangedEvent>('settings-changed', (event) => {
       if (event.key === 'tasks') {
         setSettings((prev) => ({ ...prev, ...(event.value as Partial<TaskSettingsDTO>) }))
       }
     })
-    return unsubscribe
   }, [])
 
   const updateSettings = useCallback(
     async (updates: Partial<TaskSettingsDTO>): Promise<boolean> => {
       try {
-        const result = await window.api.settings.setTaskSettings(updates)
+        const result = await invoke<{ success: boolean; error?: string }>(
+          'settings_set_task_settings',
+          updates as unknown as Record<string, unknown>
+        )
         if (result.success) {
           setSettings((prev) => ({ ...prev, ...updates }))
           return true

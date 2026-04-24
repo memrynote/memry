@@ -3,7 +3,14 @@ import { createLogger } from '@/lib/logger'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { propertiesService, type PropertyValue } from '@/services/properties-service'
 import { inferType, getUniquePropertyName } from '@/lib/property-utils'
+import { subscribeEvent } from '@/lib/ipc/forwarder'
 import { toast } from 'sonner'
+
+interface ItemSyncedEvent {
+  operation: 'push' | 'pull'
+  itemId: string
+  type: string
+}
 
 const log = createLogger('Hook:Properties')
 
@@ -58,13 +65,12 @@ export function useProperties(entityId: string | null): UsePropertiesReturn {
 
   useEffect(() => {
     if (!entityId) return
-    const unsub = window.api.onItemSynced((event) => {
+    return subscribeEvent<ItemSyncedEvent>('item-synced', (event) => {
       if (event.operation !== 'pull') return
       if (event.itemId !== entityId) return
       if (event.type !== 'note' && event.type !== 'journal') return
       fetchProperties()
     })
-    return unsub
   }, [entityId, fetchProperties])
 
   const updateProperty = useCallback(

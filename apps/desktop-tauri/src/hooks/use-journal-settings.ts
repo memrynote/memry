@@ -9,7 +9,14 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { extractErrorMessage } from '@/lib/ipc-error'
+import { invoke } from '@/lib/ipc/invoke'
+import { subscribeEvent } from '@/lib/ipc/forwarder'
 import type { JournalSettings } from '@/types/preload-types'
+
+interface SettingsChangedEvent {
+  key: string
+  value: unknown
+}
 
 interface UseJournalSettingsReturn {
   /** Current journal settings */
@@ -58,7 +65,7 @@ export function useJournalSettings(): UseJournalSettingsReturn {
 
     const loadSettings = async (): Promise<void> => {
       try {
-        const result = await window.api.settings.getJournalSettings()
+        const result = await invoke<JournalSettings>('settings_get_journal_settings')
         if (mounted) {
           setSettings(result)
         }
@@ -82,7 +89,7 @@ export function useJournalSettings(): UseJournalSettingsReturn {
 
   // Listen for settings changes
   useEffect(() => {
-    const unsubscribe = window.api.onSettingsChanged((event) => {
+    return subscribeEvent<SettingsChangedEvent>('settings-changed', (event) => {
       if (event.key === 'journal') {
         // Full journal settings update
         setSettings((prev) => ({
@@ -91,15 +98,16 @@ export function useJournalSettings(): UseJournalSettingsReturn {
         }))
       }
     })
-
-    return unsubscribe
   }, [])
 
   // Update settings
   const updateSettings = useCallback(
     async (updates: Partial<JournalSettings>): Promise<boolean> => {
       try {
-        const result = await window.api.settings.setJournalSettings(updates)
+        const result = await invoke<{ success: boolean; error?: string }>(
+          'settings_set_journal_settings',
+          updates as unknown as Record<string, unknown>
+        )
         if (result.success) {
           // Optimistically update local state
           setSettings((prev) => ({ ...prev, ...updates }))

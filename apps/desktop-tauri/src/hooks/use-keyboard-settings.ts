@@ -1,6 +1,13 @@
 import { useState, useEffect, useCallback } from 'react'
 import { extractErrorMessage } from '@/lib/ipc-error'
+import { invoke } from '@/lib/ipc/invoke'
+import { subscribeEvent } from '@/lib/ipc/forwarder'
 import type { KeyboardShortcutsDTO } from '@/types/preload-types'
+
+interface SettingsChangedEvent {
+  key: string
+  value: unknown
+}
 
 const DEFAULTS: KeyboardShortcutsDTO = {
   overrides: {},
@@ -24,7 +31,7 @@ export function useKeyboardSettings(): UseKeyboardSettingsReturn {
     let mounted = true
     const load = async (): Promise<void> => {
       try {
-        const result = await window.api.settings.getKeyboardSettings()
+        const result = await invoke<KeyboardShortcutsDTO>('settings_get_keyboard_settings')
         if (mounted) setSettings(result)
       } catch (err) {
         if (mounted) setError(extractErrorMessage(err, 'Failed to load keyboard settings'))
@@ -39,18 +46,20 @@ export function useKeyboardSettings(): UseKeyboardSettingsReturn {
   }, [])
 
   useEffect(() => {
-    const unsubscribe = window.api.onSettingsChanged((event) => {
+    return subscribeEvent<SettingsChangedEvent>('settings-changed', (event) => {
       if (event.key === 'keyboard') {
         setSettings((prev) => ({ ...prev, ...(event.value as Partial<KeyboardShortcutsDTO>) }))
       }
     })
-    return unsubscribe
   }, [])
 
   const updateSettings = useCallback(
     async (updates: Partial<KeyboardShortcutsDTO>): Promise<boolean> => {
       try {
-        const result = await window.api.settings.setKeyboardSettings(updates)
+        const result = await invoke<{ success: boolean; error?: string }>(
+          'settings_set_keyboard_settings',
+          updates as unknown as Record<string, unknown>
+        )
         if (result.success) {
           setSettings((prev) => ({ ...prev, ...updates }))
           return true
@@ -67,7 +76,9 @@ export function useKeyboardSettings(): UseKeyboardSettingsReturn {
 
   const resetToDefaults = useCallback(async (): Promise<boolean> => {
     try {
-      const result = await window.api.settings.resetKeyboardSettings()
+      const result = await invoke<{ success: boolean; error?: string }>(
+        'settings_reset_keyboard_settings'
+      )
       if (result.success) {
         setSettings(DEFAULTS)
         return true

@@ -60,16 +60,14 @@ export function extractValidPaths(files: Array<{ path: string; name: string }>):
 function resolveDroppedFiles(fileList: FileList): Array<{ path: string; name: string }> {
   const files = Array.from(fileList)
 
-  try {
-    const paths = window.api.getFileDropPaths(files)
-    return files.map((f, i) => ({ path: paths[i] || '', name: f.name }))
-  } catch (err) {
-    log.warn('webUtils.getPathForFile unavailable, falling back to file.path', err)
-    return files.map((f) => ({
-      path: (f as File & { path?: string }).path || '',
-      name: f.name
-    }))
-  }
+  // TODO: Tauri drag-drop path resolution. In Electron this used
+  // webUtils.getPathForFile(); Tauri exposes paths via onFileDropEvent at the
+  // window level instead. For now, fall back to the File.path extension which
+  // some browsers populate.
+  return files.map((f) => ({
+    path: (f as File & { path?: string }).path || '',
+    name: f.name
+  }))
 }
 
 export function useFileDrop({ onDrop }: UseFileDropOptions): UseFileDropReturn {

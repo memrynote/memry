@@ -8,6 +8,7 @@ import {
 import { notesService } from '@/services/notes-service'
 import { buildTreeFromNotes, type TreeStructure } from '@/components/notes-tree-utils'
 import { createLogger } from '@/lib/logger'
+import { invoke } from '@/lib/ipc/invoke'
 
 const log = createLogger('Hook:NoteTreeData')
 
@@ -42,7 +43,9 @@ export function useNoteTreeData(): NoteTreeData {
       if (folders.length === 0) return
 
       try {
-        const templatesResponse = await window.api.templates.list()
+        const templatesResponse = await invoke<{
+          templates: Array<{ id: string; name: string }>
+        }>('templates_list')
         const templatesMap = new Map(templatesResponse.templates.map((t) => [t.id, t.name]))
 
         const namesMap = new Map<string, string>()

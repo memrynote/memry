@@ -2,6 +2,8 @@ import { useState, useCallback, useEffect, useRef } from 'react'
 import { createLogger } from '@/lib/logger'
 import { fuzzySearch } from '@/lib/fuzzy-search'
 import { extractErrorMessage } from '@/lib/ipc-error'
+import { invoke } from '@/lib/ipc/invoke'
+import { subscribeEvent } from '@/lib/ipc/forwarder'
 
 const log = createLogger('Hook:Tags')
 
@@ -19,7 +21,7 @@ export function useTags() {
 
   const fetchTags = useCallback(async () => {
     try {
-      const result = await window.api.tags.getAllWithCounts()
+      const result = await invoke<{ tags: Tag[] }>('tags_get_all_with_counts')
       if (!mountedRef.current) return
       setTags(result.tags)
       setError(null)
@@ -44,9 +46,9 @@ export function useTags() {
   useEffect(() => {
     const refetch = () => void fetchTags()
     const unsubs = [
-      window.api.onTagsChanged(refetch),
-      window.api.onTagRenamed(refetch),
-      window.api.onTagDeleted(refetch)
+      subscribeEvent<void>('tags-changed', refetch),
+      subscribeEvent<void>('tag-renamed', refetch),
+      subscribeEvent<void>('tag-deleted', refetch)
     ]
     return () => unsubs.forEach((unsub) => unsub())
   }, [fetchTags])
@@ -97,15 +99,15 @@ export function useTags() {
   )
 
   const renameTag = useCallback(async (oldName: string, newName: string) => {
-    return window.api.tags.renameTag({ oldName, newName })
+    return invoke('tags_rename_tag', { oldName, newName })
   }, [])
 
   const mergeTag = useCallback(async (source: string, target: string) => {
-    return window.api.tags.mergeTag({ source, target })
+    return invoke('tags_merge_tag', { source, target })
   }, [])
 
   const deleteTag = useCallback(async (tag: string) => {
-    return window.api.tags.deleteTag(tag)
+    return invoke('tags_delete_tag', { args: [tag] })
   }, [])
 
   const refetch = fetchTags
