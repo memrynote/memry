@@ -69,8 +69,15 @@ command implementations; the UI surface should stay largely stable after M1.
 - The current e2e lane runs WebKit against the Vite dev server with mock IPC.
   That is correct for M1, but it is not sufficient once real Rust commands land.
   A real Tauri-runtime e2e lane must start by M5, not M10.
-- `apps/desktop-tauri` still has 121 `@memry/*` imports. Package extraction
+- Current audit (2026-04-25) shows 142 `@memry/*` occurrences across
+  `apps/desktop-tauri/src`, `tsconfig.json`, and `vite.config.ts` including
+  path aliases, type-only imports, and runtime helpers. Package extraction
   needs to become rolling work in M2-M8; leaving it all for M10 is too risky.
+- `apps/desktop-tauri/src/lib/logger.ts` still imports
+  `electron-log/renderer`, and the M1 port audit does not currently scan for
+  `electron-log`. This is not a product blocker, but it is a planning gap:
+  M2 must replace the logger with a Tauri-safe implementation and harden the
+  audit patterns.
 - Non-blocking M1 cleanup still exists in warnings:
   React setState-during-render warning in notes-tree tests,
   Radix dialog accessibility warnings, CSS `::highlight(...)` parser warnings,
@@ -128,9 +135,11 @@ Confirmed in brainstorming session 2026-04-24:
    bits are inlined into the new app.
 4. **macOS only for v1.** Windows and Linux deferred post-v1; WebKit2GTK
    (Linux) is untested territory requiring a separate spike.
-5. **AI SDK renderer-side.** Vercel AI SDK (`@ai-sdk/*`, `@blocknote/xl-ai`)
-   stays in the browser. API keys retrieved via `invoke('get_api_key')` from
-   OS keychain.
+5. **AI SDK renderer-side, secrets Rust-side.** Vercel AI SDK (`@ai-sdk/*`,
+   `@blocknote/xl-ai`) stays in the browser. Renderer may submit a provider key
+   once for storage, but it never retrieves raw provider keys. Rust stores keys
+   in the OS keychain, exposes only masked/status values, and performs provider
+   HTTPS calls through `ai_http_fetch_stream`.
 6. **Horizontal milestone sequencing.** Backend layers are built bottom-up
    (DB → vault → crypto → notes → sync → search → features) rather than
    feature-by-feature vertical slices.
@@ -326,9 +335,9 @@ apps/desktop-tauri/
 │   │   └── default.json
 │   ├── icons/
 │   ├── migrations/                 ← hand-written SQL
-│   │   ├── 0001_initial.sql
+│   │   ├── 0000_initial.sql
 │   │   ├── …
-│   │   └── 0029_….sql              ← 29 migrations ported from Electron
+│   │   └── 0028_….sql              ← 29 data DB migrations ported from Electron
 │   └── src/
 │       ├── main.rs
 │       ├── lib.rs
@@ -357,7 +366,7 @@ apps/desktop-tauri/
 │       │   └── devtools.rs         ← dev-only: reset_db, reseed, dump_state
 │       │
 │       ├── db/                     ← rusqlite layer
-│       │   ├── mod.rs              ← Mutex<Connection>
+│       │   ├── mod.rs              ← Arc<Mutex<Connection>> for data.db
 │       │   ├── migrations.rs
 │       │   ├── notes.rs
 │       │   ├── tasks.rs
@@ -432,8 +441,12 @@ apps/desktop-tauri/
 │       │   ├── vector.rs           ← sqlite-vec
 │       │   └── extensions.rs
 │       │
+│       ├── index_db/               ← rebuildable index.db (M7)
+│       │   ├── mod.rs
+│       │   └── migrations.rs
+│       │
 │       ├── ai_bridge/
-│       │   └── mod.rs              ← get_api_key, telemetry
+│       │   └── mod.rs              ← ai_http_fetch_stream, masked key status
 │       │
 │       ├── updater/
 │       │   └── mod.rs
@@ -589,11 +602,24 @@ bounded and makes each milestone's acceptance gate verifiable by side-by-side
 comparison with the Electron baseline.
 
 **Rolling package extraction model for M2–M8:** M1 still depends on shared
-`@memry/*` modules in 121 places. Waiting until M10 to inline all of that
-creates a large hidden cutover risk. Each milestone must rehome the contracts,
-types, and runtime helpers touched by that domain into `apps/desktop-tauri/src/`
-or `apps/sync-server/src/` as part of the feature work. M10 becomes the final
+`@memry/*` modules in 142 current occurrences (including aliases and type-only
+imports). Waiting until M10 to inline all of that creates a large hidden
+cutover risk. Each milestone must rehome the contracts, types, and runtime
+helpers touched by that domain into `apps/desktop-tauri/src/` or
+`apps/sync-server/src/` as part of the feature work. M10 becomes the final
 zero-import sweep and deletion proof, not the first extraction pass.
+
+**Carry-forward ledger required for every M2+ PR:** Each milestone PR body must
+record four counts:
+
+1. `@memry/*` occurrences in `apps/desktop-tauri/src`,
+   `apps/desktop-tauri/tsconfig.json`, `apps/desktop-tauri/vite.config.ts`,
+   and `apps/sync-server/src`.
+2. Non-test Electron residue count from `pnpm --filter @memry/desktop-tauri
+   port:audit`.
+3. Known non-blocking warning count and whether any touched domain still emits
+   one of the M1 warnings.
+4. Runtime e2e lane status: not started, harness exists, or domain covered.
 
 ### M1 — Tauri Skeleton + Full Renderer Port
 
@@ -698,35 +724,59 @@ identical to the Electron dev build.
 
 ### M2 — DB + Schemas + Migrations
 
-**Scope:** rusqlite integration, 29 Electron migrations ported, settings KV,
-dev seed utilities.
+**Scope:** rusqlite integration for canonical `data.db`, exact Electron data
+schema parity, settings KV, dev seed utilities, first package-extraction slice,
+and cleanup of M1 platform residue.
+
+M2 owns **data DB only**. Search/index concerns stay out of `data.db`; M7
+creates the separate rebuildable `index.db` for FTS/vector/search cache.
 
 **Deliverables:**
 
-- `src-tauri/src/db/mod.rs` with `Mutex<Connection>` state and `init_db()`.
-- `src-tauri/migrations/0001_initial.sql` through `0029_….sql` — Drizzle
-  output manually ported (0001–0019) + existing hand-written (0020+).
+- `src-tauri/src/db/mod.rs` with a single `Arc<Mutex<Connection>>` owner and
+  `init_db()`. Do not add a connection pool in M2 unless a measured contention
+  problem exists; SQLite write serialization and transaction clarity matter
+  more at this phase.
+- `src-tauri/migrations/0000_*.sql` through `0028_*.sql` or an equivalent
+  zero/one-based naming scheme that maps one-to-one to the 29 Electron data
+  migrations. No net-new `0029` migration unless schema diff proves a real
+  missing final-schema change.
 - `src-tauri/src/db/migrations.rs` — scanner + applier with `schema_migrations`
   table.
 - Per-table modules with `#[derive(specta::Type, serde::Serialize, Deserialize)]`
-  structs for Note, Task, Project, CalendarEvent, InboxItem, JournalEntry,
-  Folder, Tag, Bookmark, Template, Embedding, SyncQueueItem, CrdtUpdate,
-  CrdtSnapshot, Device, Setting.
+  structs only for tables that exist in `data.db` after the 29 migrations.
+  File-backed aggregates (`Note`, `JournalEntry`, `Folder`, `Template`) emerge
+  in M3/M5/M8; index/search-only types (`Embedding`) emerge in M7; CRDT tables
+  emerge in M5.
 - Settings KV commands: `settings_get`, `settings_set`, `settings_list`.
 - `scripts/dev-reset.sh` — wipes app data and re-runs migrations.
+- Required schema-diff script comparing final Electron `data.db` schema to the
+  Tauri `data.db` schema.
 - First specta export filling `src/generated/bindings.ts` with domain types.
+- Replace `electron-log/renderer` with a Tauri-safe renderer logger and extend
+  `port:audit` to catch `electron-log`, `from 'electron'`, `electron/`, and
+  `@electron` imports in non-test code.
+- Rehome the settings-domain contracts/defaults touched by real
+  `settings_*` commands into `apps/desktop-tauri/src/`, or document why a
+  specific import remains. Record before/after `@memry/*` occurrence counts.
 
 **Acceptance gate:**
 
 - Cold start applies all migrations without error.
 - Migration runner idempotent across restarts.
+- Electron-vs-Tauri schema diff is clean or contains only explicitly documented
+  intentional differences.
 - Renderer round-trips `settings_get`/`settings_set` with correct specta types.
 - Rust tests: ≥20 smoke tests across tables (CRUD roundtrips).
 - Bench: 1000-note list query p50 < 20ms (S3 baseline).
 - `pnpm bindings:check` shows no drift.
+- `pnpm --filter @memry/desktop-tauri port:audit` catches the expanded Electron
+  pattern set and exits 0.
 
 **Risks:** Drizzle migrations 0001–0019 may have implicit semantics missed in
-manual port — mitigated by dumping schema from Electron DB and diffing.
+manual port — mitigated by dumping schema from Electron DB and diffing. The
+current M2 implementation plan still mentions `r2d2_sqlite`; patch that plan
+before execution so it matches the single-connection decision above.
 
 **Effort:** M (~1.5 sprint)
 
@@ -748,6 +798,10 @@ preferences.
 - Commands: `vault_open`, `vault_close`, `vault_get_current`,
   `vault_list_notes`, `vault_read_note`, `vault_write_note`.
 - Event: `vault-changed` with `{path, kind}` payload.
+- Path normalization helpers that reject vault escape (`..`), symlink escape,
+  hidden app-internal folders, and unsupported filenames before any read/write.
+- Drag/drop path-resolution spike for Tauri/WebKit so file import, PDF import,
+  and attachment flows do not depend on Electron-only `File.path`.
 
 **Acceptance gate:**
 
@@ -756,6 +810,9 @@ preferences.
 - Frontmatter roundtrips Turkish characters, multiline YAML, date fields
   without loss.
 - Atomic write survives mid-write crash simulation.
+- Path traversal and symlink-escape tests fail closed.
+- Tauri drag/drop path resolution has a working manual smoke or a documented
+  fallback command before file-import features land in M8.
 - Renderer integration smoke: open/create/delete reflects in UI.
 - `cargo test --package vault` passes.
 
@@ -784,9 +841,15 @@ machine, OTP, device registration.
   in-memory SecretBox.
 - Commands: `auth_unlock`, `auth_lock`, `auth_status`, `auth_register_device`,
   `auth_request_otp`, `auth_submit_otp`, `auth_enable_biometric` (stub).
+- Secret storage commands used by later features:
+  `secrets_set_provider_key`, `secrets_get_provider_key_status`,
+  `secrets_delete_provider_key`. These return only status/masked metadata to
+  the renderer; no command returns raw provider keys.
 - `AuthState` enum: Locked, Unlocking, Unlocked, Error.
 - OAuth relay via sync-server (redirect to `memry://oauth-callback` — deep
   link infra in M9).
+- PII-safe tracing helper for email, note title, provider key, token, and URL
+  redaction before logs leave the command boundary.
 - ≥40 tests across crypto primitives.
 
 **Acceptance gate:**
@@ -798,6 +861,8 @@ machine, OTP, device registration.
 - OTP + device registration round-trips against sync-server staging.
 - Argon2id params match Electron spec for portability (iterations/memory/
   parallelism canonical values).
+- Provider key set/status/delete round-trips through keychain without exposing
+  raw key material to renderer logs, return values, or generated bindings.
 
 **Pre-flight subspike:** 1-day subspike at start of M4 to validate
 security-framework API on current macOS version. Fallback to `keyring-rs` if
@@ -829,6 +894,10 @@ Prototype B), renderer shadow Y.Doc, BlockNote binding.
   `crdt_get_snapshot` (Response<Vec<u8>>), `crdt_get_state_vector`,
   `notes_create`, `notes_get`, `notes_update`, `notes_delete`,
   `notes_list_by_folder`.
+- Dev-only runtime test commands behind a debug/test capability:
+  `devtools_reset_db`, `devtools_seed_vault`, `devtools_open_test_vault`.
+  These are required for the first real Tauri-runtime e2e lane and must not be
+  exposed in production capabilities.
 - Renderer `lib/crdt/yjs-tauri-provider.ts` — shadow Y.Doc setup with origin
   tag loop guard.
 - BlockNote editor integration via y-prosemirror.
@@ -848,6 +917,8 @@ Prototype B), renderer shadow Y.Doc, BlockNote binding.
 - Tauri-runtime e2e: 5 core scenarios (typing, manual clipboard paste,
   slash menu, undo/redo, concurrent edit). The existing M1 Vite/WebKit
   smoke lane remains for fast mock-lane regression checks.
+- Runtime lane proves real invoke/event/capability behavior with the debug
+  reset/seed commands above. Mock-lane tests alone no longer satisfy the gate.
 
 **Risks:**
 
@@ -883,14 +954,21 @@ field-level vector-clock merge, CRDT sync endpoint.
 - Events: `sync-progress`, `sync-error`, `sync-completed`.
 - Critical ordering from MEMORY.md: engine.start (pull) → seed_existing_crdt
   (fire-and-forget) → per-batch push_snapshot_for_note → POST /sync/push.
+- Sync-server contract extraction: rehome the sync/auth/blob contract modules
+  touched by the Rust client into `apps/sync-server/src/` or a clearly named
+  app-local contracts directory. Keep the Rust request/response structs aligned
+  with those schemas through explicit parity tests.
 
 **Acceptance gate:**
 
 - 2-device round-trip: note edit propagates < 3s via WebSocket notification.
 - Field-level concurrent task edits on different fields both preserved.
 - WS drop: auto-reconnect <5s, queue drain.
+- Offline edit → app restart → reconnect drains queue exactly once.
 - Sign-out/sign-in preserves CRDT (MEMORY.md bug fix verified).
 - Cert pinning fails closed with modified cert.
+- Protocol parity tests cover sync push/pull/auth/blob payload shapes against
+  the sync-server schemas.
 - ≥50 Rust tests.
 - Staging environment live round-trip smoke.
 
@@ -905,10 +983,13 @@ field-level vector-clock merge, CRDT sync endpoint.
 
 ### M7 — Search + Embeddings
 
-**Scope:** FTS5 rebuild, sqlite-vec extension bundling, vector kNN.
+**Scope:** Rebuildable `index.db` for FTS5, sqlite-vec extension bundling,
+vector kNN, and hybrid search. `data.db` remains canonical user state.
 
 **Deliverables:**
 
+- `src-tauri/src/index_db/mod.rs` with separate path resolution, migrations,
+  and reset/rebuild lifecycle from `data.db`.
 - `search/fts.rs` — FTS5 rebuild and query helpers.
 - `search/vector.rs` — sqlite-vec extension load, `vec0` virtual table, kNN.
 - `search/extensions.rs` — `.dylib` path resolution (bundled in
@@ -916,7 +997,7 @@ field-level vector-clock merge, CRDT sync endpoint.
 - `scripts/bundle-sqlite-vec.sh` — preinstall hook downloading
   sqlite-vec 0.1.7-alpha.2 `.dylib`.
 - `tauri.conf.json` `bundle.resources` entry.
-- DB init loads extension via `conn.load_extension()`.
+- Index DB init loads extension via `conn.load_extension()`.
 - Commands: `search_fts`, `search_vector`, `search_hybrid`.
 - Embeddings generated renderer-side via `@huggingface/transformers` (WASM,
   unchanged) → `invoke('embeddings_store', …)`.
@@ -925,6 +1006,8 @@ field-level vector-clock merge, CRDT sync endpoint.
 
 - sqlite-vec `.dylib` present for macOS arm64 (+ x86_64 if universal binary).
 - Extension loads without error; `vec0` table creation succeeds.
+- Deleting `index.db` and launching the app rebuilds search state from
+  canonical `data.db` + vault files without data loss.
 - FTS query on 1000-note Turkish corpus: p95 < 50ms.
 - Vector kNN 10k embeddings 128-dim: p95 < 100ms in release build (with vec0).
 - Hybrid search top-3 relevance sanity check across 10 manual queries.
@@ -943,6 +1026,17 @@ field-level vector-clock merge, CRDT sync endpoint.
 **Scope:** All remaining features. Sub-milestones can run in parallel since
 foundation from M1–M7 is in place.
 
+Dependency ordering inside M8 is still strict where features share native
+plumbing:
+
+- Deep links must land before Google Calendar OAuth is accepted.
+- M4 keychain secret status/set/delete commands must land before AI provider
+  settings or inline completions are accepted.
+- M3 drag/drop path resolution must land before file import, PDF import, and
+  attachment flows are accepted.
+- Vault/CRDT note foundations must land before journal/templates/folder default
+  template behavior is accepted.
+
 **Sub-milestones (each 1–3 days):**
 
 - **M8.1** Tasks + Projects — CRUD commands, field-level merge (infra ready in
@@ -958,7 +1052,8 @@ foundation from M1–M7 is in place.
 - **M8.8** Bookmarks + URL metadata — reqwest + scraper custom, ~80% feature
   parity with metascraper.
 - **M8.9** Calendar — Google OAuth via sync-server relay, events, sources,
-  bindings.
+  bindings. Requires the deep-link handler from M8.17 or an earlier split of
+  that work.
 - **M8.10** Calendar sync scheduler — Rust tokio task.
 - **M8.11** Graph view — sigma + graphology renderer-side; Rust provides
   `graph_build_nodes`, `graph_build_edges` commands.
@@ -968,7 +1063,8 @@ foundation from M1–M7 is in place.
   `reqwest`, and streams response bytes back through `Channel<u8>`. Renderer
   never holds a raw API key. Covers OpenAI + Anthropic providers at minimum.
 - **M8.13** PDF handling — pdfjs-dist renderer + Rust pdf-extract for
-  server-side text extraction.
+  server-side text extraction. Requires M3 drag/drop/path-resolution behavior
+  before file import is marked complete.
 - **M8.14** Thumbnails — Rust image crate, write-time generation, Channel<u8>
   binary return.
 - **M8.15** Reminders — merged into snooze infrastructure.
@@ -982,6 +1078,8 @@ foundation from M1–M7 is in place.
 - CRUD smoke tests pass.
 - ≥1 Playwright e2e covering core flow.
 - ≥5 Rust tests where backend logic exists.
+- Touched `@memry/*` contracts/types/helpers are rehomed locally or explicitly
+  counted in the carry-forward ledger.
 
 **Risks:**
 
@@ -1026,21 +1124,23 @@ links plumbing, global shortcut.
 ### M10 — Package Extraction + E2E Port + Electron Cleanup
 
 **Scope:** Finish the remaining `@memry/*` extraction work, prove both `apps/`
-packages build without `packages/`, complete the behavioral Tauri-runtime e2e
-port, delete Electron + packages.
+packages build without `packages/`, complete any runtime e2e coverage not
+already started in M5-M8, dogfood, then delete Electron + packages.
 
 Ordering inside M10 is strict: **extraction → dry-run build → E2E port →
 dogfood → deletion**. No step runs ahead of the one before it.
 
 **Sub-steps:**
 
-- **M10.1 Extraction audit** — Run
-  `grep -r '@memry/' apps/desktop-tauri/src apps/sync-server/src` to produce
-  the complete list of remaining cross-package imports. Categorize each as
-  either (a) type-only (can be inlined as a local `types.ts`), (b) runtime
-  utility (inline into the consuming app), or (c) shared contract between
-  desktop-tauri and sync-server (must survive as an app-local module or a
-  kept package).
+- **M10.1 Extraction audit** — Run `rg '@memry/'` over
+  `apps/desktop-tauri/src`, `apps/desktop-tauri/tsconfig.json`,
+  `apps/desktop-tauri/vite.config.ts`, and `apps/sync-server/src` to produce
+  the complete list of remaining cross-package imports/aliases. Categorize
+  each as either (a) type-only (can be inlined as a local `types.ts`),
+  (b) runtime utility (inline into the consuming app), or (c) shared contract
+  between desktop-tauri and sync-server (must survive as an app-local module or
+  a kept package). M10 should be a final sweep; if a domain first appears here,
+  that domain missed its M2-M8 extraction gate.
 - **M10.2 Rehome into `apps/desktop-tauri/src/`** — Inline each remaining
   `@memry/*` import used by the Tauri renderer. Update tsconfig path aliases
   to remove `@memry/*` entries. Run `pnpm --filter @memry/desktop-tauri
@@ -1053,12 +1153,13 @@ dogfood → deletion**. No step runs ahead of the one before it.
   `pnpm --filter @memry/sync-server build`. If either fails, restore and
   return to M10.1 to catch the missed import. Do NOT commit the dry-run
   branch.
-- **M10.5 E2E completion** — The M1 mock-lane Playwright suite already exists.
-  Complete the remaining behavioral suite against the real Tauri runtime:
-  port any still-missing `apps/desktop/e2e/**/*.spec.ts` coverage,
-  switch the critical-path journeys to the runtime harness, and preserve the
-  fast M1 mock-lane for parity/smoke checks. Coverage: onboarding, note CRUD,
-  2-device sync, calendar event, inbox snooze, search, settings.
+- **M10.5 E2E completion** — The M1 mock-lane Playwright suite already exists,
+  and the real runtime lane must have started in M5. Complete any remaining
+  behavioral coverage against the real Tauri runtime: port missing
+  `apps/desktop/e2e/**/*.spec.ts` coverage, keep critical-path journeys on the
+  runtime harness, and preserve the fast M1 mock-lane for parity/smoke checks.
+  Coverage: onboarding, note CRUD, 2-device sync, calendar event, inbox snooze,
+  search, settings.
 - **M10.6 Dogfood** — 1-week Kaan dogfood period on a real vault. Bug
   backlog collected; blockers fixed before proceeding.
 - **M10.7 Cutover** — Real deletion: `git rm -rf apps/desktop/ packages/`.
@@ -1273,7 +1374,9 @@ Playwright notes from Spike 0 and M1:
 - DataTransfer synthesis broken; use `page.setInputFiles` workaround.
 - In M1, e2e runs against Vite because every command is still mocked.
 - By M5, add a real Tauri-runtime lane with `devtools_reset_db` + creates test
-  vault + unlocks before-hook parity.
+  vault + unlocks before-hook parity. Runtime-lane tests must verify real
+  invoke, event, binary IPC, and capability behavior; mock-lane visual tests do
+  not cover those risks.
 
 ### 5.6 Dev workflow
 
@@ -1293,6 +1396,11 @@ Rust main.rs reads env var and segregates `app_data_dir`.
   timestamped skeleton.
 - Schema diff script compares Electron DB against Tauri DB for parity
   verification.
+- M2 owns `data.db`; M7 owns rebuildable `index.db`. Do not mix FTS/vector
+  tables into the canonical data DB.
+- M2 uses a single `Arc<Mutex<rusqlite::Connection>>` unless benchmarked
+  contention proves a pool is needed. If that decision changes, update this
+  spec and the M2 plan in the same PR.
 
 **Hot reload:**
 
@@ -1463,7 +1571,10 @@ All decisions below were confirmed in the brainstorming session 2026-04-24.
 M1 is done. Next executable plan is M2
 (`docs/superpowers/plans/2026-04-25-m2-db-schemas-migrations.md`) with the
 carry-forward constraints above: start incremental package extraction
-immediately and define the first real Tauri-runtime e2e lane no later than M5.
+immediately, patch the M2 plan to match the single-connection `data.db`
+decision, make schema diff required, remove the ambiguous net-new `0029`
+migration unless proven necessary, and define the first real Tauri-runtime e2e
+lane no later than M5.
 Subsequent milestones get their own
 plan/execute cycles — a single monolithic plan for all 10 milestones is too
 large to remain coherent.
