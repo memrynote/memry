@@ -3,11 +3,15 @@ import { describe, it, expect } from 'vitest'
 import { savedFiltersRoutes } from './saved-filters'
 
 describe('savedFiltersRoutes', () => {
-  it('saved_filters_list returns at least 5 fixture filters', async () => {
-    const list = (await savedFiltersRoutes.saved_filters_list!(undefined)) as Array<{
-      id: string
-    }>
-    expect(list.length).toBeGreaterThanOrEqual(5)
+  it('saved_filters_list returns SavedFilterListResponse (empty at M1 is valid)', async () => {
+    // #given the M1 mock intentionally returns an empty list because the
+    // real SavedFilter config schema doesn't match the legacy fixtures
+    // #when listing
+    const res = (await savedFiltersRoutes.saved_filters_list!(undefined)) as {
+      savedFilters: unknown[]
+    }
+    // #then
+    expect(Array.isArray(res.savedFilters)).toBe(true)
   })
 
   it('saved_filters_get returns filter by id', async () => {

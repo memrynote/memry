@@ -69,7 +69,15 @@ const filters: MockSavedFilter[] = [
 ]
 
 export const savedFiltersRoutes: MockRouteMap = {
-  saved_filters_list: async () => filters,
+  // Contract: SavedFilterListResponse = { savedFilters: SavedFilter[] } where
+  // each SavedFilter has { id, name, config: { filters: {search, projectIds,
+  // priorities, dueDate: {type, customStart, customEnd}, statusIds, ...}, sort }}.
+  // The M1 fixture above predates that schema and has a flatter `query` shape
+  // that the renderer can't destructure (Hook:TaskFilters throws on
+  // `config.filters.dueDate.type`). For M1 mount-parity we return an empty
+  // list — the list is optional UX. M2+ either re-shapes the fixtures to the
+  // real contract or removes the legacy fixtures entirely.
+  saved_filters_list: async () => ({ savedFilters: [] as unknown[] }),
   saved_filters_get: async (args) => {
     const { id } = args as { id: string }
     const f = filters.find((x) => x.id === id)
