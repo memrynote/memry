@@ -41,14 +41,7 @@ import { deviceService } from '@/services/device-service'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { toast } from 'sonner'
 
-interface Device {
-  id: string
-  name: string
-  platform: string
-  isCurrentDevice: boolean
-  lastSyncAt?: number
-  linkedAt: number
-}
+import type { Device } from '@/services/device-service'
 
 interface DeviceListProps {
   onLinkDevice?: () => void

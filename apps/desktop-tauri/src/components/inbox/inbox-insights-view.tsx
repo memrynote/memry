@@ -34,7 +34,7 @@ export function InboxInsightsView({ className }: InboxInsightsViewProps): React.
       <InboxStatsCards stats={stats} />
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <InboxCaptureHeatmap patterns={patterns?.[0]} />
+        <InboxCaptureHeatmap patterns={patterns} />
         <InboxTypeDistribution stats={stats} />
       </div>
 

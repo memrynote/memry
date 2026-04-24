@@ -1,0 +1,11 @@
+{
+  "extends": "./tsconfig.json",
+  "include": ["src", "vite.config.ts"],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "src-tauri/target",
+    "src/**/*.test.ts",
+    "src/**/*.test.tsx"
+  ]
+}
