@@ -58,7 +58,5 @@ opencode.jsonc
 .playwright-mcp
 .agents/
 
-# Internal docs & specs
-prompts/
 
 agents/
