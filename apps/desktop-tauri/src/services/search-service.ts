@@ -7,54 +7,56 @@ import type {
   AddReasonInput,
   IndexRebuildProgress
 } from '@memry/contracts/search-api'
+import { invoke } from '@/lib/ipc/invoke'
+import { subscribeEvent } from '@/lib/ipc/forwarder'
 
 export const searchService = {
   query(params: SearchQueryInput): Promise<SearchResponse> {
-    return window.api.search.query(params)
+    return invoke<SearchResponse>('search_query', params)
   },
 
   quick(text: string): Promise<QuickSearchResponse> {
-    return window.api.search.quick(text)
+    return invoke<QuickSearchResponse>('search_quick', { args: [text] })
   },
 
   getStats(): Promise<SearchStats> {
-    return window.api.search.getStats()
+    return invoke<SearchStats>('search_get_stats')
   },
 
   rebuildIndex(): Promise<{ started: true }> {
-    return window.api.search.rebuildIndex()
+    return invoke<{ started: true }>('search_rebuild_index')
   },
 
   getReasons(): Promise<SearchReason[]> {
-    return window.api.search.getReasons()
+    return invoke<SearchReason[]>('search_get_reasons')
   },
 
   addReason(params: AddReasonInput): Promise<SearchReason> {
-    return window.api.search.addReason(params)
+    return invoke<SearchReason>('search_add_reason', params)
   },
 
   clearReasons(): Promise<{ cleared: true }> {
-    return window.api.search.clearReasons()
+    return invoke<{ cleared: true }>('search_clear_reasons')
   },
 
   getAllTags(): Promise<string[]> {
-    return window.api.search.getAllTags()
+    return invoke<string[]>('search_get_all_tags')
   },
 
   onIndexRebuildStarted(cb: () => void): () => void {
-    return window.api.onSearchIndexRebuildStarted(cb)
+    return subscribeEvent<void>('search-index-rebuild-started', cb)
   },
 
   onIndexRebuildProgress(cb: (progress: IndexRebuildProgress) => void): () => void {
-    return window.api.onSearchIndexRebuildProgress(cb)
+    return subscribeEvent<IndexRebuildProgress>('search-index-rebuild-progress', cb)
   },
 
   onIndexRebuildCompleted(cb: () => void): () => void {
-    return window.api.onSearchIndexRebuildCompleted(cb)
+    return subscribeEvent<void>('search-index-rebuild-completed', cb)
   },
 
   onIndexCorrupt(cb: () => void): () => void {
-    return window.api.onSearchIndexCorrupt(cb)
+    return subscribeEvent<void>('search-index-corrupt', cb)
   }
 }
 

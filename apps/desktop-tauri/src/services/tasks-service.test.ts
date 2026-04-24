@@ -22,12 +22,13 @@ describe('tasks-service', () => {
     ;(window as Window & { api: unknown }).api = api
   })
 
-  it('exposes task RPC methods directly from window.api.tasks', () => {
-    expect(tasksService.create).toBe(api.tasks.create)
-    expect(tasksService.update).toBe(api.tasks.update)
-    expect(tasksService.list).toBe(api.tasks.list)
-    expect(tasksService.bulkComplete).toBe(api.tasks.bulkComplete)
-    expect(tasksService.getUpcoming).toBe(api.tasks.getUpcoming)
+  it('exposes task RPC methods as callable forwarders', () => {
+    // Phase H: forwarder is a Proxy, so methods are not identical references.
+    expect(typeof tasksService.create).toBe('function')
+    expect(typeof tasksService.update).toBe('function')
+    expect(typeof tasksService.list).toBe('function')
+    expect(typeof tasksService.bulkComplete).toBe('function')
+    expect(typeof tasksService.getUpcoming).toBe('function')
   })
 
   it('forwards CRUD and list calls', async () => {

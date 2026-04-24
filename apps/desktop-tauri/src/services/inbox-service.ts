@@ -41,7 +41,7 @@ import type {
   ListArchivedInput,
   SnoozeInput
 } from '@memry/rpc/inbox'
-import { createWindowApiForwarder } from './window-api-forwarder'
+import { createInvokeForwarder, subscribeEvent } from '@/lib/ipc/forwarder'
 
 export type {
   BulkArchiveInput,
@@ -87,48 +87,48 @@ export type {
   SuggestionsResponse
 }
 
-export const inboxService: InboxClientAPI = createWindowApiForwarder(() => window.api.inbox)
+export const inboxService: InboxClientAPI = createInvokeForwarder<InboxClientAPI>('inbox')
 
 export function onInboxCaptured(callback: (event: InboxCapturedEvent) => void): () => void {
-  return window.api.onInboxCaptured(callback)
+  return subscribeEvent<InboxCapturedEvent>('inbox-captured', callback)
 }
 
 export function onInboxUpdated(callback: (event: InboxUpdatedEvent) => void): () => void {
-  return window.api.onInboxUpdated(callback)
+  return subscribeEvent<InboxUpdatedEvent>('inbox-updated', callback)
 }
 
 export function onInboxArchived(callback: (event: InboxArchivedEvent) => void): () => void {
-  return window.api.onInboxArchived(callback)
+  return subscribeEvent<InboxArchivedEvent>('inbox-archived', callback)
 }
 
 export function onInboxFiled(callback: (event: InboxFiledEvent) => void): () => void {
-  return window.api.onInboxFiled(callback)
+  return subscribeEvent<InboxFiledEvent>('inbox-filed', callback)
 }
 
 export function onInboxSnoozed(callback: (event: InboxSnoozedEvent) => void): () => void {
-  return window.api.onInboxSnoozed(callback)
+  return subscribeEvent<InboxSnoozedEvent>('inbox-snoozed', callback)
 }
 
 export function onInboxSnoozeDue(callback: (event: InboxSnoozeDueEvent) => void): () => void {
-  return window.api.onInboxSnoozeDue(callback)
+  return subscribeEvent<InboxSnoozeDueEvent>('inbox-snooze-due', callback)
 }
 
 export function onInboxTranscriptionComplete(
   callback: (event: InboxTranscriptionCompleteEvent) => void
 ): () => void {
-  return window.api.onInboxTranscriptionComplete(callback)
+  return subscribeEvent<InboxTranscriptionCompleteEvent>('inbox-transcription-complete', callback)
 }
 
 export function onInboxMetadataComplete(
   callback: (event: InboxMetadataCompleteEvent) => void
 ): () => void {
-  return window.api.onInboxMetadataComplete(callback)
+  return subscribeEvent<InboxMetadataCompleteEvent>('inbox-metadata-complete', callback)
 }
 
 export function onInboxProcessingError(
   callback: (event: InboxProcessingErrorEvent) => void
 ): () => void {
-  return window.api.onInboxProcessingError(callback)
+  return subscribeEvent<InboxProcessingErrorEvent>('inbox-processing-error', callback)
 }
 
 export function getInboxItemIcon(type: InboxItem['type']): string {

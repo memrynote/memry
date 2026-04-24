@@ -52,12 +52,13 @@ describe('inbox-service', () => {
     vi.useRealTimers()
   })
 
-  it('exposes inbox RPC methods directly from window.api.inbox', () => {
-    expect(inboxService.captureText).toBe(api.inbox.captureText)
-    expect(inboxService.file).toBe(api.inbox.file)
-    expect(inboxService.bulkArchive).toBe(api.inbox.bulkArchive)
-    expect(inboxService.getStats).toBe(api.inbox.getStats)
-    expect(inboxService.setStaleThreshold).toBe(api.inbox.setStaleThreshold)
+  it('exposes inbox RPC methods as callable forwarders', () => {
+    // Phase H: forwarder is a Proxy, so methods are not identical references.
+    expect(typeof inboxService.captureText).toBe('function')
+    expect(typeof inboxService.file).toBe('function')
+    expect(typeof inboxService.bulkArchive).toBe('function')
+    expect(typeof inboxService.getStats).toBe('function')
+    expect(typeof inboxService.setStaleThreshold).toBe('function')
   })
 
   it('forwards capture, file, and snooze operations', async () => {

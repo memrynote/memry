@@ -1,9 +1,11 @@
 /**
  * Saved Filters service client.
- * Thin wrapper around window.api.savedFilters for type-safe access.
+ * Thin wrapper around Tauri invoke commands for type-safe access.
  *
  * @module services/saved-filters-service
  */
+
+import { createInvokeForwarder, subscribeEvent } from '@/lib/ipc/forwarder'
 
 // ============================================================================
 // Types
@@ -66,53 +68,24 @@ export interface SavedFilterUpdateInput {
   position?: number
 }
 
+interface SavedFiltersClientAPI {
+  list(): Promise<{ savedFilters: SavedFilter[] }>
+  create(
+    input: SavedFilterCreateInput
+  ): Promise<{ success: boolean; savedFilter: SavedFilter | null; error?: string }>
+  update(
+    input: SavedFilterUpdateInput
+  ): Promise<{ success: boolean; savedFilter: SavedFilter | null; error?: string }>
+  delete(id: string): Promise<{ success: boolean; error?: string }>
+  reorder(ids: string[], positions: number[]): Promise<{ success: boolean; error?: string }>
+}
+
 // ============================================================================
 // Service Methods
 // ============================================================================
 
-export const savedFiltersService = {
-  /**
-   * List all saved filters
-   */
-  list: async (): Promise<{ savedFilters: SavedFilter[] }> => {
-    return window.api.savedFilters.list()
-  },
-
-  /**
-   * Create a new saved filter
-   */
-  create: async (
-    input: SavedFilterCreateInput
-  ): Promise<{ success: boolean; savedFilter: SavedFilter | null; error?: string }> => {
-    return window.api.savedFilters.create(input)
-  },
-
-  /**
-   * Update an existing saved filter
-   */
-  update: async (
-    input: SavedFilterUpdateInput
-  ): Promise<{ success: boolean; savedFilter: SavedFilter | null; error?: string }> => {
-    return window.api.savedFilters.update(input)
-  },
-
-  /**
-   * Delete a saved filter
-   */
-  delete: async (id: string): Promise<{ success: boolean; error?: string }> => {
-    return window.api.savedFilters.delete(id)
-  },
-
-  /**
-   * Reorder saved filters
-   */
-  reorder: async (
-    ids: string[],
-    positions: number[]
-  ): Promise<{ success: boolean; error?: string }> => {
-    return window.api.savedFilters.reorder(ids, positions)
-  }
-}
+export const savedFiltersService: SavedFiltersClientAPI =
+  createInvokeForwarder<SavedFiltersClientAPI>('saved_filters')
 
 // ============================================================================
 // Event Subscription Helpers
@@ -124,7 +97,7 @@ export const savedFiltersService = {
 export function onSavedFilterCreated(
   callback: (event: { savedFilter: SavedFilter }) => void
 ): () => void {
-  return window.api.onSavedFilterCreated(callback as (event: { savedFilter: unknown }) => void)
+  return subscribeEvent<{ savedFilter: SavedFilter }>('saved-filter-created', callback)
 }
 
 /**
@@ -133,16 +106,14 @@ export function onSavedFilterCreated(
 export function onSavedFilterUpdated(
   callback: (event: { id: string; savedFilter: SavedFilter }) => void
 ): () => void {
-  return window.api.onSavedFilterUpdated(
-    callback as (event: { id: string; savedFilter: unknown }) => void
-  )
+  return subscribeEvent<{ id: string; savedFilter: SavedFilter }>('saved-filter-updated', callback)
 }
 
 /**
  * Subscribe to saved filter deleted events
  */
 export function onSavedFilterDeleted(callback: (event: { id: string }) => void): () => void {
-  return window.api.onSavedFilterDeleted(callback)
+  return subscribeEvent<{ id: string }>('saved-filter-deleted', callback)
 }
 
 // Default export

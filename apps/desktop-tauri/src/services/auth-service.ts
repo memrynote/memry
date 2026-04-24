@@ -1,37 +1,39 @@
+import { invoke } from '@/lib/ipc/invoke'
+
 export const authService = {
   requestOtp: (input: { email: string }) => {
-    return window.api.syncAuth.requestOtp(input)
+    return invoke('sync_auth_request_otp', input)
   },
 
   verifyOtp: (input: { email: string; code: string }) => {
-    return window.api.syncAuth.verifyOtp(input)
+    return invoke('sync_auth_verify_otp', input)
   },
 
   resendOtp: (input: { email: string }) => {
-    return window.api.syncAuth.resendOtp(input)
+    return invoke('sync_auth_resend_otp', input)
   },
 
   initOAuth: (input: { provider: 'google' }) => {
-    return window.api.syncAuth.initOAuth(input)
+    return invoke('sync_auth_init_o_auth', input)
   },
 
   refreshToken: () => {
-    return window.api.syncAuth.refreshToken()
+    return invoke('sync_auth_refresh_token')
   },
 
   setupFirstDevice: (input: { provider: 'google'; oauthToken: string; state: string }) => {
-    return window.api.syncSetup.setupFirstDevice(input)
+    return invoke('sync_setup_setup_first_device', input)
   },
 
   setupNewAccount: () => {
-    return window.api.syncSetup.setupNewAccount()
+    return invoke('sync_setup_setup_new_account')
   },
 
   confirmRecoveryPhrase: (input: { confirmed: boolean }) => {
-    return window.api.syncSetup.confirmRecoveryPhrase(input)
+    return invoke('sync_setup_confirm_recovery_phrase', input)
   },
 
   logout: () => {
-    return window.api.syncAuth.logout()
+    return invoke('sync_auth_logout')
   }
 }

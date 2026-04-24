@@ -18,12 +18,14 @@ describe('notes-service', () => {
     ;(window as Window & { api: unknown }).api = api
   })
 
-  it('exposes note RPC methods directly from window.api.notes', () => {
-    expect(notesService.create).toBe(api.notes.create)
-    expect(notesService.get).toBe(api.notes.get)
-    expect(notesService.list).toBe(api.notes.list)
-    expect(notesService.uploadAttachment).toBe(api.notes.uploadAttachment)
-    expect(notesService.reorder).toBe(api.notes.reorder)
+  it('exposes note RPC methods as callable forwarders', () => {
+    // Phase H: forwarder is a Proxy, so methods are not identical references.
+    // Behavioural forwarding is covered by the dedicated tests below.
+    expect(typeof notesService.create).toBe('function')
+    expect(typeof notesService.get).toBe('function')
+    expect(typeof notesService.list).toBe('function')
+    expect(typeof notesService.uploadAttachment).toBe('function')
+    expect(typeof notesService.reorder).toBe('function')
   })
 
   it('forwards core note operations to window.api.notes', async () => {

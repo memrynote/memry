@@ -36,7 +36,7 @@ import type {
   WikiLinkPreview,
   WikiLinkResolution
 } from '@memry/rpc/notes'
-import { createWindowApiForwarder } from './window-api-forwarder'
+import { createInvokeForwarder, subscribeEvent } from '@/lib/ipc/forwarder'
 
 export type {
   AttachmentInfo,
@@ -77,38 +77,38 @@ export type {
   WikiLinkResolution
 }
 
-export const notesService: NotesClientAPI = createWindowApiForwarder(() => window.api.notes)
+export const notesService: NotesClientAPI = createInvokeForwarder<NotesClientAPI>('notes')
 
 export function onNoteCreated(callback: (event: NoteCreatedEvent) => void): () => void {
-  return window.api.onNoteCreated(callback)
+  return subscribeEvent<NoteCreatedEvent>('note-created', callback)
 }
 
 export function onNoteUpdated(callback: (event: NoteUpdatedEvent) => void): () => void {
-  return window.api.onNoteUpdated(callback)
+  return subscribeEvent<NoteUpdatedEvent>('note-updated', callback)
 }
 
 export function onNoteDeleted(callback: (event: NoteDeletedEvent) => void): () => void {
-  return window.api.onNoteDeleted(callback)
+  return subscribeEvent<NoteDeletedEvent>('note-deleted', callback)
 }
 
 export function onNoteRenamed(callback: (event: NoteRenamedEvent) => void): () => void {
-  return window.api.onNoteRenamed(callback)
+  return subscribeEvent<NoteRenamedEvent>('note-renamed', callback)
 }
 
 export function onNoteMoved(callback: (event: NoteMovedEvent) => void): () => void {
-  return window.api.onNoteMoved(callback)
+  return subscribeEvent<NoteMovedEvent>('note-moved', callback)
 }
 
 export function onNoteExternalChange(
   callback: (event: NoteExternalChangeEvent) => void
 ): () => void {
-  return window.api.onNoteExternalChange(callback)
+  return subscribeEvent<NoteExternalChangeEvent>('note-external-change', callback)
 }
 
 export function onTagsChanged(callback: () => void): () => void {
-  return window.api.onTagsChanged(callback)
+  return subscribeEvent<void>('tags-changed', callback)
 }
 
 export function onFolderConfigUpdated(callback: (event: { path: string }) => void): () => void {
-  return window.api.onFolderConfigUpdated(callback)
+  return subscribeEvent<{ path: string }>('folder-config-updated', callback)
 }

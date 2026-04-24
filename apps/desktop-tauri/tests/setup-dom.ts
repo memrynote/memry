@@ -425,33 +425,39 @@ function kebabToEventKey(event: string): string {
 type AnyFn = (...args: unknown[]) => unknown
 
 function resolveApiMethod(cmd: string): AnyFn {
-  const underscore = cmd.indexOf('_')
-  if (underscore === -1) {
-    const api = (windowTarget.api ?? {}) as Record<string, AnyFn>
-    const method = api[cmd]
-    if (typeof method !== 'function') {
-      throw new Error(`Mock IPC: command "${cmd}" not implemented on window.api`)
+  const api = (windowTarget.api ?? {}) as Record<
+    string,
+    Record<string, AnyFn> | AnyFn | undefined
+  >
+
+  // Command names look like `<domain>_<method>` where the domain itself may
+  // contain underscores (e.g. `sync_auth_request_otp` routes to
+  // `api.syncAuth.requestOtp`). The mapping from a flat snake-case command to
+  // a nested `(domain, method)` pair is ambiguous — try every split point and
+  // accept the first that resolves to a function.
+  const parts = cmd.split('_')
+  for (let cut = parts.length - 1; cut >= 1; cut -= 1) {
+    const domain = snakeToCamel(parts.slice(0, cut).join('_'))
+    const method = snakeToCamel(parts.slice(cut).join('_'))
+    const domainApi = api[domain]
+    if (domainApi && typeof domainApi === 'object') {
+      const fn = (domainApi as Record<string, AnyFn>)[method]
+      if (typeof fn === 'function') return fn
     }
-    return method
   }
-  const domain = cmd.slice(0, underscore)
-  const method = snakeToCamel(cmd.slice(underscore + 1))
-  const api = (windowTarget.api ?? {}) as Record<string, Record<string, AnyFn> | AnyFn | undefined>
-  const domainApi = api[domain]
-  if (domainApi && typeof domainApi === 'object') {
-    const fn = (domainApi as Record<string, AnyFn>)[method]
-    if (typeof fn === 'function') {
-      return fn
-    }
-  }
-  // Fall back to a top-level method on the api (e.g. `windowMinimize`)
+
+  // Top-level method on the api (e.g. `window_minimize` → `windowMinimize`).
   const topLevel = api[snakeToCamel(cmd)]
-  if (typeof topLevel === 'function') {
-    return topLevel as AnyFn
+  if (typeof topLevel === 'function') return topLevel as AnyFn
+
+  // Zero-underscore command (e.g. `notes_list` was handled above because
+  // parts.length >= 2; this branch only fires for single-word commands).
+  if (parts.length === 1) {
+    const method = api[cmd]
+    if (typeof method === 'function') return method as AnyFn
   }
-  throw new Error(
-    `Mock IPC: command "${cmd}" not implemented on window.api.${domain}.${method}`
-  )
+
+  throw new Error(`Mock IPC: command "${cmd}" not implemented on window.api`)
 }
 
 function unpackArgs(payload: unknown): unknown[] {
@@ -467,9 +473,14 @@ function unpackArgs(payload: unknown): unknown[] {
 }
 
 vi.mock('@/lib/ipc/invoke', () => ({
-  invoke: vi.fn(async (cmd: string, args?: unknown) => {
+  // Synchronous pass-through: the mock api method (usually a vi.fn returning
+  // a promise) is invoked and its result is returned directly. Avoiding an
+  // extra async wrapper keeps microtask timing close to the pre-Phase-H
+  // path where callers invoked window.api.X.Y directly — tests that rely
+  // on a small number of `await Promise.resolve()` ticks continue to work.
+  invoke: vi.fn((cmd: string, args?: unknown) => {
     const fn = resolveApiMethod(cmd)
-    return Promise.resolve(fn(...unpackArgs(args)))
+    return fn(...unpackArgs(args))
   })
 }))
 
