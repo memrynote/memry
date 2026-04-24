@@ -4,6 +4,7 @@ import { tasksRoutes } from './tasks'
 import { foldersRoutes } from './folders'
 import { calendarRoutes } from './calendar'
 import { inboxRoutes } from './inbox'
+import { journalRoutes } from './journal'
 
 /**
  * Aggregated route map for the mock IPC router.
@@ -21,7 +22,8 @@ const routes: MockRouteMap = {
   ...tasksRoutes,
   ...foldersRoutes,
   ...calendarRoutes,
-  ...inboxRoutes
+  ...inboxRoutes,
+  ...journalRoutes
 }
 
 /**
