@@ -9,7 +9,7 @@
 | Author | Kaan (via brainstorming with Claude Code) |
 | Parent initiative | Memry: Electron → Tauri migration (pre-production, no users) |
 | Prerequisite | Spike 0 — Tauri Risk Discovery (2026-04-23 to 2026-04-24) complete with three 🟢 verdicts |
-| Estimated duration | 19-22 sprints (~5-5.5 months solo) across 10 milestones |
+| Estimated duration | 20-23 sprints (~5-6 months solo) across 10 milestones |
 | Target platform | macOS only for v1 (Windows/Linux post-v1) |
 
 ## TL;DR
@@ -44,8 +44,12 @@ Key architectural decisions derived from Spike 0:
    Option A).
 4. **Drizzle dropped** — hand-written SQL migrations under
    `src-tauri/migrations/*.sql`.
-5. **AI SDK runs in renderer** — Vercel AI SDK works browser-side; API keys
-   retrieved from OS keychain via invoke on demand.
+5. **AI SDK UI runs in renderer, HTTPS runs in Rust proxy.** Vercel AI SDK +
+   `@blocknote/xl-ai` stay in the webview for UX continuity. A custom fetch
+   adapter routes every outbound LLM HTTPS call through a Rust
+   `ai_http_fetch_stream` command; Rust holds the keychain-backed provider
+   key. Renderer never sees raw credentials, so an XSS in the webview cannot
+   exfiltrate an OpenAI/Anthropic key.
 6. **Binary IPC discipline** — payloads >8KB use `Response::new(Vec<u8>)` or
    `Channel<u8>` to bypass default JSON-array serialization (S3 observation #4).
 
@@ -154,9 +158,16 @@ Confirmed in brainstorming session 2026-04-24:
 - State: Tanstack Query (server cache) + minimal local state. No persistent
   state in renderer.
 - All backend access via `invoke(commandName, args)` or `listen(eventName, cb)`.
-- AI calls made directly from renderer to LLM provider APIs (Vercel AI SDK).
-  API key fetched on demand via `invoke('ai_get_api_key', {provider})`, held in
-  module-scoped ref during request lifetime.
+- Vercel AI SDK + `@blocknote/xl-ai` UI stay in renderer (streaming SSE UX,
+  tool-calling, multi-provider ergonomics preserved). However, **raw LLM
+  provider API keys never enter the renderer process.** AI SDK is instantiated
+  with a **custom fetch adapter** that forwards every outbound request to a
+  Rust command `ai_http_fetch_stream` via Tauri IPC. Rust reads the real key
+  from the OS keychain, performs the HTTPS call, streams the response back
+  through a Tauri `Channel<u8>`. The renderer reconstructs a `Response` whose
+  `ReadableStream` is fed by the channel so the AI SDK behaves identically
+  to a native `fetch`. Result: renderer holds no credential material, keychain
+  is the sole source of truth, and the browser-side integration remains intact.
 - Page reload = full reset. Webview reload behaves like fresh launch.
 
 ### IPC boundary discipline
@@ -447,8 +458,20 @@ hand-written Zod schemas in `src/lib/schemas/`.
 ### Electron freeze discipline
 
 - Add FROZEN banner to `apps/desktop/README.md` at M1.
-- CI adds path-restricted check: warn or block if any `apps/desktop/**` file
-  is modified (except during final deletion at M10).
+- CI adds path-restricted workflow that **fails any PR touching
+  `apps/desktop/**` unless the PR carries the label
+  `migration/m10-cutover`** or the label `migration/emergency-fix`. Both
+  labels are protected (only Kaan can apply them via branch protection /
+  CODEOWNERS). This makes the freeze both strict and escape-hatched:
+  - Normal PRs → guard fails, protects Electron from accidental drift
+  - The single M10 cutover PR → Kaan applies `migration/m10-cutover`, guard
+    passes, `git rm -rf apps/desktop/` proceeds
+  - A rare emergency Electron hot-fix (unlikely given pre-production
+    status) → Kaan applies `migration/emergency-fix`, guard passes, PR
+    merges with explicit intent
+- The freeze workflow itself deletes the guard as part of the M10 cutover
+  PR (one final commit removes `.github/workflows/electron-freeze.yml`
+  since Electron no longer exists post-cutover).
 
 ### Renderer UI port strategy
 
@@ -857,8 +880,11 @@ foundation from M1–M7 is in place.
 - **M8.10** Calendar sync scheduler — Rust tokio task.
 - **M8.11** Graph view — sigma + graphology renderer-side; Rust provides
   `graph_build_nodes`, `graph_build_edges` commands.
-- **M8.12** AI inline completions — Vercel AI SDK + `@blocknote/xl-ai` +
-  API key flow.
+- **M8.12** AI inline completions — Vercel AI SDK + `@blocknote/xl-ai` with
+  custom fetch adapter wired to a new Rust command `ai_http_fetch_stream`
+  that reads the provider key from keychain, performs the HTTPS call with
+  `reqwest`, and streams response bytes back through `Channel<u8>`. Renderer
+  never holds a raw API key. Covers OpenAI + Anthropic providers at minimum.
 - **M8.13** PDF handling — pdfjs-dist renderer + Rust pdf-extract for
   server-side text extraction.
 - **M8.14** Thumbnails — Rust image crate, write-time generation, Channel<u8>
@@ -915,27 +941,55 @@ links plumbing, global shortcut.
 
 **Effort:** M (~1 sprint)
 
-### M10 — E2E Port + Electron Cleanup
+### M10 — Package Extraction + E2E Port + Electron Cleanup
 
-**Scope:** Playwright suite ported, Electron deleted.
+**Scope:** Rehome every surviving `@memry/*` import, prove both `apps/`
+packages build without `packages/`, port Playwright suite, delete Electron +
+packages.
 
-**Deliverables:**
+Ordering inside M10 is strict: **extraction → dry-run build → E2E port →
+dogfood → deletion**. No step runs ahead of the one before it.
 
-- Port `apps/desktop/e2e/**/*.spec.ts` to `apps/desktop-tauri/e2e/specs/**`.
-- Playwright WebKit runs with S1 harness workarounds (manual clipboard, file
-  input fallback).
-- Critical user journeys covered: onboarding, note CRUD, 2-device sync,
-  calendar event, inbox snooze, search, settings.
-- 1-week Kaan dogfood period on real vault.
-- `git rm -r apps/desktop/` and `packages/`.
-- `pnpm-workspace.yaml` cleaned.
-- Project `CLAUDE.md` rewritten with Tauri instructions.
-- Release tag `v2.0.0`; final Electron binary archived in separate release
-  tag for emergency fallback.
+**Sub-steps:**
+
+- **M10.1 Extraction audit** — Run
+  `grep -r '@memry/' apps/desktop-tauri/src apps/sync-server/src` to produce
+  the complete list of remaining cross-package imports. Categorize each as
+  either (a) type-only (can be inlined as a local `types.ts`), (b) runtime
+  utility (inline into the consuming app), or (c) shared contract between
+  desktop-tauri and sync-server (must survive as an app-local module or a
+  kept package).
+- **M10.2 Rehome into `apps/desktop-tauri/src/`** — Inline each remaining
+  `@memry/*` import used by the Tauri renderer. Update tsconfig path aliases
+  to remove `@memry/*` entries. Run `pnpm --filter @memry/desktop-tauri
+  typecheck` after every module rehomed.
+- **M10.3 Rehome into `apps/sync-server/src/`** — Same exercise for the
+  Cloudflare Worker. Every `@memry/*` import becomes a local module.
+- **M10.4 Packages dry-run** — On a throwaway branch, run
+  `git rm -rf packages/` and confirm both commands exit 0:
+  `pnpm --filter @memry/desktop-tauri build` and
+  `pnpm --filter @memry/sync-server build`. If either fails, restore and
+  return to M10.1 to catch the missed import. Do NOT commit the dry-run
+  branch.
+- **M10.5 E2E port** — Port `apps/desktop/e2e/**/*.spec.ts` to
+  `apps/desktop-tauri/e2e/specs/**` using the S1 harness workarounds (manual
+  clipboard, `setInputFiles` for drag-drop). Coverage: onboarding, note CRUD,
+  2-device sync, calendar event, inbox snooze, search, settings.
+- **M10.6 Dogfood** — 1-week Kaan dogfood period on a real vault. Bug
+  backlog collected; blockers fixed before proceeding.
+- **M10.7 Cutover** — Real deletion: `git rm -rf apps/desktop/ packages/`.
+  This is the ONE PR allowed to touch `apps/desktop/**` (see freeze-guard
+  bypass label in Section 5.x). Clean `pnpm-workspace.yaml`. Rewrite project
+  `CLAUDE.md` with Tauri instructions. Release tag `v2.0.0`. Archive the
+  last Electron binary under a separate v1.x release for emergency rollback.
 
 **Acceptance gate:**
 
-- `pnpm test:e2e` passes (20+ specs).
+- M10.1-M10.4 done: `grep -r '@memry/' apps/` returns zero matches.
+- `pnpm --filter @memry/desktop-tauri build` and
+  `pnpm --filter @memry/sync-server build` both succeed on a branch with
+  `packages/` deleted.
+- `pnpm --filter @memry/desktop-tauri test:e2e` passes (20+ specs).
 - 1-week dogfood without regression.
 - Bundle size <80MB (Electron ~150MB baseline; Tauri target <60MB).
 - Cold start <2s (Electron ~4s baseline; Tauri target <1.5s).
@@ -943,10 +997,16 @@ links plumbing, global shortcut.
 
 **Risks:**
 
+- A `@memry/*` import hides behind dynamic `import()` or string-interpolated
+  path and escapes grep. Mitigation: M10.4 dry-run catches it at build time.
+- `apps/sync-server` relies on a type that has drifted away from the shared
+  source. Mitigation: M10.3 typecheck surfaces it; inline the current
+  server-side shape.
 - Playwright WebKit clipboard gap — manual QA covers it (S1 finding).
 - Dogfood may surface CRDT/sync edge cases — bug backlog + hot-fix sprint.
 
-**Effort:** L (~2 sprint)
+**Effort:** L→XL (~2.5-3 sprint; extraction + dry-run adds ~0.5-1 sprint
+over the original M10 scope).
 
 ### Milestone dependency graph
 
@@ -974,8 +1034,8 @@ run in parallel.
 | M7 | M | 1 |
 | M8 (parallel) | XL | 3 (parallel) / 5 (serial) |
 | M9 | M | 1 |
-| M10 | L | 2 |
-| **Total** | | **~21-22 sprint (~5.5 months) serial** or **~19-20 sprint (~5 months) with M8 parallel** |
+| M10 | L-XL | 2.5-3 |
+| **Total** | | **~22-23 sprint (~5.5-6 months) serial** or **~20-21 sprint (~5-5.5 months) with M8 parallel** |
 
 ## 5. Cross-cutting Conventions
 
@@ -1157,9 +1217,17 @@ Rust main.rs reads env var and segregates `app_data_dir`.
 - `capabilities/default.json` explicit grants per plugin. S3 observation
   #11: silent denial looks like hang. M1 acceptance test enforces
   plugin-list ↔ grants cross-check.
-- `tauri.conf.json` `security.csp` restrictive:
-  `default-src 'self'; connect-src 'self' https://*.openai.com
-  https://api.anthropic.com https://<sync-server-domain>`.
+- `tauri.conf.json` `security.csp` stays **deliberately narrow** from M1
+  onward: `default-src 'self'; script-src 'self'; style-src 'self'
+  'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:;
+  connect-src 'self' ipc: https://ipc.localhost http://localhost:1420`.
+  No third-party host needs to be whitelisted because **the renderer makes
+  zero outbound HTTPS calls** — every network request (LLM providers, sync
+  server, attachment uploads) originates from Rust. AI traffic goes through
+  `ai_http_fetch_stream` (D5); sync traffic goes through the sync engine in
+  Rust (`sync/http.rs` + `sync/ws.rs`). Any future feature that needs a
+  third-party host adds a new Rust command, not a CSP entry. Keeping CSP
+  closed is a defense-in-depth for renderer-side XSS risk.
 - Secrets (API keys, device keypair, master vault key) in OS keychain.
 - Dev-only `.env` not bundled in production.
 - Input validation: `impl NoteCreateInput::validate()` for domain rules;
@@ -1207,7 +1275,7 @@ Rust main.rs reads env var and segregates `app_data_dir`.
 | 12 | tokio-tungstenite reliability under Tauri | M | M | M6 24-hour stress test |
 | 13 | tauri-plugin-updater ergonomics | L | M | M9 subspike (1 day) |
 | 14 | Apple Developer ID signing setup | L | M | Account verified at M1; config at M9 |
-| 15 | @blocknote/xl-ai renderer-only AI SDK | M | M | M8.12 1-day POC; custom UI fallback |
+| 15 | @blocknote/xl-ai + Vercel AI SDK custom-fetch adapter streaming through Rust proxy (Channel<u8>) | M | M | M8.12 starts with 1-day POC: verify AI SDK accepts custom fetch, streaming ReadableStream reconstruction from Tauri channel works with SSE; fallback = direct-HTTPS design with CSP widening + key reconsidered |
 | 16 | sqlite-vec alpha binary availability | M | H | Self-build fallback; naive-scan fallback |
 | 17 | specta/tauri-specta generic type corner cases | M | M | M2 stress test (20+ structs) |
 | 18 | Rust compile time in large codebase | H | M | sccache in M1; incremental discipline |
@@ -1274,7 +1342,7 @@ All decisions below were confirmed in the brainstorming session 2026-04-24.
 | D2 | Electron frozen at M1, deleted at M10 | No resources spent on dual maintenance; pre-production |
 | D3 | macOS only for v1 | Spike 0 only validated WKWebView; Win/Linux post-v1 |
 | D4 | Greenfield `apps/desktop-tauri/`; `packages/*` deleted at M10 | Clean monorepo; TS-only bits inlined |
-| D5 | AI SDK renderer-side (Vercel AI SDK + @blocknote/xl-ai) | Preserve BlockNote AI integration; HTTPS APIs browser-compatible |
+| D5 | AI SDK UI renderer-side, HTTPS proxied through Rust (Vercel AI SDK custom fetch → `ai_http_fetch_stream` → keychain-backed key) | Preserve `@blocknote/xl-ai` integration + streaming UX AND keep LLM credentials out of the renderer trust boundary |
 | D6 | Horizontal milestone sequencing (M1–M10 layer-by-layer) | Features share infrastructure; vertical slices are mostly foundation |
 | D7 | Rust single crate with nested modules | Workspace split overkill at this scale |
 | D8 | rusqlite + custom Tauri commands (not plugin-sql) | S3 Option A proven; plugin-sql had unresolvable FTS5 hang |
