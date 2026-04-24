@@ -1,0 +1,61 @@
+import { forwardRef } from 'react'
+import { Book2, CheckSquare3, Inbox } from './icon-map'
+import type { AppIcon } from './types'
+
+type SvgProps = React.ComponentPropsWithRef<'svg'> & {
+  size?: string | number
+}
+
+function createSvgIcon(path: React.ReactNode, displayName: string, viewBox = '0 0 15 15'): AppIcon {
+  const Icon = forwardRef<SVGSVGElement, SvgProps>(({ size = 15, className, ...rest }, ref) => (
+    <svg
+      ref={ref}
+      xmlns="http://www.w3.org/2000/svg"
+      width={size}
+      height={size}
+      viewBox={viewBox}
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.4}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+      {...rest}
+    >
+      {path}
+    </svg>
+  ))
+  Icon.displayName = displayName
+  return Icon as AppIcon
+}
+
+export const SidebarInbox = Inbox
+
+export const SidebarJournal = Book2
+
+export const SidebarCalendar = createSvgIcon(
+  <>
+    <rect x="2" y="3" width="11" height="10" rx="2" />
+    <path d="M5 1.5v3" />
+    <path d="M10 1.5v3" />
+    <path d="M2 6.5h11" />
+    <path d="M5 9h.01" />
+    <path d="M8 9h.01" />
+    <path d="M5 11.5h.01" />
+    <path d="M8 11.5h.01" />
+  </>,
+  'SidebarCalendar'
+)
+
+export const SidebarTasks = CheckSquare3
+
+export const SidebarGraph = createSvgIcon(
+  <>
+    <circle cx="7.5" cy="3.5" r="2" />
+    <circle cx="3" cy="11.5" r="2" />
+    <circle cx="12" cy="11.5" r="2" />
+    <path d="M6.2 5.2l-2 4.5" />
+    <path d="M8.8 5.2l2 4.5" />
+  </>,
+  'SidebarGraph'
+)
