@@ -78,6 +78,18 @@ command implementations; the UI surface should stay largely stable after M1.
   `electron-log`. This is not a product blocker, but it is a planning gap:
   M2 must replace the logger with a Tauri-safe implementation and harden the
   audit patterns.
+- The current updater renderer hook calls `updater_get_state`,
+  `updater_check_for_updates`, `updater_download_update`, and
+  `updater_quit_and_install`, but the M1 mock route map still exposes older
+  `updater_check` / `updater_download` / `updater_install` names. M2 must add
+  a command-name parity gate that catches this class of drift between renderer
+  services, mock routes, generated bindings, and Rust commands.
+- Native app-shell parity is not fully captured yet. Electron currently owns
+  window controls, quick-capture window lifecycle, native context menus,
+  custom `memry-file://` media serving, deep-link dispatch, single-instance
+  behavior, graceful shutdown flushes, desktop notifications, global shortcuts,
+  and OS open/reveal actions. The Tauri plan must treat these as first-class
+  parity work, not incidental plugin setup.
 - Non-blocking M1 cleanup still exists in warnings:
   React setState-during-render warning in notes-tree tests,
   Radix dialog accessibility warnings, CSS `::highlight(...)` parser warnings,
@@ -586,6 +598,61 @@ and `src/lib/ipc/invoke.ts` decides whether a command stays on mock or routes
 to Rust via the `realCommands` allowlist. M2–M8 should preserve that pattern
 to avoid churn in the UI layer.
 
+### Full Electron parity inventory
+
+The migration is not done when the main CRUD commands work. It is done when
+every Electron-owned app-shell, preload, IPC, lifecycle, and OS integration
+surface is either implemented in Tauri, intentionally removed with a written
+reason, or explicitly deferred post-v1. The source of truth for the ledger is:
+
+1. `apps/desktop/src/main/index.ts` for app-shell and lifecycle behavior.
+2. `apps/desktop/src/preload/**` for renderer-exposed native APIs.
+3. `packages/contracts/src/**` plus `generated-ipc-invoke-map.ts` for the
+   complete invoke/event channel surface.
+4. `apps/desktop-tauri/src/lib/ipc/**` for current mock routes and renderer
+   call sites.
+5. `apps/desktop-tauri/src-tauri/src/commands/**` plus generated specta
+   bindings for real Rust coverage.
+
+Each M2+ PR must update the ledger for the domain it touches. By M10 there must
+be zero unclassified rows and zero production renderer calls that still hit the
+mock path.
+
+| Surface | Electron behavior to preserve | Tauri implementation checkpoint | Milestone | Acceptance proof |
+|---|---|---|---|---|
+| Window chrome + controls | Custom macOS titlebar/traffic lights, minimize, maximize, close, drag region | Tauri window APIs and scoped `core:window:*` capability grants per window label | M2 audit, M8.0 implementation | Traffic lights work; close still flushes dirty windows before quit |
+| Graceful shutdown | `app:request-flush`, `app:flush-done`, close snapshots, scheduler/sync/voice/vault teardown | Rust lifecycle manager emits flush event, waits with timeout, then stops background services in order | M5-M8.0 | Quit after unsaved edit preserves note content and leaves no background task running |
+| Quick capture | Secondary always-on-top frameless window, blur-close, clipboard read, resize, open settings | Dedicated window label, scoped capabilities, clipboard/global-shortcut/window commands | M8.0 + M8.16 | Shortcut opens quick capture; paste/capture/resize/blur-close/settings jump all work |
+| Native context menus | `context-menu:show` returns selected action/cancel for tab/calendar/editor menus | Rust menu implementation or deliberately equivalent renderer menu with keyboard/a11y parity | M8.0 | Right-click flows return the same action IDs as Electron |
+| File drop paths | Electron `webUtils.getPathForFile` exposes local paths from dropped files | Tauri drag/drop event handling or dialog/fs-scope fallback command | M3 before M8 imports | Drag image/PDF/attachment import works without relying on fake `File.path` |
+| Local file/media protocol | `memry-file://` allowlisted vault/appData serving, byte ranges, transparent fallback image | Tauri custom protocol/resource handler with vault allowlist and range support | M3 design, M8.13-M8.14 complete | Images, PDFs, audio/video seek, thumbnails, and denied outside-vault reads all verified |
+| OS open/reveal/dialogs | `shell.openExternal`, `openPath`, `showItemInFolder`, native file/folder pickers | Tauri opener/shell/dialog/fs commands with explicit capability scopes | M3 + M8.13 | Reveal note/vault, import file, export, and external-link flows work |
+| Deep links + single instance | `memry://` OAuth callback, warm/cold app dispatch, focus existing instance | Tauri deep-link plugin plus single-instance/focus routing | M8.0 before M8.9, M9 packaging | Cold and warm OAuth callback focuses app and emits typed event |
+| Desktop notifications | Reminder/snooze notifications, click routes back into target item | Tauri notification plugin plus click routing and permission state | M8.0 + M8.15 | Due reminder appears, click opens the right note/task/inbox item |
+| Global shortcuts | Configurable quick capture shortcut | Tauri global-shortcut plugin and settings-backed registration | M8.16 | Shortcut updates from settings and survives restart |
+| Updater | Settings UI states, check/download/install/restart events | Tauri updater plugin commands/events named exactly as renderer expects | M9 | Mock newer version covers check, download, install, restart, failure, cancel |
+| Command/event surface | All contract/preload/invoke channels reachable or intentionally retired | Automated parity audit comparing Electron map, renderer calls, mocks, Rust handlers, bindings | M2 onward | CI fails on unmapped command, mismatched mock name, or unclassified retired command |
+| Capabilities/CSP | Electron CSP/cert pinning safety preserved under Tauri capability model | Capability files scoped per plugin/window; CSP stays narrow; Rust owns network | Every plugin add | Capability check fails closed with useful error, no renderer third-party network escape |
+
+### User-visible migration states
+
+Full functionality also means the Tauri app explains transitional/native
+states clearly while mocks are being replaced. These states need screenshots or
+e2e coverage before cutover:
+
+| State | User-visible behavior | Primary action |
+|---|---|---|
+| First launch, no vault | Empty/onboarding state matches Electron, with create/open vault actions | Create vault / Open vault |
+| Vault locked | Main content gated, settings that do not require secrets still reachable | Unlock / switch vault |
+| Unlock failure | Inline error uses AppError mapping, no raw crypto/keychain text | Retry / reset local dev data |
+| Command still mocked during migration | Only dev/test builds may show mock data; production build must not silently use mocks | Dev badge / fail production build |
+| Rust command loading | Long-running vault scan, index rebuild, sync, AI stream show cancellable progress where Electron did | Cancel or background |
+| Native permission denied | Missing file, notification, shortcut, dialog, or capability grant becomes actionable UI, not a hang | Open settings / retry / choose folder |
+| Offline sync | Existing offline-first status, queue size, retry state, and last sync time remain visible | Work offline / sync now |
+| Background scheduler due item | Reminder/snooze/calendar state survives sleep/resume and app restart | Open item / dismiss / snooze |
+| Update available/downloading/error | Same updater settings UI path, typed error, retry/cancel/install states | Download / install / retry |
+| External file changed/conflict | Watcher event invalidates UI and conflict resolution mirrors Electron behavior | Reload / keep local / resolve |
+
 ## 4. Milestones
 
 Each milestone is a distinct branch + PR. Acceptance gates must pass before
@@ -756,6 +823,23 @@ creates the separate rebuildable `index.db` for FTS/vector/search cache.
 - Replace `electron-log/renderer` with a Tauri-safe renderer logger and extend
   `port:audit` to catch `electron-log`, `from 'electron'`, `electron/`, and
   `@electron` imports in non-test code.
+- Add `scripts/command-parity-audit.ts`. It compares the Electron generated
+  invoke map, preload type surface, Tauri renderer `invoke(...)` calls, mock
+  route registry, Rust `generate_handler![]` command list, and generated
+  specta bindings. Output is a classified ledger: real, mocked, renderer-only,
+  intentionally retired, or deferred with milestone. CI fails on unclassified
+  commands/events or mock/renderer name drift.
+- Resolve the current updater name mismatch before any further feature work:
+  the renderer hook calls `updater_get_state`,
+  `updater_check_for_updates`, `updater_download_update`, and
+  `updater_quit_and_install`, while the M1 mock registry exposes older
+  `updater_check` / `updater_download` / `updater_install` names. Either align
+  the mocks to the renderer contract or disable the updater UI in dev builds
+  behind an explicit "not implemented until M9" state.
+- Add minimal real/native wrappers for shell-neutral app commands that the
+  renderer already assumes exist: window minimize/maximize/close, flush event
+  subscription, and logging forward. Keep behavior simple; deeper lifecycle
+  parity lands in M8.0.
 - Rehome the settings-domain contracts/defaults touched by real
   `settings_*` commands into `apps/desktop-tauri/src/`, or document why a
   specific import remains. Record before/after `@memry/*` occurrence counts.
@@ -772,6 +856,10 @@ creates the separate rebuildable `index.db` for FTS/vector/search cache.
 - `pnpm bindings:check` shows no drift.
 - `pnpm --filter @memry/desktop-tauri port:audit` catches the expanded Electron
   pattern set and exits 0.
+- `pnpm --filter @memry/desktop-tauri command:parity` exits 0 with no
+  unclassified renderer calls and no mismatched mock command names.
+- The updater hook/mocks mismatch is gone or the updater UI is explicitly
+  unavailable until M9 in a way production cannot accidentally ship.
 
 **Risks:** Drizzle migrations 0001–0019 may have implicit semantics missed in
 manual port — mitigated by dumping schema from Electron DB and diffing. The
@@ -802,6 +890,15 @@ preferences.
   hidden app-internal folders, and unsupported filenames before any read/write.
 - Drag/drop path-resolution spike for Tauri/WebKit so file import, PDF import,
   and attachment flows do not depend on Electron-only `File.path`.
+- Native open/reveal/dialog command set: choose vault folder, choose import
+  files, reveal vault/note/attachment in Finder, open external URL, and open
+  local attachment through the OS. These replace Electron `shell.*` and dialog
+  usage and must be capability-scoped to the selected vault/app data roots.
+- Design and test the Tauri replacement for Electron's `memry-file://`
+  protocol. At minimum, prove allowlisted vault/appData reads, byte-range
+  requests for media seek, MIME detection, missing-image fallback behavior, and
+  denied access outside the vault. Full PDF/thumbnail feature coverage can land
+  in M8.13-M8.14, but the protocol strategy must be settled in M3.
 
 **Acceptance gate:**
 
@@ -813,6 +910,10 @@ preferences.
 - Path traversal and symlink-escape tests fail closed.
 - Tauri drag/drop path resolution has a working manual smoke or a documented
   fallback command before file-import features land in M8.
+- Native choose/reveal/open commands work in a real Tauri window and fail
+  closed for paths outside the selected vault/app data roots.
+- Local file protocol spike demonstrates image load, PDF load, media range
+  request, missing-image fallback, and outside-vault denial.
 - Renderer integration smoke: open/create/delete reflects in UI.
 - `cargo test --package vault` passes.
 
@@ -841,6 +942,16 @@ machine, OTP, device registration.
   in-memory SecretBox.
 - Commands: `auth_unlock`, `auth_lock`, `auth_status`, `auth_register_device`,
   `auth_request_otp`, `auth_submit_otp`, `auth_enable_biometric` (stub).
+- Parity commands for account/device/linking flows exposed by the Electron
+  contracts: `account_get_info`, `account_sign_out`, `account_get_recovery_key`,
+  `sync_setup_new_account`, `sync_generate_linking_qr`, `sync_link_via_qr`,
+  `sync_link_via_recovery`, `sync_approve_linking`, `sync_get_linking_sas`,
+  `sync_get_devices`, `sync_remove_device`, and `sync_rename_device`.
+- Crypto parity commands from the Electron contract surface:
+  `crypto_encrypt`, `crypto_decrypt`, `crypto_sign`, `crypto_verify`,
+  `crypto_rotate_keys`, and `crypto_get_rotation_progress`. If any command is
+  intentionally retired because Rust now owns the operation internally, the M4
+  command ledger must record the replacement and renderer impact.
 - Secret storage commands used by later features:
   `secrets_set_provider_key`, `secrets_get_provider_key_status`,
   `secrets_delete_provider_key`. These return only status/masked metadata to
@@ -863,6 +974,11 @@ machine, OTP, device registration.
   parallelism canonical values).
 - Provider key set/status/delete round-trips through keychain without exposing
   raw key material to renderer logs, return values, or generated bindings.
+- QR/recovery device linking, SAS approval, device rename/remove, account info,
+  sign-out, and recovery-key display match Electron flows against staging or a
+  local sync-server harness.
+- Crypto command ledger has zero unclassified Electron crypto/auth/account
+  channels, and retired channels have explicit renderer replacements.
 
 **Pre-flight subspike:** 1-day subspike at start of M4 to validate
 security-framework API on current macOS version. Fallback to `keyring-rs` if
@@ -894,6 +1010,13 @@ Prototype B), renderer shadow Y.Doc, BlockNote binding.
   `crdt_get_snapshot` (Response<Vec<u8>>), `crdt_get_state_vector`,
   `notes_create`, `notes_get`, `notes_update`, `notes_delete`,
   `notes_list_by_folder`.
+- Editor-critical notes parity beyond basic CRUD: `notes_get_by_path`,
+  `notes_rename`, `notes_move`, `notes_exists`, folder listing/CRUD needed by
+  the editor, note link/tag helpers, wiki-link resolve/preview, note positions
+  and reorder, note property definitions/options/status, local-only status, and
+  attachment metadata commands used by the editor chrome. Export/import and PDF
+  specific behavior may complete in M8, but the M5 ledger must classify every
+  note command from `notes-channels.ts`.
 - Dev-only runtime test commands behind a debug/test capability:
   `devtools_reset_db`, `devtools_seed_vault`, `devtools_open_test_vault`.
   These are required for the first real Tauri-runtime e2e lane and must not be
@@ -919,6 +1042,9 @@ Prototype B), renderer shadow Y.Doc, BlockNote binding.
   smoke lane remains for fast mock-lane regression checks.
 - Runtime lane proves real invoke/event/capability behavior with the debug
   reset/seed commands above. Mock-lane tests alone no longer satisfy the gate.
+- The notes command parity ledger has no unclassified `notes:*`, folder,
+  property, CRDT, or editor-adjacent preload channels. Any command deferred to
+  M8 is listed with the exact sub-milestone and a production guard.
 
 **Risks:**
 
@@ -952,6 +1078,15 @@ field-level vector-clock merge, CRDT sync endpoint.
 - Commands: `sync_start`, `sync_stop`, `sync_push_now`, `sync_pull_now`,
   `sync_status`, `sync_reset_cursor`.
 - Events: `sync-progress`, `sync-error`, `sync-completed`.
+- Sync operations parity commands/events from Electron contracts:
+  sync history, queue size, pause/resume, synced settings get/set, storage
+  breakdown, quarantined item list/retry/delete, device status, emergency wipe,
+  session expiration, clock skew, security warning, certificate pin failure,
+  item synced, conflict detected, queue cleared, upload/download progress, and
+  CRDT sync step events.
+- Attachment sync parity: blob upload/download/status commands, progress
+  events, cancellation/error states, and R2 payload shape tests against the
+  sync-server blob API.
 - Critical ordering from MEMORY.md: engine.start (pull) → seed_existing_crdt
   (fire-and-forget) → per-batch push_snapshot_for_note → POST /sync/push.
 - Sync-server contract extraction: rehome the sync/auth/blob contract modules
@@ -969,6 +1104,10 @@ field-level vector-clock merge, CRDT sync endpoint.
 - Cert pinning fails closed with modified cert.
 - Protocol parity tests cover sync push/pull/auth/blob payload shapes against
   the sync-server schemas.
+- The sync command/event parity ledger has zero unclassified `sync:*`,
+  `sync-ops:*`, `devices:*`, `attachments:*`, and sync event channels. Paused,
+  offline, quarantined, emergency-wipe, and session-expired states are covered
+  in runtime or integration tests.
 - ≥50 Rust tests.
 - Staging environment live round-trip smoke.
 
@@ -1029,7 +1168,10 @@ foundation from M1–M7 is in place.
 Dependency ordering inside M8 is still strict where features share native
 plumbing:
 
-- Deep links must land before Google Calendar OAuth is accepted.
+- Native shell parity (M8.0) must land before any feature that depends on
+  quick capture, context menus, notifications, OS open/reveal, lifecycle
+  flushing, or deep links is accepted.
+- Deep links from M8.0 must land before Google Calendar OAuth is accepted.
 - M4 keychain secret status/set/delete commands must land before AI provider
   settings or inline completions are accepted.
 - M3 drag/drop path resolution must land before file import, PDF import, and
@@ -1039,6 +1181,12 @@ plumbing:
 
 **Sub-milestones (each 1–3 days):**
 
+- **M8.0** Native app-shell parity — window controls and custom titlebar,
+  graceful shutdown flush, secondary quick-capture window lifecycle,
+  native context menus, desktop notifications and click routing, OS
+  open/reveal/dialog glue not already finished in M3, deep-link runtime
+  dispatch, single-instance/focus behavior, and per-window capability files.
+  This is the shell foundation for the rest of M8, not cleanup.
 - **M8.1** Tasks + Projects — CRUD commands, field-level merge (infra ready in
   M6), UI port.
 - **M8.2** Journal — date-based notes, CRDT Y.Doc, collision merge (MEMORY.md
@@ -1052,8 +1200,8 @@ plumbing:
 - **M8.8** Bookmarks + URL metadata — reqwest + scraper custom, ~80% feature
   parity with metascraper.
 - **M8.9** Calendar — Google OAuth via sync-server relay, events, sources,
-  bindings. Requires the deep-link handler from M8.17 or an earlier split of
-  that work.
+  bindings. Requires the deep-link handler from M8.0; OAuth is not accepted
+  with a manual callback workaround.
 - **M8.10** Calendar sync scheduler — Rust tokio task.
 - **M8.11** Graph view — sigma + graphology renderer-side; Rust provides
   `graph_build_nodes`, `graph_build_edges` commands.
@@ -1062,6 +1210,10 @@ plumbing:
   that reads the provider key from keychain, performs the HTTPS call with
   `reqwest`, and streams response bytes back through `Channel<u8>`. Renderer
   never holds a raw API key. Covers OpenAI + Anthropic providers at minimum.
+  Also close or explicitly retire the legacy `ai-inline:*` local-server style
+  settings/start/stop contract. If the Tauri design removes the local server,
+  the renderer settings UI must migrate to the Rust proxy model with no dead
+  controls.
 - **M8.13** PDF handling — pdfjs-dist renderer + Rust pdf-extract for
   server-side text extraction. Requires M3 drag/drop/path-resolution behavior
   before file import is marked complete.
@@ -1070,7 +1222,13 @@ plumbing:
 - **M8.15** Reminders — merged into snooze infrastructure.
 - **M8.16** Settings UI + global capture shortcut
   (tauri-plugin-global-shortcut).
-- **M8.17** Deep links — `memry://` URL handler wiring.
+- **M8.17** Reserved shell follow-up — only use this if M8.0 deliberately
+  splits non-critical polish. It may not contain Google OAuth blocking
+  deep-link work.
+- **M8.18** Full command/event parity closure — run the command parity audit
+  against the entire renderer surface, remove all production mock fallbacks,
+  close every deferred ledger row or move it to a named post-v1 decision, and
+  verify no Electron preload/global API assumptions remain.
 
 **Acceptance gate per sub-milestone:**
 
@@ -1080,6 +1238,8 @@ plumbing:
 - ≥5 Rust tests where backend logic exists.
 - Touched `@memry/*` contracts/types/helpers are rehomed locally or explicitly
   counted in the carry-forward ledger.
+- Touched command/event ledger rows are closed, deferred with a milestone, or
+  explicitly retired with user-visible impact documented.
 
 **Risks:**
 
@@ -1091,8 +1251,9 @@ plumbing:
 
 ### M9 — Updater + Packaging + Code Signing
 
-**Scope:** tauri-plugin-updater, signed `.app`, GitHub Releases, DMG, deep
-links plumbing, global shortcut.
+**Scope:** tauri-plugin-updater, signed `.app`, GitHub Releases, DMG, and
+packaging-time registration for deep links/global shortcut work already proven
+in M8.
 
 **Deliverables:**
 
@@ -1104,6 +1265,11 @@ links plumbing, global shortcut.
 - `memry://` deep link handler finalized (registered in `tauri.conf.json`
   `osxUrlSchemes`).
 - Global shortcut registered (⌥Space default).
+- Updater command/event parity for the settings UI:
+  `updater_get_state`, `updater_check_for_updates`,
+  `updater_download_update`, `updater_quit_and_install`, cancellation/error
+  states, and `updater-state-changed` event payloads. Production builds must
+  not include the M1 updater mocks.
 
 **Acceptance gate:**
 
@@ -1204,8 +1370,9 @@ M1 ──┬─ M2 ──┬─ M3 ─────────┐
      └──────────────────┼────┴─ M5 ── M6 ── M7 ── M8(parallel) ── M9 ── M10
 ```
 
-M3 and M4 can run in parallel (different worktrees). Sub-milestones under M8
-run in parallel.
+M3 and M4 can run in parallel (different worktrees). M8.0 must land before
+dependent M8 features; the remaining M8 sub-milestones can then run in
+parallel.
 
 ### Effort summary
 
@@ -1218,10 +1385,10 @@ run in parallel.
 | M5 | L | 2.5 |
 | M6 | XL | 3.5 |
 | M7 | M | 1 |
-| M8 (parallel) | XL | 3 (parallel) / 5 (serial) |
+| M8 (parallel) | XL+ | 3.5 (parallel) / 5.5 (serial) |
 | M9 | M | 1 |
 | M10 | L-XL | 2.5-3 |
-| **Total** | | **~22-23 sprint (~5.5-6 months) serial** or **~20-21 sprint (~5-5.5 months) with M8 parallel** |
+| **Total** | | **~23-24 sprint (~6 months) serial** or **~20.5-22 sprint (~5-5.5 months) with M8 parallel** |
 
 ## 5. Cross-cutting Conventions
 
@@ -1358,6 +1525,8 @@ Zod schemas hand-written.
 | TS component | Vitest + Testing Library | React render + event |
 | E2E (fast lane) | Playwright WebKit | Vite + mock IPC smoke/parity checks |
 | E2E (runtime lane) | Playwright + Tauri runtime harness | Real invoke/event/capability journeys starting in M5 |
+| IPC parity audit | `scripts/command-parity-audit.ts` | Electron map/preload/renderer calls vs mocks/Rust/bindings |
+| Capability/CSP audit | `pnpm capability:check` + targeted runtime smokes | Plugin grants, window labels, fs/dialog scopes, no renderer network escape |
 
 Rust test pattern uses in-memory SQLite with migrations applied.
 
@@ -1377,6 +1546,13 @@ Playwright notes from Spike 0 and M1:
   vault + unlocks before-hook parity. Runtime-lane tests must verify real
   invoke, event, binary IPC, and capability behavior; mock-lane visual tests do
   not cover those risks.
+- Every milestone after M1 must include a command-parity audit snapshot. A
+  production command may be mocked only if the ledger says why, names the
+  milestone that removes it, and production builds fail if that mock route is
+  still enabled past its milestone.
+- Runtime screenshots/e2e should include at least one empty, loading, error,
+  offline, permission-denied, and long-running progress state for the domains
+  touched by the milestone.
 
 ### 5.6 Dev workflow
 
@@ -1479,6 +1655,12 @@ Rust main.rs reads env var and segregates `app_data_dir`.
 | 21 | macOS deep link registration | L | M | M9 default Tauri pattern |
 | 22 | Tauri bundled asset serving in prod | L | H | M1 acceptance: prod build BlockNote render |
 | 23 | Argon2id blocking main thread | M | M | `tokio::task::spawn_blocking` in M4 |
+| 24 | Native shell parity treated as incidental plugin setup | M | H | M8.0 dedicated shell milestone and parity inventory |
+| 25 | Renderer/mocks/Rust command names drift apart | H | H | M2 command-parity audit; CI fails on unclassified or mismatched names |
+| 26 | Capability/window-label scope drift silently blocks native APIs | M | H | Capability/CSP audit plus runtime smokes for every plugin/window add |
+| 27 | Tauri custom protocol cannot match Electron `memry-file://` range/fallback semantics | M | H | M3 protocol spike before PDF/media/thumbnail work lands |
+| 28 | Production build accidentally ships M1 mocks | M | H | M8.18 full parity closure and production mock guard |
+| 29 | Updater settings UI keeps calling old mock command names | M | M | M2 mismatch fix; M9 updater command parity acceptance |
 
 ### 6.3 Open questions
 
@@ -1498,6 +1680,9 @@ Rust main.rs reads env var and segregates `app_data_dir`.
 | Q12 | Electron dev vault → Tauri migration | M5 dogfood | **Reset** (pre-production) |
 | Q13 | CI cargo cache strategy | M1 | Swatinem/rust-cache@v2 |
 | Q14 | Release versioning | M9 | v2.0.0-alpha.N during dev |
+| Q15 | Tauri replacement for `memry-file://` | M3 | Custom protocol/resource handler with vault/appData allowlist |
+| Q16 | Quick capture capability model | M8.0 | Separate window label with the minimum clipboard/window/global-shortcut grants |
+| Q17 | Legacy `ai-inline:*` local server contract | M8.12 | Retire local server; migrate UI to Rust proxy unless POC proves compatibility shim is cheaper |
 
 ### 6.4 Trip-wires
 
@@ -1513,6 +1698,11 @@ fallback (S3 proven for <50k vectors).
 
 **Trip-wire 4:** M10 dogfood reveals critical sync data-loss → release freeze,
 hot-fix sprint, Electron binary emergency release active via archived v1.x tag.
+
+**Trip-wire 5:** M8.0 cannot reproduce quick capture, deep links, context menus,
+notifications, and lifecycle flush in one sprint → split M8.0 into shell
+blocking work and M8.17 polish, but do not accept M8.9 Calendar OAuth or M8.16
+shortcut settings until their shell dependencies pass.
 
 Trip-wires produce local fallback + timeline extension; they do not abort the
 migration.
@@ -1559,6 +1749,12 @@ All decisions below were confirmed in the brainstorming session 2026-04-24.
 - Project CLAUDE.md: `CLAUDE.md`
 - MEMORY.md (project context): `~/.claude/projects/…/memory/MEMORY.md`
 - Tauri 2 docs: https://v2.tauri.app/
+- Tauri capabilities: https://v2.tauri.app/security/capabilities/
+- Tauri updater plugin: https://v2.tauri.app/plugin/updater/
+- Tauri deep-link plugin: https://v2.tauri.app/plugin/deep-linking/
+- Tauri filesystem plugin/scopes: https://v2.tauri.app/plugin/file-system/
+- Tauri global-shortcut plugin: https://v2.tauri.app/plugin/global-shortcut/
+- Tauri notification plugin: https://v2.tauri.app/plugin/notification/
 - yrs crate: https://docs.rs/yrs/0.21.3/yrs/
 - rusqlite: https://github.com/rusqlite/rusqlite
 - dryoc: https://github.com/brndnmtthws/dryoc
@@ -1573,8 +1769,74 @@ M1 is done. Next executable plan is M2
 carry-forward constraints above: start incremental package extraction
 immediately, patch the M2 plan to match the single-connection `data.db`
 decision, make schema diff required, remove the ambiguous net-new `0029`
-migration unless proven necessary, and define the first real Tauri-runtime e2e
-lane no later than M5.
+migration unless proven necessary, add the command-parity audit, fix the updater
+mock-name mismatch, and define the first real Tauri-runtime e2e lane no later
+than M5.
 Subsequent milestones get their own
 plan/execute cycles — a single monolithic plan for all 10 milestones is too
 large to remain coherent.
+
+## Plan-Review Closure
+
+Review date: 2026-04-25.
+
+Reviewed inputs:
+
+- This migration spec.
+- `CLAUDE.md`.
+- Electron app-shell entrypoint, preload API, contract channel files, and
+  generated IPC invoke map.
+- Current `apps/desktop-tauri/` package, Tauri config, capabilities, mock IPC
+  routes, and renderer invoke usage.
+
+No `DESIGN.md`, `TODOS.md`, or prior gstack review log was found in this
+worktree during the review.
+
+What was already strong:
+
+- M1 mock renderer port, parity baselines, Tauri scaffold, and test harness are
+  real in the repo.
+- Core backend sequencing is coherent: DB/vault/crypto/CRDT/sync/search before
+  feature closure.
+- The plan already treats package extraction, runtime e2e, and Electron freeze
+  as migration gates rather than cleanup.
+
+Missing pieces closed in this review:
+
+- Added a full Electron parity inventory so app-shell/native behavior is
+  tracked explicitly.
+- Added user-visible migration/runtime states so "fully functional" includes
+  loading, error, permission, offline, update, and conflict behavior.
+- Added M2 command-parity audit and called out the live updater mock-name
+  mismatch.
+- Added native shell parity as M8.0, with quick capture, context menus,
+  notifications, lifecycle flush, deep links, and per-window capabilities.
+- Expanded M3-M6/M8/M9 acceptance to cover local file protocol, OS
+  open/reveal/dialogs, device linking, crypto/admin commands, notes command
+  parity, sync ops, attachments, updater states, and full mock removal.
+
+Still open by design:
+
+- Exact Tauri implementation for `memry-file://` range/fallback behavior: M3
+  decides.
+- Quick capture window label/capability split: M8.0 decides.
+- Legacy `ai-inline:*` local server compatibility vs retirement: M8.12 decides.
+
+Score after review: 9/10 for migration completeness. The remaining 1 point is
+implementation risk, not plan coverage.
+
+## GSTACK REVIEW REPORT
+
+| Dimension | Before | After | Notes |
+|---|---:|---:|---|
+| Information architecture | 7 | 9 | Added parity inventory and migration state model |
+| User journey completeness | 6 | 8 | Added native shell, permission, offline, update, and conflict states |
+| Functional parity coverage | 7 | 9 | Added command/event ledger and full shell parity gates |
+| Visual/design drift control | 9 | 9 | M1 screenshot baselines already strong |
+| Design-system continuity | 8 | 8 | No UI redesign; existing renderer/theme preserved |
+| Risk surfacing | 7 | 9 | Added command drift, capability drift, protocol, and mock-shipping risks |
+
+Verdict: plan is ready to proceed to M2 after applying the M2-plan patch for
+the command-parity audit and updater mock-name mismatch. Run `/plan-eng-review`
+before M2 implementation because the highest remaining risk is execution
+architecture, not visual/product design.
