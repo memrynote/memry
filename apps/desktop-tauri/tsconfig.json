@@ -1,0 +1,41 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "useDefineForClassFields": true,
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "skipLibCheck": true,
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "noEmit": true,
+    "jsx": "react-jsx",
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true,
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["src/*"],
+      "@memry/contracts/*": ["../../packages/contracts/src/*"],
+      "@memry/contracts": ["../../packages/contracts/src"],
+      "@memry/domain-inbox/*": ["../../packages/domain-inbox/src/*"],
+      "@memry/domain-inbox": ["../../packages/domain-inbox/src"],
+      "@memry/domain-notes/*": ["../../packages/domain-notes/src/*"],
+      "@memry/domain-notes": ["../../packages/domain-notes/src"],
+      "@memry/domain-tasks/*": ["../../packages/domain-tasks/src/*"],
+      "@memry/domain-tasks": ["../../packages/domain-tasks/src"],
+      "@memry/rpc/*": ["../../packages/rpc/src/*"],
+      "@memry/rpc": ["../../packages/rpc/src"],
+      "@memry/shared/*": ["../../packages/shared/src/*"],
+      "@memry/shared": ["../../packages/shared/src"],
+      "@memry/sync-core/*": ["../../packages/sync-core/src/*"],
+      "@memry/sync-core": ["../../packages/sync-core/src"]
+    }
+  },
+  "include": ["src", "tests", "scripts", "vite.config.ts"],
+  "exclude": ["node_modules", "dist", "src-tauri/target"]
+}
