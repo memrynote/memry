@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { invoke } from '@/lib/ipc/invoke'
 import { subscribeEvent } from '@/lib/ipc/forwarder'
@@ -8,6 +8,8 @@ interface SettingsChangedEvent {
   key: string
   value: unknown
 }
+
+const GENERAL_SETTINGS_KEY = 'general'
 
 const DEFAULTS: GeneralSettingsDTO = {
   theme: 'system',
@@ -28,17 +30,37 @@ interface UseGeneralSettingsReturn {
   updateSettings: (updates: Partial<GeneralSettingsDTO>) => Promise<boolean>
 }
 
+function parseStoredSettings(raw: string | null): GeneralSettingsDTO {
+  if (!raw) return DEFAULTS
+  try {
+    const parsed = JSON.parse(raw) as Partial<GeneralSettingsDTO>
+    return { ...DEFAULTS, ...parsed }
+  } catch {
+    return DEFAULTS
+  }
+}
+
 export function useGeneralSettings(): UseGeneralSettingsReturn {
   const [settings, setSettings] = useState<GeneralSettingsDTO>(DEFAULTS)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const settingsRef = useRef<GeneralSettingsDTO>(DEFAULTS)
+
+  useEffect(() => {
+    settingsRef.current = settings
+  }, [settings])
 
   useEffect(() => {
     let mounted = true
     const load = async (): Promise<void> => {
       try {
-        const result = await invoke<GeneralSettingsDTO>('settings_get_general_settings')
-        if (mounted) setSettings(result)
+        const raw = await invoke<string | null>('settings_get', {
+          input: { key: GENERAL_SETTINGS_KEY }
+        })
+        if (!mounted) return
+        const merged = parseStoredSettings(raw)
+        setSettings(merged)
+        settingsRef.current = merged
       } catch (err) {
         if (mounted) setError(extractErrorMessage(err, 'Failed to load general settings'))
       } finally {
@@ -53,25 +75,26 @@ export function useGeneralSettings(): UseGeneralSettingsReturn {
 
   useEffect(() => {
     return subscribeEvent<SettingsChangedEvent>('settings-changed', (event) => {
-      if (event.key === 'general') {
-        setSettings((prev) => ({ ...prev, ...(event.value as Partial<GeneralSettingsDTO>) }))
+      if (event.key === GENERAL_SETTINGS_KEY) {
+        setSettings((prev) => {
+          const next = { ...prev, ...(event.value as Partial<GeneralSettingsDTO>) }
+          settingsRef.current = next
+          return next
+        })
       }
     })
   }, [])
 
   const updateSettings = useCallback(
     async (updates: Partial<GeneralSettingsDTO>): Promise<boolean> => {
+      const next = { ...settingsRef.current, ...updates }
       try {
-        const result = await invoke<{ success: boolean; error?: string }>(
-          'settings_set_general_settings',
-          updates as unknown as Record<string, unknown>
-        )
-        if (result.success) {
-          setSettings((prev) => ({ ...prev, ...updates }))
-          return true
-        }
-        setError(result.error ?? 'Update failed')
-        return false
+        await invoke<void>('settings_set', {
+          input: { key: GENERAL_SETTINGS_KEY, value: JSON.stringify(next) }
+        })
+        setSettings(next)
+        settingsRef.current = next
+        return true
       } catch (err) {
         setError(extractErrorMessage(err, 'Failed to update general settings'))
         return false
