@@ -7,6 +7,8 @@
   "type": "module",
   "scripts": {
     "dev": "tauri dev",
+    "dev:a": "MEMRY_DEVICE=A tauri dev",
+    "dev:b": "MEMRY_DEVICE=B tauri dev",
     "build": "tauri build",
     "preview": "vite preview",
     "lint": "pnpm exec eslint --cache .",
