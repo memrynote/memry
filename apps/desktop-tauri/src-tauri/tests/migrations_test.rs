@@ -505,6 +505,142 @@ fn calendar_external_event_roundtrip() {
 }
 
 #[test]
+fn inbox_item_roundtrip() {
+    let db = memry_desktop_tauri_lib::db::Db::open_memory().unwrap();
+    let conn = db.conn().unwrap();
+
+    conn.execute(
+        "INSERT INTO inbox_items (id, type, title) VALUES (?1, ?2, ?3)",
+        rusqlite::params!["i1", "note", "Captured thought"],
+    )
+    .unwrap();
+
+    let item = conn
+        .query_row(
+            "SELECT * FROM inbox_items WHERE id = 'i1'",
+            [],
+            memry_desktop_tauri_lib::db::inbox::InboxItem::from_row,
+        )
+        .unwrap();
+    assert_eq!(item.id, "i1");
+    assert_eq!(item.r#type, "note");
+    assert_eq!(item.title, "Captured thought");
+    assert!(item.content.is_none());
+    assert!(item.archived_at.is_none());
+    assert!(item.clock.is_none());
+    assert!(item.synced_at.is_none());
+    assert!(item.capture_source.is_none());
+    // local_only: ALTER ADD COLUMN INTEGER DEFAULT 0; on a fresh insert the
+    // default applies → Some(false). The Option<bool> mapping captures the
+    // Phase D gotcha that the column is nullable for backfilled rows.
+    assert_eq!(item.local_only, Some(false));
+    assert_eq!(item.processing_status.as_deref(), Some("complete"));
+}
+
+#[test]
+fn bookmark_roundtrip() {
+    let db = memry_desktop_tauri_lib::db::Db::open_memory().unwrap();
+    let conn = db.conn().unwrap();
+
+    conn.execute(
+        "INSERT INTO bookmarks (id, item_type, item_id, position) VALUES (?1, ?2, ?3, ?4)",
+        rusqlite::params!["bm1", "note", "n42", 5],
+    )
+    .unwrap();
+
+    let bm = conn
+        .query_row(
+            "SELECT * FROM bookmarks WHERE id = 'bm1'",
+            [],
+            memry_desktop_tauri_lib::db::bookmarks::Bookmark::from_row,
+        )
+        .unwrap();
+    assert_eq!(bm.id, "bm1");
+    assert_eq!(bm.item_type, "note");
+    assert_eq!(bm.item_id, "n42");
+    assert_eq!(bm.position, 5);
+    assert!(!bm.created_at.is_empty());
+}
+
+#[test]
+fn reminder_roundtrip() {
+    let db = memry_desktop_tauri_lib::db::Db::open_memory().unwrap();
+    let conn = db.conn().unwrap();
+
+    conn.execute(
+        "INSERT INTO reminders (id, target_type, target_id, remind_at) \
+         VALUES (?1, ?2, ?3, ?4)",
+        rusqlite::params!["rem1", "note", "n42", "2026-04-25T15:00:00.000Z"],
+    )
+    .unwrap();
+
+    let rem = conn
+        .query_row(
+            "SELECT * FROM reminders WHERE id = 'rem1'",
+            [],
+            memry_desktop_tauri_lib::db::reminders::Reminder::from_row,
+        )
+        .unwrap();
+    assert_eq!(rem.id, "rem1");
+    assert_eq!(rem.target_type, "note");
+    assert_eq!(rem.target_id, "n42");
+    assert_eq!(rem.remind_at, "2026-04-25T15:00:00.000Z");
+    assert_eq!(rem.status, "pending");
+    assert!(rem.title.is_none());
+    assert!(rem.highlight_text.is_none());
+    assert!(rem.triggered_at.is_none());
+}
+
+#[test]
+fn tag_definition_roundtrip() {
+    let db = memry_desktop_tauri_lib::db::Db::open_memory().unwrap();
+    let conn = db.conn().unwrap();
+
+    conn.execute(
+        "INSERT INTO tag_definitions (name, color) VALUES (?1, ?2)",
+        rusqlite::params!["work", "#3b82f6"],
+    )
+    .unwrap();
+
+    let tag = conn
+        .query_row(
+            "SELECT * FROM tag_definitions WHERE name = 'work'",
+            [],
+            memry_desktop_tauri_lib::db::tag_definitions::TagDefinition::from_row,
+        )
+        .unwrap();
+    assert_eq!(tag.name, "work");
+    assert_eq!(tag.color, "#3b82f6");
+    assert!(tag.clock.is_none());
+    assert!(!tag.created_at.is_empty());
+}
+
+#[test]
+fn folder_config_roundtrip() {
+    let db = memry_desktop_tauri_lib::db::Db::open_memory().unwrap();
+    let conn = db.conn().unwrap();
+
+    conn.execute(
+        "INSERT INTO folder_configs (path, icon) VALUES (?1, ?2)",
+        rusqlite::params!["notes/projects", "📂"],
+    )
+    .unwrap();
+
+    let cfg = conn
+        .query_row(
+            "SELECT * FROM folder_configs WHERE path = 'notes/projects'",
+            [],
+            memry_desktop_tauri_lib::db::folder_configs::FolderConfig::from_row,
+        )
+        .unwrap();
+    assert_eq!(cfg.path, "notes/projects");
+    assert_eq!(cfg.icon.as_deref(), Some("📂"));
+    assert!(cfg.clock.is_none());
+    assert!(!cfg.created_at.is_empty());
+    assert!(!cfg.modified_at.is_empty());
+}
+
+#[test]
 fn calendar_binding_roundtrip() {
     let db = memry_desktop_tauri_lib::db::Db::open_memory().unwrap();
     let conn = db.conn().unwrap();
