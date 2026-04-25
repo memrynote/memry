@@ -7,6 +7,8 @@ use std::{
     sync::{Arc, Mutex, MutexGuard},
 };
 
+pub mod migrations;
+
 pub type DbGuard<'a> = MutexGuard<'a, Connection>;
 
 #[derive(Clone)]
@@ -22,24 +24,28 @@ impl Db {
             std::fs::create_dir_all(parent)?;
         }
 
-        Self::with_init(Connection::open(path)?, |conn| {
+        let db = Self::with_init(Connection::open(path)?, |conn| {
             conn.execute_batch(
                 "PRAGMA journal_mode = WAL;
                  PRAGMA synchronous = NORMAL;
                  PRAGMA foreign_keys = ON;
                  PRAGMA busy_timeout = 5000;",
             )
-        })
+        })?;
+        db.with_conn(migrations::apply_pending)?;
+        Ok(db)
     }
 
     #[cfg(any(test, feature = "test-helpers"))]
     pub fn open_memory() -> AppResult<Self> {
-        Self::with_init(Connection::open_in_memory()?, |conn| {
+        let db = Self::with_init(Connection::open_in_memory()?, |conn| {
             conn.execute_batch(
                 "PRAGMA journal_mode = MEMORY;
                  PRAGMA foreign_keys = ON;",
             )
-        })
+        })?;
+        db.with_conn(migrations::apply_pending)?;
+        Ok(db)
     }
 
     pub fn with_conn<T>(&self, f: impl FnOnce(&mut Connection) -> AppResult<T>) -> AppResult<T> {
