@@ -138,12 +138,31 @@ pub fn apply_pending(conn: &mut Connection) -> AppResult<()> {
     bootstrap(conn)?;
 
     let applied = applied_migrations(conn)?;
+    let pending: Vec<(&'static str, &'static str)> = EMBEDDED
+        .iter()
+        .copied()
+        .filter(|(name, _)| !applied.contains(*name))
+        .collect();
 
-    for (name, sql) in EMBEDDED {
-        if applied.contains(*name) {
-            continue;
-        }
+    if pending.is_empty() {
+        return Ok(());
+    }
 
+    // Several Drizzle ports (e.g. 0002, 0009, 0013, 0018) rebuild tables via
+    // the `CREATE __new_X / INSERT / DROP X / RENAME` pattern. SQLite silently
+    // no-ops `PRAGMA foreign_keys = OFF` inside a transaction, so the in-SQL
+    // pragma is not enough. If the caller opened the connection with FK
+    // enforcement on (Db::open / Db::open_memory both do), `DROP TABLE X`
+    // would cascade-delete rows in tables that reference X *before* the
+    // migration copies them, silently corrupting populated databases on
+    // upgrade. Toggle FK off at connection scope around the replay, then
+    // re-enable and verify integrity afterwards.
+    let prev_fk: i64 = conn.query_row("PRAGMA foreign_keys", [], |row| row.get(0))?;
+    if prev_fk != 0 {
+        conn.execute_batch("PRAGMA foreign_keys = OFF")?;
+    }
+
+    for (name, sql) in &pending {
         let tx = conn.transaction()?;
         tx.execute_batch(sql)
             .map_err(|err| AppError::Database(format!("migration {name} failed: {err}")))?;
@@ -152,6 +171,16 @@ pub fn apply_pending(conn: &mut Connection) -> AppResult<()> {
             params![name],
         )?;
         tx.commit()?;
+    }
+
+    if prev_fk != 0 {
+        conn.execute_batch("PRAGMA foreign_keys = ON")?;
+        let violations = collect_fk_violations(conn)?;
+        if !violations.is_empty() {
+            return Err(AppError::Database(format!(
+                "foreign_key_check failed after migration replay: {violations:?}"
+            )));
+        }
     }
 
     Ok(())
@@ -163,4 +192,19 @@ fn applied_migrations(conn: &Connection) -> AppResult<HashSet<String>> {
     let applied = rows.collect::<Result<HashSet<_>, _>>()?;
 
     Ok(applied)
+}
+
+fn collect_fk_violations(conn: &Connection) -> AppResult<Vec<String>> {
+    let mut stmt = conn.prepare("PRAGMA foreign_key_check")?;
+    let rows = stmt.query_map([], |row| {
+        let table: String = row.get(0)?;
+        let rowid: Option<i64> = row.get(1)?;
+        let parent: String = row.get(2)?;
+        Ok(format!(
+            "{table}#{} -> {parent}",
+            rowid.map(|r| r.to_string()).unwrap_or_else(|| "?".into())
+        ))
+    })?;
+
+    Ok(rows.filter_map(Result::ok).collect())
 }
