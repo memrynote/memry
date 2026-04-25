@@ -57,3 +57,29 @@ fn applies_embedded_migrations_in_order_and_records_them() {
 
     assert_eq!(still_applied, expected.len() as i64);
 }
+
+#[test]
+fn migration_0000_creates_core_tables() {
+    let mut conn = Connection::open_in_memory().unwrap();
+    migrations::apply_pending(&mut conn).unwrap();
+
+    for table in [
+        "projects",
+        "statuses",
+        "tasks",
+        "task_notes",
+        "task_tags",
+        "inbox_items",
+        "saved_filters",
+        "settings",
+    ] {
+        let exists: i64 = conn
+            .query_row(
+                "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name=?1",
+                [table],
+                |row| row.get(0),
+            )
+            .unwrap();
+        assert_eq!(exists, 1, "table {table} missing after migration 0000");
+    }
+}
