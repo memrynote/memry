@@ -680,3 +680,123 @@ fn calendar_binding_roundtrip() {
     assert_eq!(b.writeback_mode, "two-way");
     assert!(b.remote_version.is_none());
 }
+
+#[test]
+fn apply_pending_restores_fk_state_on_migration_failure() {
+    // Regression test for bug where a mid-replay migration error returned
+    // early without restoring the connection-scoped FK pragma. apply_pending
+    // toggles foreign_keys = OFF for the rebuild migrations (see
+    // rebuild_migrations_preserve_rows_when_fk_enforcement_is_on); if a
+    // migration fails after that toggle, the early `?` return left the
+    // connection with FK enforcement off. Subsequent application code
+    // sharing the same connection (Db wraps it in Arc<Mutex<Connection>>)
+    // would silently write child rows that violate referential integrity.
+    let mut conn = Connection::open_in_memory().unwrap();
+    conn.execute_batch("PRAGMA foreign_keys = ON").unwrap();
+
+    // Apply migration 0000 directly so the schema is at v0; we want 0001
+    // to fail when apply_pending tries to replay it.
+    migrations::bootstrap(&mut conn).unwrap();
+    let (name_0000, sql_0000) = migrations::EMBEDDED[0];
+    let tx = conn.transaction().unwrap();
+    tx.execute_batch(sql_0000).unwrap();
+    tx.execute(
+        "INSERT INTO schema_migrations (name) VALUES (?1)",
+        rusqlite::params![name_0000],
+    )
+    .unwrap();
+    tx.commit().unwrap();
+
+    // Pre-create `bookmarks` with a conflicting schema. Migration 0001's
+    // `CREATE TABLE bookmarks` (no IF NOT EXISTS) will fail.
+    conn.execute_batch("CREATE TABLE bookmarks (foo TEXT)")
+        .unwrap();
+
+    let fk_before: i64 = conn
+        .query_row("PRAGMA foreign_keys", [], |row| row.get(0))
+        .unwrap();
+    assert_eq!(fk_before, 1, "precondition: FK enforcement must be on");
+
+    let result = migrations::apply_pending(&mut conn);
+    assert!(
+        result.is_err(),
+        "expected migration 0001 to fail due to schema collision, got {result:?}"
+    );
+
+    let fk_after: i64 = conn
+        .query_row("PRAGMA foreign_keys", [], |row| row.get(0))
+        .unwrap();
+    assert_eq!(
+        fk_after, 1,
+        "PRAGMA foreign_keys must be restored to ON after a failed migration replay"
+    );
+}
+
+#[test]
+fn apply_pending_is_safe_under_concurrent_runners() {
+    // Regression test for a race where two concurrent app processes
+    // (e.g. dev hot-reload, double-launch) both compute the same `pending`
+    // list before either records its writes. Without serialization, the
+    // second runner replays already-applied migrations and crashes on
+    // non-`IF NOT EXISTS` DDL (0001 `CREATE TABLE bookmarks`) or on the
+    // PRIMARY KEY conflict in `schema_migrations`. The fix re-checks
+    // applied state inside an IMMEDIATE per-migration transaction.
+    use std::sync::{Arc, Barrier};
+    use std::thread;
+
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("data.db");
+
+    // Bring the file into existence and set WAL on a single setup
+    // connection so worker threads don't race on the PRAGMA write.
+    {
+        let setup = Connection::open(&path).unwrap();
+        setup
+            .execute_batch("PRAGMA journal_mode = WAL;")
+            .unwrap();
+    }
+
+    let barrier = Arc::new(Barrier::new(2));
+
+    let path1 = path.clone();
+    let b1 = barrier.clone();
+    let h1 = thread::spawn(move || {
+        let mut conn = Connection::open(&path1).unwrap();
+        conn.execute_batch("PRAGMA busy_timeout = 5000;").unwrap();
+        b1.wait();
+        migrations::apply_pending(&mut conn)
+    });
+
+    let path2 = path.clone();
+    let b2 = barrier.clone();
+    let h2 = thread::spawn(move || {
+        let mut conn = Connection::open(&path2).unwrap();
+        conn.execute_batch("PRAGMA busy_timeout = 5000;").unwrap();
+        b2.wait();
+        migrations::apply_pending(&mut conn)
+    });
+
+    let r1 = h1.join().unwrap();
+    let r2 = h2.join().unwrap();
+
+    assert!(r1.is_ok(), "thread 1 apply_pending failed: {r1:?}");
+    assert!(r2.is_ok(), "thread 2 apply_pending failed: {r2:?}");
+
+    let conn = Connection::open(&path).unwrap();
+    let names: Vec<String> = conn
+        .prepare("SELECT name FROM schema_migrations ORDER BY name")
+        .unwrap()
+        .query_map([], |row| row.get::<_, String>(0))
+        .unwrap()
+        .collect::<Result<_, _>>()
+        .unwrap();
+
+    let expected_count = migrations::EMBEDDED.len();
+    assert_eq!(
+        names.len(),
+        expected_count,
+        "schema_migrations should have {expected_count} entries (one per migration), \
+         got {} — duplicates indicate a concurrent insert slipped through: {names:?}",
+        names.len()
+    );
+}
