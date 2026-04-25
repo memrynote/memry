@@ -246,3 +246,90 @@ fn projects_and_tasks_roundtrip() {
     assert!(task.clock.is_none());
     assert!(task.field_clocks.is_none());
 }
+
+#[test]
+fn note_positions_roundtrip() {
+    let db = memry_desktop_tauri_lib::db::Db::open_memory().unwrap();
+    let conn = db.conn().unwrap();
+
+    conn.execute(
+        "INSERT INTO note_positions (path, folder_path, position) VALUES (?1, ?2, ?3)",
+        rusqlite::params!["notes/foo.md", "notes", 3],
+    )
+    .unwrap();
+
+    let pos = conn
+        .query_row(
+            "SELECT * FROM note_positions WHERE path = 'notes/foo.md'",
+            [],
+            memry_desktop_tauri_lib::db::note_positions::NotePosition::from_row,
+        )
+        .unwrap();
+    assert_eq!(pos.path, "notes/foo.md");
+    assert_eq!(pos.folder_path, "notes");
+    assert_eq!(pos.position, 3);
+}
+
+#[test]
+fn note_metadata_roundtrip() {
+    let db = memry_desktop_tauri_lib::db::Db::open_memory().unwrap();
+    let conn = db.conn().unwrap();
+
+    conn.execute(
+        "INSERT INTO note_metadata \
+         (id, path, title, file_type, local_only, sync_policy, created_at, modified_at) \
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
+        rusqlite::params![
+            "n1",
+            "notes/hello.md",
+            "Hello",
+            "markdown",
+            1,
+            "sync",
+            "2026-04-25T00:00:00.000Z",
+            "2026-04-25T00:00:00.000Z",
+        ],
+    )
+    .unwrap();
+
+    let meta = conn
+        .query_row(
+            "SELECT * FROM note_metadata WHERE id = 'n1'",
+            [],
+            memry_desktop_tauri_lib::db::note_metadata::NoteMetadata::from_row,
+        )
+        .unwrap();
+    assert_eq!(meta.path, "notes/hello.md");
+    assert_eq!(meta.title, "Hello");
+    assert_eq!(meta.file_type, "markdown");
+    assert!(meta.local_only);
+    assert_eq!(meta.sync_policy, "sync");
+    assert!(meta.emoji.is_none());
+    assert!(meta.clock.is_none());
+    assert!(!meta.stored_at.is_empty());
+}
+
+#[test]
+fn property_definitions_roundtrip() {
+    let db = memry_desktop_tauri_lib::db::Db::open_memory().unwrap();
+    let conn = db.conn().unwrap();
+
+    conn.execute(
+        "INSERT INTO property_definitions (name, type) VALUES (?1, ?2)",
+        rusqlite::params!["status", "select"],
+    )
+    .unwrap();
+
+    let prop = conn
+        .query_row(
+            "SELECT * FROM property_definitions WHERE name = 'status'",
+            [],
+            memry_desktop_tauri_lib::db::notes_cache::PropertyDefinition::from_row,
+        )
+        .unwrap();
+    assert_eq!(prop.name, "status");
+    assert_eq!(prop.r#type, "select");
+    assert!(prop.options.is_none());
+    assert!(prop.color.is_none());
+    assert!(!prop.created_at.is_empty());
+}

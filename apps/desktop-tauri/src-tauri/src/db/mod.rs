@@ -9,6 +9,9 @@ use std::{
 
 pub mod migrations;
 
+pub mod note_metadata;
+pub mod note_positions;
+pub mod notes_cache;
 pub mod projects;
 pub mod statuses;
 pub mod tasks;
