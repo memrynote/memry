@@ -187,3 +187,62 @@ fn tasks_and_projects_have_field_clocks_column() {
         );
     }
 }
+
+#[test]
+fn projects_and_tasks_roundtrip() {
+    let db = memry_desktop_tauri_lib::db::Db::open_memory().unwrap();
+    let conn = db.conn().unwrap();
+
+    conn.execute(
+        "INSERT INTO projects (id, name, color, position) VALUES (?1, ?2, ?3, ?4)",
+        rusqlite::params!["p1", "Inbox", "#000", 0],
+    )
+    .unwrap();
+    conn.execute(
+        "INSERT INTO statuses (id, project_id, name, color, position, is_default, is_done) \
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
+        rusqlite::params!["s1", "p1", "Todo", "#abc", 0, 1, 0],
+    )
+    .unwrap();
+    conn.execute(
+        "INSERT INTO tasks (id, project_id, status_id, title, priority, position) \
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
+        rusqlite::params!["t1", "p1", "s1", "first", 0, 0],
+    )
+    .unwrap();
+
+    let project = conn
+        .query_row(
+            "SELECT * FROM projects WHERE id = 'p1'",
+            [],
+            memry_desktop_tauri_lib::db::projects::Project::from_row,
+        )
+        .unwrap();
+    assert_eq!(project.id, "p1");
+    assert_eq!(project.name, "Inbox");
+    assert!(!project.is_inbox);
+
+    let status = conn
+        .query_row(
+            "SELECT * FROM statuses WHERE id = 's1'",
+            [],
+            memry_desktop_tauri_lib::db::statuses::Status::from_row,
+        )
+        .unwrap();
+    assert_eq!(status.project_id, "p1");
+    assert!(status.is_default);
+    assert!(!status.is_done);
+
+    let task = conn
+        .query_row(
+            "SELECT * FROM tasks WHERE id = 't1'",
+            [],
+            memry_desktop_tauri_lib::db::tasks::Task::from_row,
+        )
+        .unwrap();
+    assert_eq!(task.project_id, "p1");
+    assert_eq!(task.status_id.as_deref(), Some("s1"));
+    assert_eq!(task.title, "first");
+    assert!(task.clock.is_none());
+    assert!(task.field_clocks.is_none());
+}
