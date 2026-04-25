@@ -1,9 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
-vi.mock('electron-log/renderer', () => ({
-  default: { scope: () => ({ info: vi.fn(), error: vi.fn(), warn: vi.fn(), debug: vi.fn() }) }
-}))
-
 import {
   registerPendingSave,
   unregisterPendingSave,

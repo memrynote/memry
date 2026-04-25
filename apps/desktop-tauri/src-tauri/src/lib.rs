@@ -47,6 +47,7 @@ pub fn run() {
             commands::settings::settings_get,
             commands::settings::settings_set,
             commands::settings::settings_list,
+            commands::lifecycle::notify_flush_done,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

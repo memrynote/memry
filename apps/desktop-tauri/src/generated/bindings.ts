@@ -7,6 +7,16 @@ export const commands = {
 	settingsGet: (input: SettingsGetInput) => typedError<string | null, AppError>(__TAURI_INVOKE("settings_get", { input })),
 	settingsSet: (input: SettingsSetInput) => typedError<null, AppError>(__TAURI_INVOKE("settings_set", { input })),
 	settingsList: () => typedError<Setting[], AppError>(__TAURI_INVOKE("settings_list")),
+	/**
+	 *  Renderer→main signal that pending save flushes finished.
+	 * 
+	 *  At M2 there is no quit-orchestration coordinator on the Rust side; the M8.0
+	 *  lifecycle milestone introduces a flush coordinator that gates window close
+	 *  on this notification. Until then the command is a thin no-op acknowledgement
+	 *  so the renderer's `useFlushOnQuit` hook can keep its existing contract
+	 *  without 404s through the mock router.
+	 */
+	notifyFlushDone: () => typedError<null, AppError>(__TAURI_INVOKE("notify_flush_done")),
 };
 
 /* Types */
