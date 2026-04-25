@@ -30,7 +30,7 @@ serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 thiserror = "2.0"
 directories = "5"
-specta = { version = "2.0.0-rc.20", features = ["derive"] }
+specta = { version = "2.0.0-rc.20", features = ["derive", "serde_json"] }
 specta-typescript = "0.0.11"
 tauri-specta = { version = "2.0.0-rc.21", features = ["typescript"] }
 
@@ -75,4 +75,8 @@ required-features = ["test-helpers"]
 
 [[test]]
 name = "vault_fs_test"
+required-features = ["test-helpers"]
+
+[[test]]
+name = "vault_frontmatter_test"
 required-features = ["test-helpers"]
