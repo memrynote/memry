@@ -29,7 +29,7 @@ fn init_app_state() -> AppResult<AppState> {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let app_state = init_app_state().expect("failed to initialize app state");
-    let builder = tauri::Builder::default()
+    tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
         .manage(app_state)
         .setup(|_app| {
@@ -40,11 +40,14 @@ pub fn run() {
                 )
                 .json()
                 .init();
-            tracing::info!("memry desktop-tauri booting (m1 scaffold)");
+            tracing::info!("memry desktop-tauri booting (m2 settings slice)");
             Ok(())
-        });
-
-    commands::register(builder)
+        })
+        .invoke_handler(tauri::generate_handler![
+            commands::settings::settings_get,
+            commands::settings::settings_set,
+            commands::settings::settings_list,
+        ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
