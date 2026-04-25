@@ -17,7 +17,7 @@
     "test:e2e": "playwright test",
     "cargo:check": "cd src-tauri && cargo check",
     "cargo:clippy": "cd src-tauri && cargo clippy -- -D warnings",
-    "cargo:test": "cd src-tauri && cargo test",
+    "cargo:test": "cd src-tauri && cargo test --features test-helpers",
     "cargo:fmt": "cd src-tauri && cargo fmt",
     "bindings:generate": "tsx scripts/generate-bindings.ts",
     "bindings:check": "tsx scripts/check-bindings.ts",

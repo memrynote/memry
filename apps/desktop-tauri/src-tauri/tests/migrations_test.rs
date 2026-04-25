@@ -189,6 +189,79 @@ fn tasks_and_projects_have_field_clocks_column() {
 }
 
 #[test]
+fn rebuild_migrations_preserve_rows_when_fk_enforcement_is_on() {
+    // Regression test for a bug where Db::open enabled FK enforcement before
+    // running apply_pending. Drizzle's big rebuild migration (0018) uses the
+    // CREATE __new_X / INSERT / DROP X / RENAME pattern; SQLite silently
+    // no-ops the in-SQL `PRAGMA foreign_keys = OFF` inside a transaction, so
+    // DROP TABLE cascades through ON DELETE CASCADE relationships and wipes
+    // child rows before the migration copies them. apply_pending must toggle
+    // FK off at connection scope around the replay.
+    //
+    // Simulates the upgrade path: a developer at schema version 0017 with
+    // populated rows, then apply_pending runs 0018-0028.
+    let mut conn = Connection::open_in_memory().unwrap();
+    conn.execute_batch("PRAGMA foreign_keys = ON").unwrap();
+
+    migrations::bootstrap(&mut conn).unwrap();
+    let upgrade_boundary = migrations::EMBEDDED
+        .iter()
+        .position(|(name, _)| name.starts_with("0018_"))
+        .expect("EMBEDDED must contain 0018_*");
+    for (name, sql) in migrations::EMBEDDED.iter().take(upgrade_boundary) {
+        let tx = conn.transaction().unwrap();
+        tx.execute_batch(sql).unwrap();
+        tx.execute(
+            "INSERT INTO schema_migrations (name) VALUES (?1)",
+            rusqlite::params![name],
+        )
+        .unwrap();
+        tx.commit().unwrap();
+    }
+
+    conn.execute(
+        "INSERT INTO projects (id, name, color, position) VALUES ('p1', 'Inbox', '#000', 0)",
+        [],
+    )
+    .unwrap();
+    conn.execute(
+        "INSERT INTO statuses (id, project_id, name, color, position, is_default, is_done) \
+         VALUES ('s1', 'p1', 'Todo', '#abc', 0, 1, 0)",
+        [],
+    )
+    .unwrap();
+    conn.execute(
+        "INSERT INTO tasks (id, project_id, status_id, title, priority, position) \
+         VALUES ('t1', 'p1', 's1', 'first', 0, 0)",
+        [],
+    )
+    .unwrap();
+
+    migrations::apply_pending(&mut conn).unwrap();
+
+    let project_count: i64 = conn
+        .query_row("SELECT COUNT(*) FROM projects", [], |row| row.get(0))
+        .unwrap();
+    let status_count: i64 = conn
+        .query_row("SELECT COUNT(*) FROM statuses", [], |row| row.get(0))
+        .unwrap();
+    let task_count: i64 = conn
+        .query_row("SELECT COUNT(*) FROM tasks", [], |row| row.get(0))
+        .unwrap();
+
+    assert_eq!(project_count, 1, "projects row lost during rebuild replay");
+    assert_eq!(status_count, 1, "statuses row lost during rebuild replay");
+    assert_eq!(task_count, 1, "tasks row lost during rebuild replay");
+
+    // FK enforcement must be back on after apply_pending returns so the
+    // application sees referential integrity for subsequent writes.
+    let fk_state: i64 = conn
+        .query_row("PRAGMA foreign_keys", [], |row| row.get(0))
+        .unwrap();
+    assert_eq!(fk_state, 1, "apply_pending must restore FK enforcement");
+}
+
+#[test]
 fn projects_and_tasks_roundtrip() {
     let db = memry_desktop_tauri_lib::db::Db::open_memory().unwrap();
     let conn = db.conn().unwrap();
