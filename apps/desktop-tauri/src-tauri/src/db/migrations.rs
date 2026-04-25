@@ -137,14 +137,15 @@ pub fn bootstrap(conn: &mut Connection) -> AppResult<()> {
 pub fn apply_pending(conn: &mut Connection) -> AppResult<()> {
     bootstrap(conn)?;
 
-    let applied = applied_migrations(conn)?;
-    let pending: Vec<(&'static str, &'static str)> = EMBEDDED
-        .iter()
-        .copied()
-        .filter(|(name, _)| !applied.contains(*name))
-        .collect();
-
-    if pending.is_empty() {
+    // Cheap upfront check: if every embedded migration is already recorded
+    // we skip the FK toggle entirely. The authoritative check happens again
+    // inside each per-migration IMMEDIATE transaction below — that is what
+    // makes concurrent runners safe; this is just an optimization.
+    let any_pending = {
+        let applied = applied_migrations(conn)?;
+        EMBEDDED.iter().any(|(name, _)| !applied.contains(*name))
+    };
+    if !any_pending {
         return Ok(());
     }
 
@@ -162,19 +163,20 @@ pub fn apply_pending(conn: &mut Connection) -> AppResult<()> {
         conn.execute_batch("PRAGMA foreign_keys = OFF")?;
     }
 
-    for (name, sql) in &pending {
-        let tx = conn.transaction()?;
-        tx.execute_batch(sql)
-            .map_err(|err| AppError::Database(format!("migration {name} failed: {err}")))?;
-        tx.execute(
-            "INSERT INTO schema_migrations (name) VALUES (?1)",
-            params![name],
-        )?;
-        tx.commit()?;
+    let result = replay_migrations(conn);
+
+    // Restore FK enforcement on BOTH success and failure paths. If we don't,
+    // a mid-replay failure leaves the connection (which Db wraps in
+    // Arc<Mutex<Connection>> and reuses across the app) with FK checks
+    // permanently off. Best-effort: if the restore PRAGMA itself errors, we
+    // still propagate the original migration error.
+    if prev_fk != 0 {
+        let _ = conn.execute_batch("PRAGMA foreign_keys = ON");
     }
 
+    result?;
+
     if prev_fk != 0 {
-        conn.execute_batch("PRAGMA foreign_keys = ON")?;
         let violations = collect_fk_violations(conn)?;
         if !violations.is_empty() {
             return Err(AppError::Database(format!(
@@ -183,6 +185,41 @@ pub fn apply_pending(conn: &mut Connection) -> AppResult<()> {
         }
     }
 
+    Ok(())
+}
+
+/// Replay every embedded migration that has not yet been recorded.
+///
+/// Each migration runs in its own `BEGIN IMMEDIATE` transaction so that
+/// concurrent runners (two app processes against the same data DB) serialize
+/// on the SQLite write lock instead of racing each other. Inside the tx we
+/// re-check `schema_migrations` under that lock — if a sibling runner already
+/// recorded this migration, we commit the empty tx and continue. This makes
+/// the replay convergent: whichever runner gets the lock first applies; the
+/// rest skip without crashing on `CREATE TABLE` (no `IF NOT EXISTS`) or on
+/// the `schema_migrations.name` PRIMARY KEY.
+fn replay_migrations(conn: &mut Connection) -> AppResult<()> {
+    for (name, sql) in EMBEDDED.iter() {
+        let tx = conn.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
+
+        let already_applied: i64 = tx.query_row(
+            "SELECT COUNT(*) FROM schema_migrations WHERE name = ?1",
+            params![name],
+            |row| row.get(0),
+        )?;
+        if already_applied > 0 {
+            tx.commit()?;
+            continue;
+        }
+
+        tx.execute_batch(sql)
+            .map_err(|err| AppError::Database(format!("migration {name} failed: {err}")))?;
+        tx.execute(
+            "INSERT INTO schema_migrations (name) VALUES (?1)",
+            params![name],
+        )?;
+        tx.commit()?;
+    }
     Ok(())
 }
 
