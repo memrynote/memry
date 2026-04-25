@@ -2,6 +2,7 @@ pub mod app_state;
 pub mod commands;
 pub mod db;
 pub mod error;
+pub mod vault;
 
 use app_state::AppState;
 use db::Db;

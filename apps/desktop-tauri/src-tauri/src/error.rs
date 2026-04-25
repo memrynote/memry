@@ -19,6 +19,12 @@ pub enum AppError {
     Conflict(String),
     #[error("validation error: {0}")]
     Validation(String),
+    #[error("vault error: {0}")]
+    Vault(String),
+    #[error("path escape: {0}")]
+    PathEscape(String),
+    #[error("io error: {0}")]
+    Io(String),
     #[error("internal error: {0}")]
     Internal(String),
 }
@@ -31,13 +37,25 @@ impl From<rusqlite::Error> for AppError {
 
 impl From<std::io::Error> for AppError {
     fn from(err: std::io::Error) -> Self {
-        AppError::Internal(err.to_string())
+        AppError::Io(err.to_string())
     }
 }
 
 impl From<serde_json::Error> for AppError {
     fn from(err: serde_json::Error) -> Self {
         AppError::Validation(err.to_string())
+    }
+}
+
+impl From<serde_yaml_ng::Error> for AppError {
+    fn from(err: serde_yaml_ng::Error) -> Self {
+        AppError::Validation(format!("yaml: {err}"))
+    }
+}
+
+impl From<notify::Error> for AppError {
+    fn from(err: notify::Error) -> Self {
+        AppError::Vault(format!("watcher: {err}"))
     }
 }
 
