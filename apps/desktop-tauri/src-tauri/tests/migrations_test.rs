@@ -682,6 +682,156 @@ fn calendar_binding_roundtrip() {
 }
 
 #[test]
+fn sync_queue_item_roundtrip() {
+    let db = memry_desktop_tauri_lib::db::Db::open_memory().unwrap();
+    let conn = db.conn().unwrap();
+
+    conn.execute(
+        "INSERT INTO sync_queue (id, type, item_id, operation, payload, created_at) \
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
+        rusqlite::params!["q1", "task", "t1", "update", "{\"title\":\"x\"}", 1714003200000_i64],
+    )
+    .unwrap();
+
+    let item = conn
+        .query_row(
+            "SELECT * FROM sync_queue WHERE id = 'q1'",
+            [],
+            memry_desktop_tauri_lib::db::sync_queue::SyncQueueItem::from_row,
+        )
+        .unwrap();
+    assert_eq!(item.id, "q1");
+    assert_eq!(item.r#type, "task");
+    assert_eq!(item.item_id, "t1");
+    assert_eq!(item.operation, "update");
+    assert_eq!(item.payload, "{\"title\":\"x\"}");
+    assert_eq!(item.priority, 0);
+    assert_eq!(item.attempts, 0);
+    assert_eq!(item.created_at, 1714003200000);
+    assert!(item.last_attempt.is_none());
+    assert!(item.error_message.is_none());
+}
+
+#[test]
+fn sync_device_roundtrip() {
+    let db = memry_desktop_tauri_lib::db::Db::open_memory().unwrap();
+    let conn = db.conn().unwrap();
+
+    conn.execute(
+        "INSERT INTO sync_devices \
+         (id, name, platform, app_version, linked_at, is_current_device, signing_public_key) \
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
+        rusqlite::params![
+            "d1",
+            "Kaan's MacBook",
+            "macos",
+            "0.1.0",
+            1714003200000_i64,
+            1,
+            "ed25519-pubkey-base64",
+        ],
+    )
+    .unwrap();
+
+    let dev = conn
+        .query_row(
+            "SELECT * FROM sync_devices WHERE id = 'd1'",
+            [],
+            memry_desktop_tauri_lib::db::sync_devices::SyncDevice::from_row,
+        )
+        .unwrap();
+    assert_eq!(dev.id, "d1");
+    assert_eq!(dev.name, "Kaan's MacBook");
+    assert_eq!(dev.platform, "macos");
+    assert_eq!(dev.app_version, "0.1.0");
+    assert_eq!(dev.linked_at, 1714003200000);
+    assert!(dev.is_current_device);
+    assert_eq!(dev.signing_public_key, "ed25519-pubkey-base64");
+    assert!(dev.os_version.is_none());
+    assert!(dev.last_sync_at.is_none());
+}
+
+#[test]
+fn sync_state_roundtrip() {
+    let db = memry_desktop_tauri_lib::db::Db::open_memory().unwrap();
+    let conn = db.conn().unwrap();
+
+    conn.execute(
+        "INSERT INTO sync_state (key, value, updated_at) VALUES (?1, ?2, ?3)",
+        rusqlite::params!["server_cursor", "abc123", 1714003200000_i64],
+    )
+    .unwrap();
+
+    let s = conn
+        .query_row(
+            "SELECT * FROM sync_state WHERE key = 'server_cursor'",
+            [],
+            memry_desktop_tauri_lib::db::sync_state::SyncState::from_row,
+        )
+        .unwrap();
+    assert_eq!(s.key, "server_cursor");
+    assert_eq!(s.value, "abc123");
+    assert_eq!(s.updated_at, 1714003200000);
+}
+
+#[test]
+fn sync_history_entry_roundtrip() {
+    let db = memry_desktop_tauri_lib::db::Db::open_memory().unwrap();
+    let conn = db.conn().unwrap();
+
+    conn.execute(
+        "INSERT INTO sync_history (id, type, item_count, direction, created_at) \
+         VALUES (?1, ?2, ?3, ?4, ?5)",
+        rusqlite::params!["h1", "tasks", 42, "pull", 1714003200000_i64],
+    )
+    .unwrap();
+
+    let h = conn
+        .query_row(
+            "SELECT * FROM sync_history WHERE id = 'h1'",
+            [],
+            memry_desktop_tauri_lib::db::sync_history::SyncHistoryEntry::from_row,
+        )
+        .unwrap();
+    assert_eq!(h.id, "h1");
+    assert_eq!(h.r#type, "tasks");
+    assert_eq!(h.item_count, 42);
+    assert_eq!(h.direction.as_deref(), Some("pull"));
+    assert_eq!(h.created_at, 1714003200000);
+    assert!(h.details.is_none());
+    assert!(h.duration_ms.is_none());
+}
+
+#[test]
+fn search_reason_roundtrip() {
+    let db = memry_desktop_tauri_lib::db::Db::open_memory().unwrap();
+    let conn = db.conn().unwrap();
+
+    conn.execute(
+        "INSERT INTO search_reasons \
+         (id, item_id, item_type, item_title, search_query) \
+         VALUES (?1, ?2, ?3, ?4, ?5)",
+        rusqlite::params!["sr1", "n42", "note", "Hello world", "hello"],
+    )
+    .unwrap();
+
+    let r = conn
+        .query_row(
+            "SELECT * FROM search_reasons WHERE id = 'sr1'",
+            [],
+            memry_desktop_tauri_lib::db::search_reasons::SearchReason::from_row,
+        )
+        .unwrap();
+    assert_eq!(r.id, "sr1");
+    assert_eq!(r.item_id, "n42");
+    assert_eq!(r.item_type, "note");
+    assert_eq!(r.item_title, "Hello world");
+    assert_eq!(r.search_query, "hello");
+    assert!(r.item_icon.is_none());
+    assert!(!r.visited_at.is_empty());
+}
+
+#[test]
 fn apply_pending_restores_fk_state_on_migration_failure() {
     // Regression test for bug where a mid-replay migration error returned
     // early without restoring the connection-scoped FK pragma. apply_pending
