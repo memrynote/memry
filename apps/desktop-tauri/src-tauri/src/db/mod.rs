@@ -9,6 +9,10 @@ use std::{
 
 pub mod migrations;
 
+pub mod calendar_bindings;
+pub mod calendar_events;
+pub mod calendar_external_events;
+pub mod calendar_sources;
 pub mod note_metadata;
 pub mod note_positions;
 pub mod notes_cache;
