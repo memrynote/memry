@@ -9,6 +9,10 @@ use std::{
 
 pub mod migrations;
 
+pub mod projects;
+pub mod statuses;
+pub mod tasks;
+
 pub type DbGuard<'a> = MutexGuard<'a, Connection>;
 
 #[derive(Clone)]
