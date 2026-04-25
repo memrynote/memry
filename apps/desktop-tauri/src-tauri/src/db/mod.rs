@@ -9,15 +9,20 @@ use std::{
 
 pub mod migrations;
 
+pub mod bookmarks;
 pub mod calendar_bindings;
 pub mod calendar_events;
 pub mod calendar_external_events;
 pub mod calendar_sources;
+pub mod folder_configs;
+pub mod inbox;
 pub mod note_metadata;
 pub mod note_positions;
 pub mod notes_cache;
 pub mod projects;
+pub mod reminders;
 pub mod statuses;
+pub mod tag_definitions;
 pub mod tasks;
 
 pub type DbGuard<'a> = MutexGuard<'a, Connection>;
