@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { scanContent, isTestFile } from './port-audit'
+import { scanContent, isTestFile, countMemryRefs } from './port-audit'
 
 describe('scanContent', () => {
   it('reports 1 window.api hit with correct line number', () => {
@@ -20,17 +20,16 @@ describe('scanContent', () => {
     ])
   })
 
-  it('reports 1 ipcRenderer hit', () => {
+  it('reports both ipcRenderer and electron-import hits on the same import line', () => {
     // #given
     const content = "import { ipcRenderer } from 'electron'"
 
     // #when
     const hits = scanContent(content, 'fake.ts')
 
-    // #then
-    expect(hits).toHaveLength(1)
-    expect(hits[0].kind).toBe('ipcRenderer')
-    expect(hits[0].line).toBe(1)
+    // #then both Electron-era patterns surface so neither slips through audit
+    expect(hits).toHaveLength(2)
+    expect(hits.map((h) => h.kind).sort()).toEqual(['electron-import', 'ipcRenderer'])
   })
 
   it('reports 1 electron-toolkit hit', () => {
@@ -99,15 +98,16 @@ describe('scanContent', () => {
     // #when
     const hits = scanContent(content, 'multi.ts')
 
-    // #then
-    expect(hits).toHaveLength(4)
+    // #then line 1 matches ipcRenderer + electron-import simultaneously
+    expect(hits).toHaveLength(5)
     expect(hits.map((h) => h.kind)).toEqual([
       'ipcRenderer',
+      'electron-import',
       'electron-toolkit',
       'window.api',
       'window.electron'
     ])
-    expect(hits.map((h) => h.line)).toEqual([1, 2, 3, 4])
+    expect(hits.map((h) => h.line)).toEqual([1, 1, 2, 3, 4])
   })
 
   it('ignores ipcRenderer substring that is not a whole word', () => {
@@ -119,6 +119,81 @@ describe('scanContent', () => {
 
     // #then
     expect(hits.filter((h) => h.kind === 'ipcRenderer')).toEqual([])
+  })
+
+  it('reports 1 electron-log hit on bare import', () => {
+    // #given
+    const content = "import log from 'electron-log/renderer'"
+
+    // #when
+    const hits = scanContent(content, 'fake.ts')
+
+    // #then
+    expect(hits).toHaveLength(1)
+    expect(hits[0].kind).toBe('electron-log')
+  })
+
+  it('reports 1 electron-log hit on plain electron-log import', () => {
+    // #given
+    const content = "import log from 'electron-log'"
+
+    // #when
+    const hits = scanContent(content, 'fake.ts')
+
+    // #then
+    expect(hits).toHaveLength(1)
+    expect(hits[0].kind).toBe('electron-log')
+  })
+
+  it('reports 1 electron-import hit for `from "electron"`', () => {
+    // #given
+    const content = "import { app } from 'electron'"
+
+    // #when
+    const hits = scanContent(content, 'fake.ts')
+
+    // #then
+    expect(hits).toHaveLength(1)
+    expect(hits[0].kind).toBe('electron-import')
+  })
+
+  it('does not flag the Tauri-safe logger module name', () => {
+    // #given
+    const content = "import { createLogger } from '@/lib/logger'"
+
+    // #when
+    const hits = scanContent(content, 'fake.ts')
+
+    // #then
+    expect(hits).toEqual([])
+  })
+})
+
+describe('countMemryRefs', () => {
+  it('counts every @memry/ occurrence', () => {
+    // #given
+    const content = [
+      "import type { Foo } from '@memry/contracts/notes-api'",
+      "import { Bar } from '@memry/shared/utils'",
+      'const x = 1'
+    ].join('\n')
+
+    // #when
+    const total = countMemryRefs(content)
+
+    // #then
+    expect(total).toBe(2)
+  })
+
+  it('returns 0 for clean Tauri code', () => {
+    // #given
+    const content = "import { invoke } from '@/lib/ipc/invoke'"
+
+    // #when
+    const total = countMemryRefs(content)
+
+    // #then
+    expect(total).toBe(0)
   })
 })
 

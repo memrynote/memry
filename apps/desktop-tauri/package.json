@@ -7,6 +7,8 @@
   "type": "module",
   "scripts": {
     "dev": "tauri dev",
+    "dev:a": "MEMRY_DEVICE=A tauri dev",
+    "dev:b": "MEMRY_DEVICE=B tauri dev",
     "build": "tauri build",
     "preview": "vite preview",
     "lint": "pnpm exec eslint --cache .",
@@ -17,12 +19,16 @@
     "test:e2e": "playwright test",
     "cargo:check": "cd src-tauri && cargo check",
     "cargo:clippy": "cd src-tauri && cargo clippy -- -D warnings",
-    "cargo:test": "cd src-tauri && cargo test",
+    "cargo:test": "cd src-tauri && cargo test --features test-helpers",
     "cargo:fmt": "cd src-tauri && cargo fmt",
     "bindings:generate": "tsx scripts/generate-bindings.ts",
     "bindings:check": "tsx scripts/check-bindings.ts",
     "capability:check": "tsx scripts/capability-sanity-check.ts",
-    "port:audit": "tsx scripts/port-audit.ts"
+    "port:audit": "tsx scripts/port-audit.ts",
+    "command:parity": "tsx scripts/command-parity-audit.ts",
+    "db:reset": "bash scripts/dev-reset.sh",
+    "db:new-migration": "tsx scripts/new-migration.ts",
+    "db:schema-diff": "tsx scripts/schema-diff.ts"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^3.0.58",
@@ -147,6 +153,7 @@
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
     "@testing-library/user-event": "^14.6.1",
+    "@types/better-sqlite3": "^7.6.13",
     "@types/node": "^25.2.2",
     "@types/react": "^19.2.13",
     "@types/react-dom": "^19.2.3",
@@ -154,6 +161,7 @@
     "@vitest/coverage-v8": "^4.0.18",
     "@vitest/ui": "^4.0.18",
     "autoprefixer": "^10.4.24",
+    "better-sqlite3": "^12.6.2",
     "eslint": "^9.39.2",
     "eslint-plugin-react": "^7.37.5",
     "eslint-plugin-react-hooks": "^7.0.1",

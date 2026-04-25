@@ -8,7 +8,11 @@ import { vi } from 'vitest'
 import { cleanup } from '@testing-library/react'
 import { afterEach } from 'vitest'
 
-vi.mock('electron-log/renderer', () => {
+// Tauri-safe logger replacement (was electron-log/renderer in M1).
+// Tests assert against `.error.toHaveBeenCalledWith(...)`, so every method
+// must be a spy. The real `@/lib/logger` impl wraps `console.*`; mocking it
+// here keeps log noise out of test output and lets tests inspect calls.
+vi.mock('@/lib/logger', () => {
   const createScopedLogger = () => ({
     debug: vi.fn(),
     info: vi.fn(),
@@ -17,13 +21,8 @@ vi.mock('electron-log/renderer', () => {
   })
 
   return {
-    default: {
-      debug: vi.fn(),
-      info: vi.fn(),
-      warn: vi.fn(),
-      error: vi.fn(),
-      scope: vi.fn(() => createScopedLogger())
-    }
+    createLogger: vi.fn(() => createScopedLogger()),
+    log: createScopedLogger()
   }
 })
 

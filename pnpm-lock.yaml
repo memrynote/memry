@@ -973,6 +973,9 @@ importers:
       '@testing-library/user-event':
         specifier: ^14.6.1
         version: 14.6.1(@testing-library/dom@10.4.1)
+      '@types/better-sqlite3':
+        specifier: ^7.6.13
+        version: 7.6.13
       '@types/node':
         specifier: ^25.2.2
         version: 25.2.2
@@ -994,6 +997,9 @@ importers:
       autoprefixer:
         specifier: ^10.4.24
         version: 10.4.24(postcss@8.5.8)
+      better-sqlite3:
+        specifier: ^12.6.2
+        version: 12.6.2
       eslint:
         specifier: ^9.39.2
         version: 9.39.2(jiti@2.6.1)

@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge'
 import { Search, RotateCcw, X, AlertTriangle, Info } from '@/lib/icons'
 import { useKeyboardSettings } from '@/hooks/use-keyboard-settings'
 import { toast } from 'sonner'
-import type { ShortcutBinding } from '@memry/contracts/settings-schemas'
+import type { ShortcutBinding } from '@/types/settings-schemas'
 import type { ShortcutBindingDTO } from '@/types/preload-types'
 import {
   SHORTCUT_REGISTRY,
