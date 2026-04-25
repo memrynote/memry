@@ -14,7 +14,7 @@ import {
   SettingRow,
   COMPACT_SELECT
 } from '@/components/settings/settings-primitives'
-import type { CalendarSettings } from '@memry/contracts/settings-schemas'
+import type { CalendarSettings } from '@/types/settings-schemas'
 
 const GLOBAL_CLICK_OPTIONS = [
   { value: 'journal', label: 'Open Journal' },
