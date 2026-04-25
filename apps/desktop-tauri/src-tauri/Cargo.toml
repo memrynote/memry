@@ -40,6 +40,7 @@ serde_yaml_ng = "0.10"
 mime_guess = "2.0"
 sha2 = "0.10"
 dunce = "1.0"
+nanoid = "0.4"
 
 # Native dialog + shell plugins (M3)
 tauri-plugin-dialog = "2"
@@ -70,4 +71,8 @@ required-features = ["test-helpers"]
 
 [[test]]
 name = "vault_paths_test"
+required-features = ["test-helpers"]
+
+[[test]]
+name = "vault_fs_test"
 required-features = ["test-helpers"]
