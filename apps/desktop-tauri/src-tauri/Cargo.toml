@@ -43,3 +43,7 @@ tempfile = "3"
 [[bin]]
 name = "generate_bindings"
 path = "src/bin/generate_bindings.rs"
+
+[[test]]
+name = "migrations_test"
+required-features = ["test-helpers"]
