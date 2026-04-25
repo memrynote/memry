@@ -1,13 +1,14 @@
 //! IPC command surface exposed to the renderer.
 //!
-//! At M1 no commands are implemented — the renderer is fed by the JS-side
-//! mock router in `src/lib/ipc/mocks/`. M2+ introduces real commands per
-//! domain (notes, tasks, crypto, sync, etc.). When a domain's Rust
-//! implementation lands, entries are added here and the corresponding
-//! mock entry is removed from `src/lib/ipc/invoke.ts`'s realCommands set.
+//! Phase F (M2) introduces the first real feature-domain slice — settings —
+//! crossing the boundary via `settings_get` / `settings_set` / `settings_list`.
+//! Phase G adds a single shell-neutral wrapper (`notify_flush_done`) so the
+//! renderer's quit-flush hook does not 404 through the mock router.
+//! Every other domain still serves data through the JS-side mock router in
+//! `src/lib/ipc/mocks/`. As each domain's Rust implementation lands, declare
+//! its module here and add the command names to the `generate_handler!` macro
+//! invocation in `lib.rs::run` plus `realCommands` in
+//! `src/lib/ipc/invoke.ts`.
 
-use tauri::Builder;
-
-pub fn register<R: tauri::Runtime>(builder: Builder<R>) -> Builder<R> {
-    builder.invoke_handler(tauri::generate_handler![])
-}
+pub mod lifecycle;
+pub mod settings;

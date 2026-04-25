@@ -22,12 +22,15 @@ export async function invoke<TResponse = unknown>(
 
 /**
  * Decides whether a command should be served by the mock router or routed to
- * the real Tauri backend. At M1, every command uses mock. Future milestones
- * extend the `realCommands` set with commands whose Rust implementation has
- * landed.
+ * the real Tauri backend. M2 Phase F lights up the settings KV slice; every
+ * other domain still serves data through the JS-side mocks until its Rust
+ * implementation lands. Add a command here once its Rust handler ships.
  */
 const realCommands = new Set<string>([
-  // No real commands at M1 — all mocked. M2+ adds entries here.
+  'settings_get',
+  'settings_set',
+  'settings_list',
+  'notify_flush_done'
 ])
 
 function shouldUseMock(cmd: string): boolean {

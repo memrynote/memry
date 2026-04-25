@@ -2,7 +2,13 @@ import { readFileSync, globSync } from 'node:fs'
 import { resolve, relative, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-export type HitKind = 'window.api' | 'ipcRenderer' | 'electron-toolkit' | 'window.electron'
+export type HitKind =
+  | 'window.api'
+  | 'ipcRenderer'
+  | 'electron-toolkit'
+  | 'window.electron'
+  | 'electron-log'
+  | 'electron-import'
 
 export interface Hit {
   file: string
@@ -15,7 +21,11 @@ const PATTERNS: Array<{ kind: HitKind; regex: RegExp }> = [
   { kind: 'window.api', regex: /window\.api\./ },
   { kind: 'ipcRenderer', regex: /\bipcRenderer\b/ },
   { kind: 'electron-toolkit', regex: /@electron-toolkit/ },
-  { kind: 'window.electron', regex: /window\.electron\b/ }
+  { kind: 'window.electron', regex: /window\.electron\b/ },
+  // Phase G hardening: catch leftover electron-log/* renderer imports.
+  { kind: 'electron-log', regex: /['"]electron-log(?:\/[a-z]+)?['"]/ },
+  // Phase G hardening: bare `from 'electron'` / `from "electron"` imports.
+  { kind: 'electron-import', regex: /from\s+['"]electron['"]/ }
 ]
 
 /**
@@ -42,6 +52,19 @@ export function isTestFile(relPath: string): boolean {
   return /\.test\.(ts|tsx)$/.test(relPath)
 }
 
+/**
+ * Counts how many lines reference a `@memry/<package>` workspace import.
+ *
+ * Phase G doesn't drive these to zero (legitimate `@memry/contracts` uses
+ * remain), but we track totals as a carry-forward ledger for the PR — later
+ * milestones graduate `@memry/rpc/*`, `@memry/db-schema/*`, and
+ * `@memry/shared/*` references away from the renderer.
+ */
+export function countMemryRefs(content: string): number {
+  const re = /@memry\//g
+  return [...content.matchAll(re)].length
+}
+
 function runCli(): void {
   const here = dirname(fileURLToPath(import.meta.url))
   const root = resolve(here, '../src')
@@ -55,9 +78,11 @@ function runCli(): void {
     .map((relPath) => resolve(root, relPath))
 
   const hits: Hit[] = []
+  let memryRefs = 0
   for (const file of files) {
     const content = readFileSync(file, 'utf-8')
     hits.push(...scanContent(content, file))
+    memryRefs += countMemryRefs(content)
   }
 
   console.log(`Total hits: ${hits.length}`)
@@ -79,6 +104,8 @@ function runCli(): void {
       .slice(0, 20)
       .forEach(([f, c]) => console.log(`  ${c.toString().padStart(4)} ${relative(root, f)}`))
   }
+
+  console.log(`\n@memry/* references (informational): ${memryRefs}`)
 
   if (hits.length > 0) {
     process.exitCode = 1
