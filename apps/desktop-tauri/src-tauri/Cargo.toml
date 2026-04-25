@@ -45,6 +45,11 @@ tempfile = "3"
 name = "generate_bindings"
 path = "src/bin/generate_bindings.rs"
 
+[[bin]]
+name = "bench_m2"
+path = "src/bin/bench_m2.rs"
+required-features = ["test-helpers"]
+
 [[test]]
 name = "migrations_test"
 required-features = ["test-helpers"]
