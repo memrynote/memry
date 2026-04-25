@@ -67,3 +67,7 @@ required-features = ["test-helpers"]
 [[test]]
 name = "settings_test"
 required-features = ["test-helpers"]
+
+[[test]]
+name = "vault_paths_test"
+required-features = ["test-helpers"]
