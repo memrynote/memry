@@ -21,7 +21,12 @@ pub mod note_positions;
 pub mod notes_cache;
 pub mod projects;
 pub mod reminders;
+pub mod search_reasons;
 pub mod statuses;
+pub mod sync_devices;
+pub mod sync_history;
+pub mod sync_queue;
+pub mod sync_state;
 pub mod tag_definitions;
 pub mod tasks;
 
