@@ -1,40 +1,45 @@
+import type { AppUpdateState } from '@memry/contracts/ipc-updater'
 import type { MockRouteMap } from './types'
 
-interface UpdaterSettings {
-  autoCheck: boolean
-  channel: 'stable' | 'beta' | 'nightly'
-  lastCheckedAt: number | null
+const CURRENT_VERSION = '2.0.0-alpha.1'
+
+const baseState: AppUpdateState = {
+  currentVersion: CURRENT_VERSION,
+  status: 'unavailable',
+  updateSupported: false,
+  availableVersion: null,
+  releaseName: null,
+  releaseDate: null,
+  releaseNotes: null,
+  downloadProgressPercent: null,
+  lastCheckedAt: null,
+  error: null
 }
 
-let settings: UpdaterSettings = {
-  autoCheck: true,
-  channel: 'stable',
-  lastCheckedAt: null
+let state: AppUpdateState = { ...baseState }
+
+function snapshot(): AppUpdateState {
+  return { ...state }
 }
 
-const currentVersion = '2.0.0-alpha.1'
-
+/**
+ * Mock surface for the auto-updater. The real Tauri command shim lands in M9
+ * (auto-update milestone); until then `useAppUpdater` calls these mocked
+ * routes and observes that updates are not supported. The shape MUST match
+ * `AppUpdateState` from `@memry/contracts/ipc-updater` so future renderer
+ * tightening (e.g. discriminated union changes) breaks tests instead of
+ * silently disagreeing with the hook.
+ */
 export const updaterRoutes: MockRouteMap = {
-  updater_check: async () => {
-    settings = { ...settings, lastCheckedAt: Date.now() }
-    return {
-      available: false,
-      currentVersion,
-      latestVersion: null,
-      releaseNotes: null,
-      checkedAt: settings.lastCheckedAt
-    }
+  updater_get_state: async () => snapshot(),
+  updater_check_for_updates: async () => {
+    state = { ...state, status: 'up-to-date', lastCheckedAt: Date.now(), error: null }
+    return snapshot()
   },
-  updater_download: async () => ({ ok: true, progress: 0 }),
-  updater_install: async () => ({
-    ok: false,
-    reason: 'updater-not-implemented-in-m1'
-  }),
-  updater_cancel: async () => ({ ok: true }),
-  updater_settings_get: async () => settings,
-  updater_settings_update: async (args) => {
-    const patch = args as Partial<UpdaterSettings>
-    settings = { ...settings, ...patch }
-    return settings
-  }
+  updater_download_update: async () => {
+    // Updater-not-supported in M2; returning the same state keeps the renderer
+    // banner inert without surfacing an error.
+    return snapshot()
+  },
+  updater_quit_and_install: async () => undefined
 }

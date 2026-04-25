@@ -29,7 +29,8 @@ export async function invoke<TResponse = unknown>(
 const realCommands = new Set<string>([
   'settings_get',
   'settings_set',
-  'settings_list'
+  'settings_list',
+  'notify_flush_done'
 ])
 
 function shouldUseMock(cmd: string): boolean {

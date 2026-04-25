@@ -20,6 +20,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             commands::settings::settings_get,
             commands::settings::settings_set,
             commands::settings::settings_list,
+            commands::lifecycle::notify_flush_done,
         ])
         .typ::<AppError>()
         .typ::<db::bookmarks::Bookmark>()

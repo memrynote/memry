@@ -1,49 +1,60 @@
-import { describe, it, expect } from 'vitest'
+import type { AppUpdateState } from '@memry/contracts/ipc-updater'
+import { describe, expect, it } from 'vitest'
 
 import { updaterRoutes } from './updater'
 
+async function call(name: keyof typeof updaterRoutes, args?: unknown): Promise<unknown> {
+  const handler = updaterRoutes[name]
+  if (!handler) throw new Error(`route ${String(name)} not registered`)
+  return handler(args)
+}
+
 describe('updaterRoutes', () => {
-  it('updater_check returns a no-update-available response by default', async () => {
-    const res = (await updaterRoutes.updater_check!(undefined)) as {
-      available: boolean
-      currentVersion: string
-      latestVersion: string | null
-    }
-    expect(res.available).toBe(false)
-    expect(typeof res.currentVersion).toBe('string')
+  it('updater_get_state returns the AppUpdateState shape with status="unavailable"', async () => {
+    // #given the M2 mock has no real update surface
+    // #when the renderer asks for current state
+    const res = (await call('updater_get_state')) as AppUpdateState
+
+    // #then it gets a fully populated AppUpdateState
+    expect(res).toMatchObject({
+      currentVersion: '2.0.0-alpha.1',
+      updateSupported: false,
+      availableVersion: null
+    })
+    expect(['unavailable', 'idle', 'up-to-date']).toContain(res.status)
   })
 
-  it('updater_download returns ok with a mocked progress report', async () => {
-    const res = (await updaterRoutes.updater_download!(undefined)) as {
-      ok: boolean
-      progress: number
-    }
-    expect(res.ok).toBe(true)
-    expect(typeof res.progress).toBe('number')
+  it('updater_check_for_updates marks state up-to-date and stamps lastCheckedAt', async () => {
+    // #when the renderer triggers a check
+    const res = (await call('updater_check_for_updates')) as AppUpdateState
+
+    // #then the mock reports up-to-date and records the check time
+    expect(res.status).toBe('up-to-date')
+    expect(typeof res.lastCheckedAt).toBe('number')
+    expect(res.error).toBeNull()
   })
 
-  it('updater_install returns ok but notes m1 cannot actually install', async () => {
-    const res = (await updaterRoutes.updater_install!(undefined)) as {
-      ok: boolean
-      reason: string
-    }
-    expect(res.ok).toBe(false)
-    expect(res.reason).toMatch(/m1/i)
+  it('updater_download_update returns a no-op state because updates are unsupported in M2', async () => {
+    // #when the renderer asks to download
+    const res = (await call('updater_download_update')) as AppUpdateState
+
+    // #then the mock returns the AppUpdateState shape unchanged
+    expect(res.updateSupported).toBe(false)
+    expect(res.availableVersion).toBeNull()
   })
 
-  it('updater_settings_get returns the updater settings', async () => {
-    const settings = (await updaterRoutes.updater_settings_get!(undefined)) as {
-      autoCheck: boolean
-      channel: string
-    }
-    expect(typeof settings.autoCheck).toBe('boolean')
-    expect(typeof settings.channel).toBe('string')
+  it('updater_quit_and_install resolves to undefined because there is nothing to install', async () => {
+    // #when the renderer asks to install
+    const res = await call('updater_quit_and_install')
+
+    // #then the route resolves without payload
+    expect(res).toBeUndefined()
   })
 
-  it('updater_settings_update merges the patch', async () => {
-    const settings = (await updaterRoutes.updater_settings_update!({
-      autoCheck: false
-    })) as { autoCheck: boolean }
-    expect(settings.autoCheck).toBe(false)
+  it('legacy updater_check / updater_download / updater_install routes are removed', () => {
+    // #then the M2 mocks no longer expose the pre-M1 names
+    expect(updaterRoutes).not.toHaveProperty('updater_check')
+    expect(updaterRoutes).not.toHaveProperty('updater_download')
+    expect(updaterRoutes).not.toHaveProperty('updater_install')
   })
 })
