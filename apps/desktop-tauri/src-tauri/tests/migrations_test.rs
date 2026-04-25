@@ -406,3 +406,141 @@ fn property_definitions_roundtrip() {
     assert!(prop.color.is_none());
     assert!(!prop.created_at.is_empty());
 }
+
+#[test]
+fn calendar_event_roundtrip() {
+    // Turkish-character roundtrip is embedded here (Phase D gotcha #3).
+    // If SQLite or rusqlite mangles UTF-8, the title compare will fail.
+    let db = memry_desktop_tauri_lib::db::Db::open_memory().unwrap();
+    let conn = db.conn().unwrap();
+
+    let title = "Toplantı: çay & kahve — ÖĞRENME günü";
+    conn.execute(
+        "INSERT INTO calendar_events (id, title, start_at) VALUES (?1, ?2, ?3)",
+        rusqlite::params!["e1", title, "2026-04-25T10:00:00.000Z"],
+    )
+    .unwrap();
+
+    let ev = conn
+        .query_row(
+            "SELECT * FROM calendar_events WHERE id = 'e1'",
+            [],
+            memry_desktop_tauri_lib::db::calendar_events::CalendarEvent::from_row,
+        )
+        .unwrap();
+    assert_eq!(ev.id, "e1");
+    assert_eq!(ev.title, title, "Turkish UTF-8 must roundtrip byte-identical");
+    assert_eq!(ev.start_at, "2026-04-25T10:00:00.000Z");
+    assert_eq!(ev.timezone, "UTC");
+    assert!(!ev.is_all_day);
+    assert!(ev.field_clocks.is_none());
+    assert!(ev.target_calendar_id.is_none());
+    assert!(ev.attendees.is_none());
+}
+
+#[test]
+fn calendar_source_roundtrip() {
+    let db = memry_desktop_tauri_lib::db::Db::open_memory().unwrap();
+    let conn = db.conn().unwrap();
+
+    conn.execute(
+        "INSERT INTO calendar_sources (id, provider, kind, remote_id, title) \
+         VALUES (?1, ?2, ?3, ?4, ?5)",
+        rusqlite::params!["src1", "google", "calendar", "primary@example.com", "Primary"],
+    )
+    .unwrap();
+
+    let src = conn
+        .query_row(
+            "SELECT * FROM calendar_sources WHERE id = 'src1'",
+            [],
+            memry_desktop_tauri_lib::db::calendar_sources::CalendarSource::from_row,
+        )
+        .unwrap();
+    assert_eq!(src.id, "src1");
+    assert_eq!(src.provider, "google");
+    assert_eq!(src.kind, "calendar");
+    assert_eq!(src.remote_id, "primary@example.com");
+    assert_eq!(src.title, "Primary");
+    assert!(!src.is_primary);
+    assert!(!src.is_selected);
+    assert!(!src.is_memry_managed);
+    assert_eq!(src.sync_status, "idle");
+    assert!(src.last_error.is_none());
+}
+
+#[test]
+fn calendar_external_event_roundtrip() {
+    let db = memry_desktop_tauri_lib::db::Db::open_memory().unwrap();
+    let conn = db.conn().unwrap();
+
+    conn.execute(
+        "INSERT INTO calendar_sources (id, provider, kind, remote_id, title) \
+         VALUES (?1, ?2, ?3, ?4, ?5)",
+        rusqlite::params!["src1", "google", "calendar", "primary@example.com", "Primary"],
+    )
+    .unwrap();
+    conn.execute(
+        "INSERT INTO calendar_external_events \
+         (id, source_id, remote_event_id, title, start_at) \
+         VALUES (?1, ?2, ?3, ?4, ?5)",
+        rusqlite::params!["xev1", "src1", "remote-abc", "Standup", "2026-04-25T09:00:00.000Z"],
+    )
+    .unwrap();
+
+    let xev = conn
+        .query_row(
+            "SELECT * FROM calendar_external_events WHERE id = 'xev1'",
+            [],
+            memry_desktop_tauri_lib::db::calendar_external_events::CalendarExternalEvent::from_row,
+        )
+        .unwrap();
+    assert_eq!(xev.id, "xev1");
+    assert_eq!(xev.source_id, "src1");
+    assert_eq!(xev.remote_event_id, "remote-abc");
+    assert_eq!(xev.title, "Standup");
+    assert_eq!(xev.status, "confirmed");
+    assert!(!xev.is_all_day);
+    assert!(xev.attendees.is_none());
+}
+
+#[test]
+fn calendar_binding_roundtrip() {
+    let db = memry_desktop_tauri_lib::db::Db::open_memory().unwrap();
+    let conn = db.conn().unwrap();
+
+    conn.execute(
+        "INSERT INTO calendar_bindings \
+         (id, source_type, source_id, provider, remote_calendar_id, remote_event_id, \
+          ownership_mode, writeback_mode) \
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
+        rusqlite::params![
+            "b1",
+            "task",
+            "t1",
+            "google",
+            "primary@example.com",
+            "remote-event-1",
+            "memry-owned",
+            "two-way",
+        ],
+    )
+    .unwrap();
+
+    let b = conn
+        .query_row(
+            "SELECT * FROM calendar_bindings WHERE id = 'b1'",
+            [],
+            memry_desktop_tauri_lib::db::calendar_bindings::CalendarBinding::from_row,
+        )
+        .unwrap();
+    assert_eq!(b.id, "b1");
+    assert_eq!(b.source_type, "task");
+    assert_eq!(b.source_id, "t1");
+    assert_eq!(b.provider, "google");
+    assert_eq!(b.remote_calendar_id, "primary@example.com");
+    assert_eq!(b.remote_event_id, "remote-event-1");
+    assert_eq!(b.ownership_mode, "memry-owned");
+    assert_eq!(b.writeback_mode, "two-way");
+    assert!(b.remote_version.is_none());
+}
