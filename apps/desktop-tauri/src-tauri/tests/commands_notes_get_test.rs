@@ -1,9 +1,7 @@
 use memry_desktop_tauri_lib::commands::notes::{
     notes_create_inner, notes_get_by_path_inner, notes_get_inner, NoteCreateInput,
 };
-use memry_desktop_tauri_lib::test_helpers::{
-    open_in_memory_with_migrations, test_vault_runtime,
-};
+use memry_desktop_tauri_lib::test_helpers::{open_in_memory_with_migrations, test_vault_runtime};
 
 #[tokio::test]
 async fn get_note_by_id_and_path_returns_same_dto() {

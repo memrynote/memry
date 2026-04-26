@@ -52,6 +52,17 @@ pub struct NoteListResponse {
 
 #[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
+pub struct NoteListOptions {
+    pub folder: Option<String>,
+    pub tags: Option<Vec<String>>,
+    pub sort_by: Option<String>,
+    pub sort_order: Option<String>,
+    pub limit: Option<i64>,
+    pub offset: Option<i64>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
+#[serde(rename_all = "camelCase")]
 pub struct NoteCreateInput {
     pub title: String,
     pub content: Option<String>,
@@ -139,7 +150,12 @@ pub async fn notes_create_inner(
         .await?
         .ok_or_else(|| AppError::NotFound(format!("note file {}", prepared.relative)))?;
 
-    finish_create(conn, prepared, &read.parsed.content, &read.parsed.frontmatter)
+    finish_create(
+        conn,
+        prepared,
+        &read.parsed.content,
+        &read.parsed.frontmatter,
+    )
 }
 
 pub async fn notes_get_inner(
@@ -190,6 +206,47 @@ pub async fn notes_delete_inner(
     let deleted_at = now_iso();
 
     finish_delete(conn, &row, &deleted_at)
+}
+
+pub fn notes_list_inner(
+    conn: &Connection,
+    options: Option<NoteListOptions>,
+) -> AppResult<NoteListResponse> {
+    let opts = options.unwrap_or_else(default_list_options);
+    let limit = opts.limit.unwrap_or(100).clamp(0, 1000);
+    let offset = opts.offset.unwrap_or(0).max(0);
+    let sort_by = opts.sort_by.as_deref().unwrap_or("modified");
+    let sort_order = opts.sort_order.as_deref().unwrap_or("desc");
+    let folder = opts.folder.as_deref();
+
+    let rows = crate::db::notes_cache::list_active_filtered(
+        conn, folder, limit, offset, sort_by, sort_order,
+    )?;
+    let total = crate::db::notes_cache::count_active_filtered(conn, folder)?;
+    let has_more = offset + (rows.len() as i64) < total;
+
+    Ok(NoteListResponse {
+        notes: rows.into_iter().map(list_item_from_cache).collect(),
+        total,
+        has_more,
+    })
+}
+
+pub fn notes_list_by_folder_inner(
+    conn: &Connection,
+    folder_id: &str,
+) -> AppResult<NoteListResponse> {
+    notes_list_inner(
+        conn,
+        Some(NoteListOptions {
+            folder: Some(folder_id.to_string()),
+            tags: None,
+            sort_by: Some("position".into()),
+            sort_order: Some("asc".into()),
+            limit: Some(1000),
+            offset: Some(0),
+        }),
+    )
 }
 
 #[tauri::command]
@@ -321,6 +378,26 @@ pub async fn notes_delete(
     Ok(resp)
 }
 
+#[tauri::command]
+#[specta::specta]
+pub fn notes_list(
+    state: State<'_, AppState>,
+    options: Option<NoteListOptions>,
+) -> AppResult<NoteListResponse> {
+    let conn = state.db.conn()?;
+    notes_list_inner(&conn, options)
+}
+
+#[tauri::command]
+#[specta::specta]
+pub fn notes_list_by_folder(
+    state: State<'_, AppState>,
+    folder_id: String,
+) -> AppResult<NoteListResponse> {
+    let conn = state.db.conn()?;
+    notes_list_by_folder_inner(&conn, &folder_id)
+}
+
 async fn read_note_dto(vault: &VaultRuntime, row: NoteMetadata) -> AppResult<NoteDto> {
     let root = vault.require_current()?;
     let read = notes_io::read_note_from_disk(&root, &row.path)
@@ -392,11 +469,7 @@ fn finish_update(conn: &Connection, updated: PreparedUpdate) -> AppResult<NoteUp
 
     Ok(NoteUpdateResponse {
         success: true,
-        note: Some(into_dto(
-            &updated.row,
-            &updated.body,
-            &updated.frontmatter,
-        )),
+        note: Some(into_dto(&updated.row, &updated.body, &updated.frontmatter)),
         error: None,
     })
 }
@@ -413,6 +486,33 @@ fn finish_delete(
     note_positions::drop_for_note(conn, &row.path)?;
 
     Ok(serde_json::json!({ "success": true }))
+}
+
+fn default_list_options() -> NoteListOptions {
+    NoteListOptions {
+        folder: None,
+        tags: None,
+        sort_by: Some("modified".into()),
+        sort_order: Some("desc".into()),
+        limit: Some(100),
+        offset: Some(0),
+    }
+}
+
+fn list_item_from_cache(row: crate::db::notes_cache::NotesCacheRow) -> NoteListItem {
+    let tags = serde_json::from_str(&row.tags_json).unwrap_or_default();
+    NoteListItem {
+        id: row.id,
+        path: row.path,
+        title: row.title,
+        created: row.created_at,
+        modified: row.modified_at,
+        tags,
+        word_count: row.word_count,
+        snippet: snippet_of(&row.snippet),
+        emoji: row.emoji,
+        local_only: row.local_only,
+    }
 }
 
 struct PreparedCreate {
