@@ -21,6 +21,7 @@ use std::sync::{Arc, Mutex};
 
 use zeroize::Zeroizing;
 
+use crate::auth::redaction::redact_secret;
 use crate::auth::types::{AuthStateKind, AuthStatus};
 use crate::error::AppResult;
 use crate::keychain::KeychainStore;
@@ -151,10 +152,9 @@ impl AuthRuntime {
     }
 }
 
-/// Phase B placeholder. Phase C (Task 10) ships the canonical PII-safe
-/// redaction helper. Until then, callers receive a stable, opaque category
-/// string so password bytes / tokens / OTPs cannot reach the IPC surface
-/// through `last_error_message()`.
-fn redact_state_error(_raw: &str) -> String {
-    "auth_error".to_string()
+/// Routes raw failure strings through the canonical PII-safe
+/// redaction helper before they can reach `last_error_message()` and
+/// the IPC surface. Password bytes, tokens, and OTPs never persist.
+fn redact_state_error(raw: &str) -> String {
+    redact_secret(raw).to_string()
 }
