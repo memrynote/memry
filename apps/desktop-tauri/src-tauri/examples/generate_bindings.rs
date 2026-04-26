@@ -41,6 +41,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             commands::notes::notes_get,
             commands::notes::notes_get_by_path,
             commands::notes::notes_update,
+            commands::notes::notes_delete,
             // M4: auth + sync_auth + sync_setup
             commands::auth::auth_status,
             commands::auth::auth_unlock,
