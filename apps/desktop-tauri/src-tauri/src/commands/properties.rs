@@ -33,6 +33,14 @@ pub struct PropertySimpleSuccess {
     pub success: bool,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
+#[serde(rename_all = "camelCase")]
+pub struct CreatePropertyDefinitionResponse {
+    pub success: bool,
+    pub definition: Option<db::PropertyDefinitionRow>,
+    pub error: Option<String>,
+}
+
 // ---- Inner helpers (called from tests, runtime, and Tauri wrappers) -------
 
 pub fn notes_get_property_definitions_inner(
@@ -63,9 +71,40 @@ pub fn notes_update_property_definition_inner(
     input: &Value,
 ) -> AppResult<db::PropertyDefinitionRow> {
     let name = require_str(input, "name")?;
-    let new_type = require_str(input, "type")?;
-    db::update_type(conn, name, new_type)?;
+    let mut row =
+        db::get(conn, name)?.ok_or_else(|| AppError::NotFound(format!("property {name}")))?;
+
+    if let Some(new_type) = input.get("type").and_then(Value::as_str) {
+        row.ty = new_type.to_string();
+    }
+    if let Some(options) = input.get("options") {
+        row.options = json_field_to_db_string(options)?;
+    }
+    if let Some(default_value) = input.get("defaultValue") {
+        row.default_value = json_field_to_db_string(default_value)?;
+    }
+    if let Some(color) = input.get("color") {
+        row.color = json_field_to_db_string(color)?;
+    }
+
+    db::update(conn, &row)?;
     db::get(conn, name)?.ok_or_else(|| AppError::NotFound(format!("property {name}")))
+}
+
+pub fn notes_create_property_definition_response_inner(
+    conn: &Connection,
+    input: CreatePropertyDefinitionInput,
+) -> AppResult<CreatePropertyDefinitionResponse> {
+    let definition = notes_create_property_definition_inner(conn, input)?;
+    Ok(property_definition_response(definition))
+}
+
+pub fn notes_update_property_definition_response_inner(
+    conn: &Connection,
+    input: &Value,
+) -> AppResult<CreatePropertyDefinitionResponse> {
+    let definition = notes_update_property_definition_inner(conn, input)?;
+    Ok(property_definition_response(definition))
 }
 
 pub fn notes_ensure_property_definition_inner(
@@ -137,9 +176,9 @@ pub fn notes_get_property_definitions(
 pub fn notes_create_property_definition(
     state: State<'_, AppState>,
     input: CreatePropertyDefinitionInput,
-) -> AppResult<db::PropertyDefinitionRow> {
+) -> AppResult<CreatePropertyDefinitionResponse> {
     let conn = state.db.conn()?;
-    notes_create_property_definition_inner(&conn, input)
+    notes_create_property_definition_response_inner(&conn, input)
 }
 
 #[tauri::command]
@@ -147,9 +186,9 @@ pub fn notes_create_property_definition(
 pub fn notes_update_property_definition(
     state: State<'_, AppState>,
     input: JsonUnknown,
-) -> AppResult<db::PropertyDefinitionRow> {
+) -> AppResult<CreatePropertyDefinitionResponse> {
     let conn = state.db.conn()?;
-    notes_update_property_definition_inner(&conn, &input)
+    notes_update_property_definition_response_inner(&conn, &input)
 }
 
 #[tauri::command]
@@ -229,6 +268,26 @@ pub fn notes_delete_property_definition(
 }
 
 // ---- Internal helpers -----------------------------------------------------
+
+fn property_definition_response(
+    definition: db::PropertyDefinitionRow,
+) -> CreatePropertyDefinitionResponse {
+    CreatePropertyDefinitionResponse {
+        success: true,
+        definition: Some(definition),
+        error: None,
+    }
+}
+
+fn json_field_to_db_string(value: &Value) -> AppResult<Option<String>> {
+    if value.is_null() {
+        return Ok(None);
+    }
+    if let Some(text) = value.as_str() {
+        return Ok(Some(text.to_string()));
+    }
+    Ok(Some(serde_json::to_string(value)?))
+}
 
 fn require_str<'a>(value: &'a Value, field: &str) -> AppResult<&'a str> {
     value

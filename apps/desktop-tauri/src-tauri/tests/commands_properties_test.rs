@@ -10,6 +10,8 @@ use memry_desktop_tauri_lib::commands::properties::{
     notes_ensure_property_definition_inner, notes_get_property_definitions_inner,
     notes_remove_property_option_inner, notes_rename_property_option_inner,
     notes_update_option_color_inner, notes_update_property_definition_inner,
+    notes_create_property_definition_response_inner,
+    notes_update_property_definition_response_inner,
     CreatePropertyDefinitionInput,
 };
 use memry_desktop_tauri_lib::error::AppError;
@@ -88,12 +90,41 @@ fn update_changes_type_and_returns_not_found_for_missing_name() {
     .unwrap();
     assert_eq!(updated.ty, "multiselect");
 
+    let updated = notes_update_property_definition_inner(
+        &conn,
+        &json!({ "name": "status", "color": "#ff0000" }),
+    )
+    .unwrap();
+    assert_eq!(updated.ty, "multiselect");
+    assert_eq!(updated.color.as_deref(), Some("#ff0000"));
+
     let err = notes_update_property_definition_inner(
         &conn,
         &json!({ "name": "ghost", "type": "select" }),
     )
     .expect_err("missing definition must error");
     assert!(matches!(err, AppError::NotFound(_)), "got {err:?}");
+}
+
+#[test]
+fn property_definition_command_helpers_wrap_success_response() {
+    let conn = open_in_memory_with_migrations();
+
+    let created =
+        notes_create_property_definition_response_inner(&conn, create_input("status", "select"))
+            .unwrap();
+    assert!(created.success);
+    assert_eq!(created.definition.unwrap().name, "status");
+    assert!(created.error.is_none());
+
+    let updated = notes_update_property_definition_response_inner(
+        &conn,
+        &json!({ "name": "status", "type": "multiselect" }),
+    )
+    .unwrap();
+    assert!(updated.success);
+    assert_eq!(updated.definition.unwrap().ty, "multiselect");
+    assert!(updated.error.is_none());
 }
 
 #[test]

@@ -93,8 +93,8 @@ export const commands = {
 	notesGetAllPositions: () => typedError<PositionsResponse, AppError>(__TAURI_INVOKE("notes_get_all_positions")),
 	notesReorder: (input: ReorderInput) => typedError<FolderSimpleSuccess, AppError>(__TAURI_INVOKE("notes_reorder", { input })),
 	notesGetPropertyDefinitions: () => typedError<PropertyDefinitionRow[], AppError>(__TAURI_INVOKE("notes_get_property_definitions")),
-	notesCreatePropertyDefinition: (input: CreatePropertyDefinitionInput) => typedError<PropertyDefinitionRow, AppError>(__TAURI_INVOKE("notes_create_property_definition", { input })),
-	notesUpdatePropertyDefinition: (input: unknown) => typedError<PropertyDefinitionRow, AppError>(__TAURI_INVOKE("notes_update_property_definition", { input })),
+	notesCreatePropertyDefinition: (input: CreatePropertyDefinitionInput) => typedError<CreatePropertyDefinitionResponse, AppError>(__TAURI_INVOKE("notes_create_property_definition", { input })),
+	notesUpdatePropertyDefinition: (input: unknown) => typedError<CreatePropertyDefinitionResponse, AppError>(__TAURI_INVOKE("notes_update_property_definition", { input })),
 	notesEnsurePropertyDefinition: (input: unknown) => typedError<PropertyDefinitionRow, AppError>(__TAURI_INVOKE("notes_ensure_property_definition", { input })),
 	notesAddPropertyOption: (input: unknown) => typedError<PropertySimpleSuccess, AppError>(__TAURI_INVOKE("notes_add_property_option", { input })),
 	notesAddStatusOption: (input: unknown) => typedError<PropertySimpleSuccess, AppError>(__TAURI_INVOKE("notes_add_status_option", { input })),
@@ -310,6 +310,12 @@ export type CreatePropertyDefinitionInput = {
 	options: unknown | null,
 	defaultValue: string | null,
 	color: string | null,
+};
+
+export type CreatePropertyDefinitionResponse = {
+	success: boolean,
+	definition: PropertyDefinitionRow | null,
+	error: string | null,
 };
 
 export type CryptoDecryptItemInput = {

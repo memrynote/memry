@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { createMockApi } from '@tests/setup-dom'
+import { invoke } from '@/lib/ipc/invoke'
 import {
   notesService,
   onNoteCreated,
@@ -14,6 +15,7 @@ describe('notes-service', () => {
   let api: ReturnType<typeof createMockApi>
 
   beforeEach(() => {
+    vi.clearAllMocks()
     api = createMockApi()
     ;(window as Window & { api: unknown }).api = api
   })
@@ -92,7 +94,9 @@ describe('notes-service', () => {
 
     const config = { template: 'default', inherit: true }
     await notesService.setFolderConfig('projects', config)
-    expect(api.notes.setFolderConfig).toHaveBeenCalledWith('projects', config)
+    expect(invoke).toHaveBeenCalledWith('notes_set_folder_config', {
+      input: { path: 'projects', icon: null, templateJson: 'default' }
+    })
 
     await notesService.getFolderTemplate('projects')
     expect(api.notes.getFolderTemplate).toHaveBeenCalledWith('projects')
@@ -211,11 +215,12 @@ describe('notes-service', () => {
         'projects/note3.md'
       ])
 
-      expect(api.notes.reorder).toHaveBeenCalledWith('projects', [
-        'projects/note2.md',
-        'projects/note1.md',
-        'projects/note3.md'
-      ])
+      expect(invoke).toHaveBeenCalledWith('notes_reorder', {
+        input: {
+          folderPath: 'projects',
+          notePaths: ['projects/note2.md', 'projects/note1.md', 'projects/note3.md']
+        }
+      })
       expect(result).toEqual({ success: true })
     })
 
@@ -227,6 +232,28 @@ describe('notes-service', () => {
 
       expect(result.success).toBe(false)
       expect(result.error).toBe('Reorder failed')
+    })
+  })
+
+  it('uses Tauri input envelopes for folder/property mutations', async () => {
+    await notesService.deleteFolder('projects')
+    expect(invoke).toHaveBeenCalledWith('notes_delete_folder', {
+      input: { path: 'projects', recursive: false }
+    })
+
+    await notesService.ensurePropertyDefinition('status', 'status')
+    expect(invoke).toHaveBeenCalledWith('notes_ensure_property_definition', {
+      input: { name: 'status', type: 'status' }
+    })
+
+    await notesService.addPropertyOption('priority', { value: 'high', color: 'red' })
+    expect(invoke).toHaveBeenCalledWith('notes_add_property_option', {
+      input: { propertyName: 'priority', option: { value: 'high', color: 'red' } }
+    })
+
+    await notesService.deletePropertyDefinition('priority')
+    expect(invoke).toHaveBeenCalledWith('notes_delete_property_definition', {
+      input: { name: 'priority' }
     })
   })
 })
