@@ -5,6 +5,7 @@ pub mod compaction;
 mod docstore;
 pub mod snapshot;
 pub mod state_vector;
+pub mod wire;
 
 pub use apply::apply_update_v1;
 pub use compaction::{compact_doc, CompactionResult, COMPACT_THRESHOLD};
