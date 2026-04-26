@@ -138,6 +138,14 @@ pub fn delete(conn: &Connection, id: &str) -> AppResult<()> {
     Ok(())
 }
 
+pub fn set_local_only(conn: &Connection, id: &str, local_only: bool) -> AppResult<()> {
+    conn.execute(
+        "UPDATE notes_cache SET local_only = ?1 WHERE id = ?2",
+        params![local_only as i64, id],
+    )?;
+    Ok(())
+}
+
 fn map_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<NotesCacheRow> {
     Ok(NotesCacheRow {
         id: row.get(0)?,
