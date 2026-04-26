@@ -1,11 +1,13 @@
 //! CRDT runtime — yrs-backed authoritative Y.Docs keyed by note id.
 
 pub mod apply;
+pub mod compaction;
 mod docstore;
 pub mod snapshot;
 pub mod state_vector;
 
 pub use apply::apply_update_v1;
+pub use compaction::{compact_doc, CompactionResult, COMPACT_THRESHOLD};
 pub use docstore::{DocHandle, DocStore, NoteId};
 pub use snapshot::{encode_diff_since_v1, encode_snapshot_v1};
 pub use state_vector::encode_state_vector_v1;
