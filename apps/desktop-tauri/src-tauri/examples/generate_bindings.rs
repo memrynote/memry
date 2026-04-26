@@ -36,6 +36,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             commands::shell::shell_reveal_in_finder,
             commands::dialog::dialog_choose_folder,
             commands::dialog::dialog_choose_files,
+            // M5: notes CRUD
+            commands::notes::notes_create,
             // M4: auth + sync_auth + sync_setup
             commands::auth::auth_status,
             commands::auth::auth_unlock,
@@ -138,6 +140,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .typ::<commands::secrets::SecretsSetProviderKeyInput>()
         .typ::<commands::secrets::SecretsGetProviderKeyStatusInput>()
         .typ::<commands::secrets::SecretsDeleteProviderKeyInput>()
+        // M5 notes
+        .typ::<commands::notes::NoteDto>()
+        .typ::<commands::notes::NoteListItem>()
+        .typ::<commands::notes::NoteListResponse>()
+        .typ::<commands::notes::NoteCreateInput>()
+        .typ::<commands::notes::NoteCreateResponse>()
         // Domain DB structs (registered for stable export across migrations)
         .typ::<db::bookmarks::Bookmark>()
         .typ::<db::calendar_bindings::CalendarBinding>()
