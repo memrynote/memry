@@ -24,9 +24,8 @@ pub(crate) fn frontmatter_iso(secs: u64) -> String {
     frontmatter::unix_secs_to_iso(secs)
 }
 
-// Re-exports flesh out in later tasks:
-// pub use frontmatter::{NoteFrontmatter, ParsedNote};
-// pub use notes_io::{NoteOnDisk, ReadNoteResult};
-// pub use preferences::{VaultConfig, VaultPreferences};
-// pub use registry::{VaultInfo, VaultRegistry};
-// pub use state::{VaultRuntime, VaultStatus};
+pub use frontmatter::{NoteFrontmatter, ParsedNote};
+pub use notes_io::{NoteOnDisk, ReadNoteResult};
+pub use preferences::{VaultConfig, VaultPreferences};
+pub use registry::{VaultInfo, VaultRegistry};
+pub use state::{VaultRuntime, VaultStatus};
