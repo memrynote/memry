@@ -2,7 +2,7 @@ use memry_desktop_tauri_lib::commands::crdt::{
     crdt_apply_update_chunk_append_inner, crdt_apply_update_chunk_finish_inner,
     crdt_apply_update_chunk_start_inner, crdt_apply_update_inner, crdt_close_doc_inner,
     crdt_get_snapshot_bytes, crdt_get_state_vector_bytes, crdt_open_doc_inner,
-    MAX_INLINE_UPDATE_BYTES,
+    crdt_sync_step_1_inner, crdt_sync_step_2_inner, MAX_INLINE_UPDATE_BYTES,
 };
 use memry_desktop_tauri_lib::crdt::{
     apply_update_v1, encode_diff_since_v1, encode_snapshot_v1, encode_state_vector_v1,
@@ -165,4 +165,41 @@ async fn snapshot_and_state_vector_bytes_round_trip() {
             .unwrap_or_default()
     });
     assert_eq!(restored_body, "snapshot body");
+}
+
+#[tokio::test]
+async fn sync_steps_exchange_diffs_from_state_vectors() {
+    let conn = open_in_memory_with_migrations();
+    let rust = Arc::new(CrdtRuntime::new());
+    let source = Arc::new(CrdtRuntime::new());
+    let source_doc = source.docs().get_or_init("sync").await;
+    source_doc.with_write(|txn| {
+        txn.get_or_insert_text("body").insert(txn, 0, "server");
+    });
+    let server_update = encode_snapshot_v1(&source_doc).unwrap();
+    crdt_apply_update_inner(&conn, rust.clone(), "sync", &server_update, 505)
+        .await
+        .unwrap();
+
+    let renderer = Arc::new(CrdtRuntime::new());
+    let renderer_doc = renderer.docs().get_or_init("sync").await;
+    let renderer_sv = encode_state_vector_v1(&renderer_doc).unwrap();
+    let step_1 = crdt_sync_step_1_inner(rust.clone(), "sync", &renderer_sv)
+        .await
+        .unwrap();
+    apply_update_v1(&renderer_doc, &step_1.diff, 1).unwrap();
+    let renderer_body = renderer_doc.with_read(|txn| txn.get_text("body").unwrap().get_string(txn));
+    assert_eq!(renderer_body, "server");
+
+    renderer_doc.with_write(|txn| {
+        txn.get_or_insert_text("body").insert(txn, 6, " client");
+    });
+    let renderer_diff = encode_diff_since_v1(&renderer_doc, &step_1.state_vector).unwrap();
+    crdt_sync_step_2_inner(&conn, rust.clone(), "sync", &renderer_diff)
+        .await
+        .unwrap();
+
+    let rust_doc = rust.docs().get("sync").await.unwrap();
+    let rust_body = rust_doc.with_read(|txn| txn.get_text("body").unwrap().get_string(txn));
+    assert_eq!(rust_body, "server client");
 }
