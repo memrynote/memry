@@ -56,6 +56,21 @@ describe('notes-service', () => {
     expect(api.notes.list).toHaveBeenCalledWith({ folder: 'projects', limit: 5 })
   })
 
+  it('forwards explicit emoji clears through frontmatter patch', async () => {
+    api.notes.update = vi.fn().mockResolvedValue({ success: true })
+
+    await notesService.update({
+      id: 'note-1',
+      emoji: null,
+      frontmatter: { fullWidth: true }
+    })
+
+    expect(api.notes.update).toHaveBeenCalledWith({
+      id: 'note-1',
+      frontmatter: { fullWidth: true, emoji: null }
+    })
+  })
+
   it('forwards attachments, export, and version helpers', async () => {
     api.notes.uploadAttachment = vi.fn().mockResolvedValue({ success: true })
     api.notes.exportPdf = vi.fn().mockResolvedValue({ success: true })

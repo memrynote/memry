@@ -11,10 +11,10 @@
 //! e2e lane in Chunk 12.
 
 use memry_desktop_tauri_lib::commands::notes::{
-    notes_create_inner, notes_delete_inner, notes_exists_inner,
+    note_update_event_changes, notes_create_inner, notes_delete_inner, notes_exists_inner,
     notes_get_local_only_count_inner, notes_list_by_folder_inner, notes_list_inner,
-    notes_move_inner, notes_rename_inner, notes_set_local_only_inner, NoteCreateInput,
-    NoteListOptions,
+    notes_move_inner, notes_rename_inner, notes_set_local_only_inner, NoteCreateInput, NoteDto,
+    NoteListOptions, NoteUpdateInput,
 };
 use memry_desktop_tauri_lib::db::note_metadata;
 use memry_desktop_tauri_lib::test_helpers::{open_in_memory_with_migrations, test_vault_runtime};
@@ -248,4 +248,33 @@ async fn list_with_pagination_and_folder_filter() {
     assert_eq!(page.total, 3);
     assert!(page.has_more);
     assert_eq!(page.notes.len(), 2);
+}
+
+#[test]
+fn update_event_changes_includes_content_for_content_saves() {
+    let input = NoteUpdateInput {
+        id: "note-1".into(),
+        title: None,
+        content: Some("new [[Target]] body".into()),
+        tags: None,
+        frontmatter: None,
+        emoji: None,
+    };
+    let note = NoteDto {
+        id: "note-1".into(),
+        path: "Inbox/doc.md".into(),
+        title: "Doc".into(),
+        content: "new [[Target]] body".into(),
+        frontmatter: serde_json::json!({}).into(),
+        created: "2026-04-27T00:00:00Z".into(),
+        modified: "2026-04-27T00:00:01Z".into(),
+        tags: vec![],
+        aliases: vec![],
+        word_count: 3,
+        emoji: None,
+    };
+
+    let changes = note_update_event_changes(&input, &note);
+    assert_eq!(changes["content"], "new [[Target]] body");
+    assert!(changes.get("title").is_none());
 }
