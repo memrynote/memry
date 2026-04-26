@@ -1,9 +1,10 @@
 use memry_desktop_tauri_lib::commands::crdt::{
     crdt_apply_update_chunk_append_inner, crdt_apply_update_chunk_finish_inner,
     crdt_apply_update_chunk_start_inner, crdt_apply_update_inner, crdt_close_doc_inner,
-    crdt_get_snapshot_bytes, crdt_get_state_vector_bytes, crdt_open_doc_inner,
-    crdt_sync_step_1_inner, crdt_sync_step_2_inner, MAX_INLINE_UPDATE_BYTES,
+    crdt_get_or_init_doc_inner, crdt_get_snapshot_bytes, crdt_get_state_vector_bytes,
+    crdt_open_doc_inner, crdt_sync_step_1_inner, crdt_sync_step_2_inner, MAX_INLINE_UPDATE_BYTES,
 };
+use memry_desktop_tauri_lib::commands::notes::{notes_create_inner, NoteCreateInput};
 use memry_desktop_tauri_lib::crdt::{
     apply_update_v1, encode_diff_since_v1, encode_snapshot_v1, encode_state_vector_v1,
     CrdtRuntime,
@@ -202,4 +203,42 @@ async fn sync_steps_exchange_diffs_from_state_vectors() {
     let rust_doc = rust.docs().get("sync").await.unwrap();
     let rust_body = rust_doc.with_read(|txn| txn.get_text("body").unwrap().get_string(txn));
     assert_eq!(rust_body, "server client");
+}
+
+#[tokio::test]
+async fn get_or_init_doc_is_idempotent_for_same_note() {
+    let conn = open_in_memory_with_migrations();
+    let vault = test_vault_runtime();
+    let crdt = Arc::new(CrdtRuntime::new());
+    let created = notes_create_inner(
+        &conn,
+        &vault,
+        NoteCreateInput {
+            title: "Idempotent".into(),
+            content: Some("seed body".into()),
+            folder: None,
+            tags: None,
+            template: None,
+        },
+    )
+    .await
+    .unwrap()
+    .note
+    .unwrap();
+
+    crdt_get_or_init_doc_inner(&conn, &vault, crdt.clone(), &created.id)
+        .await
+        .unwrap();
+    let first_sv = crdt_get_state_vector_bytes(crdt.clone(), &created.id)
+        .await
+        .unwrap();
+    crdt_get_or_init_doc_inner(&conn, &vault, crdt.clone(), &created.id)
+        .await
+        .unwrap();
+    let second_sv = crdt_get_state_vector_bytes(crdt.clone(), &created.id)
+        .await
+        .unwrap();
+
+    assert_eq!(first_sv, second_sv);
+    assert_eq!(crdt.open_doc_count().await, 1);
 }
