@@ -53,6 +53,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             commands::notes::notes_get_links,
             commands::notes::notes_resolve_by_title,
             commands::notes::notes_preview_by_title,
+            // M5: folders
+            commands::folders::notes_get_folders,
+            commands::folders::notes_create_folder,
+            commands::folders::notes_rename_folder,
+            commands::folders::notes_delete_folder,
             // M4: auth + sync_auth + sync_setup
             commands::auth::auth_status,
             commands::auth::auth_unlock,
@@ -172,6 +177,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .typ::<commands::notes::NoteLinkContext>()
         .typ::<commands::notes::NoteLinksResponse>()
         .typ::<commands::notes::NotePreview>()
+        // M5 folders
+        .typ::<commands::folders::FolderInfo>()
+        .typ::<commands::folders::FolderSimpleSuccess>()
+        .typ::<commands::folders::DeleteFolderInput>()
         // Domain DB structs (registered for stable export across migrations)
         .typ::<db::bookmarks::Bookmark>()
         .typ::<db::calendar_bindings::CalendarBinding>()

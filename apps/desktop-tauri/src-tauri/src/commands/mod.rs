@@ -5,6 +5,7 @@ pub mod auth;
 pub mod crypto;
 pub mod devices;
 pub mod dialog;
+pub mod folders;
 pub mod lifecycle;
 pub mod linking;
 pub mod notes;
