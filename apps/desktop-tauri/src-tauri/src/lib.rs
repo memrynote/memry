@@ -94,6 +94,8 @@ pub fn run() {
             commands::notes::notes_rename,
             commands::notes::notes_move,
             commands::notes::notes_exists,
+            commands::notes::notes_set_local_only,
+            commands::notes::notes_get_local_only_count,
             commands::shell::shell_open_url,
             commands::shell::shell_open_path,
             commands::shell::shell_reveal_in_finder,
