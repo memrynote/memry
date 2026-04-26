@@ -163,9 +163,7 @@ pub async fn crypto_rotate_keys(
     crypto_rotate_keys_inner(&state)
 }
 
-pub fn crypto_get_rotation_progress_inner(
-    _state: &AppState,
-) -> AppResult<CryptoRotationProgress> {
+pub fn crypto_get_rotation_progress_inner(_state: &AppState) -> AppResult<CryptoRotationProgress> {
     Ok(CryptoRotationProgress {
         in_progress: false,
         completed: 0,

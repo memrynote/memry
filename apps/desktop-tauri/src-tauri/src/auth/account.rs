@@ -296,11 +296,7 @@ pub async fn request_otp_with_base(
 /// - new account: stores `setup_token` under `SERVICE_VAULT/setup-token`.
 /// - existing account: stores `access_token` and `refresh_token` and
 ///   clears any stale setup token.
-pub async fn verify_otp(
-    state: &AppState,
-    email: &str,
-    code: &str,
-) -> AppResult<OtpVerifyResult> {
+pub async fn verify_otp(state: &AppState, email: &str, code: &str) -> AppResult<OtpVerifyResult> {
     let base = crate::sync::http::resolve_base_url()?;
     verify_otp_with_base(&base, state, email, code).await
 }
@@ -312,8 +308,7 @@ pub async fn verify_otp_with_base(
     code: &str,
 ) -> AppResult<OtpVerifyResult> {
     let body = OtpVerifyBody { email, code };
-    let resp: OtpVerifyResponse =
-        auth_client::verify_otp_with_base(base_url, &body, None).await?;
+    let resp: OtpVerifyResponse = auth_client::verify_otp_with_base(base_url, &body, None).await?;
 
     let kc = state.auth.keychain();
 
@@ -324,18 +319,15 @@ pub async fn verify_otp_with_base(
     if let Some(token) = resp.setup_token.as_deref() {
         kc.set_item(SERVICE_VAULT, KEYCHAIN_SETUP_TOKEN, token.as_bytes())?;
     } else if resp.needs_setup {
-        return Err(AppError::Auth(
-            "server did not return a setup token".into(),
-        ));
+        return Err(AppError::Auth("server did not return a setup token".into()));
     }
 
     // Some flows (post-setup re-auth on a known device) may eventually
     // ship access/refresh tokens directly. If both arrive, take the fast
     // path and clear the setup token: registration is unnecessary.
-    if let (Some(access), Some(refresh)) = (
-        resp.access_token.as_deref(),
-        resp.refresh_token.as_deref(),
-    ) {
+    if let (Some(access), Some(refresh)) =
+        (resp.access_token.as_deref(), resp.refresh_token.as_deref())
+    {
         kc.set_item(SERVICE_VAULT, KEYCHAIN_ACCESS_TOKEN, access.as_bytes())?;
         kc.set_item(SERVICE_VAULT, KEYCHAIN_REFRESH_TOKEN, refresh.as_bytes())?;
         kc.delete_item(SERVICE_VAULT, KEYCHAIN_SETUP_TOKEN)?;
@@ -434,18 +426,26 @@ pub async fn setup_new_account_with_base(
             resp.error.as_deref().unwrap_or("unknown error"),
         )));
     }
-    let device_id = resp.device_id.ok_or_else(|| {
-        AppError::Auth("server did not return a deviceId".into())
-    })?;
-    let access_token = resp.access_token.ok_or_else(|| {
-        AppError::Auth("server did not return an access token".into())
-    })?;
-    let refresh_token = resp.refresh_token.ok_or_else(|| {
-        AppError::Auth("server did not return a refresh token".into())
-    })?;
+    let device_id = resp
+        .device_id
+        .ok_or_else(|| AppError::Auth("server did not return a deviceId".into()))?;
+    let access_token = resp
+        .access_token
+        .ok_or_else(|| AppError::Auth("server did not return an access token".into()))?;
+    let refresh_token = resp
+        .refresh_token
+        .ok_or_else(|| AppError::Auth("server did not return a refresh token".into()))?;
 
-    kc.set_item(SERVICE_VAULT, KEYCHAIN_ACCESS_TOKEN, access_token.as_bytes())?;
-    kc.set_item(SERVICE_VAULT, KEYCHAIN_REFRESH_TOKEN, refresh_token.as_bytes())?;
+    kc.set_item(
+        SERVICE_VAULT,
+        KEYCHAIN_ACCESS_TOKEN,
+        access_token.as_bytes(),
+    )?;
+    kc.set_item(
+        SERVICE_VAULT,
+        KEYCHAIN_REFRESH_TOKEN,
+        refresh_token.as_bytes(),
+    )?;
     kc.delete_item(SERVICE_VAULT, KEYCHAIN_SETUP_TOKEN)?;
 
     // First-device setup: hand the server the kdf salt + key verifier so
@@ -523,8 +523,16 @@ pub async fn refresh_session_with_base(base_url: &str, state: &AppState) -> AppR
     };
     let resp: RefreshResponse = auth_client::refresh_token_with_base(base_url, &body).await?;
 
-    kc.set_item(SERVICE_VAULT, KEYCHAIN_ACCESS_TOKEN, resp.access_token.as_bytes())?;
-    kc.set_item(SERVICE_VAULT, KEYCHAIN_REFRESH_TOKEN, resp.refresh_token.as_bytes())?;
+    kc.set_item(
+        SERVICE_VAULT,
+        KEYCHAIN_ACCESS_TOKEN,
+        resp.access_token.as_bytes(),
+    )?;
+    kc.set_item(
+        SERVICE_VAULT,
+        KEYCHAIN_REFRESH_TOKEN,
+        resp.refresh_token.as_bytes(),
+    )?;
     Ok(())
 }
 

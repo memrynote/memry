@@ -191,9 +191,7 @@ pub async fn sync_linking_link_via_recovery(
 ) -> AppResult<LinkingMutationResult> {
     Ok(LinkingMutationResult {
         success: false,
-        error: Some(
-            "recovery-phrase device linking is deferred to post-M4".to_string(),
-        ),
+        error: Some("recovery-phrase device linking is deferred to post-M4".to_string()),
     })
 }
 
@@ -204,10 +202,7 @@ pub async fn sync_linking_approve_linking(
     input: SyncLinkingApproveLinkingInput,
 ) -> AppResult<LinkingMutationResult> {
     let access_token = read_access_token(&state)?;
-    let master_key = state
-        .auth
-        .master_key_clone()
-        .ok_or(AppError::VaultLocked)?;
+    let master_key = state.auth.master_key_clone().ok_or(AppError::VaultLocked)?;
     let initiator_session = state
         .linking
         .peek(&input.session_id)
@@ -220,8 +215,7 @@ pub async fn sync_linking_approve_linking(
     // key and seal the master key for themselves.
     let base = crate::sync::http::resolve_base_url()?;
     let session_info: ServerLinkingSession =
-        auth_client::get_linking_session_with_base(&base, &input.session_id, &access_token)
-            .await?;
+        auth_client::get_linking_session_with_base(&base, &input.session_id, &access_token).await?;
     let new_device_public_key = linking::decode_b64(&session_info.new_device_public_key)?;
 
     match linking::approve_linking_with_base(
@@ -280,10 +274,7 @@ fn read_access_token(state: &AppState) -> AppResult<String> {
 }
 
 /// Reads a pending linking session WITHOUT consuming it.
-fn peek_session(
-    state: &AppState,
-    session_id: &str,
-) -> AppResult<linking::PendingLinkingSession> {
+fn peek_session(state: &AppState, session_id: &str) -> AppResult<linking::PendingLinkingSession> {
     state
         .linking
         .peek(session_id)

@@ -54,8 +54,13 @@ pub fn derive_key(master_key: &[u8], context: &str, length: usize) -> AppResult<
     }
 
     let mut subkey = vec![0u8; length];
-    crypto_kdf_derive_from_key(&mut subkey, entry.subkey_id, &entry.context_bytes, key_array)
-        .map_err(|err| AppError::Crypto(format!("kdf derive failed: {err}")))?;
+    crypto_kdf_derive_from_key(
+        &mut subkey,
+        entry.subkey_id,
+        &entry.context_bytes,
+        key_array,
+    )
+    .map_err(|err| AppError::Crypto(format!("kdf derive failed: {err}")))?;
 
     Ok(subkey)
 }

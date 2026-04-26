@@ -133,8 +133,7 @@ pub async fn sync_devices_remove_device(
     input: SyncDevicesRemoveDeviceInput,
 ) -> AppResult<SyncDevicesMutationResult> {
     let access_token = read_access_token(&state)?;
-    let _: serde_json::Value =
-        auth_client::remove_device(&input.device_id, &access_token).await?;
+    let _: serde_json::Value = auth_client::remove_device(&input.device_id, &access_token).await?;
     Ok(SyncDevicesMutationResult {
         success: true,
         error: None,
@@ -170,9 +169,8 @@ fn read_access_token(state: &AppState) -> AppResult<String> {
 
 fn current_device_id(state: &AppState) -> AppResult<Option<String>> {
     let conn = state.db.conn()?;
-    let mut stmt = conn.prepare(
-        "SELECT id FROM sync_devices WHERE is_current_device = 1 LIMIT 1",
-    )?;
+    let mut stmt =
+        conn.prepare("SELECT id FROM sync_devices WHERE is_current_device = 1 LIMIT 1")?;
     let mut rows = stmt.query([])?;
     if let Some(row) = rows.next()? {
         let id: String = row.get(0)?;

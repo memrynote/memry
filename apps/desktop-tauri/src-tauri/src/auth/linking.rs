@@ -260,12 +260,12 @@ fn cbor_push_text(out: &mut Vec<u8>, value: &str) {
 }
 
 fn hmac_sodium(key_bytes: &[u8], message: &[u8]) -> AppResult<Vec<u8>> {
-    let key: AuthKey = key_bytes
-        .try_into()
-        .map_err(|_| AppError::Crypto(format!(
+    let key: AuthKey = key_bytes.try_into().map_err(|_| {
+        AppError::Crypto(format!(
             "hmac key must be {CRYPTO_AUTH_KEYBYTES} bytes, got {}",
             key_bytes.len()
-        )))?;
+        ))
+    })?;
     let mut mac: AuthMac = [0u8; std::mem::size_of::<AuthMac>()];
     crypto_auth(&mut mac, message, &key);
     Ok(mac.to_vec())
@@ -625,8 +625,7 @@ pub async fn link_via_qr_with_base(
         device_name: &metadata.device_name,
         device_platform: &metadata.device_platform,
     };
-    let _: serde_json::Value =
-        auth_client::scan_linking_with_base(base_url, &body, None).await?;
+    let _: serde_json::Value = auth_client::scan_linking_with_base(base_url, &body, None).await?;
 
     registry.insert(PendingLinkingSession {
         session_id: qr.session_id.clone(),
@@ -717,11 +716,9 @@ pub async fn complete_linking_with_base(
         key_confirm: decode_b64(&key_confirm_b64)?,
     };
 
-    let shared_secret =
-        derive_shared_secret(&session.ephemeral_secret_key, initiator_public_key)?;
+    let shared_secret = derive_shared_secret(&session.ephemeral_secret_key, initiator_public_key)?;
     let (enc_key, mac_key) = derive_linking_keys(&shared_secret)?;
-    let master_key =
-        open_master_key_for_new_device(&sealed, &enc_key, &mac_key, session_id)?;
+    let master_key = open_master_key_for_new_device(&sealed, &enc_key, &mac_key, session_id)?;
 
     // Decryption succeeded — drop the session so a replay can't reuse it.
     let _ = registry.take(session_id);

@@ -114,22 +114,22 @@ async fn post_json_omits_authorization_header_when_token_none() {
     let server = MockServer::start_async().await;
     let mock = server
         .mock_async(|when, then| {
-            when.method(POST)
-                .path("/auth/otp/request")
-                .matches(|req| {
-                    !req.headers
-                        .as_ref()
-                        .map(|h| h.iter().any(|(k, _)| k.eq_ignore_ascii_case("authorization")))
-                        .unwrap_or(false)
-                });
+            when.method(POST).path("/auth/otp/request").matches(|req| {
+                !req.headers
+                    .as_ref()
+                    .map(|h| {
+                        h.iter()
+                            .any(|(k, _)| k.eq_ignore_ascii_case("authorization"))
+                    })
+                    .unwrap_or(false)
+            });
             then.status(200).json_body(json!({ "ok": true }));
         })
         .await;
 
-    let _: Value =
-        post_json_with_base(&server.base_url(), "/auth/otp/request", &json!({}), None)
-            .await
-            .expect("anonymous post must succeed");
+    let _: Value = post_json_with_base(&server.base_url(), "/auth/otp/request", &json!({}), None)
+        .await
+        .expect("anonymous post must succeed");
 
     mock.assert_async().await;
 }
@@ -191,7 +191,10 @@ async fn post_json_500_maps_to_network_error_with_redacted_body() {
 
     let err = result.expect_err("non-2xx must error");
     let msg = format!("{err}");
-    assert!(matches!(err, AppError::Network(_)), "expected Network, got {err:?}");
+    assert!(
+        matches!(err, AppError::Network(_)),
+        "expected Network, got {err:?}"
+    );
     assert!(
         !msg.contains("super-secret-leak-token-do-not-log"),
         "Network error message must not echo response body; got {msg}",
@@ -208,7 +211,8 @@ async fn post_json_400_maps_to_network_error_with_redacted_body() {
     server
         .mock_async(|when, then| {
             when.method(POST).path("/auth/otp/request");
-            then.status(400).body("validation failed: secret payload here");
+            then.status(400)
+                .body("validation failed: secret payload here");
         })
         .await;
 
@@ -407,7 +411,10 @@ async fn auth_client_refresh_token_posts_to_canonical_path_with_body_token() {
                 .matches(|req| {
                     !req.headers
                         .as_ref()
-                        .map(|h| h.iter().any(|(k, _)| k.eq_ignore_ascii_case("authorization")))
+                        .map(|h| {
+                            h.iter()
+                                .any(|(k, _)| k.eq_ignore_ascii_case("authorization"))
+                        })
                         .unwrap_or(false)
                 });
             then.status(200).json_body(json!({ "access": "new" }));
@@ -455,13 +462,10 @@ async fn auth_client_remove_device_sends_delete_to_devices_path() {
         })
         .await;
 
-    let _: Value = auth_client::remove_device_with_base(
-        &server.base_url(),
-        "device-abc",
-        "access-token",
-    )
-    .await
-    .expect("remove_device wrapper must succeed");
+    let _: Value =
+        auth_client::remove_device_with_base(&server.base_url(), "device-abc", "access-token")
+            .await
+            .expect("remove_device wrapper must succeed");
 
     mock.assert_async().await;
 }
@@ -479,13 +483,10 @@ async fn auth_client_initiate_linking_posts_to_canonical_path() {
         .await;
 
     let body = json!({ "ephemeralPublicKey": "abc" });
-    let _: Value = auth_client::initiate_linking_with_base(
-        &server.base_url(),
-        &body,
-        "access-token",
-    )
-    .await
-    .expect("initiate_linking wrapper must succeed");
+    let _: Value =
+        auth_client::initiate_linking_with_base(&server.base_url(), &body, "access-token")
+            .await
+            .expect("initiate_linking wrapper must succeed");
 
     mock.assert_async().await;
 }

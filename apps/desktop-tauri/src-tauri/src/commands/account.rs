@@ -70,8 +70,6 @@ pub fn account_get_recovery_key_inner(state: &AppState) -> AppResult<String> {
 
 #[tauri::command]
 #[specta::specta]
-pub async fn account_get_recovery_key(
-    state: tauri::State<'_, AppState>,
-) -> AppResult<String> {
+pub async fn account_get_recovery_key(state: tauri::State<'_, AppState>) -> AppResult<String> {
     account_get_recovery_key_inner(&state)
 }

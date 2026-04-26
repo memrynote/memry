@@ -7,7 +7,7 @@
 //! are cloned copies that callers can mutate without disturbing the store.
 
 use memry_desktop_tauri_lib::keychain::{
-    MemoryKeychain, KeychainStore, SERVICE_DEVICE, SERVICE_VAULT,
+    KeychainStore, MemoryKeychain, SERVICE_DEVICE, SERVICE_VAULT,
 };
 
 #[test]
@@ -31,7 +31,10 @@ fn set_then_get_round_trips_bytes() {
 fn get_returns_none_for_missing_account() {
     let store = MemoryKeychain::new();
     let value = store.get_item(SERVICE_VAULT, "master-key").unwrap();
-    assert!(value.is_none(), "missing account must be Ok(None), got {value:?}");
+    assert!(
+        value.is_none(),
+        "missing account must be Ok(None), got {value:?}"
+    );
 }
 
 #[test]
@@ -94,12 +97,10 @@ fn service_and_account_isolate_items() {
 
     store.delete_item(SERVICE_VAULT, "master-key").unwrap();
 
-    assert!(
-        store
-            .get_item(SERVICE_VAULT, "master-key")
-            .unwrap()
-            .is_none()
-    );
+    assert!(store
+        .get_item(SERVICE_VAULT, "master-key")
+        .unwrap()
+        .is_none());
     assert_eq!(
         store
             .get_item(SERVICE_DEVICE, "master-key")
@@ -189,9 +190,9 @@ fn real_keychain_round_trip() {
         .delete_item(SERVICE_VAULT, &account)
         .expect("delete_item must succeed against the real Keychain");
 
-    let after_delete = store.get_item(SERVICE_VAULT, &account).expect(
-        "get_item after delete must succeed (and return Ok(None), not an error)",
-    );
+    let after_delete = store
+        .get_item(SERVICE_VAULT, &account)
+        .expect("get_item after delete must succeed (and return Ok(None), not an error)");
     assert!(
         after_delete.is_none(),
         "after delete the item must be Ok(None), got {after_delete:?}",

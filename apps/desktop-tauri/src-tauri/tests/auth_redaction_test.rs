@@ -109,10 +109,7 @@ fn sanitize_log_field_email_uses_email_redaction() {
 
 #[test]
 fn sanitize_log_field_url_uses_url_redaction() {
-    let out = sanitize_log_field(
-        RedactionKind::Url,
-        "https://api.example.com/auth?token=abc",
-    );
+    let out = sanitize_log_field(RedactionKind::Url, "https://api.example.com/auth?token=abc");
     assert!(
         !out.contains("token=abc"),
         "url sanitisation must drop query; got {out}",

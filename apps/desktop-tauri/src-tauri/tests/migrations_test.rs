@@ -429,7 +429,10 @@ fn calendar_event_roundtrip() {
         )
         .unwrap();
     assert_eq!(ev.id, "e1");
-    assert_eq!(ev.title, title, "Turkish UTF-8 must roundtrip byte-identical");
+    assert_eq!(
+        ev.title, title,
+        "Turkish UTF-8 must roundtrip byte-identical"
+    );
     assert_eq!(ev.start_at, "2026-04-25T10:00:00.000Z");
     assert_eq!(ev.timezone, "UTC");
     assert!(!ev.is_all_day);
@@ -446,7 +449,13 @@ fn calendar_source_roundtrip() {
     conn.execute(
         "INSERT INTO calendar_sources (id, provider, kind, remote_id, title) \
          VALUES (?1, ?2, ?3, ?4, ?5)",
-        rusqlite::params!["src1", "google", "calendar", "primary@example.com", "Primary"],
+        rusqlite::params![
+            "src1",
+            "google",
+            "calendar",
+            "primary@example.com",
+            "Primary"
+        ],
     )
     .unwrap();
 
@@ -477,14 +486,26 @@ fn calendar_external_event_roundtrip() {
     conn.execute(
         "INSERT INTO calendar_sources (id, provider, kind, remote_id, title) \
          VALUES (?1, ?2, ?3, ?4, ?5)",
-        rusqlite::params!["src1", "google", "calendar", "primary@example.com", "Primary"],
+        rusqlite::params![
+            "src1",
+            "google",
+            "calendar",
+            "primary@example.com",
+            "Primary"
+        ],
     )
     .unwrap();
     conn.execute(
         "INSERT INTO calendar_external_events \
          (id, source_id, remote_event_id, title, start_at) \
          VALUES (?1, ?2, ?3, ?4, ?5)",
-        rusqlite::params!["xev1", "src1", "remote-abc", "Standup", "2026-04-25T09:00:00.000Z"],
+        rusqlite::params![
+            "xev1",
+            "src1",
+            "remote-abc",
+            "Standup",
+            "2026-04-25T09:00:00.000Z"
+        ],
     )
     .unwrap();
 
@@ -689,7 +710,14 @@ fn sync_queue_item_roundtrip() {
     conn.execute(
         "INSERT INTO sync_queue (id, type, item_id, operation, payload, created_at) \
          VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
-        rusqlite::params!["q1", "task", "t1", "update", "{\"title\":\"x\"}", 1714003200000_i64],
+        rusqlite::params![
+            "q1",
+            "task",
+            "t1",
+            "update",
+            "{\"title\":\"x\"}",
+            1714003200000_i64
+        ],
     )
     .unwrap();
 
@@ -901,9 +929,7 @@ fn apply_pending_is_safe_under_concurrent_runners() {
     // connection so worker threads don't race on the PRAGMA write.
     {
         let setup = Connection::open(&path).unwrap();
-        setup
-            .execute_batch("PRAGMA journal_mode = WAL;")
-            .unwrap();
+        setup.execute_batch("PRAGMA journal_mode = WAL;").unwrap();
     }
 
     let barrier = Arc::new(Barrier::new(2));

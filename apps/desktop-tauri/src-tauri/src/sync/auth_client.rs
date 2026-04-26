@@ -82,10 +82,7 @@ pub async fn init_google_oauth(redirect_uri: &str) -> AppResult<String> {
     init_google_oauth_with_base(&base, redirect_uri).await
 }
 
-pub async fn init_google_oauth_with_base(
-    base_url: &str,
-    redirect_uri: &str,
-) -> AppResult<String> {
+pub async fn init_google_oauth_with_base(base_url: &str, redirect_uri: &str) -> AppResult<String> {
     let encoded = urlencoding::encode(redirect_uri);
     let url = format!(
         "{}/auth/oauth/google?redirect_uri={}",
@@ -136,10 +133,7 @@ where
 
 // ----- /auth/devices /auth/recovery-info /auth/refresh --------------
 
-pub async fn register_device<TReq, TResp>(
-    body: &TReq,
-    setup_token: &str,
-) -> AppResult<TResp>
+pub async fn register_device<TReq, TResp>(body: &TReq, setup_token: &str) -> AppResult<TResp>
 where
     TReq: Serialize + ?Sized,
     TResp: DeserializeOwned,
@@ -159,10 +153,7 @@ where
     http::post_json_with_base(base_url, "/auth/devices", body, Some(setup_token)).await
 }
 
-pub async fn first_device_setup<TReq, TResp>(
-    body: &TReq,
-    access_token: &str,
-) -> AppResult<TResp>
+pub async fn first_device_setup<TReq, TResp>(body: &TReq, access_token: &str) -> AppResult<TResp>
 where
     TReq: Serialize + ?Sized,
     TResp: DeserializeOwned,
@@ -211,10 +202,7 @@ where
     http::post_json("/auth/refresh", body, None).await
 }
 
-pub async fn refresh_token_with_base<TReq, TResp>(
-    base_url: &str,
-    body: &TReq,
-) -> AppResult<TResp>
+pub async fn refresh_token_with_base<TReq, TResp>(base_url: &str, body: &TReq) -> AppResult<TResp>
 where
     TReq: Serialize + ?Sized,
     TResp: DeserializeOwned,
@@ -231,10 +219,7 @@ where
     http::get_json("/devices", Some(access_token)).await
 }
 
-pub async fn get_devices_with_base<TResp>(
-    base_url: &str,
-    access_token: &str,
-) -> AppResult<TResp>
+pub async fn get_devices_with_base<TResp>(base_url: &str, access_token: &str) -> AppResult<TResp>
 where
     TResp: DeserializeOwned,
 {
@@ -290,10 +275,7 @@ where
 
 // ----- /auth/linking/* ----------------------------------------------
 
-pub async fn initiate_linking<TReq, TResp>(
-    body: &TReq,
-    access_token: &str,
-) -> AppResult<TResp>
+pub async fn initiate_linking<TReq, TResp>(body: &TReq, access_token: &str) -> AppResult<TResp>
 where
     TReq: Serialize + ?Sized,
     TResp: DeserializeOwned,
@@ -313,10 +295,7 @@ where
     http::post_json_with_base(base_url, "/auth/linking/initiate", body, Some(access_token)).await
 }
 
-pub async fn scan_linking<TReq, TResp>(
-    body: &TReq,
-    access_token: Option<&str>,
-) -> AppResult<TResp>
+pub async fn scan_linking<TReq, TResp>(body: &TReq, access_token: Option<&str>) -> AppResult<TResp>
 where
     TReq: Serialize + ?Sized,
     TResp: DeserializeOwned,
@@ -336,10 +315,7 @@ where
     http::post_json_with_base(base_url, "/auth/linking/scan", body, access_token).await
 }
 
-pub async fn get_linking_session<TResp>(
-    session_id: &str,
-    access_token: &str,
-) -> AppResult<TResp>
+pub async fn get_linking_session<TResp>(session_id: &str, access_token: &str) -> AppResult<TResp>
 where
     TResp: DeserializeOwned,
 {
@@ -359,10 +335,7 @@ where
     http::get_json_with_base(base_url, &path, Some(access_token)).await
 }
 
-pub async fn approve_linking<TReq, TResp>(
-    body: &TReq,
-    access_token: &str,
-) -> AppResult<TResp>
+pub async fn approve_linking<TReq, TResp>(body: &TReq, access_token: &str) -> AppResult<TResp>
 where
     TReq: Serialize + ?Sized,
     TResp: DeserializeOwned,

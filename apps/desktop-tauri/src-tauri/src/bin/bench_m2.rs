@@ -44,13 +44,7 @@ fn main() {
             tx.execute(
                 "INSERT INTO tasks (id, project_id, title, priority, position)
                  VALUES (?1, ?2, ?3, ?4, ?5)",
-                rusqlite::params![
-                    format!("t{i}"),
-                    "bench-p",
-                    format!("Task {i}"),
-                    0,
-                    i as i64
-                ],
+                rusqlite::params![format!("t{i}"), "bench-p", format!("Task {i}"), 0, i as i64],
             )
             .expect("seed task");
         }

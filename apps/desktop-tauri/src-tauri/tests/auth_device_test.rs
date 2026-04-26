@@ -13,20 +13,18 @@ use serde_json::json;
 
 use memry_desktop_tauri_lib::app_state::AppState;
 use memry_desktop_tauri_lib::auth::account::{
-    self, AccountInfo, ACCOUNT_AUTH_PROVIDER, ACCOUNT_EMAIL,
-    ACCOUNT_RECOVERY_CONFIRMED, ACCOUNT_USER_ID,
+    self, AccountInfo, ACCOUNT_AUTH_PROVIDER, ACCOUNT_EMAIL, ACCOUNT_RECOVERY_CONFIRMED,
+    ACCOUNT_USER_ID,
 };
 use memry_desktop_tauri_lib::auth::device::{
     self, CurrentDeviceRecord, KEYCHAIN_DEVICE_SIGNING_KEY,
 };
 use memry_desktop_tauri_lib::auth::linking::{
-    self, generate_sas_code, LinkingQrPayload, PendingLinkingRegistry,
-    PendingLinkingSession, ScanDeviceMetadata, SealedMasterKey,
+    self, generate_sas_code, LinkingQrPayload, PendingLinkingRegistry, PendingLinkingSession,
+    ScanDeviceMetadata, SealedMasterKey,
 };
 use memry_desktop_tauri_lib::auth::AuthRuntime;
-use memry_desktop_tauri_lib::crypto::sign_verify::{
-    device_id_from_public_key, verify_detached,
-};
+use memry_desktop_tauri_lib::crypto::sign_verify::{device_id_from_public_key, verify_detached};
 use memry_desktop_tauri_lib::db::{settings, Db};
 use memry_desktop_tauri_lib::keychain::{
     KeychainStore, MemoryKeychain, SERVICE_DEVICE, SERVICE_VAULT,
@@ -59,7 +57,11 @@ fn get_or_create_device_signing_key_creates_keychain_item_when_missing() {
     let kp = device::get_or_create_device_signing_key(&state).expect("key creation must succeed");
 
     assert_eq!(kp.public_key.len(), 32, "public key must be 32 bytes");
-    assert_eq!(kp.secret_key.len(), 64, "ed25519 secret key must be 64 bytes");
+    assert_eq!(
+        kp.secret_key.len(),
+        64,
+        "ed25519 secret key must be 64 bytes"
+    );
 
     let stored = state
         .auth
@@ -99,7 +101,10 @@ fn device_id_for_keypair_matches_blake2b_hash_of_public_key() {
     let from_helper = device::device_id_for_keypair(&kp).unwrap();
     let expected = device_id_from_public_key(&kp.public_key).unwrap();
 
-    assert_eq!(from_helper, expected, "device id must derive via Phase A helper");
+    assert_eq!(
+        from_helper, expected,
+        "device id must derive via Phase A helper"
+    );
     assert_eq!(from_helper.len(), 32, "device id is 16-byte hex");
 }
 
@@ -165,7 +170,10 @@ fn upsert_current_device_inserts_row_marked_as_current() {
         .unwrap();
     assert_eq!(name, "Alice MacBook");
     assert_eq!(platform, "macos");
-    assert_eq!(is_current, 1, "is_current_device must be 1 for the local device");
+    assert_eq!(
+        is_current, 1,
+        "is_current_device must be 1 for the local device"
+    );
 }
 
 #[test]
@@ -262,7 +270,9 @@ fn set_account_info_persists_to_canonical_settings_keys() {
     account::set_account_info(&state, &info).unwrap();
 
     assert_eq!(
-        settings::get(&state.db, ACCOUNT_USER_ID).unwrap().as_deref(),
+        settings::get(&state.db, ACCOUNT_USER_ID)
+            .unwrap()
+            .as_deref(),
         Some("user-123"),
     );
     assert_eq!(
@@ -321,16 +331,23 @@ fn recovery_confirmed_defaults_to_false_and_persists() {
 fn sign_out_clears_access_refresh_setup_tokens_but_leaves_vault_data() {
     let state = fresh_state();
     let kc = state.auth.keychain();
-    kc.set_item(SERVICE_VAULT, KEYCHAIN_ACCESS_TOKEN, b"access").unwrap();
-    kc.set_item(SERVICE_VAULT, KEYCHAIN_REFRESH_TOKEN, b"refresh").unwrap();
-    kc.set_item(SERVICE_VAULT, KEYCHAIN_SETUP_TOKEN, b"setup").unwrap();
-    kc.set_item(SERVICE_VAULT, KEYCHAIN_MASTER_KEY, &[0x11u8; 32]).unwrap();
-    kc.set_item(SERVICE_VAULT, KEYCHAIN_RECOVERY_PHRASE, b"phrase").unwrap();
+    kc.set_item(SERVICE_VAULT, KEYCHAIN_ACCESS_TOKEN, b"access")
+        .unwrap();
+    kc.set_item(SERVICE_VAULT, KEYCHAIN_REFRESH_TOKEN, b"refresh")
+        .unwrap();
+    kc.set_item(SERVICE_VAULT, KEYCHAIN_SETUP_TOKEN, b"setup")
+        .unwrap();
+    kc.set_item(SERVICE_VAULT, KEYCHAIN_MASTER_KEY, &[0x11u8; 32])
+        .unwrap();
+    kc.set_item(SERVICE_VAULT, KEYCHAIN_RECOVERY_PHRASE, b"phrase")
+        .unwrap();
 
     account::sign_out(&state).unwrap();
 
     assert!(
-        kc.get_item(SERVICE_VAULT, KEYCHAIN_ACCESS_TOKEN).unwrap().is_none(),
+        kc.get_item(SERVICE_VAULT, KEYCHAIN_ACCESS_TOKEN)
+            .unwrap()
+            .is_none(),
         "sign-out must remove the access token",
     );
     assert!(
@@ -347,7 +364,9 @@ fn sign_out_clears_access_refresh_setup_tokens_but_leaves_vault_data() {
     );
 
     assert!(
-        kc.get_item(SERVICE_VAULT, KEYCHAIN_MASTER_KEY).unwrap().is_some(),
+        kc.get_item(SERVICE_VAULT, KEYCHAIN_MASTER_KEY)
+            .unwrap()
+            .is_some(),
         "sign-out must NOT delete the local master key",
     );
     assert!(
@@ -369,7 +388,10 @@ fn generate_sas_code_returns_six_digits_stable_for_a_shared_secret() {
     let code_a = generate_sas_code(&secret).unwrap();
     let code_b = generate_sas_code(&secret).unwrap();
 
-    assert_eq!(code_a, code_b, "SAS code must be deterministic for a fixed secret");
+    assert_eq!(
+        code_a, code_b,
+        "SAS code must be deterministic for a fixed secret"
+    );
     assert_eq!(code_a.len(), 6, "SAS code must be exactly 6 characters");
     assert!(
         code_a.chars().all(|c| c.is_ascii_digit()),
@@ -385,7 +407,10 @@ fn generate_sas_code_differs_for_different_secrets() {
     let a = generate_sas_code(&s1).unwrap();
     let b = generate_sas_code(&s2).unwrap();
 
-    assert_ne!(a, b, "different shared secrets should produce different SAS codes");
+    assert_ne!(
+        a, b,
+        "different shared secrets should produce different SAS codes"
+    );
 }
 
 #[test]
@@ -425,13 +450,9 @@ fn approve_linking_seal_round_trips_master_key() {
     assert_eq!(sealed.encrypted_key_nonce.len(), 24);
     assert!(!sealed.key_confirm.is_empty());
 
-    let recovered = linking::open_master_key_for_new_device(
-        &sealed,
-        &enc_key,
-        &mac_key,
-        "sid-round-trip",
-    )
-    .unwrap();
+    let recovered =
+        linking::open_master_key_for_new_device(&sealed, &enc_key, &mac_key, "sid-round-trip")
+            .unwrap();
     assert_eq!(recovered, approver_master_key);
 }
 
@@ -448,9 +469,8 @@ fn open_master_key_rejects_tampered_ciphertext() {
 
     sealed.encrypted_master_key[0] ^= 0xFF;
 
-    let err =
-        linking::open_master_key_for_new_device(&sealed, &enc_key, &mac_key, "sid-tamper")
-            .expect_err("tampered ciphertext must fail the keyConfirm check");
+    let err = linking::open_master_key_for_new_device(&sealed, &enc_key, &mac_key, "sid-tamper")
+        .expect_err("tampered ciphertext must fail the keyConfirm check");
     let msg = format!("{err}").to_lowercase();
     assert!(
         msg.contains("confirm") || msg.contains("decrypt") || msg.contains("tamper"),
@@ -471,7 +491,9 @@ fn pending_session_registry_take_is_consume_once() {
     };
     registry.insert(session.clone());
 
-    let loaded = registry.take(&session.session_id).expect("session must exist");
+    let loaded = registry
+        .take(&session.session_id)
+        .expect("session must exist");
     assert_eq!(loaded.session_id, session.session_id);
     assert_eq!(loaded.linking_secret, session.linking_secret);
 
@@ -502,13 +524,10 @@ async fn generate_linking_qr_calls_initiate_and_records_pending_session() {
         })
         .await;
 
-    let created = linking::generate_linking_qr_with_base(
-        &server.base_url(),
-        &registry,
-        "access-token",
-    )
-    .await
-    .expect("generate linking QR must succeed");
+    let created =
+        linking::generate_linking_qr_with_base(&server.base_url(), &registry, "access-token")
+            .await
+            .expect("generate linking QR must succeed");
 
     mock.assert_async().await;
     assert_eq!(created.payload.session_id, "session-server-id");
@@ -561,10 +580,9 @@ async fn link_via_qr_validates_payload_and_calls_scan() {
         device_platform: "macos".to_string(),
     };
 
-    let result =
-        linking::link_via_qr_with_base(&server.base_url(), &registry, &qr_json, &metadata)
-            .await
-            .expect("link_via_qr must succeed");
+    let result = linking::link_via_qr_with_base(&server.base_url(), &registry, &qr_json, &metadata)
+        .await
+        .expect("link_via_qr must succeed");
 
     mock.assert_async().await;
     assert_eq!(result.session_id, "sid-7");
@@ -660,13 +678,9 @@ async fn complete_linking_decrypts_master_key_after_peer_seals_it() {
     let shared =
         linking::derive_shared_secret(&initiator.secret_key, &new_device.public_key).unwrap();
     let (enc_key, mac_key) = linking::derive_linking_keys(&shared).unwrap();
-    let sealed = linking::seal_master_key_for_new_device(
-        &approver_master_key,
-        &enc_key,
-        &mac_key,
-        "sid-c",
-    )
-    .unwrap();
+    let sealed =
+        linking::seal_master_key_for_new_device(&approver_master_key, &enc_key, &mac_key, "sid-c")
+            .unwrap();
 
     let server = MockServer::start_async().await;
     let mock = server
@@ -681,10 +695,9 @@ async fn complete_linking_decrypts_master_key_after_peer_seals_it() {
         })
         .await;
 
-    let result =
-        linking::complete_linking_with_base(&server.base_url(), &registry, "sid-c")
-            .await
-            .expect("complete must succeed");
+    let result = linking::complete_linking_with_base(&server.base_url(), &registry, "sid-c")
+        .await
+        .expect("complete must succeed");
 
     mock.assert_async().await;
     assert_eq!(result.master_key, approver_master_key);
@@ -699,10 +712,9 @@ async fn complete_linking_without_pending_session_returns_auth_error() {
     let registry = PendingLinkingRegistry::new();
     let server = MockServer::start_async().await;
 
-    let err =
-        linking::complete_linking_with_base(&server.base_url(), &registry, "missing")
-            .await
-            .expect_err("missing pending session must error");
+    let err = linking::complete_linking_with_base(&server.base_url(), &registry, "missing")
+        .await
+        .expect_err("missing pending session must error");
 
     assert!(
         format!("{err}").to_lowercase().contains("session"),

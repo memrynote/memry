@@ -134,9 +134,7 @@ fn decrypt_with_wrong_nonce_length_returns_crypto_error() {
 /// construction than libsodium / RustCrypto's XChaCha20Poly1305, this fails.
 #[test]
 fn decrypts_known_xchacha20_rfc8439_draft_vector() {
-    let key = hex_decode(
-        "808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9f",
-    );
+    let key = hex_decode("808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9f");
     let nonce = hex_decode("404142434445464748494a4b4c4d4e4f5051525354555657");
     let aad = hex_decode("50515253c0c1c2c3c4c5c6c7");
     let plaintext_hex = concat!(
