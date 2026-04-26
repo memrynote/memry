@@ -2,6 +2,7 @@
 
 pub mod account;
 pub mod auth;
+pub mod crdt;
 pub mod crypto;
 pub mod devices;
 pub mod dialog;
