@@ -3,6 +3,7 @@ pub mod commands;
 pub mod crypto;
 pub mod db;
 pub mod error;
+pub mod keychain;
 pub mod vault;
 
 use app_state::AppState;
