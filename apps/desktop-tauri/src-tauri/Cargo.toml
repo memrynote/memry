@@ -146,3 +146,7 @@ required-features = ["test-helpers"]
 [[test]]
 name = "sync_auth_client_test"
 required-features = ["test-helpers"]
+
+[[test]]
+name = "auth_device_test"
+required-features = ["test-helpers"]
