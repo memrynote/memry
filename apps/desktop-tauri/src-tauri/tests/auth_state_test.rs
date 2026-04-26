@@ -17,7 +17,7 @@ fn runtime() -> AuthRuntime {
 
 fn sample_session(remember_device: bool) -> UnlockedSession {
     UnlockedSession {
-        device_id: "device-abc".to_string(),
+        device_id: Some("device-abc".to_string()),
         email: Some("kaan@example.com".to_string()),
         has_biometric: false,
         remember_device,

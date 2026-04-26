@@ -5,6 +5,7 @@
 
 pub mod state;
 pub mod types;
+pub mod vault_keys;
 
 pub use state::{AuthRuntime, UnlockedSession};
 pub use types::{AuthStateKind, AuthStatus};

@@ -28,9 +28,13 @@ use crate::keychain::KeychainStore;
 /// Materialised session passed in once an unlock attempt succeeds. The two
 /// key fields take ownership of bytes; the runtime moves them into
 /// `Zeroizing` slots so that any subsequent drop scrubs the memory.
+///
+/// `device_id` and `email` are `Option<String>` because the first setup of
+/// a vault happens before device identity (Task 12) and account binding
+/// (Task 13) exist; later phases populate them.
 #[derive(Debug, Clone)]
 pub struct UnlockedSession {
-    pub device_id: String,
+    pub device_id: Option<String>,
     pub email: Option<String>,
     pub has_biometric: bool,
     pub remember_device: bool,
@@ -107,7 +111,7 @@ impl AuthRuntime {
     pub fn finish_unlock(&self, session: UnlockedSession) -> AppResult<()> {
         let mut g = self.inner.lock()?;
         g.state = AuthStateKind::Unlocked;
-        g.device_id = Some(session.device_id);
+        g.device_id = session.device_id;
         g.email = session.email;
         g.has_biometric = session.has_biometric;
         g.remember_device = session.remember_device;
