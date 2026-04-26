@@ -1,11 +1,15 @@
 //! CRDT IPC commands for renderer-backed Yjs providers.
 
 use crate::app_state::AppState;
-use crate::crdt::{CrdtRuntime, apply_update_v1, encode_snapshot_v1, origin_tag};
-use crate::error::AppResult;
+use crate::crdt::{
+    apply_update_v1, encode_snapshot_v1, encode_state_vector_v1, origin_tag, CrdtRuntime,
+    DocHandle,
+};
+use crate::crdt::wire::{CrdtUpdateEvent, CRDT_UPDATE_EVENT};
+use crate::error::{AppError, AppResult};
 use crate::vault::{VaultRuntime, frontmatter, paths as vault_paths};
 use std::sync::Arc;
-use tauri::State;
+use tauri::{AppHandle, Emitter, State};
 use yrs::{Text, WriteTxn};
 
 pub const MAX_INLINE_UPDATE_BYTES: usize = 8 * 1024;
@@ -27,6 +31,26 @@ pub async fn crdt_open_doc_inner(
 
 pub async fn crdt_close_doc_inner(crdt: Arc<CrdtRuntime>, note_id: &str) {
     crdt.docs().drop_doc(note_id).await;
+}
+
+#[derive(Debug, Clone, serde::Deserialize, specta::Type)]
+#[serde(rename_all = "camelCase")]
+pub struct CrdtApplyUpdateInput {
+    pub note_id: String,
+    pub update: Vec<u8>,
+    pub origin: Option<u32>,
+}
+
+pub async fn crdt_apply_update_inner(
+    conn: &rusqlite::Connection,
+    crdt: Arc<CrdtRuntime>,
+    note_id: &str,
+    update_bytes: &[u8],
+    incoming_origin: u32,
+) -> AppResult<i64> {
+    let handle =
+        apply_update_to_runtime(crdt, note_id, update_bytes, incoming_origin, true).await?;
+    persist_applied_update(conn, &handle, note_id, update_bytes, incoming_origin)
 }
 
 #[tauri::command]
@@ -52,6 +76,37 @@ pub async fn crdt_open_doc(
 pub async fn crdt_close_doc(state: State<'_, AppState>, note_id: String) -> AppResult<()> {
     crdt_close_doc_inner(state.crdt.clone(), &note_id).await;
     Ok(())
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn crdt_apply_update(
+    state: State<'_, AppState>,
+    app: AppHandle,
+    input: CrdtApplyUpdateInput,
+) -> AppResult<serde_json::Value> {
+    let incoming_origin = input.origin.unwrap_or_else(origin_tag);
+    let handle = apply_update_to_runtime(
+        state.crdt.clone(),
+        &input.note_id,
+        &input.update,
+        incoming_origin,
+        true,
+    )
+    .await?;
+    let seq = {
+        let conn = state.db.conn()?;
+        persist_applied_update(&conn, &handle, &input.note_id, &input.update, incoming_origin)?
+    };
+
+    let payload = CrdtUpdateEvent {
+        note_id: input.note_id.clone(),
+        update: input.update,
+        origin: incoming_origin,
+    };
+    let _ = app.emit(CRDT_UPDATE_EVENT, payload);
+
+    Ok(serde_json::json!({ "seq": seq }))
 }
 
 struct OpenDocState {
@@ -133,4 +188,48 @@ fn read_note_body(vault: &VaultRuntime, relative_path: &str) -> AppResult<String
     };
     let parsed = frontmatter::parse_note(&raw, Some(relative_path))?;
     Ok(parsed.content)
+}
+
+async fn apply_update_to_runtime(
+    crdt: Arc<CrdtRuntime>,
+    note_id: &str,
+    update_bytes: &[u8],
+    incoming_origin: u32,
+    enforce_inline_cap: bool,
+) -> AppResult<DocHandle> {
+    if enforce_inline_cap && update_bytes.len() > MAX_INLINE_UPDATE_BYTES {
+        return Err(AppError::Validation(format!(
+            "update {} bytes exceeds inline cap {} - use chunked transport",
+            update_bytes.len(),
+            MAX_INLINE_UPDATE_BYTES
+        )));
+    }
+
+    let handle = crdt.docs().get_or_init(note_id).await;
+    apply_update_v1(&handle, update_bytes, incoming_origin)?;
+    Ok(handle)
+}
+
+fn persist_applied_update(
+    conn: &rusqlite::Connection,
+    handle: &DocHandle,
+    note_id: &str,
+    update_bytes: &[u8],
+    incoming_origin: u32,
+) -> AppResult<i64> {
+    use crate::db::{crdt_snapshots, crdt_updates};
+
+    let seq = crdt_updates::append(conn, note_id, update_bytes, incoming_origin as i64)?;
+    if seq >= crate::crdt::COMPACT_THRESHOLD {
+        let result = crate::crdt::compact_doc(handle, seq)?;
+        let sv = encode_state_vector_v1(handle)?;
+        crdt_snapshots::upsert_with_compaction(
+            conn,
+            note_id,
+            &result.snapshot_bytes,
+            &sv,
+            result.replaced_through_seq,
+        )?;
+    }
+    Ok(seq)
 }
