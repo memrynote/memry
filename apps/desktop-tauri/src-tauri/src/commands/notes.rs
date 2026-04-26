@@ -178,6 +178,20 @@ pub async fn notes_update_inner(
     finish_update(conn, updated)
 }
 
+pub async fn notes_delete_inner(
+    conn: &Connection,
+    vault: &VaultRuntime,
+    id: &str,
+) -> AppResult<serde_json::Value> {
+    let row = crate::db::note_metadata::get_by_id(conn, id)?
+        .ok_or_else(|| AppError::NotFound(format!("note {id}")))?;
+    let root = vault.require_current()?;
+    notes_io::move_note_to_trash(&root, &row.path, &row.id).await?;
+    let deleted_at = now_iso();
+
+    finish_delete(conn, &row, &deleted_at)
+}
+
 #[tauri::command]
 #[specta::specta]
 pub async fn notes_create(
@@ -279,6 +293,34 @@ pub async fn notes_update(
     Ok(resp)
 }
 
+#[tauri::command]
+#[specta::specta]
+pub async fn notes_delete(
+    state: State<'_, AppState>,
+    app: AppHandle,
+    id: String,
+) -> AppResult<serde_json::Value> {
+    let row = {
+        let conn = state.db.conn()?;
+        crate::db::note_metadata::get_by_id(&conn, &id)?
+    }
+    .ok_or_else(|| AppError::NotFound(format!("note {id}")))?;
+
+    let root = state.vault.require_current()?;
+    notes_io::move_note_to_trash(&root, &row.path, &row.id).await?;
+    let deleted_at = now_iso();
+
+    let conn = state.db.conn()?;
+    let resp = finish_delete(&conn, &row, &deleted_at)?;
+    drop(conn);
+
+    let _ = app.emit(
+        "note-deleted",
+        serde_json::json!({ "id": id, "path": row.path, "source": "internal" }),
+    );
+    Ok(resp)
+}
+
 async fn read_note_dto(vault: &VaultRuntime, row: NoteMetadata) -> AppResult<NoteDto> {
     let root = vault.require_current()?;
     let read = notes_io::read_note_from_disk(&root, &row.path)
@@ -357,6 +399,20 @@ fn finish_update(conn: &Connection, updated: PreparedUpdate) -> AppResult<NoteUp
         )),
         error: None,
     })
+}
+
+fn finish_delete(
+    conn: &Connection,
+    row: &NoteMetadata,
+    deleted_at: &str,
+) -> AppResult<serde_json::Value> {
+    use crate::db::{note_metadata, note_positions, notes_cache};
+
+    note_metadata::delete_soft(conn, &row.id, deleted_at)?;
+    notes_cache::delete(conn, &row.id)?;
+    note_positions::drop_for_note(conn, &row.path)?;
+
+    Ok(serde_json::json!({ "success": true }))
 }
 
 struct PreparedCreate {

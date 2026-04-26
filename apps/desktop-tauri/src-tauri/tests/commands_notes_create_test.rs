@@ -1,5 +1,5 @@
 use memry_desktop_tauri_lib::commands::notes::{
-    notes_create_inner, notes_update_inner, NoteCreateInput, NoteUpdateInput,
+    notes_create_inner, notes_delete_inner, notes_update_inner, NoteCreateInput, NoteUpdateInput,
 };
 use memry_desktop_tauri_lib::db::{note_metadata, notes_cache};
 use memry_desktop_tauri_lib::test_helpers::{
@@ -124,4 +124,39 @@ async fn update_note_changes_metadata_vault_file_cache_and_returns_dto() {
     assert_eq!(cached[0].snippet, "new body with more words");
     assert_eq!(cached[0].word_count, 5);
     assert_eq!(cached[0].tags_json, "[\"new\",\"shared\"]");
+}
+
+#[tokio::test]
+async fn delete_note_soft_deletes_metadata_removes_cache_and_trashes_vault_file() {
+    let conn = open_in_memory_with_migrations();
+    let vault = test_vault_runtime();
+    let created = notes_create_inner(
+        &conn,
+        &vault,
+        NoteCreateInput {
+            title: "Discard".into(),
+            content: Some("remove me".into()),
+            folder: Some("Inbox".into()),
+            tags: None,
+            template: None,
+        },
+    )
+    .await
+    .unwrap()
+    .note
+    .unwrap();
+
+    let result = notes_delete_inner(&conn, &vault, &created.id).await.unwrap();
+
+    assert_eq!(result["success"], true);
+    let active = note_metadata::list_active(&conn).unwrap();
+    assert!(active.iter().all(|row| row.id != created.id));
+    assert_eq!(notes_cache::count_active(&conn).unwrap(), 0);
+
+    let root = vault.require_current().unwrap();
+    let original = notes_io::read_note_from_disk(&root, &created.path)
+        .await
+        .unwrap();
+    assert!(original.is_none());
+    assert!(root.join(".trash").join(format!("{}.md", created.id)).exists());
 }

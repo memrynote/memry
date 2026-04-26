@@ -88,6 +88,7 @@ pub fn run() {
             commands::notes::notes_get,
             commands::notes::notes_get_by_path,
             commands::notes::notes_update,
+            commands::notes::notes_delete,
             commands::shell::shell_open_url,
             commands::shell::shell_open_path,
             commands::shell::shell_reveal_in_finder,
