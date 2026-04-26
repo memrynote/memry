@@ -2,6 +2,7 @@
 
 use crate::auth::linking::PendingLinkingRegistry;
 use crate::auth::AuthRuntime;
+use crate::crdt::CrdtRuntime;
 use crate::db::Db;
 use crate::vault::VaultRuntime;
 use std::sync::Arc;
@@ -11,6 +12,7 @@ pub struct AppState {
     pub vault: Arc<VaultRuntime>,
     pub auth: Arc<AuthRuntime>,
     pub linking: Arc<PendingLinkingRegistry>,
+    pub crdt: Arc<CrdtRuntime>,
 }
 
 impl AppState {
@@ -19,12 +21,14 @@ impl AppState {
         vault: Arc<VaultRuntime>,
         auth: Arc<AuthRuntime>,
         linking: Arc<PendingLinkingRegistry>,
+        crdt: Arc<CrdtRuntime>,
     ) -> Self {
         Self {
             db,
             vault,
             auth,
             linking,
+            crdt,
         }
     }
 }
