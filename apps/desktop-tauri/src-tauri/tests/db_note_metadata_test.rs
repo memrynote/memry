@@ -61,6 +61,33 @@ fn list_helpers_exclude_soft_deleted_rows() {
 }
 
 #[test]
+fn list_in_folder_treats_like_wildcards_as_literal_path_chars() {
+    let conn = open_in_memory_with_migrations();
+    upsert(&conn, &row("literal", "A_B/literal.md", "Literal")).unwrap();
+    upsert(&conn, &row("underscore", "AxB/wildcard.md", "Wildcard")).unwrap();
+    upsert(&conn, &row("percent", "A%B/percent.md", "Percent")).unwrap();
+    upsert(&conn, &row("percent_match", "AxxB/match.md", "Match")).unwrap();
+
+    let underscore = list_in_folder(&conn, "A_B").unwrap();
+    assert_eq!(
+        underscore
+            .iter()
+            .map(|note| note.id.as_str())
+            .collect::<Vec<_>>(),
+        vec!["literal"]
+    );
+
+    let percent = list_in_folder(&conn, "A%B").unwrap();
+    assert_eq!(
+        percent
+            .iter()
+            .map(|note| note.id.as_str())
+            .collect::<Vec<_>>(),
+        vec!["percent"]
+    );
+}
+
+#[test]
 fn rename_path_updates_unique_index_atomically() {
     let conn = open_in_memory_with_migrations();
     upsert(&conn, &row("n", "old.md", "T")).unwrap();

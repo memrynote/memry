@@ -1,3 +1,4 @@
+use memry_desktop_tauri_lib::db::crdt_snapshots::upsert_with_compaction;
 use memry_desktop_tauri_lib::db::crdt_updates::{
     append, drop_through, list_for_note, max_seq, MAX_BLOB_BYTES,
 };
@@ -63,4 +64,17 @@ fn rejects_oversized_payload() {
 
     assert!(msg.to_lowercase().contains("validation"));
     assert_eq!(max_seq(&conn, "n").unwrap(), 0);
+}
+
+#[test]
+fn append_continues_after_compacted_snapshot_sequence() {
+    let conn = open_in_memory_with_migrations();
+    append(&conn, "n", &[1], 1).unwrap();
+    append(&conn, "n", &[2], 1).unwrap();
+
+    upsert_with_compaction(&conn, "n", &[9], &[8], 2).unwrap();
+
+    assert!(list_for_note(&conn, "n").unwrap().is_empty());
+    assert_eq!(max_seq(&conn, "n").unwrap(), 2);
+    assert_eq!(append(&conn, "n", &[3], 1).unwrap(), 3);
 }
