@@ -10,17 +10,22 @@
 //! token rotation. The command is registered so the renderer surface
 //! stays stable; it returns an explicit failure.
 
-use base64::{engine::general_purpose::STANDARD as B64, Engine as _};
 use serde::{Deserialize, Serialize};
 
 use crate::app_state::AppState;
 use crate::auth::account::KEYCHAIN_ACCESS_TOKEN;
-use crate::auth::linking::{self, LinkingQrPayload, ScanDeviceMetadata};
+use crate::auth::linking::{self, ScanDeviceMetadata};
 use crate::error::{AppError, AppResult};
 use crate::keychain::SERVICE_VAULT;
+use crate::sync::auth_client;
 
-const KEYCHAIN_SETUP_TOKEN: &str = "setup-token";
 const KEYCHAIN_MASTER_KEY: &str = "master-key";
+
+/// Sentinel error message returned by `complete_linking_with_base` when
+/// the new device polls before the approver has acted. The renderer
+/// `LinkingPending` component matches on this exact string to keep
+/// polling rather than surfacing a terminal error to the user.
+const LINKING_PENDING_SENTINEL: &str = "session not yet approved";
 
 #[derive(Debug, Clone, Deserialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
@@ -46,7 +51,6 @@ pub struct SyncLinkingLinkViaRecoveryInput {
 #[serde(rename_all = "camelCase")]
 pub struct SyncLinkingApproveLinkingInput {
     pub session_id: String,
-    pub new_device_public_key_b64: String,
 }
 
 #[derive(Debug, Clone, Deserialize, specta::Type)]
@@ -59,18 +63,13 @@ pub struct SyncLinkingGetLinkingSasInput {
 #[serde(rename_all = "camelCase")]
 pub struct LinkingQrView {
     pub session_id: String,
-    pub linking_secret: String,
-    pub ephemeral_public_key: String,
-}
-
-impl From<LinkingQrPayload> for LinkingQrView {
-    fn from(p: LinkingQrPayload) -> Self {
-        Self {
-            session_id: p.session_id,
-            linking_secret: p.linking_secret,
-            ephemeral_public_key: p.ephemeral_public_key,
-        }
-    }
+    /// JSON-encoded `LinkingQrPayload` ready for the renderer to render
+    /// inside a QR code or copy as text. The new device decodes this
+    /// string when it calls `sync_linking_link_via_qr`.
+    pub qr_payload: String,
+    /// Unix-epoch seconds when the linking session expires server-side.
+    /// The renderer uses this for the QR countdown.
+    pub expires_at: i64,
 }
 
 #[derive(Debug, Clone, Serialize, specta::Type)]
@@ -106,10 +105,16 @@ pub struct LinkingSasView {
 pub async fn sync_linking_generate_linking_qr(
     state: tauri::State<'_, AppState>,
 ) -> AppResult<LinkingQrView> {
-    let setup_token = read_setup_token(&state)?;
+    let access_token = read_access_token(&state)?;
     let base = crate::sync::http::resolve_base_url()?;
-    let payload = linking::generate_linking_qr_with_base(&base, &state.linking, &setup_token).await?;
-    Ok(payload.into())
+    let created =
+        linking::generate_linking_qr_with_base(&base, &state.linking, &access_token).await?;
+    let qr_payload = linking::encode_qr_payload(&created.payload)?;
+    Ok(LinkingQrView {
+        session_id: created.payload.session_id,
+        qr_payload,
+        expires_at: created.expires_at,
+    })
 }
 
 #[tauri::command]
@@ -158,10 +163,24 @@ pub async fn sync_linking_complete_linking_qr(
         }
         Err(err) => Ok(LinkingCompleteView {
             success: false,
-            error: Some(redact(&err)),
+            error: Some(redact_complete_linking(&err)),
             device_id: None,
         }),
     }
+}
+
+/// Like `redact()`, but preserves the `"session not yet approved"`
+/// sentinel as-is so the renderer's polling loop in
+/// `LinkingPending` can distinguish a normal pending state from a
+/// terminal failure. Every other AppError variant is mapped through
+/// the standard `redact()` helper.
+fn redact_complete_linking(err: &AppError) -> String {
+    if let AppError::Auth(msg) = err {
+        if msg == LINKING_PENDING_SENTINEL {
+            return LINKING_PENDING_SENTINEL.to_string();
+        }
+    }
+    redact(err)
 }
 
 #[tauri::command]
@@ -189,16 +208,22 @@ pub async fn sync_linking_approve_linking(
         .auth
         .master_key_clone()
         .ok_or(AppError::VaultLocked)?;
-    let new_device_public_key = B64
-        .decode(&input.new_device_public_key_b64)
-        .map_err(|err| {
-            AppError::Validation(format!("invalid newDevicePublicKey base64: {err}"))
-        })?;
     let initiator_session = state
         .linking
         .peek(&input.session_id)
         .ok_or_else(|| AppError::NotFound(format!("linking session: {}", input.session_id)))?;
+
+    // Fetch the new device's public key from the server (recorded by
+    // `/auth/linking/scan` on the new-device side). The renderer never
+    // sees this value directly, so we cannot accept it as input — that
+    // would let an attacker who controls the renderer swap the public
+    // key and seal the master key for themselves.
     let base = crate::sync::http::resolve_base_url()?;
+    let session_info: ServerLinkingSession =
+        auth_client::get_linking_session_with_base(&base, &input.session_id, &access_token)
+            .await?;
+    let new_device_public_key = linking::decode_b64(&session_info.new_device_public_key)?;
+
     match linking::approve_linking_with_base(
         &base,
         &input.session_id,
@@ -220,6 +245,16 @@ pub async fn sync_linking_approve_linking(
     }
 }
 
+/// Subset of the `/auth/linking/session/:id` response we need on the
+/// approver side. The server returns more fields (status, newDeviceConfirm,
+/// expiresAt) but the approve flow only needs the new device's public
+/// key to derive the X25519 shared secret.
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct ServerLinkingSession {
+    new_device_public_key: String,
+}
+
 #[tauri::command]
 #[specta::specta]
 pub async fn sync_linking_get_linking_sas(
@@ -233,15 +268,6 @@ pub async fn sync_linking_get_linking_sas(
     let session = peek_session(&state, &input.session_id)?;
     let sas_code = linking::generate_sas_code(&session.linking_secret)?;
     Ok(LinkingSasView { sas_code })
-}
-
-fn read_setup_token(state: &AppState) -> AppResult<String> {
-    let bytes = state
-        .auth
-        .keychain()
-        .get_item(SERVICE_VAULT, KEYCHAIN_SETUP_TOKEN)?
-        .ok_or_else(|| AppError::Auth("no setup token in keychain".into()))?;
-    String::from_utf8(bytes).map_err(|err| AppError::Auth(format!("setup token utf-8: {err}")))
 }
 
 fn read_access_token(state: &AppState) -> AppResult<String> {

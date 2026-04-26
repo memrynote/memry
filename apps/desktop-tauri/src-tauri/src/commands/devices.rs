@@ -45,7 +45,10 @@ pub struct DeviceView {
     pub linked_at: i64,
     pub last_sync_at: Option<i64>,
     pub is_current_device: bool,
-    pub created_at: Option<String>,
+    /// Unix-epoch seconds when the server first registered the device
+    /// (populated from the `devices.created_at INTEGER` D1 column). The
+    /// renderer formats this as a relative time string.
+    pub created_at: Option<i64>,
 }
 
 #[derive(Debug, Clone, Serialize, specta::Type)]
@@ -86,7 +89,7 @@ struct ServerDevice {
     #[serde(default)]
     last_sync_at: Option<i64>,
     #[serde(default)]
-    created_at: Option<String>,
+    created_at: Option<i64>,
 }
 
 #[tauri::command]
