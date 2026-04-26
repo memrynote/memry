@@ -1,5 +1,5 @@
-//! Tests for `auth::device` (Task 12) and `auth::account` device upsert
-//! and sign-out (Task 12). Linking-related tests are added in Task 14.
+//! Tests for `auth::device` (Task 12), `auth::account` device upsert
+//! and sign-out (Task 12), and `auth::linking` (Task 14).
 //!
 //! All tests use the in-memory keychain backend and a memory-only sqlite
 //! database. Production wires up the macOS Keychain in
@@ -8,6 +8,9 @@
 use std::sync::Arc;
 
 use base64::{engine::general_purpose::STANDARD as B64, Engine as _};
+use httpmock::prelude::*;
+use serde_json::json;
+
 use memry_desktop_tauri_lib::app_state::AppState;
 use memry_desktop_tauri_lib::auth::account::{
     self, AccountInfo, ACCOUNT_AUTH_PROVIDER, ACCOUNT_EMAIL,
@@ -15,6 +18,10 @@ use memry_desktop_tauri_lib::auth::account::{
 };
 use memry_desktop_tauri_lib::auth::device::{
     self, CurrentDeviceRecord, KEYCHAIN_DEVICE_SIGNING_KEY,
+};
+use memry_desktop_tauri_lib::auth::linking::{
+    self, generate_sas_code, LinkingApprovePayload, LinkingQrPayload,
+    PendingLinkingRegistry, PendingLinkingSession,
 };
 use memry_desktop_tauri_lib::auth::AuthRuntime;
 use memry_desktop_tauri_lib::crypto::sign_verify::{
@@ -349,3 +356,298 @@ fn sign_out_clears_access_refresh_setup_tokens_but_leaves_vault_data() {
         "sign-out must NOT delete the recovery phrase",
     );
 }
+
+// ---------------------------------------------------------------------
+// Task 14: linking primitives
+// ---------------------------------------------------------------------
+
+#[test]
+fn generate_sas_code_returns_six_digits_stable_for_a_shared_secret() {
+    let secret = vec![0xABu8; 32];
+
+    let code_a = generate_sas_code(&secret).unwrap();
+    let code_b = generate_sas_code(&secret).unwrap();
+
+    assert_eq!(code_a, code_b, "SAS code must be deterministic for a fixed secret");
+    assert_eq!(code_a.len(), 6, "SAS code must be exactly 6 characters");
+    assert!(
+        code_a.chars().all(|c| c.is_ascii_digit()),
+        "SAS code must contain only ASCII digits, got {code_a}",
+    );
+}
+
+#[test]
+fn generate_sas_code_differs_for_different_secrets() {
+    let s1 = vec![0xABu8; 32];
+    let s2 = vec![0xCDu8; 32];
+
+    let a = generate_sas_code(&s1).unwrap();
+    let b = generate_sas_code(&s2).unwrap();
+
+    assert_ne!(a, b, "different shared secrets should produce different SAS codes");
+}
+
+#[test]
+fn build_qr_payload_round_trips_through_json() {
+    let payload = LinkingQrPayload {
+        session_id: "sid-1".to_string(),
+        linking_secret: B64.encode([0x01u8; 32]),
+        ephemeral_public_key: B64.encode([0x02u8; 32]),
+    };
+
+    let json = linking::encode_qr_payload(&payload).unwrap();
+    let parsed = linking::decode_qr_payload(&json).unwrap();
+
+    assert_eq!(parsed.session_id, payload.session_id);
+    assert_eq!(parsed.linking_secret, payload.linking_secret);
+    assert_eq!(parsed.ephemeral_public_key, payload.ephemeral_public_key);
+}
+
+#[test]
+fn approve_linking_seal_round_trips_master_key() {
+    let new_device = linking::generate_ephemeral_keypair();
+    let approver_master_key = vec![0x42u8; 32];
+
+    let payload = linking::seal_master_key_for_new_device(
+        &approver_master_key,
+        &new_device.public_key,
+    )
+    .unwrap();
+
+    assert!(!payload.ciphertext.is_empty());
+    assert_eq!(payload.nonce.len(), 24);
+    assert_eq!(payload.approver_ephemeral_public_key.len(), 32);
+
+    let recovered =
+        linking::open_master_key_for_new_device(&payload, &new_device.secret_key).unwrap();
+    assert_eq!(recovered, approver_master_key);
+}
+
+#[test]
+fn open_master_key_rejects_tampered_ciphertext() {
+    let new_device = linking::generate_ephemeral_keypair();
+    let mk = vec![0x42u8; 32];
+    let mut payload =
+        linking::seal_master_key_for_new_device(&mk, &new_device.public_key).unwrap();
+
+    payload.ciphertext[0] ^= 0xFF;
+
+    let err = linking::open_master_key_for_new_device(&payload, &new_device.secret_key)
+        .expect_err("tampered ciphertext must fail to decrypt");
+    assert!(
+        format!("{err}").to_lowercase().contains("decrypt"),
+        "expected a crypto/decrypt error, got {err}",
+    );
+}
+
+#[test]
+fn pending_session_registry_take_is_consume_once() {
+    let registry = PendingLinkingRegistry::new();
+    let kp = linking::generate_ephemeral_keypair();
+    let session = PendingLinkingSession {
+        session_id: "sid-1".to_string(),
+        ephemeral_secret_key: kp.secret_key.to_vec(),
+        ephemeral_public_key: kp.public_key.to_vec(),
+        linking_secret: vec![0x55u8; 32],
+    };
+    registry.insert(session.clone());
+
+    let loaded = registry.take(&session.session_id).expect("session must exist");
+    assert_eq!(loaded.session_id, session.session_id);
+    assert_eq!(loaded.linking_secret, session.linking_secret);
+
+    assert!(
+        registry.take(&session.session_id).is_none(),
+        "take() must consume the session so it cannot be replayed",
+    );
+}
+
+// ---------------------------------------------------------------------
+// Task 14: linking HTTP flows
+// ---------------------------------------------------------------------
+
+#[tokio::test]
+async fn generate_linking_qr_calls_initiate_and_records_pending_session() {
+    let registry = PendingLinkingRegistry::new();
+    let server = MockServer::start_async().await;
+    let mock = server
+        .mock_async(|when, then| {
+            when.method(POST)
+                .path("/auth/linking/initiate")
+                .header("authorization", "Bearer setup-token");
+            then.status(200).json_body(json!({
+                "sessionId": "session-server-id",
+                "linkingSecret": B64.encode([0x33u8; 32]),
+            }));
+        })
+        .await;
+
+    let qr = linking::generate_linking_qr_with_base(
+        &server.base_url(),
+        &registry,
+        "setup-token",
+    )
+    .await
+    .expect("generate linking QR must succeed");
+
+    mock.assert_async().await;
+    assert_eq!(qr.session_id, "session-server-id");
+    assert!(!qr.linking_secret.is_empty());
+    let pk_bytes = B64
+        .decode(&qr.ephemeral_public_key)
+        .expect("ephemeral public key must be base64");
+    assert_eq!(pk_bytes.len(), 32);
+
+    let pending = registry
+        .take("session-server-id")
+        .expect("registry must hold the new session");
+    assert_eq!(pending.ephemeral_public_key, pk_bytes);
+    assert_eq!(pending.ephemeral_secret_key.len(), 32);
+}
+
+#[tokio::test]
+async fn link_via_qr_validates_payload_and_calls_scan() {
+    let server = MockServer::start_async().await;
+    let mock = server
+        .mock_async(|when, then| {
+            when.method(POST)
+                .path("/auth/linking/scan")
+                .header("authorization", "Bearer access-token");
+            then.status(200).json_body(json!({ "ok": true }));
+        })
+        .await;
+
+    let qr = LinkingQrPayload {
+        session_id: "sid-7".to_string(),
+        linking_secret: B64.encode([0x77u8; 32]),
+        ephemeral_public_key: B64.encode([0x88u8; 32]),
+    };
+    let qr_json = linking::encode_qr_payload(&qr).unwrap();
+
+    let result =
+        linking::link_via_qr_with_base(&server.base_url(), &qr_json, "access-token")
+            .await
+            .expect("link_via_qr must succeed");
+
+    mock.assert_async().await;
+    assert_eq!(result.session_id, "sid-7");
+    assert_eq!(result.sas_code.len(), 6);
+    assert!(result.sas_code.chars().all(|c| c.is_ascii_digit()));
+}
+
+#[tokio::test]
+async fn link_via_qr_rejects_invalid_qr_json() {
+    let server = MockServer::start_async().await;
+
+    let err = linking::link_via_qr_with_base(&server.base_url(), "not-json", "tok")
+        .await
+        .expect_err("invalid qr json must error");
+
+    assert!(
+        format!("{err}").to_lowercase().contains("validation")
+            || format!("{err}").to_lowercase().contains("json"),
+        "expected validation/json error, got {err}",
+    );
+}
+
+#[tokio::test]
+async fn approve_linking_posts_sealed_master_key_to_server() {
+    let new_device = linking::generate_ephemeral_keypair();
+    let approver_master_key = vec![0x42u8; 32];
+
+    let server = MockServer::start_async().await;
+    let mock = server
+        .mock_async(|when, then| {
+            when.method(POST)
+                .path("/auth/linking/approve")
+                .header("authorization", "Bearer access-token")
+                .matches(|req| {
+                    let body = req.body.as_deref().unwrap_or_default();
+                    let v: serde_json::Value =
+                        serde_json::from_slice(body).unwrap_or(serde_json::Value::Null);
+                    v["sessionId"] == "sid-9"
+                        && v["ciphertext"].is_string()
+                        && v["nonce"].is_string()
+                        && v["approverEphemeralPublicKey"].is_string()
+                });
+            then.status(200).json_body(json!({ "ok": true }));
+        })
+        .await;
+
+    linking::approve_linking_with_base(
+        &server.base_url(),
+        "sid-9",
+        &approver_master_key,
+        &new_device.public_key,
+        "access-token",
+    )
+    .await
+    .expect("approve linking must succeed");
+
+    mock.assert_async().await;
+}
+
+#[tokio::test]
+async fn complete_linking_decrypts_master_key_and_returns_device_id() {
+    let registry = PendingLinkingRegistry::new();
+    let new_device = linking::generate_ephemeral_keypair();
+    let approver_master_key = vec![0x42u8; 32];
+
+    registry.insert(PendingLinkingSession {
+        session_id: "sid-c".to_string(),
+        ephemeral_secret_key: new_device.secret_key.to_vec(),
+        ephemeral_public_key: new_device.public_key.to_vec(),
+        linking_secret: vec![0x55u8; 32],
+    });
+
+    let sealed =
+        linking::seal_master_key_for_new_device(&approver_master_key, &new_device.public_key)
+            .unwrap();
+
+    let server = MockServer::start_async().await;
+    let mock = server
+        .mock_async(|when, then| {
+            when.method(POST).path("/auth/linking/complete");
+            then.status(200).json_body(json!({
+                "ciphertext": B64.encode(&sealed.ciphertext),
+                "nonce": B64.encode(&sealed.nonce),
+                "approverEphemeralPublicKey": B64.encode(&sealed.approver_ephemeral_public_key),
+                "deviceId": "device-from-server",
+            }));
+        })
+        .await;
+
+    let result =
+        linking::complete_linking_with_base(&server.base_url(), &registry, "sid-c")
+            .await
+            .expect("complete must succeed");
+
+    mock.assert_async().await;
+    assert_eq!(result.master_key, approver_master_key);
+    assert_eq!(result.device_id, "device-from-server");
+
+    assert!(
+        registry.take("sid-c").is_none(),
+        "completed session must be removed from the registry",
+    );
+}
+
+#[tokio::test]
+async fn complete_linking_without_pending_session_returns_auth_error() {
+    let registry = PendingLinkingRegistry::new();
+    let server = MockServer::start_async().await;
+
+    let err =
+        linking::complete_linking_with_base(&server.base_url(), &registry, "missing")
+            .await
+            .expect_err("missing pending session must error");
+
+    assert!(
+        format!("{err}").to_lowercase().contains("session"),
+        "error message must reference the missing session, got {err}",
+    );
+}
+
+// Suppress unused-warning for types pulled into scope only by other tests.
+#[allow(dead_code)]
+fn _unused(_p: LinkingApprovePayload) {}
