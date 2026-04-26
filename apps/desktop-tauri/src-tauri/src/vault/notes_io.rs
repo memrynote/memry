@@ -156,3 +156,101 @@ fn safe_trash_stem(note_id: &str) -> String {
         stem
     }
 }
+
+/// Walk the vault tree and return forward-slashed vault-relative paths
+/// for every directory below the root. Hidden directories (`.foo`) and
+/// the `.memry/` app-internal slot are skipped, matching the supported
+/// file scan in `vault::fs::list_supported_files`.
+pub async fn list_folders(vault_root: &Path) -> AppResult<Vec<String>> {
+    let canonical_root = dunce::canonicalize(vault_root)?;
+    let mut out: Vec<String> = Vec::new();
+    let mut stack: Vec<std::path::PathBuf> = vec![canonical_root.clone()];
+
+    while let Some(dir) = stack.pop() {
+        let mut entries = match fs::read_dir(&dir).await {
+            Ok(e) => e,
+            Err(e) if e.kind() == std::io::ErrorKind::PermissionDenied => continue,
+            Err(e) => return Err(e.into()),
+        };
+        while let Some(entry) = entries.next_entry().await? {
+            let name = entry.file_name();
+            let name_str = name.to_string_lossy();
+            if name_str.starts_with('.') {
+                continue;
+            }
+            let metadata = match entry.metadata().await {
+                Ok(m) => m,
+                Err(_) => continue,
+            };
+            if metadata.file_type().is_symlink() || !metadata.is_dir() {
+                continue;
+            }
+            let path = entry.path();
+            if let Some(rel) = paths::to_relative_path(&canonical_root, &path) {
+                out.push(rel);
+            }
+            stack.push(path);
+        }
+    }
+
+    out.sort();
+    Ok(out)
+}
+
+/// Create a vault directory (no-op if it already exists). Resolves the
+/// path through the vault escape-guard before touching disk.
+pub async fn create_folder(vault_root: &Path, relative: &str) -> AppResult<()> {
+    let abs = paths::resolve_in_vault(vault_root, relative)?;
+    fs::create_dir_all(&abs).await?;
+    Ok(())
+}
+
+/// Rename a vault directory. Both paths are resolved through the
+/// escape-guard. Errors with `AppError::NotFound` if the source is
+/// missing, `AppError::Conflict` if the destination already exists.
+pub async fn rename_folder(
+    vault_root: &Path,
+    old_relative: &str,
+    new_relative: &str,
+) -> AppResult<()> {
+    let from = paths::resolve_in_vault(vault_root, old_relative)?;
+    let to = paths::resolve_in_vault(vault_root, new_relative)?;
+
+    if !fs::try_exists(&from).await? {
+        return Err(crate::error::AppError::NotFound(format!(
+            "folder not found: {old_relative}"
+        )));
+    }
+    if fs::try_exists(&to).await? {
+        return Err(crate::error::AppError::Conflict(format!(
+            "folder already exists: {new_relative}"
+        )));
+    }
+
+    if let Some(parent) = to.parent() {
+        fs::create_dir_all(parent).await?;
+    }
+    fs::rename(&from, &to).await?;
+    Ok(())
+}
+
+/// Delete a vault directory. With `recursive == false`, the OS rejects
+/// the call when the directory is non-empty, surfaced here as a generic
+/// IO error. The caller is expected to have already enforced the
+/// emptiness rule against the metadata DB.
+pub async fn delete_folder(
+    vault_root: &Path,
+    relative: &str,
+    recursive: bool,
+) -> AppResult<()> {
+    let abs = paths::resolve_in_vault(vault_root, relative)?;
+    if !fs::try_exists(&abs).await? {
+        return Ok(());
+    }
+    if recursive {
+        fs::remove_dir_all(&abs).await?;
+    } else {
+        fs::remove_dir(&abs).await?;
+    }
+    Ok(())
+}
