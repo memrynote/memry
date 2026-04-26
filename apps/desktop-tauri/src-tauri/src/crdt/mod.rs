@@ -2,7 +2,7 @@
 
 mod docstore;
 
-pub use docstore::DocStore;
+pub use docstore::{DocHandle, DocStore, NoteId};
 
 use once_cell::sync::Lazy;
 use std::sync::Arc;
