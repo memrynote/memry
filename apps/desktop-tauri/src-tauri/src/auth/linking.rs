@@ -160,6 +160,19 @@ pub fn derive_shared_secret(
     })?;
     let mut shared = [0u8; KEY_LENGTH];
     crypto_scalarmult(&mut shared, sk, pk);
+    // libsodium / dryoc do NOT return an error for low-order peer keys;
+    // they happily write an all-zero shared secret. Accepting that would
+    // give a malicious peer predictable derived (encKey, macKey) for the
+    // sealed master key, so we reject it in constant time.
+    let mut diff: u8 = 0;
+    for &b in &shared {
+        diff |= b;
+    }
+    if diff == 0 {
+        return Err(AppError::Crypto(
+            "x25519 produced an all-zero shared secret (low-order peer public key)".into(),
+        ));
+    }
     Ok(shared)
 }
 
@@ -371,6 +384,51 @@ pub fn encode_b64(bytes: &[u8]) -> String {
     B64.encode(bytes)
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn derive_shared_secret_rejects_all_zero_output() {
+        // #given a low-order peer public key (all-zero is the canonical
+        // example) X25519 scalarmult writes an all-zero shared secret;
+        // accepting it would give a malicious peer predictable derived
+        // (encKey, macKey) for the sealed master key.
+        let kp = generate_ephemeral_keypair();
+        let bad_peer = [0u8; KEY_LENGTH];
+
+        // #when we derive against the bad peer
+        let result = derive_shared_secret(&kp.secret_key, &bad_peer);
+
+        // #then the helper rejects rather than returning the all-zero secret
+        match result {
+            Err(AppError::Crypto(msg)) => {
+                assert!(
+                    msg.contains("all-zero") || msg.contains("low-order"),
+                    "expected low-order rejection message, got: {msg}",
+                );
+            }
+            Err(other) => panic!("expected AppError::Crypto, got: {other:?}"),
+            Ok(_) => panic!("derive_shared_secret accepted an all-zero shared secret"),
+        }
+    }
+
+    #[test]
+    fn derive_shared_secret_accepts_real_peer() {
+        // #given two ephemeral keypairs (both honest)
+        let a = generate_ephemeral_keypair();
+        let b = generate_ephemeral_keypair();
+
+        // #when both sides derive
+        let shared_a = derive_shared_secret(&a.secret_key, &b.public_key).unwrap();
+        let shared_b = derive_shared_secret(&b.secret_key, &a.public_key).unwrap();
+
+        // #then they agree and neither is all-zero
+        assert_eq!(shared_a, shared_b);
+        assert_ne!(shared_a, [0u8; KEY_LENGTH]);
+    }
+}
+
 /// Helper to decode an X25519 public key from a base64 QR field.
 pub fn decode_b64(value: &str) -> AppResult<Vec<u8>> {
     B64.decode(value)
@@ -392,6 +450,15 @@ struct InitiateLinkingBody {
 struct InitiateLinkingResponse {
     session_id: String,
     linking_secret: String,
+    expires_at: i64,
+}
+
+/// Wraps the QR JSON payload with the server-issued expiry so the
+/// renderer can show a countdown without needing to re-derive the value.
+#[derive(Debug, Clone)]
+pub struct LinkingQrCreated {
+    pub payload: LinkingQrPayload,
+    pub expires_at: i64,
 }
 
 #[derive(Serialize)]
@@ -464,15 +531,19 @@ pub struct CompleteLinkingResult {
     pub master_key: Vec<u8>,
 }
 
-/// New device side: generates an ephemeral keypair, calls
-/// `/auth/linking/initiate` with the public key and the supplied setup
-/// token, registers a pending session in the registry, and returns the
-/// QR payload for display.
+/// Initiator (already-authenticated) side: generates an ephemeral
+/// keypair, calls `/auth/linking/initiate` with the public key and the
+/// supplied access token, registers a pending session in the registry,
+/// and returns the QR payload + the server-issued expiry timestamp.
+///
+/// The token MUST be the active access token (not the one-shot
+/// `setup-token`, which is deleted after first-device registration).
+/// The server route is protected by `authMiddleware`.
 pub async fn generate_linking_qr_with_base(
     base_url: &str,
     registry: &PendingLinkingRegistry,
-    setup_token: &str,
-) -> AppResult<LinkingQrPayload> {
+    access_token: &str,
+) -> AppResult<LinkingQrCreated> {
     let kp = generate_ephemeral_keypair();
     let public_key_b64 = B64.encode(kp.public_key);
 
@@ -480,7 +551,7 @@ pub async fn generate_linking_qr_with_base(
         ephemeral_public_key: public_key_b64.clone(),
     };
     let resp: InitiateLinkingResponse =
-        auth_client::initiate_linking_with_base(base_url, &body, setup_token).await?;
+        auth_client::initiate_linking_with_base(base_url, &body, access_token).await?;
 
     let linking_secret_bytes = decode_b64(&resp.linking_secret)?;
     registry.insert(PendingLinkingSession {
@@ -491,10 +562,13 @@ pub async fn generate_linking_qr_with_base(
         peer_public_key: None,
     });
 
-    Ok(LinkingQrPayload {
-        session_id: resp.session_id,
-        linking_secret: resp.linking_secret,
-        ephemeral_public_key: public_key_b64,
+    Ok(LinkingQrCreated {
+        payload: LinkingQrPayload {
+            session_id: resp.session_id,
+            linking_secret: resp.linking_secret,
+            ephemeral_public_key: public_key_b64,
+        },
+        expires_at: resp.expires_at,
     })
 }
 

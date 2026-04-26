@@ -274,7 +274,12 @@ export type DeviceView = {
 	linkedAt: number,
 	lastSyncAt: number | null,
 	isCurrentDevice: boolean,
-	createdAt: string | null,
+	/**
+	 *  Unix-epoch seconds when the server first registered the device
+	 *  (populated from the `devices.created_at INTEGER` D1 column). The
+	 *  renderer formats this as a relative time string.
+	 */
+	createdAt: number | null,
 };
 
 export type FolderConfig = {
@@ -337,8 +342,17 @@ export type LinkingMutationResult = {
 
 export type LinkingQrView = {
 	sessionId: string,
-	linkingSecret: string,
-	ephemeralPublicKey: string,
+	/**
+	 *  JSON-encoded `LinkingQrPayload` ready for the renderer to render
+	 *  inside a QR code or copy as text. The new device decodes this
+	 *  string when it calls `sync_linking_link_via_qr`.
+	 */
+	qrPayload: string,
+	/**
+	 *  Unix-epoch seconds when the linking session expires server-side.
+	 *  The renderer uses this for the QR countdown.
+	 */
+	expiresAt: number,
 };
 
 export type LinkingSasView = {
@@ -598,7 +612,6 @@ export type SyncHistoryEntry = {
 
 export type SyncLinkingApproveLinkingInput = {
 	sessionId: string,
-	newDevicePublicKeyB64: string,
 };
 
 export type SyncLinkingCompleteLinkingQrInput = {

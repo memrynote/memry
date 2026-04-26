@@ -493,27 +493,29 @@ async fn generate_linking_qr_calls_initiate_and_records_pending_session() {
         .mock_async(|when, then| {
             when.method(POST)
                 .path("/auth/linking/initiate")
-                .header("authorization", "Bearer setup-token");
+                .header("authorization", "Bearer access-token");
             then.status(200).json_body(json!({
                 "sessionId": "session-server-id",
                 "linkingSecret": B64.encode([0x33u8; 32]),
+                "expiresAt": 1_700_000_000_i64,
             }));
         })
         .await;
 
-    let qr = linking::generate_linking_qr_with_base(
+    let created = linking::generate_linking_qr_with_base(
         &server.base_url(),
         &registry,
-        "setup-token",
+        "access-token",
     )
     .await
     .expect("generate linking QR must succeed");
 
     mock.assert_async().await;
-    assert_eq!(qr.session_id, "session-server-id");
-    assert!(!qr.linking_secret.is_empty());
+    assert_eq!(created.payload.session_id, "session-server-id");
+    assert!(!created.payload.linking_secret.is_empty());
+    assert_eq!(created.expires_at, 1_700_000_000);
     let pk_bytes = B64
-        .decode(&qr.ephemeral_public_key)
+        .decode(&created.payload.ephemeral_public_key)
         .expect("ephemeral public key must be base64");
     assert_eq!(pk_bytes.len(), 32);
 
