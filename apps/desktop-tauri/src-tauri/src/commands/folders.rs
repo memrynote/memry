@@ -8,10 +8,12 @@
 
 use crate::app_state::AppState;
 use crate::db::folder_configs;
+use crate::db::note_positions;
 use crate::error::{AppError, AppResult};
 use crate::vault::{notes_io, VaultRuntime};
 use rusqlite::Connection;
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use tauri::{AppHandle, Emitter, State};
 
 #[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
@@ -41,6 +43,20 @@ pub struct SetFolderConfigInput {
     pub path: String,
     pub icon: Option<String>,
     pub template_json: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
+#[serde(rename_all = "camelCase")]
+pub struct ReorderInput {
+    pub folder_path: String,
+    pub note_paths: Vec<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
+#[serde(rename_all = "camelCase")]
+pub struct PositionsResponse {
+    pub success: bool,
+    pub positions: HashMap<String, i64>,
 }
 
 // ---- Inner helpers (called from tests, runtime, and Tauri wrappers) -------
@@ -116,6 +132,25 @@ pub fn notes_get_folder_template_inner(
     path: &str,
 ) -> AppResult<Option<String>> {
     folder_configs::get_template_inherited(conn, path)
+}
+
+pub fn notes_get_positions_inner(
+    conn: &Connection,
+    folder_path: &str,
+) -> AppResult<HashMap<String, i64>> {
+    note_positions::get_for_folder(conn, folder_path)
+}
+
+pub fn notes_get_all_positions_inner(conn: &Connection) -> AppResult<HashMap<String, i64>> {
+    note_positions::get_all(conn)
+}
+
+pub fn notes_reorder_inner(
+    conn: &Connection,
+    folder_path: &str,
+    note_paths: &[String],
+) -> AppResult<()> {
+    note_positions::reorder(conn, folder_path, note_paths)
 }
 
 // ---- Tauri commands -------------------------------------------------------
@@ -232,6 +267,43 @@ pub fn notes_get_folder_template(
     let path = single_string_arg(args, "path")?;
     let conn = state.db.conn()?;
     notes_get_folder_template_inner(&conn, &path)
+}
+
+#[tauri::command]
+#[specta::specta]
+pub fn notes_get_positions(
+    state: State<'_, AppState>,
+    args: Vec<String>,
+) -> AppResult<PositionsResponse> {
+    let folder_path = single_string_arg(args, "folder_path")?;
+    let conn = state.db.conn()?;
+    let positions = notes_get_positions_inner(&conn, &folder_path)?;
+    Ok(PositionsResponse {
+        success: true,
+        positions,
+    })
+}
+
+#[tauri::command]
+#[specta::specta]
+pub fn notes_get_all_positions(state: State<'_, AppState>) -> AppResult<PositionsResponse> {
+    let conn = state.db.conn()?;
+    let positions = notes_get_all_positions_inner(&conn)?;
+    Ok(PositionsResponse {
+        success: true,
+        positions,
+    })
+}
+
+#[tauri::command]
+#[specta::specta]
+pub fn notes_reorder(
+    state: State<'_, AppState>,
+    input: ReorderInput,
+) -> AppResult<FolderSimpleSuccess> {
+    let conn = state.db.conn()?;
+    notes_reorder_inner(&conn, &input.folder_path, &input.note_paths)?;
+    Ok(FolderSimpleSuccess { success: true })
 }
 
 // ---- Internal helpers -----------------------------------------------------

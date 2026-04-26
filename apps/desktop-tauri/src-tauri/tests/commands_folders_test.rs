@@ -4,8 +4,9 @@
 //! exercise the DB+vault FS slice without needing a Tauri AppHandle.
 
 use memry_desktop_tauri_lib::commands::folders::{
-    notes_create_folder_inner, notes_delete_folder_inner, notes_get_folder_config_inner,
-    notes_get_folder_template_inner, notes_get_folders_inner, notes_rename_folder_inner,
+    notes_create_folder_inner, notes_delete_folder_inner, notes_get_all_positions_inner,
+    notes_get_folder_config_inner, notes_get_folder_template_inner, notes_get_folders_inner,
+    notes_get_positions_inner, notes_rename_folder_inner, notes_reorder_inner,
     notes_set_folder_config_inner, SetFolderConfigInput,
 };
 use memry_desktop_tauri_lib::commands::notes::{notes_create_inner, NoteCreateInput};
@@ -200,4 +201,36 @@ fn get_folder_template_walks_ancestors_for_inheritance() {
 
     let none = notes_get_folder_template_inner(&conn, "Other").unwrap();
     assert!(none.is_none(), "no ancestor → no template");
+}
+
+// ---- Task 35: positions + reorder ------------------------------------------
+
+#[test]
+fn reorder_then_get_positions_returns_indexed_paths() {
+    let conn = open_in_memory_with_migrations();
+
+    notes_reorder_inner(
+        &conn,
+        "Inbox",
+        &["a.md".into(), "b.md".into(), "c.md".into()],
+    )
+    .unwrap();
+
+    let positions = notes_get_positions_inner(&conn, "Inbox").unwrap();
+    assert_eq!(positions.get("a.md").copied(), Some(0));
+    assert_eq!(positions.get("b.md").copied(), Some(1));
+    assert_eq!(positions.get("c.md").copied(), Some(2));
+}
+
+#[test]
+fn get_all_positions_returns_flat_map_across_folders() {
+    let conn = open_in_memory_with_migrations();
+    notes_reorder_inner(&conn, "Inbox", &["a.md".into(), "b.md".into()]).unwrap();
+    notes_reorder_inner(&conn, "Projects", &["c.md".into()]).unwrap();
+
+    let all = notes_get_all_positions_inner(&conn).unwrap();
+    assert_eq!(all.get("a.md").copied(), Some(0));
+    assert_eq!(all.get("b.md").copied(), Some(1));
+    assert_eq!(all.get("c.md").copied(), Some(0));
+    assert_eq!(all.len(), 3);
 }
