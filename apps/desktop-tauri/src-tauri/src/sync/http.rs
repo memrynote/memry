@@ -15,6 +15,11 @@
 //! - HTTP 429 -> `AppError::RateLimited(retry_after_secs)`. The
 //!   `Retry-After` header is parsed when present; missing headers
 //!   yield `RateLimited(None)`.
+//! - HTTP 409 -> `AppError::Conflict(status)`. Several flows
+//!   (`/auth/linking/complete` while a session is still pending,
+//!   `/auth/devices` rename of a revoked device, ...) use 409 to mean
+//!   "retryable conflict" and callers need to distinguish that from a
+//!   generic transport failure.
 //! - Any other non-2xx -> `AppError::Network`. The error message
 //!   includes the status code but never the response body bytes; the
 //!   body is drained but discarded.
@@ -196,6 +201,13 @@ where
         // Drain the body to release the connection without echoing bytes.
         let _ = resp.bytes().await;
         return Err(AppError::RateLimited(retry_after));
+    }
+    if status.as_u16() == 409 {
+        let _ = resp.bytes().await;
+        return Err(AppError::Conflict(format!(
+            "http status={}",
+            status.as_u16()
+        )));
     }
     if !status.is_success() {
         let _ = resp.bytes().await;

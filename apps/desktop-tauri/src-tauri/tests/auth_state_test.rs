@@ -134,8 +134,8 @@ fn auth_runtime_exposes_keychain_handle_for_secret_storage() {
     let auth = runtime();
     let keychain = auth.keychain();
     keychain
-        .set_item("com.memry.vault", "probe", b"probe-bytes")
+        .set_item("com.memry.sync", "probe", b"probe-bytes")
         .unwrap();
-    let value = keychain.get_item("com.memry.vault", "probe").unwrap();
+    let value = keychain.get_item("com.memry.sync", "probe").unwrap();
     assert_eq!(value.as_deref(), Some(b"probe-bytes".as_ref()));
 }

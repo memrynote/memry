@@ -3,8 +3,8 @@
 //!
 //! The non-ignored tests must never touch the real OS Keychain. They only
 //! verify trait contract: set/get/delete round-trips, overwrite semantics,
-//! independence between (service, account) pairs, and that returned bytes
-//! are cloned copies that callers can mutate without disturbing the store.
+//! account isolation under the shared Electron service, and that returned
+//! bytes are cloned copies that callers can mutate without disturbing the store.
 
 use memry_desktop_tauri_lib::keychain::{
     KeychainStore, MemoryKeychain, SERVICE_DEVICE, SERVICE_VAULT,
@@ -12,8 +12,12 @@ use memry_desktop_tauri_lib::keychain::{
 
 #[test]
 fn service_constants_match_canonical_identifiers() {
-    assert_eq!(SERVICE_VAULT, "com.memry.vault");
-    assert_eq!(SERVICE_DEVICE, "com.memry.device");
+    // Both identifiers must match the Electron contract in
+    // `packages/contracts/src/crypto.ts`'s `KEYCHAIN_ENTRIES`, which
+    // stores every secret under the single service `com.memry.sync` and
+    // distinguishes them by account name.
+    assert_eq!(SERVICE_VAULT, "com.memry.sync");
+    assert_eq!(SERVICE_DEVICE, "com.memry.sync");
 }
 
 #[test]
@@ -75,24 +79,26 @@ fn delete_on_missing_account_is_ok() {
 }
 
 #[test]
-fn service_and_account_isolate_items() {
+fn account_names_isolate_items_under_shared_service() {
     let store = MemoryKeychain::new();
     store
         .set_item(SERVICE_VAULT, "master-key", b"vault-secret")
         .unwrap();
     store
-        .set_item(SERVICE_DEVICE, "master-key", b"device-secret")
+        .set_item(SERVICE_DEVICE, "device-signing-key", b"device-secret")
         .unwrap();
     store
         .set_item(SERVICE_VAULT, "other-account", b"other-secret")
         .unwrap();
 
     let vault_master = store.get_item(SERVICE_VAULT, "master-key").unwrap();
-    let device_master = store.get_item(SERVICE_DEVICE, "master-key").unwrap();
+    let device_signing = store
+        .get_item(SERVICE_DEVICE, "device-signing-key")
+        .unwrap();
     let vault_other = store.get_item(SERVICE_VAULT, "other-account").unwrap();
 
     assert_eq!(vault_master.as_deref(), Some(b"vault-secret".as_ref()));
-    assert_eq!(device_master.as_deref(), Some(b"device-secret".as_ref()));
+    assert_eq!(device_signing.as_deref(), Some(b"device-secret".as_ref()));
     assert_eq!(vault_other.as_deref(), Some(b"other-secret".as_ref()));
 
     store.delete_item(SERVICE_VAULT, "master-key").unwrap();
@@ -103,11 +109,11 @@ fn service_and_account_isolate_items() {
         .is_none());
     assert_eq!(
         store
-            .get_item(SERVICE_DEVICE, "master-key")
+            .get_item(SERVICE_DEVICE, "device-signing-key")
             .unwrap()
             .as_deref(),
         Some(b"device-secret".as_ref()),
-        "deleting from one service must not touch another service"
+        "deleting one account under the shared service must not touch another account"
     );
     assert_eq!(
         store
@@ -145,7 +151,7 @@ fn returned_bytes_are_cloned_copies_callers_cannot_mutate_store() {
 
 /// Manual smoke against the real macOS Keychain. Skipped by default to keep
 /// CI hermetic. Requires `MEMRY_TEST_REAL_KEYCHAIN=1` and writes to
-/// `com.memry.vault` for a unique account name. Cleans up after itself.
+/// `com.memry.sync` for a unique account name. Cleans up after itself.
 #[test]
 #[ignore = "writes to macOS Keychain; run with MEMRY_TEST_REAL_KEYCHAIN=1"]
 fn real_keychain_round_trip() {

@@ -77,18 +77,29 @@ where
 /// endpoint. We disable redirect-following on the client and surface the
 /// `Location` header back to the caller; deserializing the redirected
 /// HTML body would always fail.
-pub async fn init_google_oauth(redirect_uri: &str) -> AppResult<String> {
+///
+/// `redirect_uri` is optional. The sync server only accepts
+/// `http://127.0.0.1...` loopback addresses; passing `None` lets the
+/// server fall back to its env-configured `GOOGLE_REDIRECT_URI`, which
+/// is the right default when the renderer hasn't yet bound a local
+/// listener port.
+pub async fn init_google_oauth(redirect_uri: Option<&str>) -> AppResult<String> {
     let base = http::resolve_base_url()?;
     init_google_oauth_with_base(&base, redirect_uri).await
 }
 
-pub async fn init_google_oauth_with_base(base_url: &str, redirect_uri: &str) -> AppResult<String> {
-    let encoded = urlencoding::encode(redirect_uri);
-    let url = format!(
-        "{}/auth/oauth/google?redirect_uri={}",
-        base_url.trim_end_matches('/'),
-        encoded
-    );
+pub async fn init_google_oauth_with_base(
+    base_url: &str,
+    redirect_uri: Option<&str>,
+) -> AppResult<String> {
+    let url = match redirect_uri {
+        Some(uri) => format!(
+            "{}/auth/oauth/google?redirect_uri={}",
+            base_url.trim_end_matches('/'),
+            urlencoding::encode(uri),
+        ),
+        None => format!("{}/auth/oauth/google", base_url.trim_end_matches('/')),
+    };
 
     let client = reqwest::Client::builder()
         .redirect(reqwest::redirect::Policy::none())

@@ -42,6 +42,8 @@ sha2 = "0.10"
 dunce = "1.0"
 nanoid = "0.4"
 urlencoding = "2.1"
+hmac = "0.12"
+blake2 = "0.10"
 
 # Native dialog + shell plugins (M3)
 tauri-plugin-dialog = "2"

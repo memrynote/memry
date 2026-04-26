@@ -30,7 +30,10 @@ use crate::keychain::SERVICE_VAULT;
 const SETTING_KDF_SALT: &str = "auth.kdfSalt";
 const SETTING_KEY_VERIFIER: &str = "auth.keyVerifier";
 const SETTING_REMEMBER_DEVICE: &str = "auth.rememberDevice";
-const KEYCHAIN_ACCOUNT_MASTER_KEY: &str = "master-key";
+/// Public so the QR-linking flow in `auth::account::finalize_linking`
+/// can persist the recovered master key under the same canonical
+/// account name the password-unlock path uses.
+pub const KEYCHAIN_ACCOUNT_MASTER_KEY: &str = "master-key";
 const VAULT_KEY_CONTEXT: &str = "memry-vault-key-v1";
 
 pub async fn setup_local_vault_key(
@@ -134,6 +137,48 @@ pub fn update_session_metadata(
         master_key,
         vault_key,
     })
+}
+
+/// QR-link variant of `setup_local_vault_key`: skips Argon2id (the
+/// approver already supplied the recovered master key) and instead
+/// stores `master_key` in the keychain, derives `vault_key` in-process,
+/// and transitions the runtime to `Unlocked`.
+///
+/// `remember_device` controls whether the master key is persisted to
+/// the keychain for the boot-time `try_unlock_from_keychain` path. The
+/// new device registration flow always passes `true` so the freshly
+/// linked device unlocks without the user re-entering anything.
+pub fn unlock_with_imported_master_key(
+    state: &AppState,
+    master_key: Vec<u8>,
+    remember_device: bool,
+) -> AppResult<()> {
+    settings::set_bool(&state.db, SETTING_REMEMBER_DEVICE, remember_device)?;
+    persist_remember_device(state, remember_device, &master_key)?;
+    let vault_key = derive_key(&master_key, VAULT_KEY_CONTEXT, MASTER_KEY_LENGTH)?;
+    let prior = state.auth.status();
+    state.auth.finish_unlock(UnlockedSession {
+        device_id: prior.device_id,
+        email: prior.email,
+        has_biometric: false,
+        remember_device,
+        master_key,
+        vault_key,
+    })
+}
+
+/// Persists the canonical Argon2id salt + key verifier in settings. Used
+/// by the QR-linking flow once `/auth/recovery-info` returns the
+/// existing-account values; without this, future password unlocks on
+/// the linked device would fail with "vault is not initialised".
+pub fn persist_vault_setup_material(
+    state: &AppState,
+    kdf_salt: &str,
+    key_verifier: &str,
+) -> AppResult<()> {
+    settings::set(&state.db, SETTING_KDF_SALT, kdf_salt)?;
+    settings::set(&state.db, SETTING_KEY_VERIFIER, key_verifier)?;
+    Ok(())
 }
 
 /// Returns the persisted Argon2id salt and key verifier (both

@@ -25,14 +25,17 @@ use std::collections::HashMap;
 use std::sync::Mutex;
 
 use base64::{engine::general_purpose::STANDARD as B64, Engine as _};
+use blake2::digest::VariableOutput;
+use blake2::Blake2bVar;
 use dryoc::classic::{
     crypto_auth::{crypto_auth, Key as AuthKey, Mac as AuthMac},
     crypto_core::{crypto_scalarmult, crypto_scalarmult_base},
-    crypto_generichash::crypto_generichash,
     crypto_kdf::crypto_kdf_derive_from_key,
 };
 use dryoc::constants::CRYPTO_AUTH_KEYBYTES;
+use hmac::{Hmac, Mac};
 use serde::{Deserialize, Serialize};
+use sha2::Sha256;
 
 use crate::crypto::primitives::{decrypt_blob, encrypt_blob, KEY_LENGTH};
 use crate::error::{AppError, AppResult};
@@ -40,14 +43,19 @@ use crate::sync::auth_client;
 
 // libsodium key-derivation parameters that **must match** Electron's
 // `KDF_CONTEXT_MAP` in `apps/desktop/src/main/crypto/keys.ts`. Drift
-// here means the two clients derive different (encKey, macKey) and the
-// HMAC proofs no longer verify against each other or the server.
+// here means the two clients derive different (encKey, macKey, sasKey)
+// and the HMAC proofs / SAS digits no longer line up between Tauri and
+// Electron.
 const LINKING_KDF_ENC_ID: u64 = 5;
 const LINKING_KDF_ENC_CTX: &[u8; 8] = b"memrylnk";
 const LINKING_KDF_MAC_ID: u64 = 6;
 const LINKING_KDF_MAC_CTX: &[u8; 8] = b"memrymac";
+const LINKING_KDF_SAS_ID: u64 = 7;
+const LINKING_KDF_SAS_CTX: &[u8; 8] = b"memrysas";
 
 const SAS_LENGTH: usize = 6;
+
+type HmacSha256 = Hmac<Sha256>;
 
 /// Ephemeral X25519 keypair held only for the lifetime of one linking
 /// session. Both keys are 32 bytes.
@@ -176,18 +184,47 @@ pub fn derive_shared_secret(
     Ok(shared)
 }
 
-/// Derives a six-digit decimal SAS from the shared linking secret.
-/// Stable for a fixed input so both sides display the same code.
+/// Derives a six-digit decimal short-authentication-string (SAS) from
+/// the X25519 shared secret. Both clients display the same six digits
+/// so the human can confirm the exchange manually.
 ///
-/// libsodium's BLAKE2b minimum output is 16 bytes; the first 8 bytes
-/// are then folded into a `u64` modulo 1e6.
+/// Mirrors Electron's `computeVerificationCode(sharedSecret)`:
+///
+/// 1. Derive a 32-byte SAS key with `crypto_kdf_derive_from_key`
+///    (id=7, ctx="memrysas") from the shared secret.
+/// 2. BLAKE2b hash that SAS key down to 4 bytes (no key, no salt).
+/// 3. Take those 4 bytes as a big-endian `u32`, mod 1_000_000, and pad
+///    to 6 digits.
+///
+/// Deriving from the shared secret (not the QR-side `linkingSecret`)
+/// is a security requirement: the linkingSecret is embedded in the QR
+/// payload and visible to the server, so deriving from it would defeat
+/// the manual key-confirmation step. The shared secret is only known
+/// to the two endpoints that ran X25519.
 pub fn generate_sas_code(shared_secret: &[u8]) -> AppResult<String> {
-    let mut digest = [0u8; 16];
-    crypto_generichash(&mut digest, shared_secret, Some(b"memry-linking-sas"))
-        .map_err(|err| AppError::Crypto(format!("blake2b sas hash failed: {err}")))?;
-    let mut head = [0u8; 8];
-    head.copy_from_slice(&digest[..8]);
-    let n = u64::from_be_bytes(head);
+    if shared_secret.len() != KEY_LENGTH {
+        return Err(AppError::Crypto(format!(
+            "shared secret must be {KEY_LENGTH} bytes, got {}",
+            shared_secret.len()
+        )));
+    }
+    let key: [u8; KEY_LENGTH] = shared_secret
+        .try_into()
+        .map_err(|_| AppError::Crypto("invalid shared secret length".into()))?;
+    let mut sas_key = [0u8; KEY_LENGTH];
+    crypto_kdf_derive_from_key(&mut sas_key, LINKING_KDF_SAS_ID, LINKING_KDF_SAS_CTX, &key)
+        .map_err(|err| AppError::Crypto(format!("kdf sas derive failed: {err}")))?;
+
+    let mut digest = [0u8; 4];
+    let mut hasher = Blake2bVar::new(digest.len())
+        .map_err(|err| AppError::Crypto(format!("blake2b sas hash init failed: {err}")))?;
+    blake2::digest::Update::update(&mut hasher, &sas_key);
+    let hash_result = hasher.finalize_variable(&mut digest);
+    // Wipe the derived SAS key as soon as the hash is finalised.
+    sas_key.fill(0);
+    hash_result.map_err(|err| AppError::Crypto(format!("blake2b sas hash failed: {err}")))?;
+
+    let n = u32::from_be_bytes(digest) as u64;
     Ok(format!("{:0width$}", n % 1_000_000, width = SAS_LENGTH))
 }
 
@@ -271,11 +308,19 @@ fn hmac_sodium(key_bytes: &[u8], message: &[u8]) -> AppResult<Vec<u8>> {
     Ok(mac.to_vec())
 }
 
-/// HMAC over `CBOR{sessionId, devicePublicKey}`. The server uses this
-/// for `scanProof` (key=linkingSecret) and the new-device-confirm
-/// payload (key=macKey).
+fn hmac_sha256(key_bytes: &[u8], message: &[u8]) -> AppResult<Vec<u8>> {
+    let mut mac = HmacSha256::new_from_slice(key_bytes)
+        .map_err(|err| AppError::Crypto(format!("hmac-sha256 init failed: {err}")))?;
+    Mac::update(&mut mac, message);
+    Ok(mac.finalize().into_bytes().to_vec())
+}
+
+/// HMAC over `CBOR{sessionId, devicePublicKey}` keyed with the
+/// derived `macKey`. Matches Electron's `computeLinkingProof` and is
+/// used for the `newDeviceConfirm` field. Both sides use libsodium
+/// `crypto_auth` (HMAC-SHA-512-256).
 pub fn compute_linking_proof(
-    key: &[u8],
+    mac_key: &[u8],
     session_id: &str,
     device_public_key_b64: &str,
 ) -> AppResult<Vec<u8>> {
@@ -283,11 +328,29 @@ pub fn compute_linking_proof(
         ("sessionId", session_id),
         ("devicePublicKey", device_public_key_b64),
     ])?;
-    hmac_sodium(key, &payload)
+    hmac_sodium(mac_key, &payload)
+}
+
+/// HMAC over `CBOR{sessionId, devicePublicKey}` keyed with the
+/// linking secret. Mirrors Electron's `computeScanProof`, which uses
+/// WebCrypto HMAC-SHA-256. The sync-server `/auth/linking/scan` route
+/// also verifies with HMAC-SHA-256 so a `crypto_auth` MAC here would
+/// always be rejected.
+pub fn compute_scan_proof(
+    linking_secret: &[u8],
+    session_id: &str,
+    device_public_key_b64: &str,
+) -> AppResult<Vec<u8>> {
+    let payload = cbor_encode_text_pairs(&[
+        ("sessionId", session_id),
+        ("devicePublicKey", device_public_key_b64),
+    ])?;
+    hmac_sha256(linking_secret, &payload)
 }
 
 /// HMAC over `CBOR{sessionId, initiatorPublicKey, devicePublicKey}`
-/// keyed with the linking secret. Matches Electron's `computeScanConfirm`.
+/// keyed with the linking secret. Mirrors Electron's
+/// `computeScanConfirm` (WebCrypto HMAC-SHA-256), matching the server.
 pub fn compute_scan_confirm(
     linking_secret: &[u8],
     session_id: &str,
@@ -299,11 +362,12 @@ pub fn compute_scan_confirm(
         ("initiatorPublicKey", initiator_public_key_b64),
         ("devicePublicKey", device_public_key_b64),
     ])?;
-    hmac_sodium(linking_secret, &payload)
+    hmac_sha256(linking_secret, &payload)
 }
 
 /// HMAC over `CBOR{sessionId, encryptedMasterKey}` keyed with the
-/// derived `macKey`. Matches Electron's `computeKeyConfirm`.
+/// derived `macKey`. Matches Electron's `computeKeyConfirm`
+/// (libsodium `crypto_auth`).
 pub fn compute_key_confirm(
     mac_key: &[u8],
     session_id: &str,
@@ -411,6 +475,57 @@ mod tests {
             Err(other) => panic!("expected AppError::Crypto, got: {other:?}"),
             Ok(_) => panic!("derive_shared_secret accepted an all-zero shared secret"),
         }
+    }
+
+    #[test]
+    fn generate_sas_code_matches_electron_for_known_shared_secret() {
+        // Interop pin: for `shared_secret = [1, 2, 3, ..., 32]`, the
+        // Electron `computeVerificationCode(sharedSecret)` algorithm
+        // produces the digits `426448`. Computed independently via
+        // `libsodium-wrappers-sumo` against the same KDF id=7
+        // ctx=`memrysas` + BLAKE2b(4) reduction. If this test ever
+        // breaks, the SAS algorithm has drifted from Electron and
+        // every QR linking attempt against an Electron approver will
+        // show different digits on the two devices.
+        let mut shared_secret = [0u8; KEY_LENGTH];
+        for (i, byte) in shared_secret.iter_mut().enumerate() {
+            *byte = (i as u8) + 1;
+        }
+
+        let sas = generate_sas_code(&shared_secret).unwrap();
+
+        assert_eq!(sas, "426448");
+    }
+
+    #[test]
+    fn generate_sas_code_rejects_short_input() {
+        let too_short = [0u8; 10];
+        assert!(matches!(
+            generate_sas_code(&too_short),
+            Err(AppError::Crypto(_))
+        ));
+    }
+
+    #[test]
+    fn compute_scan_proof_uses_hmac_sha256_not_crypto_auth() {
+        // crypto_auth (libsodium HMAC-SHA-512-256) and HMAC-SHA-256
+        // produce different MACs for any fixed input, so we sanity
+        // check that the scan-proof helper diverges from the
+        // mac-key proof helper. This guards against accidentally
+        // routing scan_proof back through `hmac_sodium`.
+        let key = vec![7u8; CRYPTO_AUTH_KEYBYTES];
+        let session_id = "session-abc";
+        let device_pk = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=";
+
+        let scan_proof = compute_scan_proof(&key, session_id, device_pk).unwrap();
+        let linking_proof = compute_linking_proof(&key, session_id, device_pk).unwrap();
+
+        assert_ne!(
+            scan_proof, linking_proof,
+            "compute_scan_proof must use HMAC-SHA-256 (Electron's algorithm), not crypto_auth"
+        );
+        // HMAC-SHA-256 output is exactly 32 bytes.
+        assert_eq!(scan_proof.len(), 32);
     }
 
     #[test]
@@ -600,10 +715,12 @@ pub async fn link_via_qr_with_base(
     let shared_secret = derive_shared_secret(&new_device.secret_key, &initiator_public_key)?;
     let (_enc_key, mac_key) = derive_linking_keys(&shared_secret)?;
 
+    // newDeviceConfirm is keyed with macKey (libsodium crypto_auth).
     let new_device_confirm =
         compute_linking_proof(&mac_key, &qr.session_id, &new_device_public_b64)?;
-    let scan_proof =
-        compute_linking_proof(&linking_secret, &qr.session_id, &new_device_public_b64)?;
+    // scanProof + scanConfirm are keyed with linkingSecret and verified
+    // by the server with WebCrypto HMAC-SHA-256.
+    let scan_proof = compute_scan_proof(&linking_secret, &qr.session_id, &new_device_public_b64)?;
     let scan_confirm = compute_scan_confirm(
         &linking_secret,
         &qr.session_id,
@@ -635,7 +752,11 @@ pub async fn link_via_qr_with_base(
         peer_public_key: Some(initiator_public_key.clone()),
     });
 
-    let sas_code = generate_sas_code(&linking_secret)?;
+    // SAS is derived from the X25519 shared secret (not linkingSecret)
+    // so the human verification step actually binds to the DH exchange.
+    // Both ends produce the same six digits because they computed the
+    // same shared secret.
+    let sas_code = generate_sas_code(&shared_secret)?;
     Ok(LinkingScanResult {
         session_id: qr.session_id,
         sas_code,
@@ -643,19 +764,37 @@ pub async fn link_via_qr_with_base(
 }
 
 /// Approver side: derives the X25519 shared secret with the new
-/// device's public key, seals the local master key under the resulting
-/// `encKey`, computes `keyConfirm` over `(sessionId, encryptedMasterKey)`
-/// with the derived `macKey`, and posts the bundle to `/auth/linking/approve`.
+/// device's public key, **verifies the server-relayed
+/// `newDeviceConfirm` against the locally derived `macKey`** so a
+/// malicious server cannot swap in a public key it controls, then
+/// seals the local master key under the resulting `encKey` and posts
+/// the bundle to `/auth/linking/approve`.
 pub async fn approve_linking_with_base(
     base_url: &str,
     session_id: &str,
     initiator_secret_key: &[u8],
     master_key: &[u8],
     new_device_public_key: &[u8],
+    new_device_confirm_b64: &str,
     access_token: &str,
 ) -> AppResult<()> {
     let shared_secret = derive_shared_secret(initiator_secret_key, new_device_public_key)?;
     let (enc_key, mac_key) = derive_linking_keys(&shared_secret)?;
+
+    // Manual key-confirmation step. Without this, an attacker who
+    // controls the server (or any party that can sit between the two
+    // devices) could swap the `newDevicePublicKey` it relays and trick
+    // the approver into sealing the master key for the attacker's key
+    // pair instead of the real new device's pair.
+    let new_device_public_key_b64 = B64.encode(new_device_public_key);
+    let expected_confirm = compute_linking_proof(&mac_key, session_id, &new_device_public_key_b64)?;
+    let received_confirm = decode_b64(new_device_confirm_b64)?;
+    if !constant_time_eq(&expected_confirm, &received_confirm) {
+        return Err(AppError::Crypto(
+            "linking new-device-confirm mismatch — relayed public key is not authenticated".into(),
+        ));
+    }
+
     let sealed = seal_master_key_for_new_device(master_key, &enc_key, &mac_key, session_id)?;
 
     let encrypted_master_key_b64 = B64.encode(&sealed.encrypted_master_key);
@@ -694,7 +833,19 @@ pub async fn complete_linking_with_base(
 
     let body = CompleteLinkingBody { session_id };
     let resp: CompleteLinkingResponse =
-        auth_client::complete_linking_with_base(base_url, &body).await?;
+        match auth_client::complete_linking_with_base(base_url, &body).await {
+            Ok(r) => r,
+            // The server returns 409 (`LINKING_INVALID_TRANSITION` or
+            // `LINKING_CONCURRENT_ATTEMPT`) until the approver has acted on
+            // the scan. Surface that as the canonical "session not yet
+            // approved" sentinel so `redact_complete_linking` lets the
+            // renderer keep polling instead of mapping it to a terminal
+            // network error.
+            Err(AppError::Conflict(_)) => {
+                return Err(AppError::Auth("session not yet approved".into()));
+            }
+            Err(err) => return Err(err),
+        };
 
     let encrypted_master_key_b64 = resp
         .encrypted_master_key

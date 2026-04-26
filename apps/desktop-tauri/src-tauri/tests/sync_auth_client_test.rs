@@ -323,6 +323,7 @@ fn resolve_base_url_treats_empty_env_var_as_unset() {
 }
 
 #[tokio::test]
+#[allow(clippy::await_holding_lock)] // serializes env-var mutating tests; std Mutex is safe across cargo test threads
 async fn post_json_resolves_sync_server_url_per_call_not_at_module_load() {
     let _guard = ENV_LOCK.lock().unwrap();
 
@@ -363,6 +364,7 @@ async fn post_json_resolves_sync_server_url_per_call_not_at_module_load() {
 }
 
 #[tokio::test]
+#[allow(clippy::await_holding_lock)] // serializes env-var mutating tests; std Mutex is safe across cargo test threads
 async fn get_json_uses_resolved_base_url_per_call() {
     let _guard = ENV_LOCK.lock().unwrap();
 

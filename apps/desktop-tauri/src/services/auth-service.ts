@@ -60,12 +60,20 @@ export const authService = {
     return invoke<SetupFirstDeviceResult>('sync_setup_setup_first_device', { input })
   },
 
-  setupNewAccount: (): Promise<SetupFirstDeviceResult> => {
-    // TODO(M4 wizard): Rust requires SetupNewAccountInput { email,
-    // password, rememberDevice, deviceName, platform, osVersion?,
-    // appVersion }. The renderer wizard must collect these before this
-    // call ships against the real lane.
-    return invoke<SetupFirstDeviceResult>('sync_setup_setup_new_account')
+  // Mirrors the Rust `SetupNewAccountInput` struct. Calling
+  // `setupNewAccount()` with zero arguments was failing Tauri argument
+  // deserialization; the wizard must collect these fields before
+  // invoking the command.
+  setupNewAccount: (input: {
+    email: string
+    password: string
+    rememberDevice: boolean
+    deviceName: string
+    platform: string
+    osVersion?: string | null
+    appVersion: string
+  }): Promise<SetupFirstDeviceResult> => {
+    return invoke<SetupFirstDeviceResult>('sync_setup_setup_new_account', { input })
   },
 
   confirmRecoveryPhrase: (input: { confirmed: boolean }): Promise<ConfirmRecoveryPhraseResult> => {

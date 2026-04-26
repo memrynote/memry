@@ -355,11 +355,16 @@ pub async fn sync_auth_init_o_auth(
             input.provider
         )));
     }
-    let redirect_uri = input
-        .redirect_uri
-        .unwrap_or_else(|| "memry://oauth/callback".to_string());
+    // Forward the renderer-supplied URI verbatim. The sync server only
+    // accepts `http://127.0.0.1...` loopback redirects (see
+    // `apps/sync-server/src/routes/auth.ts`); when the renderer has not
+    // yet bound a loopback port we send `None` so the server falls back
+    // to its env-configured `GOOGLE_REDIRECT_URI`. The previous default
+    // of `memry://oauth/callback` was a Tauri custom scheme that the
+    // server always rejected.
     let base = crate::sync::http::resolve_base_url()?;
-    let authorize_url = auth_client::init_google_oauth_with_base(&base, &redirect_uri).await?;
+    let authorize_url =
+        auth_client::init_google_oauth_with_base(&base, input.redirect_uri.as_deref()).await?;
     let state = parse_state_from_url(&authorize_url).ok_or_else(|| {
         AppError::Auth("oauth init redirect did not include a state parameter".into())
     })?;
