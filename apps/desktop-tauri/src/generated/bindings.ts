@@ -53,6 +53,32 @@ export const commands = {
 	notesDelete: (args: string[]) => typedError<NoteDeleteResponse, AppError>(__TAURI_INVOKE("notes_delete", { args })),
 	notesList: (folder: string | null, tags: string[] | null, sortBy: string | null, sortOrder: string | null, limit: number | null, offset: number | null) => typedError<NoteListResponse, AppError>(__TAURI_INVOKE("notes_list", { folder, tags, sortBy, sortOrder, limit, offset })),
 	notesListByFolder: (args: string[]) => typedError<NoteListResponse, AppError>(__TAURI_INVOKE("notes_list_by_folder", { args })),
+	notesRename: (id: string, newTitle: string) => typedError<NoteUpdateResponse, AppError>(__TAURI_INVOKE("notes_rename", { id, newTitle })),
+	notesMove: (id: string, newFolder: string) => typedError<NoteUpdateResponse, AppError>(__TAURI_INVOKE("notes_move", { id, newFolder })),
+	notesExists: (args: string[]) => typedError<boolean, AppError>(__TAURI_INVOKE("notes_exists", { args })),
+	notesSetLocalOnly: (id: string, localOnly: boolean) => typedError<NoteSimpleSuccess, AppError>(__TAURI_INVOKE("notes_set_local_only", { id, localOnly })),
+	notesGetLocalOnlyCount: () => typedError<NoteLocalOnlyCount, AppError>(__TAURI_INVOKE("notes_get_local_only_count")),
+	notesGetTags: () => typedError<NoteTagInfo[], AppError>(__TAURI_INVOKE("notes_get_tags")),
+	notesGetLinks: (args: string[]) => typedError<NoteLinksResponse, AppError>(__TAURI_INVOKE("notes_get_links", { args })),
+	notesResolveByTitle: (args: string[]) => typedError<{
+	id: string,
+	path: string,
+	title: string,
+	created: string,
+	modified: string,
+	tags: string[],
+	wordCount: number,
+	snippet: string,
+	emoji: string | null,
+	localOnly: boolean,
+} | null, AppError>(__TAURI_INVOKE("notes_resolve_by_title", { args })),
+	notesPreviewByTitle: (args: string[]) => typedError<{
+	id: string,
+	title: string,
+	path: string,
+	snippet: string,
+	emoji: string | null,
+} | null, AppError>(__TAURI_INVOKE("notes_preview_by_title", { args })),
 	authStatus: () => typedError<AuthStatus, AppError>(__TAURI_INVOKE("auth_status")),
 	authUnlock: (input: AuthUnlockInput) => typedError<AuthStatus, AppError>(__TAURI_INVOKE("auth_unlock", { input })),
 	authLock: () => typedError<null, AppError>(__TAURI_INVOKE("auth_lock")),
@@ -434,6 +460,30 @@ export type NoteDto = {
 	emoji: string | null,
 };
 
+export type NoteIncomingLink = {
+	sourceId: string,
+	sourcePath: string,
+	sourceTitle: string,
+	contexts: NoteLinkContext[],
+};
+
+export type NoteLink = {
+	sourceId: string,
+	targetId: string | null,
+	targetTitle: string,
+};
+
+export type NoteLinkContext = {
+	snippet: string,
+	linkStart: number,
+	linkEnd: number,
+};
+
+export type NoteLinksResponse = {
+	outgoing: NoteLink[],
+	incoming: NoteIncomingLink[],
+};
+
 export type NoteListItem = {
 	id: string,
 	path: string,
@@ -462,6 +512,10 @@ export type NoteListResponse = {
 	hasMore: boolean,
 };
 
+export type NoteLocalOnlyCount = {
+	count: number,
+};
+
 export type NoteMetadata = {
 	id: string,
 	path: string,
@@ -487,6 +541,24 @@ export type NotePosition = {
 	path: string,
 	folderPath: string,
 	position: number,
+};
+
+export type NotePreview = {
+	id: string,
+	title: string,
+	path: string,
+	snippet: string,
+	emoji: string | null,
+};
+
+export type NoteSimpleSuccess = {
+	success: boolean,
+};
+
+export type NoteTagInfo = {
+	tag: string,
+	count: number,
+	color: string | null,
 };
 
 export type NoteUpdateInput = {
