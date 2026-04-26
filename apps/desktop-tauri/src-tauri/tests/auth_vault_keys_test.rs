@@ -10,10 +10,10 @@ use std::sync::Arc;
 
 use memry_desktop_tauri_lib::app_state::AppState;
 use memry_desktop_tauri_lib::auth::linking::PendingLinkingRegistry;
-use memry_desktop_tauri_lib::auth::{AuthRuntime, AuthStateKind};
 use memry_desktop_tauri_lib::auth::vault_keys::{
     setup_local_vault_key, try_unlock_from_keychain, unlock_with_password,
 };
+use memry_desktop_tauri_lib::auth::{AuthRuntime, AuthStateKind};
 use memry_desktop_tauri_lib::db::{settings, Db};
 use memry_desktop_tauri_lib::error::AppError;
 use memry_desktop_tauri_lib::keychain::{KeychainStore, MemoryKeychain, SERVICE_VAULT};

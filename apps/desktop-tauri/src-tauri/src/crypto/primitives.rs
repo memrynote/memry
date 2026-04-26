@@ -43,7 +43,13 @@ pub fn encrypt_blob(
 
     let ciphertext = match associated_data {
         Some(aad) => cipher
-            .encrypt(nonce, Payload { msg: plaintext, aad })
+            .encrypt(
+                nonce,
+                Payload {
+                    msg: plaintext,
+                    aad,
+                },
+            )
             .map_err(|err| AppError::Crypto(format!("encrypt failed: {err}")))?,
         None => cipher
             .encrypt(nonce, plaintext)
@@ -80,7 +86,13 @@ pub fn decrypt_blob(
 
     let plaintext = match associated_data {
         Some(aad) => cipher
-            .decrypt(nonce, Payload { msg: ciphertext, aad })
+            .decrypt(
+                nonce,
+                Payload {
+                    msg: ciphertext,
+                    aad,
+                },
+            )
             .map_err(|err| AppError::Crypto(format!("decrypt failed: {err}")))?,
         None => cipher
             .decrypt(nonce, ciphertext)

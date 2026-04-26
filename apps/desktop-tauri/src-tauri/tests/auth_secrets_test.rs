@@ -194,13 +194,7 @@ fn delete_provider_key_on_missing_provider_is_ok() {
 #[test]
 fn set_provider_key_rejects_unknown_provider() {
     let kc = store();
-    let result = set_provider_key(
-        kc.as_ref(),
-        "evil-corp",
-        RAW_KEY,
-        None,
-        fixed_now(),
-    );
+    let result = set_provider_key(kc.as_ref(), "evil-corp", RAW_KEY, None, fixed_now());
 
     match result {
         Err(AppError::Validation(msg)) => {
@@ -259,14 +253,8 @@ fn allowlist_contains_exactly_the_four_supported_providers() {
 fn set_provider_key_accepts_all_four_allowlisted_providers() {
     for &provider in ALLOWED_PROVIDERS {
         let kc = store();
-        let status = set_provider_key(
-            kc.as_ref(),
-            provider,
-            "raw-key-WXYZ",
-            None,
-            fixed_now(),
-        )
-        .unwrap_or_else(|err| panic!("set must succeed for {provider}, got {err:?}"));
+        let status = set_provider_key(kc.as_ref(), provider, "raw-key-WXYZ", None, fixed_now())
+            .unwrap_or_else(|err| panic!("set must succeed for {provider}, got {err:?}"));
         assert_eq!(status.provider, provider);
         assert!(status.configured);
     }
@@ -302,14 +290,7 @@ fn provider_key_metadata_keychain_entry_does_not_contain_raw_key() {
 #[test]
 fn last4_is_full_key_when_key_is_short() {
     let kc = store();
-    let status = set_provider_key(
-        kc.as_ref(),
-        "openai",
-        "ab",
-        None,
-        fixed_now(),
-    )
-    .unwrap();
+    let status = set_provider_key(kc.as_ref(), "openai", "ab", None, fixed_now()).unwrap();
     assert_eq!(
         status.last4.as_deref(),
         Some("ab"),

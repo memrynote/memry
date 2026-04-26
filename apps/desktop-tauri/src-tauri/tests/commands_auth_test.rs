@@ -18,12 +18,12 @@ use memry_desktop_tauri_lib::auth::account::{
 use memry_desktop_tauri_lib::auth::linking::PendingLinkingRegistry;
 use memry_desktop_tauri_lib::auth::vault_keys::setup_local_vault_key;
 use memry_desktop_tauri_lib::auth::{AuthRuntime, AuthStateKind};
-use memry_desktop_tauri_lib::commands::{account as account_cmd, auth as auth_cmd, crypto as crypto_cmd, secrets as secrets_cmd};
+use memry_desktop_tauri_lib::commands::{
+    account as account_cmd, auth as auth_cmd, crypto as crypto_cmd, secrets as secrets_cmd,
+};
 use memry_desktop_tauri_lib::db::Db;
 use memry_desktop_tauri_lib::error::AppError;
-use memry_desktop_tauri_lib::keychain::{
-    KeychainStore, MemoryKeychain, SERVICE_VAULT,
-};
+use memry_desktop_tauri_lib::keychain::{KeychainStore, MemoryKeychain, SERVICE_VAULT};
 use memry_desktop_tauri_lib::vault::VaultRuntime;
 
 const KEYCHAIN_RECOVERY_PHRASE: &str = "recovery-phrase";
@@ -82,14 +82,10 @@ async fn verify_otp_stores_setup_token_and_returns_needs_setup() {
         })
         .await;
 
-    let result = account::verify_otp_with_base(
-        &server.base_url(),
-        &state,
-        "kaan@example.com",
-        "123456",
-    )
-    .await
-    .expect("verify_otp must succeed");
+    let result =
+        account::verify_otp_with_base(&server.base_url(), &state, "kaan@example.com", "123456")
+            .await
+            .expect("verify_otp must succeed");
 
     mock.assert_async().await;
     assert!(result.needs_setup);
@@ -121,28 +117,30 @@ async fn verify_otp_with_existing_user_clears_setup_token_and_stores_session() {
         })
         .await;
 
-    let result = account::verify_otp_with_base(
-        &server.base_url(),
-        &state,
-        "kaan@example.com",
-        "123456",
-    )
-    .await
-    .expect("verify_otp must succeed");
+    let result =
+        account::verify_otp_with_base(&server.base_url(), &state, "kaan@example.com", "123456")
+            .await
+            .expect("verify_otp must succeed");
 
     assert!(!result.needs_setup, "existing user must not need setup");
 
     let kc = state.auth.keychain();
     assert_eq!(
-        kc.get_item(SERVICE_VAULT, KEYCHAIN_ACCESS_TOKEN).unwrap().as_deref(),
+        kc.get_item(SERVICE_VAULT, KEYCHAIN_ACCESS_TOKEN)
+            .unwrap()
+            .as_deref(),
         Some(b"access-1".as_ref()),
     );
     assert_eq!(
-        kc.get_item(SERVICE_VAULT, KEYCHAIN_REFRESH_TOKEN).unwrap().as_deref(),
+        kc.get_item(SERVICE_VAULT, KEYCHAIN_REFRESH_TOKEN)
+            .unwrap()
+            .as_deref(),
         Some(b"refresh-1".as_ref()),
     );
     assert!(
-        kc.get_item(SERVICE_VAULT, KEYCHAIN_SETUP_TOKEN).unwrap().is_none(),
+        kc.get_item(SERVICE_VAULT, KEYCHAIN_SETUP_TOKEN)
+            .unwrap()
+            .is_none(),
         "an existing-user verify must not leave a stale setup token",
     );
 }
@@ -169,11 +167,7 @@ async fn setup_new_account_registers_device_and_returns_recovery_phrase() {
     state
         .auth
         .keychain()
-        .set_item(
-            SERVICE_VAULT,
-            KEYCHAIN_SETUP_TOKEN,
-            setup_token.as_bytes(),
-        )
+        .set_item(SERVICE_VAULT, KEYCHAIN_SETUP_TOKEN, setup_token.as_bytes())
         .unwrap();
 
     let server = MockServer::start_async().await;
@@ -220,21 +214,33 @@ async fn setup_new_account_registers_device_and_returns_recovery_phrase() {
 
     device_mock.assert_async().await;
     setup_mock.assert_async().await;
-    assert!(!result.recovery_phrase.is_empty(), "recovery phrase must be returned");
-    assert_eq!(result.device_id, "device-from-server", "device id must come from the server");
+    assert!(
+        !result.recovery_phrase.is_empty(),
+        "recovery phrase must be returned"
+    );
+    assert_eq!(
+        result.device_id, "device-from-server",
+        "device id must come from the server"
+    );
 
     let kc = state.auth.keychain();
     assert_eq!(
-        kc.get_item(SERVICE_VAULT, KEYCHAIN_ACCESS_TOKEN).unwrap().as_deref(),
+        kc.get_item(SERVICE_VAULT, KEYCHAIN_ACCESS_TOKEN)
+            .unwrap()
+            .as_deref(),
         Some(access_token.as_bytes()),
         "access token must be persisted after device registration",
     );
     assert_eq!(
-        kc.get_item(SERVICE_VAULT, KEYCHAIN_REFRESH_TOKEN).unwrap().as_deref(),
+        kc.get_item(SERVICE_VAULT, KEYCHAIN_REFRESH_TOKEN)
+            .unwrap()
+            .as_deref(),
         Some(b"refresh-token-xyz".as_ref()),
     );
     assert!(
-        kc.get_item(SERVICE_VAULT, KEYCHAIN_SETUP_TOKEN).unwrap().is_none(),
+        kc.get_item(SERVICE_VAULT, KEYCHAIN_SETUP_TOKEN)
+            .unwrap()
+            .is_none(),
         "setup token must be cleared once device registration succeeds",
     );
 
@@ -251,16 +257,26 @@ async fn setup_new_account_registers_device_and_returns_recovery_phrase() {
     let info = account::get_account_info(&state)
         .unwrap()
         .expect("account info must be persisted");
-    assert_eq!(info.user_id, "user-9", "user id must come from access-token sub claim");
+    assert_eq!(
+        info.user_id, "user-9",
+        "user id must come from access-token sub claim"
+    );
     assert_eq!(info.email, "kaan@example.com");
     assert_eq!(info.auth_provider, "otp");
 
     assert_eq!(state.auth.status().state, AuthStateKind::Unlocked);
-    assert_eq!(state.auth.status().email.as_deref(), Some("kaan@example.com"));
+    assert_eq!(
+        state.auth.status().email.as_deref(),
+        Some("kaan@example.com")
+    );
 
     let conn = state.db.conn().unwrap();
     let count: i64 = conn
-        .query_row("SELECT COUNT(*) FROM sync_devices WHERE is_current_device = 1", [], |r| r.get(0))
+        .query_row(
+            "SELECT COUNT(*) FROM sync_devices WHERE is_current_device = 1",
+            [],
+            |r| r.get(0),
+        )
         .unwrap();
     assert_eq!(count, 1, "current device row must exist");
 }
@@ -284,7 +300,10 @@ async fn setup_new_account_without_setup_token_returns_auth_error() {
         .await
         .expect_err("setup without setup-token must error");
 
-    assert!(matches!(err, AppError::Auth(_)), "expected Auth error, got {err:?}");
+    assert!(
+        matches!(err, AppError::Auth(_)),
+        "expected Auth error, got {err:?}"
+    );
 }
 
 // ---------------------------------------------------------------------
@@ -295,8 +314,10 @@ async fn setup_new_account_without_setup_token_returns_auth_error() {
 async fn refresh_session_rotates_access_and_refresh_tokens() {
     let state = fresh_state();
     let kc = state.auth.keychain();
-    kc.set_item(SERVICE_VAULT, KEYCHAIN_REFRESH_TOKEN, b"old-refresh").unwrap();
-    kc.set_item(SERVICE_VAULT, KEYCHAIN_ACCESS_TOKEN, b"old-access").unwrap();
+    kc.set_item(SERVICE_VAULT, KEYCHAIN_REFRESH_TOKEN, b"old-refresh")
+        .unwrap();
+    kc.set_item(SERVICE_VAULT, KEYCHAIN_ACCESS_TOKEN, b"old-access")
+        .unwrap();
 
     let server = MockServer::start_async().await;
     let mock = server
@@ -317,11 +338,15 @@ async fn refresh_session_rotates_access_and_refresh_tokens() {
 
     mock.assert_async().await;
     assert_eq!(
-        kc.get_item(SERVICE_VAULT, KEYCHAIN_ACCESS_TOKEN).unwrap().as_deref(),
+        kc.get_item(SERVICE_VAULT, KEYCHAIN_ACCESS_TOKEN)
+            .unwrap()
+            .as_deref(),
         Some(b"new-access".as_ref()),
     );
     assert_eq!(
-        kc.get_item(SERVICE_VAULT, KEYCHAIN_REFRESH_TOKEN).unwrap().as_deref(),
+        kc.get_item(SERVICE_VAULT, KEYCHAIN_REFRESH_TOKEN)
+            .unwrap()
+            .as_deref(),
         Some(b"new-refresh".as_ref()),
     );
 }
@@ -335,7 +360,10 @@ async fn refresh_session_without_refresh_token_returns_auth_error() {
         .await
         .expect_err("missing refresh token must error");
 
-    assert!(matches!(err, AppError::Auth(_)), "expected Auth error, got {err:?}");
+    assert!(
+        matches!(err, AppError::Auth(_)),
+        "expected Auth error, got {err:?}"
+    );
 }
 
 // ---------------------------------------------------------------------
@@ -346,11 +374,16 @@ async fn refresh_session_without_refresh_token_returns_auth_error() {
 async fn logout_clears_tokens_and_locks_runtime() {
     let state = fresh_state();
 
-    setup_local_vault_key(&state, "p".into(), false).await.unwrap();
+    setup_local_vault_key(&state, "p".into(), false)
+        .await
+        .unwrap();
     let kc = state.auth.keychain();
-    kc.set_item(SERVICE_VAULT, KEYCHAIN_ACCESS_TOKEN, b"a").unwrap();
-    kc.set_item(SERVICE_VAULT, KEYCHAIN_REFRESH_TOKEN, b"r").unwrap();
-    kc.set_item(SERVICE_VAULT, KEYCHAIN_SETUP_TOKEN, b"s").unwrap();
+    kc.set_item(SERVICE_VAULT, KEYCHAIN_ACCESS_TOKEN, b"a")
+        .unwrap();
+    kc.set_item(SERVICE_VAULT, KEYCHAIN_REFRESH_TOKEN, b"r")
+        .unwrap();
+    kc.set_item(SERVICE_VAULT, KEYCHAIN_SETUP_TOKEN, b"s")
+        .unwrap();
     let _ = account::set_account_info(
         &state,
         &AccountInfo {
@@ -363,9 +396,18 @@ async fn logout_clears_tokens_and_locks_runtime() {
 
     account::logout(&state).unwrap();
 
-    assert!(kc.get_item(SERVICE_VAULT, KEYCHAIN_ACCESS_TOKEN).unwrap().is_none());
-    assert!(kc.get_item(SERVICE_VAULT, KEYCHAIN_REFRESH_TOKEN).unwrap().is_none());
-    assert!(kc.get_item(SERVICE_VAULT, KEYCHAIN_SETUP_TOKEN).unwrap().is_none());
+    assert!(kc
+        .get_item(SERVICE_VAULT, KEYCHAIN_ACCESS_TOKEN)
+        .unwrap()
+        .is_none());
+    assert!(kc
+        .get_item(SERVICE_VAULT, KEYCHAIN_REFRESH_TOKEN)
+        .unwrap()
+        .is_none());
+    assert!(kc
+        .get_item(SERVICE_VAULT, KEYCHAIN_SETUP_TOKEN)
+        .unwrap()
+        .is_none());
     assert_eq!(state.auth.status().state, AuthStateKind::Locked);
 }
 
@@ -376,7 +418,9 @@ async fn logout_clears_tokens_and_locks_runtime() {
 #[tokio::test]
 async fn get_recovery_phrase_returns_phrase_when_unlocked_and_present() {
     let state = fresh_state();
-    setup_local_vault_key(&state, "p".into(), false).await.unwrap();
+    setup_local_vault_key(&state, "p".into(), false)
+        .await
+        .unwrap();
     state
         .auth
         .keychain()
@@ -470,7 +514,9 @@ async fn auth_unlock_command_rejects_wrong_password() {
 #[tokio::test]
 async fn auth_lock_command_clears_runtime_state() {
     let state = fresh_state();
-    setup_local_vault_key(&state, "p".into(), false).await.unwrap();
+    setup_local_vault_key(&state, "p".into(), false)
+        .await
+        .unwrap();
     assert_eq!(state.auth.status().state, AuthStateKind::Unlocked);
 
     auth_cmd::auth_lock_inner(&state).expect("lock must succeed");
@@ -603,26 +649,42 @@ fn account_get_info_command_returns_view_after_set() {
 #[tokio::test]
 async fn account_sign_out_command_clears_tokens_and_locks_runtime() {
     let state = fresh_state();
-    setup_local_vault_key(&state, "p".into(), false).await.unwrap();
+    setup_local_vault_key(&state, "p".into(), false)
+        .await
+        .unwrap();
     let kc = state.auth.keychain();
-    kc.set_item(SERVICE_VAULT, KEYCHAIN_ACCESS_TOKEN, b"a").unwrap();
-    kc.set_item(SERVICE_VAULT, KEYCHAIN_REFRESH_TOKEN, b"r").unwrap();
-    kc.set_item(SERVICE_VAULT, KEYCHAIN_SETUP_TOKEN, b"s").unwrap();
+    kc.set_item(SERVICE_VAULT, KEYCHAIN_ACCESS_TOKEN, b"a")
+        .unwrap();
+    kc.set_item(SERVICE_VAULT, KEYCHAIN_REFRESH_TOKEN, b"r")
+        .unwrap();
+    kc.set_item(SERVICE_VAULT, KEYCHAIN_SETUP_TOKEN, b"s")
+        .unwrap();
 
     let result = account_cmd::account_sign_out_inner(&state).expect("sign out must succeed");
     assert!(result.success);
     assert!(result.error.is_none());
 
-    assert!(kc.get_item(SERVICE_VAULT, KEYCHAIN_ACCESS_TOKEN).unwrap().is_none());
-    assert!(kc.get_item(SERVICE_VAULT, KEYCHAIN_REFRESH_TOKEN).unwrap().is_none());
-    assert!(kc.get_item(SERVICE_VAULT, KEYCHAIN_SETUP_TOKEN).unwrap().is_none());
+    assert!(kc
+        .get_item(SERVICE_VAULT, KEYCHAIN_ACCESS_TOKEN)
+        .unwrap()
+        .is_none());
+    assert!(kc
+        .get_item(SERVICE_VAULT, KEYCHAIN_REFRESH_TOKEN)
+        .unwrap()
+        .is_none());
+    assert!(kc
+        .get_item(SERVICE_VAULT, KEYCHAIN_SETUP_TOKEN)
+        .unwrap()
+        .is_none());
     assert_eq!(state.auth.status().state, AuthStateKind::Locked);
 }
 
 #[tokio::test]
 async fn account_get_recovery_key_command_returns_phrase_when_unlocked() {
     let state = fresh_state();
-    setup_local_vault_key(&state, "p".into(), false).await.unwrap();
+    setup_local_vault_key(&state, "p".into(), false)
+        .await
+        .unwrap();
     state
         .auth
         .keychain()
@@ -653,7 +715,9 @@ fn account_get_recovery_key_command_when_locked_returns_vault_locked() {
 #[tokio::test]
 async fn crypto_encrypt_decrypt_round_trip_uses_session_vault_key() {
     let state = fresh_state();
-    setup_local_vault_key(&state, "p".into(), false).await.unwrap();
+    setup_local_vault_key(&state, "p".into(), false)
+        .await
+        .unwrap();
 
     let encrypted = crypto_cmd::crypto_encrypt_item_inner(
         &state,
@@ -738,10 +802,11 @@ fn crypto_get_rotation_progress_returns_idle_status() {
 #[tokio::test]
 async fn crypto_rotate_keys_returns_unsupported_in_m4() {
     let state = fresh_state();
-    setup_local_vault_key(&state, "p".into(), false).await.unwrap();
+    setup_local_vault_key(&state, "p".into(), false)
+        .await
+        .unwrap();
 
-    let result = crypto_cmd::crypto_rotate_keys_inner(&state)
-        .expect("rotate must complete");
+    let result = crypto_cmd::crypto_rotate_keys_inner(&state).expect("rotate must complete");
     assert!(!result.success);
     assert_eq!(result.reason.as_deref(), Some("not-implemented-in-m4"));
 }

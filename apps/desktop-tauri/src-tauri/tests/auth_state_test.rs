@@ -5,9 +5,7 @@
 //! exercised manually via `MEMRY_TEST_REAL_KEYCHAIN=1` in
 //! `keychain_memory_test.rs`.
 
-use memry_desktop_tauri_lib::auth::{
-    AuthRuntime, AuthStateKind, UnlockedSession,
-};
+use memry_desktop_tauri_lib::auth::{AuthRuntime, AuthStateKind, UnlockedSession};
 use memry_desktop_tauri_lib::keychain::MemoryKeychain;
 use std::sync::Arc;
 

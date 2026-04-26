@@ -22,9 +22,7 @@ use chacha20poly1305::aead::{rand_core::RngCore, OsRng};
 use crate::app_state::AppState;
 use crate::auth::state::UnlockedSession;
 use crate::auth::types::AuthStatus;
-use crate::crypto::kdf::{
-    derive_key, derive_master_key, ARGON2_SALT_LENGTH, MASTER_KEY_LENGTH,
-};
+use crate::crypto::kdf::{derive_key, derive_master_key, ARGON2_SALT_LENGTH, MASTER_KEY_LENGTH};
 use crate::db::settings;
 use crate::error::{AppError, AppResult};
 use crate::keychain::SERVICE_VAULT;
@@ -125,10 +123,7 @@ pub fn update_session_metadata(
     device_id: Option<String>,
     email: Option<String>,
 ) -> AppResult<()> {
-    let master_key = state
-        .auth
-        .master_key_clone()
-        .ok_or(AppError::VaultLocked)?;
+    let master_key = state.auth.master_key_clone().ok_or(AppError::VaultLocked)?;
     let vault_key = derive_key(&master_key, VAULT_KEY_CONTEXT, MASTER_KEY_LENGTH)?;
     let prior = state.auth.status();
     state.auth.finish_unlock(UnlockedSession {

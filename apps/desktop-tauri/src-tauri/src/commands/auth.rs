@@ -359,8 +359,7 @@ pub async fn sync_auth_init_o_auth(
         .redirect_uri
         .unwrap_or_else(|| "memry://oauth/callback".to_string());
     let base = crate::sync::http::resolve_base_url()?;
-    let authorize_url =
-        auth_client::init_google_oauth_with_base(&base, &redirect_uri).await?;
+    let authorize_url = auth_client::init_google_oauth_with_base(&base, &redirect_uri).await?;
     let state = parse_state_from_url(&authorize_url).ok_or_else(|| {
         AppError::Auth("oauth init redirect did not include a state parameter".into())
     })?;
@@ -431,8 +430,7 @@ pub async fn sync_setup_setup_first_device(
     Ok(SetupResultView {
         success: false,
         error: Some(
-            "OAuth-based first-device setup is deferred to post-M4; use the OTP flow"
-                .to_string(),
+            "OAuth-based first-device setup is deferred to post-M4; use the OTP flow".to_string(),
         ),
         device_id: None,
         email: None,

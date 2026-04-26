@@ -45,10 +45,7 @@ pub fn keypair_from_seed(seed: &[u8; SEED_LENGTH]) -> SigningKeyPair {
     }
 }
 
-pub fn sign_detached(
-    message: &[u8],
-    secret_key: &[u8],
-) -> AppResult<[u8; SIGNATURE_LENGTH]> {
+pub fn sign_detached(message: &[u8], secret_key: &[u8]) -> AppResult<[u8; SIGNATURE_LENGTH]> {
     let secret_array: &[u8; SECRET_KEY_LENGTH] = secret_key.try_into().map_err(|_| {
         AppError::Crypto(format!(
             "secret key must be {SECRET_KEY_LENGTH} bytes, got {}",
@@ -62,11 +59,7 @@ pub fn sign_detached(
     Ok(signature)
 }
 
-pub fn verify_detached(
-    message: &[u8],
-    signature: &[u8],
-    public_key: &[u8],
-) -> AppResult<()> {
+pub fn verify_detached(message: &[u8], signature: &[u8], public_key: &[u8]) -> AppResult<()> {
     let signature_array: &[u8; SIGNATURE_LENGTH] = signature.try_into().map_err(|_| {
         AppError::Crypto(format!(
             "signature must be {SIGNATURE_LENGTH} bytes, got {}",
