@@ -66,13 +66,13 @@ test-helpers = []
 tempfile = "3"
 httpmock = "0.7"
 
-[[bin]]
+[[example]]
 name = "generate_bindings"
-path = "src/bin/generate_bindings.rs"
+path = "examples/generate_bindings.rs"
 
-[[bin]]
+[[example]]
 name = "bench_m2"
-path = "src/bin/bench_m2.rs"
+path = "examples/bench_m2.rs"
 required-features = ["test-helpers"]
 
 [[test]]

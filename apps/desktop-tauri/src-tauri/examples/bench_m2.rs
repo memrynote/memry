@@ -15,7 +15,7 @@
 //!   5. Sort, report p50/p95, assert p50 < 20_000µs.
 //!
 //! Run:
-//!   cargo run --release --bin bench_m2 --features test-helpers
+//!   cargo run --release --example bench_m2 --features test-helpers
 
 use memry_desktop_tauri_lib::db::Db;
 use std::time::Instant;

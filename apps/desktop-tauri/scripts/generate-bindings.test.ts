@@ -13,7 +13,7 @@ describe('runGenerateBindings', () => {
     // #then
     expect(execFn).toHaveBeenCalledTimes(1)
     const [cmd, opts] = execFn.mock.calls[0]
-    expect(cmd).toBe('cargo run --bin generate_bindings --quiet')
+    expect(cmd).toBe('cargo run --example generate_bindings --quiet')
     expect(opts).toMatchObject({
       cwd: '/path/to/desktop-tauri/src-tauri',
       stdio: 'inherit'
