@@ -31,6 +31,8 @@ pub enum AppError {
     Auth(String),
     #[error("rate limited: retry after {0:?} seconds")]
     RateLimited(Option<u64>),
+    #[error("crdt error: {0}")]
+    Crdt(String),
     #[error("internal error: {0}")]
     Internal(String),
 }
@@ -74,6 +76,18 @@ impl<T> From<std::sync::PoisonError<T>> for AppError {
 impl From<reqwest::Error> for AppError {
     fn from(err: reqwest::Error) -> Self {
         AppError::Network(err.to_string())
+    }
+}
+
+impl From<yrs::error::Error> for AppError {
+    fn from(err: yrs::error::Error) -> Self {
+        AppError::Crdt(err.to_string())
+    }
+}
+
+impl From<yrs::encoding::read::Error> for AppError {
+    fn from(err: yrs::encoding::read::Error) -> Self {
+        AppError::Crdt(format!("decode: {err}"))
     }
 }
 

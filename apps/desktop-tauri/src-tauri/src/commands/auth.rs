@@ -530,6 +530,7 @@ fn redact_err(err: &AppError) -> String {
         AppError::Keychain(_) => "keychain error".into(),
         AppError::NotFound(_) => "not found".into(),
         AppError::RateLimited(_) => "rate limited".into(),
+        AppError::Crdt(_) => "crdt error".into(),
         AppError::Conflict(_) => "conflict".into(),
         AppError::Internal(_) => "internal error".into(),
         AppError::Vault(_) => "vault error".into(),
