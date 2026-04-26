@@ -5,7 +5,7 @@ use crate::db::note_metadata::NoteMetadata;
 use crate::db::note_metadata::NoteMetadataRow;
 use crate::error::{AppError, AppResult};
 use crate::vault::frontmatter::NoteFrontmatter;
-use crate::vault::{fs as vault_fs, notes_io, paths as vault_paths, VaultRuntime};
+use crate::vault::{VaultRuntime, fs as vault_fs, notes_io, paths as vault_paths};
 use rusqlite::Connection;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
@@ -372,12 +372,7 @@ pub async fn notes_move_inner(
     let folder = new_folder.trim().trim_matches('/');
     let row = crate::db::note_metadata::get_by_id(conn, id)?
         .ok_or_else(|| AppError::NotFound(format!("note {id}")))?;
-    let basename = row
-        .path
-        .rsplit('/')
-        .next()
-        .unwrap_or(&row.path)
-        .to_string();
+    let basename = row.path.rsplit('/').next().unwrap_or(&row.path).to_string();
     let new_path = if folder.is_empty() {
         basename
     } else {
@@ -966,12 +961,7 @@ pub async fn notes_move(
     }
     .ok_or_else(|| AppError::NotFound(format!("note {id}")))?;
 
-    let basename = row
-        .path
-        .rsplit('/')
-        .next()
-        .unwrap_or(&row.path)
-        .to_string();
+    let basename = row.path.rsplit('/').next().unwrap_or(&row.path).to_string();
     let new_path = if folder.is_empty() {
         basename
     } else {
@@ -1025,7 +1015,9 @@ pub async fn notes_set_local_only(
         [first, second] => {
             let id = first
                 .as_str()
-                .ok_or_else(|| AppError::Validation("notes_set_local_only id must be string".into()))?
+                .ok_or_else(|| {
+                    AppError::Validation("notes_set_local_only id must be string".into())
+                })?
                 .to_string();
             let local_only = second.as_bool().ok_or_else(|| {
                 AppError::Validation("notes_set_local_only local_only must be boolean".into())
@@ -1035,7 +1027,7 @@ pub async fn notes_set_local_only(
         _ => {
             return Err(AppError::Validation(
                 "notes_set_local_only expects exactly two args (id, local_only)".into(),
-            ))
+            ));
         }
     };
     // Snapshot the row, then drop the guard before any disk I/O — the

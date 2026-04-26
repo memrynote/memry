@@ -4,7 +4,7 @@
 //! what the user actually wrote.
 
 use memry_desktop_tauri_lib::commands::notes::{
-    notes_create_inner, notes_update_inner, NoteCreateInput, NoteUpdateInput,
+    NoteCreateInput, NoteUpdateInput, notes_create_inner, notes_update_inner,
 };
 use memry_desktop_tauri_lib::db::notes_cache;
 use memry_desktop_tauri_lib::test_helpers::{open_in_memory_with_migrations, test_vault_runtime};
@@ -46,7 +46,10 @@ async fn body_only_save_extracts_new_inline_tags_into_frontmatter() {
     .note
     .unwrap();
 
-    assert_eq!(updated.tags, vec!["urgent".to_string(), "review".to_string()]);
+    assert_eq!(
+        updated.tags,
+        vec!["urgent".to_string(), "review".to_string()]
+    );
     let cached = notes_cache::list_active(&conn, 10, 0, "modified").unwrap();
     assert_eq!(cached[0].tags_json, "[\"urgent\",\"review\"]");
 }

@@ -11,10 +11,10 @@
 //! e2e lane in Chunk 12.
 
 use memry_desktop_tauri_lib::commands::notes::{
-    note_update_event_changes, notes_create_inner, notes_delete_inner, notes_exists_inner,
-    notes_get_local_only_count_inner, notes_list_by_folder_inner, notes_list_inner,
-    notes_move_inner, notes_rename_inner, notes_set_local_only_inner, NoteCreateInput, NoteDto,
-    NoteListOptions, NoteUpdateInput,
+    NoteCreateInput, NoteDto, NoteListOptions, NoteUpdateInput, note_update_event_changes,
+    notes_create_inner, notes_delete_inner, notes_exists_inner, notes_get_local_only_count_inner,
+    notes_list_by_folder_inner, notes_list_inner, notes_move_inner, notes_rename_inner,
+    notes_set_local_only_inner,
 };
 use memry_desktop_tauri_lib::db::note_metadata;
 use memry_desktop_tauri_lib::test_helpers::{open_in_memory_with_migrations, test_vault_runtime};
@@ -76,14 +76,18 @@ async fn rename_round_trip_keeps_id_updates_path_and_title() {
     assert_eq!(renamed.title, "Renamed Doc");
     assert_eq!(renamed.path, "Inbox/renamed-doc.md");
 
-    assert!(notes_io::read_note_from_disk(&vault.require_current().unwrap(), &created.path)
-        .await
-        .unwrap()
-        .is_none());
-    assert!(notes_io::read_note_from_disk(&vault.require_current().unwrap(), &renamed.path)
-        .await
-        .unwrap()
-        .is_some());
+    assert!(
+        notes_io::read_note_from_disk(&vault.require_current().unwrap(), &created.path)
+            .await
+            .unwrap()
+            .is_none()
+    );
+    assert!(
+        notes_io::read_note_from_disk(&vault.require_current().unwrap(), &renamed.path)
+            .await
+            .unwrap()
+            .is_some()
+    );
 }
 
 #[tokio::test]
