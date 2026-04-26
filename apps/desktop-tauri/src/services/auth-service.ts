@@ -1,44 +1,29 @@
 import { invoke } from '@/lib/ipc/invoke'
+import type {
+  InitOAuthView,
+  LogoutView,
+  OtpRequestView,
+  OtpVerifyView,
+  RefreshTokenView,
+  SetupResultView,
+  SimpleSuccess
+} from '@/generated/bindings'
 
-export interface RequestOtpResult {
-  success: boolean
-  error?: string
-  expiresIn?: number
-}
+export type RequestOtpResult = OtpRequestView & { error?: string }
 
-export interface VerifyOtpResult {
-  success: boolean
-  error?: string
-  isNewUser?: boolean
-  needsRecoverySetup?: boolean
-  needsSetup?: boolean
-  deviceId?: string
-  email?: string
-}
+export type VerifyOtpResult = OtpVerifyView & { error?: string }
 
-export interface RefreshTokenResult {
-  success: boolean
-  error?: string
-}
+export type RefreshTokenResult = RefreshTokenView
 
-export interface InitOAuthResult {
-  state: string
-}
+export type InitOAuthResult = InitOAuthView
 
-export interface SetupFirstDeviceResult {
-  success: boolean
-  error?: string
-  deviceId?: string
-  email?: string
-  recoveryPhrase?: string[]
-  needsRecoverySetup?: boolean
+export type SetupFirstDeviceResult = SetupResultView & {
   needsRecoveryInput?: boolean
 }
 
-export interface ConfirmRecoveryPhraseResult {
-  success: boolean
-  error?: string
-}
+export type ConfirmRecoveryPhraseResult = SimpleSuccess
+
+export type LogoutResult = LogoutView
 
 export const authService = {
   requestOtp: (input: { email: string }): Promise<RequestOtpResult> => {
@@ -53,7 +38,7 @@ export const authService = {
     return invoke<RequestOtpResult>('sync_auth_resend_otp', input)
   },
 
-  initOAuth: (input: { provider: 'google' }): Promise<InitOAuthResult> => {
+  initOAuth: (input: { provider: 'google'; redirectUri?: string }): Promise<InitOAuthResult> => {
     return invoke<InitOAuthResult>('sync_auth_init_o_auth', input)
   },
 
@@ -77,7 +62,7 @@ export const authService = {
     return invoke<ConfirmRecoveryPhraseResult>('sync_setup_confirm_recovery_phrase', input)
   },
 
-  logout: (): Promise<{ success: boolean; error?: string }> => {
-    return invoke<{ success: boolean; error?: string }>('sync_auth_logout')
+  logout: (): Promise<LogoutResult> => {
+    return invoke<LogoutResult>('sync_auth_logout')
   }
 }

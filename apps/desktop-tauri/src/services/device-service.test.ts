@@ -10,7 +10,7 @@ describe('device-service', () => {
     ;(window as Window & { api: unknown }).api = api
   })
 
-  it('forwards getDevices to window.api.syncDevices', async () => {
+  it('forwards getDevices to window.api.syncDevices and adapts null email to ""', async () => {
     // #given
     const response = {
       devices: [
@@ -21,7 +21,8 @@ describe('device-service', () => {
           isCurrentDevice: true,
           linkedAt: Date.now()
         }
-      ]
+      ],
+      email: null
     }
     api.syncDevices.getDevices = vi.fn().mockResolvedValue(response)
 
@@ -30,7 +31,7 @@ describe('device-service', () => {
 
     // #then
     expect(api.syncDevices.getDevices).toHaveBeenCalled()
-    expect(result).toEqual(response)
+    expect(result).toEqual({ devices: response.devices, email: '' })
   })
 
   it('forwards removeDevice to window.api.syncDevices', async () => {

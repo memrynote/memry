@@ -1,44 +1,39 @@
 import { invoke } from '@/lib/ipc/invoke'
+import type {
+  DeviceView,
+  SetupResultView,
+  SimpleSuccess,
+  SyncDevicesGetDevicesResult,
+  SyncDevicesMutationResult
+} from '@/generated/bindings'
 
-export interface Device {
-  id: string
-  name: string
-  platform: string
-  isCurrentDevice: boolean
-  linkedAt: number
+export type Device = DeviceView & {
+  /** UI-only convenience: when supplied, prefer over `lastSyncAt`. */
   lastActiveAt?: string | null
-  lastSyncAt?: number
-  createdAt?: string
 }
 
-export interface GetDevicesResult {
+export type GetDevicesResult = {
   devices: Device[]
   email: string
 }
 
-export interface DeviceMutationResult {
-  success: boolean
-  error?: string
-}
+export type DeviceMutationResult = SyncDevicesMutationResult
 
-export interface SetupFirstDeviceResult {
-  success: boolean
-  error?: string
-  deviceId?: string
-  email?: string
-  recoveryPhrase?: string[]
-  needsRecoverySetup?: boolean
-}
+export type SetupFirstDeviceResult = SetupResultView
 
-export interface SetupNewAccountResult {
-  success: boolean
-  error?: string
-  recoveryPhrase?: string[]
+export type SetupNewAccountResult = SetupResultView
+
+function adaptGetDevicesResult(result: SyncDevicesGetDevicesResult): GetDevicesResult {
+  return {
+    devices: result.devices,
+    email: result.email ?? ''
+  }
 }
 
 export const deviceService = {
-  getDevices: (): Promise<GetDevicesResult> => {
-    return invoke<GetDevicesResult>('sync_devices_get_devices')
+  getDevices: async (): Promise<GetDevicesResult> => {
+    const result = await invoke<SyncDevicesGetDevicesResult>('sync_devices_get_devices')
+    return adaptGetDevicesResult(result)
   },
 
   removeDevice: (input: { deviceId: string }): Promise<DeviceMutationResult> => {
@@ -63,9 +58,7 @@ export const setupService = {
     return invoke<SetupNewAccountResult>('sync_setup_setup_new_account')
   },
 
-  confirmRecoveryPhrase: (input: {
-    confirmed: boolean
-  }): Promise<{ success: boolean; error?: string }> => {
-    return invoke<{ success: boolean; error?: string }>('sync_setup_confirm_recovery_phrase', input)
+  confirmRecoveryPhrase: (input: { confirmed: boolean }): Promise<SimpleSuccess> => {
+    return invoke<SimpleSuccess>('sync_setup_confirm_recovery_phrase', input)
   }
 }
