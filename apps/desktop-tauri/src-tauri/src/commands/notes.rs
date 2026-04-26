@@ -123,6 +123,30 @@ pub async fn notes_create_inner(
     finish_create(conn, prepared, &read.parsed.content, &read.parsed.frontmatter)
 }
 
+pub async fn notes_get_inner(
+    conn: &Connection,
+    vault: &VaultRuntime,
+    id: &str,
+) -> AppResult<Option<NoteDto>> {
+    let Some(row) = crate::db::note_metadata::get_by_id(conn, id)? else {
+        return Ok(None);
+    };
+
+    read_note_dto(vault, row).await.map(Some)
+}
+
+pub async fn notes_get_by_path_inner(
+    conn: &Connection,
+    vault: &VaultRuntime,
+    path: &str,
+) -> AppResult<Option<NoteDto>> {
+    let Some(row) = crate::db::note_metadata::get_by_path(conn, path)? else {
+        return Ok(None);
+    };
+
+    read_note_dto(vault, row).await.map(Some)
+}
+
 #[tauri::command]
 #[specta::specta]
 pub async fn notes_create(
@@ -160,6 +184,50 @@ pub async fn notes_create(
         );
     }
     Ok(resp)
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn notes_get(state: State<'_, AppState>, id: String) -> AppResult<Option<NoteDto>> {
+    let row = {
+        let conn = state.db.conn()?;
+        crate::db::note_metadata::get_by_id(&conn, &id)?
+    };
+    let Some(row) = row else {
+        return Ok(None);
+    };
+
+    read_note_dto(&state.vault, row).await.map(Some)
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn notes_get_by_path(
+    state: State<'_, AppState>,
+    path: String,
+) -> AppResult<Option<NoteDto>> {
+    let row = {
+        let conn = state.db.conn()?;
+        crate::db::note_metadata::get_by_path(&conn, &path)?
+    };
+    let Some(row) = row else {
+        return Ok(None);
+    };
+
+    read_note_dto(&state.vault, row).await.map(Some)
+}
+
+async fn read_note_dto(vault: &VaultRuntime, row: NoteMetadata) -> AppResult<NoteDto> {
+    let root = vault.require_current()?;
+    let read = notes_io::read_note_from_disk(&root, &row.path)
+        .await?
+        .ok_or_else(|| AppError::NotFound(format!("note file {}", row.path)))?;
+
+    Ok(into_dto(
+        &row,
+        &read.parsed.content,
+        &read.parsed.frontmatter,
+    ))
 }
 
 struct PreparedCreate {

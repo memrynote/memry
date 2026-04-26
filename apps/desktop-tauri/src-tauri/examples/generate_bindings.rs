@@ -38,6 +38,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             commands::dialog::dialog_choose_files,
             // M5: notes CRUD
             commands::notes::notes_create,
+            commands::notes::notes_get,
+            commands::notes::notes_get_by_path,
             // M4: auth + sync_auth + sync_setup
             commands::auth::auth_status,
             commands::auth::auth_unlock,
