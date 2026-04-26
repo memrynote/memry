@@ -77,7 +77,7 @@ export type AccountSignOutResult = {
 	error: string | null,
 };
 
-export type AppError = { kind: "Database"; message: string } | { kind: "Crypto"; message: string } | { kind: "VaultLocked" } | { kind: "InvalidPassword" } | { kind: "NotFound"; message: string } | { kind: "Network"; message: string } | { kind: "Conflict"; message: string } | { kind: "Validation"; message: string } | { kind: "Vault"; message: string } | { kind: "PathEscape"; message: string } | { kind: "Io"; message: string } | { kind: "Keychain"; message: string } | { kind: "Auth"; message: string } | { kind: "RateLimited"; message: number | null } | { kind: "Internal"; message: string };
+export type AppError = { kind: "Database"; message: string } | { kind: "Crypto"; message: string } | { kind: "VaultLocked" } | { kind: "InvalidPassword" } | { kind: "NotFound"; message: string } | { kind: "Network"; message: string } | { kind: "Conflict"; message: string } | { kind: "Validation"; message: string } | { kind: "Vault"; message: string } | { kind: "PathEscape"; message: string } | { kind: "Io"; message: string } | { kind: "Keychain"; message: string } | { kind: "Auth"; message: string } | { kind: "RateLimited"; message: number | null } | { kind: "Crdt"; message: string } | { kind: "Internal"; message: string };
 
 export type AuthRegisterDeviceInput = {
 	name: string,
@@ -285,6 +285,7 @@ export type DeviceView = {
 export type FolderConfig = {
 	path: string,
 	icon: string | null,
+	templateJson: string | null,
 	clock: string | null,
 	createdAt: string,
 	modifiedAt: string,
