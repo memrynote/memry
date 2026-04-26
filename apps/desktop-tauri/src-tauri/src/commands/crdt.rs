@@ -172,6 +172,15 @@ pub async fn crdt_sync_step_2_inner(
     crdt_apply_update_inner(conn, crdt, note_id, diff, origin_tag()).await
 }
 
+pub async fn crdt_get_or_init_doc_inner(
+    conn: &rusqlite::Connection,
+    vault: &VaultRuntime,
+    crdt: Arc<CrdtRuntime>,
+    note_id: &str,
+) -> AppResult<()> {
+    crdt_open_doc_inner(conn, vault, crdt, note_id).await
+}
+
 #[tauri::command]
 #[specta::specta]
 pub async fn crdt_open_doc(
@@ -346,6 +355,24 @@ pub async fn crdt_sync_step_2(
     };
     let _ = app.emit(CRDT_UPDATE_EVENT, payload);
     Ok(())
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn crdt_get_or_init_doc(
+    state: State<'_, AppState>,
+    note_id: String,
+) -> AppResult<serde_json::Value> {
+    let open_state = {
+        let conn = state.db.conn()?;
+        load_open_doc_state(&conn, &state.vault, &note_id)?
+    };
+    let seed = apply_open_doc_state(state.crdt.clone(), &note_id, open_state).await?;
+    if let Some(seed) = seed {
+        let conn = state.db.conn()?;
+        crate::db::crdt_updates::append(&conn, &note_id, &seed, origin_tag() as i64)?;
+    }
+    Ok(serde_json::json!({ "noteId": note_id, "ready": true }))
 }
 
 struct OpenDocState {
