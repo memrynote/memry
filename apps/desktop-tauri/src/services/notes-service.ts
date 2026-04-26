@@ -37,6 +37,7 @@ import type {
   WikiLinkResolution
 } from '@memry/rpc/notes'
 import { createInvokeForwarder, subscribeEvent } from '@/lib/ipc/forwarder'
+import { NOTE_METHODS_WITH_DATES, reviveNoteDates } from './notes-response-adapter'
 
 export type {
   AttachmentInfo,
@@ -77,7 +78,25 @@ export type {
   WikiLinkResolution
 }
 
-export const notesService: NotesClientAPI = createInvokeForwarder<NotesClientAPI>('notes')
+// Tauri ships note timestamps as ISO strings, but the renderer (and the
+// `Note` / `NoteListItem` types) expect `Date` objects. Wrap the forwarder
+// so methods that return note DTOs get a Date-revival pass at the IPC
+// boundary, keeping consumers like `notes-tree-utils` (`modified.getTime()`)
+// working without per-call-site changes. Methods that don't ship Dates
+// (positions, exists, tags, etc.) bypass the wrapper.
+const rawNotesService = createInvokeForwarder<NotesClientAPI>('notes')
+
+export const notesService: NotesClientAPI = new Proxy(rawNotesService, {
+  get(target, property, receiver) {
+    if (typeof property !== 'string' || !NOTE_METHODS_WITH_DATES.has(property)) {
+      return Reflect.get(target, property, receiver)
+    }
+    const original = Reflect.get(target, property, receiver) as (
+      ...args: unknown[]
+    ) => Promise<unknown>
+    return async (...args: unknown[]) => reviveNoteDates(await original(...args))
+  }
+}) as NotesClientAPI
 
 export function onNoteCreated(callback: (event: NoteCreatedEvent) => void): () => void {
   return subscribeEvent<NoteCreatedEvent>('note-created', callback)

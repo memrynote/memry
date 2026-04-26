@@ -71,7 +71,22 @@ describe('invoke', () => {
   })
 
   it('passes args through untouched to mock router (no default empty object)', async () => {
+    await invoke('notes_get_folders')
+    expect(mockRouter).toHaveBeenCalledWith('notes_get_folders', undefined)
+  })
+
+  it('routes Phase E rename/move/exists/local-only/tags/links commands to Tauri', async () => {
+    await invoke('notes_rename', { args: ['note-1', 'New Title'] })
+    await invoke('notes_move', { args: ['note-1', 'Archive'] })
+    await invoke('notes_exists', { args: ['Inbox/foo.md'] })
+    await invoke('notes_set_local_only', { args: ['note-1', true] })
+    await invoke('notes_get_local_only_count')
     await invoke('notes_get_tags')
-    expect(mockRouter).toHaveBeenCalledWith('notes_get_tags', undefined)
+    await invoke('notes_get_links', { args: ['note-1'] })
+    await invoke('notes_resolve_by_title', { args: ['Title'] })
+    await invoke('notes_preview_by_title', { args: ['Title'] })
+
+    expect(mockRouter).not.toHaveBeenCalled()
+    expect(tauriInvoke).toHaveBeenCalledTimes(9)
   })
 })

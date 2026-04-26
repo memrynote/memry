@@ -94,7 +94,17 @@ const realCommands = new Set<string>([
   'notes_update',
   'notes_delete',
   'notes_list',
-  'notes_list_by_folder'
+  'notes_list_by_folder',
+  // M5 — Phase E rename/move/exists + local-only + tags/links/wiki
+  'notes_rename',
+  'notes_move',
+  'notes_exists',
+  'notes_set_local_only',
+  'notes_get_local_only_count',
+  'notes_get_tags',
+  'notes_get_links',
+  'notes_resolve_by_title',
+  'notes_preview_by_title'
 ])
 
 function shouldUseMock(cmd: string): boolean {
