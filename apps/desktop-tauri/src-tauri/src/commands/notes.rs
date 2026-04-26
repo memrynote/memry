@@ -136,6 +136,18 @@ pub struct NoteDeleteResponse {
     pub success: bool,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
+#[serde(rename_all = "camelCase")]
+pub struct NoteSimpleSuccess {
+    pub success: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
+#[serde(rename_all = "camelCase")]
+pub struct NoteLocalOnlyCount {
+    pub count: i64,
+}
+
 pub(crate) fn into_dto(
     row: &NoteMetadata,
     body: &str,
@@ -323,6 +335,25 @@ pub fn notes_exists_inner(conn: &Connection, title_or_path: &str) -> AppResult<b
         |row| row.get(0),
     )?;
     Ok(count > 0)
+}
+
+pub fn notes_set_local_only_inner(
+    conn: &Connection,
+    id: &str,
+    local_only: bool,
+) -> AppResult<NoteSimpleSuccess> {
+    if crate::db::note_metadata::get_by_id(conn, id)?.is_none() {
+        return Err(AppError::NotFound(format!("note {id}")));
+    }
+    let modified_at = now_iso();
+    crate::db::note_metadata::set_local_only(conn, id, local_only, &modified_at)?;
+    crate::db::notes_cache::set_local_only(conn, id, local_only)?;
+    Ok(NoteSimpleSuccess { success: true })
+}
+
+pub fn notes_get_local_only_count_inner(conn: &Connection) -> AppResult<NoteLocalOnlyCount> {
+    let count = crate::db::note_metadata::count_local_only(conn)?;
+    Ok(NoteLocalOnlyCount { count })
 }
 
 pub fn notes_list_inner(
@@ -684,6 +715,24 @@ pub fn notes_exists(state: State<'_, AppState>, args: Vec<String>) -> AppResult<
     let title_or_path = single_string_arg(args, "title_or_path")?;
     let conn = state.db.conn()?;
     notes_exists_inner(&conn, &title_or_path)
+}
+
+#[tauri::command]
+#[specta::specta]
+pub fn notes_set_local_only(
+    state: State<'_, AppState>,
+    id: String,
+    local_only: bool,
+) -> AppResult<NoteSimpleSuccess> {
+    let conn = state.db.conn()?;
+    notes_set_local_only_inner(&conn, &id, local_only)
+}
+
+#[tauri::command]
+#[specta::specta]
+pub fn notes_get_local_only_count(state: State<'_, AppState>) -> AppResult<NoteLocalOnlyCount> {
+    let conn = state.db.conn()?;
+    notes_get_local_only_count_inner(&conn)
 }
 
 fn single_string_arg(args: Vec<String>, name: &str) -> AppResult<String> {
