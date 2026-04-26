@@ -34,7 +34,7 @@ describe('device-service', () => {
     expect(result).toEqual({ devices: response.devices, email: '' })
   })
 
-  it('forwards removeDevice to window.api.syncDevices', async () => {
+  it('forwards removeDevice to window.api.syncDevices wrapped in { input }', async () => {
     // #given
     api.syncDevices.removeDevice = vi.fn().mockResolvedValue({ success: true })
 
@@ -42,11 +42,13 @@ describe('device-service', () => {
     const result = await deviceService.removeDevice({ deviceId: 'dev-1' })
 
     // #then
-    expect(api.syncDevices.removeDevice).toHaveBeenCalledWith({ deviceId: 'dev-1' })
+    expect(api.syncDevices.removeDevice).toHaveBeenCalledWith({
+      input: { deviceId: 'dev-1' }
+    })
     expect(result).toEqual({ success: true })
   })
 
-  it('forwards renameDevice to window.api.syncDevices', async () => {
+  it('forwards renameDevice to window.api.syncDevices wrapped in { input }', async () => {
     // #given
     api.syncDevices.renameDevice = vi.fn().mockResolvedValue({ success: true })
 
@@ -55,8 +57,7 @@ describe('device-service', () => {
 
     // #then
     expect(api.syncDevices.renameDevice).toHaveBeenCalledWith({
-      deviceId: 'dev-1',
-      newName: 'My Laptop'
+      input: { deviceId: 'dev-1', newName: 'My Laptop' }
     })
     expect(result).toEqual({ success: true })
   })
@@ -70,11 +71,11 @@ describe('setup-service', () => {
     ;(window as Window & { api: unknown }).api = api
   })
 
-  it('forwards setupFirstDevice to window.api.syncSetup', async () => {
+  it('forwards setupFirstDevice to window.api.syncSetup wrapped in { input }', async () => {
     // #given
     const response = {
       success: true,
-      recoveryPhrase: 'word1 word2 word3',
+      recoveryPhrase: ['word1', 'word2', 'word3'],
       deviceId: 'dev-1'
     }
     api.syncSetup.setupFirstDevice = vi.fn().mockResolvedValue(response)
@@ -82,18 +83,22 @@ describe('setup-service', () => {
     // #when
     const result = await setupService.setupFirstDevice({
       provider: 'google',
-      oauthToken: 'oauth-token-123'
+      oauthToken: 'oauth-token-123',
+      state: 'oauth-state-123'
     })
 
     // #then
     expect(api.syncSetup.setupFirstDevice).toHaveBeenCalledWith({
-      provider: 'google',
-      oauthToken: 'oauth-token-123'
+      input: {
+        provider: 'google',
+        oauthToken: 'oauth-token-123',
+        state: 'oauth-state-123'
+      }
     })
     expect(result).toEqual(response)
   })
 
-  it('forwards confirmRecoveryPhrase to window.api.syncSetup', async () => {
+  it('forwards confirmRecoveryPhrase to window.api.syncSetup wrapped in { input }', async () => {
     // #given
     api.syncSetup.confirmRecoveryPhrase = vi.fn().mockResolvedValue({ success: true })
 
@@ -101,7 +106,9 @@ describe('setup-service', () => {
     const result = await setupService.confirmRecoveryPhrase({ confirmed: true })
 
     // #then
-    expect(api.syncSetup.confirmRecoveryPhrase).toHaveBeenCalledWith({ confirmed: true })
+    expect(api.syncSetup.confirmRecoveryPhrase).toHaveBeenCalledWith({
+      input: { confirmed: true }
+    })
     expect(result).toEqual({ success: true })
   })
 })

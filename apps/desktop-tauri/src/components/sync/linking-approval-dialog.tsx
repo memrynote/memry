@@ -46,12 +46,12 @@ export function LinkingApprovalDialog({
       return
     }
     setSasLoading(true)
-    invoke<{ verificationCode?: string }>('sync_linking_get_linking_sas', {
-      sessionId: event.sessionId
+    invoke<{ sasCode: string }>('sync_linking_get_linking_sas', {
+      input: { sessionId: event.sessionId }
     })
       .then((result) => {
-        if (result.verificationCode) {
-          setVerificationCode(result.verificationCode)
+        if (result.sasCode) {
+          setVerificationCode(result.sasCode)
         }
       })
       .catch(() => {})
@@ -68,8 +68,10 @@ export function LinkingApprovalDialog({
     setIsApproving(true)
     setError(null)
 
+    // Rust fetches the new device's public key from the server via the
+    // session id; the renderer never handles or transmits that key.
     invoke<{ success: boolean; error?: string }>('sync_linking_approve_linking', {
-      sessionId: event.sessionId
+      input: { sessionId: event.sessionId }
     })
       .then((result) => {
         if (!result.success) {

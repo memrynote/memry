@@ -70,10 +70,10 @@ export function SetupWizard(): React.JSX.Element {
     if (wizardStep !== 'recovery-display' && wizardStep !== 'recovery-confirm') return
     if (recoveryPhrase) return
     let cancelled = false
-    void invoke<string | null>('sync_setup_get_recovery_phrase')
-      .then((phrase) => {
+    void invoke<{ phrase: string }>('sync_setup_get_recovery_phrase')
+      .then((result) => {
         if (cancelled) return
-        setRecoveryPhrase(phrase)
+        setRecoveryPhrase(result?.phrase ?? null)
       })
       .catch(() => {
         /* recovery phrase fetch failed — user can retry via back navigation */

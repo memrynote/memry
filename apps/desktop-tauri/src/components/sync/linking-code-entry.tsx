@@ -12,6 +12,26 @@ interface LinkingCodeEntryProps {
   onBack: () => void
 }
 
+function localDeviceName(): string {
+  // Browser/WebView API only — falls back to a generic label when the
+  // platform doesn't expose the hostname.
+  const fallback = 'Memry Desktop'
+  if (typeof navigator !== 'undefined' && typeof navigator.userAgent === 'string') {
+    const match = navigator.userAgent.match(/\(([^)]+)\)/)
+    if (match?.[1]) return match[1].split(';')[0]?.trim() || fallback
+  }
+  return fallback
+}
+
+function localDevicePlatform(): string {
+  if (typeof navigator === 'undefined') return 'desktop'
+  const ua = navigator.userAgent.toLowerCase()
+  if (ua.includes('mac os')) return 'macos'
+  if (ua.includes('windows')) return 'windows'
+  if (ua.includes('linux')) return 'linux'
+  return 'desktop'
+}
+
 function parseQrData(raw: string): { sessionId: string; ephemeralPublicKey: string } | null {
   try {
     const parsed: unknown = JSON.parse(raw)
@@ -52,18 +72,18 @@ export function LinkingCodeEntry({
       setIsLoading(true)
       setError(null)
 
-      invoke<{ success: boolean; verificationCode?: string; error?: string }>(
-        'sync_linking_link_via_qr',
-        { qrData: code.trim() }
-      )
+      invoke<{ sessionId: string; sasCode: string }>('sync_linking_link_via_qr', {
+        input: {
+          qrJson: code.trim(),
+          deviceName: localDeviceName(),
+          devicePlatform: localDevicePlatform()
+        }
+      })
         .then((result) => {
-          if (!result.success) {
-            const msg = result.error ?? 'Linking failed'
-            setError(msg)
-            onError(msg)
-            return
-          }
-          onLinked(parsed.sessionId, result.verificationCode)
+          // Rust returns `LinkingScanView` only on success — Err is
+          // surfaced via the .catch path below — so receiving a value
+          // here implies the scan was accepted.
+          onLinked(result.sessionId, result.sasCode)
         })
         .catch((err: unknown) => {
           const msg = extractErrorMessage(err, 'Failed to link device')

@@ -36,7 +36,7 @@ export function LinkingPending({
     try {
       const result = await invoke<{ success: boolean; deviceId?: string; error?: string }>(
         'sync_linking_complete_linking_qr',
-        { sessionId }
+        { input: { sessionId } }
       )
 
       if (cancelledRef.current) return
@@ -48,7 +48,15 @@ export function LinkingPending({
         return
       }
 
-      if (result.error && result.error !== 'Session not yet approved') {
+      // The Rust command preserves the lowercase sentinel "session not
+      // yet approved" verbatim (other AppErrors are redacted). Keep the
+      // legacy capitalized form as a fallback so a server tweak doesn't
+      // bring the loop down silently.
+      if (
+        result.error &&
+        result.error !== 'session not yet approved' &&
+        result.error !== 'Session not yet approved'
+      ) {
         if (result.error.includes('Too many requests')) return
         setStatus('error')
         setError(result.error)

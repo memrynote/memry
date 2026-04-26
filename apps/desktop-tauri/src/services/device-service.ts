@@ -37,11 +37,11 @@ export const deviceService = {
   },
 
   removeDevice: (input: { deviceId: string }): Promise<DeviceMutationResult> => {
-    return invoke<DeviceMutationResult>('sync_devices_remove_device', input)
+    return invoke<DeviceMutationResult>('sync_devices_remove_device', { input })
   },
 
   renameDevice: (input: { deviceId: string; newName: string }): Promise<DeviceMutationResult> => {
-    return invoke<DeviceMutationResult>('sync_devices_rename_device', input)
+    return invoke<DeviceMutationResult>('sync_devices_rename_device', { input })
   }
 }
 
@@ -51,7 +51,7 @@ export const setupService = {
     oauthToken: string
     state: string
   }): Promise<SetupFirstDeviceResult> => {
-    return invoke<SetupFirstDeviceResult>('sync_setup_setup_first_device', input)
+    return invoke<SetupFirstDeviceResult>('sync_setup_setup_first_device', { input })
   },
 
   setupNewAccount: (): Promise<SetupNewAccountResult> => {
@@ -59,6 +59,6 @@ export const setupService = {
   },
 
   confirmRecoveryPhrase: (input: { confirmed: boolean }): Promise<SimpleSuccess> => {
-    return invoke<SimpleSuccess>('sync_setup_confirm_recovery_phrase', input)
+    return invoke<SimpleSuccess>('sync_setup_confirm_recovery_phrase', { input })
   }
 }

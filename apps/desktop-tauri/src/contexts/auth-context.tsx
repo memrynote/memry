@@ -483,7 +483,7 @@ export const AuthProvider = ({ children }: AuthProviderProps): React.JSX.Element
     try {
       const result = await invoke<{ success: boolean; deviceId?: string; error?: string }>(
         'sync_linking_link_via_recovery',
-        { recoveryPhrase: phrase }
+        { input: { recoveryPhrase: phrase } }
       )
       if (!result.success) {
         throw new Error(extractErrorMessage(result.error, 'Recovery failed'))

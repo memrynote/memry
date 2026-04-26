@@ -82,17 +82,22 @@ function KeyRotationWizardSession({
     setProgress({ total: 0, processed: 0, phase: '' })
 
     try {
+      // M4 returns `{ success: false, reason: 'not-implemented-in-m4' }`;
+      // M7 will swap the body in once rotation is implemented. The
+      // command itself takes no input — the user-facing confirm gate
+      // lives in this wizard, not in the Rust contract.
       const result = await invoke<{
         success: boolean
+        reason?: string | null
         newRecoveryPhrase?: string
         error?: string
-      }>('crypto_rotate_keys', { confirm: true })
+      }>('crypto_rotate_keys')
 
       if (result.success && result.newRecoveryPhrase) {
         setNewPhrase(result.newRecoveryPhrase)
         setStep('phrase')
       } else {
-        setError(result.error ?? 'Key rotation failed')
+        setError(result.error ?? result.reason ?? 'Key rotation failed')
         setStep('error')
       }
     } catch (err) {
