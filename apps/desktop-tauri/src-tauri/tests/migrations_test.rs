@@ -155,6 +155,8 @@ fn full_migration_produces_expected_table_set() {
         "crdt_updates",
         // 0030
         "crdt_snapshots",
+        // 0031
+        "notes_cache",
     ];
     for name in required {
         assert!(
@@ -194,6 +196,21 @@ fn migration_0030_crdt_snapshots_creates_table() {
     let exists: i64 = conn
         .query_row(
             "SELECT count(*) FROM sqlite_master WHERE type='table' AND name='crdt_snapshots'",
+            [],
+            |row| row.get(0),
+        )
+        .unwrap();
+    assert_eq!(exists, 1);
+}
+
+#[test]
+fn migration_0031_notes_cache_creates_table() {
+    let mut conn = Connection::open_in_memory().unwrap();
+    migrations::apply_pending(&mut conn).unwrap();
+
+    let exists: i64 = conn
+        .query_row(
+            "SELECT count(*) FROM sqlite_master WHERE type='table' AND name='notes_cache'",
             [],
             |row| row.get(0),
         )
@@ -431,7 +448,7 @@ fn property_definitions_roundtrip() {
         .query_row(
             "SELECT * FROM property_definitions WHERE name = 'status'",
             [],
-            memry_desktop_tauri_lib::db::notes_cache::PropertyDefinition::from_row,
+            memry_desktop_tauri_lib::db::property_definitions::PropertyDefinition::from_row,
         )
         .unwrap();
     assert_eq!(prop.name, "status");
