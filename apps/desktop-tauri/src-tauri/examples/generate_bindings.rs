@@ -49,6 +49,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             commands::notes::notes_exists,
             commands::notes::notes_set_local_only,
             commands::notes::notes_get_local_only_count,
+            commands::notes::notes_get_tags,
+            commands::notes::notes_get_links,
+            commands::notes::notes_resolve_by_title,
+            commands::notes::notes_preview_by_title,
             // M4: auth + sync_auth + sync_setup
             commands::auth::auth_status,
             commands::auth::auth_unlock,
@@ -162,6 +166,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .typ::<commands::notes::NoteListOptions>()
         .typ::<commands::notes::NoteSimpleSuccess>()
         .typ::<commands::notes::NoteLocalOnlyCount>()
+        .typ::<commands::notes::NoteTagInfo>()
+        .typ::<commands::notes::NoteLink>()
+        .typ::<commands::notes::NoteIncomingLink>()
+        .typ::<commands::notes::NoteLinkContext>()
+        .typ::<commands::notes::NoteLinksResponse>()
+        .typ::<commands::notes::NotePreview>()
         // Domain DB structs (registered for stable export across migrations)
         .typ::<db::bookmarks::Bookmark>()
         .typ::<db::calendar_bindings::CalendarBinding>()
