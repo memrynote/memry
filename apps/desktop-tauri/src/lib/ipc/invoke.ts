@@ -85,7 +85,16 @@ const realCommands = new Set<string>([
   // M4 — provider secret status (no raw key egress)
   'secrets_set_provider_key',
   'secrets_get_provider_key_status',
-  'secrets_delete_provider_key'
+  'secrets_delete_provider_key',
+
+  // M5 — notes CRUD lifecycle
+  'notes_create',
+  'notes_get',
+  'notes_get_by_path',
+  'notes_update',
+  'notes_delete',
+  'notes_list',
+  'notes_list_by_folder'
 ])
 
 function shouldUseMock(cmd: string): boolean {
