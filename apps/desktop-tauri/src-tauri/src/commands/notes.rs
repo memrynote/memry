@@ -252,6 +252,79 @@ pub async fn notes_delete_inner(
     finish_delete(conn, &row, &deleted_at)
 }
 
+pub async fn notes_rename_inner(
+    conn: &Connection,
+    vault: &VaultRuntime,
+    id: &str,
+    new_title: &str,
+) -> AppResult<NoteUpdateResponse> {
+    let trimmed = new_title.trim();
+    if trimmed.is_empty() {
+        return Err(AppError::Validation("title is empty".into()));
+    }
+    let row = crate::db::note_metadata::get_by_id(conn, id)?
+        .ok_or_else(|| AppError::NotFound(format!("note {id}")))?;
+    let folder = row
+        .path
+        .rsplit_once('/')
+        .map(|(prefix, _)| prefix.to_string())
+        .unwrap_or_default();
+    let slug = slug_for(trimmed);
+    let new_path = if folder.is_empty() {
+        format!("{slug}.md")
+    } else {
+        format!("{folder}/{slug}.md")
+    };
+    if new_path != row.path {
+        ensure_db_path_available(conn, &new_path)?;
+    }
+
+    let prepared = relocate_note_on_disk(vault, &row, &new_path, Some(trimmed.to_string())).await?;
+    finish_update(conn, prepared)
+}
+
+pub async fn notes_move_inner(
+    conn: &Connection,
+    vault: &VaultRuntime,
+    id: &str,
+    new_folder: &str,
+) -> AppResult<NoteUpdateResponse> {
+    let folder = new_folder.trim().trim_matches('/');
+    let row = crate::db::note_metadata::get_by_id(conn, id)?
+        .ok_or_else(|| AppError::NotFound(format!("note {id}")))?;
+    let basename = row
+        .path
+        .rsplit('/')
+        .next()
+        .unwrap_or(&row.path)
+        .to_string();
+    let new_path = if folder.is_empty() {
+        basename
+    } else {
+        format!("{folder}/{basename}")
+    };
+    if new_path != row.path {
+        ensure_db_path_available(conn, &new_path)?;
+    }
+
+    let prepared = relocate_note_on_disk(vault, &row, &new_path, None).await?;
+    finish_update(conn, prepared)
+}
+
+pub fn notes_exists_inner(conn: &Connection, title_or_path: &str) -> AppResult<bool> {
+    if crate::db::note_metadata::exists_path(conn, title_or_path)? {
+        return Ok(true);
+    }
+    let count: i64 = conn.query_row(
+        "SELECT count(*) FROM note_metadata
+         WHERE title = ?1 COLLATE NOCASE
+           AND coalesce(json_extract(clock, '$.deleted_at'), '') = ''",
+        [title_or_path],
+        |row| row.get(0),
+    )?;
+    Ok(count > 0)
+}
+
 pub fn notes_list_inner(
     conn: &Connection,
     options: Option<NoteListOptions>,
@@ -492,6 +565,127 @@ pub fn notes_list_by_folder(
     notes_list_by_folder_inner(&conn, &folder_id)
 }
 
+#[tauri::command]
+#[specta::specta]
+pub async fn notes_rename(
+    state: State<'_, AppState>,
+    app: AppHandle,
+    id: String,
+    new_title: String,
+) -> AppResult<NoteUpdateResponse> {
+    let trimmed = new_title.trim();
+    if trimmed.is_empty() {
+        return Err(AppError::Validation("title is empty".into()));
+    }
+    let row = {
+        let conn = state.db.conn()?;
+        crate::db::note_metadata::get_by_id(&conn, &id)?
+    }
+    .ok_or_else(|| AppError::NotFound(format!("note {id}")))?;
+
+    let folder = row
+        .path
+        .rsplit_once('/')
+        .map(|(prefix, _)| prefix.to_string())
+        .unwrap_or_default();
+    let slug = slug_for(trimmed);
+    let new_path = if folder.is_empty() {
+        format!("{slug}.md")
+    } else {
+        format!("{folder}/{slug}.md")
+    };
+
+    if new_path != row.path {
+        let conn = state.db.conn()?;
+        ensure_db_path_available(&conn, &new_path)?;
+    }
+
+    let old_path = row.path.clone();
+    let old_title = row.title.clone();
+    let prepared =
+        relocate_note_on_disk(&state.vault, &row, &new_path, Some(trimmed.to_string())).await?;
+
+    let conn = state.db.conn()?;
+    let resp = finish_update(&conn, prepared)?;
+    drop(conn);
+
+    if let Some(note) = &resp.note {
+        let _ = app.emit(
+            "note-renamed",
+            serde_json::json!({
+                "id": note.id,
+                "oldPath": old_path,
+                "newPath": note.path,
+                "oldTitle": old_title,
+                "newTitle": note.title,
+                "source": "internal"
+            }),
+        );
+    }
+    Ok(resp)
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn notes_move(
+    state: State<'_, AppState>,
+    app: AppHandle,
+    id: String,
+    new_folder: String,
+) -> AppResult<NoteUpdateResponse> {
+    let folder = new_folder.trim().trim_matches('/');
+    let row = {
+        let conn = state.db.conn()?;
+        crate::db::note_metadata::get_by_id(&conn, &id)?
+    }
+    .ok_or_else(|| AppError::NotFound(format!("note {id}")))?;
+
+    let basename = row
+        .path
+        .rsplit('/')
+        .next()
+        .unwrap_or(&row.path)
+        .to_string();
+    let new_path = if folder.is_empty() {
+        basename
+    } else {
+        format!("{folder}/{basename}")
+    };
+
+    if new_path != row.path {
+        let conn = state.db.conn()?;
+        ensure_db_path_available(&conn, &new_path)?;
+    }
+
+    let old_path = row.path.clone();
+    let prepared = relocate_note_on_disk(&state.vault, &row, &new_path, None).await?;
+
+    let conn = state.db.conn()?;
+    let resp = finish_update(&conn, prepared)?;
+    drop(conn);
+
+    if let Some(note) = &resp.note {
+        let _ = app.emit(
+            "note-moved",
+            serde_json::json!({
+                "id": note.id,
+                "oldPath": old_path,
+                "newPath": note.path,
+                "source": "internal"
+            }),
+        );
+    }
+    Ok(resp)
+}
+
+#[tauri::command]
+#[specta::specta]
+pub fn notes_exists(state: State<'_, AppState>, args: Vec<String>) -> AppResult<bool> {
+    let title_or_path = single_string_arg(args, "title_or_path")?;
+    let conn = state.db.conn()?;
+    notes_exists_inner(&conn, &title_or_path)
+}
+
 fn single_string_arg(args: Vec<String>, name: &str) -> AppResult<String> {
     match args.as_slice() {
         [value] => Ok(value.clone()),
@@ -533,6 +727,43 @@ struct PreparedUpdate {
     row: NoteMetadata,
     body: String,
     frontmatter: NoteFrontmatter,
+}
+
+async fn relocate_note_on_disk(
+    vault: &VaultRuntime,
+    row: &NoteMetadata,
+    new_path: &str,
+    new_title: Option<String>,
+) -> AppResult<PreparedUpdate> {
+    let root = vault.require_current()?;
+    let read = notes_io::read_note_from_disk(&root, &row.path)
+        .await?
+        .ok_or_else(|| AppError::NotFound(format!("note file {}", row.path)))?;
+    let mut frontmatter = read.parsed.frontmatter;
+    let body = read.parsed.content;
+    let mut updated = row.clone();
+    updated.modified_at = now_iso();
+    frontmatter.modified = updated.modified_at.clone();
+
+    if let Some(title) = new_title {
+        updated.title = title.clone();
+        frontmatter.title = Some(title);
+    }
+
+    if new_path == row.path {
+        notes_io::write_note_to_disk(&root, new_path, &frontmatter, &body).await?;
+    } else {
+        ensure_vault_path_available(&root, new_path).await?;
+        notes_io::write_note_to_disk(&root, new_path, &frontmatter, &body).await?;
+        notes_io::delete_note_from_disk(&root, &row.path).await?;
+        updated.path = new_path.to_string();
+    }
+
+    Ok(PreparedUpdate {
+        row: updated,
+        body,
+        frontmatter,
+    })
 }
 
 async fn apply_update_to_vault(
