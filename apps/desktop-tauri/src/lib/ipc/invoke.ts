@@ -104,7 +104,10 @@ const realCommands = new Set<string>([
   'notes_get_tags',
   'notes_get_links',
   'notes_resolve_by_title',
-  'notes_preview_by_title'
+  'notes_preview_by_title',
+  'notes_get_file',
+  'notes_open_external',
+  'notes_reveal_in_finder'
 ])
 
 function shouldUseMock(cmd: string): boolean {

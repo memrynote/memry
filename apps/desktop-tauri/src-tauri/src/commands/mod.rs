@@ -13,4 +13,5 @@ pub mod properties;
 pub mod secrets;
 pub mod settings;
 pub mod shell;
+pub mod stubs_m6_m7_m8;
 pub mod vault;
