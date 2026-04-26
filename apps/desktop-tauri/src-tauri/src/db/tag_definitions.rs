@@ -97,21 +97,29 @@ pub fn list_with_counts(conn: &Connection) -> AppResult<Vec<TagWithCount>> {
         })
         .collect();
 
-    let mut metadata_stmt = conn.prepare(
-        "SELECT property_definition_names FROM note_metadata
-         WHERE coalesce(json_extract(clock, '$.deleted_at'), '') = ''
-           AND property_definition_names IS NOT NULL",
+    // Frontmatter tags live in notes_cache.tags_json. Skip rows whose
+    // metadata row is tombstoned so deleted notes do not poison counts.
+    let mut frontmatter_stmt = conn.prepare(
+        "SELECT c.tags_json
+           FROM notes_cache c
+           JOIN note_metadata m ON m.id = c.id
+          WHERE coalesce(json_extract(m.clock, '$.deleted_at'), '') = ''",
     )?;
-    let metadata_rows = metadata_stmt.query_map([], |row| row.get::<_, Option<String>>(0))?;
-    for row in metadata_rows {
-        if let Some(json) = row? {
-            for tag in tags_from_json(&json) {
-                increment(&mut counts, &tag);
-            }
+    let frontmatter_rows = frontmatter_stmt.query_map([], |row| row.get::<_, String>(0))?;
+    for row in frontmatter_rows {
+        for tag in tags_from_json(&row?) {
+            increment(&mut counts, &tag);
         }
     }
 
-    let mut snippet_stmt = conn.prepare("SELECT snippet FROM notes_cache")?;
+    // Inline `#hashtags` come from the cached body snippet. Apply the same
+    // tombstone filter so the live note set drives the count.
+    let mut snippet_stmt = conn.prepare(
+        "SELECT c.snippet
+           FROM notes_cache c
+           JOIN note_metadata m ON m.id = c.id
+          WHERE coalesce(json_extract(m.clock, '$.deleted_at'), '') = ''",
+    )?;
     let snippet_rows = snippet_stmt.query_map([], |row| row.get::<_, String>(0))?;
     for row in snippet_rows {
         for tag in inline_tags(&row?) {
@@ -167,7 +175,10 @@ fn tags_from_json(json: &str) -> Vec<String> {
     }
 }
 
-fn inline_tags(snippet: &str) -> Vec<String> {
+/// Extract `#hashtag` tokens from a body or snippet. Tokens are lowercased
+/// to match how `list_with_counts` aggregates them, so callers can use the
+/// returned values directly when reconciling `frontmatter.tags`.
+pub fn inline_tags(snippet: &str) -> Vec<String> {
     let mut tags = Vec::new();
     for token in snippet.split_whitespace() {
         let Some(hash_index) = token.find('#') else {
