@@ -9,6 +9,9 @@ pub mod keychain;
 pub mod sync;
 pub mod vault;
 
+#[cfg(any(debug_assertions, feature = "test-helpers"))]
+pub mod test_helpers;
+
 use app_state::AppState;
 use db::Db;
 use directories::ProjectDirs;
