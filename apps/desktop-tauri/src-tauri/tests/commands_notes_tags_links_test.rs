@@ -1,6 +1,6 @@
 use memry_desktop_tauri_lib::commands::notes::{
-    notes_create_inner, notes_get_links_inner, notes_get_tags_inner, notes_preview_by_title_inner,
-    notes_resolve_by_title_inner, NoteCreateInput,
+    NoteCreateInput, notes_create_inner, notes_get_links_inner, notes_get_tags_inner,
+    notes_preview_by_title_inner, notes_resolve_by_title_inner,
 };
 use memry_desktop_tauri_lib::db::tag_definitions;
 use memry_desktop_tauri_lib::test_helpers::{open_in_memory_with_migrations, test_vault_runtime};
@@ -167,9 +167,11 @@ async fn resolve_by_title_returns_match_case_insensitively() {
         "wiki link resolution must identify markdown notes"
     );
 
-    assert!(notes_resolve_by_title_inner(&conn, "missing")
-        .unwrap()
-        .is_none());
+    assert!(
+        notes_resolve_by_title_inner(&conn, "missing")
+            .unwrap()
+            .is_none()
+    );
 }
 
 #[tokio::test]
@@ -204,7 +206,9 @@ async fn preview_by_title_returns_snippet_payload_or_none() {
     assert_eq!(preview_json["tags"][0]["name"], "docs");
     assert_eq!(preview_json["tags"][0]["color"], "green");
 
-    assert!(notes_preview_by_title_inner(&conn, "missing")
-        .unwrap()
-        .is_none());
+    assert!(
+        notes_preview_by_title_inner(&conn, "missing")
+            .unwrap()
+            .is_none()
+    );
 }
