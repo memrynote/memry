@@ -7,9 +7,9 @@ use memry_desktop_tauri_lib::commands::crdt::{
 use memry_desktop_tauri_lib::commands::notes::{notes_create_inner, NoteCreateInput};
 use memry_desktop_tauri_lib::crdt::{
     apply_update_v1, encode_diff_since_v1, encode_snapshot_v1, encode_state_vector_v1,
-    CrdtRuntime,
+    CrdtRuntime, COMPACT_THRESHOLD,
 };
-use memry_desktop_tauri_lib::db::crdt_updates;
+use memry_desktop_tauri_lib::db::{crdt_snapshots, crdt_updates};
 use memry_desktop_tauri_lib::error::AppError;
 use memry_desktop_tauri_lib::test_helpers::{open_in_memory_with_migrations, test_vault_runtime};
 use std::sync::Arc;
@@ -241,4 +241,40 @@ async fn get_or_init_doc_is_idempotent_for_same_note() {
 
     assert_eq!(first_sv, second_sv);
     assert_eq!(crdt.open_doc_count().await, 1);
+}
+
+#[tokio::test]
+async fn compaction_snapshot_drops_persisted_update_rows() {
+    let conn = open_in_memory_with_migrations();
+    let crdt = Arc::new(CrdtRuntime::new());
+    let source = Arc::new(CrdtRuntime::new());
+    let source_doc = source.docs().get_or_init("compact").await;
+    let mut expected = String::new();
+
+    for _ in 0..COMPACT_THRESHOLD {
+        let before = encode_state_vector_v1(&source_doc).unwrap();
+        source_doc.with_write(|txn| {
+            let text = txn.get_or_insert_text("body");
+            text.insert(txn, expected.len() as u32, "x");
+        });
+        expected.push('x');
+        let diff = encode_diff_since_v1(&source_doc, &before).unwrap();
+        crdt_apply_update_inner(&conn, crdt.clone(), "compact", &diff, 606)
+            .await
+            .unwrap();
+    }
+
+    let snapshot = crdt_snapshots::get_latest(&conn, "compact")
+        .unwrap()
+        .expect("compaction snapshot");
+    assert_eq!(snapshot.replaced_through_seq, COMPACT_THRESHOLD);
+    assert!(crdt_updates::list_for_note(&conn, "compact")
+        .unwrap()
+        .is_empty());
+
+    let restored = Arc::new(CrdtRuntime::new());
+    let restored_doc = restored.docs().get_or_init("compact").await;
+    apply_update_v1(&restored_doc, &snapshot.snapshot_bytes, 1).unwrap();
+    let restored_body = restored_doc.with_read(|txn| txn.get_text("body").unwrap().get_string(txn));
+    assert_eq!(restored_body, expected);
 }
