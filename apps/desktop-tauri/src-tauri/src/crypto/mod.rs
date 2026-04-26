@@ -11,6 +11,7 @@ pub mod encoding;
 pub mod kdf;
 pub mod nonces;
 pub mod primitives;
+pub mod sign_verify;
 pub mod vectors;
 
 pub use nonces::{generate_nonce, NONCE_LENGTH};
