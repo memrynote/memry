@@ -96,6 +96,12 @@ export const commands = {
 	notesCreatePropertyDefinition: (input: CreatePropertyDefinitionInput) => typedError<PropertyDefinitionRow, AppError>(__TAURI_INVOKE("notes_create_property_definition", { input })),
 	notesUpdatePropertyDefinition: (input: unknown) => typedError<PropertyDefinitionRow, AppError>(__TAURI_INVOKE("notes_update_property_definition", { input })),
 	notesEnsurePropertyDefinition: (input: unknown) => typedError<PropertyDefinitionRow, AppError>(__TAURI_INVOKE("notes_ensure_property_definition", { input })),
+	notesAddPropertyOption: (input: unknown) => typedError<PropertySimpleSuccess, AppError>(__TAURI_INVOKE("notes_add_property_option", { input })),
+	notesAddStatusOption: (input: unknown) => typedError<PropertySimpleSuccess, AppError>(__TAURI_INVOKE("notes_add_status_option", { input })),
+	notesRemovePropertyOption: (input: unknown) => typedError<PropertySimpleSuccess, AppError>(__TAURI_INVOKE("notes_remove_property_option", { input })),
+	notesRenamePropertyOption: (input: unknown) => typedError<PropertySimpleSuccess, AppError>(__TAURI_INVOKE("notes_rename_property_option", { input })),
+	notesUpdateOptionColor: (input: unknown) => typedError<PropertySimpleSuccess, AppError>(__TAURI_INVOKE("notes_update_option_color", { input })),
+	notesDeletePropertyDefinition: (input: unknown) => typedError<PropertySimpleSuccess, AppError>(__TAURI_INVOKE("notes_delete_property_definition", { input })),
 	authStatus: () => typedError<AuthStatus, AppError>(__TAURI_INVOKE("auth_status")),
 	authUnlock: (input: AuthUnlockInput) => typedError<AuthStatus, AppError>(__TAURI_INVOKE("auth_unlock", { input })),
 	authLock: () => typedError<null, AppError>(__TAURI_INVOKE("auth_lock")),
@@ -673,6 +679,10 @@ export type PropertyDefinitionRow = {
 	defaultValue: string | null,
 	color: string | null,
 	createdAt: string,
+};
+
+export type PropertySimpleSuccess = {
+	success: boolean,
 };
 
 /**

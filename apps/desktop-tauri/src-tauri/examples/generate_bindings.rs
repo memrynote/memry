@@ -69,6 +69,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             commands::properties::notes_create_property_definition,
             commands::properties::notes_update_property_definition,
             commands::properties::notes_ensure_property_definition,
+            commands::properties::notes_add_property_option,
+            commands::properties::notes_add_status_option,
+            commands::properties::notes_remove_property_option,
+            commands::properties::notes_rename_property_option,
+            commands::properties::notes_update_option_color,
+            commands::properties::notes_delete_property_definition,
             // M4: auth + sync_auth + sync_setup
             commands::auth::auth_status,
             commands::auth::auth_unlock,
@@ -197,6 +203,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .typ::<commands::folders::PositionsResponse>()
         // M5 properties
         .typ::<commands::properties::CreatePropertyDefinitionInput>()
+        .typ::<commands::properties::PropertySimpleSuccess>()
         // Domain DB structs (registered for stable export across migrations)
         .typ::<db::bookmarks::Bookmark>()
         .typ::<db::calendar_bindings::CalendarBinding>()
