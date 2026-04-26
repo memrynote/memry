@@ -148,6 +148,56 @@ pub struct NoteLocalOnlyCount {
     pub count: i64,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
+#[serde(rename_all = "camelCase")]
+pub struct NoteTagInfo {
+    pub tag: String,
+    pub count: i64,
+    pub color: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
+#[serde(rename_all = "camelCase")]
+pub struct NoteLink {
+    pub source_id: String,
+    pub target_id: Option<String>,
+    pub target_title: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
+#[serde(rename_all = "camelCase")]
+pub struct NoteIncomingLink {
+    pub source_id: String,
+    pub source_path: String,
+    pub source_title: String,
+    pub contexts: Vec<NoteLinkContext>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
+#[serde(rename_all = "camelCase")]
+pub struct NoteLinkContext {
+    pub snippet: String,
+    pub link_start: i64,
+    pub link_end: i64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
+#[serde(rename_all = "camelCase")]
+pub struct NoteLinksResponse {
+    pub outgoing: Vec<NoteLink>,
+    pub incoming: Vec<NoteIncomingLink>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
+#[serde(rename_all = "camelCase")]
+pub struct NotePreview {
+    pub id: String,
+    pub title: String,
+    pub path: String,
+    pub snippet: String,
+    pub emoji: Option<String>,
+}
+
 pub(crate) fn into_dto(
     row: &NoteMetadata,
     body: &str,
@@ -354,6 +404,157 @@ pub fn notes_set_local_only_inner(
 pub fn notes_get_local_only_count_inner(conn: &Connection) -> AppResult<NoteLocalOnlyCount> {
     let count = crate::db::note_metadata::count_local_only(conn)?;
     Ok(NoteLocalOnlyCount { count })
+}
+
+pub fn notes_get_tags_inner(conn: &Connection) -> AppResult<Vec<NoteTagInfo>> {
+    let rows = crate::db::tag_definitions::list_with_counts(conn)?;
+    Ok(rows
+        .into_iter()
+        .map(|tag| NoteTagInfo {
+            tag: tag.name,
+            count: tag.count,
+            color: tag.color,
+        })
+        .collect())
+}
+
+pub async fn notes_get_links_inner(
+    conn: &Connection,
+    vault: &VaultRuntime,
+    id: &str,
+) -> AppResult<NoteLinksResponse> {
+    let row = crate::db::note_metadata::get_active_by_id(conn, id)?
+        .ok_or_else(|| AppError::NotFound(format!("note {id}")))?;
+    let root = vault.require_current()?;
+
+    let body = notes_io::read_note_from_disk(&root, &row.path)
+        .await?
+        .map(|read| read.parsed.content)
+        .unwrap_or_default();
+    let outgoing = extract_wikilinks(&body)
+        .into_iter()
+        .map(|target| NoteLink {
+            source_id: row.id.clone(),
+            target_id: None,
+            target_title: target,
+        })
+        .collect();
+
+    // TODO(M7): replace LIKE-scan with FTS5 backlink index. M5 stays on
+    // SQLite LIKE because the corpus is small enough that an O(N) scan is
+    // cheaper than maintaining a parallel index.
+    let candidates: Vec<(String, String, String)> = {
+        let mut stmt = conn.prepare(
+            "SELECT id, path, title FROM note_metadata
+             WHERE id != ?1
+               AND coalesce(json_extract(clock, '$.deleted_at'), '') = ''",
+        )?;
+        let rows = stmt.query_map([id], |r| {
+            Ok((
+                r.get::<_, String>(0)?,
+                r.get::<_, String>(1)?,
+                r.get::<_, String>(2)?,
+            ))
+        })?;
+        let mut out = Vec::new();
+        for row in rows {
+            out.push(row?);
+        }
+        out
+    };
+
+    let needle = format!("[[{}", row.title.to_lowercase());
+    let mut incoming = Vec::new();
+    for (source_id, source_path, source_title) in candidates {
+        let candidate_body = notes_io::read_note_from_disk(&root, &source_path)
+            .await
+            .ok()
+            .flatten()
+            .map(|read| read.parsed.content)
+            .unwrap_or_default();
+        if candidate_body.to_lowercase().contains(&needle) {
+            incoming.push(NoteIncomingLink {
+                source_id,
+                source_path,
+                source_title,
+                contexts: vec![NoteLinkContext {
+                    snippet: snippet_of(&candidate_body),
+                    link_start: 0,
+                    link_end: 0,
+                }],
+            });
+        }
+    }
+
+    Ok(NoteLinksResponse { outgoing, incoming })
+}
+
+pub fn notes_resolve_by_title_inner(
+    conn: &Connection,
+    title: &str,
+) -> AppResult<Option<NoteListItem>> {
+    // SQL LIKE/COLLATE NOCASE is good enough for M5; FTS upgrade in M7.
+    let row = conn.query_row(
+        "SELECT id, title, path, snippet, word_count, tags_json, emoji,
+                modified_at, created_at, local_only
+           FROM notes_cache
+          WHERE title = ?1 COLLATE NOCASE
+          LIMIT 1",
+        [title],
+        |r| {
+            Ok(NoteListItem {
+                id: r.get(0)?,
+                title: r.get(1)?,
+                path: r.get(2)?,
+                snippet: r.get(3)?,
+                word_count: r.get(4)?,
+                tags: serde_json::from_str(&r.get::<_, String>(5)?).unwrap_or_default(),
+                emoji: r.get(6)?,
+                modified: r.get(7)?,
+                created: r.get(8)?,
+                local_only: r.get::<_, i64>(9)? != 0,
+            })
+        },
+    );
+    match row {
+        Ok(item) => Ok(Some(item)),
+        Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
+        Err(err) => Err(err.into()),
+    }
+}
+
+pub fn notes_preview_by_title_inner(
+    conn: &Connection,
+    title: &str,
+) -> AppResult<Option<NotePreview>> {
+    Ok(notes_resolve_by_title_inner(conn, title)?.map(|item| NotePreview {
+        id: item.id,
+        title: item.title,
+        path: item.path,
+        snippet: item.snippet,
+        emoji: item.emoji,
+    }))
+}
+
+fn extract_wikilinks(body: &str) -> Vec<String> {
+    let mut out = Vec::new();
+    let bytes = body.as_bytes();
+    let mut i = 0;
+    while i + 1 < bytes.len() {
+        if bytes[i] == b'[' && bytes[i + 1] == b'[' {
+            if let Some(end) = body[i + 2..].find("]]") {
+                let inner = &body[i + 2..i + 2 + end];
+                let target = inner.split('|').next().unwrap_or("").trim();
+                if !target.is_empty() {
+                    out.push(target.to_string());
+                }
+                i += 2 + end + 2;
+                continue;
+            }
+        }
+        i += 1;
+    }
+    out
 }
 
 pub fn notes_list_inner(
@@ -733,6 +934,108 @@ pub fn notes_set_local_only(
 pub fn notes_get_local_only_count(state: State<'_, AppState>) -> AppResult<NoteLocalOnlyCount> {
     let conn = state.db.conn()?;
     notes_get_local_only_count_inner(&conn)
+}
+
+#[tauri::command]
+#[specta::specta]
+pub fn notes_get_tags(state: State<'_, AppState>) -> AppResult<Vec<NoteTagInfo>> {
+    let conn = state.db.conn()?;
+    notes_get_tags_inner(&conn)
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn notes_get_links(
+    state: State<'_, AppState>,
+    args: Vec<String>,
+) -> AppResult<NoteLinksResponse> {
+    let id = single_string_arg(args, "id")?;
+    let row = {
+        let conn = state.db.conn()?;
+        crate::db::note_metadata::get_active_by_id(&conn, &id)?
+    }
+    .ok_or_else(|| AppError::NotFound(format!("note {id}")))?;
+    let root = state.vault.require_current()?;
+    let body = notes_io::read_note_from_disk(&root, &row.path)
+        .await?
+        .map(|read| read.parsed.content)
+        .unwrap_or_default();
+    let outgoing = extract_wikilinks(&body)
+        .into_iter()
+        .map(|target| NoteLink {
+            source_id: row.id.clone(),
+            target_id: None,
+            target_title: target,
+        })
+        .collect();
+
+    let candidates: Vec<(String, String, String)> = {
+        let conn = state.db.conn()?;
+        let mut stmt = conn.prepare(
+            "SELECT id, path, title FROM note_metadata
+             WHERE id != ?1
+               AND coalesce(json_extract(clock, '$.deleted_at'), '') = ''",
+        )?;
+        let rows = stmt.query_map([&id], |r| {
+            Ok((
+                r.get::<_, String>(0)?,
+                r.get::<_, String>(1)?,
+                r.get::<_, String>(2)?,
+            ))
+        })?;
+        let mut out = Vec::new();
+        for row in rows {
+            out.push(row?);
+        }
+        out
+    };
+
+    let needle = format!("[[{}", row.title.to_lowercase());
+    let mut incoming = Vec::new();
+    for (source_id, source_path, source_title) in candidates {
+        let candidate_body = notes_io::read_note_from_disk(&root, &source_path)
+            .await
+            .ok()
+            .flatten()
+            .map(|read| read.parsed.content)
+            .unwrap_or_default();
+        if candidate_body.to_lowercase().contains(&needle) {
+            incoming.push(NoteIncomingLink {
+                source_id,
+                source_path,
+                source_title,
+                contexts: vec![NoteLinkContext {
+                    snippet: snippet_of(&candidate_body),
+                    link_start: 0,
+                    link_end: 0,
+                }],
+            });
+        }
+    }
+
+    Ok(NoteLinksResponse { outgoing, incoming })
+}
+
+#[tauri::command]
+#[specta::specta]
+pub fn notes_resolve_by_title(
+    state: State<'_, AppState>,
+    args: Vec<String>,
+) -> AppResult<Option<NoteListItem>> {
+    let title = single_string_arg(args, "title")?;
+    let conn = state.db.conn()?;
+    notes_resolve_by_title_inner(&conn, &title)
+}
+
+#[tauri::command]
+#[specta::specta]
+pub fn notes_preview_by_title(
+    state: State<'_, AppState>,
+    args: Vec<String>,
+) -> AppResult<Option<NotePreview>> {
+    let title = single_string_arg(args, "title")?;
+    let conn = state.db.conn()?;
+    notes_preview_by_title_inner(&conn, &title)
 }
 
 fn single_string_arg(args: Vec<String>, name: &str) -> AppResult<String> {
