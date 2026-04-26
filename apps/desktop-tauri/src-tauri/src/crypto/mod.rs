@@ -8,7 +8,9 @@
 //! parameter parity with the Electron implementation.
 
 pub mod encoding;
+pub mod kdf;
 pub mod nonces;
 pub mod primitives;
+pub mod vectors;
 
 pub use nonces::{generate_nonce, NONCE_LENGTH};

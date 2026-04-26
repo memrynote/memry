@@ -114,3 +114,7 @@ required-features = ["test-helpers"]
 [[test]]
 name = "crypto_primitives_test"
 required-features = ["test-helpers"]
+
+[[test]]
+name = "crypto_kdf_test"
+required-features = ["test-helpers"]
