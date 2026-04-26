@@ -46,6 +46,14 @@ pub fn set(db: &Db, key: &str, value: &str) -> AppResult<()> {
     Ok(())
 }
 
+pub fn get_bool(db: &Db, key: &str) -> AppResult<Option<bool>> {
+    Ok(get(db, key)?.map(|raw| raw == "true"))
+}
+
+pub fn set_bool(db: &Db, key: &str, value: bool) -> AppResult<()> {
+    set(db, key, if value { "true" } else { "false" })
+}
+
 pub fn list(db: &Db) -> AppResult<Vec<Setting>> {
     let conn = db.conn()?;
     let mut stmt = conn.prepare("SELECT key, value, modified_at FROM settings ORDER BY key")?;

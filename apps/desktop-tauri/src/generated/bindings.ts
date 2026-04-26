@@ -17,10 +17,103 @@ export const commands = {
 	 *  without 404s through the mock router.
 	 */
 	notifyFlushDone: () => typedError<null, AppError>(__TAURI_INVOKE("notify_flush_done")),
+	shellOpenUrl: (url: string) => typedError<null, AppError>(__TAURI_INVOKE("shell_open_url", { url })),
+	shellOpenPath: (path: string) => typedError<null, AppError>(__TAURI_INVOKE("shell_open_path", { path })),
+	shellRevealInFinder: (path: string) => typedError<null, AppError>(__TAURI_INVOKE("shell_reveal_in_finder", { path })),
+	dialogChooseFolder: (title: string | null) => typedError<string | null, AppError>(__TAURI_INVOKE("dialog_choose_folder", { title })),
+	dialogChooseFiles: (title: string | null, filters: string[] | null) => typedError<string[], AppError>(__TAURI_INVOKE("dialog_choose_files", { title, filters })),
+	authStatus: () => typedError<AuthStatus, AppError>(__TAURI_INVOKE("auth_status")),
+	authUnlock: (input: AuthUnlockInput) => typedError<AuthStatus, AppError>(__TAURI_INVOKE("auth_unlock", { input })),
+	authLock: () => typedError<null, AppError>(__TAURI_INVOKE("auth_lock")),
+	authRegisterDevice: (input: AuthRegisterDeviceInput) => typedError<RegisterDeviceView, AppError>(__TAURI_INVOKE("auth_register_device", { input })),
+	authRequestOtp: (input: AuthRequestOtpInput) => typedError<OtpRequestView, AppError>(__TAURI_INVOKE("auth_request_otp", { input })),
+	authSubmitOtp: (input: AuthSubmitOtpInput) => typedError<OtpVerifyView, AppError>(__TAURI_INVOKE("auth_submit_otp", { input })),
+	authEnableBiometric: () => typedError<BiometricStatus, AppError>(__TAURI_INVOKE("auth_enable_biometric")),
+	syncAuthRequestOtp: (input: AuthRequestOtpInput) => typedError<OtpRequestView, AppError>(__TAURI_INVOKE("sync_auth_request_otp", { input })),
+	syncAuthVerifyOtp: (input: AuthSubmitOtpInput) => typedError<OtpVerifyView, AppError>(__TAURI_INVOKE("sync_auth_verify_otp", { input })),
+	syncAuthResendOtp: (input: AuthRequestOtpInput) => typedError<OtpRequestView, AppError>(__TAURI_INVOKE("sync_auth_resend_otp", { input })),
+	syncAuthInitOAuth: (input: InitOAuthInput) => typedError<InitOAuthView, AppError>(__TAURI_INVOKE("sync_auth_init_o_auth", { input })),
+	syncAuthRefreshToken: () => typedError<RefreshTokenView, AppError>(__TAURI_INVOKE("sync_auth_refresh_token")),
+	syncAuthLogout: () => typedError<LogoutView, AppError>(__TAURI_INVOKE("sync_auth_logout")),
+	syncSetupSetupFirstDevice: (input: SetupFirstDeviceInput) => typedError<SetupResultView, AppError>(__TAURI_INVOKE("sync_setup_setup_first_device", { input })),
+	syncSetupSetupNewAccount: (input: SetupNewAccountInput) => typedError<SetupResultView, AppError>(__TAURI_INVOKE("sync_setup_setup_new_account", { input })),
+	syncSetupConfirmRecoveryPhrase: (input: ConfirmRecoveryPhraseInput) => typedError<SimpleSuccess, AppError>(__TAURI_INVOKE("sync_setup_confirm_recovery_phrase", { input })),
+	syncSetupGetRecoveryPhrase: () => typedError<RecoveryPhraseView, AppError>(__TAURI_INVOKE("sync_setup_get_recovery_phrase")),
+	accountGetInfo: () => typedError<{
+	userId: string,
+	email: string,
+	authProvider: string,
+} | null, AppError>(__TAURI_INVOKE("account_get_info")),
+	accountSignOut: () => typedError<AccountSignOutResult, AppError>(__TAURI_INVOKE("account_sign_out")),
+	accountGetRecoveryKey: () => typedError<string, AppError>(__TAURI_INVOKE("account_get_recovery_key")),
+	syncDevicesGetDevices: () => typedError<SyncDevicesGetDevicesResult, AppError>(__TAURI_INVOKE("sync_devices_get_devices")),
+	syncDevicesRemoveDevice: (input: SyncDevicesRemoveDeviceInput) => typedError<SyncDevicesMutationResult, AppError>(__TAURI_INVOKE("sync_devices_remove_device", { input })),
+	syncDevicesRenameDevice: (input: SyncDevicesRenameDeviceInput) => typedError<SyncDevicesMutationResult, AppError>(__TAURI_INVOKE("sync_devices_rename_device", { input })),
+	syncLinkingGenerateLinkingQr: () => typedError<LinkingQrView, AppError>(__TAURI_INVOKE("sync_linking_generate_linking_qr")),
+	syncLinkingLinkViaQr: (input: SyncLinkingLinkViaQrInput) => typedError<LinkingScanView, AppError>(__TAURI_INVOKE("sync_linking_link_via_qr", { input })),
+	syncLinkingCompleteLinkingQr: (input: SyncLinkingCompleteLinkingQrInput) => typedError<LinkingCompleteView, AppError>(__TAURI_INVOKE("sync_linking_complete_linking_qr", { input })),
+	syncLinkingLinkViaRecovery: (input: SyncLinkingLinkViaRecoveryInput) => typedError<LinkingMutationResult, AppError>(__TAURI_INVOKE("sync_linking_link_via_recovery", { input })),
+	syncLinkingApproveLinking: (input: SyncLinkingApproveLinkingInput) => typedError<LinkingMutationResult, AppError>(__TAURI_INVOKE("sync_linking_approve_linking", { input })),
+	syncLinkingGetLinkingSas: (input: SyncLinkingGetLinkingSasInput) => typedError<LinkingSasView, AppError>(__TAURI_INVOKE("sync_linking_get_linking_sas", { input })),
+	cryptoEncryptItem: (input: CryptoEncryptItemInput) => typedError<CryptoEncryptItemResult, AppError>(__TAURI_INVOKE("crypto_encrypt_item", { input })),
+	cryptoDecryptItem: (input: CryptoDecryptItemInput) => typedError<CryptoDecryptItemResult, AppError>(__TAURI_INVOKE("crypto_decrypt_item", { input })),
+	cryptoVerifySignature: (input: CryptoVerifySignatureInput) => typedError<CryptoVerifySignatureResult, AppError>(__TAURI_INVOKE("crypto_verify_signature", { input })),
+	cryptoRotateKeys: () => typedError<CryptoRotateKeysResult, AppError>(__TAURI_INVOKE("crypto_rotate_keys")),
+	cryptoGetRotationProgress: () => typedError<CryptoRotationProgress, AppError>(__TAURI_INVOKE("crypto_get_rotation_progress")),
+	secretsSetProviderKey: (input: SecretsSetProviderKeyInput) => typedError<ProviderKeyStatus, AppError>(__TAURI_INVOKE("secrets_set_provider_key", { input })),
+	secretsGetProviderKeyStatus: (input: SecretsGetProviderKeyStatusInput) => typedError<ProviderKeyStatus, AppError>(__TAURI_INVOKE("secrets_get_provider_key_status", { input })),
+	secretsDeleteProviderKey: (input: SecretsDeleteProviderKeyInput) => typedError<null, AppError>(__TAURI_INVOKE("secrets_delete_provider_key", { input })),
 };
 
 /* Types */
-export type AppError = { kind: "Database"; message: string } | { kind: "Crypto"; message: string } | { kind: "VaultLocked" } | { kind: "InvalidPassword" } | { kind: "NotFound"; message: string } | { kind: "Network"; message: string } | { kind: "Conflict"; message: string } | { kind: "Validation"; message: string } | { kind: "Internal"; message: string };
+export type AccountInfoView = {
+	userId: string,
+	email: string,
+	authProvider: string,
+};
+
+export type AccountSignOutResult = {
+	success: boolean,
+	error: string | null,
+};
+
+export type AppError = { kind: "Database"; message: string } | { kind: "Crypto"; message: string } | { kind: "VaultLocked" } | { kind: "InvalidPassword" } | { kind: "NotFound"; message: string } | { kind: "Network"; message: string } | { kind: "Conflict"; message: string } | { kind: "Validation"; message: string } | { kind: "Vault"; message: string } | { kind: "PathEscape"; message: string } | { kind: "Io"; message: string } | { kind: "Keychain"; message: string } | { kind: "Auth"; message: string } | { kind: "RateLimited"; message: number | null } | { kind: "Internal"; message: string };
+
+export type AuthRegisterDeviceInput = {
+	name: string,
+	platform: string,
+	osVersion: string | null,
+	appVersion: string,
+};
+
+export type AuthRequestOtpInput = {
+	email: string,
+};
+
+export type AuthStateKind = "locked" | "unlocking" | "unlocked" | "error";
+
+export type AuthStatus = {
+	state: AuthStateKind,
+	deviceId: string | null,
+	email: string | null,
+	hasBiometric: boolean,
+	rememberDevice: boolean,
+};
+
+export type AuthSubmitOtpInput = {
+	email: string,
+	code: string,
+};
+
+export type AuthUnlockInput = {
+	password: string,
+	rememberDevice: boolean,
+};
+
+export type BiometricStatus = {
+	ok: boolean,
+	reason: string,
+};
 
 export type Bookmark = {
 	id: string,
@@ -127,6 +220,68 @@ export type CalendarSource = {
 	lastError: string | null,
 };
 
+export type ConfirmRecoveryPhraseInput = {
+	confirmed: boolean,
+};
+
+export type CryptoDecryptItemInput = {
+	ciphertextB64: string,
+	nonceB64: string,
+	associatedDataB64: string | null,
+};
+
+export type CryptoDecryptItemResult = {
+	plaintextB64: string,
+};
+
+export type CryptoEncryptItemInput = {
+	plaintextB64: string,
+	associatedDataB64: string | null,
+};
+
+export type CryptoEncryptItemResult = {
+	ciphertextB64: string,
+	nonceB64: string,
+};
+
+export type CryptoRotateKeysResult = {
+	success: boolean,
+	reason: string | null,
+};
+
+export type CryptoRotationProgress = {
+	inProgress: boolean,
+	completed: number,
+	total: number,
+};
+
+export type CryptoVerifySignatureInput = {
+	messageB64: string,
+	signatureB64: string,
+	publicKeyB64: string,
+};
+
+export type CryptoVerifySignatureResult = {
+	valid: boolean,
+};
+
+export type DeviceView = {
+	id: string,
+	name: string,
+	platform: string,
+	osVersion: string | null,
+	appVersion: string | null,
+	linkedAt: number,
+	lastSyncAt: number | null,
+	isCurrentDevice: boolean,
+	/**
+	 *  Unix-epoch seconds when the server first registered the device
+	 *  (populated from the `devices.created_at INTEGER` D1 column). The
+	 *  renderer formats this as a relative time string.
+	 */
+	createdAt: number | null,
+};
+
 export type FolderConfig = {
 	path: string,
 	icon: string | null,
@@ -164,6 +319,56 @@ export type InboxItem = {
 	captureSource: string | null,
 };
 
+export type InitOAuthInput = {
+	provider: string,
+	redirectUri: string | null,
+};
+
+export type InitOAuthView = {
+	state: string,
+	authorizeUrl: string | null,
+};
+
+export type LinkingCompleteView = {
+	success: boolean,
+	error: string | null,
+	deviceId: string | null,
+};
+
+export type LinkingMutationResult = {
+	success: boolean,
+	error: string | null,
+};
+
+export type LinkingQrView = {
+	sessionId: string,
+	/**
+	 *  JSON-encoded `LinkingQrPayload` ready for the renderer to render
+	 *  inside a QR code or copy as text. The new device decodes this
+	 *  string when it calls `sync_linking_link_via_qr`.
+	 */
+	qrPayload: string,
+	/**
+	 *  Unix-epoch seconds when the linking session expires server-side.
+	 *  The renderer uses this for the QR countdown.
+	 */
+	expiresAt: number,
+};
+
+export type LinkingSasView = {
+	sasCode: string,
+};
+
+export type LinkingScanView = {
+	sessionId: string,
+	sasCode: string,
+};
+
+export type LogoutView = {
+	success: boolean,
+	error: string | null,
+};
+
 export type NoteMetadata = {
 	id: string,
 	path: string,
@@ -191,6 +396,20 @@ export type NotePosition = {
 	position: number,
 };
 
+export type OtpRequestView = {
+	success: boolean,
+	/**
+	 *  Seconds until the OTP code expires (mirrors the server's
+	 *  `expiresIn` field, a countdown rather than a unix timestamp).
+	 */
+	expiresIn: number | null,
+};
+
+export type OtpVerifyView = {
+	success: boolean,
+	needsSetup: boolean,
+};
+
 export type Project = {
 	id: string,
 	name: string,
@@ -214,6 +433,32 @@ export type PropertyDefinition = {
 	defaultValue: string | null,
 	color: string | null,
 	createdAt: string,
+};
+
+/**
+ *  Public masked-metadata view of a provider key. Crosses the IPC
+ *  boundary; never carries the raw key.
+ */
+export type ProviderKeyStatus = {
+	provider: string,
+	configured: boolean,
+	label: string | null,
+	last4: string | null,
+	updatedAt: string | null,
+};
+
+export type RecoveryPhraseView = {
+	phrase: string,
+};
+
+export type RefreshTokenView = {
+	success: boolean,
+	error: string | null,
+};
+
+export type RegisterDeviceView = {
+	deviceId: string,
+	signingPublicKey: string,
 };
 
 export type Reminder = {
@@ -254,6 +499,20 @@ export type SearchReason = {
 	visitedAt: string,
 };
 
+export type SecretsDeleteProviderKeyInput = {
+	provider: string,
+};
+
+export type SecretsGetProviderKeyStatusInput = {
+	provider: string,
+};
+
+export type SecretsSetProviderKeyInput = {
+	provider: string,
+	rawKey: string,
+	label: string | null,
+};
+
 export type Setting = {
 	key: string,
 	value: string,
@@ -267,6 +526,36 @@ export type SettingsGetInput = {
 export type SettingsSetInput = {
 	key: string,
 	value: string,
+};
+
+export type SetupFirstDeviceInput = {
+	provider: string,
+	oauthToken: string,
+	state: string,
+};
+
+export type SetupNewAccountInput = {
+	email: string,
+	password: string,
+	rememberDevice: boolean,
+	deviceName: string,
+	platform: string,
+	osVersion: string | null,
+	appVersion: string,
+};
+
+export type SetupResultView = {
+	success: boolean,
+	error: string | null,
+	deviceId: string | null,
+	email: string | null,
+	recoveryPhrase: string[] | null,
+	needsRecoverySetup: boolean | null,
+};
+
+export type SimpleSuccess = {
+	success: boolean,
+	error: string | null,
 };
 
 export type Status = {
@@ -292,6 +581,25 @@ export type SyncDevice = {
 	signingPublicKey: string,
 };
 
+export type SyncDevicesGetDevicesResult = {
+	devices: DeviceView[],
+	email: string | null,
+};
+
+export type SyncDevicesMutationResult = {
+	success: boolean,
+	error: string | null,
+};
+
+export type SyncDevicesRemoveDeviceInput = {
+	deviceId: string,
+};
+
+export type SyncDevicesRenameDeviceInput = {
+	deviceId: string,
+	newName: string,
+};
+
 export type SyncHistoryEntry = {
 	id: string,
 	type: string,
@@ -300,6 +608,37 @@ export type SyncHistoryEntry = {
 	details: string | null,
 	durationMs: number | null,
 	createdAt: number,
+};
+
+export type SyncLinkingApproveLinkingInput = {
+	sessionId: string,
+};
+
+export type SyncLinkingCompleteLinkingQrInput = {
+	sessionId: string,
+	/**
+	 *  Device metadata the renderer collected during the wizard.
+	 *  Required so this command can finish device registration via
+	 *  `/auth/devices` after the master key has been recovered.
+	 */
+	deviceName: string,
+	platform: string,
+	osVersion: string | null,
+	appVersion: string,
+};
+
+export type SyncLinkingGetLinkingSasInput = {
+	sessionId: string,
+};
+
+export type SyncLinkingLinkViaQrInput = {
+	qrJson: string,
+	deviceName: string,
+	devicePlatform: string,
+};
+
+export type SyncLinkingLinkViaRecoveryInput = {
+	recoveryPhrase: string,
 };
 
 export type SyncQueueItem = {

@@ -1369,7 +1369,15 @@ interface SyncSetupClientAPI {
     needsRecoveryInput?: boolean
     error?: string
   }>
-  setupNewAccount: () => Promise<{
+  setupNewAccount: (input: {
+    email: string
+    password: string
+    rememberDevice: boolean
+    deviceName: string
+    platform: string
+    osVersion?: string | null
+    appVersion: string
+  }) => Promise<{
     success: boolean
     deviceId?: string
     error?: string

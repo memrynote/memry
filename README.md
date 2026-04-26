@@ -194,22 +194,25 @@ Want to shape what comes next? [Join the conversation →](#community)
 
 memry is built with:
 
-- **Electron** + **React** + **TypeScript** for the desktop app
+- **Electron** legacy desktop app plus the in-progress **Tauri** + **React** + **TypeScript** migration app
 - **Yjs** CRDTs for conflict-free real-time collaboration
-- **libsodium** for all cryptographic operations
+- **libsodium/RustCrypto** for cryptographic operations
 - **SQLite** (via better-sqlite3 + Drizzle ORM) for local storage
 - **Cloudflare Workers** + **D1** + **R2** for the sync backend
 - **BlockNote** for the rich text editor
 
 ```bash
 # Clone and use the pinned Node version from .nvmrc (24.x)
-git clone https://github.com/memrynote/memrynote.git
-cd memrynote
+git clone https://github.com/memrynote/memry.git
+cd memry
 nvm use
 pnpm install
 
-# Run the desktop app
+# Run the legacy Electron desktop app
 pnpm dev:desktop
+
+# Run the Tauri migration app
+pnpm --filter @memry/desktop-tauri dev
 
 # Run the sync server
 pnpm dev:sync-server

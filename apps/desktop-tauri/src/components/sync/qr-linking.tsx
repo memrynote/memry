@@ -10,8 +10,10 @@ import { invoke } from '@/lib/ipc/invoke'
 type QrState = 'loading' | 'ready' | 'expired' | 'error'
 
 interface QrSession {
-  qrData: string
+  /** JSON payload string ready for QR encoding + clipboard copy. */
+  qrPayload: string
   sessionId: string
+  /** Unix-epoch seconds; renderer multiplies by 1000 for `Date.now()` math. */
   expiresAt: number
 }
 
@@ -33,19 +35,20 @@ export function QrLinking({ onCancel }: QrLinkingProps): React.JSX.Element {
   const generateQr = useCallback(() => {
     setQrState('loading')
     setError(null)
-    invoke<{ qrData?: string; sessionId?: string; expiresAt?: number }>(
+    invoke<{ qrPayload?: string; sessionId?: string; expiresAt?: number }>(
       'sync_linking_generate_linking_qr'
     )
       .then((result) => {
-        if (!result.qrData || !result.sessionId || !result.expiresAt) {
+        if (!result.qrPayload || !result.sessionId || !result.expiresAt) {
           setQrState('error')
           setError('Failed to generate linking code')
           return
         }
         setSession({
-          qrData: result.qrData,
+          qrPayload: result.qrPayload,
           sessionId: result.sessionId,
-          expiresAt: result.expiresAt
+          // Server reports unix-epoch seconds; the countdown hook expects ms.
+          expiresAt: result.expiresAt * 1000
         })
         setQrState('ready')
       })
@@ -152,8 +155,8 @@ function QrReady({
   }, [copied])
 
   const handleCopy = useCallback(() => {
-    void navigator.clipboard.writeText(session.qrData).then(() => setCopied(true))
-  }, [session.qrData])
+    void navigator.clipboard.writeText(session.qrPayload).then(() => setCopied(true))
+  }, [session.qrPayload])
 
   if (isExpired) {
     return (
@@ -177,7 +180,7 @@ function QrReady({
         aria-label="QR code for device linking"
       >
         <QRCodeSVG
-          value={session.qrData}
+          value={session.qrPayload}
           size={180}
           level="M"
           marginSize={0}
@@ -203,7 +206,7 @@ function QrReady({
         </span>
         <div className="flex items-center gap-2 rounded-[10px] bg-foreground/[0.04] border border-border px-3.5 py-2.5 min-w-0">
           <code className="min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap font-mono text-[13px] text-muted-foreground">
-            {truncateCode(session.qrData)}
+            {truncateCode(session.qrPayload)}
           </code>
           <button
             type="button"

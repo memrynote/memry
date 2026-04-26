@@ -5,6 +5,40 @@ Format: weekly entries grouped by feature area.
 
 ---
 
+## 2026-04-26 — Tauri Migration M4 — Crypto, Keychain, and Auth Backend
+
+### Added
+- Real Rust crypto primitives in `apps/desktop-tauri/src-tauri/src/crypto/`: XChaCha20-Poly1305 AEAD blob encryption (RustCrypto `chacha20poly1305`), Argon2id key derivation with Electron-canonical params (opsLimit=3, memLimit=67MiB, salt=16, parallelism=1), Ed25519 detached sign/verify with deterministic seed support, BLAKE2b 16-byte device-id derivation, KDF context separation across 7 named contexts (`memryvlt`, `memrysgn`, `memryvrf`, `memrykve`, `memrylnk`, `memrymac`, `memrysas`)
+- macOS Keychain integration via `security-framework` (`apps/desktop-tauri/src-tauri/src/keychain/`): `KeychainStore` trait with `macos.rs` production backend and `memory.rs` test backend, Electron-compatible shared service identifier (`com.memry.sync`) with account-name isolation for master keys, tokens, provider keys, recovery phrase, and device signing key, delete-before-set update semantics, "not found" maps to `Ok(None)` rather than error
+- `AuthRuntime` in-memory state machine in `apps/desktop-tauri/src-tauri/src/auth/state.rs`: `Locked` → `Unlocking` → `Unlocked` / `Error` transitions, `zeroize::Zeroizing<Vec<u8>>` for master/vault key material, account/device metadata cached on unlock, lock zeroizes secret material immediately
+- Vault-key unlock flow (`auth/vault_keys.rs`): first-setup stores `auth.kdfSalt` + `auth.keyVerifier` + `auth.rememberDevice` in settings, password verification via constant-time `key_verifier` compare, correct password caches master key in keychain when `rememberDevice=true`, boot-time auto-unlock from keychain
+- Provider secret storage (`auth/secrets.rs`): allowlisted providers (`openai`, `anthropic`, `openrouter`, `google`), raw keys never returned — `ProviderKeyStatus { configured, label?, last4?, updatedAt? }` only, metadata stored separately from key material at `provider-key:<provider>` / `provider-key-meta:<provider>`
+- PII-safe redaction helpers (`auth/redaction.rs`): email → `k***@domain`, provider keys / bearer tokens / setup tokens / note titles → `<redacted:*>` placeholders, URL query-param scrubbing — applied on every IPC error path before tracing emit
+- Narrow JSON HTTP client to sync-server (`sync/http.rs` + `sync/auth_client.rs`): `post_json` / `get_json` / `delete_json` with optional bearer, 429 → `AppError::RateLimited(retry_after)`, non-2xx → `AppError::Network` with status code only (no body bytes), `SYNC_SERVER_URL` resolved per call (debug builds default to `http://localhost:8787`), 15 auth/device/linking route wrappers
+- Device identity (`auth/device.rs`): get-or-create Ed25519 signing keypair stored under `com.memry.sync/device-signing-key`, deterministic device id from BLAKE2b(public_key, 16 bytes), `sync_devices` row upsert, sign-out drops access/refresh/setup tokens but leaves local vault data
+- Account flows (`auth/account.rs`): OTP request/verify/resend, OAuth Google init + callback, setup-new-account (master key derive → device register → token store → recovery phrase), refresh, sign-out, recovery-key display only when unlocked
+- QR-based device linking (`auth/linking.rs`): X25519 ephemeral exchange, 6-digit SAS code from shared secret, encrypted master-key transport from approving device to new device, in-memory `Mutex<HashMap<String, PendingLinkingSession>>` for short-lived sessions
+- 32+ Tauri commands across `commands/{auth,account,crypto,devices,linking,secrets}.rs` with full `#[specta::specta]` type registration
+- `apps/desktop-tauri/src/generated/bindings.ts` regenerated to expose typed M4 commands to the renderer; `realCommands` allowlist updated so the IPC forwarder routes auth/crypto/device/linking commands to Rust while leaving M5+ surfaces on mocks
+- 20 cargo integration test files covering crypto primitives, KDF context table, sign/verify roundtrips, keychain CRUD (with one ignored real-Keychain smoke), auth state transitions, vault-key wrong-password leaves keychain untouched, redaction completeness, provider secrets allowlist, sync HTTP client mock-server cases, device identity persistence, end-to-end command flows — 243 Rust tests total, all passing
+
+### Changed
+- `apps/desktop-tauri/src/services/auth-service.ts` and `device-service.ts` now route through generated bindings; renderer call sites in `setup-wizard.tsx`, `auth-context.tsx`, `linking-*.tsx`, `key-rotation-wizard.tsx`, `qr-linking.tsx` re-aligned to the Rust contract shapes
+- `mocks/auth.ts` and `mocks/sync.ts` updated to match real command return shapes so the WebKit mock lane stays a faithful renderer test surface
+- `command-parity-audit.ts` graduates the M4 command surface from "deferred" to "required real"; retired Electron channels (`crypto_encrypt`, `crypto_decrypt`, `crypto_sign`, `crypto_verify`) added to the audit ledger so a regression that re-introduces them fails CI
+- Tauri bundle config excludes dev-only bins from the production `.app`
+
+### Tech Debt / Decisions Captured
+- Task 1 subspike confirmed `dryoc 0.7.2` lacks one-shot XChaCha20-Poly1305 AEAD and rejects the 4-byte BLAKE2b digest length Electron uses for SAS — used RustCrypto `chacha20poly1305` for `encrypt_blob`/`decrypt_blob` and `blake2` for exact SAS parity; kept dryoc for Argon2id, KDF, Ed25519, and 16-byte BLAKE2b device IDs. Decision documented inline in `Cargo.toml`
+- Biometric unlock remains a stub: `auth_enable_biometric` returns `{ ok: false, reason: "not-implemented-post-v1" }` per plan
+- M4 sync HTTP client is intentionally narrow — auth/devices/linking only. M6 owns retry/push/pull/websocket orchestration
+- Manual Keychain Access.app smoke (`MEMRY_TEST_REAL_KEYCHAIN=1`) and staging OTP smoke deferred to release-readiness pass; automated suite covers the same logic against the memory backend and `httpmock` server
+
+### Reviews
+- Pre-landing structured review (Claude code-reviewer + security-auditor + architect-review specialists), Claude adversarial subagent, and Codex adversarial pass run pre-merge. One earlier Codex review on this branch (commit `f9d31495`) addressed crypto guard / linking / devices contracts; this ship pass verifies nothing slipped after the post-fix commits
+
+---
+
 ## 2026-04-25 — Tauri Migration M1 — Skeleton + Full Renderer Port
 
 ### Added

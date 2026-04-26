@@ -329,6 +329,7 @@ const createMockApi = () => ({
   // Sync Setup API
   syncSetup: {
     setupFirstDevice: vi.fn().mockResolvedValue({ success: true }),
+    setupNewAccount: vi.fn().mockResolvedValue({ success: true }),
     confirmRecoveryPhrase: vi.fn().mockResolvedValue({ success: true })
   },
 

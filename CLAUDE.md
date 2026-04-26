@@ -5,7 +5,8 @@ Research the codebase before editing. Never change code you haven't read."
 ## Build & Dev
 
 ```bash
-pnpm dev          # desktop app (Electron + Vite HMR)
+pnpm dev                                      # legacy Electron desktop app
+pnpm --filter @memry/desktop-tauri dev       # Tauri migration app
 ```
 
 ## Verify
@@ -17,6 +18,8 @@ pnpm test         # Vitest (desktop + sync-server via turbo)
 pnpm test:e2e     # Playwright E2E (Electron)
 pnpm ipc:check    # validate IPC contract types (renderer↔main boundary)
 pnpm ipc:generate # regenerate IPC invoke map from contracts
+pnpm --filter @memry/desktop-tauri cargo:test     # Rust tests for Tauri backend
+pnpm --filter @memry/desktop-tauri bindings:check # validate generated Tauri bindings
 ```
 
 ## Approach
