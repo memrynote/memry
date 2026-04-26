@@ -397,21 +397,26 @@ async fn auth_client_request_otp_posts_to_canonical_path() {
 }
 
 #[tokio::test]
-async fn auth_client_refresh_token_posts_to_canonical_path() {
+async fn auth_client_refresh_token_posts_to_canonical_path_with_body_token() {
     let server = MockServer::start_async().await;
     let mock = server
         .mock_async(|when, then| {
             when.method(POST)
                 .path("/auth/refresh")
-                .header("authorization", "Bearer refresh-token");
+                .json_body(json!({ "refreshToken": "refresh-token" }))
+                .matches(|req| {
+                    !req.headers
+                        .as_ref()
+                        .map(|h| h.iter().any(|(k, _)| k.eq_ignore_ascii_case("authorization")))
+                        .unwrap_or(false)
+                });
             then.status(200).json_body(json!({ "access": "new" }));
         })
         .await;
 
     let _: Value = auth_client::refresh_token_with_base(
         &server.base_url(),
-        &json!({}),
-        "refresh-token",
+        &json!({ "refreshToken": "refresh-token" }),
     )
     .await
     .expect("refresh wrapper must succeed");

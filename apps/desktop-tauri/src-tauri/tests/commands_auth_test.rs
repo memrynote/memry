@@ -52,7 +52,7 @@ async fn request_otp_returns_success_and_expiry() {
                 .json_body(json!({ "email": "kaan@example.com" }));
             then.status(200)
                 .header("content-type", "application/json")
-                .json_body(json!({ "success": true, "expiresAt": 1_700_000_600 }));
+                .json_body(json!({ "success": true, "expiresIn": 600 }));
         })
         .await;
 
@@ -62,7 +62,7 @@ async fn request_otp_returns_success_and_expiry() {
 
     mock.assert_async().await;
     assert!(result.success);
-    assert_eq!(result.expires_at, Some(1_700_000_600));
+    assert_eq!(result.expires_in, Some(600));
 }
 
 #[tokio::test]
@@ -151,27 +151,56 @@ async fn verify_otp_with_existing_user_clears_setup_token_and_stores_session() {
 // Setup new account
 // ---------------------------------------------------------------------
 
+/// Fake JWT (alg=none) with the supplied claims. Acceptable for tests
+/// because `account.rs` decodes claims without verifying the signature
+/// — the server enforces validity before the client gets here.
+fn fake_jwt(claims: serde_json::Value) -> String {
+    use base64::{engine::general_purpose::URL_SAFE_NO_PAD as B64URL, Engine as _};
+    let header = B64URL.encode(br#"{"alg":"none","typ":"JWT"}"#);
+    let payload = B64URL.encode(claims.to_string().as_bytes());
+    format!("{header}.{payload}.")
+}
+
 #[tokio::test]
 async fn setup_new_account_registers_device_and_returns_recovery_phrase() {
     let state = fresh_state();
+    let setup_token = fake_jwt(json!({ "jti": "setup-jti-1", "sub": "user-9" }));
+    let access_token = fake_jwt(json!({ "sub": "user-9" }));
     state
         .auth
         .keychain()
-        .set_item(SERVICE_VAULT, KEYCHAIN_SETUP_TOKEN, b"setup-token-abc")
+        .set_item(
+            SERVICE_VAULT,
+            KEYCHAIN_SETUP_TOKEN,
+            setup_token.as_bytes(),
+        )
         .unwrap();
 
     let server = MockServer::start_async().await;
-    let mock = server
-        .mock_async(|when, then| {
+    let auth_header = format!("Bearer {setup_token}");
+    let access_header = format!("Bearer {access_token}");
+    let device_mock = {
+        let access_token = access_token.clone();
+        server
+            .mock_async(move |when, then| {
+                when.method(POST)
+                    .path("/auth/devices")
+                    .header("authorization", auth_header.as_str());
+                then.status(200).json_body(json!({
+                    "success": true,
+                    "deviceId": "device-from-server",
+                    "accessToken": access_token,
+                    "refreshToken": "refresh-token-xyz",
+                }));
+            })
+            .await
+    };
+    let setup_mock = server
+        .mock_async(move |when, then| {
             when.method(POST)
-                .path("/auth/devices")
-                .header("authorization", "Bearer setup-token-abc");
-            then.status(200).json_body(json!({
-                "userId": "user-9",
-                "deviceId": "device-from-server",
-                "accessToken": "access-token-xyz",
-                "refreshToken": "refresh-token-xyz",
-            }));
+                .path("/auth/setup")
+                .header("authorization", access_header.as_str());
+            then.status(200).json_body(json!({ "success": true }));
         })
         .await;
 
@@ -189,14 +218,15 @@ async fn setup_new_account_registers_device_and_returns_recovery_phrase() {
         .await
         .expect("setup must succeed");
 
-    mock.assert_async().await;
+    device_mock.assert_async().await;
+    setup_mock.assert_async().await;
     assert!(!result.recovery_phrase.is_empty(), "recovery phrase must be returned");
-    assert_eq!(result.device_id.len(), 32, "device id is 16-byte hex");
+    assert_eq!(result.device_id, "device-from-server", "device id must come from the server");
 
     let kc = state.auth.keychain();
     assert_eq!(
         kc.get_item(SERVICE_VAULT, KEYCHAIN_ACCESS_TOKEN).unwrap().as_deref(),
-        Some(b"access-token-xyz".as_ref()),
+        Some(access_token.as_bytes()),
         "access token must be persisted after device registration",
     );
     assert_eq!(
@@ -221,7 +251,7 @@ async fn setup_new_account_registers_device_and_returns_recovery_phrase() {
     let info = account::get_account_info(&state)
         .unwrap()
         .expect("account info must be persisted");
-    assert_eq!(info.user_id, "user-9");
+    assert_eq!(info.user_id, "user-9", "user id must come from access-token sub claim");
     assert_eq!(info.email, "kaan@example.com");
     assert_eq!(info.auth_provider, "otp");
 
@@ -273,7 +303,7 @@ async fn refresh_session_rotates_access_and_refresh_tokens() {
         .mock_async(|when, then| {
             when.method(POST)
                 .path("/auth/refresh")
-                .header("authorization", "Bearer old-refresh");
+                .json_body(json!({ "refreshToken": "old-refresh" }));
             then.status(200).json_body(json!({
                 "accessToken": "new-access",
                 "refreshToken": "new-refresh",

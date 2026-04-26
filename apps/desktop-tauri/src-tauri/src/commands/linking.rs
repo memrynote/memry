@@ -15,7 +15,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::app_state::AppState;
 use crate::auth::account::KEYCHAIN_ACCESS_TOKEN;
-use crate::auth::linking::{self, LinkingQrPayload};
+use crate::auth::linking::{self, LinkingQrPayload, ScanDeviceMetadata};
 use crate::error::{AppError, AppResult};
 use crate::keychain::SERVICE_VAULT;
 
@@ -26,6 +26,8 @@ const KEYCHAIN_MASTER_KEY: &str = "master-key";
 #[serde(rename_all = "camelCase")]
 pub struct SyncLinkingLinkViaQrInput {
     pub qr_json: String,
+    pub device_name: String,
+    pub device_platform: String,
 }
 
 #[derive(Debug, Clone, Deserialize, specta::Type)]
@@ -116,9 +118,16 @@ pub async fn sync_linking_link_via_qr(
     state: tauri::State<'_, AppState>,
     input: SyncLinkingLinkViaQrInput,
 ) -> AppResult<LinkingScanView> {
-    let access_token = read_access_token(&state)?;
+    // The /auth/linking/scan endpoint is anonymous: the linking-secret
+    // HMAC is what proves the new device scanned a real QR. We therefore
+    // do NOT require a renderer-supplied access token here.
     let base = crate::sync::http::resolve_base_url()?;
-    let scan = linking::link_via_qr_with_base(&base, &input.qr_json, &access_token).await?;
+    let metadata = ScanDeviceMetadata {
+        device_name: input.device_name.clone(),
+        device_platform: input.device_platform.clone(),
+    };
+    let scan =
+        linking::link_via_qr_with_base(&base, &state.linking, &input.qr_json, &metadata).await?;
     Ok(LinkingScanView {
         session_id: scan.session_id,
         sas_code: scan.sas_code,
@@ -185,10 +194,15 @@ pub async fn sync_linking_approve_linking(
         .map_err(|err| {
             AppError::Validation(format!("invalid newDevicePublicKey base64: {err}"))
         })?;
+    let initiator_session = state
+        .linking
+        .peek(&input.session_id)
+        .ok_or_else(|| AppError::NotFound(format!("linking session: {}", input.session_id)))?;
     let base = crate::sync::http::resolve_base_url()?;
     match linking::approve_linking_with_base(
         &base,
         &input.session_id,
+        &initiator_session.ephemeral_secret_key,
         &master_key,
         &new_device_public_key,
         &access_token,
@@ -239,19 +253,15 @@ fn read_access_token(state: &AppState) -> AppResult<String> {
     String::from_utf8(bytes).map_err(|err| AppError::Auth(format!("access token utf-8: {err}")))
 }
 
-/// Peeks at a pending linking session WITHOUT consuming it. The
-/// `PendingLinkingRegistry` only exposes `take`, so we re-insert after
-/// reading. This is a stop-gap until the registry grows a `peek` API.
+/// Reads a pending linking session WITHOUT consuming it.
 fn peek_session(
     state: &AppState,
     session_id: &str,
 ) -> AppResult<linking::PendingLinkingSession> {
-    let session = state
+    state
         .linking
-        .take(session_id)
-        .ok_or_else(|| AppError::NotFound(format!("linking session: {session_id}")))?;
-    state.linking.insert(session.clone());
-    Ok(session)
+        .peek(session_id)
+        .ok_or_else(|| AppError::NotFound(format!("linking session: {session_id}")))
 }
 
 fn redact(err: &AppError) -> String {

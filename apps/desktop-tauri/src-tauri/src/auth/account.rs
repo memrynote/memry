@@ -17,16 +17,22 @@
 //! key, recovery phrase, and any provider keys in place so that the
 //! local vault remains usable after sign-out.
 
-use base64::{engine::general_purpose::URL_SAFE_NO_PAD as B64URL, Engine as _};
+use base64::{
+    engine::general_purpose::{STANDARD as B64STD, URL_SAFE_NO_PAD as B64URL},
+    Engine as _,
+};
 use chacha20poly1305::aead::{rand_core::RngCore, OsRng};
 use serde::{Deserialize, Serialize};
 
 use crate::app_state::AppState;
 use crate::auth::device::{
-    self, CurrentDeviceRecord, DeviceSigningKeyPair, KEYCHAIN_DEVICE_SIGNING_KEY,
+    self, sign_device_challenge, CurrentDeviceRecord, DeviceSigningKeyPair,
+    KEYCHAIN_DEVICE_SIGNING_KEY,
 };
 use crate::auth::types::AuthStateKind;
-use crate::auth::vault_keys::{setup_local_vault_key, update_session_metadata};
+use crate::auth::vault_keys::{
+    read_vault_setup_material, setup_local_vault_key, update_session_metadata,
+};
 use crate::db::settings;
 use crate::error::{AppError, AppResult};
 use crate::keychain::{SERVICE_DEVICE, SERVICE_VAULT};
@@ -133,7 +139,9 @@ pub fn logout(state: &AppState) -> AppResult<()> {
 #[serde(rename_all = "camelCase")]
 pub struct OtpRequestResult {
     pub success: bool,
-    pub expires_at: Option<i64>,
+    /// Seconds until the OTP code expires. Mirrors the server's
+    /// `expiresIn` field (a duration, not an absolute instant).
+    pub expires_in: Option<i64>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -179,7 +187,7 @@ struct OtpRequestBody<'a> {
 struct OtpRequestResponse {
     success: bool,
     #[serde(default)]
-    expires_at: Option<i64>,
+    expires_in: Option<i64>,
 }
 
 #[derive(Serialize)]
@@ -210,20 +218,45 @@ struct RegisterDeviceBody<'a> {
     platform: &'a str,
     os_version: Option<&'a str>,
     app_version: &'a str,
-    signing_public_key: &'a str,
-    device_id: &'a str,
+    auth_public_key: &'a str,
+    challenge_signature: &'a str,
+    challenge_nonce: &'a str,
 }
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct RegisterDeviceResponse {
-    user_id: String,
-    access_token: String,
-    refresh_token: String,
+    #[serde(default)]
+    success: bool,
+    #[serde(default)]
+    device_id: Option<String>,
+    #[serde(default)]
+    access_token: Option<String>,
+    #[serde(default)]
+    refresh_token: Option<String>,
+    #[serde(default)]
+    error: Option<String>,
 }
 
 #[derive(Serialize)]
-struct RefreshBody {}
+#[serde(rename_all = "camelCase")]
+struct FirstDeviceSetupBody<'a> {
+    kdf_salt: &'a str,
+    key_verifier: &'a str,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct FirstDeviceSetupResponse {
+    #[serde(default)]
+    success: bool,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct RefreshBody<'a> {
+    refresh_token: &'a str,
+}
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -254,7 +287,7 @@ pub async fn request_otp_with_base(
     let resp: OtpRequestResponse = auth_client::request_otp_with_base(base_url, &body).await?;
     Ok(OtpRequestResult {
         success: resp.success,
-        expires_at: resp.expires_at,
+        expires_in: resp.expires_in,
     })
 }
 
@@ -283,18 +316,26 @@ pub async fn verify_otp_with_base(
         auth_client::verify_otp_with_base(base_url, &body, None).await?;
 
     let kc = state.auth.keychain();
-    if resp.needs_setup {
-        let token = resp
-            .setup_token
-            .ok_or_else(|| AppError::Auth("server did not return a setup token".into()))?;
+
+    // The server returns a setup token on every successful OTP verify
+    // (both new and existing users). For new users it gates `/auth/devices`;
+    // for existing users it gates the device-registration / recovery
+    // follow-up that mints the access/refresh pair.
+    if let Some(token) = resp.setup_token.as_deref() {
         kc.set_item(SERVICE_VAULT, KEYCHAIN_SETUP_TOKEN, token.as_bytes())?;
-    } else {
-        let access = resp
-            .access_token
-            .ok_or_else(|| AppError::Auth("server did not return an access token".into()))?;
-        let refresh = resp
-            .refresh_token
-            .ok_or_else(|| AppError::Auth("server did not return a refresh token".into()))?;
+    } else if resp.needs_setup {
+        return Err(AppError::Auth(
+            "server did not return a setup token".into(),
+        ));
+    }
+
+    // Some flows (post-setup re-auth on a known device) may eventually
+    // ship access/refresh tokens directly. If both arrive, take the fast
+    // path and clear the setup token: registration is unnecessary.
+    if let (Some(access), Some(refresh)) = (
+        resp.access_token.as_deref(),
+        resp.refresh_token.as_deref(),
+    ) {
         kc.set_item(SERVICE_VAULT, KEYCHAIN_ACCESS_TOKEN, access.as_bytes())?;
         kc.set_item(SERVICE_VAULT, KEYCHAIN_REFRESH_TOKEN, refresh.as_bytes())?;
         kc.delete_item(SERVICE_VAULT, KEYCHAIN_SETUP_TOKEN)?;
@@ -354,6 +395,7 @@ pub async fn setup_new_account_with_base(
         .ok_or_else(|| AppError::Auth("missing setup token; verify OTP first".into()))?;
     let setup_token = String::from_utf8(setup_token_bytes)
         .map_err(|err| AppError::Auth(format!("setup token is not valid utf-8: {err}")))?;
+    let setup_jti = extract_jwt_jti(&setup_token)?;
 
     setup_local_vault_key(state, input.password.clone(), input.remember_device).await?;
 
@@ -365,28 +407,71 @@ pub async fn setup_new_account_with_base(
     )?;
 
     let kp = device::get_or_create_device_signing_key(state)?;
-    let device_id = device::device_id_for_keypair(&kp)?;
     let signing_public_key_b64 = encode_public_key_b64(&kp.public_key);
+
+    // Server-side challenge: payload = "<challengeNonce>:<setupTokenJti>",
+    // signed with the device Ed25519 secret key. The auth_public_key we
+    // upload is the same key used to verify this signature.
+    let challenge_nonce = generate_challenge_nonce();
+    let challenge_payload = format!("{challenge_nonce}:{setup_jti}");
+    let challenge_signature = sign_device_challenge(&kp.secret_key, &challenge_payload)?;
 
     let body = RegisterDeviceBody {
         name: &input.device_name,
         platform: &input.platform,
         os_version: input.os_version.as_deref(),
         app_version: &input.app_version,
-        signing_public_key: &signing_public_key_b64,
-        device_id: &device_id,
+        auth_public_key: &signing_public_key_b64,
+        challenge_signature: &challenge_signature,
+        challenge_nonce: &challenge_nonce,
     };
     let resp: RegisterDeviceResponse =
         auth_client::register_device_with_base(base_url, &body, &setup_token).await?;
 
-    kc.set_item(SERVICE_VAULT, KEYCHAIN_ACCESS_TOKEN, resp.access_token.as_bytes())?;
-    kc.set_item(SERVICE_VAULT, KEYCHAIN_REFRESH_TOKEN, resp.refresh_token.as_bytes())?;
+    if !resp.success {
+        return Err(AppError::Auth(format!(
+            "device registration failed: {}",
+            resp.error.as_deref().unwrap_or("unknown error"),
+        )));
+    }
+    let device_id = resp.device_id.ok_or_else(|| {
+        AppError::Auth("server did not return a deviceId".into())
+    })?;
+    let access_token = resp.access_token.ok_or_else(|| {
+        AppError::Auth("server did not return an access token".into())
+    })?;
+    let refresh_token = resp.refresh_token.ok_or_else(|| {
+        AppError::Auth("server did not return a refresh token".into())
+    })?;
+
+    kc.set_item(SERVICE_VAULT, KEYCHAIN_ACCESS_TOKEN, access_token.as_bytes())?;
+    kc.set_item(SERVICE_VAULT, KEYCHAIN_REFRESH_TOKEN, refresh_token.as_bytes())?;
     kc.delete_item(SERVICE_VAULT, KEYCHAIN_SETUP_TOKEN)?;
+
+    // First-device setup: hand the server the kdf salt + key verifier so
+    // future OTP verifies for this account no longer report `needsSetup`.
+    // The values are the same base64 strings persisted by
+    // `setup_local_vault_key`; the server only stores them.
+    let (kdf_salt, key_verifier) = read_vault_setup_material(state)?;
+    let setup_body = FirstDeviceSetupBody {
+        kdf_salt: &kdf_salt,
+        key_verifier: &key_verifier,
+    };
+    let setup_resp: FirstDeviceSetupResponse =
+        auth_client::first_device_setup_with_base(base_url, &setup_body, &access_token).await?;
+    if !setup_resp.success {
+        return Err(AppError::Auth("server rejected first-device setup".into()));
+    }
+
+    // The server doesn't echo the user id from `/auth/devices`; resolve
+    // it from the access token's `sub` claim so account info stays
+    // populated for downstream sync/IPC consumers.
+    let user_id = extract_jwt_sub(&access_token).unwrap_or_default();
 
     set_account_info(
         state,
         &AccountInfo {
-            user_id: resp.user_id.clone(),
+            user_id,
             email: input.email.clone(),
             auth_provider: "otp".to_string(),
         },
@@ -433,9 +518,10 @@ pub async fn refresh_session_with_base(base_url: &str, state: &AppState) -> AppR
     let refresh = String::from_utf8(refresh_bytes)
         .map_err(|err| AppError::Auth(format!("refresh token is not valid utf-8: {err}")))?;
 
-    let body = RefreshBody {};
-    let resp: RefreshResponse =
-        auth_client::refresh_token_with_base(base_url, &body, &refresh).await?;
+    let body = RefreshBody {
+        refresh_token: &refresh,
+    };
+    let resp: RefreshResponse = auth_client::refresh_token_with_base(base_url, &body).await?;
 
     kc.set_item(SERVICE_VAULT, KEYCHAIN_ACCESS_TOKEN, resp.access_token.as_bytes())?;
     kc.set_item(SERVICE_VAULT, KEYCHAIN_REFRESH_TOKEN, resp.refresh_token.as_bytes())?;
@@ -472,8 +558,36 @@ fn generate_recovery_phrase() -> String {
 }
 
 fn encode_public_key_b64(public_key: &[u8]) -> String {
-    use base64::engine::general_purpose::STANDARD;
-    STANDARD.encode(public_key)
+    B64STD.encode(public_key)
+}
+
+/// 32-byte random nonce used in the `/auth/devices` challenge payload.
+/// The encoding (URL-safe base64, no padding) mirrors what the server
+/// expects in `challengeNonce`.
+fn generate_challenge_nonce() -> String {
+    let mut bytes = [0u8; 32];
+    OsRng.fill_bytes(&mut bytes);
+    B64URL.encode(bytes)
+}
+
+/// Decodes a JWT WITHOUT verifying its signature and returns a
+/// claim by name as a `String`. The setup-token middleware on the
+/// server validates the token before us, so the client only needs the
+/// claim values (jti, sub) to compose follow-up requests.
+fn extract_jwt_claim(token: &str, claim: &str) -> Option<String> {
+    let payload_segment = token.split('.').nth(1)?;
+    let bytes = B64URL.decode(payload_segment).ok()?;
+    let value: serde_json::Value = serde_json::from_slice(&bytes).ok()?;
+    value.get(claim)?.as_str().map(|s| s.to_string())
+}
+
+fn extract_jwt_jti(token: &str) -> AppResult<String> {
+    extract_jwt_claim(token, "jti")
+        .ok_or_else(|| AppError::Auth("setup token missing jti claim".into()))
+}
+
+fn extract_jwt_sub(token: &str) -> Option<String> {
+    extract_jwt_claim(token, "sub")
 }
 
 fn now_secs() -> i64 {

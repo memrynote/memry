@@ -14,7 +14,7 @@
 
 use serde::{de::DeserializeOwned, Serialize};
 
-use crate::error::AppResult;
+use crate::error::{AppError, AppResult};
 use crate::sync::http;
 
 // ----- /auth/otp/* ----------------------------------------------------
@@ -73,23 +73,46 @@ where
 
 // ----- /auth/oauth/google -------------------------------------------
 
-pub async fn init_google_oauth<TResp>(redirect_uri: &str) -> AppResult<TResp>
-where
-    TResp: DeserializeOwned,
-{
-    let path = format!("/auth/oauth/google?redirect_uri={redirect_uri}");
-    http::get_json(&path, None).await
+/// `/auth/oauth/google` is a 302 to Google's authorize URL, not a JSON
+/// endpoint. We disable redirect-following on the client and surface the
+/// `Location` header back to the caller; deserializing the redirected
+/// HTML body would always fail.
+pub async fn init_google_oauth(redirect_uri: &str) -> AppResult<String> {
+    let base = http::resolve_base_url()?;
+    init_google_oauth_with_base(&base, redirect_uri).await
 }
 
-pub async fn init_google_oauth_with_base<TResp>(
+pub async fn init_google_oauth_with_base(
     base_url: &str,
     redirect_uri: &str,
-) -> AppResult<TResp>
-where
-    TResp: DeserializeOwned,
-{
-    let path = format!("/auth/oauth/google?redirect_uri={redirect_uri}");
-    http::get_json_with_base(base_url, &path, None).await
+) -> AppResult<String> {
+    let encoded = urlencoding::encode(redirect_uri);
+    let url = format!(
+        "{}/auth/oauth/google?redirect_uri={}",
+        base_url.trim_end_matches('/'),
+        encoded
+    );
+
+    let client = reqwest::Client::builder()
+        .redirect(reqwest::redirect::Policy::none())
+        .build()
+        .map_err(|err| AppError::Network(format!("oauth client build failed: {err}")))?;
+
+    let resp = client.get(&url).send().await?;
+    let status = resp.status();
+
+    if !status.is_redirection() {
+        return Err(AppError::Network(format!(
+            "oauth init expected 3xx redirect, got status={}",
+            status.as_u16()
+        )));
+    }
+
+    resp.headers()
+        .get(reqwest::header::LOCATION)
+        .and_then(|v| v.to_str().ok())
+        .map(|s| s.to_string())
+        .ok_or_else(|| AppError::Network("oauth init redirect missing Location header".into()))
 }
 
 pub async fn google_oauth_callback<TReq, TResp>(body: &TReq) -> AppResult<TResp>
@@ -136,6 +159,29 @@ where
     http::post_json_with_base(base_url, "/auth/devices", body, Some(setup_token)).await
 }
 
+pub async fn first_device_setup<TReq, TResp>(
+    body: &TReq,
+    access_token: &str,
+) -> AppResult<TResp>
+where
+    TReq: Serialize + ?Sized,
+    TResp: DeserializeOwned,
+{
+    http::post_json("/auth/setup", body, Some(access_token)).await
+}
+
+pub async fn first_device_setup_with_base<TReq, TResp>(
+    base_url: &str,
+    body: &TReq,
+    access_token: &str,
+) -> AppResult<TResp>
+where
+    TReq: Serialize + ?Sized,
+    TResp: DeserializeOwned,
+{
+    http::post_json_with_base(base_url, "/auth/setup", body, Some(access_token)).await
+}
+
 pub async fn get_recovery_info<TResp>(access_token: &str) -> AppResult<TResp>
 where
     TResp: DeserializeOwned,
@@ -153,27 +199,27 @@ where
     http::get_json_with_base(base_url, "/auth/recovery-info", Some(access_token)).await
 }
 
-pub async fn refresh_token<TReq, TResp>(
-    body: &TReq,
-    refresh_token: &str,
-) -> AppResult<TResp>
+/// POST `/auth/refresh`. The refresh token travels inside `body` as
+/// `refreshToken`; the server's `RefreshTokenRequestSchema` reads it
+/// from the JSON body, not the `Authorization` header, so this wrapper
+/// intentionally takes no bearer-token argument.
+pub async fn refresh_token<TReq, TResp>(body: &TReq) -> AppResult<TResp>
 where
     TReq: Serialize + ?Sized,
     TResp: DeserializeOwned,
 {
-    http::post_json("/auth/refresh", body, Some(refresh_token)).await
+    http::post_json("/auth/refresh", body, None).await
 }
 
 pub async fn refresh_token_with_base<TReq, TResp>(
     base_url: &str,
     body: &TReq,
-    refresh_token: &str,
 ) -> AppResult<TResp>
 where
     TReq: Serialize + ?Sized,
     TResp: DeserializeOwned,
 {
-    http::post_json_with_base(base_url, "/auth/refresh", body, Some(refresh_token)).await
+    http::post_json_with_base(base_url, "/auth/refresh", body, None).await
 }
 
 // ----- /devices ------------------------------------------------------

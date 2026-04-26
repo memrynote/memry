@@ -72,14 +72,16 @@ pub struct RegisterDeviceView {
 #[serde(rename_all = "camelCase")]
 pub struct OtpRequestView {
     pub success: bool,
-    pub expires_at: Option<i64>,
+    /// Seconds until the OTP code expires (mirrors the server's
+    /// `expiresIn` field, a countdown rather than a unix timestamp).
+    pub expires_in: Option<i64>,
 }
 
 impl From<OtpRequestResult> for OtpRequestView {
     fn from(r: OtpRequestResult) -> Self {
         Self {
             success: r.success,
-            expires_at: r.expires_at,
+            expires_in: r.expires_in,
         }
     }
 }
@@ -357,9 +359,26 @@ pub async fn sync_auth_init_o_auth(
         .redirect_uri
         .unwrap_or_else(|| "memry://oauth/callback".to_string());
     let base = crate::sync::http::resolve_base_url()?;
-    let resp: InitOAuthView =
+    let authorize_url =
         auth_client::init_google_oauth_with_base(&base, &redirect_uri).await?;
-    Ok(resp)
+    let state = parse_state_from_url(&authorize_url).ok_or_else(|| {
+        AppError::Auth("oauth init redirect did not include a state parameter".into())
+    })?;
+    Ok(InitOAuthView {
+        state,
+        authorize_url: Some(authorize_url),
+    })
+}
+
+fn parse_state_from_url(url: &str) -> Option<String> {
+    let query = url.split_once('?').map(|(_, q)| q)?;
+    for pair in query.split('&') {
+        let (key, value) = pair.split_once('=')?;
+        if key == "state" {
+            return urlencoding::decode(value).ok().map(|c| c.into_owned());
+        }
+    }
+    None
 }
 
 #[tauri::command]
