@@ -1,10 +1,9 @@
 use memry_desktop_tauri_lib::commands::notes::{
-    notes_create_inner, notes_delete_inner, notes_update_inner, NoteCreateInput, NoteUpdateInput,
+    notes_create_inner, notes_delete_inner, notes_list_by_folder_inner, notes_list_inner,
+    notes_update_inner, NoteCreateInput, NoteListOptions, NoteUpdateInput,
 };
-use memry_desktop_tauri_lib::db::{note_metadata, notes_cache};
-use memry_desktop_tauri_lib::test_helpers::{
-    open_in_memory_with_migrations, test_vault_runtime,
-};
+use memry_desktop_tauri_lib::db::{note_metadata, note_positions, notes_cache};
+use memry_desktop_tauri_lib::test_helpers::{open_in_memory_with_migrations, test_vault_runtime};
 use memry_desktop_tauri_lib::vault::notes_io;
 use std::time::Duration;
 
@@ -107,7 +106,10 @@ async fn update_note_changes_metadata_vault_file_cache_and_returns_dto() {
         .expect("metadata row");
     assert_eq!(metadata.title, "Published");
     assert_eq!(metadata.emoji.as_deref(), Some("spark"));
-    assert_eq!(metadata.file_size, Some("new body with more words".len() as i64));
+    assert_eq!(
+        metadata.file_size,
+        Some("new body with more words".len() as i64)
+    );
 
     let root = vault.require_current().unwrap();
     let on_disk = notes_io::read_note_from_disk(&root, &updated.path)
@@ -115,7 +117,10 @@ async fn update_note_changes_metadata_vault_file_cache_and_returns_dto() {
         .unwrap()
         .expect("vault note");
     assert_eq!(on_disk.parsed.content, "new body with more words");
-    assert_eq!(on_disk.parsed.frontmatter.title.as_deref(), Some("Published"));
+    assert_eq!(
+        on_disk.parsed.frontmatter.title.as_deref(),
+        Some("Published")
+    );
     assert_eq!(on_disk.parsed.frontmatter.tags, vec!["new", "shared"]);
 
     let cached = notes_cache::list_active(&conn, 10, 0, "modified").unwrap();
@@ -146,7 +151,9 @@ async fn delete_note_soft_deletes_metadata_removes_cache_and_trashes_vault_file(
     .note
     .unwrap();
 
-    let result = notes_delete_inner(&conn, &vault, &created.id).await.unwrap();
+    let result = notes_delete_inner(&conn, &vault, &created.id)
+        .await
+        .unwrap();
 
     assert_eq!(result["success"], true);
     let active = note_metadata::list_active(&conn).unwrap();
@@ -158,5 +165,102 @@ async fn delete_note_soft_deletes_metadata_removes_cache_and_trashes_vault_file(
         .await
         .unwrap();
     assert!(original.is_none());
-    assert!(root.join(".trash").join(format!("{}.md", created.id)).exists());
+    assert!(root
+        .join(".trash")
+        .join(format!("{}.md", created.id))
+        .exists());
+}
+
+#[tokio::test]
+async fn list_notes_supports_pagination_modified_sort_and_folder_position_order() {
+    let conn = open_in_memory_with_migrations();
+    let vault = test_vault_runtime();
+    let first = notes_create_inner(
+        &conn,
+        &vault,
+        NoteCreateInput {
+            title: "First".into(),
+            content: Some("first body".into()),
+            folder: Some("Inbox".into()),
+            tags: None,
+            template: None,
+        },
+    )
+    .await
+    .unwrap()
+    .note
+    .unwrap();
+    tokio::time::sleep(Duration::from_millis(5)).await;
+    let second = notes_create_inner(
+        &conn,
+        &vault,
+        NoteCreateInput {
+            title: "Second".into(),
+            content: Some("second body".into()),
+            folder: Some("Inbox".into()),
+            tags: None,
+            template: None,
+        },
+    )
+    .await
+    .unwrap()
+    .note
+    .unwrap();
+    tokio::time::sleep(Duration::from_millis(5)).await;
+    let third = notes_create_inner(
+        &conn,
+        &vault,
+        NoteCreateInput {
+            title: "Third".into(),
+            content: Some("third body".into()),
+            folder: Some("Projects".into()),
+            tags: None,
+            template: None,
+        },
+    )
+    .await
+    .unwrap()
+    .note
+    .unwrap();
+
+    let page = notes_list_inner(
+        &conn,
+        Some(NoteListOptions {
+            folder: None,
+            tags: None,
+            sort_by: Some("modified".into()),
+            sort_order: Some("desc".into()),
+            limit: Some(2),
+            offset: Some(0),
+        }),
+    )
+    .unwrap();
+
+    assert_eq!(page.total, 3);
+    assert!(page.has_more);
+    assert_eq!(
+        page.notes
+            .iter()
+            .map(|note| note.id.as_str())
+            .collect::<Vec<_>>(),
+        [third.id.as_str(), second.id.as_str(),]
+    );
+
+    note_positions::reorder(&conn, "Inbox", &[second.path.clone(), first.path.clone()]).unwrap();
+    let inbox = notes_list_by_folder_inner(&conn, "Inbox").unwrap();
+
+    assert_eq!(inbox.total, 2);
+    assert!(!inbox.has_more);
+    assert_eq!(
+        inbox
+            .notes
+            .iter()
+            .map(|note| note.path.as_str())
+            .collect::<Vec<_>>(),
+        [second.path.as_str(), first.path.as_str()]
+    );
+    assert!(inbox
+        .notes
+        .iter()
+        .all(|note| note.path.starts_with("Inbox/")));
 }

@@ -20,8 +20,8 @@ pub struct NotesCacheRow {
     pub local_only: bool,
 }
 
-const SELECT_COLS: &str = "id, title, path, snippet, word_count, tags_json, emoji, \
-    modified_at, created_at, local_only";
+const SELECT_COLS_QUALIFIED: &str = "n.id, n.title, n.path, n.snippet, n.word_count, \
+    n.tags_json, n.emoji, n.modified_at, n.created_at, n.local_only";
 
 pub async fn refresh_from_metadata(
     conn: &Connection,
@@ -91,20 +91,45 @@ pub fn list_active(
     offset: i64,
     sort_by: &str,
 ) -> AppResult<Vec<NotesCacheRow>> {
-    let order_by = match sort_by {
-        "created" => "created_at DESC, id ASC",
-        "title" => "title COLLATE NOCASE ASC, id ASC",
-        _ => "modified_at DESC, id ASC",
-    };
+    let sort_order = if sort_by == "title" { "asc" } else { "desc" };
+    list_active_filtered(conn, None, limit, offset, sort_by, sort_order)
+}
+
+pub fn list_active_filtered(
+    conn: &Connection,
+    folder: Option<&str>,
+    limit: i64,
+    offset: i64,
+    sort_by: &str,
+    sort_order: &str,
+) -> AppResult<Vec<NotesCacheRow>> {
+    let folder_prefix = folder_prefix(folder);
+    let order_by = order_by(sort_by, sort_order);
     let mut stmt = conn.prepare(&format!(
-        "SELECT {SELECT_COLS} FROM notes_cache ORDER BY {order_by} LIMIT ?1 OFFSET ?2"
+        "SELECT {SELECT_COLS_QUALIFIED}
+           FROM notes_cache n
+           LEFT JOIN note_positions p ON p.path = n.path
+          WHERE (?1 = '' OR substr(n.path, 1, length(?1)) = ?1)
+          ORDER BY {order_by}
+          LIMIT ?2 OFFSET ?3"
     ))?;
-    let rows = stmt.query_map(params![limit, offset], map_row)?;
+    let rows = stmt.query_map(params![folder_prefix, limit, offset], map_row)?;
     collect_rows(rows)
 }
 
 pub fn count_active(conn: &Connection) -> AppResult<i64> {
-    let count = conn.query_row("SELECT count(*) FROM notes_cache", [], |row| row.get(0))?;
+    count_active_filtered(conn, None)
+}
+
+pub fn count_active_filtered(conn: &Connection, folder: Option<&str>) -> AppResult<i64> {
+    let folder_prefix = folder_prefix(folder);
+    let count = conn.query_row(
+        "SELECT count(*)
+           FROM notes_cache n
+          WHERE (?1 = '' OR substr(n.path, 1, length(?1)) = ?1)",
+        [folder_prefix],
+        |row| row.get(0),
+    )?;
     Ok(count)
 }
 
@@ -126,6 +151,32 @@ fn map_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<NotesCacheRow> {
         created_at: row.get(8)?,
         local_only: row.get::<_, i64>(9)? != 0,
     })
+}
+
+fn folder_prefix(folder: Option<&str>) -> String {
+    let folder = folder.unwrap_or_default().trim().trim_matches('/');
+    if folder.is_empty() {
+        String::new()
+    } else {
+        format!("{folder}/")
+    }
+}
+
+fn order_by(sort_by: &str, sort_order: &str) -> String {
+    let dir = if sort_order.eq_ignore_ascii_case("asc") {
+        "ASC"
+    } else {
+        "DESC"
+    };
+
+    match sort_by {
+        "created" => format!("n.created_at {dir}, n.id ASC"),
+        "title" => format!("n.title COLLATE NOCASE {dir}, n.id ASC"),
+        "position" => format!(
+            "coalesce(p.position, 9223372036854775807) {dir}, n.title COLLATE NOCASE ASC, n.id ASC"
+        ),
+        _ => format!("n.modified_at {dir}, n.id ASC"),
+    }
 }
 
 fn collect_rows<T>(rows: impl Iterator<Item = rusqlite::Result<T>>) -> AppResult<Vec<T>> {
