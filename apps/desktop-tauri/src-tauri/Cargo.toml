@@ -150,3 +150,7 @@ required-features = ["test-helpers"]
 [[test]]
 name = "auth_device_test"
 required-features = ["test-helpers"]
+
+[[test]]
+name = "commands_auth_test"
+required-features = ["test-helpers"]
