@@ -100,9 +100,11 @@ impl CrdtRuntime {
             .get_mut(transfer_id)
             .ok_or_else(|| AppError::NotFound(format!("crdt transfer {transfer_id}")))?;
         if offset != chunk.bytes.len() {
+            let expected = chunk.bytes.len();
+            chunks.remove(transfer_id);
             return Err(AppError::Validation(format!(
                 "chunk offset {offset} does not match expected {}",
-                chunk.bytes.len()
+                expected
             )));
         }
         let total_bytes = chunk.total_bytes;

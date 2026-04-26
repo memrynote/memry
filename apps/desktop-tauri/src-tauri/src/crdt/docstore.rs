@@ -3,6 +3,7 @@
 //! The outer map lock is held only while inserting, looking up, or removing
 //! documents. Yrs transactions run on cloned handles after the map lock drops.
 
+use std::collections::hash_map::Entry;
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::Mutex;
@@ -61,12 +62,24 @@ impl DocStore {
     }
 
     pub async fn get_or_init(&self, id: &str) -> DocHandle {
+        self.get_or_init_with_created(id).await.0
+    }
+
+    pub async fn get_or_init_with_created(&self, id: &str) -> (DocHandle, bool) {
         let mut docs = self.docs.lock().await;
-        let doc = docs
-            .entry(id.to_string())
-            .or_insert_with(|| Arc::new(Doc::new()))
-            .clone();
-        DocHandle { doc }
+        match docs.entry(id.to_string()) {
+            Entry::Occupied(entry) => (
+                DocHandle {
+                    doc: entry.get().clone(),
+                },
+                false,
+            ),
+            Entry::Vacant(entry) => {
+                let doc = Arc::new(Doc::new());
+                entry.insert(doc.clone());
+                (DocHandle { doc }, true)
+            }
+        }
     }
 
     pub async fn get(&self, id: &str) -> Option<DocHandle> {

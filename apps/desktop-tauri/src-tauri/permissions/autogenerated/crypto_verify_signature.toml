@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-crypto-verify-signature"
+description = "Enables the crypto_verify_signature command without any pre-configured scope."
+commands.allow = ["crypto_verify_signature"]
+
+[[permission]]
+identifier = "deny-crypto-verify-signature"
+description = "Denies the crypto_verify_signature command without any pre-configured scope."
+commands.deny = ["crypto_verify_signature"]

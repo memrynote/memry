@@ -421,7 +421,10 @@ async fn apply_open_doc_state(
     note_id: &str,
     open_state: OpenDocState,
 ) -> AppResult<Option<Vec<u8>>> {
-    let handle = crdt.docs().get_or_init(note_id).await;
+    let (handle, created) = crdt.docs().get_or_init_with_created(note_id).await;
+    if !created {
+        return Ok(None);
+    }
 
     let seed = if let Some(snapshot) = open_state.snapshot {
         apply_update_v1(&handle, &snapshot, origin_tag())?;
