@@ -22,6 +22,37 @@ export const commands = {
 	shellRevealInFinder: (path: string) => typedError<null, AppError>(__TAURI_INVOKE("shell_reveal_in_finder", { path })),
 	dialogChooseFolder: (title: string | null) => typedError<string | null, AppError>(__TAURI_INVOKE("dialog_choose_folder", { title })),
 	dialogChooseFiles: (title: string | null, filters: string[] | null) => typedError<string[], AppError>(__TAURI_INVOKE("dialog_choose_files", { title, filters })),
+	notesCreate: (title: string, content: string | null, folder: string | null, tags: string[] | null, template: string | null) => typedError<NoteCreateResponse, AppError>(__TAURI_INVOKE("notes_create", { title, content, folder, tags, template })),
+	notesGet: (args: string[]) => typedError<{
+	id: string,
+	path: string,
+	title: string,
+	content: string,
+	frontmatter: unknown,
+	created: string,
+	modified: string,
+	tags: string[],
+	aliases: string[],
+	wordCount: number,
+	emoji: string | null,
+} | null, AppError>(__TAURI_INVOKE("notes_get", { args })),
+	notesGetByPath: (args: string[]) => typedError<{
+	id: string,
+	path: string,
+	title: string,
+	content: string,
+	frontmatter: unknown,
+	created: string,
+	modified: string,
+	tags: string[],
+	aliases: string[],
+	wordCount: number,
+	emoji: string | null,
+} | null, AppError>(__TAURI_INVOKE("notes_get_by_path", { args })),
+	notesUpdate: (id: string, title: string | null, content: string | null, tags: string[] | null, frontmatter: unknown | null, emoji: string | null) => typedError<NoteUpdateResponse, AppError>(__TAURI_INVOKE("notes_update", { id, title, content, tags, frontmatter, emoji })),
+	notesDelete: (args: string[]) => typedError<NoteDeleteResponse, AppError>(__TAURI_INVOKE("notes_delete", { args })),
+	notesList: (folder: string | null, tags: string[] | null, sortBy: string | null, sortOrder: string | null, limit: number | null, offset: number | null) => typedError<NoteListResponse, AppError>(__TAURI_INVOKE("notes_list", { folder, tags, sortBy, sortOrder, limit, offset })),
+	notesListByFolder: (args: string[]) => typedError<NoteListResponse, AppError>(__TAURI_INVOKE("notes_list_by_folder", { args })),
 	authStatus: () => typedError<AuthStatus, AppError>(__TAURI_INVOKE("auth_status")),
 	authUnlock: (input: AuthUnlockInput) => typedError<AuthStatus, AppError>(__TAURI_INVOKE("auth_unlock", { input })),
 	authLock: () => typedError<null, AppError>(__TAURI_INVOKE("auth_lock")),
@@ -370,6 +401,67 @@ export type LogoutView = {
 	error: string | null,
 };
 
+export type NoteCreateInput = {
+	title: string,
+	content: string | null,
+	folder: string | null,
+	tags: string[] | null,
+	template: string | null,
+};
+
+export type NoteCreateResponse = {
+	success: boolean,
+	note: NoteDto | null,
+	error: string | null,
+};
+
+export type NoteDeleteResponse = {
+	success: boolean,
+};
+
+// Renderer-shape note (matches `@memry/contracts/notes-api.ts::Note`).
+export type NoteDto = {
+	id: string,
+	path: string,
+	title: string,
+	content: string,
+	frontmatter: unknown,
+	created: string,
+	modified: string,
+	tags: string[],
+	aliases: string[],
+	wordCount: number,
+	emoji: string | null,
+};
+
+export type NoteListItem = {
+	id: string,
+	path: string,
+	title: string,
+	created: string,
+	modified: string,
+	tags: string[],
+	wordCount: number,
+	snippet: string,
+	emoji: string | null,
+	localOnly: boolean,
+};
+
+export type NoteListOptions = {
+	folder: string | null,
+	tags: string[] | null,
+	sortBy: string | null,
+	sortOrder: string | null,
+	limit: number | null,
+	offset: number | null,
+};
+
+export type NoteListResponse = {
+	notes: NoteListItem[],
+	total: number,
+	hasMore: boolean,
+};
+
 export type NoteMetadata = {
 	id: string,
 	path: string,
@@ -395,6 +487,21 @@ export type NotePosition = {
 	path: string,
 	folderPath: string,
 	position: number,
+};
+
+export type NoteUpdateInput = {
+	id: string,
+	title: string | null,
+	content: string | null,
+	tags: string[] | null,
+	frontmatter: unknown | null,
+	emoji: string | null,
+};
+
+export type NoteUpdateResponse = {
+	success: boolean,
+	note: NoteDto | null,
+	error: string | null,
 };
 
 export type OtpRequestView = {

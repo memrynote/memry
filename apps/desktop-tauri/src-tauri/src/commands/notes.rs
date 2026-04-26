@@ -5,10 +5,42 @@ use crate::db::note_metadata::NoteMetadata;
 use crate::db::note_metadata::NoteMetadataRow;
 use crate::error::{AppError, AppResult};
 use crate::vault::frontmatter::NoteFrontmatter;
-use crate::vault::{notes_io, VaultRuntime};
+use crate::vault::{fs as vault_fs, notes_io, paths as vault_paths, VaultRuntime};
 use rusqlite::Connection;
 use serde::{Deserialize, Serialize};
+use std::collections::BTreeMap;
+use std::ops::Deref;
 use tauri::{AppHandle, Emitter, State};
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(transparent)]
+pub struct JsonUnknown(serde_json::Value);
+
+impl JsonUnknown {
+    fn into_value(self) -> serde_json::Value {
+        self.0
+    }
+}
+
+impl From<serde_json::Value> for JsonUnknown {
+    fn from(value: serde_json::Value) -> Self {
+        Self(value)
+    }
+}
+
+impl Deref for JsonUnknown {
+    type Target = serde_json::Value;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl specta::Type for JsonUnknown {
+    fn definition(types: &mut specta::Types) -> specta::datatype::DataType {
+        <specta_typescript::Unknown as specta::Type>::definition(types)
+    }
+}
 
 /// Renderer-shape note (matches `@memry/contracts/notes-api.ts::Note`).
 #[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
@@ -18,7 +50,7 @@ pub struct NoteDto {
     pub path: String,
     pub title: String,
     pub content: String,
-    pub frontmatter: serde_json::Value,
+    pub frontmatter: JsonUnknown,
     pub created: String,
     pub modified: String,
     pub tags: Vec<String>,
@@ -86,7 +118,7 @@ pub struct NoteUpdateInput {
     pub title: Option<String>,
     pub content: Option<String>,
     pub tags: Option<Vec<String>>,
-    pub frontmatter: Option<serde_json::Value>,
+    pub frontmatter: Option<JsonUnknown>,
     pub emoji: Option<Option<String>>,
 }
 
@@ -98,20 +130,30 @@ pub struct NoteUpdateResponse {
     pub error: Option<String>,
 }
 
-pub(crate) fn into_dto(row: &NoteMetadata, body: &str, frontmatter: &NoteFrontmatter) -> NoteDto {
-    NoteDto {
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
+#[serde(rename_all = "camelCase")]
+pub struct NoteDeleteResponse {
+    pub success: bool,
+}
+
+pub(crate) fn into_dto(
+    row: &NoteMetadata,
+    body: &str,
+    frontmatter: &NoteFrontmatter,
+) -> AppResult<NoteDto> {
+    Ok(NoteDto {
         id: row.id.clone(),
         path: row.path.clone(),
         title: row.title.clone(),
         content: body.to_string(),
-        frontmatter: serde_json::Value::Object(Default::default()),
+        frontmatter: JsonUnknown::from(serde_json::to_value(frontmatter)?),
         created: row.created_at.clone(),
         modified: row.modified_at.clone(),
         tags: frontmatter.tags.clone(),
         aliases: frontmatter.aliases.clone(),
         word_count: body.split_whitespace().count() as i64,
         emoji: row.emoji.clone(),
-    }
+    })
 }
 
 pub(crate) fn snippet_of(body: &str) -> String {
@@ -139,6 +181,8 @@ pub async fn notes_create_inner(
     let prepared = prepare_create(input)?;
     let root = vault.require_current()?;
 
+    ensure_db_path_available(conn, &prepared.relative)?;
+    ensure_vault_path_available(&root, &prepared.relative).await?;
     notes_io::write_note_to_disk(
         &root,
         &prepared.relative,
@@ -163,7 +207,7 @@ pub async fn notes_get_inner(
     vault: &VaultRuntime,
     id: &str,
 ) -> AppResult<Option<NoteDto>> {
-    let Some(row) = crate::db::note_metadata::get_by_id(conn, id)? else {
+    let Some(row) = crate::db::note_metadata::get_active_by_id(conn, id)? else {
         return Ok(None);
     };
 
@@ -175,7 +219,7 @@ pub async fn notes_get_by_path_inner(
     vault: &VaultRuntime,
     path: &str,
 ) -> AppResult<Option<NoteDto>> {
-    let Some(row) = crate::db::note_metadata::get_by_path(conn, path)? else {
+    let Some(row) = crate::db::note_metadata::get_active_by_path(conn, path)? else {
         return Ok(None);
     };
 
@@ -198,7 +242,7 @@ pub async fn notes_delete_inner(
     conn: &Connection,
     vault: &VaultRuntime,
     id: &str,
-) -> AppResult<serde_json::Value> {
+) -> AppResult<NoteDeleteResponse> {
     let row = crate::db::note_metadata::get_by_id(conn, id)?
         .ok_or_else(|| AppError::NotFound(format!("note {id}")))?;
     let root = vault.require_current()?;
@@ -254,11 +298,27 @@ pub fn notes_list_by_folder_inner(
 pub async fn notes_create(
     state: State<'_, AppState>,
     app: AppHandle,
-    input: NoteCreateInput,
+    title: String,
+    content: Option<String>,
+    folder: Option<String>,
+    tags: Option<Vec<String>>,
+    template: Option<String>,
 ) -> AppResult<NoteCreateResponse> {
+    let input = NoteCreateInput {
+        title,
+        content,
+        folder,
+        tags,
+        template,
+    };
     let prepared = prepare_create(input)?;
     let root = state.vault.require_current()?;
 
+    {
+        let conn = state.db.conn()?;
+        ensure_db_path_available(&conn, &prepared.relative)?;
+    }
+    ensure_vault_path_available(&root, &prepared.relative).await?;
     notes_io::write_note_to_disk(
         &root,
         &prepared.relative,
@@ -290,10 +350,14 @@ pub async fn notes_create(
 
 #[tauri::command]
 #[specta::specta]
-pub async fn notes_get(state: State<'_, AppState>, id: String) -> AppResult<Option<NoteDto>> {
+pub async fn notes_get(
+    state: State<'_, AppState>,
+    args: Vec<String>,
+) -> AppResult<Option<NoteDto>> {
+    let id = single_string_arg(args, "id")?;
     let row = {
         let conn = state.db.conn()?;
-        crate::db::note_metadata::get_by_id(&conn, &id)?
+        crate::db::note_metadata::get_active_by_id(&conn, &id)?
     };
     let Some(row) = row else {
         return Ok(None);
@@ -306,11 +370,12 @@ pub async fn notes_get(state: State<'_, AppState>, id: String) -> AppResult<Opti
 #[specta::specta]
 pub async fn notes_get_by_path(
     state: State<'_, AppState>,
-    path: String,
+    args: Vec<String>,
 ) -> AppResult<Option<NoteDto>> {
+    let path = single_string_arg(args, "path")?;
     let row = {
         let conn = state.db.conn()?;
-        crate::db::note_metadata::get_by_path(&conn, &path)?
+        crate::db::note_metadata::get_active_by_path(&conn, &path)?
     };
     let Some(row) = row else {
         return Ok(None);
@@ -321,11 +386,25 @@ pub async fn notes_get_by_path(
 
 #[tauri::command]
 #[specta::specta]
+#[allow(clippy::too_many_arguments)]
 pub async fn notes_update(
     state: State<'_, AppState>,
     app: AppHandle,
-    input: NoteUpdateInput,
+    id: String,
+    title: Option<String>,
+    content: Option<String>,
+    tags: Option<Vec<String>>,
+    frontmatter: Option<JsonUnknown>,
+    emoji: Option<Option<String>>,
 ) -> AppResult<NoteUpdateResponse> {
+    let input = NoteUpdateInput {
+        id,
+        title,
+        content,
+        tags,
+        frontmatter,
+        emoji,
+    };
     let row = {
         let conn = state.db.conn()?;
         crate::db::note_metadata::get_by_id(&conn, &input.id)?
@@ -355,8 +434,9 @@ pub async fn notes_update(
 pub async fn notes_delete(
     state: State<'_, AppState>,
     app: AppHandle,
-    id: String,
-) -> AppResult<serde_json::Value> {
+    args: Vec<String>,
+) -> AppResult<NoteDeleteResponse> {
+    let id = single_string_arg(args, "id")?;
     let row = {
         let conn = state.db.conn()?;
         crate::db::note_metadata::get_by_id(&conn, &id)?
@@ -382,9 +462,22 @@ pub async fn notes_delete(
 #[specta::specta]
 pub fn notes_list(
     state: State<'_, AppState>,
-    options: Option<NoteListOptions>,
+    folder: Option<String>,
+    tags: Option<Vec<String>>,
+    sort_by: Option<String>,
+    sort_order: Option<String>,
+    limit: Option<i64>,
+    offset: Option<i64>,
 ) -> AppResult<NoteListResponse> {
     let conn = state.db.conn()?;
+    let options = Some(NoteListOptions {
+        folder,
+        tags,
+        sort_by,
+        sort_order,
+        limit,
+        offset,
+    });
     notes_list_inner(&conn, options)
 }
 
@@ -392,10 +485,39 @@ pub fn notes_list(
 #[specta::specta]
 pub fn notes_list_by_folder(
     state: State<'_, AppState>,
-    folder_id: String,
+    args: Vec<String>,
 ) -> AppResult<NoteListResponse> {
+    let folder_id = single_string_arg(args, "folder_id")?;
     let conn = state.db.conn()?;
     notes_list_by_folder_inner(&conn, &folder_id)
+}
+
+fn single_string_arg(args: Vec<String>, name: &str) -> AppResult<String> {
+    match args.as_slice() {
+        [value] => Ok(value.clone()),
+        _ => Err(AppError::Validation(format!(
+            "{name} expects exactly one argument"
+        ))),
+    }
+}
+
+fn ensure_db_path_available(conn: &Connection, relative: &str) -> AppResult<()> {
+    if crate::db::note_metadata::get_by_path(conn, relative)?.is_some() {
+        return Err(AppError::Conflict(format!(
+            "note path already exists: {relative}"
+        )));
+    }
+    Ok(())
+}
+
+async fn ensure_vault_path_available(root: &std::path::Path, relative: &str) -> AppResult<()> {
+    let abs = vault_paths::resolve_supported(root, relative)?;
+    if vault_fs::safe_read(&abs).await?.is_some() {
+        return Err(AppError::Conflict(format!(
+            "note file already exists: {relative}"
+        )));
+    }
+    Ok(())
 }
 
 async fn read_note_dto(vault: &VaultRuntime, row: NoteMetadata) -> AppResult<NoteDto> {
@@ -404,11 +526,7 @@ async fn read_note_dto(vault: &VaultRuntime, row: NoteMetadata) -> AppResult<Not
         .await?
         .ok_or_else(|| AppError::NotFound(format!("note file {}", row.path)))?;
 
-    Ok(into_dto(
-        &row,
-        &read.parsed.content,
-        &read.parsed.frontmatter,
-    ))
+    into_dto(&row, &read.parsed.content, &read.parsed.frontmatter)
 }
 
 struct PreparedUpdate {
@@ -448,6 +566,9 @@ async fn apply_update_to_vault(
         row.emoji = emoji.clone();
         frontmatter.emoji = emoji;
     }
+    if let Some(frontmatter_patch) = input.frontmatter {
+        merge_frontmatter_patch(&mut row, &mut frontmatter, frontmatter_patch.into_value())?;
+    }
 
     row.modified_at = now_iso();
     frontmatter.modified = row.modified_at.clone();
@@ -460,6 +581,111 @@ async fn apply_update_to_vault(
     })
 }
 
+fn merge_frontmatter_patch(
+    row: &mut NoteMetadata,
+    frontmatter: &mut NoteFrontmatter,
+    patch: serde_json::Value,
+) -> AppResult<()> {
+    let object = patch
+        .as_object()
+        .ok_or_else(|| AppError::Validation("frontmatter must be an object".into()))?;
+
+    for (key, value) in object {
+        match key.as_str() {
+            "id" | "created" | "modified" => {
+                return Err(AppError::Validation(format!(
+                    "frontmatter field {key} is read-only"
+                )));
+            }
+            "title" => {
+                let title = value
+                    .as_str()
+                    .ok_or_else(|| {
+                        AppError::Validation("frontmatter title must be a string".into())
+                    })?
+                    .trim()
+                    .to_string();
+                if title.is_empty() {
+                    return Err(AppError::Validation("title is empty".into()));
+                }
+                row.title = title.clone();
+                frontmatter.title = Some(title);
+            }
+            "tags" => {
+                frontmatter.tags = json_string_array(value, "frontmatter tags")?;
+            }
+            "aliases" => {
+                frontmatter.aliases = json_string_array(value, "frontmatter aliases")?;
+            }
+            "emoji" => {
+                let emoji = json_optional_string(value, "frontmatter emoji")?;
+                row.emoji = emoji.clone();
+                frontmatter.emoji = emoji;
+            }
+            "localOnly" => {
+                let local_only = value.as_bool().ok_or_else(|| {
+                    AppError::Validation("frontmatter localOnly must be a boolean".into())
+                })?;
+                row.local_only = local_only;
+                row.sync_policy = if local_only {
+                    "local-only".into()
+                } else {
+                    "sync".into()
+                };
+                frontmatter.local_only = Some(local_only);
+            }
+            "properties" => {
+                frontmatter.properties = Some(json_object_to_yaml_map(value, "properties")?);
+            }
+            _ => {
+                frontmatter
+                    .extra
+                    .insert(key.clone(), serde_yaml_ng::to_value(value)?);
+            }
+        }
+    }
+
+    Ok(())
+}
+
+fn json_string_array(value: &serde_json::Value, field: &str) -> AppResult<Vec<String>> {
+    let array = value
+        .as_array()
+        .ok_or_else(|| AppError::Validation(format!("{field} must be an array")))?;
+    let mut out = Vec::with_capacity(array.len());
+    for item in array {
+        let s = item
+            .as_str()
+            .ok_or_else(|| AppError::Validation(format!("{field} must contain strings")))?;
+        out.push(s.to_string());
+    }
+    Ok(out)
+}
+
+fn json_optional_string(value: &serde_json::Value, field: &str) -> AppResult<Option<String>> {
+    if value.is_null() {
+        return Ok(None);
+    }
+    value
+        .as_str()
+        .map(|s| Some(s.to_string()))
+        .ok_or_else(|| AppError::Validation(format!("{field} must be a string or null")))
+}
+
+fn json_object_to_yaml_map(
+    value: &serde_json::Value,
+    field: &str,
+) -> AppResult<BTreeMap<String, serde_yaml_ng::Value>> {
+    let object = value
+        .as_object()
+        .ok_or_else(|| AppError::Validation(format!("{field} must be an object")))?;
+    let mut out = BTreeMap::new();
+    for (key, value) in object {
+        out.insert(key.clone(), serde_yaml_ng::to_value(value)?);
+    }
+    Ok(out)
+}
+
 fn finish_update(conn: &Connection, updated: PreparedUpdate) -> AppResult<NoteUpdateResponse> {
     use crate::db::{note_metadata, notes_cache};
 
@@ -469,7 +695,7 @@ fn finish_update(conn: &Connection, updated: PreparedUpdate) -> AppResult<NoteUp
 
     Ok(NoteUpdateResponse {
         success: true,
-        note: Some(into_dto(&updated.row, &updated.body, &updated.frontmatter)),
+        note: Some(into_dto(&updated.row, &updated.body, &updated.frontmatter)?),
         error: None,
     })
 }
@@ -478,14 +704,14 @@ fn finish_delete(
     conn: &Connection,
     row: &NoteMetadata,
     deleted_at: &str,
-) -> AppResult<serde_json::Value> {
+) -> AppResult<NoteDeleteResponse> {
     use crate::db::{note_metadata, note_positions, notes_cache};
 
     note_metadata::delete_soft(conn, &row.id, deleted_at)?;
     notes_cache::delete(conn, &row.id)?;
     note_positions::drop_for_note(conn, &row.path)?;
 
-    Ok(serde_json::json!({ "success": true }))
+    Ok(NoteDeleteResponse { success: true })
 }
 
 fn default_list_options() -> NoteListOptions {
@@ -592,7 +818,7 @@ fn finish_create(
 
     Ok(NoteCreateResponse {
         success: true,
-        note: Some(into_dto(&metadata, body, frontmatter)),
+        note: Some(into_dto(&metadata, body, frontmatter)?),
         error: None,
     })
 }
