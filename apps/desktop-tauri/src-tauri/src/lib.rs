@@ -33,6 +33,7 @@ pub fn run() {
     let app_state = init_app_state().expect("failed to initialize app state");
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
+        .plugin(tauri_plugin_dialog::init())
         .manage(app_state)
         .invoke_handler(tauri::generate_handler![
             commands::settings::settings_get,
