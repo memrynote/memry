@@ -91,10 +91,12 @@ fn ancestor_paths(path: &str) -> Vec<String> {
     }
 
     let parts: Vec<&str> = trimmed.split('/').collect();
-    (1..=parts.len())
+    let mut candidates: Vec<String> = (1..=parts.len())
         .rev()
         .map(|len| parts[..len].join("/"))
-        .collect()
+        .collect();
+    candidates.push(String::new());
+    candidates
 }
 
 fn optional_row<T>(result: rusqlite::Result<T>) -> AppResult<Option<T>> {

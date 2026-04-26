@@ -42,6 +42,25 @@ fn template_inherits_from_parent() {
 }
 
 #[test]
+fn template_inherits_from_root_folder() {
+    let conn = open_in_memory_with_migrations();
+    set(
+        &conn,
+        &FolderConfigRow {
+            path: String::new(),
+            icon: None,
+            template_json: Some(r#"{"frontmatter":{"area":"root"}}"#.into()),
+        },
+    )
+    .unwrap();
+
+    let inherited = get_template_inherited(&conn, "Projects/sub")
+        .unwrap()
+        .expect("template");
+    assert!(inherited.contains("\"area\":\"root\""));
+}
+
+#[test]
 fn delete_removes_config() {
     let conn = open_in_memory_with_migrations();
     set(
