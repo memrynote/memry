@@ -113,7 +113,7 @@ export const syncRoutes: MockRouteMap = {
     recoveryPhrase: null,
     needsRecoverySetup: null
   }),
-  sync_setup_setup_new_account: async () => ({
+  sync_setup_setup_new_account: async (_args?: unknown) => ({
     success: true,
     error: null,
     deviceId: 'device-this',

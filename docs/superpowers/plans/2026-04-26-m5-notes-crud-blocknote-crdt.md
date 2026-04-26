@@ -6,11 +6,13 @@
 
 **Architecture:** New `src-tauri/src/crdt/` module owns a `DocStore` (`tokio::sync::Mutex<HashMap<NoteId, Doc>>` behind `Arc`) with `apply.rs` (decode v1 update → apply with origin tag), `snapshot.rs` (`encode_state_as_update_v1` on demand), `compaction.rs` (after N updates, write snapshot + drop old updates inside one DB tx), and `wire.rs` (binary wire helpers). The existing `src-tauri/src/db/` skeletons (`note_metadata`, `note_positions`, `notes_cache`, `folder_configs`, `tag_definitions`) get fleshed out with full CRUD; new `db/property_definitions.rs` and `db/crdt_updates.rs` + `db/crdt_snapshots.rs` modules are added. `commands/notes.rs`, `commands/folders.rs`, `commands/properties.rs`, `commands/crdt.rs`, and `commands/devtools.rs` ship the renderer surface. Renderer adds `lib/crdt/yjs-tauri-provider.ts` (subscribe + apply with origin guard) plus `lib/crdt/origin-tags.ts`; BlockNote keeps its existing config but now binds to the shadow Y.Doc with XmlFragment name `"prosemirror"` (matching Electron's `CRDT_FRAGMENT_NAME`). Mock IPC routes for notes/folders/properties/positions/links/CRDT are deleted; export/PDF/HTML/versions/import/attachments-upload/attachments-download keep mocks with explicit `deferred:M6`/`deferred:M7`/`deferred:M8` ledger entries. Runtime e2e harness uses `tauri-driver` + `webdriverio` driving the real packaged app.
 
-**Tech Stack:** Tauri 2.10, Rust 1.95, yrs 0.21 (already declared in `Cargo.toml`), tokio sync (already `tokio = "full"`), lru 0.12 (snapshot LRU cache), once_cell, BlockNote 0.39 (renderer, already installed), y-prosemirror (renderer, already installed), Yjs 13.6 (renderer, already installed), tauri-driver 0.1 (dev-only, runtime e2e), webdriverio 9 (dev-only), Vitest, Playwright WebKit.
+**Tech Stack:** Tauri 2.10, Rust 1.95, yrs 0.21 (already declared in `Cargo.toml`), tokio sync (already `tokio = "full"`), lru 0.12 (snapshot LRU cache), once_cell, BlockNote 0.47.1 (renderer, already installed), y-prosemirror (renderer, already installed), Yjs 13.6 (renderer, already installed), tauri-driver 0.1 (dev-only, runtime e2e), webdriverio 9 (dev-only), Vitest, Playwright WebKit.
 
 **Parent spec:** `docs/superpowers/specs/2026-04-24-electron-to-tauri-full-migration-design.md` (§4 M5, §2 CRDT ownership, §5 cross-cutting conventions)
 
 **Predecessor plan:** `docs/superpowers/plans/2026-04-26-m4-crypto-keychain-auth.md` must be merged before M5 starts.
+
+**Plan audit note (2026-04-26):** This plan was checked against the parent design and the current M4 worktree. The original draft covered CRDT core, DB, command, and renderer-provider work, but stopped before the devtools/runtime-e2e/final-gate chunks promised in the file map. Chunks 10-13 below close those gaps. Treat the addendum as binding implementation work, not optional follow-up.
 
 ---
 
@@ -75,7 +77,7 @@ These commit choices made during plan-writing. Override only via PR-body decisio
 - **DocStore concurrency:** `Arc<tokio::sync::Mutex<HashMap<NoteId, yrs::Doc>>>`. `tokio::sync::Mutex` (not `parking_lot`) so `crdt_apply_update` can `.await` while the lock is held without blocking the runtime. M5 ships single-process — no cross-process contention to worry about.
 - **Snapshot compaction threshold:** 100 updates per note. Configurable via `CRDT_COMPACT_THRESHOLD` env var for tests; production default = 100.
 - **Loop prevention:** Origin tag is a `u32` derived from `MEMRY_DEVICE` env var (or `process::id()` fallback). Tag travels in the `crdt-update` event payload; renderer drops echoes whose origin matches its own client ID. Yjs natural idempotence is the second line of defense (S2 obs #9).
-- **Binary IPC:** `crdt_apply_update` accepts an inline `Vec<u8>` argument up to 64 KB; larger updates use the renderer-side chunking helper (`splitUpdateForChannel`) and call `crdt_apply_update_chunk` instead. `crdt_get_snapshot` and `crdt_get_state_vector` return `tauri::ipc::Response::new(Vec<u8>)` to bypass JSON-array serialization (S3 obs #4). All wire byte arrays are `Vec<u8>` on Rust side, `Uint8Array` on TS side; do not let `serde` re-serialize.
+- **Binary IPC:** inline CRDT update payloads are capped at 8 KB per the design's binary IPC discipline. `crdt_apply_update` accepts a small `Vec<u8>` for normal edits; larger updates use the M5 chunk path (`crdt_apply_update_chunk_start` / `crdt_apply_update_chunk_append` / `crdt_apply_update_chunk_finish`) so the renderer never sends a large JSON byte array. `crdt_get_snapshot` and `crdt_get_state_vector` return `tauri::ipc::Response::new(Vec<u8>)` to bypass JSON-array serialization (S3 obs #4). All wire byte arrays are `Vec<u8>` on Rust side, `Uint8Array` on TS side; do not let `serde` re-serialize.
 - **Note storage model:** Markdown body lives in vault FS at `<vault>/<path>` (M3 owns this). `note_metadata` row holds id/title/path/emoji/timestamps + sync metadata. Y.Doc is the runtime authoritative state during editor sessions; on every successful commit we (a) write markdown to disk and (b) append the new Y update to `crdt_updates` for sync replication. On note close we run compaction.
 - **MD→Yjs conversion:** Lazy on first `crdt_get_or_init_doc(noteId)` call. If the note has zero `crdt_updates` rows and zero snapshot, parse the markdown body into a BlockNote-compatible Y.XmlFragment and seed the doc; record the seed update as the first row in `crdt_updates`. Idempotent — re-running `get_or_init` returns the existing doc.
 - **Devtools:** `devtools_reset_db`, `devtools_seed_vault`, `devtools_open_test_vault` are gated by `#[cfg(any(debug_assertions, feature = "test-helpers"))]` and registered in a separate `capabilities/dev.json` capability file scoped to the dev window only. Production bundles compile them out.
@@ -85,14 +87,22 @@ These commit choices made during plan-writing. Override only via PR-body decisio
 - **Runtime e2e harness:** `tauri-driver` + `webdriverio` running against the bundled app. Test vault path = `$TMPDIR/memry-e2e-<uuid>` per spec to avoid stomping the dev vault. Two-device tests spawn two `tauri-driver` instances with `MEMRY_DEVICE=A` and `MEMRY_DEVICE=B`.
 - **Single `Mutex<Connection>` for `data.db`:** Carried from M2 unchanged. If contention shows up under runtime e2e, escalate to a pool in a follow-up — do not change in M5.
 - **Migration numbering:** New M5 migrations land as `0029_crdt_updates.sql` and `0030_crdt_snapshots.sql`. Hand-written per `MEMORY.md` "Migrations are hand-written since 0020" rule.
+- **Existing renderer CRDT path:** Current M4 code already has `apps/desktop-tauri/src/sync/yjs-ipc-provider.ts` and `apps/desktop-tauri/src/sync/use-yjs-collaboration.ts`, but they still call `sync_crdt_*` and listen for `crdt-state-changed`. M5 must migrate those existing files to the design command/event names (`crdt_*`, `crdt-update`) or replace them with `src/lib/crdt/yjs-tauri-provider.ts` and update every import. Do not leave a parallel unused provider.
+- **Tauri note events:** renderer services currently subscribe to `note-created`, `note-updated`, `note-deleted`, `note-renamed`, `note-moved`, `tags-changed`, and `folder-config-updated`. Rust commands must emit those kebab-case Tauri event names, matching §5.1 event naming. Do not emit Electron colon events like `notes:updated` unless a deliberate compatibility bridge is added and covered by tests.
 - **Tauri command names** (Electron channel → snake_case Tauri command):
   - `notes:create` → `notes_create`
+  - `notes:get` → `notes_get`
   - `notes:get-by-path` → `notes_get_by_path`
+  - `notes:get-file` → `notes_get_file`
+  - `notes:update` → `notes_update`
+  - `notes:delete` → `notes_delete`
   - `notes:list` → `notes_list`
   - `notes:list-by-folder` → `notes_list_by_folder`
   - `notes:rename` → `notes_rename`
   - `notes:move` → `notes_move`
   - `notes:exists` → `notes_exists`
+  - `notes:open-external` → `notes_open_external`
+  - `notes:reveal-in-finder` → `notes_reveal_in_finder`
   - `notes:get-folders` → `notes_get_folders`
   - `notes:create-folder` → `notes_create_folder`
   - `notes:rename-folder` → `notes_rename_folder`
@@ -119,9 +129,21 @@ These commit choices made during plan-writing. Override only via PR-body decisio
   - `notes:get-folder-config` → `notes_get_folder_config`
   - `notes:set-folder-config` → `notes_set_folder_config`
   - `notes:get-folder-template` → `notes_get_folder_template`
+  - `notes:upload-attachment` → `notes_upload_attachment` (`deferred:M6`)
+  - `notes:list-attachments` → `notes_list_attachments` (`deferred:M6` unless local-only metadata is complete)
+  - `notes:delete-attachment` → `notes_delete_attachment` (`deferred:M6`)
+  - `notes:export-pdf` → `notes_export_pdf` (`deferred:M8`)
+  - `notes:export-html` → `notes_export_html` (`deferred:M8`)
+  - `notes:get-versions` → `notes_get_versions` (`deferred:M8`)
+  - `notes:get-version` → `notes_get_version` (`deferred:M8`)
+  - `notes:restore-version` → `notes_restore_version` (`deferred:M8`)
+  - `notes:delete-version` → `notes_delete_version` (`deferred:M8`)
+  - `notes:import-files` → `notes_import_files` (`deferred:M8`)
+  - `notes:show-import-dialog` → `notes_show_import_dialog` (`deferred:M8`)
   - `crdt:open-doc` → `crdt_open_doc`
   - `crdt:close-doc` → `crdt_close_doc`
   - `crdt:apply-update` → `crdt_apply_update`
+  - new large-update helper: `crdt_apply_update_chunk_start` / `crdt_apply_update_chunk_append` / `crdt_apply_update_chunk_finish`
   - `crdt:sync-step-1` → `crdt_sync_step_1` (returns `{ diff, stateVector }`)
   - `crdt:sync-step-2` → `crdt_sync_step_2`
   - new: `crdt_get_snapshot`, `crdt_get_state_vector`, `crdt_get_or_init_doc`
@@ -172,63 +194,66 @@ apps/desktop-tauri/
 │       │   └── crdt_snapshots.rs                 Task 22 (new — upsert/get_latest)
 │       │
 │       └── commands/
-│           ├── mod.rs                            Task 47 (register notes/folders/properties/crdt/devtools)
+│           ├── mod.rs                            Tasks 40, 53, 54 (register notes/folders/properties/crdt/devtools)
 │           ├── notes.rs                          Tasks 23–32 (new)
 │           ├── folders.rs                        Tasks 33–35 (new)
-│           ├── properties.rs                     Tasks 36–41 (new)
-│           ├── crdt.rs                           Tasks 42–46 (new)
+│           ├── properties.rs                     Tasks 36–37 (new)
+│           ├── crdt.rs                           Tasks 40–46 + 41A (new)
 │           ├── devtools.rs                       Task 53 (new — dev-only)
-│           └── stubs_m6_m7_m8.rs                 Task 52 (new — deferred mocks behind cfg)
+│           └── stubs_m6_m7_m8.rs                 Tasks 38–39 (new — deferred mocks behind cfg)
 │
 ├── src/
 │   ├── lib/
 │   │   ├── crdt/
-│   │   │   ├── yjs-tauri-provider.ts             Task 54 (new — subscribe + apply + origin guard)
-│   │   │   ├── origin-tags.ts                    Task 55 (new — tag generation + comparison)
-│   │   │   └── md-to-yjs.ts                      Task 56 (new — JS-side MD→Yjs for tests/seeds)
+│   │   │   ├── yjs-tauri-provider.ts             Tasks 48, 57 (subscribe + apply + origin guard)
+│   │   │   ├── origin-tags.ts                    Task 47 (tag generation + comparison)
+│   │   │   └── md-to-yjs.ts                      Task 51 (JS-side MD→Yjs for tests/seeds)
 │   │   ├── ipc/
-│   │   │   ├── invoke.ts                         Task 57 (graduate notes/folders/properties/CRDT)
-│   │   │   ├── channel.ts                        Task 58 (new — Channel<u8> + Response<Vec<u8>> helpers)
+│   │   │   ├── invoke.ts                         Tasks 55, 60 (graduate notes/folders/properties/CRDT)
+│   │   │   ├── channel.ts                        Tasks 41A, 48 (chunked bytes + Response<Vec<u8>> helpers)
 │   │   │   └── mocks/
-│   │   │       ├── notes.ts                      Task 57 (delete; replaced with deferred-only stubs)
-│   │   │       ├── folders.ts                    Task 57 (delete keys covered; keep deferred export/version)
-│   │   │       ├── properties.ts                 Task 57 (delete; covered by real Rust)
+│   │   │       ├── notes.ts                      Task 60 (delete graduated routes)
+│   │   │       ├── folders.ts                    Task 60 (delete graduated routes)
+│   │   │       ├── properties.ts                 Task 60 (delete graduated routes)
 │   │   │       └── stubs/
-│   │   │           ├── attachments.ts            Task 59 (new — deferred:M6)
-│   │   │           ├── export.ts                 Task 59 (new — deferred:M8)
-│   │   │           ├── versions.ts               Task 59 (new — deferred:M8)
-│   │   │           └── import.ts                 Task 59 (new — deferred:M8)
-│   │   └── logger.ts                             Task 60 (replace electron-log import)
-│   ├── features/
-│   │   └── notes/
-│   │       ├── editor/
-│   │       │   ├── BlockNoteEditor.tsx           Task 61 (wire shadow Y.Doc + provider)
-│   │       │   └── useNoteCrdt.ts                Task 62 (new — hook combining open/close/apply)
-│   │       └── notes-service.ts                  Task 63 (no-op if forwarder already real; verify imports)
+│   │   │           ├── attachments.ts            Task 39 (new — deferred:M6)
+│   │   │           ├── export.ts                 Task 39 (new — deferred:M8)
+│   │   │           ├── versions.ts               Task 39 (new — deferred:M8)
+│   │   │           └── import.ts                 Task 39 (new — deferred:M8)
+│   ├── sync/
+│   │   ├── yjs-ipc-provider.ts                   Task 57 (migrate existing provider to crdt_* commands)
+│   │   └── use-yjs-collaboration.ts              Task 57 (keep current hook; update imports/constants)
+│   ├── components/
+│   │   └── note/content-area/
+│   │       ├── ContentArea.tsx                   Task 58 (wire shadow Y.Doc + provider)
+│   │       └── hooks/use-editor-sync.ts          Task 58 (do not overwrite CRDT-backed content)
+│   ├── services/
+│   │   └── notes-service.ts                      Tasks 56, 59 (event names + local contracts)
 │   ├── generated/
-│   │   └── bindings.ts                           Tasks 47, regenerated each chunk
-│   └── contracts/                                Task 64 (rolling extraction)
-│       ├── notes.ts                              Task 64 (rehome from @memry/contracts)
-│       ├── crdt.ts                               Task 64 (rehome ipc-crdt.ts here)
-│       └── folders.ts                            Task 64 (rehome folder + property types)
+│   │   └── bindings.ts                           Task 54 (regenerated after command registration)
+│   └── contracts/                                Task 59 (rolling extraction)
+│       ├── notes.ts                              Task 59 (rehome notes renderer contracts)
+│       └── crdt.ts                               Task 59 (rehome ipc-crdt constants/types)
 │
 ├── e2e/
-│   ├── playwright.config.ts                      Task 65 (add runtime project)
+│   ├── playwright.config.ts                      unchanged (fast mock lane remains)
 │   ├── runtime/
-│   │   ├── runtime.config.ts                     Task 66 (new — tauri-driver wiring)
+│   │   ├── runtime.config.ts                     Task 65 (new — tauri-driver/WebDriverIO wiring)
+│   │   ├── run-runtime-e2e.ts                    Task 66 (new — runtime runner)
 │   │   ├── helpers/
-│   │   │   ├── driver.ts                         Task 67 (new — start/stop tauri-driver)
-│   │   │   ├── vault.ts                          Task 67 (new — fresh test vault per spec)
-│   │   │   └── auth.ts                           Task 67 (new — devtools-backed unlock)
+│   │   │   ├── driver.ts                         Task 66 (new — start/stop tauri-driver)
+│   │   │   ├── vault.ts                          Task 66 (new — fresh test vault per spec)
+│   │   │   └── devtools.ts                       Task 66 (new — devtools-backed reset/seed/open)
 │   │   └── specs/
-│   │       ├── typing.spec.ts                    Task 68 (S1 Test 1: 500-char p95)
+│   │       ├── typing.spec.ts                    Task 67 (S1 Test 1: 500-char p95)
 │   │       ├── concurrent-edit.spec.ts           Task 69 (S2 Test 5d reproduced)
-│   │       ├── persistence.spec.ts               Task 70 (close/reopen)
-│   │       ├── undo-redo.spec.ts                 Task 71 (10-op chain)
-│   │       ├── slash-menu.spec.ts                Task 72 (slash + table + code + link)
-│   │       └── manual-paste.spec.ts              Task 73 (DOM paste; clipboard checklist)
+│   │       ├── persistence.spec.ts               Task 67 (close/reopen)
+│   │       ├── undo-redo.spec.ts                 Task 68 (10-op chain)
+│   │       ├── slash-menu.spec.ts                Task 68 (slash + table + code + link)
+│   │       ├── manual-paste.spec.ts              Task 68 (DOM paste; clipboard checklist)
+│   │       └── states.spec.ts                    Task 70 (empty/loading/error/offline/permission)
 │   └── specs/
-│       └── notes.spec.ts                         Task 74 (mock-lane regression update)
+│       └── notes.spec.ts                         Task 71 (mock-lane regression remains green)
 │
 └── src-tauri/
     └── tests/
@@ -2736,7 +2761,7 @@ pub async fn notes_create(
     let conn = state.db.conn().lock().await;
     let resp = notes_create_inner(&conn, &state.vault, input).await?;
     if let Some(note) = &resp.note {
-        let _ = app.emit("notes:created", serde_json::json!({ "note": note, "source": "internal" }));
+        let _ = app.emit("note-created", serde_json::json!({ "note": note, "source": "internal" }));
     }
     Ok(resp)
 }
@@ -2755,7 +2780,7 @@ cd apps/desktop-tauri/src-tauri && cargo test --test commands_notes_create_test
 - [ ] **Step 24.6: Commit**
 
 ```bash
-git commit -am "m5(cmd): notes_create writes vault FS + metadata + cache; emits notes:created"
+git commit -am "m5(cmd): notes_create writes vault FS + metadata + cache; emits note-created"
 ```
 
 ---
@@ -2866,7 +2891,7 @@ pub async fn notes_update(
 
     let dto = into_dto(&row, &body);
     let _ = app.emit(
-        "notes:updated",
+        "note-updated",
         serde_json::json!({ "id": row.id, "changes": { "title": row.title }, "source": "internal" }),
     );
     Ok(NoteUpdateResponse {
@@ -2880,14 +2905,14 @@ pub async fn notes_update(
 - [ ] **Step 26.3: Register, run, commit**
 
 ```bash
-git commit -am "m5(cmd): notes_update updates body/title/emoji + emits notes:updated"
+git commit -am "m5(cmd): notes_update updates body/title/emoji + emits note-updated"
 ```
 
 ---
 
 ### Task 27: `notes_delete` (soft delete)
 
-- [ ] **Step 27.1: Tests** — assert deleted note disappears from `list_active`, vault FS file is moved to `<vault>/.trash/<id>.md` (M3 vault has trash semantics; if not, retain file but soft-delete metadata only and emit `notes:deleted`).
+- [ ] **Step 27.1: Tests** — assert deleted note disappears from `list_active`, vault FS file is moved to `<vault>/.trash/<id>.md` (M3 vault has trash semantics; if not, retain file but soft-delete metadata only and emit `note-deleted`).
 
 - [ ] **Step 27.2: Implement**
 
@@ -2908,7 +2933,7 @@ pub async fn notes_delete(
     crate::db::notes_cache::delete(&conn, &id)?;
     crate::db::note_positions::drop_for_note(&conn, &id)?;
     let _ = app.emit(
-        "notes:deleted",
+        "note-deleted",
         serde_json::json!({ "id": id, "path": row.path, "source": "internal" }),
     );
     Ok(serde_json::json!({ "success": true }))
@@ -3043,7 +3068,7 @@ pub async fn notes_rename(
     crate::db::notes_cache::refresh_path(&conn, &id, &new_path, &new_title)?;
     let body = state.vault.notes_io().read_note(&new_path).await?;
     let _ = app.emit(
-        "notes:renamed",
+        "note-renamed",
         serde_json::json!({
             "id": id, "oldPath": old_path, "newPath": new_path,
             "oldTitle": old_title, "newTitle": new_title,
@@ -3081,7 +3106,7 @@ pub async fn notes_move(
     crate::db::notes_cache::refresh_path(&conn, &id, &new_path, &row.title)?;
     let body = state.vault.notes_io().read_note(&new_path).await?;
     let _ = app.emit(
-        "notes:moved",
+        "note-moved",
         serde_json::json!({ "id": id, "oldPath": old_path, "newPath": new_path }),
     );
     Ok(NoteUpdateResponse { success: true, note: Some(into_dto(&row, &body)), error: None })
@@ -3306,7 +3331,7 @@ git commit -am "m5(cmd): notes_get_tags + get_links + resolve/preview by title (
 //
 // End-to-end happy paths through the inner command helpers. The actual
 // `#[tauri::command]` async fns are covered by the runtime e2e lane in
-// Chunk 10.
+// Chunk 12.
 //
 // Keep these synchronous and DB-only — no Tauri AppHandle dependencies.
 
@@ -3651,7 +3676,7 @@ git commit -am "m5(cmd): property option mutations + delete_property_definition"
 
 Goal: make every renderer-invoked notes/folders/properties/CRDT command **classified** by `command:parity` — either real, mocked-with-deferred-tag, or retired. No unclassified row by chunk end.
 
-### Task 38: `notes_get_file` + attachment metadata reads
+### Task 38: `notes_get_file` + native open/reveal wrappers
 
 **Files:**
 - Create: `apps/desktop-tauri/src-tauri/src/commands/stubs_m6_m7_m8.rs`
@@ -3660,12 +3685,13 @@ Goal: make every renderer-invoked notes/folders/properties/CRDT command **classi
 
 ```rust
 //! Editor-adjacent commands that ship metadata-only in M5. Real upload/
-//! download/blob lives in M6 (sync). Export/PDF/HTML/versions live in M8.
+//! download/blob lives in M6 (sync). Export/PDF/HTML/versions/import live in M8.
+//! Open/reveal graduate now by delegating to the M3 shell/path helpers.
 
 use crate::app_state::AppState;
 use crate::error::{AppError, AppResult};
 use serde::Serialize;
-use tauri::State;
+use tauri::{AppHandle, State};
 
 #[derive(Debug, Clone, Serialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
@@ -3689,14 +3715,48 @@ pub async fn notes_get_file(state: State<'_, AppState>, id: String) -> AppResult
         file_size: row.file_size,
     })
 }
+
+#[tauri::command]
+#[specta::specta]
+pub async fn notes_open_external(
+    state: State<'_, AppState>,
+    app: AppHandle,
+    id: String,
+) -> AppResult<()> {
+    let conn = state.db.conn().lock().await;
+    let row = crate::db::note_metadata::get_by_id(&conn, &id)?
+        .ok_or_else(|| AppError::NotFound(id.clone()))?;
+    drop(conn);
+    let root = state.vault.current_path().ok_or(AppError::VaultLocked)?;
+    let abs = root.join(row.path);
+    crate::commands::shell::open_path_inner(&app, abs).await
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn notes_reveal_in_finder(
+    state: State<'_, AppState>,
+    app: AppHandle,
+    id: String,
+) -> AppResult<()> {
+    let conn = state.db.conn().lock().await;
+    let row = crate::db::note_metadata::get_by_id(&conn, &id)?
+        .ok_or_else(|| AppError::NotFound(id.clone()))?;
+    drop(conn);
+    let root = state.vault.current_path().ok_or(AppError::VaultLocked)?;
+    let abs = root.join(row.path);
+    crate::commands::shell::reveal_path_inner(&app, abs).await
+}
 ```
 
 Register in `lib.rs`.
 
-- [ ] **Step 38.2: Commit**
+- [ ] **Step 38.2: Tests** — cover `notes_get_file`, `notes_open_external`, and `notes_reveal_in_finder` with a fake shell opener/app-handle seam. If M3 shell helpers do not expose `*_inner` functions yet, add them in `commands/shell.rs` rather than duplicating path-opening code here.
+
+- [ ] **Step 38.3: Commit**
 
 ```bash
-git commit -am "m5(cmd): notes_get_file metadata for non-markdown files"
+git commit -am "m5(cmd): notes_get_file plus native open/reveal wrappers"
 ```
 
 ---
@@ -3725,7 +3785,7 @@ export const attachmentsRoutes: MockRouteMap = {
 }
 ```
 
-Repeat for `export.ts` (`notes_export_pdf`, `notes_export_html` → `deferred:M8`), `versions.ts` (`notes_get_versions` / `notes_get_version` / `notes_restore_version` / `notes_delete_version` → `deferred:M8`), `import.ts` (`notes_import_files`, `notes_show_import_dialog`, `notes_open_external`, `notes_reveal_in_finder` → `deferred:M8`).
+Repeat for `export.ts` (`notes_export_pdf`, `notes_export_html` → `deferred:M8`), `versions.ts` (`notes_get_versions` / `notes_get_version` / `notes_restore_version` / `notes_delete_version` → `deferred:M8`), `import.ts` (`notes_import_files`, `notes_show_import_dialog` → `deferred:M8`). `notes_open_external` and `notes_reveal_in_finder` are real M5 commands from Task 38; do not defer them.
 
 - [ ] **Step 39.2: Wire into mock router**
 
@@ -3762,8 +3822,6 @@ notes_restore_version: 'M8',
 notes_delete_version: 'M8',
 notes_import_files: 'M8',
 notes_show_import_dialog: 'M8',
-notes_open_external: 'M8',
-notes_reveal_in_finder: 'M8',
 ```
 
 Remove any matching M5 entries that no longer apply.
@@ -3835,7 +3893,7 @@ async fn close_doc_drops_runtime_entry() {
 
 ```rust
 //! CRDT IPC commands. Use binary `Response` for snapshot/state-vector returns
-//! and accept inline `Vec<u8>` for update apply — the M1 spec budget is 64 KB
+//! and accept inline `Vec<u8>` for update apply — the design budget is 8 KB
 //! per inline update; bigger updates use the renderer chunking helper.
 
 use crate::app_state::AppState;
@@ -3848,7 +3906,7 @@ use crate::error::{AppError, AppResult};
 use std::sync::Arc;
 use tauri::{ipc::Response, AppHandle, Emitter, State};
 
-pub const MAX_INLINE_UPDATE_BYTES: usize = 64 * 1024;
+pub const MAX_INLINE_UPDATE_BYTES: usize = 8 * 1024;
 
 pub async fn crdt_open_doc_inner(
     conn: &rusqlite::Connection,
@@ -3999,6 +4057,57 @@ pub async fn crdt_apply_update(
 
 ```bash
 git commit -am "m5(cmd): crdt_apply_update with auto-compaction on threshold"
+```
+
+---
+
+### Task 41A: Large-update chunk path
+
+**Files:**
+- Modify: `apps/desktop-tauri/src-tauri/src/crdt/wire.rs`
+- Modify: `apps/desktop-tauri/src-tauri/src/commands/crdt.rs`
+- Modify: `apps/desktop-tauri/src-tauri/tests/commands_crdt_test.rs`
+
+- [ ] **Step 41A.1: Tests** — create a 20 KB Yjs update, verify direct `crdt_apply_update_inner` rejects it, then stream the same bytes through chunk start/append/finish helpers and assert the doc state matches the source doc.
+
+- [ ] **Step 41A.2: Implement chunk accumulator**
+
+Add a `ChunkAccumulator` to `CrdtRuntime` or `commands/crdt.rs` keyed by `transfer_id`, with TTL cleanup on finish/error:
+
+```rust
+#[derive(Debug, Clone, serde::Deserialize, specta::Type)]
+#[serde(rename_all = "camelCase")]
+pub struct CrdtChunkStartInput {
+    pub note_id: String,
+    pub transfer_id: String,
+    pub total_bytes: usize,
+}
+
+#[derive(Debug, Clone, serde::Deserialize, specta::Type)]
+#[serde(rename_all = "camelCase")]
+pub struct CrdtChunkAppendInput {
+    pub transfer_id: String,
+    pub offset: usize,
+    pub bytes: Vec<u8>,
+}
+
+#[derive(Debug, Clone, serde::Deserialize, specta::Type)]
+#[serde(rename_all = "camelCase")]
+pub struct CrdtChunkFinishInput {
+    pub note_id: String,
+    pub transfer_id: String,
+    pub origin: Option<u32>,
+}
+```
+
+Expose `crdt_apply_update_chunk_start`, `crdt_apply_update_chunk_append`, and `crdt_apply_update_chunk_finish`; `finish` calls an internal `crdt_apply_update_inner_unchecked_size` after reassembling bytes, persists once, emits one `crdt-update`, then drops the accumulator entry.
+
+- [ ] **Step 41A.3: Capability + bindings** — add all three chunk commands to `generate_handler![]`, generated bindings, and default capability grants.
+
+- [ ] **Step 41A.4: Commit**
+
+```bash
+git commit -am "m5(cmd): stream oversized CRDT updates through chunked IPC"
 ```
 
 ---
@@ -4578,81 +4687,41 @@ git commit -am "m5(renderer): YjsTauriProvider with origin-guarded echo preventi
 ### Task 49: BlockNote editor binding
 
 **Files:**
-- Modify: `apps/desktop-tauri/src/features/notes/editor/BlockNoteEditor.tsx` (or whatever the existing component path is)
-- Create: `apps/desktop-tauri/src/features/notes/editor/useNoteCrdt.ts`
+- Modify: `apps/desktop-tauri/src/components/note/content-area/ContentArea.tsx`
+- Modify: `apps/desktop-tauri/src/sync/use-yjs-collaboration.ts`
+- Modify: `apps/desktop-tauri/src/sync/yjs-ipc-provider.ts` or wire it to `apps/desktop-tauri/src/lib/crdt/yjs-tauri-provider.ts`
 
 - [ ] **Step 49.1: Locate the current editor component**
 
 ```bash
-rg -n "BlockNoteEditor|useCreateBlockNote" apps/desktop-tauri/src
+rg -n "useCreateBlockNote|useYjsCollaboration|YjsIpcProvider" apps/desktop-tauri/src/components/note apps/desktop-tauri/src/sync
 ```
 
-Find the exact path. The mock-lane editor likely creates a BlockNote instance from a string body; M5 swaps that to use a Y.Doc + provider.
+Expected M4 paths: `ContentArea.tsx`, `use-yjs-collaboration.ts`, and `yjs-ipc-provider.ts`. Use those existing paths. Do not create `src/features/notes/editor/*` unless the repo was refactored before M5 starts.
 
-- [ ] **Step 49.2: Add `useNoteCrdt` hook**
+- [ ] **Step 49.2: Update the existing collaboration hook**
 
-```typescript
-// apps/desktop-tauri/src/features/notes/editor/useNoteCrdt.ts
-import { useEffect, useMemo, useState } from 'react'
-import * as Y from 'yjs'
-import { invoke } from '@/lib/ipc/invoke'
-import { listen as tauriListen } from '@tauri-apps/api/event'
-import { YjsTauriProvider } from '@/lib/crdt/yjs-tauri-provider'
-
-export function useNoteCrdt(noteId: string) {
-  const ydoc = useMemo(() => new Y.Doc(), [noteId])
-  const [ready, setReady] = useState(false)
-
-  useEffect(() => {
-    let cancelled = false
-    const provider = new YjsTauriProvider({
-      noteId,
-      ydoc,
-      invoke,
-      listen: tauriListen as unknown as Parameters<typeof YjsTauriProvider>[0]['listen'],
-    })
-    provider
-      .connect()
-      .then(() => {
-        if (!cancelled) setReady(true)
-      })
-      .catch((err) => {
-        // TODO: surface via extractErrorMessage
-        console.error('CRDT connect failed', err)
-      })
-    return () => {
-      cancelled = true
-      provider.disconnect().catch(() => undefined)
-    }
-  }, [noteId, ydoc])
-
-  return { ydoc, ready }
-}
-```
+`useYjsCollaboration` should still own `new Y.Doc({ guid: noteId })`, `doc.getXmlFragment('prosemirror')`, remote-update tracking, and cleanup. Swap its provider implementation to the M5 `crdt_*` command surface via Task 57. Keep the returned shape `{ fragment, provider, isReady, isRemoteUpdateRef }` stable so `ContentArea` needs minimal edits.
 
 - [ ] **Step 49.3: Wire into BlockNote**
 
-Replace the in-memory body initialiser with:
+`ContentArea` already passes `collaboration.fragment` into `useCreateBlockNote`. Keep that path and ensure string/markdown initial load is bypassed once `yjsFragment` exists:
 
 ```typescript
-const { ydoc, ready } = useNoteCrdt(noteId)
 const editor = useCreateBlockNote(
-  ready
+  yjsFragment
     ? {
         collaboration: {
-          fragment: ydoc.getXmlFragment('prosemirror'),
+          fragment: yjsFragment,
           user: { name: 'You', color: '#3b82f6' },
-          provider: undefined,
-        },
+        }
       }
     : undefined,
-  [ydoc, ready],
+  [yjsFragment]
 )
-if (!ready) return <EditorSkeleton />
-return <BlockNoteView editor={editor} />
 ```
 
-The fragment name `'prosemirror'` matches `CRDT_FRAGMENT_NAME` from `@memry/contracts/ipc-crdt.ts`.
+The fragment name `'prosemirror'` matches the local `CRDT_FRAGMENT_NAME` contract from Task 59.
 
 - [ ] **Step 49.4: Run unit tests + visual mock-lane**
 
@@ -4661,7 +4730,7 @@ pnpm --filter @memry/desktop-tauri test
 pnpm --filter @memry/desktop-tauri test:e2e -- --grep="@mock-lane"
 ```
 
-Mock-lane Playwright was passing pre-M5 against a string-body editor. The runtime e2e lane in Chunk 10 covers the live Y.Doc path; mock-lane keeps using the existing `notes_get` mock (we keep it for `deferred:M8` import flows) — actually wait, `notes_get` graduated. Verify mock-lane still has a path: if it now hits real Rust, you must run mock-lane against a fresh test vault; otherwise mark mock-lane @runtime-only and rely on Chunk 10.
+Mock-lane Playwright was passing pre-M5 against a string-body editor. The runtime e2e lane in Chunk 12 covers the live Y.Doc path. Because `notes_get` graduates in M5, verify the fast lane either runs with seeded real notes via `VITE_MOCK_IPC=false` or stays on explicitly deferred mock routes only; do not leave a hidden `notes_get` mock behind.
 
 - [ ] **Step 49.5: Commit**
 
@@ -5094,11 +5163,645 @@ git commit -am "m5(crdt): seed_from_markdown idempotent first-open initialiser"
 - [ ] `cargo test --test 'crdt_*'` shows ≥17 tests pass.
 - [ ] Manually open a markdown-only note in `pnpm dev` — body content shows in BlockNote with paragraphs + headings + lists preserved.
 
+---
 
+## Chunk 10 — Command Registration, Devtools, Capabilities, Bindings
 
+Goal: make the Rust command surface reachable from a real Tauri window, keep dev-only helpers out of production, and prove generated bindings/capability grants/command parity all agree. Acceptance proof: `bindings:check`, `capability:check`, and `command:parity` all exit 0; production build cannot call `devtools_*`.
 
+### Task 53: Dev-only runtime test commands
 
+**Files:**
+- Create: `apps/desktop-tauri/src-tauri/src/commands/devtools.rs`
+- Create: `apps/desktop-tauri/src-tauri/capabilities/dev.json`
+- Modify: `apps/desktop-tauri/src-tauri/src/commands/mod.rs`
+- Modify: `apps/desktop-tauri/src-tauri/src/lib.rs`
+- Test: `apps/desktop-tauri/src-tauri/tests/commands_devtools_test.rs`
 
+- [ ] **Step 53.1: Write failing tests**
 
+Cover:
 
+- `devtools_reset_db` clears data tables but leaves migrations applied.
+- `devtools_seed_vault` creates one folder and at least two markdown notes in a supplied temp vault.
+- `devtools_open_test_vault` points `VaultRuntime` at the temp vault and returns current-vault status.
+- A non-test build does not register `devtools_*` commands.
 
+- [ ] **Step 53.2: Implement**
+
+Gate the module and handler registration with:
+
+```rust
+#[cfg(any(debug_assertions, feature = "test-helpers"))]
+pub mod devtools;
+```
+
+Commands:
+
+```rust
+#[tauri::command]
+#[specta::specta]
+pub async fn devtools_reset_db(state: tauri::State<'_, AppState>) -> AppResult<()> { /* ... */ }
+
+#[tauri::command]
+#[specta::specta]
+pub async fn devtools_seed_vault(
+    state: tauri::State<'_, AppState>,
+    root: String,
+) -> AppResult<serde_json::Value> { /* ... */ }
+
+#[tauri::command]
+#[specta::specta]
+pub async fn devtools_open_test_vault(
+    state: tauri::State<'_, AppState>,
+    root: String,
+) -> AppResult<serde_json::Value> { /* ... */ }
+```
+
+Keep these commands boring: delete rows with explicit table lists, write seed notes through `vault::notes_io`, and call the same vault-open code path as the real command.
+
+- [ ] **Step 53.3: Add dev capability only**
+
+Create `capabilities/dev.json` scoped to the dev/test window label and include only:
+
+```json
+{
+  "identifier": "devtools",
+  "description": "Debug/test-only helpers for runtime e2e",
+  "windows": ["main"],
+  "permissions": [
+    "core:default",
+    {
+      "identifier": "devtools:default",
+      "commands": ["devtools_reset_db", "devtools_seed_vault", "devtools_open_test_vault"]
+    }
+  ]
+}
+```
+
+If the existing capability format differs, follow the current file shape, but keep `devtools_*` out of `default.json`.
+
+- [ ] **Step 53.4: Verify + commit**
+
+```bash
+pnpm --filter @memry/desktop-tauri cargo:test -- --test commands_devtools_test
+pnpm --filter @memry/desktop-tauri capability:check
+git add apps/desktop-tauri/src-tauri/src/commands/devtools.rs apps/desktop-tauri/src-tauri/tests/commands_devtools_test.rs apps/desktop-tauri/src-tauri/capabilities/dev.json apps/desktop-tauri/src-tauri/src/commands/mod.rs apps/desktop-tauri/src-tauri/src/lib.rs
+git commit -m "m5(devtools): add debug-only runtime e2e helpers"
+```
+
+---
+
+### Task 54: Register every M5 command in Rust + bindings
+
+**Files:**
+- Modify: `apps/desktop-tauri/src-tauri/src/commands/mod.rs`
+- Modify: `apps/desktop-tauri/src-tauri/src/lib.rs`
+- Modify: `apps/desktop-tauri/src-tauri/examples/generate_bindings.rs`
+- Modify: `apps/desktop-tauri/src/generated/bindings.ts`
+
+- [ ] **Step 54.1: Add command modules**
+
+`commands/mod.rs` must export:
+
+```rust
+pub mod notes;
+pub mod folders;
+pub mod properties;
+pub mod crdt;
+pub mod stubs_m6_m7_m8;
+#[cfg(any(debug_assertions, feature = "test-helpers"))]
+pub mod devtools;
+```
+
+- [ ] **Step 54.2: Add `generate_handler![]` entries**
+
+Register every real M5 command:
+
+```text
+notes_create, notes_get, notes_get_by_path, notes_get_file, notes_update, notes_delete,
+notes_list, notes_list_by_folder, notes_rename, notes_move, notes_exists,
+notes_open_external, notes_reveal_in_finder,
+notes_get_folders, notes_create_folder, notes_rename_folder, notes_delete_folder,
+notes_get_folder_config, notes_set_folder_config, notes_get_folder_template,
+notes_get_positions, notes_get_all_positions, notes_reorder,
+notes_get_tags, notes_get_links, notes_resolve_by_title, notes_preview_by_title,
+notes_set_local_only, notes_get_local_only_count,
+notes_get_property_definitions, notes_create_property_definition,
+notes_update_property_definition, notes_ensure_property_definition,
+notes_add_property_option, notes_add_status_option, notes_remove_property_option,
+notes_rename_property_option, notes_update_option_color, notes_delete_property_definition,
+crdt_open_doc, crdt_close_doc, crdt_apply_update,
+crdt_apply_update_chunk_start, crdt_apply_update_chunk_append, crdt_apply_update_chunk_finish,
+crdt_get_snapshot, crdt_get_state_vector, crdt_get_or_init_doc,
+crdt_sync_step_1, crdt_sync_step_2
+```
+
+Do not register export/import/version/attachment-upload commands as real unless Task 39's deferred ledger is also updated.
+
+- [ ] **Step 54.3: Regenerate bindings**
+
+```bash
+pnpm --filter @memry/desktop-tauri bindings:generate
+pnpm --filter @memry/desktop-tauri bindings:check
+```
+
+Expected: generated `Commands` includes all commands above plus no production `devtools_*`.
+
+- [ ] **Step 54.4: Commit**
+
+```bash
+git add apps/desktop-tauri/src-tauri/src/commands/mod.rs apps/desktop-tauri/src-tauri/src/lib.rs apps/desktop-tauri/src-tauri/examples/generate_bindings.rs apps/desktop-tauri/src/generated/bindings.ts
+git commit -m "m5(bindings): register notes and CRDT command surface"
+```
+
+---
+
+### Task 55: Default capability grants + production mock guard
+
+**Files:**
+- Modify: `apps/desktop-tauri/src-tauri/capabilities/default.json`
+- Modify: `apps/desktop-tauri/scripts/command-parity-audit.ts`
+- Modify: `apps/desktop-tauri/src/lib/ipc/invoke.ts`
+- Test: `apps/desktop-tauri/scripts/command-parity-audit.test.ts`
+
+- [ ] **Step 55.1: Add M5 `REQUIRED_REAL` commands**
+
+In `command-parity-audit.ts`, add every real M5 command from Task 54 to `REQUIRED_REAL`.
+
+Add a `RETIRED` entry for legacy M4 renderer CRDT aliases:
+
+```typescript
+sync_crdt_open_doc: 'crdt_open_doc',
+sync_crdt_close_doc: 'crdt_close_doc',
+sync_crdt_apply_update: 'crdt_apply_update',
+sync_crdt_sync_step1: 'crdt_sync_step_1',
+sync_crdt_sync_step2: 'crdt_sync_step_2'
+```
+
+The audit must fail if any `sync_crdt_*` literal call remains under `apps/desktop-tauri/src`.
+
+- [ ] **Step 55.2: Add production mock guard**
+
+In `src/lib/ipc/invoke.ts`, keep dev mock routing for deferred commands, but add a production guard:
+
+```typescript
+function assertMockAllowedInThisBuild(cmd: string): void {
+  if (import.meta.env.PROD && !DEFERRED_COMMANDS.has(cmd)) {
+    throw new Error(`Production build attempted to use mock IPC for ${cmd}`)
+  }
+}
+```
+
+Call it from `shouldUseMock`. `DEFERRED_COMMANDS` must match the ledger from Task 39. Real M5 commands must be added to `realCommands`.
+
+- [ ] **Step 55.3: Capability grants**
+
+Add default capability grants for real M5 notes/folder/property/CRDT commands. Do not add `devtools_*` to `default.json`.
+
+- [ ] **Step 55.4: Verify + commit**
+
+```bash
+pnpm --filter @memry/desktop-tauri command:parity
+pnpm --filter @memry/desktop-tauri capability:check
+pnpm --filter @memry/desktop-tauri test -- scripts/command-parity-audit.test.ts
+git add apps/desktop-tauri/scripts/command-parity-audit.ts apps/desktop-tauri/scripts/command-parity-audit.test.ts apps/desktop-tauri/src/lib/ipc/invoke.ts apps/desktop-tauri/src-tauri/capabilities/default.json
+git commit -m "m5(parity): require real notes CRDT commands and guard production mocks"
+```
+
+---
+
+### Task 56: Event-name parity tests
+
+**Files:**
+- Modify: `apps/desktop-tauri/src/services/notes-service.ts`
+- Test: `apps/desktop-tauri/src/services/notes-service.test.ts`
+- Test: `apps/desktop-tauri/src-tauri/tests/commands_notes_test.rs`
+
+- [ ] **Step 56.1: Test renderer subscriptions**
+
+Assert `notes-service.ts` subscribes to:
+
+```text
+note-created
+note-updated
+note-deleted
+note-renamed
+note-moved
+notes:external-change only if a compatibility bridge already exists; otherwise note-external-change
+tags-changed
+folder-config-updated
+```
+
+- [ ] **Step 56.2: Test Rust emissions**
+
+`commands_notes_test.rs` must verify create/update/delete/rename/move emit those same event names with payload shapes the renderer expects.
+
+- [ ] **Step 56.3: Commit**
+
+```bash
+git add apps/desktop-tauri/src/services/notes-service.ts apps/desktop-tauri/src/services/notes-service.test.ts apps/desktop-tauri/src-tauri/tests/commands_notes_test.rs
+git commit -m "m5(events): align note event names across Rust and renderer"
+```
+
+---
+
+## Chunk 11 — Existing Renderer CRDT Path + Contract Extraction
+
+Goal: migrate the current renderer CRDT integration instead of creating a second provider path, and remove M5-owned `@memry/*` shared-package dependencies from the Tauri app. Acceptance proof: no `sync_crdt_*` renderer literals remain; `rg "@memry/(contracts|rpc).*(notes|ipc-crdt)" apps/desktop-tauri/src` is empty or every remaining hit is listed with a milestone.
+
+### Task 57: Replace legacy `sync_crdt_*` provider calls
+
+**Files:**
+- Modify or delete: `apps/desktop-tauri/src/sync/yjs-ipc-provider.ts`
+- Modify: `apps/desktop-tauri/src/sync/use-yjs-collaboration.ts`
+- Test: `apps/desktop-tauri/src/sync/yjs-ipc-provider.test.ts`
+
+- [ ] **Step 57.1: Tests**
+
+Update provider tests to assert:
+
+- `disconnect()` calls `crdt_close_doc`.
+- `connect()` calls `crdt_open_doc`, `crdt_sync_step_1`, and `crdt_sync_step_2`.
+- local Yjs updates call `crdt_apply_update` for <=8 KB updates and chunk commands for >8 KB updates.
+- provider listens to `crdt-update`, ignores matching `origin`, and applies remote updates with origin `'rust'`.
+
+- [ ] **Step 57.2: Implement**
+
+Either:
+
+- keep `src/sync/yjs-ipc-provider.ts` and update it in place, or
+- make it a tiny compatibility export around `src/lib/crdt/yjs-tauri-provider.ts`.
+
+Do not leave both implementations active.
+
+- [ ] **Step 57.3: Verify no legacy aliases**
+
+```bash
+rg "sync_crdt_|crdt-state-changed" apps/desktop-tauri/src
+```
+
+Expected: no matches.
+
+- [ ] **Step 57.4: Commit**
+
+```bash
+git add apps/desktop-tauri/src/sync/yjs-ipc-provider.ts apps/desktop-tauri/src/sync/yjs-ipc-provider.test.ts apps/desktop-tauri/src/sync/use-yjs-collaboration.ts
+git commit -m "m5(renderer): migrate Yjs provider to crdt command surface"
+```
+
+---
+
+### Task 58: Bind current `ContentArea` to the provider deliberately
+
+**Files:**
+- Modify: `apps/desktop-tauri/src/components/note/content-area/ContentArea.tsx`
+- Modify: `apps/desktop-tauri/src/components/note/content-area/hooks/use-editor-sync.ts`
+- Test: `apps/desktop-tauri/src/components/note/content-area/ContentArea.test.tsx` or nearest existing content-area test
+
+- [ ] **Step 58.1: Tests** — render `ContentArea` with a fake provider ready state and assert `useCreateBlockNote` receives `collaboration.fragment`. Render with provider error/not-ready and assert the existing loading skeleton appears without calling string-body `replaceBlocks`.
+
+- [ ] **Step 58.2: Implement** — keep the current `ContentArea` outer wrapper; do not introduce `src/features/notes/editor/BlockNoteEditor.tsx` unless you also update every import. Make the CRDT-backed path the default for notes with `noteId`; keep string/markdown initialization only for non-note contexts (journal/templates/inbox) or explicit mock tests.
+
+- [ ] **Step 58.3: Commit**
+
+```bash
+git add apps/desktop-tauri/src/components/note/content-area/ContentArea.tsx apps/desktop-tauri/src/components/note/content-area/hooks/use-editor-sync.ts
+git commit -m "m5(renderer): make ContentArea use the Rust-backed Yjs provider"
+```
+
+---
+
+### Task 59: Rehome touched notes/CRDT contracts
+
+**Files:**
+- Create: `apps/desktop-tauri/src/contracts/notes.ts`
+- Create: `apps/desktop-tauri/src/contracts/crdt.ts`
+- Modify: `apps/desktop-tauri/src/services/notes-service.ts`
+- Modify: `apps/desktop-tauri/src/sync/use-yjs-collaboration.ts`
+- Modify: `apps/desktop-tauri/src/sync/yjs-ipc-provider.ts`
+
+- [ ] **Step 59.1: Copy only M5-owned types**
+
+Move the renderer-owned subset of notes and CRDT types/constants used by M5 into `apps/desktop-tauri/src/contracts/`. Keep this narrow: no sync-server schemas, no Electron preload types, no unrelated `@memry/rpc` surface.
+
+- [ ] **Step 59.2: Update imports**
+
+```bash
+rg "@memry/(contracts|rpc).*(notes|ipc-crdt)|@memry/rpc/notes|@memry/contracts/ipc-crdt" apps/desktop-tauri/src
+```
+
+Expected: no matches after the task, unless a match is intentionally deferred in this plan with a milestone.
+
+- [ ] **Step 59.3: Typecheck + commit**
+
+```bash
+pnpm --filter @memry/desktop-tauri typecheck
+git add apps/desktop-tauri/src/contracts apps/desktop-tauri/src/services/notes-service.ts apps/desktop-tauri/src/sync
+git commit -m "m5(contracts): rehome notes and CRDT renderer contracts"
+```
+
+---
+
+### Task 60: Mock router cleanup for graduated commands
+
+**Files:**
+- Modify: `apps/desktop-tauri/src/lib/ipc/mocks/notes.ts`
+- Modify: `apps/desktop-tauri/src/lib/ipc/mocks/folders.ts`
+- Modify: `apps/desktop-tauri/src/lib/ipc/mocks/properties.ts`
+- Modify: `apps/desktop-tauri/src/lib/ipc/mocks/index.ts`
+- Modify: `apps/desktop-tauri/src/lib/ipc/invoke.ts`
+
+- [ ] **Step 60.1: Delete graduated mocks** — remove mock routes for every real M5 command from Task 54. Keep only Task 39 deferred route files.
+
+- [ ] **Step 60.2: Add real commands** — `realCommands` in `invoke.ts` must include every real M5 command from Task 54.
+
+- [ ] **Step 60.3: Verify**
+
+```bash
+pnpm --filter @memry/desktop-tauri command:parity
+pnpm --filter @memry/desktop-tauri test -- src/lib/ipc
+```
+
+- [ ] **Step 60.4: Commit**
+
+```bash
+git add apps/desktop-tauri/src/lib/ipc
+git commit -m "m5(ipc): route notes and CRDT commands to Rust"
+```
+
+---
+
+## Chunk 12 — Real Tauri Runtime E2E Lane
+
+Goal: add the first real runtime e2e lane promised by the design. Acceptance proof: `pnpm --filter @memry/desktop-tauri test:e2e` still runs the fast mock/WebKit lane, and `pnpm --filter @memry/desktop-tauri test:e2e:runtime` runs at least six real Tauri scenarios using devtools reset/seed commands.
+
+### Task 65: Add runtime e2e dependencies and script
+
+**Files:**
+- Modify: `apps/desktop-tauri/package.json`
+- Modify/create: `apps/desktop-tauri/e2e/runtime/runtime.config.ts`
+
+- [ ] **Step 65.1: Add dev dependencies**
+
+```bash
+pnpm --filter @memry/desktop-tauri add -D webdriverio @wdio/cli @wdio/local-runner @wdio/mocha-framework
+cargo install tauri-driver --locked
+```
+
+If `tauri-driver` is already available in CI, document the installed version in the PR body instead of reinstalling.
+
+- [ ] **Step 65.2: Add scripts**
+
+```json
+{
+  "test:e2e": "playwright test",
+  "test:e2e:runtime": "tsx e2e/runtime/run-runtime-e2e.ts"
+}
+```
+
+Keep the mock-lane script stable; runtime lane is additive in M5.
+
+- [ ] **Step 65.3: Commit**
+
+```bash
+git add apps/desktop-tauri/package.json pnpm-lock.yaml apps/desktop-tauri/e2e/runtime
+git commit -m "m5(e2e): add runtime Tauri test harness dependencies"
+```
+
+---
+
+### Task 66: Runtime harness helpers
+
+**Files:**
+- Create: `apps/desktop-tauri/e2e/runtime/run-runtime-e2e.ts`
+- Create: `apps/desktop-tauri/e2e/runtime/helpers/driver.ts`
+- Create: `apps/desktop-tauri/e2e/runtime/helpers/vault.ts`
+- Create: `apps/desktop-tauri/e2e/runtime/helpers/devtools.ts`
+
+- [ ] **Step 66.1: Driver helper**
+
+Start one Tauri app with:
+
+```typescript
+MEMRY_DEVICE=<device>
+MEMRY_ORIGIN_TAG=<stable-test-origin>
+MEMRY_RUNTIME_E2E=1
+VITE_MOCK_IPC=false
+```
+
+The helper must start `tauri-driver`, launch the app, wait for the main window, and always stop the process in `finally`.
+
+- [ ] **Step 66.2: Vault helper**
+
+Create `$TMPDIR/memry-e2e-<uuid>` per test, seed via `devtools_seed_vault`, open via `devtools_open_test_vault`, and reset DB via `devtools_reset_db`.
+
+- [ ] **Step 66.3: Commit**
+
+```bash
+git add apps/desktop-tauri/e2e/runtime
+git commit -m "m5(e2e): add runtime driver and vault helpers"
+```
+
+---
+
+### Task 67: Runtime typing + persistence scenarios
+
+**Files:**
+- Create: `apps/desktop-tauri/e2e/runtime/specs/typing.spec.ts`
+- Create: `apps/desktop-tauri/e2e/runtime/specs/persistence.spec.ts`
+
+- [ ] **Step 67.1: Typing p95**
+
+Open a seeded note, focus `.bn-editor`, type a 500-character paragraph, collect per-key latency with `performance.now()`, and assert p95 < 15ms.
+
+- [ ] **Step 67.2: Restart persistence**
+
+Type a unique string, close the app, relaunch with the same `MEMRY_DEVICE` and vault, reopen the note, and assert the string is visible.
+
+- [ ] **Step 67.3: Commit**
+
+```bash
+git add apps/desktop-tauri/e2e/runtime/specs/typing.spec.ts apps/desktop-tauri/e2e/runtime/specs/persistence.spec.ts
+git commit -m "m5(e2e): cover runtime typing latency and restart persistence"
+```
+
+---
+
+### Task 68: Runtime editor behavior scenarios
+
+**Files:**
+- Create: `apps/desktop-tauri/e2e/runtime/specs/slash-menu.spec.ts`
+- Create: `apps/desktop-tauri/e2e/runtime/specs/undo-redo.spec.ts`
+- Create: `apps/desktop-tauri/e2e/runtime/specs/manual-paste.spec.ts`
+
+- [ ] **Step 68.1: Slash/table/code/link**
+
+Use `.bn-editor` and BlockNote menu selectors to create a table, code block, and link. Assert they remain after save/reopen.
+
+- [ ] **Step 68.2: Undo/redo**
+
+Perform 10 edit operations, undo them, redo them, and assert final markdown/Yjs snapshot content matches.
+
+- [ ] **Step 68.3: Manual paste**
+
+Automate DOM paste where WebDriver supports it. If clipboard API is unavailable, keep a manual checklist file under `e2e/runtime/manual/clipboard-paste.md` and mark the automated test skipped with the reason from the parent design.
+
+- [ ] **Step 68.4: Commit**
+
+```bash
+git add apps/desktop-tauri/e2e/runtime/specs apps/desktop-tauri/e2e/runtime/manual
+git commit -m "m5(e2e): cover runtime editor menu undo redo and paste"
+```
+
+---
+
+### Task 69: Runtime concurrent edit convergence
+
+**Files:**
+- Create: `apps/desktop-tauri/e2e/runtime/specs/concurrent-edit.spec.ts`
+
+- [ ] **Step 69.1: Two-device harness**
+
+Start two app instances against two temp app-data roots and the same seeded note content:
+
+```text
+MEMRY_DEVICE=A MEMRY_ORIGIN_TAG=1001
+MEMRY_DEVICE=B MEMRY_ORIGIN_TAG=2002
+```
+
+Apply interleaved Yjs updates through the real `crdt_*` commands. M6 owns cloud sync, so M5 may drive the second instance through direct runtime command calls or a test-only remote-update event; do not fake the CRDT merge in JS.
+
+- [ ] **Step 69.2: Assert convergence**
+
+Read `crdt_get_snapshot` from both instances and assert byte-identical snapshots after applying the same update set in different orders. Also assert visible editor text matches.
+
+- [ ] **Step 69.3: Commit**
+
+```bash
+git add apps/desktop-tauri/e2e/runtime/specs/concurrent-edit.spec.ts
+git commit -m "m5(e2e): prove runtime CRDT convergence across device origins"
+```
+
+---
+
+### Task 70: Runtime state coverage
+
+**Files:**
+- Create: `apps/desktop-tauri/e2e/runtime/specs/states.spec.ts`
+
+- [ ] **Step 70.1: Cover UI states touched by M5**
+
+Assert at least one scenario for:
+
+- empty notes list after `devtools_reset_db`
+- loading skeleton while `crdt_open_doc` is delayed by a devtools flag
+- command error surfaced with `extractErrorMessage`
+- offline sync status still allows local note editing
+- capability denied path is actionable, not a silent hang
+
+- [ ] **Step 70.2: Commit**
+
+```bash
+git add apps/desktop-tauri/e2e/runtime/specs/states.spec.ts
+git commit -m "m5(e2e): cover notes runtime empty loading error offline states"
+```
+
+---
+
+### Task 71: Runtime lane close-out
+
+- [ ] **Step 71.1: Run runtime lane**
+
+```bash
+pnpm --filter @memry/desktop-tauri test:e2e:runtime
+```
+
+Expected: typing, persistence, slash menu, undo/redo, paste/manual-check, concurrent edit, and state coverage pass or have a documented skip only for clipboard API limitations.
+
+- [ ] **Step 71.2: Run mock lane**
+
+```bash
+pnpm --filter @memry/desktop-tauri test:e2e
+```
+
+Expected: existing M1 mock-lane remains green.
+
+---
+
+## Chunk 13 — Final Verification + Carry-Forward Bookkeeping
+
+Goal: finish M5 with proof that the design acceptance gate is met and every remaining mock/deferred surface has an owner milestone. Acceptance proof: all commands below pass, plan checklist is complete, and the PR body includes the ledger diff from M4 baseline to M5.
+
+### Task 72: Full local verification
+
+- [ ] **Step 72.1: Rust**
+
+```bash
+pnpm --filter @memry/desktop-tauri cargo:fmt -- --check
+pnpm --filter @memry/desktop-tauri cargo:check
+pnpm --filter @memry/desktop-tauri cargo:clippy -- -D warnings
+pnpm --filter @memry/desktop-tauri cargo:test
+```
+
+- [ ] **Step 72.2: Renderer + audits**
+
+```bash
+pnpm --filter @memry/desktop-tauri lint
+pnpm --filter @memry/desktop-tauri typecheck
+pnpm --filter @memry/desktop-tauri test
+pnpm --filter @memry/desktop-tauri bindings:check
+pnpm --filter @memry/desktop-tauri capability:check
+pnpm --filter @memry/desktop-tauri command:parity
+```
+
+- [ ] **Step 72.3: E2E**
+
+```bash
+pnpm --filter @memry/desktop-tauri test:e2e
+pnpm --filter @memry/desktop-tauri test:e2e:runtime
+```
+
+---
+
+### Task 73: Manual dogfood checklist
+
+Run against a fresh vault with `VITE_MOCK_IPC=false`:
+
+- [ ] create note, type 500+ chars, restart, content remains
+- [ ] rename note, move folder, reorder within folder
+- [ ] delete note, verify it disappears and the vault/trash behavior matches Task 27
+- [ ] wiki-link resolve and hover preview work
+- [ ] file note metadata opens and reveal-in-Finder works
+- [ ] local-only toggle and count update
+- [ ] property create/update/options/status flows work in folder view
+- [ ] attachment upload/list/delete shows the M6 deferred error shape without data loss
+- [ ] export/import/version commands show M8 deferred shape and are impossible in production unless ledger-allowed
+
+---
+
+### Task 74: M5 PR carry-forward ledger
+
+Update the PR body with:
+
+```markdown
+## M5 Carry-Forward Ledger
+
+- M4 baseline command audit: `/tmp/m4-parity-baseline.txt`
+- M5 final command audit: attach output from `pnpm --filter @memry/desktop-tauri command:parity`
+- Real in M5: notes CRUD, folders, properties, positions, local-only, wiki-link helpers, note file open/reveal, CRDT open/apply/snapshot/state-vector/sync-step/chunk helpers
+- Deferred M6: attachment upload/list/delete if not fully local metadata-backed; cloud blob upload/download
+- Deferred M7: FTS-backed wiki-link/search ranking
+- Deferred M8: import/export/pdf/html/version history and any remaining editor-adjacent non-CRUD chrome
+- Retired aliases: `sync_crdt_*` -> `crdt_*`
+- Production mock guard: enabled and tested
+- Runtime e2e evidence: typing p95, persistence, slash, undo/redo, concurrent edit, state coverage
+- Known warnings carried forward: list exact warning, owner milestone, and why it is non-blocking
+```
+
+- [ ] **Step 74.1: Commit docs/ledger updates**
+
+```bash
+git add docs/superpowers/plans/2026-04-26-m5-notes-crud-blocknote-crdt.md
+git commit -m "m5(plan): close runtime e2e and parity planning gaps"
+```

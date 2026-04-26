@@ -98,6 +98,41 @@ describe('setup-service', () => {
     expect(result).toEqual(response)
   })
 
+  it('forwards setupNewAccount to window.api.syncSetup wrapped in { input }', async () => {
+    // #given
+    const response = {
+      success: true,
+      recoveryPhrase: ['word1', 'word2', 'word3'],
+      deviceId: 'dev-1'
+    }
+    api.syncSetup.setupNewAccount = vi.fn().mockResolvedValue(response)
+
+    // #when
+    const result = await setupService.setupNewAccount({
+      email: 'test@example.com',
+      password: 'correct horse battery staple',
+      rememberDevice: true,
+      deviceName: 'Kaan MacBook',
+      platform: 'macos',
+      osVersion: '14.6',
+      appVersion: '0.1.0'
+    })
+
+    // #then
+    expect(api.syncSetup.setupNewAccount).toHaveBeenCalledWith({
+      input: {
+        email: 'test@example.com',
+        password: 'correct horse battery staple',
+        rememberDevice: true,
+        deviceName: 'Kaan MacBook',
+        platform: 'macos',
+        osVersion: '14.6',
+        appVersion: '0.1.0'
+      }
+    })
+    expect(result).toEqual(response)
+  })
+
   it('forwards confirmRecoveryPhrase to window.api.syncSetup wrapped in { input }', async () => {
     // #given
     api.syncSetup.confirmRecoveryPhrase = vi.fn().mockResolvedValue({ success: true })
