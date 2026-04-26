@@ -58,6 +58,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             commands::folders::notes_create_folder,
             commands::folders::notes_rename_folder,
             commands::folders::notes_delete_folder,
+            commands::folders::notes_get_folder_config,
+            commands::folders::notes_set_folder_config,
+            commands::folders::notes_get_folder_template,
             // M4: auth + sync_auth + sync_setup
             commands::auth::auth_status,
             commands::auth::auth_unlock,
@@ -181,6 +184,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .typ::<commands::folders::FolderInfo>()
         .typ::<commands::folders::FolderSimpleSuccess>()
         .typ::<commands::folders::DeleteFolderInput>()
+        .typ::<commands::folders::SetFolderConfigInput>()
         // Domain DB structs (registered for stable export across migrations)
         .typ::<db::bookmarks::Bookmark>()
         .typ::<db::calendar_bindings::CalendarBinding>()

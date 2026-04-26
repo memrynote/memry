@@ -4,8 +4,9 @@
 //! exercise the DB+vault FS slice without needing a Tauri AppHandle.
 
 use memry_desktop_tauri_lib::commands::folders::{
-    notes_create_folder_inner, notes_delete_folder_inner, notes_get_folders_inner,
-    notes_rename_folder_inner,
+    notes_create_folder_inner, notes_delete_folder_inner, notes_get_folder_config_inner,
+    notes_get_folder_template_inner, notes_get_folders_inner, notes_rename_folder_inner,
+    notes_set_folder_config_inner, SetFolderConfigInput,
 };
 use memry_desktop_tauri_lib::commands::notes::{notes_create_inner, NoteCreateInput};
 use memry_desktop_tauri_lib::db::folder_configs;
@@ -149,4 +150,54 @@ async fn delete_folder_empty_passes_without_recursive() {
 
     let folders = notes_get_folders_inner(&conn, &vault).await.unwrap();
     assert!(!folders.iter().any(|f| f.path == "Empty"));
+}
+
+// ---- Task 34: folder config + template inheritance -------------------------
+
+#[test]
+fn set_folder_config_round_trip_returns_icon_and_template() {
+    let conn = open_in_memory_with_migrations();
+
+    notes_set_folder_config_inner(
+        &conn,
+        SetFolderConfigInput {
+            path: "Projects".into(),
+            icon: Some("folder-kanban".into()),
+            template_json: Some(r#"{"frontmatter":{"status":"active"}}"#.into()),
+        },
+    )
+    .unwrap();
+
+    let cfg = notes_get_folder_config_inner(&conn, "Projects")
+        .unwrap()
+        .expect("config persisted");
+    assert_eq!(cfg.icon.as_deref(), Some("folder-kanban"));
+    assert!(cfg
+        .template_json
+        .as_deref()
+        .unwrap()
+        .contains("\"status\":\"active\""));
+}
+
+#[test]
+fn get_folder_template_walks_ancestors_for_inheritance() {
+    let conn = open_in_memory_with_migrations();
+
+    notes_set_folder_config_inner(
+        &conn,
+        SetFolderConfigInput {
+            path: "Projects".into(),
+            icon: None,
+            template_json: Some(r#"{"frontmatter":{"status":"active"}}"#.into()),
+        },
+    )
+    .unwrap();
+
+    let resolved = notes_get_folder_template_inner(&conn, "Projects/sub/deep")
+        .unwrap()
+        .expect("template inherits from Projects/");
+    assert!(resolved.contains("\"status\":\"active\""));
+
+    let none = notes_get_folder_template_inner(&conn, "Other").unwrap();
+    assert!(none.is_none(), "no ancestor → no template");
 }

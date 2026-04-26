@@ -35,6 +35,14 @@ pub struct DeleteFolderInput {
     pub recursive: bool,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
+#[serde(rename_all = "camelCase")]
+pub struct SetFolderConfigInput {
+    pub path: String,
+    pub icon: Option<String>,
+    pub template_json: Option<String>,
+}
+
 // ---- Inner helpers (called from tests, runtime, and Tauri wrappers) -------
 
 pub async fn notes_get_folders_inner(
@@ -80,6 +88,34 @@ pub async fn notes_delete_folder_inner(
     let root = vault.require_current()?;
     notes_io::delete_folder(&root, path, recursive).await?;
     finalize_folder_delete(conn, path, recursive)
+}
+
+pub fn notes_get_folder_config_inner(
+    conn: &Connection,
+    path: &str,
+) -> AppResult<Option<folder_configs::FolderConfig>> {
+    folder_configs::get(conn, path)
+}
+
+pub fn notes_set_folder_config_inner(
+    conn: &Connection,
+    input: SetFolderConfigInput,
+) -> AppResult<()> {
+    folder_configs::set(
+        conn,
+        &folder_configs::FolderConfigRow {
+            path: input.path,
+            icon: input.icon,
+            template_json: input.template_json,
+        },
+    )
+}
+
+pub fn notes_get_folder_template_inner(
+    conn: &Connection,
+    path: &str,
+) -> AppResult<Option<String>> {
+    folder_configs::get_template_inherited(conn, path)
 }
 
 // ---- Tauri commands -------------------------------------------------------
@@ -163,6 +199,39 @@ pub async fn notes_delete_folder(
         serde_json::json!({ "path": path, "recursive": recursive, "source": "internal" }),
     );
     Ok(FolderSimpleSuccess { success: true })
+}
+
+#[tauri::command]
+#[specta::specta]
+pub fn notes_get_folder_config(
+    state: State<'_, AppState>,
+    args: Vec<String>,
+) -> AppResult<Option<folder_configs::FolderConfig>> {
+    let path = single_string_arg(args, "path")?;
+    let conn = state.db.conn()?;
+    notes_get_folder_config_inner(&conn, &path)
+}
+
+#[tauri::command]
+#[specta::specta]
+pub fn notes_set_folder_config(
+    state: State<'_, AppState>,
+    input: SetFolderConfigInput,
+) -> AppResult<FolderSimpleSuccess> {
+    let conn = state.db.conn()?;
+    notes_set_folder_config_inner(&conn, input)?;
+    Ok(FolderSimpleSuccess { success: true })
+}
+
+#[tauri::command]
+#[specta::specta]
+pub fn notes_get_folder_template(
+    state: State<'_, AppState>,
+    args: Vec<String>,
+) -> AppResult<Option<String>> {
+    let path = single_string_arg(args, "path")?;
+    let conn = state.db.conn()?;
+    notes_get_folder_template_inner(&conn, &path)
 }
 
 // ---- Internal helpers -----------------------------------------------------

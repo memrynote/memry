@@ -83,6 +83,16 @@ export const commands = {
 	notesCreateFolder: (args: string[]) => typedError<FolderSimpleSuccess, AppError>(__TAURI_INVOKE("notes_create_folder", { args })),
 	notesRenameFolder: (args: string[]) => typedError<FolderSimpleSuccess, AppError>(__TAURI_INVOKE("notes_rename_folder", { args })),
 	notesDeleteFolder: (input: DeleteFolderInput) => typedError<FolderSimpleSuccess, AppError>(__TAURI_INVOKE("notes_delete_folder", { input })),
+	notesGetFolderConfig: (args: string[]) => typedError<{
+	path: string,
+	icon: string | null,
+	templateJson: string | null,
+	clock: string | null,
+	createdAt: string,
+	modifiedAt: string,
+} | null, AppError>(__TAURI_INVOKE("notes_get_folder_config", { args })),
+	notesSetFolderConfig: (input: SetFolderConfigInput) => typedError<FolderSimpleSuccess, AppError>(__TAURI_INVOKE("notes_set_folder_config", { input })),
+	notesGetFolderTemplate: (args: string[]) => typedError<string | null, AppError>(__TAURI_INVOKE("notes_get_folder_template", { args })),
 	authStatus: () => typedError<AuthStatus, AppError>(__TAURI_INVOKE("auth_status")),
 	authUnlock: (input: AuthUnlockInput) => typedError<AuthStatus, AppError>(__TAURI_INVOKE("auth_unlock", { input })),
 	authLock: () => typedError<null, AppError>(__TAURI_INVOKE("auth_lock")),
@@ -709,6 +719,12 @@ export type SecretsSetProviderKeyInput = {
 	provider: string,
 	rawKey: string,
 	label: string | null,
+};
+
+export type SetFolderConfigInput = {
+	path: string,
+	icon: string | null,
+	templateJson: string | null,
 };
 
 export type Setting = {
