@@ -161,6 +161,11 @@ async fn resolve_by_title_returns_match_case_insensitively() {
     assert_eq!(resolved.id, created.id);
     assert_eq!(resolved.title, "Notes Page");
     assert_eq!(resolved.path, created.path);
+    assert_eq!(
+        serde_json::to_value(&resolved).unwrap()["fileType"],
+        "markdown",
+        "wiki link resolution must identify markdown notes"
+    );
 
     assert!(notes_resolve_by_title_inner(&conn, "missing")
         .unwrap()
@@ -171,6 +176,7 @@ async fn resolve_by_title_returns_match_case_insensitively() {
 async fn preview_by_title_returns_snippet_payload_or_none() {
     let conn = open_in_memory_with_migrations();
     let vault = test_vault_runtime();
+    tag_definitions::upsert(&conn, "docs", "green").unwrap();
     let created = notes_create_inner(
         &conn,
         &vault,
@@ -178,7 +184,7 @@ async fn preview_by_title_returns_snippet_payload_or_none() {
             title: "Preview".into(),
             content: Some("the snippet text".into()),
             folder: Some("Inbox".into()),
-            tags: None,
+            tags: Some(vec!["docs".into()]),
             template: None,
         },
     )
@@ -193,6 +199,10 @@ async fn preview_by_title_returns_snippet_payload_or_none() {
     assert_eq!(preview.id, created.id);
     assert_eq!(preview.title, "Preview");
     assert_eq!(preview.snippet, "the snippet text");
+    let preview_json = serde_json::to_value(&preview).unwrap();
+    assert_eq!(preview_json["createdAt"], created.created);
+    assert_eq!(preview_json["tags"][0]["name"], "docs");
+    assert_eq!(preview_json["tags"][0]["color"], "green");
 
     assert!(notes_preview_by_title_inner(&conn, "missing")
         .unwrap()

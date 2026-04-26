@@ -64,13 +64,7 @@ export const commands = {
 	id: string,
 	path: string,
 	title: string,
-	created: string,
-	modified: string,
-	tags: string[],
-	wordCount: number,
-	snippet: string,
-	emoji: string | null,
-	localOnly: boolean,
+	fileType: string,
 } | null, AppError>(__TAURI_INVOKE("notes_resolve_by_title", { args })),
 	notesPreviewByTitle: (args: string[]) => typedError<{
 	id: string,
@@ -78,6 +72,8 @@ export const commands = {
 	path: string,
 	snippet: string,
 	emoji: string | null,
+	tags: NotePreviewTag[],
+	createdAt: string,
 } | null, AppError>(__TAURI_INVOKE("notes_preview_by_title", { args })),
 	notesGetFolders: () => typedError<FolderInfo[], AppError>(__TAURI_INVOKE("notes_get_folders")),
 	notesCreateFolder: (args: string[]) => typedError<FolderSimpleSuccess, AppError>(__TAURI_INVOKE("notes_create_folder", { args })),
@@ -592,6 +588,13 @@ export type NotePreview = {
 	path: string,
 	snippet: string,
 	emoji: string | null,
+	tags: NotePreviewTag[],
+	createdAt: string,
+};
+
+export type NotePreviewTag = {
+	name: string,
+	color: string,
 };
 
 export type NoteSimpleSuccess = {
@@ -937,6 +940,13 @@ export type Task = {
 	syncedAt: string | null,
 	createdAt: string,
 	modifiedAt: string,
+};
+
+export type WikiLinkResolution = {
+	id: string,
+	path: string,
+	title: string,
+	fileType: string,
 };
 
 /* Tauri Specta runtime */

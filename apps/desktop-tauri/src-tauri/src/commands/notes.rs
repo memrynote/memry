@@ -196,6 +196,24 @@ pub struct NotePreview {
     pub path: String,
     pub snippet: String,
     pub emoji: Option<String>,
+    pub tags: Vec<NotePreviewTag>,
+    pub created_at: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
+#[serde(rename_all = "camelCase")]
+pub struct NotePreviewTag {
+    pub name: String,
+    pub color: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
+#[serde(rename_all = "camelCase")]
+pub struct WikiLinkResolution {
+    pub id: String,
+    pub path: String,
+    pub title: String,
+    pub file_type: String,
 }
 
 pub(crate) fn into_dto(
@@ -511,8 +529,51 @@ pub async fn notes_get_links_inner(
 pub fn notes_resolve_by_title_inner(
     conn: &Connection,
     title: &str,
-) -> AppResult<Option<NoteListItem>> {
+) -> AppResult<Option<WikiLinkResolution>> {
     // SQL LIKE/COLLATE NOCASE is good enough for M5; FTS upgrade in M7.
+    let row = conn.query_row(
+        "SELECT c.id, c.title, c.path, coalesce(m.file_type, 'markdown')
+           FROM notes_cache c
+           LEFT JOIN note_metadata m ON m.id = c.id
+          WHERE c.title = ?1 COLLATE NOCASE
+          LIMIT 1",
+        [title],
+        |r| {
+            Ok(WikiLinkResolution {
+                id: r.get(0)?,
+                title: r.get(1)?,
+                path: r.get(2)?,
+                file_type: r.get(3)?,
+            })
+        },
+    );
+    match row {
+        Ok(item) => Ok(Some(item)),
+        Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
+        Err(err) => Err(err.into()),
+    }
+}
+
+pub fn notes_preview_by_title_inner(
+    conn: &Connection,
+    title: &str,
+) -> AppResult<Option<NotePreview>> {
+    let Some(item) = note_list_item_by_title(conn, title)? else {
+        return Ok(None);
+    };
+    let tags = note_preview_tags(conn, &item.tags)?;
+    Ok(Some(NotePreview {
+        id: item.id,
+        title: item.title,
+        path: item.path,
+        snippet: item.snippet,
+        emoji: item.emoji,
+        tags,
+        created_at: item.created,
+    }))
+}
+
+fn note_list_item_by_title(conn: &Connection, title: &str) -> AppResult<Option<NoteListItem>> {
     let row = conn.query_row(
         "SELECT id, title, path, snippet, word_count, tags_json, emoji,
                 modified_at, created_at, local_only
@@ -542,17 +603,25 @@ pub fn notes_resolve_by_title_inner(
     }
 }
 
-pub fn notes_preview_by_title_inner(
-    conn: &Connection,
-    title: &str,
-) -> AppResult<Option<NotePreview>> {
-    Ok(notes_resolve_by_title_inner(conn, title)?.map(|item| NotePreview {
-        id: item.id,
-        title: item.title,
-        path: item.path,
-        snippet: item.snippet,
-        emoji: item.emoji,
-    }))
+fn note_preview_tags(conn: &Connection, tags: &[String]) -> AppResult<Vec<NotePreviewTag>> {
+    let mut out = Vec::with_capacity(tags.len());
+    for tag in tags {
+        let color = conn.query_row(
+            "SELECT color FROM tag_definitions WHERE name = ?1 LIMIT 1",
+            [tag],
+            |row| row.get::<_, String>(0),
+        );
+        let color = match color {
+            Ok(color) => color,
+            Err(rusqlite::Error::QueryReturnedNoRows) => String::new(),
+            Err(err) => return Err(err.into()),
+        };
+        out.push(NotePreviewTag {
+            name: tag.clone(),
+            color,
+        });
+    }
+    Ok(out)
 }
 
 fn extract_wikilinks(body: &str) -> Vec<String> {
@@ -730,6 +799,7 @@ pub async fn notes_update(
         frontmatter,
         emoji,
     };
+    let event_input = input.clone();
     let row = {
         let conn = state.db.conn()?;
         crate::db::note_metadata::get_by_id(&conn, &input.id)?
@@ -746,7 +816,7 @@ pub async fn notes_update(
             "note-updated",
             serde_json::json!({
                 "id": note.id,
-                "changes": { "title": note.title },
+                "changes": note_update_event_changes(&event_input, note),
                 "source": "internal"
             }),
         );
@@ -1097,7 +1167,7 @@ pub async fn notes_get_links(
 pub fn notes_resolve_by_title(
     state: State<'_, AppState>,
     args: Vec<String>,
-) -> AppResult<Option<NoteListItem>> {
+) -> AppResult<Option<WikiLinkResolution>> {
     let title = single_string_arg(args, "title")?;
     let conn = state.db.conn()?;
     notes_resolve_by_title_inner(&conn, &title)
@@ -1217,8 +1287,10 @@ async fn apply_update_to_vault(
     let read = notes_io::read_note_from_disk(&root, &row.path)
         .await?
         .ok_or_else(|| AppError::NotFound(format!("note file {}", row.path)))?;
-    let mut frontmatter = read.parsed.frontmatter;
-    let mut body = read.parsed.content;
+    let parsed = read.parsed;
+    let mut frontmatter = parsed.frontmatter;
+    let old_body = parsed.content;
+    let mut body = old_body.clone();
     let body_changed = input.content.is_some();
     let explicit_tags = input.tags.is_some();
 
@@ -1245,12 +1317,8 @@ async fn apply_update_to_vault(
         merge_frontmatter_patch(&mut row, &mut frontmatter, frontmatter_patch.into_value())?;
     }
 
-    // Body-only saves (no explicit `tags` param) reconcile inline `#hashtags`
-    // from the new body into `frontmatter.tags` so the renderer + cache stay
-    // in sync with what the user actually wrote. Existing explicit tags are
-    // preserved at the front; new inline tags are appended in body order.
     if body_changed && !explicit_tags {
-        merge_inline_tags(&mut frontmatter.tags, &body);
+        reconcile_inline_tags(&mut frontmatter.tags, &old_body, &body);
     }
 
     row.modified_at = now_iso();
@@ -1264,9 +1332,16 @@ async fn apply_update_to_vault(
     })
 }
 
-fn merge_inline_tags(existing: &mut Vec<String>, body: &str) {
-    let extracted = crate::db::tag_definitions::inline_tags(body);
-    for tag in extracted {
+fn reconcile_inline_tags(existing: &mut Vec<String>, old_body: &str, new_body: &str) {
+    let old_inline = crate::db::tag_definitions::inline_tags(old_body);
+    let new_inline = crate::db::tag_definitions::inline_tags(new_body);
+
+    existing.retain(|tag| {
+        !old_inline.iter().any(|old_tag| old_tag == tag)
+            || new_inline.iter().any(|new_tag| new_tag == tag)
+    });
+
+    for tag in new_inline {
         if !existing.iter().any(|t| t == &tag) {
             existing.push(tag);
         }
@@ -1362,6 +1437,29 @@ fn json_optional_string(value: &serde_json::Value, field: &str) -> AppResult<Opt
         .as_str()
         .map(|s| Some(s.to_string()))
         .ok_or_else(|| AppError::Validation(format!("{field} must be a string or null")))
+}
+
+pub fn note_update_event_changes(input: &NoteUpdateInput, note: &NoteDto) -> serde_json::Value {
+    let mut changes = serde_json::Map::new();
+    if input.title.is_some() {
+        changes.insert("title".into(), serde_json::json!(note.title));
+    }
+    if input.content.is_some() {
+        changes.insert("content".into(), serde_json::json!(note.content));
+    }
+    if input.tags.is_some() {
+        changes.insert("tags".into(), serde_json::json!(note.tags));
+    }
+    if let Some(frontmatter) = &input.frontmatter {
+        changes.insert("frontmatter".into(), serde_json::json!(note.frontmatter));
+        if frontmatter.get("emoji").is_some() {
+            changes.insert("emoji".into(), serde_json::json!(note.emoji));
+        }
+    }
+    if input.emoji.is_some() {
+        changes.insert("emoji".into(), serde_json::json!(note.emoji));
+    }
+    serde_json::Value::Object(changes)
 }
 
 fn json_object_to_yaml_map(
