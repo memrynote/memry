@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-sync-linking-get-linking-sas"
+description = "Enables the sync_linking_get_linking_sas command without any pre-configured scope."
+commands.allow = ["sync_linking_get_linking_sas"]
+
+[[permission]]
+identifier = "deny-sync-linking-get-linking-sas"
+description = "Denies the sync_linking_get_linking_sas command without any pre-configured scope."
+commands.deny = ["sync_linking_get_linking_sas"]

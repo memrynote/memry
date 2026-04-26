@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-notes-get-file"
+description = "Enables the notes_get_file command without any pre-configured scope."
+commands.allow = ["notes_get_file"]
+
+[[permission]]
+identifier = "deny-notes-get-file"
+description = "Denies the notes_get_file command without any pre-configured scope."
+commands.deny = ["notes_get_file"]

@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-sync-auth-refresh-token"
+description = "Enables the sync_auth_refresh_token command without any pre-configured scope."
+commands.allow = ["sync_auth_refresh_token"]
+
+[[permission]]
+identifier = "deny-sync-auth-refresh-token"
+description = "Denies the sync_auth_refresh_token command without any pre-configured scope."
+commands.deny = ["sync_auth_refresh_token"]

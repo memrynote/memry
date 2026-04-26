@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-notes-exists"
+description = "Enables the notes_exists command without any pre-configured scope."
+commands.allow = ["notes_exists"]
+
+[[permission]]
+identifier = "deny-notes-exists"
+description = "Denies the notes_exists command without any pre-configured scope."
+commands.deny = ["notes_exists"]

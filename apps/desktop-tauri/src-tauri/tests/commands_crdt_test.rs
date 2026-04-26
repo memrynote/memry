@@ -244,6 +244,63 @@ async fn get_or_init_doc_is_idempotent_for_same_note() {
 }
 
 #[tokio::test]
+async fn get_or_init_doc_does_not_reseed_existing_runtime_doc() {
+    let conn = open_in_memory_with_migrations();
+    let vault = test_vault_runtime();
+    let crdt = Arc::new(CrdtRuntime::new());
+    let created = notes_create_inner(
+        &conn,
+        &vault,
+        NoteCreateInput {
+            title: "Concurrent Seed".into(),
+            content: Some("seed body".into()),
+            folder: None,
+            tags: None,
+            template: None,
+        },
+    )
+    .await
+    .unwrap()
+    .note
+    .unwrap();
+    let handle = crdt.docs().get_or_init(&created.id).await;
+    handle.with_write(|txn| {
+        txn.get_or_insert_text("body").insert(txn, 0, "seed body");
+    });
+
+    crdt_get_or_init_doc_inner(&conn, &vault, crdt.clone(), &created.id)
+        .await
+        .unwrap();
+
+    let body = handle.with_read(|txn| txn.get_text("body").unwrap().get_string(txn));
+    assert_eq!(body, "seed body");
+    assert!(crdt_updates::list_for_note(&conn, &created.id)
+        .unwrap()
+        .is_empty());
+}
+
+#[tokio::test]
+async fn chunk_offset_error_clears_transfer() {
+    let crdt = Arc::new(CrdtRuntime::new());
+
+    crdt_apply_update_chunk_start_inner(crdt.clone(), "n1", "bad-offset", 4)
+        .await
+        .unwrap();
+    crdt_apply_update_chunk_append_inner(crdt.clone(), "bad-offset", 0, vec![1, 2])
+        .await
+        .unwrap();
+    let err = crdt_apply_update_chunk_append_inner(crdt.clone(), "bad-offset", 0, vec![3])
+        .await
+        .unwrap_err();
+    assert!(matches!(err, AppError::Validation(_)));
+
+    let retry = crdt_apply_update_chunk_append_inner(crdt.clone(), "bad-offset", 2, vec![3, 4])
+        .await
+        .unwrap_err();
+    assert!(matches!(retry, AppError::NotFound(_)));
+}
+
+#[tokio::test]
 async fn compaction_snapshot_drops_persisted_update_rows() {
     let conn = open_in_memory_with_migrations();
     let crdt = Arc::new(CrdtRuntime::new());

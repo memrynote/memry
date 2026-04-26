@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-crypto-encrypt-item"
+description = "Enables the crypto_encrypt_item command without any pre-configured scope."
+commands.allow = ["crypto_encrypt_item"]
+
+[[permission]]
+identifier = "deny-crypto-encrypt-item"
+description = "Denies the crypto_encrypt_item command without any pre-configured scope."
+commands.deny = ["crypto_encrypt_item"]
