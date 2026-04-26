@@ -325,7 +325,7 @@ fn current_iso() -> String {
     unix_secs_to_iso(secs)
 }
 
-fn unix_secs_to_iso(secs: u64) -> String {
+pub(crate) fn unix_secs_to_iso(secs: u64) -> String {
     let days_per_month = |y: u64, m: u64| -> u64 {
         let leap = is_leap_year(y);
         match m {
