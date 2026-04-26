@@ -84,6 +84,7 @@ pub fn run() {
             commands::vault::vault_delete_note,
             commands::vault::vault_reveal,
             commands::vault::vault_reindex,
+            commands::notes::notes_create,
             commands::shell::shell_open_url,
             commands::shell::shell_open_path,
             commands::shell::shell_reveal_in_finder,

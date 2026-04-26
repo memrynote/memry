@@ -28,18 +28,36 @@ pub async fn refresh_from_metadata(
     vault_root: &Path,
     metadata: &NoteMetadata,
 ) -> AppResult<()> {
-    let body = notes_io::read_note_from_disk(vault_root, &metadata.path)
+    let read = notes_io::read_note_from_disk(vault_root, &metadata.path)
         .await?
-        .map(|read| read.parsed.content)
+        .map(|read| read.parsed);
+    let body = read
+        .as_ref()
+        .map(|parsed| parsed.content.as_str())
         .unwrap_or_default();
+    let tags = read
+        .as_ref()
+        .map(|parsed| parsed.frontmatter.tags.as_slice())
+        .unwrap_or_default();
+
+    refresh_for(conn, metadata, body, tags)
+}
+
+pub fn refresh_for(
+    conn: &Connection,
+    metadata: &NoteMetadata,
+    body: &str,
+    tags: &[String],
+) -> AppResult<()> {
     let snippet: String = body.chars().take(200).collect();
     let word_count = body.split_whitespace().count() as i64;
+    let tags_json = serde_json::to_string(tags)?;
 
     conn.execute(
         "INSERT INTO notes_cache (
             id, title, path, snippet, word_count, tags_json, emoji,
             modified_at, created_at, local_only
-         ) VALUES (?1, ?2, ?3, ?4, ?5, '[]', ?6, ?7, ?8, ?9)
+         ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)
          ON CONFLICT(id) DO UPDATE SET
             title = excluded.title,
             path = excluded.path,
@@ -56,6 +74,7 @@ pub async fn refresh_from_metadata(
             metadata.path,
             snippet,
             word_count,
+            tags_json,
             metadata.emoji,
             metadata.modified_at,
             metadata.created_at,
