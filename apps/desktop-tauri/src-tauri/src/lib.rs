@@ -1,5 +1,6 @@
 pub mod app_state;
 pub mod commands;
+pub mod crypto;
 pub mod db;
 pub mod error;
 pub mod vault;
