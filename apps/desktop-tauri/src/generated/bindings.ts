@@ -79,6 +79,10 @@ export const commands = {
 	snippet: string,
 	emoji: string | null,
 } | null, AppError>(__TAURI_INVOKE("notes_preview_by_title", { args })),
+	notesGetFolders: () => typedError<FolderInfo[], AppError>(__TAURI_INVOKE("notes_get_folders")),
+	notesCreateFolder: (args: string[]) => typedError<FolderSimpleSuccess, AppError>(__TAURI_INVOKE("notes_create_folder", { args })),
+	notesRenameFolder: (args: string[]) => typedError<FolderSimpleSuccess, AppError>(__TAURI_INVOKE("notes_rename_folder", { args })),
+	notesDeleteFolder: (input: DeleteFolderInput) => typedError<FolderSimpleSuccess, AppError>(__TAURI_INVOKE("notes_delete_folder", { input })),
 	authStatus: () => typedError<AuthStatus, AppError>(__TAURI_INVOKE("auth_status")),
 	authUnlock: (input: AuthUnlockInput) => typedError<AuthStatus, AppError>(__TAURI_INVOKE("auth_unlock", { input })),
 	authLock: () => typedError<null, AppError>(__TAURI_INVOKE("auth_lock")),
@@ -322,6 +326,11 @@ export type CryptoVerifySignatureResult = {
 	valid: boolean,
 };
 
+export type DeleteFolderInput = {
+	path: string,
+	recursive?: boolean,
+};
+
 export type DeviceView = {
 	id: string,
 	name: string,
@@ -346,6 +355,15 @@ export type FolderConfig = {
 	clock: string | null,
 	createdAt: string,
 	modifiedAt: string,
+};
+
+export type FolderInfo = {
+	path: string,
+	icon: string | null,
+};
+
+export type FolderSimpleSuccess = {
+	success: boolean,
 };
 
 export type InboxItem = {
