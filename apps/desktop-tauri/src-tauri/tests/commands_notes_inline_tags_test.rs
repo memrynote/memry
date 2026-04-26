@@ -178,3 +178,85 @@ async fn body_only_save_without_tag_changes_keeps_frontmatter_unchanged() {
 
     assert_eq!(updated.tags, vec!["alpha".to_string()]);
 }
+
+#[tokio::test]
+async fn body_only_save_removes_deleted_inline_tags() {
+    let conn = open_in_memory_with_migrations();
+    let vault = test_vault_runtime();
+    let created = notes_create_inner(
+        &conn,
+        &vault,
+        NoteCreateInput {
+            title: "Doc".into(),
+            content: Some("with #project tag".into()),
+            folder: Some("Inbox".into()),
+            tags: None,
+            template: None,
+        },
+    )
+    .await
+    .unwrap()
+    .note
+    .unwrap();
+
+    let updated = notes_update_inner(
+        &conn,
+        &vault,
+        NoteUpdateInput {
+            id: created.id.clone(),
+            title: None,
+            content: Some("tag removed from body".into()),
+            tags: None,
+            frontmatter: None,
+            emoji: None,
+        },
+    )
+    .await
+    .unwrap()
+    .note
+    .unwrap();
+
+    assert!(updated.tags.is_empty());
+    let cached = notes_cache::list_active(&conn, 10, 0, "modified").unwrap();
+    assert_eq!(cached[0].tags_json, "[]");
+}
+
+#[tokio::test]
+async fn body_only_save_preserves_explicit_tags_when_removing_inline_tags() {
+    let conn = open_in_memory_with_migrations();
+    let vault = test_vault_runtime();
+    let created = notes_create_inner(
+        &conn,
+        &vault,
+        NoteCreateInput {
+            title: "Doc".into(),
+            content: Some("with #inline tag".into()),
+            folder: Some("Inbox".into()),
+            tags: Some(vec!["explicit".into(), "inline".into()]),
+            template: None,
+        },
+    )
+    .await
+    .unwrap()
+    .note
+    .unwrap();
+
+    let updated = notes_update_inner(
+        &conn,
+        &vault,
+        NoteUpdateInput {
+            id: created.id.clone(),
+            title: None,
+            content: Some("inline tag removed".into()),
+            tags: None,
+            frontmatter: None,
+            emoji: None,
+        },
+    )
+    .await
+    .unwrap()
+    .note
+    .unwrap();
+
+    assert_eq!(updated.tags, vec!["explicit".to_string()]);
+}

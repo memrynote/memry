@@ -88,15 +88,45 @@ const rawNotesService = createInvokeForwarder<NotesClientAPI>('notes')
 
 export const notesService: NotesClientAPI = new Proxy(rawNotesService, {
   get(target, property, receiver) {
-    if (typeof property !== 'string' || !NOTE_METHODS_WITH_DATES.has(property)) {
+    if (typeof property !== 'string') {
       return Reflect.get(target, property, receiver)
     }
     const original = Reflect.get(target, property, receiver) as (
       ...args: unknown[]
     ) => Promise<unknown>
+    if (property === 'update') {
+      return async (...args: unknown[]) =>
+        reviveNoteDates(await original(...normalizeUpdateArgs(args)))
+    }
+    if (!NOTE_METHODS_WITH_DATES.has(property)) {
+      return original
+    }
     return async (...args: unknown[]) => reviveNoteDates(await original(...args))
   }
 }) as NotesClientAPI
+
+function normalizeUpdateArgs(args: unknown[]): unknown[] {
+  const [input] = args
+  if (args.length !== 1 || !isRecord(input) || input.emoji !== null) {
+    return args
+  }
+  const normalized = { ...input }
+  delete normalized.emoji
+  const { frontmatter } = normalized
+  return [
+    {
+      ...normalized,
+      frontmatter: {
+        ...(isRecord(frontmatter) ? frontmatter : {}),
+        emoji: null
+      }
+    }
+  ]
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === 'object' && !Array.isArray(value)
+}
 
 export function onNoteCreated(callback: (event: NoteCreatedEvent) => void): () => void {
   return subscribeEvent<NoteCreatedEvent>('note-created', callback)
