@@ -59,7 +59,7 @@ impl Db {
         Ok(db)
     }
 
-    #[cfg(any(test, feature = "test-helpers"))]
+    #[cfg(any(debug_assertions, feature = "test-helpers"))]
     pub fn open_memory() -> AppResult<Self> {
         let db = Self::with_init(Connection::open_in_memory()?, |conn| {
             conn.execute_batch(

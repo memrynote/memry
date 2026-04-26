@@ -103,7 +103,7 @@ fn full_migration_produces_expected_table_set() {
         .collect();
 
     // Required tables traced to the migration that creates them (final state
-    // after all 29 ports apply). Any absence indicates a missing or wrongly
+    // after all embedded migrations apply). Any absence indicates a missing or wrongly
     // ordered port. Update this list only if a port faithfully removed the
     // table — never soften the assertion.
     let required: &[&str] = &[
@@ -151,6 +151,8 @@ fn full_migration_produces_expected_table_set() {
         "calendar_sources",
         "calendar_external_events",
         "calendar_bindings",
+        // 0029
+        "crdt_updates",
     ];
     for name in required {
         assert!(
@@ -165,6 +167,21 @@ fn full_migration_produces_expected_table_set() {
         !tables.contains(&"recent_searches".to_string()),
         "recent_searches should have been dropped by 0020; present tables: {tables:?}"
     );
+}
+
+#[test]
+fn migration_0029_crdt_updates_creates_table() {
+    let mut conn = Connection::open_in_memory().unwrap();
+    migrations::apply_pending(&mut conn).unwrap();
+
+    let exists: i64 = conn
+        .query_row(
+            "SELECT count(*) FROM sqlite_master WHERE type='table' AND name='crdt_updates'",
+            [],
+            |row| row.get(0),
+        )
+        .unwrap();
+    assert_eq!(exists, 1);
 }
 
 #[test]
