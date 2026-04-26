@@ -18,6 +18,7 @@ import './assets/main.css'
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { listen } from '@tauri-apps/api/event'
 import { ThemeProvider } from 'next-themes'
 import App from './App'
 import QuickCapture from './components/quick-capture'
@@ -65,6 +66,11 @@ try {
 const isQuickCaptureWindow =
   window.location.hash === '#/quick-capture' || window.location.hash === '#quick-capture'
 const startupTheme = getStartupTheme()
+
+void listen<string[]>('vault-drag-drop', (event) => {
+  // Spike telemetry only. Replaced by real import handler in M8.
+  console.info('[drag-drop spike] paths:', event.payload)
+})
 
 // Render appropriate component based on route
 const RootComponent = isQuickCaptureWindow ? (
