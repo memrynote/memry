@@ -384,7 +384,11 @@ export type NotePosition = {
 
 export type OtpRequestView = {
 	success: boolean,
-	expiresAt: number | null,
+	/**
+	 *  Seconds until the OTP code expires (mirrors the server's
+	 *  `expiresIn` field, a countdown rather than a unix timestamp).
+	 */
+	expiresIn: number | null,
 };
 
 export type OtpVerifyView = {
@@ -607,6 +611,8 @@ export type SyncLinkingGetLinkingSasInput = {
 
 export type SyncLinkingLinkViaQrInput = {
 	qrJson: string,
+	deviceName: string,
+	devicePlatform: string,
 };
 
 export type SyncLinkingLinkViaRecoveryInput = {
