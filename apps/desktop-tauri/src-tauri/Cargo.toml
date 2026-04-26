@@ -46,12 +46,25 @@ urlencoding = "2.1"
 # Native dialog + shell plugins (M3)
 tauri-plugin-dialog = "2"
 
+# Crypto + auth + keychain (M4)
+base64 = "0.22"
+hex = "0.4"
+zeroize = { version = "1.8", features = ["derive"] }
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
+security-framework = "3"
+# Task 1 spike (M4 Phase A) confirmed dryoc 0.7.2 ships only the secretstream
+# XChaCha20-Poly1305 variant; the one-shot AEAD API is missing. Use the
+# RustCrypto crate for encrypt_blob/decrypt_blob and keep dryoc for Argon2id,
+# crypto_kdf, Ed25519, and BLAKE2b.
+chacha20poly1305 = { version = "0.10", features = ["std"] }
+
 [features]
 custom-protocol = ["tauri/custom-protocol"]
 test-helpers = []
 
 [dev-dependencies]
 tempfile = "3"
+httpmock = "0.7"
 
 [[bin]]
 name = "generate_bindings"
