@@ -7,6 +7,7 @@ pub mod devices;
 pub mod dialog;
 pub mod lifecycle;
 pub mod linking;
+pub mod notes;
 pub mod secrets;
 pub mod settings;
 pub mod shell;
