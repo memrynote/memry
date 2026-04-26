@@ -18,7 +18,7 @@
     "test:watch": "vitest watch",
     "test:e2e": "playwright test",
     "cargo:check": "cd src-tauri && cargo check",
-    "cargo:clippy": "cd src-tauri && cargo clippy -- -D warnings",
+    "cargo:clippy": "sh -c 'cd src-tauri && cargo clippy -- -D warnings' --",
     "cargo:test": "cd src-tauri && cargo test --features test-helpers",
     "cargo:fmt": "cd src-tauri && cargo fmt",
     "bindings:generate": "tsx scripts/generate-bindings.ts",
