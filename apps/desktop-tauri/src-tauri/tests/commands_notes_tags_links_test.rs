@@ -104,6 +104,46 @@ async fn get_links_returns_outgoing_targets_and_incoming_sources() {
 }
 
 #[tokio::test]
+async fn get_links_does_not_treat_prefixed_titles_as_backlinks() {
+    let conn = open_in_memory_with_migrations();
+    let vault = test_vault_runtime();
+
+    let target = notes_create_inner(
+        &conn,
+        &vault,
+        NoteCreateInput {
+            title: "Foo".into(),
+            content: Some("standalone".into()),
+            folder: Some("Inbox".into()),
+            tags: None,
+            template: None,
+        },
+    )
+    .await
+    .unwrap()
+    .note
+    .unwrap();
+    notes_create_inner(
+        &conn,
+        &vault,
+        NoteCreateInput {
+            title: "Source".into(),
+            content: Some("see [[Foobar]] instead".into()),
+            folder: Some("Inbox".into()),
+            tags: None,
+            template: None,
+        },
+    )
+    .await
+    .unwrap();
+
+    let links = notes_get_links_inner(&conn, &vault, &target.id)
+        .await
+        .unwrap();
+    assert!(links.incoming.is_empty());
+}
+
+#[tokio::test]
 async fn get_links_outgoing_handles_pipe_aliases_and_multiple_links() {
     let conn = open_in_memory_with_migrations();
     let vault = test_vault_runtime();

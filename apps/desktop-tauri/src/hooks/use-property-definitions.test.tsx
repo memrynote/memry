@@ -152,8 +152,10 @@ describe('usePropertyDefinitions', () => {
       })
 
       expect(api.notes.createPropertyDefinition).toHaveBeenCalledWith({
-        name: 'newProp',
-        type: 'text'
+        input: {
+          name: 'newProp',
+          type: 'text'
+        }
       })
       expect(createdDef).toEqual({
         name: 'newProp',
@@ -224,8 +226,10 @@ describe('usePropertyDefinitions', () => {
       })
 
       expect(api.notes.updatePropertyDefinition).toHaveBeenCalledWith({
-        name: 'status',
-        color: '#FF0000'
+        input: {
+          name: 'status',
+          color: '#FF0000'
+        }
       })
       expect(updatedDef?.color).toBe('#FF0000')
     })

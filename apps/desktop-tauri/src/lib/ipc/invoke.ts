@@ -107,7 +107,28 @@ const realCommands = new Set<string>([
   'notes_preview_by_title',
   'notes_get_file',
   'notes_open_external',
-  'notes_reveal_in_finder'
+  'notes_reveal_in_finder',
+  // M5 — folders, positions, and property definitions
+  'notes_get_folders',
+  'notes_create_folder',
+  'notes_rename_folder',
+  'notes_delete_folder',
+  'notes_get_folder_config',
+  'notes_set_folder_config',
+  'notes_get_folder_template',
+  'notes_get_positions',
+  'notes_get_all_positions',
+  'notes_reorder',
+  'notes_get_property_definitions',
+  'notes_create_property_definition',
+  'notes_update_property_definition',
+  'notes_ensure_property_definition',
+  'notes_add_property_option',
+  'notes_add_status_option',
+  'notes_remove_property_option',
+  'notes_rename_property_option',
+  'notes_update_option_color',
+  'notes_delete_property_definition'
 ])
 
 function shouldUseMock(cmd: string): boolean {

@@ -57,6 +57,52 @@ async fn create_note_writes_metadata_vault_file_cache_and_returns_dto() {
 }
 
 #[tokio::test]
+async fn create_note_applies_template_body_tags_and_properties_when_content_empty() {
+    let conn = open_in_memory_with_migrations();
+    let vault = test_vault_runtime();
+    let root = vault.require_current().unwrap();
+    let templates_dir = root.join(".memry").join("templates");
+    std::fs::create_dir_all(&templates_dir).unwrap();
+    std::fs::write(
+        templates_dir.join("meeting-notes.md"),
+        r#"---
+id: meeting-notes
+name: Meeting Notes
+tags:
+  - meetings
+properties:
+  - name: Status
+    value: Planned
+---
+# {{title}}
+
+Agenda
+"#,
+    )
+    .unwrap();
+
+    let created = notes_create_inner(
+        &conn,
+        &vault,
+        NoteCreateInput {
+            title: "Weekly Sync".into(),
+            content: None,
+            folder: Some("Inbox".into()),
+            tags: Some(vec!["work".into()]),
+            template: Some("meeting-notes".into()),
+        },
+    )
+    .await
+    .unwrap()
+    .note
+    .unwrap();
+
+    assert_eq!(created.content, "# Weekly Sync\n\nAgenda");
+    assert_eq!(created.tags, vec!["meetings", "work"]);
+    assert_eq!(created.frontmatter["properties"]["Status"], "Planned");
+}
+
+#[tokio::test]
 async fn create_note_rejects_duplicate_path_without_overwriting_existing_file() {
     let conn = open_in_memory_with_migrations();
     let vault = test_vault_runtime();
