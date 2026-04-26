@@ -9,7 +9,7 @@ use db::Db;
 use directories::ProjectDirs;
 use error::{AppError, AppResult};
 use std::path::PathBuf;
-use tauri::Manager;
+use tauri::{Emitter, Manager};
 
 fn resolve_db_path() -> AppResult<PathBuf> {
     let device = std::env::var("MEMRY_DEVICE").unwrap_or_else(|_| "default".to_string());
@@ -65,7 +65,7 @@ pub fn run() {
             commands::dialog::dialog_choose_folder,
             commands::dialog::dialog_choose_files,
         ])
-        .setup(|_app| {
+        .setup(|app| {
             tracing_subscriber::fmt()
                 .with_env_filter(
                     tracing_subscriber::EnvFilter::try_from_default_env()
@@ -74,6 +74,26 @@ pub fn run() {
                 .json()
                 .init();
             tracing::info!("memry desktop-tauri booting (m2 settings slice)");
+
+            let main_window = app.get_webview_window("main").ok_or_else(|| {
+                Box::new(std::io::Error::new(
+                    std::io::ErrorKind::NotFound,
+                    "main window missing",
+                )) as Box<dyn std::error::Error>
+            })?;
+            let main_clone = main_window.clone();
+            main_window.on_window_event(move |event| {
+                if let tauri::WindowEvent::DragDrop(tauri::DragDropEvent::Drop { paths, .. }) =
+                    event
+                {
+                    let path_strs: Vec<String> = paths
+                        .iter()
+                        .map(|p| p.to_string_lossy().into_owned())
+                        .collect();
+                    let _ = main_clone.app_handle().emit("vault-drag-drop", &path_strs);
+                }
+            });
+
             Ok(())
         })
         .run(tauri::generate_context!())
