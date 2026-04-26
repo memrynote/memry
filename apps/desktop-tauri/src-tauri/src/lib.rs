@@ -1,4 +1,5 @@
 pub mod app_state;
+pub mod auth;
 pub mod commands;
 pub mod crypto;
 pub mod db;
@@ -28,7 +29,10 @@ fn init_app_state() -> AppResult<AppState> {
     let db_path = resolve_db_path()?;
     let db = Db::open(db_path)?;
     let vault = std::sync::Arc::new(crate::vault::VaultRuntime::boot()?);
-    Ok(AppState::new(db, vault))
+    let keychain: std::sync::Arc<dyn crate::keychain::KeychainStore> =
+        std::sync::Arc::new(crate::keychain::MacosKeychain::new());
+    let auth = std::sync::Arc::new(crate::auth::AuthRuntime::new(keychain));
+    Ok(AppState::new(db, vault, auth))
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
