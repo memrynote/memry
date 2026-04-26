@@ -9,7 +9,7 @@ use crate::crdt::wire::{CrdtUpdateEvent, CRDT_UPDATE_EVENT};
 use crate::error::{AppError, AppResult};
 use crate::vault::{VaultRuntime, frontmatter, paths as vault_paths};
 use std::sync::Arc;
-use tauri::{AppHandle, Emitter, State};
+use tauri::{AppHandle, Emitter, State, ipc::Response};
 use yrs::{Text, WriteTxn};
 
 pub const MAX_INLINE_UPDATE_BYTES: usize = 8 * 1024;
@@ -112,6 +112,30 @@ pub async fn crdt_apply_update_chunk_finish_inner(
     let update = crdt.finish_update_chunk(note_id, transfer_id).await?;
     let handle = apply_update_to_runtime(crdt, note_id, &update, incoming_origin, false).await?;
     persist_applied_update(conn, &handle, note_id, &update, incoming_origin)
+}
+
+pub async fn crdt_get_snapshot_bytes(
+    crdt: Arc<CrdtRuntime>,
+    note_id: &str,
+) -> AppResult<Vec<u8>> {
+    let handle = crdt
+        .docs()
+        .get(note_id)
+        .await
+        .ok_or_else(|| AppError::NotFound(format!("crdt doc {note_id}")))?;
+    encode_snapshot_v1(&handle)
+}
+
+pub async fn crdt_get_state_vector_bytes(
+    crdt: Arc<CrdtRuntime>,
+    note_id: &str,
+) -> AppResult<Vec<u8>> {
+    let handle = crdt
+        .docs()
+        .get(note_id)
+        .await
+        .ok_or_else(|| AppError::NotFound(format!("crdt doc {note_id}")))?;
+    encode_state_vector_v1(&handle)
 }
 
 #[tauri::command]
@@ -233,6 +257,26 @@ pub async fn crdt_apply_update_chunk_finish(
     let _ = app.emit(CRDT_UPDATE_EVENT, payload);
 
     Ok(serde_json::json!({ "seq": seq }))
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn crdt_get_snapshot(
+    state: State<'_, AppState>,
+    note_id: String,
+) -> AppResult<Response> {
+    let bytes = crdt_get_snapshot_bytes(state.crdt.clone(), &note_id).await?;
+    Ok(Response::new(bytes))
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn crdt_get_state_vector(
+    state: State<'_, AppState>,
+    note_id: String,
+) -> AppResult<Response> {
+    let bytes = crdt_get_state_vector_bytes(state.crdt.clone(), &note_id).await?;
+    Ok(Response::new(bytes))
 }
 
 struct OpenDocState {
