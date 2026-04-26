@@ -20,8 +20,8 @@ use memry_desktop_tauri_lib::auth::device::{
     self, CurrentDeviceRecord, KEYCHAIN_DEVICE_SIGNING_KEY,
 };
 use memry_desktop_tauri_lib::auth::linking::{
-    self, generate_sas_code, LinkingApprovePayload, LinkingQrPayload,
-    PendingLinkingRegistry, PendingLinkingSession,
+    self, generate_sas_code, LinkingQrPayload, PendingLinkingRegistry,
+    PendingLinkingSession, ScanDeviceMetadata, SealedMasterKey,
 };
 use memry_desktop_tauri_lib::auth::AuthRuntime;
 use memry_desktop_tauri_lib::crypto::sign_verify::{
@@ -406,38 +406,55 @@ fn build_qr_payload_round_trips_through_json() {
 
 #[test]
 fn approve_linking_seal_round_trips_master_key() {
+    let initiator = linking::generate_ephemeral_keypair();
     let new_device = linking::generate_ephemeral_keypair();
     let approver_master_key = vec![0x42u8; 32];
 
-    let payload = linking::seal_master_key_for_new_device(
+    let shared =
+        linking::derive_shared_secret(&initiator.secret_key, &new_device.public_key).unwrap();
+    let (enc_key, mac_key) = linking::derive_linking_keys(&shared).unwrap();
+    let sealed = linking::seal_master_key_for_new_device(
         &approver_master_key,
-        &new_device.public_key,
+        &enc_key,
+        &mac_key,
+        "sid-round-trip",
     )
     .unwrap();
 
-    assert!(!payload.ciphertext.is_empty());
-    assert_eq!(payload.nonce.len(), 24);
-    assert_eq!(payload.approver_ephemeral_public_key.len(), 32);
+    assert!(!sealed.encrypted_master_key.is_empty());
+    assert_eq!(sealed.encrypted_key_nonce.len(), 24);
+    assert!(!sealed.key_confirm.is_empty());
 
-    let recovered =
-        linking::open_master_key_for_new_device(&payload, &new_device.secret_key).unwrap();
+    let recovered = linking::open_master_key_for_new_device(
+        &sealed,
+        &enc_key,
+        &mac_key,
+        "sid-round-trip",
+    )
+    .unwrap();
     assert_eq!(recovered, approver_master_key);
 }
 
 #[test]
 fn open_master_key_rejects_tampered_ciphertext() {
+    let initiator = linking::generate_ephemeral_keypair();
     let new_device = linking::generate_ephemeral_keypair();
     let mk = vec![0x42u8; 32];
-    let mut payload =
-        linking::seal_master_key_for_new_device(&mk, &new_device.public_key).unwrap();
+    let shared =
+        linking::derive_shared_secret(&initiator.secret_key, &new_device.public_key).unwrap();
+    let (enc_key, mac_key) = linking::derive_linking_keys(&shared).unwrap();
+    let mut sealed =
+        linking::seal_master_key_for_new_device(&mk, &enc_key, &mac_key, "sid-tamper").unwrap();
 
-    payload.ciphertext[0] ^= 0xFF;
+    sealed.encrypted_master_key[0] ^= 0xFF;
 
-    let err = linking::open_master_key_for_new_device(&payload, &new_device.secret_key)
-        .expect_err("tampered ciphertext must fail to decrypt");
+    let err =
+        linking::open_master_key_for_new_device(&sealed, &enc_key, &mac_key, "sid-tamper")
+            .expect_err("tampered ciphertext must fail the keyConfirm check");
+    let msg = format!("{err}").to_lowercase();
     assert!(
-        format!("{err}").to_lowercase().contains("decrypt"),
-        "expected a crypto/decrypt error, got {err}",
+        msg.contains("confirm") || msg.contains("decrypt") || msg.contains("tamper"),
+        "expected a confirm/decrypt error, got {err}",
     );
 }
 
@@ -450,6 +467,7 @@ fn pending_session_registry_take_is_consume_once() {
         ephemeral_secret_key: kp.secret_key.to_vec(),
         ephemeral_public_key: kp.public_key.to_vec(),
         linking_secret: vec![0x55u8; 32],
+        peer_public_key: None,
     };
     registry.insert(session.clone());
 
@@ -511,22 +529,38 @@ async fn link_via_qr_validates_payload_and_calls_scan() {
     let server = MockServer::start_async().await;
     let mock = server
         .mock_async(|when, then| {
-            when.method(POST)
-                .path("/auth/linking/scan")
-                .header("authorization", "Bearer access-token");
+            when.method(POST).path("/auth/linking/scan").matches(|req| {
+                let body = req.body.as_deref().unwrap_or_default();
+                let v: serde_json::Value =
+                    serde_json::from_slice(body).unwrap_or(serde_json::Value::Null);
+                v["sessionId"] == "sid-7"
+                    && v["newDevicePublicKey"].is_string()
+                    && v["newDeviceConfirm"].is_string()
+                    && v["linkingSecret"].is_string()
+                    && v["scanConfirm"].is_string()
+                    && v["scanProof"].is_string()
+                    && v["deviceName"] == "Test"
+                    && v["devicePlatform"] == "macos"
+            });
             then.status(200).json_body(json!({ "ok": true }));
         })
         .await;
 
+    let initiator = linking::generate_ephemeral_keypair();
     let qr = LinkingQrPayload {
         session_id: "sid-7".to_string(),
         linking_secret: B64.encode([0x77u8; 32]),
-        ephemeral_public_key: B64.encode([0x88u8; 32]),
+        ephemeral_public_key: B64.encode(initiator.public_key),
     };
     let qr_json = linking::encode_qr_payload(&qr).unwrap();
+    let registry = PendingLinkingRegistry::new();
+    let metadata = ScanDeviceMetadata {
+        device_name: "Test".to_string(),
+        device_platform: "macos".to_string(),
+    };
 
     let result =
-        linking::link_via_qr_with_base(&server.base_url(), &qr_json, "access-token")
+        linking::link_via_qr_with_base(&server.base_url(), &registry, &qr_json, &metadata)
             .await
             .expect("link_via_qr must succeed");
 
@@ -534,13 +568,28 @@ async fn link_via_qr_validates_payload_and_calls_scan() {
     assert_eq!(result.session_id, "sid-7");
     assert_eq!(result.sas_code.len(), 6);
     assert!(result.sas_code.chars().all(|c| c.is_ascii_digit()));
+
+    let pending = registry
+        .take("sid-7")
+        .expect("scan must populate the registry with the new-device keys");
+    assert_eq!(
+        pending.peer_public_key.as_deref(),
+        Some(initiator.public_key.as_slice()),
+        "peer public key must be the initiator's, captured from the QR",
+    );
+    assert_eq!(pending.ephemeral_secret_key.len(), 32);
 }
 
 #[tokio::test]
 async fn link_via_qr_rejects_invalid_qr_json() {
     let server = MockServer::start_async().await;
+    let registry = PendingLinkingRegistry::new();
+    let metadata = ScanDeviceMetadata {
+        device_name: "Test".to_string(),
+        device_platform: "macos".to_string(),
+    };
 
-    let err = linking::link_via_qr_with_base(&server.base_url(), "not-json", "tok")
+    let err = linking::link_via_qr_with_base(&server.base_url(), &registry, "not-json", &metadata)
         .await
         .expect_err("invalid qr json must error");
 
@@ -553,6 +602,7 @@ async fn link_via_qr_rejects_invalid_qr_json() {
 
 #[tokio::test]
 async fn approve_linking_posts_sealed_master_key_to_server() {
+    let initiator = linking::generate_ephemeral_keypair();
     let new_device = linking::generate_ephemeral_keypair();
     let approver_master_key = vec![0x42u8; 32];
 
@@ -567,9 +617,9 @@ async fn approve_linking_posts_sealed_master_key_to_server() {
                     let v: serde_json::Value =
                         serde_json::from_slice(body).unwrap_or(serde_json::Value::Null);
                     v["sessionId"] == "sid-9"
-                        && v["ciphertext"].is_string()
-                        && v["nonce"].is_string()
-                        && v["approverEphemeralPublicKey"].is_string()
+                        && v["encryptedMasterKey"].is_string()
+                        && v["encryptedKeyNonce"].is_string()
+                        && v["keyConfirm"].is_string()
                 });
             then.status(200).json_body(json!({ "ok": true }));
         })
@@ -578,6 +628,7 @@ async fn approve_linking_posts_sealed_master_key_to_server() {
     linking::approve_linking_with_base(
         &server.base_url(),
         "sid-9",
+        &initiator.secret_key,
         &approver_master_key,
         &new_device.public_key,
         "access-token",
@@ -589,8 +640,9 @@ async fn approve_linking_posts_sealed_master_key_to_server() {
 }
 
 #[tokio::test]
-async fn complete_linking_decrypts_master_key_and_returns_device_id() {
+async fn complete_linking_decrypts_master_key_after_peer_seals_it() {
     let registry = PendingLinkingRegistry::new();
+    let initiator = linking::generate_ephemeral_keypair();
     let new_device = linking::generate_ephemeral_keypair();
     let approver_master_key = vec![0x42u8; 32];
 
@@ -599,21 +651,30 @@ async fn complete_linking_decrypts_master_key_and_returns_device_id() {
         ephemeral_secret_key: new_device.secret_key.to_vec(),
         ephemeral_public_key: new_device.public_key.to_vec(),
         linking_secret: vec![0x55u8; 32],
+        peer_public_key: Some(initiator.public_key.to_vec()),
     });
 
-    let sealed =
-        linking::seal_master_key_for_new_device(&approver_master_key, &new_device.public_key)
-            .unwrap();
+    // Approver-side derivation: same shared secret both ways.
+    let shared =
+        linking::derive_shared_secret(&initiator.secret_key, &new_device.public_key).unwrap();
+    let (enc_key, mac_key) = linking::derive_linking_keys(&shared).unwrap();
+    let sealed = linking::seal_master_key_for_new_device(
+        &approver_master_key,
+        &enc_key,
+        &mac_key,
+        "sid-c",
+    )
+    .unwrap();
 
     let server = MockServer::start_async().await;
     let mock = server
         .mock_async(|when, then| {
             when.method(POST).path("/auth/linking/complete");
             then.status(200).json_body(json!({
-                "ciphertext": B64.encode(&sealed.ciphertext),
-                "nonce": B64.encode(&sealed.nonce),
-                "approverEphemeralPublicKey": B64.encode(&sealed.approver_ephemeral_public_key),
-                "deviceId": "device-from-server",
+                "success": true,
+                "encryptedMasterKey": B64.encode(&sealed.encrypted_master_key),
+                "encryptedKeyNonce": B64.encode(&sealed.encrypted_key_nonce),
+                "keyConfirm": B64.encode(&sealed.key_confirm),
             }));
         })
         .await;
@@ -625,8 +686,6 @@ async fn complete_linking_decrypts_master_key_and_returns_device_id() {
 
     mock.assert_async().await;
     assert_eq!(result.master_key, approver_master_key);
-    assert_eq!(result.device_id, "device-from-server");
-
     assert!(
         registry.take("sid-c").is_none(),
         "completed session must be removed from the registry",
@@ -651,4 +710,4 @@ async fn complete_linking_without_pending_session_returns_auth_error() {
 
 // Suppress unused-warning for types pulled into scope only by other tests.
 #[allow(dead_code)]
-fn _unused(_p: LinkingApprovePayload) {}
+fn _unused_sealed(_p: SealedMasterKey) {}

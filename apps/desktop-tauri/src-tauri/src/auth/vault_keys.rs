@@ -141,6 +141,19 @@ pub fn update_session_metadata(
     })
 }
 
+/// Returns the persisted Argon2id salt and key verifier (both
+/// base64-encoded as written by `setup_local_vault_key`). The server's
+/// `/auth/setup` endpoint expects these exact strings as `kdfSalt` and
+/// `keyVerifier`. Returns `Auth("vault is not initialised")` if either
+/// setting is missing.
+pub fn read_vault_setup_material(state: &AppState) -> AppResult<(String, String)> {
+    let kdf_salt = settings::get(&state.db, SETTING_KDF_SALT)?
+        .ok_or_else(|| AppError::Auth("vault is not initialised".into()))?;
+    let key_verifier = settings::get(&state.db, SETTING_KEY_VERIFIER)?
+        .ok_or_else(|| AppError::Auth("vault is not initialised".into()))?;
+    Ok((kdf_salt, key_verifier))
+}
+
 pub fn try_unlock_from_keychain(state: &AppState) -> AppResult<Option<AuthStatus>> {
     let remember = settings::get_bool(&state.db, SETTING_REMEMBER_DEVICE)?.unwrap_or(false);
     if !remember {
