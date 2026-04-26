@@ -1,10 +1,12 @@
 use memry_desktop_tauri_lib::commands::crdt::{
     crdt_apply_update_chunk_append_inner, crdt_apply_update_chunk_finish_inner,
     crdt_apply_update_chunk_start_inner, crdt_apply_update_inner, crdt_close_doc_inner,
-    crdt_open_doc_inner, MAX_INLINE_UPDATE_BYTES,
+    crdt_get_snapshot_bytes, crdt_get_state_vector_bytes, crdt_open_doc_inner,
+    MAX_INLINE_UPDATE_BYTES,
 };
 use memry_desktop_tauri_lib::crdt::{
-    encode_diff_since_v1, encode_snapshot_v1, encode_state_vector_v1, CrdtRuntime,
+    apply_update_v1, encode_diff_since_v1, encode_snapshot_v1, encode_state_vector_v1,
+    CrdtRuntime,
 };
 use memry_desktop_tauri_lib::db::crdt_updates;
 use memry_desktop_tauri_lib::error::AppError;
@@ -131,4 +133,36 @@ async fn oversized_update_uses_chunked_transport_and_persists_once() {
     let target_doc = crdt.docs().get("large").await.unwrap();
     let target_body = target_doc.with_read(|txn| txn.get_text("body").unwrap().get_string(txn));
     assert_eq!(target_body, body);
+}
+
+#[tokio::test]
+async fn snapshot_and_state_vector_bytes_round_trip() {
+    let conn = open_in_memory_with_migrations();
+    let crdt = Arc::new(CrdtRuntime::new());
+    let source = Arc::new(CrdtRuntime::new());
+    let source_doc = source.docs().get_or_init("snap").await;
+    source_doc.with_write(|txn| {
+        txn.get_or_insert_text("body").insert(txn, 0, "snapshot body");
+    });
+    let update = encode_snapshot_v1(&source_doc).unwrap();
+    crdt_apply_update_inner(&conn, crdt.clone(), "snap", &update, 404)
+        .await
+        .unwrap();
+
+    let snapshot = crdt_get_snapshot_bytes(crdt.clone(), "snap").await.unwrap();
+    let state_vector = crdt_get_state_vector_bytes(crdt.clone(), "snap")
+        .await
+        .unwrap();
+
+    assert!(!snapshot.is_empty());
+    assert!(!state_vector.is_empty());
+    let restored = Arc::new(CrdtRuntime::new());
+    let restored_doc = restored.docs().get_or_init("snap").await;
+    apply_update_v1(&restored_doc, &snapshot, 1).unwrap();
+    let restored_body = restored_doc.with_read(|txn| {
+        txn.get_text("body")
+            .map(|text| text.get_string(txn))
+            .unwrap_or_default()
+    });
+    assert_eq!(restored_body, "snapshot body");
 }
