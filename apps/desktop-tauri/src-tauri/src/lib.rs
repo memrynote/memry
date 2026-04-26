@@ -123,6 +123,8 @@ pub fn run() {
             commands::properties::notes_rename_property_option,
             commands::properties::notes_update_option_color,
             commands::properties::notes_delete_property_definition,
+            commands::crdt::crdt_open_doc,
+            commands::crdt::crdt_close_doc,
             commands::shell::shell_open_url,
             commands::shell::shell_open_path,
             commands::shell::shell_reveal_in_finder,
