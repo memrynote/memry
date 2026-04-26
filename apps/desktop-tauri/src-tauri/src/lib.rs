@@ -24,7 +24,8 @@ fn resolve_db_path() -> AppResult<PathBuf> {
 fn init_app_state() -> AppResult<AppState> {
     let db_path = resolve_db_path()?;
     let db = Db::open(db_path)?;
-    Ok(AppState::new(db))
+    let vault = std::sync::Arc::new(crate::vault::VaultRuntime::boot()?);
+    Ok(AppState::new(db, vault))
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
