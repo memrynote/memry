@@ -30,9 +30,21 @@ serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 thiserror = "2.0"
 directories = "5"
-specta = { version = "2.0.0-rc.20", features = ["derive"] }
+specta = { version = "2.0.0-rc.20", features = ["derive", "serde_json"] }
 specta-typescript = "0.0.11"
 tauri-specta = { version = "2.0.0-rc.21", features = ["typescript"] }
+
+# Vault FS + watcher (M3)
+notify = { version = "6.1", default-features = false, features = ["macos_fsevent"] }
+serde_yaml_ng = "0.10"
+mime_guess = "2.0"
+sha2 = "0.10"
+dunce = "1.0"
+nanoid = "0.4"
+urlencoding = "2.1"
+
+# Native dialog + shell plugins (M3)
+tauri-plugin-dialog = "2"
 
 [features]
 custom-protocol = ["tauri/custom-protocol"]
@@ -56,4 +68,32 @@ required-features = ["test-helpers"]
 
 [[test]]
 name = "settings_test"
+required-features = ["test-helpers"]
+
+[[test]]
+name = "vault_paths_test"
+required-features = ["test-helpers"]
+
+[[test]]
+name = "vault_fs_test"
+required-features = ["test-helpers"]
+
+[[test]]
+name = "vault_frontmatter_test"
+required-features = ["test-helpers"]
+
+[[test]]
+name = "vault_notes_io_test"
+required-features = ["test-helpers"]
+
+[[test]]
+name = "vault_preferences_test"
+required-features = ["test-helpers"]
+
+[[test]]
+name = "vault_registry_test"
+required-features = ["test-helpers"]
+
+[[test]]
+name = "vault_watcher_test"
 required-features = ["test-helpers"]
