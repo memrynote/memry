@@ -64,6 +64,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             commands::folders::notes_get_positions,
             commands::folders::notes_get_all_positions,
             commands::folders::notes_reorder,
+            // M5: property definitions
+            commands::properties::notes_get_property_definitions,
+            commands::properties::notes_create_property_definition,
+            commands::properties::notes_update_property_definition,
+            commands::properties::notes_ensure_property_definition,
             // M4: auth + sync_auth + sync_setup
             commands::auth::auth_status,
             commands::auth::auth_unlock,
@@ -190,6 +195,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .typ::<commands::folders::SetFolderConfigInput>()
         .typ::<commands::folders::ReorderInput>()
         .typ::<commands::folders::PositionsResponse>()
+        // M5 properties
+        .typ::<commands::properties::CreatePropertyDefinitionInput>()
         // Domain DB structs (registered for stable export across migrations)
         .typ::<db::bookmarks::Bookmark>()
         .typ::<db::calendar_bindings::CalendarBinding>()

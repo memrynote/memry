@@ -9,6 +9,7 @@ pub mod folders;
 pub mod lifecycle;
 pub mod linking;
 pub mod notes;
+pub mod properties;
 pub mod secrets;
 pub mod settings;
 pub mod shell;
