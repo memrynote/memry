@@ -4,6 +4,7 @@
 //! later phases add device, account, and linking sub-modules per the
 //! M4 plan.
 
+pub mod redaction;
 pub mod secrets;
 pub mod state;
 pub mod types;
