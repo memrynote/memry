@@ -195,10 +195,12 @@ const authReducer = (state: AuthState, action: AuthAction): AuthState => {
 
 export interface SetupFirstDeviceResult {
   success: boolean
-  deviceId?: string
-  needsRecoverySetup?: boolean
+  deviceId?: string | null
+  email?: string | null
+  recoveryPhrase?: string[] | null
+  needsRecoverySetup?: boolean | null
   needsRecoveryInput?: boolean
-  error?: string
+  error?: string | null
 }
 
 interface AuthContextValue {
@@ -350,7 +352,7 @@ export const AuthProvider = ({ children }: AuthProviderProps): React.JSX.Element
         throw new Error(extractErrorMessage(result.error, 'Failed to send verification code'))
       }
       dispatch({ type: 'OTP_REQUESTED', email })
-      return { expiresIn: result.expiresIn }
+      return { expiresIn: result.expiresIn ?? undefined }
     } catch (err) {
       const message = extractErrorMessage(err, 'Failed to send verification code')
       dispatch({ type: 'SET_ERROR', error: message })
@@ -412,7 +414,7 @@ export const AuthProvider = ({ children }: AuthProviderProps): React.JSX.Element
       if (!result.success) {
         throw new Error(extractErrorMessage(result.error, 'Failed to resend code'))
       }
-      return { expiresIn: result.expiresIn }
+      return { expiresIn: result.expiresIn ?? undefined }
     } catch (err) {
       const message = extractErrorMessage(err, 'Failed to resend code')
       dispatch({ type: 'SET_ERROR', error: message })
