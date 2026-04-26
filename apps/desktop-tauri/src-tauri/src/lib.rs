@@ -1,6 +1,7 @@
 pub mod app_state;
 pub mod auth;
 pub mod commands;
+pub mod crdt;
 pub mod crypto;
 pub mod db;
 pub mod error;
@@ -34,7 +35,8 @@ fn init_app_state() -> AppResult<AppState> {
         std::sync::Arc::new(crate::keychain::MacosKeychain::new());
     let auth = std::sync::Arc::new(crate::auth::AuthRuntime::new(keychain));
     let linking = std::sync::Arc::new(crate::auth::linking::PendingLinkingRegistry::new());
-    let state = AppState::new(db, vault, auth, linking);
+    let crdt = std::sync::Arc::new(crate::crdt::CrdtRuntime::new());
+    let state = AppState::new(db, vault, auth, linking, crdt);
 
     // Restore the vault key from the keychain when the user previously
     // opted in to "remember this device". A failure here is logged and
