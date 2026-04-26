@@ -134,3 +134,7 @@ required-features = ["test-helpers"]
 [[test]]
 name = "auth_vault_keys_test"
 required-features = ["test-helpers"]
+
+[[test]]
+name = "auth_secrets_test"
+required-features = ["test-helpers"]
