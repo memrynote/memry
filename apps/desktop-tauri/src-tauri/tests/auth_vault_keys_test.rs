@@ -9,6 +9,7 @@
 use std::sync::Arc;
 
 use memry_desktop_tauri_lib::app_state::AppState;
+use memry_desktop_tauri_lib::auth::linking::PendingLinkingRegistry;
 use memry_desktop_tauri_lib::auth::{AuthRuntime, AuthStateKind};
 use memry_desktop_tauri_lib::auth::vault_keys::{
     setup_local_vault_key, try_unlock_from_keychain, unlock_with_password,
@@ -25,7 +26,8 @@ fn fresh_state() -> AppState {
     let vault = Arc::new(VaultRuntime::boot().expect("vault runtime must boot"));
     let keychain: Arc<dyn KeychainStore> = Arc::new(MemoryKeychain::new());
     let auth = Arc::new(AuthRuntime::new(keychain));
-    AppState::new(db, vault, auth)
+    let linking = Arc::new(PendingLinkingRegistry::new());
+    AppState::new(db, vault, auth, linking)
 }
 
 #[tokio::test]
