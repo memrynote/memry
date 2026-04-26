@@ -31,10 +31,10 @@ beforeEach(() => {
 
 describe('invoke', () => {
   it('routes commands without a real backend to mock router by default', async () => {
-    const result = await invoke('notes_get_folders')
-    expect(mockRouter).toHaveBeenCalledWith('notes_get_folders', undefined)
+    const result = await invoke('notes_export_pdf')
+    expect(mockRouter).toHaveBeenCalledWith('notes_export_pdf', undefined)
     expect(tauriInvoke).not.toHaveBeenCalled()
-    expect(result).toEqual({ mock: true, cmd: 'notes_get_folders', args: undefined })
+    expect(result).toEqual({ mock: true, cmd: 'notes_export_pdf', args: undefined })
   })
 
   it('routes shipped notes CRUD commands to Tauri by default', async () => {
@@ -71,8 +71,8 @@ describe('invoke', () => {
   })
 
   it('passes args through untouched to mock router (no default empty object)', async () => {
-    await invoke('notes_get_folders')
-    expect(mockRouter).toHaveBeenCalledWith('notes_get_folders', undefined)
+    await invoke('notes_export_pdf')
+    expect(mockRouter).toHaveBeenCalledWith('notes_export_pdf', undefined)
   })
 
   it('routes Phase E rename/move/exists/local-only/tags/links commands to Tauri', async () => {
@@ -88,5 +88,37 @@ describe('invoke', () => {
 
     expect(mockRouter).not.toHaveBeenCalled()
     expect(tauriInvoke).toHaveBeenCalledTimes(9)
+  })
+
+  it('routes graduated folder/property/position commands to Tauri by default', async () => {
+    const commands = [
+      'notes_get_folders',
+      'notes_create_folder',
+      'notes_rename_folder',
+      'notes_delete_folder',
+      'notes_get_folder_config',
+      'notes_set_folder_config',
+      'notes_get_folder_template',
+      'notes_get_positions',
+      'notes_get_all_positions',
+      'notes_reorder',
+      'notes_get_property_definitions',
+      'notes_create_property_definition',
+      'notes_update_property_definition',
+      'notes_ensure_property_definition',
+      'notes_add_property_option',
+      'notes_add_status_option',
+      'notes_remove_property_option',
+      'notes_rename_property_option',
+      'notes_update_option_color',
+      'notes_delete_property_definition'
+    ]
+
+    for (const command of commands) {
+      await invoke(command, { input: {} })
+    }
+
+    expect(mockRouter).not.toHaveBeenCalled()
+    expect(tauriInvoke).toHaveBeenCalledTimes(commands.length)
   })
 })

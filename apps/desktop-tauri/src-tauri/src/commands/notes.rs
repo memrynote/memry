@@ -258,7 +258,7 @@ pub async fn notes_create_inner(
     vault: &VaultRuntime,
     input: NoteCreateInput,
 ) -> AppResult<NoteCreateResponse> {
-    let prepared = prepare_create(input)?;
+    let prepared = prepare_create(vault, input).await?;
     let root = vault.require_current()?;
 
     ensure_db_path_available(conn, &prepared.relative)?;
@@ -495,7 +495,6 @@ pub async fn notes_get_links_inner(
         out
     };
 
-    let needle = format!("[[{}", row.title.to_lowercase());
     let mut incoming = Vec::new();
     for (source_id, source_path, source_title) in candidates {
         let candidate_body = notes_io::read_note_from_disk(&root, &source_path)
@@ -504,7 +503,7 @@ pub async fn notes_get_links_inner(
             .flatten()
             .map(|read| read.parsed.content)
             .unwrap_or_default();
-        if candidate_body.to_lowercase().contains(&needle) {
+        if body_links_to_title(&candidate_body, &row.title) {
             incoming.push(NoteIncomingLink {
                 source_id,
                 source_path,
@@ -640,6 +639,13 @@ fn extract_wikilinks(body: &str) -> Vec<String> {
     out
 }
 
+fn body_links_to_title(body: &str, title: &str) -> bool {
+    let normalized_title = title.trim().to_lowercase();
+    extract_wikilinks(body)
+        .into_iter()
+        .any(|target| target.trim().to_lowercase() == normalized_title)
+}
+
 pub fn notes_list_inner(
     conn: &Connection,
     options: Option<NoteListOptions>,
@@ -700,7 +706,7 @@ pub async fn notes_create(
         tags,
         template,
     };
-    let prepared = prepare_create(input)?;
+    let prepared = prepare_create(&state.vault, input).await?;
     let root = state.vault.require_current()?;
 
     {
@@ -1128,7 +1134,6 @@ pub async fn notes_get_links(
         out
     };
 
-    let needle = format!("[[{}", row.title.to_lowercase());
     let mut incoming = Vec::new();
     for (source_id, source_path, source_title) in candidates {
         let candidate_body = notes_io::read_note_from_disk(&root, &source_path)
@@ -1137,7 +1142,7 @@ pub async fn notes_get_links(
             .flatten()
             .map(|read| read.parsed.content)
             .unwrap_or_default();
-        if candidate_body.to_lowercase().contains(&needle) {
+        if body_links_to_title(&candidate_body, &row.title) {
             incoming.push(NoteIncomingLink {
                 source_id,
                 source_path,
@@ -1530,7 +1535,13 @@ struct PreparedCreate {
     row: NoteMetadataRow,
 }
 
-fn prepare_create(input: NoteCreateInput) -> AppResult<PreparedCreate> {
+struct AppliedTemplate {
+    body: String,
+    tags: Vec<String>,
+    properties: BTreeMap<String, serde_yaml_ng::Value>,
+}
+
+async fn prepare_create(vault: &VaultRuntime, input: NoteCreateInput) -> AppResult<PreparedCreate> {
     use crate::vault::frontmatter::create_frontmatter;
 
     let title = input.title.trim().to_string();
@@ -1545,12 +1556,39 @@ fn prepare_create(input: NoteCreateInput) -> AppResult<PreparedCreate> {
     } else {
         format!("{}/{slug}.md", folder.trim().trim_matches('/'))
     };
-    let body = input.content.unwrap_or_default();
+    let applied_template = match input.template.as_deref() {
+        Some(template_id) => load_template(vault, template_id, &title).await?,
+        None => None,
+    };
+    let body = match input.content {
+        Some(content) if content.trim().is_empty() => applied_template
+            .as_ref()
+            .map(|template| template.body.clone())
+            .unwrap_or(content),
+        Some(content) => content,
+        None => applied_template
+            .as_ref()
+            .map(|template| template.body.clone())
+            .unwrap_or_default(),
+    };
     let id = nanoid::nanoid!(21);
     let now = now_iso();
-    let tags = input.tags.unwrap_or_default();
+    let mut tags = applied_template
+        .as_ref()
+        .map(|template| template.tags.clone())
+        .unwrap_or_default();
+    for tag in input.tags.unwrap_or_default() {
+        if !tags.iter().any(|existing| existing == &tag) {
+            tags.push(tag);
+        }
+    }
 
     let mut frontmatter = create_frontmatter(&title, &tags);
+    if let Some(template) = &applied_template {
+        if !template.properties.is_empty() {
+            frontmatter.properties = Some(template.properties.clone());
+        }
+    }
     frontmatter.id = id.clone();
     frontmatter.created = now.clone();
     frontmatter.modified = now.clone();
@@ -1581,6 +1619,112 @@ fn prepare_create(input: NoteCreateInput) -> AppResult<PreparedCreate> {
         frontmatter,
         row,
     })
+}
+
+async fn load_template(
+    vault: &VaultRuntime,
+    template_id: &str,
+    title: &str,
+) -> AppResult<Option<AppliedTemplate>> {
+    let template_id = template_id.trim();
+    if template_id.is_empty()
+        || template_id.contains('/')
+        || template_id.contains('\\')
+        || template_id.contains("..")
+    {
+        return Err(AppError::Validation("invalid template id".into()));
+    }
+
+    let root = vault.require_current()?;
+    let path = root
+        .join(".memry")
+        .join("templates")
+        .join(format!("{template_id}.md"));
+    let Some(raw) = vault_fs::safe_read(&path).await? else {
+        return Ok(None);
+    };
+
+    Ok(Some(apply_template_markdown(&raw, title)?))
+}
+
+fn apply_template_markdown(raw: &str, title: &str) -> AppResult<AppliedTemplate> {
+    let (yaml_text, body) = split_template_frontmatter(raw);
+    let data: BTreeMap<String, serde_yaml_ng::Value> = if yaml_text.trim().is_empty() {
+        BTreeMap::new()
+    } else {
+        serde_yaml_ng::from_str(yaml_text)?
+    };
+    let tags = data
+        .get("tags")
+        .and_then(|value| value.as_sequence())
+        .map(|seq| {
+            seq.iter()
+                .filter_map(|value| value.as_str().map(str::to_string))
+                .collect()
+        })
+        .unwrap_or_default();
+
+    Ok(AppliedTemplate {
+        body: body.trim().replace("{{title}}", title),
+        tags,
+        properties: template_properties(&data),
+    })
+}
+
+fn split_template_frontmatter(raw: &str) -> (&str, &str) {
+    let Some(rest) = raw
+        .strip_prefix("---\n")
+        .or_else(|| raw.strip_prefix("---\r\n"))
+    else {
+        return ("", raw);
+    };
+    let Some(end) = rest.find("\n---") else {
+        return ("", raw);
+    };
+    let body = rest[end + 4..]
+        .strip_prefix('\n')
+        .or_else(|| rest[end + 4..].strip_prefix("\r\n"))
+        .unwrap_or(&rest[end + 4..]);
+    (&rest[..end], body)
+}
+
+fn template_properties(
+    data: &BTreeMap<String, serde_yaml_ng::Value>,
+) -> BTreeMap<String, serde_yaml_ng::Value> {
+    let mut out = BTreeMap::new();
+    match data.get("properties") {
+        Some(serde_yaml_ng::Value::Mapping(map)) => {
+            for (key, value) in map {
+                if let Some(name) = key.as_str() {
+                    out.insert(name.to_string(), value.clone());
+                }
+            }
+        }
+        Some(serde_yaml_ng::Value::Sequence(seq)) => {
+            for item in seq {
+                let Some(map) = item.as_mapping() else {
+                    continue;
+                };
+                let Some(name) = yaml_mapping_get(map, "name").and_then(|value| value.as_str())
+                else {
+                    continue;
+                };
+                let value = yaml_mapping_get(map, "value")
+                    .cloned()
+                    .unwrap_or(serde_yaml_ng::Value::Null);
+                out.insert(name.to_string(), value);
+            }
+        }
+        _ => {}
+    }
+    out
+}
+
+fn yaml_mapping_get<'a>(
+    map: &'a serde_yaml_ng::Mapping,
+    key: &str,
+) -> Option<&'a serde_yaml_ng::Value> {
+    map.get(serde_yaml_ng::Value::String(key.to_string()))
 }
 
 fn finish_create(
