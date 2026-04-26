@@ -1,6 +1,7 @@
 import { invoke } from '@/lib/ipc/invoke'
 import type {
   DeviceView,
+  SetupNewAccountInput,
   SetupResultView,
   SimpleSuccess,
   SyncDevicesGetDevicesResult,
@@ -54,8 +55,8 @@ export const setupService = {
     return invoke<SetupFirstDeviceResult>('sync_setup_setup_first_device', { input })
   },
 
-  setupNewAccount: (): Promise<SetupNewAccountResult> => {
-    return invoke<SetupNewAccountResult>('sync_setup_setup_new_account')
+  setupNewAccount: (input: SetupNewAccountInput): Promise<SetupNewAccountResult> => {
+    return invoke<SetupNewAccountResult>('sync_setup_setup_new_account', { input })
   },
 
   confirmRecoveryPhrase: (input: { confirmed: boolean }): Promise<SimpleSuccess> => {

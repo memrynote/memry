@@ -61,4 +61,35 @@ describe('auth-service', () => {
     })
     expect(result).toEqual(response)
   })
+
+  it('forwards setupNewAccount to window.api.syncSetup wrapped in { input }', async () => {
+    // #given
+    const response = { success: true, deviceId: 'dev-1' }
+    api.syncSetup.setupNewAccount = vi.fn().mockResolvedValue(response)
+
+    // #when
+    const result = await authService.setupNewAccount({
+      email: 'test@example.com',
+      password: 'correct horse battery staple',
+      rememberDevice: true,
+      deviceName: 'Kaan MacBook',
+      platform: 'macos',
+      osVersion: null,
+      appVersion: '0.1.0'
+    })
+
+    // #then
+    expect(api.syncSetup.setupNewAccount).toHaveBeenCalledWith({
+      input: {
+        email: 'test@example.com',
+        password: 'correct horse battery staple',
+        rememberDevice: true,
+        deviceName: 'Kaan MacBook',
+        platform: 'macos',
+        osVersion: null,
+        appVersion: '0.1.0'
+      }
+    })
+    expect(result).toEqual(response)
+  })
 })
