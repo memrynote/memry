@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-notes-add-status-option"
+description = "Enables the notes_add_status_option command without any pre-configured scope."
+commands.allow = ["notes_add_status_option"]
+
+[[permission]]
+identifier = "deny-notes-add-status-option"
+description = "Denies the notes_add_status_option command without any pre-configured scope."
+commands.deny = ["notes_add_status_option"]

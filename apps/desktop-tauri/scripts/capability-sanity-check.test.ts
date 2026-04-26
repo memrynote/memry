@@ -120,4 +120,23 @@ describe('checkCapabilities', () => {
     // #then
     expect(result.missing).toEqual(['sqlite'])
   })
+
+  it('reports app commands missing from the manifest or default grants', () => {
+    // #given
+    const conf: TauriConfig = {}
+    const cap: Capability = {
+      identifier: 'default',
+      permissions: ['core:default', 'allow-crdt-open-doc']
+    }
+
+    // #when
+    const result = checkCapabilities(conf, cap, {
+      registeredCommands: ['auth_status', 'crdt_open_doc'],
+      manifestCommands: ['crdt_open_doc']
+    })
+
+    // #then
+    expect(result.missingAppManifestCommands).toEqual(['auth_status'])
+    expect(result.missingAppPermissions).toEqual(['auth_status'])
+  })
 })

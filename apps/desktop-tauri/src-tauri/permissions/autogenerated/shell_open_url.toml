@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-shell-open-url"
+description = "Enables the shell_open_url command without any pre-configured scope."
+commands.allow = ["shell_open_url"]
+
+[[permission]]
+identifier = "deny-shell-open-url"
+description = "Denies the shell_open_url command without any pre-configured scope."
+commands.deny = ["shell_open_url"]
