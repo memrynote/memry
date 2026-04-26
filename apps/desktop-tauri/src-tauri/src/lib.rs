@@ -64,6 +64,7 @@ pub fn run() {
             commands::shell::shell_reveal_in_finder,
             commands::dialog::dialog_choose_folder,
             commands::dialog::dialog_choose_files,
+            commands::lifecycle::notify_flush_done,
         ])
         .setup(|app| {
             tracing_subscriber::fmt()
