@@ -102,6 +102,15 @@ export const commands = {
 	notesRenamePropertyOption: (input: unknown) => typedError<PropertySimpleSuccess, AppError>(__TAURI_INVOKE("notes_rename_property_option", { input })),
 	notesUpdateOptionColor: (input: unknown) => typedError<PropertySimpleSuccess, AppError>(__TAURI_INVOKE("notes_update_option_color", { input })),
 	notesDeletePropertyDefinition: (input: unknown) => typedError<PropertySimpleSuccess, AppError>(__TAURI_INVOKE("notes_delete_property_definition", { input })),
+	crdtOpenDoc: (noteId: string) => typedError<"Null" | ({ Bool: boolean }) & { Array?: never; Number?: never; Object?: never; String?: never } | ({ Number: ({ f64: number }) & { i64?: never; u64?: never } | ({ i64: number }) & { f64?: never; u64?: never } | ({ u64: number }) & { f64?: never; i64?: never } }) & { Array?: never; Bool?: never; Object?: never; String?: never } | ({ String: string }) & { Array?: never; Bool?: never; Number?: never; Object?: never } | ({ Array: Value[] }) & { Bool?: never; Number?: never; Object?: never; String?: never } | ({ Object: { [key in string]: Value } }) & { Array?: never; Bool?: never; Number?: never; String?: never }, AppError>(__TAURI_INVOKE("crdt_open_doc", { noteId })),
+	crdtCloseDoc: (noteId: string) => typedError<null, AppError>(__TAURI_INVOKE("crdt_close_doc", { noteId })),
+	crdtApplyUpdate: (input: CrdtApplyUpdateInput) => typedError<"Null" | ({ Bool: boolean }) & { Array?: never; Number?: never; Object?: never; String?: never } | ({ Number: ({ f64: number }) & { i64?: never; u64?: never } | ({ i64: number }) & { f64?: never; u64?: never } | ({ u64: number }) & { f64?: never; i64?: never } }) & { Array?: never; Bool?: never; Object?: never; String?: never } | ({ String: string }) & { Array?: never; Bool?: never; Number?: never; Object?: never } | ({ Array: Value[] }) & { Bool?: never; Number?: never; Object?: never; String?: never } | ({ Object: { [key in string]: Value } }) & { Array?: never; Bool?: never; Number?: never; String?: never }, AppError>(__TAURI_INVOKE("crdt_apply_update", { input })),
+	crdtApplyUpdateChunkStart: (input: CrdtChunkStartInput) => typedError<null, AppError>(__TAURI_INVOKE("crdt_apply_update_chunk_start", { input })),
+	crdtApplyUpdateChunkAppend: (input: CrdtChunkAppendInput) => typedError<null, AppError>(__TAURI_INVOKE("crdt_apply_update_chunk_append", { input })),
+	crdtApplyUpdateChunkFinish: (input: CrdtChunkFinishInput) => typedError<"Null" | ({ Bool: boolean }) & { Array?: never; Number?: never; Object?: never; String?: never } | ({ Number: ({ f64: number }) & { i64?: never; u64?: never } | ({ i64: number }) & { f64?: never; u64?: never } | ({ u64: number }) & { f64?: never; i64?: never } }) & { Array?: never; Bool?: never; Object?: never; String?: never } | ({ String: string }) & { Array?: never; Bool?: never; Number?: never; Object?: never } | ({ Array: Value[] }) & { Bool?: never; Number?: never; Object?: never; String?: never } | ({ Object: { [key in string]: Value } }) & { Array?: never; Bool?: never; Number?: never; String?: never }, AppError>(__TAURI_INVOKE("crdt_apply_update_chunk_finish", { input })),
+	crdtSyncStep1: (noteId: string, stateVector: number[]) => typedError<SyncStep1Result, AppError>(__TAURI_INVOKE("crdt_sync_step_1", { noteId, stateVector })),
+	crdtSyncStep2: (noteId: string, diff: number[]) => typedError<null, AppError>(__TAURI_INVOKE("crdt_sync_step_2", { noteId, diff })),
+	crdtGetOrInitDoc: (noteId: string) => typedError<"Null" | ({ Bool: boolean }) & { Array?: never; Number?: never; Object?: never; String?: never } | ({ Number: ({ f64: number }) & { i64?: never; u64?: never } | ({ i64: number }) & { f64?: never; u64?: never } | ({ u64: number }) & { f64?: never; i64?: never } }) & { Array?: never; Bool?: never; Object?: never; String?: never } | ({ String: string }) & { Array?: never; Bool?: never; Number?: never; Object?: never } | ({ Array: Value[] }) & { Bool?: never; Number?: never; Object?: never; String?: never } | ({ Object: { [key in string]: Value } }) & { Array?: never; Bool?: never; Number?: never; String?: never }, AppError>(__TAURI_INVOKE("crdt_get_or_init_doc", { noteId })),
 	authStatus: () => typedError<AuthStatus, AppError>(__TAURI_INVOKE("auth_status")),
 	authUnlock: (input: AuthUnlockInput) => typedError<AuthStatus, AppError>(__TAURI_INVOKE("auth_unlock", { input })),
 	authLock: () => typedError<null, AppError>(__TAURI_INVOKE("auth_lock")),
@@ -143,6 +152,8 @@ export const commands = {
 	secretsSetProviderKey: (input: SecretsSetProviderKeyInput) => typedError<ProviderKeyStatus, AppError>(__TAURI_INVOKE("secrets_set_provider_key", { input })),
 	secretsGetProviderKeyStatus: (input: SecretsGetProviderKeyStatusInput) => typedError<ProviderKeyStatus, AppError>(__TAURI_INVOKE("secrets_get_provider_key_status", { input })),
 	secretsDeleteProviderKey: (input: SecretsDeleteProviderKeyInput) => typedError<null, AppError>(__TAURI_INVOKE("secrets_delete_provider_key", { input })),
+	crdtGetSnapshot: (noteId: string) => typedError<Uint8Array, AppError>(__TAURI_INVOKE("crdt_get_snapshot", { noteId })),
+	crdtGetStateVector: (noteId: string) => typedError<Uint8Array, AppError>(__TAURI_INVOKE("crdt_get_state_vector", { noteId })),
 };
 
 /* Types */
@@ -302,6 +313,30 @@ export type CalendarSource = {
 
 export type ConfirmRecoveryPhraseInput = {
 	confirmed: boolean,
+};
+
+export type CrdtApplyUpdateInput = {
+	noteId: string,
+	update: number[],
+	origin: number | null,
+};
+
+export type CrdtChunkAppendInput = {
+	transferId: string,
+	offset: number,
+	bytes: number[],
+};
+
+export type CrdtChunkFinishInput = {
+	noteId: string,
+	transferId: string,
+	origin: number | null,
+};
+
+export type CrdtChunkStartInput = {
+	noteId: string,
+	transferId: string,
+	totalBytes: number,
 };
 
 export type CreatePropertyDefinitionInput = {
@@ -925,6 +960,11 @@ export type SyncState = {
 	key: string,
 	value: string,
 	updatedAt: number,
+};
+
+export type SyncStep1Result = {
+	diff: number[],
+	stateVector: number[],
 };
 
 export type TagDefinition = {

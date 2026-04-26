@@ -75,6 +75,16 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             commands::properties::notes_rename_property_option,
             commands::properties::notes_update_option_color,
             commands::properties::notes_delete_property_definition,
+            // M5: CRDT provider bridge
+            commands::crdt::crdt_open_doc,
+            commands::crdt::crdt_close_doc,
+            commands::crdt::crdt_apply_update,
+            commands::crdt::crdt_apply_update_chunk_start,
+            commands::crdt::crdt_apply_update_chunk_append,
+            commands::crdt::crdt_apply_update_chunk_finish,
+            commands::crdt::crdt_sync_step_1,
+            commands::crdt::crdt_sync_step_2,
+            commands::crdt::crdt_get_or_init_doc,
             // M4: auth + sync_auth + sync_setup
             commands::auth::auth_status,
             commands::auth::auth_unlock,
@@ -204,6 +214,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         // M5 properties
         .typ::<commands::properties::CreatePropertyDefinitionInput>()
         .typ::<commands::properties::PropertySimpleSuccess>()
+        // M5 CRDT
+        .typ::<commands::crdt::CrdtApplyUpdateInput>()
+        .typ::<commands::crdt::CrdtChunkStartInput>()
+        .typ::<commands::crdt::CrdtChunkAppendInput>()
+        .typ::<commands::crdt::CrdtChunkFinishInput>()
+        .typ::<commands::crdt::SyncStep1Result>()
         // Domain DB structs (registered for stable export across migrations)
         .typ::<db::bookmarks::Bookmark>()
         .typ::<db::calendar_bindings::CalendarBinding>()
@@ -229,6 +245,20 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .typ::<db::tasks::Task>();
 
     builder.export(Typescript::default(), "../src/generated/bindings.ts")?;
+    append_binary_crdt_bindings("../src/generated/bindings.ts")?;
 
+    Ok(())
+}
+
+fn append_binary_crdt_bindings(path: &str) -> Result<(), Box<dyn std::error::Error>> {
+    let contents = std::fs::read_to_string(path)?;
+    let marker = "\n};\n\n/* Types */";
+    let insertion = "\tcrdtGetSnapshot: (noteId: string) => typedError<Uint8Array, AppError>(__TAURI_INVOKE(\"crdt_get_snapshot\", { noteId })),\n\tcrdtGetStateVector: (noteId: string) => typedError<Uint8Array, AppError>(__TAURI_INVOKE(\"crdt_get_state_vector\", { noteId })),";
+    let updated = contents
+        .replacen(marker, &format!("\n{insertion}{marker}"), 1);
+    if updated == contents {
+        return Err("could not find commands object marker in bindings.ts".into());
+    }
+    std::fs::write(path, updated)?;
     Ok(())
 }
