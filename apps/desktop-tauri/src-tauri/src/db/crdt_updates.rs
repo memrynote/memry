@@ -36,7 +36,13 @@ pub fn append(conn: &Connection, note_id: &str, bytes: &[u8], origin: i64) -> Ap
 
 pub fn max_seq(conn: &Connection, note_id: &str) -> AppResult<i64> {
     let seq = conn.query_row(
-        "SELECT coalesce(max(seq), 0) FROM crdt_updates WHERE note_id = ?1",
+        "SELECT max(seq) FROM (
+            SELECT coalesce(max(seq), 0) AS seq FROM crdt_updates WHERE note_id = ?1
+            UNION ALL
+            SELECT coalesce(max(replaced_through_seq), 0) AS seq
+              FROM crdt_snapshots
+             WHERE note_id = ?1
+         )",
         [note_id],
         |row| row.get(0),
     )?;

@@ -175,18 +175,18 @@ pub fn list_active(conn: &Connection) -> AppResult<Vec<NoteMetadata>> {
 }
 
 pub fn list_in_folder(conn: &Connection, folder_prefix: &str) -> AppResult<Vec<NoteMetadata>> {
-    let pattern = if folder_prefix.is_empty() {
-        "%".to_string()
+    let prefix = if folder_prefix.is_empty() {
+        String::new()
     } else {
-        format!("{folder_prefix}/%")
+        format!("{folder_prefix}/")
     };
     let mut stmt = conn.prepare(&format!(
         "SELECT {SELECT_COLS} FROM note_metadata
-         WHERE path LIKE ?1
+         WHERE (?1 = '' OR substr(path, 1, length(?1)) = ?1)
            AND coalesce(json_extract(clock, '$.deleted_at'), '') = ''
          ORDER BY modified_at DESC, id ASC"
     ))?;
-    let rows = stmt.query_map([pattern], map_row)?;
+    let rows = stmt.query_map([prefix], map_row)?;
     collect_rows(rows)
 }
 
