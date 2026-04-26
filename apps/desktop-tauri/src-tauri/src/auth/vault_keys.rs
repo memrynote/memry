@@ -115,6 +115,32 @@ pub async fn unlock_with_password(
     Ok(state.auth.status())
 }
 
+/// Re-emits the unlocked session with refreshed device/email metadata.
+/// Used by `account::setup_new_account_with_base` once a server device
+/// id is known; the runtime is already `Unlocked` from `setup_local_vault_key`,
+/// so we re-derive the vault key in-process (no Argon2id) instead of
+/// rebuilding the master key.
+pub fn update_session_metadata(
+    state: &AppState,
+    device_id: Option<String>,
+    email: Option<String>,
+) -> AppResult<()> {
+    let master_key = state
+        .auth
+        .master_key_clone()
+        .ok_or(AppError::VaultLocked)?;
+    let vault_key = derive_key(&master_key, VAULT_KEY_CONTEXT, MASTER_KEY_LENGTH)?;
+    let prior = state.auth.status();
+    state.auth.finish_unlock(UnlockedSession {
+        device_id,
+        email,
+        has_biometric: prior.has_biometric,
+        remember_device: prior.remember_device,
+        master_key,
+        vault_key,
+    })
+}
+
 pub fn try_unlock_from_keychain(state: &AppState) -> AppResult<Option<AuthStatus>> {
     let remember = settings::get_bool(&state.db, SETTING_REMEMBER_DEVICE)?.unwrap_or(false);
     if !remember {
