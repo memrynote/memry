@@ -153,6 +153,8 @@ fn full_migration_produces_expected_table_set() {
         "calendar_bindings",
         // 0029
         "crdt_updates",
+        // 0030
+        "crdt_snapshots",
     ];
     for name in required {
         assert!(
@@ -177,6 +179,21 @@ fn migration_0029_crdt_updates_creates_table() {
     let exists: i64 = conn
         .query_row(
             "SELECT count(*) FROM sqlite_master WHERE type='table' AND name='crdt_updates'",
+            [],
+            |row| row.get(0),
+        )
+        .unwrap();
+    assert_eq!(exists, 1);
+}
+
+#[test]
+fn migration_0030_crdt_snapshots_creates_table() {
+    let mut conn = Connection::open_in_memory().unwrap();
+    migrations::apply_pending(&mut conn).unwrap();
+
+    let exists: i64 = conn
+        .query_row(
+            "SELECT count(*) FROM sqlite_master WHERE type='table' AND name='crdt_snapshots'",
             [],
             |row| row.get(0),
         )

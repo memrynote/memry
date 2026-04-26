@@ -4,7 +4,7 @@ use std::collections::HashSet;
 
 pub static EMBEDDED: &[(&str, &str)] = &MIGRATIONS;
 
-static MIGRATIONS: [(&str, &str); 30] = [
+static MIGRATIONS: [(&str, &str); 31] = [
     (
         "0000_thankful_luke_cage.sql",
         include_str!("../../migrations/0000_thankful_luke_cage.sql"),
@@ -124,6 +124,10 @@ static MIGRATIONS: [(&str, &str); 30] = [
     (
         "0029_crdt_updates.sql",
         include_str!("../../migrations/0029_crdt_updates.sql"),
+    ),
+    (
+        "0030_crdt_snapshots.sql",
+        include_str!("../../migrations/0030_crdt_snapshots.sql"),
     ),
 ];
 
