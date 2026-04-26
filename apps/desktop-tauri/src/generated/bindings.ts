@@ -20,7 +20,7 @@ export const commands = {
 };
 
 /* Types */
-export type AppError = { kind: "Database"; message: string } | { kind: "Crypto"; message: string } | { kind: "VaultLocked" } | { kind: "InvalidPassword" } | { kind: "NotFound"; message: string } | { kind: "Network"; message: string } | { kind: "Conflict"; message: string } | { kind: "Validation"; message: string } | { kind: "Vault"; message: string } | { kind: "PathEscape"; message: string } | { kind: "Io"; message: string } | { kind: "Internal"; message: string };
+export type AppError = { kind: "Database"; message: string } | { kind: "Crypto"; message: string } | { kind: "VaultLocked" } | { kind: "InvalidPassword" } | { kind: "NotFound"; message: string } | { kind: "Network"; message: string } | { kind: "Conflict"; message: string } | { kind: "Validation"; message: string } | { kind: "Vault"; message: string } | { kind: "PathEscape"; message: string } | { kind: "Io"; message: string } | { kind: "Keychain"; message: string } | { kind: "Auth"; message: string } | { kind: "RateLimited"; message: number | null } | { kind: "Internal"; message: string };
 
 export type Bookmark = {
 	id: string,
