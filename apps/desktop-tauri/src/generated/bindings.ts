@@ -96,6 +96,10 @@ export const commands = {
 	notesGetPositions: (args: string[]) => typedError<PositionsResponse, AppError>(__TAURI_INVOKE("notes_get_positions", { args })),
 	notesGetAllPositions: () => typedError<PositionsResponse, AppError>(__TAURI_INVOKE("notes_get_all_positions")),
 	notesReorder: (input: ReorderInput) => typedError<FolderSimpleSuccess, AppError>(__TAURI_INVOKE("notes_reorder", { input })),
+	notesGetPropertyDefinitions: () => typedError<PropertyDefinitionRow[], AppError>(__TAURI_INVOKE("notes_get_property_definitions")),
+	notesCreatePropertyDefinition: (input: CreatePropertyDefinitionInput) => typedError<PropertyDefinitionRow, AppError>(__TAURI_INVOKE("notes_create_property_definition", { input })),
+	notesUpdatePropertyDefinition: (input: unknown) => typedError<PropertyDefinitionRow, AppError>(__TAURI_INVOKE("notes_update_property_definition", { input })),
+	notesEnsurePropertyDefinition: (input: unknown) => typedError<PropertyDefinitionRow, AppError>(__TAURI_INVOKE("notes_ensure_property_definition", { input })),
 	authStatus: () => typedError<AuthStatus, AppError>(__TAURI_INVOKE("auth_status")),
 	authUnlock: (input: AuthUnlockInput) => typedError<AuthStatus, AppError>(__TAURI_INVOKE("auth_unlock", { input })),
 	authLock: () => typedError<null, AppError>(__TAURI_INVOKE("auth_lock")),
@@ -296,6 +300,14 @@ export type CalendarSource = {
 
 export type ConfirmRecoveryPhraseInput = {
 	confirmed: boolean,
+};
+
+export type CreatePropertyDefinitionInput = {
+	name: string,
+	type: string,
+	options: unknown | null,
+	defaultValue: string | null,
+	color: string | null,
 };
 
 export type CryptoDecryptItemInput = {
@@ -643,6 +655,15 @@ export type Project = {
 };
 
 export type PropertyDefinition = {
+	name: string,
+	type: string,
+	options: string | null,
+	defaultValue: string | null,
+	color: string | null,
+	createdAt: string,
+};
+
+export type PropertyDefinitionRow = {
 	name: string,
 	type: string,
 	options: string | null,
