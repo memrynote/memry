@@ -44,7 +44,8 @@ fn fresh_state() -> AppState {
     let vault = Arc::new(VaultRuntime::boot().expect("vault runtime must boot"));
     let keychain: Arc<dyn KeychainStore> = Arc::new(MemoryKeychain::new());
     let auth = Arc::new(AuthRuntime::new(keychain));
-    AppState::new(db, vault, auth)
+    let linking = Arc::new(PendingLinkingRegistry::new());
+    AppState::new(db, vault, auth, linking)
 }
 
 // ---------------------------------------------------------------------
