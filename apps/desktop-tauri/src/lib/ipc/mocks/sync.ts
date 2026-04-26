@@ -70,6 +70,8 @@ export const syncRoutes: MockRouteMap = {
 
   // Device management (sync_devices_*) — consumed by settings sync tab.
   sync_devices_get_devices: async () => ({
+    // `createdAt` is a unix-epoch seconds number to mirror the D1
+    // `devices.created_at INTEGER` column the server returns.
     devices: [
       {
         id: 'device-this',
@@ -81,7 +83,7 @@ export const syncRoutes: MockRouteMap = {
         linkedAt: mockTimestamp(30),
         lastActiveAt: new Date().toISOString(),
         lastSyncAt: Date.now(),
-        createdAt: new Date(mockTimestamp(30)).toISOString()
+        createdAt: Math.floor(mockTimestamp(30) / 1000)
       },
       {
         id: 'device-phone',
@@ -93,7 +95,7 @@ export const syncRoutes: MockRouteMap = {
         linkedAt: mockTimestamp(14),
         lastActiveAt: new Date(mockTimestamp(1)).toISOString(),
         lastSyncAt: mockTimestamp(1),
-        createdAt: new Date(mockTimestamp(14)).toISOString()
+        createdAt: Math.floor(mockTimestamp(14) / 1000)
       }
     ],
     email: 'mock@memry.local'
@@ -134,15 +136,22 @@ export const syncRoutes: MockRouteMap = {
   sync_auth_logout: async () => ({ success: true, error: null }),
 
   // Linking (sync_linking_*) — QR + recovery flows.
+  // Shapes mirror the rust LinkingQrView / LinkingScanView / LinkingSasView /
+  // LinkingMutationResult / LinkingCompleteView contracts (see
+  // src-tauri/src/commands/linking.rs).
   sync_linking_generate_linking_qr: async () => ({
-    qrPayload: 'memry://link?session=mock-linking-session',
     sessionId: 'mock-linking-session',
-    expiresAt: mockTimestamp(-1) + 300
+    qrPayload: JSON.stringify({
+      sessionId: 'mock-linking-session',
+      linkingSecret: 'mock-linking-secret',
+      ephemeralPublicKey: 'mock-ephemeral-pubkey'
+    }),
+    // Server returns unix-epoch seconds.
+    expiresAt: Math.floor(Date.now() / 1000) + 300
   }),
   sync_linking_link_via_qr: async () => ({
-    success: true,
     sessionId: 'mock-linking-session',
-    sasCode: '123-456'
+    sasCode: '123456'
   }),
   sync_linking_complete_linking_qr: async () => ({
     success: true,
@@ -155,10 +164,7 @@ export const syncRoutes: MockRouteMap = {
     deviceId: 'device-this'
   }),
   sync_linking_approve_linking: async () => ({ success: true, error: null }),
-  sync_linking_get_linking_sas: async () => ({
-    sasCode: '123-456',
-    verificationCode: '123-456'
-  }),
+  sync_linking_get_linking_sas: async () => ({ sasCode: '123456' }),
 
   // Account (account_*) — local profile + recovery key reveal.
   account_get_info: async () => ({
