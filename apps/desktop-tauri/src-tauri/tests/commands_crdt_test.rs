@@ -1,10 +1,13 @@
 use memry_desktop_tauri_lib::commands::crdt::{
-    crdt_apply_update_inner, crdt_close_doc_inner, crdt_open_doc_inner,
+    crdt_apply_update_chunk_append_inner, crdt_apply_update_chunk_finish_inner,
+    crdt_apply_update_chunk_start_inner, crdt_apply_update_inner, crdt_close_doc_inner,
+    crdt_open_doc_inner, MAX_INLINE_UPDATE_BYTES,
 };
 use memry_desktop_tauri_lib::crdt::{
     encode_diff_since_v1, encode_snapshot_v1, encode_state_vector_v1, CrdtRuntime,
 };
 use memry_desktop_tauri_lib::db::crdt_updates;
+use memry_desktop_tauri_lib::error::AppError;
 use memry_desktop_tauri_lib::test_helpers::{open_in_memory_with_migrations, test_vault_runtime};
 use std::sync::Arc;
 use yrs::{GetString, ReadTxn, Text, WriteTxn};
@@ -71,4 +74,61 @@ async fn apply_update_persists_seq_order_origin_and_doc_state() {
     let target_doc = crdt.docs().get("n1").await.unwrap();
     let body = target_doc.with_read(|txn| txn.get_text("body").unwrap().get_string(txn));
     assert_eq!(body, "alpha beta");
+}
+
+#[tokio::test]
+async fn oversized_update_uses_chunked_transport_and_persists_once() {
+    let conn = open_in_memory_with_migrations();
+    let crdt = Arc::new(CrdtRuntime::new());
+    let source = Arc::new(CrdtRuntime::new());
+    let source_doc = source.docs().get_or_init("large").await;
+    let body = "x".repeat(MAX_INLINE_UPDATE_BYTES + 12_000);
+    source_doc.with_write(|txn| {
+        txn.get_or_insert_text("body").insert(txn, 0, &body);
+    });
+    let update = encode_snapshot_v1(&source_doc).unwrap();
+    assert!(update.len() > MAX_INLINE_UPDATE_BYTES);
+
+    let err = crdt_apply_update_inner(&conn, crdt.clone(), "large", &update, 303)
+        .await
+        .unwrap_err();
+    assert!(matches!(err, AppError::Validation(message) if message.contains("chunked")));
+
+    crdt_apply_update_chunk_start_inner(
+        crdt.clone(),
+        "large",
+        "transfer-1",
+        update.len(),
+    )
+    .await
+    .unwrap();
+    for (offset, chunk) in update.chunks(4096).enumerate() {
+        crdt_apply_update_chunk_append_inner(
+            crdt.clone(),
+            "transfer-1",
+            offset * 4096,
+            chunk.to_vec(),
+        )
+        .await
+        .unwrap();
+    }
+    let seq = crdt_apply_update_chunk_finish_inner(
+        &conn,
+        crdt.clone(),
+        "large",
+        "transfer-1",
+        303,
+    )
+    .await
+    .unwrap();
+
+    assert_eq!(seq, 1);
+    let rows = crdt_updates::list_for_note(&conn, "large").unwrap();
+    assert_eq!(rows.len(), 1);
+    assert_eq!(rows[0].origin, 303);
+    assert_eq!(rows[0].update_bytes, update);
+
+    let target_doc = crdt.docs().get("large").await.unwrap();
+    let target_body = target_doc.with_read(|txn| txn.get_text("body").unwrap().get_string(txn));
+    assert_eq!(target_body, body);
 }

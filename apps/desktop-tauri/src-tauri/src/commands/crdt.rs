@@ -41,6 +41,30 @@ pub struct CrdtApplyUpdateInput {
     pub origin: Option<u32>,
 }
 
+#[derive(Debug, Clone, serde::Deserialize, specta::Type)]
+#[serde(rename_all = "camelCase")]
+pub struct CrdtChunkStartInput {
+    pub note_id: String,
+    pub transfer_id: String,
+    pub total_bytes: usize,
+}
+
+#[derive(Debug, Clone, serde::Deserialize, specta::Type)]
+#[serde(rename_all = "camelCase")]
+pub struct CrdtChunkAppendInput {
+    pub transfer_id: String,
+    pub offset: usize,
+    pub bytes: Vec<u8>,
+}
+
+#[derive(Debug, Clone, serde::Deserialize, specta::Type)]
+#[serde(rename_all = "camelCase")]
+pub struct CrdtChunkFinishInput {
+    pub note_id: String,
+    pub transfer_id: String,
+    pub origin: Option<u32>,
+}
+
 pub async fn crdt_apply_update_inner(
     conn: &rusqlite::Connection,
     crdt: Arc<CrdtRuntime>,
@@ -51,6 +75,43 @@ pub async fn crdt_apply_update_inner(
     let handle =
         apply_update_to_runtime(crdt, note_id, update_bytes, incoming_origin, true).await?;
     persist_applied_update(conn, &handle, note_id, update_bytes, incoming_origin)
+}
+
+pub async fn crdt_apply_update_chunk_start_inner(
+    crdt: Arc<CrdtRuntime>,
+    note_id: &str,
+    transfer_id: &str,
+    total_bytes: usize,
+) -> AppResult<()> {
+    if total_bytes > crate::db::crdt_updates::MAX_BLOB_BYTES {
+        return Err(AppError::Validation(format!(
+            "crdt update {} bytes exceeds cap {}",
+            total_bytes,
+            crate::db::crdt_updates::MAX_BLOB_BYTES
+        )));
+    }
+    crdt.start_update_chunk(note_id, transfer_id, total_bytes).await
+}
+
+pub async fn crdt_apply_update_chunk_append_inner(
+    crdt: Arc<CrdtRuntime>,
+    transfer_id: &str,
+    offset: usize,
+    bytes: Vec<u8>,
+) -> AppResult<()> {
+    crdt.append_update_chunk(transfer_id, offset, bytes).await
+}
+
+pub async fn crdt_apply_update_chunk_finish_inner(
+    conn: &rusqlite::Connection,
+    crdt: Arc<CrdtRuntime>,
+    note_id: &str,
+    transfer_id: &str,
+    incoming_origin: u32,
+) -> AppResult<i64> {
+    let update = crdt.finish_update_chunk(note_id, transfer_id).await?;
+    let handle = apply_update_to_runtime(crdt, note_id, &update, incoming_origin, false).await?;
+    persist_applied_update(conn, &handle, note_id, &update, incoming_origin)
 }
 
 #[tauri::command]
@@ -102,6 +163,71 @@ pub async fn crdt_apply_update(
     let payload = CrdtUpdateEvent {
         note_id: input.note_id.clone(),
         update: input.update,
+        origin: incoming_origin,
+    };
+    let _ = app.emit(CRDT_UPDATE_EVENT, payload);
+
+    Ok(serde_json::json!({ "seq": seq }))
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn crdt_apply_update_chunk_start(
+    state: State<'_, AppState>,
+    input: CrdtChunkStartInput,
+) -> AppResult<()> {
+    crdt_apply_update_chunk_start_inner(
+        state.crdt.clone(),
+        &input.note_id,
+        &input.transfer_id,
+        input.total_bytes,
+    )
+    .await
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn crdt_apply_update_chunk_append(
+    state: State<'_, AppState>,
+    input: CrdtChunkAppendInput,
+) -> AppResult<()> {
+    crdt_apply_update_chunk_append_inner(
+        state.crdt.clone(),
+        &input.transfer_id,
+        input.offset,
+        input.bytes,
+    )
+    .await
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn crdt_apply_update_chunk_finish(
+    state: State<'_, AppState>,
+    app: AppHandle,
+    input: CrdtChunkFinishInput,
+) -> AppResult<serde_json::Value> {
+    let incoming_origin = input.origin.unwrap_or_else(origin_tag);
+    let update = state
+        .crdt
+        .finish_update_chunk(&input.note_id, &input.transfer_id)
+        .await?;
+    let handle = apply_update_to_runtime(
+        state.crdt.clone(),
+        &input.note_id,
+        &update,
+        incoming_origin,
+        false,
+    )
+    .await?;
+    let seq = {
+        let conn = state.db.conn()?;
+        persist_applied_update(&conn, &handle, &input.note_id, &update, incoming_origin)?
+    };
+
+    let payload = CrdtUpdateEvent {
+        note_id: input.note_id.clone(),
+        update,
         origin: incoming_origin,
     };
     let _ = app.emit(CRDT_UPDATE_EVENT, payload);
