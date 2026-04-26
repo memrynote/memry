@@ -1,7 +1,7 @@
 use crate::db::note_metadata::NoteMetadata;
 use crate::error::AppResult;
 use crate::vault::notes_io;
-use rusqlite::{params, Connection};
+use rusqlite::{params, Connection, ToSql};
 use serde::{Deserialize, Serialize};
 use std::path::Path;
 
@@ -92,12 +92,13 @@ pub fn list_active(
     sort_by: &str,
 ) -> AppResult<Vec<NotesCacheRow>> {
     let sort_order = if sort_by == "title" { "asc" } else { "desc" };
-    list_active_filtered(conn, None, limit, offset, sort_by, sort_order)
+    list_active_filtered(conn, None, None, limit, offset, sort_by, sort_order)
 }
 
 pub fn list_active_filtered(
     conn: &Connection,
     folder: Option<&str>,
+    tags: Option<&[String]>,
     limit: i64,
     offset: i64,
     sort_by: &str,
@@ -105,33 +106,99 @@ pub fn list_active_filtered(
 ) -> AppResult<Vec<NotesCacheRow>> {
     let folder_prefix = folder_prefix(folder);
     let order_by = order_by(sort_by, sort_order);
-    let mut stmt = conn.prepare(&format!(
+    let tag_filter = tag_filter(tags);
+    let sql = format!(
         "SELECT {SELECT_COLS_QUALIFIED}
            FROM notes_cache n
            LEFT JOIN note_positions p ON p.path = n.path
-          WHERE (?1 = '' OR substr(n.path, 1, length(?1)) = ?1)
+          WHERE (? = '' OR substr(n.path, 1, length(?)) = ?){tag_clause}
           ORDER BY {order_by}
-          LIMIT ?2 OFFSET ?3"
-    ))?;
-    let rows = stmt.query_map(params![folder_prefix, limit, offset], map_row)?;
+          LIMIT ? OFFSET ?",
+        tag_clause = tag_filter.where_clause()
+    );
+
+    let mut params_vec: Vec<Box<dyn ToSql>> = vec![
+        Box::new(folder_prefix.clone()),
+        Box::new(folder_prefix.clone()),
+        Box::new(folder_prefix),
+    ];
+    for tag in tag_filter.params() {
+        params_vec.push(Box::new(tag.clone()));
+    }
+    params_vec.push(Box::new(limit));
+    params_vec.push(Box::new(offset));
+
+    let mut stmt = conn.prepare(&sql)?;
+    let rows = stmt.query_map(rusqlite::params_from_iter(params_vec.iter()), map_row)?;
     collect_rows(rows)
 }
 
 pub fn count_active(conn: &Connection) -> AppResult<i64> {
-    count_active_filtered(conn, None)
+    count_active_filtered(conn, None, None)
 }
 
-pub fn count_active_filtered(conn: &Connection, folder: Option<&str>) -> AppResult<i64> {
+pub fn count_active_filtered(
+    conn: &Connection,
+    folder: Option<&str>,
+    tags: Option<&[String]>,
+) -> AppResult<i64> {
     let folder_prefix = folder_prefix(folder);
-    let count = conn.query_row(
+    let tag_filter = tag_filter(tags);
+    let sql = format!(
         "SELECT count(*)
            FROM notes_cache n
-          WHERE (?1 = '' OR substr(n.path, 1, length(?1)) = ?1)",
-        [folder_prefix],
+          WHERE (? = '' OR substr(n.path, 1, length(?)) = ?){tag_clause}",
+        tag_clause = tag_filter.where_clause()
+    );
+
+    let mut params_vec: Vec<Box<dyn ToSql>> = vec![
+        Box::new(folder_prefix.clone()),
+        Box::new(folder_prefix.clone()),
+        Box::new(folder_prefix),
+    ];
+    for tag in tag_filter.params() {
+        params_vec.push(Box::new(tag.clone()));
+    }
+    let count: i64 = conn.query_row(
+        &sql,
+        rusqlite::params_from_iter(params_vec.iter()),
         |row| row.get(0),
     )?;
     Ok(count)
 }
+
+/// SQL fragment + bound params for the tag-filter portion of the WHERE clause.
+struct TagFilter<'a> {
+    tags: &'a [String],
+}
+
+impl<'a> TagFilter<'a> {
+    fn where_clause(&self) -> String {
+        if self.tags.is_empty() {
+            return String::new();
+        }
+        // Each tag adds `AND EXISTS(SELECT 1 FROM json_each(n.tags_json) WHERE value = ?)`
+        // so the row must contain every requested tag (set semantics on the array).
+        let mut out = String::new();
+        for _ in self.tags {
+            out.push_str(
+                " AND EXISTS (SELECT 1 FROM json_each(n.tags_json) WHERE value = ?)",
+            );
+        }
+        out
+    }
+
+    fn params(&self) -> &'a [String] {
+        self.tags
+    }
+}
+
+fn tag_filter(tags: Option<&[String]>) -> TagFilter<'_> {
+    TagFilter {
+        tags: tags.unwrap_or(&[]),
+    }
+}
+
 
 pub fn delete(conn: &Connection, id: &str) -> AppResult<()> {
     conn.execute("DELETE FROM notes_cache WHERE id = ?1", [id])?;

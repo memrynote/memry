@@ -387,16 +387,35 @@ pub fn notes_exists_inner(conn: &Connection, title_or_path: &str) -> AppResult<b
     Ok(count > 0)
 }
 
-pub fn notes_set_local_only_inner(
+pub async fn notes_set_local_only_inner(
+    vault: &VaultRuntime,
     conn: &Connection,
     id: &str,
     local_only: bool,
 ) -> AppResult<NoteSimpleSuccess> {
-    if crate::db::note_metadata::get_by_id(conn, id)?.is_none() {
-        return Err(AppError::NotFound(format!("note {id}")));
-    }
+    let mut row = crate::db::note_metadata::get_by_id(conn, id)?
+        .ok_or_else(|| AppError::NotFound(format!("note {id}")))?;
+    let root = vault.require_current()?;
+    let read = notes_io::read_note_from_disk(&root, &row.path)
+        .await?
+        .ok_or_else(|| AppError::NotFound(format!("note file {}", row.path)))?;
+    let mut frontmatter = read.parsed.frontmatter;
+    let body = read.parsed.content;
+
+    frontmatter.local_only = Some(local_only);
     let modified_at = now_iso();
-    crate::db::note_metadata::set_local_only(conn, id, local_only, &modified_at)?;
+    frontmatter.modified = modified_at.clone();
+    notes_io::write_note_to_disk(&root, &row.path, &frontmatter, &body).await?;
+
+    row.local_only = local_only;
+    row.sync_policy = if local_only {
+        "local-only".into()
+    } else {
+        "sync".into()
+    };
+    row.modified_at = modified_at.clone();
+    let upsert_row = metadata_to_upsert_row(&row);
+    crate::db::note_metadata::upsert(conn, &upsert_row)?;
     crate::db::notes_cache::set_local_only(conn, id, local_only)?;
     Ok(NoteSimpleSuccess { success: true })
 }
@@ -567,11 +586,12 @@ pub fn notes_list_inner(
     let sort_by = opts.sort_by.as_deref().unwrap_or("modified");
     let sort_order = opts.sort_order.as_deref().unwrap_or("desc");
     let folder = opts.folder.as_deref();
+    let tag_filter: Option<&[String]> = opts.tags.as_deref();
 
     let rows = crate::db::notes_cache::list_active_filtered(
-        conn, folder, limit, offset, sort_by, sort_order,
+        conn, folder, tag_filter, limit, offset, sort_by, sort_order,
     )?;
-    let total = crate::db::notes_cache::count_active_filtered(conn, folder)?;
+    let total = crate::db::notes_cache::count_active_filtered(conn, folder, tag_filter)?;
     let has_more = offset + (rows.len() as i64) < total;
 
     Ok(NoteListResponse {
@@ -802,9 +822,12 @@ pub fn notes_list_by_folder(
 pub async fn notes_rename(
     state: State<'_, AppState>,
     app: AppHandle,
-    id: String,
-    new_title: String,
+    args: Vec<String>,
 ) -> AppResult<NoteUpdateResponse> {
+    // Renderer calls `notesService.rename(id, newTitle)` which the forwarder
+    // packs as `{ args: [id, newTitle] }`. Mirror the positional shape used
+    // by `notes_get` / `notes_delete` so deserialization succeeds.
+    let (id, new_title) = two_string_args(args, "notes_rename", "id", "new_title")?;
     let trimmed = new_title.trim();
     if trimmed.is_empty() {
         return Err(AppError::Validation("title is empty".into()));
@@ -862,9 +885,10 @@ pub async fn notes_rename(
 pub async fn notes_move(
     state: State<'_, AppState>,
     app: AppHandle,
-    id: String,
-    new_folder: String,
+    args: Vec<String>,
 ) -> AppResult<NoteUpdateResponse> {
+    // Renderer calls `notesService.move(id, newFolder)` → `{ args: [id, newFolder] }`.
+    let (id, new_folder) = two_string_args(args, "notes_move", "id", "new_folder")?;
     let folder = new_folder.trim().trim_matches('/');
     let row = {
         let conn = state.db.conn()?;
@@ -920,13 +944,65 @@ pub fn notes_exists(state: State<'_, AppState>, args: Vec<String>) -> AppResult<
 
 #[tauri::command]
 #[specta::specta]
-pub fn notes_set_local_only(
+pub async fn notes_set_local_only(
     state: State<'_, AppState>,
-    id: String,
-    local_only: bool,
+    args: Vec<JsonUnknown>,
 ) -> AppResult<NoteSimpleSuccess> {
+    // Renderer calls `notesService.setLocalOnly(id, value)` → `{ args: [id, true] }`.
+    // Mixed-type positional args (string + bool) so we use the json-value
+    // envelope and pluck both fields manually.
+    let (id, local_only) = match args.as_slice() {
+        [first, second] => {
+            let id = first
+                .as_str()
+                .ok_or_else(|| AppError::Validation("notes_set_local_only id must be string".into()))?
+                .to_string();
+            let local_only = second.as_bool().ok_or_else(|| {
+                AppError::Validation("notes_set_local_only local_only must be boolean".into())
+            })?;
+            (id, local_only)
+        }
+        _ => {
+            return Err(AppError::Validation(
+                "notes_set_local_only expects exactly two args (id, local_only)".into(),
+            ))
+        }
+    };
+    // Snapshot the row, then drop the guard before any disk I/O — the
+    // MutexGuard is !Send so it cannot live across `.await` when Tauri runs
+    // commands on the multi-threaded runtime. Mirrors `notes_update`.
+    let row = {
+        let conn = state.db.conn()?;
+        crate::db::note_metadata::get_by_id(&conn, &id)?
+    }
+    .ok_or_else(|| AppError::NotFound(format!("note {id}")))?;
+
+    let root = state.vault.require_current()?;
+    let read = notes_io::read_note_from_disk(&root, &row.path)
+        .await?
+        .ok_or_else(|| AppError::NotFound(format!("note file {}", row.path)))?;
+    let mut frontmatter = read.parsed.frontmatter;
+    let body = read.parsed.content;
+
+    frontmatter.local_only = Some(local_only);
+    let modified_at = now_iso();
+    frontmatter.modified = modified_at.clone();
+    notes_io::write_note_to_disk(&root, &row.path, &frontmatter, &body).await?;
+
+    let mut updated = row;
+    updated.local_only = local_only;
+    updated.sync_policy = if local_only {
+        "local-only".into()
+    } else {
+        "sync".into()
+    };
+    updated.modified_at = modified_at;
+
     let conn = state.db.conn()?;
-    notes_set_local_only_inner(&conn, &id, local_only)
+    crate::db::note_metadata::upsert(&conn, &metadata_to_upsert_row(&updated))?;
+    crate::db::notes_cache::set_local_only(&conn, &id, local_only)?;
+
+    Ok(NoteSimpleSuccess { success: true })
 }
 
 #[tauri::command]
@@ -1047,6 +1123,20 @@ fn single_string_arg(args: Vec<String>, name: &str) -> AppResult<String> {
     }
 }
 
+fn two_string_args(
+    args: Vec<String>,
+    command: &str,
+    first: &str,
+    second: &str,
+) -> AppResult<(String, String)> {
+    match args.as_slice() {
+        [a, b] => Ok((a.clone(), b.clone())),
+        _ => Err(AppError::Validation(format!(
+            "{command} expects exactly two arguments ({first}, {second})"
+        ))),
+    }
+}
+
 fn ensure_db_path_available(conn: &Connection, relative: &str) -> AppResult<()> {
     if crate::db::note_metadata::get_by_path(conn, relative)?.is_some() {
         return Err(AppError::Conflict(format!(
@@ -1129,6 +1219,8 @@ async fn apply_update_to_vault(
         .ok_or_else(|| AppError::NotFound(format!("note file {}", row.path)))?;
     let mut frontmatter = read.parsed.frontmatter;
     let mut body = read.parsed.content;
+    let body_changed = input.content.is_some();
+    let explicit_tags = input.tags.is_some();
 
     if let Some(title) = input.title {
         let title = title.trim().to_string();
@@ -1153,6 +1245,14 @@ async fn apply_update_to_vault(
         merge_frontmatter_patch(&mut row, &mut frontmatter, frontmatter_patch.into_value())?;
     }
 
+    // Body-only saves (no explicit `tags` param) reconcile inline `#hashtags`
+    // from the new body into `frontmatter.tags` so the renderer + cache stay
+    // in sync with what the user actually wrote. Existing explicit tags are
+    // preserved at the front; new inline tags are appended in body order.
+    if body_changed && !explicit_tags {
+        merge_inline_tags(&mut frontmatter.tags, &body);
+    }
+
     row.modified_at = now_iso();
     frontmatter.modified = row.modified_at.clone();
     notes_io::write_note_to_disk(&root, &row.path, &frontmatter, &body).await?;
@@ -1162,6 +1262,15 @@ async fn apply_update_to_vault(
         body,
         frontmatter,
     })
+}
+
+fn merge_inline_tags(existing: &mut Vec<String>, body: &str) {
+    let extracted = crate::db::tag_definitions::inline_tags(body);
+    for tag in extracted {
+        if !existing.iter().any(|t| t == &tag) {
+            existing.push(tag);
+        }
+    }
 }
 
 fn merge_frontmatter_patch(
