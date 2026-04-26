@@ -2,9 +2,11 @@
 
 pub mod apply;
 mod docstore;
+pub mod snapshot;
 
 pub use apply::apply_update_v1;
 pub use docstore::{DocHandle, DocStore, NoteId};
+pub use snapshot::{encode_diff_since_v1, encode_snapshot_v1};
 
 use once_cell::sync::Lazy;
 use std::sync::Arc;
