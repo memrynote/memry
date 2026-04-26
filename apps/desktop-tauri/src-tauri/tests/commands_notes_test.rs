@@ -178,9 +178,13 @@ async fn set_local_only_flips_visibility_for_count_query() {
     .unwrap();
 
     assert_eq!(notes_get_local_only_count_inner(&conn).unwrap().count, 0);
-    notes_set_local_only_inner(&conn, &created.id, true).unwrap();
+    notes_set_local_only_inner(&vault, &conn, &created.id, true)
+        .await
+        .unwrap();
     assert_eq!(notes_get_local_only_count_inner(&conn).unwrap().count, 1);
-    notes_set_local_only_inner(&conn, &created.id, false).unwrap();
+    notes_set_local_only_inner(&vault, &conn, &created.id, false)
+        .await
+        .unwrap();
     assert_eq!(notes_get_local_only_count_inner(&conn).unwrap().count, 0);
 }
 
