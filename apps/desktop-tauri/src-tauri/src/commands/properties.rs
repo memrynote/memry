@@ -1,9 +1,10 @@
 //! Property-definition commands. Thin wrappers over `db::property_definitions`.
 //!
 //! Definition CRUD is typed (`CreatePropertyDefinitionInput`); update/ensure
-//! payloads stay permissive `JsonUnknown` to match the loose renderer
-//! contract. Inner helpers take `&Connection` so tests exercise behaviour
-//! without the Tauri runtime.
+//! and option-mutation payloads stay permissive `JsonUnknown` to match the
+//! loose renderer contract (`{ propertyName, option, optionValue, oldValue,
+//! newValue, newColor, ... }`). Inner helpers take `&Connection` so tests
+//! exercise behaviour without the Tauri runtime.
 
 use crate::app_state::AppState;
 use crate::commands::notes::{now_iso, JsonUnknown};
@@ -24,6 +25,12 @@ pub struct CreatePropertyDefinitionInput {
     pub options: Option<JsonUnknown>,
     pub default_value: Option<String>,
     pub color: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
+#[serde(rename_all = "camelCase")]
+pub struct PropertySimpleSuccess {
+    pub success: bool,
 }
 
 // ---- Inner helpers (called from tests, runtime, and Tauri wrappers) -------
@@ -72,6 +79,48 @@ pub fn notes_ensure_property_definition_inner(
     db::get(conn, name)?.ok_or_else(|| AppError::NotFound(format!("property {name}")))
 }
 
+pub fn notes_add_property_option_inner(conn: &Connection, input: &Value) -> AppResult<()> {
+    let property_name = require_str(input, "propertyName")?;
+    let option = require_object(input, "option")?;
+    let value = require_field_str(option, "option.value")?;
+    let color = option.get("color").and_then(Value::as_str);
+    db::add_option(conn, property_name, value, color)
+}
+
+pub fn notes_add_status_option_inner(conn: &Connection, input: &Value) -> AppResult<()> {
+    let property_name = require_str(input, "propertyName")?;
+    let category = require_str(input, "categoryKey")?;
+    let option = require_object(input, "option")?;
+    let value = require_field_str(option, "option.value")?;
+    let color = option.get("color").and_then(Value::as_str);
+    db::add_status_option(conn, property_name, category, value, color)
+}
+
+pub fn notes_remove_property_option_inner(conn: &Connection, input: &Value) -> AppResult<()> {
+    let property_name = require_str(input, "propertyName")?;
+    let option_value = require_str(input, "optionValue")?;
+    db::remove_option(conn, property_name, option_value)
+}
+
+pub fn notes_rename_property_option_inner(conn: &Connection, input: &Value) -> AppResult<()> {
+    let property_name = require_str(input, "propertyName")?;
+    let old_value = require_str(input, "oldValue")?;
+    let new_value = require_str(input, "newValue")?;
+    db::rename_option(conn, property_name, old_value, new_value)
+}
+
+pub fn notes_update_option_color_inner(conn: &Connection, input: &Value) -> AppResult<()> {
+    let property_name = require_str(input, "propertyName")?;
+    let option_value = require_str(input, "optionValue")?;
+    let new_color = require_str(input, "newColor")?;
+    db::update_option_color(conn, property_name, option_value, new_color)
+}
+
+pub fn notes_delete_property_definition_inner(conn: &Connection, input: &Value) -> AppResult<()> {
+    let name = require_str(input, "name")?;
+    db::delete(conn, name)
+}
+
 // ---- Tauri commands -------------------------------------------------------
 
 #[tauri::command]
@@ -113,11 +162,102 @@ pub fn notes_ensure_property_definition(
     notes_ensure_property_definition_inner(&conn, &input)
 }
 
+#[tauri::command]
+#[specta::specta]
+pub fn notes_add_property_option(
+    state: State<'_, AppState>,
+    input: JsonUnknown,
+) -> AppResult<PropertySimpleSuccess> {
+    let conn = state.db.conn()?;
+    notes_add_property_option_inner(&conn, &input)?;
+    Ok(PropertySimpleSuccess { success: true })
+}
+
+#[tauri::command]
+#[specta::specta]
+pub fn notes_add_status_option(
+    state: State<'_, AppState>,
+    input: JsonUnknown,
+) -> AppResult<PropertySimpleSuccess> {
+    let conn = state.db.conn()?;
+    notes_add_status_option_inner(&conn, &input)?;
+    Ok(PropertySimpleSuccess { success: true })
+}
+
+#[tauri::command]
+#[specta::specta]
+pub fn notes_remove_property_option(
+    state: State<'_, AppState>,
+    input: JsonUnknown,
+) -> AppResult<PropertySimpleSuccess> {
+    let conn = state.db.conn()?;
+    notes_remove_property_option_inner(&conn, &input)?;
+    Ok(PropertySimpleSuccess { success: true })
+}
+
+#[tauri::command]
+#[specta::specta]
+pub fn notes_rename_property_option(
+    state: State<'_, AppState>,
+    input: JsonUnknown,
+) -> AppResult<PropertySimpleSuccess> {
+    let conn = state.db.conn()?;
+    notes_rename_property_option_inner(&conn, &input)?;
+    Ok(PropertySimpleSuccess { success: true })
+}
+
+#[tauri::command]
+#[specta::specta]
+pub fn notes_update_option_color(
+    state: State<'_, AppState>,
+    input: JsonUnknown,
+) -> AppResult<PropertySimpleSuccess> {
+    let conn = state.db.conn()?;
+    notes_update_option_color_inner(&conn, &input)?;
+    Ok(PropertySimpleSuccess { success: true })
+}
+
+#[tauri::command]
+#[specta::specta]
+pub fn notes_delete_property_definition(
+    state: State<'_, AppState>,
+    input: JsonUnknown,
+) -> AppResult<PropertySimpleSuccess> {
+    let conn = state.db.conn()?;
+    notes_delete_property_definition_inner(&conn, &input)?;
+    Ok(PropertySimpleSuccess { success: true })
+}
+
 // ---- Internal helpers -----------------------------------------------------
 
 fn require_str<'a>(value: &'a Value, field: &str) -> AppResult<&'a str> {
     value
         .get(field)
+        .and_then(Value::as_str)
+        .ok_or_else(|| AppError::Validation(format!("{field} must be a non-empty string")))
+        .and_then(|s| {
+            if s.is_empty() {
+                Err(AppError::Validation(format!("{field} must not be empty")))
+            } else {
+                Ok(s)
+            }
+        })
+}
+
+fn require_object<'a>(value: &'a Value, field: &str) -> AppResult<&'a Value> {
+    let inner = value
+        .get(field)
+        .ok_or_else(|| AppError::Validation(format!("{field} is required")))?;
+    if !inner.is_object() {
+        return Err(AppError::Validation(format!("{field} must be an object")));
+    }
+    Ok(inner)
+}
+
+fn require_field_str<'a>(value: &'a Value, field: &str) -> AppResult<&'a str> {
+    let leaf = field.rsplit_once('.').map(|(_, leaf)| leaf).unwrap_or(field);
+    value
+        .get(leaf)
         .and_then(Value::as_str)
         .ok_or_else(|| AppError::Validation(format!("{field} must be a non-empty string")))
         .and_then(|s| {
