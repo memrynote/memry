@@ -22,7 +22,7 @@
       }
     ],
     "security": {
-      "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; media-src 'self' blob: data:; frame-src https://www.youtube.com https://www.youtube-nocookie.com https://player.vimeo.com https://player.twitch.tv; font-src 'self' data:; worker-src 'self' blob:; connect-src 'self' ipc: https://ipc.localhost http://localhost:1420 https://*.youtube.com"
+      "csp": "default-src 'self' memry-file:; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: memry-file: https:; media-src 'self' blob: data: memry-file:; frame-src https://www.youtube.com https://www.youtube-nocookie.com https://player.vimeo.com https://player.twitch.tv; font-src 'self' data:; worker-src 'self' blob:; connect-src 'self' ipc: https://ipc.localhost http://localhost:1420 https://*.youtube.com"
     }
   },
   "bundle": {
