@@ -125,6 +125,7 @@ pub fn run() {
             commands::properties::notes_delete_property_definition,
             commands::crdt::crdt_open_doc,
             commands::crdt::crdt_close_doc,
+            commands::crdt::crdt_apply_update,
             commands::shell::shell_open_url,
             commands::shell::shell_open_path,
             commands::shell::shell_reveal_in_finder,
